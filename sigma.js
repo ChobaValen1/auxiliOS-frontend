@@ -3550,7 +3550,7 @@ function _renderCamionCards() {
   const neuStatus = neuOk
     ? `${neuLabel[_camionNeumaticos.tire_condition] || '—'} · ${neuLabel[_camionNeumaticos.brake_condition] || '—'} frenos`
     : '⚠ Sin control hoy';
-  const neuBorder = neuOk ? '#f59e0b' : '#ef4444';
+  const neuBorder = neuOk ? '#f59e0b' : (esChofer ? '#ef4444' : '#f59e0b');
 
   // ── Estado Combustible ──
   const totalLitros = _camionCombustible.reduce((s, r) => s + (r.liters || 0), 0);
