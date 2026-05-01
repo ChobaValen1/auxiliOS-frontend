@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AuxiliOS | Smart App</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="sigma.css">
+<link rel="icon" href="data:,">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- Indicador flotante de cola offline -->
+<div id="offline-indicator" onclick="abrirColaOffline()" style="display:none;position:fixed;bottom:76px;right:16px;z-index:300;cursor:pointer;background:var(--amber);color:#000;border-radius:20px;padding:8px 14px;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(0,0,0,0.3);display:none;align-items:center;gap:6px">
+  <span>📶</span>
+  <span id="offline-badge-text">0 pendientes</span>
+</div>
+
+<!-- Modal: Cola Offline -->
+<div class="modal-backdrop" id="modal-offline-queue">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">📶 Cola Offline</span>
+      <button class="modal-close" onclick="closeModal('modal-offline-queue')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        Los registros <span style="color:var(--blue)">pendientes</span> se envían solos al recuperar señal.
+        Los <span style="color:var(--red)">con error</span> requieren corrección manual.
+      </div>
+      <div id="offline-queue-lista">
+        <div style="text-align:center;color:var(--muted);padding:20px">Sin registros pendientes</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-offline-queue')">Cerrar</button>
+      <button class="btn btn-primary" id="btn-sync-manual" onclick="syncOfflineFuel()">↑ Sincronizar ahora</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-combustible">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">⛽ Cargar combustible</span>
+      <button class="modal-close" onclick="closeModal('modal-combustible')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:10px 14px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:8px;margin-bottom:16px">
+        <div style="font-size:11px;color:var(--muted)">Camión</div>
+        <div style="font-family:'Bebas Neue';font-size:18px;color:var(--amber)" id="cb-camion-info">—</div>
+      </div>
+
+      <!-- Lector de ticket OCR -->
+      <div style="margin-bottom:20px">
+        <input type="file" id="cb-ticket-input" accept="image/*" capture="environment" style="display:none" onchange="leerTicketCombustible(this)">
+        <button id="cb-scan-btn" class="btn btn-ghost" style="width:100%;padding:12px;border:1.5px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px" onclick="document.getElementById('cb-ticket-input').click()">
+          <span style="font-size:18px">📷</span>
+          <span id="cb-scan-label">Escanear ticket con IA</span>
+        </button>
+        <div id="cb-scan-status" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;font-size:12px"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Fecha <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="date" id="cb-fecha">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Litros <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="tel" id="cb-litros" placeholder="Ej: 80" oninput="calcCombTotal()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Precio / litro <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="tel" id="cb-precio" placeholder="Ej: 420" oninput="calcCombTotal()">
+        </div>
+      </div>
+      <div style="padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:12px;color:var(--muted)">Total</div>
+        <div style="font-family:'DM Mono';font-size:20px;font-weight:700;color:var(--amber)" id="cb-total">$0</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">KM al cargar</label>
+        <input class="form-input" type="tel" id="cb-km" placeholder="Opcional">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estación de servicio</label>
+        <input class="form-input" type="text" id="cb-estacion" placeholder="Ej: YPF Ruta 2 km 340">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Medio de pago <span style="color:var(--red)">*</span></label>
+        <div style="display:flex;gap:8px">
+          <button id="cb-efectivo" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','efectivo')">💵 Efectivo</button>
+          <button id="cb-transferencia" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','transferencia')">🏦 Transfer.</button>
+          <button id="cb-app" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','app')">📱 App</button>
+        </div>
+      </div>
+      <div id="cb-app-select" style="display:none;margin-top:8px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Seleccioná la app</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Shell Flota')">Shell Flota</button>
+          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'YPF Ruta')">YPF Ruta</button>
+          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Axion')">Axion</button>
+          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Otra')">Otra</button>
+        </div>
+      </div>
+    </div>
+    <div id="cb-error" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-combustible')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-combustible" onclick="guardarCombustible()">⛽ Guardar carga</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-service-log">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">🔧 Registrar service</span>
+      <button class="modal-close" onclick="closeModal('modal-service-log')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:10px 14px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:8px;margin-bottom:20px">
+        <div style="font-size:11px;color:var(--muted)">Camión</div>
+        <div style="font-family:'Bebas Neue';font-size:18px;color:var(--amber)" id="sl-camion-info">—</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Plan de service <span style="color:var(--red)">*</span></label>
+        <select class="form-input" id="sl-plan" onchange="calcNextService()">
+          <option value="">— Seleccioná el plan —</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Fecha <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="date" id="sl-fecha">
+        </div>
+        <div class="form-group">
+          <label class="form-label">KM al realizar <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="tel" id="sl-km" placeholder="Ej: 185000" oninput="calcNextService()">
+        </div>
+      </div>
+      <div id="sl-next-preview" style="display:none;padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:12px;color:var(--muted)">Próximo service</div>
+        <div style="font-family:'DM Mono';font-size:16px;font-weight:700;color:var(--amber)" id="sl-next">—</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Taller</label>
+          <input class="form-input" type="text" id="sl-taller" placeholder="Nombre del taller">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Costo</label>
+          <input class="form-input" type="tel" id="sl-costo" placeholder="$0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <textarea class="form-input" id="sl-notas" placeholder="Observaciones del service..." style="min-height:60px;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-service-log')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-service" onclick="guardarServiceLog()">🔧 Guardar service</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-neumaticos">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">🔩 Control Neumáticos & Frenos</span>
+      <button class="modal-close" onclick="closeModal('modal-neumaticos')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:10px 14px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:8px;margin-bottom:20px">
+        <div style="font-size:11px;color:var(--muted)">Camión</div>
+        <div style="font-family:'Bebas Neue';font-size:18px;color:var(--amber)" id="neu-camion-info">—</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha del control <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="date" id="neu-fecha">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Estado neumáticos <span style="color:var(--red)">*</span></label>
+          <select class="form-input" id="neu-cond">
+            <option value="">— Seleccioná —</option>
+            <option value="bueno">✅ Bueno (En buen estado) </option>
+            <option value="regular">⚠️ Regular (Requiere Reparación) </option>
+            <option value="malo">❌ Malo (Enviar al taller urgente) </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Presión (PSI)</label>
+          <input class="form-input" type="tel" id="neu-psi" placeholder="Ej: 110">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado frenos <span style="color:var(--red)">*</span></label>
+        <select class="form-input" id="neu-frenos">
+          <option value="">— Seleccioná —</option>
+          <option value="bueno">✅ Bueno (En buen estado) </option>
+          <option value="regular">⚠️ Regular (Requiere Reparación) </option>
+          <option value="malo">❌ Malo (Enviar al taller urgente) </option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observaciones</label>
+        <textarea class="form-input" id="neu-notas" placeholder="Detalles del estado, desgaste, etc." style="min-height:70px;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-neumaticos')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-neumaticos" onclick="guardarNeumaticos()">🔩 Guardar control</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-crear-plan-global">
+  <div class="modal-box" style="max-width: 500px;">
+    <div class="modal-head">
+      <span class="modal-head-title">🌍 Crear Regla Global de Service</span>
+      <button class="modal-close" onclick="closeModal('modal-crear-plan-global')">×</button>
+    </div>
+    
+    <div class="modal-body">
+      <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px;">
+        Este plan se guardará en el catálogo general y podrá ser asignado a cualquier vehículo de la flota.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label">Nombre del plan <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="text" id="mg-nombre" placeholder="Ej: Mantenimiento Preventivo Tipo A">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Tipo de cadencia <span style="color:var(--red)">*</span></label>
+        <select class="form-input" id="mg-tipo" onchange="toggleAdminPlanFields()">
+          <option value="">— Seleccionar —</option>
+          <option value="km">📏 Por Kilómetros</option>
+          <option value="hours">⏱ Por Horas de Motor</option>
+          <option value="both">🔁 Ambos (Lo que ocurra primero)</option>
+        </select>
+      </div>
+
+      <div id="mg-km-row" class="form-group" style="display:none">
+        <label class="form-label">Intervalo (km) <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="tel" id="mg-km" placeholder="Ej: 15000">
+      </div>
+
+      <div id="mg-hs-row" class="form-group" style="display:none">
+        <label class="form-label">Intervalo (horas) <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="tel" id="mg-hs" placeholder="Ej: 500">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Alerta previa (km antes del vencimiento)</label>
+        <input class="form-input" type="tel" id="mg-alerta" value="500">
+      </div>
+    </div>
+
+    <div class="modal-footer" style="background: var(--bg); border-top: 1px solid var(--border);">
+      <button class="btn btn-ghost" onclick="closeModal('modal-crear-plan-global')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-global" onclick="guardarPlanGlobal()">
+        💾 Guardar en Catálogo
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="nav-seccion-admin" class="nav-section" style="display: none; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 15px;">
+  <span style="font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; display: block; padding-left: 10px;">
+    Administración
+  </span>
+  <button class="nav-btn" onclick="openAdminPlanModal()" style="width: 100%; text-align: left; padding: 10px; background: transparent; border: none; color: var(--text); cursor: pointer;">
+    ⚙️ Catálogo de Services
+  </button>
+</div> 
+<div class="modal-backdrop" id="modal-asignar-plan">
+  <div class="modal-box" style="max-width: 450px;">
+    <div class="modal-head">
+      <span class="modal-head-title">⚙️ Asignar Plan de Service</span>
+      <button class="modal-close" onclick="closeModal('modal-asignar-plan')">×</button>
+    </div>
+    
+    <div class="modal-body">
+      <div style="padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:10px; color:var(--muted); text-transform:uppercase;">Vehículo Seleccionado</div>
+          <div style="font-family:'Bebas Neue'; font-size:20px; color:var(--text)" id="ap-camion-info">—</div>
+        </div>
+        <div style="font-size:24px;">🚛</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Seleccionar Plan del Catálogo <span style="color:var(--red)">*</span></label>
+        <select class="form-input" id="ap-plan-select" style="height: 45px; font-weight: 600;">
+          <option value="">— Cargando planes... —</option>
+        </select>
+        <p style="font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.4;">
+          💡 Los planes maestros definen automáticamente los intervalos de KM/Horas y las alertas para toda la flota.
+        </p>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="background: var(--bg); border-top: 1px solid var(--border);">
+      <button class="btn btn-ghost" onclick="closeModal('modal-asignar-plan')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-asignar-plan" onclick="asignarPlanAlCamion()">
+        🔗 Vincular Plan
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-cerrar-jornada">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">🏁 Cerrar jornada</span>
+      <button class="modal-close" onclick="closeModal('modal-cerrar-jornada')">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Info del camión -->
+      <div style="padding:12px 16px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:8px;margin-bottom:4px">
+        <div style="font-size:11px;color:var(--muted)">Camión</div>
+        <div style="font-family:'Bebas Neue';font-size:18px;color:var(--amber)" id="cj-camion-info">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">KM al inicio del turno: <span id="cj-km-inicio-display">—</span></div>
+      </div>
+
+      <!-- Sección escáner / resultado IA -->
+      <div style="background:var(--bg-darker);padding:15px;border-radius:8px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:12px;font-weight:600">
+          <span>📸 Odómetro Final <span style="color:var(--red)">*</span></span>
+          <span style="font-size:10px;background:rgba(16,185,129,0.1);color:#10b981;padding:2px 6px;border-radius:4px">IA Activada</span>
+        </div>
+
+        <!-- Estado: esperando foto -->
+        <div id="cj-foto-area">
+          <label style="display:block;cursor:pointer;margin-bottom:10px">
+            <input type="file" id="cj-foto-km" accept="image/*" capture="environment" style="display:none" onchange="procesarFotoConIA(event, 'cierre')">
+            <div id="cj-foto-box" class="photo-upload" style="padding:16px;border:2px dashed var(--amber);background:var(--amber-lo);border-radius:8px;text-align:center;transition:all 0.2s">
+              <div id="cj-foto-icon" style="font-size:24px">📷</div>
+              <div id="cj-foto-status" style="font-weight:bold;margin-top:5px">Tocar para escanear odómetro</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">La IA extraerá el kilometraje automáticamente</div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Estado: resultado IA (oculto hasta que IA lee) -->
+        <div id="cj-km-result" style="display:none;border-radius:10px;padding:18px 16px;text-align:center;margin-bottom:8px">
+          <div id="cj-km-status-label" style="font-size:10px;font-weight:800;letter-spacing:0.5px;margin-bottom:4px"></div>
+          <div id="cj-km-number" style="font-size:52px;font-weight:800;line-height:1;font-family:'DM Mono','Courier New',monospace;letter-spacing:-1px"></div>
+          <div style="font-size:13px;opacity:0.7;margin-top:2px">kilómetros</div>
+          <div id="cj-km-diff" style="font-size:12px;margin-top:8px"></div>
+          <button onclick="editarKmManual()" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);cursor:pointer;padding:6px 14px;border-radius:6px;font-family:inherit">✏ Editar manualmente</button>
+        </div>
+
+        <!-- Campo manual (oculto por defecto, aparece al editar) -->
+        <div id="cj-km-manual-area" style="display:none">
+          <input class="form-input" type="tel" id="cj-km-final" placeholder="Ingresá el KM correcto..." style="font-family:'DM Mono';font-size:22px;text-align:center;font-weight:700" oninput="onKmManualInput()">
+          <div id="cj-km-calc" style="margin-top:8px;font-size:12px;text-align:center;min-height:15px"></div>
+        </div>
+
+        <!-- Sección excepción (oculta, aparece solo en anomalía) -->
+        <div id="cj-excepcion-section" style="display:none;margin-top:10px">
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;font-size:12px;color:#fca5a5;margin-bottom:8px">
+            <span style="font-size:14px;flex-shrink:0">🚨</span>
+            <span>El KM detectado es <strong>menor al inicio de jornada</strong>. Editá el valor o confirmá la excepción.</span>
+          </div>
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:8px;cursor:pointer">
+            <input type="checkbox" id="cj-excepcion-check" style="width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--amber)" onchange="onExcepcionCheck(this)">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--amber);line-height:1.4">El odómetro dio la vuelta o fue reemplazado</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Quedará registrado como excepción en el historial.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Toggle taller -->
+      <div id="cj-taller-toggle-row" onclick="toggleTaller()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg-darker);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s">
+        <div>
+          <div style="font-size:13px;font-weight:600">🔧 ¿Ingresó al taller hoy?</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px">Activá si el móvil tuvo servicio técnico</div>
+        </div>
+        <div id="cj-taller-toggle" style="width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;transition:background 0.2s;flex-shrink:0">
+          <div id="cj-taller-knob" style="position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left 0.2s"></div>
+        </div>
+      </div>
+
+      <!-- Detalle taller (expandible) -->
+      <div id="cj-taller-detalle" style="display:none">
+        <select class="form-input" id="cj-taller-tipo" onchange="onTallerTipoChange()" style="margin-bottom:8px">
+          <option value="" disabled selected>Tipo de trabajo...</option>
+          <option value="Mantenimiento">Mantenimiento</option>
+          <option value="Preventivo">Preventivo</option>
+          <option value="Repuestos">Repuestos</option>
+          <option value="Reparación">Reparación</option>
+          <option value="Eléctrico">Eléctrico</option>
+          <option value="Otro">Otro</option>
+        </select>
+        <textarea class="form-input" id="cj-workshop-detail" placeholder="Detalle del trabajo realizado..." rows="2"></textarea>
+      </div>
+
+      <!-- Notas -->
+      <textarea class="form-input" id="cj-notas" placeholder="Notas del turno (opcional)..." rows="2"></textarea>
+    </div>
+
+    <div id="cj-error" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-cerrar-jornada')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-cierre" onclick="confirmarCerrarJornada()" style="background:var(--red);border-color:var(--red)">🏁 Cerrar Jornada</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── MODAL RENDICIÓN DE CIERRE ── -->
+<div class="modal-backdrop" id="modal-rendicion-cierre">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">💰 Rendición de efectivo</span>
+    </div>
+    <div class="modal-body">
+
+      <!-- Resumen remitos del día -->
+      <div id="rend-resumen-remitos" style="background:var(--bg-darker);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Servicios del día</div>
+        <div id="rend-remitos-lista" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto"></div>
+        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--muted)">Efectivo esperado por el sistema</span>
+          <span id="rend-efectivo-esperado" style="font-family:'Bebas Neue';font-size:22px;color:var(--amber)">$0</span>
+        </div>
+      </div>
+
+      <!-- Input efectivo declarado -->
+      <div class="form-group">
+        <label class="form-label">¿Cuánto efectivo tenés en mano? <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="tel" id="rend-efectivo-declarado"
+          placeholder="Ej: 45000" style="font-family:'DM Mono';font-size:20px;font-weight:700;text-align:center"
+          oninput="rendActualizarDiferencia()">
+      </div>
+
+      <!-- Gastos del sistema (readonly) -->
+      <div id="rend-gastos-sistema-row" style="display:none;padding:10px 14px;background:var(--bg-darker);border:1px solid var(--border);border-radius:8px;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;font-weight:600">⛽ Gastos del sistema (combustible)</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Cargado automáticamente</div>
+        </div>
+        <span id="rend-gastos-sistema-val" style="font-family:'DM Mono';font-weight:700;color:var(--red)">$0</span>
+      </div>
+
+      <!-- Gastos extra -->
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">Gastos extra no registrados (opcional)</label>
+        <input class="form-input" type="tel" id="rend-gastos-extra" placeholder="$0" oninput="rendActualizarDiferencia()">
+      </div>
+      <div class="form-group" id="rend-motivo-row" style="display:none">
+        <label class="form-label">Motivo del gasto extra</label>
+        <input class="form-input" type="text" id="rend-motivo-extra" placeholder="Ej: Peón de descarga, repuesto de emergencia...">
+      </div>
+
+      <!-- Preview diferencia -->
+      <div id="rend-diferencia-preview" style="display:none;border-radius:8px;padding:12px 14px;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:12px;font-weight:600">Diferencia</span>
+          <span id="rend-diferencia-val" style="font-family:'Bebas Neue';font-size:24px"></span>
+        </div>
+        <div id="rend-diferencia-msg" style="font-size:11px;margin-top:4px;color:var(--muted)"></div>
+      </div>
+
+      <!-- Notas -->
+      <textarea class="form-input" id="rend-notas" placeholder="Aclaraciones o novedades del día (opcional)..." rows="2" style="margin-top:8px"></textarea>
+
+      <div id="rend-error" class="modal-error" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost" onclick="omitirRendicion()">Omitir</button>
+      <button class="btn btn-primary" id="btn-confirmar-rendicion" onclick="confirmarRendicion()">✅ Confirmar rendición</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-nueva-jornada">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title">🚛 ¿En qué móvil estás hoy?</span>
+      <button class="modal-close" onclick="closeModal('modal-nueva-jornada')">×</button>
+    </div>
+    <div class="modal-body">
+      
+      <div style="margin-bottom:20px">
+        <div id="camion-seleccionado-preview" style="display:none;padding:12px 14px;border-radius:10px;border:2px solid var(--amber);background:var(--amber-lo);margin-bottom:10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Camión seleccionado</div>
+          <div id="camion-preview-texto" style="font-weight:700;font-size:15px"></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted)">Para cambiar de camión ir a <strong style="color:var(--amber)">Configuración → Cambiar sesión</strong></div>
+        </div>
+        <button id="btn-abrir-selector-camion" onclick="toggleSelectorCamion()" class="btn btn-ghost" style="width:100%;justify-content:center;gap:8px;font-size:14px">
+          🚛 Seleccionar Camión
+        </button>
+        <div id="panel-selector-camion" style="display:none;margin-top:10px">
+          <input
+            id="camion-search-input"
+            class="form-input"
+            type="text"
+            placeholder="🔍 Buscar patente o número interno..."
+            oninput="filtrarCamionesPorBusqueda(this.value)"
+            style="width:100%;box-sizing:border-box;margin-bottom:10px"
+          >
+          <div id="lista-camiones-selector" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:320px;overflow-y:auto"></div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-darker);padding:15px;border-radius:8px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:12px;font-weight:600">
+          <span>📸 Odómetro Inicial <span style="color:var(--red)">*</span></span>
+          <span style="font-size:10px;background:rgba(16,185,129,0.1);color:#10b981;padding:2px 6px;border-radius:4px">IA Activada</span>
+        </div>
+
+        <!-- Estado: esperando foto -->
+        <div id="nj-foto-area">
+          <label style="display:block;cursor:pointer;margin-bottom:10px">
+            <input type="file" id="nj-foto-km" accept="image/*" capture="environment" style="display:none" onchange="procesarFotoConIA(event, 'inicio')">
+            <div id="nj-foto-box" class="photo-upload" style="padding:16px;border:2px dashed var(--amber);background:var(--amber-lo);border-radius:8px;text-align:center;transition:all 0.2s">
+              <div id="nj-foto-icon" style="font-size:24px">📷</div>
+              <div id="nj-foto-status" style="font-weight:bold;margin-top:5px">Tocar para escanear odómetro</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">La IA validará contra el último cierre</div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Estado: resultado IA (oculto hasta que IA lee) -->
+        <div id="nj-km-result" style="display:none;border-radius:10px;padding:18px 16px;text-align:center;margin-bottom:8px;background:rgba(16,185,129,0.08);border:2px solid rgba(16,185,129,0.4)">
+          <div id="nj-km-status-label" style="font-size:10px;font-weight:800;letter-spacing:0.5px;margin-bottom:4px;color:#10b981">✓ LECTURA CONFIRMADA</div>
+          <div id="nj-km-number" style="font-size:52px;font-weight:800;line-height:1;font-family:'DM Mono','Courier New',monospace;letter-spacing:-1px;color:#10b981"></div>
+          <div style="font-size:13px;opacity:0.7;margin-top:2px">kilómetros</div>
+          <div id="nj-km-diff" style="font-size:12px;margin-top:8px"></div>
+          <button onclick="editarKmManualInicio()" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:11px;color:var(--muted);background:none;border:1px solid var(--border);cursor:pointer;padding:6px 14px;border-radius:6px;font-family:inherit">✏ Editar manualmente</button>
+        </div>
+
+        <!-- Campo manual (oculto por defecto, aparece al editar) -->
+        <div id="nj-km-manual-area" style="display:none">
+          <input class="form-input" type="tel" id="nj-km-inicio" placeholder="Ingresá el KM inicial..." style="font-family:'DM Mono';font-size:22px;text-align:center;font-weight:700" oninput="onKmManualInicioInput()">
+          <div id="nj-km-calc" style="margin-top:8px;font-size:12px;text-align:center;min-height:15px"></div>
+        </div>
+
+        <!-- Validación oculta (referenciada por procesarFotoConIA durante el estado "pensando") -->
+        <div id="nj-km-validacion" style="display:none"></div>
+      </div>
+
+    </div>
+    
+    <div id="nj-error" class="modal-error" style="display:none;"></div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost" onclick="closeModal('modal-nueva-jornada')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirmar-inicio" onclick="confirmarNuevaJornada()">✅ Iniciar jornada</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Caja en Calle — Desglose -->
+<div class="modal-backdrop" id="modal-caja-calle">
+  <div class="modal-box" style="max-width:680px;width:95vw">
+    <div class="modal-head">
+      <span class="modal-head-title">💰 Caja en Calle — Desglose</span>
+      <button class="modal-close" onclick="closeModal('modal-caja-calle')">×</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div id="caja-calle-body" style="padding:16px">
+        <div style="text-align:center;color:var(--muted);padding:20px">Cargando...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-caja-calle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<nav class="sidenav">
+  <div class="nav-logo">FL</div>
+
+  <div class="nav-item active" onclick="goTo('dashboard')" id="nav-dashboard">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">Panel</span>
+  </div>
+
+  <div class="nav-divider"></div>
+
+  <div class="nav-item" onclick="goTo('registro')" id="nav-registro">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">Km</span>
+  </div>
+
+  <div class="nav-item" onclick="goTo('camion')" id="nav-camion">
+    <span class="nav-icon">🚛</span>
+    <span class="nav-label">Camión</span>
+  </div>
+
+  <div class="nav-item" onclick="goTo('documentos')" id="nav-documentos">
+    <span class="nav-icon">📄</span>
+    <span class="nav-label">Docs</span>
+    <span class="nav-dot"></span>
+  </div>
+
+  <div class="nav-item" onclick="goTo('remitos')" id="nav-remitos">
+    <span class="nav-icon">🧾</span>
+    <span class="nav-label">Remitos</span>
+  </div>
+
+  <div class="nav-bottom">
+    <div class="nav-avatar">RC</div>
+  </div>
+</nav>
+
+<div class="main">
+
+  <div class="topbar" id="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">PANEL PRINCIPAL</div>
+      <div class="topbar-sub" id="topbar-sub">Resumen · Miércoles 11 Mar 2026</div>
+    </div>
+   <div class="topbar-right">
+  <span class="role-badge" style="background:var(--amber-lo);color:var(--amber);border:1px solid rgba(245,166,35,0.3)">👑 Admin</span>
+  <div class="tb-btn">🔔</div>
+  
+  <div id="btn-admin-settings" class="tb-btn" onclick="openSettingsHub()" style="display: none; cursor: pointer;">
+    ⚙️
+  </div>
+</div>
+
+   </div>
+
+
+  <div class="content">
+
+    <div class="screen active" id="screen-dashboard">
+
+      <!-- Switcher de contexto: solo admin/supervisor -->
+      <div id="dash-ctx-bar" style="display:none;margin-bottom:16px">
+        <div class="filter-tabs">
+          <div class="ftab active" onclick="dashCambiarVista('rendimiento',this)">📈 Mi Rendimiento</div>
+          <div class="ftab" onclick="dashCambiarVista('negocio',this)">🏢 Negocio</div>
+        </div>
+      </div>
+
+      <!-- ── Vista Chofer: Mi Rendimiento ── -->
+      <div id="dash-view-rendimiento">
+
+        <!-- Filtros solo para admin/supervisor -->
+        <div id="dash-rend-filtros-admin" style="display:none;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Rendimiento Individual</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:140px">
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Chofer</div>
+              <select id="rend-filtro-chofer" class="form-input" style="width:100%" onchange="dashRendFiltroChange()">
+                <option value="">— Todos los choferes —</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:140px">
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Camión</div>
+              <select id="rend-filtro-camion" class="form-input" style="width:100%" onchange="dashRendFiltroChange()">
+                <option value="">— Todos los camiones —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selector período -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <span style="font-size:11px;color:var(--muted)" id="dash-rend-periodo-lbl">Mes actual</span>
+          <div class="filter-tabs">
+            <div class="ftab" onclick="dashRendPeriod('hoy',this)">Hoy</div>
+            <div class="ftab" onclick="dashRendPeriod('semana',this)">7 días</div>
+            <div class="ftab active" onclick="dashRendPeriod('mes',this)">Mes</div>
+          </div>
+        </div>
+
+        <!-- KPIs financieros -->
+        <div class="dash-section">Financiero</div>
+        <div class="grid-2 mb16" id="dash-rend-fin"></div>
+
+        <!-- KPIs operativos -->
+        <div class="dash-section">Operativo</div>
+        <div class="grid-4 mb16" id="dash-rend-op"></div>
+
+        <!-- Jornada activa -->
+        <div class="card mb16">
+          <div class="card-label" style="margin-bottom:12px">Jornada activa</div>
+          <div id="dash-jornada-hoy-content"></div>
+        </div>
+
+        <!-- Evolución 7 días -->
+        <div class="card mb16">
+          <div class="card-label" style="margin-bottom:14px">Evolución — últimos 7 días</div>
+          <div id="dash-evolucion-chart" style="min-height:100px;position:relative">
+  <canvas id="dash-evolucion-canvas" style="max-height:180px"></canvas>
+</div>
+        </div>
+
+        <!-- Alertas personales -->
+        <div class="card" id="dash-alertas-pers-card" style="display:none">
+          <div class="card-label" style="margin-bottom:12px">⚠️ Alertas personales</div>
+          <div id="dash-alertas-pers"></div>
+        </div>
+
+      </div>
+
+      <!-- ── Vista Manager: Negocio ── -->
+      <div id="dash-view-negocio" style="display:none">
+
+        <!-- Filter bar -->
+        <div class="dash-filter-bar" id="dash-filter-bar">
+          <div class="dash-period-row">
+            <span class="dash-period-label">📅 Período:</span>
+            <button class="dash-period-btn" data-p="1m"  onclick="dashFiltroPeriodo('1m')">1 mes</button>
+            <button class="dash-period-btn" data-p="3m"  onclick="dashFiltroPeriodo('3m')">3 meses</button>
+            <button class="dash-period-btn active" data-p="6m" onclick="dashFiltroPeriodo('6m')">6 meses</button>
+            <button class="dash-period-btn" data-p="12m" onclick="dashFiltroPeriodo('12m')">12 meses</button>
+            <button class="dash-period-btn" data-p="año" onclick="dashFiltroPeriodo('año')">Este año</button>
+          </div>
+          <div class="dash-filter-row">
+            <span class="dash-filter-label">Ver:</span>
+            <div class="dash-filter-group">
+              <button class="dash-filter-btn" id="flt-trucks-btn" onclick="dashFiltroToggle('trucks')">
+                🚛 <span id="flt-trucks-lbl">Todos los camiones</span>
+                <span class="flt-chevron">▼</span>
+              </button>
+              <div class="dash-filter-dd" id="flt-trucks-dd">
+                <div class="dash-filter-dd-head">
+                  <span>Camiones</span>
+                  <div style="display:flex;gap:4px">
+                    <button class="dash-filter-dd-selall" onclick="dashFiltroTodos('trucks')">Seleccionar todos</button>
+                    <button class="dash-filter-dd-selall" onclick="dashFiltroNinguno('trucks')">Deseleccionar todos</button>
+                  </div>
+                </div>
+                <div class="dash-filter-search"><input type="text" placeholder="Buscar patente..." oninput="dashFiltroSearch('trucks',this.value)"></div>
+                <div id="flt-trucks-list"></div>
+              </div>
+            </div>
+            <div class="dash-filter-group">
+              <button class="dash-filter-btn" id="flt-drivers-btn" onclick="dashFiltroToggle('drivers')">
+                👤 <span id="flt-drivers-lbl">Todos los choferes</span>
+                <span class="flt-chevron">▼</span>
+              </button>
+              <div class="dash-filter-dd" id="flt-drivers-dd">
+                <div class="dash-filter-dd-head">
+                  <span>Choferes</span>
+                  <div style="display:flex;gap:4px">
+                    <button class="dash-filter-dd-selall" onclick="dashFiltroTodos('drivers')">Seleccionar todos</button>
+                    <button class="dash-filter-dd-selall" onclick="dashFiltroNinguno('drivers')">Deseleccionar todos</button>
+                  </div>
+                </div>
+                <div class="dash-filter-search"><input type="text" placeholder="Buscar nombre..." oninput="dashFiltroSearch('drivers',this.value)"></div>
+                <div id="flt-drivers-list"></div>
+              </div>
+            </div>
+            <button class="dash-filter-reset" id="flt-reset-btn" style="display:none" onclick="dashFiltroReset()">✕ Limpiar</button>
+            <button class="dash-export-btn" onclick="exportarNegocioExcel()" title="Exportar a Excel">
+              📊 Exportar Excel
+            </button>
+          </div>
+          <div class="dash-filter-pills" id="flt-pills" style="display:none"></div>
+        </div>
+        <div class="dash-filter-status" id="dash-filter-status"></div>
+
+        <!-- KPIs principales -->
+        <div class="grid-3 mb16" id="dash-neg-kpis-main"></div>
+
+        <!-- KPIs secundarios -->
+        <div class="grid-4 mb16" id="dash-neg-kpis-sec"></div>
+
+        <!-- Facturación + Gastos detalle -->
+        <div class="grid-2 mb16">
+          <div class="card" id="dash-panel-fact"></div>
+          <div class="card" id="dash-panel-gastos"></div>
+        </div>
+
+        <!-- Gráfico tendencia -->
+        <div class="card mb16">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div class="card-label">Tendencia — últimos 6 meses</div>
+            <div class="filter-tabs">
+              <div class="ftab active" onclick="dashChartSwitch('fact',this)">Facturación</div>
+              <div class="ftab" onclick="dashChartSwitch('km',this)">KM</div>
+              <div class="ftab" onclick="dashChartSwitch('srvs',this)">Servicios</div>
+            </div>
+          </div>
+          <div id="dash-chart-wrap" style="min-height:120px;position:relative">
+  <canvas id="dash-chart-canvas" style="max-height:220px"></canvas>
+</div>
+        </div>
+
+        <!-- Ranking choferes -->
+        <div class="card mb16">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-label">Ranking de choferes</div>
+            <div class="filter-tabs">
+              <div class="ftab active" onclick="dashRankSwitch('ingresos',this)">Ingresos</div>
+              <div class="ftab" onclick="dashRankSwitch('km',this)">KM</div>
+              <div class="ftab" onclick="dashRankSwitch('eficiencia',this)">Eficiencia</div>
+              <div class="ftab" onclick="dashRankSwitch('deuda',this)">Deuda</div>
+            </div>
+          </div>
+          <div id="dash-ranking-body"></div>
+        </div>
+
+        <!-- Alertas de negocio -->
+        <div class="card" id="dash-alertas-neg-card">
+          <div class="card-label" style="margin-bottom:12px">🚨 Alertas de negocio</div>
+          <div id="dash-alertas-neg"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="screen" id="screen-registro">
+
+  <!-- WARNING jornada abierta -->
+  <div id="warning-jornada-abierta" style="display:none;margin-bottom:20px">
+    <div class="alert-strip warn" style="cursor:pointer" onclick="scrollToJornadasAbiertas()">
+      ⚠️ <b>Tenés jornadas abiertas sin cerrar.</b> Tocá acá para verlas.
+    </div>
+  </div>
+
+  <div class="sec-header mb24">
+    <div>
+      <div class="sec-title">REGISTRO DIARIO</div>
+      <div class="sec-sub">Jornadas y kilometraje</div>
+    </div>
+  </div>
+
+  <!-- Botones de acción jornada -->
+  <div style="display:flex;gap:12px;margin-bottom:20px">
+    <button id="btn-iniciar-jornada"
+      onclick="abrirModalNuevaJornada()"
+      style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 10px;min-height:100px;background:#14532d;border:1px solid rgba(34,197,94,0.27);border-radius:10px;color:#22c55e;cursor:pointer;font-family:inherit">
+      <span style="font-size:26px">▶</span>
+      <span style="font-size:12px;font-weight:800;letter-spacing:.5px;text-align:center;line-height:1.3">INICIAR<br>JORNADA</span>
+      <span style="font-size:10px;opacity:.7">Nueva jornada</span>
+    </button>
+    <button id="btn-finalizar-jornada"
+      onclick="mostrarDialogoTaller()"
+      style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 10px;min-height:100px;background:#450a0a;border:1px solid rgba(239,68,68,0.27);border-radius:10px;color:#ef4444;cursor:pointer;font-family:inherit;opacity:0.4;pointer-events:none">
+      <span style="font-size:26px">■</span>
+      <span style="font-size:12px;font-weight:800;letter-spacing:.5px;text-align:center;line-height:1.3">FINALIZAR<br>JORNADA</span>
+      <span style="font-size:10px;opacity:.7">Cerrar activa</span>
+    </button>
+  </div>
+
+  <!-- Jornadas abiertas -->
+  <div id="section-jornadas-abiertas" style="display:none;margin-bottom:24px">
+    <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">🟡 Jornadas abiertas</div>
+    <div id="lista-jornadas-abiertas" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+
+  <!-- Historial de jornadas -->
+  <div class="card mb24">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div class="card-label">Historial de jornadas</div>
+        <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px" id="jornadas-counter">—</div>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>  
+          <th>Camión</th>
+          <th>KM Inicio</th>
+          <th>KM Final</th>
+          <th>KM Rec.</th>
+          <th>Horas</th>
+          <th>Taller</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-historial-jornadas"></tbody>
+    </table>
+  </div>
+
+  <!-- Servicios del día -->
+  <div class="card mb24">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div class="card-label">Servicios del día</div>
+        <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px" id="viajes-counter">3 servicios registrados</div>
+      </div>
+    </div>
+    <table class="data-table" id="tabla-viajes">
+      <thead>
+        <tr>
+          <th>#</th><th>N° Servicio</th><th>Patente</th><th>Tipo de servicio</th>
+          <th>Origen</th><th>Destino</th><th>Salida</th><th>KM</th><th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-servicios-dia">
+        <tr data-srv-id="SRV-0841">
+          <td style="color:var(--muted);font-family:'DM Mono'">01</td>
+          <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">SRV-0841</span></td>
+          <td><span style="font-family:'DM Mono';font-weight:600">AB 123 CD</span></td>
+          <td><span class="pill pill-blue">🔧 Remolque ruta</span></td>
+          <td>Rosario</td><td>Córdoba</td>
+          <td style="font-family:'DM Mono'">06:45</td>
+          <td><span style="font-family:'DM Mono';color:var(--amber)">395 km</span></td>
+          <td><span class="pill pill-green">✓ Completado</span></td>
+        </tr>
+        <tr data-srv-id="SRV-0842">
+          <td style="color:var(--muted);font-family:'DM Mono'">02</td>
+          <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">SRV-0842</span></td>
+          <td><span style="font-family:'DM Mono';font-weight:600">DC 456 EF</span></td>
+          <td><span class="pill pill-blue">🏙️ Traslado urbano</span></td>
+          <td>Córdoba</td><td>Villa María</td>
+          <td style="font-family:'DM Mono'">11:30</td>
+          <td><span style="font-family:'DM Mono';color:var(--amber)">128 km</span></td>
+          <td><span class="pill pill-green">✓ Completado</span></td>
+        </tr>
+        <tr data-srv-id="SRV-0843">
+          <td style="color:var(--muted);font-family:'DM Mono'">03</td>
+          <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">SRV-0843</span></td>
+          <td><span style="font-family:'DM Mono';font-weight:600">GH 789 IJ</span></td>
+          <td><span class="pill pill-blue">🔧 Remolque ruta</span></td>
+          <td>Villa María</td><td>En curso...</td>
+          <td style="font-family:'DM Mono'">14:00</td>
+          <td style="color:var(--muted)">—</td>
+          <td><span class="pill pill-amber">⏳ En progreso</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Resumen del mes -->
+  <div id="section-resumen-mes" class="card mb24">
+    <div style="margin-bottom:14px">
+      <div class="card-label">Resumen del mes</div>
+      <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px" id="resumen-mes-titulo">—</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div style="flex:1;background:var(--bg);border-radius:8px;padding:12px;border-left:3px solid var(--amber);text-align:center">
+        <div style="font-family:'Bebas Neue';font-size:26px;color:var(--amber)" id="kpi-km-mes">—</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">KM totales</div>
+      </div>
+      <div style="flex:1;background:var(--bg);border-radius:8px;padding:12px;border-left:3px solid #3b82f6;text-align:center">
+        <div style="font-family:'Bebas Neue';font-size:26px;color:#3b82f6" id="kpi-jornadas-mes">—</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Jornadas</div>
+      </div>
+      <div style="flex:1;background:var(--bg);border-radius:8px;padding:12px;border-left:3px solid var(--green);text-align:center">
+        <div style="font-family:'Bebas Neue';font-size:26px;color:var(--green)" id="kpi-servicios-mes">—</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Servicios</div>
+        <div style="font-size:10px;color:var(--red);margin-top:3px;min-height:14px" id="kpi-anulados-mes"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+    <div class="screen" id="screen-camion">
+
+  <!-- ── VISTA PRINCIPAL ──────────────────────────────── -->
+  <div id="camion-main-view">
+    <div class="sec-header mb16">
+      <div class="sec-title">CONTROL DEL CAMIÓN</div>
+      <div class="sec-sub" id="camion-sec-sub">—</div>
+    </div>
+
+    <!-- Hero compacto -->
+    <div class="card mb16" id="camion-hero-card"
+      style="border-color:rgba(245,166,35,0.3);background:linear-gradient(135deg,var(--card),rgba(245,166,35,0.04))">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div style="font-size:40px;flex-shrink:0">🚛</div>
+        <div style="flex:1;min-width:0">
+          <div id="camion-nombre"
+            style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+          <div id="camion-detalle" style="font-size:11px;color:var(--muted);margin-top:2px">—</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <span class="pill pill-green">● Activo</span>
+            <span class="pill pill-blue" id="camion-km-pill">— km</span>
+            <span class="pill pill-amber" id="camion-next-service-pill" style="display:none"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards de módulos (renderizadas por JS) -->
+    <div id="camion-cards-container"></div>
+  </div>
+
+  <!-- ── SUB-PANTALLA: COMBUSTIBLE ────────────────────── -->
+  <div id="camion-sub-combustible" style="display:none">
+    <div class="camion-sub-header">
+      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
+      <div class="camion-sub-title">⛽ Combustible</div>
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px"
+        onclick="openFuelModal()">+ Cargar</button>
+    </div>
+    <div id="camion-sub-combustible-body"></div>
+  </div>
+
+  <!-- ── SUB-PANTALLA: NEUMÁTICOS & FRENOS ────────────── -->
+  <div id="camion-sub-neumaticos" style="display:none">
+    <div class="camion-sub-header">
+      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
+      <div class="camion-sub-title">🔧 Neumáticos & Frenos</div>
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px"
+        onclick="openNeumaticosModal()">+ Registrar</button>
+    </div>
+    <div id="camion-sub-neumaticos-body"></div>
+  </div>
+
+  <!-- ── SUB-PANTALLA: MANTENIMIENTO (chofer) ─────────── -->
+  <div id="camion-sub-mantenimiento" style="display:none">
+    <div class="camion-sub-header">
+      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
+      <div class="camion-sub-title">🔩 Mantenimiento</div>
+      <button class="btn btn-ghost" style="font-size:11px;padding:6px 12px"
+        onclick="openServiceModal()">+ Registrar</button>
+    </div>
+    <div id="camion-sub-mantenimiento-body"></div>
+  </div>
+
+  <!-- ── SUB-PANTALLA: PLANES DE SERVICE (admin/sup) ──── -->
+  <div id="camion-sub-planes" style="display:none">
+    <div class="camion-sub-header">
+      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
+      <div class="camion-sub-title">📋 Planes de Service</div>
+      <button id="btn-nuevo-plan" class="btn btn-primary"
+        style="font-size:11px;padding:6px 12px" onclick="openPlanModal()">+ Plan</button>
+    </div>
+    <div id="planes-lista"></div>
+  </div>
+
+  <!-- ── SUB-PANTALLA: HISTORIAL EJECUCIONES (admin/sup) ─ -->
+  <div id="camion-sub-historial" style="display:none">
+    <div class="camion-sub-header">
+      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
+      <div class="camion-sub-title">🔧 Historial Ejecuciones</div>
+      <button class="btn btn-primary" style="font-size:11px;padding:6px 12px"
+        onclick="openServiceModal()">+ Service</button>
+    </div>
+    <div class="card">
+      <table class="data-table">
+        <thead>
+          <tr><th>Fecha</th><th>Service</th><th>KM</th><th>Taller</th><th>Costo</th><th>Próximo</th></tr>
+        </thead>
+        <tbody id="tbody-services"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="screen" id="screen-documentos">
+      <div class="sec-header mb24">
+        <div>
+          <div class="sec-title">DOCUMENTACIÓN</div>
+          <div class="sec-sub">Legajo digital del camión y el chofer</div>
+        </div>
+        <button class="btn btn-primary" id="btn-doc-header-cargar" style="display:none" onclick="abrirUploadTruckDoc('')">+ Subir Doc Camión</button>
+      </div>
+
+      <div id="doc-banner-offline" class="banner banner-error" style="display:none"></div>
+      <div id="doc-banner-alertas" class="banner banner-warning" style="display:none"></div>
+
+      <!-- Tabs -->
+      <div class="doc-tab-bar">
+        <div class="doc-tab active" id="doc-tab-camion"      onclick="docSwitchTab('camion')">🚛 Camión</div>
+        <div class="doc-tab"        id="doc-tab-chofer"      onclick="docSwitchTab('chofer')">👤 Chofer</div>
+        <div class="doc-tab"        id="doc-tab-emergencias" onclick="docSwitchTab('emergencias')">🆘 Emergencias</div>
+      </div>
+
+      <!-- Tab Camión -->
+      <div id="doc-panel-camion">
+
+        <!-- Admin: grilla selector de camiones -->
+        <div id="doc-camion-selector" style="display:none">
+          <div class="doc-select-label">Seleccioná un móvil para ver su documentación</div>
+          <div id="doc-grid-trucks" class="truck-select-grid"></div>
+        </div>
+
+        <!-- Docs del camión (admin tras seleccionar / chofer directo) -->
+        <div id="doc-camion-docs" style="display:none">
+          <div class="doc-view-header">
+            <button id="doc-camion-back-btn" class="btn btn-ghost" onclick="volverSelectorCamiones()" style="display:none;font-size:12px">← Volver</button>
+            <div class="doc-view-header-title" id="doc-camion-docs-titulo"></div>
+            <button id="doc-camion-upload-btn" class="btn btn-primary" onclick="abrirUploadTruckDoc('')" style="font-size:11px">+ Subir</button>
+          </div>
+          <div id="doc-banner-pago" style="display:none" class="doc-warn-banner"></div>
+          <div id="doc-filter-camion" class="doc-filter-bar">
+            <button class="doc-ftab active" onclick="filtrarDocsCamion('todos',this)">Todos</button>
+            <button class="doc-ftab" onclick="filtrarDocsCamion('proximos',this)">Próx. a vencer</button>
+            <button class="doc-ftab" onclick="filtrarDocsCamion('vencidos',this)">Vencidos</button>
+          </div>
+          <div id="doc-grid-camion" class="doc-grid-2col mb16"></div>
+        </div>
+
+      </div>
+
+      <!-- Tab Chofer -->
+      <div id="doc-panel-chofer" style="display:none">
+
+        <!-- Admin: grilla selector de choferes -->
+        <div id="doc-chofer-selector" style="display:none">
+          <div class="doc-select-label">Seleccioná un chofer para ver su documentación</div>
+          <div id="doc-grid-choferes" class="truck-select-grid"></div>
+        </div>
+
+        <!-- Docs del chofer (admin tras seleccionar / chofer directo) -->
+        <div id="doc-chofer-docs" style="display:none">
+          <div class="doc-view-header">
+            <button id="doc-chofer-back-btn" class="btn btn-ghost" onclick="volverSelectorChoferes()" style="display:none;font-size:12px">← Volver</button>
+            <div class="doc-view-header-title" id="doc-chofer-docs-titulo"></div>
+            <button class="btn btn-primary" onclick="abrirSubirDocChofer()" style="font-size:11px">+ Subir</button>
+          </div>
+          <div id="doc-filter-chofer" class="doc-filter-bar">
+            <button class="doc-ftab active" onclick="filtrarDocsChofer('todos',this)">Todos</button>
+            <button class="doc-ftab" onclick="filtrarDocsChofer('proximos',this)">Próx. a vencer</button>
+            <button class="doc-ftab" onclick="filtrarDocsChofer('vencidos',this)">Vencidos</button>
+          </div>
+          <div id="doc-grid-chofer" class="doc-grid-2col mb16"></div>
+        </div>
+
+      </div>
+
+      <!-- Tab Emergencias -->
+      <div id="doc-panel-emergencias" style="display:none">
+        <div id="doc-section-telefonos"></div>
+        <div id="doc-section-protocolo"></div>
+        <div id="doc-section-talleres"></div>
+      </div>
+
+      <!-- FAB -->
+      <button id="doc-fab" class="doc-fab" onclick="abrirFab()" style="display:none">＋</button>
+    </div>
+
+<!-- Screen Remitos -->
+
+
+    <div class="screen" id="screen-remitos">
+      <div class="sec-header mb24">
+        <div><div class="sec-title">REMITOS VIRTUALES</div><div class="sec-sub">Generación, firma digital y archivo de remitos</div></div>
+        <button class="btn btn-primary desktop-only" onclick="showRemitosView('nuevo')">+ Nuevo remito</button>
+      </div>
+      
+      <div class="card mb24" id="filtros-remitos">
+
+  <!-- Filtros básicos — todos los usuarios -->
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+    <div>
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Estado</div>
+      <div class="filter-tabs" id="ftabs-estado">
+        <div class="ftab active" onclick="filtrarEstado('todos',this)">Todos</div>
+        <div class="ftab" onclick="filtrarEstado('firmado',this)">Firmados</div>
+        <div class="ftab" onclick="filtrarEstado('pendiente',this)">Pendientes</div>
+        <div class="ftab" onclick="filtrarEstado('anulado',this)">Anulados</div>
+      </div>
+    </div>
+    <div style="margin-left:auto">
+      <input class="form-input" id="input-buscar-remitos"
+        placeholder="Nº remito, cliente, patente..."
+        style="width:220px;padding:7px 12px;font-size:12px"
+        oninput="filtrarBusqueda(this.value)">
+    </div>
+  </div>
+
+ <div id="filtros-admin" style="display:none; border-top:1px solid var(--border); padding-top:14px">
+  <div style="font-size:9px; color:var(--amber); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; font-weight:700">🔑 Filtros de administración</div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end">
+    <div>
+      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Chofer</div>
+      <select class="form-input" id="filtro-chofer-input" style="width:180px; padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
+        <option value="">Todos los choferes</option>
+      </select>
+    </div> <div>
+      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Patente</div>
+      <input class="form-input" id="filtro-patente" placeholder="Ej: AB 123 CD" style="width:140px; padding:7px 12px; font-size:12px; font-family:'DM Mono'" oninput="aplicarFiltrosRemitos()">
+    </div>
+
+    <div>
+      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Tipo de servicio</div>
+      <select class="form-input" id="filtro-tipo-servicio" style="padding:7px 12px; font-size:12px; min-width:160px" onchange="aplicarFiltrosRemitos()">
+        <option value="">Todos</option>
+        <option value="Remolque ruta">Remolque ruta</option>
+        <option value="Traslado urbano">Traslado urbano</option>
+        <option value="Servicio de grúa">Servicio de grúa</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+
+    <div>
+      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Medio de pago</div>
+      <select class="form-input" id="filtro-pago" style="padding:7px 12px; font-size:12px; min-width:150px" onchange="aplicarFiltrosRemitos()">
+        <option value="">Todos</option>
+        <option value="Efectivo">💵 Efectivo</option>
+        <option value="Transferencia">🏦 Transferencia</option>
+        <option value="Tarjeta">💳 Tarjeta</option>
+        <option value="App">📱 App</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="margin-top:14px; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end">
+    <div>
+      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Período</div>
+      <div class="filter-tabs" id="ftabs-periodo-admin">
+        <div class="ftab active" onclick="filtrarPeriodo('todos',this)">Todos</div>
+        <div class="ftab" onclick="filtrarPeriodo('mes',this)">Este mes</div>
+        <div class="ftab" onclick="filtrarPeriodo('dia',this)">Día específico</div>
+        <div class="ftab" onclick="filtrarPeriodo('rango',this)">Rango</div>
+      </div>
+    </div>
+    
+    <div id="panel-dia" style="display:none">
+      <div style="font-size:9px; color:var(--muted); margin-bottom:6px">Fecha</div>
+      <input class="form-input" type="date" id="filtro-dia-especifico" style="padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
+    </div>
+
+    <div id="panel-rango" style="display:none; gap:8px; align-items:flex-end">
+      <div>
+        <div style="font-size:9px; color:var(--muted); margin-bottom:6px">Desde</div>
+        <input class="form-input" type="date" id="filtro-desde" style="padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
+      </div>
+      <div>
+        <div style="font-size:9px; color:var(--muted); margin-bottom:6px">Hasta</div>
+        <input class="form-input" type="date" id="filtro-hasta" style="padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" style="font-size:11px; padding:7px 14px" onclick="limpiarFiltrosAdmin()">✕ Limpiar filtros</button>
+  </div>
+</div>
+
+</div>
+
+<div id="filtro-info" style="margin-top:14px; padding:8px 12px; background:var(--bg); border-radius:6px; border:1px solid var(--border); display:flex; align-items:center; gap:8px">
+  <span style="font-size:11px; color:var(--muted)">Mostrando:</span>
+  <span id="filtro-label" style="font-size:11px; color:var(--amber); font-weight:600">Todos los remitos</span>
+  <span id="filtro-count" style="font-size:10px; color:var(--muted)">—</span>
+  <span id="filtro-total-extras" style="margin-left:auto; font-size:11px; color:var(--muted)"></span>
+</div>
+
+<div id="remitos-lista" style="display:block; margin-top:14px">
+  <div class="card desktop-only" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+    <table class="data-table" id="tabla-remitos" style="display: table !important; width: 100%; min-width: 700px;">
+      <thead>
+        <tr>
+          <th>Nº Remito</th>
+          <th>Hora</th>
+          <th>Chofer</th>
+          <th>Patente</th>
+          <th>Servicio · N° Srv</th>
+          <th>Peaje · Excedente</th>
+          <th>Pago</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-remitos"></tbody>
+    </table>
+  </div>
+  <div id="mobile-remitos-list" class="mobile-only remitos-container-mobile"></div>
+  <button class="fab-new-remito mobile-only" onclick="showRemitosView('nuevo')"><span>+</span></button>
+</div>
+
+     <div id="remitos-nuevo" style="display:none">
+
+        <!-- WIZARD HEADER -->
+<div class="rem-wizard-header">
+  <button class="rem-wizard-back" onclick="showRemitosView('lista')">←</button>
+  <div class="rem-wizard-title">/ NUEVO REMITO</div>
+  <div class="rem-wizard-counter"><span id="rem-step-num">1</span> de 5</div>
+</div>
+<div class="rem-progress"><div class="rem-progress-fill" id="rem-progress-fill" style="width:20%"></div></div>
+<div class="rem-step-dots" id="rem-step-dots">
+  <div class="rem-step-dot active" data-step="1"></div>
+  <div class="rem-step-dot" data-step="2"></div>
+  <div class="rem-step-dot" data-step="3"></div>
+  <div class="rem-step-dot" data-step="4"></div>
+  <div class="rem-step-dot" data-step="5"></div>
+</div>
+
+<!-- PASO 1: DATOS DEL SERVICIO -->
+<div class="rem-step-panel active" id="rem-step-1">
+  <div class="card">
+    <div class="card-label" style="margin-bottom:14px">📋 Datos del servicio</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Número de remito</label>
+        <input class="form-input" id="rem-nro" readonly style="color:var(--amber);font-family:'DM Mono'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha y hora</label>
+        <input class="form-input" type="datetime-local" id="rem-fecha">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tipo de servicio <span style="color:var(--red)">*</span></label>
+        <select class="form-select" id="rem-tipo-servicio">
+          <option value="">— Seleccionar —</option>
+          <option>Remolque ruta</option>
+          <option>Traslado urbano</option>
+          <option>Servicio de grúa</option>
+          <option>Otro</option>
+        </select>
+        <div class="rem-error-msg" id="err-tipo">Seleccioná el tipo de servicio</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">N° Servicio Prestadora</label>
+        <input class="form-input" id="rem-nro-prestadora" placeholder="Cód. asignado por la prestadora" style="font-family:'DM Mono'">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Patente del vehículo <span style="color:var(--red)">*</span></label>
+<input type="text" id="rem-patente" class="form-input" 
+       oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '')" 
+       maxlength="7"  placeholder="Ej: AB123CD">
+      <div class="rem-error-msg" id="err-patente">Ingresá la patente</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Marca y modelo</label>
+        <input class="form-input" id="rem-marca-modelo" placeholder="Ej: Ford Focus 2019">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Origen <span style="color:var(--red)">*</span></label>
+        <input class="form-input" id="rem-origen" placeholder="Ciudad / Dirección">
+        <div class="rem-error-msg" id="err-origen">Ingresá el origen</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Destino <span style="color:var(--red)">*</span></label>
+        <input class="form-input" id="rem-destino" placeholder="Ciudad / Dirección">
+        <div class="rem-error-msg" id="err-destino">Ingresá el destino</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Kilómetros recorridos</label>
+      <input type="text" id="rem-km" class="form-input" 
+       oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Ej: 150">
+    </div>
+  </div>
+</div>
+
+<!-- PASO 2: DATOS DEL SOCIO -->
+<div class="rem-step-panel" id="rem-step-2">
+  <div class="card">
+    <div class="card-label" style="margin-bottom:14px">👤 Datos del socio</div>
+    <div class="form-group">
+      <label class="form-label">Nombre del socio / cliente</label>
+      <input type="text" id="rem-cliente" class="form-input" 
+       oninput="this.value = this.value.replace(/[^a-zA-Z\sñÑáéíóúÁÉÍÓÚ]/g, '')" 
+       placeholder="Nombre completo">
+    </div>
+    <div class="form-group">
+      <label class="form-label">DNI <span style="color:var(--red)">*</span></label>
+      <input type="text" id="rem-cuit" class="form-input" 
+       oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
+       maxlength="11" 
+       placeholder="Ej: 30123456789">
+      <div class="rem-error-msg" id="err-dni">El DNI es obligatorio</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono de contacto</label>
+     <input type="tel" id="rem-telefono" class="form-input" 
+       oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
+       maxlength="10" 
+       placeholder="Ej: 1123456789 (Sin 0 ni 15)">
+    </div>
+  </div>
+</div>
+
+<!-- PASO 3: EXTRAS Y PAGO -->
+<div class="rem-step-panel" id="rem-step-3">
+  <div class="card">
+    <div class="card-label" style="margin-bottom:14px">💰 Extras y forma de pago</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Peajes</label>
+        <input class="form-input" type="tel" placeholder="0" id="imp-peaje" inputmode="decimal" oninput="calcularTotal()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Excedente km</label>
+        <input class="form-input" type="tel" placeholder="0" id="imp-excedente" inputmode="decimal" oninput="calcularTotal()">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Otros cargos</label>
+      <input class="form-input" type="tel" placeholder="0" id="imp-otros" inputmode="decimal" oninput="calcularTotal()">
+    </div>
+    <div style="padding:10px 14px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.2);display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span style="font-size:11px;color:var(--muted)">Total extras</span>
+      <span style="font-family:'Bebas Neue';font-size:20px;color:var(--amber)" id="imp-total">$0</span>
+    </div>
+    <div class="form-group" style="margin-bottom:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label class="form-label" style="margin-bottom:0">Forma de pago</label>
+        <button id="btn-add-pago2" class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="activarPagoMixto()">+ Segundo medio</button>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 1</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts">
+          <div onclick="selectRemPago(this,'Efectivo',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
+          <div onclick="selectRemPago(this,'Transferencia',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
+          <div onclick="selectRemPago(this,'Tarjeta',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
+          <div onclick="selectRemPago(this,'App',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
+          <input class="form-input" type="tel" id="pago1-monto" placeholder="Opcional" inputmode="decimal" style="font-size:12px;padding:6px 10px" oninput="calcPagoAuto()">
+        </div>
+      </div>
+      <div id="pago2-container" style="display:none;background:var(--bg);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:10px 12px;margin-bottom:8px;position:relative">
+        <button onclick="desactivarPagoMixto()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1">×</button>
+        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 2</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts2">
+          <div onclick="selectRemPago(this,'Efectivo',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
+          <div onclick="selectRemPago(this,'Transferencia',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
+          <div onclick="selectRemPago(this,'Tarjeta',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
+          <div onclick="selectRemPago(this,'App',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
+          <input class="form-input" type="tel" id="pago2-monto" readonly style="font-size:12px;padding:6px 10px;color:var(--amber)" placeholder="Auto-calculado">
+        </div>
+      </div>
+      <div class="rem-pago-error" id="rem-pago-error">⚠️ Usá dos medios de pago diferentes</div>
+      <div id="pago-mixto-resumen" style="display:none;padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:7px;font-size:11px"></div>
+      <input type="hidden" id="rem-pago-selected" value="">
+    </div>
+  </div>
+</div>
+
+<!-- PASO 4: EVIDENCIA + OBSERVACIONES -->
+<div class="rem-step-panel" id="rem-step-4">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="card-label" style="margin-bottom:0">📷 Evidencia fotográfica</div>
+      <span style="font-size:10px;color:var(--muted)">Hasta 6 fotos</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="foto-grid">
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Frente del vehículo"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto1-status','rem-foto1-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto1-icon">📸</div><div class="pu-text" id="rem-foto1-status">Frente</div><div class="pu-sub">Antes del servicio</div></div></label>
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Lateral"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto2-status','rem-foto2-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto2-icon">📸</div><div class="pu-text" id="rem-foto2-status">Lateral</div><div class="pu-sub">Daños visibles</div></div></label>
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Ticket de peaje"><input type="file" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto3-icon">🧾</div><div class="pu-text" id="rem-foto3-status">Peaje</div><div class="pu-sub">JPG o PDF</div></div></label>
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Odómetro"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto4-status','rem-foto4-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto4-icon">🔢</div><div class="pu-text" id="rem-foto4-status">Odómetro</div><div class="pu-sub">KM al inicio</div></div></label>
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Foto extra 1"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto5-status','rem-foto5-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto5-icon">➕</div><div class="pu-text" id="rem-foto5-status">Extra 1</div><div class="pu-sub">Opcional</div></div></label>
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Foto extra 2"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto6-status','rem-foto6-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto6-icon">➕</div><div class="pu-text" id="rem-foto6-status">Extra 2</div><div class="pu-sub">Opcional</div></div></label>
+    </div>
+    <div style="margin-top:8px;display:flex;align-items:center;gap:6px">
+      <div id="foto-counter-dots" style="display:flex;gap:4px">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--border2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--border2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--border2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--border2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--border2)"></div>
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--border2)"></div>
+      </div>
+      <span id="foto-counter-txt" style="font-size:10px;color:var(--muted)">0 / 6 fotos cargadas</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-label" style="margin-bottom:10px">📝 Observaciones</div>
+    <textarea id="rem-observaciones" class="form-input" placeholder="Condiciones climáticas, demoras, estado del vehículo, notas del cliente..." style="width:100%;min-height:90px;resize:vertical;box-sizing:border-box;font-size:13px;line-height:1.5"></textarea>
+  </div>
+</div>
+
+<!-- PASO 5: CONFORMIDAD + FIRMA -->
+<div class="rem-step-panel" id="rem-step-5">
+  
+  <div class="card" style="padding: 10px; margin-bottom: 8px;">
+    <div class="card-label" style="margin-bottom:8px">☑️ Conformidad del socio</div>
+    
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="toggle-row acept-toggle" onclick="toggleAcept(this)">
+        <div class="toggle-info">
+          <div class="toggle-title">Conformidad con el servicio</div>
+          <div class="toggle-desc" style="font-size:10px">El socio confirma que el servicio fue prestado correctamente</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      
+      <div class="toggle-row acept-toggle" onclick="toggleAcept(this)">
+        <div class="toggle-info">
+          <div class="toggle-title">Aceptación de cargos variables</div>
+          <div class="toggle-desc" style="font-size:10px">Acepta peajes, excedentes y otros cargos detallados</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      
+      <div class="toggle-row acept-toggle" onclick="toggleAcept(this)">
+        <div class="toggle-info">
+          <div class="toggle-title">Sin daños reportados</div>
+          <div class="toggle-desc" style="font-size:10px">El vehículo fue entregado sin incidentes ni daños adicionales</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+<div class="toggle-row acept-toggle" onclick="toggleAcept(this)" style="border: 1px dashed var(--amber); background: rgba(245,166,35,0.05);">
+        <div class="toggle-info">
+          <div class="toggle-title" style="color: var(--amber);">Conformidad de Arrastre</div>
+          <div class="toggle-desc" style="font-size:10px">Autorizo a Sigma a arrastrar mi vehículo bajo mi exclusiva responsabilidad.</div>
+        </div>
+        <div class="toggle"></div> </div>
+    </div> <div style="margin-top:8px;padding:6px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;gap:8px">
+      <span style="font-size:10px;color:var(--muted)">Confirmaciones:</span>
+      <span id="acept-progress" style="font-family:'DM Mono';font-size:10px;color:var(--amber)">3 / 3</span>
+      <div style="flex:1;background:var(--border);border-radius:3px;height:4px;overflow:hidden;margin:0 4px">
+        <div id="acept-bar" style="width:100%;height:100%;background:var(--green);border-radius:3px;transition:width 0.3s"></div>
+      </div>
+      <span id="acept-status" style="font-size:9px;color:var(--green)">✓ Completo</span>
+    </div>
+  </div>
+
+  <div class="toggle-row" onclick="toggleFirmaChofer(this)" style="background: rgba(39, 196, 122, 0.1); border: 1px dashed var(--green); margin-bottom: 10px; padding: 10px; border-radius: 6px;">
+      <div class="toggle-info">
+          <div class="toggle-title" style="color: var(--green); font-size: 12px;">Socio Ausente (Firma Chofer)</div>
+          <div class="toggle-desc" style="font-size:10px">Activar si el titular no se encuentra presente para firmar.</div>
+      </div>
+      <div class="toggle"></div>
+  </div>
+
+  <div class="card" style="padding: 10px; border-color:rgba(245,166,35,0.25); margin-bottom: 8px;">
+    <label id="label-firma-canvas" class="form-label" style="text-align:center; display:block; margin-bottom:4px;">✍️ Firma digital del socio</label>
+    
+    <div style="position:relative; margin-top: 6px;">
+      <canvas id="sig-canvas" style="width:100%;height:220px;background:var(--bg);border:2px dashed var(--amber);border-radius:8px;display:block;cursor:crosshair;touch-action:none"></canvas>
+      
+      <div id="sig-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;gap:6px">
+        <span style="font-size:24px;opacity:0.3">✍️</span>
+        <span style="font-size:10px;color:var(--muted)">Dibujá con el dedo</span>
+      </div>
+    </div>
+    
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div id="sig-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted)"></div>
+        <span id="sig-status-txt" style="font-size:10px;color:var(--muted)">Sin firma</span>
+      </div>
+      <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="limpiarFirma()">🗑 Limpiar</button>
+    </div>
+  </div>
+
+  <button class="btn btn-ghost" id="btn-guardar-pendiente" style="width:100%;justify-content:center;padding:12px;font-size:14px;border-radius:8px; background: rgba(169, 169, 169, 0.1);" onclick="guardarRemitoPendiente()">💾 Guardar como pendiente</button>
+  
+</div>
+
+<!-- FOOTER NAVEGACIÓN -->
+<div class="rem-wizard-footer" id="rem-wizard-footer">
+  <button class="btn btn-ghost" id="rem-btn-back" onclick="remWizardIr(-1)" style="display:none">← Atrás</button>
+  <button class="btn btn-primary" id="rem-btn-next" onclick="remWizardIr(1)">Siguiente →</button>
+</div>
+      </div><!-- /remitos-nuevo -->
+
+<div id="remitos-detalle" style="display:none">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+          <button class="btn btn-ghost" style="font-size:11px" onclick="showRemitosView('lista')">← Volver al listado</button>
+          <div style="font-family:'Bebas Neue';font-size:20px;letter-spacing:1px;color:var(--muted)">/ <span id="detalle-nro">REM-2026-0311-01</span></div>
+          <span class="pill pill-green" style="margin-left:8px">✓ Firmado</span>
+          <button class="btn btn-ghost" style="margin-left:auto;font-size:11px">⬇ Descargar PDF</button>
+        </div>
+
+        <div class="card" style="border-color:rgba(39,196,122,0.25);max-width:760px;margin:0 auto">
+          <!-- Header del remito -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:20px">
+            <div>
+              <div style="font-family:'Bebas Neue';font-size:28px;letter-spacing:3px;color:var(--amber)">SIGMA REMOLQUES</div>
+              <div style="font-size:11px;color:var(--muted)">Remito Virtual · Servicio de remolque y traslado</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:'DM Mono';font-size:18px;font-weight:600;color:var(--amber)">REM-2026-0311-01</div>
+              <div style="font-size:11px;color:var(--muted)">11 Mar 2026 · 08:15</div>
+              <span class="pill pill-green" style="margin-top:6px;display:inline-flex">✓ Firmado digitalmente</span>
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap:20px;margin-bottom:20px">
+            <div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Datos del servicio</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">Tipo</span><span>Remolque ruta</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">Origen</span><span>Rosario</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">Destino</span><span>Córdoba</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">KM recorridos</span><span style="font-family:'DM Mono';color:var(--amber)">420 km</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">Chofer</span><span>Rodrigo Cabrera</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Desglose de importes</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">Servicio base</span><span style="font-family:'DM Mono'">$133.600</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">Peajes</span><span style="font-family:'DM Mono'">$8.400</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 10px;background:var(--bg);border-radius:5px">
+                  <span style="color:var(--muted)">Excedente</span><span style="font-family:'DM Mono'">$0</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:10px 10px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:5px">
+                  <span>TOTAL</span><span style="font-family:'DM Mono';color:var(--amber)">$142.000</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          
+
+          <!-- Firma -->
+          <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Firma digital del socio — Transportes García</div>
+            <div style="display:flex;align-items:flex-end;gap:20px">
+              <canvas id="sig-display" style="height:90px;flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px"></canvas>
+              <div style="text-align:right;min-width:160px">
+                <div style="font-size:10px;color:var(--muted)">Firmado el</div>
+                <div style="font-family:'DM Mono';font-size:12px;color:var(--green)">11/03/2026 08:47</div>
+                <div style="font-size:10px;color:var(--muted);margin-top:6px">Confirmaciones</div>
+                <div style="font-size:10px;color:var(--green);margin-top:2px">✓ Conformidad · ✓ Cargos · ✓ Sin daños</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /remitos-detalle -->
+      
+
+    
+<div id="remitos-firma" style="display:none">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+          <button class="btn btn-ghost" style="font-size:11px" onclick="showRemitosView('lista')">← Cancelar</button>
+          <div style="font-family:'Bebas Neue';font-size:20px;letter-spacing:1px;color:var(--muted)">/ FIRMA DE REMITO</div>
+        </div>
+
+        <div style="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+
+          <!-- Header Sigma -->
+          <div style="background:linear-gradient(135deg,rgba(245,166,35,0.12),rgba(245,166,35,0.04));border:1px solid rgba(245,166,35,0.3);border-radius:12px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:46px;height:46px;background:var(--amber);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🚛</div>
+              <div>
+                <div style="font-family:'Bebas Neue';font-size:22px;letter-spacing:3px;color:var(--amber)">SIGMA REMOLQUES</div>
+                <div style="font-size:10px;color:var(--muted)">SIGMA PINAMAR — ETCHEVERRY</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:'DM Mono';font-size:14px;font-weight:600;color:var(--amber)" id="firma-nro">REM-2026-0311-03</div>
+              <div style="font-size:11px;color:var(--muted)" id="firma-fecha">—</div>
+            </div>
+          </div>
+
+          <!-- Datos del vehículo asistido -->
+          <div class="card">
+            <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">🚗 Vehículo Asistido</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+              <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+                <div style="font-size:9px;color:var(--muted);margin-bottom:3px">PATENTE</div>
+                <div style="font-family:'DM Mono';font-size:18px;font-weight:700;color:var(--amber)" id="firma-patente">—</div>
+              </div>
+              <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+                <div style="font-size:9px;color:var(--muted);margin-bottom:3px">MARCA / MODELO</div>
+                <div style="font-size:13px;font-weight:600" id="firma-marca">—</div>
+              </div>
+              <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+                <div style="font-size:9px;color:var(--muted);margin-bottom:3px">N° SERVICIO</div>
+                <div style="font-family:'DM Mono';font-size:12px;font-weight:600;color:var(--amber)" id="firma-nro-srv">—</div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Datos del servicio -->
+<div class="card">
+  <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">✏️ Completar datos</div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">Patente</label>
+      <input class="form-input" id="firma-edit-patente" placeholder="AB 123 CD" style="font-family:'DM Mono';text-transform:uppercase">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Marca y Modelo</label>
+      <input class="form-input" id="firma-edit-marca" placeholder="Toyota Hilux">
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">Nombre del Cliente</label>
+      <input class="form-input" id="firma-edit-cliente" placeholder="Nombre o empresa">
+    </div>
+    <div class="form-group">
+      <label class="form-label">KM recorridos</label>
+      <input class="form-input" type="tel" id="firma-edit-km" placeholder="Ej: 310">
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">Origen</label>
+      <input class="form-input" id="firma-edit-origen" placeholder="Ciudad / Dirección">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Destino</label>
+      <input class="form-input" id="firma-edit-destino" placeholder="Ciudad / Dirección">
+    </div>
+  </div>
+</div>
+
+<!-- Cargos adicionales -->
+<div class="card" id="firma-extras-card">
+  <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">💰 Cargos adicionales</div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">Peajes ($)</label>
+      <input class="form-input" type="tel" id="firma-edit-peaje" placeholder="0" oninput="calcularTotalFirma()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Excedente km ($)</label>
+      <input class="form-input" type="tel" id="firma-edit-excedente" placeholder="0" oninput="calcularTotalFirma()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Otros ($)</label>
+      <input class="form-input" type="tel" id="firma-edit-otros" placeholder="0" oninput="calcularTotalFirma()">
+    </div>
+  </div>
+  <div style="padding:10px 14px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.2);display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <span style="font-size:11px;color:var(--muted)">Total extras</span>
+    <span style="font-family:'Bebas Neue';font-size:20px;color:var(--amber)" id="firma-imp-total">$0</span>
+  </div>
+  <div class="form-group" style="margin-bottom:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <label class="form-label" style="margin-bottom:0">Forma de pago</label>
+      <button id="firma-btn-add-pago2" class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="activarFirmaPagoMixto()">+ Segundo medio</button>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 1</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="firma-pago-opts">
+        <div onclick="selFirmaPago(this,'Efectivo',1)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
+        <div onclick="selFirmaPago(this,'Transferencia',1)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
+        <div onclick="selFirmaPago(this,'Tarjeta',1)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
+        <div onclick="selFirmaPago(this,'App',1)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
+        <input class="form-input" type="tel" id="firma-pago1-monto" placeholder="Opcional" inputmode="decimal" style="font-size:12px;padding:6px 10px" oninput="calcFirmaPagoAuto()">
+      </div>
+    </div>
+    <div id="firma-pago2-container" style="display:none;background:var(--bg);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:10px 12px;margin-bottom:8px;position:relative">
+      <button onclick="desactivarFirmaPagoMixto()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1">×</button>
+      <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 2</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="firma-pago-opts2">
+        <div onclick="selFirmaPago(this,'Efectivo',2)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
+        <div onclick="selFirmaPago(this,'Transferencia',2)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
+        <div onclick="selFirmaPago(this,'Tarjeta',2)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
+        <div onclick="selFirmaPago(this,'App',2)" style="padding:8px 4px;background:var(--bg);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
+        <input class="form-input" type="tel" id="firma-pago2-monto" readonly style="font-size:12px;padding:6px 10px;color:var(--amber)" placeholder="Auto-calculado">
+      </div>
+    </div>
+    <input type="hidden" id="firma-pago-selected" value="">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px" id="firma-extras-list"></div>
+</div>
+          <!-- Confirmaciones del socio -->
+          <div class="card">
+            <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">☑️ Confirmaciones del socio</div>
+
+            <div class="toggle-row" onclick="toggleAcept(this)" style="margin-bottom:8px" data-conf="Conformidad con el servicio">
+              <div class="toggle-info">
+                <div class="toggle-title">Conformidad con el servicio</div>
+                <div class="toggle-desc">El servicio fue recibido de manera satisfactoria</div>
+              </div>
+              <div class="toggle on"></div>
+            </div>
+
+            <div class="toggle-row" onclick="toggleAcept(this)" style="margin-bottom:8px" data-conf="Aceptación de cargos variables">
+              <div class="toggle-info">
+                <div class="toggle-title">Aceptación de cargos variables</div>
+                <div class="toggle-desc">Confirmo los peajes, excedentes y otros cargos</div>
+              </div>
+              <div class="toggle on"></div>
+            </div>
+
+            <div class="toggle-row" onclick="toggleAcept(this)" style="margin-bottom:8px" data-conf="Sin daños reportados">
+              <div class="toggle-info">
+                <div class="toggle-title">Sin daños reportados</div>
+                <div class="toggle-desc">El vehículo fue entregado sin daños adicionales</div>
+              </div>
+              <div class="toggle on"></div>
+            </div>
+
+            <!-- Conformidad de arrastre (opcional) -->
+            <div id="firma-arrastre-trigger" style="margin-top:4px">
+              <button class="btn btn-ghost" style="font-size:11px;width:100%;justify-content:center;border-style:dashed"
+                onclick="activarArrastreFirma()">+ Requerida en este servicio: Conformidad de Arrastre</button>
+            </div>
+            <div id="firma-arrastre-row" class="toggle-row" style="display:none;margin-top:8px" onclick="toggleAcept(this)" data-conf="Conformidad de Arrastre">
+              <div class="toggle-info">
+                <div class="toggle-title" style="color:var(--amber)">Conformidad de Arrastre</div>
+                <div class="toggle-desc">Autorizo a Sigma Pinamar — Etcheverry a arrastrar mi vehículo para poder trasladarlo. Bajo mi exclusiva responsabilidad ante posibles roturas.</div>
+              </div>
+              <div class="toggle"></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:13px;font-weight:600">¿El cliente está presente?</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">Si el cliente no puede firmar, confirmá con tu firma de chofer</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div id="btn-cliente-presente" onclick="setClientePresente(true)"
+        style="padding:8px 14px;border-radius:7px;border:2px solid var(--green);background:var(--green-lo);cursor:pointer;font-size:12px;font-weight:600;color:var(--green)">
+        ✅ Sí
+      </div>
+      <div id="btn-cliente-ausente" onclick="setClientePresente(false)"
+        style="padding:8px 14px;border-radius:7px;border:2px solid var(--border);background:var(--card);cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)">
+        ❌ No
+      </div>
+    </div>
+  </div>
+
+  <!-- Aviso cuando cliente ausente -->
+  <div id="aviso-cliente-ausente" style="display:none;margin-top:12px;padding:10px 14px;
+    background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);
+    border-radius:7px;font-size:12px;color:var(--amber)">
+    ⚠️ El chofer firmará como testigo de que el servicio fue realizado. Esto quedará registrado en el sistema.
+  </div>
+</div>
+
+          <!-- Firma canvas -->
+          <div class="card">
+           <div class="card-label" style="margin-bottom:10px" id="firma-canvas-label">✍️ Firma del cliente</div>
+            <canvas id="sig-canvas-firma"
+              style="width:100%;height:160px;background:var(--bg);border:2px dashed var(--border2);border-radius:8px;display:block;cursor:crosshair;touch-action:none">
+            </canvas>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+              <span id="sig-status-firma" style="font-size:10px;color:var(--muted)">⬜ Sin firma</span>
+              <button class="btn btn-ghost" style="font-size:10px;padding:5px 12px" onclick="limpiarFirmaModal()">🗑 Limpiar</button>
+            </div>
+          </div>
+
+          <!-- Botón confirmar -->
+        <button id="btn-firma-confirmar" class="btn btn-primary"
+            style="width:100%;justify-content:center;padding:14px;font-size:15px;border-radius:10px;margin-bottom:24px"
+            onclick="confirmarFirma()">
+            ✅ Confirmar y guardar remito firmado
+          </button>
+
+       
+<div class="modal-backdrop" id="modal-settings">
+  <div class="modal-box" style="max-width: 900px; width: 95%; height: 80vh; display: flex; flex-direction: row; padding: 0; overflow: hidden;">
+    <div style="width: 250px; background: var(--bg-darker, #1a1d24); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0; font-size: 16px;">⚙️ Configuración</h3>
+        <span style="font-size: 11px; color: var(--muted);">Sigma Remolques</span>
+      </div>
+      <button class="tab-config active" onclick="switchConfigTab('tab-flota')">🚛 Gestión de Flota</button>
+      <button class="tab-config" onclick="switchConfigTab('tab-usuarios')">👥 Personal y Choferes</button>
+      <button class="tab-config" onclick="switchConfigTab('tab-planes')">📐 Catálogo de Services</button>
+      <button class="tab-config" onclick="switchConfigTab('tab-emergencias')">🆘 Emergencias</button>
+      <div style="flex-grow: 1;"></div>
+      <button class="btn btn-ghost" style="width: 100%; color: var(--red);" onclick="closeModal('modal-settings')">Cerrar Panel</button>
+    </div>
+    <div style="flex: 1; padding: 30px; overflow-y: auto; background: var(--bg);" id="config-content-area">
+      <div id="tab-flota" class="config-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2>Vehículos Registrados</h2>
+          <button class="btn btn-primary" onclick="openNuevoVehiculoModal()">+ Alta Vehículo</button>
+        </div>
+        <div id="lista-admin-vehiculos" style="color: var(--muted); font-size: 13px;">⏳ Cargando flota...</div>
+      </div>
+      <div id="tab-usuarios" class="config-section" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2>Personal</h2>
+          <button class="btn btn-primary" onclick="openNuevoUsuarioModal()">+ Nuevo Personal</button>
+        </div>
+        <div id="lista-admin-usuarios" style="color: var(--muted); font-size: 13px;">⏳ Cargando personal...</div>
+      </div>
+      <div id="tab-planes" class="config-section" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2>Reglas Maestras de Service</h2>
+          <button class="btn btn-primary" onclick="openAdminPlanModal()">+ Crear Plan Maestro</button>
+        </div>
+        <div id="lista-admin-planes" style="color: var(--muted); font-size: 13px;">⏳ Cargando catálogo...</div>
+      </div>
+      <div id="tab-emergencias" class="config-section" style="display: none;">
+        <h2 style="margin-bottom: 20px;">Emergencias</h2>
+        <div style="margin-bottom: 24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">📞 Teléfonos de emergencia</div>
+            <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('telefono')">+ Agregar</button>
+          </div>
+          <div id="cfg-emerg-telefonos" style="color:var(--muted);font-size:13px">⏳ Cargando...</div>
+        </div>
+        <div style="margin-bottom: 24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">🔧 Talleres de confianza</div>
+            <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('taller')">+ Agregar</button>
+          </div>
+          <div id="cfg-emerg-talleres" style="color:var(--muted);font-size:13px">⏳ Cargando...</div>
+        </div>
+        <div style="margin-bottom: 24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">📋 Protocolo de siniestro</div>
+            <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('protocolo')">+ Agregar</button>
+          </div>
+          <div id="cfg-emerg-protocolo" style="color:var(--muted);font-size:13px">⏳ Cargando...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-nuevo-vehiculo">
+  <div class="modal-box" style="max-width: 450px;">
+    <div class="modal-head">
+      <span class="modal-head-title">🚨 Alta de Móvil / Grúa</span>
+      <button class="modal-close" onclick="closeModal('modal-nuevo-vehiculo')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Tipo de Equipo <span style="color:var(--red)">*</span></label>
+        <select class="form-input" id="nv-tipo">
+          <option value="plancha">Plancha / Cama Hidráulica</option>
+          <option value="percha">Pescante / Percha / Tenedor</option>
+          <option value="asistencia">Asistencia Ligera / Taller Móvil</option>
+          <option value="pesado">Grúa Pesada (Rotativa/Izaje)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Patente / Dominio <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="text" id="nv-patente" placeholder="Ej: AB123CD" style="text-transform: uppercase;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label class="form-label">Marca</label>
+          <input class="form-input" type="text" id="nv-marca" placeholder="Ej: Iveco">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modelo</label>
+          <input class="form-input" type="text" id="nv-modelo" placeholder="Ej: Daily">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label class="form-label">Año</label>
+          <input class="form-input" type="tel" id="nv-anio" placeholder="Ej: 2020" min="1990" max="2030">
+        </div>
+        <div class="form-group">
+          <label class="form-label">N° Interno</label>
+          <input class="form-input" type="text" id="nv-interno" placeholder="Ej: U-07">
+        </div>
+        <div class="form-group">
+          <label class="form-label">KM Inicial <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="tel" id="nv-km" placeholder="Ej: 150000">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-nuevo-vehiculo')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-vehiculo" onclick="guardarNuevoVehiculo()">💾 Registrar Móvil</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-nuevo-usuario">
+  <div class="modal-box" style="max-width: 450px;">
+    <div class="modal-head">
+      <span class="modal-head-title">👤 Alta de Personal / Chofer</span>
+      <button class="modal-close" onclick="closeModal('modal-nuevo-usuario')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nombre Completo <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="text" id="nu-nombre" placeholder="Ej: Juan Pérez">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Legajo <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="text" id="nu-legajo" placeholder="Ej: CHO-002">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teléfono</label>
+          <input class="form-input" type="tel" id="nu-telefono" placeholder="Ej: 11 1234-5678">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="email" id="nu-email" placeholder="Ej: juan@empresa.com">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">DNI <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="text" id="nu-dni" placeholder="Ej: 30123456">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol <span style="color:var(--red)">*</span></label>
+          <select class="form-input" id="nu-rol" onchange="toggleLicenciaSection()">
+            <option value="chofer">🚛 Chofer</option>
+            <option value="administracion">👑 Administración</option>
+          </select>
+        </div>
+      </div>
+      <div style="padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:6px;font-size:11px;color:var(--amber)">
+        Contraseña inicial: <strong>Sigma1234!</strong>
+      </div>
+      <div id="nu-licencia-section" style="padding:15px;background:var(--bg-darker);border-radius:8px;margin-top:10px;border:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--amber);font-weight:bold;margin-bottom:10px;text-transform:uppercase">Datos de Licencia</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">N° Registro</label>
+            <input class="form-input" type="text" id="nu-licencia" placeholder="Nro de carnet">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Vencimiento</label>
+            <input class="form-input" type="date" id="nu-vencimiento">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-nuevo-usuario')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-usuario" onclick="guardarNuevoUsuario()">💾 Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-emergencia-item" class="modal-overlay">
+  <div class="modal-content">
+    <h3 id="mei-titulo">Agregar Item</h3>
+    <input type="hidden" id="mei-config-id">
+    <label>Categoría</label>
+    <select id="mei-category" class="input-field" onchange="meiOnCategoryChange()">
+      <option value="telefono">Teléfono</option>
+      <option value="protocolo">Paso de Protocolo</option>
+      <option value="taller">Taller / Gomería</option>
+    </select>
+    <label>Título / Nombre</label>
+    <input type="text" id="mei-title" class="input-field">
+    <label>Valor / Descripción</label>
+    <textarea id="mei-value" class="input-field" rows="3"></textarea>
+    <label>Orden (Prioridad)</label>
+    <input type="tel" id="mei-sort-order" class="input-field" value="99">
+    <div id="mei-phone-group">
+      <label>Número de Teléfono (Ej: +5411...)</label>
+      <input type="text" id="mei-phone" class="input-field">
+    </div>
+    <div id="mei-badge-group" style="display:none;">
+      <label>Etiqueta (Ej: 24hs, Alineación)</label>
+      <input type="text" id="mei-badge" class="input-field">
+    </div>
+    <div id="mei-address-group" style="display:none">
+      <label>Dirección</label>
+      <input class="input-field" type="text" id="mei-address" placeholder="Ej: Av. Constituyentes 4521, CABA">
+    </div>
+    <div id="mei-maps-url-group" style="display:none">
+      <label>Link de Google Maps (opcional)</label>
+      <input class="input-field" type="text" id="mei-maps-url" placeholder="https://maps.app.goo.gl/...">
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Si lo dejás vacío, se genera automáticamente desde la dirección.</div>
+    </div>
+    <div id="mei-critical-group" style="display:none; margin-top: 15px;">
+      <label style="display:flex; align-items:center; gap: 8px;">
+        <input type="checkbox" id="mei-critical"> Marcar paso como CRÍTICO (Rojo)
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-emergencia-item')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEmergenciaItem()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
+<script src="sigma.js"></script>
+ </div> </div> </div> </div> </div> </div> </div> <div class="modal-backdrop" id="modal-ver-remito">
+
+          
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <span class="modal-head-title" id="vr-modal-nro">REMITO</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="pill pill-green" id="vr-estado-pill">✓ Firmado</span>
+        <button class="modal-close" onclick="closeModal('modal-ver-remito')">×</button>
+      </div>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div style="background:linear-gradient(135deg,#13161d,rgba(245,166,35,0.08));padding:22px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:48px;height:48px;border-radius:10px;background:var(--amber);display:flex;align-items:center;justify-content:center;font-size:24px">🚛</div>
+          <div>
+            <div style="font-family:'Bebas Neue';font-size:26px;letter-spacing:3px;color:var(--amber)">SIGMA REMOLQUES</div>
+            <div style="font-size:10px;color:var(--muted);letter-spacing:1px">SIGMA PINAMAR — ETCHEVERRY · SERVICIO DE REMOLQUE Y TRASLADO</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'DM Mono';font-size:16px;font-weight:600;color:var(--amber)" id="vr-nro">—</div>
+          <div style="font-size:11px;color:var(--muted)" id="vr-fecha">—</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px" id="vr-nro-srv">N° Serv. Prestadora: —</div>
+        </div>
+      </div>
+
+      <div style="padding:22px 28px">
+        <div style="margin-bottom:18px">
+          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">🚗 Vehículo Asistido</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">PATENTE</div>
+              <div style="font-family:'DM Mono';font-size:16px;font-weight:700;color:var(--amber)" id="vr-patente">—</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">MARCA / MODELO</div>
+              <div style="font-size:13px;font-weight:600" id="vr-marca">—</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">TITULAR / CLIENTE</div>
+              <div style="font-size:12px;font-weight:600" id="vr-cliente">—</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:18px">
+          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">📍 Ruta del Servicio</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+            <div style="text-align:center;flex:1">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:4px">ORIGEN</div>
+              <div style="font-size:14px;font-weight:700" id="vr-origen">—</div>
+            </div>
+            <div style="font-size:22px;color:var(--amber)">→</div>
+            <div style="text-align:center;flex:1">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:4px">DESTINO</div>
+              <div style="font-size:14px;font-weight:700" id="vr-destino">—</div>
+            </div>
+            <div style="border-left:1px solid var(--border);padding-left:14px;text-align:center;min-width:80px">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:4px">KM REALIZADOS</div>
+              <div style="font-family:'DM Mono';font-size:18px;font-weight:700;color:var(--amber)" id="vr-km">—</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:18px">
+          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">💳 Cargos adicionales y pago</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">PEAJES</div>
+              <div style="font-family:'DM Mono';font-size:14px;font-weight:600;color:var(--text)" id="vr-peaje">$0</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">EXCEDENTE KM</div>
+              <div style="font-family:'DM Mono';font-size:14px;font-weight:600;color:var(--amber)" id="vr-excedente">$0</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">OTROS CARGOS</div>
+              <div style="font-family:'DM Mono';font-size:14px;font-weight:600" id="vr-otros">$0</div>
+            </div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.3)">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">FORMA DE PAGO</div>
+              <div style="font-size:13px;font-weight:700" id="vr-pago">—</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-bottom:18px">
+          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">☑️ Confirmaciones del socio</div>
+          <div style="display:flex;flex-direction:column;gap:6px" id="vr-confirmaciones"></div>
+        </div>
+        <div id="vr-anulado-section" style="display:none;margin-bottom:18px">
+          <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">🚫 Remito Anulado</div>
+          <div style="padding:12px 16px;background:var(--red-lo);border:1px solid rgba(226,80,74,0.3);border-radius:8px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">MOTIVO</div>
+            <div style="font-size:13px;color:var(--red)" id="vr-anulado-motivo">—</div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:16px">
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Firma digital del socio</div>
+          <div style="display:flex;gap:16px;align-items:flex-start">
+            <canvas id="vr-sig-display" style="height:80px;flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px"></canvas>
+            <div style="text-align:right;min-width:150px">
+              <div style="font-size:10px;color:var(--muted)">Firmado el</div>
+              <div style="font-family:'DM Mono';font-size:12px;color:var(--green)" id="vr-sig-fecha">—</div>
+              <div style="margin-top:8px"><span class="pill pill-green">✓ Firmado digitalmente</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:8px;justify-content:space-between;align-items:center">
+      <button id="btn-anular-remito" class="btn btn-ghost" style="color:var(--red);border-color:var(--red);font-size:11px;display:none" onclick="abrirModalAnular()">
+        🚫 Anular remito
+      </button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="closeModal('modal-ver-remito')">Cerrar</button>
+        <button class="btn btn-primary btn-pdf-modal">⬇ Descargar PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-anular-remito">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-head">
+      <span class="modal-head-title" style="color:var(--red)">🚫 Anular Remito</span>
+      <button class="modal-close" onclick="closeModal('modal-anular-remito')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(226,80,74,0.08);border:1px solid rgba(226,80,74,0.3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--red)">
+        ⚠️ Esta acción no se puede deshacer. El remito quedará marcado como anulado en la base de datos.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Motivo de anulación <span style="color:var(--red)">*</span></label>
+        <select id="anular-motivo-tipo" class="form-input" style="margin-bottom:8px">
+          <option value="">— Seleccioná el motivo —</option>
+          <option value="cliente_ausente">Cliente ausente al llegar</option>
+          <option value="vehiculo_no_arranca">Vehículo no arranca</option>
+          <option value="servicio_cancelado">Servicio cancelado por el cliente</option>
+          <option value="error_datos">Error en los datos del remito</option>
+          <option value="otro">Otro motivo</option>
+        </select>
+        <textarea id="anular-motivo-detalle" class="form-input" placeholder="Describí el motivo en detalle..." style="width:100%;min-height:70px;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('modal-anular-remito')">Cancelar</button>
+      <button class="btn btn-primary" style="background:var(--red);border-color:var(--red)" onclick="confirmarAnulacion()">
+        Confirmar anulación
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+<div id="modal-upload-truck-doc" class="modal-overlay">
+  <div class="modal-content">
+    <h3>Subir Documento (Camión)</h3>
+    <div id="utd-truck-group" style="display:none">
+      <label>Móvil destino</label>
+      <select id="utd-truck-id" class="input-field">
+        <option value="">— Seleccioná un móvil —</option>
+      </select>
+    </div>
+    <label>Tipo de Documento</label>
+    <select id="utd-tipo" class="input-field" onchange="utdOnTipoChange()">
+      <option value="" disabled selected>Seleccionar...</option>
+      <option value="VTV">VTV</option>
+      <option value="SEGURO_POLIZA">Póliza de Seguro</option>
+      <option value="PAGO_SEGURO">Comprobante de Pago Seguro</option>
+      <option value="CEDULA_VERDE">Cédula Verde</option>
+      <option value="PERMISO_ESPECIAL">Permiso Especial</option>
+    </select>
+    <label>Nº de Documento / Póliza</label>
+    <input type="text" id="utd-nro" class="input-field" placeholder="Opcional">
+    <div id="utd-venc-group">
+      <label>Fecha de Vencimiento</label>
+      <input type="date" id="utd-vencimiento" class="input-field">
+    </div>
+    <div id="utd-periodo-group" style="display:none;">
+      <label>Período Abonado (Mes/Año)</label>
+      <input type="month" id="utd-periodo" class="input-field">
+    </div>
+    <div id="utd-obs-group" style="display:none;">
+      <label>Observaciones</label>
+      <textarea id="utd-observaciones" class="input-field"></textarea>
+    </div>
+    <div class="file-upload-wrapper">
+      <input type="file" id="utd-file" class="file-input" onchange="utdOnFileChange()" accept=".pdf,image/*">
+      <label for="utd-file" id="utd-file-box" class="file-box">📎 Tocar para seleccionar archivo</label>
+    </div>
+    <div id="utd-error" class="modal-error" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-upload-truck-doc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="subirDocCamion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-upload-driver-doc" class="modal-overlay">
+  <div class="modal-content">
+    <h3>Subir Documento (Chofer)</h3>
+    <div id="udd-driver-group" style="display:none">
+      <label>Chofer destino</label>
+      <select id="udd-driver-id" class="input-field">
+        <option value="">— Seleccioná un chofer —</option>
+      </select>
+    </div>
+    <label>Tipo de Documento</label>
+    <select id="udd-tipo" class="input-field">
+      <option value="" disabled selected>Seleccionar...</option>
+      <option value="licencia_particular">Licencia Particular</option>
+      <option value="licencia_linti">Licencia Prof. (LINTI)</option>
+      <option value="psicofisico">Psicofísico</option>
+      <option value="art_cnr">Certificado ART con CNR</option>
+    </select>
+    <label>Nº de Credencial</label>
+    <input type="text" id="udd-nro" class="input-field" placeholder="Opcional">
+    <label>Fecha de Vencimiento</label>
+    <input type="date" id="udd-vencimiento" class="input-field">
+    <label>Notas</label>
+    <textarea id="udd-notes" class="input-field" placeholder="Opcional"></textarea>
+    <div class="file-upload-wrapper">
+      <input type="file" id="udd-file" class="file-input" onchange="uddOnFileChange()" accept=".pdf,image/*">
+      <label for="udd-file" id="udd-file-box" class="file-box">📎 Tocar para seleccionar archivo</label>
+    </div>
+    <div id="udd-error" class="modal-error" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-upload-driver-doc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="subirDocChofer()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
