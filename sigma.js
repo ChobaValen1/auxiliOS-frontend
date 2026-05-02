@@ -4602,11 +4602,15 @@ function calcNextService() {
 
 function renderHistorialServices(data) {
   const tbody = document.getElementById('tbody-services');
+  const mList = document.getElementById('mobile-services-list');
   if (!tbody) return;
+
   if (!data?.length) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Sin services registrados</td></tr>';
+    if (mList) mList.innerHTML = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin services registrados</div>`;
     return;
   }
+
   tbody.innerHTML = data.map(s => {
     const fecha   = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
     const km      = (s.km_at_service || 0).toLocaleString('es-AR');
@@ -4623,6 +4627,49 @@ function renderHistorialServices(data) {
       <td style="font-family:'DM Mono';font-size:11px;color:var(--amber)">${nextKm}</td>
     </tr>`;
   }).join('');
+
+  // ── Mobile: lista compacta ──
+  if (!mList) return;
+  mList.innerHTML = '';
+  data.forEach(s => {
+    const fecha  = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
+    const km     = (s.km_at_service || 0).toLocaleString('es-AR');
+    const nextKm = s.next_due_km ? s.next_due_km.toLocaleString('es-AR') + ' km' : '—';
+    const costo  = s.cost ? Number(s.cost).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }) : '—';
+    const taller = s.workshop_name || '—';
+    const plan   = s.master_service_plans?.name || '—';
+    const titulo = `${plan} — ${fecha}`;
+    const detalle = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">KM al service</div>
+          <div style="color:var(--text);font-size:12px;font-family:'DM Mono';font-weight:600">${km} km</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Taller</div>
+          <div style="color:var(--text);font-size:12px">${taller}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Costo</div>
+          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${costo}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Próximo</div>
+          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${nextKm}</div>
+        </div>
+      </div>`;
+
+    const row = document.createElement('div');
+    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid #4ade80;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
+    row.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${plan}</div>
+        <div style="color:var(--muted);font-size:10px">${fecha} · ${km} km</div>
+      </div>
+      <span style="color:var(--muted2);font-size:16px;flex-shrink:0">›</span>`;
+    row.onclick = () => _abrirDetalleMovil(titulo, detalle);
+    mList.appendChild(row);
+  });
 }
 
 async function guardarServiceLog() {
