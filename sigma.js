@@ -3642,7 +3642,8 @@ function _volverCamionMain() {
 }
 
 function _abrirSubCamion(subId) {
-  document.getElementById('camion-main-view').style.display = 'none';
+  const main = document.getElementById('camion-main-view');
+  if (main) main.style.display = 'none';
   _CAMION_SUBS.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
