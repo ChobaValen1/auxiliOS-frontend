@@ -3657,6 +3657,208 @@ function _abrirSubCamion(subId) {
   // 'camion-sub-planes' and 'camion-sub-historial' are pre-rendered by renderPlanes/renderHistorialServices
 }
 
+function _renderSubCombustible() {
+  const body = document.getElementById('camion-sub-combustible-body');
+  if (!body) return;
+
+  const esChofer    = PERFIL_USUARIO?.roles?.name === 'chofer';
+  const totalLitros = _camionCombustible.reduce((s, r) => s + (r.liters || 0), 0);
+  const totalPesos  = _camionCombustible.reduce((s, r) => s + (r.total_cost || 0), 0);
+
+  const summaryPesos = esChofer ? '' : `
+    <div class="camion-summary-item">
+      <div class="camion-summary-label">Total $</div>
+      <div class="camion-summary-value" style="color:#4ade80">
+        ${totalPesos.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })}
+      </div>
+    </div>`;
+
+  body.innerHTML = `
+    <div class="camion-summary-row">
+      <div class="camion-summary-item">
+        <div class="camion-summary-label">Litros</div>
+        <div class="camion-summary-value">${totalLitros} L</div>
+      </div>
+      ${summaryPesos}
+      <div class="camion-summary-item">
+        <div class="camion-summary-label">Cargas</div>
+        <div class="camion-summary-value">${_camionCombustible.length}</div>
+      </div>
+    </div>
+    <div class="card-label" style="margin-bottom:8px">Cargas de esta jornada</div>
+    <div class="card">${_renderCombustibleList(_camionCombustible, esChofer)}</div>
+    <div style="color:var(--muted);font-size:10px;text-align:center;margin-top:8px">
+      Solo se muestran cargas de la jornada activa
+    </div>`;
+}
+
+function _renderCombustibleList(data, esChofer) {
+  const payIcons = { efectivo: '💵', transferencia: '🏦', app: '📱', tarjeta: '💳' };
+  if (!data.length) return `
+    <div style="text-align:center;color:var(--muted);padding:20px">
+      Sin cargas registradas en esta jornada
+    </div>`;
+  return `<table class="data-table" style="width:100%">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Litros</th>
+        ${esChofer ? '' : '<th>Total</th>'}
+        <th>Pago</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${data.map(r => {
+        const fecha = new Date(r.fuel_date + 'T12:00:00')
+          .toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+        const total = Number(r.total_cost || 0)
+          .toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+        return `<tr>
+          <td>${payIcons[r.payment_method] || '💵'} ${fecha}</td>
+          <td style="font-family:'DM Mono'">${r.liters} L</td>
+          ${esChofer ? '' : `<td style="font-family:'DM Mono';color:var(--amber)">${total}</td>`}
+          <td style="font-size:11px;color:var(--muted)">${r.payment_app || r.payment_method || '—'}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function _renderSubNeumaticos() {
+  const body = document.getElementById('camion-sub-neumaticos-body');
+  if (!body) return;
+
+  if (!_camionNeumaticos) {
+    body.innerHTML = `
+      <div class="card" style="text-align:center;padding:30px">
+        <div style="font-size:32px;margin-bottom:8px">🔧</div>
+        <div style="color:var(--muted);font-size:13px">Sin control registrado en esta jornada</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:6px">
+          Registrá el estado antes de arrancar
+        </div>
+      </div>`;
+    return;
+  }
+
+  const d          = _camionNeumaticos;
+  const pillClass  = { bueno: 'pill-green', regular: 'pill-amber', malo: 'pill-red' };
+  const pillLabel  = { bueno: 'Bueno', regular: 'Regular', malo: 'Malo' };
+  const fecha      = new Date(d.check_date + 'T12:00:00')
+    .toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  body.innerHTML = `
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px">Control de esta jornada</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+          <div style="font-size:12px">Neumáticos</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${d.pressure_psi
+              ? `<span style="font-family:'DM Mono';font-size:11px;color:var(--muted)">${d.pressure_psi} PSI</span>`
+              : ''}
+            <span class="pill ${pillClass[d.tire_condition] || 'pill-muted'}">
+              ${pillLabel[d.tire_condition] || '—'}
+            </span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+          <div style="font-size:12px">Frenos</div>
+          <span class="pill ${pillClass[d.brake_condition] || 'pill-muted'}">
+            ${pillLabel[d.brake_condition] || '—'}
+          </span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+          <div style="font-size:12px">Fecha</div>
+          <span style="font-size:12px;font-family:'DM Mono';color:var(--muted)">${fecha}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function _renderSubMantenimiento() {
+  const body = document.getElementById('camion-sub-mantenimiento-body');
+  if (!body) return;
+
+  if (!_camionPlanes?.length) {
+    body.innerHTML = `
+      <div class="card" style="text-align:center;padding:30px;color:var(--muted)">
+        Sin planes de service asignados a este camión
+      </div>`;
+    return;
+  }
+
+  const estadoColor = {
+    al_dia: 'var(--green)', proximo: 'var(--amber)', vencido: 'var(--red)',
+    sin_registro: 'var(--muted)', sin_odometro: 'var(--muted)',
+  };
+  const estadoLabel = {
+    al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido',
+    sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro',
+  };
+
+  const planesHtml = _camionPlanes.map(p => {
+    const estado   = p.plan_estado || 'sin_registro';
+    const color    = estadoColor[estado];
+    const label    = estadoLabel[estado];
+    const kmInfo   = p.interval_km
+      ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${p.interval_km.toLocaleString('es-AR')} km</b>`
+      : '';
+    const nextDue  = p.next_due_km ? p.next_due_km.toLocaleString('es-AR') + ' km' : '—';
+    const restante = p.km_restantes != null
+      ? `${p.km_restantes > 0 ? 'Faltan' : 'Excedidos'} <b>${Math.abs(p.km_restantes).toLocaleString('es-AR')} km</b>`
+      : '';
+    const progreso = (p.next_due_km && p.interval_km && p.km_restantes != null)
+      ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
+      : 0;
+    return `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
+        padding:14px 16px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="width:36px;height:36px;border-radius:8px;background:var(--amber-lo);
+            display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🔧</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:600">${p.name}</span>
+              <span style="font-size:10px;padding:2px 8px;border-radius:20px;
+                background:${color}22;color:${color};font-weight:600">${label}</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${kmInfo}</div>
+            <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px">
+              <div style="width:${progreso}%;height:100%;background:${color};border-radius:3px"></div>
+            </div>
+            <div style="font-size:9px;color:var(--muted)">PRÓXIMO VENCIMIENTO</div>
+            <div style="font-family:'DM Mono';font-size:14px;font-weight:700;color:${color}">${nextDue}</div>
+            ${restante ? `<div style="font-size:10px;color:var(--muted)">${restante}</div>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const histHtml = _camionHistorial.length ? `
+    <div class="card-label" style="margin:16px 0 8px">Historial</div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Service</th><th>KM</th></tr></thead>
+        <tbody>
+          ${_camionHistorial.slice(0, 5).map(s => {
+            const fecha = new Date(s.performed_at + 'T12:00:00')
+              .toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+            return `<tr>
+              <td>${fecha}</td>
+              <td style="font-weight:600">${s.master_service_plans?.name || '—'}</td>
+              <td style="font-family:'DM Mono'">${(s.km_at_service || 0).toLocaleString('es-AR')} km</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>` : '';
+
+  body.innerHTML = planesHtml + histHtml;
+}
+
 function renderCombustible(data) {
   const tbody = document.getElementById('tbody-combustible');
   if (!tbody) return;
