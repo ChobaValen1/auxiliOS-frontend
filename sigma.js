@@ -5233,10 +5233,24 @@ function resetFirmaPagoForm() {
   if (totalVisual) totalVisual.textContent = '$0';
 }
 
+function _abrirDetalleMovil(titulo, htmlContent) {
+  if (window.innerWidth > 600) return;
+  const tituloEl = document.getElementById('mmd-titulo');
+  const bodyEl   = document.getElementById('mmd-body');
+  if (tituloEl) tituloEl.textContent = titulo;
+  if (bodyEl)   bodyEl.innerHTML     = htmlContent;
+  openModal('modal-mobile-detalle');
+}
+
 function renderHistorialJornadas(data) {
-  const tbody = document.getElementById('tbody-historial-jornadas');
+  const tbody    = document.getElementById('tbody-historial-jornadas');
+  const mList    = document.getElementById('mobile-jornadas-list');
   if (!tbody) return;
   tbody.innerHTML = '';
+  if (mList) mList.innerHTML = '';
+
+  const borderColor = { cerrada: '#4ade80', abierta: '#f59e0b', anulada: '#ef4444' };
+
   data.forEach(j => {
     const tallerPill = j.taller
       ? `<span class="pill pill-amber">Sí</span>`
@@ -5244,6 +5258,8 @@ function renderHistorialJornadas(data) {
     const estadoPill = j.estado === 'abierta'
       ? `<span class="pill pill-amber">Abierta</span>`
       : `<span class="pill pill-green">Cerrada</span>`;
+
+    // ── Desktop: fila de tabla (sin cambios) ──
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><b>${j.fecha}</b></td>
@@ -5255,6 +5271,48 @@ function renderHistorialJornadas(data) {
       <td>${tallerPill}</td>
       <td>${estadoPill}</td>`;
     tbody.appendChild(tr);
+
+    // ── Mobile: fila compacta + modal de detalle ──
+    if (!mList) return;
+    const color   = borderColor[j.estado] || '#4ade80';
+    const titulo  = `${j.fecha} · ${j.camion}`;
+    const detalle = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">KM Inicio</div>
+          <div style="color:var(--text);font-size:12px;font-family:'DM Mono'">${j.kmInicio}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Taller</div>
+          <div style="font-size:12px">${j.taller ? '<span style="color:var(--amber);font-weight:600">Sí</span>' : '<span style="color:var(--muted)">No</span>'}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">KM Final</div>
+          <div style="color:var(--text);font-size:12px;font-family:'DM Mono'">${j.kmFinal}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Hs Totales</div>
+          <div style="color:var(--text);font-size:12px">${j.horas} hs</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:8px">
+        <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Recorrido</span>
+        <span style="color:#4ade80;font-size:16px;font-weight:700;font-family:'DM Mono'">${j.kmRec} km</span>
+      </div>`;
+
+    const row = document.createElement('div');
+    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
+    row.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${titulo}</div>
+        <div style="color:var(--muted);font-size:10px">${j.kmRec} km recorridos</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        ${estadoPill}
+        <span style="color:var(--muted2);font-size:16px">›</span>
+      </div>`;
+    row.onclick = () => _abrirDetalleMovil(titulo, detalle);
+    mList.appendChild(row);
   });
 }
 
