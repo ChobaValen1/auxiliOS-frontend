@@ -5318,17 +5318,24 @@ function renderHistorialJornadas(data) {
 
 function renderServiciosDia(data) {
   const tbody = document.querySelector('#tabla-viajes tbody');
+  const mList = document.getElementById('mobile-viajes-list');
   if (!tbody) return;
   tbody.innerHTML = '';
+  if (mList) mList.innerHTML = '';
+
+  const borderColor = { completado: '#4ade80', 'en curso': '#f59e0b', anulado: '#ef4444', pendiente: '#f59e0b' };
+  const estadoPillHtml = (estado) => {
+    if (estado === 'completado') return `<span class="pill pill-green">✓ Completado</span>`;
+    if (estado === 'anulado')    return `<span class="pill pill-red">✕ Anulado</span>`;
+    return `<span class="pill pill-amber">⏳ Pendiente</span>`;
+  };
+
   data.forEach(s => {
     const kmCell = s.km
       ? `<span style="font-family:'DM Mono';color:var(--amber)">${s.km} km</span>`
       : `<span style="color:var(--muted)">—</span>`;
-    const estadoPill = s.estado === 'completado'
-      ? `<span class="pill pill-green">✓ Completado</span>`
-      : s.estado === 'anulado'
-      ? `<span class="pill pill-red">✕ Anulado</span>`
-      : `<span class="pill pill-amber">⏳ Pendiente</span>`;
+
+    // ── Desktop: fila de tabla (sin cambios) ──
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="color:var(--muted);font-family:'DM Mono'">${s.num}</td>
@@ -5339,9 +5346,53 @@ function renderServiciosDia(data) {
       <td>${s.destino}</td>
       <td style="font-family:'DM Mono'">${s.salida}</td>
       <td>${kmCell}</td>
-      <td>${estadoPill}</td>`;
+      <td>${estadoPillHtml(s.estado)}</td>`;
     tbody.appendChild(tr);
+
+    // ── Mobile: fila compacta + modal de detalle ──
+    if (!mList) return;
+    const color  = borderColor[s.estado] || '#f59e0b';
+    const titulo = `N° ${s.nroSrv} · ${s.patente}`;
+    const detalle = `
+      <div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span style="color:var(--text);font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.origen}</span>
+        <span style="color:#3b82f6;font-size:18px">→</span>
+        <span style="color:var(--text);font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${s.destino}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Tipo</div>
+          <div style="color:var(--text);font-size:11px">${s.tipo}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Salida</div>
+          <div style="color:var(--text);font-size:11px;font-family:'DM Mono'">${s.salida}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">KM</div>
+          <div style="color:var(--amber);font-size:11px;font-family:'DM Mono';font-weight:600">${s.km || '—'}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">N° Servicio</div>
+          <div style="color:var(--amber);font-size:11px;font-family:'DM Mono'">${s.nroSrv}</div>
+        </div>
+      </div>`;
+
+    const row = document.createElement('div');
+    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
+    row.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div style="color:var(--text);font-size:11px;font-weight:700">${s.nroSrv} · <span style="color:var(--amber)">${s.patente}</span></div>
+        <div style="color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.origen} → ${s.destino}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        ${estadoPillHtml(s.estado)}
+        <span style="color:var(--muted2);font-size:16px">›</span>
+      </div>`;
+    row.onclick = () => _abrirDetalleMovil(titulo, detalle);
+    mList.appendChild(row);
   });
+
   const counter = document.getElementById('viajes-counter');
   if (counter) counter.textContent = `${data.length} servicios registrados`;
 }
