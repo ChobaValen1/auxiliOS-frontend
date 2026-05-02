@@ -3510,7 +3510,7 @@ async function cargarScreenCamion() {
   _camionCombustible = _camionLogDate
     ? (combustible || []).filter(r => r.fuel_date >= _camionLogDate)
     : (combustible || []);
-  _camionNeumaticos  = (ultimoControl?.check_date >= _camionLogDate) ? ultimoControl : null;
+  _camionNeumaticos  = (!_camionLogDate || ultimoControl?.check_date >= _camionLogDate) ? ultimoControl : null;
   _camionPlanes      = planes || [];
   _camionHistorial   = services || [];
 
