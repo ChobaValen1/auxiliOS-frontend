@@ -3992,8 +3992,7 @@ async function syncOfflineFuel() {
   if (exitos > 0) {
     toast(`✅ ${exitos} carga${exitos > 1 ? 's' : ''} offline sincronizada${exitos > 1 ? 's' : ''}`, 'success');
     if (_truckActual?.truck_id) {
-      const combustible = await cargarCombustible(_truckActual.truck_id);
-      renderCombustible(combustible);
+      cargarScreenCamion();
     }
   }
 
@@ -4313,8 +4312,7 @@ async function guardarCombustible() {
     toast(`${litros}L registrados correctamente`, 'success');
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
-    const combustible = await cargarCombustible(_truckActual.truck_id);
-    renderCombustible(combustible);
+    cargarScreenCamion();
   } else {
     _idEditandoOffline = null;
     toast(`Error al guardar: ${resultado.errorMsg || 'Error desconocido'}`, 'error');
@@ -4389,8 +4387,7 @@ async function guardarNeumaticos() {
   if (exito) {
     toast(`Control registrado · Neumáticos: ${cond} · Frenos: ${frenos}`, 'success');
     closeModal('modal-neumaticos');
-    const ultimo = await cargarUltimoControlNeumaticos(_truckActual.truck_id);
-    renderUltimoControlNeumaticos(ultimo);
+    cargarScreenCamion();
   } else {
     toast('Error al guardar el control', 'error');
   }
