@@ -5361,6 +5361,19 @@ function renderHistorialJornadas(data) {
     row.onclick = () => _abrirDetalleMovil(titulo, detalle);
     mList.appendChild(row);
   });
+
+  if (mList && data.length > 4) {
+    const hidden = Array.from(mList.children).slice(4);
+    hidden.forEach(el => { el.style.display = 'none'; });
+    const btn = document.createElement('button');
+    btn.textContent = `Ver más (${data.length - 4} restantes)`;
+    btn.style.cssText = `width:100%;padding:10px;margin-top:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:12px;cursor:pointer`;
+    btn.onclick = () => {
+      hidden.forEach(el => { el.style.display = ''; });
+      btn.remove();
+    };
+    mList.appendChild(btn);
+  }
 }
 
 function renderServiciosDia(data) {
