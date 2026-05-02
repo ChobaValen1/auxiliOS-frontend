@@ -2129,3 +2129,54 @@ body {
   color: var(--text);
   margin-top: 2px;
 }
+
+/* ── MOBILE UX — MEJORAS RESPONSIVAS ─────────────────────── */
+
+/* 1. Form grid 2-col colapsable en modales */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 480px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 2. Grids de KPIs/cards que colapsan a 1 col en mobile */
+@media (max-width: 600px) {
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* 3. Filtros del Dashboard */
+@media (max-width: 767px) {
+  .dash-period-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .dash-filter-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .dash-filter-dd {
+    min-width: min(220px, calc(100vw - 32px));
+  }
+  .dash-filter-btn {
+    min-width: 140px;
+  }
+}
+
+/* 4. Canvas de firma — más alto en mobile para facilitar firma con el dedo */
+@media (max-width: 767px) {
+  #sig-canvas {
+    height: 200px !important;
+  }
+  #sig-canvas-firma {
+    height: 200px !important;
+  }
+}
