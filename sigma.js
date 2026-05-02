@@ -3219,6 +3219,17 @@ document.querySelectorAll('.modal-backdrop').forEach(m => {
 });
 
 
+// ── INPUT SANITIZERS ────────────────────────────
+function sanitizeDecimal(input) {
+  let v = input.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+  const parts = v.split('.');
+  if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+  input.value = v;
+}
+function sanitizeInt(input) {
+  input.value = input.value.replace(/[^0-9]/g, '');
+}
+
 // ── MODAL INLINE ERROR ──────────────────────────
 function _modalError(id, msg) {
   const el = document.getElementById(id);
@@ -4268,10 +4279,14 @@ async function guardarCombustible() {
   const km     = parseInt(document.getElementById('cb-km')?.value) || null;
   const estacion = document.getElementById('cb-estacion')?.value || null;
 
-  if (!fecha)                   { _modalError('cb-error', 'Seleccioná la fecha'); return; }
-  if (!litros || isNaN(litros)) { _modalError('cb-error', 'Ingresá los litros cargados'); return; }
-  if (!precio || isNaN(precio)) { _modalError('cb-error', 'Ingresá el precio por litro'); return; }
-  if (!selectedPayMethod)       { _modalError('cb-error', 'Seleccioná el medio de pago'); return; }
+  if (!fecha)                     { _modalError('cb-error', 'Seleccioná la fecha'); return; }
+  if (!litros || isNaN(litros))   { _modalError('cb-error', 'Ingresá los litros cargados'); return; }
+  if (litros <= 0)                { _modalError('cb-error', 'Los litros deben ser un valor mayor a 0'); return; }
+  if (litros > 5000)              { _modalError('cb-error', 'Los litros ingresados parecen incorrectos (máx. 5000)'); return; }
+  if (!precio || isNaN(precio))   { _modalError('cb-error', 'Ingresá el precio por litro'); return; }
+  if (precio <= 0)                { _modalError('cb-error', 'El precio debe ser mayor a 0'); return; }
+  if (km !== null && km <= 0)     { _modalError('cb-error', 'Los KM deben ser un valor mayor a 0'); return; }
+  if (!selectedPayMethod)         { _modalError('cb-error', 'Seleccioná el medio de pago'); return; }
   if (selectedPayMethod === 'app' && !selectedApp) { _modalError('cb-error', 'Seleccioná la app de pago'); return; }
   _modalError('cb-error', '');
 
@@ -4328,6 +4343,7 @@ function openNeumaticosModal() {
   if (fecha) fecha.value = new Date().toISOString().slice(0, 10);
   ['neu-cond','neu-frenos'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   ['neu-psi','neu-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _modalError('neu-error', '');
   openModal('modal-neumaticos');
 }
 
@@ -4367,8 +4383,11 @@ async function guardarNeumaticos() {
   const psi    = parseFloat(document.getElementById('neu-psi')?.value) || null;
   const notas  = document.getElementById('neu-notas')?.value || null;
 
-  if (!cond)   { toast('Seleccioná el estado de los neumáticos', 'error'); return; }
-  if (!frenos) { toast('Seleccioná el estado de los frenos', 'error'); return; }
+  if (!cond)                        { _modalError('neu-error', 'Seleccioná el estado de los neumáticos'); return; }
+  if (!frenos)                      { _modalError('neu-error', 'Seleccioná el estado de los frenos'); return; }
+  if (psi !== null && psi <= 0)     { _modalError('neu-error', 'La presión PSI debe ser mayor a 0'); return; }
+  if (psi !== null && psi > 250)    { _modalError('neu-error', 'La presión PSI parece incorrecta (máx. 250)'); return; }
+  _modalError('neu-error', '');
 
   const btn = document.getElementById('btn-guardar-neumaticos');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
@@ -4546,6 +4565,7 @@ async function openServiceModal() {
   if (fecha) fecha.value = new Date().toISOString().slice(0, 10);
   ['sl-km','sl-costo','sl-taller','sl-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const next = document.getElementById('sl-next-preview'); if (next) next.style.display = 'none';
+  _modalError('sl-error', '');
 
   // Traer solo los planes a los que este camión está suscrito
   const _planesCacheRaw = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
@@ -4613,9 +4633,11 @@ async function guardarServiceLog() {
   const costo   = parseFloat(document.getElementById('sl-costo')?.value) || null;
   const notas   = document.getElementById('sl-notas')?.value || null;
 
-  if (!planId)         { toast('Seleccioná el plan de service', 'error'); return; }
-  if (!km || isNaN(km)) { toast('Ingresá los KM al realizar el service', 'error'); return; }
-  if (km <= 0)          { toast('Los KM deben ser un valor positivo mayor a cero', 'error'); return; }
+  if (!planId)           { _modalError('sl-error', 'Seleccioná el plan de service'); return; }
+  if (!km || isNaN(km))  { _modalError('sl-error', 'Ingresá los KM al realizar el service'); return; }
+  if (km <= 0)           { _modalError('sl-error', 'Los KM deben ser un valor positivo mayor a cero'); return; }
+  if (costo !== null && costo < 0) { _modalError('sl-error', 'El costo no puede ser negativo'); return; }
+  _modalError('sl-error', '');
 
   if (_truckActual?.current_km) {
     const currentKm = _truckActual.current_km;

@@ -69,11 +69,11 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label class="form-label">Litros <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="cb-litros" placeholder="Ej: 80" oninput="calcCombTotal()">
+          <input class="form-input" type="tel" id="cb-litros" placeholder="Ej: 80" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()">
         </div>
         <div class="form-group">
           <label class="form-label">Precio / litro <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="cb-precio" placeholder="Ej: 420" oninput="calcCombTotal()">
+          <input class="form-input" type="tel" id="cb-precio" placeholder="Ej: 420" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()">
         </div>
       </div>
       <div style="padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
@@ -82,11 +82,11 @@
       </div>
       <div class="form-group">
         <label class="form-label">KM al cargar</label>
-        <input class="form-input" type="tel" id="cb-km" placeholder="Opcional">
+        <input class="form-input" type="tel" id="cb-km" placeholder="Opcional" inputmode="numeric" oninput="sanitizeInt(this)">
       </div>
       <div class="form-group">
         <label class="form-label">Estación de servicio</label>
-        <input class="form-input" type="text" id="cb-estacion" placeholder="Ej: YPF Ruta 2 km 340">
+        <input class="form-input" type="text" id="cb-estacion" placeholder="Ej: YPF Ruta 2 km 340" maxlength="100">
       </div>
       <div class="form-group">
         <label class="form-label">Medio de pago <span style="color:var(--red)">*</span></label>
@@ -138,7 +138,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">KM al realizar <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="sl-km" placeholder="Ej: 185000" oninput="calcNextService()">
+          <input class="form-input" type="tel" id="sl-km" placeholder="Ej: 185000" inputmode="numeric" oninput="sanitizeInt(this);calcNextService()">
         </div>
       </div>
       <div id="sl-next-preview" style="display:none;padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
@@ -152,14 +152,15 @@
         </div>
         <div class="form-group">
           <label class="form-label">Costo</label>
-          <input class="form-input" type="tel" id="sl-costo" placeholder="$0">
+          <input class="form-input" type="tel" id="sl-costo" placeholder="$0" inputmode="decimal" oninput="sanitizeDecimal(this)">
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">Notas</label>
-        <textarea class="form-input" id="sl-notas" placeholder="Observaciones del service..." style="min-height:60px;resize:vertical"></textarea>
+        <textarea class="form-input" id="sl-notas" placeholder="Observaciones del service..." style="min-height:60px;resize:vertical" maxlength="500"></textarea>
       </div>
     </div>
+    <div id="sl-error" class="modal-error" style="display:none;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-service-log')">Cancelar</button>
       <button class="btn btn-primary" id="btn-guardar-service" onclick="guardarServiceLog()">🔧 Guardar service</button>
@@ -194,7 +195,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Presión (PSI)</label>
-          <input class="form-input" type="tel" id="neu-psi" placeholder="Ej: 110">
+          <input class="form-input" type="tel" id="neu-psi" placeholder="Ej: 110" inputmode="decimal" oninput="sanitizeDecimal(this)">
         </div>
       </div>
       <div class="form-group">
@@ -208,9 +209,10 @@
       </div>
       <div class="form-group">
         <label class="form-label">Observaciones</label>
-        <textarea class="form-input" id="neu-notas" placeholder="Detalles del estado, desgaste, etc." style="min-height:70px;resize:vertical"></textarea>
+        <textarea class="form-input" id="neu-notas" placeholder="Detalles del estado, desgaste, etc." style="min-height:70px;resize:vertical" maxlength="500"></textarea>
       </div>
     </div>
+    <div id="neu-error" class="modal-error" style="display:none;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-neumaticos')">Cancelar</button>
       <button class="btn btn-primary" id="btn-guardar-neumaticos" onclick="guardarNeumaticos()">🔩 Guardar control</button>
