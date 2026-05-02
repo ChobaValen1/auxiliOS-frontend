@@ -175,6 +175,7 @@ const SCREENS = {
 };
 
 function goTo(name) {
+  if (name !== 'chofer') _resetJornadasMobile();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -5374,6 +5375,24 @@ function renderHistorialJornadas(data) {
     };
     mList.appendChild(btn);
   }
+}
+
+function _resetJornadasMobile() {
+  const mList = document.getElementById('mobile-jornadas-list');
+  if (!mList) return;
+  const rows = Array.from(mList.children).filter(el => el.tagName !== 'BUTTON');
+  if (rows.length <= 4) return;
+  rows.slice(4).forEach(el => { el.style.display = 'none'; });
+  const existingBtn = mList.querySelector('button');
+  if (existingBtn) existingBtn.remove();
+  const btn = document.createElement('button');
+  btn.textContent = `Ver más (${rows.length - 4} restantes)`;
+  btn.style.cssText = `width:100%;padding:10px;margin-top:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:12px;cursor:pointer`;
+  btn.onclick = () => {
+    rows.slice(4).forEach(el => { el.style.display = ''; });
+    btn.remove();
+  };
+  mList.appendChild(btn);
 }
 
 function renderServiciosDia(data) {
