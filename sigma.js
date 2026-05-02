@@ -7920,7 +7920,7 @@ function _renderSelectorChoferes() {
   grid.innerHTML = _listaChoferes.map(chofer => {
     const docsChofer = _allDriverDocs.filter(d => d.driver_id === chofer.user_id);
     const badge = _badgeDocsCamion(docsChofer);
-    return `<div class="truck-select-card" onclick="seleccionarChoferAdmin(${chofer.user_id})">
+    return `<div class="truck-select-card" onclick="seleccionarChoferAdmin('${chofer.user_id}')">
       <div class="tscard-icon">👤</div>
       <div class="tscard-num" style="font-size:14px;letter-spacing:0">${_escHtml(chofer.full_name || '')}</div>
       <span class="truck-badge ${badge.cls}">${badge.txt}</span>
