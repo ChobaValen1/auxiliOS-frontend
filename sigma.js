@@ -5408,10 +5408,6 @@ function renderServiciosDia(data) {
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
         <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Tipo</div>
-          <div style="color:var(--text);font-size:11px">${s.tipo}</div>
-        </div>
-        <div>
           <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Salida</div>
           <div style="color:var(--text);font-size:11px;font-family:'DM Mono'">${s.salida}</div>
         </div>
@@ -5420,8 +5416,12 @@ function renderServiciosDia(data) {
           <div style="color:var(--amber);font-size:11px;font-family:'DM Mono';font-weight:600">${s.km || '—'}</div>
         </div>
         <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">N° Servicio</div>
-          <div style="color:var(--amber);font-size:11px;font-family:'DM Mono'">${s.nroSrv}</div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Peaje</div>
+          <div style="color:var(--text);font-size:11px;font-family:'DM Mono'">${s.peaje}</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Excedente</div>
+          <div style="color:var(--text);font-size:11px;font-family:'DM Mono'">${s.excedente}</div>
         </div>
       </div>`;
 
