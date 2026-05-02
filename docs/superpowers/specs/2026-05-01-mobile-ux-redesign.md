@@ -13,13 +13,23 @@ Mejorar la experiencia en mobile (≤600px) sin romper el comportamiento desktop
 
 ## 1. Tablas → Lista compacta + modal de detalle
 
-### Patrón general
+### Patrón general — Hybrid render (igual que Remitos)
 
-En mobile (≤600px), las tablas con muchas columnas se reemplazan por:
-- **Lista de filas compactas**: una línea por registro con la info más relevante y un chevron `›`
-- **Modal de detalle** (`#modal-mobile-detalle`): al tocar una fila, se abre un modal reutilizable con todos los campos del registro
+El proyecto ya usa el patrón `.desktop-only` / `.mobile-only` para la tabla de Remitos. Se aplica el mismo approach a las tres tablas restantes:
 
-En desktop (>600px) no cambia nada — las tablas siguen siendo tablas.
+- La función JS que renderiza cada tabla genera **dos salidas en paralelo**:
+  1. Un `<tr>` normal para la tabla de desktop (sin `onclick`)
+  2. Un `<div>` de lista compacta para mobile (con `onclick` para abrir el modal)
+- El CSS existente (`.desktop-only { display:none }` / `.mobile-only { display:block }` a ≤767px) controla cuál es visible
+- El `onclick` vive **solo** en los `<div>` del mobile list — los `<tr>` de desktop no tienen onclick, eliminando el edge case de que el modal se abra en desktop por accidente
+
+**Guard clause en `_abrirDetalleMovil` (defensa en profundidad):**
+```javascript
+function _abrirDetalleMovil(titulo, htmlContent) {
+  if (window.innerWidth > 600) return;
+  // ...
+}
+```
 
 ### Modal reutilizable `#modal-mobile-detalle`
 
@@ -36,7 +46,7 @@ Un único modal en Index.html con estructura:
 </div>
 ```
 
-Función JS: `_abrirDetalleMovil(titulo, htmlContent)` — setea `#mmd-titulo` y `#mmd-body`, luego abre el modal.
+Función JS: `_abrirDetalleMovil(titulo, htmlContent)` — guard clause de ancho, setea `#mmd-titulo` y `#mmd-body`, luego llama `openModal('modal-mobile-detalle')`.
 
 ### 1.1 Tabla: Historial de jornadas (`#tbody-historial-jornadas`)
 
@@ -61,7 +71,7 @@ Color del borde izquierdo por estado:
 - Abierta → `#f59e0b` (naranja)
 - Anulada → `#ef4444` (rojo)
 
-La función que renderiza `#tbody-historial-jornadas` en sigma.js debe agregar `onclick="_abrirDetalleJornada(this)"` a cada `<tr>` y almacenar los datos como `data-*` attributes en la fila.
+La función que renderiza jornadas genera en paralelo un contenedor `#mobile-jornadas-list` (`.mobile-only`) con `<div>` items que tienen `onclick="_abrirDetalleJornada(data)"`. El `<tbody>` existente mantiene `.desktop-only`.
 
 ### 1.2 Tabla: Viajes del día (`#tbody-servicios-dia`)
 
@@ -87,6 +97,8 @@ Color del borde izquierdo por estado:
 - En curso → `#f59e0b`
 - Anulado → `#ef4444`
 
+La función que renderiza viajes genera en paralelo un contenedor `#mobile-viajes-list` (`.mobile-only`). El `<tbody>` existente mantiene `.desktop-only`.
+
 ### 1.3 Tabla: Historial de services (`#tbody-services`)
 
 **Fila compacta:**
@@ -102,6 +114,8 @@ Grid 2 columnas:
   KM al service: XXX.XXX  |  Taller: Nombre
   Costo: $X.XXX           |  Próximo: XXX.XXX km
 ```
+
+La función que renderiza services genera en paralelo un contenedor `#mobile-services-list` (`.mobile-only`). El `<tbody id="tbody-services">` mantiene `.desktop-only`.
 
 ---
 
