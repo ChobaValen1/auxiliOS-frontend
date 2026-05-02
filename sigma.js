@@ -3641,6 +3641,21 @@ function _volverCamionMain() {
   if (main) main.style.display = '';
 }
 
+function _abrirSubCamion(subId) {
+  document.getElementById('camion-main-view').style.display = 'none';
+  _CAMION_SUBS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const target = document.getElementById(subId);
+  if (target) target.style.display = '';
+
+  if (subId === 'camion-sub-combustible')   _renderSubCombustible();
+  if (subId === 'camion-sub-neumaticos')    _renderSubNeumaticos();
+  if (subId === 'camion-sub-mantenimiento') _renderSubMantenimiento();
+  // 'camion-sub-planes' and 'camion-sub-historial' are pre-rendered by renderPlanes/renderHistorialServices
+}
+
 function renderCombustible(data) {
   const tbody = document.getElementById('tbody-combustible');
   if (!tbody) return;
