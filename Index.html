@@ -66,7 +66,7 @@
         <label class="form-label">Fecha <span style="color:var(--red)">*</span></label>
         <input class="form-input" type="date" id="cb-fecha">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-grid-2">
         <div class="form-group">
           <label class="form-label">Litros <span style="color:var(--red)">*</span></label>
           <input class="form-input" type="tel" id="cb-litros" placeholder="Ej: 80" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()">
@@ -131,7 +131,7 @@
           <option value="">— Seleccioná el plan —</option>
         </select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-grid-2">
         <div class="form-group">
           <label class="form-label">Fecha <span style="color:var(--red)">*</span></label>
           <input class="form-input" type="date" id="sl-fecha">
@@ -183,7 +183,7 @@
         <label class="form-label">Fecha del control <span style="color:var(--red)">*</span></label>
         <input class="form-input" type="date" id="neu-fecha">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-grid-2">
         <div class="form-group">
           <label class="form-label">Estado neumáticos <span style="color:var(--red)">*</span></label>
           <select class="form-input" id="neu-cond">
@@ -863,7 +863,7 @@
   </div>
 
   <!-- Historial de jornadas -->
-  <div class="card mb24">
+  <div class="card mb24 desktop-only">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div>
         <div class="card-label">Historial de jornadas</div>
@@ -873,7 +873,7 @@
     <table class="data-table">
       <thead>
         <tr>
-          <th>Fecha</th>  
+          <th>Fecha</th>
           <th>Camión</th>
           <th>KM Inicio</th>
           <th>KM Final</th>
@@ -886,9 +886,10 @@
       <tbody id="tbody-historial-jornadas"></tbody>
     </table>
   </div>
+  <div id="mobile-jornadas-list" class="mobile-only"></div>
 
   <!-- Servicios del día -->
-  <div class="card mb24">
+  <div class="card mb24 desktop-only">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div>
         <div class="card-label">Servicios del día</div>
@@ -936,6 +937,7 @@
       </tbody>
     </table>
   </div>
+  <div id="mobile-viajes-list" class="mobile-only"></div>
 
   <!-- Resumen del mes -->
   <div id="section-resumen-mes" class="card mb24">
@@ -1046,7 +1048,7 @@
       <button class="btn btn-primary" style="font-size:11px;padding:6px 12px"
         onclick="openServiceModal()">+ Service</button>
     </div>
-    <div class="card">
+    <div class="card desktop-only">
       <table class="data-table">
         <thead>
           <tr><th>Fecha</th><th>Service</th><th>KM</th><th>Taller</th><th>Costo</th><th>Próximo</th></tr>
@@ -1054,6 +1056,7 @@
         <tbody id="tbody-services"></tbody>
       </table>
     </div>
+    <div id="mobile-services-list" class="mobile-only"></div>
   </div>
 
 </div>
@@ -2326,6 +2329,17 @@
       <button class="btn btn-ghost" onclick="closeModal('modal-upload-driver-doc')">Cancelar</button>
       <button class="btn btn-primary" onclick="subirDocChofer()">Guardar</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal reutilizable detalle mobile -->
+<div class="modal-backdrop" id="modal-mobile-detalle">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-head-title" id="mmd-titulo">—</span>
+      <button class="modal-close" onclick="closeModal('modal-mobile-detalle')">×</button>
+    </div>
+    <div class="modal-body" id="mmd-body"></div>
   </div>
 </div>
 
