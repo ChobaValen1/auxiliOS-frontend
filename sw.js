@@ -70,8 +70,9 @@ self.addEventListener('fetch', event => {
           const networkFetch = fetch(event.request).then(res => {
             cache.put(event.request, res.clone());
             return res;
-          });
-          return cached || networkFetch;
+          }).catch(() => cached);
+          // Always fire network in background for cache update; return cached immediately
+          return cached ? (networkFetch.catch(() => {}), cached) : networkFetch;
         })
       )
     );
