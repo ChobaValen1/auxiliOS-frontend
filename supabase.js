@@ -892,7 +892,12 @@ document.addEventListener('click', e => {
   const card = e.target.closest('[data-rem]');
   if (!card) return;
   if (e.target.closest('.btn-ver-remito'))      { verRemitoModal(card); return; }
-  if (e.target.closest('.btn-firmar-remito'))   { showRemitosView('firma', card); return; }
+  if (e.target.closest('.btn-firmar-remito')) {
+    let d = null;
+    try { d = JSON.parse(card.getAttribute('data-rem')); } catch(_) {}
+    completarRemitoPendiente(d);
+    return;
+  }
   if (e.target.closest('.btn-pdf-remito'))      { descargarRemitoPDF(card); return; }
   if (e.target.closest('.btn-whatsapp-remito')) { compartirRemitoPorWhatsApp(card); return; }
 });
@@ -1336,7 +1341,7 @@ async function cargarDatosChofer(userId, desde, truckId = null) {
 
   const [remitosRes, jornadasRes, fuelRes, rendicionRes, alertasRes, jornadaHoyRes] = await Promise.all([
     _db.from('remitos')
-      .select('pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status, created_at_device, log_id')
+      .select('pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status, created_at_device, log_id, nro_remito, patente, origen, destino, imp_peaje, imp_excedente, imp_otros')
       .eq('driver_id', userId)
       .gte('created_at_device', desde + 'T00:00:00')
       .neq('status', 'anulado'),
