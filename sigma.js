@@ -1,6 +1,22 @@
 // Variable global: jornada activa del chofer (persiste en localStorage entre reinicios)
 let _jornadaActivaLocal = null;
 
+function _validarPatente(val) {
+  const el = document.getElementById('warn-patente');
+  if (!el) return;
+  const n = val.length;
+  if (n === 0 || n >= 6) {
+    el.textContent = '';
+    el.className = 'rem-warn-patente';
+  } else if (n <= 3) {
+    el.textContent = '⚠️ La patente parece muy corta. Verificá que esté completa.';
+    el.className = 'rem-warn-patente warn-strong';
+  } else {
+    el.textContent = 'La patente tiene menos de 6 caracteres. Formato: ABC123 o AB123CD';
+    el.className = 'rem-warn-patente warn-soft';
+  }
+}
+
 // ── REPARACIÓN DE ESTRUCTURA DOM ──────────────────────────────
 // El browser anidó elementos incorrectamente por tags mal cerrados.
 // Este bloque los reubica antes de que el usuario interactúe.
@@ -562,18 +578,21 @@ function _remWizardActualizar() {
     if (_remPasoActual === REM_TOTAL_PASOS) {
       // ESTAMOS EN EL PASO 5 (FIRMA)
       btnNext.textContent = '✅ Finalizar';
-      if (btnPendiente) btnPendiente.style.display = 'block'; 
-      
-      // Conectamos la Cláusula de Guardia antes de guardar
+      if (btnPendiente) btnPendiente.style.display = 'none';
       btnNext.onclick = () => {
           if (typeof validarPaso5Final === 'function' && validarPaso5Final()) {
-              finalizarRemito(); 
+              finalizarRemito();
           }
       };
-    } else {
-      // PASOS 1 al 4
+    } else if (_remPasoActual === 1) {
+      // PASO 1 — mostrar "Guardar y seguir después"
       btnNext.textContent = 'Siguiente →';
-      if (btnPendiente) btnPendiente.style.display = 'none'; 
+      if (btnPendiente) { btnPendiente.style.display = 'block'; btnPendiente.innerHTML = '💾 Guardar y seguir después'; }
+      btnNext.onclick = () => remWizardIr(1);
+    } else {
+      // PASOS 2 al 4
+      btnNext.textContent = 'Siguiente →';
+      if (btnPendiente) btnPendiente.style.display = 'none';
       btnNext.onclick = () => remWizardIr(1);
     }
   }
@@ -785,7 +804,7 @@ function actualizarProgresoFirmas() {
 // ── 3. GUARD CLAUSE (VALIDACIÓN ANTES DE GUARDAR) ──
 // Esta función se ejecuta cuando el chofer toca "Finalizar y Guardar"
 function validarPaso5Final() {
-    // 1. Verificamos las confirmaciones
+    // 1. Verificamos las confirmaciones obligatorias (excluye Arrastre por ser opcional)
     const obligatorios = document.querySelectorAll('#rem-step-5 .acept-toggle:not(#row-arrastre) .toggle');
     let todasConfirmadas = true;
     obligatorios.forEach(t => {
@@ -793,29 +812,23 @@ function validarPaso5Final() {
     });
 
     if (!todasConfirmadas) {
-        toast('❌ Error: Faltan marcar confirmaciones obligatorias.', 'error');
+        toast('Marcá todas las confirmaciones antes de finalizar', 'error');
         return false;
     }
 
-    // 2. Verificamos la Firma (Asumiendo que guardás los trazos del canvas en un array o variable global, 
-    // o chequeamos si el canvas está vacío)
-    const canvas = document.getElementById('sig-canvas');
-    const isCanvasBlank = (canvas) => {
-        const blank = document.createElement('canvas');
-        blank.width = canvas.width;
-        blank.height = canvas.height;
-        return canvas.toDataURL() === blank.toDataURL();
-    };
-
-    if (canvas && isCanvasBlank(canvas)) {
-        toast('❌ Error: Falta la firma de conformidad.', 'error');
-        // Efecto visual para que vea qué falta
-        canvas.style.borderColor = 'var(--red)';
-        setTimeout(() => canvas.style.borderColor = 'var(--amber)', 2000);
+    // 2. Verificamos la firma usando hasSig (más confiable que comparar pixel-data)
+    if (!hasSig) {
+        const canvas = document.getElementById('sig-canvas');
+        if (canvas) {
+            canvas.style.borderColor = 'var(--red)';
+            setTimeout(() => canvas.style.borderColor = 'var(--amber)', 2500);
+            canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        toast('Dibujá la firma antes de finalizar', 'error');
         return false;
     }
 
-    return true; // Pasa la prueba
+    return true;
 }
 
 // ── CLÁUSULA DE GUARDIA (BLINDAJE DE GUARDADO) ──────────────
@@ -1082,11 +1095,6 @@ function drawDemoSignature() {
 let arrastreRequerido = false;
 
 
-
-function toggleAcept(row) {
-  const toggle = row.querySelector('.toggle');
-  toggle.classList.toggle('on');
-}
 
 async function finalizarRemito() {
   const btn = document.getElementById('btn-finalizar');
@@ -1763,8 +1771,8 @@ function verRemitoModal(elemento) {
         }
         
         const rect = c.getBoundingClientRect();
-        c.width  = rect.width  > 0 ? rect.width  : 360;
-        c.height = rect.height > 0 ? rect.height : 80;
+        c.width  = rect.width  > 0 ? rect.width  : (c.parentElement?.offsetWidth || 360);
+        c.height = rect.height > 0 ? rect.height : 120;
         const ctx = c.getContext('2d');
         ctx.clearRect(0, 0, c.width, c.height);
         
@@ -2156,6 +2164,7 @@ let _fltPeriodo      = '6m';   // período activo
 let _chartNegocio   = null;   // instancia Chart.js del gráfico de tendencia negocio
 let _chartEvolucion = null;   // instancia Chart.js del gráfico evolución 7 días
 let _remitosEfectivoActuales = [];  // remitos con pago en efectivo del render actual
+let _rendRemitosActuales    = [];   // remitos del período activo en vista rendimiento
 let _negocioUsuariosActuales  = [];
 let _negocioLogTruckMapActual = {};
 let _negocioJornadasActuales  = [];
@@ -2163,13 +2172,14 @@ let _negocioJornadasActuales  = [];
 // ── helpers ──────────────────────────────────
 const _AR = n => Math.round(n).toLocaleString('es-AR');
 
-function _KPI(icon, label, val, color, sub, detail) {
+function _KPI(icon, label, val, color, sub, detail, cta) {
   return `<div class="kpi-dash">
     <div class="kpi-dash-icon">${icon}</div>
     <div class="kpi-dash-label">${label}</div>
     <div class="kpi-dash-val" style="color:${color||'var(--amber)'}">${val}</div>
     ${sub    ? `<div class="kpi-dash-sub">${sub}</div>` : ''}
     ${detail ? `<details class="kpi-more"><summary>Ver más</summary><div class="kpi-more-body">${detail}</div></details>` : ''}
+    ${cta    ? `<div class="kpi-dash-cta">${cta}</div>` : ''}
   </div>`;
 }
 
@@ -2270,13 +2280,14 @@ async function _cargarViewRendimiento() {
   document.getElementById('dash-view-negocio').style.display     = 'none';
 
   const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Cargando...</div>';
-  ['dash-rend-fin','dash-rend-op','dash-jornada-hoy-content'].forEach(id => {
+  ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot','dash-jornada-hoy-content'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = LOAD;
   });
 
   const desde = _desde(_rendPeriodo);
-  const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
-                  PERFIL_USUARIO?.roles?.name === 'supervision';
+  const esAdmin  = PERFIL_USUARIO?.roles?.name === 'administracion' ||
+                   PERFIL_USUARIO?.roles?.name === 'supervision';
+  const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
   const selChofer = document.getElementById('rend-filtro-chofer');
   const selCamion = document.getElementById('rend-filtro-camion');
   const targetUserId = esAdmin && selChofer?.value ? selChofer.value : USUARIO_ACTUAL.id;
@@ -2284,7 +2295,7 @@ async function _cargarViewRendimiento() {
 
   // Si es admin y no seleccionó chofer, mostrar placeholder
   if (esAdmin && !selChofer?.value) {
-    ['dash-rend-fin','dash-rend-op','dash-jornada-hoy-content'].forEach(id => {
+    ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot','dash-jornada-hoy-content'].forEach(id => {
       const el = document.getElementById(id); if (el) el.innerHTML = '';
     });
     const finEl = document.getElementById('dash-rend-fin');
@@ -2298,6 +2309,7 @@ async function _cargarViewRendimiento() {
   ]);
 
   const { remitos, jornadas: logs, fuel, rendicion, alertas } = datos;
+  _rendRemitosActuales = remitos;
 
   // ── Cálculos financieros ──
   let factTotal = 0, factEf = 0, factTr = 0;
@@ -2315,57 +2327,61 @@ async function _cargarViewRendimiento() {
   const srvs     = remitos.length;
   const truckIds = new Set(logs.map(j => j.truck_id).filter(Boolean));
   const litros   = fuel.filter(f => truckIds.has(f.truck_id)).reduce((s, f) => s + (f.liters || 0), 0);
-  const kmPorL   = litros > 0 ? (kmTotal / litros).toFixed(1) : '—';
-  const porSrv   = srvs > 0   ? Math.round(factTotal / srvs)  : 0;
-  const porKm    = kmTotal > 0 ? (factTotal / kmTotal).toFixed(1) : '—';
+  const kmPorL      = litros > 0   ? (kmTotal / litros).toFixed(1)  : '—';
+  const kmPorJornada = logs.length > 0 ? Math.round(kmTotal / logs.length) : null;
+  const srvPorJornada = logs.length > 0 ? Math.round(srvs / logs.length)   : null;
+  const kmPorViaje   = srvs > 0        ? Math.round(kmTotal / srvs)        : null;
 
   // ── Detalles para ver más ──
   const topRemitos  = [...remitos].sort((a,b)=>((b.pago_1_monto||0)+(b.pago_2_monto||0))-((a.pago_1_monto||0)+(a.pago_2_monto||0))).slice(0,3);
-  const efRemitos   = remitos.filter(r=>r.pago_1_metodo==='efectivo'||r.pago_2_metodo==='efectivo').slice(0,3);
-  const trRemitos   = remitos.filter(r=>r.pago_1_metodo==='transferencia'||r.pago_2_metodo==='transferencia').slice(0,3);
-  const montos      = remitos.map(r=>(r.pago_1_monto||0)+(r.pago_2_monto||0)).filter(v=>v>0);
   const gastosFuel  = fuel.filter(f=>truckIds.has(f.truck_id)).reduce((s,f)=>s+(f.total_cost||0),0);
 
   const detTotal = topRemitos.map(r=>_mrow('#'+(r.nro_remito||'—'), '$'+_AR((r.pago_1_monto||0)+(r.pago_2_monto||0)))).join('')
     + `<span class="kpi-more-link" onclick="goTo('remitos')">Ver todos los remitos →</span>`;
 
-  const detEf = (efRemitos.length ? efRemitos.map(r=>_mrow('#'+(r.nro_remito||'—'), '$'+_AR((r.pago_1_metodo==='efectivo'?r.pago_1_monto:0)+(r.pago_2_metodo==='efectivo'?r.pago_2_monto:0)))).join('') : '<div style="color:var(--muted);font-size:11px">Sin cobros en efectivo</div>')
-    + _mrow('Total', `${efRemitos.length} cobros`);
-
-  const detTr = (trRemitos.length ? trRemitos.map(r=>_mrow('#'+(r.nro_remito||'—'), '$'+_AR((r.pago_1_metodo==='transferencia'?r.pago_1_monto:0)+(r.pago_2_metodo==='transferencia'?r.pago_2_monto:0)))).join('') : '<div style="color:var(--muted);font-size:11px">Sin transferencias</div>');
 
   const detPend = pendiente > 0
     ? _mrow('Cobrado en efectivo', '$'+_AR(factEf)) + _mrow('Ya rendido', '$'+_AR(efRendido)) + _mrow('Diferencia', '$'+_AR(pendiente))
     : '<div style="color:var(--muted);font-size:11px">Todo rendido ✓</div>';
 
-  const detSrvs = `<span class="kpi-more-link" onclick="goTo('remitos')">Ver listado completo →</span>`;
-
   const detKm = logs.slice(0,3).map(j=>_mrow(j.log_date||'—', Math.max(0,(j.km_final||0)-(j.km_inicio||0)).toLocaleString('es-AR')+' km')).join('')
     + `<span class="kpi-more-link" onclick="goTo('registro')">Ver historial de jornadas →</span>`;
 
-  const detXSrv = montos.length > 0
-    ? _mrow('Máximo', '$'+_AR(Math.max(...montos))) + _mrow('Mínimo', '$'+_AR(Math.min(...montos))) + _mrow('Promedio', '$'+_AR(montos.reduce((a,b)=>a+b,0)/montos.length))
-    : '<div style="color:var(--muted);font-size:11px">Sin datos</div>';
 
   const detXKm = kmTotal > 0
     ? _mrow('KM recorridos', kmTotal.toLocaleString('es-AR')+' km') + _mrow('Facturación', '$'+_AR(factTotal)) + (litros>0?_mrow('Consumo estimado', kmPorL+' km/l'):'') + (gastosFuel>0?_mrow('Costo combustible', '$'+_AR(gastosFuel)):'')
     : '<div style="color:var(--muted);font-size:11px">Sin jornadas cerradas</div>';
 
   // ── KPIs financieros ──
+  const efCount = remitos.filter(r => r.pago_1_metodo==='efectivo'    || r.pago_2_metodo==='efectivo').length;
+  const trCount = remitos.filter(r => r.pago_1_metodo==='transferencia'|| r.pago_2_metodo==='transferencia').length;
   const finEl = document.getElementById('dash-rend-fin');
-  if (finEl) finEl.innerHTML =
-    _KPI('💰', 'Total generado',    '$'+_AR(factTotal), 'var(--amber)', `${srvs} servicios`,                              detTotal) +
-    _KPI('💵', 'Efectivo en mano',  '$'+_AR(factEf),    'var(--green)', `${efRemitos.length} cobros en efectivo`,         detEf) +
-    _KPI('📲', 'Transferencias',    '$'+_AR(factTr),    'var(--blue)',  `${trRemitos.length} cobros digitales`,            detTr) +
-    _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)', pendiente>0?'sin rendir':'al día ✓', detPend);
+  if (finEl) {
+    finEl.style.gridTemplateColumns = esChofer ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
+    finEl.innerHTML =
+      (esChofer ? '' : _KPI('💰', 'Total generado', '$'+_AR(factTotal), 'var(--amber)', `${srvs} servicios`, detTotal)) +
+      _KPI('💵', 'Efectivo en mano',  '$'+_AR(factEf),   'var(--green)',
+        `${efCount} cobros`, null,
+        `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('efectivo')">📋 Ver detalle</span>`) +
+      _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
+        `${trCount} cobros`, null,
+        `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
+      _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)', pendiente>0?'sin rendir':'al día ✓', detPend);
+  }
 
   // ── KPIs operativos ──
-  const opEl = document.getElementById('dash-rend-op');
-  if (opEl) opEl.innerHTML =
-    _KPI('📦', 'Servicios',    String(srvs),                                    'var(--blue)',   `en el período`,                      detSrvs) +
-    _KPI('🚛', 'Km recorridos', kmTotal.toLocaleString('es-AR')+' km',          'var(--amber)',  `${logs.length} jornadas`,            detKm) +
-    _KPI('💰', '$ / Servicio', porSrv>0?'$'+_AR(porSrv):'—',                   'var(--green)',  porSrv>0?'promedio por remito':'',    detXSrv) +
-    _KPI('💸', '$ / Km',       porKm!=='—'?'$'+porKm:'—',                       'var(--purple)', kmPorL!=='—'?'⛽ '+kmPorL+' km/l':'', detXKm);
+  const opTop = document.getElementById('dash-rend-op-top');
+  const opBot = document.getElementById('dash-rend-op-bot');
+  if (opTop) opTop.innerHTML =
+    _KPI('🚛', 'Km recorridos', kmTotal.toLocaleString('es-AR')+' km', 'var(--amber)',  `${logs.length} jornadas`, detKm) +
+    _KPI('📦', 'Servicios',     String(srvs),                          'var(--blue)',
+      `${srvs>0?'en el período':''} <span style="cursor:pointer;color:var(--accent);font-size:10px" onclick="goTo('remitos')">Ver remitos →</span>`, null) +
+    _KPI('⛽', 'KM / Litro',   kmPorL!=='—'?kmPorL:'—',               'var(--purple)', kmPorL!=='—'?'km/l':'sin datos', null);
+  if (opBot) opBot.innerHTML =
+    _KPI('📊', 'KM / Jornada', kmPorJornada!==null?String(kmPorJornada):'—', 'var(--green)',
+      kmPorJornada!==null?`${srvPorJornada} srv/jornada`:'sin jornadas', null) +
+    _KPI('📍', 'KM / Viaje',   kmPorViaje!==null?String(kmPorViaje):'—',    'var(--green)',
+      'promedio', null);
 
   // ── Jornada activa ──
   const jCard = document.getElementById('dash-jornada-hoy-content');
@@ -2389,22 +2405,25 @@ async function _cargarViewRendimiento() {
     }
   }
 
-  // ── Evolución 7 días ──
+  // ── Evolución 7 días (KM + servicios) ──
   const dias7 = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    dias7.push({ key: d.toISOString().slice(0,10), label: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()], val: 0 });
+    dias7.push({ key: d.toISOString().slice(0,10), label: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()], km: 0, srvs: 0 });
   }
-  // siempre últimos 7 días para evolución (independiente del período)
   const hace7 = dias7[0].key;
-  remitos
-    .filter(r => (r.created_at_device||'').slice(0,10) >= hace7)
-    .forEach(r => {
-      const d = dias7.find(d => d.key === (r.created_at_device||'').slice(0,10));
-      if (d) d.val += (r.pago_1_monto||0) + (r.pago_2_monto||0);
-    });
-  const maxD = Math.max(...dias7.map(d => d.val), 1);
+  // KM por día (desde jornadas cerradas)
+  logs.filter(j => (j.log_date||'') >= hace7).forEach(j => {
+    const d = dias7.find(d => d.key === j.log_date);
+    if (d) d.km += Math.max(0, (j.km_final||0) - (j.km_inicio||0));
+  });
+  // Servicios por día (desde remitos)
+  remitos.filter(r => (r.created_at_device||'').slice(0,10) >= hace7).forEach(r => {
+    const d = dias7.find(d => d.key === (r.created_at_device||'').slice(0,10));
+    if (d) d.srvs++;
+  });
   const hoyKey = new Date().toISOString().slice(0,10);
+  const hoyIdx = dias7.findIndex(d => d.key === hoyKey);
   const canvas = document.getElementById('dash-evolucion-canvas');
   if (canvas) {
     if (_chartEvolucion) { _chartEvolucion.destroy(); _chartEvolucion = null; }
@@ -2412,20 +2431,43 @@ async function _cargarViewRendimiento() {
       type: 'bar',
       data: {
         labels: dias7.map(d => d.label),
-        datasets: [{
-          data: dias7.map(d => d.val),
-          backgroundColor: dias7.map(d => d.key === hoyKey ? '#f59e0b' : 'rgba(245,158,11,0.25)'),
-          borderRadius: 4,
-          borderSkipped: false,
-        }],
+        datasets: [
+          {
+            type: 'bar',
+            label: 'KM',
+            data: dias7.map(d => d.km),
+            backgroundColor: dias7.map((_, i) => i === hoyIdx ? 'rgba(245,166,35,1)' : 'rgba(245,166,35,0.45)'),
+            borderRadius: 4,
+            borderSkipped: false,
+            yAxisID: 'y',
+          },
+          {
+            type: 'line',
+            label: 'Servicios',
+            data: dias7.map(d => d.srvs),
+            borderColor: '#4ade80',
+            backgroundColor: 'rgba(74,222,128,0.12)',
+            pointBackgroundColor: '#4ade80',
+            pointRadius: 4,
+            tension: 0.3,
+            yAxisID: 'y1',
+          },
+        ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: true,
+            labels: { color: '#6b7280', font: { size: 10 }, boxWidth: 12, padding: 8 },
+          },
           tooltip: {
-            callbacks: { label: ctx => '$' + _AR(ctx.parsed.y) },
+            callbacks: {
+              label: ctx => ctx.dataset.label === 'KM'
+                ? ctx.parsed.y + ' km'
+                : ctx.parsed.y + ' srv',
+            },
           },
         },
         scales: {
@@ -2434,8 +2476,15 @@ async function _cargarViewRendimiento() {
             ticks: { color: '#6b7280', font: { size: 10 } },
           },
           y: {
+            position: 'left',
             grid: { color: 'rgba(255,255,255,0.05)' },
-            ticks: { color: '#6b7280', font: { size: 10 }, callback: v => '$' + _AR(v) },
+            ticks: { color: '#6b7280', font: { size: 10 }, callback: v => v + ' km' },
+            beginAtZero: true,
+          },
+          y1: {
+            position: 'right',
+            grid: { display: false },
+            ticks: { color: '#4ade80', font: { size: 10 }, stepSize: 1 },
             beginAtZero: true,
           },
         },
@@ -5016,7 +5065,7 @@ function renderTablaRemitos(data) {
                <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px;opacity:0.5">Ver</button>
              </div>`
           : `<div style="display:flex;gap:5px;align-items:center">
-               <button class="btn btn-primary btn-firmar-remito" style="padding:4px 10px;font-size:10px">Firmar</button>
+               <button class="btn btn-primary btn-firmar-remito" style="padding:4px 10px;font-size:10px">Completar</button>
                <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
              </div>`;
 
@@ -5079,7 +5128,7 @@ function renderTablaRemitos(data) {
         </div>
         <div style="margin-top:12px">
           ${!esFirmado && !esAnulado
-            ? `<button class="btn btn-primary btn-firmar-remito" style="width:100%;padding:14px;font-weight:800">✍️ REVISAR Y FIRMAR</button>`
+            ? `<button class="btn btn-primary btn-firmar-remito" style="width:100%;padding:14px;font-weight:800">✍️ COMPLETAR REMITO</button>`
             : esAnulado
             ? `<button class="btn btn-ghost btn-ver-remito" style="width:100%;padding:12px;opacity:0.5">Ver detalles</button>`
             : `<button class="btn-ver-full btn-ver-remito">🔍 VER DETALLES</button>`
@@ -5538,7 +5587,7 @@ async function guardarRemitoPendiente() {
   // 🚨 DIAGNÓSTICO DE SEGURIDAD (Mirar Consola F12) 🚨
   console.log("ID del chofer enviado a Supabase:", USUARIO_ACTUAL.id);
 
-  const { data, error } = await _db.from('remitos').insert(remitoDB);
+  const { data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' });
 
   // 🚨 CAPTURA DE ERRORES DE SUPABASE (RLS/Foreign Keys) 🚨
   if (error) {
@@ -5552,6 +5601,27 @@ async function guardarRemitoPendiente() {
   await cargarRemitos();
   showRemitosView('lista');
   toast(`Remito ${nro} guardado como pendiente ✓`, 'success');
+}
+
+function completarRemitoPendiente(r) {
+  showRemitosView('nuevo'); // calls remWizardReset() internally — clears all fields
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  set('rem-nro',            r.nro);
+  set('rem-patente',        r.patente);
+  set('rem-tipo-servicio',  r.tipo);
+  set('rem-origen',         r.origen);
+  set('rem-destino',        r.destino);
+  set('rem-km',             r.km !== '—' ? r.km : '');
+  set('rem-nro-prestadora', r.nroSrv);
+  set('rem-marca-modelo',   r.marca);
+  set('rem-cliente',        r.cliente);
+  set('rem-cuit',           r.cuit);
+  set('imp-peaje',          r.peaje && r.peaje !== '0' ? r.peaje : '');
+  set('imp-excedente',      r.excedente && r.excedente !== '0' ? r.excedente : '');
+  set('imp-otros',          r.otros && r.otros !== '0' ? r.otros : '');
+  set('rem-observaciones',  r.observaciones);
+  if (typeof _validarPatente === 'function') _validarPatente(r.patente || '');
+  toast(`Completando remito ${r.nro}`, 'info');
 }
 // ═══════════════════════════════════════════
 // 4. INICIALIZACIÓN DE LA APP (Un solo DOMContentLoaded)
@@ -5685,7 +5755,7 @@ function descargarRemitoPDF(tr) {
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
           ${fotosArray.map(url => `
             <div style="border: 1px solid #eee; border-radius: 4px; overflow: hidden; height: 130px; background: #fdfdfd;">
-              <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" crossorigin="anonymous">
+              <img src="${(typeof ENV !== 'undefined' && ENV.API_BASE_URL && !url.startsWith('http')) ? ENV.API_BASE_URL + url : url}" style="width: 100%; height: 100%; object-fit: cover;" crossorigin="anonymous">
             </div>
           `).join('')}
         </div>
@@ -5709,6 +5779,7 @@ function descargarRemitoPDF(tr) {
   ` : '';
 
   // --- ARMADO DEL HTML ---
+  const _firmaUrl = (() => { const u = d.firma_imagen_url || d.firmaUrl || ''; return (typeof ENV !== 'undefined' && ENV.API_BASE_URL && u && !u.startsWith('http')) ? ENV.API_BASE_URL + u : u; })();
   const contenido = `
     <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:35px; color:#333; background:#fff;">
       
@@ -5768,7 +5839,7 @@ function descargarRemitoPDF(tr) {
       <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-end;">
           <div style="text-align:center; width:200px;">
-            ${(d.firma_imagen_url || d.firmaUrl) ? `<img src="${d.firma_imagen_url || d.firmaUrl}" style="width:150px; border-bottom:1px solid #333;" crossorigin="anonymous">` : '<div style="height:50px; border-bottom:1px dashed #ccc;"></div>'}
+            ${_firmaUrl ? `<img src="${_firmaUrl}" style="width:150px; border-bottom:1px solid #333;" crossorigin="anonymous">` : '<div style="height:50px; border-bottom:1px dashed #ccc;"></div>'}
             <div style="font-size:10px; color:#999; margin-top:5px;">Firma de Conformidad del Cliente</div>
           </div>
           <div style="font-size:9px; color:#bbb; text-align:right; max-width:250px;">
@@ -8742,6 +8813,76 @@ function abrirDocumentoChofer(url) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+function abrirModalDesglosePago(tipo) {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const remitos  = _rendRemitosActuales || [];
+  const filtrados = remitos.filter(r => r.pago_1_metodo === tipo || r.pago_2_metodo === tipo);
+  const getMonto  = r => (r.pago_1_metodo===tipo ? (r.pago_1_monto||0) : 0) +
+                         (r.pago_2_metodo===tipo ? (r.pago_2_monto||0) : 0);
+
+  const totalMonto    = filtrados.reduce((s, r) => s + getMonto(r), 0);
+  const totalPeajes   = filtrados.reduce((s, r) => s + (r.imp_peaje||0), 0);
+  const totalExcedente= filtrados.reduce((s, r) => s + (r.imp_excedente||0), 0);
+  const totalOtros    = filtrados.reduce((s, r) => s + (r.imp_otros||0), 0);
+  const totalServBase = Math.max(0, totalMonto - totalPeajes - totalExcedente - totalOtros);
+
+  const icono = tipo === 'efectivo' ? '💵' : '📲';
+  const label = tipo === 'efectivo' ? 'Efectivo en mano' : 'Transferencias';
+  const color = tipo === 'efectivo' ? 'var(--green)' : 'var(--blue)';
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `${icono} ${label} · $${_AR(totalMonto)}`;
+
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const rowsHtml = filtrados.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">Sin cobros en este período</div>'
+    : filtrados.map(r => {
+        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
+        const monto = getMonto(r);
+        return '<div class="modal-desglose-row">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
+          + '<span style="color:var(--text);font-size:11px;font-family:\'DM Mono\'">' + _esc(r.patente||'—') + '</span>'
+          + '<span class="desktop-only" style="color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(r.origen||'—') + '</span>'
+          + '<span class="desktop-only" style="color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _esc(r.destino||'—') + '</span>'
+          + '<span style="color:' + color + ';font-weight:600;font-size:11px">$' + _AR(monto) + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Servicio</div>
+        <div style="color:${color};font-weight:700;font-size:14px">$${_AR(totalServBase)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Peajes</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(totalPeajes)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Excedente</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(totalExcedente)}</div>
+      </div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">
+      <div class="modal-desglose-header">
+        <span>Fecha</span>
+        <span>N° Servicio</span>
+        <span>Patente</span>
+        <span class="desktop-only">Origen</span>
+        <span class="desktop-only">Destino</span>
+        <span>Monto</span>
+      </div>
+      ${rowsHtml}
+    </div>
+    <div style="color:var(--muted2);font-size:10px;text-align:right;margin-top:8px">${filtrados.length} servicios · período activo</div>
+  `;
+
+  openModal('modal-desglose-pago');
+}
+
 function abrirModalCajaCalle() {
   const modal = document.getElementById('modal-caja-calle');
   if (!modal) return;
@@ -8810,3 +8951,22 @@ function abrirModalCajaCalle() {
   document.getElementById('caja-calle-body').innerHTML = tabla;
   openModal('modal-caja-calle');
 }
+
+// --- PWA OFFLINE BANNER ---
+function _pwaBanner(msg, tipo) {
+  let el = document.getElementById('_pwa_banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = '_pwa_banner';
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:10px 16px;font-size:13px;font-weight:700;text-align:center;transition:opacity 0.4s';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = tipo === 'ok' ? '#4ade80' : '#f97316';
+  el.style.color = '#000';
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  if (tipo === 'ok') el._t = setTimeout(() => { el.style.opacity = '0'; }, 3000);
+}
+window.addEventListener('offline', () => _pwaBanner('Sin conexión — los datos no se actualizarán hasta recuperar señal.', 'warn'));
+window.addEventListener('online',  () => _pwaBanner('Conexión recuperada.', 'ok'));
