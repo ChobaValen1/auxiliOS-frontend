@@ -199,6 +199,7 @@ function goTo(name) {
   document.getElementById('topbar-title').textContent = SCREENS[name].title;
   document.getElementById('topbar-sub').textContent   = SCREENS[name].sub;
   if (name === 'dashboard') cargarDashboard();
+  if (name === 'registro') actualizarPantallaJornadas();
   if (name === 'camion') cargarScreenCamion();
   if (name === 'documentos') cargarDocumentos();
   if (name === 'remitos') {
