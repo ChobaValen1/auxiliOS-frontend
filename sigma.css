@@ -515,6 +515,19 @@ body {
   font-size: 26px; letter-spacing: 0.5px; line-height: 1;
 }
 .kpi-dash-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.kpi-dash-cta { margin-top: auto; padding-top: 10px; }
+.kpi-dash-cta-btn {
+  display: block;
+  text-align: center;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--accent);
+  cursor: pointer;
+}
 
 details.kpi-more {
   margin-top: 10px;
@@ -1213,7 +1226,7 @@ body {
 }
 
 .btn-primary { background-color: var(--amber); color: rgba(0, 0, 0, 0.868); }
-.btn-primary:hover { background-color: #716835bd; }
+.btn-primary:hover { background-color: var(--amber); opacity: 0.88; }
 
 .btn-ghost { background-color: transparent; color: var(--text-muted); border: 1px solid var(--border); }
 .btn-ghost:hover { background-color: rgba(255,255,255,0.05); color: var(--text-main); }
@@ -1880,32 +1893,33 @@ body {
 #rem-step-5 {
     padding: 10px !important; 
     padding-bottom: 90px !important; /* Espacio exacto para la botonera */
-    overflow: hidden !important; /* Matamos el scroll */
+    overflow-y: auto !important;
 }
 
-* Achicamos las filas de confirmación */
+/* ── STEP 5: CONFIRMACIONES ─────────────────────────────── */
+#rem-step-5 .card { padding: 10px 12px !important; margin-bottom: 8px !important; }
+#rem-step-5 .card-label { font-size: 12px !important; margin-bottom: 6px !important; }
+
 #rem-step-5 .toggle-row {
-    padding: 6px 10px !important; /* Menos relleno */
-    margin-bottom: 6px !important; /* Menos espacio entre filas */
+    padding: 8px 12px !important;
+    margin-bottom: 4px !important;
     min-height: auto !important;
-    border-radius: 6px !important;
+    border-radius: 7px !important;
 }
-
-/* Achicamos los textos de confirmación */
-#rem-step-5 .toggle-title {
-    font-size: 12px !important;
-}
-
-/* Achicamos los botones switch (Toggles) un 20% */
+#rem-step-5 .toggle-desc { display: block !important; font-size: 10px !important; }
+#rem-step-5 .toggle-title { font-size: 12px !important; font-weight: 500 !important; }
 #rem-step-5 .toggle {
-    transform: scale(0.8);
+    transform: scale(0.85);
     transform-origin: right center;
 }
+#rem-step-5 [id="acept-progress"],
+#rem-step-5 [id="acept-status"] { font-size: 10px !important; }
+#rem-step-5 [id="acept-bar"] { height: 4px !important; }
 
 /* 3. Canvas de firma optimizado */
 #sig-canvas {
     width: 100% !important;
-    height: 160px !important; /* Altura perfecta: no es inmenso, pero sirve para firmar */
+    height: 200px !important;
     margin: 5px auto !important;
     background-color: #ffffff;
     border: 2px dashed var(--amber);
@@ -2130,6 +2144,17 @@ body {
   margin-top: 2px;
 }
 
+/* ── PATENTE VALIDATION WARN ─────────────────── */
+.rem-warn-patente {
+  font-size: 11px;
+  margin-top: 4px;
+  min-height: 16px;
+  transition: opacity 0.15s;
+}
+.rem-warn-patente:empty { display: none; }
+.rem-warn-patente.warn-strong { color: var(--amber); }
+.rem-warn-patente.warn-soft   { color: var(--muted); }
+
 /* ── MOBILE UX — MEJORAS RESPONSIVAS ─────────────────────── */
 
 /* 1. Form grid 2-col colapsable en modales */
@@ -2178,5 +2203,51 @@ body {
   }
   #sig-canvas-firma {
     height: 200px !important;
+  }
+}
+
+/* ── PANEL CHOFER REDESIGN ────────────────────── */
+
+/* Bloque operativo: 3+2 en mobile, 5 cols en desktop */
+@media (min-width: 481px) {
+  #dash-rend-op-wrap {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  #dash-rend-op-top,
+  #dash-rend-op-bot {
+    display: contents;
+  }
+}
+
+/* Modal desglose pago — tabla con cols Origen/Destino que se ocultan en mobile */
+.modal-desglose-row {
+  display: grid;
+  grid-template-columns: 55px 90px 65px 1fr 1fr 80px;
+  gap: 4px;
+  padding: 9px 12px;
+  align-items: center;
+  border-top: 1px solid var(--border);
+}
+.modal-desglose-header {
+  display: grid;
+  grid-template-columns: 55px 90px 65px 1fr 1fr 80px;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--card-alt, #1a1a2a);
+  color: var(--muted2);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+@media (max-width: 480px) {
+  .modal-desglose-row,
+  .modal-desglose-header {
+    grid-template-columns: 50px 75px 60px 70px;
+  }
+  .modal-desglose-row .desktop-only,
+  .modal-desglose-header .desktop-only {
+    display: none;
   }
 }
