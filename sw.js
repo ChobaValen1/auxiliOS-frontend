@@ -2,7 +2,7 @@ const CACHE_NAME = 'auxilios-v1';
 
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
+  '/Index.html',
   '/sigma.css',
   '/sigma.js',
   '/supabase.js',
