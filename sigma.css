@@ -1664,12 +1664,13 @@ body {
     padding-bottom: 60px;
   }
   .topbar { padding: 0 16px; }
-  
+  .content { padding: 16px; }
+
  .remitos-container-mobile {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 10px 10px 120px 10px; /* Aumentamos de 100px a 120px el padding-bottom */
+    gap: 20px;
+    padding: 16px 16px 120px 16px;
   }
 
   /* Card Operativa */
@@ -1707,13 +1708,13 @@ body {
   /* Mobile Remito Card v0.0.12 */
   .mobile-card-remito {
     background: var(--card);
-    border: 3px solid var(--border);
-    border-radius: 12px;
-    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+    gap: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
   }
   .mobile-card-remito.estado-pendiente { border-left: 5px solid var(--amber); }
   .mobile-card-remito.estado-firmado   { border-left: 5px solid var(--green); }

@@ -6791,7 +6791,10 @@ async function actualizarPantallaJornadas() {
   const lista   = document.getElementById('lista-jornadas-abiertas');
 
   if (jornadas.length > 0) {
-    if (warning) warning.style.display = 'block';
+    if (warning) {
+      warning.style.display = 'block';
+      setTimeout(() => { warning.style.display = 'none'; }, 5000);
+    }
     if (section) section.style.display = 'block';
     if (lista) {
       lista.innerHTML = '';
