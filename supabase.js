@@ -34,15 +34,15 @@ async function verificarSesion() {
 }
 // Nota: esta función se llama al cargar la página para verificar si el usuario ya tiene una sesión activa. Si la hay, carga su perfil y arranca la app. Si no, muestra la pantalla de login.
 
-async function loginUsuario(email, password)  {   
-  const { data, error } = await _db.auth.signInWithPassword({ email, password }); 
-  if (error) { mostrarErrorLogin('Email o contraseña incorrectos'); return false; } 
-  USUARIO_ACTUAL = data.user;  
+async function loginUsuario(email, password) {
+  const { data, error } = await _db.auth.signInWithPassword({ email, password });
+  if (error) return false;
+  USUARIO_ACTUAL = data.user;
   await cargarPerfilUsuario();
   await inicializarApp();
   return true;
 }
-// Nota: esta función no solo hace login, sino que también carga el perfil y arranca la app. Si el login falla, muestra un error específico. 
+// Nota: esta función no solo hace login, sino que también carga el perfil y arranca la app. Devuelve true si el login fue exitoso, false en caso de error.
 
 
 async function logoutUsuario() {
@@ -791,20 +791,23 @@ function mostrarPantallaLogin() {
     const div = document.createElement('div');
     div.id = 'pantalla-login';
     div.innerHTML = `
-      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);font-family:'DM Sans',sans-serif">
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:36px 40px;width:360px;max-width:90vw">
+      <div style="min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--bg);font-family:'DM Sans',sans-serif;padding:20px;box-sizing:border-box">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:36px 32px;width:360px;max-width:100%;box-sizing:border-box">
           <div style="text-align:center;margin-bottom:28px">
-            <div style="font-family:'Bebas Neue';font-size:36px;letter-spacing:3px;color:var(--amber)">SIGMA</div>
-            <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:2px;color:var(--muted)">REMOLQUES</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:8px">Iniciá sesión para continuar</div>
+            <img src="/assets/logo-auxilios-main.png" alt="AuxiliOS" style="max-width:180px;height:auto;display:block;margin:0 auto 12px" onerror="this.style.display='none';document.getElementById('login-title-fallback').style.display='block'">
+            <div id="login-title-fallback" style="display:none;font-family:'Bebas Neue';font-size:32px;letter-spacing:3px;color:var(--amber)">AuxiliOS</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px">Iniciá sesión para continuar</div>
           </div>
           <div style="margin-bottom:14px">
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Email</div>
-            <input id="login-email" class="form-input" type="email" placeholder="tu@email.com" style="width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')ejecutarLogin()">
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Email o DNI</div>
+            <input id="login-identifier" class="form-input" type="text" placeholder="tu@email.com o 30123456" style="width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')ejecutarLogin()">
           </div>
           <div style="margin-bottom:22px">
             <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Contraseña</div>
-            <input id="login-pass" class="form-input" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')ejecutarLogin()">
+            <div style="position:relative">
+              <input id="login-pass" class="form-input" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding-right:42px" onkeydown="if(event.key==='Enter')ejecutarLogin()">
+              <button type="button" onclick="toggleLoginPassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1" id="login-pass-toggle">👁</button>
+            </div>
           </div>
           <button id="login-btn" class="btn btn-primary" onclick="ejecutarLogin()" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:8px">Ingresar →</button>
           <div id="login-error" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(226,80,74,0.1);border:1px solid rgba(226,80,74,0.3);border-radius:7px;font-size:12px;color:var(--red);text-align:center"></div>
@@ -813,9 +816,47 @@ function mostrarPantallaLogin() {
     document.body.insertBefore(div, document.body.firstChild);
   }
   document.getElementById('pantalla-login').style.display = 'block';
+  _checkLoginLock();
 }
 //Nota: esta función muestra la pantalla de login. Si el elemento ya existe, solo lo muestra. Si no, lo crea dinámicamente con HTML y lo inserta en el DOM. Mientras la pantalla de login está visible, oculta la barra lateral y el contenido principal.
 
+function toggleLoginPassword() {
+  const input = document.getElementById('login-pass');
+  const btn   = document.getElementById('login-pass-toggle');
+  if (!input) return;
+  if (input.type === 'password') { input.type = 'text'; if (btn) btn.textContent = '🙈'; }
+  else                           { input.type = 'password'; if (btn) btn.textContent = '👁'; }
+}
+
+// ── RATE LIMITING LOGIN ───────────────────────────────────────
+const _LOGIN_MAX  = 5;
+const _LOGIN_LOCK = 15 * 60 * 1000; // 15 minutos
+
+function _loginAttempts()   { return parseInt(localStorage.getItem('sigma_login_attempts')    || '0'); }
+function _loginLockedUntil(){ return parseInt(localStorage.getItem('sigma_login_locked_until')|| '0'); }
+function _resetLoginAttempts() {
+  localStorage.removeItem('sigma_login_attempts');
+  localStorage.removeItem('sigma_login_locked_until');
+}
+function _incrementLoginAttempts() {
+  const n = _loginAttempts() + 1;
+  localStorage.setItem('sigma_login_attempts', n);
+  if (n >= _LOGIN_MAX) localStorage.setItem('sigma_login_locked_until', Date.now() + _LOGIN_LOCK);
+  return n;
+}
+function _checkLoginLock() {
+  const until = _loginLockedUntil();
+  const btn = document.getElementById('login-btn');
+  const e   = document.getElementById('login-error');
+  if (until && Date.now() < until) {
+    const mins = Math.ceil((until - Date.now()) / 60000);
+    if (e) { e.textContent = `Demasiados intentos. Intentá de nuevo en ${mins} minuto${mins !== 1 ? 's' : ''}.`; e.style.display = 'block'; }
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+    return true;
+  }
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  return false;
+}
 
 function ocultarPantallaLogin() {
   const p = document.getElementById('pantalla-login');
@@ -834,16 +875,60 @@ function mostrarErrorLogin(msg) {
 //Nota: esta función muestra un mensaje de error en la pantalla de login, y también restablece el botón de login a su estado original. Se llama cuando el login falla por credenciales incorrectas o por un error en la conexión.
 
 async function ejecutarLogin() {
-  const email = document.getElementById('login-email')?.value.trim();
-  const pass  = document.getElementById('login-pass')?.value;
-  const e = document.getElementById('login-error');
-  const b = document.getElementById('login-btn');
-  if (!email || !pass) { if(e){e.textContent='Completá email y contraseña';e.style.display='block';} return; }
+  if (_checkLoginLock()) return;
+
+  const identifier = document.getElementById('login-identifier')?.value.trim();
+  const pass       = document.getElementById('login-pass')?.value;
+  const e          = document.getElementById('login-error');
+  const b          = document.getElementById('login-btn');
+
+  if (!identifier || !pass) {
+    if (e) { e.textContent = 'Completá todos los campos'; e.style.display = 'block'; }
+    return;
+  }
   if (e) e.style.display = 'none';
-  if (b) { b.textContent = 'Ingresando...'; b.style.opacity = '0.7'; }
-  await loginUsuario(email, pass);
+  if (b) { b.textContent = 'Ingresando...'; b.style.opacity = '0.7'; b.disabled = true; }
+
+  let email = identifier;
+
+  // Si no es email, buscar por DNI en el backend
+  if (!identifier.includes('@')) {
+    try {
+      const res  = await fetch(`${ENV.API_BASE_URL}/api/email-by-dni`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dni: identifier })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.email) {
+        _handleLoginFail('No encontramos una cuenta con ese DNI.', b, e);
+        return;
+      }
+      email = data.email;
+    } catch (_) {
+      _handleLoginFail('Error de conexión. Verificá tu internet.', b, e);
+      return;
+    }
+  }
+
+  const ok = await loginUsuario(email, pass);
+  if (ok) {
+    _resetLoginAttempts();
+  } else {
+    _handleLoginFail('Contraseña incorrecta.', b, e);
+  }
 }
-//Nota: esta función se llama al hacer clic en el botón de login o al presionar Enter en los campos de email o contraseña. Valida que ambos campos estén completos, muestra un mensaje de error si no lo están, y si todo está bien, llama a la función de loginUsuario para intentar iniciar sesión.
+
+function _handleLoginFail(msg, btn, errorEl) {
+  const attempts  = _incrementLoginAttempts();
+  const remaining = _LOGIN_MAX - attempts;
+  let text = msg;
+  if (remaining > 0) text += ` Intentos restantes: ${remaining}.`;
+  if (errorEl) { errorEl.textContent = text; errorEl.style.display = 'block'; }
+  if (btn)     { btn.textContent = 'Ingresar →'; btn.style.opacity = '1'; btn.disabled = false; }
+  _checkLoginLock();
+}
+//Nota: esta función se llama al hacer clic en el botón de login o al presionar Enter en los campos de email/DNI o contraseña. Valida que ambos campos estén completos, aplica rate limiting, y si el identificador no es un email, consulta el backend para obtener el email por DNI.
 
 
 // ── INDICADOR DE CARGA ────────────────────────────────────────
