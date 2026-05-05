@@ -7463,7 +7463,7 @@ function abrirResetPassword(userId, nombre) {
   modal.innerHTML = `
     <div class="modal-box" style="max-width:380px">
       <div class="modal-head">
-        <span class="modal-head-title">🔑 Cambiar contraseña — ${nombre}</span>
+        <span class="modal-head-title"></span>
         <button class="modal-close" onclick="document.getElementById('modal-reset-pass').remove()">×</button>
       </div>
       <div class="modal-body">
@@ -7483,6 +7483,8 @@ function abrirResetPassword(userId, nombre) {
       </div>
     </div>`;
   document.body.appendChild(modal);
+  const titleEl = modal.querySelector('.modal-head-title');
+  if (titleEl) titleEl.textContent = `🔑 Cambiar contraseña — ${nombre}`;
 }
 
 async function confirmarResetPassword(userId) {
@@ -7505,6 +7507,11 @@ async function confirmarResetPassword(userId) {
   try {
     const { data: { session } } = await _db.auth.getSession();
     const token = session?.access_token;
+    if (!token) {
+      if (errorEl) { errorEl.textContent = 'Sesión expirada. Recargá la página.'; errorEl.style.display = 'block'; }
+      if (btn) { btn.textContent = 'Confirmar'; btn.disabled = false; }
+      return;
+    }
     const res = await fetch(`${ENV.API_BASE_URL}/api/reset-password`, {
       method: 'POST',
       headers: {
