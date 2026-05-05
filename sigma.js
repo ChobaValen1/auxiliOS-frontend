@@ -7420,6 +7420,7 @@ async function cargarTablaAdminUsuarios() {
         <th style="padding: 10px;">Rol</th>
         <th style="padding: 10px;">Licencia</th>
         <th style="padding: 10px;">Estado</th>
+        <th style="padding: 10px;"></th>
       </tr>
       ${usuarios.map(u => `
         <tr style="border-bottom: 1px solid var(--border); font-size: 14px;">
@@ -7439,10 +7440,87 @@ async function cargarTablaAdminUsuarios() {
               ${u.status}
             </span>
           </td>
+          <td style="padding: 12px;">
+            <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
+              onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">
+              🔑 Contraseña
+            </button>
+          </td>
         </tr>
       `).join('')}
     </table>
   `;
+}
+
+function abrirResetPassword(userId, nombre) {
+  const existing = document.getElementById('modal-reset-pass');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-reset-pass';
+  modal.className = 'modal-backdrop';
+  modal.style.display = 'flex';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:380px">
+      <div class="modal-head">
+        <span class="modal-head-title">🔑 Cambiar contraseña — ${nombre}</span>
+        <button class="modal-close" onclick="document.getElementById('modal-reset-pass').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label">Nueva contraseña</label>
+          <input class="form-input" type="password" id="rp-nueva" placeholder="Mínimo 8 caracteres">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar contraseña</label>
+          <input class="form-input" type="password" id="rp-confirmar" placeholder="Repetí la contraseña">
+        </div>
+        <div id="rp-error" style="display:none;margin-top:10px;color:var(--red);font-size:12px"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-reset-pass').remove()">Cancelar</button>
+        <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Confirmar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function confirmarResetPassword(userId) {
+  const nueva     = document.getElementById('rp-nueva')?.value;
+  const confirmar = document.getElementById('rp-confirmar')?.value;
+  const errorEl   = document.getElementById('rp-error');
+  const btn       = document.getElementById('rp-btn-confirmar');
+
+  if (!nueva || nueva.length < 8) {
+    if (errorEl) { errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; errorEl.style.display = 'block'; }
+    return;
+  }
+  if (nueva !== confirmar) {
+    if (errorEl) { errorEl.textContent = 'Las contraseñas no coinciden.'; errorEl.style.display = 'block'; }
+    return;
+  }
+  if (errorEl) errorEl.style.display = 'none';
+  if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; }
+
+  try {
+    const { data: { session } } = await _db.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(`${ENV.API_BASE_URL}/api/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId, newPassword: nueva })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error desconocido');
+    document.getElementById('modal-reset-pass').remove();
+    toast('Contraseña actualizada ✓', 'success');
+  } catch (err) {
+    if (errorEl) { errorEl.textContent = err.message; errorEl.style.display = 'block'; }
+    if (btn) { btn.textContent = 'Confirmar'; btn.disabled = false; }
+  }
 }
 
 
