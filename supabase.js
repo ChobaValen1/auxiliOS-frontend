@@ -893,6 +893,11 @@ async function ejecutarLogin() {
 
   // Si no es email, buscar por DNI en el backend
   if (!identifier.includes('@')) {
+    if (!/^\d{6,10}$/.test(identifier)) {
+      if (e) { e.textContent = 'El DNI debe contener solo números (6 a 10 dígitos).'; e.style.display = 'block'; }
+      if (b) { b.textContent = 'Ingresar →'; b.style.opacity = '1'; b.disabled = false; }
+      return;
+    }
     try {
       const res  = await fetch(`${ENV.API_BASE_URL}/api/email-by-dni`, {
         method: 'POST',
@@ -911,7 +916,13 @@ async function ejecutarLogin() {
     }
   }
 
-  const ok = await loginUsuario(email, pass);
+  let ok = false;
+  try {
+    ok = await loginUsuario(email, pass);
+  } catch (_) {
+    _handleLoginFail('Error inesperado. Intentá de nuevo.', b, e);
+    return;
+  }
   if (ok) {
     _resetLoginAttempts();
   } else {
@@ -920,13 +931,13 @@ async function ejecutarLogin() {
 }
 
 function _handleLoginFail(msg, btn, errorEl) {
-  const attempts  = _incrementLoginAttempts();
-  const remaining = _LOGIN_MAX - attempts;
-  let text = msg;
-  if (remaining > 0) text += ` Intentos restantes: ${remaining}.`;
-  if (errorEl) { errorEl.textContent = text; errorEl.style.display = 'block'; }
-  if (btn)     { btn.textContent = 'Ingresar →'; btn.style.opacity = '1'; btn.disabled = false; }
-  _checkLoginLock();
+  _incrementLoginAttempts();
+  if (btn) { btn.textContent = 'Ingresar →'; btn.style.opacity = '1'; btn.disabled = false; }
+  if (!_checkLoginLock()) {
+    const remaining = _LOGIN_MAX - _loginAttempts();
+    const text = remaining > 0 ? `${msg} Intentos restantes: ${remaining}.` : msg;
+    if (errorEl) { errorEl.textContent = text; errorEl.style.display = 'block'; }
+  }
 }
 //Nota: esta función se llama al hacer clic en el botón de login o al presionar Enter en los campos de email/DNI o contraseña. Valida que ambos campos estén completos, aplica rate limiting, y si el identificador no es un email, consulta el backend para obtener el email por DNI.
 
