@@ -7252,6 +7252,7 @@ async function cargarTablaAdminFlota() {
     if (!vehiculos || vehiculos.length === 0) { contenedor.innerHTML = `<div style="padding: 30px; text-align: center;">No hay vehículos registrados.</div>`; return; }
 
     contenedor.innerHTML = `
+        <div style="overflow-x: auto">
         <div style="background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
             <table style="width: 100%; border-collapse: collapse; text-align: left;">
                 <tr style="background: var(--bg); border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; text-transform: uppercase;">
@@ -7278,13 +7279,15 @@ async function cargarTablaAdminFlota() {
                         </td>
                         <td style="padding: 14px 16px; text-align: center;">
                             <button onclick="abrirEditarVehiculo('${v.truck_id}')" style="background: none; border: none; cursor: pointer; font-size: 16px; margin-right: 8px;" title="Editar Móvil">✏️</button>
-                            <button onclick="toggleEstadoVehiculo('${v.truck_id}', '${v.status}')" style="background: none; border: none; cursor: pointer; font-size: 16px;" title="${v.status === 'active' ? 'Suspender' : 'Activar'}">
-                                ${v.status === 'active' ? '🛑' : '✅'}
+                            <button onclick="toggleEstadoVehiculo('${v.truck_id}', '${v.status}')"
+                              style="font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;border:1px solid;${v.status === 'active' ? 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)' : 'background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3)'}">
+                              ${v.status === 'active' ? '🚫 Dar de baja' : '✅ Reactivar'}
                             </button>
                         </td>
                     </tr>
                 `).join('')}
             </table>
+        </div>
         </div>
     `;
 }
@@ -7294,20 +7297,19 @@ let vehiculoEditandoId = null;
 
 // ── 1. FUNCIÓN SUSPENDER / ACTIVAR ────────────────────────
 async function toggleEstadoVehiculo(truckId, estadoActual) {
-    const nuevoEstado = estadoActual === 'active' ? 'inactive' : 'active';
-    const accionTxt = nuevoEstado === 'active' ? 'activado' : 'suspendido';
-
-    if (nuevoEstado === 'inactive' && !confirm('¿Estás seguro de que querés suspender esta unidad?')) return;
-
-    toast('Actualizando estado...', 'success');
-    const { error } = await _db.from('trucks').update({ status: nuevoEstado }).eq('truck_id', truckId);
-
-    if (error) {
-        toast(`Error: ${error.message}`, 'error');
-    } else {
-        toast(`Móvil ${accionTxt} correctamente`, 'success');
-        cargarTablaAdminFlota(); // Recargamos la tabla para ver el cambio
+  if (estadoActual === 'active') {
+    const { data } = await _db.from('daily_logs').select('log_id').eq('truck_id', truckId).eq('status', 'open').maybeSingle();
+    if (data) {
+      alert('Este camión tiene una jornada abierta. Cerrá la jornada antes de darlo de baja.');
+      return;
     }
+    if (!confirm('¿Dar de baja esta unidad? Quedará inactiva pero sus datos se conservan.')) return;
+  }
+  const nuevoEstado = estadoActual === 'active' ? 'inactive' : 'active';
+  const { error } = await _db.from('trucks').update({ status: nuevoEstado }).eq('truck_id', truckId);
+  if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+  toast(nuevoEstado === 'active' ? 'Móvil reactivado' : 'Móvil dado de baja', 'success');
+  cargarTablaAdminFlota();
 }
 
 // ── 2. FUNCIÓN ABRIR EDICIÓN ─────────────────────────────
