@@ -1863,17 +1863,20 @@
        
 <div class="modal-backdrop" id="modal-settings">
   <div class="modal-box" style="max-width: 900px; width: 95%; height: 80vh; display: flex; flex-direction: row; padding: 0; overflow: hidden;">
-    <div style="width: 250px; background: var(--bg-darker, #1a1d24); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 10px;">
-      <div style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
+    <div class="settings-sidebar" style="width: 250px; background: var(--bg-darker, #1a1d24); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+      <div class="settings-header" style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
         <h3 style="margin: 0; font-size: 16px;">⚙️ Configuración</h3>
-        <span style="font-size: 11px; color: var(--muted);">Sigma Remolques</span>
+        <button class="modal-close" onclick="closeModal('modal-settings')" style="display:none" id="btn-close-settings-mobile">×</button>
       </div>
       <button class="tab-config active" onclick="switchConfigTab('tab-flota')">🚛 Gestión de Flota</button>
       <button class="tab-config" onclick="switchConfigTab('tab-usuarios')">👥 Personal y Choferes</button>
       <button class="tab-config" onclick="switchConfigTab('tab-planes')">📐 Catálogo de Services</button>
       <button class="tab-config" onclick="switchConfigTab('tab-emergencias')">🆘 Emergencias</button>
       <div style="flex-grow: 1;"></div>
-      <button class="btn btn-ghost" style="width: 100%; color: var(--red);" onclick="closeModal('modal-settings')">Cerrar Panel</button>
+      <div class="settings-footer" style="display: flex; flex-direction: column; gap: 6px;">
+        <button class="btn btn-ghost" style="width: 100%;" onclick="closeModal('modal-settings')">Cerrar Panel</button>
+        <button id="btn-cerrar-sesion" class="btn btn-ghost" style="width: 100%; color: var(--red);">🚪 Cerrar sesión</button>
+      </div>
     </div>
     <div style="flex: 1; padding: 30px; overflow-y: auto; background: var(--bg);" id="config-content-area">
       <div id="tab-flota" class="config-section">
