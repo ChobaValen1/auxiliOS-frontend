@@ -44,6 +44,20 @@ async function loginUsuario(email, password) {
 }
 // Nota: esta función no solo hace login, sino que también carga el perfil y arranca la app. Devuelve true si el login fue exitoso, false en caso de error.
 
+async function cerrarSesion() {
+  try {
+    await _db.auth.signOut();
+  } catch (e) {
+    console.error('Error al cerrar sesión:', e.message);
+  } finally {
+    location.reload();
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('btn-cerrar-sesion');
+  if (btn) btn.addEventListener('click', cerrarSesion);
+});
+
 
 async function logoutUsuario() {
   await _db.auth.signOut();
@@ -1227,6 +1241,7 @@ async function cargarCatalogoPlanes() {
   const { data, error } = await _db
     .from('master_service_plans')
     .select('id, name, trigger_type, interval_km, interval_hours, alert_before_km')
+    .eq('activo', true)
     .order('name');
     
   if (error) {
