@@ -1169,7 +1169,7 @@
   </div>
 
  <div id="filtros-admin" style="display:none; border-top:1px solid var(--border); padding-top:14px">
-  <div style="font-size:9px; color:var(--amber); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; font-weight:700">🔑 Filtros de administración</div>
+  <div style="font-size:9px; color:var(--amber); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; font-weight:700"> Filtros de administración</div>
 
   <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end">
     <div>
@@ -1288,17 +1288,19 @@
 <!-- PASO 1: DATOS DEL SERVICIO -->
 <div class="rem-step-panel active" id="rem-step-1">
   <div class="card">
-    <div class="card-label" style="margin-bottom:14px">📋 Datos del servicio</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Número de remito</label>
-        <input class="form-input" id="rem-nro" readonly style="color:var(--amber);font-family:'DM Mono'">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Fecha y hora</label>
-        <input class="form-input" type="datetime-local" id="rem-fecha">
-      </div>
+    <div class="card-label" style="margin-bottom:14px"> Datos del servicio</div>
+    
+    <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin-bottom: 15px;">
+        <div style="display: flex; flex-direction: column; width: 100%;">
+            <label class="form-label" style="font-size: 11px; margin-bottom: 4px; white-space: nowrap;">Número de remito</label>
+            <input class="form-input" id="rem-nro" readonly style="background: var(--bg); color: var(--amber); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: bold; width: 100%; box-sizing: border-box;">
+        </div>
+        <div style="display: flex; flex-direction: column; width: 100%;">
+            <label class="form-label" style="font-size: 11px; margin-bottom: 4px; white-space: nowrap;">Fecha y hora</label>
+            <input class="form-input" type="datetime-local" id="rem-fecha" style="font-size: 12px; padding: 10px 8px; width: 100%; box-sizing: border-box;">
+        </div>
     </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Tipo de servicio <span style="color:var(--red)">*</span></label>
@@ -1316,20 +1318,22 @@
         <input class="form-input" id="rem-nro-prestadora" placeholder="Cód. asignado por la prestadora" style="font-family:'DM Mono'">
       </div>
     </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Patente del vehículo <span style="color:var(--red)">*</span></label>
-<input type="text" id="rem-patente" class="form-input"
-       oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); _validarPatente(this.value)"
-       maxlength="7" placeholder="Ej: AB123CD">
-      <div class="rem-warn-patente" id="warn-patente"></div>
-      <div class="rem-error-msg" id="err-patente">Ingresá la patente</div>
+        <input type="text" id="rem-patente" class="form-input"
+               oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); _validarPatente(this.value)"
+               maxlength="7" placeholder="Ej: AB123CD">
+        <div class="rem-warn-patente" id="warn-patente"></div>
+        <div class="rem-error-msg" id="err-patente">Ingresá la patente</div>
       </div>
       <div class="form-group">
         <label class="form-label">Marca y modelo</label>
         <input class="form-input" id="rem-marca-modelo" placeholder="Ej: Ford Focus 2019">
       </div>
     </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Origen <span style="color:var(--red)">*</span></label>
@@ -1342,46 +1346,55 @@
         <div class="rem-error-msg" id="err-destino">Ingresá el destino</div>
       </div>
     </div>
+
     <div class="form-group">
       <label class="form-label">Kilómetros recorridos</label>
-      <input type="text" id="rem-km" class="form-input" 
-       oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Ej: 150">
+      <input type="tel" id="rem-km" class="form-input" 
+             inputmode="numeric" pattern="[0-9]*"
+             oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Ej: 150">
     </div>
+
   </div>
 </div>
 
 <!-- PASO 2: DATOS DEL SOCIO -->
 <div class="rem-step-panel" id="rem-step-2">
   <div class="card">
-    <div class="card-label" style="margin-bottom:14px">👤 Datos del socio</div>
+    <div class="card-label" style="margin-bottom:14px"> Datos del socio</div>
+    
     <div class="form-group">
       <label class="form-label">Nombre del socio / cliente</label>
       <input type="text" id="rem-cliente" class="form-input" 
-       oninput="this.value = this.value.replace(/[^a-zA-Z\sñÑáéíóúÁÉÍÓÚ]/g, '')" 
-       placeholder="Nombre completo">
+             oninput="this.value = this.value.replace(/[^a-zA-Z\sñÑáéíóúÁÉÍÓÚ]/g, '')" 
+             placeholder="Nombre completo">
     </div>
+    
     <div class="form-group">
       <label class="form-label">DNI <span style="color:var(--red)">*</span></label>
-      <input type="text" id="rem-cuit" class="form-input" 
-       oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
-       maxlength="11" 
-       placeholder="Ej: 30123456789">
+      <input type="tel" id="rem-cuit" class="form-input" 
+             inputmode="numeric" pattern="[0-9]*"
+             oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
+             maxlength="11" 
+             placeholder="Ej: 30123456789">
       <div class="rem-error-msg" id="err-dni">El DNI es obligatorio</div>
     </div>
+    
     <div class="form-group">
       <label class="form-label">Teléfono de contacto</label>
-     <input type="tel" id="rem-telefono" class="form-input" 
-       oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
-       maxlength="10" 
-       placeholder="Ej: 1123456789 (Sin 0 ni 15)">
+      <input type="tel" id="rem-telefono" class="form-input" 
+             inputmode="numeric" pattern="[0-9]*"
+             oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
+             maxlength="10" 
+             placeholder="Ej: 1123456789 (Sin 0 ni 15)">
     </div>
+    
   </div>
 </div>
 
 <!-- PASO 3: EXTRAS Y PAGO -->
 <div class="rem-step-panel" id="rem-step-3">
   <div class="card">
-    <div class="card-label" style="margin-bottom:14px">💰 Extras y forma de pago</div>
+    <div class="card-label" style="margin-bottom:14px"> Extras y forma de pago</div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Peajes</label>
@@ -1443,7 +1456,7 @@
 <div class="rem-step-panel" id="rem-step-4">
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div class="card-label" style="margin-bottom:0">📷 Evidencia fotográfica</div>
+      <div class="card-label" style="margin-bottom:0"> Evidencia fotográfica</div>
       <span style="font-size:10px;color:var(--muted)">Hasta 6 fotos</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="foto-grid">
@@ -1467,7 +1480,7 @@
     </div>
   </div>
   <div class="card">
-    <div class="card-label" style="margin-bottom:10px">📝 Observaciones</div>
+    <div class="card-label" style="margin-bottom:10px"> Observaciones</div>
     <textarea id="rem-observaciones" class="form-input" placeholder="Condiciones climáticas, demoras, estado del vehículo, notas del cliente..." style="width:100%;min-height:90px;resize:vertical;box-sizing:border-box;font-size:13px;line-height:1.5"></textarea>
   </div>
 </div>
@@ -1476,7 +1489,7 @@
 <div class="rem-step-panel" id="rem-step-5">
   
   <div class="card" style="padding: 10px; margin-bottom: 8px;">
-    <div class="card-label" style="margin-bottom:8px">☑️ Conformidad del socio</div>
+    <div class="card-label" style="margin-bottom:8px"> Conformidad del socio</div>
     
     <div style="display:flex;flex-direction:column;gap:6px">
       <div class="toggle-row acept-toggle" onclick="toggleAcept(this)">
@@ -1527,7 +1540,7 @@
   </div>
 
   <div class="card" style="padding: 10px; border-color:rgba(245,166,35,0.25); margin-bottom: 8px;">
-    <label id="label-firma-canvas" class="form-label" style="text-align:center; display:block; margin-bottom:4px;">✍️ Firma digital del socio</label>
+    <label id="label-firma-canvas" class="form-label" style="text-align:center; display:block; margin-bottom:4px;"> Firma digital del socio</label>
     
     <div style="position:relative; margin-top: 6px;">
       <canvas id="sig-canvas" style="width:100%;height:220px;background:var(--bg);border:2px dashed var(--amber);border-radius:8px;display:block;cursor:crosshair;touch-action:none"></canvas>

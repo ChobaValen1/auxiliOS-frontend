@@ -311,23 +311,67 @@ document.addEventListener('keydown', e => {
 // ── ADMINISTRACIÓN DE PLANES GLOBALES ───────────────────────
 
 function openAdminPlanModal() {
-  ['mg-nombre', 'mg-km', 'mg-hs'].forEach(id => { 
-    const el = document.getElementById(id); 
-    if (el) el.value = ''; 
+  planEditandoId = null;
+  ['mg-nombre', 'mg-km', 'mg-hs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
   const tipoEl = document.getElementById('mg-tipo'); if (tipoEl) tipoEl.value = '';
   const alertaEl = document.getElementById('mg-alerta'); if (alertaEl) alertaEl.value = '500';
-  
-  // Si tienes esta función, la llamas, si no, no pasa nada
-  if (typeof toggleAdminPlanFields === 'function') toggleAdminPlanFields(); 
+  const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
+  if (titulo) titulo.textContent = '📐 Nuevo Plan Maestro';
+  const btnG = document.getElementById('btn-guardar-global');
+  if (btnG) btnG.textContent = '💾 Guardar en Catálogo';
 
-  // EL TRUCO Z-INDEX: Lo ponemos por encima del Hub
+  if (typeof toggleAdminPlanFields === 'function') toggleAdminPlanFields();
+
   const modal = document.getElementById('modal-crear-plan-global');
   if (modal) {
     document.body.appendChild(modal);
-    modal.style.zIndex = '10000000'; 
+    modal.style.zIndex = '10000000';
   }
   openModal('modal-crear-plan-global');
+}
+
+function abrirEditarPlan(planId) {
+  const plan = (window._planesCache || []).find(p => String(p.id) === String(planId));
+  if (!plan) { toast('Plan no encontrado', 'error'); return; }
+
+  planEditandoId = planId;
+
+  const nombreEl = document.getElementById('mg-nombre');
+  const tipoEl   = document.getElementById('mg-tipo');
+  const kmEl     = document.getElementById('mg-km');
+  const hsEl     = document.getElementById('mg-hs');
+  const alertaEl = document.getElementById('mg-alerta');
+
+  if (nombreEl) nombreEl.value = plan.name;
+  if (tipoEl)   { tipoEl.value = plan.trigger_type; if (typeof toggleAdminPlanFields === 'function') toggleAdminPlanFields(); }
+  if (kmEl)     kmEl.value = plan.interval_km || '';
+  if (hsEl)     hsEl.value = plan.interval_hours || '';
+  if (alertaEl) alertaEl.value = plan.alert_before_km || 500;
+
+  const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
+  if (titulo) titulo.textContent = '✏️ Editar Plan Maestro';
+  const btn = document.getElementById('btn-guardar-global');
+  if (btn) btn.textContent = '💾 Actualizar Plan';
+
+  const modal = document.getElementById('modal-crear-plan-global');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  openModal('modal-crear-plan-global');
+}
+
+async function toggleEstadoPlan(planId, estaActivo) {
+  if (estaActivo) {
+    if (!confirm('¿Dar de baja este plan maestro?')) return;
+  }
+  const { error } = await _db
+    .from('master_service_plans')
+    .update({ activo: !estaActivo })
+    .eq('id', planId);
+  if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+  toast(!estaActivo ? 'Plan reactivado' : 'Plan dado de baja', 'success');
+  cargarTablaAdminPlanes();
 }
 function toggleAdminPlanFields() {
   const tipo = document.getElementById('mg-tipo')?.value;
@@ -354,6 +398,20 @@ async function guardarPlanGlobal() {
   const btn = document.getElementById('btn-guardar-global');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
+  if (planEditandoId) {
+    const { error } = await _db
+      .from('master_service_plans')
+      .update({ name: nombre, trigger_type: tipo, interval_km: km, interval_hours: hs, alert_before_km: alerta })
+      .eq('id', planEditandoId);
+    if (btn) { btn.textContent = '💾 Guardar en Catálogo'; btn.style.pointerEvents = 'auto'; }
+    planEditandoId = null;
+    if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+    toast('Plan actualizado', 'success');
+    closeModal('modal-crear-plan-global');
+    cargarTablaAdminPlanes();
+    return;
+  }
+
   // Armamos el payload
   const datos = {
     name: nombre,
@@ -371,6 +429,7 @@ async function guardarPlanGlobal() {
   if (resultado.ok) {
     toast('Plan maestro agregado al catálogo exitosamente', 'success');
     closeModal('modal-crear-plan-global');
+    cargarTablaAdminPlanes();
   } else {
     toast(`Error al guardar: ${resultado.errorMsg}`, 'error');
   }
@@ -7133,32 +7192,50 @@ async function eliminarEmergenciaItemConfig(configId) {
 async function cargarTablaAdminPlanes() {
   const contenedor = document.getElementById('lista-admin-planes');
   contenedor.innerHTML = '⏳ Cargando catálogo...';
-  
-  // Usamos la función de Supabase que ya creamos
-  const planes = await cargarCatalogoPlanes(); 
-  
-  if (planes.length === 0) {
+
+  const { data: planes, error } = await _db
+    .from('master_service_plans')
+    .select('id, name, trigger_type, interval_km, interval_hours, alert_before_km, activo')
+    .order('name');
+
+  if (error) {
+    contenedor.innerHTML = `<div style="color:var(--red)">Error: ${error.message}</div>`;
+    return;
+  }
+  if (!planes || planes.length === 0) {
     contenedor.innerHTML = '<div style="padding: 20px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;">No hay planes globales creados.</div>';
     return;
   }
 
-  // Renderizamos una tabla simple
-  contenedor.innerHTML = `
-    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-      <tr style="border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px;">
-        <th style="padding: 10px;">Nombre del Plan</th>
-        <th style="padding: 10px;">Cadencia</th>
-        <th style="padding: 10px;">Alerta</th>
+  window._planesCache = planes;
+
+  contenedor.innerHTML = `<div style="overflow-x:auto"><table style="width: 100%; border-collapse: collapse; text-align: left;">
+    <tr style="border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; text-transform: uppercase;">
+      <th style="padding: 10px;">Nombre del Plan</th>
+      <th style="padding: 10px;">Cadencia</th>
+      <th style="padding: 10px;">Alerta</th>
+      <th style="padding: 10px;">Estado</th>
+      <th style="padding: 10px;">Acciones</th>
+    </tr>
+    ${planes.map(p => `
+      <tr style="border-bottom: 1px solid var(--border); font-size: 14px; opacity: ${p.activo ? '1' : '0.6'}">
+        <td style="padding: 12px; font-weight: 600;">${p.name}</td>
+        <td style="padding: 12px;">${p.interval_km ? `${p.interval_km.toLocaleString()} km` : `${p.interval_hours} hs`}</td>
+        <td style="padding: 12px; color: var(--amber);">${p.alert_before_km} km antes</td>
+        <td style="padding: 12px;">${p.activo ? '🟢 Activo' : '🔴 Inactivo'}</td>
+        <td style="padding: 12px;">
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
+              onclick="abrirEditarPlan('${p.id}')">✏️ Editar</button>
+            <button style="font-size:11px;padding:5px 10px;white-space:nowrap;border-radius:5px;cursor:pointer;border:1px solid;${p.activo ? 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)' : 'background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3)'}"
+              onclick="toggleEstadoPlan('${p.id}', ${p.activo})">
+              ${p.activo ? '🚫 Dar de baja' : '✅ Reactivar'}
+            </button>
+          </div>
+        </td>
       </tr>
-      ${planes.map(p => `
-        <tr style="border-bottom: 1px solid var(--border); font-size: 14px;">
-          <td style="padding: 12px; font-weight: 600;">${p.name}</td>
-          <td style="padding: 12px;">${p.interval_km ? `${p.interval_km.toLocaleString()} km` : `${p.interval_hours} hs`}</td>
-          <td style="padding: 12px; color: var(--amber);">${p.alert_before_km} km antes</td>
-        </tr>
-      `).join('')}
-    </table>
-  `;
+    `).join('')}
+  </table></div>`;
 }
 
 // ── 3. ACTUALIZACIÓN: APERTURA PARA "NUEVO" ───────────────
@@ -7294,6 +7371,8 @@ async function cargarTablaAdminFlota() {
 
 // Variable global para saber si estamos editando o creando
 let vehiculoEditandoId = null;
+let usuarioEditandoId = null;
+let planEditandoId = null;
 
 // ── 1. FUNCIÓN SUSPENDER / ACTIVAR ────────────────────────
 async function toggleEstadoVehiculo(truckId, estadoActual) {
@@ -7345,6 +7424,15 @@ async function abrirEditarVehiculo(truckId) {
 
 // ── 2. APERTURA DE ALTA PERSONAL ───────────────────────
 function openNuevoUsuarioModal() {
+  usuarioEditandoId = null;
+  const emailEl = document.getElementById('nu-email');
+  const legajoEl = document.getElementById('nu-legajo');
+  if (emailEl) emailEl.disabled = false;
+  if (legajoEl) legajoEl.disabled = false;
+  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
+  if (tituloModal) tituloModal.textContent = '👤 Alta de Personal';
+  const btnGuardar = document.getElementById('btn-guardar-usuario');
+  if (btnGuardar) btnGuardar.textContent = '💾 Crear Usuario';
   ['nu-nombre', 'nu-legajo', 'nu-email', 'nu-telefono', 'nu-licencia', 'nu-vencimiento'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -7361,6 +7449,63 @@ function openNuevoUsuarioModal() {
   openModal('modal-nuevo-usuario');
 }
 
+// ── 3. FUNCIÓN ABRIR EDICIÓN PERSONAL ───────────────────────
+function abrirEditarUsuario(userId) {
+  const u = (window._usuariosCache || []).find(x => String(x.user_id) === String(userId));
+  if (!u) { toast('No se encontró el usuario', 'error'); return; }
+
+  usuarioEditandoId = userId;
+
+  // Pre-llenar campos
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('nu-nombre',     u.full_name);
+  set('nu-telefono',   u.phone);
+  set('nu-licencia',   u.license_number);
+  set('nu-vencimiento', u.license_expiry ? u.license_expiry.substring(0, 10) : '');
+
+  const rolEl = document.getElementById('nu-rol');
+  if (rolEl) rolEl.value = u.role || 'chofer';
+
+  // Deshabilitar campos no editables
+  const emailEl = document.getElementById('nu-email');
+  const legajoEl = document.getElementById('nu-legajo');
+  if (emailEl) { emailEl.value = u.email || ''; emailEl.disabled = true; }
+  if (legajoEl) { legajoEl.value = u.employee_id || ''; legajoEl.disabled = true; }
+
+  // Cambiar título y botón
+  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
+  if (tituloModal) tituloModal.textContent = '✏️ Editar Personal';
+  const btnGuardar = document.getElementById('btn-guardar-usuario');
+  if (btnGuardar) btnGuardar.innerHTML = '💾 Actualizar Usuario';
+
+  // Mover al body para z-index correcto
+  const modal = document.getElementById('modal-nuevo-usuario');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  openModal('modal-nuevo-usuario');
+}
+
+// ── 4. FUNCIÓN SUSPENDER / ACTIVAR PERSONAL ──────────────────
+async function toggleEstadoUsuario(userId, estadoActual) {
+  if (estadoActual === 'activo') {
+    if (!confirm('¿Dar de baja a este usuario?')) return;
+    const { data } = await _db
+      .from('daily_logs')
+      .select('log_id')
+      .eq('driver_id', userId)
+      .eq('status', 'open')
+      .maybeSingle();
+    if (data) {
+      alert('Este chofer tiene una jornada abierta. Cerrá la jornada antes de darlo de baja.');
+      return;
+    }
+  }
+  const nuevoEstado = estadoActual === 'activo' ? 'inactivo' : 'activo';
+  const { error } = await _db.from('users').update({ status: nuevoEstado }).eq('user_id', userId);
+  if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+  toast(nuevoEstado === 'activo' ? 'Personal reactivado' : 'Personal dado de baja', 'success');
+  cargarTablaAdminUsuarios();
+}
+
 async function guardarNuevoUsuario() {
   const nombre  = document.getElementById('nu-nombre').value.trim();
   const legajo  = document.getElementById('nu-legajo').value.trim().toUpperCase();
@@ -7373,12 +7518,31 @@ async function guardarNuevoUsuario() {
   if (!email)   { toast('El email es obligatorio', 'error'); return; }
 
   const btn = document.getElementById('btn-guardar-usuario');
-  btn.textContent = 'Guardando...';
-  btn.style.pointerEvents = 'none';
+  if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
+
+  if (usuarioEditandoId) {
+    const licencia    = document.getElementById('nu-licencia')?.value.trim() || null;
+    const vencimiento = document.getElementById('nu-vencimiento')?.value || null;
+    const { error } = await _db.from('users').update({
+      full_name: nombre, phone: tel || null, role: rol,
+      license_number: licencia, license_expiry: vencimiento
+    }).eq('user_id', usuarioEditandoId);
+    if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
+    const emailEl2 = document.getElementById('nu-email');
+    const legajoEl2 = document.getElementById('nu-legajo');
+    if (emailEl2) emailEl2.disabled = false;
+    if (legajoEl2) legajoEl2.disabled = false;
+    usuarioEditandoId = null;
+    if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+    toast('Usuario actualizado', 'success');
+    closeModal('modal-nuevo-usuario');
+    cargarTablaAdminUsuarios();
+    return;
+  }
 
   let resp, data;
   try {
-    resp = await fetch('http://localhost:3000/api/create-user', {
+    resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ full_name: nombre, email, legajo, role_name: rol, phone: tel || null }),
@@ -7388,8 +7552,7 @@ async function guardarNuevoUsuario() {
     data = { error: 'No se pudo conectar con el servidor' };
   }
 
-  btn.textContent = '💾 Crear Usuario';
-  btn.style.pointerEvents = 'auto';
+  if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
 
   if (!resp?.ok || data?.error) {
     toast(`Error: ${data?.error || 'Error desconocido'}`, 'error');
@@ -7410,13 +7573,14 @@ async function cargarTablaAdminUsuarios() {
     .select('*')
     .order('full_name', { ascending: true });
 
+  if (usuarios) window._usuariosCache = usuarios;
+
   if (error) {
     contenedor.innerHTML = `<div style="color:var(--red)">Error: ${error.message}</div>`;
     return;
   }
 
-  contenedor.innerHTML = `
-    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+  contenedor.innerHTML = `<div style="overflow-x:auto"><table style="width: 100%; border-collapse: collapse; text-align: left;">
       <tr style="border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; text-transform: uppercase;">
         <th style="padding: 10px;">Nombre</th>
         <th style="padding: 10px;">Rol</th>
@@ -7443,14 +7607,20 @@ async function cargarTablaAdminUsuarios() {
             </span>
           </td>
           <td style="padding: 12px;">
-            <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
-              onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">
-              🔑 Contraseña
-            </button>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">
+              <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
+                onclick="abrirEditarUsuario('${u.user_id}')">✏️ Editar</button>
+              <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
+                onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">🔑 Pass</button>
+              <button style="font-size:11px;padding:5px 10px;white-space:nowrap;border-radius:5px;cursor:pointer;border:1px solid;${u.status === 'activo' ? 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)' : 'background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3)'}"
+                onclick="toggleEstadoUsuario('${u.user_id}','${u.status}')">
+                ${u.status === 'activo' ? '🚫 Dar de baja' : '✅ Reactivar'}
+              </button>
+            </div>
           </td>
         </tr>
       `).join('')}
-    </table>
+    </table></div>
   `;
 }
 

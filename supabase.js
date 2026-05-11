@@ -139,19 +139,32 @@ async function _hidratarSesionChofer() {
       const _mostrarAvisoJornada = () => {
         const patente = jornada.trucks?.plate || '';
         const modelo  = [jornada.trucks?.brand, jornada.trucks?.model].filter(Boolean).join(' ');
+        
+        // 1. Toast ajustado a 4 segundos (4000 ms)
         if (typeof toast === 'function') {
-          toast(`🚛 Jornada activa — Camión ${patente}${modelo ? ' · ' + modelo : ''}. No podés cambiar de camión hasta cerrar la jornada.`, 'warning', 6000);
+          toast(`🚛 Jornada activa — Camión ${patente}${modelo ? ' · ' + modelo : ''}. No podés cambiar de camión hasta cerrar la jornada.`, 'warning', 4000);
         }
-        // Banner persistente en la parte superior
+        
+        // 2. Banner temporal en la parte superior
         let banner = document.getElementById('banner-jornada-activa');
         if (!banner) {
           banner = document.createElement('div');
           banner.id = 'banner-jornada-activa';
-          banner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#f5a623;color:#1a1a1a;padding:7px 16px;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.3px;';
+          // Se agrega transition para un fade-out suave
+          banner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#f5a623;color:#1a1a1a;padding:7px 16px;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.3px;transition: opacity 0.5s ease;';
           document.querySelector('.main')?.prepend(banner);
         }
         banner.textContent = `⚠️ Jornada activa · Camión ${patente}${modelo ? ' · ' + modelo : ''} · No podés cambiar de camión hasta cerrar la jornada`;
+
+        // 3. Remover el banner a los 4 segundos
+        setTimeout(() => {
+          if (banner && banner.parentNode) {
+            banner.style.opacity = '0'; // Inicia el fade-out
+            setTimeout(() => banner.remove(), 500); // Lo quita del DOM tras la animación
+          }
+        }, 4000);
       };
+
       // Esperar a que sigma.js esté listo antes de mostrar el toast
       setTimeout(_mostrarAvisoJornada, 800);
 
@@ -180,7 +193,6 @@ async function _hidratarSesionChofer() {
   // Sin jornada activa y sin datos locales — flujo normal de selección
   await mostrarPantallaSeleccionCamion();
 }
-
 async function _finalizarInicializacion() {
   mostrarCargando(true);
   try {
