@@ -7089,27 +7089,40 @@ function _cambiarSesionChofer() {
 function _confirmarCerrarSesion() {
   if (confirm('¿Seguro que querés cerrar sesión?')) logoutUsuario();
 }
+const _cfgTabMeta = {
+  'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal' },
+  'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal' },
+  'tab-planes':      { title: 'Planes',       action: 'openAdminPlanModal' },
+  'tab-emergencias': { title: 'Emergencias',  action: null },
+};
+
 function switchConfigTab(tabId) {
-  // 1. Cambiar visibilidad de las secciones (derecha)
   document.querySelectorAll('.config-section').forEach(el => el.style.display = 'none');
   document.getElementById(tabId).style.display = 'block';
 
-  // 2. Cambiar estado visual de los botones (izquierda)
-  document.querySelectorAll('.tab-config').forEach(btn => btn.classList.remove('active'));
-  // Busca el botón que tiene en su onclick el nombre del tab actual y lo activa
-  const activeBtn = Array.from(document.querySelectorAll('.tab-config')).find(btn => btn.getAttribute('onclick').includes(tabId));
+  document.querySelectorAll('.cfg-nav-item').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.querySelector(`.cfg-nav-item[data-tab="${tabId}"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  // 3. Cargar los datos según la pestaña seleccionada
-  if (tabId === 'tab-flota') {
-    cargarTablaAdminFlota();
-  } else if (tabId === 'tab-usuarios') {
-    cargarTablaAdminUsuarios();
-  } else if (tabId === 'tab-planes') {
-    cargarTablaAdminPlanes();
-  } else if (tabId === 'tab-emergencias') {
-    cargarYRenderizarConfigEmergencias();
+  const meta = _cfgTabMeta[tabId];
+  if (meta) {
+    const titleEl = document.getElementById('cfg-tab-title');
+    if (titleEl) titleEl.textContent = meta.title;
+    const btnNew = document.getElementById('cfg-btn-new');
+    if (btnNew) {
+      if (meta.action) {
+        btnNew.style.display = '';
+        btnNew.onclick = window[meta.action];
+      } else {
+        btnNew.style.display = 'none';
+      }
+    }
   }
+
+  if (tabId === 'tab-flota')        cargarTablaAdminFlota();
+  else if (tabId === 'tab-usuarios') cargarTablaAdminUsuarios();
+  else if (tabId === 'tab-planes')   cargarTablaAdminPlanes();
+  else if (tabId === 'tab-emergencias') cargarYRenderizarConfigEmergencias();
 }
 
 async function cargarYRenderizarConfigEmergencias() {
@@ -7134,45 +7147,39 @@ function renderConfigEmergencias(items) {
   const talleres  = items.filter(i => i.category === 'taller');
   const protocolo = items.filter(i => i.category === 'protocolo');
 
-  const rowHtml = (item, detalle) => `
-    <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600">${_escHtml(item.title || '')}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${_escHtml(detalle)}</div>
+  const itemHtml = (item, sub) => `
+    <div class="cfg-item">
+      <div class="cfg-item-main">
+        <div class="cfg-item-name">${_escHtml(item.title || '')}</div>
+        <div class="cfg-item-sub">${_escHtml(sub)}</div>
       </div>
-      <button onclick="editarEmergenciaItem(${item.config_id})" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">✏</button>
-      <button onclick="eliminarEmergenciaItemConfig(${item.config_id})" style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);color:var(--red);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">✕</button>
+      <div class="cfg-item-actions">
+        <button class="cfg-btn-a ghost" onclick="editarEmergenciaItem(${item.config_id})">Editar</button>
+        <button class="cfg-btn-a warn" onclick="eliminarEmergenciaItemConfig(${item.config_id})">Eliminar</button>
+      </div>
     </div>`;
   const vacioHtml = msg => `<div style="font-size:12px;color:var(--muted);padding:8px 0">${msg}</div>`;
 
   const elTel = document.getElementById('cfg-emerg-telefonos');
   if (elTel) elTel.innerHTML = telefonos.length
-    ? telefonos.map(t => rowHtml(t, t.value || '')).join('')
-    : vacioHtml('Sin teléfonos. Usá + Agregar.');
+    ? `<div class="cfg-item-list">${telefonos.map(t => itemHtml(t, t.value || '')).join('')}</div>`
+    : vacioHtml('Sin telefonos. Usa + Agregar.');
 
   const elTal = document.getElementById('cfg-emerg-talleres');
   if (elTal) elTal.innerHTML = talleres.length
-    ? talleres.map(t => {
+    ? `<div class="cfg-item-list">${talleres.map(t => {
         const rawMapsUrl = t.metadata?.maps_url || (t.metadata?.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.metadata.address)}` : '');
         const safeUrl = /^https?:\/\//i.test(rawMapsUrl) ? rawMapsUrl : '';
-        const ubicacion = _escHtml([t.metadata?.address, t.metadata?.badge].filter(Boolean).join(' · '));
-        const mapsLink = safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-size:11px"> · 🗺 Ver mapa</a>` : '';
-        return `
-          <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
-            <div style="flex:1">
-              <div style="font-size:13px;font-weight:600">${_escHtml(t.title || '')}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">${ubicacion}${mapsLink}</div>
-            </div>
-            <button onclick="editarEmergenciaItem(${t.config_id})" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">✏</button>
-            <button onclick="eliminarEmergenciaItemConfig(${t.config_id})" style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);color:var(--red);border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer">✕</button>
-          </div>`;
-      }).join('')
-    : vacioHtml('Sin talleres. Usá + Agregar.');
+        const sub = [t.metadata?.address, t.metadata?.badge].filter(Boolean).join(' · ');
+        const mapsLink = safeUrl ? ` · <a href="${safeUrl}" target="_blank" rel="noopener" style="color:var(--amber);text-decoration:none">Ver mapa</a>` : '';
+        return itemHtml(t, _escHtml(sub) + mapsLink);
+      }).join('')}</div>`
+    : vacioHtml('Sin talleres. Usa + Agregar.');
 
   const elProt = document.getElementById('cfg-emerg-protocolo');
   if (elProt) elProt.innerHTML = protocolo.length
-    ? protocolo.map((p, idx) => rowHtml(p, `Paso ${idx + 1}${p.metadata?.critical ? ' · ⚠ Crítico' : ''}`)).join('')
-    : vacioHtml('Sin pasos. Usá + Agregar.');
+    ? `<div class="cfg-item-list">${protocolo.map((p, idx) => itemHtml(p, `Paso ${idx + 1}${p.metadata?.critical ? ' · Critico' : ''}`)).join('')}</div>`
+    : vacioHtml('Sin pasos. Usa + Agregar.');
 }
 
 async function eliminarEmergenciaItemConfig(configId) {
@@ -7209,33 +7216,22 @@ async function cargarTablaAdminPlanes() {
 
   window._planesCache = planes;
 
-  contenedor.innerHTML = `<div style="overflow-x:auto"><table style="width: 100%; border-collapse: collapse; text-align: left;">
-    <tr style="border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; text-transform: uppercase;">
-      <th style="padding: 10px;">Nombre del Plan</th>
-      <th style="padding: 10px;">Cadencia</th>
-      <th style="padding: 10px;">Alerta</th>
-      <th style="padding: 10px;">Estado</th>
-      <th style="padding: 10px;">Acciones</th>
-    </tr>
-    ${planes.map(p => `
-      <tr style="border-bottom: 1px solid var(--border); font-size: 14px; opacity: ${p.activo ? '1' : '0.6'}">
-        <td style="padding: 12px; font-weight: 600;">${p.name}</td>
-        <td style="padding: 12px;">${p.interval_km ? `${p.interval_km.toLocaleString()} km` : `${p.interval_hours} hs`}</td>
-        <td style="padding: 12px; color: var(--amber);">${p.alert_before_km} km antes</td>
-        <td style="padding: 12px;">${p.activo ? '🟢 Activo' : '🔴 Inactivo'}</td>
-        <td style="padding: 12px;">
-          <div style="display:flex;flex-wrap:wrap;gap:5px">
-            <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
-              onclick="abrirEditarPlan('${p.id}')">✏️ Editar</button>
-            <button style="font-size:11px;padding:5px 10px;white-space:nowrap;border-radius:5px;cursor:pointer;border:1px solid;${p.activo ? 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)' : 'background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3)'}"
-              onclick="toggleEstadoPlan('${p.id}', ${p.activo})">
-              ${p.activo ? '🚫 Dar de baja' : '✅ Reactivar'}
-            </button>
-          </div>
-        </td>
-      </tr>
-    `).join('')}
-  </table></div>`;
+  contenedor.innerHTML = `<div class="cfg-item-list">${planes.map(p => `
+    <div class="cfg-item${!p.activo ? ' inactive' : ''}">
+      <div class="cfg-item-main">
+        <div class="cfg-item-name">${p.name}</div>
+        <div class="cfg-item-sub">${p.interval_km ? `Cada ${p.interval_km.toLocaleString()} km` : `Cada ${p.interval_hours} hs`} · Alerta ${p.alert_before_km} km antes</div>
+      </div>
+      <div class="cfg-item-side">
+        <span class="cfg-status ${p.activo ? 'on' : 'off'}">${p.activo ? 'Activo' : 'Inactivo'}</span>
+      </div>
+      <div class="cfg-item-actions">
+        <button class="cfg-btn-a ghost" onclick="abrirEditarPlan('${p.id}')">Editar</button>
+        <button class="cfg-btn-a ${p.activo ? 'danger' : 'go'}" onclick="toggleEstadoPlan('${p.id}', ${p.activo})">
+          ${p.activo ? 'Dar de baja' : 'Reactivar'}
+        </button>
+      </div>
+    </div>`).join('')}</div>`;
 }
 
 // ── 3. ACTUALIZACIÓN: APERTURA PARA "NUEVO" ───────────────
@@ -7328,45 +7324,23 @@ async function cargarTablaAdminFlota() {
     if (error) { contenedor.innerHTML = `<div style="color: var(--red);">Error al cargar: ${error.message}</div>`; return; }
     if (!vehiculos || vehiculos.length === 0) { contenedor.innerHTML = `<div style="padding: 30px; text-align: center;">No hay vehículos registrados.</div>`; return; }
 
-    contenedor.innerHTML = `
-        <div style="overflow-x: auto">
-        <div style="background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                <tr style="background: var(--bg); border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; text-transform: uppercase;">
-                    <th style="padding: 14px 16px;">N° Interno</th>
-                    <th style="padding: 14px 16px;">Patente</th>
-                    <th style="padding: 14px 16px;">Vehículo</th>
-                    <th style="padding: 14px 16px;">Kilometraje</th>
-                    <th style="padding: 14px 16px;">Estado</th>
-                    <th style="padding: 14px 16px; text-align: center;">Acciones</th>
-                </tr>
-                ${vehiculos.map(v => `
-                    <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'">
-                        <td style="padding: 14px 16px; font-weight: 600;">${v.numero_interno || '—'}</td>
-                        <td style="padding: 14px 16px;"><span style="background: var(--bg); border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; font-family: monospace;">${v.plate}</span></td>
-                        <td style="padding: 14px 16px;">
-                            <div style="font-weight: 600;">${v.brand} ${v.model}</div>
-                            <div style="font-size: 11px; color: var(--muted);">Año: ${v.year || '—'} | Eq: ${v.tipo_equipo ? v.tipo_equipo.toUpperCase() : '—'}</div>
-                        </td>
-                        <td style="padding: 14px 16px;">${v.current_km ? v.current_km.toLocaleString('es-AR') + ' km' : '0 km'}</td>
-                        <td style="padding: 14px 16px;">
-                            <span style="background: ${v.status === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}; color: ${v.status === 'active' ? '#10b981' : '#ef4444'}; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase;">
-                                ${v.status === 'active' ? 'Operativo' : 'Inactivo'}
-                            </span>
-                        </td>
-                        <td style="padding: 14px 16px; text-align: center;">
-                            <button onclick="abrirEditarVehiculo('${v.truck_id}')" style="background: none; border: none; cursor: pointer; font-size: 16px; margin-right: 8px;" title="Editar Móvil">✏️</button>
-                            <button onclick="toggleEstadoVehiculo('${v.truck_id}', '${v.status}')"
-                              style="font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;border:1px solid;${v.status === 'active' ? 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)' : 'background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3)'}">
-                              ${v.status === 'active' ? '🚫 Dar de baja' : '✅ Reactivar'}
-                            </button>
-                        </td>
-                    </tr>
-                `).join('')}
-            </table>
+    contenedor.innerHTML = `<div class="cfg-item-list">${vehiculos.map(v => `
+      <div class="cfg-item${v.status !== 'active' ? ' inactive' : ''}">
+        <div class="cfg-item-main">
+          <div class="cfg-item-name">${v.plate}${v.numero_interno ? ` · Interno ${v.numero_interno}` : ''}</div>
+          <div class="cfg-item-sub">${[v.brand, v.model, v.year ? `${v.year}` : null, v.current_km ? `${v.current_km.toLocaleString('es-AR')} km` : null].filter(Boolean).join(' · ')}</div>
         </div>
+        <div class="cfg-item-side">
+          <span class="cfg-badge cfg-badge-tipo">${v.tipo_equipo || 'Vehículo'}</span>
+          <span class="cfg-status ${v.status === 'active' ? 'on' : 'off'}">${v.status === 'active' ? 'Operativo' : 'Inactivo'}</span>
         </div>
-    `;
+        <div class="cfg-item-actions">
+          <button class="cfg-btn-a ghost" onclick="abrirEditarVehiculo('${v.truck_id}')">Editar</button>
+          <button class="cfg-btn-a ${v.status === 'active' ? 'danger' : 'go'}" onclick="toggleEstadoVehiculo('${v.truck_id}','${v.status}')">
+            ${v.status === 'active' ? 'Dar de baja' : 'Reactivar'}
+          </button>
+        </div>
+      </div>`).join('')}</div>`;
 }
 
 // Variable global para saber si estamos editando o creando
@@ -7580,48 +7554,24 @@ async function cargarTablaAdminUsuarios() {
     return;
   }
 
-  contenedor.innerHTML = `<div style="overflow-x:auto"><table style="width: 100%; border-collapse: collapse; text-align: left;">
-      <tr style="border-bottom: 1px solid var(--border); color: var(--muted); font-size: 12px; text-transform: uppercase;">
-        <th style="padding: 10px;">Nombre</th>
-        <th style="padding: 10px;">Rol</th>
-        <th style="padding: 10px;">Licencia</th>
-        <th style="padding: 10px;">Estado</th>
-        <th style="padding: 10px;"></th>
-      </tr>
-      ${usuarios.map(u => `
-        <tr style="border-bottom: 1px solid var(--border); font-size: 14px;">
-          <td style="padding: 12px;">
-            <div style="font-weight: 600;">${u.full_name}</div>
-            <div style="font-size: 11px; color: var(--muted);">${u.phone || 'Sin teléfono'}</div>
-          </td>
-          <td style="padding: 12px; text-transform: capitalize;">${u.role}</td>
-          <td style="padding: 12px;">
-            <div style="font-size: 12px;">${u.license_number || '—'}</div>
-            <div style="font-size: 10px; color: ${esVencida(u.license_expiry) ? 'var(--red)' : 'var(--muted)'};">
-              ${u.license_expiry ? `Vence: ${u.license_expiry}` : ''}
-            </div>
-          </td>
-          <td style="padding: 12px;">
-            <span class="badge" style="background: ${u.status === 'activo' ? 'var(--green-lo)' : 'var(--red-lo)'}; color: ${u.status === 'activo' ? 'var(--green)' : 'var(--red)'};">
-              ${u.status}
-            </span>
-          </td>
-          <td style="padding: 12px;">
-            <div style="display:flex;flex-wrap:wrap;gap:5px">
-              <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
-                onclick="abrirEditarUsuario('${u.user_id}')">✏️ Editar</button>
-              <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;white-space:nowrap"
-                onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">🔑 Pass</button>
-              <button style="font-size:11px;padding:5px 10px;white-space:nowrap;border-radius:5px;cursor:pointer;border:1px solid;${u.status === 'activo' ? 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)' : 'background:rgba(34,197,94,0.1);color:#22c55e;border-color:rgba(34,197,94,0.3)'}"
-                onclick="toggleEstadoUsuario('${u.user_id}','${u.status}')">
-                ${u.status === 'activo' ? '🚫 Dar de baja' : '✅ Reactivar'}
-              </button>
-            </div>
-          </td>
-        </tr>
-      `).join('')}
-    </table></div>
-  `;
+  contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => `
+    <div class="cfg-item${u.status !== 'activo' ? ' inactive' : ''}">
+      <div class="cfg-item-main">
+        <div class="cfg-item-name">${u.full_name}</div>
+        <div class="cfg-item-sub">${u.license_number ? `Lic. ${u.license_number}${u.license_expiry ? ` · Vence ${u.license_expiry.substring(0,10)}` : ''}` : 'Sin licencia registrada'}</div>
+      </div>
+      <div class="cfg-item-side">
+        <span class="cfg-badge cfg-badge-role">${u.role || 'Sin rol'}</span>
+        <span class="cfg-status ${u.status === 'activo' ? 'on' : 'off'}">${u.status === 'activo' ? 'Activo' : 'Inactivo'}</span>
+      </div>
+      <div class="cfg-item-actions">
+        <button class="cfg-btn-a ghost" onclick="abrirEditarUsuario('${u.user_id}')">Editar</button>
+        ${u.status === 'activo' ? `<button class="cfg-btn-a ghost" onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">Contrasena</button>` : ''}
+        <button class="cfg-btn-a ${u.status === 'activo' ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${u.user_id}','${u.status}')">
+          ${u.status === 'activo' ? 'Dar de baja' : 'Reactivar'}
+        </button>
+      </div>
+    </div>`).join('')}</div>`;
 }
 
 function abrirResetPassword(userId, nombre) {

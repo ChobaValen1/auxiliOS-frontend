@@ -1875,71 +1875,79 @@
 
        
 <div class="modal-backdrop" id="modal-settings">
-  <div class="modal-box" style="max-width: 900px; width: 95%; height: 80vh; display: flex; flex-direction: row; padding: 0; overflow: hidden;">
-    <div class="settings-sidebar" style="width: 250px; background: var(--bg-darker, #1a1d24); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 10px;">
-      <div class="settings-header" style="margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border);">
-        <h3 style="margin: 0; font-size: 16px;">⚙️ Configuración</h3>
-        <button class="modal-close" onclick="closeModal('modal-settings')" style="display:none" id="btn-close-settings-mobile">×</button>
+  <div class="modal-box cfg-modal-box">
+
+    <!-- SIDEBAR -->
+    <div class="cfg-sidebar">
+      <div class="cfg-sidebar-header">
+        <span class="cfg-sidebar-title">Configuracion</span>
+        <button class="cfg-mobile-close" onclick="closeModal('modal-settings')">×</button>
       </div>
-      <button class="tab-config active" onclick="switchConfigTab('tab-flota')">🚛 Gestión de Flota</button>
-      <button class="tab-config" onclick="switchConfigTab('tab-usuarios')">👥 Personal y Choferes</button>
-      <button class="tab-config" onclick="switchConfigTab('tab-planes')">📐 Catálogo de Services</button>
-      <button class="tab-config" onclick="switchConfigTab('tab-emergencias')">🆘 Emergencias</button>
-      <div style="flex-grow: 1;"></div>
-      <div class="settings-footer" style="display: flex; flex-direction: column; gap: 6px;">
-        <button class="btn btn-ghost" style="width: 100%;" onclick="closeModal('modal-settings')">Cerrar Panel</button>
-        <button id="btn-cerrar-sesion" class="btn btn-ghost" style="width: 100%; color: var(--red);">🚪 Cerrar sesión</button>
-      </div>
-    </div>
-    <div style="flex: 1; padding: 30px; overflow-y: auto; background: var(--bg);" id="config-content-area">
-      <div id="tab-flota" class="config-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h2>Vehículos Registrados</h2>
-          <button class="btn btn-primary" onclick="openNuevoVehiculoModal()">+ Alta Vehículo</button>
-        </div>
-        <div id="lista-admin-vehiculos" style="color: var(--muted); font-size: 13px;">⏳ Cargando flota...</div>
-      </div>
-      <div id="tab-usuarios" class="config-section" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h2>Personal</h2>
-          <button class="btn btn-primary" onclick="openNuevoUsuarioModal()">+ Nuevo Personal</button>
-        </div>
-        <div id="lista-admin-usuarios" style="color: var(--muted); font-size: 13px;">⏳ Cargando personal...</div>
-      </div>
-      <div id="tab-planes" class="config-section" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h2>Reglas Maestras de Service</h2>
-          <button class="btn btn-primary" onclick="openAdminPlanModal()">+ Crear Plan Maestro</button>
-        </div>
-        <div id="lista-admin-planes" style="color: var(--muted); font-size: 13px;">⏳ Cargando catálogo...</div>
-      </div>
-      <div id="tab-emergencias" class="config-section" style="display: none;">
-        <h2 style="margin-bottom: 20px;">Emergencias</h2>
-        <div style="margin-bottom: 24px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">📞 Teléfonos de emergencia</div>
-            <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('telefono')">+ Agregar</button>
-          </div>
-          <div id="cfg-emerg-telefonos" style="color:var(--muted);font-size:13px">⏳ Cargando...</div>
-        </div>
-        <div style="margin-bottom: 24px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">🔧 Talleres de confianza</div>
-            <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('taller')">+ Agregar</button>
-          </div>
-          <div id="cfg-emerg-talleres" style="color:var(--muted);font-size:13px">⏳ Cargando...</div>
-        </div>
-        <div style="margin-bottom: 24px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">📋 Protocolo de siniestro</div>
-            <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('protocolo')">+ Agregar</button>
-          </div>
-          <div id="cfg-emerg-protocolo" style="color:var(--muted);font-size:13px">⏳ Cargando...</div>
-        </div>
+      <nav class="cfg-nav">
+        <button class="cfg-nav-item active" data-tab="tab-flota" onclick="switchConfigTab('tab-flota')"><span class="cfg-nav-dot"></span>Flota</button>
+        <button class="cfg-nav-item" data-tab="tab-usuarios" onclick="switchConfigTab('tab-usuarios')"><span class="cfg-nav-dot"></span>Personal</button>
+        <button class="cfg-nav-item" data-tab="tab-planes" onclick="switchConfigTab('tab-planes')"><span class="cfg-nav-dot"></span>Planes</button>
+        <button class="cfg-nav-item" data-tab="tab-emergencias" onclick="switchConfigTab('tab-emergencias')"><span class="cfg-nav-dot"></span>Emergencias</button>
+      </nav>
+      <div class="cfg-sidebar-footer">
+        <button id="btn-cerrar-sesion" class="cfg-btn-logout">Cerrar sesion</button>
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- CONTENT -->
+    <div class="cfg-content">
+      <div class="cfg-content-header">
+        <span class="cfg-content-title" id="cfg-tab-title">Flota</span>
+        <button class="btn btn-primary" id="cfg-btn-new" onclick="openNuevoVehiculoModal()" style="font-size:11px;padding:7px 13px">+ Nuevo</button>
+      </div>
+      <div class="cfg-content-body" id="config-content-area">
+
+        <div id="tab-flota" class="config-section">
+          <div id="lista-admin-vehiculos" style="color:var(--muted);font-size:13px">Cargando flota...</div>
+        </div>
+
+        <div id="tab-usuarios" class="config-section" style="display:none">
+          <div id="lista-admin-usuarios" style="color:var(--muted);font-size:13px">Cargando personal...</div>
+        </div>
+
+        <div id="tab-planes" class="config-section" style="display:none">
+          <div id="lista-admin-planes" style="color:var(--muted);font-size:13px">Cargando planes...</div>
+        </div>
+
+        <div id="tab-emergencias" class="config-section" style="display:none">
+          <div class="cfg-emerg-section">
+            <div class="cfg-emerg-section-header">
+              <span class="cfg-emerg-section-label">Telefonos de emergencia</span>
+              <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('telefono')">+ Agregar</button>
+            </div>
+            <div id="cfg-emerg-telefonos" style="color:var(--muted);font-size:13px">Cargando...</div>
+          </div>
+          <div class="cfg-emerg-section">
+            <div class="cfg-emerg-section-header">
+              <span class="cfg-emerg-section-label">Talleres de confianza</span>
+              <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('taller')">+ Agregar</button>
+            </div>
+            <div id="cfg-emerg-talleres" style="color:var(--muted);font-size:13px">Cargando...</div>
+          </div>
+          <div class="cfg-emerg-section">
+            <div class="cfg-emerg-section-header">
+              <span class="cfg-emerg-section-label">Protocolo de siniestro</span>
+              <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('protocolo')">+ Agregar</button>
+          </div>
+          <div id="cfg-emerg-protocolo" style="color:var(--muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+
+      </div><!-- /cfg-content-body -->
+
+      <!-- Logout visible solo en mobile (desktop lo tiene en sidebar) -->
+      <div class="cfg-mobile-footer">
+        <button class="cfg-btn-logout" onclick="cerrarSesion()">Cerrar sesion</button>
+      </div>
+    </div><!-- /cfg-content -->
+
+  </div><!-- /modal-box -->
+</div><!-- /modal-settings -->
 
 <div class="modal-backdrop" id="modal-nuevo-vehiculo">
   <div class="modal-box" style="max-width: 450px;">
