@@ -7501,7 +7501,7 @@ async function toggleEstadoUsuario(userId, estadoActual) {
   }
   const nuevoEstado = estadoActual === 'activo' ? 'inactivo' : 'activo';
   const { error } = await _db.from('users').update({ status: nuevoEstado }).eq('user_id', userId);
-  if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+  if (error) { console.error('[toggleEstadoUsuario] Supabase error:', error); toast(`Error: ${error.message}`, 'error'); return; }
   toast(nuevoEstado === 'activo' ? 'Personal reactivado' : 'Personal dado de baja', 'success');
   cargarTablaAdminUsuarios();
 }
