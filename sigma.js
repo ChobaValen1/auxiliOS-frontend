@@ -7654,6 +7654,7 @@ function abrirResetPassword(userId, nombre) {
         <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Confirmar</button>
       </div>
     </div>`;
+  modal.style.zIndex = '10000001';
   document.body.appendChild(modal);
   const titleEl = modal.querySelector('.modal-head-title');
   if (titleEl) titleEl.textContent = `🔑 Cambiar contraseña — ${nombre}`;
