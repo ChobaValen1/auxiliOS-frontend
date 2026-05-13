@@ -389,10 +389,10 @@ async function guardarPlanGlobal() {
   const hs = parseInt(document.getElementById('mg-hs')?.value) || null;
   const alerta = parseInt(document.getElementById('mg-alerta')?.value) || 500;
 
-  if (!nombre) { toast('Nombre del plan es obligatorio', 'error'); return; }
-  if (!tipo)   { toast('Seleccioná un tipo de cadencia', 'error'); return; }
-  if ((tipo === 'km'    || tipo === 'both') && !km) { toast('Intervalo en KM es obligatorio para este tipo de plan', 'error'); return; }
-  if ((tipo === 'hours' || tipo === 'both') && !hs) { toast('Intervalo en Horas es obligatorio para este tipo de plan', 'error'); return; }
+  if (!nombre) { toast('Para guardar completá Nombre del Plan', 'error'); return; }
+  if (!tipo)   { toast('Para guardar seleccioná el Tipo de Cadencia', 'error'); return; }
+  if ((tipo === 'km'    || tipo === 'both') && !km) { toast('Para guardar completá Intervalo en KM', 'error'); return; }
+  if ((tipo === 'hours' || tipo === 'both') && !hs) { toast('Para guardar completá Intervalo en Horas', 'error'); return; }
 
   const btn = document.getElementById('btn-guardar-global');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
@@ -7289,9 +7289,9 @@ async function guardarNuevoVehiculo() {
 
   const btn = document.getElementById('btn-guardar-vehiculo');
 
-  if (!patente)      { toast('Patente / Dominio es obligatorio (Ej: AB123CD)', 'error'); return; }
+  if (!patente)      { toast('Para guardar completá Patente / Dominio', 'error'); return; }
   if (patente.replace(/\s/g,'').length < 6) { toast('La patente parece incompleta — revisá que tenga al menos 6 caracteres', 'warning'); return; }
-  if (isNaN(km) || document.getElementById('nv-km').value === '') { toast('KM Inicial es obligatorio', 'error'); return; }
+  if (isNaN(km) || document.getElementById('nv-km').value === '') { toast('Para guardar completá KM Inicial', 'error'); return; }
 
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
@@ -7525,11 +7525,11 @@ async function guardarNuevoUsuario() {
   const dni     = document.getElementById('nu-dni').value.trim();
   const rol     = document.getElementById('nu-rol').value;
 
-  if (!nombre)  { toast('Nombre completo es obligatorio', 'error'); return; }
-  if (!legajo)  { toast('Legajo es obligatorio (Ej: CHO-002)', 'error'); return; }
-  if (!email)   { toast('Email es obligatorio', 'error'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Email inválido — debe tener @ y dominio (Ej: juan@empresa.com)', 'error'); return; }
-  if (!dni)     { toast('DNI es obligatorio', 'error'); return; }
+  if (!nombre)  { toast('Para guardar completá Nombre Completo', 'error'); return; }
+  if (!legajo)  { toast('Para guardar completá Legajo', 'error'); return; }
+  if (!email)   { toast('Para guardar completá Email', 'error'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('El email no tiene un formato válido — revisá que tenga @ y dominio', 'error'); return; }
+  if (!dni)     { toast('Para guardar completá DNI', 'error'); return; }
 
   const btn = document.getElementById('btn-guardar-usuario');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
