@@ -1,10 +1,10 @@
 // Variable global: jornada activa del chofer (persiste en localStorage entre reinicios)
 let _jornadaActivaLocal = null;
 
-function _validarPatente(val) {
-  const el = document.getElementById('warn-patente');
+function _validarPatente(val, targetId) {
+  const el = document.getElementById(targetId || 'warn-patente');
   if (!el) return;
-  const n = val.length;
+  const n = val.replace(/\s/g, '').length;
   if (n === 0 || n >= 6) {
     el.textContent = '';
     el.className = 'rem-warn-patente';
@@ -6964,6 +6964,27 @@ async function cargarResumenMesPantalla() {
   if (elAnu) elAnu.textContent = data.total_anulados > 0 ? `${data.total_anulados} anulado${data.total_anulados > 1 ? 's' : ''}` : '';
 }
 
+// ── NAV AVATAR POPUP ────────────────────────────────────────────
+
+function toggleNavAvatarMenu() {
+  const popup = document.getElementById('nav-avatar-popup');
+  if (!popup) return;
+  const isOpen = popup.classList.toggle('open');
+  if (isOpen) {
+    const nameEl = document.getElementById('nav-avatar-popup-name');
+    const roleEl = document.getElementById('nav-avatar-popup-role');
+    if (nameEl && PERFIL_USUARIO?.full_name) nameEl.textContent = PERFIL_USUARIO.full_name;
+    if (roleEl && PERFIL_USUARIO?.roles?.name) roleEl.textContent = PERFIL_USUARIO.roles.name;
+    const closeOutside = (e) => {
+      if (!popup.contains(e.target) && !e.target.closest('.nav-avatar')) {
+        popup.classList.remove('open');
+        document.removeEventListener('click', closeOutside);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeOutside), 0);
+  }
+}
+
 // ── CONTROLADOR DEL HUB DE CONFIGURACIÓN ───────────────────────
 
 async function openSettingsHub() {
@@ -7263,6 +7284,7 @@ async function guardarNuevoVehiculo() {
   const marca = document.getElementById('nv-marca').value.trim();
   const modelo = document.getElementById('nv-modelo').value.trim();
   const km = parseInt(document.getElementById('nv-km').value);
+  const horas = parseInt(document.getElementById('nv-horas').value) || 0;
   const anio = parseInt(document.getElementById('nv-anio').value) || null;
   const interno = document.getElementById('nv-interno').value.trim();
 
@@ -7273,11 +7295,10 @@ async function guardarNuevoVehiculo() {
 
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
-  // Armamos el paquete de datos
   const payload = {
     plate: patente, brand: marca, model: modelo,
     year: anio, numero_interno: interno, current_km: km,
-    tipo_equipo: tipo
+    current_hours: horas, tipo_equipo: tipo
   };
 
   let error_res;
@@ -7294,13 +7315,13 @@ async function guardarNuevoVehiculo() {
     error_res = error;
   }
 
-  if (btn) { btn.textContent = vehiculoEditandoId ? '💾 Actualizar Móvil' : '💾 Registrar Móvil'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = vehiculoEditandoId ? '💾 Actualizar Flota' : '💾 Registrar en Flota'; btn.style.pointerEvents = 'auto'; }
 
   if (error_res) {
     if (error_res.code === '23505') toast('🚨 Patente o N° Interno duplicado.', 'error');
     else toast(`Error: ${error_res.message}`, 'error');
   } else {
-    toast(vehiculoEditandoId ? '✅ Móvil actualizado' : '✅ Móvil registrado', 'success');
+    toast(vehiculoEditandoId ? '✅ Flota actualizada' : '✅ Vehículo registrado en flota', 'success');
     closeModal('modal-nuevo-vehiculo');
     cargarTablaAdminFlota(); 
   }
@@ -7324,6 +7345,20 @@ async function cargarTablaAdminFlota() {
     if (error) { contenedor.innerHTML = `<div style="color: var(--red);">Error al cargar: ${error.message}</div>`; return; }
     if (!vehiculos || vehiculos.length === 0) { contenedor.innerHTML = `<div style="padding: 30px; text-align: center;">No hay vehículos registrados.</div>`; return; }
 
+    const tipoBadgeClass = (t) => {
+      if (t === 'plancha')    return 'cfg-badge-plancha';
+      if (t === 'percha')     return 'cfg-badge-percha';
+      if (t === 'asistencia') return 'cfg-badge-asistencia';
+      if (t === 'pesado')     return 'cfg-badge-pesado';
+      return 'cfg-badge-tipo';
+    };
+    const tipoLabel = (t) => {
+      if (t === 'plancha')    return 'Plancha';
+      if (t === 'percha')     return 'Percha';
+      if (t === 'asistencia') return 'Asistencia';
+      if (t === 'pesado')     return 'Grua Pesada';
+      return t || 'Vehiculo';
+    };
     contenedor.innerHTML = `<div class="cfg-item-list">${vehiculos.map(v => `
       <div class="cfg-item${v.status !== 'active' ? ' inactive' : ''}">
         <div class="cfg-item-main">
@@ -7331,7 +7366,7 @@ async function cargarTablaAdminFlota() {
           <div class="cfg-item-sub">${[v.brand, v.model, v.year ? `${v.year}` : null, v.current_km ? `${v.current_km.toLocaleString('es-AR')} km` : null].filter(Boolean).join(' · ')}</div>
         </div>
         <div class="cfg-item-side">
-          <span class="cfg-badge cfg-badge-tipo">${v.tipo_equipo || 'Vehículo'}</span>
+          <span class="cfg-badge ${tipoBadgeClass(v.tipo_equipo)}">${tipoLabel(v.tipo_equipo)}</span>
           <span class="cfg-status ${v.status === 'active' ? 'on' : 'off'}">${v.status === 'active' ? 'Operativo' : 'Inactivo'}</span>
         </div>
         <div class="cfg-item-actions">
@@ -7459,8 +7494,8 @@ function abrirEditarUsuario(userId) {
 }
 
 // ── 4. FUNCIÓN SUSPENDER / ACTIVAR PERSONAL ──────────────────
-async function toggleEstadoUsuario(userId, estadoActual) {
-  if (estadoActual === 'activo') {
+async function toggleEstadoUsuario(userId, isActive) {
+  if (isActive) {
     if (!confirm('¿Dar de baja a este usuario?')) return;
     const { data } = await _db
       .from('daily_logs')
@@ -7473,10 +7508,9 @@ async function toggleEstadoUsuario(userId, estadoActual) {
       return;
     }
   }
-  const nuevoEstado = estadoActual === 'activo' ? 'inactivo' : 'activo';
-  const { error } = await _db.from('users').update({ status: nuevoEstado }).eq('user_id', userId);
+  const { error } = await _db.from('users').update({ is_active: !isActive }).eq('user_id', userId);
   if (error) { console.error('[toggleEstadoUsuario] Supabase error:', error); toast(`Error: ${error.message}`, 'error'); return; }
-  toast(nuevoEstado === 'activo' ? 'Personal reactivado' : 'Personal dado de baja', 'success');
+  toast(!isActive ? 'Personal reactivado' : 'Personal dado de baja', 'success');
   cargarTablaAdminUsuarios();
 }
 
@@ -7485,11 +7519,13 @@ async function guardarNuevoUsuario() {
   const legajo  = document.getElementById('nu-legajo').value.trim().toUpperCase();
   const email   = document.getElementById('nu-email').value.trim();
   const tel     = document.getElementById('nu-telefono').value.trim();
+  const dni     = document.getElementById('nu-dni').value.trim();
   const rol     = document.getElementById('nu-rol').value;
 
   if (!nombre)  { toast('El nombre es obligatorio', 'error'); return; }
   if (!legajo)  { toast('El legajo es obligatorio', 'error'); return; }
   if (!email)   { toast('El email es obligatorio', 'error'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('El email debe tener formato válido (usuario@dominio.com)', 'error'); return; }
 
   const btn = document.getElementById('btn-guardar-usuario');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
@@ -7519,7 +7555,7 @@ async function guardarNuevoUsuario() {
     resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ full_name: nombre, email, legajo, role_name: rol, phone: tel || null }),
+      body: JSON.stringify({ full_name: nombre, email, legajo, role_name: rol, phone: tel || null, dni: dni || null }),
     });
     data = await resp.json();
   } catch (e) {
@@ -7540,11 +7576,11 @@ async function guardarNuevoUsuario() {
 // Esta es la consulta que pedías para visualizar al personal
 async function cargarTablaAdminUsuarios() {
   const contenedor = document.getElementById('lista-admin-usuarios');
-  contenedor.innerHTML = '⏳ Cargando personal...';
+  contenedor.innerHTML = 'Cargando personal...';
 
   const { data: usuarios, error } = await _db
     .from('users')
-    .select('*')
+    .select('*, roles(name)')
     .order('full_name', { ascending: true });
 
   if (usuarios) window._usuariosCache = usuarios;
@@ -7554,24 +7590,41 @@ async function cargarTablaAdminUsuarios() {
     return;
   }
 
-  contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => `
-    <div class="cfg-item${u.status !== 'activo' ? ' inactive' : ''}">
+  const roleBadgeClass = (rol) => {
+    if (rol === 'administracion') return 'cfg-badge-admin';
+    if (rol === 'supervision')    return 'cfg-badge-supervision';
+    if (rol === 'chofer')         return 'cfg-badge-chofer';
+    return 'cfg-badge-role';
+  };
+  const roleLabel = (rol) => {
+    if (rol === 'administracion') return 'Admin';
+    if (rol === 'supervision')    return 'Supervision';
+    if (rol === 'chofer')         return 'Chofer';
+    return rol || 'Sin rol';
+  };
+
+  contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => {
+    const rol = u.roles?.name || '';
+    const activo = u.is_active !== false;
+    return `
+    <div class="cfg-item${!activo ? ' inactive' : ''}">
       <div class="cfg-item-main">
         <div class="cfg-item-name">${u.full_name}</div>
         <div class="cfg-item-sub">${u.license_number ? `Lic. ${u.license_number}${u.license_expiry ? ` · Vence ${u.license_expiry.substring(0,10)}` : ''}` : 'Sin licencia registrada'}</div>
       </div>
       <div class="cfg-item-side">
-        <span class="cfg-badge cfg-badge-role">${u.role || 'Sin rol'}</span>
-        <span class="cfg-status ${u.status === 'activo' ? 'on' : 'off'}">${u.status === 'activo' ? 'Activo' : 'Inactivo'}</span>
+        <span class="cfg-badge ${roleBadgeClass(rol)}">${roleLabel(rol)}</span>
+        <span class="cfg-status ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Inactivo'}</span>
       </div>
       <div class="cfg-item-actions">
         <button class="cfg-btn-a ghost" onclick="abrirEditarUsuario('${u.user_id}')">Editar</button>
-        ${u.status === 'activo' ? `<button class="cfg-btn-a ghost" onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">Contrasena</button>` : ''}
-        <button class="cfg-btn-a ${u.status === 'activo' ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${u.user_id}','${u.status}')">
-          ${u.status === 'activo' ? 'Dar de baja' : 'Reactivar'}
+        ${activo ? `<button class="cfg-btn-a ghost" onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">Contrasena</button>` : ''}
+        <button class="cfg-btn-a ${activo ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${u.user_id}',${activo})">
+          ${activo ? 'Dar de baja' : 'Reactivar'}
         </button>
       </div>
-    </div>`).join('')}</div>`;
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function abrirResetPassword(userId, nombre) {

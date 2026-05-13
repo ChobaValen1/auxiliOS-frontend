@@ -275,17 +275,20 @@
 
       <div id="mg-km-row" class="form-group" style="display:none">
         <label class="form-label">Intervalo (km) <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="tel" id="mg-km" placeholder="Ej: 15000">
+        <input class="form-input" type="tel" id="mg-km" placeholder="Ej: 15000"
+               oninput="this.value = this.value.replace(/\D/g, '')">
       </div>
 
       <div id="mg-hs-row" class="form-group" style="display:none">
         <label class="form-label">Intervalo (horas) <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="tel" id="mg-hs" placeholder="Ej: 500">
+        <input class="form-input" type="tel" id="mg-hs" placeholder="Ej: 500"
+               oninput="this.value = this.value.replace(/\D/g, '')">
       </div>
 
       <div class="form-group">
         <label class="form-label">Alerta previa (km antes del vencimiento)</label>
-        <input class="form-input" type="tel" id="mg-alerta" value="500">
+        <input class="form-input" type="tel" id="mg-alerta" value="500"
+               oninput="this.value = this.value.replace(/\D/g, '')">
       </div>
     </div>
 
@@ -655,8 +658,16 @@
     <span class="nav-label">Remitos</span>
   </div>
 
-  <div class="nav-bottom">
-    <div class="nav-avatar">RC</div>
+  <div class="nav-bottom" style="position:relative">
+    <div id="nav-avatar-popup" class="nav-avatar-popup">
+      <div>
+        <div class="nav-avatar-popup-name" id="nav-avatar-popup-name">Usuario</div>
+        <div class="nav-avatar-popup-role" id="nav-avatar-popup-role">—</div>
+      </div>
+      <hr>
+      <button class="nav-avatar-popup-logout" onclick="cerrarSesion()">Cerrar sesion</button>
+    </div>
+    <div class="nav-avatar" onclick="toggleNavAvatarMenu()">RC</div>
   </div>
 </nav>
 
@@ -1889,9 +1900,6 @@
         <button class="cfg-nav-item" data-tab="tab-planes" onclick="switchConfigTab('tab-planes')"><span class="cfg-nav-dot"></span>Planes</button>
         <button class="cfg-nav-item" data-tab="tab-emergencias" onclick="switchConfigTab('tab-emergencias')"><span class="cfg-nav-dot"></span>Emergencias</button>
       </nav>
-      <div class="cfg-sidebar-footer">
-        <button id="btn-cerrar-sesion" class="cfg-btn-logout">Cerrar sesion</button>
-      </div>
     </div>
 
     <!-- CONTENT -->
@@ -1940,10 +1948,6 @@
 
       </div><!-- /cfg-content-body -->
 
-      <!-- Logout visible solo en mobile (desktop lo tiene en sidebar) -->
-      <div class="cfg-mobile-footer">
-        <button class="cfg-btn-logout" onclick="cerrarSesion()">Cerrar sesion</button>
-      </div>
     </div><!-- /cfg-content -->
 
   </div><!-- /modal-box -->
@@ -1952,7 +1956,7 @@
 <div class="modal-backdrop" id="modal-nuevo-vehiculo">
   <div class="modal-box" style="max-width: 450px;">
     <div class="modal-head">
-      <span class="modal-head-title">🚨 Alta de Móvil / Grúa</span>
+      <span class="modal-head-title">🚨 Alta de Flota</span>
       <button class="modal-close" onclick="closeModal('modal-nuevo-vehiculo')">×</button>
     </div>
     <div class="modal-body">
@@ -1967,7 +1971,10 @@
       </div>
       <div class="form-group">
         <label class="form-label">Patente / Dominio <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="text" id="nv-patente" placeholder="Ej: AB123CD" style="text-transform: uppercase;">
+        <input class="form-input" type="text" id="nv-patente" placeholder="Ej: AB123CD"
+               style="text-transform: uppercase;"
+               oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9\s]/g, ''); _validarPatente(this.value, 'warn-patente-nv')">
+        <div class="rem-warn-patente" id="warn-patente-nv"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group">
@@ -1979,24 +1986,33 @@
           <input class="form-input" type="text" id="nv-modelo" placeholder="Ej: Daily">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group">
           <label class="form-label">Año</label>
-          <input class="form-input" type="tel" id="nv-anio" placeholder="Ej: 2020" min="1990" max="2030">
+          <input class="form-input" type="tel" id="nv-anio" placeholder="Ej: 2020"
+                 oninput="this.value = this.value.replace(/\D/g, '')">
         </div>
         <div class="form-group">
           <label class="form-label">N° Interno</label>
           <input class="form-input" type="text" id="nv-interno" placeholder="Ej: U-07">
         </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group">
           <label class="form-label">KM Inicial <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="nv-km" placeholder="Ej: 150000">
+          <input class="form-input" type="tel" id="nv-km" placeholder="Ej: 150000"
+                 oninput="this.value = this.value.replace(/\D/g, '')">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Horas Iniciales</label>
+          <input class="form-input" type="tel" id="nv-horas" placeholder="Ej: 4820"
+                 oninput="this.value = this.value.replace(/\D/g, '')">
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-nuevo-vehiculo')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-vehiculo" onclick="guardarNuevoVehiculo()">💾 Registrar Móvil</button>
+      <button class="btn btn-primary" id="btn-guardar-vehiculo" onclick="guardarNuevoVehiculo()">💾 Registrar en Flota</button>
     </div>
   </div>
 </div>
@@ -2010,7 +2026,8 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Nombre Completo <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="text" id="nu-nombre" placeholder="Ej: Juan Pérez">
+        <input class="form-input" type="text" id="nu-nombre" placeholder="Ej: Juan Pérez"
+               oninput="this.value = this.value.replace(/[^a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s]/gi, '')">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
@@ -2019,7 +2036,8 @@
         </div>
         <div class="form-group">
           <label class="form-label">Teléfono</label>
-          <input class="form-input" type="tel" id="nu-telefono" placeholder="Ej: 11 1234-5678">
+          <input class="form-input" type="tel" id="nu-telefono" placeholder="Ej: +54 11 1234-5678"
+                 oninput="this.value = this.value.replace(/[^+\d\s\-]/g, '')">
         </div>
       </div>
       <div class="form-group">
@@ -2029,12 +2047,14 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label class="form-label">DNI <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="text" id="nu-dni" placeholder="Ej: 30123456">
+          <input class="form-input" type="text" id="nu-dni" placeholder="Ej: 30123456"
+                 oninput="this.value = this.value.replace(/\D/g, '')">
         </div>
         <div class="form-group">
           <label class="form-label">Rol <span style="color:var(--red)">*</span></label>
           <select class="form-input" id="nu-rol" onchange="toggleLicenciaSection()">
             <option value="chofer">🚛 Chofer</option>
+            <option value="supervision">👁 Supervisor</option>
             <option value="administracion">👑 Administración</option>
           </select>
         </div>
