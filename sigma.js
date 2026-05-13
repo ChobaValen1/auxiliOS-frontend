@@ -7256,20 +7256,20 @@ async function cargarTablaAdminPlanes() {
 
 // ── 3. ACTUALIZACIÓN: APERTURA PARA "NUEVO" ───────────────
 function openNuevoVehiculoModal() {
-  vehiculoEditandoId = null; // Avisamos que es MODO CREACIÓN
-  
-  // Limpiamos los campos
-  ['nv-patente', 'nv-marca', 'nv-modelo', 'nv-km', 'nv-anio', 'nv-interno'].forEach(id => {
+  vehiculoEditandoId = null;
+
+  ['nv-patente', 'nv-marca', 'nv-modelo', 'nv-km', 'nv-anio', 'nv-interno', 'nv-horas'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  const tipo = document.getElementById('nv-tipo'); if(tipo) tipo.value = 'plancha';
+  const warnEl = document.getElementById('warn-patente-nv');
+  if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
+  const tipo = document.getElementById('nv-tipo'); if (tipo) tipo.value = 'plancha';
 
-  // Restauramos los textos originales del modal
   const titulo = document.querySelector('#modal-nuevo-vehiculo .modal-head-title');
-  if(titulo) titulo.textContent = '🚨 Alta de Móvil / Grúa';
+  if (titulo) titulo.textContent = '🚨 Alta de Flota';
   const btnGuardar = document.getElementById('btn-guardar-vehiculo');
-  if(btnGuardar) btnGuardar.innerHTML = '💾 Registrar Móvil';
+  if (btnGuardar) btnGuardar.innerHTML = '💾 Registrar en Flota';
 
   const modal = document.getElementById('modal-nuevo-vehiculo');
   if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
@@ -7396,7 +7396,7 @@ async function toggleEstadoVehiculo(truckId, estadoActual) {
   const nuevoEstado = estadoActual === 'active' ? 'inactive' : 'active';
   const { error } = await _db.from('trucks').update({ status: nuevoEstado }).eq('truck_id', truckId);
   if (error) { toast(`Error: ${error.message}`, 'error'); return; }
-  toast(nuevoEstado === 'active' ? 'Móvil reactivado' : 'Móvil dado de baja', 'success');
+  toast(nuevoEstado === 'active' ? 'Unidad reactivada' : 'Unidad dada de baja', 'success');
   cargarTablaAdminFlota();
 }
 
@@ -7416,11 +7416,13 @@ async function abrirEditarVehiculo(truckId) {
     document.getElementById('nv-anio').value = data.year || '';
     document.getElementById('nv-interno').value = data.numero_interno || '';
     document.getElementById('nv-km').value = data.current_km || '';
-    if(data.tipo_equipo) document.getElementById('nv-tipo').value = data.tipo_equipo;
+    document.getElementById('nv-horas').value = data.current_hours || '';
+    if (data.tipo_equipo) document.getElementById('nv-tipo').value = data.tipo_equipo;
+    const warnEl = document.getElementById('warn-patente-nv');
+    if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
 
-    // 3. Transformamos visualmente el modal de "Alta" a "Edición"
-    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏️ Editar Móvil / Grúa';
-    document.getElementById('btn-guardar-vehiculo').innerHTML = '💾 Actualizar Móvil';
+    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏️ Editar Flota';
+    document.getElementById('btn-guardar-vehiculo').innerHTML = '💾 Actualizar Flota';
     
     // 4. Abrimos el modal con fuerza bruta (z-index)
     const modal = document.getElementById('modal-nuevo-vehiculo');
@@ -7442,7 +7444,7 @@ function openNuevoUsuarioModal() {
   if (tituloModal) tituloModal.textContent = '👤 Alta de Personal';
   const btnGuardar = document.getElementById('btn-guardar-usuario');
   if (btnGuardar) btnGuardar.textContent = '💾 Crear Usuario';
-  ['nu-nombre', 'nu-legajo', 'nu-email', 'nu-telefono', 'nu-licencia', 'nu-vencimiento'].forEach(id => {
+  ['nu-nombre', 'nu-legajo', 'nu-email', 'nu-telefono', 'nu-dni', 'nu-licencia', 'nu-vencimiento'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -7467,9 +7469,10 @@ function abrirEditarUsuario(userId) {
 
   // Pre-llenar campos
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  set('nu-nombre',     u.full_name);
-  set('nu-telefono',   u.phone);
-  set('nu-licencia',   u.license_number);
+  set('nu-nombre',      u.full_name);
+  set('nu-telefono',    u.phone);
+  set('nu-dni',         u.dni);
+  set('nu-licencia',    u.license_number);
   set('nu-vencimiento', u.license_expiry ? u.license_expiry.substring(0, 10) : '');
 
   const rolEl = document.getElementById('nu-rol');
@@ -7479,7 +7482,7 @@ function abrirEditarUsuario(userId) {
   const emailEl = document.getElementById('nu-email');
   const legajoEl = document.getElementById('nu-legajo');
   if (emailEl) { emailEl.value = u.email || ''; emailEl.disabled = true; }
-  if (legajoEl) { legajoEl.value = u.employee_id || ''; legajoEl.disabled = true; }
+  if (legajoEl) { legajoEl.value = u.legajo || ''; legajoEl.disabled = true; }
 
   // Cambiar título y botón
   const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
@@ -7535,7 +7538,7 @@ async function guardarNuevoUsuario() {
     const licencia    = document.getElementById('nu-licencia')?.value.trim() || null;
     const vencimiento = document.getElementById('nu-vencimiento')?.value || null;
     const { error } = await _db.from('users').update({
-      full_name: nombre, phone: tel || null, role: rol,
+      full_name: nombre, phone: tel || null, role: rol, dni: dni || null,
       license_number: licencia, license_expiry: vencimiento
     }).eq('user_id', usuarioEditandoId);
     if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
