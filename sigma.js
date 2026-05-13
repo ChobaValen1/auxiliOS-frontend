@@ -1,6 +1,15 @@
 // Variable global: jornada activa del chofer (persiste en localStorage entre reinicios)
 let _jornadaActivaLocal = null;
 
+function showModalError(errorDivId, msg) {
+  const el = document.getElementById(errorDivId);
+  if (!el) { toast(msg, 'error'); return; }
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
 function _validarPatente(val, targetId) {
   const el = document.getElementById(targetId || 'warn-patente');
   if (!el) return;
@@ -389,10 +398,10 @@ async function guardarPlanGlobal() {
   const hs = parseInt(document.getElementById('mg-hs')?.value) || null;
   const alerta = parseInt(document.getElementById('mg-alerta')?.value) || 500;
 
-  if (!nombre) { toast('Para guardar completá Nombre del Plan', 'error'); return; }
-  if (!tipo)   { toast('Para guardar seleccioná el Tipo de Cadencia', 'error'); return; }
-  if ((tipo === 'km'    || tipo === 'both') && !km) { toast('Para guardar completá Intervalo en KM', 'error'); return; }
-  if ((tipo === 'hours' || tipo === 'both') && !hs) { toast('Para guardar completá Intervalo en Horas', 'error'); return; }
+  if (!nombre) { showModalError('mg-modal-error', 'Para guardar completá Nombre del Plan'); return; }
+  if (!tipo)   { showModalError('mg-modal-error', 'Para guardar seleccioná el Tipo de Cadencia'); return; }
+  if ((tipo === 'km'    || tipo === 'both') && !km) { showModalError('mg-modal-error', 'Para guardar completá Intervalo en KM'); return; }
+  if ((tipo === 'hours' || tipo === 'both') && !hs) { showModalError('mg-modal-error', 'Para guardar completá Intervalo en Horas'); return; }
 
   const btn = document.getElementById('btn-guardar-global');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
@@ -7264,6 +7273,8 @@ function openNuevoVehiculoModal() {
   });
   const warnEl = document.getElementById('warn-patente-nv');
   if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
+  const errEl = document.getElementById('nv-modal-error');
+  if (errEl) errEl.style.display = 'none';
   const tipo = document.getElementById('nv-tipo'); if (tipo) tipo.value = 'plancha';
 
   const titulo = document.querySelector('#modal-nuevo-vehiculo .modal-head-title');
@@ -7289,9 +7300,9 @@ async function guardarNuevoVehiculo() {
 
   const btn = document.getElementById('btn-guardar-vehiculo');
 
-  if (!patente)      { toast('Para guardar completá Patente / Dominio', 'error'); return; }
-  if (patente.replace(/\s/g,'').length < 6) { toast('La patente parece incompleta — revisá que tenga al menos 6 caracteres', 'warning'); return; }
-  if (isNaN(km) || document.getElementById('nv-km').value === '') { toast('Para guardar completá KM Inicial', 'error'); return; }
+  if (!patente)      { showModalError('nv-modal-error', 'Para guardar completá Patente / Dominio'); return; }
+  if (patente.replace(/\s/g,'').length < 6) { showModalError('nv-modal-error', 'La patente parece incompleta — revisá que tenga al menos 6 caracteres'); return; }
+  if (isNaN(km) || document.getElementById('nv-km').value === '') { showModalError('nv-modal-error', 'Para guardar completá KM Inicial'); return; }
 
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
@@ -7448,6 +7459,8 @@ function openNuevoUsuarioModal() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const nuErrEl = document.getElementById('nu-modal-error');
+  if (nuErrEl) nuErrEl.style.display = 'none';
   const rol = document.getElementById('nu-rol');
   if(rol) rol.value = 'chofer';
 
@@ -7525,11 +7538,11 @@ async function guardarNuevoUsuario() {
   const dni     = document.getElementById('nu-dni').value.trim();
   const rol     = document.getElementById('nu-rol').value;
 
-  if (!nombre)  { toast('Para guardar completá Nombre Completo', 'error'); return; }
-  if (!legajo)  { toast('Para guardar completá Legajo', 'error'); return; }
-  if (!email)   { toast('Para guardar completá Email', 'error'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('El email no tiene un formato válido — revisá que tenga @ y dominio', 'error'); return; }
-  if (!dni)     { toast('Para guardar completá DNI', 'error'); return; }
+  if (!nombre)  { showModalError('nu-modal-error', 'Para guardar completá Nombre Completo'); return; }
+  if (!legajo)  { showModalError('nu-modal-error', 'Para guardar completá Legajo'); return; }
+  if (!email)   { showModalError('nu-modal-error', 'Para guardar completá Email'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showModalError('nu-modal-error', 'El email no tiene formato válido — revisá que tenga @ y dominio'); return; }
+  if (!dni)     { showModalError('nu-modal-error', 'Para guardar completá DNI'); return; }
 
   const btn = document.getElementById('btn-guardar-usuario');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
