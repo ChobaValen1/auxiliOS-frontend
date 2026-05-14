@@ -1029,6 +1029,8 @@ function verRemito(nro) {
 let activeCanvas = null, activeCtx = null, drawing = false, hasSig = false;
 // Map nro → signature dataURL
 const sigDataStore = {};
+// Elemento activo en modal de detalles (para PDF)
+let _currentRemitoEl = null;
 
 function initCanvas(canvasId) {
   const canvas = document.getElementById(canvasId);
@@ -1038,8 +1040,8 @@ function initCanvas(canvasId) {
   
   // 1. Forzar dimensiones basadas en el CSS real AHORA, sin timeouts.
   const rect = canvas.getBoundingClientRect();
-  canvas.width  = rect.width > 0 ? rect.width : (canvas.parentElement.offsetWidth || 300);
-  canvas.height = 160; // Fijo según tu HTML
+  canvas.width  = rect.width  > 0 ? rect.width  : (canvas.parentElement.offsetWidth || 300);
+  canvas.height = rect.height > 0 ? rect.height : 220;
   
   // 2. Crear el contexto DESPUÉS de redimensionar (vital)
   activeCtx = canvas.getContext('2d');
@@ -1692,7 +1694,8 @@ const PAY_COLORS = { Efectivo:'var(--green)', Transferencia:'var(--blue)', Tarje
  */
 function verRemitoModal(elemento) {
   const TAG = "[UI-MODAL-DETALLES]";
-  
+  _currentRemitoEl = elemento;
+
   try {
     // 1. Obtener y parsear los datos de manera robusta
     let d = null;
@@ -9253,3 +9256,21 @@ function _pwaBanner(msg, tipo) {
 }
 window.addEventListener('offline', () => _pwaBanner('Sin conexión — los datos no se actualizarán hasta recuperar señal.', 'warn'));
 window.addEventListener('online',  () => _pwaBanner('Conexión recuperada.', 'ok'));
+
+// ── REMITOS: delegación de clicks ─────────────
+document.addEventListener('click', e => {
+  if (e.target.closest('.btn-ver-remito')) {
+    const el = e.target.closest('[data-rem]');
+    if (el) verRemitoModal(el);
+    return;
+  }
+  if (e.target.closest('.btn-pdf-remito')) {
+    const el = e.target.closest('[data-rem]');
+    if (el) descargarRemitoPDF(el);
+    return;
+  }
+  if (e.target.closest('.btn-pdf-modal')) {
+    if (_currentRemitoEl) descargarRemitoPDF(_currentRemitoEl);
+    return;
+  }
+});
