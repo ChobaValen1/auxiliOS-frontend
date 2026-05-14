@@ -7582,7 +7582,7 @@ async function guardarNuevoUsuario() {
   if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
 
   if (!resp?.ok || data?.error) {
-    toast(`Error: ${data?.error || 'Error desconocido'}`, 'error');
+    showModalError('nu-modal-error', data?.error || 'Error desconocido al crear el usuario');
   } else {
     toast('Usuario creado — contraseña inicial: Sigma1234!', 'success');
     closeModal('modal-nuevo-usuario');
@@ -7621,7 +7621,7 @@ async function cargarTablaAdminUsuarios() {
   };
 
   contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => {
-    const rol = u.roles?.name || '';
+    const rol = u.roles?.name || u.role || '';
     const activo = u.is_active !== false;
     return `
     <div class="cfg-item${!activo ? ' inactive' : ''}">
