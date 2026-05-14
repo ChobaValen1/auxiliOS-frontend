@@ -2253,76 +2253,6 @@ body {
   }
 }
 
-/* ── CONFIG PANEL RESPONSIVE ────────────────────────────── */
-@media (max-width: 680px) {
-  #modal-settings .modal-box {
-    flex-direction: column;
-    height: 100dvh;
-    max-width: 100%;
-    width: 100%;
-    border-radius: 0;
-    margin: 0;
-  }
-
-  #modal-settings .settings-sidebar {
-    width: 100% !important;
-    flex-direction: row !important;
-    overflow-x: auto;
-    border-right: none !important;
-    border-bottom: 1px solid var(--border);
-    padding: 0 8px !important;
-    gap: 0 !important;
-    flex-shrink: 0;
-  }
-
-  #modal-settings .settings-header {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    padding: 12px 16px !important;
-    margin-bottom: 0 !important;
-    padding-bottom: 12px !important;
-    border-bottom: none !important;
-  }
-
-  #modal-settings .settings-header h3 { margin: 0; }
-  #modal-settings #btn-close-settings-mobile { display: block !important; }
-
-  #modal-settings .settings-footer {
-    position: sticky;
-    bottom: 0;
-    background: var(--bg-darker, #1a1d24);
-    border-top: 1px solid var(--border);
-    flex-direction: column !important;
-    gap: 6px !important;
-    padding: 10px 12px !important;
-    flex-shrink: 0;
-  }
-
-  #modal-settings .tab-config {
-    white-space: nowrap;
-    flex-shrink: 0;
-    padding: 10px 14px;
-    font-size: 12px;
-    border-radius: 0;
-    border-bottom: 2px solid transparent;
-    border-left: none !important;
-  }
-
-  #modal-settings .tab-config.active {
-    border-bottom: 2px solid var(--amber) !important;
-    background: transparent !important;
-    border-left: none !important;
-  }
-
-  #config-content-area {
-    padding: 16px !important;
-    flex: 1;
-    overflow-y: auto;
-  }
-}
-
 /* ═══════════════════════════════════════════════
    CONFIG PANEL — DISEÑO NUEVO
 ═══════════════════════════════════════════════ */
@@ -2342,7 +2272,7 @@ body {
   display: flex; flex-direction: column;
 }
 .cfg-sidebar-header {
-  padding: 16px;
+  padding: 18px 16px 14px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
 }
@@ -2402,7 +2332,7 @@ body {
   overflow: hidden; background: var(--bg);
 }
 .cfg-content-header {
-  padding: 13px 18px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0; background: var(--card);
@@ -2427,8 +2357,9 @@ body {
 .cfg-item.inactive { opacity: 0.45; }
 .cfg-item-main { flex: 1; min-width: 0; }
 .cfg-item-name {
-  font-size: 13px; font-weight: 600;
+  font-size: 15px; font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--text);
 }
 .cfg-item-sub { font-size: 11px; color: var(--muted2); margin-top: 3px; }
 .cfg-item-side {
@@ -2448,6 +2379,15 @@ body {
   background: rgba(90,98,120,0.15);
   border-color: var(--border2);
 }
+/* Role badges */
+.cfg-badge-admin      { color:#60a5fa; background:rgba(96,165,250,0.1); border-color:rgba(96,165,250,0.3); }
+.cfg-badge-supervision{ color:#c084fc; background:rgba(192,132,252,0.1); border-color:rgba(192,132,252,0.3); }
+.cfg-badge-chofer     { color:var(--amber); background:var(--amber-lo); border-color:rgba(245,166,35,0.3); }
+/* Tipo equipo badges */
+.cfg-badge-plancha    { color:#38bdf8; background:rgba(56,189,248,0.1); border-color:rgba(56,189,248,0.3); }
+.cfg-badge-percha     { color:#a78bfa; background:rgba(167,139,250,0.1); border-color:rgba(167,139,250,0.3); }
+.cfg-badge-asistencia { color:var(--green); background:var(--green-lo); border-color:rgba(39,196,122,0.3); }
+.cfg-badge-pesado     { color:#fb923c; background:rgba(251,146,60,0.1); border-color:rgba(251,146,60,0.3); }
 .cfg-badge-cat {
   color: var(--amber);
   background: var(--amber-lo);
@@ -2493,8 +2433,27 @@ body {
   text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
 }
 
-/* ── Mobile footer logout ─────────────────────── */
-.cfg-mobile-footer { display: none; flex-shrink: 0; }
+/* ── Nav avatar popup ─────────────────────────── */
+.nav-avatar-popup {
+  position: absolute; bottom: calc(100% + 10px); left: 50%;
+  transform: translateX(-50%);
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 12px 14px;
+  min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  display: none; flex-direction: column; gap: 10px;
+  z-index: 900;
+}
+.nav-avatar-popup.open { display: flex; }
+.nav-avatar-popup-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.nav-avatar-popup-role { font-size: 10px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px; }
+.nav-avatar-popup hr   { border: none; border-top: 1px solid var(--border); margin: 0; }
+.nav-avatar-popup-logout {
+  background: transparent; border: 1px solid rgba(226,80,74,0.3);
+  color: var(--red); border-radius: 6px; padding: 6px 10px;
+  font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+  text-align: left;
+}
+.nav-avatar-popup-logout:hover { background: var(--red-lo); }
 
 /* ── Mobile ───────────────────────────────────── */
 @media (max-width: 680px) {
