@@ -1027,8 +1027,20 @@ function verRemito(nro) {
 
 // ── FIRMA CANVAS ──────────────────────────────
 let activeCanvas = null, activeCtx = null, drawing = false, hasSig = false;
-// Map nro → signature dataURL
+// Map nro → signature dataURL (persistido en localStorage)
 const sigDataStore = {};
+(function _restoreSigs() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('sig_')) sigDataStore[k.slice(4)] = localStorage.getItem(k);
+    }
+  } catch(_) {}
+})();
+function _saveSig(nro, dataURL) {
+  sigDataStore[nro] = dataURL;
+  try { localStorage.setItem('sig_' + nro, dataURL); } catch(_) {}
+}
 // Elemento activo en modal de detalles (para PDF)
 let _currentRemitoEl = null;
 
@@ -1315,7 +1327,7 @@ async function finalizarRemito() {
 
   // ⑤ → Save signature
   const sigCanvas = document.getElementById('sig-canvas');
-  if (sigCanvas && hasSig) sigDataStore[nro] = sigCanvas.toDataURL();
+  if (sigCanvas && hasSig) _saveSig(nro, sigCanvas.toDataURL());
 
   resetPagoForm();
 
@@ -1991,7 +2003,7 @@ async function confirmarFirma() {
 
   try {
     const sigCF = document.getElementById('sig-canvas-firma');
-    if (sigCF && hasSig) sigDataStore[nro2] = sigCF.toDataURL();
+    if (sigCF && hasSig) _saveSig(nro2, sigCF.toDataURL());
 
     const confirmaciones = [];
     document.querySelectorAll('#remitos-firma .toggle-row:not([style*="display:none"]) .toggle.on').forEach(t => {
