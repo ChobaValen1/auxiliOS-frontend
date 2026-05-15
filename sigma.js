@@ -1720,8 +1720,6 @@ function verRemitoModal(elemento) {
     
     const prevCanvas = document.getElementById('vr-sig-display');
     if (prevCanvas) {
-      prevCanvas.width  = prevCanvas.offsetWidth || 360;
-      prevCanvas.height = 80;
       const ctx = prevCanvas.getContext('2d');
       if (ctx) ctx.clearRect(0, 0, prevCanvas.width, prevCanvas.height);
     }
@@ -1846,18 +1844,18 @@ function verRemitoModal(elemento) {
         c.height = rect.height > 0 ? rect.height : 120;
         const ctx = c.getContext('2d');
         ctx.clearRect(0, 0, c.width, c.height);
-        
+
         const savedSig = (typeof sigDataStore !== 'undefined' ? sigDataStore[d.nro] : null) || d.firmaUrl || null;
-        
+        console.log(`${TAG} 🔍 Firma nro="${d.nro}", sigDataStore=${!!sigDataStore[d.nro]}, firmaUrl=${!!d.firmaUrl}`);
+
         if (savedSig) {
           const img = new Image();
-          img.crossOrigin = 'anonymous';
           img.onload  = () => {
             ctx.drawImage(img, 0, 0, c.width, c.height);
             console.log(`${TAG} ✅ Firma renderizada correctamente.`);
           };
           img.onerror = () => {
-            console.error(`${TAG} ❌ Error cargando la imagen de la firma.`);
+            console.error(`${TAG} ❌ Error cargando la imagen de la firma. src="${savedSig?.slice(0,60)}"`);
             if (typeof dibujarFirmaDemo === 'function') dibujarFirmaDemo(ctx, c.width, c.height);
           };
           img.src = savedSig;
@@ -9257,20 +9255,9 @@ function _pwaBanner(msg, tipo) {
 window.addEventListener('offline', () => _pwaBanner('Sin conexión — los datos no se actualizarán hasta recuperar señal.', 'warn'));
 window.addEventListener('online',  () => _pwaBanner('Conexión recuperada.', 'ok'));
 
-// ── REMITOS: delegación de clicks ─────────────
+// ── REMITO PDF desde modal ─────────────────────
 document.addEventListener('click', e => {
-  if (e.target.closest('.btn-ver-remito')) {
-    const el = e.target.closest('[data-rem]');
-    if (el) verRemitoModal(el);
-    return;
-  }
-  if (e.target.closest('.btn-pdf-remito')) {
-    const el = e.target.closest('[data-rem]');
-    if (el) descargarRemitoPDF(el);
-    return;
-  }
   if (e.target.closest('.btn-pdf-modal')) {
     if (_currentRemitoEl) descargarRemitoPDF(_currentRemitoEl);
-    return;
   }
 });
