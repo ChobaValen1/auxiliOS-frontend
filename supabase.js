@@ -657,16 +657,31 @@ async function guardarRemitoCompleto(datosRemito) {
     }
 
     // ── 4. Subida de Firma ────────────────────────────────────
+    // El caller (finalizarRemito) nos pasa el dataURL del canvas correcto (sig-canvas).
+    // Si no viene firmaDataURL, intentamos fallback al canvas del wizard, NUNCA al de la vista firma
+    // (que existe en el DOM pero está oculto y vacío).
     let firmaUrl = null;
-    const canvas = document.getElementById('sig-canvas-firma') || document.getElementById('sig-canvas');
-    // Asumo que tienes una variable global 'hasSig' controlando esto, si no, valida el canvas vacío
-    if (canvas && typeof hasSig !== 'undefined' && hasSig) {
-      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-      const nombre = `firma_${nroFinal}_${Date.now()}.png`;
-      const { error: fe } = await _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true });
-      if (!fe) {
-        const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
-        firmaUrl = fd.publicUrl;
+    let firmaDataURL = datosRemito.firmaDataURL || null;
+    if (!firmaDataURL) {
+      const canvas = document.getElementById('sig-canvas');
+      if (canvas && typeof hasSig !== 'undefined' && hasSig) {
+        firmaDataURL = canvas.toDataURL('image/png');
+      }
+    }
+    if (firmaDataURL) {
+      try {
+        const blob = await (await fetch(firmaDataURL)).blob();
+        const nombre = `firma_${nroFinal}_${Date.now()}.png`;
+        const { error: fe } = await _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true });
+        if (!fe) {
+          const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
+          firmaUrl = fd.publicUrl;
+        } else {
+          console.warn('⚠️ No se pudo subir la firma:', fe.message);
+          _toast('Firma guardada localmente (no se pudo subir): ' + fe.message, 'warn');
+        }
+      } catch (upErr) {
+        console.warn('⚠️ Error procesando firma:', upErr);
       }
     }
 

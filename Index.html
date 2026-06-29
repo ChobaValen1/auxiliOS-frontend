@@ -398,14 +398,14 @@
 
         <!-- Sección excepción (oculta, aparece solo en anomalía) -->
         <div id="cj-excepcion-section" style="display:none;margin-top:10px">
-          <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;font-size:12px;color:#fca5a5;margin-bottom:8px">
+          <div id="cj-excepcion-aviso" style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;font-size:12px;color:#fca5a5;margin-bottom:8px">
             <span style="font-size:14px;flex-shrink:0">🚨</span>
-            <span>El KM detectado es <strong>menor al inicio de jornada</strong>. Editá el valor o confirmá la excepción.</span>
+            <span id="cj-excepcion-msg">El KM detectado es <strong>menor al inicio de jornada</strong>. Editá el valor o confirmá la excepción.</span>
           </div>
           <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:8px;cursor:pointer">
             <input type="checkbox" id="cj-excepcion-check" style="width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:var(--amber)" onchange="onExcepcionCheck(this)">
             <div>
-              <div style="font-size:12px;font-weight:600;color:var(--amber);line-height:1.4">El odómetro dio la vuelta o fue reemplazado</div>
+              <div id="cj-excepcion-label" style="font-size:12px;font-weight:600;color:var(--amber);line-height:1.4">El odómetro dio la vuelta o fue reemplazado</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">Quedará registrado como excepción en el historial.</div>
             </div>
           </label>
@@ -990,7 +990,7 @@
             style="font-family:'Bebas Neue';font-size:22px;letter-spacing:2px;color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
           <div id="camion-detalle" style="font-size:11px;color:var(--muted);margin-top:2px">—</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
-            <span class="pill pill-green">● Activo</span>
+            <span class="pill pill-muted" id="camion-status-pill">○ Sin jornada</span>
             <span class="pill pill-blue" id="camion-km-pill">— km</span>
             <span class="pill pill-amber" id="camion-next-service-pill" style="display:none"></span>
           </div>
@@ -1156,7 +1156,7 @@
     <div class="screen" id="screen-remitos">
       <div class="sec-header mb24">
         <div><div class="sec-title">REMITOS VIRTUALES</div><div class="sec-sub">Generación, firma digital y archivo de remitos</div></div>
-        <button class="btn btn-primary desktop-only" onclick="showRemitosView('nuevo')">+ Nuevo remito</button>
+        <button id="btn-nuevo-remito-desktop" class="btn btn-primary desktop-only" onclick="abrirNuevoRemito()">+ Nuevo remito</button>
       </div>
       
       <div class="card mb24" id="filtros-remitos">
@@ -1277,7 +1277,7 @@
     </table>
   </div>
   <div id="mobile-remitos-list" class="mobile-only remitos-container-mobile"></div>
-  <button class="fab-new-remito mobile-only" onclick="showRemitosView('nuevo')"><span>+</span></button>
+  <button id="btn-nuevo-remito-fab" class="fab-new-remito mobile-only" onclick="abrirNuevoRemito()"><span>+</span></button>
 </div>
 
      <div id="remitos-nuevo" style="display:none">
@@ -1372,34 +1372,41 @@
 <!-- PASO 2: DATOS DEL SOCIO -->
 <div class="rem-step-panel" id="rem-step-2">
   <div class="card">
-    <div class="card-label" style="margin-bottom:14px"> Datos del socio</div>
-    
-    <div class="form-group">
-      <label class="form-label">Nombre del socio / cliente</label>
-      <input type="text" id="rem-cliente" class="form-input" 
-             oninput="this.value = this.value.replace(/[^a-zA-Z\sñÑáéíóúÁÉÍÓÚ]/g, '')" 
-             placeholder="Nombre completo">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="card-label" style="margin:0">Datos del socio</div>
+      <button type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModal('modal-formatos')">ℹ️ Formatos</button>
     </div>
-    
+
     <div class="form-group">
-      <label class="form-label">DNI <span style="color:var(--red)">*</span></label>
-      <input type="tel" id="rem-cuit" class="form-input" 
+      <label class="form-label">Nombre del socio / cliente <span style="color:var(--red)">*</span></label>
+      <input type="text" id="rem-cliente" class="form-input"
+             oninput="this.value = this.value.replace(/[^a-zA-Z\sñÑáéíóúÁÉÍÓÚ]/g, '')"
+             placeholder="Nombre completo">
+      <div class="form-hint">Solo letras y espacios.</div>
+      <div class="rem-error-msg" id="err-cliente">El nombre del socio es obligatorio</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">DNI / CUIT <span style="color:var(--red)">*</span></label>
+      <input type="tel" id="rem-cuit" class="form-input"
              inputmode="numeric" pattern="[0-9]*"
-             oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
-             maxlength="11" 
+             oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+             maxlength="11"
              placeholder="Ej: 30123456789">
+      <div class="form-hint">7 a 11 dígitos. Ej: DNI 12345678 · CUIT 30123456789.</div>
       <div class="rem-error-msg" id="err-dni">El DNI es obligatorio</div>
     </div>
-    
+
     <div class="form-group">
       <label class="form-label">Teléfono de contacto</label>
-      <input type="tel" id="rem-telefono" class="form-input" 
+      <input type="tel" id="rem-telefono" class="form-input"
              inputmode="numeric" pattern="[0-9]*"
-             oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
-             maxlength="10" 
+             oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+             maxlength="10"
              placeholder="Ej: 1123456789 (Sin 0 ni 15)">
+      <div class="form-hint">10 dígitos. Sin 0 inicial ni 15. Ej: 1145678901.</div>
     </div>
-    
+
   </div>
 </div>
 
@@ -2249,6 +2256,92 @@
         <button class="btn btn-ghost" onclick="closeModal('modal-ver-remito')">Cerrar</button>
         <button class="btn btn-primary btn-pdf-modal">⬇ Descargar PDF</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-validacion" style="z-index:10001">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-head">
+      <span class="modal-head-title" id="modal-validacion-titulo" style="color:var(--amber)">⚠️ Datos incompletos</span>
+      <button class="modal-close" onclick="closeModal('modal-validacion')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:14px;font-size:13px;line-height:1.5;color:#fde68a" id="modal-validacion-msg">
+        Faltan datos obligatorios.
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="closeModal('modal-validacion')">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-sin-jornada" style="z-index:10001">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-head">
+      <span class="modal-head-title" style="color:var(--amber)">⚠️ Sin jornada activa</span>
+      <button class="modal-close" onclick="closeModal('modal-sin-jornada')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px;line-height:1.55;color:#fde68a">
+      <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:14px">
+        Iniciá una jornada (con foto del odómetro) para poder crear remitos.
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('modal-sin-jornada')">Cancelar</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-sin-jornada'); abrirModalNuevaJornada();">Iniciar jornada</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-formatos" style="z-index:10001">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-head">
+      <span class="modal-head-title" style="color:var(--amber)">ℹ️ Formatos válidos de campos</span>
+      <button class="modal-close" onclick="closeModal('modal-formatos')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px;line-height:1.55">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px">
+          <div style="font-weight:700;color:var(--text);margin-bottom:3px">Nombre del socio</div>
+          <div style="color:var(--muted)">Solo letras y espacios. No se aceptan números ni símbolos.</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px">
+          <div style="font-weight:700;color:var(--text);margin-bottom:3px">DNI / CUIT</div>
+          <div style="color:var(--muted)">Solo números. Entre 7 y 11 dígitos.<br>DNI: <span style="font-family:'DM Mono';color:var(--amber)">12345678</span> · CUIT: <span style="font-family:'DM Mono';color:var(--amber)">30123456789</span></div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px">
+          <div style="font-weight:700;color:var(--text);margin-bottom:3px">Teléfono</div>
+          <div style="color:var(--muted)">10 dígitos. Sin 0 inicial ni 15.<br>Ej: <span style="font-family:'DM Mono';color:var(--amber)">1145678901</span></div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px">
+          <div style="font-weight:700;color:var(--text);margin-bottom:3px">Patente</div>
+          <div style="color:var(--muted)">Formato viejo: <span style="font-family:'DM Mono';color:var(--amber)">ABC123</span> · Mercosur: <span style="font-family:'DM Mono';color:var(--amber)">AB123CD</span></div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px">
+          <div style="font-weight:700;color:var(--text);margin-bottom:3px">Kilómetros e importes</div>
+          <div style="color:var(--muted)">Solo números enteros. Sin puntos ni símbolos.<br>Ej: <span style="font-family:'DM Mono';color:var(--amber)">150</span> · <span style="font-family:'DM Mono';color:var(--amber)">12500</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="closeModal('modal-formatos')">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-firma-falta" style="z-index:9999">
+  <div class="modal-box" style="max-width:560px;width:92vw;padding:0;background:linear-gradient(135deg,#1f1610 0%,#2a1d10 100%);border:2px solid var(--amber);box-shadow:0 0 60px rgba(245,166,35,0.4)">
+    <div style="padding:48px 32px 24px;text-align:center">
+      <div style="font-size:80px;line-height:1;margin-bottom:16px">✍️</div>
+      <div style="font-size:24px;font-weight:800;color:var(--amber);margin-bottom:12px;letter-spacing:0.5px">FALTA COMPLETAR LA FIRMA</div>
+      <div style="font-size:15px;line-height:1.6;color:#fde68a;max-width:420px;margin:0 auto;padding:0 8px">
+        Para finalizar el servicio es <strong>obligatoria la firma del socio</strong>, o del chofer en caso de ausencia.
+      </div>
+    </div>
+    <div style="padding:0 24px 32px;display:flex;justify-content:center">
+      <button class="btn btn-primary" style="min-width:200px;padding:14px 28px;font-size:15px;font-weight:700" onclick="cerrarModalFirmaFalta()">Entendido</button>
     </div>
   </div>
 </div>

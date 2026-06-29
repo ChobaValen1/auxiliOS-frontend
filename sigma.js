@@ -580,47 +580,6 @@ function _remWizardActualizar() {
   
   const btnBack = document.getElementById('rem-btn-back');
   const btnNext = document.getElementById('rem-btn-next');
-  
-  if (btnBack) btnBack.style.display = _remPasoActual === 1 ? 'none' : '';
-  
-  if (btnNext) {
-    if (_remPasoActual === REM_TOTAL_PASOS) {
-      btnNext.textContent = '✅ Finalizar';
-      // Conectamos la Cláusula de Guardia antes de guardar (Firma y Toggles obligatorios)
-      btnNext.onclick = () => {
-          if (typeof validarPaso5Final === 'function' && validarPaso5Final()) {
-              finalizarRemito(); 
-          }
-      };
-    } else {
-      btnNext.textContent = 'Siguiente →';
-      btnNext.onclick = () => remWizardIr(1);
-    }
-  }
-  
-  document.querySelector('.content')?.scrollTo(0, 0);
-}
-
-function _remWizardActualizar() {
-  for (let i = 1; i <= REM_TOTAL_PASOS; i++) {
-    const panel = document.getElementById(`rem-step-${i}`);
-    if (panel) panel.classList.toggle('active', i === _remPasoActual);
-  }
-  
-  const fill = document.getElementById('rem-progress-fill');
-  if (fill) fill.style.width = `${(_remPasoActual / REM_TOTAL_PASOS) * 100}%`;
-  
-  const num = document.getElementById('rem-step-num');
-  if (num) num.textContent = _remPasoActual;
-  
-  document.querySelectorAll('.rem-step-dot').forEach((d, i) => {
-    d.classList.remove('active', 'done');
-    if (i + 1 < _remPasoActual) d.classList.add('done');
-    else if (i + 1 === _remPasoActual) d.classList.add('active');
-  });
-  
-  const btnBack = document.getElementById('rem-btn-back');
-  const btnNext = document.getElementById('rem-btn-next');
   if (btnBack) btnBack.style.display = _remPasoActual === 1 ? 'none' : '';
   
   // ── INYECCIÓN DEL BOTÓN PENDIENTE EN EL FOOTER ──
@@ -695,6 +654,7 @@ function _remWizardValidar(paso) {
     marcar('rem-destino', 'err-destino');
   }
   if (paso === 2) {
+    marcar('rem-cliente', 'err-cliente');
     marcar('rem-cuit', 'err-dni');
   }
   if (paso === 3) {
@@ -869,6 +829,18 @@ function actualizarProgresoFirmas() {
     }
 }
 
+function cerrarModalFirmaFalta() {
+  closeModal('modal-firma-falta');
+  const canvasWizard = document.getElementById('sig-canvas');
+  const canvasFirma  = document.getElementById('sig-canvas-firma');
+  const target = (canvasWizard && canvasWizard.offsetParent !== null) ? canvasWizard
+               : (canvasFirma && canvasFirma.offsetParent !== null) ? canvasFirma
+               : null;
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
 // ── 3. GUARD CLAUSE (VALIDACIÓN ANTES DE GUARDAR) ──
 // Esta función se ejecuta cuando el chofer toca "Finalizar y Guardar"
 function validarPaso5Final() {
@@ -880,7 +852,11 @@ function validarPaso5Final() {
     });
 
     if (!todasConfirmadas) {
-        toast('Marcá todas las confirmaciones antes de finalizar', 'error');
+        const titulo = document.getElementById('modal-validacion-titulo');
+        const msgEl  = document.getElementById('modal-validacion-msg');
+        if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+        if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
+        openModal('modal-validacion');
         return false;
     }
 
@@ -888,11 +864,10 @@ function validarPaso5Final() {
     if (!hasSig) {
         const canvas = document.getElementById('sig-canvas');
         if (canvas) {
-            canvas.style.borderColor = 'var(--red)';
-            setTimeout(() => canvas.style.borderColor = 'var(--amber)', 2500);
-            canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            canvas.style.border = '2px dashed var(--red)';
+            canvas.style.background = 'rgba(226,80,74,0.06)';
         }
-        toast('Dibujá la firma antes de finalizar', 'error');
+        openModal('modal-firma-falta');
         return false;
     }
 
@@ -911,6 +886,35 @@ function calcPagoAuto() {
     const resto = Math.max(0, total - monto1);
     monto2El.value = resto > 0 ? resto.toFixed(2) : '';
   }
+}
+
+function abrirNuevoRemito() {
+  const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
+  const jActiva  = _jornadasAbiertasCache?.[0] || _jornadaActivaLocal;
+  if (esChofer && !jActiva) {
+    openModal('modal-sin-jornada');
+    return;
+  }
+  showRemitosView('nuevo');
+}
+
+function actualizarEstadoBtnNuevoRemito() {
+  const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
+  const jActiva  = _jornadasAbiertasCache?.[0] || _jornadaActivaLocal;
+  const deshabilitar = esChofer && !jActiva;
+  ['btn-nuevo-remito-desktop','btn-nuevo-remito-fab'].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    if (deshabilitar) {
+      b.style.opacity = '0.45';
+      b.style.cursor = 'not-allowed';
+      b.title = 'Requiere una jornada activa';
+    } else {
+      b.style.opacity = '';
+      b.style.cursor = '';
+      b.title = '';
+    }
+  });
 }
 
 // ── REMITOS SUB-VISTAS ────────────────────────
@@ -953,11 +957,10 @@ if (view === 'nuevo') {
     vistaDestino.classList.remove('active');
     const lista = document.getElementById('remitos-lista');
     if (lista) { lista.style.display = 'block'; lista.classList.add('active'); }
-    if (typeof toast === 'function') toast('Debés iniciar una jornada antes de crear un remito', 'error');
+    openModal('modal-sin-jornada');
     return;
   }
   remWizardReset();
-  console.log("✅ Vista 'Nuevo Remito' reseteada y lista.");
 }
   // 3. Lógica para FIRMA
  if (view === 'firma') {
@@ -1179,6 +1182,15 @@ let arrastreRequerido = false;
 
 
 async function finalizarRemito() {
+  try {
+    return await _finalizarRemitoInner();
+  } catch (e) {
+    console.error('Error en finalizarRemito:', e);
+    toast('Error al finalizar: ' + (e?.message || e), 'error');
+  }
+}
+
+async function _finalizarRemitoInner() {
   const btn = document.getElementById('btn-finalizar');
   if (btn && btn.style.opacity === '0.5') {
     toast('Se requiere firma para finalizar', 'error'); return;
@@ -1203,22 +1215,28 @@ async function finalizarRemito() {
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || '';
 
   // ── Validaciones ──────────────────────────────────────
-  if (!patente) {
-    toast('Ingresá la patente del vehículo', 'error'); return;
-  }
-  if (!origen) {
-    toast('Ingresá el origen del servicio', 'error'); return;
-  }
-  if (!destino) {
-    toast('Ingresá el destino del servicio', 'error'); return;
-  }
+  const mostrarValidacion = (titulo, msg) => {
+    const tEl = document.getElementById('modal-validacion-titulo');
+    const mEl = document.getElementById('modal-validacion-msg');
+    if (tEl) tEl.textContent = titulo;
+    if (mEl) mEl.textContent = msg;
+    openModal('modal-validacion');
+  };
+
+  if (!patente) { mostrarValidacion('⚠️ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  if (!origen)  { mostrarValidacion('⚠️ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
+  if (!destino) { mostrarValidacion('⚠️ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
   if (cuit && !/^\d{7,11}$/.test(cuit) && !/^\d{2}-\d{7,8}-\d{1}$/.test(cuit)) {
-    toast('DNI/CUIT inválido. Ingresá solo números o formato XX-XXXXXXXX-X', 'error'); return;
+    mostrarValidacion('⚠️ DNI/CUIT inválido', 'El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso 2.');
+    remWizardIr(2 - _remPasoActual);
+    const cuitInp = document.getElementById('rem-cuit');
+    if (cuitInp) cuitInp.classList.add('rem-field-error');
+    return;
   }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';
   const totalVal = parseFloat(totalStr.replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
   if (totalVal > 0 && (!pago || pago === '—')) {
-    toast('Seleccioná un medio de pago antes de finalizar', 'error');
+    mostrarValidacion('⚠️ Falta medio de pago', 'Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso 3.');
     remWizardIr(3 - _remPasoActual);
     return;
   }
@@ -1325,9 +1343,15 @@ async function finalizarRemito() {
     jornadasList.insertBefore(div, jornadasList.firstChild);
   }
 
-  // ⑤ → Save signature
+  // ⑤ → Save signature (capturamos el dataURL ANTES de cambiar de vista, para evitar
+  // que se pierda al ocultarse el canvas. Lo guardamos en localStorage Y lo pasamos
+  // explícitamente a guardarRemitoCompleto para que no haya ambigüedad sobre qué canvas usar)
   const sigCanvas = document.getElementById('sig-canvas');
-  if (sigCanvas && hasSig) _saveSig(nro, sigCanvas.toDataURL());
+  let firmaDataURL = null;
+  if (sigCanvas && hasSig) {
+    firmaDataURL = sigCanvas.toDataURL('image/png');
+    _saveSig(nro, firmaDataURL);
+  }
 
   resetPagoForm();
 
@@ -1353,11 +1377,9 @@ async function finalizarRemito() {
   const excedenteLimpio = parsearImporte(document.getElementById('imp-excedente')?.value);
   const otrosLimpio     = parsearImporte(document.getElementById('imp-otros')?.value);
 
-  // 🚨 DIAGNÓSTICO DE SEGURIDAD
-  console.log("ID del chofer enviado a Supabase (Remito Final):", USUARIO_ACTUAL.id);
-
   const ok = await guardarRemitoCompleto({
     nro,
+    firmaDataURL,
     driver_id: USUARIO_ACTUAL.id, // 🛠️ INYECCIÓN DE SEGURIDAD
     log_id:  _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null, // 🛠️ REGISTRO SILENCIOSO
     nroSrv,
@@ -1994,7 +2016,30 @@ function toggleConformidadArrastre(btnElement) {
 }
 
 async function confirmarFirma() {
-  if (!hasSig) { toast('El socio debe firmar antes de confirmar', 'error'); return; }
+  // Validar confirmaciones obligatorias (toggles que no estén ocultos)
+  const togglesObligatorios = document.querySelectorAll('#remitos-firma .toggle-row:not([style*="display:none"]) .toggle');
+  let todasConf = true;
+  togglesObligatorios.forEach(t => {
+    if (!t.classList.contains('on')) todasConf = false;
+  });
+  if (!todasConf) {
+    const titulo = document.getElementById('modal-validacion-titulo');
+    const msgEl  = document.getElementById('modal-validacion-msg');
+    if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+    if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
+    openModal('modal-validacion');
+    return;
+  }
+
+  if (!hasSig) {
+    const canvas = document.getElementById('sig-canvas-firma');
+    if (canvas) {
+      canvas.style.border = '2px dashed var(--red)';
+      canvas.style.background = 'rgba(226,80,74,0.06)';
+    }
+    openModal('modal-firma-falta');
+    return;
+  }
 
   const nro2 = document.getElementById('firma-nro')?.textContent || '—';
 
@@ -3337,6 +3382,7 @@ function openModal(id) {
     const fh = document.getElementById('nj-hora');
     if (fd && !fd.value) fd.value = hoy;
     if (fh && !fh.value) fh.value = hora;
+    kmInicioExcepcion = false;
   }
   if (id === 'modal-cerrar-jornada') {
     const fh = document.getElementById('cj-hora');
@@ -3641,6 +3687,11 @@ async function cargarScreenCamion() {
   set('camion-detalle', `Patente: ${patente}`);
   set('camion-km-pill', km != null ? `${km} km actuales` : '— km actuales');
   set('camion-sec-sub', `${nombre} · ${patente}`);
+  const statusPill = document.getElementById('camion-status-pill');
+  if (statusPill) {
+    statusPill.textContent = '● Activo';
+    statusPill.className = 'pill pill-green';
+  }
 
   const [combustible, ultimoControl, services, planes] = await Promise.all([
     cargarCombustible(truckId),
@@ -3668,10 +3719,16 @@ function _renderCamionSinJornada() {
   set('camion-km-pill', '— km');
   const pill = document.getElementById('camion-next-service-pill');
   if (pill) pill.style.display = 'none';
+  const statusPill = document.getElementById('camion-status-pill');
+  if (statusPill) {
+    statusPill.textContent = '○ Sin jornada';
+    statusPill.className = 'pill pill-muted';
+  }
   const cont = document.getElementById('camion-cards-container');
   if (cont) cont.innerHTML = `
     <div class="card" style="text-align:center;padding:30px;color:var(--muted)">
-      Iniciá una jornada para ver el camión activo
+      <div style="margin-bottom:16px">Iniciá una jornada para ver el camión activo</div>
+      <button class="btn btn-primary" onclick="abrirModalNuevaJornada()">Iniciar jornada</button>
     </div>`;
   _volverCamionMain();
 }
@@ -6104,6 +6161,7 @@ let _allDriverDocs           = [];
 let fotoKmInicio          = null;
 let fotoKmFinal           = null;
 let kmExcepcion = false;  // true si el chofer confirmó excepción de odómetro
+let kmInicioExcepcion = false;  // true si el chofer confirmó salto grande al iniciar jornada
 let _jornadasAbiertasCache    = [];
 let _jornadaPendienteCerrar   = null;
 
@@ -6311,6 +6369,12 @@ async function confirmarNuevaJornada() {
   const kmRegistrado = parseInt(jornadaSeleccionada?.current_km) || 0;
   if (kmRegistrado > 0 && kmInicio < kmRegistrado) {
     _modalError('nj-error', `El KM ingresado (${kmInicio.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`); return;
+  }
+  const MAX_SALTO_INICIO = 5000;
+  if (kmRegistrado > 0 && (kmInicio - kmRegistrado) > MAX_SALTO_INICIO && !kmInicioExcepcion) {
+    _modalError('nj-error', `El KM ingresado (${kmInicio.toLocaleString('es-AR')}) supera en más de ${MAX_SALTO_INICIO.toLocaleString('es-AR')} km al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Revisá el odómetro o tocá de nuevo para confirmar la excepción.`);
+    kmInicioExcepcion = true;
+    return;
   }
   if (!fotoKmInicio) {
     _modalError('nj-error', 'Sacá la foto del tablero del camión');
@@ -6525,11 +6589,15 @@ function onKmManualInicioInput() {
   if (btnConf) btnConf.disabled = false;
 }
 
+const MAX_KM_DIARIO = 1500;
+
 function onKmManualInput() {
   const input      = document.getElementById('cj-km-final');
   const calcEl     = document.getElementById('cj-km-calc');
   const excSection = document.getElementById('cj-excepcion-section');
   const excCheck   = document.getElementById('cj-excepcion-check');
+  const excMsg     = document.getElementById('cj-excepcion-msg');
+  const excLabel   = document.getElementById('cj-excepcion-label');
   const btnCierre  = document.getElementById('btn-confirmar-cierre');
 
   const kmFinal  = parseInt(input?.value) || 0;
@@ -6542,14 +6610,30 @@ function onKmManualInput() {
   }
 
   const diff = kmFinal - kmInicio;
-  const esAnomalía = diff < 0;
+  const esRetroceso  = diff < 0;
+  const esSaltoGrande = diff > MAX_KM_DIARIO;
+  const esAnomalía   = esRetroceso || esSaltoGrande;
 
   if (calcEl) {
-    calcEl.textContent = esAnomalía ? '⚠ KM menor al inicio de jornada' : `+${diff.toLocaleString('es-AR')} km recorridos`;
+    calcEl.textContent = esRetroceso
+      ? '⚠ KM menor al inicio de jornada'
+      : esSaltoGrande
+        ? `⚠ +${diff.toLocaleString('es-AR')} km en una sola jornada — verificá el valor`
+        : `+${diff.toLocaleString('es-AR')} km recorridos`;
     calcEl.style.color = esAnomalía ? 'var(--red)' : 'var(--green)';
   }
 
   if (excSection) excSection.style.display = esAnomalía ? 'block' : 'none';
+  if (excMsg) {
+    excMsg.innerHTML = esRetroceso
+      ? 'El KM ingresado es <strong>menor al inicio de jornada</strong>. Editá el valor o confirmá la excepción.'
+      : `El recorrido (+${diff.toLocaleString('es-AR')} km) supera el máximo razonable de una jornada (${MAX_KM_DIARIO.toLocaleString('es-AR')} km). Verificá el odómetro o confirmá la excepción.`;
+  }
+  if (excLabel) {
+    excLabel.textContent = esRetroceso
+      ? 'El odómetro dio la vuelta o fue reemplazado'
+      : 'El recorrido es correcto (viaje extraordinario)';
+  }
   if (!esAnomalía && excCheck) { excCheck.checked = false; kmExcepcion = false; }
 
   if (btnCierre) btnCierre.disabled = esAnomalía && !kmExcepcion;
@@ -6566,10 +6650,13 @@ function validarKmInicioJornada() {
   const display = document.getElementById('nj-km-validacion');
   if (!input || !display || !jornadaSeleccionada) return;
 
+  kmInicioExcepcion = false;
+
   const kmIngresado = parseInt(input.value) || 0;
   const kmRegistrado = parseInt(jornadaSeleccionada.current_km) || 0;
 
-  if (kmIngresado === 0) { display.textContent = ''; return; }
+  if (kmIngresado === 0) { display.textContent = ''; display.style.display = 'none'; return; }
+  display.style.display = '';
 
   if (kmRegistrado > 0) {
     display.textContent = `Último KM registrado para este camión: ${kmRegistrado.toLocaleString('es-AR')} km`;
@@ -6578,6 +6665,9 @@ function validarKmInicioJornada() {
 
   if (kmIngresado < kmRegistrado) {
     display.textContent = `⚠️ El KM ingresado (${kmIngresado.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
+    display.style.color = 'var(--red)';
+  } else if (kmRegistrado > 0 && (kmIngresado - kmRegistrado) > 5000) {
+    display.textContent = `⚠️ Salto de +${(kmIngresado - kmRegistrado).toLocaleString('es-AR')} km respecto al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
     display.style.color = 'var(--red)';
   }
 }
@@ -6621,6 +6711,9 @@ async function confirmarCerrarJornada() {
   }
   if (kmFinal < jornadaParaCerrar.km_inicio && !kmExcepcion) {
     _modalError('cj-error', 'El KM final es menor al inicial. Editá el valor o confirmá la excepción de odómetro.'); return;
+  }
+  if ((kmFinal - jornadaParaCerrar.km_inicio) > MAX_KM_DIARIO && !kmExcepcion) {
+    _modalError('cj-error', `El recorrido supera ${MAX_KM_DIARIO.toLocaleString('es-AR')} km en una sola jornada. Editá el valor o confirmá la excepción.`); return;
   }
   if (!fotoKmFinal) {
     _modalError('cj-error', 'Sacá la foto del odómetro final');
@@ -6848,6 +6941,7 @@ async function actualizarPantallaJornadas() {
   const jornadas = await cargarJornadasAbiertas();
   _jornadasAbiertasCache = jornadas;
   actualizarBotonFinalizar(jornadas.length > 0);
+  try { actualizarEstadoBtnNuevoRemito(); } catch(_) {}
 
   // Sincronizar localStorage con lo que devuelve Supabase
   try {
@@ -8083,12 +8177,26 @@ function crearDocCard(doc, meta) {
     falta_archivo:   { border: '#f97316',       pill: 'pill-orange', pillTxt: 'Sin archivo' },
     sin_vencimiento: { border: 'var(--border)', pill: 'pill-muted',  pillTxt: 'Sin venc.'   },
   };
-  const sc = statusConfig[doc.status] || statusConfig.sin_vencimiento;
 
   // Usar UTC para ambos extremos — evita error de ±1 día en cambio de horario
   const dias = doc.expiry_date
     ? Math.round((new Date(doc.expiry_date + 'T00:00:00Z') - new Date(new Date().toISOString().slice(0,10) + 'T00:00:00Z')) / 86400000)
     : null;
+
+  // El pill principal SIEMPRE refleja vigencia (no archivo).
+  // El "sin archivo" se comunica abajo en la fila de archivo.
+  let statusEfectivo;
+  if (dias === null) {
+    statusEfectivo = doc.status === 'sin_vencimiento' ? 'sin_vencimiento' : 'sin_vencimiento';
+  } else if (dias < 0) {
+    statusEfectivo = 'vencido';
+  } else if (dias <= 30) {
+    statusEfectivo = 'proximo';
+  } else {
+    statusEfectivo = 'vigente';
+  }
+  const sc = statusConfig[statusEfectivo] || statusConfig.sin_vencimiento;
+  const sinArchivo = !doc.file_url;
 
 let fileSectionHtml = '';
   if (doc.file_url) {
@@ -8146,10 +8254,18 @@ let fileSectionHtml = '';
       </div>
       <div class="doc-expiry-row">
         <div>
-          <div class="doc-days" style="color:${sc.border}">${dias !== null ? dias : '—'}</div>
-          <div class="doc-days-label">${dias !== null ? 'días restantes' : 'sin vencimiento'}</div>
+          <div class="doc-days" style="color:${sc.border}">${dias !== null ? Math.abs(dias) : '—'}</div>
+          <div class="doc-days-label">${
+            dias === null ? 'sin vencimiento'
+            : dias < 0 ? `vencido hace ${Math.abs(dias) === 1 ? '1 día' : Math.abs(dias) + ' días'}`
+            : dias === 0 ? 'vence hoy'
+            : `${dias === 1 ? '1 día' : dias + ' días'} restantes`
+          }</div>
         </div>
-        <span class="pill ${sc.pill}">${sc.pillTxt}</span>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <span class="pill ${sc.pill}">${sc.pillTxt}</span>
+          ${sinArchivo ? `<span class="pill pill-orange" style="font-size:9px;padding:2px 6px">Sin archivo</span>` : ''}
+        </div>
       </div>
       <div class="doc-file-row">${fileSectionHtml}</div>
     </div>`;
