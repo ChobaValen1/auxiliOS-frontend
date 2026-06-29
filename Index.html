@@ -1287,6 +1287,7 @@
   <button class="rem-wizard-back" onclick="showRemitosView('lista')">←</button>
   <div class="rem-wizard-title">/ NUEVO REMITO</div>
   <div class="rem-wizard-counter"><span id="rem-step-num">1</span> de 5</div>
+  <button type="button" class="rem-wizard-help" title="Ver formatos de campos" onclick="openModal('modal-formatos')">?</button>
 </div>
 <div class="rem-progress"><div class="rem-progress-fill" id="rem-progress-fill" style="width:20%"></div></div>
 <div class="rem-step-dots" id="rem-step-dots">
@@ -1372,10 +1373,7 @@
 <!-- PASO 2: DATOS DEL SOCIO -->
 <div class="rem-step-panel" id="rem-step-2">
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div class="card-label" style="margin:0">Datos del socio</div>
-      <button type="button" class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openModal('modal-formatos')">ℹ️ Formatos</button>
-    </div>
+    <div class="card-label" style="margin-bottom:14px">Datos del socio</div>
 
     <div class="form-group">
       <label class="form-label">Nombre del socio / cliente <span style="color:var(--red)">*</span></label>
