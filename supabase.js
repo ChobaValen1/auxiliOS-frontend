@@ -1486,7 +1486,7 @@ async function cargarDatosChofer(userId, desde, truckId = null) {
     jornadasQ,
     fuelQ,
     _db.from('rendicion_cierre')
-      .select('efectivo_declarado, efectivo_esperado, estado, fecha')
+      .select('efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra, estado, fecha')
       .eq('driver_id', userId)
       .gte('fecha', desde)
       .neq('estado', 'rechazado'),

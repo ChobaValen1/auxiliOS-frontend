@@ -2291,6 +2291,8 @@ let _chartNegocio   = null;   // instancia Chart.js del gráfico de tendencia ne
 let _chartEvolucion = null;   // instancia Chart.js del gráfico evolución 7 días
 let _remitosEfectivoActuales = [];  // remitos con pago en efectivo del render actual
 let _rendRemitosActuales    = [];   // remitos del período activo en vista rendimiento
+let _rendFuelActuales       = [];   // combustible del período activo
+let _rendRendicionActuales  = [];   // rendiciones del período activo (con gastos_extra)
 let _negocioUsuariosActuales  = [];
 let _negocioLogTruckMapActual = {};
 let _negocioJornadasActuales  = [];
@@ -2325,11 +2327,91 @@ function _metodoRow(label, monto, total) {
   </div>`;
 }
 
+function _buildChartBuckets(tipo, logs, remitos) {
+  const now = new Date();
+  if (tipo === 'hoy') {
+    // 4 bloques: Mañana 6-12 / Mediodía 12-15 / Tarde 15-19 / Noche 19-24
+    const blocks = [
+      { label: 'Mañana',   from: 6,  to: 12, km: 0, srvs: 0 },
+      { label: 'Mediodía', from: 12, to: 15, km: 0, srvs: 0 },
+      { label: 'Tarde',    from: 15, to: 19, km: 0, srvs: 0 },
+      { label: 'Noche',    from: 19, to: 24, km: 0, srvs: 0 },
+    ];
+    const hoyKey = now.toISOString().slice(0,10);
+    const hourNow = now.getHours();
+    remitos.forEach(r => {
+      const ts = r.created_at_device || '';
+      if (ts.slice(0,10) !== hoyKey) return;
+      const h = parseInt(ts.slice(11,13), 10);
+      if (isNaN(h)) return;
+      const b = blocks.find(b => h >= b.from && h < b.to);
+      if (b) b.srvs++;
+    });
+    // KM del día (sin granularidad horaria — todo al bloque actual)
+    const kmHoy = logs.filter(j => j.log_date === hoyKey)
+      .reduce((s, j) => s + Math.max(0, (j.km_final||0) - (j.km_inicio||0)), 0);
+    const idxActual = blocks.findIndex(b => hourNow >= b.from && hourNow < b.to);
+    if (idxActual >= 0) blocks[idxActual].km = kmHoy;
+    return blocks.map((b, i) => ({ ...b, actual: i === idxActual }));
+  }
+  if (tipo === 'semana') {
+    // Lun→Dom de la semana actual
+    const day = now.getDay() || 7;
+    const monday = new Date(now); monday.setDate(now.getDate() - (day - 1));
+    const labels = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    const dias = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
+      dias.push({ key: d.toISOString().slice(0,10), label: labels[i], km: 0, srvs: 0 });
+    }
+    logs.forEach(j => {
+      const d = dias.find(d => d.key === j.log_date);
+      if (d) d.km += Math.max(0, (j.km_final||0) - (j.km_inicio||0));
+    });
+    remitos.forEach(r => {
+      const k = (r.created_at_device||'').slice(0,10);
+      const d = dias.find(d => d.key === k);
+      if (d) d.srvs++;
+    });
+    const hoyKey = now.toISOString().slice(0,10);
+    return dias.map(d => ({ ...d, actual: d.key === hoyKey }));
+  }
+  // mes = últimos 12 meses
+  const meses = [];
+  const labelsMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    meses.push({ key, label: labelsMes[d.getMonth()], km: 0, srvs: 0 });
+  }
+  logs.forEach(j => {
+    const k = (j.log_date||'').slice(0,7);
+    const m = meses.find(m => m.key === k);
+    if (m) m.km += Math.max(0, (j.km_final||0) - (j.km_inicio||0));
+  });
+  remitos.forEach(r => {
+    const k = (r.created_at_device||'').slice(0,7);
+    const m = meses.find(m => m.key === k);
+    if (m) m.srvs++;
+  });
+  const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return meses.map(m => ({ ...m, actual: m.key === mesActual }));
+}
+
 function _desde(tipo) {
   const now = new Date();
   if (tipo === 'hoy')    return now.toISOString().slice(0, 10);
-  if (tipo === 'semana') { const d = new Date(now); d.setDate(d.getDate() - 6); return d.toISOString().slice(0,10); }
-  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  if (tipo === 'semana') {
+    const d = new Date(now);
+    const day = d.getDay() || 7; // domingo=7 para alinear Lun=1
+    d.setDate(d.getDate() - (day - 1));
+    return d.toISOString().slice(0,10);
+  }
+  // mes = últimos 12 meses (primer día del mes hace 11 meses)
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - 11);
+  d.setDate(1);
+  return d.toISOString().slice(0,10);
 }
 
 // ── cargarDashboard ───────────────────────────
@@ -2396,7 +2478,7 @@ function dashRendPeriod(tipo, el) {
   el.classList.add('active');
   _rendPeriodo = tipo;
   const lbl = document.getElementById('dash-rend-periodo-lbl');
-  if (lbl) lbl.textContent = { hoy:'Hoy', semana:'Últimos 7 días', mes:'Mes actual' }[tipo];
+  if (lbl) lbl.textContent = { hoy:'Hoy', semana:'Semana actual (Lun–Dom)', mes:'Últimos 12 meses' }[tipo];
   _cargarViewRendimiento();
 }
 
@@ -2436,6 +2518,8 @@ async function _cargarViewRendimiento() {
 
   const { remitos, jornadas: logs, fuel, rendicion, alertas } = datos;
   _rendRemitosActuales = remitos;
+  _rendFuelActuales       = fuel;
+  _rendRendicionActuales  = rendicion;
 
   // ── Cálculos financieros ──
   let factTotal = 0, factEf = 0, factTr = 0;
@@ -2447,6 +2531,7 @@ async function _cargarViewRendimiento() {
   });
   const efRendido    = rendicion.reduce((s, r) => s + (r.efectivo_declarado || 0), 0);
   const pendiente    = Math.max(0, factEf - efRendido);
+  const totalGastosExtra = rendicion.reduce((s, r) => s + (r.gastos_extra || 0), 0);
 
   // ── Cálculos operativos ──
   const kmTotal  = logs.reduce((s, j) => s + Math.max(0, (j.km_final||0) - (j.km_inicio||0)), 0);
@@ -2486,9 +2571,9 @@ async function _cargarViewRendimiento() {
     finEl.style.gridTemplateColumns = esChofer ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
     finEl.innerHTML =
       (esChofer ? '' : _KPI('💰', 'Total generado', '$'+_AR(factTotal), 'var(--amber)', `${srvs} servicios`, detTotal)) +
-      _KPI('💵', 'Efectivo en mano',  '$'+_AR(factEf),   'var(--green)',
-        `${efCount} cobros`, null,
-        `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('efectivo')">📋 Ver detalle</span>`) +
+      _KPI('💵', 'Efectivo en mano',  '$'+_AR(factEf - gastosFuel - totalGastosExtra),   'var(--green)',
+        `$${_AR(factEf)} cobrado − $${_AR(gastosFuel + totalGastosExtra)} gastos`, null,
+        `<span class="kpi-dash-cta-btn" onclick="abrirModalDesgloseEfectivo()">📋 Ver detalle</span>`) +
       _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
         `${trCount} cobros`, null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
@@ -2531,38 +2616,21 @@ async function _cargarViewRendimiento() {
     }
   }
 
-  // ── Evolución 7 días (KM + servicios) ──
-  const dias7 = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    dias7.push({ key: d.toISOString().slice(0,10), label: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()], km: 0, srvs: 0 });
-  }
-  const hace7 = dias7[0].key;
-  // KM por día (desde jornadas cerradas)
-  logs.filter(j => (j.log_date||'') >= hace7).forEach(j => {
-    const d = dias7.find(d => d.key === j.log_date);
-    if (d) d.km += Math.max(0, (j.km_final||0) - (j.km_inicio||0));
-  });
-  // Servicios por día (desde remitos)
-  remitos.filter(r => (r.created_at_device||'').slice(0,10) >= hace7).forEach(r => {
-    const d = dias7.find(d => d.key === (r.created_at_device||'').slice(0,10));
-    if (d) d.srvs++;
-  });
-  const hoyKey = new Date().toISOString().slice(0,10);
-  const hoyIdx = dias7.findIndex(d => d.key === hoyKey);
-  const canvas = document.getElementById('dash-evolucion-canvas');
+  // ── Gráfico de evolución (modo según filtro Hoy/Semana/Mes) ──
+  const buckets = _buildChartBuckets(_rendPeriodo, logs, remitos);
+  const canvas  = document.getElementById('dash-evolucion-canvas');
   if (canvas) {
     if (_chartEvolucion) { _chartEvolucion.destroy(); _chartEvolucion = null; }
     _chartEvolucion = new Chart(canvas, {
       type: 'bar',
       data: {
-        labels: dias7.map(d => d.label),
+        labels: buckets.map(b => b.label),
         datasets: [
           {
             type: 'bar',
             label: 'KM',
-            data: dias7.map(d => d.km),
-            backgroundColor: dias7.map((_, i) => i === hoyIdx ? 'rgba(245,166,35,1)' : 'rgba(245,166,35,0.45)'),
+            data: buckets.map(b => b.km),
+            backgroundColor: buckets.map(b => b.actual ? 'rgba(245,166,35,1)' : 'rgba(245,166,35,0.45)'),
             borderRadius: 4,
             borderSkipped: false,
             yAxisID: 'y',
@@ -2570,7 +2638,7 @@ async function _cargarViewRendimiento() {
           {
             type: 'line',
             label: 'Servicios',
-            data: dias7.map(d => d.srvs),
+            data: buckets.map(b => b.srvs),
             borderColor: '#4ade80',
             backgroundColor: 'rgba(74,222,128,0.12)',
             pointBackgroundColor: '#4ade80',
@@ -9223,6 +9291,98 @@ function abrirDocumentoChofer(url) {
   
   // El '_blank' fuerza al navegador móvil a abrir su visor nativo o una nueva pestaña
   window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function abrirModalDesgloseEfectivo() {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const remitos   = _rendRemitosActuales || [];
+  const fuel      = _rendFuelActuales || [];
+  const rendicion = _rendRendicionActuales || [];
+
+  const cobradosEf = remitos.filter(r => r.pago_1_metodo === 'efectivo' || r.pago_2_metodo === 'efectivo');
+  const getEf = r => (r.pago_1_metodo==='efectivo'?(r.pago_1_monto||0):0) + (r.pago_2_metodo==='efectivo'?(r.pago_2_monto||0):0);
+  const totalCobrado = cobradosEf.reduce((s,r)=>s+getEf(r),0);
+
+  const truckIds = new Set((rendicion || []).map(r=>r.truck_id));
+  const totalCombustible = fuel.reduce((s,f)=>s+(f.total_cost||0),0);
+  const cargasFuel = [...fuel].sort((a,b)=>(b.fuel_date||'').localeCompare(a.fuel_date||''));
+
+  const gastosExtra = rendicion.filter(r => (r.gastos_extra||0) > 0);
+  const totalGastosExtra = gastosExtra.reduce((s,r)=>s+(r.gastos_extra||0),0);
+
+  const neto = totalCobrado - totalCombustible - totalGastosExtra;
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `💵 Efectivo en mano · $${_AR(neto)}`;
+
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const rowsCobrado = cobradosEf.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cobros en efectivo</div>'
+    : cobradosEf.map(r => {
+        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
+          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">+$' + _AR(getEf(r)) + '</span>'
+          + '</div>';
+      }).join('');
+
+  const rowsFuel = cargasFuel.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cargas de combustible</div>'
+    : cargasFuel.map(f => {
+        const fecha = (f.fuel_date||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--text);font-size:11px">⛽ ' + (f.liters||0) + ' L</span>'
+          + '<span style="color:var(--red);font-weight:600;font-size:11px;text-align:right">−$' + _AR(f.total_cost||0) + '</span>'
+          + '</div>';
+      }).join('');
+
+  const rowsExtra = gastosExtra.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin gastos extra registrados</div>'
+    : gastosExtra.map(r => {
+        const fecha = (r.fecha||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--text);font-size:11px">' + _esc(r.motivo_extra || 'Sin motivo') + '</span>'
+          + '<span style="color:var(--red);font-weight:600;font-size:11px;text-align:right">−$' + _AR(r.gastos_extra||0) + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Cobrado</div>
+        <div style="color:var(--green);font-weight:700;font-size:14px">+$${_AR(totalCobrado)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Combustible</div>
+        <div style="color:var(--red);font-weight:700;font-size:14px">−$${_AR(totalCombustible)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Gastos extra</div>
+        <div style="color:var(--red);font-weight:700;font-size:14px">−$${_AR(totalGastosExtra)}</div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid ${neto>=0?'var(--green)':'var(--red)'};border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">= Efectivo en mano</div>
+      <div style="color:${neto>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${_AR(neto)}</div>
+    </div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:var(--green);font-weight:600">+ Cobrado en efectivo (${cobradosEf.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:14px">${rowsCobrado}</div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">− Combustible (${cargasFuel.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:14px">${rowsFuel}</div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">− Gastos extra (${gastosExtra.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rowsExtra}</div>
+  `;
+
+  openModal('modal-desglose-pago');
 }
 
 function abrirModalDesglosePago(tipo) {

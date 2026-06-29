@@ -540,14 +540,24 @@ details.kpi-more {
   padding-top: 8px;
 }
 details.kpi-more > summary {
-  font-size: 10px; color: var(--amber);
-  cursor: pointer; list-style: none;
-  user-select: none; outline: none;
+  display: block;
+  text-align: center;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  outline: none;
 }
 details.kpi-more > summary::-webkit-details-marker { display: none; }
-details.kpi-more > summary::after { content: ' →'; }
-details.kpi-more[open] > summary::after { content: ' ↑'; }
-.kpi-more-body { margin-top: 8px; }
+details.kpi-more > summary::after { content: ' ▾'; }
+details.kpi-more[open] > summary::after { content: ' ▴'; }
+.kpi-more-body { margin-top: 10px; }
 .kpi-more-row {
   display: flex; justify-content: space-between;
   align-items: center; padding: 4px 0;
@@ -559,7 +569,14 @@ details.kpi-more[open] > summary::after { content: ' ↑'; }
 .kpi-more-row span:last-child { font-family: 'DM Mono'; font-weight: 600; }
 .kpi-more-link {
   display: block; margin-top: 8px;
-  font-size: 10px; color: var(--amber);
+  text-align: center;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--accent);
   cursor: pointer;
 }
 
