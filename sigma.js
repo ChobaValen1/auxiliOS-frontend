@@ -7753,8 +7753,8 @@ function _confirmarCerrarSesion() {
   if (confirm('¿Seguro que querés cerrar sesión?')) logoutUsuario();
 }
 const _cfgTabMeta = {
-  'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal' },
-  'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal' },
+  'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal', importTipo: 'flota' },
+  'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal', importTipo: 'usuarios' },
   'tab-planes':      { title: 'Planes',       action: 'openAdminPlanModal' },
   'tab-emergencias': { title: 'Emergencias',  action: null },
   'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
@@ -7780,6 +7780,15 @@ function switchConfigTab(tabId) {
         btnNew.onclick = window[meta.action];
       } else {
         btnNew.style.display = 'none';
+      }
+    }
+    const btnImport = document.getElementById('cfg-btn-import');
+    if (btnImport) {
+      if (meta.importTipo && !esSupervisor) {
+        btnImport.style.display = '';
+        btnImport.onclick = () => openImportCSVModal(meta.importTipo);
+      } else {
+        btnImport.style.display = 'none';
       }
     }
   }
@@ -10014,3 +10023,295 @@ document.addEventListener('click', e => {
     if (_currentRemitoEl) descargarRemitoPDF(_currentRemitoEl);
   }
 });
+
+// ─────────────────────────────────────────────────────────
+// IMPORTACIÓN CSV — Flota y Personal
+// ─────────────────────────────────────────────────────────
+const _CSV_SCHEMA = {
+  flota: {
+    title: '📥 Importar Flota desde CSV',
+    help: 'Subí un .csv o .xlsx con: <b>plate</b>, numero_interno, brand, model, year, <b>current_km</b>, current_hours, tipo_equipo.',
+    required: ['plate', 'current_km'],
+    columns: ['plate','numero_interno','brand','model','year','current_km','current_hours','tipo_equipo'],
+    template: [
+      ['plate','numero_interno','brand','model','year','current_km','current_hours','tipo_equipo'],
+      ['AB123CD','101','Scania','R450','2022','180000','5200','tractor'],
+      ['XY999ZZ','202','Volvo','FH16','2021','220000','0','tractor']
+    ]
+  },
+  usuarios: {
+    title: '📥 Importar Personal desde CSV',
+    help: 'Subí un .csv o .xlsx con: <b>legajo</b>, <b>email</b>, <b>full_name</b>, dni, phone, <b>rol</b> (chofer / supervision / administracion).',
+    required: ['legajo','email','full_name','rol'],
+    columns: ['legajo','email','full_name','dni','phone','rol'],
+    template: [
+      ['legajo','email','full_name','dni','phone','rol'],
+      ['CH-100','juan@example.com','Juan Pérez','30111222','11-5555-1111','chofer'],
+      ['SUP-10','ana@example.com','Ana López','27333444','11-5555-2222','supervision']
+    ]
+  }
+};
+
+let _csvCtx = { tipo: null, validRows: [], invalidRows: [], existingPlates: new Set(), existingEmails: new Set(), existingLegajos: new Set() };
+
+async function openImportCSVModal(tipo) {
+  if (!_CSV_SCHEMA[tipo]) return;
+  if (typeof XLSX === 'undefined') { toast('Librería XLSX no cargó aún — recargá la página', 'error'); return; }
+
+  _csvCtx = { tipo, validRows: [], invalidRows: [], existingPlates: new Set(), existingEmails: new Set(), existingLegajos: new Set() };
+
+  const sc = _CSV_SCHEMA[tipo];
+  document.getElementById('csv-modal-title').textContent = sc.title;
+  document.getElementById('csv-help-text').innerHTML = sc.help;
+  document.getElementById('csv-step-pick').style.display = '';
+  document.getElementById('csv-step-preview').style.display = 'none';
+  document.getElementById('csv-step-result').style.display = 'none';
+  document.getElementById('csv-btn-confirm').style.display = 'none';
+  document.getElementById('csv-modal-error').style.display = 'none';
+  const fi = document.getElementById('csv-file-input'); if (fi) fi.value = '';
+
+  try {
+    if (tipo === 'flota') {
+      const { data } = await _db.from('trucks').select('plate');
+      (data || []).forEach(r => r.plate && _csvCtx.existingPlates.add(String(r.plate).toUpperCase()));
+    } else {
+      const { data } = await _db.from('users').select('email, legajo');
+      (data || []).forEach(r => {
+        if (r.email) _csvCtx.existingEmails.add(String(r.email).toLowerCase());
+        if (r.legajo) _csvCtx.existingLegajos.add(String(r.legajo).toUpperCase());
+      });
+    }
+  } catch (e) { console.warn('CSV: no se pudo precargar duplicados', e); }
+
+  openModal('modal-import-csv');
+  _csvWireDropzone();
+}
+
+function _csvWireDropzone() {
+  const dz = document.getElementById('csv-dropzone');
+  if (!dz || dz._wired) return;
+  dz._wired = true;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const f = e.dataTransfer?.files?.[0];
+    if (f) _csvParseFile(f);
+  });
+}
+
+function _csvFileChanged(ev) {
+  const f = ev.target?.files?.[0];
+  if (f) _csvParseFile(f);
+}
+
+function _csvParseFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      _csvRenderPreview(rows);
+    } catch (err) {
+      showModalError('csv-modal-error', 'No se pudo leer el archivo. ¿Está bien formateado?');
+    }
+  };
+  reader.onerror = () => showModalError('csv-modal-error', 'Error leyendo el archivo');
+  reader.readAsArrayBuffer(file);
+}
+
+function _csvNormalizeHeader(h) {
+  return String(h || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+}
+
+function _csvRenderPreview(rows) {
+  const tipo = _csvCtx.tipo;
+  const sc = _CSV_SCHEMA[tipo];
+  if (!rows || rows.length < 2) {
+    showModalError('csv-modal-error', 'El archivo está vacío o solo tiene encabezados');
+    return;
+  }
+  document.getElementById('csv-modal-error').style.display = 'none';
+
+  const headers = rows[0].map(_csvNormalizeHeader);
+  const missing = sc.required.filter(r => !headers.includes(r));
+  if (missing.length) {
+    showModalError('csv-modal-error', `Faltan columnas obligatorias: ${missing.join(', ')}`);
+    return;
+  }
+
+  const seenInFile = { plate: new Set(), email: new Set(), legajo: new Set() };
+  const valid = [], invalid = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.every(v => String(v).trim() === '')) continue;
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = String(r[idx] ?? '').trim(); });
+
+    const errors = [];
+    if (tipo === 'flota') {
+      if (!obj.plate) errors.push('plate vacío');
+      else {
+        obj.plate = obj.plate.toUpperCase();
+        if (obj.plate.replace(/\s/g,'').length < 6) errors.push('plate muy corto');
+        if (_csvCtx.existingPlates.has(obj.plate)) errors.push('plate ya existe en flota');
+        if (seenInFile.plate.has(obj.plate)) errors.push('plate duplicado en archivo');
+        seenInFile.plate.add(obj.plate);
+      }
+      const km = parseInt(obj.current_km);
+      if (isNaN(km)) errors.push('current_km inválido'); else obj.current_km = km;
+      obj.current_hours = parseInt(obj.current_hours) || 0;
+      obj.year = parseInt(obj.year) || null;
+      if (obj.tipo_equipo && !['tractor','semi','utilitario','otro'].includes(obj.tipo_equipo.toLowerCase())) {
+        obj.tipo_equipo = obj.tipo_equipo;
+      }
+    } else {
+      if (!obj.legajo) errors.push('legajo vacío');
+      else {
+        obj.legajo = obj.legajo.toUpperCase();
+        if (_csvCtx.existingLegajos.has(obj.legajo)) errors.push('legajo ya existe');
+        if (seenInFile.legajo.has(obj.legajo)) errors.push('legajo duplicado en archivo');
+        seenInFile.legajo.add(obj.legajo);
+      }
+      if (!obj.email) errors.push('email vacío');
+      else {
+        obj.email = obj.email.toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(obj.email)) errors.push('email inválido');
+        if (_csvCtx.existingEmails.has(obj.email)) errors.push('email ya existe');
+        if (seenInFile.email.has(obj.email)) errors.push('email duplicado en archivo');
+        seenInFile.email.add(obj.email);
+      }
+      if (!obj.full_name) errors.push('full_name vacío');
+      const rolN = (obj.rol || '').toLowerCase();
+      if (!['chofer','supervision','administracion'].includes(rolN)) errors.push('rol inválido (chofer/supervision/administracion)');
+      else obj.rol = rolN;
+    }
+
+    if (errors.length) invalid.push({ rowNum: i + 1, obj, errors });
+    else valid.push(obj);
+  }
+
+  _csvCtx.validRows = valid;
+  _csvCtx.invalidRows = invalid;
+
+  document.getElementById('csv-preview-summary').innerHTML =
+    `<span style="color:#22c55e">✓ ${valid.length} válidas</span> · <span style="color:#f87171">✗ ${invalid.length} con error</span> · Total: ${valid.length + invalid.length}`;
+
+  const cols = sc.columns;
+  let html = `<table class="csv-preview-tbl"><thead><tr><th>#</th>${cols.map(c => `<th>${c}</th>`).join('')}<th>Estado</th></tr></thead><tbody>`;
+  const allRows = [
+    ...valid.map((o, i) => ({ rowNum: i + 2, obj: o, errors: [] })),
+    ...invalid
+  ].sort((a,b) => a.rowNum - b.rowNum);
+
+  allRows.forEach(r => {
+    const cls = r.errors.length ? 'csv-bad' : 'csv-ok';
+    html += `<tr class="${cls}"><td>${r.rowNum}</td>`;
+    cols.forEach(c => { html += `<td>${(r.obj[c] ?? '').toString().replace(/[<>]/g,'')}</td>`; });
+    html += `<td>${r.errors.length ? '⚠ ' + r.errors.join('; ') : '✓'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+
+  document.getElementById('csv-preview-table').innerHTML = html;
+  document.getElementById('csv-step-pick').style.display = 'none';
+  document.getElementById('csv-step-preview').style.display = '';
+  document.getElementById('csv-step-result').style.display = 'none';
+
+  const btn = document.getElementById('csv-btn-confirm');
+  btn.style.display = valid.length ? '' : 'none';
+  btn.textContent = `✓ Importar ${valid.length} válidas`;
+}
+
+function _csvVolverPick() {
+  document.getElementById('csv-step-pick').style.display = '';
+  document.getElementById('csv-step-preview').style.display = 'none';
+  document.getElementById('csv-step-result').style.display = 'none';
+  document.getElementById('csv-btn-confirm').style.display = 'none';
+  document.getElementById('csv-modal-error').style.display = 'none';
+  const fi = document.getElementById('csv-file-input'); if (fi) fi.value = '';
+}
+
+function _csvDescargarPlantilla() {
+  const tipo = _csvCtx.tipo || 'flota';
+  const sc = _CSV_SCHEMA[tipo];
+  const csv = sc.template.map(r => r.map(c => /[,"\n]/.test(c) ? `"${c.replace(/"/g,'""')}"` : c).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `plantilla_${tipo}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function _csvImportarConfirm() {
+  const tipo = _csvCtx.tipo;
+  const valid = _csvCtx.validRows;
+  if (!valid.length) return;
+
+  const btn = document.getElementById('csv-btn-confirm');
+  btn.disabled = true; btn.textContent = 'Importando…';
+
+  const results = { ok: 0, fail: 0, errors: [] };
+
+  if (tipo === 'flota') {
+    const payload = valid.map(o => ({
+      plate: o.plate, brand: o.brand || '', model: o.model || '',
+      year: o.year, numero_interno: o.numero_interno || '',
+      current_km: o.current_km, current_hours: o.current_hours || 0,
+      tipo_equipo: o.tipo_equipo || 'tractor', status: 'active'
+    }));
+    const CHUNK = 50;
+    for (let i = 0; i < payload.length; i += CHUNK) {
+      const slice = payload.slice(i, i + CHUNK);
+      const { error } = await _db.from('trucks').insert(slice);
+      if (error) {
+        for (const row of slice) {
+          const { error: e2 } = await _db.from('trucks').insert(row);
+          if (e2) { results.fail++; results.errors.push(`${row.plate}: ${e2.message}`); }
+          else results.ok++;
+        }
+      } else {
+        results.ok += slice.length;
+      }
+    }
+    try { cargarTablaAdminFlota(); } catch(_){}
+  } else {
+    for (let i = 0; i < valid.length; i++) {
+      const o = valid[i];
+      btn.textContent = `Importando… ${i + 1}/${valid.length}`;
+      try {
+        const resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: o.full_name, email: o.email, legajo: o.legajo,
+            role_name: o.rol, phone: o.phone || null, dni: o.dni || null
+          })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || data?.error) { results.fail++; results.errors.push(`${o.legajo}: ${data?.error || 'error HTTP ' + resp.status}`); }
+        else results.ok++;
+      } catch (e) {
+        results.fail++; results.errors.push(`${o.legajo}: red caída`);
+      }
+    }
+    try { cargarTablaAdminUsuarios(); } catch(_){}
+  }
+
+  document.getElementById('csv-step-preview').style.display = 'none';
+  document.getElementById('csv-step-result').style.display = '';
+  const body = document.getElementById('csv-result-body');
+  body.innerHTML = `
+    <div style="padding:18px;text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">${results.fail ? '⚠️' : '✅'}</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:10px">Importación finalizada</div>
+      <div style="color:#22c55e">✓ ${results.ok} ${tipo === 'flota' ? 'vehículos creados' : 'usuarios creados'}</div>
+      ${results.fail ? `<div style="color:#f87171;margin-top:6px">✗ ${results.fail} fallaron</div>` : ''}
+      ${results.errors.length ? `<details style="margin-top:14px;text-align:left"><summary style="cursor:pointer;font-size:12px;color:var(--muted)">Ver errores</summary><pre style="font-size:11px;background:#0008;padding:10px;border-radius:4px;max-height:200px;overflow:auto">${results.errors.map(e => e.replace(/[<>]/g,'')).join('\n')}</pre></details>` : ''}
+      ${tipo === 'usuarios' && results.ok ? `<div style="margin-top:14px;font-size:12px;color:var(--muted)">Contraseña inicial para todos: <code>Sigma1234!</code></div>` : ''}
+    </div>`;
+  btn.disabled = false;
+  btn.style.display = 'none';
+}

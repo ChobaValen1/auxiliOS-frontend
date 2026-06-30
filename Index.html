@@ -1920,7 +1920,10 @@
     <div class="cfg-content">
       <div class="cfg-content-header">
         <span class="cfg-content-title" id="cfg-tab-title">Flota</span>
-        <button class="btn btn-primary" id="cfg-btn-new" onclick="openNuevoVehiculoModal()" style="font-size:11px;padding:7px 13px">+ Nuevo</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" id="cfg-btn-import" onclick="openImportCSVModal('flota')" style="font-size:11px;padding:7px 13px">📥 Importar CSV</button>
+          <button class="btn btn-primary" id="cfg-btn-new" onclick="openNuevoVehiculoModal()" style="font-size:11px;padding:7px 13px">+ Nuevo</button>
+        </div>
       </div>
       <div class="cfg-content-body" id="config-content-area">
 
@@ -2097,6 +2100,46 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-nuevo-usuario')">Cancelar</button>
       <button class="btn btn-primary" id="btn-guardar-usuario" onclick="guardarNuevoUsuario()">💾 Crear Usuario</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-import-csv">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-head">
+      <span class="modal-head-title" id="csv-modal-title">📥 Importar CSV</span>
+      <button class="modal-close" onclick="closeModal('modal-import-csv')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="csv-step-pick">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px" id="csv-help-text">
+          Subí un archivo <b>.csv</b> o <b>.xlsx</b> con las columnas requeridas.
+        </div>
+        <div style="margin-bottom:10px">
+          <a href="javascript:void(0)" onclick="_csvDescargarPlantilla()" style="font-size:12px;color:var(--amber);text-decoration:underline">⬇ Descargar plantilla CSV</a>
+        </div>
+        <label class="csv-dropzone" id="csv-dropzone">
+          <input type="file" id="csv-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="_csvFileChanged(event)">
+          <div style="font-size:28px">📄</div>
+          <div style="font-size:13px;font-weight:600;margin-top:8px">Click para elegir archivo</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">o arrastrá y soltá acá</div>
+        </label>
+      </div>
+      <div id="csv-step-preview" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--muted)" id="csv-preview-summary">—</div>
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="_csvVolverPick()">← Cambiar archivo</button>
+        </div>
+        <div id="csv-preview-table" style="max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:6px"></div>
+      </div>
+      <div id="csv-step-result" style="display:none">
+        <div id="csv-result-body"></div>
+      </div>
+    </div>
+    <div id="csv-modal-error" style="display:none;margin:0 16px 10px;padding:10px 14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:6px;color:#f87171;font-size:13px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-import-csv')">Cerrar</button>
+      <button class="btn btn-primary" id="csv-btn-confirm" onclick="_csvImportarConfirm()" style="display:none">✓ Importar válidos</button>
     </div>
   </div>
 </div>
