@@ -3840,7 +3840,7 @@ function _renderCamionSinJornada() {
 }
 
 // ── Vista flota para admin/supervisor (sin jornada) ──
-let _flotaFiltro = 'todos';   // 'todos' | 'enRuta' | 'enBase' | 'alertas'
+let _flotaFiltro = 'todos';   // 'todos' | 'enRuta' | 'enBase' | 'alertas' | 'sinDatos'
 let _flotaQuery  = '';
 let _flotaEstado = {};        // truck_id -> { conductor, severidad, planUrgente }
 
@@ -3877,8 +3877,11 @@ async function _renderCamionFlotaAdmin() {
         .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
       let severidad = 'al_dia';
       if (urgente) {
-        if (urgente.plan_estado === 'vencido' || (urgente.km_restantes != null && urgente.km_restantes <= 0)) severidad = 'critico';
-        else if (urgente.km_restantes != null && urgente.km_restantes <= 1000) severidad = 'alerta';
+        const est = urgente.plan_estado;
+        const kmR = urgente.km_restantes;
+        if (est === 'vencido' || (kmR != null && kmR <= 0)) severidad = 'critico';
+        else if (est === 'proximo' || (kmR != null && kmR <= 1000)) severidad = 'alerta';
+        else if (est === 'sin_registro' || est === 'sin_odometro') severidad = 'sin_datos';
       }
       _flotaEstado[t.truck_id] = { conductor: enUso[t.truck_id] || null, severidad, planUrgente: urgente || null };
     });
@@ -3901,13 +3904,14 @@ function _pintarFlotaAdmin() {
     return;
   }
 
-  const counts = { todos: 0, enRuta: 0, enBase: 0, alertas: 0 };
+  const counts = { todos: 0, enRuta: 0, enBase: 0, alertas: 0, sinDatos: 0 };
   _flotaAdmin.forEach(t => {
     const st = _flotaEstado[t.truck_id] || {};
     counts.todos++;
     if (st.conductor) counts.enRuta++;
     else counts.enBase++;
     if (st.severidad === 'critico' || st.severidad === 'alerta') counts.alertas++;
+    if (st.severidad === 'sin_datos') counts.sinDatos++;
   });
 
   const q = _flotaQuery.trim().toLowerCase();
@@ -3916,6 +3920,7 @@ function _pintarFlotaAdmin() {
     if (_flotaFiltro === 'enRuta' && !st.conductor) return false;
     if (_flotaFiltro === 'enBase' && st.conductor) return false;
     if (_flotaFiltro === 'alertas' && st.severidad !== 'critico' && st.severidad !== 'alerta') return false;
+    if (_flotaFiltro === 'sinDatos' && st.severidad !== 'sin_datos') return false;
     if (q) {
       const hay = `${t.plate || ''} ${t.numero_interno || ''} ${t.brand || ''} ${t.model || ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
@@ -3929,35 +3934,81 @@ function _pintarFlotaAdmin() {
 
   const cards = filtrados.map(t => {
     const st = _flotaEstado[t.truck_id] || {};
-    const borderColor = st.conductor && st.severidad === 'al_dia' ? '#3b82f6'
-      : st.severidad === 'critico' ? '#ef4444'
+    // Borde: prioriza severidad de mantenimiento; sin_datos es neutro (gris).
+    const borderColor = st.severidad === 'critico' ? '#ef4444'
       : st.severidad === 'alerta'  ? '#f59e0b'
+      : st.conductor               ? '#3b82f6'
+      : st.severidad === 'sin_datos' ? '#6b7280'
       : '#22c55e';
-    const estadoLabel = st.conductor && st.severidad === 'al_dia' ? '🔵 En ruta'
-      : st.severidad === 'critico' ? '🔴 Service vencido'
-      : st.severidad === 'alerta'  ? '🟡 Alerta próxima'
-      : '🟢 Disponible';
-    const titulo = t.numero_interno != null
-      ? `MÓVIL #${t.numero_interno}`
-      : (t.plate || `ID ${t.truck_id}`);
+    // Regla de negocio: un camion con service vencido NO figura como Disponible.
+    // sin_datos = estado neutro: no afirma "Disponible" pero tampoco alarma con amarillo.
+    const labelOperativo = st.conductor
+      ? `<span style="color:#3b82f6">🔵 En ruta</span>`
+      : (st.severidad === 'critico'
+          ? `<span style="color:#ef4444">⛔ No apto</span>`
+          : st.severidad === 'alerta'
+            ? `<span style="color:#f59e0b">🟡 Apto con alerta</span>`
+            : st.severidad === 'sin_datos'
+              ? `<span style="color:#9ca3af">⚪ Sin historial</span>`
+              : `<span style="color:#22c55e">🟢 Disponible</span>`);
+    // Etiqueta de mantenimiento (si aplica). sin_datos no genera badge (ya se refleja en labelOperativo)
+    const labelMant = st.severidad === 'critico'
+      ? `<span style="color:#ef4444">🔴 Service vencido</span>`
+      : st.severidad === 'alerta'
+        ? `<span style="color:#f59e0b">🟡 Service próximo</span>`
+        : '';
+    // No duplicar la info: si labelOperativo ya dice "No apto"/"Apto con alerta", no repetir el detalle de mant
+    const estadoLabel = (labelMant && st.conductor)
+      ? `${labelOperativo} · ${labelMant}`
+      : labelOperativo;
+    // Titulo: si numero_interno ya contiene "MOVIL"/"MOBIL", no duplicar el prefijo
+    let titulo;
+    if (t.numero_interno != null) {
+      const ni = String(t.numero_interno).trim();
+      titulo = /^m[oó]vil/i.test(ni) ? ni.toUpperCase() : `MÓVIL ${ni}`;
+    } else {
+      titulo = t.plate || `ID ${t.truck_id}`;
+    }
     const subtitulo = `${t.plate || '—'}${t.brand || t.model ? ' · ' + `${t.brand || ''} ${t.model || ''}`.trim() : ''}`;
     const km = t.current_km != null ? Number(t.current_km).toLocaleString('es-AR') + ' km' : '— km';
+    // KM: gris por defecto, ambar/rojo solo si entra en ventana de service
+    const kmColor = st.severidad === 'critico' ? 'var(--red)'
+      : st.severidad === 'alerta' ? 'var(--amber)'
+      : 'var(--muted2)';
     const conductorLine = st.conductor
       ? `<div class="camion-flota-meta">👤 ${st.conductor}</div>`
       : `<div class="camion-flota-meta" style="color:var(--muted)">👤 Sin asignar</div>`;
-    const planLine = st.planUrgente
-      ? `<div class="camion-flota-meta" style="color:${st.severidad === 'critico' ? 'var(--red)' : st.severidad === 'alerta' ? 'var(--amber)' : 'var(--green)'}">⚙ ${st.planUrgente.name} · ${(st.planUrgente.km_restantes ?? 0) <= 0 ? 'vencido' : 'en ' + Math.abs(st.planUrgente.km_restantes || 0).toLocaleString('es-AR') + ' km'}</div>`
-      : '';
+    // Texto del plan urgente: respeta el estado real, no inventa "vencido" si km_restantes es null
+    let planLine = '';
+    if (st.planUrgente) {
+      const p = st.planUrgente;
+      const kmR = p.km_restantes;
+      const color = st.severidad === 'critico' ? 'var(--red)'
+        : st.severidad === 'alerta' ? 'var(--amber)'
+        : st.severidad === 'sin_datos' ? 'var(--muted2)'
+        : 'var(--green)';
+      let detalle;
+      if (kmR == null) {
+        detalle = p.plan_estado === 'sin_registro' ? 'sin ejecución registrada'
+          : p.plan_estado === 'sin_odometro' ? 'sin odómetro inicial'
+          : (p.plan_estado || '—');
+      } else if (kmR <= 0) {
+        detalle = `vencido por ${Math.abs(kmR).toLocaleString('es-AR')} km`;
+      } else {
+        detalle = `en ${kmR.toLocaleString('es-AR')} km`;
+      }
+      planLine = `<div class="camion-flota-meta" style="color:${color}">⚙ ${p.name} · ${detalle}</div>`;
+    }
     return `
       <div class="camion-flota-card" style="border-left-color:${borderColor}" onclick="_abrirCamionDetalleAdmin(${t.truck_id})">
         <div class="camion-flota-icon">🚛</div>
         <div class="camion-flota-info">
           <div class="camion-flota-name">${titulo}</div>
           <div class="camion-flota-sub">${subtitulo}</div>
-          <div class="camion-flota-km">${km}</div>
+          <div class="camion-flota-km" style="color:${kmColor}">${km}</div>
           ${conductorLine}
           ${planLine}
-          <div class="camion-flota-status" style="color:${borderColor}">${estadoLabel}</div>
+          <div class="camion-flota-status">${estadoLabel}</div>
         </div>
         <div class="camion-flota-arrow">›</div>
       </div>`;
@@ -3978,6 +4029,7 @@ function _pintarFlotaAdmin() {
         ${mkPill('enRuta','En ruta', counts.enRuta)}
         ${mkPill('enBase','Disponibles', counts.enBase)}
         ${mkPill('alertas','Alertas', counts.alertas)}
+        ${mkPill('sinDatos','Sin datos', counts.sinDatos)}
       </div>
     </div>
     <div class="camion-flota-grid">${cards}${empty}</div>`;

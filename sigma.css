@@ -2204,7 +2204,7 @@ body {
 .camion-flota-km {
   font-family: 'DM Mono', monospace;
   font-size: 12px;
-  color: var(--amber);
+  color: var(--muted2);
   margin-top: 6px;
 }
 .camion-flota-meta {
