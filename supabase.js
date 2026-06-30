@@ -1348,8 +1348,10 @@ async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null)
         return {
           plan_id: plan.id,
           name: plan.name,
+          trigger_type: plan.trigger_type,
           interval_km: plan.interval_km,
           interval_hours: plan.interval_hours,
+          alert_before_km: plan.alert_before_km,
           current_km: null,
           next_due_km: log?.next_due_km || null,
           next_due_hours: log?.next_due_hours || null,
@@ -1372,10 +1374,12 @@ async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null)
 
       return {
           // Mapeamos para mantener compatibilidad con tu renderPlanes en UI
-          plan_id: plan.id, 
+          plan_id: plan.id,
           name: plan.name,
+          trigger_type: plan.trigger_type,
           interval_km: plan.interval_km,
           interval_hours: plan.interval_hours,
+          alert_before_km: plan.alert_before_km,
           current_km: currentKm,
           next_due_km: nextDueKm,
           next_due_hours: log?.next_due_hours || null,

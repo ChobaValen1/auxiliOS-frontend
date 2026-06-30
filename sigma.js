@@ -5059,7 +5059,8 @@ function renderPlanes(data) {
     return;
   }
 
-  const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion';
+  const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
+                  PERFIL_USUARIO?.roles?.name === 'supervision';
 
   if (!data?.length) {
     lista.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin planes de service</div>';
@@ -5191,7 +5192,11 @@ async function openServiceModal() {
       opt.textContent = p.name;
       opt.dataset.intervalKm = p.interval_km || 0;
       opt.dataset.intervalHours = p.interval_hours || 0;
-      opt.dataset.triggerType = p.trigger_type || (p.interval_hours && !p.interval_km ? 'hours' : 'km');
+      // Inferir trigger_type si el backend no lo manda: km+horas → 'both', solo horas → 'hours', resto → 'km'
+      const inferred = (p.interval_km && p.interval_hours) ? 'both'
+                     : (p.interval_hours && !p.interval_km) ? 'hours'
+                     : 'km';
+      opt.dataset.triggerType = p.trigger_type || inferred;
       select.appendChild(opt);
     });
   }
