@@ -5189,14 +5189,14 @@ async function openServiceModal() {
     _planesCache.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.plan_id; // Este es el master_plan_id internamente
-      opt.textContent = p.name;
+      // Mostramos la cadencia para que el usuario sepa qué intervalo tiene el plan
+      const partes = [];
+      if (p.interval_km)    partes.push(`${p.interval_km.toLocaleString('es-AR')} km`);
+      if (p.interval_hours) partes.push(`${p.interval_hours.toLocaleString('es-AR')} hs`);
+      opt.textContent = partes.length ? `${p.name} — cada ${partes.join(' / ')}` : p.name;
       opt.dataset.intervalKm = p.interval_km || 0;
       opt.dataset.intervalHours = p.interval_hours || 0;
-      // Inferir trigger_type si el backend no lo manda: km+horas → 'both', solo horas → 'hours', resto → 'km'
-      const inferred = (p.interval_km && p.interval_hours) ? 'both'
-                     : (p.interval_hours && !p.interval_km) ? 'hours'
-                     : 'km';
-      opt.dataset.triggerType = p.trigger_type || inferred;
+      opt.dataset.triggerType = p.trigger_type || '';
       select.appendChild(opt);
     });
   }
@@ -5204,22 +5204,26 @@ async function openServiceModal() {
   openModal('modal-service-log');
 }
 
-function _slTrigger() {
+function _slNeeds() {
+  // Decide qué inputs mostrar a partir de los intervalos del plan, no del trigger_type
+  // (más robusto: si el plan tiene interval_hours > 0, necesita horas, punto).
   const select = document.getElementById('sl-plan');
   const opt = select?.options[select.selectedIndex];
-  return opt?.dataset?.triggerType || '';
+  const intervalKm = parseInt(opt?.dataset?.intervalKm) || 0;
+  const intervalHs = parseInt(opt?.dataset?.intervalHours) || 0;
+  // Sin plan: mostramos KM por defecto, ocultamos horas
+  if (!opt?.value) return { needsKm: true, needsHrs: false, hasPlan: false };
+  return { needsKm: intervalKm > 0, needsHrs: intervalHs > 0, hasPlan: true };
 }
 
 function onServicePlanChange() {
-  const trigger = _slTrigger();
+  const { needsKm, needsHrs } = _slNeeds();
   const kmGroup = document.getElementById('sl-km-group');
   const horasGroup = document.getElementById('sl-horas-group');
-  const showKm = !trigger || trigger === 'km' || trigger === 'both';
-  const showHoras = trigger === 'hours' || trigger === 'both';
-  if (kmGroup) kmGroup.style.display = showKm ? '' : 'none';
-  if (horasGroup) horasGroup.style.display = showHoras ? '' : 'none';
-  // Si el plan no usa horas, limpiamos el input; si no usa km, también
-  if (!showHoras) { const h = document.getElementById('sl-horas'); if (h) h.value = ''; }
+  if (kmGroup) kmGroup.style.display = needsKm ? '' : 'none';
+  if (horasGroup) horasGroup.style.display = needsHrs ? '' : 'none';
+  if (!needsHrs) { const h = document.getElementById('sl-horas'); if (h) h.value = ''; }
+  if (!needsKm)  { const k = document.getElementById('sl-km');    if (k) k.value = ''; }
   calcNextService();
   validateServiceForm();
 }
@@ -5250,9 +5254,7 @@ function validateServiceForm() {
   if (!btn) return;
   const planId = document.getElementById('sl-plan')?.value;
   const fecha  = document.getElementById('sl-fecha')?.value;
-  const trigger = _slTrigger();
-  const needsKm = !trigger || trigger === 'km' || trigger === 'both';
-  const needsHrs = trigger === 'hours' || trigger === 'both';
+  const { needsKm, needsHrs } = _slNeeds();
   const km  = parseInt(document.getElementById('sl-km')?.value);
   const hrs = parseInt(document.getElementById('sl-horas')?.value);
   let ok = !!planId && !!fecha;
@@ -5335,9 +5337,7 @@ function renderHistorialServices(data) {
 
 async function guardarServiceLog() {
   const planId  = document.getElementById('sl-plan')?.value;
-  const trigger = _slTrigger();
-  const needsKm  = !trigger || trigger === 'km' || trigger === 'both';
-  const needsHrs = trigger === 'hours' || trigger === 'both';
+  const { needsKm, needsHrs } = _slNeeds();
   const km      = parseInt(document.getElementById('sl-km')?.value);
   const hrs     = parseInt(document.getElementById('sl-horas')?.value);
   const fecha   = document.getElementById('sl-fecha')?.value;
