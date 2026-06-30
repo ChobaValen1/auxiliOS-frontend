@@ -1967,16 +1967,18 @@ body {
 }
 
 /* --- FIX: MODALES Y FIRMA EN CELULAR --- */
-.modal-box {
-    max-height: 90vh !important; /* Nunca puede ser más alto que la pantalla del celular */
-    display: flex !important;
-    flex-direction: column !important;
-}
+@media (max-width: 680px) {
+  .modal-box {
+      max-height: 90vh !important; /* Nunca puede ser más alto que la pantalla del celular */
+      display: flex !important;
+      flex-direction: column !important;
+  }
 
-.modal-body {
-    flex: 1 !important;
-    overflow-y: auto !important; /* Permite scrollear si el contenido es muy largo */
-    padding-bottom: 20px !important;
+  .modal-body {
+      flex: 1 !important;
+      overflow-y: auto !important; /* Permite scrollear si el contenido es muy largo */
+      padding-bottom: 20px !important;
+  }
 }
 
 /* Evita que el recuadro de firma crezca demasiado y empuje los botones */
@@ -2291,14 +2293,15 @@ body {
 
 /* Modal box */
 .cfg-modal-box {
-  max-width: 900px; width: 95%; height: 85vh;
+  max-width: 1100px; width: 92%; height: 86vh;
   display: flex; flex-direction: row;
   padding: 0; overflow: hidden;
+  border-radius: 14px;
 }
 
 /* ── Sidebar ──────────────────────────────────── */
 .cfg-sidebar {
-  width: 196px; flex-shrink: 0;
+  width: 220px; flex-shrink: 0;
   background: #111420;
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
@@ -2364,16 +2367,17 @@ body {
   overflow: hidden; background: var(--bg);
 }
 .cfg-content-header {
-  padding: 14px 20px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
   flex-shrink: 0; background: var(--card);
 }
 .cfg-content-title {
-  font-size: 14px; font-weight: 700; letter-spacing: 0.2px;
+  font-size: 15px; font-weight: 700; letter-spacing: 0.2px;
 }
 .cfg-content-body {
-  flex: 1; overflow-y: auto; padding: 14px 16px;
+  flex: 1; overflow-y: auto; padding: 18px 24px;
 }
 
 /* ── Item list (card rows) ────────────────────── */
