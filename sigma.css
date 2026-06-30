@@ -206,6 +206,14 @@ body {
 }
 .btn-primary { background: var(--amber); color: #000; }
 .btn-primary:hover { opacity: 0.88; }
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+.btn:disabled:hover,
+.btn[disabled]:hover { opacity: 0.45; }
 .btn-ghost {
   background: transparent;
   border: 1px solid var(--border2); color: var(--muted2);

@@ -5134,7 +5134,15 @@ async function openServiceModal() {
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
   const fecha = document.getElementById('sl-fecha');
   if (fecha) fecha.value = new Date().toISOString().slice(0, 10);
-  ['sl-km','sl-costo','sl-taller','sl-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['sl-km','sl-horas','sl-costo','sl-taller','sl-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  // KM por defecto = odómetro actual del camión (asume que el service se hace ahora)
+  const kmInput = document.getElementById('sl-km');
+  if (kmInput && _truckActual.current_km != null) kmInput.value = _truckActual.current_km;
+  // Estado inicial: KM visible (la mayoría de planes son por km), horas oculto
+  const kmGroup = document.getElementById('sl-km-group');
+  const horasGroup = document.getElementById('sl-horas-group');
+  if (kmGroup) kmGroup.style.display = '';
+  if (horasGroup) horasGroup.style.display = 'none';
   const next = document.getElementById('sl-next-preview'); if (next) next.style.display = 'none';
   _modalError('sl-error', '');
 
@@ -5150,25 +5158,70 @@ async function openServiceModal() {
       opt.value = p.plan_id; // Este es el master_plan_id internamente
       opt.textContent = p.name;
       opt.dataset.intervalKm = p.interval_km || 0;
+      opt.dataset.intervalHours = p.interval_hours || 0;
+      opt.dataset.triggerType = p.trigger_type || (p.interval_hours && !p.interval_km ? 'hours' : 'km');
       select.appendChild(opt);
     });
   }
+  validateServiceForm();
   openModal('modal-service-log');
+}
+
+function _slTrigger() {
+  const select = document.getElementById('sl-plan');
+  const opt = select?.options[select.selectedIndex];
+  return opt?.dataset?.triggerType || '';
+}
+
+function onServicePlanChange() {
+  const trigger = _slTrigger();
+  const kmGroup = document.getElementById('sl-km-group');
+  const horasGroup = document.getElementById('sl-horas-group');
+  const showKm = !trigger || trigger === 'km' || trigger === 'both';
+  const showHoras = trigger === 'hours' || trigger === 'both';
+  if (kmGroup) kmGroup.style.display = showKm ? '' : 'none';
+  if (horasGroup) horasGroup.style.display = showHoras ? '' : 'none';
+  // Si el plan no usa horas, limpiamos el input; si no usa km, también
+  if (!showHoras) { const h = document.getElementById('sl-horas'); if (h) h.value = ''; }
+  calcNextService();
+  validateServiceForm();
 }
 
 function calcNextService() {
   const km = parseInt(document.getElementById('sl-km')?.value) || 0;
+  const hrs = parseInt(document.getElementById('sl-horas')?.value) || 0;
   const select = document.getElementById('sl-plan');
   const selectedOpt = select?.options[select.selectedIndex];
-  const interval = parseInt(selectedOpt?.dataset?.intervalKm) || 0;
+  const intervalKm = parseInt(selectedOpt?.dataset?.intervalKm) || 0;
+  const intervalHs = parseInt(selectedOpt?.dataset?.intervalHours) || 0;
   const preview = document.getElementById('sl-next-preview');
   const el = document.getElementById('sl-next');
-  if (km > 0 && interval > 0 && el && preview) {
+  if (!el || !preview) return;
+  const partes = [];
+  if (km > 0 && intervalKm > 0) partes.push((km + intervalKm).toLocaleString('es-AR') + ' km');
+  if (hrs > 0 && intervalHs > 0) partes.push((hrs + intervalHs).toLocaleString('es-AR') + ' hs');
+  if (partes.length) {
     preview.style.display = 'flex';
-    el.textContent = (km + interval).toLocaleString('es-AR') + ' km';
-  } else if (preview) {
+    el.textContent = partes.join(' · ');
+  } else {
     preview.style.display = 'none';
   }
+}
+
+function validateServiceForm() {
+  const btn = document.getElementById('btn-guardar-service');
+  if (!btn) return;
+  const planId = document.getElementById('sl-plan')?.value;
+  const fecha  = document.getElementById('sl-fecha')?.value;
+  const trigger = _slTrigger();
+  const needsKm = !trigger || trigger === 'km' || trigger === 'both';
+  const needsHrs = trigger === 'hours' || trigger === 'both';
+  const km  = parseInt(document.getElementById('sl-km')?.value);
+  const hrs = parseInt(document.getElementById('sl-horas')?.value);
+  let ok = !!planId && !!fecha;
+  if (ok && needsKm)  ok = !isNaN(km)  && km  > 0;
+  if (ok && needsHrs) ok = !isNaN(hrs) && hrs > 0;
+  btn.disabled = !ok;
 }
 
 function renderHistorialServices(data) {
@@ -5245,19 +5298,25 @@ function renderHistorialServices(data) {
 
 async function guardarServiceLog() {
   const planId  = document.getElementById('sl-plan')?.value;
+  const trigger = _slTrigger();
+  const needsKm  = !trigger || trigger === 'km' || trigger === 'both';
+  const needsHrs = trigger === 'hours' || trigger === 'both';
   const km      = parseInt(document.getElementById('sl-km')?.value);
+  const hrs     = parseInt(document.getElementById('sl-horas')?.value);
   const fecha   = document.getElementById('sl-fecha')?.value;
   const taller  = document.getElementById('sl-taller')?.value || null;
   const costo   = parseFloat(document.getElementById('sl-costo')?.value) || null;
   const notas   = document.getElementById('sl-notas')?.value || null;
 
   if (!planId)           { _modalError('sl-error', 'Seleccioná el plan de service'); return; }
-  if (!km || isNaN(km))  { _modalError('sl-error', 'Ingresá los KM al realizar el service'); return; }
-  if (km <= 0)           { _modalError('sl-error', 'Los KM deben ser un valor positivo mayor a cero'); return; }
+  if (needsKm && (!km || isNaN(km))) { _modalError('sl-error', 'Ingresá los KM al realizar el service'); return; }
+  if (needsKm && km <= 0)            { _modalError('sl-error', 'Los KM deben ser un valor positivo mayor a cero'); return; }
+  if (needsHrs && (!hrs || isNaN(hrs))) { _modalError('sl-error', 'Ingresá las horas de motor al realizar el service'); return; }
+  if (needsHrs && hrs <= 0)             { _modalError('sl-error', 'Las horas deben ser un valor positivo mayor a cero'); return; }
   if (costo !== null && costo < 0) { _modalError('sl-error', 'El costo no puede ser negativo'); return; }
   _modalError('sl-error', '');
 
-  if (_truckActual?.current_km) {
+  if (needsKm && _truckActual?.current_km) {
     const currentKm = _truckActual.current_km;
     if (Math.abs(km - currentKm) > currentKm * 0.2) {
       toast(`El KM ingresado difiere mucho del odómetro actual (${currentKm.toLocaleString('es-AR')} km). Verificá el dato.`, 'error');
@@ -5265,25 +5324,30 @@ async function guardarServiceLog() {
   }
 
   const select = document.getElementById('sl-plan');
-  const interval = parseInt(select?.options[select.selectedIndex]?.dataset?.intervalKm) || 0;
-  const nextDueKm = interval > 0 ? km + interval : null;
+  const opt = select?.options[select.selectedIndex];
+  const intervalKm = parseInt(opt?.dataset?.intervalKm) || 0;
+  const intervalHs = parseInt(opt?.dataset?.intervalHours) || 0;
+  const nextDueKm    = (needsKm  && intervalKm > 0) ? km + intervalKm : null;
+  const nextDueHours = (needsHrs && intervalHs > 0) ? hrs + intervalHs : null;
 
   const btn = document.getElementById('btn-guardar-service');
-  if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
+  if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; btn.style.pointerEvents = 'none'; }
 
   // NUEVO: Enviamos master_plan_id y recibimos la respuesta estandarizada
   const resultado = await registrarServiceOptimizado({
-    truck_id:       _truckActual.truck_id,
-    master_plan_id: parseInt(planId), 
-    performed_at:   fecha || new Date().toLocaleDateString('sv-SE'),
-    km_at_service:  km,
-    next_due_km:    nextDueKm,
-    workshop_name:  taller,
-    cost:           costo,
-    notes:          notas,
+    truck_id:         _truckActual.truck_id,
+    master_plan_id:   parseInt(planId),
+    performed_at:     fecha || new Date().toLocaleDateString('sv-SE'),
+    km_at_service:    needsKm  ? km  : null,
+    hours_at_service: needsHrs ? hrs : null,
+    next_due_km:      nextDueKm,
+    next_due_hours:   nextDueHours,
+    workshop_name:    taller,
+    cost:             costo,
+    notes:            notas,
   });
 
-  if (btn) { btn.textContent = '🔧 Guardar service'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = '🔧 Guardar service'; btn.style.pointerEvents = 'auto'; validateServiceForm(); }
 
   if (resultado.ok) {
     toast('Service registrado correctamente', 'success');

@@ -152,19 +152,23 @@
       </div>
       <div class="form-group">
         <label class="form-label">Plan de service <span style="color:var(--red)">*</span></label>
-        <select class="form-input" id="sl-plan" onchange="calcNextService()">
+        <select class="form-input" id="sl-plan" onchange="onServicePlanChange()">
           <option value="">— Seleccioná el plan —</option>
         </select>
       </div>
       <div class="form-grid-2">
         <div class="form-group">
           <label class="form-label">Fecha <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="date" id="sl-fecha">
+          <input class="form-input" type="date" id="sl-fecha" oninput="validateServiceForm()">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="sl-km-group">
           <label class="form-label">KM al realizar <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="sl-km" placeholder="Ej: 185000" inputmode="numeric" oninput="sanitizeInt(this);calcNextService()">
+          <input class="form-input" type="tel" id="sl-km" inputmode="numeric" oninput="sanitizeInt(this);calcNextService();validateServiceForm()">
         </div>
+      </div>
+      <div class="form-group" id="sl-horas-group" style="display:none">
+        <label class="form-label">Horas de motor al realizar <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="tel" id="sl-horas" placeholder="Ej: 2800" inputmode="numeric" oninput="sanitizeInt(this);calcNextService();validateServiceForm()">
       </div>
       <div id="sl-next-preview" style="display:none;padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:12px;color:var(--muted)">Próximo service</div>
@@ -188,7 +192,7 @@
     <div id="sl-error" class="modal-error" style="display:none;"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-service-log')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-service" onclick="guardarServiceLog()">🔧 Guardar service</button>
+      <button class="btn btn-primary" id="btn-guardar-service" onclick="guardarServiceLog()" disabled>🔧 Guardar service</button>
     </div>
   </div>
 </div>
