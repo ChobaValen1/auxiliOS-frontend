@@ -10238,13 +10238,13 @@ function _csvVolverPick() {
 function _csvDescargarPlantilla() {
   const tipo = _csvCtx.tipo || 'flota';
   const sc = _CSV_SCHEMA[tipo];
-  const csv = sc.template.map(r => r.map(c => /[,"\n]/.test(c) ? `"${c.replace(/"/g,'""')}"` : c).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `plantilla_${tipo}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  if (typeof XLSX === 'undefined') { toast('Librería XLSX no cargó — refrescá la página', 'error'); return; }
+
+  const ws = XLSX.utils.aoa_to_sheet(sc.template);
+  ws['!cols'] = sc.template[0].map(h => ({ wch: Math.max(12, String(h).length + 4) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, tipo === 'flota' ? 'Flota' : 'Personal');
+  XLSX.writeFile(wb, `plantilla_${tipo}.xlsx`);
 }
 
 async function _csvImportarConfirm() {
