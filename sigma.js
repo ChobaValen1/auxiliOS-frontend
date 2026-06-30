@@ -5081,45 +5081,77 @@ function renderPlanes(data) {
       ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
       : 0;
 
+    const kebab = esAdmin ? `
+      <div class="kebab-wrap">
+        <button class="kebab-btn" onclick="event.stopPropagation();togglePlanMenu(${p.plan_id})" aria-label="Acciones del plan">⋮</button>
+        <div class="kebab-menu" id="plan-menu-${p.plan_id}">
+          <button class="kebab-item" onclick="event.stopPropagation();editarParametrosPlan(${p.plan_id})">✏️ Editar parámetros</button>
+          <button class="kebab-item danger" onclick="event.stopPropagation();desvincularPlanUI(${p.plan_id})">🔌 Desvincular plan</button>
+        </div>
+      </div>` : '';
+
     return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px">
       <div style="display:flex;align-items:flex-start;gap:12px">
         <div style="width:40px;height:40px;border-radius:8px;background:var(--amber-lo);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔧</div>
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:600">${p.name}</span>
+          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:600;flex:1;min-width:0">${p.name}</span>
             <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${label}</span>
           </div>
           <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${kmInfo}${hsInfo}</div>
           <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px">
             <div style="width:${progreso}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:flex-end">
-            <div>
-              <div style="font-size:9px;color:var(--muted)">PRÓXIMO VENCIMIENTO</div>
-              <div style="font-family:'DM Mono';font-size:14px;font-weight:700;color:${color}">${nextDue}</div>
-              ${restante ? `<div style="font-size:10px;color:var(--muted)">${restante}</div>` : ''}
-            </div>
-            ${esAdmin ? `<button onclick="desactivarPlanUI(${p.plan_id})" style="font-size:10px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--muted);cursor:pointer">Desactivar</button>` : ''}
+          <div>
+            <div style="font-size:9px;color:var(--muted)">PRÓXIMO VENCIMIENTO</div>
+            <div style="font-family:'DM Mono';font-size:14px;font-weight:700;color:${color}">${nextDue}</div>
+            ${restante ? `<div style="font-size:10px;color:var(--muted)">${restante}</div>` : ''}
           </div>
         </div>
+        ${kebab}
       </div>
     </div>`;
   }).join('');
 }
 
+function togglePlanMenu(planId) {
+  const menu = document.getElementById(`plan-menu-${planId}`);
+  if (!menu) return;
+  const wasOpen = menu.classList.contains('open');
+  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+  if (!wasOpen) menu.classList.add('open');
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.kebab-wrap')) return;
+  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+});
+
+async function desvincularPlanUI(masterPlanId) {
+  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+  return desactivarPlanUI(masterPlanId);
+}
+
+function editarParametrosPlan(masterPlanId) {
+  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+  const plan = (_camionPlanes || []).find(p => p.plan_id === masterPlanId);
+  if (!plan) { toast('No se encontró el plan', 'error'); return; }
+  toast('Edición de parámetros por camión: próximamente (requiere overrides en truck_subscriptions)', 'info');
+}
+
 async function desactivarPlanUI(masterPlanId) {
   if (!_truckActual?.truck_id) { toast('Error: no hay camión activo', 'error'); return; }
-  if (!confirm('¿Seguro querés desvincular este camión de este plan de mantenimiento?')) return;
-  
+  if (!confirm('¿Desvincular este plan del camión?\n\nEl plan matriz seguirá disponible para otros camiones — solo se quita de este vehículo.')) return;
+
   // NUEVO: Pasamos el truck_id y el master_plan_id
   const resultado = await desactivarSuscripcionPlan(_truckActual.truck_id, masterPlanId);
-  
-  if (!resultado.ok) { 
-    toast(`Error: ${resultado.errorMsg}`, 'error'); 
-    return; 
+
+  if (!resultado.ok) {
+    toast(`Error: ${resultado.errorMsg}`, 'error');
+    return;
   }
-  
-  toast('Plan desvinculado exitosamente', 'success');
+
+  toast('Plan desvinculado del camión', 'success');
   const planes = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
   renderPlanes(planes);
 }

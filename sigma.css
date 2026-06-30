@@ -220,6 +220,49 @@ body {
 }
 .btn-ghost:hover { border-color: var(--amber); color: var(--amber); }
 
+/* ── KEBAB MENU (⋮) ─────────────────────────── */
+.kebab-wrap { position: relative; flex-shrink: 0; }
+.kebab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted2);
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.kebab-btn:hover { background: var(--card); border-color: var(--border); color: var(--text); }
+.kebab-menu {
+  position: absolute;
+  top: 32px; right: 0;
+  min-width: 200px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  padding: 4px;
+  z-index: 50;
+  display: none;
+}
+.kebab-menu.open { display: block; }
+.kebab-item {
+  width: 100%;
+  background: transparent; border: none; color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  font-family: inherit;
+}
+.kebab-item:hover { background: var(--bg); }
+.kebab-item.danger { color: var(--red); }
+.kebab-item.danger:hover { background: rgba(239,68,68,0.08); }
+
 /* ── CARDS & GRID ─────────────────────────── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
