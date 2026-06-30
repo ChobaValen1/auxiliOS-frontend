@@ -2102,6 +2102,136 @@ body {
   padding: 14px;
   margin-bottom: 8px;
 }
+
+/* ── Flota global (vista admin/supervisor) ── */
+.flota-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.flota-search {
+  flex: 1;
+  min-width: 220px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  min-height: 44px;
+}
+.flota-search::placeholder { color: var(--muted2); }
+.flota-search:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+.flota-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.flota-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 36px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted2);
+  cursor: pointer;
+  font-family: inherit;
+}
+.flota-pill:hover { border-color: var(--amber); color: var(--text); }
+.flota-pill.active {
+  background: var(--amber-lo);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.flota-pill-count {
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+}
+.flota-pill.active .flota-pill-count { background: rgba(245,166,35,0.18); }
+
+.camion-flota-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+.camion-flota-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--amber);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.camion-flota-card:hover { transform: translateY(-1px); }
+.camion-flota-icon { font-size: 28px; flex-shrink: 0; }
+.camion-flota-info { flex: 1; min-width: 0; overflow: hidden; }
+.camion-flota-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  letter-spacing: 1.3px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+.camion-flota-sub {
+  font-size: 11px;
+  color: var(--muted2);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.camion-flota-km {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--amber);
+  margin-top: 6px;
+}
+.camion-flota-meta {
+  font-size: 11px;
+  color: var(--text);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.camion-flota-status {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+}
+.camion-flota-arrow {
+  font-size: 22px;
+  color: var(--muted);
+  flex-shrink: 0;
+  align-self: center;
+}
+@media (max-width: 680px) {
+  .camion-flota-grid { grid-template-columns: 1fr; }
+  .flota-pills { width: 100%; }
+}
 .camion-card-icon { font-size: 22px; flex-shrink: 0; }
 .camion-card-info { flex: 1; min-width: 0; overflow: hidden; }
 .camion-card-title { font-size: 12px; font-weight: 700; color: var(--text); }
@@ -2109,29 +2239,34 @@ body {
 .camion-card-actions {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   flex-shrink: 0;
+  align-items: stretch;
 }
 .btn-camion-action {
   border: none;
-  border-radius: 6px;
-  padding: 5px 10px;
-  font-size: 10px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   font-family: 'DM Sans', sans-serif;
+  min-height: 44px;
+  min-width: 92px;
 }
 .btn-camion-ver {
   background: var(--bg);
   color: var(--muted2);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 10px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
   font-family: 'DM Sans', sans-serif;
+  min-height: 44px;
+  min-width: 92px;
 }
 .btn-camion-ver:hover { border-color: var(--amber); color: var(--amber); }
 .camion-sub-header {

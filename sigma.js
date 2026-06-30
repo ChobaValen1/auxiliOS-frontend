@@ -2304,6 +2304,7 @@ let _negocioJornadasActuales  = [];
 
 // ── helpers ──────────────────────────────────
 const _AR = n => Math.round(n).toLocaleString('es-AR');
+const _L  = n => (Math.round((n||0)*10)/10).toLocaleString('es-AR', { maximumFractionDigits: 1 });
 
 function _KPI(icon, label, val, color, sub, detail, cta) {
   return `<div class="kpi-dash">
@@ -3745,8 +3746,26 @@ let _camionNeumaticos   = null;
 let _camionPlanes       = [];
 let _camionHistorial    = [];
 let _camionLogDate      = null;
+let _flotaAdmin         = [];
+let _camionVistaAdmin   = 'flota'; // 'flota' | 'detalle'
 
 async function cargarScreenCamion() {
+  const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
+                  PERFIL_USUARIO?.roles?.name === 'supervision';
+
+  // Admin/supervisor: siempre arrancan en vista flota global
+  if (esAdmin) {
+    _truckActual       = null;
+    _camionCombustible = [];
+    _camionNeumaticos  = null;
+    _camionPlanes      = [];
+    _camionHistorial   = [];
+    _camionLogDate     = null;
+    _camionVistaAdmin  = 'flota';
+    await _renderCamionFlotaAdmin();
+    return;
+  }
+
   const truckId   = _jornadasAbiertasCache?.[0]?.truck_id  || null;
   const truckData = _jornadasAbiertasCache?.[0]?.trucks     || null;
   _camionLogDate  = _jornadasAbiertasCache?.[0]?.log_date   || null;
@@ -3820,6 +3839,216 @@ function _renderCamionSinJornada() {
   _volverCamionMain();
 }
 
+// ── Vista flota para admin/supervisor (sin jornada) ──
+let _flotaFiltro = 'todos';   // 'todos' | 'enRuta' | 'enBase' | 'alertas'
+let _flotaQuery  = '';
+let _flotaEstado = {};        // truck_id -> { conductor, severidad, planUrgente }
+
+async function _renderCamionFlotaAdmin() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('camion-sec-sub', 'Flota completa');
+  ['camion-nombre','camion-detalle'].forEach(id => set(id, ''));
+  const hero = document.getElementById('camion-hero-card');
+  if (hero) hero.style.display = 'none';
+  const cont = document.getElementById('camion-cards-container');
+  if (!cont) return;
+  cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando flota...</div>';
+
+  try {
+    const [camiones, jornadasResp] = await Promise.all([
+      cargarCamiones(),
+      _db.from('daily_logs').select('truck_id, driver_id, users(full_name)').eq('status', 'open'),
+    ]);
+    _flotaAdmin = camiones || [];
+    const enUso = {};
+    (jornadasResp?.data || []).forEach(j => {
+      if (j.truck_id) enUso[j.truck_id] = j.users?.full_name || 'En uso';
+    });
+
+    // Calcular plan urgente por camión (para borde de color)
+    const planesPorCamion = await Promise.all(
+      _flotaAdmin.map(t => cargarPlanesDetalleOptimizados(t.truck_id).catch(() => []))
+    );
+    _flotaEstado = {};
+    _flotaAdmin.forEach((t, i) => {
+      const planes = planesPorCamion[i] || [];
+      const urgente = planes
+        .filter(p => p.plan_estado && p.plan_estado !== '_error')
+        .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
+      let severidad = 'al_dia';
+      if (urgente) {
+        if (urgente.plan_estado === 'vencido' || (urgente.km_restantes != null && urgente.km_restantes <= 0)) severidad = 'critico';
+        else if (urgente.km_restantes != null && urgente.km_restantes <= 1000) severidad = 'alerta';
+      }
+      _flotaEstado[t.truck_id] = { conductor: enUso[t.truck_id] || null, severidad, planUrgente: urgente || null };
+    });
+  } catch (e) {
+    console.error('Error cargando flota:', e);
+    cont.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">Error al cargar la flota</div>';
+    return;
+  }
+
+  _pintarFlotaAdmin();
+  _volverCamionMain();
+}
+
+function _pintarFlotaAdmin() {
+  const cont = document.getElementById('camion-cards-container');
+  if (!cont) return;
+
+  if (!_flotaAdmin.length) {
+    cont.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:30px">No hay camiones registrados</div>';
+    return;
+  }
+
+  const counts = { todos: 0, enRuta: 0, enBase: 0, alertas: 0 };
+  _flotaAdmin.forEach(t => {
+    const st = _flotaEstado[t.truck_id] || {};
+    counts.todos++;
+    if (st.conductor) counts.enRuta++;
+    else counts.enBase++;
+    if (st.severidad === 'critico' || st.severidad === 'alerta') counts.alertas++;
+  });
+
+  const q = _flotaQuery.trim().toLowerCase();
+  const filtrados = _flotaAdmin.filter(t => {
+    const st = _flotaEstado[t.truck_id] || {};
+    if (_flotaFiltro === 'enRuta' && !st.conductor) return false;
+    if (_flotaFiltro === 'enBase' && st.conductor) return false;
+    if (_flotaFiltro === 'alertas' && st.severidad !== 'critico' && st.severidad !== 'alerta') return false;
+    if (q) {
+      const hay = `${t.plate || ''} ${t.numero_interno || ''} ${t.brand || ''} ${t.model || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const mkPill = (key, label, n) => `
+    <button class="flota-pill ${_flotaFiltro === key ? 'active' : ''}"
+      onclick="_setFlotaFiltro('${key}')">${label} <span class="flota-pill-count">${n}</span></button>`;
+
+  const cards = filtrados.map(t => {
+    const st = _flotaEstado[t.truck_id] || {};
+    const borderColor = st.conductor && st.severidad === 'al_dia' ? '#3b82f6'
+      : st.severidad === 'critico' ? '#ef4444'
+      : st.severidad === 'alerta'  ? '#f59e0b'
+      : '#22c55e';
+    const estadoLabel = st.conductor && st.severidad === 'al_dia' ? '🔵 En ruta'
+      : st.severidad === 'critico' ? '🔴 Service vencido'
+      : st.severidad === 'alerta'  ? '🟡 Alerta próxima'
+      : '🟢 Disponible';
+    const titulo = t.numero_interno != null
+      ? `MÓVIL #${t.numero_interno}`
+      : (t.plate || `ID ${t.truck_id}`);
+    const subtitulo = `${t.plate || '—'}${t.brand || t.model ? ' · ' + `${t.brand || ''} ${t.model || ''}`.trim() : ''}`;
+    const km = t.current_km != null ? Number(t.current_km).toLocaleString('es-AR') + ' km' : '— km';
+    const conductorLine = st.conductor
+      ? `<div class="camion-flota-meta">👤 ${st.conductor}</div>`
+      : `<div class="camion-flota-meta" style="color:var(--muted)">👤 Sin asignar</div>`;
+    const planLine = st.planUrgente
+      ? `<div class="camion-flota-meta" style="color:${st.severidad === 'critico' ? 'var(--red)' : st.severidad === 'alerta' ? 'var(--amber)' : 'var(--green)'}">⚙ ${st.planUrgente.name} · ${(st.planUrgente.km_restantes ?? 0) <= 0 ? 'vencido' : 'en ' + Math.abs(st.planUrgente.km_restantes || 0).toLocaleString('es-AR') + ' km'}</div>`
+      : '';
+    return `
+      <div class="camion-flota-card" style="border-left-color:${borderColor}" onclick="_abrirCamionDetalleAdmin(${t.truck_id})">
+        <div class="camion-flota-icon">🚛</div>
+        <div class="camion-flota-info">
+          <div class="camion-flota-name">${titulo}</div>
+          <div class="camion-flota-sub">${subtitulo}</div>
+          <div class="camion-flota-km">${km}</div>
+          ${conductorLine}
+          ${planLine}
+          <div class="camion-flota-status" style="color:${borderColor}">${estadoLabel}</div>
+        </div>
+        <div class="camion-flota-arrow">›</div>
+      </div>`;
+  }).join('');
+
+  const empty = filtrados.length === 0
+    ? `<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:30px;font-size:13px">Sin coincidencias</div>`
+    : '';
+
+  cont.innerHTML = `
+    <div class="flota-toolbar">
+      <input id="flota-search" class="flota-search" type="search"
+        placeholder="Buscar por patente, móvil o marca…"
+        value="${_flotaQuery.replace(/"/g,'&quot;')}"
+        oninput="_setFlotaQuery(this.value)">
+      <div class="flota-pills">
+        ${mkPill('todos','Todos', counts.todos)}
+        ${mkPill('enRuta','En ruta', counts.enRuta)}
+        ${mkPill('enBase','Disponibles', counts.enBase)}
+        ${mkPill('alertas','Alertas', counts.alertas)}
+      </div>
+    </div>
+    <div class="camion-flota-grid">${cards}${empty}</div>`;
+
+  // Reenfocar input si el usuario estaba escribiendo
+  const inp = document.getElementById('flota-search');
+  if (inp && _flotaQuery) {
+    inp.focus();
+    const v = inp.value;
+    inp.setSelectionRange(v.length, v.length);
+  }
+}
+
+function _setFlotaFiltro(key) { _flotaFiltro = key; _pintarFlotaAdmin(); }
+function _setFlotaQuery(q)    { _flotaQuery = q || ''; _pintarFlotaAdmin(); }
+
+async function _abrirCamionDetalleAdmin(truckId) {
+  const truck = (_flotaAdmin || []).find(t => t.truck_id === truckId);
+  if (!truck) return;
+
+  _camionVistaAdmin = 'detalle';
+  _camionLogDate = null; // sin filtro por jornada — vista global
+  _truckActual = truck;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const nombre  = `${truck.brand || ''} ${truck.model || ''}`.trim() || '—';
+  const patente = truck.plate || '—';
+  const km = truck.current_km != null ? Number(truck.current_km).toLocaleString('es-AR') : null;
+  const hero = document.getElementById('camion-hero-card');
+  if (hero) hero.style.display = '';
+  set('camion-nombre',  nombre.toUpperCase());
+  set('camion-detalle', `Patente: ${patente}`);
+  set('camion-km-pill', km != null ? `${km} km actuales` : '— km actuales');
+  set('camion-sec-sub', `${nombre} · ${patente}`);
+  const statusPill = document.getElementById('camion-status-pill');
+  if (statusPill) {
+    statusPill.textContent = '● Vista global';
+    statusPill.className = 'pill pill-blue';
+  }
+
+  const cont = document.getElementById('camion-cards-container');
+  if (cont) cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando datos del camión...</div>';
+
+  const [combustible, ultimoControl, services, planes] = await Promise.all([
+    cargarCombustible(truckId),
+    cargarUltimoControlNeumaticos(truckId),
+    cargarHistorialServices(truckId),
+    cargarPlanesDetalleOptimizados(truckId),
+  ]);
+
+  _camionCombustible = combustible || [];
+  _camionNeumaticos  = ultimoControl || null;
+  _camionPlanes      = planes || [];
+  _camionHistorial   = services || [];
+
+  _renderCamionCards();
+  renderPlanes(_camionPlanes);
+  renderHistorialServices(_camionHistorial);
+  _volverCamionMain();
+
+  // Inyectar boton "volver a flota" al inicio del contenedor
+  if (cont) {
+    const back = document.createElement('button');
+    back.className = 'btn-camion-back';
+    back.style.cssText = 'margin-bottom:12px';
+    back.textContent = '← Volver a flota';
+    back.onclick = () => { _camionVistaAdmin = 'flota'; _renderCamionFlotaAdmin(); };
+    cont.insertBefore(back, cont.firstChild);
+  }
+}
+
 function _renderCamionCards() {
   const cont = document.getElementById('camion-cards-container');
   if (!cont) return;
@@ -3843,8 +4072,8 @@ function _renderCamionCards() {
   const totalPesos  = _camionCombustible.reduce((s, r) => s + (r.total_cost || 0), 0);
   const combStatus  = _camionCombustible.length
     ? (esChofer
-        ? `${_camionCombustible.length} carga${_camionCombustible.length > 1 ? 's' : ''} · ${totalLitros} L`
-        : `${totalLitros} L · ${totalPesos.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })}`)
+        ? `${_camionCombustible.length} carga${_camionCombustible.length > 1 ? 's' : ''} · ${_L(totalLitros)} L`
+        : `${_L(totalLitros)} L · ${totalPesos.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })}`)
     : 'Sin cargas esta jornada';
   const combColor = _camionCombustible.length ? '#4ade80' : 'var(--muted)';
 
@@ -3853,12 +4082,20 @@ function _renderCamionCards() {
     .filter(p => p.plan_estado && p.plan_estado !== '_error')
     .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
   const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro' };
+  // Severidad real basada en km_restantes: <=0 rojo (vencido), <=1000 ámbar, resto verde
+  const _planSeveridad = (p) => {
+    if (!p) return 'al_dia';
+    if (p.plan_estado === 'al_dia') return 'al_dia';
+    if (p.plan_estado === 'vencido' || (p.km_restantes != null && p.km_restantes <= 0)) return 'critico';
+    if (p.km_restantes != null && p.km_restantes <= 1000) return 'alerta';
+    return 'al_dia';
+  };
+  const mantSeveridad = _planSeveridad(planUrgente);
   const mantStatus  = planUrgente
     ? `${estadoLabel[planUrgente.plan_estado] || ''} · ${planUrgente.name}`
     : (_camionPlanes.length ? 'Al día' : 'Sin planes');
-  const mantColor   = planUrgente
-    ? (planUrgente.plan_estado === 'al_dia' ? '#4ade80'
-      : planUrgente.plan_estado === 'proximo' ? '#f59e0b' : '#ef4444')
+  const mantColor   = mantSeveridad === 'critico' ? '#ef4444'
+    : mantSeveridad === 'alerta' ? '#f59e0b'
     : '#4ade80';
 
   const mkCard = (icon, title, status, statusColor, borderColor, actionLabel, actionBg, actionFg, actionFn, subId) => `
@@ -3904,7 +4141,14 @@ function _renderCamionCards() {
   if (!esChofer && planUrgente) {
     const pill = document.getElementById('camion-next-service-pill');
     if (pill) {
-      pill.textContent = `⚙ ${planUrgente.name} en ${Math.abs(planUrgente.km_restantes || 0).toLocaleString('es-AR')} km`;
+      const kmR = planUrgente.km_restantes;
+      const vencido = kmR != null && kmR <= 0;
+      const txt = vencido
+        ? `⚠ ${planUrgente.name} VENCIDO por ${Math.abs(kmR).toLocaleString('es-AR')} km`
+        : `⚙ ${planUrgente.name} en ${Math.abs(kmR || 0).toLocaleString('es-AR')} km`;
+      pill.textContent = txt;
+      pill.className = 'pill ' + (mantSeveridad === 'critico' ? 'pill-red'
+        : mantSeveridad === 'alerta' ? 'pill-amber' : 'pill-green');
       pill.style.display = '';
     }
   }
@@ -3963,7 +4207,7 @@ function _renderSubCombustible() {
     <div class="camion-summary-row">
       <div class="camion-summary-item">
         <div class="camion-summary-label">Litros</div>
-        <div class="camion-summary-value">${totalLitros} L</div>
+        <div class="camion-summary-value">${_L(totalLitros)} L</div>
       </div>
       ${summaryPesos}
       <div class="camion-summary-item">
@@ -4001,7 +4245,7 @@ function _renderCombustibleList(data, esChofer) {
           .toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
         return `<tr>
           <td>${payIcons[r.payment_method] || '💵'} ${fecha}</td>
-          <td style="font-family:'DM Mono'">${r.liters} L</td>
+          <td style="font-family:'DM Mono'">${_L(r.liters)} L</td>
           ${esChofer ? '' : `<td style="font-family:'DM Mono';color:var(--amber)">${total}</td>`}
           <td style="font-size:11px;color:var(--muted)">${r.payment_app || r.payment_method || '—'}</td>
         </tr>`;
@@ -4164,7 +4408,7 @@ function renderCombustible(data) {
     const appTag = r.payment_app ? `<div style="font-size:9px;color:var(--muted)">${r.payment_app}</div>` : '';
     return `<tr>
       <td>${fecha}</td>
-      <td style="font-family:'DM Mono'">${r.liters} L</td>
+      <td style="font-family:'DM Mono'">${_L(r.liters)} L</td>
       <td style="font-family:'DM Mono'">${precio}</td>
       <td style="font-family:'DM Mono';color:var(--amber)">${total}</td>
       <td><div style="display:flex;align-items:center;gap:5px">
@@ -4338,7 +4582,7 @@ async function abrirColaOffline() {
 
   lista.innerHTML = todos.map(r => {
     const fecha   = r.fuel_date || new Date(r._savedAt).toLocaleDateString('es-AR');
-    const litros  = r.liters  ? `${r.liters} L` : '—';
+    const litros  = r.liters  ? `${_L(r.liters)} L` : '—';
     const precio  = r.price_per_liter ? `$${r.price_per_liter}/L` : '';
     const estacion = r.gas_station || '';
     const tieneError = !!r._syncError;
@@ -9403,7 +9647,7 @@ function abrirModalDesgloseEfectivo() {
         const fecha = (f.fuel_date||'').slice(5,10).replace('-','/');
         return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
           + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
-          + '<span style="color:var(--text);font-size:11px">⛽ ' + (f.liters||0) + ' L</span>'
+          + '<span style="color:var(--text);font-size:11px">⛽ ' + _L(f.liters) + ' L</span>'
           + '<span style="color:var(--red);font-weight:600;font-size:11px;text-align:right">−$' + _AR(f.total_cost||0) + '</span>'
           + '</div>';
       }).join('');
