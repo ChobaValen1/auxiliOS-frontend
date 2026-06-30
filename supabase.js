@@ -202,9 +202,8 @@ async function _finalizarInicializacion() {
     }
     await Promise.all([
       cargarRemitos(),
-      cargarJornadas(),
       cargarServiciosDia(),
-      actualizarPantallaJornadas(),
+      actualizarPantallaJornadas(), // ya invoca cargarJornadas + cargarJornadasAbiertas + cargarResumenMesPantalla
       cargarDashboard(),
     ]);
   } catch (err) {
@@ -217,7 +216,6 @@ async function _finalizarInicializacion() {
     if (panel) panel.style.display = 'block';
     await cargarChoferes();
   }
-  await actualizarPantallaJornadas();
 }
 
 let _camionSelTmp  = null;
@@ -515,6 +513,7 @@ async function cargarRemitos() {
 
     if (typeof renderTablaRemitos === 'function') {
       renderTablaRemitos(mapped);
+      if (typeof aplicarFiltrosRemitos === 'function') aplicarFiltrosRemitos();
       console.log("🎨 Función renderTablaRemitos ejecutada.");
     } else {
       console.error("❌ CRÍTICO: La función renderTablaRemitos no existe.");
@@ -584,8 +583,8 @@ async function cargarServiciosDia() {
       .from('remitos')
       .select('*')
       .eq('driver_id', USUARIO_ACTUAL.id)
-      .gte('created_at_device', hoy + 'T00:00:00')
-      .lte('created_at_device', hoy + 'T23:59:59')
+      .gte('created_at_device', hoy + 'T00:00:00-03:00')
+      .lte('created_at_device', hoy + 'T23:59:59.999-03:00')
       .order('created_at_device', { ascending: true });
 
     if (error) { 
@@ -804,7 +803,9 @@ function calcularHoras(ini, fin) {
   if (!ini || !fin) return '—';
   const [h1,m1] = ini.split(':').map(Number);
   const [h2,m2] = fin.split(':').map(Number);
-  const d = ((h2*60+m2)-(h1*60+m1))/60;
+  let mins = (h2*60+m2) - (h1*60+m1);
+  if (mins < 0) mins += 24*60; // turno cruza medianoche
+  const d = mins / 60;
   return d > 0 ? d.toFixed(1) : '—';
 }
 //Nota: esta función calcula la cantidad de horas entre una hora de inicio y una hora de fin, dadas en formato "hh:mm". Si alguna de las horas no es válida o el resultado es negativo, devuelve "—".
@@ -1466,14 +1467,14 @@ async function cargarDatosChofer(userId, desde, truckId = null) {
   const hoy = new Date().toISOString().slice(0, 10);
 
   let jornadasQ = _db.from('daily_logs')
-    .select('km_inicio, km_final, truck_id, log_date, log_id')
+    .select('km_inicio, km_final, truck_id, log_date, log_id, status')
     .eq('driver_id', userId)
     .gte('log_date', desde)
-    .eq('status', 'closed');
+    .in('status', ['open', 'closed']);
   if (truckId) jornadasQ = jornadasQ.eq('truck_id', truckId);
 
   let fuelQ = _db.from('fuel_records')
-    .select('liters, total_cost, fuel_date, truck_id')
+    .select('liters, total_cost, fuel_date, truck_id, payment_method')
     .gte('fuel_date', desde);
   if (truckId) fuelQ = fuelQ.eq('truck_id', truckId);
 
@@ -1481,7 +1482,7 @@ async function cargarDatosChofer(userId, desde, truckId = null) {
     _db.from('remitos')
       .select('pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status, created_at_device, log_id, nro_remito, patente, origen, destino, imp_peaje, imp_excedente, imp_otros')
       .eq('driver_id', userId)
-      .gte('created_at_device', desde + 'T00:00:00')
+      .gte('created_at_device', desde + 'T00:00:00-03:00')
       .neq('status', 'anulado'),
     jornadasQ,
     fuelQ,
@@ -1528,7 +1529,7 @@ async function cargarDatosNegocio(desde) {
   const [remitosRes, fuelRes, jornadasRes, usuariosRes, alertas] = await Promise.all([
     _db.from('remitos')
       .select('driver_id, nro_remito, nro_servicio, patente, marca_modelo, razon_social, cuit, telefono, email_cliente, tipo_servicio, origen, destino, km_reales, imp_peaje, imp_excedente, imp_otros, imp_total_extras, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, conformidad_servicio, conformidad_cargos, sin_danos, cliente_presente, observaciones, status, created_at_device, log_id')
-      .gte('created_at_device', desde + 'T00:00:00')
+      .gte('created_at_device', desde + 'T00:00:00-03:00')
       .neq('status', 'anulado'),
     _db.from('fuel_records')
       .select('total_cost, fuel_date, truck_id, liters, price_per_liter, km_at_load, payment_method, payment_app, gas_station')
@@ -1587,25 +1588,28 @@ async function cargarJornadasAbiertas() {
 
 async function cargarResumenMes(userId, anio, mes) {
   // mes es 1-indexed (1=enero, 12=diciembre)
+  // Si userId es null/undefined, agrega la flota completa (admin/supervisor)
   const mesStr = String(mes).padStart(2, '0');
   const desde  = `${anio}-${mesStr}-01`;
   const hasta  = new Date(anio, mes, 0).toISOString().slice(0, 10); // último día del mes
 
-  const { data, error } = await _db
+  let q = _db
     .from('v_driver_summary_month')
-    .select('total_km, total_jornadas, total_servicios, total_anulados')
-    .eq('user_id', userId)
+    .select('total_km, total_jornadas, total_servicios, total_anulados, user_id')
     .gte('mes', desde)
-    .lte('mes', hasta)
-    .maybeSingle();
+    .lte('mes', hasta);
+  if (userId) q = q.eq('user_id', userId);
 
+  const { data, error } = await q;
   if (error) { console.error('Error resumen mes:', error); return null; }
-  return data ? {
-    total_km:         data.total_km        || 0,
-    total_jornadas:   data.total_jornadas  || 0,
-    total_servicios:  data.total_servicios || 0,
-    total_anulados:   data.total_anulados  || 0,
-  } : { total_km: 0, total_jornadas: 0, total_servicios: 0, total_anulados: 0 };
+  const rows = data || [];
+  const agg = rows.reduce((acc, r) => ({
+    total_km:        acc.total_km        + (r.total_km        || 0),
+    total_jornadas:  acc.total_jornadas  + (r.total_jornadas  || 0),
+    total_servicios: acc.total_servicios + (r.total_servicios || 0),
+    total_anulados:  acc.total_anulados  + (r.total_anulados  || 0),
+  }), { total_km: 0, total_jornadas: 0, total_servicios: 0, total_anulados: 0 });
+  return agg;
 }
 
 // ── RENDICIÓN DE CIERRE ──────────────────────────────────────────────
@@ -1615,8 +1619,8 @@ async function obtenerResumenRendicion(driverId, fecha, truckId) {
     _db.from('remitos')
       .select('nro_remito, tipo_servicio, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status')
       .eq('driver_id', driverId)
-      .gte('created_at_device', fecha + 'T00:00:00')
-      .lte('created_at_device', fecha + 'T23:59:59')
+      .gte('created_at_device', fecha + 'T00:00:00-03:00')
+      .lte('created_at_device', fecha + 'T23:59:59.999-03:00')
       .neq('status', 'anulado'),
     truckId
       ? _db.from('fuel_records').select('total_cost').eq('truck_id', truckId).eq('fuel_date', fecha)

@@ -192,7 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // ── SCREENS ──────────────────────────────────
 const SCREENS = {
-  dashboard:  { title:'PANEL PRINCIPAL',    sub:'Resumen por Chofer' }, 
+  dashboard:  { title:'PANEL PRINCIPAL',    sub:() => {
+    const fmt = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    return 'Resumen · ' + fmt.charAt(0).toUpperCase() + fmt.slice(1);
+  } },
   registro:   { title:'REGISTRO DIARIO',    sub:'Módulo 1 · Carga de kilómetros' },
   camion:     { title:'CONTROL DEL CAMIÓN', sub:'Módulo 2 · Revisión y Carga' },
   documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
@@ -206,7 +209,8 @@ function goTo(name) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('nav-' + name).classList.add('active');
   document.getElementById('topbar-title').textContent = SCREENS[name].title;
-  document.getElementById('topbar-sub').textContent   = SCREENS[name].sub;
+  const sub = SCREENS[name].sub;
+  document.getElementById('topbar-sub').textContent   = typeof sub === 'function' ? sub() : sub;
   if (name === 'dashboard') cargarDashboard();
   if (name === 'registro') actualizarPantallaJornadas();
   if (name === 'camion') cargarScreenCamion();
@@ -2280,7 +2284,7 @@ function limpiarRangoKM() {
 // ── PANEL PRINCIPAL: Dual-Contexto ────────────
 
 let _dashVistaActual = 'rendimiento';
-let _rendPeriodo     = 'mes';
+let _rendPeriodo     = 'hoy';
 let _negocioData     = null;
 let _negocioRaw      = null;   // datos sin filtrar
 let _negocioFiltered = null;   // snapshot filtrado para export
@@ -2293,6 +2297,7 @@ let _remitosEfectivoActuales = [];  // remitos con pago en efectivo del render a
 let _rendRemitosActuales    = [];   // remitos del período activo en vista rendimiento
 let _rendFuelActuales       = [];   // combustible del período activo
 let _rendRendicionActuales  = [];   // rendiciones del período activo (con gastos_extra)
+let _rendTruckIdsActuales   = new Set(); // truck_ids de las jornadas del período
 let _negocioUsuariosActuales  = [];
 let _negocioLogTruckMapActual = {};
 let _negocioJornadasActuales  = [];
@@ -2520,6 +2525,7 @@ async function _cargarViewRendimiento() {
   _rendRemitosActuales = remitos;
   _rendFuelActuales       = fuel;
   _rendRendicionActuales  = rendicion;
+  _rendTruckIdsActuales   = new Set(logs.map(j => j.truck_id).filter(Boolean));
 
   // ── Cálculos financieros ──
   let factTotal = 0, factEf = 0, factTr = 0;
@@ -2541,7 +2547,12 @@ async function _cargarViewRendimiento() {
   const kmPorL      = litros > 0   ? (kmTotal / litros).toFixed(1)  : '—';
   const kmPorJornada = logs.length > 0 ? Math.round(kmTotal / logs.length) : null;
   const srvPorJornada = logs.length > 0 ? Math.round(srvs / logs.length)   : null;
-  const kmPorViaje   = srvs > 0        ? Math.round(kmTotal / srvs)        : null;
+  const logIdsConServicio = new Set(remitos.map(r => r.log_id).filter(Boolean));
+  const kmJornadasConServicio = logs.filter(j => logIdsConServicio.has(j.log_id))
+    .reduce((s, j) => s + Math.max(0, (j.km_final||0) - (j.km_inicio||0)), 0);
+  const kmPorViaje   = srvs > 0 && kmJornadasConServicio > 0
+    ? Math.round(kmJornadasConServicio / srvs)
+    : null;
 
   // ── Detalles para ver más ──
   const topRemitos  = [...remitos].sort((a,b)=>((b.pago_1_monto||0)+(b.pago_2_monto||0))-((a.pago_1_monto||0)+(a.pago_2_monto||0))).slice(0,3);
@@ -2571,9 +2582,14 @@ async function _cargarViewRendimiento() {
     finEl.style.gridTemplateColumns = esChofer ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
     finEl.innerHTML =
       (esChofer ? '' : _KPI('💰', 'Total generado', '$'+_AR(factTotal), 'var(--amber)', `${srvs} servicios`, detTotal)) +
-      _KPI('💵', 'Efectivo en mano',  '$'+_AR(factEf - gastosFuel - totalGastosExtra),   'var(--green)',
-        `$${_AR(factEf)} cobrado − $${_AR(gastosFuel + totalGastosExtra)} gastos`, null,
-        `<span class="kpi-dash-cta-btn" onclick="abrirModalDesgloseEfectivo()">📋 Ver detalle</span>`) +
+      (() => {
+        const fuelEfectivo = fuel.filter(f => truckIds.has(f.truck_id) && f.payment_method === 'efectivo')
+          .reduce((s,f)=>s+(f.total_cost||0),0);
+        const neto = Math.max(0, factEf - fuelEfectivo - totalGastosExtra);
+        return _KPI('💵', 'Efectivo en mano',  '$'+_AR(neto),   'var(--green)',
+          `$${_AR(factEf)} cobrado − $${_AR(fuelEfectivo + totalGastosExtra)} gastos en efectivo`, null,
+          `<span class="kpi-dash-cta-btn" onclick="abrirModalDesgloseEfectivo()">📋 Ver detalle</span>`);
+      })() +
       _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
         `${trCount} cobros`, null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
@@ -3750,7 +3766,10 @@ async function cargarScreenCamion() {
   const set     = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const nombre  = `${truckData?.brand || ''} ${truckData?.model || ''}`.trim() || '—';
   const patente = truckData?.plate || '—';
-  const km      = _truckActual.current_km != null ? _truckActual.current_km.toLocaleString('es-AR') : null;
+  const jActiva = _jornadasAbiertasCache?.[0] || {};
+  const kmFallback = jActiva.km_final ?? jActiva.km_inicio ?? null;
+  const kmRaw   = _truckActual.current_km ?? kmFallback;
+  const km      = kmRaw != null ? Number(kmRaw).toLocaleString('es-AR') : null;
   set('camion-nombre',  nombre.toUpperCase());
   set('camion-detalle', `Patente: ${patente}`);
   set('camion-km-pill', km != null ? `${km} km actuales` : '— km actuales');
@@ -5357,9 +5376,6 @@ function renderTablaRemitos(data) {
     }
   }
 
-  if (tbody.children.length > 0 && tbody.clientHeight === 0) {
-    console.warn("⚠️ tabla invisible — verificá contenedor padre.");
-  }
 }
 
 // --- LÓGICA DE PAGOS (Refactorizada y Segura) ---
@@ -7129,7 +7145,9 @@ function confirmarDialogoTaller(enTallerValue) {
 async function cargarResumenMesPantalla() {
   if (!USUARIO_ACTUAL?.id) return;
   const hoy  = new Date();
-  const data = await cargarResumenMes(USUARIO_ACTUAL.id, hoy.getFullYear(), hoy.getMonth() + 1);
+  const rol  = PERFIL_USUARIO?.roles?.name;
+  const scopeUserId = (rol === 'administracion' || rol === 'supervision') ? null : USUARIO_ACTUAL.id;
+  const data = await cargarResumenMes(scopeUserId, hoy.getFullYear(), hoy.getMonth() + 1);
   if (!data) return;
 
   const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -7179,20 +7197,64 @@ async function openSettingsHub() {
   }
 
   const modal = document.getElementById('modal-settings');
-  if (modal) {
+  if (modal && modal.parentElement !== document.body) {
     document.body.appendChild(modal);
-    modal.style.display = 'flex';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100vw';
-    modal.style.height = '100vh';
-    modal.style.zIndex = '9000';
-    modal.style.opacity = '1';
-    modal.style.visibility = 'visible';
-    modal.style.backgroundColor = 'rgba(0,0,0,0.85)';
-    switchConfigTab('tab-flota');
   }
+  _renderPerfilAdminTab();
+  openModal('modal-settings');
+  switchConfigTab('tab-flota');
+}
+
+function _renderPerfilAdminTab() {
+  const cont = document.getElementById('tab-mi-cuenta');
+  if (!cont) return;
+  const nombre = PERFIL_USUARIO?.full_name || '—';
+  const email  = PERFIL_USUARIO?.email     || USUARIO_ACTUAL?.email || '—';
+  const rol    = PERFIL_USUARIO?.roles?.name || '—';
+  cont.innerHTML = `
+    <div class="cfg-ch-section-label">PERFIL</div>
+    <div class="cfg-ch-card">
+      <div class="cfg-ch-row"><span class="cfg-ch-key">Nombre</span><span class="cfg-ch-val">${nombre}</span></div>
+      <div class="cfg-ch-row"><span class="cfg-ch-key">Email</span><span class="cfg-ch-val">${email}</span></div>
+      <div class="cfg-ch-row"><span class="cfg-ch-key">Rol</span><span class="cfg-ch-val" style="text-transform:capitalize">${rol}</span></div>
+    </div>
+
+    <div class="cfg-ch-section-label">SEGURIDAD</div>
+    <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPasswordAdmin()">
+      <span>🔑 Cambiar contraseña</span>
+      <span class="cfg-ch-arrow">›</span>
+    </div>
+    <div id="cfg-admin-pass-form" style="display:none" class="cfg-ch-card">
+      <input id="cfg-admin-pass-nueva" class="cfg-ch-input" type="password" placeholder="Nueva contraseña">
+      <input id="cfg-admin-pass-confirm" class="cfg-ch-input" type="password" placeholder="Confirmar contraseña">
+      <button class="cfg-ch-btn-primary" onclick="_guardarNuevaPasswordAdmin()">Guardar</button>
+    </div>
+
+    <div class="cfg-ch-section-label">SESIÓN</div>
+    <div class="cfg-ch-card cfg-ch-card--action cfg-ch-card--danger" onclick="_confirmarCerrarSesion()">
+      <span>🚪 Cerrar sesión</span>
+      <span class="cfg-ch-arrow">›</span>
+    </div>
+  `;
+}
+
+function _abrirCambioPasswordAdmin() {
+  const form = document.getElementById('cfg-admin-pass-form');
+  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+async function _guardarNuevaPasswordAdmin() {
+  const nueva   = document.getElementById('cfg-admin-pass-nueva')?.value?.trim();
+  const confirm = document.getElementById('cfg-admin-pass-confirm')?.value?.trim();
+  if (!nueva || nueva.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'error'); return; }
+  if (nueva !== confirm)          { toast('Las contraseñas no coinciden', 'error'); return; }
+  const { error } = await _db.auth.updateUser({ password: nueva });
+  if (error) { toast('Error al cambiar contraseña: ' + error.message, 'error'); return; }
+  toast('Contraseña actualizada correctamente', 'success');
+  const form = document.getElementById('cfg-admin-pass-form');
+  if (form) form.style.display = 'none';
+  document.getElementById('cfg-admin-pass-nueva').value = '';
+  document.getElementById('cfg-admin-pass-confirm').value = '';
 }
 
 function _abrirPanelChofer() {
@@ -7298,6 +7360,7 @@ const _cfgTabMeta = {
   'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal' },
   'tab-planes':      { title: 'Planes',       action: 'openAdminPlanModal' },
   'tab-emergencias': { title: 'Emergencias',  action: null },
+  'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
 };
 
 function switchConfigTab(tabId) {
@@ -7309,12 +7372,13 @@ function switchConfigTab(tabId) {
   if (activeBtn) activeBtn.classList.add('active');
 
   const meta = _cfgTabMeta[tabId];
+  const esSupervisor = PERFIL_USUARIO?.roles?.name === 'supervision';
   if (meta) {
     const titleEl = document.getElementById('cfg-tab-title');
     if (titleEl) titleEl.textContent = meta.title;
     const btnNew = document.getElementById('cfg-btn-new');
     if (btnNew) {
-      if (meta.action) {
+      if (meta.action && !esSupervisor) {
         btnNew.style.display = '';
         btnNew.onclick = window[meta.action];
       } else {
@@ -7327,6 +7391,7 @@ function switchConfigTab(tabId) {
   else if (tabId === 'tab-usuarios') cargarTablaAdminUsuarios();
   else if (tabId === 'tab-planes')   cargarTablaAdminPlanes();
   else if (tabId === 'tab-emergencias') cargarYRenderizarConfigEmergencias();
+  else if (tabId === 'tab-mi-cuenta')   _renderPerfilAdminTab();
 }
 
 async function cargarYRenderizarConfigEmergencias() {
@@ -9303,14 +9368,17 @@ function abrirModalDesgloseEfectivo() {
   const getEf = r => (r.pago_1_metodo==='efectivo'?(r.pago_1_monto||0):0) + (r.pago_2_metodo==='efectivo'?(r.pago_2_monto||0):0);
   const totalCobrado = cobradosEf.reduce((s,r)=>s+getEf(r),0);
 
-  const truckIds = new Set((rendicion || []).map(r=>r.truck_id));
-  const totalCombustible = fuel.reduce((s,f)=>s+(f.total_cost||0),0);
-  const cargasFuel = [...fuel].sort((a,b)=>(b.fuel_date||'').localeCompare(a.fuel_date||''));
+  const truckIds = _rendTruckIdsActuales || new Set();
+  const fuelEfectivo = fuel.filter(f =>
+    f.payment_method === 'efectivo' && (truckIds.size === 0 || truckIds.has(f.truck_id))
+  );
+  const totalCombustible = fuelEfectivo.reduce((s,f)=>s+(f.total_cost||0),0);
+  const cargasFuel = [...fuelEfectivo].sort((a,b)=>(b.fuel_date||'').localeCompare(a.fuel_date||''));
 
   const gastosExtra = rendicion.filter(r => (r.gastos_extra||0) > 0);
   const totalGastosExtra = gastosExtra.reduce((s,r)=>s+(r.gastos_extra||0),0);
 
-  const neto = totalCobrado - totalCombustible - totalGastosExtra;
+  const neto = Math.max(0, totalCobrado - totalCombustible - totalGastosExtra);
 
   const tituloEl = document.getElementById('modal-desglose-titulo');
   if (tituloEl) tituloEl.textContent = `💵 Efectivo en mano · $${_AR(neto)}`;
@@ -9358,7 +9426,7 @@ function abrirModalDesgloseEfectivo() {
         <div style="color:var(--green);font-weight:700;font-size:14px">+$${_AR(totalCobrado)}</div>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Combustible</div>
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Comb. efectivo</div>
         <div style="color:var(--red);font-weight:700;font-size:14px">−$${_AR(totalCombustible)}</div>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
@@ -9375,7 +9443,7 @@ function abrirModalDesgloseEfectivo() {
     <div style="margin-bottom:6px;font-size:11px;color:var(--green);font-weight:600">+ Cobrado en efectivo (${cobradosEf.length})</div>
     <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:14px">${rowsCobrado}</div>
 
-    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">− Combustible (${cargasFuel.length})</div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">− Combustible en efectivo (${cargasFuel.length})</div>
     <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:14px">${rowsFuel}</div>
 
     <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">− Gastos extra (${gastosExtra.length})</div>
