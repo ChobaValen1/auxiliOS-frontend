@@ -10083,6 +10083,8 @@ async function openImportCSVModal(tipo) {
     }
   } catch (e) { console.warn('CSV: no se pudo precargar duplicados', e); }
 
+  const modal = document.getElementById('modal-import-csv');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
   openModal('modal-import-csv');
   _csvWireDropzone();
 }
