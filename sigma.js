@@ -6344,12 +6344,47 @@ async function compartirRemitoPorWhatsApp(tr) {
  * Genera y descarga el remito en formato PDF profesional.
  * Versión: 0.2.0 - Sigma Remolques
  */
-function descargarRemitoPDF(tr) {
+// Datos de contacto/pie del PDF de remito (ajustar cuando SIGMA confirme los definitivos)
+const _REMITO_EMPRESA = {
+  nombre:    'SIGMA REMOLQUES',
+  direccion: 'Av. Ejemplo 1234 · CABA',
+  telefono:  '+54 11 5555-5555',
+  email:     'contacto@sigmaremolques.com',
+  web:       'sigmaremolques.com'
+};
+
+async function _remitoHash(d) {
+  try {
+    const payload = [d.nro, d.patente, d.createdAt || '', d.firmadoAt || '', d.km || '', String(d.peaje||0), String(d.excedente||0), String(d.otros||0)].join('|');
+    const buf = new TextEncoder().encode(payload);
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    const hex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    return hex.slice(0, 16).toUpperCase();
+  } catch(_) { return ''; }
+}
+
+function _qrDataURL(text) {
+  try {
+    if (typeof qrcode !== 'function') return '';
+    const qr = qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    return qr.createDataURL(4, 2);
+  } catch(_) { return ''; }
+}
+
+async function descargarRemitoPDF(tr) {
   const raw = tr?.getAttribute('data-rem');
   const d = raw ? JSON.parse(raw) : null;
   if (!d) { toast('No hay datos para el PDF', 'error'); return; }
 
   const totalExtras = (parseFloat(d.peaje || 0) + parseFloat(d.excedente || 0) + parseFloat(d.otros || 0));
+
+  // Código de verificación (hash) + QR
+  const hash = await _remitoHash(d);
+  const codVerif = hash ? `${hash.slice(0,4)}-${hash.slice(4,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}` : '';
+  const qrPayload = `SIGMA-REMITO|${d.nro}|${d.patente}|${d.firmadoAt || ''}|${hash}`;
+  const qrDataUrl = _qrDataURL(qrPayload);
 
   // --- LÓGICA: PROCESAMIENTO DE FOTOS ---
   const fotosArray = d.foto_urls || d.fotos || [];
@@ -6521,6 +6556,29 @@ function descargarRemitoPDF(tr) {
             El cliente declara conformidad con el estado de la unidad al momento de la entrega y acepta los cargos detallados.
           </div>
         </div>
+      </div>
+
+      <div style="margin-top:24px; border-top:1px dashed #ccc; padding-top:14px; display:flex; justify-content:space-between; align-items:flex-start; gap:20px;">
+        <div style="flex:1;">
+          <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-weight:bold;">Verificación digital</div>
+          <div style="font-size:10px; color:#555; line-height:1.5;">
+            Este remito fue firmado digitalmente. Código de verificación:<br>
+            <span style="font-family:'Courier New',monospace; font-size:12px; color:#111; font-weight:bold; letter-spacing:1px;">${codVerif || 'N/D'}</span>
+          </div>
+          <div style="font-size:8px; color:#999; margin-top:6px; line-height:1.4;">
+            El código y el QR se generan a partir de N° de remito, patente, KM, montos y fecha/hora de firma.
+            Cualquier alteración posterior modifica el código.
+          </div>
+        </div>
+        ${qrDataUrl ? `<div style="text-align:center;">
+          <img src="${qrDataUrl}" style="width:110px; height:110px; display:block; border:1px solid #eee;" alt="QR verificación">
+          <div style="font-size:8px; color:#999; margin-top:4px;">Escaneá para verificar</div>
+        </div>` : ''}
+      </div>
+
+      <div style="margin-top:14px; border-top:2px solid #f5a623; padding-top:10px; text-align:center; font-size:9px; color:#666; line-height:1.5;">
+        <b style="color:#f5a623;">${_REMITO_EMPRESA.nombre}</b> · ${_REMITO_EMPRESA.direccion}<br>
+        📞 ${_REMITO_EMPRESA.telefono} · ✉ ${_REMITO_EMPRESA.email} · 🌐 ${_REMITO_EMPRESA.web}
       </div>
 
     </div>
