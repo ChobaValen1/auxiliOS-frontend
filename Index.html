@@ -1043,7 +1043,7 @@
   <div id="camion-sub-planes" style="display:none">
     <div class="camion-sub-header">
       <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
-      <div class="camion-sub-title">📋 Planes de Service</div>
+      <div class="camion-sub-title">📋 Planes asignados a este vehículo</div>
       <button id="btn-nuevo-plan" class="btn btn-primary"
         style="font-size:11px;padding:6px 12px" onclick="openPlanModal()">+ Plan</button>
     </div>
@@ -1907,13 +1907,10 @@
       <nav class="cfg-nav">
         <button class="cfg-nav-item active" data-tab="tab-flota" onclick="switchConfigTab('tab-flota')"><span class="cfg-nav-dot"></span>Flota</button>
         <button class="cfg-nav-item" data-tab="tab-usuarios" onclick="switchConfigTab('tab-usuarios')"><span class="cfg-nav-dot"></span>Personal</button>
-        <button class="cfg-nav-item" data-tab="tab-planes" onclick="switchConfigTab('tab-planes')"><span class="cfg-nav-dot"></span>Planes</button>
-        <button class="cfg-nav-item" data-tab="tab-emergencias" onclick="switchConfigTab('tab-emergencias')"><span class="cfg-nav-dot"></span>Emergencias</button>
+        <button class="cfg-nav-item" data-tab="tab-planes" onclick="switchConfigTab('tab-planes')"><span class="cfg-nav-dot"></span>Catálogo de Planes</button>
+        <button class="cfg-nav-item" data-tab="tab-emergencias" onclick="switchConfigTab('tab-emergencias')"><span class="cfg-nav-dot"></span>Contactos de Emergencia</button>
         <button class="cfg-nav-item" data-tab="tab-mi-cuenta" onclick="switchConfigTab('tab-mi-cuenta')"><span class="cfg-nav-dot"></span>Mi cuenta</button>
       </nav>
-      <div class="cfg-sidebar-footer">
-        <button class="cfg-btn-logout" onclick="_confirmarCerrarSesion()">🚪 Cerrar sesión</button>
-      </div>
     </div>
 
     <!-- CONTENT -->

@@ -7626,12 +7626,6 @@ function _renderPerfilAdminTab() {
       <input id="cfg-admin-pass-confirm" class="cfg-ch-input" type="password" placeholder="Confirmar contraseña">
       <button class="cfg-ch-btn-primary" onclick="_guardarNuevaPasswordAdmin()">Guardar</button>
     </div>
-
-    <div class="cfg-ch-section-label">SESIÓN</div>
-    <div class="cfg-ch-card cfg-ch-card--action cfg-ch-card--danger" onclick="_confirmarCerrarSesion()">
-      <span>🚪 Cerrar sesión</span>
-      <span class="cfg-ch-arrow">›</span>
-    </div>
   `;
 }
 
@@ -7706,10 +7700,6 @@ function _abrirPanelChofer() {
           </div>
           <span class="cfg-ch-arrow">›</span>
         </div>
-        <div class="cfg-ch-card cfg-ch-card--action cfg-ch-card--danger" onclick="_confirmarCerrarSesion()">
-          <span>🚪 Cerrar sesión</span>
-          <span class="cfg-ch-arrow">›</span>
-        </div>
       </div>
     </div>`;
 
@@ -7755,8 +7745,8 @@ function _confirmarCerrarSesion() {
 const _cfgTabMeta = {
   'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal', importTipo: 'flota' },
   'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal', importTipo: 'usuarios' },
-  'tab-planes':      { title: 'Planes',       action: 'openAdminPlanModal' },
-  'tab-emergencias': { title: 'Emergencias',  action: null },
+  'tab-planes':      { title: 'Catálogo de Planes',       action: 'openAdminPlanModal' },
+  'tab-emergencias': { title: 'Contactos de Emergencia',  action: null },
   'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
 };
 
