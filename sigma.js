@@ -6388,9 +6388,26 @@ function descargarRemitoPDF(tr) {
 
   // --- ARMADO DEL HTML ---
   const _firmaUrl = (() => { const u = d.firma_imagen_url || d.firmaUrl || ''; return (typeof ENV !== 'undefined' && ENV.API_BASE_URL && u && !u.startsWith('http')) ? ENV.API_BASE_URL + u : u; })();
+
+  // Formateo fecha+hora inicio (creación) y fin (firma)
+  const _fmtDT = iso => {
+    if (!iso) return '—';
+    try {
+      const dt = new Date(iso);
+      const dd = String(dt.getDate()).padStart(2,'0');
+      const mm = String(dt.getMonth()+1).padStart(2,'0');
+      const yy = String(dt.getFullYear()).slice(-2);
+      const hh = String(dt.getHours()).padStart(2,'0');
+      const mi = String(dt.getMinutes()).padStart(2,'0');
+      return `${dd}/${mm}/${yy} ${hh}:${mi}`;
+    } catch(_) { return '—'; }
+  };
+  const _fechaInicio = _fmtDT(d.createdAt);
+  const _fechaFin    = _fmtDT(d.firmadoAt);
+
   const contenido = `
     <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:35px; color:#333; background:#fff;">
-      
+
       <table style="width:100%; border-bottom:2px solid #333; padding-bottom:15px; margin-bottom:20px;">
         <tr>
           <td>
@@ -6404,7 +6421,7 @@ function descargarRemitoPDF(tr) {
         </tr>
       </table>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px; font-size:12px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:14px; font-size:12px;">
         <div style="background:#f9f9f9; padding:12px; border-radius:6px;">
           <b style="color:#f5a623; font-size:10px; text-transform:uppercase;">Datos de la Unidad</b><br>
           <div style="margin-top:5px;"><b>Patente:</b> ${d.patente}</div>
@@ -6414,6 +6431,20 @@ function descargarRemitoPDF(tr) {
           <b style="color:#f5a623; font-size:10px; text-transform:uppercase;">Cliente / Servicio</b><br>
           <div style="margin-top:5px;"><b>Titular:</b> ${d.cliente || '—'}</div>
           <div><b>Tipo:</b> ${d.tipo}</div>
+        </div>
+      </div>
+
+      <div style="background:#f9f9f9; padding:12px; border-radius:6px; margin-bottom:20px; font-size:12px;">
+        <b style="color:#f5a623; font-size:10px; text-transform:uppercase;">Detalle del Servicio</b>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px 20px; margin-top:6px;">
+          <div><b>Origen:</b> ${d.origen || '—'}</div>
+          <div><b>Destino:</b> ${d.destino || '—'}</div>
+          <div><b>KM recorridos:</b> ${d.km || '—'}</div>
+          <div><b>N° de servicio:</b> ${d.nroSrv || '—'}</div>
+          <div><b>Chofer:</b> ${d.chofer || '—'}</div>
+          <div><b>Nº Remito:</b> ${d.nro}</div>
+          <div><b>Inicio:</b> ${_fechaInicio}</div>
+          <div><b>Fin (firma):</b> ${_fechaFin}</div>
         </div>
       </div>
 
@@ -6445,12 +6476,17 @@ function descargarRemitoPDF(tr) {
       ${bloqueLegalArrastre}
 
       <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-          <div style="text-align:center; width:200px;">
-            ${_firmaUrl ? `<img src="${_firmaUrl}" style="width:150px; border-bottom:1px solid #333;" crossorigin="anonymous">` : '<div style="height:50px; border-bottom:1px dashed #ccc;"></div>'}
-            <div style="font-size:10px; color:#999; margin-top:5px;">Firma de Conformidad del Cliente</div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px;">
+          <div style="text-align:center; width:340px;">
+            <div style="border:1px solid #ddd; background:#fff; border-radius:6px; padding:8px; min-height:180px; display:flex; align-items:center; justify-content:center;">
+              ${_firmaUrl
+                ? `<img src="${_firmaUrl}" style="max-width:320px; max-height:180px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
+                : '<div style="color:#bbb; font-size:11px;">Firma pendiente</div>'}
+            </div>
+            <div style="font-size:10px; color:#999; margin-top:6px;">Firma de Conformidad del Cliente</div>
+            <div style="font-size:9px; color:#777; margin-top:2px;">Fecha/hora de firma: ${_fechaFin}</div>
           </div>
-          <div style="font-size:9px; color:#bbb; text-align:right; max-width:250px;">
+          <div style="font-size:9px; color:#888; text-align:right; max-width:250px; padding-bottom:8px;">
             El cliente declara conformidad con el estado de la unidad al momento de la entrega y acepta los cargos detallados.
           </div>
         </div>

@@ -480,6 +480,8 @@ function _mapRemitoRow(r) {
     observaciones: r.observaciones || null,
     firmaUrl:      r.firma_imagen_url || null,
     chofer:        r.users?.full_name || '—',
+    createdAt:     r.created_at_device || null,
+    firmadoAt:     r.firmado_at        || null,
   };
 }
 
