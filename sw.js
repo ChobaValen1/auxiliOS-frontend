@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v45';
+const CACHE_NAME = 'auxilios-v46';
 
 const PRECACHE_ASSETS = [
   '/',

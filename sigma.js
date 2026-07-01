@@ -6488,7 +6488,7 @@ async function descargarRemitoPDF(tr) {
         </tr>
         <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Peajes y Gastos de Ruta</td>
             <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.peaje||0).toLocaleString('es-AR')}</td></tr>
-        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Excedente de Kilometraje (${d.km} KM totales)</td>
+        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Excedente a cargo del socio <span style="color:#888;font-size:9px">(km, carritos u hs. de trabajo fuera de plan)</span></td>
             <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.excedente||0).toLocaleString('es-AR')}</td></tr>
         <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Otros cargos adicionales</td>
             <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.otros||0).toLocaleString('es-AR')}</td></tr>
