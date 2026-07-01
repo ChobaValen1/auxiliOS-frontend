@@ -2574,7 +2574,12 @@ async function _cargarViewRendimiento() {
   if (finEl) {
     finEl.style.gridTemplateColumns = esChofer ? 'repeat(3,1fr)' : 'repeat(2,1fr)';
     finEl.innerHTML =
-      (esChofer ? '' : _KPI('💰', 'Total generado', '$'+_AR(factTotal), 'var(--amber)', `${srvs} servicios`, detTotal)) +
+      (esChofer ? '' : _KPI('💰', 'Total generado',
+        factTotal>0 ? '$'+_AR(factTotal) : '<span style="font-size:14px;color:var(--muted);font-weight:400">Sin datos</span>',
+        'var(--amber)',
+        factTotal>0 ? `${srvs} servicios` : 'No hay servicios registrados',
+        null,
+        factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalTotalGenerado()">📋 Ver detalle</span>` : null)) +
       (() => {
         const fuelEfectivo = fuel.filter(f => truckIds.has(f.truck_id) && f.payment_method === 'efectivo')
           .reduce((s,f)=>s+(f.total_cost||0),0);
@@ -9911,6 +9916,76 @@ function abrirDocumentoChofer(url) {
   
   // El '_blank' fuerza al navegador móvil a abrir su visor nativo o una nueva pestaña
   window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function abrirModalTotalGenerado() {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const remitos = _rendRemitosActuales || [];
+
+  const montoR = r => (r.pago_1_monto||0) + (r.pago_2_monto||0);
+  const totalGen = remitos.reduce((s,r)=>s+montoR(r),0);
+
+  const acc = { efectivo:0, transferencia:0, tarjeta:0, app:0 };
+  const cnt = { efectivo:0, transferencia:0, tarjeta:0, app:0 };
+  remitos.forEach(r => {
+    ['1','2'].forEach(i => {
+      const m = r['pago_'+i+'_metodo'];
+      const v = r['pago_'+i+'_monto'] || 0;
+      if (m && acc.hasOwnProperty(m)) { acc[m] += v; if (v>0) cnt[m]++; }
+    });
+  });
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `💰 Total generado · $${_AR(totalGen)}`;
+
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const pctBar = (label, monto, count, color) => {
+    const pct = totalGen>0 ? Math.round(monto/totalGen*100) : 0;
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:var(--text)">${label} <span style="color:var(--muted);font-size:10px">(${count})</span></span>
+        <span style="font-family:'DM Mono';color:${color};font-weight:600">$${_AR(monto)} <span style="color:var(--muted);font-weight:400">(${pct}%)</span></span>
+      </div>
+      <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${color}"></div>
+      </div>
+    </div>`;
+  };
+
+  const sorted = [...remitos].sort((a,b)=>montoR(b)-montoR(a));
+  const rowsRem = sorted.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay servicios registrados en el período</div>'
+    : sorted.map(r => {
+        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
+          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">$' + _AR(montoR(r)) + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--amber);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total facturado</div>
+      <div style="color:var(--amber);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${_AR(totalGen)}</div>
+      <div style="color:var(--muted);font-size:10px;margin-top:2px">${remitos.length} servicios</div>
+    </div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Desglose por método</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:12px;margin-bottom:14px">
+      ${pctBar('💵 Efectivo',       acc.efectivo,      cnt.efectivo,      'var(--green)')}
+      ${pctBar('📲 Transferencia',  acc.transferencia, cnt.transferencia, 'var(--blue)')}
+      ${pctBar('💳 Tarjeta',        acc.tarjeta,       cnt.tarjeta,       'var(--purple)')}
+      ${pctBar('📱 App',            acc.app,           cnt.app,           'var(--amber)')}
+    </div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Servicios ordenados por monto (${remitos.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rowsRem}</div>
+  `;
+
+  openModal('modal-desglose-pago');
 }
 
 function abrirModalKmRecorridos() {
