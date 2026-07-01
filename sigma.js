@@ -6477,10 +6477,10 @@ function descargarRemitoPDF(tr) {
 
       <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px;">
-          <div style="text-align:center; width:340px;">
-            <div style="border:1px solid #ddd; background:#fff; border-radius:6px; padding:8px; min-height:180px; display:flex; align-items:center; justify-content:center;">
+          <div style="text-align:center; width:480px;">
+            <div style="border:1px solid #ddd; background:#fff; border-radius:6px; padding:10px; min-height:260px; display:flex; align-items:center; justify-content:center;">
               ${_firmaUrl
-                ? `<img src="${_firmaUrl}" style="max-width:320px; max-height:180px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
+                ? `<img src="${_firmaUrl}" style="max-width:460px; max-height:260px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
                 : '<div style="color:#bbb; font-size:11px;">Firma pendiente</div>'}
             </div>
             <div style="font-size:10px; color:#999; margin-top:6px;">Firma de Conformidad del Cliente</div>
