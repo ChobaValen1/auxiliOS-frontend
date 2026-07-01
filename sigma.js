@@ -2289,6 +2289,9 @@ let _rendLogsActuales       = [];   // daily_logs del período activo
 let _negocioUsuariosActuales  = [];
 let _negocioLogTruckMapActual = {};
 let _negocioJornadasActuales  = [];
+let _negocioRemitosActuales   = [];
+let _negocioFuelActuales      = [];
+let _negocioJornadasFilt      = [];
 
 // ── helpers ──────────────────────────────────
 const _AR = n => Math.round(n).toLocaleString('es-AR');
@@ -2827,6 +2830,9 @@ function _renderNegocioFiltrado() {
   _negocioUsuariosActuales  = usuarios;
   _negocioLogTruckMapActual = logTruckMap;
   _negocioJornadasActuales  = jAll;
+  _negocioRemitosActuales   = remitos;
+  _negocioFuelActuales      = fuel;
+  _negocioJornadasFilt      = jornadas;
 
   // Status bar
   const totTrucks  = new Set(jAll.map(j=>j.truck_id).filter(Boolean)).size;
@@ -2900,20 +2906,57 @@ function _renderNegocioFiltrado() {
                       _mrow('Litros cargados', _AR(litrosTot)+'L') +
                       (deudaTotal>0 ? _mrow('⚠️ Deuda en alertas', '$'+_AR(deudaTotal)) : '');
 
+  const _NEG_EMPTY = '<span style="font-size:14px;color:var(--muted);font-weight:400">Sin datos</span>';
+
   // ── KPIs principales ──
   const mainEl = document.getElementById('dash-neg-kpis-main');
   if (mainEl) mainEl.innerHTML =
-    _KPI('💵', 'Facturación', '$' + _AR(factTotal), 'var(--amber)', `${remitos.length} servicios`, detFact) +
-    _KPI('📈', 'Resultado op.', (resultado>=0?'$':'−$') + _AR(Math.abs(resultado)), resultado>=0?'var(--green)':'var(--red)', `${margenPct}% margen`, detResult) +
-    _KPI('💰', 'Caja en calle', '$' + _AR(cajaEnCalle), 'var(--blue)', '<span style="cursor:pointer;color:var(--blue);text-decoration:underline" onclick="abrirModalCajaCalle()">Ver desglose completo →</span>', detCaja);
+    _KPI('💵', 'Facturación',
+      factTotal>0 ? '$'+_AR(factTotal) : _NEG_EMPTY,
+      'var(--amber)',
+      factTotal>0 ? `${remitos.length} servicios` : 'No hay servicios registrados',
+      null,
+      factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioFacturacion()">📋 Ver detalle</span>` : null) +
+    _KPI('📈', 'Resultado op.',
+      factTotal>0 ? (resultado>=0?'$':'−$') + _AR(Math.abs(resultado)) : _NEG_EMPTY,
+      factTotal>0 ? (resultado>=0?'var(--green)':'var(--red)') : 'var(--muted)',
+      factTotal>0 ? `${margenPct}% margen` : 'No hay facturación en el período',
+      null,
+      factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioResultado()">📋 Ver detalle</span>` : null) +
+    _KPI('💰', 'Caja en calle',
+      cajaEnCalle>0 ? '$'+_AR(cajaEnCalle) : _NEG_EMPTY,
+      'var(--blue)',
+      cajaEnCalle>0 ? 'efectivo en manos de choferes' : 'No hay efectivo cobrado',
+      null,
+      cajaEnCalle>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalCajaCalle()">📋 Ver detalle</span>` : null);
 
   // ── KPIs secundarios ──
   const secEl = document.getElementById('dash-neg-kpis-sec');
   if (secEl) secEl.innerHTML =
-    _KPI('🚛', 'Km totales',   kmTotal.toLocaleString('es-AR') + ' km', 'var(--amber)', jornadasTot+' jornadas', detKmG) +
-    _KPI('🎫', 'Ticket prom.', ticketProm > 0 ? '$' + _AR(ticketProm) : '—', 'var(--green)', remitos.length+' servicios', detTicket) +
-    _KPI('💸', '$ / Km',       porKmG !== '—' ? '$' + porKmG : '—', 'var(--blue)', 'ingreso por km', detPorKm) +
-    _KPI('⛽', 'Costo / Km',   costoKm !== '—' ? '$' + costoKm : '—', deudaTotal>0?'var(--red)':'var(--muted)', deudaTotal>0?'⚠️ $'+_AR(deudaTotal)+' en alertas':'combustible/km', detCostoKm);
+    _KPI('🚛', 'Km totales',
+      kmTotal>0 ? kmTotal.toLocaleString('es-AR')+' km' : _NEG_EMPTY,
+      'var(--amber)',
+      kmTotal>0 ? jornadasTot+' jornadas' : 'No hay jornadas cerradas',
+      null,
+      kmTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioKmTotales()">📋 Ver detalle</span>` : null) +
+    _KPI('🎫', 'Ticket prom.',
+      ticketProm>0 ? '$'+_AR(ticketProm) : _NEG_EMPTY,
+      'var(--green)',
+      ticketProm>0 ? remitos.length+' servicios' : 'No hay servicios registrados',
+      null,
+      ticketProm>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioTicket()">📋 Ver detalle</span>` : null) +
+    _KPI('💸', '$ / Km',
+      porKmG!=='—' ? '$'+porKmG : _NEG_EMPTY,
+      'var(--blue)',
+      porKmG!=='—' ? 'ingreso por km' : 'No hay km recorridos',
+      null,
+      porKmG!=='—' ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioPorKm()">📋 Ver detalle</span>` : null) +
+    _KPI('⛽', 'Costo / Km',
+      costoKm!=='—' ? '$'+costoKm : _NEG_EMPTY,
+      deudaTotal>0 ? 'var(--red)' : 'var(--muted)',
+      costoKm!=='—' ? (deudaTotal>0 ? '⚠️ $'+_AR(deudaTotal)+' en alertas' : 'combustible/km') : 'No hay cargas de combustible',
+      null,
+      costoKm!=='—' ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioCostoKm()">📋 Ver detalle</span>` : null);
 
   // ── Panel Frecuencia (reemplaza Facturación) ──
   const factEl = document.getElementById('dash-panel-fact');
@@ -10271,6 +10314,354 @@ function abrirModalDesglosePago(tipo) {
     <div style="color:var(--muted2);font-size:10px;text-align:right;margin-top:8px">${filtrados.length} servicios · período activo</div>
   `;
 
+  openModal('modal-desglose-pago');
+}
+
+function _negocioMetodoStats() {
+  const remitos = _negocioRemitosActuales || [];
+  const acc = { efectivo:0, transferencia:0, tarjeta:0, app:0 };
+  const cnt = { efectivo:0, transferencia:0, tarjeta:0, app:0 };
+  remitos.forEach(r => {
+    ['1','2'].forEach(i => {
+      const m = r['pago_'+i+'_metodo'];
+      const v = r['pago_'+i+'_monto'] || 0;
+      if (m && acc.hasOwnProperty(m)) { acc[m] += v; if (v>0) cnt[m]++; }
+    });
+  });
+  return { acc, cnt };
+}
+
+function _negocioBarPct(label, monto, count, total, color) {
+  const pct = total>0 ? Math.round(monto/total*100) : 0;
+  return `<div style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+      <span style="color:var(--text)">${label} <span style="color:var(--muted);font-size:10px">(${count})</span></span>
+      <span style="font-family:'DM Mono';color:${color};font-weight:600">$${_AR(monto)} <span style="color:var(--muted);font-weight:400">(${pct}%)</span></span>
+    </div>
+    <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:${color}"></div>
+    </div>
+  </div>`;
+}
+
+function abrirModalNegocioFacturacion() {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const remitos = _negocioRemitosActuales || [];
+  const montoR = r => (r.pago_1_monto||0) + (r.pago_2_monto||0);
+  const total = remitos.reduce((s,r)=>s+montoR(r),0);
+  const firmados = remitos.filter(r=>r.status==='firmado').length;
+  const pendientes = remitos.filter(r=>r.status==='pendiente').length;
+  const anulados = remitos.filter(r=>r.status==='anulado').length;
+  const { acc, cnt } = _negocioMetodoStats();
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `💵 Facturación · $${_AR(total)}`;
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const sorted = [...remitos].sort((a,b)=>montoR(b)-montoR(a));
+  const rows = sorted.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay servicios registrados</div>'
+    : sorted.map(r => {
+        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
+        const badge = r.status==='firmado'?'✓':r.status==='anulado'?'✕':'⋯';
+        const badgeCol = r.status==='firmado'?'var(--green)':r.status==='anulado'?'var(--red)':'var(--muted)';
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 20px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:'+badgeCol+';font-size:12px;text-align:center">' + badge + '</span>'
+          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
+          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">$' + _AR(montoR(r)) + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--amber);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Facturación total</div>
+      <div style="color:var(--amber);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${_AR(total)}</div>
+      <div style="color:var(--muted);font-size:10px;margin-top:2px">${remitos.length} servicios</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Firmados</div>
+        <div style="color:var(--green);font-weight:700;font-size:14px">${firmados}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Pendientes</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">${pendientes}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Anulados</div>
+        <div style="color:var(--red);font-weight:700;font-size:14px">${anulados}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Desglose por método</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:12px;margin-bottom:14px">
+      ${_negocioBarPct('💵 Efectivo',      acc.efectivo,      cnt.efectivo,      total, 'var(--green)')}
+      ${_negocioBarPct('📲 Transferencia', acc.transferencia, cnt.transferencia, total, 'var(--blue)')}
+      ${_negocioBarPct('💳 Tarjeta',       acc.tarjeta,       cnt.tarjeta,       total, 'var(--purple)')}
+      ${_negocioBarPct('📱 App',           acc.app,           cnt.app,           total, 'var(--amber)')}
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Servicios ordenados por monto (${remitos.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rows}</div>
+  `;
+  openModal('modal-desglose-pago');
+}
+
+function abrirModalNegocioResultado() {
+  const remitos = _negocioRemitosActuales || [];
+  const fuel = _negocioFuelActuales || [];
+  const factTotal = remitos.reduce((s,r)=>s+(r.pago_1_monto||0)+(r.pago_2_monto||0),0);
+  const gastosFuel = fuel.reduce((s,f)=>s+(f.total_cost||0),0);
+  const litros = fuel.reduce((s,f)=>s+(f.liters||0),0);
+  const resultado = factTotal - gastosFuel;
+  const margen = factTotal>0 ? Math.round(resultado/factTotal*100) : 0;
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `📈 Resultado operativo · ${resultado>=0?'':'−'}$${_AR(Math.abs(resultado))}`;
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const rowsFuel = fuel.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">No hay cargas de combustible</div>'
+    : [...fuel].sort((a,b)=>(b.fuel_date||'').localeCompare(a.fuel_date||'')).slice(0,50).map(f => {
+        const fecha = (f.fuel_date||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--text);font-size:11px">⛽ ' + _AR(f.liters||0) + ' L</span>'
+          + '<span style="color:var(--red);font-weight:600;font-size:11px;text-align:right">−$' + _AR(f.total_cost||0) + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Facturación</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(factTotal)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Combustible</div>
+        <div style="color:var(--red);font-weight:700;font-size:14px">−$${_AR(gastosFuel)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Margen</div>
+        <div style="color:${margen>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:14px">${margen}%</div>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid ${resultado>=0?'var(--green)':'var(--red)'};border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">= Resultado operativo</div>
+      <div style="color:${resultado>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:22px;font-family:'Bebas Neue'">${resultado>=0?'':'−'}$${_AR(Math.abs(resultado))}</div>
+      <div style="color:var(--muted);font-size:10px;margin-top:2px">${litros>0?_AR(litros)+' L de combustible':''}</div>
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">− Cargas de combustible (${fuel.length}${fuel.length>50?' — mostrando 50':''})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rowsFuel}</div>
+  `;
+  openModal('modal-desglose-pago');
+}
+
+function abrirModalNegocioKmTotales() {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const jornadas = _negocioJornadasFilt || [];
+  const totalKm = jornadas.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
+  const cerradas = jornadas.filter(j=>j.km_final!=null).length;
+  const promKm = cerradas>0 ? Math.round(totalKm/cerradas) : 0;
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `🚛 Km totales · ${totalKm.toLocaleString('es-AR')} km`;
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const sorted = [...jornadas].sort((a,b)=>(b.log_date||'').localeCompare(a.log_date||''));
+  const rows = sorted.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay jornadas registradas</div>'
+    : sorted.slice(0,100).map(j => {
+        const km = Math.max(0, (j.km_final||0) - (j.km_inicio||0));
+        const abierta = j.km_final == null;
+        const fecha = j.log_date || '—';
+        const plate = j.trucks?.plate || (j.truck_id ? '#'+j.truck_id : '—');
+        return '<div class="modal-desglose-row" style="grid-template-columns:80px 1fr 110px">'
+          + '<span style="color:var(--muted);font-size:11px">' + _esc(fecha) + '</span>'
+          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(plate) + (abierta?' <span style="color:var(--amber);font-size:9px">(abierta)</span>':'') + '</span>'
+          + '<span style="color:var(--text);font-weight:600;font-size:11px;text-align:right">' + (abierta?'—':km.toLocaleString('es-AR')+' km') + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Total km</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">${totalKm.toLocaleString('es-AR')}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Jornadas</div>
+        <div style="color:var(--text);font-weight:700;font-size:14px">${jornadas.length}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Promedio</div>
+        <div style="color:var(--green);font-weight:700;font-size:14px">${promKm.toLocaleString('es-AR')} km</div>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">Jornadas ordenadas por fecha (${jornadas.length}${jornadas.length>100?' — mostrando 100':''})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rows}</div>
+  `;
+  openModal('modal-desglose-pago');
+}
+
+function abrirModalNegocioTicket() {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const remitos = _negocioRemitosActuales || [];
+  const montoR = r => (r.pago_1_monto||0) + (r.pago_2_monto||0);
+  const montos = remitos.map(montoR).filter(v=>v>0).sort((a,b)=>a-b);
+  const total = montos.reduce((s,v)=>s+v,0);
+  const prom = montos.length>0 ? Math.round(total/montos.length) : 0;
+  const min = montos.length>0 ? montos[0] : 0;
+  const max = montos.length>0 ? montos[montos.length-1] : 0;
+  const mediana = montos.length>0 ? montos[Math.floor(montos.length/2)] : 0;
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `🎫 Ticket promedio · $${_AR(prom)}`;
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const rangos = [
+    { label: 'Hasta $10.000', min: 0, max: 10000, color: 'var(--muted)' },
+    { label: '$10.000 - $30.000', min: 10000, max: 30000, color: 'var(--blue)' },
+    { label: '$30.000 - $60.000', min: 30000, max: 60000, color: 'var(--green)' },
+    { label: '$60.000 - $100.000', min: 60000, max: 100000, color: 'var(--amber)' },
+    { label: 'Más de $100.000', min: 100000, max: Infinity, color: 'var(--purple)' },
+  ];
+  const distTotal = montos.length;
+  const dist = rangos.map(r => {
+    const count = montos.filter(v => v>=r.min && v<r.max).length;
+    const pct = distTotal>0 ? Math.round(count/distTotal*100) : 0;
+    return `<div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="color:var(--text)">${r.label}</span>
+        <span style="color:${r.color};font-weight:600">${count} <span style="color:var(--muted);font-weight:400">(${pct}%)</span></span>
+      </div>
+      <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${r.color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--green);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Ticket promedio</div>
+      <div style="color:var(--green);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${_AR(prom)}</div>
+      <div style="color:var(--muted);font-size:10px;margin-top:2px">${montos.length} servicios con monto</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Mínimo</div>
+        <div style="color:var(--text);font-weight:700;font-size:14px">$${_AR(min)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Mediana</div>
+        <div style="color:var(--blue);font-weight:700;font-size:14px">$${_AR(mediana)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Máximo</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(max)}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Distribución de tickets</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:12px">${dist}</div>
+  `;
+  openModal('modal-desglose-pago');
+}
+
+function abrirModalNegocioPorKm() {
+  const remitos = _negocioRemitosActuales || [];
+  const jornadas = _negocioJornadasFilt || [];
+  const factTotal = remitos.reduce((s,r)=>s+(r.pago_1_monto||0)+(r.pago_2_monto||0),0);
+  const kmTotal = jornadas.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
+  const porKm = kmTotal>0 ? (factTotal/kmTotal) : 0;
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `💸 Ingreso por km · $${porKm.toFixed(1)}`;
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  body.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--blue);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Ingreso por km</div>
+      <div style="color:var(--blue);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${porKm.toFixed(1)}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Facturación total</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(factTotal)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Km totales</div>
+        <div style="color:var(--text);font-weight:700;font-size:14px">${kmTotal.toLocaleString('es-AR')} km</div>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:12px;font-size:11px;color:var(--muted);line-height:1.6">
+      Este indicador muestra cuánto se factura por cada km recorrido. Se calcula dividiendo la facturación total por los km recorridos en el período. Sirve para comparar rentabilidad entre períodos o entre camiones/choferes usando los filtros de arriba.
+    </div>
+  `;
+  openModal('modal-desglose-pago');
+}
+
+function abrirModalNegocioCostoKm() {
+  const jornadas = _negocioJornadasFilt || [];
+  const fuel = _negocioFuelActuales || [];
+  const gastosFuel = fuel.reduce((s,f)=>s+(f.total_cost||0),0);
+  const litros = fuel.reduce((s,f)=>s+(f.liters||0),0);
+  const kmTotal = jornadas.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
+  const costoKm = kmTotal>0 ? (gastosFuel/kmTotal) : 0;
+  const kmL = litros>0 ? (kmTotal/litros).toFixed(1) : '—';
+  const precioL = litros>0 ? (gastosFuel/litros).toFixed(0) : 0;
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `⛽ Costo por km · $${costoKm.toFixed(1)}`;
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const rowsFuel = fuel.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">No hay cargas de combustible</div>'
+    : [...fuel].sort((a,b)=>(b.fuel_date||'').localeCompare(a.fuel_date||'')).slice(0,50).map(f => {
+        const fecha = (f.fuel_date||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--text);font-size:11px">⛽ ' + _AR(f.liters||0) + ' L</span>'
+          + '<span style="color:var(--red);font-weight:600;font-size:11px;text-align:right">−$' + _AR(f.total_cost||0) + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Costo de combustible por km</div>
+      <div style="color:var(--red);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${costoKm.toFixed(1)}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Km / litro</div>
+        <div style="color:var(--purple);font-weight:700;font-size:14px">${kmL}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Precio prom./L</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(precioL)}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Gasto total</div>
+        <div style="color:var(--red);font-weight:700;font-size:14px">$${_AR(gastosFuel)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Litros</div>
+        <div style="color:var(--text);font-weight:700;font-size:14px">${_AR(litros)} L</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Km totales</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">${kmTotal.toLocaleString('es-AR')}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">Cargas de combustible (${fuel.length}${fuel.length>50?' — mostrando 50':''})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rowsFuel}</div>
+  `;
   openModal('modal-desglose-pago');
 }
 
