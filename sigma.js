@@ -6391,14 +6391,14 @@ async function descargarRemitoPDF(tr) {
   let seccionFotos = '';
   if (fotosArray.length > 0) {
     seccionFotos = `
-      <div style="margin-bottom:24px;">
-        <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-weight:bold; border-bottom: 1px solid #eee; padding-bottom: 5px;">
-          📷 Registro Fotográfico de la Unidad (Evidencia)
+      <div style="margin-bottom:8px;">
+        <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:2px;">
+          📷 Registro Fotográfico de la Unidad
         </div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-          ${fotosArray.map(url => `
-            <div style="border: 1px solid #eee; border-radius: 4px; overflow: hidden; height: 130px; background: #fdfdfd;">
-              <img src="${(typeof ENV !== 'undefined' && ENV.API_BASE_URL && !url.startsWith('http')) ? ENV.API_BASE_URL + url : url}" style="width: 100%; height: 100%; object-fit: cover;" crossorigin="anonymous">
+        <div style="display:grid; grid-template-columns: repeat(${Math.min(fotosArray.length, 4)}, 1fr); gap:5px;">
+          ${fotosArray.slice(0, 4).map(url => `
+            <div style="border:1px solid #eee; border-radius:3px; overflow:hidden; height:75px; background:#fdfdfd;">
+              <img src="${(typeof ENV !== 'undefined' && ENV.API_BASE_URL && !url.startsWith('http')) ? ENV.API_BASE_URL + url : url}" style="width:100%; height:100%; object-fit:cover;" crossorigin="anonymous">
             </div>
           `).join('')}
         </div>
@@ -6411,12 +6411,12 @@ async function descargarRemitoPDF(tr) {
   const requiereArrastre = d.confirmaciones && d.confirmaciones.includes('Conformidad de Arrastre');
   
   const bloqueLegalArrastre = requiereArrastre ? `
-    <div style="background:#fff3cd; border:1px solid #ffeeba; border-radius:6px; padding:12px; margin-bottom:20px;">
-      <div style="font-size:10px; color:#856404; font-weight:bold; margin-bottom:5px;">
+    <div style="background:#fff3cd; border:1px solid #ffeeba; border-radius:4px; padding:6px 8px; margin-bottom:8px;">
+      <div style="font-size:9px; color:#856404; font-weight:bold; margin-bottom:2px;">
         ⚠️ DECLARACIÓN DE CONFORMIDAD DE ARRASTRE
       </div>
-      <div style="font-size:9px; color:#856404; line-height:1.4; text-align:justify;">
-        El cliente autoriza expresamente a Sigma Remolques a realizar maniobras de arrastre sobre el vehículo, asumiendo total responsabilidad por posibles daños mecánicos (transmisión, frenos, etc.) o estéticos derivados de la condición actual de la unidad (falta de llaves, ruedas bloqueadas, fallas electrónicas, etc). El operador queda eximido de reclamos posteriores por dichos conceptos.
+      <div style="font-size:8px; color:#856404; line-height:1.3; text-align:justify;">
+        El cliente autoriza expresamente a Sigma Remolques a realizar maniobras de arrastre sobre el vehículo, asumiendo total responsabilidad por posibles daños mecánicos o estéticos derivados de la condición actual de la unidad. El operador queda eximido de reclamos posteriores por dichos conceptos.
       </div>
     </div>
   ` : '';
@@ -6441,72 +6441,64 @@ async function descargarRemitoPDF(tr) {
   const _fechaFin    = _fmtDT(d.firmadoAt);
 
   const contenido = `
-    <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:35px; color:#333; background:#fff;">
+    <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:18px 22px; color:#333; background:#fff; width:794px; box-sizing:border-box;">
 
-      <table style="width:100%; border-bottom:2px solid #333; padding-bottom:15px; margin-bottom:20px;">
+      <table style="width:100%; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:8px;">
         <tr>
           <td>
-            <div style="font-size:22px; font-weight:bold; color:#f5a623;">SIGMA REMOLQUES</div>
-            <div style="font-size:10px; color:#777;">Auxilio y Traslados de Vehículos</div>
+            <div style="font-size:18px; font-weight:bold; color:#f5a623; line-height:1.1;">SIGMA REMOLQUES</div>
+            <div style="font-size:9px; color:#777;">Auxilio y Traslados de Vehículos</div>
           </td>
           <td style="text-align:right;">
-            <div style="font-size:16px; font-weight:bold;">REMITO N° ${d.nro}</div>
-            <div style="font-size:11px; color:#888;">${d.fecha}</div>
+            <div style="font-size:14px; font-weight:bold;">REMITO N° ${d.nro}</div>
+            <div style="font-size:10px; color:#888;">${d.fecha}</div>
           </td>
         </tr>
       </table>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:14px; font-size:12px;">
-        <div style="background:#f9f9f9; padding:12px; border-radius:6px;">
-          <b style="color:#f5a623; font-size:10px; text-transform:uppercase;">Datos de la Unidad</b><br>
-          <div style="margin-top:5px;"><b>Patente:</b> ${d.patente}</div>
-          <div><b>Marca/Mod:</b> ${d.marca || '—'}</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:6px; font-size:10px;">
+        <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px;">
+          <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Datos de la Unidad</b>
+          <div style="margin-top:2px;"><b>Patente:</b> ${d.patente} &nbsp;·&nbsp; <b>Marca/Mod:</b> ${d.marca || '—'}</div>
         </div>
-        <div style="background:#f9f9f9; padding:12px; border-radius:6px;">
-          <b style="color:#f5a623; font-size:10px; text-transform:uppercase;">Cliente / Servicio</b><br>
-          <div style="margin-top:5px;"><b>Titular:</b> ${d.cliente || '—'}</div>
-          <div><b>Tipo:</b> ${d.tipo}</div>
+        <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px;">
+          <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Cliente / Servicio</b>
+          <div style="margin-top:2px;"><b>Titular:</b> ${d.cliente || '—'} &nbsp;·&nbsp; <b>Tipo:</b> ${d.tipo}</div>
         </div>
       </div>
 
-      <div style="background:#f9f9f9; padding:12px; border-radius:6px; margin-bottom:20px; font-size:12px;">
-        <b style="color:#f5a623; font-size:10px; text-transform:uppercase;">Detalle del Servicio</b>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px 20px; margin-top:6px;">
+      <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px; margin-bottom:8px; font-size:10px;">
+        <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Detalle del Servicio</b>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:2px 12px; margin-top:2px;">
           <div><b>Origen:</b> ${d.origen || '—'}</div>
           <div><b>Destino:</b> ${d.destino || '—'}</div>
-          <div><b>KM recorridos:</b> ${d.km || '—'}</div>
-          <div><b>N° de servicio:</b> ${d.nroSrv || '—'}</div>
+          <div><b>KM:</b> ${d.km || '—'}</div>
+          <div><b>N° Srv:</b> ${d.nroSrv || '—'}</div>
           <div><b>Chofer:</b> ${d.chofer || '—'}</div>
           <div><b>Nº Remito:</b> ${d.nro}</div>
           <div><b>Inicio:</b> ${_fechaInicio}</div>
-          <div><b>Fin (firma):</b> ${_fechaFin}</div>
+          <div><b>Fin firma:</b> ${_fechaFin}</div>
         </div>
       </div>
 
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:11px;">
+      <table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:10px;">
         <tr style="background:#f5a623; color:#fff; font-weight:bold;">
-          <td style="padding:8px;">Concepto de Extras</td>
-          <td style="padding:8px; text-align:right;">Monto</td>
+          <td style="padding:4px 8px;">Concepto de Extras</td>
+          <td style="padding:4px 8px; text-align:right;">Monto</td>
         </tr>
-        <tr>
-          <td style="padding:8px; border-bottom:1px solid #eee;">Peajes y Gastos de Ruta</td>
-          <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.peaje||0).toLocaleString('es-AR')}</td>
+        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Peajes y Gastos de Ruta</td>
+            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.peaje||0).toLocaleString('es-AR')}</td></tr>
+        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Excedente de Kilometraje (${d.km} KM totales)</td>
+            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.excedente||0).toLocaleString('es-AR')}</td></tr>
+        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Otros cargos adicionales</td>
+            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.otros||0).toLocaleString('es-AR')}</td></tr>
+        <tr style="font-weight:bold; font-size:11px; background:#fafafa;">
+          <td style="padding:6px 8px; text-align:right;">TOTAL A ABONAR POR EL SOCIO:</td>
+          <td style="padding:6px 8px; text-align:right; color:#f5a623;">$${totalExtras.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})} ARS</td>
         </tr>
-        <tr>
-          <td style="padding:8px; border-bottom:1px solid #eee;">Excedente de Kilometraje (${d.km} KM totales)</td>
-          <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.excedente||0).toLocaleString('es-AR')}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px; border-bottom:1px solid #eee;">Otros cargos adicionales</td>
-          <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.otros||0).toLocaleString('es-AR')}</td>
-        </tr>
-        <tr style="font-weight:bold; font-size:13px; background:#fafafa;">
-          <td style="padding:10px; text-align:right;">TOTAL A ABONAR POR EL SOCIO:</td>
-          <td style="padding:10px; text-align:right; color:#f5a623;">$${totalExtras.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})} ARS</td>
-        </tr>
-        <tr style="font-size:11px;">
-          <td style="padding:8px 10px; text-align:right; color:#666;">Forma de pago:</td>
-          <td style="padding:8px 10px; text-align:right; color:#333; font-weight:600;">${(d.pago && d.pago !== '—') ? d.pago : '— No informado —'}</td>
+        <tr style="font-size:10px;">
+          <td style="padding:4px 8px; text-align:right; color:#666;">Forma de pago:</td>
+          <td style="padding:4px 8px; text-align:right; color:#333; font-weight:600;">${(d.pago && d.pago !== '—') ? d.pago : '— No informado —'}</td>
         </tr>
       </table>
 
@@ -6516,11 +6508,11 @@ async function descargarRemitoPDF(tr) {
         const confs = Array.isArray(d.confirmaciones) ? d.confirmaciones : [];
         if (!confs.length) return '';
         return `
-        <div style="margin-bottom:20px;">
-          <div style="font-size:10px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:5px;">
+        <div style="margin-bottom:8px;">
+          <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:2px;">
             ✓ Confirmaciones firmadas por el cliente
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 20px; font-size:11px; color:#333;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 16px; font-size:10px; color:#333;">
             ${confs.map(c => `<div><span style="color:#2ea043;font-weight:bold">✓</span> ${c}</div>`).join('')}
           </div>
         </div>`;
@@ -6528,73 +6520,59 @@ async function descargarRemitoPDF(tr) {
 
       ${bloqueLegalArrastre}
 
-      <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px;">
-          <div style="width:480px;">
-            <div style="border:1px solid #ddd; background:#fff; border-radius:6px; padding:10px; min-height:260px; display:flex; align-items:center; justify-content:center;">
+      <div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px;">
+          <div style="flex:1;">
+            <div style="border:1px solid #ddd; background:#fff; border-radius:4px; padding:4px; height:140px; display:flex; align-items:center; justify-content:center;">
               ${_firmaUrl
-                ? `<img src="${_firmaUrl}" style="max-width:460px; max-height:260px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
-                : '<div style="color:#bbb; font-size:11px;">Firma pendiente</div>'}
+                ? `<img src="${_firmaUrl}" style="max-width:100%; max-height:132px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
+                : '<div style="color:#bbb; font-size:10px;">Firma pendiente</div>'}
             </div>
-            <div style="text-align:center; font-size:10px; color:#999; margin-top:6px;">Firma de Conformidad del Cliente</div>
-            <table style="width:100%; margin-top:10px; font-size:10px; color:#444; border-collapse:collapse;">
-              <tr>
-                <td style="padding:3px 0; width:110px; color:#888;">Aclaración:</td>
-                <td style="padding:3px 0; border-bottom:1px solid #ccc;">${d.cliente || ''}</td>
-              </tr>
-              <tr>
-                <td style="padding:3px 0; color:#888;">DNI / CUIT:</td>
-                <td style="padding:3px 0; border-bottom:1px solid #ccc;">${d.cuit || ''}</td>
-              </tr>
-              <tr>
-                <td style="padding:3px 0; color:#888;">Fecha y hora:</td>
-                <td style="padding:3px 0; border-bottom:1px solid #ccc;">${_fechaFin}</td>
-              </tr>
+            <div style="text-align:center; font-size:9px; color:#999; margin-top:3px;">Firma de Conformidad del Cliente</div>
+            <table style="width:100%; margin-top:4px; font-size:9px; color:#444; border-collapse:collapse;">
+              <tr><td style="padding:1px 0; width:80px; color:#888;">Aclaración:</td>
+                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${d.cliente || ''}</td></tr>
+              <tr><td style="padding:1px 0; color:#888;">DNI / CUIT:</td>
+                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${d.cuit || ''}</td></tr>
+              <tr><td style="padding:1px 0; color:#888;">Fecha y hora:</td>
+                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${_fechaFin}</td></tr>
             </table>
           </div>
-          <div style="font-size:9px; color:#888; text-align:right; max-width:250px; padding-bottom:8px;">
-            El cliente declara conformidad con el estado de la unidad al momento de la entrega y acepta los cargos detallados.
+          <div style="width:200px;">
+            <div style="font-size:8px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; font-weight:bold;">Verificación digital</div>
+            <div style="font-size:9px; color:#555; line-height:1.3;">
+              Código:<br>
+              <span style="font-family:'Courier New',monospace; font-size:10px; color:#111; font-weight:bold; letter-spacing:0.5px;">${codVerif || 'N/D'}</span>
+            </div>
+            ${qrDataUrl ? `<div style="text-align:center; margin-top:4px;">
+              <img src="${qrDataUrl}" style="width:90px; height:90px; display:block; margin:0 auto; border:1px solid #eee;" alt="QR verificación">
+              <div style="font-size:7px; color:#999; margin-top:2px;">Escaneá para verificar</div>
+            </div>` : ''}
           </div>
         </div>
       </div>
 
-      <div style="margin-top:24px; border-top:1px dashed #ccc; padding-top:14px; display:flex; justify-content:space-between; align-items:flex-start; gap:20px;">
-        <div style="flex:1;">
-          <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; font-weight:bold;">Verificación digital</div>
-          <div style="font-size:10px; color:#555; line-height:1.5;">
-            Este remito fue firmado digitalmente. Código de verificación:<br>
-            <span style="font-family:'Courier New',monospace; font-size:12px; color:#111; font-weight:bold; letter-spacing:1px;">${codVerif || 'N/D'}</span>
-          </div>
-          <div style="font-size:8px; color:#999; margin-top:6px; line-height:1.4;">
-            El código y el QR se generan a partir de N° de remito, patente, KM, montos y fecha/hora de firma.
-            Cualquier alteración posterior modifica el código.
-          </div>
-        </div>
-        ${qrDataUrl ? `<div style="text-align:center;">
-          <img src="${qrDataUrl}" style="width:110px; height:110px; display:block; border:1px solid #eee;" alt="QR verificación">
-          <div style="font-size:8px; color:#999; margin-top:4px;">Escaneá para verificar</div>
-        </div>` : ''}
-      </div>
-
-      <div style="margin-top:14px; border-top:2px solid #f5a623; padding-top:10px; text-align:center; font-size:9px; color:#666; line-height:1.5;">
-        <b style="color:#f5a623;">${_REMITO_EMPRESA.nombre}</b> · ${_REMITO_EMPRESA.direccion}<br>
-        📞 ${_REMITO_EMPRESA.telefono} · ✉ ${_REMITO_EMPRESA.email} · 🌐 ${_REMITO_EMPRESA.web}
+      <div style="margin-top:8px; border-top:2px solid #f5a623; padding-top:4px; text-align:center; font-size:8px; color:#666; line-height:1.4;">
+        <b style="color:#f5a623;">${_REMITO_EMPRESA.nombre}</b> · ${_REMITO_EMPRESA.direccion}
+        &nbsp;·&nbsp; 📞 ${_REMITO_EMPRESA.telefono} &nbsp;·&nbsp; ✉ ${_REMITO_EMPRESA.email} &nbsp;·&nbsp; 🌐 ${_REMITO_EMPRESA.web}
       </div>
 
     </div>
   `;
 
-  // --- CONFIGURACIÓN DE GENERACIÓN ---
+  // --- CONFIGURACIÓN DE GENERACIÓN (fit-1-page) ---
   const opt = {
-    margin: 10,
+    margin: [5, 5, 5, 5],
     filename: `REMITO_${d.nro}_${d.patente}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { 
-      scale: 3, 
-      useCORS: true, 
-      letterRendering: true 
+    image: { type: 'jpeg', quality: 0.95 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      letterRendering: true,
+      windowWidth: 794
     },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all'] }
   };
 
   if (typeof toast === 'function') toast('Generando PDF...', 'info');
