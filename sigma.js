@@ -2285,6 +2285,7 @@ let _rendRemitosActuales    = [];   // remitos del período activo en vista rend
 let _rendFuelActuales       = [];   // combustible del período activo
 let _rendRendicionActuales  = [];   // rendiciones del período activo (con gastos_extra)
 let _rendTruckIdsActuales   = new Set(); // truck_ids de las jornadas del período
+let _rendLogsActuales       = [];   // daily_logs del período activo
 let _negocioUsuariosActuales  = [];
 let _negocioLogTruckMapActual = {};
 let _negocioJornadasActuales  = [];
@@ -2517,6 +2518,7 @@ async function _cargarViewRendimiento() {
   _rendFuelActuales       = fuel;
   _rendRendicionActuales  = rendicion;
   _rendTruckIdsActuales   = new Set(logs.map(j => j.truck_id).filter(Boolean));
+  _rendLogsActuales       = logs;
 
   // ── Cálculos financieros ──
   let factTotal = 0, factEf = 0, factTr = 0;
@@ -2584,22 +2586,43 @@ async function _cargarViewRendimiento() {
       _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
         `${trCount} cobros`, null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
-      _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)', pendiente>0?'sin rendir':'al día ✓', detPend);
+      _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
+        pendiente>0?'sin rendir':'al día ✓', null,
+        `<span class="kpi-dash-cta-btn" onclick="abrirModalPendienteRendir()">📋 Ver detalle</span>`);
   }
 
   // ── KPIs operativos ──
   const opTop = document.getElementById('dash-rend-op-top');
   const opBot = document.getElementById('dash-rend-op-bot');
+  const _EMPTY = '<span style="font-size:14px;color:var(--muted);font-weight:400">Sin datos</span>';
   if (opTop) opTop.innerHTML =
-    _KPI('🚛', 'Km recorridos', kmTotal.toLocaleString('es-AR')+' km', 'var(--amber)',  `${logs.length} jornadas`, detKm) +
-    _KPI('📦', 'Servicios',     String(srvs),                          'var(--blue)',
-      `${srvs>0?'en el período':''} <span style="cursor:pointer;color:var(--accent);font-size:10px" onclick="goTo('remitos')">Ver remitos →</span>`, null) +
-    _KPI('⛽', 'KM / Litro',   kmPorL!=='—'?kmPorL:'—',               'var(--purple)', kmPorL!=='—'?'km/l':'sin datos', null);
+    _KPI('🚛', 'Km recorridos',
+      kmTotal>0 ? kmTotal.toLocaleString('es-AR')+' km' : _EMPTY,
+      'var(--amber)',
+      kmTotal>0 ? `${logs.length} jornadas` : 'No hay jornadas registradas',
+      null,
+      kmTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalKmRecorridos()">📋 Ver detalle</span>` : null) +
+    _KPI('📦', 'Servicios',
+      srvs>0 ? String(srvs) : _EMPTY,
+      'var(--blue)',
+      srvs>0 ? `en el período <span style="cursor:pointer;color:var(--accent);font-size:10px" onclick="goTo('remitos')">Ver remitos →</span>` : 'No hay servicios registrados',
+      null) +
+    _KPI('⛽', 'KM / Litro',
+      kmPorL!=='—' ? kmPorL : _EMPTY,
+      'var(--purple)',
+      kmPorL!=='—' ? 'km/l' : 'No hay cargas de combustible',
+      null);
   if (opBot) opBot.innerHTML =
-    _KPI('📊', 'KM / Jornada', kmPorJornada!==null?String(kmPorJornada):'—', 'var(--green)',
-      kmPorJornada!==null?`${srvPorJornada} srv/jornada`:'sin jornadas', null) +
-    _KPI('📍', 'KM / Viaje',   kmPorViaje!==null?String(kmPorViaje):'—',    'var(--green)',
-      'promedio', null);
+    _KPI('📊', 'KM / Jornada',
+      kmPorJornada!==null ? String(kmPorJornada) : _EMPTY,
+      'var(--green)',
+      kmPorJornada!==null ? `${srvPorJornada} srv/jornada` : 'No hay jornadas registradas',
+      null) +
+    _KPI('📍', 'KM / Viaje',
+      kmPorViaje!==null ? String(kmPorViaje) : _EMPTY,
+      'var(--green)',
+      kmPorViaje!==null ? 'promedio' : 'No hay servicios con KM',
+      null);
 
   // ── Gráfico de evolución (modo según filtro Hoy/Semana/Mes) ──
   const buckets = _buildChartBuckets(_rendPeriodo, logs, remitos);
@@ -9888,6 +9911,127 @@ function abrirDocumentoChofer(url) {
   
   // El '_blank' fuerza al navegador móvil a abrir su visor nativo o una nueva pestaña
   window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function abrirModalKmRecorridos() {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const logs = _rendLogsActuales || [];
+
+  const totalKm = logs.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
+  const jornadasCerradas = logs.filter(j=>j.km_final!=null).length;
+  const promKm = jornadasCerradas>0 ? Math.round(totalKm/jornadasCerradas) : 0;
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `🚛 Km recorridos · ${totalKm.toLocaleString('es-AR')} km`;
+
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const sorted = [...logs].sort((a,b)=>(b.log_date||'').localeCompare(a.log_date||''));
+  const rows = sorted.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay jornadas registradas en el período</div>'
+    : sorted.map(j => {
+        const km = Math.max(0, (j.km_final||0) - (j.km_inicio||0));
+        const abierta = j.km_final == null;
+        const fecha = j.log_date || '—';
+        const plate = j.trucks?.plate || (j.truck_id ? '#'+j.truck_id : '—');
+        return '<div class="modal-desglose-row" style="grid-template-columns:80px 1fr 110px">'
+          + '<span style="color:var(--muted);font-size:11px">' + _esc(fecha) + '</span>'
+          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(plate) + (abierta?' <span style="color:var(--amber);font-size:9px">(abierta)</span>':'') + '</span>'
+          + '<span style="color:var(--text);font-weight:600;font-size:11px;text-align:right">' + (abierta?'—':km.toLocaleString('es-AR')+' km') + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Total km</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">${totalKm.toLocaleString('es-AR')}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Jornadas</div>
+        <div style="color:var(--text);font-weight:700;font-size:14px">${logs.length}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Promedio</div>
+        <div style="color:var(--green);font-weight:700;font-size:14px">${promKm.toLocaleString('es-AR')} km</div>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">Detalle por jornada (${logs.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rows}</div>
+  `;
+
+  openModal('modal-desglose-pago');
+}
+
+function abrirModalPendienteRendir() {
+  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const remitos   = _rendRemitosActuales || [];
+  const rendicion = _rendRendicionActuales || [];
+
+  const getEf = r => (r.pago_1_metodo==='efectivo'?(r.pago_1_monto||0):0) + (r.pago_2_metodo==='efectivo'?(r.pago_2_monto||0):0);
+  const cobradosEf = remitos.filter(r => r.pago_1_metodo === 'efectivo' || r.pago_2_metodo === 'efectivo');
+  const totalCobrado = cobradosEf.reduce((s,r)=>s+getEf(r),0);
+  const totalRendido = rendicion.reduce((s,r)=>s+(r.efectivo_declarado||0),0);
+  const pendiente = Math.max(0, totalCobrado - totalRendido);
+
+  const tituloEl = document.getElementById('modal-desglose-titulo');
+  if (tituloEl) tituloEl.textContent = `⚠️ Pendiente de rendir · $${_AR(pendiente)}`;
+
+  const body = document.getElementById('modal-desglose-body');
+  if (!body) return;
+
+  const rowsCobrado = cobradosEf.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">No hay cobros en efectivo</div>'
+    : [...cobradosEf].sort((a,b)=>(b.created_at_device||'').localeCompare(a.created_at_device||'')).map(r => {
+        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
+          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">+$' + _AR(getEf(r)) + '</span>'
+          + '</div>';
+      }).join('');
+
+  const rowsRend = rendicion.length === 0
+    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">No hay rendiciones registradas</div>'
+    : [...rendicion].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).map(r => {
+        const fecha = (r.fecha||'').slice(5,10).replace('-','/');
+        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
+          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
+          + '<span style="color:var(--text);font-size:11px">Rendición</span>'
+          + '<span style="color:var(--blue);font-weight:600;font-size:11px;text-align:right">−$' + _AR(r.efectivo_declarado||0) + '</span>'
+          + '</div>';
+      }).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Cobrado ef.</div>
+        <div style="color:var(--green);font-weight:700;font-size:14px">+$${_AR(totalCobrado)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Rendido</div>
+        <div style="color:var(--blue);font-weight:700;font-size:14px">−$${_AR(totalRendido)}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Pendiente</div>
+        <div style="color:${pendiente>0?'var(--red)':'var(--green)'};font-weight:700;font-size:14px">$${_AR(pendiente)}</div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid ${pendiente>0?'var(--red)':'var(--green)'};border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
+      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">= Pendiente de rendir</div>
+      <div style="color:${pendiente>0?'var(--red)':'var(--green)'};font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${_AR(pendiente)}</div>
+    </div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:var(--green);font-weight:600">+ Cobrado en efectivo (${cobradosEf.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:14px">${rowsCobrado}</div>
+
+    <div style="margin-bottom:6px;font-size:11px;color:var(--blue);font-weight:600">− Rendiciones (${rendicion.length})</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rowsRend}</div>
+  `;
+
+  openModal('modal-desglose-pago');
 }
 
 function abrirModalDesgloseEfectivo() {
