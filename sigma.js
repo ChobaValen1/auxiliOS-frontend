@@ -2506,9 +2506,10 @@ async function _cargarViewRendimiento() {
     return;
   }
 
-  const [datos, jornadas] = await Promise.all([
+  const [datos, jornadas, alertasPers] = await Promise.all([
     cargarDatosChofer(targetUserId, desde, targetTruck),
     cargarJornadasAbiertas(),
+    esChofer ? cargarAlertasPersonales() : Promise.resolve([]),
   ]);
 
   const { remitos, jornadas: logs, fuel, rendicion, alertas } = datos;
@@ -2692,24 +2693,51 @@ async function _cargarViewRendimiento() {
     });
   }
 
-  // ── Alertas personales ──
+  // ── Alertas personales + operativas ──
   const alertaCard = document.getElementById('dash-alertas-pers-card');
   const alertaBody = document.getElementById('dash-alertas-pers');
   if (alertaCard && alertaBody) {
-    if (alertas.length === 0) {
+    const persHTML = (alertasPers || []).map(a => {
+      const bg = a.sev === 'critico' ? 'var(--red-lo)' : 'rgba(245,158,11,0.10)';
+      const bd = a.sev === 'critico' ? 'rgba(231,76,60,0.35)' : 'rgba(245,158,11,0.45)';
+      const clr= a.sev === 'critico' ? '#fca5a5' : '#fbbf24';
+      const params = JSON.stringify({ target: a.target, tab: a.tab || null, filtro: a.filtro || null }).replace(/"/g,'&quot;');
+      return `<div onclick="_dashAlertaGo(${params})" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${bg};border:1px solid ${bd};border-radius:8px;margin-bottom:6px">
+        <div style="font-size:20px;line-height:1">${a.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:${clr}">${a.title}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.detail}</div>
+        </div>
+        <div style="font-size:11px;color:${clr};font-weight:600">${a.cta} ›</div>
+      </div>`;
+    }).join('');
+
+    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición' };
+    const opHTML = (alertas || []).map(a =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--red-lo);border:1px solid rgba(231,76,60,0.3);border-radius:7px;margin-bottom:6px">
+        <div><div style="font-size:12px;font-weight:600">${TIPO[a.tipo]||a.tipo}</div>
+        <div style="font-size:10px;color:var(--muted)">${a.fecha||''}</div></div>
+        <div style="font-family:'Bebas Neue';font-size:18px;color:var(--red)">$${_AR(Math.abs(a.diferencia_monto||0))}</div>
+      </div>`
+    ).join('');
+
+    if (!persHTML && !opHTML) {
       alertaCard.style.display = 'none';
     } else {
       alertaCard.style.display = '';
-      const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición' };
-      alertaBody.innerHTML = alertas.map(a =>
-        `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--red-lo);border:1px solid rgba(231,76,60,0.3);border-radius:7px;margin-bottom:6px">
-          <div><div style="font-size:12px;font-weight:600">${TIPO[a.tipo]||a.tipo}</div>
-          <div style="font-size:10px;color:var(--muted)">${a.fecha||''}</div></div>
-          <div style="font-family:'Bebas Neue';font-size:18px;color:var(--red)">$${_AR(Math.abs(a.diferencia_monto||0))}</div>
-        </div>`
-      ).join('');
+      alertaBody.innerHTML = persHTML + opHTML;
     }
   }
+}
+
+function _dashAlertaGo(opts) {
+  if (!opts || !opts.target) return;
+  if (opts.target === 'documentos' && opts.tab) _docTabActivo = opts.tab;
+  if (opts.target === 'remitos' && opts.filtro) {
+    try { filtroEstado = opts.filtro; } catch(e) {}
+    if (typeof aplicarFiltrosRemitos === 'function') setTimeout(aplicarFiltrosRemitos, 100);
+  }
+  goTo(opts.target);
 }
 
 // ── Vista Negocio ─────────────────────────────

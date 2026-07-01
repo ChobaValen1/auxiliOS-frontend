@@ -1647,6 +1647,76 @@ async function cargarJornadasAbiertas() {
   return data || [];
 }
 
+async function cargarAlertasPersonales() {
+  if (!USUARIO_ACTUAL?.id) return [];
+  const uid = USUARIO_ACTUAL.id;
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  const alertas = [];
+
+  const [jornadasRes, remitosRes, docsRes] = await Promise.allSettled([
+    _db.from('daily_logs')
+       .select('log_id, log_date, trucks(plate)')
+       .eq('driver_id', uid).eq('status', 'open')
+       .lt('log_date', hoyISO)
+       .order('log_date', { ascending: true }),
+    _db.from('remitos')
+       .select('remito_id, created_at_device', { count: 'exact', head: false })
+       .eq('driver_id', uid).eq('status', 'pendiente')
+       .lt('created_at_device', hoyISO)
+       .limit(1),
+    _db.from('v_driver_docs_status')
+       .select('doc_type, expiry_date, status')
+       .eq('driver_id', uid)
+       .in('status', ['vencido', 'proximo']),
+  ]);
+
+  if (jornadasRes.status === 'fulfilled' && jornadasRes.value.data?.length) {
+    jornadasRes.value.data.forEach(j => {
+      const plate = j.trucks?.plate || 's/ patente';
+      alertas.push({
+        sev: 'critico',
+        icon: '🕒',
+        title: 'Jornada sin cerrar',
+        detail: `${j.log_date} — ${plate}`,
+        cta: 'Ir a Registro',
+        target: 'registro',
+      });
+    });
+  }
+
+  if (docsRes.status === 'fulfilled' && docsRes.value.data?.length) {
+    docsRes.value.data.forEach(d => {
+      alertas.push({
+        sev: d.status === 'vencido' ? 'critico' : 'advertencia',
+        icon: d.status === 'vencido' ? '⛔' : '⚠️',
+        title: d.status === 'vencido' ? 'Documento vencido' : 'Documento por vencer',
+        detail: `${d.doc_type}${d.expiry_date ? ' — ' + d.expiry_date : ''}`,
+        cta: 'Ver documentos',
+        target: 'documentos',
+        tab: 'chofer',
+      });
+    });
+  }
+
+  if (remitosRes.status === 'fulfilled') {
+    const total = remitosRes.value.count || 0;
+    if (total > 0) {
+      alertas.push({
+        sev: 'advertencia',
+        icon: '📝',
+        title: 'Remitos sin firmar',
+        detail: `${total} remito(s) pendiente(s) de días anteriores`,
+        cta: 'Ver remitos',
+        target: 'remitos',
+        filtro: 'pendiente',
+      });
+    }
+  }
+
+  alertas.sort((a, b) => (a.sev === 'critico' ? 0 : 1) - (b.sev === 'critico' ? 0 : 1));
+  return alertas;
+}
+
 async function cargarResumenMes(userId, anio, mes) {
   // mes es 1-indexed (1=enero, 12=diciembre)
   // Si userId es null/undefined, agrega la flota completa (admin/supervisor)
