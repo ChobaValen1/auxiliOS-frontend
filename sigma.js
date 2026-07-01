@@ -10015,6 +10015,51 @@ function abrirEmergenciasDirecto() {
   goTo('documentos');
 }
 
+// ── Exportar remitos filtrados a Excel ─────────────
+function exportarRemitosExcel() {
+  if (typeof XLSX === 'undefined') { toast('Librería XLSX no cargó — refrescá la página', 'error'); return; }
+
+  const rows = document.querySelectorAll('#tbody-remitos tr');
+  const visibles = [];
+  rows.forEach(tr => {
+    if (tr.style.display === 'none' || tr.id === 'remitos-empty-row') return;
+    try {
+      const d = JSON.parse(tr.getAttribute('data-rem') || '{}');
+      if (d.nro) visibles.push(d);
+    } catch(_){}
+  });
+
+  if (!visibles.length) { toast('No hay remitos que exportar con los filtros actuales', 'warn'); return; }
+
+  const headers = [
+    'Nº Remito','Fecha','Nº Servicio','Chofer','Patente','Marca/Modelo',
+    'Cliente','CUIT','Teléfono','Origen','Destino','KM','Tipo Servicio',
+    'Peaje','Excedente','Otros','Extras Total','Pago','Estado','Observaciones'
+  ];
+
+  const rowsAoA = [headers, ...visibles.map(d => {
+    const peaje = parseInt(d.peaje) || 0;
+    const excedente = parseInt(d.excedente) || 0;
+    const otros = parseInt(d.otros) || 0;
+    return [
+      d.nro, d.fecha, d.nroSrv || '', d.chofer || '', d.patente || '', d.marca || '',
+      d.cliente || '', d.cuit || '', d.telefono || '', d.origen || '', d.destino || '',
+      d.km || '', d.tipo || '',
+      peaje, excedente, otros, peaje + excedente + otros,
+      d.pago || '', d.estado || '', d.observaciones || ''
+    ];
+  })];
+
+  const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
+  ws['!cols'] = headers.map((h, i) => ({ wch: [12,11,12,22,10,16,24,13,15,22,22,7,18,10,11,10,12,14,11,30][i] || 14 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Remitos');
+
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `remitos_${stamp}.xlsx`);
+  toast(`✓ ${visibles.length} remito${visibles.length !== 1 ? 's' : ''} exportado${visibles.length !== 1 ? 's' : ''}`, 'success');
+}
+
 // ── REMITO PDF desde modal ─────────────────────
 document.addEventListener('click', e => {
   if (e.target.closest('.btn-pdf-modal')) {
