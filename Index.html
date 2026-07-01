@@ -710,6 +710,18 @@
       <!-- ── Vista Chofer: Mi Rendimiento ── -->
       <div id="dash-view-rendimiento">
 
+        <!-- Acceso rápido a Emergencias (solo chofer) -->
+        <div id="dash-emergencias-quick" style="display:none;margin-bottom:16px" onclick="abrirEmergenciasDirecto()">
+          <div style="background:linear-gradient(135deg,rgba(239,68,68,0.18),rgba(239,68,68,0.08));border:1px solid rgba(239,68,68,0.45);border-radius:12px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:transform .1s ease,background .15s ease" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="font-size:28px;line-height:1">🆘</div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:700;color:#fca5a5;letter-spacing:.3px">EMERGENCIAS</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Teléfonos, talleres y protocolo de siniestro</div>
+            </div>
+            <div style="color:#fca5a5;font-size:20px">›</div>
+          </div>
+        </div>
+
         <!-- Filtros solo para admin/supervisor -->
         <div id="dash-rend-filtros-admin" style="display:none;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Rendimiento Individual</div>

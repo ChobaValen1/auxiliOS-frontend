@@ -2464,6 +2464,8 @@ async function cargarDashboard() {
                   PERFIL_USUARIO?.roles?.name === 'supervision';
   const ctxBar = document.getElementById('dash-ctx-bar');
   if (ctxBar) ctxBar.style.display = esAdmin ? '' : 'none';
+  const emergQuick = document.getElementById('dash-emergencias-quick');
+  if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
   if (esAdmin && _dashVistaActual === 'negocio') await _cargarViewNegocio();
   else { _dashVistaActual = 'rendimiento'; await _cargarViewRendimiento(); }
@@ -10006,6 +10008,12 @@ function _pwaBanner(msg, tipo) {
 }
 window.addEventListener('offline', () => _pwaBanner('Sin conexión — los datos no se actualizarán hasta recuperar señal.', 'warn'));
 window.addEventListener('online',  () => _pwaBanner('Conexión recuperada.', 'ok'));
+
+// ── Atajo a Emergencias desde dashboard chofer ─────
+function abrirEmergenciasDirecto() {
+  _docTabActivo = 'emergencias';
+  goTo('documentos');
+}
 
 // ── REMITO PDF desde modal ─────────────────────
 document.addEventListener('click', e => {
