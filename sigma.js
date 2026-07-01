@@ -6465,26 +6465,57 @@ function descargarRemitoPDF(tr) {
           <td style="padding:8px; border-bottom:1px solid #eee;">Otros cargos adicionales</td>
           <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.otros||0).toLocaleString('es-AR')}</td>
         </tr>
-        <tr style="font-weight:bold; font-size:13px;">
-          <td style="padding:10px; text-align:right;">TOTAL EXTRAS:</td>
-          <td style="padding:10px; text-align:right; color:#f5a623;">$${totalExtras.toLocaleString('es-AR')}</td>
+        <tr style="font-weight:bold; font-size:13px; background:#fafafa;">
+          <td style="padding:10px; text-align:right;">TOTAL A ABONAR POR EL SOCIO:</td>
+          <td style="padding:10px; text-align:right; color:#f5a623;">$${totalExtras.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})} ARS</td>
+        </tr>
+        <tr style="font-size:11px;">
+          <td style="padding:8px 10px; text-align:right; color:#666;">Forma de pago:</td>
+          <td style="padding:8px 10px; text-align:right; color:#333; font-weight:600;">${(d.pago && d.pago !== '—') ? d.pago : '— No informado —'}</td>
         </tr>
       </table>
 
       ${seccionFotos}
 
+      ${(() => {
+        const confs = Array.isArray(d.confirmaciones) ? d.confirmaciones : [];
+        if (!confs.length) return '';
+        return `
+        <div style="margin-bottom:20px;">
+          <div style="font-size:10px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:5px;">
+            ✓ Confirmaciones firmadas por el cliente
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 20px; font-size:11px; color:#333;">
+            ${confs.map(c => `<div><span style="color:#2ea043;font-weight:bold">✓</span> ${c}</div>`).join('')}
+          </div>
+        </div>`;
+      })()}
+
       ${bloqueLegalArrastre}
 
       <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:24px;">
-          <div style="text-align:center; width:480px;">
+          <div style="width:480px;">
             <div style="border:1px solid #ddd; background:#fff; border-radius:6px; padding:10px; min-height:260px; display:flex; align-items:center; justify-content:center;">
               ${_firmaUrl
                 ? `<img src="${_firmaUrl}" style="max-width:460px; max-height:260px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
                 : '<div style="color:#bbb; font-size:11px;">Firma pendiente</div>'}
             </div>
-            <div style="font-size:10px; color:#999; margin-top:6px;">Firma de Conformidad del Cliente</div>
-            <div style="font-size:9px; color:#777; margin-top:2px;">Fecha/hora de firma: ${_fechaFin}</div>
+            <div style="text-align:center; font-size:10px; color:#999; margin-top:6px;">Firma de Conformidad del Cliente</div>
+            <table style="width:100%; margin-top:10px; font-size:10px; color:#444; border-collapse:collapse;">
+              <tr>
+                <td style="padding:3px 0; width:110px; color:#888;">Aclaración:</td>
+                <td style="padding:3px 0; border-bottom:1px solid #ccc;">${d.cliente || ''}</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 0; color:#888;">DNI / CUIT:</td>
+                <td style="padding:3px 0; border-bottom:1px solid #ccc;">${d.cuit || ''}</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 0; color:#888;">Fecha y hora:</td>
+                <td style="padding:3px 0; border-bottom:1px solid #ccc;">${_fechaFin}</td>
+              </tr>
+            </table>
           </div>
           <div style="font-size:9px; color:#888; text-align:right; max-width:250px; padding-bottom:8px;">
             El cliente declara conformidad con el estado de la unidad al momento de la entrega y acepta los cargos detallados.
