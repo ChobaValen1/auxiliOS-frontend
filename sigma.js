@@ -6572,6 +6572,14 @@ async function descargarRemitoPDF(tr) {
   document.body.appendChild(elemento);
 
   try {
+    if (typeof html2canvas !== 'function') {
+      throw new Error('html2canvas no cargó — refrescá la página');
+    }
+    const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (typeof jsPDFCtor !== 'function') {
+      throw new Error('jsPDF no cargó — refrescá la página');
+    }
+
     // Esperar a que las imágenes (firma, fotos, QR) carguen antes de capturar
     const imgs = Array.from(elemento.querySelectorAll('img'));
     await Promise.all(imgs.map(img => img.complete
@@ -6579,7 +6587,6 @@ async function descargarRemitoPDF(tr) {
       : new Promise(res => { img.onload = img.onerror = () => res(); })
     ));
 
-    const h2c = (typeof html2canvas === 'function') ? html2canvas : (window.html2pdf && window.html2pdf.Worker && window.html2canvas);
     const canvas = await html2canvas(elemento, {
       scale: 2,
       useCORS: true,
@@ -6588,7 +6595,6 @@ async function descargarRemitoPDF(tr) {
       windowWidth: 794
     });
 
-    const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
     const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
     const pageW = pdf.internal.pageSize.getWidth();   // 210
     const pageH = pdf.internal.pageSize.getHeight();  // 297
@@ -6612,9 +6618,9 @@ async function descargarRemitoPDF(tr) {
     pdf.save(`REMITO_${d.nro}_${d.patente}.pdf`);
   } catch (err) {
     console.error('descargarRemitoPDF:', err);
-    if (typeof toast === 'function') toast('Error al generar el PDF', 'error');
+    if (typeof toast === 'function') toast('Error al generar el PDF: ' + (err?.message || err), 'error');
   } finally {
-    document.body.removeChild(elemento);
+    if (elemento.parentNode) document.body.removeChild(elemento);
   }
 }
 
