@@ -1433,15 +1433,19 @@ function calcularTotal() {
   if (pagoMixtoActivo) calcPagoAuto();
 }
 
-// ── FILTROS Y BÚSQUEDA DE REMITOS ────────────
-// ── VARIABLES DE FILTRO ───────────────────────
+// ── FILTROS Y BÚSQUEDA DE REMITOS (server-side) ────────────
 let filtroEstado  = 'todos';
 let filtroBuscar  = '';
 let filtroPeriodo = 'todos';
 
+function _debounce(fn, ms = 350) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 function filtrarBusqueda(val) {
-  filtroBuscar = val.trim();
-  aplicarFiltrosRemitos();
+  filtroBuscar = (val || '').trim();
+  aplicarFiltrosRemitosDebounced();
 }
 
 function filtrarEstado(estado, el) {
@@ -1465,6 +1469,7 @@ function filtrarPeriodo(periodo, el) {
 function limpiarFiltrosAdmin() {
   filtroBuscar  = '';
   filtroPeriodo = 'todos';
+  filtroEstado  = 'todos';
   ['filtro-chofer-input','filtro-patente',
    'input-buscar-remitos','filtro-dia-especifico','filtro-desde','filtro-hasta']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
@@ -1479,122 +1484,104 @@ function limpiarFiltrosAdmin() {
   document.querySelectorAll('#ftabs-periodo-admin .ftab').forEach((t,i) => {
     t.classList.toggle('active', i === 0);
   });
+  document.querySelectorAll('#ftabs-estado .ftab').forEach((t,i) => {
+    t.classList.toggle('active', i === 0);
+  });
   aplicarFiltrosRemitos();
 }
 
+function _leerFiltrosRemitosUI() {
+  return {
+    driverId:     document.getElementById('filtro-chofer-input')?.value || '',
+    patente:      (document.getElementById('filtro-patente')?.value || '').trim(),
+    tipoServicio: document.getElementById('filtro-tipo-servicio')?.value || '',
+    pagoMetodo:   document.getElementById('filtro-pago')?.value || '',
+    estado:       filtroEstado,
+    periodo:      filtroPeriodo,
+    diaEspecifico: document.getElementById('filtro-dia-especifico')?.value || '',
+    desde:        document.getElementById('filtro-desde')?.value || '',
+    hasta:        document.getElementById('filtro-hasta')?.value || '',
+    buscar:       filtroBuscar || (document.getElementById('input-buscar-remitos')?.value || '').trim(),
+  };
+}
+
 function aplicarFiltrosRemitos() {
-  const rows  = document.querySelectorAll('#tbody-remitos tr');
-  const ahora = new Date();
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  const filtros = _leerFiltrosRemitosUI();
+  window._remitosFiltros = filtros;
+  window._remitosPagina = 1;
+  if (typeof cargarRemitos === 'function') cargarRemitos({ filtros, page: 1 });
+}
 
-  const choferInput = document.getElementById('filtro-chofer-input')?.value.toLowerCase().trim() || '';
-  const patenteInput = document.getElementById('filtro-patente')?.value.toLowerCase().trim() || '';
-  const tipoInput   = document.getElementById('filtro-tipo-servicio')?.value || '';
-  const extrasMin   = parseFloat(document.getElementById('filtro-extras-min')?.value) || 0;
-  const diaEsp      = document.getElementById('filtro-dia-especifico')?.value || '';
-  const desde       = document.getElementById('filtro-desde')?.value || '';
-  const hasta       = document.getElementById('filtro-hasta')?.value || '';
+const aplicarFiltrosRemitosDebounced = _debounce(aplicarFiltrosRemitos, 350);
 
-  let visible = 0;
-  let totalExtras = 0;
+function paginaRemitos(delta) {
+  const total = window._remitosTotal || 0;
+  const size  = window._REMITOS_PAGE_SIZE || 50;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const actual = window._remitosPagina || 1;
+  const nueva = Math.min(totalPages, Math.max(1, actual + delta));
+  if (nueva === actual) return;
+  window._remitosPagina = nueva;
+  if (typeof cargarRemitos === 'function') cargarRemitos({ page: nueva });
+}
 
-  rows.forEach(tr => {
-    let d = {};
-    try { d = JSON.parse(tr.getAttribute('data-rem') || '{}'); } catch(e) {}
+function renderRemitosPagination() {
+  const cont = document.getElementById('remitos-pagination');
+  if (!cont) return;
+  const total = window._remitosTotal || 0;
+  const size  = window._REMITOS_PAGE_SIZE || 50;
+  const pag   = window._remitosPagina || 1;
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  cont.style.display = total > size ? 'flex' : 'none';
 
-    // ── Estado ───────────────────────────────
-    const estadoCell = tr.querySelector('td:nth-child(8) .pill');
-    const estadoTxt  = (estadoCell?.textContent || '').toLowerCase();
-    const estadoOk =
-      filtroEstado === 'todos'     ? true :
-      filtroEstado === 'firmado'   ? estadoTxt.includes('firmado') && !estadoTxt.includes('anulado') :
-      filtroEstado === 'pendiente' ? estadoTxt.includes('pendiente') :
-      filtroEstado === 'anulado'   ? estadoTxt.includes('anulado') : true;
+  const info   = document.getElementById('remitos-pagination-info');
+  const pageEl = document.getElementById('remitos-pagination-page');
+  const prev   = document.getElementById('btn-remitos-prev');
+  const next   = document.getElementById('btn-remitos-next');
+  const start  = total === 0 ? 0 : (pag - 1) * size + 1;
+  const end    = Math.min(total, pag * size);
+  if (info)   info.textContent   = `${start}–${end} de ${total} remitos`;
+  if (pageEl) pageEl.textContent = `Página ${pag} de ${totalPages}`;
+  if (prev)   prev.disabled = pag <= 1;
+  if (next)   next.disabled = pag >= totalPages;
+}
 
-    // ── Búsqueda general ─────────────────────
-    const rowText  = tr.textContent.toLowerCase();
-    const buscarOk = !filtroBuscar || rowText.includes(filtroBuscar.toLowerCase());
-
-    // ── Chofer ───────────────────────────────
-    const choferOk = !choferInput ||
-      (d.chofer || '').toLowerCase().includes(choferInput);
-
-    // ── Patente ──────────────────────────────
-    const patenteOk = !patenteInput ||
-      (d.patente || '').toLowerCase().includes(patenteInput);
-
-    // ── Tipo de servicio ─────────────────────
-    const tipoOk = !tipoInput || (d.tipo || '').includes(tipoInput);
-
-    // ── Medio de pago ─────────────────────────
-      const pagoInput = document.getElementById('filtro-pago')?.value || '';
-      const pagoOk = !pagoInput || (d.pago || '').includes(pagoInput);
-
-    // ── Extras mínimos ───────────────────────
-    const extrasRow = (parseInt(d.peaje)||0) + (parseInt(d.excedente)||0) + (parseInt(d.otros)||0);
-    const extrasOk  = extrasMin === 0 || extrasRow >= extrasMin;
-
-    // ── Período ──────────────────────────────
-    let periodoOk = true;
-    if (filtroPeriodo !== 'todos' && d.fecha) {
-      try {
-        const partes = d.fecha.split(' ');
-        const [dd, mm, yy] = partes[0].split('/');
-        const fechaStr = `20${yy}-${mm}-${dd}`;
-        const fechaRow = new Date(fechaStr);
-        if (filtroPeriodo === 'mes') {
-          periodoOk = fechaRow >= inicioMes;
-        } else if (filtroPeriodo === 'dia' && diaEsp) {
-          periodoOk = fechaStr === diaEsp;
-        } else if (filtroPeriodo === 'rango' && desde && hasta) {
-          periodoOk = fechaStr >= desde && fechaStr <= hasta;
-        }
-      } catch(e) { periodoOk = true; }
-    }
-
-    const show = estadoOk && buscarOk && choferOk && patenteOk && tipoOk && extrasOk && periodoOk && pagoOk;
-    tr.style.display = show ? '' : 'none';
-
-    if (show) {
-  visible++;
-  if (d.estado !== 'anulado') totalExtras += extrasRow;
-  }
-  });
-
+function actualizarInfoFiltroRemitos() {
+  const total = window._remitosTotal || 0;
   const countEl = document.getElementById('filtro-count');
-  if (countEl) countEl.textContent = `— ${visible} remito${visible !== 1 ? 's' : ''}`;
+  if (countEl) countEl.textContent = `— ${total} remito${total !== 1 ? 's' : ''}`;
+
+  const labelEl = document.getElementById('filtro-label');
+  if (labelEl) {
+    const f = window._remitosFiltros || {};
+    const parts = [];
+    if (f.estado && f.estado !== 'todos') parts.push(f.estado);
+    if (f.periodo === 'mes') parts.push('este mes');
+    else if (f.periodo === 'dia' && f.diaEspecifico) parts.push(f.diaEspecifico);
+    else if (f.periodo === 'rango' && f.desde && f.hasta) parts.push(`${f.desde}→${f.hasta}`);
+    if (f.patente) parts.push(`patente ~ ${f.patente}`);
+    if (f.tipoServicio) parts.push(f.tipoServicio);
+    if (f.pagoMetodo) parts.push(f.pagoMetodo);
+    if (f.buscar) parts.push(`"${f.buscar}"`);
+    labelEl.textContent = parts.length ? parts.join(' · ') : 'Todos los remitos';
+  }
 
   const totalEl = document.getElementById('filtro-total-extras');
-  if (totalEl) {
-    totalEl.textContent = totalExtras > 0
-      ? `Total extras: $${totalExtras.toLocaleString('es-AR')}`
-      : '';
-  }
+  if (totalEl) totalEl.textContent = '';
 
+  const tbody = document.getElementById('tbody-remitos');
   let emptyRow = document.getElementById('remitos-empty-row');
-  if (visible === 0) {
+  if (total === 0 && tbody) {
     if (!emptyRow) {
       emptyRow = document.createElement('tr');
       emptyRow.id = 'remitos-empty-row';
       emptyRow.innerHTML = `<td colspan="9" style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No se encontraron remitos</td>`;
-      document.getElementById('tbody-remitos')?.appendChild(emptyRow);
+      tbody.appendChild(emptyRow);
     }
     emptyRow.style.display = '';
   } else if (emptyRow) {
-    emptyRow.style.display = 'none';
+    emptyRow.remove();
   }
-
-  const hayFiltroActivo = filtroEstado !== 'todos' || !!filtroBuscar;
-  if (hayFiltroActivo) {
-    document.getElementById('mobile-ver-todos-btn')?.remove();
-  }
-  document.querySelectorAll('#mobile-remitos-list .mobile-card-remito').forEach(card => {
-    let d = {};
-    try { d = JSON.parse(card.getAttribute('data-rem') || '{}'); } catch(e) {}
-    const estadoOk = filtroEstado === 'todos' || (d.estado || '') === filtroEstado;
-    const buscarOk = !filtroBuscar || card.textContent.toLowerCase().includes(filtroBuscar.toLowerCase());
-    card.style.display = (estadoOk && buscarOk) ? '' : 'none';
-  });
 }
 
 
@@ -10016,48 +10003,54 @@ function abrirEmergenciasDirecto() {
 }
 
 // ── Exportar remitos filtrados a Excel ─────────────
-function exportarRemitosExcel() {
+async function exportarRemitosExcel() {
   if (typeof XLSX === 'undefined') { toast('Librería XLSX no cargó — refrescá la página', 'error'); return; }
+  if (typeof fetchRemitosFiltrados !== 'function') { toast('Servicio de remitos no disponible', 'error'); return; }
 
-  const rows = document.querySelectorAll('#tbody-remitos tr');
-  const visibles = [];
-  rows.forEach(tr => {
-    if (tr.style.display === 'none' || tr.id === 'remitos-empty-row') return;
-    try {
-      const d = JSON.parse(tr.getAttribute('data-rem') || '{}');
-      if (d.nro) visibles.push(d);
-    } catch(_){}
-  });
+  const btn = document.getElementById('btn-export-remitos');
+  const originalTxt = btn?.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exportando…'; }
 
-  if (!visibles.length) { toast('No hay remitos que exportar con los filtros actuales', 'warn'); return; }
+  try {
+    const filtros = window._remitosFiltros ?? _leerFiltrosRemitosUI();
+    const all = await fetchRemitosFiltrados({ filtros, max: 5000 });
 
-  const headers = [
-    'Nº Remito','Fecha','Nº Servicio','Chofer','Patente','Marca/Modelo',
-    'Cliente','CUIT','Teléfono','Origen','Destino','KM','Tipo Servicio',
-    'Peaje','Excedente','Otros','Extras Total','Pago','Estado','Observaciones'
-  ];
+    if (!all.length) { toast('No hay remitos que exportar con los filtros actuales', 'warn'); return; }
 
-  const rowsAoA = [headers, ...visibles.map(d => {
-    const peaje = parseInt(d.peaje) || 0;
-    const excedente = parseInt(d.excedente) || 0;
-    const otros = parseInt(d.otros) || 0;
-    return [
-      d.nro, d.fecha, d.nroSrv || '', d.chofer || '', d.patente || '', d.marca || '',
-      d.cliente || '', d.cuit || '', d.telefono || '', d.origen || '', d.destino || '',
-      d.km || '', d.tipo || '',
-      peaje, excedente, otros, peaje + excedente + otros,
-      d.pago || '', d.estado || '', d.observaciones || ''
+    const headers = [
+      'Nº Remito','Fecha','Nº Servicio','Chofer','Patente','Marca/Modelo',
+      'Cliente','CUIT','Teléfono','Origen','Destino','KM','Tipo Servicio',
+      'Peaje','Excedente','Otros','Extras Total','Pago','Estado','Observaciones'
     ];
-  })];
 
-  const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
-  ws['!cols'] = headers.map((h, i) => ({ wch: [12,11,12,22,10,16,24,13,15,22,22,7,18,10,11,10,12,14,11,30][i] || 14 }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Remitos');
+    const rowsAoA = [headers, ...all.map(d => {
+      const peaje = parseInt(d.peaje) || 0;
+      const excedente = parseInt(d.excedente) || 0;
+      const otros = parseInt(d.otros) || 0;
+      return [
+        d.nro, d.fecha, d.nroSrv || '', d.chofer || '', d.patente || '', d.marca || '',
+        d.cliente || '', d.cuit || '', d.telefono || '', d.origen || '', d.destino || '',
+        d.km || '', d.tipo || '',
+        peaje, excedente, otros, peaje + excedente + otros,
+        d.pago || '', d.estado || '', d.observaciones || ''
+      ];
+    })];
 
-  const stamp = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `remitos_${stamp}.xlsx`);
-  toast(`✓ ${visibles.length} remito${visibles.length !== 1 ? 's' : ''} exportado${visibles.length !== 1 ? 's' : ''}`, 'success');
+    const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
+    ws['!cols'] = headers.map((h, i) => ({ wch: [12,11,12,22,10,16,24,13,15,22,22,7,18,10,11,10,12,14,11,30][i] || 14 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Remitos');
+
+    const stamp = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `remitos_${stamp}.xlsx`);
+    const capMsg = all.length >= 5000 ? ' (límite 5000 aplicado)' : '';
+    toast(`✓ ${all.length} remito${all.length !== 1 ? 's' : ''} exportado${all.length !== 1 ? 's' : ''}${capMsg}`, 'success');
+  } catch (e) {
+    console.error('exportarRemitosExcel:', e);
+    toast('Error al exportar', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalTxt || '📊 Exportar a Excel'; }
+  }
 }
 
 // ── REMITO PDF desde modal ─────────────────────

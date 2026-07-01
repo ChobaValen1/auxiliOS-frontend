@@ -430,7 +430,7 @@ async function cargarChoferes() {
   if (!select) return;
   data.forEach(u => {
     const opt = document.createElement('option');
-    opt.value = u.full_name;
+    opt.value = u.user_id;
     opt.textContent = u.full_name;
     select.appendChild(opt);
   });
@@ -444,84 +444,139 @@ async function cargarChoferes() {
 
 // ── LECTURA: REMITOS ──────────────────────────────────────────
 
-async function cargarRemitos() {
-  try {
-    // 1. Identificamos el rol
-    const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
+// Estado de filtros/paginación para remitos (server-side)
+window._remitosFiltros = window._remitosFiltros || {};
+window._remitosPagina = window._remitosPagina || 1;
+window._REMITOS_PAGE_SIZE = window._REMITOS_PAGE_SIZE || 50;
+window._remitosTotal = window._remitosTotal || 0;
 
-    // 2. Armamos la base de la consulta
-    let query = _db
-      .from('remitos')
-      .select('*, users(full_name)')
-      .order('created_at_device', { ascending: false })
-      .limit(200);
+function _mapRemitoRow(r) {
+  return {
+    nro:           r.nro_remito,
+    fecha:         r.status === 'firmado'
+                     ? formatearFecha(r.firmado_at || r.created_at_device)
+                     : formatearFecha(r.created_at_device),
+    nroSrv:        r.nro_servicio    || '',
+    patente:       r.patente,
+    marca:         r.marca_modelo    || '',
+    cliente:       r.razon_social    || '',
+    cuit:          r.cuit            || '',
+    telefono:      r.telefono        || '',
+    origen:        r.origen,
+    destino:       r.destino,
+    km:            String(r.km_reales     || '—'),
+    peaje:         String(r.imp_peaje     || 0),
+    excedente:     String(r.imp_excedente || 0),
+    otros:         String(r.imp_otros     || 0),
+    tipo:          r.tipo_servicio   || '—',
+    pago: (() => {
+      const p1 = r.pago_1_metodo ? capitalizar(r.pago_1_metodo) : null;
+      const p2 = r.pago_2_metodo ? capitalizar(r.pago_2_metodo) : null;
+      if (p1 && p2) return `${p1}+${p2}`;
+      return p1 || '—';
+    })(),
+    estado:        r.status === 'firmado' ? 'firmado' : r.status === 'anulado' ? 'anulado' : 'pendiente',
+    confirmaciones: armarConfirmaciones(r),
+    observaciones: r.observaciones || null,
+    firmaUrl:      r.firma_imagen_url || null,
+    chofer:        r.users?.full_name || '—',
+  };
+}
 
-    // 3. 🛠️ FIX: Si es chofer, filtramos estrictamente por su ID
-    if (esChofer) {
-      query = query.eq('driver_id', USUARIO_ACTUAL.id);
-    }
+// Escapa caracteres problemáticos para PostgREST or/ilike (%, coma, paréntesis)
+function _escPostgrest(s) {
+  return String(s).replace(/[,()%]/g, '');
+}
 
-    // Ejecutamos la consulta final
-    const { data, error } = await query;
+function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
+  const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
+  let q = _db
+    .from('remitos')
+    .select('*, users(full_name)', { count: 'exact' })
+    .order('created_at_device', { ascending: false });
 
-    // 🚨 EL DETECTOR DE FUGAS 🚨
-    console.log("📥 Remitos que llegaron desde Supabase:", data);
-
-    if (error) { 
-      console.error('❌ Error Supabase en remitos:', error); 
-      return; 
-    }
-    
-    if (!data || data.length === 0) { 
-      if (typeof renderTablaRemitos === 'function') renderTablaRemitos([]); 
-      return; 
-    }
-
-    // El mapeo ahora está protegido. Si algo falla acá, lo sabremos.
-    const mapped = data.map(r => ({
-      nro:           r.nro_remito,
-      fecha:         r.status === 'firmado'
-                       ? formatearFecha(r.firmado_at || r.created_at_device)
-                       : formatearFecha(r.created_at_device),
-      nroSrv:        r.nro_servicio    || '',
-      patente:       r.patente,
-      marca:         r.marca_modelo    || '',
-      cliente:       r.razon_social    || '',
-      cuit:          r.cuit            || '',
-      telefono:      r.telefono        || '',
-      origen:        r.origen,
-      destino:       r.destino,
-      km:            String(r.km_reales     || '—'),
-      peaje:         String(r.imp_peaje     || 0),
-      excedente:     String(r.imp_excedente || 0),
-      otros:         String(r.imp_otros     || 0),
-      tipo:          r.tipo_servicio   || '—',
-      pago: (() => {
-        const p1 = r.pago_1_metodo ? capitalizar(r.pago_1_metodo) : null;
-        const p2 = r.pago_2_metodo ? capitalizar(r.pago_2_metodo) : null;
-        if (p1 && p2) return `${p1}+${p2}`;
-        return p1 || '—';
-      })(),
-      estado:        r.status === 'firmado' ? 'firmado' : r.status === 'anulado' ? 'anulado' : 'pendiente',
-      confirmaciones: armarConfirmaciones(r),
-      observaciones: r.observaciones || null,
-      firmaUrl:      r.firma_imagen_url || null,
-      chofer:        r.users?.full_name || '—',
-    }));
-    
-    console.log("✅ Mapeo exitoso. Datos listos para dibujar:", mapped);
-
-    if (typeof renderTablaRemitos === 'function') {
-      renderTablaRemitos(mapped);
-      if (typeof aplicarFiltrosRemitos === 'function') aplicarFiltrosRemitos();
-      console.log("🎨 Función renderTablaRemitos ejecutada.");
-    } else {
-      console.error("❌ CRÍTICO: La función renderTablaRemitos no existe.");
-    }
-
-  } catch (err) {
-    console.error("❌ CRÍTICO: El código crasheó al intentar leer o mapear los datos:", err);
+  if (esChofer) {
+    q = q.eq('driver_id', USUARIO_ACTUAL.id);
+  } else if (filtros.driverId) {
+    q = q.eq('driver_id', filtros.driverId);
   }
+
+  if (filtros.patente) {
+    q = q.ilike('patente', `%${_escPostgrest(filtros.patente)}%`);
+  }
+  if (filtros.tipoServicio) {
+    q = q.eq('tipo_servicio', filtros.tipoServicio);
+  }
+  if (filtros.pagoMetodo) {
+    const p = filtros.pagoMetodo.toLowerCase();
+    q = q.or(`pago_1_metodo.eq.${p},pago_2_metodo.eq.${p}`);
+  }
+  if (filtros.estado && filtros.estado !== 'todos') {
+    q = q.eq('status', filtros.estado);
+  }
+
+  if (filtros.periodo === 'mes') {
+    const ahora = new Date();
+    const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+    q = q.gte('created_at_device', inicio);
+  } else if (filtros.periodo === 'dia' && filtros.diaEspecifico) {
+    const d = filtros.diaEspecifico;
+    q = q.gte('created_at_device', `${d}T00:00:00`).lte('created_at_device', `${d}T23:59:59.999`);
+  } else if (filtros.periodo === 'rango' && filtros.desde && filtros.hasta) {
+    q = q.gte('created_at_device', `${filtros.desde}T00:00:00`).lte('created_at_device', `${filtros.hasta}T23:59:59.999`);
+  }
+
+  if (filtros.buscar) {
+    const b = _escPostgrest(filtros.buscar).trim();
+    if (b) {
+      q = q.or(
+        `nro_remito.ilike.%${b}%,razon_social.ilike.%${b}%,cuit.ilike.%${b}%,telefono.ilike.%${b}%,origen.ilike.%${b}%,destino.ilike.%${b}%,nro_servicio.ilike.%${b}%,patente.ilike.%${b}%`
+      );
+    }
+  }
+
+  return q;
+}
+
+async function cargarRemitos(opts = {}) {
+  try {
+    const page     = opts.page     ?? window._remitosPagina ?? 1;
+    const pageSize = opts.pageSize ?? window._REMITOS_PAGE_SIZE;
+    const filtros  = opts.filtros  ?? window._remitosFiltros ?? {};
+
+    window._remitosPagina  = page;
+    window._remitosFiltros = filtros;
+
+    let query = _buildRemitosQuery({ filtros });
+    const start = (page - 1) * pageSize;
+    const end   = start + pageSize - 1;
+    query = query.range(start, end);
+
+    const { data, error, count } = await query;
+    if (error) {
+      console.error('❌ Error Supabase remitos:', error);
+      if (typeof renderTablaRemitos === 'function') renderTablaRemitos([]);
+      return;
+    }
+
+    window._remitosTotal = count ?? 0;
+
+    const mapped = (data || []).map(_mapRemitoRow);
+    if (typeof renderTablaRemitos === 'function') renderTablaRemitos(mapped);
+    if (typeof renderRemitosPagination === 'function') renderRemitosPagination();
+    if (typeof actualizarInfoFiltroRemitos === 'function') actualizarInfoFiltroRemitos();
+  } catch (err) {
+    console.error("❌ CRÍTICO cargarRemitos:", err);
+  }
+}
+
+async function fetchRemitosFiltrados({ filtros, max = 5000 } = {}) {
+  const f = filtros ?? window._remitosFiltros ?? {};
+  let query = _buildRemitosQuery({ filtros: f });
+  query = query.range(0, Math.max(0, max - 1));
+  const { data, error } = await query;
+  if (error) { console.error('❌ fetchRemitosFiltrados:', error); return []; }
+  return (data || []).map(_mapRemitoRow);
 }
 // Nota: esta función carga los remitos más recientes (hasta 200) y los mapea al formato que necesita la tabla. Incluye lógica para formatear fechas, mostrar métodos de pago combinados, y armar el texto de confirmaciones. Si hay un error o no hay remitos, muestra mensajes en la consola.
 

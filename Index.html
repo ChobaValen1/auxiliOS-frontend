@@ -1207,7 +1207,7 @@
       </select>
     </div> <div>
       <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Patente</div>
-      <input class="form-input" id="filtro-patente" placeholder="Ej: AB 123 CD" style="width:140px; padding:7px 12px; font-size:12px; font-family:'DM Mono'" oninput="aplicarFiltrosRemitos()">
+      <input class="form-input" id="filtro-patente" placeholder="Ej: AB 123 CD" style="width:140px; padding:7px 12px; font-size:12px; font-family:'DM Mono'" oninput="aplicarFiltrosRemitosDebounced()">
     </div>
 
     <div>
@@ -1296,6 +1296,16 @@
     </table>
   </div>
   <div id="mobile-remitos-list" class="mobile-only remitos-container-mobile"></div>
+
+  <div id="remitos-pagination" style="display:none;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;flex-wrap:wrap">
+    <div id="remitos-pagination-info" style="font-size:11px;color:var(--muted)"></div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="btn btn-ghost" id="btn-remitos-prev" onclick="paginaRemitos(-1)" style="font-size:11px;padding:5px 12px">‹ Anterior</button>
+      <span id="remitos-pagination-page" style="font-size:11px;color:var(--text);font-weight:600;min-width:110px;text-align:center"></span>
+      <button class="btn btn-ghost" id="btn-remitos-next" onclick="paginaRemitos(1)" style="font-size:11px;padding:5px 12px">Siguiente ›</button>
+    </div>
+  </div>
+
   <button id="btn-nuevo-remito-fab" class="fab-new-remito mobile-only" onclick="abrirNuevoRemito()"><span>+</span></button>
 </div>
 
