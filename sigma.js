@@ -2483,7 +2483,7 @@ async function _cargarViewRendimiento() {
   document.getElementById('dash-view-negocio').style.display     = 'none';
 
   const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Cargando...</div>';
-  ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot','dash-jornada-hoy-content'].forEach(id => {
+  ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = LOAD;
   });
 
@@ -2498,7 +2498,7 @@ async function _cargarViewRendimiento() {
 
   // Si es admin y no seleccionó chofer, mostrar placeholder
   if (esAdmin && !selChofer?.value) {
-    ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot','dash-jornada-hoy-content'].forEach(id => {
+    ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
       const el = document.getElementById(id); if (el) el.innerHTML = '';
     });
     const finEl = document.getElementById('dash-rend-fin');
@@ -2600,28 +2600,6 @@ async function _cargarViewRendimiento() {
       kmPorJornada!==null?`${srvPorJornada} srv/jornada`:'sin jornadas', null) +
     _KPI('📍', 'KM / Viaje',   kmPorViaje!==null?String(kmPorViaje):'—',    'var(--green)',
       'promedio', null);
-
-  // ── Jornada activa ──
-  const jCard = document.getElementById('dash-jornada-hoy-content');
-  if (jCard) {
-    if (jornadas.length > 0) {
-      const j = jornadas[0], t = j.trucks;
-      jCard.innerHTML = `<div style="display:flex;align-items:center;gap:14px">
-        <div style="width:44px;height:44px;background:var(--amber-lo);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🚛</div>
-        <div style="flex:1">
-          <div style="font-family:'Bebas Neue';font-size:18px;color:var(--amber)">${t?.plate||'—'} <span style="font-size:12px;color:var(--muted)">${t?.brand||''} ${t?.model||''}</span></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">KM base: ${(j.km_inicio||0).toLocaleString('es-AR')}</div>
-        </div>
-        <span class="pill pill-amber">Abierta</span>
-      </div>`;
-    } else {
-      jCard.innerHTML = `<div style="text-align:center;padding:16px;color:var(--muted)">
-        <div style="font-size:24px;margin-bottom:8px">🚫</div>
-        <div style="font-size:13px">Sin jornada activa hoy</div>
-        <button class="btn btn-primary" style="margin-top:12px;font-size:12px" onclick="goTo('registro')">Iniciar jornada →</button>
-      </div>`;
-    }
-  }
 
   // ── Gráfico de evolución (modo según filtro Hoy/Semana/Mes) ──
   const buckets = _buildChartBuckets(_rendPeriodo, logs, remitos);
