@@ -6391,13 +6391,13 @@ async function descargarRemitoPDF(tr) {
   let seccionFotos = '';
   if (fotosArray.length > 0) {
     seccionFotos = `
-      <div style="margin-bottom:8px;">
-        <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:2px;">
+      <div style="margin-bottom:10px;">
+        <div style="font-size:10px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:3px;">
           📷 Registro Fotográfico de la Unidad
         </div>
-        <div style="display:grid; grid-template-columns: repeat(${Math.min(fotosArray.length, 4)}, 1fr); gap:5px;">
+        <div style="display:grid; grid-template-columns: repeat(${Math.min(fotosArray.length, 4)}, 1fr); gap:6px;">
           ${fotosArray.slice(0, 4).map(url => `
-            <div style="border:1px solid #eee; border-radius:3px; overflow:hidden; height:75px; background:#fdfdfd;">
+            <div style="border:1px solid #eee; border-radius:4px; overflow:hidden; height:105px; background:#fdfdfd;">
               <img src="${(typeof ENV !== 'undefined' && ENV.API_BASE_URL && !url.startsWith('http')) ? ENV.API_BASE_URL + url : url}" style="width:100%; height:100%; object-fit:cover;" crossorigin="anonymous">
             </div>
           `).join('')}
@@ -6441,7 +6441,7 @@ async function descargarRemitoPDF(tr) {
   const _fechaFin    = _fmtDT(d.firmadoAt);
 
   const contenido = `
-    <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:18px 22px; color:#333; background:#fff; width:794px; box-sizing:border-box;">
+    <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:24px 26px; color:#333; background:#fff; width:794px; box-sizing:border-box;">
 
       <table style="width:100%; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:8px;">
         <tr>
@@ -6523,9 +6523,9 @@ async function descargarRemitoPDF(tr) {
       <div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px;">
           <div style="flex:1;">
-            <div style="border:1px solid #ddd; background:#fff; border-radius:4px; padding:4px; height:140px; display:flex; align-items:center; justify-content:center;">
+            <div style="border:1px solid #ddd; background:#fff; border-radius:4px; padding:6px; height:200px; display:flex; align-items:center; justify-content:center;">
               ${_firmaUrl
-                ? `<img src="${_firmaUrl}" style="max-width:100%; max-height:132px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
+                ? `<img src="${_firmaUrl}" style="max-width:100%; max-height:188px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
                 : '<div style="color:#bbb; font-size:10px;">Firma pendiente</div>'}
             </div>
             <div style="text-align:center; font-size:9px; color:#999; margin-top:3px;">Firma de Conformidad del Cliente</div>
@@ -6560,30 +6560,62 @@ async function descargarRemitoPDF(tr) {
     </div>
   `;
 
-  // --- CONFIGURACIÓN DE GENERACIÓN (fit-1-page) ---
-  const opt = {
-    margin: [5, 5, 5, 5],
-    filename: `REMITO_${d.nro}_${d.patente}.pdf`,
-    image: { type: 'jpeg', quality: 0.95 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      letterRendering: true,
-      windowWidth: 794
-    },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all'] }
-  };
-
   if (typeof toast === 'function') toast('Generando PDF...', 'info');
-  
+
   const elemento = document.createElement('div');
+  elemento.style.position = 'fixed';
+  elemento.style.left = '-10000px';
+  elemento.style.top = '0';
+  elemento.style.width = '794px';
+  elemento.style.background = '#fff';
   elemento.innerHTML = contenido;
   document.body.appendChild(elemento);
 
-  html2pdf().set(opt).from(elemento).save().then(() => {
+  try {
+    // Esperar a que las imágenes (firma, fotos, QR) carguen antes de capturar
+    const imgs = Array.from(elemento.querySelectorAll('img'));
+    await Promise.all(imgs.map(img => img.complete
+      ? Promise.resolve()
+      : new Promise(res => { img.onload = img.onerror = () => res(); })
+    ));
+
+    const h2c = (typeof html2canvas === 'function') ? html2canvas : (window.html2pdf && window.html2pdf.Worker && window.html2canvas);
+    const canvas = await html2canvas(elemento, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      letterRendering: true,
+      windowWidth: 794
+    });
+
+    const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageW = pdf.internal.pageSize.getWidth();   // 210
+    const pageH = pdf.internal.pageSize.getHeight();  // 297
+    const margin = 6;
+    const availW = pageW - margin * 2;
+    const availH = pageH - margin * 2;
+
+    // Shrink-to-fit: escalar la imagen entera para que entre en 1 hoja A4
+    const ratioCanvas = canvas.width / canvas.height;
+    let drawW = availW;
+    let drawH = drawW / ratioCanvas;
+    if (drawH > availH) {
+      drawH = availH;
+      drawW = drawH * ratioCanvas;
+    }
+    const x = (pageW - drawW) / 2;
+    const y = margin;
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    pdf.addImage(imgData, 'JPEG', x, y, drawW, drawH);
+    pdf.save(`REMITO_${d.nro}_${d.patente}.pdf`);
+  } catch (err) {
+    console.error('descargarRemitoPDF:', err);
+    if (typeof toast === 'function') toast('Error al generar el PDF', 'error');
+  } finally {
     document.body.removeChild(elemento);
-  });
+  }
 }
 
 // ── ANULACIÓN DE REMITOS ──────────────────────
