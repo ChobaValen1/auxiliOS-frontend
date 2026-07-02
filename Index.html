@@ -635,6 +635,28 @@
   </div>
 </div>
 
+<!-- Detalle de jornada (admin/supervisor) -->
+<div class="modal-backdrop" id="modal-jornada-detalle">
+  <div class="modal-box" style="max-width:1000px;width:95vw">
+    <div class="modal-head">
+      <div>
+        <span class="modal-head-title" id="jd-title">JORNADA</span>
+        <div class="modal-head-sub" id="jd-sub" style="font-size:11px;color:var(--muted2);margin-top:4px;letter-spacing:.5px">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-jornada-detalle')">×</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div id="jd-content" style="padding:16px"><!-- populated by JS in Task 51 --></div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div id="jd-traza" style="font-size:11px;color:var(--muted)">—</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="closeModal('modal-jornada-detalle')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <nav class="sidenav">
   <div class="nav-logo">FL</div>
 
@@ -669,6 +691,11 @@
   <div class="nav-item" onclick="goTo('sueldos')" id="nav-sueldos" style="display:none">
     <span class="nav-icon">💵</span>
     <span class="nav-label">Sueldos</span>
+  </div>
+
+  <div class="nav-item" onclick="goTo('jornadas-admin')" id="nav-jornadas-admin" style="display:none">
+    <span class="nav-icon">🗓️</span>
+    <span class="nav-label">Jornadas</span>
   </div>
 
   <div class="nav-bottom" style="position:relative">
@@ -1921,6 +1948,10 @@
             ✅ Confirmar y guardar remito firmado
           </button>
 
+        </div><!-- /max-width wrapper (abierto en 1709) -->
+      </div><!-- /remitos-firma (abierto en 1703) -->
+    </div><!-- /screen-remitos (abierto en 1174) -->
+
 <!-- ═══════════════════════════════════════════════════════════
      SCREEN: SUELDOS (Liquidación de sueldos — admin/supervisor)
      ═══════════════════════════════════════════════════════════ -->
@@ -1952,23 +1983,29 @@
     </div>
   </div>
 
-  <!-- SUB: rendiciones -->
+  <!-- SUB: rendiciones (hub admin — aprobación/observación) -->
   <div id="sueldos-sub-rendiciones" class="sueldos-sub" style="display:none">
-    <div class="card" style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <label style="color:var(--muted);font-size:12px">Período</label>
-        <input type="month" id="pl-rend-periodo" class="form-input" style="max-width:180px" />
-        <select id="pl-rend-chofer" class="form-input" style="max-width:220px"><option value="">Todos los choferes</option></select>
-        <button class="btn btn-ghost" onclick="_cargarRendicionesSueldos()" style="font-size:12px;padding:8px 14px">🔄 Refrescar</button>
-        <div style="flex:1"></div>
-        <div id="pl-rend-stats" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    <div class="card">
+      <div class="cfg-rend-filtros">
+        <input id="cfg-rend-buscar" type="text" placeholder="Buscar chofer…" oninput="_renderRendicionesTabla()">
+        <select id="cfg-rend-status" onchange="_renderRendicionesTabla()">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente aprobación</option>
+          <option value="observada">Observada / con diferencia</option>
+          <option value="aprobada">Aprobada</option>
+        </select>
+        <select id="cfg-rend-rango" onchange="cargarRendicionesTab()">
+          <option value="30">Últimos 30 días</option>
+          <option value="90">Últimos 90 días</option>
+          <option value="365">Último año</option>
+          <option value="all">Todo</option>
+        </select>
       </div>
-      <div style="margin-top:10px;color:var(--muted);font-size:11px;line-height:1.5">
+      <div id="cfg-rend-stats" class="cfg-rend-stats"></div>
+      <div style="margin:10px 0;color:var(--muted);font-size:11px;line-height:1.5">
         🟢 OK · 🟡 Sobrante (revisar, no acredita) · 🔴 Faltante (se descuenta del recibo del mes)
       </div>
-    </div>
-    <div class="card">
-      <div id="pl-rend-body" style="color:var(--muted);font-size:13px">Seleccioná un período para ver las rendiciones.</div>
+      <div id="cfg-rend-body" style="color:var(--muted);font-size:13px">Cargando rendiciones...</div>
     </div>
   </div>
 
@@ -2016,6 +2053,456 @@
 </div><!-- /screen-sueldos -->
 
 
+<div class="screen" id="screen-jornadas-admin">
+  <style>
+  /* ===== Estilos scoped para screen-jornadas-admin ===== */
+  #screen-jornadas-admin .jadmin-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  #screen-jornadas-admin .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  #screen-jornadas-admin .kpi-lbl {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  #screen-jornadas-admin .kpi-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+  #screen-jornadas-admin .kpi-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  #screen-jornadas-admin .kpi.abiertas { border-left-color: var(--amber); }
+  #screen-jornadas-admin .kpi.abiertas .kpi-val { color: var(--amber); }
+  #screen-jornadas-admin .kpi.jornadas { border-left-color: var(--blue); }
+  #screen-jornadas-admin .kpi.jornadas .kpi-val { color: var(--blue); }
+  #screen-jornadas-admin .kpi.km       { border-left-color: var(--green); }
+  #screen-jornadas-admin .kpi.km       .kpi-val { color: var(--green); }
+  #screen-jornadas-admin .kpi.horas    { border-left-color: #a855f7; }
+  #screen-jornadas-admin .kpi.horas    .kpi-val { color: #a855f7; }
+  #screen-jornadas-admin .kpi.taller   { border-left-color: var(--red); }
+  #screen-jornadas-admin .kpi.taller   .kpi-val { color: var(--red); }
+
+  #screen-jornadas-admin .filtros {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 2fr 1.4fr 1.4fr 1.2fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  #screen-jornadas-admin .filtros label {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  #screen-jornadas-admin .filtros input,
+  #screen-jornadas-admin .filtros select {
+    width: 100%;
+    background: var(--bg, #111420);
+    color: var(--text, #e8eaf2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-family: inherit;
+  }
+  #screen-jornadas-admin .filtros input:focus,
+  #screen-jornadas-admin .filtros select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  #screen-jornadas-admin .filtros .clear {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    padding: 7px 12px;
+    font-size: 11px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #screen-jornadas-admin .filtros .clear:hover {
+    color: var(--text);
+    border-color: var(--muted2);
+  }
+
+  #screen-jornadas-admin .chips {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  #screen-jornadas-admin .chip {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    padding: 5px 12px;
+    font-size: 11px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 500;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+  #screen-jornadas-admin .chip:hover {
+    color: var(--text);
+    border-color: var(--muted2);
+  }
+  #screen-jornadas-admin .chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  #screen-jornadas-admin .chip .cnt {
+    background: rgba(255,255,255,0.15);
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  #screen-jornadas-admin .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #screen-jornadas-admin .table-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  #screen-jornadas-admin .table-hdr .titulo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1.5px;
+    color: var(--text);
+  }
+  #screen-jornadas-admin .table-hdr .count {
+    font-size: 11px;
+    color: var(--muted2);
+  }
+  #screen-jornadas-admin .table-hdr .count b { color: var(--text); }
+
+  #screen-jornadas-admin table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  #screen-jornadas-admin thead th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 9.5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted2);
+    font-weight: 700;
+    background: rgba(0,0,0,0.15);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  #screen-jornadas-admin thead th.right { text-align: right; }
+  #screen-jornadas-admin thead th.center { text-align: center; }
+  #screen-jornadas-admin thead th[data-sort] { cursor: pointer; user-select: none; }
+  #screen-jornadas-admin thead th[data-sort]:hover { color: var(--text); }
+  #screen-jornadas-admin thead th[data-sort]::after {
+    content: '↕';
+    margin-left: 4px;
+    opacity: 0.4;
+  }
+  #screen-jornadas-admin thead th.sort-desc::after { content: '↓'; opacity: 1; color: var(--accent); }
+  #screen-jornadas-admin thead th.sort-asc::after  { content: '↑'; opacity: 1; color: var(--accent); }
+
+  #screen-jornadas-admin tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  #screen-jornadas-admin tbody tr:hover { background: rgba(255,255,255,0.03); }
+  #screen-jornadas-admin tbody tr:last-child { border-bottom: none; }
+  #screen-jornadas-admin tbody td {
+    padding: 11px 12px;
+    vertical-align: middle;
+  }
+  #screen-jornadas-admin td.right  { text-align: right; font-family: 'DM Mono', 'Courier New', monospace; }
+  #screen-jornadas-admin td.center { text-align: center; }
+  #screen-jornadas-admin td.mono   { font-family: 'DM Mono', 'Courier New', monospace; }
+
+  #screen-jornadas-admin .fecha-cell b { display: block; }
+  #screen-jornadas-admin .fecha-cell .dia { font-size: 10.5px; color: var(--muted2); margin-top: 1px; }
+
+  #screen-jornadas-admin .chofer-cell {
+    display: flex; align-items: center; gap: 10px;
+  }
+  #screen-jornadas-admin .avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #0f3460);
+    color: #fff;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  #screen-jornadas-admin .avatar.c2 { background: linear-gradient(135deg, #f5a623, #b46b0d); }
+  #screen-jornadas-admin .avatar.c3 { background: linear-gradient(135deg, #27c47a, #147041); }
+  #screen-jornadas-admin .avatar.c4 { background: linear-gradient(135deg, #e2504a, #8a2320); }
+  #screen-jornadas-admin .avatar.c5 { background: linear-gradient(135deg, #a855f7, #5b21b6); }
+  #screen-jornadas-admin .chofer-cell .name b { display: block; font-weight: 600; }
+  #screen-jornadas-admin .chofer-cell .name .lg { font-size: 10.5px; color: var(--muted2); }
+
+  #screen-jornadas-admin .camion-cell { display: flex; flex-direction: column; gap: 1px; }
+  #screen-jornadas-admin .camion-cell .pat { font-family: 'DM Mono', monospace; font-weight: 600; }
+  #screen-jornadas-admin .camion-cell .mov { font-size: 10.5px; color: var(--muted2); }
+
+  #screen-jornadas-admin .pill {
+    display: inline-flex;
+    align-items: center; gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  #screen-jornadas-admin .pill-green { background: rgba(39,196,122,0.12); color: var(--green); }
+  #screen-jornadas-admin .pill-amber { background: rgba(245,166,35,0.12); color: var(--amber); }
+  #screen-jornadas-admin .pill-red   { background: rgba(226,80,74,0.12);  color: var(--red); }
+  #screen-jornadas-admin .pill-blue  { background: rgba(59,130,246,0.12); color: var(--blue); }
+  #screen-jornadas-admin .pill-muted { background: rgba(90,98,120,0.15);  color: var(--muted2); }
+
+  #screen-jornadas-admin .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  #screen-jornadas-admin .dot.g { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  #screen-jornadas-admin .dot.a { background: var(--amber); }
+  #screen-jornadas-admin .dot.r { background: var(--red); }
+
+  #screen-jornadas-admin .km-cell { color: var(--amber); font-weight: 600; }
+  #screen-jornadas-admin .km-cell.zero { color: var(--muted); font-weight: 400; }
+
+  #screen-jornadas-admin .rend-cell { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 11.5px; }
+  #screen-jornadas-admin .rend-cell.ok   { color: var(--green); }
+  #screen-jornadas-admin .rend-cell.warn { color: var(--amber); }
+  #screen-jornadas-admin .rend-cell.bad  { color: var(--red); }
+  #screen-jornadas-admin .rend-cell.na   { color: var(--muted); font-weight: 400; }
+
+  #screen-jornadas-admin .inc-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  #screen-jornadas-admin .inc-cell.zero { color: var(--muted); }
+  #screen-jornadas-admin .inc-cell.some { color: var(--red); }
+
+  #screen-jornadas-admin .table-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.15);
+  }
+  #screen-jornadas-admin .pager { display: flex; gap: 4px; align-items: center; }
+  #screen-jornadas-admin .pager button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    min-width: 28px; height: 28px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #screen-jornadas-admin .pager button:hover { color: var(--text); }
+  #screen-jornadas-admin .pager button:disabled { opacity: 0.3; cursor: not-allowed; }
+  #screen-jornadas-admin .pager .info { font-size: 11px; color: var(--muted2); margin: 0 12px; }
+  #screen-jornadas-admin .per-page {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  #screen-jornadas-admin .leyenda {
+    margin-top: 16px;
+    padding: 10px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex; gap: 20px; flex-wrap: wrap;
+    font-size: 11px; color: var(--muted2);
+  }
+  #screen-jornadas-admin .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+
+  @media (max-width: 900px) {
+    #screen-jornadas-admin .jadmin-kpis { grid-template-columns: repeat(2, 1fr); }
+    #screen-jornadas-admin .filtros { grid-template-columns: 1fr 1fr; }
+  }
+  </style>
+
+  <!-- KPI STRIP -->
+  <div class="jadmin-kpis" id="jadmin-kpis">
+    <div class="kpi abiertas">
+      <div class="kpi-lbl">Abiertas ahora</div>
+      <div class="kpi-val" id="jadmin-kpi-abiertas">—</div>
+      <div class="kpi-sub" id="jadmin-kpi-abiertas-sub">—</div>
+    </div>
+    <div class="kpi jornadas">
+      <div class="kpi-lbl">Jornadas del período</div>
+      <div class="kpi-val" id="jadmin-kpi-jornadas">—</div>
+      <div class="kpi-sub" id="jadmin-kpi-jornadas-sub">—</div>
+    </div>
+    <div class="kpi km">
+      <div class="kpi-lbl">KM recorridos</div>
+      <div class="kpi-val" id="jadmin-kpi-km">—</div>
+      <div class="kpi-sub" id="jadmin-kpi-km-sub">—</div>
+    </div>
+    <div class="kpi horas">
+      <div class="kpi-lbl">Horas trabajadas</div>
+      <div class="kpi-val" id="jadmin-kpi-horas">—</div>
+      <div class="kpi-sub" id="jadmin-kpi-horas-sub">—</div>
+    </div>
+    <div class="kpi taller">
+      <div class="kpi-lbl">En taller</div>
+      <div class="kpi-val" id="jadmin-kpi-taller">—</div>
+      <div class="kpi-sub" id="jadmin-kpi-taller-sub">—</div>
+    </div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filtros">
+    <div>
+      <label>Buscar</label>
+      <input type="search" id="jadmin-f-q" placeholder="Buscar por chofer o patente…">
+    </div>
+    <div>
+      <label>Chofer</label>
+      <select id="jadmin-f-chofer">
+        <option value="">Todos los choferes</option>
+      </select>
+    </div>
+    <div>
+      <label>Camión</label>
+      <select id="jadmin-f-camion">
+        <option value="">Todos los camiones</option>
+      </select>
+    </div>
+    <div>
+      <label>Estado</label>
+      <select id="jadmin-f-estado">
+        <option value="">Todos</option>
+        <option value="open">Abierta</option>
+        <option value="closed">Cerrada</option>
+      </select>
+    </div>
+    <div>
+      <label>Desde</label>
+      <input type="date" id="jadmin-f-desde">
+    </div>
+    <div>
+      <label>Hasta</label>
+      <input type="date" id="jadmin-f-hasta">
+    </div>
+    <button class="clear" id="jadmin-f-clear">Limpiar</button>
+  </div>
+
+  <!-- CHIPS -->
+  <div class="chips">
+    <span class="chip active" data-chip="todas">Todas <span class="cnt"></span></span>
+    <span class="chip" data-chip="hoy">Hoy <span class="cnt"></span></span>
+    <span class="chip" data-chip="semana">Esta semana <span class="cnt"></span></span>
+    <span class="chip" data-chip="mes">Este mes <span class="cnt"></span></span>
+    <span class="chip" data-chip="abiertas">Abiertas ahora <span class="cnt"></span></span>
+    <span class="chip" data-chip="taller">En taller <span class="cnt"></span></span>
+    <span class="chip" data-chip="incidentes">Con incidentes <span class="cnt"></span></span>
+    <span class="chip" data-chip="rendicion">Faltantes rendición <span class="cnt"></span></span>
+  </div>
+
+  <!-- TABLA -->
+  <div class="table-wrap">
+    <div class="table-hdr">
+      <div class="titulo">Historial de jornadas</div>
+      <div class="count">Mostrando <b id="jadmin-count-shown">0</b> de <b id="jadmin-count-total">0</b></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="log_date" class="sort-desc">Fecha</th>
+          <th>Chofer</th>
+          <th>Camión</th>
+          <th class="right" data-sort="km">KM Rec.</th>
+          <th class="right" data-sort="horas">Horas</th>
+          <th class="right">Srv.</th>
+          <th class="right">Rendición</th>
+          <th class="center">Inc.</th>
+          <th class="center">Taller</th>
+          <th class="center">Estado</th>
+        </tr>
+      </thead>
+      <tbody id="jadmin-tbody"></tbody>
+    </table>
+
+    <div class="table-foot">
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted2)">
+        Filas por página
+        <select class="per-page" id="jadmin-per-page">
+          <option value="20" selected>20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div class="pager">
+        <button id="jadmin-prev">←</button>
+        <span class="info" id="jadmin-pager-info">Página 1</span>
+        <button id="jadmin-next">→</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEYENDA -->
+  <div class="leyenda">
+    <span><span class="dot g"></span> Cerrada</span>
+    <span><span class="dot a"></span> Abierta</span>
+    <span><span class="dot r"></span> Anulada</span>
+    <span style="color:var(--green)">✓ OK</span><span>rendición cuadra</span>
+    <span style="color:var(--red)">-$X</span><span>faltante</span>
+    <span style="color:var(--amber)">+$X</span><span>sobrante</span>
+    <span>⚠ N incidentes registrados</span>
+    <span><span class="pill pill-amber" style="padding:1px 6px;font-size:9px">Sí</span> en taller</span>
+  </div>
+
+</div><!-- /screen-jornadas-admin -->
+
+
 <div class="modal-backdrop" id="modal-settings">
   <div class="modal-box cfg-modal-box">
 
@@ -2029,7 +2516,6 @@
         <button class="cfg-nav-item active" data-tab="tab-flota" onclick="switchConfigTab('tab-flota')"><span class="cfg-nav-dot"></span>Flota</button>
         <button class="cfg-nav-item" data-tab="tab-usuarios" onclick="switchConfigTab('tab-usuarios')"><span class="cfg-nav-dot"></span>Personal</button>
         <button class="cfg-nav-item" data-tab="tab-planes" onclick="switchConfigTab('tab-planes')"><span class="cfg-nav-dot"></span>Catálogo de Planes</button>
-        <button class="cfg-nav-item" data-tab="tab-rendiciones" onclick="switchConfigTab('tab-rendiciones')"><span class="cfg-nav-dot"></span>Rendiciones</button>
         <button class="cfg-nav-item" data-tab="tab-mantenimiento" onclick="switchConfigTab('tab-mantenimiento')"><span class="cfg-nav-dot"></span>Mantenimiento</button>
         <button class="cfg-nav-item" data-tab="tab-emergencias" onclick="switchConfigTab('tab-emergencias')"><span class="cfg-nav-dot"></span>Contactos de Emergencia</button>
         <button class="cfg-nav-item" data-tab="tab-mi-cuenta" onclick="switchConfigTab('tab-mi-cuenta')"><span class="cfg-nav-dot"></span>Mi cuenta</button>
@@ -2057,26 +2543,6 @@
 
         <div id="tab-planes" class="config-section" style="display:none">
           <div id="lista-admin-planes" style="color:var(--muted);font-size:13px">Cargando planes...</div>
-        </div>
-
-        <div id="tab-rendiciones" class="config-section" style="display:none">
-          <div class="cfg-rend-filtros">
-            <input id="cfg-rend-buscar" type="text" placeholder="Buscar chofer…" oninput="_renderRendicionesTabla()">
-            <select id="cfg-rend-status" onchange="_renderRendicionesTabla()">
-              <option value="">Todos los estados</option>
-              <option value="pendiente">Pendiente aprobación</option>
-              <option value="observada">Observada / con diferencia</option>
-              <option value="aprobada">Aprobada</option>
-            </select>
-            <select id="cfg-rend-rango" onchange="cargarRendicionesTab()">
-              <option value="30">Últimos 30 días</option>
-              <option value="90">Últimos 90 días</option>
-              <option value="365">Último año</option>
-              <option value="all">Todo</option>
-            </select>
-          </div>
-          <div id="cfg-rend-stats" class="cfg-rend-stats"></div>
-          <div id="cfg-rend-body" style="color:var(--muted);font-size:13px">Cargando rendiciones...</div>
         </div>
 
         <div id="tab-mantenimiento" class="config-section" style="display:none">
@@ -2345,7 +2811,7 @@
 
 <div id="toast-container"></div>
 
- </div> </div> </div> </div> </div> </div> </div> <div class="modal-backdrop" id="modal-ver-remito">
+ </div> </div> </div> </div> <div class="modal-backdrop" id="modal-ver-remito">
 
           
   <div class="modal-box wide">
@@ -2760,8 +3226,17 @@
         <div style="color:var(--muted);font-size:11px;margin-top:4px" id="cump-cant-hint">Cantidad de unidades cumplidas.</div>
       </div>
       <div class="form-group">
-        <label class="form-label">Referencia (opcional)</label>
-        <input class="form-input" id="cump-ref" type="text" placeholder="Nro. remito, service_id, etc.">
+        <label class="form-label">Referencia <span style="color:var(--red)">*</span></label>
+        <div style="display:flex;gap:8px">
+          <select class="form-input" id="cump-ref-tipo" style="max-width:150px">
+            <option value="patente">Patente</option>
+            <option value="socio">Socio</option>
+            <option value="servicio">N° Servicio</option>
+          </select>
+          <input class="form-input" id="cump-ref" type="text" list="cump-ref-opts" placeholder="Elegí una opción..." autocomplete="off" style="flex:1">
+          <datalist id="cump-ref-opts"></datalist>
+        </div>
+        <div style="color:var(--muted);font-size:11px;margin-top:4px" id="cump-ref-hint">Debe coincidir con un valor real del chofer en el período.</div>
       </div>
       <div style="background:var(--bg-elev);padding:10px 12px;border-radius:8px;margin-top:12px">
         <div style="color:var(--muted);font-size:11px">Bono calculado</div>

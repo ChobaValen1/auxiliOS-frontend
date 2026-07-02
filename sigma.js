@@ -245,6 +245,7 @@ const SCREENS = {
   documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
   remitos:    { title:'REMITOS VIRTUALES',  sub:'Módulo 4 · Firma digital y archivo' },
   sueldos:    { title:'LIQUIDACIÓN DE SUELDOS', sub:'Objetivos, esquema salarial y recibos' },
+  'jornadas-admin': { title:'JORNADAS · ADMIN', sub:'Historial de jornadas de la flota' },
 };
 
 function goTo(name) {
@@ -265,6 +266,7 @@ function goTo(name) {
     cargarRemitos();
   }
   if (name === 'sueldos') cargarSueldosTab();
+  if (name === 'jornadas-admin') initJornadasAdmin();
 }
 
 function toggleWorkshop(row) {
@@ -5135,6 +5137,7 @@ async function guardarCombustible() {
 
   const datos = {
     truck_id:        _truckActual.truck_id,
+    log_id:          _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null,
     fuel_date:       fecha || new Date().toISOString().slice(0, 10),
     liters:          litros,
     price_per_liter: precio,
@@ -5237,6 +5240,7 @@ async function guardarNeumaticos() {
 
   const exito = await registrarControlNeumaticos({
     truck_id:        _truckActual.truck_id,
+    log_id:          _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null,
     check_date:      fecha || new Date().toISOString().slice(0, 10),
     tire_condition:  cond,
     brake_condition: frenos,
@@ -8159,7 +8163,6 @@ const _cfgTabMeta = {
   'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal', importTipo: 'flota' },
   'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal', importTipo: 'usuarios' },
   'tab-planes':      { title: 'Catálogo de Planes',       action: 'openAdminPlanModal' },
-  'tab-rendiciones': { title: 'Rendiciones',                action: null },
   'tab-mantenimiento':{ title: 'Mantenimiento',             action: null },
   'tab-emergencias': { title: 'Contactos de Emergencia',  action: null },
   'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
@@ -8201,7 +8204,6 @@ function switchConfigTab(tabId) {
   if (tabId === 'tab-flota')        cargarTablaAdminFlota();
   else if (tabId === 'tab-usuarios') cargarTablaAdminUsuarios();
   else if (tabId === 'tab-planes')   cargarTablaAdminPlanes();
-  else if (tabId === 'tab-rendiciones') cargarRendicionesTab();
   else if (tabId === 'tab-mantenimiento') cargarMantenimientoTab();
   else if (tabId === 'tab-emergencias') cargarYRenderizarConfigEmergencias();
   else if (tabId === 'tab-mi-cuenta')   _renderPerfilAdminTab();
@@ -11995,10 +11997,8 @@ _sueldosSwitchSub = function(sub, btnEl) {
   } else if (sub === 'historial') {
     _initHistorialFiltros();
   } else if (sub === 'rendiciones') {
-    const inp = document.getElementById('pl-rend-periodo');
-    if (inp && !inp.value) inp.value = _mesActualInputVal();
-    _initRendicionesFiltros();
-    _cargarRendicionesSueldos();
+    // Hub admin de rendiciones (aprobación / observación) dentro de Sueldos.
+    cargarRendicionesTab();
   }
 };
 
@@ -12033,13 +12033,20 @@ function _renderLiquidacionesMes() {
     const pend  = _liquidacionesMesCache.filter(l => l.estado === 'pendiente').length;
     const apr   = _liquidacionesMesCache.filter(l => l.estado === 'aprobada').length;
     const pag   = _liquidacionesMesCache.filter(l => l.estado === 'pagada').length;
-    const suma  = _liquidacionesMesCache.reduce((s,l) => s + (Number(l.total)||0), 0);
+    const sumBy = est => _liquidacionesMesCache
+      .filter(l => l.estado === est)
+      .reduce((s,l) => s + (Number(l.total)||0), 0);
+    const sumaPend = sumBy('pendiente');
+    const sumaApr  = sumBy('aprobada');
+    const sumaPag  = sumBy('pagada');
+    const sumaComprometido = sumaPend + sumaApr;
     statsEl.innerHTML = `
       <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Total</div><div class="cfg-rend-stat-val">${tot}</div></div>
-      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Pendientes</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${pend}</div></div>
-      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Aprobadas</div><div class="cfg-rend-stat-val">${apr}</div></div>
-      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Pagadas</div><div class="cfg-rend-stat-val" style="color:#4ade80">${pag}</div></div>
-      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Suma total</div><div class="cfg-rend-stat-val" style="font-family:'DM Mono',monospace">$${_AR(suma)}</div></div>
+      <div class="cfg-rend-stat" title="Pendientes: $${_AR(sumaPend)}"><div class="cfg-rend-stat-lbl">Pendientes</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${pend}</div></div>
+      <div class="cfg-rend-stat" title="Aprobadas: $${_AR(sumaApr)}"><div class="cfg-rend-stat-lbl">Aprobadas</div><div class="cfg-rend-stat-val">${apr}</div></div>
+      <div class="cfg-rend-stat" title="Pagadas: $${_AR(sumaPag)}"><div class="cfg-rend-stat-lbl">Pagadas</div><div class="cfg-rend-stat-val" style="color:#4ade80">${pag}</div></div>
+      <div class="cfg-rend-stat" title="Pendiente + aprobada (aún no pagado)"><div class="cfg-rend-stat-lbl">Comprometido</div><div class="cfg-rend-stat-val" style="color:var(--amber);font-family:'DM Mono',monospace">$${_AR(sumaComprometido)}</div></div>
+      <div class="cfg-rend-stat" title="Ya pagado en el período"><div class="cfg-rend-stat-lbl">Pagado</div><div class="cfg-rend-stat-val" style="color:#4ade80;font-family:'DM Mono',monospace">$${_AR(sumaPag)}</div></div>
     `;
   }
 
@@ -12172,6 +12179,24 @@ function _reciboSwitch(sub) {
   else if (sub === 'rendiciones') _renderReciboRendiciones();
 }
 
+// Utilidades reusadas por resumen y PDF
+function _reciboMeta(liq) {
+  const s = String(liq.periodo_yyyymm);
+  const anio = parseInt(s.slice(0, 4), 10);
+  const mes  = parseInt(s.slice(4, 6), 10);
+  const ultDia = new Date(anio, mes, 0).getDate();
+  const rangoStr = `01/${String(mes).padStart(2,'0')}/${anio} al ${String(ultDia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${anio}`;
+  // ID legible: últimos 8 chars del UUID en mayúsculas.
+  const idCorto = (liq.liquidacion_id || '').slice(-8).toUpperCase();
+  // Snapshot con fallback derivado (registros previos a la migración de trazabilidad).
+  const km = Number(liq.km_total) || 0;
+  const serv = Number(liq.servicios) || 0;
+  const valorKm    = Number(liq.valor_km_snapshot)         || (km   > 0 ? (Number(liq.adic_km)   || 0) / km   : 0);
+  const valorServ  = Number(liq.valor_servicio_snapshot)   || (serv > 0 ? (Number(liq.adic_serv) || 0) / serv : 0);
+  const bonoPresConf = Number(liq.bono_presentismo_snapshot) || Number(liq.bono_presentismo) || 0;
+  return { anio, mes, rangoStr, idCorto, valorKm, valorServ, bonoPresConf };
+}
+
 function _renderReciboResumen() {
   const liq = _reciboActual;
   if (!liq) return;
@@ -12179,34 +12204,51 @@ function _renderReciboResumen() {
   if (!el) return;
   const row = (label, val, opts = {}) => `
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);${opts.strong?'font-weight:700;font-size:15px':''}">
-      <span style="color:${opts.strong?'var(--fg)':'var(--muted)'};font-size:${opts.strong?'14px':'12px'}">${label}</span>
+      <span style="color:${opts.strong?'var(--fg)':'var(--muted)'};font-size:${opts.strong?'14px':'12px'};max-width:70%">${label}</span>
       <span style="font-family:'DM Mono',monospace;color:${opts.color||'var(--fg)'}">${val}</span>
     </div>`;
+  const meta = _reciboMeta(liq);
   const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo)||0 : 0;
-  const ajusteRend = Number(liq.ajuste_rendiciones) || 0;
+  const ajusteRend   = Number(liq.ajuste_rendiciones) || 0;
   const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0);
-  const ajusteRow = ajusteRend > 0
-    ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
-         <span style="color:var(--muted);font-size:12px">Descuentos por rendición ${liq.estado==='aprobada'||liq.estado==='pagada'?'🔒':''}</span>
-         <span style="font-family:'DM Mono',monospace;color:var(--red)">- $${_AR(ajusteRend)}</span>
-       </div>`
-    : '';
+  const snapLock = (liq.estado === 'aprobada' || liq.estado === 'pagada') ? ' 🔒' : '';
+
+  // Fórmulas legibles para km / servicios.
+  const kmDetalle   = meta.valorKm   > 0 ? `<span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">${_AR(liq.km_total)} km × $${_AR(meta.valorKm)}/km</span>` : '';
+  const servDetalle = meta.valorServ > 0 ? `<span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">${liq.servicios} × $${_AR(meta.valorServ)}/servicio</span>` : '';
+
+  // Presentismo siempre visible con criterio.
+  const presLabel = liq.presentismo_paga
+    ? `Presentismo ✓ <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Bono configurado ($${_AR(meta.bonoPresConf)}) · sin incidentes en el período</span>`
+    : `Presentismo ✗ <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Bono configurado ($${_AR(meta.bonoPresConf)}) · no se paga: hubo incidente(s) en el período o sin jornadas</span>`;
+
+  // Ajuste rendiciones siempre visible con criterio.
+  const ajusteLabel = ajusteRend > 0
+    ? `Descuentos por rendición${snapLock} <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Faltantes ≥ $500 del período (tolerancia aplicada)</span>`
+    : `Descuentos por rendición${snapLock} <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Sin faltantes por sobre la tolerancia de $500</span>`;
+  const ajusteVal = ajusteRend > 0 ? `- $${_AR(ajusteRend)}` : '$0';
+
   el.innerHTML = `
+    <div style="padding:10px 12px;background:var(--bg-elev);border-radius:8px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.6">
+      <div><strong style="color:var(--fg)">Recibo N° ${meta.idCorto}</strong> · Período ${meta.rangoStr}</div>
+      ${liq.generada_at ? `<div>Emitido: ${new Date(liq.generada_at).toLocaleString('es-AR')}</div>` : ''}
+      ${liq.aprobada_at ? `<div>Aprobado: ${new Date(liq.aprobada_at).toLocaleString('es-AR')}${liq.aprobador_nombre ? ' por ' + _escHtml(liq.aprobador_nombre) : ''}</div>` : ''}
+      ${liq.pagada_at   ? `<div>Pagado${liq.pagada_metodo ? ': ' + _escHtml(liq.pagada_metodo) : ''}</div>` : ''}
+    </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
       <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Jornadas</div><div class="cfg-rend-stat-val">${liq.jornadas}</div></div>
       <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">KM totales</div><div class="cfg-rend-stat-val" style="font-family:'DM Mono',monospace">${_AR(liq.km_total)}</div></div>
       <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Servicios</div><div class="cfg-rend-stat-val">${liq.servicios}</div></div>
     </div>
-    ${row('Sueldo básico',              '$' + _AR(liq.sueldo_basico))}
-    ${row('Adicional km',               '$' + _AR(liq.adic_km))}
-    ${row('Adicional servicios',        '$' + _AR(liq.adic_serv))}
-    ${row('Presentismo' + (liq.presentismo_paga?' ✓':' ✗ (no paga)'), '$' + _AR(presMostrado), { color: liq.presentismo_paga?'#4ade80':'var(--muted)' })}
-    ${row('Bonos por objetivos',        '$' + _AR(liq.bonos_objetivos))}
-    ${ajusteRend > 0 ? row('Subtotal bruto', '$' + _AR(bruto), { color:'var(--muted)' }) : ''}
-    ${ajusteRow}
-    ${row('TOTAL',                      '$' + _AR(liq.total), { strong:true, color:'var(--amber)' })}
+    ${row('Sueldo básico',                      '$' + _AR(liq.sueldo_basico))}
+    ${row('Adicional por km' + kmDetalle,       '$' + _AR(liq.adic_km))}
+    ${row('Adicional por servicios' + servDetalle, '$' + _AR(liq.adic_serv))}
+    ${row(presLabel,                            '$' + _AR(presMostrado), { color: liq.presentismo_paga?'#4ade80':'var(--muted)' })}
+    ${row('Bonos por objetivos',                '$' + _AR(liq.bonos_objetivos))}
+    ${row('Subtotal bruto',                     '$' + _AR(bruto), { color:'var(--muted)' })}
+    ${row(ajusteLabel,                          ajusteVal, { color: ajusteRend > 0 ? 'var(--red)' : 'var(--muted)' })}
+    ${row('TOTAL',                              '$' + _AR(liq.total), { strong:true, color:'var(--amber)' })}
     ${liq.notas ? `<div style="margin-top:14px;padding:10px 12px;background:var(--bg-elev);border-radius:8px;font-size:12px;color:var(--muted)"><strong>Notas:</strong> ${_escHtml(liq.notas)}</div>` : ''}
-    ${liq.pagada_metodo ? `<div style="margin-top:8px;color:var(--muted);font-size:11px">Método de pago: ${_escHtml(liq.pagada_metodo)}${liq.pagada_at ? ' · ' + new Date(liq.pagada_at).toLocaleDateString('es-AR') : ''}</div>` : ''}
   `;
 }
 
@@ -12338,7 +12380,7 @@ function _renderReciboEfectivos() {
 
 // ── Cumplimientos ──
 function _abrirCumplimientoModal(driverId, yyyymm, liquidacionId) {
-  _cumpModalContexto = { driverId, yyyymm, liquidacionId };
+  _cumpModalContexto = { driverId, yyyymm, liquidacionId, refs: null };
   const modal = document.getElementById('modal-cumplimiento-nuevo');
   if (!modal) { toast('Modal no encontrado', 'error'); return; }
   if (modal.parentElement !== document.body) document.body.appendChild(modal);
@@ -12346,6 +12388,7 @@ function _abrirCumplimientoModal(driverId, yyyymm, liquidacionId) {
   document.getElementById('cump-chofer-per').textContent = `${chofer} · ${_yyyymmToPeriodo(yyyymm)}`;
   document.getElementById('cump-cantidad').value = '';
   document.getElementById('cump-ref').value = '';
+  document.getElementById('cump-ref-tipo').value = 'patente';
   document.getElementById('cump-fecha').value = new Date().toISOString().slice(0,10);
   // Cargar objetivos activos en el select
   const sel = document.getElementById('cump-objetivo');
@@ -12353,9 +12396,35 @@ function _abrirCumplimientoModal(driverId, yyyymm, liquidacionId) {
     sel.innerHTML = objs.map(o => `<option value="${o.objetivo_id}" data-tipo="${o.tipo}" data-valor="${o.valor}">${_escHtml(o.nombre)} — ${o.tipo==='porcentaje'?o.valor+'%':'$'+_AR(o.valor)}</option>`).join('');
     _cumpActualizarPreview();
   });
+  // Cargar referencias posibles (patentes/socios/servicios) del chofer en el período
+  cargarRefsCumplimiento(driverId, yyyymm).then(refs => {
+    _cumpModalContexto.refs = refs;
+    _cumpActualizarDatalist();
+  });
   sel.onchange = _cumpActualizarPreview;
   document.getElementById('cump-cantidad').oninput = _cumpActualizarPreview;
+  document.getElementById('cump-ref-tipo').onchange = _cumpActualizarDatalist;
   openModal('modal-cumplimiento-nuevo');
+}
+
+function _cumpActualizarDatalist() {
+  const refs = _cumpModalContexto?.refs;
+  const tipo = document.getElementById('cump-ref-tipo').value;
+  const dl = document.getElementById('cump-ref-opts');
+  const inp = document.getElementById('cump-ref');
+  const hint = document.getElementById('cump-ref-hint');
+  if (!dl || !refs) return;
+  const list = tipo === 'patente' ? refs.patentes
+             : tipo === 'socio'   ? refs.socios
+             : refs.servicios;
+  dl.innerHTML = list.map(v => `<option value="${_escHtml(v)}">`).join('');
+  if (inp) inp.value = '';
+  const label = tipo === 'patente' ? 'patente' : tipo === 'socio' ? 'razón social' : 'nro de servicio';
+  if (hint) {
+    hint.innerHTML = list.length
+      ? `Elegí una <strong>${label}</strong> de las ${list.length} opciones del chofer en el período.`
+      : `<span style="color:#f59e0b">⚠ El chofer no tiene remitos con ${label} en este período.</span>`;
+  }
 }
 
 function _cumpActualizarPreview() {
@@ -12392,7 +12461,19 @@ async function _guardarCumplimiento() {
   const valor = Number(opt?.dataset?.valor) || 0;
   const bono  = tipo === 'porcentaje' ? (cant * valor) / 100 : cant * valor;
   const fecha = document.getElementById('cump-fecha').value || new Date().toISOString().slice(0,10);
-  const ref   = document.getElementById('cump-ref').value.trim() || null;
+  const refTipo = document.getElementById('cump-ref-tipo')?.value || 'patente';
+  const ref     = document.getElementById('cump-ref').value.trim();
+  if (!ref) { toast('La referencia es obligatoria', 'error'); return; }
+  const refs = ctx.refs;
+  const listaVal = refs
+    ? (refTipo === 'patente' ? refs.patentes
+      : refTipo === 'socio'   ? refs.socios
+      : refs.servicios)
+    : [];
+  if (!listaVal.some(v => String(v).toLowerCase() === ref.toLowerCase())) {
+    toast('La referencia no coincide con ninguna del período', 'error', 4500);
+    return;
+  }
 
   const res = await crearCumplimiento({
     objetivo_id,
@@ -12401,7 +12482,7 @@ async function _guardarCumplimiento() {
     fecha,
     cantidad: cant,
     bonus_calculado: bono,
-    ref_tipo: 'manual',
+    ref_tipo: refTipo,
     ref_id: ref,
   });
   if (!res.ok) { toast('Error al guardar cumplimiento', 'error'); return; }
@@ -12426,44 +12507,164 @@ async function _borrarCumplimiento(cumplimientoId) {
 }
 
 // ── Export PDF (usa window.print sobre un div temporal) ──
+// Genera un data-URL PNG con el QR del liquidacion_id, o null si la librería no está.
+function _qrDataUrl(payload) {
+  try {
+    if (typeof qrcode !== 'function') return null;
+    const q = qrcode(0, 'M');
+    q.addData(payload);
+    q.make();
+    return q.createDataURL(4, 0);
+  } catch (err) {
+    console.warn('_qrDataUrl:', err);
+    return null;
+  }
+}
+
 function _exportarReciboPDF() {
   const liq = _reciboActual;
   if (!liq) return;
-  const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo)||0 : 0;
+  const meta = _reciboMeta(liq);
+  const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo) || 0 : 0;
+  const ajusteRend   = Number(liq.ajuste_rendiciones) || 0;
+  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0);
+  const emitidoStr  = liq.generada_at ? new Date(liq.generada_at).toLocaleString('es-AR') : new Date().toLocaleString('es-AR');
+  const aprobadoStr = liq.aprobada_at ? `${new Date(liq.aprobada_at).toLocaleString('es-AR')}${liq.aprobador_nombre ? ' · ' + _escHtml(liq.aprobador_nombre) : ''}` : null;
+  const pagadoStr   = liq.pagada_at   ? (liq.pagada_metodo ? _escHtml(liq.pagada_metodo) : '—') : null;
+
+  const kmFormula   = meta.valorKm   > 0 ? `${_AR(liq.km_total)} km × $${_AR(meta.valorKm)}/km` : '—';
+  const servFormula = meta.valorServ > 0 ? `${liq.servicios} × $${_AR(meta.valorServ)}` : '—';
+
+  const presDetalle = liq.presentismo_paga
+    ? `Bono $${_AR(meta.bonoPresConf)} · Criterio: sin incidentes en el período`
+    : `Bono configurado $${_AR(meta.bonoPresConf)} · No se paga: hubo incidente(s) o sin jornadas`;
+
+  const ajusteDetalle = ajusteRend > 0
+    ? `Faltantes de rendición ≥ $500 del período`
+    : `Sin faltantes por sobre la tolerancia de $500`;
+
+  const qrPayload = `liq:${liq.liquidacion_id}`;
+  const qrImg = _qrDataUrl(qrPayload);
+
   const html = `
-    <html><head><title>Recibo ${liq.chofer_nombre} ${_yyyymmToPeriodo(liq.periodo_yyyymm)}</title>
+    <html><head><title>Recibo ${_escHtml(liq.chofer_nombre)} ${_yyyymmToPeriodo(liq.periodo_yyyymm)}</title>
     <style>
-      body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
-      h1 { font-size: 20px; margin: 0 0 6px 0; }
-      h2 { font-size: 14px; margin: 20px 0 8px 0; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px; }
-      td, th { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: left; }
-      .right { text-align: right; font-family: monospace; }
-      .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #333; border-bottom: none; }
-      .hdr { display: flex; justify-content: space-between; margin-bottom: 16px; }
+      @page { size: A4; margin: 0; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page { min-height: 297mm; padding: 0 0 22mm 0; display: flex; flex-direction: column; }
+      .band { background: #0f3460; color: #fff; padding: 18px 26px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #d4a017; }
+      .band .brand { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+      .band .brand small { display: block; font-size: 10px; font-weight: 400; letter-spacing: 3px; opacity: 0.85; margin-top: 2px; }
+      .band .doc { text-align: right; font-size: 11px; line-height: 1.5; }
+      .band .doc .num { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+      .content { flex: 1; padding: 20px 26px 0 26px; }
+      .chofer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #d6d6d6; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+      .chofer-grid .cell { padding: 10px 14px; border-bottom: 1px solid #eee; border-right: 1px solid #eee; }
+      .chofer-grid .cell:nth-child(2n) { border-right: none; }
+      .chofer-grid .cell:nth-last-child(-n+2) { border-bottom: none; }
+      .chofer-grid .lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
+      .chofer-grid .val { font-size: 12.5px; color: #1a1a1a; font-weight: 500; }
+      .chofer-grid .full { grid-column: 1 / -1; }
+      h2 { font-size: 11px; margin: 0 0 8px 0; padding: 7px 12px; background: #0f3460; color: #fff; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; border-radius: 4px 4px 0 0; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 4px 4px; }
+      td, th { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; text-align: left; vertical-align: top; }
+      tr:last-child td { border-bottom: none; }
+      .right { text-align: right; font-family: 'DM Mono', 'Courier New', monospace; white-space: nowrap; font-weight: 500; }
+      .muted { color: #7a7a7a; font-size: 10.5px; margin-top: 2px; }
+      .subtotal-row td { color: #555; background: #fafafa; font-weight: 600; border-top: 1px solid #e5e5e5; }
+      .total-row td { font-weight: 800; font-size: 16px; background: #0f3460; color: #fff; padding: 14px 12px; letter-spacing: 0.5px; border-bottom: none; }
+      .total-row .right { color: #fff; font-size: 18px; }
+      .desc-row .right { color: #b91c1c; }
+      .foot { padding: 0 26px; margin-top: auto; }
+      .foot-inner { display: grid; grid-template-columns: 1fr 1fr auto; gap: 24px; align-items: end; padding: 18px 0 12px 0; border-top: 1px solid #ddd; }
+      .firma { text-align: center; padding-top: 30px; }
+      .firma .line { border-top: 1px solid #333; margin-bottom: 6px; }
+      .firma .rol { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; font-weight: 600; }
+      .firma .name { font-size: 11px; color: #1a1a1a; margin-top: 3px; }
+      .verif { text-align: center; padding: 8px 10px; border: 1px solid #d6d6d6; border-radius: 6px; background: #fafafa; }
+      .verif img { width: 78px; height: 78px; display: block; margin: 0 auto 4px; }
+      .verif .lbl { font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: #666; font-weight: 600; }
+      .verif .id { font-family: 'DM Mono', 'Courier New', monospace; font-size: 9px; color: #333; margin-top: 2px; }
+      .aviso { margin: 10px 26px 0 26px; padding: 8px 12px; font-size: 9px; color: #777; line-height: 1.5; text-align: justify; border-top: 1px dashed #ccc; padding-top: 10px; }
+      .aviso strong { color: #555; }
     </style></head><body>
-      <div class="hdr">
-        <div><h1>Recibo de sueldo</h1><div>Sigma Remolques</div></div>
-        <div style="text-align:right"><div><strong>${_escHtml(liq.chofer_nombre)}</strong></div><div>${liq.chofer_legajo?'Legajo #'+_escHtml(liq.chofer_legajo):''}</div><div>Período: ${_yyyymmToPeriodo(liq.periodo_yyyymm)}</div></div>
-      </div>
-      <h2>Producción del mes</h2>
-      <table><tr><td>Jornadas trabajadas</td><td class="right">${liq.jornadas}</td></tr>
-      <tr><td>KM totales</td><td class="right">${_AR(liq.km_total)}</td></tr>
-      <tr><td>Servicios (remitos firmados)</td><td class="right">${liq.servicios}</td></tr></table>
-      <h2>Liquidación</h2>
-      <table>
-        <tr><td>Sueldo básico</td><td class="right">$${_AR(liq.sueldo_basico)}</td></tr>
-        <tr><td>Adicional por km</td><td class="right">$${_AR(liq.adic_km)}</td></tr>
-        <tr><td>Adicional por servicios</td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
-        <tr><td>Presentismo ${liq.presentismo_paga?'':' (no aplica)'}</td><td class="right">$${_AR(presMostrado)}</td></tr>
-        <tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
-        ${Number(liq.ajuste_rendiciones)>0 ? `<tr><td>Descuentos por rendición</td><td class="right" style="color:#b91c1c">- $${_AR(liq.ajuste_rendiciones)}</td></tr>` : ''}
-        <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>
-      </table>
-      <div style="margin-top:24px;font-size:11px;color:#666">Estado: ${liq.estado}${liq.pagada_metodo?' · Pago: '+_escHtml(liq.pagada_metodo):''}${liq.pagada_at?' · '+new Date(liq.pagada_at).toLocaleDateString('es-AR'):''}</div>
-      <div style="margin-top:48px;display:flex;justify-content:space-around">
-        <div style="text-align:center"><div>_______________________</div><div>Firma empleador</div></div>
-        <div style="text-align:center"><div>_______________________</div><div>Firma chofer</div></div>
+      <div class="page">
+        <div class="band">
+          <div class="brand">SIGMA REMOLQUES<small>SERVICIO DE AUXILIO 24 HS</small></div>
+          <div class="doc">
+            <div class="num">RECIBO N° ${meta.idCorto}</div>
+            <div>Emitido: ${emitidoStr}</div>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="chofer-grid">
+            <div class="cell full">
+              <div class="lbl">Chofer</div>
+              <div class="val">${_escHtml(liq.chofer_nombre)}${liq.chofer_legajo ? ' · Legajo #' + _escHtml(liq.chofer_legajo) : ''}</div>
+            </div>
+            <div class="cell">
+              <div class="lbl">Período</div>
+              <div class="val">${_yyyymmToPeriodo(liq.periodo_yyyymm)}</div>
+            </div>
+            <div class="cell">
+              <div class="lbl">Rango</div>
+              <div class="val">${meta.rangoStr}</div>
+            </div>
+            <div class="cell">
+              <div class="lbl">Estado</div>
+              <div class="val">${_escHtml(liq.estado)}</div>
+            </div>
+            <div class="cell">
+              <div class="lbl">${liq.estado === 'pagada' ? 'Pagado' : (liq.estado === 'aprobada' ? 'Aprobado' : 'Trazabilidad')}</div>
+              <div class="val" style="font-size:11px">${pagadoStr || aprobadoStr || '—'}</div>
+            </div>
+          </div>
+
+          <h2>Producción del mes</h2>
+          <table>
+            <tr><td>Jornadas trabajadas</td><td class="right">${liq.jornadas}</td></tr>
+            <tr><td>KM totales</td><td class="right">${_AR(liq.km_total)}</td></tr>
+            <tr><td>Servicios (remitos firmados)</td><td class="right">${liq.servicios}</td></tr>
+          </table>
+
+          <h2>Liquidación</h2>
+          <table>
+            <tr><td>Sueldo básico</td><td class="right">$${_AR(liq.sueldo_basico)}</td></tr>
+            <tr><td>Adicional por km<div class="muted">${kmFormula}</div></td><td class="right">$${_AR(liq.adic_km)}</td></tr>
+            <tr><td>Adicional por servicios<div class="muted">${servFormula}</div></td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
+            <tr><td>Presentismo ${liq.presentismo_paga ? '✓' : '✗'}<div class="muted">${presDetalle}</div></td><td class="right">$${_AR(presMostrado)}</td></tr>
+            <tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
+            <tr class="subtotal-row"><td>Subtotal bruto</td><td class="right">$${_AR(bruto)}</td></tr>
+            <tr class="desc-row"><td>Descuentos por rendición<div class="muted">${ajusteDetalle}</div></td><td class="right">${ajusteRend > 0 ? '- $' + _AR(ajusteRend) : '$0'}</td></tr>
+            <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>
+          </table>
+        </div>
+
+        <div class="foot">
+          <div class="foot-inner">
+            <div class="firma">
+              <div class="line"></div>
+              <div class="rol">Firma empleador</div>
+              <div class="name">Sigma Remolques</div>
+            </div>
+            <div class="firma">
+              <div class="line"></div>
+              <div class="rol">Firma chofer</div>
+              <div class="name">${_escHtml(liq.chofer_nombre)}</div>
+            </div>
+            <div class="verif">
+              ${qrImg ? `<img src="${qrImg}" alt="QR verificación" />` : ''}
+              <div class="lbl">Verificación</div>
+              <div class="id">${meta.idCorto}</div>
+            </div>
+          </div>
+          <div class="aviso">
+            <strong>Aviso:</strong> Comprobante <strong>interno</strong> de liquidación emitido por el sistema. No constituye recibo de sueldo con validez fiscal ni legal en los términos de la Ley de Contrato de Trabajo. Sirve exclusivamente como registro de cálculo y control entre empleador y empleado. Cualquier discrepancia debe comunicarse dentro del período de pago.
+          </div>
+        </div>
       </div>
     </body></html>`;
   const w = window.open('', '_blank');
@@ -12707,4 +12908,936 @@ async function _renderReciboRendiciones() {
     console.error('_renderReciboRendiciones:', err);
     el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar rendiciones</div>';
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  JORNADAS · VISTA ADMIN  (Tasks 50 & 51)
+//  Listing screen (#screen-jornadas-admin) + detalle modal (#modal-jornada-detalle)
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _jadminState = {
+  // Filtros / paginación
+  desde: null,          // 'YYYY-MM-DD'
+  hasta: null,          // 'YYYY-MM-DD'
+  driverId: null,
+  truckId: null,
+  estado: '',           // '' | 'open' | 'closed'
+  q: '',                // búsqueda libre client-side
+  offset: 0,
+  limit: 20,
+  orderBy: 'log_date',  // 'log_date' | 'km_recorridos' | 'horas'
+  orderAsc: false,
+
+  // Estado interno
+  chip: 'todas',        // chip activo
+  clientFilter: null,   // 'taller' | 'incidentes' | 'rendicion' | null
+  lastPage: [],         // última página traída del backend (rows)
+  lastTotal: 0,
+  choferes: [],
+  camiones: [],
+  ready: false,         // handlers wired
+  loading: false,
+  searchTimer: null,
+};
+
+// ─── Utilidades locales ───────────────────────────────────────────
+function _jadminFmtFecha(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + (iso.length === 10 ? 'T12:00:00' : ''));
+  if (isNaN(d)) return _escHtml(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = d.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+function _jadminDiaSemana(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + (iso.length === 10 ? 'T12:00:00' : ''));
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('es-AR', { weekday: 'long' });
+}
+function _jadminFmtDT(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return _escHtml(iso);
+  return d.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function _jadminFmtHora(hhmmss) {
+  if (!hhmmss) return '—';
+  return String(hhmmss).slice(0, 5);
+}
+function _jadminHoy() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+function _jadminPrimerDiaMes() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}-01`;
+}
+function _jadminLunesSemana() {
+  const d = new Date();
+  const dow = (d.getDay() + 6) % 7; // 0=lun ... 6=dom
+  d.setDate(d.getDate() - dow);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+function _jadminMoney(n) {
+  const v = Number(n) || 0;
+  const sign = v < 0 ? '-' : '';
+  return `${sign}$${Math.abs(Math.round(v)).toLocaleString('es-AR')}`;
+}
+function _jadminMoneySigned(n) {
+  const v = Number(n) || 0;
+  if (v === 0) return '$0';
+  const sign = v > 0 ? '+' : '-';
+  return `${sign}$${Math.abs(Math.round(v)).toLocaleString('es-AR')}`;
+}
+function _jadminAvatarClass(nombre, legajo) {
+  const key = String(legajo || nombre || '');
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  const mod = h % 5;
+  return ['', 'c2', 'c3', 'c4', 'c5'][mod];
+}
+function _jadminIniciales(nombre) {
+  if (!nombre) return '?';
+  const parts = String(nombre).trim().split(/\s+/);
+  const a = parts[0]?.[0] || '';
+  const b = parts[1]?.[0] || '';
+  return (a + b).toUpperCase() || '?';
+}
+
+// ─── Inicialización ───────────────────────────────────────────────
+async function initJornadasAdmin() {
+  // Setear defaults (primera vez)
+  if (!_jadminState.desde) _jadminState.desde = _jadminPrimerDiaMes();
+  if (!_jadminState.hasta) _jadminState.hasta = _jadminHoy();
+
+  // Poblar inputs desde estado
+  const $ = (id) => document.getElementById(id);
+  if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde;
+  if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta;
+  if ($('jadmin-f-estado')) $('jadmin-f-estado').value = _jadminState.estado;
+  if ($('jadmin-f-q')) $('jadmin-f-q').value = _jadminState.q;
+  if ($('jadmin-per-page')) $('jadmin-per-page').value = String(_jadminState.limit);
+
+  // Cargar dropdowns una sola vez
+  if (!_jadminState.ready) {
+    try {
+      const [chofs, cams] = await Promise.all([
+        (typeof cargarChoferesFlotaAdmin === 'function' ? cargarChoferesFlotaAdmin() : Promise.resolve([])),
+        (typeof cargarCamiones === 'function' ? cargarCamiones() : Promise.resolve([])),
+      ]);
+      _jadminState.choferes = chofs || [];
+      _jadminState.camiones = cams || [];
+      _jadminPopularDropdowns();
+    } catch (e) {
+      console.warn('[jadmin] no se pudieron cargar dropdowns:', e);
+    }
+    _jadminWireHandlers();
+    _jadminState.ready = true;
+  }
+
+  // Refrescar dropdown values según state
+  if ($('jadmin-f-chofer')) $('jadmin-f-chofer').value = _jadminState.driverId || '';
+  if ($('jadmin-f-camion')) $('jadmin-f-camion').value = _jadminState.truckId || '';
+
+  // Cargar datos
+  await _jadminReload();
+}
+
+function _jadminPopularDropdowns() {
+  const selCh = document.getElementById('jadmin-f-chofer');
+  const selCa = document.getElementById('jadmin-f-camion');
+  if (selCh) {
+    const opts = ['<option value="">Todos los choferes</option>']
+      .concat(_jadminState.choferes.map(c => {
+        const lbl = c.legajo ? `${_escHtml(c.full_name)} (Leg. ${_escHtml(c.legajo)})` : _escHtml(c.full_name);
+        return `<option value="${_escHtml(c.user_id)}">${lbl}</option>`;
+      }));
+    selCh.innerHTML = opts.join('');
+  }
+  if (selCa) {
+    const opts = ['<option value="">Todos los camiones</option>']
+      .concat(_jadminState.camiones.map(t => {
+        const mov = t.numero_interno ? ` · #${_escHtml(t.numero_interno)}` : '';
+        return `<option value="${_escHtml(t.truck_id)}">${_escHtml(t.plate)}${mov}</option>`;
+      }));
+    selCa.innerHTML = opts.join('');
+  }
+}
+
+function _jadminWireHandlers() {
+  const $ = (id) => document.getElementById(id);
+
+  // Búsqueda (debounce 300ms)
+  const inpQ = $('jadmin-f-q');
+  if (inpQ) {
+    inpQ.addEventListener('input', () => {
+      clearTimeout(_jadminState.searchTimer);
+      _jadminState.searchTimer = setTimeout(() => {
+        _jadminState.q = inpQ.value.trim();
+        _jadminState.offset = 0;
+        _jadminRenderTabla();
+      }, 300);
+    });
+  }
+
+  // Chofer
+  const selCh = $('jadmin-f-chofer');
+  if (selCh) selCh.addEventListener('change', () => {
+    _jadminState.driverId = selCh.value || null;
+    _jadminState.offset = 0;
+    _jadminReload();
+  });
+
+  // Camión
+  const selCa = $('jadmin-f-camion');
+  if (selCa) selCa.addEventListener('change', () => {
+    _jadminState.truckId = selCa.value || null;
+    _jadminState.offset = 0;
+    _jadminReload();
+  });
+
+  // Estado
+  const selEst = $('jadmin-f-estado');
+  if (selEst) selEst.addEventListener('change', () => {
+    _jadminState.estado = selEst.value || '';
+    _jadminState.offset = 0;
+    _jadminReload();
+  });
+
+  // Desde / Hasta
+  const inpD = $('jadmin-f-desde');
+  if (inpD) inpD.addEventListener('change', () => {
+    _jadminState.desde = inpD.value || null;
+    _jadminState.offset = 0;
+    _jadminReload();
+  });
+  const inpH = $('jadmin-f-hasta');
+  if (inpH) inpH.addEventListener('change', () => {
+    _jadminState.hasta = inpH.value || null;
+    _jadminState.offset = 0;
+    _jadminReload();
+  });
+
+  // Limpiar
+  const btnClr = $('jadmin-f-clear');
+  if (btnClr) btnClr.addEventListener('click', () => _jadminResetFiltros());
+
+  // Chips
+  document.querySelectorAll('#screen-jornadas-admin .chip[data-chip]').forEach(chip => {
+    chip.addEventListener('click', () => _jadminAplicarChip(chip.getAttribute('data-chip')));
+  });
+
+  // Sortable headers
+  document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const rawKey = th.getAttribute('data-sort');
+      // Map header key → backend column
+      const key = rawKey === 'km' ? 'km_recorridos'
+                : rawKey === 'horas' ? 'horas'
+                : 'log_date';
+      if (_jadminState.orderBy === key) {
+        _jadminState.orderAsc = !_jadminState.orderAsc;
+      } else {
+        _jadminState.orderBy = key;
+        _jadminState.orderAsc = false;
+      }
+      _jadminState.offset = 0;
+      _jadminActualizarClasesSort();
+      _jadminReload();
+    });
+  });
+
+  // Per-page
+  const selPP = $('jadmin-per-page');
+  if (selPP) selPP.addEventListener('change', () => {
+    _jadminState.limit = parseInt(selPP.value, 10) || 20;
+    _jadminState.offset = 0;
+    _jadminReload();
+  });
+
+  // Pager
+  const btnPrev = $('jadmin-prev');
+  if (btnPrev) btnPrev.addEventListener('click', () => {
+    if (_jadminState.offset <= 0) return;
+    _jadminState.offset = Math.max(0, _jadminState.offset - _jadminState.limit);
+    _jadminReload();
+  });
+  const btnNext = $('jadmin-next');
+  if (btnNext) btnNext.addEventListener('click', () => {
+    const next = _jadminState.offset + _jadminState.limit;
+    if (next >= _jadminState.lastTotal) return;
+    _jadminState.offset = next;
+    _jadminReload();
+  });
+
+  // Row click (event delegation)
+  const tbody = $('jadmin-tbody');
+  if (tbody) tbody.addEventListener('click', (ev) => {
+    const tr = ev.target.closest('tr[data-log-id]');
+    if (!tr) return;
+    const id = tr.getAttribute('data-log-id');
+    if (id) abrirDetalleJornadaAdmin(id);
+  });
+}
+
+function _jadminActualizarClasesSort() {
+  document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    const rawKey = th.getAttribute('data-sort');
+    const key = rawKey === 'km' ? 'km_recorridos'
+              : rawKey === 'horas' ? 'horas'
+              : 'log_date';
+    if (key === _jadminState.orderBy) {
+      th.classList.add(_jadminState.orderAsc ? 'sort-asc' : 'sort-desc');
+    }
+  });
+}
+
+function _jadminResetFiltros() {
+  _jadminState.desde = _jadminPrimerDiaMes();
+  _jadminState.hasta = _jadminHoy();
+  _jadminState.driverId = null;
+  _jadminState.truckId = null;
+  _jadminState.estado = '';
+  _jadminState.q = '';
+  _jadminState.offset = 0;
+  _jadminState.orderBy = 'log_date';
+  _jadminState.orderAsc = false;
+  _jadminState.chip = 'todas';
+  _jadminState.clientFilter = null;
+
+  const $ = (id) => document.getElementById(id);
+  if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde;
+  if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta;
+  if ($('jadmin-f-chofer')) $('jadmin-f-chofer').value = '';
+  if ($('jadmin-f-camion')) $('jadmin-f-camion').value = '';
+  if ($('jadmin-f-estado')) $('jadmin-f-estado').value = '';
+  if ($('jadmin-f-q')) $('jadmin-f-q').value = '';
+
+  document.querySelectorAll('#screen-jornadas-admin .chip').forEach(c => c.classList.remove('active'));
+  const chipTodas = document.querySelector('#screen-jornadas-admin .chip[data-chip="todas"]');
+  if (chipTodas) chipTodas.classList.add('active');
+  _jadminActualizarClasesSort();
+  _jadminReload();
+}
+
+function _jadminAplicarChip(nombre) {
+  _jadminState.chip = nombre;
+  _jadminState.clientFilter = null;
+  _jadminState.offset = 0;
+
+  const hoy = _jadminHoy();
+  switch (nombre) {
+    case 'todas':
+      _jadminState.desde = _jadminPrimerDiaMes();
+      _jadminState.hasta = hoy;
+      _jadminState.estado = '';
+      break;
+    case 'hoy':
+      _jadminState.desde = hoy;
+      _jadminState.hasta = hoy;
+      _jadminState.estado = '';
+      break;
+    case 'semana':
+      _jadminState.desde = _jadminLunesSemana();
+      _jadminState.hasta = hoy;
+      _jadminState.estado = '';
+      break;
+    case 'mes':
+      _jadminState.desde = _jadminPrimerDiaMes();
+      _jadminState.hasta = hoy;
+      _jadminState.estado = '';
+      break;
+    case 'abiertas':
+      _jadminState.estado = 'open';
+      break;
+    case 'taller':
+      _jadminState.estado = '';
+      _jadminState.clientFilter = 'taller';
+      break;
+    case 'incidentes':
+      _jadminState.estado = '';
+      _jadminState.clientFilter = 'incidentes';
+      break;
+    case 'rendicion':
+      _jadminState.estado = '';
+      _jadminState.clientFilter = 'rendicion';
+      break;
+  }
+
+  // Reflejar UI
+  document.querySelectorAll('#screen-jornadas-admin .chip').forEach(c => c.classList.remove('active'));
+  const chipEl = document.querySelector(`#screen-jornadas-admin .chip[data-chip="${nombre}"]`);
+  if (chipEl) chipEl.classList.add('active');
+
+  const $ = (id) => document.getElementById(id);
+  if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde || '';
+  if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta || '';
+  if ($('jadmin-f-estado')) $('jadmin-f-estado').value = _jadminState.estado || '';
+
+  _jadminReload();
+}
+
+// ─── Data loading ─────────────────────────────────────────────────
+async function _jadminReload() {
+  if (_jadminState.loading) return;
+  _jadminState.loading = true;
+  try {
+    const tbody = document.getElementById('jadmin-tbody');
+    if (tbody && !tbody.innerHTML) {
+      tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted2)">Cargando…</td></tr>`;
+    }
+
+    // KPIs (rango + filtros de chofer/camión, no depende de estado/q)
+    const kpiFiltros = {
+      desde: _jadminState.desde,
+      hasta: _jadminState.hasta,
+      driverId: _jadminState.driverId,
+      truckId: _jadminState.truckId,
+    };
+
+    // Tabla
+    const listaFiltros = {
+      ...kpiFiltros,
+      estado: _jadminState.estado || null,
+      offset: _jadminState.offset,
+      limit: _jadminState.limit,
+      orderBy: (_jadminState.orderBy === 'horas' ? 'hora_inicio' : _jadminState.orderBy),
+      orderAsc: _jadminState.orderAsc,
+    };
+
+    const [kpis, resp] = await Promise.all([
+      (typeof cargarKpisJornadasAdmin === 'function' ? cargarKpisJornadasAdmin(kpiFiltros) : Promise.resolve(null)),
+      (typeof cargarJornadasAdmin === 'function' ? cargarJornadasAdmin(listaFiltros) : Promise.resolve({ data: [], total: 0 })),
+    ]);
+
+    _jadminState.lastPage = resp?.data || [];
+    _jadminState.lastTotal = resp?.total || 0;
+
+    _jadminRenderKpis(kpis);
+    _jadminActualizarClasesSort();
+    _jadminRenderTabla();
+  } catch (e) {
+    console.error('[jadmin] error al cargar:', e);
+    const tbody = document.getElementById('jadmin-tbody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
+  } finally {
+    _jadminState.loading = false;
+  }
+}
+
+function _jadminRenderKpis(k) {
+  const $ = (id) => document.getElementById(id);
+  if (!k) return;
+  if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = k.abiertasAhora ?? 0;
+  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = `${k.choferesActivos ?? 0} choferes activos`;
+  if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
+  if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
+  if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
+  if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
+  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${Math.round(k.horasTotalPeriodo ?? 0)}h`;
+  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `prom. ${k.promHorasJornada ?? 0} h/jornada`;
+  if ($('jadmin-kpi-taller'))       $('jadmin-kpi-taller').textContent       = k.tallerPeriodo ?? 0;
+  if ($('jadmin-kpi-taller-sub'))   $('jadmin-kpi-taller-sub').textContent   = `${k.pctTaller ?? 0}% del período`;
+}
+
+function _jadminAplicarFiltrosClientSide(rows) {
+  let out = rows;
+
+  // Filtro por texto libre (q) sobre chofer/patente
+  if (_jadminState.q) {
+    const q = _jadminState.q.toLowerCase();
+    out = out.filter(r =>
+      String(r.chofer_nombre || '').toLowerCase().includes(q) ||
+      String(r.truck_plate   || '').toLowerCase().includes(q) ||
+      String(r.chofer_legajo || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Filtros de chip client-side
+  if (_jadminState.clientFilter === 'taller') {
+    out = out.filter(r => r.in_workshop);
+  } else if (_jadminState.clientFilter === 'incidentes') {
+    out = out.filter(r => (r.incidentes || 0) > 0);
+  } else if (_jadminState.clientFilter === 'rendicion') {
+    out = out.filter(r => r.rendicion && r.rendicion.estado === 'faltante');
+  }
+
+  // Sort client-side por horas (no soportado backend directamente)
+  if (_jadminState.orderBy === 'horas') {
+    const dir = _jadminState.orderAsc ? 1 : -1;
+    out = [...out].sort((a, b) => ((a.horas || 0) - (b.horas || 0)) * dir);
+  }
+
+  return out;
+}
+
+function _jadminRenderTabla() {
+  const tbody = document.getElementById('jadmin-tbody');
+  if (!tbody) return;
+
+  const rows = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
+  } else {
+    tbody.innerHTML = rows.map(r => _jadminRenderFila(r)).join('');
+  }
+
+  // Contadores
+  const shown = rows.length;
+  const total = _jadminState.lastTotal;
+  const elS = document.getElementById('jadmin-count-shown');
+  const elT = document.getElementById('jadmin-count-total');
+  if (elS) elS.textContent = shown;
+  if (elT) elT.textContent = total;
+
+  // Pager
+  const perPage = _jadminState.limit;
+  const pagina = Math.floor(_jadminState.offset / perPage) + 1;
+  const totalPags = Math.max(1, Math.ceil(total / perPage));
+  const info = document.getElementById('jadmin-pager-info');
+  if (info) info.textContent = `Página ${pagina} de ${totalPags}`;
+  const prev = document.getElementById('jadmin-prev');
+  const next = document.getElementById('jadmin-next');
+  if (prev) prev.disabled = _jadminState.offset <= 0;
+  if (next) next.disabled = (_jadminState.offset + perPage) >= total;
+}
+
+function _jadminRenderFila(r) {
+  const fecha = _jadminFmtFecha(r.log_date);
+  const dia = _jadminDiaSemana(r.log_date);
+  const avClass = _jadminAvatarClass(r.chofer_nombre, r.chofer_legajo);
+  const iniciales = _jadminIniciales(r.chofer_nombre);
+  const legajoTxt = r.chofer_legajo ? `Legajo ${_escHtml(r.chofer_legajo)}` : '—';
+
+  // KM
+  const km = Number(r.km_recorridos) || 0;
+  const kmCls = km === 0 ? 'km-cell zero' : 'km-cell';
+  const kmTxt = km ? km.toLocaleString('es-AR') : '0';
+
+  // Horas
+  const horas = Number(r.horas) || 0;
+  const horasTxt = horas ? horas.toFixed(1) : '0';
+
+  // Servicios
+  const srv = r.servicios || 0;
+
+  // Rendición
+  let rendCls = 'rend-cell na';
+  let rendTxt = '—';
+  if (r.rendicion) {
+    if (r.rendicion.estado === 'ok') {
+      rendCls = 'rend-cell ok';
+      const d = Number(r.rendicion.diff) || 0;
+      rendTxt = d === 0 ? '$0 · OK' : `${_jadminMoneySigned(d)} OK`;
+    } else if (r.rendicion.estado === 'faltante') {
+      rendCls = 'rend-cell bad';
+      rendTxt = _jadminMoneySigned(r.rendicion.diff);
+    } else if (r.rendicion.estado === 'sobrante') {
+      rendCls = 'rend-cell warn';
+      rendTxt = _jadminMoneySigned(r.rendicion.diff);
+    }
+  }
+
+  // Incidentes
+  let incCls = 'inc-cell zero';
+  let incTxt = '0';
+  if ((r.incidentes || 0) > 0) {
+    incCls = 'inc-cell some';
+    incTxt = r.inc_grave ? `⚠ ${r.incidentes}` : String(r.incidentes);
+  }
+
+  // Taller
+  const tallerHtml = r.in_workshop
+    ? `<span class="pill pill-red">🔧</span>`
+    : `<span style="color:var(--muted)">—</span>`;
+
+  // Estado (solo open/closed/anulado — taller es columna independiente)
+  let estadoHtml;
+  if (r.status === 'open') {
+    estadoHtml = `<span class="pill pill-amber"><span class="dot a"></span>Abierta</span>`;
+  } else if (r.status === 'closed') {
+    estadoHtml = `<span class="pill pill-green"><span class="dot g"></span>Cerrada</span>`;
+  } else {
+    estadoHtml = `<span class="pill pill-muted">${_escHtml(r.status || '—')}</span>`;
+  }
+
+  const movil = r.truck_movil ? `#${_escHtml(r.truck_movil)}` : '';
+
+  return `
+    <tr data-log-id="${_escHtml(r.log_id)}" style="cursor:pointer">
+      <td>
+        <div class="fecha-cell">
+          <b>${_escHtml(fecha)}</b>
+          <div class="dia">${_escHtml(dia)}</div>
+        </div>
+      </td>
+      <td>
+        <div class="chofer-cell">
+          <div class="avatar ${avClass}">${_escHtml(iniciales)}</div>
+          <div class="name">
+            <b>${_escHtml(r.chofer_nombre || '—')}</b>
+            <div class="lg">${legajoTxt}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="camion-cell">
+          <span class="pat">${_escHtml(r.truck_plate || '—')}</span>
+          <span class="mov">${movil}</span>
+        </div>
+      </td>
+      <td class="right"><span class="${kmCls}">${kmTxt}</span></td>
+      <td class="right mono">${horasTxt}</td>
+      <td class="right mono">${srv}</td>
+      <td class="right"><span class="${rendCls}">${rendTxt}</span></td>
+      <td class="center"><span class="${incCls}">${incTxt}</span></td>
+      <td class="center">${tallerHtml}</td>
+      <td class="center">${estadoHtml}</td>
+    </tr>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  TASK 51 — MODAL DETALLE JORNADA ADMIN
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function abrirDetalleJornadaAdmin(logId) {
+  if (!logId) return;
+  const $ = (id) => document.getElementById(id);
+  if ($('jd-title')) $('jd-title').textContent = 'JORNADA · —';
+  if ($('jd-sub'))   $('jd-sub').textContent   = '—';
+  if ($('jd-traza')) $('jd-traza').textContent = 'Cargando…';
+  if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted2)">Cargando detalle…</div>`;
+
+  openModal('modal-jornada-detalle');
+
+  try {
+    const det = (typeof cargarDetalleJornadaAdmin === 'function')
+      ? await cargarDetalleJornadaAdmin(logId)
+      : null;
+    if (!det) {
+      if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">No se pudo cargar el detalle.</div>`;
+      if ($('jd-traza')) $('jd-traza').textContent = '—';
+      return;
+    }
+    _jadminRenderDetalle(det);
+  } catch (e) {
+    console.error('[jadmin] abrirDetalleJornadaAdmin:', e);
+    if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">Error al cargar el detalle.</div>`;
+    if ($('jd-traza')) $('jd-traza').textContent = '—';
+  }
+}
+
+function _jadminRenderDetalle(det) {
+  const $ = (id) => document.getElementById(id);
+  const { log, trips, incidents, fuel_records, tire_check, rendicion } = det;
+
+  const fecha = _jadminFmtFecha(log.log_date);
+  const chNombre = log.chofer?.full_name || '—';
+  const chLegajo = log.chofer?.legajo || null;
+  const truckPlate = log.truck?.plate || '—';
+  const truckMovil = log.truck?.numero_interno || null;
+  const truckMarca = [log.truck?.brand, log.truck?.model].filter(Boolean).join(' ') || null;
+
+  if ($('jd-title')) $('jd-title').textContent = `JORNADA · ${fecha}`;
+  if ($('jd-sub')) {
+    const sub = `${chNombre}${chLegajo ? ' (Leg. ' + chLegajo + ')' : ''} · ${truckPlate}${truckMovil ? ' #' + truckMovil : ''}`;
+    $('jd-sub').textContent = sub;
+  }
+  if ($('jd-traza')) {
+    const created = log.created_at_device ? _jadminFmtDT(log.created_at_device) : '—';
+    const statusTxt = log.in_workshop ? 'en taller'
+                    : log.status === 'open' ? 'abierta'
+                    : log.status === 'closed' ? 'cerrada'
+                    : (log.status || '—');
+    $('jd-traza').textContent = `Creado: ${created} · Estado: ${statusTxt}`;
+  }
+
+  const horas = (typeof _horasEntre === 'function') ? _horasEntre(log.hora_inicio, log.hora_fin) : 0;
+  const horasTxt = horas ? Number(horas).toFixed(1) + ' h' : '—';
+  const kmIni = Number(log.km_inicio) || 0;
+  const kmFin = Number(log.km_final) || 0;
+  const kmRec = Number(log.km_recorridos) || 0;
+
+  // Estilo scoped
+  const styles = `
+    <style>
+      #jd-content .jd-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+      @media (max-width: 900px) { #jd-content .jd-grid { grid-template-columns: 1fr; } }
+      #jd-content .jd-card {
+        background: var(--card, #131826);
+        border: 1px solid var(--border, #1f2937);
+        border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
+      }
+      #jd-content .jd-card h4 {
+        margin: 0 0 10px 0; font-size: 12px; letter-spacing: .8px;
+        color: var(--muted2, #93a2b8); text-transform: uppercase; font-weight: 600;
+      }
+      #jd-content .jd-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12.5px; }
+      #jd-content .jd-info .k { color: var(--muted2, #93a2b8); font-size: 11px; letter-spacing:.4px; text-transform: uppercase; }
+      #jd-content .jd-info .v { color: var(--text, #e5e7eb); font-weight: 600; margin-top: 2px; }
+      #jd-content .jd-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      #jd-content .jd-foto { display: block; border: 1px solid var(--border, #1f2937); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.02); text-align: center; color: var(--muted2); font-size: 11px; padding: 8px; }
+      #jd-content .jd-foto img { display: block; width: 100%; height: 130px; object-fit: cover; border-radius: 6px; }
+      #jd-content .jd-foto small { display:block; margin-top: 4px; }
+      #jd-content .jd-list { display: flex; flex-direction: column; gap: 8px; }
+      #jd-content .jd-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 8px 10px; background: rgba(255,255,255,0.02);
+        border: 1px solid var(--border, #1f2937); border-radius: 8px; font-size: 12px;
+      }
+      #jd-content .jd-item .lft { display:flex; flex-direction:column; gap:2px; min-width:0; }
+      #jd-content .jd-item .rgt { font-family: 'DM Mono', monospace; font-weight: 600; white-space: nowrap; }
+      #jd-content .jd-empty { color: var(--muted2); font-size: 12px; padding: 6px 2px; }
+      #jd-content .jd-badge {
+        display: inline-block; padding: 2px 6px; border-radius: 4px;
+        font-size: 10px; text-transform: uppercase; letter-spacing:.3px; font-weight: 600;
+      }
+      #jd-content .b-grave { background: rgba(226,80,74,0.15); color: var(--red, #e2504a); }
+      #jd-content .b-medio { background: rgba(245,166,35,0.15); color: var(--amber, #f5a623); }
+      #jd-content .b-leve  { background: rgba(59,130,246,0.15); color: var(--blue, #3b82f6); }
+      #jd-content .jd-rend-linea { display:flex; justify-content:space-between; font-size:12px; margin: 4px 0; }
+      #jd-content .jd-rend-linea .v { font-family: 'DM Mono', monospace; font-weight: 600; }
+      #jd-content .jd-rend-diff.ok   { color: var(--green, #27c47a); }
+      #jd-content .jd-rend-diff.bad  { color: var(--red, #e2504a); }
+      #jd-content .jd-rend-diff.warn { color: var(--amber, #f5a623); }
+    </style>
+  `;
+
+  // ── Columna IZQ ────────────────────────
+  const resumenCard = `
+    <div class="jd-card">
+      <h4>Resumen</h4>
+      <div class="jd-info">
+        <div><div class="k">Fecha</div><div class="v">${_escHtml(fecha)}</div></div>
+        <div><div class="k">Chofer</div><div class="v">${_escHtml(chNombre)}${chLegajo ? ' <span style="color:var(--muted2);font-weight:400">(Leg. ' + _escHtml(chLegajo) + ')</span>' : ''}</div></div>
+        <div><div class="k">Camión</div><div class="v">${_escHtml(truckPlate)}${truckMovil ? ' <span style="color:var(--muted2);font-weight:400">#' + _escHtml(truckMovil) + '</span>' : ''}${truckMarca ? '<br><span style="color:var(--muted2);font-weight:400;font-size:11px">' + _escHtml(truckMarca) + '</span>' : ''}</div></div>
+        <div><div class="k">Horas</div><div class="v">${_escHtml(_jadminFmtHora(log.hora_inicio))} → ${_escHtml(_jadminFmtHora(log.hora_fin))}<br><span style="color:var(--muted2);font-weight:400;font-size:11px">${_escHtml(horasTxt)}</span></div></div>
+        <div><div class="k">KM inicio</div><div class="v">${kmIni.toLocaleString('es-AR')}</div></div>
+        <div><div class="k">KM final</div><div class="v">${kmFin.toLocaleString('es-AR')}</div></div>
+        <div><div class="k">KM recorridos</div><div class="v" style="color:var(--amber)">${kmRec.toLocaleString('es-AR')}</div></div>
+        <div><div class="k">Notas</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(log.notas || '—')}</div></div>
+      </div>
+    </div>
+  `;
+
+  const fotoIni = log.foto_km_inicio
+    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_inicio)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_inicio)}" alt="KM inicio"><small>KM inicio</small></a>`
+    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM inicio</small></div>`;
+  const fotoFin = log.foto_km_final
+    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_final)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_final)}" alt="KM final"><small>KM final</small></a>`
+    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM final</small></div>`;
+
+  const odomCard = `
+    <div class="jd-card">
+      <h4>Odómetro</h4>
+      <div class="jd-fotos">${fotoIni}${fotoFin}</div>
+    </div>
+  `;
+
+  const _payLbl  = (m) => m === 'efectivo' ? '💵 Ef' : m === 'transferencia' ? '📲 Tr' : m === 'tarjeta' ? '💳 Tj' : m === 'app' ? '📱 App' : '—';
+
+  const serviciosCard = `
+    <div class="jd-card">
+      <h4>Servicios <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${trips.length})</span></h4>
+      ${trips.length ? `<div class="jd-list">${trips.map(t => {
+        const nro     = t.nro_servicio ? `#${_escHtml(t.nro_servicio)}` : (t.nro_remito ? `#${_escHtml(t.nro_remito)}` : '');
+        const origen  = _escHtml(t.origin || '—');
+        const destino = _escHtml(t.destination || '—');
+        const km      = Number(t.km_traveled) || 0;
+        const patente = _escHtml(t.patente || '');
+        const peaje   = Number(t.imp_peaje) || 0;
+        const excede  = Number(t.imp_excedente) || 0;
+        const p1metodo = t.pago_1_metodo ? _payLbl(t.pago_1_metodo) : '';
+        const p2metodo = t.pago_2_metodo ? _payLbl(t.pago_2_metodo) : '';
+        const metodos  = [p1metodo, p2metodo].filter(Boolean).join(' / ') || '—';
+
+        const stCls = t.status === 'firmado' ? 'b-leve' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
+        const stLbl = t.status === 'firmado' ? '✓ Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
+
+        return `
+          <div class="jd-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px">
+            <div style="min-width:0;flex:1">
+              <div style="font-weight:600">${nro}${patente ? ` <span style="color:var(--muted2);font-weight:400;font-size:11px">· ${patente}</span>` : ''}</div>
+              <div style="color:var(--muted2);font-size:11.5px">${origen} → ${destino}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;font-size:10.5px;color:var(--muted2);min-width:110px">
+              ${(peaje>0||excede>0) ? `<div>Peaje $${_AR(peaje)} · Exc. $${_AR(excede)}</div>` : `<div>Sin extras</div>`}
+              <div style="color:var(--text)">${metodos}</div>
+              <div style="color:var(--amber)">${km.toLocaleString('es-AR')} km</div>
+            </div>
+            <div style="flex-shrink:0"><span class="jd-badge ${stCls}">${stLbl}</span></div>
+          </div>
+        `;
+      }).join('')}</div>` : `<div class="jd-empty">Sin servicios registrados.</div>`}
+    </div>
+  `;
+
+  // Card de taller (solo si ingresó al taller)
+  let tallerCard = '';
+  if (log.in_workshop) {
+    const detalle = log.workshop_detail || '';
+    let tipo = '', desc = detalle;
+    const m = detalle.match(/^([^:]+):\s*(.*)$/);
+    if (m) { tipo = m[1].trim(); desc = m[2].trim(); }
+    tallerCard = `
+      <div class="jd-card">
+        <h4>🔧 Ingreso al taller</h4>
+        <div class="jd-info">
+          ${tipo ? `<div><div class="k">Tipo de trabajo</div><div class="v">${_escHtml(tipo)}</div></div>` : ''}
+          <div><div class="k">Detalle</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(desc || '—')}</div></div>
+        </div>
+      </div>
+    `;
+  }
+
+  const incidentesCard = `
+    <div class="jd-card">
+      <h4>Incidentes <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${incidents.length})</span></h4>
+      ${incidents.length ? `<div class="jd-list">${incidents.map(i => {
+        const sev = String(i.severity || '').toLowerCase();
+        const badgeCls = sev === 'grave' ? 'b-grave' : sev === 'medio' ? 'b-medio' : 'b-leve';
+        return `
+          <div class="jd-item">
+            <div class="lft">
+              <div><b>${_escHtml(i.type || 'Incidente')}</b> <span class="jd-badge ${badgeCls}">${_escHtml(i.severity || '—')}</span></div>
+              <div style="color:var(--muted2);font-size:11px">${_escHtml(i.description || '—')}</div>
+              ${i.location ? `<div style="color:var(--muted2);font-size:10.5px">📍 ${_escHtml(i.location)}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}</div>` : `<div class="jd-empty">Sin incidentes.</div>`}
+    </div>
+  `;
+
+  // ── Columna DER ────────────────────────
+  let tireCard;
+  if (tire_check) {
+    tireCard = `
+      <div class="jd-card">
+        <h4>Revisión pre-jornada</h4>
+        <div class="jd-info">
+          <div><div class="k">Neumáticos</div><div class="v">${_escHtml(tire_check.tire_condition || '—')}</div></div>
+          <div><div class="k">Frenos</div><div class="v">${_escHtml(tire_check.brake_condition || '—')}</div></div>
+          <div><div class="k">Presión (PSI)</div><div class="v">${_escHtml(tire_check.pressure_psi ?? '—')}</div></div>
+          <div><div class="k">Fecha</div><div class="v">${_escHtml(_jadminFmtDT(tire_check.check_date))}</div></div>
+        </div>
+        ${tire_check.notes ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.02);border-radius:6px;font-size:11.5px;color:var(--muted2)">${_escHtml(tire_check.notes)}</div>` : ''}
+      </div>
+    `;
+  } else {
+    tireCard = `
+      <div class="jd-card">
+        <h4>Revisión pre-jornada</h4>
+        <div class="jd-empty">No cargada.</div>
+      </div>
+    `;
+  }
+
+  let fuelCard;
+  if (fuel_records && fuel_records.length) {
+    const totalLitros = fuel_records.reduce((s, f) => s + (Number(f.liters) || 0), 0);
+    const totalCosto  = fuel_records.reduce((s, f) => s + (Number(f.total_cost) || 0), 0);
+    const costoEfectivo = fuel_records
+      .filter(f => f.payment_method === 'efectivo')
+      .reduce((s, f) => s + (Number(f.total_cost) || 0), 0);
+    const costoCredito = totalCosto - costoEfectivo;
+    fuelCard = `
+      <div class="jd-card">
+        <h4>Combustible <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${fuel_records.length} carga${fuel_records.length===1?'':'s'})</span></h4>
+        <div class="jd-info">
+          <div><div class="k">Litros totales</div><div class="v">${totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1})} L</div></div>
+          <div><div class="k">Costo total</div><div class="v">${_jadminMoney(totalCosto)}</div></div>
+          ${costoEfectivo > 0 ? `<div><div class="k">💵 Efectivo</div><div class="v" style="color:var(--amber)">${_jadminMoney(costoEfectivo)}</div></div>` : ''}
+          ${costoCredito > 0 ? `<div><div class="k">📱 A crédito (15d)</div><div class="v" style="color:var(--muted2)">${_jadminMoney(costoCredito)}</div></div>` : ''}
+        </div>
+        <div class="jd-list" style="margin-top:10px">
+          ${fuel_records.map(f => {
+            const esCredito = f.payment_method !== 'efectivo';
+            const badge = esCredito
+              ? `<span class="jd-badge b-medio" style="font-size:9px">Crédito</span>`
+              : `<span class="jd-badge b-leve" style="font-size:9px">Efectivo</span>`;
+            return `
+            <div class="jd-item">
+              <div class="lft">
+                <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> <span style="color:var(--muted2);font-size:11px">${_escHtml(f.gas_station || '')}</span> ${badge}</div>
+                <div style="color:var(--muted2);font-size:11px">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
+              </div>
+              <div class="rgt">${_jadminMoney(f.total_cost)}</div>
+            </div>
+          `}).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    fuelCard = `
+      <div class="jd-card">
+        <h4>Combustible</h4>
+        <div class="jd-empty">Sin cargas.</div>
+      </div>
+    `;
+  }
+
+  let rendCard;
+  if (rendicion) {
+    const estado = rendicion.estado;
+    const diff = Number(rendicion.diff) || 0;
+    const declarado = Number(rendicion.efectivo_declarado) || 0;
+    const esperado  = Number(rendicion.efectivo_esperado)  || 0;
+    const gastos    = Number(rendicion.gastos_extra)       || 0;
+    const cls = estado === 'ok' ? 'ok' : estado === 'faltante' ? 'bad' : 'warn';
+    const lbl = estado === 'ok' ? 'OK' : estado === 'faltante' ? 'Faltante' : 'Sobrante';
+    rendCard = `
+      <div class="jd-card">
+        <h4>Rendición</h4>
+        <div class="jd-rend-linea"><span>Declarado</span><span class="v">${_jadminMoney(declarado)}</span></div>
+        <div class="jd-rend-linea"><span>Esperado</span><span class="v">${_jadminMoney(esperado)}</span></div>
+        <div class="jd-rend-linea"><span>Gastos</span><span class="v">${_jadminMoney(gastos)}</span></div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+        <div class="jd-rend-linea" style="font-size:13px">
+          <span>Diferencia <span class="jd-badge ${cls === 'ok' ? 'b-leve' : cls === 'bad' ? 'b-grave' : 'b-medio'}">${lbl}</span></span>
+          <span class="v jd-rend-diff ${cls}">${_jadminMoneySigned(diff)}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    rendCard = `
+      <div class="jd-card">
+        <h4>Rendición</h4>
+        <div class="jd-empty">Sin rendición registrada para esta fecha.</div>
+      </div>
+    `;
+  }
+
+  const html = `
+    ${styles}
+    <div class="jd-grid">
+      <div class="jd-col-l">
+        ${resumenCard}
+        ${odomCard}
+        ${serviciosCard}
+        ${incidentesCard}
+      </div>
+      <div class="jd-col-r">
+        ${tallerCard}
+        ${tireCard}
+        ${fuelCard}
+        ${rendCard}
+      </div>
+    </div>
+  `;
+
+  if ($('jd-content')) $('jd-content').innerHTML = html;
 }

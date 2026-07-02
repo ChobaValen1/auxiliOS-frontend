@@ -223,6 +223,11 @@ async function _finalizarInicializacion() {
   if (navSueldos) {
     navSueldos.style.display = (rolActual === 'administracion' || rolActual === 'supervision') ? '' : 'none';
   }
+
+  const navJornadasAdmin = document.getElementById('nav-jornadas-admin');
+  if (navJornadasAdmin) {
+    navJornadasAdmin.style.display = (rolActual === 'administracion' || rolActual === 'supervision') ? '' : 'none';
+  }
 }
 
 let _camionSelTmp  = null;
@@ -497,6 +502,15 @@ function _escPostgrest(s) {
   return String(s).replace(/[,()%]/g, '');
 }
 
+// Dado 'YYYY-MM-DD', devuelve el día siguiente 'YYYY-MM-DD'.
+// Usar como cota superior EXCLUSIVA (.lt) en filtros de created_at_device.
+function _nextDay(yyyymmdd) {
+  const [y, m, d] = yyyymmdd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  return dt.toISOString().slice(0, 10);
+}
+
 function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
   let q = _db
@@ -525,14 +539,17 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   }
 
   if (filtros.periodo === 'mes') {
-    const ahora = new Date();
-    const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
-    q = q.gte('created_at_device', inicio);
+    // Primer día del mes actual en horario AR (-03:00), no en UTC.
+    const hoyAR = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+    const [y, m] = hoyAR.split('-');
+    q = q.gte('created_at_device', `${y}-${m}-01T00:00:00-03:00`);
   } else if (filtros.periodo === 'dia' && filtros.diaEspecifico) {
     const d = filtros.diaEspecifico;
-    q = q.gte('created_at_device', `${d}T00:00:00`).lte('created_at_device', `${d}T23:59:59.999`);
+    q = q.gte('created_at_device', `${d}T00:00:00-03:00`)
+         .lt ('created_at_device', `${_nextDay(d)}T00:00:00-03:00`);
   } else if (filtros.periodo === 'rango' && filtros.desde && filtros.hasta) {
-    q = q.gte('created_at_device', `${filtros.desde}T00:00:00`).lte('created_at_device', `${filtros.hasta}T23:59:59.999`);
+    q = q.gte('created_at_device', `${filtros.desde}T00:00:00-03:00`)
+         .lt ('created_at_device', `${_nextDay(filtros.hasta)}T00:00:00-03:00`);
   }
 
   if (filtros.buscar) {
@@ -1774,7 +1791,7 @@ async function cargarComparativoChofer(userId, desde, hasta, truckId = null) {
       .select('pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, log_id, created_at_device')
       .eq('driver_id', userId)
       .gte('created_at_device', desde + 'T00:00:00-03:00')
-      .lte('created_at_device', hasta + 'T23:59:59-03:00')
+      .lt ('created_at_device', _nextDay(hasta) + 'T00:00:00-03:00')
       .neq('status', 'anulado'),
     jornadasQ,
     fuelQ,
@@ -1806,7 +1823,7 @@ async function cargarComparativoNegocio(desde, hasta) {
     _db.from('remitos')
       .select('driver_id, log_id, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, created_at_device')
       .gte('created_at_device', desde + 'T00:00:00-03:00')
-      .lte('created_at_device', hasta + 'T23:59:59-03:00')
+      .lt ('created_at_device', _nextDay(hasta) + 'T00:00:00-03:00')
       .neq('status', 'anulado'),
     _db.from('daily_logs')
       .select('driver_id, truck_id, log_id, km_inicio, km_final, log_date')
@@ -1835,23 +1852,39 @@ async function cargarAlertasOperativas() {
   return data || [];
 }
 
+// Referencias posibles para un cumplimiento — remitos del chofer en el período.
+// Devuelve arrays únicos de patentes, socios, nros de servicio.
+async function cargarRefsCumplimiento(driverId, yyyymm) {
+  if (!driverId || !yyyymm) return { patentes: [], socios: [], servicios: [] };
+  const { desdeTs, hastaTsExclusive } = _payrollRangoMes(yyyymm);
+  const { data, error } = await _db.from('remitos')
+    .select('patente, razon_social, nro_servicio')
+    .eq('driver_id', driverId)
+    .neq('status', 'anulado')
+    .gte('created_at_device', desdeTs)
+    .lt('created_at_device', hastaTsExclusive);
+  if (error) { console.error('[cargarRefsCumplimiento]', error.message); return { patentes: [], socios: [], servicios: [] }; }
+  const uniq = arr => [...new Set(arr.filter(v => v && String(v).trim()))].sort();
+  return {
+    patentes:  uniq((data || []).map(r => r.patente)),
+    socios:    uniq((data || []).map(r => r.razon_social)),
+    servicios: uniq((data || []).map(r => r.nro_servicio)),
+  };
+}
+
 // Rendiciones de un período yyyymm — para módulo Sueldos.
 // Devuelve rendiciones + faltante calculado por cada una y agregado por chofer.
 // faltante = max(0, efectivo_esperado - efectivo_declarado - gastos_extra)
 // sobrante = max(0, efectivo_declarado + gastos_extra - efectivo_esperado)
 async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
   if (!yyyymm) return { rendiciones: [], porChofer: {} };
-  const anio = Math.floor(yyyymm / 100);
-  const mes  = yyyymm % 100;
-  const desde = `${anio}-${String(mes).padStart(2, '0')}-01`;
-  const ultimoDia = new Date(anio, mes, 0).getDate();
-  const hasta = `${anio}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+  const { desde, hastaExclusive } = _payrollRangoMes(yyyymm);
 
   let q = _db.from('rendicion_cierre')
     .select('rendicion_id, log_id, driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, estado, admin_status')
     .neq('estado', 'rechazado')
     .gte('fecha', desde)
-    .lte('fecha', hasta)
+    .lt('fecha', hastaExclusive)
     .order('fecha', { ascending: true });
   if (driverId) q = q.eq('driver_id', driverId);
 
@@ -2141,7 +2174,7 @@ async function obtenerResumenRendicion(driverId, fecha, truckId) {
       .lte('created_at_device', fecha + 'T23:59:59.999-03:00')
       .neq('status', 'anulado'),
     truckId
-      ? _db.from('fuel_records').select('total_cost').eq('truck_id', truckId).eq('fuel_date', fecha)
+      ? _db.from('fuel_records').select('total_cost, payment_method').eq('truck_id', truckId).eq('fuel_date', fecha)
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -2152,7 +2185,11 @@ async function obtenerResumenRendicion(driverId, fecha, truckId) {
     return sum + p1 + p2;
   }, 0);
 
-  const gastosSistema = (combustibleRes.data || []).reduce((sum, f) => sum + (f.total_cost || 0), 0);
+  // Solo el combustible pagado en efectivo descuenta del cash esperado.
+  // Apps (YPF/SHELL/etc) van por contrato a 15 días y no afectan la caja diaria.
+  const gastosSistema = (combustibleRes.data || [])
+    .filter(f => f.payment_method === 'efectivo')
+    .reduce((sum, f) => sum + (f.total_cost || 0), 0);
 
   return { remitos, efectivoEsperado, gastosSistema };
 }
@@ -2294,15 +2331,30 @@ async function obtenerTruckAsignado() {
 // payroll_objetivo_cumplimientos.
 
 // ── Helpers de período ──
+// Tolerancia (ARS) por debajo de la cual una diferencia de rendición se considera "OK"
+// y NO se descuenta del recibo. Debe coincidir con el umbral visual del semáforo (sigma.js).
+const PAYROLL_TOLERANCIA_RENDICION = 500;
+
 function _payrollRangoMes(yyyymm) {
-  // yyyymm INT (ej. 202607) → { desde:'YYYY-MM-01', hasta:'YYYY-MM-DD' (último día) }
+  // yyyymm INT (ej. 202607) → rangos de mes con cotas superiores EXCLUSIVAS.
+  //   desde / hastaExclusive → para columnas DATE (log_date, fecha).
+  //   desdeTs / hastaTsExclusive → para columnas TIMESTAMPTZ (created_at_device).
+  // Todos los rangos referencian al mismo instante (medianoche AR = -03:00),
+  // así garantizamos que un mismo día pertenezca al mismo mes en todas las tablas.
   const anio = Math.floor(yyyymm / 100);
   const mes  = yyyymm % 100;
-  const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
-  // último día: día 0 del mes siguiente
+  const mm = String(mes).padStart(2, '0');
+  const anioNext = mes === 12 ? anio + 1 : anio;
+  const mesNext  = mes === 12 ? 1 : mes + 1;
+  const mmNext = String(mesNext).padStart(2, '0');
+  const desde            = `${anio}-${mm}-01`;
+  const hastaExclusive   = `${anioNext}-${mmNext}-01`;
+  const desdeTs          = `${desde}T00:00:00-03:00`;
+  const hastaTsExclusive = `${hastaExclusive}T00:00:00-03:00`;
+  // "hasta" (inclusivo, último día del mes) se conserva para consumidores externos.
   const ultimoDia = new Date(anio, mes, 0).getDate();
-  const hasta = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
-  return { desde, hasta };
+  const hasta = `${anio}-${mm}-${String(ultimoDia).padStart(2, '0')}`;
+  return { desde, hasta, hastaExclusive, desdeTs, hastaTsExclusive };
 }
 
 // ── Objetivos (catálogo) ──
@@ -2425,23 +2477,49 @@ async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor
 }
 
 // ── Liquidaciones ──
+// Alias explícitos para poder JOINear la misma tabla users tres veces (chofer,
+// admin generador, admin pagador) sin colisión de nombres en PostgREST.
+const _LIQ_SELECT_FIELDS = `
+  liquidacion_id, driver_id, periodo_yyyymm,
+  jornadas, km_total, servicios,
+  sueldo_basico, adic_km, adic_serv,
+  presentismo_paga, bono_presentismo, bonos_objetivos,
+  ajuste_rendiciones, total, estado,
+  valor_km_snapshot, valor_servicio_snapshot, bono_presentismo_snapshot,
+  generada_by, generada_at,
+  aprobada_by, aprobada_at,
+  pagada_by, pagada_at, pagada_metodo,
+  notas, created_at,
+  chofer:users!driver_id(full_name, legajo),
+  generador:users!generada_by(full_name),
+  aprobador:users!aprobada_by(full_name),
+  pagador:users!pagada_by(full_name)
+`.trim();
+
+function _mapLiquidacionRow(l) {
+  return {
+    ...l,
+    chofer_nombre:     l.chofer?.full_name    || '—',
+    chofer_legajo:     l.chofer?.legajo       || null,
+    generador_nombre:  l.generador?.full_name || null,
+    aprobador_nombre:  l.aprobador?.full_name || null,
+    pagador_nombre:    l.pagador?.full_name   || null,
+  };
+}
+
 async function cargarLiquidacionesMes(yyyymm) {
   const { data, error } = await _db
     .from('payroll_liquidaciones')
-    .select('liquidacion_id, driver_id, periodo_yyyymm, jornadas, km_total, servicios, sueldo_basico, adic_km, adic_serv, presentismo_paga, bono_presentismo, bonos_objetivos, ajuste_rendiciones, total, estado, aprobada_by, aprobada_at, pagada_at, pagada_metodo, notas, created_at, users:driver_id(full_name, legajo)')
+    .select(_LIQ_SELECT_FIELDS)
     .eq('periodo_yyyymm', yyyymm)
     .order('created_at', { ascending: false });
   if (error) { console.error('[Payroll cargarLiquidacionesMes]', error.message); return []; }
-  return (data || []).map(l => ({
-    ...l,
-    chofer_nombre: l.users?.full_name || '—',
-    chofer_legajo: l.users?.legajo || null,
-  }));
+  return (data || []).map(_mapLiquidacionRow);
 }
 
 async function cargarLiquidacionHistorial({ anio = null, driverId = null, limit = 200 } = {}) {
   let q = _db.from('payroll_liquidaciones')
-    .select('liquidacion_id, driver_id, periodo_yyyymm, jornadas, km_total, servicios, sueldo_basico, adic_km, adic_serv, presentismo_paga, bono_presentismo, bonos_objetivos, ajuste_rendiciones, total, estado, aprobada_by, aprobada_at, pagada_at, pagada_metodo, notas, created_at, users:driver_id(full_name, legajo)')
+    .select(_LIQ_SELECT_FIELDS)
     .order('periodo_yyyymm', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -2449,11 +2527,7 @@ async function cargarLiquidacionHistorial({ anio = null, driverId = null, limit 
   if (driverId) q = q.eq('driver_id', driverId);
   const { data, error } = await q;
   if (error) { console.error('[Payroll cargarLiquidacionHistorial]', error.message); return []; }
-  return (data || []).map(l => ({
-    ...l,
-    chofer_nombre: l.users?.full_name || '—',
-    chofer_legajo: l.users?.legajo || null,
-  }));
+  return (data || []).map(_mapLiquidacionRow);
 }
 
 async function actualizarEstadoLiquidacion(liquidacionId, { estado, notas = null, pagada_metodo = null }) {
@@ -2462,11 +2536,12 @@ async function actualizarEstadoLiquidacion(liquidacionId, { estado, notas = null
   if (notas !== null) patch.notas = notas;
   const nowIso = new Date().toISOString();
   if (estado === 'aprobada') {
-    patch.aprobada_by = USUARIO_ACTUAL?.id || null;
+    patch.aprobada_by = PERFIL_USUARIO?.user_id || null;
     patch.aprobada_at = nowIso;
   }
   if (estado === 'pagada') {
     patch.pagada_at     = nowIso;
+    patch.pagada_by     = PERFIL_USUARIO?.user_id || null;
     patch.pagada_metodo = pagada_metodo;
   }
   const { data, error } = await _db
@@ -2526,7 +2601,7 @@ async function borrarCumplimiento(cumplimientoId) {
 // ── Generación de liquidaciones del mes ──
 async function generarLiquidacionesMes(yyyymm) {
   if (!yyyymm) return { ok: false, error: 'Falta yyyymm' };
-  const { desde, hasta } = _payrollRangoMes(yyyymm);
+  const { desde, hastaExclusive, desdeTs, hastaTsExclusive } = _payrollRangoMes(yyyymm);
 
   // Choferes con esquema (LEFT JOIN via 2 queries)
   const flota = await cargarPayrollSettingsFlota();
@@ -2551,13 +2626,13 @@ async function generarLiquidacionesMes(yyyymm) {
         .eq('driver_id', driverId)
         .eq('status', 'closed')
         .gte('log_date', desde)
-        .lte('log_date', hasta),
+        .lt('log_date', hastaExclusive),
       _db.from('remitos')
         .select('remito_id, created_at_device, status')
         .eq('driver_id', driverId)
         .eq('status', 'firmado')
-        .gte('created_at_device', desde + 'T00:00:00-03:00')
-        .lte('created_at_device', hasta + 'T23:59:59-03:00'),
+        .gte('created_at_device', desdeTs)
+        .lt('created_at_device', hastaTsExclusive),
       _db.from('payroll_objetivo_cumplimientos')
         .select('bonus_calculado')
         .eq('driver_id', driverId)
@@ -2565,14 +2640,14 @@ async function generarLiquidacionesMes(yyyymm) {
       _db.from('incidents')
         .select('incident_id, created_at_device')
         .eq('driver_id', driverId)
-        .gte('created_at_device', desde + 'T00:00:00-03:00')
-        .lte('created_at_device', hasta + 'T23:59:59-03:00'),
+        .gte('created_at_device', desdeTs)
+        .lt('created_at_device', hastaTsExclusive),
       _db.from('rendicion_cierre')
         .select('efectivo_declarado, efectivo_esperado, gastos_extra, estado')
         .eq('driver_id', driverId)
         .neq('estado', 'rechazado')
         .gte('fecha', desde)
-        .lte('fecha', hasta),
+        .lt('fecha', hastaExclusive),
     ]);
 
     if (jornadasRes.error || remitosRes.error || cumplRes.error || incidRes.error || rendRes.error) {
@@ -2610,12 +2685,14 @@ async function generarLiquidacionesMes(yyyymm) {
 
     // Faltantes del período: SOLO faltantes descuentan (regla de negocio).
     // faltante_i = max(0, esperado - declarado - gastos_extra)
+    // Se aplica tolerancia PAYROLL_TOLERANCIA_RENDICION para alinear el descuento
+    // con el semáforo visual (rendiciones bajo el umbral se muestran "OK" y no descuentan).
     const ajuste_rendiciones_calc = rendiciones.reduce((sum, r) => {
       const declarado = Number(r.efectivo_declarado) || 0;
       const esperado  = Number(r.efectivo_esperado)  || 0;
       const gastos    = Number(r.gastos_extra)       || 0;
       const falt = Math.max(0, esperado - declarado - gastos);
-      return sum + falt;
+      return sum + (falt >= PAYROLL_TOLERANCIA_RENDICION ? falt : 0);
     }, 0);
 
     // ¿Existe ya la liquidación? Si está 'pagada', NO pisamos.
@@ -2666,6 +2743,14 @@ async function generarLiquidacionesMes(yyyymm) {
       bonos_objetivos,
       ajuste_rendiciones,
       total,
+      // Trazabilidad: snapshots del esquema salarial en el momento de generar,
+      // + quién y cuándo se emitió. Al reimprimir el recibo se puede reconstruir
+      // la fórmula exacta ($/km, $/servicio) aunque el esquema cambie después.
+      valor_km_snapshot:         valor_km,
+      valor_servicio_snapshot:   valor_servicio,
+      bono_presentismo_snapshot: bono_presentismo,
+      generada_by:               PERFIL_USUARIO?.user_id || null,
+      generada_at:               new Date().toISOString(),
     };
 
     if (existRes.data) {
@@ -2700,20 +2785,20 @@ async function generarLiquidacionesMes(yyyymm) {
 // ── Cruce efectivos vs. rendicion_cierre ──
 async function cargarEfectivosValidacion(driverId, yyyymm) {
   if (!driverId || !yyyymm) return [];
-  const { desde, hasta } = _payrollRangoMes(yyyymm);
+  const { desde, hastaExclusive, desdeTs, hastaTsExclusive } = _payrollRangoMes(yyyymm);
 
   const [remitosRes, rendRes] = await Promise.all([
     _db.from('remitos')
       .select('remito_id, nro_remito, created_at_device, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status')
       .eq('driver_id', driverId)
       .neq('status', 'anulado')
-      .gte('created_at_device', desde + 'T00:00:00-03:00')
-      .lte('created_at_device', hasta + 'T23:59:59-03:00'),
+      .gte('created_at_device', desdeTs)
+      .lt('created_at_device', hastaTsExclusive),
     _db.from('rendicion_cierre')
       .select('rendicion_id, fecha, efectivo_declarado, efectivo_esperado, estado')
       .eq('driver_id', driverId)
       .gte('fecha', desde)
-      .lte('fecha', hasta)
+      .lt('fecha', hastaExclusive)
       .neq('estado', 'rechazado'),
   ]);
   if (remitosRes.error) { console.error('[Payroll cargarEfectivosValidacion] remitos', remitosRes.error.message); return []; }
@@ -2768,4 +2853,333 @@ async function cargarEfectivosValidacion(driverId, yyyymm) {
   });
 
   return items;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// JORNADAS · VISTA ADMIN
+// Listado consolidado de la flota con filtros, KPIs y detalle enriquecido.
+// ═══════════════════════════════════════════════════════════════════
+
+const _JORNADAS_ADMIN_TOLERANCIA_RENDICION = 500;
+
+function _horasEntre(hi, hf) {
+  if (!hi || !hf) return 0;
+  const [h1, m1] = hi.split(':').map(Number);
+  const [h2, m2] = hf.split(':').map(Number);
+  let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (mins < 0) mins += 24 * 60; // cruza medianoche
+  return mins / 60;
+}
+
+async function cargarJornadasAdmin(filtros = {}) {
+  const {
+    desde       = null,   // 'YYYY-MM-DD'
+    hasta       = null,   // 'YYYY-MM-DD' inclusive
+    driverId    = null,
+    truckId     = null,
+    estado      = null,   // 'open' | 'closed'
+    q           = '',
+    offset      = 0,
+    limit       = 20,
+    orderBy     = 'log_date',
+    orderAsc    = false,
+  } = filtros;
+
+  let query = _db
+    .from('daily_logs')
+    .select(`
+      log_id, driver_id, truck_id, log_date,
+      km_inicio, km_final, km_recorridos,
+      hora_inicio, hora_fin,
+      in_workshop, workshop_detail,
+      foto_km_inicio, foto_km_final,
+      status, notas, created_at_device,
+      chofer:users!driver_id(user_id, full_name, legajo),
+      truck:trucks!truck_id(truck_id, plate, numero_interno, brand, model)
+    `, { count: 'exact' })
+    .order(orderBy, { ascending: orderAsc })
+    .order('hora_inicio', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (desde)    query = query.gte('log_date', desde);
+  if (hasta)    query = query.lte('log_date', hasta);
+  if (driverId) query = query.eq('driver_id', driverId);
+  if (truckId)  query = query.eq('truck_id', truckId);
+  if (estado)   query = query.eq('status', estado);
+
+  const { data: logs, error, count } = await query;
+  if (error) { console.error('cargarJornadasAdmin:', error); return { data: [], total: 0 }; }
+
+  const logIds = (logs || []).map(l => l.log_id);
+  if (!logIds.length) return { data: [], total: count || 0 };
+
+  const driverIds = [...new Set(logs.map(l => l.driver_id))];
+  const truckIds  = [...new Set(logs.map(l => l.truck_id))];
+  const fechaMin  = logs.reduce((m, l) => l.log_date < m ? l.log_date : m, logs[0].log_date);
+  const fechaMax  = logs.reduce((m, l) => l.log_date > m ? l.log_date : m, logs[0].log_date);
+
+  // Índice truck|fecha → log_id, para correlacionar fuel_records/tire_checks/rendicion
+  // cuando esas tablas guardan datos sin log_id (caso real: chofer inserta sin log_id).
+  const truckFechaToLogId = {};
+  logs.forEach(l => { truckFechaToLogId[`${l.truck_id}|${l.log_date}`] = l.log_id; });
+
+  const [remitosRes, incRes, fuelRes, tireRes, rendRes] = await Promise.all([
+    // Servicios = remitos (la tabla trips no se usa)
+    _db.from('remitos').select('log_id, status').in('log_id', logIds).neq('status', 'anulado'),
+    _db.from('incidents').select('log_id, severity, type').in('log_id', logIds),
+    // Fuel: correlacionar por truck_id + fuel_date (log_id suele venir NULL)
+    _db.from('fuel_records')
+       .select('log_id, truck_id, fuel_date, total_cost, liters')
+       .in('truck_id', truckIds)
+       .gte('fuel_date', fechaMin)
+       .lte('fuel_date', fechaMax),
+    // Tire: idem
+    _db.from('tire_checks')
+       .select('log_id, truck_id, check_date')
+       .in('truck_id', truckIds)
+       .gte('check_date', fechaMin)
+       .lte('check_date', fechaMax),
+    _db.from('rendicion_cierre')
+       .select('driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, admin_status')
+       .in('driver_id', driverIds)
+       .gte('fecha', fechaMin)
+       .lte('fecha', fechaMax),
+  ]);
+
+  const cnt = {};
+  logIds.forEach(id => cnt[id] = { servicios: 0, incidentes: 0, incGrave: false, combustible: 0, litros: 0, revision: false });
+
+  const resolverLogId = (r, fechaField) => {
+    if (r.log_id && cnt[r.log_id]) return r.log_id;
+    return truckFechaToLogId[`${r.truck_id}|${r[fechaField]}`] || null;
+  };
+
+  (remitosRes.data || []).forEach(r => { if (cnt[r.log_id]) cnt[r.log_id].servicios++; });
+  (incRes.data     || []).forEach(r => {
+    if (!cnt[r.log_id]) return;
+    cnt[r.log_id].incidentes++;
+    if (r.severity === 'grave') cnt[r.log_id].incGrave = true;
+  });
+  (fuelRes.data    || []).forEach(r => {
+    const lid = resolverLogId(r, 'fuel_date');
+    if (!lid || !cnt[lid]) return;
+    cnt[lid].combustible++;
+    cnt[lid].litros += Number(r.liters) || 0;
+  });
+  (tireRes.data    || []).forEach(r => {
+    const lid = resolverLogId(r, 'check_date');
+    if (!lid || !cnt[lid]) return;
+    cnt[lid].revision = true;
+  });
+
+  const rendMap = {};
+  (rendRes.data || []).forEach(r => { rendMap[`${r.driver_id}|${r.fecha}`] = r; });
+
+  const rows = (logs || []).map(l => {
+    const c = cnt[l.log_id] || {};
+    const rend = rendMap[`${l.driver_id}|${l.log_date}`];
+    let rendInfo = null;
+    if (rend) {
+      const declarado = Number(rend.efectivo_declarado) || 0;
+      const esperado  = Number(rend.efectivo_esperado)  || 0;
+      const gastos    = Number(rend.gastos_extra)       || 0;
+      const diff = declarado - (esperado - gastos);
+      let estadoR = 'ok';
+      if (diff < -_JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'faltante';
+      else if (diff > _JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'sobrante';
+      rendInfo = { estado: estadoR, diff, declarado, esperado, gastos, admin_status: rend.admin_status };
+    }
+
+    return {
+      log_id:       l.log_id,
+      driver_id:    l.driver_id,
+      truck_id:     l.truck_id,
+      log_date:     l.log_date,
+      km_inicio:    l.km_inicio,
+      km_final:     l.km_final,
+      km_recorridos: l.km_recorridos,
+      hora_inicio:  l.hora_inicio,
+      hora_fin:     l.hora_fin,
+      horas:        _horasEntre(l.hora_inicio, l.hora_fin),
+      in_workshop:  l.in_workshop,
+      status:       l.status,
+      foto_km_inicio: l.foto_km_inicio,
+      foto_km_final:  l.foto_km_final,
+      chofer_nombre: l.chofer?.full_name || '—',
+      chofer_legajo: l.chofer?.legajo || null,
+      truck_plate:  l.truck?.plate || '—',
+      truck_movil:  l.truck?.numero_interno || null,
+      truck_marca:  [l.truck?.brand, l.truck?.model].filter(Boolean).join(' ') || null,
+      servicios:    c.servicios || 0,
+      incidentes:   c.incidentes || 0,
+      inc_grave:    c.incGrave || false,
+      combustible:  c.combustible || 0,
+      revision:     c.revision || false,
+      rendicion:    rendInfo,
+    };
+  });
+
+  return { data: rows, total: count || 0 };
+}
+
+async function cargarKpisJornadasAdmin(filtros = {}) {
+  const { desde = null, hasta = null, driverId = null, truckId = null } = filtros;
+
+  const withRange = (q) => {
+    if (desde)    q = q.gte('log_date', desde);
+    if (hasta)    q = q.lte('log_date', hasta);
+    if (driverId) q = q.eq('driver_id', driverId);
+    if (truckId)  q = q.eq('truck_id', truckId);
+    return q;
+  };
+
+  const [abiertasRes, choferesRes, mesRes, tallerRes] = await Promise.all([
+    _db.from('daily_logs').select('log_id', { count: 'exact', head: true }).eq('status', 'open'),
+    _db.from('users').select('user_id, roles!inner(name)', { count: 'exact', head: true }).eq('roles.name', 'chofer'),
+    withRange(_db.from('daily_logs').select('log_id, km_recorridos, hora_inicio, hora_fin, in_workshop')),
+    withRange(_db.from('daily_logs').select('log_id', { count: 'exact', head: true }).eq('in_workshop', true)),
+  ]);
+
+  const jornadas = mesRes.data || [];
+  const kmTotal    = jornadas.reduce((s, j) => s + (Number(j.km_recorridos) || 0), 0);
+  const horasTotal = jornadas.reduce((s, j) => s + _horasEntre(j.hora_inicio, j.hora_fin), 0);
+
+  return {
+    abiertasAhora: abiertasRes.count || 0,
+    choferesActivos: choferesRes.count || 0,
+    jornadasPeriodo: jornadas.length,
+    kmTotalPeriodo: kmTotal,
+    horasTotalPeriodo: horasTotal,
+    tallerPeriodo: tallerRes.count || 0,
+    promKmJornada:   jornadas.length ? Math.round(kmTotal / jornadas.length)   : 0,
+    promHorasJornada: jornadas.length ? (horasTotal / jornadas.length).toFixed(1) : '0',
+    pctTaller: jornadas.length ? ((tallerRes.count || 0) / jornadas.length * 100).toFixed(1) : '0',
+  };
+}
+
+async function cargarDetalleJornadaAdmin(logId) {
+  if (!logId) return null;
+
+  const { data: log, error: logErr } = await _db
+    .from('daily_logs')
+    .select(`
+      log_id, driver_id, truck_id, log_date,
+      km_inicio, km_final, km_recorridos, km_excepcion,
+      hora_inicio, hora_fin,
+      in_workshop, workshop_detail,
+      foto_km_inicio, foto_km_final,
+      status, notas, created_at_device,
+      chofer:users!driver_id(user_id, full_name, legajo),
+      truck:trucks!truck_id(truck_id, plate, numero_interno, brand, model)
+    `)
+    .eq('log_id', logId)
+    .single();
+
+  if (logErr || !log) { console.error('cargarDetalleJornadaAdmin:', logErr); return null; }
+
+  // Fuel y tire pueden guardarse con log_id=NULL — filtramos por truck_id + fecha.
+  const [remitosRes, incRes, fuelRes, tireRes, rendRes] = await Promise.all([
+    _db.from('remitos')
+       .select(`
+         remito_id, nro_remito, nro_servicio, tipo_servicio, patente, marca_modelo,
+         razon_social, origen, destino, km_reales,
+         imp_peaje, imp_excedente, imp_otros, imp_total_extras,
+         pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto,
+         foto_urls, firma_imagen_url, firmado_at,
+         conformidad_servicio, conformidad_cargos, sin_danos, conformidad_arrastre,
+         status, created_at_device
+       `)
+       .eq('log_id', logId)
+       .neq('status', 'anulado')
+       .order('created_at_device', { ascending: true }),
+    _db.from('incidents')
+       .select('incident_id, type, severity, description, location, photo_urls, created_at_device')
+       .eq('log_id', logId)
+       .order('created_at_device', { ascending: true }),
+    _db.from('fuel_records')
+       .select('fuel_id, log_id, liters, price_per_liter, total_cost, km_at_load, payment_method, payment_app, gas_station, fuel_date, created_at_device')
+       .eq('truck_id', log.truck_id)
+       .eq('fuel_date', log.log_date),
+    _db.from('tire_checks')
+       .select('check_id, log_id, tire_condition, brake_condition, pressure_psi, notes, check_date, created_at')
+       .eq('truck_id', log.truck_id)
+       .eq('check_date', log.log_date)
+       .order('created_at', { ascending: false })
+       .limit(1),
+    _db.from('rendicion_cierre')
+       .select('*')
+       .eq('driver_id', log.driver_id)
+       .eq('fecha', log.log_date)
+       .maybeSingle(),
+  ]);
+
+  let rendicionInfo = null;
+  if (rendRes.data) {
+    const r = rendRes.data;
+    const declarado = Number(r.efectivo_declarado) || 0;
+    const esperado  = Number(r.efectivo_esperado)  || 0;
+    const gastos    = Number(r.gastos_extra)       || 0;
+    const diff = declarado - (esperado - gastos);
+    let estadoR = 'ok';
+    if (diff < -_JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'faltante';
+    else if (diff > _JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'sobrante';
+    rendicionInfo = { ...r, diff, estado: estadoR };
+  }
+
+  // Mapear remitos → forma esperada por el renderer del modal (origin/destination/km_traveled)
+  const trips = (remitosRes.data || []).map(r => {
+    const p1 = Number(r.pago_1_monto) || 0;
+    const p2 = Number(r.pago_2_monto) || 0;
+    const extras = Number(r.imp_total_extras) || 0;
+    return {
+      trip_id:              r.remito_id,
+      nro_remito:           r.nro_remito,
+      nro_servicio:         r.nro_servicio || r.nro_remito,
+      tipo_servicio:        r.tipo_servicio,
+      origin:               r.origen,
+      destination:          r.destino,
+      patente:              r.patente,
+      marca_modelo:         r.marca_modelo,
+      razon_social:         r.razon_social,
+      km_traveled:          r.km_reales,
+      imp_peaje:            Number(r.imp_peaje) || 0,
+      imp_excedente:        Number(r.imp_excedente) || 0,
+      imp_otros:            Number(r.imp_otros) || 0,
+      imp_total_extras:     extras,
+      pago_1_metodo:        r.pago_1_metodo,
+      pago_1_monto:         p1,
+      pago_2_metodo:        r.pago_2_metodo,
+      pago_2_monto:         p2,
+      importe_total:        p1 + p2,
+      foto_urls:            r.foto_urls || [],
+      firma_imagen_url:     r.firma_imagen_url,
+      firmado_at:           r.firmado_at,
+      conformidad_servicio: !!r.conformidad_servicio,
+      conformidad_cargos:   !!r.conformidad_cargos,
+      sin_danos:            !!r.sin_danos,
+      conformidad_arrastre: r.conformidad_arrastre,
+      status:               r.status,
+      fecha_hora_inicio:    r.created_at_device,
+      fecha_hora_fin:       null,
+    };
+  });
+
+  return {
+    log,
+    trips,
+    incidents:    incRes.data   || [],
+    fuel_records: fuelRes.data  || [],
+    tire_check:   tireRes.data?.[0] || null,
+    rendicion:    rendicionInfo,
+  };
+}
+
+async function cargarChoferesFlotaAdmin() {
+  const { data, error } = await _db
+    .from('users')
+    .select('user_id, full_name, legajo, roles!inner(name)')
+    .eq('roles.name', 'chofer')
+    .order('full_name', { ascending: true });
+  if (error) { console.error('cargarChoferesFlotaAdmin:', error); return []; }
+  return data || [];
 }
