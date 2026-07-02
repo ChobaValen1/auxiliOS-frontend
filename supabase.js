@@ -216,6 +216,13 @@ async function _finalizarInicializacion() {
     if (panel) panel.style.display = 'block';
     await cargarChoferes();
   }
+
+  // Nav "Sueldos": visible sólo para admin/supervisor
+  const rolActual = PERFIL_USUARIO?.roles?.name;
+  const navSueldos = document.getElementById('nav-sueldos');
+  if (navSueldos) {
+    navSueldos.style.display = (rolActual === 'administracion' || rolActual === 'supervision') ? '' : 'none';
+  }
 }
 
 let _camionSelTmp  = null;
@@ -1465,6 +1472,138 @@ async function cargarHistorialServices(truckId) {
 }
 
 /**
+ * 5c. MANTENIMIENTO FLOTA: recorre camiones activos y agrega planes pendientes.
+ * Admin/supervisor. Ordena por prioridad (vencido → próximo).
+ */
+async function cargarMantenimientoFlota() {
+  const { data: trucks, error } = await _db
+    .from('trucks')
+    .select('truck_id, plate, numero_interno, current_km, status')
+    .eq('status', 'active')
+    .order('numero_interno', { ascending: true });
+  if (error) { console.error('[Mantenimiento Flota] error:', error.message); return []; }
+
+  const items = [];
+  await Promise.all((trucks || []).map(async (t) => {
+    try {
+      const planes = await cargarPlanesDetalleOptimizados(t.truck_id, t.current_km);
+      if (!Array.isArray(planes)) return;
+      planes.forEach(p => {
+        if (p.plan_estado === 'vencido' || p.plan_estado === 'proximo') {
+          items.push({
+            truck_id: t.truck_id,
+            plate: t.plate,
+            numero_interno: t.numero_interno,
+            current_km: t.current_km,
+            plan_name: p.name,
+            next_due_km: p.next_due_km,
+            km_restantes: p.km_restantes,
+            ultimo_km: p.ultimo_km,
+            ultima_fecha: p.ultima_fecha,
+            estado: p.plan_estado,
+          });
+        }
+      });
+    } catch (err) {
+      console.warn('[Mantenimiento Flota] truck error', t.truck_id, err);
+    }
+  }));
+
+  items.sort((a, b) => {
+    if (a.estado !== b.estado) return a.estado === 'vencido' ? -1 : 1;
+    return (a.km_restantes || 0) - (b.km_restantes || 0);
+  });
+  return items;
+}
+
+/**
+ * 5b. TIMELINE CAMIÓN: eventos combinados (jornadas + combustible + services).
+ * Admin/supervisor. Retorna array normalizado ordenado por fecha desc.
+ */
+async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) {
+  if (!truckId) return { truck: null, eventos: [], stats: { jornadas: 0, litros: 0, gastoFuel: 0, services: 0, gastoServ: 0 } };
+
+  const truckPromise = _db.from('trucks').select('*').eq('truck_id', truckId).single();
+
+  let jQ = _db.from('daily_logs')
+     .select('log_id, log_date, km_inicio, km_final, status, driver_id, users(full_name)')
+     .eq('truck_id', truckId)
+     .order('log_date', { ascending: false })
+     .limit(limit);
+  let fQ = _db.from('fuel_records')
+     .select('fuel_record_id, fuel_date, liters, total_cost, gas_station, payment_method, driver_id, users(full_name)')
+     .eq('truck_id', truckId)
+     .order('fuel_date', { ascending: false })
+     .limit(limit);
+  let mQ = _db.from('maintenance_logs')
+     .select('maintenance_id, performed_at, km_at_service, next_due_km, cost, workshop_name, master_service_plans(name)')
+     .eq('truck_id', truckId)
+     .order('performed_at', { ascending: false })
+     .limit(limit);
+
+  if (desde) {
+    jQ = jQ.gte('log_date', desde);
+    fQ = fQ.gte('fuel_date', desde);
+    mQ = mQ.gte('performed_at', desde);
+  }
+
+  const [truckRes, jRes, fRes, mRes] = await Promise.all([truckPromise, jQ, fQ, mQ]);
+
+  const truck = truckRes.data || null;
+  const jornadas = jRes.data || [];
+  const fuel     = fRes.data || [];
+  const servs    = mRes.data || [];
+
+  const eventos = [];
+  jornadas.forEach(j => {
+    const km = (j.km_final || 0) - (j.km_inicio || 0);
+    eventos.push({
+      tipo: 'jornada',
+      fecha: j.log_date,
+      titulo: `Jornada ${j.status === 'open' ? '(abierta)' : ''}`.trim(),
+      detalle: `${j.users?.full_name || 'Chofer'} · ${(j.km_inicio||0).toLocaleString('es-AR')} → ${(j.km_final||0).toLocaleString('es-AR')} km`,
+      valor: km > 0 ? `+${km.toLocaleString('es-AR')} km` : (j.status === 'open' ? 'en curso' : ''),
+      valorColor: null,
+      raw: j,
+    });
+  });
+  fuel.forEach(f => {
+    eventos.push({
+      tipo: 'combustible',
+      fecha: f.fuel_date,
+      titulo: 'Combustible',
+      detalle: `${f.users?.full_name || 'Chofer'} · ${f.gas_station || 's/ estación'} · ${(f.liters||0).toFixed(1)} L · ${f.payment_method || ''}`,
+      valor: '-$' + Math.round(f.total_cost || 0).toLocaleString('es-AR'),
+      valorColor: '#ef4444',
+      raw: f,
+    });
+  });
+  servs.forEach(s => {
+    eventos.push({
+      tipo: 'service',
+      fecha: s.performed_at,
+      titulo: s.master_service_plans?.name || 'Service',
+      detalle: `${s.workshop_name || 's/ taller'} · ${(s.km_at_service||0).toLocaleString('es-AR')} km${s.next_due_km ? ' · próx ' + s.next_due_km.toLocaleString('es-AR') : ''}`,
+      valor: s.cost ? '-$' + Math.round(s.cost).toLocaleString('es-AR') : '',
+      valorColor: '#ef4444',
+      raw: s,
+    });
+  });
+
+  eventos.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  const stats = {
+    jornadas:  jornadas.length,
+    litros:    fuel.reduce((s, f) => s + (f.liters || 0), 0),
+    gastoFuel: fuel.reduce((s, f) => s + (f.total_cost || 0), 0),
+    services:  servs.length,
+    gastoServ: servs.reduce((s, x) => s + (x.cost || 0), 0),
+  };
+
+  return { truck, eventos, stats };
+}
+
+/**
  * 6. EJECUCIÓN: Registra que se realizó un service.
  */
 async function registrarServiceOptimizado(datos) {
@@ -1614,6 +1753,77 @@ async function cargarDatosNegocio(desde) {
   };
 }
 
+// Comparativo: fetch mínimo para KPIs de un rango [desde, hasta] (chofer)
+async function cargarComparativoChofer(userId, desde, hasta, truckId = null) {
+  if (!userId || !desde || !hasta) return { remitos: [], jornadas: [], fuel: [], rendicion: [] };
+
+  let jornadasQ = _db.from('daily_logs')
+    .select('km_inicio, km_final, truck_id, log_date, log_id')
+    .eq('driver_id', userId)
+    .gte('log_date', desde).lte('log_date', hasta)
+    .in('status', ['open', 'closed']);
+  if (truckId) jornadasQ = jornadasQ.eq('truck_id', truckId);
+
+  let fuelQ = _db.from('fuel_records')
+    .select('liters, total_cost, truck_id, payment_method, fuel_date')
+    .gte('fuel_date', desde).lte('fuel_date', hasta);
+  if (truckId) fuelQ = fuelQ.eq('truck_id', truckId);
+
+  const [remitosRes, jornadasRes, fuelRes, rendicionRes] = await Promise.all([
+    _db.from('remitos')
+      .select('pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, log_id, created_at_device')
+      .eq('driver_id', userId)
+      .gte('created_at_device', desde + 'T00:00:00-03:00')
+      .lte('created_at_device', hasta + 'T23:59:59-03:00')
+      .neq('status', 'anulado'),
+    jornadasQ,
+    fuelQ,
+    _db.from('rendicion_cierre')
+      .select('efectivo_declarado, gastos_extra, fecha')
+      .eq('driver_id', userId)
+      .gte('fecha', desde).lte('fecha', hasta)
+      .neq('estado', 'rechazado'),
+  ]);
+
+  let remitos = remitosRes.data || [];
+  if (truckId) {
+    const logIds = new Set((jornadasRes.data || []).map(j => j.log_id).filter(Boolean));
+    remitos = remitos.filter(r => logIds.has(r.log_id));
+  }
+  return {
+    remitos,
+    jornadas: jornadasRes.data || [],
+    fuel:     fuelRes.data     || [],
+    rendicion: rendicionRes.data || [],
+  };
+}
+
+// Comparativo: fetch mínimo para KPIs de un rango [desde, hasta] (negocio, todos los choferes)
+async function cargarComparativoNegocio(desde, hasta) {
+  if (!desde || !hasta) return { remitos: [], jornadas: [], fuel: [] };
+
+  const [remitosRes, jornadasRes, fuelRes] = await Promise.all([
+    _db.from('remitos')
+      .select('driver_id, log_id, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, created_at_device')
+      .gte('created_at_device', desde + 'T00:00:00-03:00')
+      .lte('created_at_device', hasta + 'T23:59:59-03:00')
+      .neq('status', 'anulado'),
+    _db.from('daily_logs')
+      .select('driver_id, truck_id, log_id, km_inicio, km_final, log_date')
+      .gte('log_date', desde).lte('log_date', hasta)
+      .eq('status', 'closed'),
+    _db.from('fuel_records')
+      .select('truck_id, liters, total_cost, fuel_date')
+      .gte('fuel_date', desde).lte('fuel_date', hasta),
+  ]);
+
+  return {
+    remitos:  remitosRes.data  || [],
+    jornadas: jornadasRes.data || [],
+    fuel:     fuelRes.data     || [],
+  };
+}
+
 async function cargarAlertasOperativas() {
   const { data, error } = await _db
     .from('alertas_operativas')
@@ -1623,6 +1833,138 @@ async function cargarAlertasOperativas() {
     .limit(30);
   if (error) { console.error('cargarAlertasOperativas:', error); return []; }
   return data || [];
+}
+
+// Rendiciones de un período yyyymm — para módulo Sueldos.
+// Devuelve rendiciones + faltante calculado por cada una y agregado por chofer.
+// faltante = max(0, efectivo_esperado - efectivo_declarado - gastos_extra)
+// sobrante = max(0, efectivo_declarado + gastos_extra - efectivo_esperado)
+async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
+  if (!yyyymm) return { rendiciones: [], porChofer: {} };
+  const anio = Math.floor(yyyymm / 100);
+  const mes  = yyyymm % 100;
+  const desde = `${anio}-${String(mes).padStart(2, '0')}-01`;
+  const ultimoDia = new Date(anio, mes, 0).getDate();
+  const hasta = `${anio}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
+
+  let q = _db.from('rendicion_cierre')
+    .select('rendicion_id, log_id, driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, estado, admin_status')
+    .neq('estado', 'rechazado')
+    .gte('fecha', desde)
+    .lte('fecha', hasta)
+    .order('fecha', { ascending: true });
+  if (driverId) q = q.eq('driver_id', driverId);
+
+  const [rendRes, usuariosRes] = await Promise.all([
+    q,
+    _db.from('users').select('user_id, full_name').eq('role_id', 3),
+  ]);
+  if (rendRes.error) { console.error('cargarRendicionesPeriodo:', rendRes.error); return { rendiciones: [], porChofer: {} }; }
+  const mapU = {};
+  (usuariosRes.data || []).forEach(u => { mapU[u.user_id] = u.full_name; });
+
+  const rendiciones = (rendRes.data || []).map(r => {
+    const declarado = Number(r.efectivo_declarado) || 0;
+    const esperado  = Number(r.efectivo_esperado)  || 0;
+    const gastos    = Number(r.gastos_extra)       || 0;
+    const diff = declarado + gastos - esperado; // + sobra, - falta
+    return {
+      ...r,
+      chofer_nombre: mapU[r.driver_id] || '—',
+      _diff: diff,
+      _faltante: diff < 0 ? -diff : 0,
+      _sobrante: diff > 0 ?  diff : 0,
+    };
+  });
+
+  const porChofer = {};
+  rendiciones.forEach(r => {
+    const k = r.driver_id;
+    if (!porChofer[k]) porChofer[k] = { driver_id: k, chofer_nombre: r.chofer_nombre, faltante: 0, sobrante: 0, cant: 0 };
+    porChofer[k].faltante += r._faltante;
+    porChofer[k].sobrante += r._sobrante;
+    porChofer[k].cant += 1;
+  });
+  return { rendiciones, porChofer };
+}
+
+// Listado de rendiciones para el hub admin — incluye nombre del chofer y estado admin
+async function cargarRendicionesAdmin({ desde = null, hasta = null, driverId = null, status = null, limit = 200 } = {}) {
+  let q = _db.from('rendicion_cierre')
+    .select('rendicion_id, log_id, driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra, notas, estado, admin_status, admin_by, admin_at, admin_nota, created_at')
+    .neq('estado', 'rechazado')
+    .order('fecha', { ascending: false })
+    .limit(limit);
+  if (desde)    q = q.gte('fecha', desde);
+  if (hasta)    q = q.lte('fecha', hasta);
+  if (driverId) q = q.eq('driver_id', driverId);
+  if (status)   q = q.eq('admin_status', status);
+
+  const [rendRes, usuariosRes] = await Promise.all([
+    q,
+    _db.from('users').select('user_id, full_name').eq('role_id', 3),
+  ]);
+  if (rendRes.error) { console.error('cargarRendicionesAdmin:', rendRes.error); return { rendiciones: [], usuarios: [] }; }
+  const usuarios = usuariosRes.data || [];
+  const mapU = {};
+  usuarios.forEach(u => { mapU[u.user_id] = u.full_name; });
+  const rendiciones = (rendRes.data || []).map(r => ({ ...r, chofer_nombre: mapU[r.driver_id] || '—' }));
+  return { rendiciones, usuarios };
+}
+
+// Detalle de una rendición: remitos efectivo + gastos combustible/extra del día
+async function cargarDetalleRendicion(logId) {
+  if (!logId) return { remitos: [], fuel: [], rendicion: null };
+  const rendicionRes = await _db.from('rendicion_cierre')
+    .select('*')
+    .eq('log_id', logId)
+    .maybeSingle();
+  const rendicion = rendicionRes.data;
+  if (!rendicion) return { remitos: [], fuel: [], rendicion: null };
+
+  const [remitosRes, jornadaRes] = await Promise.all([
+    _db.from('remitos')
+      .select('nro_remito, patente, origen, destino, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, created_at_device')
+      .eq('log_id', logId)
+      .neq('status', 'anulado'),
+    _db.from('daily_logs')
+      .select('truck_id, log_date, driver_id, trucks(plate)')
+      .eq('log_id', logId)
+      .maybeSingle(),
+  ]);
+  const jornada = jornadaRes.data;
+  let fuel = [];
+  if (jornada?.truck_id && jornada?.log_date) {
+    const fuelRes = await _db.from('fuel_records')
+      .select('liters, total_cost, payment_method, gas_station, fuel_date')
+      .eq('truck_id', jornada.truck_id)
+      .eq('fuel_date', jornada.log_date);
+    fuel = fuelRes.data || [];
+  }
+  return {
+    remitos: remitosRes.data || [],
+    fuel,
+    rendicion,
+    jornada,
+  };
+}
+
+// Actualiza el estado admin (aprobar/observar) de una rendición
+async function actualizarAdminRendicion(rendicionId, { admin_status, admin_nota = null }) {
+  if (!rendicionId || !USUARIO_ACTUAL?.id) return { error: 'Falta rendición o usuario' };
+  const payload = {
+    admin_status,
+    admin_by:   USUARIO_ACTUAL.id,
+    admin_at:   new Date().toISOString(),
+    admin_nota,
+  };
+  const { data, error } = await _db.from('rendicion_cierre')
+    .update(payload)
+    .eq('rendicion_id', rendicionId)
+    .select()
+    .maybeSingle();
+  if (error) { console.error('actualizarAdminRendicion:', error); return { error }; }
+  return { data };
 }
 
 async function cargarFlotaEnCurso() {
@@ -1653,7 +1995,7 @@ async function cargarAlertasPersonales() {
   const hoyISO = new Date().toISOString().slice(0, 10);
   const alertas = [];
 
-  const [jornadasRes, remitosRes, docsRes] = await Promise.allSettled([
+  const [jornadasRes, remitosRes, docsRes, rendRes] = await Promise.allSettled([
     _db.from('daily_logs')
        .select('log_id, log_date, trucks(plate)')
        .eq('driver_id', uid).eq('status', 'open')
@@ -1668,6 +2010,12 @@ async function cargarAlertasPersonales() {
        .select('doc_type, expiry_date, status')
        .eq('driver_id', uid)
        .in('status', ['vencido', 'proximo']),
+    _db.from('rendicion_cierre')
+       .select('rendicion_id, fecha, admin_status, admin_nota')
+       .eq('driver_id', uid)
+       .eq('admin_status', 'observada')
+       .order('fecha', { ascending: false })
+       .limit(5),
   ]);
 
   if (jornadasRes.status === 'fulfilled' && jornadasRes.value.data?.length) {
@@ -1711,6 +2059,45 @@ async function cargarAlertasPersonales() {
         filtro: 'pendiente',
       });
     }
+  }
+
+  if (rendRes.status === 'fulfilled' && rendRes.value.data?.length) {
+    rendRes.value.data.forEach(r => {
+      alertas.push({
+        sev: 'advertencia',
+        icon: '💬',
+        title: 'Rendición observada',
+        detail: `${r.fecha} — ${(r.admin_nota || '').slice(0, 60)}${(r.admin_nota||'').length > 60 ? '…' : ''}`,
+        cta: 'Ver detalle',
+        target: 'dashboard',
+      });
+    });
+  }
+
+  try {
+    const openJ = jornadasRes.status === 'fulfilled' ? jornadasRes.value.data?.[0] : null;
+    const openTruckId = openJ?.log_id
+      ? (await _db.from('daily_logs').select('truck_id').eq('log_id', openJ.log_id).maybeSingle()).data?.truck_id
+      : (await _db.from('daily_logs').select('truck_id').eq('driver_id', uid).eq('status', 'open').limit(1).maybeSingle()).data?.truck_id;
+    if (openTruckId && typeof cargarPlanesDetalleOptimizados === 'function') {
+      const planes = await cargarPlanesDetalleOptimizados(openTruckId);
+      if (Array.isArray(planes)) {
+        planes.forEach(p => {
+          if (p.plan_estado === 'vencido' || p.plan_estado === 'proximo') {
+            alertas.push({
+              sev: p.plan_estado === 'vencido' ? 'critico' : 'advertencia',
+              icon: '🔧',
+              title: p.plan_estado === 'vencido' ? 'Service vencido' : 'Service próximo',
+              detail: `${p.name} · ${p.km_restantes != null ? Math.abs(p.km_restantes).toLocaleString('es-AR') + ' km ' + (p.km_restantes < 0 ? 'excedidos' : 'restantes') : 'sin registro'}`,
+              cta: 'Ver camión',
+              target: 'camion',
+            });
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[Alertas mantenimiento chofer] error:', err);
   }
 
   alertas.sort((a, b) => (a.sev === 'critico' ? 0 : 1) - (b.sev === 'critico' ? 0 : 1));
@@ -1899,4 +2286,486 @@ async function obtenerTruckAsignado() {
     .limit(1)
     .maybeSingle();
   return data?.truck_id || null;
+}
+
+// ── PAYROLL ────────────────────────────────────────────────
+// Módulo liquidación de sueldos (admin/supervisor).
+// 4 tablas: payroll_objetivos, payroll_settings, payroll_liquidaciones,
+// payroll_objetivo_cumplimientos.
+
+// ── Helpers de período ──
+function _payrollRangoMes(yyyymm) {
+  // yyyymm INT (ej. 202607) → { desde:'YYYY-MM-01', hasta:'YYYY-MM-DD' (último día) }
+  const anio = Math.floor(yyyymm / 100);
+  const mes  = yyyymm % 100;
+  const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
+  // último día: día 0 del mes siguiente
+  const ultimoDia = new Date(anio, mes, 0).getDate();
+  const hasta = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
+  return { desde, hasta };
+}
+
+// ── Objetivos (catálogo) ──
+async function cargarObjetivos() {
+  const { data, error } = await _db
+    .from('payroll_objetivos')
+    .select('objetivo_id, nombre, tipo, valor, descripcion, activo, created_at')
+    .eq('activo', true)
+    .order('nombre', { ascending: true });
+  if (error) { console.error('[Payroll cargarObjetivos]', error.message); return []; }
+  return data || [];
+}
+
+async function crearObjetivo({ nombre, tipo, valor, descripcion = null, activo = true }) {
+  const { data, error } = await _db
+    .from('payroll_objetivos')
+    .insert({ nombre, tipo, valor, descripcion, activo })
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[Payroll crearObjetivo]', error.message); return { ok: false, error }; }
+  return { ok: true, data };
+}
+
+async function actualizarObjetivo(objetivoId, patch) {
+  const { data, error } = await _db
+    .from('payroll_objetivos')
+    .update(patch)
+    .eq('objetivo_id', objetivoId)
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[Payroll actualizarObjetivo]', error.message); return { ok: false, error }; }
+  return { ok: true, data };
+}
+
+async function toggleObjetivoActivo(objetivoId, activo) {
+  return actualizarObjetivo(objetivoId, { activo });
+}
+
+// ── Esquema salarial por chofer ──
+async function cargarPayrollSettingsChofer(driverId) {
+  if (!driverId) return null;
+  const { data, error } = await _db
+    .from('payroll_settings')
+    .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, updated_at')
+    .eq('user_id', driverId)
+    .maybeSingle();
+  if (error) { console.error('[Payroll cargarPayrollSettingsChofer]', error.message); return null; }
+  return data || null;
+}
+
+async function cargarPayrollSettingsFlota() {
+  // LEFT JOIN manual: choferes activos + (opcional) su esquema.
+  const [usersRes, settingsRes] = await Promise.all([
+    _db.from('users')
+      .select('user_id, full_name, legajo, is_active')
+      .eq('role_id', 3)
+      .eq('is_active', true)
+      .order('full_name', { ascending: true }),
+    _db.from('payroll_settings')
+      .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, updated_at'),
+  ]);
+  if (usersRes.error)    { console.error('[Payroll cargarPayrollSettingsFlota] users', usersRes.error.message); return []; }
+  if (settingsRes.error) { console.error('[Payroll cargarPayrollSettingsFlota] settings', settingsRes.error.message); /* seguimos con [] */ }
+  const mapSet = {};
+  (settingsRes.data || []).forEach(s => { mapSet[s.user_id] = s; });
+  return (usersRes.data || []).map(u => ({
+    user_id:          u.user_id,
+    full_name:        u.full_name,
+    legajo:           u.legajo,
+    settings:         mapSet[u.user_id] || null,
+    sueldo_basico:    mapSet[u.user_id]?.sueldo_basico    ?? null,
+    valor_km:         mapSet[u.user_id]?.valor_km         ?? null,
+    valor_servicio:   mapSet[u.user_id]?.valor_servicio   ?? null,
+    bono_presentismo: mapSet[u.user_id]?.bono_presentismo ?? null,
+  }));
+}
+
+// Aplicar esquema salarial masivo a todos los choferes activos.
+// Los campos undefined/null NO se pisan (se preservan los del chofer).
+// Si onlySinEsquema=true, solo actualiza choferes sin fila en payroll_settings.
+async function guardarPayrollSettingsMasivo(patch, { onlySinEsquema = false } = {}) {
+  const flota = await cargarPayrollSettingsFlota();
+  const target = onlySinEsquema ? flota.filter(f => !f.settings) : flota;
+  if (!target.length) return { ok: true, actualizados: 0, insertados: 0, total: 0 };
+  const nowIso = new Date().toISOString();
+  const rows = target.map(c => {
+    const base = c.settings || {};
+    return {
+      user_id: c.user_id,
+      sueldo_basico:    patch.sueldo_basico    != null ? Number(patch.sueldo_basico)    : (Number(base.sueldo_basico)    || 0),
+      valor_km:         patch.valor_km         != null ? Number(patch.valor_km)         : (Number(base.valor_km)         || 0),
+      valor_servicio:   patch.valor_servicio   != null ? Number(patch.valor_servicio)   : (Number(base.valor_servicio)   || 0),
+      bono_presentismo: patch.bono_presentismo != null ? Number(patch.bono_presentismo) : (Number(base.bono_presentismo) || 0),
+      updated_at:       nowIso,
+    };
+  });
+  const { error } = await _db.from('payroll_settings').upsert(rows, { onConflict: 'user_id' });
+  if (error) { console.error('[Payroll guardarPayrollSettingsMasivo]', error.message); return { ok: false, error }; }
+  const insertados = target.filter(c => !c.settings).length;
+  return { ok: true, actualizados: target.length - insertados, insertados, total: target.length };
+}
+
+async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo }) {
+  if (!driverId) return { ok: false, error: 'Falta driverId' };
+  const payload = {
+    user_id: driverId,
+    sueldo_basico:    Number(sueldo_basico)    || 0,
+    valor_km:         Number(valor_km)         || 0,
+    valor_servicio:   Number(valor_servicio)   || 0,
+    bono_presentismo: Number(bono_presentismo) || 0,
+    updated_at:       new Date().toISOString(),
+  };
+  const { data, error } = await _db
+    .from('payroll_settings')
+    .upsert(payload, { onConflict: 'user_id' })
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[Payroll guardarPayrollSettings]', error.message); return { ok: false, error }; }
+  return { ok: true, data };
+}
+
+// ── Liquidaciones ──
+async function cargarLiquidacionesMes(yyyymm) {
+  const { data, error } = await _db
+    .from('payroll_liquidaciones')
+    .select('liquidacion_id, driver_id, periodo_yyyymm, jornadas, km_total, servicios, sueldo_basico, adic_km, adic_serv, presentismo_paga, bono_presentismo, bonos_objetivos, ajuste_rendiciones, total, estado, aprobada_by, aprobada_at, pagada_at, pagada_metodo, notas, created_at, users:driver_id(full_name, legajo)')
+    .eq('periodo_yyyymm', yyyymm)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('[Payroll cargarLiquidacionesMes]', error.message); return []; }
+  return (data || []).map(l => ({
+    ...l,
+    chofer_nombre: l.users?.full_name || '—',
+    chofer_legajo: l.users?.legajo || null,
+  }));
+}
+
+async function cargarLiquidacionHistorial({ anio = null, driverId = null, limit = 200 } = {}) {
+  let q = _db.from('payroll_liquidaciones')
+    .select('liquidacion_id, driver_id, periodo_yyyymm, jornadas, km_total, servicios, sueldo_basico, adic_km, adic_serv, presentismo_paga, bono_presentismo, bonos_objetivos, ajuste_rendiciones, total, estado, aprobada_by, aprobada_at, pagada_at, pagada_metodo, notas, created_at, users:driver_id(full_name, legajo)')
+    .order('periodo_yyyymm', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (anio)     q = q.gte('periodo_yyyymm', anio * 100 + 1).lte('periodo_yyyymm', anio * 100 + 12);
+  if (driverId) q = q.eq('driver_id', driverId);
+  const { data, error } = await q;
+  if (error) { console.error('[Payroll cargarLiquidacionHistorial]', error.message); return []; }
+  return (data || []).map(l => ({
+    ...l,
+    chofer_nombre: l.users?.full_name || '—',
+    chofer_legajo: l.users?.legajo || null,
+  }));
+}
+
+async function actualizarEstadoLiquidacion(liquidacionId, { estado, notas = null, pagada_metodo = null }) {
+  if (!liquidacionId) return { ok: false, error: 'Falta liquidacionId' };
+  const patch = { estado };
+  if (notas !== null) patch.notas = notas;
+  const nowIso = new Date().toISOString();
+  if (estado === 'aprobada') {
+    patch.aprobada_by = USUARIO_ACTUAL?.id || null;
+    patch.aprobada_at = nowIso;
+  }
+  if (estado === 'pagada') {
+    patch.pagada_at     = nowIso;
+    patch.pagada_metodo = pagada_metodo;
+  }
+  const { data, error } = await _db
+    .from('payroll_liquidaciones')
+    .update(patch)
+    .eq('liquidacion_id', liquidacionId)
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[Payroll actualizarEstadoLiquidacion]', error.message); return { ok: false, error }; }
+  return { ok: true, data };
+}
+
+// ── Cumplimientos de objetivos ──
+async function cargarCumplimientos(driverId, yyyymm) {
+  if (!driverId || !yyyymm) return [];
+  const { data, error } = await _db
+    .from('payroll_objetivo_cumplimientos')
+    .select('cumplimiento_id, objetivo_id, driver_id, periodo_yyyymm, fecha, cantidad, bonus_calculado, ref_tipo, ref_id, cargado_by, created_at, payroll_objetivos(nombre, tipo, valor)')
+    .eq('driver_id', driverId)
+    .eq('periodo_yyyymm', yyyymm)
+    .order('fecha', { ascending: true });
+  if (error) { console.error('[Payroll cargarCumplimientos]', error.message); return []; }
+  return data || [];
+}
+
+async function crearCumplimiento({ objetivo_id, driver_id, periodo_yyyymm, fecha, cantidad, bonus_calculado, ref_tipo = 'manual', ref_id = null }) {
+  const payload = {
+    objetivo_id,
+    driver_id,
+    periodo_yyyymm,
+    fecha:           fecha || new Date().toISOString().slice(0,10),
+    cantidad:        Number(cantidad) || 0,
+    bonus_calculado: Number(bonus_calculado) || 0,
+    ref_tipo,
+    ref_id,
+    cargado_by:      USUARIO_ACTUAL?.id || null,
+  };
+  const { data, error } = await _db
+    .from('payroll_objetivo_cumplimientos')
+    .insert(payload)
+    .select()
+    .maybeSingle();
+  if (error) { console.error('[Payroll crearCumplimiento]', error.message); return { ok: false, error }; }
+  return { ok: true, data };
+}
+
+async function borrarCumplimiento(cumplimientoId) {
+  if (!cumplimientoId) return { ok: false, error: 'Falta cumplimientoId' };
+  const { error } = await _db
+    .from('payroll_objetivo_cumplimientos')
+    .delete()
+    .eq('cumplimiento_id', cumplimientoId);
+  if (error) { console.error('[Payroll borrarCumplimiento]', error.message); return { ok: false, error }; }
+  return { ok: true };
+}
+
+// ── Generación de liquidaciones del mes ──
+async function generarLiquidacionesMes(yyyymm) {
+  if (!yyyymm) return { ok: false, error: 'Falta yyyymm' };
+  const { desde, hasta } = _payrollRangoMes(yyyymm);
+
+  // Choferes con esquema (LEFT JOIN via 2 queries)
+  const flota = await cargarPayrollSettingsFlota();
+  const conEsquema = (flota || []).filter(f => f.settings);
+  if (conEsquema.length === 0) {
+    return { ok: true, creadas: 0, actualizadas: 0, saltadas: 0, detalle: [], nota: 'Ningún chofer tiene payroll_settings cargado' };
+  }
+
+  let creadas = 0, actualizadas = 0, saltadas = 0;
+  const detalle = [];
+
+  for (const chofer of conEsquema) {
+    const driverId = chofer.user_id;
+    const s = chofer.settings;
+
+    // Query paralela: jornadas cerradas + remitos finalizados + cumplimientos + incidents.
+    // Nota: remitos usa status IN ('pendiente','firmado','anulado'). Interpretamos
+    // "finalizado" del mockup como los remitos ya firmados (no pendientes, no anulados).
+    const [jornadasRes, remitosRes, cumplRes, incidRes, rendRes] = await Promise.all([
+      _db.from('daily_logs')
+        .select('log_id, log_date, km_inicio, km_final, status')
+        .eq('driver_id', driverId)
+        .eq('status', 'closed')
+        .gte('log_date', desde)
+        .lte('log_date', hasta),
+      _db.from('remitos')
+        .select('remito_id, created_at_device, status')
+        .eq('driver_id', driverId)
+        .eq('status', 'firmado')
+        .gte('created_at_device', desde + 'T00:00:00-03:00')
+        .lte('created_at_device', hasta + 'T23:59:59-03:00'),
+      _db.from('payroll_objetivo_cumplimientos')
+        .select('bonus_calculado')
+        .eq('driver_id', driverId)
+        .eq('periodo_yyyymm', yyyymm),
+      _db.from('incidents')
+        .select('incident_id, created_at_device')
+        .eq('driver_id', driverId)
+        .gte('created_at_device', desde + 'T00:00:00-03:00')
+        .lte('created_at_device', hasta + 'T23:59:59-03:00'),
+      _db.from('rendicion_cierre')
+        .select('efectivo_declarado, efectivo_esperado, gastos_extra, estado')
+        .eq('driver_id', driverId)
+        .neq('estado', 'rechazado')
+        .gte('fecha', desde)
+        .lte('fecha', hasta),
+    ]);
+
+    if (jornadasRes.error || remitosRes.error || cumplRes.error || incidRes.error || rendRes.error) {
+      console.error('[Payroll generarLiquidaciones] error chofer', driverId,
+        jornadasRes.error || remitosRes.error || cumplRes.error || incidRes.error || rendRes.error);
+      detalle.push({ driverId, error: true });
+      continue;
+    }
+
+    const jornadas = jornadasRes.data || [];
+    const remitos  = remitosRes.data  || [];
+    const cumpl    = cumplRes.data    || [];
+    const incid    = incidRes.data    || [];
+    const rendiciones = rendRes.data  || [];
+
+    const km_total = jornadas.reduce((sum, j) => {
+      const ki = Number(j.km_inicio) || 0;
+      const kf = Number(j.km_final)  || 0;
+      return sum + Math.max(0, kf - ki);
+    }, 0);
+    const servicios = remitos.length;
+    const jornadasCount = jornadas.length;
+
+    // Presentismo: sin incidents y con al menos una jornada.
+    const presentismo_paga = (incid.length === 0 && jornadasCount > 0);
+
+    const sueldo_basico    = Number(s.sueldo_basico)    || 0;
+    const valor_km         = Number(s.valor_km)         || 0;
+    const valor_servicio   = Number(s.valor_servicio)   || 0;
+    const bono_presentismo = Number(s.bono_presentismo) || 0;
+
+    const adic_km   = km_total  * valor_km;
+    const adic_serv = servicios * valor_servicio;
+    const bonos_objetivos = cumpl.reduce((sum, c) => sum + (Number(c.bonus_calculado) || 0), 0);
+
+    // Faltantes del período: SOLO faltantes descuentan (regla de negocio).
+    // faltante_i = max(0, esperado - declarado - gastos_extra)
+    const ajuste_rendiciones_calc = rendiciones.reduce((sum, r) => {
+      const declarado = Number(r.efectivo_declarado) || 0;
+      const esperado  = Number(r.efectivo_esperado)  || 0;
+      const gastos    = Number(r.gastos_extra)       || 0;
+      const falt = Math.max(0, esperado - declarado - gastos);
+      return sum + falt;
+    }, 0);
+
+    // ¿Existe ya la liquidación? Si está 'pagada', NO pisamos.
+    // Si está 'aprobada' → congelamos ajuste_rendiciones (snapshot).
+    const existRes = await _db.from('payroll_liquidaciones')
+      .select('liquidacion_id, estado, ajuste_rendiciones')
+      .eq('driver_id', driverId)
+      .eq('periodo_yyyymm', yyyymm)
+      .maybeSingle();
+
+    if (existRes.error) {
+      console.error('[Payroll generarLiquidaciones] check exist', existRes.error.message);
+      detalle.push({ driverId, error: true });
+      continue;
+    }
+
+    if (existRes.data && existRes.data.estado === 'pagada') {
+      saltadas++;
+      detalle.push({ driverId, accion: 'saltada', motivo: 'pagada' });
+      continue;
+    }
+
+    // Snapshot: si ya está aprobada, se preserva el ajuste guardado; si no, se recalcula.
+    const ajuste_rendiciones = (existRes.data && existRes.data.estado === 'aprobada')
+      ? (Number(existRes.data.ajuste_rendiciones) || 0)
+      : ajuste_rendiciones_calc;
+
+    const bruto =
+      sueldo_basico +
+      adic_km +
+      adic_serv +
+      (presentismo_paga ? bono_presentismo : 0) +
+      bonos_objetivos;
+
+    const total = Math.max(0, bruto - ajuste_rendiciones);
+
+    const payload = {
+      driver_id:        driverId,
+      periodo_yyyymm:   yyyymm,
+      jornadas:         jornadasCount,
+      km_total,
+      servicios,
+      sueldo_basico,
+      adic_km,
+      adic_serv,
+      presentismo_paga,
+      bono_presentismo: presentismo_paga ? bono_presentismo : 0,
+      bonos_objetivos,
+      ajuste_rendiciones,
+      total,
+    };
+
+    if (existRes.data) {
+      // update
+      const { error: updErr } = await _db.from('payroll_liquidaciones')
+        .update(payload)
+        .eq('liquidacion_id', existRes.data.liquidacion_id);
+      if (updErr) {
+        console.error('[Payroll generarLiquidaciones] update', updErr.message);
+        detalle.push({ driverId, error: true });
+        continue;
+      }
+      actualizadas++;
+      detalle.push({ driverId, accion: 'actualizada', total });
+    } else {
+      // insert
+      const { error: insErr } = await _db.from('payroll_liquidaciones')
+        .insert({ ...payload, estado: 'pendiente' });
+      if (insErr) {
+        console.error('[Payroll generarLiquidaciones] insert', insErr.message);
+        detalle.push({ driverId, error: true });
+        continue;
+      }
+      creadas++;
+      detalle.push({ driverId, accion: 'creada', total });
+    }
+  }
+
+  return { ok: true, creadas, actualizadas, saltadas, detalle };
+}
+
+// ── Cruce efectivos vs. rendicion_cierre ──
+async function cargarEfectivosValidacion(driverId, yyyymm) {
+  if (!driverId || !yyyymm) return [];
+  const { desde, hasta } = _payrollRangoMes(yyyymm);
+
+  const [remitosRes, rendRes] = await Promise.all([
+    _db.from('remitos')
+      .select('remito_id, nro_remito, created_at_device, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status')
+      .eq('driver_id', driverId)
+      .neq('status', 'anulado')
+      .gte('created_at_device', desde + 'T00:00:00-03:00')
+      .lte('created_at_device', hasta + 'T23:59:59-03:00'),
+    _db.from('rendicion_cierre')
+      .select('rendicion_id, fecha, efectivo_declarado, efectivo_esperado, estado')
+      .eq('driver_id', driverId)
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+      .neq('estado', 'rechazado'),
+  ]);
+  if (remitosRes.error) { console.error('[Payroll cargarEfectivosValidacion] remitos', remitosRes.error.message); return []; }
+  if (rendRes.error)    { console.error('[Payroll cargarEfectivosValidacion] rend',    rendRes.error.message); return []; }
+
+  const remitos = remitosRes.data || [];
+  const rendiciones = rendRes.data || [];
+
+  // Filtrar remitos con algún cobro en efectivo
+  const efectivos = remitos
+    .map(r => {
+      let monto = 0;
+      if (r.pago_1_metodo === 'efectivo') monto += Number(r.pago_1_monto) || 0;
+      if (r.pago_2_metodo === 'efectivo') monto += Number(r.pago_2_monto) || 0;
+      const fecha = (r.created_at_device || '').slice(0, 10);
+      return { remito_id: r.remito_id, nro_remito: r.nro_remito, fecha, monto };
+    })
+    .filter(x => x.monto > 0);
+
+  // Agrupar remitos-efectivo por día → calculado del día
+  const calcPorDia = {};
+  efectivos.forEach(e => {
+    calcPorDia[e.fecha] = (calcPorDia[e.fecha] || 0) + e.monto;
+  });
+
+  // Rendiciones por día
+  const rendPorDia = {};
+  rendiciones.forEach(r => {
+    rendPorDia[r.fecha] = (rendPorDia[r.fecha] || 0) + (Number(r.efectivo_declarado) || 0);
+  });
+
+  const TOLERANCIA = 50;
+  const items = [];
+  Object.keys(calcPorDia).sort().forEach(fecha => {
+    const calculado = calcPorDia[fecha];
+    const declarado = rendPorDia[fecha];
+    const remitosDelDia = efectivos.filter(e => e.fecha === fecha);
+    const concepto = remitosDelDia.length === 1
+      ? `Efectivo remito ${remitosDelDia[0].nro_remito}`
+      : `Efectivo ${remitosDelDia.length} remitos`;
+
+    if (declarado === undefined || declarado === null) {
+      items.push({ fecha, concepto, calculado, declarado: null, delta: -calculado, estado: 'err' });
+      return;
+    }
+    const delta = declarado - calculado;
+    let estado = 'ok';
+    if (Math.abs(delta) <= TOLERANCIA) estado = 'ok';
+    else if (delta < 0)                estado = 'warn';
+    else                                estado = 'ok'; // sobra: no marca alerta
+    items.push({ fecha, concepto, calculado, declarado, delta, estado });
+  });
+
+  return items;
 }

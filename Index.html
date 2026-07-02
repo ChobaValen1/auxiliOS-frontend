@@ -666,6 +666,11 @@
     <span class="nav-label">Remitos</span>
   </div>
 
+  <div class="nav-item" onclick="goTo('sueldos')" id="nav-sueldos" style="display:none">
+    <span class="nav-icon">💵</span>
+    <span class="nav-label">Sueldos</span>
+  </div>
+
   <div class="nav-bottom" style="position:relative">
     <div id="nav-avatar-popup" class="nav-avatar-popup">
       <div>
@@ -746,7 +751,7 @@
 
         <!-- Selector período -->
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <span style="font-size:11px;color:var(--muted)" id="dash-rend-periodo-lbl">Hoy</span>
+          <span style="font-size:11px;color:var(--muted)"><span id="dash-rend-periodo-lbl">Hoy</span> <span id="dash-rend-comparado" style="font-size:9px;opacity:0.7;margin-left:4px"></span></span>
           <div class="filter-tabs">
             <div class="ftab active" onclick="dashRendPeriod('hoy',this)">Hoy</div>
             <div class="ftab" onclick="dashRendPeriod('semana',this)">7 días</div>
@@ -1916,7 +1921,101 @@
             ✅ Confirmar y guardar remito firmado
           </button>
 
-       
+<!-- ═══════════════════════════════════════════════════════════
+     SCREEN: SUELDOS (Liquidación de sueldos — admin/supervisor)
+     ═══════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-sueldos">
+
+  <!-- Sub-tab nav -->
+  <div class="filter-tabs" style="margin-bottom:16px">
+    <div class="ftab active" data-sub="mes"          onclick="_sueldosSwitchSub('mes', this)">📅 Mes actual</div>
+    <div class="ftab"        data-sub="rendiciones"  onclick="_sueldosSwitchSub('rendiciones', this)">💵 Rendiciones</div>
+    <div class="ftab"        data-sub="objetivos"    onclick="_sueldosSwitchSub('objetivos', this)">🎯 Objetivos</div>
+    <div class="ftab"        data-sub="esquema"      onclick="_sueldosSwitchSub('esquema', this)">💼 Esquema salarial</div>
+    <div class="ftab"        data-sub="historial"    onclick="_sueldosSwitchSub('historial', this)">📜 Historial</div>
+  </div>
+
+  <!-- SUB: mes actual -->
+  <div id="sueldos-sub-mes" class="sueldos-sub">
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="color:var(--muted);font-size:12px">Período</label>
+        <input type="month" id="pl-mes-periodo" class="form-input" style="max-width:180px" />
+        <button class="btn btn-primary" onclick="_generarLiquidacionesMes()" style="font-size:12px;padding:8px 14px">⚡ Generar liquidaciones</button>
+        <button class="btn btn-ghost" onclick="_cargarLiquidacionesMes()" style="font-size:12px;padding:8px 14px">🔄 Refrescar</button>
+        <div style="flex:1"></div>
+        <div id="pl-mes-stats" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div id="pl-mes-body" style="color:var(--muted);font-size:13px">Seleccioná un período y presioná Generar.</div>
+    </div>
+  </div>
+
+  <!-- SUB: rendiciones -->
+  <div id="sueldos-sub-rendiciones" class="sueldos-sub" style="display:none">
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="color:var(--muted);font-size:12px">Período</label>
+        <input type="month" id="pl-rend-periodo" class="form-input" style="max-width:180px" />
+        <select id="pl-rend-chofer" class="form-input" style="max-width:220px"><option value="">Todos los choferes</option></select>
+        <button class="btn btn-ghost" onclick="_cargarRendicionesSueldos()" style="font-size:12px;padding:8px 14px">🔄 Refrescar</button>
+        <div style="flex:1"></div>
+        <div id="pl-rend-stats" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+      <div style="margin-top:10px;color:var(--muted);font-size:11px;line-height:1.5">
+        🟢 OK · 🟡 Sobrante (revisar, no acredita) · 🔴 Faltante (se descuenta del recibo del mes)
+      </div>
+    </div>
+    <div class="card">
+      <div id="pl-rend-body" style="color:var(--muted);font-size:13px">Seleccioná un período para ver las rendiciones.</div>
+    </div>
+  </div>
+
+  <!-- SUB: objetivos -->
+  <div id="sueldos-sub-objetivos" class="sueldos-sub" style="display:none">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
+        <div style="color:var(--muted);font-size:12px;flex:1;min-width:200px">Bonos configurables por concepto. Los cambios afectan solo liquidaciones futuras.</div>
+        <button class="btn btn-primary" onclick="_abrirObjetivoModal()" style="font-size:12px;padding:8px 14px">+ Nuevo objetivo</button>
+      </div>
+      <div id="cfg-obj-body" style="color:var(--muted);font-size:13px">Cargando objetivos...</div>
+    </div>
+  </div>
+
+  <!-- SUB: esquema salarial -->
+  <div id="sueldos-sub-esquema" class="sueldos-sub" style="display:none">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
+        <div style="color:var(--muted);font-size:12px;flex:1;min-width:200px">Configurá el esquema base de cada chofer. Se aplica al generar la liquidación del mes.</div>
+        <button class="btn btn-primary" onclick="_abrirEsquemaMasivoModal()" style="font-size:12px;padding:8px 14px">⚡ Aplicar a todos</button>
+      </div>
+      <div id="cfg-esq-body" style="color:var(--muted);font-size:13px">Cargando esquema salarial...</div>
+    </div>
+  </div>
+
+  <!-- SUB: historial -->
+  <div id="sueldos-sub-historial" class="sueldos-sub" style="display:none">
+    <div class="card" style="margin-bottom:14px">
+      <div class="cfg-rend-filtros">
+        <select id="pl-hist-anio" onchange="_cargarHistorialLiquidaciones()" style="max-width:120px"></select>
+        <select id="pl-hist-chofer" onchange="_cargarHistorialLiquidaciones()" style="max-width:200px"><option value="">Todos los choferes</option></select>
+        <select id="pl-hist-estado" onchange="_renderHistorialTabla()" style="max-width:160px">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="aprobada">Aprobada</option>
+          <option value="pagada">Pagada</option>
+        </select>
+      </div>
+    </div>
+    <div class="card">
+      <div id="pl-hist-body" style="color:var(--muted);font-size:13px">Cargando historial...</div>
+    </div>
+  </div>
+
+</div><!-- /screen-sueldos -->
+
+
 <div class="modal-backdrop" id="modal-settings">
   <div class="modal-box cfg-modal-box">
 
@@ -1930,6 +2029,8 @@
         <button class="cfg-nav-item active" data-tab="tab-flota" onclick="switchConfigTab('tab-flota')"><span class="cfg-nav-dot"></span>Flota</button>
         <button class="cfg-nav-item" data-tab="tab-usuarios" onclick="switchConfigTab('tab-usuarios')"><span class="cfg-nav-dot"></span>Personal</button>
         <button class="cfg-nav-item" data-tab="tab-planes" onclick="switchConfigTab('tab-planes')"><span class="cfg-nav-dot"></span>Catálogo de Planes</button>
+        <button class="cfg-nav-item" data-tab="tab-rendiciones" onclick="switchConfigTab('tab-rendiciones')"><span class="cfg-nav-dot"></span>Rendiciones</button>
+        <button class="cfg-nav-item" data-tab="tab-mantenimiento" onclick="switchConfigTab('tab-mantenimiento')"><span class="cfg-nav-dot"></span>Mantenimiento</button>
         <button class="cfg-nav-item" data-tab="tab-emergencias" onclick="switchConfigTab('tab-emergencias')"><span class="cfg-nav-dot"></span>Contactos de Emergencia</button>
         <button class="cfg-nav-item" data-tab="tab-mi-cuenta" onclick="switchConfigTab('tab-mi-cuenta')"><span class="cfg-nav-dot"></span>Mi cuenta</button>
       </nav>
@@ -1956,6 +2057,40 @@
 
         <div id="tab-planes" class="config-section" style="display:none">
           <div id="lista-admin-planes" style="color:var(--muted);font-size:13px">Cargando planes...</div>
+        </div>
+
+        <div id="tab-rendiciones" class="config-section" style="display:none">
+          <div class="cfg-rend-filtros">
+            <input id="cfg-rend-buscar" type="text" placeholder="Buscar chofer…" oninput="_renderRendicionesTabla()">
+            <select id="cfg-rend-status" onchange="_renderRendicionesTabla()">
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente aprobación</option>
+              <option value="observada">Observada / con diferencia</option>
+              <option value="aprobada">Aprobada</option>
+            </select>
+            <select id="cfg-rend-rango" onchange="cargarRendicionesTab()">
+              <option value="30">Últimos 30 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="365">Último año</option>
+              <option value="all">Todo</option>
+            </select>
+          </div>
+          <div id="cfg-rend-stats" class="cfg-rend-stats"></div>
+          <div id="cfg-rend-body" style="color:var(--muted);font-size:13px">Cargando rendiciones...</div>
+        </div>
+
+        <div id="tab-mantenimiento" class="config-section" style="display:none">
+          <div class="cfg-rend-filtros">
+            <input id="cfg-mant-buscar" type="text" placeholder="Buscar patente o plan…" oninput="_renderMantenimientoTab()">
+            <select id="cfg-mant-filtro" onchange="_renderMantenimientoTab()">
+              <option value="todos">Todos</option>
+              <option value="vencido">Solo vencidos</option>
+              <option value="proximo">Solo próximos</option>
+            </select>
+            <button class="btn btn-ghost" onclick="cargarMantenimientoTab()" style="font-size:11px;padding:7px 13px">🔄 Refrescar</button>
+          </div>
+          <div id="cfg-mant-stats" class="cfg-rend-stats"></div>
+          <div id="cfg-mant-body" style="color:var(--muted);font-size:13px">Cargando mantenimiento...</div>
         </div>
 
         <div id="tab-mi-cuenta" class="config-section" style="display:none"></div>
@@ -2397,6 +2532,323 @@
     </div>
     <div class="modal-footer" style="display:flex;justify-content:flex-end">
       <button class="btn btn-primary" onclick="closeModal('modal-formatos')">Entendido</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-camion-timeline" style="z-index:10001">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-head">
+      <span class="modal-head-title" id="cam-tl-header">Timeline camión</span>
+      <button class="modal-close" onclick="closeModal('modal-camion-timeline')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Unidad</div>
+          <div id="cam-tl-unidad" style="font-weight:700;color:var(--text)">—</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">KM actual</div>
+          <div id="cam-tl-km" style="font-weight:700;color:var(--text);font-family:'DM Mono'">—</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase">Rango:</label>
+        <select id="cam-tl-rango" onchange="_reloadTimelineCamion()" style="flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px">
+          <option value="30">Últimos 30 días</option>
+          <option value="90" selected>Últimos 90 días</option>
+          <option value="365">Último año</option>
+          <option value="all">Todo</option>
+        </select>
+      </div>
+      <div id="cam-tl-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px"></div>
+      <div id="cam-tl-body" style="max-height:340px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="closeModal('modal-camion-timeline')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-objetivo-edit">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-head">
+      <span class="modal-head-title" id="obj-modal-title">Nuevo objetivo</span>
+      <button class="modal-close" onclick="closeModal('modal-objetivo-edit')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nombre <span style="color:var(--red)">*</span></label>
+        <input class="form-input" id="obj-nombre" type="text" placeholder="Ej: Baterías">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo <span style="color:var(--red)">*</span></label>
+        <select class="form-input" id="obj-tipo">
+          <option value="fijo">Monto fijo por unidad</option>
+          <option value="porcentaje">Porcentaje sobre total</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="obj-valor-lbl">Valor <span style="color:var(--red)">*</span></label>
+        <input class="form-input" id="obj-valor" type="number" step="0.01" min="0" placeholder="0">
+        <div style="color:var(--muted);font-size:11px;margin-top:4px" id="obj-valor-hint">Se pagará $ X por cada unidad cumplida.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripción (opcional)</label>
+        <input class="form-input" id="obj-desc" type="text" placeholder="Detalle o condición para pagar">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="obj-activo" checked>
+        <label for="obj-activo" style="color:var(--muted);font-size:12px;margin:0">Activo (se usa para liquidar)</label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-objetivo-edit')">Cancelar</button>
+      <button class="btn btn-primary" onclick="_guardarObjetivo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-esquema-edit">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-head">
+      <span class="modal-head-title">Esquema salarial</span>
+      <button class="modal-close" onclick="closeModal('modal-esquema-edit')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg-elev);padding:10px 12px;border-radius:8px;margin-bottom:14px">
+        <div style="color:var(--muted);font-size:11px">Chofer</div>
+        <div id="esq-chofer" style="font-weight:600;font-size:14px">—</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sueldo básico mensual</label>
+        <input class="form-input" id="esq-basico" type="number" step="0.01" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor por km ($/km)</label>
+        <input class="form-input" id="esq-valor-km" type="number" step="0.01" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor por servicio ($/servicio)</label>
+        <input class="form-input" id="esq-valor-serv" type="number" step="0.01" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bono presentismo (todo o nada)</label>
+        <input class="form-input" id="esq-bono-pres" type="number" step="0.01" min="0" placeholder="0">
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">Se paga si el chofer no tuvo incidentes en el mes.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-esquema-edit')">Cancelar</button>
+      <button class="btn btn-primary" onclick="_guardarEsquema()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-esquema-masivo">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-head">
+      <span class="modal-head-title">⚡ Aplicar esquema a todos los choferes</span>
+      <button class="modal-close" onclick="closeModal('modal-esquema-masivo')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;color:#f59e0b;font-size:12px;border-radius:4px;margin-bottom:14px">
+        ⚠ Los valores completados se sobrescriben en TODOS los choferes activos. Dejá vacío el campo que querés preservar tal cual está en cada chofer.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sueldo básico mensual</label>
+        <input class="form-input" id="esqm-basico" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor por km ($/km)</label>
+        <input class="form-input" id="esqm-valor-km" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Valor por servicio ($/servicio)</label>
+        <input class="form-input" id="esqm-valor-serv" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bono presentismo</label>
+        <input class="form-input" id="esqm-bono-pres" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="esqm-solo-sin-esquema">
+        <label for="esqm-solo-sin-esquema" style="color:var(--muted);font-size:12px;margin:0">Solo aplicar a choferes sin esquema (no pisar los ya configurados)</label>
+      </div>
+      <div id="esqm-preview" style="margin-top:10px;color:var(--muted);font-size:12px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-esquema-masivo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="_guardarEsquemaMasivo()">Aplicar a todos</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-recibo-payroll">
+  <div class="modal-box" style="max-width:720px">
+    <div class="modal-head">
+      <span class="modal-head-title">🧾 Recibo de sueldo</span>
+      <button class="modal-close" onclick="closeModal('modal-recibo-payroll')">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Cabecera -->
+      <div style="background:var(--bg-elev);padding:12px 14px;border-radius:8px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="color:var(--muted);font-size:11px">Chofer</div>
+          <div id="rec-chofer" style="font-weight:600;font-size:14px">—</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:11px">Período</div>
+          <div id="rec-periodo" style="font-weight:600;font-size:14px">—</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:11px">Estado</div>
+          <div id="rec-estado">—</div>
+        </div>
+        <div>
+          <div style="color:var(--muted);font-size:11px">Total</div>
+          <div id="rec-total" style="font-weight:700;font-size:18px;color:var(--amber);font-family:'DM Mono',monospace">$0</div>
+        </div>
+      </div>
+      <!-- Sub-tabs -->
+      <div class="filter-tabs" style="margin-bottom:14px">
+        <div class="ftab active" data-recsub="resumen"   onclick="_reciboSwitch('resumen')">📊 Resumen</div>
+        <div class="ftab"        data-recsub="jornadas"  onclick="_reciboSwitch('jornadas')">📅 Jornadas</div>
+        <div class="ftab"        data-recsub="objetivos" onclick="_reciboSwitch('objetivos')">🎯 Objetivos</div>
+        <div class="ftab"        data-recsub="efectivos" onclick="_reciboSwitch('efectivos')">💵 Efectivos</div>
+        <div class="ftab"        data-recsub="rendiciones" onclick="_reciboSwitch('rendiciones')">📋 Rendiciones</div>
+      </div>
+      <div id="rec-sub-resumen"   class="rec-sub"></div>
+      <div id="rec-sub-jornadas"  class="rec-sub" style="display:none"></div>
+      <div id="rec-sub-objetivos" class="rec-sub" style="display:none"></div>
+      <div id="rec-sub-efectivos" class="rec-sub" style="display:none"></div>
+      <div id="rec-sub-rendiciones" class="rec-sub" style="display:none"></div>
+    </div>
+    <div class="modal-foot" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div id="rec-acciones-estado" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="_exportarReciboPDF()" style="font-size:12px">📄 Exportar PDF</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-recibo-payroll')" style="font-size:12px">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-cumplimiento-nuevo">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-head">
+      <span class="modal-head-title">🎯 Cargar cumplimiento</span>
+      <button class="modal-close" onclick="closeModal('modal-cumplimiento-nuevo')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg-elev);padding:10px 12px;border-radius:8px;margin-bottom:14px">
+        <div style="color:var(--muted);font-size:11px">Chofer · Período</div>
+        <div id="cump-chofer-per" style="font-weight:600;font-size:13px">—</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Objetivo <span style="color:var(--red)">*</span></label>
+        <select class="form-input" id="cump-objetivo"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha</label>
+        <input class="form-input" id="cump-fecha" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="cump-cant-lbl">Cantidad <span style="color:var(--red)">*</span></label>
+        <input class="form-input" id="cump-cantidad" type="number" step="0.01" min="0" placeholder="0">
+        <div style="color:var(--muted);font-size:11px;margin-top:4px" id="cump-cant-hint">Cantidad de unidades cumplidas.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Referencia (opcional)</label>
+        <input class="form-input" id="cump-ref" type="text" placeholder="Nro. remito, service_id, etc.">
+      </div>
+      <div style="background:var(--bg-elev);padding:10px 12px;border-radius:8px;margin-top:12px">
+        <div style="color:var(--muted);font-size:11px">Bono calculado</div>
+        <div id="cump-bono-preview" style="font-weight:700;color:var(--amber);font-family:'DM Mono',monospace">$0</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-cumplimiento-nuevo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="_guardarCumplimiento()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-rendicion-observar" style="z-index:10001">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-head">
+      <span class="modal-head-title" style="color:var(--amber)">Observar rendición</span>
+      <button class="modal-close" onclick="closeModal('modal-rendicion-observar')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Chofer</div>
+          <div id="rend-obs-chofer" style="font-weight:700;color:var(--text)">—</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Fecha</div>
+          <div id="rend-obs-fecha" style="font-weight:700;color:var(--text)">—</div>
+        </div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:12px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Diferencia detectada</div>
+        <div id="rend-obs-diff" style="font-size:22px;font-weight:800;font-family:'DM Mono'">$0</div>
+      </div>
+      <label style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Nota para el chofer *</label>
+      <textarea id="rend-obs-nota" rows="4" placeholder="Explicá qué corregir o revisar..." style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--text);font-family:inherit;font-size:13px;resize:vertical"></textarea>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('modal-rendicion-observar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarObservarRendicion()">Marcar observada</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-rendicion-detalle" style="z-index:10001">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-head">
+      <span class="modal-head-title">Detalle rendición</span>
+      <button class="modal-close" onclick="closeModal('modal-rendicion-detalle')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Chofer</div>
+          <div id="rend-det-chofer" style="font-weight:700;color:var(--text)">—</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Fecha</div>
+          <div id="rend-det-fecha" style="font-weight:700;color:var(--text)">—</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Declarado</div>
+          <div id="rend-det-declarado" style="font-weight:700;color:var(--text);font-family:'DM Mono';font-size:14px">$0</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Esperado</div>
+          <div id="rend-det-esperado" style="font-weight:700;color:var(--text);font-family:'DM Mono';font-size:14px">$0</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;text-align:center">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px">Diferencia</div>
+          <div id="rend-det-diff" style="font-weight:800;font-family:'DM Mono';font-size:14px">$0</div>
+        </div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Nota chofer</div>
+        <div id="rend-det-nota-chofer" style="color:var(--text);font-size:12px;line-height:1.5">—</div>
+      </div>
+      <div id="rend-det-nota-admin-wrap" style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:none">
+        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;margin-bottom:4px">Nota administración</div>
+        <div id="rend-det-nota-admin" style="color:#fde68a;font-size:12px;line-height:1.5">—</div>
+      </div>
+      <div id="rend-det-remitos" style="max-height:240px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="closeModal('modal-rendicion-detalle')">Cerrar</button>
     </div>
   </div>
 </div>

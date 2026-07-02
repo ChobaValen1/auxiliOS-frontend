@@ -1,0 +1,15 @@
+node_modules/
+.env
+uploads/
+.claude/
+"Supabase Token.txt"
+Supabase Token.txt
+diagnose-users.js
+fix-auth-users.js
+fix-mismatch-user.js
+sigma_db.sql
+db/
+supabase/
+docs/
+mockup_docs.html
+server.js

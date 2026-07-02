@@ -1,6 +1,37 @@
 // Variable global: jornada activa del chofer (persiste en localStorage entre reinicios)
 let _jornadaActivaLocal = null;
 
+// ── ANTI-AUTOFILL GLOBAL ──────────────────────────────────
+// Chrome/Firefox rellenan inputs con usuarios/contraseñas guardados aunque no
+// sean campos de login. Marcamos todos los inputs con autocomplete="new-password"
+// (bypass que los password managers respetan) salvo el input de email de nuevo
+// usuario, que necesita permitir la entrada de email pero sin sugerencias.
+function _antiAutofillPatch(root = document) {
+  const inputs = root.querySelectorAll('input:not([data-af-patched]), textarea:not([data-af-patched])');
+  inputs.forEach(inp => {
+    inp.setAttribute('autocomplete', 'new-password');
+    inp.setAttribute('autocorrect', 'off');
+    inp.setAttribute('autocapitalize', 'off');
+    inp.setAttribute('spellcheck', 'false');
+    inp.dataset.afPatched = '1';
+  });
+  root.querySelectorAll('form:not([data-af-patched])').forEach(f => {
+    f.setAttribute('autocomplete', 'off');
+    f.dataset.afPatched = '1';
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  _antiAutofillPatch();
+  const obs = new MutationObserver(muts => {
+    muts.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType !== 1) return;
+      if (n.matches?.('input,textarea,form')) _antiAutofillPatch(n.parentNode || document);
+      else if (n.querySelector?.('input,textarea,form')) _antiAutofillPatch(n);
+    }));
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+});
+
 function showModalError(errorDivId, msg) {
   const el = document.getElementById(errorDivId);
   if (!el) { toast(msg, 'error'); return; }
@@ -109,6 +140,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }); // <-- ACÁ CIERRA EL FOREACH CORRECTAMENTE
 
+  // 2b. Sueldos: screen-sueldos → hijo directo de .content; modales payroll → body
+  const contentEl = document.querySelector('.content');
+  const screenSueldos = document.getElementById('screen-sueldos');
+  if (screenSueldos && contentEl && screenSueldos.parentElement !== contentEl) {
+    contentEl.appendChild(screenSueldos);
+  }
+  ['modal-objetivo-edit', 'modal-esquema-edit', 'modal-esquema-masivo', 'modal-recibo-payroll', 'modal-cumplimiento-nuevo'].forEach(id => {
+    const modal = document.getElementById(id);
+    if (modal && modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+  });
+
   // 3. Boton Configuración (Global)
   const btnSettings = document.getElementById('btn-admin-settings');
   if (btnSettings) {
@@ -200,6 +244,7 @@ const SCREENS = {
   camion:     { title:'CONTROL DEL CAMIÓN', sub:'Módulo 2 · Revisión y Carga' },
   documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
   remitos:    { title:'REMITOS VIRTUALES',  sub:'Módulo 4 · Firma digital y archivo' },
+  sueldos:    { title:'LIQUIDACIÓN DE SUELDOS', sub:'Objetivos, esquema salarial y recibos' },
 };
 
 function goTo(name) {
@@ -219,6 +264,7 @@ function goTo(name) {
     showRemitosView('lista');
     cargarRemitos();
   }
+  if (name === 'sueldos') cargarSueldosTab();
 }
 
 function toggleWorkshop(row) {
@@ -2274,6 +2320,8 @@ let _dashVistaActual = 'rendimiento';
 let _rendPeriodo     = 'hoy';
 let _negocioData     = null;
 let _negocioRaw      = null;   // datos sin filtrar
+let _negocioRawAnt   = null;   // datos período anterior (comparativo)
+let _negocioAntLbl   = '';     // label del período anterior ("6 meses previos", etc.)
 let _negocioFiltered = null;   // snapshot filtrado para export
 let _fltTrucks       = null;   // Set de truck_id seleccionados (null = todos)
 let _fltDrivers      = null;   // Set de driver_id seleccionados (null = todos)
@@ -2411,6 +2459,88 @@ function _desde(tipo) {
   return d.toISOString().slice(0,10);
 }
 
+// Rango del período equivalente inmediatamente anterior (Vista Chofer)
+function _periodoAnterior(tipo) {
+  const now = new Date();
+  if (tipo === 'hoy') {
+    const d = new Date(now); d.setDate(d.getDate() - 1);
+    const iso = d.toISOString().slice(0, 10);
+    return { desde: iso, hasta: iso, label: 'ayer' };
+  }
+  if (tipo === 'semana') {
+    const day = now.getDay() || 7;
+    const monday = new Date(now); monday.setDate(now.getDate() - (day - 1));
+    const lunAnt = new Date(monday); lunAnt.setDate(monday.getDate() - 7);
+    const domAnt = new Date(monday); domAnt.setDate(monday.getDate() - 1);
+    return {
+      desde: lunAnt.toISOString().slice(0, 10),
+      hasta: domAnt.toISOString().slice(0, 10),
+      label: 'semana anterior',
+    };
+  }
+  // mes = últimos 12 meses → comparar contra 12 meses previos
+  const d = new Date(now);
+  d.setMonth(d.getMonth() - 23); d.setDate(1);
+  const desde = d.toISOString().slice(0, 10);
+  const h = new Date(now.getFullYear(), now.getMonth() - 11, 0); // último día del mes previo al rango actual
+  return {
+    desde,
+    hasta: h.toISOString().slice(0, 10),
+    label: '12 meses previos',
+  };
+}
+
+// Rango del período equivalente anterior (Vista Negocio: 1m/3m/6m/12m/año)
+function _periodoAnteriorNeg(p) {
+  const now = new Date();
+  const mesesTable = { '1m': 1, '3m': 3, '6m': 6, '12m': 12 };
+  let meses = mesesTable[p];
+  if (p === 'año') meses = now.getMonth() + 1; // meses transcurridos del año actual
+  if (!meses) meses = 6;
+  // rango actual: [ini_actual, hoy]; anterior: [ini_actual - meses, ini_actual - 1día]
+  const iniActual = new Date(now.getFullYear(), now.getMonth() - (meses - 1), 1);
+  const iniAnt    = new Date(iniActual.getFullYear(), iniActual.getMonth() - meses, 1);
+  const finAnt    = new Date(iniActual); finAnt.setDate(0);
+  const labels = { '1m': 'mes anterior', '3m': '3 meses previos', '6m': '6 meses previos', '12m': '12 meses previos', 'año': 'año anterior' };
+  return {
+    desde: iniAnt.toISOString().slice(0, 10),
+    hasta: finAnt.toISOString().slice(0, 10),
+    label: labels[p] || 'período anterior',
+  };
+}
+
+// Badge inline con delta ▲/▼/→. invert=true para KPIs donde menos es mejor (ej. pendiente/gastos)
+function _deltaBadge(actual, anterior, opts = {}) {
+  const invert = !!opts.invert;
+  if (anterior === null || anterior === undefined || isNaN(anterior)) return '';
+  const cur = Number(actual) || 0;
+  const prev = Number(anterior) || 0;
+  const base = 'display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;margin-left:5px;font-weight:600;font-family:\'DM Mono\',monospace';
+  if (prev === 0 && cur === 0) {
+    return `<span style="${base};background:rgba(107,114,128,0.18);color:var(--muted)" title="Sin cambios">→ 0%</span>`;
+  }
+  if (prev === 0) {
+    return `<span style="${base};background:rgba(74,222,128,0.18);color:#4ade80" title="Sin dato anterior">▲ nuevo</span>`;
+  }
+  if (cur === 0) {
+    const color = invert ? '#4ade80' : '#ef4444';
+    const bg = invert ? 'rgba(74,222,128,0.18)' : 'rgba(239,68,68,0.18)';
+    return `<span style="${base};background:${bg};color:${color}" title="Anterior: ${prev.toLocaleString('es-AR')}">▼ -100%</span>`;
+  }
+  const pctRaw = ((cur - prev) / Math.abs(prev)) * 100;
+  const pct = Math.abs(pctRaw) < 1 ? Math.round(pctRaw * 10) / 10 : Math.round(pctRaw);
+  if (pct === 0) {
+    return `<span style="${base};background:rgba(107,114,128,0.18);color:var(--muted)" title="Anterior: ${prev.toLocaleString('es-AR')}">→ 0%</span>`;
+  }
+  const positivo = pct > 0;
+  const good = invert ? !positivo : positivo;
+  const color = good ? '#4ade80' : '#ef4444';
+  const bg = good ? 'rgba(74,222,128,0.18)' : 'rgba(239,68,68,0.18)';
+  const arrow = positivo ? '▲' : '▼';
+  const val = positivo ? `+${pct}%` : `${pct}%`;
+  return `<span style="${base};background:${bg};color:${color}" title="Anterior: ${prev.toLocaleString('es-AR')}">${arrow} ${val}</span>`;
+}
+
 // ── cargarDashboard ───────────────────────────
 async function _inicializarFiltrosRendAdmin() {
   const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
@@ -2510,13 +2640,44 @@ async function _cargarViewRendimiento() {
     return;
   }
 
-  const [datos, jornadas, alertasPers] = await Promise.all([
+  const periodoAnt = _periodoAnterior(_rendPeriodo);
+  const cmpLbl = document.getElementById('dash-rend-comparado');
+  if (cmpLbl) cmpLbl.textContent = `vs. ${periodoAnt.label}`;
+
+  const [datos, jornadas, alertasPers, datosAnt] = await Promise.all([
     cargarDatosChofer(targetUserId, desde, targetTruck),
     cargarJornadasAbiertas(),
     esChofer ? cargarAlertasPersonales() : Promise.resolve([]),
+    cargarComparativoChofer(targetUserId, periodoAnt.desde, periodoAnt.hasta, targetTruck),
   ]);
 
   const { remitos, jornadas: logs, fuel, rendicion, alertas } = datos;
+
+  // ── Cálculos comparativos (período anterior) ──
+  let factTotalAnt = 0, factEfAnt = 0, factTrAnt = 0;
+  (datosAnt.remitos || []).forEach(r => {
+    const p1 = r.pago_1_monto || 0, p2 = r.pago_2_monto || 0;
+    factTotalAnt += p1 + p2;
+    if (r.pago_1_metodo === 'efectivo') factEfAnt += p1; else if (r.pago_1_metodo === 'transferencia') factTrAnt += p1;
+    if (r.pago_2_metodo === 'efectivo') factEfAnt += p2; else if (r.pago_2_metodo === 'transferencia') factTrAnt += p2;
+  });
+  const efRendidoAnt = (datosAnt.rendicion || []).reduce((s, r) => s + (r.efectivo_declarado || 0), 0);
+  const gastosExtraAnt = (datosAnt.rendicion || []).reduce((s, r) => s + (r.gastos_extra || 0), 0);
+  const pendienteAnt = Math.max(0, factEfAnt - efRendidoAnt);
+  const logsAnt = datosAnt.jornadas || [];
+  const kmTotalAnt = logsAnt.reduce((s, j) => s + Math.max(0, (j.km_final||0) - (j.km_inicio||0)), 0);
+  const srvsAnt = (datosAnt.remitos || []).length;
+  const truckIdsAnt = new Set(logsAnt.map(j => j.truck_id).filter(Boolean));
+  const litrosAnt = (datosAnt.fuel || []).filter(f => truckIdsAnt.has(f.truck_id)).reduce((s, f) => s + (f.liters || 0), 0);
+  const fuelEfectivoAnt = (datosAnt.fuel || []).filter(f => truckIdsAnt.has(f.truck_id) && f.payment_method === 'efectivo')
+    .reduce((s, f) => s + (f.total_cost || 0), 0);
+  const netoAnt = Math.max(0, factEfAnt - fuelEfectivoAnt - gastosExtraAnt);
+  const kmPorLAnt = litrosAnt > 0 ? (kmTotalAnt / litrosAnt) : null;
+  const kmPorJornadaAnt = logsAnt.length > 0 ? (kmTotalAnt / logsAnt.length) : null;
+  const logIdsConSrvAnt = new Set((datosAnt.remitos || []).map(r => r.log_id).filter(Boolean));
+  const kmJornadasSrvAnt = logsAnt.filter(j => logIdsConSrvAnt.has(j.log_id))
+    .reduce((s, j) => s + Math.max(0, (j.km_final||0) - (j.km_inicio||0)), 0);
+  const kmPorViajeAnt = srvsAnt > 0 && kmJornadasSrvAnt > 0 ? (kmJornadasSrvAnt / srvsAnt) : null;
   _rendRemitosActuales = remitos;
   _rendFuelActuales       = fuel;
   _rendRendicionActuales  = rendicion;
@@ -2580,7 +2741,7 @@ async function _cargarViewRendimiento() {
       (esChofer ? '' : _KPI('💰', 'Total generado',
         factTotal>0 ? '$'+_AR(factTotal) : '<span style="font-size:14px;color:var(--muted);font-weight:400">Sin datos</span>',
         'var(--amber)',
-        factTotal>0 ? `${srvs} servicios` : 'No hay servicios registrados',
+        (factTotal>0 ? `${srvs} servicios` : 'No hay servicios registrados') + _deltaBadge(factTotal, factTotalAnt),
         null,
         factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalTotalGenerado()">📋 Ver detalle</span>` : null)) +
       (() => {
@@ -2588,14 +2749,14 @@ async function _cargarViewRendimiento() {
           .reduce((s,f)=>s+(f.total_cost||0),0);
         const neto = Math.max(0, factEf - fuelEfectivo - totalGastosExtra);
         return _KPI('💵', 'Efectivo en mano',  '$'+_AR(neto),   'var(--green)',
-          `$${_AR(factEf)} cobrado − $${_AR(fuelEfectivo + totalGastosExtra)} gastos en efectivo`, null,
+          `$${_AR(factEf)} cobrado − $${_AR(fuelEfectivo + totalGastosExtra)} gastos${_deltaBadge(neto, netoAnt)}`, null,
           `<span class="kpi-dash-cta-btn" onclick="abrirModalDesgloseEfectivo()">📋 Ver detalle</span>`);
       })() +
       _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
-        `${trCount} cobros`, null,
+        `${trCount} cobros${_deltaBadge(factTr, factTrAnt)}`, null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
       _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
-        pendiente>0?'sin rendir':'al día ✓', null,
+        (pendiente>0?'sin rendir':'al día ✓') + _deltaBadge(pendiente, pendienteAnt, {invert:true}), null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalPendienteRendir()">📋 Ver detalle</span>`);
   }
 
@@ -2607,29 +2768,29 @@ async function _cargarViewRendimiento() {
     _KPI('🚛', 'Km recorridos',
       kmTotal>0 ? kmTotal.toLocaleString('es-AR')+' km' : _EMPTY,
       'var(--amber)',
-      kmTotal>0 ? `${logs.length} jornadas` : 'No hay jornadas registradas',
+      (kmTotal>0 ? `${logs.length} jornadas` : 'No hay jornadas registradas') + _deltaBadge(kmTotal, kmTotalAnt),
       null,
       kmTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalKmRecorridos()">📋 Ver detalle</span>` : null) +
     _KPI('📦', 'Servicios',
       srvs>0 ? String(srvs) : _EMPTY,
       'var(--blue)',
-      srvs>0 ? `en el período <span style="cursor:pointer;color:var(--accent);font-size:10px" onclick="goTo('remitos')">Ver remitos →</span>` : 'No hay servicios registrados',
+      (srvs>0 ? `en el período <span style="cursor:pointer;color:var(--accent);font-size:10px" onclick="goTo('remitos')">Ver remitos →</span>` : 'No hay servicios registrados') + _deltaBadge(srvs, srvsAnt),
       null) +
     _KPI('⛽', 'KM / Litro',
       kmPorL!=='—' ? kmPorL : _EMPTY,
       'var(--purple)',
-      kmPorL!=='—' ? 'km/l' : 'No hay cargas de combustible',
+      (kmPorL!=='—' ? 'km/l' : 'No hay cargas de combustible') + _deltaBadge(parseFloat(kmPorL), kmPorLAnt),
       null);
   if (opBot) opBot.innerHTML =
     _KPI('📊', 'KM / Jornada',
       kmPorJornada!==null ? String(kmPorJornada) : _EMPTY,
       'var(--green)',
-      kmPorJornada!==null ? `${srvPorJornada} srv/jornada` : 'No hay jornadas registradas',
+      (kmPorJornada!==null ? `${srvPorJornada} srv/jornada` : 'No hay jornadas registradas') + _deltaBadge(kmPorJornada, kmPorJornadaAnt),
       null) +
     _KPI('📍', 'KM / Viaje',
       kmPorViaje!==null ? String(kmPorViaje) : _EMPTY,
       'var(--green)',
-      kmPorViaje!==null ? 'promedio' : 'No hay servicios con KM',
+      (kmPorViaje!==null ? 'promedio' : 'No hay servicios con KM') + _deltaBadge(kmPorViaje, kmPorViajeAnt),
       null);
 
   // ── Gráfico de evolución (modo según filtro Hoy/Semana/Mes) ──
@@ -2778,8 +2939,14 @@ async function _cargarViewNegocio() {
     const el = document.getElementById(id); if (el) el.innerHTML = LOAD;
   });
 
-  const raw = await cargarDatosNegocio(_periodoDesde(_fltPeriodo));
-  _negocioRaw = raw;
+  const periodoAntNeg = _periodoAnteriorNeg(_fltPeriodo);
+  const [raw, rawAnt] = await Promise.all([
+    cargarDatosNegocio(_periodoDesde(_fltPeriodo)),
+    cargarComparativoNegocio(periodoAntNeg.desde, periodoAntNeg.hasta),
+  ]);
+  _negocioRaw    = raw;
+  _negocioRawAnt = rawAnt;
+  _negocioAntLbl = periodoAntNeg.label;
   _fltTrucks  = null;
   _fltDrivers = null;
   _dashFiltroInicializarUI(raw.usuarios, raw.jornadas);
@@ -2798,8 +2965,14 @@ async function dashFiltroPeriodo(p) {
   ['dash-neg-kpis-main','dash-neg-kpis-sec','dash-panel-fact','dash-panel-gastos','dash-ranking-body','dash-alertas-neg'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = LOAD;
   });
-  const raw = await cargarDatosNegocio(_periodoDesde(p));
-  _negocioRaw = raw;
+  const periodoAntNeg = _periodoAnteriorNeg(p);
+  const [raw, rawAnt] = await Promise.all([
+    cargarDatosNegocio(_periodoDesde(p)),
+    cargarComparativoNegocio(periodoAntNeg.desde, periodoAntNeg.hasta),
+  ]);
+  _negocioRaw    = raw;
+  _negocioRawAnt = rawAnt;
+  _negocioAntLbl = periodoAntNeg.label;
   _fltTrucks  = null;
   _fltDrivers = null;
   _dashFiltroInicializarUI(raw.usuarios, raw.jornadas);
@@ -2842,10 +3015,43 @@ function _renderNegocioFiltrado() {
   const stEl = document.getElementById('dash-filter-status');
   if (stEl) {
     const filtered = _fltTrucks || _fltDrivers;
+    const antTxt = _negocioAntLbl ? ` <span style="opacity:0.7">· vs. ${_negocioAntLbl}</span>` : '';
     stEl.innerHTML = filtered
-      ? `<div class="dash-filter-status-dot"></div>Mostrando ${selTrucks} de ${totTrucks} camiones · ${selDrivers} de ${totDrivers} choferes`
-      : `<div class="dash-filter-status-dot"></div>Toda la flota · ${totTrucks} camiones · ${totDrivers} choferes · ${_periodoLabel(_fltPeriodo)}`;
+      ? `<div class="dash-filter-status-dot"></div>Mostrando ${selTrucks} de ${totTrucks} camiones · ${selDrivers} de ${totDrivers} choferes${antTxt}`
+      : `<div class="dash-filter-status-dot"></div>Toda la flota · ${totTrucks} camiones · ${totDrivers} choferes · ${_periodoLabel(_fltPeriodo)}${antTxt}`;
   }
+
+  // ── Comparativo período anterior (mismos filtros) ──
+  let factTotalAntN = 0, factEfAntN = 0, kmTotalAntN = 0, gastosFuelAntN = 0, litrosAntN = 0;
+  let srvsAntN = 0, jornadasAntN = 0;
+  if (_negocioRawAnt) {
+    const rA = _negocioRawAnt.remitos || [];
+    const jA = _negocioRawAnt.jornadas || [];
+    const fA = _negocioRawAnt.fuel || [];
+    const logTruckMapAnt = {};
+    jA.forEach(j => { if (j.log_id) logTruckMapAnt[j.log_id] = j.truck_id; });
+    const rAntF = rA.filter(r =>
+      (!_fltDrivers || _fltDrivers.has(r.driver_id)) &&
+      (!_fltTrucks  || _fltTrucks.has(logTruckMapAnt[r.log_id]))
+    );
+    const jAntF = jA.filter(j => (!_fltDrivers || _fltDrivers.has(j.driver_id)) && (!_fltTrucks || _fltTrucks.has(j.truck_id)));
+    const fAntF = fA.filter(f => (!_fltTrucks || _fltTrucks.has(f.truck_id)));
+    rAntF.forEach(r => {
+      const p1 = r.pago_1_monto||0, p2 = r.pago_2_monto||0;
+      factTotalAntN += p1 + p2;
+      if (r.pago_1_metodo==='efectivo') factEfAntN += p1;
+      if (r.pago_2_metodo==='efectivo') factEfAntN += p2;
+    });
+    kmTotalAntN = jAntF.reduce((s,j) => s + Math.max(0,(j.km_final||0)-(j.km_inicio||0)), 0);
+    gastosFuelAntN = fAntF.reduce((s,f) => s + (f.total_cost||0), 0);
+    litrosAntN = fAntF.reduce((s,f) => s + (f.liters||0), 0);
+    srvsAntN = rAntF.length;
+    jornadasAntN = jAntF.length;
+  }
+  const resultadoAntN = factTotalAntN - gastosFuelAntN;
+  const ticketPromAntN = srvsAntN > 0 ? (factTotalAntN / srvsAntN) : null;
+  const porKmGAntN = kmTotalAntN > 0 ? (factTotalAntN / kmTotalAntN) : null;
+  const costoKmAntN = (kmTotalAntN > 0 && litrosAntN > 0) ? (gastosFuelAntN / kmTotalAntN) : null;
 
   // ── Facturación ──
   let factTotal = 0, factEf = 0, factTr = 0, factOtros = 0, firmados = 0;
@@ -2914,19 +3120,19 @@ function _renderNegocioFiltrado() {
     _KPI('💵', 'Facturación',
       factTotal>0 ? '$'+_AR(factTotal) : _NEG_EMPTY,
       'var(--amber)',
-      factTotal>0 ? `${remitos.length} servicios` : 'No hay servicios registrados',
+      (factTotal>0 ? `${remitos.length} servicios` : 'No hay servicios registrados') + _deltaBadge(factTotal, factTotalAntN),
       null,
       factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioFacturacion()">📋 Ver detalle</span>` : null) +
     _KPI('📈', 'Resultado op.',
       factTotal>0 ? (resultado>=0?'$':'−$') + _AR(Math.abs(resultado)) : _NEG_EMPTY,
       factTotal>0 ? (resultado>=0?'var(--green)':'var(--red)') : 'var(--muted)',
-      factTotal>0 ? `${margenPct}% margen` : 'No hay facturación en el período',
+      (factTotal>0 ? `${margenPct}% margen` : 'No hay facturación en el período') + _deltaBadge(resultado, resultadoAntN),
       null,
       factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioResultado()">📋 Ver detalle</span>` : null) +
     _KPI('💰', 'Caja en calle',
       cajaEnCalle>0 ? '$'+_AR(cajaEnCalle) : _NEG_EMPTY,
       'var(--blue)',
-      cajaEnCalle>0 ? 'efectivo en manos de choferes' : 'No hay efectivo cobrado',
+      (cajaEnCalle>0 ? 'efectivo en manos de choferes' : 'No hay efectivo cobrado') + _deltaBadge(cajaEnCalle, factEfAntN),
       null,
       cajaEnCalle>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalCajaCalle()">📋 Ver detalle</span>` : null);
 
@@ -2936,25 +3142,25 @@ function _renderNegocioFiltrado() {
     _KPI('🚛', 'Km totales',
       kmTotal>0 ? kmTotal.toLocaleString('es-AR')+' km' : _NEG_EMPTY,
       'var(--amber)',
-      kmTotal>0 ? jornadasTot+' jornadas' : 'No hay jornadas cerradas',
+      (kmTotal>0 ? jornadasTot+' jornadas' : 'No hay jornadas cerradas') + _deltaBadge(kmTotal, kmTotalAntN),
       null,
       kmTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioKmTotales()">📋 Ver detalle</span>` : null) +
     _KPI('🎫', 'Ticket prom.',
       ticketProm>0 ? '$'+_AR(ticketProm) : _NEG_EMPTY,
       'var(--green)',
-      ticketProm>0 ? remitos.length+' servicios' : 'No hay servicios registrados',
+      (ticketProm>0 ? remitos.length+' servicios' : 'No hay servicios registrados') + _deltaBadge(ticketProm, ticketPromAntN),
       null,
       ticketProm>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioTicket()">📋 Ver detalle</span>` : null) +
     _KPI('💸', '$ / Km',
       porKmG!=='—' ? '$'+porKmG : _NEG_EMPTY,
       'var(--blue)',
-      porKmG!=='—' ? 'ingreso por km' : 'No hay km recorridos',
+      (porKmG!=='—' ? 'ingreso por km' : 'No hay km recorridos') + _deltaBadge(parseFloat(porKmG), porKmGAntN),
       null,
       porKmG!=='—' ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioPorKm()">📋 Ver detalle</span>` : null) +
     _KPI('⛽', 'Costo / Km',
       costoKm!=='—' ? '$'+costoKm : _NEG_EMPTY,
       deudaTotal>0 ? 'var(--red)' : 'var(--muted)',
-      costoKm!=='—' ? (deudaTotal>0 ? '⚠️ $'+_AR(deudaTotal)+' en alertas' : 'combustible/km') : 'No hay cargas de combustible',
+      (costoKm!=='—' ? (deudaTotal>0 ? '⚠️ $'+_AR(deudaTotal)+' en alertas' : 'combustible/km') : 'No hay cargas de combustible') + _deltaBadge(parseFloat(costoKm), costoKmAntN, {invert:true}),
       null,
       costoKm!=='—' ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioCostoKm()">📋 Ver detalle</span>` : null);
 
@@ -7953,6 +8159,8 @@ const _cfgTabMeta = {
   'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal', importTipo: 'flota' },
   'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal', importTipo: 'usuarios' },
   'tab-planes':      { title: 'Catálogo de Planes',       action: 'openAdminPlanModal' },
+  'tab-rendiciones': { title: 'Rendiciones',                action: null },
+  'tab-mantenimiento':{ title: 'Mantenimiento',             action: null },
   'tab-emergencias': { title: 'Contactos de Emergencia',  action: null },
   'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
 };
@@ -7993,6 +8201,8 @@ function switchConfigTab(tabId) {
   if (tabId === 'tab-flota')        cargarTablaAdminFlota();
   else if (tabId === 'tab-usuarios') cargarTablaAdminUsuarios();
   else if (tabId === 'tab-planes')   cargarTablaAdminPlanes();
+  else if (tabId === 'tab-rendiciones') cargarRendicionesTab();
+  else if (tabId === 'tab-mantenimiento') cargarMantenimientoTab();
   else if (tabId === 'tab-emergencias') cargarYRenderizarConfigEmergencias();
   else if (tabId === 'tab-mi-cuenta')   _renderPerfilAdminTab();
 }
@@ -8104,6 +8314,345 @@ async function cargarTablaAdminPlanes() {
         </button>
       </div>
     </div>`).join('')}</div>`;
+}
+
+// ── Rendiciones (admin) ─────────────────────────
+let _rendicionesCache = [];
+
+async function cargarRendicionesTab() {
+  const bodyEl  = document.getElementById('cfg-rend-body');
+  const statsEl = document.getElementById('cfg-rend-stats');
+  if (bodyEl)  bodyEl.innerHTML  = '<div class="cfg-rend-empty">Cargando rendiciones...</div>';
+  if (statsEl) statsEl.innerHTML = '';
+
+  const rango = document.getElementById('cfg-rend-rango')?.value || '30';
+  let desde = null;
+  if (rango !== 'all') {
+    const d = new Date();
+    d.setDate(d.getDate() - parseInt(rango, 10));
+    desde = d.toISOString().slice(0, 10);
+  }
+
+  try {
+    const { rendiciones } = await cargarRendicionesAdmin({ desde });
+    _rendicionesCache = rendiciones;
+    _renderRendicionesTabla();
+  } catch (err) {
+    console.error('cargarRendicionesTab:', err);
+    if (bodyEl) bodyEl.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar rendiciones</div>';
+  }
+}
+
+function _renderRendicionesTabla() {
+  const bodyEl  = document.getElementById('cfg-rend-body');
+  const statsEl = document.getElementById('cfg-rend-stats');
+  if (!bodyEl) return;
+
+  const busq   = (document.getElementById('cfg-rend-buscar')?.value || '').trim().toLowerCase();
+  const status = document.getElementById('cfg-rend-status')?.value || '';
+
+  let list = _rendicionesCache.slice();
+  if (busq)   list = list.filter(r => (r.chofer_nombre || '').toLowerCase().includes(busq));
+  if (status) list = list.filter(r => (r.admin_status || 'pendiente') === status);
+
+  // Stats
+  if (statsEl) {
+    const total       = _rendicionesCache.length;
+    const pendientes  = _rendicionesCache.filter(r => (r.admin_status||'pendiente') === 'pendiente').length;
+    const observadas  = _rendicionesCache.filter(r => r.admin_status === 'observada').length;
+    const conDif      = _rendicionesCache.filter(r => Math.abs((r.efectivo_declarado||0) - (r.efectivo_esperado||0)) >= 500).length;
+    statsEl.innerHTML = `
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Total</div><div class="cfg-rend-stat-val">${total}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Pendientes</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${pendientes}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Con diferencia</div><div class="cfg-rend-stat-val" style="color:${conDif>0?'#ef4444':'var(--muted)'}">${conDif}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Observadas</div><div class="cfg-rend-stat-val" style="color:${observadas>0?'#ef4444':'var(--muted)'}">${observadas}</div></div>
+    `;
+  }
+
+  if (list.length === 0) {
+    bodyEl.innerHTML = '<div class="cfg-rend-empty">No hay rendiciones que coincidan con los filtros.</div>';
+    return;
+  }
+
+  const rows = list.map(r => {
+    const declarado = r.efectivo_declarado || 0;
+    const esperado  = r.efectivo_esperado || 0;
+    const diff      = declarado - esperado;
+    const diffAbs   = Math.abs(diff);
+    const diffColor = diffAbs < 500 ? 'var(--muted)' : diff > 0 ? '#4ade80' : '#ef4444';
+    const diffTxt   = diff === 0 ? '$0' : (diff > 0 ? '+$' : '−$') + _AR(diffAbs);
+    const st = r.admin_status || 'pendiente';
+    const pillCls = st === 'aprobada' ? 'ok' : st === 'observada' ? 'err' : 'warn';
+    const pillTxt = st === 'aprobada' ? 'Aprobada' : st === 'observada' ? 'Observada' : 'Pendiente';
+    const fecha = r.fecha ? r.fecha.slice(5).split('-').reverse().join('/') : '—';
+    const acciones = st === 'pendiente'
+      ? `<button class="cfg-rend-btn-mini primary" onclick="aprobarRendicion(${r.rendicion_id})">Aprobar</button>
+         <button class="cfg-rend-btn-mini" onclick="observarRendicion(${r.rendicion_id})">Observar</button>`
+      : `<button class="cfg-rend-btn-mini" onclick="verDetalleRendicion(${r.rendicion_id})">Ver</button>`;
+    return `<tr onclick="verDetalleRendicion(${r.rendicion_id})" style="cursor:pointer">
+      <td>${fecha}</td>
+      <td>${_escHtml(r.chofer_nombre)}</td>
+      <td style="font-family:'DM Mono',monospace">$${_AR(declarado)}</td>
+      <td style="font-family:'DM Mono',monospace">$${_AR(esperado)}</td>
+      <td style="color:${diffColor};font-family:'DM Mono',monospace;font-weight:600">${diffTxt}</td>
+      <td><span class="pill ${pillCls}">${pillTxt}</span></td>
+      <td onclick="event.stopPropagation()" style="text-align:right;white-space:nowrap">${acciones}</td>
+    </tr>`;
+  }).join('');
+
+  bodyEl.innerHTML = `
+    <table class="cfg-rend-table">
+      <thead>
+        <tr><th>Fecha</th><th>Chofer</th><th>Declarado</th><th>Esperado</th><th>Δ</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+async function aprobarRendicion(rendId) {
+  const rend = _rendicionesCache.find(r => r.rendicion_id === rendId);
+  if (!rend) return;
+  const diffAbs = Math.abs((rend.efectivo_declarado||0) - (rend.efectivo_esperado||0));
+  if (diffAbs >= 500) {
+    if (!confirm(`Esta rendición tiene diferencia de $${_AR(diffAbs)}. ¿Aprobarla igualmente?`)) return;
+  }
+  const { error } = await actualizarAdminRendicion(rendId, { admin_status: 'aprobada' });
+  if (error) { toast('Error al aprobar', 'error'); return; }
+  rend.admin_status = 'aprobada';
+  rend.admin_at = new Date().toISOString();
+  toast('Rendición aprobada ✓', 'success');
+  _renderRendicionesTabla();
+}
+
+function observarRendicion(rendId) {
+  const rend = _rendicionesCache.find(r => r.rendicion_id === rendId);
+  if (!rend) return;
+  _rendicionObservarId = rendId;
+  const modal = document.getElementById('modal-rendicion-observar');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  document.getElementById('rend-obs-chofer').textContent = rend.chofer_nombre || '—';
+  document.getElementById('rend-obs-fecha').textContent  = rend.fecha || '—';
+  const diff = (rend.efectivo_declarado||0) - (rend.efectivo_esperado||0);
+  const diffTxt = diff === 0 ? '$0' : (diff > 0 ? '+$' : '−$') + _AR(Math.abs(diff));
+  document.getElementById('rend-obs-diff').textContent = diffTxt;
+  document.getElementById('rend-obs-diff').style.color = Math.abs(diff) < 500 ? 'var(--muted)' : diff > 0 ? '#4ade80' : '#ef4444';
+  document.getElementById('rend-obs-nota').value = '';
+  openModal('modal-rendicion-observar');
+}
+
+let _rendicionObservarId = null;
+
+async function confirmarObservarRendicion() {
+  const nota = document.getElementById('rend-obs-nota')?.value?.trim();
+  if (!nota) { toast('Escribí una nota para el chofer', 'error'); return; }
+  const rendId = _rendicionObservarId;
+  const { error } = await actualizarAdminRendicion(rendId, { admin_status: 'observada', admin_nota: nota });
+  if (error) { toast('Error al guardar observación', 'error'); return; }
+  const rend = _rendicionesCache.find(r => r.rendicion_id === rendId);
+  if (rend) {
+    rend.admin_status = 'observada';
+    rend.admin_nota   = nota;
+    rend.admin_at     = new Date().toISOString();
+  }
+  closeModal('modal-rendicion-observar');
+  toast('Rendición marcada como observada', 'success');
+  _renderRendicionesTabla();
+}
+
+async function verDetalleRendicion(rendId) {
+  const rend = _rendicionesCache.find(r => r.rendicion_id === rendId);
+  if (!rend) return;
+  const modal = document.getElementById('modal-rendicion-detalle');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  document.getElementById('rend-det-chofer').textContent = rend.chofer_nombre || '—';
+  document.getElementById('rend-det-fecha').textContent  = rend.fecha || '—';
+  document.getElementById('rend-det-declarado').textContent = '$' + _AR(rend.efectivo_declarado||0);
+  document.getElementById('rend-det-esperado').textContent  = '$' + _AR(rend.efectivo_esperado||0);
+  const diff = (rend.efectivo_declarado||0) - (rend.efectivo_esperado||0);
+  const diffTxt = diff === 0 ? '$0' : (diff > 0 ? '+$' : '−$') + _AR(Math.abs(diff));
+  const diffEl = document.getElementById('rend-det-diff');
+  diffEl.textContent = diffTxt;
+  diffEl.style.color = Math.abs(diff) < 500 ? 'var(--muted)' : diff > 0 ? '#4ade80' : '#ef4444';
+  const notaChoferEl = document.getElementById('rend-det-nota-chofer');
+  if (notaChoferEl) notaChoferEl.textContent = rend.notas || rend.motivo_extra || '—';
+  const notaAdminEl = document.getElementById('rend-det-nota-admin-wrap');
+  if (notaAdminEl) {
+    if (rend.admin_nota) {
+      notaAdminEl.style.display = '';
+      document.getElementById('rend-det-nota-admin').textContent = rend.admin_nota;
+    } else {
+      notaAdminEl.style.display = 'none';
+    }
+  }
+  const bodyEl = document.getElementById('rend-det-remitos');
+  bodyEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Cargando detalle...</div>';
+  openModal('modal-rendicion-detalle');
+
+  try {
+    const { remitos, fuel } = await cargarDetalleRendicion(rend.log_id);
+    const remsEfectivo = remitos.filter(r => r.pago_1_metodo==='efectivo' || r.pago_2_metodo==='efectivo');
+    const fuelEfectivo = fuel.filter(f => f.payment_method === 'efectivo');
+    let html = '';
+    if (remsEfectivo.length === 0 && fuelEfectivo.length === 0) {
+      html = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Sin remitos/gastos efectivo asociados</div>';
+    } else {
+      if (remsEfectivo.length > 0) {
+        html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin:8px 0 4px">Remitos cobrados en efectivo</div>';
+        remsEfectivo.forEach(r => {
+          const monto = (r.pago_1_metodo==='efectivo' ? (r.pago_1_monto||0) : 0) + (r.pago_2_metodo==='efectivo' ? (r.pago_2_monto||0) : 0);
+          html += _mrow(`#${r.nro_remito||'—'} · ${_escHtml(r.origen||'')} → ${_escHtml(r.destino||'')}`, '+$' + _AR(monto));
+        });
+      }
+      if (fuelEfectivo.length > 0) {
+        html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin:12px 0 4px">Combustible en efectivo</div>';
+        fuelEfectivo.forEach(f => {
+          html += _mrow(`${_escHtml(f.gas_station||'estación')} · ${_L(f.liters)} L`, '−$' + _AR(f.total_cost||0));
+        });
+      }
+      if (rend.gastos_extra > 0) {
+        html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin:12px 0 4px">Otros gastos</div>';
+        html += _mrow(_escHtml(rend.motivo_extra||'Sin motivo'), '−$' + _AR(rend.gastos_extra));
+      }
+    }
+    bodyEl.innerHTML = html;
+  } catch (err) {
+    console.error('verDetalleRendicion:', err);
+    bodyEl.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:12px">Error al cargar detalle</div>';
+  }
+}
+
+// ── MANTENIMIENTO FLOTA (admin/supervisor) ────────────────
+let _mantCache = [];
+
+async function cargarMantenimientoTab() {
+  const body = document.getElementById('cfg-mant-body');
+  const stats = document.getElementById('cfg-mant-stats');
+  if (!body) return;
+  body.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Cargando…</div>';
+  if (stats) stats.innerHTML = '';
+  try {
+    _mantCache = await cargarMantenimientoFlota();
+    _renderMantenimientoTab();
+  } catch (err) {
+    console.error('mant tab:', err);
+    body.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:16px">Error al cargar mantenimiento</div>';
+  }
+}
+
+function _renderMantenimientoTab() {
+  const body  = document.getElementById('cfg-mant-body');
+  const stats = document.getElementById('cfg-mant-stats');
+  const filt  = document.getElementById('cfg-mant-filtro')?.value || 'todos';
+  const busq  = (document.getElementById('cfg-mant-buscar')?.value || '').trim().toLowerCase();
+  if (!body) return;
+
+  const vencidas = _mantCache.filter(x => x.estado === 'vencido').length;
+  const proximas = _mantCache.filter(x => x.estado === 'proximo').length;
+  if (stats) {
+    stats.innerHTML = `
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Vencidos</div><div class="cfg-rend-stat-val" style="color:#ef4444">${vencidas}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Próximos</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${proximas}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Total</div><div class="cfg-rend-stat-val">${_mantCache.length}</div></div>`;
+  }
+
+  let list = _mantCache.slice();
+  if (filt !== 'todos') list = list.filter(x => x.estado === filt);
+  if (busq) list = list.filter(x => (x.plate || '').toLowerCase().includes(busq) || (x.plan_name || '').toLowerCase().includes(busq));
+
+  if (!list.length) {
+    body.innerHTML = '<div class="cfg-rend-empty">Sin services pendientes 🎉</div>';
+    return;
+  }
+
+  body.innerHTML = `<table class="cfg-rend-table">
+    <thead><tr><th>Unidad</th><th>Plan</th><th>KM actual</th><th>Restante</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${list.map(x => {
+      const cls = x.estado === 'vencido' ? 'err' : 'warn';
+      const restTxt = x.km_restantes == null ? '—' : (x.km_restantes < 0 ? '−' + Math.abs(x.km_restantes).toLocaleString('es-AR') : x.km_restantes.toLocaleString('es-AR'));
+      const restColor = x.km_restantes == null ? 'var(--muted)' : x.km_restantes < 0 ? '#ef4444' : x.km_restantes < 500 ? 'var(--amber)' : 'var(--text)';
+      return `<tr>
+        <td>${_escHtml(x.plate)}${x.numero_interno ? ' <span style="color:var(--muted)">· ' + _escHtml(String(x.numero_interno)) + '</span>' : ''}</td>
+        <td>${_escHtml(x.plan_name)}</td>
+        <td style="font-family:'DM Mono'">${x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—'}</td>
+        <td style="font-family:'DM Mono';color:${restColor}">${restTxt}</td>
+        <td><span class="pill ${cls}">${x.estado === 'vencido' ? 'Vencido' : 'Próximo'}</span></td>
+        <td><button class="cfg-rend-btn-mini" onclick="verTimelineCamion('${x.truck_id}')">Ver camión</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ── TIMELINE CAMIÓN (admin/supervisor) ────────────────────
+let _tlTruckId = null;
+
+async function verTimelineCamion(truckId) {
+  _tlTruckId = truckId;
+  const modal = document.getElementById('modal-camion-timeline');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  document.getElementById('cam-tl-unidad').textContent = '⏳';
+  document.getElementById('cam-tl-km').textContent = '—';
+  document.getElementById('cam-tl-stats').innerHTML = '';
+  document.getElementById('cam-tl-body').innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Cargando timeline…</div>';
+  openModal('modal-camion-timeline');
+  _reloadTimelineCamion();
+}
+
+async function _reloadTimelineCamion() {
+  if (!_tlTruckId) return;
+  const rango = document.getElementById('cam-tl-rango')?.value || '90';
+  let desde = null;
+  if (rango !== 'all') {
+    const d = new Date();
+    d.setDate(d.getDate() - Number(rango));
+    desde = d.toISOString().slice(0, 10);
+  }
+  try {
+    const { truck, eventos, stats } = await cargarTimelineCamion(_tlTruckId, { desde });
+    if (!truck) {
+      document.getElementById('cam-tl-body').innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:16px">Camión no encontrado</div>';
+      return;
+    }
+    document.getElementById('cam-tl-header').textContent = `Timeline · ${truck.plate}`;
+    document.getElementById('cam-tl-unidad').textContent = `${truck.plate}${truck.numero_interno ? ' · Int ' + truck.numero_interno : ''}`;
+    document.getElementById('cam-tl-km').textContent = (truck.current_km || 0).toLocaleString('es-AR') + ' km';
+
+    document.getElementById('cam-tl-stats').innerHTML = `
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:6px 8px;text-align:center">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Jornadas</div>
+        <div style="font-weight:800;color:var(--text);font-family:'DM Mono';font-size:13px">${stats.jornadas}</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:6px 8px;text-align:center">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Combustible</div>
+        <div style="font-weight:800;color:var(--text);font-family:'DM Mono';font-size:13px">${stats.litros.toFixed(0)} L</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">$${Math.round(stats.gastoFuel).toLocaleString('es-AR')}</div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:6px 8px;text-align:center">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Services</div>
+        <div style="font-weight:800;color:var(--text);font-family:'DM Mono';font-size:13px">${stats.services}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">$${Math.round(stats.gastoServ).toLocaleString('es-AR')}</div>
+      </div>`;
+
+    const body = document.getElementById('cam-tl-body');
+    if (!eventos.length) {
+      body.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Sin eventos en el rango</div>';
+      return;
+    }
+    const iconoTipo = { jornada: '🕒', combustible: '⛽', service: '🔧' };
+    body.innerHTML = eventos.map(e => `
+      <div style="display:flex;gap:10px;padding:10px 8px;border-bottom:1px solid var(--border2)">
+        <div style="font-size:18px;line-height:1">${iconoTipo[e.tipo] || '•'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;gap:8px">
+            <div style="font-weight:700;color:var(--text);font-size:12px">${_escHtml(e.titulo)}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono'">${e.fecha || ''}</div>
+          </div>
+          <div style="color:var(--muted);font-size:11px;margin-top:2px">${_escHtml(e.detalle)}</div>
+          ${e.valor ? `<div style="font-family:'DM Mono';font-size:12px;font-weight:700;margin-top:2px;color:${e.valorColor || 'var(--text)'}">${e.valor}</div>` : ''}
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    console.error('timelineCamion:', err);
+    document.getElementById('cam-tl-body').innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:16px">Error al cargar timeline</div>';
+  }
 }
 
 // ── 3. ACTUALIZACIÓN: APERTURA PARA "NUEVO" ───────────────
@@ -8224,6 +8773,7 @@ async function cargarTablaAdminFlota() {
           <span class="cfg-status ${v.status === 'active' ? 'on' : 'off'}">${v.status === 'active' ? 'Operativo' : 'Inactivo'}</span>
         </div>
         <div class="cfg-item-actions">
+          <button class="cfg-btn-a ghost" onclick="verTimelineCamion('${v.truck_id}')">Timeline</button>
           <button class="cfg-btn-a ghost" onclick="abrirEditarVehiculo('${v.truck_id}')">Editar</button>
           <button class="cfg-btn-a ${v.status === 'active' ? 'danger' : 'go'}" onclick="toggleEstadoVehiculo('${v.truck_id}','${v.status}')">
             ${v.status === 'active' ? 'Dar de baja' : 'Reactivar'}
@@ -11109,4 +11659,1052 @@ async function _csvImportarConfirm() {
     </div>`;
   btn.disabled = false;
   btn.style.display = 'none';
+}
+
+// ============================================================
+// SUELDOS (Payroll) — Fase 2: Objetivos + Esquema salarial UI
+// ============================================================
+
+let _objetivosCache = [];
+let _esquemaCache   = [];
+let _objetivoEditId = null;
+let _esquemaEditDriverId = null;
+let _sueldosSubActual = 'mes';
+
+function _sueldosSwitchSub(sub, btnEl) {
+  _sueldosSubActual = sub;
+  const scope = document.getElementById('screen-sueldos');
+  if (scope) {
+    scope.querySelectorAll('.ftab').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+    scope.querySelectorAll('.sueldos-sub').forEach(el => el.style.display = 'none');
+  }
+  const target = document.getElementById('sueldos-sub-' + sub);
+  if (target) target.style.display = 'block';
+
+  if (sub === 'objetivos')     _cargarObjetivosTab();
+  else if (sub === 'esquema')  _cargarEsquemaTab();
+}
+
+async function cargarSueldosTab() {
+  // Entrada por defecto: renderiza sub actual
+  _sueldosSwitchSub(_sueldosSubActual || 'mes');
+}
+
+// ── Objetivos ──
+async function _cargarObjetivosTab() {
+  const el = document.getElementById('cfg-obj-body');
+  if (!el) return;
+  el.innerHTML = '<div class="cfg-rend-empty">Cargando objetivos...</div>';
+  try {
+    // cargarObjetivos filtra activos; para el admin, listamos todos:
+    const { data, error } = await _db.from('payroll_objetivos')
+      .select('objetivo_id, nombre, tipo, valor, descripcion, activo, created_at')
+      .order('nombre', { ascending: true });
+    if (error) throw error;
+    _objetivosCache = data || [];
+    _renderObjetivosTabla();
+  } catch (err) {
+    console.error('_cargarObjetivosTab:', err);
+    el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar objetivos</div>';
+  }
+}
+
+function _renderObjetivosTabla() {
+  const el = document.getElementById('cfg-obj-body');
+  if (!el) return;
+  if (!_objetivosCache.length) {
+    el.innerHTML = '<div class="cfg-rend-empty">No hay objetivos cargados. Usá + Nuevo objetivo.</div>';
+    return;
+  }
+  const rows = _objetivosCache.map(o => {
+    const valorTxt = o.tipo === 'porcentaje' ? (Number(o.valor)||0) + ' %' : '$' + _AR(Number(o.valor)||0);
+    const pillCls = o.activo ? 'ok' : 'warn';
+    const pillTxt = o.activo ? 'Activo' : 'Inactivo';
+    return `<tr>
+      <td>${_escHtml(o.nombre)}</td>
+      <td>${o.tipo === 'porcentaje' ? '% sobre total' : 'Fijo por unidad'}</td>
+      <td style="font-family:'DM Mono',monospace">${valorTxt}</td>
+      <td style="color:var(--muted);font-size:12px">${_escHtml(o.descripcion || '—')}</td>
+      <td><span class="pill ${pillCls}">${pillTxt}</span></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="cfg-rend-btn-mini" onclick="_abrirObjetivoModal('${o.objetivo_id}')">Editar</button>
+        <button class="cfg-rend-btn-mini" onclick="_toggleObjetivo('${o.objetivo_id}', ${!o.activo})">${o.activo ? 'Desactivar' : 'Activar'}</button>
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `
+    <table class="cfg-rend-table">
+      <thead><tr><th>Nombre</th><th>Tipo</th><th>Valor</th><th>Descripción</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function _abrirObjetivoModal(objetivoId = null) {
+  _objetivoEditId = objetivoId;
+  const modal = document.getElementById('modal-objetivo-edit');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  document.getElementById('obj-modal-title').textContent = objetivoId ? 'Editar objetivo' : 'Nuevo objetivo';
+  if (objetivoId) {
+    const o = _objetivosCache.find(x => x.objetivo_id === objetivoId);
+    if (!o) return;
+    document.getElementById('obj-nombre').value = o.nombre || '';
+    document.getElementById('obj-tipo').value   = o.tipo   || 'fijo';
+    document.getElementById('obj-valor').value  = o.valor  ?? 0;
+    document.getElementById('obj-desc').value   = o.descripcion || '';
+    document.getElementById('obj-activo').checked = !!o.activo;
+  } else {
+    document.getElementById('obj-nombre').value = '';
+    document.getElementById('obj-tipo').value   = 'fijo';
+    document.getElementById('obj-valor').value  = '';
+    document.getElementById('obj-desc').value   = '';
+    document.getElementById('obj-activo').checked = true;
+  }
+  _actualizarHintObjetivo();
+  document.getElementById('obj-tipo').onchange = _actualizarHintObjetivo;
+  openModal('modal-objetivo-edit');
+}
+
+function _actualizarHintObjetivo() {
+  const tipo = document.getElementById('obj-tipo')?.value;
+  const lbl  = document.getElementById('obj-valor-lbl');
+  const hint = document.getElementById('obj-valor-hint');
+  if (tipo === 'porcentaje') {
+    if (lbl)  lbl.innerHTML  = 'Valor (%) <span style="color:var(--red)">*</span>';
+    if (hint) hint.textContent = 'Se pagará este porcentaje del total del remito/objetivo.';
+  } else {
+    if (lbl)  lbl.innerHTML  = 'Valor ($) <span style="color:var(--red)">*</span>';
+    if (hint) hint.textContent = 'Se pagará este monto por cada unidad cumplida.';
+  }
+}
+
+async function _guardarObjetivo() {
+  const nombre = document.getElementById('obj-nombre').value.trim();
+  const tipo   = document.getElementById('obj-tipo').value;
+  const valor  = Number(document.getElementById('obj-valor').value);
+  const desc   = document.getElementById('obj-desc').value.trim() || null;
+  const activo = document.getElementById('obj-activo').checked;
+  if (!nombre)                 { toast('Falta el nombre', 'error'); return; }
+  if (!(valor >= 0))           { toast('Valor inválido', 'error'); return; }
+  if (tipo === 'porcentaje' && valor > 100) { toast('El porcentaje no puede superar 100', 'error'); return; }
+
+  const payload = { nombre, tipo, valor, descripcion: desc, activo };
+  const res = _objetivoEditId
+    ? await actualizarObjetivo(_objetivoEditId, payload)
+    : await crearObjetivo(payload);
+  if (!res.ok) { toast('Error al guardar objetivo', 'error'); return; }
+  closeModal('modal-objetivo-edit');
+  toast(_objetivoEditId ? 'Objetivo actualizado ✓' : 'Objetivo creado ✓', 'success');
+  _cargarObjetivosTab();
+}
+
+async function _toggleObjetivo(objetivoId, nuevoActivo) {
+  const res = await toggleObjetivoActivo(objetivoId, nuevoActivo);
+  if (!res.ok) { toast('Error al cambiar estado', 'error'); return; }
+  toast(nuevoActivo ? 'Objetivo activado' : 'Objetivo desactivado', 'success');
+  _cargarObjetivosTab();
+}
+
+// ── Esquema salarial ──
+async function _cargarEsquemaTab() {
+  const el = document.getElementById('cfg-esq-body');
+  if (!el) return;
+  el.innerHTML = '<div class="cfg-rend-empty">Cargando esquema salarial...</div>';
+  try {
+    _esquemaCache = await cargarPayrollSettingsFlota();
+    _renderEsquemaTabla();
+  } catch (err) {
+    console.error('_cargarEsquemaTab:', err);
+    el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar esquema salarial</div>';
+  }
+}
+
+function _renderEsquemaTabla() {
+  const el = document.getElementById('cfg-esq-body');
+  if (!el) return;
+  if (!_esquemaCache.length) {
+    el.innerHTML = '<div class="cfg-rend-empty">No hay choferes activos.</div>';
+    return;
+  }
+  const rows = _esquemaCache.map(u => {
+    const hasSet = !!u.settings;
+    const basico = hasSet ? '$' + _AR(u.sueldo_basico || 0) : '—';
+    const vkm    = hasSet ? '$' + _AR(u.valor_km || 0)      : '—';
+    const vserv  = hasSet ? '$' + _AR(u.valor_servicio || 0): '—';
+    const bono   = hasSet ? '$' + _AR(u.bono_presentismo || 0) : '—';
+    const pillCls = hasSet ? 'ok' : 'warn';
+    const pillTxt = hasSet ? 'Configurado' : 'Sin esquema';
+    return `<tr>
+      <td>${_escHtml(u.full_name || '')}${u.legajo ? ` <span style="color:var(--muted);font-size:11px">#${_escHtml(u.legajo)}</span>` : ''}</td>
+      <td style="font-family:'DM Mono',monospace">${basico}</td>
+      <td style="font-family:'DM Mono',monospace">${vkm}</td>
+      <td style="font-family:'DM Mono',monospace">${vserv}</td>
+      <td style="font-family:'DM Mono',monospace">${bono}</td>
+      <td><span class="pill ${pillCls}">${pillTxt}</span></td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="cfg-rend-btn-mini primary" onclick="_abrirEsquemaModal('${u.user_id}')">Editar</button>
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `
+    <table class="cfg-rend-table">
+      <thead><tr><th>Chofer</th><th>Sueldo básico</th><th>$/km</th><th>$/servicio</th><th>Presentismo</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function _abrirEsquemaModal(driverId) {
+  const u = _esquemaCache.find(x => x.user_id === driverId);
+  if (!u) return;
+  // Defensa: si el modal quedó anidado dentro de otro screen (HTML mal cerrado),
+  // lo movemos a body para que no herede display:none del padre.
+  const modal = document.getElementById('modal-esquema-edit');
+  if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
+  _esquemaEditDriverId = driverId;
+  document.getElementById('esq-chofer').textContent = u.full_name + (u.legajo ? ' · #' + u.legajo : '');
+  document.getElementById('esq-basico').value     = u.sueldo_basico    ?? '';
+  document.getElementById('esq-valor-km').value   = u.valor_km         ?? '';
+  document.getElementById('esq-valor-serv').value = u.valor_servicio   ?? '';
+  document.getElementById('esq-bono-pres').value  = u.bono_presentismo ?? '';
+  openModal('modal-esquema-edit');
+}
+
+function _abrirEsquemaMasivoModal() {
+  const modal = document.getElementById('modal-esquema-masivo');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres'].forEach(id => {
+    const inp = document.getElementById(id); if (inp) inp.value = '';
+  });
+  const chk = document.getElementById('esqm-solo-sin-esquema');
+  if (chk) chk.checked = false;
+  _actualizarPreviewEsquemaMasivo();
+  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-solo-sin-esquema'].forEach(id => {
+    const inp = document.getElementById(id); if (inp) inp.oninput = inp.onchange = _actualizarPreviewEsquemaMasivo;
+  });
+  openModal('modal-esquema-masivo');
+}
+
+function _actualizarPreviewEsquemaMasivo() {
+  const solo = document.getElementById('esqm-solo-sin-esquema')?.checked;
+  const total = _esquemaCache.length;
+  const sin = _esquemaCache.filter(c => !c.settings).length;
+  const target = solo ? sin : total;
+  const previewEl = document.getElementById('esqm-preview');
+  if (previewEl) {
+    previewEl.innerHTML = `Se aplicará a <strong style="color:var(--fg)">${target}</strong> chofer${target===1?'':'es'} ${solo ? '(sin esquema)' : '(todos activos)'}.`;
+  }
+}
+
+async function _guardarEsquemaMasivo() {
+  const parseOptional = id => {
+    const v = document.getElementById(id)?.value;
+    return v === '' || v == null ? null : Number(v);
+  };
+  const patch = {
+    sueldo_basico:    parseOptional('esqm-basico'),
+    valor_km:         parseOptional('esqm-valor-km'),
+    valor_servicio:   parseOptional('esqm-valor-serv'),
+    bono_presentismo: parseOptional('esqm-bono-pres'),
+  };
+  const algo = Object.values(patch).some(v => v != null);
+  if (!algo) { toast('Completá al menos un campo', 'error'); return; }
+  if (Object.values(patch).some(v => v != null && v < 0)) { toast('Los valores no pueden ser negativos', 'error'); return; }
+  const onlySinEsquema = !!document.getElementById('esqm-solo-sin-esquema')?.checked;
+  const totalTarget = onlySinEsquema
+    ? _esquemaCache.filter(c => !c.settings).length
+    : _esquemaCache.length;
+  if (totalTarget === 0) { toast('No hay choferes destino', 'error'); return; }
+  if (!confirm(`¿Aplicar estos valores a ${totalTarget} chofer${totalTarget===1?'':'es'}?`)) return;
+
+  const res = await guardarPayrollSettingsMasivo(patch, { onlySinEsquema });
+  if (!res.ok) { toast('Error al aplicar masivo', 'error'); return; }
+  closeModal('modal-esquema-masivo');
+  toast(`Esquema aplicado a ${res.total} choferes ✓`, 'success');
+  _cargarEsquemaTab();
+}
+
+async function _guardarEsquema() {
+  const driverId = _esquemaEditDriverId;
+  if (!driverId) { toast('Falta chofer', 'error'); return; }
+  const payload = {
+    sueldo_basico:    Number(document.getElementById('esq-basico').value)     || 0,
+    valor_km:         Number(document.getElementById('esq-valor-km').value)   || 0,
+    valor_servicio:   Number(document.getElementById('esq-valor-serv').value) || 0,
+    bono_presentismo: Number(document.getElementById('esq-bono-pres').value)  || 0,
+  };
+  if ([payload.sueldo_basico, payload.valor_km, payload.valor_servicio, payload.bono_presentismo].some(n => n < 0)) {
+    toast('Los valores no pueden ser negativos', 'error'); return;
+  }
+  const res = await guardarPayrollSettings(driverId, payload);
+  if (!res.ok) {
+    const msg = res.error?.message || res.error?.hint || res.error?.details || 'desconocido';
+    console.error('[_guardarEsquema] falla:', res.error);
+    toast('Error al guardar esquema: ' + msg, 'error');
+    return;
+  }
+  closeModal('modal-esquema-edit');
+  toast('Esquema guardado ✓', 'success');
+  _cargarEsquemaTab();
+}
+
+// ============================================================
+// SUELDOS (Payroll) — Fase 3: Mes actual + Recibo + Historial
+// ============================================================
+
+let _liquidacionesMesCache = [];
+let _liquidacionesHistCache = [];
+let _reciboActual = null;                // objeto liquidación
+let _reciboCumplCache = [];
+let _reciboEfectivosCache = [];
+let _cumpModalContexto = null;           // { driverId, yyyymm, liquidacionId }
+
+// ── Helpers ──
+function _yyyymmToPeriodo(yyyymm) {
+  const s = String(yyyymm);
+  return `${s.slice(4,6)}/${s.slice(0,4)}`;
+}
+function _mesInputToYyyymm(mesStr) {
+  // "2026-07" → 202607
+  if (!mesStr) return null;
+  const [y, m] = mesStr.split('-');
+  return parseInt(y, 10) * 100 + parseInt(m, 10);
+}
+function _yyyymmToMesInput(yyyymm) {
+  const s = String(yyyymm);
+  return `${s.slice(0,4)}-${s.slice(4,6)}`;
+}
+function _mesActualInputVal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function _pillEstadoLiq(estado) {
+  const cls = estado === 'pagada' ? 'ok' : estado === 'aprobada' ? 'warn' : 'err';
+  const txt = estado === 'pagada' ? 'Pagada' : estado === 'aprobada' ? 'Aprobada' : 'Pendiente';
+  return `<span class="pill ${cls}">${txt}</span>`;
+}
+
+// ── Extender _sueldosSwitchSub para cargar historial/mes on-demand ──
+const __origSueldosSwitchSub = _sueldosSwitchSub;
+_sueldosSwitchSub = function(sub, btnEl) {
+  __origSueldosSwitchSub(sub, btnEl);
+  if (sub === 'mes') {
+    const inp = document.getElementById('pl-mes-periodo');
+    if (inp && !inp.value) inp.value = _mesActualInputVal();
+    _cargarLiquidacionesMes();
+  } else if (sub === 'historial') {
+    _initHistorialFiltros();
+  } else if (sub === 'rendiciones') {
+    const inp = document.getElementById('pl-rend-periodo');
+    if (inp && !inp.value) inp.value = _mesActualInputVal();
+    _initRendicionesFiltros();
+    _cargarRendicionesSueldos();
+  }
+};
+
+// ── Mes actual ──
+async function _cargarLiquidacionesMes() {
+  const bodyEl  = document.getElementById('pl-mes-body');
+  const statsEl = document.getElementById('pl-mes-stats');
+  const inp     = document.getElementById('pl-mes-periodo');
+  if (!bodyEl) return;
+  if (inp && !inp.value) inp.value = _mesActualInputVal();
+  const yyyymm = _mesInputToYyyymm(inp?.value);
+  if (!yyyymm) { bodyEl.innerHTML = '<div class="cfg-rend-empty">Elegí un período.</div>'; return; }
+  bodyEl.innerHTML = '<div class="cfg-rend-empty">Cargando liquidaciones...</div>';
+  if (statsEl) statsEl.innerHTML = '';
+  try {
+    _liquidacionesMesCache = await cargarLiquidacionesMes(yyyymm);
+    _renderLiquidacionesMes();
+  } catch (err) {
+    console.error('_cargarLiquidacionesMes:', err);
+    bodyEl.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar</div>';
+  }
+}
+
+function _renderLiquidacionesMes() {
+  const bodyEl  = document.getElementById('pl-mes-body');
+  const statsEl = document.getElementById('pl-mes-stats');
+  if (!bodyEl) return;
+
+  // Stats
+  if (statsEl) {
+    const tot   = _liquidacionesMesCache.length;
+    const pend  = _liquidacionesMesCache.filter(l => l.estado === 'pendiente').length;
+    const apr   = _liquidacionesMesCache.filter(l => l.estado === 'aprobada').length;
+    const pag   = _liquidacionesMesCache.filter(l => l.estado === 'pagada').length;
+    const suma  = _liquidacionesMesCache.reduce((s,l) => s + (Number(l.total)||0), 0);
+    statsEl.innerHTML = `
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Total</div><div class="cfg-rend-stat-val">${tot}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Pendientes</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${pend}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Aprobadas</div><div class="cfg-rend-stat-val">${apr}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Pagadas</div><div class="cfg-rend-stat-val" style="color:#4ade80">${pag}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Suma total</div><div class="cfg-rend-stat-val" style="font-family:'DM Mono',monospace">$${_AR(suma)}</div></div>
+    `;
+  }
+
+  if (!_liquidacionesMesCache.length) {
+    bodyEl.innerHTML = '<div class="cfg-rend-empty">No hay liquidaciones para este período. Presioná Generar.</div>';
+    return;
+  }
+
+  const rows = _liquidacionesMesCache.map(l => {
+    const acciones = [];
+    acciones.push(`<button class="cfg-rend-btn-mini primary" onclick="event.stopPropagation();_abrirReciboPayroll('${l.liquidacion_id}')">Recibo</button>`);
+    if (l.estado === 'pendiente') acciones.push(`<button class="cfg-rend-btn-mini" onclick="event.stopPropagation();_cambiarEstadoLiq('${l.liquidacion_id}','aprobada')">Aprobar</button>`);
+    if (l.estado === 'aprobada')  acciones.push(`<button class="cfg-rend-btn-mini" onclick="event.stopPropagation();_marcarPagada('${l.liquidacion_id}')">Pagar</button>`);
+
+    return `<tr onclick="_abrirReciboPayroll('${l.liquidacion_id}')" style="cursor:pointer">
+      <td>${_escHtml(l.chofer_nombre)}${l.chofer_legajo ? ` <span style="color:var(--muted);font-size:11px">#${_escHtml(l.chofer_legajo)}</span>` : ''}</td>
+      <td style="text-align:right">${l.jornadas}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${_AR(l.km_total)}</td>
+      <td style="text-align:right">${l.servicios}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.sueldo_basico)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_km)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_serv)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR((l.presentismo_paga ? l.bono_presentismo : 0))}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.bonos_objetivos)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700">$${_AR(l.total)}</td>
+      <td>${_pillEstadoLiq(l.estado)}</td>
+      <td onclick="event.stopPropagation()" style="text-align:right;white-space:nowrap">${acciones.join('')}</td>
+    </tr>`;
+  }).join('');
+
+  bodyEl.innerHTML = `
+    <div style="overflow-x:auto">
+    <table class="cfg-rend-table">
+      <thead>
+        <tr>
+          <th>Chofer</th><th>Jornadas</th><th>KM</th><th>Servicios</th>
+          <th>Sueldo</th><th>Adic. KM</th><th>Adic. Serv</th><th>Presentismo</th><th>Bonos</th><th>TOTAL</th>
+          <th>Estado</th><th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>`;
+}
+
+async function _generarLiquidacionesMes() {
+  const inp = document.getElementById('pl-mes-periodo');
+  const yyyymm = _mesInputToYyyymm(inp?.value);
+  if (!yyyymm) { toast('Elegí un período', 'error'); return; }
+  if (!confirm('Se generarán/actualizarán las liquidaciones de todos los choferes con esquema salarial cargado. Las liquidaciones marcadas como PAGADAS no se pisan. ¿Continuar?')) return;
+  toast('Generando liquidaciones...', 'warning');
+  const res = await generarLiquidacionesMes(yyyymm);
+  if (!res.ok) { toast('Error al generar', 'error'); return; }
+  const msg = `Creadas: ${res.creadas} · Actualizadas: ${res.actualizadas} · Saltadas: ${res.saltadas}`;
+  toast(msg, 'success', 5000);
+  if (res.nota) toast(res.nota, 'warning', 5000);
+  await _cargarLiquidacionesMes();
+}
+
+async function _cambiarEstadoLiq(liquidacionId, nuevoEstado, extras = {}) {
+  const res = await actualizarEstadoLiquidacion(liquidacionId, { estado: nuevoEstado, ...extras });
+  if (!res.ok) { toast('Error al actualizar estado', 'error'); return; }
+  toast('Estado actualizado ✓', 'success');
+  await _cargarLiquidacionesMes();
+  // Si el recibo está abierto sobre esta liquidación, refrescar
+  if (_reciboActual?.liquidacion_id === liquidacionId) {
+    const upd = _liquidacionesMesCache.find(l => l.liquidacion_id === liquidacionId);
+    if (upd) { _reciboActual = upd; _renderReciboHeader(); }
+  }
+}
+
+async function _marcarPagada(liquidacionId) {
+  const metodo = prompt('Método de pago (efectivo / transferencia / mixto):', 'transferencia');
+  if (!metodo) return;
+  await _cambiarEstadoLiq(liquidacionId, 'pagada', { pagada_metodo: metodo });
+}
+
+// ── Recibo modal ──
+async function _abrirReciboPayroll(liquidacionId) {
+  const liq = _liquidacionesMesCache.find(l => l.liquidacion_id === liquidacionId)
+           || _liquidacionesHistCache.find(l => l.liquidacion_id === liquidacionId);
+  if (!liq) { toast('Liquidación no encontrada', 'error'); return; }
+  _reciboActual = liq;
+  const modal = document.getElementById('modal-recibo-payroll');
+  if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
+  openModal('modal-recibo-payroll');
+  _renderReciboHeader();
+  _reciboSwitch('resumen');
+  // Cargar datos secundarios en paralelo
+  try {
+    const [cumpl, efect] = await Promise.all([
+      cargarCumplimientos(liq.driver_id, liq.periodo_yyyymm),
+      cargarEfectivosValidacion(liq.driver_id, liq.periodo_yyyymm),
+    ]);
+    _reciboCumplCache = cumpl;
+    _reciboEfectivosCache = efect;
+    _renderReciboObjetivos();
+    _renderReciboEfectivos();
+    _renderReciboJornadas();
+  } catch (err) {
+    console.error('_abrirReciboPayroll:', err);
+  }
+}
+
+function _renderReciboHeader() {
+  const liq = _reciboActual;
+  if (!liq) return;
+  document.getElementById('rec-chofer').textContent  = (liq.chofer_nombre || '—') + (liq.chofer_legajo ? ` · #${liq.chofer_legajo}` : '');
+  document.getElementById('rec-periodo').textContent = _yyyymmToPeriodo(liq.periodo_yyyymm);
+  document.getElementById('rec-estado').innerHTML    = _pillEstadoLiq(liq.estado);
+  document.getElementById('rec-total').textContent   = '$' + _AR(liq.total);
+
+  // Acciones de estado
+  const accEl = document.getElementById('rec-acciones-estado');
+  if (accEl) {
+    const acc = [];
+    if (liq.estado === 'pendiente') acc.push(`<button class="btn btn-primary" onclick="_cambiarEstadoLiq('${liq.liquidacion_id}','aprobada')" style="font-size:12px">✓ Aprobar</button>`);
+    if (liq.estado === 'aprobada')  acc.push(`<button class="btn btn-primary" onclick="_marcarPagada('${liq.liquidacion_id}')" style="font-size:12px">💵 Marcar pagada</button>`);
+    if (liq.estado === 'aprobada')  acc.push(`<button class="btn btn-ghost" onclick="_cambiarEstadoLiq('${liq.liquidacion_id}','pendiente')" style="font-size:12px">↺ Volver a pendiente</button>`);
+    accEl.innerHTML = acc.join('');
+  }
+}
+
+function _reciboSwitch(sub) {
+  document.querySelectorAll('#modal-recibo-payroll .ftab').forEach(t => t.classList.toggle('active', t.dataset.recsub === sub));
+  document.querySelectorAll('#modal-recibo-payroll .rec-sub').forEach(el => el.style.display = 'none');
+  const target = document.getElementById('rec-sub-' + sub);
+  if (target) target.style.display = 'block';
+  if (sub === 'resumen') _renderReciboResumen();
+  else if (sub === 'rendiciones') _renderReciboRendiciones();
+}
+
+function _renderReciboResumen() {
+  const liq = _reciboActual;
+  if (!liq) return;
+  const el = document.getElementById('rec-sub-resumen');
+  if (!el) return;
+  const row = (label, val, opts = {}) => `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);${opts.strong?'font-weight:700;font-size:15px':''}">
+      <span style="color:${opts.strong?'var(--fg)':'var(--muted)'};font-size:${opts.strong?'14px':'12px'}">${label}</span>
+      <span style="font-family:'DM Mono',monospace;color:${opts.color||'var(--fg)'}">${val}</span>
+    </div>`;
+  const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo)||0 : 0;
+  const ajusteRend = Number(liq.ajuste_rendiciones) || 0;
+  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0);
+  const ajusteRow = ajusteRend > 0
+    ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+         <span style="color:var(--muted);font-size:12px">Descuentos por rendición ${liq.estado==='aprobada'||liq.estado==='pagada'?'🔒':''}</span>
+         <span style="font-family:'DM Mono',monospace;color:var(--red)">- $${_AR(ajusteRend)}</span>
+       </div>`
+    : '';
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Jornadas</div><div class="cfg-rend-stat-val">${liq.jornadas}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">KM totales</div><div class="cfg-rend-stat-val" style="font-family:'DM Mono',monospace">${_AR(liq.km_total)}</div></div>
+      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Servicios</div><div class="cfg-rend-stat-val">${liq.servicios}</div></div>
+    </div>
+    ${row('Sueldo básico',              '$' + _AR(liq.sueldo_basico))}
+    ${row('Adicional km',               '$' + _AR(liq.adic_km))}
+    ${row('Adicional servicios',        '$' + _AR(liq.adic_serv))}
+    ${row('Presentismo' + (liq.presentismo_paga?' ✓':' ✗ (no paga)'), '$' + _AR(presMostrado), { color: liq.presentismo_paga?'#4ade80':'var(--muted)' })}
+    ${row('Bonos por objetivos',        '$' + _AR(liq.bonos_objetivos))}
+    ${ajusteRend > 0 ? row('Subtotal bruto', '$' + _AR(bruto), { color:'var(--muted)' }) : ''}
+    ${ajusteRow}
+    ${row('TOTAL',                      '$' + _AR(liq.total), { strong:true, color:'var(--amber)' })}
+    ${liq.notas ? `<div style="margin-top:14px;padding:10px 12px;background:var(--bg-elev);border-radius:8px;font-size:12px;color:var(--muted)"><strong>Notas:</strong> ${_escHtml(liq.notas)}</div>` : ''}
+    ${liq.pagada_metodo ? `<div style="margin-top:8px;color:var(--muted);font-size:11px">Método de pago: ${_escHtml(liq.pagada_metodo)}${liq.pagada_at ? ' · ' + new Date(liq.pagada_at).toLocaleDateString('es-AR') : ''}</div>` : ''}
+  `;
+}
+
+async function _renderReciboJornadas() {
+  const liq = _reciboActual;
+  if (!liq) return;
+  const el = document.getElementById('rec-sub-jornadas');
+  if (!el) return;
+  el.innerHTML = '<div class="cfg-rend-empty">Cargando jornadas...</div>';
+
+  // Fetch jornadas del período + remitos para contar servicios/día
+  const s = String(liq.periodo_yyyymm);
+  const anio = parseInt(s.slice(0,4), 10);
+  const mes  = parseInt(s.slice(4,6), 10);
+  const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
+  const ult   = new Date(anio, mes, 0).getDate();
+  const hasta = `${anio}-${String(mes).padStart(2,'0')}-${String(ult).padStart(2,'0')}`;
+
+  try {
+    const [jornRes, remRes] = await Promise.all([
+      _db.from('daily_logs')
+        .select('log_id, log_date, km_inicio, km_final, status, plate:trucks(plate)')
+        .eq('driver_id', liq.driver_id)
+        .eq('status', 'closed')
+        .gte('log_date', desde)
+        .lte('log_date', hasta)
+        .order('log_date', { ascending: true }),
+      _db.from('remitos')
+        .select('remito_id, created_at_device')
+        .eq('driver_id', liq.driver_id)
+        .eq('status', 'firmado')
+        .gte('created_at_device', desde + 'T00:00:00-03:00')
+        .lte('created_at_device', hasta + 'T23:59:59-03:00'),
+    ]);
+    const jorn = jornRes.data || [];
+    const rem  = remRes.data  || [];
+    // Contar remitos por día
+    const remPorDia = {};
+    rem.forEach(r => {
+      const d = (r.created_at_device || '').slice(0, 10);
+      remPorDia[d] = (remPorDia[d] || 0) + 1;
+    });
+    if (!jorn.length) {
+      el.innerHTML = '<div class="cfg-rend-empty">Sin jornadas cerradas en el período.</div>';
+      return;
+    }
+    const rows = jorn.map(j => {
+      const km = Math.max(0, (Number(j.km_final)||0) - (Number(j.km_inicio)||0));
+      const servs = remPorDia[j.log_date] || 0;
+      const plate = j.plate?.plate || '—';
+      return `<tr>
+        <td>${j.log_date}</td>
+        <td>${_escHtml(plate)}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace">${_AR(km)}</td>
+        <td style="text-align:right">${servs}</td>
+      </tr>`;
+    }).join('');
+    el.innerHTML = `<table class="cfg-rend-table"><thead><tr><th>Fecha</th><th>Camión</th><th>KM</th><th>Servicios</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } catch (err) {
+    console.error('_renderReciboJornadas:', err);
+    el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar jornadas</div>';
+  }
+}
+
+function _renderReciboObjetivos() {
+  const liq = _reciboActual;
+  if (!liq) return;
+  const el = document.getElementById('rec-sub-objetivos');
+  if (!el) return;
+  const cargar = `<button class="btn btn-primary" onclick="_abrirCumplimientoModal('${liq.driver_id}', ${liq.periodo_yyyymm}, '${liq.liquidacion_id}')" style="font-size:12px;padding:7px 13px">+ Cargar cumplimiento</button>`;
+
+  if (!_reciboCumplCache.length) {
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="color:var(--muted);font-size:12px">Sin cumplimientos cargados aún.</div>
+        ${cargar}
+      </div>`;
+    return;
+  }
+  const rows = _reciboCumplCache.map(c => `
+    <tr>
+      <td>${c.fecha}</td>
+      <td>${_escHtml(c.payroll_objetivos?.nombre || '—')}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${_AR(c.cantidad)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(c.bonus_calculado)}</td>
+      <td style="color:var(--muted);font-size:11px">${c.ref_tipo}${c.ref_id?': '+_escHtml(c.ref_id):''}</td>
+      <td style="text-align:right"><button class="cfg-rend-btn-mini" onclick="_borrarCumplimiento('${c.cumplimiento_id}')">🗑</button></td>
+    </tr>`).join('');
+  const total = _reciboCumplCache.reduce((s,c) => s + (Number(c.bonus_calculado)||0), 0);
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="color:var(--muted);font-size:12px">Cumplimientos del período · Total bonos: <strong style="color:var(--amber);font-family:'DM Mono',monospace">$${_AR(total)}</strong></div>
+      ${cargar}
+    </div>
+    <table class="cfg-rend-table"><thead><tr><th>Fecha</th><th>Objetivo</th><th>Cantidad</th><th>Bono</th><th>Ref.</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+  `;
+}
+
+function _renderReciboEfectivos() {
+  const el = document.getElementById('rec-sub-efectivos');
+  if (!el) return;
+  if (!_reciboEfectivosCache.length) {
+    el.innerHTML = '<div class="cfg-rend-empty">Sin cobros en efectivo registrados en el período. Nada que validar.</div>';
+    return;
+  }
+  const rows = _reciboEfectivosCache.map(e => {
+    const semaforo = e.estado === 'ok' ? '🟢' : e.estado === 'warn' ? '🟡' : '🔴';
+    const declaradoTxt = e.declarado === null ? '<span style="color:var(--red)">— (sin rendir)</span>' : ('$' + _AR(e.declarado));
+    const deltaColor = Math.abs(e.delta) < 50 ? 'var(--muted)' : e.delta < 0 ? '#ef4444' : '#4ade80';
+    const deltaTxt = e.delta === 0 ? '$0' : (e.delta > 0 ? '+$' : '−$') + _AR(Math.abs(e.delta));
+    return `<tr>
+      <td>${semaforo}</td>
+      <td>${e.fecha}</td>
+      <td>${_escHtml(e.concepto)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(e.calculado)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">${declaradoTxt}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:${deltaColor};font-weight:600">${deltaTxt}</td>
+    </tr>`;
+  }).join('');
+  const problemas = _reciboEfectivosCache.filter(e => e.estado !== 'ok').length;
+  el.innerHTML = `
+    <div style="margin-bottom:10px;color:var(--muted);font-size:12px">
+      Cruce entre remitos-efectivo (calculado) y rendiciones del chofer (declarado).
+      ${problemas>0?`<span style="color:#ef4444;font-weight:600"> · ${problemas} día(s) con diferencias.</span>`:''}
+    </div>
+    <table class="cfg-rend-table"><thead><tr><th></th><th>Fecha</th><th>Concepto</th><th>Calculado</th><th>Declarado</th><th>Δ</th></tr></thead><tbody>${rows}</tbody></table>
+  `;
+}
+
+// ── Cumplimientos ──
+function _abrirCumplimientoModal(driverId, yyyymm, liquidacionId) {
+  _cumpModalContexto = { driverId, yyyymm, liquidacionId };
+  const modal = document.getElementById('modal-cumplimiento-nuevo');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  const chofer = _reciboActual?.chofer_nombre || '—';
+  document.getElementById('cump-chofer-per').textContent = `${chofer} · ${_yyyymmToPeriodo(yyyymm)}`;
+  document.getElementById('cump-cantidad').value = '';
+  document.getElementById('cump-ref').value = '';
+  document.getElementById('cump-fecha').value = new Date().toISOString().slice(0,10);
+  // Cargar objetivos activos en el select
+  const sel = document.getElementById('cump-objetivo');
+  cargarObjetivos().then(objs => {
+    sel.innerHTML = objs.map(o => `<option value="${o.objetivo_id}" data-tipo="${o.tipo}" data-valor="${o.valor}">${_escHtml(o.nombre)} — ${o.tipo==='porcentaje'?o.valor+'%':'$'+_AR(o.valor)}</option>`).join('');
+    _cumpActualizarPreview();
+  });
+  sel.onchange = _cumpActualizarPreview;
+  document.getElementById('cump-cantidad').oninput = _cumpActualizarPreview;
+  openModal('modal-cumplimiento-nuevo');
+}
+
+function _cumpActualizarPreview() {
+  const sel = document.getElementById('cump-objetivo');
+  const opt = sel?.selectedOptions?.[0];
+  const tipo  = opt?.dataset?.tipo;
+  const valor = Number(opt?.dataset?.valor) || 0;
+  const cant  = Number(document.getElementById('cump-cantidad').value) || 0;
+  const hint = document.getElementById('cump-cant-hint');
+  const lbl  = document.getElementById('cump-cant-lbl');
+  let bono = 0;
+  if (tipo === 'fijo') {
+    bono = cant * valor;
+    if (lbl)  lbl.innerHTML = 'Cantidad de unidades <span style="color:var(--red)">*</span>';
+    if (hint) hint.textContent = `Bono = cantidad × $${_AR(valor)} por unidad.`;
+  } else if (tipo === 'porcentaje') {
+    bono = (cant * valor) / 100;
+    if (lbl)  lbl.innerHTML = 'Monto base ($) <span style="color:var(--red)">*</span>';
+    if (hint) hint.textContent = `Bono = ${valor}% del monto base.`;
+  }
+  document.getElementById('cump-bono-preview').textContent = '$' + _AR(bono);
+}
+
+async function _guardarCumplimiento() {
+  const ctx = _cumpModalContexto;
+  if (!ctx) return;
+  const sel = document.getElementById('cump-objetivo');
+  const opt = sel?.selectedOptions?.[0];
+  const objetivo_id = sel.value;
+  if (!objetivo_id) { toast('Elegí un objetivo', 'error'); return; }
+  const cant = Number(document.getElementById('cump-cantidad').value);
+  if (!(cant > 0)) { toast('Cantidad inválida', 'error'); return; }
+  const tipo  = opt?.dataset?.tipo;
+  const valor = Number(opt?.dataset?.valor) || 0;
+  const bono  = tipo === 'porcentaje' ? (cant * valor) / 100 : cant * valor;
+  const fecha = document.getElementById('cump-fecha').value || new Date().toISOString().slice(0,10);
+  const ref   = document.getElementById('cump-ref').value.trim() || null;
+
+  const res = await crearCumplimiento({
+    objetivo_id,
+    driver_id: ctx.driverId,
+    periodo_yyyymm: ctx.yyyymm,
+    fecha,
+    cantidad: cant,
+    bonus_calculado: bono,
+    ref_tipo: 'manual',
+    ref_id: ref,
+  });
+  if (!res.ok) { toast('Error al guardar cumplimiento', 'error'); return; }
+  closeModal('modal-cumplimiento-nuevo');
+  toast('Cumplimiento cargado ✓ · Regenerá el mes para actualizar totales', 'success', 5000);
+  // Recargar cumplimientos del recibo abierto
+  if (_reciboActual?.driver_id === ctx.driverId && _reciboActual?.periodo_yyyymm === ctx.yyyymm) {
+    _reciboCumplCache = await cargarCumplimientos(ctx.driverId, ctx.yyyymm);
+    _renderReciboObjetivos();
+  }
+}
+
+async function _borrarCumplimiento(cumplimientoId) {
+  if (!confirm('¿Borrar este cumplimiento? Regenerá el mes para actualizar el total.')) return;
+  const res = await borrarCumplimiento(cumplimientoId);
+  if (!res.ok) { toast('Error al borrar', 'error'); return; }
+  toast('Cumplimiento borrado ✓', 'success');
+  if (_reciboActual) {
+    _reciboCumplCache = await cargarCumplimientos(_reciboActual.driver_id, _reciboActual.periodo_yyyymm);
+    _renderReciboObjetivos();
+  }
+}
+
+// ── Export PDF (usa window.print sobre un div temporal) ──
+function _exportarReciboPDF() {
+  const liq = _reciboActual;
+  if (!liq) return;
+  const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo)||0 : 0;
+  const html = `
+    <html><head><title>Recibo ${liq.chofer_nombre} ${_yyyymmToPeriodo(liq.periodo_yyyymm)}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+      h1 { font-size: 20px; margin: 0 0 6px 0; }
+      h2 { font-size: 14px; margin: 20px 0 8px 0; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px; }
+      td, th { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: left; }
+      .right { text-align: right; font-family: monospace; }
+      .total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #333; border-bottom: none; }
+      .hdr { display: flex; justify-content: space-between; margin-bottom: 16px; }
+    </style></head><body>
+      <div class="hdr">
+        <div><h1>Recibo de sueldo</h1><div>Sigma Remolques</div></div>
+        <div style="text-align:right"><div><strong>${_escHtml(liq.chofer_nombre)}</strong></div><div>${liq.chofer_legajo?'Legajo #'+_escHtml(liq.chofer_legajo):''}</div><div>Período: ${_yyyymmToPeriodo(liq.periodo_yyyymm)}</div></div>
+      </div>
+      <h2>Producción del mes</h2>
+      <table><tr><td>Jornadas trabajadas</td><td class="right">${liq.jornadas}</td></tr>
+      <tr><td>KM totales</td><td class="right">${_AR(liq.km_total)}</td></tr>
+      <tr><td>Servicios (remitos firmados)</td><td class="right">${liq.servicios}</td></tr></table>
+      <h2>Liquidación</h2>
+      <table>
+        <tr><td>Sueldo básico</td><td class="right">$${_AR(liq.sueldo_basico)}</td></tr>
+        <tr><td>Adicional por km</td><td class="right">$${_AR(liq.adic_km)}</td></tr>
+        <tr><td>Adicional por servicios</td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
+        <tr><td>Presentismo ${liq.presentismo_paga?'':' (no aplica)'}</td><td class="right">$${_AR(presMostrado)}</td></tr>
+        <tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
+        ${Number(liq.ajuste_rendiciones)>0 ? `<tr><td>Descuentos por rendición</td><td class="right" style="color:#b91c1c">- $${_AR(liq.ajuste_rendiciones)}</td></tr>` : ''}
+        <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>
+      </table>
+      <div style="margin-top:24px;font-size:11px;color:#666">Estado: ${liq.estado}${liq.pagada_metodo?' · Pago: '+_escHtml(liq.pagada_metodo):''}${liq.pagada_at?' · '+new Date(liq.pagada_at).toLocaleDateString('es-AR'):''}</div>
+      <div style="margin-top:48px;display:flex;justify-content:space-around">
+        <div style="text-align:center"><div>_______________________</div><div>Firma empleador</div></div>
+        <div style="text-align:center"><div>_______________________</div><div>Firma chofer</div></div>
+      </div>
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { toast('Bloqueado por popup. Habilitá popups.', 'error'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
+}
+
+// ── Historial ──
+function _initHistorialFiltros() {
+  const anioSel = document.getElementById('pl-hist-anio');
+  if (anioSel && !anioSel.options.length) {
+    const cur = new Date().getFullYear();
+    const opts = ['<option value="">Todos los años</option>'];
+    for (let y = cur; y >= cur - 4; y--) opts.push(`<option value="${y}">${y}</option>`);
+    anioSel.innerHTML = opts.join('');
+    anioSel.value = String(cur);
+  }
+  const chSel = document.getElementById('pl-hist-chofer');
+  if (chSel && chSel.options.length === 1 && Array.isArray(_esquemaCache) && _esquemaCache.length) {
+    chSel.innerHTML = '<option value="">Todos los choferes</option>' + _esquemaCache.map(c => `<option value="${c.user_id}">${_escHtml(c.full_name)}</option>`).join('');
+  } else if (chSel && chSel.options.length === 1) {
+    // Cargar bajo demanda
+    cargarPayrollSettingsFlota().then(list => {
+      _esquemaCache = list;
+      chSel.innerHTML = '<option value="">Todos los choferes</option>' + list.map(c => `<option value="${c.user_id}">${_escHtml(c.full_name)}</option>`).join('');
+    });
+  }
+  _cargarHistorialLiquidaciones();
+}
+
+async function _cargarHistorialLiquidaciones() {
+  const bodyEl = document.getElementById('pl-hist-body');
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '<div class="cfg-rend-empty">Cargando historial...</div>';
+  const anio = parseInt(document.getElementById('pl-hist-anio')?.value, 10) || null;
+  const chof = document.getElementById('pl-hist-chofer')?.value || null;
+  try {
+    _liquidacionesHistCache = await cargarLiquidacionHistorial({ anio, driverId: chof });
+    _renderHistorialTabla();
+  } catch (err) {
+    console.error('_cargarHistorialLiquidaciones:', err);
+    bodyEl.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar</div>';
+  }
+}
+
+function _renderHistorialTabla() {
+  const bodyEl = document.getElementById('pl-hist-body');
+  if (!bodyEl) return;
+  const estadoFiltro = document.getElementById('pl-hist-estado')?.value || '';
+  let list = _liquidacionesHistCache.slice();
+  if (estadoFiltro) list = list.filter(l => l.estado === estadoFiltro);
+  if (!list.length) {
+    bodyEl.innerHTML = '<div class="cfg-rend-empty">Sin resultados.</div>';
+    return;
+  }
+  const rows = list.map(l => `
+    <tr onclick="_abrirReciboPayroll('${l.liquidacion_id}')" style="cursor:pointer">
+      <td>${_yyyymmToPeriodo(l.periodo_yyyymm)}</td>
+      <td>${_escHtml(l.chofer_nombre)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:600">$${_AR(l.total)}</td>
+      <td>${_pillEstadoLiq(l.estado)}</td>
+      <td style="color:var(--muted);font-size:11px">${l.pagada_at ? new Date(l.pagada_at).toLocaleDateString('es-AR') : l.aprobada_at ? new Date(l.aprobada_at).toLocaleDateString('es-AR') : new Date(l.created_at).toLocaleDateString('es-AR')}</td>
+    </tr>`).join('');
+  bodyEl.innerHTML = `<table class="cfg-rend-table"><thead><tr><th>Período</th><th>Chofer</th><th>Total</th><th>Estado</th><th>Última acción</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SUB-TAB "RENDICIONES" — módulo Sueldos (Fase 4)
+// ═══════════════════════════════════════════════════════════════════
+let _rendicionesSueldosCache = { rendiciones: [], porChofer: {} };
+
+function _initRendicionesFiltros() {
+  const chSel = document.getElementById('pl-rend-chofer');
+  if (chSel && chSel.options.length === 1 && Array.isArray(_esquemaCache) && _esquemaCache.length) {
+    chSel.innerHTML = '<option value="">Todos los choferes</option>' + _esquemaCache.map(c => `<option value="${c.user_id}">${_escHtml(c.full_name)}</option>`).join('');
+    chSel.onchange = _cargarRendicionesSueldos;
+  } else if (chSel && chSel.options.length === 1) {
+    cargarPayrollSettingsFlota().then(list => {
+      _esquemaCache = list;
+      chSel.innerHTML = '<option value="">Todos los choferes</option>' + list.map(c => `<option value="${c.user_id}">${_escHtml(c.full_name)}</option>`).join('');
+      chSel.onchange = _cargarRendicionesSueldos;
+    });
+  }
+  const inp = document.getElementById('pl-rend-periodo');
+  if (inp) inp.onchange = _cargarRendicionesSueldos;
+}
+
+async function _cargarRendicionesSueldos() {
+  const bodyEl  = document.getElementById('pl-rend-body');
+  const statsEl = document.getElementById('pl-rend-stats');
+  const inp     = document.getElementById('pl-rend-periodo');
+  const chSel   = document.getElementById('pl-rend-chofer');
+  if (!bodyEl) return;
+  const yyyymm = _mesInputToYyyymm(inp?.value);
+  if (!yyyymm) { bodyEl.innerHTML = '<div class="cfg-rend-empty">Elegí un período.</div>'; return; }
+  bodyEl.innerHTML = '<div class="cfg-rend-empty">Cargando rendiciones...</div>';
+  if (statsEl) statsEl.innerHTML = '';
+  try {
+    _rendicionesSueldosCache = await cargarRendicionesPeriodo(yyyymm, chSel?.value || null);
+    _renderRendicionesSueldos();
+  } catch (err) {
+    console.error('_cargarRendicionesSueldos:', err);
+    bodyEl.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar rendiciones</div>';
+  }
+}
+
+function _renderRendicionesSueldos() {
+  const bodyEl  = document.getElementById('pl-rend-body');
+  const statsEl = document.getElementById('pl-rend-stats');
+  if (!bodyEl) return;
+
+  const { rendiciones, porChofer } = _rendicionesSueldosCache;
+  const totalFalt = Object.values(porChofer).reduce((s, c) => s + c.faltante, 0);
+  const totalSobr = Object.values(porChofer).reduce((s, c) => s + c.sobrante, 0);
+  const cantChoferesConFaltante = Object.values(porChofer).filter(c => c.faltante > 0).length;
+
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red);font-weight:600">🔴 Faltantes: $${_AR(totalFalt)}</span>
+      <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:600">🟡 Sobrantes: $${_AR(totalSobr)}</span>
+      <span class="badge" style="background:rgba(148,163,184,0.15);color:var(--muted)">${rendiciones.length} rendiciones · ${cantChoferesConFaltante} con descuento</span>
+    `;
+  }
+
+  if (!rendiciones.length) {
+    bodyEl.innerHTML = '<div class="cfg-rend-empty">Sin rendiciones en el período.</div>';
+    return;
+  }
+
+  const choferesArr = Object.values(porChofer).sort((a, b) => b.faltante - a.faltante || a.chofer_nombre.localeCompare(b.chofer_nombre));
+  const resumenRows = choferesArr.map(c => `
+    <tr>
+      <td>${_escHtml(c.chofer_nombre)}</td>
+      <td style="text-align:right">${c.cant}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--red);font-weight:600">$${_AR(c.faltante)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:#f59e0b">$${_AR(c.sobrante)}</td>
+    </tr>`).join('');
+
+  const detalleRows = rendiciones.map(r => {
+    const sem = r._faltante > 0 ? '🔴' : r._sobrante > 0 ? '🟡' : '🟢';
+    const diffTxt = r._faltante > 0
+      ? `<span style="color:var(--red);font-weight:600">-$${_AR(r._faltante)}</span>`
+      : r._sobrante > 0
+      ? `<span style="color:#f59e0b">+$${_AR(r._sobrante)}</span>`
+      : `<span style="color:var(--muted)">$0</span>`;
+    return `<tr>
+      <td>${new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-AR')}</td>
+      <td>${_escHtml(r.chofer_nombre)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(r.efectivo_declarado)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(r.efectivo_esperado)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--muted)">$${_AR(r.gastos_extra)}</td>
+      <td style="text-align:right">${diffTxt}</td>
+      <td style="text-align:center;font-size:16px">${sem}</td>
+    </tr>`;
+  }).join('');
+
+  bodyEl.innerHTML = `
+    <div style="margin-bottom:18px">
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Resumen por chofer</div>
+      <table class="cfg-rend-table">
+        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th></tr></thead>
+        <tbody>${resumenRows}</tbody>
+      </table>
+    </div>
+    <div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Detalle jornada por jornada</div>
+      <table class="cfg-rend-table">
+        <thead><tr><th>Fecha</th><th>Chofer</th><th style="text-align:right">Declarado</th><th style="text-align:right">Esperado</th><th style="text-align:right">Gastos</th><th style="text-align:right">Diff</th><th style="text-align:center">Sem.</th></tr></thead>
+        <tbody>${detalleRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── Sub-vista Rendiciones dentro del modal-recibo ──
+async function _renderReciboRendiciones() {
+  const liq = _reciboActual;
+  if (!liq) return;
+  const el = document.getElementById('rec-sub-rendiciones');
+  if (!el) return;
+  el.innerHTML = '<div class="cfg-rend-empty">Cargando rendiciones del período...</div>';
+  try {
+    const { rendiciones } = await cargarRendicionesPeriodo(liq.periodo_yyyymm, liq.driver_id);
+    const ajusteGuardado = Number(liq.ajuste_rendiciones) || 0;
+    const faltCalc = rendiciones.reduce((s, r) => s + r._faltante, 0);
+    const congelado = liq.estado === 'aprobada' || liq.estado === 'pagada';
+
+    if (!rendiciones.length) {
+      el.innerHTML = `
+        <div style="padding:14px;background:var(--bg-elev);border-radius:8px;color:var(--muted);font-size:13px;text-align:center">
+          Sin rendiciones en el período.
+        </div>
+        <div style="margin-top:12px;padding:10px 12px;background:var(--bg-elev);border-radius:8px;font-size:12px">
+          <span style="color:var(--muted)">Ajuste aplicado:</span>
+          <span style="font-family:'DM Mono',monospace;font-weight:600;color:${ajusteGuardado>0?'var(--red)':'var(--fg)'}">$${_AR(ajusteGuardado)}</span>
+          ${congelado ? '<span style="color:var(--muted);margin-left:8px">🔒 snapshot</span>' : ''}
+        </div>`;
+      return;
+    }
+
+    const rows = rendiciones.map(r => {
+      const sem = r._faltante > 0 ? '🔴' : r._sobrante > 0 ? '🟡' : '🟢';
+      const diffTxt = r._faltante > 0
+        ? `<span style="color:var(--red);font-weight:600">-$${_AR(r._faltante)}</span>`
+        : r._sobrante > 0
+        ? `<span style="color:#f59e0b">+$${_AR(r._sobrante)}</span>`
+        : `<span style="color:var(--muted)">$0</span>`;
+      return `<tr>
+        <td>${new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-AR')}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(r.efectivo_declarado)}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(r.efectivo_esperado)}</td>
+        <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--muted)">$${_AR(r.gastos_extra)}</td>
+        <td style="text-align:right">${diffTxt}</td>
+        <td style="text-align:center;font-size:16px">${sem}</td>
+      </tr>`;
+    }).join('');
+
+    const desfase = Math.abs(faltCalc - ajusteGuardado) > 0.01;
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">
+        <div class="cfg-rend-stat">
+          <div class="cfg-rend-stat-lbl">Ajuste aplicado ${congelado ? '🔒' : ''}</div>
+          <div class="cfg-rend-stat-val" style="color:${ajusteGuardado>0?'var(--red)':'var(--fg)'};font-family:'DM Mono',monospace">$${_AR(ajusteGuardado)}</div>
+        </div>
+        <div class="cfg-rend-stat">
+          <div class="cfg-rend-stat-lbl">Faltante calculado hoy</div>
+          <div class="cfg-rend-stat-val" style="font-family:'DM Mono',monospace">$${_AR(faltCalc)}</div>
+        </div>
+      </div>
+      ${desfase && !congelado ? `<div style="padding:8px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;color:#f59e0b;font-size:12px;margin-bottom:12px">⚠ El ajuste guardado difiere del calculado actual. Presioná "⚡ Generar liquidaciones" para actualizar.</div>` : ''}
+      ${congelado ? `<div style="padding:8px 12px;background:rgba(148,163,184,0.1);border-left:3px solid var(--muted);color:var(--muted);font-size:12px;margin-bottom:12px">🔒 Liquidación ${liq.estado}. El ajuste quedó congelado (snapshot).</div>` : ''}
+      <table class="cfg-rend-table">
+        <thead><tr><th>Fecha</th><th style="text-align:right">Declarado</th><th style="text-align:right">Esperado</th><th style="text-align:right">Gastos</th><th style="text-align:right">Diff</th><th style="text-align:center">Sem.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  } catch (err) {
+    console.error('_renderReciboRendiciones:', err);
+    el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar rendiciones</div>';
+  }
 }
