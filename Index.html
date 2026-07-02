@@ -2000,6 +2000,7 @@
           <option value="365">Último año</option>
           <option value="all">Todo</option>
         </select>
+        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" onclick="abrirModalExportRendicionMes()">📄 PDF mensual</button>
       </div>
       <div id="cfg-rend-stats" class="cfg-rend-stats"></div>
       <div style="margin:10px 0;color:var(--muted);font-size:11px;line-height:1.5">
@@ -3324,6 +3325,34 @@
     </div>
     <div class="modal-footer" style="display:flex;justify-content:flex-end">
       <button class="btn btn-primary" onclick="closeModal('modal-rendicion-detalle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-export-rendicion-mes" style="z-index:10001">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-head">
+      <span class="modal-head-title">📄 Exportar rendición mensual</span>
+      <button class="modal-close" onclick="closeModal('modal-export-rendicion-mes')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px">
+      <div style="color:var(--muted);font-size:12px;margin-bottom:14px;line-height:1.5">
+        Genera un PDF firmable con el detalle día por día del mes seleccionado: facturación, efectivo, combustible y gastos.
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;letter-spacing:0.5px">Chofer</label>
+        <select id="exprend-chofer" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px">
+          <option value="">— seleccionar chofer —</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;letter-spacing:0.5px">Mes</label>
+        <select id="exprend-mes" style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px"></select>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-export-rendicion-mes')">Cancelar</button>
+      <button id="exprend-btn-generar" class="btn btn-primary" onclick="_exportarRendicionMensualPDF()">📄 Generar PDF</button>
     </div>
   </div>
 </div>

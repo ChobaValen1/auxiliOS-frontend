@@ -1704,7 +1704,7 @@ async function cargarDatosChofer(userId, desde, truckId = null) {
     jornadasQ,
     fuelQ,
     _db.from('rendicion_cierre')
-      .select('efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra, estado, fecha')
+      .select('efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra:motivo_gastos_extra, estado, fecha')
       .eq('driver_id', userId)
       .gte('fecha', desde)
       .neq('estado', 'rechazado'),
@@ -1921,10 +1921,92 @@ async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
   return { rendiciones, porChofer };
 }
 
+// Detalle día-por-día del mes para PDF de rendición mensual.
+// Agrega: remitos (fact_total + efectivo), combustible en efectivo, rendición del día.
+async function cargarRendicionMensualDetalle(driverId, yyyymm) {
+  if (!driverId || !yyyymm) return null;
+  const { desde, hastaExclusive, desdeTs, hastaTsExclusive } = _payrollRangoMes(yyyymm);
+
+  const [choferRes, remitosRes, fuelRes, rendRes, jornadasRes] = await Promise.all([
+    _db.from('users').select('user_id, full_name, legajo').eq('user_id', driverId).single(),
+    _db.from('remitos')
+      .select('created_at_device, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto')
+      .eq('driver_id', driverId)
+      .gte('created_at_device', desdeTs)
+      .lt ('created_at_device', hastaTsExclusive)
+      .neq('status', 'anulado'),
+    _db.from('daily_logs')
+      .select('log_id, log_date, truck_id')
+      .eq('driver_id', driverId)
+      .gte('log_date', desde).lt('log_date', hastaExclusive),
+    _db.from('rendicion_cierre')
+      .select('fecha, efectivo_declarado, efectivo_esperado, gastos_extra, admin_status')
+      .eq('driver_id', driverId)
+      .neq('estado', 'rechazado')
+      .gte('fecha', desde).lt('fecha', hastaExclusive),
+    _db.from('fuel_records')
+      .select('fuel_date, total_cost, payment_method, truck_id')
+      .gte('fuel_date', desde).lt('fuel_date', hastaExclusive),
+  ]);
+
+  const chofer = choferRes.data || { full_name: '—', legajo: null };
+  const truckIds = new Set((fuelRes.data || []).map(j => j.truck_id).filter(Boolean));
+  // Filtrar combustible sólo de los camiones que este chofer usó ese mes.
+  const misTrucks = new Set((jornadasRes.data || []).map(j => j.truck_id).filter(Boolean));
+  const fuelDelChofer = (fuelRes.data || []).filter(f =>
+    misTrucks.has(f.truck_id) && f.payment_method === 'efectivo'
+  );
+
+  // Bucket por día (YYYY-MM-DD en AR)
+  const porDia = {};
+  const bucket = (d) => {
+    if (!porDia[d]) porDia[d] = { fecha: d, fact_total: 0, efectivo: 0, combustible: 0, gastos_extra: 0, rendicion_estado: null };
+    return porDia[d];
+  };
+
+  const _fechaAR = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+  const _esEfectivo = (m) => m === 'efectivo';
+
+  (remitosRes.data || []).forEach(r => {
+    const d = _fechaAR(r.created_at_device);
+    const b = bucket(d);
+    const m1 = Number(r.pago_1_monto) || 0;
+    const m2 = Number(r.pago_2_monto) || 0;
+    b.fact_total += m1 + m2;
+    if (_esEfectivo(r.pago_1_metodo)) b.efectivo += m1;
+    if (_esEfectivo(r.pago_2_metodo)) b.efectivo += m2;
+  });
+
+  fuelDelChofer.forEach(f => {
+    const b = bucket(f.fuel_date);
+    b.combustible += Number(f.total_cost) || 0;
+  });
+
+  (rendRes.data || []).forEach(r => {
+    const b = bucket(r.fecha);
+    b.gastos_extra += Number(r.gastos_extra) || 0;
+    b.rendicion_estado = r.admin_status || 'pendiente';
+  });
+
+  const dias = Object.values(porDia)
+    .map(b => ({ ...b, a_rendir: b.efectivo - b.combustible - b.gastos_extra }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  const totales = dias.reduce((t, d) => ({
+    fact_total:   t.fact_total   + d.fact_total,
+    efectivo:     t.efectivo     + d.efectivo,
+    combustible:  t.combustible  + d.combustible,
+    gastos_extra: t.gastos_extra + d.gastos_extra,
+    a_rendir:     t.a_rendir     + d.a_rendir,
+  }), { fact_total: 0, efectivo: 0, combustible: 0, gastos_extra: 0, a_rendir: 0 });
+
+  return { chofer, dias, totales, periodo_yyyymm: yyyymm };
+}
+
 // Listado de rendiciones para el hub admin — incluye nombre del chofer y estado admin
 async function cargarRendicionesAdmin({ desde = null, hasta = null, driverId = null, status = null, limit = 200 } = {}) {
   let q = _db.from('rendicion_cierre')
-    .select('rendicion_id, log_id, driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra, notas, estado, admin_status, admin_by, admin_at, admin_nota, created_at')
+    .select('rendicion_id, log_id, driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra:motivo_gastos_extra, notas:notas_chofer, estado, admin_status, admin_by, admin_at, admin_nota, created_at')
     .neq('estado', 'rechazado')
     .order('fecha', { ascending: false })
     .limit(limit);

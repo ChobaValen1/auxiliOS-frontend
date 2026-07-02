@@ -8388,10 +8388,10 @@ function _renderRendicionesTabla() {
     const pillTxt = st === 'aprobada' ? 'Aprobada' : st === 'observada' ? 'Observada' : 'Pendiente';
     const fecha = r.fecha ? r.fecha.slice(5).split('-').reverse().join('/') : '—';
     const acciones = st === 'pendiente'
-      ? `<button class="cfg-rend-btn-mini primary" onclick="aprobarRendicion(${r.rendicion_id})">Aprobar</button>
-         <button class="cfg-rend-btn-mini" onclick="observarRendicion(${r.rendicion_id})">Observar</button>`
-      : `<button class="cfg-rend-btn-mini" onclick="verDetalleRendicion(${r.rendicion_id})">Ver</button>`;
-    return `<tr onclick="verDetalleRendicion(${r.rendicion_id})" style="cursor:pointer">
+      ? `<button class="cfg-rend-btn-mini primary" onclick="event.stopPropagation();aprobarRendicion('${r.rendicion_id}')">Aprobar</button>
+         <button class="cfg-rend-btn-mini" onclick="event.stopPropagation();observarRendicion('${r.rendicion_id}')">Observar</button>`
+      : `<button class="cfg-rend-btn-mini" onclick="event.stopPropagation();verDetalleRendicion('${r.rendicion_id}')">Ver</button>`;
+    return `<tr onclick="verDetalleRendicion('${r.rendicion_id}')" style="cursor:pointer">
       <td>${fecha}</td>
       <td>${_escHtml(r.chofer_nombre)}</td>
       <td style="font-family:'DM Mono',monospace">$${_AR(declarado)}</td>
@@ -8409,6 +8409,221 @@ function _renderRendicionesTabla() {
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+// ── Export PDF de rendición mensual ──
+async function abrirModalExportRendicionMes() {
+  const modal = document.getElementById('modal-export-rendicion-mes');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  const chSel = document.getElementById('exprend-chofer');
+  const mesSel = document.getElementById('exprend-mes');
+  // Meses: últimos 12 en formato yyyymm
+  const opts = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const yyyymm = d.getFullYear() * 100 + (d.getMonth() + 1);
+    const label = d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' });
+    opts.push(`<option value="${yyyymm}">${label.charAt(0).toUpperCase() + label.slice(1)}</option>`);
+  }
+  mesSel.innerHTML = opts.join('');
+  // Escoger mes anterior por default (rendición del mes cerrado)
+  if (mesSel.options.length > 1) mesSel.selectedIndex = 1;
+  // Cargar lista fresca de choferes
+  chSel.innerHTML = '<option value="">Cargando…</option>';
+  openModal('modal-export-rendicion-mes');
+  try {
+    const choferes = await cargarPayrollSettingsFlota();
+    if (Array.isArray(choferes) && choferes.length) {
+      chSel.innerHTML = '<option value="">— seleccionar chofer —</option>' +
+        choferes.map(c => `<option value="${c.user_id}">${_escHtml(c.full_name)}</option>`).join('');
+    } else {
+      chSel.innerHTML = '<option value="">Sin choferes</option>';
+    }
+  } catch (err) {
+    console.error('abrirModalExportRendicionMes choferes:', err);
+    chSel.innerHTML = '<option value="">Error al cargar</option>';
+  }
+}
+
+async function _exportarRendicionMensualPDF() {
+  const driverId = document.getElementById('exprend-chofer')?.value;
+  const yyyymm   = parseInt(document.getElementById('exprend-mes')?.value, 10);
+  if (!driverId) { toast('Elegí un chofer', 'error'); return; }
+  if (!yyyymm)   { toast('Elegí un mes', 'error'); return; }
+  const btn = document.getElementById('exprend-btn-generar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando…'; }
+  try {
+    const data = await cargarRendicionMensualDetalle(driverId, yyyymm);
+    if (!data) { toast('Sin datos', 'error'); return; }
+    _abrirRendicionMensualPDF(data);
+    closeModal('modal-export-rendicion-mes');
+  } catch (err) {
+    console.error('_exportarRendicionMensualPDF:', err);
+    toast('Error al generar PDF', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Generar PDF'; }
+  }
+}
+
+function _abrirRendicionMensualPDF({ chofer, dias, totales, periodo_yyyymm }) {
+  const anio = Math.floor(periodo_yyyymm / 100);
+  const mes  = periodo_yyyymm % 100;
+  const mesNombre = new Date(anio, mes - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  const rangoStr  = `01/${String(mes).padStart(2,'0')}/${anio} — ${String(new Date(anio, mes, 0).getDate()).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${anio}`;
+  const emitido   = new Date().toLocaleString('es-AR');
+
+  const filas = dias.map(d => {
+    const fecha = d.fecha.slice(5).split('-').reverse().join('/');
+    return `<tr>
+      <td>${fecha}</td>
+      <td class="right">$${_AR(d.fact_total)}</td>
+      <td class="right">$${_AR(d.efectivo)}</td>
+      <td class="right">$${_AR(d.combustible)}</td>
+      <td class="right">$${_AR(d.gastos_extra)}</td>
+      <td class="right strong ${d.a_rendir < 0 ? 'neg' : ''}">${d.a_rendir < 0 ? '−$' : '$'}${_AR(Math.abs(d.a_rendir))}</td>
+    </tr>`;
+  }).join('');
+
+  const emptyMsg = dias.length === 0
+    ? `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">Sin actividad en el período.</td></tr>`
+    : '';
+
+  const html = `
+    <html><head><title>Rendición mensual ${_escHtml(chofer.full_name)} — ${mesNombre}</title>
+    <style>
+      @page { size: A4; margin: 0; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .page { min-height: 297mm; padding: 0 0 22mm 0; display: flex; flex-direction: column; }
+      .band { background: #0f3460; color: #fff; padding: 18px 26px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #d4a017; }
+      .band .brand { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+      .band .brand small { display: block; font-size: 10px; font-weight: 400; letter-spacing: 3px; opacity: 0.85; margin-top: 2px; }
+      .band .doc { text-align: right; font-size: 11px; line-height: 1.5; }
+      .band .doc .num { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+      .content { flex: 1; padding: 20px 26px 0 26px; }
+      .chofer-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border: 1px solid #d6d6d6; border-radius: 6px; overflow: hidden; margin-bottom: 18px; }
+      .chofer-grid .cell { padding: 10px 14px; border-right: 1px solid #eee; }
+      .chofer-grid .cell:last-child { border-right: none; }
+      .chofer-grid .lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
+      .chofer-grid .val { font-size: 12.5px; color: #1a1a1a; font-weight: 500; }
+      h2 { font-size: 11px; margin: 0 0 8px 0; padding: 7px 12px; background: #0f3460; color: #fff; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; border-radius: 4px 4px 0 0; }
+      table.detail { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 4px 4px; }
+      table.detail th { background: #f5f5f5; padding: 8px 10px; text-align: left; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; color: #555; border-bottom: 1px solid #ddd; }
+      table.detail td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+      table.detail tr:nth-child(even) td { background: #fafafa; }
+      table.detail tr:last-child td { border-bottom: none; }
+      .right { text-align: right; font-family: 'DM Mono', 'Courier New', monospace; white-space: nowrap; }
+      .strong { font-weight: 700; }
+      .neg { color: #b91c1c; }
+      table.detail tfoot td { background: #0f3460; color: #fff; font-weight: 800; font-size: 12px; padding: 12px 10px; letter-spacing: 0.4px; }
+      table.detail tfoot .right { color: #fff; font-size: 13px; }
+      .resumen { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin: 8px 0 18px 0; }
+      .resumen .box { padding: 12px 14px; border-radius: 6px; }
+      .resumen .formula { background: #fafafa; border: 1px solid #e5e5e5; font-size: 11px; color: #555; line-height: 1.6; }
+      .resumen .formula strong { color: #1a1a1a; }
+      .resumen .neto { background: #0f3460; color: #fff; text-align: center; }
+      .resumen .neto .lbl { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.85; }
+      .resumen .neto .val { font-family: 'DM Mono', 'Courier New', monospace; font-size: 22px; font-weight: 800; margin-top: 4px; }
+      .foot { padding: 0 26px; margin-top: auto; }
+      .foot-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 26px 0 12px 0; border-top: 1px solid #ddd; }
+      .firma { text-align: center; padding-top: 30px; }
+      .firma .line { border-top: 1px solid #333; margin-bottom: 6px; }
+      .firma .rol { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; font-weight: 600; }
+      .firma .name { font-size: 11px; color: #1a1a1a; margin-top: 3px; }
+      .aviso { margin: 10px 26px 0 26px; padding: 8px 12px; font-size: 9px; color: #777; line-height: 1.5; text-align: justify; border-top: 1px dashed #ccc; padding-top: 10px; }
+      .aviso strong { color: #555; }
+    </style></head><body>
+      <div class="page">
+        <div class="band">
+          <div class="brand">SIGMA REMOLQUES<small>SERVICIO DE AUXILIO 24 HS</small></div>
+          <div class="doc">
+            <div class="num">RENDICIÓN MENSUAL</div>
+            <div>Emitido: ${emitido}</div>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="chofer-grid">
+            <div class="cell">
+              <div class="lbl">Chofer</div>
+              <div class="val">${_escHtml(chofer.full_name)}${chofer.legajo ? ' · #' + _escHtml(chofer.legajo) : ''}</div>
+            </div>
+            <div class="cell">
+              <div class="lbl">Período</div>
+              <div class="val">${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}</div>
+            </div>
+            <div class="cell">
+              <div class="lbl">Rango</div>
+              <div class="val">${rangoStr}</div>
+            </div>
+          </div>
+
+          <h2>Detalle día por día</h2>
+          <table class="detail">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th style="text-align:right">Fact. total</th>
+                <th style="text-align:right">Efectivo</th>
+                <th style="text-align:right">Combustible</th>
+                <th style="text-align:right">Gastos extra</th>
+                <th style="text-align:right">A rendir</th>
+              </tr>
+            </thead>
+            <tbody>${filas}${emptyMsg}</tbody>
+            <tfoot>
+              <tr>
+                <td>TOTAL MES</td>
+                <td class="right">$${_AR(totales.fact_total)}</td>
+                <td class="right">$${_AR(totales.efectivo)}</td>
+                <td class="right">$${_AR(totales.combustible)}</td>
+                <td class="right">$${_AR(totales.gastos_extra)}</td>
+                <td class="right">${totales.a_rendir < 0 ? '−$' : '$'}${_AR(Math.abs(totales.a_rendir))}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="resumen">
+            <div class="box formula">
+              <strong>Cálculo del neto a rendir:</strong><br>
+              Efectivo cobrado ($${_AR(totales.efectivo)})<br>
+              − Combustible en efectivo ($${_AR(totales.combustible)})<br>
+              − Gastos extra declarados ($${_AR(totales.gastos_extra)})
+            </div>
+            <div class="box neto">
+              <div class="lbl">Neto a rendir</div>
+              <div class="val">${totales.a_rendir < 0 ? '−$' : '$'}${_AR(Math.abs(totales.a_rendir))}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot">
+          <div class="foot-inner">
+            <div class="firma">
+              <div class="line"></div>
+              <div class="rol">Firma chofer</div>
+              <div class="name">${_escHtml(chofer.full_name)}</div>
+            </div>
+            <div class="firma">
+              <div class="line"></div>
+              <div class="rol">Firma admin</div>
+              <div class="name">Sigma Remolques</div>
+            </div>
+          </div>
+          <div class="aviso">
+            <strong>Aviso:</strong> Comprobante <strong>interno</strong> de rendición mensual generado automáticamente por el sistema a partir de remitos, cargas de combustible en efectivo y rendiciones diarias registradas por el chofer. Sirve como registro consolidado para el arqueo mensual entre empleador y empleado.
+          </div>
+        </div>
+      </div>
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { toast('Bloqueado por popup. Habilitá popups.', 'error'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
 }
 
 async function aprobarRendicion(rendId) {
