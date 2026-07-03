@@ -989,6 +989,8 @@
   </div>
   <div id="mobile-jornadas-list" class="mobile-only"></div>
 
+  <button class="jhist-open-btn" onclick="abrirHistorialJornadas()">📖 Ver historial completo</button>
+
 
   <!-- Resumen del mes -->
   <div id="section-resumen-mes" class="card mb24">
@@ -3325,6 +3327,26 @@
     </div>
     <div class="modal-footer" style="display:flex;justify-content:flex-end">
       <button class="btn btn-primary" onclick="closeModal('modal-rendicion-detalle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-historial-jornadas" style="z-index:10001">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-head">
+      <span class="modal-head-title">📖 Mis jornadas</span>
+      <button class="modal-close" onclick="closeModal('modal-historial-jornadas')">✕</button>
+    </div>
+    <div class="modal-body" style="font-size:13px">
+      <div id="jhist-admin-filtro" style="display:none;margin-bottom:12px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Chofer</div>
+        <select id="jhist-select-chofer" class="input-field" onchange="_jhistCambiarChofer()"></select>
+      </div>
+      <div id="jhist-lista" style="max-height:55vh;overflow-y:auto"></div>
+      <button id="jhist-btn-mas" class="jhist-btn-mas" onclick="_jhistCargarPagina(false)" style="display:none">Cargar más</button>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="closeModal('modal-historial-jornadas')">Cerrar</button>
     </div>
   </div>
 </div>

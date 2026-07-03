@@ -6314,7 +6314,9 @@ function renderHistorialJornadas(data) {
     btn.textContent = `Ver más (${data.length - 4} restantes)`;
     btn.style.cssText = `width:100%;padding:10px;margin-top:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:12px;cursor:pointer`;
     btn.onclick = () => {
-      hidden.forEach(el => { el.style.display = ''; });
+      // 'flex' (no ''): las cards se crean con display:flex inline; si se restaura
+      // con '' quedan en display:block y se ven con otro formato (más anchas).
+      hidden.forEach(el => { el.style.display = 'flex'; });
       btn.remove();
     };
     mList.appendChild(btn);
@@ -6333,10 +6335,126 @@ function _resetJornadasMobile() {
   btn.textContent = `Ver más (${rows.length - 4} restantes)`;
   btn.style.cssText = `width:100%;padding:10px;margin-top:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:12px;cursor:pointer`;
   btn.onclick = () => {
-    rows.slice(4).forEach(el => { el.style.display = ''; });
+    // 'flex' (no ''): mismo formato que las primeras 4 cards (ver renderHistorialJornadas)
+    rows.slice(4).forEach(el => { el.style.display = 'flex'; });
     btn.remove();
   };
   mList.appendChild(btn);
+}
+
+// ── MODAL "MIS JORNADAS" (historial completo paginado) ────────
+const _JHIST_PAGINA = 20;
+let _jhistOffset   = 0;
+let _jhistDriverId = null;
+
+async function abrirHistorialJornadas() {
+  const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
+  const filtro   = document.getElementById('jhist-admin-filtro');
+  const sel      = document.getElementById('jhist-select-chofer');
+
+  if (esChofer) {
+    if (filtro) filtro.style.display = 'none';
+    _jhistDriverId = USUARIO_ACTUAL?.id || null;
+  } else {
+    if (filtro) filtro.style.display = 'block';
+    if (sel && sel.options.length === 0) {
+      const { data } = await _db.from('users').select('user_id, full_name').eq('role_id', 3).order('full_name');
+      (data || []).forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.user_id;
+        opt.textContent = u.full_name;
+        sel.appendChild(opt);
+      });
+    }
+    _jhistDriverId = sel?.value || null;
+  }
+
+  openModal('modal-historial-jornadas');
+  await _jhistCargarPagina(true);
+}
+
+function _jhistCambiarChofer() {
+  const sel = document.getElementById('jhist-select-chofer');
+  _jhistDriverId = sel?.value || null;
+  _jhistCargarPagina(true);
+}
+
+function _jhistFecha(iso) {
+  // 'AAAA-MM-DD' → 'DD-MM-AAAA'
+  if (!iso) return '—';
+  const p = String(iso).slice(0, 10).split('-');
+  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '—';
+}
+
+function _jhistHora(h) {
+  return h ? String(h).slice(0, 5) : '—';
+}
+
+async function _jhistCargarPagina(reset) {
+  const lista  = document.getElementById('jhist-lista');
+  const btnMas = document.getElementById('jhist-btn-mas');
+  if (!lista) return;
+
+  if (reset) {
+    _jhistOffset = 0;
+    lista.innerHTML = '<div class="jhist-vacio">Cargando jornadas...</div>';
+  }
+  if (btnMas) { btnMas.disabled = true; btnMas.textContent = 'Cargando...'; }
+
+  if (!_jhistDriverId) {
+    lista.innerHTML = '<div class="jhist-vacio">No hay chofer seleccionado.</div>';
+    if (btnMas) btnMas.style.display = 'none';
+    return;
+  }
+
+  const { data, error } = await _db.from('daily_logs')
+    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate, numero_interno)')
+    .eq('driver_id', _jhistDriverId)
+    .order('log_date', { ascending: false })
+    .range(_jhistOffset, _jhistOffset + _JHIST_PAGINA - 1);
+
+  if (btnMas) { btnMas.disabled = false; btnMas.textContent = 'Cargar más'; }
+
+  if (error) {
+    console.error('_jhistCargarPagina:', error);
+    if (reset) lista.innerHTML = '<div class="jhist-vacio" style="color:var(--red)">No se pudieron cargar las jornadas. Probá de nuevo.</div>';
+    return;
+  }
+
+  if (reset) lista.innerHTML = '';
+  const rows = data || [];
+
+  if (reset && rows.length === 0) {
+    lista.innerHTML = '<div class="jhist-vacio">Todavía no hay jornadas registradas.</div>';
+    if (btnMas) btnMas.style.display = 'none';
+    return;
+  }
+
+  rows.forEach(j => {
+    const abierta = j.status === 'open';
+    const movil   = j.trucks?.numero_interno ? `N° ${j.trucks.numero_interno}` : (j.trucks?.plate || '—');
+    const kmRec   = (j.km_final != null && j.km_inicio != null)
+      ? Math.max(0, Number(j.km_final) - Number(j.km_inicio)).toLocaleString('es-AR') + ' km'
+      : '—';
+    const horas   = `${_jhistHora(j.hora_inicio)} → ${_jhistHora(j.hora_fin)}`;
+    const pill    = abierta
+      ? '<span class="pill pill-amber">Abierta</span>'
+      : '<span class="pill pill-green">Cerrada</span>';
+
+    const row = document.createElement('div');
+    row.className = 'jhist-row' + (abierta ? ' jhist-row--abierta' : '');
+    row.innerHTML = `
+      <div class="jhist-row-main">
+        <div class="jhist-row-titulo">${_jhistFecha(j.log_date)} · ${movil}</div>
+        <div class="jhist-row-sub">${kmRec} · ${horas}</div>
+      </div>
+      ${pill}`;
+    lista.appendChild(row);
+  });
+
+  _jhistOffset += rows.length;
+  // Si vino la página completa, puede haber más
+  if (btnMas) btnMas.style.display = rows.length === _JHIST_PAGINA ? 'block' : 'none';
 }
 
 function renderServiciosDia(data) {

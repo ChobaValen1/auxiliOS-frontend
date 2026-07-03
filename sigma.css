@@ -2820,3 +2820,64 @@ body {
 #modal-recibo-payroll .ftab { font-size: 12px; padding: 6px 12px; }
 .rec-sub { min-height: 200px; }
 
+/* ── Modal "Mis jornadas" (historial completo) ─────────────── */
+.jhist-open-btn {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent, var(--amber));
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.jhist-open-btn:hover { border-color: var(--accent, var(--amber)); }
+.jhist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid #4ade80;
+  border-radius: 8px;
+}
+.jhist-row--abierta { border-left-color: #f59e0b; }
+.jhist-row-main { flex: 1; min-width: 0; }
+.jhist-row-titulo {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jhist-row-sub {
+  color: var(--muted2);
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  margin-top: 2px;
+}
+.jhist-btn-mas {
+  width: 100%;
+  padding: 10px;
+  margin-top: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--accent, var(--amber));
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.jhist-btn-mas:disabled { opacity: .6; cursor: default; }
+.jhist-vacio {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--muted2);
+  font-size: 12px;
+}
+
