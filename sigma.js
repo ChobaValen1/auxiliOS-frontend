@@ -8871,16 +8871,6 @@ async function verDetalleRendicion(rendId) {
         html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin:12px 0 4px">Otros gastos</div>';
         html += _mrow(_escHtml(rend.motivo_extra||'Sin motivo'), '−$' + _AR(rend.gastos_extra));
       }
-      // La cuenta final, para que se entienda de dónde sale la diferencia
-      html += `
-        <div style="margin-top:12px;padding:10px 12px;background:var(--bg-elev);border-radius:8px;font-size:12px;line-height:1.8">
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Debería entregar (cobros − gastos)</span><span style="font-family:'DM Mono',monospace">$${_AR(rend.efectivo_esperado||0)}</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Entregó</span><span style="font-family:'DM Mono',monospace">$${_AR(rend.efectivo_declarado||0)}</span></div>
-          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-weight:700">
-            <span>Resultado</span>
-            <span style="font-family:'DM Mono',monospace;color:${diffEl.style.color}">${diffEl.textContent}</span>
-          </div>
-        </div>`;
     }
     bodyEl.innerHTML = html;
   } catch (err) {
