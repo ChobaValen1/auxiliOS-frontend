@@ -14329,7 +14329,7 @@ async function cargarGrilla() {
 
   try {
     const [rTrucks, rChoferes, rAsig, rFeriados] = await Promise.all([
-      _db.from('trucks').select('truck_id, plate, numero_interno').eq('status', 'activo').order('numero_interno'),
+      _db.from('trucks').select('truck_id, plate, numero_interno').in('status', ['active', 'activo']).order('numero_interno'),
       _db.from('users').select('user_id, full_name').eq('role_id', 3).order('full_name'),
       _db.from('asignaciones_grilla')
          .select('asignacion_id, fecha, truck_id, driver_id, estado, users(full_name), trucks(numero_interno, plate)')
