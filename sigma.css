@@ -2881,3 +2881,212 @@ body {
   font-size: 12px;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   GRILLA MENSUAL — asignaciones chofer × móvil
+   ═══════════════════════════════════════════════════════════════ */
+
+.grilla-topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.grilla-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grilla-controls select {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.grilla-semana-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.grilla-semana-tab {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted2);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.grilla-semana-tab:hover { border-color: var(--border2); color: var(--text); }
+.grilla-semana-tab.active {
+  background: var(--amber-lo);
+  border-color: var(--amber);
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.grilla-filtros {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.grilla-filtros label {
+  display: block;
+  font-size: 10px;
+  color: var(--muted2);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+.grilla-filtros select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 180px;
+}
+.grilla-filtros select:focus { outline: none; border-color: var(--amber); }
+.grilla-f-clear {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted2);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.grilla-f-clear:hover { border-color: var(--amber); color: var(--amber); }
+
+.grilla-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+.grilla-table { border-collapse: collapse; width: 100%; min-width: 760px; }
+.grilla-table th,
+.grilla-table td {
+  padding: 10px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.grilla-table th {
+  background: var(--panel);
+  color: var(--muted2);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.grilla-th-fecha { display: block; color: var(--text); font-size: 12px; letter-spacing: 0; margin-top: 2px; }
+.grilla-th-feriado {
+  display: block;
+  color: var(--red);
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-top: 2px;
+  max-width: 110px;
+  margin-left: auto;
+  margin-right: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.grilla-table th.grilla-feriado { color: var(--red); background: var(--red-lo); }
+.grilla-table th.grilla-hoy { background: var(--amber-lo); color: var(--amber); }
+.grilla-table th.grilla-hoy .grilla-th-fecha { color: var(--amber); }
+.grilla-table td.grilla-hoy-celda { background: rgba(245,166,35,0.05); }
+.grilla-table td.grilla-movil {
+  font-weight: 800;
+  font-family: 'DM Mono', 'Consolas', monospace;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--panel);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.grilla-table tr:last-child td { border-bottom: none; }
+.grilla-cargando { padding: 24px 12px; text-align: center; color: var(--muted2); font-size: 12px; }
+
+.grilla-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  white-space: nowrap;
+}
+.grilla-admin .grilla-chip { cursor: pointer; }
+.grilla-chip-chofer {
+  background: var(--green-lo);
+  color: var(--green);
+  border: 1px solid rgba(39,196,122,0.25);
+}
+.grilla-chip-franco {
+  background: rgba(133,144,171,0.12);
+  color: var(--muted2);
+  border: 1px dashed var(--border2);
+}
+.grilla-chip-taller {
+  background: var(--amber-lo);
+  color: var(--amber);
+  border: 1px solid rgba(245,166,35,0.3);
+}
+.grilla-chip-vacia {
+  background: none;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  min-width: 28px;
+}
+.grilla-chip-mia { border: 2px solid var(--green); font-weight: 800; }
+.grilla-chip-atenuada { opacity: 0.25; }
+.grilla-chip-resaltada { border: 2px solid var(--green); box-shadow: 0 0 8px rgba(39,196,122,0.35); }
+
+.grilla-leyenda {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--muted2);
+  flex-wrap: wrap;
+}
+.grilla-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.grilla-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+.grilla-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  user-select: none;
+}
+.grilla-opt:hover { border-color: var(--amber); }
+.grilla-opt.sel { border-color: var(--green); background: var(--green-lo); }
+.grilla-opt.sel span { color: var(--green); font-weight: 700; }
+
+@media (max-width: 767px) {
+  .grilla-table th, .grilla-table td { padding: 8px 5px; font-size: 11px; }
+  .grilla-chip { padding: 3px 7px; font-size: 10px; }
+  .grilla-filtros select { min-width: 130px; flex: 1; }
+  .grilla-topbar { justify-content: flex-start; }
+}
+

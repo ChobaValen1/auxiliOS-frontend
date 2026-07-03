@@ -698,6 +698,11 @@
     <span class="nav-label">Jornadas</span>
   </div>
 
+  <div class="nav-item" onclick="goTo('grilla')" id="nav-grilla">
+    <span class="nav-icon">🗓️</span>
+    <span class="nav-label">Grilla</span>
+  </div>
+
   <div class="nav-bottom" style="position:relative">
     <div id="nav-avatar-popup" class="nav-avatar-popup">
       <div>
@@ -2504,6 +2509,77 @@
   </div>
 
 </div><!-- /screen-jornadas-admin -->
+
+
+<div class="screen" id="screen-grilla">
+
+  <!-- Header: mes + acciones -->
+  <div class="grilla-topbar">
+    <div class="grilla-controls">
+      <select id="grilla-mes-select" onchange="cambiarMesGrilla(this.value)"></select>
+      <button class="btn btn-primary" id="grilla-btn-copiar" style="display:none" onclick="copiarSemanaGrilla()">+ Copiar semana →</button>
+    </div>
+  </div>
+
+  <!-- Tabs de semanas -->
+  <div class="grilla-semana-tabs" id="grilla-semana-tabs"></div>
+
+  <!-- Filtros -->
+  <div class="grilla-filtros">
+    <div>
+      <label>Chofer</label>
+      <select id="grilla-f-chofer" onchange="setFiltroChoferGrilla(this.value)">
+        <option value="">Todos los choferes</option>
+      </select>
+    </div>
+    <div>
+      <label>Móvil</label>
+      <select id="grilla-f-movil" onchange="setFiltroMovilGrilla(this.value)">
+        <option value="">Todos los móviles</option>
+      </select>
+    </div>
+    <button class="grilla-f-clear" onclick="limpiarFiltrosGrilla()">Limpiar</button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="grilla-card">
+    <table class="grilla-table">
+      <thead id="grilla-thead"></thead>
+      <tbody id="grilla-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Leyenda -->
+  <div class="grilla-leyenda">
+    <span><span class="grilla-dot" style="background:var(--green)"></span> Chofer asignado</span>
+    <span><span class="grilla-dot" style="background:var(--muted2)"></span> Franco (descanso)</span>
+    <span><span class="grilla-dot" style="background:var(--amber)"></span> Móvil en taller</span>
+    <span><span class="grilla-dot" style="background:var(--amber);border-radius:2px"></span> Columna = hoy</span>
+    <span><span class="grilla-dot" style="background:var(--red)"></span> Feriado</span>
+  </div>
+
+</div><!-- /screen-grilla -->
+
+
+<!-- Modal: editar celda de la grilla (solo admin) -->
+<div class="modal-backdrop" id="modal-grilla-celda">
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-head">
+      <div>
+        <span class="modal-head-title">Editar asignación</span>
+        <div style="font-size:11px;color:var(--muted2);margin-top:4px" id="grilla-celda-sub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-grilla-celda')">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="grilla-celda-opts"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-grilla-celda')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarGrillaCelda()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 
 <div class="modal-backdrop" id="modal-settings">
