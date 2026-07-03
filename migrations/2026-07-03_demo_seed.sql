@@ -183,7 +183,7 @@ BEGIN
          v_efectivo_esp,
          CASE WHEN RANDOM() < 0.2 THEN (1500 + RANDOM()*5000)::NUMERIC(12,2) ELSE 0 END,
          CASE WHEN RANDOM() < 0.2 THEN 'Almuerzo + peaje adicional' ELSE NULL END,
-         'cerrada',
+         'pendiente',
          CASE WHEN v_dia < CURRENT_DATE - 3 THEN 'aprobada' ELSE 'pendiente' END,
          v_dia + TIME '19:00');
 
