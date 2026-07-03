@@ -169,6 +169,10 @@ body {
 }
 .tb-btn:hover { border-color: var(--amber); }
 
+/* Logout en topbar: solo visible en mobile (el sidenav se oculta ahí) */
+.tb-btn-logout { display: none; color: var(--red); border-color: rgba(226,80,74,0.3); }
+.tb-btn-logout:hover { border-color: var(--red); background: var(--red-lo); }
+
 /* ── CONTENT AREA ─────────────────────────── */
 .content {
   flex: 1;
@@ -1753,6 +1757,7 @@ body {
 @media (max-width: 767px) {
   .desktop-only { display: none !important; }
   .mobile-only { display: block !important; }
+  .tb-btn-logout { display: flex; }
 
   /* Bottom navigation */
   .sidenav {
