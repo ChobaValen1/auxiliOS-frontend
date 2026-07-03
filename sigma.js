@@ -8476,28 +8476,47 @@ async function _exportarRendicionMensualPDF() {
   }
 }
 
-function _abrirRendicionMensualPDF({ chofer, dias, totales, periodo_yyyymm }) {
+function _abrirRendicionMensualPDF({ chofer, servicios, gastos, totales, arqueo, periodo_yyyymm }) {
   const anio = Math.floor(periodo_yyyymm / 100);
   const mes  = periodo_yyyymm % 100;
+  const mm   = String(mes).padStart(2, '0');
   const mesNombre = new Date(anio, mes - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-  const rangoStr  = `01/${String(mes).padStart(2,'0')}/${anio} — ${String(new Date(anio, mes, 0).getDate()).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${anio}`;
-  const emitido   = new Date().toLocaleString('es-AR');
+  const rangoStr  = `01-${mm}-${anio} — ${String(new Date(anio, mes, 0).getDate()).padStart(2,'0')}-${mm}-${anio}`;
+  const _p2 = (n) => String(n).padStart(2, '0');
+  const ahora = new Date();
+  const emitido = `${_p2(ahora.getDate())}-${_p2(ahora.getMonth()+1)}-${ahora.getFullYear()} ${_p2(ahora.getHours())}:${_p2(ahora.getMinutes())}`;
+  const _dmy = (iso) => (iso || '').split('-').reverse().join('-');
+  const _chip = {
+    'Servicio': 'chip-servicio', 'Peaje': 'chip-peaje', 'Excedente': 'chip-excedente',
+    'Otro': 'chip-otro', 'Combustible': 'chip-combustible', 'Gasto extra': 'chip-extra',
+  };
 
-  const filas = dias.map(d => {
-    const fecha = d.fecha.slice(5).split('-').reverse().join('/');
-    return `<tr>
-      <td>${fecha}</td>
-      <td class="right">$${_AR(d.fact_total)}</td>
-      <td class="right">$${_AR(d.efectivo)}</td>
-      <td class="right">$${_AR(d.combustible)}</td>
-      <td class="right">$${_AR(d.gastos_extra)}</td>
-      <td class="right strong ${d.a_rendir < 0 ? 'neg' : ''}">${d.a_rendir < 0 ? '−$' : '$'}${_AR(Math.abs(d.a_rendir))}</td>
-    </tr>`;
-  }).join('');
+  const filasServicios = (servicios || []).map(s => `<tr>
+      <td>${_dmy(s.fecha)}</td>
+      <td>${_escHtml(String(s.movil))}</td>
+      <td>${_escHtml(String(s.nro_servicio))}</td>
+      <td>${_escHtml(String(s.patente))}</td>
+      <td><span class="chip ${_chip[s.concepto] || 'chip-otro'}">${_escHtml(s.concepto)}</span></td>
+      <td class="right">$${_AR(s.importe)}</td>
+    </tr>`).join('')
+    || `<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;font-weight:700;letter-spacing:1px">NO PRESENTA SERVICIOS EN EFECTIVO</td></tr>`;
 
-  const emptyMsg = dias.length === 0
-    ? `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">Sin actividad en el período.</td></tr>`
-    : '';
+  const filasGastos = (gastos || []).map(g => `<tr>
+      <td>${_dmy(g.fecha)}</td>
+      <td>${_escHtml(String(g.movil))}</td>
+      <td><span class="chip ${_chip[g.tipo] || 'chip-otro'}">${_escHtml(g.tipo)}</span></td>
+      <td>${_escHtml(g.obs)}</td>
+      <td class="right">$${_AR(g.importe)}</td>
+    </tr>`).join('')
+    || `<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;font-weight:700;letter-spacing:1px">NO PRESENTA GASTOS EN EFECTIVO</td></tr>`;
+
+  const totalGastos = (totales.combustible || 0) + (totales.gastos_extra || 0);
+  const diffArqueo  = arqueo?.diff || 0;
+  const arqueoTxt = Math.abs(diffArqueo) < 0.01
+    ? '<strong style="color:#067647">sin diferencia</strong>'
+    : (diffArqueo < 0
+        ? `<strong style="color:#b91c1c">faltante de $${_AR(Math.abs(diffArqueo))}</strong>`
+        : `<strong style="color:#067647">sobrante de $${_AR(diffArqueo)}</strong>`);
 
   const html = `
     <html><head><title>Rendición mensual ${_escHtml(chofer.full_name)} — ${mesNombre}</title>
@@ -8527,6 +8546,13 @@ function _abrirRendicionMensualPDF({ chofer, dias, totales, periodo_yyyymm }) {
       .right { text-align: right; font-family: 'DM Mono', 'Courier New', monospace; white-space: nowrap; }
       .strong { font-weight: 700; }
       .neg { color: #b91c1c; }
+      .chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+      .chip-peaje       { background: #e8f0fe; color: #1a56db; }
+      .chip-excedente   { background: #fef3e2; color: #b45309; }
+      .chip-otro        { background: #f3f4f6; color: #4b5563; }
+      .chip-servicio    { background: #e7f7ee; color: #067647; }
+      .chip-combustible { background: #fde8e8; color: #b91c1c; }
+      .chip-extra       { background: #f3e8ff; color: #7e22ce; }
       table.detail tfoot td { background: #0f3460; color: #fff; font-weight: 800; font-size: 12px; padding: 12px 10px; letter-spacing: 0.4px; }
       table.detail tfoot .right { color: #fff; font-size: 13px; }
       .resumen { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin: 8px 0 18px 0; }
@@ -8570,27 +8596,43 @@ function _abrirRendicionMensualPDF({ chofer, dias, totales, periodo_yyyymm }) {
             </div>
           </div>
 
-          <h2>Detalle día por día</h2>
+          <h2>1 · Servicios con importe en efectivo</h2>
           <table class="detail">
             <thead>
               <tr>
                 <th>Fecha</th>
-                <th style="text-align:right">Fact. total</th>
-                <th style="text-align:right">Efectivo</th>
-                <th style="text-align:right">Combustible</th>
-                <th style="text-align:right">Gastos extra</th>
-                <th style="text-align:right">A rendir</th>
+                <th>Móvil</th>
+                <th>N° Servicio</th>
+                <th>Patente</th>
+                <th>Concepto</th>
+                <th style="text-align:right">Importe</th>
               </tr>
             </thead>
-            <tbody>${filas}${emptyMsg}</tbody>
+            <tbody>${filasServicios}</tbody>
             <tfoot>
               <tr>
-                <td>TOTAL MES</td>
-                <td class="right">$${_AR(totales.fact_total)}</td>
+                <td colspan="5">TOTAL EFECTIVO COBRADO</td>
                 <td class="right">$${_AR(totales.efectivo)}</td>
-                <td class="right">$${_AR(totales.combustible)}</td>
-                <td class="right">$${_AR(totales.gastos_extra)}</td>
-                <td class="right">${totales.a_rendir < 0 ? '−$' : '$'}${_AR(Math.abs(totales.a_rendir))}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <h2>2 · Gastos en efectivo</h2>
+          <table class="detail">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Móvil</th>
+                <th>Tipo de gasto</th>
+                <th>Observaciones</th>
+                <th style="text-align:right">Importe</th>
+              </tr>
+            </thead>
+            <tbody>${filasGastos}</tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4">TOTAL GASTOS EN EFECTIVO</td>
+                <td class="right">$${_AR(totalGastos)}</td>
               </tr>
             </tfoot>
           </table>
@@ -8598,13 +8640,16 @@ function _abrirRendicionMensualPDF({ chofer, dias, totales, periodo_yyyymm }) {
           <div class="resumen">
             <div class="box formula">
               <strong>Cálculo del neto a rendir:</strong><br>
-              Efectivo cobrado ($${_AR(totales.efectivo)})<br>
-              − Combustible en efectivo ($${_AR(totales.combustible)})<br>
-              − Gastos extra declarados ($${_AR(totales.gastos_extra)})
+              Efectivo cobrado en servicios ($${_AR(totales.efectivo)})<br>
+              − Gastos en efectivo ($${_AR(totalGastos)})<br>
+              <span style="display:block;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc">
+                <strong>Diferencia de arqueo del mes:</strong> declarado $${_AR(arqueo?.declarado || 0)} vs. esperado $${_AR(arqueo?.esperado || 0)} → ${arqueoTxt}
+              </span>
             </div>
             <div class="box neto">
               <div class="lbl">Neto a rendir</div>
               <div class="val">${totales.a_rendir < 0 ? '−$' : '$'}${_AR(Math.abs(totales.a_rendir))}</div>
+              <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:0.8;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.25)">Dif. arqueo: <strong>${diffArqueo < 0 ? '−' : ''}$${_AR(Math.abs(diffArqueo))}</strong></div>
             </div>
           </div>
         </div>

@@ -1930,7 +1930,7 @@ async function cargarRendicionMensualDetalle(driverId, yyyymm) {
   const [choferRes, remitosRes, fuelRes, rendRes, jornadasRes] = await Promise.all([
     _db.from('users').select('user_id, full_name, legajo').eq('user_id', driverId).single(),
     _db.from('remitos')
-      .select('created_at_device, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto')
+      .select('created_at_device, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, nro_servicio, nro_remito, patente, imp_peaje, imp_excedente, imp_otros, log_id')
       .eq('driver_id', driverId)
       .gte('created_at_device', desdeTs)
       .lt ('created_at_device', hastaTsExclusive)
@@ -1940,12 +1940,12 @@ async function cargarRendicionMensualDetalle(driverId, yyyymm) {
       .eq('driver_id', driverId)
       .gte('log_date', desde).lt('log_date', hastaExclusive),
     _db.from('rendicion_cierre')
-      .select('fecha, efectivo_declarado, efectivo_esperado, gastos_extra, admin_status')
+      .select('fecha, efectivo_declarado, efectivo_esperado, gastos_extra, motivo_gastos_extra, admin_status')
       .eq('driver_id', driverId)
       .neq('estado', 'rechazado')
       .gte('fecha', desde).lt('fecha', hastaExclusive),
     _db.from('fuel_records')
-      .select('fuel_date, total_cost, payment_method, truck_id')
+      .select('fuel_date, total_cost, payment_method, truck_id, gas_station, liters')
       .gte('fuel_date', desde).lt('fuel_date', hastaExclusive),
   ]);
 
@@ -2000,7 +2000,91 @@ async function cargarRendicionMensualDetalle(driverId, yyyymm) {
     a_rendir:     t.a_rendir     + d.a_rendir,
   }), { fact_total: 0, efectivo: 0, combustible: 0, gastos_extra: 0, a_rendir: 0 });
 
-  return { chofer, dias, totales, periodo_yyyymm: yyyymm };
+  // ── Móvil por jornada/fecha (para servicios y gastos) ──
+  const logToTruck = {}, fechaToTruck = {};
+  (jornadasRes.data || []).forEach(j => {
+    logToTruck[j.log_id] = j.truck_id;
+    fechaToTruck[j.log_date] = j.truck_id;
+  });
+  let trucksMap = {};
+  if (misTrucks.size) {
+    const tRes = await _db.from('trucks')
+      .select('truck_id, numero_interno, plate')
+      .in('truck_id', [...misTrucks]);
+    (tRes.data || []).forEach(t => {
+      trucksMap[t.truck_id] = t.numero_interno || t.plate || String(t.truck_id);
+    });
+  }
+  const movilDe = (truckId) => trucksMap[truckId] || '—';
+
+  // ── Servicios con importe en efectivo (una fila por concepto) ──
+  const servicios = [];
+  (remitosRes.data || []).forEach(r => {
+    const m1 = Number(r.pago_1_monto) || 0;
+    const m2 = Number(r.pago_2_monto) || 0;
+    const ef = (_esEfectivo(r.pago_1_metodo) ? m1 : 0) + (_esEfectivo(r.pago_2_metodo) ? m2 : 0);
+    if (ef <= 0) return;
+    const fecha = _fechaAR(r.created_at_device);
+    const base = {
+      fecha,
+      movil: movilDe(logToTruck[r.log_id] ?? fechaToTruck[fecha]),
+      nro_servicio: r.nro_servicio || r.nro_remito || '—',
+      patente: r.patente || '—',
+    };
+    const total = m1 + m2;
+    const peaje = Number(r.imp_peaje) || 0;
+    const exc   = Number(r.imp_excedente) || 0;
+    const otros = Number(r.imp_otros) || 0;
+    const serv  = total - peaje - exc - otros;
+    if (ef >= total - 0.01 && serv >= 0) {
+      // Pagado 100% en efectivo → desglose por concepto
+      if (serv  > 0) servicios.push({ ...base, concepto: 'Servicio',  importe: serv });
+      if (peaje > 0) servicios.push({ ...base, concepto: 'Peaje',     importe: peaje });
+      if (exc   > 0) servicios.push({ ...base, concepto: 'Excedente', importe: exc });
+      if (otros > 0) servicios.push({ ...base, concepto: 'Otro',      importe: otros });
+    } else {
+      // Pago mixto: no se puede atribuir concepto → una sola fila por la parte en efectivo
+      servicios.push({ ...base, concepto: 'Servicio', importe: ef });
+    }
+  });
+  servicios.sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.nro_servicio).localeCompare(String(b.nro_servicio)));
+
+  // ── Gastos en efectivo (combustible + gastos extra declarados) ──
+  const gastos = [];
+  fuelDelChofer.forEach(f => {
+    gastos.push({
+      fecha: f.fuel_date,
+      movil: movilDe(f.truck_id),
+      tipo: 'Combustible',
+      obs: [f.gas_station, f.liters ? Number(f.liters).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' L' : null].filter(Boolean).join(' — ') || '—',
+      importe: Number(f.total_cost) || 0,
+    });
+  });
+  (rendRes.data || []).forEach(r => {
+    const g = Number(r.gastos_extra) || 0;
+    if (g <= 0) return;
+    gastos.push({
+      fecha: r.fecha,
+      movil: movilDe(fechaToTruck[r.fecha]),
+      tipo: 'Gasto extra',
+      obs: r.motivo_gastos_extra || '—',
+      importe: g,
+    });
+  });
+  gastos.sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+  // ── Diferencia de arqueo del mes (misma fórmula que el hub admin) ──
+  const arqueo = (rendRes.data || []).reduce((a, r) => {
+    const decl = Number(r.efectivo_declarado) || 0;
+    const esp  = Number(r.efectivo_esperado)  || 0;
+    const g    = Number(r.gastos_extra)       || 0;
+    a.declarado += decl;
+    a.esperado  += esp;
+    a.diff      += decl + g - esp; // + sobra, − falta
+    return a;
+  }, { declarado: 0, esperado: 0, diff: 0 });
+
+  return { chofer, dias, totales, servicios, gastos, arqueo, periodo_yyyymm: yyyymm };
 }
 
 // Listado de rendiciones para el hub admin — incluye nombre del chofer y estado admin

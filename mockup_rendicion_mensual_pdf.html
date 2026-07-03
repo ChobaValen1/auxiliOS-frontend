@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<title>MOCKUP — Rendición mensual (nuevo formato)</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #555; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .mockup-note { max-width: 210mm; margin: 20px auto 0 auto; background: #fff8e1; border: 2px dashed #d4a017; border-radius: 8px; padding: 14px 18px; font-size: 13px; line-height: 1.6; }
+  .mockup-note h3 { margin: 0 0 6px 0; font-size: 14px; }
+  .page { width: 210mm; min-height: 297mm; margin: 20px auto; background: #fff; padding: 0 0 22mm 0; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  .band { background: #0f3460; color: #fff; padding: 18px 26px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #d4a017; }
+  .band .brand { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+  .band .brand small { display: block; font-size: 10px; font-weight: 400; letter-spacing: 3px; opacity: 0.85; margin-top: 2px; }
+  .band .doc { text-align: right; font-size: 11px; line-height: 1.5; }
+  .band .doc .num { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+  .content { flex: 1; padding: 20px 26px 0 26px; }
+  .chofer-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid #d6d6d6; border-radius: 6px; overflow: hidden; margin-bottom: 18px; }
+  .chofer-grid .cell { padding: 10px 14px; border-right: 1px solid #eee; }
+  .chofer-grid .cell:last-child { border-right: none; }
+  .chofer-grid .lbl { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
+  .chofer-grid .val { font-size: 12.5px; font-weight: 500; }
+  h2 { font-size: 11px; margin: 0 0 0 0; padding: 7px 12px; background: #0f3460; color: #fff; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; border-radius: 4px 4px 0 0; }
+  table.detail { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 10.5px; border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 4px 4px; }
+  table.detail th { background: #f5f5f5; padding: 7px 9px; text-align: left; font-weight: 700; font-size: 9.5px; letter-spacing: 0.5px; text-transform: uppercase; color: #555; border-bottom: 1px solid #ddd; }
+  table.detail td { padding: 6px 9px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  table.detail tr:nth-child(even) td { background: #fafafa; }
+  .right { text-align: right; font-family: 'DM Mono', 'Courier New', monospace; white-space: nowrap; }
+  .strong { font-weight: 700; }
+  table.detail tfoot td { background: #0f3460; color: #fff; font-weight: 800; font-size: 11.5px; padding: 10px 9px; letter-spacing: 0.4px; }
+  table.detail tfoot .right { color: #fff; }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .chip-peaje     { background: #e8f0fe; color: #1a56db; }
+  .chip-excedente { background: #fef3e2; color: #b45309; }
+  .chip-otro      { background: #f3f4f6; color: #4b5563; }
+  .chip-servicio  { background: #e7f7ee; color: #067647; }
+  .chip-combustible { background: #fde8e8; color: #b91c1c; }
+  .chip-extra       { background: #f3e8ff; color: #7e22ce; }
+  .resumen { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin: 4px 0 18px 0; }
+  .resumen .box { padding: 12px 14px; border-radius: 6px; }
+  .resumen .formula { background: #fafafa; border: 1px solid #e5e5e5; font-size: 11px; color: #555; line-height: 1.7; }
+  .resumen .formula strong { color: #1a1a1a; }
+  .resumen .neto { background: #0f3460; color: #fff; text-align: center; }
+  .resumen .neto .lbl { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.85; }
+  .resumen .neto .val { font-family: 'DM Mono', 'Courier New', monospace; font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .foot { padding: 0 26px; margin-top: auto; }
+  .foot-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 26px 0 12px 0; border-top: 1px solid #ddd; }
+  .firma { text-align: center; padding-top: 30px; }
+  .firma .line { border-top: 1px solid #333; margin-bottom: 6px; }
+  .firma .rol { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; font-weight: 600; }
+  .firma .name { font-size: 11px; margin-top: 3px; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — Nuevo PDF de Rendición Mensual</h3>
+  Reemplaza el "detalle día por día" por dos tablas:
+  <strong>1)</strong> Servicios con importe en efectivo (N° servicio, patente, concepto, importe) y
+  <strong>2)</strong> Gastos en efectivo (fecha, tipo, observaciones, importe).
+  Si un servicio tiene más de un concepto en efectivo (ej. servicio + peaje), va una fila por concepto.
+  Incluye columna <strong>Móvil</strong> por servicio y la <strong>diferencia de arqueo</strong> (declarado vs. esperado) en el resumen.
+  <em>Los datos son de ejemplo.</em>
+</div>
+
+<div class="page">
+  <div class="band">
+    <div class="brand">SIGMA REMOLQUES<small>SERVICIO DE AUXILIO 24 HS</small></div>
+    <div class="doc">
+      <div class="num">RENDICIÓN MENSUAL</div>
+      <div>Emitido: 03-07-2026 15:40</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="chofer-grid">
+      <div class="cell"><div class="lbl">Chofer</div><div class="val">Ricardo Cuello · #CHO-004</div></div>
+      <div class="cell"><div class="lbl">Período</div><div class="val">Junio 2026</div></div>
+      <div class="cell"><div class="lbl">Rango</div><div class="val">01-06-2026 — 30-06-2026</div></div>
+    </div>
+
+    <h2>1 · Servicios con importe en efectivo</h2>
+    <table class="detail">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Móvil</th>
+          <th>N° Servicio</th>
+          <th>Patente</th>
+          <th>Concepto</th>
+          <th style="text-align:right">Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>03-06-2026</td><td>114</td><td>SRV-104512</td><td>AB 123 CD</td><td><span class="chip chip-servicio">Servicio</span></td><td class="right">$48.500,00</td></tr>
+        <tr><td>03-06-2026</td><td>114</td><td>SRV-104512</td><td>AB 123 CD</td><td><span class="chip chip-peaje">Peaje</span></td><td class="right">$3.200,00</td></tr>
+        <tr><td>07-06-2026</td><td>114</td><td>SRV-104538</td><td>AC 987 EF</td><td><span class="chip chip-servicio">Servicio</span></td><td class="right">$62.000,00</td></tr>
+        <tr><td>07-06-2026</td><td>114</td><td>SRV-104538</td><td>AC 987 EF</td><td><span class="chip chip-excedente">Excedente</span></td><td class="right">$8.400,00</td></tr>
+        <tr><td>12-06-2026</td><td>114</td><td>SRV-104571</td><td>AD 456 GH</td><td><span class="chip chip-servicio">Servicio</span></td><td class="right">$35.750,00</td></tr>
+        <tr><td>18-06-2026</td><td>120</td><td>SRV-104603</td><td>AE 321 JK</td><td><span class="chip chip-servicio">Servicio</span></td><td class="right">$51.300,00</td></tr>
+        <tr><td>18-06-2026</td><td>120</td><td>SRV-104603</td><td>AE 321 JK</td><td><span class="chip chip-peaje">Peaje</span></td><td class="right">$2.800,00</td></tr>
+        <tr><td>24-06-2026</td><td>114</td><td>SRV-104650</td><td>AF 654 LM</td><td><span class="chip chip-otro">Otro</span></td><td class="right">$5.000,00</td></tr>
+        <tr><td>28-06-2026</td><td>114</td><td>SRV-104688</td><td>AG 111 NP</td><td><span class="chip chip-servicio">Servicio</span></td><td class="right">$44.900,00</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td colspan="5">TOTAL EFECTIVO COBRADO</td><td class="right">$261.850,00</td></tr>
+      </tfoot>
+    </table>
+
+    <h2>2 · Gastos en efectivo</h2>
+    <table class="detail">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Móvil</th>
+          <th>Tipo de gasto</th>
+          <th>Observaciones</th>
+          <th style="text-align:right">Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>04-06-2026</td><td>114</td><td><span class="chip chip-combustible">Combustible</span></td><td>YPF Ruta 3 — 78,5 L</td><td class="right">$98.125,00</td></tr>
+        <tr><td>11-06-2026</td><td>114</td><td><span class="chip chip-combustible">Combustible</span></td><td>Shell Panamericana — 64,2 L</td><td class="right">$80.250,00</td></tr>
+        <tr><td>15-06-2026</td><td>114</td><td><span class="chip chip-extra">Gasto extra</span></td><td>Almuerzo + peaje adicional</td><td class="right">$6.500,00</td></tr>
+        <tr><td>22-06-2026</td><td>120</td><td><span class="chip chip-combustible">Combustible</span></td><td>Axion Km 25 — 71,0 L</td><td class="right">$88.750,00</td></tr>
+        <tr><td>27-06-2026</td><td>120</td><td><span class="chip chip-extra">Gasto extra</span></td><td>Lavado de móvil</td><td class="right">$4.000,00</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td colspan="4">TOTAL GASTOS EN EFECTIVO</td><td class="right">$277.625,00</td></tr>
+      </tfoot>
+    </table>
+
+    <div style="border:2px dashed #d4a017;border-radius:6px;padding:10px 14px;margin-bottom:16px;background:#fffdf5">
+      <div style="font-size:10px;font-weight:700;color:#b45309;letter-spacing:1px;margin-bottom:8px">EJEMPLO — ASÍ SE VE UNA TABLA SIN DATOS (aplica a ambas tablas):</div>
+      <h2>2 · Gastos en efectivo</h2>
+      <table class="detail">
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Móvil</th><th>Tipo de gasto</th><th>Observaciones</th><th style="text-align:right">Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="5" style="text-align:center;color:#888;padding:20px;font-weight:700;letter-spacing:1px">NO PRESENTA GASTOS EN EFECTIVO</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="resumen">
+      <div class="box formula">
+        <strong>Cálculo del neto a rendir:</strong><br>
+        Efectivo cobrado en servicios ($261.850,00)<br>
+        − Gastos en efectivo ($277.625,00)<br>
+        <span style="display:block;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc">
+          <strong>Diferencia de arqueo del mes:</strong> declarado $−21.000,00 vs. esperado $−15.775,00
+          → <strong style="color:#b91c1c">faltante de $5.225,00</strong>
+        </span>
+      </div>
+      <div class="box neto">
+        <div class="lbl">Neto a rendir</div>
+        <div class="val">−$15.775,00</div>
+        <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;opacity:0.8;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.25)">Dif. arqueo: <strong>−$5.225,00</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="foot-inner">
+      <div class="firma"><div class="line"></div><div class="rol">Firma chofer</div><div class="name">Ricardo Cuello</div></div>
+      <div class="firma"><div class="line"></div><div class="rol">Firma admin</div><div class="name">Sigma Remolques</div></div>
+    </div>
+  </div>
+</div>
+
+</body></html>
