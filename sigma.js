@@ -8402,13 +8402,25 @@ function _renderRendicionesTabla() {
   const resumenRows = Object.values(porChofer)
     .map(c => ({ ...c, descuento: Math.max(0, -c.neto) >= PAYROLL_TOLERANCIA_RENDICION ? Math.max(0, -c.neto) : 0 }))
     .sort((a, b) => b.descuento - a.descuento || a.nombre.localeCompare(b.nombre))
-    .map(c => `<tr>
-      <td>${_escHtml(c.nombre)}</td>
-      <td style="text-align:right">${c.cant}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--red)">$${_AR(c.faltante)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;color:#f59e0b">$${_AR(c.sobrante)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:600;color:${c.descuento > 0 ? 'var(--red)' : 'var(--muted)'}">$${_AR(c.descuento)}</td>
-    </tr>`).join('');
+    .map(c => {
+      let balanceTxt, balanceColor;
+      if (Math.abs(c.neto) < PAYROLL_TOLERANCIA_RENDICION) {
+        balanceTxt = '✓ Cierra bien'; balanceColor = '#4ade80';
+      } else if (c.neto < 0) {
+        balanceTxt = `Faltan $${_AR(Math.abs(c.neto))}`; balanceColor = 'var(--red)';
+      } else {
+        balanceTxt = `Sobran $${_AR(c.neto)}`; balanceColor = 'var(--amber)';
+      }
+      const descTxt = c.descuento > 0
+        ? `<span style="color:var(--red);font-weight:700">−$${_AR(c.descuento)}</span>`
+        : '<span style="color:#4ade80">Sin descuento</span>';
+      return `<tr onclick="_filtrarRendicionesPorChofer('${_escHtml(c.nombre).replace(/'/g, "\\'")}')" style="cursor:pointer" title="Click para ver solo las rendiciones de ${_escHtml(c.nombre)}">
+        <td>${_escHtml(c.nombre)}</td>
+        <td style="text-align:right">${c.cant}</td>
+        <td style="text-align:right;font-weight:600;color:${balanceColor}">${balanceTxt}</td>
+        <td style="text-align:right">${descTxt}</td>
+      </tr>`;
+    }).join('');
 
   const rows = list.map(r => {
     const declarado = r.efectivo_declarado || 0;
@@ -8459,7 +8471,7 @@ function _renderRendicionesTabla() {
       <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:2px;font-weight:600">Resumen por chofer (rango seleccionado)</div>
       <div style="color:var(--muted);font-size:11px;margin-bottom:8px">Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}.</div>
       <table class="cfg-rend-table">
-        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th><th style="text-align:right" title="Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}">Descuento en sueldo</th></tr></thead>
+        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">¿Cierra la plata?</th><th style="text-align:right" title="Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}">Descuento en sueldo</th></tr></thead>
         <tbody>${resumenRows}</tbody>
       </table>
     </div>
@@ -8789,6 +8801,14 @@ async function confirmarObservarRendicion() {
   _renderRendicionesTabla();
 }
 
+function _filtrarRendicionesPorChofer(nombre) {
+  const inp = document.getElementById('cfg-rend-buscar');
+  if (!inp) return;
+  // Toggle: si ya está filtrado por ese chofer, limpiar
+  inp.value = inp.value === nombre ? '' : nombre;
+  _renderRendicionesTabla();
+}
+
 async function verDetalleRendicion(rendId) {
   const rend = _rendicionesCache.find(r => r.rendicion_id === rendId);
   if (!rend) return;
@@ -8798,11 +8818,19 @@ async function verDetalleRendicion(rendId) {
   document.getElementById('rend-det-fecha').textContent  = rend.fecha || '—';
   document.getElementById('rend-det-declarado').textContent = '$' + _AR(rend.efectivo_declarado||0);
   document.getElementById('rend-det-esperado').textContent  = '$' + _AR(rend.efectivo_esperado||0);
-  const diff = (rend.efectivo_declarado||0) - (rend.efectivo_esperado||0);
-  const diffTxt = diff === 0 ? '$0' : (diff > 0 ? '+$' : '−$') + _AR(Math.abs(diff));
+  // Fórmula canónica: entregó + gastos declarados − debería entregar
+  const diff = (Number(rend.efectivo_declarado)||0) + (Number(rend.gastos_extra)||0) - (Number(rend.efectivo_esperado)||0);
   const diffEl = document.getElementById('rend-det-diff');
-  diffEl.textContent = diffTxt;
-  diffEl.style.color = Math.abs(diff) < 500 ? 'var(--muted)' : diff > 0 ? '#4ade80' : '#ef4444';
+  if (Math.abs(diff) < PAYROLL_TOLERANCIA_RENDICION) {
+    diffEl.textContent = Math.abs(diff) < 0.01 ? 'OK' : `OK (${diff > 0 ? '+' : '−'}$${_AR(Math.abs(diff))})`;
+    diffEl.style.color = '#4ade80';
+  } else if (diff < 0) {
+    diffEl.textContent = `faltan $${_AR(Math.abs(diff))}`;
+    diffEl.style.color = 'var(--red)';
+  } else {
+    diffEl.textContent = `sobran $${_AR(diff)}`;
+    diffEl.style.color = 'var(--amber)';
+  }
   const notaChoferEl = document.getElementById('rend-det-nota-chofer');
   if (notaChoferEl) notaChoferEl.textContent = rend.notas || rend.motivo_extra || '—';
   const notaAdminEl = document.getElementById('rend-det-nota-admin-wrap');
@@ -8843,6 +8871,16 @@ async function verDetalleRendicion(rendId) {
         html += '<div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin:12px 0 4px">Otros gastos</div>';
         html += _mrow(_escHtml(rend.motivo_extra||'Sin motivo'), '−$' + _AR(rend.gastos_extra));
       }
+      // La cuenta final, para que se entienda de dónde sale la diferencia
+      html += `
+        <div style="margin-top:12px;padding:10px 12px;background:var(--bg-elev);border-radius:8px;font-size:12px;line-height:1.8">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Debería entregar (cobros − gastos)</span><span style="font-family:'DM Mono',monospace">$${_AR(rend.efectivo_esperado||0)}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Entregó</span><span style="font-family:'DM Mono',monospace">$${_AR(rend.efectivo_declarado||0)}</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-weight:700">
+            <span>Resultado</span>
+            <span style="font-family:'DM Mono',monospace;color:${diffEl.style.color}">${diffEl.textContent}</span>
+          </div>
+        </div>`;
     }
     bodyEl.innerHTML = html;
   } catch (err) {
@@ -12699,10 +12737,10 @@ function _renderReciboEfectivos() {
   const problemas = _reciboEfectivosCache.filter(e => e.estado !== 'ok').length;
   el.innerHTML = `
     <div style="margin-bottom:10px;color:var(--muted);font-size:12px">
-      Cruce entre remitos-efectivo (calculado) y rendiciones del chofer (declarado).
+      Compara día por día el efectivo que el chofer debería haber entregado (según sus remitos) con lo que entregó en la rendición.
       ${problemas>0?`<span style="color:#ef4444;font-weight:600"> · ${problemas} día(s) con diferencias.</span>`:''}
     </div>
-    <table class="cfg-rend-table"><thead><tr><th></th><th>Fecha</th><th>Concepto</th><th>Calculado</th><th>Declarado</th><th>Δ</th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="cfg-rend-table"><thead><tr><th></th><th>Fecha</th><th>Concepto</th><th>Debería entregar</th><th>Entregó</th><th>Diferencia</th></tr></thead><tbody>${rows}</tbody></table>
   `;
 }
 
