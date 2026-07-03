@@ -8475,13 +8475,20 @@ function _renderRendicionesTabla() {
         <tbody>${resumenRows}</tbody>
       </table>
     </div>
-    <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Detalle por rendición</div>
+    ${(busq || status) ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:600">Detalle por rendición${busq ? ` — ${_escHtml(busq)}` : ''}</div>
+      <button class="cfg-rend-btn-mini" onclick="_filtrarRendicionesPorChofer('')">✕ Cerrar detalle</button>
+    </div>
     <table class="cfg-rend-table">
       <thead>
         <tr><th>Fecha</th><th>Chofer</th><th>Entregó</th><th>Debería entregar</th><th>Diferencia</th><th>Estado</th><th></th></tr>
       </thead>
       <tbody>${rows}</tbody>
-    </table>`;
+    </table>` : `
+    <div style="color:var(--muted);font-size:12px;padding:10px 12px;background:var(--bg-elev);border-radius:8px">
+      👆 Hacé clic en un chofer del resumen (o usá el buscador/filtro) para ver el detalle de sus rendiciones.
+    </div>`}`;
 }
 
 // ── Export PDF de rendición mensual ──
