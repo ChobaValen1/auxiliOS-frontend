@@ -1913,10 +1913,16 @@ async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
   const porChofer = {};
   rendiciones.forEach(r => {
     const k = r.driver_id;
-    if (!porChofer[k]) porChofer[k] = { driver_id: k, chofer_nombre: r.chofer_nombre, faltante: 0, sobrante: 0, cant: 0 };
+    if (!porChofer[k]) porChofer[k] = { driver_id: k, chofer_nombre: r.chofer_nombre, faltante: 0, sobrante: 0, neto: 0, descuento: 0, cant: 0 };
     porChofer[k].faltante += r._faltante;
     porChofer[k].sobrante += r._sobrante;
+    porChofer[k].neto     += r._diff;
     porChofer[k].cant += 1;
+  });
+  // Descuento alineado con la liquidación: faltante NETO del mes con tolerancia
+  Object.values(porChofer).forEach(c => {
+    const faltNeto = Math.max(0, -c.neto);
+    c.descuento = faltNeto >= PAYROLL_TOLERANCIA_RENDICION ? faltNeto : 0;
   });
   return { rendiciones, porChofer };
 }
@@ -2849,17 +2855,17 @@ async function generarLiquidacionesMes(yyyymm) {
     const adic_serv = servicios * valor_servicio;
     const bonos_objetivos = cumpl.reduce((sum, c) => sum + (Number(c.bonus_calculado) || 0), 0);
 
-    // Faltantes del período: SOLO faltantes descuentan (regla de negocio).
-    // faltante_i = max(0, esperado - declarado - gastos_extra)
-    // Se aplica tolerancia PAYROLL_TOLERANCIA_RENDICION para alinear el descuento
-    // con el semáforo visual (rendiciones bajo el umbral se muestran "OK" y no descuentan).
-    const ajuste_rendiciones_calc = rendiciones.reduce((sum, r) => {
+    // Arqueo NETO mensual (alineado con el PDF de rendición mensual):
+    // diff_mes = Σ (declarado + gastos_extra − esperado). Sobrantes compensan faltantes.
+    // Solo descuenta el faltante neto del mes si supera la tolerancia.
+    const diffMes = rendiciones.reduce((sum, r) => {
       const declarado = Number(r.efectivo_declarado) || 0;
       const esperado  = Number(r.efectivo_esperado)  || 0;
       const gastos    = Number(r.gastos_extra)       || 0;
-      const falt = Math.max(0, esperado - declarado - gastos);
-      return sum + (falt >= PAYROLL_TOLERANCIA_RENDICION ? falt : 0);
+      return sum + (declarado + gastos - esperado);
     }, 0);
+    const faltanteNeto = Math.max(0, -diffMes);
+    const ajuste_rendiciones_calc = faltanteNeto >= PAYROLL_TOLERANCIA_RENDICION ? faltanteNeto : 0;
 
     // ¿Existe ya la liquidación? Si está 'pagada', NO pisamos.
     // Si está 'aprobada' → congelamos ajuste_rendiciones (snapshot).

@@ -8517,6 +8517,12 @@ function _abrirRendicionMensualPDF({ chofer, servicios, gastos, totales, arqueo,
     : (diffArqueo < 0
         ? `<strong style="color:#b91c1c">faltante de $${_AR(Math.abs(diffArqueo))}</strong>`
         : `<strong style="color:#067647">sobrante de $${_AR(diffArqueo)}</strong>`);
+  // Misma fórmula que la liquidación de sueldos: faltante neto + tolerancia
+  const faltNetoPdf   = Math.max(0, -diffArqueo);
+  const descuentoRecibo = faltNetoPdf >= PAYROLL_TOLERANCIA_RENDICION ? faltNetoPdf : 0;
+  const descuentoTxt = descuentoRecibo > 0
+    ? `<strong style="color:#b91c1c">$${_AR(descuentoRecibo)}</strong>`
+    : `<strong style="color:#067647">$0</strong> (bajo tolerancia de $${_AR(PAYROLL_TOLERANCIA_RENDICION)})`;
 
   const html = `
     <html><head><title>Rendición mensual ${_escHtml(chofer.full_name)} — ${mesNombre}</title>
@@ -8643,7 +8649,8 @@ function _abrirRendicionMensualPDF({ chofer, servicios, gastos, totales, arqueo,
               Efectivo cobrado en servicios ($${_AR(totales.efectivo)})<br>
               − Gastos en efectivo ($${_AR(totalGastos)})<br>
               <span style="display:block;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc">
-                <strong>Diferencia de arqueo del mes:</strong> declarado $${_AR(arqueo?.declarado || 0)} vs. esperado $${_AR(arqueo?.esperado || 0)} → ${arqueoTxt}
+                <strong>Diferencia de arqueo del mes:</strong> declarado $${_AR(arqueo?.declarado || 0)} vs. esperado $${_AR(arqueo?.esperado || 0)} → ${arqueoTxt}<br>
+                <strong>Descuento aplicable en recibo de sueldo:</strong> ${descuentoTxt}
               </span>
             </div>
             <div class="box neto">
@@ -12494,8 +12501,8 @@ function _renderReciboResumen() {
 
   // Ajuste rendiciones siempre visible con criterio.
   const ajusteLabel = ajusteRend > 0
-    ? `Descuentos por rendición${snapLock} <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Faltantes ≥ $500 del período (tolerancia aplicada)</span>`
-    : `Descuentos por rendición${snapLock} <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Sin faltantes por sobre la tolerancia de $500</span>`;
+    ? `Descuentos por rendición${snapLock} <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Faltante neto del mes ≥ $500 (sobrantes compensan)</span>`
+    : `Descuentos por rendición${snapLock} <span style="color:var(--muted);font-size:11px;display:block;margin-top:2px">Sin faltante neto por sobre la tolerancia de $500</span>`;
   const ajusteVal = ajusteRend > 0 ? `- $${_AR(ajusteRend)}` : '$0';
 
   el.innerHTML = `
@@ -12810,8 +12817,8 @@ function _exportarReciboPDF() {
     : `Bono configurado $${_AR(meta.bonoPresConf)} · No se paga: hubo incidente(s) o sin jornadas`;
 
   const ajusteDetalle = ajusteRend > 0
-    ? `Faltantes de rendición ≥ $500 del período`
-    : `Sin faltantes por sobre la tolerancia de $500`;
+    ? `Faltante neto de rendiciones del mes ≥ $500 (sobrantes compensan)`
+    : `Sin faltante neto por sobre la tolerancia de $500`;
 
   const qrPayload = `liq:${liq.liquidacion_id}`;
   const qrImg = _qrDataUrl(qrPayload);
@@ -13052,13 +13059,15 @@ function _renderRendicionesSueldos() {
   const { rendiciones, porChofer } = _rendicionesSueldosCache;
   const totalFalt = Object.values(porChofer).reduce((s, c) => s + c.faltante, 0);
   const totalSobr = Object.values(porChofer).reduce((s, c) => s + c.sobrante, 0);
-  const cantChoferesConFaltante = Object.values(porChofer).filter(c => c.faltante > 0).length;
+  const totalDesc = Object.values(porChofer).reduce((s, c) => s + c.descuento, 0);
+  const cantChoferesConDescuento = Object.values(porChofer).filter(c => c.descuento > 0).length;
 
   if (statsEl) {
     statsEl.innerHTML = `
       <span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red);font-weight:600">🔴 Faltantes: $${_AR(totalFalt)}</span>
       <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:600">🟡 Sobrantes: $${_AR(totalSobr)}</span>
-      <span class="badge" style="background:rgba(148,163,184,0.15);color:var(--muted)">${rendiciones.length} rendiciones · ${cantChoferesConFaltante} con descuento</span>
+      <span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red);font-weight:600">Descuento neto: $${_AR(totalDesc)}</span>
+      <span class="badge" style="background:rgba(148,163,184,0.15);color:var(--muted)">${rendiciones.length} rendiciones · ${cantChoferesConDescuento} con descuento</span>
     `;
   }
 
@@ -13067,13 +13076,14 @@ function _renderRendicionesSueldos() {
     return;
   }
 
-  const choferesArr = Object.values(porChofer).sort((a, b) => b.faltante - a.faltante || a.chofer_nombre.localeCompare(b.chofer_nombre));
+  const choferesArr = Object.values(porChofer).sort((a, b) => b.descuento - a.descuento || a.chofer_nombre.localeCompare(b.chofer_nombre));
   const resumenRows = choferesArr.map(c => `
     <tr>
       <td>${_escHtml(c.chofer_nombre)}</td>
       <td style="text-align:right">${c.cant}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--red);font-weight:600">$${_AR(c.faltante)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--red)">$${_AR(c.faltante)}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace;color:#f59e0b">$${_AR(c.sobrante)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:600;color:${c.descuento > 0 ? 'var(--red)' : 'var(--muted)'}">$${_AR(c.descuento)}</td>
     </tr>`).join('');
 
   const detalleRows = rendiciones.map(r => {
@@ -13098,7 +13108,7 @@ function _renderRendicionesSueldos() {
     <div style="margin-bottom:18px">
       <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Resumen por chofer</div>
       <table class="cfg-rend-table">
-        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th></tr></thead>
+        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th><th style="text-align:right">Descuento (neto)</th></tr></thead>
         <tbody>${resumenRows}</tbody>
       </table>
     </div>
@@ -13122,7 +13132,10 @@ async function _renderReciboRendiciones() {
   try {
     const { rendiciones } = await cargarRendicionesPeriodo(liq.periodo_yyyymm, liq.driver_id);
     const ajusteGuardado = Number(liq.ajuste_rendiciones) || 0;
-    const faltCalc = rendiciones.reduce((s, r) => s + r._faltante, 0);
+    // Faltante NETO del mes (sobrantes compensan) + tolerancia — misma fórmula que la liquidación
+    const diffMes  = rendiciones.reduce((s, r) => s + r._diff, 0);
+    const faltNeto = Math.max(0, -diffMes);
+    const faltCalc = faltNeto >= PAYROLL_TOLERANCIA_RENDICION ? faltNeto : 0;
     const congelado = liq.estado === 'aprobada' || liq.estado === 'pagada';
 
     if (!rendiciones.length) {
@@ -13163,7 +13176,7 @@ async function _renderReciboRendiciones() {
           <div class="cfg-rend-stat-val" style="color:${ajusteGuardado>0?'var(--red)':'var(--fg)'};font-family:'DM Mono',monospace">$${_AR(ajusteGuardado)}</div>
         </div>
         <div class="cfg-rend-stat">
-          <div class="cfg-rend-stat-lbl">Faltante calculado hoy</div>
+          <div class="cfg-rend-stat-lbl">Descuento calculado hoy (neto del mes)</div>
           <div class="cfg-rend-stat-val" style="font-family:'DM Mono',monospace">$${_AR(faltCalc)}</div>
         </div>
       </div>
