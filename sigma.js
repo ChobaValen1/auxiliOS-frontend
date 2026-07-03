@@ -8415,7 +8415,15 @@ function _renderRendicionesTabla() {
     const esperado  = r.efectivo_esperado || 0;
     const diff      = _diffRend(r);
     const diffAbs   = Math.abs(diff);
-    const diffColor = diffAbs < 500 ? 'var(--muted)' : diff > 0 ? '#4ade80' : '#ef4444';
+    // Texto humano: dentro de la tolerancia = OK (verde) / faltó = rojo / sobró = ámbar
+    let diffColor, diffHumano;
+    if (diffAbs < PAYROLL_TOLERANCIA_RENDICION) {
+      diffColor = '#4ade80'; diffHumano = 'OK';
+    } else if (diff < 0) {
+      diffColor = 'var(--red)'; diffHumano = `faltan $${_AR(diffAbs)}`;
+    } else {
+      diffColor = 'var(--amber)'; diffHumano = `sobran $${_AR(diffAbs)}`;
+    }
     const diffTxt   = diff === 0 ? '$0' : (diff > 0 ? '+$' : '−$') + _AR(diffAbs);
     const st = r.admin_status || 'pendiente';
     const pillCls = st === 'aprobada' ? 'ok' : st === 'observada' ? 'err' : 'warn';
@@ -8430,24 +8438,35 @@ function _renderRendicionesTabla() {
       <td>${_escHtml(r.chofer_nombre)}</td>
       <td style="font-family:'DM Mono',monospace">$${_AR(declarado)}</td>
       <td style="font-family:'DM Mono',monospace">$${_AR(esperado)}</td>
-      <td style="color:${diffColor};font-family:'DM Mono',monospace;font-weight:600">${diffTxt}</td>
+      <td style="color:${diffColor};font-family:'DM Mono',monospace;font-weight:600">${diffTxt}<div style="font-size:10px;font-weight:400;font-family:inherit">${diffHumano}</div></td>
       <td><span class="pill ${pillCls}">${pillTxt}</span></td>
       <td onclick="event.stopPropagation()" style="text-align:right;white-space:nowrap">${acciones}</td>
     </tr>`;
   }).join('');
 
   bodyEl.innerHTML = `
+    <details style="margin-bottom:14px;background:var(--bg-elev);border-radius:8px;padding:8px 12px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px;font-weight:600">❓ ¿Qué es una rendición?</summary>
+      <div style="color:var(--muted);font-size:12px;line-height:1.6;margin-top:6px">
+        Al cerrar cada jornada, el sistema calcula cuánto efectivo debería entregar el chofer
+        (cobros en efectivo menos gastos pagados en efectivo) y el chofer declara cuánto entrega.
+        <strong style="color:var(--red)">Rojo</strong> = faltó plata,
+        <strong style="color:var(--amber)">ámbar</strong> = sobró,
+        <strong style="color:#4ade80">verde</strong> = está OK (diferencia menor a $${_AR(PAYROLL_TOLERANCIA_RENDICION)}).
+      </div>
+    </details>
     <div style="margin-bottom:18px">
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Resumen por chofer (rango seleccionado)</div>
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:2px;font-weight:600">Resumen por chofer (rango seleccionado)</div>
+      <div style="color:var(--muted);font-size:11px;margin-bottom:8px">Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}.</div>
       <table class="cfg-rend-table">
-        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th><th style="text-align:right">Descuento (neto)</th></tr></thead>
+        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th><th style="text-align:right" title="Los faltantes y sobrantes del rango se compensan; se descuenta solo si el faltante neto supera $${_AR(PAYROLL_TOLERANCIA_RENDICION)}">Descuento en sueldo</th></tr></thead>
         <tbody>${resumenRows}</tbody>
       </table>
     </div>
     <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Detalle por rendición</div>
     <table class="cfg-rend-table">
       <thead>
-        <tr><th>Fecha</th><th>Chofer</th><th>Declarado</th><th>Esperado</th><th>Δ</th><th>Estado</th><th></th></tr>
+        <tr><th>Fecha</th><th>Chofer</th><th>Entregó</th><th>Debería entregar</th><th>Diferencia</th><th>Estado</th><th></th></tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -13065,9 +13084,9 @@ async function _renderReciboRendiciones() {
           Sin rendiciones en el período.
         </div>
         <div style="margin-top:12px;padding:10px 12px;background:var(--bg-elev);border-radius:8px;font-size:12px">
-          <span style="color:var(--muted)">Ajuste aplicado:</span>
+          <span style="color:var(--muted)">Descuento aplicado en este recibo:</span>
           <span style="font-family:'DM Mono',monospace;font-weight:600;color:${ajusteGuardado>0?'var(--red)':'var(--fg)'}">$${_AR(ajusteGuardado)}</span>
-          ${congelado ? '<span style="color:var(--muted);margin-left:8px">🔒 snapshot</span>' : ''}
+          ${congelado ? '<span style="color:var(--muted);margin-left:8px">🔒 fijado</span>' : ''}
         </div>`;
       return;
     }
@@ -13093,18 +13112,18 @@ async function _renderReciboRendiciones() {
     el.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px">
         <div class="cfg-rend-stat">
-          <div class="cfg-rend-stat-lbl">Ajuste aplicado ${congelado ? '🔒' : ''}</div>
+          <div class="cfg-rend-stat-lbl">Descuento aplicado en este recibo ${congelado ? '🔒' : ''}</div>
           <div class="cfg-rend-stat-val" style="color:${ajusteGuardado>0?'var(--red)':'var(--fg)'};font-family:'DM Mono',monospace">$${_AR(ajusteGuardado)}</div>
         </div>
         <div class="cfg-rend-stat">
-          <div class="cfg-rend-stat-lbl">Descuento calculado hoy (neto del mes)</div>
+          <div class="cfg-rend-stat-lbl">Descuento según datos de hoy</div>
           <div class="cfg-rend-stat-val" style="font-family:'DM Mono',monospace">$${_AR(faltCalc)}</div>
         </div>
       </div>
       ${desfase && !congelado ? `<div style="padding:8px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;color:#f59e0b;font-size:12px;margin-bottom:12px">⚠ El ajuste guardado difiere del calculado actual. Presioná "⚡ Generar liquidaciones" para actualizar.</div>` : ''}
-      ${congelado ? `<div style="padding:8px 12px;background:rgba(148,163,184,0.1);border-left:3px solid var(--muted);color:var(--muted);font-size:12px;margin-bottom:12px">🔒 Liquidación ${liq.estado}. El ajuste quedó congelado (snapshot).</div>` : ''}
+      ${congelado ? `<div style="padding:8px 12px;background:rgba(148,163,184,0.1);border-left:3px solid var(--muted);color:var(--muted);font-size:12px;margin-bottom:12px">🔒 Liquidación ${liq.estado}. El descuento quedó fijado al aprobarse y ya no se recalcula.</div>` : ''}
       <table class="cfg-rend-table">
-        <thead><tr><th>Fecha</th><th style="text-align:right">Declarado</th><th style="text-align:right">Esperado</th><th style="text-align:right">Gastos</th><th style="text-align:right">Diff</th><th style="text-align:center">Sem.</th></tr></thead>
+        <thead><tr><th>Fecha</th><th style="text-align:right">Entregó</th><th style="text-align:right">Debería entregar</th><th style="text-align:right">Gastos</th><th style="text-align:right">Diferencia</th><th style="text-align:center">Sem.</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;
@@ -14006,8 +14025,8 @@ function _jadminRenderDetalle(det) {
     rendCard = `
       <div class="jd-card">
         <h4>Rendición</h4>
-        <div class="jd-rend-linea"><span>Declarado</span><span class="v">${_jadminMoney(declarado)}</span></div>
-        <div class="jd-rend-linea"><span>Esperado</span><span class="v">${_jadminMoney(esperado)}</span></div>
+        <div class="jd-rend-linea"><span>Entregó</span><span class="v">${_jadminMoney(declarado)}</span></div>
+        <div class="jd-rend-linea"><span>Debería entregar</span><span class="v">${_jadminMoney(esperado)}</span></div>
         <div class="jd-rend-linea"><span>Gastos</span><span class="v">${_jadminMoney(gastos)}</span></div>
         <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
         <div class="jd-rend-linea" style="font-size:13px">
