@@ -8367,12 +8367,15 @@ function _renderRendicionesTabla() {
   if (busq)   list = list.filter(r => (r.chofer_nombre || '').toLowerCase().includes(busq));
   if (status) list = list.filter(r => (r.admin_status || 'pendiente') === status);
 
+  // Fórmula canónica de arqueo: declarado + gastos − esperado (+ sobra, − falta)
+  const _diffRend = (r) => (Number(r.efectivo_declarado)||0) + (Number(r.gastos_extra)||0) - (Number(r.efectivo_esperado)||0);
+
   // Stats
   if (statsEl) {
     const total       = _rendicionesCache.length;
     const pendientes  = _rendicionesCache.filter(r => (r.admin_status||'pendiente') === 'pendiente').length;
     const observadas  = _rendicionesCache.filter(r => r.admin_status === 'observada').length;
-    const conDif      = _rendicionesCache.filter(r => Math.abs((r.efectivo_declarado||0) - (r.efectivo_esperado||0)) >= 500).length;
+    const conDif      = _rendicionesCache.filter(r => Math.abs(_diffRend(r)) >= PAYROLL_TOLERANCIA_RENDICION).length;
     statsEl.innerHTML = `
       <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Total</div><div class="cfg-rend-stat-val">${total}</div></div>
       <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Pendientes</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${pendientes}</div></div>
@@ -8386,10 +8389,31 @@ function _renderRendicionesTabla() {
     return;
   }
 
+  // Resumen por chofer del rango filtrado — mismo cálculo neto + tolerancia que sueldos
+  const porChofer = {};
+  list.forEach(r => {
+    const k = r.driver_id;
+    if (!porChofer[k]) porChofer[k] = { nombre: r.chofer_nombre || '—', cant: 0, faltante: 0, sobrante: 0, neto: 0 };
+    const d = _diffRend(r);
+    porChofer[k].cant += 1;
+    porChofer[k].neto += d;
+    if (d < 0) porChofer[k].faltante += -d; else porChofer[k].sobrante += d;
+  });
+  const resumenRows = Object.values(porChofer)
+    .map(c => ({ ...c, descuento: Math.max(0, -c.neto) >= PAYROLL_TOLERANCIA_RENDICION ? Math.max(0, -c.neto) : 0 }))
+    .sort((a, b) => b.descuento - a.descuento || a.nombre.localeCompare(b.nombre))
+    .map(c => `<tr>
+      <td>${_escHtml(c.nombre)}</td>
+      <td style="text-align:right">${c.cant}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--red)">$${_AR(c.faltante)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;color:#f59e0b">$${_AR(c.sobrante)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:600;color:${c.descuento > 0 ? 'var(--red)' : 'var(--muted)'}">$${_AR(c.descuento)}</td>
+    </tr>`).join('');
+
   const rows = list.map(r => {
     const declarado = r.efectivo_declarado || 0;
     const esperado  = r.efectivo_esperado || 0;
-    const diff      = declarado - esperado;
+    const diff      = _diffRend(r);
     const diffAbs   = Math.abs(diff);
     const diffColor = diffAbs < 500 ? 'var(--muted)' : diff > 0 ? '#4ade80' : '#ef4444';
     const diffTxt   = diff === 0 ? '$0' : (diff > 0 ? '+$' : '−$') + _AR(diffAbs);
@@ -8413,6 +8437,14 @@ function _renderRendicionesTabla() {
   }).join('');
 
   bodyEl.innerHTML = `
+    <div style="margin-bottom:18px">
+      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Resumen por chofer (rango seleccionado)</div>
+      <table class="cfg-rend-table">
+        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th><th style="text-align:right">Descuento (neto)</th></tr></thead>
+        <tbody>${resumenRows}</tbody>
+      </table>
+    </div>
+    <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Detalle por rendición</div>
     <table class="cfg-rend-table">
       <thead>
         <tr><th>Fecha</th><th>Chofer</th><th>Declarado</th><th>Esperado</th><th>Δ</th><th>Estado</th><th></th></tr>
@@ -8691,8 +8723,8 @@ function _abrirRendicionMensualPDF({ chofer, servicios, gastos, totales, arqueo,
 async function aprobarRendicion(rendId) {
   const rend = _rendicionesCache.find(r => r.rendicion_id === rendId);
   if (!rend) return;
-  const diffAbs = Math.abs((rend.efectivo_declarado||0) - (rend.efectivo_esperado||0));
-  if (diffAbs >= 500) {
+  const diffAbs = Math.abs((Number(rend.efectivo_declarado)||0) + (Number(rend.gastos_extra)||0) - (Number(rend.efectivo_esperado)||0));
+  if (diffAbs >= PAYROLL_TOLERANCIA_RENDICION) {
     if (!confirm(`Esta rendición tiene diferencia de $${_AR(diffAbs)}. ¿Aprobarla igualmente?`)) return;
   }
   const { error } = await actualizarAdminRendicion(rendId, { admin_status: 'aprobada' });
@@ -13009,117 +13041,6 @@ function _renderHistorialTabla() {
       <td style="color:var(--muted);font-size:11px">${l.pagada_at ? new Date(l.pagada_at).toLocaleDateString('es-AR') : l.aprobada_at ? new Date(l.aprobada_at).toLocaleDateString('es-AR') : new Date(l.created_at).toLocaleDateString('es-AR')}</td>
     </tr>`).join('');
   bodyEl.innerHTML = `<table class="cfg-rend-table"><thead><tr><th>Período</th><th>Chofer</th><th>Total</th><th>Estado</th><th>Última acción</th></tr></thead><tbody>${rows}</tbody></table>`;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// SUB-TAB "RENDICIONES" — módulo Sueldos (Fase 4)
-// ═══════════════════════════════════════════════════════════════════
-let _rendicionesSueldosCache = { rendiciones: [], porChofer: {} };
-
-function _initRendicionesFiltros() {
-  const chSel = document.getElementById('pl-rend-chofer');
-  if (chSel && chSel.options.length === 1 && Array.isArray(_esquemaCache) && _esquemaCache.length) {
-    chSel.innerHTML = '<option value="">Todos los choferes</option>' + _esquemaCache.map(c => `<option value="${c.user_id}">${_escHtml(c.full_name)}</option>`).join('');
-    chSel.onchange = _cargarRendicionesSueldos;
-  } else if (chSel && chSel.options.length === 1) {
-    cargarPayrollSettingsFlota().then(list => {
-      _esquemaCache = list;
-      chSel.innerHTML = '<option value="">Todos los choferes</option>' + list.map(c => `<option value="${c.user_id}">${_escHtml(c.full_name)}</option>`).join('');
-      chSel.onchange = _cargarRendicionesSueldos;
-    });
-  }
-  const inp = document.getElementById('pl-rend-periodo');
-  if (inp) inp.onchange = _cargarRendicionesSueldos;
-}
-
-async function _cargarRendicionesSueldos() {
-  const bodyEl  = document.getElementById('pl-rend-body');
-  const statsEl = document.getElementById('pl-rend-stats');
-  const inp     = document.getElementById('pl-rend-periodo');
-  const chSel   = document.getElementById('pl-rend-chofer');
-  if (!bodyEl) return;
-  const yyyymm = _mesInputToYyyymm(inp?.value);
-  if (!yyyymm) { bodyEl.innerHTML = '<div class="cfg-rend-empty">Elegí un período.</div>'; return; }
-  bodyEl.innerHTML = '<div class="cfg-rend-empty">Cargando rendiciones...</div>';
-  if (statsEl) statsEl.innerHTML = '';
-  try {
-    _rendicionesSueldosCache = await cargarRendicionesPeriodo(yyyymm, chSel?.value || null);
-    _renderRendicionesSueldos();
-  } catch (err) {
-    console.error('_cargarRendicionesSueldos:', err);
-    bodyEl.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar rendiciones</div>';
-  }
-}
-
-function _renderRendicionesSueldos() {
-  const bodyEl  = document.getElementById('pl-rend-body');
-  const statsEl = document.getElementById('pl-rend-stats');
-  if (!bodyEl) return;
-
-  const { rendiciones, porChofer } = _rendicionesSueldosCache;
-  const totalFalt = Object.values(porChofer).reduce((s, c) => s + c.faltante, 0);
-  const totalSobr = Object.values(porChofer).reduce((s, c) => s + c.sobrante, 0);
-  const totalDesc = Object.values(porChofer).reduce((s, c) => s + c.descuento, 0);
-  const cantChoferesConDescuento = Object.values(porChofer).filter(c => c.descuento > 0).length;
-
-  if (statsEl) {
-    statsEl.innerHTML = `
-      <span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red);font-weight:600">🔴 Faltantes: $${_AR(totalFalt)}</span>
-      <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-weight:600">🟡 Sobrantes: $${_AR(totalSobr)}</span>
-      <span class="badge" style="background:rgba(239,68,68,0.15);color:var(--red);font-weight:600">Descuento neto: $${_AR(totalDesc)}</span>
-      <span class="badge" style="background:rgba(148,163,184,0.15);color:var(--muted)">${rendiciones.length} rendiciones · ${cantChoferesConDescuento} con descuento</span>
-    `;
-  }
-
-  if (!rendiciones.length) {
-    bodyEl.innerHTML = '<div class="cfg-rend-empty">Sin rendiciones en el período.</div>';
-    return;
-  }
-
-  const choferesArr = Object.values(porChofer).sort((a, b) => b.descuento - a.descuento || a.chofer_nombre.localeCompare(b.chofer_nombre));
-  const resumenRows = choferesArr.map(c => `
-    <tr>
-      <td>${_escHtml(c.chofer_nombre)}</td>
-      <td style="text-align:right">${c.cant}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--red)">$${_AR(c.faltante)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;color:#f59e0b">$${_AR(c.sobrante)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:600;color:${c.descuento > 0 ? 'var(--red)' : 'var(--muted)'}">$${_AR(c.descuento)}</td>
-    </tr>`).join('');
-
-  const detalleRows = rendiciones.map(r => {
-    const sem = r._faltante > 0 ? '🔴' : r._sobrante > 0 ? '🟡' : '🟢';
-    const diffTxt = r._faltante > 0
-      ? `<span style="color:var(--red);font-weight:600">-$${_AR(r._faltante)}</span>`
-      : r._sobrante > 0
-      ? `<span style="color:#f59e0b">+$${_AR(r._sobrante)}</span>`
-      : `<span style="color:var(--muted)">$0</span>`;
-    return `<tr>
-      <td>${new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-AR')}</td>
-      <td>${_escHtml(r.chofer_nombre)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(r.efectivo_declarado)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(r.efectivo_esperado)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;color:var(--muted)">$${_AR(r.gastos_extra)}</td>
-      <td style="text-align:right">${diffTxt}</td>
-      <td style="text-align:center;font-size:16px">${sem}</td>
-    </tr>`;
-  }).join('');
-
-  bodyEl.innerHTML = `
-    <div style="margin-bottom:18px">
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Resumen por chofer</div>
-      <table class="cfg-rend-table">
-        <thead><tr><th>Chofer</th><th style="text-align:right">Rendiciones</th><th style="text-align:right">Faltante</th><th style="text-align:right">Sobrante</th><th style="text-align:right">Descuento (neto)</th></tr></thead>
-        <tbody>${resumenRows}</tbody>
-      </table>
-    </div>
-    <div>
-      <div style="color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Detalle jornada por jornada</div>
-      <table class="cfg-rend-table">
-        <thead><tr><th>Fecha</th><th>Chofer</th><th style="text-align:right">Declarado</th><th style="text-align:right">Esperado</th><th style="text-align:right">Gastos</th><th style="text-align:right">Diff</th><th style="text-align:center">Sem.</th></tr></thead>
-        <tbody>${detalleRows}</tbody>
-      </table>
-    </div>
-  `;
 }
 
 // ── Sub-vista Rendiciones dentro del modal-recibo ──
