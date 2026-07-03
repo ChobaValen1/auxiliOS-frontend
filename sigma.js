@@ -8043,6 +8043,12 @@ function _renderPerfilAdminTab() {
       <input id="cfg-admin-pass-confirm" class="cfg-ch-input" type="password" placeholder="Confirmar contraseña">
       <button class="cfg-ch-btn-primary" onclick="_guardarNuevaPasswordAdmin()">Guardar</button>
     </div>
+
+    <div class="cfg-ch-section-label">SESIÓN</div>
+    <div class="cfg-ch-card cfg-ch-card--action" onclick="_confirmarCerrarSesion()" style="color:var(--red)">
+      <span>⏻ Cerrar sesión</span>
+      <span class="cfg-ch-arrow">›</span>
+    </div>
   `;
 }
 
@@ -8115,6 +8121,10 @@ function _abrirPanelChofer() {
             <div>🔄 Cambiar sesión</div>
             ${tieneJornada ? '<div class="cfg-ch-hint">Cerrá tu jornada activa primero</div>' : ''}
           </div>
+          <span class="cfg-ch-arrow">›</span>
+        </div>
+        <div class="cfg-ch-card cfg-ch-card--action" onclick="_confirmarCerrarSesion()" style="color:var(--red)">
+          <span>⏻ Cerrar sesión</span>
           <span class="cfg-ch-arrow">›</span>
         </div>
       </div>
