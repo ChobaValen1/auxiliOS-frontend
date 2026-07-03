@@ -226,9 +226,9 @@ BEGIN
   SELECT t.truck_id, d.doc_type, d.pref || t.truck_id || d.suf, d.issuer, d.issued, d.expiry, d.alert
   FROM trucks t
   CROSS JOIN (VALUES
-    ('VTV',          'VTV-', '-2025', 'RTO Zona Sur', DATE '2025-01-15', DATE '2027-01-15', 30),
-    ('seguro',       'POL-', '-2026', 'La Caja',      DATE '2026-01-01', DATE '2027-01-01', 30),
-    ('habilitacion', 'HAB-', '-2025', 'CNRT',         DATE '2025-06-01', DATE '2026-08-01', 45)
+    ('VTV',               'VTV-', '-2025', 'RTO Zona Sur', DATE '2025-01-15', DATE '2027-01-15', 30),
+    ('SEGURO_POLIZA',     'POL-', '-2026', 'La Caja',      DATE '2026-01-01', DATE '2027-01-01', 30),
+    ('HABILITACION_RUTA', 'HAB-', '-2025', 'CNRT',         DATE '2025-06-01', DATE '2026-08-01', 45)
   ) AS d(doc_type, pref, suf, issuer, issued, expiry, alert)
   WHERE t.status IN ('active','activo')
     AND NOT EXISTS (
