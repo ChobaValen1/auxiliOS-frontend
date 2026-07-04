@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v78';
+const CACHE_NAME = 'auxilios-v79';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -6,6 +6,7 @@ const PRECACHE_ASSETS = [
   '/sigma.css',
   '/sigma.js',
   '/supabase.js',
+  '/offline.js',
   '/manifest.json',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
