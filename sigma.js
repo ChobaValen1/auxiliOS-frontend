@@ -4748,6 +4748,45 @@ function renderCombustible(data) {
   }).join('');
 }
 
+// ── OFFLINE — HANDLERS DEL OUTBOX (offline.js) ─────────────────────────
+// Reproducen contra Supabase las operaciones encoladas sin señal.
+// offline.js se carga ANTES que sigma.js, así que obRegistrarHandler existe.
+if (typeof obRegistrarHandler === 'function') {
+
+  // Apertura de jornada: sube la foto del odómetro guardada localmente y
+  // reusa iniciarJornada() real. Devuelve el log_id real para remapear TMP-*.
+  obRegistrarHandler('jornada_abrir', async (payload, blobs) => {
+    if (blobs && blobs.foto_km_inicio) {
+      payload.fotoKmInicio = await subirFotoOdometro(blobs.foto_km_inicio, 'inicio', payload.truckId);
+    }
+    const res = await iniciarJornada(payload);
+    if (!res || !res.success) throw new Error(res?.error || 'No se pudo abrir la jornada');
+    // Si la jornada activa local sigue siendo la provisoria, actualizarla con el id real
+    if (String(_jornadaActivaLocal?.log_id || '').startsWith('TMP-')) {
+      _jornadaActivaLocal.log_id = res.data.log_id;
+      try { localStorage.setItem('sigma_jornada_activa', JSON.stringify(_jornadaActivaLocal)); } catch (e) { /* no crítico */ }
+    }
+    return { realId: res.data.log_id };
+  });
+
+  // Cierre de jornada: reusa cerrarJornada() real (que también sube el Blob
+  // de la foto final y actualiza trucks.current_km — no se duplica lógica).
+  // El log_id TMP-* ya llega remapeado por obSync.
+  obRegistrarHandler('jornada_cerrar', async (payload, blobs) => {
+    const { logId, ...datos } = payload;
+    if (blobs && blobs.foto_km_final) datos.fotoKmFinal = blobs.foto_km_final;
+    const ok = await cerrarJornada(logId, datos);
+    if (!ok) throw new Error('No se pudo cerrar la jornada en el servidor');
+    return {};
+  });
+
+  // Rendición de efectivo: mismo POST a la edge function que el flujo online.
+  obRegistrarHandler('rendicion', async (payload) => {
+    await _postRendicion(payload);
+    return {};
+  });
+}
+
 // ── OFFLINE — INDEXEDDB ───────────────────────
 const _IDB_NAME  = 'SigmaOfflineDB';
 const _IDB_STORE = 'fuel_queue';
@@ -7414,11 +7453,60 @@ async function confirmarNuevaJornada() {
 
   // Chequeo grilla vs. realidad: si el móvil/día no coincide con lo planificado,
   // pedimos el motivo al chofer (sin bloquear) antes de abrir la jornada.
-  if (!_grillaDesvioConfirmado) {
+  // Sin señal se saltea directo: la consulta a la grilla necesita red.
+  if (!_grillaDesvioConfirmado && navigator.onLine) {
     const desvio = await _detectarDesvioGrillaChofer(jornadaSeleccionada.truck_id);
     if (desvio) {
       if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
       _abrirModalMotivoGrilla(desvio);
+      return;
+    }
+  }
+
+  // ── Sin señal → encolar la apertura en el outbox y seguir la UI normal ──
+  if (!navigator.onLine && typeof obAdd === 'function') {
+    try {
+      const tempId = obTempId();
+      const payloadOffline = {
+        truckId:      jornadaSeleccionada.truck_id,
+        patente:      jornadaSeleccionada.plate,
+        kmInicio:     kmInicio,
+        grillaMotivo: _grillaMotivoPendiente,
+        marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
+      };
+      let blobsOffline = null;
+      if (typeof fotoKmInicio === 'string') {
+        // Ya es una URL pública (se subió antes de perder la señal)
+        payloadOffline.fotoKmInicio = fotoKmInicio;
+      } else if (fotoKmInicio) {
+        // File/Blob → queda guardado local y se sube al sincronizar
+        blobsOffline = { foto_km_inicio: fotoKmInicio };
+      }
+      await obAdd({ tipo: 'jornada_abrir', payload: payloadOffline, blobs: blobsOffline, tempId });
+
+      _jornadaActivaLocal = {
+        log_id:       tempId,
+        truck_id:     jornadaSeleccionada.truck_id,
+        patente:      jornadaSeleccionada.plate,
+        marca_modelo: payloadOffline.marcaModelo,
+        km_inicio:    kmInicio,
+        log_date:     new Date().toISOString().slice(0, 10),
+        hora_inicio:  new Date().toTimeString().slice(0, 5),
+      };
+      try { localStorage.setItem('sigma_jornada_activa', JSON.stringify(_jornadaActivaLocal)); } catch (e) { /* no crítico */ }
+
+      _grillaDesvioConfirmado = false;
+      _grillaMotivoPendiente  = null;
+      if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
+      toast('Jornada iniciada — se sincroniza cuando haya señal 📴', 'success');
+      closeModal('modal-nueva-jornada');
+      actualizarBotonFinalizar(true);
+      try { actualizarEstadoBtnNuevoRemito(); } catch (_) {}
+      return;
+    } catch (err) {
+      console.error('[offline] No se pudo encolar la apertura de jornada:', err);
+      if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
+      _modalError('nj-error', 'No se pudo guardar la jornada en el teléfono. Reintentá.');
       return;
     }
   }
@@ -7855,6 +7943,58 @@ async function confirmarCerrarJornada() {
     btn.style.pointerEvents = 'none';
   }
 
+  // ── Sin señal → encolar el cierre en el outbox y seguir la UI normal ──
+  if (!navigator.onLine && typeof obAdd === 'function') {
+    try {
+      const logId = jornadaParaCerrar.log_id;
+      const payloadOffline = {
+        logId:          logId,
+        truckId:        jornadaParaCerrar.truck_id,
+        kmInicio:       jornadaParaCerrar.km_inicio,
+        kmFinal:        kmFinal,
+        inWorkshop:     enTaller,
+        workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
+        notas:          notas,
+        kmExcepcion:    kmExcepcion,
+      };
+      let blobsOffline = null;
+      if (typeof fotoKmFinal === 'string') {
+        payloadOffline.fotoKmFinal = fotoKmFinal; // ya es URL pública
+      } else if (fotoKmFinal) {
+        blobsOffline = { foto_km_final: fotoKmFinal }; // File/Blob → se sube al sincronizar
+      }
+      await obAdd({
+        tipo:      'jornada_cerrar',
+        payload:   payloadOffline,
+        blobs:     blobsOffline,
+        dependeDe: String(logId).startsWith('TMP-') ? logId : null,
+      });
+
+      const logDate        = jornadaParaCerrar.log_date || new Date().toISOString().slice(0, 10);
+      const truckIdCerrado = jornadaParaCerrar.truck_id;
+
+      // Limpiar jornada activa local (mismo efecto que el cierre online)
+      _jornadaActivaLocal = null;
+      try { localStorage.removeItem('sigma_jornada_activa'); } catch (e) { /* no crítico */ }
+      _jornadasAbiertasCache = [];
+
+      if (btn) { btn.textContent = '🏁 Cerrar jornada'; btn.style.pointerEvents = 'auto'; }
+      toast('Jornada cerrada — se sincroniza cuando haya señal 📴', 'success');
+      closeModal('modal-cerrar-jornada');
+      actualizarBotonFinalizar(false);
+      try { actualizarEstadoBtnNuevoRemito(); } catch (_) {}
+
+      // Abrir rendición de efectivo como en el flujo online
+      await abrirRendicion(logId, USUARIO_ACTUAL.id, truckIdCerrado, logDate);
+      return;
+    } catch (err) {
+      console.error('[offline] No se pudo encolar el cierre de jornada:', err);
+      if (btn) { btn.textContent = '🏁 Cerrar jornada'; btn.style.pointerEvents = 'auto'; }
+      _modalError('cj-error', 'No se pudo guardar el cierre en el teléfono. Reintentá.');
+      return;
+    }
+  }
+
   const exito = await cerrarJornada(jornadaParaCerrar.log_id, {
     truckId:        jornadaParaCerrar.truck_id,
     kmInicio:       jornadaParaCerrar.km_inicio,
@@ -8022,13 +8162,19 @@ async function confirmarRendicion() {
       notas:              document.getElementById('rend-notas')?.value?.trim() || null,
     };
 
-    const res  = await fetch(`${SUPABASE_URL}/functions/v1/check-integridad`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
-      body:    JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Error al enviar rendición');
+    // Sin señal → encolar la rendición en el outbox y cerrar como si hubiera salido bien
+    if (!navigator.onLine && typeof obAdd === 'function') {
+      await obAdd({
+        tipo:      'rendicion',
+        payload:   payload,
+        dependeDe: String(payload.log_id || '').startsWith('TMP-') ? payload.log_id : null,
+      });
+      closeModal('modal-rendicion-cierre');
+      toast('Rendición guardada — se sincroniza cuando haya señal 📴', 'success');
+      return;
+    }
+
+    const json = await _postRendicion(payload);
 
     closeModal('modal-rendicion-cierre');
     if (json.alerta_generada) {
@@ -8044,6 +8190,19 @@ async function confirmarRendicion() {
   }
 }
 
+// POST a la edge function de rendición — compartido entre el flujo online
+// y el handler del outbox (sync offline). Lanza Error si el server rechaza.
+async function _postRendicion(payload) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/check-integridad`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+    body:    JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || 'Error al enviar rendición');
+  return json;
+}
+
 function omitirRendicion() {
   closeModal('modal-rendicion-cierre');
 }
@@ -8052,7 +8211,9 @@ function omitirRendicion() {
 async function actualizarPantallaJornadas() {
   const jornadas = await cargarJornadasAbiertas();
   _jornadasAbiertasCache = jornadas;
-  actualizarBotonFinalizar(jornadas.length > 0);
+  // Jornada abierta offline (aún sin sincronizar): log_id provisorio TMP-*
+  const jornadaOfflinePendiente = String(_jornadaActivaLocal?.log_id || '').startsWith('TMP-');
+  actualizarBotonFinalizar(jornadas.length > 0 || jornadaOfflinePendiente);
   try { actualizarEstadoBtnNuevoRemito(); } catch(_) {}
 
   // Sincronizar localStorage con lo que devuelve Supabase
@@ -8066,7 +8227,8 @@ async function actualizarPantallaJornadas() {
         marca_modelo: [j.trucks?.brand, j.trucks?.model].filter(Boolean).join(' ') || null,
       };
       localStorage.setItem('sigma_jornada_activa', JSON.stringify(_jornadaActivaLocal));
-    } else {
+    } else if (!jornadaOfflinePendiente) {
+      // No borrar la jornada local si es una apertura offline que aún no sincronizó
       _jornadaActivaLocal = null;
       localStorage.removeItem('sigma_jornada_activa');
     }
@@ -8145,7 +8307,20 @@ function iniciarCierreJornada(jornada) {
 }
 
 function mostrarDialogoTaller() {
-  const jornada = _jornadasAbiertasCache?.[0] || null;
+  // Fallback: jornada abierta offline (no está en la cache de Supabase)
+  // → reconstruirla desde la copia local para poder cerrarla sin señal.
+  const jornada = _jornadasAbiertasCache?.[0] || (_jornadaActivaLocal?.log_id ? {
+    log_id:      _jornadaActivaLocal.log_id,
+    truck_id:    _jornadaActivaLocal.truck_id,
+    km_inicio:   _jornadaActivaLocal.km_inicio || 0,
+    log_date:    _jornadaActivaLocal.log_date || new Date().toISOString().slice(0, 10),
+    hora_inicio: _jornadaActivaLocal.hora_inicio || null,
+    trucks: {
+      plate: _jornadaActivaLocal.patente || '',
+      brand: _jornadaActivaLocal.marca_modelo || '',
+      model: '',
+    },
+  } : null);
   if (!jornada) {
     toast('No hay jornada activa para cerrar.', 'error');
     return;
@@ -9965,15 +10140,17 @@ async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
 
 /**
  * Sube una imagen al Storage de Supabase y devuelve la URL pública
- * @param {File} archivo - El archivo de la imagen
+ * @param {File|Blob} archivo - El archivo de la imagen (File o Blob del outbox)
  * @param {string} contexto - 'inicio' o 'cierre'
+ * @param {string|null} truckIdOverride - truck_id explícito (usado por el sync offline,
+ *   donde los globales de jornada pueden no estar seteados)
  * @returns {Promise<string>} URL de la imagen subida
  */
-async function subirFotoOdometro(archivo, contexto) {
+async function subirFotoOdometro(archivo, contexto, truckIdOverride = null) {
     try {
-        const truckId = jornadaSeleccionada?.truck_id || jornadaParaCerrar?.truck_id || _truckActual?.truck_id;
+        const truckId = truckIdOverride || jornadaSeleccionada?.truck_id || jornadaParaCerrar?.truck_id || _truckActual?.truck_id;
         if (!truckId) throw new Error('No hay camión activo para subir la foto.');
-        const extension = archivo.name.split('.').pop();
+        const extension = (archivo.name && archivo.name.includes('.')) ? archivo.name.split('.').pop() : 'jpg';
         const nombreArchivo = `${contexto}/${truckId}_${Date.now()}.${extension}`;
 
         const { data, error } = await _db.storage
