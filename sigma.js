@@ -2569,7 +2569,7 @@ async function _inicializarFiltrosRendAdmin() {
   // Poblar select de camiones (solo si aún vacío)
   const selCamion = document.getElementById('rend-filtro-camion');
   if (selCamion && selCamion.options.length === 1) {
-    const { data } = await _db.from('trucks').select('truck_id, plate, numero_interno').eq('status', 'activo').order('plate');
+    const { data } = await _db.from('trucks').select('truck_id, plate, numero_interno').in('status', ['active', 'activo']).order('plate');
     (data || []).forEach(t => {
       const opt = document.createElement('option');
       opt.value = t.truck_id;

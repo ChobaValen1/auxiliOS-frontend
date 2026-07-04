@@ -1,0 +1,14 @@
+{
+  "name": "sigma-choferes",
+  "version": "1.0.0",
+  "description": "Gestión de flota y remitos digitales — Sigma Remolques",
+  "private": true,
+  "scripts": {
+    "diagnose-users": "node diagnose-users.js",
+    "fix-auth-users": "node fix-auth-users.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.0"
+  }
+}
