@@ -14293,9 +14293,11 @@ async function initGrilla() {
     sel.value = _grillaMesKey;
   }
 
-  // Botón copiar semana: solo admin
+  // Botones copiar semana / generar mes: solo admin
   const btnCopiar = document.getElementById('grilla-btn-copiar');
   if (btnCopiar) btnCopiar.style.display = _grillaEsAdmin() ? '' : 'none';
+  const btnCopiarMes = document.getElementById('grilla-btn-copiar-mes');
+  if (btnCopiarMes) btnCopiarMes.style.display = _grillaEsAdmin() ? '' : 'none';
 
   _grillaAutoSemana = true;
   await cargarGrilla();
@@ -14610,4 +14612,53 @@ async function copiarSemanaGrilla() {
 
   toast('Semana copiada');
   await cargarGrilla();
+}
+
+// Copia todo el patrón del mes visible al mes siguiente, semana a semana
+// (semana 1 → semana 1, etc.), preservando alternancias entre choferes.
+async function copiarMesGrilla() {
+  if (!_grillaEsAdmin()) return;
+
+  const [y, m] = _grillaMesKey.split('-').map(Number);
+  const dNext = new Date(y, m, 1, 12);
+  const nextKey = `${dNext.getFullYear()}-${String(dNext.getMonth() + 1).padStart(2, '0')}`;
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const nombreDestino = `${meses[dNext.getMonth()]} ${dNext.getFullYear()}`;
+
+  const semanasDestino = _gSemanasDelMes(nextKey);
+  const filas = [];
+  semanasDestino.forEach((semDest, i) => {
+    const semOrig = _grillaSemanas[i % _grillaSemanas.length];
+    semDest.forEach((isoDest, dia) => {
+      if (isoDest.slice(0, 7) !== nextKey) return; // solo días del mes destino
+      const isoOrig = semOrig[dia];
+      _grillaTrucks.forEach(t => {
+        const a = _grillaAsig[`${isoOrig}|${t.truck_id}`];
+        if (!a) return;
+        filas.push({
+          fecha: isoDest,
+          truck_id: t.truck_id,
+          driver_id: a.estado === 'asignado' ? a.driver_id : null,
+          estado: a.estado,
+        });
+      });
+    });
+  });
+
+  if (!filas.length) { toast('Este mes no tiene asignaciones para copiar', 'info'); return; }
+  if (!confirm(`Se van a generar ${filas.length} asignaciones para ${nombreDestino}, repitiendo el patrón de este mes. Si ${nombreDestino} ya tiene datos, se pisan. ¿Continuar?`)) return;
+
+  const { error } = await _db.from('asignaciones_grilla')
+    .upsert(filas, { onConflict: 'fecha,truck_id' });
+
+  if (error) {
+    console.error('Error copiando mes:', error);
+    toast('No se pudo generar el mes siguiente', 'error');
+    return;
+  }
+
+  toast(`${nombreDestino.charAt(0).toUpperCase() + nombreDestino.slice(1)} generado ✓`);
+  const sel = document.getElementById('grilla-mes-select');
+  if (sel && [...sel.options].some(o => o.value === nextKey)) sel.value = nextKey;
+  await cambiarMesGrilla(nextKey);
 }

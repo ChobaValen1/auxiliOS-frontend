@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Alertas: grilla vs. realidad</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --panel:#1c2129; --border:#2d333b; --border2:#3d444d;
+    --text:#e6edf3; --muted:#8b949e;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --red:#e2504a; --red-lo:rgba(226,80,74,0.12);
+    --green:#27c47a; --green-lo:rgba(39,196,122,0.10);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:20px; }
+  .mockup-note { background:#2b2210; border:2px dashed var(--amber); border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; margin-bottom:20px; max-width:760px; }
+  .mockup-note h3 { margin:0 0 6px 0; font-size:14px; color:var(--amber); }
+  .wrap { max-width:760px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:22px; }
+  .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .card-title { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:1px; }
+  .badge-count { background:var(--red-lo); color:var(--red); border:1px solid rgba(226,80,74,0.3); border-radius:12px; padding:3px 10px; font-size:11px; font-weight:700; }
+
+  .alerta { display:flex; gap:12px; align-items:flex-start; padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid var(--border); border-left:4px solid var(--red); background:var(--panel); }
+  .alerta.warn { border-left-color:var(--amber); }
+  .alerta.info { border-left-color:var(--muted); }
+  .alerta .ico { font-size:20px; }
+  .alerta .txt { flex:1; font-size:13px; line-height:1.5; }
+  .alerta .txt strong { color:var(--text); }
+  .alerta .txt small { display:block; color:var(--muted); font-size:11px; margin-top:2px; }
+  .alerta .acciones { display:flex; flex-direction:column; gap:6px; }
+  .btn-mini { background:transparent; border:1px solid var(--border2); color:var(--text); border-radius:6px; padding:5px 10px; font-size:11px; cursor:pointer; white-space:nowrap; }
+  .btn-mini:hover { border-color:var(--amber); }
+  .btn-mini.ok { color:var(--green); border-color:rgba(39,196,122,0.35); }
+
+  .empty { text-align:center; color:var(--green); font-size:13px; padding:18px; background:var(--green-lo); border-radius:8px; }
+
+  h4.demo { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1px; margin:26px 0 10px; }
+
+  table { border-collapse:collapse; width:100%; }
+  th, td { padding:9px 8px; text-align:center; border-bottom:1px solid var(--border); font-size:12px; }
+  th { background:var(--panel); color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:1px; }
+  td.movil { font-weight:800; font-family:'Consolas',monospace; background:var(--panel); }
+  .chip { display:inline-block; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; position:relative; }
+  .chip-chofer { background:var(--green-lo); color:var(--green); border:1px solid rgba(39,196,122,0.25); }
+  .chip-alerta { box-shadow:0 0 0 2px var(--red); }
+  .chip-alerta::after { content:'⚠'; position:absolute; top:-8px; right:-8px; background:var(--red); color:#fff; border-radius:50%; width:16px; height:16px; font-size:10px; line-height:16px; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — Alertas: grilla vs. realidad</h3>
+  Cada vez que un chofer abre jornada, el sistema compara contra la grilla del día y genera alertas para el admin.
+  Se muestran en <strong>una card nueva del dashboard admin</strong> y además la celda conflictiva queda marcada en la pantalla Grilla.
+  "Marcar visto" descarta la alerta; "Corregir grilla" abre la celda para editarla (así la grilla queda como la realidad).
+</div>
+
+<div class="wrap">
+
+  <h4 class="demo">1 · Card en el dashboard del admin</h4>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">⚠ Grilla vs. realidad — hoy 04-07</div>
+      <span class="badge-count">3 alertas</span>
+    </div>
+
+    <div class="alerta">
+      <div class="ico">🚚</div>
+      <div class="txt">
+        <strong>Ricardo Cuello</strong> abrió jornada con el <strong>móvil 120</strong>, pero la grilla lo asignaba al <strong>114</strong>.
+        <small>Jornada abierta 06:42 · el 120 estaba asignado a Iván</small>
+      </div>
+      <div class="acciones">
+        <button class="btn-mini">✏️ Corregir grilla</button>
+        <button class="btn-mini ok">✓ Marcar visto</button>
+      </div>
+    </div>
+
+    <div class="alerta warn">
+      <div class="ico">😴</div>
+      <div class="txt">
+        <strong>Sergio Godoy</strong> abrió jornada, pero hoy figuraba de <strong>franco</strong>.
+        <small>Jornada abierta 07:15 con el móvil 118</small>
+      </div>
+      <div class="acciones">
+        <button class="btn-mini">✏️ Corregir grilla</button>
+        <button class="btn-mini ok">✓ Marcar visto</button>
+      </div>
+    </div>
+
+    <div class="alerta warn">
+      <div class="ico">🔧</div>
+      <div class="txt">
+        El <strong>móvil 116</strong> figura en <strong>taller</strong>, pero <strong>Jorge Meza</strong> abrió jornada con él.
+        <small>Jornada abierta 08:03</small>
+      </div>
+      <div class="acciones">
+        <button class="btn-mini">✏️ Corregir grilla</button>
+        <button class="btn-mini ok">✓ Marcar visto</button>
+      </div>
+    </div>
+  </div>
+
+  <h4 class="demo">1b · Cuando todo coincide</h4>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">⚠ Grilla vs. realidad — hoy 04-07</div>
+    </div>
+    <div class="empty">✓ Todas las jornadas de hoy coinciden con la grilla</div>
+  </div>
+
+  <h4 class="demo">2 · Marca en la pantalla Grilla (celda conflictiva)</h4>
+  <div class="card" style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Móvil</th><th>Vie 03-07</th><th>Sáb 04-07 (hoy)</th><th>Dom 05-07</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="movil">114</td>
+          <td><span class="chip chip-chofer">Ricardo</span></td>
+          <td><span class="chip chip-chofer chip-alerta" title="La grilla dice Ricardo, pero la jornada real la abrió con el 120">Ricardo</span></td>
+          <td><span class="chip chip-chofer">Ricardo</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="color:var(--muted);font-size:11px;margin-top:8px">La celda con ⚠ tiene tooltip explicando el conflicto. Solo se marca el día de hoy y días pasados.</div>
+  </div>
+
+</div>
+</body></html>
