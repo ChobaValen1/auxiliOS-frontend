@@ -3090,3 +3090,90 @@ body {
   .grilla-topbar { justify-content: flex-start; }
 }
 
+/* ── ALERTAS GRILLA VS. REALIDAD ──────────────────────────── */
+.agr-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.agr-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+.agr-badge {
+  background: var(--red-lo);
+  color: var(--red);
+  border: 1px solid rgba(226,80,74,0.3);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.agr-alerta {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--red);
+  background: var(--panel);
+}
+.agr-alerta.warn { border-left-color: var(--amber); }
+.agr-alerta:last-child { margin-bottom: 0; }
+.agr-ico { font-size: 20px; line-height: 1.2; }
+.agr-txt { flex: 1; font-size: 13px; line-height: 1.5; color: var(--muted2); }
+.agr-txt strong { color: var(--text); }
+.agr-txt small { display: block; color: var(--muted2); opacity: 0.8; font-size: 11px; margin-top: 2px; }
+.agr-acciones { display: flex; flex-direction: column; gap: 6px; }
+.agr-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.agr-btn:hover { border-color: var(--amber); }
+.agr-btn.ok { color: var(--green); border-color: rgba(39,196,122,0.35); }
+.agr-vacio {
+  text-align: center;
+  color: var(--green);
+  font-size: 13px;
+  padding: 18px;
+  background: var(--green-lo);
+  border-radius: 8px;
+}
+@media (max-width: 560px) {
+  .agr-alerta { flex-wrap: wrap; }
+  .agr-acciones { flex-direction: row; width: 100%; justify-content: flex-end; }
+}
+
+/* Chip de grilla con conflicto grilla vs. realidad */
+.grilla-chip-alerta {
+  box-shadow: 0 0 0 2px var(--red);
+  position: relative;
+}
+.grilla-chip-alerta::after {
+  content: '⚠';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--red);
+  color: #fff;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+

@@ -2592,6 +2592,7 @@ async function cargarDashboard() {
   const emergQuick = document.getElementById('dash-emergencias-quick');
   if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
+  if (PERFIL_USUARIO?.roles?.name === 'administracion') cargarAlertasGrilla();
   if (esAdmin && _dashVistaActual === 'negocio') await _cargarViewNegocio();
   else { _dashVistaActual = 'rendimiento'; await _cargarViewRendimiento(); }
 }
@@ -14237,6 +14238,8 @@ let _grillaFiltroMovil  = '';     // truck_id (string) o ''
 let _grillaCeldaEdit    = null;   // { fecha, truckId } de la celda en edición
 let _grillaSeleccion    = null;   // opción elegida en el modal
 let _grillaAutoSemana   = true;   // al entrar o cambiar de mes, posicionarse en la semana de hoy
+let _grillaConflictos   = {};     // 'fecha|truck_id' -> texto del conflicto grilla vs. realidad
+let _grillaListaTs      = 0;      // timestamp de la última carga exitosa (para esperar desde el dashboard)
 
 function _grillaEsAdmin()  { return PERFIL_USUARIO?.roles?.name === 'administracion'; }
 function _grillaEsChofer() { return PERFIL_USUARIO?.roles?.name === 'chofer'; }
@@ -14330,13 +14333,22 @@ async function cargarGrilla() {
   if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="grilla-cargando">Cargando grilla…</td></tr>`;
 
   try {
-    const [rTrucks, rChoferes, rAsig, rFeriados] = await Promise.all([
+    // Jornadas reales del rango visible, solo hasta hoy (para marcar conflictos grilla vs. realidad)
+    const hastaLogs = hasta < hoyIso ? hasta : hoyIso;
+    const pLogs = desde <= hoyIso
+      ? _db.from('daily_logs')
+           .select('log_id, driver_id, truck_id, log_date, hora_inicio, status, users(full_name), trucks(numero_interno, plate)')
+           .gte('log_date', desde).lte('log_date', hastaLogs)
+      : Promise.resolve({ data: [] });
+
+    const [rTrucks, rChoferes, rAsig, rFeriados, rLogs] = await Promise.all([
       _db.from('trucks').select('truck_id, plate, numero_interno').in('status', ['active', 'activo']).order('numero_interno'),
       _db.from('users').select('user_id, full_name').eq('role_id', 3).order('full_name'),
       _db.from('asignaciones_grilla')
          .select('asignacion_id, fecha, truck_id, driver_id, estado, users(full_name), trucks(numero_interno, plate)')
          .gte('fecha', desde).lte('fecha', hasta),
       _db.from('feriados').select('fecha, nombre').gte('fecha', desde).lte('fecha', hasta),
+      pLogs,
     ]);
 
     _grillaTrucks   = rTrucks.data   || [];
@@ -14348,9 +14360,25 @@ async function cargarGrilla() {
     _grillaFeriados = {};
     (rFeriados.data || []).forEach(f => { _grillaFeriados[f.fecha] = f.nombre; });
 
+    // ── Conflictos grilla vs. realidad (fechas <= hoy) ──
+    _grillaConflictos = {};
+    const logsPorFecha = {};
+    (rLogs.data || []).forEach(l => { (logsPorFecha[l.log_date] = logsPorFecha[l.log_date] || []).push(l); });
+    const asigPorFecha = {};
+    (rAsig.data || []).forEach(a => { (asigPorFecha[a.fecha] = asigPorFecha[a.fecha] || []).push(a); });
+    Object.keys(logsPorFecha).forEach(f => {
+      _grillaDetectarConflictosDia(f, logsPorFecha[f], asigPorFecha[f] || []).forEach(al => {
+        (al.celdas || []).forEach(c => {
+          const k = `${c.fecha}|${c.truckId}`;
+          _grillaConflictos[k] = _grillaConflictos[k] ? `${_grillaConflictos[k]} · ${c.msg}` : c.msg;
+        });
+      });
+    });
+
     _grillaPoblarFiltros();
     renderGrillaTabs();
     renderGrillaTabla();
+    _grillaListaTs = Date.now();
   } catch (err) {
     console.error('Error cargando grilla:', err);
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="grilla-cargando">No se pudo cargar la grilla. Probá de nuevo.</td></tr>`;
@@ -14464,6 +14492,12 @@ function renderGrillaTabla() {
       // Atenuar también francos/taller/vacías cuando hay filtro por chofer
       if (_grillaFiltroChofer && (!a || a.estado !== 'asignado')) {
         chip = chip.replace('class="grilla-chip ', 'class="grilla-chip grilla-chip-atenuada ');
+      }
+
+      // Marca ⚠ si la jornada real difiere de la grilla (solo hoy y días pasados)
+      const conflicto = iso <= hoyIso ? _grillaConflictos[`${iso}|${t.truck_id}`] : null;
+      if (conflicto) {
+        chip = chip.replace('class="grilla-chip', `title="⚠ ${conflicto.replace(/"/g, '&quot;')}" class="grilla-chip grilla-chip-alerta`);
       }
 
       tds += `<td class="${esHoy ? 'grilla-hoy-celda' : ''}">${chip}</td>`;
@@ -14661,4 +14695,179 @@ async function copiarMesGrilla() {
   const sel = document.getElementById('grilla-mes-select');
   if (sel && [...sel.options].some(o => o.value === nextKey)) sel.value = nextKey;
   await cambiarMesGrilla(nextKey);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// ALERTAS "GRILLA VS. REALIDAD" — dashboard admin + marcas en grilla
+// ═══════════════════════════════════════════════════════════════
+
+let _alertasGrillaActuales = [];  // alertas del día vigentes (sin las vistas)
+
+// Detecta conflictos entre las jornadas reales de un día y la grilla de ese día.
+// Devuelve alertas { id, tipo, sev, ico, fecha, driverId, truckId, texto, sub, celdas:[{fecha,truckId,msg}] }.
+// Si la grilla del día está vacía, no alerta nada.
+function _grillaDetectarConflictosDia(fecha, logsDia, asigsDia) {
+  const alertas = [];
+  if (!asigsDia || !asigsDia.length) return alertas;
+
+  const asigPorTruck  = {};
+  const asigPorDriver = {};
+  asigsDia.forEach(a => {
+    asigPorTruck[a.truck_id] = a;
+    if (a.estado === 'asignado' && a.driver_id) asigPorDriver[a.driver_id] = a;
+  });
+
+  const idsUsados = new Set();
+  const push = (al) => {
+    al.id = `${al.fecha}|${al.driverId}|${al.truckId}|${al.tipo}`;
+    if (idsUsados.has(al.id)) return; // no repetir la misma combinación
+    idsUsados.add(al.id);
+    alertas.push(al);
+  };
+
+  (logsDia || []).forEach(l => {
+    const nombre    = l.users?.full_name || 'Chofer';
+    const nombrePila = nombre.split(' ')[0];
+    const movilReal = l.trucks?.numero_interno || l.trucks?.plate || l.truck_id;
+    const hora      = (l.hora_inicio || '').slice(0, 5) || '—';
+    const g         = asigPorTruck[l.truck_id];                       // fila de grilla del móvil real
+    const esperada  = l.driver_id ? asigPorDriver[l.driver_id] : null; // dónde lo asignaba la grilla
+
+    // taller_en_uso (ámbar)
+    if (g && g.estado === 'taller') {
+      push({
+        tipo: 'taller_en_uso', sev: 'warn', ico: '🔧',
+        fecha, driverId: l.driver_id, truckId: l.truck_id,
+        texto: `El <strong>móvil ${movilReal}</strong> figura en <strong>taller</strong>, pero <strong>${nombre}</strong> abrió jornada con él.`,
+        sub: `Jornada abierta ${hora}`,
+        celdas: [{ fecha, truckId: l.truck_id, msg: `Figura en taller, pero ${nombre} abrió jornada con este móvil` }],
+      });
+    }
+
+    if (esperada && String(esperada.truck_id) !== String(l.truck_id)) {
+      // movil_distinto (roja)
+      const movilGrilla = esperada.trucks?.numero_interno || esperada.trucks?.plate || esperada.truck_id;
+      let estadoReal;
+      if (!g)                          estadoReal = 'sin asignar';
+      else if (g.estado === 'franco')  estadoReal = 'de franco';
+      else if (g.estado === 'taller')  estadoReal = 'en taller';
+      else                             estadoReal = `asignado a ${(g.users?.full_name || 'otro chofer').split(' ')[0]}`;
+      push({
+        tipo: 'movil_distinto', sev: 'rojo', ico: '🚚',
+        fecha, driverId: l.driver_id, truckId: l.truck_id,
+        texto: `<strong>${nombre}</strong> abrió jornada con el <strong>móvil ${movilReal}</strong>, pero la grilla lo asignaba al <strong>${movilGrilla}</strong>.`,
+        sub: `Jornada abierta ${hora} · el ${movilReal} estaba ${estadoReal}`,
+        celdas: [
+          { fecha, truckId: l.truck_id,       msg: `${nombre} abrió jornada con este móvil, pero la grilla lo asignaba al ${movilGrilla}` },
+          { fecha, truckId: esperada.truck_id, msg: `La grilla dice ${nombrePila}, pero la jornada real la abrió con el ${movilReal}` },
+        ],
+      });
+    } else if (!esperada && !(g && g.estado === 'taller')) {
+      // franco_trabajado (ámbar) — sin fila 'asignado' en toda la grilla del día
+      push({
+        tipo: 'franco_trabajado', sev: 'warn', ico: '😴',
+        fecha, driverId: l.driver_id, truckId: l.truck_id,
+        texto: `<strong>${nombre}</strong> abrió jornada, pero hoy figuraba de <strong>franco/sin asignación</strong>.`,
+        sub: `Jornada abierta ${hora} con el móvil ${movilReal}`,
+        celdas: [{ fecha, truckId: l.truck_id, msg: `${nombre} abrió jornada con este móvil, pero figuraba de franco/sin asignación` }],
+      });
+    }
+  });
+
+  return alertas;
+}
+
+// ── Vistos (localStorage) ───────────────────────────────────────
+function _alertasGrillaVistas() {
+  try { return JSON.parse(localStorage.getItem('grillaAlertasVistas') || '[]'); }
+  catch (e) { return []; }
+}
+
+function marcarAlertaGrillaVista(id) {
+  const hoy = _gHoyIso();
+  // Guardar el visto y limpiar entradas de días anteriores
+  const vistas = _alertasGrillaVistas().filter(v => v.startsWith(hoy + '|'));
+  if (!vistas.includes(id)) vistas.push(id);
+  localStorage.setItem('grillaAlertasVistas', JSON.stringify(vistas));
+  _alertasGrillaActuales = _alertasGrillaActuales.filter(a => a.id !== id);
+  _renderAlertasGrilla();
+}
+
+// ── Card del dashboard admin ────────────────────────────────────
+async function cargarAlertasGrilla() {
+  const cont = document.getElementById('dash-alertas-grilla');
+  if (!cont) return;
+  if (PERFIL_USUARIO?.roles?.name !== 'administracion') { cont.style.display = 'none'; return; }
+
+  const hoy = _gHoyIso();
+  try {
+    const [rLogs, rAsig] = await Promise.all([
+      _db.from('daily_logs')
+         .select('log_id, driver_id, truck_id, log_date, hora_inicio, status, users(full_name), trucks(numero_interno, plate)')
+         .eq('log_date', hoy),
+      _db.from('asignaciones_grilla')
+         .select('fecha, truck_id, driver_id, estado, users(full_name), trucks(numero_interno, plate)')
+         .eq('fecha', hoy),
+    ]);
+
+    const asigs = rAsig.data || [];
+    if (!asigs.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; } // grilla del día vacía → ocultar
+
+    const vistas = _alertasGrillaVistas().filter(v => v.startsWith(hoy + '|'));
+    localStorage.setItem('grillaAlertasVistas', JSON.stringify(vistas)); // limpia días anteriores
+
+    _alertasGrillaActuales = _grillaDetectarConflictosDia(hoy, rLogs.data || [], asigs)
+      .filter(a => !vistas.includes(a.id));
+
+    _renderAlertasGrilla();
+  } catch (err) {
+    console.error('Error cargando alertas grilla vs. realidad:', err);
+    cont.style.display = 'none';
+  }
+}
+
+function _renderAlertasGrilla() {
+  const cont = document.getElementById('dash-alertas-grilla');
+  if (!cont) return;
+
+  const hoy = _gHoyIso();
+  const n = _alertasGrillaActuales.length;
+
+  const filas = n
+    ? _alertasGrillaActuales.map(a => `
+        <div class="agr-alerta ${a.sev === 'warn' ? 'warn' : ''}">
+          <div class="agr-ico">${a.ico}</div>
+          <div class="agr-txt">
+            ${a.texto}
+            <small>${a.sub}</small>
+          </div>
+          <div class="agr-acciones">
+            <button class="agr-btn" onclick="corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})">✏️ Corregir grilla</button>
+            <button class="agr-btn ok" onclick="marcarAlertaGrillaVista('${a.id}')">✓ Marcar visto</button>
+          </div>
+        </div>`).join('')
+    : `<div class="agr-vacio">✓ Todas las jornadas de hoy coinciden con la grilla</div>`;
+
+  cont.innerHTML = `
+    <div class="card">
+      <div class="agr-head">
+        <div class="agr-title">⚠ Grilla vs. realidad — hoy ${_gDDMM(hoy)}</div>
+        ${n ? `<span class="agr-badge">${n} ${n === 1 ? 'alerta' : 'alertas'}</span>` : ''}
+      </div>
+      ${filas}
+    </div>`;
+  cont.style.display = '';
+}
+
+// Navega a la grilla y abre la celda del móvil real usado, esperando a que cargue
+async function corregirGrillaDesdeAlerta(fecha, truckId) {
+  _grillaMesKey = fecha.slice(0, 7);
+  _grillaAutoSemana = true;
+  const antes = _grillaListaTs;
+  goTo('grilla'); // dispara initGrilla() → cargarGrilla()
+  for (let i = 0; i < 50 && _grillaListaTs === antes; i++) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  abrirGrillaCelda(fecha, truckId);
 }
