@@ -2127,6 +2127,57 @@ async function confirmarFirma() {
       }
     };
 
+    // ── Pago mixto (se calcula antes por si hay que encolar offline) ──
+    const metodosValidos = ['efectivo','transferencia','tarjeta','app'];
+    const pagosFirma = (datosActualizados.pago || '').split('+').map(p => p.trim().toLowerCase());
+    const pago1Firma = metodosValidos.includes(pagosFirma[0]) ? pagosFirma[0] : null;
+    const pago2Firma = pagosFirma[1] && metodosValidos.includes(pagosFirma[1]) ? pagosFirma[1] : null;
+
+    const _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
+
+    // ── OFFLINE: encolar la firma en el outbox ────────────
+    if (!navigator.onLine && typeof obAdd === 'function') {
+      const payloadFirma = {
+        nro_remito:           nro2,
+        ...(_logId ? { log_id: _logId } : {}),
+        patente:              datosActualizados.patente,
+        marca_modelo:         datosActualizados.marca,
+        razon_social:         datosActualizados.cliente,
+        origen:               datosActualizados.origen,
+        destino:              datosActualizados.destino,
+        km_reales:            datosActualizados.km,
+        imp_peaje:            datosActualizados.peaje,
+        imp_excedente:        datosActualizados.excedente,
+        imp_otros:            datosActualizados.otros,
+        firmado_at:           new Date().toISOString(),
+        conformidad_servicio: confirmaciones.includes('Conformidad con el servicio'),
+        conformidad_cargos:   confirmaciones.includes('Aceptación de cargos variables'),
+        sin_danos:            confirmaciones.includes('Sin daños reportados'),
+        conformidad_arrastre: confirmaciones.includes('Conformidad de Arrastre') || null,
+        pago_1_metodo:        pago1Firma,
+        pago_1_monto:         datosActualizados.pago1Monto,
+        pago_2_metodo:        pago2Firma,
+        pago_2_monto:         datosActualizados.pago2Monto,
+        cliente_presente:     clientePresente,
+        status:               'firmado',
+        edicion:              edicion, // el handler la agrega al historial al sincronizar
+      };
+      // Si el remito pendiente del mismo nro está en la cola, la firma depende de él;
+      // si no, depende de la jornada TMP (si la hay).
+      const dependeDe = _obRemitoTemp[nro2]
+        || (String(_logId || '').startsWith('TMP-') ? _logId : null);
+      await obAdd({
+        tipo: 'remito_firmar',
+        payload: payloadFirma,
+        blobs: { firma: sigCF ? sigCF.toDataURL() : null },
+        dependeDe
+      });
+      try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
+      showRemitosView('lista');
+      toast(`Remito ${nro2} firmado — se sincroniza cuando haya señal 📴`, 'success');
+      return;
+    }
+
     const { data: remitoActual } = await _db
       .from('remitos')
       .select('historial_ediciones, cliente_presente')
@@ -2143,28 +2194,11 @@ async function confirmarFirma() {
     let firmaUrl = null;
     if (sigCF) {
       const blob = await new Promise(r => sigCF.toBlob(r, 'image/png'));
-      const nombre = `firma_${nro2}_${Date.now()}.png`;
-      const { error: fe } = await _db.storage
-        .from('firmas')
-        .upload(nombre, blob, { contentType: 'image/png', upsert: true });
-      if (!fe) {
-        const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
-        firmaUrl = fd.publicUrl;
-      } else {
-        console.warn('⚠️ No se pudo subir la firma:', fe.message);
-      }
+      firmaUrl = await _subirFirmaStorage(blob, nro2);
     }
-
-    // ── Pago mixto ────────────────────────────────────────
-    const metodosValidos = ['efectivo','transferencia','tarjeta','app'];
-    const pagosFirma = (datosActualizados.pago || '').split('+').map(p => p.trim().toLowerCase());
-    const pago1Firma = metodosValidos.includes(pagosFirma[0]) ? pagosFirma[0] : null;
-    const pago2Firma = pagosFirma[1] && metodosValidos.includes(pagosFirma[1]) ? pagosFirma[1] : null;
 
     // ── Actualizar remito en Supabase ─────────────────────
     toast('Guardando en base de datos...', 'info');
-
-    const _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
 
     const { error } = await _db.from('remitos')
       .update({
@@ -2214,6 +2248,22 @@ async function confirmarFirma() {
     }
   }
 }
+// Sube la firma (Blob PNG) al bucket 'firmas' con el naming del flujo online.
+// Devuelve la URL pública o null si falló. Compartida por confirmarFirma y
+// el handler offline 'remito_firmar'.
+async function _subirFirmaStorage(blob, nro) {
+  const nombre = `firma_${nro}_${Date.now()}.png`;
+  const { error: fe } = await _db.storage
+    .from('firmas')
+    .upload(nombre, blob, { contentType: 'image/png', upsert: true });
+  if (fe) {
+    console.warn('⚠️ No se pudo subir la firma:', fe.message);
+    return null;
+  }
+  const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
+  return fd.publicUrl;
+}
+
 function simFotoSlot(slot) {
   if (slot.classList.contains('loaded')) return;
   slot.classList.add('loaded');
@@ -4785,7 +4835,49 @@ if (typeof obRegistrarHandler === 'function') {
     await _postRendicion(payload);
     return {};
   });
+
+  // Remito pendiente: mismo upsert idempotente que el flujo online
+  // (el nro_remito viene del talonario físico → replayable sin duplicar).
+  obRegistrarHandler('remito_pendiente', async (payload) => {
+    const { error } = await _db.from('remitos').upsert(payload, { onConflict: 'nro_remito' });
+    if (error) throw new Error(error.message);
+    return {};
+  });
+
+  // Firma de remito: sube el blob de la firma al bucket 'firmas' con el mismo
+  // naming del flujo online y actualiza el remito por nro_remito. La 'edicion'
+  // viaja en el payload y se agrega al historial recién al sincronizar (el
+  // historial existente no se puede leer offline).
+  obRegistrarHandler('remito_firmar', async (payload, blobs) => {
+    const { nro_remito, edicion, ...campos } = payload;
+
+    let firmaUrl = null;
+    if (blobs && blobs.firma) {
+      firmaUrl = await _subirFirmaStorage(blobs.firma, nro_remito);
+      if (!firmaUrl) throw new Error('No se pudo subir la firma al almacenamiento');
+    }
+
+    const { data: remitoActual } = await _db
+      .from('remitos')
+      .select('historial_ediciones')
+      .eq('nro_remito', nro_remito)
+      .single();
+    const historial = Array.isArray(remitoActual?.historial_ediciones)
+      ? remitoActual.historial_ediciones
+      : [];
+    if (edicion) historial.push(edicion);
+
+    const { error } = await _db.from('remitos')
+      .update({ ...campos, firma_imagen_url: firmaUrl, historial_ediciones: historial })
+      .eq('nro_remito', nro_remito);
+    if (error) throw new Error(error.message);
+    return {};
+  });
 }
+
+// Mapa en memoria nro_remito → tempId de la op 'remito_pendiente' encolada,
+// para que la firma offline del mismo nro dependa de esa op (no hay id real).
+let _obRemitoTemp = {};
 
 // ── OFFLINE — INDEXEDDB ───────────────────────
 const _IDB_NAME  = 'SigmaOfflineDB';
@@ -6638,6 +6730,18 @@ async function guardarRemitoPendiente() {
     status:            'pendiente',
     created_at_device: new Date().toISOString(),
   };
+
+  // ── OFFLINE: encolar en el outbox y seguir el flujo normal ──
+  if (!navigator.onLine && typeof obAdd === 'function') {
+    const tempId = obTempId();
+    _obRemitoTemp[nro] = tempId; // para que la firma del mismo nro dependa de esta op
+    const dependeDe = String(_logId || '').startsWith('TMP-') ? _logId : null;
+    await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, dependeDe, tempId });
+    try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
+    showRemitosView('lista');
+    toast(`Remito ${nro} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
+    return;
+  }
 
   // 🚨 DIAGNÓSTICO DE SEGURIDAD (Mirar Consola F12) 🚨
   console.log("ID del chofer enviado a Supabase:", USUARIO_ACTUAL.id);
