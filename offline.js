@@ -152,6 +152,17 @@ async function obEliminar(id) {
   await _obActualizarIndicador();
 }
 
+// Limpia el estado de error de una op (vuelve a 'pendiente') y dispara el sync.
+async function obReintentar(id) {
+  const op = await _obStoreGet('ops', id);
+  if (!op) return;
+  op.estado = 'pendiente';
+  op.errorMsg = null;
+  await _obStorePut('ops', op);
+  await _obActualizarIndicador();
+  if (navigator.onLine) setTimeout(obSync, 100);
+}
+
 // Si valor es un tempId 'TMP-*', devuelve el realId del idmap o null si aún
 // no se sincronizó la op que lo genera. Si no es TMP-, devuelve el valor tal cual.
 async function obResolverRef(valor) {

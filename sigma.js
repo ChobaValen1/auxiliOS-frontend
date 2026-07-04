@@ -4873,68 +4873,21 @@ if (typeof obRegistrarHandler === 'function') {
     if (error) throw new Error(error.message);
     return {};
   });
+
+  // Carga de combustible: reusa registrarCombustible() (supabase.js). El
+  // log_id TMP-* ya llega remapeado por obSync.
+  obRegistrarHandler('fuel', async (payload) => {
+    const res = await registrarCombustible(payload);
+    if (!res || !res.ok) throw new Error(res?.errorMsg || 'No se pudo registrar la carga de combustible');
+    return {};
+  });
 }
 
 // Mapa en memoria nro_remito → tempId de la op 'remito_pendiente' encolada,
 // para que la firma offline del mismo nro dependa de esa op (no hay id real).
 let _obRemitoTemp = {};
 
-// ── OFFLINE — INDEXEDDB ───────────────────────
-const _IDB_NAME  = 'SigmaOfflineDB';
-const _IDB_STORE = 'fuel_queue';
-
-function _idbOpen() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(_IDB_NAME, 1);
-    req.onupgradeneeded = e => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(_IDB_STORE))
-        db.createObjectStore(_IDB_STORE, { keyPath: 'id', autoIncrement: true });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
-  });
-}
-
-async function _idbAdd(datos) {
-  const db  = await _idbOpen();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction(_IDB_STORE, 'readwrite').objectStore(_IDB_STORE).add({ ...datos, _savedAt: Date.now() });
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
-  });
-}
-
-async function _idbGetAll() {
-  const db = await _idbOpen();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction(_IDB_STORE, 'readonly').objectStore(_IDB_STORE).getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
-  });
-}
-
-async function _idbDelete(id) {
-  const db = await _idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(_IDB_STORE, 'readwrite');
-    tx.objectStore(_IDB_STORE).delete(id);
-    tx.oncomplete = resolve;
-    tx.onerror    = () => reject(tx.error);
-  });
-}
-
-async function _idbUpdate(registro) {
-  const db = await _idbOpen();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction(_IDB_STORE, 'readwrite').objectStore(_IDB_STORE).put(registro);
-    req.onsuccess = () => resolve();
-    req.onerror   = () => reject(req.error);
-  });
-}
-
-// Sincronización al recuperar señal
-window.addEventListener('online',  syncOfflineFuel);
+// ── OFFLINE — ESTADO DE CONEXIÓN (OCR) ────────
 window.addEventListener('offline', _actualizarEstadoConexion);
 window.addEventListener('online',  _actualizarEstadoConexion);
 
@@ -4953,165 +4906,151 @@ function _actualizarEstadoConexion() {
   }
 }
 
-async function syncOfflineFuel() {
-  const todos = await _idbGetAll();
-  // Solo procesar los pendientes (no los que ya fallaron con error de validación)
-  const pendientes = todos.filter(r => !r._syncError);
-  if (!pendientes.length) return;
-
-  let exitos = 0;
-  let erroresValidacion = 0;
-
-  for (const registro of pendientes) {
-    const { id, _savedAt, ...datos } = registro;
-    const resultado = await registrarCombustible(datos);
-
-    if (resultado.ok) {
-      await _idbDelete(id);
-      exitos++;
-    } else if (resultado.isValidation) {
-      // Error de datos — marcar para revisión manual, no reintentar
-      await _idbUpdate({ ...registro, _syncError: true, _errorMsg: resultado.errorMsg });
-      erroresValidacion++;
+// ── OFFLINE — MIGRACIÓN ONE-SHOT DE LA COLA VIEJA DE COMBUSTIBLE ───────
+// Mueve los registros que quedaron en la DB vieja SigmaOfflineDB/fuel_queue
+// al outbox unificado (ops tipo 'fuel') y borra la DB vieja.
+async function _migrarFuelQueueVieja() {
+  try {
+    // Si el navegador soporta listar DBs, evitar crear la vieja al abrirla
+    if (typeof indexedDB.databases === 'function') {
+      const dbs = await indexedDB.databases();
+      if (!dbs.some(d => d.name === 'SigmaOfflineDB')) return;
     }
-    // Si isValidation=false (error de red) → no hacer nada, se reintentará la próxima vez
-  }
-
-  await actualizarIndicadorOffline();
-
-  if (exitos > 0) {
-    toast(`✅ ${exitos} carga${exitos > 1 ? 's' : ''} offline sincronizada${exitos > 1 ? 's' : ''}`, 'success');
-    if (_truckActual?.truck_id) {
-      cargarScreenCamion();
+    const dbVieja = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('SigmaOfflineDB');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => reject(req.error);
+    });
+    let registros = [];
+    if (dbVieja.objectStoreNames.contains('fuel_queue')) {
+      registros = await new Promise((resolve, reject) => {
+        const req = dbVieja.transaction('fuel_queue', 'readonly').objectStore('fuel_queue').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror   = () => reject(req.error);
+      });
     }
-  }
-
-  if (erroresValidacion > 0) {
-    toast(
-      `⚠️ ${erroresValidacion} carga${erroresValidacion > 1 ? 's' : ''} no pudieron sincronizarse — abrí la cola para corregirlas`,
-      'error'
-    );
-  }
-}
-
-// Verificar al iniciar si hay registros con error de validación pendientes
-async function verificarOfflineErrores() {
-  await actualizarIndicadorOffline();
-  const todos = await _idbGetAll();
-  const conError = todos.filter(r => r._syncError);
-  if (conError.length > 0) {
-    toast(`⚠️ Hay ${conError.length} carga${conError.length > 1 ? 's' : ''} offline con errores — revisá la cola`, 'error');
+    dbVieja.close();
+    for (const registro of registros) {
+      const { id, _savedAt, _syncError, _errorMsg, ...payload } = registro;
+      await obAdd({
+        tipo: 'fuel',
+        payload,
+        dependeDe: String(payload.log_id || '').startsWith('TMP-') ? payload.log_id : null
+      });
+    }
+    indexedDB.deleteDatabase('SigmaOfflineDB');
+    if (registros.length) {
+      console.log(`[outbox] ${registros.length} carga(s) de combustible migradas de la cola vieja`);
+    }
+  } catch (err) {
+    console.error('[outbox] Error migrando la cola vieja de combustible:', err);
   }
 }
 
-async function actualizarIndicadorOffline() {
-  const todos       = await _idbGetAll();
-  const indicador   = document.getElementById('offline-indicator');
-  const badgeText   = document.getElementById('offline-badge-text');
-  const btnSync     = document.getElementById('btn-sync-manual');
-  if (!indicador) return;
-
-  if (todos.length === 0) {
-    indicador.style.display = 'none';
-    return;
-  }
-
-  const conError    = todos.filter(r => r._syncError).length;
-  const pendientes  = todos.length - conError;
-  const partes      = [];
-  if (pendientes > 0) partes.push(`${pendientes} pendiente${pendientes > 1 ? 's' : ''}`);
-  if (conError   > 0) partes.push(`${conError} con error`);
-
-  indicador.style.display   = 'flex';
-  indicador.style.background = conError > 0 ? 'var(--red)' : 'var(--amber)';
-  indicador.style.color      = conError > 0 ? '#fff'       : '#000';
-  if (badgeText) badgeText.textContent = partes.join(' · ');
-  if (btnSync)   btnSync.disabled = !navigator.onLine;
-}
+// ── OFFLINE — COLA UNIFICADA (UI del outbox) ──────────────────────────
+const _OB_ETIQUETAS = {
+  jornada_abrir:    () => '🚚 Inicio de jornada',
+  jornada_cerrar:   () => '🏁 Cierre de jornada',
+  remito_pendiente: p  => `🧾 Remito N° ${p?.nro_remito || '—'}`,
+  remito_firmar:    p  => `✍️ Firma remito N° ${p?.nro_remito || '—'}`,
+  fuel:             () => '⛽ Carga de combustible',
+  rendicion:        () => '💵 Rendición'
+};
 
 async function abrirColaOffline() {
-  const todos  = await _idbGetAll();
-  const lista  = document.getElementById('offline-queue-lista');
+  await _renderColaOffline();
+  openModal('modal-offline-queue');
+}
+
+async function _renderColaOffline() {
+  const lista = document.getElementById('offline-queue-lista');
   if (!lista) return;
 
-  if (!todos.length) {
-    lista.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">Sin registros pendientes</div>';
-    openModal('modal-offline-queue');
+  let ops = [];
+  try { ops = await obPendientes(); } catch (e) { /* DB no disponible */ }
+
+  if (!ops.length) {
+    lista.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">Sin operaciones pendientes</div>';
     return;
   }
 
-  lista.innerHTML = todos.map(r => {
-    const fecha   = r.fuel_date || new Date(r._savedAt).toLocaleDateString('es-AR');
-    const litros  = r.liters  ? `${_L(r.liters)} L` : '—';
-    const precio  = r.price_per_liter ? `$${r.price_per_liter}/L` : '';
-    const estacion = r.gas_station || '';
-    const tieneError = !!r._syncError;
+  lista.innerHTML = ops.map(op => {
+    const etiqueta = (_OB_ETIQUETAS[op.tipo] || (() => op.tipo))(op.payload);
+    const fecha = op.createdAt
+      ? new Date(op.createdAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : '—';
+    const tieneError = op.estado === 'error';
 
     const pillColor = tieneError ? 'var(--red)' : 'var(--blue)';
-    const pillLabel = tieneError ? '✕ Error' : '⏳ Pendiente';
-    const errorMsg  = tieneError ? `<div style="font-size:10px;color:var(--red);margin-top:4px">${r._errorMsg || 'Error de validación'}</div>` : '';
+    const pillLabel = tieneError ? '⚠ Error' : '⏳ Pendiente';
+    const errorMsg  = tieneError ? `<div style="font-size:10px;color:var(--red);margin-top:4px">${op.errorMsg || 'Error al sincronizar'}</div>` : '';
 
-    const acciones = tieneError
-      ? `<div style="display:flex;gap:6px;margin-top:10px">
-           <button onclick="editarRegistroOffline(${r.id})" class="btn btn-primary" style="font-size:11px;padding:5px 12px">✏️ Editar y reintentar</button>
-           <button onclick="eliminarRegistroOffline(${r.id})" class="btn btn-ghost" style="font-size:11px;padding:5px 12px;color:var(--red)">🗑 Eliminar</button>
-         </div>`
+    const btnReintentar = tieneError
+      ? `<button onclick="reintentarOpOffline(${op.id})" class="btn btn-primary" style="font-size:11px;padding:5px 12px">↻ Reintentar</button>`
       : '';
+    const acciones = `<div style="display:flex;gap:6px;margin-top:10px">
+         ${btnReintentar}
+         <button onclick="eliminarOpOffline(${op.id})" class="btn btn-ghost" style="font-size:11px;padding:5px 12px;color:var(--red)">🗑 Eliminar</button>
+       </div>`;
 
     return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-        <div style="font-size:12px;font-weight:600">${fecha} · ${litros} ${precio}</div>
+        <div style="font-size:12px;font-weight:600">${etiqueta}</div>
         <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${pillColor}22;color:${pillColor};font-weight:600;flex-shrink:0">${pillLabel}</span>
       </div>
-      ${estacion ? `<div style="font-size:11px;color:var(--muted)">${estacion}</div>` : ''}
+      <div style="font-size:11px;color:var(--muted)">${fecha}</div>
       ${errorMsg}
       ${acciones}
     </div>`;
   }).join('');
-
-  openModal('modal-offline-queue');
 }
 
-async function eliminarRegistroOffline(id) {
-  if (!confirm('¿Eliminar este registro? No se puede deshacer.')) return;
-  await _idbDelete(id);
-  await actualizarIndicadorOffline();
-  await abrirColaOffline(); // re-render
+async function reintentarOpOffline(id) {
+  await obReintentar(id);
+  await _renderColaOffline();
 }
 
-let _idEditandoOffline = null;
+async function eliminarOpOffline(id) {
+  if (!confirm('¿Eliminar esta operación? Los datos se pierden y no se puede deshacer.')) return;
+  await obEliminar(id);
+  await _renderColaOffline();
+}
 
-async function editarRegistroOffline(id) {
-  const todos   = await _idbGetAll();
-  const registro = todos.find(r => r.id === id);
-  if (!registro) return;
+// ── OFFLINE — INDICADOR FLOTANTE ──────────────────────────────────────
+window.addEventListener('outbox-changed', () => {
+  _renderIndicadorOffline();
+  // Si la cola está abierta, refrescarla en vivo
+  const modal = document.getElementById('modal-offline-queue');
+  if (modal && modal.classList.contains('open')) _renderColaOffline();
+});
+window.addEventListener('online',  _renderIndicadorOffline);
+window.addEventListener('offline', _renderIndicadorOffline);
 
-  // Guardar referencia para borrarlo al confirmar
-  _idEditandoOffline = id;
+async function _renderIndicadorOffline() {
+  const indicador = document.getElementById('offline-indicator');
+  const badgeText = document.getElementById('offline-badge-text');
+  const btnSync   = document.getElementById('btn-sync-manual');
+  if (btnSync) btnSync.disabled = !navigator.onLine;
+  if (!indicador) return;
 
-  // Abrir modal de combustible pre-relleno
-  closeModal('modal-offline-queue');
+  let ops = [];
+  try { ops = await obPendientes(); } catch (e) { /* DB no disponible */ }
 
-  // Asegurarse de que _truckActual esté disponible
-  if (!_truckActual?.truck_id) {
-    toast('Necesitás tener una jornada abierta para editar este registro', 'warning');
-    _idEditandoOffline = null;
+  if (!ops.length) {
+    indicador.style.display = 'none';
     return;
   }
 
-  const info = document.getElementById('cb-camion-info');
-  if (info) info.textContent = `${_truckActual.plate || '—'}`;
+  const conError   = ops.filter(o => o.estado === 'error').length;
+  const pendientes = ops.length - conError;
+  const partes     = [];
+  if (pendientes > 0) partes.push(`${pendientes} pendiente${pendientes > 1 ? 's' : ''}`);
+  if (conError   > 0) partes.push(`${conError} con error`);
 
-  const set = (id, val) => { if (val != null) { const el = document.getElementById(id); if (el) el.value = val; } };
-  set('cb-fecha',   registro.fuel_date);
-  set('cb-litros',  registro.liters);
-  set('cb-precio',  registro.price_per_liter);
-  set('cb-km',      registro.km_at_load);
-  set('cb-estacion', registro.gas_station);
-  if (registro.liters && registro.price_per_liter) calcCombTotal();
-  if (registro.payment_method) selectPayBtn('cb', registro.payment_method);
-  _modalError('cb-error', '');
-  openModal('modal-combustible');
+  indicador.style.display    = 'flex';
+  indicador.style.background = conError > 0 ? 'var(--red)' : 'var(--amber)';
+  indicador.style.color      = conError > 0 ? '#fff'       : '#000';
+  if (badgeText) badgeText.textContent = partes.join(' · ');
 }
 
 // ── LECTOR DE TICKET OCR ──────────────────────
@@ -5282,11 +5221,12 @@ async function guardarCombustible() {
   };
 
   if (!navigator.onLine) {
-    // Sin señal: guardar en IndexedDB (reemplazar si venía de edición)
-    if (_idEditandoOffline !== null) await _idbDelete(_idEditandoOffline);
-    _idEditandoOffline = null;
-    await _idbAdd(datos);
-    await actualizarIndicadorOffline();
+    // Sin señal: encolar en el outbox unificado
+    await obAdd({
+      tipo: 'fuel',
+      payload: datos,
+      dependeDe: String(datos.log_id || '').startsWith('TMP-') ? datos.log_id : null
+    });
     toast('Sin señal — carga guardada localmente. Se sincronizará al recuperar conexión.', 'warning');
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
@@ -5301,15 +5241,11 @@ async function guardarCombustible() {
   if (btn) { btn.textContent = '⛽ Guardar carga'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado.ok) {
-    // Si era edición de un registro offline, eliminar el original de la cola
-    if (_idEditandoOffline !== null) { await _idbDelete(_idEditandoOffline); _idEditandoOffline = null; }
-    await actualizarIndicadorOffline();
     toast(`${litros}L registrados correctamente`, 'success');
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
     cargarScreenCamion();
   } else {
-    _idEditandoOffline = null;
     toast(`Error al guardar: ${resultado.errorMsg || 'Error desconocido'}`, 'error');
   }
 }
@@ -6801,7 +6737,7 @@ window.addEventListener('load', () => {
   _restaurarJornadaDesdeStorage();
   wireButtons();
   _actualizarEstadoConexion();
-  verificarOfflineErrores();
+  _migrarFuelQueueVieja().then(_renderIndicadorOffline);
   applyDocRole();
 
   if (typeof _db === 'undefined') {

@@ -50,21 +50,21 @@
 <div class="modal-backdrop" id="modal-offline-queue">
   <div class="modal-box">
     <div class="modal-head">
-      <span class="modal-head-title">📶 Cola Offline</span>
+      <span class="modal-head-title">📶 Pendientes de sincronizar</span>
       <button class="modal-close" onclick="closeModal('modal-offline-queue')">×</button>
     </div>
     <div class="modal-body">
       <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
-        Los registros <span style="color:var(--blue)">pendientes</span> se envían solos al recuperar señal.
-        Los <span style="color:var(--red)">con error</span> requieren corrección manual.
+        Las operaciones <span style="color:var(--blue)">pendientes</span> se envían solas al recuperar señal.
+        Las <span style="color:var(--red)">con error</span> se pueden reintentar o eliminar.
       </div>
       <div id="offline-queue-lista">
-        <div style="text-align:center;color:var(--muted);padding:20px">Sin registros pendientes</div>
+        <div style="text-align:center;color:var(--muted);padding:20px">Sin operaciones pendientes</div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-offline-queue')">Cerrar</button>
-      <button class="btn btn-primary" id="btn-sync-manual" onclick="syncOfflineFuel()">↑ Sincronizar ahora</button>
+      <button class="btn btn-primary" id="btn-sync-manual" onclick="obSync()">↑ Sincronizar ahora</button>
     </div>
   </div>
 </div>
