@@ -1179,6 +1179,7 @@ async function iniciarJornada(datos) {
       km_inicio:         parseInt(datos.kmInicio),
       hora_inicio:       new Date().toTimeString().slice(0, 5),
       foto_km_inicio:    fotoUrl,
+      grilla_motivo:     datos.grillaMotivo || null,
       status:            'open',
       created_at_device: new Date().toISOString(),
     };

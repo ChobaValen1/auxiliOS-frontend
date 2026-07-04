@@ -7412,6 +7412,17 @@ async function confirmarNuevaJornada() {
   const btn = document.querySelector('#modal-nueva-jornada .btn-primary');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
+  // Chequeo grilla vs. realidad: si el móvil/día no coincide con lo planificado,
+  // pedimos el motivo al chofer (sin bloquear) antes de abrir la jornada.
+  if (!_grillaDesvioConfirmado) {
+    const desvio = await _detectarDesvioGrillaChofer(jornadaSeleccionada.truck_id);
+    if (desvio) {
+      if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
+      _abrirModalMotivoGrilla(desvio);
+      return;
+    }
+  }
+
   console.log("📍 PASO 3: Enviando datos a Supabase...", {
     truckId: jornadaSeleccionada.truck_id,
     kmInicio: kmInicio
@@ -7422,8 +7433,12 @@ async function confirmarNuevaJornada() {
     patente:      jornadaSeleccionada.plate,
     kmInicio:     kmInicio,
     fotoKmInicio: fotoKmInicio,
+    grillaMotivo: _grillaMotivoPendiente,
     marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
   });
+
+  _grillaDesvioConfirmado = false;
+  _grillaMotivoPendiente  = null;
 
   console.log("📍 PASO 4: Supabase contestó:", resultado);
 
@@ -7448,6 +7463,84 @@ async function confirmarNuevaJornada() {
   }
 }
 
+
+// ── Desvío grilla al abrir jornada (Opción C) ─────────────────
+// Si el chofer abre jornada con un móvil distinto al planificado, la app
+// le pide el motivo ahí mismo. No bloquea: puede abrir igual.
+let _grillaDesvioConfirmado = false; // true tras "Abrir jornada igual"
+let _grillaMotivoPendiente  = null;  // texto a guardar en daily_logs.grilla_motivo
+
+// Devuelve { titulo, sub } si hay desvío contra la grilla de HOY, o null.
+// Ante cualquier error, devuelve null (nunca rompe el inicio de jornada).
+async function _detectarDesvioGrillaChofer(truckId) {
+  try {
+    const hoy = _gHoyIso();
+    const { data: asigs, error } = await _db
+      .from('asignaciones_grilla')
+      .select('truck_id, driver_id, estado, trucks(numero_interno, plate)')
+      .eq('fecha', hoy);
+    if (error || !asigs || !asigs.length) return null; // grilla vacía → flujo normal
+
+    const uid          = USUARIO_ACTUAL?.id;
+    const propia       = asigs.find(a => a.estado === 'asignado' && a.driver_id && String(a.driver_id) === String(uid));
+    const filaDelTruck = asigs.find(a => String(a.truck_id) === String(truckId));
+    const movilElegido = jornadaSeleccionada?.numero_interno || jornadaSeleccionada?.plate || truckId;
+
+    // a) La grilla lo asigna a OTRO móvil
+    if (propia && String(propia.truck_id) !== String(truckId)) {
+      const movilGrilla = propia.trucks?.numero_interno || propia.trucks?.plate || propia.truck_id;
+      return {
+        titulo: '⚠ Este no es tu móvil de hoy',
+        sub: `La grilla te asigna el móvil ${movilGrilla}. Estás abriendo con el ${movilElegido}. Contanos por qué:`,
+      };
+    }
+    // b) Hoy no tiene ninguna asignación en la grilla
+    if (!propia) {
+      return {
+        titulo: '⚠ Hoy figurás de franco',
+        sub: `Hoy figurás de franco / sin asignación en la grilla. Contanos por qué abrís jornada:`,
+      };
+    }
+    // c) El móvil elegido figura en taller
+    if (filaDelTruck && filaDelTruck.estado === 'taller') {
+      return {
+        titulo: '⚠ Ese móvil figura en taller',
+        sub: `El móvil ${movilElegido} figura en taller hoy. Contanos por qué lo estás usando:`,
+      };
+    }
+    return null;
+  } catch (err) {
+    console.warn('[Grilla] No se pudo verificar desvío (se continúa igual):', err);
+    return null;
+  }
+}
+
+function _abrirModalMotivoGrilla(desvio) {
+  const t = document.getElementById('mg-titulo');
+  const s = document.getElementById('mg-sub');
+  const m = document.getElementById('mg-motivo');
+  if (t) t.textContent = desvio.titulo;
+  if (s) s.textContent = desvio.sub;
+  if (m) m.value = '';
+  openModal('modal-motivo-grilla');
+  if (m) setTimeout(() => m.focus(), 150);
+}
+
+// "Volver" → cierra y deja elegir otro móvil
+function cancelarMotivoGrilla() {
+  _grillaDesvioConfirmado = false;
+  _grillaMotivoPendiente  = null;
+  closeModal('modal-motivo-grilla');
+}
+
+// "Abrir jornada igual" → guarda el motivo (o uno por defecto) y sigue el flujo
+function confirmarMotivoGrilla() {
+  const texto = (document.getElementById('mg-motivo')?.value || '').trim();
+  _grillaMotivoPendiente  = texto || 'Sin motivo indicado';
+  _grillaDesvioConfirmado = true;
+  closeModal('modal-motivo-grilla');
+  confirmarNuevaJornada();
+}
 
 // ── Cerrar jornada ────────────────────────────
 function abrirModalCerrarJornada(jornada) {
@@ -14731,13 +14824,14 @@ function _grillaDetectarConflictosDia(fecha, logsDia, asigsDia) {
     const nombrePila = nombre.split(' ')[0];
     const movilReal = l.trucks?.numero_interno || l.trucks?.plate || l.truck_id;
     const hora      = (l.hora_inicio || '').slice(0, 5) || '—';
+    const motivo    = l.grilla_motivo || null;
     const g         = asigPorTruck[l.truck_id];                       // fila de grilla del móvil real
     const esperada  = l.driver_id ? asigPorDriver[l.driver_id] : null; // dónde lo asignaba la grilla
 
     // taller_en_uso (ámbar)
     if (g && g.estado === 'taller') {
       push({
-        tipo: 'taller_en_uso', sev: 'warn', ico: '🔧',
+        tipo: 'taller_en_uso', sev: 'warn', ico: '🔧', motivo,
         fecha, driverId: l.driver_id, truckId: l.truck_id,
         texto: `El <strong>móvil ${movilReal}</strong> figura en <strong>taller</strong>, pero <strong>${nombre}</strong> abrió jornada con él.`,
         sub: `Jornada abierta ${hora}`,
@@ -14754,7 +14848,7 @@ function _grillaDetectarConflictosDia(fecha, logsDia, asigsDia) {
       else if (g.estado === 'taller')  estadoReal = 'en taller';
       else                             estadoReal = `asignado a ${(g.users?.full_name || 'otro chofer').split(' ')[0]}`;
       push({
-        tipo: 'movil_distinto', sev: 'rojo', ico: '🚚',
+        tipo: 'movil_distinto', sev: 'rojo', ico: '🚚', motivo,
         fecha, driverId: l.driver_id, truckId: l.truck_id,
         texto: `<strong>${nombre}</strong> abrió jornada con el <strong>móvil ${movilReal}</strong>, pero la grilla lo asignaba al <strong>${movilGrilla}</strong>.`,
         sub: `Jornada abierta ${hora} · el ${movilReal} estaba ${estadoReal}`,
@@ -14766,7 +14860,7 @@ function _grillaDetectarConflictosDia(fecha, logsDia, asigsDia) {
     } else if (!esperada && !(g && g.estado === 'taller')) {
       // franco_trabajado (ámbar) — sin fila 'asignado' en toda la grilla del día
       push({
-        tipo: 'franco_trabajado', sev: 'warn', ico: '😴',
+        tipo: 'franco_trabajado', sev: 'warn', ico: '😴', motivo,
         fecha, driverId: l.driver_id, truckId: l.truck_id,
         texto: `<strong>${nombre}</strong> abrió jornada, pero hoy figuraba de <strong>franco/sin asignación</strong>.`,
         sub: `Jornada abierta ${hora} con el móvil ${movilReal}`,
@@ -14804,7 +14898,7 @@ async function cargarAlertasGrilla() {
   try {
     const [rLogs, rAsig] = await Promise.all([
       _db.from('daily_logs')
-         .select('log_id, driver_id, truck_id, log_date, hora_inicio, status, users(full_name), trucks(numero_interno, plate)')
+         .select('log_id, driver_id, truck_id, log_date, hora_inicio, status, grilla_motivo, users(full_name), trucks(numero_interno, plate)')
          .eq('log_date', hoy),
       _db.from('asignaciones_grilla')
          .select('fecha, truck_id, driver_id, estado, users(full_name), trucks(numero_interno, plate)')
@@ -14841,6 +14935,11 @@ function _renderAlertasGrilla() {
           <div class="agr-txt">
             ${a.texto}
             <small>${a.sub}</small>
+            ${a.motivo ? `
+            <div class="agr-motivo">
+              <span class="agr-motivo-k">Motivo del chofer</span>
+              "${_escHtml(a.motivo)}"
+            </div>` : ''}
           </div>
           <div class="agr-acciones">
             <button class="agr-btn" onclick="corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})">✏️ Corregir grilla</button>

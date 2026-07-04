@@ -601,6 +601,24 @@
   </div>
 </div>
 
+<!-- Modal: Motivo de desvío grilla (el chofer explica al abrir jornada) -->
+<div class="modal-backdrop" id="modal-motivo-grilla">
+  <div class="modal-box" style="max-width:360px">
+    <div class="modal-head">
+      <span class="modal-head-title" id="mg-titulo">⚠ Este no es tu móvil de hoy</span>
+      <button class="modal-close" onclick="cancelarMotivoGrilla()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="mg-sub" style="color:var(--muted);font-size:12px;margin-bottom:10px;line-height:1.5"></div>
+      <textarea id="mg-motivo" rows="3" class="form-input" placeholder="Ej: el móvil asignado no arranca, me dieron este..." style="width:100%;box-sizing:border-box;resize:none;font-family:inherit;font-size:13px"></textarea>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-ghost" onclick="cancelarMotivoGrilla()">Volver</button>
+      <button class="btn btn-primary" onclick="confirmarMotivoGrilla()">Abrir jornada igual</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Desglose de Pago (Efectivo / Transferencias) -->
 <div class="modal-backdrop" id="modal-desglose-pago">
   <div class="modal-box" style="max-width:720px;width:95vw;max-height:90vh;display:flex;flex-direction:column">
