@@ -1146,7 +1146,9 @@ async function iniciarJornada(datos) {
     }
 
     // 2. Verificar jornadas del día: bloquear si hay una abierta, o si ya usó el mismo camión
-    const hoy = new Date().toISOString().slice(0, 10);
+    // La fecha puede venir en datos (sync offline: fecha del evento real);
+    // si no viene, se usa la de hoy (flujo online, comportamiento original).
+    const hoy = datos.logDate || new Date().toISOString().slice(0, 10);
     const fechaDisplay = new Date(hoy + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const { data: jornadasHoy } = await _db
       .from('daily_logs')
@@ -1177,11 +1179,11 @@ async function iniciarJornada(datos) {
       patente_camion:    datos.patente,
       log_date:          hoy,
       km_inicio:         parseInt(datos.kmInicio),
-      hora_inicio:       new Date().toTimeString().slice(0, 5),
+      hora_inicio:       datos.horaInicio || new Date().toTimeString().slice(0, 5),
       foto_km_inicio:    fotoUrl,
       grilla_motivo:     datos.grillaMotivo || null,
       status:            'open',
-      created_at_device: new Date().toISOString(),
+      created_at_device: datos.createdAtDevice || new Date().toISOString(),
     };
 
     const { data, error } = await _db.from('daily_logs').insert(payload).select().single();
@@ -1212,7 +1214,7 @@ async function iniciarJornada(datos) {
 
 async function cerrarJornada(logId, datos) {
   try {
-    const { truckId, kmInicio, kmFinal, fotoKmFinal, inWorkshop, workshopDetail, notas, kmExcepcion = false } = datos;
+    const { truckId, kmInicio, kmFinal, fotoKmFinal, inWorkshop, workshopDetail, notas, kmExcepcion = false, horaFin = null } = datos;
 
     if (kmFinal < kmInicio && !kmExcepcion) {
       console.error(`[Cierre Jornada] KM inválido: kmFinal (${kmFinal}) < kmInicio (${kmInicio}). Log ID: ${logId}`);
@@ -1244,7 +1246,9 @@ async function cerrarJornada(logId, datos) {
       km_final:        kmFinal,
       foto_km_final:   fotoUrl,
       status:          'closed',
-      hora_fin:        new Date().toTimeString().slice(0, 5),
+      // horaFin puede venir en datos (sync offline: hora del evento real);
+      // si no viene, se usa la actual (flujo online, comportamiento original).
+      hora_fin:        horaFin || new Date().toTimeString().slice(0, 5),
       in_workshop:     inWorkshop,
       workshop_detail: workshopDetail,
       notas:           notas,

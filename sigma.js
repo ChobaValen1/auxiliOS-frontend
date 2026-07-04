@@ -1431,11 +1431,21 @@ async function _finalizarRemitoInner() {
   const excedenteLimpio = parsearImporte(document.getElementById('imp-excedente')?.value);
   const otrosLimpio     = parsearImporte(document.getElementById('imp-otros')?.value);
 
+  // Registro silencioso: si la jornada se abrió offline el log_id es TMP-*.
+  // Intentamos resolverlo al id real; si sigue provisorio NO lo mandamos
+  // (un TMP-* rompería el insert — el remito queda sin vínculo a la jornada).
+  let _logIdRemito = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
+  _logIdRemito = await _resolverLogIdLocal(_logIdRemito);
+  if (_logIdEsTemporal(_logIdRemito)) {
+    console.warn('[offline] Remito guardado sin log_id: la jornada offline aún no sincronizó');
+    _logIdRemito = null;
+  }
+
   const ok = await guardarRemitoCompleto({
     nro,
     firmaDataURL,
     driver_id: USUARIO_ACTUAL.id, // 🛠️ INYECCIÓN DE SEGURIDAD
-    log_id:  _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null, // 🛠️ REGISTRO SILENCIOSO
+    log_id:  _logIdRemito, // 🛠️ REGISTRO SILENCIOSO
     nroSrv,
     patente,
     marca:   document.getElementById('rem-marca-modelo')?.value || '',
@@ -2133,10 +2143,13 @@ async function confirmarFirma() {
     const pago1Firma = metodosValidos.includes(pagosFirma[0]) ? pagosFirma[0] : null;
     const pago2Firma = pagosFirma[1] && metodosValidos.includes(pagosFirma[1]) ? pagosFirma[1] : null;
 
-    const _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
+    let _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
+    _logId = await _resolverLogIdLocal(_logId);
 
     // ── OFFLINE: encolar la firma en el outbox ────────────
-    if (!navigator.onLine && typeof obAdd === 'function') {
+    // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
+    // el flujo online haría un update con un id inválido.
+    if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
       const payloadFirma = {
         nro_remito:           nro2,
         ...(_logId ? { log_id: _logId } : {}),
@@ -2162,10 +2175,20 @@ async function confirmarFirma() {
         status:               'firmado',
         edicion:              edicion, // el handler la agrega al historial al sincronizar
       };
-      // Si el remito pendiente del mismo nro está en la cola, la firma depende de él;
-      // si no, depende de la jornada TMP (si la hay).
-      const dependeDe = _obRemitoTemp[nro2]
-        || (String(_logId || '').startsWith('TMP-') ? _logId : null);
+      // Si el remito pendiente del mismo nro está en la cola, la firma depende de él.
+      // _obRemitoTemp vive solo en memoria: si la app se recargó, buscamos la op
+      // 'remito_pendiente' viva con ese nro directamente en el outbox.
+      let dependeDe = _obRemitoTemp[nro2] || null;
+      if (!dependeDe && typeof obPendientes === 'function') {
+        try {
+          const opsVivas = await obPendientes();
+          const opPend = opsVivas.find(o =>
+            o.tipo === 'remito_pendiente' && o.tempId && o.payload?.nro_remito === nro2);
+          if (opPend) dependeDe = opPend.tempId;
+        } catch (e) { /* no crítico */ }
+      }
+      // Si no, depende de la jornada TMP (si la hay).
+      if (!dependeDe && _logIdEsTemporal(_logId)) dependeDe = _logId;
       await obAdd({
         tipo: 'remito_firmar',
         payload: payloadFirma,
@@ -4805,7 +4828,26 @@ if (typeof obRegistrarHandler === 'function') {
 
   // Apertura de jornada: sube la foto del odómetro guardada localmente y
   // reusa iniciarJornada() real. Devuelve el log_id real para remapear TMP-*.
+  // Idempotente: si un intento anterior ya insertó la jornada (mismo
+  // driver + created_at_device) pero se perdió el idmap, devuelve el log_id
+  // existente sin volver a insertar.
   obRegistrarHandler('jornada_abrir', async (payload, blobs) => {
+    if (payload.createdAtDevice) {
+      const { data: previas } = await _db
+        .from('daily_logs')
+        .select('log_id')
+        .eq('driver_id', USUARIO_ACTUAL.id)
+        .eq('created_at_device', payload.createdAtDevice)
+        .limit(1);
+      if (previas && previas.length) {
+        const logIdExistente = previas[0].log_id;
+        if (String(_jornadaActivaLocal?.log_id || '').startsWith('TMP-')) {
+          _jornadaActivaLocal.log_id = logIdExistente;
+          try { localStorage.setItem('sigma_jornada_activa', JSON.stringify(_jornadaActivaLocal)); } catch (e) { /* no crítico */ }
+        }
+        return { realId: logIdExistente };
+      }
+    }
     if (blobs && blobs.foto_km_inicio) {
       payload.fotoKmInicio = await subirFotoOdometro(blobs.foto_km_inicio, 'inicio', payload.truckId);
     }
@@ -4831,8 +4873,21 @@ if (typeof obRegistrarHandler === 'function') {
   });
 
   // Rendición de efectivo: mismo POST a la edge function que el flujo online.
+  // Idempotente: si ya hay una rendición para ese log_id (un intento anterior
+  // llegó al servidor), no vuelve a postear.
   obRegistrarHandler('rendicion', async (payload) => {
-    await _postRendicion(payload);
+    if (payload.log_id) {
+      const { data: previas } = await _db
+        .from('rendicion_cierre')
+        .select('log_id')
+        .eq('log_id', payload.log_id)
+        .limit(1);
+      if (previas && previas.length) return {};
+    }
+    const json = await _postRendicion(payload);
+    if (json && json.alerta_generada && typeof toast === 'function') {
+      toast('Rendición registrada — se generó una alerta por diferencia de efectivo', 'warning');
+    }
     return {};
   });
 
@@ -4867,16 +4922,34 @@ if (typeof obRegistrarHandler === 'function') {
       : [];
     if (edicion) historial.push(edicion);
 
-    const { error } = await _db.from('remitos')
+    const { data: actualizados, error } = await _db.from('remitos')
       .update({ ...campos, firma_imagen_url: firmaUrl, historial_ediciones: historial })
-      .eq('nro_remito', nro_remito);
+      .eq('nro_remito', nro_remito)
+      .select('remito_id');
     if (error) throw new Error(error.message);
+    // 0 filas afectadas = el remito no existe en el servidor: NO dar por
+    // sincronizada la firma (quedaría borrada en silencio). La op queda en
+    // error y la firma se conserva para reintento.
+    if (!actualizados || actualizados.length === 0) {
+      throw new Error(`El remito N° ${nro_remito} no existe todavía en el servidor`);
+    }
     return {};
   });
 
   // Carga de combustible: reusa registrarCombustible() (supabase.js). El
   // log_id TMP-* ya llega remapeado por obSync.
+  // Idempotente: si un intento anterior ya insertó la carga (mismo camión +
+  // created_at_device), no vuelve a insertar.
   obRegistrarHandler('fuel', async (payload) => {
+    if (payload.created_at_device) {
+      const { data: previas } = await _db
+        .from('fuel_records')
+        .select('fuel_id')
+        .eq('truck_id', payload.truck_id)
+        .eq('created_at_device', payload.created_at_device)
+        .limit(1);
+      if (previas && previas.length) return {};
+    }
     const res = await registrarCombustible(payload);
     if (!res || !res.ok) throw new Error(res?.errorMsg || 'No se pudo registrar la carga de combustible');
     return {};
@@ -4886,6 +4959,25 @@ if (typeof obRegistrarHandler === 'function') {
 // Mapa en memoria nro_remito → tempId de la op 'remito_pendiente' encolada,
 // para que la firma offline del mismo nro dependa de esa op (no hay id real).
 let _obRemitoTemp = {};
+
+// ¿El log_id es un id provisorio del outbox (jornada abierta offline aún sin
+// sincronizar)? Esos valores NO sirven para queries contra Supabase.
+function _logIdEsTemporal(v) {
+  return typeof v === 'string' && v.startsWith('TMP-');
+}
+
+// Intenta resolver un log_id TMP-* al id real vía el idmap del outbox.
+// Devuelve el id real si ya sincronizó, o el mismo valor si sigue provisorio.
+async function _resolverLogIdLocal(v) {
+  if (!_logIdEsTemporal(v)) return v;
+  try {
+    if (typeof obResolverRef === 'function') {
+      const real = await obResolverRef(v);
+      if (real) return real;
+    }
+  } catch (e) { /* no crítico */ }
+  return v;
+}
 
 // ── OFFLINE — ESTADO DE CONEXIÓN (OCR) ────────
 window.addEventListener('offline', _actualizarEstadoConexion);
@@ -5219,13 +5311,17 @@ async function guardarCombustible() {
     payment_app:     selectedPayMethod === 'app' ? selectedApp : null,
     gas_station:     estacion,
   };
+  datos.log_id = await _resolverLogIdLocal(datos.log_id);
 
-  if (!navigator.onLine) {
-    // Sin señal: encolar en el outbox unificado
+  // Sin señal, o jornada abierta offline aún sin sincronizar (log_id TMP-*):
+  // encolar en el outbox unificado
+  if (!navigator.onLine || _logIdEsTemporal(datos.log_id)) {
+    // created_at_device = momento real de la carga → clave de idempotencia del handler
+    datos.created_at_device = new Date().toISOString();
     await obAdd({
       tipo: 'fuel',
       payload: datos,
-      dependeDe: String(datos.log_id || '').startsWith('TMP-') ? datos.log_id : null
+      dependeDe: _logIdEsTemporal(datos.log_id) ? datos.log_id : null
     });
     toast('Sin señal — carga guardada localmente. Se sincronizará al recuperar conexión.', 'warning');
     closeModal('modal-combustible');
@@ -5308,9 +5404,15 @@ async function guardarNeumaticos() {
   const btn = document.getElementById('btn-guardar-neumaticos');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
+  // Si la jornada se abrió offline el log_id es TMP-*: resolver al id real o
+  // guardar el control sin vínculo a la jornada (un TMP-* rompería el insert).
+  let _logIdNeu = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
+  _logIdNeu = await _resolverLogIdLocal(_logIdNeu);
+  if (_logIdEsTemporal(_logIdNeu)) _logIdNeu = null;
+
   const exito = await registrarControlNeumaticos({
     truck_id:        _truckActual.truck_id,
-    log_id:          _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null,
+    log_id:          _logIdNeu,
     check_date:      fecha || new Date().toISOString().slice(0, 10),
     tire_condition:  cond,
     brake_condition: frenos,
@@ -6643,7 +6745,8 @@ async function guardarRemitoPendiente() {
   if (!destino) { toast('Ingresá el destino del servicio', 'error'); return; }
 
   // ── Registro Silencioso (Asignación a la jornada) ─────
-  const _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
+  let _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
+  _logId = await _resolverLogIdLocal(_logId);
 
   // ── Empaquetado de Datos ──────────────────────────────
   const remitoDB = {
@@ -6668,10 +6771,12 @@ async function guardarRemitoPendiente() {
   };
 
   // ── OFFLINE: encolar en el outbox y seguir el flujo normal ──
-  if (!navigator.onLine && typeof obAdd === 'function') {
+  // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
+  // el upsert online fallaría con un id inválido.
+  if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
     const tempId = obTempId();
     _obRemitoTemp[nro] = tempId; // para que la firma del mismo nro dependa de esta op
-    const dependeDe = String(_logId || '').startsWith('TMP-') ? _logId : null;
+    const dependeDe = _logIdEsTemporal(_logId) ? _logId : null;
     await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, dependeDe, tempId });
     try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
     showRemitosView('lista');
@@ -7513,6 +7618,11 @@ async function confirmarNuevaJornada() {
         kmInicio:     kmInicio,
         grillaMotivo: _grillaMotivoPendiente,
         marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
+        // Fecha/hora del momento REAL de la apertura (no del sync).
+        // createdAtDevice además es la clave de idempotencia del handler.
+        logDate:         new Date().toISOString().slice(0, 10),
+        horaInicio:      new Date().toTimeString().slice(0, 5),
+        createdAtDevice: new Date().toISOString(),
       };
       let blobsOffline = null;
       if (typeof fotoKmInicio === 'string') {
@@ -7530,8 +7640,8 @@ async function confirmarNuevaJornada() {
         patente:      jornadaSeleccionada.plate,
         marca_modelo: payloadOffline.marcaModelo,
         km_inicio:    kmInicio,
-        log_date:     new Date().toISOString().slice(0, 10),
-        hora_inicio:  new Date().toTimeString().slice(0, 5),
+        log_date:     payloadOffline.logDate,
+        hora_inicio:  payloadOffline.horaInicio,
       };
       try { localStorage.setItem('sigma_jornada_activa', JSON.stringify(_jornadaActivaLocal)); } catch (e) { /* no crítico */ }
 
@@ -7983,10 +8093,14 @@ async function confirmarCerrarJornada() {
     btn.style.pointerEvents = 'none';
   }
 
-  // ── Sin señal → encolar el cierre en el outbox y seguir la UI normal ──
-  if (!navigator.onLine && typeof obAdd === 'function') {
+  // Si la jornada se abrió offline el log_id es TMP-*: intentar resolverlo al real
+  const logIdCierre = await _resolverLogIdLocal(jornadaParaCerrar.log_id);
+
+  // ── Sin señal (o jornada offline sin sincronizar: log_id TMP-*) →
+  //    encolar el cierre en el outbox y seguir la UI normal ──
+  if ((!navigator.onLine || _logIdEsTemporal(logIdCierre)) && typeof obAdd === 'function') {
     try {
-      const logId = jornadaParaCerrar.log_id;
+      const logId = logIdCierre;
       const payloadOffline = {
         logId:          logId,
         truckId:        jornadaParaCerrar.truck_id,
@@ -7996,6 +8110,8 @@ async function confirmarCerrarJornada() {
         workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
         notas:          notas,
         kmExcepcion:    kmExcepcion,
+        // Hora real del cierre — al sincronizar se guarda esta, no la del sync
+        horaFin:        new Date().toTimeString().slice(0, 5),
       };
       let blobsOffline = null;
       if (typeof fotoKmFinal === 'string') {
@@ -8035,7 +8151,7 @@ async function confirmarCerrarJornada() {
     }
   }
 
-  const exito = await cerrarJornada(jornadaParaCerrar.log_id, {
+  const exito = await cerrarJornada(logIdCierre, {
     truckId:        jornadaParaCerrar.truck_id,
     kmInicio:       jornadaParaCerrar.km_inicio,
     kmFinal:        kmFinal,
@@ -8066,7 +8182,7 @@ async function confirmarCerrarJornada() {
     }
 
     // Abrir rendición de efectivo
-    await abrirRendicion(jornadaParaCerrar.log_id, USUARIO_ACTUAL.id, jornadaParaCerrar.truck_id, jornadaParaCerrar.log_date);
+    await abrirRendicion(logIdCierre, USUARIO_ACTUAL.id, jornadaParaCerrar.truck_id, jornadaParaCerrar.log_date);
   } else {
     toast('Error: No se pudo cerrar la jornada.', 'error');
   }
@@ -8193,7 +8309,7 @@ async function confirmarRendicion() {
 
   try {
     const payload = {
-      log_id:             _rendicionLogId,
+      log_id:             await _resolverLogIdLocal(_rendicionLogId),
       driver_id:          USUARIO_ACTUAL.id,
       fecha:              _rendicionFecha,
       efectivo_declarado: parseFloat(declaradoEl.value),
@@ -8202,12 +8318,13 @@ async function confirmarRendicion() {
       notas:              document.getElementById('rend-notas')?.value?.trim() || null,
     };
 
-    // Sin señal → encolar la rendición en el outbox y cerrar como si hubiera salido bien
-    if (!navigator.onLine && typeof obAdd === 'function') {
+    // Sin señal (o jornada offline sin sincronizar: log_id TMP-*) →
+    // encolar la rendición en el outbox y cerrar como si hubiera salido bien
+    if ((!navigator.onLine || _logIdEsTemporal(payload.log_id)) && typeof obAdd === 'function') {
       await obAdd({
         tipo:      'rendicion',
         payload:   payload,
-        dependeDe: String(payload.log_id || '').startsWith('TMP-') ? payload.log_id : null,
+        dependeDe: _logIdEsTemporal(payload.log_id) ? payload.log_id : null,
       });
       closeModal('modal-rendicion-cierre');
       toast('Rendición guardada — se sincroniza cuando haya señal 📴', 'success');

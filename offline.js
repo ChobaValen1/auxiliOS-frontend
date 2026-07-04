@@ -195,77 +195,125 @@ async function _obDependenciaResuelta(tempId, ops) {
   return !viva;
 }
 
+// ¿La op quedó huérfana? Sí si alguna referencia TMP-* de su payload no está
+// en idmap Y ya no existe ninguna op viva con ese tempId → nunca va a
+// resolverse (la op generadora fue eliminada o falló y se borró).
+async function _obEsHuerfano(payload, ops) {
+  for (const campo of Object.keys(payload || {})) {
+    const v = payload[campo];
+    if (typeof v !== 'string' || !v.startsWith('TMP-')) continue;
+    const enMapa = await _obStoreGet('idmap', v);
+    if (enMapa) continue;
+    if (!ops.some(o => o.tempId === v)) return true;
+  }
+  return false;
+}
+
 // Sincroniza el outbox: reproduce las ops en orden contra los handlers.
+// Hace hasta 5 pasadas por ciclo: si en una pasada se sincronizó algo y
+// quedan pendientes (dependientes recién desbloqueados), vuelve a intentar
+// sin esperar al próximo evento online.
 async function obSync() {
   if (!navigator.onLine || _obSyncEnCurso) return;
   _obSyncEnCurso = true;
   let sincronizadas = 0;
   try {
-    const ops = await obPendientes();
-    // tempIds cuya op falló o quedó esperando en ESTE ciclo → sus dependientes se saltean
-    const bloqueados = new Set();
+    for (let pasada = 0; pasada < 5; pasada++) {
+      const ops = await obPendientes();
+      // tempIds cuya op falló o quedó esperando en ESTA pasada → sus dependientes se saltean
+      const bloqueados = new Set();
+      let sincronizadasPasada = 0;
 
-    for (const op of ops) {
-      try {
-        if (op.estado === 'error') {
-          if (op.tempId) bloqueados.add(op.tempId);
-          continue;
-        }
-        if (op.dependeDe) {
-          if (bloqueados.has(op.dependeDe)) {
-            if (op.tempId) bloqueados.add(op.tempId);
-            continue;
-          }
-          const resuelta = await _obDependenciaResuelta(op.dependeDe, ops);
-          if (!resuelta) {
-            if (op.tempId) bloqueados.add(op.tempId);
-            continue;
-          }
-        }
-
-        const handler = _obHandlers[op.tipo];
-        if (!handler) {
-          // Sin handler registrado todavía (ej. script que no cargó): esperar
-          if (op.tempId) bloqueados.add(op.tempId);
-          continue;
-        }
-
-        // Resolver referencias TMP-* dentro del payload (ej. log_id)
-        const payload = await _obResolverPayload(op.payload || {});
-        if (payload === null) {
-          if (op.tempId) bloqueados.add(op.tempId);
-          continue;
-        }
-
-        // Cargar blobs del store
-        const blobsResueltos = {};
-        if (op.blobs) {
-          for (const campo of Object.keys(op.blobs)) {
-            const entrada = await _obStoreGet('blobs', op.blobs[campo]);
-            blobsResueltos[campo] = entrada ? entrada.blob : null;
-          }
-        }
-
-        const resultado = await handler(payload, blobsResueltos);
-
-        // Éxito: mapear id real si corresponde y borrar op + blobs
-        if (op.tempId && resultado && resultado.realId != null) {
-          await _obStorePut('idmap', { tempId: op.tempId, realId: resultado.realId });
-        }
-        await obEliminar(op.id);
-        sincronizadas++;
-      } catch (err) {
-        // Falla del handler: marcar error y seguir con las no-dependientes
+      for (const op of ops) {
+        let resultado = null;
+        let handlerOk = false;
         try {
-          op.estado = 'error';
-          op.errorMsg = (err && err.message) ? err.message : String(err);
-          await _obStorePut('ops', op);
-        } catch (e2) {
-          console.error('[outbox] No se pudo marcar la op en error:', e2);
+          if (op.estado === 'error') {
+            if (op.tempId) bloqueados.add(op.tempId);
+            continue;
+          }
+          if (op.dependeDe) {
+            if (bloqueados.has(op.dependeDe)) {
+              if (op.tempId) bloqueados.add(op.tempId);
+              continue;
+            }
+            const resuelta = await _obDependenciaResuelta(op.dependeDe, ops);
+            if (!resuelta) {
+              if (op.tempId) bloqueados.add(op.tempId);
+              continue;
+            }
+          }
+
+          const handler = _obHandlers[op.tipo];
+          if (!handler) {
+            // Sin handler registrado todavía (ej. script que no cargó): esperar
+            if (op.tempId) bloqueados.add(op.tempId);
+            continue;
+          }
+
+          // Resolver referencias TMP-* dentro del payload (ej. log_id)
+          const payload = await _obResolverPayload(op.payload || {});
+          if (payload === null) {
+            // Referencia TMP-* sin resolver: si la op generadora ya no existe
+            // ni está mapeada, esta op nunca va a poder ejecutarse → error.
+            if (await _obEsHuerfano(op.payload || {}, ops)) {
+              op.estado = 'error';
+              op.errorMsg = 'La operación de la que depende fue eliminada o falló';
+              await _obStorePut('ops', op);
+            }
+            if (op.tempId) bloqueados.add(op.tempId);
+            continue;
+          }
+
+          // Cargar blobs del store
+          const blobsResueltos = {};
+          if (op.blobs) {
+            for (const campo of Object.keys(op.blobs)) {
+              const entrada = await _obStoreGet('blobs', op.blobs[campo]);
+              blobsResueltos[campo] = entrada ? entrada.blob : null;
+            }
+          }
+
+          resultado = await handler(payload, blobsResueltos);
+          handlerOk = true;
+        } catch (err) {
+          // Falla del handler: marcar error y seguir con las no-dependientes
+          try {
+            op.estado = 'error';
+            op.errorMsg = (err && err.message) ? err.message : String(err);
+            await _obStorePut('ops', op);
+          } catch (e2) {
+            console.error('[outbox] No se pudo marcar la op en error:', e2);
+          }
+          if (op.tempId) bloqueados.add(op.tempId);
+          console.error(`[outbox] Op #${op.id} (${op.tipo}) falló:`, err);
+          continue;
         }
-        if (op.tempId) bloqueados.add(op.tempId);
-        console.error(`[outbox] Op #${op.id} (${op.tipo}) falló:`, err);
+
+        // Bookkeeping SEPARADO del handler: si el handler ya aplicó la op en
+        // el servidor, un error acá NO la marca en error ni la re-ejecuta como
+        // fallida. Queda pendiente y se reintenta en el próximo ciclo — seguro
+        // porque los handlers son idempotentes.
+        if (handlerOk) {
+          try {
+            if (op.tempId && resultado && resultado.realId != null) {
+              await _obStorePut('idmap', { tempId: op.tempId, realId: resultado.realId });
+            }
+            await obEliminar(op.id);
+          } catch (errBk) {
+            console.warn(`[outbox] Op #${op.id} (${op.tipo}) aplicada pero falló el bookkeeping local — se reintenta en el próximo ciclo:`, errBk);
+            if (op.tempId) bloqueados.add(op.tempId);
+          }
+          sincronizadas++;
+          sincronizadasPasada++;
+        }
       }
+
+      // ¿Hace falta otra pasada? Solo si algo se sincronizó y quedan ops
+      // pendientes (no en error) que podrían haberse desbloqueado.
+      if (sincronizadasPasada === 0) break;
+      const restantes = await obPendientes();
+      if (!restantes.some(o => o.estado !== 'error')) break;
     }
   } catch (err) {
     console.error('[outbox] Error general en obSync:', err);
