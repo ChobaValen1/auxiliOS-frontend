@@ -769,6 +769,9 @@
       <!-- Alertas grilla vs. realidad (solo admin) -->
       <div id="dash-alertas-grilla" style="display:none;margin-bottom:16px"></div>
 
+      <!-- Incidentes recientes (solo admin, últimos 7 días) -->
+      <div id="dash-incidentes-recientes" style="display:none;margin-bottom:16px"></div>
+
       <!-- ── Vista Chofer: Mi Rendimiento ── -->
       <div id="dash-view-rendimiento">
 
@@ -781,6 +784,14 @@
               <div style="font-size:11px;color:var(--muted);margin-top:2px">Teléfonos, talleres y protocolo de siniestro</div>
             </div>
             <div style="color:#fca5a5;font-size:20px">›</div>
+          </div>
+        </div>
+
+        <!-- Reportar incidente (solo chofer) -->
+        <div id="dash-incidente-quick" style="display:none;margin-bottom:16px">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
+            <button class="btn-incidente" onclick="abrirModalIncidente()">⚠️ Reportar incidente</button>
+            <div class="inc-aviso-offline">📴 Funciona sin señal — se sincroniza solo</div>
           </div>
         </div>
 
@@ -1070,6 +1081,12 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Reportar incidente (solo chofer) -->
+    <div id="camion-incidente-quick" style="display:none;margin-bottom:16px">
+      <button class="btn-incidente" onclick="abrirModalIncidente()">⚠️ Reportar incidente</button>
+      <div class="inc-aviso-offline">📴 Funciona sin señal — se sincroniza solo</div>
     </div>
 
     <!-- Cards de módulos (renderizadas por JS) -->
@@ -2907,6 +2924,49 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-emergencia-item')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarEmergenciaItem()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: REPORTAR INCIDENTE (chofer y admin) ─────────────────── -->
+<div id="modal-incidente" class="modal-overlay">
+  <div class="modal-content" style="max-width:420px">
+    <h3 style="margin-bottom:2px">⚠️ Reportar incidente</h3>
+    <div id="inc-sub" style="color:var(--muted2);font-size:11px;margin-bottom:14px">—</div>
+
+    <label>¿Qué pasó?</label>
+    <div class="inc-tipos" id="inc-tipos">
+      <div class="inc-tipo" data-tipo="accidente" onclick="incElegirTipo('accidente', this)"><span class="ico">💥</span>Accidente</div>
+      <div class="inc-tipo" data-tipo="averia" onclick="incElegirTipo('averia', this)"><span class="ico">🔧</span>Avería</div>
+      <div class="inc-tipo" data-tipo="multa" onclick="incElegirTipo('multa', this)"><span class="ico">📄</span>Multa</div>
+      <div class="inc-tipo" data-tipo="robo" onclick="incElegirTipo('robo', this)"><span class="ico">🚨</span>Robo</div>
+      <div class="inc-tipo" data-tipo="otro" onclick="incElegirTipo('otro', this)"><span class="ico">❓</span>Otro</div>
+    </div>
+
+    <label style="margin-top:14px">Gravedad</label>
+    <div class="inc-sev" id="inc-sev">
+      <div class="inc-sev-op leve" data-sev="leve" onclick="incElegirSev('leve', this)">Leve</div>
+      <div class="inc-sev-op moderado" data-sev="moderado" onclick="incElegirSev('moderado', this)">Moderado</div>
+      <div class="inc-sev-op grave" data-sev="grave" onclick="incElegirSev('grave', this)">Grave</div>
+    </div>
+
+    <label style="margin-top:14px">Contanos qué pasó *</label>
+    <textarea id="inc-descripcion" class="input-field" rows="3" style="resize:none;margin-bottom:0" placeholder="Ej: se rompió el embrague en plena ruta"></textarea>
+
+    <label style="margin-top:14px">¿Dónde? (opcional)</label>
+    <input type="text" id="inc-ubicacion" class="input-field" style="margin-bottom:0" placeholder="Ej: Ruta 3 Km 45">
+
+    <label style="margin-top:14px">Fotos (opcional — hasta 3)</label>
+    <input type="file" id="inc-foto-input" accept="image/*" capture="environment" style="display:none" onchange="incAgregarFoto(this)">
+    <div class="inc-foto-add" id="inc-foto-add" onclick="document.getElementById('inc-foto-input').click()">📷 Agregar foto</div>
+    <div class="inc-foto-mini" id="inc-foto-mini" style="display:none"></div>
+
+    <div class="inc-ctx" id="inc-ctx">—</div>
+    <div id="inc-error" style="display:none;color:var(--red);font-size:12px;margin-top:10px"></div>
+
+    <div class="modal-actions" style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modal-incidente')">Cancelar</button>
+      <button class="btn" id="inc-btn-enviar" style="flex:1;background:var(--red);color:#fff;font-weight:800;border:none" onclick="guardarIncidente()">Enviar reporte</button>
     </div>
   </div>
 </div>

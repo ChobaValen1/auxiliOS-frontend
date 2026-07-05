@@ -2666,8 +2666,13 @@ async function cargarDashboard() {
   if (ctxBar) ctxBar.style.display = esAdmin ? '' : 'none';
   const emergQuick = document.getElementById('dash-emergencias-quick');
   if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
+  const incQuick = document.getElementById('dash-incidente-quick');
+  if (incQuick) incQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
-  if (PERFIL_USUARIO?.roles?.name === 'administracion') cargarAlertasGrilla();
+  if (PERFIL_USUARIO?.roles?.name === 'administracion') {
+    cargarAlertasGrilla();
+    cargarIncidentesRecientes();
+  }
   if (esAdmin && _dashVistaActual === 'negocio') await _cargarViewNegocio();
   else { _dashVistaActual = 'rendimiento'; await _cargarViewRendimiento(); }
 }
@@ -4186,6 +4191,10 @@ async function cargarScreenCamion() {
   const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
                   PERFIL_USUARIO?.roles?.name === 'supervision';
 
+  // Botón "Reportar incidente" — solo para el chofer
+  const incQuickCam = document.getElementById('camion-incidente-quick');
+  if (incQuickCam) incQuickCam.style.display = esAdmin ? 'none' : '';
+
   // Admin/supervisor: siempre arrancan en vista flota global
   if (esAdmin) {
     _truckActual       = null;
@@ -5151,11 +5160,9 @@ if (typeof obRegistrarHandler === 'function') {
     return {};
   });
 
-  // Incidente del chofer. NOTA: hoy no existe en la app un formulario de
-  // chofer que inserte en `incidents` (solo lecturas de administración);
-  // el handler queda registrado para cuando ese flujo exista — la
-  // intercepción deberá encolar {tipo:'incidente', payload, blobs:{foto_N},
-  // dependeDe: log_id TMP-*} con created_at_device capturado al momento.
+  // Incidente reportado offline desde el modal de incidentes (guardarIncidente
+  // encola {tipo:'incidente', payload, blobs:{foto_0..foto_2}, dependeDe: log_id
+  // TMP-*} con created_at_device capturado al momento del reporte).
   // Idempotencia: driver_id + created_at_device (columna existente en incidents).
   obRegistrarHandler('incidente', async (payload, blobs) => {
     if (payload.created_at_device && payload.driver_id) {
@@ -12594,6 +12601,310 @@ function abrirEmergenciasDirecto() {
   goTo('documentos');
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  REPORTE DE INCIDENTES (chofer + admin)
+// ═══════════════════════════════════════════════════════════════
+
+const _INC_TIPO_INFO = {
+  accidente: { ico: '💥', label: 'Accidente' },
+  averia:    { ico: '🔧', label: 'Avería' },
+  multa:     { ico: '📄', label: 'Multa' },
+  robo:      { ico: '🚨', label: 'Robo' },
+  otro:      { ico: '❓', label: 'Otro' },
+};
+
+let _incTipoSel   = null;   // 'accidente' | 'averia' | 'multa' | 'robo' | 'otro'
+let _incSevSel    = null;   // 'leve' | 'moderado' | 'grave'
+let _incFotos     = [];     // File[] (hasta 3)
+let _incLogId     = null;   // log_id vinculado (puede ser TMP-* o null)
+let _incDriverId  = null;   // chofer al que se le carga el incidente
+let _incDesdeAdmin = false; // abierto desde el detalle de jornada del admin
+
+// Abre el modal. Sin args → chofer (usa su jornada activa si hay).
+// Con logId/driverId → admin cargando un incidente sobre una jornada puntual.
+function abrirModalIncidente(opts = {}) {
+  const { logId = null, driverId = null, contexto = null } = opts;
+
+  // Reset del estado y la UI
+  _incTipoSel = null;
+  _incSevSel  = null;
+  _incFotos   = [];
+  document.querySelectorAll('#inc-tipos .inc-tipo').forEach(el => el.classList.remove('sel'));
+  document.querySelectorAll('#inc-sev .inc-sev-op').forEach(el => el.classList.remove('sel'));
+  const desc = document.getElementById('inc-descripcion');
+  const ubic = document.getElementById('inc-ubicacion');
+  const finp = document.getElementById('inc-foto-input');
+  if (desc) desc.value = '';
+  if (ubic) ubic.value = '';
+  if (finp) finp.value = '';
+  _modalError('inc-error', '');
+  _incRenderFotos();
+  const btn = document.getElementById('inc-btn-enviar');
+  if (btn) { btn.textContent = 'Enviar reporte'; btn.disabled = false; btn.style.opacity = '1'; }
+
+  const sub = document.getElementById('inc-sub');
+  const ctx = document.getElementById('inc-ctx');
+
+  if (logId) {
+    // ── Admin: jornada y chofer prefijados ──
+    _incDesdeAdmin = true;
+    _incLogId      = logId;
+    _incDriverId   = driverId || null;
+    if (sub) sub.textContent = contexto || 'Jornada seleccionada';
+    if (ctx) ctx.innerHTML = `Se va a registrar en la <strong>jornada seleccionada</strong>, a nombre del <strong>chofer de esa jornada</strong>.`;
+  } else {
+    // ── Chofer: usa su jornada activa si hay (puede ser TMP-* offline) ──
+    _incDesdeAdmin = false;
+    _incDriverId   = USUARIO_ACTUAL?.id || null;
+    const j = _jornadasAbiertasCache?.[0] || (_jornadaActivaLocal?.log_id ? _jornadaActivaLocal : null);
+    _incLogId = j?.log_id || null;
+    const patente = j?.trucks?.plate || j?.patente || '';
+    const movil   = j?.trucks?.numero_interno ? `Móvil ${j.trucks.numero_interno}` : (patente || '');
+    if (sub) {
+      sub.textContent = j
+        ? [movil, 'Jornada de hoy', PERFIL_USUARIO?.full_name].filter(Boolean).join(' · ')
+        : 'Sin jornada abierta';
+    }
+    if (ctx) {
+      ctx.innerHTML = j
+        ? `Se va a registrar con ${movil ? `el <strong>${_escHtml(movil.toLowerCase())}</strong> y ` : ''}tu <strong>jornada de hoy</strong>.`
+        : `No tenés jornada abierta: se registra igual, <strong>sin vínculo</strong> a una jornada.`;
+    }
+  }
+
+  openModal('modal-incidente');
+}
+
+function incElegirTipo(tipo, el) {
+  _incTipoSel = tipo;
+  document.querySelectorAll('#inc-tipos .inc-tipo').forEach(e => e.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+  _modalError('inc-error', '');
+}
+
+function incElegirSev(sev, el) {
+  _incSevSel = sev;
+  document.querySelectorAll('#inc-sev .inc-sev-op').forEach(e => e.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+  _modalError('inc-error', '');
+}
+
+function incAgregarFoto(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  if (_incFotos.length >= 3) { toast('Máximo 3 fotos por incidente', 'error'); input.value = ''; return; }
+  _incFotos.push(file);
+  input.value = '';
+  _incRenderFotos();
+}
+
+function incQuitarFoto(i) {
+  _incFotos.splice(i, 1);
+  _incRenderFotos();
+}
+
+function _incRenderFotos() {
+  const mini = document.getElementById('inc-foto-mini');
+  const add  = document.getElementById('inc-foto-add');
+  if (!mini) return;
+  if (!_incFotos.length) {
+    mini.style.display = 'none';
+    mini.innerHTML = '';
+  } else {
+    mini.style.display = 'flex';
+    mini.innerHTML = _incFotos.map((f, i) => `
+      <div class="inc-mini">
+        <img src="${URL.createObjectURL(f)}" alt="Foto ${i + 1}">
+        <button type="button" onclick="incQuitarFoto(${i})" title="Quitar foto">×</button>
+      </div>`).join('');
+  }
+  if (add) add.style.display = _incFotos.length >= 3 ? 'none' : '';
+}
+
+// Insert online compartido: sube las fotos al bucket 'remitos' y hace el
+// insert en incidents. El handler del outbox usa el mismo shape de payload
+// (las fotos viajan como blobs foto_0..foto_2 y se suben recién al sincronizar).
+async function _insertarIncidente(payload, fotos = []) {
+  const incidente = { ...payload };
+  const urls = [];
+  for (let i = 0; i < fotos.length; i++) {
+    const nombre = `incidente_${Date.now()}_${i}.jpg`;
+    const { error: ue } = await _db.storage.from('remitos').upload(nombre, fotos[i], { upsert: true });
+    if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
+    urls.push(_db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl);
+  }
+  if (urls.length) incidente.photo_urls = urls;
+  const { error } = await _db.from('incidents').insert(incidente);
+  if (error) throw new Error(error.message);
+}
+
+async function guardarIncidente() {
+  if (!_incTipoSel)  { _modalError('inc-error', 'Elegí qué pasó (tipo de incidente).'); return; }
+  if (!_incSevSel)   { _modalError('inc-error', 'Elegí la gravedad.'); return; }
+  const descripcion = (document.getElementById('inc-descripcion')?.value || '').trim();
+  if (!descripcion)  { _modalError('inc-error', 'Contanos qué pasó — la descripción es obligatoria.'); return; }
+  const driverId = _incDriverId || USUARIO_ACTUAL?.id;
+  if (!driverId)     { _modalError('inc-error', 'No se pudo identificar al chofer.'); return; }
+  _modalError('inc-error', '');
+
+  const ubicacion = (document.getElementById('inc-ubicacion')?.value || '').trim();
+  const logId = await _resolverLogIdLocal(_incLogId);
+
+  const payload = {
+    log_id:            logId || null,
+    driver_id:         driverId,
+    type:              _incTipoSel,
+    severity:          _incSevSel,
+    description:       descripcion,
+    location:          ubicacion || null,
+    created_at_device: new Date().toISOString(), // clave de idempotencia del outbox
+  };
+
+  const btn = document.getElementById('inc-btn-enviar');
+  if (btn) { btn.textContent = 'Enviando…'; btn.disabled = true; btn.style.opacity = '0.6'; }
+
+  // Sin señal, o jornada abierta offline aún sin sincronizar (log_id TMP-*):
+  // encolar en el outbox unificado con las fotos como blobs
+  if ((!navigator.onLine || _logIdEsTemporal(payload.log_id)) && typeof obAdd === 'function') {
+    try {
+      const blobs = {};
+      _incFotos.forEach((f, i) => { blobs['foto_' + i] = f; });
+      await obAdd({
+        tipo: 'incidente',
+        payload,
+        blobs: Object.keys(blobs).length ? blobs : null,
+        dependeDe: _logIdEsTemporal(payload.log_id) ? payload.log_id : null,
+      });
+      toast('📴 Sin señal — incidente guardado. Se sincroniza solo.', 'warning');
+      closeModal('modal-incidente');
+    } catch (e) {
+      console.error('[incidente] error encolando offline:', e);
+      toast('No se pudo guardar el incidente', 'error');
+    } finally {
+      if (btn) { btn.textContent = 'Enviar reporte'; btn.disabled = false; btn.style.opacity = '1'; }
+    }
+    return;
+  }
+
+  try {
+    await _insertarIncidente(payload, _incFotos);
+    toast('Incidente reportado', 'success');
+    closeModal('modal-incidente');
+    // Si el admin lo cargó desde el detalle de una jornada, refrescar ese detalle
+    if (_incDesdeAdmin && payload.log_id && typeof abrirDetalleJornadaAdmin === 'function') {
+      abrirDetalleJornadaAdmin(payload.log_id);
+    }
+    // Refrescar la card de incidentes recientes del dashboard admin
+    if (PERFIL_USUARIO?.roles?.name === 'administracion' && typeof cargarIncidentesRecientes === 'function') {
+      cargarIncidentesRecientes();
+    }
+  } catch (e) {
+    console.error('[incidente] error guardando:', e);
+    toast('No se pudo guardar el incidente: ' + (e.message || 'error desconocido'), 'error');
+  } finally {
+    if (btn) { btn.textContent = 'Enviar reporte'; btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+// ── Admin: "+ Cargar incidente" desde el detalle de una jornada ──
+let _jadminIncCtx = null; // { logId, driverId, contexto } de la jornada abierta en el detalle
+
+function abrirIncidenteDesdeJornadaAdmin() {
+  if (!_jadminIncCtx?.logId) { toast('No hay una jornada seleccionada', 'error'); return; }
+  abrirModalIncidente(_jadminIncCtx);
+}
+
+// ── Card "Incidentes recientes" del dashboard admin (últimos 7 días) ──
+async function cargarIncidentesRecientes() {
+  const cont = document.getElementById('dash-incidentes-recientes');
+  if (!cont) return;
+  if (PERFIL_USUARIO?.roles?.name !== 'administracion') { cont.style.display = 'none'; return; }
+
+  try {
+    const desde = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: incs, error } = await _db
+      .from('incidents')
+      .select('incident_id, driver_id, log_id, type, severity, description, location, photo_urls, created_at_device')
+      .gte('created_at_device', desde)
+      .order('created_at_device', { ascending: false })
+      .limit(10);
+    if (error) throw error;
+
+    if (!incs || !incs.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
+
+    const driverIds = [...new Set(incs.map(i => i.driver_id).filter(Boolean))];
+    const logIds    = [...new Set(incs.map(i => i.log_id).filter(Boolean))];
+    const [uRes, lRes] = await Promise.all([
+      driverIds.length
+        ? _db.from('users').select('user_id, full_name').in('user_id', driverIds)
+        : Promise.resolve({ data: [] }),
+      logIds.length
+        ? _db.from('daily_logs').select('log_id, trucks(numero_interno, plate)').in('log_id', logIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const nombres = {};
+    (uRes.data || []).forEach(u => { nombres[u.user_id] = u.full_name; });
+    const moviles = {};
+    (lRes.data || []).forEach(l => {
+      moviles[l.log_id] = l.trucks?.numero_interno
+        ? `móvil ${l.trucks.numero_interno}`
+        : (l.trucks?.plate || '');
+    });
+
+    const filas = incs.map(i => {
+      const info  = _INC_TIPO_INFO[i.type] || _INC_TIPO_INFO.otro;
+      const sev   = ['leve', 'moderado', 'grave'].includes(i.severity) ? i.severity : 'leve';
+      const quien = nombres[i.driver_id] || 'Chofer';
+      const movil = i.log_id ? moviles[i.log_id] : '';
+      const descCorta = (i.description || '').length > 90
+        ? i.description.slice(0, 90) + '…'
+        : (i.description || '');
+      const nFotos = Array.isArray(i.photo_urls) ? i.photo_urls.length : 0;
+      const detalle = [
+        descCorta ? `"${_escHtml(descCorta)}"` : '',
+        i.location ? _escHtml(i.location) : '',
+        _incFmtFecha(i.created_at_device),
+        nFotos ? `${nFotos} foto${nFotos === 1 ? '' : 's'}` : '',
+      ].filter(Boolean).join(' · ');
+      return `
+        <div class="inc-rec-item ${sev}">
+          <span class="ico">${info.ico}</span>
+          <div class="txt">
+            <strong>${_escHtml(quien)}</strong> reportó <strong>${_escHtml(info.label.toLowerCase())} ${_escHtml(sev)}</strong>${movil ? ` en el ${_escHtml(movil)}` : ''}
+            <small>${detalle}</small>
+          </div>
+        </div>`;
+    }).join('');
+
+    cont.innerHTML = `
+      <div class="card">
+        <div class="agr-head">
+          <div class="agr-title">⚠️ Incidentes recientes — últimos 7 días</div>
+          <span class="agr-badge">${incs.length}</span>
+        </div>
+        ${filas}
+      </div>`;
+    cont.style.display = '';
+  } catch (err) {
+    console.error('Error cargando incidentes recientes:', err);
+    cont.style.display = 'none';
+  }
+}
+
+// Fecha corta para la card: "hoy 14:32" o "28-06-2026 14:32"
+function _incFmtFecha(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const hoy = new Date();
+  const esHoy = d.getFullYear() === hoy.getFullYear() && d.getMonth() === hoy.getMonth() && d.getDate() === hoy.getDate();
+  if (esHoy) return `hoy ${hm}`;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}-${mm}-${d.getFullYear()} ${hm}`;
+}
+
 // ── Exportar remitos filtrados a Excel ─────────────
 async function exportarRemitosExcel() {
   if (typeof XLSX === 'undefined') { toast('Librería XLSX no cargó — refrescá la página', 'error'); return; }
@@ -14729,6 +15040,14 @@ function _jadminRenderDetalle(det) {
   const truckMovil = log.truck?.numero_interno || null;
   const truckMarca = [log.truck?.brand, log.truck?.model].filter(Boolean).join(' ') || null;
 
+  // Contexto para "+ Cargar incidente": el incidente se registra a nombre del
+  // CHOFER de la jornada (no del admin que lo carga).
+  _jadminIncCtx = {
+    logId:    log.log_id,
+    driverId: log.driver_id,
+    contexto: `${truckPlate}${truckMovil ? ' #' + truckMovil : ''} · ${fecha} · ${chNombre}`,
+  };
+
   if ($('jd-title')) $('jd-title').textContent = `JORNADA · ${fecha}`;
   if ($('jd-sub')) {
     const sub = `${chNombre}${chLegajo ? ' (Leg. ' + chLegajo + ')' : ''} · ${truckPlate}${truckMovil ? ' #' + truckMovil : ''}`;
@@ -14883,7 +15202,11 @@ function _jadminRenderDetalle(det) {
 
   const incidentesCard = `
     <div class="jd-card">
-      <h4>Incidentes <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${incidents.length})</span></h4>
+      <h4 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span>Incidentes <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${incidents.length})</span></span>
+        <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px;text-transform:none;letter-spacing:0"
+          onclick="abrirIncidenteDesdeJornadaAdmin()">+ Cargar incidente</button>
+      </h4>
       ${incidents.length ? `<div class="jd-list">${incidents.map(i => {
         const sev = String(i.severity || '').toLowerCase();
         const badgeCls = sev === 'grave' ? 'b-grave' : sev === 'medio' ? 'b-medio' : 'b-leve';

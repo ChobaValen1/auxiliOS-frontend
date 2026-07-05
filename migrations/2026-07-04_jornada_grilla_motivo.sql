@@ -5,3 +5,4 @@
 -- ================================================================
 
 ALTER TABLE daily_logs ADD COLUMN IF NOT EXISTS grilla_motivo TEXT;
+

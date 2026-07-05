@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Formulario de incidentes</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --panel:#1c2129; --border:#2d333b; --border2:#3d444d;
+    --text:#e6edf3; --muted:#8b949e;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --red:#e2504a; --red-lo:rgba(226,80,74,0.12);
+    --green:#27c47a;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:20px; display:flex; flex-wrap:wrap; gap:26px; justify-content:center; }
+  .mockup-note { flex-basis:100%; max-width:800px; margin:0 auto; background:#2b2210; border:2px dashed var(--amber); border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; }
+  .mockup-note h3 { margin:0 0 6px; font-size:14px; color:var(--amber); }
+
+  .col { width:360px; }
+  .col h4 { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1px; margin:0 0 10px; }
+
+  .modal { background:var(--card); border:1px solid var(--border2); border-radius:14px; padding:18px; }
+  .modal h5 { margin:0 0 2px; font-size:15px; }
+  .sub { color:var(--muted); font-size:11px; margin-bottom:14px; }
+  label { display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:1px; margin:12px 0 6px; }
+  select, textarea, input[type=text] { width:100%; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--text); padding:10px; font-size:13px; font-family:inherit; }
+  textarea { resize:none; }
+
+  .tipos { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+  .tipo { text-align:center; padding:10px 2px 8px; border:1px solid var(--border); border-radius:10px; cursor:pointer; font-size:10px; color:var(--muted); }
+  .tipo .ico { display:block; font-size:20px; margin-bottom:4px; }
+  .tipo.sel { border-color:var(--amber); background:var(--amber-lo); color:var(--amber); font-weight:700; }
+
+  .sev { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .sev-op { text-align:center; padding:9px; border:1px solid var(--border); border-radius:10px; cursor:pointer; font-size:12px; font-weight:600; color:var(--muted); }
+  .sev-op.leve.sel     { border-color:var(--green); color:var(--green); background:rgba(39,196,122,0.1); }
+  .sev-op.moderado.sel { border-color:var(--amber); color:var(--amber); background:var(--amber-lo); }
+  .sev-op.grave.sel    { border-color:var(--red); color:var(--red); background:var(--red-lo); }
+
+  .foto-add { border:2px dashed var(--border2); border-radius:10px; padding:14px; text-align:center; color:var(--muted); font-size:12px; cursor:pointer; }
+  .foto-mini { display:flex; gap:8px; margin-top:8px; }
+  .foto-mini div { width:56px; height:56px; background:var(--panel); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+
+  .ctx { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:11px; color:var(--muted); margin-top:14px; }
+  .ctx strong { color:var(--text); }
+
+  .fila-btn { display:flex; gap:8px; margin-top:16px; }
+  .btn { flex:1; padding:12px; border-radius:10px; border:1px solid var(--border2); background:transparent; color:var(--text); font-size:13px; cursor:pointer; font-family:inherit; }
+  .btn-red { background:var(--red); border:none; color:#fff; font-weight:800; }
+
+  .acceso { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:14px; }
+  .acceso .titulo { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; }
+  .btn-sos { width:100%; padding:13px; border-radius:10px; border:1px solid rgba(226,80,74,0.4); background:var(--red-lo); color:var(--red); font-weight:800; font-size:14px; cursor:pointer; }
+  .aviso-offline { margin-top:10px; font-size:11px; color:var(--amber); background:var(--amber-lo); border-radius:6px; padding:6px 10px; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — Reporte de incidentes</h3>
+  <strong>Quién:</strong> el chofer, desde un botón "⚠️ Reportar incidente" en su dashboard (al lado de Emergencias) y también dentro de la pantalla Camión.
+  <strong>Cuándo:</strong> en cualquier momento — con o sin jornada abierta (si hay jornada, el incidente queda vinculado a ella automáticamente).
+  <strong>Offline:</strong> funciona sin señal, va a la cola como todo lo demás.
+  <strong>Impacto:</strong> el admin lo ve al instante en su dashboard, y el incidente afecta el presentismo del mes según la regla que ya existe.
+  Campos según la tabla real: tipo (accidente/avería/multa/robo/otro), gravedad (leve/moderado/grave), descripción obligatoria, ubicación y fotos opcionales.
+</div>
+
+<div class="col">
+  <h4>1 · Acceso desde el dashboard del chofer</h4>
+  <div class="acceso">
+    <div class="titulo">Acciones rápidas</div>
+    <button class="btn-sos">⚠️ Reportar incidente</button>
+    <div class="aviso-offline">📴 Funciona sin señal — se sincroniza solo</div>
+  </div>
+
+  <h4>2 · El admin lo ve así (card existente de alertas)</h4>
+  <div class="acceso">
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-left:4px solid var(--red);border-radius:8px;background:var(--panel)">
+      <span style="font-size:20px">💥</span>
+      <div style="font-size:12px;line-height:1.5">
+        <strong>Ricardo Cuello</strong> reportó <strong>avería grave</strong> en el móvil 114
+        <div style="color:var(--muted);font-size:11px">"Se rompió el embrague en plena ruta" · Ruta 3 Km 45 · hoy 14:32 · 2 fotos</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="col">
+  <h4>3 · El formulario (modal)</h4>
+  <div class="modal">
+    <h5>⚠️ Reportar incidente</h5>
+    <div class="sub">Móvil 114 · Jornada de hoy · Ricardo Cuello</div>
+
+    <label>¿Qué pasó?</label>
+    <div class="tipos">
+      <div class="tipo"><span class="ico">💥</span>Accidente</div>
+      <div class="tipo sel"><span class="ico">🔧</span>Avería</div>
+      <div class="tipo"><span class="ico">📄</span>Multa</div>
+      <div class="tipo"><span class="ico">🚨</span>Robo</div>
+      <div class="tipo"><span class="ico">❓</span>Otro</div>
+    </div>
+
+    <label>Gravedad</label>
+    <div class="sev">
+      <div class="sev-op leve">Leve</div>
+      <div class="sev-op moderado">Moderado</div>
+      <div class="sev-op grave sel">Grave</div>
+    </div>
+
+    <label>Contanos qué pasó *</label>
+    <textarea rows="3">Se rompió el embrague en plena ruta, el móvil quedó parado.</textarea>
+
+    <label>¿Dónde? (opcional)</label>
+    <input type="text" value="Ruta 3 Km 45">
+
+    <label>Fotos (opcional)</label>
+    <div class="foto-add">📷 Agregar foto</div>
+    <div class="foto-mini"><div>🖼️</div><div>🖼️</div></div>
+
+    <div class="ctx">
+      Se va a registrar con el <strong>móvil 114</strong> y tu <strong>jornada de hoy</strong>.
+      Si no tenés jornada abierta, se registra igual sin vínculo.
+    </div>
+
+    <div class="fila-btn">
+      <button class="btn">Cancelar</button>
+      <button class="btn btn-red">Enviar reporte</button>
+    </div>
+  </div>
+</div>
+
+</body></html>

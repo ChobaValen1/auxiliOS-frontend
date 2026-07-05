@@ -2264,7 +2264,7 @@ async function cargarJornadasAbiertas() {
   if (!USUARIO_ACTUAL?.id) return [];
   const { data, error } = await _db
     .from('daily_logs')
-    .select('*, trucks(plate, brand, model)')
+    .select('*, trucks(plate, brand, model, numero_interno)')
     .eq('driver_id', USUARIO_ACTUAL.id)
     .eq('status', 'open')
     .order('created_at_device', { ascending: false });
