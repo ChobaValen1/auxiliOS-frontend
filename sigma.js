@@ -10135,6 +10135,21 @@ async function procesarFotoConIA(event, contexto) {
         return;
     }
 
+    // Sin conexión: no se puede subir la foto ni usar la IA. La foto queda
+    // guardada en el teléfono (se sube al sincronizar) y los KM van a mano.
+    if (!navigator.onLine) {
+        if (isInicio) { fotoKmInicio = archivo; } else { fotoKmFinal = archivo; }
+        const manualArea = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
+        if (manualArea) manualArea.style.display = 'block';
+        if (msgStatus) msgStatus.innerHTML = '<span style="color: var(--amber);">📴 Sin conexión: la foto quedó guardada en el teléfono. Ingresá los KM a mano.</span>';
+        if (fotoBox) fotoBox.style.borderColor = 'var(--amber)';
+        if (fotoIcon) fotoIcon.textContent = '📴';
+        if (fotoStatusTxt) { fotoStatusTxt.textContent = 'Foto guardada en el teléfono'; fotoStatusTxt.style.color = 'var(--amber)'; }
+        if (btnConfirmar) btnConfirmar.disabled = false;
+        toast('Modo offline: ingresá los KM a mano 📴', 'info');
+        return;
+    }
+
     // Buscamos contra qué número validar
     let kmBaseReferencia = 0;
     if (isInicio) {
