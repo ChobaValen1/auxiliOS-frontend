@@ -705,6 +705,43 @@ async function cargarServiciosDia() {
 
 // ── GUARDAR REMITO ────────────────────────────────────────────
 
+// Arma el registro de la tabla remitos a partir de los datos del wizard.
+// Única fuente para el camino online y el offline (outbox).
+function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl) {
+  return {
+    nro_remito:           nroFinal,
+    driver_id:            USUARIO_ACTUAL.id,
+    log_id:               datosRemito.log_id         || null,
+    nro_servicio:         datosRemito.nroSrv         || null,
+    patente:              datosRemito.patente,
+    marca_modelo:         datosRemito.marca          || null,
+    razon_social:         datosRemito.cliente        || null,
+    cuit:                 datosRemito.cuit           || null,
+    telefono:             datosRemito.telefono       || null,
+    tipo_servicio:        datosRemito.tipo,
+    origen:               datosRemito.origen,
+    destino:              datosRemito.destino,
+    km_reales:            parseInt(datosRemito.km)   || null,
+    imp_peaje:            parsearImporte(datosRemito.peaje),
+    imp_excedente:        parsearImporte(datosRemito.excedente),
+    imp_otros:            parsearImporte(datosRemito.otros),
+    pago_1_monto:         parsearImporte(datosRemito.pago1Monto),
+    pago_2_monto:         parsearImporte(datosRemito.pago2Monto),
+    pago_1_metodo:        pago1,
+    pago_2_metodo:        pago2,
+    observaciones:        datosRemito.observaciones  || null,
+    foto_urls:            (fotoUrls && fotoUrls.length) ? fotoUrls : null,
+    firma_imagen_url:     firmaUrl || null,
+    firmado_at:           new Date().toISOString(),
+    conformidad_servicio: datosRemito.confirmaciones.includes('Conformidad con el servicio'),
+    conformidad_cargos:   datosRemito.confirmaciones.includes('Aceptación de cargos variables'),
+    sin_danos:            datosRemito.confirmaciones.includes('Sin daños reportados'),
+    conformidad_arrastre: datosRemito.confirmaciones.includes('Conformidad de Arrastre') || null,
+    status:               'firmado',
+    created_at_device:    new Date().toISOString(),
+  };
+}
+
 async function guardarRemitoCompleto(datosRemito) {
   try {
     _toast('Guardando remito...', 'info');
@@ -722,12 +759,45 @@ async function guardarRemitoCompleto(datosRemito) {
     const _r = Math.floor(Math.random() * 9000) + 1000;
     const nroFinal = datosRemito.nro || `REM-${_f}-${_r}`;
 
-    // ── 3. Subida de Fotos ────────────────────────────────────
+    // ── 3. Parseo de Pago Mixto ───────────────────────────────
+    const metodosValidos = ['efectivo', 'transferencia', 'tarjeta', 'app'];
+    const pagos = (datosRemito.pago || '').split('+').map(p => p.trim().toLowerCase());
+    const pago1 = metodosValidos.includes(pagos[0]) ? pagos[0] : null;
+    const pago2 = pagos[1] && metodosValidos.includes(pagos[1]) ? pagos[1] : null;
+
+    // ── 4. Recolectar firma y fotos (sin subirlas todavía) ────
+    let firmaDataURL = datosRemito.firmaDataURL || null;
+    if (!firmaDataURL) {
+      const canvas = document.getElementById('sig-canvas');
+      if (canvas && typeof hasSig !== 'undefined' && hasSig) {
+        firmaDataURL = canvas.toDataURL('image/png');
+      }
+    }
+    const archivosFotos = [];
+    for (const input of document.querySelectorAll('#foto-grid input[type="file"]')) {
+      if (input.files?.length) archivosFotos.push(input.files[0]);
+    }
+
+    // ── 5. SIN CONEXIÓN → outbox (fotos y firma quedan en el teléfono) ──
+    if (!navigator.onLine && typeof obAdd === 'function') {
+      const remitoOffline = _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, null, null);
+      const blobs = {};
+      if (firmaDataURL) blobs.firma = firmaDataURL;
+      archivosFotos.forEach((f, i) => { blobs['foto_' + i] = f; });
+      await obAdd({
+        tipo: 'remito_completo',
+        payload: remitoOffline,
+        blobs: Object.keys(blobs).length ? blobs : null,
+        dependeDe: (typeof remitoOffline.log_id === 'string' && remitoOffline.log_id.startsWith('TMP-')) ? remitoOffline.log_id : null,
+      });
+      _toast(`Remito ${nroFinal} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
+      try { showRemitosView('lista'); } catch (e) { /* vista puede no estar disponible offline */ }
+      return true;
+    }
+
+    // ── 5b. ONLINE: Subida de Fotos ───────────────────────────
     const fotoUrls = [];
-    const inputsFotos = document.querySelectorAll('#foto-grid input[type="file"]');
-    for (const input of inputsFotos) {
-      if (!input.files?.length) continue;
-      const file = input.files[0];
+    for (const file of archivosFotos) {
       const nombre = `${nroFinal}_${Date.now()}.${file.name.split('.').pop()}`;
       const { error: ue } = await _db.storage.from('remitos').upload(nombre, file, { upsert: true });
       if (!ue) {
@@ -736,18 +806,8 @@ async function guardarRemitoCompleto(datosRemito) {
       }
     }
 
-    // ── 4. Subida de Firma ────────────────────────────────────
-    // El caller (finalizarRemito) nos pasa el dataURL del canvas correcto (sig-canvas).
-    // Si no viene firmaDataURL, intentamos fallback al canvas del wizard, NUNCA al de la vista firma
-    // (que existe en el DOM pero está oculto y vacío).
+    // ── 5c. ONLINE: Subida de Firma ───────────────────────────
     let firmaUrl = null;
-    let firmaDataURL = datosRemito.firmaDataURL || null;
-    if (!firmaDataURL) {
-      const canvas = document.getElementById('sig-canvas');
-      if (canvas && typeof hasSig !== 'undefined' && hasSig) {
-        firmaDataURL = canvas.toDataURL('image/png');
-      }
-    }
     if (firmaDataURL) {
       try {
         const blob = await (await fetch(firmaDataURL)).blob();
@@ -765,51 +825,14 @@ async function guardarRemitoCompleto(datosRemito) {
       }
     }
 
-    // ── 5. Parseo de Pago Mixto ───────────────────────────────
-    const metodosValidos = ['efectivo', 'transferencia', 'tarjeta', 'app'];
-    const pagos = (datosRemito.pago || '').split('+').map(p => p.trim().toLowerCase());
-    const pago1 = metodosValidos.includes(pagos[0]) ? pagos[0] : null;
-    const pago2 = pagos[1] && metodosValidos.includes(pagos[1]) ? pagos[1] : null;
-
     console.log('Enviando DTO a Supabase para:', nroFinal);
 
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
-    const { error } = await _db.from('remitos').upsert({
-      nro_remito:           nroFinal,
-      driver_id:            USUARIO_ACTUAL.id, // Inyección RLS
-      log_id:               datosRemito.log_id         || null,
-      nro_servicio:         datosRemito.nroSrv         || null,
-      patente:              datosRemito.patente,
-      marca_modelo:         datosRemito.marca          || null,
-      razon_social:         datosRemito.cliente        || null,
-      cuit:                 datosRemito.cuit           || null,
-      telefono:             datosRemito.telefono       || null,
-      tipo_servicio:        datosRemito.tipo,
-      origen:               datosRemito.origen,
-      destino:              datosRemito.destino,
-      km_reales:            parseInt(datosRemito.km)   || null,
-      
-      // Aplicamos el parseo seguro a todos los montos
-      imp_peaje:            parsearImporte(datosRemito.peaje),
-      imp_excedente:        parsearImporte(datosRemito.excedente),
-      imp_otros:            parsearImporte(datosRemito.otros),
-      pago_1_monto:         parsearImporte(datosRemito.pago1Monto),
-      pago_2_monto:         parsearImporte(datosRemito.pago2Monto),
-      
-      pago_1_metodo:        pago1,
-      pago_2_metodo:        pago2,
-      observaciones:        datosRemito.observaciones  || null,
-      foto_urls:            fotoUrls.length ? fotoUrls : null,
-      firma_imagen_url:     firmaUrl,
-      firmado_at:           new Date().toISOString(),
-      conformidad_servicio: datosRemito.confirmaciones.includes('Conformidad con el servicio'),
-      conformidad_cargos:   datosRemito.confirmaciones.includes('Aceptación de cargos variables'),
-      sin_danos:            datosRemito.confirmaciones.includes('Sin daños reportados'),
-      conformidad_arrastre: datosRemito.confirmaciones.includes('Conformidad de Arrastre') || null,
-      status:               'firmado',
-      created_at_device:    new Date().toISOString(),
-    }, { onConflict: 'nro_remito' }); // <-- La clave del Upsert
+    const { error } = await _db.from('remitos').upsert(
+      _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl),
+      { onConflict: 'nro_remito' }
+    );
 
     if (error) { 
       console.error("❌ Error de inserción Supabase:", error);

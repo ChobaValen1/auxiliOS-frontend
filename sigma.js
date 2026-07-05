@@ -1436,7 +1436,9 @@ async function _finalizarRemitoInner() {
   // (un TMP-* rompería el insert — el remito queda sin vínculo a la jornada).
   let _logIdRemito = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
   _logIdRemito = await _resolverLogIdLocal(_logIdRemito);
-  if (_logIdEsTemporal(_logIdRemito)) {
+  if (_logIdEsTemporal(_logIdRemito) && navigator.onLine) {
+    // Online con TMP sin remapear: mejor sin vínculo que romper el insert.
+    // Offline el TMP viaja al outbox y se remapea al sincronizar.
     console.warn('[offline] Remito guardado sin log_id: la jornada offline aún no sincronizó');
     _logIdRemito = null;
   }
@@ -4895,6 +4897,31 @@ if (typeof obRegistrarHandler === 'function') {
   // (el nro_remito viene del talonario físico → replayable sin duplicar).
   obRegistrarHandler('remito_pendiente', async (payload) => {
     const { error } = await _db.from('remitos').upsert(payload, { onConflict: 'nro_remito' });
+    if (error) throw new Error(error.message);
+    return {};
+  });
+
+  // Remito completo (wizard con firma y fotos hecho offline): sube los blobs
+  // y hace el mismo upsert idempotente por nro_remito que el flujo online.
+  obRegistrarHandler('remito_completo', async (payload, blobs) => {
+    const remito = { ...payload };
+    if (blobs) {
+      const fotoUrls = [];
+      for (const [campo, blob] of Object.entries(blobs)) {
+        if (campo === 'firma') continue;
+        const nombre = `${remito.nro_remito}_${Date.now()}_${campo}.jpg`;
+        const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
+        if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
+        fotoUrls.push(_db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl);
+      }
+      if (fotoUrls.length) remito.foto_urls = fotoUrls;
+      if (blobs.firma) {
+        const url = await _subirFirmaStorage(blobs.firma, remito.nro_remito);
+        if (!url) throw new Error('No se pudo subir la firma al almacenamiento');
+        remito.firma_imagen_url = url;
+      }
+    }
+    const { error } = await _db.from('remitos').upsert(remito, { onConflict: 'nro_remito' });
     if (error) throw new Error(error.message);
     return {};
   });
