@@ -2724,13 +2724,48 @@ async function _cargarViewRendimiento() {
   const cmpLbl = document.getElementById('dash-rend-comparado');
   if (cmpLbl) cmpLbl.textContent = `vs. ${periodoAnt.label}`;
 
-  const [datos, jornadas, alertasPers, datosAnt] = await Promise.all([
-    cargarDatosChofer(targetUserId, desde, targetTruck),
-    cargarJornadasAbiertas(),
-    esChofer ? cargarAlertasPersonales() : Promise.resolve([]),
-    cargarComparativoChofer(targetUserId, periodoAnt.desde, periodoAnt.hasta, targetTruck),
-  ]);
+  // Fetch separado del render para cachearlo (Fase 3 offline — solo chofer)
+  const fnOnlineRend = async () => {
+    const [datos, jornadas, alertasPers, datosAnt] = await Promise.all([
+      cargarDatosChofer(targetUserId, desde, targetTruck),
+      cargarJornadasAbiertas(),
+      esChofer ? cargarAlertasPersonales() : Promise.resolve([]),
+      cargarComparativoChofer(targetUserId, periodoAnt.desde, periodoAnt.hasta, targetTruck),
+    ]);
+    return { datos, jornadas, alertasPers, datosAnt };
+  };
 
+  let paqueteRend = null, rendDeCache = false, rendGuardadoAt = null;
+  try {
+    if (esChofer && typeof obLecturaConCache === 'function') {
+      const lectura = await obLecturaConCache(`dash_rend_${targetUserId}_${_rendPeriodo}`, fnOnlineRend);
+      paqueteRend    = lectura.data;
+      rendDeCache    = lectura.deCache;
+      rendGuardadoAt = lectura.guardadoAt;
+    } else {
+      paqueteRend = await fnOnlineRend();
+    }
+  } catch (e) {
+    console.error('Dashboard rendimiento:', e);
+    rendDeCache = true;
+  }
+
+  if (!paqueteRend) {
+    // Offline sin caché: vacío elegante, jamás pantalla rota
+    ['dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.innerHTML = '';
+    });
+    const finEl = document.getElementById('dash-rend-fin');
+    if (finEl) finEl.innerHTML = `<div style="grid-column:1/-1">${typeof _htmlOfflineSinDatos === 'function' ? _htmlOfflineSinDatos() : '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">📴 Sin conexión y sin datos guardados</div>'}</div>`;
+    const alertaCardOff = document.getElementById('dash-alertas-pers-card');
+    if (alertaCardOff) alertaCardOff.style.display = 'none';
+    return;
+  }
+
+  if (rendDeCache) mostrarBannerOffline('dash-view-rendimiento', rendGuardadoAt);
+  else quitarBannerOffline('dash-view-rendimiento');
+
+  const { datos, jornadas, alertasPers, datosAnt } = paqueteRend;
   const { remitos, jornadas: logs, fuel, rendicion, alertas } = datos;
 
   // ── Cálculos comparativos (período anterior) ──
@@ -2876,7 +2911,8 @@ async function _cargarViewRendimiento() {
   // ── Gráfico de evolución (modo según filtro Hoy/Semana/Mes) ──
   const buckets = _buildChartBuckets(_rendPeriodo, logs, remitos);
   const canvas  = document.getElementById('dash-evolucion-canvas');
-  if (canvas) {
+  // typeof Chart: la lib viene de CDN y puede no estar disponible offline
+  if (canvas && typeof Chart !== 'undefined') {
     if (_chartEvolucion) { _chartEvolucion.destroy(); _chartEvolucion = null; }
     _chartEvolucion = new Chart(canvas, {
       type: 'bar',
@@ -4101,6 +4137,51 @@ let _camionLogDate      = null;
 let _flotaAdmin         = [];
 let _camionVistaAdmin   = 'flota'; // 'flota' | 'detalle'
 
+// ── FASE 3 OFFLINE: banner reutilizable de "datos guardados" ─────────────────
+function _formatearGuardadoAt(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getDate())}-${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// Inserta (o actualiza) un banner chico arriba del contenido del contenedor.
+// Desaparece solo cuando el render online vuelve a pintar la pantalla
+// (los online-paths llaman a quitarBannerOffline).
+function mostrarBannerOffline(contenedorId, guardadoAt) {
+  try {
+    const cont = document.getElementById(contenedorId);
+    if (!cont) return;
+    const id = 'offline-banner-' + contenedorId;
+    let banner = document.getElementById(id);
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = id;
+      banner.className = 'offline-banner';
+      cont.insertBefore(banner, cont.firstChild);
+    }
+    const cuando = _formatearGuardadoAt(guardadoAt);
+    banner.textContent = cuando
+      ? `📴 Sin conexión — estás viendo datos guardados el ${cuando}`
+      : '📴 Sin conexión — estás viendo datos guardados';
+  } catch (e) { /* no crítico */ }
+}
+
+function quitarBannerOffline(contenedorId) {
+  const banner = document.getElementById('offline-banner-' + contenedorId);
+  if (banner) banner.remove();
+}
+
+// Mensaje amable para pantallas sin caché (nunca pantalla rota)
+function _htmlOfflineSinDatos() {
+  return `<div class="card" style="text-align:center;padding:30px;color:var(--muted)">
+    <div style="font-size:28px;margin-bottom:8px">📴</div>
+    <div style="font-size:13px">Sin conexión y sin datos guardados de esta pantalla</div>
+    <div style="font-size:11px;margin-top:6px">Se va a actualizar cuando vuelva la señal</div>
+  </div>`;
+}
+
 async function cargarScreenCamion() {
   const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
                   PERFIL_USUARIO?.roles?.name === 'supervision';
@@ -4123,6 +4204,19 @@ async function cargarScreenCamion() {
   _camionLogDate  = _jornadasAbiertasCache?.[0]?.log_date   || null;
 
   if (!truckId) {
+    // Sin jornada abierta conocida. Si además estamos offline, la falta de
+    // jornada puede ser solo falta de señal → mostrar la última foto conocida.
+    if (!navigator.onLine && typeof obCacheGet === 'function') {
+      let cacheado = null;
+      try { cacheado = await obCacheGet('camion_chofer'); } catch (e) { /* no crítico */ }
+      if (cacheado?.data) {
+        _renderCamionChoferDatos(cacheado.data);
+        mostrarBannerOffline('camion-cards-container', cacheado.guardadoAt);
+        return;
+      }
+      _renderCamionOfflineSinDatos();
+      return;
+    }
     _truckActual       = null;
     _camionCombustible = [];
     _camionNeumaticos  = null;
@@ -4132,13 +4226,51 @@ async function cargarScreenCamion() {
     return;
   }
 
-  _truckActual = { truck_id: truckId, ...truckData };
+  const jActiva = _jornadasAbiertasCache?.[0] || {};
+  const fnOnline = async () => {
+    const [combustible, ultimoControl, services, planes] = await Promise.all([
+      cargarCombustible(truckId),
+      cargarUltimoControlNeumaticos(truckId),
+      cargarHistorialServices(truckId),
+      cargarPlanesDetalleOptimizados(truckId),
+    ]);
+    return {
+      truckId,
+      truckData:     truckData || null,
+      logDate:       _camionLogDate,
+      jActiva:       { km_inicio: jActiva.km_inicio ?? null, km_final: jActiva.km_final ?? null },
+      combustible:   combustible || [],
+      ultimoControl: ultimoControl || null,
+      services:      services || [],
+      planes:        planes || [],
+    };
+  };
+
+  let lectura = { data: null, deCache: true, guardadoAt: null };
+  try {
+    lectura = typeof obLecturaConCache === 'function'
+      ? await obLecturaConCache('camion_chofer', fnOnline)
+      : { data: await fnOnline(), deCache: false, guardadoAt: null };
+  } catch (e) {
+    console.error('cargarScreenCamion:', e);
+  }
+
+  if (!lectura.data) { _renderCamionOfflineSinDatos(); return; }
+  _renderCamionChoferDatos(lectura.data);
+  if (lectura.deCache) mostrarBannerOffline('camion-cards-container', lectura.guardadoAt);
+  else quitarBannerOffline('camion-cards-container');
+}
+
+// Render del control de camión del chofer a partir de un paquete de datos
+// (viene fresco de Supabase o de la caché offline — misma forma en ambos casos).
+function _renderCamionChoferDatos(d) {
+  _truckActual   = { truck_id: d.truckId, ...(d.truckData || {}) };
+  _camionLogDate = d.logDate || null;
 
   const set     = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  const nombre  = `${truckData?.brand || ''} ${truckData?.model || ''}`.trim() || '—';
-  const patente = truckData?.plate || '—';
-  const jActiva = _jornadasAbiertasCache?.[0] || {};
-  const kmFallback = jActiva.km_final ?? jActiva.km_inicio ?? null;
+  const nombre  = `${d.truckData?.brand || ''} ${d.truckData?.model || ''}`.trim() || '—';
+  const patente = d.truckData?.plate || '—';
+  const kmFallback = d.jActiva?.km_final ?? d.jActiva?.km_inicio ?? null;
   const kmRaw   = _truckActual.current_km ?? kmFallback;
   const km      = kmRaw != null ? Number(kmRaw).toLocaleString('es-AR') : null;
   set('camion-nombre',  nombre.toUpperCase());
@@ -4151,23 +4283,33 @@ async function cargarScreenCamion() {
     statusPill.className = 'pill pill-green';
   }
 
-  const [combustible, ultimoControl, services, planes] = await Promise.all([
-    cargarCombustible(truckId),
-    cargarUltimoControlNeumaticos(truckId),
-    cargarHistorialServices(truckId),
-    cargarPlanesDetalleOptimizados(truckId),
-  ]);
-
   _camionCombustible = _camionLogDate
-    ? (combustible || []).filter(r => r.fuel_date >= _camionLogDate)
-    : (combustible || []);
-  _camionNeumaticos  = (!_camionLogDate || ultimoControl?.check_date >= _camionLogDate) ? ultimoControl : null;
-  _camionPlanes      = planes || [];
-  _camionHistorial   = services || [];
+    ? (d.combustible || []).filter(r => r.fuel_date >= _camionLogDate)
+    : (d.combustible || []);
+  _camionNeumaticos  = (!_camionLogDate || d.ultimoControl?.check_date >= _camionLogDate) ? d.ultimoControl : null;
+  _camionPlanes      = d.planes || [];
+  _camionHistorial   = d.services || [];
 
   _renderCamionCards();
   renderPlanes(_camionPlanes);
   renderHistorialServices(_camionHistorial);
+  _volverCamionMain();
+}
+
+// Offline sin caché: mensaje amable en lugar de pantalla rota
+function _renderCamionOfflineSinDatos() {
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  ['camion-nombre','camion-detalle','camion-sec-sub'].forEach(id => set(id, '—'));
+  set('camion-km-pill', '— km');
+  const pill = document.getElementById('camion-next-service-pill');
+  if (pill) pill.style.display = 'none';
+  const statusPill = document.getElementById('camion-status-pill');
+  if (statusPill) {
+    statusPill.textContent = '📴 Sin conexión';
+    statusPill.className = 'pill pill-muted';
+  }
+  const cont = document.getElementById('camion-cards-container');
+  if (cont) cont.innerHTML = _htmlOfflineSinDatos();
   _volverCamionMain();
 }
 
@@ -6248,6 +6390,67 @@ function renderTablaRemitos(data) {
     }
   }
 
+}
+
+// ── FASE 3 OFFLINE: remitos del outbox aún sin sincronizar ───────────────────
+// Muestra al tope de la lista los remitos encolados en el outbox (tipos
+// 'remito_completo' / 'remito_pendiente') como cards NO clickeables con badge
+// "Pendiente de sincronizar", para que el chofer sepa que existen.
+async function _renderRemitosOutboxPendientes() {
+  if (typeof obPendientes !== 'function') return;
+  const tbody      = document.getElementById('tbody-remitos');
+  const mobileList = document.getElementById('mobile-remitos-list');
+  if (!tbody && !mobileList) return;
+
+  // Limpiar cards previas (re-render idempotente)
+  document.querySelectorAll('.remito-outbox-pendiente').forEach(el => el.remove());
+
+  let ops = [];
+  try { ops = await obPendientes(); } catch (e) { return; }
+  const remitosOps = ops
+    .filter(o => (o.tipo === 'remito_completo' || o.tipo === 'remito_pendiente') && o.payload)
+    .reverse(); // más nuevos primero
+
+  remitosOps.forEach(op => {
+    const p       = op.payload || {};
+    const nro     = p.nro_remito    || '—';
+    const cliente = p.razon_social  || '—';
+    const tipo    = p.tipo_servicio || '—';
+    const patente = p.patente       || '—';
+    const badge   = '<span class="pill pill-amber" style="white-space:nowrap">📴 Pendiente de sincronizar</span>';
+
+    if (tbody) {
+      const tr = document.createElement('tr');
+      tr.className = 'remito-outbox-pendiente';
+      tr.style.cssText = 'background:rgba(245,166,35,0.06);pointer-events:none';
+      tr.innerHTML = `
+        <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nro}</span></td>
+        <td style="font-size:11px;color:var(--muted)">—</td>
+        <td style="font-size:11px;color:var(--muted2)">${cliente}</td>
+        <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${patente}</div></td>
+        <td><div style="font-size:12px">${tipo}</div></td>
+        <td style="font-size:11px;color:var(--muted)">—</td>
+        <td style="font-size:11px;color:var(--muted)">—</td>
+        <td>${badge}</td>
+        <td style="font-size:10px;color:var(--muted)">Se sincroniza con señal</td>`;
+      tbody.insertBefore(tr, tbody.firstChild);
+    }
+
+    if (mobileList) {
+      const mcard = document.createElement('div');
+      mcard.className = 'mobile-card-remito remito-outbox-pendiente';
+      mcard.style.cssText = 'pointer-events:none;border-color:rgba(245,166,35,0.4)';
+      mcard.innerHTML = `
+        <div class="card-header-main">
+          <div><span class="text-codigo">N° ${nro}</span><span class="text-patente">${patente}</span></div>
+          ${badge}
+        </div>
+        <div style="font-size:13px;font-weight:600">${tipo}</div>
+        <div style="font-size:12px;color:var(--muted)">Cliente: ${cliente}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">Guardado en el teléfono — se sincroniza cuando haya señal</div>`;
+      mobileList.insertBefore(mcard, mobileList.firstChild);
+    }
+  });
 }
 
 // --- LÓGICA DE PAGOS (Refactorizada y Segura) ---
@@ -10899,7 +11102,13 @@ async function cargarDocumentos() {
   mostrarSkeletonDocs();
 
   try {
-    _emergencias = await cargarEmergencias();
+    // Emergencias: útiles offline (teléfonos/protocolos) → lectura con caché
+    if (typeof obLecturaConCache === 'function') {
+      const lecturaEmerg = await obLecturaConCache('emergencias', cargarEmergencias);
+      _emergencias = lecturaEmerg.data || [];
+    } else {
+      _emergencias = await cargarEmergencias();
+    }
     renderEmergencias(_emergencias);
 
     if (esAdmin) {
@@ -10920,14 +11129,32 @@ async function cargarDocumentos() {
       _renderSelectorCamiones();
       _renderSelectorChoferes();
     } else {
-      const truckId = _camionActual?.truck_id || _truckActual?.truck_id || await obtenerTruckAsignado().catch(() => null);
-      const [truckDocs, driverDocs] = await Promise.all([
-        truckId ? cargarTruckDocs(truckId) : Promise.resolve([]),
-        cargarDriverDocs(driverId),
-      ]);
-      _docsCamion = truckDocs;
-      _docsChofer = driverDocs;
-      _mostrarDocsCamionChofer(truckId);
+      const fnOnline = async () => {
+        const truckId = _camionActual?.truck_id || _truckActual?.truck_id || await obtenerTruckAsignado().catch(() => null);
+        const [truckDocs, driverDocs] = await Promise.all([
+          truckId ? cargarTruckDocs(truckId) : Promise.resolve([]),
+          cargarDriverDocs(driverId),
+        ]);
+        return { truckId, truckDocs, driverDocs };
+      };
+
+      const lectura = typeof obLecturaConCache === 'function'
+        ? await obLecturaConCache('docs_chofer_' + driverId, fnOnline)
+        : { data: await fnOnline(), deCache: false, guardadoAt: null };
+
+      if (!lectura.data) {
+        // Offline sin caché: mensaje amable, nunca pantalla rota
+        _docsCamion = [];
+        _docsChofer = [];
+        _mostrarDocsCamionChofer(null);
+        _mostrarDocsOfflineSinCache();
+      } else {
+        _docsCamion = lectura.data.truckDocs || [];
+        _docsChofer = lectura.data.driverDocs || [];
+        _mostrarDocsCamionChofer(lectura.data.truckId);
+        if (lectura.deCache) mostrarBannerOffline('screen-documentos', lectura.guardadoAt);
+        else quitarBannerOffline('screen-documentos');
+      }
     }
 
     docSwitchTab(_docTabActivo || 'camion');
@@ -10939,6 +11166,19 @@ async function cargarDocumentos() {
     console.error('Error crítico en cargarDocumentos:', err);
     mostrarErrorDocs();
   }
+}
+
+// Offline sin caché de documentos: mensaje amable en las grillas
+function _mostrarDocsOfflineSinCache() {
+  const html = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted)">
+    <div style="font-size:28px;margin-bottom:8px">📴</div>
+    <div style="font-size:13px">Sin conexión y sin datos guardados de esta pantalla</div>
+  </div>`;
+  const gridC  = document.getElementById('doc-grid-camion');
+  const gridCh = document.getElementById('doc-grid-chofer');
+  if (gridC)  gridC.innerHTML  = html;
+  if (gridCh) gridCh.innerHTML = html;
+  mostrarBannerOffline('screen-documentos', null);
 }
 
 function actualizarInterfazDocs() {

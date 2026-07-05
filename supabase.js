@@ -573,24 +573,60 @@ async function cargarRemitos(opts = {}) {
     window._remitosPagina  = page;
     window._remitosFiltros = filtros;
 
-    let query = _buildRemitosQuery({ filtros });
-    const start = (page - 1) * pageSize;
-    const end   = start + pageSize - 1;
-    query = query.range(start, end);
+    // Fetch puro (separado del render para poder cachearlo — Fase 3 offline)
+    const fnOnline = async () => {
+      let query = _buildRemitosQuery({ filtros });
+      const start = (page - 1) * pageSize;
+      const end   = start + pageSize - 1;
+      query = query.range(start, end);
+      const { data, error, count } = await query;
+      if (error) throw new Error(error.message || 'Error Supabase remitos');
+      return { remitos: (data || []).map(_mapRemitoRow), total: count ?? 0 };
+    };
 
-    const { data, error, count } = await query;
-    if (error) {
-      console.error('❌ Error Supabase remitos:', error);
-      if (typeof renderTablaRemitos === 'function') renderTablaRemitos([]);
-      return;
+    const esChofer = typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name === 'chofer';
+    let resultado = null, deCache = false, guardadoAt = null;
+
+    if (esChofer && typeof obLecturaConCache === 'function') {
+      const lectura = await obLecturaConCache('remitos_lista', fnOnline);
+      resultado  = lectura.data;
+      deCache    = lectura.deCache;
+      guardadoAt = lectura.guardadoAt;
+    } else {
+      try {
+        resultado = await fnOnline();
+      } catch (err) {
+        console.error('❌ Error Supabase remitos:', err);
+        if (typeof renderTablaRemitos === 'function') renderTablaRemitos([]);
+        return;
+      }
     }
 
-    window._remitosTotal = count ?? 0;
-
-    const mapped = (data || []).map(_mapRemitoRow);
-    if (typeof renderTablaRemitos === 'function') renderTablaRemitos(mapped);
+    window._remitosTotal = resultado?.total ?? 0;
+    if (typeof renderTablaRemitos === 'function') renderTablaRemitos(resultado?.remitos || []);
     if (typeof renderRemitosPagination === 'function') renderRemitosPagination();
     if (typeof actualizarInfoFiltroRemitos === 'function') actualizarInfoFiltroRemitos();
+
+    // Banner offline sobre la lista
+    if (deCache && typeof mostrarBannerOffline === 'function') {
+      mostrarBannerOffline('remitos-lista', guardadoAt);
+    } else if (!deCache && typeof quitarBannerOffline === 'function') {
+      quitarBannerOffline('remitos-lista');
+    }
+
+    // Offline sin caché: mensaje amable en la lista (no queda vacía sin explicación)
+    if (deCache && !resultado) {
+      const msg = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">📴 Sin conexión y sin datos guardados de esta pantalla</div>';
+      const mobileList = document.getElementById('mobile-remitos-list');
+      if (mobileList) mobileList.innerHTML = msg;
+      const tbody = document.getElementById('tbody-remitos');
+      if (tbody) tbody.innerHTML = `<tr><td colspan="9">${msg}</td></tr>`;
+    }
+
+    // Remitos del outbox sin sincronizar, al tope de la lista (online u offline)
+    if (esChofer && typeof _renderRemitosOutboxPendientes === 'function') {
+      try { await _renderRemitosOutboxPendientes(); } catch (e) { /* no crítico */ }
+    }
   } catch (err) {
     console.error("❌ CRÍTICO cargarRemitos:", err);
   }
@@ -660,17 +696,31 @@ async function cargarServiciosDia() {
       timeZone: 'America/Argentina/Buenos_Aires' 
     });
     
-    const { data, error } = await _db
-      .from('remitos')
-      .select('*')
-      .eq('driver_id', USUARIO_ACTUAL.id)
-      .gte('created_at_device', hoy + 'T00:00:00-03:00')
-      .lte('created_at_device', hoy + 'T23:59:59.999-03:00')
-      .order('created_at_device', { ascending: true });
+    const fnOnline = async () => {
+      const { data, error } = await _db
+        .from('remitos')
+        .select('*')
+        .eq('driver_id', USUARIO_ACTUAL.id)
+        .gte('created_at_device', hoy + 'T00:00:00-03:00')
+        .lte('created_at_device', hoy + 'T23:59:59.999-03:00')
+        .order('created_at_device', { ascending: true });
+      if (error) throw new Error(error.message || 'Error Supabase servicios del día');
+      return data || [];
+    };
 
-    if (error) { 
-      console.error('❌ Error Supabase en servicios del día:', error); 
-      return; 
+    // Fase 3 offline: caché scopeada al día (nunca mostrar "hoy" de ayer)
+    const esChofer = typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name === 'chofer';
+    let data = null;
+    if (esChofer && typeof obLecturaConCache === 'function') {
+      const lectura = await obLecturaConCache('servicios_dia_' + hoy, fnOnline);
+      data = lectura.data || [];
+    } else {
+      try {
+        data = await fnOnline();
+      } catch (err) {
+        console.error('❌ Error Supabase en servicios del día:', err);
+        return;
+      }
     }
 
     if (!data || data.length === 0) {

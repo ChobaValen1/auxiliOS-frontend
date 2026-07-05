@@ -14,6 +14,7 @@
 //           estado: 'pendiente'|'error', errorMsg, createdAt }
 //   blobs { key (string, keyPath), blob (Blob), mime }
 //   idmap { tempId (string, keyPath), realId }
+//   cache { clave (string, keyPath), data, guardadoAt }  ← lecturas offline (Fase 3)
 //
 // Sync (obSync): recorre las ops en orden por id. Las ops en 'error' se
 // saltean (quedan para reintento manual). Una dependencia (dependeDe) se
@@ -24,7 +25,7 @@
 // dependan de ella.
 
 const OB_DB = 'SigmaOutboxDB';
-const OB_DB_VERSION = 1;
+const OB_DB_VERSION = 2; // v2: agrega store 'cache' para lecturas offline
 let _obHandlers = {};          // tipo -> async (payload, blobsResueltos) => ({ realId? })
 let _obSyncEnCurso = false;
 let _obDbPromise = null;
@@ -47,6 +48,9 @@ function _obOpen() {
       }
       if (!db.objectStoreNames.contains('idmap')) {
         db.createObjectStore('idmap', { keyPath: 'tempId' });
+      }
+      if (!db.objectStoreNames.contains('cache')) {
+        db.createObjectStore('cache', { keyPath: 'clave' });
       }
     };
     req.onsuccess = () => {
@@ -324,6 +328,49 @@ async function obSync() {
       toast(`Se sincronizaron ${sincronizadas} operación${sincronizadas === 1 ? '' : 'es'} pendiente${sincronizadas === 1 ? '' : 's'} ✅`, 'success');
     }
   }
+}
+
+// ── Caché de lecturas (Fase 3) ─────────────────────────────────────────────
+// Guarda el resultado de una lectura online para servirlo cuando no hay señal.
+// Fire-and-forget: NUNCA lanza (una falla de caché no debe romper la pantalla).
+async function obCacheSet(clave, data) {
+  try {
+    await _obStorePut('cache', { clave, data, guardadoAt: new Date().toISOString() });
+  } catch (e) {
+    console.warn('[cache] No se pudo guardar la clave', clave, e);
+  }
+}
+
+// Devuelve { data, guardadoAt } o null si no hay nada cacheado. Nunca lanza.
+async function obCacheGet(clave) {
+  try {
+    const entrada = await _obStoreGet('cache', clave);
+    return entrada ? { data: entrada.data, guardadoAt: entrada.guardadoAt || null } : null;
+  } catch (e) {
+    console.warn('[cache] No se pudo leer la clave', clave, e);
+    return null;
+  }
+}
+
+// Patrón lectura-con-caché:
+//   - Con conexión: intenta fnOnline(); si sale bien, cachea y devuelve
+//     { data, deCache: false }.
+//   - Sin conexión, o si fnOnline() falla: devuelve lo último cacheado como
+//     { data, deCache: true, guardadoAt }, o { data: null, deCache: true }
+//     si nunca se cacheó nada. Nunca lanza.
+async function obLecturaConCache(clave, fnOnline) {
+  if (navigator.onLine && typeof fnOnline === 'function') {
+    try {
+      const data = await fnOnline();
+      obCacheSet(clave, data); // fire-and-forget
+      return { data, deCache: false, guardadoAt: null };
+    } catch (e) {
+      console.warn('[cache] Lectura online falló para', clave, '— se usa la caché:', e);
+    }
+  }
+  const cacheado = await obCacheGet(clave);
+  if (cacheado) return { data: cacheado.data, deCache: true, guardadoAt: cacheado.guardadoAt };
+  return { data: null, deCache: true, guardadoAt: null };
 }
 
 // Notifica a la UI el estado de la cola
