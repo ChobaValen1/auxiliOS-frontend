@@ -15424,6 +15424,10 @@ async function initGrilla() {
   const btnCopiarMes = document.getElementById('grilla-btn-copiar-mes');
   if (btnCopiarMes) btnCopiarMes.style.display = _grillaEsAdmin() ? '' : 'none';
 
+  // El chofer no filtra: ve solo los móviles donde está asignado en el mes
+  const filtrosEl = document.getElementById('grilla-filtros');
+  if (filtrosEl) filtrosEl.style.display = _grillaEsChofer() ? 'none' : '';
+
   _grillaAutoSemana = true;
   await cargarGrilla();
 }
@@ -15569,10 +15573,22 @@ function renderGrillaTabla() {
   // ── Filas por móvil ──
   const miUserId = PERFIL_USUARIO?.user_id;
 
+  // El chofer ve solo los móviles donde está asignado en el mes cargado
+  // (incluye a sus compañeros de móvil, no al resto de la flota).
+  let misMoviles = null;
+  if (_grillaEsChofer()) {
+    misMoviles = new Set();
+    Object.values(_grillaAsig).forEach(a => {
+      if (a.driver_id === miUserId) misMoviles.add(String(a.truck_id));
+    });
+  }
+
   let filas = '';
   let filasVisibles = 0;
 
   _grillaTrucks.forEach(t => {
+    if (misMoviles && !misMoviles.has(String(t.truck_id))) return;
+
     // Filtro por móvil
     if (_grillaFiltroMovil && String(t.truck_id) !== String(_grillaFiltroMovil)) return;
 
@@ -15629,7 +15645,9 @@ function renderGrillaTabla() {
   });
 
   if (!filasVisibles) {
-    filas = `<tr><td colspan="8" class="grilla-cargando">No hay móviles para mostrar con estos filtros.</td></tr>`;
+    filas = misMoviles
+      ? `<tr><td colspan="8" class="grilla-cargando">Todavía no estás asignado en la grilla de este mes.</td></tr>`
+      : `<tr><td colspan="8" class="grilla-cargando">No hay móviles para mostrar con estos filtros.</td></tr>`;
   }
   tbody.innerHTML = filas;
   tbody.classList.toggle('grilla-admin', esAdmin);
