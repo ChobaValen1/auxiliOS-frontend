@@ -12605,20 +12605,25 @@ const _INC_TIPO_INFO = {
 
 let _incTipoSel   = null;   // 'accidente' | 'averia' | 'multa' | 'robo' | 'otro'
 let _incSevSel    = null;   // 'leve' | 'moderado' | 'grave'
-let _incFotos     = [];     // File[] (hasta 3)
+let _incFotos     = [];     // File[] nuevas (hasta 3 en total junto con las existentes)
+let _incFotosExist = [];    // string[] URLs ya subidas (solo en modo edición)
+let _incEditId    = null;   // incident_id en edición (null = creación)
 let _incLogId     = null;   // log_id vinculado (puede ser TMP-* o null)
 let _incDriverId  = null;   // chofer al que se le carga el incidente
 let _incDesdeAdmin = false; // abierto desde el detalle de jornada del admin
 
 // Abre el modal. Sin args → chofer (usa su jornada activa si hay).
 // Con logId/driverId → admin cargando un incidente sobre una jornada puntual.
+// Con incidente (fila de incidents) → admin editando un incidente existente.
 function abrirModalIncidente(opts = {}) {
-  const { logId = null, driverId = null, contexto = null } = opts;
+  const { logId = null, driverId = null, contexto = null, incidente = null } = opts;
 
   // Reset del estado y la UI
   _incTipoSel = null;
   _incSevSel  = null;
   _incFotos   = [];
+  _incFotosExist = [];
+  _incEditId  = null;
   document.querySelectorAll('#inc-tipos .inc-tipo').forEach(el => el.classList.remove('sel'));
   document.querySelectorAll('#inc-sev .inc-sev-op').forEach(el => el.classList.remove('sel'));
   const desc = document.getElementById('inc-descripcion');
@@ -12628,12 +12633,37 @@ function abrirModalIncidente(opts = {}) {
   if (ubic) ubic.value = '';
   if (finp) finp.value = '';
   _modalError('inc-error', '');
-  _incRenderFotos();
   const btn = document.getElementById('inc-btn-enviar');
   if (btn) { btn.textContent = 'Enviar reporte'; btn.disabled = false; btn.style.opacity = '1'; }
+  const titulo = document.querySelector('#modal-incidente h3');
+  if (titulo) titulo.textContent = '⚠️ Reportar incidente';
 
   const sub = document.getElementById('inc-sub');
   const ctx = document.getElementById('inc-ctx');
+
+  if (incidente) {
+    // ── Admin: edición de un incidente existente ──
+    _incDesdeAdmin = true;
+    _incEditId     = incidente.incident_id;
+    _incLogId      = logId || _jadminIncCtx?.logId || null;
+    _incDriverId   = driverId || null;
+    _incTipoSel    = incidente.type || null;
+    _incSevSel     = incidente.severity || null;
+    _incFotosExist = Array.isArray(incidente.photo_urls) ? [...incidente.photo_urls] : [];
+    if (desc) desc.value = incidente.description || '';
+    if (ubic) ubic.value = incidente.location || '';
+    if (_incTipoSel) document.querySelector(`#inc-tipos .inc-tipo[data-tipo="${_incTipoSel}"]`)?.classList.add('sel');
+    if (_incSevSel)  document.querySelector(`#inc-sev .inc-sev-op[data-sev="${_incSevSel}"]`)?.classList.add('sel');
+    if (titulo) titulo.textContent = '✏️ Editar incidente';
+    if (btn) btn.textContent = 'Guardar cambios';
+    if (sub) sub.textContent = contexto || _jadminIncCtx?.contexto || 'Incidente registrado';
+    if (ctx) ctx.innerHTML = `Estás <strong>editando</strong> un incidente ya registrado. Los cambios se guardan al confirmar.`;
+    _incRenderFotos();
+    openModal('modal-incidente');
+    return;
+  }
+
+  _incRenderFotos();
 
   if (logId) {
     // ── Admin: jornada y chofer prefijados ──
@@ -12682,7 +12712,7 @@ function incElegirSev(sev, el) {
 function incAgregarFoto(input) {
   const file = input?.files?.[0];
   if (!file) return;
-  if (_incFotos.length >= 3) { toast('Máximo 3 fotos por incidente', 'error'); input.value = ''; return; }
+  if (_incFotosExist.length + _incFotos.length >= 3) { toast('Máximo 3 fotos por incidente', 'error'); input.value = ''; return; }
   _incFotos.push(file);
   input.value = '';
   _incRenderFotos();
@@ -12693,22 +12723,35 @@ function incQuitarFoto(i) {
   _incRenderFotos();
 }
 
+// Quita una foto YA subida (modo edición) — se descarta del array final al guardar
+function incQuitarFotoExist(i) {
+  _incFotosExist.splice(i, 1);
+  _incRenderFotos();
+}
+
 function _incRenderFotos() {
   const mini = document.getElementById('inc-foto-mini');
   const add  = document.getElementById('inc-foto-add');
   if (!mini) return;
-  if (!_incFotos.length) {
+  const total = _incFotosExist.length + _incFotos.length;
+  if (!total) {
     mini.style.display = 'none';
     mini.innerHTML = '';
   } else {
     mini.style.display = 'flex';
-    mini.innerHTML = _incFotos.map((f, i) => `
+    const existentes = _incFotosExist.map((url, i) => `
       <div class="inc-mini">
-        <img src="${URL.createObjectURL(f)}" alt="Foto ${i + 1}">
+        <img src="${_escHtml(url)}" alt="Foto ${i + 1}">
+        <button type="button" onclick="incQuitarFotoExist(${i})" title="Quitar foto">×</button>
+      </div>`).join('');
+    const nuevas = _incFotos.map((f, i) => `
+      <div class="inc-mini">
+        <img src="${URL.createObjectURL(f)}" alt="Foto nueva ${i + 1}">
         <button type="button" onclick="incQuitarFoto(${i})" title="Quitar foto">×</button>
       </div>`).join('');
+    mini.innerHTML = existentes + nuevas;
   }
-  if (add) add.style.display = _incFotos.length >= 3 ? 'none' : '';
+  if (add) add.style.display = total >= 3 ? 'none' : '';
 }
 
 // Insert online compartido: sube las fotos al bucket 'remitos' y hace el
@@ -12733,6 +12776,43 @@ async function guardarIncidente() {
   if (!_incSevSel)   { _modalError('inc-error', 'Elegí la gravedad.'); return; }
   const descripcion = (document.getElementById('inc-descripcion')?.value || '').trim();
   if (!descripcion)  { _modalError('inc-error', 'Contanos qué pasó — la descripción es obligatoria.'); return; }
+  // ── Modo edición (solo admin, online-only): UPDATE por incident_id ──
+  if (_incEditId) {
+    _modalError('inc-error', '');
+    const ubicacionEd = (document.getElementById('inc-ubicacion')?.value || '').trim();
+    const btnEd = document.getElementById('inc-btn-enviar');
+    if (btnEd) { btnEd.textContent = 'Guardando…'; btnEd.disabled = true; btnEd.style.opacity = '0.6'; }
+    try {
+      // Subir fotos nuevas al bucket 'remitos' (mismo naming que la creación)
+      const urlsNuevas = [];
+      for (let i = 0; i < _incFotos.length; i++) {
+        const nombre = `incidente_${Date.now()}_${i}.jpg`;
+        const { error: ue } = await _db.storage.from('remitos').upload(nombre, _incFotos[i], { upsert: true });
+        if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
+        urlsNuevas.push(_db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl);
+      }
+      const urlsFinales = [..._incFotosExist, ...urlsNuevas];
+      const { error } = await _db.from('incidents').update({
+        type:        _incTipoSel,
+        severity:    _incSevSel,
+        description: descripcion,
+        location:    ubicacionEd || null,
+        photo_urls:  urlsFinales.length ? urlsFinales : null,
+      }).eq('incident_id', _incEditId);
+      if (error) throw new Error(error.message);
+      toast('Incidente actualizado', 'success');
+      closeModal('modal-incidente');
+      if (_incLogId && typeof abrirDetalleJornadaAdmin === 'function') abrirDetalleJornadaAdmin(_incLogId);
+      if (typeof _alxRefrescar === 'function') _alxRefrescar();
+    } catch (e) {
+      console.error('[incidente] error actualizando:', e);
+      _modalError('inc-error', 'No se pudo guardar: ' + (e.message || 'error desconocido'));
+    } finally {
+      if (btnEd) { btnEd.textContent = 'Guardar cambios'; btnEd.disabled = false; btnEd.style.opacity = '1'; }
+    }
+    return;
+  }
+
   const driverId = _incDriverId || USUARIO_ACTUAL?.id;
   if (!driverId)     { _modalError('inc-error', 'No se pudo identificar al chofer.'); return; }
   _modalError('inc-error', '');
@@ -12800,6 +12880,46 @@ let _jadminIncCtx = null; // { logId, driverId, contexto } de la jornada abierta
 function abrirIncidenteDesdeJornadaAdmin() {
   if (!_jadminIncCtx?.logId) { toast('No hay una jornada seleccionada', 'error'); return; }
   abrirModalIncidente(_jadminIncCtx);
+}
+
+// ── Admin: menú ⋮ por incidente en el detalle de jornada ──
+let _jadminIncCache = []; // incidentes de la jornada abierta en el detalle
+
+function _jadminToggleIncMenu(incidentId) {
+  const menu = document.getElementById(`inc-menu-${incidentId}`);
+  if (!menu) return;
+  const estabaAbierto = menu.classList.contains('open');
+  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+  if (!estabaAbierto) menu.classList.add('open');
+}
+
+function _jadminEditarIncidente(incidentId) {
+  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+  const fila = _jadminIncCache.find(i => String(i.incident_id) === String(incidentId));
+  if (!fila) { toast('No se encontró el incidente', 'error'); return; }
+  abrirModalIncidente({
+    incidente: fila,
+    logId:     _jadminIncCtx?.logId || null,
+    contexto:  _jadminIncCtx?.contexto || null,
+  });
+}
+
+async function _jadminEliminarIncidente(incidentId) {
+  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+  const ok = confirm('¿Eliminar este incidente? Esta acción no se puede deshacer y puede afectar el presentismo del chofer.');
+  if (!ok) return;
+  try {
+    const { error } = await _db.from('incidents').delete().eq('incident_id', incidentId);
+    if (error) throw new Error(error.message);
+    toast('Incidente eliminado', 'success');
+    if (_jadminIncCtx?.logId && typeof abrirDetalleJornadaAdmin === 'function') {
+      abrirDetalleJornadaAdmin(_jadminIncCtx.logId);
+    }
+    if (typeof _alxRefrescar === 'function') _alxRefrescar();
+  } catch (e) {
+    console.error('[incidente] error eliminando:', e);
+    toast('No se pudo eliminar el incidente: ' + (e.message || 'error desconocido'), 'error');
+  }
 }
 
 // La card "Incidentes recientes" del dashboard se movió al Centro de Alertas
@@ -15024,6 +15144,9 @@ function _jadminRenderDetalle(det) {
       #jd-content .jd-rend-diff.ok   { color: var(--green, #27c47a); }
       #jd-content .jd-rend-diff.bad  { color: var(--red, #e2504a); }
       #jd-content .jd-rend-diff.warn { color: var(--amber, #f5a623); }
+      #jd-content .inc-menu-thumbs { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+      #jd-content .inc-menu-thumb { display: block; width: 48px; height: 48px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border, #1f2937); flex-shrink: 0; }
+      #jd-content .inc-menu-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
     </style>
   `;
 
@@ -15114,6 +15237,10 @@ function _jadminRenderDetalle(det) {
     `;
   }
 
+  // Solo administración puede editar/eliminar incidentes (supervisión y chofer no)
+  const esAdminIncidentes = PERFIL_USUARIO?.roles?.name === 'administracion';
+  _jadminIncCache = incidents || [];
+
   const incidentesCard = `
     <div class="jd-card">
       <h4 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -15124,13 +15251,30 @@ function _jadminRenderDetalle(det) {
       ${incidents.length ? `<div class="jd-list">${incidents.map(i => {
         const sev = String(i.severity || '').toLowerCase();
         const badgeCls = sev === 'grave' ? 'b-grave' : sev === 'medio' ? 'b-medio' : 'b-leve';
+        const fotos = Array.isArray(i.photo_urls) ? i.photo_urls : [];
+        const thumbsHtml = fotos.length ? `
+          <div class="inc-menu-thumbs">${fotos.map((u, n) => `
+            <a class="inc-menu-thumb" href="${_escHtml(u)}" target="_blank" rel="noopener" title="Ver foto ${n + 1}">
+              <img src="${_escHtml(u)}" alt="Foto ${n + 1}">
+            </a>`).join('')}
+          </div>` : '';
+        const kebabHtml = esAdminIncidentes ? `
+          <div class="kebab-wrap" style="align-self:flex-start">
+            <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">⋮</button>
+            <div class="kebab-menu" id="inc-menu-${_escHtml(i.incident_id)}">
+              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">✏️ Editar</button>
+              <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">🗑 Eliminar</button>
+            </div>
+          </div>` : '';
         return `
           <div class="jd-item">
             <div class="lft">
               <div><b>${_escHtml(i.type || 'Incidente')}</b> <span class="jd-badge ${badgeCls}">${_escHtml(i.severity || '—')}</span></div>
               <div style="color:var(--muted2);font-size:11px">${_escHtml(i.description || '—')}</div>
               ${i.location ? `<div style="color:var(--muted2);font-size:10.5px">📍 ${_escHtml(i.location)}</div>` : ''}
+              ${thumbsHtml}
             </div>
+            ${kebabHtml}
           </div>
         `;
       }).join('')}</div>` : `<div class="jd-empty">Sin incidentes.</div>`}
