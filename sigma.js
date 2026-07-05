@@ -3333,27 +3333,8 @@ function _renderNegocioFiltrado() {
   _renderNegocioChart('fact');
   _renderNegocioRanking('ingresos');
 
-  // ── Alertas de negocio ──
-  const alertaNegEl = document.getElementById('dash-alertas-neg');
-  if (alertaNegEl) {
-    if (alertas.length === 0) {
-      alertaNegEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Sin alertas pendientes ✓</div>';
-    } else {
-      const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición' };
-      alertaNegEl.innerHTML = alertas.map(a =>
-        `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border:1px solid rgba(231,76,60,0.25);border-radius:7px;margin-bottom:6px">
-          <div>
-            <div style="font-size:12px;font-weight:600">${TIPO[a.tipo]||a.tipo}</div>
-            <div style="font-size:10px;color:var(--muted)">${a.fecha||''} ${a.nota_chofer?'· '+a.nota_chofer.slice(0,35):''}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-family:'Bebas Neue';font-size:18px;color:var(--red)">$${_AR(Math.abs(a.diferencia_monto||0))}</div>
-            <span class="pill pill-amber" style="font-size:9px">pendiente</span>
-          </div>
-        </div>`
-      ).join('');
-    }
-  }
+  // La card "Alertas de negocio" se mudó al Centro de Alertas del Panel;
+  // los datos de `alertas` siguen alimentando los KPIs de esta vista.
 }
 
 // ── Heatmap de frecuencia ─────────────────────
