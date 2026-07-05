@@ -744,7 +744,7 @@
     </div>
    <div class="topbar-right">
   <span class="role-badge" style="background:var(--amber-lo);color:var(--amber);border:1px solid rgba(245,166,35,0.3)">👑 Admin</span>
-  <div class="tb-btn">🔔</div>
+  <div class="tb-btn" id="tb-bell" style="position:relative" onclick="alxBellClick()">🔔<span class="alx-bubble" id="alx-bell-badge" style="display:none"></span></div>
   
   <div id="btn-admin-settings" class="tb-btn" onclick="openSettingsHub()" style="display: none; cursor: pointer;">
     ⚙️
@@ -761,16 +761,11 @@
       <!-- Switcher de contexto: solo admin/supervisor -->
       <div id="dash-ctx-bar" style="display:none;margin-bottom:16px">
         <div class="filter-tabs">
-          <div class="ftab active" onclick="dashCambiarVista('rendimiento',this)">📈 Mi Rendimiento</div>
-          <div class="ftab" onclick="dashCambiarVista('negocio',this)">🏢 Negocio</div>
+          <div class="ftab active" data-vista="rendimiento" onclick="dashCambiarVista('rendimiento',this)">📈 Mi Rendimiento</div>
+          <div class="ftab" data-vista="negocio" onclick="dashCambiarVista('negocio',this)">🏢 Negocio</div>
+          <div class="ftab" data-vista="alertas" id="dash-tab-alertas" style="position:relative" onclick="dashCambiarVista('alertas',this)">🔔 Alertas<span class="alx-bubble" id="alx-tab-badge" style="display:none"></span></div>
         </div>
       </div>
-
-      <!-- Alertas grilla vs. realidad (solo admin) -->
-      <div id="dash-alertas-grilla" style="display:none;margin-bottom:16px"></div>
-
-      <!-- Incidentes recientes (solo admin, últimos 7 días) -->
-      <div id="dash-incidentes-recientes" style="display:none;margin-bottom:16px"></div>
 
       <!-- ── Vista Chofer: Mi Rendimiento ── -->
       <div id="dash-view-rendimiento">
@@ -956,6 +951,16 @@
           <div id="dash-alertas-neg"></div>
         </div>
 
+      </div>
+
+      <!-- ── Vista Centro de Alertas (admin/supervisión) ── -->
+      <div id="dash-view-alertas" style="display:none">
+        <div id="alx-pendientes" style="margin-bottom:12px"></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px">
+          <div class="alx-cats" id="alx-chips" style="flex:1"></div>
+          <button class="btn btn-ghost" style="font-size:11px;padding:7px 12px;white-space:nowrap" onclick="alxMarcarTodasVistas()">✓ Marcar todas como vistas</button>
+        </div>
+        <div id="alx-body"></div>
       </div>
 
     </div>

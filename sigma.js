@@ -2669,22 +2669,27 @@ async function cargarDashboard() {
   const incQuick = document.getElementById('dash-incidente-quick');
   if (incQuick) incQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
-  if (PERFIL_USUARIO?.roles?.name === 'administracion') {
-    cargarAlertasGrilla();
-    cargarIncidentesRecientes();
-  }
+  _alxActualizarBadges(); // badges de alertas (campanita + pestaña) en segundo plano
   if (esAdmin && _dashVistaActual === 'negocio') await _cargarViewNegocio();
+  else if (esAdmin && _dashVistaActual === 'alertas') dashCambiarVista('alertas');
   else { _dashVistaActual = 'rendimiento'; await _cargarViewRendimiento(); }
 }
 
 function dashCambiarVista(vista, el) {
-  el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  const bar = document.getElementById('dash-ctx-bar');
+  if (!el && bar) el = bar.querySelector(`.ftab[data-vista="${vista}"]`);
+  if (el) {
+    el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
   _dashVistaActual = vista;
   document.getElementById('dash-view-rendimiento').style.display = vista === 'rendimiento' ? '' : 'none';
   document.getElementById('dash-view-negocio').style.display     = vista === 'negocio'     ? '' : 'none';
+  const va = document.getElementById('dash-view-alertas');
+  if (va) va.style.display = vista === 'alertas' ? '' : 'none';
   if (vista === 'negocio')     _cargarViewNegocio();
   if (vista === 'rendimiento') _cargarViewRendimiento();
+  if (vista === 'alertas')     cargarCentroAlertas();
 }
 
 function dashRendPeriod(tipo, el) {
@@ -2700,6 +2705,8 @@ function dashRendPeriod(tipo, el) {
 async function _cargarViewRendimiento() {
   document.getElementById('dash-view-rendimiento').style.display = '';
   document.getElementById('dash-view-negocio').style.display     = 'none';
+  const _vAlx = document.getElementById('dash-view-alertas');
+  if (_vAlx) _vAlx.style.display = 'none';
 
   const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Cargando...</div>';
   ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
@@ -3054,6 +3061,8 @@ function _periodoDesde(p) {
 async function _cargarViewNegocio() {
   document.getElementById('dash-view-rendimiento').style.display = 'none';
   document.getElementById('dash-view-negocio').style.display     = '';
+  const _vAlx = document.getElementById('dash-view-alertas');
+  if (_vAlx) _vAlx.style.display = 'none';
 
   const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando...</div>';
   ['dash-neg-kpis-main','dash-neg-kpis-sec','dash-panel-fact','dash-panel-gastos','dash-ranking-body','dash-alertas-neg'].forEach(id => {
@@ -12794,10 +12803,8 @@ async function guardarIncidente() {
     if (_incDesdeAdmin && payload.log_id && typeof abrirDetalleJornadaAdmin === 'function') {
       abrirDetalleJornadaAdmin(payload.log_id);
     }
-    // Refrescar la card de incidentes recientes del dashboard admin
-    if (PERFIL_USUARIO?.roles?.name === 'administracion' && typeof cargarIncidentesRecientes === 'function') {
-      cargarIncidentesRecientes();
-    }
+    // Refrescar el Centro de Alertas (badges + vista si está abierta)
+    if (typeof _alxRefrescar === 'function') _alxRefrescar();
   } catch (e) {
     console.error('[incidente] error guardando:', e);
     toast('No se pudo guardar el incidente: ' + (e.message || 'error desconocido'), 'error');
@@ -12814,82 +12821,8 @@ function abrirIncidenteDesdeJornadaAdmin() {
   abrirModalIncidente(_jadminIncCtx);
 }
 
-// ── Card "Incidentes recientes" del dashboard admin (últimos 7 días) ──
-async function cargarIncidentesRecientes() {
-  const cont = document.getElementById('dash-incidentes-recientes');
-  if (!cont) return;
-  if (PERFIL_USUARIO?.roles?.name !== 'administracion') { cont.style.display = 'none'; return; }
-
-  try {
-    const desde = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: incs, error } = await _db
-      .from('incidents')
-      .select('incident_id, driver_id, log_id, type, severity, description, location, photo_urls, created_at_device')
-      .gte('created_at_device', desde)
-      .order('created_at_device', { ascending: false })
-      .limit(10);
-    if (error) throw error;
-
-    if (!incs || !incs.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
-
-    const driverIds = [...new Set(incs.map(i => i.driver_id).filter(Boolean))];
-    const logIds    = [...new Set(incs.map(i => i.log_id).filter(Boolean))];
-    const [uRes, lRes] = await Promise.all([
-      driverIds.length
-        ? _db.from('users').select('user_id, full_name').in('user_id', driverIds)
-        : Promise.resolve({ data: [] }),
-      logIds.length
-        ? _db.from('daily_logs').select('log_id, trucks(numero_interno, plate)').in('log_id', logIds)
-        : Promise.resolve({ data: [] }),
-    ]);
-    const nombres = {};
-    (uRes.data || []).forEach(u => { nombres[u.user_id] = u.full_name; });
-    const moviles = {};
-    (lRes.data || []).forEach(l => {
-      moviles[l.log_id] = l.trucks?.numero_interno
-        ? `móvil ${l.trucks.numero_interno}`
-        : (l.trucks?.plate || '');
-    });
-
-    const filas = incs.map(i => {
-      const info  = _INC_TIPO_INFO[i.type] || _INC_TIPO_INFO.otro;
-      const sev   = ['leve', 'moderado', 'grave'].includes(i.severity) ? i.severity : 'leve';
-      const quien = nombres[i.driver_id] || 'Chofer';
-      const movil = i.log_id ? moviles[i.log_id] : '';
-      const descCorta = (i.description || '').length > 90
-        ? i.description.slice(0, 90) + '…'
-        : (i.description || '');
-      const nFotos = Array.isArray(i.photo_urls) ? i.photo_urls.length : 0;
-      const detalle = [
-        descCorta ? `"${_escHtml(descCorta)}"` : '',
-        i.location ? _escHtml(i.location) : '',
-        _incFmtFecha(i.created_at_device),
-        nFotos ? `${nFotos} foto${nFotos === 1 ? '' : 's'}` : '',
-      ].filter(Boolean).join(' · ');
-      return `
-        <div class="inc-rec-item ${sev}">
-          <span class="ico">${info.ico}</span>
-          <div class="txt">
-            <strong>${_escHtml(quien)}</strong> reportó <strong>${_escHtml(info.label.toLowerCase())} ${_escHtml(sev)}</strong>${movil ? ` en el ${_escHtml(movil)}` : ''}
-            <small>${detalle}</small>
-          </div>
-        </div>`;
-    }).join('');
-
-    cont.innerHTML = `
-      <div class="card">
-        <div class="agr-head">
-          <div class="agr-title">⚠️ Incidentes recientes — últimos 7 días</div>
-          <span class="agr-badge">${incs.length}</span>
-        </div>
-        ${filas}
-      </div>`;
-    cont.style.display = '';
-  } catch (err) {
-    console.error('Error cargando incidentes recientes:', err);
-    cont.style.display = 'none';
-  }
-}
+// La card "Incidentes recientes" del dashboard se movió al Centro de Alertas
+// del Panel (ver _alxFetchIncidentes, al final de este archivo).
 
 // Fecha corta para la card: "hoy 14:32" o "28-06-2026 14:32"
 function _incFmtFecha(iso) {
@@ -15935,75 +15868,33 @@ function marcarAlertaGrillaVista(id) {
   _renderAlertasGrilla();
 }
 
-// ── Card del dashboard admin ────────────────────────────────────
+// ── Fuente de datos del grupo "Jornadas/Grilla" del Centro de Alertas ──
+// (la card #dash-alertas-grilla del dashboard se movió a la vista Alertas del Panel)
 async function cargarAlertasGrilla() {
-  const cont = document.getElementById('dash-alertas-grilla');
-  if (!cont) return;
-  if (PERFIL_USUARIO?.roles?.name !== 'administracion') { cont.style.display = 'none'; return; }
-
   const hoy = _gHoyIso();
-  try {
-    const [rLogs, rAsig] = await Promise.all([
-      _db.from('daily_logs')
-         .select('log_id, driver_id, truck_id, log_date, hora_inicio, status, grilla_motivo, users(full_name), trucks(numero_interno, plate)')
-         .eq('log_date', hoy),
-      _db.from('asignaciones_grilla')
-         .select('fecha, truck_id, driver_id, estado, users(full_name), trucks(numero_interno, plate)')
-         .eq('fecha', hoy),
-    ]);
+  const [rLogs, rAsig] = await Promise.all([
+    _db.from('daily_logs')
+       .select('log_id, driver_id, truck_id, log_date, hora_inicio, status, grilla_motivo, users(full_name), trucks(numero_interno, plate)')
+       .eq('log_date', hoy),
+    _db.from('asignaciones_grilla')
+       .select('fecha, truck_id, driver_id, estado, users(full_name), trucks(numero_interno, plate)')
+       .eq('fecha', hoy),
+  ]);
 
-    const asigs = rAsig.data || [];
-    if (!asigs.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; } // grilla del día vacía → ocultar
+  const asigs = rAsig.data || [];
+  if (!asigs.length) { _alertasGrillaActuales = []; return _alertasGrillaActuales; } // grilla del día vacía → nada
 
-    const vistas = _alertasGrillaVistas().filter(v => v.startsWith(hoy + '|'));
-    localStorage.setItem('grillaAlertasVistas', JSON.stringify(vistas)); // limpia días anteriores
+  const vistas = _alertasGrillaVistas().filter(v => v.startsWith(hoy + '|'));
+  localStorage.setItem('grillaAlertasVistas', JSON.stringify(vistas)); // limpia días anteriores
 
-    _alertasGrillaActuales = _grillaDetectarConflictosDia(hoy, rLogs.data || [], asigs)
-      .filter(a => !vistas.includes(a.id));
-
-    _renderAlertasGrilla();
-  } catch (err) {
-    console.error('Error cargando alertas grilla vs. realidad:', err);
-    cont.style.display = 'none';
-  }
+  _alertasGrillaActuales = _grillaDetectarConflictosDia(hoy, rLogs.data || [], asigs)
+    .filter(a => !vistas.includes(a.id));
+  return _alertasGrillaActuales;
 }
 
+// Re-renderiza el grupo de grilla dentro del Centro de Alertas
 function _renderAlertasGrilla() {
-  const cont = document.getElementById('dash-alertas-grilla');
-  if (!cont) return;
-
-  const hoy = _gHoyIso();
-  const n = _alertasGrillaActuales.length;
-
-  const filas = n
-    ? _alertasGrillaActuales.map(a => `
-        <div class="agr-alerta ${a.sev === 'warn' ? 'warn' : ''}">
-          <div class="agr-ico">${a.ico}</div>
-          <div class="agr-txt">
-            ${a.texto}
-            <small>${a.sub}</small>
-            ${a.motivo ? `
-            <div class="agr-motivo">
-              <span class="agr-motivo-k">Motivo del chofer</span>
-              "${_escHtml(a.motivo)}"
-            </div>` : ''}
-          </div>
-          <div class="agr-acciones">
-            <button class="agr-btn" onclick="corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})">✏️ Corregir grilla</button>
-            <button class="agr-btn ok" onclick="marcarAlertaGrillaVista('${a.id}')">✓ Marcar visto</button>
-          </div>
-        </div>`).join('')
-    : `<div class="agr-vacio">✓ Todas las jornadas de hoy coinciden con la grilla</div>`;
-
-  cont.innerHTML = `
-    <div class="card">
-      <div class="agr-head">
-        <div class="agr-title">⚠ Grilla vs. realidad — hoy ${_gDDMM(hoy)}</div>
-        ${n ? `<span class="agr-badge">${n} ${n === 1 ? 'alerta' : 'alertas'}</span>` : ''}
-      </div>
-      ${filas}
-    </div>`;
-  cont.style.display = '';
+  if (typeof _alxSyncGrilla === 'function') _alxSyncGrilla();
 }
 
 // Navega a la grilla y abre la celda del móvil real usado, esperando a que cargue
@@ -16016,4 +15907,461 @@ async function corregirGrillaDesdeAlerta(fecha, truckId) {
     await new Promise(r => setTimeout(r, 100));
   }
   abrirGrillaCelda(fecha, truckId);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// CENTRO DE ALERTAS — vista del Panel (admin/supervisión)
+// ═══════════════════════════════════════════════════════════════
+
+const ALX_CATS = [
+  { key: 'efectivo',      lbl: '💵 Efectivo',        titulo: '💵 Efectivo faltante' },
+  { key: 'incidentes',    lbl: '⚠️ Incidentes',      titulo: '⚠️ Incidentes' },
+  { key: 'grilla',        lbl: '🗓️ Jornadas/Grilla', titulo: '🗓️ Jornadas / Grilla' },
+  { key: 'documentos',    lbl: '📄 Documentos',      titulo: '📄 Documentos' },
+  { key: 'mantenimiento', lbl: '🔧 Mantenimiento',   titulo: '🔧 Mantenimiento' },
+];
+
+let _alxItems = [];      // alertas vigentes (sin las vistas), todas las categorías
+let _alxPendCount = 0;   // rendiciones esperando aprobación (línea superior, no descartable)
+let _alxFiltro = 'todas';
+let _alxCargado = false;
+let _alxEnCurso = null;  // promesa en vuelo para no duplicar cargas
+
+function _alxEsAdminOSup() {
+  const r = PERFIL_USUARIO?.roles?.name;
+  return r === 'administracion' || r === 'supervision';
+}
+
+// 'YYYY-MM-DD' → 'DD-MM-AAAA'
+function _alxFecha(iso) {
+  if (!iso || iso.length < 10) return iso || '';
+  return `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+}
+
+// ── Vistos (localStorage 'alertasVistas', purga > 30 días) ─────
+function _alxVistasRaw() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('alertasVistas') || '[]');
+    return Array.isArray(arr) ? arr.filter(v => v && v.id) : [];
+  } catch (e) { return []; }
+}
+
+function _alxVistas() {
+  const lim = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const raw = _alxVistasRaw();
+  const limpio = raw.filter(v => (v.ts || 0) >= lim);
+  if (limpio.length !== raw.length) localStorage.setItem('alertasVistas', JSON.stringify(limpio));
+  return new Set(limpio.map(v => v.id));
+}
+
+function _alxGuardarVisto(id) {
+  const arr = _alxVistasRaw();
+  if (!arr.some(v => v.id === id)) arr.push({ id, ts: Date.now() });
+  localStorage.setItem('alertasVistas', JSON.stringify(arr));
+}
+
+// ── Navegación desde las alertas ───────────────────────────────
+function alxIrRendiciones() {
+  _sueldosSubActual = 'rendiciones';
+  goTo('sueldos');
+}
+
+function alxIrMantenimiento() {
+  openSettingsHub();
+  switchConfigTab('tab-mantenimiento'); // dispara cargarMantenimientoTab()
+}
+
+function alxBellClick() {
+  if (!_alxEsAdminOSup()) return; // el chofer no tiene centro de alertas
+  _dashVistaActual = 'alertas';
+  goTo('dashboard'); // cargarDashboard() activa la vista Alertas
+}
+
+// ── Fuentes de datos (una por categoría) ───────────────────────
+
+// Línea superior: rendiciones esperando aprobación (no descartable)
+async function _alxFetchPendientes() {
+  const { count, error } = await _db.from('rendicion_cierre')
+    .select('rendicion_id', { count: 'exact', head: true })
+    .or('admin_status.eq.pendiente,admin_status.is.null')
+    .neq('estado', 'rechazado');
+  if (error) throw error;
+  return count || 0;
+}
+
+// 1. Efectivo: faltantes diarios (últimos 7 días) + faltante neto del mes por chofer
+async function _alxFetchEfectivo() {
+  const items = [];
+  const hoy = new Date();
+  const d7 = new Date(hoy); d7.setDate(d7.getDate() - 7);
+  const desde7 = d7.toISOString().slice(0, 10);
+  const yyyymm = hoy.getFullYear() * 100 + (hoy.getMonth() + 1);
+
+  const [rend7Res, mesRes] = await Promise.all([
+    _db.from('rendicion_cierre')
+       .select('rendicion_id, driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, users(full_name)')
+       .neq('estado', 'rechazado')
+       .gte('fecha', desde7)
+       .order('fecha', { ascending: false }),
+    cargarRendicionesPeriodo(yyyymm), // misma agregación que sueldos (neto + tolerancia)
+  ]);
+
+  // (a) Faltante diario > $500 — fórmula canónica: declarado + gastos − esperado (negativa = falta)
+  if (!rend7Res.error) {
+    (rend7Res.data || []).forEach(r => {
+      const declarado = Number(r.efectivo_declarado) || 0;
+      const esperado  = Number(r.efectivo_esperado)  || 0;
+      const gastos    = Number(r.gastos_extra)       || 0;
+      const diff = declarado + gastos - esperado;
+      if (diff >= -PAYROLL_TOLERANCIA_RENDICION) return;
+      const nombre = _escHtml(r.users?.full_name || 'Chofer');
+      items.push({
+        id: `efectivo|rend|${r.rendicion_id}`,
+        cat: 'efectivo', sev: 'roja', ico: '💵', orden: r.fecha,
+        texto: `<strong>${nombre}</strong> — faltante de <strong>$${_AR(-diff)}</strong> en la rendición del ${_alxFecha(r.fecha)}.`,
+        sub: `Declaró $${_AR(declarado)}${gastos ? ` · gastos extra $${_AR(gastos)}` : ''} · debería entregar $${_AR(esperado)}`,
+        acciones: [{ lbl: '→ Ver rendición', fn: 'alxIrRendiciones()' }],
+      });
+    });
+  }
+
+  // (b) Faltante NETO del mes en curso > $500 por chofer
+  const mesKey = `${hoy.getFullYear()}${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+  Object.values(mesRes?.porChofer || {}).forEach(c => {
+    const faltNeto = Math.max(0, -(c.neto || 0));
+    if (faltNeto <= PAYROLL_TOLERANCIA_RENDICION) return;
+    const nombre = _escHtml(c.chofer_nombre || 'Chofer');
+    items.push({
+      id: `efectivo|mes|${c.driver_id}|${mesKey}`,
+      cat: 'efectivo', sev: 'ambar', ico: '💵', orden: '9999-99-99', // arriba dentro de su tipo
+      texto: `<strong>${nombre}</strong> — el faltante neto del mes llegó a <strong>$${_AR(faltNeto)}</strong> (supera la tolerancia, hoy se descontaría en el recibo).`,
+      sub: `Acumulado del mes en curso · ${c.cant} ${c.cant === 1 ? 'rendición' : 'rendiciones'}`,
+      acciones: [{ lbl: '→ Ver arqueo', fn: 'alxIrRendiciones()' }],
+    });
+  });
+
+  // Más reciente arriba (los acumulados del mes quedan primeros)
+  items.sort((a, b) => (b.orden || '').localeCompare(a.orden || ''));
+  return items;
+}
+
+// 2. Incidentes de los últimos 7 días (lógica movida de la card del dashboard)
+async function _alxFetchIncidentes() {
+  const desde = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: incs, error } = await _db
+    .from('incidents')
+    .select('incident_id, driver_id, log_id, type, severity, description, location, photo_urls, created_at_device')
+    .gte('created_at_device', desde)
+    .order('created_at_device', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  if (!incs || !incs.length) return [];
+
+  const driverIds = [...new Set(incs.map(i => i.driver_id).filter(Boolean))];
+  const logIds    = [...new Set(incs.map(i => i.log_id).filter(Boolean))];
+  const [uRes, lRes] = await Promise.all([
+    driverIds.length
+      ? _db.from('users').select('user_id, full_name').in('user_id', driverIds)
+      : Promise.resolve({ data: [] }),
+    logIds.length
+      ? _db.from('daily_logs').select('log_id, trucks(numero_interno, plate)').in('log_id', logIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const nombres = {};
+  (uRes.data || []).forEach(u => { nombres[u.user_id] = u.full_name; });
+  const moviles = {};
+  (lRes.data || []).forEach(l => {
+    moviles[l.log_id] = l.trucks?.numero_interno
+      ? `móvil ${l.trucks.numero_interno}`
+      : (l.trucks?.plate || '');
+  });
+
+  return incs.map(i => {
+    const info  = _INC_TIPO_INFO[i.type] || _INC_TIPO_INFO.otro;
+    const sev   = ['leve', 'moderado', 'grave'].includes(i.severity) ? i.severity : 'leve';
+    const quien = nombres[i.driver_id] || 'Chofer';
+    const movil = i.log_id ? moviles[i.log_id] : '';
+    const descCorta = (i.description || '').length > 90
+      ? i.description.slice(0, 90) + '…'
+      : (i.description || '');
+    const nFotos = Array.isArray(i.photo_urls) ? i.photo_urls.length : 0;
+    const detalle = [
+      descCorta ? `"${_escHtml(descCorta)}"` : '',
+      i.location ? _escHtml(i.location) : '',
+      _incFmtFecha(i.created_at_device),
+      nFotos ? `${nFotos} foto${nFotos === 1 ? '' : 's'}` : '',
+    ].filter(Boolean).join(' · ');
+    return {
+      id: `incidentes|${i.incident_id}`,
+      cat: 'incidentes',
+      sev: sev === 'grave' ? 'roja' : (sev === 'moderado' ? 'ambar' : 'azul'),
+      ico: info.ico,
+      texto: `<strong>${_escHtml(quien)}</strong> reportó <strong>${_escHtml(info.label.toLowerCase())} ${_escHtml(sev)}</strong>${movil ? ` en el ${_escHtml(movil)}` : ''}.`,
+      sub: detalle,
+      acciones: i.log_id ? [{ lbl: '→ Ver incidente', fn: `abrirDetalleJornadaAdmin(${Number(i.log_id)})` }] : [],
+    };
+  });
+}
+
+// 3. Jornadas/Grilla: reusa cargarAlertasGrilla() (con su propio visto por localStorage)
+function _alxItemsGrilla() {
+  return (_alertasGrillaActuales || []).map(a => ({
+    id: `grilla|${a.id}`,
+    grillaId: a.id,
+    cat: 'grilla',
+    sev: a.sev === 'warn' ? 'ambar' : 'azul',
+    ico: a.ico,
+    texto: a.texto,
+    sub: a.sub,
+    motivo: a.motivo || null,
+    acciones: [{ lbl: '✏️ Corregir grilla', fn: `corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})` }],
+    vistoFn: `marcarAlertaGrillaVista('${a.id}')`,
+  }));
+}
+
+async function _alxFetchGrilla() {
+  await cargarAlertasGrilla(); // llena _alertasGrillaActuales (ya sin las vistas)
+  return _alxItemsGrilla();
+}
+
+// El visto de grilla re-renderiza el Centro de Alertas
+function _alxSyncGrilla() {
+  _alxItems = _alxItems.filter(i => i.cat !== 'grilla').concat(_alxItemsGrilla());
+  _alxRender();
+  _alxPintarBadges();
+}
+
+// 4. Documentos del camión vencidos o dentro de alert_days
+const _ALX_DOC_LBL = {
+  VTV: 'VTV', seguro: 'póliza de seguro', habilitacion: 'habilitación CNRT',
+  libreta_porte: 'libreta de porte', matafuegos: 'carga de matafuegos',
+  ruta: 'permiso de ruta', otro: 'documento',
+};
+
+async function _alxFetchDocumentos() {
+  const { data, error } = await _db.from('truck_docs')
+    .select('doc_id, doc_type, doc_number, expiry_date, alert_days, trucks(numero_interno, plate, status)')
+    .not('expiry_date', 'is', null);
+  if (error) throw error;
+
+  const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0);
+  const items = [];
+  (data || []).forEach(d => {
+    const t = d.trucks;
+    if (!t || (t.status !== 'active' && t.status !== 'activo')) return;
+    const [y, m, dd] = d.expiry_date.split('-').map(Number);
+    const venc = new Date(y, m - 1, dd);
+    const dias = Math.round((venc - hoy0) / 86400000);
+    const alertDays = d.alert_days ?? 30;
+    if (dias > alertDays) return;
+
+    const movil = t.numero_interno ? `móvil ${t.numero_interno}` : (t.plate || '');
+    const doc   = _ALX_DOC_LBL[d.doc_type] || d.doc_type || 'documento';
+    const fechaTxt = _alxFecha(d.expiry_date);
+    let texto;
+    if (dias < 0)        texto = `La <strong>${doc} del ${_escHtml(movil)}</strong> venció hace <strong>${-dias} ${dias === -1 ? 'día' : 'días'}</strong> (${fechaTxt}).`;
+    else if (dias === 0) texto = `La <strong>${doc} del ${_escHtml(movil)}</strong> vence <strong>hoy</strong> (${fechaTxt}).`;
+    else                 texto = `La <strong>${doc} del ${_escHtml(movil)}</strong> vence en <strong>${dias} ${dias === 1 ? 'día' : 'días'}</strong> (${fechaTxt}).`;
+
+    items.push({
+      id: `documentos|${d.doc_id}|${d.expiry_date}`,
+      cat: 'documentos',
+      sev: dias < 0 ? 'roja' : 'ambar',
+      ico: '📄',
+      _dias: dias,
+      texto,
+      sub: `${d.doc_number ? _escHtml(d.doc_number) + ' · ' : ''}alerta configurada a ${alertDays} días`,
+      acciones: [{ lbl: '→ Ver documento', fn: "goTo('documentos')" }],
+    });
+  });
+
+  items.sort((a, b) => a._dias - b._dias); // lo más urgente arriba
+  return items;
+}
+
+// 5. Mantenimiento: planes vencidos/próximos de móviles activos (lógica existente)
+async function _alxFetchMantenimiento() {
+  const lista = await cargarMantenimientoFlota(); // ya ordena vencido → próximo
+  return (lista || []).map(x => {
+    const movil = x.numero_interno ? `móvil ${x.numero_interno}` : (x.plate || '');
+    const kmAct  = x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—';
+    const kmDue  = x.next_due_km != null ? x.next_due_km.toLocaleString('es-AR') : '—';
+    const texto = x.estado === 'vencido'
+      ? `El <strong>${_escHtml(movil)}</strong> pasó el service <strong>${_escHtml(x.plan_name)}</strong> hace <strong>${Math.abs(x.km_restantes || 0).toLocaleString('es-AR')} km</strong>.`
+      : `El <strong>${_escHtml(movil)}</strong> está a <strong>${(x.km_restantes || 0).toLocaleString('es-AR')} km</strong> del próximo service (<strong>${_escHtml(x.plan_name)}</strong>).`;
+    return {
+      id: `mantenimiento|${x.truck_id}|${x.plan_name}|${x.next_due_km}`,
+      cat: 'mantenimiento',
+      sev: x.estado === 'vencido' ? 'roja' : 'violeta',
+      ico: '🔧',
+      texto,
+      sub: `KM actual ${kmAct} · service a los ${kmDue}`,
+      acciones: [{ lbl: '→ Ver plan', fn: 'alxIrMantenimiento()' }],
+    };
+  });
+}
+
+// ── Carga (Promise.all con try/catch por categoría) ────────────
+function _alxCargarDatos() {
+  if (_alxEnCurso) return _alxEnCurso;
+  _alxEnCurso = (async () => {
+    const vistas = _alxVistas();
+    const [pend, efectivo, incidentes, grilla, documentos, mantenimiento] = await Promise.all([
+      _alxFetchPendientes().catch(e => { console.error('[alertas] rendiciones pendientes:', e); return 0; }),
+      _alxFetchEfectivo().catch(e => { console.error('[alertas] efectivo:', e); return []; }),
+      _alxFetchIncidentes().catch(e => { console.error('[alertas] incidentes:', e); return []; }),
+      _alxFetchGrilla().catch(e => { console.error('[alertas] grilla:', e); return []; }),
+      _alxFetchDocumentos().catch(e => { console.error('[alertas] documentos:', e); return []; }),
+      _alxFetchMantenimiento().catch(e => { console.error('[alertas] mantenimiento:', e); return []; }),
+    ]);
+    _alxPendCount = pend;
+    _alxItems = [...efectivo, ...incidentes, ...grilla, ...documentos, ...mantenimiento]
+      .filter(it => it.vistoFn ? true : !vistas.has(it.id)); // las de grilla ya vienen filtradas por su propio visto
+    _alxCargado = true;
+  })().finally(() => { _alxEnCurso = null; });
+  return _alxEnCurso;
+}
+
+// Entrada a la pestaña (carga lazy, siempre refresca)
+async function cargarCentroAlertas() {
+  const body = document.getElementById('alx-body');
+  if (!body || !_alxEsAdminOSup()) return;
+  body.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:24px">Cargando alertas...</div>';
+  await _alxCargarDatos();
+  _alxRender();
+  _alxPintarBadges();
+}
+
+// Refresco silencioso (ej.: después de cargar un incidente)
+async function _alxRefrescar() {
+  if (!_alxEsAdminOSup()) return;
+  await _alxCargarDatos();
+  if (_dashVistaActual === 'alertas') _alxRender();
+  _alxPintarBadges();
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function _alxRender() {
+  const body  = document.getElementById('alx-body');
+  const chips = document.getElementById('alx-chips');
+  const pend  = document.getElementById('alx-pendientes');
+  if (!body) return;
+
+  // Línea superior: rendiciones esperando aprobación
+  if (pend) {
+    pend.innerHTML = _alxPendCount > 0 ? `
+      <div class="alx-pend">
+        <span style="font-size:20px">📥</span>
+        <div style="flex:1">Tenés <strong>${_alxPendCount}</strong> ${_alxPendCount === 1 ? 'rendición esperando' : 'rendiciones esperando'} aprobación</div>
+        <button class="alx-btn ir" onclick="alxIrRendiciones()">→ Ir a Rendiciones</button>
+      </div>` : '';
+  }
+
+  // Chips (Todas + solo categorías con alertas)
+  const counts = {};
+  _alxItems.forEach(i => { counts[i.cat] = (counts[i.cat] || 0) + 1; });
+  const total = _alxItems.length;
+  if (_alxFiltro !== 'todas' && !counts[_alxFiltro]) _alxFiltro = 'todas';
+  if (chips) {
+    let h = `<div class="alx-cat ${_alxFiltro === 'todas' ? 'active' : ''}" onclick="alxFiltrar('todas')">Todas <span class="alx-n">${total}</span></div>`;
+    ALX_CATS.forEach(c => {
+      if (!counts[c.key]) return;
+      h += `<div class="alx-cat ${_alxFiltro === c.key ? 'active' : ''}" onclick="alxFiltrar('${c.key}')">${c.lbl} <span class="alx-n">${counts[c.key]}</span></div>`;
+    });
+    chips.innerHTML = h;
+  }
+
+  if (!total) {
+    body.innerHTML = '<div class="alx-vacio">✓ No hay alertas pendientes — todo en orden</div>';
+    return;
+  }
+
+  let html = '';
+  ALX_CATS.forEach(c => {
+    if (_alxFiltro !== 'todas' && _alxFiltro !== c.key) return;
+    const items = _alxItems.filter(i => i.cat === c.key);
+    if (!items.length) return;
+    html += `
+      <div class="alx-grupo">
+        <div class="alx-grupo-titulo">${c.titulo} <span class="alx-linea"></span></div>
+        ${items.map(_alxItemHtml).join('')}
+      </div>`;
+  });
+  body.innerHTML = html || '<div class="alx-vacio">✓ No hay alertas pendientes — todo en orden</div>';
+}
+
+function _alxItemHtml(it) {
+  const botones = (it.acciones || [])
+    .map(a => `<button class="alx-btn ir" onclick="${a.fn}">${a.lbl}</button>`)
+    .concat(`<button class="alx-btn ok" onclick="${it.vistoFn || `alxMarcarVista('${it.id}')`}">✓ Visto</button>`)
+    .join('');
+  const motivo = it.motivo ? `
+    <div class="agr-motivo">
+      <span class="agr-motivo-k">Motivo del chofer</span>
+      "${_escHtml(it.motivo)}"
+    </div>` : '';
+  return `
+    <div class="alx-alerta ${it.sev}">
+      <span class="alx-ico">${it.ico}</span>
+      <div class="alx-txt">${it.texto}${it.sub ? `<small>${it.sub}</small>` : ''}${motivo}</div>
+      <div class="alx-acc">${botones}</div>
+    </div>`;
+}
+
+function alxFiltrar(cat) {
+  _alxFiltro = cat;
+  _alxRender();
+}
+
+// ── Vistos ─────────────────────────────────────────────────────
+function alxMarcarVista(id) {
+  _alxGuardarVisto(id);
+  _alxItems = _alxItems.filter(i => i.id !== id);
+  _alxRender();
+  _alxPintarBadges();
+}
+
+function alxMarcarTodasVistas() {
+  if (!_alxItems.length) return;
+  const hoy = _gHoyIso();
+  const vistasG = _alertasGrillaVistas().filter(v => v.startsWith(hoy + '|'));
+  _alxItems.forEach(it => {
+    if (it.cat === 'grilla') {
+      if (it.grillaId && !vistasG.includes(it.grillaId)) vistasG.push(it.grillaId);
+    } else {
+      _alxGuardarVisto(it.id);
+    }
+  });
+  localStorage.setItem('grillaAlertasVistas', JSON.stringify(vistasG));
+  _alertasGrillaActuales = [];
+  _alxItems = [];
+  _alxRender();
+  _alxPintarBadges();
+  if (typeof toast === 'function') toast('Todas las alertas quedaron marcadas como vistas');
+}
+
+// ── Badges (pestaña del Panel + campanita) ─────────────────────
+function _alxPintarBadges() {
+  const esAdmin = _alxEsAdminOSup();
+  const n = _alxItems.length; // no cuenta la línea de rendiciones pendientes
+  const txt = n > 99 ? '99+' : String(n);
+  ['alx-tab-badge', 'alx-bell-badge'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = txt;
+    el.style.display = (esAdmin && n > 0) ? 'flex' : 'none';
+  });
+}
+
+// Carga en segundo plano para tener el número apenas se entra al Panel
+async function _alxActualizarBadges() {
+  if (!_alxEsAdminOSup()) { _alxItems = []; _alxPintarBadges(); return; }
+  if (_alxCargado) _alxPintarBadges();
+  try {
+    await _alxCargarDatos();
+    _alxPintarBadges();
+  } catch (e) {
+    console.error('[alertas] badges:', e);
+  }
 }
