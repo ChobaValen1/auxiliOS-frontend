@@ -5123,6 +5123,69 @@ if (typeof obRegistrarHandler === 'function') {
     if (!res || !res.ok) throw new Error(res?.errorMsg || 'No se pudo registrar la carga de combustible');
     return {};
   });
+
+  // Control de neumáticos: reusa registrarControlNeumaticos() (supabase.js).
+  // El log_id TMP-* ya llega remapeado por obSync (dependeDe).
+  // Idempotencia: tire_checks NO tiene created_at_device. Clave elegida:
+  //   - con jornada → log_id + check_date (hay a lo sumo un control por jornada
+  //     y por día; el log_id remapeado es estable entre reintentos);
+  //   - sin jornada → truck_id + check_date + log_id NULL (un control "suelto"
+  //     por camión y día alcanza para no duplicar reintentos).
+  obRegistrarHandler('tire_check', async (payload) => {
+    // Si el remap no ocurrió (op sin dependeDe o idmap perdido), un TMP-*
+    // rompería el insert: se guarda sin vínculo a la jornada.
+    if (_logIdEsTemporal(payload.log_id)) payload.log_id = null;
+    try {
+      let q = _db.from('tire_checks')
+        .select('check_id')
+        .eq('check_date', payload.check_date)
+        .limit(1);
+      q = (payload.log_id != null)
+        ? q.eq('log_id', payload.log_id)
+        : q.eq('truck_id', payload.truck_id).is('log_id', null);
+      const { data: previas } = await q;
+      if (previas && previas.length) return {}; // ya sincronizado por un intento anterior
+    } catch (e) { /* si el pre-chequeo falla, se intenta el insert igual */ }
+    const ok = await registrarControlNeumaticos(payload);
+    if (!ok) throw new Error('No se pudo registrar el control de neumáticos');
+    return {};
+  });
+
+  // Incidente del chofer. NOTA: hoy no existe en la app un formulario de
+  // chofer que inserte en `incidents` (solo lecturas de administración);
+  // el handler queda registrado para cuando ese flujo exista — la
+  // intercepción deberá encolar {tipo:'incidente', payload, blobs:{foto_N},
+  // dependeDe: log_id TMP-*} con created_at_device capturado al momento.
+  // Idempotencia: driver_id + created_at_device (columna existente en incidents).
+  obRegistrarHandler('incidente', async (payload, blobs) => {
+    if (payload.created_at_device && payload.driver_id) {
+      const { data: previas } = await _db
+        .from('incidents')
+        .select('incident_id')
+        .eq('driver_id', payload.driver_id)
+        .eq('created_at_device', payload.created_at_device)
+        .limit(1);
+      if (previas && previas.length) return {}; // ya sincronizado por un intento anterior
+    }
+    const incidente = { ...payload };
+    // Fotos guardadas offline → subirlas recién al sincronizar (mismo patrón que remito_completo)
+    if (blobs) {
+      const fotoUrls = Array.isArray(incidente.photo_urls) ? [...incidente.photo_urls] : [];
+      for (const [campo, blob] of Object.entries(blobs)) {
+        if (!blob) continue;
+        const nombre = `incidente_${payload.driver_id || 'sin-chofer'}_${Date.now()}_${campo}.jpg`;
+        const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
+        if (ue) throw new Error('No se pudo subir una foto del incidente: ' + ue.message);
+        fotoUrls.push(_db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl);
+      }
+      if (fotoUrls.length) incidente.photo_urls = fotoUrls;
+    }
+    // Un log_id TMP-* sin remapear rompería el insert: se guarda sin vínculo
+    if (_logIdEsTemporal(incidente.log_id)) incidente.log_id = null;
+    const { error } = await _db.from('incidents').insert(incidente);
+    if (error) throw new Error(error.message);
+    return {};
+  });
 }
 
 // Mapa en memoria nro_remito → tempId de la op 'remito_pendiente' encolada,
@@ -5215,7 +5278,9 @@ const _OB_ETIQUETAS = {
   remito_pendiente: p  => `🧾 Remito N° ${p?.nro_remito || '—'}`,
   remito_firmar:    p  => `✍️ Firma remito N° ${p?.nro_remito || '—'}`,
   fuel:             () => '⛽ Carga de combustible',
-  rendicion:        () => '💵 Rendición'
+  rendicion:        () => '💵 Rendición',
+  tire_check:       () => '🛞 Control de gomas',
+  incidente:        () => '⚠️ Incidente'
 };
 
 async function abrirColaOffline() {
@@ -5573,13 +5638,11 @@ async function guardarNeumaticos() {
   const btn = document.getElementById('btn-guardar-neumaticos');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
-  // Si la jornada se abrió offline el log_id es TMP-*: resolver al id real o
-  // guardar el control sin vínculo a la jornada (un TMP-* rompería el insert).
+  // Si la jornada se abrió offline el log_id es TMP-*: intentar resolverlo al real
   let _logIdNeu = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
   _logIdNeu = await _resolverLogIdLocal(_logIdNeu);
-  if (_logIdEsTemporal(_logIdNeu)) _logIdNeu = null;
 
-  const exito = await registrarControlNeumaticos({
+  const datos = {
     truck_id:        _truckActual.truck_id,
     log_id:          _logIdNeu,
     check_date:      fecha || new Date().toISOString().slice(0, 10),
@@ -5587,7 +5650,34 @@ async function guardarNeumaticos() {
     brake_condition: frenos,
     pressure_psi:    psi,
     notes:           notas,
-  });
+  };
+
+  // Sin señal, o jornada abierta offline aún sin sincronizar (log_id TMP-*):
+  // encolar en el outbox unificado en lugar de perder el vínculo a la jornada
+  if ((!navigator.onLine || _logIdEsTemporal(_logIdNeu)) && typeof obAdd === 'function') {
+    try {
+      await obAdd({
+        tipo:      'tire_check',
+        payload:   datos,
+        dependeDe: _logIdEsTemporal(_logIdNeu) ? _logIdNeu : null,
+      });
+      if (btn) { btn.textContent = '🔩 Guardar control'; btn.style.pointerEvents = 'auto'; }
+      toast('Control guardado — se sincroniza cuando haya señal 📴', 'success');
+      closeModal('modal-neumaticos');
+      return;
+    } catch (err) {
+      console.error('[offline] No se pudo encolar el control de neumáticos:', err);
+      if (btn) { btn.textContent = '🔩 Guardar control'; btn.style.pointerEvents = 'auto'; }
+      _modalError('neu-error', 'No se pudo guardar el control en el teléfono. Reintentá.');
+      return;
+    }
+  }
+
+  // Online pero sin outbox disponible y log_id aún provisorio: guardar el
+  // control sin vínculo a la jornada (un TMP-* rompería el insert).
+  if (_logIdEsTemporal(datos.log_id)) datos.log_id = null;
+
+  const exito = await registrarControlNeumaticos(datos);
 
   if (btn) { btn.textContent = '🔩 Guardar control'; btn.style.pointerEvents = 'auto'; }
 
