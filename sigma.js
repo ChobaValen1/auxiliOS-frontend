@@ -15483,9 +15483,10 @@ async function initGrilla() {
   const btnCopiarMes = document.getElementById('grilla-btn-copiar-mes');
   if (btnCopiarMes) btnCopiarMes.style.display = _grillaEsAdmin() ? '' : 'none';
 
-  // El chofer no filtra: ve solo los móviles donde está asignado en el mes
+  // Filtros ocultos por defecto en el HTML; solo se muestran a admin/supervisión.
+  // (El chofer nunca filtra: ve únicamente sus móviles de la semana.)
   const filtrosEl = document.getElementById('grilla-filtros');
-  if (filtrosEl) filtrosEl.style.display = _grillaEsChofer() ? 'none' : '';
+  if (filtrosEl) filtrosEl.style.display = _grillaEsChofer() ? 'none' : 'flex';
 
   _grillaAutoSemana = true;
   _grillaDiaIdx = null;
