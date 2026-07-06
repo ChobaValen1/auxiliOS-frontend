@@ -15596,6 +15596,8 @@ function _grillaPoblarFiltros() {
 function renderGrillaTabs() {
   const cont = document.getElementById('grilla-semana-tabs');
   if (!cont) return;
+  // En mobile el chofer navega con las flechas ‹ › de "MI SEMANA"; los tabs se ocultan por CSS
+  cont.classList.toggle('gsem-ocultar-mobile', _grillaEsChofer());
   cont.innerHTML = _grillaSemanas.map((sem, i) => {
     const ini = sem[0], fin = sem[6];
     const rango = ini.slice(5,7) === fin.slice(5,7)
@@ -15757,6 +15759,87 @@ function renderGrillaDia() {
   const semana = _grillaSemanas[_grillaSemanaIdx] || [];
   if (!semana.length) { cont.innerHTML = ''; return; }
 
+  // Bifurcación por rol: el chofer ve "MI SEMANA" (filas con pill de estado);
+  // admin/supervisión ven la vista por día pulida.
+  cont.innerHTML = _grillaEsChofer() ? _grillaHtmlMiSemana(semana) : _grillaHtmlDiaAdmin(semana);
+}
+
+// ── Vista "MI SEMANA" del chofer (mobile) ───────────────────────
+function _grillaHtmlMiSemana(semana) {
+  const hoyIso   = _gHoyIso();
+  const miUserId = PERFIL_USUARIO?.user_id;
+  const diasNomLargo = ['Lunes','Martes','Miérc.','Jueves','Viernes','Sábado','Domingo'];
+
+  const rango  = `${_gDDbarraMM(semana[0])} – ${_gDDbarraMM(semana[6])}`;
+  const nombre = PERFIL_USUARIO?.full_name || '';
+  const nTot   = _grillaSemanas.length;
+  const prevOk = _grillaSemanaIdx > 0;
+  const nextOk = _grillaSemanaIdx < nTot - 1;
+
+  const head = `
+    <div class="gsem-titulo">MI SEMANA</div>
+    <div class="gsem-sub">${nombre ? `${nombre} · ` : ''}${rango}</div>
+    <div class="gsem-nav">
+      <span class="gsem-fl ${prevOk ? '' : 'off'}" ${prevOk ? `onclick="setSemanaGrilla(${_grillaSemanaIdx - 1})"` : ''}>‹</span>
+      <span>Semana <b>${_grillaSemanaIdx + 1} de ${nTot}</b></span>
+      <span class="gsem-fl ${nextOk ? '' : 'off'}" ${nextOk ? `onclick="setSemanaGrilla(${_grillaSemanaIdx + 1})"` : ''}>›</span>
+    </div>`;
+
+  // Móviles del chofer en la semana visible (incluye días de compañeros)
+  const { trucks } = _grillaTrucksVisibles(semana);
+  if (!trucks.length) {
+    return head + `<div class="gsem-vacio">Todavía no estás asignado en la grilla de este mes.</div>`;
+  }
+
+  let filas = '';
+  semana.forEach((iso, i) => {
+    const esHoy   = iso === hoyIso;
+    const feriado = _grillaFeriados[iso];
+
+    // Buscar en sus móviles de la semana qué pasa ese día
+    let propia = null, taller = null, comp = null;
+    trucks.forEach(t => {
+      const a = _grillaAsig[`${iso}|${t.truck_id}`];
+      if (!a) return;
+      if (a.estado === 'asignado' && a.driver_id === miUserId && !propia) propia = { a, t };
+      else if (a.estado === 'taller' && !taller) taller = { a, t };
+      else if (a.estado === 'asignado' && a.driver_id !== miUserId && !comp) comp = { a, t };
+    });
+
+    const notaHoy = esHoy ? '<div class="gsem-nota">HOY</div>' : '';
+    let asig = '', pills = '';
+    if (propia) {
+      const num = propia.t.numero_interno || propia.t.plate || '—';
+      asig  = `<span class="gsem-mv">🚚 ${num}</span>${notaHoy}`;
+      pills = `<span class="gsem-pill p-trabaja">Trabajás</span>`;
+    } else if (taller) {
+      const num = taller.t.numero_interno || taller.t.plate || '—';
+      asig  = `<span class="gsem-mv off">${num}</span><div class="gsem-nota">tu móvil entra a taller</div>`;
+      pills = `<span class="gsem-pill p-taller">🔧 Taller</span>`;
+    } else if (comp) {
+      const num   = comp.t.numero_interno || comp.t.plate || '—';
+      const quien = (comp.a.users?.full_name || 'otro chofer').split(' ')[0];
+      asig  = `<span class="gsem-mv off">—</span><div class="gsem-nota">El ${num} lo lleva ${quien}</div>`;
+      pills = `<span class="gsem-pill p-franco">😴 Franco</span>`;
+    } else {
+      asig  = `<span class="gsem-mv off">—</span>${notaHoy}`;
+      pills = `<span class="gsem-pill p-franco">😴 Franco</span>`;
+    }
+    if (feriado) pills += `<span class="gsem-pill p-feriado">🎌 ${feriado}</span>`;
+
+    filas += `
+      <div class="gsem-row ${esHoy ? 'hoy' : ''}">
+        <div class="gsem-d"><b>${diasNomLargo[i]}</b><small>${_gDDMM(iso)}</small></div>
+        <div class="gsem-asig">${asig}</div>
+        <div class="gsem-est">${pills}</div>
+      </div>`;
+  });
+
+  return head + `<div class="gsem-card">${filas}</div>`;
+}
+
+// ── Vista por día para admin/supervisión (mobile) ───────────────
+function _grillaHtmlDiaAdmin(semana) {
   const hoyIso  = _gHoyIso();
   const esAdmin = _grillaEsAdmin();
   const diasNom = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -15768,31 +15851,30 @@ function renderGrillaDia() {
     _grillaDiaIdx = idxHoy >= 0 ? idxHoy : 0;
   }
 
-  // ── Chips de día ──
+  // ── Chips de día (altos: abreviatura + número grande) ──
   let chips = '';
   semana.forEach((iso, i) => {
     const clases = [
       'grilla-dia-chip',
       i === _grillaDiaIdx ? 'active' : '',
       iso === hoyIso ? 'hoy' : '',
-      _grillaFeriados[iso] ? 'feriado' : '',
     ].filter(Boolean).join(' ');
-    chips += `<div class="${clases}" onclick="setDiaGrilla(${i})">${diasNom[i]} ${iso.slice(8,10)}${_grillaFeriados[iso] ? '<span class="grilla-dia-fdot"></span>' : ''}</div>`;
+    chips += `<div class="${clases}" onclick="setDiaGrilla(${i})"><span class="gd-dn">${diasNom[i]}</span><span class="gd-nu">${parseInt(iso.slice(8,10), 10)}</span>${_grillaFeriados[iso] ? '<span class="grilla-dia-fdot"></span>' : ''}</div>`;
   });
 
   // ── Encabezado del día ──
   const iso     = semana[_grillaDiaIdx];
   const feriado = _grillaFeriados[iso];
   const esHoy   = iso === hoyIso;
-  const clickHead = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')"` : '';
+  const clickHead = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')" title="Tocá para marcar/desmarcar feriado"` : '';
   const head = `
-    <div class="grilla-dia-head ${feriado ? 'feriado' : ''} ${esHoy ? 'hoy' : ''}" ${clickHead}>
-      <span class="grilla-dia-head-fecha">${diasNomLargo[_grillaDiaIdx]} ${_gDDbarraMM(iso)}${esHoy ? ' · HOY' : ''}</span>
-      ${feriado ? `<span class="grilla-dia-head-feriado">🔴 ${feriado}</span>` : ''}
+    <div class="grilla-dia-head ${esHoy ? 'hoy' : ''} ${esAdmin ? 'admin' : ''}" ${clickHead}>
+      <span class="grilla-dia-head-fecha">${diasNomLargo[_grillaDiaIdx]} ${_gDDMM(iso)}${esHoy ? ' · HOY' : ''}</span>
+      ${feriado ? `<span class="grilla-dia-head-feriado">${feriado}</span>` : ''}
     </div>`;
 
   // ── Cards por móvil ──
-  const { trucks, misMoviles } = _grillaTrucksVisibles(semana);
+  const { trucks } = _grillaTrucksVisibles(semana);
 
   let cards = '';
   trucks.forEach(t => {
@@ -15800,24 +15882,19 @@ function renderGrillaDia() {
     const { chip, conflicto } = _grillaChipHtml(iso, t, '');
     cards += `
       <div class="grilla-dia-card ${esAdmin ? 'grilla-admin' : ''}" ${clickCard}>
-        <div class="grilla-dia-card-main">
-          <span class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}</span>
+        <div class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}<small>MÓVIL</small></div>
+        <div class="grilla-dia-der">
           ${chip}
+          ${conflicto ? `<div class="grilla-dia-conf">⚠ ${conflicto}</div>` : ''}
         </div>
-        ${conflicto ? `<div class="grilla-dia-conf">⚠ ${conflicto}</div>` : ''}
       </div>`;
   });
 
   if (!trucks.length) {
-    cards = `<div class="grilla-cargando">${misMoviles
-      ? 'Todavía no estás asignado en la grilla de este mes.'
-      : 'No hay móviles para mostrar con estos filtros.'}</div>`;
+    cards = `<div class="grilla-cargando">No hay móviles para mostrar con estos filtros.</div>`;
   }
 
-  cont.innerHTML = `
-    <div class="grilla-dia-chips">${chips}</div>
-    ${head}
-    <div class="grilla-dia-lista">${cards}</div>`;
+  return `<div class="grilla-dia-chips">${chips}</div>${head}<div class="grilla-dia-lista">${cards}</div>`;
 }
 
 // ── Filtros ─────────────────────────────────────────────────────

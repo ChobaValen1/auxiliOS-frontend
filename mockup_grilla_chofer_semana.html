@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Mi semana (chofer): 3 variantes</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --panel:#1c2129; --border:#2d333b; --border2:#3d444d;
+    --text:#e6edf3; --muted:#8b949e;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --red:#e2504a; --red-lo:rgba(226,80,74,0.12);
+    --green:#27c47a; --green-lo:rgba(39,196,122,0.10);
+    --blue:#58a6ff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#20242b; color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:20px; display:flex; flex-wrap:wrap; gap:24px; justify-content:center; }
+  .mockup-note { flex-basis:100%; max-width:900px; margin:0 auto; background:#2b2210; border:2px dashed var(--amber); border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; }
+  .mockup-note h3 { margin:0 0 6px; font-size:14px; color:var(--amber); }
+  .phone { width:375px; background:var(--bg); border:10px solid #000; border-radius:28px; padding:14px 12px; }
+  .opt-tag { text-align:center; margin:-4px 0 10px; }
+  .opt-tag span { background:rgba(88,166,255,0.15); color:var(--blue); border:1px solid rgba(88,166,255,0.4); border-radius:8px; padding:4px 12px; font-weight:800; font-size:12px; }
+  .opt-sub { text-align:center; color:var(--muted); font-size:11px; margin-bottom:12px; line-height:1.5; }
+  .titulo { font-size:15px; font-weight:800; }
+  .subtitulo { color:var(--muted); font-size:10px; margin-bottom:10px; }
+  .sem-nav { display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px; margin-bottom:10px; font-size:12px; }
+  .sem-nav b { color:var(--amber); }
+  .sem-nav .fl { color:var(--muted); font-size:18px; padding:0 8px; }
+
+  /* B1: filas limpias */
+  .b1 { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .b1 .row { display:flex; align-items:center; padding:13px 14px; border-bottom:1px solid var(--border); gap:10px; }
+  .b1 .row:last-child { border-bottom:none; }
+  .b1 .row.hoy { background:var(--amber-lo); box-shadow:inset 3px 0 0 var(--amber); }
+  .b1 .d { width:70px; flex-shrink:0; }
+  .b1 .d b { font-size:13px; display:block; }
+  .b1 .d small { color:var(--muted); font-size:10px; }
+  .b1 .row.hoy .d b { color:var(--amber); }
+  .b1 .asig { flex:1; }
+  .b1 .mv { font-family:'Consolas',monospace; font-weight:800; font-size:17px; }
+  .b1 .nota { color:var(--muted); font-size:10px; margin-top:1px; }
+  .b1 .estado-pill { font-size:11px; font-weight:700; padding:5px 12px; border-radius:12px; }
+  .p-trabaja { background:var(--green-lo); color:var(--green); }
+  .p-franco  { background:rgba(139,148,158,0.12); color:var(--muted); font-weight:500; }
+  .p-taller  { background:var(--amber-lo); color:var(--amber); }
+  .p-feriado { background:var(--red-lo); color:var(--red); }
+
+  /* B2: agenda con línea de tiempo */
+  .b2 { position:relative; padding-left:22px; }
+  .b2::before { content:''; position:absolute; left:7px; top:8px; bottom:8px; width:2px; background:var(--border); }
+  .b2 .item { position:relative; margin-bottom:8px; }
+  .b2 .dot { position:absolute; left:-21px; top:14px; width:12px; height:12px; border-radius:50%; border:2px solid var(--bg); }
+  .dot-g { background:var(--green); } .dot-m { background:var(--muted); } .dot-a { background:var(--amber); } .dot-r { background:var(--red); }
+  .b2 .caja { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; }
+  .b2 .item.hoy .caja { border-color:var(--amber); background:var(--amber-lo); }
+  .b2 .dia { font-size:12px; font-weight:700; }
+  .b2 .dia small { display:block; color:var(--muted); font-size:10px; font-weight:400; }
+  .b2 .que { text-align:right; font-size:13px; font-weight:800; font-family:'Consolas',monospace; }
+  .b2 .que small { display:block; font-size:10px; color:var(--muted); font-weight:400; font-family:'Segoe UI'; }
+
+  /* B3: tira compacta 7 días */
+  .b3-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-bottom:10px; }
+  .b3-day { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:8px 2px 9px; text-align:center; }
+  .b3-day.hoy { border-color:var(--amber); background:var(--amber-lo); }
+  .b3-day .dn { font-size:9px; color:var(--muted); text-transform:uppercase; }
+  .b3-day .nu { font-size:13px; font-weight:800; margin:1px 0 6px; }
+  .b3-day .st { font-size:14px; font-weight:800; font-family:'Consolas',monospace; }
+  .b3-day .st.g { color:var(--green); } .b3-day .st.m { color:var(--muted); font-size:11px; } .b3-day .st.a { color:var(--amber); }
+  .b3-det { background:var(--card); border:1px solid var(--amber); border-radius:12px; padding:12px 14px; }
+  .b3-det .f { color:var(--amber); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+  .b3-det .g { font-size:20px; font-weight:800; font-family:'Consolas',monospace; margin:4px 0 2px; }
+  .b3-det .n { color:var(--muted); font-size:11px; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — "Mi semana" del chofer: 3 variantes del mismo formato</h3>
+  Semana completa de un vistazo, sin scroll. Muestran el caso real de Sergio: labura en el 118, el jueves su móvil está en taller,
+  el domingo tiene franco, y el 9/7 cae feriado. Elegí la que más te guste — las tres usan flechas ‹ › para cambiar de semana.
+</div>
+
+<!-- B1 -->
+<div>
+<div class="phone">
+  <div class="opt-tag"><span>B1 — FILAS CON PILL DE ESTADO</span></div>
+  <div class="opt-sub">Cada día una fila: móvil grande + pill de estado a la derecha.<br>La más legible y con lugar para notas (compañero, taller, feriado).</div>
+  <div class="titulo">MI SEMANA</div>
+  <div class="subtitulo">Sergio Godoy · 29/06 – 05/07</div>
+  <div class="sem-nav"><span class="fl">‹</span><span>Semana <b>1 de 5</b></span><span class="fl">›</span></div>
+  <div class="b1">
+    <div class="row"><div class="d"><b>Lunes</b><small>29-06</small></div><div class="asig"><span class="mv">🚚 118</span></div><span class="estado-pill p-trabaja">Trabajás</span></div>
+    <div class="row"><div class="d"><b>Martes</b><small>30-06</small></div><div class="asig"><span class="mv">🚚 118</span></div><span class="estado-pill p-trabaja">Trabajás</span></div>
+    <div class="row"><div class="d"><b>Miérc.</b><small>01-07</small></div><div class="asig"><span class="mv">🚚 118</span></div><span class="estado-pill p-trabaja">Trabajás</span></div>
+    <div class="row"><div class="d"><b>Jueves</b><small>02-07</small></div><div class="asig"><span class="mv" style="color:var(--muted)">118</span><div class="nota">tu móvil entra a taller</div></div><span class="estado-pill p-taller">🔧 Taller</span></div>
+    <div class="row hoy"><div class="d"><b>Viernes</b><small>03-07</small></div><div class="asig"><span class="mv">🚚 118</span><div class="nota">HOY</div></div><span class="estado-pill p-trabaja">Trabajás</span></div>
+    <div class="row"><div class="d"><b>Sábado</b><small>04-07</small></div><div class="asig"><span class="mv">🚚 118</span></div><span class="estado-pill p-trabaja">Trabajás</span></div>
+    <div class="row"><div class="d"><b>Domingo</b><small>05-07</small></div><div class="asig"><span class="mv" style="color:var(--muted)">—</span></div><span class="estado-pill p-franco">😴 Franco</span></div>
+  </div>
+  <div style="color:var(--muted);font-size:10px;margin-top:8px;text-align:center">Si compartís móvil: "compartís con Cristian" como nota del día</div>
+</div>
+</div>
+
+<!-- B2 -->
+<div>
+<div class="phone">
+  <div class="opt-tag"><span>B2 — AGENDA CON LÍNEA DE TIEMPO</span></div>
+  <div class="opt-sub">Estilo agenda: punto de color por día (verde trabaja, gris franco,<br>ámbar taller, rojo feriado). Más visual, menos texto.</div>
+  <div class="titulo">MI SEMANA</div>
+  <div class="subtitulo">Sergio Godoy · 06/07 – 12/07</div>
+  <div class="sem-nav"><span class="fl">‹</span><span>Semana <b>2 de 5</b></span><span class="fl">›</span></div>
+  <div class="b2">
+    <div class="item"><span class="dot dot-g"></span><div class="caja"><div class="dia">Lunes <small>06-07</small></div><div class="que">🚚 118</div></div></div>
+    <div class="item"><span class="dot dot-g"></span><div class="caja"><div class="dia">Martes <small>07-07</small></div><div class="que">🚚 118</div></div></div>
+    <div class="item"><span class="dot dot-g"></span><div class="caja"><div class="dia">Miércoles <small>08-07</small></div><div class="que">🚚 118</div></div></div>
+    <div class="item"><span class="dot dot-r"></span><div class="caja"><div class="dia">Jueves <small>09-07</small></div><div class="que">🚚 118<small>🎌 Feriado — Independencia</small></div></div></div>
+    <div class="item"><span class="dot dot-a"></span><div class="caja"><div class="dia">Viernes <small>10-07</small></div><div class="que"><span style="color:var(--amber)">🔧 Taller</span><small>tu móvil en service</small></div></div></div>
+    <div class="item"><span class="dot dot-g"></span><div class="caja"><div class="dia">Sábado <small>11-07</small></div><div class="que">🚚 118</div></div></div>
+    <div class="item"><span class="dot dot-m"></span><div class="caja"><div class="dia">Domingo <small>12-07</small></div><div class="que"><span style="color:var(--muted)">😴 Franco</span></div></div></div>
+  </div>
+</div>
+</div>
+
+<!-- B3 -->
+<div>
+<div class="phone">
+  <div class="opt-tag"><span>B3 — TIRA DE 7 DÍAS + DETALLE</span></div>
+  <div class="opt-sub">Los 7 días como mini-tarjetas (número de móvil o estado)<br>y abajo el detalle del día que toques. La más compacta.</div>
+  <div class="titulo">MI SEMANA</div>
+  <div class="subtitulo">Sergio Godoy · 29/06 – 05/07</div>
+  <div class="sem-nav"><span class="fl">‹</span><span>Semana <b>1 de 5</b></span><span class="fl">›</span></div>
+  <div class="b3-grid">
+    <div class="b3-day"><div class="dn">Lun</div><div class="nu">29</div><div class="st g">118</div></div>
+    <div class="b3-day"><div class="dn">Mar</div><div class="nu">30</div><div class="st g">118</div></div>
+    <div class="b3-day"><div class="dn">Mié</div><div class="nu">1</div><div class="st g">118</div></div>
+    <div class="b3-day"><div class="dn">Jue</div><div class="nu">2</div><div class="st a">🔧</div></div>
+    <div class="b3-day hoy"><div class="dn">Vie</div><div class="nu">3</div><div class="st g">118</div></div>
+    <div class="b3-day"><div class="dn">Sáb</div><div class="nu">4</div><div class="st g">118</div></div>
+    <div class="b3-day"><div class="dn">Dom</div><div class="nu">5</div><div class="st m">😴</div></div>
+  </div>
+  <div class="b3-det">
+    <div class="f">Viernes 03-07 · Hoy</div>
+    <div class="g">🚚 Móvil 118</div>
+    <div class="n">Turno normal · mañana también te toca el 118</div>
+  </div>
+</div>
+</div>
+
+</body></html>

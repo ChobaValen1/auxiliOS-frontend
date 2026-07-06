@@ -3093,45 +3093,50 @@ body {
 .grilla-opt.sel { border-color: var(--green); background: var(--green-lo); }
 .grilla-opt.sel span { color: var(--green); font-weight: 700; }
 
-/* ── Vista día (solo mobile) ─────────────────────────────── */
+/* ── Vista día admin/supervisión (solo mobile) ───────────── */
 .grilla-dia-view { display: none; }
 
 .grilla-dia-chips {
   display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 6px;
+  gap: 5px;
   margin-bottom: 10px;
-  -webkit-overflow-scrolling: touch;
 }
 .grilla-dia-chip {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  padding: 7px 0 6px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--muted2);
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 10px;
+  background: var(--card);
   cursor: pointer;
   user-select: none;
-  white-space: nowrap;
+  position: relative;
 }
-.grilla-dia-chip.hoy { border-color: var(--amber); color: var(--amber); }
-.grilla-dia-chip.active {
-  background: var(--amber-lo);
-  border-color: var(--amber);
-  color: var(--amber);
+.grilla-dia-chip .gd-dn {
+  display: block;
+  font-size: 9px;
+  color: var(--muted2);
+  text-transform: uppercase;
 }
+.grilla-dia-chip .gd-nu {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+.grilla-dia-chip.hoy { border-color: var(--amber); background: var(--amber-lo); }
+.grilla-dia-chip.hoy .gd-dn,
+.grilla-dia-chip.hoy .gd-nu { color: var(--amber); }
+.grilla-dia-chip.active { border-color: var(--text); }
 .grilla-dia-fdot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--red);
-  display: inline-block;
 }
 
 .grilla-dia-head {
@@ -3139,56 +3144,153 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  flex-wrap: wrap;
-  padding: 10px 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px 10px 0 0;
-  border-bottom: none;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  min-width: 0;
+  padding: 0 2px;
+  margin-bottom: 8px;
 }
+.grilla-dia-head.admin { cursor: pointer; }
+.grilla-dia-head-fecha { font-size: 12px; font-weight: 700; color: var(--text); }
 .grilla-dia-head.hoy .grilla-dia-head-fecha { color: var(--amber); }
-.grilla-dia-head.feriado { background: var(--red-lo); }
 .grilla-dia-head-feriado {
+  font-size: 10px;
   color: var(--red);
-  font-size: 11px;
-  text-transform: none;
-  letter-spacing: 0;
+  background: var(--red-lo);
+  border-radius: 6px;
+  padding: 2px 8px;
+  max-width: 55%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.grilla-dia-lista {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 0 0 10px 10px;
-  overflow: hidden;
-}
 .grilla-dia-card {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-}
-.grilla-dia-card:last-child { border-bottom: none; }
-.grilla-dia-card.grilla-admin { cursor: pointer; }
-.grilla-dia-card-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 7px;
 }
+.grilla-dia-card.grilla-admin { cursor: pointer; }
 .grilla-dia-movil {
   font-weight: 800;
   font-family: 'DM Mono', 'Consolas', monospace;
-  font-size: 16px;
+  font-size: 19px;
   color: var(--text);
+  flex-shrink: 0;
 }
+.grilla-dia-movil small {
+  display: block;
+  font-size: 9px;
+  color: var(--muted2);
+  font-weight: 400;
+  letter-spacing: 1px;
+}
+.grilla-dia-der { text-align: right; min-width: 0; }
 .grilla-dia-conf {
-  margin-top: 5px;
+  margin-top: 3px;
   font-size: 10px;
   color: var(--amber);
   line-height: 1.4;
+}
+
+/* ── "MI SEMANA" del chofer (solo mobile) ────────────────── */
+.gsem-titulo { font-size: 15px; font-weight: 800; color: var(--text); }
+.gsem-sub { color: var(--muted2); font-size: 11px; margin-bottom: 10px; }
+.gsem-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+.gsem-nav b { color: var(--amber); }
+.gsem-fl {
+  color: var(--muted2);
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.gsem-fl.off { opacity: 0.25; cursor: default; }
+
+.gsem-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.gsem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.gsem-row:last-child { border-bottom: none; }
+.gsem-row.hoy { background: var(--amber-lo); box-shadow: inset 3px 0 0 var(--amber); }
+.gsem-d { width: 70px; flex-shrink: 0; }
+.gsem-d b { display: block; font-size: 13px; color: var(--text); }
+.gsem-d small { color: var(--muted2); font-size: 10px; }
+.gsem-row.hoy .gsem-d b { color: var(--amber); }
+.gsem-asig { flex: 1; min-width: 0; }
+.gsem-mv {
+  font-family: 'DM Mono', 'Consolas', monospace;
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.gsem-mv.off { color: var(--muted2); }
+.gsem-nota {
+  color: var(--muted2);
+  font-size: 10px;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gsem-est {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  max-width: 45%;
+  min-width: 0;
+}
+.gsem-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 12px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gsem-pill.p-trabaja { background: var(--green-lo); color: var(--green); }
+.gsem-pill.p-franco  { background: rgba(133,144,171,0.12); color: var(--muted2); font-weight: 500; }
+.gsem-pill.p-taller  { background: var(--amber-lo); color: var(--amber); }
+.gsem-pill.p-feriado { background: var(--red-lo); color: var(--red); }
+.gsem-vacio {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--muted2);
+  font-size: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
 }
 
 @media (max-width: 767px) {
@@ -3197,10 +3299,13 @@ body {
   .grilla-filtros select { min-width: 130px; flex: 1; }
   .grilla-topbar { justify-content: flex-start; }
 
-  /* Vista día reemplaza la tabla en el teléfono */
+  /* Vista día / MI SEMANA reemplazan la tabla en el teléfono */
   .grilla-card { display: none; }
   .grilla-dia-view { display: block; }
-  .grilla-dia-view .grilla-chip { font-size: 11px; padding: 4px 10px; }
+  .grilla-dia-view .grilla-chip { font-size: 12px; padding: 6px 14px; border-radius: 14px; }
+
+  /* El chofer navega con las flechas ‹ › de MI SEMANA: tabs ocultos */
+  .grilla-semana-tabs.gsem-ocultar-mobile { display: none; }
 
   /* Que los controles del header no desborden en 360px */
   .grilla-controls { width: 100%; }
