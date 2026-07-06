@@ -3093,11 +3093,119 @@ body {
 .grilla-opt.sel { border-color: var(--green); background: var(--green-lo); }
 .grilla-opt.sel span { color: var(--green); font-weight: 700; }
 
+/* ── Vista día (solo mobile) ─────────────────────────────── */
+.grilla-dia-view { display: none; }
+
+.grilla-dia-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.grilla-dia-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.grilla-dia-chip.hoy { border-color: var(--amber); color: var(--amber); }
+.grilla-dia-chip.active {
+  background: var(--amber-lo);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.grilla-dia-fdot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  display: inline-block;
+}
+
+.grilla-dia-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px 10px 0 0;
+  border-bottom: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.grilla-dia-head.hoy .grilla-dia-head-fecha { color: var(--amber); }
+.grilla-dia-head.feriado { background: var(--red-lo); }
+.grilla-dia-head-feriado {
+  color: var(--red);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.grilla-dia-lista {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+}
+.grilla-dia-card {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.grilla-dia-card:last-child { border-bottom: none; }
+.grilla-dia-card.grilla-admin { cursor: pointer; }
+.grilla-dia-card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.grilla-dia-movil {
+  font-weight: 800;
+  font-family: 'DM Mono', 'Consolas', monospace;
+  font-size: 16px;
+  color: var(--text);
+}
+.grilla-dia-conf {
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--amber);
+  line-height: 1.4;
+}
+
 @media (max-width: 767px) {
   .grilla-table th, .grilla-table td { padding: 8px 5px; font-size: 11px; }
   .grilla-chip { padding: 3px 7px; font-size: 10px; }
   .grilla-filtros select { min-width: 130px; flex: 1; }
   .grilla-topbar { justify-content: flex-start; }
+
+  /* Vista día reemplaza la tabla en el teléfono */
+  .grilla-card { display: none; }
+  .grilla-dia-view { display: block; }
+  .grilla-dia-view .grilla-chip { font-size: 11px; padding: 4px 10px; }
+
+  /* Que los controles del header no desborden en 360px */
+  .grilla-controls { width: 100%; }
+  .grilla-controls select,
+  .grilla-controls .btn { max-width: 100%; }
 }
 
 /* ── ALERTAS GRILLA VS. REALIDAD ──────────────────────────── */

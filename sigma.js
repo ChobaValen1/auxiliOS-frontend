@@ -15419,6 +15419,7 @@ let _grillaCeldaEdit    = null;   // { fecha, truckId } de la celda en edición
 let _grillaSeleccion    = null;   // opción elegida en el modal
 let _grillaAutoSemana   = true;   // al entrar o cambiar de mes, posicionarse en la semana de hoy
 let _grillaConflictos   = {};     // 'fecha|truck_id' -> texto del conflicto grilla vs. realidad
+let _grillaDiaIdx       = null;   // día seleccionado en la vista mobile (0-6); null = recalcular (hoy o primer día)
 let _grillaListaTs      = 0;      // timestamp de la última carga exitosa (para esperar desde el dashboard)
 
 function _grillaEsAdmin()  { return PERFIL_USUARIO?.roles?.name === 'administracion'; }
@@ -15487,6 +15488,7 @@ async function initGrilla() {
   if (filtrosEl) filtrosEl.style.display = _grillaEsChofer() ? 'none' : '';
 
   _grillaAutoSemana = true;
+  _grillaDiaIdx = null;
   await cargarGrilla();
 }
 
@@ -15494,6 +15496,7 @@ async function cambiarMesGrilla(mesKey) {
   _grillaMesKey = mesKey;
   _grillaSemanaIdx = 0;
   _grillaAutoSemana = true;
+  _grillaDiaIdx = null;
   await cargarGrilla();
 }
 
@@ -15515,6 +15518,8 @@ async function cargarGrilla() {
 
   const tbody = document.getElementById('grilla-tbody');
   if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="grilla-cargando">Cargando grilla…</td></tr>`;
+  const diaView = document.getElementById('grilla-dia-view');
+  if (diaView) diaView.innerHTML = `<div class="grilla-cargando">Cargando grilla…</div>`;
 
   try {
     // Jornadas reales del rango visible, solo hasta hoy (para marcar conflictos grilla vs. realidad)
@@ -15566,6 +15571,7 @@ async function cargarGrilla() {
   } catch (err) {
     console.error('Error cargando grilla:', err);
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="grilla-cargando">No se pudo cargar la grilla. Probá de nuevo.</td></tr>`;
+    if (diaView) diaView.innerHTML = `<div class="grilla-cargando">No se pudo cargar la grilla. Probá de nuevo.</div>`;
   }
 }
 
@@ -15601,8 +15607,84 @@ function renderGrillaTabs() {
 
 function setSemanaGrilla(idx) {
   _grillaSemanaIdx = idx;
+  _grillaDiaIdx = null; // recalcular día visible (hoy si está en la semana, si no el primero)
   renderGrillaTabs();
   renderGrillaTabla();
+}
+
+// ── Helpers compartidos tabla / vista día ───────────────────────
+// Móviles visibles según rol (chofer ve solo los suyos) y filtros activos
+function _grillaTrucksVisibles(semana) {
+  const miUserId = PERFIL_USUARIO?.user_id;
+
+  // El chofer ve solo los móviles donde está asignado en el mes cargado
+  // (incluye a sus compañeros de móvil, no al resto de la flota).
+  let misMoviles = null;
+  if (_grillaEsChofer()) {
+    misMoviles = new Set();
+    Object.values(_grillaAsig).forEach(a => {
+      if (a.driver_id === miUserId) misMoviles.add(String(a.truck_id));
+    });
+  }
+
+  const trucks = _grillaTrucks.filter(t => {
+    if (misMoviles && !misMoviles.has(String(t.truck_id))) return false;
+
+    // Filtro por móvil
+    if (_grillaFiltroMovil && String(t.truck_id) !== String(_grillaFiltroMovil)) return false;
+
+    // Filtro por chofer: ocultar el móvil si el chofer no aparece ningún día de la semana visible
+    if (_grillaFiltroChofer) {
+      const apareceEnSemana = semana.some(iso => {
+        const a = _grillaAsig[`${iso}|${t.truck_id}`];
+        return a && a.driver_id === _grillaFiltroChofer;
+      });
+      if (!apareceEnSemana) return false;
+    }
+    return true;
+  });
+
+  return { trucks, misMoviles };
+}
+
+// Chip de asignación para (fecha, móvil). Devuelve { chip, conflicto }.
+// clickCelda: atributo onclick a incrustar en el chip ('' si el click va en otro lado).
+function _grillaChipHtml(iso, t, clickCelda) {
+  const hoyIso   = _gHoyIso();
+  const esAdmin  = _grillaEsAdmin();
+  const miUserId = PERFIL_USUARIO?.user_id;
+  const a = _grillaAsig[`${iso}|${t.truck_id}`];
+
+  let chip = '';
+  if (!a) {
+    chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda}>${esAdmin ? '+' : '—'}</span>`;
+  } else if (a.estado === 'taller') {
+    chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}>🔧 Taller</span>`;
+  } else if (a.estado === 'franco') {
+    chip = `<span class="grilla-chip grilla-chip-franco" ${clickCelda}>Franco</span>`;
+  } else {
+    const nombreCompleto = a.users?.full_name || 'Chofer';
+    const nombre = nombreCompleto.split(' ')[0];
+    const esMia  = _grillaEsChofer() && a.driver_id === miUserId;
+    let extra = esMia ? ' grilla-chip-mia' : '';
+    if (_grillaFiltroChofer) {
+      extra += a.driver_id === _grillaFiltroChofer ? ' grilla-chip-resaltada' : ' grilla-chip-atenuada';
+    }
+    chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} title="${nombreCompleto.replace(/"/g, '&quot;')}">${nombre}</span>`;
+  }
+
+  // Atenuar también francos/taller/vacías cuando hay filtro por chofer
+  if (_grillaFiltroChofer && (!a || a.estado !== 'asignado')) {
+    chip = chip.replace('class="grilla-chip ', 'class="grilla-chip grilla-chip-atenuada ');
+  }
+
+  // Marca ⚠ si la jornada real difiere de la grilla (solo hoy y días pasados)
+  const conflicto = iso <= hoyIso ? _grillaConflictos[`${iso}|${t.truck_id}`] : null;
+  if (conflicto) {
+    chip = chip.replace('class="grilla-chip', `title="⚠ ${conflicto.replace(/"/g, '&quot;')}" class="grilla-chip grilla-chip-alerta`);
+  }
+
+  return { chip, conflicto };
 }
 
 function renderGrillaTabla() {
@@ -15629,86 +15711,109 @@ function renderGrillaTabla() {
   thead.innerHTML = ths;
 
   // ── Filas por móvil ──
-  const miUserId = PERFIL_USUARIO?.user_id;
-
-  // El chofer ve solo los móviles donde está asignado en el mes cargado
-  // (incluye a sus compañeros de móvil, no al resto de la flota).
-  let misMoviles = null;
-  if (_grillaEsChofer()) {
-    misMoviles = new Set();
-    Object.values(_grillaAsig).forEach(a => {
-      if (a.driver_id === miUserId) misMoviles.add(String(a.truck_id));
-    });
-  }
+  const { trucks, misMoviles } = _grillaTrucksVisibles(semana);
 
   let filas = '';
-  let filasVisibles = 0;
 
-  _grillaTrucks.forEach(t => {
-    if (misMoviles && !misMoviles.has(String(t.truck_id))) return;
-
-    // Filtro por móvil
-    if (_grillaFiltroMovil && String(t.truck_id) !== String(_grillaFiltroMovil)) return;
-
-    // Filtro por chofer: ocultar el móvil si el chofer no aparece ningún día de la semana visible
-    if (_grillaFiltroChofer) {
-      const apareceEnSemana = semana.some(iso => {
-        const a = _grillaAsig[`${iso}|${t.truck_id}`];
-        return a && a.driver_id === _grillaFiltroChofer;
-      });
-      if (!apareceEnSemana) return;
-    }
-
-    filasVisibles++;
+  trucks.forEach(t => {
     let tds = `<td class="grilla-movil">${t.numero_interno || t.plate || '—'}</td>`;
 
     semana.forEach(iso => {
       const esHoy = iso === hoyIso;
-      const a = _grillaAsig[`${iso}|${t.truck_id}`];
       const clickCelda = esAdmin ? `onclick="abrirGrillaCelda('${iso}', ${t.truck_id})"` : '';
-
-      let chip = '';
-      if (!a) {
-        chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda}>${esAdmin ? '+' : '—'}</span>`;
-      } else if (a.estado === 'taller') {
-        chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}>🔧 Taller</span>`;
-      } else if (a.estado === 'franco') {
-        chip = `<span class="grilla-chip grilla-chip-franco" ${clickCelda}>Franco</span>`;
-      } else {
-        const nombreCompleto = a.users?.full_name || 'Chofer';
-        const nombre = nombreCompleto.split(' ')[0];
-        const esMia  = _grillaEsChofer() && a.driver_id === miUserId;
-        let extra = esMia ? ' grilla-chip-mia' : '';
-        if (_grillaFiltroChofer) {
-          extra += a.driver_id === _grillaFiltroChofer ? ' grilla-chip-resaltada' : ' grilla-chip-atenuada';
-        }
-        chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} title="${nombreCompleto.replace(/"/g, '&quot;')}">${nombre}</span>`;
-      }
-
-      // Atenuar también francos/taller/vacías cuando hay filtro por chofer
-      if (_grillaFiltroChofer && (!a || a.estado !== 'asignado')) {
-        chip = chip.replace('class="grilla-chip ', 'class="grilla-chip grilla-chip-atenuada ');
-      }
-
-      // Marca ⚠ si la jornada real difiere de la grilla (solo hoy y días pasados)
-      const conflicto = iso <= hoyIso ? _grillaConflictos[`${iso}|${t.truck_id}`] : null;
-      if (conflicto) {
-        chip = chip.replace('class="grilla-chip', `title="⚠ ${conflicto.replace(/"/g, '&quot;')}" class="grilla-chip grilla-chip-alerta`);
-      }
-
+      const { chip } = _grillaChipHtml(iso, t, clickCelda);
       tds += `<td class="${esHoy ? 'grilla-hoy-celda' : ''}">${chip}</td>`;
     });
 
     filas += `<tr>${tds}</tr>`;
   });
 
-  if (!filasVisibles) {
+  if (!trucks.length) {
     filas = misMoviles
       ? `<tr><td colspan="8" class="grilla-cargando">Todavía no estás asignado en la grilla de este mes.</td></tr>`
       : `<tr><td colspan="8" class="grilla-cargando">No hay móviles para mostrar con estos filtros.</td></tr>`;
   }
   tbody.innerHTML = filas;
   tbody.classList.toggle('grilla-admin', esAdmin);
+
+  // Vista día (mobile) desde el mismo estado
+  renderGrillaDia();
+}
+
+// ── Vista día (mobile ≤767px) ───────────────────────────────────
+function setDiaGrilla(idx) {
+  _grillaDiaIdx = idx;
+  renderGrillaDia();
+}
+
+function renderGrillaDia() {
+  const cont = document.getElementById('grilla-dia-view');
+  if (!cont) return;
+
+  const semana = _grillaSemanas[_grillaSemanaIdx] || [];
+  if (!semana.length) { cont.innerHTML = ''; return; }
+
+  const hoyIso  = _gHoyIso();
+  const esAdmin = _grillaEsAdmin();
+  const diasNom = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const diasNomLargo = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+  // Día seleccionado: hoy si está en la semana visible, si no el primero
+  if (_grillaDiaIdx === null || _grillaDiaIdx < 0 || _grillaDiaIdx > 6) {
+    const idxHoy = semana.indexOf(hoyIso);
+    _grillaDiaIdx = idxHoy >= 0 ? idxHoy : 0;
+  }
+
+  // ── Chips de día ──
+  let chips = '';
+  semana.forEach((iso, i) => {
+    const clases = [
+      'grilla-dia-chip',
+      i === _grillaDiaIdx ? 'active' : '',
+      iso === hoyIso ? 'hoy' : '',
+      _grillaFeriados[iso] ? 'feriado' : '',
+    ].filter(Boolean).join(' ');
+    chips += `<div class="${clases}" onclick="setDiaGrilla(${i})">${diasNom[i]} ${iso.slice(8,10)}${_grillaFeriados[iso] ? '<span class="grilla-dia-fdot"></span>' : ''}</div>`;
+  });
+
+  // ── Encabezado del día ──
+  const iso     = semana[_grillaDiaIdx];
+  const feriado = _grillaFeriados[iso];
+  const esHoy   = iso === hoyIso;
+  const clickHead = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')"` : '';
+  const head = `
+    <div class="grilla-dia-head ${feriado ? 'feriado' : ''} ${esHoy ? 'hoy' : ''}" ${clickHead}>
+      <span class="grilla-dia-head-fecha">${diasNomLargo[_grillaDiaIdx]} ${_gDDbarraMM(iso)}${esHoy ? ' · HOY' : ''}</span>
+      ${feriado ? `<span class="grilla-dia-head-feriado">🔴 ${feriado}</span>` : ''}
+    </div>`;
+
+  // ── Cards por móvil ──
+  const { trucks, misMoviles } = _grillaTrucksVisibles(semana);
+
+  let cards = '';
+  trucks.forEach(t => {
+    const clickCard = esAdmin ? `onclick="abrirGrillaCelda('${iso}', ${t.truck_id})"` : '';
+    const { chip, conflicto } = _grillaChipHtml(iso, t, '');
+    cards += `
+      <div class="grilla-dia-card ${esAdmin ? 'grilla-admin' : ''}" ${clickCard}>
+        <div class="grilla-dia-card-main">
+          <span class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}</span>
+          ${chip}
+        </div>
+        ${conflicto ? `<div class="grilla-dia-conf">⚠ ${conflicto}</div>` : ''}
+      </div>`;
+  });
+
+  if (!trucks.length) {
+    cards = `<div class="grilla-cargando">${misMoviles
+      ? 'Todavía no estás asignado en la grilla de este mes.'
+      : 'No hay móviles para mostrar con estos filtros.'}</div>`;
+  }
+
+  cont.innerHTML = `
+    <div class="grilla-dia-chips">${chips}</div>
+    ${head}
+    <div class="grilla-dia-lista">${cards}</div>`;
 }
 
 // ── Filtros ─────────────────────────────────────────────────────
