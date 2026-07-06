@@ -15825,7 +15825,12 @@ function _grillaHtmlMiSemana(semana) {
       asig  = `<span class="gsem-mv off">—</span>${notaHoy}`;
       pills = `<span class="gsem-pill p-franco">😴 Franco</span>`;
     }
-    if (feriado) pills += `<span class="gsem-pill p-feriado">🎌 ${feriado}</span>`;
+    // Nombre completo del feriado como nota truncada; la pill queda corta
+    // para no romper el layout de la fila con nombres largos.
+    if (feriado) {
+      pills += `<span class="gsem-pill p-feriado" title="${feriado.replace(/"/g, '&quot;')}">🎌 Feriado</span>`;
+      asig  += `<div class="gsem-nota gsem-nota-feriado">${feriado}</div>`;
+    }
 
     filas += `
       <div class="gsem-row ${esHoy ? 'hoy' : ''}">

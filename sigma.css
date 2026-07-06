@@ -3260,6 +3260,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.gsem-nota-feriado {
+  color: var(--red);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .gsem-est {
   display: flex;
   flex-direction: column;
