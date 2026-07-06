@@ -15617,13 +15617,17 @@ function setSemanaGrilla(idx) {
 function _grillaTrucksVisibles(semana) {
   const miUserId = PERFIL_USUARIO?.user_id;
 
-  // El chofer ve solo los móviles donde está asignado en el mes cargado
-  // (incluye a sus compañeros de móvil, no al resto de la flota).
+  // El chofer ve solo los móviles donde está asignado al menos un día de la
+  // SEMANA VISIBLE (incluye a sus compañeros de esos móviles). Si una semana
+  // estuvo en 3 móviles ve 3 esa semana; las demás, solo el que le toca.
   let misMoviles = null;
   if (_grillaEsChofer()) {
     misMoviles = new Set();
-    Object.values(_grillaAsig).forEach(a => {
-      if (a.driver_id === miUserId) misMoviles.add(String(a.truck_id));
+    (semana || []).forEach(iso => {
+      _grillaTrucks.forEach(t => {
+        const a = _grillaAsig[`${iso}|${t.truck_id}`];
+        if (a && a.driver_id === miUserId) misMoviles.add(String(t.truck_id));
+      });
     });
   }
 
