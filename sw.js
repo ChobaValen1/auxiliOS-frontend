@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v81'; // v81: fix edición de personal (role_id + columnas de licencia)
+const CACHE_NAME = 'auxilios-v82'; // v82: carga rápida por rango en la grilla
 
 const PRECACHE_ASSETS = [
   '/',
