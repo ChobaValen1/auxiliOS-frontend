@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v80'; // v80: Fase 3 offline — lecturas con caché local
+const CACHE_NAME = 'auxilios-v81'; // v81: fix edición de personal (role_id + columnas de licencia)
 
 const PRECACHE_ASSETS = [
   '/',

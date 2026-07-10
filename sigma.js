@@ -10171,8 +10171,9 @@ async function guardarNuevoUsuario() {
   if (usuarioEditandoId) {
     const licencia    = document.getElementById('nu-licencia')?.value.trim() || null;
     const vencimiento = document.getElementById('nu-vencimiento')?.value || null;
+    const { data: rolRow } = await _db.from('roles').select('role_id').eq('name', rol).single();
     const { error } = await _db.from('users').update({
-      full_name: nombre, phone: tel || null, role: rol, dni: dni || null,
+      full_name: nombre, phone: tel || null, role_id: rolRow?.role_id, dni: dni || null,
       license_number: licencia, license_expiry: vencimiento
     }).eq('user_id', usuarioEditandoId);
     if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
