@@ -16198,6 +16198,31 @@ function _cargaRapidaPreview() {
   btn.textContent = `Cargar ${filas.length} días`;
 }
 
+async function guardarCargaRapida() {
+  if (!_grillaEsAdmin()) return;
+  const filas = _cargaRapidaFilas();
+  if (!filas) return;
+
+  const btn = document.getElementById('cr-btn-confirmar');
+  btn.disabled = true;
+  btn.textContent = 'Guardando…';
+
+  const { error } = await _db.from('asignaciones_grilla')
+    .upsert(filas, { onConflict: 'fecha,truck_id' });
+
+  if (error) {
+    console.error('Error en carga rápida:', error);
+    toast('No se pudo guardar: ' + error.message, 'error');
+    btn.disabled = false;
+    _cargaRapidaPreview();
+    return;
+  }
+
+  toast(`${filas.length} días cargados ✓`);
+  closeModal('modal-carga-rapida');
+  await cargarGrilla();
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ALERTAS "GRILLA VS. REALIDAD" — dashboard admin + marcas en grilla
 // ═══════════════════════════════════════════════════════════════
