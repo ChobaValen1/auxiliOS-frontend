@@ -464,6 +464,8 @@ window._remitosTotal = window._remitosTotal || 0;
 
 function _mapRemitoRow(r) {
   return {
+    id:            r.remito_id,
+    fotosCount:    Array.isArray(r.foto_urls) ? r.foto_urls.length : 0,
     nro:           r.nro_remito,
     fecha:         r.status === 'firmado'
                      ? formatearFecha(r.firmado_at || r.created_at_device)
@@ -642,6 +644,28 @@ async function fetchRemitosFiltrados({ filtros, max = 5000 } = {}) {
 }
 // Nota: esta función carga los remitos más recientes (hasta 200) y los mapea al formato que necesita la tabla. Incluye lógica para formatear fechas, mostrar métodos de pago combinados, y armar el texto de confirmaciones. Si hay un error o no hay remitos, muestra mensajes en la consola.
 
+// ── Detalle completo de un remito (vista admin) ─────────────────
+async function obtenerRemitoCompleto(remitoId) {
+  const { data, error } = await _db
+    .from('remitos')
+    .select('*, users(full_name), daily_logs(log_date, trucks(numero_interno, plate))')
+    .eq('remito_id', remitoId)
+    .single();
+  if (error) { console.error('❌ obtenerRemitoCompleto:', error); return null; }
+  return data;
+}
+
+// Update de campos editados por admin + registro en historial_ediciones.
+// `updates` = { col: nuevoValor }, `entradaHistorial` = objeto {fecha, user_id, user_nombre, cambios}.
+async function actualizarRemitoAdmin(remitoId, updates, entradaHistorial, historialPrevio) {
+  const historial = Array.isArray(historialPrevio) ? historialPrevio : [];
+  const { error } = await _db
+    .from('remitos')
+    .update({ ...updates, historial_ediciones: [...historial, entradaHistorial] })
+    .eq('remito_id', remitoId);
+  if (error) { console.error('❌ actualizarRemitoAdmin:', error); return { ok: false, msg: error.message }; }
+  return { ok: true };
+}
 
 // ── LECTURA: JORNADAS Y SERVICIOS ─────────────────────────────
 
