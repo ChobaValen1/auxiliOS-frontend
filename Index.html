@@ -2557,6 +2557,7 @@
       <select id="grilla-mes-select" onchange="cambiarMesGrilla(this.value)"></select>
       <button class="btn btn-primary" id="grilla-btn-copiar" style="display:none" onclick="copiarSemanaGrilla()">+ Copiar semana →</button>
       <button class="btn" id="grilla-btn-copiar-mes" style="display:none" onclick="copiarMesGrilla()">📅 Generar mes siguiente</button>
+      <button class="btn" id="grilla-btn-carga-rapida" style="display:none" onclick="abrirModalCargaRapida()">⚡ Carga rápida</button>
     </div>
   </div>
 
@@ -2619,6 +2620,50 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-grilla-celda')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarGrillaCelda()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: carga rápida por rango (solo admin) -->
+<div class="modal-backdrop" id="modal-carga-rapida">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-head">
+      <div>
+        <span class="modal-head-title">⚡ Carga rápida</span>
+        <div style="font-size:11px;color:var(--muted2);margin-top:4px">Asigná un chofer a un móvil por varios días de una vez</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-carga-rapida')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Chofer</label>
+          <select class="form-input" id="cr-chofer" onchange="_cargaRapidaPreview()"></select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Móvil</label>
+          <select class="form-input" id="cr-movil" onchange="_cargaRapidaPreview()"></select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Desde</label>
+          <input class="form-input" type="date" id="cr-desde" onchange="_cargaRapidaPreview()">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Hasta</label>
+          <input class="form-input" type="date" id="cr-hasta" onchange="_cargaRapidaPreview()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Días de franco (tocá para marcar)</label>
+        <div id="cr-francos" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div id="cr-preview" style="background:var(--bg-darker);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.7">—</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-carga-rapida')">Cancelar</button>
+      <button class="btn btn-primary" id="cr-btn-confirmar" onclick="guardarCargaRapida()" disabled>Cargar</button>
     </div>
   </div>
 </div>
