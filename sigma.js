@@ -15484,6 +15484,9 @@ async function initGrilla() {
   const btnCopiarMes = document.getElementById('grilla-btn-copiar-mes');
   if (btnCopiarMes) btnCopiarMes.style.display = _grillaEsAdmin() ? '' : 'none';
 
+  const btnCargaRapida = document.getElementById('grilla-btn-carga-rapida');
+  if (btnCargaRapida) btnCargaRapida.style.display = _grillaEsAdmin() ? '' : 'none';
+
   // Filtros ocultos por defecto en el HTML; solo se muestran a admin/supervisión.
   // (El chofer nunca filtra: ve únicamente sus móviles de la semana.)
   const filtrosEl = document.getElementById('grilla-filtros');
@@ -16088,6 +16091,112 @@ async function copiarMesGrilla() {
   await cambiarMesGrilla(nextKey);
 }
 
+// ── Carga rápida por rango ──────────────────────────────────────
+// Asigna un chofer a un móvil por un rango de fechas en un solo upsert,
+// con francos semanales opcionales. Solo admin.
+
+let _cargaRapidaFrancos = new Set(); // índices 0=Lun … 6=Dom
+
+function abrirModalCargaRapida() {
+  if (!_grillaEsAdmin()) return;
+
+  const selChofer = document.getElementById('cr-chofer');
+  selChofer.innerHTML = '<option value="">Elegí un chofer…</option>' +
+    _grillaChoferes.map(c => `<option value="${c.user_id}">${c.full_name}</option>`).join('');
+
+  const selMovil = document.getElementById('cr-movil');
+  selMovil.innerHTML = '<option value="">Elegí un móvil…</option>' +
+    _grillaTrucks.map(t => `<option value="${t.truck_id}">${t.numero_interno || t.plate}</option>`).join('');
+
+  // Rango por defecto: hoy (si el mes visible es el actual) o día 1 del mes visible → fin de mes
+  const hoy = _gHoyIso();
+  const [y, m] = _grillaMesKey.split('-').map(Number);
+  const finMes = _gIso(new Date(y, m, 0, 12));
+  document.getElementById('cr-desde').value = hoy.slice(0, 7) === _grillaMesKey ? hoy : `${_grillaMesKey}-01`;
+  document.getElementById('cr-hasta').value = finMes;
+
+  _cargaRapidaFrancos = new Set();
+  const cont = document.getElementById('cr-francos');
+  const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  cont.innerHTML = dias.map((d, i) =>
+    `<span class="cr-dia-pill" data-dia="${i}" onclick="_cargaRapidaToggleFranco(${i})"
+       style="padding:7px 0;width:42px;text-align:center;border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;color:var(--muted);user-select:none">${d}</span>`
+  ).join('');
+
+  _cargaRapidaPreview();
+  openModal('modal-carga-rapida');
+}
+
+function _cargaRapidaToggleFranco(dia) {
+  if (_cargaRapidaFrancos.has(dia)) _cargaRapidaFrancos.delete(dia);
+  else _cargaRapidaFrancos.add(dia);
+  const pill = document.querySelector(`#cr-francos [data-dia="${dia}"]`);
+  if (pill) {
+    const activo = _cargaRapidaFrancos.has(dia);
+    pill.style.background   = activo ? 'rgba(139,148,158,0.15)' : '';
+    pill.style.borderStyle  = activo ? 'dashed' : 'solid';
+    pill.style.color        = activo ? 'var(--text)' : 'var(--muted)';
+    pill.style.fontWeight   = activo ? '700' : '400';
+  }
+  _cargaRapidaPreview();
+}
+
+// Genera las filas del rango actual del modal. Devuelve null si el form es inválido.
+function _cargaRapidaFilas() {
+  const choferId = document.getElementById('cr-chofer').value;
+  const truckId  = document.getElementById('cr-movil').value;
+  const desde    = document.getElementById('cr-desde').value;
+  const hasta    = document.getElementById('cr-hasta').value;
+  if (!choferId || !truckId || !desde || !hasta || desde > hasta) return null;
+
+  const filas = [];
+  let iso = desde;
+  while (iso <= hasta) {
+    if (filas.length >= 62) return null; // rango máximo: 62 días
+    const diaIdx = (_gDate(iso).getDay() + 6) % 7; // 0 = Lun
+    const esFranco = _cargaRapidaFrancos.has(diaIdx);
+    filas.push({
+      fecha: iso,
+      truck_id: parseInt(truckId),
+      driver_id: esFranco ? null : choferId,
+      estado: esFranco ? 'franco' : 'asignado',
+    });
+    iso = _gSumarDias(iso, 1);
+  }
+  return filas;
+}
+
+function _cargaRapidaPreview() {
+  const box = document.getElementById('cr-preview');
+  const btn = document.getElementById('cr-btn-confirmar');
+  const desde = document.getElementById('cr-desde').value;
+  const hasta = document.getElementById('cr-hasta').value;
+
+  const filas = _cargaRapidaFilas();
+  if (!filas) {
+    btn.disabled = true;
+    btn.textContent = 'Cargar';
+    if (desde && hasta && desde > hasta) box.textContent = '⚠ La fecha "Desde" tiene que ser anterior a "Hasta".';
+    else if (desde && hasta && _gSumarDias(desde, 61) < hasta) box.textContent = '⚠ El rango no puede superar los 62 días. Cargalo en dos tandas.';
+    else box.textContent = 'Completá chofer, móvil y fechas para ver el resumen.';
+    return;
+  }
+
+  const choferNombre = document.getElementById('cr-chofer').selectedOptions[0].textContent;
+  const movilNombre  = document.getElementById('cr-movil').selectedOptions[0].textContent;
+  const francos = filas.filter(f => f.estado === 'franco').length;
+  const diasNombres = ['lunes','martes','miércoles','jueves','viernes','sábados','domingos'];
+  const francosTxt = _cargaRapidaFrancos.size
+    ? `, con franco los ${[..._cargaRapidaFrancos].sort().map(i => diasNombres[i]).join(', ')} (${francos} días)`
+    : '';
+
+  box.innerHTML = `Se van a cargar <b style="color:var(--text)">${filas.length} días</b>: ` +
+    `<b style="color:var(--text)">${choferNombre}</b> en el móvil <b style="color:var(--text)">${movilNombre}</b> ` +
+    `del <b style="color:var(--text)">${_gDDbarraMM(desde)}</b> al <b style="color:var(--text)">${_gDDbarraMM(hasta)}</b>${francosTxt}.<br>` +
+    `⚠ Los días que ya tenían algo cargado se pisan.`;
+  btn.disabled = false;
+  btn.textContent = `Cargar ${filas.length} días`;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ALERTAS "GRILLA VS. REALIDAD" — dashboard admin + marcas en grilla
