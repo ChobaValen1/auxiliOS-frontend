@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v85'; // v85: modal Km del chofer — últimas 7 + historial por semana con servicios
+const CACHE_NAME = 'auxilios-v86'; // v86: registro diario — lista corta de jornadas, historial solo por el modal
 
 const PRECACHE_ASSETS = [
   '/',

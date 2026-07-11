@@ -7137,39 +7137,19 @@ function renderHistorialJornadas(data) {
     mList.appendChild(row);
   });
 
-  if (mList && data.length > 4) {
-    const hidden = Array.from(mList.children).slice(4);
-    hidden.forEach(el => { el.style.display = 'none'; });
-    const btn = document.createElement('button');
-    btn.textContent = `Ver más (${data.length - 4} restantes)`;
-    btn.style.cssText = `width:100%;padding:10px;margin-top:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:12px;cursor:pointer`;
-    btn.onclick = () => {
-      // 'flex' (no ''): las cards se crean con display:flex inline; si se restaura
-      // con '' quedan en display:block y se ven con otro formato (más anchas).
-      hidden.forEach(el => { el.style.display = 'flex'; });
-      btn.remove();
-    };
-    mList.appendChild(btn);
-  }
+  // Solo las últimas jornadas a la vista; el resto vive en el modal "Mis Jornadas"
+  // que abre el botón "Ver historial completo" que ya está debajo del listado.
+  // (Antes un "Ver más" desplegaba todo acá y colapsaba el módulo.)
+  if (mList) Array.from(mList.children).slice(4).forEach(el => { el.remove(); });
+  Array.from(tbody.children).slice(10).forEach(el => { el.remove(); });
 }
 
 function _resetJornadasMobile() {
   const mList = document.getElementById('mobile-jornadas-list');
   if (!mList) return;
-  const rows = Array.from(mList.children).filter(el => el.tagName !== 'BUTTON');
-  if (rows.length <= 4) return;
-  rows.slice(4).forEach(el => { el.style.display = 'none'; });
   const existingBtn = mList.querySelector('button');
   if (existingBtn) existingBtn.remove();
-  const btn = document.createElement('button');
-  btn.textContent = `Ver más (${rows.length - 4} restantes)`;
-  btn.style.cssText = `width:100%;padding:10px;margin-top:4px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--accent);font-size:12px;cursor:pointer`;
-  btn.onclick = () => {
-    // 'flex' (no ''): mismo formato que las primeras 4 cards (ver renderHistorialJornadas)
-    rows.slice(4).forEach(el => { el.style.display = 'flex'; });
-    btn.remove();
-  };
-  mList.appendChild(btn);
+  Array.from(mList.children).slice(4).forEach(el => { el.remove(); });
 }
 
 // ── MODAL "MIS JORNADAS" (historial completo paginado) ────────
