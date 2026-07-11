@@ -2175,6 +2175,72 @@ async function abrirDetalleRemitoAdmin(remitoId) {
   openModal('modal-remito-admin');
 }
 
+function _raEditar(grupoId) {
+  if (!_raEsAdmin()) return;
+  _raGrupoEditando = grupoId;
+  _raRender();
+}
+
+function _raCancelar() {
+  _raGrupoEditando = null;
+  _raRender();
+}
+
+// Lee el valor tipado de un input de edición
+function _raLeerInput(campo) {
+  const el = document.getElementById(`ra-in-${campo.col}`);
+  if (!el) return undefined;
+  const raw = el.value;
+  if (campo.tipo === 'bool')   return raw === '' ? null : raw === 'true';
+  if (campo.tipo === 'number') return raw === '' ? null : Number(raw);
+  if (campo.tipo === 'pago')   return raw === '' ? null : raw;
+  return raw.trim() === '' ? null : raw.trim();
+}
+
+async function _raGuardar(grupoId) {
+  if (!_raEsAdmin() || !_raRemito) return;
+  const grupo = _RA_GRUPOS.find(g => g.id === grupoId);
+  if (!grupo) return;
+
+  // Diff: solo campos que cambiaron
+  const updates = {};
+  const cambios = [];
+  grupo.campos.filter(c => !c.soloLectura).forEach(c => {
+    const nuevo = _raLeerInput(c);
+    if (nuevo === undefined) return;
+    const actual = _raRemito[c.col] ?? null;
+    const iguales = (c.tipo === 'number')
+      ? Number(actual ?? NaN) === Number(nuevo ?? NaN) || (actual === null && nuevo === null)
+      : actual === nuevo;
+    if (!iguales) {
+      updates[c.col] = nuevo;
+      cambios.push({ campo: c.col, antes: actual, despues: nuevo });
+    }
+  });
+
+  if (!cambios.length) { _raCancelar(); return; }
+
+  const entrada = {
+    fecha: new Date().toISOString(),
+    user_id: USUARIO_ACTUAL?.id || null,
+    user_nombre: PERFIL_USUARIO?.full_name || '—',
+    cambios,
+  };
+
+  const res = await actualizarRemitoAdmin(_raRemito.remito_id, updates, entrada, _raRemito.historial_ediciones);
+  if (!res.ok) { toast('No se pudo guardar: ' + res.msg, 'error'); return; }
+
+  toast('Cambios guardados ✓');
+  _raGrupoEditando = null;
+  // Recargar el remito completo (imp_total_extras es columna generada: se recalcula en la DB)
+  const r = await obtenerRemitoCompleto(_raRemito.remito_id);
+  if (r) _raRemito = r;
+  _raRender();
+  // Refrescar lista y KPIs de fondo
+  if (typeof cargarRemitos === 'function') cargarRemitos();
+  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
+}
+
 // ── FORMA DE PAGO — soporta pago mixto ────────
 let remPago1 = '', remPago2 = '', pagoMixtoActivo = false;
 
