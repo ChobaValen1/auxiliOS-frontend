@@ -265,6 +265,7 @@ function goTo(name) {
   if (name === 'remitos') {
     showRemitosView('lista');
     cargarRemitos();
+    actualizarKpisRemitos();
   }
   if (name === 'sueldos') cargarSueldosTab();
   if (name === 'jornadas-admin') initJornadasAdmin();
@@ -1572,6 +1573,7 @@ function aplicarFiltrosRemitos() {
   window._remitosFiltros = filtros;
   window._remitosPagina = 1;
   if (typeof cargarRemitos === 'function') cargarRemitos({ filtros, page: 1 });
+  actualizarKpisRemitos();
 }
 
 const aplicarFiltrosRemitosDebounced = _debounce(aplicarFiltrosRemitos, 350);
@@ -6310,6 +6312,35 @@ function generarHtmlPill(estado) {
   if (estado === 'firmado') return `<span class="pill pill-green">✓ Firmado</span>`;
   if (estado === 'anulado') return `<span class="pill pill-red">🚫 Anulado</span>`;
   return `<span class="pill pill-amber">⏳ Pendiente</span>`;
+}
+
+// ── KPIs de remitos (admin/supervisión) ─────────────────────────
+// Usa fetchRemitosFiltrados (mismos filtros que la lista, sin paginar).
+function _remitoIncompleto(r) {
+  const sinFirma = r.estado !== 'anulado' && !r.firmaUrl;
+  return !r.telefono || r.km === '—' || !r.fotosCount || sinFirma;
+}
+
+async function actualizarKpisRemitos() {
+  const rol = PERFIL_USUARIO?.roles?.name;
+  const cont = document.getElementById('remitos-kpis');
+  if (!cont) return;
+  if (rol !== 'administracion' && rol !== 'supervision') { cont.style.display = 'none'; return; }
+  cont.style.display = 'flex';
+
+  const filas = await fetchRemitosFiltrados({ filtros: window._remitosFiltros || {} });
+  const activos = filas.filter(r => r.estado !== 'anulado');
+
+  const facturado = activos.reduce((s, r) =>
+    s + (parseInt(r.peaje) || 0) + (parseInt(r.excedente) || 0) + (parseInt(r.otros) || 0), 0);
+  const km = activos.reduce((s, r) => s + (parseInt(r.km) || 0), 0);
+  const incompletos = activos.filter(_remitoIncompleto).length;
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('rkpi-cantidad',    activos.length);
+  set('rkpi-facturado',   '$ ' + facturado.toLocaleString('es-AR'));
+  set('rkpi-km',          km.toLocaleString('es-AR') + ' km');
+  set('rkpi-incompletos', incompletos);
 }
 
 function renderTablaRemitos(data) {
