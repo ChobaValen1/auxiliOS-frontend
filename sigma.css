@@ -3563,3 +3563,8 @@ body {
   .alx-alerta { flex-wrap: wrap; }
   .alx-acc { flex-direction: row; width: 100%; justify-content: flex-end; }
 }
+
+/* Detalle remito admin: tarjetas a 1 columna en mobile */
+@media (max-width: 640px) {
+  .ra-grid { grid-template-columns: 1fr !important; }
+}

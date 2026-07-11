@@ -1989,9 +1989,8 @@ const _RA_GRUPOS = [
     { col: 'razon_social',  label: 'Razón social', tipo: 'text' },
     { col: 'cuit',          label: 'CUIT', tipo: 'text' },
     { col: 'telefono',      label: 'Teléfono', tipo: 'text' },
-    { col: 'email_cliente', label: 'Email', tipo: 'text' },
   ]},
-  { id: 'recorrido', titulo: '📍 Recorrido', editable: true, campos: [
+  { id: 'recorrido', titulo: '📍 Recorrido', editable: true, full: true, campos: [
     { col: 'origen',    label: 'Origen', tipo: 'text' },
     { col: 'destino',   label: 'Destino', tipo: 'text' },
     { col: 'km_reales', label: 'KM reales del servicio', tipo: 'number' },
@@ -2012,7 +2011,7 @@ const _RA_GRUPOS = [
     { col: 'sin_danos',            label: 'Sin daños', tipo: 'bool' },
     { col: 'conformidad_arrastre', label: 'Conformidad de arrastre', tipo: 'bool' },
   ]},
-  { id: 'observaciones', titulo: '📝 Observaciones', editable: true, campos: [
+  { id: 'observaciones', titulo: '📝 Observaciones', editable: true, full: true, campos: [
     { col: 'observaciones', label: 'Observaciones', tipo: 'textarea' },
   ]},
 ];
@@ -2027,6 +2026,12 @@ function _raEscape(s) {
 function _raValorHTML(campo, r) {
   const v = r[campo.col];
   const vacioHTML = '<span style="color:var(--red);font-style:italic;font-weight:400">— sin cargar</span>';
+  // Arrastre: NO es un dato faltante — solo avisa cuando está activada
+  if (campo.col === 'conformidad_arrastre') {
+    return v === true
+      ? '<span style="color:var(--amber);font-weight:700">⚠ Activada</span>'
+      : '<span style="color:var(--muted)">No</span>';
+  }
   if (campo.tipo === 'bool') {
     if (v === true)  return '<span style="color:var(--green);font-weight:600">✓ Sí</span>';
     if (v === false) return '<span style="color:var(--red);font-weight:600">✗ No</span>';
@@ -2081,17 +2086,18 @@ function _raGrupoHTML(g, r) {
 
   const filas = g.campos.map(c => {
     const esEditable = editando && !c.soloLectura;
-    return `<span style="color:var(--muted)">${c.label}</span>
-            <span style="font-weight:600">${esEditable ? _raInputHTML(c, r) : _raValorHTML(c, r)}</span>`;
+    return `<span style="color:var(--muted);font-size:11px;align-self:center">${c.label}</span>
+            <span style="font-weight:600;text-align:${esEditable ? 'left' : 'right'}">${esEditable ? _raInputHTML(c, r) : _raValorHTML(c, r)}</span>`;
   }).join('');
 
+  const fullStyle = g.full || editando ? 'grid-column:1 / -1;' : '';
   return `
-    <div style="margin-bottom:18px" id="ra-grupo-${g.id}">
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">
-        <span style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700">${g.titulo}</span>
+    <div style="${fullStyle}background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px" id="ra-grupo-${g.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700">${g.titulo}</span>
         ${btnEditar}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12px">${filas}</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12px">${filas}</div>
       ${botonesEdicion}
     </div>`;
 }
@@ -2104,8 +2110,8 @@ function _raFotosHTML(r) {
            style="width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--border2);cursor:pointer">`).join('') + `</div>`
     : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin fotos cargadas</span>';
   return `
-    <div style="margin-bottom:18px">
-      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">📷 Fotos del servicio (${fotos.length})</div>
+    <div style="grid-column:1 / -1;background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">📷 Fotos del servicio (${fotos.length})</div>
       ${cuerpo}
     </div>`;
 }
@@ -2116,8 +2122,8 @@ function _raFirmaHTML(r) {
        <div style="font-size:11px;color:var(--muted);margin-top:6px">Firmado el ${r.firmado_at ? formatearFecha(r.firmado_at) : '—'}</div>`
     : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin firma</span>';
   return `
-    <div style="margin-bottom:18px">
-      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">✍️ Firma del cliente</div>
+    <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">✍️ Firma del cliente</div>
       ${cuerpo}
     </div>`;
 }
@@ -2132,8 +2138,8 @@ function _raTrazabilidadHTML(r) {
       }).join('<br>')
     : 'Sin ediciones registradas';
   return `
-    <div style="margin-bottom:6px">
-      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">🕓 Trazabilidad</div>
+    <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">🕓 Trazabilidad</div>
       <div style="font-size:11px;color:var(--muted);line-height:1.9">
         📱 Creado en el dispositivo: <b style="color:var(--text)">${r.created_at_device ? formatearFecha(r.created_at_device) : '—'}</b><br>
         ☁️ Recibido en el servidor: <b style="color:var(--text)">${r.received_at ? formatearFecha(r.received_at) : (r.created_at ? formatearFecha(r.created_at) : '—')}</b>${r.sync_status ? ` (${_raEscape(r.sync_status)})` : ''}<br>
@@ -2157,8 +2163,31 @@ function _raRender() {
   pill.className = `pill ${est[0]}`;
   pill.textContent = est[1];
 
+  // Hero: números clave del remito
+  const km = r.km_reales != null ? `${Number(r.km_reales).toLocaleString('es-AR')} km` : '—';
+  const extras = '$ ' + Number(r.imp_total_extras || 0).toLocaleString('es-AR');
+  const cobrado = '$ ' + ((Number(r.pago_1_monto) || 0) + (Number(r.pago_2_monto) || 0)).toLocaleString('es-AR');
+  const statHTML = (v, l, color) => `
+    <div style="flex:1;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
+      <div style="font-family:'DM Mono',monospace;font-size:17px;font-weight:800;${color ? `color:${color}` : ''}">${v}</div>
+      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">${l}</div>
+    </div>`;
+  const avisoArrastre = r.conformidad_arrastre === true
+    ? `<div style="margin-top:10px;padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.4);border-radius:8px;font-size:12px;color:var(--amber);font-weight:600">⚠ Este remito tiene la conformidad de ARRASTRE activada</div>`
+    : '';
+  const heroHTML = `
+    <div style="background:linear-gradient(135deg,#13161d,rgba(245,166,35,0.10));padding:16px 22px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:10px">
+        ${statHTML(km, 'Recorrido')}
+        ${statHTML(extras, 'Extras')}
+        ${statHTML(cobrado, 'Cobrado', 'var(--green)')}
+      </div>
+      ${avisoArrastre}
+    </div>`;
+
   document.getElementById('ra-body').innerHTML =
-    `<div style="padding:18px 22px">` +
+    heroHTML +
+    `<div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px" class="ra-grid">` +
     _RA_GRUPOS.map(g => _raGrupoHTML(g, r)).join('') +
     _raFotosHTML(r) +
     _raFirmaHTML(r) +

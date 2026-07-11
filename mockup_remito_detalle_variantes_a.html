@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Detalle remito admin · 3 variantes de la Opción A</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --bg-elev:#1c2129; --border:#2d333b; --border2:#3d444d;
+    --text:#e6edf3; --muted:#8b949e; --muted2:#6e7681;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --red:#e2504a; --red-lo:rgba(226,80,74,0.12);
+    --green:#4ade80; --green-lo:rgba(74,222,128,0.10);
+    --blue:#58a6ff; --blue-lo:rgba(88,166,255,0.12);
+    --purple:#bc8cff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:20px; }
+  .mockup-note { background:#2b2210; border:2px dashed var(--amber); border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; margin-bottom:26px; max-width:1100px; }
+  .mockup-note h3 { margin:0 0 6px 0; font-size:14px; color:var(--amber); }
+  .wrap { max-width:1100px; }
+  .st-titulo { font-size:17px; font-weight:800; margin:40px 0 4px; }
+  .st-sub { color:var(--muted); font-size:12px; margin-bottom:16px; max-width:780px; line-height:1.6; }
+  .modal { max-width:600px; background:var(--card); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+  .btn-mini { padding:2px 10px; font-size:10px; border-radius:6px; background:transparent; color:var(--muted); border:1px solid var(--border2); cursor:pointer; }
+  .pill { padding:3px 10px; border-radius:10px; font-size:10px; font-weight:700; }
+  .pill-green { background:var(--green-lo); color:var(--green); }
+  .vacio { color:var(--red); font-style:italic; font-weight:400; }
+  .pros { display:flex; gap:20px; margin-top:14px; flex-wrap:wrap; font-size:12px; }
+  .pros div { flex:1; min-width:240px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; line-height:1.7; }
+  .pros .p { color:var(--green); font-weight:700; } .pros .c { color:var(--red); font-weight:700; }
+  hr.sep { border:none; border-top:1px solid var(--border); margin:44px 0; }
+  .mono { font-family:'Consolas',monospace; }
+
+  /* ═══ A1 ═══ */
+  .a1-hero { background:linear-gradient(135deg,#13161d,rgba(245,166,35,0.10)); padding:20px 24px; border-bottom:1px solid var(--border); }
+  .a1-stats { display:flex; gap:10px; margin-top:14px; }
+  .a1-stat { flex:1; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:10px; padding:10px 12px; text-align:center; }
+  .a1-cards { padding:16px 20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .a1-card { background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .a1-card .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .a1-kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:12px; }
+  .a1-kv .k { color:var(--muted); font-size:11px; }
+  .a1-kv .v { font-weight:600; text-align:right; }
+  @media (max-width:640px){ .a1-cards { grid-template-columns:1fr; } }
+
+  /* ═══ A2 ═══ */
+  .a2-hero { padding:18px 22px; border-bottom:1px solid var(--border); }
+  .a2-prog { margin-top:12px; }
+  .a2-prog .bar { height:8px; border-radius:6px; background:var(--bg-elev); overflow:hidden; }
+  .a2-prog .fill { height:100%; width:72%; background:linear-gradient(90deg,var(--amber),var(--green)); border-radius:6px; }
+  .a2-prog .txt { font-size:10px; color:var(--muted); margin-top:5px; display:flex; justify-content:space-between; }
+  .a2-acc { border-top:1px solid var(--border); }
+  .a2-item { border-bottom:1px solid var(--border); }
+  .a2-head { display:flex; align-items:center; gap:10px; padding:13px 20px; cursor:pointer; font-size:12px; font-weight:700; }
+  .a2-head .estado-mini { margin-left:auto; font-size:10px; font-weight:600; }
+  .a2-head .flecha { color:var(--muted2); font-size:11px; }
+  .a2-body { padding:4px 20px 16px 44px; }
+  .a2-kv { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .a2-field { background:var(--bg-elev); border:1px solid var(--border); border-radius:8px; padding:7px 11px; }
+  .a2-field .k { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .a2-field .v { font-size:12px; font-weight:600; margin-top:2px; }
+  @media (max-width:640px){ .a2-kv { grid-template-columns:1fr; } }
+
+  /* ═══ A3 ═══ */
+  .a3-hero { display:flex; gap:14px; align-items:center; padding:18px 22px; background:linear-gradient(180deg,rgba(88,166,255,0.07),transparent); border-bottom:1px solid var(--border); }
+  .a3-avatar { width:46px; height:46px; border-radius:50%; background:var(--amber); color:#000; font-weight:800; font-size:17px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .a3-chips { display:flex; gap:8px; padding:14px 22px 0; flex-wrap:wrap; }
+  .a3-chip { padding:6px 12px; border-radius:16px; font-size:11px; font-weight:700; border:1px solid var(--border2); background:var(--bg-elev); }
+  .a3-secciones { padding:14px 22px 18px; }
+  .a3-sec { border-left:3px solid var(--border2); padding:10px 0 10px 16px; margin-bottom:6px; position:relative; }
+  .a3-sec.ok { border-left-color:var(--green); }
+  .a3-sec.warn { border-left-color:var(--red); }
+  .a3-sec .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .a3-sec .t { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); }
+  .a3-linea { font-size:13px; line-height:1.8; }
+  .a3-linea b { font-weight:700; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — 3 variantes de la Opción A (resumen arriba + secciones)</h3>
+  Mismo contenido y funciones en las tres (✏️ por sección, vacíos visibles, trazabilidad).
+  Cambia cómo se organiza y se ve. Mirá las tres y elegí (o mezclamos).
+</div>
+
+<div class="wrap">
+
+  <!-- ═════════ A1 ═════════ -->
+  <div class="st-titulo">A1 — Tarjetas en grilla (la original pulida)</div>
+  <div class="st-sub">Cabecera con 3 números grandes y tarjetas de a dos. Es la que viste, refinada.</div>
+
+  <div class="modal">
+    <div class="a1-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="mono" style="font-size:18px;font-weight:700;color:var(--amber)">📄 REM-20260708-6278</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Pablo · Jornada 08/07/2026 · Móvil 114 (NZQ933)</div>
+        </div>
+        <span class="pill pill-green">✓ FIRMADO</span>
+      </div>
+      <div class="a1-stats">
+        <div class="a1-stat"><div class="mono" style="font-size:17px;font-weight:800">12 km</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Recorrido</div></div>
+        <div class="a1-stat"><div class="mono" style="font-size:17px;font-weight:800">$ 3.500</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Extras</div></div>
+        <div class="a1-stat"><div class="mono" style="font-size:17px;font-weight:800;color:var(--green)">$ 18.500</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Cobrado</div></div>
+      </div>
+    </div>
+    <div class="a1-cards">
+      <div class="a1-card">
+        <div class="head"><span style="font-size:11px;font-weight:700">👤 Cliente</span><button class="btn-mini">✏️</button></div>
+        <div class="a1-kv">
+          <span class="k">Razón social</span><span class="v">Marina López</span>
+          <span class="k">CUIT</span><span class="v">27-28456789-3</span>
+          <span class="k">Teléfono</span><span class="v vacio">— sin cargar</span>
+          <span class="k">Email</span><span class="v vacio">— sin cargar</span>
+        </div>
+      </div>
+      <div class="a1-card">
+        <div class="head"><span style="font-size:11px;font-weight:700">💳 Importes y pago</span><button class="btn-mini">✏️</button></div>
+        <div class="a1-kv">
+          <span class="k">Peaje</span><span class="v">$ 0</span>
+          <span class="k">Excedente</span><span class="v">$ 3.500</span>
+          <span class="k">Pago 1</span><span class="v">🏦 $ 18.500</span>
+          <span class="k">Pago 2</span><span class="v vacio">—</span>
+        </div>
+      </div>
+      <div class="a1-card" style="grid-column:1/-1">
+        <div class="head"><span style="font-size:11px;font-weight:700">📍 Recorrido · 🚗 Servicio · ☑️ Conformidades · 📷 · ✍️ · 🕓</span></div>
+        <div style="font-size:11px;color:var(--muted)">…el resto de las secciones sigue igual, en tarjetas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pros">
+    <div><span class="p">✔</span> Equilibrada: compacta en PC, ordenada en celular. La más simple de construir sobre lo que ya está.</div>
+    <div><span class="c">✘</span> Con muchas secciones sigue habiendo bastante scroll en celular.</div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ═════════ A2 ═════════ -->
+  <div class="st-titulo">A2 — Acordeón con completitud</div>
+  <div class="st-sub">
+    Cada sección es una fila plegable: cerrada muestra un mini-estado (✓ completa / ⚠ faltan 2). Arriba, una
+    <b>barra de completitud del remito</b> (qué % de los datos está cargado). Abrís solo lo que te interesa.
+  </div>
+
+  <div class="modal">
+    <div class="a2-hero">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="mono" style="font-size:17px;font-weight:700;color:var(--amber)">📄 REM-20260708-6278</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Pablo · 08/07 · Móvil 114 · <b style="color:var(--green)">$ 18.500</b> · 12 km</div>
+        </div>
+        <span class="pill pill-green">✓ FIRMADO</span>
+      </div>
+      <div class="a2-prog">
+        <div class="bar"><div class="fill"></div></div>
+        <div class="txt"><span>Datos cargados: <b style="color:var(--text)">13 de 18</b></span><span style="color:var(--red)">Faltan: teléfono, email, pago 2, sin daños, observaciones</span></div>
+      </div>
+    </div>
+    <div class="a2-acc">
+      <div class="a2-item">
+        <div class="a2-head"><span class="flecha">▸</span> 🚗 Servicio <span class="estado-mini" style="color:var(--green)">✓ completa</span></div>
+      </div>
+      <div class="a2-item">
+        <div class="a2-head"><span class="flecha">▾</span> 👤 Cliente <span class="estado-mini" style="color:var(--red)">⚠ faltan 2</span><button class="btn-mini" style="margin-left:10px">✏️</button></div>
+        <div class="a2-body">
+          <div class="a2-kv">
+            <div class="a2-field"><div class="k">Razón social</div><div class="v">Marina López</div></div>
+            <div class="a2-field"><div class="k">CUIT</div><div class="v">27-28456789-3</div></div>
+            <div class="a2-field" style="border-color:rgba(226,80,74,0.4)"><div class="k">Teléfono</div><div class="v vacio">— sin cargar</div></div>
+            <div class="a2-field" style="border-color:rgba(226,80,74,0.4)"><div class="k">Email</div><div class="v vacio">— sin cargar</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="a2-item"><div class="a2-head"><span class="flecha">▸</span> 📍 Recorrido <span class="estado-mini" style="color:var(--green)">✓ completa</span></div></div>
+      <div class="a2-item"><div class="a2-head"><span class="flecha">▸</span> 💳 Importes y pago <span class="estado-mini" style="color:var(--green)">✓ completa</span></div></div>
+      <div class="a2-item"><div class="a2-head"><span class="flecha">▸</span> ☑️ Conformidades <span class="estado-mini" style="color:var(--red)">⚠ falta 1</span></div></div>
+      <div class="a2-item"><div class="a2-head"><span class="flecha">▸</span> 📷 Fotos (3) · ✍️ Firma <span class="estado-mini" style="color:var(--green)">✓</span></div></div>
+      <div class="a2-item"><div class="a2-head"><span class="flecha">▸</span> 🕓 Trazabilidad <span class="estado-mini" style="color:var(--muted)">1 edición</span></div></div>
+    </div>
+  </div>
+
+  <div class="pros">
+    <div><span class="p">✔</span> Súper corto: ves de una qué secciones están incompletas sin scrollear. La barra de completitud es un control de calidad instantáneo.</div>
+    <div><span class="c">✘</span> Para leer TODO el remito hay que ir abriendo secciones (un toque más por sección).</div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ═════════ A3 ═════════ -->
+  <div class="st-titulo">A3 — Lectura corrida con semáforo lateral</div>
+  <div class="st-sub">
+    Sin tarjetas ni grillas: cada sección es un bloque de <b>texto legible</b> ("Marina López, CUIT 27-…, sin teléfono")
+    con una barrita de color a la izquierda — verde = completa, roja = falta algo. Se lee como una ficha, de corrido.
+  </div>
+
+  <div class="modal">
+    <div class="a3-hero">
+      <div class="a3-avatar">PA</div>
+      <div style="flex:1">
+        <div class="mono" style="font-size:16px;font-weight:700;color:var(--amber)">REM-20260708-6278</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Pablo · Jornada 08/07/2026 · Móvil 114</div>
+      </div>
+      <span class="pill pill-green">✓ FIRMADO</span>
+    </div>
+    <div class="a3-chips">
+      <span class="a3-chip">🛣 12 km</span>
+      <span class="a3-chip">💵 Extras $ 3.500</span>
+      <span class="a3-chip" style="color:var(--green);border-color:rgba(74,222,128,0.35)">🏦 Cobrado $ 18.500</span>
+      <span class="a3-chip" style="color:var(--red);border-color:rgba(226,80,74,0.35)">⚠ 2 datos sin cargar</span>
+    </div>
+    <div class="a3-secciones">
+      <div class="a3-sec ok">
+        <div class="head"><span class="t">🚗 Servicio</span><button class="btn-mini">✏️</button></div>
+        <div class="a3-linea"><b>SRV-10382</b> · Remolque liviano · <b>AC 123 BD</b> Fiat Cronos · cliente presente ✓</div>
+      </div>
+      <div class="a3-sec warn">
+        <div class="head"><span class="t">👤 Cliente</span><button class="btn-mini">✏️</button></div>
+        <div class="a3-linea"><b>Marina López</b> · CUIT 27-28456789-3 · <span class="vacio">teléfono sin cargar</span> · <span class="vacio">email sin cargar</span></div>
+      </div>
+      <div class="a3-sec ok">
+        <div class="head"><span class="t">📍 Recorrido</span><button class="btn-mini">✏️</button></div>
+        <div class="a3-linea">Talleres Unidos, Av. Vélez 880 <span style="color:var(--amber)">→</span> Domicilio, Bº Alta Córdoba · <b>12 km</b></div>
+      </div>
+      <div class="a3-sec ok">
+        <div class="head"><span class="t">💳 Importes y pago</span><button class="btn-mini">✏️</button></div>
+        <div class="a3-linea">Extras <b>$ 3.500</b> (peaje 0 · excedente 3.500 · otros 0) · Cobrado <b style="color:var(--green)">$ 18.500 por transferencia</b></div>
+      </div>
+      <div class="a3-sec warn">
+        <div class="head"><span class="t">☑️ Conformidades</span><button class="btn-mini">✏️</button></div>
+        <div class="a3-linea">Servicio ✓ · Cargos ✓ · Arrastre ✓ · <span class="vacio">Sin daños: no marcado</span></div>
+      </div>
+      <div class="a3-sec ok">
+        <div class="head"><span class="t">📷 Fotos · ✍️ Firma · 🕓 Trazabilidad</span></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+          <div style="width:48px;height:48px;border-radius:8px;background:#2c333c;display:flex;align-items:center;justify-content:center">📷</div>
+          <div style="width:48px;height:48px;border-radius:8px;background:#2c333c;display:flex;align-items:center;justify-content:center">📷</div>
+          <div style="width:48px;height:48px;border-radius:8px;background:#2c333c;display:flex;align-items:center;justify-content:center">📷</div>
+          <div style="width:110px;height:48px;background:#fff;border-radius:8px;color:#333;font-family:cursive;display:flex;align-items:center;justify-content:center">Marina L.</div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">📱 08/07 11:02 · ☁️ 08/07 11:05 · ✏️ 10/07 Valentín: teléfono — → 351…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pros">
+    <div><span class="p">✔</span> El más rápido de leer: frases en vez de tablas, y el semáforo izquierdo te lleva el ojo a lo que falta. Bárbaro en celular.</div>
+    <div><span class="c">✘</span> Menos "prolijo contable" — si te gusta ver cada dato en su casillero, A1 o A2 son mejores.</div>
+  </div>
+
+</div>
+</body></html>

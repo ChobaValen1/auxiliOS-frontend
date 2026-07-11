@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Rediseño del detalle de remito (admin) · 3 opciones</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --bg-elev:#1c2129; --border:#2d333b; --border2:#3d444d;
+    --text:#e6edf3; --muted:#8b949e; --muted2:#6e7681;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --red:#e2504a; --red-lo:rgba(226,80,74,0.12);
+    --green:#4ade80; --green-lo:rgba(74,222,128,0.10);
+    --blue:#58a6ff; --blue-lo:rgba(88,166,255,0.12);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:20px; }
+  .mockup-note { background:#2b2210; border:2px dashed var(--amber); border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; margin-bottom:26px; max-width:1100px; }
+  .mockup-note h3 { margin:0 0 6px 0; font-size:14px; color:var(--amber); }
+  .wrap { max-width:1100px; }
+  .seccion-titulo { font-size:17px; font-weight:800; margin:40px 0 4px; }
+  .seccion-titulo .tag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:1px; padding:3px 8px; border-radius:10px; vertical-align:middle; margin-left:8px; background:var(--green-lo); color:var(--green); border:1px solid rgba(74,222,128,0.3); }
+  .seccion-sub { color:var(--muted); font-size:12px; margin-bottom:16px; max-width:780px; line-height:1.6; }
+
+  .modal { max-width:600px; background:var(--card); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+  .btn { background:var(--card); color:var(--text); border:1px solid var(--border2); border-radius:8px; padding:7px 12px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .btn-mini { padding:2px 10px; font-size:10px; border-radius:6px; background:transparent; color:var(--muted); }
+  .btn-mini:hover { color:var(--amber); border-color:var(--amber); }
+  .pill { padding:3px 10px; border-radius:10px; font-size:10px; font-weight:700; }
+  .pill-green { background:var(--green-lo); color:var(--green); }
+  .vacio { color:var(--red); font-style:italic; font-weight:400; }
+
+  .pros { display:flex; gap:20px; margin-top:14px; flex-wrap:wrap; font-size:12px; }
+  .pros div { flex:1; min-width:240px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; line-height:1.7; }
+  .pros .p { color:var(--green); font-weight:700; } .pros .c { color:var(--red); font-weight:700; }
+  hr.sep { border:none; border-top:1px solid var(--border); margin:44px 0; }
+
+  /* ══ OPCIÓN A: hero + tarjetas ══ */
+  .heroA { background:linear-gradient(135deg,#13161d,rgba(245,166,35,0.10)); padding:20px 24px; border-bottom:1px solid var(--border); }
+  .heroA .fila1 { display:flex; justify-content:space-between; align-items:flex-start; }
+  .heroA .nro { font-family:'Consolas',monospace; font-size:18px; font-weight:700; color:var(--amber); }
+  .heroA .sub { font-size:11px; color:var(--muted); margin-top:4px; }
+  .heroA .stats { display:flex; gap:10px; margin-top:14px; }
+  .statA { flex:1; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:10px; padding:10px 12px; text-align:center; }
+  .statA .v { font-size:17px; font-weight:800; font-family:'Consolas',monospace; }
+  .statA .l { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
+  .cardsA { padding:16px 20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .cardA { background:var(--bg-elev); border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+  .cardA.full { grid-column:1 / -1; }
+  .cardA .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .cardA .head .t { font-size:11px; font-weight:700; }
+  .cardA .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:12px; }
+  .cardA .kv .k { color:var(--muted); font-size:11px; }
+  .cardA .kv .v { font-weight:600; text-align:right; }
+  @media (max-width:640px){ .cardsA { grid-template-columns:1fr; } .heroA .stats { flex-wrap:wrap; } }
+
+  /* ══ OPCIÓN B: pestañas ══ */
+  .headB { padding:16px 20px; border-bottom:1px solid var(--border); background:var(--bg-elev); display:flex; justify-content:space-between; align-items:center; }
+  .tabsB { display:flex; gap:4px; padding:10px 14px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .tabB { padding:8px 14px; font-size:12px; color:var(--muted); cursor:pointer; border:1px solid transparent; border-bottom:none; border-radius:8px 8px 0 0; }
+  .tabB.on { color:var(--amber); background:var(--card); border-color:var(--border); font-weight:700; position:relative; top:1px; }
+  .bodyB { padding:18px 22px; }
+  .kvB { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .fieldB { background:var(--bg-elev); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
+  .fieldB .k { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .fieldB .v { font-size:13px; font-weight:600; margin-top:3px; }
+  @media (max-width:640px){ .kvB { grid-template-columns:1fr; } }
+
+  /* ══ OPCIÓN C: documento ══ */
+  .docC { padding:0; }
+  .docC .membrete { display:flex; justify-content:space-between; align-items:center; padding:18px 24px; border-bottom:2px solid var(--amber); }
+  .docC .marca { display:flex; gap:12px; align-items:center; }
+  .docC .logo { width:42px; height:42px; border-radius:9px; background:var(--amber); display:flex; align-items:center; justify-content:center; font-size:22px; }
+  .docC .nombre { font-size:19px; letter-spacing:2px; color:var(--amber); font-weight:800; }
+  .docC .sub { font-size:9px; color:var(--muted); letter-spacing:1px; }
+  .docC .cuerpo { padding:18px 24px; }
+  .docC .secc { margin-bottom:14px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .docC .secc .st { display:flex; justify-content:space-between; align-items:center; background:var(--bg-elev); padding:7px 12px; font-size:10px; font-weight:700; color:var(--amber); text-transform:uppercase; letter-spacing:1.2px; }
+  .docC table { width:100%; border-collapse:collapse; font-size:12px; }
+  .docC td { padding:7px 12px; border-top:1px solid var(--border); }
+  .docC td.k { color:var(--muted); width:40%; font-size:11px; }
+  .docC td.v { font-weight:600; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — Rediseño del detalle de remito (vista admin) · 3 opciones</h3>
+  Mismo contenido en los tres (todos los campos, vacíos en rojo, ✏️ editar por sección, trazabilidad),
+  lo que cambia es el <strong>formato visual</strong>. Elegí la que más te guste o decime qué mezclar.
+</div>
+
+<div class="wrap">
+
+  <!-- ═══════════ OPCIÓN A ═══════════ -->
+  <div class="seccion-titulo">Opción A — Resumen arriba + tarjetas <span class="tag">RECOMENDADA</span></div>
+  <div class="seccion-sub">
+    Cabecera con los 3 números que más mirás (KM, extras, total cobrado) y abajo tarjetas de a dos columnas.
+    Cada tarjeta tiene su ✏️. Menos scroll que hoy y se ve de un golpe qué falta (rojo).
+  </div>
+
+  <div class="modal">
+    <div class="heroA">
+      <div class="fila1">
+        <div>
+          <div class="nro">📄 REM-20260708-6278</div>
+          <div class="sub">Pablo · Jornada 08/07/2026 · Móvil 114 (NZQ933)</div>
+        </div>
+        <span class="pill pill-green">✓ FIRMADO</span>
+      </div>
+      <div class="stats">
+        <div class="statA"><div class="v">12 km</div><div class="l">Recorrido</div></div>
+        <div class="statA"><div class="v">$ 3.500</div><div class="l">Extras</div></div>
+        <div class="statA"><div class="v" style="color:var(--green)">$ 18.500</div><div class="l">Cobrado</div></div>
+      </div>
+    </div>
+    <div class="cardsA">
+      <div class="cardA">
+        <div class="head"><span class="t">🚗 Servicio</span><button class="btn btn-mini">✏️</button></div>
+        <div class="kv">
+          <span class="k">Nro servicio</span><span class="v">SRV-10382</span>
+          <span class="k">Tipo</span><span class="v">Remolque liviano</span>
+          <span class="k">Vehículo</span><span class="v">AC 123 BD · Cronos</span>
+          <span class="k">Cliente presente</span><span class="v" style="color:var(--green)">✓ Sí</span>
+        </div>
+      </div>
+      <div class="cardA">
+        <div class="head"><span class="t">👤 Cliente</span><button class="btn btn-mini">✏️</button></div>
+        <div class="kv">
+          <span class="k">Razón social</span><span class="v">Marina López</span>
+          <span class="k">CUIT</span><span class="v">27-28456789-3</span>
+          <span class="k">Teléfono</span><span class="v vacio">— sin cargar</span>
+          <span class="k">Email</span><span class="v vacio">— sin cargar</span>
+        </div>
+      </div>
+      <div class="cardA full">
+        <div class="head"><span class="t">📍 Recorrido</span><button class="btn btn-mini">✏️</button></div>
+        <div style="display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600">
+          <span style="flex:1;text-align:center">Talleres Unidos, Av. Vélez 880</span>
+          <span style="color:var(--amber);font-size:18px">→</span>
+          <span style="flex:1;text-align:center">Domicilio — Bº Alta Córdoba</span>
+        </div>
+      </div>
+      <div class="cardA">
+        <div class="head"><span class="t">💳 Importes y pago</span><button class="btn btn-mini">✏️</button></div>
+        <div class="kv">
+          <span class="k">Peaje</span><span class="v">$ 0</span>
+          <span class="k">Excedente</span><span class="v">$ 3.500</span>
+          <span class="k">Pago 1</span><span class="v">🏦 Transf. $ 18.500</span>
+          <span class="k">Pago 2</span><span class="v vacio">— sin segundo pago</span>
+        </div>
+      </div>
+      <div class="cardA">
+        <div class="head"><span class="t">☑️ Conformidades</span><button class="btn btn-mini">✏️</button></div>
+        <div class="kv">
+          <span class="k">Servicio</span><span class="v" style="color:var(--green)">✓</span>
+          <span class="k">Cargos</span><span class="v" style="color:var(--green)">✓</span>
+          <span class="k">Sin daños</span><span class="v" style="color:var(--red)">✗</span>
+          <span class="k">Arrastre</span><span class="v" style="color:var(--green)">✓</span>
+        </div>
+      </div>
+      <div class="cardA full">
+        <div class="head"><span class="t">📷 Fotos (3) · ✍️ Firma · 🕓 Trazabilidad</span></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div style="width:56px;height:56px;border-radius:8px;background:#2c333c;display:flex;align-items:center;justify-content:center">📷</div>
+          <div style="width:56px;height:56px;border-radius:8px;background:#2c333c;display:flex;align-items:center;justify-content:center">📷</div>
+          <div style="width:56px;height:56px;border-radius:8px;background:#2c333c;display:flex;align-items:center;justify-content:center">📷</div>
+          <div style="width:120px;height:56px;background:#fff;border-radius:8px;color:#333;font-family:cursive;display:flex;align-items:center;justify-content:center">Marina L.</div>
+          <div style="font-size:10px;color:var(--muted);line-height:1.7;margin-left:6px">📱 08/07 11:02 · ☁️ 08/07 11:05<br>✏️ 10/07 — Valentín: telefono — → 351…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pros">
+    <div><span class="p">✔</span> Los números importantes se ven al toque. Compacto: la mitad de scroll que hoy.</div>
+    <div><span class="c">✘</span> En celular las tarjetas quedan en una columna (vuelve a ser largo, aunque ordenado).</div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ═══════════ OPCIÓN B ═══════════ -->
+  <div class="seccion-titulo">Opción B — Pestañas</div>
+  <div class="seccion-sub">
+    Sin scroll: la info se divide en pestañas (Datos / Pagos / Fotos y firma / Historial).
+    Encabezado siempre visible con lo esencial.
+  </div>
+
+  <div class="modal">
+    <div class="headB">
+      <div>
+        <div style="font-family:'Consolas',monospace;font-size:16px;font-weight:700;color:var(--amber)">📄 REM-20260708-6278</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Pablo · 08/07 · Móvil 114 · <b style="color:var(--green)">$ 18.500</b> · 12 km</div>
+      </div>
+      <span class="pill pill-green">✓ FIRMADO</span>
+    </div>
+    <div class="tabsB">
+      <div class="tabB on">📋 Datos</div>
+      <div class="tabB">💳 Pagos</div>
+      <div class="tabB">📷 Fotos y firma</div>
+      <div class="tabB">🕓 Historial</div>
+    </div>
+    <div class="bodyB">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-mini">✏️ Editar esta pestaña</button></div>
+      <div class="kvB">
+        <div class="fieldB"><div class="k">Nro servicio</div><div class="v">SRV-10382</div></div>
+        <div class="fieldB"><div class="k">Tipo</div><div class="v">Remolque liviano</div></div>
+        <div class="fieldB"><div class="k">Vehículo</div><div class="v">AC 123 BD · Fiat Cronos</div></div>
+        <div class="fieldB"><div class="k">Cliente</div><div class="v">Marina López</div></div>
+        <div class="fieldB"><div class="k">Teléfono</div><div class="v vacio">— sin cargar</div></div>
+        <div class="fieldB"><div class="k">Email</div><div class="v vacio">— sin cargar</div></div>
+        <div class="fieldB"><div class="k">Origen</div><div class="v">Talleres Unidos</div></div>
+        <div class="fieldB"><div class="k">Destino</div><div class="v">Bº Alta Córdoba</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pros">
+    <div><span class="p">✔</span> Nada de scroll, ideal en celular. Cada cosa tiene su lugar.</div>
+    <div><span class="c">✘</span> Hay que tocar pestañas para ver todo — no ves el remito "entero" de un vistazo. Un toque más de trabajo para construir.</div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ═══════════ OPCIÓN C ═══════════ -->
+  <div class="seccion-titulo">Opción C — Documento tipo remito</div>
+  <div class="seccion-sub">
+    Mismo espíritu que el remito del chofer (membrete Sigma, secciones enmarcadas tipo comprobante),
+    pero con todos los campos y el ✏️ en cada sección. Familiar y prolijo para imprimir/PDF.
+  </div>
+
+  <div class="modal docC">
+    <div class="membrete">
+      <div class="marca">
+        <div class="logo">🚛</div>
+        <div>
+          <div class="nombre">SIGMA REMOLQUES</div>
+          <div class="sub">SERVICIO DE REMOLQUE Y TRASLADO</div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'Consolas',monospace;color:var(--amber);font-weight:700">REM-20260708-6278</div>
+        <div style="font-size:11px;color:var(--muted)">08/07/2026 11:04 · <span class="pill pill-green">✓ FIRMADO</span></div>
+      </div>
+    </div>
+    <div class="cuerpo">
+      <div class="secc">
+        <div class="st"><span>🚗 Servicio y vehículo</span><button class="btn btn-mini">✏️</button></div>
+        <table>
+          <tr><td class="k">Nro servicio / Tipo</td><td class="v">SRV-10382 · Remolque liviano</td></tr>
+          <tr><td class="k">Vehículo asistido</td><td class="v">AC 123 BD · Fiat Cronos</td></tr>
+        </table>
+      </div>
+      <div class="secc">
+        <div class="st"><span>👤 Cliente</span><button class="btn btn-mini">✏️</button></div>
+        <table>
+          <tr><td class="k">Razón social / CUIT</td><td class="v">Marina López · 27-28456789-3</td></tr>
+          <tr><td class="k">Teléfono / Email</td><td class="v"><span class="vacio">— sin cargar</span> · <span class="vacio">— sin cargar</span></td></tr>
+        </table>
+      </div>
+      <div class="secc">
+        <div class="st"><span>💳 Importes</span><button class="btn btn-mini">✏️</button></div>
+        <table>
+          <tr><td class="k">Extras (peaje+exc+otros)</td><td class="v">$ 3.500</td></tr>
+          <tr><td class="k">Cobrado</td><td class="v" style="color:var(--green)">🏦 Transferencia $ 18.500</td></tr>
+        </table>
+      </div>
+      <div style="font-size:10px;color:var(--muted)">… y abajo igual: Conformidades, Fotos, Firma, Trazabilidad</div>
+    </div>
+  </div>
+
+  <div class="pros">
+    <div><span class="p">✔</span> Se ve "oficial", coherente con el remito del chofer y con el PDF.</div>
+    <div><span class="c">✘</span> Más denso; los campos vacíos resaltan menos que en A. Es el más largo de scrollear.</div>
+  </div>
+
+</div>
+</body></html>
