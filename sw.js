@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v86'; // v86: registro diario — lista corta de jornadas, historial solo por el modal
+const CACHE_NAME = 'auxilios-v87'; // v87: control de gomas 1x/día por móvil y chofer + card con semáforo en jornadas
 
 const PRECACHE_ASSETS = [
   '/',

@@ -5947,6 +5947,24 @@ async function guardarNeumaticos() {
   const btn = document.getElementById('btn-guardar-neumaticos');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
+  const fechaCheck = fecha || new Date().toISOString().slice(0, 10);
+
+  // Regla: UN control por día, por móvil y por chofer (online; offline lo cubre
+  // la idempotencia del outbox al sincronizar)
+  if (navigator.onLine) {
+    const { data: yaHecho } = await _db.from('tire_checks')
+      .select('check_id')
+      .eq('truck_id', _truckActual.truck_id)
+      .eq('check_date', fechaCheck)
+      .eq('driver_id', USUARIO_ACTUAL?.id)
+      .limit(1);
+    if (yaHecho && yaHecho.length) {
+      if (btn) { btn.textContent = '🔩 Guardar control'; btn.style.pointerEvents = 'auto'; }
+      _modalError('neu-error', 'Ya registraste el control de hoy para este móvil. Se hace una sola vez por día.');
+      return;
+    }
+  }
+
   // Si la jornada se abrió offline el log_id es TMP-*: intentar resolverlo al real
   let _logIdNeu = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
   _logIdNeu = await _resolverLogIdLocal(_logIdNeu);
@@ -5954,7 +5972,8 @@ async function guardarNeumaticos() {
   const datos = {
     truck_id:        _truckActual.truck_id,
     log_id:          _logIdNeu,
-    check_date:      fecha || new Date().toISOString().slice(0, 10),
+    driver_id:       USUARIO_ACTUAL?.id || null,
+    check_date:      fechaCheck,
     tire_condition:  cond,
     brake_condition: frenos,
     pressure_psi:    psi,
@@ -15673,23 +15692,44 @@ function _jadminRenderDetalle(det) {
   // ── Columna DER ────────────────────────
   let tireCard;
   if (tire_check) {
+    // Semáforo por condición: bueno=verde, regular=ámbar, malo=rojo
+    const _condPill = (v) => {
+      const map = {
+        bueno:   ['✓ Bueno',   'var(--green)', 'rgba(74,222,128,0.12)',  'rgba(74,222,128,0.3)'],
+        regular: ['⚠ Regular', 'var(--amber)', 'rgba(245,166,35,0.12)',  'rgba(245,166,35,0.35)'],
+        malo:    ['✗ Malo',    'var(--red)',   'rgba(226,80,74,0.12)',   'rgba(226,80,74,0.35)'],
+      };
+      const [label, color, bg, borde] = map[v] || ['— sin dato', 'var(--muted)', 'transparent', 'var(--border)'];
+      return `<span style="display:inline-block;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:700;color:${color};background:${bg};border:1px solid ${borde}">${label}</span>`;
+    };
+    const peor = [tire_check.tire_condition, tire_check.brake_condition].includes('malo') ? 'malo'
+               : [tire_check.tire_condition, tire_check.brake_condition].includes('regular') ? 'regular' : 'bueno';
+    const bordeCard = peor === 'malo' ? 'var(--red)' : peor === 'regular' ? 'var(--amber)' : 'var(--green)';
     tireCard = `
-      <div class="jd-card">
-        <h4>Revisión pre-jornada</h4>
-        <div class="jd-info">
-          <div><div class="k">Neumáticos</div><div class="v">${_escHtml(tire_check.tire_condition || '—')}</div></div>
-          <div><div class="k">Frenos</div><div class="v">${_escHtml(tire_check.brake_condition || '—')}</div></div>
-          <div><div class="k">Presión (PSI)</div><div class="v">${_escHtml(tire_check.pressure_psi ?? '—')}</div></div>
-          <div><div class="k">Fecha</div><div class="v">${_escHtml(_jadminFmtDT(tire_check.check_date))}</div></div>
+      <div class="jd-card" style="border-left:3px solid ${bordeCard}">
+        <h4>🛞 Neumáticos y Frenos</h4>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">
+          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛞 Neumáticos</div>
+            ${_condPill(tire_check.tire_condition)}
+          </div>
+          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛑 Frenos</div>
+            ${_condPill(tire_check.brake_condition)}
+          </div>
         </div>
-        ${tire_check.notes ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.02);border-radius:6px;font-size:11.5px;color:var(--muted2)">${_escHtml(tire_check.notes)}</div>` : ''}
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+          <span>Presión: <b style="color:var(--text)">${tire_check.pressure_psi != null ? _escHtml(tire_check.pressure_psi) + ' PSI' : '—'}</b></span>
+          <span>${_escHtml(_jadminFmtDT(tire_check.check_date))}</span>
+        </div>
+        ${tire_check.notes ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.02);border-radius:6px;font-size:11.5px;color:var(--muted2)">📝 ${_escHtml(tire_check.notes)}</div>` : ''}
       </div>
     `;
   } else {
     tireCard = `
       <div class="jd-card">
-        <h4>Revisión pre-jornada</h4>
-        <div class="jd-empty">No cargada.</div>
+        <h4>🛞 Neumáticos y Frenos</h4>
+        <div class="jd-empty" style="color:var(--red)">El chofer no cargó el control este día.</div>
       </div>
     `;
   }
