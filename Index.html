@@ -1351,6 +1351,25 @@
 </div>
 
 <div id="remitos-lista" style="display:block; margin-top:14px">
+  <!-- KPIs de remitos: solo admin/supervisión (se muestra por JS) -->
+  <div id="remitos-kpis" style="display:none;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:20px;font-weight:800" id="rkpi-cantidad">—</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Remitos del período</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:20px;font-weight:800" id="rkpi-facturado">—</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Facturado</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:20px;font-weight:800" id="rkpi-km">—</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">KM facturados</div>
+    </div>
+    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:20px;font-weight:800;color:var(--red)" id="rkpi-incompletos">—</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Con datos incompletos</div>
+    </div>
+  </div>
   <div class="card desktop-only" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
     <table class="data-table" id="tabla-remitos" style="display: table !important; width: 100%; min-width: 700px;">
       <thead>
@@ -3136,6 +3155,26 @@
         <button class="btn btn-ghost" onclick="closeModal('modal-ver-remito')">Cerrar</button>
         <button class="btn btn-primary btn-pdf-modal">⬇ Descargar PDF</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: detalle COMPLETO de remito para admin/supervisión -->
+<div class="modal-backdrop" id="modal-remito-admin">
+  <div class="modal-box wide" style="max-width:640px">
+    <div class="modal-head">
+      <div>
+        <span class="modal-head-title" id="ra-titulo">📄 REMITO</span>
+        <div style="font-size:11px;color:var(--muted2);margin-top:4px" id="ra-sub">—</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="pill" id="ra-estado-pill">—</span>
+        <button class="modal-close" onclick="closeModal('modal-remito-admin')">×</button>
+      </div>
+    </div>
+    <div class="modal-body" id="ra-body" style="max-height:70vh;overflow-y:auto"></div>
+    <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('modal-remito-admin')">Cerrar</button>
     </div>
   </div>
 </div>
