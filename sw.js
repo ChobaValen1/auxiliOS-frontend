@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v82'; // v82: carga rápida por rango en la grilla
+const CACHE_NAME = 'auxilios-v83'; // v83: remitos admin — KPIs y detalle completo editable
 
 const PRECACHE_ASSETS = [
   '/',
