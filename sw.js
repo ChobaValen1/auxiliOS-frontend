@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v84'; // v84: detalle remito admin rediseño A1 — hero + tarjetas, sin email, aviso arrastre
+const CACHE_NAME = 'auxilios-v85'; // v85: modal Km del chofer — últimas 7 + historial por semana con servicios
 
 const PRECACHE_ASSETS = [
   '/',

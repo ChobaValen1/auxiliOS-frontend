@@ -12205,9 +12205,46 @@ function abrirModalTotalGenerado() {
   openModal('modal-desglose-pago');
 }
 
-function abrirModalKmRecorridos() {
+// Estado del historial del modal Km: plegado al abrir, semanas abiertas al desplegar
+let _kmHistExpandido = false;
+let _kmSemAbiertas = new Set();
+
+function _kmFilaJornadaHTML(j, srvPorLog) {
   const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const km = Math.max(0, (j.km_final||0) - (j.km_inicio||0));
+  const abierta = j.km_final == null;
+  const fecha = j.log_date || '—';
+  const plate = j.trucks?.plate || (j.truck_id ? '#'+j.truck_id : '—');
+  const srvs = srvPorLog[j.log_id] || 0;
+  return '<div class="modal-desglose-row" style="grid-template-columns:76px 1fr 60px 90px">'
+    + '<span style="color:var(--muted);font-size:11px">' + _esc(fecha) + '</span>'
+    + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(plate) + (abierta?' <span style="color:var(--amber);font-size:9px">(abierta)</span>':'') + '</span>'
+    + '<span style="color:var(--muted);font-size:11px;text-align:right">' + (srvs ? srvs + ' srv' : '—') + '</span>'
+    + '<span style="color:var(--text);font-weight:600;font-size:11px;text-align:right">' + (abierta?'—':km.toLocaleString('es-AR')+' km') + '</span>'
+    + '</div>';
+}
+
+function _kmToggleSemana(clave) {
+  if (_kmSemAbiertas.has(clave)) _kmSemAbiertas.delete(clave);
+  else _kmSemAbiertas.add(clave);
+  _kmRenderModal();
+}
+
+function _kmVerHistorial() {
+  _kmHistExpandido = true;
+  _kmRenderModal();
+}
+
+function _kmRenderModal() {
   const logs = _rendLogsActuales || [];
+  const remitos = _rendRemitosActuales || [];
+
+  // Servicios por jornada (remitos no anulados vinculados al log)
+  const srvPorLog = {};
+  remitos.forEach(r => {
+    if (!r.log_id || r.status === 'anulado') return;
+    srvPorLog[r.log_id] = (srvPorLog[r.log_id] || 0) + 1;
+  });
 
   const totalKm = logs.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
   const jornadasCerradas = logs.filter(j=>j.km_final!=null).length;
@@ -12220,19 +12257,43 @@ function abrirModalKmRecorridos() {
   if (!body) return;
 
   const sorted = [...logs].sort((a,b)=>(b.log_date||'').localeCompare(a.log_date||''));
-  const rows = sorted.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay jornadas registradas en el período</div>'
-    : sorted.map(j => {
-        const km = Math.max(0, (j.km_final||0) - (j.km_inicio||0));
-        const abierta = j.km_final == null;
-        const fecha = j.log_date || '—';
-        const plate = j.trucks?.plate || (j.truck_id ? '#'+j.truck_id : '—');
-        return '<div class="modal-desglose-row" style="grid-template-columns:80px 1fr 110px">'
-          + '<span style="color:var(--muted);font-size:11px">' + _esc(fecha) + '</span>'
-          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(plate) + (abierta?' <span style="color:var(--amber);font-size:9px">(abierta)</span>':'') + '</span>'
-          + '<span style="color:var(--text);font-weight:600;font-size:11px;text-align:right">' + (abierta?'—':km.toLocaleString('es-AR')+' km') + '</span>'
-          + '</div>';
-      }).join('');
+
+  let listaHTML = '';
+  let botonHTML = '';
+
+  if (!sorted.length) {
+    listaHTML = '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay jornadas registradas en el período</div>';
+  } else if (!_kmHistExpandido) {
+    // ── Vista compacta: últimas 7 jornadas ──
+    const VISIBLES = 7;
+    listaHTML = sorted.slice(0, VISIBLES).map(j => _kmFilaJornadaHTML(j, srvPorLog)).join('');
+    const restantes = sorted.length - VISIBLES;
+    if (restantes > 0) {
+      botonHTML = `<button onclick="_kmVerHistorial()" style="display:block;width:100%;margin-top:12px;padding:11px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.35);color:var(--amber);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;text-align:center;font-family:inherit">📜 Ver historial completo (${restantes} jornada${restantes === 1 ? '' : 's'} más)</button>`;
+    }
+  } else {
+    // ── Historial completo: agrupado por semana (Lun-Dom) con subtotales ──
+    const semanas = new Map(); // lunes ISO -> jornadas
+    sorted.forEach(j => {
+      const lunes = j.log_date ? _gLunesDe(j.log_date) : 'sin-fecha';
+      if (!semanas.has(lunes)) semanas.set(lunes, []);
+      semanas.get(lunes).push(j);
+    });
+    // La semana más reciente arranca abierta la primera vez
+    if (!_kmSemAbiertas.size && semanas.size) _kmSemAbiertas.add([...semanas.keys()][0]);
+
+    listaHTML = [...semanas.entries()].map(([lunes, js]) => {
+      const abierta = _kmSemAbiertas.has(lunes);
+      const kmSem = js.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
+      const srvSem = js.reduce((s,j)=>s+(srvPorLog[j.log_id]||0),0);
+      const rango = lunes === 'sin-fecha' ? 'Sin fecha' : `Semana ${_gDDbarraMM(lunes)} – ${_gDDbarraMM(_gSumarDias(lunes, 6))}`;
+      const head = `<div onclick="_kmToggleSemana('${lunes}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-darker);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid var(--border);cursor:pointer">
+        <span><span style="color:var(--muted2);margin-right:6px">${abierta ? '▾' : '▸'}</span>${rango} · ${js.length} jornada${js.length === 1 ? '' : 's'}${srvSem ? ` · ${srvSem} srv` : ''}</span>
+        <span style="color:var(--amber);font-size:11px;letter-spacing:0">${kmSem.toLocaleString('es-AR')} km</span>
+      </div>`;
+      return head + (abierta ? js.map(j => _kmFilaJornadaHTML(j, srvPorLog)).join('') : '');
+    }).join('');
+  }
 
   body.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
@@ -12249,10 +12310,16 @@ function abrirModalKmRecorridos() {
         <div style="color:var(--green);font-weight:700;font-size:14px">${promKm.toLocaleString('es-AR')} km</div>
       </div>
     </div>
-    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">Detalle por jornada (${logs.length})</div>
-    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rows}</div>
+    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">${_kmHistExpandido ? `Historial completo (${logs.length})` : 'Últimas jornadas'}</div>
+    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${listaHTML}</div>
+    ${botonHTML}
   `;
+}
 
+function abrirModalKmRecorridos() {
+  _kmHistExpandido = false;
+  _kmSemAbiertas = new Set();
+  _kmRenderModal();
   openModal('modal-desglose-pago');
 }
 

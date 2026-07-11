@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Km recorridos (chofer) con "Ver historial"</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --bg-elev:#1c2129; --border:#2d333b; --border2:#3d444d;
+    --text:#e6edf3; --muted:#8b949e; --muted2:#6e7681;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --red:#e2504a; --green:#4ade80; --green-lo:rgba(74,222,128,0.10);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:20px; }
+  .mockup-note { background:#2b2210; border:2px dashed var(--amber); border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; margin-bottom:26px; max-width:900px; }
+  .mockup-note h3 { margin:0 0 6px 0; font-size:14px; color:var(--amber); }
+  .cols { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .col { flex:1; min-width:320px; max-width:400px; }
+  .col-titulo { font-size:14px; font-weight:800; margin-bottom:10px; }
+  .col-sub { font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
+
+  .modal { background:var(--card); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+  .m-head { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--border); background:var(--bg-elev); }
+  .m-head .t { font-size:14px; font-weight:700; }
+  .m-body { padding:14px 16px; }
+
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .stat { background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:10px; text-align:center; }
+  .stat .l { color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px; }
+  .stat .v { font-weight:700; font-size:14px; }
+
+  .lista { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .fila { display:grid; grid-template-columns:76px 1fr 90px; padding:9px 12px; border-bottom:1px solid var(--border); font-size:11px; align-items:center; }
+  .fila:last-child { border-bottom:none; }
+  .fila .f { color:var(--muted); }
+  .fila .p { color:var(--amber); font-weight:600; }
+  .fila .k { text-align:right; font-weight:600; }
+  .fila.hoy { background:rgba(245,166,35,0.05); }
+
+  .sem { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--bg-elev); font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .sem .tot { color:var(--amber); font-size:11px; letter-spacing:0; }
+  .sem .flecha { color:var(--muted2); margin-right:6px; }
+
+  .btn-hist { display:block; width:100%; margin-top:12px; padding:11px; background:var(--amber-lo); border:1px solid rgba(245,166,35,0.35); color:var(--amber); border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; text-align:center; font-family:inherit; }
+  .btn-cerrar-hist { display:block; width:100%; margin-top:12px; padding:9px; background:transparent; border:1px solid var(--border2); color:var(--muted); border-radius:8px; font-size:11px; cursor:pointer; text-align:center; font-family:inherit; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — Modal "Km recorridos" del chofer, con historial plegado</h3>
+  Hoy el modal lista TODAS las jornadas del período y con un mes cargado se hace larguísimo.
+  Propuesta: <strong>izquierda = como se abre</strong> (últimas 7 jornadas + botón historial) ·
+  <strong>derecha = con el historial desplegado</strong> (agrupado por semana con subtotal, cada semana se puede plegar).
+  Los números de arriba siempre calculan TODO el período.
+</div>
+
+<div class="cols">
+
+  <!-- ══ ESTADO 1 ══ -->
+  <div class="col">
+    <div class="col-titulo">1 · Al abrir (compacto)</div>
+    <div class="col-sub">Se ven las últimas 7 jornadas. El resto queda detrás del botón.</div>
+
+    <div class="modal">
+      <div class="m-head"><span class="t">🚛 Km recorridos · 2.840 km</span><span style="color:var(--muted);cursor:pointer">×</span></div>
+      <div class="m-body">
+        <div class="stats">
+          <div class="stat"><div class="l">Total km</div><div class="v" style="color:var(--amber)">2.840</div></div>
+          <div class="stat"><div class="l">Jornadas</div><div class="v">30</div></div>
+          <div class="stat"><div class="l">Promedio</div><div class="v" style="color:var(--green)">95 km</div></div>
+        </div>
+        <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">Últimas jornadas</div>
+        <div class="lista">
+          <div class="fila hoy"><span class="f">11-07</span><span class="p">NZQ933 <span style="font-size:9px">(abierta)</span></span><span class="k">—</span></div>
+          <div class="fila"><span class="f">10-07</span><span class="p">NZQ933</span><span class="k">112 km</span></div>
+          <div class="fila"><span class="f">09-07</span><span class="p">NZQ933</span><span class="k">96 km</span></div>
+          <div class="fila"><span class="f">08-07</span><span class="p">NZQ933</span><span class="k">104 km</span></div>
+          <div class="fila"><span class="f">07-07</span><span class="p">HSF392</span><span class="k">88 km</span></div>
+          <div class="fila"><span class="f">05-07</span><span class="p">NZQ933</span><span class="k">120 km</span></div>
+          <div class="fila"><span class="f">04-07</span><span class="p">NZQ933</span><span class="k">75 km</span></div>
+        </div>
+        <button class="btn-hist">📜 Ver historial completo (23 jornadas más)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ESTADO 2 ══ -->
+  <div class="col">
+    <div class="col-titulo">2 · Con historial desplegado</div>
+    <div class="col-sub">Agrupado por semana con subtotal de KM. Tocás una semana y se pliega/despliega. Las semanas viejas arrancan plegadas.</div>
+
+    <div class="modal">
+      <div class="m-head"><span class="t">🚛 Km recorridos · 2.840 km</span><span style="color:var(--muted);cursor:pointer">×</span></div>
+      <div class="m-body">
+        <div class="stats">
+          <div class="stat"><div class="l">Total km</div><div class="v" style="color:var(--amber)">2.840</div></div>
+          <div class="stat"><div class="l">Jornadas</div><div class="v">30</div></div>
+          <div class="stat"><div class="l">Promedio</div><div class="v" style="color:var(--green)">95 km</div></div>
+        </div>
+        <div class="lista">
+          <div class="sem"><span><span class="flecha">▾</span>Semana 06/07 – 12/07 · 5 jornadas</span><span class="tot">480 km</span></div>
+          <div class="fila hoy"><span class="f">11-07</span><span class="p">NZQ933 <span style="font-size:9px">(abierta)</span></span><span class="k">—</span></div>
+          <div class="fila"><span class="f">10-07</span><span class="p">NZQ933</span><span class="k">112 km</span></div>
+          <div class="fila"><span class="f">09-07</span><span class="p">NZQ933</span><span class="k">96 km</span></div>
+          <div class="fila"><span class="f">08-07</span><span class="p">NZQ933</span><span class="k">104 km</span></div>
+          <div class="fila"><span class="f">07-07</span><span class="p">HSF392</span><span class="k">88 km</span></div>
+
+          <div class="sem"><span><span class="flecha">▾</span>Semana 29/06 – 05/07 · 6 jornadas</span><span class="tot">610 km</span></div>
+          <div class="fila"><span class="f">05-07</span><span class="p">NZQ933</span><span class="k">120 km</span></div>
+          <div class="fila"><span class="f">04-07</span><span class="p">NZQ933</span><span class="k">75 km</span></div>
+          <div class="fila"><span class="f">03-07</span><span class="p">NZQ933</span><span class="k">118 km</span></div>
+          <div class="fila" style="color:var(--muted2);font-size:10px"><span class="f">…</span><span>3 jornadas más</span><span class="k"></span></div>
+
+          <div class="sem"><span><span class="flecha">▸</span>Semana 22/06 – 28/06 · 7 jornadas</span><span class="tot">720 km</span></div>
+          <div class="sem"><span><span class="flecha">▸</span>Semana 15/06 – 21/06 · 6 jornadas</span><span class="tot">590 km</span></div>
+          <div class="sem"><span><span class="flecha">▸</span>Semana 08/06 – 14/06 · 6 jornadas</span><span class="tot">440 km</span></div>
+        </div>
+        <button class="btn-cerrar-hist">Mostrar solo las últimas jornadas</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body></html>
