@@ -1801,6 +1801,13 @@ function verRemitoModal(elemento) {
       return;
     }
 
+    // Admin/supervisión ven el detalle completo en su propio modal
+    const _rol = PERFIL_USUARIO?.roles?.name;
+    if ((_rol === 'administracion' || _rol === 'supervision') && d.id) {
+      abrirDetalleRemitoAdmin(d.id);
+      return;
+    }
+
     console.log(`${TAG} 🔍 Abriendo detalles para remito: ${d.nro}`, d);
 
     // ── Limpiar estado anterior del modal ────────────────────────
@@ -1960,6 +1967,214 @@ function verRemitoModal(elemento) {
     if (typeof toast === 'function') toast('Ocurrió un error al cargar la información', 'error');
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// DETALLE COMPLETO DE REMITO (admin/supervisión) + edición por grupos
+// ═══════════════════════════════════════════════════════════════
+
+let _raRemito = null;        // fila completa de la DB del remito abierto
+let _raGrupoEditando = null; // id del grupo en modo edición (uno a la vez)
+
+const _RA_PAGOS = ['', 'efectivo', 'transferencia', 'tarjeta', 'app'];
+
+const _RA_GRUPOS = [
+  { id: 'servicio', titulo: '🚗 Servicio', editable: true, campos: [
+    { col: 'nro_servicio',   label: 'Nro de servicio', tipo: 'text' },
+    { col: 'tipo_servicio',  label: 'Tipo de servicio', tipo: 'text' },
+    { col: 'patente',        label: 'Patente', tipo: 'text' },
+    { col: 'marca_modelo',   label: 'Marca / modelo', tipo: 'text' },
+    { col: 'cliente_presente', label: 'Cliente presente', tipo: 'bool' },
+  ]},
+  { id: 'cliente', titulo: '👤 Cliente', editable: true, campos: [
+    { col: 'razon_social',  label: 'Razón social', tipo: 'text' },
+    { col: 'cuit',          label: 'CUIT', tipo: 'text' },
+    { col: 'telefono',      label: 'Teléfono', tipo: 'text' },
+    { col: 'email_cliente', label: 'Email', tipo: 'text' },
+  ]},
+  { id: 'recorrido', titulo: '📍 Recorrido', editable: true, campos: [
+    { col: 'origen',    label: 'Origen', tipo: 'text' },
+    { col: 'destino',   label: 'Destino', tipo: 'text' },
+    { col: 'km_reales', label: 'KM reales del servicio', tipo: 'number' },
+  ]},
+  { id: 'importes', titulo: '💳 Importes y pago', editable: true, campos: [
+    { col: 'imp_peaje',     label: 'Peaje', tipo: 'number' },
+    { col: 'imp_excedente', label: 'Excedente', tipo: 'number' },
+    { col: 'imp_otros',     label: 'Otros', tipo: 'number' },
+    { col: 'imp_total_extras', label: 'Total extras', tipo: 'number', soloLectura: true },
+    { col: 'pago_1_metodo', label: 'Pago 1 — método', tipo: 'pago' },
+    { col: 'pago_1_monto',  label: 'Pago 1 — monto', tipo: 'number' },
+    { col: 'pago_2_metodo', label: 'Pago 2 — método', tipo: 'pago' },
+    { col: 'pago_2_monto',  label: 'Pago 2 — monto', tipo: 'number' },
+  ]},
+  { id: 'conformidades', titulo: '☑️ Conformidades', editable: true, campos: [
+    { col: 'conformidad_servicio', label: 'Conformidad del servicio', tipo: 'bool' },
+    { col: 'conformidad_cargos',   label: 'Conformidad de cargos', tipo: 'bool' },
+    { col: 'sin_danos',            label: 'Sin daños', tipo: 'bool' },
+    { col: 'conformidad_arrastre', label: 'Conformidad de arrastre', tipo: 'bool' },
+  ]},
+  { id: 'observaciones', titulo: '📝 Observaciones', editable: true, campos: [
+    { col: 'observaciones', label: 'Observaciones', tipo: 'textarea' },
+  ]},
+];
+
+function _raEsAdmin() { return PERFIL_USUARIO?.roles?.name === 'administracion'; }
+
+function _raEscape(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Valor legible de un campo (solo lectura). Vacío → "— sin cargar" en rojo.
+function _raValorHTML(campo, r) {
+  const v = r[campo.col];
+  const vacioHTML = '<span style="color:var(--red);font-style:italic;font-weight:400">— sin cargar</span>';
+  if (campo.tipo === 'bool') {
+    if (v === true)  return '<span style="color:var(--green);font-weight:600">✓ Sí</span>';
+    if (v === false) return '<span style="color:var(--red);font-weight:600">✗ No</span>';
+    return vacioHTML;
+  }
+  if (v === null || v === undefined || v === '') return vacioHTML;
+  if (campo.tipo === 'number') {
+    const n = Number(v);
+    return campo.col.startsWith('imp_') || campo.col.endsWith('_monto')
+      ? '$ ' + n.toLocaleString('es-AR')
+      : n.toLocaleString('es-AR') + (campo.col === 'km_reales' ? ' km' : '');
+  }
+  if (campo.tipo === 'pago') return _raEscape(String(v).charAt(0).toUpperCase() + String(v).slice(1));
+  return _raEscape(v);
+}
+
+// Input de edición para un campo
+function _raInputHTML(campo, r) {
+  const v = r[campo.col];
+  const idInput = `ra-in-${campo.col}`;
+  const base = 'width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-size:12px;font-family:inherit';
+  if (campo.tipo === 'bool') {
+    return `<select id="${idInput}" style="${base}">
+      <option value="" ${v === null || v === undefined ? 'selected' : ''}>—</option>
+      <option value="true" ${v === true ? 'selected' : ''}>Sí</option>
+      <option value="false" ${v === false ? 'selected' : ''}>No</option>
+    </select>`;
+  }
+  if (campo.tipo === 'pago') {
+    return `<select id="${idInput}" style="${base}">` +
+      _RA_PAGOS.map(p => `<option value="${p}" ${String(v || '') === p ? 'selected' : ''}>${p ? p.charAt(0).toUpperCase() + p.slice(1) : '— sin pago'}</option>`).join('') +
+      `</select>`;
+  }
+  if (campo.tipo === 'textarea') {
+    return `<textarea id="${idInput}" rows="3" style="${base};resize:vertical">${_raEscape(v)}</textarea>`;
+  }
+  if (campo.tipo === 'number') {
+    return `<input id="${idInput}" type="number" value="${v ?? ''}" style="${base}">`;
+  }
+  return `<input id="${idInput}" type="text" value="${_raEscape(v)}" style="${base}">`;
+}
+
+function _raGrupoHTML(g, r) {
+  const editando = _raGrupoEditando === g.id;
+  const btnEditar = g.editable && _raEsAdmin() && !editando
+    ? `<button class="btn btn-ghost" style="padding:2px 10px;font-size:10px" onclick="_raEditar('${g.id}')">✏️ Editar</button>` : '';
+  const botonesEdicion = editando
+    ? `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+         <button class="btn btn-ghost" style="font-size:11px" onclick="_raCancelar()">Cancelar</button>
+         <button class="btn btn-primary" style="font-size:11px" onclick="_raGuardar('${g.id}')">Guardar</button>
+       </div>` : '';
+
+  const filas = g.campos.map(c => {
+    const esEditable = editando && !c.soloLectura;
+    return `<span style="color:var(--muted)">${c.label}</span>
+            <span style="font-weight:600">${esEditable ? _raInputHTML(c, r) : _raValorHTML(c, r)}</span>`;
+  }).join('');
+
+  return `
+    <div style="margin-bottom:18px" id="ra-grupo-${g.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">
+        <span style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700">${g.titulo}</span>
+        ${btnEditar}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12px">${filas}</div>
+      ${botonesEdicion}
+    </div>`;
+}
+
+function _raFotosHTML(r) {
+  const fotos = Array.isArray(r.foto_urls) ? r.foto_urls : [];
+  const cuerpo = fotos.length
+    ? `<div style="display:flex;gap:8px;flex-wrap:wrap">` + fotos.map(u =>
+        `<img src="${_raEscape(u)}" onclick="window.open('${_raEscape(u)}','_blank')"
+           style="width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--border2);cursor:pointer">`).join('') + `</div>`
+    : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin fotos cargadas</span>';
+  return `
+    <div style="margin-bottom:18px">
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">📷 Fotos del servicio (${fotos.length})</div>
+      ${cuerpo}
+    </div>`;
+}
+
+function _raFirmaHTML(r) {
+  const cuerpo = r.firma_imagen_url
+    ? `<img src="${_raEscape(r.firma_imagen_url)}" style="max-width:240px;background:#fff;border-radius:8px;padding:6px">
+       <div style="font-size:11px;color:var(--muted);margin-top:6px">Firmado el ${r.firmado_at ? formatearFecha(r.firmado_at) : '—'}</div>`
+    : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin firma</span>';
+  return `
+    <div style="margin-bottom:18px">
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">✍️ Firma del cliente</div>
+      ${cuerpo}
+    </div>`;
+}
+
+function _raTrazabilidadHTML(r) {
+  const hist = Array.isArray(r.historial_ediciones) ? r.historial_ediciones : [];
+  const ediciones = hist.length
+    ? hist.map(h => {
+        const cambios = (h.cambios || []).map(c =>
+          `<b>${_raEscape(c.campo)}</b>: ${_raEscape(c.antes ?? '—')} → ${_raEscape(c.despues ?? '—')}`).join(' · ');
+        return `✏️ ${h.fecha ? formatearFecha(h.fecha) : '—'} — <b>${_raEscape(h.user_nombre || '¿?')}</b>: ${cambios}`;
+      }).join('<br>')
+    : 'Sin ediciones registradas';
+  return `
+    <div style="margin-bottom:6px">
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:8px">🕓 Trazabilidad</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.9">
+        📱 Creado en el dispositivo: <b style="color:var(--text)">${r.created_at_device ? formatearFecha(r.created_at_device) : '—'}</b><br>
+        ☁️ Recibido en el servidor: <b style="color:var(--text)">${r.received_at ? formatearFecha(r.received_at) : (r.created_at ? formatearFecha(r.created_at) : '—')}</b>${r.sync_status ? ` (${_raEscape(r.sync_status)})` : ''}<br>
+        ${ediciones}
+      </div>
+    </div>`;
+}
+
+function _raRender() {
+  const r = _raRemito;
+  if (!r) return;
+
+  document.getElementById('ra-titulo').textContent = `📄 ${r.nro_remito || '—'}`;
+  const movil = r.daily_logs?.trucks ? ` · Móvil ${r.daily_logs.trucks.numero_interno || r.daily_logs.trucks.plate}` : '';
+  const jornada = r.daily_logs?.log_date ? ` · Jornada del ${r.daily_logs.log_date.split('-').reverse().join('/')}` : '';
+  document.getElementById('ra-sub').textContent =
+    `Cargado por ${r.users?.full_name || '—'}${jornada}${movil}`;
+
+  const pill = document.getElementById('ra-estado-pill');
+  const est = r.status === 'firmado' ? ['pill-green', '✓ Firmado'] : r.status === 'anulado' ? ['pill-red', '🚫 Anulado'] : ['pill-amber', '⏳ Pendiente'];
+  pill.className = `pill ${est[0]}`;
+  pill.textContent = est[1];
+
+  document.getElementById('ra-body').innerHTML =
+    `<div style="padding:18px 22px">` +
+    _RA_GRUPOS.map(g => _raGrupoHTML(g, r)).join('') +
+    _raFotosHTML(r) +
+    _raFirmaHTML(r) +
+    _raTrazabilidadHTML(r) +
+    `</div>`;
+}
+
+async function abrirDetalleRemitoAdmin(remitoId) {
+  const r = await obtenerRemitoCompleto(remitoId);
+  if (!r) { toast('No se pudo cargar el remito', 'error'); return; }
+  _raRemito = r;
+  _raGrupoEditando = null;
+  _raRender();
+  openModal('modal-remito-admin');
+}
+
 // ── FORMA DE PAGO — soporta pago mixto ────────
 let remPago1 = '', remPago2 = '', pagoMixtoActivo = false;
 
