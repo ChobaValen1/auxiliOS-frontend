@@ -489,7 +489,8 @@ function _mapRemitoRow(r) {
       if (p1 && p2) return `${p1}+${p2}`;
       return p1 || '—';
     })(),
-    estado:        r.status === 'firmado' ? 'firmado' : r.status === 'anulado' ? 'anulado' : 'pendiente',
+    estado:        r.status === 'firmado' ? 'firmado' : r.status === 'anulado' ? 'anulado' : r.status === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
+    creadoPor:     r.creado_por || null,
     confirmaciones: armarConfirmaciones(r),
     observaciones: r.observaciones || null,
     firmaUrl:      r.firma_imagen_url || null,
@@ -653,6 +654,30 @@ async function obtenerRemitoCompleto(remitoId) {
     .single();
   if (error) { console.error('❌ obtenerRemitoCompleto:', error); return null; }
   return data;
+}
+
+// Crea un remito desde administración: pre-carga asignada a un chofer
+// (status 'pendiente') o cierre directo sin firma (status 'cerrado_admin').
+async function crearRemitoAdmin(campos, modo, driverId) {
+  const f = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const nro = `REM-${f}-${Math.floor(Math.random() * 9000) + 1000}`;
+  const fila = {
+    ...campos,
+    nro_remito: nro,
+    status:     modo === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
+    driver_id:  modo === 'cerrado_admin' ? null : driverId,
+    creado_por: USUARIO_ACTUAL?.id || null,
+    created_at_device: new Date().toISOString(),
+    historial_ediciones: [{
+      fecha: new Date().toISOString(),
+      user_id: USUARIO_ACTUAL?.id || null,
+      user_nombre: PERFIL_USUARIO?.full_name || '—',
+      cambios: [{ campo: '_creacion', antes: null, despues: modo === 'cerrado_admin' ? 'cerrado por administración' : 'pre-carga asignada' }],
+    }],
+  };
+  const { error } = await _db.from('remitos').insert(fila);
+  if (error) { console.error('❌ crearRemitoAdmin:', error); return { ok: false, msg: error.message }; }
+  return { ok: true, nro };
 }
 
 // Update de campos editados por admin + registro en historial_ediciones.

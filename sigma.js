@@ -2130,6 +2130,10 @@ function _raTrazabilidadHTML(r) {
   const hist = Array.isArray(r.historial_ediciones) ? r.historial_ediciones : [];
   const ediciones = hist.length
     ? hist.map(h => {
+        // Entrada de creación (remito nacido desde administración)
+        if ((h.cambios || [])[0]?.campo === '_creacion') {
+          return `🏷 ${h.fecha ? formatearFecha(h.fecha) : '—'} — Creado por <b>${_raEscape(h.user_nombre || '¿?')}</b> (${_raEscape(h.cambios[0].despues || '')})`;
+        }
         const cambios = (h.cambios || []).map(c =>
           `<b>${_raEscape(c.campo)}</b>: ${_raEscape(c.antes ?? '—')} → ${_raEscape(c.despues ?? '—')}`).join(' · ');
         return `✏️ ${h.fecha ? formatearFecha(h.fecha) : '—'} — <b>${_raEscape(h.user_nombre || '¿?')}</b>: ${cambios}`;
@@ -2157,8 +2161,12 @@ function _raRender() {
     `Cargado por ${r.users?.full_name || '—'}${jornada}${movil}`;
 
   const pill = document.getElementById('ra-estado-pill');
-  const est = r.status === 'firmado' ? ['pill-green', '✓ Firmado'] : r.status === 'anulado' ? ['pill-red', '🚫 Anulado'] : ['pill-amber', '⏳ Pendiente'];
+  const est = r.status === 'firmado' ? ['pill-green', '✓ Firmado']
+    : r.status === 'anulado' ? ['pill-red', '🚫 Anulado']
+    : r.status === 'cerrado_admin' ? ['', '🏢 Cerrado por administración']
+    : ['pill-amber', '⏳ Pendiente'];
   pill.className = `pill ${est[0]}`;
+  pill.style.cssText = r.status === 'cerrado_admin' ? 'background:rgba(88,166,255,0.12);color:var(--blue)' : '';
   pill.textContent = est[1];
 
   // Hero: números clave del remito
@@ -2264,6 +2272,76 @@ async function _raGuardar(grupoId) {
   if (r) _raRemito = r;
   _raRender();
   // Refrescar lista y KPIs de fondo
+  if (typeof cargarRemitos === 'function') cargarRemitos();
+  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
+}
+
+// ── CREAR REMITO DESDE ADMINISTRACIÓN ───────────────────────────
+async function abrirModalRemitoAdmin() {
+  if (PERFIL_USUARIO?.roles?.name !== 'administracion') return;
+
+  ['rna-nro-srv','rna-tipo','rna-patente','rna-marca','rna-cliente','rna-cuit','rna-telefono',
+   'rna-origen','rna-destino','rna-km','rna-peaje','rna-excedente','rna-pago-monto','rna-obs']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const met = document.getElementById('rna-pago-metodo'); if (met) met.value = '';
+  const err = document.getElementById('rna-error'); if (err) err.textContent = '';
+
+  const sel = document.getElementById('rna-chofer');
+  if (sel) {
+    const { data } = await _db.from('users').select('user_id, full_name').eq('role_id', 3).eq('is_active', true).order('full_name');
+    sel.innerHTML = '<option value="">Elegí un chofer…</option>' +
+      (data || []).map(c => `<option value="${c.user_id}">${c.full_name}</option>`).join('');
+  }
+  openModal('modal-remito-nuevo-admin');
+}
+
+async function _rnaGuardar(modo) {
+  if (PERFIL_USUARIO?.roles?.name !== 'administracion') return;
+  const v = id => document.getElementById(id)?.value.trim() || null;
+  const n = id => { const x = parseFloat(document.getElementById(id)?.value); return isNaN(x) ? null : x; };
+  const err = document.getElementById('rna-error');
+
+  const patente = v('rna-patente');
+  const cliente = v('rna-cliente');
+  const choferId = document.getElementById('rna-chofer')?.value || null;
+
+  if (!patente && !cliente) { if (err) err.textContent = 'Cargá al menos la patente o el cliente.'; return; }
+  if (modo === 'precarga' && !choferId) { if (err) err.textContent = 'Para asignar la pre-carga elegí un chofer.'; return; }
+  if (err) err.textContent = '';
+
+  const metodo = document.getElementById('rna-pago-metodo')?.value || null;
+  const campos = {
+    nro_servicio:  v('rna-nro-srv'),
+    tipo_servicio: v('rna-tipo'),
+    patente:       patente ? patente.toUpperCase() : null,
+    marca_modelo:  v('rna-marca'),
+    razon_social:  cliente,
+    cuit:          v('rna-cuit'),
+    telefono:      v('rna-telefono'),
+    origen:        v('rna-origen'),
+    destino:       v('rna-destino'),
+    km_reales:     n('rna-km'),
+    imp_peaje:     n('rna-peaje'),
+    imp_excedente: n('rna-excedente'),
+    pago_1_metodo: metodo,
+    pago_1_monto:  metodo ? (n('rna-pago-monto') || 0) : null,
+    observaciones: v('rna-obs'),
+  };
+
+  const btns = ['rna-btn-asignar', 'rna-btn-cerrar'].map(id => document.getElementById(id));
+  btns.forEach(b => { if (b) b.disabled = true; });
+
+  const res = await crearRemitoAdmin(campos, modo, choferId);
+
+  btns.forEach(b => { if (b) b.disabled = false; });
+
+  if (!res.ok) { if (err) err.textContent = 'No se pudo crear: ' + res.msg; return; }
+
+  const choferNombre = document.getElementById('rna-chofer')?.selectedOptions?.[0]?.textContent;
+  toast(modo === 'cerrado_admin'
+    ? `Remito ${res.nro} cerrado por administración ✓`
+    : `Remito ${res.nro} asignado a ${choferNombre} ✓`);
+  closeModal('modal-remito-nuevo-admin');
   if (typeof cargarRemitos === 'function') cargarRemitos();
   if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
 }
@@ -6638,12 +6716,15 @@ function actualizarContadorFotosRemito() {
 function generarHtmlPill(estado) {
   if (estado === 'firmado') return `<span class="pill pill-green">✓ Firmado</span>`;
   if (estado === 'anulado') return `<span class="pill pill-red">🚫 Anulado</span>`;
+  if (estado === 'cerrado_admin') return `<span class="pill" style="background:rgba(88,166,255,0.12);color:var(--blue)">🏢 Cerrado por admin</span>`;
   return `<span class="pill pill-amber">⏳ Pendiente</span>`;
 }
 
 // ── KPIs de remitos (admin/supervisión) ─────────────────────────
 // Usa fetchRemitosFiltrados (mismos filtros que la lista, sin paginar).
 function _remitoIncompleto(r) {
+  // Cerrado por administración: no espera firma ni datos del chofer
+  if (r.estado === 'cerrado_admin') return false;
   const sinFirma = r.estado !== 'anulado' && !r.firmaUrl;
   return !r.telefono || r.km === '—' || !r.fotosCount || sinFirma;
 }
@@ -6652,6 +6733,10 @@ async function actualizarKpisRemitos() {
   const rol = PERFIL_USUARIO?.roles?.name;
   const cont = document.getElementById('remitos-kpis');
   if (!cont) return;
+  const btnNuevo = document.getElementById('btn-remito-nuevo-admin');
+  if (btnNuevo) btnNuevo.style.display = rol === 'administracion' ? '' : 'none';
+  const ftabCerrado = document.getElementById('ftab-cerrado-admin');
+  if (ftabCerrado) ftabCerrado.style.display = (rol === 'administracion' || rol === 'supervision') ? '' : 'none';
   if (rol !== 'administracion' && rol !== 'supervision') { cont.style.display = 'none'; return; }
   cont.style.display = 'flex';
 
@@ -6703,13 +6788,19 @@ function renderTablaRemitos(data) {
           ${otros > 0 ? `<div style="font-size:11px;color:var(--muted)">Otros: $${otros.toLocaleString('es-AR')}</div>` : ''}
         </div>`;
 
-      const esAnulado = r.estado === 'anulado';
-      const esFirmado = r.estado === 'firmado';
+      const esAnulado     = r.estado === 'anulado';
+      const esFirmado     = r.estado === 'firmado';
+      const esCerradoAdmin = r.estado === 'cerrado_admin';
+      const esAsignadoAdmin = r.estado === 'pendiente' && r.creadoPor && r.creadoPor !== USUARIO_ACTUAL?.id;
 
       const estadoPill = esFirmado
         ? `<span class="pill pill-green">✓ Firmado</span>`
         : esAnulado
         ? `<span class="pill pill-red">🚫 Anulado</span>`
+        : esCerradoAdmin
+        ? `<span class="pill" style="background:rgba(88,166,255,0.12);color:var(--blue)">🏢 Cerrado por admin</span>`
+        : esAsignadoAdmin
+        ? `<span class="pill pill-amber">📥 Asignado por admin</span>`
         : `<span class="pill pill-amber">⏳ Pendiente</span>`;
 
       const pagoParts  = (r.pago || '—').split('+').map(p => p.trim());
@@ -6738,11 +6829,11 @@ function renderTablaRemitos(data) {
         ? `<button class="btn btn-ghost btn-pdf-remito" style="padding:4px 10px;font-size:10px">PDF</button>`
         : '';
 
-      const acciones = esFirmado
+      const acciones = (esFirmado || esCerradoAdmin)
         ? `<div style="display:flex;gap:5px;align-items:center">
              <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
              ${btnPDF}
-             ${btnWA}
+             ${esFirmado ? btnWA : ''}
            </div>`
         : esAnulado
           ? `<div style="display:flex;gap:5px">
@@ -6791,7 +6882,7 @@ function renderTablaRemitos(data) {
     );
 
     mobileSorted.forEach((r, mIdx) => {
-      const esFirmado = r.estado === 'firmado';
+      const esFirmado = r.estado === 'firmado' || r.estado === 'cerrado_admin';
       const esAnulado = r.estado === 'anulado';
       const mcard = document.createElement('div');
       mcard.className = `mobile-card-remito estado-${r.estado}`;

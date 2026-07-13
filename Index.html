@@ -1260,6 +1260,7 @@
         <div class="ftab" onclick="filtrarEstado('firmado',this)">Firmados</div>
         <div class="ftab" onclick="filtrarEstado('pendiente',this)">Pendientes</div>
         <div class="ftab" onclick="filtrarEstado('anulado',this)">Anulados</div>
+        <div class="ftab" onclick="filtrarEstado('cerrado_admin',this)" id="ftab-cerrado-admin" style="display:none">Cerrados admin</div>
       </div>
     </div>
     <div style="margin-left:auto">
@@ -1351,6 +1352,8 @@
 </div>
 
 <div id="remitos-lista" style="display:block; margin-top:14px">
+  <!-- Crear remito desde admin (se muestra por JS solo a administración) -->
+  <button class="btn btn-primary" id="btn-remito-nuevo-admin" style="display:none;margin-bottom:12px" onclick="abrirModalRemitoAdmin()">➕ Nuevo remito</button>
   <!-- KPIs de remitos: solo admin/supervisión (se muestra por JS) -->
   <div id="remitos-kpis" style="display:none;gap:12px;flex-wrap:wrap;margin-bottom:14px">
     <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
@@ -3167,6 +3170,68 @@
     <div class="modal-body" id="ra-body" style="max-height:70vh;overflow-y:auto"></div>
     <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeModal('modal-remito-admin')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: crear remito desde administración (pre-carga o cierre directo) -->
+<div class="modal-backdrop" id="modal-remito-nuevo-admin">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-head">
+      <div>
+        <span class="modal-head-title">➕ Nuevo remito</span>
+        <div style="font-size:11px;color:var(--muted2);margin-top:4px">Cargá lo que tengas — el resto lo completa el chofer</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-remito-nuevo-admin')">×</button>
+    </div>
+    <div class="modal-body" style="max-height:62vh;overflow-y:auto">
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:10px">🚗 Servicio</div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label class="form-label">Nro servicio</label><input class="form-input" id="rna-nro-srv" placeholder="SRV-…"></div>
+        <div class="form-group" style="flex:1"><label class="form-label">Tipo</label><input class="form-input" id="rna-tipo" placeholder="Remolque liviano"></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label class="form-label">Patente</label><input class="form-input" id="rna-patente" placeholder="AC 123 BD"></div>
+        <div class="form-group" style="flex:1"><label class="form-label">Marca / modelo</label><input class="form-input" id="rna-marca"></div>
+      </div>
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px;margin:12px 0 10px">👤 Cliente</div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label class="form-label">Razón social</label><input class="form-input" id="rna-cliente"></div>
+        <div class="form-group" style="flex:1"><label class="form-label">CUIT</label><input class="form-input" id="rna-cuit"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Teléfono</label><input class="form-input" id="rna-telefono"></div>
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px;margin:12px 0 10px">📍 Recorrido</div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label class="form-label">Origen</label><input class="form-input" id="rna-origen"></div>
+        <div class="form-group" style="flex:1"><label class="form-label">Destino</label><input class="form-input" id="rna-destino"></div>
+      </div>
+      <div class="form-group" style="max-width:140px"><label class="form-label">KM</label><input class="form-input" type="number" id="rna-km" placeholder="0"></div>
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px;margin:12px 0 10px">💳 Importes (si ya se conocen)</div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label class="form-label">Peajes</label><input class="form-input" type="number" id="rna-peaje" placeholder="0"></div>
+        <div class="form-group" style="flex:1"><label class="form-label">Excedente <span style="text-transform:none;letter-spacing:0;color:var(--muted2)">(particulares, baterías, km, hs)</span></label><input class="form-input" type="number" id="rna-excedente" placeholder="0"></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1"><label class="form-label">Pago — método</label>
+          <select class="form-input" id="rna-pago-metodo">
+            <option value="">— sin definir</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="app">App</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1"><label class="form-label">Pago — monto</label><input class="form-input" type="number" id="rna-pago-monto" placeholder="0"></div>
+      </div>
+      <div class="form-group"><label class="form-label">📝 Observaciones</label><textarea class="form-input" id="rna-obs" rows="2" placeholder="Notas para el chofer o para el archivo"></textarea></div>
+      <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:4px;margin:12px 0 10px">🚛 Asignar a chofer</div>
+      <div class="form-group"><select class="form-input" id="rna-chofer"></select></div>
+      <div id="rna-error" style="color:var(--red);font-size:11px;min-height:14px"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-primary" id="rna-btn-asignar" style="width:100%" onclick="_rnaGuardar('precarga')">📤 Asignar al chofer (pendiente de completar y firmar)</button>
+      <button class="btn" id="rna-btn-cerrar" style="width:100%;color:var(--blue);border-color:rgba(88,166,255,0.4)" onclick="_rnaGuardar('cerrado_admin')">✅ Cerrar por administración (sin firma, sin chofer)</button>
+      <button class="btn btn-ghost" style="width:100%" onclick="closeModal('modal-remito-nuevo-admin')">Cancelar</button>
     </div>
   </div>
 </div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v88'; // v88: remitos sin "Otros cargos" — todo va a Excedente
+const CACHE_NAME = 'auxilios-v89'; // v89: remitos creados por admin — pre-carga asignada y cierre administrativo
 
 const PRECACHE_ASSETS = [
   '/',
