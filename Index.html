@@ -1540,13 +1540,9 @@
         <input class="form-input" type="tel" placeholder="0" id="imp-peaje" inputmode="decimal" oninput="calcularTotal()">
       </div>
       <div class="form-group">
-        <label class="form-label">Excedente <span style="color:var(--muted);font-weight:400;font-size:11px">(km/carritos/hs fuera de plan)</span></label>
+        <label class="form-label">Excedente <span style="color:var(--muted);font-weight:400;font-size:11px">(particulares, baterías, km, hs de espera)</span></label>
         <input class="form-input" type="tel" placeholder="0" id="imp-excedente" inputmode="decimal" oninput="calcularTotal()">
       </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Otros cargos</label>
-      <input class="form-input" type="tel" placeholder="0" id="imp-otros" inputmode="decimal" oninput="calcularTotal()">
     </div>
     <div style="padding:10px 14px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.2);display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <span style="font-size:11px;color:var(--muted)">Total extras</span>
@@ -3112,10 +3108,6 @@
             <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
               <div style="font-size:9px;color:var(--muted);margin-bottom:3px">EXCEDENTE KM</div>
               <div style="font-family:'DM Mono';font-size:14px;font-weight:600;color:var(--amber)" id="vr-excedente">$0</div>
-            </div>
-            <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
-              <div style="font-size:9px;color:var(--muted);margin-bottom:3px">OTROS CARGOS</div>
-              <div style="font-family:'DM Mono';font-size:14px;font-weight:600" id="vr-otros">$0</div>
             </div>
             <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.3)">
               <div style="font-size:9px;color:var(--muted);margin-bottom:3px">FORMA DE PAGO</div>

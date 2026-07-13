@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
   auditarPagosActivos(); // Ejecuta una vez al inicio por si el total arranca en $0
 
   // 4A. Escuchar cambios al tipear importes (Acá audita que no sea $0)
-  ['imp-peaje', 'imp-excedente', 'imp-otros'].forEach(id => {
+  ['imp-peaje', 'imp-excedente'].forEach(id => {
     const input = document.getElementById(id);
     if (input) {
       input.addEventListener('input', () => {
@@ -571,7 +571,7 @@ function remWizardReset() {
 
   // Limpieza general de inputs de texto
   ['rem-nro-prestadora','rem-patente','rem-marca-modelo','rem-km','rem-origen','rem-destino',
-   'rem-cliente','rem-cuit','rem-telefono','imp-peaje','imp-excedente','imp-otros','rem-observaciones'
+   'rem-cliente','rem-cuit','rem-telefono','imp-peaje','imp-excedente','rem-observaciones'
   ].forEach(id => { 
       const el = document.getElementById(id); 
       if (el) { el.value = ''; el.readOnly = false; el.style.opacity = ''; } 
@@ -1841,8 +1841,7 @@ function verRemitoModal(elemento) {
     set('vr-destino',   d.destino);
     set('vr-km',        (d.km || '—') + ' km');
     set('vr-peaje',     '$' + parseInt(d.peaje     || 0).toLocaleString('es-AR'));
-    set('vr-excedente', '$' + parseInt(d.excedente || 0).toLocaleString('es-AR'));
-    set('vr-otros',     '$' + parseInt(d.otros     || 0).toLocaleString('es-AR'));
+    set('vr-excedente', '$' + (parseInt(d.excedente || 0) + parseInt(d.otros || 0)).toLocaleString('es-AR'));
 
     // ── Forma de pago ─────────────────────────────────────────────
     const pagoEl = document.getElementById('vr-pago');
@@ -1997,8 +1996,7 @@ const _RA_GRUPOS = [
   ]},
   { id: 'importes', titulo: '💳 Importes y pago', editable: true, campos: [
     { col: 'imp_peaje',     label: 'Peaje', tipo: 'number' },
-    { col: 'imp_excedente', label: 'Excedente', tipo: 'number' },
-    { col: 'imp_otros',     label: 'Otros', tipo: 'number' },
+    { col: 'imp_excedente', label: 'Excedente (particulares, baterías, km, hs de espera)', tipo: 'number' },
     { col: 'imp_total_extras', label: 'Total extras', tipo: 'number', soloLectura: true },
     { col: 'pago_1_metodo', label: 'Pago 1 — método', tipo: 'pago' },
     { col: 'pago_1_monto',  label: 'Pago 1 — monto', tipo: 'number' },
@@ -7474,8 +7472,8 @@ function completarRemitoPendiente(r) {
   set('rem-cliente',        r.cliente);
   set('rem-cuit',           r.cuit);
   set('imp-peaje',          r.peaje && r.peaje !== '0' ? r.peaje : '');
-  set('imp-excedente',      r.excedente && r.excedente !== '0' ? r.excedente : '');
-  set('imp-otros',          r.otros && r.otros !== '0' ? r.otros : '');
+  const _excMasOtros = (parseInt(r.excedente) || 0) + (parseInt(r.otros) || 0);
+  set('imp-excedente',      _excMasOtros ? String(_excMasOtros) : '');
   set('rem-observaciones',  r.observaciones);
   if (typeof _validarPatente === 'function') _validarPatente(r.patente || '');
   toast(`Completando remito ${r.nro}`, 'info');

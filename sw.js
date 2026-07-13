@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v87'; // v87: control de gomas 1x/día por móvil y chofer + card con semáforo en jornadas
+const CACHE_NAME = 'auxilios-v88'; // v88: remitos sin "Otros cargos" — todo va a Excedente
 
 const PRECACHE_ASSETS = [
   '/',
