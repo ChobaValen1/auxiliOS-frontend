@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v90'; // v90: fix join ambiguo remitos→users por FK creado_por
+const CACHE_NAME = 'auxilios-v91'; // v91: cierre admin con chofer elegido queda a cuenta del chofer
 
 const PRECACHE_ASSETS = [
   '/',

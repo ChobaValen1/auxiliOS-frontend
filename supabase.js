@@ -665,7 +665,9 @@ async function crearRemitoAdmin(campos, modo, driverId) {
     ...campos,
     nro_remito: nro,
     status:     modo === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
-    driver_id:  modo === 'cerrado_admin' ? null : driverId,
+    // Cierre admin: si se eligió chofer, el remito queda a su cuenta
+    // (lo ve en su lista y cuenta en rendiciones/facturación/KPIs)
+    driver_id:  driverId || null,
     creado_por: USUARIO_ACTUAL?.id || null,
     created_at_device: new Date().toISOString(),
     historial_ediciones: [{

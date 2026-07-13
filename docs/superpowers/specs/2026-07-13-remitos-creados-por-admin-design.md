@@ -12,9 +12,12 @@ chofer) con dos salidas:
    chofer elegido. El chofer la ve en su lista con badge "📥 Asignado por admin"
    y la completa con el asistente de siempre (prefill existente); **espera la
    firma del socio** para pasar a Firmado. Requiere chofer + (patente o cliente).
-2. **✅ Cerrar por administración:** `status='cerrado_admin'`, `driver_id=null`,
-   sin firma. Estado propio "🏢 Cerrado por administración" (pill azul).
-   Requiere (patente o cliente).
+2. **✅ Cerrar por administración:** `status='cerrado_admin'`, sin firma.
+   Estado propio "🏢 Cerrado por administración" (pill azul). Requiere
+   (patente o cliente). **Corrección 2026-07-13:** si se eligió chofer, el
+   remito queda a su cuenta (`driver_id` del chofer): el chofer lo ve en su
+   lista (solo lectura) y cuenta en TODOS sus conceptos (facturación,
+   rendiciones/efectivo esperado, KPIs). Sin chofer elegido → `driver_id=null`.
 
 El admin puede cargar el remito de punta a punta y aún así asignarlo (el chofer
 solo consigue la firma).
