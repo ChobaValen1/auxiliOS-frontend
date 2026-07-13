@@ -518,7 +518,7 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
   let q = _db
     .from('remitos')
-    .select('*, users(full_name)', { count: 'exact' })
+    .select('*, users!remitos_driver_id_fkey(full_name)', { count: 'exact' })
     .order('created_at_device', { ascending: false });
 
   if (esChofer) {
@@ -649,7 +649,7 @@ async function fetchRemitosFiltrados({ filtros, max = 5000 } = {}) {
 async function obtenerRemitoCompleto(remitoId) {
   const { data, error } = await _db
     .from('remitos')
-    .select('*, users(full_name), daily_logs(log_date, trucks(numero_interno, plate))')
+    .select('*, users!remitos_driver_id_fkey(full_name), daily_logs(log_date, trucks(numero_interno, plate))')
     .eq('remito_id', remitoId)
     .single();
   if (error) { console.error('❌ obtenerRemitoCompleto:', error); return null; }

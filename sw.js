@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v89'; // v89: remitos creados por admin — pre-carga asignada y cierre administrativo
+const CACHE_NAME = 'auxilios-v90'; // v90: fix join ambiguo remitos→users por FK creado_por
 
 const PRECACHE_ASSETS = [
   '/',
