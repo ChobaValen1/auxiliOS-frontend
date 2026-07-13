@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — Crear remito desde admin (pre-carga o cierre directo)</title>
+<style>
+  :root {
+    --bg:#0d1117; --card:#161b22; --bg-elev:#1c2129; --border:#2d333b; --border2:#3d444d;
+    --text:#e6edf3; --muted:#8b949e; --muted2:#6e7681;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --red:#e2504a; --green:#4ade80; --green-lo:rgba(74,222,128,0.10);
+    --blue:#58a6ff; --blue-lo:rgba(88,166,255,0.12);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:20px; }
+  .mockup-note { background:#2b2210; border:2px dashed var(--amber); border-radius:8px; padding:12px 16px; font-size:13px; line-height:1.6; margin-bottom:26px; max-width:1000px; }
+  .mockup-note h3 { margin:0 0 6px 0; font-size:14px; color:var(--amber); }
+  .cols { display:flex; gap:26px; flex-wrap:wrap; align-items:flex-start; }
+  .col { flex:1; min-width:330px; max-width:480px; }
+  .col-titulo { font-size:14px; font-weight:800; margin-bottom:8px; }
+  .col-sub { font-size:11px; color:var(--muted); margin-bottom:12px; line-height:1.6; }
+
+  .modal { background:var(--card); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+  .m-head { padding:14px 18px; border-bottom:1px solid var(--border); background:var(--bg-elev); }
+  .m-body { padding:16px 18px; }
+  .grupo { font-size:10px; color:var(--amber); text-transform:uppercase; letter-spacing:1.5px; font-weight:700; margin:14px 0 8px; border-bottom:1px solid var(--border); padding-bottom:4px; }
+  .grupo:first-child { margin-top:0; }
+  .fila { display:flex; gap:10px; }
+  .campo { flex:1; margin-bottom:10px; }
+  .campo label { display:block; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px; }
+  .campo label small { text-transform:none; letter-spacing:0; color:var(--muted2); font-weight:400; }
+  input, select, textarea { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border2); border-radius:7px; padding:8px 10px; font-size:12px; font-family:inherit; }
+  .opcional { color:var(--muted2); font-size:9px; }
+
+  .acciones { padding:14px 18px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+  .btn-precarga { padding:12px; background:var(--amber); color:#000; border:none; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; }
+  .btn-cerrar { padding:11px; background:var(--blue-lo); color:var(--blue); border:1px solid rgba(88,166,255,0.35); border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .btn-cancelar { padding:8px; background:transparent; color:var(--muted); border:none; font-size:11px; cursor:pointer; font-family:inherit; }
+  .hint { font-size:10px; color:var(--muted); text-align:center; line-height:1.5; }
+
+  .pill { padding:3px 10px; border-radius:10px; font-size:10px; font-weight:700; display:inline-block; }
+  .pill-amber { background:var(--amber-lo); color:var(--amber); }
+  .pill-blue { background:var(--blue-lo); color:var(--blue); }
+  .pill-green { background:var(--green-lo); color:var(--green); }
+
+  .lista-demo { background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:8px; }
+  .li { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); font-size:12px; }
+  .li:last-child { border-bottom:none; }
+</style></head><body>
+
+<div class="mockup-note">
+  <h3>📐 MOCKUP — "➕ Nuevo remito" del admin</h3>
+  Un botón nuevo en la vista Remitos del admin abre este formulario. El admin carga lo que tenga
+  (todo es opcional salvo el <b>vehículo o cliente</b>) y elige el destino con los botones de abajo:
+  <b>asignarlo a un chofer como pre-carga</b> (el chofer lo completa y consigue la firma) o
+  <b>cerrarlo por administración</b> (sin firma, estado propio). A la derecha: cómo lo ve cada uno después.
+</div>
+
+<div class="cols">
+
+  <!-- ══ FORM ══ -->
+  <div class="col">
+    <div class="col-titulo">El formulario</div>
+    <div class="modal">
+      <div class="m-head">
+        <div style="font-size:14px;font-weight:700">➕ Nuevo remito</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Cargá lo que tengas — el resto lo completa el chofer</div>
+      </div>
+      <div class="m-body">
+        <div class="grupo">🚗 Servicio</div>
+        <div class="fila">
+          <div class="campo"><label>Nro servicio <span class="opcional">opcional</span></label><input placeholder="SRV-…"></div>
+          <div class="campo"><label>Tipo</label><input placeholder="Remolque liviano"></div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Patente</label><input placeholder="AC 123 BD"></div>
+          <div class="campo"><label>Marca / modelo</label><input placeholder="Fiat Cronos"></div>
+        </div>
+
+        <div class="grupo">👤 Cliente</div>
+        <div class="fila">
+          <div class="campo"><label>Razón social</label><input placeholder="Nombre o empresa"></div>
+          <div class="campo"><label>CUIT <span class="opcional">opcional</span></label><input></div>
+        </div>
+        <div class="campo"><label>Teléfono <span class="opcional">opcional</span></label><input></div>
+
+        <div class="grupo">📍 Recorrido</div>
+        <div class="fila">
+          <div class="campo"><label>Origen</label><input></div>
+          <div class="campo"><label>Destino</label><input></div>
+        </div>
+        <div class="campo" style="max-width:140px"><label>KM <span class="opcional">opcional</span></label><input type="number" placeholder="0"></div>
+
+        <div class="grupo">💳 Importes <span style="color:var(--muted2);font-weight:400;letter-spacing:0;text-transform:none">(si ya se conocen)</span></div>
+        <div class="fila">
+          <div class="campo"><label>Peajes</label><input type="number" placeholder="0"></div>
+          <div class="campo"><label>Excedente <small>(particulares, baterías, km, hs)</small></label><input type="number" placeholder="0"></div>
+        </div>
+        <div class="fila">
+          <div class="campo"><label>Pago — método</label><select><option>— sin definir</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>App</option></select></div>
+          <div class="campo"><label>Pago — monto</label><input type="number" placeholder="0"></div>
+        </div>
+
+        <div class="grupo">📝 Observaciones</div>
+        <div class="campo"><textarea rows="2" placeholder="Notas para el chofer o para el archivo"></textarea></div>
+
+        <div class="grupo">🚛 Asignar a chofer</div>
+        <div class="campo">
+          <select><option>Elegí un chofer…</option><option selected>Pablo</option><option>Ricardo</option></select>
+        </div>
+      </div>
+      <div class="acciones">
+        <button class="btn-precarga">📤 Asignar a Pablo (queda pendiente de completar y firmar)</button>
+        <button class="btn-cerrar">✅ Cerrar por administración (sin firma, sin chofer)</button>
+        <div class="hint">Pre-carga: el chofer lo ve en sus remitos, lo completa en la calle y consigue la firma del socio.<br>Cierre admin: queda archivado con estado propio "Cerrado por administración".</div>
+        <button class="btn-cancelar">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RESULTADO ══ -->
+  <div class="col">
+    <div class="col-titulo">Cómo se ve después</div>
+
+    <div class="col-sub"><b>El chofer</b> (Pablo) en su lista de remitos — la pre-carga aparece arriba con etiqueta propia; al tocarla se abre el asistente de siempre con los datos ya cargados:</div>
+    <div class="lista-demo">
+      <div class="li" style="border-left:3px solid var(--amber)">
+        <div>
+          <div style="font-weight:700;font-family:'Consolas',monospace">REM-20260713-1042</div>
+          <div style="font-size:10px;color:var(--muted)">Seguros del Sur · Ruta 9 km 44 → Base</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="pill pill-amber">📥 Asignado por admin</span>
+          <button style="background:var(--amber);border:none;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">Completar</button>
+        </div>
+      </div>
+      <div class="li" style="opacity:0.6">
+        <div><div style="font-weight:700;font-family:'Consolas',monospace">REM-20260712-8867</div><div style="font-size:10px;color:var(--muted)">Marina López</div></div>
+        <span class="pill pill-green">✓ Firmado</span>
+      </div>
+    </div>
+
+    <div class="col-sub" style="margin-top:20px"><b>El admin</b> en su vista global — el estado nuevo se distingue del resto:</div>
+    <div class="lista-demo">
+      <div class="li">
+        <div><div style="font-weight:700;font-family:'Consolas',monospace">REM-20260713-1042</div><div style="font-size:10px;color:var(--muted)">Pablo · pre-carga</div></div>
+        <span class="pill pill-amber">⏳ Pendiente</span>
+      </div>
+      <div class="li">
+        <div><div style="font-weight:700;font-family:'Consolas',monospace">REM-20260713-1055</div><div style="font-size:10px;color:var(--muted)">Sin chofer · cargado por Valentín</div></div>
+        <span class="pill pill-blue">🏢 Cerrado por administración</span>
+      </div>
+      <div class="li">
+        <div><div style="font-weight:700;font-family:'Consolas',monospace">REM-20260712-8867</div><div style="font-size:10px;color:var(--muted)">Pablo</div></div>
+        <span class="pill pill-green">✓ Firmado</span>
+      </div>
+    </div>
+
+    <div class="col-sub" style="margin-top:20px">
+      Detalles del comportamiento:
+      <br>• La pre-carga <b>espera la firma del socio</b>: recién pasa a "Firmado" cuando el chofer la completa con firma.
+      <br>• El admin puede cargar de punta a punta y aún así asignarla (el chofer solo consigue la firma).
+      <br>• "Cerrado por administración" cuenta en los KPIs como remito facturado, pero se distingue en la lista.
+      <br>• Todo remito creado por admin queda registrado en la trazabilidad ("Creado por Valentín").
+    </div>
+  </div>
+
+</div>
+</body></html>
