@@ -682,6 +682,13 @@ async function crearRemitoAdmin(campos, modo, driverId) {
   return { ok: true, nro };
 }
 
+// Elimina definitivamente un remito (solo admin — irreversible)
+async function eliminarRemitoAdmin(remitoId) {
+  const { error } = await _db.from('remitos').delete().eq('remito_id', remitoId);
+  if (error) { console.error('❌ eliminarRemitoAdmin:', error); return { ok: false, msg: error.message }; }
+  return { ok: true };
+}
+
 // Update de campos editados por admin + registro en historial_ediciones.
 // `updates` = { col: nuevoValor }, `entradaHistorial` = objeto {fecha, user_id, user_nombre, cambios}.
 async function actualizarRemitoAdmin(remitoId, updates, entradaHistorial, historialPrevio) {

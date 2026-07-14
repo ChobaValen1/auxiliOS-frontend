@@ -2207,7 +2207,24 @@ async function abrirDetalleRemitoAdmin(remitoId) {
   _raRemito = r;
   _raGrupoEditando = null;
   _raRender();
+  const btnDel = document.getElementById('ra-btn-eliminar');
+  if (btnDel) btnDel.style.display = _raEsAdmin() ? '' : 'none';
   openModal('modal-remito-admin');
+}
+
+async function eliminarRemitoActual() {
+  if (!_raEsAdmin() || !_raRemito) return;
+  const nro = _raRemito.nro_remito || '';
+  if (!confirm(`⚠ Vas a ELIMINAR definitivamente el remito ${nro}.\n\nNo es lo mismo que anular: desaparece de todos los listados, KPIs y rendiciones, y NO se puede recuperar.\n\n¿Eliminar igual?`)) return;
+
+  const res = await eliminarRemitoAdmin(_raRemito.remito_id);
+  if (!res.ok) { toast('No se pudo eliminar: ' + res.msg, 'error'); return; }
+
+  toast(`Remito ${nro} eliminado`);
+  _raRemito = null;
+  closeModal('modal-remito-admin');
+  if (typeof cargarRemitos === 'function') cargarRemitos();
+  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
 }
 
 function _raEditar(grupoId) {

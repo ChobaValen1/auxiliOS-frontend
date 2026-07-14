@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v91'; // v91: cierre admin con chofer elegido queda a cuenta del chofer
+const CACHE_NAME = 'auxilios-v92'; // v92: eliminar remito definitivo desde el detalle admin
 
 const PRECACHE_ASSETS = [
   '/',
