@@ -8128,6 +8128,11 @@ let fotoKmInicio          = null;
 let fotoKmFinal           = null;
 let kmExcepcion = false;  // true si el chofer confirmó excepción de odómetro
 let kmInicioExcepcion = false;  // true si el chofer confirmó salto grande al iniciar jornada
+// Trazabilidad del odómetro: qué leyó la IA y de dónde salió el KM confirmado
+let kmIaInicio     = null;  // lectura IA al abrir (null = no leyó)
+let kmIaFinal      = null;  // lectura IA al cerrar
+let kmOrigenInicio = null;  // 'ia' | 'manual_ia_fallo' | 'manual_editado' | 'manual_offline'
+let kmOrigenFinal  = null;
 let _jornadasAbiertasCache    = [];
 let _jornadaPendienteCerrar   = null;
 
@@ -8136,6 +8141,7 @@ async function abrirModalNuevaJornada() {
     // Resetear estado
     jornadaSeleccionada = null;
     fotoKmInicio = null;
+    kmIaInicio = null; kmOrigenInicio = null;
     _modalError('nj-error', '');
 
     const kmInput = document.getElementById('nj-km-inicio');
@@ -8379,6 +8385,8 @@ async function confirmarNuevaJornada() {
         truckId:      jornadaSeleccionada.truck_id,
         patente:      jornadaSeleccionada.plate,
         kmInicio:     kmInicio,
+        kmInicioIa:     kmIaInicio,
+        kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
         grillaMotivo: _grillaMotivoPendiente,
         marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
         // Fecha/hora del momento REAL de la apertura (no del sync).
@@ -8433,6 +8441,8 @@ async function confirmarNuevaJornada() {
     truckId:      jornadaSeleccionada.truck_id,
     patente:      jornadaSeleccionada.plate,
     kmInicio:     kmInicio,
+    kmInicioIa:     kmIaInicio,
+    kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
     fotoKmInicio: fotoKmInicio,
     grillaMotivo: _grillaMotivoPendiente,
     marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
@@ -8555,6 +8565,7 @@ function abrirModalCerrarJornada(jornada) {
   enTaller = false;
   fotoKmFinal = null;
   kmExcepcion = false;
+  kmIaFinal = null; kmOrigenFinal = null;
 
   // Limpiar inputs viejos
   ['cj-km-final', 'cj-workshop-detail', 'cj-notas'].forEach(id => {
@@ -8646,6 +8657,15 @@ function toggleTaller() {
     row.style.borderColor = enTaller ? 'rgba(245,166,35,0.4)' : 'var(--border)';
     row.style.background  = enTaller ? 'rgba(245,166,35,0.05)' : 'var(--bg-darker)';
   }
+}
+
+// Decide el origen final del KM al confirmar la jornada:
+// la IA leyó y el valor coincide → 'ia'; leyó y difiere → 'manual_editado';
+// no leyó → queda el origen que marcó el flujo ('manual_ia_fallo'/'manual_offline').
+function _kmResolverOrigen(kmIa, kmIngresado, origenActual) {
+  if (origenActual === 'manual_offline') return 'manual_offline';
+  if (kmIa != null) return parseInt(kmIngresado) === parseInt(kmIa) ? 'ia' : 'manual_editado';
+  return origenActual;
 }
 
 function editarKmManual() {
@@ -8869,6 +8889,8 @@ async function confirmarCerrarJornada() {
         truckId:        jornadaParaCerrar.truck_id,
         kmInicio:       jornadaParaCerrar.km_inicio,
         kmFinal:        kmFinal,
+        kmFinalIa:     kmIaFinal,
+        kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
         inWorkshop:     enTaller,
         workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
         notas:          notas,
@@ -8918,6 +8940,8 @@ async function confirmarCerrarJornada() {
     truckId:        jornadaParaCerrar.truck_id,
     kmInicio:       jornadaParaCerrar.km_inicio,
     kmFinal:        kmFinal,
+    kmFinalIa:     kmIaFinal,
+    kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
     fotoKmFinal:    fotoKmFinal,
     inWorkshop:     enTaller,
     workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
@@ -10903,6 +10927,8 @@ async function procesarFotoConIA(event, contexto) {
     // guardada en el teléfono (se sube al sincronizar) y los KM van a mano.
     if (!navigator.onLine) {
         if (isInicio) { fotoKmInicio = archivo; } else { fotoKmFinal = archivo; }
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_offline'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_offline'; }
         const manualArea = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualArea) manualArea.style.display = 'block';
         if (msgStatus) msgStatus.innerHTML = '<span style="color: var(--amber);">📴 Sin conexión: la foto quedó guardada en el teléfono. Ingresá los KM a mano.</span>';
@@ -10950,6 +10976,7 @@ async function procesarFotoConIA(event, contexto) {
         // Para inicio: display gigante (siempre verde, diff informativo)
         if (isInicio) {
             fotoKmInicio = urlPublica;
+            kmIaInicio = kmDetectado; kmOrigenInicio = 'ia';
 
             const njFotoArea = document.getElementById('nj-foto-area');
             const njManual   = document.getElementById('nj-km-manual-area');
@@ -10982,6 +11009,7 @@ async function procesarFotoConIA(event, contexto) {
 
         // Para cierre: display gigante
         fotoKmFinal = urlPublica;
+        kmIaFinal = kmDetectado; kmOrigenFinal = 'ia';
         kmExcepcion = false;
 
         const kmResult    = document.getElementById('cj-km-result');
@@ -11027,7 +11055,11 @@ async function procesarFotoConIA(event, contexto) {
 
     } catch (error) {
         // 5. ERROR: Manejo visual
-        msgStatus.innerHTML = `<span style="color: var(--red);">❌ ${error.message}</span>`;
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_ia_fallo'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; }
+        const manualAreaErr = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
+        if (manualAreaErr) manualAreaErr.style.display = 'block';
+        msgStatus.innerHTML = `<span style="color: var(--red);">❌ ${error.message} Podés reintentar la foto o cargar los KM a mano.</span>`;
         inputKmReal.placeholder = 'Reintentar foto';
         fotoBox.style.borderColor = 'var(--red)';
         fotoIcon.textContent = '⚠️';

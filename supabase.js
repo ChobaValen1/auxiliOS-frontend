@@ -1310,6 +1310,8 @@ async function iniciarJornada(datos) {
       patente_camion:    datos.patente,
       log_date:          hoy,
       km_inicio:         parseInt(datos.kmInicio),
+      km_inicio_ia:      datos.kmInicioIa ?? null,
+      km_inicio_origen:  datos.kmInicioOrigen || null,
       hora_inicio:       datos.horaInicio || new Date().toTimeString().slice(0, 5),
       foto_km_inicio:    fotoUrl,
       grilla_motivo:     datos.grillaMotivo || null,
@@ -1375,6 +1377,8 @@ async function cerrarJornada(logId, datos) {
   
     const { error: logError } = await _db.from('daily_logs').update({
       km_final:        kmFinal,
+      km_final_ia:     datos.kmFinalIa ?? null,
+      km_final_origen: datos.kmFinalOrigen || null,
       foto_km_final:   fotoUrl,
       status:          'closed',
       // horaFin puede venir en datos (sync offline: hora del evento real);
