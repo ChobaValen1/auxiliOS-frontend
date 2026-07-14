@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup · Control de KM cargados a mano</title>
+<style>
+  :root {
+    --bg:#0c0e12; --panel:#13161d; --card:#191d27; --border:#252a38; --border2:#2e3446;
+    --amber:#f5a623; --amber-lo:rgba(245,166,35,0.12);
+    --blue:#4a90e2; --green:#27c47a; --green-lo:rgba(39,196,122,0.12);
+    --red:#e2504a; --red-lo:rgba(226,80,74,0.12);
+    --text:#e8eaf2; --muted:#5a6278; --muted2:#8590ab; --primary:#4F8EF7;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; padding:24px; }
+  h1 { font-size:18px; margin-bottom:4px; }
+  .sub { color:var(--muted2); font-size:12px; margin-bottom:28px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.8px; color:var(--amber); margin:34px 0 6px; }
+  .desc { color:var(--muted2); font-size:12px; margin-bottom:12px; max-width:720px; }
+  .mono { font-family:'DM Mono','Courier New',monospace; }
+
+  /* ── Tabla jornadas ── */
+  table { border-collapse:collapse; width:100%; max-width:860px; background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:12.5px; }
+  th { text-align:left; padding:9px 12px; color:var(--muted2); font-size:10.5px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); }
+  td { padding:9px 12px; border-bottom:1px solid var(--border); }
+  tr:last-child td { border-bottom:none; }
+  tr.clickable:hover { background:rgba(255,255,255,0.03); cursor:pointer; }
+  .badge { display:inline-block; padding:2px 7px; border-radius:5px; font-size:10px; font-weight:700; letter-spacing:.3px; }
+  .b-manual  { background:var(--amber-lo); color:var(--amber); }
+  .b-offline { background:rgba(133,144,171,0.15); color:var(--muted2); }
+  .b-ok      { background:var(--green-lo); color:var(--green); }
+
+  /* ── Cards ── */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; max-width:560px; margin-bottom:14px; }
+  .card h4 { font-size:11px; letter-spacing:.8px; color:var(--muted2); text-transform:uppercase; margin-bottom:12px; }
+  .fotos { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .foto { border:1px solid var(--border2); border-radius:8px; text-align:center; color:var(--muted2); font-size:11px; padding:8px; }
+  .foto .ph { height:90px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.03); border-radius:6px; font-size:26px; }
+  .cmp { border:1px solid var(--border2); border-radius:8px; padding:10px 12px; margin-top:8px; }
+  .cmp.warn { border-color:rgba(245,166,35,0.45); background:var(--amber-lo); }
+  .cmp.off  { border-color:var(--border2); background:rgba(255,255,255,0.02); }
+  .cmp .title { font-size:10.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; margin-bottom:8px; }
+  .cmp.warn .title { color:var(--amber); }
+  .cmp.off  .title { color:var(--muted2); }
+  .cmp-row { display:flex; justify-content:space-between; font-size:12.5px; padding:3px 0; }
+  .cmp-row .k { color:var(--muted2); }
+  .cmp-row .v { font-family:'DM Mono',monospace; font-weight:600; }
+  .diff-amber { color:var(--amber); } .diff-red { color:var(--red); } .ok-green { color:var(--green); }
+
+  /* ── Alerta ── */
+  .alerta { background:var(--panel); border:1px solid rgba(245,166,35,0.4); border-left:4px solid var(--amber); border-radius:10px; padding:12px 14px; max-width:560px; margin-bottom:12px; }
+  .alerta .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .alerta .tipo { font-size:12px; font-weight:700; color:var(--amber); }
+  .alerta .meta { font-size:11px; color:var(--muted2); }
+  .alerta .cuerpo { font-size:12.5px; color:var(--text); margin:6px 0 10px; line-height:1.5; }
+  .btns { display:flex; gap:8px; }
+  .btn { border:none; border-radius:7px; padding:7px 14px; font-size:11.5px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn-ver { background:var(--border2); color:var(--text); }
+  .btn-ok  { background:var(--green-lo); color:var(--green); border:1px solid rgba(39,196,122,0.4); }
+  .btn-no  { background:var(--red-lo); color:var(--red); border:1px solid rgba(226,80,74,0.4); }
+  .nota { margin-top:10px; }
+  .nota input { width:100%; background:var(--bg); border:1px solid var(--border2); border-radius:7px; padding:8px 10px; color:var(--text); font-size:12px; font-family:inherit; }
+  .resuelta { opacity:.65; border-color:var(--border); border-left-color:var(--green); }
+  .resuelta .tipo { color:var(--green); }
+</style>
+</head>
+<body>
+
+<h1>✏️ Control de KM cargados a mano</h1>
+<div class="sub">Mockup · 3 partes: cómo se ve en la lista de Jornadas, en el detalle de la jornada, y en el panel de alertas</div>
+
+<!-- ════ 1 · LISTA DE JORNADAS ════ -->
+<h2>1 · Lista de Jornadas — indicador en la fila</h2>
+<div class="desc">Al lado del KM aparece una marca si el valor no salió de la IA. Sin marca = la IA leyó y el chofer no tocó nada.</div>
+<table>
+  <tr><th>Fecha</th><th>Chofer</th><th>Camión</th><th>KM recorridos</th><th>Origen KM</th></tr>
+  <tr class="clickable"><td>14-07-2026</td><td>Pablo Misko</td><td>AB123CD #12</td><td class="mono">312</td><td><span class="badge b-manual">✏️ A MANO</span></td></tr>
+  <tr class="clickable"><td>14-07-2026</td><td>Jorge Duarte</td><td>AC456EF #7</td><td class="mono">185</td><td><span class="badge b-ok">✓ IA</span></td></tr>
+  <tr class="clickable"><td>13-07-2026</td><td>Raúl Gómez</td><td>AD789GH #3</td><td class="mono">402</td><td><span class="badge b-offline">📴 SIN SEÑAL</span></td></tr>
+</table>
+
+<!-- ════ 2 · DETALLE DE JORNADA ════ -->
+<h2>2 · Detalle de jornada — tarjeta Odómetro con la comparación</h2>
+<div class="desc">La tarjeta "Odómetro" que ya existe suma la comparación debajo de cada foto. Tres ejemplos según el caso:</div>
+
+<!-- Caso A: IA falló -->
+<div class="card">
+  <h4>Odómetro — <span style="color:var(--amber)">caso: la IA no pudo leer</span></h4>
+  <div class="fotos">
+    <div class="foto"><div class="ph">📷</div><small>KM inicio</small></div>
+    <div class="foto"><div class="ph">📷</div><small>KM final</small></div>
+  </div>
+  <div class="cmp warn">
+    <div class="title">⚠ KM final modificado manualmente</div>
+    <div class="cmp-row"><span class="k">Resultado generado por IA</span><span class="v diff-red">— no pudo leer la foto</span></div>
+    <div class="cmp-row"><span class="k">Resultado generado por chofer</span><span class="v">248.512 km</span></div>
+  </div>
+</div>
+
+<!-- Caso B: chofer corrigió a la IA -->
+<div class="card">
+  <h4>Odómetro — <span style="color:var(--amber)">caso: el chofer corrigió a la IA</span></h4>
+  <div class="fotos">
+    <div class="foto"><div class="ph">📷</div><small>KM inicio</small></div>
+    <div class="foto"><div class="ph">📷</div><small>KM final</small></div>
+  </div>
+  <div class="cmp warn">
+    <div class="title">⚠ KM final modificado manualmente</div>
+    <div class="cmp-row"><span class="k">Resultado generado por IA</span><span class="v">248.450 km</span></div>
+    <div class="cmp-row"><span class="k">Resultado generado por chofer</span><span class="v">248.512 km</span></div>
+    <div class="cmp-row"><span class="k">Diferencia</span><span class="v diff-amber">+62 km</span></div>
+  </div>
+</div>
+
+<!-- Caso C: offline -->
+<div class="card">
+  <h4>Odómetro — <span style="color:var(--muted2)">caso: sin señal (no genera alerta)</span></h4>
+  <div class="fotos">
+    <div class="foto"><div class="ph">📷</div><small>KM inicio</small></div>
+    <div class="foto"><div class="ph">📷</div><small>KM final</small></div>
+  </div>
+  <div class="cmp off">
+    <div class="title">📴 KM cargados a mano por falta de señal</div>
+    <div class="cmp-row"><span class="k">Resultado generado por IA</span><span class="v" style="color:var(--muted2)">— sin conexión al momento de la carga</span></div>
+    <div class="cmp-row"><span class="k">Resultado generado por chofer</span><span class="v">248.512 km</span></div>
+  </div>
+</div>
+
+<!-- ════ 3 · PANEL DE ALERTAS ════ -->
+<h2>3 · Panel de alertas — tipo nuevo "KM cargado a mano"</h2>
+<div class="desc">Aparece junto a las alertas de efectivo. Queda pendiente hasta que la apruebes o rechaces con nota, igual que las demás.</div>
+
+<div class="alerta">
+  <div class="top">
+    <span class="tipo">✏️ KM cargado a mano</span>
+    <span class="meta">14-07-2026 · 08:32</span>
+  </div>
+  <div class="cuerpo">
+    <strong>Pablo Misko</strong> · AB123CD #12<br>
+    KM final: la IA leyó <span class="mono">248.450</span> y el chofer cargó <span class="mono">248.512</span> (<span class="diff-amber">+62 km</span>)
+  </div>
+  <div class="btns">
+    <button class="btn btn-ver">Ver jornada</button>
+    <button class="btn btn-ok">✓ Aprobar</button>
+    <button class="btn btn-no">✕ Rechazar</button>
+  </div>
+  <div class="nota"><input placeholder="Nota de revisión (obligatoria al aprobar o rechazar)…"></div>
+</div>
+
+<div class="alerta">
+  <div class="top">
+    <span class="tipo">✏️ KM cargado a mano</span>
+    <span class="meta">14-07-2026 · 19:05</span>
+  </div>
+  <div class="cuerpo">
+    <strong>Jorge Duarte</strong> · AC456EF #7<br>
+    KM final: la IA <strong>no pudo leer la foto</strong> y el chofer cargó <span class="mono">312.780</span>
+  </div>
+  <div class="btns">
+    <button class="btn btn-ver">Ver jornada</button>
+    <button class="btn btn-ok">✓ Aprobar</button>
+    <button class="btn btn-no">✕ Rechazar</button>
+  </div>
+  <div class="nota"><input placeholder="Nota de revisión (obligatoria al aprobar o rechazar)…"></div>
+</div>
+
+<div class="alerta resuelta">
+  <div class="top">
+    <span class="tipo">✓ KM cargado a mano — aprobada</span>
+    <span class="meta">13-07-2026 · revisada por Administrador</span>
+  </div>
+  <div class="cuerpo">
+    <strong>Raúl Gómez</strong> · AD789GH #3 · Nota: "Verificado contra la foto, el número es correcto."
+  </div>
+</div>
+
+</body>
+</html>
