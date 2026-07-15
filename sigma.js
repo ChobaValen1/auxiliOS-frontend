@@ -10976,7 +10976,7 @@ async function procesarFotoConIA(event, contexto) {
         // Para inicio: display gigante (siempre verde, diff informativo)
         if (isInicio) {
             fotoKmInicio = urlPublica;
-            kmIaInicio = kmDetectado; kmOrigenInicio = 'ia';
+            kmIaInicio = parseInt(kmDetectado); kmOrigenInicio = 'ia';
 
             const njFotoArea = document.getElementById('nj-foto-area');
             const njManual   = document.getElementById('nj-km-manual-area');
@@ -11009,7 +11009,7 @@ async function procesarFotoConIA(event, contexto) {
 
         // Para cierre: display gigante
         fotoKmFinal = urlPublica;
-        kmIaFinal = kmDetectado; kmOrigenFinal = 'ia';
+        kmIaFinal = parseInt(kmDetectado); kmOrigenFinal = 'ia';
         kmExcepcion = false;
 
         const kmResult    = document.getElementById('cj-km-result');
