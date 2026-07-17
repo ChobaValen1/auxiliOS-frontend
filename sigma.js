@@ -15544,6 +15544,15 @@ function _jadminRenderFila(r) {
 
   const movil = r.truck_movil ? `#${_escHtml(r.truck_movil)}` : '';
 
+  // Origen del KM: peor caso entre inicio y final
+  const _orgs = [r.km_inicio_origen, r.km_final_origen];
+  let origenBadge = '';
+  if (_orgs.includes('manual_ia_fallo') || _orgs.includes('manual_editado')) {
+    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(245,166,35,0.12);color:var(--amber)">✏️ A MANO</span>';
+  } else if (_orgs.includes('manual_offline')) {
+    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(133,144,171,0.15);color:var(--muted2)">📴</span>';
+  }
+
   return `
     <tr data-log-id="${_escHtml(r.log_id)}" style="cursor:pointer">
       <td>
@@ -15567,7 +15576,7 @@ function _jadminRenderFila(r) {
           <span class="mov">${movil}</span>
         </div>
       </td>
-      <td class="right"><span class="${kmCls}">${kmTxt}</span></td>
+      <td class="right"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
       <td class="right mono">${horasTxt}</td>
       <td class="right mono">${srv}</td>
       <td class="right"><span class="${rendCls}">${rendTxt}</span></td>
@@ -15720,10 +15729,44 @@ function _jadminRenderDetalle(det) {
     ? `<a class="jd-foto" href="${_escHtml(log.foto_km_final)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_final)}" alt="KM final"><small>KM final</small></a>`
     : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM final</small></div>`;
 
+  const _kmCmpBloque = (extremo, origen, kmIa, kmChofer) => {
+    if (!origen || origen === 'ia') return '';
+    const lbl = extremo === 'inicio' ? 'KM inicio' : 'KM final';
+    const esOffline = origen === 'manual_offline';
+    const iaTxt = kmIa != null
+      ? Number(kmIa).toLocaleString('es-AR') + ' km'
+      : (esOffline ? '— sin conexión al momento de la carga' : '— no pudo leer la foto');
+    const diff = (kmIa != null && kmChofer != null) ? kmChofer - kmIa : null;
+    const borde = esOffline ? 'var(--border2)' : 'rgba(245,166,35,0.45)';
+    const fondo = esOffline ? 'rgba(255,255,255,0.02)' : 'rgba(245,166,35,0.12)';
+    const titulo = esOffline
+      ? `📴 ${lbl} cargado a mano por falta de señal`
+      : `⚠ ${lbl} modificado manualmente`;
+    const tituloColor = esOffline ? 'var(--muted2)' : 'var(--amber)';
+    return `
+      <div style="border:1px solid ${borde};background:${fondo};border-radius:8px;padding:10px 12px;margin-top:10px">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${tituloColor};margin-bottom:8px">${titulo}</div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
+          <span style="color:var(--muted2)">Resultado generado por IA</span>
+          <span style="font-family:'DM Mono',monospace;font-weight:600">${iaTxt}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
+          <span style="color:var(--muted2)">Resultado generado por chofer</span>
+          <span style="font-family:'DM Mono',monospace;font-weight:600">${kmChofer != null ? Number(kmChofer).toLocaleString('es-AR') + ' km' : '—'}</span>
+        </div>
+        ${diff != null ? `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
+          <span style="color:var(--muted2)">Diferencia</span>
+          <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--amber)">${diff > 0 ? '+' : ''}${diff.toLocaleString('es-AR')} km</span>
+        </div>` : ''}
+      </div>`;
+  };
+  const kmCmpHtml = _kmCmpBloque('inicio', log.km_inicio_origen, log.km_inicio_ia, log.km_inicio)
+                  + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final);
+
   const odomCard = `
     <div class="jd-card">
       <h4>Odómetro</h4>
-      <div class="jd-fotos">${fotoIni}${fotoFin}</div>
+      <div class="jd-fotos">${fotoIni}${fotoFin}</div>${kmCmpHtml}
     </div>
   `;
 

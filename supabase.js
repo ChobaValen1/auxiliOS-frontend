@@ -3202,6 +3202,7 @@ async function cargarJornadasAdmin(filtros = {}) {
     .select(`
       log_id, driver_id, truck_id, log_date,
       km_inicio, km_final, km_recorridos,
+      km_inicio_origen, km_final_origen,
       hora_inicio, hora_fin,
       in_workshop, workshop_detail,
       foto_km_inicio, foto_km_final,
@@ -3310,6 +3311,8 @@ async function cargarJornadasAdmin(filtros = {}) {
       km_inicio:    l.km_inicio,
       km_final:     l.km_final,
       km_recorridos: l.km_recorridos,
+      km_inicio_origen: l.km_inicio_origen,
+      km_final_origen:  l.km_final_origen,
       hora_inicio:  l.hora_inicio,
       hora_fin:     l.hora_fin,
       horas:        _horasEntre(l.hora_inicio, l.hora_fin),
@@ -3377,6 +3380,7 @@ async function cargarDetalleJornadaAdmin(logId) {
     .select(`
       log_id, driver_id, truck_id, log_date,
       km_inicio, km_final, km_recorridos, km_excepcion,
+      km_inicio_ia, km_inicio_origen, km_final_ia, km_final_origen,
       hora_inicio, hora_fin,
       in_workshop, workshop_detail,
       foto_km_inicio, foto_km_final,
