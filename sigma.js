@@ -3415,7 +3415,7 @@ async function _cargarViewRendimiento() {
       </div>`;
     }).join('');
 
-    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición' };
+    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición', km_manual: '✏️ KM cargado a mano' };
     const opHTML = (alertas || []).map(a =>
       `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--red-lo);border:1px solid rgba(231,76,60,0.3);border-radius:7px;margin-bottom:6px">
         <div><div style="font-size:12px;font-weight:600">${TIPO[a.tipo]||a.tipo}</div>
@@ -16979,6 +16979,7 @@ const ALX_CATS = [
   { key: 'efectivo',      lbl: '💵 Efectivo',        titulo: '💵 Efectivo faltante' },
   { key: 'incidentes',    lbl: '⚠️ Incidentes',      titulo: '⚠️ Incidentes' },
   { key: 'grilla',        lbl: '🗓️ Jornadas/Grilla', titulo: '🗓️ Jornadas / Grilla' },
+  { key: 'km_manual',     lbl: '✏️ KM a mano',       titulo: '✏️ KM cargados a mano' },
   { key: 'documentos',    lbl: '📄 Documentos',      titulo: '📄 Documentos' },
   { key: 'mantenimiento', lbl: '🔧 Mantenimiento',   titulo: '🔧 Mantenimiento' },
 ];
@@ -17193,6 +17194,58 @@ function _alxSyncGrilla() {
   _alxPintarBadges();
 }
 
+// 3bis. KM cargados a mano (IA vs chofer) — se resuelven con Aprobar/Rechazar + nota
+async function _alxFetchKmManual() {
+  const alertas = await cargarAlertasKmManual();
+  return (alertas || []).map(a => ({
+    id: `km_manual|${a.alerta_id}`,
+    cat: 'km_manual',
+    sev: 'ambar',
+    ico: '✏️',
+    html: _alxCardKmManual(a), // tarjeta propia (no usa el layout genérico ni el "Visto")
+  }));
+}
+
+function _alxCardKmManual(a) {
+  const kmIaTxt = a.km_ia != null
+    ? `la IA leyó <span style="font-family:'DM Mono',monospace">${Number(a.km_ia).toLocaleString('es-AR')}</span>`
+    : 'la IA <strong>no pudo leer la foto</strong>';
+  const diffTxt = (a.km_ia != null && a.km_chofer != null)
+    ? ` (<span style="color:var(--amber)">${a.km_chofer - a.km_ia > 0 ? '+' : ''}${(a.km_chofer - a.km_ia).toLocaleString('es-AR')} km</span>)` : '';
+  const lbl = a.extremo === 'inicio' ? 'KM inicio' : 'KM final';
+  return `
+    <div style="background:var(--panel);border:1px solid rgba(245,166,35,0.4);border-left:4px solid var(--amber);border-radius:10px;padding:12px 14px;margin-bottom:10px" id="alx-km-${a.alerta_id}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:700;color:var(--amber)">✏️ KM cargado a mano</span>
+        <span style="font-size:11px;color:var(--muted2)">${_alxFecha(a.fecha)}</span>
+      </div>
+      <div style="font-size:12.5px;line-height:1.5;margin:6px 0 10px">
+        <strong>${_escHtml(a.chofer_nombre)}</strong> · ${_escHtml(a.patente)}${a.movil ? ' #' + _escHtml(String(a.movil)) : ''}<br>
+        ${lbl}: ${kmIaTxt} y el chofer cargó <span style="font-family:'DM Mono',monospace">${a.km_chofer != null ? Number(a.km_chofer).toLocaleString('es-AR') : '—'}</span>${diffTxt}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:11.5px" onclick="abrirDetalleJornadaAdmin(${Number(a.log_id)})">Ver jornada</button>
+        <button class="btn" style="font-size:11.5px;background:rgba(39,196,122,0.12);color:var(--green);border:1px solid rgba(39,196,122,0.4)" onclick="_alxResolverKm('${a.alerta_id}','aprobado')">✓ Aprobar</button>
+        <button class="btn" style="font-size:11.5px;background:rgba(226,80,74,0.12);color:var(--red);border:1px solid rgba(226,80,74,0.4)" onclick="_alxResolverKm('${a.alerta_id}','rechazado')">✕ Rechazar</button>
+      </div>
+      <div style="margin-top:10px">
+        <input id="alx-km-nota-${a.alerta_id}" placeholder="Nota de revisión (obligatoria)…"
+          style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;color:var(--text);font-size:12px;font-family:inherit">
+      </div>
+    </div>`;
+}
+
+async function _alxResolverKm(alertaId, estado) {
+  const nota = document.getElementById(`alx-km-nota-${alertaId}`)?.value?.trim();
+  if (!nota) { toast('Escribí la nota de revisión antes de resolver', 'error'); return; }
+  const ok = await resolverAlertaKmManual(alertaId, estado, nota);
+  if (!ok) { toast('No se pudo guardar la resolución', 'error'); return; }
+  toast(estado === 'aprobado' ? 'Alerta aprobada ✓' : 'Alerta rechazada', 'success');
+  document.getElementById(`alx-km-${alertaId}`)?.remove();
+  _alxItems = _alxItems.filter(i => i.id !== `km_manual|${alertaId}`);
+  _alxPintarBadges();
+}
+
 // 4. Documentos del camión vencidos o dentro de alert_days
 const _ALX_DOC_LBL = {
   VTV: 'VTV', seguro: 'póliza de seguro', habilitacion: 'habilitación CNRT',
@@ -17268,17 +17321,18 @@ function _alxCargarDatos() {
   if (_alxEnCurso) return _alxEnCurso;
   _alxEnCurso = (async () => {
     const vistas = _alxVistas();
-    const [pend, efectivo, incidentes, grilla, documentos, mantenimiento] = await Promise.all([
+    const [pend, efectivo, incidentes, grilla, kmManual, documentos, mantenimiento] = await Promise.all([
       _alxFetchPendientes().catch(e => { console.error('[alertas] rendiciones pendientes:', e); return 0; }),
       _alxFetchEfectivo().catch(e => { console.error('[alertas] efectivo:', e); return []; }),
       _alxFetchIncidentes().catch(e => { console.error('[alertas] incidentes:', e); return []; }),
       _alxFetchGrilla().catch(e => { console.error('[alertas] grilla:', e); return []; }),
+      _alxFetchKmManual().catch(e => { console.error('[alertas] km manual:', e); return []; }),
       _alxFetchDocumentos().catch(e => { console.error('[alertas] documentos:', e); return []; }),
       _alxFetchMantenimiento().catch(e => { console.error('[alertas] mantenimiento:', e); return []; }),
     ]);
     _alxPendCount = pend;
-    _alxItems = [...efectivo, ...incidentes, ...grilla, ...documentos, ...mantenimiento]
-      .filter(it => it.vistoFn ? true : !vistas.has(it.id)); // las de grilla ya vienen filtradas por su propio visto
+    _alxItems = [...efectivo, ...incidentes, ...grilla, ...kmManual, ...documentos, ...mantenimiento]
+      .filter(it => (it.vistoFn || it.cat === 'km_manual') ? true : !vistas.has(it.id)); // grilla filtra por su visto; km_manual se resuelve en DB
     _alxCargado = true;
   })().finally(() => { _alxEnCurso = null; });
   return _alxEnCurso;
@@ -17353,6 +17407,7 @@ function _alxRender() {
 }
 
 function _alxItemHtml(it) {
+  if (it.html) return it.html; // tarjetas con layout propio (ej. km_manual)
   const botones = (it.acciones || [])
     .map(a => `<button class="alx-btn ir" onclick="${a.fn}">${a.lbl}</button>`)
     .concat(`<button class="alx-btn ok" onclick="${it.vistoFn || `alxMarcarVista('${it.id}')`}">✓ Visto</button>`)

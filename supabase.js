@@ -1992,6 +1992,53 @@ async function cargarAlertasOperativas() {
   return data || [];
 }
 
+// Alertas de KM cargado a mano, con datos de jornada para mostrar la comparación.
+async function cargarAlertasKmManual() {
+  const { data: alertas, error } = await _db.from('alertas_operativas')
+    .select('alerta_id, driver_id, fecha, log_id, extremo, diferencia_monto, estado, created_at')
+    .eq('tipo', 'km_manual').eq('estado', 'pendiente')
+    .order('created_at', { ascending: false }).limit(50);
+  if (error) { console.error('cargarAlertasKmManual:', error); return []; }
+  if (!alertas?.length) return [];
+
+  const logIds = [...new Set(alertas.map(a => a.log_id).filter(Boolean))];
+  const [logsRes, usersRes] = await Promise.all([
+    logIds.length
+      ? _db.from('daily_logs')
+          .select('log_id, km_inicio, km_final, km_inicio_ia, km_final_ia, patente_camion, truck:trucks!fk_daily_logs_truck(plate, numero_interno)')
+          .in('log_id', logIds)
+      : Promise.resolve({ data: [] }),
+    _db.from('users').select('user_id, full_name').in('user_id', [...new Set(alertas.map(a => a.driver_id).filter(Boolean))]),
+  ]);
+  const logsMap = {}; (logsRes.data || []).forEach(l => { logsMap[l.log_id] = l; });
+  const uMap = {};    (usersRes.data || []).forEach(u => { uMap[u.user_id] = u.full_name; });
+
+  return alertas.map(a => {
+    const l = logsMap[a.log_id] || {};
+    const esInicio = a.extremo === 'inicio';
+    return {
+      ...a,
+      chofer_nombre: uMap[a.driver_id] || '—',
+      patente:  l.truck?.plate || l.patente_camion || '—',
+      movil:    l.truck?.numero_interno || null,
+      km_ia:     esInicio ? l.km_inicio_ia : l.km_final_ia,
+      km_chofer: esInicio ? l.km_inicio    : l.km_final,
+    };
+  });
+}
+
+// Aprueba o rechaza una alerta km_manual con nota obligatoria.
+async function resolverAlertaKmManual(alertaId, estado, nota) {
+  const { error } = await _db.from('alertas_operativas').update({
+    estado,                       // 'aprobado' | 'rechazado'
+    nota_resolucion: nota,
+    resuelto_por: USUARIO_ACTUAL?.id || null,
+    resuelto_at:  new Date().toISOString(),
+  }).eq('alerta_id', alertaId).eq('estado', 'pendiente');
+  if (error) { console.error('resolverAlertaKmManual:', error); return false; }
+  return true;
+}
+
 // Referencias posibles para un cumplimiento — remitos del chofer en el período.
 // Devuelve arrays únicos de patentes, socios, nros de servicio.
 async function cargarRefsCumplimiento(driverId, yyyymm) {
