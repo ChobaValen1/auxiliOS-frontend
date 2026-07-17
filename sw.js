@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v92'; // v92: eliminar remito definitivo desde el detalle admin
+const CACHE_NAME = 'auxilios-v93'; // v93: control de KM cargados a mano (IA vs chofer)
 
 const PRECACHE_ASSETS = [
   '/',
