@@ -3,7 +3,8 @@
 --
 -- ANTES DE EJECUTAR (una sola vez, en el Dashboard de Supabase):
 --   Authentication → Users → Add user →
---   email: pablo@sigmaremolques.com · password: Beren1974 · Auto confirm ✓
+--   crear el usuario indicado con una contraseña definida fuera del repositorio
+--   y confirmar el email según el procedimiento operativo vigente.
 --
 -- Este script después:
 --   1. Encuentra el auth user por email (auth.users)
@@ -22,7 +23,7 @@ DECLARE
 BEGIN
   SELECT id INTO v_new FROM auth.users WHERE email = 'pablo@sigmaremolques.com';
   IF v_new IS NULL THEN
-    RAISE EXCEPTION 'Primero creá el usuario en Authentication (pablo@sigmaremolques.com / Beren1974)';
+    RAISE EXCEPTION 'Primero creá el usuario requerido en Supabase Authentication';
   END IF;
 
   SELECT user_id INTO v_old

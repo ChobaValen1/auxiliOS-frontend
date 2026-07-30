@@ -9,6 +9,80 @@ const SUPABASE_KEY = 'sb_publishable_daGVg7URncTvLzC7N8NzOA_Z0CWB-1M'; // ← re
 const { createClient } = window.supabase;
 const _db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+let _passwordLinkHandled = false;
+
+function _urlEsAltaORecuperacion() {
+  const authUrl = `${window.location.search || ''}&${window.location.hash || ''}`;
+  return /(?:^|[?&#])type=(?:invite|recovery)(?:&|$)/i.test(authUrl);
+}
+
+function mostrarDefinirPassword() {
+  if (_passwordLinkHandled || document.getElementById('modal-definir-password')) return;
+  _passwordLinkHandled = true;
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-definir-password';
+  modal.className = 'modal-backdrop';
+  modal.style.cssText = 'display:flex;z-index:10000010';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:400px">
+      <div class="modal-head"><span class="modal-head-title">🔐 Definí tu contraseña</span></div>
+      <div class="modal-body">
+        <p style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:0">
+          Usá al menos 12 caracteres e incluí letras y números.
+        </p>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Nueva contraseña</label>
+          <input class="form-input" id="dp-password" type="password" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Repetir contraseña</label>
+          <input class="form-input" id="dp-confirm" type="password" autocomplete="new-password">
+        </div>
+        <div id="dp-error" style="display:none;color:var(--red);font-size:12px;margin-top:10px"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="dp-submit" onclick="confirmarDefinirPassword()">Guardar contraseña</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function confirmarDefinirPassword() {
+  const password = document.getElementById('dp-password')?.value || '';
+  const confirmPassword = document.getElementById('dp-confirm')?.value || '';
+  const errorEl = document.getElementById('dp-error');
+  const button = document.getElementById('dp-submit');
+  const invalid = password.length < 12 || !/[A-Za-z]/.test(password) || !/\d/.test(password);
+
+  if (invalid) {
+    if (errorEl) { errorEl.textContent = 'Usá al menos 12 caracteres, con letras y números.'; errorEl.style.display = 'block'; }
+    return;
+  }
+  if (password !== confirmPassword) {
+    if (errorEl) { errorEl.textContent = 'Las contraseñas no coinciden.'; errorEl.style.display = 'block'; }
+    return;
+  }
+
+  if (button) { button.disabled = true; button.textContent = 'Guardando...'; }
+  const { error } = await _db.auth.updateUser({ password });
+  if (error) {
+    if (errorEl) { errorEl.textContent = 'No se pudo actualizar la contraseña. Solicitá un enlace nuevo.'; errorEl.style.display = 'block'; }
+    if (button) { button.disabled = false; button.textContent = 'Guardar contraseña'; }
+    return;
+  }
+
+  document.getElementById('modal-definir-password')?.remove();
+  history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+  _toast('Contraseña definida correctamente', 'success');
+}
+
+_db.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY' || _urlEsAltaORecuperacion()) {
+    setTimeout(mostrarDefinirPassword, 0);
+  }
+});
+
 // Wrapper de toast — funciona aunque sigma.js no haya cargado todavía
 function _toast(msg, type = 'success') {
   if (typeof toast === 'function') {
@@ -43,6 +117,42 @@ async function loginUsuario(email, password) {
   return true;
 }
 // Nota: esta función no solo hace login, sino que también carga el perfil y arranca la app. Devuelve true si el login fue exitoso, false en caso de error.
+
+// El backend autentica DNI + contraseña y devuelve una sesión Supabase sin
+// revelar al navegador qué email está asociado al DNI.
+async function loginUsuarioPorDni(dni, password) {
+  const response = await fetch(`${ENV.API_BASE_URL}/api/login-by-dni`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dni, password }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.access_token || !payload.refresh_token) return false;
+
+  const { data, error } = await _db.auth.setSession({
+    access_token: payload.access_token,
+    refresh_token: payload.refresh_token,
+  });
+  if (error || !data?.session?.user) return false;
+
+  USUARIO_ACTUAL = data.session.user;
+  await cargarPerfilUsuario();
+  await inicializarApp();
+  return true;
+}
+
+async function obtenerAccessToken() {
+  const { data: { session }, error } = await _db.auth.getSession();
+  if (error || !session?.access_token) throw new Error('Sesión expirada. Volvé a ingresar.');
+  return session.access_token;
+}
+
+async function apiAuthHeaders(extra = {}) {
+  return {
+    ...extra,
+    Authorization: `Bearer ${await obtenerAccessToken()}`,
+  };
+}
 
 async function cerrarSesion() {
   try {
@@ -1143,36 +1253,21 @@ async function ejecutarLogin() {
   if (e) e.style.display = 'none';
   if (b) { b.textContent = 'Ingresando...'; b.style.opacity = '0.7'; b.disabled = true; }
 
-  let email = identifier;
+  const loginConDni = !identifier.includes('@');
 
-  // Si no es email, buscar por DNI en el backend
-  if (!identifier.includes('@')) {
+  if (loginConDni) {
     if (!/^\d{6,10}$/.test(identifier)) {
       if (e) { e.textContent = 'El DNI debe contener solo números (6 a 10 dígitos).'; e.style.display = 'block'; }
       if (b) { b.textContent = 'Ingresar →'; b.style.opacity = '1'; b.disabled = false; }
-      return;
-    }
-    try {
-      const res  = await fetch(`${ENV.API_BASE_URL}/api/email-by-dni`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dni: identifier })
-      });
-      const data = await res.json();
-      if (!res.ok || !data.email) {
-        _handleLoginFail('No encontramos una cuenta con ese DNI.', b, e);
-        return;
-      }
-      email = data.email;
-    } catch (_) {
-      _handleLoginFail('Error de conexión. Verificá tu internet.', b, e);
       return;
     }
   }
 
   let ok = false;
   try {
-    ok = await loginUsuario(email, pass);
+    ok = loginConDni
+      ? await loginUsuarioPorDni(identifier, pass)
+      : await loginUsuario(identifier, pass);
   } catch (_) {
     _handleLoginFail('Error inesperado. Intentá de nuevo.', b, e);
     return;
@@ -1180,7 +1275,7 @@ async function ejecutarLogin() {
   if (ok) {
     _resetLoginAttempts();
   } else {
-    _handleLoginFail('Contraseña incorrecta.', b, e);
+    _handleLoginFail('DNI, email o contraseña incorrectos.', b, e);
   }
 }
 

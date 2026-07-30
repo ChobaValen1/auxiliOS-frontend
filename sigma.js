@@ -5819,11 +5819,12 @@ async function leerTicketCombustible(input) {
   });
 try {
     // LLAMADO A LA EDGE FUNCTION DE SUPABASE
+    const accessToken = await obtenerAccessToken();
     const res = await fetch(`${SUPABASE_URL}/functions/v1/procesar-ticket`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_KEY}` // Seguridad vital
+        'Authorization': `Bearer ${accessToken}`
       },
       body: JSON.stringify({ imagen_base64: base64 }),
     });
@@ -9137,9 +9138,10 @@ async function confirmarRendicion() {
 // POST a la edge function de rendición — compartido entre el flujo online
 // y el handler del outbox (sync offline). Lanza Error si el server rechaza.
 async function _postRendicion(payload) {
+  const accessToken = await obtenerAccessToken();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/check-integridad`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
     body:    JSON.stringify(payload),
   });
   const json = await res.json();
@@ -10663,7 +10665,7 @@ async function guardarNuevoUsuario() {
   try {
     resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ full_name: nombre, email, legajo, role_name: rol, phone: tel || null, dni: dni || null }),
     });
     data = await resp.json();
@@ -10676,7 +10678,7 @@ async function guardarNuevoUsuario() {
   if (!resp?.ok || data?.error) {
     showModalError('nu-modal-error', data?.error || 'Error desconocido al crear el usuario');
   } else {
-    toast('Usuario creado — contraseña inicial: Sigma1234!', 'success');
+    toast('Usuario invitado — recibirá un correo para definir su contraseña', 'success');
     closeModal('modal-nuevo-usuario');
     cargarTablaAdminUsuarios();
   }
@@ -10715,20 +10717,24 @@ async function cargarTablaAdminUsuarios() {
   contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => {
     const rol = u.roles?.name || u.role || '';
     const activo = u.is_active !== false;
+    const userIdSeguro = _escHtml(u.user_id || '');
+    const nombreSeguro = _escHtml(u.full_name || '');
+    const licenciaSegura = _escHtml(u.license_number || '');
+    const vencimientoSeguro = _escHtml(u.license_expiry ? u.license_expiry.substring(0,10) : '');
     return `
     <div class="cfg-item${!activo ? ' inactive' : ''}">
       <div class="cfg-item-main">
-        <div class="cfg-item-name">${u.full_name}</div>
-        <div class="cfg-item-sub">${u.license_number ? `Lic. ${u.license_number}${u.license_expiry ? ` · Vence ${u.license_expiry.substring(0,10)}` : ''}` : 'Sin licencia registrada'}</div>
+        <div class="cfg-item-name">${nombreSeguro}</div>
+        <div class="cfg-item-sub">${u.license_number ? `Lic. ${licenciaSegura}${u.license_expiry ? ` · Vence ${vencimientoSeguro}` : ''}` : 'Sin licencia registrada'}</div>
       </div>
       <div class="cfg-item-side">
         <span class="cfg-badge ${roleBadgeClass(rol)}">${roleLabel(rol)}</span>
         <span class="cfg-status ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Inactivo'}</span>
       </div>
       <div class="cfg-item-actions">
-        <button class="cfg-btn-a ghost" onclick="abrirEditarUsuario('${u.user_id}')">Editar</button>
-        ${activo ? `<button class="cfg-btn-a ghost" onclick="abrirResetPassword('${u.user_id}','${u.full_name.replace(/'/g,"\\'")}')">Contrasena</button>` : ''}
-        <button class="cfg-btn-a ${activo ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${u.user_id}',${activo})">
+        <button class="cfg-btn-a ghost" onclick="abrirEditarUsuario('${userIdSeguro}')">Editar</button>
+        ${activo ? `<button class="cfg-btn-a ghost" data-user-name="${nombreSeguro}" onclick="abrirResetPassword('${userIdSeguro}',this.dataset.userName)">Recuperar acceso</button>` : ''}
+        <button class="cfg-btn-a ${activo ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${userIdSeguro}',${activo})">
           ${activo ? 'Dar de baja' : 'Reactivar'}
         </button>
       </div>
@@ -10751,67 +10757,42 @@ function abrirResetPassword(userId, nombre) {
         <button class="modal-close" onclick="document.getElementById('modal-reset-pass').remove()">×</button>
       </div>
       <div class="modal-body">
-        <div class="form-group" style="margin-bottom:14px">
-          <label class="form-label">Nueva contraseña</label>
-          <input class="form-input" type="password" id="rp-nueva" placeholder="Mínimo 8 caracteres">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Confirmar contraseña</label>
-          <input class="form-input" type="password" id="rp-confirmar" placeholder="Repetí la contraseña">
-        </div>
+        <p style="font-size:13px;line-height:1.5;color:var(--muted);margin:0">
+          Se enviará un enlace seguro al correo registrado para que la persona defina
+          una nueva contraseña. Administración no podrá verla ni elegirla.
+        </p>
         <div id="rp-error" style="display:none;margin-top:10px;color:var(--red);font-size:12px"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-reset-pass').remove()">Cancelar</button>
-        <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Confirmar</button>
+        <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Enviar enlace</button>
       </div>
     </div>`;
   modal.style.zIndex = '10000001';
   document.body.appendChild(modal);
   const titleEl = modal.querySelector('.modal-head-title');
-  if (titleEl) titleEl.textContent = `🔑 Cambiar contraseña — ${nombre}`;
+  if (titleEl) titleEl.textContent = `🔑 Recuperar acceso — ${nombre}`;
 }
 
 async function confirmarResetPassword(userId) {
-  const nueva     = document.getElementById('rp-nueva')?.value;
-  const confirmar = document.getElementById('rp-confirmar')?.value;
   const errorEl   = document.getElementById('rp-error');
   const btn       = document.getElementById('rp-btn-confirmar');
-
-  if (!nueva || nueva.length < 8) {
-    if (errorEl) { errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; errorEl.style.display = 'block'; }
-    return;
-  }
-  if (nueva !== confirmar) {
-    if (errorEl) { errorEl.textContent = 'Las contraseñas no coinciden.'; errorEl.style.display = 'block'; }
-    return;
-  }
   if (errorEl) errorEl.style.display = 'none';
-  if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; }
+  if (btn) { btn.textContent = 'Enviando...'; btn.disabled = true; }
 
   try {
-    const { data: { session } } = await _db.auth.getSession();
-    const token = session?.access_token;
-    if (!token) {
-      if (errorEl) { errorEl.textContent = 'Sesión expirada. Recargá la página.'; errorEl.style.display = 'block'; }
-      if (btn) { btn.textContent = 'Confirmar'; btn.disabled = false; }
-      return;
-    }
-    const res = await fetch(`${ENV.API_BASE_URL}/api/reset-password`, {
+    const res = await fetch(`${ENV.API_BASE_URL}/api/send-password-reset`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ userId, newPassword: nueva })
+      headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ userId })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error desconocido');
     document.getElementById('modal-reset-pass').remove();
-    toast('Contraseña actualizada ✓', 'success');
+    toast('Enlace de recuperación enviado ✓', 'success');
   } catch (err) {
     if (errorEl) { errorEl.textContent = err.message; errorEl.style.display = 'block'; }
-    if (btn) { btn.textContent = 'Confirmar'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Enviar enlace'; btn.disabled = false; }
   }
 }
 
@@ -11075,6 +11056,7 @@ async function procesarFotoConIA(event, contexto) {
  */
 async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
     const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/procesar-odometro`;
+    const accessToken = await obtenerAccessToken();
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 40000);
@@ -11085,7 +11067,7 @@ async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'Authorization': `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
                 url_foto: urlPublica,
@@ -13805,7 +13787,7 @@ async function _csvImportarConfirm() {
       try {
         const resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             full_name: o.full_name, email: o.email, legajo: o.legajo,
             role_name: o.rol, phone: o.phone || null, dni: o.dni || null
@@ -13831,7 +13813,7 @@ async function _csvImportarConfirm() {
       <div style="color:#22c55e">✓ ${results.ok} ${tipo === 'flota' ? 'vehículos creados' : 'usuarios creados'}</div>
       ${results.fail ? `<div style="color:#f87171;margin-top:6px">✗ ${results.fail} fallaron</div>` : ''}
       ${results.errors.length ? `<details style="margin-top:14px;text-align:left"><summary style="cursor:pointer;font-size:12px;color:var(--muted)">Ver errores</summary><pre style="font-size:11px;background:#0008;padding:10px;border-radius:4px;max-height:200px;overflow:auto">${results.errors.map(e => e.replace(/[<>]/g,'')).join('\n')}</pre></details>` : ''}
-      ${tipo === 'usuarios' && results.ok ? `<div style="margin-top:14px;font-size:12px;color:var(--muted)">Contraseña inicial para todos: <code>Sigma1234!</code></div>` : ''}
+      ${tipo === 'usuarios' && results.ok ? `<div style="margin-top:14px;font-size:12px;color:var(--muted)">Cada usuario recibirá un correo para definir su contraseña.</div>` : ''}
     </div>`;
   btn.disabled = false;
   btn.style.display = 'none';
