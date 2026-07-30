@@ -4,6 +4,9 @@
   "description": "Gestión de flota y remitos digitales — Sigma Remolques",
   "private": true,
   "scripts": {
+    "check": "node --check sigma.js && node --check supabase.js && node --check offline.js && node --check sw.js && node scripts/security-check.js",
+    "test": "node --test test/*.test.js",
+    "ci": "npm run check && npm test",
     "diagnose-users": "node diagnose-users.js",
     "fix-auth-users": "node fix-auth-users.js"
   },

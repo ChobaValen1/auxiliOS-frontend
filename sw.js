@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v93'; // v93: control de KM cargados a mano (IA vs chofer)
+const CACHE_NAME = 'auxilios-v94'; // v94: autenticación y recuperación de acceso seguras
 
 const PRECACHE_ASSETS = [
   '/',
