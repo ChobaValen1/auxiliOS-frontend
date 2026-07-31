@@ -1,45 +1,232 @@
-/* AuxiliOS · Fase 2A: contratos y tarifarios */
+/* AuxiliOS · Motor tarifario visual */
 (()=>{'use strict';
-const S={company:null,contracts:[],cards:[],branches:[],items:new Map(),expanded:null,form:null,observer:null};
+const T=window.TariffEngine=window.TariffEngine||{};
+const S=T.S={
+ company:null,contracts:[],cards:[],branches:[],catalog:[],
+ card:null,items:[],rules:[],exceptions:[],links:[],billing:null,codes:[],
+ step:'services',search:'',filter:'all',observer:null,form:null,busy:false
+};
 const role=()=>typeof PERFIL_USUARIO==='undefined'?'':(PERFIL_USUARIO?.roles?.name||PERFIL_USUARIO?.role||'');
-const read=()=>['administracion','supervision'].includes(role()),write=()=>role()==='administracion';
-const e=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const n=v=>Number(String(v??'').replace(',','.'))||0,today=()=>new Date().toISOString().slice(0,10);
-const cash=(v,c='ARS')=>new Intl.NumberFormat('es-AR',{style:'currency',currency:c,maximumFractionDigits:2}).format(Number(v||0));
-const d=v=>v?new Date(v+'T12:00:00').toLocaleDateString('es-AR'):'Sin vencimiento';
-const toast2=(m,t='info')=>typeof toast==='function'?toast(m,t):console.log(m);
+const canRead=()=>['administracion','supervision'].includes(role());
+const canWrite=()=>role()==='administracion';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>Number(String(v??'').replace(',','.'))||0;
+const money=(v,c='ARS')=>new Intl.NumberFormat('es-AR',{style:'currency',currency:c,maximumFractionDigits:2}).format(num(v));
+const dateFmt=v=>v?new Date(v+'T12:00:00').toLocaleDateString('es-AR'):'Sin vencimiento';
+const notify=(m,t='info')=>typeof toast==='function'?toast(m,t):console.log(m);
 const open=id=>typeof openModal==='function'?openModal(id):document.getElementById(id)?.classList.add('open');
 const close=id=>typeof closeModal==='function'?closeModal(id):document.getElementById(id)?.classList.remove('open');
-const label=v=>({draft:'Borrador',active:'Vigente',suspended:'Suspendido',expired:'Vencido',closed:'Cerrado',archived:'Archivado'}[v]||v);
-const cls=v=>({active:'green',suspended:'amber',expired:'red',draft:'muted',closed:'muted',archived:'muted'}[v]||'muted');
-const contract=id=>S.contracts.find(x=>x.contract_id===id),card=id=>S.cards.find(x=>x.rate_card_id===id);
-function inject(){if(document.getElementById('com2-css'))return;document.head.insertAdjacentHTML('beforeend',`<style id="com2-css">
-.com2{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}.com2-h,.com2-r,.com2-a{display:flex;align-items:center;justify-content:space-between;gap:8px}.com2-title{font-size:13px;font-weight:800}.com2-list{display:grid;gap:9px;margin-top:10px}.com2-box{padding:11px;background:var(--bg);border:1px solid var(--border);border-radius:9px}.com2-contract{border-left:3px solid var(--amber)}.com2-card{margin-top:8px;background:var(--panel)}.com2-name{font-size:12px;font-weight:700}.com2-meta{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.45}.com2-pill{font-size:9px;padding:3px 8px;border-radius:99px;border:1px solid var(--border)}.com2-pill.green{color:var(--green)}.com2-pill.amber{color:var(--amber)}.com2-pill.red{color:var(--red)}.com2-pill.muted{color:var(--muted)}.com2-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}.com2-k{padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:7px}.com2-k small{display:block;font-size:8px;color:var(--muted);text-transform:uppercase}.com2-k b{display:block;font-size:10px;margin-top:3px}.com2-a{justify-content:flex-start;flex-wrap:wrap;margin-top:8px}.com2-empty{padding:13px;text-align:center;color:var(--muted);font-size:11px;border:1px dashed var(--border);border-radius:8px}.com2-alert{margin-top:9px;padding:9px 11px;color:var(--amber);font-size:11px;border:1px solid rgba(245,166,35,.35);background:rgba(245,166,35,.08);border-radius:8px}.com2-modal{width:min(760px,calc(100vw - 24px));max-width:760px}.com2-sec{font-size:10px;color:var(--amber);font-weight:800;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px;margin:12px 0 9px}@media(max-width:780px){.com2-grid{grid-template-columns:repeat(2,1fr)}}
-</style>`);document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop" id="modal-com2"><div class="modal-box com2-modal"><div class="modal-head"><span class="modal-head-title" id="com2-form-title">Configuración comercial</span><button class="modal-close" onclick="closeModal('modal-com2')">×</button></div><div class="modal-body" id="com2-form-body"></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-com2')">Cancelar</button><button class="btn btn-primary" onclick="guardarFormularioComercial()">Guardar</button></div></div></div>`)}
-async function load(id=S.company){if(!read()||!id)return;S.company=id;const[a,b]=await Promise.all([_db.from('company_contracts').select('*').eq('company_id',id).order('valid_from',{ascending:false}),_db.from('company_branches').select('branch_id,name,branch_code').eq('company_id',id).eq('is_active',true).order('is_primary',{ascending:false}).order('name')]);if(a.error)return toast2('No se pudieron cargar los contratos','error');S.contracts=a.data||[];S.branches=b.data||[];const ids=S.contracts.map(x=>x.contract_id);if(ids.length){const r=await _db.from('company_rate_cards').select('*').in('contract_id',ids).order('version',{ascending:false});if(r.error)return toast2('No se pudieron cargar los tarifarios','error');S.cards=r.data||[]}else S.cards=[];S.items.clear();render()}
-function render(){const host=document.querySelector('#emp-detail .emp-detail');if(!host||!S.company)return;document.getElementById('com2')?.remove();const now=new Date(today()+'T12:00:00'),warn=S.contracts.some(x=>['active','suspended'].includes(x.status)&&x.valid_until&&Math.ceil((new Date(x.valid_until+'T12:00:00')-now)/86400000)>=0&&Math.ceil((new Date(x.valid_until+'T12:00:00')-now)/86400000)<=30);host.insertAdjacentHTML('beforeend',`<section class="com2" id="com2"><div class="com2-h"><div><div class="com2-title">Contratos y tarifarios</div><div class="com2-meta">Acuerdos versionados para aplicar luego al flujo operativo.</div></div>${write()?'<button class="btn btn-ghost" onclick="abrirContratoComercial()">＋ Contrato</button>':''}</div>${warn?'<div class="com2-alert">⚠ Hay contratos próximos a vencer.</div>':''}${!write()?'<div class="com2-meta">Supervisión tiene acceso de consulta.</div>':''}<div class="com2-list">${S.contracts.length?S.contracts.map(contractHTML).join(''):'<div class="com2-empty">Sin contratos cargados.</div>'}</div></section>`)}
-function contractHTML(x){const cards=S.cards.filter(c=>c.contract_id===x.contract_id),active=cards.find(c=>c.status==='active');return`<div class="com2-box com2-contract"><div class="com2-r"><div><div class="com2-name">${e(x.name)}</div><div class="com2-meta">${e(x.contract_number||'Sin número')} · ${d(x.valid_from)} a ${d(x.valid_until)}</div></div><span class="com2-pill ${cls(x.status)}">${label(x.status)}</span></div><div class="com2-grid"><div class="com2-k"><small>Facturación</small><b>${({per_service:'Por servicio',weekly:'Semanal',biweekly:'Quincenal',monthly:'Mensual'}[x.billing_frequency]||x.billing_frequency)}</b></div><div class="com2-k"><small>Pago</small><b>${x.payment_terms_days?x.payment_terms_days+' días':'Contado'}</b></div><div class="com2-k"><small>Moneda</small><b>${e(x.currency)}</b></div><div class="com2-k"><small>Tarifario</small><b>${active?'v'+active.version:'Sin publicar'}</b></div></div><div class="com2-meta">${x.requires_service_order?'✓ Requiere N° de servicio':'○ Sin N° obligatorio'} · ${x.requires_purchase_order?'✓ Requiere OC':'○ Sin OC'}${x.is_primary?' · Principal':''}</div>${write()?`<div class="com2-a"><button class="btn btn-ghost" onclick="abrirContratoComercial('${x.contract_id}')">Editar</button><button class="btn btn-ghost" onclick="abrirTarifarioComercial('${x.contract_id}')">＋ Tarifario</button></div>`:''}<div class="com2-list">${cards.length?cards.map(cardHTML).join(''):'<div class="com2-empty">Sin tarifarios.</div>'}</div></div>`}
-function cardHTML(x){const exp=S.expanded===x.rate_card_id,items=S.items.get(x.rate_card_id)||[];return`<div class="com2-box com2-card"><div class="com2-r"><div><div class="com2-name">${e(x.name)} · v${x.version}</div><div class="com2-meta">${d(x.valid_from)} a ${d(x.valid_until)} · ${e(x.currency)}</div></div><span class="com2-pill ${cls(x.status)}">${label(x.status)}</span></div><div class="com2-a"><button class="btn btn-ghost" onclick="verTarifarioComercial('${x.rate_card_id}')">${exp?'Ocultar':'Ver tarifas'}</button>${write()&&x.status==='draft'?`<button class="btn btn-ghost" onclick="abrirTarifarioComercial('${x.contract_id}','${x.rate_card_id}')">Editar</button><button class="btn btn-ghost" onclick="abrirTarifaComercial('${x.rate_card_id}')">＋ Tarifa</button><button class="btn btn-primary" onclick="publicarTarifarioComercial('${x.rate_card_id}')">Publicar</button>`:''}${write()&&x.status!=='draft'?`<button class="btn btn-ghost" onclick="duplicarTarifarioComercial('${x.rate_card_id}')">Duplicar versión</button>`:''}${write()&&x.status==='active'?`<button class="btn btn-ghost" onclick="vencerTarifarioComercial('${x.rate_card_id}')">Finalizar</button>`:''}</div>${exp?`<div class="com2-list">${items.length?items.map(itemHTML).join(''):'<div class="com2-empty">Sin tarifas cargadas.</div>'}</div>`:''}</div>`}
-function itemHTML(x){const c=card(x.rate_card_id),branch=x.branch_id?(S.branches.find(b=>b.branch_id===x.branch_id)?.name||'Sucursal'):'Todas las sucursales',tolls=({at_cost:'Al costo',included:'Incluidos',fixed:'Fijo '+cash(x.tolls_fixed_amount,c?.currency),not_applicable:'No aplica'}[x.tolls_mode]||x.tolls_mode);return`<div class="com2-box"><div class="com2-r"><div><div class="com2-name">${e(x.service_name)}</div><div class="com2-meta">${e(branch)} · ${({one_way:'Solo ida',round_trip:'Ida y vuelta',from_base:'Desde base',from_unit:'Desde móvil',manual:'Manual'}[x.km_calculation_method]||x.km_calculation_method)}</div></div><b style="color:var(--amber);font-family:'DM Mono'">${cash(x.base_price,c?.currency)}</b></div><div class="com2-grid"><div class="com2-k"><small>Incluye</small><b>${Number(x.included_km)} km</b></div><div class="com2-k"><small>KM extra</small><b>${cash(x.extra_km_price,c?.currency)}</b></div><div class="com2-k"><small>Espera</small><b>${x.included_wait_minutes} min + ${cash(x.wait_price_per_hour,c?.currency)}/h</b></div><div class="com2-k"><small>Peajes</small><b>${tolls}</b></div></div><div class="com2-meta">Extracción ${cash(x.extraction_fee,c?.currency)} · Cancelación ${cash(x.cancellation_fee,c?.currency)} · Nocturno ${Number(x.night_surcharge_pct)}% · Feriado ${Number(x.holiday_surcharge_pct)}%</div>${write()&&c?.status==='draft'?`<div class="com2-a"><button class="btn btn-ghost" onclick="abrirTarifaComercial('${x.rate_card_id}','${x.rate_item_id}')">Editar</button><button class="btn btn-ghost" onclick="borrarTarifaComercial('${x.rate_item_id}','${x.rate_card_id}')">Eliminar</button></div>`:''}</div>`}
-function setForm(title,type,ids,html){S.form={type,...ids};document.getElementById('com2-form-title').textContent=title;document.getElementById('com2-form-body').innerHTML=html;open('modal-com2')}
-function val(id){return document.getElementById(id)?.value??''}function chk(id){return!!document.getElementById(id)?.checked}
-function contractForm(id=null){if(!write())return;const x=contract(id);setForm(x?'Editar contrato':'Nuevo contrato','contract',{id},`<div class="form-grid-2"><div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="f-name" value="${e(x?.name||'Convenio principal')}"></div><div class="form-group"><label class="form-label">Número</label><input class="form-input" id="f-number" value="${e(x?.contract_number||'')}"></div></div><div class="form-grid-2"><div class="form-group"><label class="form-label">Estado</label><select class="form-input" id="f-status">${['draft','active','suspended','expired','closed'].map(v=>`<option value="${v}" ${x?.status===v?'selected':''}>${label(v)}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Moneda</label><select class="form-input" id="f-currency"><option ${x?.currency!=='USD'?'selected':''}>ARS</option><option ${x?.currency==='USD'?'selected':''}>USD</option></select></div></div><div class="form-grid-2"><div class="form-group"><label class="form-label">Desde *</label><input class="form-input" type="date" id="f-from" value="${x?.valid_from||today()}"></div><div class="form-group"><label class="form-label">Hasta</label><input class="form-input" type="date" id="f-until" value="${x?.valid_until||''}"></div></div><div class="form-grid-2"><div class="form-group"><label class="form-label">Facturación</label><select class="form-input" id="f-billing">${[['per_service','Por servicio'],['weekly','Semanal'],['biweekly','Quincenal'],['monthly','Mensual']].map(([v,l])=>`<option value="${v}" ${x?.billing_frequency===v?'selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Pago (días)</label><input class="form-input" type="number" min="0" max="365" id="f-days" value="${x?.payment_terms_days??30}"></div></div><label class="emp-check"><input type="checkbox" id="f-primary" ${x?.is_primary?'checked':''}> Contrato principal</label><label class="emp-check"><input type="checkbox" id="f-service" ${x?.requires_service_order!==false?'checked':''}> Requiere N° de servicio</label><label class="emp-check"><input type="checkbox" id="f-po" ${x?.requires_purchase_order?'checked':''}> Requiere orden de compra</label><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="f-notes">${e(x?.notes||'')}</textarea></div><div class="modal-error" id="com2-error" style="display:none"></div>`)}
-function cardForm(contractId,id=null){if(!write())return;const x=card(id),ct=contract(contractId);setForm(x?'Editar tarifario':'Nuevo tarifario','card',{id,contractId},`<div class="form-grid-2"><div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="f-name" value="${e(x?.name||'Tarifario general')}"></div><div class="form-group"><label class="form-label">Moneda</label><select class="form-input" id="f-currency"><option ${(x?.currency||ct?.currency)!=='USD'?'selected':''}>ARS</option><option ${(x?.currency||ct?.currency)==='USD'?'selected':''}>USD</option></select></div></div><div class="form-grid-2"><div class="form-group"><label class="form-label">Desde *</label><input class="form-input" type="date" id="f-from" value="${x?.valid_from||ct?.valid_from||today()}"></div><div class="form-group"><label class="form-label">Hasta</label><input class="form-input" type="date" id="f-until" value="${x?.valid_until||ct?.valid_until||''}"></div></div><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="f-notes">${e(x?.notes||'')}</textarea></div><div class="modal-error" id="com2-error" style="display:none"></div>`)}
-const serviceOpts=[['urban_tow','Remolque urbano'],['route_tow','Remolque en ruta'],['crane_service','Grúa / izaje'],['light_assistance','Asistencia ligera'],['extraction','Extracción'],['battery','Batería'],['storage','Custodia / estadía'],['other','Otro']];
-function itemForm(cardId,id=null){if(!write()||card(cardId)?.status!=='draft')return;const x=(S.items.get(cardId)||[]).find(i=>i.rate_item_id===id),stored=x?.service_code||'urban_tow',sv=stored.startsWith('other_')?'other':stored;setForm(x?'Editar tarifa':'Nueva tarifa','item',{id,cardId},`<div class="form-grid-2"><div class="form-group"><label class="form-label">Servicio</label><select class="form-input" id="f-service-code">${serviceOpts.map(([v,l])=>`<option value="${v}" ${sv===v?'selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Nombre visible *</label><input class="form-input" id="f-name" value="${e(x?.service_name||serviceOpts.find(a=>a[0]===sv)?.[1]||'')}"></div></div><div class="form-group"><label class="form-label">Sucursal</label><select class="form-input" id="f-branch"><option value="">Todas</option>${S.branches.map(b=>`<option value="${b.branch_id}" ${x?.branch_id===b.branch_id?'selected':''}>${e(b.name)}</option>`).join('')}</select></div><div class="com2-sec">Base y kilómetros</div><div class="form-grid-2"><div class="form-group"><label class="form-label">Precio base</label><input class="form-input" type="number" min="0" id="f-base" value="${x?.base_price||0}"></div><div class="form-group"><label class="form-label">Mínimo</label><input class="form-input" type="number" min="0" id="f-min" value="${x?.minimum_charge||0}"></div></div><div class="form-grid-2"><div class="form-group"><label class="form-label">KM incluidos</label><input class="form-input" type="number" min="0" id="f-km-inc" value="${x?.included_km||0}"></div><div class="form-group"><label class="form-label">KM excedente</label><input class="form-input" type="number" min="0" id="f-km-extra" value="${x?.extra_km_price||0}"></div></div><div class="form-group"><label class="form-label">Cálculo KM</label><select class="form-input" id="f-km-method">${[['one_way','Solo ida'],['round_trip','Ida y vuelta'],['from_base','Desde base'],['from_unit','Desde móvil'],['manual','Manual']].map(([v,l])=>`<option value="${v}" ${x?.km_calculation_method===v?'selected':''}>${l}</option>`).join('')}</select></div><div class="com2-sec">Espera y adicionales</div><div class="form-grid-2"><div class="form-group"><label class="form-label">Espera incluida (min)</label><input class="form-input" type="number" min="0" id="f-wait-inc" value="${x?.included_wait_minutes||0}"></div><div class="form-group"><label class="form-label">Hora de espera</label><input class="form-input" type="number" min="0" id="f-wait-price" value="${x?.wait_price_per_hour||0}"></div></div><div class="form-grid-2"><div class="form-group"><label class="form-label">Extracción</label><input class="form-input" type="number" min="0" id="f-extraction" value="${x?.extraction_fee||0}"></div><div class="form-group"><label class="form-label">Cancelación</label><input class="form-input" type="number" min="0" id="f-cancel" value="${x?.cancellation_fee||0}"></div></div><div class="form-grid-2"><div class="form-group"><label class="form-label">Segunda unidad</label><input class="form-input" type="number" min="0" id="f-second" value="${x?.second_unit_fee||0}"></div><div class="form-group"><label class="form-label">Peajes</label><select class="form-input" id="f-tolls">${[['at_cost','Al costo'],['included','Incluidos'],['fixed','Monto fijo'],['not_applicable','No aplica']].map(([v,l])=>`<option value="${v}" ${x?.tolls_mode===v?'selected':''}>${l}</option>`).join('')}</select></div></div><div class="form-group"><label class="form-label">Monto fijo de peajes</label><input class="form-input" type="number" min="0" id="f-tolls-fixed" value="${x?.tolls_fixed_amount||0}"></div><div class="com2-sec">Recargos</div><div class="form-grid-2"><div class="form-group"><label class="form-label">Nocturno %</label><input class="form-input" type="number" min="0" max="500" id="f-night" value="${x?.night_surcharge_pct||0}"></div><div class="form-group"><label class="form-label">Fin de semana %</label><input class="form-input" type="number" min="0" max="500" id="f-weekend" value="${x?.weekend_surcharge_pct||0}"></div></div><div class="form-group"><label class="form-label">Feriado %</label><input class="form-input" type="number" min="0" max="500" id="f-holiday" value="${x?.holiday_surcharge_pct||0}"></div><div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="f-notes">${e(x?.notes||'')}</textarea></div><div class="modal-error" id="com2-error" style="display:none"></div>`)}
-function err(m){const x=document.getElementById('com2-error');if(x){x.textContent='⚠ '+m;x.style.display='block'}}
-async function save(){if(!S.form)return;const f=S.form;if(f.type==='contract'){const from=val('f-from'),until=val('f-until')||null,name=val('f-name').trim(),days=Number(val('f-days')||0);if(!name||!from)return err('Completá nombre y fecha de inicio.');if(until&&until<from)return err('La fecha final no puede ser anterior.');if(days<0||days>365)return err('La condición de pago no es válida.');const p={company_id:S.company,name,contract_number:val('f-number').trim()||null,status:val('f-status'),currency:val('f-currency'),valid_from:from,valid_until:until,billing_frequency:val('f-billing'),payment_terms_days:days,requires_service_order:chk('f-service'),requires_purchase_order:chk('f-po'),is_primary:chk('f-primary'),notes:val('f-notes').trim()||null};const r=f.id?await _db.from('company_contracts').update(p).eq('contract_id',f.id):await _db.from('company_contracts').insert(p);if(r.error)return err(r.error.message)}
-if(f.type==='card'){const from=val('f-from'),until=val('f-until')||null,name=val('f-name').trim();if(!name||!from)return err('Completá nombre y fecha.');if(until&&until<from)return err('La fecha final no puede ser anterior.');const p={contract_id:f.contractId,name,status:'draft',currency:val('f-currency'),valid_from:from,valid_until:until,notes:val('f-notes').trim()||null};const r=f.id?await _db.from('company_rate_cards').update(p).eq('rate_card_id',f.id):await _db.from('company_rate_cards').insert(p);if(r.error)return err(r.error.message)}
-if(f.type==='item'){let code=val('f-service-code'),name=val('f-name').trim();if(!name)return err('Ingresá el nombre del servicio.');if(code==='other'){const slug=name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,42);code='other_'+(slug||'servicio')}const rec=[n(val('f-night')),n(val('f-weekend')),n(val('f-holiday'))];if(rec.some(v=>v<0||v>500))return err('Los recargos deben estar entre 0% y 500%.');const p={rate_card_id:f.cardId,branch_id:val('f-branch')||null,service_code:code,service_name:name,base_price:n(val('f-base')),minimum_charge:n(val('f-min')),included_km:n(val('f-km-inc')),extra_km_price:n(val('f-km-extra')),km_calculation_method:val('f-km-method'),included_wait_minutes:Math.trunc(n(val('f-wait-inc'))),wait_price_per_hour:n(val('f-wait-price')),tolls_mode:val('f-tolls')||'at_cost',tolls_fixed_amount:n(val('f-tolls-fixed')),extraction_fee:n(val('f-extraction')),cancellation_fee:n(val('f-cancel')),second_unit_fee:n(val('f-second')),night_surcharge_pct:rec[0],weekend_surcharge_pct:rec[1],holiday_surcharge_pct:rec[2],is_active:true,notes:val('f-notes').trim()||null};const r=f.id?await _db.from('company_rate_items').update(p).eq('rate_item_id',f.id):await _db.from('company_rate_items').insert(p);if(r.error)return err(r.error.code==='23505'?'Ya existe esa tarifa para la sucursal.':r.error.message);S.items.delete(f.cardId);S.expanded=null}
-close('modal-com2');toast2('Datos comerciales guardados','success');await load();if(f.type==='item')await toggle(f.cardId)}
-async function toggle(id){S.expanded=S.expanded===id?null:id;if(S.expanded&&!S.items.has(id)){const r=await _db.from('company_rate_items').select('*').eq('rate_card_id',id).eq('is_active',true).order('service_name');if(r.error)return toast2('No se pudieron cargar las tarifas','error');S.items.set(id,r.data||[])}render()}
-async function publish(id){if(!write()||!confirm('¿Publicar este tarifario? Después no podrá editarse.'))return;const r=await _db.from('company_rate_cards').update({status:'active'}).eq('rate_card_id',id);if(r.error)return toast2(r.error.message,'error');await load();toast2('Tarifario publicado','success')}
-async function expire(id){if(!write()||!confirm('¿Finalizar este tarifario?'))return;const r=await _db.from('company_rate_cards').update({status:'expired',valid_until:today()}).eq('rate_card_id',id);if(r.error)return toast2(r.error.message,'error');await load();toast2('Tarifario finalizado','success')}
-async function duplicate(id){if(!write())return;const x=card(id);if(!x)return;const ir=await _db.from('company_rate_items').select('*').eq('rate_card_id',id).eq('is_active',true);if(ir.error)return toast2(ir.error.message,'error');const cr=await _db.from('company_rate_cards').insert({contract_id:x.contract_id,name:x.name,status:'draft',currency:x.currency,valid_from:today(),notes:'Basado en versión '+x.version}).select().single();if(cr.error)return toast2(cr.error.message,'error');const rows=(ir.data||[]).map(({rate_item_id,created_at,updated_at,created_by,updated_by,...z})=>({...z,rate_card_id:cr.data.rate_card_id}));if(rows.length){const rr=await _db.from('company_rate_items').insert(rows);if(rr.error)return toast2('Se creó la versión, pero falló la copia de tarifas','warning')}await load();S.expanded=null;await toggle(cr.data.rate_card_id);toast2('Nueva versión creada','success')}
-async function delItem(id,cardId){if(!write()||!confirm('¿Eliminar esta tarifa del borrador?'))return;const r=await _db.from('company_rate_items').delete().eq('rate_item_id',id);if(r.error)return toast2(r.error.message,'error');S.items.delete(cardId);S.expanded=null;await toggle(cardId);toast2('Tarifa eliminada','success')}
-function hook(){if(window.__com2hook||typeof window.seleccionarEmpresa!=='function')return false;const base=window.seleccionarEmpresa;window.seleccionarEmpresa=async(id,...rest)=>{const r=await base(id,...rest);await load(id);return r};window.__com2hook=true;return true}
-function observe(){const h=document.getElementById('emp-detail');if(!h||S.observer)return;S.observer=new MutationObserver(()=>{if(S.company&&!document.getElementById('com2'))queueMicrotask(render)});S.observer.observe(h,{childList:true,subtree:true})}
-function init(){inject();let i=0;const t=setInterval(()=>{hook();observe();if((window.__com2hook&&document.getElementById('emp-detail'))||++i>40)clearInterval(t)},250)}
-Object.assign(window,{abrirContratoComercial:contractForm,abrirTarifarioComercial:cardForm,abrirTarifaComercial:itemForm,guardarFormularioComercial:save,verTarifarioComercial:toggle,publicarTarifarioComercial:publish,vencerTarifarioComercial:expire,duplicarTarifarioComercial:duplicate,borrarTarifaComercial:delItem,cargarComercialEmpresa:load});
-document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
+const statusLabel=v=>({draft:'Borrador',active:'Vigente',suspended:'Suspendido',expired:'Vencido',closed:'Cerrado',archived:'Archivado'}[v]||v);
+const unitLabel=v=>({service:'Por servicio',hour:'Por hora',km:'Por km',unit:'Por unidad',day:'Por día',fixed:'Monto fijo'}[v]||v);
+const ruleMeta={
+ night:{title:'Horario nocturno',sub:'Recargo automático dentro de un rango horario.',icon:'☾',tone:'blue'},
+ weekend_holiday:{title:'Fines de semana y feriados',sub:'Reglas especiales para sábados, domingos y feriados.',icon:'▣',tone:'green'},
+ wide_coverage:{title:'Cobertura amplia',sub:'Recargo cuando el servicio supera una distancia.',icon:'⌖',tone:'amber'}
+};
+const codeLabels={traveler:'Código Viajero',work:'Código Trabajo',toll:'Código Peaje',wait:'Código Espera',osa:'Código OSA',extraction:'Código Extracción',storage:'Código Guarda',excess:'Código Excedente',special:'Código Especial'};
+const currentCompany=()=>window.__auxCompanySelected||S.company;
+const cardCurrency=()=>S.card?.currency||'ARS';
+const itemFor=(conceptId,branchId=null)=>S.items.find(x=>x.concept_id===conceptId&&(x.branch_id||null)===(branchId||null));
+const concept=id=>S.catalog.find(x=>x.concept_id===id);
+const rule=type=>S.rules.find(x=>x.rule_type===type);
+const enabledItems=()=>S.items.filter(x=>x.is_active&&x.branch_id==null);
+const primaryItems=()=>enabledItems().filter(x=>x.can_be_primary);
+const secondaryItems=()=>enabledItems().filter(x=>x.can_be_secondary);
+const mixedItems=()=>enabledItems().filter(x=>x.can_be_primary&&x.can_be_secondary);
+const isDraft=()=>S.card?.status==='draft';
+const editable=()=>canWrite()&&isDraft();
+
+function inject(){
+ if(document.getElementById('tariff-engine-css'))return;
+ const css=document.createElement('link');css.id='tariff-engine-css';css.rel='stylesheet';css.href='/comercial.css';document.head.appendChild(css);
+ document.body.insertAdjacentHTML('beforeend',`
+ <div class="modal-backdrop tc-modal" id="tariff-wizard"><div class="tc-shell">
+  <div id="tc-wizard-content"></div>
+ </div></div>
+ <div class="modal-backdrop" id="tariff-small-modal"><div class="modal-box tc-small-modal">
+  <div class="modal-head"><span class="modal-head-title" id="tc-form-title">Configuración</span><button class="modal-close" onclick="closeModal('tariff-small-modal')">×</button></div>
+  <div class="modal-body" id="tc-form-body"></div>
+  <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('tariff-small-modal')">Cancelar</button><button class="btn btn-primary" onclick="guardarFormularioTarifa()">Guardar</button></div>
+ </div></div>`);
+}
+
+async function load(companyId=S.company){
+ if(!canRead()||!companyId)return;
+ S.company=companyId;window.__auxCompanySelected=companyId;
+ const [contracts,branches,catalog]=await Promise.all([
+  _db.from('company_contracts').select('*').eq('company_id',companyId).order('is_primary',{ascending:false}).order('valid_from',{ascending:false}),
+  _db.from('company_branches').select('branch_id,name,branch_code,is_primary').eq('company_id',companyId).eq('is_active',true).order('is_primary',{ascending:false}).order('name'),
+  _db.from('service_concepts').select('*').eq('is_active',true).order('sort_order').order('name')
+ ]);
+ if(contracts.error||catalog.error)return notify('No se pudo cargar la configuración comercial','error');
+ S.contracts=contracts.data||[];S.branches=branches.data||[];S.catalog=catalog.data||[];
+ const ids=S.contracts.map(x=>x.contract_id);
+ if(ids.length){
+  const cards=await _db.from('company_rate_cards').select('*').in('contract_id',ids).order('version',{ascending:false});
+  S.cards=cards.data||[];
+ }else S.cards=[];
+ renderEmbedded();
+}
+
+function renderEmbedded(){
+ const host=document.querySelector('#emp-detail .emp-detail');if(!host||!S.company)return;
+ document.getElementById('tc-embedded')?.remove();
+ const active=S.cards.filter(x=>x.status==='active').length,drafts=S.cards.filter(x=>x.status==='draft').length;
+ host.insertAdjacentHTML('beforeend',`<section class="tc-embedded" id="tc-embedded">
+  <div class="tc-head"><div><div class="tc-eyebrow">Motor tarifario</div><div class="tc-title">Contratos, servicios y reglas de facturación</div><div class="tc-muted">Configuración versionada para aplicar automáticamente en el flujo del operador.</div></div>
+   ${canWrite()?'<button class="btn btn-primary" onclick="abrirContratoTarifa()">＋ Nuevo contrato</button>':''}
+  </div>
+  <div class="tc-kpis">
+   <div class="tc-kpi"><small>Contratos</small><b>${S.contracts.length}</b></div>
+   <div class="tc-kpi"><small>Tarifarios</small><b>${S.cards.length}</b></div>
+   <div class="tc-kpi"><small>Vigentes</small><b>${active}</b></div>
+   <div class="tc-kpi"><small>Borradores</small><b>${drafts}</b></div>
+  </div>
+  ${!canWrite()?'<div class="tc-readonly" style="margin-top:10px">Supervisión puede consultar, simular y revisar. Las modificaciones corresponden a Administración.</div>':''}
+  <div class="tc-contracts">${S.contracts.length?S.contracts.map(contractHTML).join(''):'<div class="tc-empty">Todavía no hay contratos. Creá el primero para comenzar.</div>'}</div>
+ </section>`);
+}
+
+function contractHTML(x){
+ const cards=S.cards.filter(c=>c.contract_id===x.contract_id);
+ return `<article class="tc-contract ${x.is_primary?'primary':''}">
+  <div class="tc-card-head"><div><div class="tc-contract-name">${esc(x.name)}</div><div class="tc-muted">${esc(x.contract_number||'Sin número')} · ${dateFmt(x.valid_from)} a ${dateFmt(x.valid_until)} · ${esc(x.currency)}</div></div>
+   <span class="tc-pill ${x.status}">${statusLabel(x.status)}</span>
+  </div>
+  <div class="tc-actions" style="margin-top:8px;flex-wrap:wrap">
+   ${canWrite()?`<button class="btn btn-ghost" onclick="abrirContratoTarifa('${x.contract_id}')">Editar contrato</button><button class="btn btn-ghost" onclick="abrirTarifarioTarifa('${x.contract_id}')">＋ Nueva versión</button>`:''}
+  </div>
+  <div class="tc-rate-list">${cards.length?cards.map(rateHTML).join(''):'<div class="tc-empty">Sin tarifarios.</div>'}</div>
+ </article>`;
+}
+function rateHTML(x){
+ return `<div class="tc-rate"><div><b>${esc(x.name)} · versión ${x.version}</b><small>${dateFmt(x.valid_from)} a ${dateFmt(x.valid_until)} · ${statusLabel(x.status)}</small></div>
+  <div class="tc-actions">
+   <button class="btn btn-ghost" onclick="abrirMotorTarifario('${x.rate_card_id}')">${x.status==='draft'&&canWrite()?'Configurar':'Ver'}</button>
+   ${x.status!=='draft'&&canWrite()?`<button class="btn btn-ghost" onclick="duplicarMotorTarifario('${x.rate_card_id}')">Duplicar</button>`:''}
+  </div>
+ </div>`;
+}
+
+function setForm(title,type,data,html){
+ S.form={type,...data};document.getElementById('tc-form-title').textContent=title;
+ document.getElementById('tc-form-body').innerHTML=html;open('tariff-small-modal');
+}
+function input(id){return document.getElementById(id)?.value??''}
+function checked(id){return!!document.getElementById(id)?.checked}
+function formError(msg){let e=document.getElementById('tc-form-error');if(e){e.textContent='⚠ '+msg;e.style.display='block'}}
+
+function openContract(id=null){
+ if(!canWrite())return;const x=S.contracts.find(i=>i.contract_id===id);
+ setForm(x?'Editar contrato':'Nuevo contrato','contract',{id},`
+  <div class="form-grid-2"><div class="form-group"><label class="form-label">Nombre del acuerdo *</label><input class="form-input" id="tf-name" value="${esc(x?.name||'Convenio principal')}"></div>
+  <div class="form-group"><label class="form-label">Número de contrato</label><input class="form-input" id="tf-number" value="${esc(x?.contract_number||'')}"></div></div>
+  <div class="form-grid-2"><div class="form-group"><label class="form-label">Estado</label><select class="form-input" id="tf-status">${['draft','active','suspended','expired','closed'].map(v=>`<option value="${v}" ${x?.status===v?'selected':''}>${statusLabel(v)}</option>`).join('')}</select></div>
+  <div class="form-group"><label class="form-label">Moneda</label><select class="form-input" id="tf-currency"><option ${x?.currency!=='USD'?'selected':''}>ARS</option><option ${x?.currency==='USD'?'selected':''}>USD</option></select></div></div>
+  <div class="form-grid-2"><div class="form-group"><label class="form-label">Vigencia desde *</label><input class="form-input" type="date" id="tf-from" value="${x?.valid_from||new Date().toISOString().slice(0,10)}"></div>
+  <div class="form-group"><label class="form-label">Vigencia hasta</label><input class="form-input" type="date" id="tf-until" value="${x?.valid_until||''}"></div></div>
+  <div class="form-grid-2"><div class="form-group"><label class="form-label">Frecuencia de facturación</label><select class="form-input" id="tf-billing">${[['per_service','Por servicio'],['weekly','Semanal'],['biweekly','Quincenal'],['monthly','Mensual']].map(([v,l])=>`<option value="${v}" ${x?.billing_frequency===v?'selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="form-group"><label class="form-label">Condición de pago (días)</label><input class="form-input" type="number" min="0" max="365" id="tf-days" value="${x?.payment_terms_days??30}"></div></div>
+  <label class="emp-check"><input type="checkbox" id="tf-primary" ${x?.is_primary?'checked':''}> Contrato principal</label>
+  <label class="emp-check"><input type="checkbox" id="tf-service" ${x?.requires_service_order!==false?'checked':''}> Requiere número de servicio</label>
+  <label class="emp-check"><input type="checkbox" id="tf-po" ${x?.requires_purchase_order?'checked':''}> Requiere orden de compra</label>
+  <div class="form-group"><label class="form-label">Observaciones</label><textarea class="form-input" id="tf-notes">${esc(x?.notes||'')}</textarea></div>
+  <div class="modal-error" id="tc-form-error" style="display:none"></div>`);
+}
+function openRateCard(contractId,id=null){
+ if(!canWrite())return;const x=S.cards.find(i=>i.rate_card_id===id),ct=S.contracts.find(i=>i.contract_id===contractId);
+ setForm(x?'Editar tarifario':'Nueva versión de tarifario','rate_card',{id,contractId},`
+  <div class="form-grid-2"><div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="tf-name" value="${esc(x?.name||'Tarifario general')}"></div>
+  <div class="form-group"><label class="form-label">Moneda</label><select class="form-input" id="tf-currency"><option ${(x?.currency||ct?.currency)!=='USD'?'selected':''}>ARS</option><option ${(x?.currency||ct?.currency)==='USD'?'selected':''}>USD</option></select></div></div>
+  <div class="form-grid-2"><div class="form-group"><label class="form-label">Vigencia desde *</label><input class="form-input" type="date" id="tf-from" value="${x?.valid_from||new Date().toISOString().slice(0,10)}"></div>
+  <div class="form-group"><label class="form-label">Vigencia hasta</label><input class="form-input" type="date" id="tf-until" value="${x?.valid_until||''}"></div></div>
+  <div class="form-group"><label class="form-label">Observaciones</label><textarea class="form-input" id="tf-notes">${esc(x?.notes||'')}</textarea></div>
+  <div class="modal-error" id="tc-form-error" style="display:none"></div>`);
+}
+
+async function saveForm(){
+ if(!S.form||S.busy)return;S.busy=true;
+ try{
+  if(S.form.type==='contract'){
+   const name=input('tf-name').trim(),from=input('tf-from'),until=input('tf-until')||null,days=Number(input('tf-days')||0);
+   if(!name||!from)return formError('Completá el nombre y la fecha de inicio.');
+   if(until&&until<from)return formError('La fecha final no puede ser anterior.');
+   if(days<0||days>365)return formError('La condición de pago no es válida.');
+   const payload={company_id:S.company,name,contract_number:input('tf-number').trim()||null,status:input('tf-status'),currency:input('tf-currency'),
+    valid_from:from,valid_until:until,billing_frequency:input('tf-billing'),payment_terms_days:days,is_primary:checked('tf-primary'),
+    requires_service_order:checked('tf-service'),requires_purchase_order:checked('tf-po'),notes:input('tf-notes').trim()||null};
+   const r=S.form.id?await _db.from('company_contracts').update(payload).eq('contract_id',S.form.id):await _db.from('company_contracts').insert(payload);
+   if(r.error)return formError(r.error.message);
+  }else if(S.form.type==='rate_card'){
+   const name=input('tf-name').trim(),from=input('tf-from'),until=input('tf-until')||null;
+   if(!name||!from)return formError('Completá el nombre y la fecha de inicio.');
+   if(until&&until<from)return formError('La fecha final no puede ser anterior.');
+   const payload={contract_id:S.form.contractId,name,status:'draft',currency:input('tf-currency'),valid_from:from,valid_until:until,notes:input('tf-notes').trim()||null};
+   let r;
+   if(S.form.id)r=await _db.from('company_rate_cards').update(payload).eq('rate_card_id',S.form.id).select().single();
+   else r=await _db.from('company_rate_cards').insert(payload).select().single();
+   if(r.error)return formError(r.error.message);
+   close('tariff-small-modal');await load();
+   if(!S.form.id&&r.data)return openWizard(r.data.rate_card_id);
+   notify('Tarifario creado','success');return;
+  }else if(S.form.type==='branch_item'){
+   await T.saveBranchItem();return;
+  }else if(S.form.type==='concept'){
+   await T.saveCustomConcept();return;
+  }
+  close('tariff-small-modal');await load();notify('Configuración guardada','success');
+ }finally{S.busy=false}
+}
+
+async function loadEngine(cardId){
+ const [items,rules,exceptions,links,billing,codes]=await Promise.all([
+  _db.from('company_rate_items').select('*').eq('rate_card_id',cardId).eq('is_active',true).order('service_name'),
+  _db.from('company_rate_rules').select('*').eq('rate_card_id',cardId),
+  _db.from('company_rate_rule_exceptions').select('*').eq('rate_card_id',cardId),
+  _db.from('company_rate_service_links').select('*').eq('rate_card_id',cardId).eq('is_enabled',true),
+  _db.from('company_rate_billing_settings').select('*').eq('rate_card_id',cardId).maybeSingle(),
+  _db.from('company_rate_codes').select('*').eq('rate_card_id',cardId)
+ ]);
+ if([items,rules,exceptions,links,billing,codes].some(x=>x.error))throw new Error('No se pudo cargar el motor tarifario.');
+ S.items=items.data||[];S.rules=rules.data||[];S.exceptions=exceptions.data||[];S.links=links.data||[];
+ S.billing=billing.data||{rate_card_id:cardId,copay_enabled:false,copay_mode:'fixed',copay_value:0,toll_enabled:false,toll_invoice_enabled:false,toll_mode:'at_cost',toll_fixed_amount:0,require_toll_receipt:true};
+ S.codes=codes.data||[];
+}
+async function openWizard(cardId){
+ const c=S.cards.find(x=>x.rate_card_id===cardId);if(!c)return;
+ S.card=c;S.step='services';
+ try{await loadEngine(cardId);renderWizard();open('tariff-wizard')}
+ catch(err){notify(err.message,'error')}
+}
+function closeWizard(){close('tariff-wizard');S.card=null;load(S.company)}
+
+function renderWizard(){
+ const root=document.getElementById('tc-wizard-content');if(!root||!S.card)return;
+ const ct=S.contracts.find(x=>x.contract_id===S.card.contract_id);
+ const tabs=[['services','1','Servicios'],['rules','2','Recargos'],['links','3','Tarifas diferenciadas'],['billing','4','Cobros y códigos'],['summary','5','Resumen']];
+ root.innerHTML=`<div class="tc-wizard-head"><div><div class="tc-eyebrow">${esc(ct?.name||'Contrato')}</div><div class="tc-wizard-title">${esc(S.card.name)} · versión ${S.card.version}</div><div class="tc-wizard-meta">${statusLabel(S.card.status)} · ${dateFmt(S.card.valid_from)} a ${dateFmt(S.card.valid_until)} · ${esc(S.card.currency)}</div></div>
+  <div class="tc-actions">${S.card.status!=='draft'&&canWrite()?`<button class="btn btn-ghost" onclick="duplicarMotorTarifario('${S.card.rate_card_id}')">Duplicar versión</button>`:''}<button class="btn btn-ghost" onclick="cerrarMotorTarifario()">Cerrar</button></div></div>
+  <div class="tc-tabs">${tabs.map(([v,n,l])=>`<button class="tc-tab ${S.step===v?'active':''}" onclick="irPasoTarifa('${v}')"><span>${n}</span>${l}</button>`).join('')}</div>
+  <div class="tc-body">${!editable()?'<div class="tc-readonly" style="margin-bottom:12px">Esta versión es histórica o tu perfil es de consulta. Podés revisar y simular, pero no modificar.</div>':''}<div id="tc-step"></div></div>
+  <div class="tc-footer"><div class="tc-muted">Los cambios se guardan automáticamente.</div><div class="tc-actions">${S.step!=='services'?'<button class="btn btn-ghost" onclick="pasoTarifaAnterior()">← Anterior</button>':''}${S.step!=='summary'?'<button class="btn btn-primary" onclick="pasoTarifaSiguiente()">Siguiente →</button>':editable()?`<button class="btn btn-primary" onclick="publicarMotorTarifario('${S.card.rate_card_id}')">Publicar tarifario</button>`:''}</div></div>`;
+ renderStep();
+}
+function goStep(step){S.step=step;renderWizard()}
+function stepNext(){const a=['services','rules','links','billing','summary'],i=a.indexOf(S.step);if(i<a.length-1)goStep(a[i+1])}
+function stepPrev(){const a=['services','rules','links','billing','summary'],i=a.indexOf(S.step);if(i>0)goStep(a[i-1])}
+function renderStep(){
+ const el=document.getElementById('tc-step');if(!el)return;
+ if(S.step==='services')T.renderServices(el);
+ if(S.step==='rules')T.renderRules(el);
+ if(S.step==='links')T.renderLinks(el);
+ if(S.step==='billing')T.renderBilling(el);
+ if(S.step==='summary')T.renderSummary(el);
+}
+
+Object.assign(T,{role,canRead,canWrite,esc,num,money,dateFmt,notify,open,close,statusLabel,unitLabel,ruleMeta,codeLabels,
+ currentCompany,cardCurrency,itemFor,concept,rule,enabledItems,primaryItems,secondaryItems,mixedItems,isDraft,editable,
+ inject,load,renderEmbedded,setForm,input,checked,formError,loadEngine,openWizard,closeWizard,renderWizard,goStep,stepNext,stepPrev,renderStep});
+Object.assign(window,{cargarComercialEmpresa:load,abrirContratoTarifa:openContract,abrirTarifarioTarifa:openRateCard,
+ guardarFormularioTarifa:saveForm,abrirMotorTarifario:openWizard,cerrarMotorTarifario:closeWizard,
+ irPasoTarifa:goStep,pasoTarifaSiguiente:stepNext,pasoTarifaAnterior:stepPrev});
 })();
