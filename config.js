@@ -2,12 +2,32 @@ const ENV = {
   API_BASE_URL: 'https://auxilios.up.railway.app'
 };
 
-// Módulo comercial Fase 1: empresas, contactos y sucursales.
-window.addEventListener('DOMContentLoaded', () => {
-  if (document.getElementById('auxilios-empresas-module')) return;
-  const script = document.createElement('script');
-  script.id = 'auxilios-empresas-module';
-  script.src = '/empresas.js';
-  script.defer = true;
-  document.body.appendChild(script);
+function loadAuxiliosModule(id, src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById(id);
+    if (existing) {
+      if (existing.dataset.loaded === '1') resolve();
+      else existing.addEventListener('load', resolve, { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = id;
+    script.src = src;
+    script.async = false;
+    script.addEventListener('load', () => {
+      script.dataset.loaded = '1';
+      resolve();
+    }, { once: true });
+    script.addEventListener('error', reject, { once: true });
+    document.body.appendChild(script);
+  });
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await loadAuxiliosModule('auxilios-empresas-module', '/empresas.js');
+    await loadAuxiliosModule('auxilios-comercial-module', '/comercial.js');
+  } catch (error) {
+    console.error('No se pudieron cargar los módulos comerciales:', error);
+  }
 }, { once: true });

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v95'; // v95: empresas, contactos y sucursales
+const CACHE_NAME = 'auxilios-v96'; // v96: contratos y tarifarios por empresa
 
 const PRECACHE_ASSETS = [
   '/',
@@ -6,6 +6,7 @@ const PRECACHE_ASSETS = [
   '/sigma.css',
   '/sigma.js',
   '/empresas.js',
+  '/comercial.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
@@ -44,7 +45,7 @@ self.addEventListener('fetch', event => {
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/uploads/')
   ) {
-    return; // deja pasar sin interceptar
+    return;
   }
 
   // 2. Network-First: config.js (detectar cambios de URL Railway)
@@ -73,7 +74,6 @@ self.addEventListener('fetch', event => {
             cache.put(event.request, res.clone());
             return res;
           }).catch(() => cached);
-          // Always fire network in background for cache update; return cached immediately
           return cached ? (networkFetch.catch(() => {}), cached) : networkFetch;
         })
       )
