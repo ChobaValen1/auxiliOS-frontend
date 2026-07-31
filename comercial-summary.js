@@ -1,7 +1,7 @@
 /* AuxiliOS · Motor tarifario · resumen */
 (()=>{'use strict';
 const T=window.TariffEngine,S=T.S;
-const {esc,num,money,concept,itemFor,enabledItems,primaryItems,secondaryItems,editable,notify,rule,checked,canWrite,load,closeWizard,openWizard,inject,renderEmbedded}=T;
+const {esc,num,money,concept,itemFor,enabledItems,primaryItems,secondaryItems,editable,notify,rule,checked,canWrite,load,closeWizard,openWizard,inject,renderEmbedded,renderStep}=T;
 function timeInside(value,start,end){
  if(!value||!start||!end)return false;
  const v=value.slice(0,5),s=start.slice(0,5),e=end.slice(0,5);
