@@ -1,10 +1,11 @@
-const CACHE_NAME = 'auxilios-v94'; // v94: autenticación y recuperación de acceso seguras
+const CACHE_NAME = 'auxilios-v95'; // v95: empresas, contactos y sucursales
 
 const PRECACHE_ASSETS = [
   '/',
   '/Index.html',
   '/sigma.css',
   '/sigma.js',
+  '/empresas.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
