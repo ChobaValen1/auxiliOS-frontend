@@ -26,7 +26,10 @@ function loadAuxiliosModule(id, src) {
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await loadAuxiliosModule('auxilios-empresas-module', '/empresas.js');
-    await loadAuxiliosModule('auxilios-comercial-module', '/comercial.js');
+    await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
+    await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
+    await loadAuxiliosModule('auxilios-comercial-rules', '/comercial-rules.js');
+    await loadAuxiliosModule('auxilios-comercial-summary', '/comercial-summary.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales:', error);
   }

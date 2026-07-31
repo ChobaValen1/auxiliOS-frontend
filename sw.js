@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v96'; // v96: contratos y tarifarios por empresa
+const CACHE_NAME = 'auxilios-v97'; // v97: motor tarifario visual y dinámico
 
 const PRECACHE_ASSETS = [
   '/',
@@ -6,7 +6,11 @@ const PRECACHE_ASSETS = [
   '/sigma.css',
   '/sigma.js',
   '/empresas.js',
+  '/comercial.css',
   '/comercial.js',
+  '/comercial-services.js',
+  '/comercial-rules.js',
+  '/comercial-summary.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
