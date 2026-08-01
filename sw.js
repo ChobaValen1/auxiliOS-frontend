@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v98'; // v98: mesa operativa y flujo de asignación
+const CACHE_NAME = 'auxilios-v99'; // v99: privacidad comercial del flujo operativo
 
 const PRECACHE_ASSETS = [
   '/',
