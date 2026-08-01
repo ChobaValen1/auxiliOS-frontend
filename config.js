@@ -30,7 +30,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
     await loadAuxiliosModule('auxilios-comercial-rules', '/comercial-rules.js');
     await loadAuxiliosModule('auxilios-comercial-summary', '/comercial-summary.js');
+    await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
+    await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
   } catch (error) {
-    console.error('No se pudieron cargar los módulos comerciales:', error);
+    console.error('No se pudieron cargar los módulos comerciales y operativos:', error);
   }
 }, { once: true });
