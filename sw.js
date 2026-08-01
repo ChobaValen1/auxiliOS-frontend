@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v97'; // v97: motor tarifario visual y dinámico
+const CACHE_NAME = 'auxilios-v98'; // v98: mesa operativa y flujo de asignación
 
 const PRECACHE_ASSETS = [
   '/',
@@ -11,6 +11,9 @@ const PRECACHE_ASSETS = [
   '/comercial-services.js',
   '/comercial-rules.js',
   '/comercial-summary.js',
+  '/operator-services.css',
+  '/operator-services.js',
+  '/operator-service-wizard.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
