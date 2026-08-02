@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v99'; // v99: privacidad comercial del flujo operativo
+const CACHE_NAME = 'auxilios-v100'; // v100: alta operativa desktop
 
 const PRECACHE_ASSETS = [
   '/',
@@ -12,6 +12,7 @@ const PRECACHE_ASSETS = [
   '/comercial-rules.js',
   '/comercial-summary.js',
   '/operator-services.css',
+  '/operator-service-desktop.css',
   '/operator-services.js',
   '/operator-service-wizard.js',
   '/supabase.js',
