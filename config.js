@@ -28,10 +28,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-empresas-module', '/empresas.js');
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
     await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
+    await loadAuxiliosModule('auxilios-comercial-code-strategy', '/comercial-code-strategy.js');
     await loadAuxiliosModule('auxilios-comercial-rules', '/comercial-rules.js');
     await loadAuxiliosModule('auxilios-comercial-summary', '/comercial-summary.js');
     await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
     await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
+    await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales y operativos:', error);
   }
