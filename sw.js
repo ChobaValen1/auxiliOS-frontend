@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v101'; // v101: mesa operativa v2
+const CACHE_NAME = 'auxilios-v102'; // v102: módulo de bases tarifarias
 
 const PRECACHE_ASSETS = [
   '/',
@@ -6,6 +6,8 @@ const PRECACHE_ASSETS = [
   '/sigma.css',
   '/sigma.js',
   '/empresas.js',
+  '/billing-bases.js',
+  '/billing-base-operator-adapter.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
