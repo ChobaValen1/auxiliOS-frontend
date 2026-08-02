@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v102'; // v102: módulo de bases tarifarias
+const CACHE_NAME = 'auxilios-v103'; // v103: bases geográficas y facturación por empresa
 
 const PRECACHE_ASSETS = [
   '/',
@@ -7,6 +7,7 @@ const PRECACHE_ASSETS = [
   '/sigma.js',
   '/empresas.js',
   '/billing-bases.js',
+  '/company-billing-settings.js',
   '/billing-base-operator-adapter.js',
   '/comercial.css',
   '/comercial.js',
@@ -27,7 +28,6 @@ const PRECACHE_ASSETS = [
   '/assets/icons/icon-512.png',
 ];
 
-// ── INSTALL: pre-cachear assets propios ──────────────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -36,22 +36,19 @@ self.addEventListener('install', event => {
   );
 });
 
-// ── ACTIVATE: limpiar cachés viejos + tomar control inmediato ────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
 });
 
-// ── FETCH: estrategia por tipo de recurso ────────────────────────────────
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. Network-Only: Supabase y Railway (datos en vivo, nunca cachear)
   if (
     url.hostname.includes('supabase.co') ||
     url.hostname.includes('railway.app') ||
@@ -61,21 +58,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 2. Network-First: config.js (detectar cambios de URL Railway)
   if (url.pathname === '/config.js') {
     event.respondWith(
       fetch(event.request)
-        .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, copy));
-          return res;
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+          return response;
         })
         .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // 3. Stale-While-Revalidate: JS y CSS propios
   if (
     (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) &&
     url.origin === self.location.origin
@@ -83,9 +78,9 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.open(CACHE_NAME).then(cache =>
         cache.match(event.request).then(cached => {
-          const networkFetch = fetch(event.request).then(res => {
-            cache.put(event.request, res.clone());
-            return res;
+          const networkFetch = fetch(event.request).then(response => {
+            cache.put(event.request, response.clone());
+            return response;
           }).catch(() => cached);
           return cached ? (networkFetch.catch(() => {}), cached) : networkFetch;
         })
@@ -94,16 +89,15 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 4. Cache-First con fallback a red: HTML, íconos, manifest y CDN libs/fuentes
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request).then(res => {
-        if (res && res.status === 200) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, copy));
+      return fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         }
-        return res;
+        return response;
       });
     })
   );
