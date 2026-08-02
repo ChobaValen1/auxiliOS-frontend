@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v103'; // v103: bases geográficas y facturación por empresa
+const CACHE_NAME = 'auxilios-v104'; // v104: movida + km + variables + peajes
 
 const PRECACHE_ASSETS = [
   '/',
@@ -15,6 +15,7 @@ const PRECACHE_ASSETS = [
   '/comercial-code-strategy.js',
   '/comercial-rules.js',
   '/comercial-summary.js',
+  '/tariff-composition.js',
   '/operator-services.css',
   '/operator-service-desktop.css',
   '/operator-service-v2.css',

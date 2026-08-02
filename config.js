@@ -33,6 +33,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-comercial-code-strategy', '/comercial-code-strategy.js');
     await loadAuxiliosModule('auxilios-comercial-rules', '/comercial-rules.js');
     await loadAuxiliosModule('auxilios-comercial-summary', '/comercial-summary.js');
+    await loadAuxiliosModule('auxilios-tariff-composition', '/tariff-composition.js');
     await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
     await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
     await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
