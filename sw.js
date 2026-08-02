@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v100'; // v100: alta operativa desktop
+const CACHE_NAME = 'auxilios-v101'; // v101: mesa operativa v2
 
 const PRECACHE_ASSETS = [
   '/',
@@ -9,12 +9,15 @@ const PRECACHE_ASSETS = [
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
+  '/comercial-code-strategy.js',
   '/comercial-rules.js',
   '/comercial-summary.js',
   '/operator-services.css',
   '/operator-service-desktop.css',
+  '/operator-service-v2.css',
   '/operator-services.js',
   '/operator-service-wizard.js',
+  '/operator-service-v2.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
