@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v107'; // v107: oculta Servicios para choferes
+const CACHE_NAME = 'auxilios-v108'; // v108: bases de facturación con igual jerarquía
 
 const PRECACHE_ASSETS = [
   '/',
@@ -11,6 +11,7 @@ const PRECACHE_ASSETS = [
   '/billing-bases.js',
   '/company-billing-settings.js',
   '/billing-base-operator-adapter.js',
+  '/equal-billing-bases.js',
   '/configuration-reference.css',
   '/configuration-reference.js',
   '/comercial.css',
