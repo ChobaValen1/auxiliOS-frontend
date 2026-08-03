@@ -32,6 +32,16 @@ test('frequent operational modules stay as direct navigation destinations', () =
   assert.match(source, /setNavContent\('nav-historial-sistema', '◷', 'Historial'\)/);
 });
 
+test('frequent navigation applies changes idempotently', () => {
+  const source = read('frequent-navigation.js');
+
+  assert.match(source, /iconNode && iconNode\.textContent !== icon/);
+  assert.match(source, /labelNode && labelNode\.textContent !== label/);
+  assert.match(source, /function ensureNavigationOrder/);
+  assert.match(source, /const alreadyOrdered = ordered\.every/);
+  assert.match(source, /if \(alreadyOrdered\) return;/);
+});
+
 test('configuration keeps structural modules without duplicating frequent access', () => {
   const center = read('configuration-center.js');
   const frequent = read('frequent-navigation.js');
@@ -78,7 +88,7 @@ test('configuration and frequent navigation are loaded, checked and precached', 
   assert.match(config, /auxilios-configuration-center/);
   assert.match(config, /auxilios-frequent-navigation/);
   assert.match(config, /\/frequent-navigation\.js/);
-  assert.ok(cacheVersion >= 110, `Expected cache version 110 or newer, received ${cacheVersion}`);
+  assert.ok(cacheVersion >= 111, `Expected cache version 111 or newer, received ${cacheVersion}`);
   assert.match(serviceWorker, /'\/configuration-center\.js'/);
   assert.match(serviceWorker, /'\/frequent-navigation\.js'/);
   assert.match(pkg, /node --check configuration-center\.js/);
