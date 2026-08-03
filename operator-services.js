@@ -3,7 +3,7 @@
 const O=window.OperatorServices=window.OperatorServices||{};
 const S=O.S={services:[],companies:[],branches:[],drivers:[],trucks:[],concepts:[],selected:null,items:[],events:[],loading:false,timer:null,wizard:null};
 const role=()=>typeof PERFIL_USUARIO==='undefined'?'':(PERFIL_USUARIO?.roles?.name||PERFIL_USUARIO?.role||'');
-const canRead=()=>['administracion','supervision','chofer'].includes(role());
+const canRead=()=>['administracion','supervision'].includes(role());
 const canManage=()=>['administracion','supervision'].includes(role());
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number(String(v??'').replace(',','.'))||0;
@@ -39,10 +39,10 @@ function inject(){
 }
 
 function applyRole(){
- const nav=document.getElementById('nav-operaciones');if(nav)nav.style.display=canRead()?'':'none';
+ const allowed=canRead();
+ const nav=document.getElementById('nav-operaciones');if(nav)nav.style.display=allowed?'':'none';
+ const screen=document.getElementById('screen-operaciones');if(screen&&!allowed)screen.classList.remove('active');
  document.querySelectorAll('.os-manage').forEach(x=>x.style.display=canManage()?'':'none');
- const title=document.getElementById('os-title'),sub=document.getElementById('os-subtitle');
- if(role()==='chofer'){if(title)title.textContent='Mis servicios';if(sub)sub.textContent='Servicios asignados y próximos pasos';}
 }
 
 async function loadBase(){
@@ -52,7 +52,6 @@ async function loadBase(){
  const rows=await Promise.all(queries);if(rows.some(x=>x.error))throw new Error('No se pudieron cargar los datos operativos.');
  S.trucks=rows[0].data||[];S.concepts=rows[1].data||[];
  if(canManage()){S.companies=rows[2].data||[];S.branches=rows[3].data||[];S.drivers=(rows[4].data||[]).filter(x=>x.roles?.name==='chofer');}
- else{S.drivers=[{user_id:USUARIO_ACTUAL?.id,full_name:PERFIL_USUARIO?.full_name||'Chofer'}];}
  const sel=document.getElementById('os-company');if(sel&&canManage())sel.innerHTML='<option value="all">Todas las empresas</option>'+S.companies.map(x=>`<option value="${x.company_id}">${esc(x.trade_name||x.legal_name)}</option>`).join('');
 }
 
@@ -82,6 +81,7 @@ function card(s){
  return `<article class="os-card priority-${s.priority}" onclick="abrirDetalleServicio('${s.service_id}')"><div class="os-card-top"><span class="os-number">${esc(s.service_number)}</span><span class="os-priority ${pm.tone}">${pm.label}</span></div><div class="os-company">${esc(companyName)}</div><div class="os-concept">${esc(conceptIcon)} ${esc(conceptName)}</div><div class="os-route"><span>${esc(s.origin)}</span><i>→</i><span>${esc(s.destination)}</span></div><div class="os-card-meta"><span>🕒 ${fmtDate(s.scheduled_for)}</span>${s.vehicle_plate?`<span>🚗 ${esc(s.vehicle_plate)}</span>`:''}</div><div class="os-assignment">${driverName||truckName?`<span>👤 ${esc(driverName||'Sin chofer')}</span><span>🚛 ${esc(truckName||'Sin móvil')}</span>`:'<span class="os-unassigned">Sin asignar</span>'}</div><div class="os-card-foot"><span class="os-status ${sm.tone}">${sm.icon} ${sm.label}</span>${canManage()?`<b>${money(s.company_estimated_total,s.currency)}</b>`:''}</div></article>`;
 }
 function renderBoard(){
+ if(!canRead())return;
  const rows=filtered();renderKpis(S.services);const el=document.getElementById('os-board');if(!el)return;
  if(!rows.length){el.innerHTML='<div class="os-empty">No hay servicios para mostrar.</div>';return;}
  const defs=[['pending','Pendientes'],['assigned','Asignados'],['active','En curso'],['closed','Finalizados']];
@@ -89,43 +89,49 @@ function renderBoard(){
 }
 
 async function openDetail(id){
+ if(!canRead())return notify('Sin permiso para consultar servicios','error');
  const existing=service(id);if(!existing)return;S.selected=id;
  const {data,error}=await _db.rpc('get_operator_service_detail',{p_service_id:id});
  if(error)return notify(error.message||'No se pudo cargar el servicio','error');
  const current=data?.service||existing;S.services=S.services.map(x=>x.service_id===id?{...x,...current}:x);S.items=Array.isArray(data?.items)?data.items:[];S.events=Array.isArray(data?.events)?data.events:[];renderDetail(current);open('modal-operador-servicio');
 }
-function nextStatus(st){return({assigned:'en_route',en_route:'at_origin',at_origin:'loaded',loaded:'at_destination',at_destination:'completed'})[st]||null;}
-function nextLabel(st){return({assigned:'Iniciar viaje',en_route:'Llegué al origen',at_origin:'Vehículo cargado',loaded:'Llegué al destino',at_destination:'Finalizar servicio'})[st]||'';}
 function renderDetail(s){
- const c=company(s.company_id),b=branch(s.branch_id),d=driver(s.assigned_driver_id),t=truck(s.assigned_truck_id),sm=statusMeta[s.status]||statusMeta.pending,nxt=nextStatus(s.status);
- const components=S.items.length?S.items:(s.pricing_snapshot?.components||[]),companyName=c?.trade_name||c?.legal_name||s.company_name||'Servicio asignado',branchName=b?.name||s.branch_name||'General',driverName=d?.full_name||s.driver_name||PERFIL_USUARIO?.full_name||'—',truckName=t?.numero_interno||t?.plate||s.truck_label||'—';
- const conceptRows=canManage()?`${components.map(x=>`<div><span>${esc(x.service_name)}${num(x.quantity)!==1?` × ${num(x.quantity)}`:''}</span><b>${money(x.subtotal,s.currency)}</b></div>`).join('')}${(s.pricing_snapshot?.surcharges||[]).map(x=>`<div><span>Recargo ${esc(String(x.rule_type).replaceAll('_',' '))}</span><b>${money(x.amount,s.currency)}</b></div>`).join('')}${num(s.toll_total)?`<div><span>Peajes</span><b>${money(s.toll_total,s.currency)}</b></div>`:''}<div class="total"><span>Total empresa</span><b>${money(s.company_estimated_total,s.currency)}</b></div>${num(s.copay_total)?`<div><span>Copago cliente</span><b>${money(s.copay_total,s.currency)}</b></div>`:''}`:components.map(x=>`<div><span>${esc(x.service_name)}${num(x.quantity)!==1?` × ${num(x.quantity)}`:''}</span></div>`).join('');
+ if(!canRead())return;
+ const c=company(s.company_id),b=branch(s.branch_id),d=driver(s.assigned_driver_id),t=truck(s.assigned_truck_id),sm=statusMeta[s.status]||statusMeta.pending;
+ const components=S.items.length?S.items:(s.pricing_snapshot?.components||[]),companyName=c?.trade_name||c?.legal_name||s.company_name||'Servicio asignado',branchName=b?.name||s.branch_name||'General',driverName=d?.full_name||s.driver_name||'—',truckName=t?.numero_interno||t?.plate||s.truck_label||'—';
+ const conceptRows=`${components.map(x=>`<div><span>${esc(x.service_name)}${num(x.quantity)!==1?` × ${num(x.quantity)}`:''}</span><b>${money(x.subtotal,s.currency)}</b></div>`).join('')}${(s.pricing_snapshot?.surcharges||[]).map(x=>`<div><span>Recargo ${esc(String(x.rule_type).replaceAll('_',' '))}</span><b>${money(x.amount,s.currency)}</b></div>`).join('')}${num(s.toll_total)?`<div><span>Peajes</span><b>${money(s.toll_total,s.currency)}</b></div>`:''}<div class="total"><span>Total empresa</span><b>${money(s.company_estimated_total,s.currency)}</b></div>${num(s.copay_total)?`<div><span>Copago cliente</span><b>${money(s.copay_total,s.currency)}</b></div>`:''}`;
  document.getElementById('os-detail-shell').innerHTML=`<div class="os-detail-head"><div><div class="os-eyebrow">${esc(s.service_number)}</div><h3>${esc(companyName)}</h3><div class="os-detail-meta"><span class="os-status ${sm.tone}">${sm.icon} ${sm.label}</span><span>${fmtDate(s.scheduled_for)}</span></div></div><button class="os-close" onclick="cerrarDetalleServicio()">×</button></div>
- <div class="os-detail-body"><div class="os-detail-grid"><section class="os-panel"><h4>Servicio</h4><div class="os-info-grid"><div><small>Prioridad</small><b>${priorityMeta[s.priority]?.label||s.priority}</b></div><div><small>Sucursal</small><b>${esc(branchName)}</b></div><div><small>N° prestación</small><b>${esc(s.service_order_number||'—')}</b></div>${canManage()?`<div><small>Orden de compra</small><b>${esc(s.purchase_order_number||'—')}</b></div>`:''}</div><div class="os-route large"><span>${esc(s.origin)}</span><i>→</i><span>${esc(s.destination)}</span></div></section>
+ <div class="os-detail-body"><div class="os-detail-grid"><section class="os-panel"><h4>Servicio</h4><div class="os-info-grid"><div><small>Prioridad</small><b>${priorityMeta[s.priority]?.label||s.priority}</b></div><div><small>Sucursal</small><b>${esc(branchName)}</b></div><div><small>N° prestación</small><b>${esc(s.service_order_number||'—')}</b></div><div><small>Orden de compra</small><b>${esc(s.purchase_order_number||'—')}</b></div></div><div class="os-route large"><span>${esc(s.origin)}</span><i>→</i><span>${esc(s.destination)}</span></div></section>
  <section class="os-panel"><h4>Cliente y vehículo</h4><div class="os-info-grid"><div><small>Cliente</small><b>${esc(s.customer_name||'—')}</b></div><div><small>Teléfono</small><b>${esc(s.customer_phone||'—')}</b></div><div><small>Patente</small><b>${esc(s.vehicle_plate||'—')}</b></div><div><small>Vehículo</small><b>${esc(s.vehicle_make_model||'—')}</b></div></div></section></div>
- <section class="os-panel"><div class="os-panel-head"><h4>Asignación</h4>${s.assigned_at?`<small>Asignado ${fmtDate(s.assigned_at)}</small>`:''}</div>${canManage()?assignmentEditor(s):`<div class="os-assignment-detail"><div><small>Chofer</small><b>${esc(driverName)}</b></div><div><small>Móvil</small><b>${esc(truckName)}</b></div></div>`}</section>
+ <section class="os-panel"><div class="os-panel-head"><h4>Asignación</h4>${s.assigned_at?`<small>Asignado ${fmtDate(s.assigned_at)}</small>`:''}</div>${assignmentEditor(s)}</section>
  <div class="os-detail-grid"><section class="os-panel"><h4>Conceptos</h4><div class="os-breakdown">${conceptRows}</div></section>
- <section class="os-panel"><h4>Indicaciones</h4><p>${esc(s.driver_instructions||'Sin instrucciones especiales.')}</p>${canManage()&&s.operator_notes?`<small>Nota interna</small><p>${esc(s.operator_notes)}</p>`:''}${s.driver_notes?`<small>Última nota del chofer</small><p>${esc(s.driver_notes)}</p>`:''}</section></div>
+ <section class="os-panel"><h4>Indicaciones</h4><p>${esc(s.driver_instructions||'Sin instrucciones especiales.')}</p>${s.operator_notes?`<small>Nota interna</small><p>${esc(s.operator_notes)}</p>`:''}${s.driver_notes?`<small>Última nota del chofer</small><p>${esc(s.driver_notes)}</p>`:''}</section></div>
  <section class="os-panel"><h4>Historial</h4><div class="os-timeline">${S.events.length?S.events.map(e=>`<div><i></i><span><b>${esc(e.event_type==='created'?'Servicio creado':e.event_type==='assignment'?'Asignación actualizada':statusMeta[e.to_status]?.label||'Actualización')}</b><small>${fmtDate(e.created_at)}${e.notes?' · '+esc(e.notes):''}</small></span></div>`).join(''):'<div class="os-muted">Sin eventos.</div>'}</div></section></div>
- <div class="os-detail-footer">${canManage()&&s.status!=='completed'&&s.status!=='cancelled'?`<button class="btn btn-ghost danger" onclick="cancelarServicioOperador('${s.service_id}')">Cancelar servicio</button>`:'<span></span>'}<div class="os-actions">${role()==='chofer'&&nxt?`<button class="btn btn-primary" onclick="avanzarServicioChofer('${s.service_id}','${nxt}')">${nextLabel(s.status)} →</button>`:''}<button class="btn btn-ghost" onclick="cerrarDetalleServicio()">Cerrar</button></div></div>`;
+ <div class="os-detail-footer">${s.status!=='completed'&&s.status!=='cancelled'?`<button class="btn btn-ghost danger" onclick="cancelarServicioOperador('${s.service_id}')">Cancelar servicio</button>`:'<span></span>'}<div class="os-actions"><button class="btn btn-ghost" onclick="cerrarDetalleServicio()">Cerrar</button></div></div>`;
 }
 function assignmentEditor(s){return`<div class="os-assign-grid"><div class="os-field"><label>Chofer</label><select class="form-input" id="os-detail-driver"><option value="">Sin asignar</option>${S.drivers.map(x=>`<option value="${x.user_id}" ${s.assigned_driver_id===x.user_id?'selected':''}>${esc(x.full_name)}</option>`).join('')}</select></div><div class="os-field"><label>Móvil</label><select class="form-input" id="os-detail-truck"><option value="">Sin asignar</option>${S.trucks.map(x=>`<option value="${x.truck_id}" ${String(s.assigned_truck_id)===String(x.truck_id)?'selected':''}>${esc(x.numero_interno||x.plate)} · ${esc(x.plate)}</option>`).join('')}</select></div><button class="btn btn-primary" onclick="guardarAsignacionServicio('${s.service_id}')">Guardar asignación</button></div>`}
 async function saveAssignment(id){
+ if(!canManage())return notify('Sin permiso para modificar servicios','error');
  const s=service(id),d=document.getElementById('os-detail-driver')?.value||null,t=document.getElementById('os-detail-truck')?.value||null;if((d&&!t)||(!d&&t))return notify('Seleccioná chofer y móvil juntos','warning');if(['en_route','at_origin','loaded','at_destination','completed'].includes(s.status)&&(!d||!t))return notify('No se puede desasignar un servicio en curso','warning');
  const patch={assigned_driver_id:d,assigned_truck_id:t?Number(t):null,status:d?(s.status==='pending'?'assigned':s.status):'pending'};const {error}=await _db.from('operator_services').update(patch).eq('service_id',id);if(error)return notify(error.message,'error');notify('Asignación actualizada','success');await loadServices();await openDetail(id);
 }
-async function driverAdvance(id,status){
- const note=status==='completed'?(prompt('Observación final opcional:')||null):null;const {error}=await _db.from('operator_services').update({status,driver_notes:note}).eq('service_id',id);if(error)return notify(error.message,'error');notify(status==='completed'?'Servicio finalizado':'Estado actualizado','success');closeDetail();await loadServices();
-}
+async function driverAdvance(){return notify('El seguimiento operativo para choferes no está habilitado','error');}
 async function cancelService(id){
+ if(!canManage())return notify('Sin permiso para cancelar servicios','error');
  const reason=prompt('Motivo de cancelación:');if(!reason?.trim())return;const {error}=await _db.from('operator_services').update({status:'cancelled',cancellation_reason:reason.trim()}).eq('service_id',id);if(error)return notify(error.message,'error');notify('Servicio cancelado','success');closeDetail();await loadServices();
 }
 function closeDetail(){close('modal-operador-servicio');S.selected=null;}
 
 function hookNavigation(){
- if(window.__osNavHook||typeof window.goTo!=='function')return false;const base=window.goTo;window.goTo=(name,...args)=>{const r=base(name,...args);if(name==='operaciones')loadServices();return r};window.__osNavHook=true;return true;
+ if(window.__osNavHook||typeof window.goTo!=='function')return false;
+ const base=window.goTo;
+ window.goTo=(name,...args)=>{
+  if(name==='operaciones'&&!canRead())return notify('Sin permiso para acceder a Servicios','error');
+  const r=base(name,...args);if(name==='operaciones')loadServices();return r;
+ };
+ window.__osNavHook=true;return true;
 }
-function init(){inject();let n=0;const timer=setInterval(()=>{applyRole();hookNavigation();if(canRead()&&typeof _db!=='undefined'){loadBase().then(loadServices).catch(e=>console.warn('[Operaciones]',e.message));clearInterval(timer);}else if(++n>80)clearInterval(timer);},250);S.timer=setInterval(()=>{if(document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices()},60000);}
+function init(){inject();let n=0;const timer=setInterval(()=>{applyRole();hookNavigation();if(canRead()&&typeof _db!=='undefined'){loadBase().then(loadServices).catch(e=>console.warn('[Operaciones]',e.message));clearInterval(timer);}else if(++n>80)clearInterval(timer);},250);S.timer=setInterval(()=>{if(canRead()&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices()},60000);}
 Object.assign(O,{role,canRead,canManage,esc,num,money,fmtDate,statusMeta,priorityMeta,company,branch,driver,truck,concept,service,loadBase,loadServices,renderBoard,openDetail,closeDetail});
 Object.assign(window,{cargarServiciosOperador:loadServices,renderServiciosOperador:renderBoard,abrirDetalleServicio:openDetail,cerrarDetalleServicio:closeDetail,guardarAsignacionServicio:saveAssignment,avanzarServicioChofer:driverAdvance,cancelarServicioOperador:cancelService});
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();

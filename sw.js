@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v106'; // v106: gestión contractual de empresas
+const CACHE_NAME = 'auxilios-v107'; // v107: oculta Servicios para choferes
 
 const PRECACHE_ASSETS = [
   '/',
