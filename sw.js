@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v111'; // v111: navegación frecuente idempotente
+const CACHE_NAME = 'auxilios-v112'; // v112: puente servicio-jornada-viaje-remito
 
 const PRECACHE_ASSETS = [
   '/',
@@ -27,9 +27,11 @@ const PRECACHE_ASSETS = [
   '/operator-services.css',
   '/operator-service-desktop.css',
   '/operator-service-v2.css',
+  '/operator-service-bridge.css',
   '/operator-services.js',
   '/operator-service-wizard.js',
   '/operator-service-v2.js',
+  '/operator-service-bridge.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
