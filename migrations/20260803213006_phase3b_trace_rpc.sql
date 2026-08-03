@@ -176,9 +176,6 @@ $function$;
 revoke all on function public.reassign_operator_service(uuid,uuid,integer,text,text) from public, anon;
 grant execute on function public.reassign_operator_service(uuid,uuid,integer,text,text) to authenticated;
 
-revoke all on function public.close_operator_service_exception(uuid,jsonb) from public, anon;
-grant execute on function public.close_operator_service_exception(uuid,jsonb) to authenticated;
-
 revoke all on function public.review_operator_service_closure(uuid,text,text) from public, anon;
 grant execute on function public.review_operator_service_closure(uuid,text,text) to authenticated;
 
