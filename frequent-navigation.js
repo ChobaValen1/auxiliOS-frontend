@@ -16,8 +16,8 @@
     if (!node) return null;
     const iconNode = node.querySelector('.nav-icon');
     const labelNode = node.querySelector('.nav-label');
-    if (iconNode) iconNode.textContent = icon;
-    if (labelNode) labelNode.textContent = label;
+    if (iconNode && iconNode.textContent !== icon) iconNode.textContent = icon;
+    if (labelNode && labelNode.textContent !== label) labelNode.textContent = label;
     return node;
   }
 
@@ -74,6 +74,16 @@
     });
   }
 
+  function ensureNavigationOrder(sidenav, bottom, nodes) {
+    const ordered = nodes.filter(Boolean);
+    const alreadyOrdered = ordered.every((node, index) => (
+      node.parentElement === sidenav
+      && node.nextElementSibling === (ordered[index + 1] || bottom)
+    ));
+    if (alreadyOrdered) return;
+    ordered.forEach(node => sidenav.insertBefore(node, bottom));
+  }
+
   function apply() {
     scheduled = false;
     if (applying) return;
@@ -105,12 +115,19 @@
         node.classList.add('aux-frequent-direct');
       });
 
-      [dashboard, services, journeys, documents, remitos, grid, configuration, billing, history]
-        .filter(Boolean)
-        .forEach(node => {
-          node.classList.add('aux-top-nav');
-          sidenav.insertBefore(node, bottom);
-        });
+      const orderedNavigation = [
+        dashboard,
+        services,
+        journeys,
+        documents,
+        remitos,
+        grid,
+        configuration,
+        billing,
+        history,
+      ].filter(Boolean);
+      orderedNavigation.forEach(node => node.classList.add('aux-top-nav'));
+      ensureNavigationOrder(sidenav, bottom, orderedNavigation);
 
       removeGroupedDuplicates();
     } finally {
