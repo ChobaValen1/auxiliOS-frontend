@@ -134,6 +134,9 @@
   function patchCompanyRow(row, data) {
     const cells = row.querySelectorAll(':scope > td');
     if (cells.length < 7 || !data) return;
+    const signature = `${data.bases.length}:${data.coveredBases}:${data.completeTariffs}`;
+    if (row.dataset.equalBasesSignature === signature) return;
+
     cells[2].innerHTML = data.bases.length
       ? `<span class="empv2-chip blue">${data.bases.length} ${data.bases.length === 1 ? 'base' : 'bases'}</span>`
       : '<span class="empv2-chip red">Sin base</span>';
@@ -147,6 +150,7 @@
     if (data.bases.length && !data.completeTariffs) {
       cells[6].innerHTML = `<span class="empv2-alert">⚠ Tarifas pendientes en ${data.bases.length - data.coveredBases} base(s)</span>`;
     }
+    row.dataset.equalBasesSignature = signature;
   }
 
   async function patchList(root) {
@@ -159,28 +163,29 @@
     }));
   }
 
+  function setTextIfChanged(element, value) {
+    if (element && element.textContent !== value) element.textContent = value;
+  }
+
   function patchBaseSummary(root, data) {
     if (!data) return;
 
     root.querySelectorAll('.empv2-hero-stat').forEach(stat => {
       const label = stat.querySelector('small');
       if (label?.textContent.trim() !== 'Bases habilitadas') return;
-      const value = stat.querySelector('b');
-      if (value) value.textContent = String(data.bases.length);
+      setTextIfChanged(stat.querySelector('b'), String(data.bases.length));
     });
 
     root.querySelectorAll('.empv2-contract-strip .empv2-info').forEach(card => {
       const label = card.querySelector('small');
       if (label?.textContent.trim() !== 'Bases habilitadas') return;
-      const value = card.querySelector('b');
-      if (value) value.textContent = `${data.bases.length} vinculada${data.bases.length === 1 ? '' : 's'}`;
+      setTextIfChanged(card.querySelector('b'), `${data.bases.length} vinculada${data.bases.length === 1 ? '' : 's'}`);
     });
 
     root.querySelectorAll('.empv2-rule-grid article').forEach(card => {
       const label = card.querySelector('b');
       if (label?.textContent.trim() !== 'Bases habilitadas') return;
-      const value = card.querySelector('small');
-      if (value) value.textContent = String(data.bases.length);
+      setTextIfChanged(card.querySelector('small'), String(data.bases.length));
     });
   }
 
@@ -190,9 +195,15 @@
     const table = section?.querySelector('table');
     if (!table || !data) return;
 
+    const signature = data.bases
+      .map(base => `${base.base_id}:${base.address_verified}:${base.is_active}`)
+      .join('|');
+    if (table.dataset.equalBasesSignature === signature) return;
+
     table.innerHTML = `<thead><tr><th>Base</th><th>Código</th><th>Estado</th><th>Coordenadas</th></tr></thead><tbody>${data.bases.length
       ? data.bases.map(base => `<tr><td><b>${esc(base.name)}</b><small>${esc(base.address || '')}</small></td><td>${esc(base.base_code || '—')}</td><td><span class="empv2-status active"><i></i>Habilitada</span></td><td>${base.address_verified ? '<span class="empv2-tariff ok">Verificadas</span>' : '<span class="empv2-tariff bad">Pendientes</span>'}</td></tr>`).join('')
       : '<tr><td colspan="4"><div class="empv2-empty">No hay bases vinculadas.</div></td></tr>'}</tbody>`;
+    table.dataset.equalBasesSignature = signature;
   }
 
   function patchTariffsTable(root, data) {
@@ -202,9 +213,23 @@
     if (!table || !data) return;
 
     const rows = data.matrix;
+    const signature = rows.map(row => [
+      row.base_id,
+      row.service_code,
+      row.valid_from,
+      row.service_day_mode,
+      row.service_day_value,
+      row.service_night_mode,
+      row.service_night_value,
+      row.asphalt_day_mode,
+      row.asphalt_day_value,
+    ].join(':')).join('|');
+    if (table.dataset.equalBasesSignature === signature) return;
+
     table.innerHTML = `<thead><tr><th>Servicio</th><th>Base</th><th>Vigencia</th><th>Servicio día</th><th>Servicio noche</th><th>KM asfalto</th><th>Estado</th></tr></thead><tbody>${rows.length
       ? rows.map(row => `<tr><td><b>${esc(row.service_name)}</b><small>${esc(row.service_code || '')}</small></td><td><b>${esc(row.base_name || '—')}</b><small>${esc(row.base_code || '')}</small></td><td>${esc(row.valid_from || '—')}</td><td>${canSeeCommercial() ? tariffValue(row.service_day_mode, row.service_day_value, row.currency) : 'Protegido por rol'}</td><td>${canSeeCommercial() ? tariffValue(row.service_night_mode, row.service_night_value, row.currency) : 'Protegido por rol'}</td><td>${canSeeCommercial() ? tariffValue(row.asphalt_day_mode, row.asphalt_day_value, row.currency) : 'Protegido por rol'}</td><td><span class="empv2-tariff ${hasPrice(row) ? 'ok' : 'bad'}">${hasPrice(row) ? 'Vigente' : 'Pendiente'}</span></td></tr>`).join('')
       : '<tr><td colspan="7"><div class="empv2-empty">No existen tarifas vigentes para las bases habilitadas.</div></td></tr>'}</tbody>`;
+    table.dataset.equalBasesSignature = signature;
   }
 
   async function patchDetail(root) {
