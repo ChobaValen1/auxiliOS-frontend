@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v104'; // v104: movida + km + variables + peajes
+const CACHE_NAME = 'auxilios-v105'; // v105: tipos de servicio, tipos de tarifa e historial
 
 const PRECACHE_ASSETS = [
   '/',
@@ -9,6 +9,8 @@ const PRECACHE_ASSETS = [
   '/billing-bases.js',
   '/company-billing-settings.js',
   '/billing-base-operator-adapter.js',
+  '/configuration-reference.css',
+  '/configuration-reference.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
