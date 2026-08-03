@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v114'; // v114: corrige overlay modal oculto sobre el login
+const CACHE_NAME = 'auxilios-v115'; // v115: guía inicio de jornada antes del viaje
 
 const PRECACHE_ASSETS = [
   '/',
@@ -34,6 +34,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-wizard.js',
   '/operator-service-v2.js',
   '/operator-service-bridge.js',
+  '/phase3-journey-start-guard.js',
   '/operator-service-creation-redesign.js',
   '/phase3b-modal-visibility-guard.js',
   '/operator-service-lifecycle.js',
