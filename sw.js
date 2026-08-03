@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v108'; // v108: bases de facturación con igual jerarquía
+const CACHE_NAME = 'auxilios-v109'; // v109: centro de configuración y navegación administrativa
 
 const PRECACHE_ASSETS = [
   '/',
@@ -14,6 +14,8 @@ const PRECACHE_ASSETS = [
   '/equal-billing-bases.js',
   '/configuration-reference.css',
   '/configuration-reference.js',
+  '/configuration-center.css',
+  '/configuration-center.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
