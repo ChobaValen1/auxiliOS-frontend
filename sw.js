@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v110'; // v110: accesos operativos frecuentes fuera de Configuración
+const CACHE_NAME = 'auxilios-v111'; // v111: navegación frecuente idempotente
 
 const PRECACHE_ASSETS = [
   '/',
