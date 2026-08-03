@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v109'; // v109: centro de configuración y navegación administrativa
+const CACHE_NAME = 'auxilios-v110'; // v110: accesos operativos frecuentes fuera de Configuración
 
 const PRECACHE_ASSETS = [
   '/',
@@ -16,6 +16,7 @@ const PRECACHE_ASSETS = [
   '/configuration-reference.js',
   '/configuration-center.css',
   '/configuration-center.js',
+  '/frequent-navigation.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',

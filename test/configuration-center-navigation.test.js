@@ -7,29 +7,42 @@ const path = require('node:path');
 
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
-test('configuration center preserves driver navigation and limits the new workspace by role', () => {
+test('configuration center preserves driver navigation and limits the workspace by role', () => {
   const source = read('configuration-center.js');
+  const frequent = read('frequent-navigation.js');
 
   assert.match(source, /BACKOFFICE_ROLES = new Set\(\['administracion', 'supervision', 'facturacion'\]\)/);
   assert.doesNotMatch(source, /BACKOFFICE_ROLES[^\n]*chofer/);
+  assert.match(frequent, /MANAGEMENT_ROLES = new Set\(\['administracion', 'supervision'\]\)/);
+  assert.doesNotMatch(frequent, /MANAGEMENT_ROLES[^\n]*(chofer|facturacion)/);
   assert.match(source, /document\.body\.classList\.remove\('aux-backoffice-nav'\)/);
-  assert.match(source, /Sin permiso para acceder a Configuración/);
 });
 
-test('administrative navigation has five clear top-level destinations without duplicating configuration modules', () => {
-  const source = read('configuration-center.js');
+test('frequent operational modules stay as direct navigation destinations', () => {
+  const source = read('frequent-navigation.js');
 
   assert.match(source, /setNavContent\('nav-dashboard', '📊', 'Resumen'\)/);
   assert.match(source, /setNavContent\('nav-operaciones', '🧭', 'Servicios'\)/);
-  assert.match(source, /id="nav-configuracion"/);
+  assert.match(source, /setNavContent\('nav-jornadas-admin', '🗓️', 'Jornadas'\)/);
+  assert.match(source, /setNavContent\('nav-documentos', '📄', 'Docs'\)/);
+  assert.match(source, /setNavContent\('nav-remitos', '🧾', 'Remitos'\)/);
+  assert.match(source, /setNavContent\('nav-grilla', '📅', 'Grilla'\)/);
+  assert.match(source, /setNavContent\('nav-configuracion', '⚙️', 'Configuración'\)/);
   assert.match(source, /setNavContent\('nav-config-tariff-matrix', '💳', 'Facturación'\)/);
-  assert.match(source, /id="nav-historial-sistema"/);
+  assert.match(source, /setNavContent\('nav-historial-sistema', '◷', 'Historial'\)/);
+});
 
-  assert.match(source, /companyGroup\.appendChild\(companies\)/);
-  assert.match(source, /companyGroup\.appendChild\(bases\)/);
-  assert.match(source, /operationGroup\.appendChild\(services\)/);
-  assert.match(source, /billingGroup\.appendChild\(tariffTypes\)/);
-  assert.doesNotMatch(source, /billingGroup\.appendChild\(.*tariff-matrix/);
+test('configuration keeps structural modules without duplicating frequent access', () => {
+  const center = read('configuration-center.js');
+  const frequent = read('frequent-navigation.js');
+
+  assert.match(center, /companyGroup\.appendChild\(companies\)/);
+  assert.match(center, /companyGroup\.appendChild\(bases\)/);
+  assert.match(center, /operationGroup\.appendChild\(services\)/);
+  assert.match(center, /billingGroup\.appendChild\(tariffTypes\)/);
+  assert.doesNotMatch(center, /billingGroup\.appendChild\(.*tariff-matrix/);
+  assert.match(frequent, /document\.getElementById\('aux-settings-grid'\)\?\.remove\(\)/);
+  assert.match(frequent, /aux-center-tool\[onclick\*=/);
 });
 
 test('future modules are visibly disabled and do not create orphan routes', () => {
@@ -56,15 +69,18 @@ test('configuration center uses live data and safe audit fields', () => {
   assert.doesNotMatch(source, /after_data/);
 });
 
-test('configuration center is loaded, checked and precached', () => {
+test('configuration and frequent navigation are loaded, checked and precached', () => {
   const config = read('config.js');
   const serviceWorker = read('sw.js');
   const pkg = read('package.json');
+  const cacheVersion = Number(serviceWorker.match(/auxilios-v(\d+)/)?.[1] || 0);
 
   assert.match(config, /auxilios-configuration-center/);
-  assert.match(config, /\/configuration-center\.js/);
-  assert.match(serviceWorker, /auxilios-v109/);
+  assert.match(config, /auxilios-frequent-navigation/);
+  assert.match(config, /\/frequent-navigation\.js/);
+  assert.ok(cacheVersion >= 110, `Expected cache version 110 or newer, received ${cacheVersion}`);
   assert.match(serviceWorker, /'\/configuration-center\.js'/);
-  assert.match(serviceWorker, /'\/configuration-center\.css'/);
+  assert.match(serviceWorker, /'\/frequent-navigation\.js'/);
   assert.match(pkg, /node --check configuration-center\.js/);
+  assert.match(pkg, /node --check frequent-navigation\.js/);
 });
