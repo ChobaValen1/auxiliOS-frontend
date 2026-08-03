@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v105'; // v105: tipos de servicio, tipos de tarifa e historial
+const CACHE_NAME = 'auxilios-v106'; // v106: gestión contractual de empresas
 
 const PRECACHE_ASSETS = [
   '/',
@@ -6,6 +6,8 @@ const PRECACHE_ASSETS = [
   '/sigma.css',
   '/sigma.js',
   '/empresas.js',
+  '/empresas-v2.js',
+  '/empresas-v2.css',
   '/billing-bases.js',
   '/company-billing-settings.js',
   '/billing-base-operator-adapter.js',

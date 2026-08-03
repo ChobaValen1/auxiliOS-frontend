@@ -26,6 +26,7 @@ function loadAuxiliosModule(id, src) {
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await loadAuxiliosModule('auxilios-empresas-module', '/empresas.js');
+    await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-company-billing-settings', '/company-billing-settings.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
