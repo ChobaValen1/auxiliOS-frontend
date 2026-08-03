@@ -5,9 +5,14 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const readPhase3bSql = () => fs.readdirSync(path.join(root, 'migrations'))
+  .filter(name => /^20260803213\d+_phase3b_.*\.sql$/.test(name))
+  .sort()
+  .map(name => read(path.join('migrations', name)))
+  .join('\n');
 
 test('fase 3B conserva asignaciones y registra cierres operativos estructurados', () => {
-  const sql = read('migrations/20260803213000_phase3b_service_lifecycle_and_qa.sql');
+  const sql = readPhase3bSql();
 
   assert.match(sql, /create table if not exists public\.operator_service_assignments/i);
   assert.match(sql, /operator_service_assignments_one_active_idx/i);
