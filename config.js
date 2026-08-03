@@ -45,6 +45,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
     await loadAuxiliosModule('auxilios-phase3b-service-creation', '/operator-service-creation-redesign.js');
+    await loadAuxiliosModule('auxilios-phase3b-modal-visibility-guard', '/phase3b-modal-visibility-guard.js');
     await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales y operativos:', error);

@@ -83,12 +83,17 @@ test('fase 3B se carga en el arranque, CI y caché PWA', () => {
   const config = read('config.js');
   const pkg = read('package.json');
   const sw = read('sw.js');
+  const guard = read('phase3b-modal-visibility-guard.js');
 
   assert.match(config, /operator-service-creation-redesign\.js/);
+  assert.match(config, /phase3b-modal-visibility-guard\.js/);
   assert.match(config, /operator-service-lifecycle\.js/);
   assert.match(pkg, /node --check operator-service-creation-redesign\.js/);
   assert.match(pkg, /node --check operator-service-lifecycle\.js/);
-  assert.match(sw, /auxilios-v113/);
+  assert.match(sw, /auxilios-v11\d+/);
+  assert.match(sw, /phase3b-modal-visibility-guard\.js/);
   assert.match(sw, /operator-service-creation-redesign\.css/);
   assert.match(sw, /operator-service-lifecycle\.css/);
+  assert.match(guard, /p3b-modal-backdrop\[hidden\]/);
+  assert.match(guard, /display:\s*none\s*!important/);
 });

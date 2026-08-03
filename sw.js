@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v113'; // v113: alta operativa, reasignaciones y cierres sin firma
+const CACHE_NAME = 'auxilios-v114'; // v114: corrige overlay modal oculto sobre el login
 
 const PRECACHE_ASSETS = [
   '/',
@@ -35,6 +35,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-v2.js',
   '/operator-service-bridge.js',
   '/operator-service-creation-redesign.js',
+  '/phase3b-modal-visibility-guard.js',
   '/operator-service-lifecycle.js',
   '/supabase.js',
   '/offline.js',
