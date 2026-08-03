@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v112'; // v112: puente servicio-jornada-viaje-remito
+const CACHE_NAME = 'auxilios-v113'; // v113: alta operativa, reasignaciones y cierres sin firma
 
 const PRECACHE_ASSETS = [
   '/',
@@ -28,10 +28,14 @@ const PRECACHE_ASSETS = [
   '/operator-service-desktop.css',
   '/operator-service-v2.css',
   '/operator-service-bridge.css',
+  '/operator-service-creation-redesign.css',
+  '/operator-service-lifecycle.css',
   '/operator-services.js',
   '/operator-service-wizard.js',
   '/operator-service-v2.js',
   '/operator-service-bridge.js',
+  '/operator-service-creation-redesign.js',
+  '/operator-service-lifecycle.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
