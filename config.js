@@ -43,6 +43,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-equal-billing-bases', '/equal-billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
+    await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales y operativos:', error);
   }
