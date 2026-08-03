@@ -29,7 +29,10 @@
     at_destination: { status: 'completed',      label: 'Finalizar servicio' },
   };
 
-  const role = () => window.PERFIL_USUARIO?.roles?.name || window.PERFIL_USUARIO?.role || '';
+  const getDb = () => typeof _db !== 'undefined' ? _db : null;
+  const getProfile = () => typeof PERFIL_USUARIO !== 'undefined' ? PERFIL_USUARIO : null;
+  const getCurrentUser = () => typeof USUARIO_ACTUAL !== 'undefined' ? USUARIO_ACTUAL : null;
+  const role = () => getProfile()?.roles?.name || getProfile()?.role || '';
   const isDriver = () => role() === 'chofer';
   const canTrace = () => ['administracion', 'operador', 'supervision', 'facturacion'].includes(role());
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -77,10 +80,10 @@
   }
 
   async function loadDriverQueue({ silent = false } = {}) {
-    if (!isDriver() || P3.loading || !window._db) return;
+    if (!isDriver() || P3.loading || !getDb()) return;
     P3.loading = true;
     try {
-      const { data, error } = await window._db.rpc('get_driver_operator_queue');
+      const { data, error } = await getDb().rpc('get_driver_operator_queue');
       if (error) throw error;
       P3.queue = Array.isArray(data) ? data.filter(item => ACTIVE_STATUSES.includes(item.status)) : [];
       renderDriverQueue();
@@ -178,7 +181,7 @@
   }
 
   async function advanceService(serviceId, toStatus) {
-    if (!isDriver() || !window._db) return;
+    if (!isDriver() || !getDb()) return;
     const button = document.querySelector(`[onclick="avanzarServicioAsignado('${serviceId}','${toStatus}')"]`);
     if (button) {
       button.disabled = true;
@@ -190,7 +193,7 @@
       const note = toStatus === 'completed'
         ? (window.prompt('Nota final del servicio (opcional):') || null)
         : null;
-      const { error } = await window._db.rpc('advance_operator_service', {
+      const { error } = await getDb().rpc('advance_operator_service', {
         p_service_id: serviceId,
         p_to_status: toStatus,
         p_note: note,
@@ -276,7 +279,7 @@
 
     window.abrirModalIncidente({
       logId: service.journey_log_id,
-      driverId: window.USUARIO_ACTUAL?.id || null,
+      driverId: getCurrentUser()?.id || null,
       contexto: `${service.service_number} · ${service.origin} → ${service.destination}`,
     });
   }
@@ -301,7 +304,7 @@
       }
 
       try {
-        const { data: remito, error: remitoError } = await window._db
+        const { data: remito, error: remitoError } = await getDb()
           .from('remitos')
           .select('remito_id,nro_remito,trip_id,status')
           .eq('nro_remito', remitoNumber)
@@ -309,7 +312,7 @@
         if (remitoError) throw remitoError;
         if (!remito?.remito_id) throw new Error('No se encontró el remito recién guardado');
 
-        const { error: linkError } = await window._db.rpc('link_operator_service_remito', {
+        const { error: linkError } = await getDb().rpc('link_operator_service_remito', {
           p_service_id: serviceId,
           p_remito_id: remito.remito_id,
         });
@@ -337,7 +340,7 @@
     shell.querySelector('.os-detail-body')?.appendChild(placeholder);
 
     try {
-      const { data, error } = await window._db.rpc('get_operator_service_trace', {
+      const { data, error } = await getDb().rpc('get_operator_service_trace', {
         p_service_id: serviceId,
       });
       if (error) throw error;
@@ -406,7 +409,7 @@
   }
 
   function initialize() {
-    if (P3.initialized || !window._db || !window.PERFIL_USUARIO) return false;
+    if (P3.initialized || !getDb() || !getProfile()) return false;
     P3.initialized = true;
     injectAssets();
     wrapRemitoSave();
