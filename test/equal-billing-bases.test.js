@@ -34,12 +34,13 @@ test('company views evaluate and display tariffs for every enabled base', () => 
   assert.match(source, /removeColumnsByHeader\(section\.querySelector\('table'\), \['Prioridad', 'Principal'\]\)/);
 });
 
-test('equal-base module is loaded and precached', () => {
+test('equal-base module is loaded and remains precached after later cache revisions', () => {
   const config = read('config.js');
   const serviceWorker = read('sw.js');
+  const cacheVersion = Number(serviceWorker.match(/auxilios-v(\d+)/)?.[1] || 0);
 
   assert.match(config, /auxilios-equal-billing-bases/);
   assert.match(config, /\/equal-billing-bases\.js/);
-  assert.match(serviceWorker, /auxilios-v108/);
+  assert.ok(cacheVersion >= 108, `Expected cache version 108 or newer, received ${cacheVersion}`);
   assert.match(serviceWorker, /'\/equal-billing-bases\.js'/);
 });
