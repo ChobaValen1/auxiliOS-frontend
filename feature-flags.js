@@ -34,6 +34,14 @@ async function activate(flags){
   loadStyle('auxilios-operator-console-v2-css','/operator-console-v2.css');
   await loadScript('auxilios-operator-console-v2','/operator-console-v2.js');
  }
+
+ if(flags.service_editing_tolls_v1){
+  await loadScript('auxilios-operator-reference-loader','/operator-reference-loader.js');
+  loadStyle('auxilios-operator-service-edit-css','/operator-service-edit.css');
+  await loadScript('auxilios-operator-service-edit','/operator-service-edit.js');
+  loadStyle('auxilios-toll-management-css','/toll-management.css');
+  await loadScript('auxilios-toll-management','/toll-management.js');
+ }
 }
 
 async function refresh(){
