@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v118'; // v118: edición auditada, peajes y referencias protegidas para operador
+const CACHE_NAME = 'auxilios-v119'; // v119: beta privada de edición auditada y peajes
 
 const PRECACHE_ASSETS = [
   '/',
