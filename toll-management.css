@@ -1,0 +1,70 @@
+/* AuxiliOS · Módulo de peajes */
+
+#tm-modal[hidden]{display:none!important}
+.tm-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px}
+.tm-head h2{margin:2px 0 3px}
+.tm-head p{margin:0;color:var(--muted,#778094);font-size:11px}
+.tm-eyebrow{color:var(--amber,#f5a623);font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.tm-head-actions{display:flex;gap:8px}
+.tm-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:10px;border:1px solid var(--border,#2d3444);border-radius:10px;background:var(--panel,#181d27)}
+.tm-toolbar input[type="text"],.tm-toolbar>.form-input{flex:1;min-width:240px}
+.tm-toolbar label{display:flex;align-items:center;gap:7px;color:var(--muted2,#aab1c0);font-size:10px;white-space:nowrap}
+.tm-toolbar label input{accent-color:var(--amber,#f5a623)}
+.tm-summary{min-height:24px;padding:0 3px;color:var(--muted,#778094);font-size:10px}
+.tm-table-wrap{overflow:auto;border:1px solid var(--border,#2d3444);border-radius:11px;background:var(--card,#202632)}
+.tm-table{width:100%;min-width:1120px;border-collapse:separate;border-spacing:0}
+.tm-table th,.tm-table td{padding:10px;border-right:1px solid var(--border,#2d3444);border-bottom:1px solid var(--border,#2d3444);text-align:left;vertical-align:middle}
+.tm-table th:last-child,.tm-table td:last-child{border-right:0}
+.tm-table thead th{position:sticky;top:0;z-index:2;background:var(--panel,#181d27);color:var(--muted2,#aab1c0);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.tm-table tbody tr:last-child td{border-bottom:0}
+.tm-table tbody tr:hover{background:rgba(245,166,35,.04)}
+.tm-table td{font-size:10.5px}
+.tm-table td>b,.tm-table td>span,.tm-table td>small{display:block}
+.tm-table td small{margin-top:3px;color:var(--muted,#778094);font-size:9px}
+.tm-code{color:var(--amber,#f5a623);font-family:'DM Mono',monospace}
+.tm-rates{display:flex;flex-wrap:wrap;gap:5px}
+.tm-rates>span{display:flex;flex-direction:column;gap:1px;padding:5px 7px;border-radius:7px;background:rgba(39,196,122,.08);color:var(--green,#27c47a)}
+.tm-rates small{color:var(--muted2,#aab1c0)!important}
+.tm-rates em{color:var(--muted,#778094);font-size:9px}
+.tm-state{display:inline-flex;align-items:center;min-height:22px;padding:2px 7px;border-radius:999px;font-size:8px;font-weight:800;text-transform:uppercase}
+.tm-state.active{background:rgba(39,196,122,.12);color:var(--green,#27c47a)}
+.tm-state.inactive{background:rgba(119,128,148,.12);color:var(--muted2,#aab1c0)}
+.tm-link{border:0;background:transparent;color:var(--blue,#5799ff);font:inherit;font-size:9px;font-weight:700;cursor:pointer}
+.tm-actions{display:flex;gap:5px}
+.tm-actions button{min-height:28px;padding:0 8px;border:1px solid var(--border2,#3b4458);border-radius:6px;background:var(--panel,#181d27);color:var(--text,#f5f7fa);font:inherit;font-size:8px;font-weight:800;cursor:pointer}
+.tm-actions button:hover{border-color:var(--amber,#f5a623);color:var(--amber,#f5a623)}
+.tm-backdrop{position:fixed;inset:0;z-index:10150;display:grid;place-items:center;padding:18px;background:rgba(5,8,14,.72)}
+.tm-modal-shell{width:min(760px,96vw);max-height:92vh;overflow:auto;border:1px solid var(--border2,#3b4458);border-radius:13px;background:var(--bg,#10141c);color:var(--text,#f5f7fa);box-shadow:0 26px 75px rgba(0,0,0,.5)}
+.tm-modal-shell header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:17px 18px;border-bottom:1px solid var(--border,#2d3444);background:var(--panel,#181d27)}
+.tm-modal-shell header small{display:block;color:var(--amber,#f5a623);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.tm-modal-shell header h3{margin:4px 0 2px;font-size:18px}
+.tm-modal-shell header p{margin:0;color:var(--muted,#778094);font-size:10px}
+.tm-modal-shell header button{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--border2,#3b4458);border-radius:8px;background:var(--card,#202632);color:var(--text,#f5f7fa);font:inherit;font-size:19px;cursor:pointer}
+.tm-modal-body{padding:18px}
+.tm-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tm-form-grid label{display:flex;flex-direction:column;gap:5px;min-width:0}
+.tm-form-grid label>span{color:var(--muted2,#aab1c0);font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.tm-form-grid input,.tm-form-grid select,.tm-form-grid textarea{width:100%;min-height:38px;box-sizing:border-box;border:1px solid var(--border2,#3b4458);border-radius:8px;outline:none;background:var(--card,#202632);color:var(--text,#f5f7fa);font:inherit;font-size:11px;padding:8px 10px}
+.tm-form-grid textarea{min-height:80px;resize:vertical}
+.tm-form-grid input:focus,.tm-form-grid select:focus,.tm-form-grid textarea:focus{border-color:var(--amber,#f5a623);box-shadow:0 0 0 3px rgba(245,166,35,.08)}
+.tm-form-grid .span-two{grid-column:1/-1}
+.tm-form-grid .tm-check{flex-direction:row;align-items:center}
+.tm-form-grid .tm-check input{width:16px;min-height:16px;accent-color:var(--amber,#f5a623)}
+.tm-modal-shell footer{display:flex;justify-content:flex-end;gap:8px;padding:13px 18px;border-top:1px solid var(--border,#2d3444);background:var(--panel,#181d27)}
+.tm-history{display:grid;gap:8px}
+.tm-history article{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--border,#2d3444);border-radius:8px;background:var(--card,#202632)}
+.tm-history article.current{border-color:rgba(39,196,122,.45);background:rgba(39,196,122,.05)}
+.tm-history article div{display:flex;flex-direction:column;gap:2px}
+.tm-history article span,.tm-history article small{color:var(--muted2,#aab1c0);font-size:9px}
+
+@media(max-width:760px){
+ .tm-head{flex-direction:column}
+ .tm-head-actions{width:100%}
+ .tm-head-actions .btn{flex:1}
+ .tm-toolbar{align-items:stretch;flex-direction:column}
+ .tm-toolbar input[type="text"],.tm-toolbar>.form-input{min-width:0;width:100%}
+ .tm-backdrop{padding:0}
+ .tm-modal-shell{width:100vw;max-height:100vh;height:100vh;border-radius:0}
+ .tm-form-grid{grid-template-columns:1fr}
+ .tm-form-grid .span-two{grid-column:auto}
+}
