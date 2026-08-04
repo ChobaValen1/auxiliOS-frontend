@@ -3,9 +3,10 @@
 const O=window.OperatorServices=window.OperatorServices||{};
 const S=O.S={services:[],companies:[],branches:[],drivers:[],trucks:[],concepts:[],selected:null,items:[],events:[],loading:false,timer:null,wizard:null};
 const role=()=>typeof PERFIL_USUARIO==='undefined'?'':(PERFIL_USUARIO?.roles?.name||PERFIL_USUARIO?.role||'');
-const canRead=()=>['administracion','supervision','operador'].includes(role());
-const canManage=()=>['administracion','operador'].includes(role());
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const betaEnabled=()=>Boolean(window.AuxiliosFeatures?.flags?.service_editing_tolls_v1);
+const canRead=()=>['administracion','supervision'].includes(role())||(role()==='operador'&&betaEnabled());
+const canManage=()=>['administracion','supervision'].includes(role())||(role()==='operador'&&betaEnabled());
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const num=v=>Number(String(v??'').replace(',','.'))||0;
 const money=(v,c='ARS')=>new Intl.NumberFormat('es-AR',{style:'currency',currency:c,maximumFractionDigits:2}).format(num(v));
 const fmtDate=v=>v?new Date(v).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
@@ -136,7 +137,7 @@ function hookNavigation(){
  window.__osNavHook=true;return true;
 }
 function init(){inject();let n=0;const timer=setInterval(()=>{applyRole();hookNavigation();if(canRead()&&typeof _db!=='undefined'){loadBase().then(loadServices).catch(e=>console.warn('[Operaciones]',e.message));clearInterval(timer);}else if(++n>80)clearInterval(timer);},250);S.timer=setInterval(()=>{if(canRead()&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices()},60000);}
-Object.assign(O,{role,canRead,canManage,esc,num,money,fmtDate,statusMeta,priorityMeta,company,branch,driver,truck,concept,service,loadBase,loadServices,renderBoard,openDetail,closeDetail});
+Object.assign(O,{role,betaEnabled,canRead,canManage,esc,num,money,fmtDate,statusMeta,priorityMeta,company,branch,driver,truck,concept,service,loadBase,loadServices,renderBoard,openDetail,closeDetail});
 Object.assign(window,{cargarServiciosOperador:loadServices,renderServiciosOperador:renderBoard,abrirDetalleServicio:openDetail,cerrarDetalleServicio:closeDetail,guardarAsignacionServicio:saveAssignment,avanzarServicioChofer:driverAdvance,cancelarServicioOperador:cancelService});
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();
