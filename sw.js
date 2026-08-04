@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v117'; // v117: edición auditada de servicios y módulo de peajes
+const CACHE_NAME = 'auxilios-v118'; // v118: edición auditada, peajes y referencias protegidas para operador
 
 const PRECACHE_ASSETS = [
   '/',
@@ -34,6 +34,7 @@ const PRECACHE_ASSETS = [
   '/toll-management.css',
   '/operator-console-v2.css',
   '/operator-services.js',
+  '/operator-reference-loader.js',
   '/operator-service-wizard.js',
   '/operator-service-v2.js',
   '/operator-service-bridge.js',
