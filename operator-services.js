@@ -3,8 +3,8 @@
 const O=window.OperatorServices=window.OperatorServices||{};
 const S=O.S={services:[],companies:[],branches:[],drivers:[],trucks:[],concepts:[],selected:null,items:[],events:[],loading:false,timer:null,wizard:null};
 const role=()=>typeof PERFIL_USUARIO==='undefined'?'':(PERFIL_USUARIO?.roles?.name||PERFIL_USUARIO?.role||'');
-const canRead=()=>['administracion','supervision'].includes(role());
-const canManage=()=>['administracion','supervision'].includes(role());
+const canRead=()=>['administracion','supervision','operador'].includes(role());
+const canManage=()=>['administracion','operador'].includes(role());
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number(String(v??'').replace(',','.'))||0;
 const money=(v,c='ARS')=>new Intl.NumberFormat('es-AR',{style:'currency',currency:c,maximumFractionDigits:2}).format(num(v));
@@ -106,19 +106,23 @@ function renderDetail(s){
  <section class="os-panel"><div class="os-panel-head"><h4>Asignación</h4>${s.assigned_at?`<small>Asignado ${fmtDate(s.assigned_at)}</small>`:''}</div>${assignmentEditor(s)}</section>
  <div class="os-detail-grid"><section class="os-panel"><h4>Conceptos</h4><div class="os-breakdown">${conceptRows}</div></section>
  <section class="os-panel"><h4>Indicaciones</h4><p>${esc(s.driver_instructions||'Sin instrucciones especiales.')}</p>${s.operator_notes?`<small>Nota interna</small><p>${esc(s.operator_notes)}</p>`:''}${s.driver_notes?`<small>Última nota del chofer</small><p>${esc(s.driver_notes)}</p>`:''}</section></div>
- <section class="os-panel"><h4>Historial</h4><div class="os-timeline">${S.events.length?S.events.map(e=>`<div><i></i><span><b>${esc(e.event_type==='created'?'Servicio creado':e.event_type==='assignment'?'Asignación actualizada':statusMeta[e.to_status]?.label||'Actualización')}</b><small>${fmtDate(e.created_at)}${e.notes?' · '+esc(e.notes):''}</small></span></div>`).join(''):'<div class="os-muted">Sin eventos.</div>'}</div></section></div>
- <div class="os-detail-footer">${s.status!=='completed'&&s.status!=='cancelled'?`<button class="btn btn-ghost danger" onclick="cancelarServicioOperador('${s.service_id}')">Cancelar servicio</button>`:'<span></span>'}<div class="os-actions"><button class="btn btn-ghost" onclick="cerrarDetalleServicio()">Cerrar</button></div></div>`;
+ <section class="os-panel"><h4>Historial</h4><div class="os-timeline">${S.events.length?S.events.map(e=>`<div><i></i><span><b>${esc(e.event_type==='created'?'Servicio creado':e.event_type==='assignment'?'Asignación actualizada':e.event_type==='service_edit'?'Servicio corregido':statusMeta[e.to_status]?.label||'Actualización')}</b><small>${fmtDate(e.created_at)}${e.notes?' · '+esc(e.notes):''}</small></span></div>`).join(''):'<div class="os-muted">Sin eventos.</div>'}</div></section></div>
+ <div class="os-detail-footer">${canManage()&&s.status!=='completed'&&s.status!=='cancelled'?`<button class="btn btn-ghost danger" onclick="cancelarServicioOperador('${s.service_id}')">Cancelar servicio</button>`:'<span></span>'}<div class="os-actions"><button class="btn btn-ghost" onclick="cerrarDetalleServicio()">Cerrar</button></div></div>`;
 }
-function assignmentEditor(s){return`<div class="os-assign-grid"><div class="os-field"><label>Chofer</label><select class="form-input" id="os-detail-driver"><option value="">Sin asignar</option>${S.drivers.map(x=>`<option value="${x.user_id}" ${s.assigned_driver_id===x.user_id?'selected':''}>${esc(x.full_name)}</option>`).join('')}</select></div><div class="os-field"><label>Móvil</label><select class="form-input" id="os-detail-truck"><option value="">Sin asignar</option>${S.trucks.map(x=>`<option value="${x.truck_id}" ${String(s.assigned_truck_id)===String(x.truck_id)?'selected':''}>${esc(x.numero_interno||x.plate)} · ${esc(x.plate)}</option>`).join('')}</select></div><button class="btn btn-primary" onclick="guardarAsignacionServicio('${s.service_id}')">Guardar asignación</button></div>`}
+function assignmentEditor(s){
+ const d=driver(s.assigned_driver_id),t=truck(s.assigned_truck_id),driverName=d?.full_name||s.driver_name||'Sin chofer',truckName=t?.numero_interno||t?.plate||s.truck_label||'Sin móvil';
+ if(!canManage()||!['pending','assigned'].includes(s.status))return`<div class="os-assignment"><span>👤 ${esc(driverName)}</span><span>🚛 ${esc(truckName)}</span></div>`;
+ return`<div class="os-assign-grid"><div class="os-field"><label>Chofer</label><select class="form-input" id="os-detail-driver"><option value="">Sin asignar</option>${S.drivers.map(x=>`<option value="${x.user_id}" ${s.assigned_driver_id===x.user_id?'selected':''}>${esc(x.full_name)}</option>`).join('')}</select></div><div class="os-field"><label>Móvil</label><select class="form-input" id="os-detail-truck"><option value="">Sin asignar</option>${S.trucks.map(x=>`<option value="${x.truck_id}" ${String(s.assigned_truck_id)===String(x.truck_id)?'selected':''}>${esc(x.numero_interno||x.plate)} · ${esc(x.plate)}</option>`).join('')}</select></div><button class="btn btn-primary" onclick="guardarAsignacionServicio('${s.service_id}')">Guardar asignación</button></div>`;
+}
 async function saveAssignment(id){
  if(!canManage())return notify('Sin permiso para modificar servicios','error');
- const s=service(id),d=document.getElementById('os-detail-driver')?.value||null,t=document.getElementById('os-detail-truck')?.value||null;if((d&&!t)||(!d&&t))return notify('Seleccioná chofer y móvil juntos','warning');if(['en_route','at_origin','loaded','at_destination','completed'].includes(s.status)&&(!d||!t))return notify('No se puede desasignar un servicio en curso','warning');
- const patch={assigned_driver_id:d,assigned_truck_id:t?Number(t):null,status:d?(s.status==='pending'?'assigned':s.status):'pending'};const {error}=await _db.from('operator_services').update(patch).eq('service_id',id);if(error)return notify(error.message,'error');notify('Asignación actualizada','success');await loadServices();await openDetail(id);
+ const d=document.getElementById('os-detail-driver')?.value||null,t=document.getElementById('os-detail-truck')?.value||null;if((d&&!t)||(!d&&t))return notify('Seleccioná chofer y móvil juntos','warning');
+ const {error}=await _db.rpc('update_operator_service_assignment',{p_service_id:id,p_driver_id:d,p_truck_id:t?Number(t):null});if(error)return notify(error.message,'error');notify('Asignación actualizada','success');await loadServices();await openDetail(id);
 }
 async function driverAdvance(){return notify('El seguimiento operativo para choferes no está habilitado','error');}
 async function cancelService(id){
  if(!canManage())return notify('Sin permiso para cancelar servicios','error');
- const reason=prompt('Motivo de cancelación:');if(!reason?.trim())return;const {error}=await _db.from('operator_services').update({status:'cancelled',cancellation_reason:reason.trim()}).eq('service_id',id);if(error)return notify(error.message,'error');notify('Servicio cancelado','success');closeDetail();await loadServices();
+ const reason=prompt('Motivo de cancelación:');if(!reason?.trim())return;const {error}=await _db.rpc('cancel_operator_service',{p_service_id:id,p_reason:reason.trim()});if(error)return notify(error.message,'error');notify('Servicio cancelado','success');closeDetail();await loadServices();
 }
 function closeDetail(){close('modal-operador-servicio');S.selected=null;}
 
