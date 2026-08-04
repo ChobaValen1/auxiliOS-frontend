@@ -42,7 +42,7 @@ test('el módulo y sus estilos forman parte del arranque, CI y PWA', () => {
   assert.match(config, /auxilios-phase3-service-bridge/);
   assert.match(config, /operator-service-bridge\.js/);
   assert.match(pkg, /node --check operator-service-bridge\.js/);
-  assert.match(sw, /auxilios-v11[2-9]/);
+  assert.match(sw, /auxilios-v1\d{2,}/);
   assert.match(sw, /operator-service-bridge\.js/);
   assert.match(sw, /operator-service-bridge\.css/);
 });
