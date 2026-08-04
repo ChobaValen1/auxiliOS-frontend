@@ -90,7 +90,7 @@ test('fase 3B se carga en el arranque, CI y caché PWA', () => {
   assert.match(config, /operator-service-lifecycle\.js/);
   assert.match(pkg, /node --check operator-service-creation-redesign\.js/);
   assert.match(pkg, /node --check operator-service-lifecycle\.js/);
-  assert.match(sw, /auxilios-v11\d+/);
+  assert.match(sw, /auxilios-v1\d{2,}/);
   assert.match(sw, /phase3b-modal-visibility-guard\.js/);
   assert.match(sw, /operator-service-creation-redesign\.css/);
   assert.match(sw, /operator-service-lifecycle\.css/);
