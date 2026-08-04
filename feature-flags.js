@@ -42,6 +42,11 @@ async function activate(flags){
   loadStyle('auxilios-toll-management-css','/toll-management.css');
   await loadScript('auxilios-toll-management','/toll-management.js');
  }
+
+ if(flags.service_workspace_v2){
+  loadStyle('auxilios-operator-service-workspace-v2-css','/operator-service-workspace-v2.css');
+  await loadScript('auxilios-operator-service-workspace-v2','/operator-service-workspace-v2.js');
+ }
 }
 
 async function refresh(){
