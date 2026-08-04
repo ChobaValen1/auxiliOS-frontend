@@ -78,7 +78,7 @@ test('la nueva capa reutiliza el flujo existente y no escribe directamente en Su
   assert.match(workspace, /window\.seleccionarEmpresaServicio/);
   assert.match(workspace, /window\.calcularNuevoServicio/);
   assert.match(workspace, /window\.crearServicioFase3B/);
-  assert.match(workspace, /window\.guardarBorradorServicio/);
+  assert.match(workspace, /guardarBorradorServicio\(\)/);
   assert.doesNotMatch(workspace, /\.rpc\(/);
   assert.doesNotMatch(workspace, /\.from\(/);
 });
