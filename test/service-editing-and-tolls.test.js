@@ -8,12 +8,14 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 const migration = read('migrations/20260804161000_service_editing_and_tolls.sql');
 const historyMigration = read('migrations/20260804162000_preserve_toll_rate_history.sql');
+const betaMigration = read('migrations/20260804163000_service_editing_tolls_private_beta.sql');
 const services = read('operator-services.js');
 const references = read('operator-reference-loader.js');
 const editor = read('operator-service-edit.js');
 const editorCss = read('operator-service-edit.css');
 const tolls = read('toll-management.js');
 const tollsCss = read('toll-management.css');
+const featureFlags = read('feature-flags.js');
 const config = read('config.js');
 const pkg = read('package.json');
 const sw = read('sw.js');
@@ -100,10 +102,10 @@ test('las tablas nuevas no admiten escritura directa de usuarios autenticados', 
   assert.match(migration, /Solo administración puede gestionar los importes de peajes/i);
 });
 
-test('administración y operador gestionan servicios; supervisión queda en lectura', () => {
-  assert.match(services, /canRead=\(\)=>\['administracion','supervision','operador'\]/);
-  assert.match(services, /canManage=\(\)=>\['administracion','operador'\]/);
-  assert.doesNotMatch(services, /canManage=\(\)=>\[[^\]]*supervision/);
+test('la mesa conserva los controles actuales de administración y supervisión', () => {
+  assert.match(services, /betaEnabled=\(\)=>Boolean\(window\.AuxiliosFeatures\?\.flags\?\.service_editing_tolls_v1\)/);
+  assert.match(services, /canRead=\(\)=>\['administracion','supervision'\]\.includes\(role\(\)\)\|\|\(role\(\)==='operador'&&betaEnabled\(\)\)/);
+  assert.match(services, /canManage=\(\)=>\['administracion','supervision'\]\.includes\(role\(\)\)\|\|\(role\(\)==='operador'&&betaEnabled\(\)\)/);
   assert.match(services, /rpc\('update_operator_service_assignment'/);
   assert.match(services, /rpc\('cancel_operator_service'/);
   assert.doesNotMatch(services, /from\('operator_services'\)\.update/);
@@ -121,8 +123,6 @@ test('el operador obtiene referencias mediante un RPC acotado y no mediante acce
   assert.match(references, /\['administracion','operador','supervision'\]\.includes\(role\(\)\)/);
   assert.doesNotMatch(references, /\.from\('users'\)/);
   assert.doesNotMatch(references, /\.from\('companies'\)/);
-  assert.match(config, /auxilios-operator-reference-loader/);
-  assert.match(config, /operator-reference-loader\.js/);
 });
 
 test('el editor usa el contexto y la actualización transaccional del backend', () => {
@@ -152,15 +152,29 @@ test('el módulo de peajes ofrece lectura amplia y gestión administrativa', () 
   assert.match(tollsCss, /@media/i);
 });
 
-test('los módulos forman parte del arranque, CI y caché PWA', () => {
-  assert.match(config, /auxilios-operator-service-edit/);
-  assert.match(config, /operator-service-edit\.js/);
-  assert.match(config, /auxilios-toll-management/);
-  assert.match(config, /toll-management\.js/);
+test('la nueva entrega se habilita únicamente mediante una bandera individual', () => {
+  assert.match(betaMigration, /'service_editing_tolls_v1'/);
+  assert.match(betaMigration, /lower\(u\.email\) = 'admin@sigmaremolques\.com'/i);
+  assert.doesNotMatch(betaMigration, /supervisor@sigmaremolques\.com/i);
+  assert.doesNotMatch(betaMigration, /where[\s\S]{0,160}role/i);
+  assert.match(featureFlags, /flags\.service_editing_tolls_v1/);
+  assert.match(featureFlags, /operator-reference-loader\.js/);
+  assert.match(featureFlags, /operator-service-edit\.css/);
+  assert.match(featureFlags, /operator-service-edit\.js/);
+  assert.match(featureFlags, /toll-management\.css/);
+  assert.match(featureFlags, /toll-management\.js/);
+  assert.doesNotMatch(featureFlags, /admin@sigmaremolques\.com/);
+  assert.doesNotMatch(config, /auxilios-operator-reference-loader/);
+  assert.doesNotMatch(config, /auxilios-operator-service-edit/);
+  assert.doesNotMatch(config, /auxilios-toll-management/);
+  assert.match(config, /auxilios-feature-flags/);
+});
+
+test('los módulos forman parte de CI y caché PWA sin cargarse globalmente', () => {
   assert.match(pkg, /node --check operator-reference-loader\.js/);
   assert.match(pkg, /node --check operator-service-edit\.js/);
   assert.match(pkg, /node --check toll-management\.js/);
-  assert.match(sw, /auxilios-v118/);
+  assert.match(sw, /auxilios-v11[8-9]|auxilios-v1[2-9]\d/);
   for (const asset of ['operator-reference-loader.js', 'operator-service-edit.js', 'operator-service-edit.css', 'toll-management.js', 'toll-management.css']) {
     assert.match(sw, new RegExp(asset.replace('.', '\\.')));
   }
