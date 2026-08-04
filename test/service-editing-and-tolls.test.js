@@ -7,7 +7,9 @@ const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 const migration = read('migrations/20260804161000_service_editing_and_tolls.sql');
+const historyMigration = read('migrations/20260804162000_preserve_toll_rate_history.sql');
 const services = read('operator-services.js');
+const references = read('operator-reference-loader.js');
 const editor = read('operator-service-edit.js');
 const editorCss = read('operator-service-edit.css');
 const tolls = read('toll-management.js');
@@ -64,8 +66,9 @@ test('el catálogo de peajes conserva ubicaciones, tarifas y vigencias históric
   assert.match(migration, /valid_from date not null/i);
   assert.match(migration, /valid_until date/i);
   assert.match(migration, /unique \(toll_id, vehicle_category, payment_method, valid_from\)/i);
-  assert.match(migration, /update public\.toll_rates[\s\S]*valid_until = v_from - 1/i);
-  assert.match(migration, /insert into public\.toll_rates/i);
+  assert.match(historyMigration, /update public\.toll_rates[\s\S]*valid_until = v_from - 1/i);
+  assert.doesNotMatch(historyMigration, /set[\s\S]{0,120}is_active\s*=\s*false/i);
+  assert.match(historyMigration, /insert into public\.toll_rates/i);
   assert.doesNotMatch(tolls, /\.from\('toll_rates'\)\.update/);
   assert.match(tolls, /save_toll_rate/);
   assert.match(tolls, /El importe anterior se conserva en el historial/);
@@ -108,6 +111,20 @@ test('administración y operador gestionan servicios; supervisión queda en lect
   assert.match(tolls, /canManage=\(\)=>role\(\)==='administracion'/);
 });
 
+test('el operador obtiene referencias mediante un RPC acotado y no mediante acceso amplio a usuarios', () => {
+  assert.match(references, /get_operator_service_reference_data/);
+  assert.match(references, /services\.S\.companies/);
+  assert.match(references, /services\.S\.branches/);
+  assert.match(references, /services\.S\.drivers/);
+  assert.match(references, /services\.S\.trucks/);
+  assert.match(references, /services\.S\.concepts/);
+  assert.match(references, /\['administracion','operador','supervision'\]\.includes\(role\(\)\)/);
+  assert.doesNotMatch(references, /\.from\('users'\)/);
+  assert.doesNotMatch(references, /\.from\('companies'\)/);
+  assert.match(config, /auxilios-operator-reference-loader/);
+  assert.match(config, /operator-reference-loader\.js/);
+});
+
 test('el editor usa el contexto y la actualización transaccional del backend', () => {
   assert.match(editor, /get_operator_service_edit_context/);
   assert.match(editor, /list_toll_catalog/);
@@ -140,10 +157,11 @@ test('los módulos forman parte del arranque, CI y caché PWA', () => {
   assert.match(config, /operator-service-edit\.js/);
   assert.match(config, /auxilios-toll-management/);
   assert.match(config, /toll-management\.js/);
+  assert.match(pkg, /node --check operator-reference-loader\.js/);
   assert.match(pkg, /node --check operator-service-edit\.js/);
   assert.match(pkg, /node --check toll-management\.js/);
-  assert.match(sw, /auxilios-v117/);
-  for (const asset of ['operator-service-edit.js', 'operator-service-edit.css', 'toll-management.js', 'toll-management.css']) {
+  assert.match(sw, /auxilios-v118/);
+  for (const asset of ['operator-reference-loader.js', 'operator-service-edit.js', 'operator-service-edit.css', 'toll-management.js', 'toll-management.css']) {
     assert.match(sw, new RegExp(asset.replace('.', '\\.')));
   }
   assert.match(editorCss, /#ose-modal\[hidden\]/);
