@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v115'; // v115: guía inicio de jornada antes del viaje
+const CACHE_NAME = 'auxilios-v116'; // v116: consola operativa V2 beta por usuario
 
 const PRECACHE_ASSETS = [
   '/',
@@ -30,6 +30,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-bridge.css',
   '/operator-service-creation-redesign.css',
   '/operator-service-lifecycle.css',
+  '/operator-console-v2.css',
   '/operator-services.js',
   '/operator-service-wizard.js',
   '/operator-service-v2.js',
@@ -38,6 +39,8 @@ const PRECACHE_ASSETS = [
   '/operator-service-creation-redesign.js',
   '/phase3b-modal-visibility-guard.js',
   '/operator-service-lifecycle.js',
+  '/feature-flags.js',
+  '/operator-console-v2.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
