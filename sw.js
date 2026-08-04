@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v119'; // v119: beta privada de edición auditada y peajes
+const CACHE_NAME = 'auxilios-v120'; // v120: workspace full screen de servicios
 
 const PRECACHE_ASSETS = [
   '/',
@@ -33,6 +33,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-edit.css',
   '/toll-management.css',
   '/operator-console-v2.css',
+  '/operator-service-workspace-v2.css',
   '/operator-services.js',
   '/operator-reference-loader.js',
   '/operator-service-wizard.js',
@@ -46,6 +47,7 @@ const PRECACHE_ASSETS = [
   '/toll-management.js',
   '/feature-flags.js',
   '/operator-console-v2.js',
+  '/operator-service-workspace-v2.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
