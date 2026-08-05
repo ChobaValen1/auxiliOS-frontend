@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v128'; // v128: contraste de Medio de pago en CRUD de combustible
+const CACHE_NAME = 'auxilios-v129'; // v129: validación visible para correcciones históricas de combustible
 
 const PRECACHE_ASSETS = [
   '/',
@@ -21,7 +21,9 @@ const PRECACHE_ASSETS = [
   '/fleet-admin-detail-v2.js',
   '/fleet-fuel-crud-v1.css',
   '/fleet-fuel-crud-contrast-fix.css',
+  '/fleet-fuel-closed-edit-fix.css',
   '/fleet-fuel-crud-v1.js',
+  '/fleet-fuel-closed-edit-fix.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
