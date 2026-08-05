@@ -54,6 +54,7 @@ async function activate(flags){
  // módulos limitan su ejecución a Administración y Supervisión.
  await loadScript('auxilios-fleet-admin-detail-v2','/fleet-admin-detail-v2.js');
  loadStyle('auxilios-fleet-fuel-crud-v1-css','/fleet-fuel-crud-v1.css');
+ loadStyle('auxilios-fleet-fuel-crud-contrast-fix-css','/fleet-fuel-crud-contrast-fix.css');
  await loadScript('auxilios-fleet-fuel-crud-v1','/fleet-fuel-crud-v1.js');
 }
 
