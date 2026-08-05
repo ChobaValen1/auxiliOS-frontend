@@ -51,8 +51,7 @@ async function activate(flags){
  }
 
  // Flota es un módulo estable por rol, no una beta individual. El propio
- // módulo limita su ejecución a Administración y Supervisión.
- loadStyle('auxilios-fleet-admin-detail-v2-css','/fleet-admin-detail-v2.css');
+ // módulo limita su ejecución a Administración y Supervisión y carga su CSS.
  await loadScript('auxilios-fleet-admin-detail-v2','/fleet-admin-detail-v2.js');
 }
 
