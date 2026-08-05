@@ -2,7 +2,7 @@
 (()=>{'use strict';
 const ID='operator-service-workspace-review-v3';
 const DRAFT_KEY='auxilios.operator-service-draft.v1';
-const ADDRESS_DELAY_MS=2000;
+const ADDRESS_DELAY_MS=1200;
 const RESOURCE_REFRESH_MS=45000;
 let previousOpen=null;
 let observer=null;
