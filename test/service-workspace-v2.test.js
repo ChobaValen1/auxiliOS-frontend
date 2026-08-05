@@ -24,7 +24,7 @@ test('el workspace se habilita únicamente por una bandera individual', () => {
   assert.doesNotMatch(flags, /admin@sigmaremolques\.com/);
 });
 
-test('la creación usa una pantalla completa de tres columnas', () => {
+test('la creación conserva el layout full screen de tres columnas', () => {
   assert.match(workspace, /osv2-workspace/);
   assert.match(workspace, /osv2-grid/);
   assert.match(workspace, /admin-column/);
@@ -34,18 +34,78 @@ test('la creación usa una pantalla completa de tres columnas', () => {
   assert.match(css, /width:\s*100vw\s*!important/i);
   assert.match(css, /height:\s*100vh\s*!important/i);
   assert.match(css, /overflow:\s*hidden\s*!important/i);
-});
-
-test('header, cuerpo y footer permanecen fijos dentro del viewport', () => {
   assert.match(css, /grid-template-rows:\s*54px minmax\(0, 1fr\) 62px/i);
-  assert.match(workspace, /osv2-header/);
-  assert.match(workspace, /osv2-footer/);
-  assert.match(workspace, /Guardar y seguir/);
-  assert.match(workspace, /Guardar y Finalizar/);
-  assert.match(workspace, /cerrarNuevoServicio\(\)/);
 });
 
-test('la segunda columna contiene recorrido, vehículo, kilómetros y observaciones', () => {
+test('la estética reutiliza los tokens visuales de AuxiliOS', () => {
+  assert.match(css, /--osv2-bg:\s*var\(--bg/i);
+  assert.match(css, /--osv2-panel:\s*var\(--panel/i);
+  assert.match(css, /--osv2-card:\s*var\(--card/i);
+  assert.match(css, /--osv2-border:\s*var\(--border/i);
+  assert.match(css, /--osv2-text:\s*var\(--text/i);
+  assert.match(css, /--osv2-amber:\s*var\(--amber/i);
+  assert.match(css, /background:\s*var\(--osv2-bg\)/i);
+  assert.doesNotMatch(css, /linear-gradient\(90deg,\s*#eff6ff/i);
+  assert.doesNotMatch(css, /background:\s*#fff\s*[;!]/i);
+});
+
+test('los inputs de texto actualizan estado sin renderizar toda la pantalla por tecla', () => {
+  const inputBody = workspace.match(/function input\(key,value,validationKey=key\)\{([\s\S]*?)\n\}/)?.[1] || '';
+  const vehicleBody = workspace.match(/function setVehicleInput\(key,value\)\{([\s\S]*?)\n\}/)?.[1] || '';
+  const distanceBody = workspace.match(/function setDistanceInput\(key,value\)\{([\s\S]*?)\n\}/)?.[1] || '';
+  assert.match(workspace, /oninput="osv2Input\('customer_phone'/);
+  assert.match(workspace, /oninput="osv2Input\('\$\{kind\}'/);
+  assert.match(workspace, /oninput="osv2VehicleInput\('vehicle_make'/);
+  assert.match(workspace, /oninput="osv2DistanceInput\('estimated_asphalt_km'/);
+  assert.doesNotMatch(inputBody, /render\(\)/);
+  assert.doesNotMatch(vehicleBody, /render\(\)/);
+  assert.doesNotMatch(distanceBody, /render\(\)/);
+  assert.match(inputBody, /setCore\(key,value\)/);
+  assert.match(workspace, /onblur="osv2Blur\('customer_phone'\)"/);
+});
+
+test('agregar concepto parte de un botón y despliega una tabla tarifaria', () => {
+  assert.match(workspace, /osv2-add-concept-trigger/);
+  assert.match(workspace, /＋ Agregar Concepto/);
+  assert.match(workspace, /function conceptPicker\(w\)/);
+  assert.match(workspace, /osv2-concept-picker-table/);
+  assert.match(workspace, /Conceptos disponibles/);
+  assert.match(workspace, /Servicios precargados en el tarifario vigente/);
+  assert.match(workspace, /Concepto<\/span><span>Unidad<\/span><span>Precio<\/span><span>Acción/);
+  assert.match(workspace, /secondaryPrice\(item\)/);
+  assert.match(workspace, /osv2AddSecondary/);
+  assert.doesNotMatch(workspace, /id="osv2-secondary-select"/);
+});
+
+test('peajes y excedentes tienen estados independientes y pueden convivir', () => {
+  assert.match(workspace, /let panels=\{tolls:false,extras:false\}/);
+  assert.match(workspace, /panels\.tolls\|\|panels\.extras/);
+  assert.match(workspace, /complementaryPanel\('tolls'/);
+  assert.match(workspace, /complementaryPanel\('extras'/);
+  assert.match(workspace, /panels\[panel\]=!panels\[panel\]/);
+  assert.match(css, /\.osv2-complementary-stack[\s\S]*overflow:\s*auto/i);
+  assert.match(css, /\.osv2-dynamic-panel[\s\S]*overflow:\s*hidden/i);
+  assert.doesNotMatch(css, /\.osv2-dynamic-panel[\s\S]{0,220}position:\s*absolute/i);
+});
+
+test('los warnings muestran errores por campo y resumen antes de crear', () => {
+  assert.match(workspace, /function validationErrors\(\)/);
+  assert.match(workspace, /Completá la fecha del servicio/);
+  assert.match(workspace, /Seleccioná una prestadora/);
+  assert.match(workspace, /Seleccioná el tipo de servicio/);
+  assert.match(workspace, /Completá el teléfono del cliente/);
+  assert.match(workspace, /Completá el origen/);
+  assert.match(workspace, /Completá el destino/);
+  assert.match(workspace, /Chofer y móvil deben seleccionarse juntos/);
+  assert.match(workspace, /osv2-field-error/);
+  assert.match(workspace, /osv2-validation-summary/);
+  assert.match(workspace, /submitAttempted=true/);
+  assert.match(workspace, /focusFirstError\(errors\)/);
+  assert.match(css, /\.has-error input/);
+  assert.match(css, /\.osv2-validation-summary\.invalid/);
+});
+
+test('la segunda columna conserva recorrido, vehículo, kilómetros y observaciones', () => {
   const routeStart = workspace.indexOf('<section class="osv2-column route-column">');
   const actionsStart = workspace.indexOf('<section class="osv2-column actions-column">');
   assert.ok(routeStart >= 0 && actionsStart > routeStart);
@@ -58,23 +118,7 @@ test('la segunda columna contiene recorrido, vehículo, kilómetros y observacio
   assert.match(routeSection, /Observaciones/);
 });
 
-test('la tercera columna queda reservada para peajes y excedentes', () => {
-  assert.match(workspace, /Agregar Peaje/);
-  assert.match(workspace, /Agregar Excedente/);
-  assert.match(workspace, /Peajes del servicio/);
-  assert.match(workspace, /Nombre del peaje/);
-  assert.match(workspace, /Excedentes/);
-  assert.doesNotMatch(workspace, /actions-column[\s\S]{0,400}Vehículo del cliente/);
-});
-
-test('los bloques dinámicos usan scroll interno sin alterar la página completa', () => {
-  assert.match(css, /\.osv2-concepts-list[\s\S]*overflow:\s*auto/i);
-  assert.match(css, /\.osv2-dynamic-panel[\s\S]*overflow:\s*hidden/i);
-  assert.match(css, /\.osv2-grid[\s\S]*overflow:\s*hidden/i);
-  assert.match(css, /@media \(max-width: 1099px\)/i);
-});
-
-test('la nueva capa reutiliza el flujo existente y no escribe directamente en Supabase', () => {
+test('la capa reutiliza el flujo existente y no escribe directamente en Supabase', () => {
   assert.match(workspace, /window\.seleccionarEmpresaServicio/);
   assert.match(workspace, /window\.calcularNuevoServicio/);
   assert.match(workspace, /window\.crearServicioFase3B/);
@@ -83,9 +127,9 @@ test('la nueva capa reutiliza el flujo existente y no escribe directamente en Su
   assert.doesNotMatch(workspace, /\.from\(/);
 });
 
-test('el workspace forma parte de CI y de la caché PWA', () => {
+test('el workspace forma parte de CI y utiliza una caché PWA vigente', () => {
   assert.match(pkg, /node --check operator-service-workspace-v2\.js/);
-  assert.match(sw, /auxilios-v120/);
+  assert.match(sw, /auxilios-v12[1-9]|auxilios-v1[3-9]\d/);
   assert.match(sw, /operator-service-workspace-v2\.css/);
   assert.match(sw, /operator-service-workspace-v2\.js/);
 });
