@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v124'; // v124: Peajes y Adicionales con alta y registro conjunto
+const CACHE_NAME = 'auxilios-v125'; // v125: Flota visible para administración y estados operativos combinados
 
 const PRECACHE_ASSETS = [
   '/',
