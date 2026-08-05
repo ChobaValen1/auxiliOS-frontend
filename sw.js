@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v120'; // v120: workspace full screen de servicios
+const CACHE_NAME = 'auxilios-v121'; // v121: revisión de workspace, validaciones y paneles coexistentes
 
 const PRECACHE_ASSETS = [
   '/',
