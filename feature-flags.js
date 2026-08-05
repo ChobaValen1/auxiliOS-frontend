@@ -33,6 +33,8 @@ async function activate(flags){
  if(flags.operator_console_v2){
   loadStyle('auxilios-operator-console-v2-css','/operator-console-v2.css');
   await loadScript('auxilios-operator-console-v2','/operator-console-v2.js');
+  loadStyle('auxilios-operator-active-desk-clean-v1-css','/operator-active-desk-clean-v1.css');
+  await loadScript('auxilios-operator-active-desk-clean-v1','/operator-active-desk-clean-v1.js');
  }
 
  if(flags.service_editing_tolls_v1){
