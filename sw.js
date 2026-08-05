@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v121'; // v121: revisión de workspace, validaciones y paneles coexistentes
+const CACHE_NAME = 'auxilios-v122'; // v122: alta limpia, recursos operativos y direcciones Maps
 
 const PRECACHE_ASSETS = [
   '/',
@@ -34,6 +34,7 @@ const PRECACHE_ASSETS = [
   '/toll-management.css',
   '/operator-console-v2.css',
   '/operator-service-workspace-v2.css',
+  '/operator-service-workspace-review-v3.css',
   '/operator-services.js',
   '/operator-reference-loader.js',
   '/operator-service-wizard.js',
@@ -48,6 +49,7 @@ const PRECACHE_ASSETS = [
   '/feature-flags.js',
   '/operator-console-v2.js',
   '/operator-service-workspace-v2.js',
+  '/operator-service-workspace-review-v3.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
