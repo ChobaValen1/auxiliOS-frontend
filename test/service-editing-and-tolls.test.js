@@ -9,6 +9,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const migration = read('migrations/20260804161000_service_editing_and_tolls.sql');
 const historyMigration = read('migrations/20260804162000_preserve_toll_rate_history.sql');
 const betaMigration = read('migrations/20260804163000_service_editing_tolls_private_beta.sql');
+const simpleTollsMigration = read('migrations/20260805100000_simple_tolls_workspace.sql');
 const services = read('operator-services.js');
 const references = read('operator-reference-loader.js');
 const editor = read('operator-service-edit.js');
@@ -60,20 +61,32 @@ test('los cambios posteriores al inicio requieren motivo y respetan el remito bl
   assert.match(editor, /change_reason/);
 });
 
-test('el catálogo de peajes conserva ubicaciones, tarifas y vigencias históricas', () => {
+test('el catálogo conserva ubicaciones e historial aunque la interfaz use un importe simple', () => {
   assert.match(migration, /create table if not exists public\.toll_locations/i);
   assert.match(migration, /create table if not exists public\.toll_rates/i);
-  assert.match(migration, /vehicle_category text not null/i);
-  assert.match(migration, /payment_method text not null/i);
   assert.match(migration, /valid_from date not null/i);
   assert.match(migration, /valid_until date/i);
-  assert.match(migration, /unique \(toll_id, vehicle_category, payment_method, valid_from\)/i);
   assert.match(historyMigration, /update public\.toll_rates[\s\S]*valid_until = v_from - 1/i);
-  assert.doesNotMatch(historyMigration, /set[\s\S]{0,120}is_active\s*=\s*false/i);
-  assert.match(historyMigration, /insert into public\.toll_rates/i);
+  assert.match(simpleTollsMigration, /create or replace function public\.save_simple_toll/i);
+  assert.match(simpleTollsMigration, /v_name text/i);
+  assert.match(simpleTollsMigration, /v_address text/i);
+  assert.match(simpleTollsMigration, /v_amount numeric/i);
+  assert.match(simpleTollsMigration, /vehicle_category = 'light_2_axles'/i);
+  assert.match(simpleTollsMigration, /payment_method = 'any'/i);
+  assert.match(simpleTollsMigration, /set valid_until = current_date - 1/i);
+  assert.match(simpleTollsMigration, /Actualización desde Peajes y Adicionales/i);
   assert.doesNotMatch(tolls, /\.from\('toll_rates'\)\.update/);
-  assert.match(tolls, /save_toll_rate/);
-  assert.match(tolls, /El importe anterior se conserva en el historial/);
+});
+
+test('el alta simple y el archivado están protegidos por RPC administrativo', () => {
+  assert.match(simpleTollsMigration, /v_role <> 'administracion'/i);
+  assert.match(simpleTollsMigration, /El nombre del peaje es obligatorio/i);
+  assert.match(simpleTollsMigration, /El importe debe ser igual o mayor a cero/i);
+  assert.match(simpleTollsMigration, /create or replace function public\.set_simple_toll_active/i);
+  assert.match(simpleTollsMigration, /is_active = coalesce\(p_active, false\)/i);
+  assert.match(simpleTollsMigration, /revoke all on function public\.save_simple_toll\(jsonb\) from public, anon/i);
+  assert.match(simpleTollsMigration, /grant execute on function public\.save_simple_toll\(jsonb\) to authenticated/i);
+  assert.match(simpleTollsMigration, /revoke all on function public\.set_simple_toll_active\(uuid, boolean\) from public, anon/i);
 });
 
 test('los peajes aplicados al servicio quedan como snapshot y disparan recotización', () => {
@@ -138,16 +151,23 @@ test('el editor usa el contexto y la actualización transaccional del backend', 
   assert.match(editor, /O\.openDetail/);
 });
 
-test('el módulo de peajes ofrece lectura amplia y gestión administrativa', () => {
-  assert.match(tolls, /nav-peajes/);
-  assert.match(tolls, /screen-peajes/);
-  assert.match(tolls, /list_toll_catalog/);
-  assert.match(tolls, /save_toll_location/);
-  assert.match(tolls, /save_toll_rate/);
-  assert.match(tolls, /Mostrar inactivos/);
-  assert.match(tolls, /Historial/);
-  assert.match(tolls, /Nueva vigencia tarifaria/);
+test('Peajes y Adicionales muestra el alta junto al registro histórico', () => {
+  assert.match(tolls, /Peajes y Adicionales/);
+  assert.match(tolls, /id="tm-simple-form"/);
+  assert.match(tolls, /Nombre del peaje \*/);
+  assert.match(tolls, /Dirección/);
+  assert.match(tolls, /Importe \*/);
+  assert.match(tolls, /Todos los peajes cargados/);
+  assert.match(tolls, /p_include_inactive:true/);
+  assert.match(tolls, /save_simple_toll/);
+  assert.match(tolls, /set_simple_toll_active/);
+  assert.match(tolls, /Permanecerá visible en el historial/);
+  assert.match(tolls, /data-tm-section="additionals"/);
+  assert.match(tolls, /Próxima configuración/);
   assert.match(tolls, /\['administracion','operador','supervision','facturacion'\]\.includes\(role\(\)\)/);
+  assert.doesNotMatch(tolls, /data-tm-new/);
+  assert.doesNotMatch(tolls, /Nueva vigencia tarifaria/);
+  assert.match(tollsCss, /\.tm-workspace/);
   assert.match(tollsCss, /position:\s*sticky/i);
   assert.match(tollsCss, /@media/i);
 });
@@ -174,7 +194,7 @@ test('los módulos forman parte de CI y caché PWA sin cargarse globalmente', ()
   assert.match(pkg, /node --check operator-reference-loader\.js/);
   assert.match(pkg, /node --check operator-service-edit\.js/);
   assert.match(pkg, /node --check toll-management\.js/);
-  assert.match(sw, /auxilios-v11[8-9]|auxilios-v1[2-9]\d/);
+  assert.match(sw, /auxilios-v1[2-9]\d/);
   for (const asset of ['operator-reference-loader.js', 'operator-service-edit.js', 'operator-service-edit.css', 'toll-management.js', 'toll-management.css']) {
     assert.match(sw, new RegExp(asset.replace('.', '\\.')));
   }
