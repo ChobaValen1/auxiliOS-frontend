@@ -46,6 +46,8 @@ async function activate(flags){
  if(flags.service_workspace_v2){
   loadStyle('auxilios-operator-service-workspace-v2-css','/operator-service-workspace-v2.css');
   await loadScript('auxilios-operator-service-workspace-v2','/operator-service-workspace-v2.js');
+  loadStyle('auxilios-operator-service-workspace-review-v3-css','/operator-service-workspace-review-v3.css');
+  await loadScript('auxilios-operator-service-workspace-review-v3','/operator-service-workspace-review-v3.js');
  }
 }
 
