@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v125'; // v125: Flota visible para administración y estados operativos combinados
+const CACHE_NAME = 'auxilios-v126'; // v126: detalle de Flota con Jornadas y uso
 
 const PRECACHE_ASSETS = [
   '/',
@@ -17,6 +17,8 @@ const PRECACHE_ASSETS = [
   '/configuration-center.css',
   '/configuration-center.js',
   '/frequent-navigation.js',
+  '/fleet-admin-detail-v2.css',
+  '/fleet-admin-detail-v2.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
