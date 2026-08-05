@@ -29,12 +29,12 @@ test('decimal values accept Argentine comma notation', () => {
   assert.match(source, /2\.499,50/);
 });
 
-test('closed edit fix loads after the main fuel CRUD and is cached in PWA v129', () => {
+test('closed edit fix loads after the main fuel CRUD and remains cached after later PWA revisions', () => {
   const mainIndex = flags.indexOf('/fleet-fuel-crud-v1.js');
   const fixIndex = flags.indexOf('/fleet-fuel-closed-edit-fix.js');
   assert.ok(mainIndex >= 0 && fixIndex > mainIndex);
   assert.match(flags, /fleet-fuel-closed-edit-fix\.css/);
-  assert.match(sw, /auxilios-v129/);
+  assert.match(sw, /auxilios-v(?:129|1[3-9]\d|[2-9]\d{2,})/);
   assert.match(sw, /'\/fleet-fuel-closed-edit-fix\.css'/);
   assert.match(sw, /'\/fleet-fuel-closed-edit-fix\.js'/);
   assert.match(pkg, /node --check fleet-fuel-closed-edit-fix\.js/);
