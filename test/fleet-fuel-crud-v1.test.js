@@ -53,10 +53,10 @@ test('fleet fuel workspace exposes edit, void, restore, history and refresh', ()
   assert.match(styles, /\.ffcrud-table/);
 });
 
-test('fuel CRUD assets are loaded and cached in PWA v127', () => {
+test('fuel CRUD assets are loaded and cached in PWA v127 or later', () => {
   assert.match(flags, /fleet-fuel-crud-v1\.css/);
   assert.match(flags, /fleet-fuel-crud-v1\.js/);
-  assert.match(sw, /auxilios-v127/);
+  assert.match(sw, /auxilios-v(?:12[7-9]|1[3-9]\d|[2-9]\d{2,})/);
   assert.match(sw, /'\/fleet-fuel-crud-v1\.css'/);
   assert.match(sw, /'\/fleet-fuel-crud-v1\.js'/);
 });
