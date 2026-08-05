@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v126'; // v126: detalle de Flota con Jornadas y uso
+const CACHE_NAME = 'auxilios-v127'; // v127: CRUD seguro de combustible en Flota
 
 const PRECACHE_ASSETS = [
   '/',
@@ -19,6 +19,8 @@ const PRECACHE_ASSETS = [
   '/frequent-navigation.js',
   '/fleet-admin-detail-v2.css',
   '/fleet-admin-detail-v2.js',
+  '/fleet-fuel-crud-v1.css',
+  '/fleet-fuel-crud-v1.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
