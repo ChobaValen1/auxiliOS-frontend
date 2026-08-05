@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v129'; // v129: validación visible para correcciones históricas de combustible
+const CACHE_NAME = 'auxilios-v130'; // v130: estado estable de modales CRUD de combustible
 
 const PRECACHE_ASSETS = [
   '/',
@@ -24,6 +24,7 @@ const PRECACHE_ASSETS = [
   '/fleet-fuel-closed-edit-fix.css',
   '/fleet-fuel-crud-v1.js',
   '/fleet-fuel-closed-edit-fix.js',
+  '/fleet-fuel-modal-state-fix.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
