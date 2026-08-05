@@ -99,7 +99,7 @@ test('la revisión continúa detrás de la beta privada y entra en CI y PWA', ()
   assert.match(flags, /operator-service-workspace-review-v3\.css/);
   assert.match(flags, /operator-service-workspace-review-v3\.js/);
   assert.match(pkg, /node --check operator-service-workspace-review-v3\.js/);
-  assert.match(sw, /auxilios-v123/);
+  assert.match(sw, /auxilios-v1(?:2[4-9]|[3-9]\d)/);
   assert.match(sw, /operator-service-workspace-review-v3\.css/);
   assert.match(sw, /operator-service-workspace-review-v3\.js/);
 });
