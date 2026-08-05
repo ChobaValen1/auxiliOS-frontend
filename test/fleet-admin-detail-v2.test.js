@@ -37,7 +37,7 @@ test('fleet detail assets load once and are included in the PWA cache', () => {
   assert.match(flags, /fleet-admin-detail-v2\.js/);
   assert.doesNotMatch(flags, /fleet-admin-detail-v2\.css/);
   assert.match(source, /fleet-admin-detail-v2\.css/);
-  assert.match(sw, /auxilios-v12[6-9]/);
+  assert.match(sw, /auxilios-v(?:12[6-9]|1[3-9]\d|[2-9]\d{2,})/);
   assert.match(sw, /'\/fleet-admin-detail-v2\.css'/);
   assert.match(sw, /'\/fleet-admin-detail-v2\.js'/);
 });
