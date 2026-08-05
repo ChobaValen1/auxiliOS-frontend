@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v123'; // v123: búsqueda de direcciones con debounce de 1.2 segundos
+const CACHE_NAME = 'auxilios-v124'; // v124: Peajes y Adicionales con alta y registro conjunto
 
 const PRECACHE_ASSETS = [
   '/',
