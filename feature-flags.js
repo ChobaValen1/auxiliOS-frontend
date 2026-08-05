@@ -50,9 +50,11 @@ async function activate(flags){
   await loadScript('auxilios-operator-service-workspace-review-v3','/operator-service-workspace-review-v3.js');
  }
 
- // Flota es un módulo estable por rol, no una beta individual. El propio
- // módulo limita su ejecución a Administración y Supervisión y carga su CSS.
+ // Flota es un módulo estable por rol, no una beta individual. Los propios
+ // módulos limitan su ejecución a Administración y Supervisión.
  await loadScript('auxilios-fleet-admin-detail-v2','/fleet-admin-detail-v2.js');
+ loadStyle('auxilios-fleet-fuel-crud-v1-css','/fleet-fuel-crud-v1.css');
+ await loadScript('auxilios-fleet-fuel-crud-v1','/fleet-fuel-crud-v1.js');
 }
 
 async function refresh(){
