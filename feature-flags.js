@@ -56,6 +56,8 @@ async function activate(flags){
  loadStyle('auxilios-fleet-fuel-crud-v1-css','/fleet-fuel-crud-v1.css');
  loadStyle('auxilios-fleet-fuel-crud-contrast-fix-css','/fleet-fuel-crud-contrast-fix.css');
  await loadScript('auxilios-fleet-fuel-crud-v1','/fleet-fuel-crud-v1.js');
+ loadStyle('auxilios-fleet-fuel-closed-edit-fix-css','/fleet-fuel-closed-edit-fix.css');
+ await loadScript('auxilios-fleet-fuel-closed-edit-fix','/fleet-fuel-closed-edit-fix.js');
 }
 
 async function refresh(){
