@@ -14,8 +14,8 @@ test('fuel payment dropdown has explicit visible colors', () => {
   assert.match(styles, /color:\s*#f5f7fb/);
 });
 
-test('fuel dropdown contrast fix is loaded and cached in PWA v128', () => {
+test('fuel dropdown contrast fix is loaded and cached in PWA v128 or later', () => {
   assert.match(flags, /fleet-fuel-crud-contrast-fix\.css/);
-  assert.match(sw, /auxilios-v128/);
+  assert.match(sw, /auxilios-v(?:12[8-9]|1[3-9]\d|[2-9]\d{2,})/);
   assert.match(sw, /'\/fleet-fuel-crud-contrast-fix\.css'/);
 });
