@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v130'; // v130: estado estable de modales CRUD de combustible
+const CACHE_NAME = 'auxilios-v131'; // v131: Mesa activa clean UI y estados rápidos
 
 const PRECACHE_ASSETS = [
   '/',
@@ -41,6 +41,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-edit.css',
   '/toll-management.css',
   '/operator-console-v2.css',
+  '/operator-active-desk-clean-v1.css',
   '/operator-service-workspace-v2.css',
   '/operator-service-workspace-review-v3.css',
   '/operator-services.js',
@@ -56,6 +57,7 @@ const PRECACHE_ASSETS = [
   '/toll-management.js',
   '/feature-flags.js',
   '/operator-console-v2.js',
+  '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-v2.js',
   '/operator-service-workspace-review-v3.js',
   '/supabase.js',
