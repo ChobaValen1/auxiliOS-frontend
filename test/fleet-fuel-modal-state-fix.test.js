@@ -23,12 +23,12 @@ test('edit, void and restore submissions use protected RPCs instead of silent cl
   assert.match(source, /showInlineError/);
 });
 
-test('fuel modal fix is loaded after the historical edit validator and included in CI and PWA v130', () => {
+test('fuel modal fix is loaded after the historical edit validator and included in later PWA revisions', () => {
   const validatorIndex = flags.indexOf('/fleet-fuel-closed-edit-fix.js');
   const stateFixIndex = flags.indexOf('/fleet-fuel-modal-state-fix.js');
   assert.ok(validatorIndex >= 0);
   assert.ok(stateFixIndex > validatorIndex);
   assert.match(pkg, /node --check fleet-fuel-modal-state-fix\.js/);
-  assert.match(sw, /auxilios-v130/);
+  assert.match(sw, /auxilios-v1(?:3\d|[4-9]\d)/);
   assert.match(sw, /'\/fleet-fuel-modal-state-fix\.js'/);
 });
