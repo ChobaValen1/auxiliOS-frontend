@@ -58,6 +58,7 @@ async function activate(flags){
  await loadScript('auxilios-fleet-fuel-crud-v1','/fleet-fuel-crud-v1.js');
  loadStyle('auxilios-fleet-fuel-closed-edit-fix-css','/fleet-fuel-closed-edit-fix.css');
  await loadScript('auxilios-fleet-fuel-closed-edit-fix','/fleet-fuel-closed-edit-fix.js');
+ await loadScript('auxilios-fleet-fuel-modal-state-fix','/fleet-fuel-modal-state-fix.js');
 }
 
 async function refresh(){
