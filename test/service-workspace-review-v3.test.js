@@ -79,8 +79,8 @@ test('seleccionar chofer o móvil completa la contraparte de una jornada abierta
   assert.match(review, /confirm\(/);
 });
 
-test('las direcciones consultan Maps luego de dos segundos sin escribir', () => {
-  assert.match(review, /const ADDRESS_DELAY_MS=2000/);
+test('las direcciones consultan Maps luego de 1.2 segundos sin escribir', () => {
+  assert.match(review, /const ADDRESS_DELAY_MS=1200/);
   assert.match(review, /query\.length<3/);
   assert.match(review, /setTimeout\(\(\)=>searchAddress\(kind,query,sequence\),ADDRESS_DELAY_MS\)/);
   assert.match(review, /functions\.invoke\('maps-proxy'/);
@@ -99,7 +99,7 @@ test('la revisión continúa detrás de la beta privada y entra en CI y PWA', ()
   assert.match(flags, /operator-service-workspace-review-v3\.css/);
   assert.match(flags, /operator-service-workspace-review-v3\.js/);
   assert.match(pkg, /node --check operator-service-workspace-review-v3\.js/);
-  assert.match(sw, /auxilios-v122/);
+  assert.match(sw, /auxilios-v123/);
   assert.match(sw, /operator-service-workspace-review-v3\.css/);
   assert.match(sw, /operator-service-workspace-review-v3\.js/);
 });

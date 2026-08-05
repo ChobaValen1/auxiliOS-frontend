@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v122'; // v122: alta limpia, recursos operativos y direcciones Maps
+const CACHE_NAME = 'auxilios-v123'; // v123: búsqueda de direcciones con debounce de 1.2 segundos
 
 const PRECACHE_ASSETS = [
   '/',
