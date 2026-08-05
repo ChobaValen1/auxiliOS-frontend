@@ -11,7 +11,7 @@ test('fuel modal keeps the selected record id before the CRUD opens its modal', 
   assert.match(source, /\[data-fuel-action\]\[data-fuel-id\]/);
   assert.match(source, /state\.fuelId = fuelId/);
   assert.match(source, /selectedFuelId\(form\)/);
-  assert.match(source, /Combustible #/);
+  assert.match(source, /label\.match\(\/#\(\\d\+\)\//);
 });
 
 test('edit, void and restore submissions use protected RPCs instead of silent closure state', () => {
