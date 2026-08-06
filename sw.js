@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v131'; // v131: Mesa activa clean UI y estados rápidos
+const CACHE_NAME = 'auxilios-v132'; // v132: identidad cromática AuxiliOS en Mesa activa
 
 const PRECACHE_ASSETS = [
   '/',
@@ -42,6 +42,7 @@ const PRECACHE_ASSETS = [
   '/toll-management.css',
   '/operator-console-v2.css',
   '/operator-active-desk-clean-v1.css',
+  '/operator-active-desk-auxilios-theme-v2.css',
   '/operator-service-workspace-v2.css',
   '/operator-service-workspace-review-v3.css',
   '/operator-services.js',
