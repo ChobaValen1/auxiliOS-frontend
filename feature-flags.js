@@ -34,6 +34,7 @@ async function activate(flags){
   loadStyle('auxilios-operator-console-v2-css','/operator-console-v2.css');
   await loadScript('auxilios-operator-console-v2','/operator-console-v2.js');
   loadStyle('auxilios-operator-active-desk-clean-v1-css','/operator-active-desk-clean-v1.css');
+  loadStyle('auxilios-operator-active-desk-auxilios-theme-v2-css','/operator-active-desk-auxilios-theme-v2.css');
   await loadScript('auxilios-operator-active-desk-clean-v1','/operator-active-desk-clean-v1.js');
  }
 
