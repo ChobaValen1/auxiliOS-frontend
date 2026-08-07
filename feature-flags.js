@@ -52,10 +52,12 @@ async function activate(flags){
   await loadScript('auxilios-operator-service-workspace-review-v3','/operator-service-workspace-review-v3.js');
  }
 
- // Bloque A conserva dirty state y unifica Crear / Ver / Editar. La hoja de
- // marca queda limitada a esos workspaces para no volver a pisar la Mesa Activa.
+ // Bloque A conserva dirty state y unifica Crear / Ver / Editar.
  if(flags.operator_console_v2||flags.service_editing_tolls_v1||flags.service_workspace_v2){
   loadStyle('auxilios-operator-services-brand-system-v1-css','/operator-services-brand-system-v1.css');
+  // Esta hoja es deliberadamente la última capa visual: replica Jornadas,
+  // hace la Mesa Activa desktop-first y restaura Nuevo Servicio a 3 columnas.
+  loadStyle('auxilios-operator-services-jornadas-desktop-v1-css','/operator-services-jornadas-desktop-v1.css');
   await loadScript('auxilios-operator-services-block-a-v1','/operator-services-block-a-v1.js');
   await loadScript('auxilios-operator-services-canonical-view-v1','/operator-services-canonical-view-v1.js');
  }

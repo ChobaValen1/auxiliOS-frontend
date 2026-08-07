@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v135'; // v135: Servicios tabla canónica + workspace full modal claro
+const CACHE_NAME = 'auxilios-v136'; // v136: Servicios 100% viewport + estética Jornadas + Nuevo Servicio 3 columnas
 
 const PRECACHE_ASSETS = [
   '/',
@@ -45,6 +45,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-workspace-v2.css',
   '/operator-service-workspace-review-v3.css',
   '/operator-services-brand-system-v1.css',
+  '/operator-services-jornadas-desktop-v1.css',
   '/operator-services.js',
   '/operator-reference-loader.js',
   '/operator-service-wizard.js',
