@@ -1,0 +1,409 @@
+/* AuxiliOS · Servicios · Sistema visual unificado · Bloque A */
+:root {
+  --svc-amber: var(--amber, #f5a623);
+  --svc-amber-soft: rgba(245,166,35,.12);
+  --svc-blue: var(--primary, #4f8ef7);
+  --svc-blue-soft: rgba(79,142,247,.12);
+  --svc-green: var(--green, #27c47a);
+  --svc-green-soft: rgba(39,196,122,.12);
+  --svc-red: var(--red, #e2504a);
+  --svc-red-soft: rgba(226,80,74,.12);
+  --svc-cyan: var(--cyan, #2ec4d6);
+  --svc-purple: var(--purple, #9b6dff);
+  --svc-bg: var(--bg, #0c0e12);
+  --svc-panel: var(--panel, #13161d);
+  --svc-surface: var(--card, #191d27);
+  --svc-surface-2: #151922;
+  --svc-border: var(--border, #252a38);
+  --svc-border-strong: var(--border2, #2e3446);
+  --svc-text: var(--text, #e8eaf2);
+  --svc-muted: var(--muted2, #8590ab);
+  --svc-radius: 12px;
+  --svc-shadow: 0 18px 50px rgba(0,0,0,.34);
+}
+
+/* El módulo Servicios usa una sola jerarquía cromática: ámbar = marca, azul = interacción. */
+#screen-operaciones,
+#modal-operador-servicio,
+#modal-operador-wizard,
+#ose-modal,
+#p3b-modal,
+#oad-modal,
+#oad-settings {
+  --amber: var(--svc-amber);
+  --blue: var(--svc-blue);
+  --green: var(--svc-green);
+  --red: var(--svc-red);
+  --cyan: var(--svc-cyan);
+  --purple: var(--svc-purple);
+}
+
+#screen-operaciones .os-head {
+  position: relative;
+  padding: 2px 0 18px;
+  border-bottom: 1px solid var(--svc-border);
+  margin-bottom: 18px;
+}
+#screen-operaciones .os-head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -10px;
+  width: 42px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--svc-amber);
+}
+#screen-operaciones .os-eyebrow,
+.svc-eyebrow {
+  color: var(--svc-amber) !important;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  font-size: 10px !important;
+  font-weight: 700;
+}
+#screen-operaciones .os-head h2 span { color: var(--svc-amber); }
+
+/* Workspace: Nuevo / Vista / Edición ocupan exactamente el mismo lienzo. */
+#modal-operador-servicio,
+#modal-operador-wizard,
+#ose-modal {
+  position: fixed !important;
+  inset: 56px 0 0 var(--nav-w, 72px) !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: rgba(8,10,14,.92) !important;
+  backdrop-filter: blur(8px);
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  overflow: hidden !important;
+  z-index: 520 !important;
+}
+#modal-operador-servicio .os-detail-shell,
+#modal-operador-wizard .os-wizard-shell,
+#ose-modal .ose-shell {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--svc-bg) !important;
+  color: var(--svc-text) !important;
+  box-shadow: none !important;
+  display: flex;
+  flex-direction: column;
+}
+#modal-operador-servicio .os-detail-body,
+#ose-modal .ose-body,
+#modal-operador-wizard .osv2-grid {
+  flex: 1;
+  min-height: 0;
+}
+#modal-operador-servicio .os-detail-body,
+#ose-modal .ose-body {
+  overflow: auto !important;
+  padding: 22px 26px 28px !important;
+}
+
+/* Cabecera fija y coherente en los tres modos. */
+.osv2-header,
+.ose-head,
+.os-detail-head {
+  min-height: 74px;
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  background: rgba(19,22,29,.97) !important;
+  border-bottom: 1px solid var(--svc-border) !important;
+  padding: 14px 24px !important;
+  box-shadow: 0 6px 22px rgba(0,0,0,.12);
+}
+.osv2-header::before,
+.ose-head::before,
+.os-detail-head::before,
+.p3b-modal-head::before,
+.oad-modal header::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 0;
+  width: 44px;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: var(--svc-amber);
+}
+.osv2-header h2,
+.ose-head h3,
+.os-detail-head h3 {
+  color: var(--svc-text) !important;
+  letter-spacing: -.01em;
+}
+.osv2-header > div > span,
+.ose-head > div > small,
+.os-detail-head .os-eyebrow {
+  color: var(--svc-amber) !important;
+}
+
+.svc-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  margin-bottom: 4px;
+  padding: 3px 8px;
+  border: 1px solid rgba(79,142,247,.26);
+  border-radius: 999px;
+  background: var(--svc-blue-soft);
+  color: #9ec3ff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.svc-mode-badge.new { border-color: rgba(245,166,35,.28); background: var(--svc-amber-soft); color: #ffd28a; }
+.svc-mode-badge.view { color: #9ec3ff; }
+.svc-mode-badge.edit { border-color: rgba(155,109,255,.3); background: rgba(155,109,255,.12); color: #c5a8ff; }
+
+/* Superficies y secciones */
+.os-panel,
+.ose-section,
+.osv2-column,
+.osv2-summary-card,
+.osv2-dynamic-panel,
+.p3b-action-modal,
+.oad-modal,
+.oad-settings {
+  background: var(--svc-panel) !important;
+  border-color: var(--svc-border) !important;
+}
+.os-panel,
+.ose-section,
+.osv2-summary-card,
+.osv2-dynamic-panel {
+  border-radius: var(--svc-radius) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+}
+.ose-section-title h4,
+.os-panel h4,
+.osv2-section-label b,
+.osv2-panel-head b { color: var(--svc-text) !important; }
+.ose-section-title p,
+.osv2-panel-head small,
+.osv2-empty span,
+.os-detail-meta,
+.os-panel small { color: var(--svc-muted) !important; }
+
+/* Inputs, selects y textareas: un solo componente visual. */
+#screen-operaciones input,
+#screen-operaciones select,
+#screen-operaciones textarea,
+#modal-operador-servicio input,
+#modal-operador-servicio select,
+#modal-operador-servicio textarea,
+#modal-operador-wizard input,
+#modal-operador-wizard select,
+#modal-operador-wizard textarea,
+#ose-modal input,
+#ose-modal select,
+#ose-modal textarea,
+#p3b-modal input,
+#p3b-modal select,
+#p3b-modal textarea,
+#oad-modal input,
+#oad-modal select,
+#oad-modal textarea {
+  background: #10131a !important;
+  color: var(--svc-text) !important;
+  border: 1px solid var(--svc-border-strong) !important;
+  border-radius: 8px !important;
+  outline: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+  color-scheme: dark;
+}
+#screen-operaciones input:focus,
+#screen-operaciones select:focus,
+#screen-operaciones textarea:focus,
+#modal-operador-servicio input:focus,
+#modal-operador-servicio select:focus,
+#modal-operador-servicio textarea:focus,
+#modal-operador-wizard input:focus,
+#modal-operador-wizard select:focus,
+#modal-operador-wizard textarea:focus,
+#ose-modal input:focus,
+#ose-modal select:focus,
+#ose-modal textarea:focus,
+#p3b-modal input:focus,
+#p3b-modal select:focus,
+#p3b-modal textarea:focus,
+#oad-modal input:focus,
+#oad-modal select:focus,
+#oad-modal textarea:focus {
+  border-color: var(--svc-blue) !important;
+  box-shadow: 0 0 0 3px rgba(79,142,247,.13) !important;
+}
+#modal-operador-wizard input:disabled,
+#modal-operador-wizard select:disabled,
+#ose-modal input:disabled,
+#ose-modal select:disabled {
+  opacity: .58;
+  background: #0d1016 !important;
+}
+
+/* Botones */
+#screen-operaciones .btn-primary,
+#modal-operador-servicio .btn-primary,
+#modal-operador-wizard button.primary,
+#ose-modal .btn-primary,
+#p3b-modal button[type='submit']:not(.danger),
+#oad-modal button.primary {
+  background: var(--svc-blue) !important;
+  border-color: var(--svc-blue) !important;
+  color: #fff !important;
+}
+#screen-operaciones .btn-primary:hover,
+#modal-operador-servicio .btn-primary:hover,
+#modal-operador-wizard button.primary:hover,
+#ose-modal .btn-primary:hover,
+#oad-modal button.primary:hover { filter: brightness(1.06); }
+#modal-operador-wizard button.secondary,
+#ose-modal .btn-ghost,
+#modal-operador-servicio .btn-ghost,
+#oad-modal footer button:not(.primary):not(.success):not(.danger) {
+  background: transparent !important;
+  border: 1px solid var(--svc-border-strong) !important;
+  color: var(--svc-muted) !important;
+}
+#oad-modal button.success,
+#modal-operador-wizard .assigned { background: var(--svc-green) !important; color: #07120c !important; }
+#oad-modal button.danger,
+#p3b-modal button.danger { background: var(--svc-red) !important; color: #fff !important; }
+
+/* Estados y avisos */
+.ose-notice.warning,
+.oad-warning-box { background: var(--svc-amber-soft) !important; border-color: rgba(245,166,35,.30) !important; }
+.ose-notice.danger,
+.osv2-global-error,
+.oad-modal-error,
+.oad-inline-error { background: var(--svc-red-soft) !important; border-color: rgba(226,80,74,.32) !important; }
+.osv2-validation-summary.ready { color: var(--svc-green) !important; }
+.osv2-validation-summary.pending { color: var(--svc-amber) !important; }
+.osv2-validation-summary.invalid { color: var(--svc-red) !important; }
+
+/* Footer fijo del workspace */
+.osv2-footer,
+.ose-footer,
+.os-actions {
+  flex: 0 0 auto;
+  background: rgba(19,22,29,.98) !important;
+  border-top: 1px solid var(--svc-border) !important;
+  box-shadow: 0 -10px 28px rgba(0,0,0,.13);
+}
+.ose-footer { position: sticky; bottom: 0; z-index: 8; }
+
+/* Estado de guardado / dirty state */
+.svc-save-state,
+#ose-save-state,
+.osv2-save-state {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(133,144,171,.08);
+  border: 1px solid var(--svc-border);
+  color: var(--svc-muted) !important;
+  font-size: 10px !important;
+  font-weight: 700;
+}
+.svc-save-state::before,
+#ose-save-state::before,
+.osv2-save-state::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--svc-green);
+}
+.svc-save-state.dirty,
+#ose-save-state.dirty,
+.osv2-save-state.dirty {
+  color: #ffd28a !important;
+  background: var(--svc-amber-soft);
+  border-color: rgba(245,166,35,.28);
+}
+.svc-save-state.dirty::before,
+#ose-save-state.dirty::before,
+.osv2-save-state.dirty::before { background: var(--svc-amber); }
+.svc-save-state.saving,
+#ose-save-state.saving,
+.osv2-save-state.saving {
+  color: #9ec3ff !important;
+  background: var(--svc-blue-soft);
+  border-color: rgba(79,142,247,.28);
+}
+.svc-save-state.saving::before,
+#ose-save-state.saving::before,
+.osv2-save-state.saving::before { background: var(--svc-blue); }
+
+/* Confirmación de salida con cambios pendientes */
+#svc-unsaved-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5,7,10,.72);
+  backdrop-filter: blur(8px);
+}
+#svc-unsaved-dialog[hidden] { display: none !important; }
+.svc-unsaved-card {
+  width: min(440px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--svc-border-strong);
+  border-radius: 14px;
+  background: var(--svc-panel);
+  box-shadow: var(--svc-shadow);
+}
+.svc-unsaved-card::before {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 3px;
+  margin-left: 22px;
+  background: var(--svc-amber);
+}
+.svc-unsaved-card .body { padding: 20px 22px 18px; }
+.svc-unsaved-card small { color: var(--svc-amber); text-transform: uppercase; letter-spacing: .1em; font-weight: 800; }
+.svc-unsaved-card h3 { margin: 5px 0 7px; color: var(--svc-text); font-size: 18px; }
+.svc-unsaved-card p { color: var(--svc-muted); font-size: 12px; line-height: 1.55; }
+.svc-unsaved-card footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--svc-border); background: #10131a; }
+.svc-unsaved-card button { min-height: 36px; padding: 0 14px; border-radius: 8px; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.svc-unsaved-card button[data-svc-stay] { border: 1px solid var(--svc-border-strong); background: transparent; color: var(--svc-muted); }
+.svc-unsaved-card button[data-svc-leave] { border: 1px solid var(--svc-red); background: var(--svc-red); color: white; }
+
+/* Lifecycle / modales legacy quedan visualmente absorbidos por Servicios. */
+#p3b-modal .p3b-action-modal {
+  border-radius: 14px !important;
+  border: 1px solid var(--svc-border-strong) !important;
+  box-shadow: var(--svc-shadow) !important;
+}
+.p3b-modal-head { position: relative; background: var(--svc-panel) !important; border-color: var(--svc-border) !important; }
+.p3b-modal-footer { background: #10131a !important; border-color: var(--svc-border) !important; }
+
+@media (max-width: 900px) {
+  #modal-operador-servicio,
+  #modal-operador-wizard,
+  #ose-modal { inset: 0 !important; }
+  .osv2-header,
+  .ose-head,
+  .os-detail-head { padding: 12px 14px !important; }
+  #modal-operador-servicio .os-detail-body,
+  #ose-modal .ose-body { padding: 14px !important; }
+}
