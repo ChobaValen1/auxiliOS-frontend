@@ -35,13 +35,15 @@ test('el ámbar identifica la marca sin reemplazar al azul de interacción', () 
   assert.match(theme, /\.oad-row-button\.primary[\s\S]*--oad-brand-blue-deep/i);
 });
 
-test('el tema se carga después de la clean UI y está precacheado en PWA v132', () => {
+test('el tema se carga después de la clean UI y está precacheado en PWA v132 o posterior', () => {
   const baseTheme = flags.indexOf('/operator-active-desk-clean-v1.css');
   const auxiliOSTheme = flags.indexOf('/operator-active-desk-auxilios-theme-v2.css');
   const activeDeskScript = flags.indexOf('/operator-active-desk-clean-v1.js');
   assert.ok(baseTheme >= 0);
   assert.ok(auxiliOSTheme > baseTheme);
   assert.ok(activeDeskScript > auxiliOSTheme);
-  assert.match(sw, /auxilios-v132/);
+  const match = sw.match(/auxilios-v(\d+)/);
+  assert.ok(match);
+  assert.ok(Number(match[1]) >= 132);
   assert.match(sw, /'\/operator-active-desk-auxilios-theme-v2\.css'/);
 });
