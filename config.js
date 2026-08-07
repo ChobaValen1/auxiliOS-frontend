@@ -45,13 +45,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
     await loadAuxiliosModule('auxilios-phase3-journey-start-guard', '/phase3-journey-start-guard.js');
-    await loadAuxiliosModule('auxilios-phase3b-service-creation', '/operator-service-creation-redesign.js');
+    // El alta legacy Fase 3B fue retirada. Nuevo Servicio tiene un único renderer:
+    // Workspace V2 de tres columnas 33/33/33.
     await loadAuxiliosModule('auxilios-phase3b-modal-visibility-guard', '/phase3b-modal-visibility-guard.js');
     await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
     await loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js');
     await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
-    // Canonical owner de Nuevo Servicio. Se carga desde config (network-first)
-    // para que una caché PWA anterior no pueda dejar activo el renderer legacy.
     await loadAuxiliosModule('auxilios-service-workspace-canonical-v4', '/operator-service-workspace-canonical-v4.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales y operativos:', error);
