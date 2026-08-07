@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v132'; // v132: identidad cromática AuxiliOS en Mesa activa
+const CACHE_NAME = 'auxilios-v133'; // v133: rendiciones sincronizadas por jornada (log_id)
 
 const PRECACHE_ASSETS = [
   '/',
@@ -56,6 +56,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-lifecycle.js',
   '/operator-service-edit.js',
   '/toll-management.js',
+  '/rendition-journey-source-v1.js',
   '/feature-flags.js',
   '/operator-console-v2.js',
   '/operator-active-desk-clean-v1.js',
