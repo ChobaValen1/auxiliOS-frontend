@@ -51,7 +51,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
     await loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js');
     await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
-    await loadAuxiliosModule('auxilios-service-workspace-canonical-v4', '/operator-service-workspace-canonical-v4.js');
+    // Estabilidad: evita observers globales recursivos de Servicios.
+    await loadAuxiliosModule('auxilios-operator-services-stability-v1', '/operator-services-stability-v1.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales y operativos:', error);
   }

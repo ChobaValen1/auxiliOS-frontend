@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v138'; // v138: un único Nuevo Servicio canónico de 3 columnas
+const CACHE_NAME = 'auxilios-v139'; // v139: estabilidad Servicios sin observers globales recursivos
 
 const PRECACHE_ASSETS = [
   '/',
@@ -60,7 +60,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-v2.js',
   '/operator-service-workspace-review-v3.js',
-  '/operator-service-workspace-canonical-v4.js',
+  '/operator-services-stability-v1.js',
   '/operator-services-block-a-v1.js',
   '/operator-services-canonical-view-v1.js',
   '/supabase.js',

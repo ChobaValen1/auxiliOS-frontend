@@ -17,11 +17,12 @@ test('Nuevo Servicio tiene un único renderer canónico', () => {
 
 test('el único formato de Nuevo Servicio es 3 columnas iguales', () => {
   assert.match(workspace, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(config, /operator-service-workspace-canonical-v4\.js/);
+  assert.doesNotMatch(config, /operator-service-workspace-canonical-v4\.js/);
+  assert.match(config, /operator-services-stability-v1\.js/);
 });
 
-test('la PWA invalida cualquier copia anterior del alta legacy', () => {
+test('la PWA invalida cualquier copia anterior del alta legacy y del loop DOM', () => {
   const match = sw.match(/auxilios-v(\d+)/);
   assert.ok(match);
-  assert.ok(Number(match[1]) >= 138);
+  assert.ok(Number(match[1]) >= 139);
 });
