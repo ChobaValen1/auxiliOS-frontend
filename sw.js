@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v133'; // v133: rendiciones sincronizadas por jornada (log_id)
+const CACHE_NAME = 'auxilios-v134'; // v134: Servicios Bloque A · branding, workspace y dirty guard
 
 const PRECACHE_ASSETS = [
   '/',
@@ -45,6 +45,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-auxilios-theme-v2.css',
   '/operator-service-workspace-v2.css',
   '/operator-service-workspace-review-v3.css',
+  '/operator-services-brand-system-v1.css',
   '/operator-services.js',
   '/operator-reference-loader.js',
   '/operator-service-wizard.js',
@@ -62,6 +63,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-v2.js',
   '/operator-service-workspace-review-v3.js',
+  '/operator-services-block-a-v1.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',
