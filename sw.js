@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v134'; // v134: Servicios Bloque A · branding, workspace y dirty guard
+const CACHE_NAME = 'auxilios-v135'; // v135: Servicios tabla canónica + workspace full modal claro
 
 const PRECACHE_ASSETS = [
   '/',
@@ -40,7 +40,6 @@ const PRECACHE_ASSETS = [
   '/operator-service-lifecycle.css',
   '/operator-service-edit.css',
   '/toll-management.css',
-  '/operator-console-v2.css',
   '/operator-active-desk-clean-v1.css',
   '/operator-active-desk-auxilios-theme-v2.css',
   '/operator-service-workspace-v2.css',
@@ -59,11 +58,11 @@ const PRECACHE_ASSETS = [
   '/toll-management.js',
   '/rendition-journey-source-v1.js',
   '/feature-flags.js',
-  '/operator-console-v2.js',
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-v2.js',
   '/operator-service-workspace-review-v3.js',
   '/operator-services-block-a-v1.js',
+  '/operator-services-canonical-view-v1.js',
   '/supabase.js',
   '/offline.js',
   '/manifest.json',

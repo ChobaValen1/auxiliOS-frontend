@@ -69,13 +69,19 @@ test('las transiciones rápidas preservan jornada, viaje, remito e historial', (
   assert.match(migration, /grant execute on function public\.transition_operator_service_from_desk/i);
 });
 
-test('el módulo se carga después de la consola beta y forma parte de CI y PWA', () => {
-  const oldConsole = flags.indexOf('/operator-console-v2.js');
-  const activeDesk = flags.indexOf('/operator-active-desk-clean-v1.js');
-  assert.ok(oldConsole >= 0 && activeDesk > oldConsole);
+test('la Mesa activa es la única vista cargada y forma parte de CI y PWA', () => {
+  assert.doesNotMatch(flags, /loadScript\([^\n]*operator-console-v2/);
+  assert.doesNotMatch(flags, /loadStyle\([^\n]*operator-console-v2/);
   assert.match(flags, /operator-active-desk-clean-v1\.css/);
+  assert.match(flags, /operator-active-desk-clean-v1\.js/);
+  assert.match(flags, /operator-services-canonical-view-v1\.js/);
   assert.match(pkg, /node --check operator-active-desk-clean-v1\.js/);
-  assert.match(sw, /auxilios-v13[1-9]|auxilios-v1[4-9]\d/);
+  assert.match(pkg, /node --check operator-services-canonical-view-v1\.js/);
+  assert.doesNotMatch(sw, /'\/operator-console-v2\.(?:css|js)'/);
   assert.match(sw, /'\/operator-active-desk-clean-v1\.css'/);
   assert.match(sw, /'\/operator-active-desk-clean-v1\.js'/);
+  assert.match(sw, /'\/operator-services-canonical-view-v1\.js'/);
+  const match = sw.match(/auxilios-v(\d+)/);
+  assert.ok(match);
+  assert.ok(Number(match[1]) >= 135);
 });
