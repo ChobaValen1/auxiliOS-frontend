@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v137'; // v137: Nuevo Servicio con Workspace V2 como único owner del layout
+const CACHE_NAME = 'auxilios-v138'; // v138: un único Nuevo Servicio canónico de 3 columnas
 
 const PRECACHE_ASSETS = [
   '/',
@@ -36,7 +36,6 @@ const PRECACHE_ASSETS = [
   '/operator-service-desktop.css',
   '/operator-service-v2.css',
   '/operator-service-bridge.css',
-  '/operator-service-creation-redesign.css',
   '/operator-service-lifecycle.css',
   '/operator-service-edit.css',
   '/toll-management.css',
@@ -52,7 +51,6 @@ const PRECACHE_ASSETS = [
   '/operator-service-v2.js',
   '/operator-service-bridge.js',
   '/phase3-journey-start-guard.js',
-  '/operator-service-creation-redesign.js',
   '/phase3b-modal-visibility-guard.js',
   '/operator-service-lifecycle.js',
   '/operator-service-edit.js',

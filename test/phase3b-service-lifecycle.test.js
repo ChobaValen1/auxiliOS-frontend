@@ -28,23 +28,16 @@ test('fase 3B conserva asignaciones y registra cierres operativos estructurados'
   assert.match(sql, /operator_services_company_order_unique_idx/i);
 });
 
-test('la nueva alta preserva cotización y creación existentes con una UI operativa completa', () => {
-  const js = read('operator-service-creation-redesign.js');
-  const css = read('operator-service-creation-redesign.css');
+test('Nuevo Servicio ya no depende del renderer visual de fase 3B', () => {
+  const config = read('config.js');
+  const sw = read('sw.js');
+  const workspace = read('operator-service-workspace-v2.css');
 
-  assert.match(js, /window\.OperatorServices/);
-  assert.match(js, /original\.create/);
-  assert.match(js, /original\.quote/);
-  assert.match(js, /Crear sin asignar/);
-  assert.match(js, /Crear y asignar/);
-  assert.match(js, /Código AuxiliOS/);
-  assert.match(js, /Entorno de prueba/);
-  assert.match(js, /KM asfalto/);
-  assert.match(js, /KM ripio/);
-  assert.doesNotMatch(js, /Arribo real|Fin real|Demora real/);
-  assert.match(css, /grid-template-columns/);
-  assert.match(css, /position:\s*sticky/i);
-  assert.match(css, /@media/);
+  assert.equal(fs.existsSync(path.join(root, 'operator-service-creation-redesign.js')), false);
+  assert.equal(fs.existsSync(path.join(root, 'operator-service-creation-redesign.css')), false);
+  assert.doesNotMatch(config, /operator-service-creation-redesign/);
+  assert.doesNotMatch(sw, /operator-service-creation-redesign/);
+  assert.match(workspace, /grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
 });
 
 test('el chofer describe lo ocurrido y el sistema resuelve la clasificación administrativa', () => {
@@ -79,21 +72,21 @@ test('los recursos QA quedan marcados y el tarifario se publica después de carg
   assert.match(tariff, /set status = 'active'/i);
 });
 
-test('fase 3B se carga en el arranque, CI y caché PWA', () => {
+test('fase 3B conserva solo lifecycle operativo, no una segunda alta de servicio', () => {
   const config = read('config.js');
   const pkg = read('package.json');
   const sw = read('sw.js');
   const guard = read('phase3b-modal-visibility-guard.js');
 
-  assert.match(config, /operator-service-creation-redesign\.js/);
   assert.match(config, /phase3b-modal-visibility-guard\.js/);
   assert.match(config, /operator-service-lifecycle\.js/);
-  assert.match(pkg, /node --check operator-service-creation-redesign\.js/);
+  assert.doesNotMatch(config, /operator-service-creation-redesign\.js/);
   assert.match(pkg, /node --check operator-service-lifecycle\.js/);
+  assert.doesNotMatch(pkg, /operator-service-creation-redesign\.js/);
   assert.match(sw, /auxilios-v1\d{2,}/);
   assert.match(sw, /phase3b-modal-visibility-guard\.js/);
-  assert.match(sw, /operator-service-creation-redesign\.css/);
   assert.match(sw, /operator-service-lifecycle\.css/);
+  assert.doesNotMatch(sw, /operator-service-creation-redesign/);
   assert.match(guard, /p3b-modal-backdrop\[hidden\]/);
   assert.match(guard, /display:\s*none\s*!important/);
 });
