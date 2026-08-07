@@ -22,7 +22,7 @@ test('el layout canónico se fuerza en 3 columnas 33-33-33', () => {
   assert.match(js, /grid-template-columns','repeat\(3, minmax\(0, 1fr\)\)'/);
   assert.match(js, /grid-template-rows','54px minmax\(0, 1fr\) 62px'/);
   assert.match(js, /setProperty\('display','grid','important'\)/);
-  assert.match(js, /data\.canonicalGrid='three-columns'/);
+  assert.match(js, /grid\.dataset\.canonicalGrid='three-columns'/);
   assert.match(js, /columns\.length===3/);
 });
 
