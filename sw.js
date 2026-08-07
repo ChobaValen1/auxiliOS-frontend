@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v136'; // v136: Servicios 100% viewport + estética Jornadas + Nuevo Servicio 3 columnas
+const CACHE_NAME = 'auxilios-v137'; // v137: Nuevo Servicio con Workspace V2 como único owner del layout
 
 const PRECACHE_ASSETS = [
   '/',
@@ -62,6 +62,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-v2.js',
   '/operator-service-workspace-review-v3.js',
+  '/operator-service-workspace-canonical-v4.js',
   '/operator-services-block-a-v1.js',
   '/operator-services-canonical-view-v1.js',
   '/supabase.js',
