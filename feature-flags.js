@@ -7,8 +7,7 @@ const db=()=>typeof _db!=='undefined'?_db:null;
 
 function loadStyle(id,href){
  if(document.getElementById(id))return;
- const link=document.createElement('link');
- link.id=id;link.rel='stylesheet';link.href=href;
+ const link=document.createElement('link');link.id=id;link.rel='stylesheet';link.href=href;
  document.head.appendChild(link);
 }
 
@@ -30,9 +29,9 @@ function loadScript(id,src){
 }
 
 async function activate(flags){
+ // Mesa Activa canónica: una única tabla productiva. La consola V2 alternativa
+ // dejó de formar parte del runtime; el flag conserva el rollout privado actual.
  if(flags.operator_console_v2){
-  loadStyle('auxilios-operator-console-v2-css','/operator-console-v2.css');
-  await loadScript('auxilios-operator-console-v2','/operator-console-v2.js');
   loadStyle('auxilios-operator-active-desk-clean-v1-css','/operator-active-desk-clean-v1.css');
   loadStyle('auxilios-operator-active-desk-auxilios-theme-v2-css','/operator-active-desk-auxilios-theme-v2.css');
   await loadScript('auxilios-operator-active-desk-clean-v1','/operator-active-desk-clean-v1.js');
@@ -53,11 +52,12 @@ async function activate(flags){
   await loadScript('auxilios-operator-service-workspace-review-v3','/operator-service-workspace-review-v3.js');
  }
 
- // Bloque A: una única identidad y comportamiento de workspace para Servicios.
- // Se carga al final para absorber visualmente las capas legacy sin alterar sus RPC.
+ // Bloque A conserva dirty state y unifica Crear / Ver / Editar. La hoja de
+ // marca queda limitada a esos workspaces para no volver a pisar la Mesa Activa.
  if(flags.operator_console_v2||flags.service_editing_tolls_v1||flags.service_workspace_v2){
   loadStyle('auxilios-operator-services-brand-system-v1-css','/operator-services-brand-system-v1.css');
   await loadScript('auxilios-operator-services-block-a-v1','/operator-services-block-a-v1.js');
+  await loadScript('auxilios-operator-services-canonical-view-v1','/operator-services-canonical-view-v1.js');
  }
 
  // Flota es un módulo estable por rol, no una beta individual. Los propios
