@@ -53,6 +53,13 @@ async function activate(flags){
   await loadScript('auxilios-operator-service-workspace-review-v3','/operator-service-workspace-review-v3.js');
  }
 
+ // Bloque A: una única identidad y comportamiento de workspace para Servicios.
+ // Se carga al final para absorber visualmente las capas legacy sin alterar sus RPC.
+ if(flags.operator_console_v2||flags.service_editing_tolls_v1||flags.service_workspace_v2){
+  loadStyle('auxilios-operator-services-brand-system-v1-css','/operator-services-brand-system-v1.css');
+  await loadScript('auxilios-operator-services-block-a-v1','/operator-services-block-a-v1.js');
+ }
+
  // Flota es un módulo estable por rol, no una beta individual. Los propios
  // módulos limitan su ejecución a Administración y Supervisión.
  await loadScript('auxilios-fleet-admin-detail-v2','/fleet-admin-detail-v2.js');
