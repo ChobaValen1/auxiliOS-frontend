@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v144'; // v144: edición/anulación de Jornadas + navegación vinculada
+const CACHE_NAME = 'auxilios-v145'; // v145: Jornadas canónicas + impacto contable + historial/restauración
 
 const PRECACHE_ASSETS = [
   '/',

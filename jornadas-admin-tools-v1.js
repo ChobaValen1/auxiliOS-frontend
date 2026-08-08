@@ -1,294 +1,153 @@
-/* AuxiliOS · Jornadas Admin · correcciones + navegación vinculada v1 */
+/* AuxiliOS · Jornadas Admin · correcciones, impacto y navegación canónica v2 */
 (() => {
   'use strict';
 
-  const state = { current: null, installed: false, originalRender: null };
+  const state = { current: null, installed: false, originalRender: null, payrollWrapped: false };
   const $ = id => document.getElementById(id);
   const db = () => typeof _db === 'undefined' ? null : _db;
   const role = () => String(typeof PERFIL_USUARIO === 'undefined' ? '' : (PERFIL_USUARIO?.roles?.name || PERFIL_USUARIO?.role || '')).toLowerCase();
   const isAdmin = () => role() === 'administracion';
   const allowed = () => ['administracion', 'supervision'].includes(role());
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const fmtMoney = value => Number(value || 0).toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 });
-  const fmtDate = value => {
-    if (!value) return '—';
-    const raw = String(value).slice(0,10); const [y,m,d] = raw.split('-');
-    return y && m && d ? `${d}/${m}/${y}` : raw;
-  };
+  const fmtDate = value => { if (!value) return '—'; const raw=String(value).slice(0,10); const [y,m,d]=raw.split('-'); return y&&m&&d?`${d}/${m}/${y}`:raw; };
   const fmtTime = value => value ? String(value).slice(0,5) : '—';
-  const notify = (message, type='success') => typeof toast === 'function' ? toast(message, type) : console[type === 'error' ? 'error' : 'log'](message);
+  const fmtMoney = value => Number(value || 0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
+  const notify = (message,type='success') => typeof toast==='function' ? toast(message,type) : console[type==='error'?'error':'log'](message);
   const errorText = error => error?.message || error?.details || 'No se pudo completar la operación';
 
-  function closeToolModal() { $('jat-modal-root')?.remove(); }
-
-  function mountModal({ eyebrow='', title='', body='', footer='', wide=false }) {
+  function closeToolModal(){ $('jat-modal-root')?.remove(); }
+  function mountModal({eyebrow='',title='',body='',footer='',wide=false}){
     closeToolModal();
-    const root = document.createElement('div');
-    root.id = 'jat-modal-root';
-    root.className = 'jat-backdrop';
-    root.innerHTML = `
-      <section class="jat-modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true">
-        <header class="jat-head"><div><small>${esc(eyebrow)}</small><h3>${esc(title)}</h3></div><button class="jat-close" type="button" data-jat-close aria-label="Cerrar">×</button></header>
-        <div class="jat-body">${body}</div>
-        ${footer ? `<footer class="jat-footer">${footer}</footer>` : ''}
-      </section>`;
-    root.addEventListener('click', event => {
-      if (event.target === root || event.target.closest('[data-jat-close]')) closeToolModal();
+    const root=document.createElement('div'); root.id='jat-modal-root'; root.className='jat-backdrop';
+    root.innerHTML=`<section class="jat-modal ${wide?'wide':''}" role="dialog" aria-modal="true"><header class="jat-head"><div><small>${esc(eyebrow)}</small><h3>${esc(title)}</h3></div><button class="jat-close" type="button" data-jat-close aria-label="Cerrar">×</button></header><div class="jat-body">${body}</div>${footer?`<footer class="jat-footer">${footer}</footer>`:''}</section>`;
+    root.addEventListener('click',e=>{if(e.target===root||e.target.closest('[data-jat-close]'))closeToolModal();});
+    document.body.appendChild(root); setTimeout(()=>root.querySelector('input,textarea,select,button')?.focus(),0); return root;
+  }
+  function currentLog(){ return state.current?.log || null; }
+
+  async function refreshCurrent(logId){
+    try{ if(typeof window._jadminReload==='function') await window._jadminReload(); }catch(_){}
+    if(!logId||typeof window.cargarDetalleJornadaAdmin!=='function')return;
+    const det=await window.cargarDetalleJornadaAdmin(logId); if(det&&typeof window._jadminRenderDetalle==='function')window._jadminRenderDetalle(det);
+  }
+
+  async function impactFor(logId){
+    const {data,error}=await db().rpc('get_daily_log_admin_impact',{p_log_id:logId});
+    if(error) throw error; return data||{};
+  }
+  function impactCopy(impact){
+    const liq=impact?.liquidacion;
+    if(!liq) return 'No existe una liquidación generada para este período. La corrección actualizará la fuente de datos.';
+    if(liq.estado==='pendiente') return 'Impacto: si cambiás kilometraje, la liquidación pendiente se recalculará automáticamente con el nuevo valor.';
+    if(liq.estado==='aprobada') return 'Impacto: la liquidación ya está aprobada. No se sobrescribirá; quedará marcada como Requiere revisión y AuxiliOS calculará la diferencia.';
+    if(liq.estado==='pagada') return 'Impacto: la liquidación ya está pagada. El pago histórico no se modifica; AuxiliOS registrará la diferencia como ajuste pendiente.';
+    return 'AuxiliOS recalculará los derivados afectados por esta corrección.';
+  }
+
+  function editModal(){
+    if(!isAdmin())return; const log=currentLog(); if(!log)return;
+    const root=mountModal({eyebrow:`Jornada #${log.log_id}`,title:'Corregir jornada',wide:true,
+      body:`<div class="jat-warning">Toda corrección queda registrada en auditoría. El motivo es obligatorio.</div><div id="jat-impact-preview" class="jat-warning">Analizando impacto contable…</div><form id="jat-edit-form"><div class="jat-grid"><label class="jat-field"><span>KM inicial</span><input name="km_inicio" type="number" min="0" step="1" required value="${esc(log.km_inicio??'')}"></label><label class="jat-field"><span>KM final</span><input name="km_final" type="number" min="0" step="1" value="${esc(log.km_final??'')}" ${log.status==='closed'?'required':''}></label><label class="jat-field"><span>Hora inicio</span><input name="hora_inicio" type="time" value="${esc(fmtTime(log.hora_inicio)==='—'?'':fmtTime(log.hora_inicio))}"></label><label class="jat-field"><span>Hora fin</span><input name="hora_fin" type="time" value="${esc(fmtTime(log.hora_fin)==='—'?'':fmtTime(log.hora_fin))}" ${log.status==='closed'?'required':''}></label><label class="jat-check jat-span-2"><input name="km_excepcion" type="checkbox" ${log.km_excepcion?'checked':''}><span>Permitir excepción de kilometraje solo si el KM final legítimamente queda por debajo del inicial.</span></label><label class="jat-check jat-span-2"><input name="in_workshop" type="checkbox" ${log.in_workshop?'checked':''}><span>La unidad ingresó a taller durante esta jornada.</span></label><label class="jat-field jat-span-2"><span>Detalle de taller</span><textarea name="workshop_detail">${esc(log.workshop_detail||'')}</textarea></label><label class="jat-field jat-span-2"><span>Notas de jornada</span><textarea name="notas">${esc(log.notas||'')}</textarea></label><label class="jat-field jat-span-2"><span>Motivo de la corrección *</span><textarea name="reason" minlength="5" required placeholder="Ej.: el odómetro correcto era 125.040 km"></textarea></label></div><div id="jat-edit-error" class="jat-error"></div></form>`,
+      footer:`<button class="btn btn-ghost" type="button" data-jat-close>Cancelar</button><button class="btn btn-primary" type="submit" form="jat-edit-form">Guardar corrección</button>`});
+    impactFor(log.log_id).then(i=>{root._impact=i;const el=root.querySelector('#jat-impact-preview');if(el)el.textContent=impactCopy(i);}).catch(()=>{const el=root.querySelector('#jat-impact-preview');if(el)el.textContent='No se pudo anticipar el impacto; la corrección seguirá auditada.';});
+    const form=root.querySelector('#jat-edit-form');
+    form.addEventListener('submit',async e=>{
+      e.preventDefault(); const err=root.querySelector('#jat-edit-error'); err.style.display='none'; const submit=root.querySelector('[type="submit"]'); const fd=new FormData(form);
+      const patch={km_inicio:fd.get('km_inicio'),km_final:fd.get('km_final'),hora_inicio:fd.get('hora_inicio'),hora_fin:fd.get('hora_fin'),km_excepcion:form.elements.km_excepcion.checked,in_workshop:form.elements.in_workshop.checked,workshop_detail:fd.get('workshop_detail'),notas:fd.get('notas')};
+      const reason=String(fd.get('reason')||'').trim(); if(reason.length<5){err.textContent='Indicá un motivo de al menos 5 caracteres.';err.style.display='block';return;}
+      const kmChanged=Number(patch.km_inicio)!==Number(log.km_inicio)||Number(patch.km_final)!==Number(log.km_final);
+      const status=root._impact?.liquidacion?.estado;
+      if(kmChanged&&['aprobada','pagada'].includes(status)&&!window.confirm(impactCopy(root._impact)+'\n\n¿Confirmás la corrección?'))return;
+      submit.disabled=true;submit.textContent='Guardando…';
+      try{const {error}=await db().rpc('update_daily_log_admin',{p_log_id:log.log_id,p_patch:patch,p_reason:reason});if(error)throw error;closeToolModal();notify('Jornada corregida y derivados sincronizados');await refreshCurrent(log.log_id);setTimeout(surfacePayrollReviews,0);}catch(error){err.textContent=errorText(error);err.style.display='block';submit.disabled=false;submit.textContent='Guardar corrección';}
     });
-    document.body.appendChild(root);
-    setTimeout(() => root.querySelector('input,textarea,select,button')?.focus(), 0);
-    return root;
   }
 
-  function record(label, value, full=false) {
-    return `<div class="jat-record ${full ? 'full' : ''}"><small>${esc(label)}</small><b>${value == null || value === '' ? '—' : value}</b></div>`;
+  function voidModal(){
+    if(!isAdmin())return; const det=state.current,log=det?.log;if(!log)return;
+    const linkedText=[['remitos',det.trips?.length||0],['combustible',det.fuel_records?.length||0],['rendición',det.rendicion?1:0],['checklist',det.tire_check?1:0],['incidentes',det.incidents?.length||0]].filter(([,n])=>n>0).map(([k,n])=>`${n} ${k}`).join(' · ')||'Sin registros vinculados';
+    const root=mountModal({eyebrow:`Jornada #${log.log_id}`,title:'Anular jornada',body:`<div class="jat-warning jat-danger-warning"><b>La jornada se anulará, no se borrará físicamente.</b><br>Se preservan remitos, combustible, rendición, checklist, auditoría y trazabilidad.</div><div class="jat-warning">Registros vinculados: ${esc(linkedText)}</div><form id="jat-void-form"><label class="jat-field"><span>Motivo de anulación *</span><textarea name="reason" minlength="5" required placeholder="Ej.: jornada duplicada creada por error"></textarea></label><div id="jat-void-error" class="jat-error"></div></form>`,footer:`<button class="btn btn-ghost" data-jat-close>Cancelar</button><button class="btn jat-btn-danger" type="submit" form="jat-void-form">Anular jornada</button>`});
+    root.querySelector('#jat-void-form').addEventListener('submit',async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get('reason')||'').trim();const err=root.querySelector('#jat-void-error');if(reason.length<5){err.textContent='Indicá un motivo de al menos 5 caracteres.';err.style.display='block';return;}const submit=root.querySelector('[type="submit"]');submit.disabled=true;submit.textContent='Anulando…';try{const {error}=await db().rpc('void_daily_log_admin',{p_log_id:log.log_id,p_reason:reason});if(error)throw error;closeToolModal();if(typeof closeModal==='function')closeModal('modal-jornada-detalle');notify('Jornada anulada. La trazabilidad fue preservada.');if(typeof window._jadminReload==='function')await window._jadminReload();setTimeout(surfacePayrollReviews,0);}catch(error){err.textContent=errorText(error);err.style.display='block';submit.disabled=false;submit.textContent='Anular jornada';}});
   }
 
-  function currentLog() { return state.current?.log || null; }
-
-  async function refreshCurrent(logId) {
-    try { if (typeof window._jadminReload === 'function') await window._jadminReload(); } catch (_) {}
-    if (!logId || typeof window.cargarDetalleJornadaAdmin !== 'function') return;
-    const det = await window.cargarDetalleJornadaAdmin(logId);
-    if (det && typeof window._jadminRenderDetalle === 'function') window._jadminRenderDetalle(det);
+  function changedFields(before={},after={}){
+    const keys=[['km_inicio','KM inicial'],['km_final','KM final'],['hora_inicio','Hora inicio'],['hora_fin','Hora fin'],['status','Estado'],['in_workshop','Taller'],['workshop_detail','Detalle taller'],['notas','Notas'],['correction_reason','Motivo']];
+    return keys.filter(([k])=>JSON.stringify(before?.[k])!==JSON.stringify(after?.[k])).map(([k,label])=>`<div class="jat-history-change"><b>${esc(label)}</b><span>${esc(before?.[k]??'—')} → ${esc(after?.[k]??'—')}</span></div>`).join('');
+  }
+  async function historyModal(){
+    const log=currentLog();if(!log)return; const root=mountModal({eyebrow:`Jornada #${log.log_id}`,title:'Historial de cambios',wide:true,body:'<div id="jat-history-list">Cargando historial…</div>',footer:'<button class="btn btn-ghost" data-jat-close>Cerrar</button>'});
+    try{const {data,error}=await db().rpc('get_daily_log_admin_history',{p_log_id:log.log_id});if(error)throw error;const el=root.querySelector('#jat-history-list');if(!data?.length){el.innerHTML='<div class="jat-warning">Todavía no hay cambios auditados.</div>';return;}el.innerHTML=data.map(x=>`<article class="jat-history-item"><div class="jat-history-head"><b>${esc(x.actor_name||'Sistema')}</b><span>${new Date(x.occurred_at).toLocaleString('es-AR')} · ${esc(x.operation)}</span></div>${changedFields(x.before_data,x.after_data)||'<div class="jat-history-change"><span>Actualización sin cambios operativos visibles.</span></div>'}</article>`).join('');}catch(error){root.querySelector('#jat-history-list').textContent=errorText(error);}
   }
 
-  function editModal() {
-    if (!isAdmin()) return;
-    const log = currentLog();
-    if (!log) return;
-    const root = mountModal({
-      eyebrow: `Jornada #${log.log_id}`,
-      title: 'Corregir jornada',
-      wide: true,
-      body: `
-        <div class="jat-warning">Toda corrección queda registrada en auditoría. El motivo es obligatorio.</div>
-        <form id="jat-edit-form">
-          <div class="jat-grid">
-            <label class="jat-field"><span>KM inicial</span><input name="km_inicio" type="number" min="0" step="1" required value="${esc(log.km_inicio ?? '')}"></label>
-            <label class="jat-field"><span>KM final</span><input name="km_final" type="number" min="0" step="1" value="${esc(log.km_final ?? '')}" ${log.status === 'closed' ? 'required' : ''}></label>
-            <label class="jat-field"><span>Hora inicio</span><input name="hora_inicio" type="time" value="${esc(fmtTime(log.hora_inicio) === '—' ? '' : fmtTime(log.hora_inicio))}"></label>
-            <label class="jat-field"><span>Hora fin</span><input name="hora_fin" type="time" value="${esc(fmtTime(log.hora_fin) === '—' ? '' : fmtTime(log.hora_fin))}" ${log.status === 'closed' ? 'required' : ''}></label>
-            <label class="jat-check jat-span-2"><input name="km_excepcion" type="checkbox" ${log.km_excepcion ? 'checked' : ''}><span>Permitir excepción de kilometraje. Usar únicamente si el KM final legítimamente queda por debajo del inicial.</span></label>
-            <label class="jat-check jat-span-2"><input name="in_workshop" type="checkbox" ${log.in_workshop ? 'checked' : ''}><span>La unidad ingresó a taller durante esta jornada.</span></label>
-            <label class="jat-field jat-span-2"><span>Detalle de taller</span><textarea name="workshop_detail">${esc(log.workshop_detail || '')}</textarea></label>
-            <label class="jat-field jat-span-2"><span>Notas de jornada</span><textarea name="notas">${esc(log.notas || '')}</textarea></label>
-            <label class="jat-field jat-span-2"><span>Motivo de la corrección *</span><textarea name="reason" minlength="5" required placeholder="Ej.: el chofer ingresó 125.400 km y el odómetro correcto era 125.040 km"></textarea></label>
-          </div>
-          <div id="jat-edit-error" class="jat-error"></div>
-        </form>`,
-      footer: `<button class="btn btn-ghost" type="button" data-jat-close>Cancelar</button><button class="btn btn-primary" type="submit" form="jat-edit-form">Guardar corrección</button>`
-    });
-    const form = root.querySelector('#jat-edit-form');
-    form.addEventListener('submit', async event => {
-      event.preventDefault();
-      const err = root.querySelector('#jat-edit-error');
-      err.style.display = 'none';
-      const submit = root.querySelector('[type="submit"]');
-      const data = new FormData(form);
-      const patch = {
-        km_inicio: data.get('km_inicio'),
-        km_final: data.get('km_final'),
-        hora_inicio: data.get('hora_inicio'),
-        hora_fin: data.get('hora_fin'),
-        km_excepcion: form.elements.km_excepcion.checked,
-        in_workshop: form.elements.in_workshop.checked,
-        workshop_detail: data.get('workshop_detail'),
-        notas: data.get('notas'),
-      };
-      const reason = String(data.get('reason') || '').trim();
-      if (reason.length < 5) { err.textContent = 'Indicá un motivo de al menos 5 caracteres.'; err.style.display = 'block'; return; }
-      submit.disabled = true; submit.textContent = 'Guardando…';
-      try {
-        const { error } = await db().rpc('update_daily_log_admin', { p_log_id: log.log_id, p_patch: patch, p_reason: reason });
-        if (error) throw error;
-        closeToolModal();
-        notify('Jornada corregida correctamente');
-        await refreshCurrent(log.log_id);
-      } catch (error) {
-        err.textContent = errorText(error); err.style.display = 'block';
-        submit.disabled = false; submit.textContent = 'Guardar corrección';
+  async function openRemitoCanonical(trip){
+    try{const id=trip?.trip_id;if(!id)throw new Error('Remito sin identificador');const {data,error}=await db().from('remitos').select('*').eq('remito_id',id).maybeSingle();if(error||!data)throw error||new Error('Remito no encontrado');if(typeof closeModal==='function')closeModal('modal-jornada-detalle');if(typeof goTo==='function')goTo('remitos');if(typeof cargarRemitos==='function')await cargarRemitos();setTimeout(()=>{if(typeof verRemitoModal==='function')verRemitoModal(data);else if(typeof verRemito==='function')verRemito(data.nro_remito);},30);}catch(error){notify(errorText(error),'error');}
+  }
+  async function openFleetCanonical(tab,truckId,recordId=null){
+    if(!truckId)return notify('La jornada no tiene móvil asociado','error');if(typeof closeModal==='function')closeModal('modal-jornada-detalle');if(typeof goTo==='function')goTo('camion');
+    try{if(typeof window._abrirCamionDetalleAdmin==='function')await window._abrirCamionDetalleAdmin(truckId);if(window.FleetAdminDetailV2?.openTab)window.FleetAdminDetailV2.openTab(tab);if(tab==='combustible'&&window.FleetFuelCRUD?.refresh)await window.FleetFuelCRUD.refresh();if(recordId)setTimeout(()=>{const rows=[...document.querySelectorAll('.ffcrud-table tbody tr')];const row=rows.find(el=>el.textContent.includes(`#${recordId}`));if(row){row.classList.add('jat-highlight');row.scrollIntoView({behavior:'smooth',block:'center'});}},120);}catch(error){notify(errorText(error),'error');}
+  }
+  function openRenditionCanonical(rend){
+    if(typeof closeModal==='function')closeModal('modal-jornada-detalle');if(typeof goTo==='function')goTo('sueldos');setTimeout(()=>{const candidates=[...document.querySelectorAll('#screen-sueldos button,#screen-sueldos .ftab,#screen-sueldos [role="tab"]')];const target=candidates.find(el=>/rendiciones/i.test(el.textContent||''));if(target)target.click();else if(typeof cargarRendicionesTab==='function')cargarRendicionesTab();setTimeout(()=>{const needle=fmtDate(rend?.fecha||currentLog()?.log_date);const rows=[...document.querySelectorAll('#screen-sueldos tr,#screen-sueldos .rend-card')];const row=rows.find(el=>(el.textContent||'').includes(needle));if(row){row.classList.add('jat-highlight');row.scrollIntoView({behavior:'smooth',block:'center'});}},180);},80);
+  }
+
+  function addHint(el,label='Abrir →'){if(!el||el.querySelector('.jat-open-hint'))return;const hint=document.createElement('span');hint.className='jat-open-hint';hint.textContent=label;(el.querySelector('.lft > div:first-child, h4, .v')||el).appendChild(hint);}
+  function makeClickable(el,handler,label){if(!el||el.dataset.jatClickable==='1')return;el.dataset.jatClickable='1';el.classList.add('jat-clickable');el.tabIndex=0;el.setAttribute('role','button');const run=e=>{if(e.type==='keydown'&&!['Enter',' '].includes(e.key))return;if(e.target.closest('button,a,input,select,textarea'))return;e.preventDefault();handler();};el.addEventListener('click',run);el.addEventListener('keydown',run);addHint(el,label);}
+  function cardByTitle(fragment){return [...document.querySelectorAll('#jd-content .jd-card')].find(c=>(c.querySelector('h4')?.textContent||'').toLowerCase().includes(fragment.toLowerCase()));}
+
+  async function restoreModal(row){
+    const root=mountModal({eyebrow:`Jornada #${row.log_id}`,title:'Restaurar jornada',body:`<div class="jat-warning">Se restaurará con su estado anterior y se volverán a calcular odómetro y liquidaciones afectadas.</div><form id="jat-restore-form"><label class="jat-field"><span>Motivo de restauración *</span><textarea name="reason" minlength="5" required></textarea></label><div id="jat-restore-error" class="jat-error"></div></form>`,footer:'<button class="btn btn-ghost" data-jat-close>Cancelar</button><button class="btn btn-primary" type="submit" form="jat-restore-form">Restaurar</button>'});
+    root.querySelector('#jat-restore-form').addEventListener('submit',async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get('reason')||'').trim();const err=root.querySelector('#jat-restore-error');if(reason.length<5){err.textContent='Indicá un motivo de al menos 5 caracteres.';err.style.display='block';return;}try{const {error}=await db().rpc('restore_daily_log_admin',{p_log_id:row.log_id,p_reason:reason});if(error)throw error;closeToolModal();notify('Jornada restaurada y derivados recalculados');if(typeof window._jadminReload==='function')await window._jadminReload();setTimeout(surfacePayrollReviews,0);}catch(error){err.textContent=errorText(error);err.style.display='block';}});
+  }
+  async function voidedListModal(){
+    if(!isAdmin())return;const root=mountModal({eyebrow:'Jornadas',title:'Jornadas anuladas',wide:true,body:'<div id="jat-voided-list">Cargando…</div>',footer:'<button class="btn btn-ghost" data-jat-close>Cerrar</button>'});
+    try{const {data,error}=await db().rpc('list_voided_daily_logs_admin',{p_limit:100});if(error)throw error;const el=root.querySelector('#jat-voided-list');if(!data?.length){el.innerHTML='<div class="jat-warning">No hay jornadas anuladas.</div>';return;}el.innerHTML=`<div class="jat-voided-table">${data.map((r,i)=>`<div class="jat-voided-row"><div><b>#${r.log_id} · ${esc(r.driver_name||'—')}</b><span>${fmtDate(r.log_date)} · ${esc(r.truck_plate||'—')} · ${Number(r.km_inicio||0).toLocaleString('es-AR')} → ${Number(r.km_final||0).toLocaleString('es-AR')} km</span><small>${esc(r.void_reason||'Sin motivo')}</small></div><button class="btn btn-ghost" data-restore-index="${i}">Restaurar</button></div>`).join('')}</div>`;el.querySelectorAll('[data-restore-index]').forEach(btn=>btn.addEventListener('click',()=>restoreModal(data[Number(btn.dataset.restoreIndex)])));}catch(error){root.querySelector('#jat-voided-list').textContent=errorText(error);}
+  }
+  function installVoidedButton(){if(!isAdmin()||$('jat-open-voided'))return;const clear=$('jadmin-f-clear');if(!clear?.parentElement)return;const btn=document.createElement('button');btn.id='jat-open-voided';btn.type='button';btn.className='btn btn-ghost';btn.textContent='Jornadas anuladas';btn.addEventListener('click',voidedListModal);clear.parentElement.appendChild(btn);}
+
+  async function surfacePayrollReviews(){
+    if(!allowed()||!db())return;
+    try{
+      const {data,error}=await db().from('payroll_liquidaciones').select('liquidacion_id,estado,review_required,review_reason,proposed_total,adjustment_pending').eq('review_required',true).limit(200);
+      if(error)throw error;
+      const screen=$('screen-sueldos');
+      for(const item of (data||[])){
+        const rows=[...(screen?.querySelectorAll('tr[onclick]')||[])];
+        const row=rows.find(el=>(el.getAttribute('onclick')||'').includes(item.liquidacion_id));
+        if(row){
+          const cell=row.querySelector('td');
+          cell?.querySelector('.jat-payroll-review')?.remove();
+          if(cell){const badge=document.createElement('div');badge.className='jat-payroll-review';const delta=Number(item.adjustment_pending||0);badge.textContent=item.estado==='pagada'?`Ajuste pendiente ${fmtMoney(delta)}`:`Requiere revisión · Δ ${delta>=0?'+':''}${fmtMoney(delta)}`;badge.title=item.review_reason||'Corrección administrativa posterior';cell.appendChild(badge);}
+        }
+        if(typeof _reciboActual!=='undefined'&&_reciboActual?.liquidacion_id===item.liquidacion_id){
+          const estado=$('rec-estado');let warning=$('jat-payroll-receipt-review');if(!warning&&estado?.parentElement){warning=document.createElement('div');warning.id='jat-payroll-receipt-review';warning.className='jat-payroll-receipt-review';estado.parentElement.appendChild(warning);}if(warning){const delta=Number(item.adjustment_pending||0);warning.textContent=item.estado==='pagada'?`Requiere ajuste: ${fmtMoney(delta)}. El pago original se conserva.`:`Requiere revisión. Total propuesto: ${fmtMoney(item.proposed_total)} · diferencia ${delta>=0?'+':''}${fmtMoney(delta)}.`;warning.title=item.review_reason||'';}
+        }
       }
-    });
+    }catch(error){console.warn('[JornadasAdminTools] payroll review surface',error?.message||error);}
+  }
+  function installPayrollImpactSurface(){
+    const nav=$('nav-sueldos');if(nav&&!nav.dataset.jatPayrollHook){nav.dataset.jatPayrollHook='1';nav.addEventListener('click',()=>setTimeout(surfacePayrollReviews,250));}
+    if(state.payrollWrapped)return;
+    let wrappedAny=false;
+    if(typeof window._renderLiquidacionesMes==='function'&&!window._renderLiquidacionesMes.__jatImpactWrapped){const original=window._renderLiquidacionesMes;const wrapped=function(...args){const result=original.apply(this,args);setTimeout(surfacePayrollReviews,0);return result;};wrapped.__jatImpactWrapped=true;window._renderLiquidacionesMes=wrapped;wrappedAny=true;}
+    if(typeof window._abrirReciboPayroll==='function'&&!window._abrirReciboPayroll.__jatImpactWrapped){const original=window._abrirReciboPayroll;const wrapped=async function(...args){const result=await original.apply(this,args);setTimeout(surfacePayrollReviews,0);return result;};wrapped.__jatImpactWrapped=true;window._abrirReciboPayroll=wrapped;wrappedAny=true;}
+    state.payrollWrapped=wrappedAny||state.payrollWrapped;
   }
 
-  function voidModal() {
-    if (!isAdmin()) return;
-    const det = state.current; const log = det?.log;
-    if (!log) return;
-    const linked = {
-      remitos: det.trips?.length || 0,
-      combustible: det.fuel_records?.length || 0,
-      rendicion: det.rendicion ? 1 : 0,
-      checklist: det.tire_check ? 1 : 0,
-      incidentes: det.incidents?.length || 0,
-    };
-    const linkedText = Object.entries(linked).filter(([,n]) => n > 0).map(([k,n]) => `${n} ${k}`).join(' · ') || 'Sin registros vinculados';
-    const root = mountModal({
-      eyebrow: `Jornada #${log.log_id}`,
-      title: 'Eliminar jornada',
-      body: `
-        <div class="jat-warning jat-danger-warning"><b>La jornada se anulará, no se borrará físicamente.</b><br>Desaparecerá de la operación normal pero conservará auditoría y relaciones históricas.</div>
-        ${log.status === 'open' ? '<div class="jat-warning">⚠ Esta jornada está abierta. El chofer dejará de verla como jornada activa al refrescar la aplicación.</div>' : ''}
-        <div class="jat-record-grid">${record('Fecha', fmtDate(log.log_date))}${record('Chofer', esc(log.chofer?.full_name || '—'))}${record('Móvil', esc(log.truck?.plate || log.patente_camion || '—'))}${record('Vinculados', esc(linkedText), true)}</div>
-        <form id="jat-void-form" style="margin-top:16px"><label class="jat-field"><span>Motivo de eliminación *</span><textarea name="reason" minlength="5" required placeholder="Ej.: jornada duplicada creada por error"></textarea></label><div id="jat-void-error" class="jat-error"></div></form>`,
-      footer: `<button class="btn btn-ghost" type="button" data-jat-close>Cancelar</button><button class="btn jat-btn-danger" type="submit" form="jat-void-form">Eliminar jornada</button>`
-    });
-    root.querySelector('#jat-void-form').addEventListener('submit', async event => {
-      event.preventDefault();
-      const form = event.currentTarget; const reason = String(new FormData(form).get('reason') || '').trim();
-      const err = root.querySelector('#jat-void-error');
-      if (reason.length < 5) { err.textContent='Indicá un motivo de al menos 5 caracteres.'; err.style.display='block'; return; }
-      const submit = root.querySelector('[type="submit"]'); submit.disabled=true; submit.textContent='Eliminando…';
-      try {
-        const { error } = await db().rpc('void_daily_log_admin', { p_log_id: log.log_id, p_reason: reason });
-        if (error) throw error;
-        closeToolModal();
-        if (typeof closeModal === 'function') closeModal('modal-jornada-detalle');
-        notify('Jornada eliminada de la operación');
-        if (typeof window._jadminReload === 'function') await window._jadminReload();
-      } catch (error) {
-        err.textContent=errorText(error); err.style.display='block'; submit.disabled=false; submit.textContent='Eliminar jornada';
-      }
-    });
+  function installFooterActions(){
+    const footer=$('modal-jornada-detalle')?.querySelector('.modal-footer');if(!footer)return;footer.querySelector('#jat-jornada-actions')?.remove();const actions=document.createElement('div');actions.id='jat-jornada-actions';actions.className='jat-actions';
+    actions.innerHTML=`${isAdmin()?'<button class="btn btn-ghost" type="button" data-jat-edit>✎ Editar jornada</button>':''}<button class="btn btn-ghost" type="button" data-jat-history>Historial</button>${isAdmin()?'<button class="btn jat-btn-danger" type="button" data-jat-void>Anular jornada</button>':''}`;
+    actions.querySelector('[data-jat-edit]')?.addEventListener('click',editModal);actions.querySelector('[data-jat-history]')?.addEventListener('click',historyModal);actions.querySelector('[data-jat-void]')?.addEventListener('click',voidModal);footer.prepend(actions);
   }
-
-  async function openRemito(trip) {
-    if (!trip) return;
-    try {
-      let nro = trip.nro_remito || null;
-      if (!nro && trip.trip_id && db()) {
-        const { data } = await db().from('remitos').select('nro_remito').eq('remito_id', trip.trip_id).maybeSingle();
-        nro = data?.nro_remito || null;
-      }
-      if (!nro) throw new Error('El remito no tiene número visible');
-      if (typeof closeModal === 'function') closeModal('modal-jornada-detalle');
-      if (typeof goTo === 'function') goTo('remitos');
-      if (typeof cargarRemitos === 'function') await cargarRemitos();
-      if (typeof verRemito === 'function') verRemito(nro);
-      else if (typeof showRemitosView === 'function') showRemitosView('detalle', nro);
-    } catch (error) { notify(errorText(error), 'error'); }
+  function enhanceDetail(det){
+    state.current=det;installFooterActions();
+    const serviceItems=[...(cardByTitle('servicios')?.querySelectorAll('.jd-item')||[])];serviceItems.forEach((el,i)=>{if(det.trips?.[i])makeClickable(el,()=>openRemitoCanonical(det.trips[i]),'Abrir Remito →');});
+    const fuelItems=[...(cardByTitle('combustible')?.querySelectorAll('.jd-item')||[])];fuelItems.forEach((el,i)=>{if(det.fuel_records?.[i])makeClickable(el,()=>openFleetCanonical('combustible',det.log?.truck_id,det.fuel_records[i].fuel_id),'Abrir Combustible →');});
+    const tireCard=cardByTitle('neumáticos');if(det.tire_check&&tireCard)makeClickable(tireCard,()=>openFleetCanonical('neumaticos',det.log?.truck_id),'Abrir Checklist →');
+    const rendCard=cardByTitle('rendición');if(det.rendicion&&rendCard)makeClickable(rendCard,()=>openRenditionCanonical(det.rendicion),'Abrir Rendición →');
   }
-
-  async function openFleet(tab, truckId, fuelId=null) {
-    if (!truckId) return notify('La jornada no tiene móvil asociado', 'error');
-    closeToolModal();
-    if (typeof closeModal === 'function') closeModal('modal-jornada-detalle');
-    if (typeof goTo === 'function') goTo('camion');
-    try {
-      if (typeof window._abrirCamionDetalleAdmin === 'function') await window._abrirCamionDetalleAdmin(truckId);
-      if (window.FleetAdminDetailV2?.openTab) window.FleetAdminDetailV2.openTab(tab);
-      if (tab === 'combustible' && window.FleetFuelCRUD?.refresh) await window.FleetFuelCRUD.refresh();
-      if (fuelId) setTimeout(() => {
-        const rows = [...document.querySelectorAll('.ffcrud-table tbody tr')];
-        const row = rows.find(el => el.textContent.includes(`#${fuelId}`));
-        if (row) { row.classList.add('jat-highlight'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
-      }, 120);
-    } catch (error) { notify(errorText(error), 'error'); }
+  function install(){
+    if(!allowed())return;installVoidedButton();installPayrollImpactSurface();if(state.installed)return;if(typeof window._jadminRenderDetalle!=='function')return;state.originalRender=window._jadminRenderDetalle;if(state.originalRender.__jatWrapped){state.installed=true;return;}const wrapped=function(det,...args){const result=state.originalRender.call(this,det,...args);try{enhanceDetail(det);}catch(error){console.error('[JornadasAdminTools] enhanceDetail',error);}return result;};wrapped.__jatWrapped=true;window._jadminRenderDetalle=wrapped;state.installed=true;
   }
-
-  async function fuelViewer(fuel) {
-    if (!fuel?.fuel_id || !db()) return;
-    const { data, error } = await db().from('fuel_records').select('*').eq('fuel_id', fuel.fuel_id).maybeSingle();
-    if (error || !data) return notify(errorText(error || new Error('Carga no encontrada')), 'error');
-    const log = currentLog();
-    mountModal({
-      eyebrow:`Combustible #${data.fuel_id}`, title:'Ver carga de combustible',
-      body:`<div class="jat-record-grid">${record('Fecha',fmtDate(data.fuel_date))}${record('Litros',`${Number(data.liters||0).toLocaleString('es-AR')} L`)}${record('Precio / litro',fmtMoney(data.price_per_liter))}${record('Total',fmtMoney(data.total_cost))}${record('KM al cargar',data.km_at_load == null ? '—' : `${Number(data.km_at_load).toLocaleString('es-AR')} km`)}${record('Medio de pago',esc(data.payment_method || '—'))}${record('Estación',esc(data.gas_station || '—'),true)}${record('Estado',`<span class="jat-pill ${data.status==='voided'?'bad':'ok'}">${esc(data.status || 'active')}</span>`,true)}</div>`,
-      footer:`<button class="btn btn-ghost" data-jat-close>Cerrar</button><button class="btn btn-primary" id="jat-open-fleet-fuel">Abrir en Flota · Combustible</button>`
-    });
-    $('jat-open-fleet-fuel')?.addEventListener('click', () => openFleet('combustible', data.truck_id || log?.truck_id, data.fuel_id));
-  }
-
-  async function checklistViewer(check) {
-    if (!check?.check_id || !db()) return;
-    const { data, error } = await db().from('tire_checks').select('*').eq('check_id', check.check_id).maybeSingle();
-    if (error || !data) return notify(errorText(error || new Error('Checklist no encontrado')), 'error');
-    const cond = v => ({bueno:'Bueno',regular:'Regular',malo:'Malo'}[v] || v || '—');
-    const pill = v => `<span class="jat-pill ${v==='bueno'?'ok':v==='regular'?'warn':v==='malo'?'bad':''}">${esc(cond(v))}</span>`;
-    mountModal({
-      eyebrow:`Checklist #${data.check_id}`, title:'Ver checklist de neumáticos y frenos',
-      body:`<div class="jat-record-grid">${record('Fecha',fmtDate(data.check_date))}${record('Presión',data.pressure_psi ? `${esc(data.pressure_psi)} PSI` : '—')}${record('Neumáticos',pill(data.tire_condition))}${record('Frenos',pill(data.brake_condition))}${record('Observaciones',esc(data.notes || 'Sin observaciones'),true)}</div>`,
-      footer:`<button class="btn btn-ghost" data-jat-close>Cerrar</button><button class="btn btn-primary" id="jat-open-fleet-check">Abrir en Flota · Neumáticos y frenos</button>`
-    });
-    $('jat-open-fleet-check')?.addEventListener('click', () => openFleet('neumaticos', data.truck_id || currentLog()?.truck_id));
-  }
-
-  async function renditionViewer(rend) {
-    if (!db()) return;
-    let query = db().from('rendicion_cierre').select('*');
-    query = rend?.rendicion_id ? query.eq('rendicion_id', rend.rendicion_id) : query.eq('log_id', currentLog()?.log_id);
-    const { data, error } = await query.order('created_at',{ascending:false}).limit(1).maybeSingle();
-    if (error || !data) return notify(errorText(error || new Error('Rendición no encontrada')), 'error');
-    const diff = Number(data.diferencia || 0);
-    mountModal({
-      eyebrow:`Rendición · ${fmtDate(data.fecha)}`, title:'Ver rendición',
-      body:`<div class="jat-record-grid">${record('Efectivo esperado',fmtMoney(data.efectivo_esperado))}${record('Efectivo declarado',fmtMoney(data.efectivo_declarado))}${record('Gastos sistema',fmtMoney(data.gastos_sistema))}${record('Gastos extra',fmtMoney(data.gastos_extra))}${record('Diferencia',`<span class="jat-pill ${Math.abs(diff)<.01?'ok':'bad'}">${fmtMoney(diff)}</span>`)}${record('Estado',esc(data.estado || '—'))}${record('Estado administración',esc(data.admin_status || 'pendiente'))}${record('Nota administración',esc(data.admin_nota || '—'))}${record('Notas chofer',esc(data.notas_chofer || '—'),true)}</div>`,
-      footer:`<button class="btn btn-ghost" data-jat-close>Cerrar</button><button class="btn btn-primary" id="jat-open-renditions">Abrir módulo Rendiciones</button>`
-    });
-    $('jat-open-renditions')?.addEventListener('click', () => {
-      closeToolModal(); if (typeof closeModal==='function') closeModal('modal-jornada-detalle');
-      if (typeof goTo==='function') goTo('sueldos');
-      setTimeout(() => {
-        const candidates=[...document.querySelectorAll('#screen-sueldos button,#screen-sueldos .ftab,#screen-sueldos [role="tab"]')];
-        const target=candidates.find(el=>/rendiciones/i.test(el.textContent||''));
-        if(target) target.click(); else if(typeof cargarRendicionesTab==='function') cargarRendicionesTab();
-      },80);
-    });
-  }
-
-  function addHint(el) {
-    if (!el || el.querySelector('.jat-open-hint')) return;
-    const hint=document.createElement('span'); hint.className='jat-open-hint'; hint.textContent='Ver →';
-    const first=el.querySelector('.lft > div:first-child, h4, .v') || el;
-    first.appendChild(hint);
-  }
-
-  function makeClickable(el, handler) {
-    if (!el || el.dataset.jatClickable==='1') return;
-    el.dataset.jatClickable='1'; el.classList.add('jat-clickable'); el.tabIndex=0; el.setAttribute('role','button');
-    const run=event=>{ if(event.type==='keydown' && !['Enter',' '].includes(event.key)) return; if(event.target.closest('button,a,input,select,textarea')) return; event.preventDefault(); handler(); };
-    el.addEventListener('click',run); el.addEventListener('keydown',run); addHint(el);
-  }
-
-  function cardByTitle(fragment) {
-    return [...document.querySelectorAll('#jd-content .jd-card')].find(card => (card.querySelector('h4')?.textContent || '').toLowerCase().includes(fragment.toLowerCase()));
-  }
-
-  function installFooterActions(det) {
-    const footer=$('modal-jornada-detalle')?.querySelector('.modal-footer'); if(!footer) return;
-    footer.querySelector('#jat-jornada-actions')?.remove();
-    if(!isAdmin()) return;
-    const actions=document.createElement('div'); actions.id='jat-jornada-actions'; actions.className='jat-actions';
-    actions.innerHTML='<button class="btn btn-ghost" type="button" data-jat-edit>✎ Editar jornada</button><button class="btn jat-btn-danger" type="button" data-jat-void>Eliminar jornada</button>';
-    actions.querySelector('[data-jat-edit]').addEventListener('click',editModal);
-    actions.querySelector('[data-jat-void]').addEventListener('click',voidModal);
-    footer.prepend(actions);
-  }
-
-  function enhanceDetail(det) {
-    state.current=det;
-    installFooterActions(det);
-    const serviceCard=cardByTitle('servicios');
-    const serviceItems=[...(serviceCard?.querySelectorAll('.jd-item')||[])];
-    serviceItems.forEach((el,i)=>{ if(det.trips?.[i]) makeClickable(el,()=>openRemito(det.trips[i])); });
-    const fuelCard=cardByTitle('combustible');
-    const fuelItems=[...(fuelCard?.querySelectorAll('.jd-item')||[])];
-    fuelItems.forEach((el,i)=>{ if(det.fuel_records?.[i]) makeClickable(el,()=>fuelViewer(det.fuel_records[i])); });
-    const tireCard=cardByTitle('neumáticos'); if(det.tire_check && tireCard) makeClickable(tireCard,()=>checklistViewer(det.tire_check));
-    const rendCard=cardByTitle('rendición'); if(det.rendicion && rendCard) makeClickable(rendCard,()=>renditionViewer(det.rendicion));
-  }
-
-  function install() {
-    if (state.installed || !allowed()) return;
-    if (typeof window._jadminRenderDetalle !== 'function') return;
-    state.originalRender=window._jadminRenderDetalle;
-    if(state.originalRender.__jatWrapped){state.installed=true;return;}
-    const wrapped=function(det,...args){const result=state.originalRender.call(this,det,...args);try{enhanceDetail(det);}catch(error){console.error('[JornadasAdminTools] enhanceDetail',error);}return result;};
-    wrapped.__jatWrapped=true; window._jadminRenderDetalle=wrapped; state.installed=true;
-  }
-
-  let attempts=0; const timer=setInterval(()=>{attempts++;install();if(state.installed||attempts>80)clearInterval(timer);},75);
-  window.addEventListener('auxilios:features-ready',install);
-  window.JornadasAdminToolsV1={edit:editModal,voidJourney:voidModal,enhance:enhanceDetail,openFuel:fuelViewer,openChecklist:checklistViewer,openRendition:renditionViewer};
+  let attempts=0;const timer=setInterval(()=>{attempts++;install();if((state.installed&&state.payrollWrapped&&$('jat-open-voided'))||attempts>160)clearInterval(timer);},75);window.addEventListener('auxilios:features-ready',install);
+  window.JornadasAdminToolsV1={edit:editModal,voidJourney:voidModal,history:historyModal,voided:voidedListModal,enhance:enhanceDetail,surfacePayrollReviews};
 })();
