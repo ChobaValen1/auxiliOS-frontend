@@ -2,10 +2,6 @@ const ENV = {
   API_BASE_URL: 'https://auxilios.up.railway.app'
 };
 
-// Nuevo Servicio es una funcionalidad estable del módulo Servicios: no existe
-// una segunda interfaz de alta. Dejamos el flag encendido desde bootstrap para
-// que el renderer canónico esté disponible incluso antes de terminar la carga
-// de flags individuales.
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
 window.AuxiliosFeatures.flags.service_workspace_v2 = true;
@@ -18,7 +14,6 @@ function loadAuxiliosStyle(id, href) {
   link.href = href;
   document.head.appendChild(link);
 }
-
 function loadAuxiliosModule(id, src) {
   return new Promise((resolve, reject) => {
     const existing = document.getElementById(id);
@@ -28,13 +23,8 @@ function loadAuxiliosModule(id, src) {
       return;
     }
     const script = document.createElement('script');
-    script.id = id;
-    script.src = src;
-    script.async = false;
-    script.addEventListener('load', () => {
-      script.dataset.loaded = '1';
-      resolve();
-    }, { once: true });
+    script.id = id; script.src = src; script.async = false;
+    script.addEventListener('load', () => { script.dataset.loaded = '1'; resolve(); }, { once: true });
     script.addEventListener('error', reject, { once: true });
     document.body.appendChild(script);
   });
@@ -47,6 +37,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-company-billing-settings', '/company-billing-settings.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
+    await loadAuxiliosModule('auxilios-configuration-service-unit-v1', '/configuration-service-unit-v1.js');
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
     await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
     await loadAuxiliosModule('auxilios-comercial-code-strategy', '/comercial-code-strategy.js');
@@ -56,11 +47,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
     await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
 
-    // Único alta permitida: workspace full-screen 3 columnas (33/33/33).
+    // Único alta permitida: workspace full-screen 3 columnas. Se monta una vez
+    // y luego actualiza sectores puntuales para evitar parpadeos/reflows globales.
     loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
-    await loadAuxiliosModule('auxilios-operator-service-workspace-v2', '/operator-service-workspace-v2.js');
-    loadAuxiliosStyle('auxilios-operator-service-workspace-review-v3-css', '/operator-service-workspace-review-v3.css');
-    await loadAuxiliosModule('auxilios-operator-service-workspace-review-v3', '/operator-service-workspace-review-v3.js');
+    loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
+    await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
 
     await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
     await loadAuxiliosModule('auxilios-billing-base-operator-adapter', '/billing-base-operator-adapter.js');
