@@ -56,7 +56,9 @@ test('Review V3 deja de cargarse y el renderer reactivo entra en bootstrap CI y 
   assert.doesNotMatch(flags, /operator-service-workspace-review-v3/);
   assert.match(pkg, /node --check operator-service-workspace-reactive-v1\.js/);
   assert.doesNotMatch(pkg, /node --check operator-service-workspace-review-v3\.js/);
-  assert.match(sw, /auxilios-v141/);
+  const version = sw.match(/auxilios-v(\d+)/);
+  assert.ok(version);
+  assert.ok(Number(version[1]) >= 142);
   assert.match(sw, /operator-service-workspace-reactive-v1\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);
   assert.doesNotMatch(sw, /operator-service-workspace-review-v3/);
