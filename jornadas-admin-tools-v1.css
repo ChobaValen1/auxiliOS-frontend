@@ -1,0 +1,42 @@
+/* AuxiliOS · Jornadas Admin · correcciones y navegación vinculada v1 */
+.jat-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.jat-btn-danger{border:1px solid rgba(226,80,74,.45)!important;background:rgba(226,80,74,.1)!important;color:#ff9c98!important}
+.jat-btn-danger:hover{background:rgba(226,80,74,.18)!important}
+#jd-content .jat-clickable{cursor:pointer;position:relative;transition:border-color .15s ease,background .15s ease,transform .15s ease}
+#jd-content .jat-clickable:hover{border-color:rgba(79,142,247,.55)!important;background:rgba(79,142,247,.06)!important}
+#jd-content .jat-clickable:focus-visible{outline:2px solid #4F8EF7;outline-offset:2px}
+#jd-content .jat-open-hint{display:inline-flex;align-items:center;gap:4px;margin-left:7px;color:#77a9ff;font-size:9px;font-weight:700;text-transform:none;letter-spacing:0;white-space:nowrap}
+.jat-backdrop{position:fixed;inset:0;z-index:10000030;display:grid;place-items:center;padding:20px;background:rgba(2,5,10,.82);backdrop-filter:blur(5px)}
+.jat-modal{width:min(760px,96vw);max-height:calc(100vh - 40px);overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--panel,#13161d);box-shadow:0 28px 90px rgba(0,0,0,.55)}
+.jat-modal.wide{width:min(900px,96vw)}
+.jat-head{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:17px 20px;border-bottom:1px solid var(--border);background:var(--panel,#13161d)}
+.jat-head small{display:block;margin-bottom:4px;color:var(--muted2);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
+.jat-head h3{margin:0;color:var(--text);font-size:19px}
+.jat-close{appearance:none;border:0;background:none;color:var(--muted2);font-size:27px;line-height:1;cursor:pointer}
+.jat-body{padding:20px}
+.jat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.jat-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.jat-field{display:flex;flex-direction:column;gap:6px}
+.jat-field>span,.jat-label{color:var(--muted2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.jat-field input,.jat-field textarea,.jat-field select{width:100%;min-height:40px;border:1px solid var(--border);border-radius:8px;background:var(--bg,#0c0e12);color:var(--text);padding:9px 10px;font:inherit;outline:none}
+.jat-field textarea{min-height:82px;resize:vertical}
+.jat-field input:focus,.jat-field textarea:focus,.jat-field select:focus{border-color:#4F8EF7;box-shadow:0 0 0 2px rgba(79,142,247,.12)}
+.jat-span-2{grid-column:1/-1}
+.jat-check{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02);color:var(--text);font-size:12px}
+.jat-check input{width:16px;height:16px;margin-top:1px;accent-color:var(--amber)}
+.jat-warning{margin:0 20px 16px;padding:11px 13px;border:1px solid rgba(245,166,35,.4);border-radius:9px;background:rgba(245,166,35,.08);color:var(--text);font-size:12px;line-height:1.45}
+.jat-danger-warning{border-color:rgba(226,80,74,.42);background:rgba(226,80,74,.08)}
+.jat-error{display:none;margin-top:12px;padding:9px 11px;border-radius:7px;background:rgba(226,80,74,.1);color:#ffaaa6;font-size:12px}
+.jat-footer{display:flex;justify-content:flex-end;gap:9px;padding:15px 20px;border-top:1px solid var(--border);background:rgba(0,0,0,.08)}
+.jat-record-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
+.jat-record{padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.jat-record small{display:block;color:var(--muted2);font-size:9px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.jat-record b{color:var(--text);font-size:13px;word-break:break-word}
+.jat-record.full{grid-column:1/-1}
+.jat-pill{display:inline-flex;padding:3px 7px;border-radius:999px;border:1px solid var(--border);font-size:10px;font-weight:700}
+.jat-pill.ok{color:#77dda9;border-color:rgba(39,196,122,.35);background:rgba(39,196,122,.08)}
+.jat-pill.warn{color:#ffd27e;border-color:rgba(245,166,35,.38);background:rgba(245,166,35,.08)}
+.jat-pill.bad{color:#ff9c98;border-color:rgba(226,80,74,.38);background:rgba(226,80,74,.08)}
+.jat-highlight{animation:jatPulse 2.5s ease 1;outline:2px solid var(--amber)!important;outline-offset:-2px}
+@keyframes jatPulse{0%,100%{background:transparent}25%,65%{background:rgba(245,166,35,.15)}}
+@media(max-width:720px){.jat-grid,.jat-grid.three,.jat-record-grid{grid-template-columns:1fr}.jat-span-2,.jat-record.full{grid-column:auto}.jat-body{padding:16px}.jat-footer{padding:13px 16px}}
