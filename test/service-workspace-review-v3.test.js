@@ -43,8 +43,8 @@ test('Maps consulta luego de 550 ms, valida place y cierra resultados fuera del 
   assert.match(workspace, /action:'route'/);
   assert.match(workspace, /function closeSuggestions\(kind,cancel=false\)/);
   assert.match(workspace, /if\(cancel\)a\.seq\+\+/);
-  assert.match(workspace, /origin_place_id/);
-  assert.match(workspace, /destination_place_id/);
+  assert.match(workspace, /`\$\{kind\}_place_id`/);
+  assert.match(workspace, /`\$\{kind\}_formatted_address`/);
   assert.match(workspace, /Dirección manual sin validar/);
   assert.match(css, /\.osv4-suggestions\{position:absolute/);
 });
