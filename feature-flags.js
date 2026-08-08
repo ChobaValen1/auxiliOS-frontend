@@ -45,6 +45,8 @@ async function activate(flags){
   await loadScript('auxilios-toll-management','/toll-management.js');
  }
 
+ // Nuevo Servicio dejó de ser una variante beta. Para cualquier usuario que ya
+ // tenga acceso al módulo Servicios, éste es el único renderer permitido.
  if(flags.service_workspace_v2){
   loadStyle('auxilios-operator-service-workspace-v2-css','/operator-service-workspace-v2.css');
   await loadScript('auxilios-operator-service-workspace-v2','/operator-service-workspace-v2.js');
@@ -55,8 +57,6 @@ async function activate(flags){
  // Bloque A conserva dirty state y unifica Crear / Ver / Editar.
  if(flags.operator_console_v2||flags.service_editing_tolls_v1||flags.service_workspace_v2){
   loadStyle('auxilios-operator-services-brand-system-v1-css','/operator-services-brand-system-v1.css');
-  // Esta hoja es deliberadamente la última capa visual: replica Jornadas,
-  // hace la Mesa Activa desktop-first y restaura Nuevo Servicio a 3 columnas.
   loadStyle('auxilios-operator-services-jornadas-desktop-v1-css','/operator-services-jornadas-desktop-v1.css');
   await loadScript('auxilios-operator-services-block-a-v1','/operator-services-block-a-v1.js');
   await loadScript('auxilios-operator-services-canonical-view-v1','/operator-services-canonical-view-v1.js');
@@ -93,6 +93,10 @@ async function refresh(){
    .eq('enabled',true);
   if(error)throw error;
   const flags=Object.fromEntries((data||[]).map(row=>[row.feature_key,Boolean(row.enabled)]));
+  // Canonicalización: ya no existe una alternativa de alta. Este flag queda
+  // forzado para todos los usuarios autenticados; los permisos de Servicios
+  // siguen resolviéndose por rol y por las reglas existentes del módulo.
+  flags.service_workspace_v2=true;
   STATE.flags=flags;STATE.userId=userId;STATE.ready=true;loadedUser=userId;
   await activate(flags);
   window.dispatchEvent(new CustomEvent('auxilios:features-ready',{detail:STATE}));

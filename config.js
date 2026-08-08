@@ -2,6 +2,23 @@ const ENV = {
   API_BASE_URL: 'https://auxilios.up.railway.app'
 };
 
+// Nuevo Servicio es una funcionalidad estable del módulo Servicios: no existe
+// una segunda interfaz de alta. Dejamos el flag encendido desde bootstrap para
+// que el renderer canónico esté disponible incluso antes de terminar la carga
+// de flags individuales.
+window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
+window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
+window.AuxiliosFeatures.flags.service_workspace_v2 = true;
+
+function loadAuxiliosStyle(id, href) {
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
 function loadAuxiliosModule(id, src) {
   return new Promise((resolve, reject) => {
     const existing = document.getElementById(id);
@@ -38,6 +55,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-tariff-composition', '/tariff-composition.js');
     await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
     await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
+
+    // Único alta permitida: workspace full-screen 3 columnas (33/33/33).
+    loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
+    await loadAuxiliosModule('auxilios-operator-service-workspace-v2', '/operator-service-workspace-v2.js');
+    loadAuxiliosStyle('auxilios-operator-service-workspace-review-v3-css', '/operator-service-workspace-review-v3.css');
+    await loadAuxiliosModule('auxilios-operator-service-workspace-review-v3', '/operator-service-workspace-review-v3.js');
+
     await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
     await loadAuxiliosModule('auxilios-billing-base-operator-adapter', '/billing-base-operator-adapter.js');
     await loadAuxiliosModule('auxilios-equal-billing-bases', '/equal-billing-bases.js');
@@ -45,13 +69,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
     await loadAuxiliosModule('auxilios-phase3-journey-start-guard', '/phase3-journey-start-guard.js');
-    // El alta legacy Fase 3B fue retirada. Nuevo Servicio tiene un único renderer:
-    // Workspace V2 de tres columnas 33/33/33.
     await loadAuxiliosModule('auxilios-phase3b-modal-visibility-guard', '/phase3b-modal-visibility-guard.js');
     await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
     await loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js');
     await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
-    // Estabilidad: evita observers globales recursivos de Servicios.
     await loadAuxiliosModule('auxilios-operator-services-stability-v1', '/operator-services-stability-v1.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales y operativos:', error);
