@@ -10,46 +10,66 @@ const css = read('jornadas-admin-tools-v1.css');
 const config = read('config.js');
 const sw = read('sw.js');
 const migration = read('migrations/20260808115500_admin_journey_corrections_v1.sql');
+const impactMigration = read('migrations/20260808194000_journey_correction_impact_propagation_v1.sql');
 const pkg = read('package.json');
 
-test('Administración puede corregir kilometraje y horarios con motivo obligatorio', () => {
+test('Administración corrige kilometraje con motivo e impacto anticipado', () => {
   assert.match(js, /update_daily_log_admin/);
+  assert.match(js, /get_daily_log_admin_impact/);
   assert.match(js, /km_inicio/);
   assert.match(js, /km_final/);
-  assert.match(js, /hora_inicio/);
-  assert.match(js, /hora_fin/);
   assert.match(js, /Motivo de la corrección/);
-  assert.match(migration, /JORNADA_MOTIVO_REQUERIDO/);
+  assert.match(js, /Requiere revisión/);
   assert.match(migration, /manual_editado/);
 });
 
-test('Eliminar jornada es anulación lógica y no borrado físico', () => {
+test('Anular jornada conserva relaciones y puede restaurarse', () => {
   assert.match(js, /void_daily_log_admin/);
-  assert.match(migration, /status='voided'/);
-  assert.match(migration, /voided_at/);
-  assert.match(migration, /void_reason/);
-  assert.doesNotMatch(migration, /delete\s+from\s+public\.daily_logs/i);
-  assert.match(migration, /status<>'voided'/);
+  assert.match(js, /restore_daily_log_admin/);
+  assert.match(js, /Anular jornada/);
+  assert.match(js, /Jornadas anuladas/);
+  assert.match(impactMigration, /void_previous_status/);
+  assert.match(impactMigration, /list_voided_daily_logs_admin/);
+  assert.doesNotMatch(impactMigration, /delete\s+from\s+public\.daily_logs/i);
 });
 
-test('una jornada anulada permite recrear la combinación chofer fecha móvil', () => {
-  assert.match(migration, /daily_logs_driver_truck_date_active_uidx/);
-  assert.match(migration, /where status <> 'voided'/i);
+test('el historial administrativo queda visible', () => {
+  assert.match(js, /get_daily_log_admin_history/);
+  assert.match(js, /Historial de cambios/);
+  assert.match(js, /changedFields/);
+  assert.match(impactMigration, /audit_events/);
 });
 
-test('los vínculos de Jornada abren el registro asociado', () => {
-  assert.match(js, /openRemito/);
-  assert.match(js, /verRemito/);
-  assert.match(js, /fuelViewer/);
-  assert.match(js, /checklistViewer/);
-  assert.match(js, /renditionViewer/);
+test('Jornada usa vistas canónicas y no viewers duplicados para registros vinculados', () => {
+  assert.match(js, /verRemitoModal/);
   assert.match(js, /FleetAdminDetailV2\.openTab/);
-  assert.match(js, /Abrir módulo Rendiciones/);
+  assert.match(js, /openFleetCanonical\('combustible'/);
+  assert.match(js, /openFleetCanonical\('neumaticos'/);
+  assert.match(js, /openRenditionCanonical/);
+  assert.doesNotMatch(js, /function fuelViewer/);
+  assert.doesNotMatch(js, /function checklistViewer/);
+  assert.doesNotMatch(js, /function renditionViewer/);
+});
+
+test('correcciones propagan a odómetro rendición y liquidación según estado', () => {
+  assert.match(impactMigration, /recalculate_payroll_impact/);
+  assert.match(impactMigration, /estado='pendiente'/);
+  assert.match(impactMigration, /review_required=true/);
+  assert.match(impactMigration, /adjustment_pending=v_delta/);
+  assert.match(impactMigration, /recompute_truck_odometer_after_correction/);
+  assert.match(impactMigration, /max\(km_at_load\)/);
+  assert.match(impactMigration, /max\(km_at_service\)/);
+  assert.match(impactMigration, /trg_daily_logs_impact_sync/);
+});
+
+test('remitos disparan sincronización también al cambiar importes económicos', () => {
+  assert.match(impactMigration, /update of log_id,driver_id,created_at_device,status,imp_peaje,imp_excedente,imp_otros,pago_1_metodo,pago_1_monto,pago_2_metodo,pago_2_monto/);
+  assert.match(impactMigration, /sync_rendicion_jornada/);
 });
 
 test('las acciones de mutación quedan limitadas a Administración', () => {
   assert.match(js, /const isAdmin = \(\) => role\(\) === 'administracion'/);
-  assert.match(migration, /v_role<>'administracion'/);
+  assert.match(impactMigration, /v_role<>'administracion'/);
 });
 
 test('el módulo se carga, se precachea y entra en CI', () => {
@@ -59,6 +79,7 @@ test('el módulo se carga, se precachea y entra en CI', () => {
   assert.match(sw, /jornadas-admin-tools-v1\.js/);
   assert.match(pkg, /node --check jornadas-admin-tools-v1\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
-  assert.ok(version && Number(version[1]) >= 144);
-  assert.match(css, /\.jat-clickable/);
+  assert.ok(version && Number(version[1]) >= 145);
+  assert.match(css, /\.jat-history-item/);
+  assert.match(css, /\.jat-voided-row/);
 });
