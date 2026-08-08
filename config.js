@@ -66,6 +66,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js');
     await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
     await loadAuxiliosModule('auxilios-operator-services-stability-v1', '/operator-services-stability-v1.js');
+
+    // Jornadas admin: correcciones auditadas, anulación lógica y navegación
+    // directa a remitos/combustible/rendiciones/checklists vinculados.
+    loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
+    await loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js');
   } catch (error) {
     console.error('No se pudieron cargar los módulos comerciales y operativos:', error);
   }
