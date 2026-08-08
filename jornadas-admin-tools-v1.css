@@ -49,5 +49,7 @@
 .jat-voided-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 13px;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.02)}
 .jat-voided-row>div{display:flex;flex-direction:column;gap:3px;min-width:0}
 .jat-voided-row b{color:var(--text);font-size:12px}.jat-voided-row span{color:var(--muted2);font-size:11px}.jat-voided-row small{color:#ff9c98;font-size:10px}
+.jat-payroll-review{display:block;width:max-content;max-width:240px;margin-top:5px;padding:3px 7px;border:1px solid rgba(245,166,35,.42);border-radius:999px;background:rgba(245,166,35,.09);color:#ffd27e;font-size:9px;font-weight:800;line-height:1.2;white-space:normal}
+.jat-payroll-receipt-review{margin-top:8px;padding:8px 10px;border:1px solid rgba(245,166,35,.42);border-radius:8px;background:rgba(245,166,35,.09);color:#ffd27e;font-size:11px;font-weight:700;line-height:1.4}
 @keyframes jatPulse{0%,100%{background:transparent}25%,65%{background:rgba(245,166,35,.15)}}
 @media(max-width:720px){.jat-grid,.jat-grid.three,.jat-record-grid{grid-template-columns:1fr}.jat-span-2,.jat-record.full{grid-column:auto}.jat-body{padding:16px}.jat-footer{padding:13px 16px}.jat-history-head,.jat-history-change,.jat-voided-row{flex-direction:column;align-items:flex-start}.jat-history-change span{text-align:left}}
