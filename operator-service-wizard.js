@@ -1,50 +1,183 @@
-/* AuxiliOS · Alta operativa de escritorio */
+/* AuxiliOS · Nuevo Servicio · controlador canónico sin renderer propio */
 (()=>{'use strict';
 const O=window.OperatorServices,S=O.S;
-const {esc,num,money,concept,canManage,loadServices}=O;
+const {num,canManage,loadServices}=O;
 const notify=(m,t='info')=>typeof toast==='function'?toast(m,t):console.log(m);
 const open=id=>typeof openModal==='function'?openModal(id):document.getElementById(id)?.classList.add('open');
 const close=id=>typeof closeModal==='function'?closeModal(id):document.getElementById(id)?.classList.remove('open');
 const DRAFT_KEY='auxilios.operator-service-draft.v1';
 const quoteFields=new Set(['company_id','branch_id','scheduled_for','primary_concept_id','estimated_distance_km','toll_estimate','is_holiday']);
-const localDateTime=()=>{const d=new Date(Date.now()+30*60000),pad=x=>String(x).padStart(2,'0');return`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`};
-const baseData=()=>({company_id:'',branch_id:'',service_order_number:'',purchase_order_number:'',scheduled_for:localDateTime(),priority:'normal',primary_concept_id:'',secondary_items:{},estimated_distance_km:0,toll_estimate:0,is_holiday:false,customer_name:'',customer_phone:'',customer_email:'',vehicle_plate:'',vehicle_make_model:'',origin:'',destination:'',operator_notes:'',driver_instructions:'',assigned_driver_id:'',assigned_truck_id:'',estimated_arrival_at:''});
-function fresh(saved={}){return{data:{...baseData(),...saved,secondary_items:{...(saved.secondary_items||{})}},contract:null,card:null,items:[],links:[],quote:null,error:null,busy:false,loadingCatalog:false,dirty:false,draftSavedAt:null};}
+
+function nowInBuenosAires(){
+ const parts=new Intl.DateTimeFormat('en-CA',{
+  timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit',
+  hour:'2-digit',minute:'2-digit',hourCycle:'h23'
+ }).formatToParts(new Date());
+ const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
+ return`${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
+}
+
+const baseData=()=>({
+ company_id:'',branch_id:'',billing_base_id:'',service_order_number:'',purchase_order_number:'',
+ scheduled_for:nowInBuenosAires(),priority:'normal',primary_concept_id:'',secondary_items:{},
+ estimated_distance_km:0,estimated_asphalt_km:0,estimated_gravel_km:0,toll_estimate:0,is_holiday:false,
+ customer_name:'',customer_phone:'',customer_email:'',vehicle_plate:'',vehicle_make_model:'',
+ vehicle_make:'',vehicle_model:'',origin:'',destination:'',origin_lat:'',origin_lng:'',destination_lat:'',destination_lng:'',
+ origin_place_id:'',destination_place_id:'',origin_formatted_address:'',destination_formatted_address:'',
+ operator_notes:'',driver_instructions:'',assigned_driver_id:'',assigned_truck_id:'',estimated_arrival_at:'',
+ estimated_finish_at:'',granted_delay_minutes:0,logistics_type:'own',route_distance_meters:'',route_duration_seconds:'',
+ route_toll_estimate:'',route_toll_currency:'',route_provider:'',route_calculated_at:'',route_legs:[]
+});
+
+function fresh(){return{data:baseData(),contract:null,card:null,items:[],links:[],quote:null,error:null,busy:false,loadingCatalog:false,dirty:false,draftSavedAt:null};}
 function storage(){try{return window.localStorage||null}catch{return null}}
-function readDraft(){try{const raw=storage()?.getItem(DRAFT_KEY);return raw?JSON.parse(raw):null}catch{return null}}
 function clearDraft(){try{storage()?.removeItem(DRAFT_KEY)}catch{}}
-function ensureDesktopCss(){if(document.getElementById('operator-service-desktop-css'))return;const css=document.createElement('link');css.id='operator-service-desktop-css';css.rel='stylesheet';css.href='/operator-service-desktop.css';document.head.appendChild(css);}
-function markDirty(){const w=S.wizard;if(!w)return;w.dirty=true;const el=document.getElementById('os-draft-state');if(el){el.textContent='Cambios sin guardar';el.className='os-draft-state dirty';}}
-function invalidateQuote(){const w=S.wizard;if(!w)return;w.quote=null;const el=document.getElementById('os-quote-panel');if(el)el.innerHTML=quoteHTML(w);}
-function setVal(k,v){const w=S.wizard;if(!w)return;if(['estimated_distance_km','toll_estimate'].includes(k))v=Math.max(0,num(v));w.data[k]=v;if(quoteFields.has(k))invalidateQuote();markDirty();}
-function changeBranch(v){setVal('branch_id',v);sanitizeConcepts();render();}
-function resolvedItems(){const w=S.wizard,b=w.data.branch_id,map=new Map();for(const i of w.items){if(i.branch_id&&i.branch_id!==b)continue;const old=map.get(i.concept_id);if(!old||(!old.branch_id&&i.branch_id===b))map.set(i.concept_id,i);}return[...map.values()];}
+
+function render(){
+ if(!S.wizard)return;
+ const renderer=window.OperatorServiceWorkspaceV2?.render;
+ if(typeof renderer==='function')return renderer();
+ const root=document.getElementById('os-wizard-shell');
+ if(root)root.innerHTML='<div class="osv2-bootstrap-state">Cargando formulario de Nuevo Servicio…</div>';
+}
+
+function markDirty(){const w=S.wizard;if(w)w.dirty=true;}
+function invalidateQuote(){const w=S.wizard;if(w)w.quote=null;}
+function setVal(k,v){
+ const w=S.wizard;if(!w)return;
+ if(['estimated_distance_km','toll_estimate','estimated_asphalt_km','estimated_gravel_km','granted_delay_minutes'].includes(k))v=Math.max(0,num(v));
+ w.data[k]=v;
+ if(quoteFields.has(k))invalidateQuote();
+ markDirty();
+}
+function changeBranch(v){setVal('branch_id',v);S.wizard.data.billing_base_id=v||'';sanitizeConcepts();render();}
+
+function resolvedItems(){
+ const w=S.wizard,b=w?.data?.branch_id,map=new Map();if(!w)return[];
+ for(const i of w.items){
+  const itemBranch=i.billing_base_id||i.branch_id||'';
+  if(itemBranch&&b&&String(itemBranch)!==String(b))continue;
+  const old=map.get(String(i.concept_id));
+  if(!old||(!(old.billing_base_id||old.branch_id)&&itemBranch))map.set(String(i.concept_id),i);
+ }
+ return[...map.values()];
+}
 function primaryItems(){return resolvedItems().filter(x=>x.is_active&&x.can_be_primary)}
-function secondaryItems(){const w=S.wizard,all=resolvedItems().filter(x=>x.is_active&&x.can_be_secondary&&x.concept_id!==w.data.primary_concept_id),links=w.links.filter(x=>x.primary_concept_id===w.data.primary_concept_id&&x.is_enabled);return links.length?all.filter(x=>links.some(l=>l.secondary_concept_id===x.concept_id)):all;}
-function secondaryPrice(i){const w=S.wizard,link=w.links.find(x=>x.primary_concept_id===w.data.primary_concept_id&&x.secondary_concept_id===i.concept_id);return link?.price_override??i.secondary_price;}
-function sanitizeConcepts(){const w=S.wizard,primaries=new Set(primaryItems().map(x=>x.concept_id));if(w.data.primary_concept_id&&!primaries.has(w.data.primary_concept_id)){w.data.primary_concept_id='';w.data.secondary_items={};}const allowed=new Set(secondaryItems().map(x=>x.concept_id));for(const id of Object.keys(w.data.secondary_items))if(!allowed.has(id))delete w.data.secondary_items[id];invalidateQuote();}
-async function openWizard(){if(!canManage())return;ensureDesktopCss();const saved=readDraft();S.wizard=fresh(saved?.data||{});S.wizard.draftSavedAt=saved?.savedAt||null;document.getElementById('os-wizard-shell')?.classList.add('os-desktop-shell');render();open('modal-operador-wizard');if(S.wizard.data.company_id)await selectCompany(S.wizard.data.company_id,true);}
-function closeWizard(force=false){const w=S.wizard;if(!w)return;if(!force&&w.dirty&&typeof confirm==='function'&&!confirm('Hay cambios sin guardar. ¿Cerrar el alta?'))return;close('modal-operador-wizard');document.getElementById('os-wizard-shell')?.classList.remove('os-desktop-shell');S.wizard=null;}
-function saveDraft(){const w=S.wizard;if(!w)return;try{const savedAt=new Date().toISOString();storage()?.setItem(DRAFT_KEY,JSON.stringify({data:w.data,savedAt}));w.dirty=false;w.draftSavedAt=savedAt;notify('Borrador guardado en este dispositivo','success');render();}catch{notify('No se pudo guardar el borrador','error');}}
-function shell(){const w=S.wizard,d=w.data,assignmentReady=d.assigned_driver_id&&d.assigned_truck_id;return`<div class="os-wizard-head os-desktop-head"><div><div class="os-eyebrow">Nuevo servicio</div><h3>Alta operativa</h3><div class="os-sub">Vista completa para registrar, cotizar y asignar sin cambiar de pantalla.</div></div><div class="os-desktop-head-meta"><span class="os-status amber">○ Borrador</span><span id="os-draft-state" class="os-draft-state ${w.dirty?'dirty':''}">${w.dirty?'Cambios sin guardar':w.draftSavedAt?'Borrador guardado':'Sin guardar'}</span><button class="os-close" onclick="cerrarNuevoServicio()">×</button></div></div><div class="os-wizard-body os-desktop-body">${w.error?`<div class="os-alert error os-desktop-alert">${esc(w.error)}</div>`:''}<div class="os-service-desktop"><main class="os-service-main">${generalSection()}${companyServiceSection()}${conceptsSection()}</main><aside class="os-service-side">${clientVehicleSection()}${routeSection()}${assignmentSection()}<section class="os-panel os-desktop-section os-quote-card"><div class="os-section-head"><div><span class="os-section-kicker">Cotización</span><h4>Resumen económico</h4></div><button class="btn btn-ghost" ${w.busy||!w.card||!d.primary_concept_id?'disabled':''} onclick="calcularNuevoServicio()">Recalcular</button></div><div id="os-quote-panel">${quoteHTML(w)}</div></section></aside></div></div><div class="os-wizard-footer os-desktop-footer"><div class="os-footer-left"><button class="btn btn-ghost" onclick="cerrarNuevoServicio()">Cancelar</button><button class="btn btn-ghost" onclick="guardarBorradorServicio()">Guardar borrador</button></div><div class="os-footer-summary"><span>${w.card?`${esc(w.card.name)} · v${w.card.version}`:'Tarifario pendiente'}</span>${w.quote?`<b>${money(w.quote.company_estimated_total,w.quote.currency)}</b>`:''}</div><button class="btn btn-primary" ${w.busy?'disabled':''} onclick="crearNuevoServicio()">${w.busy?'Procesando…':assignmentReady?'Crear y asignar':'Crear pendiente'}</button></div>`}
-function section(title,kicker,body,extra=''){return`<section class="os-panel os-desktop-section">${extra||`<div class="os-section-head"><div><span class="os-section-kicker">${kicker}</span><h4>${title}</h4></div></div>`}${body}</section>`}
-function generalSection(){const d=S.wizard.data;return section('Datos generales','Servicio',`<div class="os-desktop-grid four"><div class="os-field"><label>Fecha y hora solicitada *</label><input class="form-input" type="datetime-local" value="${esc(d.scheduled_for)}" onchange="osSetServicio('scheduled_for',this.value)"></div><div class="os-field"><label>Prioridad</label><select class="form-input" onchange="osSetServicio('priority',this.value)"><option value="normal" ${d.priority==='normal'?'selected':''}>Normal</option><option value="urgent" ${d.priority==='urgent'?'selected':''}>Urgente</option><option value="critical" ${d.priority==='critical'?'selected':''}>Crítica</option></select></div><div class="os-field"><label>N° de prestación ${S.wizard.contract?.requires_service_order?'*':''}</label><input class="form-input" value="${esc(d.service_order_number)}" oninput="osSetServicio('service_order_number',this.value)" placeholder="Caso o asistencia"></div><div class="os-field"><label>Orden de compra ${S.wizard.contract?.requires_purchase_order?'*':''}</label><input class="form-input" value="${esc(d.purchase_order_number)}" oninput="osSetServicio('purchase_order_number',this.value)" placeholder="Opcional"></div></div>`);}
-function companyServiceSection(){const w=S.wizard,d=w.data,branches=S.branches.filter(x=>x.company_id===d.company_id);return section('Empresa y prestación','Empresa',`<div class="os-desktop-grid two"><div class="os-field"><label>Prestadora *</label><select class="form-input" onchange="seleccionarEmpresaServicio(this.value)"><option value="">Seleccionar empresa</option>${S.companies.map(x=>`<option value="${x.company_id}" ${d.company_id===x.company_id?'selected':''}>${esc(x.trade_name||x.legal_name)}</option>`).join('')}</select></div><div class="os-field"><label>Sucursal o base</label><select class="form-input" ${d.company_id?'':'disabled'} onchange="cambiarSucursalServicio(this.value)"><option value="">Tarifa general</option>${branches.map(x=>`<option value="${x.branch_id}" ${d.branch_id===x.branch_id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div></div>${w.loadingCatalog?'<div class="os-catalog-state">Cargando convenio y tarifario vigente…</div>':w.card?`<div class="os-tariff-ready"><i>✓</i><div><b>${esc(w.contract.name)}</b><span>${esc(w.card.name)} · versión ${w.card.version} · ${esc(w.card.currency)}</span></div></div>`:d.company_id?'<div class="os-alert warning">La empresa debe tener un contrato y tarifario publicados.</div>':''}`);}
-function conceptsSection(){const w=S.wizard,d=w.data,prim=primaryItems(),selectedPrimary=prim.find(x=>x.concept_id===d.primary_concept_id),selectedSecondary=secondaryItems().filter(x=>Object.hasOwn(d.secondary_items,x.concept_id)),available=secondaryItems().filter(x=>!Object.hasOwn(d.secondary_items,x.concept_id));const rows=[];if(selectedPrimary){const c=concept(selectedPrimary.concept_id);rows.push(`<tr><td><span class="os-concept-kind primary">Principal</span></td><td><b>${esc(c?.name||selectedPrimary.service_name)}</b><small>${esc(selectedPrimary.pricing_unit||'servicio')}</small></td><td>1</td><td>${money(selectedPrimary.primary_price,w.card?.currency||'ARS')}</td><td>${w.quote?money(w.quote.components?.find(x=>x.concept_id===selectedPrimary.concept_id)?.subtotal??selectedPrimary.primary_price,w.card?.currency||'ARS'):'—'}</td><td></td></tr>`);}for(const i of selectedSecondary){const c=concept(i.concept_id),qty=d.secondary_items[i.concept_id],component=w.quote?.components?.find(x=>x.concept_id===i.concept_id);rows.push(`<tr><td><span class="os-concept-kind secondary">Adicional</span></td><td><b>${esc(c?.name||i.service_name)}</b><small>${esc(i.pricing_unit||'unidad')}</small></td><td><input class="form-input os-qty" type="number" min="0.01" step="0.01" value="${num(qty)}" onchange="cantidadSecundarioServicio('${i.concept_id}',this.value)"></td><td>${money(secondaryPrice(i),w.card?.currency||'ARS')}</td><td>${component?money(component.subtotal,w.card?.currency||'ARS'):'—'}</td><td><button class="os-row-action" title="Quitar" onclick="quitarSecundarioServicio('${i.concept_id}')">×</button></td></tr>`);}return section('Conceptos y kilómetros','Servicio',`<div class="os-desktop-grid two os-concept-selectors"><div class="os-field"><label>Concepto principal *</label><select class="form-input" ${w.card?'':'disabled'} onchange="seleccionarPrincipalServicio(this.value)"><option value="">Seleccionar servicio</option>${prim.map(i=>{const c=concept(i.concept_id);return`<option value="${i.concept_id}" ${d.primary_concept_id===i.concept_id?'selected':''}>${esc(c?.name||i.service_name)} · ${money(i.primary_price,w.card?.currency||'ARS')}</option>`}).join('')}</select></div><div class="os-field"><label>Agregar concepto</label><select class="form-input" ${d.primary_concept_id&&available.length?'':'disabled'} onchange="agregarSecundarioServicio(this.value);this.value=''"><option value="">+ Agregar adicional</option>${available.map(i=>{const c=concept(i.concept_id);return`<option value="${i.concept_id}">${esc(c?.name||i.service_name)} · ${money(secondaryPrice(i),w.card?.currency||'ARS')}</option>`}).join('')}</select></div></div><div class="os-concepts-table-wrap"><table class="os-concepts-table"><thead><tr><th>Tipo</th><th>Concepto</th><th>Cantidad</th><th>Unitario</th><th>Subtotal</th><th></th></tr></thead><tbody>${rows.join('')||'<tr><td colspan="6" class="os-table-empty">Seleccioná el concepto principal para comenzar.</td></tr>'}</tbody></table></div><div class="os-desktop-grid three os-distance-grid"><div class="os-field"><label>Distancia estimada (km)</label><input class="form-input" type="number" min="0" step="0.1" value="${num(d.estimated_distance_km)}" onchange="osSetServicio('estimated_distance_km',this.value)"></div><div class="os-field"><label>Peajes estimados</label><input class="form-input" type="number" min="0" step="0.01" value="${num(d.toll_estimate)}" onchange="osSetServicio('toll_estimate',this.value)"></div><label class="os-check os-holiday"><input type="checkbox" ${d.is_holiday?'checked':''} onchange="osSetServicio('is_holiday',this.checked)"> Aplicar condición de feriado</label></div>`);}
-function clientVehicleSection(){const d=S.wizard.data;return section('Cliente y vehículo','Datos y ruta',`<div class="os-desktop-grid two"><div class="os-field"><label>Cliente o socio</label><input class="form-input" value="${esc(d.customer_name)}" oninput="osSetServicio('customer_name',this.value)" placeholder="Nombre completo"></div><div class="os-field"><label>Teléfono *</label><input class="form-input" value="${esc(d.customer_phone)}" oninput="osSetServicio('customer_phone',this.value)" placeholder="11 0000 0000"></div><div class="os-field"><label>Email</label><input class="form-input" type="email" value="${esc(d.customer_email)}" oninput="osSetServicio('customer_email',this.value)" placeholder="cliente@email.com"></div><div class="os-field"><label>Patente</label><input class="form-input" value="${esc(d.vehicle_plate)}" oninput="osSetServicio('vehicle_plate',this.value.toUpperCase())" placeholder="AA123BB"></div><div class="os-field span-two"><label>Marca y modelo</label><input class="form-input" value="${esc(d.vehicle_make_model)}" oninput="osSetServicio('vehicle_make_model',this.value)" placeholder="Marca, modelo y versión"></div></div>`);}
-function routeSection(){const d=S.wizard.data;return section('Origen y destino','Datos y ruta',`<div class="os-location-card origin"><div class="os-location-title"><span>A</span><b>Origen *</b></div><textarea class="form-input" oninput="osSetServicio('origin',this.value)" placeholder="Dirección y referencias">${esc(d.origin)}</textarea></div><div class="os-route-divider">↓</div><div class="os-location-card destination"><div class="os-location-title"><span>B</span><b>Destino *</b></div><textarea class="form-input" oninput="osSetServicio('destination',this.value)" placeholder="Dirección y referencias">${esc(d.destination)}</textarea></div>`);}
-function assignmentSection(){const d=S.wizard.data;return section('Asignación e indicaciones','Asignación',`<div class="os-desktop-grid two"><div class="os-field"><label>Chofer</label><select class="form-input" onchange="osSetServicio('assigned_driver_id',this.value)"><option value="">Asignar más tarde</option>${S.drivers.map(x=>`<option value="${x.user_id}" ${d.assigned_driver_id===x.user_id?'selected':''}>${esc(x.full_name)}</option>`).join('')}</select></div><div class="os-field"><label>Móvil</label><select class="form-input" onchange="osSetServicio('assigned_truck_id',this.value)"><option value="">Asignar más tarde</option>${S.trucks.map(x=>`<option value="${x.truck_id}" ${String(d.assigned_truck_id)===String(x.truck_id)?'selected':''}>${esc(x.numero_interno||x.plate)} · ${esc(x.plate)}</option>`).join('')}</select></div><div class="os-field span-two"><label>Hora estimada de llegada</label><input class="form-input" type="datetime-local" value="${esc(d.estimated_arrival_at)}" onchange="osSetServicio('estimated_arrival_at',this.value)"></div><div class="os-field span-two"><label>Indicaciones para el chofer</label><textarea class="form-input" oninput="osSetServicio('driver_instructions',this.value)" placeholder="Acceso, contacto, estado del vehículo…">${esc(d.driver_instructions)}</textarea></div><div class="os-field span-two"><label>Observación interna</label><textarea class="form-input" oninput="osSetServicio('operator_notes',this.value)" placeholder="Visible solo para operación y administración">${esc(d.operator_notes)}</textarea></div></div>`);}
-function quoteHTML(w){if(w.busy)return'<div class="os-quote-loading">Procesando información…</div>';if(!w.card)return'<div class="os-quote-empty">Seleccioná una empresa con tarifario vigente.</div>';if(!w.data.primary_concept_id)return'<div class="os-quote-empty">Seleccioná el concepto principal.</div>';if(!w.quote)return'<div class="os-quote-empty"><b>Cotización pendiente</b><span>Recalculá para validar el total con el tarifario vigente.</span></div>';const q=w.quote;return`<div class="os-quote-meta"><span>${esc(q.rate_card_name)} · v${q.rate_card_version}</span><span>${esc(q.currency)}</span></div><div class="os-breakdown">${q.components.map(x=>`<div><span>${esc(x.service_name)}${num(x.quantity)!==1?` × ${num(x.quantity)}`:''}</span><b>${money(x.subtotal,q.currency)}</b></div>`).join('')}${q.surcharges.map(x=>`<div><span>Recargo ${esc(String(x.rule_type).replaceAll('_',' '))}</span><b>${money(x.amount,q.currency)}</b></div>`).join('')}${num(q.toll_total)?`<div><span>Peajes</span><b>${money(q.toll_total,q.currency)}</b></div>`:''}${num(q.copay_total)?`<div><span>Copago del cliente</span><b>− ${money(q.copay_total,q.currency)}</b></div>`:''}<div class="total"><span>Total empresa</span><b>${money(q.company_estimated_total,q.currency)}</b></div>${num(q.copay_total)?`<div><span>Total general</span><b>${money(q.estimated_total,q.currency)}</b></div>`:''}</div>`}
-function render(){const root=document.getElementById('os-wizard-shell');if(!root||!S.wizard)return;root.innerHTML=shell();}
-async function selectCompany(id,preserve=false){const w=S.wizard;if(!w)return;const previous=preserve?{branch_id:w.data.branch_id,primary_concept_id:w.data.primary_concept_id,secondary_items:{...w.data.secondary_items}}:null;w.data.company_id=id;w.contract=w.card=null;w.items=[];w.links=[];w.quote=null;w.error=null;if(!preserve){w.data.branch_id='';w.data.primary_concept_id='';w.data.secondary_items={};markDirty();}if(!id){w.loadingCatalog=false;return render();}w.loadingCatalog=true;render();const date=(w.data.scheduled_for||localDateTime()).slice(0,10);const contracts=await _db.from('company_contracts').select('*').eq('company_id',id).eq('status','active').lte('valid_from',date).or(`valid_until.is.null,valid_until.gte.${date}`).order('is_primary',{ascending:false}).order('valid_from',{ascending:false}).limit(1);if(contracts.error||!contracts.data?.length){w.loadingCatalog=false;w.error='La empresa no tiene un contrato vigente.';return render();}w.contract=contracts.data[0];const cards=await _db.from('company_rate_cards').select('*').eq('contract_id',w.contract.contract_id).eq('status','active').lte('valid_from',date).or(`valid_until.is.null,valid_until.gte.${date}`).order('version',{ascending:false}).limit(1);if(cards.error||!cards.data?.length){w.loadingCatalog=false;w.error='El contrato no tiene un tarifario publicado y vigente.';return render();}w.card=cards.data[0];const [items,links]=await Promise.all([_db.from('company_rate_items').select('*').eq('rate_card_id',w.card.rate_card_id).eq('is_active',true),_db.from('company_rate_service_links').select('*').eq('rate_card_id',w.card.rate_card_id).eq('is_enabled',true)]);w.loadingCatalog=false;if(items.error||links.error){w.error='No se pudo cargar el tarifario.';}else{w.items=items.data||[];w.links=links.data||[];w.error=null;if(previous){w.data.branch_id=previous.branch_id;w.data.primary_concept_id=previous.primary_concept_id;w.data.secondary_items=previous.secondary_items;sanitizeConcepts();}}render();}
+function secondaryItems(){
+ const w=S.wizard;if(!w)return[];
+ const all=resolvedItems().filter(x=>x.is_active&&x.can_be_secondary&&String(x.concept_id)!==String(w.data.primary_concept_id));
+ const links=w.links.filter(x=>String(x.primary_concept_id)===String(w.data.primary_concept_id)&&x.is_enabled!==false);
+ return links.length?all.filter(x=>links.some(l=>String(l.secondary_concept_id)===String(x.concept_id))):all;
+}
+function sanitizeConcepts(){
+ const w=S.wizard;if(!w)return;
+ const primaries=new Set(primaryItems().map(x=>String(x.concept_id)));
+ if(w.data.primary_concept_id&&!primaries.has(String(w.data.primary_concept_id))){w.data.primary_concept_id='';w.data.secondary_items={};}
+ const allowed=new Set(secondaryItems().map(x=>String(x.concept_id)));
+ for(const id of Object.keys(w.data.secondary_items))if(!allowed.has(String(id)))delete w.data.secondary_items[id];
+ invalidateQuote();
+}
+
+async function openWizard(){
+ if(!canManage())return;
+ clearDraft();
+ S.wizard=fresh();
+ const shell=document.getElementById('os-wizard-shell');
+ if(shell){shell.replaceChildren();shell.className='os-wizard-shell';}
+ window.OperatorServiceWorkspaceReviewV3?.prepareOpen?.();
+ render();
+ open('modal-operador-wizard');
+}
+function closeWizard(force=false){
+ const w=S.wizard;if(!w)return;
+ if(!force&&w.dirty&&typeof confirm==='function'&&!confirm('Hay cambios sin guardar. ¿Cerrar el alta?'))return;
+ close('modal-operador-wizard');
+ const shell=document.getElementById('os-wizard-shell');if(shell)shell.replaceChildren();
+ S.wizard=null;
+}
+function saveDraft(){
+ const w=S.wizard;if(!w)return;
+ try{
+  const savedAt=new Date().toISOString();
+  storage()?.setItem(DRAFT_KEY,JSON.stringify({data:w.data,savedAt}));
+  w.dirty=false;w.draftSavedAt=savedAt;
+  notify('Borrador guardado en este dispositivo','success');render();
+ }catch{notify('No se pudo guardar el borrador','error');}
+}
+
+async function selectCompany(id,preserve=false){
+ const w=S.wizard;if(!w)return;
+ const previous=preserve?{branch_id:w.data.branch_id,primary_concept_id:w.data.primary_concept_id,secondary_items:{...w.data.secondary_items}}:null;
+ w.data.company_id=id;w.contract=w.card=null;w.items=[];w.links=[];w.quote=null;w.error=null;
+ if(!preserve){w.data.branch_id='';w.data.billing_base_id='';w.data.primary_concept_id='';w.data.secondary_items={};markDirty();}
+ if(!id){w.loadingCatalog=false;return render();}
+ w.loadingCatalog=true;render();
+ const date=(w.data.scheduled_for||nowInBuenosAires()).slice(0,10);
+ const contracts=await _db.from('company_contracts').select('*').eq('company_id',id).eq('status','active').lte('valid_from',date).or(`valid_until.is.null,valid_until.gte.${date}`).order('is_primary',{ascending:false}).order('valid_from',{ascending:false}).limit(1);
+ if(contracts.error||!contracts.data?.length){w.loadingCatalog=false;w.error='La empresa no tiene un contrato vigente.';return render();}
+ w.contract=contracts.data[0];
+ const cards=await _db.from('company_rate_cards').select('*').eq('contract_id',w.contract.contract_id).eq('status','active').lte('valid_from',date).or(`valid_until.is.null,valid_until.gte.${date}`).order('version',{ascending:false}).limit(1);
+ if(cards.error||!cards.data?.length){w.loadingCatalog=false;w.error='El contrato no tiene un tarifario publicado y vigente.';return render();}
+ w.card=cards.data[0];
+ const [items,links]=await Promise.all([
+  _db.from('company_rate_items').select('*').eq('rate_card_id',w.card.rate_card_id).eq('is_active',true),
+  _db.from('company_rate_service_links').select('*').eq('rate_card_id',w.card.rate_card_id).eq('is_enabled',true)
+ ]);
+ w.loadingCatalog=false;
+ if(items.error||links.error)w.error='No se pudo cargar el tarifario.';
+ else{
+  w.items=items.data||[];w.links=links.data||[];w.error=null;
+  if(previous){w.data.branch_id=previous.branch_id;w.data.billing_base_id=previous.branch_id;w.data.primary_concept_id=previous.primary_concept_id;w.data.secondary_items=previous.secondary_items;sanitizeConcepts();}
+ }
+ render();
+}
 function selectPrimary(id){const w=S.wizard;if(!w)return;w.data.primary_concept_id=id;w.data.secondary_items={};w.quote=null;markDirty();render();}
 function addSecondary(id){if(!id||!S.wizard)return;S.wizard.data.secondary_items[id]=1;S.wizard.quote=null;markDirty();render();}
 function removeSecondary(id){if(!S.wizard)return;delete S.wizard.data.secondary_items[id];S.wizard.quote=null;markDirty();render();}
 function secondaryQty(id,v){if(!S.wizard)return;S.wizard.data.secondary_items[id]=Math.max(num(v),.01);S.wizard.quote=null;markDirty();render();}
 function secondaryPayload(){return Object.entries(S.wizard.data.secondary_items).map(([concept_id,quantity])=>({concept_id,quantity:num(quantity)}))}
-async function calculate(){const w=S.wizard;if(!w?.card||!w.data.primary_concept_id)return;const scheduled=new Date(w.data.scheduled_for);if(Number.isNaN(scheduled.getTime())){w.error='Ingresá una fecha y hora válidas.';return render();}w.busy=true;w.error=null;render();const d=w.data,{data,error}=await _db.rpc('calculate_operator_service_quote',{p_company_id:d.company_id,p_branch_id:d.branch_id||null,p_scheduled_for:scheduled.toISOString(),p_primary_concept_id:d.primary_concept_id,p_secondary_items:secondaryPayload(),p_distance_km:num(d.estimated_distance_km),p_toll_amount:num(d.toll_estimate),p_is_holiday:!!d.is_holiday});w.busy=false;if(error){w.error=error.message;w.quote=null}else{w.quote=data;w.error=null}render();}
-function validationErrors(){const w=S.wizard,d=w.data,errors=[];if(!d.company_id||!w.card)errors.push('Seleccioná una empresa con tarifario publicado y vigente.');if(!d.primary_concept_id)errors.push('Elegí el concepto principal.');if(!String(d.customer_phone||'').trim())errors.push('Completá el teléfono del cliente.');if(!String(d.origin||'').trim()||!String(d.destination||'').trim())errors.push('Completá origen y destino.');if(w.contract?.requires_service_order&&!String(d.service_order_number||'').trim())errors.push('El contrato exige número de prestación.');if(w.contract?.requires_purchase_order&&!String(d.purchase_order_number||'').trim())errors.push('El contrato exige orden de compra.');if((d.assigned_driver_id&&!d.assigned_truck_id)||(!d.assigned_driver_id&&d.assigned_truck_id))errors.push('Chofer y móvil deben asignarse juntos.');return errors;}
-async function create(){const w=S.wizard;if(!w||w.busy)return;const errors=validationErrors();if(errors.length){w.error=errors.join(' ');return render();}if(!w.quote){await calculate();if(!w.quote)return;}w.busy=true;w.error=null;render();const d=w.data,payload={...d,scheduled_for:new Date(d.scheduled_for).toISOString(),estimated_arrival_at:d.estimated_arrival_at?new Date(d.estimated_arrival_at).toISOString():'',secondary_items:secondaryPayload(),estimated_distance_km:num(d.estimated_distance_km),toll_estimate:num(d.toll_estimate),is_holiday:!!d.is_holiday};const {data,error}=await _db.rpc('create_operator_service',{p_payload:payload});w.busy=false;if(error){w.error=error.message;return render()}clearDraft();w.dirty=false;notify(`Servicio ${data.service_number} creado`,'success');closeWizard(true);await loadServices();if(data.service_id)window.abrirDetalleServicio(data.service_id);}
+
+async function calculate(){
+ const w=S.wizard;if(!w?.card||!w.data.primary_concept_id)return;
+ const scheduled=new Date(w.data.scheduled_for);
+ if(Number.isNaN(scheduled.getTime())){w.error='Ingresá una fecha y hora válidas.';return render();}
+ w.busy=true;w.error=null;render();
+ const d=w.data,{data,error}=await _db.rpc('calculate_operator_service_quote',{
+  p_company_id:d.company_id,p_branch_id:d.branch_id||null,p_scheduled_for:scheduled.toISOString(),
+  p_primary_concept_id:d.primary_concept_id,p_secondary_items:secondaryPayload(),p_distance_km:num(d.estimated_distance_km),
+  p_toll_amount:num(d.toll_estimate),p_is_holiday:!!d.is_holiday
+ });
+ w.busy=false;
+ if(error){w.error=error.message;w.quote=null}else{w.quote=data;w.error=null}
+ render();
+}
+function validationErrors(){
+ const w=S.wizard,d=w?.data,errors=[];if(!w)return['No hay un servicio en edición.'];
+ if(!d.company_id||!w.card)errors.push('Seleccioná una empresa con tarifario publicado y vigente.');
+ if(!d.primary_concept_id)errors.push('Elegí el concepto principal.');
+ if(!String(d.customer_phone||'').trim())errors.push('Completá el teléfono del cliente.');
+ if(!String(d.origin||'').trim()||!String(d.destination||'').trim())errors.push('Completá origen y destino.');
+ if(w.contract?.requires_service_order&&!String(d.service_order_number||'').trim())errors.push('El contrato exige número de prestación.');
+ if(w.contract?.requires_purchase_order&&!String(d.purchase_order_number||'').trim())errors.push('El contrato exige orden de compra.');
+ if((d.assigned_driver_id&&!d.assigned_truck_id)||(!d.assigned_driver_id&&d.assigned_truck_id))errors.push('Chofer y móvil deben asignarse juntos.');
+ return errors;
+}
+async function create(){
+ const w=S.wizard;if(!w||w.busy)return;
+ const errors=validationErrors();if(errors.length){w.error=errors.join(' ');return render();}
+ if(!w.quote){await calculate();if(!w.quote)return;}
+ w.busy=true;w.error=null;render();
+ const d=w.data,payload={...d,scheduled_for:new Date(d.scheduled_for).toISOString(),estimated_arrival_at:d.estimated_arrival_at?new Date(d.estimated_arrival_at).toISOString():'',estimated_finish_at:d.estimated_finish_at?new Date(d.estimated_finish_at).toISOString():'',secondary_items:secondaryPayload(),estimated_distance_km:num(d.estimated_distance_km),toll_estimate:num(d.toll_estimate),is_holiday:!!d.is_holiday};
+ const {data,error}=await _db.rpc('create_operator_service',{p_payload:payload});
+ w.busy=false;if(error){w.error=error.message;return render();}
+ clearDraft();w.dirty=false;notify(`Servicio ${data.service_number} creado`,'success');closeWizard(true);await loadServices();if(data.service_id)window.abrirDetalleServicio(data.service_id);
+}
+
 Object.assign(O,{openWizard,closeWizard,renderWizard:render,calculateQuote:calculate});
-Object.assign(window,{abrirNuevoServicio:openWizard,cerrarNuevoServicio:closeWizard,guardarBorradorServicio:saveDraft,osSetServicio:setVal,seleccionarEmpresaServicio:selectCompany,cambiarSucursalServicio:changeBranch,seleccionarPrincipalServicio:selectPrimary,agregarSecundarioServicio:addSecondary,quitarSecundarioServicio:removeSecondary,alternarSecundarioServicio:(id,on)=>on?addSecondary(id):removeSecondary(id),cantidadSecundarioServicio:secondaryQty,calcularNuevoServicio:calculate,crearNuevoServicio:create,pasoSiguienteNuevoServicio:()=>{},pasoAnteriorNuevoServicio:()=>{},irPasoNuevoServicio:()=>{}});
+Object.assign(window,{
+ abrirNuevoServicio:openWizard,cerrarNuevoServicio:closeWizard,guardarBorradorServicio:saveDraft,osSetServicio:setVal,
+ seleccionarEmpresaServicio:selectCompany,cambiarSucursalServicio:changeBranch,seleccionarPrincipalServicio:selectPrimary,
+ agregarSecundarioServicio:addSecondary,quitarSecundarioServicio:removeSecondary,alternarSecundarioServicio:(id,on)=>on?addSecondary(id):removeSecondary(id),
+ cantidadSecundarioServicio:secondaryQty,calcularNuevoServicio:calculate,crearNuevoServicio:create,pasoSiguienteNuevoServicio:()=>{},pasoAnteriorNuevoServicio:()=>{},irPasoNuevoServicio:()=>{}
+});
 })();
