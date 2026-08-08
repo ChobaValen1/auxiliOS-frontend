@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-test('operator services modules render the dispatch board and creation wizard', () => {
+test('operator services renders the dispatch board and initializes the canonical creation controller', () => {
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) {
@@ -13,6 +13,7 @@ test('operator services modules render the dispatch board and creation wizard', 
         innerHTML: '',
         value: id === 'os-status' || id === 'os-company' ? 'all' : '',
         style: {},
+        className: '',
         classList: { add() {}, remove() {}, contains() { return false; } },
         insertAdjacentHTML() {},
       });
@@ -108,9 +109,7 @@ test('operator services modules render the dispatch board and creation wizard', 
 
   sandbox.abrirNuevoServicio();
   assert.ok(state.wizard);
-  assert.match(element('os-wizard-shell').innerHTML, /Alta operativa/);
-  assert.match(element('os-wizard-shell').innerHTML, /Empresa/);
-  assert.match(element('os-wizard-shell').innerHTML, /Servicio/);
-  assert.match(element('os-wizard-shell').innerHTML, /Datos y ruta/);
-  assert.match(element('os-wizard-shell').innerHTML, /Asignación/);
+  assert.match(element('os-wizard-shell').innerHTML, /Cargando formulario de Nuevo Servicio/);
+  assert.doesNotMatch(element('os-wizard-shell').innerHTML, /Alta operativa|os-service-desktop/);
+  assert.equal(typeof operator.renderWizard, 'function');
 });
