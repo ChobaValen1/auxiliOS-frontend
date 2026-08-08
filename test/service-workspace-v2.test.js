@@ -97,7 +97,9 @@ test('Maps flota sobre el layout y no ocupa espacio al cerrarse', () => {
 
 test('el workspace forma parte de CI y utiliza una caché PWA vigente', () => {
   assert.match(pkg, /node --check operator-service-workspace-reactive-v1\.js/);
-  assert.match(sw, /auxilios-v141/);
+  const version = sw.match(/auxilios-v(\d+)/);
+  assert.ok(version);
+  assert.ok(Number(version[1]) >= 142);
   assert.match(sw, /operator-service-workspace-v2\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);
