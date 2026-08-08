@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v141'; // v141: Nuevo Servicio reactivo, conceptos por fila y Maps sin overlays persistentes
+const CACHE_NAME = 'auxilios-v142'; // v142: Nuevo Servicio reactivo + compatibilidad operativa
 
 const PRECACHE_ASSETS = [
   '/',
@@ -59,6 +59,7 @@ const PRECACHE_ASSETS = [
   '/feature-flags.js',
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-reactive-v1.js',
+  '/operator-service-workspace-behavior-v1.js',
   '/operator-services-stability-v1.js',
   '/operator-services-block-a-v1.js',
   '/operator-services-canonical-view-v1.js',
