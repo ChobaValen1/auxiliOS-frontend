@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v143'; // v143: estructura previa de columnas + mejoras reactivas
+const CACHE_NAME = 'auxilios-v144'; // v144: edición/anulación de Jornadas + navegación vinculada
 
 const PRECACHE_ASSETS = [
   '/',
@@ -26,6 +26,8 @@ const PRECACHE_ASSETS = [
   '/fleet-fuel-crud-v1.js',
   '/fleet-fuel-closed-edit-fix.js',
   '/fleet-fuel-modal-state-fix.js',
+  '/jornadas-admin-tools-v1.css',
+  '/jornadas-admin-tools-v1.js',
   '/comercial.css',
   '/comercial.js',
   '/comercial-services.js',
