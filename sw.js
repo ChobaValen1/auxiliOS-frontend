@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v142'; // v142: Nuevo Servicio reactivo + compatibilidad operativa
+const CACHE_NAME = 'auxilios-v143'; // v143: estructura previa de columnas + mejoras reactivas
 
 const PRECACHE_ASSETS = [
   '/',

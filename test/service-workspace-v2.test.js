@@ -8,6 +8,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 const flags = read('feature-flags.js');
 const workspace = read('operator-service-workspace-reactive-v1.js');
+const wizard = read('operator-service-wizard.js');
 const css = read('operator-service-workspace-v2.css');
 const reactiveCss = read('operator-service-workspace-reactive-v1.css');
 const pkg = read('package.json');
@@ -51,6 +52,24 @@ test('el formulario se monta una sola vez y luego sincroniza sectores', () => {
   assert.match(workspace, /function syncSummary\(\)/);
 });
 
+test('la primera columna recupera el orden operativo anterior', () => {
+  const adminStart = workspace.indexOf('<section class="osv2-column admin-column">');
+  const routeStart = workspace.indexOf('<section class="osv2-column route-column">');
+  assert.ok(adminStart >= 0 && routeStart > adminStart);
+  const admin = workspace.slice(adminStart, routeStart);
+  const ordered = ['Código prestadora', 'Fecha *', 'Hora *', 'Arribo', 'Fin', 'Demora', 'Prestadora *', 'Base Operativa', 'Tipo de Servicio *', 'Tipo de Logística', 'Asignar Chofer', 'Asignar Móvil', 'Conceptos adicionales'];
+  let cursor = -1;
+  for (const label of ordered) {
+    const next = admin.indexOf(label);
+    assert.ok(next > cursor, `${label} debe respetar el orden anterior`);
+    cursor = next;
+  }
+  assert.doesNotMatch(admin, /Orden de compra/i);
+  assert.doesNotMatch(admin, /Patente|Vehículo del cliente/);
+  assert.match(admin, /data-time-field="estimated_arrival_at"/);
+  assert.match(admin, /data-time-field="estimated_finish_at"/);
+});
+
 test('Agregar concepto agrega una fila independiente por click', () => {
   assert.match(workspace, /data-click="add-concept"/);
   assert.match(workspace, /ui\.rows\.push\(\{id:uid\(\),conceptId:''\}\)/);
@@ -76,17 +95,26 @@ test('peajes y excedentes conservan paneles independientes', () => {
   assert.match(workspace, /id="osv4-extras"/);
 });
 
-test('la segunda columna conserva recorrido, vehículo, kilómetros y observaciones', () => {
+test('la segunda columna conserva recorrido vehículo cliente kilómetros y observaciones', () => {
   const routeStart = workspace.indexOf('<section class="osv2-column route-column">');
   const actionsStart = workspace.indexOf('<section class="osv2-column actions-column">');
   assert.ok(routeStart >= 0 && actionsStart > routeStart);
-  const routeSection = workspace.slice(routeStart, actionsStart);
-  assert.match(routeSection, /Origen/);
-  assert.match(routeSection, /Destino/);
-  assert.match(routeSection, /KM asfalto/);
-  assert.match(routeSection, /KM ripio/);
-  assert.match(routeSection, /Notas del operador/);
-  assert.match(routeSection, /Indicaciones al chofer/);
+  const route = workspace.slice(routeStart, actionsStart);
+  const ordered = ['Origen', 'Destino', 'Vehículo del cliente', 'Marca', 'Modelo', 'Patente', 'Tel. Cliente *', 'Cliente / Socio', 'Kilómetros', 'KM Asfalto', 'KM Ripio', 'KM Totales', 'Observaciones'];
+  let cursor = -1;
+  for (const label of ordered) {
+    const next = route.indexOf(label);
+    assert.ok(next > cursor, `${label} debe permanecer en la segunda columna y en orden`);
+    cursor = next;
+  }
+  assert.match(route, /locationMarkup\('origin','Origen'\)/);
+  assert.match(route, /locationMarkup\('destination','Destino'\)/);
+});
+
+test('Orden de compra no pertenece al flujo de alta del operador', () => {
+  assert.doesNotMatch(workspace, /Orden de compra/i);
+  assert.doesNotMatch(wizard, /El contrato exige orden de compra/i);
+  assert.doesNotMatch(wizard, /requires_purchase_order.*errors\.push/i);
 });
 
 test('Maps flota sobre el layout y no ocupa espacio al cerrarse', () => {
@@ -99,7 +127,7 @@ test('el workspace forma parte de CI y utiliza una caché PWA vigente', () => {
   assert.match(pkg, /node --check operator-service-workspace-reactive-v1\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
   assert.ok(version);
-  assert.ok(Number(version[1]) >= 142);
+  assert.ok(Number(version[1]) >= 143);
   assert.match(sw, /operator-service-workspace-v2\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);

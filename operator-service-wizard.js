@@ -158,7 +158,6 @@ function validationErrors(){
  if(!String(d.customer_phone||'').trim())errors.push('Completá el teléfono del cliente.');
  if(!String(d.origin||'').trim()||!String(d.destination||'').trim())errors.push('Completá origen y destino.');
  if(w.contract?.requires_service_order&&!String(d.service_order_number||'').trim())errors.push('El contrato exige número de prestación.');
- if(w.contract?.requires_purchase_order&&!String(d.purchase_order_number||'').trim())errors.push('El contrato exige orden de compra.');
  if((d.assigned_driver_id&&!d.assigned_truck_id)||(!d.assigned_driver_id&&d.assigned_truck_id))errors.push('Chofer y móvil deben asignarse juntos.');
  return errors;
 }
