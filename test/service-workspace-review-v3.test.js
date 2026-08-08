@@ -13,11 +13,15 @@ const flags = read('feature-flags.js');
 const pkg = read('package.json');
 const sw = read('sw.js');
 
-test('Nuevo Servicio mantiene código prestadora, demora y KM totales en el renderer reactivo', () => {
+test('Nuevo Servicio mantiene código prestadora demora horarios y KM totales en el renderer reactivo', () => {
   assert.match(workspace, /Código prestadora/);
   assert.match(workspace, /service_order_number/);
+  assert.match(workspace, /Arribo/);
+  assert.match(workspace, /estimated_arrival_at/);
+  assert.match(workspace, /Fin/);
+  assert.match(workspace, /estimated_finish_at/);
   assert.match(workspace, /\[30,60,90,120,180,240\]/);
-  assert.match(workspace, /KM totales/);
+  assert.match(workspace, /KM Totales/i);
   assert.match(workspace, /estimated_asphalt_km/);
   assert.match(workspace, /estimated_gravel_km/);
   assert.match(workspace, /estimated_distance_km/);
@@ -58,7 +62,7 @@ test('Review V3 deja de cargarse y el renderer reactivo entra en bootstrap CI y 
   assert.doesNotMatch(pkg, /node --check operator-service-workspace-review-v3\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
   assert.ok(version);
-  assert.ok(Number(version[1]) >= 142);
+  assert.ok(Number(version[1]) >= 143);
   assert.match(sw, /operator-service-workspace-reactive-v1\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);
   assert.doesNotMatch(sw, /operator-service-workspace-review-v3/);
