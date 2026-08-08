@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v139'; // v139: estabilidad Servicios sin observers globales recursivos
+const CACHE_NAME = 'auxilios-v140'; // v140: Nuevo Servicio único, full-screen 3 columnas 33/33/33
 
 const PRECACHE_ASSETS = [
   '/',
@@ -33,7 +33,6 @@ const PRECACHE_ASSETS = [
   '/comercial-summary.js',
   '/tariff-composition.js',
   '/operator-services.css',
-  '/operator-service-desktop.css',
   '/operator-service-v2.css',
   '/operator-service-bridge.css',
   '/operator-service-lifecycle.css',
