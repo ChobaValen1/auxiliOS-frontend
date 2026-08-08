@@ -52,6 +52,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
     loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
     await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
+    await loadAuxiliosModule('auxilios-operator-service-workspace-behavior-v1', '/operator-service-workspace-behavior-v1.js');
 
     await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
     await loadAuxiliosModule('auxilios-billing-base-operator-adapter', '/billing-base-operator-adapter.js');
