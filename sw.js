@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v140'; // v140: Nuevo Servicio único, full-screen 3 columnas 33/33/33
+const CACHE_NAME = 'auxilios-v141'; // v141: Nuevo Servicio reactivo, conceptos por fila y Maps sin overlays persistentes
 
 const PRECACHE_ASSETS = [
   '/',
@@ -41,7 +41,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-clean-v1.css',
   '/operator-active-desk-auxilios-theme-v2.css',
   '/operator-service-workspace-v2.css',
-  '/operator-service-workspace-review-v3.css',
+  '/operator-service-workspace-reactive-v1.css',
   '/operator-services-brand-system-v1.css',
   '/operator-services-jornadas-desktop-v1.css',
   '/operator-services.js',
@@ -57,8 +57,7 @@ const PRECACHE_ASSETS = [
   '/rendition-journey-source-v1.js',
   '/feature-flags.js',
   '/operator-active-desk-clean-v1.js',
-  '/operator-service-workspace-v2.js',
-  '/operator-service-workspace-review-v3.js',
+  '/operator-service-workspace-reactive-v1.js',
   '/operator-services-stability-v1.js',
   '/operator-services-block-a-v1.js',
   '/operator-services-canonical-view-v1.js',
@@ -70,76 +69,21 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PRECACHE_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_ASSETS)).then(() => self.skipWaiting()));
 });
-
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
-  if (
-    url.hostname.includes('supabase.co') ||
-    url.hostname.includes('railway.app') ||
-    url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/uploads/')
-  ) {
-    return;
-  }
-
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('railway.app') || url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/')) return;
   if (url.pathname === '/config.js') {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+    event.respondWith(fetch(event.request).then(response => {const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(event.request,copy));return response;}).catch(()=>caches.match(event.request)));
     return;
   }
-
-  if (
-    (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) &&
-    url.origin === self.location.origin
-  ) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(cache =>
-        cache.match(event.request).then(cached => {
-          const networkFetch = fetch(event.request).then(response => {
-            cache.put(event.request, response.clone());
-            return response;
-          }).catch(() => cached);
-          return cached ? (networkFetch.catch(() => {}), cached) : networkFetch;
-        })
-      )
-    );
+  if ((url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) && url.origin === self.location.origin) {
+    event.respondWith(caches.open(CACHE_NAME).then(cache => cache.match(event.request).then(cached => {const networkFetch=fetch(event.request).then(response=>{cache.put(event.request,response.clone());return response;}).catch(()=>cached);return cached ? (networkFetch.catch(()=>{}),cached) : networkFetch;})));
     return;
   }
-
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response && response.status === 200) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        }
-        return response;
-      });
-    })
-  );
+  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {if(response&&response.status===200){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(event.request,copy));}return response;})));
 });
