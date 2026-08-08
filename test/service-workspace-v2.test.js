@@ -107,7 +107,8 @@ test('la segunda columna conserva recorrido vehículo cliente kilómetros y obse
     assert.ok(next > cursor, `${label} debe permanecer en la segunda columna y en orden`);
     cursor = next;
   }
-  assert.match(route, /maps-proxy|data-address=/);
+  assert.match(route, /locationMarkup\('origin','Origen'\)/);
+  assert.match(route, /locationMarkup\('destination','Destino'\)/);
 });
 
 test('Orden de compra no pertenece al flujo de alta del operador', () => {
