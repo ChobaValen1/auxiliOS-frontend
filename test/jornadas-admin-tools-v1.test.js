@@ -11,6 +11,8 @@ const config = read('config.js');
 const sw = read('sw.js');
 const migration = read('migrations/20260808115500_admin_journey_corrections_v1.sql');
 const impactMigration = read('migrations/20260808194000_journey_correction_impact_propagation_v1.sql');
+const fuelResolutionMigration = read('migrations/20260808194500_fuel_correction_journey_resolution_v1.sql');
+const securityMigration = read('migrations/20260808195200_journey_admin_rpc_anon_revoke_v1.sql');
 const pkg = read('package.json');
 
 test('Administración corrige kilometraje con motivo e impacto anticipado', () => {
@@ -62,14 +64,40 @@ test('correcciones propagan a odómetro rendición y liquidación según estado'
   assert.match(impactMigration, /trg_daily_logs_impact_sync/);
 });
 
+test('Sueldos hace visible una liquidación afectada sin reescribir el snapshot aprobado/pagado', () => {
+  assert.match(js, /surfacePayrollReviews/);
+  assert.match(js, /review_required/);
+  assert.match(js, /Ajuste pendiente/);
+  assert.match(js, /Requiere revisión/);
+  assert.match(js, /proposed_total/);
+  assert.match(js, /adjustment_pending/);
+  assert.match(css, /\.jat-payroll-review/);
+  assert.match(css, /\.jat-payroll-receipt-review/);
+});
+
 test('remitos disparan sincronización también al cambiar importes económicos', () => {
   assert.match(impactMigration, /update of log_id,driver_id,created_at_device,status,imp_peaje,imp_excedente,imp_otros,pago_1_metodo,pago_1_monto,pago_2_metodo,pago_2_monto/);
   assert.match(impactMigration, /sync_rendicion_jornada/);
 });
 
+test('combustible resuelve jornada por móvil y fecha cuando falta log_id', () => {
+  assert.match(fuelResolutionMigration, /resolve_fuel_journey/);
+  assert.match(fuelResolutionMigration, /count\(\*\)=1/);
+  assert.match(fuelResolutionMigration, /truck_id=p_truck_id/);
+  assert.match(fuelResolutionMigration, /log_date=p_fuel_date/);
+});
+
 test('las acciones de mutación quedan limitadas a Administración', () => {
   assert.match(js, /const isAdmin = \(\) => role\(\) === 'administracion'/);
   assert.match(impactMigration, /v_role<>'administracion'/);
+});
+
+test('las RPC administrativas nuevas no son ejecutables por anon', () => {
+  assert.match(securityMigration, /get_daily_log_admin_impact\(integer\) from anon/);
+  assert.match(securityMigration, /get_daily_log_admin_history\(integer\) from anon/);
+  assert.match(securityMigration, /list_voided_daily_logs_admin\(integer\) from anon/);
+  assert.match(securityMigration, /restore_daily_log_admin\(integer,text\) from anon/);
+  assert.match(securityMigration, /tg_fuel_sync_rendicion\(\) from anon, authenticated/);
 });
 
 test('el módulo se carga, se precachea y entra en CI', () => {
