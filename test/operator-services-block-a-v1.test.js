@@ -38,17 +38,17 @@ test('los workspaces advierten antes de perder cambios', () => {
   assert.match(js, /Guardando cambios/);
 });
 
-test('Bloque A se carga después de las capas actuales y forma parte de CI/PWA', () => {
-  const review = flags.indexOf('/operator-service-workspace-review-v3.js');
+test('Bloque A se carga después del workspace reactivo y forma parte de CI/PWA', () => {
+  const workspace = flags.indexOf('/operator-service-workspace-reactive-v1.js');
   const brand = flags.indexOf('/operator-services-brand-system-v1.css');
   const block = flags.indexOf('/operator-services-block-a-v1.js');
-  assert.ok(review >= 0);
-  assert.ok(brand > review);
+  assert.ok(workspace >= 0);
+  assert.ok(brand > workspace);
   assert.ok(block > brand);
   assert.match(pkg, /node --check operator-services-block-a-v1\.js/);
   assert.match(sw, /'\/operator-services-brand-system-v1\.css'/);
   assert.match(sw, /'\/operator-services-block-a-v1\.js'/);
   const match = sw.match(/auxilios-v(\d+)/);
   assert.ok(match);
-  assert.ok(Number(match[1]) >= 134);
+  assert.ok(Number(match[1]) >= 141);
 });
