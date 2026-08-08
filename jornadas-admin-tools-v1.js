@@ -2,7 +2,7 @@
 (() => {
   'use strict';
 
-  const state = { current: null, installed: false, originalRender: null };
+  const state = { current: null, installed: false, originalRender: null, payrollWrapped: false };
   const $ = id => document.getElementById(id);
   const db = () => typeof _db === 'undefined' ? null : _db;
   const role = () => String(typeof PERFIL_USUARIO === 'undefined' ? '' : (PERFIL_USUARIO?.roles?.name || PERFIL_USUARIO?.role || '')).toLowerCase();
@@ -59,7 +59,7 @@
       const status=root._impact?.liquidacion?.estado;
       if(kmChanged&&['aprobada','pagada'].includes(status)&&!window.confirm(impactCopy(root._impact)+'\n\n¿Confirmás la corrección?'))return;
       submit.disabled=true;submit.textContent='Guardando…';
-      try{const {error}=await db().rpc('update_daily_log_admin',{p_log_id:log.log_id,p_patch:patch,p_reason:reason});if(error)throw error;closeToolModal();notify('Jornada corregida y derivados sincronizados');await refreshCurrent(log.log_id);}catch(error){err.textContent=errorText(error);err.style.display='block';submit.disabled=false;submit.textContent='Guardar corrección';}
+      try{const {error}=await db().rpc('update_daily_log_admin',{p_log_id:log.log_id,p_patch:patch,p_reason:reason});if(error)throw error;closeToolModal();notify('Jornada corregida y derivados sincronizados');await refreshCurrent(log.log_id);setTimeout(surfacePayrollReviews,0);}catch(error){err.textContent=errorText(error);err.style.display='block';submit.disabled=false;submit.textContent='Guardar corrección';}
     });
   }
 
@@ -67,7 +67,7 @@
     if(!isAdmin())return; const det=state.current,log=det?.log;if(!log)return;
     const linkedText=[['remitos',det.trips?.length||0],['combustible',det.fuel_records?.length||0],['rendición',det.rendicion?1:0],['checklist',det.tire_check?1:0],['incidentes',det.incidents?.length||0]].filter(([,n])=>n>0).map(([k,n])=>`${n} ${k}`).join(' · ')||'Sin registros vinculados';
     const root=mountModal({eyebrow:`Jornada #${log.log_id}`,title:'Anular jornada',body:`<div class="jat-warning jat-danger-warning"><b>La jornada se anulará, no se borrará físicamente.</b><br>Se preservan remitos, combustible, rendición, checklist, auditoría y trazabilidad.</div><div class="jat-warning">Registros vinculados: ${esc(linkedText)}</div><form id="jat-void-form"><label class="jat-field"><span>Motivo de anulación *</span><textarea name="reason" minlength="5" required placeholder="Ej.: jornada duplicada creada por error"></textarea></label><div id="jat-void-error" class="jat-error"></div></form>`,footer:`<button class="btn btn-ghost" data-jat-close>Cancelar</button><button class="btn jat-btn-danger" type="submit" form="jat-void-form">Anular jornada</button>`});
-    root.querySelector('#jat-void-form').addEventListener('submit',async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get('reason')||'').trim();const err=root.querySelector('#jat-void-error');if(reason.length<5){err.textContent='Indicá un motivo de al menos 5 caracteres.';err.style.display='block';return;}const submit=root.querySelector('[type="submit"]');submit.disabled=true;submit.textContent='Anulando…';try{const {error}=await db().rpc('void_daily_log_admin',{p_log_id:log.log_id,p_reason:reason});if(error)throw error;closeToolModal();if(typeof closeModal==='function')closeModal('modal-jornada-detalle');notify('Jornada anulada. La trazabilidad fue preservada.');if(typeof window._jadminReload==='function')await window._jadminReload();}catch(error){err.textContent=errorText(error);err.style.display='block';submit.disabled=false;submit.textContent='Anular jornada';}});
+    root.querySelector('#jat-void-form').addEventListener('submit',async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get('reason')||'').trim();const err=root.querySelector('#jat-void-error');if(reason.length<5){err.textContent='Indicá un motivo de al menos 5 caracteres.';err.style.display='block';return;}const submit=root.querySelector('[type="submit"]');submit.disabled=true;submit.textContent='Anulando…';try{const {error}=await db().rpc('void_daily_log_admin',{p_log_id:log.log_id,p_reason:reason});if(error)throw error;closeToolModal();if(typeof closeModal==='function')closeModal('modal-jornada-detalle');notify('Jornada anulada. La trazabilidad fue preservada.');if(typeof window._jadminReload==='function')await window._jadminReload();setTimeout(surfacePayrollReviews,0);}catch(error){err.textContent=errorText(error);err.style.display='block';submit.disabled=false;submit.textContent='Anular jornada';}});
   }
 
   function changedFields(before={},after={}){
@@ -96,13 +96,42 @@
 
   async function restoreModal(row){
     const root=mountModal({eyebrow:`Jornada #${row.log_id}`,title:'Restaurar jornada',body:`<div class="jat-warning">Se restaurará con su estado anterior y se volverán a calcular odómetro y liquidaciones afectadas.</div><form id="jat-restore-form"><label class="jat-field"><span>Motivo de restauración *</span><textarea name="reason" minlength="5" required></textarea></label><div id="jat-restore-error" class="jat-error"></div></form>`,footer:'<button class="btn btn-ghost" data-jat-close>Cancelar</button><button class="btn btn-primary" type="submit" form="jat-restore-form">Restaurar</button>'});
-    root.querySelector('#jat-restore-form').addEventListener('submit',async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get('reason')||'').trim();const err=root.querySelector('#jat-restore-error');if(reason.length<5){err.textContent='Indicá un motivo de al menos 5 caracteres.';err.style.display='block';return;}try{const {error}=await db().rpc('restore_daily_log_admin',{p_log_id:row.log_id,p_reason:reason});if(error)throw error;closeToolModal();notify('Jornada restaurada y derivados recalculados');if(typeof window._jadminReload==='function')await window._jadminReload();}catch(error){err.textContent=errorText(error);err.style.display='block';}});
+    root.querySelector('#jat-restore-form').addEventListener('submit',async e=>{e.preventDefault();const reason=String(new FormData(e.currentTarget).get('reason')||'').trim();const err=root.querySelector('#jat-restore-error');if(reason.length<5){err.textContent='Indicá un motivo de al menos 5 caracteres.';err.style.display='block';return;}try{const {error}=await db().rpc('restore_daily_log_admin',{p_log_id:row.log_id,p_reason:reason});if(error)throw error;closeToolModal();notify('Jornada restaurada y derivados recalculados');if(typeof window._jadminReload==='function')await window._jadminReload();setTimeout(surfacePayrollReviews,0);}catch(error){err.textContent=errorText(error);err.style.display='block';}});
   }
   async function voidedListModal(){
     if(!isAdmin())return;const root=mountModal({eyebrow:'Jornadas',title:'Jornadas anuladas',wide:true,body:'<div id="jat-voided-list">Cargando…</div>',footer:'<button class="btn btn-ghost" data-jat-close>Cerrar</button>'});
     try{const {data,error}=await db().rpc('list_voided_daily_logs_admin',{p_limit:100});if(error)throw error;const el=root.querySelector('#jat-voided-list');if(!data?.length){el.innerHTML='<div class="jat-warning">No hay jornadas anuladas.</div>';return;}el.innerHTML=`<div class="jat-voided-table">${data.map((r,i)=>`<div class="jat-voided-row"><div><b>#${r.log_id} · ${esc(r.driver_name||'—')}</b><span>${fmtDate(r.log_date)} · ${esc(r.truck_plate||'—')} · ${Number(r.km_inicio||0).toLocaleString('es-AR')} → ${Number(r.km_final||0).toLocaleString('es-AR')} km</span><small>${esc(r.void_reason||'Sin motivo')}</small></div><button class="btn btn-ghost" data-restore-index="${i}">Restaurar</button></div>`).join('')}</div>`;el.querySelectorAll('[data-restore-index]').forEach(btn=>btn.addEventListener('click',()=>restoreModal(data[Number(btn.dataset.restoreIndex)])));}catch(error){root.querySelector('#jat-voided-list').textContent=errorText(error);}
   }
   function installVoidedButton(){if(!isAdmin()||$('jat-open-voided'))return;const clear=$('jadmin-f-clear');if(!clear?.parentElement)return;const btn=document.createElement('button');btn.id='jat-open-voided';btn.type='button';btn.className='btn btn-ghost';btn.textContent='Jornadas anuladas';btn.addEventListener('click',voidedListModal);clear.parentElement.appendChild(btn);}
+
+  async function surfacePayrollReviews(){
+    if(!allowed()||!db())return;
+    try{
+      const {data,error}=await db().from('payroll_liquidaciones').select('liquidacion_id,estado,review_required,review_reason,proposed_total,adjustment_pending').eq('review_required',true).limit(200);
+      if(error)throw error;
+      const screen=$('screen-sueldos');
+      for(const item of (data||[])){
+        const rows=[...(screen?.querySelectorAll('tr[onclick]')||[])];
+        const row=rows.find(el=>(el.getAttribute('onclick')||'').includes(item.liquidacion_id));
+        if(row){
+          const cell=row.querySelector('td');
+          cell?.querySelector('.jat-payroll-review')?.remove();
+          if(cell){const badge=document.createElement('div');badge.className='jat-payroll-review';const delta=Number(item.adjustment_pending||0);badge.textContent=item.estado==='pagada'?`Ajuste pendiente ${fmtMoney(delta)}`:`Requiere revisión · Δ ${delta>=0?'+':''}${fmtMoney(delta)}`;badge.title=item.review_reason||'Corrección administrativa posterior';cell.appendChild(badge);}
+        }
+        if(typeof _reciboActual!=='undefined'&&_reciboActual?.liquidacion_id===item.liquidacion_id){
+          const estado=$('rec-estado');let warning=$('jat-payroll-receipt-review');if(!warning&&estado?.parentElement){warning=document.createElement('div');warning.id='jat-payroll-receipt-review';warning.className='jat-payroll-receipt-review';estado.parentElement.appendChild(warning);}if(warning){const delta=Number(item.adjustment_pending||0);warning.textContent=item.estado==='pagada'?`Requiere ajuste: ${fmtMoney(delta)}. El pago original se conserva.`:`Requiere revisión. Total propuesto: ${fmtMoney(item.proposed_total)} · diferencia ${delta>=0?'+':''}${fmtMoney(delta)}.`;warning.title=item.review_reason||'';}
+        }
+      }
+    }catch(error){console.warn('[JornadasAdminTools] payroll review surface',error?.message||error);}
+  }
+  function installPayrollImpactSurface(){
+    const nav=$('nav-sueldos');if(nav&&!nav.dataset.jatPayrollHook){nav.dataset.jatPayrollHook='1';nav.addEventListener('click',()=>setTimeout(surfacePayrollReviews,250));}
+    if(state.payrollWrapped)return;
+    let wrappedAny=false;
+    if(typeof window._renderLiquidacionesMes==='function'&&!window._renderLiquidacionesMes.__jatImpactWrapped){const original=window._renderLiquidacionesMes;const wrapped=function(...args){const result=original.apply(this,args);setTimeout(surfacePayrollReviews,0);return result;};wrapped.__jatImpactWrapped=true;window._renderLiquidacionesMes=wrapped;wrappedAny=true;}
+    if(typeof window._abrirReciboPayroll==='function'&&!window._abrirReciboPayroll.__jatImpactWrapped){const original=window._abrirReciboPayroll;const wrapped=async function(...args){const result=await original.apply(this,args);setTimeout(surfacePayrollReviews,0);return result;};wrapped.__jatImpactWrapped=true;window._abrirReciboPayroll=wrapped;wrappedAny=true;}
+    state.payrollWrapped=wrappedAny||state.payrollWrapped;
+  }
 
   function installFooterActions(){
     const footer=$('modal-jornada-detalle')?.querySelector('.modal-footer');if(!footer)return;footer.querySelector('#jat-jornada-actions')?.remove();const actions=document.createElement('div');actions.id='jat-jornada-actions';actions.className='jat-actions';
@@ -117,8 +146,8 @@
     const rendCard=cardByTitle('rendición');if(det.rendicion&&rendCard)makeClickable(rendCard,()=>openRenditionCanonical(det.rendicion),'Abrir Rendición →');
   }
   function install(){
-    if(!allowed())return;installVoidedButton();if(state.installed)return;if(typeof window._jadminRenderDetalle!=='function')return;state.originalRender=window._jadminRenderDetalle;if(state.originalRender.__jatWrapped){state.installed=true;return;}const wrapped=function(det,...args){const result=state.originalRender.call(this,det,...args);try{enhanceDetail(det);}catch(error){console.error('[JornadasAdminTools] enhanceDetail',error);}return result;};wrapped.__jatWrapped=true;window._jadminRenderDetalle=wrapped;state.installed=true;
+    if(!allowed())return;installVoidedButton();installPayrollImpactSurface();if(state.installed)return;if(typeof window._jadminRenderDetalle!=='function')return;state.originalRender=window._jadminRenderDetalle;if(state.originalRender.__jatWrapped){state.installed=true;return;}const wrapped=function(det,...args){const result=state.originalRender.call(this,det,...args);try{enhanceDetail(det);}catch(error){console.error('[JornadasAdminTools] enhanceDetail',error);}return result;};wrapped.__jatWrapped=true;window._jadminRenderDetalle=wrapped;state.installed=true;
   }
-  let attempts=0;const timer=setInterval(()=>{attempts++;install();if(state.installed&&$('jat-open-voided')||attempts>120)clearInterval(timer);},75);window.addEventListener('auxilios:features-ready',install);
-  window.JornadasAdminToolsV1={edit:editModal,voidJourney:voidModal,history:historyModal,voided:voidedListModal,enhance:enhanceDetail};
+  let attempts=0;const timer=setInterval(()=>{attempts++;install();if((state.installed&&state.payrollWrapped&&$('jat-open-voided'))||attempts>160)clearInterval(timer);},75);window.addEventListener('auxilios:features-ready',install);
+  window.JornadasAdminToolsV1={edit:editModal,voidJourney:voidModal,history:historyModal,voided:voidedListModal,enhance:enhanceDetail,surfacePayrollReviews};
 })();
