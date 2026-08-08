@@ -83,7 +83,7 @@ async function openWizard(){
  clearDraft();
  S.wizard=fresh();
  const shell=document.getElementById('os-wizard-shell');
- if(shell){shell.replaceChildren();shell.className='os-wizard-shell';}
+ if(shell){shell.innerHTML='';shell.className='os-wizard-shell';}
  window.OperatorServiceWorkspaceReviewV3?.prepareOpen?.();
  render();
  open('modal-operador-wizard');
@@ -92,7 +92,7 @@ function closeWizard(force=false){
  const w=S.wizard;if(!w)return;
  if(!force&&w.dirty&&typeof confirm==='function'&&!confirm('Hay cambios sin guardar. ¿Cerrar el alta?'))return;
  close('modal-operador-wizard');
- const shell=document.getElementById('os-wizard-shell');if(shell)shell.replaceChildren();
+ const shell=document.getElementById('os-wizard-shell');if(shell)shell.innerHTML='';
  S.wizard=null;
 }
 function saveDraft(){
