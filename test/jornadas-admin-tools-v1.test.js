@@ -13,6 +13,7 @@ const migration = read('migrations/20260808115500_admin_journey_corrections_v1.s
 const impactMigration = read('migrations/20260808194000_journey_correction_impact_propagation_v1.sql');
 const fuelResolutionMigration = read('migrations/20260808194500_fuel_correction_journey_resolution_v1.sql');
 const securityMigration = read('migrations/20260808195200_journey_admin_rpc_anon_revoke_v1.sql');
+const lifecycleMigration = read('migrations/20260808231500_admin_open_journey_close_v1.sql');
 const pkg = read('package.json');
 
 test('Administración corrige kilometraje con motivo e impacto anticipado', () => {
@@ -23,6 +24,25 @@ test('Administración corrige kilometraje con motivo e impacto anticipado', () =
   assert.match(js, /Motivo de la corrección/);
   assert.match(js, /Requiere revisión/);
   assert.match(migration, /manual_editado/);
+});
+
+test('una jornada abierta se edita sin datos de cierre y se cierra por una acción separada', () => {
+  assert.match(js, /close_daily_log_admin/);
+  assert.match(js, /data-jat-close-journey/);
+  assert.match(js, /Jornada abierta/);
+  assert.match(js, /se completan únicamente desde <b>Cerrar jornada<\/b>/);
+  assert.match(js, /if\(!isOpen\)\{patch\.km_final=/);
+  assert.match(lifecycleMigration, /JORNADA_ABIERTA_REQUIERE_CIERRE/);
+  assert.match(lifecycleMigration, /daily_logs_lifecycle_consistency/);
+  assert.match(lifecycleMigration, /status='open' and km_final is null and hora_fin is null and closed_at is null/);
+  assert.match(lifecycleMigration, /status='closed' and km_final is not null and hora_fin is not null and closed_at is not null/);
+});
+
+test('el cierre administrativo no fabrica una rendición', () => {
+  assert.match(js, /Rendición pendiente de presentación\/revisión/);
+  assert.match(js, /no inventará una declaración de efectivo/);
+  assert.match(lifecycleMigration, /rendicion_exists/);
+  assert.doesNotMatch(lifecycleMigration, /insert\s+into\s+public\.rendicion_cierre/i);
 });
 
 test('Anular jornada conserva relaciones y puede restaurarse', () => {
@@ -42,8 +62,14 @@ test('el historial administrativo queda visible', () => {
   assert.match(impactMigration, /audit_events/);
 });
 
-test('Jornada usa vistas canónicas y no viewers duplicados para registros vinculados', () => {
-  assert.match(js, /verRemitoModal/);
+test('Jornada abre el remito con la vista administrativa canónica', () => {
+  assert.match(js, /abrirDetalleRemitoAdmin/);
+  assert.match(js, /Abrir Remito admin/);
+  assert.doesNotMatch(js, /verRemitoModal/);
+  assert.doesNotMatch(js, /else if\(typeof verRemito/);
+});
+
+test('Jornada usa vistas canónicas y no viewers duplicados para otros registros vinculados', () => {
   assert.match(js, /FleetAdminDetailV2\.openTab/);
   assert.match(js, /openFleetCanonical\('combustible'/);
   assert.match(js, /openFleetCanonical\('neumaticos'/);
@@ -90,6 +116,7 @@ test('combustible resuelve jornada por móvil y fecha cuando falta log_id', () =
 test('las acciones de mutación quedan limitadas a Administración', () => {
   assert.match(js, /const isAdmin = \(\) => role\(\) === 'administracion'/);
   assert.match(impactMigration, /v_role<>'administracion'/);
+  assert.match(lifecycleMigration, /solo Administración puede cerrar jornadas/);
 });
 
 test('las RPC administrativas nuevas no son ejecutables por anon', () => {
@@ -98,6 +125,7 @@ test('las RPC administrativas nuevas no son ejecutables por anon', () => {
   assert.match(securityMigration, /list_voided_daily_logs_admin\(integer\) from anon/);
   assert.match(securityMigration, /restore_daily_log_admin\(integer,text\) from anon/);
   assert.match(securityMigration, /tg_fuel_sync_rendicion\(\) from anon, authenticated/);
+  assert.match(lifecycleMigration, /close_daily_log_admin\(integer,jsonb,text\) from anon/);
 });
 
 test('el módulo se carga, se precachea y entra en CI', () => {
@@ -107,7 +135,7 @@ test('el módulo se carga, se precachea y entra en CI', () => {
   assert.match(sw, /jornadas-admin-tools-v1\.js/);
   assert.match(pkg, /node --check jornadas-admin-tools-v1\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
-  assert.ok(version && Number(version[1]) >= 145);
+  assert.ok(version && Number(version[1]) >= 146);
   assert.match(css, /\.jat-history-item/);
   assert.match(css, /\.jat-voided-row/);
 });
