@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v145'; // v145: Jornadas canónicas + impacto contable + historial/restauración
+const CACHE_NAME = 'auxilios-v146'; // v146: Remito admin canónico + cierre administrativo de jornadas abiertas
 
 const PRECACHE_ASSETS = [
   '/',
