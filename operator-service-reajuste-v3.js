@@ -87,12 +87,13 @@ function install(){
  if(!isAdmin())return;
  ensureModal();
  const candidate=window.abrirDetalleServicio||O.openDetail;if(typeof candidate!=='function')return setTimeout(install,200);
- if(candidate.__osr3Wrapped){originalOpen=candidate.__osr3Original||candidate;return;}
+ if(candidate.__osr3Wrapped){originalOpen=candidate.__osr3Original||candidate;decorate();return;}
  originalOpen=candidate;
  const wrapped=async id=>{const result=await originalOpen(id);decorate();return result;};
  wrapped.__osr3Wrapped=true;wrapped.__osr3Original=originalOpen;
- window.abrirDetalleServicio=wrapped;O.openDetail=wrapped;
+ window.abrirDetalleServicio=wrapped;O.openDetail=wrapped;decorate();
 }
 bind();install();
+window.addEventListener('auxilios:profile-ready',install);
 window.OperatorServiceReajusteV3={decorate,open:openModal,history:loadHistory};
 })();
