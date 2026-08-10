@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v148'; // v148: reajuste administrativo visible + historial auditado
+const CACHE_NAME = 'auxilios-v149'; // v149: rediseño Tarifas V3 + carga y actualización masiva
 
 const PRECACHE_ASSETS = [
   '/',
