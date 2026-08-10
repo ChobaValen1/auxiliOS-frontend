@@ -51,7 +51,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // y luego actualiza sectores puntuales para evitar parpadeos/reflows globales.
     loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
     loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
+    loadAuxiliosStyle('auxilios-operator-service-tariff-v3-css', '/operator-service-tariff-v3.css');
     await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
+    await loadAuxiliosModule('auxilios-operator-service-tariff-v3-ui', '/operator-service-tariff-v3-ui.js');
     await loadAuxiliosModule('auxilios-operator-service-workspace-behavior-v1', '/operator-service-workspace-behavior-v1.js');
 
     await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
