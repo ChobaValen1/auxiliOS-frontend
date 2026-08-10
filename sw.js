@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v147'; // v147: matriz tarifaria Categoría × Concepto + Nuevo Servicio V3
+const CACHE_NAME = 'auxilios-v148'; // v148: reajuste administrativo visible + historial auditado
 
 const PRECACHE_ASSETS = [
   '/',
@@ -48,6 +48,7 @@ const PRECACHE_ASSETS = [
   '/operator-service-workspace-v2.css',
   '/operator-service-workspace-reactive-v1.css',
   '/operator-service-tariff-v3.css',
+  '/operator-service-reajuste-v3.css',
   '/operator-services-brand-system-v1.css',
   '/operator-services-jornadas-desktop-v1.css',
   '/operator-services.js',
@@ -65,6 +66,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-reactive-v1.js',
   '/operator-service-tariff-v3-ui.js',
+  '/operator-service-reajuste-v3.js',
   '/operator-service-workspace-behavior-v1.js',
   '/operator-services-stability-v1.js',
   '/operator-services-block-a-v1.js',
