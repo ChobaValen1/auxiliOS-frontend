@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v146'; // v146: Remito admin canónico + cierre administrativo de jornadas abiertas
+const CACHE_NAME = 'auxilios-v147'; // v147: matriz tarifaria Categoría × Concepto + Nuevo Servicio V3
 
 const PRECACHE_ASSETS = [
   '/',
@@ -15,6 +15,8 @@ const PRECACHE_ASSETS = [
   '/configuration-reference.css',
   '/configuration-reference.js',
   '/configuration-service-unit-v1.js',
+  '/tariff-matrix-v3.css',
+  '/tariff-matrix-v3.js',
   '/configuration-center.css',
   '/configuration-center.js',
   '/frequent-navigation.js',
@@ -45,6 +47,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-auxilios-theme-v2.css',
   '/operator-service-workspace-v2.css',
   '/operator-service-workspace-reactive-v1.css',
+  '/operator-service-tariff-v3.css',
   '/operator-services-brand-system-v1.css',
   '/operator-services-jornadas-desktop-v1.css',
   '/operator-services.js',
@@ -61,6 +64,7 @@ const PRECACHE_ASSETS = [
   '/feature-flags.js',
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-reactive-v1.js',
+  '/operator-service-tariff-v3-ui.js',
   '/operator-service-workspace-behavior-v1.js',
   '/operator-services-stability-v1.js',
   '/operator-services-block-a-v1.js',
