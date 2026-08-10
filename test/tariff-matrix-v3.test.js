@@ -17,6 +17,7 @@ const backfill = read('migrations/20260810173658_tariff_matrix_v3_backfill.sql')
 const configRpc = read('migrations/20260810173757_tariff_matrix_v3_configuration_rpcs.sql');
 const operatorRpc = read('migrations/20260810174148_operator_service_tariff_matrix_v3.sql');
 const adjustRpc = read('migrations/20260810174428_operator_service_item_reajuste_v3.sql');
+const bulkRpc = read('migrations/20260810195000_tariff_bulk_updates_v3.sql');
 
 test('el catálogo separa categorías reutilizables de conceptos tarifarios', () => {
   assert.match(schema, /create table public\.service_categories/);
@@ -102,7 +103,7 @@ test('Administración puede aplicar y revisar reajustes desde el detalle del ser
   assert.doesNotMatch(reajusteUi, /MutationObserver/);
 });
 
-test('Configuración presenta una matriz Categoría por Concepto reutilizable', () => {
+test('Configuración conserva la matriz Categoría por Concepto reutilizable', () => {
   assert.match(configUi, /Categorías y conceptos/);
   assert.match(configUi, /Tarifarios por prestadora/);
   assert.match(configUi, /Categoría \+ Concepto/);
@@ -111,6 +112,38 @@ test('Configuración presenta una matriz Categoría por Concepto reutilizable', 
   assert.match(configUi, /save_company_category_setting_v3/);
   assert.match(configUi, /save_company_concept_setting_v3/);
   assert.match(configUi, /save_company_tariff_rate_v3/);
+});
+
+test('Tarifas V3 prioriza base explícita y una vista operativa sin perder la matriz avanzada', () => {
+  assert.match(configUi, /Administrá valores por prestadora, base y vigencia/);
+  assert.match(configUi, /No existe una base principal/);
+  assert.match(configUi, /Seleccionar base/);
+  assert.match(configUi, /MOVIDA/);
+  assert.match(configUi, /TRABAJO/);
+  assert.match(configUi, /VENTA/);
+  assert.match(configUi, /Listado/);
+  assert.match(configUi, /Matriz/);
+  assert.match(configUi, /Nueva vigencia/);
+  assert.match(configUi, /Histórico protegido/);
+});
+
+test('Tarifas V3 permite actualización porcentual e importación validada desde Excel o CSV', () => {
+  assert.match(configUi, /Actualizar tarifas/);
+  assert.match(configUi, /Aumento porcentual/);
+  assert.match(configUi, /Importar desde Excel/);
+  assert.match(configUi, /Mapeo de columnas/);
+  assert.match(configUi, /Preparar vista previa/);
+  assert.match(configUi, /bulk_save_company_tariff_rates_v3/);
+});
+
+test('la actualización masiva de tarifas es atómica, acotada y solo de Administración', () => {
+  assert.match(bulkRpc, /bulk_save_company_tariff_rates_v3/);
+  assert.match(bulkRpc, /current_auxilios_role\(\)<>'administracion'/);
+  assert.match(bulkRpc, /jsonb_array_length/);
+  assert.match(bulkRpc, /máximo de 500 tarifas/);
+  assert.match(bulkRpc, /save_company_tariff_rate_v3\(v_item\)/);
+  assert.match(bulkRpc, /revoke all on function public\.bulk_save_company_tariff_rates_v3\(jsonb\) from public,anon/);
+  assert.match(bulkRpc, /grant execute on function public\.bulk_save_company_tariff_rates_v3\(jsonb\) to authenticated/);
 });
 
 test('Nuevo Servicio consume la matriz V3 sin crear otro workspace', () => {
@@ -130,6 +163,7 @@ test('las RPC V3 no quedan expuestas a anon', () => {
   assert.match(operatorRpc, /revoke all on function public\.create_operator_service_v3\(jsonb\) from public,anon/);
   assert.match(operatorRpc, /revoke all on function public\.calculate_operator_service_quote_v3/);
   assert.match(adjustRpc, /revoke all on function public\.adjust_operator_service_item_v3/);
+  assert.match(bulkRpc, /revoke all on function public\.bulk_save_company_tariff_rates_v3\(jsonb\) from public,anon/);
 });
 
 test('los módulos V3 se cargan, precachean y entran en CI', () => {
@@ -143,5 +177,5 @@ test('los módulos V3 se cargan, precachean y entran en CI', () => {
   assert.match(pkg, /node --check operator-service-tariff-v3-ui\.js/);
   assert.match(pkg, /node --check operator-service-reajuste-v3\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
-  assert.ok(version && Number(version[1]) >= 148);
+  assert.ok(version && Number(version[1]) >= 149);
 });
