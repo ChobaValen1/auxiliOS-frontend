@@ -164,7 +164,9 @@ async function create(){
 }
 
 async function checkCode(value,conceptId=null){
- const w=S.wizard;if(!w?.data.company_id)return null;const code=String(value??(conceptId?w.data.item_codes?.[conceptId]:w.data.service_order_number)||'').trim();
+ const w=S.wizard;if(!w?.data.company_id)return null;
+ const current=conceptId?w.data.item_codes?.[conceptId]:w.data.service_order_number;
+ const code=String((value??current)||'').trim();
  if(!code){if(conceptId)delete w.itemCodeWarnings[conceptId];else w.codeWarning=null;render();return null;}
  const {data,error}=await _db.rpc('check_recent_provider_code_v3',{p_company_id:w.data.company_id,p_code:code,p_exclude_service_id:null});
  if(error)return null;
