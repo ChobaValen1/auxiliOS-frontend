@@ -71,6 +71,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
     await loadAuxiliosModule('auxilios-operator-services-stability-v1', '/operator-services-stability-v1.js');
 
+    // Reajuste administrativo: conserva tarifa de lista, modifica solo el valor aplicado
+    // al servicio y expone el historial auditado para Administración.
+    loadAuxiliosStyle('auxilios-operator-service-reajuste-v3-css', '/operator-service-reajuste-v3.css');
+    await loadAuxiliosModule('auxilios-operator-service-reajuste-v3', '/operator-service-reajuste-v3.js');
+
     // Jornadas admin: correcciones auditadas, anulación lógica y navegación
     // directa a remitos/combustible/rendiciones/checklists vinculados.
     loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');

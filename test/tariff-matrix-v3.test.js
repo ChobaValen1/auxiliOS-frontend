@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const wizard = read('operator-service-wizard.js');
 const ui = read('operator-service-tariff-v3-ui.js');
+const reajusteUi = read('operator-service-reajuste-v3.js');
 const configUi = read('tariff-matrix-v3.js');
 const config = read('config.js');
 const sw = read('sw.js');
@@ -89,6 +90,18 @@ test('el reajuste administrativo conserva tarifa de lista y deja auditoría', ()
   assert.doesNotMatch(adjustRpc, /update public\.company_tariff_matrix_rates/);
 });
 
+test('Administración puede aplicar y revisar reajustes desde el detalle del servicio', () => {
+  assert.match(reajusteUi, /role\(\)==='administracion'/);
+  assert.match(reajusteUi, /matrix_rate_id&&i\.item_role!=='primary'/);
+  assert.match(reajusteUi, /Tarifa de lista/);
+  assert.match(reajusteUi, /Precio aplicado/);
+  assert.match(reajusteUi, /Motivo del reajuste/);
+  assert.match(reajusteUi, /adjust_operator_service_item_v3/);
+  assert.match(reajusteUi, /get_operator_service_item_adjustments_v3/);
+  assert.match(reajusteUi, /No modifican el tarifario de la prestadora/);
+  assert.doesNotMatch(reajusteUi, /MutationObserver/);
+});
+
 test('Configuración presenta una matriz Categoría por Concepto reutilizable', () => {
   assert.match(configUi, /Categorías y conceptos/);
   assert.match(configUi, /Tarifarios por prestadora/);
@@ -122,10 +135,13 @@ test('las RPC V3 no quedan expuestas a anon', () => {
 test('los módulos V3 se cargan, precachean y entran en CI', () => {
   assert.match(config, /tariff-matrix-v3\.js/);
   assert.match(config, /operator-service-tariff-v3-ui\.js/);
+  assert.match(config, /operator-service-reajuste-v3\.js/);
   assert.match(sw, /tariff-matrix-v3\.js/);
   assert.match(sw, /operator-service-tariff-v3-ui\.js/);
+  assert.match(sw, /operator-service-reajuste-v3\.js/);
   assert.match(pkg, /node --check tariff-matrix-v3\.js/);
   assert.match(pkg, /node --check operator-service-tariff-v3-ui\.js/);
+  assert.match(pkg, /node --check operator-service-reajuste-v3\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
-  assert.ok(version && Number(version[1]) >= 147);
+  assert.ok(version && Number(version[1]) >= 148);
 });
