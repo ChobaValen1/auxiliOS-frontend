@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v154'; // v154: recargos, bases globales y edición de configuración
+const CACHE_NAME = 'auxilios-v155'; // v155: parámetros sin ruido de bases y recargos configurables
 
 const PRECACHE_ASSETS = [
   '/',
@@ -12,6 +12,7 @@ const PRECACHE_ASSETS = [
   '/company-billing-settings.js',
   '/company-configuration-coherence-v1.js',
   '/company-billing-parameters-v2.js',
+  '/company-billing-parameters-view-v2.js',
   '/billing-base-operator-adapter.js',
   '/equal-billing-bases.js',
   '/configuration-reference.css',
