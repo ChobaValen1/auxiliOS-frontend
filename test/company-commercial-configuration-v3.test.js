@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const billing = fs.readFileSync('company-billing-parameters-v3.js', 'utf8');
-const services = fs.readFileSync('company-services-configuration-v3.js', 'utf8');
+const services = fs.readFileSync('company-services-configuration-v4.js', 'utf8');
 const serviceCatalog = fs.readFileSync('service-types-catalog-v2.js', 'utf8');
 const config = fs.readFileSync('config.js', 'utf8');
 const sw = fs.readFileSync('sw.js', 'utf8');
@@ -19,18 +19,19 @@ const obsolete = [
   'company-billing-parameters-view-v2.js',
   'tariff-new-rate-flow-v1.js',
   'company-services-configuration-v2.js',
+  'company-services-configuration-v3.js',
   'configuration-service-unit-v1.js',
   'service-types-catalog-v1.js',
 ];
 
 test('runtime has one service catalog, one provider allowlist and one billing parameters module', () => {
   assert.match(config, /service-types-catalog-v2\.js/);
-  assert.match(config, /company-services-configuration-v3\.js/);
+  assert.match(config, /company-services-configuration-v4\.js/);
   assert.match(config, /company-billing-parameters-v3\.js/);
   assert.match(sw, /service-types-catalog-v2\.js/);
-  assert.match(sw, /company-services-configuration-v3\.js/);
+  assert.match(sw, /company-services-configuration-v4\.js/);
   assert.match(pkg, /service-types-catalog-v2\.js/);
-  assert.match(pkg, /company-services-configuration-v3\.js/);
+  assert.match(pkg, /company-services-configuration-v4\.js/);
   for (const name of obsolete) {
     assert.equal(config.includes(name), false, `${name} must not load at runtime`);
     assert.equal(sw.includes(name), false, `${name} must not be precached`);
@@ -118,5 +119,5 @@ test('tariffs use global bases and only enabled company services', () => {
 
 test('PWA cache is bumped after replacing service type runtime code', () => {
   const version = Number(sw.match(/auxilios-v(\d+)/)?.[1] || 0);
-  assert.ok(version >= 158, `Expected cache version 158 or newer, received ${version}`);
+  assert.ok(version >= 159, `Expected cache version 159 or newer, received ${version}`);
 });
