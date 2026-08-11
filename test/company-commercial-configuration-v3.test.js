@@ -39,6 +39,15 @@ test('runtime has one service catalog, one provider allowlist and one billing pa
   }
 });
 
+test('Tipos de Servicio owns the route after Tarifario V3 initializes', () => {
+  const tariffIndex = config.indexOf("auxilios-tariff-matrix-v3', '/tariff-matrix-v3.js");
+  const serviceIndex = config.indexOf("auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js");
+  assert.ok(tariffIndex >= 0, 'Tarifario V3 must load');
+  assert.ok(serviceIndex >= 0, 'Service catalog must load');
+  assert.ok(tariffIndex < serviceIndex, 'Service catalog must mount after Tarifario V3 so its screen cannot be overwritten');
+  assert.match(config, /serviceTypesNavLabel\.textContent = 'Tipos de servicio'/);
+});
+
 test('service types screen implements read create update and delete', () => {
   assert.match(serviceCatalog, /list_service_types_config/);
   assert.match(serviceCatalog, /Nuevo servicio/);
@@ -128,5 +137,5 @@ test('tariffs use global bases and only enabled company services', () => {
 
 test('PWA cache is bumped after replacing service type runtime code', () => {
   const version = Number(sw.match(/auxilios-v(\d+)/)?.[1] || 0);
-  assert.ok(version >= 159, `Expected cache version 159 or newer, received ${version}`);
+  assert.ok(version >= 160, `Expected cache version 160 or newer, received ${version}`);
 });
