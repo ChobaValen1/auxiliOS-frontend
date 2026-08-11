@@ -35,12 +35,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-empresas-module', '/empresas.js');
     await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
-    await loadAuxiliosModule('auxilios-company-billing-settings', '/company-billing-settings.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
     await loadAuxiliosModule('auxilios-configuration-service-unit-v1', '/configuration-service-unit-v1.js');
     loadAuxiliosStyle('auxilios-tariff-matrix-v3-css', '/tariff-matrix-v3.css');
     await loadAuxiliosModule('auxilios-tariff-matrix-v3', '/tariff-matrix-v3.js');
-    await loadAuxiliosModule('auxilios-tariff-new-rate-flow-v1', '/tariff-new-rate-flow-v1.js');
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
     await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
     await loadAuxiliosModule('auxilios-comercial-code-strategy', '/comercial-code-strategy.js');
@@ -61,11 +59,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
     await loadAuxiliosModule('auxilios-billing-base-operator-adapter', '/billing-base-operator-adapter.js');
-    await loadAuxiliosModule('auxilios-equal-billing-bases', '/equal-billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
-    await loadAuxiliosModule('auxilios-company-configuration-coherence-v1', '/company-configuration-coherence-v1.js');
-    await loadAuxiliosModule('auxilios-company-billing-parameters-v2', '/company-billing-parameters-v2.js');
-    await loadAuxiliosModule('auxilios-company-billing-parameters-view-v2', '/company-billing-parameters-view-v2.js');
+
+    // Configuración canónica: catálogo/allowlist de servicios + parámetros comerciales.
+    await loadAuxiliosModule('auxilios-company-services-v2', '/company-services-configuration-v2.js');
+    await loadAuxiliosModule('auxilios-company-billing-parameters-v3', '/company-billing-parameters-v3.js');
+
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
     await loadAuxiliosModule('auxilios-phase3-journey-start-guard', '/phase3-journey-start-guard.js');
