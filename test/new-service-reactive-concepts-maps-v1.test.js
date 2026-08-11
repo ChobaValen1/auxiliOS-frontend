@@ -4,7 +4,7 @@ const fs = require('node:fs');
 
 const ui = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const css = fs.readFileSync('operator-service-workspace-reactive-v1.css','utf8');
-const units = fs.readFileSync('configuration-service-unit-v1.js','utf8');
+const serviceCatalog = fs.readFileSync('service-types-catalog-v2.js','utf8');
 const migration = fs.readFileSync('migrations/20260808093500_secondary_concepts_allow_km.sql','utf8');
 
 test('Agregar concepto crea filas independientes y no abre un catálogo completo', () => {
@@ -16,10 +16,10 @@ test('Agregar concepto crea filas independientes y no abre un catálogo completo
   assert.doesNotMatch(ui, /conceptPickerOpen|osv2-concept-picker-table/);
 });
 
-test('las unidades del concepto controlan cantidad y admiten KM', () => {
+test('las unidades del concepto controlan cantidad y el catálogo canónico permite KM', () => {
   assert.match(ui, /km:\{label:'km',step:\.1,locked:false\}/);
   assert.match(ui, /service:\{label:'servicio',step:1,locked:true\}/);
-  assert.match(units, /option\.value='km'/);
+  assert.match(serviceCatalog, /<option value="km">Por km<\/option>/);
   assert.match(migration, /secundarios por KM permitidos/);
 });
 
