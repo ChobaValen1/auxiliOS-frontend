@@ -49,6 +49,15 @@ test('service types screen implements read create update and delete', () => {
   assert.match(serviceCatalog, /load\(true\)/);
 });
 
+test('service type screen owns its CRUD UI and removes the legacy modal', () => {
+  assert.match(serviceCatalog, /screen-config-service-types/);
+  assert.match(serviceCatalog, /modal-service-type-crud-v2/);
+  assert.match(serviceCatalog, /modal-config-service-type/);
+  assert.match(serviceCatalog, /\.remove\(\)/);
+  assert.doesNotMatch(serviceCatalog, /abrirTipoServicioConfig/);
+  assert.doesNotMatch(serviceCatalog, /guardarTipoServicioConfig/);
+});
+
 test('service type editing exposes the requested operational attributes', () => {
   assert.match(serviceCatalog, /st2-category/);
   assert.match(serviceCatalog, /Primario/);
