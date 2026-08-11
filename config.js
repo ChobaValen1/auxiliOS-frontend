@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
-    await loadAuxiliosModule('auxilios-service-types-catalog-v1', '/service-types-catalog-v1.js');
+    await loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js');
     loadAuxiliosStyle('auxilios-tariff-matrix-v3-css', '/tariff-matrix-v3.css');
     await loadAuxiliosModule('auxilios-tariff-matrix-v3', '/tariff-matrix-v3.js');
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
@@ -48,8 +48,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
     await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
 
-    // Único alta permitida: workspace full-screen 3 columnas. Se monta una vez
-    // y luego actualiza sectores puntuales para evitar parpadeos/reflows globales.
     loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
     loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
     loadAuxiliosStyle('auxilios-operator-service-tariff-v3-css', '/operator-service-tariff-v3.css');
@@ -74,13 +72,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
     await loadAuxiliosModule('auxilios-operator-services-stability-v1', '/operator-services-stability-v1.js');
 
-    // Reajuste administrativo: conserva tarifa de lista, modifica solo el valor aplicado
-    // al servicio y expone el historial auditado para Administración.
     loadAuxiliosStyle('auxilios-operator-service-reajuste-v3-css', '/operator-service-reajuste-v3.css');
     await loadAuxiliosModule('auxilios-operator-service-reajuste-v3', '/operator-service-reajuste-v3.js');
 
-    // Jornadas admin: correcciones auditadas, anulación lógica y navegación
-    // directa a remitos/combustible/rendiciones/checklists vinculados.
     loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
     await loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js');
   } catch (error) {
