@@ -9,7 +9,8 @@ const sw = fs.readFileSync('sw.js', 'utf8');
 test('loads the dedicated billing parameters module', () => {
   assert.match(config, /company-billing-parameters-v2\.js/);
   assert.match(sw, /company-billing-parameters-v2\.js/);
-  assert.match(sw, /auxilios-v154/);
+  const version = Number(sw.match(/auxilios-v(\d+)/)?.[1] || 0);
+  assert.ok(version >= 155, `Expected cache version 155 or newer, received ${version}`);
 });
 
 test('billing parameters is a configuration module without a company base selector', () => {
