@@ -36,7 +36,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
-    await loadAuxiliosModule('auxilios-configuration-service-unit-v1', '/configuration-service-unit-v1.js');
+    await loadAuxiliosModule('auxilios-service-types-catalog-v1', '/service-types-catalog-v1.js');
     loadAuxiliosStyle('auxilios-tariff-matrix-v3-css', '/tariff-matrix-v3.css');
     await loadAuxiliosModule('auxilios-tariff-matrix-v3', '/tariff-matrix-v3.js');
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
@@ -61,8 +61,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-billing-base-operator-adapter', '/billing-base-operator-adapter.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
 
-    // Configuración canónica: catálogo/allowlist de servicios + parámetros comerciales.
-    await loadAuxiliosModule('auxilios-company-services-v2', '/company-services-configuration-v2.js');
+    // Configuración canónica: Tipos de Servicio + allowlist por prestadora + parámetros comerciales.
+    await loadAuxiliosModule('auxilios-company-services-v3', '/company-services-configuration-v3.js');
     await loadAuxiliosModule('auxilios-company-billing-parameters-v3', '/company-billing-parameters-v3.js');
 
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
