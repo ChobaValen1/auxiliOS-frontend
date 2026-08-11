@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v159'; // v159: Tipos de Servicio CRUD verificado + allowlist aislada
+const CACHE_NAME = 'auxilios-v160'; // v160: Tipos de Servicio conserva ownership final de su ruta
 
 const PRECACHE_ASSETS = [
   '/',
