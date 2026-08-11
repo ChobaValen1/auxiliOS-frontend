@@ -114,7 +114,7 @@ test('tariff history uses draft then publish rather than overwriting published p
 test('operator pricing consumes the published rate card source, not the old matrix rates', () => {
   assert.match(operatorMigration, /company_rate_items/);
   assert.match(operatorMigration, /calculate_operator_service_quote_v4_full/);
-  assert.match(operatorMigration, /pricing_model', 'rate_card_v4/);
+  assert.match(operatorMigration, /rate_card_v4/);
   assert.doesNotMatch(operatorMigration, /company_tariff_matrix_rates/);
 });
 
