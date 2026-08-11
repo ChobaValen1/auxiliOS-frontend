@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v148'; // v148: reajuste administrativo visible + historial auditado
+const CACHE_NAME = 'auxilios-v150'; // v150: Tarifas V3 alineado a la colorimetría dark de AuxiliOS
 
 const PRECACHE_ASSETS = [
   '/',
