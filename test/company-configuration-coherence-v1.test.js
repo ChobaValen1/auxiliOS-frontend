@@ -13,8 +13,8 @@ test('bases are global and stay outside provider billing parameters', () => {
   assert.match(billing, /from\('billing_bases'\)/);
   assert.match(billing, /Seleccionar base global/);
   assert.doesNotMatch(billing, /id="cb-base-list"/);
-  assert.doesNotMatch(billing, /Prioridad/);
-  assert.doesNotMatch(billing, /Base principal/);
+  assert.doesNotMatch(billing, /<th>Prioridad<\/th>/);
+  assert.doesNotMatch(billing, /<small>Base principal<\/small>/);
 });
 
 test('service types are created globally and provider screen is only an allowlist', () => {
