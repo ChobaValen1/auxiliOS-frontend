@@ -26,7 +26,8 @@ test('night surcharge supports enablement, time window, percentage or fixed amou
   assert.match(source, /bp2-night-end/);
   assert.match(source, /percentage/);
   assert.match(source, /fixed/);
-  assert.match(source, /data-bp2-exception="night"/);
+  assert.match(source, /exceptionHtml\('night'/);
+  assert.match(source, /data-bp2-exception=/);
 });
 
 test('weekend and holiday surcharge supports separate ranges and exceptions', () => {
@@ -35,7 +36,8 @@ test('weekend and holiday surcharge supports separate ranges and exceptions', ()
   assert.match(source, /bp2-saturday-end/);
   assert.match(source, /bp2-sunday-start/);
   assert.match(source, /bp2-sunday-end/);
-  assert.match(source, /data-bp2-exception="weekend_holiday"/);
+  assert.match(source, /exceptionHtml\('weekend_holiday'/);
+  assert.match(source, /data-bp2-exception=/);
 });
 
 test('surcharges reuse versioned rate rules instead of storing values in notes', () => {
