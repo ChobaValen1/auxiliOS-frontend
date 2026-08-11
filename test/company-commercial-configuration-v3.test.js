@@ -6,7 +6,7 @@ const fs = require('node:fs');
 
 const billing = fs.readFileSync('company-billing-parameters-v3.js', 'utf8');
 const services = fs.readFileSync('company-services-configuration-v3.js', 'utf8');
-const serviceCatalog = fs.readFileSync('service-types-catalog-v1.js', 'utf8');
+const serviceCatalog = fs.readFileSync('service-types-catalog-v2.js', 'utf8');
 const config = fs.readFileSync('config.js', 'utf8');
 const sw = fs.readFileSync('sw.js', 'utf8');
 const pkg = fs.readFileSync('package.json', 'utf8');
@@ -20,15 +20,16 @@ const obsolete = [
   'tariff-new-rate-flow-v1.js',
   'company-services-configuration-v2.js',
   'configuration-service-unit-v1.js',
+  'service-types-catalog-v1.js',
 ];
 
 test('runtime has one service catalog, one provider allowlist and one billing parameters module', () => {
-  assert.match(config, /service-types-catalog-v1\.js/);
+  assert.match(config, /service-types-catalog-v2\.js/);
   assert.match(config, /company-services-configuration-v3\.js/);
   assert.match(config, /company-billing-parameters-v3\.js/);
-  assert.match(sw, /service-types-catalog-v1\.js/);
+  assert.match(sw, /service-types-catalog-v2\.js/);
   assert.match(sw, /company-services-configuration-v3\.js/);
-  assert.match(pkg, /service-types-catalog-v1\.js/);
+  assert.match(pkg, /service-types-catalog-v2\.js/);
   assert.match(pkg, /company-services-configuration-v3\.js/);
   for (const name of obsolete) {
     assert.equal(config.includes(name), false, `${name} must not load at runtime`);
@@ -37,33 +38,34 @@ test('runtime has one service catalog, one provider allowlist and one billing pa
   }
 });
 
-test('service types screen implements read, create, update and delete actions', () => {
+test('service types screen implements read create update and delete', () => {
   assert.match(serviceCatalog, /list_service_types_config/);
   assert.match(serviceCatalog, /Nuevo servicio/);
   assert.match(serviceCatalog, /Editar/);
   assert.match(serviceCatalog, /Eliminar/);
   assert.match(serviceCatalog, /save_service_type_config/);
-  assert.match(serviceCatalog, /from\('service_concepts'\)\.delete\(\)/);
-  assert.match(serviceCatalog, /from\('service_concepts'\)\.update\(\{ code \}\)/);
+  assert.match(serviceCatalog, /delete_service_type_config/);
   assert.match(serviceCatalog, /load\(true\)/);
 });
 
 test('service type editing exposes the requested operational attributes', () => {
-  assert.match(serviceCatalog, /stc-category/);
+  assert.match(serviceCatalog, /st2-category/);
   assert.match(serviceCatalog, /Primario/);
   assert.match(serviceCatalog, /Secundario/);
   assert.match(serviceCatalog, /Mixto/);
-  assert.match(serviceCatalog, /stc-adds-km/);
+  assert.match(serviceCatalog, /st2-adds-km/);
   assert.match(serviceCatalog, /Suma kilómetros/);
-  assert.match(serviceCatalog, /stc-tariff-type/);
-  assert.match(serviceCatalog, /stc-unit/);
-  assert.match(serviceCatalog, /document\.getElementById\('stc-code'\)\.disabled = false/);
+  assert.match(serviceCatalog, /st2-tariff-type/);
+  assert.match(serviceCatalog, /st2-unit/);
+  assert.match(serviceCatalog, /document\.getElementById\('st2-code'\)\.disabled=false/);
 });
 
-test('service deletion preserves historical integrity when foreign keys block hard delete', () => {
-  assert.match(serviceCatalog, /23503/);
-  assert.match(serviceCatalog, /se desactivó en lugar de borrarse/);
-  assert.match(serviceCatalog, /is_active: false/);
+test('service type mutations use admin RPCs instead of direct table writes', () => {
+  assert.match(serviceCatalog, /rpc\('save_service_type_config'/);
+  assert.match(serviceCatalog, /rpc\('delete_service_type_config'/);
+  assert.doesNotMatch(serviceCatalog, /from\('service_concepts'\)\.update/);
+  assert.doesNotMatch(serviceCatalog, /from\('service_concepts'\)\.delete/);
+  assert.match(serviceCatalog, /result\.data\?\.archived/);
 });
 
 test('provider services module is only an allowlist over the master service catalog', () => {
@@ -85,7 +87,7 @@ test('billing parameters owns its modal and does not depend on the deleted legac
   assert.doesNotMatch(billing, /cb-base-list/);
 });
 
-test('night surcharge supports checkbox, time range, percentage or fixed value and service exceptions', () => {
+test('night surcharge supports checkbox time range percentage or fixed value and service exceptions', () => {
   assert.match(billing, /bp3-night-enabled/);
   assert.match(billing, /bp3-night-start/);
   assert.match(billing, /bp3-night-end/);
@@ -116,5 +118,5 @@ test('tariffs use global bases and only enabled company services', () => {
 
 test('PWA cache is bumped after replacing service type runtime code', () => {
   const version = Number(sw.match(/auxilios-v(\d+)/)?.[1] || 0);
-  assert.ok(version >= 157, `Expected cache version 157 or newer, received ${version}`);
+  assert.ok(version >= 158, `Expected cache version 158 or newer, received ${version}`);
 });
