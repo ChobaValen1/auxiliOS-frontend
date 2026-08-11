@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v158'; // v158: CRUD completo y seguro de Tipos de Servicio
+const CACHE_NAME = 'auxilios-v159'; // v159: Tipos de Servicio CRUD verificado + allowlist aislada
 
 const PRECACHE_ASSETS = [
   '/',
@@ -13,7 +13,7 @@ const PRECACHE_ASSETS = [
   '/configuration-reference.css',
   '/configuration-reference.js',
   '/service-types-catalog-v2.js',
-  '/company-services-configuration-v3.js',
+  '/company-services-configuration-v4.js',
   '/company-billing-parameters-v3.js',
   '/tariff-matrix-v3.css',
   '/tariff-matrix-v3.js',
