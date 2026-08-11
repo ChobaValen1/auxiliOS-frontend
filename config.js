@@ -37,16 +37,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
 
-    // Tarifario V3 todavía consume categorías/conceptos para su matriz. Debe inicializarse
-    // ANTES que el catálogo canónico para no volver a apropiarse de config-service-types.
-    loadAuxiliosStyle('auxilios-tariff-matrix-v3-css', '/tariff-matrix-v3.css');
-    await loadAuxiliosModule('auxilios-tariff-matrix-v3', '/tariff-matrix-v3.js');
-
-    // Único dueño visible de Configuración → Tipos de Servicio. Se monta después de
-    // cualquier módulo tarifario que históricamente haya reutilizado esta misma pantalla.
+    // Catálogos/configuración con ownership único por pantalla.
     await loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js');
-    const serviceTypesNavLabel = document.querySelector('#nav-config-service-types .nav-label');
-    if (serviceTypesNavLabel) serviceTypesNavLabel.textContent = 'Tipos de servicio';
+    await loadAuxiliosModule('auxilios-company-tariffs-v4', '/company-tariffs-v4.js');
 
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
     await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
@@ -68,7 +61,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-billing-base-operator-adapter', '/billing-base-operator-adapter.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
 
-    // Configuración canónica: Tipos de Servicio + allowlist por prestadora + parámetros comerciales.
+    // Prestadora: allowlist de servicios + parámetros comerciales.
     await loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js');
     await loadAuxiliosModule('auxilios-company-billing-parameters-v3', '/company-billing-parameters-v3.js');
 
