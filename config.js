@@ -64,6 +64,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-equal-billing-bases', '/equal-billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
     await loadAuxiliosModule('auxilios-company-configuration-coherence-v1', '/company-configuration-coherence-v1.js');
+    await loadAuxiliosModule('auxilios-company-billing-parameters-v2', '/company-billing-parameters-v2.js');
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
     await loadAuxiliosModule('auxilios-phase3-journey-start-guard', '/phase3-journey-start-guard.js');
