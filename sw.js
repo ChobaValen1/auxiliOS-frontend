@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v149'; // v149: rediseño Tarifas V3 + carga y actualización masiva
+const CACHE_NAME = 'auxilios-v150'; // v150: Tarifas V3 alineado a la colorimetría dark de AuxiliOS
 
 const PRECACHE_ASSETS = [
   '/',
