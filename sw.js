@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v156'; // v156: configuración comercial canónica sin adaptadores obsoletos
+const CACHE_NAME = 'auxilios-v157'; // v157: CRUD canónico de Tipos de Servicio
 
 const PRECACHE_ASSETS = [
   '/',
@@ -12,8 +12,8 @@ const PRECACHE_ASSETS = [
   '/billing-base-operator-adapter.js',
   '/configuration-reference.css',
   '/configuration-reference.js',
-  '/configuration-service-unit-v1.js',
-  '/company-services-configuration-v2.js',
+  '/service-types-catalog-v1.js',
+  '/company-services-configuration-v3.js',
   '/company-billing-parameters-v3.js',
   '/tariff-matrix-v3.css',
   '/tariff-matrix-v3.js',
