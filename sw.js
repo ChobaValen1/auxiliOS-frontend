@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v160'; // v160: Tipos de Servicio conserva ownership final de su ruta
+const CACHE_NAME = 'auxilios-v161'; // v161: Tarifas v4 canónicas + parámetros v4
 
 const PRECACHE_ASSETS = [
   '/',
@@ -14,9 +14,8 @@ const PRECACHE_ASSETS = [
   '/configuration-reference.js',
   '/service-types-catalog-v2.js',
   '/company-services-configuration-v4.js',
-  '/company-billing-parameters-v3.js',
-  '/tariff-matrix-v3.css',
-  '/tariff-matrix-v3.js',
+  '/company-billing-parameters-v4.js',
+  '/company-tariffs-v4.js',
   '/configuration-center.css',
   '/configuration-center.js',
   '/frequent-navigation.js',
