@@ -40,6 +40,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-configuration-service-unit-v1', '/configuration-service-unit-v1.js');
     loadAuxiliosStyle('auxilios-tariff-matrix-v3-css', '/tariff-matrix-v3.css');
     await loadAuxiliosModule('auxilios-tariff-matrix-v3', '/tariff-matrix-v3.js');
+    await loadAuxiliosModule('auxilios-tariff-new-rate-flow-v1', '/tariff-new-rate-flow-v1.js');
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
     await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
     await loadAuxiliosModule('auxilios-comercial-code-strategy', '/comercial-code-strategy.js');
