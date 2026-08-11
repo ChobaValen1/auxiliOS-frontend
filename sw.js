@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v150'; // v150: Tarifas V3 alineado a la colorimetría dark de AuxiliOS
+const CACHE_NAME = 'auxilios-v153'; // v153: coherencia Prestadoras, Servicios habilitados y parámetros de facturación
 
 const PRECACHE_ASSETS = [
   '/',
@@ -10,6 +10,7 @@ const PRECACHE_ASSETS = [
   '/empresas-v2.css',
   '/billing-bases.js',
   '/company-billing-settings.js',
+  '/company-configuration-coherence-v1.js',
   '/billing-base-operator-adapter.js',
   '/equal-billing-bases.js',
   '/configuration-reference.css',
