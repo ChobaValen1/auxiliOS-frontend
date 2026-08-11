@@ -1,0 +1,282 @@
+/* AuxiliOS · Parámetros de facturación v4 · sin dependencias de Tarifario V3 */
+(() => {
+  'use strict';
+
+  const S = {
+    companyId: null,
+    billing: null,
+    companyConfig: null,
+    activeCard: null,
+    draftCard: null,
+    rateCard: null,
+    rules: [],
+    exceptions: [],
+    busy: false,
+    contextKey: '',
+    patching: false,
+    timer: null,
+  };
+
+  const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const profile = () => typeof PERFIL_USUARIO !== 'undefined' ? PERFIL_USUARIO : (window.PERFIL_USUARIO || {});
+  const role = () => norm(profile()?.roles?.name || profile()?.role?.name || profile()?.role || profile()?.role_name || '');
+  const canWrite = () => role() === 'administracion';
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const notify = (message, type = 'info') => typeof toast === 'function' ? toast(message, type) : console[type === 'error' ? 'error' : 'log'](message);
+  const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const timeValue = value => value ? String(value).slice(0, 5) : '';
+  const num = value => Number(value ?? 0) || 0;
+  const routeLabel = value => ({ base_origin_destination_base: 'Base → Origen → Destino → Base', base_origin: 'Base → Origen', origin_destination: 'Origen → Destino', manual: 'Kilometraje manual' }[value] || 'Base → Origen → Destino → Base');
+  const tollLabel = value => ({ route_estimate: 'Estimación automática por ruta', manual: 'Carga real / comprobante', not_applicable: 'No corresponde' }[value] || 'Según configuración');
+  const resolveCompanyId = explicit => explicit || S.companyId || window.__auxCompanySelected || null;
+
+  function inject() {
+    if (!document.getElementById('company-billing-parameters-v4-css')) {
+      document.head.insertAdjacentHTML('beforeend', `<style id="company-billing-parameters-v4-css">
+        .bp4-shell{display:grid;gap:14px}.bp4-section{border:1px solid var(--border);border-radius:12px;background:var(--panel);overflow:hidden}.bp4-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.012)}.bp4-section-head h4{margin:0;font-size:13px;color:var(--text)}.bp4-section-head p{margin:4px 0 0;font-size:10px;line-height:1.45;color:var(--muted2)}.bp4-section-body{padding:14px 16px}
+        .bp4-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.bp4-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.bp4-field{display:grid;gap:6px}.bp4-field>span,.bp4-field>label{font-size:9px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--muted2)}.bp4-field.full{grid-column:1/-1}
+        .bp4-help{padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg);font-size:10px;line-height:1.5;color:var(--muted2)}.bp4-help b{display:block;margin-bottom:2px;color:var(--text)}.bp4-help.route{border-color:rgba(46,196,214,.30)}.bp4-help.manual{border-color:rgba(245,166,35,.30)}.bp4-help.off{border-color:rgba(90,98,120,.40)}
+        .bp4-rule-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.bp4-rule{padding:14px;border:1px solid var(--border);border-radius:11px;background:var(--bg)}.bp4-rule.active{border-color:rgba(245,166,35,.34)}.bp4-rule-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.bp4-rule-head h5{margin:0;font-size:12px;color:var(--text)}.bp4-rule-head p{margin:3px 0 0;font-size:9px;line-height:1.4;color:var(--muted2)}
+        .bp4-switch{position:relative;display:inline-flex;align-items:center;width:38px;height:22px;flex:0 0 auto}.bp4-switch input{position:absolute;opacity:0;pointer-events:none}.bp4-switch i{width:38px;height:22px;border-radius:999px;background:var(--border2);position:relative;transition:.18s}.bp4-switch i:after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--muted2);transition:.18s}.bp4-switch input:checked+i{background:rgba(245,166,35,.26);box-shadow:inset 0 0 0 1px rgba(245,166,35,.45)}.bp4-switch input:checked+i:after{left:19px;background:var(--amber)}
+        .bp4-rule-fields{display:grid;gap:10px}.bp4-rule-fields.disabled{opacity:.42}.bp4-subtitle{margin:3px 0 7px;font-size:9px;font-weight:800;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em}.bp4-exceptions{margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}.bp4-exception-list{display:flex;gap:6px;flex-wrap:wrap}.bp4-exception{display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;font-size:9px;color:var(--muted2);cursor:pointer}.bp4-exception:has(input:checked){border-color:rgba(226,80,74,.38);background:rgba(226,80,74,.07);color:var(--text)}.bp4-exception input{accent-color:var(--red)}
+        .bp4-version{margin-top:10px;padding:9px 11px;border-radius:8px;border:1px solid var(--border);background:rgba(79,142,247,.05);font-size:9px;line-height:1.45;color:var(--muted2)}.bp4-version b{color:var(--text)}.bp4-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.bp4-summary article{padding:13px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}.bp4-summary small{display:block;font-size:8px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.bp4-summary b{display:block;margin-top:5px;font-size:11px;line-height:1.4;color:var(--text)}.bp4-summary em{display:block;margin-top:4px;font-size:9px;font-style:normal;color:var(--muted2)}
+        .bp4-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.bp4-detail-head h3{margin:0}.bp4-detail-head p{margin:4px 0 0;color:var(--muted2);font-size:10px}.bp4-dialog{width:min(980px,calc(100vw - 24px));max-width:980px}.bp4-dialog .modal-body{max-height:min(76vh,760px);overflow:auto}
+        @media(max-width:900px){.bp4-rule-grid,.bp4-summary{grid-template-columns:1fr 1fr}.bp4-grid.three{grid-template-columns:1fr 1fr}}@media(max-width:650px){.bp4-grid,.bp4-grid.three,.bp4-rule-grid,.bp4-summary{grid-template-columns:1fr}}
+      </style>`);
+    }
+    if (!document.getElementById('modal-company-billing-v4')) {
+      document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="modal-company-billing-v4"><div class="modal-box bp4-dialog"><div class="modal-head"><span class="modal-head-title">Parámetros de facturación</span><button class="modal-close" type="button" data-bp4-close>×</button></div><div class="modal-body" id="bp4-modal-body"></div><div class="modal-footer"><button class="btn btn-ghost" type="button" data-bp4-close>Cancelar</button><button class="btn btn-primary" id="bp4-save" type="button">Guardar parámetros</button></div></div></div>`);
+      document.querySelectorAll('[data-bp4-close]').forEach(button => button.addEventListener('click', () => close()));
+      document.getElementById('bp4-save')?.addEventListener('click', saveParameters);
+    }
+  }
+
+  function close() { typeof closeModal === 'function' ? closeModal('modal-company-billing-v4') : document.getElementById('modal-company-billing-v4')?.classList.remove('open'); }
+
+  async function globalBases() {
+    const result = await _db.from('billing_bases').select('base_id,is_active').eq('is_active', true);
+    if (result.error) throw result.error;
+    return result.data || [];
+  }
+
+  async function loadRateContext(companyId) {
+    const contracts = await _db.from('company_contracts').select('contract_id,status,is_primary,valid_from').eq('company_id', companyId).order('is_primary', { ascending: false }).order('valid_from', { ascending: false });
+    if (contracts.error) throw contracts.error;
+    const contract = (contracts.data || []).find(row => row.status === 'active') || null;
+    if (!contract) return { active: null, draft: null, card: null, rules: [], exceptions: [] };
+    const cards = await _db.from('company_rate_cards').select('*').eq('contract_id', contract.contract_id).order('version', { ascending: false }).order('created_at', { ascending: false });
+    if (cards.error) throw cards.error;
+    const rows = cards.data || [];
+    const active = rows.find(row => row.status === 'active') || null;
+    const draft = rows.find(row => row.status === 'draft' && (!active || Number(row.version) > Number(active.version))) || null;
+    const card = draft || active;
+    if (!card) return { active, draft, card: null, rules: [], exceptions: [] };
+    const [rules, exceptions] = await Promise.all([
+      _db.from('company_rate_rules').select('*').eq('rate_card_id', card.rate_card_id),
+      _db.from('company_rate_rule_exceptions').select('*').eq('rate_card_id', card.rate_card_id),
+    ]);
+    if (rules.error) throw rules.error;
+    if (exceptions.error) throw exceptions.error;
+    return { active, draft, card, rules: rules.data || [], exceptions: exceptions.data || [] };
+  }
+
+  async function loadContext(companyId = null, force = false) {
+    const id = resolveCompanyId(companyId);
+    if (!id) throw new Error('Seleccioná una prestadora.');
+    if (!force && S.contextKey === String(id) && S.billing && S.companyConfig) return S;
+    const [billing, companyConfig, rate] = await Promise.all([
+      _db.rpc('get_company_billing_configuration', { p_company_id: id, p_scheduled_for: new Date().toISOString() }),
+      _db.rpc('get_company_configuration_v2', { p_company_id: id }),
+      loadRateContext(id),
+    ]);
+    if (billing.error) throw billing.error;
+    if (companyConfig.error) throw companyConfig.error;
+    S.companyId = id;
+    S.billing = billing.data || { setting: null };
+    S.companyConfig = companyConfig.data || { services: [] };
+    S.activeCard = rate.active; S.draftCard = rate.draft; S.rateCard = rate.card;
+    S.rules = rate.rules; S.exceptions = rate.exceptions; S.contextKey = String(id);
+    return S;
+  }
+
+  function rule(type) {
+    return S.rules.find(item => item.rule_type === type) || {
+      rule_id: null, rule_type: type, enabled: false, calculation_mode: 'percentage', amount: 20,
+      start_time: type === 'night' ? '22:00' : null, end_time: type === 'night' ? '06:00' : null,
+      saturday_start: type === 'weekend_holiday' ? '00:00' : null, saturday_end: type === 'weekend_holiday' ? '23:59' : null,
+      sunday_holiday_start: type === 'weekend_holiday' ? '00:00' : null, sunday_holiday_end: type === 'weekend_holiday' ? '23:59' : null,
+    };
+  }
+
+  const enabledServices = () => (S.companyConfig?.services || []).filter(item => item.is_enabled === true);
+  const exceptionSet = ruleId => new Set(ruleId ? S.exceptions.filter(item => item.rule_id === ruleId).map(item => String(item.concept_id)) : []);
+
+  function exceptionHtml(type, selected) {
+    const services = enabledServices();
+    if (!services.length) return '<div class="bp4-help off">No hay servicios habilitados para configurar excepciones.</div>';
+    return `<div class="bp4-exception-list">${services.map(service => `<label class="bp4-exception"><input type="checkbox" data-bp4-exception="${esc(type)}" value="${esc(service.concept_id)}" ${selected.has(String(service.concept_id)) ? 'checked' : ''}><span>${esc(service.name)}</span></label>`).join('')}</div>`;
+  }
+
+  function modalHtml() {
+    const setting = S.billing?.setting || {};
+    const night = rule('night'); const weekend = rule('weekend_holiday');
+    const versionText = !S.rateCard ? '<b>Sin tarifario.</b> Los recargos quedarán asociados al próximo tarifario que se publique.' : S.draftCard ? `<b>Borrador v${esc(S.draftCard.version)}.</b> Los cambios de recargos quedan dentro de esa misma versión pendiente.` : `<b>Tarifario publicado v${esc(S.activeCard?.version)}.</b> Si cambiás recargos, AuxiliOS genera una nueva versión para preservar el histórico.`;
+    return `<div class="bp4-shell">
+      <section class="bp4-section"><div class="bp4-section-head"><div><h4>Cómo factura el servicio</h4><p>Recorrido y tratamiento de peajes para esta prestadora.</p></div></div><div class="bp4-section-body"><div class="bp4-grid"><label class="bp4-field"><span>Modo de kilometraje</span><select class="form-input" id="bp4-route"><option value="base_origin_destination_base">Base → Origen → Destino → Base</option><option value="base_origin">Base → Origen</option><option value="origin_destination">Origen → Destino</option><option value="manual">Kilometraje manual</option></select></label><label class="bp4-field"><span>Peajes</span><select class="form-input" id="bp4-tolls"><option value="route_estimate">Estimación de la ruta</option><option value="manual">Carga manual / comprobante</option><option value="not_applicable">No corresponde</option></select></label><div class="bp4-help full" id="bp4-toll-help"></div></div></div></section>
+      <section class="bp4-section"><div class="bp4-section-head"><div><h4>Recargos</h4><p>Activación, horarios, cálculo y servicios exceptuados.</p></div></div><div class="bp4-section-body"><div class="bp4-rule-grid">
+        <article class="bp4-rule ${night.enabled ? 'active' : ''}" id="bp4-night-card"><div class="bp4-rule-head"><div><h5>Turno noche</h5><p>Recargo dentro del rango nocturno.</p></div><label class="bp4-switch"><input type="checkbox" id="bp4-night-enabled" ${night.enabled ? 'checked' : ''}><i></i></label></div><div class="bp4-rule-fields ${night.enabled ? '' : 'disabled'}" id="bp4-night-fields"><div class="bp4-grid"><label class="bp4-field"><span>Desde</span><input class="form-input" type="time" id="bp4-night-start" value="${esc(timeValue(night.start_time) || '22:00')}"></label><label class="bp4-field"><span>Hasta</span><input class="form-input" type="time" id="bp4-night-end" value="${esc(timeValue(night.end_time) || '06:00')}"></label></div><div class="bp4-grid"><label class="bp4-field"><span>Tipo de recargo</span><select class="form-input" id="bp4-night-mode"><option value="percentage" ${night.calculation_mode !== 'fixed' ? 'selected' : ''}>Porcentaje</option><option value="fixed" ${night.calculation_mode === 'fixed' ? 'selected' : ''}>Monto fijo</option></select></label><label class="bp4-field"><span id="bp4-night-label">Valor</span><input class="form-input" type="number" min="0" step="0.01" id="bp4-night-amount" value="${esc(num(night.amount))}"></label></div><div class="bp4-exceptions"><div class="bp4-subtitle">Servicios que NO aplican</div>${exceptionHtml('night', exceptionSet(night.rule_id))}</div></div></article>
+        <article class="bp4-rule ${weekend.enabled ? 'active' : ''}" id="bp4-weekend-card"><div class="bp4-rule-head"><div><h5>Fin de semana y feriados</h5><p>Rangos para sábado y domingo/feriado.</p></div><label class="bp4-switch"><input type="checkbox" id="bp4-weekend-enabled" ${weekend.enabled ? 'checked' : ''}><i></i></label></div><div class="bp4-rule-fields ${weekend.enabled ? '' : 'disabled'}" id="bp4-weekend-fields"><div class="bp4-subtitle">Sábado</div><div class="bp4-grid"><label class="bp4-field"><span>Desde</span><input class="form-input" type="time" id="bp4-saturday-start" value="${esc(timeValue(weekend.saturday_start) || '00:00')}"></label><label class="bp4-field"><span>Hasta</span><input class="form-input" type="time" id="bp4-saturday-end" value="${esc(timeValue(weekend.saturday_end) || '23:59')}"></label></div><div class="bp4-subtitle">Domingo / feriado</div><div class="bp4-grid"><label class="bp4-field"><span>Desde</span><input class="form-input" type="time" id="bp4-sunday-start" value="${esc(timeValue(weekend.sunday_holiday_start) || '00:00')}"></label><label class="bp4-field"><span>Hasta</span><input class="form-input" type="time" id="bp4-sunday-end" value="${esc(timeValue(weekend.sunday_holiday_end) || '23:59')}"></label></div><div class="bp4-grid"><label class="bp4-field"><span>Tipo de recargo</span><select class="form-input" id="bp4-weekend-mode"><option value="percentage" ${weekend.calculation_mode !== 'fixed' ? 'selected' : ''}>Porcentaje</option><option value="fixed" ${weekend.calculation_mode === 'fixed' ? 'selected' : ''}>Monto fijo</option></select></label><label class="bp4-field"><span id="bp4-weekend-label">Valor</span><input class="form-input" type="number" min="0" step="0.01" id="bp4-weekend-amount" value="${esc(num(weekend.amount))}"></label></div><div class="bp4-exceptions"><div class="bp4-subtitle">Servicios que NO aplican</div>${exceptionHtml('weekend_holiday', exceptionSet(weekend.rule_id))}</div></div></article>
+      </div><div class="bp4-version">${versionText}</div></div></section>
+      <section class="bp4-section"><div class="bp4-section-head"><div><h4>Vigencia</h4><p>Período de aplicación de estos parámetros.</p></div></div><div class="bp4-section-body"><div class="bp4-grid three"><label class="bp4-field"><span>Vigente desde</span><input class="form-input" type="date" id="bp4-from" value="${esc(setting.valid_from || today())}"></label><label class="bp4-field"><span>Vigente hasta</span><input class="form-input" type="date" id="bp4-until" value="${esc(setting.valid_until || '')}"></label><label class="bp4-field" style="align-content:end"><span>Estado</span><label class="cb-check"><input type="checkbox" id="bp4-active" ${setting.is_active !== false ? 'checked' : ''}> Configuración activa</label></label><label class="bp4-field full"><span>Observaciones</span><textarea class="form-input" id="bp4-notes" rows="3">${esc(setting.notes || '')}</textarea></label></div></div></section>
+      <div class="modal-error" id="bp4-error" style="display:none"></div>
+    </div>`;
+  }
+
+  function renderTollHelp() {
+    const mode = document.getElementById('bp4-tolls')?.value;
+    const panel = document.getElementById('bp4-toll-help'); if (!panel) return;
+    if (mode === 'manual') { panel.className = 'bp4-help full manual'; panel.innerHTML = '<b>Carga real / comprobante</b>El peaje se carga durante el servicio con el importe real.'; }
+    else if (mode === 'not_applicable') { panel.className = 'bp4-help full off'; panel.innerHTML = '<b>No corresponde</b>AuxiliOS no incorpora peajes en la liquidación.'; }
+    else { panel.className = 'bp4-help full route'; panel.innerHTML = '<b>Estimación automática por ruta</b>El recorrido calculado se usa como referencia para estimar peajes.'; }
+  }
+
+  function syncRule(prefix) {
+    const enabled = Boolean(document.getElementById(`bp4-${prefix}-enabled`)?.checked);
+    document.getElementById(`bp4-${prefix}-card`)?.classList.toggle('active', enabled);
+    document.getElementById(`bp4-${prefix}-fields`)?.classList.toggle('disabled', !enabled);
+    document.querySelectorAll(`#bp4-${prefix}-fields input,#bp4-${prefix}-fields select`).forEach(input => { input.disabled = !enabled; });
+  }
+  function updateAmountLabel(prefix) { const label = document.getElementById(`bp4-${prefix}-label`); if (label) label.textContent = document.getElementById(`bp4-${prefix}-mode`)?.value === 'fixed' ? 'Monto fijo' : 'Porcentaje (%)'; }
+  function bindModal() {
+    document.getElementById('bp4-tolls')?.addEventListener('change', renderTollHelp);
+    ['night', 'weekend'].forEach(prefix => {
+      document.getElementById(`bp4-${prefix}-enabled`)?.addEventListener('change', () => syncRule(prefix));
+      document.getElementById(`bp4-${prefix}-mode`)?.addEventListener('change', () => updateAmountLabel(prefix));
+      syncRule(prefix); updateAmountLabel(prefix);
+    });
+    renderTollHelp();
+  }
+
+  async function openParameters(companyId = null) {
+    if (!canWrite()) return notify('Solo Administración puede modificar parámetros de facturación', 'error');
+    inject(); const id = resolveCompanyId(companyId); if (!id) return notify('Seleccioná una prestadora', 'warning');
+    S.companyId = id; const body = document.getElementById('bp4-modal-body'); if (body) body.innerHTML = '<div class="bp4-help">Cargando parámetros…</div>';
+    typeof openModal === 'function' ? openModal('modal-company-billing-v4') : document.getElementById('modal-company-billing-v4')?.classList.add('open');
+    try {
+      await loadContext(id, true); if (!body) return; body.innerHTML = modalHtml();
+      const setting = S.billing?.setting || {};
+      document.getElementById('bp4-route').value = setting.route_mode || 'base_origin_destination_base';
+      document.getElementById('bp4-tolls').value = setting.toll_calculation_mode || 'route_estimate';
+      bindModal();
+    } catch (error) { if (body) body.innerHTML = `<div class="modal-error" style="display:block">${esc(error?.message || 'No se pudieron cargar los parámetros.')}</div>`; }
+  }
+
+  function setError(message = '') { const el = document.getElementById('bp4-error'); if (el) { el.textContent = message; el.style.display = message ? 'block' : 'none'; } }
+  function collectRule(type) {
+    const weekend = type === 'weekend_holiday'; const prefix = weekend ? 'weekend' : 'night';
+    return { type, enabled: Boolean(document.getElementById(`bp4-${prefix}-enabled`)?.checked), calculation_mode: document.getElementById(`bp4-${prefix}-mode`)?.value || 'percentage', amount: Math.max(0, Number(document.getElementById(`bp4-${prefix}-amount`)?.value || 0)), start_time: weekend ? null : (document.getElementById('bp4-night-start')?.value || null), end_time: weekend ? null : (document.getElementById('bp4-night-end')?.value || null), saturday_start: weekend ? (document.getElementById('bp4-saturday-start')?.value || null) : null, saturday_end: weekend ? (document.getElementById('bp4-saturday-end')?.value || null) : null, sunday_holiday_start: weekend ? (document.getElementById('bp4-sunday-start')?.value || null) : null, sunday_holiday_end: weekend ? (document.getElementById('bp4-sunday-end')?.value || null) : null, exceptions: [...document.querySelectorAll(`[data-bp4-exception="${type}"]:checked`)].map(input => input.value) };
+  }
+  function validateRules(rules) {
+    for (const item of rules) {
+      if (!item.enabled) continue;
+      if (!Number.isFinite(item.amount) || item.amount < 0) return 'El valor del recargo debe ser válido.';
+      if (item.type === 'night' && (!item.start_time || !item.end_time)) return 'Completá el rango horario del turno noche.';
+      if (item.type === 'weekend_holiday' && (!item.saturday_start || !item.saturday_end || !item.sunday_holiday_start || !item.sunday_holiday_end)) return 'Completá los rangos de fin de semana y feriados.';
+    }
+    return '';
+  }
+
+  async function saveRule(cardId, model) {
+    const current = await _db.from('company_rate_rules').select('*').eq('rate_card_id', cardId).eq('rule_type', model.type).maybeSingle();
+    if (current.error) throw current.error;
+    const patch = { enabled: model.enabled, calculation_mode: model.calculation_mode, amount: model.amount, start_time: model.start_time, end_time: model.end_time, saturday_start: model.saturday_start, saturday_end: model.saturday_end, sunday_holiday_start: model.sunday_holiday_start, sunday_holiday_end: model.sunday_holiday_end };
+    const saved = current.data ? await _db.from('company_rate_rules').update(patch).eq('rule_id', current.data.rule_id).select().single() : await _db.from('company_rate_rules').insert({ rate_card_id: cardId, rule_type: model.type, ...patch }).select().single();
+    if (saved.error) throw saved.error;
+    const removed = await _db.from('company_rate_rule_exceptions').delete().eq('rule_id', saved.data.rule_id); if (removed.error) throw removed.error;
+    if (model.exceptions.length) { const inserted = await _db.from('company_rate_rule_exceptions').insert(model.exceptions.map(conceptId => ({ rate_card_id: cardId, rule_id: saved.data.rule_id, concept_id: conceptId }))); if (inserted.error) throw inserted.error; }
+  }
+
+  async function saveParameters() {
+    if (!canWrite() || S.busy || !S.companyId) return;
+    const from = document.getElementById('bp4-from')?.value || today(); const until = document.getElementById('bp4-until')?.value || null;
+    if (until && until < from) return setError('La fecha hasta no puede ser anterior a la fecha desde.');
+    const models = [collectRule('night'), collectRule('weekend_holiday')]; const validation = validateRules(models); if (validation) return setError(validation);
+    const button = document.getElementById('bp4-save'); S.busy = true; setError(''); if (button) { button.disabled = true; button.textContent = 'Guardando…'; }
+    try {
+      await loadContext(S.companyId, true);
+      const bases = await globalBases();
+      const billingPayload = { billing_setting_id: S.billing?.setting?.billing_setting_id || null, company_id: S.companyId, contract_id: null, route_mode: document.getElementById('bp4-route')?.value || 'base_origin_destination_base', toll_calculation_mode: document.getElementById('bp4-tolls')?.value || 'route_estimate', valid_from: from, valid_until: until, requires_verified_base: false, is_active: Boolean(document.getElementById('bp4-active')?.checked), notes: String(document.getElementById('bp4-notes')?.value || '').trim() || null, bases: bases.map(base => ({ base_id: base.base_id, is_active: true })) };
+      const billing = await _db.rpc('save_company_billing_configuration', { p_payload: billingPayload }); if (billing.error) throw billing.error;
+
+      const hadDraft = Boolean(S.draftCard?.rate_card_id);
+      const draft = await _db.rpc('ensure_company_tariff_draft_v4', { p_company_id: S.companyId, p_valid_from: S.draftCard?.valid_from || today() });
+      if (draft.error) throw draft.error;
+      const draftId = draft.data?.rate_card_id; if (!draftId) throw new Error('No se pudo preparar la versión tarifaria para los recargos.');
+      for (const model of models) await saveRule(draftId, model);
+
+      if (!hadDraft && S.activeCard?.rate_card_id) {
+        const published = await _db.rpc('publish_company_tariff_draft_v4', { p_rate_card_id: draftId });
+        if (published.error) throw published.error;
+      }
+
+      close(); S.contextKey = '';
+      notify(hadDraft ? 'Parámetros guardados en el borrador tarifario' : 'Parámetros de facturación guardados', 'success');
+      window.AuxiliosCompanyTariffsV4?.reload?.();
+      if (typeof window.cargarEmpresasV2 === 'function') await window.cargarEmpresasV2();
+      if (typeof window.seleccionarEmpresaV2 === 'function') await window.seleccionarEmpresaV2(S.companyId);
+      schedulePatch();
+    } catch (error) { setError(error?.message || 'No se pudieron guardar los parámetros.'); }
+    finally { S.busy = false; if (button) { button.disabled = false; button.textContent = 'Guardar parámetros'; } }
+  }
+
+  function cleanCompanyView(root) {
+    if (!root) return;
+    root.querySelectorAll('.empv2-hero-stat').forEach(stat => { const label = stat.querySelector('small')?.textContent.trim() || ''; if (/Base principal|Bases habilitadas|Bases operativas/i.test(label)) stat.remove(); });
+    root.querySelectorAll('.empv2-alert-item').forEach(item => { if (/base/i.test(item.querySelector('b')?.textContent || '')) item.remove(); });
+    root.querySelectorAll('.empv2-tabs button').forEach(button => { const text = button.textContent.trim(); if (text === 'Reglas y parámetros') button.remove(); if (text === 'Bases y facturación') button.textContent = 'Parámetros de facturación'; });
+    root.querySelectorAll('.empv2-feature-card').forEach(card => { const title = card.querySelector('h3'); if (!title) return; const text = title.textContent.trim(); if (text === 'Reglas y parámetros') return card.remove(); if (text === 'Bases y facturación' || text === 'Parámetros de facturación') { title.textContent = 'Parámetros de facturación'; const p = card.querySelector('p'); if (p) p.textContent = 'Recorrido, peajes, recargos y vigencia comercial.'; } });
+    root.querySelectorAll('.empv2-section-card').forEach(section => { const title = section.querySelector('h3'); if (title?.textContent.trim() === 'Bases y facturación') title.textContent = 'Parámetros de facturación'; });
+    root.querySelectorAll('.empv2-rule-grid').forEach(grid => grid.closest('.empv2-section-card')?.remove());
+  }
+
+  async function renderParametersDetail(root) {
+    if (!root || !S.companyId) return;
+    const section = [...root.querySelectorAll('.empv2-section-card')].find(item => item.querySelector('h3')?.textContent.trim() === 'Parámetros de facturación'); if (!section) return;
+    try {
+      await loadContext(S.companyId); if (!document.body.contains(section)) return;
+      const setting = S.billing?.setting || {}; const night = rule('night'); const weekend = rule('weekend_holiday'); const version = S.rateCard ? `${S.rateCard.name} · v${S.rateCard.version} · ${S.draftCard ? 'Borrador' : 'Vigente'}` : 'Sin tarifario';
+      const signature = [setting.route_mode, setting.toll_calculation_mode, setting.valid_from, night.enabled, night.amount, weekend.enabled, weekend.amount, version].join('|'); if (section.dataset.bp4Signature === signature) return;
+      section.innerHTML = `<div class="bp4-detail-head"><div><h3>Parámetros de facturación</h3><p>Configuración de recorrido, peajes, recargos y vigencia.</p></div>${canWrite() ? '<button class="btn btn-primary" onclick="abrirConfiguracionFacturacionEmpresa()">Editar parámetros</button>' : ''}</div><div class="bp4-summary"><article><small>Recorrido</small><b>${esc(routeLabel(setting.route_mode))}</b><em>${setting.is_active === false ? 'Configuración inactiva' : 'Activo'}</em></article><article><small>Peajes</small><b>${esc(tollLabel(setting.toll_calculation_mode))}</b><em>Según modalidad configurada</em></article><article><small>Turno noche</small><b>${night.enabled ? `${night.calculation_mode === 'fixed' ? '$' : ''}${esc(num(night.amount))}${night.calculation_mode === 'percentage' ? '%' : ''}` : 'No aplica'}</b><em>${night.enabled ? `${esc(timeValue(night.start_time))} → ${esc(timeValue(night.end_time))}` : 'Desactivado'}</em></article><article><small>Fin de semana / feriados</small><b>${weekend.enabled ? `${weekend.calculation_mode === 'fixed' ? '$' : ''}${esc(num(weekend.amount))}${weekend.calculation_mode === 'percentage' ? '%' : ''}` : 'No aplica'}</b><em>${weekend.enabled ? 'Con horarios y excepciones' : 'Desactivado'}</em></article></div><div class="bp4-version"><b>Vigencia:</b> ${esc(setting.valid_from || 'Sin definir')}${setting.valid_until ? ` → ${esc(setting.valid_until)}` : ' → vigente'} · <b>Reglas:</b> ${esc(version)}</div>`;
+      section.dataset.bp4Signature = signature;
+    } catch (error) { console.warn('[parámetros facturación v4]', error); }
+  }
+
+  function installCompanyWrappers() {
+    const selection = window.seleccionarEmpresaV2;
+    if (typeof selection === 'function' && !selection.__bp4Wrapped) {
+      const wrapped = async function(companyId, ...args) { if (companyId) { S.companyId = companyId; S.contextKey = ''; } const result = await selection.apply(this, [companyId, ...args]); schedulePatch(); return result; };
+      wrapped.__bp4Wrapped = true; window.seleccionarEmpresaV2 = wrapped; if (window.seleccionarEmpresa === selection) window.seleccionarEmpresa = wrapped;
+    }
+    const tab = window.abrirTabEmpresaV2;
+    if (typeof tab === 'function' && !tab.__bp4Wrapped) {
+      const wrapped = function(name, ...args) { const result = tab.apply(this, [name === 'rules' ? 'bases' : name, ...args]); schedulePatch(); return result; };
+      wrapped.__bp4Wrapped = true; window.abrirTabEmpresaV2 = wrapped;
+    }
+  }
+
+  async function patchAll() {
+    if (S.patching) return; S.patching = true;
+    try { inject(); installCompanyWrappers(); const root = document.getElementById('empv2-root'); if (root) { cleanCompanyView(root); await renderParametersDetail(root); } }
+    finally { S.patching = false; }
+  }
+  function schedulePatch() { clearTimeout(S.timer); S.timer = setTimeout(patchAll, 70); }
+  function init() {
+    inject(); let attempts = 0;
+    const timer = setInterval(() => { installCompanyWrappers(); patchAll(); if (++attempts > 80 || window.seleccionarEmpresaV2) clearInterval(timer); }, 200);
+    new MutationObserver(schedulePatch).observe(document.body, { childList: true, subtree: true });
+  }
+
+  Object.assign(window, { abrirConfiguracionFacturacionEmpresa: companyId => openParameters(companyId || S.companyId), guardarConfiguracionFacturacionEmpresa: saveParameters });
+  window.AuxiliosBillingParametersV4 = { open: openParameters, save: saveParameters, loadContext };
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init, { once: true }) : init();
+})();
