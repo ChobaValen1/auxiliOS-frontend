@@ -36,9 +36,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
-    await loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js');
+
+    // Tarifario V3 todavía consume categorías/conceptos para su matriz. Debe inicializarse
+    // ANTES que el catálogo canónico para no volver a apropiarse de config-service-types.
     loadAuxiliosStyle('auxilios-tariff-matrix-v3-css', '/tariff-matrix-v3.css');
     await loadAuxiliosModule('auxilios-tariff-matrix-v3', '/tariff-matrix-v3.js');
+
+    // Único dueño visible de Configuración → Tipos de Servicio. Se monta después de
+    // cualquier módulo tarifario que históricamente haya reutilizado esta misma pantalla.
+    await loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js');
+    const serviceTypesNavLabel = document.querySelector('#nav-config-service-types .nav-label');
+    if (serviceTypesNavLabel) serviceTypesNavLabel.textContent = 'Tipos de servicio';
+
     await loadAuxiliosModule('auxilios-comercial-core', '/comercial.js');
     await loadAuxiliosModule('auxilios-comercial-services', '/comercial-services.js');
     await loadAuxiliosModule('auxilios-comercial-code-strategy', '/comercial-code-strategy.js');
