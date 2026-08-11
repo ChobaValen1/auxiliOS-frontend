@@ -60,7 +60,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
 
     // Configuración canónica: Tipos de Servicio + allowlist por prestadora + parámetros comerciales.
-    await loadAuxiliosModule('auxilios-company-services-v3', '/company-services-configuration-v3.js');
+    await loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js');
     await loadAuxiliosModule('auxilios-company-billing-parameters-v3', '/company-billing-parameters-v3.js');
 
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
