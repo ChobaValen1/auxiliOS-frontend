@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v153'; // v153: coherencia Prestadoras, Servicios habilitados y parámetros de facturación
+const CACHE_NAME = 'auxilios-v154'; // v154: recargos, bases globales y edición de configuración
 
 const PRECACHE_ASSETS = [
   '/',
@@ -11,6 +11,7 @@ const PRECACHE_ASSETS = [
   '/billing-bases.js',
   '/company-billing-settings.js',
   '/company-configuration-coherence-v1.js',
+  '/company-billing-parameters-v2.js',
   '/billing-base-operator-adapter.js',
   '/equal-billing-bases.js',
   '/configuration-reference.css',
