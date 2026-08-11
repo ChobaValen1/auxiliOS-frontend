@@ -7,15 +7,14 @@ const path = require('node:path');
 
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
-test('provider configuration keeps bases scoped to the selected company', () => {
-  const bases = read('equal-billing-bases.js');
-  const tariff = read('tariff-new-rate-flow-v1.js');
+test('bases are global and stay outside provider billing parameters', () => {
+  const billing = read('company-billing-parameters-v2.js');
 
-  assert.match(bases, /billingResult\.data\?\.links/);
-  assert.doesNotMatch(bases, /available_bases[^\n]*filter\(base => base\.is_active/);
-  assert.match(tariff, /get_company_configuration_v2/);
-  assert.match(tariff, /Esta prestadora todavía no tiene una base activa vinculada/);
-  assert.doesNotMatch(tariff, /Todas las bases · Tarifa general/);
+  assert.match(billing, /from\('billing_bases'\)/);
+  assert.match(billing, /Seleccionar base global/);
+  assert.doesNotMatch(billing, /id="cb-base-list"/);
+  assert.doesNotMatch(billing, /Prioridad/);
+  assert.doesNotMatch(billing, /Base principal/);
 });
 
 test('service types are created globally and provider screen is only an allowlist', () => {
@@ -38,33 +37,36 @@ test('service types are created globally and provider screen is only an allowlis
 
 test('provider billing rules are unified and toll mode is reactive', () => {
   const coherence = read('company-configuration-coherence-v1.js');
+  const billing = read('company-billing-parameters-v2.js');
 
   assert.match(coherence, /name === 'rules' \? 'bases' : name/);
   assert.match(coherence, /Reglas y parámetros/);
-  assert.match(coherence, /Parámetros de facturación/);
-  assert.match(coherence, /toll\.addEventListener\('change', renderTollMode\)/);
-  assert.match(coherence, /Estimación automática por ruta/);
-  assert.match(coherence, /Carga real \/ comprobante/);
-  assert.match(coherence, /AuxiliOS no debe solicitar ni incorporar peajes/);
+  assert.match(billing, /Parámetros de facturación/);
+  assert.match(billing, /addEventListener\('change', renderTollMode\)/);
+  assert.match(billing, /Estimación automática por ruta/);
+  assert.match(billing, /Carga real \/ comprobante/);
+  assert.match(billing, /AuxiliOS no incorpora peajes/);
 });
 
 test('company services view shows enabled catalog metadata and tariffs remain downstream', () => {
   const coherence = read('company-configuration-coherence-v1.js');
+  const billing = read('company-billing-parameters-v2.js');
 
   assert.match(coherence, /Servicios creados en Tipos de servicio que esta prestadora tiene habilitados\. Las tarifas se asignan después/);
   assert.match(coherence, /settings\.get\(String\(service\.concept_id\)\)\?\.is_enabled === true/);
   assert.match(coherence, /Suma KM/);
   assert.match(coherence, /No suma KM/);
-  assert.match(coherence, /document\.querySelectorAll\('#cr-matrix-body tr\.disabled'\)\.forEach\(row => row\.remove\(\)\)/);
+  assert.match(billing, /enforceTariffServiceScope/);
 });
 
-test('coherence module is loaded and PWA cache invalidates old previews', () => {
+test('configuration modules are loaded and PWA cache invalidates old previews', () => {
   const config = read('config.js');
   const sw = read('sw.js');
   const version = Number(sw.match(/auxilios-v(\d+)/)?.[1] || 0);
 
   assert.match(config, /auxilios-company-configuration-coherence-v1/);
   assert.match(config, /company-configuration-coherence-v1\.js/);
-  assert.match(sw, /company-configuration-coherence-v1\.js/);
-  assert.ok(version >= 153, `Expected cache version 153 or newer, received ${version}`);
+  assert.match(config, /company-billing-parameters-v2\.js/);
+  assert.match(sw, /company-billing-parameters-v2\.js/);
+  assert.ok(version >= 154, `Expected cache version 154 or newer, received ${version}`);
 });
