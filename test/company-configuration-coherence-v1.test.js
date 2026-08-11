@@ -9,13 +9,16 @@ const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
 test('bases are global and stay outside provider billing parameters', () => {
   const billing = read('company-billing-parameters-v2.js');
+  const view = read('company-billing-parameters-view-v2.js');
 
   assert.match(billing, /from\('billing_bases'\)/);
   assert.match(billing, /Seleccionar base global/);
   assert.doesNotMatch(billing, /id="cb-base-list"/);
   assert.doesNotMatch(billing, /<th>Prioridad<\/th>/);
   assert.doesNotMatch(billing, /<small>Base principal<\/small>/);
-  assert.doesNotMatch(billing, /Configuración de recorrido, peajes, recargos y vigencia\. Las bases son globales/);
+  assert.match(view, /Configuración de recorrido, peajes, recargos y vigencia\./);
+  assert.match(view, /Reglas y parámetros/);
+  assert.match(view, /button\.remove\(\)/);
 });
 
 test('service types are created globally and provider screen is only an allowlist', () => {
@@ -39,6 +42,7 @@ test('service types are created globally and provider screen is only an allowlis
 test('provider billing rules are unified and toll mode is reactive', () => {
   const coherence = read('company-configuration-coherence-v1.js');
   const billing = read('company-billing-parameters-v2.js');
+  const view = read('company-billing-parameters-view-v2.js');
 
   assert.match(coherence, /name === 'rules' \? 'bases' : name/);
   assert.match(coherence, /Reglas y parámetros/);
@@ -47,6 +51,7 @@ test('provider billing rules are unified and toll mode is reactive', () => {
   assert.match(billing, /Estimación automática por ruta/);
   assert.match(billing, /Carga real \/ comprobante/);
   assert.match(billing, /AuxiliOS no incorpora peajes/);
+  assert.match(view, /dataset\.ccReactive = '1'/);
 });
 
 test('company services view shows enabled catalog metadata and tariffs remain downstream', () => {
@@ -68,6 +73,8 @@ test('configuration modules are loaded and PWA cache invalidates old previews', 
   assert.match(config, /auxilios-company-configuration-coherence-v1/);
   assert.match(config, /company-configuration-coherence-v1\.js/);
   assert.match(config, /company-billing-parameters-v2\.js/);
+  assert.match(config, /company-billing-parameters-view-v2\.js/);
   assert.match(sw, /company-billing-parameters-v2\.js/);
-  assert.ok(version >= 154, `Expected cache version 154 or newer, received ${version}`);
+  assert.match(sw, /company-billing-parameters-view-v2\.js/);
+  assert.ok(version >= 155, `Expected cache version 155 or newer, received ${version}`);
 });
