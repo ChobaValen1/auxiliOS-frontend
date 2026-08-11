@@ -37,7 +37,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-configuration-reference', '/configuration-reference.js');
 
-    // Catálogos/configuración con ownership único por pantalla.
+    // Ownership único: catálogo maestro y tarifas versionadas.
     await loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js');
     await loadAuxiliosModule('auxilios-company-tariffs-v4', '/company-tariffs-v4.js');
 
@@ -61,9 +61,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-billing-base-operator-adapter', '/billing-base-operator-adapter.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
 
-    // Prestadora: allowlist de servicios + parámetros comerciales.
+    // Prestadora: allowlist y parámetros comerciales. Sin dependencias de la matriz tarifaria vieja.
     await loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js');
-    await loadAuxiliosModule('auxilios-company-billing-parameters-v3', '/company-billing-parameters-v3.js');
+    await loadAuxiliosModule('auxilios-company-billing-parameters-v4', '/company-billing-parameters-v4.js');
 
     await loadAuxiliosModule('auxilios-frequent-navigation', '/frequent-navigation.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
