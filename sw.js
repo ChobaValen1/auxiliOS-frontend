@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v164'; // v164: Tarifas solo precios + reglas de distancia por prestadora
+const CACHE_NAME = 'auxilios-v165'; // v165: precios actuales + contexto operativo sin sucursales
 
 const PRECACHE_ASSETS = [
   '/',
@@ -36,7 +36,7 @@ const PRECACHE_ASSETS = [
   '/operator-active-desk-auxilios-theme-v2.css',
   '/operator-service-workspace-v2.css',
   '/operator-service-workspace-reactive-v1.css',
-  '/operator-service-tariff-v3.css',
+  '/operator-service-code-warnings-v1.css',
   '/operator-service-reajuste-v3.css',
   '/operator-services-brand-system-v1.css',
   '/operator-services-jornadas-desktop-v1.css',
@@ -54,7 +54,7 @@ const PRECACHE_ASSETS = [
   '/feature-flags.js',
   '/operator-active-desk-clean-v1.js',
   '/operator-service-workspace-reactive-v1.js',
-  '/operator-service-tariff-v3-ui.js',
+  '/operator-service-code-warnings-v1.js',
   '/operator-service-reajuste-v3.js',
   '/operator-service-workspace-behavior-v1.js',
   '/operator-services-stability-v1.js',
