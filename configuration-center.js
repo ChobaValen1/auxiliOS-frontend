@@ -1,209 +1,251 @@
-/* AuxiliOS · Centro de configuración y navegación administrativa */
+/* AuxiliOS · Navegación canónica y Centro de Configuración */
 (() => {
   'use strict';
 
-  const S = {
-    flyoutOpen: false,
-    loading: false,
-    summary: null,
-    audit: [],
-    auditLoading: false,
-    auditQuery: '',
-    auditOperation: 'all',
-  };
-
   const BACKOFFICE_ROLES = new Set(['administracion', 'supervision', 'facturacion']);
   const MANAGEMENT_ROLES = new Set(['administracion', 'supervision']);
-  const CONFIG_CHILD_ROUTES = new Set([
-    'empresas',
-    'bases-geograficas',
-    'bases-tarifarias',
-    'config-service-types',
-    'config-tariff-types',
-  ]);
+  const CONFIG_CHILD_ROUTES = new Set(['empresas', 'bases-geograficas', 'bases-tarifarias', 'config-service-types', 'config-tariff-types']);
+  const S = { flyoutOpen: false, auditLoading: false };
 
-  const role = () => String(typeof PERFIL_USUARIO === 'undefined'
-    ? ''
-    : (PERFIL_USUARIO?.roles?.name || PERFIL_USUARIO?.role || '')).toLowerCase();
+  const role = () => String(typeof PERFIL_USUARIO === 'undefined' ? '' : (PERFIL_USUARIO?.roles?.name || PERFIL_USUARIO?.role || '')).toLowerCase();
   const canUseCenter = () => BACKOFFICE_ROLES.has(role());
   const canUseManagementTools = () => MANAGEMENT_ROLES.has(role());
-  const canWrite = () => role() === 'administracion';
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[character]));
-  const notify = (message, type = 'info') => typeof toast === 'function'
-    ? toast(message, type)
-    : console[type === 'error' ? 'error' : 'log'](message);
-  const dateTime = value => value
-    ? new Date(value).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
-    : '—';
-  const hasTariff = row => Boolean(row?.valid_from) && (
-    row.service_day_value != null
-    || row.service_day_mode === 'automatic'
-    || row.asphalt_day_value != null
-    || row.asphalt_day_mode === 'automatic'
-  );
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const notify = (message, type = 'info') => typeof toast === 'function' ? toast(message, type) : console[type === 'error' ? 'error' : 'log'](message);
+  const dateTime = value => value ? new Date(value).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
-  function inject() {
-    if (document.getElementById('screen-configuracion')) return;
-
-    const css = document.createElement('link');
-    css.id = 'configuration-center-css';
-    css.rel = 'stylesheet';
-    css.href = '/configuration-center.css';
-    document.head.appendChild(css);
-
-    const bottom = document.querySelector('.sidenav .nav-bottom');
-    bottom?.insertAdjacentHTML('beforebegin', `
-      <div class="nav-item aux-config-trigger" id="nav-configuracion" onclick="abrirCentroConfiguracion(event)" style="display:none">
-        <span class="nav-icon">⚙️</span><span class="nav-label">Configuración</span><span class="nav-caret">⌄</span>
-      </div>
-      <div class="nav-item" id="nav-historial-sistema" onclick="goTo('historial-sistema')" style="display:none">
-        <span class="nav-icon">◷</span><span class="nav-label">Historial</span>
-      </div>`);
-
-    document.querySelector('.content')?.insertAdjacentHTML('beforeend', `
-      <div class="screen" id="screen-configuracion"><div class="aux-loading">Cargando Centro de Configuración…</div></div>
-      <div class="screen" id="screen-historial-sistema"><div class="aux-loading">Cargando historial…</div></div>`);
-
-    document.body.insertAdjacentHTML('beforeend', `
-      <aside class="aux-config-flyout" id="aux-config-flyout" aria-hidden="true">
-        <div class="aux-config-flyout-head">
-          <div><small>Centro administrativo</small><b>Configuración</b><p>Accesos organizados por dominio, sin duplicar módulos ni permisos.</p></div>
-          <button class="aux-config-close" onclick="cerrarMenuConfiguracion()" aria-label="Cerrar">×</button>
-        </div>
-        <div class="aux-config-flyout-body">
-          ${flyoutGroup('Empresas y red', 'aux-config-company')}
-          ${flyoutGroup('Operación', 'aux-config-operation')}
-          ${flyoutGroup('Tarifas y facturación', 'aux-config-billing')}
-          ${flyoutGroup('Datos', 'aux-config-data')}
-        </div>
-      </aside>`);
-  }
-
-  function flyoutGroup(title, id) {
-    return `<section class="aux-config-group"><div class="aux-config-group-title">${title}</div><div class="aux-config-group-links" id="${id}"></div></section>`;
-  }
-
-  function ensureScreens() {
-    if (typeof SCREENS === 'undefined') return;
-    Object.assign(SCREENS, {
-      configuracion: { title: 'CENTRO DE CONFIGURACIÓN', sub: 'Módulos, parámetros y estado general' },
-      'historial-sistema': { title: 'HISTORIAL', sub: 'Auditoría y registros administrativos' },
-      empresas: { title: 'PRESTADORAS / EMPRESAS', sub: 'Configuración contractual de clientes corporativos' },
-      'bases-geograficas': { title: 'BASES GEOGRÁFICAS', sub: 'Puntos de referencia reutilizables' },
-      'bases-tarifarias': { title: 'BASES GEOGRÁFICAS', sub: 'Puntos de referencia reutilizables' },
-      'config-service-types': { title: 'TIPOS DE SERVICIO', sub: 'Catálogo operativo global' },
-      'config-tariff-types': { title: 'TIPOS DE TARIFA', sub: 'Reglas de cálculo por familia' },
-      'config-tariff-matrix': { title: 'FACTURACIÓN', sub: 'Matriz tarifaria e historial de vigencias' },
-    });
-  }
-
-  function setNavContent(id, icon, label) {
-    const node = document.getElementById(id);
-    if (!node) return null;
+  function ensureNavNode(id, routeName, icon, label, hidden = true) {
+    let node = document.getElementById(id);
+    if (!node) {
+      node = document.createElement('div');
+      node.className = 'nav-item';
+      node.id = id;
+      node.setAttribute('onclick', `goTo('${routeName}')`);
+      node.innerHTML = `<span class="nav-icon">${icon}</span><span class="nav-label">${label}</span>`;
+      const bottom = document.querySelector('.sidenav .nav-bottom');
+      bottom?.parentElement?.insertBefore(node, bottom);
+    }
     const iconNode = node.querySelector('.nav-icon');
     const labelNode = node.querySelector('.nav-label');
     if (iconNode) iconNode.textContent = icon;
     if (labelNode) labelNode.textContent = label;
+    if (hidden) node.style.display = 'none';
     return node;
   }
 
-  function actionLink(id, icon, label, subtitle, action, tag = '') {
-    return `<button type="button" class="aux-config-link" id="${id}" onclick="${action}"><span class="aux-config-link-icon">${icon}</span><span class="aux-config-link-label">${label}<small>${subtitle}</small></span>${tag ? `<span class="aux-config-link-tag">${tag}</span>` : '<span>›</span>'}</button>`;
+  function ensureScreen(id) {
+    let screen = document.getElementById(id);
+    if (!screen) {
+      screen = document.createElement('div');
+      screen.className = 'screen';
+      screen.id = id;
+      document.querySelector('.content')?.appendChild(screen);
+    }
+    return screen;
   }
 
-  function futureLink(id, icon, label, subtitle) {
-    return `<div class="aux-config-link future" id="${id}"><span class="aux-config-link-icon">${icon}</span><span class="aux-config-link-label">${label}<small>${subtitle}</small></span><span class="aux-config-link-tag">Próxima fase</span></div>`;
+  function ensureRouteShells() {
+    if (!canUseCenter()) return;
+    ensureNavNode('nav-empresas', 'empresas', '▦', 'Prestadoras / Empresas');
+    ensureScreen('screen-empresas');
+    ensureNavNode('nav-config-service-types', 'config-service-types', '🛠️', 'Tipos de servicio');
+    ensureScreen('screen-config-service-types');
+    ensureNavNode('nav-config-tariff-types', 'config-tariff-types', '💰', 'Tipos de tarifa');
+    ensureScreen('screen-config-tariff-types');
+    ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas');
+    ensureScreen('screen-config-tariff-matrix');
+  }
+
+  function injectCenter() {
+    if (!document.getElementById('configuration-center-css')) {
+      const css = document.createElement('link');
+      css.id = 'configuration-center-css';
+      css.rel = 'stylesheet';
+      css.href = '/configuration-center.css';
+      document.head.appendChild(css);
+    }
+
+    if (!document.getElementById('nav-configuracion')) {
+      const node = ensureNavNode('nav-configuracion', 'configuracion', '⚙️', 'Configuración');
+      node.setAttribute('onclick', 'abrirCentroConfiguracion(event)');
+    }
+    ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial');
+    ensureScreen('screen-configuracion');
+    ensureScreen('screen-historial-sistema');
+
+    if (!document.getElementById('aux-config-flyout')) {
+      document.body.insertAdjacentHTML('beforeend', `<aside class="aux-config-flyout" id="aux-config-flyout" aria-hidden="true">
+        <div class="aux-config-flyout-head"><div><small>Centro administrativo</small><b>Configuración</b><p>Una sola navegación, organizada por dominio.</p></div><button class="aux-config-close" type="button" onclick="cerrarMenuConfiguracion()">×</button></div>
+        <div class="aux-config-flyout-body">
+          <section class="aux-config-group"><div class="aux-config-group-title">Prestadoras y red</div><div class="aux-config-group-links" id="aux-config-company"></div></section>
+          <section class="aux-config-group"><div class="aux-config-group-title">Catálogos</div><div class="aux-config-group-links" id="aux-config-catalogs"></div></section>
+          <section class="aux-config-group"><div class="aux-config-group-title">Operación y administración</div><div class="aux-config-group-links" id="aux-config-operation"></div></section>
+          <section class="aux-config-group"><div class="aux-config-group-title">Facturación</div><div class="aux-config-group-links" id="aux-config-billing"></div></section>
+        </div>
+      </aside>`);
+    }
+  }
+
+  function ensureScreenMetadata() {
+    if (typeof SCREENS === 'undefined') return;
+    Object.assign(SCREENS, {
+      configuracion: { title: 'CENTRO DE CONFIGURACIÓN', sub: 'Prestadoras, catálogos y herramientas administrativas' },
+      'historial-sistema': { title: 'HISTORIAL', sub: 'Auditoría y registros administrativos' },
+      empresas: { title: 'PRESTADORAS / EMPRESAS', sub: 'Configuración contractual de clientes corporativos' },
+      'bases-geograficas': { title: 'BASES GEOGRÁFICAS', sub: 'Catálogo maestro de ubicaciones' },
+      'bases-tarifarias': { title: 'BASES GEOGRÁFICAS', sub: 'Catálogo maestro de ubicaciones' },
+      'config-service-types': { title: 'TIPOS DE SERVICIO', sub: 'Catálogo maestro global' },
+      'config-tariff-types': { title: 'TIPOS DE TARIFA', sub: 'Formas de cálculo disponibles' },
+      'config-tariff-matrix': { title: 'TARIFAS', sub: 'Valores versionados por prestadora' },
+    });
+  }
+
+  function asFlyoutLink(node) {
+    if (!node) return null;
+    node.style.display = '';
+    node.classList.remove('aux-top-nav');
+    node.classList.add('aux-config-nav-link');
+    return node;
+  }
+
+  function moveTo(group, node) {
+    if (!group || !node) return;
+    group.appendChild(asFlyoutLink(node));
+  }
+
+  function addAction(group, id, icon, label, subtitle, routeName) {
+    if (!group) return;
+    let button = document.getElementById(id);
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'aux-config-link';
+      button.id = id;
+      button.innerHTML = `<span class="aux-config-link-icon">${icon}</span><span class="aux-config-link-label">${label}<small>${subtitle}</small></span><span>›</span>`;
+      button.addEventListener('click', () => { closeFlyout(); if (typeof goTo === 'function') goTo(routeName); });
+    }
+    group.appendChild(button);
   }
 
   function populateFlyout() {
-    const companyGroup = document.getElementById('aux-config-company');
-    const operationGroup = document.getElementById('aux-config-operation');
-    const billingGroup = document.getElementById('aux-config-billing');
-    const dataGroup = document.getElementById('aux-config-data');
-    if (!companyGroup || !operationGroup || !billingGroup || !dataGroup) return;
+    if (!canUseCenter()) return;
+    const company = document.getElementById('aux-config-company');
+    const catalogs = document.getElementById('aux-config-catalogs');
+    const operation = document.getElementById('aux-config-operation');
+    const billing = document.getElementById('aux-config-billing');
+    [company, catalogs, operation, billing].forEach(group => group?.replaceChildren());
 
-    const companies = document.getElementById('nav-empresas');
-    const bases = document.getElementById('nav-bases-geograficas');
-    const services = document.getElementById('nav-config-service-types');
-    const tariffTypes = document.getElementById('nav-config-tariff-types');
+    moveTo(company, document.getElementById('nav-empresas'));
+    moveTo(company, document.getElementById('nav-bases-geograficas') || document.getElementById('nav-bases-tarifarias'));
+    moveTo(catalogs, document.getElementById('nav-config-service-types'));
+    moveTo(catalogs, document.getElementById('nav-config-tariff-types'));
 
-    companyGroup.replaceChildren();
-    if (companies) {
-      companies.classList.add('aux-config-nav-link');
-      companyGroup.appendChild(companies);
-    }
-    companyGroup.insertAdjacentHTML('beforeend', futureLink('aux-future-particulares', '👤', 'Particulares', 'Clientes sin convenio corporativo'));
-    if (bases) {
-      bases.classList.add('aux-config-nav-link');
-      companyGroup.appendChild(bases);
-    }
-
-    operationGroup.replaceChildren();
-    if (services) {
-      services.classList.add('aux-config-nav-link');
-      operationGroup.appendChild(services);
-    }
     if (canUseManagementTools()) {
-      operationGroup.insertAdjacentHTML('beforeend', actionLink('aux-settings-fleet', '🚛', 'Vehículos', 'Flota y móviles registrados', "abrirHerramientaConfiguracion('tab-flota')"));
-      operationGroup.insertAdjacentHTML('beforeend', actionLink('aux-settings-users', '👥', 'Choferes y personal', 'Usuarios, roles y estado', "abrirHerramientaConfiguracion('tab-usuarios')"));
-      operationGroup.insertAdjacentHTML('beforeend', actionLink('aux-settings-maintenance', '🔧', 'Mantenimiento', 'Planes y seguimiento de taller', "abrirHerramientaConfiguracion('tab-mantenimiento')"));
-      operationGroup.insertAdjacentHTML('beforeend', actionLink('aux-settings-grid', '🗓️', 'Grilla de móviles', 'Asignaciones y francos', "irModuloConfiguracion('grilla')"));
+      moveTo(operation, document.getElementById('nav-camion'));
+      moveTo(operation, document.getElementById('nav-jornadas-admin'));
+      moveTo(operation, document.getElementById('nav-documentos'));
+      moveTo(operation, document.getElementById('nav-remitos'));
+      moveTo(operation, document.getElementById('nav-grilla'));
+      moveTo(operation, document.getElementById('nav-sueldos'));
+    } else {
+      ['nav-camion','nav-jornadas-admin','nav-documentos','nav-remitos','nav-grilla','nav-sueldos'].forEach(id => {
+        const node = document.getElementById(id);
+        if (node) node.style.display = 'none';
+      });
     }
-    operationGroup.insertAdjacentHTML('beforeend', futureLink('aux-future-outsourced', '↗️', 'Logística tercerizada', 'Prestadores, recursos y disponibilidad'));
 
-    billingGroup.replaceChildren();
-    if (tariffTypes) {
-      tariffTypes.classList.add('aux-config-nav-link');
-      billingGroup.appendChild(tariffTypes);
-    }
-    billingGroup.insertAdjacentHTML('beforeend', futureLink('aux-future-surcharges', '％', 'Parámetros y recargos', 'Nocturnidad, distancia y reglas especiales'));
-    billingGroup.insertAdjacentHTML('beforeend', futureLink('aux-future-tolls', '🛣️', 'Peajes y adicionales', 'Conceptos automáticos y comprobantes'));
-    billingGroup.insertAdjacentHTML('beforeend', futureLink('aux-future-holidays', '📅', 'Feriados', 'Calendario aplicable a la facturación'));
-    billingGroup.insertAdjacentHTML('beforeend', '<div class="aux-config-group-note">La matriz tarifaria se abre desde el acceso principal <b>Facturación</b>.</div>');
-
-    dataGroup.innerHTML = [
-      futureLink('aux-future-import', '⬆️', 'Importar Excel', 'Carga masiva con validación previa'),
-      futureLink('aux-future-export', '⬇️', 'Exportar información', 'Descarga controlada por permisos'),
-      futureLink('aux-future-import-history', '◷', 'Historial de importaciones', 'Resultados, errores y trazabilidad'),
-    ].join('');
+    addAction(billing, 'aux-open-tariffs', '💳', 'Tarifas', 'Vigencias, valores y excepciones por base', 'config-tariff-matrix');
+    const note = document.createElement('div');
+    note.className = 'aux-config-group-note';
+    note.innerHTML = 'Las <b>bases habilitadas, recorrido, peajes y recargos</b> se configuran dentro de cada Prestadora.';
+    billing?.appendChild(note);
   }
 
-  function configureTopNavigation() {
-    const currentRole = role();
-    if (!currentRole) return;
+  function ensureDriverNode(id, route, icon, label) {
+    const node = ensureNavNode(id, route, icon, label, false);
+    node.classList.remove('aux-config-nav-link', 'aux-top-nav');
+    return node;
+  }
 
-    const configurationNav = document.getElementById('nav-configuracion');
-    const historyNav = document.getElementById('nav-historial-sistema');
-    if (!canUseCenter()) {
-      document.body.classList.remove('aux-backoffice-nav');
-      if (configurationNav) configurationNav.style.display = 'none';
-      if (historyNav) historyNav.style.display = 'none';
-      setFlyout(false);
-      return;
-    }
-
-    document.body.classList.add('aux-backoffice-nav');
-    if (configurationNav) configurationNav.style.display = '';
-    if (historyNav) historyNav.style.display = '';
-
+  function orderTop(nodes) {
     const sidenav = document.querySelector('.sidenav');
     const bottom = sidenav?.querySelector('.nav-bottom');
     if (!sidenav || !bottom) return;
-
-    const dashboard = setNavContent('nav-dashboard', '📊', 'Resumen');
-    const operations = setNavContent('nav-operaciones', '🧭', 'Servicios');
-    const billing = setNavContent('nav-config-tariff-matrix', '💳', 'Facturación');
-    setNavContent('nav-configuracion', '⚙️', 'Configuración');
-    setNavContent('nav-historial-sistema', '◷', 'Historial');
-
-    [dashboard, operations, configurationNav, billing, historyNav].filter(Boolean).forEach(node => {
+    nodes.filter(Boolean).forEach(node => {
+      node.style.display = '';
       node.classList.add('aux-top-nav');
       sidenav.insertBefore(node, bottom);
     });
+  }
+
+  function configureDriverNavigation() {
+    document.body.classList.remove('aux-backoffice-nav');
+    closeFlyout();
+    ['nav-configuracion','nav-historial-sistema','nav-empresas','nav-bases-geograficas','nav-bases-tarifarias','nav-config-service-types','nav-config-tariff-types','nav-config-tariff-matrix','nav-operaciones'].forEach(id => {
+      const node = document.getElementById(id);
+      if (node) node.style.display = 'none';
+    });
+    const nodes = [
+      ensureDriverNode('nav-dashboard', 'dashboard', '📊', 'Panel'),
+      ensureDriverNode('nav-registro', 'registro', '📋', 'Km'),
+      ensureDriverNode('nav-camion', 'camion', '🚛', 'Camión'),
+      ensureDriverNode('nav-documentos', 'documentos', '📄', 'Docs'),
+      ensureDriverNode('nav-remitos', 'remitos', '🧾', 'Remitos'),
+      ensureDriverNode('nav-grilla', 'grilla', '🗓️', 'Grilla'),
+    ];
+    orderTop(nodes);
+  }
+
+  function configureBackofficeNavigation() {
+    document.body.classList.add('aux-backoffice-nav');
+    const registro = document.getElementById('nav-registro');
+    if (registro) registro.remove();
+
+    const dashboard = ensureNavNode('nav-dashboard', 'dashboard', '📊', 'Resumen', false);
+    const operations = document.getElementById('nav-operaciones');
+    if (operations) {
+      const icon = operations.querySelector('.nav-icon');
+      const label = operations.querySelector('.nav-label');
+      if (icon) icon.textContent = '🧭';
+      if (label) label.textContent = 'Servicios';
+      operations.style.display = canUseManagementTools() ? '' : 'none';
+    }
+    const configuration = ensureNavNode('nav-configuracion', 'configuracion', '⚙️', 'Configuración', false);
+    configuration.setAttribute('onclick', 'abrirCentroConfiguracion(event)');
+    const tariffs = ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas', false);
+    const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
 
     populateFlyout();
+    orderTop([dashboard, canUseManagementTools() ? operations : null, configuration, tariffs, history]);
+  }
+
+  function renderCenter() {
+    const screen = document.getElementById('screen-configuracion');
+    if (!screen || !canUseCenter()) return;
+    screen.innerHTML = `<div class="aux-center-shell"><div class="aux-center-head"><div><small>Centro administrativo</small><h2>Configuración</h2><p>La configuración estructural de AuxiliOS vive acá. Los módulos operativos no duplican estas definiciones.</p></div></div><div class="aux-center-grid">
+      <button class="aux-center-tool" onclick="irModuloConfiguracion('empresas')"><span>▦</span><b>Prestadoras</b><small>Datos, servicios habilitados y parámetros de facturación.</small></button>
+      <button class="aux-center-tool" onclick="irModuloConfiguracion('bases-geograficas')"><span>⌖</span><b>Bases geográficas</b><small>Catálogo maestro de ubicaciones disponibles.</small></button>
+      <button class="aux-center-tool" onclick="irModuloConfiguracion('config-service-types')"><span>🛠️</span><b>Tipos de servicio</b><small>Único lugar donde se crean y definen servicios.</small></button>
+      <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-types')"><span>💰</span><b>Tipos de tarifa</b><small>Define la modalidad de cálculo y si suma kilómetros.</small></button>
+      <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-matrix')"><span>💳</span><b>Tarifas</b><small>Valores versionados de los servicios habilitados.</small></button>
+    </div></div>`;
+  }
+
+  async function loadHistory() {
+    const screen = document.getElementById('screen-historial-sistema');
+    if (!screen || !canUseCenter() || S.auditLoading) return;
+    S.auditLoading = true;
+    screen.innerHTML = '<div class="aux-loading">Cargando historial…</div>';
+    try {
+      const { data, error } = await _db.from('audit_events').select('event_id,occurred_at,actor_id,operation,entity_table,entity_id').order('occurred_at', { ascending: false }).limit(120);
+      if (error) throw error;
+      const rows = data || [];
+      screen.innerHTML = `<div class="aux-history-shell"><div class="aux-center-head"><div><small>Auditoría</small><h2>Historial</h2><p>Últimos cambios administrativos registrados por el sistema.</p></div></div><div class="aux-history-list">${rows.length ? rows.map(row => `<article class="aux-history-row"><span>${row.operation === 'INSERT' ? '+' : row.operation === 'DELETE' ? '−' : '✎'}</span><div><b>${esc(String(row.entity_table || '').replaceAll('_', ' '))}</b><small>${esc(row.operation || 'CAMBIO')} · ${row.actor_id ? 'Usuario autenticado' : 'Sistema'}</small></div><time>${dateTime(row.occurred_at)}</time></article>`).join('') : '<div class="aux-loading">Sin eventos visibles.</div>'}</div></div>`;
+    } catch (error) {
+      screen.innerHTML = `<div class="aux-loading">No se pudo cargar el historial: ${esc(error?.message || '')}</div>`;
+    } finally {
+      S.auditLoading = false;
+    }
   }
 
   function setFlyout(open) {
@@ -214,403 +256,56 @@
     trigger?.classList.toggle('open', S.flyoutOpen);
     flyout?.setAttribute('aria-hidden', S.flyoutOpen ? 'false' : 'true');
   }
-
+  function closeFlyout() { setFlyout(false); }
   function openCenter(event) {
     event?.stopPropagation?.();
     if (!canUseCenter()) return notify('Sin permiso para acceder a Configuración', 'error');
-    const centerActive = document.getElementById('screen-configuracion')?.classList.contains('active');
-    if (!centerActive && typeof goTo === 'function') goTo('configuracion');
-    setFlyout(centerActive ? !S.flyoutOpen : true);
-  }
-
-  function closeFlyout() {
-    setFlyout(false);
-  }
-
-  function markConfigurationActive(routeName) {
-    if (!CONFIG_CHILD_ROUTES.has(routeName)) return;
-    document.getElementById('nav-configuracion')?.classList.add('active');
+    if (!document.getElementById('screen-configuracion')?.classList.contains('active') && typeof goTo === 'function') goTo('configuracion');
+    setFlyout(true);
   }
 
   function installNavigationHook() {
     const previous = window.goTo;
-    if (typeof previous !== 'function' || previous.__configurationCenterWrapped) return false;
-
+    if (typeof previous !== 'function' || previous.__auxCanonicalNavigation) return;
     const wrapped = function(name, ...args) {
-      if (['configuracion', 'historial-sistema'].includes(name) && !canUseCenter()) {
-        return notify('Sin permiso para acceder a este módulo', 'error');
-      }
+      if ((name === 'configuracion' || name === 'historial-sistema' || CONFIG_CHILD_ROUTES.has(name) || name === 'config-tariff-matrix') && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
       const result = previous.call(this, name, ...args);
-      if (name === 'configuracion') {
-        loadSummary();
-      } else if (name === 'historial-sistema') {
-        closeFlyout();
-        loadHistory();
-      } else {
-        closeFlyout();
-        markConfigurationActive(name);
-      }
+      closeFlyout();
+      if (CONFIG_CHILD_ROUTES.has(name)) document.getElementById('nav-configuracion')?.classList.add('active');
+      if (name === 'configuracion') renderCenter();
+      if (name === 'historial-sistema') loadHistory();
       return result;
     };
-    wrapped.__configurationCenterWrapped = true;
+    wrapped.__auxCanonicalNavigation = true;
     window.goTo = wrapped;
-    return true;
-  }
-
-  function goModule(routeName) {
-    closeFlyout();
-    if (typeof goTo === 'function') goTo(routeName);
-  }
-
-  async function openSettingsTab(tabId) {
-    if (!canUseManagementTools()) return notify('Tu rol no tiene acceso a esta herramienta', 'error');
-    closeFlyout();
-    if (typeof openSettingsHub !== 'function' || typeof switchConfigTab !== 'function') {
-      return notify('La herramienta todavía no está disponible', 'error');
-    }
-    await openSettingsHub();
-    switchConfigTab(tabId);
-  }
-
-  async function mapLimit(items, limit, mapper) {
-    const queue = [...items];
-    const results = [];
-    const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
-      while (queue.length) {
-        const item = queue.shift();
-        if (!item) continue;
-        results.push(await mapper(item));
-      }
-    });
-    await Promise.all(workers);
-    return results;
-  }
-
-  async function companyCommercialState(company) {
-    try {
-      const billingResult = await _db.rpc('get_company_billing_configuration', {
-        p_company_id: company.company_id,
-        p_scheduled_for: new Date().toISOString(),
-      });
-      if (billingResult.error) throw billingResult.error;
-      const setting = billingResult.data?.setting || null;
-      const bases = (billingResult.data?.links || []).filter(link => link.is_active !== false && link.base_active !== false);
-      const coverage = await Promise.all(bases.map(async base => {
-        const matrixResult = await _db.rpc('list_company_tariff_matrix_v2', {
-          p_company_id: company.company_id,
-          p_base_id: base.base_id,
-          p_as_of: new Date().toISOString().slice(0, 10),
-        });
-        if (matrixResult.error) return false;
-        return (Array.isArray(matrixResult.data) ? matrixResult.data : []).some(hasTariff);
-      }));
-      const coveredBases = coverage.filter(Boolean).length;
-      return {
-        companyId: company.company_id,
-        setting,
-        bases: bases.length,
-        coveredBases,
-        tariffComplete: bases.length > 0 && coveredBases === bases.length,
-        configured: Boolean(setting) && bases.length > 0,
-        activeRules: [setting?.route_mode, setting?.toll_calculation_mode, setting?.requires_verified_base].filter(value => value !== null && value !== undefined && value !== '').length,
-      };
-    } catch (error) {
-      console.warn('[centro configuración] resumen empresa:', company.company_id, error);
-      return { companyId: company.company_id, setting: null, bases: 0, coveredBases: 0, tariffComplete: false, configured: false, activeRules: 0 };
-    }
-  }
-
-  async function loadSummary(force = false) {
-    if (!canUseCenter() || S.loading || (S.summary && !force)) {
-      if (S.summary) renderCenter();
-      return;
-    }
-    S.loading = true;
-    renderCenter();
-    try {
-      const [companiesResult, basesResult, servicesResult, tariffTypesResult] = await Promise.all([
-        _db.from('companies').select('company_id,status').order('company_id'),
-        _db.rpc('list_geographic_bases', { p_include_inactive: true }),
-        _db.rpc('list_service_types_config', { p_include_inactive: true }),
-        _db.rpc('list_tariff_types_config'),
-      ]);
-      if (companiesResult.error) throw companiesResult.error;
-      if (basesResult.error) throw basesResult.error;
-      if (servicesResult.error) throw servicesResult.error;
-      if (tariffTypesResult.error) throw tariffTypesResult.error;
-
-      const companies = companiesResult.data || [];
-      const activeCompanies = companies.filter(company => company.status === 'active');
-      const bases = Array.isArray(basesResult.data) ? basesResult.data : [];
-      const services = Array.isArray(servicesResult.data) ? servicesResult.data : [];
-      const tariffTypes = Array.isArray(tariffTypesResult.data) ? tariffTypesResult.data : [];
-      const commercial = await mapLimit(activeCompanies, 3, companyCommercialState);
-
-      S.summary = { companies, activeCompanies, bases, services, tariffTypes, commercial };
-    } catch (error) {
-      console.error('[centro configuración] carga:', error);
-      notify(error.message || 'No se pudo cargar el Centro de Configuración', 'error');
-      S.summary = { error: true, companies: [], activeCompanies: [], bases: [], services: [], tariffTypes: [], commercial: [] };
-    } finally {
-      S.loading = false;
-      renderCenter();
-    }
-  }
-
-  function stat(label, value) {
-    return `<div class="aux-center-card-stat"><small>${esc(label)}</small><b>${esc(value)}</b></div>`;
-  }
-
-  function centerCard({ icon, title, description, stats, status, tone = '', action = '', disabled = false }) {
-    return `<article class="aux-center-card"><div class="aux-center-card-top"><div class="aux-center-card-icon">${icon}</div><div><h3>${esc(title)}</h3><p>${esc(description)}</p></div></div><div class="aux-center-card-stats">${stats.map(([label, value]) => stat(label, value)).join('')}</div><div class="aux-center-card-foot"><span class="aux-center-status ${tone}">${esc(status)}</span><button class="aux-center-open" ${disabled ? 'disabled' : `onclick="${action}"`}>${disabled ? 'Próxima fase' : 'Abrir →'}</button></div></article>`;
-  }
-
-  function overviewKpi(label, value, note) {
-    return `<div class="aux-center-kpi"><small>${esc(label)}</small><b>${esc(value)}</b><span>${esc(note)}</span></div>`;
-  }
-
-  function renderCenter() {
-    const root = document.getElementById('screen-configuracion');
-    if (!root) return;
-    if (!canUseCenter()) {
-      root.innerHTML = '<div class="aux-empty">Tu rol no tiene acceso al Centro de Configuración.</div>';
-      return;
-    }
-    if (S.loading && !S.summary) {
-      root.innerHTML = '<div class="aux-loading">Analizando módulos y configuraciones…</div>';
-      return;
-    }
-
-    const data = S.summary || { companies: [], activeCompanies: [], bases: [], services: [], tariffTypes: [], commercial: [] };
-    const activeBases = data.bases.filter(base => base.is_active !== false);
-    const verifiedBases = activeBases.filter(base => base.address_verified);
-    const activeServices = data.services.filter(service => service.is_active !== false);
-    const primary = activeServices.filter(service => service.category === 'primary').length;
-    const secondary = activeServices.filter(service => service.category === 'secondary').length;
-    const mixed = activeServices.filter(service => service.category === 'mixed').length;
-    const fullyTariffed = data.commercial.filter(item => item.tariffComplete).length;
-    const partiallyTariffed = data.commercial.filter(item => item.coveredBases > 0 && !item.tariffComplete).length;
-    const configuredCompanies = data.commercial.filter(item => item.configured).length;
-    const incompleteCompanies = Math.max(data.activeCompanies.length - data.commercial.filter(item => item.configured && item.tariffComplete).length, 0);
-    const activeRules = data.commercial.reduce((sum, item) => sum + item.activeRules, 0);
-    const readOnly = !canWrite();
-
-    const cards = [
-      centerCard({
-        icon: '🏢', title: 'Prestadoras', description: 'Datos legales, contactos, bases y reglas contractuales.',
-        stats: [['Total', data.companies.length], ['Activas', data.activeCompanies.length], ['Incompletas', incompleteCompanies]],
-        status: incompleteCompanies ? `${incompleteCompanies} requieren atención` : 'Configuración al día', tone: incompleteCompanies ? 'warn' : '', action: "irModuloConfiguracion('empresas')",
-      }),
-      centerCard({
-        icon: '📍', title: 'Bases geográficas', description: 'Puntos reutilizables para recorridos y facturación.',
-        stats: [['Total', data.bases.length], ['Validadas', verifiedBases.length], ['Pendientes', Math.max(activeBases.length - verifiedBases.length, 0)]],
-        status: activeBases.length === verifiedBases.length ? 'Todas verificadas' : 'Hay direcciones pendientes', tone: activeBases.length === verifiedBases.length ? '' : 'warn', action: "irModuloConfiguracion('bases-geograficas')",
-      }),
-      centerCard({
-        icon: '🛠️', title: 'Tipos de servicio', description: 'Catálogo global y clasificación operativa.',
-        stats: [['Primarios', primary], ['Secundarios', secondary], ['Mixtos', mixed]],
-        status: `${activeServices.length} servicios habilitados`, action: "irModuloConfiguracion('config-service-types')",
-      }),
-      centerCard({
-        icon: '💳', title: 'Tarifas', description: 'Cobertura vigente por prestadora, base y servicio.',
-        stats: [['Completas', fullyTariffed], ['Parciales', partiallyTariffed], ['Tipos', data.tariffTypes.length]],
-        status: fullyTariffed === data.activeCompanies.length && data.activeCompanies.length ? 'Cobertura completa' : 'Revisar vigencias', tone: fullyTariffed === data.activeCompanies.length && data.activeCompanies.length ? '' : 'warn', action: "irModuloConfiguracion('config-tariff-matrix')",
-      }),
-      centerCard({
-        icon: '🛡️', title: 'Parámetros', description: 'Recorridos, peajes y validaciones configuradas por prestadora.',
-        stats: [['Configuradas', configuredCompanies], ['Pendientes', Math.max(data.activeCompanies.length - configuredCompanies, 0)], ['Reglas activas', activeRules]],
-        status: configuredCompanies === data.activeCompanies.length && data.activeCompanies.length ? 'Parámetros completos' : 'Configuración parcial', tone: configuredCompanies === data.activeCompanies.length && data.activeCompanies.length ? '' : 'warn', action: "irModuloConfiguracion('empresas')",
-      }),
-      centerCard({
-        icon: '⬆️', title: 'Importaciones', description: 'Carga masiva, validación y trazabilidad de archivos.',
-        stats: [['Última carga', '—'], ['Errores', '—'], ['Estado', 'No activo']],
-        status: 'Módulo todavía no habilitado', tone: 'muted', disabled: true,
-      }),
-    ];
-
-    root.innerHTML = `<section class="aux-center-page">
-      <header class="aux-center-head"><div><div class="aux-center-eyebrow">Administración central</div><h2>Centro de Configuración</h2><p>Una única entrada para administrar la red, la operación y la facturación. Cada módulo conserva sus permisos y su fuente de datos original.</p></div><button class="btn btn-ghost" onclick="actualizarCentroConfiguracion()">↻ Actualizar</button></header>
-      ${readOnly ? '<div class="aux-center-readonly">Acceso de consulta. Las modificaciones continúan reservadas a Administración.</div>' : ''}
-      <div class="aux-center-overview">
-        ${overviewKpi('Prestadoras activas', data.activeCompanies.length, `${incompleteCompanies} con pendientes`)}
-        ${overviewKpi('Bases verificadas', verifiedBases.length, `${activeBases.length} activas`)}
-        ${overviewKpi('Servicios activos', activeServices.length, `${primary} pueden iniciar servicios`)}
-        ${overviewKpi('Tarifarios completos', fullyTariffed, `${data.activeCompanies.length} prestadoras activas`)}
-      </div>
-      <div class="aux-center-grid">${cards.join('')}</div>
-      ${managementTools()}
-    </section>`;
-  }
-
-  function tool(icon, title, subtitle, action) {
-    return `<button class="aux-center-tool" onclick="${action}"><span>${icon}</span><b>${esc(title)}</b><small>${esc(subtitle)}</small></button>`;
-  }
-
-  function managementTools() {
-    if (!canUseManagementTools()) return '';
-    return `<section class="aux-center-tools"><div class="aux-center-tools-head"><div><h3>Herramientas administrativas</h3><p>Accesos contextuales que antes ocupaban lugares separados en la navegación.</p></div></div><div class="aux-center-tool-grid">
-      ${tool('🚛', 'Flota', 'Vehículos y móviles', "abrirHerramientaConfiguracion('tab-flota')")}
-      ${tool('👥', 'Personal', 'Choferes y usuarios', "abrirHerramientaConfiguracion('tab-usuarios')")}
-      ${tool('🔧', 'Mantenimiento', 'Planes y controles', "abrirHerramientaConfiguracion('tab-mantenimiento')")}
-      ${tool('🗓️', 'Grilla', 'Asignaciones mensuales', "irModuloConfiguracion('grilla')")}
-      ${tool('💵', 'Liquidaciones', 'Sueldos y rendiciones', "irModuloConfiguracion('sueldos')")}
-    </div></section>`;
-  }
-
-  async function loadHistory(force = false) {
-    if (!canUseCenter() || S.auditLoading || (S.audit.length && !force)) {
-      renderHistory();
-      return;
-    }
-    S.auditLoading = true;
-    renderHistory();
-    try {
-      const { data, error } = await _db.from('audit_events')
-        .select('event_id,occurred_at,actor_id,operation,entity_table,entity_id')
-        .order('occurred_at', { ascending: false })
-        .limit(250);
-      if (error) throw error;
-      S.audit = data || [];
-    } catch (error) {
-      console.error('[historial administrativo] carga:', error);
-      notify(error.message || 'No se pudo cargar el historial', 'error');
-      S.audit = [];
-    } finally {
-      S.auditLoading = false;
-      renderHistory();
-    }
-  }
-
-  const ENTITY_LABELS = {
-    companies: 'Prestadora',
-    company_contacts: 'Contacto de prestadora',
-    company_branches: 'Sucursal heredada',
-    billing_bases: 'Base geográfica',
-    company_billing_settings: 'Configuración de facturación',
-    company_billing_base_links: 'Vínculo de base',
-    service_concepts: 'Tipo de servicio',
-    tariff_types: 'Tipo de tarifa',
-    company_service_settings: 'Servicio de prestadora',
-    company_service_price_versions: 'Versión tarifaria',
-    operator_services: 'Servicio operativo',
-    users: 'Usuario',
-    trucks: 'Vehículo',
-    remitos: 'Remito',
-    jornadas: 'Jornada',
-  };
-
-  function entityLabel(table) {
-    return ENTITY_LABELS[table] || String(table || 'Registro').replaceAll('_', ' ');
-  }
-
-  function operationLabel(operation) {
-    return ({ INSERT: 'Alta', UPDATE: 'Modificación', DELETE: 'Baja' }[operation] || operation || 'Cambio');
-  }
-
-  function renderHistory() {
-    const root = document.getElementById('screen-historial-sistema');
-    if (!root) return;
-    if (!canUseCenter()) {
-      root.innerHTML = '<div class="aux-empty">Tu rol no tiene acceso al historial administrativo.</div>';
-      return;
-    }
-    if (S.auditLoading && !S.audit.length) {
-      root.innerHTML = '<div class="aux-loading">Cargando eventos de auditoría…</div>';
-      return;
-    }
-
-    const query = S.auditQuery.toLowerCase().trim();
-    const rows = S.audit.filter(event => {
-      const matchesOperation = S.auditOperation === 'all' || event.operation === S.auditOperation;
-      const matchesQuery = !query || `${entityLabel(event.entity_table)} ${event.entity_table || ''} ${event.entity_id || ''} ${operationLabel(event.operation)}`.toLowerCase().includes(query);
-      return matchesOperation && matchesQuery;
-    });
-
-    root.innerHTML = `<section class="aux-center-page">
-      <header class="aux-center-head"><div><div class="aux-center-eyebrow">Trazabilidad</div><h2>Historial administrativo</h2><p>Eventos auditados de configuración y operación. Se muestran metadatos de cambio, sin exponer contenido comercial protegido.</p></div><div class="aux-history-shortcuts">${historyShortcuts()}<button class="btn btn-ghost" onclick="actualizarHistorialSistema()">↻ Actualizar</button></div></header>
-      <section class="aux-history-panel">
-        <div class="aux-history-toolbar"><input class="form-input" id="aux-history-q" value="${esc(S.auditQuery)}" placeholder="Buscar módulo, entidad o identificador" oninput="filtrarHistorialSistema(this.value)"><select class="form-input" id="aux-history-operation" onchange="filtrarOperacionHistorial(this.value)"><option value="all" ${S.auditOperation === 'all' ? 'selected' : ''}>Todas las acciones</option><option value="INSERT" ${S.auditOperation === 'INSERT' ? 'selected' : ''}>Altas</option><option value="UPDATE" ${S.auditOperation === 'UPDATE' ? 'selected' : ''}>Modificaciones</option><option value="DELETE" ${S.auditOperation === 'DELETE' ? 'selected' : ''}>Bajas</option></select><span style="font-size:9px;color:var(--muted);white-space:nowrap">${rows.length} eventos</span></div>
-        <div class="aux-history-table-wrap"><table class="aux-history-table"><thead><tr><th>Fecha</th><th>Acción</th><th>Módulo</th><th>Identificador</th><th>Origen</th></tr></thead><tbody>${rows.length ? rows.map(historyRow).join('') : '<tr><td colspan="5"><div class="aux-empty">No hay eventos que coincidan con los filtros.</div></td></tr>'}</tbody></table></div>
-      </section>
-    </section>`;
-  }
-
-  function historyRow(event) {
-    const operation = String(event.operation || '').toLowerCase();
-    return `<tr><td>${dateTime(event.occurred_at)}</td><td><span class="aux-history-operation ${operation}">${esc(operationLabel(event.operation))}</span></td><td><div class="aux-history-entity"><b>${esc(entityLabel(event.entity_table))}</b><small>${esc(event.entity_table || '—')}</small></div></td><td>${esc(event.entity_id || '—')}</td><td>${event.actor_id ? 'Usuario autenticado' : 'Sistema'}</td></tr>`;
-  }
-
-  function historyShortcuts() {
-    const links = [];
-    if (canUseManagementTools()) {
-      links.push('<button class="btn btn-ghost" onclick="irModuloConfiguracion(\'jornadas-admin\')">Jornadas</button>');
-      links.push('<button class="btn btn-ghost" onclick="irModuloConfiguracion(\'documentos\')">Documentación</button>');
-    }
-    links.push('<button class="btn btn-ghost" onclick="irModuloConfiguracion(\'remitos\')">Remitos</button>');
-    return links.join('');
-  }
-
-  function setAuditQuery(value) {
-    S.auditQuery = String(value || '');
-    renderHistory();
-    const input = document.getElementById('aux-history-q');
-    if (input) {
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
-  }
-
-  function setAuditOperation(value) {
-    S.auditOperation = value || 'all';
-    renderHistory();
   }
 
   function init() {
-    inject();
-    ensureScreens();
+    ensureScreenMetadata();
+    if (canUseCenter()) {
+      ensureRouteShells();
+      injectCenter();
+      configureBackofficeNavigation();
+      renderCenter();
+    } else {
+      configureDriverNavigation();
+    }
     installNavigationHook();
-
-    let attempts = 0;
-    const timer = setInterval(() => {
-      ensureScreens();
-      installNavigationHook();
-      configureTopNavigation();
-      if (role() || ++attempts > 60) clearInterval(timer);
-    }, 200);
-
-    window.addEventListener('auxilios:profile-ready', () => {
-      ensureScreens();
-      configureTopNavigation();
-      if (canUseCenter()) loadSummary();
-    });
-
     document.addEventListener('click', event => {
       if (!S.flyoutOpen) return;
       if (event.target.closest('#aux-config-flyout') || event.target.closest('#nav-configuracion')) return;
       closeFlyout();
     });
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape') closeFlyout();
-    });
-
-    setTimeout(() => {
-      configureTopNavigation();
-      if (canUseCenter()) loadSummary();
-    }, 1400);
+    const sidenav = document.querySelector('.sidenav');
+    if (sidenav) { sidenav.style.visibility = ''; sidenav.setAttribute('aria-busy', 'false'); }
   }
 
   Object.assign(window, {
     abrirCentroConfiguracion: openCenter,
     cerrarMenuConfiguracion: closeFlyout,
-    irModuloConfiguracion: goModule,
-    abrirHerramientaConfiguracion: openSettingsTab,
-    actualizarCentroConfiguracion: () => { S.summary = null; loadSummary(true); },
-    actualizarHistorialSistema: () => { S.audit = []; loadHistory(true); },
-    filtrarHistorialSistema: setAuditQuery,
-    filtrarOperacionHistorial: setAuditOperation,
+    irModuloConfiguracion: routeName => { closeFlyout(); if (typeof goTo === 'function') goTo(routeName); },
   });
+  window.AuxiliosConfigurationCenter = { configure: () => canUseCenter() ? configureBackofficeNavigation() : configureDriverNavigation(), renderCenter, loadHistory };
 
-  document.readyState === 'loading'
-    ? document.addEventListener('DOMContentLoaded', init, { once: true })
-    : init();
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init, { once: true }) : init();
 })();
