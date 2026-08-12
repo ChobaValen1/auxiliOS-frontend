@@ -14,6 +14,7 @@ function loadAuxiliosStyle(id, href) {
   link.href = href;
   document.head.appendChild(link);
 }
+
 function loadAuxiliosModule(id, src) {
   return new Promise((resolve, reject) => {
     const existing = document.getElementById(id);
@@ -23,15 +24,40 @@ function loadAuxiliosModule(id, src) {
       return;
     }
     const script = document.createElement('script');
-    script.id = id; script.src = src; script.async = false;
-    script.addEventListener('load', () => { script.dataset.loaded = '1'; resolve(); }, { once: true });
+    script.id = id;
+    script.src = src;
+    script.async = false;
+    script.addEventListener('load', () => {
+      script.dataset.loaded = '1';
+      resolve();
+    }, { once: true });
     script.addEventListener('error', reject, { once: true });
     document.body.appendChild(script);
   });
 }
 
+function waitForAuxiliosProfile() {
+  return new Promise(resolve => {
+    const ready = () => typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name;
+    if (ready()) {
+      resolve(PERFIL_USUARIO);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      if (!ready()) return;
+      clearInterval(timer);
+      resolve(PERFIL_USUARIO);
+    }, 50);
+  });
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   try {
+    // Los módulos con permisos no deben inicializarse hasta conocer el rol real.
+    // Esto evita que Administración sea interpretada como rol vacío durante el bootstrap.
+    await waitForAuxiliosProfile();
+
     await loadAuxiliosModule('auxilios-empresas-module', '/empresas.js');
     await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
