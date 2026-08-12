@@ -32,6 +32,7 @@ test('daily administration modules stay in the main sidenav', () => {
   assert.doesNotMatch(css, /sidenav > #nav-camion,/);
   assert.doesNotMatch(css, /sidenav > #nav-jornadas-admin,/);
   assert.doesNotMatch(css, /sidenav > #nav-remitos,/);
+  assert.match(center, /\['nav-jornadas-admin', 'nav-camion', 'nav-remitos'\]\.forEach/);
 });
 
 test('configuration restores existing personnel vehicle and maintenance tools without duplicating their CRUD', () => {
@@ -87,6 +88,8 @@ test('history exposes the four business questions and extracts only safe audit f
   assert.match(center, /after_status:after_data->>status/);
   assert.match(center, /before_voided_at:before_data->>voided_at/);
   assert.match(center, /after_voided_at:after_data->>voided_at/);
+  assert.match(center, /before_is_active:before_data->>is_active/);
+  assert.match(center, /after_is_active:after_data->>is_active/);
   assert.doesNotMatch(center, /event_id,occurred_at,actor_id,operation,entity_table,entity_id,before_data,after_data/);
   assert.match(center, /Qué hizo/);
   assert.match(center, /Sobre qué lo hizo/);
@@ -96,8 +99,11 @@ test('history exposes the four business questions and extracts only safe audit f
   assert.match(center, /MODIFICACIÓN/);
   assert.match(center, /ANULACIÓN/);
   assert.match(center, /ELIMINACIÓN/);
-  assert.match(center, /from\('users'\)\.select\('user_id,full_name,email'\)/);
-  assert.doesNotMatch(center, /actor_id\}\<\/td\>/);
+  assert.match(center, /loadLookupMap\('users', 'user_id', \['full_name', 'email'\]/);
+  assert.match(center, /loadLookupMap\('service_concepts', 'concept_id', \['name'\]/);
+  assert.match(center, /loadLookupMap\('companies', 'company_id', \['trade_name', 'legal_name'\]/);
+  assert.match(center, /before_is_active\)\.toLowerCase\(\) === 'true'/);
+  assert.doesNotMatch(center, /<td>\$\{esc\(row\.actor_id\)/);
 });
 
 test('fleet operational status decorates Camión without renaming or reordering it', () => {
