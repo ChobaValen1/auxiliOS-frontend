@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v166'; // v166: precios actuales + contexto operativo + modos de recorrido
+const CACHE_NAME = 'auxilios-v167'; // v167: vigencias tarifarias + layout de servicios prioritario
 
 const PRECACHE_ASSETS = [
   '/',
