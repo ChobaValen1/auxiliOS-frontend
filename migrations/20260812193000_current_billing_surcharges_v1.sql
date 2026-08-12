@@ -12,7 +12,7 @@ DECLARE
   card_id uuid;
   card_status text;
   card_company uuid;
-  current_role text;
+  v_current_role text;
   p uuid; s uuid; r uuid; c uuid;
 BEGIN
   d:=CASE WHEN tg_op='DELETE' THEN to_jsonb(old) ELSE to_jsonb(new) END;
@@ -21,11 +21,11 @@ BEGIN
   FROM public.company_rate_cards rc
   JOIN public.company_contracts cc ON cc.contract_id=rc.contract_id
   WHERE rc.rate_card_id=card_id;
-  current_role:=app_private.current_auxilios_role();
+  v_current_role:=app_private.current_auxilios_role();
 
   IF card_id IS NULL OR card_status IS NULL THEN RAISE EXCEPTION 'Configuración comercial inexistente.'; END IF;
   IF card_status<>'draft' THEN
-    IF NOT (card_status='active' AND current_role='administracion' AND tg_table_name IN ('company_rate_rules','company_rate_rule_exceptions')) THEN
+    IF NOT (card_status='active' AND v_current_role='administracion' AND tg_table_name IN ('company_rate_rules','company_rate_rule_exceptions')) THEN
       RAISE EXCEPTION 'La configuración histórica no se puede modificar.';
     END IF;
   END IF;
