@@ -7,90 +7,85 @@ const path = require('node:path');
 
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
-test('configuration center preserves driver navigation and limits the workspace by role', () => {
-  const source = read('configuration-center.js');
-  const frequent = read('frequent-navigation.js');
-
-  assert.match(source, /BACKOFFICE_ROLES = new Set\(\['administracion', 'supervision', 'facturacion'\]\)/);
-  assert.doesNotMatch(source, /BACKOFFICE_ROLES[^\n]*chofer/);
-  assert.match(frequent, /MANAGEMENT_ROLES = new Set\(\['administracion', 'supervision'\]\)/);
-  assert.doesNotMatch(frequent, /MANAGEMENT_ROLES[^\n]*(chofer|facturacion)/);
-  assert.match(source, /document\.body\.classList\.remove\('aux-backoffice-nav'\)/);
-});
-
-test('frequent operational modules stay as direct navigation destinations', () => {
-  const source = read('frequent-navigation.js');
-
-  assert.match(source, /setNavContent\('nav-dashboard', '📊', 'Resumen'\)/);
-  assert.match(source, /setNavContent\('nav-operaciones', '🧭', 'Servicios'\)/);
-  assert.match(source, /setNavContent\('nav-jornadas-admin', '🗓️', 'Jornadas'\)/);
-  assert.match(source, /setNavContent\('nav-documentos', '📄', 'Docs'\)/);
-  assert.match(source, /setNavContent\('nav-remitos', '🧾', 'Remitos'\)/);
-  assert.match(source, /setNavContent\('nav-grilla', '📅', 'Grilla'\)/);
-  assert.match(source, /setNavContent\('nav-configuracion', '⚙️', 'Configuración'\)/);
-  assert.match(source, /setNavContent\('nav-config-tariff-matrix', '💳', 'Facturación'\)/);
-  assert.match(source, /setNavContent\('nav-historial-sistema', '◷', 'Historial'\)/);
-});
-
-test('frequent navigation applies changes idempotently', () => {
-  const source = read('frequent-navigation.js');
-
-  assert.match(source, /iconNode && iconNode\.textContent !== icon/);
-  assert.match(source, /labelNode && labelNode\.textContent !== label/);
-  assert.match(source, /function ensureNavigationOrder/);
-  assert.match(source, /const alreadyOrdered = ordered\.every/);
-  assert.match(source, /if \(alreadyOrdered\) return;/);
-});
-
-test('configuration keeps structural modules without duplicating frequent access', () => {
+test('configuration center is the single backoffice navigation owner', () => {
   const center = read('configuration-center.js');
-  const frequent = read('frequent-navigation.js');
+  const config = read('config.js');
 
-  assert.match(center, /companyGroup\.appendChild\(companies\)/);
-  assert.match(center, /companyGroup\.appendChild\(bases\)/);
-  assert.match(center, /operationGroup\.appendChild\(services\)/);
-  assert.match(center, /billingGroup\.appendChild\(tariffTypes\)/);
-  assert.doesNotMatch(center, /billingGroup\.appendChild\(.*tariff-matrix/);
-  assert.match(frequent, /document\.getElementById\('aux-settings-grid'\)\?\.remove\(\)/);
-  assert.match(frequent, /aux-center-tool\[onclick\*=/);
+  assert.match(center, /BACKOFFICE_ROLES = new Set\(\['administracion', 'supervision', 'facturacion'\]\)/);
+  assert.match(center, /function configureBackofficeNavigation/);
+  assert.match(center, /orderTop\(\[dashboard, canUseManagementTools\(\) \? operations : null, configuration, tariffs, history\]\)/);
+  assert.match(center, /document\.getElementById\('nav-registro'\)/);
+  assert.match(center, /registro\.remove\(\)/);
+  assert.doesNotMatch(config, /frequent-navigation/);
 });
 
-test('future modules are visibly disabled and do not create orphan routes', () => {
-  const source = read('configuration-center.js');
+test('management modules move into Configuration instead of returning to the main sidenav', () => {
+  const center = read('configuration-center.js');
 
-  assert.match(source, /class="aux-config-link future"/);
-  assert.match(source, /Próxima fase/);
-  assert.match(source, /Particulares/);
-  assert.match(source, /Logística tercerizada/);
-  assert.match(source, /Importar Excel/);
-  assert.doesNotMatch(source, /goTo\('particulares'\)/);
-  assert.doesNotMatch(source, /goTo\('importar-excel'\)/);
+  for (const id of ['nav-camion', 'nav-jornadas-admin', 'nav-documentos', 'nav-remitos', 'nav-grilla', 'nav-sueldos']) {
+    assert.ok(center.includes(`document.getElementById('${id}')`), `${id} must be handled by Configuration`);
+  }
+  assert.match(center, /moveTo\(operation, document\.getElementById\('nav-camion'\)\)/);
+  assert.match(center, /moveTo\(operation, document\.getElementById\('nav-remitos'\)\)/);
+  assert.match(center, /moveTo\(operation, document\.getElementById\('nav-sueldos'\)\)/);
 });
 
-test('configuration center uses live data and safe audit fields', () => {
-  const source = read('configuration-center.js');
+test('driver navigation remains explicit and isolated from backoffice navigation', () => {
+  const center = read('configuration-center.js');
 
-  assert.match(source, /list_geographic_bases/);
-  assert.match(source, /list_service_types_config/);
-  assert.match(source, /get_company_billing_configuration/);
-  assert.match(source, /list_company_tariff_matrix_v2/);
-  assert.match(source, /select\('event_id,occurred_at,actor_id,operation,entity_table,entity_id'\)/);
-  assert.doesNotMatch(source, /before_data/);
-  assert.doesNotMatch(source, /after_data/);
+  assert.match(center, /function configureDriverNavigation/);
+  assert.match(center, /ensureDriverNode\('nav-dashboard', 'dashboard', '📊', 'Panel'\)/);
+  assert.match(center, /ensureDriverNode\('nav-registro', 'registro', '📋', 'Km'\)/);
+  assert.match(center, /ensureDriverNode\('nav-camion', 'camion', '🚛', 'Camión'\)/);
+  assert.match(center, /ensureDriverNode\('nav-remitos', 'remitos', '🧾', 'Remitos'\)/);
+  assert.doesNotMatch(center, /BACKOFFICE_ROLES[^\n]*chofer/);
 });
 
-test('configuration and frequent navigation are loaded, checked and precached', () => {
+test('configuration owns structural catalog routes without duplicate matrix modules', () => {
+  const center = read('configuration-center.js');
+
+  assert.match(center, /ensureNavNode\('nav-empresas'/);
+  assert.match(center, /ensureNavNode\('nav-config-service-types'/);
+  assert.match(center, /ensureNavNode\('nav-config-tariff-types'/);
+  assert.match(center, /ensureNavNode\('nav-config-tariff-matrix'/);
+  assert.match(center, /Prestadoras y red/);
+  assert.match(center, /Catálogos/);
+  assert.match(center, /Facturación/);
+  assert.doesNotMatch(center, /list_company_tariff_matrix_v2/);
+});
+
+test('configuration center history reads safe audit metadata only', () => {
+  const center = read('configuration-center.js');
+
+  assert.match(center, /select\('event_id,occurred_at,actor_id,operation,entity_table,entity_id'\)/);
+  assert.doesNotMatch(center, /before_data/);
+  assert.doesNotMatch(center, /after_data/);
+});
+
+test('fleet operational status is separate from navigation and cannot reorder the sidenav', () => {
+  const fleet = read('fleet-operational-status-v1.js');
+
+  assert.match(fleet, /list_operator_services/);
+  assert.match(fleet, /title: 'FLOTA'/);
+  assert.doesNotMatch(fleet, /querySelector\('\.sidenav'\)/);
+  assert.doesNotMatch(fleet, /insertBefore/);
+  assert.doesNotMatch(fleet, /nav-/);
+});
+
+test('canonical navigation and fleet status are loaded checked and precached', () => {
   const config = read('config.js');
   const serviceWorker = read('sw.js');
   const pkg = read('package.json');
   const cacheVersion = Number(serviceWorker.match(/auxilios-v(\d+)/)?.[1] || 0);
 
   assert.match(config, /auxilios-configuration-center/);
-  assert.match(config, /auxilios-frequent-navigation/);
-  assert.match(config, /\/frequent-navigation\.js/);
-  assert.ok(cacheVersion >= 111, `Expected cache version 111 or newer, received ${cacheVersion}`);
+  assert.match(config, /auxilios-fleet-operational-status-v1/);
   assert.match(serviceWorker, /'\/configuration-center\.js'/);
-  assert.match(serviceWorker, /'\/frequent-navigation\.js'/);
+  assert.match(serviceWorker, /'\/fleet-operational-status-v1\.js'/);
   assert.match(pkg, /node --check configuration-center\.js/);
-  assert.match(pkg, /node --check frequent-navigation\.js/);
+  assert.match(pkg, /node --check fleet-operational-status-v1\.js/);
+  assert.doesNotMatch(config, /frequent-navigation/);
+  assert.doesNotMatch(serviceWorker, /frequent-navigation/);
+  assert.doesNotMatch(pkg, /frequent-navigation/);
+  assert.ok(cacheVersion >= 162, `Expected cache version 162 or newer, received ${cacheVersion}`);
 });
