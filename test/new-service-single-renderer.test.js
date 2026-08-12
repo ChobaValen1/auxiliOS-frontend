@@ -21,7 +21,7 @@ test('Nuevo Servicio tiene un único renderer canónico en runtime', () => {
     assert.doesNotMatch(source, /operator-service-workspace-v2\.js|operator-service-workspace-review-v3\.js/);
   }
   assert.match(config, /operator-service-workspace-reactive-v1\.js/);
-  assert.match(flags, /operator-service-workspace-reactive-v1\.js/);
+  assert.doesNotMatch(flags, /operator-service-workspace-reactive-v1\.js/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);
   assert.match(pkg, /operator-service-workspace-reactive-v1\.js/);
 });
@@ -42,5 +42,5 @@ test('el renderer reactivo no usa MutationObserver ni repinta el shell en cada c
 test('la PWA invalida cualquier copia anterior del alta', () => {
   const match = sw.match(/auxilios-v(\d+)/);
   assert.ok(match);
-  assert.ok(Number(match[1]) >= 141);
+  assert.ok(Number(match[1]) >= 165);
 });
