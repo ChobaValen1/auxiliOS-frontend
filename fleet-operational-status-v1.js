@@ -54,7 +54,7 @@
         });
         loadedAt = Date.now();
       } catch (error) {
-        console.warn('[Flota] No se pudo cruzar el estado de servicios:', error?.message || error);
+        console.warn('[Camión] No se pudo cruzar el estado de servicios:', error?.message || error);
       } finally {
         loading = null;
       }
@@ -133,7 +133,6 @@
   function init() {
     if (!allowed()) return;
     injectStyles();
-    if (typeof SCREENS !== 'undefined') SCREENS.camion = { title: 'FLOTA', sub: 'Disponibilidad, uso y mantenimiento de móviles' };
     let attempts = 0;
     const timer = setInterval(() => {
       installHooks();
