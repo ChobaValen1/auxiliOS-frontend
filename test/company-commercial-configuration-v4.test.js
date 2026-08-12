@@ -123,7 +123,8 @@ test('current-price backend uses audited items as technical storage without bran
   assert.match(currentPricesMigration,/save_company_service_price_v1/);
   assert.match(currentPricesMigration,/get_company_service_price_history_v1/);
   assert.match(currentPricesMigration,/get_operator_service_context_v1/);
-  assert.match(currentPricesMigration,/branch_id,NULL|branch_id,branch_id/i);
+  assert.match(currentPricesMigration,/v_card,\s*NULL,\s*v_base/);
+  assert.match(currentPricesMigration,/i\.branch_id\s+IS\s+NULL/i);
   assert.match(currentPricesMigration,/new\.included_km:=0/);
   assert.match(currentPricesMigration,/has_price/);
   assert.match(currentPricesMigration,/blocking_issues/);
