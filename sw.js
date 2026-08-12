@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v163'; // v163: navegación diaria, configuración completa e historial legible
+const CACHE_NAME = 'auxilios-v164'; // v164: Tarifas solo precios + reglas de distancia por prestadora
 
 const PRECACHE_ASSETS = [
   '/',
