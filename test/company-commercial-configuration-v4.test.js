@@ -15,6 +15,7 @@ const sw = fs.readFileSync('sw.js', 'utf8');
 const pkg = fs.readFileSync('package.json', 'utf8');
 const tariffMigration = fs.readFileSync('migrations/20260811223000_company_tariffs_v4.sql', 'utf8');
 const operatorMigration = fs.readFileSync('migrations/20260811224500_operator_rate_items_pricing_v4.sql', 'utf8');
+const distanceRulesMigration = fs.readFileSync('migrations/20260812123000_company_distance_billing_rules_v1.sql', 'utf8');
 
 const canonical = [
   'empresas-v2.js',
@@ -27,23 +28,12 @@ const canonical = [
 ];
 
 const removedRuntime = [
-  'empresas.js',
-  'configuration-reference.js',
-  'configuration-reference.css',
-  'billing-base-operator-adapter.js',
-  'frequent-navigation.js',
-  'comercial.js',
-  'comercial-services.js',
-  'comercial-code-strategy.js',
-  'comercial-rules.js',
-  'comercial-summary.js',
-  'tariff-composition.js',
-  'comercial.css',
-  'company-billing-settings.js',
-  'equal-billing-bases.js',
-  'company-configuration-coherence-v1.js',
-  'tariff-new-rate-flow-v1.js',
-  'tariff-matrix-v3.js',
+  'empresas.js', 'configuration-reference.js', 'configuration-reference.css',
+  'billing-base-operator-adapter.js', 'frequent-navigation.js', 'comercial.js',
+  'comercial-services.js', 'comercial-code-strategy.js', 'comercial-rules.js',
+  'comercial-summary.js', 'tariff-composition.js', 'comercial.css',
+  'company-billing-settings.js', 'equal-billing-bases.js',
+  'company-configuration-coherence-v1.js', 'tariff-new-rate-flow-v1.js', 'tariff-matrix-v3.js',
 ];
 
 test('runtime keeps only the canonical commercial configuration modules', () => {
@@ -98,9 +88,15 @@ test('billing parameters selects company bases explicitly instead of linking eve
   assert.doesNotMatch(billing, /_db\.from\('billing_bases'\).*eq\('is_active', true\)/s);
 });
 
-test('billing parameters owns route tolls surcharge exceptions and vigencia', () => {
+test('billing parameters owns distance rules, tolls, surcharges and vigencia', () => {
   assert.match(billing, /Modo de kilometraje/);
-  assert.match(billing, /bp4-tolls/);
+  assert.match(billing, /Radio cubierto \(km\)/);
+  assert.match(billing, /Cobrar movida hasta \(km\)/);
+  assert.match(billing, /bp4-covered-radius/);
+  assert.match(billing, /bp4-movement-until/);
+  assert.match(billing, /covered_radius_km: radius/);
+  assert.match(billing, /movement_charge_until_km: movementUntil/);
+  assert.match(billing, /Opcional/);
   assert.match(billing, /Estimación automática por ruta/);
   assert.match(billing, /Carga real \/ comprobante/);
   assert.match(billing, /No corresponde/);
@@ -121,14 +117,42 @@ test('Prestadoras V2 uses only company linked bases and Tarifas V4', () => {
   assert.doesNotMatch(companies, /Reglas y parámetros/);
 });
 
-test('Tarifas v4 is the only provider price screen and uses enabled services', () => {
+test('Tarifas v4 is price-only and uses enabled services', () => {
   assert.match(tariffs, /Prestadora/);
   assert.match(tariffs, /get_company_tariffs_v4/);
-  assert.match(tariffs, /S\.data\.services/);
+  assert.match(tariffs, /S\.data\?\.services|S\.data\.services/);
   assert.match(tariffs, /Excepción por base/);
   assert.match(tariffs, /delete_company_tariff_exception_v4/);
+  assert.match(tariffs, /Valor movida/);
+  assert.match(tariffs, /Valor por KM/);
+  assert.match(tariffs, /km_price/);
+  assert.doesNotMatch(tariffs, /KM incluidos/i);
+  assert.doesNotMatch(tariffs, /KM excedente/i);
+  assert.doesNotMatch(tariffs, /included_km/);
+  assert.doesNotMatch(tariffs, /ct4-included-km/);
+  assert.doesNotMatch(tariffs, /Nota interna/i);
+  assert.doesNotMatch(tariffs, /ct4-rate-notes/);
+  assert.doesNotMatch(tariffs, /covered_radius_km/);
+  assert.doesNotMatch(tariffs, /movement_charge_until_km/);
   assert.doesNotMatch(tariffs, /Categoría × Concepto/);
   assert.match(tariffMigration, /billing_base_id IS NULL/);
+});
+
+test('distance business rules live in company billing configuration and charge all km after radius', () => {
+  assert.match(distanceRulesMigration, /covered_radius_km/);
+  assert.match(distanceRulesMigration, /movement_charge_until_km/);
+  assert.match(distanceRulesMigration, /v_distance_applies := v_distance > 0 AND \(v_radius IS NULL OR v_distance > v_radius\)/);
+  assert.match(distanceRulesMigration, /v_movement_applies := v_movement_until IS NULL OR v_distance <= v_movement_until/);
+  assert.match(distanceRulesMigration, /v_distance \* coalesce\(v_rate\.extra_km_price, 0\)/i);
+  assert.doesNotMatch(distanceRulesMigration, /v_distance\s*-\s*coalesce\(v_rate\.included_km/i);
+  assert.doesNotMatch(distanceRulesMigration, /KM excedente/i);
+});
+
+test('active tariff API exposes km_price and stops exposing included-km semantics', () => {
+  assert.match(distanceRulesMigration, /'km_price'/);
+  assert.match(distanceRulesMigration, /new\.included_km := 0/);
+  assert.match(distanceRulesMigration, /included_km = 0/);
+  assert.doesNotMatch(distanceRulesMigration, /p_payload->>'included_km'/);
 });
 
 test('tariff history uses draft then publish rather than overwriting published prices', () => {
@@ -146,7 +170,7 @@ test('operator pricing uses published rate items and never queries the legacy ma
   assert.doesNotMatch(operatorMigration, /(?:FROM|JOIN|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?company_tariff_matrix_rates/i);
 });
 
-test('PWA invalidates every cached copy from before the cleanup', () => {
+test('PWA invalidates every cached copy from before the distance-rule move', () => {
   const version = Number(sw.match(/auxilios-v(\d+)/)?.[1] || 0);
-  assert.ok(version >= 162, `Expected cache version 162 or newer, received ${version}`);
+  assert.ok(version >= 164, `Expected cache version 164 or newer, received ${version}`);
 });
