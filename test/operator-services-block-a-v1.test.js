@@ -4,6 +4,7 @@ const fs = require('node:fs');
 
 const css = fs.readFileSync('operator-services-brand-system-v1.css', 'utf8');
 const js = fs.readFileSync('operator-services-block-a-v1.js', 'utf8');
+const config = fs.readFileSync('config.js', 'utf8');
 const flags = fs.readFileSync('feature-flags.js', 'utf8');
 const sw = fs.readFileSync('sw.js', 'utf8');
 const pkg = fs.readFileSync('package.json', 'utf8');
@@ -38,17 +39,18 @@ test('los workspaces advierten antes de perder cambios', () => {
   assert.match(js, /Guardando cambios/);
 });
 
-test('Bloque A se carga después del workspace reactivo y forma parte de CI/PWA', () => {
-  const workspace = flags.indexOf('/operator-service-workspace-reactive-v1.js');
+test('Bloque A se carga después del sistema de marca sin duplicar el workspace canónico', () => {
+  const workspace = config.indexOf('/operator-service-workspace-reactive-v1.js');
   const brand = flags.indexOf('/operator-services-brand-system-v1.css');
   const block = flags.indexOf('/operator-services-block-a-v1.js');
   assert.ok(workspace >= 0);
-  assert.ok(brand > workspace);
+  assert.doesNotMatch(flags, /operator-service-workspace-reactive-v1\.js/);
+  assert.ok(brand >= 0);
   assert.ok(block > brand);
   assert.match(pkg, /node --check operator-services-block-a-v1\.js/);
   assert.match(sw, /'\/operator-services-brand-system-v1\.css'/);
   assert.match(sw, /'\/operator-services-block-a-v1\.js'/);
   const match = sw.match(/auxilios-v(\d+)/);
   assert.ok(match);
-  assert.ok(Number(match[1]) >= 141);
+  assert.ok(Number(match[1]) >= 166);
 });
