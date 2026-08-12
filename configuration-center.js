@@ -36,6 +36,9 @@
     tariff_types: 'Tipo de tarifa',
     truck_docs: 'Documento de camión',
   };
+
+  // Solo se extraen campos puntuales del JSON de auditoría. Nunca se descarga
+  // before_data/after_data completo al navegador.
   const AUDIT_SELECT = `
     event_id,
     occurred_at,
@@ -49,6 +52,8 @@
     after_estado:after_data->>estado,
     before_voided_at:before_data->>voided_at,
     after_voided_at:after_data->>voided_at,
+    before_is_active:before_data->>is_active,
+    after_is_active:after_data->>is_active,
     before_name:before_data->>name,
     after_name:after_data->>name,
     before_full_name:before_data->>full_name,
@@ -72,10 +77,21 @@
     before_log_date:before_data->>log_date,
     after_log_date:after_data->>log_date,
     before_fecha:before_data->>fecha,
-    after_fecha:after_data->>fecha
+    after_fecha:after_data->>fecha,
+    before_concept_id:before_data->>concept_id,
+    after_concept_id:after_data->>concept_id,
+    before_company_id:before_data->>company_id,
+    after_company_id:after_data->>company_id
   `;
 
-  const S = { flyoutOpen: false, auditLoading: false, auditRows: [], actors: new Map() };
+  const S = {
+    flyoutOpen: false,
+    auditLoading: false,
+    auditRows: [],
+    actors: new Map(),
+    concepts: new Map(),
+    companies: new Map(),
+  };
 
   const role = () => String(typeof PERFIL_USUARIO === 'undefined' ? '' : (PERFIL_USUARIO?.roles?.name || PERFIL_USUARIO?.role || '')).toLowerCase();
   const canUseCenter = () => BACKOFFICE_ROLES.has(role());
@@ -183,8 +199,7 @@
   }
 
   function moveTo(group, node) {
-    if (!group || !node) return;
-    group.appendChild(asFlyoutLink(node));
+    if (group && node) group.appendChild(asFlyoutLink(node));
   }
 
   function addAction(group, icon, label, subtitle, handler) {
@@ -225,7 +240,6 @@
       addAction(management, '🧰', 'Planes de mantenimiento', 'Crear y administrar planes globales', () => openLegacySettingsTab('tab-planes'));
       addAction(management, '🔧', 'Mantenimiento', 'Seguimiento y asignación de mantenimiento', () => openLegacySettingsTab('tab-mantenimiento'));
       addAction(management, '🆘', 'Contactos de emergencia', 'Teléfonos y referencias operativas', () => openLegacySettingsTab('tab-emergencias'));
-
       moveTo(administration, document.getElementById('nav-documentos'));
       moveTo(administration, document.getElementById('nav-grilla'));
       moveTo(administration, document.getElementById('nav-sueldos'));
@@ -263,15 +277,14 @@
       const node = document.getElementById(id);
       if (node) node.style.display = 'none';
     });
-    const nodes = [
+    orderTop([
       ensureDriverNode('nav-dashboard', 'dashboard', '📊', 'Panel'),
       ensureDriverNode('nav-registro', 'registro', '📋', 'Km'),
       ensureDriverNode('nav-camion', 'camion', '🚛', 'Camión'),
       ensureDriverNode('nav-documentos', 'documentos', '📄', 'Docs'),
       ensureDriverNode('nav-remitos', 'remitos', '🧾', 'Remitos'),
       ensureDriverNode('nav-grilla', 'grilla', '🗓️', 'Grilla'),
-    ];
-    orderTop(nodes);
+    ]);
   }
 
   function configureBackofficeNavigation() {
@@ -288,9 +301,21 @@
       if (label) label.textContent = 'Servicios';
       operations.style.display = canUseManagementTools() ? '' : 'none';
     }
-    const jornadas = canUseManagementTools() ? ensureNavNode('nav-jornadas-admin', 'jornadas-admin', '🗓️', 'Jornadas', false) : null;
-    const camion = canUseManagementTools() ? ensureNavNode('nav-camion', 'camion', '🚛', 'Camión', false) : null;
-    const remitos = canUseManagementTools() ? ensureNavNode('nav-remitos', 'remitos', '🧾', 'Remitos', false) : null;
+
+    let jornadas = null;
+    let camion = null;
+    let remitos = null;
+    if (canUseManagementTools()) {
+      jornadas = ensureNavNode('nav-jornadas-admin', 'jornadas-admin', '🗓️', 'Jornadas', false);
+      camion = ensureNavNode('nav-camion', 'camion', '🚛', 'Camión', false);
+      remitos = ensureNavNode('nav-remitos', 'remitos', '🧾', 'Remitos', false);
+    } else {
+      ['nav-jornadas-admin', 'nav-camion', 'nav-remitos'].forEach(id => {
+        const node = document.getElementById(id);
+        if (node) node.style.display = 'none';
+      });
+    }
+
     const configuration = ensureNavNode('nav-configuracion', 'configuracion', '⚙️', 'Configuración', false);
     configuration.setAttribute('onclick', 'abrirCentroConfiguracion(event)');
     const tariffs = ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas', false);
@@ -347,10 +372,15 @@
     if (operation === 'INSERT') return { key: 'create', label: 'CREACIÓN' };
     if (operation === 'DELETE') return { key: 'delete', label: 'ELIMINACIÓN' };
     if (/CANCEL|VOID|ANUL/.test(operation)) return { key: 'cancel', label: 'ANULACIÓN' };
+
     const beforeState = String(row.before_status || row.before_estado || '').trim().toLowerCase();
     const afterState = String(row.after_status || row.after_estado || '').trim().toLowerCase();
     if ((afterState && CANCELLATION_STATES.has(afterState) && afterState !== beforeState) || (row.after_voided_at && !row.before_voided_at)) {
       return { key: 'cancel', label: 'ANULACIÓN' };
+    }
+
+    if (String(row.before_is_active).toLowerCase() === 'true' && String(row.after_is_active).toLowerCase() === 'false') {
+      return { key: 'delete', label: 'ELIMINACIÓN' };
     }
     return { key: 'update', label: 'MODIFICACIÓN' };
   }
@@ -373,11 +403,15 @@
     const title = row.after_title || row.before_title;
     const legajo = row.after_legajo || row.before_legajo;
     const date = row.after_log_date || row.before_log_date || row.after_fecha || row.before_fecha;
+    const conceptId = row.after_concept_id || row.before_concept_id;
+    const companyId = row.after_company_id || row.before_company_id;
+    const conceptName = conceptId ? S.concepts.get(String(conceptId)) : '';
+    const companyName = companyId ? S.companies.get(String(companyId)) : '';
 
     let detail = name || fullName || remito || service || title || baseCode || legajo || '';
     if (row.entity_table === 'trucks' && plate) detail = [plate, internal].filter(Boolean).join(' · ');
-    if (row.entity_table === 'daily_logs' && date) detail = date;
-    if (row.entity_table === 'asignaciones_grilla' && date) detail = date;
+    if ((row.entity_table === 'daily_logs' || row.entity_table === 'asignaciones_grilla') && date) detail = date;
+    if (!detail && (companyName || conceptName)) detail = [companyName, conceptName].filter(Boolean).join(' · ');
     if (!detail) detail = shortId(row.entity_id);
     return { type, detail };
   }
@@ -462,6 +496,14 @@
     renderHistoryRows();
   }
 
+  async function loadLookupMap(table, idColumn, valueColumns, ids, target, formatter) {
+    target.clear();
+    if (!ids.length) return;
+    const { data, error } = await _db.from(table).select([idColumn, ...valueColumns].join(',')).in(idColumn, ids);
+    if (error) return;
+    (data || []).forEach(item => target.set(String(item[idColumn]), formatter(item)));
+  }
+
   async function loadHistory() {
     const screen = document.getElementById('screen-historial-sistema');
     if (!screen || !canUseCenter() || S.auditLoading) return;
@@ -471,12 +513,15 @@
       const { data, error } = await _db.from('audit_events').select(AUDIT_SELECT).order('occurred_at', { ascending: false }).limit(250);
       if (error) throw error;
       S.auditRows = Array.isArray(data) ? data : [];
-      S.actors.clear();
+
       const actorIds = [...new Set(S.auditRows.map(row => row.actor_id).filter(Boolean).map(String))];
-      if (actorIds.length) {
-        const { data: users, error: usersError } = await _db.from('users').select('user_id,full_name,email').in('user_id', actorIds);
-        if (!usersError) (users || []).forEach(user => S.actors.set(String(user.user_id), user));
-      }
+      const conceptIds = [...new Set(S.auditRows.map(row => row.after_concept_id || row.before_concept_id).filter(Boolean).map(String))];
+      const companyIds = [...new Set(S.auditRows.map(row => row.after_company_id || row.before_company_id).filter(Boolean).map(String))];
+      await Promise.all([
+        loadLookupMap('users', 'user_id', ['full_name', 'email'], actorIds, S.actors, item => ({ full_name: item.full_name, email: item.email })),
+        loadLookupMap('service_concepts', 'concept_id', ['name'], conceptIds, S.concepts, item => item.name || ''),
+        loadLookupMap('companies', 'company_id', ['trade_name', 'legal_name'], companyIds, S.companies, item => item.trade_name || item.legal_name || ''),
+      ]);
       renderHistory();
     } catch (error) {
       screen.innerHTML = `<div class="aux-loading">No se pudo cargar el historial: ${esc(error?.message || '')}</div>`;
@@ -536,7 +581,10 @@
       closeFlyout();
     });
     const sidenav = document.querySelector('.sidenav');
-    if (sidenav) { sidenav.style.visibility = ''; sidenav.setAttribute('aria-busy', 'false'); }
+    if (sidenav) {
+      sidenav.style.visibility = '';
+      sidenav.setAttribute('aria-busy', 'false');
+    }
   }
 
   Object.assign(window, {
@@ -545,7 +593,11 @@
     irModuloConfiguracion: routeName => { closeFlyout(); if (typeof goTo === 'function') goTo(routeName); },
     abrirHerramientaConfiguracion: openLegacySettingsTab,
   });
-  window.AuxiliosConfigurationCenter = { configure: () => canUseCenter() ? configureBackofficeNavigation() : configureDriverNavigation(), renderCenter, loadHistory };
+  window.AuxiliosConfigurationCenter = {
+    configure: () => canUseCenter() ? configureBackofficeNavigation() : configureDriverNavigation(),
+    renderCenter,
+    loadHistory,
+  };
 
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init, { once: true }) : init();
 })();
