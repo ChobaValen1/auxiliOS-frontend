@@ -55,8 +55,11 @@ function setNavigationBooting(booting) {
   sidenav.setAttribute('aria-busy', booting ? 'true' : 'false');
 }
 
+// config.js se ejecuta con defer: el HTML ya existe. Ocultamos el shell legado
+// antes del primer render útil y recién lo mostramos cuando el rol definió el menú canónico.
+setNavigationBooting(true);
+
 window.addEventListener('DOMContentLoaded', async () => {
-  setNavigationBooting(true);
   try {
     // Ningún módulo con permisos se inicializa hasta conocer el rol real.
     await waitForAuxiliosProfile();
