@@ -155,7 +155,7 @@ test('Nuevo Servicio UI shows warnings and never renders commercial prices',()=>
   assert.match(operatorWorkspace,/Disponible/);
   assert.match(operatorWorkspace,/Validar servicio/);
   assert.doesNotMatch(operatorWorkspace,/osv4-branch|cambiarSucursalServicio|secondaryPrice/);
-  assert.doesNotMatch(operatorWorkspace,/\$\s*\{|money\(/);
+  assert.doesNotMatch(operatorWorkspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total/);
 });
 
 test('Servicios operational module has no company branch dependency and gates commercial display',()=>{
@@ -183,7 +183,7 @@ test('operator pricing still delegates to v4 rate items and not the legacy matri
 
 test('PWA invalidates caches after the current-price and service-context refactor',()=>{
   const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
-  assert.ok(version>=165,`Expected cache version 165 or newer, received ${version}`);
+  assert.ok(version>=166,`Expected cache version 166 or newer, received ${version}`);
   assert.match(sw,/operator-service-code-warnings-v1\.js/);
   assert.doesNotMatch(sw,/operator-service-tariff-v3-ui\.js|operator-service-tariff-v3\.css/);
 });
