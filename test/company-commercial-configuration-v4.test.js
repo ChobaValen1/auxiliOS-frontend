@@ -20,6 +20,11 @@ const operatorMigration = fs.readFileSync('migrations/20260811224500_operator_ra
 const distanceRulesMigration = fs.readFileSync('migrations/20260812123000_company_distance_billing_rules_v1.sql','utf8');
 const currentPricesMigration = fs.readFileSync('migrations/20260812190000_current_service_prices_and_operator_context_v1.sql','utf8');
 const surchargeMigration = fs.readFileSync('migrations/20260812193000_current_billing_surcharges_v1.sql','utf8');
+const validityMigration = fs.readFileSync('migrations/20260812201500_scheduled_service_price_validity_v1.sql','utf8');
+const auditGuardMigration = fs.readFileSync('migrations/20260812204000_scheduled_price_audit_guard_v1.sql','utf8');
+const engineInheritanceMigration = fs.readFileSync('migrations/20260812205000_scheduled_rate_engine_inheritance_v1.sql','utf8');
+const cloneFilterMigration = fs.readFileSync('migrations/20260812210000_scheduled_rate_clone_filter_v1.sql','utf8');
+const timelineMigration = fs.readFileSync('migrations/20260812211000_price_timeline_cascade_v1.sql','utf8');
 
 const canonical = [
   'empresas-v2.js','service-types-catalog-v2.js','tariff-types-catalog-v1.js',
@@ -103,19 +108,34 @@ test('Prestadoras uses current prices and embeds the canonical price screen',()=
   assert.doesNotMatch(companies,/company_branches|abrirSucursal|guardarSucursal|desactivarSucursal|Nueva sucursal|Sucursales/);
 });
 
-test('Tarifas is one current-price implementation with optional base exceptions and audit history',()=>{
+test('Tarifas exposes current price, effective dates, future scheduling and base exceptions in one screen',()=>{
   assert.match(tariffs,/get_company_service_prices_v1/);
   assert.match(tariffs,/save_company_service_price_v1/);
   assert.match(tariffs,/delete_company_service_price_exception_v1/);
   assert.match(tariffs,/get_company_service_price_history_v1/);
+  assert.match(tariffs,/get_company_service_price_schedule_v1/);
+  assert.match(tariffs,/save_company_service_price_schedule_v1/);
+  assert.match(tariffs,/cancel_company_service_price_schedule_v1/);
   assert.match(tariffs,/mountEmbedded/);
+  assert.match(tariffs,/Vigente desde/);
+  assert.match(tariffs,/Programar/);
   assert.match(tariffs,/Valor movida/);
   assert.match(tariffs,/Valor por KM/);
-  assert.match(tariffs,/Excepción por base/);
+  assert.match(tariffs,/Excepciones por base/);
+  assert.match(tariffs,/Próxima vigencia/);
   assert.doesNotMatch(tariffs,/ensure_company_tariff_draft_v4|publish_company_tariff_draft_v4|get_company_tariffs_v4/);
   assert.doesNotMatch(tariffs,/Crear nueva vigencia|Borrador v|Tarifario publicado|draft_card|active_card/i);
   assert.doesNotMatch(tariffs,/KM incluidos|KM excedente|included_km|Nota interna|ct4-rate-notes/i);
   assert.doesNotMatch(tariffs,/covered_radius_km|movement_charge_until_km/);
+});
+
+test('Tarifas prioritizes service visibility and keeps KPIs compact',()=>{
+  assert.match(tariffs,/\.ct4-stats\{/);
+  assert.match(tariffs,/\.ct4-stat\{/);
+  assert.match(tariffs,/max-height:calc\(100vh - 220px\)/);
+  assert.match(tariffs,/position:sticky/);
+  assert.doesNotMatch(tariffs,/ct4-kpi|ct4-kpis/);
+  assert.match(tariffs,/scheduledServices = services\.filter\(service => allScheduleChanges/);
 });
 
 test('current-price backend uses audited items as technical storage without branch semantics',()=>{
@@ -129,6 +149,36 @@ test('current-price backend uses audited items as technical storage without bran
   assert.match(currentPricesMigration,/has_price/);
   assert.match(currentPricesMigration,/blocking_issues/);
   assert.match(currentPricesMigration,/warnings/);
+});
+
+test('future price validity is date-aware without restoring draft/publish workflow',()=>{
+  assert.match(validityMigration,/status='scheduled'/);
+  assert.match(validityMigration,/price_card_for_company_date/);
+  assert.match(validityMigration,/get_company_service_price_schedule_v1/);
+  assert.match(validityMigration,/save_company_service_price_schedule_v1/);
+  assert.match(validityMigration,/cancel_company_service_price_schedule_v1/);
+  assert.match(validityMigration,/valid_from/);
+  assert.doesNotMatch(validityMigration,/publish_company_tariff_draft_v4/);
+});
+
+test('scheduled validity inherits only valid commercial state and technical cloning is not audited',()=>{
+  assert.match(auditGuardMigration,/app\.suppress_audit/);
+  assert.match(auditGuardMigration,/scheduled/);
+  assert.match(engineInheritanceMigration,/IF new\.status='scheduled' THEN RETURN new/);
+  assert.match(engineInheritanceMigration,/company_rate_codes/);
+  assert.match(cloneFilterMigration,/company_service_settings css/);
+  assert.match(cloneFilterMigration,/sc\.is_active/);
+});
+
+test('price timeline cascades inherited changes forward but stops at explicit future changes',()=>{
+  assert.match(timelineMigration,/cascade_company_service_price_v1/);
+  assert.match(timelineMigration,/r\.status='scheduled'/);
+  assert.match(timelineMigration,/v_same_as_before/);
+  assert.match(timelineMigration,/IF NOT v_same_as_before THEN EXIT/);
+  assert.match(timelineMigration,/app\.suppress_audit/);
+  assert.match(timelineMigration,/save_company_service_price_v1/);
+  assert.match(timelineMigration,/save_company_service_price_schedule_v1/);
+  assert.match(timelineMigration,/cancel_company_service_price_schedule_v1/);
 });
 
 test('billing surcharges use current provider configuration instead of draft/publish workflow',()=>{
@@ -181,9 +231,10 @@ test('operator pricing still delegates to v4 rate items and not the legacy matri
   assert.doesNotMatch(operatorMigration,/(?:FROM|JOIN|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?company_tariff_matrix_rates/i);
 });
 
-test('PWA invalidates caches after the current-price and service-context refactor',()=>{
+test('PWA invalidates caches after effective-date tariff scheduling',()=>{
   const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
-  assert.ok(version>=166,`Expected cache version 166 or newer, received ${version}`);
+  assert.ok(version>=167,`Expected cache version 167 or newer, received ${version}`);
+  assert.match(sw,/company-tariffs-v4\.js/);
   assert.match(sw,/operator-service-code-warnings-v1\.js/);
   assert.doesNotMatch(sw,/operator-service-tariff-v3-ui\.js|operator-service-tariff-v3\.css/);
 });
