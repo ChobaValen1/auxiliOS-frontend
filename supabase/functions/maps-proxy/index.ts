@@ -94,6 +94,14 @@ async function autocomplete(body: Record<string, any>, apiKey: string) {
   return { suggestions };
 }
 
+function addressComponent(components: any[], types: string[]): string | null {
+  for (const type of types) {
+    const component = components.find((item: any) => Array.isArray(item.types) && item.types.includes(type));
+    if (component) return component.longText || component.shortText || null;
+  }
+  return null;
+}
+
 async function placeDetails(body: Record<string, any>, apiKey: string) {
   const placeId = String(body.placeId || "").trim();
   if (!placeId) throw new Error("Falta el Place ID");
@@ -102,24 +110,51 @@ async function placeDetails(body: Record<string, any>, apiKey: string) {
     `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?${params}`,
     apiKey,
     { method: "GET" },
-    "id,displayName,formattedAddress,location",
+    "id,displayName,formattedAddress,location,addressComponents",
   );
+  const components = Array.isArray(payload.addressComponents) ? payload.addressComponents : [];
   return {
     placeId: payload.id || placeId,
     displayName: payload.displayName?.text || "",
     formattedAddress: payload.formattedAddress || "",
     location: payload.location || null,
+    city: addressComponent(components, ["locality", "postal_town", "administrative_area_level_2"]),
+    province: addressComponent(components, ["administrative_area_level_1"]),
+    postalCode: addressComponent(components, ["postal_code"]),
+    country: addressComponent(components, ["country"]),
+    addressComponents: components,
+  };
+}
+
+type RouteMode = "base_origin_destination_base" | "base_origin" | "origin_destination";
+
+function routeWaypoints(body: Record<string, any>) {
+  const mode = String(body.routeMode || "base_origin_destination_base") as RouteMode;
+  const base = body.base || {};
+  const origin = body.origin || {};
+  const destination = body.destination || {};
+
+  if (mode === "base_origin") {
+    return { mode, origin: latLngWaypoint(base), destination: latLngWaypoint(origin), intermediates: [] };
+  }
+  if (mode === "origin_destination") {
+    return { mode, origin: latLngWaypoint(origin), destination: latLngWaypoint(destination), intermediates: [] };
+  }
+  if (mode !== "base_origin_destination_base") throw new Error("Modo de recorrido inválido");
+  return {
+    mode,
+    origin: latLngWaypoint(base),
+    destination: latLngWaypoint(base),
+    intermediates: [latLngWaypoint(origin), latLngWaypoint(destination)],
   };
 }
 
 async function computeRoute(body: Record<string, any>, apiKey: string) {
-  const base = body.base || {};
-  const origin = body.origin || {};
-  const destination = body.destination || {};
+  const waypoints = routeWaypoints(body);
   const request = {
-    origin: latLngWaypoint(base),
-    destination: latLngWaypoint(base),
-    intermediates: [latLngWaypoint(origin), latLngWaypoint(destination)],
+    origin: waypoints.origin,
+    destination: waypoints.destination,
+    intermediates: waypoints.intermediates,
     travelMode: "DRIVE",
     routingPreference: "TRAFFIC_AWARE",
     departureTime: body.departureTime || new Date().toISOString(),
@@ -162,6 +197,7 @@ async function computeRoute(body: Record<string, any>, apiKey: string) {
   }));
 
   return {
+    routeMode: waypoints.mode,
     distanceMeters: Number(route.distanceMeters || 0),
     durationSeconds: parseDurationSeconds(route.duration),
     legs,
@@ -176,16 +212,17 @@ Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método no permitido" }, 405);
 
   const apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
-  if (!apiKey) {
-    return json({ error: "Google Maps todavía no está configurado en el servidor" }, 503);
-  }
+  if (!apiKey) return json({ error: "Google Maps todavía no está configurado en el servidor" }, 503);
 
   try {
     const body = await request.json();
     const action = String(body?.action || "");
     if (action === "autocomplete") return json(await autocomplete(body, apiKey));
     if (action === "place") return json(await placeDetails(body, apiKey));
-    if (action === "route") return json(await computeRoute(body, apiKey));
+    if (action === "route") {
+      if (body?.routeMode === "manual") return json({ error: "El kilometraje manual no usa cálculo automático" }, 400);
+      return json(await computeRoute(body, apiKey));
+    }
     return json({ error: "Acción inválida" }, 400);
   } catch (error) {
     console.error("[maps-proxy]", error);
