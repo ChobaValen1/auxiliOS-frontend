@@ -126,13 +126,13 @@ test('la mesa conserva los controles actuales de administración y supervisión'
   assert.match(tolls, /canManage=\(\)=>role\(\)==='administracion'/);
 });
 
-test('el operador obtiene referencias mediante un RPC acotado y no mediante acceso amplio a usuarios', () => {
+test('el operador obtiene referencias acotadas sin Sucursal ni accesos amplios', () => {
   assert.match(references, /get_operator_service_reference_data/);
   assert.match(references, /services\.S\.companies/);
-  assert.match(references, /services\.S\.branches/);
   assert.match(references, /services\.S\.drivers/);
   assert.match(references, /services\.S\.trucks/);
   assert.match(references, /services\.S\.concepts/);
+  assert.doesNotMatch(references, /services\.S\.branches|company_branches/);
   assert.match(references, /\['administracion','operador','supervision'\]\.includes\(role\(\)\)/);
   assert.doesNotMatch(references, /\.from\('users'\)/);
   assert.doesNotMatch(references, /\.from\('companies'\)/);
