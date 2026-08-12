@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
+const config = read('config.js');
 const flags = read('feature-flags.js');
 const workspace = read('operator-service-workspace-reactive-v1.js');
 const wizard = read('operator-service-wizard.js');
@@ -16,9 +17,10 @@ const sw = read('sw.js');
 
 test('el workspace reactivo es el renderer canónico de Nuevo Servicio', () => {
   assert.match(flags, /flags\.service_workspace_v2/);
-  assert.match(flags, /operator-service-workspace-v2\.css/);
-  assert.match(flags, /operator-service-workspace-reactive-v1\.css/);
-  assert.match(flags, /operator-service-workspace-reactive-v1\.js/);
+  assert.match(config, /operator-service-workspace-v2\.css/);
+  assert.match(config, /operator-service-workspace-reactive-v1\.css/);
+  assert.match(config, /operator-service-workspace-reactive-v1\.js/);
+  assert.doesNotMatch(flags, /operator-service-workspace-reactive-v1\.js|operator-service-workspace-behavior-v1\.js/);
   assert.doesNotMatch(flags, /operator-service-workspace-v2\.js|operator-service-workspace-review-v3\.js/);
 });
 
@@ -48,36 +50,42 @@ test('el formulario se monta una sola vez y luego sincroniza sectores', () => {
   assert.equal((workspace.match(/shell\.innerHTML/g) || []).length, 1);
   assert.match(workspace, /function sync\(force=false\)/);
   assert.match(workspace, /function syncCatalog\(\)/);
+  assert.match(workspace, /function syncContextStatus\(\)/);
   assert.match(workspace, /function syncResources\(\)/);
   assert.match(workspace, /function syncSummary\(\)/);
 });
 
-test('la primera columna recupera el orden operativo anterior', () => {
+test('la primera columna usa Prestadora Base y Tipo de Servicio sin Sucursal', () => {
   const adminStart = workspace.indexOf('<section class="osv2-column admin-column">');
   const routeStart = workspace.indexOf('<section class="osv2-column route-column">');
   assert.ok(adminStart >= 0 && routeStart > adminStart);
   const admin = workspace.slice(adminStart, routeStart);
-  const ordered = ['Código prestadora', 'Fecha *', 'Hora *', 'Arribo', 'Fin', 'Demora', 'Prestadora *', 'Base Operativa', 'Tipo de Servicio *', 'Tipo de Logística', 'Asignar Chofer', 'Asignar Móvil', 'Conceptos adicionales'];
+  const ordered = ['Código prestadora', 'Fecha *', 'Hora *', 'Arribo', 'Fin', 'Demora', 'Prestadora *', 'Base *', 'Tipo de Servicio *', 'Tipo de Logística', 'Asignar Chofer', 'Asignar Móvil', 'Conceptos adicionales'];
   let cursor = -1;
   for (const label of ordered) {
     const next = admin.indexOf(label);
-    assert.ok(next > cursor, `${label} debe respetar el orden anterior`);
+    assert.ok(next > cursor, `${label} debe respetar el orden operativo`);
     cursor = next;
   }
+  assert.doesNotMatch(admin, /Sucursal|Base Operativa/);
   assert.doesNotMatch(admin, /Orden de compra/i);
   assert.doesNotMatch(admin, /Patente|Vehículo del cliente/);
   assert.match(admin, /data-time-field="estimated_arrival_at"/);
   assert.match(admin, /data-time-field="estimated_finish_at"/);
+  assert.match(admin, /osv4-context-status/);
 });
 
-test('Agregar concepto agrega una fila independiente por click', () => {
+test('Agregar concepto agrega una fila independiente con estado y sin importe', () => {
   assert.match(workspace, /data-click="add-concept"/);
   assert.match(workspace, /ui\.rows\.push\(\{id:uid\(\),conceptId:''\}\)/);
   assert.match(workspace, /osv4-concept-row/);
   assert.match(workspace, /Concepto/);
   assert.match(workspace, /Código Prestadora/);
   assert.match(workspace, /Cantidad/);
-  assert.match(workspace, /Importe/);
+  assert.match(workspace, /Estado/);
+  assert.match(workspace, /Disponible/);
+  assert.match(workspace, /Sin precio/);
+  assert.doesNotMatch(workspace, />Importe/);
   assert.doesNotMatch(workspace, /conceptPickerOpen|osv2-concept-picker-table/);
 });
 
@@ -88,11 +96,13 @@ test('las unidades determinan cómo se edita la cantidad', () => {
   assert.match(workspace, /hour:\{label:'horas',step:\.25,locked:false\}/);
 });
 
-test('peajes y excedentes conservan paneles independientes', () => {
+test('peajes y excedentes conservan paneles independientes sin exponer precios', () => {
   assert.match(workspace, /data-click="toggle-tolls"/);
   assert.match(workspace, /data-click="toggle-extras"/);
   assert.match(workspace, /id="osv4-tolls"/);
   assert.match(workspace, /id="osv4-extras"/);
+  assert.match(workspace, /Validar servicio/);
+  assert.doesNotMatch(workspace, /money\(/);
 });
 
 test('la segunda columna conserva recorrido vehículo cliente kilómetros y observaciones', () => {
@@ -123,11 +133,11 @@ test('Maps flota sobre el layout y no ocupa espacio al cerrarse', () => {
   assert.match(workspace, /function closeSuggestions\(kind,cancel=false\)/);
 });
 
-test('el workspace forma parte de CI y utiliza una caché PWA vigente', () => {
+test('el workspace forma parte de CI y utiliza la caché PWA actual', () => {
   assert.match(pkg, /node --check operator-service-workspace-reactive-v1\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
   assert.ok(version);
-  assert.ok(Number(version[1]) >= 143);
+  assert.ok(Number(version[1]) >= 165);
   assert.match(sw, /operator-service-workspace-v2\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);
