@@ -1,4 +1,4 @@
-/* AuxiliOS · Peajes y Adicionales */
+/* AuxiliOS · Peajes y Adicionales · sin ownership de navegación */
 (()=>{'use strict';
 const ID='toll-management';
 if(window.AuxiliosTolls)return;
@@ -21,13 +21,6 @@ function loadCss(){
 }
 
 function inject(){
- if(!document.getElementById('nav-peajes')){
-  const bottom=document.querySelector('.sidenav .nav-bottom');
-  bottom?.insertAdjacentHTML('beforebegin','<div class="nav-item" id="nav-peajes" onclick="goTo(\'peajes\')" style="display:none"><span class="nav-icon">🛣️</span><span class="nav-label">Peajes y Adicionales</span></div>');
- }else{
-  const label=document.querySelector('#nav-peajes .nav-label');if(label)label.textContent='Peajes y Adicionales';
- }
-
  if(!document.getElementById('screen-peajes')){
   document.querySelector('.content')?.insertAdjacentHTML('beforeend',`<div class="screen" id="screen-peajes">
    <div class="tm-head"><div><div class="tm-eyebrow">Configuración operativa</div><h2>Peajes y Adicionales</h2><p>Alta, consulta y mantenimiento de conceptos complementarios del servicio.</p></div><button type="button" class="btn btn-ghost" data-tm-refresh>↻ Actualizar</button></div>
@@ -67,7 +60,6 @@ function inject(){
 }
 
 function applyRole(){
- const nav=document.getElementById('nav-peajes');if(nav)nav.style.display=canRead()?'':'none';
  document.querySelectorAll('.tm-admin').forEach(node=>node.style.display=canManage()?'':'none');
 }
 
