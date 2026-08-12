@@ -9,11 +9,12 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const migration = read('migrations/20260805090000_operator_resource_availability.sql');
 const workspace = read('operator-service-workspace-reactive-v1.js');
 const css = read('operator-service-workspace-reactive-v1.css');
+const config = read('config.js');
 const flags = read('feature-flags.js');
 const pkg = read('package.json');
 const sw = read('sw.js');
 
-test('Nuevo Servicio mantiene código prestadora demora horarios y KM totales en el renderer reactivo', () => {
+test('Nuevo Servicio mantiene código prestadora demora horarios KM y contexto de base', () => {
   assert.match(workspace, /Código prestadora/);
   assert.match(workspace, /service_order_number/);
   assert.match(workspace, /Arribo/);
@@ -25,6 +26,8 @@ test('Nuevo Servicio mantiene código prestadora demora horarios y KM totales en
   assert.match(workspace, /estimated_asphalt_km/);
   assert.match(workspace, /estimated_gravel_km/);
   assert.match(workspace, /estimated_distance_km/);
+  assert.match(workspace, /osv4-base/);
+  assert.match(workspace, /osv4-context-status/);
 });
 
 test('la disponibilidad se obtiene desde jornadas, móviles y servicios activos', () => {
@@ -53,16 +56,17 @@ test('Maps consulta luego de 550 ms, valida place y cierra resultados fuera del 
   assert.match(css, /\.osv4-suggestions\{position:absolute/);
 });
 
-test('Review V3 deja de cargarse y el renderer reactivo entra en bootstrap CI y PWA', () => {
+test('Review V3 no carga y el renderer reactivo entra una sola vez por bootstrap, CI y PWA', () => {
   assert.match(flags, /flags\.service_workspace_v2/);
-  assert.match(flags, /operator-service-workspace-reactive-v1\.css/);
-  assert.match(flags, /operator-service-workspace-reactive-v1\.js/);
+  assert.doesNotMatch(flags, /operator-service-workspace-reactive-v1\.css|operator-service-workspace-reactive-v1\.js/);
   assert.doesNotMatch(flags, /operator-service-workspace-review-v3/);
+  assert.match(config, /operator-service-workspace-reactive-v1\.css/);
+  assert.match(config, /operator-service-workspace-reactive-v1\.js/);
   assert.match(pkg, /node --check operator-service-workspace-reactive-v1\.js/);
   assert.doesNotMatch(pkg, /node --check operator-service-workspace-review-v3\.js/);
   const version = sw.match(/auxilios-v(\d+)/);
   assert.ok(version);
-  assert.ok(Number(version[1]) >= 143);
+  assert.ok(Number(version[1]) >= 165);
   assert.match(sw, /operator-service-workspace-reactive-v1\.css/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);
   assert.doesNotMatch(sw, /operator-service-workspace-review-v3/);
