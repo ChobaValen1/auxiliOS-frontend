@@ -172,7 +172,7 @@ test('Peajes y Adicionales muestra el alta junto al registro histórico', () => 
   assert.match(tollsCss, /@media/i);
 });
 
-test('la nueva entrega se habilita únicamente mediante una bandera individual', () => {
+test('la edición de servicio queda bajo bandera individual y Peajes es configuración canónica', () => {
   assert.match(betaMigration, /'service_editing_tolls_v1'/);
   assert.match(betaMigration, /lower\(u\.email\) = 'admin@sigmaremolques\.com'/i);
   assert.doesNotMatch(betaMigration, /supervisor@sigmaremolques\.com/i);
@@ -181,16 +181,15 @@ test('la nueva entrega se habilita únicamente mediante una bandera individual',
   assert.match(featureFlags, /operator-reference-loader\.js/);
   assert.match(featureFlags, /operator-service-edit\.css/);
   assert.match(featureFlags, /operator-service-edit\.js/);
-  assert.match(featureFlags, /toll-management\.css/);
-  assert.match(featureFlags, /toll-management\.js/);
+  assert.doesNotMatch(featureFlags, /toll-management/);
   assert.doesNotMatch(featureFlags, /admin@sigmaremolques\.com/);
   assert.doesNotMatch(config, /auxilios-operator-reference-loader/);
   assert.doesNotMatch(config, /auxilios-operator-service-edit/);
-  assert.doesNotMatch(config, /auxilios-toll-management/);
+  assert.match(config, /auxilios-toll-management/);
   assert.match(config, /auxilios-feature-flags/);
 });
 
-test('los módulos forman parte de CI y caché PWA sin cargarse globalmente', () => {
+test('los módulos forman parte de CI y PWA sin duplicar la carga de Peajes', () => {
   assert.match(pkg, /node --check operator-reference-loader\.js/);
   assert.match(pkg, /node --check operator-service-edit\.js/);
   assert.match(pkg, /node --check toll-management\.js/);
@@ -198,6 +197,8 @@ test('los módulos forman parte de CI y caché PWA sin cargarse globalmente', ()
   for (const asset of ['operator-reference-loader.js', 'operator-service-edit.js', 'operator-service-edit.css', 'toll-management.js', 'toll-management.css']) {
     assert.match(sw, new RegExp(asset.replace('.', '\\.')));
   }
+  assert.match(config, /loadAuxiliosModule\('auxilios-toll-management', '\/toll-management\.js'\)/);
+  assert.doesNotMatch(featureFlags, /toll-management/);
   assert.match(editorCss, /#ose-modal\[hidden\]/);
   assert.match(editorCss, /@media/i);
 });
