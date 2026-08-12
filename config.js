@@ -67,6 +67,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Los módulos que crean rutas estructurales cargan antes del único dueño del sidenav.
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
     await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
+    await loadAuxiliosModule('auxilios-toll-management', '/toll-management.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
 
     // Configuración comercial canónica. No hay matriz ni motor comercial legacy en runtime.
@@ -87,7 +88,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-operator-service-workspace-behavior-v1', '/operator-service-workspace-behavior-v1.js');
     await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
 
-    // Estado de flota separado de la navegación: no puede volver a reordenar el sidenav.
+    // Estado operativo del módulo Camión, separado de la navegación.
     await loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js');
 
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
