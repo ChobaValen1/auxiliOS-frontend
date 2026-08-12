@@ -11,7 +11,7 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&
 function fillCompanyFilter(services){
  const select=document.getElementById('os-company');
  if(!select)return;
- select.innerHTML='<option value="all">Todas las empresas</option>'+(services.S.companies||[]).map(company=>`<option value="${company.company_id}">${esc(company.trade_name||company.legal_name)}</option>`).join('');
+ select.innerHTML='<option value="all">Todas las prestadoras</option>'+(services.S.companies||[]).map(company=>`<option value="${company.company_id}">${esc(company.trade_name||company.legal_name)}</option>`).join('');
 }
 
 async function load({refreshServices=true}={}){
@@ -22,7 +22,6 @@ async function load({refreshServices=true}={}){
   const {data,error}=await client.rpc('get_operator_service_reference_data');
   if(error)throw error;
   services.S.companies=Array.isArray(data?.companies)?data.companies:[];
-  services.S.branches=Array.isArray(data?.branches)?data.branches:[];
   services.S.drivers=Array.isArray(data?.drivers)?data.drivers:[];
   services.S.trucks=Array.isArray(data?.trucks)?data.trucks:[];
   services.S.concepts=Array.isArray(data?.concepts)?data.concepts:[];
