@@ -7,13 +7,16 @@ const css = fs.readFileSync('operator-service-workspace-reactive-v1.css','utf8')
 const serviceCatalog = fs.readFileSync('service-types-catalog-v2.js','utf8');
 const migration = fs.readFileSync('migrations/20260808093500_secondary_concepts_allow_km.sql','utf8');
 
-test('Agregar concepto crea filas independientes y no abre un catálogo completo', () => {
+test('Agregar concepto crea filas independientes y muestra disponibilidad sin importes', () => {
   assert.match(ui, /ui\.rows\.push\(\{id:uid\(\),conceptId:''\}\)/);
   assert.match(ui, /osv4-concept-row/);
   assert.match(ui, /Código Prestadora/);
   assert.match(ui, /Cantidad/);
-  assert.match(ui, /Importe/);
+  assert.match(ui, /Estado/);
+  assert.match(ui, /Disponible/);
+  assert.match(ui, /Sin precio/);
   assert.doesNotMatch(ui, /conceptPickerOpen|osv2-concept-picker-table/);
+  assert.doesNotMatch(ui, />Importe</);
 });
 
 test('las unidades del concepto controlan cantidad y el catálogo canónico permite KM', () => {
