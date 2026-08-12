@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v162'; // v162: navegación y configuración canónicas sin módulos legacy
+const CACHE_NAME = 'auxilios-v163'; // v163: navegación diaria, configuración completa e historial legible
 
 const PRECACHE_ASSETS = [
   '/',
