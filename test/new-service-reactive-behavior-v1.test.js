@@ -23,9 +23,11 @@ test('Chofer y Móvil conservan emparejamiento por jornada abierta', () => {
   assert.match(behavior, /setPair/);
 });
 
-test('el módulo de comportamiento carga después del renderer y está cubierto por CI y PWA', () => {
+test('el workspace y su comportamiento tienen un solo cargador canónico', () => {
   assert.ok(config.indexOf('/operator-service-workspace-behavior-v1.js') > config.indexOf('/operator-service-workspace-reactive-v1.js'));
-  assert.ok(flags.indexOf('/operator-service-workspace-behavior-v1.js') > flags.indexOf('/operator-service-workspace-reactive-v1.js'));
+  assert.doesNotMatch(flags, /operator-service-workspace-reactive-v1\.js/);
+  assert.doesNotMatch(flags, /operator-service-workspace-behavior-v1\.js/);
+  assert.doesNotMatch(flags, /configuration-service-unit-v1\.js/);
   assert.match(sw, /operator-service-workspace-behavior-v1\.js/);
   assert.match(pkg, /node --check operator-service-workspace-behavior-v1\.js/);
 });
