@@ -1,91 +1,67 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
 
-test('operator services renders the dispatch board and initializes the canonical creation controller', () => {
-  const elements = new Map();
-  const element = id => {
-    if (!elements.has(id)) {
-      elements.set(id, {
-        id,
-        innerHTML: '',
-        value: id === 'os-status' || id === 'os-company' ? 'all' : '',
-        style: {},
-        className: '',
-        classList: { add() {}, remove() {}, contains() { return false; } },
-        insertAdjacentHTML() {},
-      });
-    }
-    return elements.get(id);
-  };
+const services = fs.readFileSync('operator-services.js','utf8');
+const css = fs.readFileSync('operator-services.css','utf8');
+const config = fs.readFileSync('config.js','utf8');
 
-  for (const id of ['os-board', 'os-kpis', 'os-q', 'os-status', 'os-company', 'os-wizard-shell']) element(id);
+const removed = [
+  'operator-active-desk-clean-v1.js','operator-services-canonical-view-v1.js','operator-services-stability-v1.js',
+  'operator-services-block-a-v1.js','operator-reference-loader.js','operator-service-v2.js',
+  'operator-service-edit.js','operator-service-reajuste-v3.js'
+];
 
-  const sandbox = {
-    console, Intl, Date, Number, String, Set, Map, Promise, Object,
-    confirm: () => true,
-    prompt: () => '',
-    setInterval: () => 1,
-    clearInterval: () => {},
-    PERFIL_USUARIO: { roles: { name: 'administracion' }, full_name: 'Administrador' },
-    USUARIO_ACTUAL: { id: 'admin' },
-    openModal: () => {}, closeModal: () => {}, toast: () => {},
-    document: {
-      readyState: 'loading',
-      addEventListener() {},
-      getElementById: id => elements.get(id) || null,
-      createElement() { return { id: '', rel: '', href: '', addEventListener() {}, dataset: {} }; },
-      head: { appendChild() {} }, body: { insertAdjacentHTML() {}, appendChild() {} },
-      querySelector() { return null; }, querySelectorAll() { return []; },
-    },
-    _db: {
-      from() { throw new Error('The render smoke test must not access Supabase.'); },
-      rpc() { throw new Error('The render smoke test must not call RPCs.'); },
-    },
-  };
-  sandbox.window = sandbox;
-  vm.createContext(sandbox);
+test('Servicios tiene una sola mesa tabular y no conserva el Kanban anterior', () => {
+  assert.match(services, /os-commandbar/);
+  assert.match(services, /os-status-tabs/);
+  assert.match(services, /os-table-body/);
+  assert.match(services, /<th>Servicio<\/th><th>Fecha<\/th><th>Recorrido<\/th><th>Cliente \/ Vehículo<\/th><th>Chofer \/ Móvil<\/th><th>Estado<\/th>/);
+  assert.doesNotMatch(services, /os-kpis|os-board|renderKpis|groupFor\(|os-column-list|Mesa operativa|Centro de despacho/);
+});
 
-  for (const file of ['operator-services.js', 'operator-service-wizard.js']) {
-    const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
-    vm.runInContext(source, sandbox, { filename: file });
-  }
+test('la mesa prioriza densidad y deja la tabla ocupar la pantalla', () => {
+  assert.match(css, /os-commandbar/);
+  assert.match(css, /height:34px/);
+  assert.match(css, /os-status-tabs button/);
+  assert.match(css, /height:28px/);
+  assert.match(css, /max-height:calc\(100vh - 176px\)/);
+  assert.match(css, /os-table th\{position:sticky/);
+  assert.match(css, /os-table td\{height:54px/);
+});
 
-  const operator = sandbox.OperatorServices;
-  assert.ok(operator);
-  const state = operator.S;
-  state.companies = [{ company_id: 'company', legal_name: 'Empresa Prueba', trade_name: 'Empresa' }];
-  state.drivers = [{ user_id: 'driver', full_name: 'Chofer Prueba' }];
-  state.trucks = [{ truck_id: 1, plate: 'TEST123', numero_interno: 'Móvil 1' }];
-  state.concepts = [{ concept_id: 'primary', name: 'Asistencia liviano', icon: '🚗' }];
-  state.services = [{
-    service_id: 'service', service_number: 'SRV-20260801-00001', status: 'assigned', priority: 'urgent',
-    company_id: 'company', billing_base_id: 'base', billing_base_name: 'Base Prueba', primary_concept_id: 'primary',
-    assigned_driver_id: 'driver', assigned_truck_id: 1, scheduled_for: '2026-08-01T14:00:00-03:00',
-    origin: 'Origen', destination: 'Destino', vehicle_plate: 'TEST123', currency: 'ARS',
-    company_estimated_total: 100000, pricing_snapshot: { components: [] },
-  }];
+test('la tabla agrupa datos relacionados y señala servicios que requieren atención', () => {
+  assert.match(services, /function needsAttention/);
+  assert.match(services, /function delayMinutes/);
+  assert.match(services, /\['attention','Atención'\]/);
+  assert.match(services, /serviceIdentity/);
+  assert.match(services, /resourceCell/);
+  assert.match(services, /os-route-cell/);
+  assert.match(services, /os-unassigned/);
+  assert.match(services, /os-delay/);
+});
 
-  operator.renderBoard();
-  assert.match(element('os-board').innerHTML, /Pendientes/);
-  assert.match(element('os-board').innerHTML, /Asignados/);
-  assert.match(element('os-board').innerHTML, /En curso/);
-  assert.match(element('os-board').innerHTML, /Finalizados/);
-  assert.match(element('os-board').innerHTML, /SRV-20260801-00001/);
-  assert.match(element('os-board').innerHTML, /Empresa/);
-  assert.match(element('os-kpis').innerHTML, /Pendientes/);
-  assert.equal(typeof sandbox.abrirNuevoServicio, 'function');
-  assert.equal(typeof sandbox.abrirDetalleServicio, 'function');
-  assert.equal(typeof sandbox.guardarAsignacionServicio, 'function');
-  assert.equal(typeof sandbox.avanzarServicioChofer, 'function');
-  assert.equal(operator.statusMeta.at_destination.label, 'En destino');
+test('la mesa carga referencias mediante una única RPC protegida', () => {
+  assert.match(services, /get_operator_service_reference_data/);
+  assert.match(services, /list_operator_services/);
+  assert.doesNotMatch(services, /company_branches|S\.branches/);
+  assert.doesNotMatch(services, /\.from\('users'\)|\.from\('companies'\)/);
+});
 
-  sandbox.abrirNuevoServicio();
-  assert.ok(state.wizard);
-  assert.match(element('os-wizard-shell').innerHTML, /Cargando formulario de Nuevo Servicio/);
-  assert.doesNotMatch(element('os-wizard-shell').innerHTML, /Alta operativa|os-service-desktop/);
-  assert.equal(typeof operator.renderWizard, 'function');
-  assert.equal('branches' in state, false);
+test('Operaciones puede ver la mesa sin recibir una implementación diferente por feature flag', () => {
+  assert.match(services, /canRead=\(\)=>\['administracion','operador','supervision','facturacion'\]\.includes\(role\(\)\)/);
+  assert.match(services, /canManage=\(\)=>\['administracion','operador'\]\.includes\(role\(\)\)/);
+  assert.doesNotMatch(services, /AuxiliosFeatures|operator_console_v2|service_editing_tolls_v1/);
+});
+
+test('los importes solo se pintan para Administración o Facturación', () => {
+  assert.match(services, /canSeeCommercial=\(\)=>\['administracion','facturacion'\]\.includes\(role\(\)\)/);
+  assert.match(services, /if\(canSeeCommercial\(\)\)/);
+});
+
+test('el runtime no carga ninguna de las implementaciones reemplazadas', () => {
+  for (const name of removed) assert.equal(config.includes(name), false, `${name} no debe cargarse`);
+  assert.match(config, /operator-services\.js/);
+  assert.match(config, /operator-service-wizard\.js/);
+  assert.match(config, /operator-service-workspace-reactive-v1\.js/);
 });
