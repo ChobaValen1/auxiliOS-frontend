@@ -39,7 +39,7 @@ test('workspace usa Prestadora Base y Tipo sin Sucursal',()=>{
 });
 
 test('selects reactivos reflejan el valor inmediatamente',()=>{
-  const helper=workspace.split('function setOptions')[1].split('function itemById')[0];
+  const helper=workspace.split('function setOptions')[1].split('function selectedBase')[0];
   assert.match(helper,/el\.value=value\?\?''/);
   assert.doesNotMatch(helper,/document\.activeElement/);
   assert.match(workspace,/data-assignment="driver"/);
@@ -47,8 +47,9 @@ test('selects reactivos reflejan el valor inmediatamente',()=>{
 });
 
 test('configuración empresarial controla campos requeridos opcionales u ocultos',()=>{
-  assert.match(wizard,/configuredRequiredErrors/);
-  assert.match(wizard,/fieldMode/);
+  assert.match(wizard,/function requiredErrors/);
+  assert.match(wizard,/S\.moduleConfig\?\.field_modes/);
+  assert.match(workspace,/function fieldMode/);
   assert.match(workspace,/data-field-config="customer_phone"/);
   assert.match(workspace,/data-field-config="vehicle_plate"/);
   assert.match(workspace,/data-field-config="assigned_resources"/);
@@ -83,5 +84,6 @@ test('PWA incluye solo el workspace y configuración canónicos',()=>{
   assert.match(sw,/operator-services\.js/);
   assert.match(sw,/operator-service-wizard\.js/);
   assert.match(sw,/operator-service-workspace-reactive-v1\.js/);
+  assert.match(sw,/operator-service-commercial-addons-v1\.js/);
   assert.doesNotMatch(sw,/operator-active-desk|operator-services-block-a|operator-service-edit|operator-service-reajuste|operator-service-v2\.js|operator-reference-loader/);
 });
