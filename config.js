@@ -4,7 +4,6 @@ const ENV = {
 
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
-window.AuxiliosFeatures.flags.service_workspace_v2 = true;
 
 function loadAuxiliosStyle(id, href) {
   if (document.getElementById(id)) return;
@@ -76,23 +75,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
     loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
     loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
-    loadAuxiliosStyle('auxilios-operator-service-code-warnings-v1-css', '/operator-service-code-warnings-v1.css');
     await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
-    await loadAuxiliosModule('auxilios-operator-service-code-warnings-v1', '/operator-service-code-warnings-v1.js');
-    await loadAuxiliosModule('auxilios-operator-service-workspace-behavior-v1', '/operator-service-workspace-behavior-v1.js');
-    await loadAuxiliosModule('auxilios-operator-desk-v2', '/operator-service-v2.js');
 
     await loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
     await loadAuxiliosModule('auxilios-phase3-journey-start-guard', '/phase3-journey-start-guard.js');
-    await loadAuxiliosModule('auxilios-phase3b-modal-visibility-guard', '/phase3b-modal-visibility-guard.js');
     await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
     await loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js');
     await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
-    await loadAuxiliosModule('auxilios-operator-services-stability-v1', '/operator-services-stability-v1.js');
-
-    loadAuxiliosStyle('auxilios-operator-service-reajuste-v3-css', '/operator-service-reajuste-v3.css');
-    await loadAuxiliosModule('auxilios-operator-service-reajuste-v3', '/operator-service-reajuste-v3.js');
 
     loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
     await loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js');
