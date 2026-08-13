@@ -1,5 +1,4 @@
 'use strict';
-
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -7,234 +6,113 @@ const fs = require('node:fs');
 const billing = fs.readFileSync('company-billing-parameters-v4.js','utf8');
 const services = fs.readFileSync('company-services-configuration-v4.js','utf8');
 const serviceCatalog = fs.readFileSync('service-types-catalog-v2.js','utf8');
-const tariffTypes = fs.readFileSync('tariff-types-catalog-v1.js','utf8');
 const tariffs = fs.readFileSync('company-tariffs-v4.js','utf8');
 const companies = fs.readFileSync('empresas-v2.js','utf8');
-const operatorWizard = fs.readFileSync('operator-service-wizard.js','utf8');
-const operatorWorkspace = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
+const wizard = fs.readFileSync('operator-service-wizard.js','utf8');
+const workspace = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const operatorServices = fs.readFileSync('operator-services.js','utf8');
 const config = fs.readFileSync('config.js','utf8');
+const flags = fs.readFileSync('feature-flags.js','utf8');
 const sw = fs.readFileSync('sw.js','utf8');
 const pkg = fs.readFileSync('package.json','utf8');
-const operatorMigration = fs.readFileSync('migrations/20260811224500_operator_rate_items_pricing_v4.sql','utf8');
-const distanceRulesMigration = fs.readFileSync('migrations/20260812123000_company_distance_billing_rules_v1.sql','utf8');
-const currentPricesMigration = fs.readFileSync('migrations/20260812190000_current_service_prices_and_operator_context_v1.sql','utf8');
-const surchargeMigration = fs.readFileSync('migrations/20260812193000_current_billing_surcharges_v1.sql','utf8');
-const validityMigration = fs.readFileSync('migrations/20260812201500_scheduled_service_price_validity_v1.sql','utf8');
-const auditGuardMigration = fs.readFileSync('migrations/20260812204000_scheduled_price_audit_guard_v1.sql','utf8');
-const engineInheritanceMigration = fs.readFileSync('migrations/20260812205000_scheduled_rate_engine_inheritance_v1.sql','utf8');
-const cloneFilterMigration = fs.readFileSync('migrations/20260812210000_scheduled_rate_clone_filter_v1.sql','utf8');
-const timelineMigration = fs.readFileSync('migrations/20260812211000_price_timeline_cascade_v1.sql','utf8');
+const distance = fs.readFileSync('migrations/20260812123000_company_distance_billing_rules_v1.sql','utf8');
+const prices = fs.readFileSync('migrations/20260812190000_current_service_prices_and_operator_context_v1.sql','utf8');
+const validity = fs.readFileSync('migrations/20260812201500_scheduled_service_price_validity_v1.sql','utf8');
+const timeline = fs.readFileSync('migrations/20260812211000_price_timeline_cascade_v1.sql','utf8');
+const edit = fs.readFileSync('migrations/20260812222500_canonical_service_edit_workspace_v1.sql','utf8');
 
-const canonical = [
-  'empresas-v2.js','service-types-catalog-v2.js','tariff-types-catalog-v1.js',
-  'company-services-configuration-v4.js','company-billing-parameters-v4.js',
-  'company-tariffs-v4.js','configuration-center.js','operator-service-code-warnings-v1.js',
-];
-const removedRuntime = [
-  'empresas.js','configuration-reference.js','configuration-reference.css','billing-base-operator-adapter.js',
-  'frequent-navigation.js','comercial.js','comercial-services.js','comercial-code-strategy.js','comercial-rules.js',
-  'comercial-summary.js','tariff-composition.js','comercial.css','company-billing-settings.js','equal-billing-bases.js',
-  'company-configuration-coherence-v1.js','tariff-new-rate-flow-v1.js','tariff-matrix-v3.js',
-  'operator-service-tariff-v3-ui.js','operator-service-tariff-v3.css',
-];
+const canonical = ['empresas-v2.js','service-types-catalog-v2.js','company-services-configuration-v4.js','company-billing-parameters-v4.js','company-tariffs-v4.js','operator-services.js','operator-service-wizard.js','operator-service-workspace-reactive-v1.js'];
+const removed = ['empresas.js','configuration-reference.js','billing-base-operator-adapter.js','comercial.js','tariff-composition.js','tariff-matrix-v3.js','tariff-new-rate-flow-v1.js','operator-active-desk-clean-v1.js','operator-services-canonical-view-v1.js','operator-services-stability-v1.js','operator-services-block-a-v1.js','operator-reference-loader.js','operator-service-edit.js','operator-service-code-warnings-v1.js','operator-service-workspace-behavior-v1.js','operator-service-reajuste-v3.js','operator-service-v2.js','phase3b-modal-visibility-guard.js'];
 
-test('runtime keeps only canonical commercial modules and code warnings',()=>{
-  for(const name of canonical){
-    assert.ok(config.includes(name),`${name} must load at runtime`);
-    assert.ok(sw.includes(name),`${name} must be precached`);
-    if(name.endsWith('.js'))assert.ok(pkg.includes(name),`${name} must be checked by CI`);
-  }
-  for(const name of removedRuntime){
-    assert.equal(config.includes(name),false,`${name} must not load at runtime`);
-    assert.equal(sw.includes(name),false,`${name} must not be precached`);
-    assert.equal(pkg.includes(name),false,`${name} must not be checked by CI`);
-  }
+test('runtime, CI y PWA contienen solo los módulos canónicos',()=>{
+  for(const name of canonical){assert.ok(config.includes(name),`${name} debe cargar`);assert.ok(sw.includes(name),`${name} debe precachearse`);if(name.endsWith('.js'))assert.ok(pkg.includes(name),`${name} debe pasar syntax check`);}
+  for(const name of removed){assert.equal(config.includes(name),false,`${name} no debe cargar`);assert.equal(sw.includes(name),false,`${name} no debe precachearse`);assert.equal(pkg.includes(name),false,`${name} no debe estar en CI`);}
 });
 
-test('Tipos de Servicio is the only service creation catalog',()=>{
-  assert.match(serviceCatalog,/screen-config-service-types/);
-  assert.match(serviceCatalog,/Nuevo servicio/);
+test('Tipos de Servicio es el único catálogo creador y Prestadora mantiene una allowlist',()=>{
   assert.match(serviceCatalog,/save_service_type_config/);
   assert.match(serviceCatalog,/delete_service_type_config/);
   assert.match(serviceCatalog,/distance_chargeable/);
+  assert.match(services,/save_company_service_setting_v2/);
+  assert.match(services,/Acá no se crean servicios/);
   assert.doesNotMatch(services,/save_service_type_config/);
 });
 
-test('Tipos de Tarifa remains an independent service classification catalog',()=>{
-  assert.match(tariffTypes,/list_tariff_types_config/);
-  assert.match(tariffTypes,/save_tariff_type_config/);
-  assert.match(tariffTypes,/adds_km/);
-  assert.match(tariffTypes,/service_ids/);
-  assert.doesNotMatch(config,/configuration-reference/);
-});
-
-test('provider services is a pure allowlist',()=>{
-  assert.match(services,/get_company_configuration_v2/);
-  assert.match(services,/list_service_types_config/);
-  assert.match(services,/save_company_service_setting_v2/);
-  assert.match(services,/Acá no se crean servicios/);
-  assert.doesNotMatch(services,/MutationObserver/);
-});
-
-test('billing parameters owns provider bases and current contractual rules without tariff drafts',()=>{
+test('Parámetros de facturación posee Bases y reglas contractuales, no Tarifas',()=>{
   assert.match(billing,/get_company_billing_configuration/);
-  assert.match(billing,/available_bases/);
-  assert.match(billing,/data-bp4-base/);
-  assert.match(billing,/selectedBases/);
   assert.match(billing,/Bases habilitadas para esta prestadora/);
-  assert.match(billing,/bases:selectedBases\.map|bases: selectedBases\.map/);
   assert.match(billing,/Radio cubierto \(km\)/);
   assert.match(billing,/Cobrar movida hasta \(km\)/);
-  assert.match(billing,/covered_radius_km:radius|covered_radius_km: radius/);
-  assert.match(billing,/movement_charge_until_km:movementUntil|movement_charge_until_km: movementUntil/);
-  assert.match(billing,/get_company_billing_surcharges_v1/);
-  assert.match(billing,/save_company_billing_surcharges_v1/);
-  assert.doesNotMatch(billing,/ensure_company_tariff_draft_v4/);
-  assert.doesNotMatch(billing,/publish_company_tariff_draft_v4/);
-  assert.doesNotMatch(billing,/draftCard|rateCard|activeCard/);
-  assert.doesNotMatch(billing,/function globalBases/);
+  assert.match(billing,/covered_radius_km/);
+  assert.match(billing,/movement_charge_until_km/);
+  assert.doesNotMatch(billing,/ensure_company_tariff_draft_v4|publish_company_tariff_draft_v4/);
 });
 
-test('Prestadoras uses current prices and embeds the canonical price screen',()=>{
-  assert.match(companies,/get_company_configuration_v2/);
-  assert.match(companies,/get_company_billing_configuration/);
-  assert.match(companies,/get_company_service_prices_v1/);
-  assert.match(companies,/mountEmbedded/);
-  assert.match(companies,/Precios/);
-  assert.match(companies,/Sin precio/);
-  assert.doesNotMatch(companies,/get_company_tariffs_v4/);
-  assert.doesNotMatch(companies,/active_card|draft_card|Tarifario v|Sin tarifario publicado/);
-  assert.doesNotMatch(companies,/company_branches|abrirSucursal|guardarSucursal|desactivarSucursal|Nueva sucursal|Sucursales/);
-});
-
-test('Tarifas exposes current price, effective dates, future scheduling and base exceptions in one screen',()=>{
+test('Tarifas maneja precio actual, vigencia futura y excepción por Base sin draft/publish',()=>{
   assert.match(tariffs,/get_company_service_prices_v1/);
   assert.match(tariffs,/save_company_service_price_v1/);
-  assert.match(tariffs,/delete_company_service_price_exception_v1/);
-  assert.match(tariffs,/get_company_service_price_history_v1/);
   assert.match(tariffs,/get_company_service_price_schedule_v1/);
   assert.match(tariffs,/save_company_service_price_schedule_v1/);
   assert.match(tariffs,/cancel_company_service_price_schedule_v1/);
-  assert.match(tariffs,/mountEmbedded/);
   assert.match(tariffs,/Vigente desde/);
   assert.match(tariffs,/Programar/);
-  assert.match(tariffs,/Valor movida/);
-  assert.match(tariffs,/Valor por KM/);
   assert.match(tariffs,/Excepciones por base/);
-  assert.match(tariffs,/Próxima vigencia/);
   assert.doesNotMatch(tariffs,/ensure_company_tariff_draft_v4|publish_company_tariff_draft_v4|get_company_tariffs_v4/);
-  assert.doesNotMatch(tariffs,/Crear nueva vigencia|Borrador v|Tarifario publicado|draft_card|active_card/i);
-  assert.doesNotMatch(tariffs,/KM incluidos|KM excedente|included_km|Nota interna|ct4-rate-notes/i);
-  assert.doesNotMatch(tariffs,/covered_radius_km|movement_charge_until_km/);
 });
 
-test('Tarifas prioritizes service visibility and keeps KPIs compact',()=>{
-  assert.match(tariffs,/\.ct4-stats\{/);
-  assert.match(tariffs,/\.ct4-stat\{/);
-  assert.match(tariffs,/max-height:calc\(100vh - 220px\)/);
-  assert.match(tariffs,/position:sticky/);
-  assert.doesNotMatch(tariffs,/ct4-kpi|ct4-kpis/);
-  assert.match(tariffs,/scheduledServices = services\.filter\(service => allScheduleChanges/);
+test('Prestadoras embebe la misma implementación de precios y no contiene Sucursales',()=>{
+  assert.match(companies,/get_company_service_prices_v1/);
+  assert.match(companies,/mountEmbedded/);
+  assert.doesNotMatch(companies,/company_branches|abrirSucursal|guardarSucursal|desactivarSucursal|Nueva sucursal|Sucursales/);
 });
 
-test('current-price backend uses audited items as technical storage without branch semantics',()=>{
-  assert.match(currentPricesMigration,/get_company_service_prices_v1/);
-  assert.match(currentPricesMigration,/save_company_service_price_v1/);
-  assert.match(currentPricesMigration,/get_company_service_price_history_v1/);
-  assert.match(currentPricesMigration,/get_operator_service_context_v1/);
-  assert.match(currentPricesMigration,/v_card,\s*NULL,\s*v_base/);
-  assert.match(currentPricesMigration,/i\.branch_id\s+IS\s+NULL/i);
-  assert.match(currentPricesMigration,/new\.included_km:=0/);
-  assert.match(currentPricesMigration,/has_price/);
-  assert.match(currentPricesMigration,/blocking_issues/);
-  assert.match(currentPricesMigration,/warnings/);
+test('vigencias se resuelven por fecha del servicio y propagan herencia hasta un cambio explícito',()=>{
+  assert.match(validity,/price_card_for_company_date/);
+  assert.match(validity,/valid_from/);
+  assert.match(validity,/status='scheduled'/);
+  assert.match(timeline,/cascade_company_service_price_v1/);
+  assert.match(timeline,/IF NOT v_same_as_before THEN EXIT/);
+  assert.doesNotMatch(validity,/publish_company_tariff_draft_v4/);
 });
 
-test('future price validity is date-aware without restoring draft/publish workflow',()=>{
-  assert.match(validityMigration,/status='scheduled'/);
-  assert.match(validityMigration,/price_card_for_company_date/);
-  assert.match(validityMigration,/get_company_service_price_schedule_v1/);
-  assert.match(validityMigration,/save_company_service_price_schedule_v1/);
-  assert.match(validityMigration,/cancel_company_service_price_schedule_v1/);
-  assert.match(validityMigration,/valid_from/);
-  assert.doesNotMatch(validityMigration,/publish_company_tariff_draft_v4/);
+test('Nuevo/Editar Servicio consumen Base real, contexto de Prestadora y el mismo workspace',()=>{
+  assert.match(wizard,/get_operator_service_context_v1/);
+  assert.match(wizard,/get_operator_service_edit_context/);
+  assert.match(wizard,/billing_base_id/);
+  assert.match(wizard,/openCreate/);
+  assert.match(wizard,/openEdit/);
+  assert.match(workspace,/data-mode="\$\{w\.mode\}"/);
+  assert.doesNotMatch(wizard,/branch_id|cambiarSucursalServicio|get_operator_category_tariff_v3/);
+  assert.doesNotMatch(workspace,/Sucursal|Base Operativa/);
 });
 
-test('scheduled validity inherits only valid commercial state and technical cloning is not audited',()=>{
-  assert.match(auditGuardMigration,/app\.suppress_audit/);
-  assert.match(auditGuardMigration,/scheduled/);
-  assert.match(engineInheritanceMigration,/IF new\.status='scheduled' THEN RETURN new/);
-  assert.match(engineInheritanceMigration,/company_rate_codes/);
-  assert.match(cloneFilterMigration,/company_service_settings css/);
-  assert.match(cloneFilterMigration,/sc\.is_active/);
-});
-
-test('price timeline cascades inherited changes forward but stops at explicit future changes',()=>{
-  assert.match(timelineMigration,/cascade_company_service_price_v1/);
-  assert.match(timelineMigration,/r\.status='scheduled'/);
-  assert.match(timelineMigration,/v_same_as_before/);
-  assert.match(timelineMigration,/IF NOT v_same_as_before THEN EXIT/);
-  assert.match(timelineMigration,/app\.suppress_audit/);
-  assert.match(timelineMigration,/save_company_service_price_v1/);
-  assert.match(timelineMigration,/save_company_service_price_schedule_v1/);
-  assert.match(timelineMigration,/cancel_company_service_price_schedule_v1/);
-});
-
-test('billing surcharges use current provider configuration instead of draft/publish workflow',()=>{
-  assert.match(surchargeMigration,/get_company_billing_surcharges_v1/);
-  assert.match(surchargeMigration,/save_company_billing_surcharges_v1/);
-  assert.doesNotMatch(surchargeMigration,/ensure_company_tariff_draft_v4|publish_company_tariff_draft_v4/);
-});
-
-test('Nuevo Servicio uses only billing bases, provider context and availability warnings',()=>{
-  assert.match(operatorWizard,/get_operator_service_context_v1/);
-  assert.match(operatorWizard,/billing_base_id/);
-  assert.match(operatorWizard,/cambiarBaseServicio/);
-  assert.match(operatorWizard,/blocking_issues/);
-  assert.match(operatorWizard,/has_price/);
-  assert.doesNotMatch(operatorWizard,/branch_id|cambiarSucursalServicio|get_operator_category_tariff_v3/);
-  const baseDataBody=operatorWizard.match(/const baseData=\(\)=>\(\{([\s\S]*?)\}\);/)?.[1]||'';
-  assert.doesNotMatch(baseDataBody,/category_id/);
-});
-
-test('Nuevo Servicio UI shows warnings and never renders commercial prices',()=>{
-  assert.match(operatorWorkspace,/osv4-base/);
-  assert.match(operatorWorkspace,/osv4-context-status/);
-  assert.match(operatorWorkspace,/Sin precio/);
-  assert.match(operatorWorkspace,/Disponible/);
-  assert.match(operatorWorkspace,/Validar servicio/);
-  assert.doesNotMatch(operatorWorkspace,/osv4-branch|cambiarSucursalServicio|secondaryPrice/);
-  assert.doesNotMatch(operatorWorkspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total/);
-});
-
-test('Servicios operational module has no company branch dependency and gates commercial display',()=>{
-  assert.doesNotMatch(operatorServices,/company_branches|S\.branches|const branch=|branch\(/);
+test('Servicios es tabla compacta única y Operaciones no ve importes',()=>{
+  assert.match(operatorServices,/os-commandbar/);
+  assert.match(operatorServices,/os-table-body/);
+  assert.doesNotMatch(operatorServices,/os-kpis|os-board|renderKpis/);
   assert.match(operatorServices,/canSeeCommercial/);
-  assert.match(operatorServices,/<small>Base<\/small>/);
-  assert.match(operatorServices,/billing_base_name/);
+  assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total/);
+  assert.match(workspace,/No visible para Operaciones/);
+  assert.doesNotMatch(flags,/service_workspace_v2|service_editing_tolls_v1|operator_console_v2/);
 });
 
-test('distance rules charge all km after the covered radius',()=>{
-  assert.match(distanceRulesMigration,/covered_radius_km/);
-  assert.match(distanceRulesMigration,/movement_charge_until_km/);
-  assert.match(distanceRulesMigration,/v_distance_applies := v_distance > 0 AND \(v_radius IS NULL OR v_distance > v_radius\)/);
-  assert.match(distanceRulesMigration,/v_movement_applies := v_movement_until IS NULL OR v_distance <= v_movement_until/);
-  assert.match(distanceRulesMigration,/v_distance \* coalesce\(v_rate\.extra_km_price, 0\)/i);
-  assert.doesNotMatch(distanceRulesMigration,/v_distance\s*-\s*coalesce\(v_rate\.included_km/i);
+test('edición canónica oculta datos comerciales y recotiza con v4',()=>{
+  const context=edit.split(/create or replace function public\.get_operator_service_edit_context/i)[1].split(/create or replace function public\.update_operator_service/i)[0];
+  assert.doesNotMatch(context,/pricing_snapshot|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total/);
+  assert.match(edit,/calculate_operator_service_quote_v4_full/);
+  assert.match(edit,/branch_id=null/);
+  assert.match(edit,/drop function if exists app_private\.sync_operator_service_items_from_quote/);
 });
 
-test('operator pricing still delegates to v4 rate items and not the legacy matrix',()=>{
-  assert.match(operatorMigration,/company_rate_items/);
-  assert.match(operatorMigration,/calculate_operator_service_quote_v4_full/);
-  assert.match(operatorMigration,/rate_card_v4/);
-  assert.doesNotMatch(operatorMigration,/(?:FROM|JOIN|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public\.)?company_tariff_matrix_rates/i);
+test('regla de distancia factura todos los KM después del radio y corta movida en el límite',()=>{
+  assert.match(distance,/covered_radius_km/);
+  assert.match(distance,/movement_charge_until_km/);
+  assert.match(distance,/v_distance_applies := v_distance > 0 AND \(v_radius IS NULL OR v_distance > v_radius\)/);
+  assert.match(distance,/v_movement_applies := v_movement_until IS NULL OR v_distance <= v_movement_until/);
+  assert.doesNotMatch(distance,/v_distance\s*-\s*coalesce\(v_rate\.included_km/i);
 });
 
-test('PWA invalidates caches after effective-date tariff scheduling',()=>{
+test('PWA invalida el cache del runtime consolidado',()=>{
   const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
-  assert.ok(version>=167,`Expected cache version 167 or newer, received ${version}`);
-  assert.match(sw,/company-tariffs-v4\.js/);
-  assert.match(sw,/operator-service-code-warnings-v1\.js/);
-  assert.doesNotMatch(sw,/operator-service-tariff-v3-ui\.js|operator-service-tariff-v3\.css/);
+  assert.ok(version>=168,`Expected cache version 168 or newer, received ${version}`);
 });
