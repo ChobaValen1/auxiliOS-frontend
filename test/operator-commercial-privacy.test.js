@@ -12,10 +12,9 @@ test('Chofer no puede leer ni gestionar la mesa administrativa de Servicios', ()
   assert.doesNotMatch(services, /'chofer'.*canRead|canRead.*'chofer'/);
 });
 
-test('Operador y Supervisión no tienen renderer monetario', () => {
-  assert.match(services, /canSeeCommercial=\(\)=>\['administracion','facturacion'\]\.includes\(role\(\)\)/);
-  assert.match(services, /if\(canSeeCommercial\(\)\)/);
-  assert.doesNotMatch(workspace, /money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total/);
+test('la mesa y el workspace de Operaciones no tienen renderer monetario', () => {
+  assert.doesNotMatch(services, /canSeeCommercial|money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
+  assert.doesNotMatch(workspace, /money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
   assert.match(workspace, /No visible para Operaciones/);
 });
 
