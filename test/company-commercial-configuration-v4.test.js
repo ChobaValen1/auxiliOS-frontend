@@ -19,7 +19,7 @@ const distance = fs.readFileSync('migrations/20260812123000_company_distance_bil
 const validity = fs.readFileSync('migrations/20260812201500_scheduled_service_price_validity_v1.sql','utf8');
 const timeline = fs.readFileSync('migrations/20260812211000_price_timeline_cascade_v1.sql','utf8');
 const edit = fs.readFileSync('migrations/20260812222500_canonical_service_edit_workspace_v1.sql','utf8');
-const editPrivacy = fs.readFileSync('migrations/20260812224000_operator_edit_context_privacy_v1.sql','utf8');
+const effectiveEdit = fs.readFileSync('migrations/20260812225500_operator_service_update_split_v1.sql','utf8');
 
 const canonical = ['empresas-v2.js','service-types-catalog-v2.js','company-services-configuration-v4.js','company-billing-parameters-v4.js','company-tariffs-v4.js','operator-services.js','operator-service-wizard.js','operator-service-workspace-reactive-v1.js'];
 const removed = ['empresas.js','configuration-reference.js','billing-base-operator-adapter.js','comercial.js','tariff-composition.js','tariff-matrix-v3.js','tariff-new-rate-flow-v1.js','operator-active-desk-clean-v1.js','operator-services-canonical-view-v1.js','operator-services-stability-v1.js','operator-services-block-a-v1.js','operator-reference-loader.js','operator-service-edit.js','operator-service-code-warnings-v1.js','operator-service-workspace-behavior-v1.js','operator-service-reajuste-v3.js','operator-service-v2.js','phase3b-modal-visibility-guard.js'];
@@ -96,11 +96,21 @@ test('Servicios es tabla compacta única y Operaciones no ve importes',()=>{
   assert.doesNotMatch(flags,/service_workspace_v2|service_editing_tolls_v1|operator_console_v2/);
 });
 
-test('edición canónica recotiza con v4 y su contexto efectivo está redacted',()=>{
+test('edición pública separa correcciones operativas de cambios que recotizan',()=>{
+  assert.match(effectiveEdit,/alter function public\.update_operator_service\(uuid,jsonb,text\) set schema app_private/);
+  assert.match(effectiveEdit,/v_requires_reprice/);
+  assert.match(effectiveEdit,/return app_private\.update_operator_service_full/);
+  assert.match(effectiveEdit,/Correcciones operativas que no alteran la cotización/);
   assert.match(edit,/calculate_operator_service_quote_v4_full/);
   assert.match(edit,/branch_id=null/);
-  assert.match(edit,/drop function if exists app_private\.sync_operator_service_items_from_quote/);
-  assert.doesNotMatch(editPrivacy,/pricing_snapshot|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|toll_total|toll_estimate|route_toll_estimate|operator_service_changes/);
+});
+
+test('contexto efectivo no expone pricing del servicio y protege peajes por rol',()=>{
+  const context=effectiveEdit.split(/create or replace function public\.get_operator_service_edit_context/i)[1];
+  assert.doesNotMatch(context,/pricing_snapshot|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|toll_estimate|route_toll_estimate/);
+  assert.match(context,/v_tolls jsonb := '\[\]'::jsonb/);
+  assert.match(context,/if v_role='administracion' then/);
+  assert.match(effectiveEdit,/if v_role='operador' then v_payload := v_payload - 'tolls'/);
 });
 
 test('regla de distancia factura todos los KM después del radio y corta movida en el límite',()=>{
