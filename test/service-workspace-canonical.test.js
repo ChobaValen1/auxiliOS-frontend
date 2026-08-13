@@ -33,6 +33,17 @@ test('el workspace usa Prestadora, Base y Tipo de Servicio sin Sucursal', () => 
   assert.doesNotMatch(workspace, /Sucursal|Base Operativa/);
 });
 
+test('los selects reactivos reflejan el valor nuevo aunque mantengan el foco', () => {
+  const helper = workspace.match(/function setOptions\([^}]+\}/)?.[0] || '';
+  assert.match(helper, /el\.value=value\?\?''/);
+  assert.doesNotMatch(helper, /document\.activeElement/);
+  assert.match(workspace, /data-struct="company"/);
+  assert.match(workspace, /data-struct="base"/);
+  assert.match(workspace, /data-struct="primary"/);
+  assert.match(workspace, /data-assignment="driver"/);
+  assert.match(workspace, /data-assignment="truck"/);
+});
+
 test('warnings, disponibilidad y códigos están integrados sin módulos decoradores', () => {
   assert.match(workspace, /blocking_issues/);
   assert.match(workspace, /warnings/);
