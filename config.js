@@ -61,11 +61,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     await waitForAuxiliosProfile();
 
     await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
+    await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
     await loadAuxiliosModule('auxilios-toll-management', '/toll-management.js');
     await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
     loadAuxiliosStyle('auxilios-service-module-configuration-css', '/service-module-configuration.css');
     await loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js');
-    await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
     window.AuxiliosConfigurationCenter?.configure?.();
 
     await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
