@@ -53,7 +53,7 @@ test('viaje iniciado requiere motivo y remito firmado bloquea cambios estructura
 
 test('los conceptos se reconstruyen desde rate items v4 y no desde matrix_rate_id', () => {
   assert.match(canonical, /rate_item_id/);
-  assert.match(canonical, /matrix_rate_id\) values/);
+  assert.match(canonical, /matrix_rate_id\)\s*values/);
   assert.match(canonical, /v_legacy_category,null\)/);
   assert.match(canonical, /drop function if exists app_private\.sync_operator_service_items_from_quote/);
 });
