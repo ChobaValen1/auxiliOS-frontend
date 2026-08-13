@@ -16,10 +16,9 @@ insert into public.service_module_settings(settings_key)
 values ('default')
 on conflict (settings_key) do nothing;
 
-do $$ begin
-  if not exists (
-    select 1 from pg_trigger where tgname='service_module_settings_audit'
-  ) then
+do $$
+begin
+  if not exists (select 1 from pg_trigger where tgname='service_module_settings_audit') then
     create trigger service_module_settings_audit
     after insert or update or delete on public.service_module_settings
     for each row execute function public.capture_audit_event('settings_key');
@@ -58,60 +57,26 @@ set search_path='public','app_private','pg_temp'
 as $$
 declare
   v_role text:=app_private.current_auxilios_role();
-  v_uid uuid:=auth.uid();
-  v_current public.service_module_settings%rowtype;
-  v_order jsonb;
-  v_visibility jsonb;
-  v_modes jsonb;
-  v_workflow jsonb;
-  v_allowed_columns text[]:=array['service','date','route','customer_vehicle','resource','status','base','km','priority','updated','actions'];
-  v_allowed_fields text[]:=array['customer_name','customer_phone','customer_email','vehicle_plate','vehicle_make_model','assigned_resources','purchase_order_number','operator_notes','driver_instructions'];
-  v_value text;
-  v_key text;
+  v_row public.service_module_settings%rowtype;
 begin
-  if v_role<>'administracion' then raise exception 'Solo Administración puede modificar la configuración de Servicios'; end if;
-  select * into v_current from public.service_module_settings where settings_key='default' for update;
-
-  v_order:=coalesce(p_config->'column_order',v_current.column_order);
-  if jsonb_typeof(v_order)<>'array' or jsonb_array_length(v_order)<>cardinality(v_allowed_columns) then
-    raise exception 'El orden de columnas es inválido';
+  if v_role<>'administracion' then
+    raise exception 'Solo Administración puede modificar la configuración de Servicios';
   end if;
-  if exists(
-    select 1 from jsonb_array_elements_text(v_order) x(value)
-    where not (x.value=any(v_allowed_columns))
-  ) or (select count(distinct x.value) from jsonb_array_elements_text(v_order) x(value))<>cardinality(v_allowed_columns) then
-    raise exception 'El orden de columnas contiene valores inválidos o repetidos';
-  end if;
-
-  v_visibility:=coalesce(p_config->'column_visibility',v_current.column_visibility);
-  if jsonb_typeof(v_visibility)<>'object' then raise exception 'La visibilidad de columnas es inválida'; end if;
-  v_visibility:=v_visibility||jsonb_build_object('service',true,'actions',true);
-
-  v_modes:=coalesce(p_config->'field_modes',v_current.field_modes);
-  if jsonb_typeof(v_modes)<>'object' then raise exception 'La configuración de campos es inválida'; end if;
-  for v_key,v_value in select key,value #>> '{}' from jsonb_each(v_modes) loop
-    if not (v_key=any(v_allowed_fields)) then raise exception 'Campo configurable inválido: %',v_key; end if;
-    if v_value not in ('required','optional','hidden') then raise exception 'Modo inválido para %',v_key; end if;
-  end loop;
-
-  v_workflow:=coalesce(p_config->'workflow',v_current.workflow);
-  if jsonb_typeof(v_workflow)<>'object' then raise exception 'La configuración de flujo es inválida'; end if;
-  v_workflow:=jsonb_build_object(
-    'show_cancelled_in_history',coalesce((v_workflow->>'show_cancelled_in_history')::boolean,true),
-    'allow_personal_column_overrides',coalesce((v_workflow->>'allow_personal_column_overrides')::boolean,true)
-  );
-
   update public.service_module_settings
-  set column_order=v_order,column_visibility=v_visibility,field_modes=v_modes,workflow=v_workflow,updated_at=now(),updated_by=v_uid
+  set column_order=coalesce(p_config->'column_order',column_order),
+      column_visibility=(coalesce(p_config->'column_visibility',column_visibility)||jsonb_build_object('service',true,'actions',true)),
+      field_modes=coalesce(p_config->'field_modes',field_modes),
+      workflow=coalesce(p_config->'workflow',workflow),
+      updated_at=now(),
+      updated_by=auth.uid()
   where settings_key='default'
-  returning * into v_current;
-
+  returning * into v_row;
   return jsonb_build_object(
-    'column_order',v_current.column_order,
-    'column_visibility',v_current.column_visibility,
-    'field_modes',v_current.field_modes,
-    'workflow',v_current.workflow,
-    'updated_at',v_current.updated_at
+    'column_order',v_row.column_order,
+    'column_visibility',v_row.column_visibility,
+    'field_modes',v_row.field_modes,
+    'workflow',v_row.workflow,
+    'updated_at',v_row.updated_at
   );
 end;
 $$;
@@ -121,34 +86,76 @@ revoke all on function public.save_service_module_configuration(jsonb) from publ
 grant execute on function public.get_service_module_configuration() to authenticated;
 grant execute on function public.save_service_module_configuration(jsonb) to authenticated;
 
-alter table public.operator_services add column if not exists billing_status text not null default 'not_ready';
+alter table public.operator_services
+  add column if not exists billing_status text not null default 'not_ready';
 
-do $$ begin
-  if not exists (
-    select 1 from pg_constraint where conname='operator_services_billing_status_check'
-  ) then
-    alter table public.operator_services add constraint operator_services_billing_status_check
-      check (billing_status in ('not_ready','pending','reviewed','invoiced','excluded'));
-  end if;
-end $$;
+update public.operator_services
+set billing_status='pending'
+where status='completed' and billing_status='not_ready';
 
-update public.operator_services set billing_status='pending' where status='completed' and billing_status='not_ready';
-
-create or replace function app_private.sync_operator_service_billing_status()
+-- Se reutiliza el trigger BEFORE UPDATE existente de operator_services.
+-- No se crea otro trigger en paralelo: al finalizar, el mismo registro queda
+-- fuera de la mesa activa y preparado para la futura cola de Facturación.
+create or replace function app_private.operator_services_before_update()
 returns trigger
 language plpgsql
 security definer
 set search_path='public','app_private','pg_temp'
 as $$
+declare
+  v_role text := app_private.current_auxilios_role();
+  v_bridge boolean := coalesce(current_setting('app.phase3_bridge', true), '') = '1';
 begin
-  if new.status='completed' and (tg_op='INSERT' or old.status is distinct from new.status) then
+  if new.status='completed' and old.status is distinct from 'completed' then
     new.billing_status:='pending';
   end if;
+
+  if v_bridge then
+    new.updated_at := now();
+    new.updated_by := coalesce(new.updated_by, auth.uid(), old.updated_by);
+    return new;
+  end if;
+
+  if v_role = 'chofer' then
+    if old.assigned_driver_id is distinct from auth.uid() then
+      raise exception 'Servicio no asignado al chofer actual';
+    end if;
+    if (to_jsonb(new) - array['status','driver_notes','billing_status','updated_at','updated_by'])
+       is distinct from
+       (to_jsonb(old) - array['status','driver_notes','billing_status','updated_at','updated_by']) then
+      raise exception 'El chofer solo puede avanzar el estado y registrar una nota';
+    end if;
+    if not (
+      (old.status='assigned' and new.status='en_route') or
+      (old.status='en_route' and new.status='at_origin') or
+      (old.status='at_origin' and new.status='loaded') or
+      (old.status='loaded' and new.status='at_destination') or
+      (old.status='at_destination' and new.status='completed') or
+      old.status=new.status
+    ) then
+      raise exception 'Transición de estado no permitida';
+    end if;
+  end if;
+
+  if new.status='cancelled' and old.status<>'cancelled' then
+    new.cancelled_at:=coalesce(new.cancelled_at,now());
+  elsif new.status<>'cancelled' then
+    new.cancelled_at:=null;
+  end if;
+  if new.status='completed' and old.status<>'completed' then
+    new.completed_at:=coalesce(new.completed_at,now());
+  end if;
+  if new.assigned_driver_id is not null and (
+    old.assigned_driver_id is distinct from new.assigned_driver_id or
+    old.assigned_truck_id is distinct from new.assigned_truck_id
+  ) then
+    new.assigned_at:=now();
+    if v_role in ('administracion','operador','supervision') then
+      new.assigned_by:=auth.uid();
+    end if;
+  end if;
+  new.updated_at:=now();
+  new.updated_by:=coalesce(auth.uid(),old.updated_by);
   return new;
 end;
 $$;
-
-drop trigger if exists operator_services_billing_status_sync on public.operator_services;
-create trigger operator_services_billing_status_sync
-before insert or update of status on public.operator_services
-for each row execute function app_private.sync_operator_service_billing_status();
