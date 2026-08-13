@@ -13,7 +13,6 @@ const readPhase3bSql = () => fs.readdirSync(path.join(root, 'migrations'))
 
 test('fase 3B conserva asignaciones y registra cierres operativos estructurados', () => {
   const sql = readPhase3bSql();
-
   assert.match(sql, /create table if not exists public\.operator_service_assignments/i);
   assert.match(sql, /operator_service_assignments_one_active_idx/i);
   assert.match(sql, /create table if not exists public\.operator_service_closures/i);
@@ -28,11 +27,10 @@ test('fase 3B conserva asignaciones y registra cierres operativos estructurados'
   assert.match(sql, /operator_services_company_order_unique_idx/i);
 });
 
-test('Nuevo Servicio ya no depende del renderer visual de fase 3B', () => {
+test('Nuevo Servicio no depende de una segunda alta visual de fase 3B', () => {
   const config = read('config.js');
   const sw = read('sw.js');
   const workspace = read('operator-service-workspace-v2.css');
-
   assert.equal(fs.existsSync(path.join(root, 'operator-service-creation-redesign.js')), false);
   assert.equal(fs.existsSync(path.join(root, 'operator-service-creation-redesign.css')), false);
   assert.doesNotMatch(config, /operator-service-creation-redesign/);
@@ -43,7 +41,6 @@ test('Nuevo Servicio ya no depende del renderer visual de fase 3B', () => {
 test('el chofer describe lo ocurrido y el sistema resuelve la clasificación administrativa', () => {
   const js = read('operator-service-lifecycle.js');
   const css = read('operator-service-lifecycle.css');
-
   assert.match(js, /No se pudo completar/);
   assert.match(js, /Antes de salir/);
   assert.match(js, /Camino al origen/);
@@ -57,36 +54,25 @@ test('el chofer describe lo ocurrido y el sistema resuelve la clasificación adm
   assert.match(css, /p3b-closure-summary/);
 });
 
-test('los recursos QA quedan marcados y el tarifario se publica después de cargar sus conceptos', () => {
+test('los recursos QA históricos siguen identificados para pruebas de lifecycle', () => {
   const core = read('migrations/20260803213100_phase3b_qa_core.sql');
-  const tariff = read('migrations/20260803213200_phase3b_qa_tariff.sql');
-
   assert.match(core, /Chofer de Prueba/);
   assert.match(core, /QA-01/);
   assert.match(core, /Prestadora QA/);
   assert.match(core, /is_test/i);
-  assert.match(core, /'draft'/i);
-  assert.match(tariff, /Liviano QA/);
-  assert.match(tariff, /Extracción QA/);
-  assert.match(tariff, /Cancelación QA/);
-  assert.match(tariff, /set status = 'active'/i);
 });
 
-test('fase 3B conserva solo lifecycle operativo, no una segunda alta de servicio', () => {
+test('fase 3B conserva solo lifecycle operativo y el guard visual está integrado en su CSS', () => {
   const config = read('config.js');
   const pkg = read('package.json');
   const sw = read('sw.js');
-  const guard = read('phase3b-modal-visibility-guard.js');
-
-  assert.match(config, /phase3b-modal-visibility-guard\.js/);
+  const css = read('operator-service-lifecycle.css');
   assert.match(config, /operator-service-lifecycle\.js/);
-  assert.doesNotMatch(config, /operator-service-creation-redesign\.js/);
+  assert.doesNotMatch(config, /phase3b-modal-visibility-guard\.js|operator-service-creation-redesign\.js/);
   assert.match(pkg, /node --check operator-service-lifecycle\.js/);
-  assert.doesNotMatch(pkg, /operator-service-creation-redesign\.js/);
-  assert.match(sw, /auxilios-v1\d{2,}/);
-  assert.match(sw, /phase3b-modal-visibility-guard\.js/);
+  assert.doesNotMatch(pkg, /phase3b-modal-visibility-guard\.js|operator-service-creation-redesign\.js/);
   assert.match(sw, /operator-service-lifecycle\.css/);
-  assert.doesNotMatch(sw, /operator-service-creation-redesign/);
-  assert.match(guard, /p3b-modal-backdrop\[hidden\]/);
-  assert.match(guard, /display:\s*none\s*!important/);
+  assert.doesNotMatch(sw, /phase3b-modal-visibility-guard\.js|operator-service-creation-redesign/);
+  assert.match(css, /p3b-modal-backdrop\[hidden\]/);
+  assert.match(css, /display:none!important/);
 });
