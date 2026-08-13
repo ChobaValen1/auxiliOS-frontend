@@ -81,7 +81,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
     loadAuxiliosStyle('auxilios-operator-service-commercial-addons-v1-css', '/operator-service-commercial-addons-v1.css');
     await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
-    await loadAuxiliosModule('auxilios-operator-service-commercial-addons-input-fix-v1', '/operator-service-commercial-addons-input-fix-v1.js');
 
     await loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js');
     await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
