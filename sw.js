@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v168'; // v168: Servicios canónico único + edición unificada
+const CACHE_NAME = 'auxilios-v169'; // v169: Servicios canónico + edición segura por naturaleza del cambio
 
 const PRECACHE_ASSETS = [
   '/',
