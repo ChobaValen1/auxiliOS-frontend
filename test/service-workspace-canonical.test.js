@@ -34,7 +34,7 @@ test('el workspace usa Prestadora, Base y Tipo de Servicio sin Sucursal', () => 
 });
 
 test('los selects reactivos reflejan el valor nuevo aunque mantengan el foco', () => {
-  const helper = workspace.match(/function setOptions\([^}]+\}/)?.[0] || '';
+  const helper = workspace.split('function setOptions')[1].split('function itemById')[0];
   assert.match(helper, /el\.value=value\?\?''/);
   assert.doesNotMatch(helper, /document\.activeElement/);
   assert.match(workspace, /data-struct="company"/);
@@ -98,7 +98,7 @@ test('la edición usa payload diferencial y separa corrección operativa de reco
 
 test('PWA precachea solo los archivos canónicos de Servicios', () => {
   const version = Number(sw.match(/auxilios-v(\d+)/)?.[1] || 0);
-  assert.ok(version >= 168);
+  assert.ok(version >= 170);
   assert.match(sw, /operator-services\.js/);
   assert.match(sw, /operator-service-wizard\.js/);
   assert.match(sw, /operator-service-workspace-reactive-v1\.js/);
