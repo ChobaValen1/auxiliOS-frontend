@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v170'; // v170: selects reactivos actualizan estado visual inmediatamente
+const CACHE_NAME = 'auxilios-v171'; // v171: Servicios compacto + Historial + configuración empresarial
 
 const PRECACHE_ASSETS = [
   '/',
@@ -15,6 +15,8 @@ const PRECACHE_ASSETS = [
   '/company-tariffs-v4.js',
   '/configuration-center.css',
   '/configuration-center.js',
+  '/service-module-configuration.js',
+  '/service-module-configuration.css',
   '/fleet-operational-status-v1.js',
   '/fleet-admin-detail-v2.css',
   '/fleet-admin-detail-v2.js',
