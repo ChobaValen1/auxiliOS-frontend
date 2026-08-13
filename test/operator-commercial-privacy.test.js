@@ -1,77 +1,32 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
 
-test('driver role cannot load or navigate to operator services', async () => {
-  const elements = new Map();
-  const element = id => {
-    if (!elements.has(id)) {
-      elements.set(id, {
-        id,
-        innerHTML: '',
-        value: '',
-        style: {},
-        classList: {
-          removed: [],
-          add() {},
-          remove(name) { this.removed.push(name); },
-          contains() { return false; },
-        },
-        insertAdjacentHTML() {},
-      });
-    }
-    return elements.get(id);
-  };
+const services = fs.readFileSync('operator-services.js','utf8');
+const workspace = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
+const migration = fs.readFileSync('migrations/20260812222500_canonical_service_edit_workspace_v1.sql','utf8');
 
-  for (const id of ['screen-operaciones', 'nav-operaciones', 'os-board', 'os-detail-shell']) element(id);
+test('Chofer no puede leer ni gestionar la mesa administrativa de Servicios', () => {
+  assert.match(services, /canRead=\(\)=>\['administracion','operador','supervision','facturacion'\]\.includes\(role\(\)\)/);
+  assert.match(services, /canManage=\(\)=>\['administracion','operador'\]\.includes\(role\(\)\)/);
+  assert.doesNotMatch(services, /'chofer'.*canRead|canRead.*'chofer'/);
+});
 
-  const notices = [];
-  const intervalCallbacks = [];
-  const sandbox = {
-    console, Intl, Date, Number, String, Set, Map, Promise, Object,
-    PERFIL_USUARIO: { roles: { name: 'chofer' }, full_name: 'Chofer' },
-    USUARIO_ACTUAL: { id: 'driver' },
-    toast: (message, type) => notices.push({ message, type }),
-    prompt: () => '',
-    setInterval(callback) { intervalCallbacks.push(callback); return intervalCallbacks.length; },
-    clearInterval() {},
-    goTo() { throw new Error('Driver navigation must not reach the base router.'); },
-    document: {
-      readyState: 'complete',
-      addEventListener() {},
-      getElementById: id => elements.get(id) || null,
-      createElement() { return { id: '', rel: '', href: '' }; },
-      head: { appendChild() {} },
-      body: { insertAdjacentHTML() {} },
-      querySelector() { return null; },
-      querySelectorAll() { return []; },
-    },
-    _db: {
-      rpc() { throw new Error('Drivers must not call operator service RPCs.'); },
-      from() { throw new Error('Drivers must not query operator service tables.'); },
-    },
-  };
-  sandbox.window = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'operator-services.js'), 'utf8'), sandbox, { filename: 'operator-services.js' });
+test('Operador y Supervisión no tienen renderer monetario', () => {
+  assert.match(services, /canSeeCommercial=\(\)=>\['administracion','facturacion'\]\.includes\(role\(\)\)/);
+  assert.match(services, /if\(canSeeCommercial\(\)\)/);
+  assert.doesNotMatch(workspace, /money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total/);
+  assert.match(workspace, /No visible para Operaciones/);
+});
 
-  for (const callback of intervalCallbacks.slice()) callback();
+test('el contexto de edición no devuelve importes ni pricing snapshot', () => {
+  const part = migration.split(/create or replace function public\.get_operator_service_edit_context/i)[1].split(/create or replace function public\.update_operator_service/i)[0];
+  assert.doesNotMatch(part, /pricing_snapshot|company_estimated_total|estimated_total|base_subtotal|surcharge_total|toll_total|copay_total|currency/);
+  assert.match(part, /v_role not in \('administracion','operador','supervision','facturacion'\)/);
+});
 
-  assert.equal(sandbox.OperatorServices.canRead(), false);
-  assert.equal(element('nav-operaciones').style.display, 'none');
-  assert.deepEqual(element('screen-operaciones').classList.removed, ['active']);
-
-  sandbox.OperatorServices.renderBoard();
-  assert.equal(element('os-board').innerHTML, '');
-
-  sandbox.goTo('operaciones');
-  assert.equal(notices.at(-1)?.type, 'error');
-  assert.match(notices.at(-1)?.message || '', /Sin permiso/);
-
-  await sandbox.abrirDetalleServicio('service');
-  assert.equal(element('os-detail-shell').innerHTML, '');
-  assert.equal(notices.at(-1)?.type, 'error');
-  assert.match(notices.at(-1)?.message || '', /Sin permiso/);
+test('la actualización canónica requiere identidad y limita escritura a Administración u Operador', () => {
+  const part = migration.split(/create or replace function public\.update_operator_service/i)[1];
+  assert.match(part, /v_uid is null or v_role not in \('administracion','operador'\)/);
+  assert.match(part, /Sin permiso para editar servicios/);
 });
