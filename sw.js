@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auxilios-v169'; // v169: Servicios canónico + edición segura por naturaleza del cambio
+const CACHE_NAME = 'auxilios-v170'; // v170: selects reactivos actualizan estado visual inmediatamente
 
 const PRECACHE_ASSETS = [
   '/',
