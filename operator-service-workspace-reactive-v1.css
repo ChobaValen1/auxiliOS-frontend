@@ -1,33 +1,3 @@
-/* AuxiliOS · Nuevo Servicio reactivo */
-.osv4-reactive .osv2-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
-.osv4-reactive .top-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
-.osv4-reactive .osv2-column{min-width:0}
-.osv4-concept-table{display:grid;align-content:start;gap:5px;min-height:0;overflow:auto}
-.osv4-concept-head,.osv4-concept-row{display:grid;grid-template-columns:minmax(150px,1.45fr) minmax(110px,.9fr) minmax(100px,.72fr) minmax(95px,.72fr) 30px;align-items:center;gap:6px}
-.osv4-concept-head{padding:3px 6px;color:var(--osv2-muted2);font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
-.osv4-concept-row{padding:6px;border:1px solid var(--osv2-border);border-radius:8px;background:var(--osv2-panel)}
-.osv4-concept-row select,.osv4-concept-row input{height:29px}
-.osv4-concept-row>b{font-size:9px;text-align:right;white-space:nowrap}
-.osv4-concept-row>button{width:28px;height:28px;border:1px solid rgba(226,80,74,.25);border-radius:6px;background:var(--osv2-red-lo);color:var(--osv2-red);font-size:15px;cursor:pointer}
-.osv4-code-cell{min-width:0;color:var(--osv2-muted2);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.osv4-code-cell span{display:block;padding:0 7px;line-height:29px;border:1px solid var(--osv2-border);border-radius:7px;background:var(--osv2-card);overflow:hidden;text-overflow:ellipsis}
-.osv4-qty-cell{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px}
-.osv4-qty-cell small{color:var(--osv2-muted);font-size:8px;white-space:nowrap}
-.osv4-address-wrap{position:relative;z-index:4}
-.osv4-address-input{display:flex;align-items:center;gap:5px;border:1px solid var(--osv2-border-strong);border-radius:7px;background:var(--osv2-card);padding-left:8px}
-.osv4-address-input:focus-within{border-color:var(--osv2-blue);box-shadow:0 0 0 2px var(--osv2-blue-lo)}
-.osv4-address-input>span{color:var(--osv2-muted2);font-size:13px}
-.osv4-address-input input{border:0!important;box-shadow:none!important;background:transparent!important;padding-left:2px!important}
-.osv4-suggestions{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:120;max-height:220px;overflow:auto;border:1px solid var(--osv2-border-strong);border-radius:8px;background:var(--osv2-card);box-shadow:0 14px 32px rgba(0,0,0,.38)}
-.osv4-suggestions[hidden]{display:none!important}
-.osv4-suggestions button{display:flex;width:100%;flex-direction:column;gap:2px;padding:8px 10px;border:0;border-bottom:1px solid var(--osv2-border);background:transparent;color:var(--osv2-text);text-align:left;cursor:pointer}
-.osv4-suggestions button:last-child{border-bottom:0}
-.osv4-suggestions button:hover{background:var(--osv2-blue-lo)}
-.osv4-suggestions b{font-size:9px}.osv4-suggestions span{color:var(--osv2-muted2);font-size:8px}
-.osv4-suggestion-state{padding:10px;color:var(--osv2-muted2);font-size:9px}.osv4-suggestion-state.error{color:var(--osv2-red)}
-.osv4-address-status,.osv4-note{min-height:18px;color:var(--osv2-muted2);font-size:8px;line-height:1.35}
-.osv4-address-status.ok{color:var(--osv2-green)}.osv4-address-status.warning{color:var(--osv2-amber)}.osv4-address-status.muted{color:var(--osv2-muted)}
-.osv4-route-card{display:grid;gap:7px;padding:8px}
-.osv4-note{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.osv4-note button{border:0;background:transparent;color:var(--osv2-amber);cursor:pointer}
-@media(max-width:1100px){.osv4-concept-head,.osv4-concept-row{grid-template-columns:minmax(120px,1.2fr) minmax(90px,.8fr) 85px 85px 30px}}
+/* AuxiliOS · Servicio reactivo canónico */
+.osv4-reactive .osv2-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.osv4-reactive .top-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.osv4-reactive .osv2-column{min-width:0}.osv4-context-status{display:grid;gap:5px}.osv4-context-line{padding:6px 8px;border:1px solid var(--osv2-border);border-radius:7px;background:var(--osv2-panel);font-size:8px;line-height:1.35;color:var(--osv2-muted2)}.osv4-context-line.ok{color:var(--osv2-green);border-color:rgba(39,196,122,.28);background:var(--osv2-green-lo)}.osv4-context-line.warning{color:var(--osv2-amber);border-color:rgba(245,166,35,.3);background:var(--osv2-amber-lo)}.osv4-context-line.blocking{color:var(--osv2-red);border-color:rgba(226,80,74,.3);background:var(--osv2-red-lo)}.osv4-concept-table{display:grid;align-content:start;gap:5px;min-height:0;overflow:auto}.osv4-concept-row{display:grid;grid-template-columns:minmax(125px,1.35fr) minmax(82px,.75fr) 70px 72px 28px;align-items:center;gap:5px;padding:6px;border:1px solid var(--osv2-border);border-radius:8px;background:var(--osv2-panel)}.osv4-concept-row select,.osv4-concept-row input{height:28px}.osv4-concept-row>button{width:28px;height:28px;border:1px solid rgba(226,80,74,.25);border-radius:6px;background:var(--osv2-red-lo);color:var(--osv2-red);font-size:15px;cursor:pointer}.osv4-concept-state{font-size:8px;font-weight:800;color:var(--osv2-green);white-space:nowrap}.osv4-concept-state.warning{color:var(--osv2-amber)}.osv3-code-warning{grid-column:1/-1;display:block;color:var(--osv2-amber);font-size:8px;line-height:1.35}.osv4-address-wrap{position:relative;z-index:4}.osv4-address-input{display:flex;align-items:center;gap:5px;border:1px solid var(--osv2-border-strong);border-radius:7px;background:var(--osv2-card);padding-left:8px}.osv4-address-input:focus-within{border-color:var(--osv2-blue);box-shadow:0 0 0 2px var(--osv2-blue-lo)}.osv4-address-input>span{color:var(--osv2-muted2);font-size:13px}.osv4-address-input input{border:0!important;box-shadow:none!important;background:transparent!important;padding-left:2px!important}.osv4-suggestions{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:120;max-height:220px;overflow:auto;border:1px solid var(--osv2-border-strong);border-radius:8px;background:var(--osv2-card);box-shadow:0 14px 32px rgba(0,0,0,.38)}.osv4-suggestions[hidden]{display:none!important}.osv4-suggestions button{display:flex;width:100%;flex-direction:column;gap:2px;padding:8px 10px;border:0;border-bottom:1px solid var(--osv2-border);background:transparent;color:var(--osv2-text);text-align:left;cursor:pointer}.osv4-suggestions button:last-child{border-bottom:0}.osv4-suggestions button:hover{background:var(--osv2-blue-lo)}.osv4-suggestions b{font-size:9px}.osv4-suggestions span{color:var(--osv2-muted2);font-size:8px}.osv4-suggestion-state{padding:10px;color:var(--osv2-muted2);font-size:9px}.osv4-suggestion-state.error{color:var(--osv2-red)}.osv4-address-status,.osv4-note{min-height:18px;color:var(--osv2-muted2);font-size:8px;line-height:1.35}.osv4-address-status.ok{color:var(--osv2-green)}.osv4-address-status.warning{color:var(--osv2-amber)}.osv4-address-status.muted{color:var(--osv2-muted)}#osv4-edit-reason{padding:10px}#osv4-edit-reason textarea{margin-top:5px}.osv4-reactive[data-mode="edit"] .osv2-header{box-shadow:inset 3px 0 0 var(--osv2-blue)}
+@media(max-width:1100px){.osv4-concept-row{grid-template-columns:minmax(110px,1.2fr) minmax(75px,.7fr) 64px 68px 28px}}
