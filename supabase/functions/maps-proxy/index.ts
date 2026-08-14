@@ -82,7 +82,7 @@ async function autocomplete(body: Record<string, any>, apiKey: string) {
           latitude: requireNumber(bias.latitude, "Latitud de referencia", -90, 90),
           longitude: requireNumber(bias.longitude, "Longitud de referencia", -180, 180),
         },
-        radius: Math.min(Math.max(Number(bias.radius) || 50000, 1000), 500000),
+        radius: Math.min(Math.max(Number(bias.radius) || 50000, 0), 50000),
       },
     };
   }
