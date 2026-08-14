@@ -40,6 +40,11 @@ async function googleFetch(url: string, apiKey: string, init: RequestInit, field
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = payload?.error?.message || `Google Maps respondió ${response.status}`;
+    console.error("[maps-proxy:google]", {
+      status: response.status,
+      googleStatus: payload?.error?.status || null,
+      message,
+    });
     throw new Error(message);
   }
   return payload;
@@ -53,9 +58,9 @@ async function autocomplete(body: Record<string, any>, apiKey: string) {
   const request: Record<string, unknown> = {
     input,
     sessionToken: body.sessionToken || undefined,
-    regionCode: "AR",
+    regionCode: "ar",
     languageCode: "es",
-    includedRegionCodes: ["AR"],
+    includedRegionCodes: ["ar"],
   };
   const bias = body.locationBias;
   if (bias && Number.isFinite(Number(bias.latitude)) && Number.isFinite(Number(bias.longitude))) {
@@ -107,7 +112,7 @@ function component(components: any[], types: string[]) {
 async function placeDetails(body: Record<string, any>, apiKey: string) {
   const placeId = String(body.placeId || "").trim();
   if (!placeId) throw new Error("Falta el Place ID");
-  const params = new URLSearchParams({ languageCode: "es", regionCode: "AR" });
+  const params = new URLSearchParams({ languageCode: "es", regionCode: "ar" });
   if (body.sessionToken) params.set("sessionToken", String(body.sessionToken));
 
   const payload = await googleFetch(
@@ -176,7 +181,7 @@ async function computeRoute(body: Record<string, any>, apiKey: string) {
     travelMode: "DRIVE",
     routingPreference: "TRAFFIC_UNAWARE",
     languageCode: "es-419",
-    regionCode: "AR",
+    regionCode: "ar",
   };
 
   const payload = await googleFetch(
