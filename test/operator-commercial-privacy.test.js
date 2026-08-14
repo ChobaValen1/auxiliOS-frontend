@@ -12,10 +12,10 @@ test('Chofer no puede leer ni gestionar la mesa administrativa de Servicios', ()
   assert.doesNotMatch(services, /'chofer'.*canRead|canRead.*'chofer'/);
 });
 
-test('la mesa y el workspace de Operaciones no tienen renderer monetario', () => {
+test('la mesa y el workspace de Operaciones no tienen renderer monetario ni placeholder económico', () => {
   assert.doesNotMatch(services, /canSeeCommercial|money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
   assert.doesNotMatch(workspace, /money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
-  assert.match(workspace, /No visible para Operaciones/);
+  assert.doesNotMatch(workspace, /osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
 });
 
 test('el contexto efectivo de edición no devuelve pricing del servicio', () => {
