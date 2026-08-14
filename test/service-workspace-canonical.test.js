@@ -85,6 +85,11 @@ test('Conceptos adicionales vuelve a columna 1 y se habilita después de Prestad
   assert.match(effective,/'items','item_codes'/);
 });
 
+test('cantidad de concepto puede editarse sin rerender por cada tecla',()=>{
+  assert.match(wizard,/function secondaryQty\(id,value,refresh=true\)/);
+  assert.match(wizard,/if\(refresh\)render\(\)/);
+});
+
 test('conceptos crecen con el workspace y no crean un scroll interno',()=>{
   assert.match(workspaceCss,/\.osv4-reactive \.osv2-concepts-section\{[^}]*overflow:visible!important/);
   assert.match(workspaceCss,/\.osv4-concept-table\{[^}]*overflow:visible/);
