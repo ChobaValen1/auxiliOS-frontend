@@ -14,6 +14,7 @@
 .osv3-code-warning{display:block;color:var(--osv2-amber);font-size:8px;line-height:1.35}
 .osv4-reactive .osv2-concepts-section{grid-template-rows:auto auto!important;min-height:auto!important;overflow:visible!important;padding:8px}
 .osv4-reactive .osv2-concepts-head{padding-bottom:5px}
+.osv4-reactive .osv2-add-concept-trigger{min-height:25px!important;padding:0 8px!important;font-size:7.7px!important;border-radius:6px}
 .osv4-reactive .osv2-add-concept-trigger:disabled{opacity:.45;cursor:not-allowed}
 .osv4-concept-table{display:grid;align-content:start;gap:5px;min-height:0;overflow:visible}
 .osv4-concept-head,.osv4-concept-row{display:grid;grid-template-columns:minmax(130px,1.4fr) minmax(100px,.9fr) minmax(92px,.72fr) 28px;align-items:center;gap:5px}
@@ -48,10 +49,13 @@
 .osv4-address-status.ok{color:var(--osv2-green)}
 .osv4-address-status.warning{color:var(--osv2-amber)}
 .osv4-address-status.muted{color:var(--osv2-muted)}
-.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card{padding:7px!important}
-.osv4-reactive .vehicle-card,.osv4-reactive .distance-card{gap:5px!important}
+.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{padding:7px!important}
+.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{gap:5px!important}
+.osv4-reactive .osv2-observations{display:grid!important;min-width:0;border:1px solid var(--osv2-border);border-radius:11px;background:var(--osv2-card);color:var(--osv2-text)!important}
+.osv4-reactive .osv2-observations>span{min-height:13px;color:var(--osv2-text);font-size:10px;font-weight:800;line-height:1.2}
+.osv4-reactive .driver-instructions-card .osv2-section-label{min-height:13px;margin:0}
+.osv4-reactive .driver-instructions-card .osv2-section-label b{font-size:10px}
 .osv4-reactive .route-column textarea{min-height:52px!important;padding:6px 8px!important}
-.osv4-reactive .osv2-observations{gap:3px!important}
 #osv4-edit-reason{padding:10px}
 #osv4-edit-reason textarea{margin-top:5px}
 .osv4-reactive[data-mode="edit"] .osv2-header{box-shadow:inset 3px 0 0 var(--osv2-blue)}
