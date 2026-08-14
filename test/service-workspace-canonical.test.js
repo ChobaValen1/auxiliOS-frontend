@@ -3,6 +3,8 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
 const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
+const workspaceCss=fs.readFileSync('operator-service-workspace-reactive-v1.css','utf8');
+const moduleConfig=fs.readFileSync('service-module-configuration.js','utf8');
 const config=fs.readFileSync('config.js','utf8');
 const flags=fs.readFileSync('feature-flags.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
@@ -46,25 +48,37 @@ test('selects reactivos reflejan el valor inmediatamente',()=>{
   assert.match(workspace,/data-assignment="truck"/);
 });
 
-test('configuración empresarial controla campos requeridos opcionales u ocultos',()=>{
+test('configuración empresarial controla campos operativos y email inicia oculto',()=>{
   assert.match(wizard,/function requiredErrors/);
   assert.match(wizard,/S\.moduleConfig\?\.field_modes/);
   assert.match(workspace,/function fieldMode/);
+  assert.match(workspace,/key==='customer_email'\?'hidden':'optional'/);
   assert.match(workspace,/data-field-config="customer_phone"/);
   assert.match(workspace,/data-field-config="vehicle_plate"/);
   assert.match(workspace,/data-field-config="assigned_resources"/);
-  assert.match(workspace,/data-field-config="purchase_order_number"/);
   assert.match(workspace,/data-field-config="customer_email"/);
   assert.match(workspace,/mode==='hidden'/);
+  assert.match(moduleConfig,/customer_email:'hidden'/);
+  assert.doesNotMatch(moduleConfig,/purchase_order_number/);
+  assert.doesNotMatch(workspace,/osv4-purchase-order|Orden de compra/);
+  assert.doesNotMatch(wizard,/purchase_order_number/);
 });
 
-test('warnings Maps pairing y privacidad siguen dentro del workspace canónico',()=>{
+test('origen destino es compacto y observaciones e indicaciones permanecen en columna 2',()=>{
+  assert.match(workspace,/osv4-location-head/);
+  assert.match(workspace,/rows="3" data-key="operator_notes"/);
+  assert.match(workspace,/rows="3" data-key="driver_instructions"/);
+  assert.match(workspaceCss,/\.osv4-reactive \.osv2-location\{gap:3px;padding:6px 7px\}/);
+  assert.match(workspaceCss,/\.osv4-reactive \.route-column textarea\{min-height:52px!important/);
+});
+
+test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloque fantasma',()=>{
   assert.match(workspace,/blocking_issues/);
   assert.match(workspace,/Sin precio/);
   assert.match(wizard,/get_operator_resource_availability/);
   assert.match(workspace,/action:'autocomplete'/);
   assert.match(workspace,/action:'route'/);
-  assert.match(workspace,/No visible para Operaciones/);
+  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
   assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total/);
   assert.match(editMigration,/calculate_operator_service_quote_v4_full/);
 });
