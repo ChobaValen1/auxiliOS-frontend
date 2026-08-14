@@ -118,14 +118,18 @@ begin
     if v_excess_qty<=0 then raise exception 'La cantidad del excedente debe ser mayor a cero'; end if;
     if v_excess_unit<=0 then raise exception 'El importe del excedente debe ser mayor a cero'; end if;
     if v_collector not in ('company','provider') then raise exception 'Seleccioná quién cobró el excedente'; end if;
-    if v_customer_method not in ('cash','transfer','card','mercado_pago','other') then raise exception 'El medio de pago del excedente es obligatorio'; end if;
+    if v_collector='provider' then
+      v_customer_method:=null;
+    elsif v_customer_method not in ('cash','transfer','card','mercado_pago','other') then
+      raise exception 'Cuando cobra la Empresa, el medio de pago del excedente es obligatorio';
+    end if;
 
     select sc.name into v_concept_name from public.service_concepts sc
     where sc.concept_id=v_concept_id and sc.is_active and sc.billing_family<>'system' and sc.service_category in ('secondary','mixed')
       and exists(select 1 from public.company_service_settings css where css.company_id=p_company_id and css.concept_id=sc.concept_id and css.is_enabled);
     if not found then raise exception 'El concepto de excedente no está habilitado para la prestadora'; end if;
 
-    v_key:=v_concept_id::text||'|'||to_char(v_excess_unit,'FM999999999999990.00')||'|'||v_collector||'|'||v_customer_method;
+    v_key:=v_concept_id::text||'|'||to_char(v_excess_unit,'FM999999999999990.00')||'|'||v_collector||'|'||coalesce(v_customer_method,'n/a');
     if v_key=any(v_excess_keys) then raise exception 'Ese excedente ya existe con el mismo importe, cobrador y medio de pago; aumentá la cantidad'; end if;
     v_excess_keys:=array_append(v_excess_keys,v_key);
     v_excess_total:=v_excess_total+(v_excess_qty*v_excess_unit);
