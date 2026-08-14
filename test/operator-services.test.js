@@ -8,6 +8,7 @@ const config=fs.readFileSync('config.js','utf8');
 const settings=fs.readFileSync('service-module-configuration.js','utf8');
 const lifecycle=fs.readFileSync('migrations/20260813104500_service_module_configuration_v1.sql','utf8');
 const listMigration=fs.readFileSync('migrations/20260814125000_operator_service_list_v3.sql','utf8');
+const settingsMigration=fs.readFileSync('migrations/20260814125500_service_module_columns_v2.sql','utf8');
 
 test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=>{
   assert.match(services,/os-table-body/);
@@ -52,6 +53,7 @@ test('Origen y Destino son columnas separadas con detalle Dirección Localidad P
   assert.match(settings,/Detalle de Origen \/ Destino/);
   assert.match(settings,/Dirección, Localidad y Provincia/);
   assert.match(services,/cambiarDetalleUbicacionPersonalServicio/);
+  assert.match(settingsMigration,/add column if not exists location_detail/);
 });
 
 test('todas las columnas pueden ser visibles u ocultas por configuración o por usuario',()=>{
@@ -62,6 +64,8 @@ test('todas las columnas pueden ser visibles u ocultas por configuración o por 
   assert.match(settings,/S\.config\.column_visibility\[key\]=!!on/);
   assert.doesNotMatch(services,/service:true,actions:true/);
   assert.doesNotMatch(settings,/\['service','actions'\]\.includes/);
+  assert.match(settingsMigration,/v_allowed text\[\]:=array\['code','datetime','arrival','finish','provider','base','type','origin','destination','client','km','driver','delay','mobile','status','amount_due','actions'\]/);
+  assert.doesNotMatch(settingsMigration,/jsonb_build_object\('service',true,'actions',true\)/);
 });
 
 test('Por Cobrar es peajes del cliente más todos los excedentes',()=>{
