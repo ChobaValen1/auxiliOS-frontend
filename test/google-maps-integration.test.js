@@ -13,7 +13,9 @@ test('Maps permanece server-side y usa Places New con sesiones',()=>{
   assert.match(maps,/places:autocomplete/);
   assert.match(maps,/sessionToken/);
   assert.match(maps,/params\.set\("sessionToken"/);
-  assert.match(maps,/includedRegionCodes: \["AR"\]/);
+  assert.match(maps,/regionCode: "ar"/);
+  assert.match(maps,/includedRegionCodes: \["ar"\]/);
+  assert.match(maps,/\[maps-proxy:google\]/);
   assert.doesNotMatch(maps,/AIza[0-9A-Za-z_-]+/);
 });
 
