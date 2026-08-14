@@ -7,7 +7,11 @@ do $$
 begin
   if not exists(select 1 from pg_constraint where conname='operator_service_excess_collector_chk') then
     alter table public.operator_service_excess_charges add constraint operator_service_excess_collector_chk
-      check (collector_agent is null or collector_agent in ('company','provider'));
+      check (
+        collector_agent is null
+        or (collector_agent='provider' and customer_payment_method is null)
+        or (collector_agent='company' and customer_payment_method in ('cash','transfer','card','mercado_pago','other'))
+      );
   end if;
 end $$;
 
@@ -17,6 +21,6 @@ on public.operator_service_excess_charges(
   service_id,
   concept_id,
   unit_amount,
-  customer_payment_method,
+  coalesce(customer_payment_method,'n/a'),
   coalesce(collector_agent,'unregistered')
 );
