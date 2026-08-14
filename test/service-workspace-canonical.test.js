@@ -48,7 +48,7 @@ test('selects reactivos reflejan el valor inmediatamente',()=>{
   assert.match(workspace,/data-assignment="truck"/);
 });
 
-test('configuración empresarial controla campos operativos y email inicia oculto',()=>{
+test('configuración empresarial controla campos operativos y cualquier Oculto desaparece visualmente',()=>{
   assert.match(wizard,/function requiredErrors/);
   assert.match(wizard,/S\.moduleConfig\?\.field_modes/);
   assert.match(workspace,/function fieldMode/);
@@ -57,11 +57,37 @@ test('configuración empresarial controla campos operativos y email inicia ocult
   assert.match(workspace,/data-field-config="vehicle_plate"/);
   assert.match(workspace,/data-field-config="assigned_resources"/);
   assert.match(workspace,/data-field-config="customer_email"/);
-  assert.match(workspace,/mode==='hidden'/);
+  assert.match(workspace,/wrapper\.hidden=mode==='hidden'/);
+  assert.match(workspaceCss,/\.osv4-reactive \[hidden\]\{display:none!important\}/);
   assert.match(moduleConfig,/customer_email:'hidden'/);
   assert.doesNotMatch(moduleConfig,/purchase_order_number/);
   assert.doesNotMatch(workspace,/osv4-purchase-order|Orden de compra/);
   assert.doesNotMatch(wizard,/purchase_order_number/);
+});
+
+test('Conceptos adicionales vuelve a columna 1 y se habilita después de Prestadora',()=>{
+  const admin=workspace.split('<section class="osv2-column admin-column">')[1].split('<section class="osv2-column route-column">')[0];
+  assert.match(admin,/Conceptos adicionales/);
+  assert.match(admin,/data-click="add-concept"/);
+  assert.match(workspace,/add\.disabled=!w\.data\.company_id\|\|lockedState/);
+  assert.match(workspace,/Seleccioná una Prestadora para habilitar conceptos/);
+  assert.match(workspace,/data-concept-row/);
+  assert.match(workspace,/data-concept-qty/);
+  assert.match(workspace,/data-concept-code/);
+  assert.doesNotMatch(admin,/Importe|money\(|Intl\.NumberFormat/);
+  assert.match(wizard,/function addSecondary/);
+  assert.match(wizard,/function removeSecondary/);
+  assert.match(wizard,/function secondaryQty/);
+  assert.match(wizard,/function secondaryCode/);
+  assert.match(wizard,/requires_own_code/);
+  assert.match(wizard,/out\.items=secondaryPayload\(d\)/);
+  assert.match(wizard,/out\.item_codes=d\.item_codes\|\|\{\}/);
+  assert.match(effective,/'items','item_codes'/);
+});
+
+test('conceptos crecen con el workspace y no crean un scroll interno',()=>{
+  assert.match(workspaceCss,/\.osv4-reactive \.osv2-concepts-section\{[^}]*overflow:visible!important/);
+  assert.match(workspaceCss,/\.osv4-concept-table\{[^}]*overflow:visible/);
 });
 
 test('origen destino es compacto y observaciones e indicaciones permanecen en columna 2',()=>{
@@ -81,6 +107,11 @@ test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloqu
   assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
   assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total/);
   assert.match(editMigration,/calculate_operator_service_quote_v4_full/);
+});
+
+test('renderer elimina callbacks vacíos sin consumidores',()=>{
+  assert.doesNotMatch(workspace,/validationErrors:\(\)=>\[\]|updateValidationUI:\(\)=>\{\}/);
+  assert.match(workspace,/window\.OperatorServiceWorkspaceV2=\{render,sync,reset\}/);
 });
 
 test('edición conserva payload diferencial y privacidad backend',()=>{
