@@ -1,4 +1,5 @@
 /* AuxiliOS · Servicio reactivo canónico */
+.osv4-reactive [hidden]{display:none!important}
 .osv4-reactive .osv2-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;overflow-y:auto!important;overflow-x:hidden!important;align-items:start}
 .osv4-reactive .top-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
 .osv4-reactive .osv2-column{min-width:0;min-height:auto!important;overflow:visible!important;align-content:start}
@@ -11,6 +12,19 @@
 .osv4-context-line.warning{color:var(--osv2-amber);border-color:rgba(245,166,35,.3);background:var(--osv2-amber-lo)}
 .osv4-context-line.blocking{color:var(--osv2-red);border-color:rgba(226,80,74,.3);background:var(--osv2-red-lo)}
 .osv3-code-warning{display:block;color:var(--osv2-amber);font-size:8px;line-height:1.35}
+.osv4-reactive .osv2-concepts-section{grid-template-rows:auto auto!important;min-height:auto!important;overflow:visible!important;padding:8px}
+.osv4-reactive .osv2-concepts-head{padding-bottom:5px}
+.osv4-reactive .osv2-add-concept-trigger:disabled{opacity:.45;cursor:not-allowed}
+.osv4-concept-table{display:grid;align-content:start;gap:5px;min-height:0;overflow:visible}
+.osv4-concept-head,.osv4-concept-row{display:grid;grid-template-columns:minmax(130px,1.4fr) minmax(100px,.9fr) minmax(92px,.72fr) 28px;align-items:center;gap:5px}
+.osv4-concept-head{padding:2px 5px;color:var(--osv2-muted2);font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.osv4-concept-row{padding:5px;border:1px solid var(--osv2-border);border-radius:7px;background:var(--osv2-panel)}
+.osv4-concept-row select,.osv4-concept-row input{height:28px!important;min-width:0}
+.osv4-concept-row>button{width:27px;height:28px;border:1px solid rgba(226,80,74,.25);border-radius:6px;background:var(--osv2-red-lo);color:var(--osv2-red);font-size:14px;cursor:pointer}
+.osv4-code-cell{min-width:0;color:var(--osv2-muted2);font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.osv4-code-cell span{display:block;padding:0 6px;line-height:28px;border:1px solid var(--osv2-border);border-radius:7px;background:var(--osv2-card);overflow:hidden;text-overflow:ellipsis}
+.osv4-qty-cell{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px}
+.osv4-qty-cell small{color:var(--osv2-muted);font-size:7px;white-space:nowrap}
 .osv4-reactive .osv2-location{gap:3px;padding:6px 7px}
 .osv4-location-head{display:grid!important;grid-template-columns:8px auto minmax(0,1fr);align-items:center;gap:5px!important;min-height:14px}
 .osv4-location-head small{justify-self:end;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px;font-weight:700}
@@ -42,7 +56,6 @@
 #osv4-edit-reason textarea{margin-top:5px}
 .osv4-reactive[data-mode="edit"] .osv2-header{box-shadow:inset 3px 0 0 var(--osv2-blue)}
 .osv4-meta-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start;min-width:0}
-.osv4-meta-row[hidden]{display:none!important}
 .osv4-meta-row>#osv4-edit-reason,.osv4-meta-row>.osv4-history-panel{min-width:0}
 .osv4-history-panel{border:1px solid var(--osv2-border);border-radius:8px;background:var(--osv2-panel);overflow:hidden}
 .osv4-history-panel>summary{display:grid;gap:2px;padding:9px 10px;cursor:pointer;list-style:none}
@@ -55,4 +68,5 @@
 .osv4-lifecycle-slot .p3b-lifecycle-head h4{font-size:9px}
 .osv4-reactive .route-column>.osv2-card,.osv4-reactive .route-column>.osv2-observations{flex:none}
 .osv4-reactive textarea{resize:vertical}
+@media(max-width:1100px){.osv4-concept-head,.osv4-concept-row{grid-template-columns:minmax(110px,1.2fr) minmax(90px,.9fr) 86px 28px}}
 @media(max-width:800px){.osv4-reactive .osv2-grid{overflow:visible!important}.osv4-meta-row{grid-template-columns:1fr}}
