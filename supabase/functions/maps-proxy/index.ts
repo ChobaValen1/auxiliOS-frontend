@@ -11,6 +11,17 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" },
 });
 
+class GoogleMapsError extends Error {
+  upstreamStatus: number;
+  googleStatus: string | null;
+  constructor(message: string, upstreamStatus: number, googleStatus: string | null = null) {
+    super(message);
+    this.name = "GoogleMapsError";
+    this.upstreamStatus = upstreamStatus;
+    this.googleStatus = googleStatus;
+  }
+}
+
 const requireNumber = (value: unknown, label: string, min: number, max: number): number => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < min || parsed > max) throw new Error(`${label} inválido`);
@@ -40,12 +51,13 @@ async function googleFetch(url: string, apiKey: string, init: RequestInit, field
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = payload?.error?.message || `Google Maps respondió ${response.status}`;
+    const googleStatus = payload?.error?.status || null;
     console.error("[maps-proxy:google]", {
       status: response.status,
-      googleStatus: payload?.error?.status || null,
+      googleStatus,
       message,
     });
-    throw new Error(message);
+    throw new GoogleMapsError(message, response.status, googleStatus);
   }
   return payload;
 }
@@ -57,11 +69,11 @@ async function autocomplete(body: Record<string, any>, apiKey: string) {
 
   const request: Record<string, unknown> = {
     input,
-    sessionToken: body.sessionToken || undefined,
-    regionCode: "ar",
-    languageCode: "es",
+    languageCode: "es-419",
     includedRegionCodes: ["ar"],
   };
+  if (body.sessionToken) request.sessionToken = String(body.sessionToken);
+
   const bias = body.locationBias;
   if (bias && Number.isFinite(Number(bias.latitude)) && Number.isFinite(Number(bias.longitude))) {
     request.locationBias = {
@@ -112,7 +124,7 @@ function component(components: any[], types: string[]) {
 async function placeDetails(body: Record<string, any>, apiKey: string) {
   const placeId = String(body.placeId || "").trim();
   if (!placeId) throw new Error("Falta el Place ID");
-  const params = new URLSearchParams({ languageCode: "es", regionCode: "ar" });
+  const params = new URLSearchParams({ languageCode: "es-419", regionCode: "ar" });
   if (body.sessionToken) params.set("sessionToken", String(body.sessionToken));
 
   const payload = await googleFetch(
@@ -235,6 +247,14 @@ Deno.serve(async (request: Request) => {
     return json({ error: "Acción inválida" }, 400);
   } catch (error) {
     console.error("[maps-proxy]", error);
+    if (error instanceof GoogleMapsError) {
+      return json({
+        error: error.message,
+        source: "google_maps",
+        upstreamStatus: error.upstreamStatus,
+        googleStatus: error.googleStatus,
+      });
+    }
     return json({ error: error instanceof Error ? error.message : "Error de Google Maps" }, 400);
   }
 });
