@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const services = fs.readFileSync('operator-services.js','utf8');
 const workspace = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const effective = fs.readFileSync('migrations/20260812225500_operator_service_update_split_v1.sql','utf8');
+const listMigration = fs.readFileSync('migrations/20260814125000_operator_service_list_v3.sql','utf8');
 
 test('Chofer no puede leer ni gestionar la mesa administrativa de Servicios', () => {
   assert.match(services, /canRead=\(\)=>\['administracion','operador','supervision','facturacion'\]\.includes\(role\(\)\)/);
@@ -12,8 +13,12 @@ test('Chofer no puede leer ni gestionar la mesa administrativa de Servicios', ()
   assert.doesNotMatch(services, /'chofer'.*canRead|canRead.*'chofer'/);
 });
 
-test('la mesa y el workspace de Operaciones no tienen renderer monetario ni placeholder económico', () => {
-  assert.doesNotMatch(services, /canSeeCommercial|money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
+test('Operaciones sólo ve Por Cobrar del socio y no pricing de la Prestadora', () => {
+  assert.match(services, /customer_amount_due/);
+  assert.match(services, /Por Cobrar/);
+  assert.match(listMigration, /ot\.payer_agent='customer'/);
+  assert.match(listMigration, /operator_service_excess_charges/);
+  assert.doesNotMatch(services, /canSeeCommercial|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot|provider_toll_total/);
   assert.doesNotMatch(workspace, /money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
   assert.doesNotMatch(workspace, /osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
 });
@@ -27,7 +32,7 @@ test('el contexto efectivo de edición no devuelve pricing del servicio', () => 
   assert.match(context, /'tolls',v_tolls/);
 });
 
-test('compatibilidad de peajes es exclusiva de Administración y Operador no puede modificarlos', () => {
+test('compatibilidad de peajes legacy es exclusiva de Administración', () => {
   assert.match(effective, /if v_role='operador' then v_payload := v_payload - 'tolls'/);
   assert.match(effective, /if v_role='administracion' and v_payload \? 'tolls' then/);
   const context = effective.split(/create or replace function public\.get_operator_service_edit_context/i)[1];
