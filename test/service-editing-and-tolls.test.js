@@ -29,6 +29,7 @@ test('la tercera columna tiene un único renderer comercial',()=>{
  assert.match(workspace,/class="osv2-column actions-column"><\/section>/);
  assert.match(workspace,/OperatorServiceCommercialAddonsV1\?\.render/);
  assert.doesNotMatch(workspace,/tollCard|extrasCard|renderTolls|renderRows|data-toll-field|data-row-concept/);
+ assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación/);
 });
 
 test('formato de cobro habilita la matriz y gobierna Quién paga',()=>{
@@ -51,13 +52,16 @@ test('peaje toma tarifa vigente, cantidad y total sin importe manual',()=>{
  assert.match(wizard,/commercial_addons:commercialPayload\(d\)/);
 });
 
-test('excedentes usan Concepto Cant Importe Cobrador Medio Pago',()=>{
+test('excedentes usan Concepto Cant Importe Cobrador Medio Pago y Prestadora implica N/A',()=>{
  for(const label of ['Concepto','Cant.','Importe','Cobrador','Medio Pago'])assert.match(commercial,new RegExp(label.replace('.','\\.')));
  assert.match(commercial,/Empresa \(Nosotros\)/);
- assert.match(commercial,/collector_agent/);
+ assert.match(commercial,/function excessPaymentControl/);
+ assert.match(commercial,/row\.collector_agent==='provider'/);
  assert.match(wizard,/COLLECTORS=new Set\(\['company','provider'\]\)/);
- assert.match(wizard,/collector_agent:r\.collector_agent\|\|null/);
- assert.match(schema,/add column if not exists collector_agent text/i);
+ assert.match(wizard,/customer_payment_method:r\.collector_agent==='provider'\?null/);
+ assert.match(wizard,/if\(key==='collector_agent'\)/);
+ assert.match(wizard,/if\(value==='provider'\)r\.customer_payment_method=''/);
+ assert.match(schema,/coalesce\(customer_payment_method,'n\/a'\)/i);
  assert.match(persistence,/collector_agent/i);
 });
 
@@ -68,6 +72,9 @@ test('backend replica las restricciones de la matriz',()=>{
  assert.match(normalizer,/v_payer='customer' and v_customer_method not in/i);
  assert.match(normalizer,/v_payer='provider' then v_customer_method:=null/i);
  assert.match(normalizer,/v_collector not in \('company','provider'\)/i);
+ assert.match(normalizer,/v_collector='provider' then[\s\S]*v_customer_method:=null/i);
+ assert.match(normalizer,/Cuando cobra la Empresa, el medio de pago del excedente es obligatorio/i);
+ assert.match(normalizer,/coalesce\(v_customer_method,'n\/a'\)/i);
  assert.match(normalizer,/v_rate\.amount/);
 });
 
