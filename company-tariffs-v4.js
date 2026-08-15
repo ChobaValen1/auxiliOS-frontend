@@ -1,4 +1,4 @@
-/* AuxiliOS · Tarifas · precio vigente + vigencias programadas */
+/* AuxiliOS · Tarifas · precios, vigencias y edición masiva canónica */
 (() => {
   'use strict';
 
@@ -27,19 +27,22 @@
       .ct4{display:grid;gap:7px;min-height:0}.ct4-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.ct4-head h2{margin:0;font-size:15px}.ct4-head p{margin:2px 0 0;font-size:8.5px;color:var(--muted2)}
       .ct4-toolbar{display:flex;align-items:end;gap:7px;flex-wrap:wrap;padding:6px 9px;border:1px solid var(--border);border-radius:9px;background:var(--panel)}.ct4-field{display:grid;gap:4px}.ct4-field>span{font-size:7.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2)}.ct4-company-field{width:min(320px,100%)}
       .ct4-stats{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-left:auto}.ct4-stat{display:inline-flex;gap:4px;align-items:center;padding:3px 7px;border:1px solid var(--border);border-radius:999px;background:var(--bg);font-size:7.5px;color:var(--muted2)}.ct4-stat b{font-size:9px;color:var(--text)}.ct4-stat.pending{color:var(--amber);border-color:rgba(245,166,35,.28)}
-      .ct4-panel{border:1px solid var(--border);border-radius:9px;background:var(--panel);overflow:hidden;min-height:0}.ct4-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--border)}.ct4-panel-head h3{margin:0;font-size:10.5px}.ct4-panel-head p{margin:0;font-size:7.5px;color:var(--muted2)}
+      .ct4-panel{border:1px solid var(--border);border-radius:9px;background:var(--panel);overflow:hidden;min-height:0}.ct4-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-bottom:1px solid var(--border)}.ct4-panel-head h3{margin:0;font-size:10.5px}.ct4-panel-head p{margin:0;font-size:7.5px;color:var(--muted2)}.ct4-panel-head-main{display:flex;align-items:center;gap:10px}.ct4-panel-head-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
       .ct4-table-wrap{overflow:auto;max-height:calc(100vh - 220px)}.ct4-table{width:100%;border-collapse:collapse}.ct4-table th,.ct4-table td{padding:8px 9px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top;font-size:8.5px}.ct4-table th{position:sticky;top:0;z-index:1;background:var(--panel);font-size:7px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.ct4-table strong{display:block;font-size:9.5px;color:var(--text)}.ct4-table small{display:block;margin-top:2px;font-size:7.5px;line-height:1.35;color:var(--muted2)}.ct4-table tr:last-child td{border-bottom:0}
       .ct4-chip{display:inline-flex;align-items:center;padding:3px 6px;border:1px solid var(--border2);border-radius:999px;font-size:7.5px;color:var(--muted2);white-space:nowrap}.ct4-chip.pending{color:var(--amber);border-color:rgba(245,166,35,.3)}
       .ct4-price-main{font-weight:850;color:var(--text);white-space:nowrap}.ct4-price-km{margin-top:2px;font-size:7.5px;color:var(--muted2)}
       .ct4-next{display:grid;gap:3px;min-width:145px}.ct4-next-row{padding:5px 7px;border:1px solid rgba(79,142,247,.22);border-radius:7px;background:rgba(79,142,247,.04)}.ct4-next-row>b{font-size:7.5px;color:var(--primary)}.ct4-next-value{margin-top:3px}
-      .ct4-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.ct4-action{border:1px solid var(--border2);background:var(--bg);color:var(--text);border-radius:6px;padding:4px 6px;font-size:7.5px;cursor:pointer}.ct4-action.primary{border-color:rgba(79,142,247,.35);color:var(--primary)}.ct4-action.danger{border-color:rgba(226,80,74,.3);color:var(--red)}.ct4-icon-action{border:0;background:transparent;color:var(--red);padding:1px 3px;cursor:pointer;font-size:11px;line-height:1}
+      .ct4-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.ct4-action{border:1px solid var(--border2);background:var(--bg);color:var(--text);border-radius:6px;padding:4px 6px;font-size:7.5px;cursor:pointer}.ct4-action.primary{border-color:rgba(79,142,247,.35);color:var(--primary)}.ct4-action.danger{border-color:rgba(226,80,74,.3);color:var(--red)}.ct4-action:disabled{opacity:.45;cursor:not-allowed}.ct4-icon-action{border:0;background:transparent;color:var(--red);padding:1px 3px;cursor:pointer;font-size:11px;line-height:1}
       .ct4-exceptions{display:grid;gap:4px;min-width:150px}.ct4-exception{display:grid;grid-template-columns:minmax(65px,1fr) minmax(80px,1.15fr) auto;gap:5px;align-items:center}.ct4-exception-name{font-size:7.5px;color:var(--muted2);overflow:hidden;text-overflow:ellipsis}.ct4-exception-price{min-width:0}.ct4-exception-price .ct4-price-main{font-size:8px}.ct4-exception-price .ct4-price-km{font-size:7px}
       .ct4-empty{padding:22px;text-align:center;color:var(--muted2);font-size:9.5px}.ct4-error{padding:9px 11px;border:1px solid rgba(226,80,74,.3);border-radius:8px;background:rgba(226,80,74,.06);color:var(--red);font-size:8.5px}
       .ct4-dialog{width:min(650px,calc(100vw - 24px));max-width:650px}.ct4-dialog.wide{width:min(850px,calc(100vw - 24px));max-width:850px}.ct4-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ct4-full{grid-column:1/-1}.ct4-note{padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);font-size:8px;line-height:1.4;color:var(--muted2)}
       .ct4-history{display:grid;gap:6px}.ct4-history-row{display:grid;grid-template-columns:135px 135px 1fr;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:8px;color:var(--muted2)}.ct4-history-row b{display:block;color:var(--text)}
       .ct4-schedule-list{display:grid;gap:6px}.ct4-schedule-item{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}.ct4-schedule-item small{font-size:7.5px;color:var(--muted2)}
+      .ct4-bulk-grid{display:grid;grid-template-columns:repeat(2,minmax(76px,1fr));gap:5px;min-width:165px}.ct4-bulk-grid.single{grid-template-columns:minmax(100px,155px);min-width:120px}.ct4-bulk-field{display:grid;gap:3px;min-width:0}.ct4-bulk-field span{font-size:6.8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}.ct4-bulk-field input{width:100%;height:27px;box-sizing:border-box;padding:0 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;font-size:8.5px;outline:none}.ct4-bulk-field input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(79,142,247,.12)}.ct4-bulk-field input.dirty{border-color:var(--amber);background:var(--amber-lo)}
+      .ct4-bulk-savebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-top:1px solid var(--border);background:var(--bg)}.ct4-bulk-savebar>div:first-child{display:grid;gap:2px}.ct4-bulk-savebar b{font-size:9px}.ct4-bulk-savebar small{font-size:7.5px;color:var(--muted2)}.ct4-bulk-savebar-actions{display:flex;align-items:center;gap:6px}.ct4-bulk-savebar .btn{font-size:8.5px;padding:0 10px;min-height:28px}
       .ct4-embedded>.ct4-head,.ct4-embedded .ct4-company-field{display:none}.ct4-embedded .ct4-toolbar{padding:3px 0;border:0;background:transparent}.ct4-embedded .ct4-stats{margin-left:0}
       @media(max-width:900px){.ct4-table th:nth-child(2),.ct4-table td:nth-child(2){display:none}.ct4-table-wrap{max-height:none}}
+      @media(max-width:780px){.ct4-bulk-grid{grid-template-columns:1fr}.ct4-bulk-savebar{align-items:stretch;flex-direction:column}.ct4-bulk-savebar-actions{justify-content:flex-end}}
       @media(max-width:650px){.ct4-grid,.ct4-history-row,.ct4-schedule-item{grid-template-columns:1fr}.ct4-stats{margin-left:0}.ct4-actions{justify-content:flex-start}.ct4-table{min-width:790px}}
     </style>`);
   }
@@ -54,14 +57,21 @@
 
   function showModalError(message = '') { const el = document.getElementById('ct4-rate-error'); if (!el) return; el.textContent = message; el.style.display = message ? 'block' : 'none'; }
 
+  function emptyBulkState() { return { editing: false, values: new Map(), dirtyKeys: new Set(), saving: false }; }
+  function resetBulk(instance) { instance.bulk = emptyBulkState(); }
+
   function shell(instance) {
     const embedded = instance.mode === 'embedded';
     instance.root.innerHTML = `<div class="ct4 ${embedded ? 'ct4-embedded' : ''}">
-      <div class="ct4-head"><div><h2>Tarifas</h2><p>Precio vigente y cambios futuros por servicio, sin flujo de borrador/publicación.</p></div></div>
+      <div class="ct4-head"><div><h2>Tarifas</h2><p>Precio vigente y cambios futuros por servicio.</p></div></div>
       <section class="ct4-toolbar"><label class="ct4-field ct4-company-field"><span>Prestadora</span><select class="form-input" data-ct4-company><option value="">Seleccionar prestadora</option></select></label><div class="ct4-stats" data-ct4-stats></div></section>
       <div data-ct4-error></div><div data-ct4-content><div class="ct4-empty">${embedded ? 'Cargando precios…' : 'Seleccioná una prestadora.'}</div></div>
     </div>`;
-    instance.root.querySelector('[data-ct4-company]')?.addEventListener('change', async e => { instance.companyId = e.target.value; await loadInstance(instance); });
+    instance.root.querySelector('[data-ct4-company]')?.addEventListener('change', async e => {
+      instance.companyId = e.target.value;
+      resetBulk(instance);
+      await loadInstance(instance);
+    });
   }
 
   async function loadCompanies(instance) {
@@ -123,6 +133,44 @@
     return `<div class="ct4-exceptions">${current.slice(0, 2).map(row => `<div class="ct4-exception"><span class="ct4-exception-name" title="${esc(row.base_name || 'Base')}">${esc(row.base_name || 'Base')}</span><div class="ct4-exception-price">${formatPrice(instance, service, row)}</div>${canWrite() ? `<button class="ct4-icon-action" type="button" title="Eliminar excepción" data-ct4-delete-base="${esc(service.concept_id)}" data-base="${esc(row.base_id)}">×</button>` : '<span></span>'}</div>`).join('')}${current.length > 2 ? `<span class="ct4-chip">+${current.length - 2} bases</span>` : ''}${scheduled.length ? `<button class="ct4-action" type="button" data-ct4-schedules="${esc(service.concept_id)}">${scheduled.length} cambio${scheduled.length === 1 ? '' : 's'} por base programado${scheduled.length === 1 ? '' : 's'}</button>` : ''}</div>`;
   }
 
+  function originalBulkValue(service, field) {
+    const price = service?.general_price;
+    if (!price) return '';
+    const value = field === 'movement_price' ? price.movement_price : field === 'km_price' ? price.km_price : price.unit_price;
+    return value === null || value === undefined ? '' : String(Number(value));
+  }
+
+  function normalizeBulkValue(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    const number = Number(raw);
+    return Number.isFinite(number) ? number : raw;
+  }
+
+  const bulkKey = (conceptId, field) => `${conceptId}:${field}`;
+  function bulkInputValue(instance, service, field) {
+    const key = bulkKey(service.concept_id, field);
+    return instance.bulk.values.has(key) ? instance.bulk.values.get(key) : originalBulkValue(service, field);
+  }
+  function bulkChanged(service, field, value) { return normalizeBulkValue(value) !== normalizeBulkValue(originalBulkValue(service, field)); }
+
+  function bulkInput(instance, service, field, label) {
+    const key = bulkKey(service.concept_id, field);
+    const value = bulkInputValue(instance, service, field);
+    const dirty = instance.bulk.dirtyKeys.has(key);
+    return `<label class="ct4-bulk-field"><span>${esc(label)}</span><input type="number" min="0" step="0.01" value="${esc(value)}" class="${dirty ? 'dirty' : ''}" data-ct4-bulk-input data-concept="${esc(service.concept_id)}" data-field="${field}"></label>`;
+  }
+
+  function bulkPriceEditor(instance, service) {
+    if (service.distance_chargeable) return `<div class="ct4-bulk-grid">${bulkInput(instance, service, 'movement_price', 'Movida')}${bulkInput(instance, service, 'km_price', 'KM')}</div>`;
+    return `<div class="ct4-bulk-grid single">${bulkInput(instance, service, 'unit_price', 'Valor')}</div>`;
+  }
+
+  function bulkSavebar(instance) {
+    const count = instance.bulk.dirtyKeys.size;
+    return `<div class="ct4-bulk-savebar"><div><b>Edición masiva de precios vigentes</b><small>${count} celda${count === 1 ? '' : 's'} modificada${count === 1 ? '' : 's'}</small></div><div class="ct4-bulk-savebar-actions"><button class="btn btn-ghost" type="button" data-ct4-bulk-discard ${instance.bulk.saving ? 'disabled' : ''}>Descartar</button><button class="btn btn-primary" type="button" data-ct4-bulk-save ${count === 0 || instance.bulk.saving ? 'disabled' : ''}>${instance.bulk.saving ? 'Actualizando…' : `Actualizar (${count})`}</button></div></div>`;
+  }
+
   function renderInstance(instance) {
     const content = instance.root.querySelector('[data-ct4-content]');
     const error = instance.root.querySelector('[data-ct4-error]');
@@ -141,7 +189,8 @@
     const scheduledServices = services.filter(service => allScheduleChanges(instance, service).length > 0).length;
     if (stats) stats.innerHTML = `<span class="ct4-stat"><b>${enabled}</b> servicios</span><span class="ct4-stat"><b>${priced}</b> con precio</span>${pending ? `<span class="ct4-stat pending"><b>${pending}</b> sin precio</span>` : ''}${scheduledServices ? `<span class="ct4-stat"><b>${scheduledServices}</b> con cambio futuro</span>` : ''}`;
 
-    content.innerHTML = `<section class="ct4-panel"><div class="ct4-panel-head"><h3>Servicios</h3><p>Precio efectivo hoy · ${dateLabel(today())}</p></div><div class="ct4-table-wrap"><table class="ct4-table"><thead><tr><th>Servicio</th><th>Tipo</th><th>Precio vigente</th><th>Próxima vigencia</th><th>Excepciones por base</th><th></th></tr></thead><tbody>${services.length ? services.map(service => `<tr><td><strong>${esc(service.name)}</strong><small>${service.distance_chargeable ? 'Movida + valor por KM' : esc(unitLabel(service.pricing_unit))}</small></td><td><span class="ct4-chip">${esc(categoryLabel(service.category))}</span></td><td>${formatPrice(instance, service, service.general_price)}</td><td>${nextPriceHtml(instance, service)}</td><td>${exceptionsHtml(instance, service)}</td><td><div class="ct4-actions">${canWrite() ? `<button class="ct4-action primary" type="button" data-ct4-edit="${esc(service.concept_id)}">${service.general_price ? 'Editar' : 'Cargar precio'}</button><button class="ct4-action" type="button" data-ct4-program="${esc(service.concept_id)}">Programar</button>${(d.bases || []).length ? `<button class="ct4-action" type="button" data-ct4-base-price="${esc(service.concept_id)}">Precio por base</button>` : ''}` : ''}<button class="ct4-action" type="button" data-ct4-history="${esc(service.concept_id)}">Historial</button></div></td></tr>`).join('') : '<tr><td colspan="6"><div class="ct4-empty">No hay servicios habilitados para esta prestadora.</div></td></tr>'}</tbody></table></div></section>`;
+    const bulk = canWrite() && instance.bulk.editing;
+    content.innerHTML = `<section class="ct4-panel"><div class="ct4-panel-head"><div class="ct4-panel-head-main"><h3>Servicios</h3><p>Precio efectivo hoy · ${dateLabel(today())}</p></div>${canWrite() ? `<div class="ct4-panel-head-actions"><button class="ct4-action primary" type="button" data-ct4-bulk-toggle ${instance.bulk.saving ? 'disabled' : ''}>${bulk ? 'Salir de edición' : 'Editar en lote'}</button></div>` : ''}</div><div class="ct4-table-wrap"><table class="ct4-table"><thead><tr><th>Servicio</th><th>Tipo</th><th>Precio vigente</th><th>Próxima vigencia</th><th>Excepciones por base</th><th></th></tr></thead><tbody>${services.length ? services.map(service => `<tr><td><strong>${esc(service.name)}</strong><small>${service.distance_chargeable ? 'Movida + valor por KM' : esc(unitLabel(service.pricing_unit))}</small></td><td><span class="ct4-chip">${esc(categoryLabel(service.category))}</span></td><td>${bulk ? bulkPriceEditor(instance, service) : formatPrice(instance, service, service.general_price)}</td><td>${nextPriceHtml(instance, service)}</td><td>${exceptionsHtml(instance, service)}</td><td><div class="ct4-actions">${canWrite() ? `${bulk ? '' : `<button class="ct4-action primary" type="button" data-ct4-edit="${esc(service.concept_id)}">${service.general_price ? 'Editar' : 'Cargar precio'}</button>`}<button class="ct4-action" type="button" data-ct4-program="${esc(service.concept_id)}">Programar</button>${(d.bases || []).length ? `<button class="ct4-action" type="button" data-ct4-base-price="${esc(service.concept_id)}">Precio por base</button>` : ''}` : ''}<button class="ct4-action" type="button" data-ct4-history="${esc(service.concept_id)}">Historial</button></div></td></tr>`).join('') : '<tr><td colspan="6"><div class="ct4-empty">No hay servicios habilitados para esta prestadora.</div></td></tr>'}</tbody></table></div>${bulk ? bulkSavebar(instance) : ''}</section>`;
     bindInstance(instance);
   }
 
@@ -152,11 +201,84 @@
     instance.root.querySelectorAll('[data-ct4-history]').forEach(b => b.addEventListener('click', () => openHistory(instance, b.dataset.ct4History)));
     instance.root.querySelectorAll('[data-ct4-schedules]').forEach(b => b.addEventListener('click', () => openSchedules(instance, b.dataset.ct4Schedules)));
     instance.root.querySelectorAll('[data-ct4-delete-base]').forEach(b => b.addEventListener('click', () => deleteBaseException(instance, b.dataset.ct4DeleteBase, b.dataset.base)));
+    instance.root.querySelector('[data-ct4-bulk-toggle]')?.addEventListener('click', () => toggleBulk(instance));
+    instance.root.querySelectorAll('[data-ct4-bulk-input]').forEach(input => input.addEventListener('input', () => onBulkInput(instance, input)));
+    instance.root.querySelector('[data-ct4-bulk-discard]')?.addEventListener('click', () => discardBulk(instance));
+    instance.root.querySelector('[data-ct4-bulk-save]')?.addEventListener('click', () => saveBulk(instance));
+  }
+
+  function onBulkInput(instance, input) {
+    const service = serviceFor(instance, input.dataset.concept);
+    if (!service) return;
+    const key = bulkKey(service.concept_id, input.dataset.field);
+    instance.bulk.values.set(key, input.value);
+    if (bulkChanged(service, input.dataset.field, input.value)) instance.bulk.dirtyKeys.add(key);
+    else { instance.bulk.dirtyKeys.delete(key); instance.bulk.values.delete(key); }
+    renderInstance(instance);
+    const replacement = instance.root.querySelector(`[data-ct4-bulk-input][data-concept="${CSS.escape(String(service.concept_id))}"][data-field="${CSS.escape(input.dataset.field)}"]`);
+    replacement?.focus();
+    if (replacement) replacement.setSelectionRange?.(replacement.value.length, replacement.value.length);
+  }
+
+  function toggleBulk(instance) {
+    if (!canWrite() || instance.bulk.saving) return;
+    if (instance.bulk.editing) return discardBulk(instance);
+    instance.bulk.editing = true;
+    instance.bulk.values.clear();
+    instance.bulk.dirtyKeys.clear();
+    renderInstance(instance);
+  }
+
+  function discardBulk(instance) {
+    if (instance.bulk.saving) return;
+    if (instance.bulk.dirtyKeys.size && !window.confirm('¿Descartar los cambios de tarifas sin guardar?')) return;
+    resetBulk(instance);
+    renderInstance(instance);
+  }
+
+  function bulkPayloadForService(instance, service) {
+    const payload = { concept_id: service.concept_id, billing_base_id: null };
+    if (service.distance_chargeable) {
+      const movement = Number(bulkInputValue(instance, service, 'movement_price'));
+      const km = Number(bulkInputValue(instance, service, 'km_price'));
+      if (!Number.isFinite(movement) || movement < 0 || !Number.isFinite(km) || km < 0) throw new Error(`${service.name}: completá movida y valor por KM con importes válidos.`);
+      payload.movement_price = movement;
+      payload.km_price = km;
+    } else {
+      const value = Number(bulkInputValue(instance, service, 'unit_price'));
+      if (!Number.isFinite(value) || value < 0) throw new Error(`${service.name}: ingresá un importe válido.`);
+      payload.unit_price = value;
+    }
+    return payload;
+  }
+
+  async function saveBulk(instance) {
+    if (!canWrite() || instance.bulk.saving || !instance.bulk.dirtyKeys.size) return;
+    const conceptIds = [...new Set([...instance.bulk.dirtyKeys].map(key => key.split(':')[0]))];
+    let prices;
+    try {
+      prices = conceptIds.map(conceptId => {
+        const service = serviceFor(instance, conceptId);
+        if (!service) throw new Error('Una tarifa modificada ya no está disponible.');
+        return bulkPayloadForService(instance, service);
+      });
+    } catch (error) {
+      return notify(error.message || 'Revisá los importes modificados.', 'error');
+    }
+    instance.bulk.saving = true;
+    renderInstance(instance);
+    const result = await _db.rpc('bulk_save_company_service_prices_v1', { p_payload: { company_id: instance.companyId, prices } });
+    instance.bulk.saving = false;
+    if (result.error) { renderInstance(instance); return notify(result.error.message || 'No se pudieron actualizar las tarifas.', 'error'); }
+    const count = Number(result.data?.count || prices.length);
+    resetBulk(instance);
+    notify(`${count} tarifa${count === 1 ? '' : 's'} actualizada${count === 1 ? '' : 's'} en una sola operación`, 'success');
+    await reloadCompany(instance.companyId);
   }
 
   async function loadInstance(instance) {
     if (!canRead()) { const c = instance.root.querySelector('[data-ct4-content]'); if (c) c.innerHTML = '<div class="ct4-error">Tu rol no está habilitado para consultar Tarifas.</div>'; return; }
-    if (!instance.companyId) { instance.data = null; instance.schedule = []; renderInstance(instance); return; }
+    if (!instance.companyId) { instance.data = null; instance.schedule = []; resetBulk(instance); renderInstance(instance); return; }
     instance.loading = true;
     renderInstance(instance);
     const [prices, schedule] = await Promise.all([
@@ -284,7 +406,7 @@
     if (!root) return null;
     injectStyles(); ensureModals();
     const instanceId = id || root.id || `ct4-${Math.random().toString(36).slice(2)}`;
-    const instance = { id: instanceId, root, mode, companyId: companyId || '', companies: [], data: null, schedule: [], loading: false };
+    const instance = { id: instanceId, root, mode, companyId: companyId || '', companies: [], data: null, schedule: [], loading: false, bulk: emptyBulkState() };
     instances.set(instanceId, instance);
     shell(instance);
     if (mode === 'standalone') await loadCompanies(instance);
@@ -293,9 +415,32 @@
   }
 
   async function mountEmbedded(root, companyId) { return mount(root, { mode: 'embedded', companyId, id: `embedded-${companyId}-${root.id || 'prices'}` }); }
-  async function openForCompany(companyId) { const standalone = instances.get('standalone'); if (!standalone) return; standalone.companyId = companyId || ''; const select = standalone.root.querySelector('[data-ct4-company]'); if (select) select.value = standalone.companyId; await loadInstance(standalone); }
-  async function init() { const screen = document.getElementById('screen-config-tariff-matrix'); if (!screen) return; const nav = document.querySelector('#nav-config-tariff-matrix .nav-label'); if (nav) nav.textContent = 'Tarifas'; await mount(screen, { mode: 'standalone', id: 'standalone' }); }
+  async function openForCompany(companyId) {
+    const standalone = instances.get('standalone'); if (!standalone) return;
+    standalone.companyId = companyId || '';
+    resetBulk(standalone);
+    const select = standalone.root.querySelector('[data-ct4-company]'); if (select) select.value = standalone.companyId;
+    await loadInstance(standalone);
+  }
+  async function init() {
+    const screen = document.getElementById('screen-config-tariff-matrix'); if (!screen) return;
+    const nav = document.querySelector('#nav-config-tariff-matrix .nav-label'); if (nav) nav.textContent = 'Tarifas';
+    await mount(screen, { mode: 'standalone', id: 'standalone' });
+  }
 
-  window.AuxiliosCompanyTariffsV4 = { instances, mount, mountEmbedded, openForCompany, reload: reloadCompany, loadCompany: async () => { const legacyId = window.AuxiliosCompanyTariffsV4?.state?.companyId; if (legacyId) return openForCompany(legacyId); const standalone = instances.get('standalone'); if (standalone) return loadInstance(standalone); }, state: { get companyId() { return instances.get('standalone')?.companyId || ''; }, set companyId(value) { const instance = instances.get('standalone'); if (instance) instance.companyId = value || ''; } }, init };
+  window.AuxiliosCompanyTariffsV4 = {
+    instances, mount, mountEmbedded, openForCompany, reload: reloadCompany,
+    loadCompany: async () => {
+      const legacyId = window.AuxiliosCompanyTariffsV4?.state?.companyId;
+      if (legacyId) return openForCompany(legacyId);
+      const standalone = instances.get('standalone');
+      if (standalone) return loadInstance(standalone);
+    },
+    state: {
+      get companyId() { return instances.get('standalone')?.companyId || ''; },
+      set companyId(value) { const instance = instances.get('standalone'); if (instance) { instance.companyId = value || ''; resetBulk(instance); } }
+    },
+    init
+  };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init, { once: true }) : init();
 })();
