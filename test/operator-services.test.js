@@ -19,12 +19,13 @@ test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=
   assert.doesNotMatch(services,/os-board|renderKpis|renderDetail|modal-operador-servicio|get_operator_service_detail|os-detail-shell/);
 });
 
-test('mesa compacta ubica Nuevo servicio a la derecha y admite las 17 columnas',()=>{
+test('mesa compacta ubica Nuevo servicio a la derecha y adapta las 17 columnas al viewport',()=>{
   assert.match(css,/grid-template-columns:auto auto 180px 120px 34px 34px minmax\(0,1fr\)/);
   assert.match(css,/\.os-commandbar \.os-manage\{justify-self:end\}/);
-  assert.match(css,/min-width:1740px/);
+  assert.match(css,/\.os-table\{width:100%;min-width:0;/);
+  assert.doesNotMatch(css,/min-width:1740px/);
   assert.match(css,/100vh - 126px/);
-  assert.match(css,/col-origin,.os-table th.col-destination/);
+  assert.match(css,/\.os-table th\.col-origin,\.os-table th\.col-destination\{width:13%\}/);
   assert.match(css,/col-amount_due/);
 });
 
