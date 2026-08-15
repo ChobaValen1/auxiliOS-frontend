@@ -8,6 +8,7 @@ const config=fs.readFileSync('config.js','utf8');
 const settings=fs.readFileSync('service-module-configuration.js','utf8');
 const lifecycle=fs.readFileSync('migrations/20260813104500_service_module_configuration_v1.sql','utf8');
 const listMigration=fs.readFileSync('migrations/20260814125000_operator_service_list_v3.sql','utf8');
+const amountDueMigration=fs.readFileSync('migrations/20260815110500_operator_service_amount_due_excess_only_v1.sql','utf8');
 const settingsMigration=fs.readFileSync('migrations/20260814125500_service_module_columns_v2.sql','utf8');
 
 test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=>{
@@ -55,6 +56,8 @@ test('Origen y Destino son columnas separadas con detalle Dirección Localidad P
   assert.match(settings,/Dirección, Localidad y Provincia/);
   assert.match(services,/cambiarDetalleUbicacionPersonalServicio/);
   assert.match(settingsMigration,/add column if not exists location_detail/);
+  assert.match(listMigration,/origin_formatted_address/);
+  assert.match(listMigration,/destination_formatted_address/);
 });
 
 test('todas las columnas pueden ser visibles u ocultas por configuración o por usuario',()=>{
@@ -69,14 +72,17 @@ test('todas las columnas pueden ser visibles u ocultas por configuración o por 
   assert.doesNotMatch(settingsMigration,/jsonb_build_object\('service',true,'actions',true\)/);
 });
 
-test('Por Cobrar es peajes del cliente más todos los excedentes',()=>{
+test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido',()=>{
   assert.match(services,/customer_amount_due/);
-  assert.match(services,/fmtMoney/);
-  assert.match(listMigration,/ot\.payer_agent='customer'/);
-  assert.match(listMigration,/operator_service_excess_charges oe/);
-  assert.match(listMigration,/customer_amount_due/);
-  assert.match(listMigration,/origin_formatted_address/);
-  assert.match(listMigration,/destination_formatted_address/);
+  assert.match(services,/customer_payment_methods/);
+  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'\}/);
+  assert.match(services,/os-payment-method/);
+  assert.match(css,/\.os-payment-method\{/);
+  assert.match(amountDueMigration,/from public\.operator_service_excess_charges oe/);
+  assert.match(amountDueMigration,/array_agg\(distinct oe\.customer_payment_method order by oe\.customer_payment_method\)/);
+  assert.match(amountDueMigration,/'customer_amount_due',coalesce\(excess\.amount_due,0\)/);
+  assert.match(amountDueMigration,/'customer_payment_methods',coalesce\(excess\.payment_methods,array\[\]::text\[\]\)/);
+  assert.doesNotMatch(amountDueMigration,/from public\.operator_service_tolls/);
 });
 
 test('Agregar concepto es más compacto y Observaciones e Indicaciones comparten tarjeta y padding',()=>{
