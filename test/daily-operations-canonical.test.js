@@ -70,7 +70,8 @@ test('unreachable fleet patch stack is removed from repository and PWA cache', (
     assert.equal(exists(file), false, `${file} should not exist`);
     assert.doesNotMatch(sw, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
-  assert.match(sw, /auxilios-v184/);
+  const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
+  assert.ok(version>=185,`Expected cache version 185 or newer, received ${version}`);
 });
 
 test('bulk price migration reuses the canonical individual save function', () => {
