@@ -38,6 +38,7 @@
 .os-unassigned{color:var(--amber)}
 .os-muted-value{color:var(--muted)}
 .os-amount-due{color:var(--amber);font-weight:900}
+.os-payment-method{font-size:7px!important;color:var(--muted2)!important}
 .os-status{display:flex!important;align-items:center;justify-content:center;gap:4px;width:100%;max-width:100%;box-sizing:border-box;padding:3px 5px;border-radius:999px;font-size:7px!important;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .os-status.amber{color:var(--amber);background:var(--amber-lo)}.os-status.blue{color:var(--blue);background:var(--blue-lo)}.os-status.violet{color:#a986ff;background:rgba(169,134,255,.1)}.os-status.green{color:var(--green);background:var(--green-lo)}.os-status.red{color:var(--red);background:var(--red-lo)}
 .os-table td.actions{text-align:center;overflow:visible}
