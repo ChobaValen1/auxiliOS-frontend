@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const services = fs.readFileSync('operator-services.js','utf8');
 const workspace = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const effective = fs.readFileSync('migrations/20260812225500_operator_service_update_split_v1.sql','utf8');
-const listMigration = fs.readFileSync('migrations/20260814125000_operator_service_list_v3.sql','utf8');
+const amountDueMigration = fs.readFileSync('migrations/20260815110500_operator_service_amount_due_excess_only_v1.sql','utf8');
 
 test('Chofer no puede leer ni gestionar la mesa administrativa de Servicios', () => {
   assert.match(services, /canRead=\(\)=>\['administracion','operador','supervision','facturacion'\]\.includes\(role\(\)\)/);
@@ -13,14 +13,21 @@ test('Chofer no puede leer ni gestionar la mesa administrativa de Servicios', ()
   assert.doesNotMatch(services, /'chofer'.*canRead|canRead.*'chofer'/);
 });
 
-test('Operaciones sólo ve Por Cobrar del socio y no pricing de la Prestadora', () => {
+test('Operaciones ve Por Cobrar sólo desde Excedentes y no pricing de la Prestadora', () => {
   assert.match(services, /customer_amount_due/);
+  assert.match(services, /customer_payment_methods/);
   assert.match(services, /Por Cobrar/);
-  assert.match(listMigration, /ot\.payer_agent='customer'/);
-  assert.match(listMigration, /operator_service_excess_charges/);
+  assert.match(amountDueMigration, /operator_service_excess_charges/);
+  assert.doesNotMatch(amountDueMigration, /from public\.operator_service_tolls/);
   assert.doesNotMatch(services, /canSeeCommercial|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot|provider_toll_total/);
   assert.doesNotMatch(workspace, /money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
   assert.doesNotMatch(workspace, /osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
+});
+
+test('Chofer no recibe Por Cobrar ni medios de pago desde el listado', () => {
+  const driverBranch = amountDueMigration.split("elsif v_role='chofer' then")[1].split("else\n    raise exception 'Sin permiso para consultar servicios'")[0];
+  assert.ok(driverBranch);
+  assert.doesNotMatch(driverBranch, /customer_amount_due|customer_payment_methods|operator_service_excess_charges/);
 });
 
 test('el contexto efectivo de edición no devuelve pricing del servicio', () => {
