@@ -15,7 +15,7 @@ const config = fs.readFileSync('config.js','utf8');
 const flags = fs.readFileSync('feature-flags.js','utf8');
 const sw = fs.readFileSync('sw.js','utf8');
 const pkg = fs.readFileSync('package.json','utf8');
-const distance = fs.readFileSync('migrations/20260812123000_company_distance_billing_rules_v1.sql','utf8');
+const contractRules = fs.readFileSync('migrations/20260815121000_operator_quote_contract_rules_v2.sql','utf8');
 const validity = fs.readFileSync('migrations/20260812201500_scheduled_service_price_validity_v1.sql','utf8');
 const timeline = fs.readFileSync('migrations/20260812211000_price_timeline_cascade_v1.sql','utf8');
 const edit = fs.readFileSync('migrations/20260812222500_canonical_service_edit_workspace_v1.sql','utf8');
@@ -113,12 +113,26 @@ test('contexto efectivo no expone pricing del servicio y protege peajes por rol'
   assert.match(effectiveEdit,/if v_role='operador' then v_payload := v_payload - 'tolls'/);
 });
 
-test('regla de distancia factura todos los KM después del radio y corta movida en el límite',()=>{
-  assert.match(distance,/covered_radius_km/);
-  assert.match(distance,/movement_charge_until_km/);
-  assert.match(distance,/v_distance_applies := v_distance > 0 AND \(v_radius IS NULL OR v_distance > v_radius\)/);
-  assert.match(distance,/v_movement_applies := v_movement_until IS NULL OR v_distance <= v_movement_until/);
-  assert.doesNotMatch(distance,/v_distance\s*-\s*coalesce\(v_rate\.included_km/i);
+test('Radio cobra sólo KM excedentes y Cobrar movida hasta corta la movida después del límite',()=>{
+  assert.match(contractRules,/v_billable_distance:=greatest\(v_distance-coalesce\(v_radius,0\),0\)/);
+  assert.match(contractRules,/v_distance_applies:=v_billable_distance>0/);
+  assert.match(contractRules,/v_movement_applies:=v_movement_until is null or v_distance<=v_movement_until/);
+  assert.match(contractRules,/v_subtotal:=round\(v_billable_distance\*coalesce\(v_rate\.extra_km_price,0\),2\)/);
+  assert.match(contractRules,/'billable_distance_km',v_billable_distance/);
+  assert.doesNotMatch(contractRules,/round\(v_distance\*coalesce\(v_rate\.extra_km_price/);
+});
+
+test('Recargos contractuales no se acumulan y se evalúan del mayor valor al menor',()=>{
+  assert.match(contractRules,/order by amount desc,rule_type,rule_id/);
+  assert.match(contractRules,/v_surcharge_total:=v_charge/);
+  assert.match(contractRules,/v_surcharges:=jsonb_build_array/);
+  assert.match(contractRules,/exit;/);
+  assert.doesNotMatch(contractRules,/v_surcharge_total:=v_surcharge_total\+v_charge/);
+});
+
+test('configuración inválida no admite Cobrar movida hasta menor que Radio',()=>{
+  assert.match(contractRules,/v_movement_until<v_radius/);
+  assert.match(contractRules,/no puede ser menor que el radio cubierto/);
 });
 
 test('PWA invalida el cache del runtime consolidado',()=>{
