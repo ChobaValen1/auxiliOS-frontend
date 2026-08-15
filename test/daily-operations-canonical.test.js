@@ -5,11 +5,13 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const exists = file => fs.existsSync(path.join(root, file));
 
 test('geographic bases preload from the canonical bootstrap without an UX overlay', () => {
   const config = read('config.js');
   assert.match(config, /await window\.cargarBasesGeograficas\?\.\(\)/);
   assert.doesNotMatch(config, /daily-operations-experience-v1\.js/);
+  assert.equal(exists('daily-operations-experience-v1.js'), false);
 });
 
 test('services table is responsive in the canonical stylesheet', () => {
@@ -32,11 +34,43 @@ test('Services refreshes active provider references on every load', () => {
   assert.match(source, /S\.company!=='all'&&!S\.companies\.some/);
 });
 
-test('bulk tariff editor remains an active feature and saves one atomic batch', () => {
-  const source = read('company-tariffs-bulk-v1.js');
-  assert.match(source, /dirtyKeys\.size/);
+test('bulk tariff editing belongs to the canonical tariffs module', () => {
+  const source = read('company-tariffs-v4.js');
+  const config = read('config.js');
+  assert.match(source, /dirtyKeys/);
   assert.match(source, /Actualizar \(\$\{count\}\)/);
   assert.match(source, /bulk_save_company_service_prices_v1/);
+  assert.equal(exists('company-tariffs-bulk-v1.js'), false);
+  assert.doesNotMatch(config, /company-tariffs-bulk-v1/);
+});
+
+test('superseded Services beta modules are absent', () => {
+  for (const file of [
+    'operator-console-v2.js',
+    'operator-console-v2.css',
+    'operator-service-workspace-v2.js',
+    'operator-service-workspace-review-v3.js',
+    'operator-service-workspace-review-v3.css'
+  ]) assert.equal(exists(file), false, `${file} should not exist`);
+  assert.equal(exists('operator-service-workspace-v2.css'), true, 'base workspace CSS is still used by the canonical renderer');
+});
+
+test('unreachable fleet patch stack is removed from repository and PWA cache', () => {
+  const sw = read('sw.js');
+  for (const file of [
+    'fleet-admin-detail-v2.js',
+    'fleet-admin-detail-v2.css',
+    'fleet-fuel-crud-v1.js',
+    'fleet-fuel-crud-v1.css',
+    'fleet-fuel-crud-contrast-fix.css',
+    'fleet-fuel-closed-edit-fix.js',
+    'fleet-fuel-closed-edit-fix.css',
+    'fleet-fuel-modal-state-fix.js'
+  ]) {
+    assert.equal(exists(file), false, `${file} should not exist`);
+    assert.doesNotMatch(sw, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(sw, /auxilios-v184/);
 });
 
 test('bulk price migration reuses the canonical individual save function', () => {
