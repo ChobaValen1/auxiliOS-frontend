@@ -2,17 +2,36 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
+const lifecycle=fs.readFileSync('operator-service-lifecycle.js','utf8');
 
 test('quitar chofer o móvil limpia ambos recursos',()=>{
   assert.match(wizard,/if\(!value\)\{w\.data\.assigned_driver_id='';w\.data\.assigned_truck_id='';markDirty\(\);return render\(\);\}/);
 });
 
-test('guardar confirma todos los cambios de asignación que cambian estado o recursos',()=>{
+test('guardar confirma cambios de asignación dentro de AuxiliOS',()=>{
   assert.match(wizard,/function confirmAssignmentChange/);
   assert.match(wizard,/El servicio pasará a ASIGNADO/);
   assert.match(wizard,/El servicio volverá a SIN ASIGNAR/);
   assert.match(wizard,/¿Confirmar reasignación del servicio\?/);
+  assert.match(wizard,/OperatorServiceLifecycleV2\?\.confirmAssignmentChange/);
   assert.match(wizard,/if\(wasEdit&&!await confirmAssignmentChange\(w\)\)return/);
+  assert.match(lifecycle,/function confirmAction/);
+  assert.match(lifecycle,/Confirmar cambio de asignación/);
+  assert.doesNotMatch(wizard,/window\.confirm|[^\.]confirm\('/);
+  assert.doesNotMatch(lifecycle,/window\.confirm/);
+});
+
+test('guardar servicio cierra el workspace y vuelve siempre a la tabla general',()=>{
+  assert.match(wizard,/function performCloseWorkspace\(\)\{hideWorkspaceModal\(\);resetShell\(\);S\.wizard=null;S\.selected=null;return true;\}/);
+  assert.match(wizard,/performCloseWorkspace\(\);S\.view='active';S\.status='all';if\(typeof window\.goTo==='function'\)window\.goTo\('operaciones'\);await loadServices\(\)/);
+  assert.doesNotMatch(wizard,/if\(wasEdit&&id\)await openView\(id\)/);
+  assert.match(wizard,/modal\.hidden=true;modal\.style\.display='none'/);
+});
+
+test('salir con cambios pendientes también usa confirmación interna',()=>{
+  assert.match(wizard,/title:'Salir sin guardar'/);
+  assert.match(wizard,/OperatorServiceLifecycleV2\?\.confirmAction/);
+  assert.doesNotMatch(wizard,/confirm\('Hay cambios sin guardar/);
 });
 
 test('después de ARRIBADO sólo Chofer y Móvil quedan bloqueados',()=>{
