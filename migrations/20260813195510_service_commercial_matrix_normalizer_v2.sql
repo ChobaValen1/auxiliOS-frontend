@@ -112,7 +112,9 @@ begin
     v_excess_unit:=round(greatest(coalesce(nullif(v_row->>'unit_amount','')::numeric,0),0),2);
     v_customer_method:=nullif(lower(btrim(v_row->>'customer_payment_method')),'');
     v_currency:=upper(coalesce(nullif(btrim(v_row->>'currency'),''),'ARS'));
-    v_collector:=nullif(lower(btrim(v_row->>'collector_agent')),'');
+    -- Compatibilidad temporal con clientes publicados antes de que existiera Cobrador:
+    -- si no lo envían, ese flujo histórico corresponde a Empresa (Nosotros).
+    v_collector:=coalesce(nullif(lower(btrim(v_row->>'collector_agent')),''),'company');
 
     if v_concept_id is null then raise exception 'Seleccioná el concepto del excedente'; end if;
     if v_excess_qty<=0 then raise exception 'La cantidad del excedente debe ser mayor a cero'; end if;
