@@ -18,3 +18,7 @@ test('la pantalla central muestra accesos directos a Servicios y Tarifas',()=>{
   assert.match(center,/irModuloConfiguracion\('config-services'\)[\s\S]*<b>Servicios<\/b>/);
   assert.match(center,/irModuloConfiguracion\('config-tariff-matrix'\)[\s\S]*<b>Tarifas<\/b>/);
 });
+
+test('Configuración conserva en un único centro los módulos estructurales disponibles',()=>{
+  for(const label of ['Prestadoras','Bases geográficas','Tipos de servicio','Tipos de tarifa','Peajes y adicionales','Servicios','Tarifas','Personal / Choferes','Camiones','Planes de mantenimiento','Mantenimiento','Contactos de emergencia','Documentación','Grilla','Sueldos','Mi cuenta'])assert.match(center,new RegExp(label));
+});
