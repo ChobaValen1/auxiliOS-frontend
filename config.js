@@ -19,7 +19,10 @@ function loadAuxiliosModule(id, src) {
     const existing = document.getElementById(id);
     if (existing) {
       if (existing.dataset.loaded === '1') resolve();
-      else existing.addEventListener('load', resolve, { once: true });
+      else {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', reject, { once: true });
+      }
       return;
     }
     const script = document.createElement('script');
@@ -50,8 +53,54 @@ function waitForAuxiliosProfile() {
 function setNavigationBooting(booting) {
   const sidenav = document.querySelector('.sidenav');
   if (!sidenav) return;
-  sidenav.style.visibility = booting ? 'hidden' : '';
+  sidenav.classList.toggle('aux-navigation-booting', !!booting);
   sidenav.setAttribute('aria-busy', booting ? 'true' : 'false');
+}
+
+async function loadCriticalAuxiliosModules() {
+  loadAuxiliosStyle('auxilios-service-module-configuration-css', '/service-module-configuration.css');
+  await Promise.all([
+    loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
+    loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),
+    loadAuxiliosModule('auxilios-toll-management', '/toll-management.js'),
+    loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),
+    loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js')
+  ]);
+  window.AuxiliosConfigurationCenter?.configure?.();
+}
+
+function loadGeographicBasesInBackground() {
+  Promise.resolve(window.cargarBasesGeograficas?.()).catch(error => {
+    console.error('No se pudieron precargar las bases geográficas:', error);
+  });
+}
+
+async function loadSecondaryAuxiliosModules() {
+  loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
+  loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
+  loadAuxiliosStyle('auxilios-operator-service-commercial-addons-v1-css', '/operator-service-commercial-addons-v1.css');
+  loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
+
+  await Promise.all([
+    loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js'),
+    loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js'),
+    loadAuxiliosModule('auxilios-tariff-types-catalog-v1', '/tariff-types-catalog-v1.js'),
+    loadAuxiliosModule('auxilios-company-tariffs-v4', '/company-tariffs-v4.js'),
+    loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js'),
+    loadAuxiliosModule('auxilios-company-billing-parameters-v4', '/company-billing-parameters-v4.js'),
+    loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js'),
+    loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js'),
+    loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js'),
+    loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js'),
+    loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js'),
+    loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js')
+  ]);
+
+  await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
+  await Promise.all([
+    loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js'),
+    loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js')
+  ]);
 }
 
 setNavigationBooting(true);
@@ -59,41 +108,17 @@ setNavigationBooting(true);
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await waitForAuxiliosProfile();
+    await loadCriticalAuxiliosModules();
 
-    await loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js');
-    await window.cargarBasesGeograficas?.();
-    await loadAuxiliosModule('auxilios-operator-services', '/operator-services.js');
-    await loadAuxiliosModule('auxilios-toll-management', '/toll-management.js');
-    await loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js');
-    loadAuxiliosStyle('auxilios-service-module-configuration-css', '/service-module-configuration.css');
-    await loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js');
-    window.AuxiliosConfigurationCenter?.configure?.();
+    // El shell ya está operativo. Ninguna carga secundaria debe bloquear la UI.
+    setNavigationBooting(false);
+    loadGeographicBasesInBackground();
 
-    await loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js');
-    await loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js');
-    await loadAuxiliosModule('auxilios-tariff-types-catalog-v1', '/tariff-types-catalog-v1.js');
-    await loadAuxiliosModule('auxilios-company-tariffs-v4', '/company-tariffs-v4.js');
-    await loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js');
-    await loadAuxiliosModule('auxilios-company-billing-parameters-v4', '/company-billing-parameters-v4.js');
-
-    await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
-    loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
-    loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
-    await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
-    loadAuxiliosStyle('auxilios-operator-service-commercial-addons-v1-css', '/operator-service-commercial-addons-v1.css');
-    await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
-
-    await loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js');
-    await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
-    await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
-    await loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js');
-    await loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js');
-
-    loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
-    await loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js');
+    void loadSecondaryAuxiliosModules().catch(error => {
+      console.error('No se pudieron cargar módulos secundarios de AuxiliOS:', error);
+    });
   } catch (error) {
-    console.error('No se pudieron cargar los módulos de AuxiliOS:', error);
-  } finally {
+    console.error('No se pudo completar el arranque de AuxiliOS:', error);
     setNavigationBooting(false);
   }
 }, { once: true });
