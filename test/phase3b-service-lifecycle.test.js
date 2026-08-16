@@ -6,6 +6,7 @@ const lifecycleCss=fs.readFileSync('operator-service-lifecycle.css','utf8');
 const services=fs.readFileSync('operator-services.js','utf8');
 const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const commercial=fs.readFileSync('operator-service-commercial-addons-v1.js','utf8');
+const commercialCss=fs.readFileSync('operator-service-commercial-addons-v1.css','utf8');
 const config=fs.readFileSync('config.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const migration=fs.readFileSync('migrations/20260815211500_operator_service_lifecycle_v2.sql','utf8');
@@ -86,21 +87,22 @@ test('asignación rápida backend es atómica para Administración y Operador y 
   assert.match(quickAssignment,/event_type,from_status,to_status,notes,details,created_by/);
 });
 
-test('historial y acciones quedan integrados al workspace canónico',()=>{
+test('historial permanece en el workspace pero cambios de estado viven sólo en la mesa',()=>{
   assert.match(workspace,/osv4-lifecycle-slot/);
   assert.match(lifecycle,/get_operator_service_history_v2/);
   assert.match(lifecycle,/auxilios:service-workspace-opened/);
   assert.match(lifecycle,/osv4-lifecycle-slot/);
-  assert.match(commercial,/data-ca="lifecycle-arrive"/);
-  assert.match(commercial,/data-ca="lifecycle-finalize"/);
-  assert.match(commercial,/data-ca="lifecycle-annul"/);
-  assert.match(commercial,/Guardá los cambios antes de cambiar el estado/);
+  assert.doesNotMatch(commercial,/lifecyclePanel|data-ca="lifecycle-arrive"|data-ca="lifecycle-finalize"|data-ca="lifecycle-annul"|Estado del servicio|Guardá los cambios antes de cambiar el estado/);
+  assert.doesNotMatch(commercialCss,/osca-lifecycle/);
+  assert.match(services,/accionMenuServicio\('arrive'/);
+  assert.match(services,/accionMenuServicio\('finalize'/);
+  assert.match(services,/accionMenuServicio\('annul'/);
+  assert.match(services,/asignarServicioRapido/);
 });
 
-test('las transiciones operativas quedan habilitadas para Administración y Operador',()=>{
+test('las transiciones operativas quedan habilitadas para Administración y Operador desde la mesa',()=>{
   assert.match(services,/const canTransitionState=\(\)=>\['administracion','operador'\]\.includes\(role\(\)\)/);
-  assert.match(commercial,/canTransitionState/);
-  assert.match(commercial,/if\(canTransition&&!closed&&!legacy\)/);
+  assert.match(services,/if\(canTransitionState\(\)&&!closed&&!legacy\)/);
   assert.match(adminTransitions,/transition_operator_service_v2/);
   assert.match(adminTransitions,/v_role not in \(''operador'',''administracion''\)/);
   assert.match(adminTransitions,/Solo Operador o Administración puede cambiar el estado del servicio/);
@@ -118,10 +120,10 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga lifecycle antes de liberar UI y cache v197',()=>{
+test('runtime carga lifecycle antes de liberar UI y cache v198',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v197/);
+  assert.match(sw,/auxilios-v198/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
