@@ -3,6 +3,8 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
 const lifecycle=fs.readFileSync('operator-service-lifecycle.js','utf8');
+const lifecycleCss=fs.readFileSync('operator-service-lifecycle.css','utf8');
+const workspaceCss=fs.readFileSync('operator-service-workspace-v2.css','utf8');
 
 test('quitar chofer o móvil limpia ambos recursos',()=>{
   assert.match(wizard,/if\(!value\)\{w\.data\.assigned_driver_id='';w\.data\.assigned_truck_id='';markDirty\(\);return render\(\);\}/);
@@ -19,6 +21,13 @@ test('guardar confirma cambios de asignación dentro de AuxiliOS',()=>{
   assert.match(lifecycle,/Confirmar cambio de asignación/);
   assert.doesNotMatch(wizard,/window\.confirm|[^\.]confirm\('/);
   assert.doesNotMatch(lifecycle,/window\.confirm/);
+});
+
+test('confirmación de reasignación queda por encima del workspace',()=>{
+  const lifecycleZ=Number(lifecycleCss.match(/\.osl-modal-backdrop\{[^}]*z-index:(\d+)/)?.[1]||0);
+  const workspaceZ=Number(workspaceCss.match(/#modal-operador-wizard\.osv2-modal-backdrop\s*\{[^}]*z-index:\s*(\d+)/)?.[1]||0);
+  assert.ok(workspaceZ>0,'No se encontró el z-index del workspace');
+  assert.ok(lifecycleZ>workspaceZ,`La confirmación (${lifecycleZ}) debe quedar sobre el workspace (${workspaceZ})`);
 });
 
 test('guardar servicio cierra el workspace y vuelve siempre a la tabla general',()=>{
