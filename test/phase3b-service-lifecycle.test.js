@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const lifecycle=fs.readFileSync('operator-service-lifecycle.js','utf8');
 const services=fs.readFileSync('operator-services.js','utf8');
 const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
+const commercial=fs.readFileSync('operator-service-commercial-addons-v1.js','utf8');
 const config=fs.readFileSync('config.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const migration=fs.readFileSync('migrations/20260815211500_operator_service_lifecycle_v2.sql','utf8');
@@ -37,11 +38,15 @@ test('lifecycle usa una sola RPC canónica y eliminó cierres por excepción vie
   assert.doesNotMatch(lifecycle,/close_operator_service_exception|review_operator_service_closure|reassign_operator_service|MutationObserver|No se pudo completar/);
 });
 
-test('historial queda integrado al slot canónico del workspace',()=>{
+test('historial y acciones quedan integrados al workspace canónico',()=>{
   assert.match(workspace,/osv4-lifecycle-slot/);
   assert.match(lifecycle,/get_operator_service_history_v2/);
   assert.match(lifecycle,/auxilios:service-workspace-opened/);
   assert.match(lifecycle,/osv4-lifecycle-slot/);
+  assert.match(commercial,/data-ca="lifecycle-arrive"/);
+  assert.match(commercial,/data-ca="lifecycle-finalize"/);
+  assert.match(commercial,/data-ca="lifecycle-annul"/);
+  assert.match(commercial,/Guardá los cambios antes de cambiar el estado/);
 });
 
 test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>{
