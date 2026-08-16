@@ -2,6 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const lifecycle=fs.readFileSync('operator-service-lifecycle.js','utf8');
+const lifecycleCss=fs.readFileSync('operator-service-lifecycle.css','utf8');
 const services=fs.readFileSync('operator-services.js','utf8');
 const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const commercial=fs.readFileSync('operator-service-commercial-addons-v1.js','utf8');
@@ -39,10 +40,16 @@ test('lifecycle usa una sola RPC canónica y eliminó cierres por excepción vie
   assert.doesNotMatch(lifecycle,/close_operator_service_exception|review_operator_service_closure|reassign_operator_service|MutationObserver|No se pudo completar/);
 });
 
-test('las confirmaciones del lifecycle viven dentro de AuxiliOS',()=>{
+test('las confirmaciones viven dentro de AuxiliOS y la reasignación no bloquea el workspace',()=>{
   assert.match(lifecycle,/function confirmAction/);
   assert.match(lifecycle,/osl-confirm-copy/);
-  assert.match(lifecycle,/confirmAssignmentChange\(message\).*confirmAction/s);
+  assert.match(lifecycle,/function confirmAssignmentChange\(message\)/);
+  assert.match(lifecycle,/\.assignment-grid/);
+  assert.match(lifecycle,/osl-assignment-inline/);
+  assert.match(lifecycle,/data-osl-assignment-confirm/);
+  assert.match(lifecycle,/data-osl-assignment-cancel/);
+  assert.match(lifecycleCss,/\.osv4-reactive \.osl-assignment-inline/);
+  assert.doesNotMatch(lifecycle,/confirmAssignmentChange\(message\).*confirmAction/s);
   assert.doesNotMatch(lifecycle,/window\.confirm/);
 });
 
