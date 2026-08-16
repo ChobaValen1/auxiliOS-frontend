@@ -9,8 +9,8 @@ const commercial=fs.readFileSync('operator-service-commercial-addons-v1.js','utf
 const config=fs.readFileSync('config.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const migration=fs.readFileSync('migrations/20260815211500_operator_service_lifecycle_v2.sql','utf8');
-const operatorOnly=fs.readFileSync('migrations/20260815224000_operator_only_service_transitions_v2.sql','utf8');
 const quickAssignment=fs.readFileSync('migrations/20260816002000_operator_service_quick_assignment_v2.sql','utf8');
+const adminTransitions=fs.readFileSync('migrations/20260816015500_admin_operator_service_transitions_v2.sql','utf8');
 
 test('mesa operativa expone sólo los cinco estados acordados',()=>{
   for(const label of ['Sin asignar','Asignado','Arribado','Finalizado','Anulado'])assert.match(services,new RegExp(label));
@@ -68,16 +68,16 @@ test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
   assert.match(lifecycle,/set_operator_service_assignment_v2/);
   assert.match(lifecycle,/function markReadOnly\(m\)/);
   assert.match(lifecycle,/Modo consulta/);
-  assert.match(lifecycle,/Solo Operador/);
   assert.match(lifecycle,/const readOnly=!canTransition\(\)/);
   assert.doesNotMatch(lifecycle,/data-osl-quick-action=.*disabled/s);
   assert.match(lifecycleCss,/\.osl-quick-status-menu/);
   assert.match(lifecycleCss,/\.osl-assignment-compare/);
 });
 
-test('asignación rápida backend es atómica, sólo del Operador y respeta ocupación',()=>{
+test('asignación rápida backend es atómica para Administración y Operador y respeta ocupación',()=>{
   assert.match(quickAssignment,/create or replace function public\.set_operator_service_assignment_v2/);
-  assert.match(quickAssignment,/v_role <> 'operador'/);
+  assert.match(adminTransitions,/set_operator_service_assignment_v2/);
+  assert.match(adminTransitions,/v_role not in \(''operador'',''administracion''\)/);
   assert.match(quickAssignment,/s\.status not in \('pending','assigned'\)/);
   assert.match(quickAssignment,/El Chofer ya está ocupado en otro servicio activo/);
   assert.match(quickAssignment,/El Móvil ya está ocupado en otro servicio activo/);
@@ -97,12 +97,13 @@ test('historial y acciones quedan integrados al workspace canónico',()=>{
   assert.match(commercial,/Guardá los cambios antes de cambiar el estado/);
 });
 
-test('las transiciones operativas quedan reservadas al Operador',()=>{
-  assert.match(services,/const canTransitionState=\(\)=>role\(\)==='operador'/);
+test('las transiciones operativas quedan habilitadas para Administración y Operador',()=>{
+  assert.match(services,/const canTransitionState=\(\)=>\['administracion','operador'\]\.includes\(role\(\)\)/);
   assert.match(commercial,/canTransitionState/);
   assert.match(commercial,/if\(canTransition&&!closed&&!legacy\)/);
-  assert.match(operatorOnly,/v_role <> ''operador''/);
-  assert.match(operatorOnly,/Solo el Operador puede cambiar el estado del servicio/);
+  assert.match(adminTransitions,/transition_operator_service_v2/);
+  assert.match(adminTransitions,/v_role not in \(''operador'',''administracion''\)/);
+  assert.match(adminTransitions,/Solo Operador o Administración puede cambiar el estado del servicio/);
 });
 
 test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>{
@@ -117,10 +118,10 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga lifecycle antes de liberar UI y cache v196',()=>{
+test('runtime carga lifecycle antes de liberar UI y cache v197',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v196/);
+  assert.match(sw,/auxilios-v197/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
