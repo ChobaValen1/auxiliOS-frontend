@@ -72,6 +72,24 @@ test('todas las columnas pueden ser visibles u ocultas por configuración o por 
   assert.doesNotMatch(settingsMigration,/jsonb_build_object\('service',true,'actions',true\)/);
 });
 
+test('preferencias de columnas son persistentes por usuario en Supabase con cache local de respaldo',()=>{
+  assert.match(services,/const PERSONAL_VIEW_KEY='operator_services_table_v2'/);
+  assert.match(services,/function currentUserId\(\)/);
+  assert.match(services,/async function loadPersonalPreference\(\)/);
+  assert.match(services,/from\('user_view_preferences'\)\.select\('preferences'\)/);
+  assert.match(services,/view_key',PERSONAL_VIEW_KEY/);
+  assert.match(services,/upsert\(\{user_id:uid,view_key:PERSONAL_VIEW_KEY,preferences:pref/);
+  assert.match(services,/from\('user_view_preferences'\)\.delete\(\)/);
+  assert.match(services,/localStorage\.setItem\(personalKey\(\),JSON\.stringify\(pref\)\)/);
+  assert.match(services,/loadPersonalPreference\(\)/);
+});
+
+test('acciones de asignación desde la mesa usan el modal rápido y no abren el editor completo',()=>{
+  const menu=services.split('async function menuAction')[1].split('function viewService')[0];
+  assert.match(menu,/action==='assign'.*asignarServicioRapido/s);
+  assert.doesNotMatch(menu,/action==='assign'.*editarServicioOperador/s);
+});
+
 test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido',()=>{
   assert.match(services,/customer_amount_due/);
   assert.match(services,/customer_payment_methods/);
