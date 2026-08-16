@@ -4,7 +4,7 @@
 
   const BACKOFFICE_ROLES = new Set(['administracion', 'supervision', 'facturacion']);
   const MANAGEMENT_ROLES = new Set(['administracion', 'supervision']);
-  const CONFIG_CHILD_ROUTES = new Set(['empresas', 'bases-geograficas', 'bases-tarifarias', 'config-service-types', 'config-tariff-types', 'peajes']);
+  const CONFIG_CHILD_ROUTES = new Set(['empresas', 'bases-geograficas', 'bases-tarifarias', 'config-service-types', 'config-tariff-types', 'peajes', 'config-services', 'config-tariff-matrix']);
   const CANCELLATION_STATES = new Set(['cancelled', 'canceled', 'cancelado', 'cancelada', 'anulado', 'anulada', 'void', 'voided']);
   const ENTITY_LABELS = {
     remitos: 'Remito',
@@ -186,6 +186,7 @@
       'config-service-types': { title: 'TIPOS DE SERVICIO', sub: 'Catálogo maestro global' },
       'config-tariff-types': { title: 'TIPOS DE TARIFA', sub: 'Formas de cálculo disponibles' },
       peajes: { title: 'PEAJES Y ADICIONALES', sub: 'Catálogo de conceptos complementarios' },
+      'config-services': { title: 'CONFIGURACIÓN · SERVICIOS', sub: 'Panel, formulario y flujo operativo' },
       'config-tariff-matrix': { title: 'TARIFAS', sub: 'Valores versionados por prestadora' },
     });
   }
@@ -233,6 +234,11 @@
     moveTo(catalogs, document.getElementById('nav-config-service-types'));
     moveTo(catalogs, document.getElementById('nav-config-tariff-types'));
     moveTo(catalogs, document.getElementById('nav-peajes'));
+    moveTo(catalogs, document.getElementById('nav-config-services'));
+    addAction(catalogs, '💳', 'Tarifas', 'Valores y vigencias por prestadora', () => {
+      closeFlyout();
+      if (typeof goTo === 'function') goTo('config-tariff-matrix');
+    });
 
     if (canUseManagementTools()) {
       addAction(management, '👤', 'Personal / Choferes', 'Alta y gestión del personal', () => openLegacySettingsTab('tab-usuarios'));
@@ -273,7 +279,7 @@
   function configureDriverNavigation() {
     document.body.classList.remove('aux-backoffice-nav');
     closeFlyout();
-    ['nav-configuracion', 'nav-historial-sistema', 'nav-empresas', 'nav-bases-geograficas', 'nav-bases-tarifarias', 'nav-config-service-types', 'nav-config-tariff-types', 'nav-config-tariff-matrix', 'nav-peajes', 'nav-operaciones'].forEach(id => {
+    ['nav-configuracion', 'nav-historial-sistema', 'nav-empresas', 'nav-bases-geograficas', 'nav-bases-tarifarias', 'nav-config-service-types', 'nav-config-tariff-types', 'nav-config-services', 'nav-config-tariff-matrix', 'nav-peajes', 'nav-operaciones'].forEach(id => {
       const node = document.getElementById(id);
       if (node) node.style.display = 'none';
     });
@@ -361,6 +367,8 @@
           <button class="aux-center-tool" onclick="irModuloConfiguracion('config-service-types')"><span>🛠️</span><b>Tipos de servicio</b><small>Alta y definición de servicios.</small></button>
           <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-types')"><span>💰</span><b>Tipos de tarifa</b><small>Modalidades de cálculo.</small></button>
           <button class="aux-center-tool" onclick="irModuloConfiguracion('peajes')"><span>🛣️</span><b>Peajes y adicionales</b><small>Catálogo e importes vigentes.</small></button>
+          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-services')"><span>☷</span><b>Servicios</b><small>Columnas, formulario y flujo operativo.</small></button>
+          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-matrix')"><span>💳</span><b>Tarifas</b><small>Valores y vigencias por prestadora.</small></button>
         </div>
       </section>
       ${managementToolsMarkup()}
@@ -545,6 +553,7 @@
     event?.stopPropagation?.();
     if (!canUseCenter()) return notify('Sin permiso para acceder a Configuración', 'error');
     if (!document.getElementById('screen-configuracion')?.classList.contains('active') && typeof goTo === 'function') goTo('configuracion');
+    populateFlyout();
     setFlyout(true);
   }
 
@@ -552,7 +561,7 @@
     const previous = window.goTo;
     if (typeof previous !== 'function' || previous.__auxCanonicalNavigation) return;
     const wrapped = function(name, ...args) {
-      if ((name === 'configuracion' || name === 'historial-sistema' || CONFIG_CHILD_ROUTES.has(name) || name === 'config-tariff-matrix') && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
+      if ((name === 'configuracion' || name === 'historial-sistema' || CONFIG_CHILD_ROUTES.has(name)) && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
       const result = previous.call(this, name, ...args);
       closeFlyout();
       if (canUseCenter() && CONFIG_CHILD_ROUTES.has(name)) document.getElementById('nav-configuracion')?.classList.add('active');
