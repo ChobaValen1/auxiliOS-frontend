@@ -112,9 +112,9 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga sólo lifecycle canónico y cache v193',()=>{
+test('runtime carga sólo lifecycle canónico y cache v194',()=>{
   assert.match(config,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v193/);
+  assert.match(sw,/auxilios-v194/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
