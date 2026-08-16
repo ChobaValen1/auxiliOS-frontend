@@ -8,6 +8,7 @@ const commercial=fs.readFileSync('operator-service-commercial-addons-v1.js','utf
 const config=fs.readFileSync('config.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const migration=fs.readFileSync('migrations/20260815211500_operator_service_lifecycle_v2.sql','utf8');
+const operatorOnly=fs.readFileSync('migrations/20260815224000_operator_only_service_transitions_v2.sql','utf8');
 
 test('mesa operativa expone sólo los cinco estados acordados',()=>{
   for(const label of ['Sin asignar','Asignado','Arribado','Finalizado','Anulado'])assert.match(services,new RegExp(label));
@@ -49,6 +50,14 @@ test('historial y acciones quedan integrados al workspace canónico',()=>{
   assert.match(commercial,/Guardá los cambios antes de cambiar el estado/);
 });
 
+test('las transiciones operativas quedan reservadas al Operador',()=>{
+  assert.match(services,/const canTransitionState=\(\)=>role\(\)==='operador'/);
+  assert.match(commercial,/canTransitionState/);
+  assert.match(commercial,/if\(canTransition&&!closed&&!legacy\)/);
+  assert.match(operatorOnly,/v_role <> ''operador''/);
+  assert.match(operatorOnly,/Solo el Operador puede cambiar el estado del servicio/);
+});
+
 test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>{
   assert.match(migration,/old\.status='assigned' and new\.status='pending'/);
   assert.match(migration,/old\.status='assigned' and new\.status='at_origin'/);
@@ -61,9 +70,9 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga sólo lifecycle canónico y cache v188',()=>{
+test('runtime carga sólo lifecycle canónico y cache v189',()=>{
   assert.match(config,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v188/);
+  assert.match(sw,/auxilios-v189/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
