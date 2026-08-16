@@ -14,3 +14,8 @@ test('guardar confirma todos los cambios de asignación que cambian estado o rec
   assert.match(wizard,/¿Confirmar reasignación del servicio\?/);
   assert.match(wizard,/if\(wasEdit&&!await confirmAssignmentChange\(w\)\)return/);
 });
+
+test('después de ARRIBADO sólo Chofer y Móvil quedan bloqueados',()=>{
+  assert.match(wizard,/const TRIP_LOCKED=new Set\(\['assigned_driver_id','assigned_truck_id'\]\)/);
+  assert.doesNotMatch(wizard,/const TRIP_LOCKED=new Set\(\['company_id','billing_base_id','primary_concept_id'/);
+});
