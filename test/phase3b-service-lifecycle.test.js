@@ -49,7 +49,9 @@ test('las confirmaciones viven dentro de AuxiliOS y la reasignación no bloquea 
   assert.match(lifecycle,/data-osl-assignment-confirm/);
   assert.match(lifecycle,/data-osl-assignment-cancel/);
   assert.match(lifecycleCss,/\.osv4-reactive \.osl-assignment-inline/);
-  assert.doesNotMatch(lifecycle,/confirmAssignmentChange\(message\).*confirmAction/s);
+  const assignmentFn=lifecycle.split('function confirmAssignmentChange(message)')[1].split('function onWorkspaceOpened')[0];
+  assert.doesNotMatch(assignmentFn,/confirmAction\s*\(/);
+  assert.doesNotMatch(assignmentFn,/openModal\s*\(/);
   assert.doesNotMatch(lifecycle,/window\.confirm/);
 });
 
