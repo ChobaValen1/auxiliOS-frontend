@@ -62,11 +62,15 @@ test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
   assert.match(lifecycle,/status==='assigned'.*\['reassign','Re-asignar'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/status==='at_origin'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/\.col-status \.os-status/);
-  assert.match(lifecycle,/function openAssignment\(id\)/);
+  assert.match(lifecycle,/function openAssignment\(id,readOnly=false\)/);
   assert.match(lifecycle,/Asignación actual/);
   assert.match(lifecycle,/Nueva asignación/);
   assert.match(lifecycle,/set_operator_service_assignment_v2/);
+  assert.match(lifecycle,/function markReadOnly\(m\)/);
+  assert.match(lifecycle,/Modo consulta/);
   assert.match(lifecycle,/Solo Operador/);
+  assert.match(lifecycle,/const readOnly=!canTransition\(\)/);
+  assert.doesNotMatch(lifecycle,/data-osl-quick-action=.*disabled/s);
   assert.match(lifecycleCss,/\.osl-quick-status-menu/);
   assert.match(lifecycleCss,/\.osl-assignment-compare/);
 });
@@ -113,10 +117,10 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga lifecycle antes de liberar UI y cache v195',()=>{
+test('runtime carga lifecycle antes de liberar UI y cache v196',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v195/);
+  assert.match(sw,/auxilios-v196/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
