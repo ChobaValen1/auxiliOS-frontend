@@ -10,6 +10,7 @@ const config=fs.readFileSync('config.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const migration=fs.readFileSync('migrations/20260815211500_operator_service_lifecycle_v2.sql','utf8');
 const operatorOnly=fs.readFileSync('migrations/20260815224000_operator_only_service_transitions_v2.sql','utf8');
+const quickAssignment=fs.readFileSync('migrations/20260816002000_operator_service_quick_assignment_v2.sql','utf8');
 
 test('mesa operativa expone sólo los cinco estados acordados',()=>{
   for(const label of ['Sin asignar','Asignado','Arribado','Finalizado','Anulado'])assert.match(services,new RegExp(label));
@@ -40,7 +41,7 @@ test('lifecycle usa una sola RPC canónica y eliminó cierres por excepción vie
   assert.doesNotMatch(lifecycle,/close_operator_service_exception|review_operator_service_closure|reassign_operator_service|MutationObserver|No se pudo completar/);
 });
 
-test('las confirmaciones viven dentro de AuxiliOS y la reasignación no bloquea el workspace',()=>{
+test('las confirmaciones viven dentro de AuxiliOS y la reasignación del editor no bloquea el workspace',()=>{
   assert.match(lifecycle,/function confirmAction/);
   assert.match(lifecycle,/osl-confirm-copy/);
   assert.match(lifecycle,/function confirmAssignmentChange\(message\)/);
@@ -53,6 +54,31 @@ test('las confirmaciones viven dentro de AuxiliOS y la reasignación no bloquea 
   assert.doesNotMatch(assignmentFn,/confirmAction\s*\(/);
   assert.doesNotMatch(assignmentFn,/openModal\s*\(/);
   assert.doesNotMatch(lifecycle,/window\.confirm/);
+});
+
+test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
+  assert.match(lifecycle,/function quickActions\(s\)/);
+  assert.match(lifecycle,/status==='pending'.*\['assign','Asignar'\]/s);
+  assert.match(lifecycle,/status==='assigned'.*\['reassign','Re-asignar'\].*\['finalize','Finalizar'\]/s);
+  assert.match(lifecycle,/status==='at_origin'.*\['finalize','Finalizar'\]/s);
+  assert.match(lifecycle,/\.col-status \.os-status/);
+  assert.match(lifecycle,/function openAssignment\(id\)/);
+  assert.match(lifecycle,/Asignación actual/);
+  assert.match(lifecycle,/Nueva asignación/);
+  assert.match(lifecycle,/set_operator_service_assignment_v2/);
+  assert.match(lifecycleCss,/\.osl-quick-status-menu/);
+  assert.match(lifecycleCss,/\.osl-assignment-compare/);
+});
+
+test('asignación rápida backend es atómica, sólo del Operador y respeta ocupación',()=>{
+  assert.match(quickAssignment,/create or replace function public\.set_operator_service_assignment_v2/);
+  assert.match(quickAssignment,/v_role <> 'operador'/);
+  assert.match(quickAssignment,/s\.status not in \('pending','assigned'\)/);
+  assert.match(quickAssignment,/El Chofer ya está ocupado en otro servicio activo/);
+  assert.match(quickAssignment,/El Móvil ya está ocupado en otro servicio activo/);
+  assert.match(quickAssignment,/assigned_driver_id=p_driver_id/);
+  assert.match(quickAssignment,/assigned_truck_id=p_truck_id/);
+  assert.match(quickAssignment,/event_type,from_status,to_status,notes,details,created_by/);
 });
 
 test('historial y acciones quedan integrados al workspace canónico',()=>{
@@ -86,9 +112,9 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga sólo lifecycle canónico y cache v192',()=>{
+test('runtime carga sólo lifecycle canónico y cache v193',()=>{
   assert.match(config,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v192/);
+  assert.match(sw,/auxilios-v193/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
