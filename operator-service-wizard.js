@@ -6,7 +6,7 @@ const open=id=>typeof openModal==='function'?openModal(id):document.getElementBy
 const close=id=>typeof closeModal==='function'?closeModal(id):document.getElementById(id)?.classList.remove('open');
 const FIELD_LABELS={customer_name:'cliente / socio',customer_phone:'teléfono del cliente',customer_email:'email del cliente',vehicle_plate:'patente',vehicle_make_model:'marca y modelo',assigned_resources:'chofer y móvil',operator_notes:'observaciones',driver_instructions:'indicaciones para el chofer'};
 const REMITO_STRUCTURAL=new Set(['company_id','billing_base_id','primary_concept_id','service_order_number','customer_name','customer_phone','customer_email','vehicle_plate','vehicle_make','vehicle_model','origin','destination','estimated_asphalt_km','estimated_gravel_km']);
-const TRIP_LOCKED=new Set(['company_id','billing_base_id','primary_concept_id','assigned_driver_id','assigned_truck_id']);
+const TRIP_LOCKED=new Set(['assigned_driver_id','assigned_truck_id']);
 const PAYMENTS=new Set(['cash','transfer','card','mercado_pago','other']),PAYERS=new Set(['provider','customer']),COLLECTORS=new Set(['company','provider']),COVERAGE=new Set(['provider_roundtrip','mixed_manual','customer_roundtrip']);
 let availability=null,transientErrorTimer=null;
 const clone=v=>JSON.parse(JSON.stringify(v)),same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null),uid=()=>crypto.randomUUID?.()||`commercial-${Date.now()}-${Math.random().toString(16).slice(2)}`;
