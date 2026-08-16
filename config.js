@@ -66,6 +66,9 @@ async function loadCriticalAuxiliosModules() {
     loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),
     loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js')
   ]);
+
+  // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
+  await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
   window.AuxiliosConfigurationCenter?.configure?.();
 }
 
@@ -90,7 +93,6 @@ async function loadSecondaryAuxiliosModules() {
     loadAuxiliosModule('auxilios-company-billing-parameters-v4', '/company-billing-parameters-v4.js'),
     loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js'),
     loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js'),
-    loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js'),
     loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js'),
     loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js'),
     loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js')
