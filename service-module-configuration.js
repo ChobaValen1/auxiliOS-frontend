@@ -8,7 +8,7 @@ const FIELD_LABELS={customer_name:'Cliente / Socio',customer_phone:'Teléfono de
 const CORE_FIELDS=['N° de servicio AuxiliOS (automático)','Código de prestadora','Prestadora','Fecha y hora','Base','Tipo de servicio','Origen','Destino'];
 const S={config:JSON.parse(JSON.stringify(DEFAULTS)),loaded:false,tab:'panel',saving:false};
 const clone=v=>JSON.parse(JSON.stringify(v));
-const role=()=>String(typeof PERFIL_USUARIO==='undefined'?'':(PERFIL_USUARIO?.roles?.name||PERIL_USUARIO?.role||PERFIL_USUARIO?.role_name||'')).toLowerCase();
+const role=()=>String(typeof PERFIL_USUARIO==='undefined'?'':(PERFIL_USUARIO?.roles?.name||PERFIL_USUARIO?.role||PERFIL_USUARIO?.role_name||'')).toLowerCase();
 const canRead=()=>['administracion','supervision','facturacion'].includes(role());
 const canWrite=()=>role()==='administracion';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
