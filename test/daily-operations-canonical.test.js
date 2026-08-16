@@ -7,11 +7,19 @@ const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const exists = file => fs.existsSync(path.join(root, file));
 
-test('geographic bases preload from the canonical bootstrap without an UX overlay', () => {
+test('geographic bases preload in background without blocking the application shell', () => {
   const config = read('config.js');
-  assert.match(config, /await window\.cargarBasesGeograficas\?\.\(\)/);
+  assert.match(config, /function loadGeographicBasesInBackground\(\)/);
+  assert.match(config, /Promise\.resolve\(window\.cargarBasesGeograficas\?\.\(\)\)/);
+  assert.doesNotMatch(config, /await window\.cargarBasesGeograficas\?\.\(\)/);
   assert.doesNotMatch(config, /daily-operations-experience-v1\.js/);
   assert.equal(exists('daily-operations-experience-v1.js'), false);
+});
+
+test('bootstrap releases navigation before secondary modules finish loading', () => {
+  const config = read('config.js');
+  assert.match(config, /await loadCriticalAuxiliosModules\(\);[\s\S]*setNavigationBooting\(false\);[\s\S]*void loadSecondaryAuxiliosModules\(\)/);
+  assert.doesNotMatch(config, /sidenav\.style\.visibility\s*=\s*booting/);
 });
 
 test('services table is responsive in the canonical stylesheet', () => {
