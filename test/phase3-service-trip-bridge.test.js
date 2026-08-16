@@ -14,7 +14,9 @@ test('el puente del chofer usa sólo cola v2, remito y firma para ARRIBADO',()=>
   assert.match(js,/link_operator_service_remito/);
   assert.match(js,/guardarRemitoCompleto/);
   assert.match(js,/firmaDataURL/);
-  assert.match(js,/¿Confirmar firma y marcar el servicio/);
+  assert.match(js,/Confirmar firma y ARRIBADO/);
+  assert.match(js,/OperatorServiceLifecycleV2\?\.confirmAction/);
+  assert.doesNotMatch(js,/window\.confirm/);
   assert.doesNotMatch(js,/advance_operator_service|avanzarServicioAsignado|NEXT\s*=|en_route|loaded|at_destination/);
 });
 
