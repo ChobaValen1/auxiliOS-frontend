@@ -21,10 +21,11 @@ test('services table is responsive in the canonical stylesheet', () => {
   assert.match(css, /\.os-table th\.col-origin,\.os-table th\.col-destination\{width:13%\}/);
 });
 
-test('creating a service returns to the table while edits may reopen view mode', () => {
+test('crear o editar un servicio vuelve a la tabla general sin reabrir visualización', () => {
   const source = read('operator-service-wizard.js');
   assert.match(source, /const wasEdit=w\.mode==='edit'/);
-  assert.match(source, /if\(wasEdit&&id\)await openView\(id\)/);
+  assert.match(source, /performCloseWorkspace\(\);S\.view='active';S\.status='all';if\(typeof window\.goTo==='function'\)window\.goTo\('operaciones'\);await loadServices\(\)/);
+  assert.doesNotMatch(source, /if\(wasEdit&&id\)await openView\(id\)/);
   assert.doesNotMatch(source, /await loadServices\(\);if\(id\)await openView\(id\)/);
 });
 
