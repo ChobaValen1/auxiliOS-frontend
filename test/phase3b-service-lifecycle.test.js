@@ -39,6 +39,13 @@ test('lifecycle usa una sola RPC canónica y eliminó cierres por excepción vie
   assert.doesNotMatch(lifecycle,/close_operator_service_exception|review_operator_service_closure|reassign_operator_service|MutationObserver|No se pudo completar/);
 });
 
+test('las confirmaciones del lifecycle viven dentro de AuxiliOS',()=>{
+  assert.match(lifecycle,/function confirmAction/);
+  assert.match(lifecycle,/osl-confirm-copy/);
+  assert.match(lifecycle,/confirmAssignmentChange\(message\).*confirmAction/s);
+  assert.doesNotMatch(lifecycle,/window\.confirm/);
+});
+
 test('historial y acciones quedan integrados al workspace canónico',()=>{
   assert.match(workspace,/osv4-lifecycle-slot/);
   assert.match(lifecycle,/get_operator_service_history_v2/);
@@ -70,9 +77,9 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga sólo lifecycle canónico y cache v189',()=>{
+test('runtime carga sólo lifecycle canónico y cache v190',()=>{
   assert.match(config,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v189/);
+  assert.match(sw,/auxilios-v190/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
