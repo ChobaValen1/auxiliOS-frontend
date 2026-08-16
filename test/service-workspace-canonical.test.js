@@ -106,7 +106,9 @@ test('origen destino es compacto y observaciones e indicaciones permanecen en co
 test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloque fantasma',()=>{
   assert.match(workspace,/blocking_issues/);
   assert.match(workspace,/Sin precio/);
-  assert.match(wizard,/get_operator_resource_availability/);
+  assert.doesNotMatch(wizard,/get_operator_resource_availability/);
+  assert.match(wizard,/function setAssignment\(kind,value\)/);
+  assert.match(wizard,/setVal\(key,value\);render\(\)/);
   assert.match(workspace,/action:'autocomplete'/);
   assert.match(workspace,/action:'route'/);
   assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
