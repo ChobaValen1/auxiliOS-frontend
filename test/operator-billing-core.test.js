@@ -3,8 +3,11 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const billing=fs.readFileSync('operator-billing.js','utf8');
 const billingCss=fs.readFileSync('operator-billing.css','utf8');
+const billingExport=fs.readFileSync('operator-billing-export.js','utf8');
+const excelExport=fs.readFileSync('excel-export.js','utf8');
 const companyBilling=fs.readFileSync('company-billing-parameters-v4.js','utf8');
 const config=fs.readFileSync('config.js','utf8');
+const index=fs.readFileSync('Index.html','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const foundation=fs.readFileSync('migrations/20260817133000_operator_billing_core_v1.sql','utf8');
 const migration=fs.readFileSync('migrations/20260817141500_operator_billing_desk_v2.sql','utf8');
@@ -166,9 +169,46 @@ test('Facturación incorpora un sector Peajes sin duplicar la carga operativa',(
   assert.doesNotMatch(tollDesk,/create table.*toll/i);
 });
 
-test('runtime carga y cachea Facturación canónica v202',()=>{
-  assert.match(config,/auxilios-operator-billing.*operator-billing\.js/);
+test('exportador usa el SheetJS ya cargado y genera archivos XLSX reales',()=>{
+  assert.match(index,/xlsx\.full\.min\.js/);
+  assert.match(excelExport,/window\.XLSX/);
+  assert.match(excelExport,/utils\.aoa_to_sheet/);
+  assert.match(excelExport,/utils\.book_new/);
+  assert.match(excelExport,/writeFile/);
+  assert.match(excelExport,/bookType:'xlsx'/);
+  assert.doesNotMatch(excelExport,/text\/csv|\.csv/i);
+});
+
+test('Facturación exporta vista actual, selección y todo lo filtrado',()=>{
+  assert.match(billingExport,/function exportCurrent\(\)/);
+  assert.match(billingExport,/function exportSelected\(\)/);
+  assert.match(billingExport,/function exportAllFiltered\(\)/);
+  assert.match(billingExport,/Vista actual/);
+  assert.match(billingExport,/Todo lo filtrado/);
+  assert.match(billingExport,/S\.selected/);
+  assert.match(billingExport,/billing_status==='pending'/);
+  assert.match(billingExport,/billing_status==='reviewed'/);
+  assert.match(billingExport,/S\.tollRows/);
+});
+
+test('Excel de servicios y peajes conserva datos administrativos relevantes',()=>{
+  for(const label of ['Fecha','Prestadora','N° servicio','Orden prestadora','Estado facturación','Base','Cliente','Patente','Origen','Destino','Moneda'])assert.match(billingExport,new RegExp(label));
+  for(const label of ['KM','Importe al cierre','Importe actual','Diferencia','Error tarifario'])assert.match(billingExport,new RegExp(label));
+  for(const label of ['Peaje','Ruta','Sentido','Cantidad','Importe','Origen del dato','Medio de pago','Fecha cruce','Pagador'])assert.match(billingExport,new RegExp(label));
+  assert.match(billingExport,/totalsByCurrency/);
+  assert.match(billingExport,/Resumen/);
+});
+
+test('runtime carga y cachea Facturación + Excel canónicos v203',()=>{
+  const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
+  assert.match(critical,/auxilios-excel-export.*excel-export\.js/);
+  assert.match(critical,/auxilios-operator-billing.*operator-billing\.js/);
+  assert.match(critical,/auxilios-operator-billing-export.*operator-billing-export\.js/);
+  assert.ok(critical.indexOf('/excel-export.js')<critical.indexOf('/operator-billing.js'));
+  assert.ok(critical.indexOf('/operator-billing.js')<critical.indexOf('/operator-billing-export.js'));
   assert.match(sw,/operator-billing\.js/);
   assert.match(sw,/operator-billing\.css/);
-  assert.match(sw,/auxilios-v202/);
+  assert.match(sw,/excel-export\.js/);
+  assert.match(sw,/operator-billing-export\.js/);
+  assert.match(sw,/auxilios-v203/);
 });
