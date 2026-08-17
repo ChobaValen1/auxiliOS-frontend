@@ -89,9 +89,10 @@ test('Administración puede corregir o anular FINALIZADO y la corrección reingr
 test('revertir Facturación vuelve a Servicios sin reabrir lifecycle ni recursos',()=>{
   assert.match(billing,/Revertir Facturación/);
   assert.match(migration,/revert_operator_billing_service_v2/);
-  assert.match(migration,/set billing_status='not_ready'/);
-  assert.match(migration,/billing_reverted/);
-  assert.doesNotMatch(migration,/revert_operator_billing_service_v2[\s\S]*status='assigned'/);
+  const revertFn=migration.split('create or replace function public.revert_operator_billing_service_v2')[1].split('create or replace function app_private.operator_services_before_update')[0];
+  assert.match(revertFn,/set billing_status='not_ready'/);
+  assert.match(revertFn,/billing_reverted/);
+  assert.doesNotMatch(revertFn,/set\s+status\s*=|assigned_driver_id\s*=|assigned_truck_id\s*=/);
   assert.match(billing,/window\.cambiarVistaServicios\?\.\('history'\)/);
 });
 
