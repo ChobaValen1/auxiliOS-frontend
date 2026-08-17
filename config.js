@@ -62,6 +62,7 @@ async function loadCriticalAuxiliosModules() {
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
     loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),
+    loadAuxiliosModule('auxilios-operator-billing', '/operator-billing.js'),
     loadAuxiliosModule('auxilios-toll-management', '/toll-management.js'),
     loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),
     loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js')
