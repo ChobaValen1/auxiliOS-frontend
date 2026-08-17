@@ -42,6 +42,20 @@ test('lifecycle usa una sola RPC canónica y eliminó cierres por excepción vie
   assert.doesNotMatch(lifecycle,/close_operator_service_exception|review_operator_service_closure|reassign_operator_service|MutationObserver|No se pudo completar/);
 });
 
+test('las confirmaciones quedan ligadas a la pantalla que las dispara',()=>{
+  assert.match(lifecycle,/function captureModalContext\(\)/);
+  assert.match(lifecycle,/function sameModalContext\(ctx=state\.modalContext\)/);
+  assert.match(lifecycle,/function mountModalForContext\(m,ctx\)/);
+  assert.match(lifecycle,/workspace\.appendChild\(m\)/);
+  assert.match(lifecycle,/m\.classList\.add\('osl-workspace-context'\)/);
+  assert.match(lifecycle,/function rejectStaleContext\(\)/);
+  assert.match(lifecycle,/La pantalla cambió\. Volvé a ejecutar la acción desde donde corresponde\./);
+  assert.match(lifecycle,/if\(rejectStaleContext\(\)\)return;close\(true\)/);
+  assert.match(lifecycle,/if\(nav&&state\.modal&&!state\.modal\.hidden\)\{close\(false\);return\}/);
+  assert.match(lifecycle,/function onWorkspaceOpened\(e\)\{if\(state\.modal&&!state\.modal\.hidden\)close\(false\)/);
+  assert.match(lifecycleCss,/#modal-operador-wizard>\.osl-modal-backdrop\.osl-workspace-context/);
+});
+
 test('las confirmaciones viven dentro de AuxiliOS y la reasignación del editor no bloquea el workspace',()=>{
   assert.match(lifecycle,/function confirmAction/);
   assert.match(lifecycle,/osl-confirm-copy/);
@@ -120,10 +134,10 @@ test('backend impide transiciones no acordadas y libera recursos al cerrar',()=>
   assert.match(migration,/No se puede confirmar la firma\. Faltan completar/);
 });
 
-test('runtime carga lifecycle antes de liberar UI y cache v198',()=>{
+test('runtime carga lifecycle antes de liberar UI y cache v199',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-v198/);
+  assert.match(sw,/auxilios-v199/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });
