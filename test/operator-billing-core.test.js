@@ -196,7 +196,7 @@ test('Excel de servicios y peajes conserva datos administrativos relevantes',()=
   for(const label of ['KM','Importe al cierre','Importe actual','Diferencia','Error tarifario'])assert.match(billingExport,new RegExp(label));
   for(const label of ['Peaje','Ruta','Sentido','Cantidad','Importe','Origen del dato','Medio de pago','Fecha cruce','Pagador'])assert.match(billingExport,new RegExp(label));
   assert.match(billingExport,/totalsByCurrency/);
-  assert.match(billingExport,/Resumen/);
+  assert.match(excelExport,/Resumen/);
 });
 
 test('runtime carga y cachea Facturación + Excel canónicos v203',()=>{
