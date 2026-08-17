@@ -15,6 +15,7 @@ const tollSchema=fs.readFileSync('migrations/20260817181500_toll_billing_mode_sc
 const tollConfig=fs.readFileSync('migrations/20260817181600_toll_billing_config_rpc_v1.sql','utf8');
 const tollQuote=fs.readFileSync('migrations/20260817181700_toll_billing_quote_v1.sql','utf8');
 const tollDesk=fs.readFileSync('migrations/20260817181800_toll_billing_desk_v1.sql','utf8');
+const exportMigration=fs.readFileSync('migrations/20260817195000_operator_billing_export_v2.sql','utf8');
 
 test('Facturación mantiene lifecycle independiente FINALIZADO -> PENDIENTE -> REVISADO',()=>{
   assert.match(foundation,/operator_service_billing_revisions/);
@@ -179,10 +180,10 @@ test('exportador usa el SheetJS ya cargado y genera archivos XLSX reales',()=>{
   assert.doesNotMatch(excelExport,/text\/csv|\.csv/i);
 });
 
-test('Facturación exporta vista actual, selección y todo lo filtrado',()=>{
-  assert.match(billingExport,/function exportCurrent\(\)/);
-  assert.match(billingExport,/function exportSelected\(\)/);
-  assert.match(billingExport,/function exportAllFiltered\(\)/);
+test('Facturación conserva vista actual, selección y todo lo filtrado como alcances de exportación',()=>{
+  assert.match(billingExport,/const exportCurrent=\(\)=>openPicker\('current'\)/);
+  assert.match(billingExport,/const exportSelected=\(\)=>openPicker\('selected'\)/);
+  assert.match(billingExport,/const exportAllFiltered=\(\)=>openPicker\('all'\)/);
   assert.match(billingExport,/Vista actual/);
   assert.match(billingExport,/Todo lo filtrado/);
   assert.match(billingExport,/S\.selected/);
@@ -191,15 +192,58 @@ test('Facturación exporta vista actual, selección y todo lo filtrado',()=>{
   assert.match(billingExport,/S\.tollRows/);
 });
 
-test('Excel de servicios y peajes conserva datos administrativos relevantes',()=>{
-  for(const label of ['Fecha','Prestadora','N° servicio','Orden prestadora','Estado facturación','Base','Cliente','Patente','Origen','Destino','Moneda'])assert.match(billingExport,new RegExp(label));
-  for(const label of ['KM','Importe al cierre','Importe actual','Diferencia','Error tarifario'])assert.match(billingExport,new RegExp(label));
-  for(const label of ['Peaje','Ruta','Sentido','Cantidad','Importe','Origen del dato','Medio de pago','Fecha cruce','Pagador'])assert.match(billingExport,new RegExp(label));
-  assert.match(billingExport,/totalsByCurrency/);
-  assert.match(excelExport,/Resumen/);
+test('Excel permite elegir columnas, seleccionar todas o deseleccionarlas antes de descargar',()=>{
+  assert.match(billingExport,/Elegí qué columnas querés incluir/);
+  assert.match(billingExport,/Seleccionar Todos/);
+  assert.match(billingExport,/Deseleccionar Todos/);
+  assert.match(billingExport,/data-obx-col/);
+  assert.match(billingExport,/selectedColumns/);
+  assert.match(billingExport,/confirmExport/);
 });
 
-test('runtime carga y cachea Facturación + Excel canónicos v203',()=>{
+test('catálogo Excel de servicios coincide con datos comerciales y operativos solicitados',()=>{
+  const required=[
+    'N° Orden','Fecha','Hora','Prestadora','Chofer','Móvil','Tipo de Servicio',
+    'Calle Origen','Localidad Origen','Provincia Origen','Calle Destino','Localidad Destino','Provincia Destino',
+    'Marca','Modelo','Patente','KM Asfalto','KM Ripio','KM Total','Precio Base','Tarifa KM Asfalto','Tarifa KM Ripio',
+    'COPAGO','Extra %','Precio Total','Estado','Base','Importe Movida','Importe KM Asfalto','Importe KM Ripio','Importe KM Total',
+    'Observaciones','Peajes','S. Esp. Cantidad','S. Esp. Unitario','S. Esp. Subtotal'
+  ];
+  for(const label of required)assert.ok(billingExport.includes(`'${label}'`),`falta columna ${label}`);
+  for(const removed of ["header:'Moneda'","header:'Última revisión'","header:'Revisado por'","header:'Error tarifario'","header:'Importe al cierre'","header:'Diferencia'"]){
+    assert.doesNotMatch(billingExport,new RegExp(removed.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+  }
+});
+
+test('exportación usa dataset canónico para tarifas, asignación final, KM y componentes',()=>{
+  assert.match(exportMigration,/get_operator_billing_export_rows_v1/);
+  assert.match(exportMigration,/v_role not in \('administracion','facturacion','supervision'\)/);
+  assert.match(exportMigration,/event_type='finalized'/);
+  assert.match(exportMigration,/old_driver_id/);
+  assert.match(exportMigration,/old_truck_id/);
+  assert.match(exportMigration,/calculate_operator_service_billing_quote_v2/);
+  assert.match(exportMigration,/primary_price/);
+  assert.match(exportMigration,/km_unit_price/);
+  assert.match(exportMigration,/estimated_asphalt_km/);
+  assert.match(exportMigration,/estimated_gravel_km/);
+  assert.match(billingExport,/get_operator_billing_export_rows_v1/);
+});
+
+test('importe de KM por terreno se reparte sin alterar el subtotal canónico de distancia',()=>{
+  assert.match(billingExport,/function distanceAmounts\(r\)/);
+  assert.match(billingExport,/total\*asphalt\/km/);
+  assert.match(billingExport,/round2\(total-a\)/);
+  assert.match(billingExport,/Importe KM Asfalto/);
+  assert.match(billingExport,/Importe KM Ripio/);
+  assert.match(billingExport,/Importe KM Total/);
+});
+
+test('Excel de peajes conserva datos útiles y omite moneda administrativa',()=>{
+  for(const label of ['Fecha','Hora','Prestadora','N° Orden','Estado','Base','Patente','Origen','Destino','Peaje','Ruta','Sentido','Cantidad','Importe','Origen del dato','Medio de pago','Fecha cruce','Pagador'])assert.ok(billingExport.includes(`'${label}'`));
+  assert.doesNotMatch(billingExport,/header:'Moneda'/);
+});
+
+test('runtime carga y cachea Facturación + Excel canónicos v204',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/auxilios-excel-export.*excel-export\.js/);
   assert.match(critical,/auxilios-operator-billing.*operator-billing\.js/);
@@ -210,5 +254,5 @@ test('runtime carga y cachea Facturación + Excel canónicos v203',()=>{
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-v203/);
+  assert.match(sw,/auxilios-v204/);
 });
