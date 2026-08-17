@@ -59,6 +59,7 @@ function setNavigationBooting(booting) {
 
 async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-service-module-configuration-css', '/service-module-configuration.css');
+  await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
     loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),
@@ -67,6 +68,7 @@ async function loadCriticalAuxiliosModules() {
     loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),
     loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js')
   ]);
+  await loadAuxiliosModule('auxilios-operator-billing-export', '/operator-billing-export.js');
 
   // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
   await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
