@@ -3,10 +3,15 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const billing=fs.readFileSync('operator-billing.js','utf8');
 const billingCss=fs.readFileSync('operator-billing.css','utf8');
+const companyBilling=fs.readFileSync('company-billing-parameters-v4.js','utf8');
 const config=fs.readFileSync('config.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const foundation=fs.readFileSync('migrations/20260817133000_operator_billing_core_v1.sql','utf8');
 const migration=fs.readFileSync('migrations/20260817141500_operator_billing_desk_v2.sql','utf8');
+const tollSchema=fs.readFileSync('migrations/20260817181500_toll_billing_mode_schema_v1.sql','utf8');
+const tollConfig=fs.readFileSync('migrations/20260817181600_toll_billing_config_rpc_v1.sql','utf8');
+const tollQuote=fs.readFileSync('migrations/20260817181700_toll_billing_quote_v1.sql','utf8');
+const tollDesk=fs.readFileSync('migrations/20260817181800_toll_billing_desk_v1.sql','utf8');
 
 test('Facturación mantiene lifecycle independiente FINALIZADO -> PENDIENTE -> REVISADO',()=>{
   assert.match(foundation,/operator_service_billing_revisions/);
@@ -123,9 +128,47 @@ test('roles: Administración y Facturación revisan/revierten; sólo Administrac
   assert.match(migration,/Sólo Administración puede modificar un servicio FINALIZADO/);
 });
 
-test('runtime carga y cachea Facturación canónica v201',()=>{
+test('parámetros separan obtención de peajes de tratamiento de facturación',()=>{
+  assert.match(tollSchema,/toll_billing_mode/);
+  assert.match(tollSchema,/with_service/);
+  assert.match(tollSchema,/separate/);
+  assert.match(tollConfig,/v_toll_billing_mode/);
+  assert.match(tollConfig,/toll_billing_mode=v_toll_billing_mode/);
+  assert.match(companyBilling,/Obtención de peajes/);
+  assert.match(companyBilling,/Facturación de peajes/);
+  assert.match(companyBilling,/id="bp4-toll-billing"/);
+  assert.match(companyBilling,/toll_billing_mode:document\.getElementById\('bp4-toll-billing'\)/);
+  assert.match(companyBilling,/Junto con el servicio/);
+  assert.match(companyBilling,/Por separado/);
+});
+
+test('peaje separado no integra el importe del servicio y conserva su monto independiente',()=>{
+  assert.match(tollQuote,/v_service_quote:=app_private\.calculate_operator_service_quote_v4_full/);
+  assert.match(tollQuote,/v_current:=v_service_amount\+case when v_toll_billing_mode='with_service' then v_effective_toll else 0 end/);
+  assert.match(tollQuote,/separate_toll_amount/);
+  assert.match(tollQuote,/included_toll_amount/);
+  assert.match(tollQuote,/service_company_amount/);
+  assert.match(tollQuote,/company_amount_with_tolls/);
+  assert.match(billing,/q\.toll_billing_mode!=='separate'/);
+  assert.match(billing,/Peajes facturados por separado/);
+  assert.match(billing,/no forma parte del total del servicio/i);
+});
+
+test('Facturación incorpora un sector Peajes sin duplicar la carga operativa',()=>{
+  assert.match(tollDesk,/list_operator_billing_tolls_v1/);
+  assert.match(tollDesk,/operator_service_tolls/);
+  assert.match(tollDesk,/cfg\.toll_billing_mode='separate'/);
+  assert.match(tollDesk,/t\.payer_agent='provider'/);
+  assert.match(billing,/data-ob-tab="tolls">Peajes/);
+  assert.match(billing,/function tollTableMarkup/);
+  assert.match(billing,/function tollRowMarkup/);
+  assert.match(billing,/list_operator_billing_tolls_v1/);
+  assert.doesNotMatch(tollDesk,/create table.*toll/i);
+});
+
+test('runtime carga y cachea Facturación canónica v202',()=>{
   assert.match(config,/auxilios-operator-billing.*operator-billing\.js/);
   assert.match(sw,/operator-billing\.js/);
   assert.match(sw,/operator-billing\.css/);
-  assert.match(sw,/auxilios-v201/);
+  assert.match(sw,/auxilios-v202/);
 });
