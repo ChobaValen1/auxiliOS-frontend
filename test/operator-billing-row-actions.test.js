@@ -38,10 +38,13 @@ test('detalle ya no duplica bloque visible de acciones administrativas',()=>{
   assert.match(detail,/actionConfirmMarkup\(\)/);
 });
 
-test('menu flotante evita clipping de la tabla y tiene estilo de peligro',()=>{
+test('menu flotante está fuera de la tabla y siempre por encima de las filas',()=>{
   assert.match(billing,/document\.body\.appendChild\(menu\)/);
   assert.match(billing,/getBoundingClientRect\(\)/);
-  assert.match(css,/\.ob-row-menu-trigger\{/);
-  assert.match(css,/\.ob-row-action-menu\{position:fixed;z-index:13000/);
-  assert.match(css,/\.ob-row-action-menu button\.danger\{color:var\(--ob-red\)\}/);
+  assert.match(css,/\.ob-row-menu-trigger\{position:relative;z-index:3/);
+  assert.match(css,/\.ob-row-action-menu\{[^}]*position:fixed;z-index:2147483000;isolation:isolate;pointer-events:auto/s);
+  assert.match(css,/--ob-menu-card:var\(--card,#191d27\)/);
+  assert.match(css,/background:var\(--ob-menu-card\)/);
+  assert.match(css,/\.ob-row-action-menu button\{[^}]*pointer-events:auto/s);
+  assert.match(css,/\.ob-row-action-menu button\.danger\{color:var\(--ob-menu-red\)\}/);
 });
