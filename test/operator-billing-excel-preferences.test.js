@@ -37,3 +37,11 @@ test('preferencias se guardan solo despues de una exportacion exitosa',()=>{
   assert.ok(download>=0,'falta descarga XLSX');
   assert.ok(save>download,'las preferencias deben guardarse despues de descargar');
 });
+
+test('Excel exporta tarifas de Asfalto y Ripio desde campos independientes',()=>{
+  assert.match(billingExport,/Tarifa KM Asfalto/);
+  assert.match(billingExport,/Tarifa KM Ripio/);
+  assert.match(billingExport,/r\.asphalt_km_unit_price\?\?r\.km_unit_price/);
+  assert.match(billingExport,/r\.gravel_km_unit_price\?\?r\.km_unit_price/);
+  assert.doesNotMatch(billingExport,/gravel_rate','Tarifa KM Ripio',[^\n]*r=>num\(r\.km_unit_price\)/);
+});
