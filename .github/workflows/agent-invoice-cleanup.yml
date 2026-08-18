@@ -1,0 +1,28 @@
+name: Cleanup invoice validation marker
+
+on:
+  push:
+    branches:
+      - refactor/global-bases-billing-model
+    paths:
+      - .github/workflows/agent-invoice-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/global-bases-billing-model
+          fetch-depth: 0
+      - name: Remove temporary validation artifacts
+        shell: bash
+        run: |
+          git config user.name "AuxiliOS CI"
+          git config user.email "actions@users.noreply.github.com"
+          git rm -f test/.invoice-flow-ci .github/workflows/agent-invoice-cleanup.yml
+          git commit -m "chore(billing): clean invoice validation artifacts"
+          git push origin HEAD:refactor/global-bases-billing-model
