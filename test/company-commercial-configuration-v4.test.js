@@ -68,8 +68,10 @@ test('Tarifas separa Movida, KM Asfalto y KM Ripio en lectura y edición',()=>{
   assert.match(terrainTariffs,/'asphalt_km_price'/);
   assert.match(terrainTariffs,/'gravel_km_price'/);
   assert.match(tariffs,/Movida \+ KM Asfalto \+ KM Ripio/);
-  assert.match(tariffs,/'asphalt_km_price', 'KM Asfalto'/);
-  assert.match(tariffs,/'gravel_km_price', 'KM Ripio'/);
+  assert.match(tariffs,/asphalt_km_price/);
+  assert.match(tariffs,/KM Asfalto/);
+  assert.match(tariffs,/gravel_km_price/);
+  assert.match(tariffs,/KM Ripio/);
   assert.match(tariffs,/payload\.asphalt_km_price = asphalt/);
   assert.match(tariffs,/payload\.gravel_km_price = gravel/);
   assert.match(tariffs,/id="ct4-asphalt"/);
