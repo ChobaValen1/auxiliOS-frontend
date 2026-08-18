@@ -191,8 +191,8 @@ test('Facturación conserva vista actual, selección y todo lo filtrado como alc
   assert.match(billingExport,/const exportCurrent=\(\)=>openPicker\('current'\)/);
   assert.match(billingExport,/const exportSelected=\(\)=>openPicker\('selected'\)/);
   assert.match(billingExport,/const exportAllFiltered=\(\)=>openPicker\('all'\)/);
-  assert.match(billingExport,/Vista actual/);
-  assert.match(billingExport,/Todo lo filtrado/);
+  assert.match(billing,/Vista actual/);
+  assert.match(billing,/Todo lo filtrado/);
   assert.match(billingExport,/S\.selected/);
   assert.match(billingExport,/billing_status==='pending'/);
   assert.match(billingExport,/billing_status==='reviewed'/);
