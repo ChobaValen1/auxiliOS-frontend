@@ -18,11 +18,10 @@ test('Actualizar vive en la misma fila que busqueda filtros y Excel condicional'
   assert.match(render,/id="obx-wrap"/);
 });
 
-test('header ya no contiene una accion Actualizar duplicada',()=>{
+test('Actualizar existe una sola vez en la mesa limpia',()=>{
   const render=billing.split('function render()')[1].split('function selectionMarkup()')[0];
-  const head=render.split('<div class="ob-head">')[1].split('<div class="ob-kpis">')[0];
-  assert.doesNotMatch(head,/data-ob="refresh"/);
   assert.equal((render.match(/data-ob="refresh"/g)||[]).length,1);
+  assert.doesNotMatch(render,/ob-head|ob-kpis/);
 });
 
 test('boton Actualizar mantiene altura de los controles de filtro',()=>{
