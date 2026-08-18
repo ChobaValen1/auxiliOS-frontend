@@ -11,6 +11,7 @@ const index=fs.readFileSync('Index.html','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const foundation=fs.readFileSync('migrations/20260817133000_operator_billing_core_v1.sql','utf8');
 const migration=fs.readFileSync('migrations/20260817141500_operator_billing_desk_v2.sql','utf8');
+const adminNoReason=fs.readFileSync('migrations/20260818020500_admin_actions_without_reason_v1.sql','utf8');
 const tollSchema=fs.readFileSync('migrations/20260817181500_toll_billing_mode_schema_v1.sql','utf8');
 const tollConfig=fs.readFileSync('migrations/20260817181600_toll_billing_config_rpc_v1.sql','utf8');
 const tollQuote=fs.readFileSync('migrations/20260817181700_toll_billing_quote_v1.sql','utf8');
@@ -105,19 +106,25 @@ test('revertir Facturación vuelve a Servicios sin reabrir lifecycle ni recursos
   assert.match(billing,/window\.cambiarVistaServicios\?\.\('history'\)/);
 });
 
-test('editor canónico de Servicios admite corrección administrativa de FINALIZADO con motivo',()=>{
+test('Administración corrige servicios sin cargar un motivo manual',()=>{
   assert.match(migration,/get_operator_service_edit_context_base_v2/);
   assert.match(migration,/update_operator_service_base_v2/);
   assert.match(migration,/billing_correction/);
-  assert.match(migration,/requires_reason',true/);
   assert.match(migration,/if s\.status='completed' then return public\.update_operator_billing_service_v2/);
-  assert.match(migration,/Indicá el motivo de la corrección/);
   assert.match(migration,/Chofer y Móvil no pueden modificarse en un servicio FINALIZADO/);
+  assert.match(adminNoReason,/jsonb_build_object\('requires_reason',false\)/);
+  assert.match(adminNoReason,/'requires_reason',false/);
+  assert.match(adminNoReason,/v_role<>''administracion'' and v_trip_started/);
+  assert.match(adminNoReason,/Corrección administrativa/);
 });
 
-test('confirmaciones administrativas permanecen contextuales dentro de Facturación',()=>{
+test('revertir y anular se confirman sin campo de motivo y se auditan en backend',()=>{
   assert.match(billing,/function actionConfirmMarkup/);
-  assert.match(billing,/id="ob-action-reason"/);
+  assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio/);
+  assert.match(billing,/p_reason:null/);
+  assert.match(adminNoReason,/Acción administrativa/);
+  assert.match(adminNoReason,/revert_operator_billing_service_v2/);
+  assert.match(adminNoReason,/annul_operator_billing_service_v2/);
   assert.match(billing,/Confirmar revisión masiva/);
   assert.doesNotMatch(billing,/window\.confirm|[^\.]confirm\(/);
   assert.match(billingCss,/\.ob-action-confirm/);
