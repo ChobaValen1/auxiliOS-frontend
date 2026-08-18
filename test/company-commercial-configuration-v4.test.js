@@ -16,6 +16,8 @@ const flags = fs.readFileSync('feature-flags.js','utf8');
 const sw = fs.readFileSync('sw.js','utf8');
 const pkg = fs.readFileSync('package.json','utf8');
 const contractRules = fs.readFileSync('migrations/20260815121000_operator_quote_contract_rules_v2.sql','utf8');
+const terrainTariffs = fs.readFileSync('migrations/20260818104000_terrain_km_tariffs_v1.sql','utf8');
+const terrainQuote = fs.readFileSync('migrations/20260818104500_terrain_km_quote_v1.sql','utf8');
 const validity = fs.readFileSync('migrations/20260812201500_scheduled_service_price_validity_v1.sql','utf8');
 const timeline = fs.readFileSync('migrations/20260812211000_price_timeline_cascade_v1.sql','utf8');
 const edit = fs.readFileSync('migrations/20260812222500_canonical_service_edit_workspace_v1.sql','utf8');
@@ -58,6 +60,21 @@ test('Tarifas maneja precio actual, vigencia futura y excepción por Base sin dr
   assert.match(tariffs,/Programar/);
   assert.match(tariffs,/Excepciones por base/);
   assert.doesNotMatch(tariffs,/ensure_company_tariff_draft_v4|publish_company_tariff_draft_v4|get_company_tariffs_v4/);
+});
+
+test('Tarifas separa Movida, KM Asfalto y KM Ripio en lectura y edición',()=>{
+  assert.match(terrainTariffs,/ADD COLUMN IF NOT EXISTS asphalt_km_price/);
+  assert.match(terrainTariffs,/ADD COLUMN IF NOT EXISTS gravel_km_price/);
+  assert.match(terrainTariffs,/'asphalt_km_price'/);
+  assert.match(terrainTariffs,/'gravel_km_price'/);
+  assert.match(tariffs,/Movida \+ KM Asfalto \+ KM Ripio/);
+  assert.match(tariffs,/data-field="\$\{field\}"/);
+  assert.match(tariffs,/'asphalt_km_price', 'KM Asfalto'/);
+  assert.match(tariffs,/'gravel_km_price', 'KM Ripio'/);
+  assert.match(tariffs,/payload\.asphalt_km_price = asphalt/);
+  assert.match(tariffs,/payload\.gravel_km_price = gravel/);
+  assert.match(tariffs,/id="ct4-asphalt"/);
+  assert.match(tariffs,/id="ct4-gravel"/);
 });
 
 test('Prestadoras embebe la misma implementación de precios y no contiene Sucursales',()=>{
@@ -120,6 +137,14 @@ test('Radio cobra sólo KM excedentes y Cobrar movida hasta corta la movida desp
   assert.match(contractRules,/v_subtotal:=round\(v_billable_distance\*coalesce\(v_rate\.extra_km_price,0\),2\)/);
   assert.match(contractRules,/'billable_distance_km',v_billable_distance/);
   assert.doesNotMatch(contractRules,/round\(v_distance\*coalesce\(v_rate\.extra_km_price/);
+});
+
+test('Radio cubierto consume Asfalto primero y luego Ripio',()=>{
+  assert.match(terrainQuote,/v_billable_asphalt:=greatest\(coalesce\(p_asphalt_km,0\)-coalesce\(v_radius,0\),0\)/);
+  assert.match(terrainQuote,/coalesce\(p_gravel_km,0\)-greatest\(coalesce\(v_radius,0\)-coalesce\(p_asphalt_km,0\),0\)/);
+  assert.match(terrainQuote,/'covered_radius_consumption_order','asphalt_then_gravel'/);
+  assert.doesNotMatch(terrainQuote,/v_billable_distance\*coalesce\(p_asphalt_km,0\)\/v_distance/);
+  assert.doesNotMatch(terrainQuote,/distribuye proporcionalmente/);
 });
 
 test('Recargos contractuales no se acumulan y se evalúan del mayor valor al menor',()=>{
