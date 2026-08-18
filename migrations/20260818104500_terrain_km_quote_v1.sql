@@ -118,12 +118,13 @@ BEGIN
     v_billable_distance:=greatest(v_distance-coalesce(v_radius,0),0);
     v_distance_applies:=v_billable_distance>0;
 
-    -- Hoy se guardan kilómetros totales por terreno pero no la secuencia de tramos.
-    -- Por eso el radio cubierto se distribuye proporcionalmente entre asfalto y ripio.
-    IF v_distance_applies AND v_distance>0 THEN
-      v_billable_asphalt:=round(v_billable_distance*coalesce(p_asphalt_km,0)/v_distance,6);
-      v_billable_gravel:=greatest(v_billable_distance-v_billable_asphalt,0);
-    END IF;
+    -- Regla contractual: el radio cubierto consume primero KM de asfalto y,
+    -- sólo si todavía queda cobertura, continúa consumiendo KM de ripio.
+    v_billable_asphalt:=greatest(coalesce(p_asphalt_km,0)-coalesce(v_radius,0),0);
+    v_billable_gravel:=greatest(
+      coalesce(p_gravel_km,0)-greatest(coalesce(v_radius,0)-coalesce(p_asphalt_km,0),0),
+      0
+    );
   ELSE
     v_movement_applies:=true;
     v_billable_distance:=0;
@@ -263,7 +264,7 @@ BEGIN
     'primary_concept_id',v_primary.concept_id,'primary_service_name',v_primary.name,
     'components',v_components,'surcharges',v_surcharges,
     'asphalt_km',coalesce(p_asphalt_km,0),'gravel_km',coalesce(p_gravel_km,0),'distance_km',v_distance,
-    'covered_radius_km',v_radius,'billable_distance_km',v_billable_distance,
+    'covered_radius_km',v_radius,'covered_radius_consumption_order','asphalt_then_gravel','billable_distance_km',v_billable_distance,
     'billable_asphalt_km',v_billable_asphalt,'billable_gravel_km',v_billable_gravel,
     'asphalt_km_unit_price',v_asphalt_unit_price,'gravel_km_unit_price',v_gravel_unit_price,
     'asphalt_km_subtotal',round(v_asphalt_subtotal,2),'gravel_km_subtotal',round(v_gravel_subtotal,2),
