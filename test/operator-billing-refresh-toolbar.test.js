@@ -5,14 +5,17 @@ const fs=require('node:fs');
 const billing=fs.readFileSync('operator-billing.js','utf8');
 const css=fs.readFileSync('operator-billing.css','utf8');
 
-test('Actualizar vive en la misma fila que busqueda filtros y Excel',()=>{
+test('Actualizar vive en la misma fila que busqueda filtros y Excel condicional',()=>{
   const render=billing.split('function render()')[1].split('function selectionMarkup()')[0];
   const filters=render.split('<div class="ob-filters">')[1].split('</div></div>')[0];
   assert.match(filters,/id="ob-search"/);
   assert.match(filters,/id="ob-company-filter"/);
   assert.match(filters,/id="ob-period-filter"/);
-  assert.match(filters,/id="obx-wrap"/);
+  assert.match(filters,/\$\{excelControl\}/);
   assert.match(filters,/data-ob="refresh">↻ Actualizar/);
+  assert.ok(filters.indexOf('${excelControl}')<filters.indexOf('data-ob="refresh"'));
+  assert.match(render,/excelControl=S\.selected\.size\?/);
+  assert.match(render,/id="obx-wrap"/);
 });
 
 test('header ya no contiene una accion Actualizar duplicada',()=>{
