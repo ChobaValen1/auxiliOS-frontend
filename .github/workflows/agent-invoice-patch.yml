@@ -1,0 +1,232 @@
+name: Finalize invoice module wiring
+
+on:
+  push:
+    branches:
+      - refactor/global-bases-billing-model
+    paths:
+      - .github/workflows/agent-invoice-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/global-bases-billing-model
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Wire Facturas, PWA cache and canonical tests
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          config = Path('config.js')
+          text = config.read_text(encoding='utf-8')
+          if 'auxilios-operator-invoices' not in text:
+              pattern = r"(loadAuxiliosModule\(\s*['\"]auxilios-operator-billing['\"]\s*,\s*['\"]/operator-billing\.js['\"]\s*\)\s*,?)"
+              match = re.search(pattern, text)
+              if not match:
+                  raise SystemExit('No se encontró el loader canónico de operator-billing.js')
+              insert = match.group(1) + "\n    loadAuxiliosModule('auxilios-operator-invoices','/operator-invoices.js'),"
+              text = text[:match.start()] + insert + text[match.end():]
+              config.write_text(text, encoding='utf-8')
+
+          sw = Path('sw.js')
+          sw_text = sw.read_text(encoding='utf-8')
+          sw_text = sw_text.replace('auxilios-v204','auxilios-v205')
+          if '/operator-invoices.js' not in sw_text:
+              lines = sw_text.splitlines()
+              out=[]
+              inserted=False
+              for line in lines:
+                  out.append(line)
+                  if not inserted and '/operator-billing.css' in line:
+                      indent=line[:len(line)-len(line.lstrip())]
+                      out.append(f"{indent}'/operator-invoices.js',")
+                      out.append(f"{indent}'/operator-invoices.css',")
+                      inserted=True
+              if not inserted:
+                  raise SystemExit('No se encontró operator-billing.css en el cache PWA')
+              sw_text='\n'.join(out)+'\n'
+          sw.write_text(sw_text, encoding='utf-8')
+
+          core = Path('test/operator-billing-core.test.js')
+          core.write_text(r'''const test=require('node:test');
+          const assert=require('node:assert/strict');
+          const fs=require('node:fs');
+          const billing=fs.readFileSync('operator-billing.js','utf8');
+          const billingCss=fs.readFileSync('operator-billing.css','utf8');
+          const billingExport=fs.readFileSync('operator-billing-export.js','utf8');
+          const excelExport=fs.readFileSync('excel-export.js','utf8');
+          const invoices=fs.readFileSync('operator-invoices.js','utf8');
+          const companyBilling=fs.readFileSync('company-billing-parameters-v4.js','utf8');
+          const config=fs.readFileSync('config.js','utf8');
+          const index=fs.readFileSync('Index.html','utf8');
+          const sw=fs.readFileSync('sw.js','utf8');
+          const foundation=fs.readFileSync('migrations/20260817133000_operator_billing_core_v1.sql','utf8');
+          const deskV2=fs.readFileSync('migrations/20260817141500_operator_billing_desk_v2.sql','utf8');
+          const adminNoReason=fs.readFileSync('migrations/20260818020500_admin_actions_without_reason_v1.sql','utf8');
+          const invoiceMigration=fs.readFileSync('migrations/20260818023000_operator_invoices_v1.sql','utf8');
+          const tollSchema=fs.readFileSync('migrations/20260817181500_toll_billing_mode_schema_v1.sql','utf8');
+          const tollConfig=fs.readFileSync('migrations/20260817181600_toll_billing_config_rpc_v1.sql','utf8');
+          const tollQuote=fs.readFileSync('migrations/20260817181700_toll_billing_quote_v1.sql','utf8');
+          const exportMigration=fs.readFileSync('migrations/20260817195000_operator_billing_export_v2.sql','utf8');
+
+          test('Facturación usa una cola única de servicios disponibles',()=>{
+            assert.match(billing,/tab:'services'/);
+            assert.match(billing,/data-ob-tab="services">Servicios/);
+            assert.doesNotMatch(billing,/data-ob-tab="pending"|data-ob-tab="reviewed"/);
+            assert.doesNotMatch(billing,/Marcar REVISADOS|Confirmar revisión masiva|review_operator_billing_services_bulk_v2/);
+            assert.match(billing,/list_operator_billing_services_v3/);
+            assert.match(invoiceMigration,/billing_status in \('pending','reviewed'\)/);
+          });
+
+          test('tarifa vigente sigue siendo la fuente de verdad antes de facturar',()=>{
+            assert.match(deskV2,/calculate_operator_service_billing_quote_v2/);
+            assert.match(deskV2,/calculate_operator_service_quote_v4_full/);
+            assert.match(deskV2,/stored_company_amount/);
+            assert.match(deskV2,/current_company_amount/);
+            assert.match(deskV2,/billing_delta/);
+            assert.match(invoiceMigration,/calculate_operator_service_billing_quote_v2/);
+          });
+
+          test('mesa mantiene búsqueda Prestadora y período mensual',()=>{
+            assert.match(invoiceMigration,/list_operator_billing_services_v3/);
+            assert.match(invoiceMigration,/p_search text default null/);
+            assert.match(invoiceMigration,/p_company_id uuid default null/);
+            assert.match(invoiceMigration,/p_period_start date default null/);
+            assert.match(invoiceMigration,/p_period_end date default null/);
+            assert.match(billing,/id="ob-search"/);
+            assert.match(billing,/id="ob-company-filter"/);
+            assert.match(billing,/id="ob-period-filter"/);
+          });
+
+          test('grilla general es sintética y pricing vive en detalle',()=>{
+            const table=billing.split('function tableMarkup()')[1].split('function rowMarkup')[0];
+            for(const label of ['Fecha/Hora','Prestadora','Base','Tipo de Servicio','Origen','Destino','Cliente','KM'])assert.match(table,new RegExp(label));
+            for(const forbidden of ['Importe cierre','Importe actual','Diferencia','Tarifa','Estado'])assert.doesNotMatch(table,new RegExp(forbidden));
+            const detail=billing.split('function detailMarkup()')[1].split('async function load')[0];
+            assert.match(detail,/Importe actual/);
+            assert.match(detail,/Importe al cierre/);
+            assert.match(detail,/Diferencia/);
+            assert.match(detail,/Tarifa aplicada ahora/);
+            assert.match(detail,/Composición/);
+          });
+
+          test('selección para Factura nunca mezcla Prestadoras',()=>{
+            assert.match(billing,/selectionCompanyId/);
+            assert.match(billing,/No se pueden facturar juntas diferentes prestadoras/);
+            assert.match(billing,/Filtrá una prestadora antes de seleccionar todos/);
+            assert.match(invoiceMigration,/No se pueden facturar juntas diferentes prestadoras/);
+            assert.match(invoiceMigration,/count\(distinct company_id\)/);
+          });
+
+          test('Facturar selección crea Factura y elimina servicios de la cola',()=>{
+            assert.match(billing,/Facturar selección/);
+            assert.match(billing,/create_operator_invoice_v1/);
+            assert.match(invoiceMigration,/create table if not exists public\.operator_invoices/);
+            assert.match(invoiceMigration,/create table if not exists public\.operator_invoice_services/);
+            assert.match(invoiceMigration,/billing_status='invoiced'/);
+            assert.match(invoiceMigration,/'billing_invoiced'/);
+            assert.match(billing,/window\.OperatorInvoices\?\.open/);
+          });
+
+          test('Factura congela importe servicio y quote y no duplica servicios',()=>{
+            assert.match(invoiceMigration,/service_snapshot jsonb not null/);
+            assert.match(invoiceMigration,/quote_snapshot jsonb not null/);
+            assert.match(invoiceMigration,/unique\(service_id\)/);
+            assert.match(invoiceMigration,/company_amount numeric\(14,2\) not null/);
+            assert.match(invoiceMigration,/operator_service_billing_revisions/);
+            assert.match(invoiceMigration,/'invoiced'/);
+          });
+
+          test('Administración corrige revierte o anula sin escribir motivo',()=>{
+            assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio/);
+            assert.match(billing,/p_reason:null/);
+            assert.match(adminNoReason,/jsonb_build_object\('requires_reason',false\)/);
+            assert.match(adminNoReason,/Corrección administrativa/);
+            assert.match(adminNoReason,/Acción administrativa/);
+            assert.match(adminNoReason,/revert_operator_billing_service_v2/);
+            assert.match(adminNoReason,/annul_operator_billing_service_v2/);
+          });
+
+          test('roles: Administración y Facturación facturan; sólo Administración corrige/anula',()=>{
+            assert.match(billing,/const canInvoice=\(\)=>\['administracion','facturacion'\]/);
+            assert.match(billing,/const canCorrect=\(\)=>role\(\)==='administracion'/);
+            assert.match(billing,/const canRevert=\(\)=>\['administracion','facturacion'\]/);
+            assert.match(invoiceMigration,/v_role not in \('administracion','facturacion'\)/);
+            assert.match(deskV2,/Sólo Administración puede anular un servicio FINALIZADO/);
+          });
+
+          test('peajes separados conservan circuito independiente al facturar servicio',()=>{
+            assert.match(tollSchema,/toll_billing_mode/);
+            assert.match(tollSchema,/with_service/);
+            assert.match(tollSchema,/separate/);
+            assert.match(tollConfig,/toll_billing_mode=v_toll_billing_mode/);
+            assert.match(companyBilling,/Facturación de peajes/);
+            assert.match(tollQuote,/separate_toll_amount/);
+            assert.match(invoiceMigration,/list_operator_billing_tolls_v2/);
+            assert.match(invoiceMigration,/billing_status in \('pending','reviewed','invoiced'\)/);
+            assert.match(billing,/data-ob-tab="tolls">Peajes/);
+          });
+
+          test('exportador usa SheetJS y la cola unificada',()=>{
+            assert.match(index,/xlsx\.full\.min\.js/);
+            assert.match(excelExport,/window\.XLSX/);
+            assert.match(excelExport,/writeFile/);
+            assert.match(excelExport,/bookType:'xlsx'/);
+            assert.match(billingExport,/label:'Servicios'/);
+            assert.match(billingExport,/name:'Servicios'/);
+            assert.doesNotMatch(billingExport,/name:'Pendientes'|name:'Revisados'/);
+            assert.match(billingExport,/get_operator_billing_export_rows_v1/);
+          });
+
+          test('Excel conserva catálogo comercial y selección de columnas',()=>{
+            for(const label of ['N° Orden','Fecha','Hora','Prestadora','Chofer','Móvil','Tipo de Servicio','Calle Origen','Localidad Origen','Provincia Origen','Calle Destino','Localidad Destino','Provincia Destino','Marca','Modelo','Patente','KM Asfalto','KM Ripio','KM Total','Precio Base','Tarifa KM Asfalto','Tarifa KM Ripio','COPAGO','Extra %','Precio Total','Estado','Base','Importe Movida','Importe KM Asfalto','Importe KM Ripio','Importe KM Total','Observaciones','Peajes','S. Esp. Cantidad','S. Esp. Unitario','S. Esp. Subtotal'])assert.ok(billingExport.includes(`'${label}'`),`falta columna ${label}`);
+            assert.match(billingExport,/Elegí qué columnas querés incluir/);
+            assert.match(billingExport,/Seleccionar Todos/);
+            assert.match(billingExport,/Deseleccionar Todos/);
+            assert.match(exportMigration,/get_operator_billing_export_rows_v1/);
+          });
+
+          test('runtime carga Facturación Facturas y Excel y PWA usa v205',()=>{
+            const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
+            assert.match(critical,/auxilios-operator-billing.*operator-billing\.js/);
+            assert.match(critical,/auxilios-operator-invoices.*operator-invoices\.js/);
+            assert.match(critical,/auxilios-operator-billing-export.*operator-billing-export\.js/);
+            assert.match(invoices,/list_operator_invoices_v1/);
+            assert.match(invoices,/get_operator_invoice_detail_v1/);
+            assert.match(sw,/operator-invoices\.js/);
+            assert.match(sw,/operator-invoices\.css/);
+            assert.match(sw,/auxilios-v205/);
+          });
+          ''',encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate final billing flow
+        run: npm run ci
+
+      - name: Commit finalized flow
+        shell: bash
+        run: |
+          git config user.name "AuxiliOS CI"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/agent-invoice-patch.yml
+          git add config.js sw.js test/operator-billing-core.test.js
+          git commit -m "feat(billing): wire Facturas module"
+          git push origin HEAD:refactor/global-bases-billing-model
