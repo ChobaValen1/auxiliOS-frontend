@@ -38,7 +38,7 @@
       .ct4-dialog{width:min(650px,calc(100vw - 24px));max-width:650px}.ct4-dialog.wide{width:min(850px,calc(100vw - 24px));max-width:850px}.ct4-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ct4-full{grid-column:1/-1}.ct4-note{padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg);font-size:8px;line-height:1.4;color:var(--muted2)}
       .ct4-history{display:grid;gap:6px}.ct4-history-row{display:grid;grid-template-columns:135px 135px 1fr;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:8px;color:var(--muted2)}.ct4-history-row b{display:block;color:var(--text)}
       .ct4-schedule-list{display:grid;gap:6px}.ct4-schedule-item{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}.ct4-schedule-item small{font-size:7.5px;color:var(--muted2)}
-      .ct4-bulk-grid{display:grid;grid-template-columns:repeat(2,minmax(76px,1fr));gap:5px;min-width:165px}.ct4-bulk-grid.single{grid-template-columns:minmax(100px,155px);min-width:120px}.ct4-bulk-field{display:grid;gap:3px;min-width:0}.ct4-bulk-field span{font-size:6.8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}.ct4-bulk-field input{width:100%;height:27px;box-sizing:border-box;padding:0 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;font-size:8.5px;outline:none}.ct4-bulk-field input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(79,142,247,.12)}.ct4-bulk-field input.dirty{border-color:var(--amber);background:var(--amber-lo)}
+      .ct4-bulk-grid{display:grid;grid-template-columns:repeat(3,minmax(72px,1fr));gap:5px;min-width:240px}.ct4-bulk-grid.single{grid-template-columns:minmax(100px,155px);min-width:120px}.ct4-bulk-field{display:grid;gap:3px;min-width:0}.ct4-bulk-field span{font-size:6.8px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}.ct4-bulk-field input{width:100%;height:27px;box-sizing:border-box;padding:0 6px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:var(--text);font:inherit;font-size:8.5px;outline:none}.ct4-bulk-field input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(79,142,247,.12)}.ct4-bulk-field input.dirty{border-color:var(--amber);background:var(--amber-lo)}
       .ct4-bulk-savebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-top:1px solid var(--border);background:var(--bg)}.ct4-bulk-savebar>div:first-child{display:grid;gap:2px}.ct4-bulk-savebar b{font-size:9px}.ct4-bulk-savebar small{font-size:7.5px;color:var(--muted2)}.ct4-bulk-savebar-actions{display:flex;align-items:center;gap:6px}.ct4-bulk-savebar .btn{font-size:8.5px;padding:0 10px;min-height:28px}
       .ct4-embedded>.ct4-head,.ct4-embedded .ct4-company-field{display:none}.ct4-embedded .ct4-toolbar{padding:3px 0;border:0;background:transparent}.ct4-embedded .ct4-stats{margin-left:0}
       @media(max-width:900px){.ct4-table th:nth-child(2),.ct4-table td:nth-child(2){display:none}.ct4-table-wrap{max-height:none}}
@@ -87,14 +87,16 @@
   function formatPrice(instance, service, price) {
     if (!price) return '<span class="ct4-chip pending">Sin precio</span>';
     const currency = instance.data?.currency || 'ARS';
-    if (service.distance_chargeable) return `<div><div class="ct4-price-main">${money(price.movement_price, currency)} movida</div><div class="ct4-price-km">${money(price.km_price, currency)} / KM</div></div>`;
+    if (service.distance_chargeable) return `<div><div class="ct4-price-main">${money(price.movement_price, currency)} movida</div><div class="ct4-price-km">Asfalto · ${money(price.asphalt_km_price ?? price.km_price, currency)} / KM</div><div class="ct4-price-km">Ripio · ${money(price.gravel_km_price ?? price.km_price, currency)} / KM</div></div>`;
     return `<div><div class="ct4-price-main">${money(price.unit_price, currency)}</div><div class="ct4-price-km">${esc(unitLabel(price.pricing_unit || service.pricing_unit))}</div></div>`;
   }
 
   function samePrice(service, a, b) {
     if (!a && !b) return true;
     if (!a || !b) return false;
-    if (service.distance_chargeable) return Number(a.movement_price || 0) === Number(b.movement_price || 0) && Number(a.km_price || 0) === Number(b.km_price || 0);
+    if (service.distance_chargeable) return Number(a.movement_price || 0) === Number(b.movement_price || 0)
+      && Number(a.asphalt_km_price ?? a.km_price ?? 0) === Number(b.asphalt_km_price ?? b.km_price ?? 0)
+      && Number(a.gravel_km_price ?? a.km_price ?? 0) === Number(b.gravel_km_price ?? b.km_price ?? 0);
     return Number(a.unit_price || 0) === Number(b.unit_price || 0);
   }
 
@@ -136,7 +138,10 @@
   function originalBulkValue(service, field) {
     const price = service?.general_price;
     if (!price) return '';
-    const value = field === 'movement_price' ? price.movement_price : field === 'km_price' ? price.km_price : price.unit_price;
+    const value = field === 'movement_price' ? price.movement_price
+      : field === 'asphalt_km_price' ? (price.asphalt_km_price ?? price.km_price)
+      : field === 'gravel_km_price' ? (price.gravel_km_price ?? price.km_price)
+      : price.unit_price;
     return value === null || value === undefined ? '' : String(Number(value));
   }
 
@@ -162,7 +167,7 @@
   }
 
   function bulkPriceEditor(instance, service) {
-    if (service.distance_chargeable) return `<div class="ct4-bulk-grid">${bulkInput(instance, service, 'movement_price', 'Movida')}${bulkInput(instance, service, 'km_price', 'KM')}</div>`;
+    if (service.distance_chargeable) return `<div class="ct4-bulk-grid">${bulkInput(instance, service, 'movement_price', 'Movida')}${bulkInput(instance, service, 'asphalt_km_price', 'KM Asfalto')}${bulkInput(instance, service, 'gravel_km_price', 'KM Ripio')}</div>`;
     return `<div class="ct4-bulk-grid single">${bulkInput(instance, service, 'unit_price', 'Valor')}</div>`;
   }
 
@@ -190,7 +195,7 @@
     if (stats) stats.innerHTML = `<span class="ct4-stat"><b>${enabled}</b> servicios</span><span class="ct4-stat"><b>${priced}</b> con precio</span>${pending ? `<span class="ct4-stat pending"><b>${pending}</b> sin precio</span>` : ''}${scheduledServices ? `<span class="ct4-stat"><b>${scheduledServices}</b> con cambio futuro</span>` : ''}`;
 
     const bulk = canWrite() && instance.bulk.editing;
-    content.innerHTML = `<section class="ct4-panel"><div class="ct4-panel-head"><div class="ct4-panel-head-main"><h3>Servicios</h3><p>Precio efectivo hoy · ${dateLabel(today())}</p></div>${canWrite() ? `<div class="ct4-panel-head-actions"><button class="ct4-action primary" type="button" data-ct4-bulk-toggle ${instance.bulk.saving ? 'disabled' : ''}>${bulk ? 'Salir de edición' : 'Editar en lote'}</button></div>` : ''}</div><div class="ct4-table-wrap"><table class="ct4-table"><thead><tr><th>Servicio</th><th>Tipo</th><th>Precio vigente</th><th>Próxima vigencia</th><th>Excepciones por base</th><th></th></tr></thead><tbody>${services.length ? services.map(service => `<tr><td><strong>${esc(service.name)}</strong><small>${service.distance_chargeable ? 'Movida + valor por KM' : esc(unitLabel(service.pricing_unit))}</small></td><td><span class="ct4-chip">${esc(categoryLabel(service.category))}</span></td><td>${bulk ? bulkPriceEditor(instance, service) : formatPrice(instance, service, service.general_price)}</td><td>${nextPriceHtml(instance, service)}</td><td>${exceptionsHtml(instance, service)}</td><td><div class="ct4-actions">${canWrite() ? `${bulk ? '' : `<button class="ct4-action primary" type="button" data-ct4-edit="${esc(service.concept_id)}">${service.general_price ? 'Editar' : 'Cargar precio'}</button>`}<button class="ct4-action" type="button" data-ct4-program="${esc(service.concept_id)}">Programar</button>${(d.bases || []).length ? `<button class="ct4-action" type="button" data-ct4-base-price="${esc(service.concept_id)}">Precio por base</button>` : ''}` : ''}<button class="ct4-action" type="button" data-ct4-history="${esc(service.concept_id)}">Historial</button></div></td></tr>`).join('') : '<tr><td colspan="6"><div class="ct4-empty">No hay servicios habilitados para esta prestadora.</div></td></tr>'}</tbody></table></div>${bulk ? bulkSavebar(instance) : ''}</section>`;
+    content.innerHTML = `<section class="ct4-panel"><div class="ct4-panel-head"><div class="ct4-panel-head-main"><h3>Servicios</h3><p>Precio efectivo hoy · ${dateLabel(today())}</p></div>${canWrite() ? `<div class="ct4-panel-head-actions"><button class="ct4-action primary" type="button" data-ct4-bulk-toggle ${instance.bulk.saving ? 'disabled' : ''}>${bulk ? 'Salir de edición' : 'Editar en lote'}</button></div>` : ''}</div><div class="ct4-table-wrap"><table class="ct4-table"><thead><tr><th>Servicio</th><th>Tipo</th><th>Precio vigente</th><th>Próxima vigencia</th><th>Excepciones por base</th><th></th></tr></thead><tbody>${services.length ? services.map(service => `<tr><td><strong>${esc(service.name)}</strong><small>${service.distance_chargeable ? 'Movida + KM Asfalto + KM Ripio' : esc(unitLabel(service.pricing_unit))}</small></td><td><span class="ct4-chip">${esc(categoryLabel(service.category))}</span></td><td>${bulk ? bulkPriceEditor(instance, service) : formatPrice(instance, service, service.general_price)}</td><td>${nextPriceHtml(instance, service)}</td><td>${exceptionsHtml(instance, service)}</td><td><div class="ct4-actions">${canWrite() ? `${bulk ? '' : `<button class="ct4-action primary" type="button" data-ct4-edit="${esc(service.concept_id)}">${service.general_price ? 'Editar' : 'Cargar precio'}</button>`}<button class="ct4-action" type="button" data-ct4-program="${esc(service.concept_id)}">Programar</button>${(d.bases || []).length ? `<button class="ct4-action" type="button" data-ct4-base-price="${esc(service.concept_id)}">Precio por base</button>` : ''}` : ''}<button class="ct4-action" type="button" data-ct4-history="${esc(service.concept_id)}">Historial</button></div></td></tr>`).join('') : '<tr><td colspan="6"><div class="ct4-empty">No hay servicios habilitados para esta prestadora.</div></td></tr>'}</tbody></table></div>${bulk ? bulkSavebar(instance) : ''}</section>`;
     bindInstance(instance);
   }
 
@@ -240,10 +245,12 @@
     const payload = { concept_id: service.concept_id, billing_base_id: null };
     if (service.distance_chargeable) {
       const movement = Number(bulkInputValue(instance, service, 'movement_price'));
-      const km = Number(bulkInputValue(instance, service, 'km_price'));
-      if (!Number.isFinite(movement) || movement < 0 || !Number.isFinite(km) || km < 0) throw new Error(`${service.name}: completá movida y valor por KM con importes válidos.`);
+      const asphalt = Number(bulkInputValue(instance, service, 'asphalt_km_price'));
+      const gravel = Number(bulkInputValue(instance, service, 'gravel_km_price'));
+      if (!Number.isFinite(movement) || movement < 0 || !Number.isFinite(asphalt) || asphalt < 0 || !Number.isFinite(gravel) || gravel < 0) throw new Error(`${service.name}: completá movida, KM asfalto y KM ripio con importes válidos.`);
       payload.movement_price = movement;
-      payload.km_price = km;
+      payload.asphalt_km_price = asphalt;
+      payload.gravel_km_price = gravel;
     } else {
       const value = Number(bulkInputValue(instance, service, 'unit_price'));
       if (!Number.isFinite(value) || value < 0) throw new Error(`${service.name}: ingresá un importe válido.`);
@@ -305,7 +312,7 @@
     const bases = instance.data?.bases || [];
     const baseField = selectingBase ? `<label class="ct4-field ct4-full"><span>Base *</span><select class="form-input" id="ct4-rate-base"><option value="">Seleccionar base</option>${bases.map(base => `<option value="${esc(base.base_id)}">${esc(base.name)}</option>`).join('')}</select></label>` : baseId ? `<div class="ct4-field ct4-full"><span>Base</span><div class="ct4-note">${esc(existing?.base_name || bases.find(b => String(b.base_id) === String(baseId))?.name || 'Base')}</div></div>` : '';
     const dateField = `<label class="ct4-field ct4-full"><span>Vigente desde *</span><input class="form-input" type="date" id="ct4-valid-from" min="${today()}" value="${esc(validFrom)}" ${scheduled ? 'disabled' : ''}></label><div class="ct4-note ct4-full">${scheduled ? 'Esta vigencia ya está programada. Para cambiar la fecha, cancelala y creá una nueva.' : 'Hoy aplica inmediatamente. Una fecha futura queda programada y se usa automáticamente según la fecha del servicio.'}</div>`;
-    const priceFields = service.distance_chargeable ? `<label class="ct4-field"><span>Valor movida</span><input class="form-input" type="number" min="0" step="0.01" id="ct4-movement" value="${esc(existing?.movement_price ?? '')}"></label><label class="ct4-field"><span>Valor por KM</span><input class="form-input" type="number" min="0" step="0.01" id="ct4-km" value="${esc(existing?.km_price ?? '')}"></label>` : `<label class="ct4-field ct4-full"><span>Valor · ${esc(unitLabel(service.pricing_unit))}</span><input class="form-input" type="number" min="0" step="0.01" id="ct4-unit" value="${esc(existing?.unit_price ?? '')}"></label>`;
+    const priceFields = service.distance_chargeable ? `<label class="ct4-field"><span>Valor movida</span><input class="form-input" type="number" min="0" step="0.01" id="ct4-movement" value="${esc(existing?.movement_price ?? '')}"></label><label class="ct4-field"><span>KM Asfalto</span><input class="form-input" type="number" min="0" step="0.01" id="ct4-asphalt" value="${esc(existing?.asphalt_km_price ?? existing?.km_price ?? '')}"></label><label class="ct4-field"><span>KM Ripio</span><input class="form-input" type="number" min="0" step="0.01" id="ct4-gravel" value="${esc(existing?.gravel_km_price ?? existing?.km_price ?? '')}"></label><div class="ct4-note">El radio cubierto consume primero KM de asfalto y luego KM de ripio.</div>` : `<label class="ct4-field ct4-full"><span>Valor · ${esc(unitLabel(service.pricing_unit))}</span><input class="form-input" type="number" min="0" step="0.01" id="ct4-unit" value="${esc(existing?.unit_price ?? '')}"></label>`;
     document.getElementById('ct4-rate-body').innerHTML = `<div class="ct4-grid">${baseField}${dateField}${priceFields}</div>`;
     const save = document.getElementById('ct4-rate-save'); if (save) save.textContent = validFrom > today() ? 'Programar precio' : 'Guardar precio';
     document.getElementById('ct4-valid-from')?.addEventListener('change', e => { if (save) save.textContent = e.target.value > today() ? 'Programar precio' : 'Guardar precio'; });
@@ -322,9 +329,13 @@
     if (editor.selectingBase && !baseId) return showModalError('Seleccioná una base.');
     const payload = { company_id: instance.companyId, concept_id: editor.conceptId, billing_base_id: baseId };
     if (editor.service.distance_chargeable) {
-      const movement = Number(document.getElementById('ct4-movement')?.value), km = Number(document.getElementById('ct4-km')?.value);
-      if (!Number.isFinite(movement) || movement < 0 || !Number.isFinite(km) || km < 0) return showModalError('Completá valores válidos para movida y kilómetro.');
-      payload.movement_price = movement; payload.km_price = km;
+      const movement = Number(document.getElementById('ct4-movement')?.value);
+      const asphalt = Number(document.getElementById('ct4-asphalt')?.value);
+      const gravel = Number(document.getElementById('ct4-gravel')?.value);
+      if (!Number.isFinite(movement) || movement < 0 || !Number.isFinite(asphalt) || asphalt < 0 || !Number.isFinite(gravel) || gravel < 0) return showModalError('Completá valores válidos para movida, KM asfalto y KM ripio.');
+      payload.movement_price = movement;
+      payload.asphalt_km_price = asphalt;
+      payload.gravel_km_price = gravel;
     } else {
       const value = Number(document.getElementById('ct4-unit')?.value);
       if (!Number.isFinite(value) || value < 0) return showModalError('Ingresá un valor válido.');
@@ -381,7 +392,7 @@
 
   function historyValue(instance, service, row) {
     if (!row) return '—';
-    if (service.distance_chargeable) return `${money(row.movement_price, instance.data?.currency)} movida · ${money(row.km_price, instance.data?.currency)}/km`;
+    if (service.distance_chargeable) return `${money(row.movement_price, instance.data?.currency)} movida · ${money(row.asphalt_km_price ?? row.km_price, instance.data?.currency)}/km asfalto · ${money(row.gravel_km_price ?? row.km_price, instance.data?.currency)}/km ripio`;
     return money(row.unit_price, instance.data?.currency);
   }
 
