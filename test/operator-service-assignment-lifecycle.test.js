@@ -9,10 +9,22 @@ test('quitar chofer o móvil limpia ambos recursos',()=>{
   assert.match(wizard,/if\(!value\)\{w\.data\.assigned_driver_id='';w\.data\.assigned_truck_id='';markDirty\(\);return render\(\);\}/);
 });
 
-test('seleccionar chofer o móvil es inmediato y no espera disponibilidad de red',()=>{
-  assert.match(wizard,/function setAssignment\(kind,value\)/);
-  assert.match(wizard,/setVal\(key,value\);render\(\)/);
-  assert.doesNotMatch(wizard,/get_operator_resource_availability/);
+test('la jornada activa vuelve a enlazar chofer y móvil antes de asignar',()=>{
+  assert.match(wizard,/async function loadResourceAvailability\(\)/);
+  assert.match(wizard,/get_operator_resource_availability/);
+  assert.match(wizard,/active_truck_id/);
+  assert.match(wizard,/active_driver_id/);
+  assert.match(wizard,/if\(mode==='edit'\)await loadResourceAvailability\(\)/);
+  assert.match(wizard,/await loadResourceAvailability\(\);render\(\);window\.dispatchEvent/);
+});
+
+test('seleccionar chofer o móvil resuelve su pareja en memoria sin una consulta de red por click',()=>{
+  const assignment=wizard.split('function setAssignment(kind,value)')[1].split("window.addEventListener('beforeunload'")[0];
+  assert.match(assignment,/current\?\.active_truck_id/);
+  assert.match(assignment,/current\?\.active_driver_id/);
+  assert.match(assignment,/w\.data\.assigned_truck_id=String\(current\.active_truck_id\)/);
+  assert.match(assignment,/w\.data\.assigned_driver_id=String\(current\.active_driver_id\)/);
+  assert.doesNotMatch(assignment,/_db\.rpc|get_operator_resource_availability|await/);
   assert.doesNotMatch(wizard,/async function setAssignment/);
 });
 
