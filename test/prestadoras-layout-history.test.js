@@ -6,6 +6,29 @@ const fs = require('node:fs');
 const companies = fs.readFileSync('empresas-v2.js','utf8');
 const historyMigration = fs.readFileSync('migrations/20260818150000_company_configuration_history_v1.sql','utf8');
 
+test('Listado canónico de Prestadoras mantiene la versión simplificada',()=>{
+  assert.doesNotMatch(companies,/empv2-kpis/);
+  assert.doesNotMatch(companies,/empv2-refresh/);
+  assert.doesNotMatch(companies,/value="suspended"/);
+  assert.doesNotMatch(companies,/>Suspendidas</);
+  assert.match(companies,/<option value="active">Activo<\/option><option value="inactive">Inactivo<\/option>/);
+  assert.match(companies,/<th>Prestadora<\/th><th>CUIT<\/th><th>Contacto<\/th><th>Estado<\/th><th>Acciones<\/th>/);
+  assert.match(companies,/col:nth-child\(1\)\{width:28%\}/);
+  assert.match(companies,/col:nth-child\(2\)\{width:17%\}/);
+  assert.match(companies,/col:nth-child\(3\)\{width:32%\}/);
+  assert.match(companies,/col:nth-child\(4\)\{width:13%\}/);
+  assert.match(companies,/col:nth-child\(5\)\{width:10%\}/);
+  assert.match(companies,/width:38px;height:38px;min-width:38px/);
+  assert.match(companies,/data-empv2-action="view"/);
+  assert.match(companies,/data-empv2-action="edit"/);
+  assert.match(companies,/data-empv2-action="toggle"/);
+  assert.match(companies,/>Visualizar<\/button>/);
+  assert.match(companies,/>Modificar<\/button>/);
+  assert.match(companies,/Deshabilitar':'Habilitar/);
+  assert.match(companies,/function setCompanyStatus\(id,nextStatus=null\)/);
+  assert.match(companies,/desactivarEmpresa:id=>setCompanyStatus\(id,'inactive'\)/);
+});
+
 test('Datos y Contactos usa columnas verticales y canales independientes',()=>{
   assert.match(companies,/empv2-general-columns/);
   assert.match(companies,/empv2-vertical-grid/);
