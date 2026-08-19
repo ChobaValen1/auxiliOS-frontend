@@ -1,115 +1,129 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const services=fs.readFileSync('operator-services.js','utf8');
+const css=fs.readFileSync('operator-services.css','utf8');
+const workspaceCss=fs.readFileSync('operator-service-workspace-reactive-v1.css','utf8');
+const config=fs.readFileSync('config.js','utf8');
+const settings=fs.readFileSync('service-module-configuration.js','utf8');
+const lifecycle=fs.readFileSync('migrations/20260813104500_service_module_configuration_v1.sql','utf8');
+const listMigration=fs.readFileSync('migrations/20260814125000_operator_service_list_v3.sql','utf8');
+const amountDueMigration=fs.readFileSync('migrations/20260815110500_operator_service_amount_due_excess_only_v1.sql','utf8');
+const settingsMigration=fs.readFileSync('migrations/20260814125500_service_module_columns_v2.sql','utf8');
 
-test('operator services renders the dispatch board and initializes the canonical creation controller', () => {
-  const elements = new Map();
-  const element = id => {
-    if (!elements.has(id)) {
-      elements.set(id, {
-        id,
-        innerHTML: '',
-        value: id === 'os-status' || id === 'os-company' ? 'all' : '',
-        style: {},
-        className: '',
-        classList: { add() {}, remove() {}, contains() { return false; } },
-        insertAdjacentHTML() {},
-      });
-    }
-    return elements.get(id);
-  };
+test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=>{
+  assert.match(services,/os-table-body/);
+  assert.match(services,/renderTableHeader/);
+  assert.match(services,/COLUMN_KEYS=\['code','datetime','arrival','finish','provider','base','type','origin','destination','client','km','driver','delay','mobile','status','amount_due','actions'\]/);
+  for(const label of ['Código','Fecha\/Hora','Arribo','Fin','Prestadora','Base','Tipo','Origen','Destino','Cliente','Km','Chofer','Demora','Móvil','Estado','Por Cobrar','Acciones'])assert.match(services,new RegExp(label));
+  assert.doesNotMatch(services,/column_order:\['service','date','route'|customer_vehicle|resource:'|priorityMeta|col-route|col-customer_vehicle/);
+  assert.doesNotMatch(services,/os-board|renderKpis|renderDetail|modal-operador-servicio|get_operator_service_detail|os-detail-shell/);
+});
 
-  for (const id of ['os-board', 'os-kpis', 'os-q', 'os-status', 'os-company', 'os-wizard-shell']) element(id);
+test('mesa compacta ubica Nuevo servicio a la derecha y adapta las 17 columnas al viewport',()=>{
+  assert.match(css,/grid-template-columns:auto auto 180px 120px 34px 34px minmax\(0,1fr\)/);
+  assert.match(css,/\.os-commandbar \.os-manage\{justify-self:end\}/);
+  assert.match(css,/\.os-table\{width:100%;min-width:0;/);
+  assert.doesNotMatch(css,/min-width:1740px/);
+  assert.match(css,/100vh - 126px/);
+  assert.match(css,/\.os-table th\.col-origin,\.os-table th\.col-destination\{width:13%\}/);
+  assert.match(css,/col-amount_due/);
+});
 
-  const sandbox = {
-    console,
-    Intl,
-    Date,
-    Number,
-    String,
-    Set,
-    Map,
-    Promise,
-    Object,
-    confirm: () => true,
-    prompt: () => '',
-    setInterval: () => 1,
-    clearInterval: () => {},
-    PERFIL_USUARIO: { roles: { name: 'administracion' }, full_name: 'Administrador' },
-    USUARIO_ACTUAL: { id: 'admin' },
-    openModal: () => {},
-    closeModal: () => {},
-    toast: () => {},
-    document: {
-      readyState: 'loading',
-      addEventListener() {},
-      getElementById: id => elements.get(id) || null,
-      createElement() { return { id: '', rel: '', href: '', addEventListener() {}, dataset: {} }; },
-      head: { appendChild() {} },
-      body: { insertAdjacentHTML() {}, appendChild() {} },
-      querySelector() { return null; },
-      querySelectorAll() { return []; },
-    },
-    _db: {
-      from() { throw new Error('The render smoke test must not access Supabase.'); },
-      rpc() { throw new Error('The render smoke test must not call RPCs.'); },
-    },
-  };
-  sandbox.window = sandbox;
-  vm.createContext(sandbox);
+test('Fecha Hora muestra sólo la fecha programada y su hora en menor jerarquía',()=>{
+  assert.match(services,/fmtDay\(s\.scheduled_for\)/);
+  assert.match(services,/fmtTime\(s\.scheduled_for\)/);
+  assert.match(services,/os-scheduled-time/);
+  assert.match(css,/\.os-scheduled-time\{font-size:8px!important/);
+  assert.doesNotMatch(services,/Creado ·|fmtTimeSeconds/);
+});
 
-  for (const file of ['operator-services.js', 'operator-service-wizard.js']) {
-    const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
-    vm.runInContext(source, sandbox, { filename: file });
-  }
+test('Cliente representa patente marca y modelo, no el nombre del socio',()=>{
+  const customer=services.split('function customerCell')[1].split('function amountDueCell')[0];
+  assert.match(customer,/vehicle_plate/);
+  assert.match(customer,/vehicle_make_model/);
+  assert.doesNotMatch(customer,/customer_name/);
+});
 
-  const operator = sandbox.OperatorServices;
-  assert.ok(operator);
-  const state = operator.S;
-  state.companies = [{ company_id: 'company', legal_name: 'Empresa Prueba', trade_name: 'Empresa' }];
-  state.branches = [];
-  state.drivers = [{ user_id: 'driver', full_name: 'Chofer Prueba' }];
-  state.trucks = [{ truck_id: 1, plate: 'TEST123', numero_interno: 'Móvil 1' }];
-  state.concepts = [{ concept_id: 'primary', name: 'Asistencia liviano', icon: '🚗' }];
-  state.services = [{
-    service_id: 'service',
-    service_number: 'SRV-20260801-00001',
-    status: 'assigned',
-    priority: 'urgent',
-    company_id: 'company',
-    branch_id: null,
-    primary_concept_id: 'primary',
-    assigned_driver_id: 'driver',
-    assigned_truck_id: 1,
-    scheduled_for: '2026-08-01T14:00:00-03:00',
-    origin: 'Origen',
-    destination: 'Destino',
-    vehicle_plate: 'TEST123',
-    currency: 'ARS',
-    company_estimated_total: 100000,
-    pricing_snapshot: { components: [] },
-  }];
+test('Origen y Destino son columnas separadas con detalle Dirección Localidad Provincia',()=>{
+  assert.match(services,/origin:'Origen',destination:'Destino'/);
+  assert.match(services,/LOCATION_LABELS=\{address:'Dirección',locality:'Localidad',province:'Provincia'\}/);
+  assert.match(services,/function locationCell/);
+  assert.match(services,/origin_formatted_address/);
+  assert.match(services,/destination_formatted_address/);
+  assert.match(services,/location_detail/);
+  assert.match(settings,/Detalle de Origen \/ Destino/);
+  assert.match(settings,/Dirección, Localidad y Provincia/);
+  assert.match(services,/cambiarDetalleUbicacionPersonalServicio/);
+  assert.match(settingsMigration,/add column if not exists location_detail/);
+  assert.match(listMigration,/origin_formatted_address/);
+  assert.match(listMigration,/destination_formatted_address/);
+});
 
-  operator.renderBoard();
-  assert.match(element('os-board').innerHTML, /Pendientes/);
-  assert.match(element('os-board').innerHTML, /Asignados/);
-  assert.match(element('os-board').innerHTML, /En curso/);
-  assert.match(element('os-board').innerHTML, /Finalizados/);
-  assert.match(element('os-board').innerHTML, /SRV-20260801-00001/);
-  assert.match(element('os-board').innerHTML, /Empresa/);
-  assert.match(element('os-kpis').innerHTML, /Pendientes/);
+test('todas las columnas pueden ser visibles u ocultas por configuración o por usuario',()=>{
+  assert.match(settings,/Configurar columnas/);
+  assert.match(services,/auxilios\.services\.columns/);
+  assert.match(services,/allow_personal_column_overrides/);
+  assert.match(services,/S\.personalDraft\.column_visibility\[key\]=!!on/);
+  assert.match(settings,/S\.config\.column_visibility\[key\]=!!on/);
+  assert.doesNotMatch(services,/service:true,actions:true/);
+  assert.doesNotMatch(settings,/\['service','actions'\]\.includes/);
+  assert.match(settingsMigration,/v_allowed text\[\]:=array\['code','datetime','arrival','finish','provider','base','type','origin','destination','client','km','driver','delay','mobile','status','amount_due','actions'\]/);
+  assert.doesNotMatch(settingsMigration,/jsonb_build_object\('service',true,'actions',true\)/);
+});
 
-  assert.equal(typeof sandbox.abrirNuevoServicio, 'function');
-  assert.equal(typeof sandbox.abrirDetalleServicio, 'function');
-  assert.equal(typeof sandbox.guardarAsignacionServicio, 'function');
-  assert.equal(typeof sandbox.avanzarServicioChofer, 'function');
-  assert.equal(operator.statusMeta.at_destination.label, 'En destino');
+test('preferencias de columnas son persistentes por usuario en Supabase con cache local de respaldo',()=>{
+  assert.match(services,/const PERSONAL_VIEW_KEY='operator_services_table_v2'/);
+  assert.match(services,/function currentUserId\(\)/);
+  assert.match(services,/async function loadPersonalPreference\(\)/);
+  assert.match(services,/from\('user_view_preferences'\)\.select\('preferences'\)/);
+  assert.match(services,/view_key',PERSONAL_VIEW_KEY/);
+  assert.match(services,/upsert\(\{user_id:uid,view_key:PERSONAL_VIEW_KEY,preferences:pref/);
+  assert.match(services,/from\('user_view_preferences'\)\.delete\(\)/);
+  assert.match(services,/localStorage\.setItem\(personalKey\(\),JSON\.stringify\(pref\)\)/);
+  assert.match(services,/loadPersonalPreference\(\)/);
+});
 
-  sandbox.abrirNuevoServicio();
-  assert.ok(state.wizard);
-  assert.match(element('os-wizard-shell').innerHTML, /Cargando formulario de Nuevo Servicio/);
-  assert.doesNotMatch(element('os-wizard-shell').innerHTML, /Alta operativa|os-service-desktop/);
-  assert.equal(typeof operator.renderWizard, 'function');
+test('acciones de asignación desde la mesa usan el modal rápido y no abren el editor completo',()=>{
+  const menu=services.split('async function menuAction')[1].split('function viewService')[0];
+  assert.match(menu,/action==='assign'.*asignarServicioRapido/s);
+  assert.doesNotMatch(menu,/action==='assign'.*editarServicioOperador/s);
+});
+
+test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido',()=>{
+  assert.match(services,/customer_amount_due/);
+  assert.match(services,/customer_payment_methods/);
+  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'\}/);
+  assert.match(services,/os-payment-method/);
+  assert.match(css,/\.os-payment-method\{/);
+  assert.match(amountDueMigration,/from public\.operator_service_excess_charges oe/);
+  assert.match(amountDueMigration,/array_agg\(distinct oe\.customer_payment_method order by oe\.customer_payment_method\)/);
+  assert.match(amountDueMigration,/'customer_amount_due',coalesce\(excess\.amount_due,0\)/);
+  assert.match(amountDueMigration,/'customer_payment_methods',coalesce\(excess\.payment_methods,array\[\]::text\[\]\)/);
+  assert.doesNotMatch(amountDueMigration,/from public\.operator_service_tolls/);
+});
+
+test('Agregar concepto es más compacto y Observaciones e Indicaciones comparten tarjeta y padding',()=>{
+  assert.match(workspaceCss,/\.osv4-reactive \.osv2-add-concept-trigger\{min-height:25px!important;padding:0 8px!important;font-size:7\.7px!important/);
+  assert.match(workspaceCss,/\.vehicle-card,.osv4-reactive \.distance-card,.osv4-reactive \.driver-instructions-card,.osv4-reactive \.osv2-observations\{padding:7px!important\}/);
+  assert.match(workspaceCss,/\.osv2-observations\{display:grid!important;min-width:0;border:1px solid var\(--osv2-border\);border-radius:11px;background:var\(--osv2-card\)/);
+  assert.match(workspaceCss,/\.route-column textarea\{min-height:52px!important;padding:6px 8px!important\}/);
+});
+
+test('Servicios registra header, Activos e Historial y mantiene el flujo de facturación',()=>{
+  assert.match(services,/SCREENS\.operaciones/);
+  assert.match(services,/title:'SERVICIOS'/);
+  assert.match(services,/const ACTIVE=new Set/);
+  assert.match(services,/historyServices/);
+  assert.match(services,/cambiarVistaServicios/);
+  assert.match(lifecycle,/billing_status text not null default 'not_ready'/);
+  assert.match(lifecycle,/new\.billing_status:='pending'/);
+});
+
+test('runtime carga sólo módulos canónicos de Servicios',()=>{
+  assert.match(config,/service-module-configuration\.js/);
+  assert.match(config,/operator-services\.js/);
+  assert.match(config,/operator-service-wizard\.js/);
+  assert.match(config,/operator-service-workspace-reactive-v1\.js/);
+  assert.doesNotMatch(config,/operator-active-desk|operator-service-edit\.js|operator-service-v2\.js|operator-service-reajuste/);
 });

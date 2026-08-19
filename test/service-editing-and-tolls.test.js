@@ -1,203 +1,101 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const read=p=>fs.readFileSync(p,'utf8');
+const legacy=read('migrations/20260804161000_service_editing_and_tolls.sql');
+const canonical=read('migrations/20260812222500_canonical_service_edit_workspace_v1.sql');
+const schema=read('migrations/20260813195500_service_commercial_matrix_v2.sql');
+const normalizer=read('migrations/20260813195510_service_commercial_matrix_normalizer_v2.sql');
+const persistence=read('migrations/20260813195520_service_commercial_matrix_persistence_v2.sql');
+const wizard=read('operator-service-wizard.js');
+const workspace=read('operator-service-workspace-reactive-v1.js');
+const workspaceCss=read('operator-service-workspace-reactive-v1.css');
+const commercial=read('operator-service-commercial-addons-v1.js');
+const commercialCss=read('operator-service-commercial-addons-v1.css');
+const config=read('config.js'),sw=read('sw.js'),pkg=read('package.json');
 
-const root = path.join(__dirname, '..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-
-const migration = read('migrations/20260804161000_service_editing_and_tolls.sql');
-const historyMigration = read('migrations/20260804162000_preserve_toll_rate_history.sql');
-const betaMigration = read('migrations/20260804163000_service_editing_tolls_private_beta.sql');
-const simpleTollsMigration = read('migrations/20260805100000_simple_tolls_workspace.sql');
-const services = read('operator-services.js');
-const references = read('operator-reference-loader.js');
-const editor = read('operator-service-edit.js');
-const editorCss = read('operator-service-edit.css');
-const tolls = read('toll-management.js');
-const tollsCss = read('toll-management.css');
-const featureFlags = read('feature-flags.js');
-const config = read('config.js');
-const pkg = read('package.json');
-const sw = read('sw.js');
-
-test('la edición de servicios abiertos queda auditada y protegida por RPC', () => {
-  assert.match(migration, /create table if not exists public\.operator_service_changes/i);
-  assert.match(migration, /before_values jsonb not null/i);
-  assert.match(migration, /after_values jsonb not null/i);
-  assert.match(migration, /changed_fields text\[\]/i);
-  assert.match(migration, /create or replace function public\.update_operator_service/i);
-  assert.match(migration, /v_role not in \('administracion','operador'\)/i);
-  assert.match(migration, /status in \('completed','cancelled'\)/i);
-  assert.match(migration, /El servicio ya está cerrado y no puede editarse/i);
-  assert.match(migration, /insert into public\.operator_service_changes/i);
-  assert.match(migration, /'service_edit'/i);
-  assert.match(migration, /change_reason/i);
+test('edición sigue auditada y usa un solo workspace',()=>{
+ assert.match(legacy,/operator_service_changes/i);
+ assert.match(canonical,/create or replace function public\.update_operator_service/i);
+ assert.match(wizard,/get_operator_service_edit_context/);
+ assert.match(wizard,/update_operator_service/);
+ assert.match(workspace,/data-mode="\$\{w\.mode\}"/);
+ assert.doesNotMatch(config,/operator-service-edit\.js|operator-service-edit\.css/);
 });
 
-test('la edición no permite alterar número interno, estado ni asignación', () => {
-  const updateBody = migration.split(/create or replace function public\.update_operator_service/i)[1] || '';
-  assert.doesNotMatch(updateBody, /service_number\s*=/i);
-  assert.doesNotMatch(updateBody, /assigned_driver_id\s*=/i);
-  assert.doesNotMatch(updateBody, /assigned_truck_id\s*=/i);
-  assert.doesNotMatch(updateBody, /set\s+status\s*=/i);
-  assert.match(editor, /El número interno, el estado y la asignación se mantienen fuera de esta edición/);
-  assert.doesNotMatch(editor, /name="service_number"/);
-  assert.doesNotMatch(editor, /name="status"/);
-  assert.doesNotMatch(editor, /name="assigned_driver_id"/);
+test('la tercera columna tiene un único renderer comercial',()=>{
+ assert.match(workspace,/data-workspace="three-columns"/);
+ assert.match(workspaceCss,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
+ assert.match(workspace,/class="osv2-column actions-column"><\/section>/);
+ assert.match(workspace,/OperatorServiceCommercialAddonsV1\?\.render/);
+ assert.doesNotMatch(workspace,/tollCard|extrasCard|renderTolls|renderRows|data-toll-field|data-row-concept/);
+ assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación/);
 });
 
-test('los cambios posteriores al inicio requieren motivo y respetan el remito bloqueado', () => {
-  assert.match(migration, /v_trip_started boolean/i);
-  assert.match(migration, /v_reason_fields text\[\]/i);
-  assert.match(migration, /Indicá el motivo de la corrección porque el viaje ya fue iniciado/i);
-  assert.match(migration, /v_remito_locked boolean/i);
-  assert.match(migration, /v_protected_after_remito text\[\]/i);
-  assert.match(migration, /El remito ya está firmado o cerrado/i);
-  assert.match(migration, /update public\.trips/i);
-  assert.match(migration, /update public\.remitos/i);
-  assert.match(editor, /Viaje iniciado/);
-  assert.match(editor, /Remito bloqueado/);
-  assert.match(editor, /change_reason/);
+test('formato de cobro se retrae tras elegir y permite Cambiar en la misma fila',()=>{
+ for(const label of ['A cargo del cliente','A cargo de la Prestadora','Uno y Uno'])assert.match(commercial,new RegExp(label));
+ assert.match(commercial,/Elegí el formato de cobro/);
+ assert.match(commercial,/Quién paga/);
+ assert.match(commercial,/Método de Pago/);
+ assert.match(commercial,/function coverageControl/);
+ assert.match(commercial,/osca-format-selected/);
+ assert.match(commercial,/data-ca="change-coverage"/);
+ assert.match(commercial,/state\.coverageEditing=false/);
+ assert.match(commercial,/action==='change-coverage'/);
+ assert.match(commercialCss,/\.osca-format-selected\{/);
+ assert.match(wizard,/PAYERS=new Set\(\['provider','customer'\]\)/);
+ assert.match(wizard,/fixedPayer=mode=>mode==='provider_roundtrip'\?'provider':mode==='customer_roundtrip'\?'customer':''/);
+ assert.match(wizard,/Seleccioná primero el formato de cobro de peajes/);
+ assert.doesNotMatch(wizard,/PAYERS=new Set\(\[[^\]]*both/);
 });
 
-test('el catálogo conserva ubicaciones e historial aunque la interfaz use un importe simple', () => {
-  assert.match(migration, /create table if not exists public\.toll_locations/i);
-  assert.match(migration, /create table if not exists public\.toll_rates/i);
-  assert.match(migration, /valid_from date not null/i);
-  assert.match(migration, /valid_until date/i);
-  assert.match(historyMigration, /update public\.toll_rates[\s\S]*valid_until = v_from - 1/i);
-  assert.match(simpleTollsMigration, /create or replace function public\.save_simple_toll/i);
-  assert.match(simpleTollsMigration, /v_name text/i);
-  assert.match(simpleTollsMigration, /v_address text/i);
-  assert.match(simpleTollsMigration, /v_amount numeric/i);
-  assert.match(simpleTollsMigration, /vehicle_category = 'light_2_axles'/i);
-  assert.match(simpleTollsMigration, /payment_method = 'any'/i);
-  assert.match(simpleTollsMigration, /set valid_until = current_date - 1/i);
-  assert.match(simpleTollsMigration, /Actualización desde Peajes y Adicionales/i);
-  assert.doesNotMatch(tolls, /\.from\('toll_rates'\)\.update/);
+test('peaje toma tarifa vigente, cantidad y total sin importe manual',()=>{
+ assert.match(commercial,/Seleccionar peaje…/);
+ assert.match(commercial,/total=num\(rate\?\.amount\)\*qty/);
+ assert.match(commercial,/value="N\/A" disabled/);
+ assert.doesNotMatch(commercial,/data-ca-field="unit_amount"/);
+ assert.match(wizard,/toll_rate_id:r\.toll_rate_id\|\|tollRate\(r\.toll_id\)\?\.toll_rate_id\|\|null/);
+ assert.match(wizard,/commercial_addons:commercialPayload\(d\)/);
 });
 
-test('el alta simple y el archivado están protegidos por RPC administrativo', () => {
-  assert.match(simpleTollsMigration, /v_role <> 'administracion'/i);
-  assert.match(simpleTollsMigration, /El nombre del peaje es obligatorio/i);
-  assert.match(simpleTollsMigration, /El importe debe ser igual o mayor a cero/i);
-  assert.match(simpleTollsMigration, /create or replace function public\.set_simple_toll_active/i);
-  assert.match(simpleTollsMigration, /is_active = coalesce\(p_active, false\)/i);
-  assert.match(simpleTollsMigration, /revoke all on function public\.save_simple_toll\(jsonb\) from public, anon/i);
-  assert.match(simpleTollsMigration, /grant execute on function public\.save_simple_toll\(jsonb\) to authenticated/i);
-  assert.match(simpleTollsMigration, /revoke all on function public\.set_simple_toll_active\(uuid, boolean\) from public, anon/i);
+test('excedentes usan Concepto Cant Importe Cobrador Medio Pago y Prestadora implica N/A',()=>{
+ for(const label of ['Concepto','Cant.','Importe','Cobrador','Medio Pago'])assert.match(commercial,new RegExp(label.replace('.','\\.')));
+ assert.match(commercial,/Empresa \(Nosotros\)/);
+ assert.match(commercial,/function excessPaymentControl/);
+ assert.match(commercial,/row\.collector_agent==='provider'/);
+ assert.match(wizard,/COLLECTORS=new Set\(\['company','provider'\]\)/);
+ assert.match(wizard,/customer_payment_method:r\.collector_agent==='provider'\?null/);
+ assert.match(wizard,/if\(key==='collector_agent'\)/);
+ assert.match(wizard,/if\(value==='provider'\)r\.customer_payment_method=''/);
+ assert.match(schema,/coalesce\(customer_payment_method,'n\/a'\)/i);
+ assert.match(persistence,/collector_agent/i);
 });
 
-test('los peajes aplicados al servicio quedan como snapshot y disparan recotización', () => {
-  assert.match(migration, /create table if not exists public\.operator_service_tolls/i);
-  assert.match(migration, /toll_name_snapshot text not null/i);
-  assert.match(migration, /unit_amount numeric/i);
-  assert.match(migration, /total_amount numeric.*generated always/i);
-  assert.match(migration, /source in \('planned','actual','manual'\)/i);
-  assert.match(migration, /app_private\.calculate_operator_service_quote_full/i);
-  assert.match(migration, /perform app_private\.sync_operator_service_items_from_quote/i);
-  assert.match(migration, /toll_estimate = coalesce/i);
-  assert.match(migration, /company_estimated_total = coalesce/i);
-  assert.match(editor, /Los valores seleccionados quedan congelados en el servicio/);
-  assert.match(editor, /Carga manual/);
-  assert.match(editor, /Peajes reales informados/);
+test('backend replica las restricciones de la matriz',()=>{
+ assert.match(normalizer,/v_mode='provider_roundtrip' and v_payer<>'provider'/i);
+ assert.match(normalizer,/v_mode='customer_roundtrip' and v_payer<>'customer'/i);
+ assert.match(normalizer,/v_payer not in \('provider','customer'\)/i);
+ assert.match(normalizer,/v_payer='customer' and v_customer_method not in/i);
+ assert.match(normalizer,/v_payer='provider' then v_customer_method:=null/i);
+ assert.match(normalizer,/v_collector not in \('company','provider'\)/i);
+ assert.match(normalizer,/v_collector='provider' then[\s\S]*v_customer_method:=null/i);
+ assert.match(normalizer,/Cuando cobra la Empresa, el medio de pago del excedente es obligatorio/i);
+ assert.match(normalizer,/coalesce\(v_customer_method,'n\/a'\)/i);
+ assert.match(normalizer,/v_rate\.amount/);
 });
 
-test('las tablas nuevas no admiten escritura directa de usuarios autenticados', () => {
-  for (const table of ['operator_service_changes', 'toll_locations', 'toll_rates', 'operator_service_tolls']) {
-    assert.match(migration, new RegExp(`alter table public\\.${table} enable row level security`, 'i'));
-    assert.match(migration, new RegExp(`revoke all on table public\\.${table} from public, anon, authenticated`, 'i'));
-    assert.match(migration, new RegExp(`grant select on table public\\.${table} to authenticated`, 'i'));
-  }
-  assert.doesNotMatch(migration, /grant\s+(insert|update|delete)[^;]*(operator_service_changes|toll_locations|toll_rates|operator_service_tolls)/i);
-  assert.match(migration, /Solo administración puede gestionar el catálogo de peajes/i);
-  assert.match(migration, /Solo administración puede gestionar los importes de peajes/i);
+test('matrices crecen sin scroll interno propio',()=>{
+ assert.match(workspaceCss,/\.osv4-reactive \.osv2-grid\{[^}]*overflow-y:auto!important/);
+ assert.match(workspaceCss,/\.osv4-reactive \.osv2-column\{[^}]*overflow:visible!important/);
+ assert.match(commercialCss,/\.osca-matrix\{display:grid;gap:4px\}/);
+ assert.doesNotMatch(commercialCss,/\.osca-matrix(?:-body)?\{[^}]*overflow/);
 });
 
-test('la mesa conserva los controles actuales de administración y supervisión', () => {
-  assert.match(services, /betaEnabled=\(\)=>Boolean\(window\.AuxiliosFeatures\?\.flags\?\.service_editing_tolls_v1\)/);
-  assert.match(services, /canRead=\(\)=>\['administracion','supervision'\]\.includes\(role\(\)\)\|\|\(role\(\)==='operador'&&betaEnabled\(\)\)/);
-  assert.match(services, /canManage=\(\)=>\['administracion','supervision'\]\.includes\(role\(\)\)\|\|\(role\(\)==='operador'&&betaEnabled\(\)\)/);
-  assert.match(services, /rpc\('update_operator_service_assignment'/);
-  assert.match(services, /rpc\('cancel_operator_service'/);
-  assert.doesNotMatch(services, /from\('operator_services'\)\.update/);
-  assert.match(editor, /\['administracion','operador'\]\.includes\(role\(\)\)/);
-  assert.match(tolls, /canManage=\(\)=>role\(\)==='administracion'/);
-});
-
-test('el operador obtiene referencias mediante un RPC acotado y no mediante acceso amplio a usuarios', () => {
-  assert.match(references, /get_operator_service_reference_data/);
-  assert.match(references, /services\.S\.companies/);
-  assert.match(references, /services\.S\.branches/);
-  assert.match(references, /services\.S\.drivers/);
-  assert.match(references, /services\.S\.trucks/);
-  assert.match(references, /services\.S\.concepts/);
-  assert.match(references, /\['administracion','operador','supervision'\]\.includes\(role\(\)\)/);
-  assert.doesNotMatch(references, /\.from\('users'\)/);
-  assert.doesNotMatch(references, /\.from\('companies'\)/);
-});
-
-test('el editor usa el contexto y la actualización transaccional del backend', () => {
-  assert.match(editor, /get_operator_service_edit_context/);
-  assert.match(editor, /list_toll_catalog/);
-  assert.match(editor, /update_operator_service/);
-  assert.match(editor, /p_service_id:STATE\.serviceId/);
-  assert.match(editor, /p_payload:payload/);
-  assert.match(editor, /p_reason:reason/);
-  assert.doesNotMatch(editor, /\.from\('operator_services'\)\.update/);
-  assert.doesNotMatch(editor, /\.from\('operator_service_tolls'\)\.(insert|update|delete)/);
-  assert.match(editor, /O\.loadServices/);
-  assert.match(editor, /O\.openDetail/);
-});
-
-test('Peajes y Adicionales muestra el alta junto al registro histórico', () => {
-  assert.match(tolls, /Peajes y Adicionales/);
-  assert.match(tolls, /id="tm-simple-form"/);
-  assert.match(tolls, /Nombre del peaje \*/);
-  assert.match(tolls, /Dirección/);
-  assert.match(tolls, /Importe \*/);
-  assert.match(tolls, /Todos los peajes cargados/);
-  assert.match(tolls, /p_include_inactive:true/);
-  assert.match(tolls, /save_simple_toll/);
-  assert.match(tolls, /set_simple_toll_active/);
-  assert.match(tolls, /Permanecerá visible en el historial/);
-  assert.match(tolls, /data-tm-section="additionals"/);
-  assert.match(tolls, /Próxima configuración/);
-  assert.match(tolls, /\['administracion','operador','supervision','facturacion'\]\.includes\(role\(\)\)/);
-  assert.doesNotMatch(tolls, /data-tm-new/);
-  assert.doesNotMatch(tolls, /Nueva vigencia tarifaria/);
-  assert.match(tollsCss, /\.tm-workspace/);
-  assert.match(tollsCss, /position:\s*sticky/i);
-  assert.match(tollsCss, /@media/i);
-});
-
-test('la nueva entrega se habilita únicamente mediante una bandera individual', () => {
-  assert.match(betaMigration, /'service_editing_tolls_v1'/);
-  assert.match(betaMigration, /lower\(u\.email\) = 'admin@sigmaremolques\.com'/i);
-  assert.doesNotMatch(betaMigration, /supervisor@sigmaremolques\.com/i);
-  assert.doesNotMatch(betaMigration, /where[\s\S]{0,160}role/i);
-  assert.match(featureFlags, /flags\.service_editing_tolls_v1/);
-  assert.match(featureFlags, /operator-reference-loader\.js/);
-  assert.match(featureFlags, /operator-service-edit\.css/);
-  assert.match(featureFlags, /operator-service-edit\.js/);
-  assert.match(featureFlags, /toll-management\.css/);
-  assert.match(featureFlags, /toll-management\.js/);
-  assert.doesNotMatch(featureFlags, /admin@sigmaremolques\.com/);
-  assert.doesNotMatch(config, /auxilios-operator-reference-loader/);
-  assert.doesNotMatch(config, /auxilios-operator-service-edit/);
-  assert.doesNotMatch(config, /auxilios-toll-management/);
-  assert.match(config, /auxilios-feature-flags/);
-});
-
-test('los módulos forman parte de CI y caché PWA sin cargarse globalmente', () => {
-  assert.match(pkg, /node --check operator-reference-loader\.js/);
-  assert.match(pkg, /node --check operator-service-edit\.js/);
-  assert.match(pkg, /node --check toll-management\.js/);
-  assert.match(sw, /auxilios-v1[2-9]\d/);
-  for (const asset of ['operator-reference-loader.js', 'operator-service-edit.js', 'operator-service-edit.css', 'toll-management.js', 'toll-management.css']) {
-    assert.match(sw, new RegExp(asset.replace('.', '\\.')));
-  }
-  assert.match(editorCss, /#ose-modal\[hidden\]/);
-  assert.match(editorCss, /@media/i);
+test('runtime contiene sólo la implementación definitiva',()=>{
+ for(const name of ['operator-service-edit.js','operator-service-edit.css','operator-reference-loader.js','operator-service-workspace-behavior-v1.js','operator-service-commercial-addons-input-fix-v1.js']){
+  assert.equal(config.includes(name),false);assert.equal(sw.includes(name),false);
+ }
+ assert.match(config,/operator-service-commercial-addons-v1\.js/);
+ assert.match(sw,/operator-service-commercial-addons-v1\.js/);
+ assert.match(pkg,/node --check operator-service-commercial-addons-v1\.js/);
 });

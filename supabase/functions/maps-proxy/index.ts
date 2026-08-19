@@ -11,9 +11,20 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" },
 });
 
-const requireNumber = (value: unknown, label: string): number => {
+class GoogleMapsError extends Error {
+  upstreamStatus: number;
+  googleStatus: string | null;
+  constructor(message: string, upstreamStatus: number, googleStatus: string | null = null) {
+    super(message);
+    this.name = "GoogleMapsError";
+    this.upstreamStatus = upstreamStatus;
+    this.googleStatus = googleStatus;
+  }
+}
+
+const requireNumber = (value: unknown, label: string, min: number, max: number): number => {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) throw new Error(`${label} inválido`);
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) throw new Error(`${label} inválido`);
   return parsed;
 };
 
@@ -25,8 +36,8 @@ const parseDurationSeconds = (value: unknown): number => {
 const latLngWaypoint = (point: Record<string, unknown>) => ({
   location: {
     latLng: {
-      latitude: requireNumber(point.latitude, "Latitud"),
-      longitude: requireNumber(point.longitude, "Longitud"),
+      latitude: requireNumber(point.latitude, "Latitud", -90, 90),
+      longitude: requireNumber(point.longitude, "Longitud", -180, 180),
     },
   },
 });
@@ -40,7 +51,13 @@ async function googleFetch(url: string, apiKey: string, init: RequestInit, field
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = payload?.error?.message || `Google Maps respondió ${response.status}`;
-    throw new Error(message);
+    const googleStatus = payload?.error?.status || null;
+    console.error("[maps-proxy:google]", {
+      status: response.status,
+      googleStatus,
+      message,
+    });
+    throw new GoogleMapsError(message, response.status, googleStatus);
   }
   return payload;
 }
@@ -48,23 +65,24 @@ async function googleFetch(url: string, apiKey: string, init: RequestInit, field
 async function autocomplete(body: Record<string, any>, apiKey: string) {
   const input = String(body.input || "").trim();
   if (input.length < 3) return { suggestions: [] };
+  if (input.length > 180) throw new Error("La búsqueda de dirección es demasiado larga");
 
   const request: Record<string, unknown> = {
     input,
-    sessionToken: body.sessionToken || undefined,
-    regionCode: body.regionCode || "AR",
-    languageCode: "es",
-    includedRegionCodes: ["AR"],
+    languageCode: "es-419",
+    includedRegionCodes: ["ar"],
   };
+  if (body.sessionToken) request.sessionToken = String(body.sessionToken);
+
   const bias = body.locationBias;
   if (bias && Number.isFinite(Number(bias.latitude)) && Number.isFinite(Number(bias.longitude))) {
     request.locationBias = {
       circle: {
         center: {
-          latitude: Number(bias.latitude),
-          longitude: Number(bias.longitude),
+          latitude: requireNumber(bias.latitude, "Latitud de referencia", -90, 90),
+          longitude: requireNumber(bias.longitude, "Longitud de referencia", -180, 180),
         },
-        radius: Math.min(Math.max(Number(bias.radius) || 50000, 1000), 500000),
+        radius: Math.min(Math.max(Number(bias.radius) || 50000, 0), 50000),
       },
     };
   }
@@ -81,58 +99,101 @@ async function autocomplete(body: Record<string, any>, apiKey: string) {
     ].join(","),
   );
 
-  const suggestions = (payload.suggestions || [])
-    .map((entry: any) => entry.placePrediction)
-    .filter(Boolean)
-    .slice(0, 6)
-    .map((prediction: any) => ({
-      placeId: prediction.placeId,
-      text: prediction.text?.text || "",
-      mainText: prediction.structuredFormat?.mainText?.text || prediction.text?.text || "",
-      secondaryText: prediction.structuredFormat?.secondaryText?.text || "",
-    }));
-  return { suggestions };
+  return {
+    suggestions: (payload.suggestions || [])
+      .map((entry: any) => entry.placePrediction)
+      .filter(Boolean)
+      .slice(0, 6)
+      .map((prediction: any) => ({
+        placeId: prediction.placeId,
+        text: prediction.text?.text || "",
+        mainText: prediction.structuredFormat?.mainText?.text || prediction.text?.text || "",
+        secondaryText: prediction.structuredFormat?.secondaryText?.text || "",
+      })),
+  };
+}
+
+function component(components: any[], types: string[]) {
+  for (const type of types) {
+    const match = components.find((item: any) => Array.isArray(item.types) && item.types.includes(type));
+    if (match) return { long: match.longText || match.shortText || null, short: match.shortText || match.longText || null };
+  }
+  return { long: null, short: null };
 }
 
 async function placeDetails(body: Record<string, any>, apiKey: string) {
   const placeId = String(body.placeId || "").trim();
   if (!placeId) throw new Error("Falta el Place ID");
-  const params = new URLSearchParams({ languageCode: "es", regionCode: "AR" });
+  const params = new URLSearchParams({ languageCode: "es-419", regionCode: "ar" });
+  if (body.sessionToken) params.set("sessionToken", String(body.sessionToken));
+
   const payload = await googleFetch(
     `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?${params}`,
     apiKey,
     { method: "GET" },
-    "id,displayName,formattedAddress,location",
+    "id,displayName,formattedAddress,location,addressComponents",
   );
+  const components = Array.isArray(payload.addressComponents) ? payload.addressComponents : [];
+  const street = component(components, ["route"]);
+  const streetNumber = component(components, ["street_number"]);
+  const locality = component(components, ["locality", "postal_town", "administrative_area_level_2"]);
+  const province = component(components, ["administrative_area_level_1"]);
+  const postalCode = component(components, ["postal_code"]);
+  const country = component(components, ["country"]);
+  const streetAddress = [street.long, streetNumber.long].filter(Boolean).join(" ") || payload.formattedAddress || "";
+
   return {
     placeId: payload.id || placeId,
     displayName: payload.displayName?.text || "",
     formattedAddress: payload.formattedAddress || "",
+    address: streetAddress,
+    street: street.long,
+    streetNumber: streetNumber.long,
+    city: locality.long,
+    locality: locality.long,
+    province: province.long,
+    postalCode: postalCode.long,
+    country: country.long,
+    countryCode: country.short,
     location: payload.location || null,
+    addressComponents: components,
+    provider: "google_places_new",
+  };
+}
+
+type RouteMode = "base_origin_destination_base" | "base_origin" | "origin_destination";
+
+function routeWaypoints(body: Record<string, any>) {
+  const mode = String(body.routeMode || "base_origin_destination_base") as RouteMode;
+  const base = body.base || {};
+  const origin = body.origin || {};
+  const destination = body.destination || {};
+
+  if (mode === "base_origin") {
+    return { mode, origin: latLngWaypoint(base), destination: latLngWaypoint(origin), intermediates: [] };
+  }
+  if (mode === "origin_destination") {
+    return { mode, origin: latLngWaypoint(origin), destination: latLngWaypoint(destination), intermediates: [] };
+  }
+  if (mode !== "base_origin_destination_base") throw new Error("Modo de recorrido inválido");
+  return {
+    mode,
+    origin: latLngWaypoint(base),
+    destination: latLngWaypoint(base),
+    intermediates: [latLngWaypoint(origin), latLngWaypoint(destination)],
   };
 }
 
 async function computeRoute(body: Record<string, any>, apiKey: string) {
-  const base = body.base || {};
-  const origin = body.origin || {};
-  const destination = body.destination || {};
+  const waypoints = routeWaypoints(body);
   const request = {
-    origin: latLngWaypoint(base),
-    destination: latLngWaypoint(base),
-    intermediates: [latLngWaypoint(origin), latLngWaypoint(destination)],
+    origin: waypoints.origin,
+    destination: waypoints.destination,
+    intermediates: waypoints.intermediates,
     travelMode: "DRIVE",
-    routingPreference: "TRAFFIC_AWARE",
-    departureTime: body.departureTime || new Date().toISOString(),
+    routingPreference: "TRAFFIC_UNAWARE",
     languageCode: "es-419",
-    regionCode: "AR",
-    routeModifiers: {
-      avoidTolls: false,
-      vehicleInfo: { emissionType: body.emissionType || "DIESEL" },
-      tollPasses: Array.isArray(body.tollPasses) && body.tollPasses.length
-        ? body.tollPasses
-        : ["AR_TELEPASE"],
-    },
-    extraComputations: ["TOLLS"],
+    regionCode: "ar",
   };
 
   const payload = await googleFetch(
@@ -144,17 +205,11 @@ async function computeRoute(body: Record<string, any>, apiKey: string) {
       "routes.duration",
       "routes.legs.distanceMeters",
       "routes.legs.duration",
-      "routes.travelAdvisory.tollInfo",
     ].join(","),
   );
   const route = payload.routes?.[0];
   if (!route) throw new Error("Google Maps no encontró un recorrido");
 
-  const estimatedPrices = route.travelAdvisory?.tollInfo?.estimatedPrice || [];
-  const tollAmount = estimatedPrices.reduce((total: number, item: any) => {
-    return total + Number(item.units || 0) + Number(item.nanos || 0) / 1_000_000_000;
-  }, 0);
-  const currencyCode = estimatedPrices.find((item: any) => item.currencyCode)?.currencyCode || null;
   const legs = (route.legs || []).map((leg: any, index: number) => ({
     index,
     distanceMeters: Number(leg.distanceMeters || 0),
@@ -162,12 +217,14 @@ async function computeRoute(body: Record<string, any>, apiKey: string) {
   }));
 
   return {
+    routeMode: waypoints.mode,
     distanceMeters: Number(route.distanceMeters || 0),
     durationSeconds: parseDurationSeconds(route.duration),
     legs,
-    hasTolls: Boolean(route.travelAdvisory?.tollInfo),
-    toll: estimatedPrices.length ? { amount: tollAmount, currencyCode } : null,
     provider: "google_routes",
+    calculation: "billing_distance",
+    hasTolls: null,
+    toll: null,
   };
 }
 
@@ -176,19 +233,28 @@ Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método no permitido" }, 405);
 
   const apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
-  if (!apiKey) {
-    return json({ error: "Google Maps todavía no está configurado en el servidor" }, 503);
-  }
+  if (!apiKey) return json({ error: "Google Maps todavía no está configurado en el servidor" }, 503);
 
   try {
     const body = await request.json();
     const action = String(body?.action || "");
     if (action === "autocomplete") return json(await autocomplete(body, apiKey));
     if (action === "place") return json(await placeDetails(body, apiKey));
-    if (action === "route") return json(await computeRoute(body, apiKey));
+    if (action === "route") {
+      if (body?.routeMode === "manual") return json({ error: "El kilometraje manual no usa cálculo automático" }, 400);
+      return json(await computeRoute(body, apiKey));
+    }
     return json({ error: "Acción inválida" }, 400);
   } catch (error) {
     console.error("[maps-proxy]", error);
+    if (error instanceof GoogleMapsError) {
+      return json({
+        error: error.message,
+        source: "google_maps",
+        upstreamStatus: error.upstreamStatus,
+        googleStatus: error.googleStatus,
+      });
+    }
     return json({ error: error instanceof Error ? error.message : "Error de Google Maps" }, 400);
   }
 });
