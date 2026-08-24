@@ -1,16 +1,16 @@
 # Facturación · Contrato de dominio V1
 
-Este documento fija el contrato funcional de Facturación para cerrar el módulo sin volver a redefinir estados durante las fases siguientes.
+Este documento fija el contrato funcional de Facturación sobre el flujo que ya está desplegado. No reemplaza `operator_services.billing_status`, `operator_service_billing_revisions` ni las facturas existentes: los consolida detrás de una verdad financiera canónica.
 
 ## Frontera del dominio
 
-La cotización y los valores almacenados en `operator_services` representan la economía aplicada al servicio durante su ciclo operativo. Facturación crea una segunda verdad, explícita e inmutable cuando se aprueba: `operator_service_billing`.
+El servicio conserva su economía operativa en `operator_services` y `pricing_snapshot`. Facturación materializa el valor definitivo en `operator_service_billing`.
 
-El flujo canónico es:
+El flujo canónico queda:
 
-`servicio cerrado → revisión económica → cálculo/confirmación final → aprobación y lock → lote → factura`.
+`servicio cerrado → pendiente → cálculo/confirmación → aprobado y bloqueado → lote/factura → facturado`.
 
-Las fases de lotes y factura se implementan sobre este contrato; no modifican el significado de los estados definidos aquí.
+En el flujo productivo actual, `reviewed` representa la aprobación financiera y `invoiced` representa el servicio ya incorporado a una factura.
 
 ## Tres dimensiones independientes
 
@@ -22,28 +22,36 @@ Las fases de lotes y factura se implementan sobre este contrato; no modifican el
 
 ### Modalidad (`billing_basis`)
 
-- `full`: servicio completo según los valores económicos aplicados.
+- `full`: servicio completo.
 - `km`: reconocimiento parcial por kilómetros.
 - `origin`: reconocimiento por llegada/origen.
 - `movement`: reconocimiento por movida/activación.
 
-La modalidad no es un estado de proceso. Los casos `km`, `origin` y `movement` requieren confirmación explícita de importes mientras no exista una regla comercial determinística común a todas las prestadoras.
+La modalidad no es un estado. `km`, `origin` y `movement` requieren confirmación explícita del importe mientras no exista una regla determinística común a todas las prestadoras.
 
 ### Estado de proceso (`process_status`)
 
-- `pending`: editable desde Facturación; todavía no está congelado.
+- `pending`: editable desde Facturación.
 - `approved`: importe definitivo aprobado y bloqueado.
-- `batched`: incorporado a un lote de facturación.
-- `invoiced`: incorporado a una factura registrada.
-- `voided`: registro invalidado por un flujo financiero explícito.
+- `batched`: reservado para agrupación previa a factura.
+- `invoiced`: incorporado a una factura.
+- `voided`: fuera del circuito financiero activo.
 
-La Fase 1 implementa `pending` y `approved`. `batched`, `invoiced` y el flujo completo de `voided` son contratos reservados para las fases de lotes/factura.
+## Compatibilidad con los estados ya desplegados
 
-## Compatibilidad con Fase 3B
+`operator_services.billing_status` se mantiene como interfaz legacy/productiva:
 
-`operator_service_closures.billing_status` queda temporalmente como campo legado para no romper la UI existente. La traducción es:
+| Estado productivo | Estado canónico |
+| --- | --- |
+| `not_ready` | fuera del escritorio / `voided` |
+| `pending` | `pending` |
+| `reviewed` | `approved` |
+| `invoiced` | `invoiced` |
+| `excluded` | `approved` + `non_billable` |
 
-| Estado legado | eligibility | billing_basis |
+Los cierres excepcionales siguen usando `operator_service_closures.billing_status` y se traducen así:
+
+| Estado de cierre | eligibility | billing_basis |
 | --- | --- | --- |
 | `pending_review` | `pending_review` | `full` |
 | `billable` | `billable` | `full` |
@@ -52,13 +60,11 @@ La Fase 1 implementa `pending` y `approved`. `batched`, `invoiced` y el flujo co
 | `billable_origin` | `billable` | `origin` |
 | `billable_movement` | `billable` | `movement` |
 
-El RPC legado `review_operator_service_closure` debe mantener esa interfaz pero sincronizar siempre el registro financiero canónico.
+`operator_service_billing_revisions` sigue siendo la bitácora histórica compatible con el escritorio desplegado. `operator_service_billing` es el ledger 1:1 que determina cuál de esas versiones está vigente y si está bloqueada.
 
 ## Importe definitivo
 
-`estimated_total` y `company_estimated_total` no cambian de significado. Siguen siendo los valores aplicados al servicio y sirven como fuente inicial.
-
-Los importes que utiliza Facturación viven exclusivamente en:
+`estimated_total` y `company_estimated_total` mantienen su significado operativo/compatible. Facturación usa exclusivamente:
 
 - `final_base_subtotal`
 - `final_surcharge_total`
@@ -67,39 +73,31 @@ Los importes que utiliza Facturación viven exclusivamente en:
 - `final_total`
 - `company_final_total`
 
-Para `billable/full`, el primer cálculo congela los valores aplicados actuales del servicio. Para `non_billable`, todos los importes definitivos son cero. Para modalidades parciales, los importes deben confirmarse explícitamente antes de aprobar.
+Para un servicio completo se toma el Billing Quote vigente al momento de revisión si el motor V2 está disponible; en instalaciones anteriores se utiliza el valor aplicado almacenado. Al aprobar, ese resultado queda congelado.
+
+Para `non_billable`, los importes definitivos son cero. Para modalidades parciales, Facturación debe confirmar el desglose antes de aprobar.
 
 ## Snapshot y trazabilidad
 
-Cada cálculo captura un `billing_snapshot` que incluye, como mínimo:
-
-- identificación y contexto comercial del servicio;
-- contrato, tarifario, base y categoría utilizados;
-- `pricing_snapshot` del servicio;
-- conceptos e importes aplicados;
-- historial de reajustes de conceptos;
-- peajes del servicio;
-- cierre operativo, si existe;
-- totales económicos vigentes en el momento de captura.
-
-`operator_service_billing_revisions` conserva las versiones financieras relevantes (`calculated`, `amounts_confirmed`, `approved`, `reopened`).
+El `billing_snapshot` congela contexto comercial, contrato/tarifario/base, conceptos, reajustes, peajes, cierre operativo y la cotización utilizada. La revisión histórica desplegada no se elimina: cada aprobación, confirmación o reapertura deja además una entrada compatible en `operator_service_billing_revisions`.
 
 ## Invariantes
 
-1. Cambiar un tarifario vigente no recalcula un servicio ya aprobado.
-2. Aprobar Facturación bloquea modificaciones económicas del servicio, sus conceptos y sus peajes.
-3. Para editar datos económicos de un servicio aprobado hay que ejecutar una reapertura explícita con motivo.
-4. Una reapertura conserva la versión previamente aprobada antes de liberar el servicio.
-5. Un servicio no puede tener más de un registro financiero canónico.
-6. Un servicio en `batched` o `invoiced` no puede reabrirse desde el flujo de servicio; la corrección deberá resolverse desde el futuro dominio de lotes/facturas.
-7. No se infieren importes para `km`, `origin` o `movement` si la regla comercial no está formalmente modelada.
+1. Un servicio `reviewed/approved` no puede modificar silenciosamente contrato, tarifa, conceptos, kilómetros, peajes ni importes.
+2. Para cambiar datos económicos aprobados hay que ejecutar una reapertura explícita con motivo.
+3. Un servicio no puede pasar de `pending` a `invoiced`: primero debe quedar `reviewed/approved`.
+4. Si la cotización cambia entre revisión y factura, el cambio es rechazado; la factura no puede sustituir silenciosamente el valor aprobado.
+5. Un servicio tiene un único registro financiero canónico (`service_id` único).
+6. Los servicios ya `invoiced` no pueden reabrirse desde el flujo del servicio.
+7. Las facturas históricas y `operator_invoice_services.service_snapshot/quote_snapshot` se preservan.
+8. No se infieren importes para `km`, `origin` o `movement` sin una regla formal o confirmación explícita.
 
 ## Permisos
 
-- `administracion` y `facturacion`: calcular, confirmar importes, aprobar y reabrir mientras el servicio no esté loteado/facturado.
+- `administracion` y `facturacion`: calcular, confirmar, aprobar y reabrir mientras el servicio no esté facturado/loteado.
 - `supervision`: lectura financiera.
-- `operador` y `chofer`: no acceden al registro financiero canónico ni a sus importes mediante permisos directos.
+- `operador` y `chofer`: sin escritura sobre el ledger financiero.
 
 ## Definition of Done de Fase 1
 
-La Fase 1 queda terminada cuando un servicio cerrado puede producir un registro financiero definitivo, auditable y bloqueable; el valor aprobado no puede modificarse silenciosamente; y el flujo legado de revisión económica queda sincronizado con este contrato sin romper su interfaz actual.
+Fase 1 queda terminada cuando el estado productivo existente se puede reflejar sin pérdida en `operator_service_billing`, `reviewed` produce un lock financiero real, una reapertura es obligatoria para editar, `invoiced` exige aprobación previa y los servicios/facturas históricos se backfillean sin recalcular ni duplicar facturación.
