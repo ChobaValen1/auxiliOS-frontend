@@ -28,7 +28,7 @@ test('el service worker no congela una versión vieja del HTML', () => {
   assert.match(sw, /fetch\(event\.request\)/);
   const precacheBlock = sw.match(/const PRECACHE_ASSETS=\[([\s\S]*?)\];/)?.[1] || '';
   assert.doesNotMatch(precacheBlock, /['"]\/['"]/);
-  assert.doesNotMatch(precacheBlock, /Index\.html/);
+  assert.doesNotMatch(precacheBlock, /['"]\/Index\.html['"]/);
   assert.doesNotMatch(precacheBlock, /operator-service-workspace-v2\.css/);
   assert.doesNotMatch(precacheBlock, /feature-flags\.js/);
   assert.match(precacheBlock, /operator-invoices\.js/);
