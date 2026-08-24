@@ -17,9 +17,17 @@ function functionBody(source, name, nextName) {
   return source.slice(start, end);
 }
 
+function sourceSlice(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  assert.notEqual(start, -1, `No se encontró ${startMarker}`);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.notEqual(end, -1, `No se encontró ${endMarker}`);
+  return source.slice(start, end);
+}
+
 test('el modal definitivo de creación se carga antes de liberar la navegación', () => {
   const critical = functionBody(config, 'loadCriticalAuxiliosModules', 'loadGeographicBasesInBackground');
-  const secondary = functionBody(config, 'loadSecondaryAuxiliosModules', 'setNavigationBooting');
+  const secondary = sourceSlice(config, 'async function loadSecondaryAuxiliosModules()', '\n\nsetNavigationBooting(true);');
 
   assert.match(critical, /operator-service-workspace-reactive-v1\.css/);
   assert.match(critical, /operator-service-commercial-addons-v1\.css/);
