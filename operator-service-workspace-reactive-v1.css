@@ -1,21 +1,132 @@
-/* AuxiliOS · Servicio reactivo canónico */
+/* AuxiliOS · Nuevo Servicio · workspace canónico definitivo */
+
+/*
+ * Este archivo es autosuficiente: no depende del stylesheet V2 eliminado.
+ * En escritorio el cuerpo del modal se divide exactamente en tres columnas iguales.
+ */
+#modal-operador-wizard.osv2-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:10080;
+  display:block!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:var(--bg,#0c0e12)!important;
+}
+#modal-operador-wizard.osv2-modal-backdrop:not(.open){display:none!important}
+#modal-operador-wizard.osv2-modal-backdrop .osv2-shell{
+  width:100vw!important;
+  max-width:none!important;
+  height:100vh!important;
+  max-height:none!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:var(--bg,#0c0e12)!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+
+.osv2-workspace{
+  --osv2-bg:var(--bg,#0c0e12);
+  --osv2-panel:var(--panel,#13161d);
+  --osv2-card:var(--card,#191d27);
+  --osv2-border:var(--border,#252a38);
+  --osv2-border-strong:var(--border2,#2e3446);
+  --osv2-text:var(--text,#e8eaf2);
+  --osv2-muted:var(--muted,#5a6278);
+  --osv2-muted2:var(--muted2,#8590ab);
+  --osv2-amber:var(--amber,#f5a623);
+  --osv2-amber-lo:var(--amber-lo,rgba(245,166,35,.12));
+  --osv2-blue:var(--blue,#4a90e2);
+  --osv2-blue-lo:var(--blue-lo,rgba(74,144,226,.12));
+  --osv2-green:var(--green,#27c47a);
+  --osv2-green-lo:var(--green-lo,rgba(39,196,122,.12));
+  --osv2-red:var(--red,#e2504a);
+  --osv2-red-lo:var(--red-lo,rgba(226,80,74,.12));
+  position:relative;
+  display:grid;
+  grid-template-rows:54px minmax(0,1fr) 62px;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:var(--osv2-bg);
+  color:var(--osv2-text);
+  font-family:inherit;
+}
+
+.osv2-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  min-width:0;
+  padding:0 18px 0 24px;
+  border-bottom:1px solid var(--osv2-border);
+  background:var(--osv2-panel);
+}
+.osv2-header>div{min-width:0}
+.osv2-header span{display:block;margin-bottom:1px;color:var(--osv2-muted);font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.osv2-header h2{margin:0;color:var(--osv2-text);font-size:15px;font-weight:800}
+.osv2-header button,.osv2-footer button,.osv2-concepts-head button,.osv2-logistics button{font:inherit}
+.osv2-header button{min-height:34px;padding:0 13px;border:1px solid var(--osv2-border-strong);border-radius:8px;background:var(--osv2-card);color:var(--osv2-text);font-size:11px;font-weight:700;cursor:pointer}
+.osv2-header button:hover{border-color:var(--osv2-amber);color:var(--osv2-amber)}
+.osv4-header-actions{display:flex;align-items:center;gap:7px}
+
+.osv2-global-error{position:absolute;top:58px;left:50%;z-index:130;width:min(680px,calc(100vw - 40px));padding:9px 12px;border:1px solid rgba(226,80,74,.4);border-radius:8px;background:var(--osv2-red-lo);color:var(--osv2-red);font-size:11px;font-weight:700;transform:translateX(-50%);box-shadow:0 8px 24px rgba(0,0,0,.32)}
 .osv4-reactive [hidden]{display:none!important}
-.osv4-reactive .osv2-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;overflow-y:auto!important;overflow-x:hidden!important;align-items:start}
-.osv4-reactive .top-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* Regla definitiva: 33.33% + 33.33% + 33.33%. */
+.osv4-reactive .osv2-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  min-width:0;
+  min-height:0;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  align-items:start;
+}
+.osv2-column{min-width:0;min-height:0;padding:12px;border-right:1px solid var(--osv2-border);background:var(--osv2-bg)}
+.osv2-column:last-child{border-right:0}
 .osv4-reactive .osv2-column{min-width:0;min-height:auto!important;overflow:visible!important;align-content:start}
+.admin-column,.route-column,.actions-column{display:grid;gap:8px}
 .osv4-reactive .admin-column,.osv4-reactive .route-column,.osv4-reactive .actions-column{grid-template-rows:none!important;grid-auto-rows:auto}
-.osv4-reactive .actions-column{align-self:start}
+.osv4-reactive .actions-column{align-self:start;gap:8px}
 .osv4-reactive .route-column{gap:6px!important}
+
+.osv2-inline-grid{display:grid;gap:6px;min-width:0}
+.osv2-inline-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.osv2-inline-grid.three,.osv4-reactive .top-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+.osv2-workspace label{display:flex;flex-direction:column;gap:4px;min-width:0;color:var(--osv2-muted2);font-size:10px;font-weight:600}
+.osv2-workspace label>span,.osv2-logistics>span{min-height:13px;line-height:1.2}
+.osv2-workspace input,.osv2-workspace select,.osv2-workspace textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--osv2-border-strong);border-radius:7px;outline:none;background:var(--osv2-card);color:var(--osv2-text);font:inherit;font-size:10px;font-weight:500;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.osv2-workspace input,.osv2-workspace select{height:31px;padding:0 9px}
+.osv2-workspace textarea{padding:8px 9px;resize:vertical}
+.osv2-workspace input:focus,.osv2-workspace select:focus,.osv2-workspace textarea:focus{border-color:var(--osv2-blue);box-shadow:0 0 0 2px var(--osv2-blue-lo)}
+.osv2-workspace input:disabled,.osv2-workspace select:disabled{border-color:var(--osv2-border);background:var(--osv2-panel);color:var(--osv2-muted)}
+
+.osv2-card,.osv2-location,.osv2-concepts-section{min-width:0;border:1px solid var(--osv2-border);border-radius:11px;background:var(--osv2-card)}
+.admin-card{display:grid;gap:7px;padding:9px}
+.osv2-logistics{display:flex;flex-direction:column;gap:5px;color:var(--osv2-muted2);font-size:10px;font-weight:600}
+.osv2-logistics>div{display:flex;align-items:center;gap:5px}
+.osv2-logistics button{min-height:25px;padding:0 9px;border:1px solid var(--osv2-border);border-radius:999px;background:var(--osv2-panel);color:var(--osv2-muted);font-size:9px;font-weight:700;cursor:pointer}
+.osv2-logistics button.active{border-color:rgba(74,144,226,.35);color:var(--osv2-blue);background:var(--osv2-blue-lo)}
+.assignment-grid{position:relative;padding-bottom:0}
+
 .osv4-context-status{display:grid;gap:5px}
 .osv4-context-line{padding:6px 8px;border:1px solid var(--osv2-border);border-radius:7px;background:var(--osv2-panel);font-size:8px;line-height:1.35;color:var(--osv2-muted2)}
 .osv4-context-line.ok{color:var(--osv2-green);border-color:rgba(39,196,122,.28);background:var(--osv2-green-lo)}
 .osv4-context-line.warning{color:var(--osv2-amber);border-color:rgba(245,166,35,.3);background:var(--osv2-amber-lo)}
 .osv4-context-line.blocking{color:var(--osv2-red);border-color:rgba(226,80,74,.3);background:var(--osv2-red-lo)}
 .osv3-code-warning{display:block;color:var(--osv2-amber);font-size:8px;line-height:1.35}
-.osv4-reactive .osv2-concepts-section{grid-template-rows:auto auto!important;min-height:auto!important;overflow:visible!important;padding:8px}
-.osv4-reactive .osv2-concepts-head{padding-bottom:5px}
-.osv4-reactive .osv2-add-concept-trigger{min-height:25px!important;padding:0 8px!important;font-size:7.7px!important;border-radius:6px}
-.osv4-reactive .osv2-add-concept-trigger:disabled{opacity:.45;cursor:not-allowed}
+
+.osv2-concepts-section{display:grid;grid-template-rows:auto auto;min-height:auto;overflow:visible;padding:8px}
+.osv2-concepts-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding-bottom:5px}
+.osv2-concepts-head>div:first-child{display:flex;flex-direction:column;min-width:0}
+.osv2-concepts-head b{font-size:11px}
+.osv2-concepts-head small{margin-top:2px;color:var(--osv2-muted);font-size:8px}
+.osv2-add-concept-trigger{min-height:25px!important;padding:0 8px!important;border:1px solid rgba(245,166,35,.35);border-radius:6px;background:var(--osv2-amber-lo);color:var(--osv2-amber);font-size:7.7px!important;font-weight:800;cursor:pointer}
+.osv2-add-concept-trigger:disabled{opacity:.45;cursor:not-allowed}
 .osv4-concept-table{display:grid;align-content:start;gap:5px;min-height:0;overflow:visible}
 .osv4-concept-head,.osv4-concept-row{display:grid;grid-template-columns:minmax(130px,1.4fr) minmax(100px,.9fr) minmax(92px,.72fr) 28px;align-items:center;gap:5px}
 .osv4-concept-head{padding:2px 5px;color:var(--osv2-muted2);font-size:7px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
@@ -26,7 +137,15 @@
 .osv4-code-cell span{display:block;padding:0 6px;line-height:28px;border:1px solid var(--osv2-border);border-radius:7px;background:var(--osv2-card);overflow:hidden;text-overflow:ellipsis}
 .osv4-qty-cell{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px}
 .osv4-qty-cell small{color:var(--osv2-muted);font-size:7px;white-space:nowrap}
-.osv4-reactive .osv2-location{gap:3px;padding:6px 7px}
+
+.osv2-location{display:grid;gap:3px;padding:6px 7px}
+.osv2-location.origin{border-color:rgba(39,196,122,.3);background:linear-gradient(180deg,var(--osv2-green-lo),var(--osv2-card))}
+.osv2-location.destination{border-color:rgba(226,80,74,.3);background:linear-gradient(180deg,var(--osv2-red-lo),var(--osv2-card))}
+.osv2-section-label{display:flex;align-items:center;gap:5px;min-height:13px;color:var(--osv2-muted2);font-size:9px}
+.osv2-section-label>span{width:7px;height:7px;flex:0 0 auto;border-radius:50%;background:currentColor}
+.osv2-location.origin .osv2-section-label{color:var(--osv2-green)}
+.osv2-location.destination .osv2-section-label{color:var(--osv2-red)}
+.osv2-section-label.neutral{color:var(--osv2-muted2)}
 .osv4-location-head{display:grid!important;grid-template-columns:8px auto minmax(0,1fr);align-items:center;gap:5px!important;min-height:14px}
 .osv4-location-head small{justify-self:end;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px;font-weight:700}
 .osv4-address-wrap{position:relative;z-index:4}
@@ -44,18 +163,24 @@
 .osv4-suggestion-state{padding:10px;color:var(--osv2-muted2);font-size:9px}
 .osv4-suggestion-state.error{color:var(--osv2-red)}
 .osv4-address-status{min-height:0;color:var(--osv2-muted2);font-size:7px;line-height:1.2}
-.osv4-note{min-height:16px;color:var(--osv2-muted2);font-size:8px;line-height:1.3}
-.osv4-note:empty{display:none}
 .osv4-address-status.ok{color:var(--osv2-green)}
 .osv4-address-status.warning{color:var(--osv2-amber)}
 .osv4-address-status.muted{color:var(--osv2-muted)}
-.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{padding:7px!important}
-.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{gap:5px!important}
+.osv4-note{min-height:16px;color:var(--osv2-muted2);font-size:8px;line-height:1.3}
+.osv4-note:empty{display:none}
+
+.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{padding:7px!important;gap:5px!important}
 .osv4-reactive .osv2-observations{display:grid!important;min-width:0;border:1px solid var(--osv2-border);border-radius:11px;background:var(--osv2-card);color:var(--osv2-text)!important}
 .osv4-reactive .osv2-observations>span{min-height:13px;color:var(--osv2-text);font-size:10px;font-weight:800;line-height:1.2}
 .osv4-reactive .driver-instructions-card .osv2-section-label{min-height:13px;margin:0}
 .osv4-reactive .driver-instructions-card .osv2-section-label b{font-size:10px}
 .osv4-reactive .route-column textarea{min-height:52px!important;padding:6px 8px!important}
+.osv4-reactive .route-column>.osv2-card,.osv4-reactive .route-column>.osv2-observations{flex:none}
+
+.osv2-field-error{display:none;min-height:0;color:var(--osv2-red);font-size:8px;font-weight:700;line-height:1.2}
+.has-error>.osv2-field-error,.has-error .osv2-field-error{display:block}
+.has-error input,.has-error select,.has-error textarea{border-color:var(--osv2-red)!important;box-shadow:0 0 0 2px var(--osv2-red-lo)!important}
+
 #osv4-edit-reason{padding:10px}
 #osv4-edit-reason textarea{margin-top:5px}
 .osv4-reactive[data-mode="edit"] .osv2-header{box-shadow:inset 3px 0 0 var(--osv2-blue)}
@@ -70,7 +195,33 @@
 .osv4-lifecycle-slot{padding:8px}
 .osv4-lifecycle-slot .p3b-lifecycle-head>div>span{display:none}
 .osv4-lifecycle-slot .p3b-lifecycle-head h4{font-size:9px}
-.osv4-reactive .route-column>.osv2-card,.osv4-reactive .route-column>.osv2-observations{flex:none}
-.osv4-reactive textarea{resize:vertical}
-@media(max-width:1100px){.osv4-concept-head,.osv4-concept-row{grid-template-columns:minmax(110px,1.2fr) minmax(90px,.9fr) 86px 28px}}
-@media(max-width:800px){.osv4-reactive .osv2-grid{overflow:visible!important}.osv4-meta-row{grid-template-columns:1fr}}
+
+.osv2-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 22px;border-top:1px solid var(--osv2-border);background:var(--osv2-panel)}
+.osv2-footer>div{display:flex;align-items:center;gap:8px}
+.osv2-footer>span{color:var(--osv2-muted);font-size:9px}
+.osv2-footer button{min-height:36px;padding:0 14px;border:1px solid transparent;border-radius:8px;font-size:10px;font-weight:800;cursor:pointer}
+.osv2-footer button.primary{border-color:rgba(245,166,35,.45);background:var(--osv2-amber);color:#16110a}
+.osv2-footer button:disabled{opacity:.55;cursor:default}
+
+@media(max-width:1100px){
+  .osv4-concept-head,.osv4-concept-row{grid-template-columns:minmax(110px,1.2fr) minmax(90px,.9fr) 86px 28px}
+}
+
+/* En pantallas operativas normales se preservan siempre las tres columnas iguales. */
+@media(max-width:800px){
+  #modal-operador-wizard.osv2-modal-backdrop{overflow:auto!important}
+  #modal-operador-wizard.osv2-modal-backdrop .osv2-shell{height:auto!important;min-height:100vh!important;overflow:visible!important}
+  .osv2-workspace{height:auto;min-height:100vh;grid-template-rows:54px auto 62px;overflow:visible}
+  .osv4-reactive .osv2-grid{grid-template-columns:1fr!important;overflow:visible!important}
+  .osv2-column{border-right:0;border-bottom:1px solid var(--osv2-border)}
+  .osv2-column:last-child{border-bottom:0}
+  .osv4-meta-row{grid-template-columns:1fr}
+}
+
+@media(max-width:620px){
+  .osv2-inline-grid.two,.osv2-inline-grid.three,.osv4-reactive .top-fields{grid-template-columns:1fr}
+  .osv2-footer{align-items:stretch;min-height:84px;padding:8px 12px}
+  .osv2-footer>div{flex:1;flex-wrap:wrap}
+  .osv2-footer>span{display:none}
+  .osv2-footer button{flex:1}
+}
