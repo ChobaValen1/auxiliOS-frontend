@@ -85,6 +85,7 @@
   overflow-y:auto!important;
   overflow-x:hidden!important;
   align-items:start;
+  font-size:11px;
 }
 .osv2-column{min-width:0;min-height:0;padding:12px;border-right:1px solid var(--osv2-border);background:var(--osv2-bg)}
 .osv2-column:last-child{border-right:0}
@@ -97,9 +98,9 @@
 .osv2-inline-grid{display:grid;gap:6px;min-width:0}
 .osv2-inline-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .osv2-inline-grid.three,.osv4-reactive .top-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
-.osv2-workspace label{display:flex;flex-direction:column;gap:4px;min-width:0;color:var(--osv2-muted2);font-size:10px;font-weight:600}
+.osv2-workspace label{display:flex;flex-direction:column;gap:4px;min-width:0;color:var(--osv2-muted2);font-size:11px;font-weight:600}
 .osv2-workspace label>span,.osv2-logistics>span{min-height:13px;line-height:1.2}
-.osv2-workspace input,.osv2-workspace select,.osv2-workspace textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--osv2-border-strong);border-radius:7px;outline:none;background:var(--osv2-card);color:var(--osv2-text);font:inherit;font-size:10px;font-weight:500;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+.osv2-workspace input,.osv2-workspace select,.osv2-workspace textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--osv2-border-strong);border-radius:7px;outline:none;background:var(--osv2-card);color:var(--osv2-text);font:inherit;font-size:11px;font-weight:500;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
 .osv2-workspace input,.osv2-workspace select{height:31px;padding:0 9px}
 .osv2-workspace textarea{padding:8px 9px;resize:vertical}
 .osv2-workspace input:focus,.osv2-workspace select:focus,.osv2-workspace textarea:focus{border-color:var(--osv2-blue);box-shadow:0 0 0 2px var(--osv2-blue-lo)}
