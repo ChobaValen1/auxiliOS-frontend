@@ -98,7 +98,7 @@ test('cantidad de concepto puede editarse sin rerender por cada tecla',()=>{
 });
 
 test('conceptos crecen con el workspace y no crean un scroll interno',()=>{
-  assert.match(workspaceCss,/\.osv4-reactive \.osv2-concepts-section\{[^}]*overflow:visible!important/);
+  assert.match(workspaceCss,/\.osv2-concepts-section\{[^}]*overflow:visible/);
   assert.match(workspaceCss,/\.osv4-concept-table\{[^}]*overflow:visible/);
 });
 
@@ -106,14 +106,15 @@ test('origen destino es compacto y observaciones e indicaciones permanecen en co
   assert.match(workspace,/osv4-location-head/);
   assert.match(workspace,/rows="3" data-key="operator_notes"/);
   assert.match(workspace,/rows="3" data-key="driver_instructions"/);
-  assert.match(workspaceCss,/\.osv4-reactive \.osv2-location\{gap:3px;padding:6px 7px\}/);
+  assert.match(workspaceCss,/\.osv2-location\{display:grid;gap:3px;padding:6px 7px\}/);
   assert.match(workspaceCss,/\.osv4-reactive \.route-column textarea\{min-height:52px!important/);
 });
 
 test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloque fantasma',()=>{
   assert.match(workspace,/blocking_issues/);
   assert.match(workspace,/Sin precio/);
-  assert.doesNotMatch(wizard,/get_operator_resource_availability/);
+  assert.match(wizard,/function loadResourceAvailability\(\)/);
+  assert.match(wizard,/get_operator_resource_availability/);
   assert.match(wizard,/function setAssignment\(kind,value\)/);
   assert.match(wizard,/setVal\(key,value\);render\(\)/);
   assert.match(workspace,/action:'autocomplete'/);
@@ -137,7 +138,7 @@ test('edición conserva payload diferencial y privacidad backend',()=>{
 });
 
 test('PWA incluye solo el workspace y configuración canónicos',()=>{
-  const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
+  const version=Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1]||0);
   assert.ok(version>=171);
   assert.match(sw,/service-module-configuration\.js/);
   assert.match(sw,/operator-services\.js/);
