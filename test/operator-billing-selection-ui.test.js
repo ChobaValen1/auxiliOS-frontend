@@ -6,7 +6,7 @@ const billing=fs.readFileSync('operator-billing.js','utf8');
 const billingExport=fs.readFileSync('operator-billing-export.js','utf8');
 
 test('Excel aparece únicamente cuando existe una selección de servicios',()=>{
-  assert.match(billing,/excelControl=S\.selected\.size\?/);
+  assert.match(billing,/excelControl\s*=\s*S\.selected\.size\s*\?/);
   assert.match(billing,/\$\{excelControl\}<button class="ob-button ob-filter-action"/);
   assert.match(billing,/function toggleSelection\(id,on\)/);
   assert.match(billing,/S\.selected\.add\(String\(id\)\)/);

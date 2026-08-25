@@ -14,7 +14,7 @@ test('Actualizar vive en la misma fila que busqueda filtros y Excel condicional'
   assert.match(filters,/\$\{excelControl\}/);
   assert.match(filters,/data-ob="refresh">↻ Actualizar/);
   assert.ok(filters.indexOf('${excelControl}')<filters.indexOf('data-ob="refresh"'));
-  assert.match(render,/excelControl=S\.selected\.size\?/);
+  assert.match(render,/excelControl\s*=\s*S\.selected\.size\s*\?/);
   assert.match(render,/id="obx-wrap"/);
 });
 

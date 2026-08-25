@@ -66,16 +66,22 @@ test('Facturación elimina el paso redundante de aprobación', () => {
   assert.match(selection, />FACTURAR</);
 });
 
-test('servicios pending y reviewed legados pueden ir directamente al modal de factura', () => {
+test('servicios pending y reviewed legados mantienen el guard canónico antes de facturar', () => {
+  const validateSelection = functionBody(billing, 'validateSelection', 'openInvoice');
   const openInvoice = functionBody(billing, 'openInvoice', 'closeInvoice');
   const createInvoice = functionBody(billing, 'createInvoice', 'confirmAdminAction');
-  assert.match(openInvoice, /\['pending','reviewed'\]\.includes\(r\.billing_status\)/);
-  assert.match(createInvoice, /\['pending','reviewed'\]\.includes\(r\.billing_status\)/);
-  assert.match(createInvoice, /create_operator_invoice_v2/);
+
+  assert.match(validateSelection, /\['pending', 'reviewed'\]\.includes\(row\.billing_status\)/);
+  assert.match(openInvoice, /const error = validateSelection\(\)/);
+  assert.match(createInvoice, /const selectionError = validateSelection\(\)/);
+  assert.match(createInvoice, /create_operator_invoice_v3/);
+  assert.match(createInvoice, /p_service_ids: serviceIds/);
+  assert.match(createInvoice, /p_service_toll_ids: tollIds/);
+  assert.doesNotMatch(createInvoice, /create_operator_invoice_v1|create_operator_invoice_v2/);
   assert.doesNotMatch(createInvoice, /aprob/i);
 });
 
-test('la RPC v2 deja de exigir reviewed y usa el núcleo canónico de creación', () => {
+test('la RPC v2 permanece como compatibilidad y usa el núcleo canónico previo', () => {
   assert.match(invoiceWorkflow, /create or replace function public\.create_operator_invoice_v2/);
   assert.match(invoiceWorkflow, /create_operator_invoice_core_v2\(/);
   assert.match(invoiceWorkflow, /p_service_ids,/);

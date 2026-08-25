@@ -27,7 +27,7 @@ test('acciones de fila reutilizan flujos canonicos sin duplicar logica de backen
   assert.match(billing,/if\(action==='revert'\)return openDetailAction\(id,'revert'\)/);
   assert.match(billing,/if\(action==='annul'\)return openDetailAction\(id,'annul'\)/);
   assert.match(billing,/window\.editarServicioOperador\(id\)/);
-  assert.match(billing,/get_operator_billing_service_detail_v2/);
+  assert.match(billing,/get_operator_billing_service_detail_v3/);
   assert.match(billing,/revert_operator_billing_service_v2/);
   assert.match(billing,/annul_operator_billing_service_v2/);
 });

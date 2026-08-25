@@ -60,21 +60,25 @@ test('grilla general es sintética y deja pricing dentro del detalle',()=>{
   assert.match(billing,/function componentMarkup/);
 });
 
-test('selección factura una sola Prestadora y una sola moneda',()=>{
-  assert.match(billing,/function selectedCompanies\(rows=selectedRows\(\)\)/);
-  assert.match(billing,/function selectedCurrencies\(rows=selectedRows\(\)\)/);
-  assert.match(billing,/seleccioná servicios de una sola prestadora/i);
-  assert.match(billing,/selección debe pertenecer a una sola prestadora/i);
+test('selección factura conceptos de una sola Prestadora y una sola moneda',()=>{
+  assert.match(billing,/function selectedCompanies\(\)/);
+  assert.match(billing,/function selectedCurrencies\(\)/);
+  assert.match(billing,/selectedTollRows\(\)/);
+  assert.match(billing,/seleccioná conceptos de una sola prestadora/i);
   assert.match(billing,/selección debe tener una sola moneda/i);
   assert.match(billing,/data-ob="invoice-selection"/);
   assert.match(billing,/>FACTURAR</);
 });
 
-test('Facturar abre modal y crea directamente con V2 sin revisión masiva',()=>{
+test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
+  assert.match(billing,/function validateSelection\(\)/);
   assert.match(billing,/function openInvoice\(\)/);
   assert.match(billing,/function createInvoice\(\)/);
-  assert.match(billing,/\['pending','reviewed'\]\.includes\(r\.billing_status\)/);
-  assert.match(billing,/create_operator_invoice_v2/);
+  assert.match(billing,/\['pending', 'reviewed'\]\.includes\(row\.billing_status\)/);
+  assert.match(billing,/create_operator_invoice_v3/);
+  assert.match(billing,/p_service_ids: serviceIds/);
+  assert.match(billing,/p_service_toll_ids: tollIds/);
+  assert.doesNotMatch(billing,/create_operator_invoice_v1|create_operator_invoice_v2/);
   assert.doesNotMatch(billing,/Marcar REVISADOS|Confirmar revisión masiva|review_operator_billing_services_bulk_v2/);
   assert.match(invoiceWorkflow,/create_operator_invoice_core_v2\(/);
   assert.match(invoiceWorkflow,/false\s*\n\s*\);/);
@@ -113,9 +117,9 @@ test('acciones administrativas de servicio siguen auditadas sin duplicar formula
 });
 
 test('roles: Administración y Facturación facturan/revierten; sólo Administración corrige servicios',()=>{
-  assert.match(billing,/const canInvoice=\(\)=>\['administracion','facturacion'\]/);
-  assert.match(billing,/const canCorrect=\(\)=>role\(\)==='administracion'/);
-  assert.match(billing,/const canRevert=\(\)=>\['administracion','facturacion'\]/);
+  assert.match(billing,/const canInvoice\s*=\s*\(\)\s*=>\s*\['administracion', 'facturacion'\]/);
+  assert.match(billing,/const canCorrect\s*=\s*\(\)\s*=>\s*role\(\)\s*===\s*'administracion'/);
+  assert.match(billing,/const canRevert\s*=\s*\(\)\s*=>\s*\['administracion', 'facturacion'\]/);
   assert.match(legacyDesk,/Sólo Administración puede anular un servicio FINALIZADO/);
   assert.match(legacyDesk,/Sólo Administración puede modificar un servicio FINALIZADO/);
 });
@@ -141,7 +145,7 @@ test('peaje separado no integra el importe del servicio',()=>{
   assert.match(tollQuote,/included_toll_amount/);
   assert.match(tollQuote,/service_company_amount/);
   assert.match(tollQuote,/company_amount_with_tolls/);
-  assert.match(billing,/q\.toll_billing_mode!=='separate'/);
+  assert.match(billing,/quote\.toll_billing_mode\s*!==\s*'separate'/);
   assert.match(billing,/Peajes facturados por separado/);
   assert.match(billing,/no forma parte del total del servicio/i);
 });
@@ -172,7 +176,7 @@ test('Facturación conserva selección, servicios visibles y todo lo filtrado pa
   assert.match(billingExport,/const exportCurrent=\(\)=>openPicker\('current'\)/);
   assert.match(billingExport,/const exportSelected=\(\)=>openPicker\('selected'\)/);
   assert.match(billingExport,/const exportAllFiltered=\(\)=>openPicker\('all'\)/);
-  assert.match(billing,/Servicios visibles/);
+  assert.match(billing,/S\.tab === 'tolls' \? 'Peajes' : 'Servicios'/);
   assert.match(billing,/Todo lo filtrado/);
   assert.match(billingExport,/S\.selected/);
   assert.match(billingExport,/S\.tollRows/);
