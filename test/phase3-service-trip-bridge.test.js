@@ -5,13 +5,15 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
-test('el puente del chofer usa sólo cola v2, remito y firma para ARRIBADO',()=>{
+test('el puente del chofer usa la cola v2 y el guardado transaccional para ARRIBADO',()=>{
   const js=read('operator-service-bridge.js');
+  const data=read('supabase.js');
   assert.match(js,/get_driver_operator_queue_v2/);
   assert.match(js,/ensure_operator_service_trip_v2/);
   assert.match(js,/validate_operator_service_required_fields_v2/);
   assert.match(js,/complete_driver_operator_service_fields_v2/);
-  assert.match(js,/link_operator_service_remito/);
+  assert.match(data,/save_driver_operator_service_remito_v3/);
+  assert.doesNotMatch(js,/link_operator_service_remito/);
   assert.match(js,/guardarRemitoCompleto/);
   assert.match(js,/firmaDataURL/);
   assert.match(js,/Confirmar firma y ARRIBADO/);

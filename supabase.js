@@ -607,6 +607,9 @@ function _mapRemitoRow(r) {
     chofer:        r.users?.full_name || '—',
     createdAt:     r.created_at_device || null,
     firmadoAt:     r.firmado_at        || null,
+    operatorServiceId: r.operator_service_id || null,
+    clientOperationId: r.client_operation_id || null,
+    documentSource: r.document_source || 'legacy_driver',
   };
 }
 
@@ -923,9 +926,75 @@ async function cargarServiciosDia() {
 
 // ── GUARDAR REMITO ────────────────────────────────────────────
 
+function _uuidV4Local() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  if (!bytes.some(Boolean)) {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(v => v.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
+function _operatorServiceIdActivo(explicitId = null) {
+  return explicitId
+    || sessionStorage.getItem('auxilios_phase3_service_id')
+    || null;
+}
+
+function _operatorRemitoClientOperationId(serviceId, nroRemito, explicitId = null) {
+  if (explicitId) return explicitId;
+  if (!serviceId) return null;
+  const key = `auxilios_remito_operation:${serviceId}:${nroRemito || 'draft'}`;
+  let id = null;
+  try { id = localStorage.getItem(key); } catch (e) { /* almacenamiento no disponible */ }
+  if (!id) {
+    id = _uuidV4Local();
+    try { localStorage.setItem(key, id); } catch (e) { /* el payload conserva el id */ }
+  }
+  return id;
+}
+
+async function guardarRemitoVinculado(remito, explicitServiceId = null) {
+  const serviceId = _operatorServiceIdActivo(explicitServiceId || remito?.operator_service_id);
+  if (!serviceId) return null;
+  const clientOperationId = _operatorRemitoClientOperationId(
+    serviceId,
+    remito?.nro_remito,
+    remito?.client_operation_id
+  );
+  const payload = {
+    ...remito,
+    operator_service_id: serviceId,
+    client_operation_id: clientOperationId,
+  };
+  const { data, error } = await _db.rpc('save_driver_operator_service_remito_v3', {
+    p_service_id: serviceId,
+    p_payload: payload,
+    p_client_operation_id: clientOperationId,
+  });
+  if (error) throw new Error(error.message || 'No se pudo vincular el remito al servicio');
+  return data;
+}
+
+Object.assign(window, {
+  guardarRemitoVinculado,
+  obtenerServicioActivoRemito: _operatorServiceIdActivo,
+  obtenerOperacionRemito: _operatorRemitoClientOperationId,
+});
+
 // Arma el registro de la tabla remitos a partir de los datos del wizard.
 // Única fuente para el camino online y el offline (outbox).
 function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl) {
+  const operatorServiceId = _operatorServiceIdActivo(datosRemito.operator_service_id);
+  const clientOperationId = _operatorRemitoClientOperationId(
+    operatorServiceId,
+    nroFinal,
+    datosRemito.client_operation_id
+  );
   return {
     nro_remito:           nroFinal,
     driver_id:            USUARIO_ACTUAL.id,
@@ -957,6 +1026,11 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
     conformidad_arrastre: datosRemito.confirmaciones.includes('Conformidad de Arrastre') || null,
     status:               'firmado',
     created_at_device:    new Date().toISOString(),
+    ...(operatorServiceId ? {
+      operator_service_id: operatorServiceId,
+      client_operation_id: clientOperationId,
+      document_source: 'auxilios_driver',
+    } : {}),
   };
 }
 
@@ -1047,10 +1121,17 @@ async function guardarRemitoCompleto(datosRemito) {
 
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
-    const { error } = await _db.from('remitos').upsert(
-      _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl),
-      { onConflict: 'nro_remito' }
-    );
+    const remitoDB = _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl);
+    let error = null;
+    if (remitoDB.operator_service_id) {
+      try {
+        await guardarRemitoVinculado(remitoDB, remitoDB.operator_service_id);
+      } catch (linkedError) {
+        error = linkedError;
+      }
+    } else {
+      ({ error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));
+    }
 
     if (error) { 
       console.error("❌ Error de inserción Supabase:", error);

@@ -1040,6 +1040,9 @@ if (view === 'nuevo') {
     }
 
     if (d) {
+      if (d.operatorServiceId) {
+        sessionStorage.setItem('auxilios_phase3_service_id', d.operatorServiceId);
+      }
       const setT = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '—'; };
       const setV = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
 
@@ -2556,6 +2559,13 @@ async function confirmarFirma() {
     // ── OFFLINE: encolar la firma en el outbox ────────────
     // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
     // el flujo online haría un update con un id inválido.
+    const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
+      ? obtenerServicioActivoRemito()
+      : sessionStorage.getItem('auxilios_phase3_service_id');
+    const clientOperationId = operatorServiceId && typeof obtenerOperacionRemito === 'function'
+      ? obtenerOperacionRemito(operatorServiceId, nro2)
+      : null;
+
     if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
       const payloadFirma = {
         nro_remito:           nro2,
@@ -2581,6 +2591,11 @@ async function confirmarFirma() {
         cliente_presente:     clientePresente,
         status:               'firmado',
         edicion:              edicion, // el handler la agrega al historial al sincronizar
+        ...(operatorServiceId ? {
+          operator_service_id: operatorServiceId,
+          client_operation_id: clientOperationId,
+          document_source: 'auxilios_driver',
+        } : {}),
       };
       // Si el remito pendiente del mismo nro está en la cola, la firma depende de él.
       // _obRemitoTemp vive solo en memoria: si la app se recargó, buscamos la op
@@ -2610,7 +2625,7 @@ async function confirmarFirma() {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones, cliente_presente')
+      .select('historial_ediciones,cliente_presente,operator_service_id,client_operation_id')
       .eq('nro_remito', nro2)
       .single();
 
@@ -2630,8 +2645,8 @@ async function confirmarFirma() {
     // ── Actualizar remito en Supabase ─────────────────────
     toast('Guardando en base de datos...', 'info');
 
-    const { error } = await _db.from('remitos')
-      .update({
+    const firmaDB = {
+        nro_remito:           nro2,
         ...(_logId ? { log_id: _logId } : {}),
         patente:              datosActualizados.patente,
         marca_modelo:         datosActualizados.marca,
@@ -2655,8 +2670,26 @@ async function confirmarFirma() {
         cliente_presente:     clientePresente,
         historial_ediciones:  historialActual,
         status:               'firmado',
-      })
-      .eq('nro_remito', nro2);
+        ...((operatorServiceId || remitoActual?.operator_service_id) ? {
+          operator_service_id: operatorServiceId || remitoActual.operator_service_id,
+          client_operation_id: clientOperationId || remitoActual?.client_operation_id || null,
+          document_source: 'auxilios_driver',
+        } : {}),
+      };
+
+    let error = null;
+    const linkedServiceId = operatorServiceId || remitoActual?.operator_service_id || null;
+    if (linkedServiceId && typeof guardarRemitoVinculado === 'function') {
+      try {
+        await guardarRemitoVinculado(firmaDB, linkedServiceId);
+      } catch (linkedError) {
+        error = linkedError;
+      }
+    } else {
+      ({ error } = await _db.from('remitos')
+        .update(firmaDB)
+        .eq('nro_remito', nro2));
+    }
 
     if (error) {
       toast('Error al guardar: ' + error.message, 'error');
@@ -5442,9 +5475,16 @@ if (typeof obRegistrarHandler === 'function') {
   // Remito pendiente: mismo upsert idempotente que el flujo online
   // (el nro_remito viene del talonario físico → replayable sin duplicar).
   obRegistrarHandler('remito_pendiente', async (payload) => {
-    const { error } = await _db.from('remitos').upsert(payload, { onConflict: 'nro_remito' });
+    if (payload.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado(payload, payload.operator_service_id);
+      return { realId: linked?.remito_id || null };
+    }
+    const { data, error } = await _db.from('remitos')
+      .upsert(payload, { onConflict: 'nro_remito' })
+      .select('remito_id')
+      .single();
     if (error) throw new Error(error.message);
-    return {};
+    return { realId: data?.remito_id || null };
   });
 
   // Remito completo (wizard con firma y fotos hecho offline): sube los blobs
@@ -5467,9 +5507,16 @@ if (typeof obRegistrarHandler === 'function') {
         remito.firma_imagen_url = url;
       }
     }
-    const { error } = await _db.from('remitos').upsert(remito, { onConflict: 'nro_remito' });
+    if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
+      return { realId: linked?.remito_id || null };
+    }
+    const { data, error } = await _db.from('remitos')
+      .upsert(remito, { onConflict: 'nro_remito' })
+      .select('remito_id')
+      .single();
     if (error) throw new Error(error.message);
-    return {};
+    return { realId: data?.remito_id || null };
   });
 
   // Firma de remito: sube el blob de la firma al bucket 'firmas' con el mismo
@@ -5477,7 +5524,7 @@ if (typeof obRegistrarHandler === 'function') {
   // viaja en el payload y se agrega al historial recién al sincronizar (el
   // historial existente no se puede leer offline).
   obRegistrarHandler('remito_firmar', async (payload, blobs) => {
-    const { nro_remito, edicion, ...campos } = payload;
+    const { nro_remito, edicion, operator_service_id, client_operation_id, ...campos } = payload;
 
     let firmaUrl = null;
     if (blobs && blobs.firma) {
@@ -5487,13 +5534,25 @@ if (typeof obRegistrarHandler === 'function') {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones')
+      .select('historial_ediciones,operator_service_id,client_operation_id')
       .eq('nro_remito', nro_remito)
       .single();
     const historial = Array.isArray(remitoActual?.historial_ediciones)
       ? remitoActual.historial_ediciones
       : [];
     if (edicion) historial.push(edicion);
+
+    const serviceId = operator_service_id || remitoActual?.operator_service_id || null;
+    if (serviceId && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado({
+        nro_remito,
+        ...campos,
+        firma_imagen_url: firmaUrl,
+        operator_service_id: serviceId,
+        client_operation_id: client_operation_id || remitoActual?.client_operation_id || null,
+      }, serviceId);
+      return { realId: linked?.remito_id || null };
+    }
 
     const { data: actualizados, error } = await _db.from('remitos')
       .update({ ...campos, firma_imagen_url: firmaUrl, historial_ediciones: historial })
@@ -7513,6 +7572,12 @@ async function guardarRemitoPendiente() {
   _logId = await _resolverLogIdLocal(_logId);
 
   // ── Empaquetado de Datos ──────────────────────────────
+  const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
+    ? obtenerServicioActivoRemito()
+    : sessionStorage.getItem('auxilios_phase3_service_id');
+  const clientOperationId = operatorServiceId && typeof obtenerOperacionRemito === 'function'
+    ? obtenerOperacionRemito(operatorServiceId, nro)
+    : null;
   const remitoDB = {
     nro_remito:        nro,
     driver_id:         USUARIO_ACTUAL.id,
@@ -7532,6 +7597,11 @@ async function guardarRemitoPendiente() {
     observaciones:     observaciones,
     status:            'pendiente',
     created_at_device: new Date().toISOString(),
+    ...(operatorServiceId ? {
+      operator_service_id: operatorServiceId,
+      client_operation_id: clientOperationId,
+      document_source: 'auxilios_driver',
+    } : {}),
   };
 
   // ── OFFLINE: encolar en el outbox y seguir el flujo normal ──
@@ -7551,7 +7621,16 @@ async function guardarRemitoPendiente() {
   // 🚨 DIAGNÓSTICO DE SEGURIDAD (Mirar Consola F12) 🚨
   console.log("ID del chofer enviado a Supabase:", USUARIO_ACTUAL.id);
 
-  const { data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' });
+  let data = null, error = null;
+  if (operatorServiceId && typeof guardarRemitoVinculado === 'function') {
+    try {
+      data = await guardarRemitoVinculado(remitoDB, operatorServiceId);
+    } catch (linkedError) {
+      error = linkedError;
+    }
+  } else {
+    ({ data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));
+  }
 
   // 🚨 CAPTURA DE ERRORES DE SUPABASE (RLS/Foreign Keys) 🚨
   if (error) {
@@ -7568,6 +7647,9 @@ async function guardarRemitoPendiente() {
 }
 
 function completarRemitoPendiente(r) {
+  if (r?.operatorServiceId) {
+    sessionStorage.setItem('auxilios_phase3_service_id', r.operatorServiceId);
+  }
   showRemitosView('nuevo'); // calls remWizardReset() internally — clears all fields
   const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
   set('rem-nro',            r.nro);
