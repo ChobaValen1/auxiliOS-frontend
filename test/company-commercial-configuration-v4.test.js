@@ -12,7 +12,6 @@ const wizard = fs.readFileSync('operator-service-wizard.js','utf8');
 const workspace = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const operatorServices = fs.readFileSync('operator-services.js','utf8');
 const config = fs.readFileSync('config.js','utf8');
-const flags = fs.readFileSync('feature-flags.js','utf8');
 const sw = fs.readFileSync('sw.js','utf8');
 const pkg = fs.readFileSync('package.json','utf8');
 const contractRules = fs.readFileSync('migrations/20260815121000_operator_quote_contract_rules_v2.sql','utf8');
@@ -111,7 +110,9 @@ test('Servicios es tabla compacta única y no contiene renderer monetario ni res
   assert.doesNotMatch(operatorServices,/os-kpis|os-board|renderKpis|canSeeCommercial|money\(|company_estimated_total|estimated_total|pricing_snapshot/);
   assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total/);
   assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
-  assert.doesNotMatch(flags,/service_workspace_v2|service_editing_tolls_v1|operator_console_v2/);
+  assert.equal(fs.existsSync('feature-flags.js'),false,'feature-flags.js legacy debe permanecer eliminado');
+  assert.doesNotMatch(config,/feature-flags\.js/);
+  assert.doesNotMatch(sw,/feature-flags\.js/);
 });
 
 test('edición pública separa correcciones operativas de cambios que recotizan',()=>{
@@ -162,6 +163,6 @@ test('configuración inválida no admite Cobrar movida hasta menor que Radio',()
 });
 
 test('PWA invalida el cache del runtime consolidado',()=>{
-  const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
+  const version=Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1]||0);
   assert.ok(version>=171,`Expected cache version 171 or newer, received ${version}`);
 });
