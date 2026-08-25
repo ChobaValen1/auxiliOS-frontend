@@ -41,6 +41,14 @@ test('el chofer tiene historial propio y no finaliza el servicio',()=>{
   assert.doesNotMatch(js,/Finalizar servicio|No se pudo completar|abrirModalIncidente/);
 });
 
+test('los servicios asignados del Chofer viven dentro de Remitos y no en el Panel',()=>{
+  const js=read('operator-service-bridge.js');
+  assert.match(js,/document\.getElementById\('screen-remitos'\)/);
+  assert.match(js,/data-location="remitos"/);
+  assert.match(js,/＋ Sin asignación/);
+  assert.doesNotMatch(js,/document\.getElementById\('screen-dashboard'\)/);
+});
+
 test('runtime conserva puente canónico sin journey guard muerto',()=>{
   const config=read('config.js'),pkg=read('package.json'),sw=read('sw.js');
   assert.match(config,/auxilios-phase3-service-bridge/);
