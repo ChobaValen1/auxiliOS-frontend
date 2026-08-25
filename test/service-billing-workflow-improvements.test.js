@@ -8,6 +8,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const config = read('config.js');
 const lifecycle = read('operator-service-lifecycle.js');
 const billing = read('operator-billing.js');
+const invoiceWorkflow = read('migrations/20260824221500_operator_invoice_workflow_v3.sql');
 
 function functionBody(source, name, nextName) {
   const start = source.indexOf(`function ${name}`);
@@ -55,26 +56,28 @@ test('la asignación rápida conserva la relación chofer-camión en ambos senti
   assert.match(lifecycle, /truck\?\.addEventListener\('change',\(\)=>syncAssignmentPair\(m,'truck'\)\)/);
 });
 
-test('Facturación separa aprobar de facturar y muestra los datos de la futura factura', () => {
-  assert.match(billing, /data-ob="approve-selection"/);
-  assert.match(billing, /Aprobar servicios para facturar/);
-  assert.match(billing, /Información necesaria para crear la factura/);
-  assert.match(billing, /Prestadora/);
-  assert.match(billing, /Período de los servicios/);
-  assert.match(billing, /Moneda/);
-  assert.match(billing, /Cantidad de servicios/);
-  assert.match(billing, /Importe total/);
-  assert.match(billing, /review_operator_billing_services_bulk_v2/);
+test('Facturación elimina el paso redundante de aprobación', () => {
+  assert.doesNotMatch(billing, /approve-selection|approvalOpen|approvalBusy|approvalNotes|openApproval|approveSelection/);
+  assert.doesNotMatch(billing, /review_operator_billing_services_bulk_v2/);
+  assert.doesNotMatch(billing, /Aprobar servicios para facturar|Confirmar aprobación|APROBADO/);
+
+  const selection = functionBody(billing, 'selectionMarkup', 'invoiceModalMarkup');
+  assert.match(selection, /data-ob="invoice-selection"/);
+  assert.match(selection, />FACTURAR</);
 });
 
-test('un servicio pendiente no puede saltar desde la UI directamente a factura', () => {
+test('servicios pending y reviewed legados pueden ir directamente al modal de factura', () => {
+  const openInvoice = functionBody(billing, 'openInvoice', 'closeInvoice');
   const createInvoice = functionBody(billing, 'createInvoice', 'confirmAdminAction');
-  assert.match(createInvoice, /rows\.every\(r=>r\.billing_status==='reviewed'\)/);
-  assert.match(createInvoice, /Antes de facturar, aprobá todos los servicios seleccionados/);
+  assert.match(openInvoice, /\['pending','reviewed'\]\.includes\(r\.billing_status\)/);
+  assert.match(createInvoice, /\['pending','reviewed'\]\.includes\(r\.billing_status\)/);
+  assert.match(createInvoice, /create_operator_invoice_v2/);
+  assert.doesNotMatch(createInvoice, /aprob/i);
+});
 
-  const selection = functionBody(billing, 'selectionMarkup', 'approvalModalMarkup');
-  assert.match(selection, /allPending/);
-  assert.match(selection, /approve-selection/);
-  assert.match(selection, /allReviewed/);
-  assert.match(selection, /invoice-selection/);
+test('la RPC v2 deja de exigir reviewed y usa el núcleo canónico de creación', () => {
+  assert.match(invoiceWorkflow, /create or replace function public\.create_operator_invoice_v2/);
+  assert.match(invoiceWorkflow, /create_operator_invoice_core_v2\(/);
+  assert.match(invoiceWorkflow, /p_service_ids,/);
+  assert.match(invoiceWorkflow, /false\s*\n\s*\);/);
 });
