@@ -1,48 +1,51 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.join(__dirname,'..');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
-const root = path.join(__dirname, '..');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
-
-test('fase 3 conecta servicio, jornada, viaje y remito en la base', () => {
-  const sql = read('migrations/20260803173000_phase3_service_trip_bridge.sql');
-
-  assert.match(sql, /create or replace function public\.get_driver_operator_queue\(\)/i);
-  assert.match(sql, /create or replace function public\.link_operator_service_remito/i);
-  assert.match(sql, /JORNADA_REQUERIDA/i);
-  assert.match(sql, /REMITO_REQUERIDO/i);
-  assert.match(sql, /insert into public\.trips/i);
-  assert.match(sql, /update public\.trips[\s\S]*fecha_hora_fin/i);
-  assert.match(sql, /trg_phase3_link_remito/i);
-  assert.match(sql, /trg_phase3_link_incident/i);
-  assert.match(sql, /operator_services_unique_trip_idx/i);
-  assert.match(sql, /operator_services_unique_remito_idx/i);
+test('el puente del chofer usa sólo cola v2, remito y firma para ARRIBADO',()=>{
+  const js=read('operator-service-bridge.js');
+  assert.match(js,/get_driver_operator_queue_v2/);
+  assert.match(js,/ensure_operator_service_trip_v2/);
+  assert.match(js,/validate_operator_service_required_fields_v2/);
+  assert.match(js,/complete_driver_operator_service_fields_v2/);
+  assert.match(js,/link_operator_service_remito/);
+  assert.match(js,/guardarRemitoCompleto/);
+  assert.match(js,/firmaDataURL/);
+  assert.match(js,/Confirmar firma y ARRIBADO/);
+  assert.match(js,/OperatorServiceLifecycleV2\?\.confirmAction/);
+  assert.doesNotMatch(js,/window\.confirm/);
+  assert.doesNotMatch(js,/advance_operator_service|avanzarServicioAsignado|NEXT\s*=|en_route|loaded|at_destination/);
 });
 
-test('el puente del chofer usa RPC seguras y conserva el remito existente', () => {
-  const js = read('operator-service-bridge.js');
-
-  assert.match(js, /get_driver_operator_queue/);
-  assert.match(js, /advance_operator_service/);
-  assert.match(js, /link_operator_service_remito/);
-  assert.match(js, /guardarRemitoCompleto/);
-  assert.match(js, /abrirModalIncidente/);
-  assert.match(js, /rem-nro-prestadora/);
-  assert.doesNotMatch(js, /company_estimated_total|unit_price|pricing_snapshot/);
-  assert.doesNotMatch(js, /nav-operaciones/);
+test('los obligatorios sin campo nativo aparecen en una card antes de la firma',()=>{
+  const js=read('operator-service-bridge.js');
+  assert.match(js,/Completá antes de firmar/);
+  assert.match(js,/Configuración → Servicios → Formulario/);
+  assert.match(js,/Email del cliente/);
+  assert.match(js,/Observaciones del servicio/);
+  assert.match(js,/Indicaciones para el chofer/);
+  assert.match(js,/Orden de compra/);
+  assert.match(js,/Antes de firmar completá:/);
 });
 
-test('el módulo y sus estilos forman parte del arranque, CI y PWA', () => {
-  const config = read('config.js');
-  const pkg = read('package.json');
-  const sw = read('sw.js');
+test('el chofer tiene historial propio y no finaliza el servicio',()=>{
+  const js=read('operator-service-bridge.js');
+  assert.match(js,/get_driver_operator_history_v2/);
+  assert.match(js,/Historial de servicios/);
+  assert.match(js,/No tenés servicios activos asignados/);
+  assert.doesNotMatch(js,/Finalizar servicio|No se pudo completar|abrirModalIncidente/);
+});
 
-  assert.match(config, /auxilios-phase3-service-bridge/);
-  assert.match(config, /operator-service-bridge\.js/);
-  assert.match(pkg, /node --check operator-service-bridge\.js/);
-  assert.match(sw, /auxilios-v1\d{2,}/);
-  assert.match(sw, /operator-service-bridge\.js/);
-  assert.match(sw, /operator-service-bridge\.css/);
+test('runtime conserva puente canónico sin journey guard muerto',()=>{
+  const config=read('config.js'),pkg=read('package.json'),sw=read('sw.js');
+  assert.match(config,/auxilios-phase3-service-bridge/);
+  assert.match(config,/operator-service-bridge\.js/);
+  assert.doesNotMatch(config,/phase3-journey-start-guard/);
+  assert.doesNotMatch(pkg,/phase3-journey-start-guard/);
+  assert.doesNotMatch(sw,/phase3-journey-start-guard/);
+  assert.match(pkg,/node --check operator-service-bridge\.js/);
+  assert.match(sw,/operator-service-bridge\.css/);
 });

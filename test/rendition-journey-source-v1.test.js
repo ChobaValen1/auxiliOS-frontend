@@ -52,7 +52,7 @@ test('PWA and config load the rendition correction module', () => {
   const sw = read('sw.js');
   assert.match(config, /auxilios-rendition-journey-source-v1/);
   assert.match(config, /\/rendition-journey-source-v1\.js/);
-  const match = sw.match(/auxilios-v(\d+)/);
+  const match = sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/);
   assert.ok(match);
   assert.ok(Number(match[1]) >= 133);
   assert.match(sw, /'\/rendition-journey-source-v1\.js'/);

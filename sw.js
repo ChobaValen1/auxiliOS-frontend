@@ -1,82 +1,93 @@
-const CACHE_NAME = 'auxilios-v150'; // v150: Tarifas V3 alineado a la colorimetría dark de AuxiliOS
-
-const PRECACHE_ASSETS = [
-  '/',
-  '/Index.html',
-  '/sigma.css',
-  '/sigma.js',
-  '/empresas.js',
-  '/empresas-v2.js',
-  '/empresas-v2.css',
+const CACHE_NAME='auxilios-billing-phase2-v206';
+const PRECACHE_ASSETS=[
+  '/sigma.css','/sigma.js',
+  '/empresas-v2.js','/empresas-v2.css',
   '/billing-bases.js',
-  '/company-billing-settings.js',
-  '/billing-base-operator-adapter.js',
-  '/equal-billing-bases.js',
-  '/configuration-reference.css',
-  '/configuration-reference.js',
-  '/configuration-service-unit-v1.js',
-  '/tariff-matrix-v3.css',
-  '/tariff-matrix-v3.js',
-  '/configuration-center.css',
-  '/configuration-center.js',
-  '/frequent-navigation.js',
-  '/fleet-admin-detail-v2.css',
-  '/fleet-admin-detail-v2.js',
-  '/fleet-fuel-crud-v1.css',
-  '/fleet-fuel-crud-contrast-fix.css',
-  '/fleet-fuel-closed-edit-fix.css',
-  '/fleet-fuel-crud-v1.js',
-  '/fleet-fuel-closed-edit-fix.js',
-  '/fleet-fuel-modal-state-fix.js',
-  '/jornadas-admin-tools-v1.css',
-  '/jornadas-admin-tools-v1.js',
-  '/comercial.css',
-  '/comercial.js',
-  '/comercial-services.js',
-  '/comercial-code-strategy.js',
-  '/comercial-rules.js',
-  '/comercial-summary.js',
-  '/tariff-composition.js',
-  '/operator-services.css',
-  '/operator-service-v2.css',
-  '/operator-service-bridge.css',
-  '/operator-service-lifecycle.css',
-  '/operator-service-edit.css',
-  '/toll-management.css',
-  '/operator-active-desk-clean-v1.css',
-  '/operator-active-desk-auxilios-theme-v2.css',
-  '/operator-service-workspace-v2.css',
-  '/operator-service-workspace-reactive-v1.css',
-  '/operator-service-tariff-v3.css',
-  '/operator-service-reajuste-v3.css',
-  '/operator-services-brand-system-v1.css',
-  '/operator-services-jornadas-desktop-v1.css',
-  '/operator-services.js',
-  '/operator-reference-loader.js',
-  '/operator-service-wizard.js',
-  '/operator-service-v2.js',
-  '/operator-service-bridge.js',
-  '/phase3-journey-start-guard.js',
-  '/phase3b-modal-visibility-guard.js',
-  '/operator-service-lifecycle.js',
-  '/operator-service-edit.js',
-  '/toll-management.js',
+  '/service-types-catalog-v2.js','/tariff-types-catalog-v1.js',
+  '/company-services-configuration-v4.js','/company-billing-parameters-v4.js','/company-tariffs-v4.js',
+  '/configuration-center.css','/configuration-center.js',
+  '/service-module-configuration.js','/service-module-configuration.css',
+  '/fleet-operational-status-v1.js',
+  '/jornadas-admin-tools-v1.css','/jornadas-admin-tools-v1.js',
+  '/operator-services.css','/operator-services.js',
+  '/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js',
+  '/operator-invoices.css','/operator-invoices.js',
+  '/operator-service-workspace-reactive-v1.css','/operator-service-workspace-reactive-v1.js',
+  '/operator-service-commercial-addons-v1.css','/operator-service-commercial-addons-v1.js',
+  '/operator-service-bridge.css','/operator-service-bridge.js',
+  '/operator-service-lifecycle.css','/operator-service-lifecycle.js',
+  '/toll-management.css','/toll-management.js',
   '/rendition-journey-source-v1.js',
-  '/feature-flags.js',
-  '/operator-active-desk-clean-v1.js',
-  '/operator-service-workspace-reactive-v1.js',
-  '/operator-service-tariff-v3-ui.js',
-  '/operator-service-reajuste-v3.js',
-  '/operator-service-workspace-behavior-v1.js',
-  '/operator-services-stability-v1.js',
-  '/operator-services-block-a-v1.js',
-  '/operator-services-canonical-view-v1.js',
-  '/supabase.js',
-  '/offline.js',
-  '/manifest.json',
-  '/assets/icons/icon-192.png',
-  '/assets/icons/icon-512.png',
+  '/supabase.js','/offline.js','/manifest.json',
+  '/assets/icons/icon-192.png','/assets/icons/icon-512.png'
 ];
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(PRECACHE_ASSETS)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
-self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(url.hostname.includes('supabase.co')||url.hostname.includes('railway.app')||url.pathname.startsWith('/api/')||url.pathname.startsWith('/uploads/'))return;if(url.pathname==='/config.js'){event.respondWith(fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(event.request,copy));return response;}).catch(()=>caches.match(event.request)));return;}if((url.pathname.endsWith('.js')||url.pathname.endsWith('.css'))&&url.origin===self.location.origin){event.respondWith(caches.open(CACHE_NAME).then(cache=>cache.match(event.request).then(cached=>{const networkFetch=fetch(event.request).then(response=>{cache.put(event.request,response.clone());return response;}).catch(()=>cached);return cached?(networkFetch.catch(()=>{}),cached):networkFetch;})));return;}event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{if(response&&response.status===200){const copy=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(event.request,copy));}return response;})));});
+
+self.addEventListener('install',event=>event.waitUntil(
+  caches.open(CACHE_NAME)
+    .then(cache=>cache.addAll(PRECACHE_ASSETS))
+    .then(()=>self.skipWaiting())
+));
+
+self.addEventListener('activate',event=>event.waitUntil(
+  caches.keys()
+    .then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key))))
+    .then(()=>self.clients.claim())
+));
+
+self.addEventListener('fetch',event=>{
+  const url=new URL(event.request.url);
+
+  if(
+    url.hostname.includes('supabase.co')||
+    url.hostname.includes('railway.app')||
+    url.pathname.startsWith('/api/')||
+    url.pathname.startsWith('/uploads/')
+  ) return;
+
+  // La aplicación/HTML siempre intenta red primero. Así un nuevo preview no queda
+  // oculto por el Index.html de un deploy anterior. La caché queda sólo como fallback offline.
+  if(event.request.mode==='navigate'||url.pathname==='/'||url.pathname==='/Index.html'){
+    event.respondWith(
+      fetch(event.request)
+        .then(response=>{
+          if(response?.status===200){
+            const copy=response.clone();
+            caches.open(CACHE_NAME).then(cache=>cache.put('/Index.html',copy));
+          }
+          return response;
+        })
+        .catch(()=>caches.match('/Index.html'))
+    );
+    return;
+  }
+
+  // Config y módulos visuales usan red primero para reflejar el commit actual.
+  if(
+    url.pathname==='/config.js'||
+    ((url.pathname.endsWith('.js')||url.pathname.endsWith('.css'))&&url.origin===self.location.origin)
+  ){
+    event.respondWith(
+      fetch(event.request)
+        .then(response=>{
+          if(response?.status===200){
+            const copy=response.clone();
+            caches.open(CACHE_NAME).then(cache=>cache.put(event.request,copy));
+          }
+          return response;
+        })
+        .catch(()=>caches.match(event.request))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request)
+      .then(cached=>cached||fetch(event.request).then(response=>{
+        if(response?.status===200){
+          const copy=response.clone();
+          caches.open(CACHE_NAME).then(cache=>cache.put(event.request,copy));
+        }
+        return response;
+      }))
+  );
+});

@@ -1,188 +1,83 @@
-/* AuxiliOS · Nuevo Servicio · controlador canónico · Tarifario V3 */
+/* AuxiliOS · Servicio · controlador canónico */
 (()=>{'use strict';
-const O=window.OperatorServices,S=O.S;
-const {num,canManage,loadServices}=O;
-const notify=(m,t='info')=>typeof toast==='function'?toast(m,t):console.log(m);
-const open=id=>typeof openModal==='function'?openModal(id):document.getElementById(id)?.classList.add('open');
-const close=id=>typeof closeModal==='function'?closeModal(id):document.getElementById(id)?.classList.remove('open');
-const DRAFT_KEY='auxilios.operator-service-draft.v2';
-const quoteFields=new Set(['company_id','branch_id','billing_base_id','scheduled_for','category_id','estimated_asphalt_km','estimated_gravel_km','toll_estimate','is_holiday']);
-
-function nowInBuenosAires(){
- const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
- const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
- return`${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
-}
-const baseData=()=>({
- company_id:'',branch_id:'',billing_base_id:'',service_order_number:'',purchase_order_number:'',
- scheduled_for:nowInBuenosAires(),priority:'normal',category_id:'',primary_concept_id:'',secondary_items:{},item_codes:{},
- estimated_distance_km:0,estimated_asphalt_km:0,estimated_gravel_km:0,toll_estimate:0,is_holiday:false,
- customer_name:'',customer_phone:'',customer_email:'',vehicle_plate:'',vehicle_make_model:'',vehicle_make:'',vehicle_model:'',
- origin:'',destination:'',origin_lat:'',origin_lng:'',destination_lat:'',destination_lng:'',origin_place_id:'',destination_place_id:'',
- origin_formatted_address:'',destination_formatted_address:'',operator_notes:'',driver_instructions:'',assigned_driver_id:'',assigned_truck_id:'',
- estimated_arrival_at:'',estimated_finish_at:'',granted_delay_minutes:0,logistics_type:'own',route_distance_meters:'',route_duration_seconds:'',
- route_toll_estimate:'',route_toll_currency:'',route_provider:'',route_calculated_at:'',route_legs:[]
-});
-function fresh(){return{data:baseData(),contract:null,card:null,categories:[],catalogConcepts:[],items:[],links:[],quote:null,error:null,busy:false,loadingCatalog:false,dirty:false,draftSavedAt:null,catalogKey:'',codeWarning:null,itemCodeWarnings:{}};}
-function storage(){try{return window.localStorage||null}catch{return null}}
-function clearDraft(){try{storage()?.removeItem(DRAFT_KEY)}catch{}}
-function render(){
- if(!S.wizard)return;
- const renderer=window.OperatorServiceWorkspaceV2?.render;
- if(typeof renderer==='function')return renderer();
- const root=document.getElementById('os-wizard-shell');if(root)root.innerHTML='<div class="osv2-bootstrap-state">Cargando formulario de Nuevo Servicio…</div>';
-}
-function markDirty(){if(S.wizard)S.wizard.dirty=true;}
-function invalidateQuote(){if(S.wizard)S.wizard.quote=null;}
-function setVal(k,v){
- const w=S.wizard;if(!w)return;
- if(['estimated_distance_km','toll_estimate','estimated_asphalt_km','estimated_gravel_km','granted_delay_minutes'].includes(k))v=Math.max(0,num(v));
- w.data[k]=v;if(quoteFields.has(k))invalidateQuote();
- if(k==='service_order_number')w.codeWarning=null;
- markDirty();
-}
-function catalogDate(w=S.wizard){return String(w?.data?.scheduled_for||nowInBuenosAires()).slice(0,10)}
-function catalogKey(w=S.wizard){return w?`${w.data.company_id}|${w.data.branch_id||''}|${w.data.category_id||''}|${catalogDate(w)}`:''}
-function rebuildItems(){
- const w=S.wizard;if(!w)return;
- const categories=(w.categories||[]).map(c=>({
-  concept_id:c.category_id,service_name:c.name,name:c.name,service_code:c.code,is_active:true,can_be_primary:true,can_be_secondary:false,
-  pricing_unit:'service',code_mode:'fixed',is_category:true
- }));
- const concepts=(w.catalogConcepts||[]).filter(c=>!c.auto_apply).map(c=>({
-  ...c,is_active:true,can_be_primary:false,can_be_secondary:true,
-  code_mode:c.requires_own_code?'manual':'shared',service_code:c.requires_own_code?'': 'Usa código principal',
-  unit_price:c.unit_price==null?null:num(c.unit_price),secondary_price:c.unit_price==null?null:num(c.unit_price)
- }));
- w.items=[...categories,...concepts];w.links=[];
-}
-function resolvedItems(){return S.wizard?.items||[]}
-function primaryItems(){return resolvedItems().filter(x=>x.is_active&&x.can_be_primary)}
-function secondaryItems(){return resolvedItems().filter(x=>x.is_active&&x.can_be_secondary)}
-function sanitizeConcepts(){
- const w=S.wizard;if(!w)return;
- const cats=new Set((w.categories||[]).map(x=>String(x.category_id)));
- if(w.data.category_id&&!cats.has(String(w.data.category_id))){w.data.category_id='';w.data.primary_concept_id='';w.data.secondary_items={};w.data.item_codes={};}
- const allowed=new Set((w.catalogConcepts||[]).filter(x=>!x.auto_apply).map(x=>String(x.concept_id)));
- for(const id of Object.keys(w.data.secondary_items||{}))if(!allowed.has(String(id))){delete w.data.secondary_items[id];delete w.data.item_codes?.[id];}
- invalidateQuote();rebuildItems();
-}
-
-async function openWizard(){
- if(!canManage())return;
- clearDraft();S.wizard=fresh();
- const shell=document.getElementById('os-wizard-shell');if(shell){shell.innerHTML='';shell.className='os-wizard-shell';}
- window.OperatorServiceWorkspaceReviewV3?.prepareOpen?.();render();open('modal-operador-wizard');
-}
-function closeWizard(force=false){
- const w=S.wizard;if(!w)return;
- if(!force&&w.dirty&&typeof confirm==='function'&&!confirm('Hay cambios sin guardar. ¿Cerrar el alta?'))return;
- close('modal-operador-wizard');const shell=document.getElementById('os-wizard-shell');if(shell)shell.innerHTML='';S.wizard=null;
-}
-function saveDraft(){
- const w=S.wizard;if(!w)return;
- try{const savedAt=new Date().toISOString();storage()?.setItem(DRAFT_KEY,JSON.stringify({data:w.data,savedAt}));w.dirty=false;w.draftSavedAt=savedAt;notify('Borrador guardado en este dispositivo','success');render();}
- catch{notify('No se pudo guardar el borrador','error');}
-}
-
-async function loadCatalog({preserve=true,silent=false}={}){
- const w=S.wizard;if(!w?.data.company_id)return false;
- const d=w.data,category=d.category_id||null;
- if(!silent){w.loadingCatalog=true;render();}
- const {data,error}=await _db.rpc('get_operator_category_tariff_v3',{
-  p_company_id:d.company_id,p_base_id:d.branch_id||null,p_category_id:category,p_as_of:catalogDate(w)
- });
- w.loadingCatalog=false;
- if(error){w.error=error.message;w.catalogConcepts=[];rebuildItems();render();return false;}
- w.contract={contract_id:data.contract_id};w.card={rate_card_id:data.rate_card_id,currency:data.currency};
- w.categories=Array.isArray(data.categories)?data.categories:[];w.catalogConcepts=Array.isArray(data.concepts)?data.concepts:[];w.catalogKey=catalogKey(w);w.error=null;
- if(!preserve){w.data.secondary_items={};w.data.item_codes={};}
- sanitizeConcepts();render();return true;
-}
-async function selectCompany(id,preserve=false){
- const w=S.wizard;if(!w)return;
- const prev=preserve?{branch_id:w.data.branch_id,category_id:w.data.category_id,secondary_items:{...w.data.secondary_items},item_codes:{...w.data.item_codes}}:null;
- w.data.company_id=id;w.contract=w.card=null;w.categories=[];w.catalogConcepts=[];w.items=[];w.links=[];w.quote=null;w.error=null;w.catalogKey='';w.codeWarning=null;w.itemCodeWarnings={};
- if(!preserve){w.data.branch_id='';w.data.billing_base_id='';w.data.category_id='';w.data.primary_concept_id='';w.data.secondary_items={};w.data.item_codes={};markDirty();}
- if(!id)return render();
- if(prev){w.data.branch_id=prev.branch_id;w.data.billing_base_id=prev.branch_id;w.data.category_id=prev.category_id;w.data.primary_concept_id=prev.category_id;w.data.secondary_items=prev.secondary_items;w.data.item_codes=prev.item_codes;}
- await loadCatalog({preserve:true});
-}
-async function changeBranch(v){
- const w=S.wizard;if(!w)return;setVal('branch_id',v);w.data.billing_base_id=v||'';w.catalogKey='';
- if(w.data.category_id)await loadCatalog({preserve:true});else render();
-}
-async function selectPrimary(id){
- const w=S.wizard;if(!w)return;w.data.category_id=id;w.data.primary_concept_id=id;w.data.secondary_items={};w.data.item_codes={};w.quote=null;w.catalogConcepts=[];w.catalogKey='';markDirty();
- if(id)await loadCatalog({preserve:false});else{rebuildItems();render();}
-}
-function addSecondary(id){if(!id||!S.wizard)return;S.wizard.data.secondary_items[id]=1;S.wizard.quote=null;markDirty();render();}
-function removeSecondary(id){if(!S.wizard)return;delete S.wizard.data.secondary_items[id];delete S.wizard.data.item_codes?.[id];delete S.wizard.itemCodeWarnings?.[id];S.wizard.quote=null;markDirty();render();}
-function secondaryQty(id,v){if(!S.wizard)return;S.wizard.data.secondary_items[id]=Math.max(num(v),.01);S.wizard.quote=null;markDirty();render();}
-function secondaryPayload(){return Object.entries(S.wizard?.data?.secondary_items||{}).map(([concept_id,quantity])=>({concept_id,quantity:num(quantity)}))}
-async function ensureFreshCatalog(){const w=S.wizard;if(!w?.data.company_id||!w.data.category_id)return false;if(w.catalogKey===catalogKey(w))return true;return loadCatalog({preserve:true,silent:true});}
-
-async function calculate(){
- const w=S.wizard;if(!w?.card||!w.data.category_id)return;
- const scheduled=new Date(w.data.scheduled_for);if(Number.isNaN(scheduled.getTime())){w.error='Ingresá una fecha y hora válidas.';return render();}
- if(!await ensureFreshCatalog())return;
- w.busy=true;w.error=null;render();const d=w.data;
- const {data,error}=await _db.rpc('calculate_operator_service_quote_v3',{
-  p_company_id:d.company_id,p_base_id:d.branch_id||null,p_scheduled_for:scheduled.toISOString(),p_category_id:d.category_id,
-  p_items:secondaryPayload(),p_asphalt_km:num(d.estimated_asphalt_km),p_gravel_km:num(d.estimated_gravel_km),
-  p_toll_amount:num(d.toll_estimate),p_is_holiday:!!d.is_holiday
- });
- w.busy=false;if(error){w.error=error.message;w.quote=null}else{w.quote=data;w.error=null}render();
-}
-function validationErrors(){
- const w=S.wizard,d=w?.data,errors=[];if(!w)return['No hay un servicio en edición.'];
- if(!d.company_id||!w.card)errors.push('Seleccioná una empresa con tarifario publicado y vigente.');
- if(!d.category_id)errors.push('Elegí la categoría del servicio.');
- if(!String(d.service_order_number||'').trim())errors.push('Completá el código de prestadora.');
- if(!String(d.customer_phone||'').trim())errors.push('Completá el teléfono del cliente.');
- if(!String(d.origin||'').trim()||!String(d.destination||'').trim())errors.push('Completá origen y destino.');
- for(const [id] of Object.entries(d.secondary_items||{})){
-  const item=(w.catalogConcepts||[]).find(x=>String(x.concept_id)===String(id));
-  if(item?.requires_own_code&&!String(d.item_codes?.[id]||'').trim())errors.push(`${item.name||item.service_name} requiere código propio de prestadora.`);
- }
- if((d.assigned_driver_id&&!d.assigned_truck_id)||(!d.assigned_driver_id&&d.assigned_truck_id))errors.push('Chofer y móvil deben asignarse juntos.');
- return errors;
-}
-async function create(){
- const w=S.wizard;if(!w||w.busy)return;
- const errors=validationErrors();if(errors.length){w.error=errors.join(' ');return render();}
- if(!w.quote){await calculate();if(!w.quote)return;}
- w.busy=true;w.error=null;render();const d=w.data,payload={...d,
-  scheduled_for:new Date(d.scheduled_for).toISOString(),estimated_arrival_at:d.estimated_arrival_at?new Date(d.estimated_arrival_at).toISOString():'',
-  estimated_finish_at:d.estimated_finish_at?new Date(d.estimated_finish_at).toISOString():'',items:secondaryPayload(),item_codes:d.item_codes||{},
-  estimated_asphalt_km:num(d.estimated_asphalt_km),estimated_gravel_km:num(d.estimated_gravel_km),estimated_distance_km:num(d.estimated_asphalt_km)+num(d.estimated_gravel_km),
-  toll_estimate:num(d.toll_estimate),is_holiday:!!d.is_holiday
- };
- const {data,error}=await _db.rpc('create_operator_service_v3',{p_payload:payload});
- w.busy=false;if(error){w.error=error.message;return render();}
- clearDraft();w.dirty=false;notify(`Servicio ${data.service_number} creado`,'success');closeWizard(true);await loadServices();if(data.service_id)window.abrirDetalleServicio(data.service_id);
-}
-
-async function checkCode(value,conceptId=null){
- const w=S.wizard;if(!w?.data.company_id)return null;
- const current=conceptId?w.data.item_codes?.[conceptId]:w.data.service_order_number;
- const code=String((value??current)||'').trim();
- if(!code){if(conceptId)delete w.itemCodeWarnings[conceptId];else w.codeWarning=null;render();return null;}
- const {data,error}=await _db.rpc('check_recent_provider_code_v3',{p_company_id:w.data.company_id,p_code:code,p_exclude_service_id:null});
- if(error)return null;
- if(conceptId)w.itemCodeWarnings[conceptId]=data?.duplicate?data:null;else w.codeWarning=data?.duplicate?data:null;
- render();return data;
-}
-async function checkPrimaryCode(){return checkCode(null,null)}
-async function checkItemCode(conceptId,value){return checkCode(value,conceptId)}
-
-Object.assign(O,{openWizard,closeWizard,renderWizard:render,calculateQuote:calculate,loadTariffMatrixV3:loadCatalog});
-Object.assign(window,{
- abrirNuevoServicio:openWizard,cerrarNuevoServicio:closeWizard,guardarBorradorServicio:saveDraft,osSetServicio:setVal,
- seleccionarEmpresaServicio:selectCompany,cambiarSucursalServicio:changeBranch,seleccionarPrincipalServicio:selectPrimary,seleccionarCategoriaServicio:selectPrimary,
- agregarSecundarioServicio:addSecondary,quitarSecundarioServicio:removeSecondary,alternarSecundarioServicio:(id,on)=>on?addSecondary(id):removeSecondary(id),
- cantidadSecundarioServicio:secondaryQty,calcularNuevoServicio:calculate,crearNuevoServicio:create,
- validarCodigoPrestadoraServicio:checkPrimaryCode,validarCodigoConceptoServicio:checkItemCode,
- pasoSiguienteNuevoServicio:()=>{},pasoAnteriorNuevoServicio:()=>{},irPasoNuevoServicio:()=>{}
-});
+const O=window.OperatorServices,S=O.S,{num,canManage,canRead,loadServices}=O;
+const notify=(m,t='info')=>typeof toast==='function'?toast(m,t):console[t==='error'?'error':'log'](m);
+function showWorkspaceModal(){const modal=document.getElementById('modal-operador-wizard');if(!modal)return;if(typeof openModal==='function')openModal('modal-operador-wizard');modal.hidden=false;modal.style.display='';modal.classList.add('open');}
+function hideWorkspaceModal(){const modal=document.getElementById('modal-operador-wizard');if(!modal)return;if(typeof closeModal==='function')closeModal('modal-operador-wizard');modal.classList.remove('open','active');modal.hidden=true;modal.style.display='none';}
+const FIELD_LABELS={customer_name:'cliente / socio',customer_phone:'teléfono del cliente',customer_email:'email del cliente',vehicle_plate:'patente',vehicle_make_model:'marca y modelo',assigned_resources:'chofer y móvil',operator_notes:'observaciones',driver_instructions:'indicaciones para el chofer'};
+const REMITO_STRUCTURAL=new Set(['company_id','billing_base_id','primary_concept_id','service_order_number','customer_name','customer_phone','customer_email','vehicle_plate','vehicle_make','vehicle_model','origin','destination','estimated_asphalt_km','estimated_gravel_km']);
+const TRIP_LOCKED=new Set(['assigned_driver_id','assigned_truck_id']);
+const PAYMENTS=new Set(['cash','transfer','card','mercado_pago','other']),PAYERS=new Set(['provider','customer']),COLLECTORS=new Set(['company','provider']),COVERAGE=new Set(['provider_roundtrip','mixed_manual','customer_roundtrip']);
+let transientErrorTimer=null;
+const clone=v=>JSON.parse(JSON.stringify(v)),same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null),uid=()=>crypto.randomUUID?.()||`commercial-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function localDateTime(value){if(!value)return'';const d=new Date(value),p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d),g=t=>p.find(x=>x.type===t)?.value||'';return`${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`;}
+const nowLocal=()=>localDateTime(new Date()),iso=value=>{if(!value)return'';const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toISOString();};
+function splitVehicle(value){const p=String(value||'').trim().split(/\s+/).filter(Boolean);return{make:p.shift()||'',model:p.join(' ')}};
+const blankCommercial=()=>({toll_coverage_mode:'',tolls:[],excess_charges:[]});
+function baseData(){return{company_id:'',billing_base_id:'',service_order_number:'',scheduled_for:nowLocal(),priority:'normal',primary_concept_id:'',secondary_items:{},item_codes:{},estimated_distance_km:0,estimated_asphalt_km:0,estimated_gravel_km:0,is_holiday:false,customer_name:'',customer_phone:'',customer_email:'',vehicle_plate:'',vehicle_make_model:'',vehicle_make:'',vehicle_model:'',origin:'',destination:'',origin_lat:'',origin_lng:'',destination_lat:'',destination_lng:'',origin_place_id:'',destination_place_id:'',origin_formatted_address:'',destination_formatted_address:'',operator_notes:'',driver_instructions:'',assigned_driver_id:'',assigned_truck_id:'',estimated_arrival_at:'',estimated_finish_at:'',granted_delay_minutes:0,logistics_type:'own',route_distance_meters:'',route_duration_seconds:'',route_toll_estimate:'',route_toll_currency:'',route_provider:'',route_calculated_at:'',route_legs:[],actual_tolls:[],commercial_addons:blankCommercial()};}
+function fresh(mode='create',serviceId=null){return{mode,serviceId,serviceStatus:'pending',data:baseData(),original:null,context:null,items:[],tollCatalog:[],quote:null,error:null,busy:false,dirty:false,contextKey:'',codeWarning:null,locks:{closed:false,trip_started:false,remito_locked:false,can_edit:true,requires_reason:false},changeReason:''};}
+const render=()=>window.OperatorServiceWorkspaceV2?.render?.();
+function clearTransientError(){if(transientErrorTimer){clearTimeout(transientErrorTimer);transientErrorTimer=null;}}
+function showTransientError(message,ms=3000){const w=S.wizard;if(!w)return;clearTransientError();w.error=message;render();const target=w;transientErrorTimer=setTimeout(()=>{transientErrorTimer=null;if(S.wizard===target&&target.error===message){target.error=null;render();}},ms);}
+function resetShell(){clearTransientError();const shell=document.getElementById('os-wizard-shell');if(shell){shell.innerHTML='';shell.className='os-wizard-shell';}window.OperatorServiceWorkspaceV2?.reset?.();}
+function locked(key){const w=S.wizard;if(!w)return false;if(w.mode==='view')return true;if(w.mode!=='edit')return false;if(w.locks?.remito_locked&&REMITO_STRUCTURAL.has(key))return true;if(TRIP_LOCKED.has(key)&&w.serviceStatus&&!['pending','assigned'].includes(w.serviceStatus))return true;return false;}
+const addonLocked=()=>!S.wizard||S.wizard.mode==='view'||(S.wizard.mode==='edit'&&S.wizard.locks?.remito_locked);
+function markDirty(){if(S.wizard?.mode&&S.wizard.mode!=='view')S.wizard.dirty=true;}
+function setVal(key,value){const w=S.wizard;if(!w||locked(key))return;if(['estimated_distance_km','estimated_asphalt_km','estimated_gravel_km','granted_delay_minutes'].includes(key))value=Math.max(0,num(value));w.data[key]=value;if(key==='vehicle_make'||key==='vehicle_model')w.data.vehicle_make_model=[w.data.vehicle_make,w.data.vehicle_model].filter(Boolean).join(' ').trim();if(['company_id','billing_base_id','scheduled_for','primary_concept_id','estimated_asphalt_km','estimated_gravel_km','is_holiday'].includes(key))w.quote=null;if(key==='service_order_number')w.codeWarning=null;markDirty();}
+const contextKey=w=>w?`${w.data.company_id}|${String(w.data.scheduled_for||'').slice(0,10)}`:'';
+function rebuildItems(){const w=S.wizard;if(!w)return;w.items=(w.context?.services||[]).map(s=>({concept_id:s.concept_id,name:s.name,service_name:s.name,is_active:true,can_be_primary:['primary','mixed'].includes(s.category),can_be_secondary:['secondary','mixed'].includes(s.category),pricing_unit:s.pricing_unit||'service',code_mode:s.code_mode||'fixed',requires_own_code:!!s.requires_own_code,has_price:!!s.has_price,available:!!s.available}));w.quote=null;}
+const itemById=id=>(S.wizard?.items||[]).find(x=>String(x.concept_id)===String(id));
+const secondaryUnit=item=>({service:{step:1,locked:true},fixed:{step:1,locked:true},unit:{step:1,locked:false},km:{step:.1,locked:false},hour:{step:.25,locked:false},day:{step:.5,locked:false}})[item?.pricing_unit]||{step:.01,locked:false};
+function currentTollRate(location){const rates=(location?.rates||[]).filter(x=>x.is_current&&x.is_active);return rates.find(x=>x.vehicle_category==='light_2_axles'&&x.payment_method==='any')||rates[0]||null;}
+const tollLocation=id=>(S.wizard?.tollCatalog||[]).find(x=>String(x.toll_id)===String(id)),tollRate=id=>currentTollRate(tollLocation(id));
+function commercialState(data=S.wizard?.data){if(!data)return blankCommercial();if(!data.commercial_addons)data.commercial_addons=blankCommercial();const c=data.commercial_addons;c.tolls=Array.isArray(c.tolls)?c.tolls:[];c.excess_charges=Array.isArray(c.excess_charges)?c.excess_charges:[];for(const r of [...c.tolls,...c.excess_charges])if(!r._id)r._id=uid();return c;}
+const fixedPayer=mode=>mode==='provider_roundtrip'?'provider':mode==='customer_roundtrip'?'customer':'';
+function tollKey(r){if(!r.toll_id||!r.payer_agent)return'';const method=r.payer_agent==='provider'?'n/a':String(r.customer_payment_method||'').trim().toLowerCase();return r.payer_agent==='customer'&&!method?'':`${r.toll_id}|${r.payer_agent}|${method}`;}
+function excessKey(r){const amount=Math.round(num(r.unit_amount)*100)/100,method=r.collector_agent==='provider'?'n/a':String(r.customer_payment_method||'').trim().toLowerCase();return !r.concept_id||amount<=0||!r.collector_agent||(r.collector_agent==='company'&&!method)?'':`${r.concept_id}|${amount.toFixed(2)}|${r.collector_agent}|${method}`;}
+function commercialPayload(data=S.wizard?.data){const c=commercialState(data);return{toll_coverage_mode:c.toll_coverage_mode||null,tolls:c.tolls.map(r=>({toll_id:r.toll_id||null,toll_rate_id:r.toll_rate_id||tollRate(r.toll_id)?.toll_rate_id||null,quantity:Math.max(1,Math.round(num(r.quantity)||1)),payer_agent:r.payer_agent||null,customer_payment_method:r.payer_agent==='provider'?null:(r.customer_payment_method||null)})),excess_charges:c.excess_charges.map(r=>({concept_id:r.concept_id||null,quantity:Math.max(.01,num(r.quantity)||1),unit_amount:Math.max(0,num(r.unit_amount)),currency:r.currency||'ARS',collector_agent:r.collector_agent||null,customer_payment_method:r.collector_agent==='provider'?null:(r.customer_payment_method||null)}))};}
+function commercialProviderTollTotal(data=S.wizard?.data){return commercialState(data).tolls.reduce((s,r)=>{const rate=tollRate(r.toll_id);return r.payer_agent==='provider'&&rate?s+num(rate.amount)*Math.max(1,Math.round(num(r.quantity)||1)):s;},0);}
+function commercialCustomerTollTotal(data=S.wizard?.data){return commercialState(data).tolls.reduce((s,r)=>{const rate=tollRate(r.toll_id);return r.payer_agent==='customer'&&rate?s+num(rate.amount)*Math.max(1,Math.round(num(r.quantity)||1)):s;},0);}
+const commercialCustomerExcessTotal=(data=S.wizard?.data)=>commercialState(data).excess_charges.reduce((s,r)=>s+Math.max(.01,num(r.quantity)||1)*Math.max(0,num(r.unit_amount)),0);
+function commercialErrors(){const w=S.wizard,c=commercialState(),errors=[];if(!w||w.mode==='view')return errors;if(c.tolls.length&&!COVERAGE.has(c.toll_coverage_mode))errors.push('Seleccioná el formato de cobro de peajes.');const fixed=fixedPayer(c.toll_coverage_mode),tk=new Set();for(const r of c.tolls){if(!r.toll_id)errors.push('Seleccioná el peaje.');else if(!tollRate(r.toll_id))errors.push('Uno de los peajes no tiene una tarifa vigente.');if(!PAYERS.has(r.payer_agent))errors.push('Quién paga debe ser Cliente o Prestadora.');if(fixed&&r.payer_agent!==fixed)errors.push(fixed==='customer'?'En A cargo del cliente, todos los peajes deben quedar a cargo del Cliente.':'En A cargo de la Prestadora, todos los peajes deben quedar a cargo de la Prestadora.');if(r.payer_agent==='customer'&&!PAYMENTS.has(r.customer_payment_method))errors.push('Cuando paga el cliente, el medio de pago es obligatorio.');const k=tollKey(r);if(k){if(tk.has(k))errors.push('Hay peajes duplicados con el mismo pagador y medio de pago.');tk.add(k);}}
+const ek=new Set();for(const r of c.excess_charges){if(!r.concept_id||!itemById(r.concept_id)?.can_be_secondary)errors.push('Seleccioná el concepto del excedente.');if(num(r.quantity)<=0)errors.push('La cantidad del excedente debe ser mayor a cero.');if(num(r.unit_amount)<=0)errors.push('Ingresá el importe del excedente.');if(!COLLECTORS.has(r.collector_agent))errors.push('Seleccioná quién cobró el excedente.');if(r.collector_agent==='company'&&!PAYMENTS.has(r.customer_payment_method))errors.push('Cuando cobra la Empresa, el medio de pago del excedente es obligatorio.');const k=excessKey(r);if(k){if(ek.has(k))errors.push('Hay excedentes duplicados con el mismo importe, cobrador y medio de pago.');ek.add(k);}}return errors;}
+function setCommercialCoverage(value){if(addonLocked())return;const c=commercialState();c.toll_coverage_mode=COVERAGE.has(value)?value:'';const fixed=fixedPayer(c.toll_coverage_mode);for(const r of c.tolls){if(fixed)r.payer_agent=fixed;else if(!PAYERS.has(r.payer_agent))r.payer_agent='';if(r.payer_agent==='provider')r.customer_payment_method='';}S.wizard.quote=null;markDirty();render();}
+function addCommercialToll(){const w=S.wizard,c=commercialState();if(!w||addonLocked())return;if(!COVERAGE.has(c.toll_coverage_mode)){w.error='Seleccioná primero el formato de cobro de peajes.';return render();}if(!(w.tollCatalog||[]).some(currentTollRate)){w.error='No hay peajes activos con tarifa vigente.';return render();}c.tolls.push({_id:uid(),toll_id:'',toll_rate_id:'',quantity:1,payer_agent:fixedPayer(c.toll_coverage_mode),customer_payment_method:''});w.quote=null;markDirty();render();}
+function removeCommercialToll(index){if(addonLocked())return;commercialState().tolls.splice(Number(index),1);S.wizard.quote=null;markDirty();render();}
+function updateCommercialToll(index,key,value,commit=true){if(addonLocked())return;const c=commercialState(),r=c.tolls[Number(index)];if(!r)return;if(key==='quantity')value=Math.max(1,Math.round(num(value)||1));if(key==='toll_id')r.toll_rate_id=tollRate(value)?.toll_rate_id||'';if(key==='payer_agent'){value=fixedPayer(c.toll_coverage_mode)||value;if(!PAYERS.has(value))value='';if(value==='provider')r.customer_payment_method='';}r[key]=value;S.wizard.quote=null;markDirty();if(commit){const k=tollKey(r),other=c.tolls.findIndex((x,i)=>i!==Number(index)&&tollKey(x)===k);if(k&&other>=0){c.tolls[other].quantity=Math.max(1,Math.round(num(c.tolls[other].quantity)||1))+Math.max(1,Math.round(num(r.quantity)||1));c.tolls.splice(Number(index),1);notify('Ese peaje ya estaba cargado. Se aumentó la cantidad.','info');}render();}}
+function addCommercialExcess(){if(addonLocked())return;commercialState().excess_charges.push({_id:uid(),concept_id:'',quantity:1,unit_amount:'',currency:'ARS',collector_agent:'',customer_payment_method:''});S.wizard.quote=null;markDirty();render();}
+function removeCommercialExcess(index){if(addonLocked())return;commercialState().excess_charges.splice(Number(index),1);S.wizard.quote=null;markDirty();render();}
+function updateCommercialExcess(index,key,value,commit=true){if(addonLocked())return;const c=commercialState(),r=c.excess_charges[Number(index)];if(!r)return;if(['quantity','unit_amount'].includes(key))value=Math.max(0,num(value));if(key==='collector_agent'){value=COLLECTORS.has(value)?value:'';if(value==='provider')r.customer_payment_method='';}r[key]=value;S.wizard.quote=null;markDirty();if(commit){const k=excessKey(r),other=c.excess_charges.findIndex((x,i)=>i!==Number(index)&&excessKey(x)===k);if(k&&other>=0){c.excess_charges[other].quantity=Math.max(.01,num(c.excess_charges[other].quantity)||1)+Math.max(.01,num(r.quantity)||1);c.excess_charges.splice(Number(index),1);notify('Ese excedente ya estaba cargado. Se aumentó la cantidad.','info');}render();}}
+async function loadTollCatalog(){const w=S.wizard;if(!w)return;const {data,error}=await _db.rpc('list_toll_catalog',{p_as_of:String(w.data.scheduled_for||nowLocal()).slice(0,10),p_include_inactive:false});w.tollCatalog=error?[]:(Array.isArray(data)?data:[]);}
+async function loadResourceAvailability(){const w=S.wizard;if(!w||w.mode==='view'||typeof _db==='undefined')return;const {data,error}=await _db.rpc('get_operator_resource_availability');if(error){console.warn('[Servicios] No se pudo cargar la relación chofer-móvil:',error.message||error);return;}const driverMap=new Map((Array.isArray(data?.drivers)?data.drivers:[]).map(x=>[String(x.user_id),x])),truckMap=new Map((Array.isArray(data?.trucks)?data.trucks:[]).map(x=>[String(x.truck_id),x]));S.drivers=(S.drivers||[]).map(x=>({...x,...(driverMap.get(String(x.user_id))||{})}));S.trucks=(S.trucks||[]).map(x=>({...x,...(truckMap.get(String(x.truck_id))||{})}));}
+async function loadContext(){const w=S.wizard;if(!w?.data.company_id)return false;const when=new Date(w.data.scheduled_for);const {data,error}=await _db.rpc('get_operator_service_context_v1',{p_company_id:w.data.company_id,p_scheduled_for:(Number.isNaN(when.getTime())?new Date():when).toISOString()});if(error){w.context=null;w.items=[];w.error=error.message||'No se pudo validar la configuración de la prestadora.';render();return false;}w.context=data||null;w.contextKey=contextKey(w);w.error=null;rebuildItems();await loadTollCatalog();const bases=w.context?.bases||[];if(!w.data.billing_base_id&&bases.length===1&&w.mode==='create')w.data.billing_base_id=bases[0].base_id;render();return true;}
+async function ensureContext(){const w=S.wizard;return !!w?.data.company_id&&(w.context&&w.contextKey===contextKey(w)?true:loadContext());}
+function fillFromContext(w,ctx){const s=ctx.service||{},vehicle=splitVehicle(s.vehicle_make_model),allTolls=Array.isArray(ctx.tolls)?ctx.tolls:[];w.serviceStatus=s.status||w.serviceStatus||'pending';Object.assign(w.data,{company_id:s.company_id||'',billing_base_id:s.billing_base_id||'',service_order_number:s.service_order_number||'',scheduled_for:localDateTime(s.scheduled_for),priority:s.priority||'normal',primary_concept_id:s.primary_concept_id||'',estimated_distance_km:num(s.estimated_distance_km),estimated_asphalt_km:num(s.estimated_asphalt_km??s.estimated_distance_km),estimated_gravel_km:num(s.estimated_gravel_km),actual_tolls:allTolls.filter(t=>t.source==='actual').map(t=>({toll_name:t.toll_name||t.toll_name_snapshot||'',quantity:num(t.quantity)||1,unit_amount:num(t.unit_amount),currency:t.currency||'ARS'})),is_holiday:!!s.is_holiday,customer_name:s.customer_name||'',customer_phone:s.customer_phone||'',customer_email:s.customer_email||'',vehicle_plate:s.vehicle_plate||'',vehicle_make_model:s.vehicle_make_model||'',vehicle_make:vehicle.make,vehicle_model:vehicle.model,origin:s.origin||'',destination:s.destination||'',origin_lat:s.origin_lat??'',origin_lng:s.origin_lng??'',destination_lat:s.destination_lat??'',destination_lng:s.destination_lng??'',origin_place_id:s.origin_place_id||'',destination_place_id:s.destination_place_id||'',origin_formatted_address:s.origin_formatted_address||'',destination_formatted_address:s.destination_formatted_address||'',operator_notes:s.operator_notes||'',driver_instructions:s.driver_instructions||'',assigned_driver_id:s.assigned_driver_id||'',assigned_truck_id:s.assigned_truck_id||'',estimated_arrival_at:localDateTime(s.estimated_arrival_at),estimated_finish_at:localDateTime(s.estimated_finish_at),granted_delay_minutes:num(s.granted_delay_minutes),logistics_type:s.logistics_type||'own',route_distance_meters:s.route_distance_meters||'',route_duration_seconds:s.route_duration_seconds||'',route_toll_estimate:s.route_toll_estimate||'',route_toll_currency:s.route_toll_currency||'',route_provider:s.route_provider||'',route_calculated_at:s.route_calculated_at||'',route_legs:Array.isArray(s.route_legs)?s.route_legs:[]});for(const i of ctx.items||[])if(i.item_role==='secondary'){w.data.secondary_items[i.concept_id]=num(i.quantity)||1;if(i.instance_code)w.data.item_codes[i.concept_id]=i.instance_code;}}
+async function loadCommercial(serviceId){const {data,error}=await _db.rpc('get_operator_service_commercial_addons_v1',{p_service_id:serviceId});if(error)throw error;S.wizard.data.commercial_addons={toll_coverage_mode:data?.toll_coverage_mode||'',tolls:(data?.tolls||[]).map(r=>({...r,_id:uid()})),excess_charges:(data?.excess_charges||[]).map(r=>({...r,_id:uid()}))};}
+async function openExisting(serviceId,mode){if(mode==='edit'&&!canManage())return notify('Sin permiso para editar servicios','error');if(mode==='view'&&!canRead())return notify('Sin permiso para consultar servicios','error');resetShell();S.wizard=fresh(mode,serviceId);S.selected=serviceId;S.wizard.busy=true;render();showWorkspaceModal();try{const {data,error}=await _db.rpc('get_operator_service_edit_context',{p_service_id:serviceId});if(error)throw error;if(mode==='edit'&&!data?.locks?.can_edit)throw new Error('El servicio ya no admite modificaciones.');S.wizard.locks=data.locks||S.wizard.locks;fillFromContext(S.wizard,data);if(mode==='edit')await loadResourceAvailability();await loadContext();await loadCommercial(serviceId);S.wizard.original=clone(S.wizard.data);S.wizard.busy=false;S.wizard.dirty=false;render();window.dispatchEvent(new CustomEvent('auxilios:service-workspace-opened',{detail:{mode,serviceId}}));}catch(e){hideWorkspaceModal();S.wizard=null;S.selected=null;notify(e.message||'No se pudo abrir el servicio','error');}}
+async function openCreate(){if(!canManage())return;resetShell();S.wizard=fresh('create');render();showWorkspaceModal();await loadResourceAvailability();render();window.dispatchEvent(new CustomEvent('auxilios:service-workspace-opened',{detail:{mode:'create'}}));}
+const openView=id=>openExisting(id,'view'),openEdit=id=>openExisting(id,'edit');
+function performCloseWorkspace(){hideWorkspaceModal();resetShell();S.wizard=null;S.selected=null;return true;}
+function closeWorkspace(force=false){if(!S.wizard)return true;if(force||!S.wizard.dirty)return performCloseWorkspace();const ask=window.OperatorServiceLifecycleV2?.confirmAction;if(!ask){notify('No se pudo abrir la confirmación dentro de AuxiliOS.','error');return false;}ask({title:'Salir sin guardar',subtitle:'Hay cambios pendientes en este servicio.',message:'Si salís ahora, los cambios que hiciste no se van a guardar.',confirmLabel:'Salir sin guardar',tone:'danger'}).then(ok=>{if(ok)performCloseWorkspace()});return false;}
+async function selectCompany(id){if(!S.wizard||locked('company_id'))return;Object.assign(S.wizard.data,{company_id:id||'',billing_base_id:'',primary_concept_id:'',secondary_items:{},item_codes:{},actual_tolls:[],commercial_addons:blankCommercial()});S.wizard.context=null;S.wizard.items=[];S.wizard.tollCatalog=[];S.wizard.contextKey='';S.wizard.quote=null;markDirty();id?await loadContext():render();}
+async function changeBase(value){if(!S.wizard||locked('billing_base_id'))return;setVal('billing_base_id',value||'');render();}
+async function selectPrimary(id){if(!S.wizard||locked('primary_concept_id'))return;const item=itemById(id);if(id&&(!item||!item.available)){S.wizard.error=item?.has_price===false?'Este servicio está habilitado pero no tiene precio configurado.':'El servicio seleccionado no está disponible.';return render();}if(id&&S.wizard.data.secondary_items?.[id]!==undefined){delete S.wizard.data.secondary_items[id];delete S.wizard.data.item_codes?.[id];}setVal('primary_concept_id',id||'');render();}
+function addSecondary(id){const w=S.wizard,item=itemById(id);if(!w||addonLocked()||!item?.can_be_secondary||!item.available||String(id)===String(w.data.primary_concept_id))return;w.data.secondary_items[id]=secondaryUnit(item).locked?1:Math.max(num(w.data.secondary_items[id])||1,.01);w.quote=null;markDirty();render();}
+function removeSecondary(id){const w=S.wizard;if(!w||addonLocked())return;delete w.data.secondary_items[id];delete w.data.item_codes?.[id];w.quote=null;markDirty();render();}
+function secondaryQty(id,value,refresh=true){const w=S.wizard,item=itemById(id);if(!w||addonLocked()||!item||w.data.secondary_items?.[id]===undefined)return;const unit=secondaryUnit(item);let qty=unit.locked?1:Math.max(num(value),unit.step);if(unit.step===1)qty=Math.max(1,Math.round(qty));w.data.secondary_items[id]=qty;w.quote=null;markDirty();if(refresh)render();return qty;}
+function secondaryCode(id,value){const w=S.wizard,item=itemById(id);if(!w||addonLocked()||!item?.requires_own_code||w.data.secondary_items?.[id]===undefined)return;w.data.item_codes={...(w.data.item_codes||{}),[id]:String(value||'')};w.quote=null;markDirty();}
+const secondaryPayload=data=>Object.entries(data?.secondary_items||{}).map(([concept_id,quantity])=>({concept_id,quantity:num(quantity)}));
+function requiredErrors(d){const req=k=>S.moduleConfig?.field_modes?.[k]==='required',e=[];if(req('customer_name')&&!String(d.customer_name||'').trim())e.push('Completá '+FIELD_LABELS.customer_name+'.');if(req('customer_phone')&&!String(d.customer_phone||'').trim())e.push('Completá '+FIELD_LABELS.customer_phone+'.');if(req('customer_email')&&!String(d.customer_email||'').trim())e.push('Completá '+FIELD_LABELS.customer_email+'.');if(req('vehicle_plate')&&!String(d.vehicle_plate||'').trim())e.push('Completá '+FIELD_LABELS.vehicle_plate+'.');if(req('vehicle_make_model')&&(!d.vehicle_make||!d.vehicle_model))e.push('Completá marca y modelo.');if(req('assigned_resources')&&(!d.assigned_driver_id||!d.assigned_truck_id))e.push('Asigná chofer y móvil.');if(req('operator_notes')&&!String(d.operator_notes||'').trim())e.push('Completá las observaciones.');if(req('driver_instructions')&&!String(d.driver_instructions||'').trim())e.push('Completá las indicaciones para el chofer.');return e;}
+function secondaryErrors(d){const e=[];for(const [id,quantity] of Object.entries(d.secondary_items||{})){const item=itemById(id);if(!item?.can_be_secondary||!item.available||String(id)===String(d.primary_concept_id)){e.push('Uno de los conceptos adicionales ya no está disponible para la prestadora.');continue;}if(num(quantity)<=0)e.push(`La cantidad de ${item.name||'un concepto adicional'} debe ser mayor a cero.`);if(item.requires_own_code&&!String(d.item_codes?.[id]||'').trim())e.push(`${item.name||'El concepto adicional'} requiere código propio de prestadora.`);}return e;}
+function validationErrors(){const w=S.wizard,d=w?.data,e=[];if(!w)return['No hay un servicio abierto.'];if(w.mode==='view')return[];if(!d.company_id)e.push('Seleccioná una prestadora.');for(const x of w.context?.blocking_issues||[])e.push(x.message);if(!d.billing_base_id)e.push('Seleccioná una base habilitada.');if(!d.primary_concept_id)e.push('Elegí el tipo de servicio.');if(d.primary_concept_id&&!itemById(d.primary_concept_id)?.has_price)e.push('El servicio seleccionado no tiene precio configurado.');if(!String(d.service_order_number||'').trim())e.push('Completá el código de prestadora.');if(Number.isNaN(new Date(d.scheduled_for).getTime()))e.push('Ingresá fecha y hora válidas.');if(!String(d.origin||'').trim()||!String(d.destination||'').trim())e.push('Completá origen y destino.');if(w.mode==='create')e.push(...requiredErrors(d));e.push(...secondaryErrors(d));e.push(...commercialErrors());if((d.assigned_driver_id&&!d.assigned_truck_id)||(!d.assigned_driver_id&&d.assigned_truck_id))e.push('Chofer y móvil deben asignarse juntos.');if(w.mode==='edit'&&w.locks?.requires_reason&&w.dirty&&String(w.changeReason||'').trim().length<5)e.push('Indicá el motivo de la corrección.');return[...new Set(e.filter(Boolean))];}
+async function calculate(){const w=S.wizard,d=w?.data;if(!w||w.mode==='view'||!d.company_id||!d.primary_concept_id)return;if(!await ensureContext())return;const errors=[...secondaryErrors(d),...commercialErrors()];if(errors.length){w.error=errors.join(' ');return render();}w.busy=true;w.error=null;render();const {data,error}=await _db.rpc('calculate_operator_service_quote_v3',{p_company_id:d.company_id,p_base_id:d.billing_base_id,p_scheduled_for:new Date(d.scheduled_for).toISOString(),p_category_id:d.primary_concept_id,p_items:secondaryPayload(d),p_asphalt_km:num(d.estimated_asphalt_km),p_gravel_km:num(d.estimated_gravel_km),p_toll_amount:commercialProviderTollTotal(d),p_is_holiday:!!d.is_holiday});w.busy=false;w.quote=error?null:data;w.error=error?.message||null;render();}
+function createPayload(){const d=S.wizard.data;return{...d,category_id:d.primary_concept_id,scheduled_for:iso(d.scheduled_for),estimated_arrival_at:iso(d.estimated_arrival_at),estimated_finish_at:iso(d.estimated_finish_at),items:secondaryPayload(d),item_codes:d.item_codes||{},estimated_distance_km:num(d.estimated_asphalt_km)+num(d.estimated_gravel_km),toll_estimate:commercialProviderTollTotal(d),commercial_addons:commercialPayload(d)};}
+function editPayload(){const w=S.wizard,d=w.data,o=w.original||{},out={},scalar=['company_id','billing_base_id','service_order_number','priority','primary_concept_id','granted_delay_minutes','logistics_type','customer_name','customer_phone','customer_email','vehicle_plate','vehicle_make_model','origin','destination','origin_lat','origin_lng','destination_lat','destination_lng','origin_place_id','destination_place_id','origin_formatted_address','destination_formatted_address','assigned_driver_id','assigned_truck_id','estimated_asphalt_km','estimated_gravel_km','is_holiday','operator_notes','driver_instructions','route_distance_meters','route_duration_seconds','route_toll_estimate','route_toll_currency','route_provider','route_calculated_at','route_legs'];for(const k of scalar)if(!same(d[k],o[k]))out[k]=d[k];for(const k of ['scheduled_for','estimated_arrival_at','estimated_finish_at'])if(!same(d[k],o[k]))out[k]=iso(d[k]);if(!same(secondaryPayload(d),secondaryPayload(o)))out.items=secondaryPayload(d);if(!same(d.item_codes||{},o.item_codes||{}))out.item_codes=d.item_codes||{};if(!same(commercialPayload(d),commercialPayload(o)))out.commercial_addons=commercialPayload(d);if('primary_concept_id'in out)out.category_id=out.primary_concept_id;if('estimated_asphalt_km'in out||'estimated_gravel_km'in out)out.estimated_distance_km=num(d.estimated_asphalt_km)+num(d.estimated_gravel_km);if('commercial_addons'in out)out.toll_estimate=commercialProviderTollTotal(d);return out;}
+function resourceLabel(kind,id){if(!id)return'—';if(kind==='driver'){const r=(S.drivers||[]).find(x=>String(x.user_id)===String(id));return r?.full_name||r?.name||String(id);}const r=(S.trucks||[]).find(x=>String(x.truck_id)===String(id));return r?.numero_interno||r?.plate||String(id);}
+async function confirmAssignmentChange(w){if(w.mode!=='edit')return true;const d=w.data,o=w.original||{},changed=!same(d.assigned_driver_id,o.assigned_driver_id)||!same(d.assigned_truck_id,o.assigned_truck_id);if(!changed)return true;const oldAssigned=!!o.assigned_driver_id&&!!o.assigned_truck_id,newAssigned=!!d.assigned_driver_id&&!!d.assigned_truck_id;let message;if(!oldAssigned&&newAssigned)message=`¿Confirmar asignación del servicio?\nChofer: ${resourceLabel('driver',d.assigned_driver_id)}\nMóvil: ${resourceLabel('truck',d.assigned_truck_id)}\nEl servicio pasará a ASIGNADO.`;else if(oldAssigned&&!newAssigned)message=`¿Quitar la asignación del servicio?\nChofer: ${resourceLabel('driver',o.assigned_driver_id)}\nMóvil: ${resourceLabel('truck',o.assigned_truck_id)}\nEl servicio volverá a SIN ASIGNAR.`;else message=`¿Confirmar reasignación del servicio?\nChofer: ${resourceLabel('driver',o.assigned_driver_id)} → ${resourceLabel('driver',d.assigned_driver_id)}\nMóvil: ${resourceLabel('truck',o.assigned_truck_id)} → ${resourceLabel('truck',d.assigned_truck_id)}`;const ask=window.OperatorServiceLifecycleV2?.confirmAssignmentChange;if(!ask){notify('No se pudo abrir la confirmación dentro de AuxiliOS.','error');return false;}return await ask(message);}
+async function save(){const w=S.wizard;if(!w||w.busy||w.mode==='view'||!await ensureContext())return;const wasEdit=w.mode==='edit';const errors=validationErrors();if(errors.length){const message=errors.join(' ');if(!wasEdit)return showTransientError(message,3000);w.error=message;return render();}if(wasEdit&&!await confirmAssignmentChange(w))return;const body=wasEdit?editPayload():createPayload();if(wasEdit&&!Object.keys(body).length){w.dirty=false;return render();}if(!w.quote){await calculate();if(!w.quote)return;}w.busy=true;w.error=null;render();let data,error;if(wasEdit)({data,error}=await _db.rpc('update_operator_service',{p_service_id:w.serviceId,p_payload:body,p_reason:String(w.changeReason||'').trim()||null}));else({data,error}=await _db.rpc('create_operator_service_v3',{p_payload:body}));w.busy=false;if(error){w.error=error.message;return render();}notify(wasEdit?'Servicio actualizado':'Servicio creado','success');w.dirty=false;performCloseWorkspace();S.view='active';S.status='all';if(typeof window.goTo==='function')window.goTo('operaciones');await loadServices();}
+async function checkCode(){const w=S.wizard;if(!w?.data.company_id||w.mode==='view'||!String(w.data.service_order_number||'').trim())return;const {data,error}=await _db.rpc('check_recent_provider_code_v3',{p_company_id:w.data.company_id,p_code:w.data.service_order_number,p_exclude_service_id:w.mode==='edit'?w.serviceId:null});if(!error)w.codeWarning=data?.duplicate?data:null;render();}
+function setAssignment(kind,value){const w=S.wizard,key=kind==='driver'?'assigned_driver_id':'assigned_truck_id';if(!w||locked(key))return;if(!value){w.data.assigned_driver_id='';w.data.assigned_truck_id='';markDirty();return render();}if(kind==='driver'){const current=(S.drivers||[]).find(x=>String(x.user_id)===String(value));w.data.assigned_driver_id=value;if(current?.active_truck_id)w.data.assigned_truck_id=String(current.active_truck_id);}else{const current=(S.trucks||[]).find(x=>String(x.truck_id)===String(value));w.data.assigned_truck_id=value;if(current?.active_driver_id)w.data.assigned_driver_id=String(current.active_driver_id);}markDirty();render();}
+window.addEventListener('beforeunload',e=>{if(S.wizard?.dirty){e.preventDefault();e.returnValue='';}});
+Object.assign(O,{openWizard:openCreate,openViewWizard:openView,openEditWizard:openEdit,closeWizard:closeWorkspace,renderWizard:render,calculateQuote:calculate,refreshServiceContext:loadContext,isServiceFieldLocked:locked,isSecondaryServiceLocked:addonLocked,areServiceTollsLocked:addonLocked,setServiceAssignment:setAssignment,addSecondaryService:addSecondary,removeSecondaryService:removeSecondary,setSecondaryServiceQuantity:secondaryQty,setSecondaryServiceCode:secondaryCode,commercialState,commercialPayload,commercialProviderTollTotal,commercialCustomerTollTotal,commercialCustomerExcessTotal,setCommercialCoverage,addCommercialToll,removeCommercialToll,updateCommercialToll,addCommercialExcess,removeCommercialExcess,updateCommercialExcess});
+Object.assign(window,{abrirNuevoServicio:openCreate,verServicioWorkspace:openView,editarServicioOperador:openEdit,cerrarNuevoServicio:closeWorkspace,osSetServicio:setVal,seleccionarEmpresaServicio:selectCompany,cambiarBaseServicio:changeBase,actualizarContextoServicio:loadContext,seleccionarPrincipalServicio:selectPrimary,agregarSecundarioServicio:addSecondary,quitarSecundarioServicio:removeSecondary,cantidadSecundarioServicio:secondaryQty,codigoSecundarioServicio:secondaryCode,calcularNuevoServicio:calculate,crearNuevoServicio:save,guardarServicioWorkspace:save,validarCodigoPrestadoraServicio:checkCode,asignarRecursoServicio:setAssignment,cambiarMotivoServicio:v=>{if(S.wizard)S.wizard.changeReason=v;}});
 })();

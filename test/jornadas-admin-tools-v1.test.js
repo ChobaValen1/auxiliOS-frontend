@@ -134,7 +134,7 @@ test('el módulo se carga, se precachea y entra en CI', () => {
   assert.match(sw, /jornadas-admin-tools-v1\.css/);
   assert.match(sw, /jornadas-admin-tools-v1\.js/);
   assert.match(pkg, /node --check jornadas-admin-tools-v1\.js/);
-  const version = sw.match(/auxilios-v(\d+)/);
+  const version = sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/);
   assert.ok(version && Number(version[1]) >= 146);
   assert.match(css, /\.jat-history-item/);
   assert.match(css, /\.jat-voided-row/);
