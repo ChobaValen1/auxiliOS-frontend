@@ -63,7 +63,7 @@ test('Facturación elimina el paso redundante de aprobación', () => {
 
   const selection = functionBody(billing, 'selectionMarkup', 'invoiceModalMarkup');
   assert.match(selection, /data-ob="invoice-selection"/);
-  assert.match(selection, />FACTURAR</);
+  assert.match(selection, /Facturando…'\s*:\s*'FACTURAR'/);
 });
 
 test('servicios pending y reviewed legados mantienen el guard canónico antes de facturar', () => {

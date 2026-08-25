@@ -34,7 +34,11 @@ test('el modal permite ingresar la numeración real y la fecha', () => {
 });
 
 test('el resumen diferencia servicios, peajes y grupos canónicos', () => {
-  const groups = functionBody(billing, 'invoiceGroupCounts', 'freshInvoiceForm');
+  const start = billing.indexOf('function invoiceGroupCounts');
+  const end = billing.indexOf('const freshInvoiceForm', start);
+  assert.notEqual(start, -1, 'No se encontró invoiceGroupCounts');
+  assert.notEqual(end, -1, 'No se encontró freshInvoiceForm');
+  const groups = billing.slice(start, end);
   assert.match(groups, /name === 'liviano'/);
   assert.match(groups, /name === 'semipesado'/);
   assert.match(groups, /name === 'uml'/);

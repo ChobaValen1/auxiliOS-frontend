@@ -59,9 +59,10 @@ test('superseded Services beta modules are absent', () => {
     'operator-console-v2.css',
     'operator-service-workspace-v2.js',
     'operator-service-workspace-review-v3.js',
-    'operator-service-workspace-review-v3.css'
+    'operator-service-workspace-review-v3.css',
+    'operator-service-workspace-v2.css'
   ]) assert.equal(exists(file), false, `${file} should not exist`);
-  assert.equal(exists('operator-service-workspace-v2.css'), true, 'base workspace CSS is still used by the canonical renderer');
+  assert.equal(exists('operator-service-workspace-reactive-v1.css'), true, 'canonical reactive workspace CSS must remain');
 });
 
 test('unreachable fleet patch stack is removed from repository and PWA cache', () => {
@@ -79,7 +80,7 @@ test('unreachable fleet patch stack is removed from repository and PWA cache', (
     assert.equal(exists(file), false, `${file} should not exist`);
     assert.doesNotMatch(sw, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
-  const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
+  const version=Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1]||0);
   assert.ok(version>=185,`Expected cache version 185 or newer, received ${version}`);
 });
 

@@ -121,7 +121,7 @@ test('canonical navigation assets are loaded checked and precached', () => {
   const config = read('config.js');
   const serviceWorker = read('sw.js');
   const pkg = read('package.json');
-  const cacheVersion = Number(serviceWorker.match(/auxilios-v(\d+)/)?.[1] || 0);
+  const cacheVersion = Number(serviceWorker.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1] || 0);
 
   assert.match(config, /auxilios-configuration-center/);
   assert.match(config, /auxilios-toll-management/);
