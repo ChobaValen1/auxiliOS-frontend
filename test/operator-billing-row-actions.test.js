@@ -8,7 +8,8 @@ const css=fs.readFileSync('operator-billing.css','utf8');
 test('grilla reemplaza Ver por menu horizontal de tres puntos',()=>{
   const row=billing.split('function rowMarkup(row)')[1].split('function tollTableMarkup()')[0];
   assert.match(row,/data-ob-row-menu/);
-  assert.match(row,/aria-label="Acciones del servicio"/);
+  assert.match(row,/title="Acciones del servicio"/);
+  assert.match(row,/aria-haspopup="menu"/);
   assert.match(row,/⋯/);
   assert.doesNotMatch(row,/>Ver<\/button>/);
 });
