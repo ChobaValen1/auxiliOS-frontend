@@ -10,15 +10,15 @@ const baseMigration=fs.readFileSync('migrations/20260818023000_operator_invoices
 const workflowMigration=fs.readFileSync('migrations/20260824221500_operator_invoice_workflow_v3.sql','utf8');
 
 test('Facturación expone una sola cola y una única acción directa FACTURAR',()=>{
-  assert.match(billing,/tab:'services'/);
+  assert.match(billing,/tab:\s*'services'/);
   assert.match(billing,/data-ob-tab="services">Servicios/);
   assert.doesNotMatch(billing,/data-ob-tab="pending"|data-ob-tab="reviewed"/);
   assert.doesNotMatch(billing,/approve-selection|openApproval|approveSelection|review_operator_billing_services_bulk_v2/);
   assert.match(billing,/data-ob="invoice-selection"/);
-  assert.match(billing,/>FACTURAR</);
+  assert.match(billing,/Facturando…'\s*:\s*'FACTURAR'/);
   assert.match(billing,/create_operator_invoice_v3/);
-  assert.match(billing,/p_service_ids: serviceIds/);
-  assert.match(billing,/p_service_toll_ids: tollIds/);
+  assert.match(billing,/p_service_ids:\s*serviceIds/);
+  assert.match(billing,/p_service_toll_ids:\s*tollIds/);
   assert.doesNotMatch(billing,/create_operator_invoice_v1|create_operator_invoice_v2/);
   assert.match(billing,/window\.OperatorInvoices\?\.open/);
 });
@@ -58,7 +58,8 @@ test('Facturas expone PDF, Excel, Nota de Crédito y Anular desde un solo menú'
 
 test('PDF usa un único bucket privado y guarda sólo la referencia en factura',()=>{
   assert.match(workflowMigration,/operator-invoice-pdfs/);
-  assert.match(workflowMigration,/public,false/);
+  assert.match(workflowMigration,/values\('operator-invoice-pdfs','operator-invoice-pdfs',false,/);
+  assert.match(workflowMigration,/set public=false/);
   assert.match(workflowMigration,/allowed_mime_types/);
   assert.match(workflowMigration,/application\/pdf/);
   assert.match(workflowMigration,/add column if not exists pdf_path text/);
