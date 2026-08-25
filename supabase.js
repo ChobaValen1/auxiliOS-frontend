@@ -608,6 +608,7 @@ function _mapRemitoRow(r) {
     createdAt:     r.created_at_device || null,
     firmadoAt:     r.firmado_at        || null,
     operatorServiceId: r.operator_service_id || null,
+    driverIntakeId: r.driver_intake_id || null,
     clientOperationId: r.client_operation_id || null,
     documentSource: r.document_source || 'legacy_driver',
   };
@@ -945,6 +946,11 @@ function _operatorServiceIdActivo(explicitId = null) {
     || null;
 }
 
+function _driverAdHocActivo(explicit = null) {
+  if (explicit != null) return !!explicit;
+  return sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1';
+}
+
 function _operatorRemitoClientOperationId(serviceId, nroRemito, explicitId = null) {
   if (explicitId) return explicitId;
   if (!serviceId) return null;
@@ -980,18 +986,42 @@ async function guardarRemitoVinculado(remito, explicitServiceId = null) {
   return data;
 }
 
+async function guardarRemitoAdHoc(remito) {
+  const clientOperationId = _operatorRemitoClientOperationId(
+    'driver-ad-hoc',
+    remito?.nro_remito,
+    remito?.client_operation_id
+  );
+  const payload = {
+    ...remito,
+    client_operation_id: clientOperationId,
+    document_source: 'driver_ad_hoc',
+  };
+  const { data, error } = await _db.rpc('save_driver_ad_hoc_remito_v1', {
+    p_payload: payload,
+    p_client_operation_id: clientOperationId,
+  });
+  if (error) throw new Error(error.message || 'No se pudo registrar el ingreso sin asignación');
+  return data;
+}
+
 Object.assign(window, {
   guardarRemitoVinculado,
+  guardarRemitoAdHoc,
   obtenerServicioActivoRemito: _operatorServiceIdActivo,
   obtenerOperacionRemito: _operatorRemitoClientOperationId,
+  esRemitoAdHocActivo: _driverAdHocActivo,
 });
 
 // Arma el registro de la tabla remitos a partir de los datos del wizard.
 // Única fuente para el camino online y el offline (outbox).
 function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl) {
   const operatorServiceId = _operatorServiceIdActivo(datosRemito.operator_service_id);
+  const driverAdHoc = !operatorServiceId && _driverAdHocActivo(
+    datosRemito.document_source === 'driver_ad_hoc' ? true : null
+  );
   const clientOperationId = _operatorRemitoClientOperationId(
-    operatorServiceId,
+    operatorServiceId || (driverAdHoc ? 'driver-ad-hoc' : null),
     nroFinal,
     datosRemito.client_operation_id
   );
@@ -1030,6 +1060,9 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
       operator_service_id: operatorServiceId,
       client_operation_id: clientOperationId,
       document_source: 'auxilios_driver',
+    } : driverAdHoc ? {
+      client_operation_id: clientOperationId,
+      document_source: 'driver_ad_hoc',
     } : {}),
   };
 }
@@ -1128,6 +1161,13 @@ async function guardarRemitoCompleto(datosRemito) {
         await guardarRemitoVinculado(remitoDB, remitoDB.operator_service_id);
       } catch (linkedError) {
         error = linkedError;
+      }
+    } else if (remitoDB.document_source === 'driver_ad_hoc') {
+      try {
+        await guardarRemitoAdHoc(remitoDB);
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+      } catch (adHocError) {
+        error = adHocError;
       }
     } else {
       ({ error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));

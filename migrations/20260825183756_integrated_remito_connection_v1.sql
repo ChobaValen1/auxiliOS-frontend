@@ -29,7 +29,7 @@ alter table public.remitos
 alter table public.remitos
   drop constraint if exists remitos_document_source_check,
   add constraint remitos_document_source_check
-    check (document_source in ('legacy_driver','auxilios_driver','external_provider','administrative_exception'));
+    check (document_source in ('legacy_driver','auxilios_driver','driver_ad_hoc','external_provider','administrative_exception'));
 
 -- El histórico continúa siendo legado. Sólo se completa el vínculo ya
 -- demostrado por operator_services.remito_id; no se infieren relaciones nuevas.
@@ -138,7 +138,10 @@ begin
   end if;
 
   if v_new_link then
-    new.document_source:='auxilios_driver';
+    -- Al clasificar un ingreso iniciado sin operador conserva su procedencia.
+    if new.document_source is distinct from 'driver_ad_hoc' then
+      new.document_source:='auxilios_driver';
+    end if;
   end if;
   return new;
 end;
@@ -473,7 +476,7 @@ end;
 $function$;
 
 revoke all on function public.save_driver_operator_service_remito_v3(uuid,jsonb,uuid) from public, anon;
-grant execute on function public.save_driver_operator_service_remito_v3(uuid,jsonb,uuid) to authenticated, service_role;
+grant execute on function public.save_driver_operator_service_remito_v3(uuid,jsonb,uuid) to authenticated;
 
 -- Vista mínima común para que Administración, Operaciones, Supervisión y
 -- Facturación vean la recepción documental sin exponer datos comerciales.
@@ -510,7 +513,7 @@ end;
 $function$;
 
 revoke all on function public.list_operator_service_document_connections_v1() from public, anon;
-grant execute on function public.list_operator_service_document_connections_v1() to authenticated, service_role;
+grant execute on function public.list_operator_service_document_connections_v1() to authenticated;
 
 -- La recepción documental es el gate para Facturación, no para terminar el
 -- trabajo operativo. Un servicio puede finalizar sin remito, pero permanece
@@ -618,7 +621,7 @@ end;
 $function$;
 
 revoke all on function public.resolve_operator_service_document_v1(uuid,text) from public, anon;
-grant execute on function public.resolve_operator_service_document_v1(uuid,text) to authenticated, service_role;
+grant execute on function public.resolve_operator_service_document_v1(uuid,text) to authenticated;
 
 -- Los triggers heredados dejan de buscar En camino/Cargado/En destino. Durante
 -- la compatibilidad sólo relacionan el viaje canónico ASIGNADO/ARRIBADO.

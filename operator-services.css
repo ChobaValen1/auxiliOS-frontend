@@ -18,6 +18,11 @@
 .os-status-tabs button b{font:8px 'DM Mono'}
 .os-status-tabs button.active{border-color:var(--blue);color:var(--blue);background:var(--blue-lo)}
 .os-status-tabs button.warning{color:var(--amber)}
+.os-intakes{margin:0 0 7px;padding:8px;border:1px solid rgba(245,166,35,.28);border-radius:10px;background:rgba(245,166,35,.045)}
+.os-intakes>header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.os-intakes>header b{display:block;font-size:10px}.os-intakes>header small{display:block;color:var(--muted);font-size:8px;margin-top:2px}.os-intakes>header span{font:8px 'DM Mono';color:var(--amber)}
+.os-intake-list{display:grid;gap:5px}.os-intake-list article{display:grid;grid-template-columns:minmax(150px,.7fr) minmax(260px,1.3fr) auto;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--panel)}.os-intake-list article b,.os-intake-list article small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.os-intake-list article b{font-size:9px}.os-intake-list article small{margin-top:2px;color:var(--muted);font-size:7px}
+.os-intake-summary,.os-intake-select,.os-intake-no-match{display:block;margin:12px;padding:10px;border:1px solid var(--border);border-radius:8px}.os-intake-summary b,.os-intake-summary small,.os-intake-select span{display:block}.os-intake-summary small,.os-intake-select span{margin-top:4px;color:var(--muted);font-size:9px}.os-intake-select select{width:100%;margin-top:7px;padding:9px;border:1px solid var(--border);border-radius:7px;background:var(--panel);color:var(--text)}.os-intake-no-match{color:var(--amber);font-size:10px;line-height:1.4}
+@media(max-width:760px){.os-intake-list article{grid-template-columns:1fr}.os-intake-list article button{width:100%}}
 .os-table-wrap{position:relative;max-height:calc(100vh - 126px);overflow:auto;border:1px solid var(--border);border-radius:9px;background:var(--panel)}
 .os-table{width:100%;min-width:0;border-collapse:separate;border-spacing:0;table-layout:fixed}
 .os-table th{position:sticky;top:0;z-index:4;height:31px;padding:0 5px;border-bottom:1px solid var(--border);background:var(--bg);color:var(--muted2);font-size:7px;font-weight:800;text-align:left;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

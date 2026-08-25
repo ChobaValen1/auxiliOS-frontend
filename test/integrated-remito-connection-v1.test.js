@@ -29,7 +29,8 @@ test('el guardado canónico es autenticado, idempotente y deriva identidad, jorn
   assert.match(migration,/trip_id=s\.trip_id/);
   assert.match(migration,/log_id=t\.log_id/);
   assert.match(migration,/revoke all on function public\.save_driver_operator_service_remito_v3.*from public, anon/s);
-  assert.match(migration,/grant execute on function public\.save_driver_operator_service_remito_v3.*to authenticated, service_role/s);
+  assert.match(migration,/grant execute on function public\.save_driver_operator_service_remito_v3.*to authenticated/s);
+  assert.doesNotMatch(migration,/save_driver_operator_service_remito_v3.*to service_role/s);
   assert.match(migration,/guard_operator_service_document_billing_v1/);
   assert.match(migration,/resolve_operator_service_document_v1/);
   assert.match(migration,/Sólo Administración puede resolver la recepción documental/);

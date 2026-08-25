@@ -1041,7 +1041,11 @@ if (view === 'nuevo') {
 
     if (d) {
       if (d.operatorServiceId) {
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
         sessionStorage.setItem('auxilios_phase3_service_id', d.operatorServiceId);
+      } else if (d.driverIntakeId || d.documentSource === 'driver_ad_hoc') {
+        sessionStorage.removeItem('auxilios_phase3_service_id');
+        sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
       }
       const setT = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '—'; };
       const setV = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
@@ -2562,8 +2566,11 @@ async function confirmarFirma() {
     const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
       ? obtenerServicioActivoRemito()
       : sessionStorage.getItem('auxilios_phase3_service_id');
-    const clientOperationId = operatorServiceId && typeof obtenerOperacionRemito === 'function'
-      ? obtenerOperacionRemito(operatorServiceId, nro2)
+    const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
+      ? esRemitoAdHocActivo()
+      : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+    const clientOperationId = (operatorServiceId || adHocMode) && typeof obtenerOperacionRemito === 'function'
+      ? obtenerOperacionRemito(operatorServiceId || 'driver-ad-hoc', nro2)
       : null;
 
     if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
@@ -2595,6 +2602,9 @@ async function confirmarFirma() {
           operator_service_id: operatorServiceId,
           client_operation_id: clientOperationId,
           document_source: 'auxilios_driver',
+        } : adHocMode ? {
+          client_operation_id: clientOperationId,
+          document_source: 'driver_ad_hoc',
         } : {}),
       };
       // Si el remito pendiente del mismo nro está en la cola, la firma depende de él.
@@ -2625,7 +2635,7 @@ async function confirmarFirma() {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones,cliente_presente,operator_service_id,client_operation_id')
+      .select('historial_ediciones,cliente_presente,operator_service_id,driver_intake_id,client_operation_id,document_source')
       .eq('nro_remito', nro2)
       .single();
 
@@ -2674,6 +2684,10 @@ async function confirmarFirma() {
           operator_service_id: operatorServiceId || remitoActual.operator_service_id,
           client_operation_id: clientOperationId || remitoActual?.client_operation_id || null,
           document_source: 'auxilios_driver',
+        } : (adHocMode || remitoActual?.driver_intake_id || remitoActual?.document_source === 'driver_ad_hoc') ? {
+          driver_intake_id: remitoActual?.driver_intake_id || null,
+          client_operation_id: clientOperationId || remitoActual?.client_operation_id || null,
+          document_source: 'driver_ad_hoc',
         } : {}),
       };
 
@@ -2684,6 +2698,13 @@ async function confirmarFirma() {
         await guardarRemitoVinculado(firmaDB, linkedServiceId);
       } catch (linkedError) {
         error = linkedError;
+      }
+    } else if ((adHocMode || remitoActual?.driver_intake_id || remitoActual?.document_source === 'driver_ad_hoc') && typeof guardarRemitoAdHoc === 'function') {
+      try {
+        await guardarRemitoAdHoc(firmaDB);
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+      } catch (adHocError) {
+        error = adHocError;
       }
     } else {
       ({ error } = await _db.from('remitos')
@@ -5479,6 +5500,10 @@ if (typeof obRegistrarHandler === 'function') {
       const linked = await guardarRemitoVinculado(payload, payload.operator_service_id);
       return { realId: linked?.remito_id || null };
     }
+    if (payload.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc(payload);
+      return { realId: intake?.remito_id || null };
+    }
     const { data, error } = await _db.from('remitos')
       .upsert(payload, { onConflict: 'nro_remito' })
       .select('remito_id')
@@ -5511,6 +5536,10 @@ if (typeof obRegistrarHandler === 'function') {
       const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
       return { realId: linked?.remito_id || null };
     }
+    if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc(remito);
+      return { realId: intake?.remito_id || null };
+    }
     const { data, error } = await _db.from('remitos')
       .upsert(remito, { onConflict: 'nro_remito' })
       .select('remito_id')
@@ -5524,7 +5553,7 @@ if (typeof obRegistrarHandler === 'function') {
   // viaja en el payload y se agrega al historial recién al sincronizar (el
   // historial existente no se puede leer offline).
   obRegistrarHandler('remito_firmar', async (payload, blobs) => {
-    const { nro_remito, edicion, operator_service_id, client_operation_id, ...campos } = payload;
+    const { nro_remito, edicion, operator_service_id, driver_intake_id, client_operation_id, document_source, ...campos } = payload;
 
     let firmaUrl = null;
     if (blobs && blobs.firma) {
@@ -5534,7 +5563,7 @@ if (typeof obRegistrarHandler === 'function') {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones,operator_service_id,client_operation_id')
+      .select('historial_ediciones,operator_service_id,driver_intake_id,client_operation_id,document_source')
       .eq('nro_remito', nro_remito)
       .single();
     const historial = Array.isArray(remitoActual?.historial_ediciones)
@@ -5552,6 +5581,22 @@ if (typeof obRegistrarHandler === 'function') {
         client_operation_id: client_operation_id || remitoActual?.client_operation_id || null,
       }, serviceId);
       return { realId: linked?.remito_id || null };
+    }
+
+    const adHoc = document_source === 'driver_ad_hoc'
+      || !!driver_intake_id
+      || remitoActual?.document_source === 'driver_ad_hoc'
+      || !!remitoActual?.driver_intake_id;
+    if (adHoc && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc({
+        nro_remito,
+        ...campos,
+        firma_imagen_url: firmaUrl,
+        driver_intake_id: driver_intake_id || remitoActual?.driver_intake_id || null,
+        client_operation_id: client_operation_id || remitoActual?.client_operation_id || null,
+        document_source: 'driver_ad_hoc',
+      });
+      return { realId: intake?.remito_id || null };
     }
 
     const { data: actualizados, error } = await _db.from('remitos')
@@ -7575,8 +7620,11 @@ async function guardarRemitoPendiente() {
   const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
     ? obtenerServicioActivoRemito()
     : sessionStorage.getItem('auxilios_phase3_service_id');
-  const clientOperationId = operatorServiceId && typeof obtenerOperacionRemito === 'function'
-    ? obtenerOperacionRemito(operatorServiceId, nro)
+  const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
+    ? esRemitoAdHocActivo()
+    : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+  const clientOperationId = (operatorServiceId || adHocMode) && typeof obtenerOperacionRemito === 'function'
+    ? obtenerOperacionRemito(operatorServiceId || 'driver-ad-hoc', nro)
     : null;
   const remitoDB = {
     nro_remito:        nro,
@@ -7601,6 +7649,9 @@ async function guardarRemitoPendiente() {
       operator_service_id: operatorServiceId,
       client_operation_id: clientOperationId,
       document_source: 'auxilios_driver',
+    } : adHocMode ? {
+      client_operation_id: clientOperationId,
+      document_source: 'driver_ad_hoc',
     } : {}),
   };
 
@@ -7628,6 +7679,12 @@ async function guardarRemitoPendiente() {
     } catch (linkedError) {
       error = linkedError;
     }
+  } else if (adHocMode && typeof guardarRemitoAdHoc === 'function') {
+    try {
+      data = await guardarRemitoAdHoc(remitoDB);
+    } catch (adHocError) {
+      error = adHocError;
+    }
   } else {
     ({ data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));
   }
@@ -7648,7 +7705,11 @@ async function guardarRemitoPendiente() {
 
 function completarRemitoPendiente(r) {
   if (r?.operatorServiceId) {
+    sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
     sessionStorage.setItem('auxilios_phase3_service_id', r.operatorServiceId);
+  } else if (r?.driverIntakeId || r?.documentSource === 'driver_ad_hoc') {
+    sessionStorage.removeItem('auxilios_phase3_service_id');
+    sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
   }
   showRemitosView('nuevo'); // calls remWizardReset() internally — clears all fields
   const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
