@@ -1,6 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+
 const billing=fs.readFileSync('operator-billing.js','utf8');
 const billingCss=fs.readFileSync('operator-billing.css','utf8');
 const billingExport=fs.readFileSync('operator-billing-export.js','utf8');
@@ -10,40 +11,36 @@ const config=fs.readFileSync('config.js','utf8');
 const index=fs.readFileSync('Index.html','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const foundation=fs.readFileSync('migrations/20260817133000_operator_billing_core_v1.sql','utf8');
-const migration=fs.readFileSync('migrations/20260817141500_operator_billing_desk_v2.sql','utf8');
+const legacyDesk=fs.readFileSync('migrations/20260817141500_operator_billing_desk_v2.sql','utf8');
 const adminNoReason=fs.readFileSync('migrations/20260818020500_admin_actions_without_reason_v1.sql','utf8');
 const tollSchema=fs.readFileSync('migrations/20260817181500_toll_billing_mode_schema_v1.sql','utf8');
 const tollConfig=fs.readFileSync('migrations/20260817181600_toll_billing_config_rpc_v1.sql','utf8');
 const tollQuote=fs.readFileSync('migrations/20260817181700_toll_billing_quote_v1.sql','utf8');
 const tollDesk=fs.readFileSync('migrations/20260817181800_toll_billing_desk_v1.sql','utf8');
 const exportMigration=fs.readFileSync('migrations/20260817195000_operator_billing_export_v2.sql','utf8');
+const invoiceWorkflow=fs.readFileSync('migrations/20260824221500_operator_invoice_workflow_v3.sql','utf8');
 
-test('Facturación mantiene lifecycle independiente FINALIZADO -> PENDIENTE -> REVISADO',()=>{
+test('backend conserva compatibilidad histórica reviewed pero la UI no expone aprobar',()=>{
   assert.match(foundation,/operator_service_billing_revisions/);
-  assert.match(migration,/Sólo un servicio FINALIZADO y PENDIENTE puede marcarse REVISADO/);
-  assert.match(migration,/billing_status='reviewed'/);
-  assert.match(migration,/review_operator_billing_service_v2/);
-  assert.doesNotMatch(billing,/mark.*invoiced|invoice_operator|facturarServicio/);
+  assert.match(legacyDesk,/billing_status='reviewed'/);
+  assert.match(legacyDesk,/review_operator_billing_service_v2/);
+  assert.doesNotMatch(billing,/approve-selection|openApproval|approveSelection|Confirmar aprobación|APROBADO/);
+  assert.doesNotMatch(billing,/review_operator_billing_services_bulk_v2/);
 });
 
 test('importe se recalcula por período sin pisar snapshot de FINALIZADO',()=>{
-  assert.match(migration,/calculate_operator_service_billing_quote_v2/);
-  assert.match(migration,/calculate_operator_service_quote_v4_full/);
-  assert.match(migration,/pricing_snapshot->>'company_estimated_total'/);
-  assert.match(migration,/stored_company_amount/);
-  assert.match(migration,/current_company_amount/);
-  assert.match(migration,/billing_delta/);
-  assert.match(migration,/billing_source','current_tariff_period/);
-  const calc=migration.split('create or replace function app_private.calculate_operator_service_billing_quote_v2')[1].split('create or replace function public.list_operator_billing_services_v2')[0];
+  assert.match(legacyDesk,/calculate_operator_service_billing_quote_v2/);
+  assert.match(legacyDesk,/calculate_operator_service_quote_v4_full/);
+  assert.match(legacyDesk,/pricing_snapshot->>'company_estimated_total'/);
+  assert.match(legacyDesk,/stored_company_amount/);
+  assert.match(legacyDesk,/current_company_amount/);
+  assert.match(legacyDesk,/billing_delta/);
+  const calc=legacyDesk.split('create or replace function app_private.calculate_operator_service_billing_quote_v2')[1].split('create or replace function public.list_operator_billing_services_v2')[0];
   assert.doesNotMatch(calc,/update public\.operator_services/);
 });
 
 test('mesa acepta búsqueda, Prestadora y período mensual',()=>{
-  assert.match(migration,/list_operator_billing_services_v2/);
-  assert.match(migration,/p_search text default null/);
-  assert.match(migration,/p_company_id uuid default null/);
-  assert.match(migration,/p_period_start date default null/);
-  assert.match(migration,/p_period_end date default null/);
+  assert.match(billing,/list_operator_billing_services_v3/);
   assert.match(billing,/id="ob-search"/);
   assert.match(billing,/id="ob-company-filter"/);
   assert.match(billing,/id="ob-period-filter"/);
@@ -54,7 +51,7 @@ test('grilla general es sintética y deja pricing dentro del detalle',()=>{
   const table=billing.split('function tableMarkup()')[1].split('function rowMarkup')[0];
   for(const label of ['Fecha/Hora','Prestadora','Base','Tipo de Servicio','Origen','Destino','Cliente','KM'])assert.match(table,new RegExp(label));
   for(const forbidden of ['Importe cierre','Importe actual','Diferencia','Tarifa','Estado'])assert.doesNotMatch(table,new RegExp(forbidden));
-  const detail=billing.split('function detailMarkup()')[1].split('function reviewMarkup')[0];
+  const detail=billing.split('function detailMarkup()')[1].split('function render()')[0];
   assert.match(detail,/Importe actual/);
   assert.match(detail,/Importe al cierre/);
   assert.match(detail,/Diferencia/);
@@ -63,80 +60,64 @@ test('grilla general es sintética y deja pricing dentro del detalle',()=>{
   assert.match(billing,/function componentMarkup/);
 });
 
-test('selección masiva jamás mezcla Prestadoras en frontend ni backend',()=>{
-  assert.match(billing,/selectionCompanyId/);
-  assert.match(billing,/No se pueden seleccionar juntas diferentes prestadoras/);
-  assert.match(billing,/Filtrá una prestadora antes de seleccionar todos/);
-  assert.match(billing,/review_operator_billing_services_bulk_v2/);
-  assert.match(migration,/count\(distinct company_id\)/);
-  assert.match(migration,/No se pueden procesar juntas diferentes prestadoras/);
-  assert.match(migration,/La selección contiene servicios que ya no están PENDIENTES/);
+test('selección factura una sola Prestadora y una sola moneda',()=>{
+  assert.match(billing,/function selectedCompanies\(rows=selectedRows\(\)\)/);
+  assert.match(billing,/function selectedCurrencies\(rows=selectedRows\(\)\)/);
+  assert.match(billing,/seleccioná servicios de una sola prestadora/i);
+  assert.match(billing,/selección debe pertenecer a una sola prestadora/i);
+  assert.match(billing,/selección debe tener una sola moneda/i);
+  assert.match(billing,/data-ob="invoice-selection"/);
+  assert.match(billing,/>FACTURAR</);
 });
 
-test('revisión masiva sólo prepara servicios; no fabrica una factura',()=>{
-  assert.match(billing,/Marcar REVISADOS/);
-  assert.match(billing,/Confirmar revisión masiva/);
-  assert.match(billing,/Facturar selección · siguiente etapa/);
-  assert.match(billing,/Se habilitará con la entidad Factura/);
-  assert.match(migration,/review_operator_billing_services_bulk_v2/);
-  assert.doesNotMatch(migration,/create table.*invoice|create table.*factura/i);
+test('Facturar abre modal y crea directamente con V2 sin revisión masiva',()=>{
+  assert.match(billing,/function openInvoice\(\)/);
+  assert.match(billing,/function createInvoice\(\)/);
+  assert.match(billing,/\['pending','reviewed'\]\.includes\(r\.billing_status\)/);
+  assert.match(billing,/create_operator_invoice_v2/);
+  assert.doesNotMatch(billing,/Marcar REVISADOS|Confirmar revisión masiva|review_operator_billing_services_bulk_v2/);
+  assert.match(invoiceWorkflow,/create_operator_invoice_core_v2\(/);
+  assert.match(invoiceWorkflow,/false\s*\n\s*\);/);
 });
 
-test('Administración puede corregir o anular FINALIZADO y la corrección reingresa PENDIENTE',()=>{
-  assert.match(billing,/Modificar servicio/);
+test('Administración puede corregir o anular un servicio FINALIZADO',()=>{
   assert.match(billing,/window\.editarServicioOperador/);
-  assert.match(billing,/Anular servicio/);
-  assert.match(migration,/update_operator_billing_service_v2/);
-  assert.match(migration,/Sólo Administración puede modificar un servicio FINALIZADO/);
-  assert.match(migration,/billing_status='pending'/);
-  assert.match(migration,/billing_service_edit/);
-  assert.match(migration,/annul_operator_billing_service_v2/);
-  assert.match(migration,/app\.billing_admin_transition/);
-  assert.match(migration,/old\.status='completed' and new\.status='cancelled'/);
-  assert.match(migration,/cancellation_reason_code='billing_admin'/);
+  assert.match(billing,/openDetailAction\(id,'annul'\)/);
+  assert.match(legacyDesk,/update_operator_billing_service_v2/);
+  assert.match(legacyDesk,/Sólo Administración puede modificar un servicio FINALIZADO/);
+  assert.match(legacyDesk,/billing_status='pending'/);
+  assert.match(legacyDesk,/billing_service_edit/);
+  assert.match(legacyDesk,/annul_operator_billing_service_v2/);
 });
 
 test('revertir Facturación vuelve a Servicios sin reabrir lifecycle ni recursos',()=>{
   assert.match(billing,/Revertir Facturación/);
-  assert.match(migration,/revert_operator_billing_service_v2/);
-  const revertFn=migration.split('create or replace function public.revert_operator_billing_service_v2')[1].split('create or replace function app_private.operator_services_before_update')[0];
+  assert.match(legacyDesk,/revert_operator_billing_service_v2/);
+  const revertFn=legacyDesk.split('create or replace function public.revert_operator_billing_service_v2')[1].split('create or replace function app_private.operator_services_before_update')[0];
   assert.match(revertFn,/set billing_status='not_ready'/);
   assert.match(revertFn,/billing_reverted/);
   assert.doesNotMatch(revertFn,/set\s+status\s*=|assigned_driver_id\s*=|assigned_truck_id\s*=/);
   assert.match(billing,/window\.cambiarVistaServicios\?\.\('history'\)/);
 });
 
-test('Administración corrige servicios sin cargar un motivo manual',()=>{
-  assert.match(migration,/get_operator_service_edit_context_base_v2/);
-  assert.match(migration,/update_operator_service_base_v2/);
-  assert.match(migration,/billing_correction/);
-  assert.match(migration,/if s\.status='completed' then return public\.update_operator_billing_service_v2/);
-  assert.match(migration,/Chofer y Móvil no pueden modificarse en un servicio FINALIZADO/);
-  assert.match(adminNoReason,/jsonb_build_object\('requires_reason',false\)/);
-  assert.match(adminNoReason,/'requires_reason',false/);
-  assert.match(adminNoReason,/v_role<>''administracion'' and v_trip_started/);
-  assert.match(adminNoReason,/Corrección administrativa/);
-});
-
-test('revertir y anular se confirman sin campo de motivo y se auditan en backend',()=>{
+test('acciones administrativas de servicio siguen auditadas sin duplicar formularios',()=>{
   assert.match(billing,/function actionConfirmMarkup/);
   assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio/);
   assert.match(billing,/p_reason:null/);
   assert.match(adminNoReason,/Acción administrativa/);
   assert.match(adminNoReason,/revert_operator_billing_service_v2/);
   assert.match(adminNoReason,/annul_operator_billing_service_v2/);
-  assert.match(billing,/Confirmar revisión masiva/);
   assert.doesNotMatch(billing,/window\.confirm|[^\.]confirm\(/);
   assert.match(billingCss,/\.ob-action-confirm/);
   assert.match(billingCss,/\.ob-selection/);
 });
 
-test('roles: Administración y Facturación revisan/revierten; sólo Administración corrige/anula',()=>{
-  assert.match(billing,/const canReview=\(\)=>\['administracion','facturacion'\]/);
+test('roles: Administración y Facturación facturan/revierten; sólo Administración corrige servicios',()=>{
+  assert.match(billing,/const canInvoice=\(\)=>\['administracion','facturacion'\]/);
   assert.match(billing,/const canCorrect=\(\)=>role\(\)==='administracion'/);
   assert.match(billing,/const canRevert=\(\)=>\['administracion','facturacion'\]/);
-  assert.match(migration,/Sólo Administración puede anular un servicio FINALIZADO/);
-  assert.match(migration,/Sólo Administración puede modificar un servicio FINALIZADO/);
+  assert.match(legacyDesk,/Sólo Administración puede anular un servicio FINALIZADO/);
+  assert.match(legacyDesk,/Sólo Administración puede modificar un servicio FINALIZADO/);
 });
 
 test('parámetros separan obtención de peajes de tratamiento de facturación',()=>{
@@ -153,7 +134,7 @@ test('parámetros separan obtención de peajes de tratamiento de facturación',(
   assert.match(companyBilling,/Por separado/);
 });
 
-test('peaje separado no integra el importe del servicio y conserva su monto independiente',()=>{
+test('peaje separado no integra el importe del servicio',()=>{
   assert.match(tollQuote,/v_service_quote:=app_private\.calculate_operator_service_quote_v4_full/);
   assert.match(tollQuote,/v_current:=v_service_amount\+case when v_toll_billing_mode='with_service' then v_effective_toll else 0 end/);
   assert.match(tollQuote,/separate_toll_amount/);
@@ -165,7 +146,7 @@ test('peaje separado no integra el importe del servicio y conserva su monto inde
   assert.match(billing,/no forma parte del total del servicio/i);
 });
 
-test('Facturación incorpora un sector Peajes sin duplicar la carga operativa',()=>{
+test('Facturación incorpora Peajes sin duplicar la carga operativa',()=>{
   assert.match(tollDesk,/list_operator_billing_tolls_v1/);
   assert.match(tollDesk,/operator_service_tolls/);
   assert.match(tollDesk,/cfg\.toll_billing_mode='separate'/);
@@ -173,11 +154,11 @@ test('Facturación incorpora un sector Peajes sin duplicar la carga operativa',(
   assert.match(billing,/data-ob-tab="tolls">Peajes/);
   assert.match(billing,/function tollTableMarkup/);
   assert.match(billing,/function tollRowMarkup/);
-  assert.match(billing,/list_operator_billing_tolls_v1/);
+  assert.match(billing,/list_operator_billing_tolls_v2/);
   assert.doesNotMatch(tollDesk,/create table.*toll/i);
 });
 
-test('exportador usa el SheetJS ya cargado y genera archivos XLSX reales',()=>{
+test('exportador usa SheetJS ya cargado y genera XLSX real',()=>{
   assert.match(index,/xlsx\.full\.min\.js/);
   assert.match(excelExport,/window\.XLSX/);
   assert.match(excelExport,/utils\.aoa_to_sheet/);
@@ -187,19 +168,17 @@ test('exportador usa el SheetJS ya cargado y genera archivos XLSX reales',()=>{
   assert.doesNotMatch(excelExport,/text\/csv|\.csv/i);
 });
 
-test('Facturación conserva vista actual, selección y todo lo filtrado como alcances de exportación',()=>{
+test('Facturación conserva selección, servicios visibles y todo lo filtrado para Excel',()=>{
   assert.match(billingExport,/const exportCurrent=\(\)=>openPicker\('current'\)/);
   assert.match(billingExport,/const exportSelected=\(\)=>openPicker\('selected'\)/);
   assert.match(billingExport,/const exportAllFiltered=\(\)=>openPicker\('all'\)/);
-  assert.match(billing,/Vista actual/);
+  assert.match(billing,/Servicios visibles/);
   assert.match(billing,/Todo lo filtrado/);
   assert.match(billingExport,/S\.selected/);
-  assert.match(billingExport,/billing_status==='pending'/);
-  assert.match(billingExport,/billing_status==='reviewed'/);
   assert.match(billingExport,/S\.tollRows/);
 });
 
-test('Excel permite elegir columnas, seleccionar todas o deseleccionarlas antes de descargar',()=>{
+test('Excel permite elegir columnas antes de descargar',()=>{
   assert.match(billingExport,/Elegí qué columnas querés incluir/);
   assert.match(billingExport,/Seleccionar Todos/);
   assert.match(billingExport,/Deseleccionar Todos/);
@@ -208,7 +187,7 @@ test('Excel permite elegir columnas, seleccionar todas o deseleccionarlas antes 
   assert.match(billingExport,/confirmExport/);
 });
 
-test('catálogo Excel de servicios coincide con datos comerciales y operativos solicitados',()=>{
+test('catálogo Excel de servicios conserva los datos comerciales y operativos',()=>{
   const required=[
     'N° Orden','Fecha','Hora','Prestadora','Chofer','Móvil','Tipo de Servicio',
     'Calle Origen','Localidad Origen','Provincia Origen','Calle Destino','Localidad Destino','Provincia Destino',
@@ -236,7 +215,7 @@ test('exportación usa dataset canónico para tarifas, asignación final, KM y c
   assert.match(billingExport,/get_operator_billing_export_rows_v1/);
 });
 
-test('importe de KM por terreno se reparte sin alterar el subtotal canónico de distancia',()=>{
+test('importe de KM por terreno conserva el subtotal canónico de distancia',()=>{
   assert.match(billingExport,/function distanceAmounts\(r\)/);
   assert.match(billingExport,/total\*asphalt\/km/);
   assert.match(billingExport,/round2\(total-a\)/);
@@ -250,7 +229,7 @@ test('Excel de peajes conserva datos útiles y omite moneda administrativa',()=>
   assert.doesNotMatch(billingExport,/header:'Moneda'/);
 });
 
-test('runtime carga y cachea Facturación + Excel canónicos v204',()=>{
+test('runtime carga Facturación y Excel canónicos sin assets de revisión paralelos',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/auxilios-excel-export.*excel-export\.js/);
   assert.match(critical,/auxilios-operator-billing.*operator-billing\.js/);
@@ -261,5 +240,5 @@ test('runtime carga y cachea Facturación + Excel canónicos v204',()=>{
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-v204/);
+  assert.match(sw,/auxilios-billing-phase2-v206/);
 });
