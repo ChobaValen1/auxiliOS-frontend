@@ -67,7 +67,7 @@ test('selección factura conceptos de una sola Prestadora y una sola moneda',()=
   assert.match(billing,/seleccioná conceptos de una sola prestadora/i);
   assert.match(billing,/selección debe tener una sola moneda/i);
   assert.match(billing,/data-ob="invoice-selection"/);
-  assert.match(billing,/>FACTURAR</);
+  assert.match(billing,/Facturando…'\s*:\s*'FACTURAR'/);
 });
 
 test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
@@ -86,7 +86,7 @@ test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
 
 test('Administración puede corregir o anular un servicio FINALIZADO',()=>{
   assert.match(billing,/window\.editarServicioOperador/);
-  assert.match(billing,/openDetailAction\(id,'annul'\)/);
+  assert.match(billing,/openDetailAction\(id,\s*'annul'\)/);
   assert.match(legacyDesk,/update_operator_billing_service_v2/);
   assert.match(legacyDesk,/Sólo Administración puede modificar un servicio FINALIZADO/);
   assert.match(legacyDesk,/billing_status='pending'/);
@@ -107,7 +107,7 @@ test('revertir Facturación vuelve a Servicios sin reabrir lifecycle ni recursos
 test('acciones administrativas de servicio siguen auditadas sin duplicar formularios',()=>{
   assert.match(billing,/function actionConfirmMarkup/);
   assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio/);
-  assert.match(billing,/p_reason:null/);
+  assert.match(billing,/p_reason:\s*null/);
   assert.match(adminNoReason,/Acción administrativa/);
   assert.match(adminNoReason,/revert_operator_billing_service_v2/);
   assert.match(adminNoReason,/annul_operator_billing_service_v2/);
@@ -173,9 +173,9 @@ test('exportador usa SheetJS ya cargado y genera XLSX real',()=>{
 });
 
 test('Facturación conserva selección, servicios visibles y todo lo filtrado para Excel',()=>{
-  assert.match(billingExport,/const exportCurrent=\(\)=>openPicker\('current'\)/);
-  assert.match(billingExport,/const exportSelected=\(\)=>openPicker\('selected'\)/);
-  assert.match(billingExport,/const exportAllFiltered=\(\)=>openPicker\('all'\)/);
+  assert.match(billingExport,/exportCurrent\s*=\s*\(\)\s*=>\s*openPicker\('current'\)/);
+  assert.match(billingExport,/exportSelected\s*=\s*\(\)\s*=>\s*openPicker\('selected'\)/);
+  assert.match(billingExport,/exportAllFiltered\s*=\s*\(\)\s*=>\s*openPicker\('all'\)/);
   assert.match(billing,/S\.tab === 'tolls' \? 'Peajes' : 'Servicios'/);
   assert.match(billing,/Todo lo filtrado/);
   assert.match(billingExport,/S\.selected/);
