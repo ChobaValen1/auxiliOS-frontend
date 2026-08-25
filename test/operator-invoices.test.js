@@ -65,7 +65,7 @@ test('PDF usa un único bucket privado y guarda sólo la referencia en factura',
   assert.match(workflowMigration,/add column if not exists pdf_path text/);
   assert.match(workflowMigration,/attach_operator_invoice_pdf_v1/);
   assert.match(invoices,/const PDF_BUCKET\s*=\s*'operator-invoice-pdfs'/);
-  assert.match(invoices,/storage\.upload\(path,file,\{upsert:true/);
+  assert.match(invoices,/storage\.upload\(path,\s*file,\s*\{\s*upsert:\s*true/);
 });
 
 test('Nota de Crédito es total, se asocia a la factura y no libera servicios',()=>{
