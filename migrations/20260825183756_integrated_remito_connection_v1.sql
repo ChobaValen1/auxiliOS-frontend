@@ -42,13 +42,23 @@ where s.remito_id=r.remito_id
 
 update public.operator_services s
 set document_status=case
-  when r.status='firmado' then 'submitted'
+  -- Los documentos ya aceptados antes de este gate conservan su condición
+  -- operativa y no vuelven artificialmente a una cola de revisión.
+  when r.status='firmado' then 'approved'
   when r.status='pendiente' then 'draft'
   else s.document_status
 end
 from public.remitos r
 where r.remito_id=s.remito_id
   and s.document_status='not_started';
+
+-- Los servicios históricos ya FINALIZADOS sin remito explícito continúan
+-- facturables como excepción heredada. Sólo los casos nuevos requieren decisión.
+update public.operator_services
+set document_status='exception_approved'
+where status='completed'
+  and remito_id is null
+  and document_status='not_started';
 
 create unique index if not exists remitos_one_active_operator_service_idx
   on public.remitos(operator_service_id)
@@ -501,6 +511,114 @@ $function$;
 
 revoke all on function public.list_operator_service_document_connections_v1() from public, anon;
 grant execute on function public.list_operator_service_document_connections_v1() to authenticated, service_role;
+
+-- La recepción documental es el gate para Facturación, no para terminar el
+-- trabajo operativo. Un servicio puede finalizar sin remito, pero permanece
+-- NOT_READY hasta que Administración apruebe el documento o la excepción.
+create or replace function app_private.guard_operator_service_document_billing_v1()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, app_private, pg_temp
+as $function$
+begin
+  if new.status='completed'
+     and new.billing_status in ('pending','reviewed','invoiced')
+     and new.document_status not in ('approved','exception_approved') then
+    new.billing_status:='not_ready';
+  end if;
+  return new;
+end;
+$function$;
+
+revoke all on function app_private.guard_operator_service_document_billing_v1() from public, anon, authenticated;
+
+drop trigger if exists operator_services_document_billing_guard_v1 on public.operator_services;
+create trigger operator_services_document_billing_guard_v1
+before update of status,billing_status,document_status on public.operator_services
+for each row execute function app_private.guard_operator_service_document_billing_v1();
+
+create or replace function public.resolve_operator_service_document_v1(
+  p_service_id uuid,
+  p_action text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, app_private, pg_temp
+as $function$
+declare
+  v_role text:=app_private.current_auxilios_role();
+  v_uid uuid:=auth.uid();
+  s public.operator_services%rowtype;
+  r public.remitos%rowtype;
+  v_document_status text;
+  v_event_type text;
+  v_notes text;
+begin
+  if v_uid is null or v_role<>'administracion' then
+    raise exception 'Sólo Administración puede resolver la recepción documental';
+  end if;
+  if p_action not in ('approve','approve_missing_remito_exception') then
+    raise exception 'Acción documental inválida';
+  end if;
+
+  select * into s from public.operator_services where service_id=p_service_id for update;
+  if not found then raise exception 'Servicio inexistente'; end if;
+
+  if p_action='approve' then
+    if s.remito_id is null then raise exception 'El servicio todavía no tiene remito'; end if;
+    select * into r from public.remitos where remito_id=s.remito_id;
+    if not found or r.status<>'firmado' or r.firma_imagen_url is null or r.firmado_at is null then
+      raise exception 'El remito todavía no está firmado y recibido';
+    end if;
+    v_document_status:='approved';
+    v_event_type:='remito_approved';
+    v_notes:='Administración aprobó el remito recibido';
+  else
+    if s.remito_id is not null then
+      raise exception 'El servicio ya tiene un remito para revisar';
+    end if;
+    if s.status not in ('at_origin','completed') then
+      raise exception 'La excepción sin remito sólo corresponde a un servicio arribado o finalizado';
+    end if;
+    v_document_status:='exception_approved';
+    v_event_type:='remito_exception_approved';
+    v_notes:='Administración aprobó la excepción: el chofer no completó el remito';
+  end if;
+
+  perform set_config('app.phase3_bridge','1',true);
+  update public.operator_services
+  set document_status=v_document_status,
+      administrative_review_status='approved',
+      billing_status=case
+        when status='completed' and billing_status='not_ready' then 'pending'
+        else billing_status
+      end,
+      updated_by=v_uid,
+      updated_at=now()
+  where service_id=p_service_id
+  returning * into s;
+
+  insert into public.operator_service_events(
+    service_id,event_type,from_status,to_status,notes,created_by,details
+  ) values (
+    s.service_id,v_event_type,s.status,s.status,v_notes,v_uid,
+    jsonb_build_object('document_status',s.document_status,'remito_id',s.remito_id)
+  );
+
+  return jsonb_build_object(
+    'service_id',s.service_id,
+    'document_status',s.document_status,
+    'administrative_review_status',s.administrative_review_status,
+    'billing_status',s.billing_status,
+    'remito_id',s.remito_id
+  );
+end;
+$function$;
+
+revoke all on function public.resolve_operator_service_document_v1(uuid,text) from public, anon;
+grant execute on function public.resolve_operator_service_document_v1(uuid,text) to authenticated, service_role;
 
 -- Los triggers heredados dejan de buscar En camino/Cargado/En destino. Durante
 -- la compatibilidad sólo relacionan el viaje canónico ASIGNADO/ARRIBADO.

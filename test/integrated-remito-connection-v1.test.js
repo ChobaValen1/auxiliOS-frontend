@@ -30,6 +30,9 @@ test('el guardado canónico es autenticado, idempotente y deriva identidad, jorn
   assert.match(migration,/log_id=t\.log_id/);
   assert.match(migration,/revoke all on function public\.save_driver_operator_service_remito_v3.*from public, anon/s);
   assert.match(migration,/grant execute on function public\.save_driver_operator_service_remito_v3.*to authenticated, service_role/s);
+  assert.match(migration,/guard_operator_service_document_billing_v1/);
+  assert.match(migration,/resolve_operator_service_document_v1/);
+  assert.match(migration,/Sólo Administración puede resolver la recepción documental/);
 });
 
 test('la conexión automática ya no depende de estados operativos eliminados',()=>{
@@ -49,4 +52,5 @@ test('frontend conserva service_id y client_operation_id en pendiente, firma y o
   assert.match(bridge,/Pendiente de sincronización/);
   assert.doesNotMatch(bridge,/link_operator_service_remito/);
   assert.match(read('operator-services.js'),/list_operator_service_document_connections_v1/);
+  assert.match(read('operator-services.js'),/Aprobar excepción sin remito/);
 });
