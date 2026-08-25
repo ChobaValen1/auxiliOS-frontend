@@ -2,6 +2,9 @@ const ENV = {
   API_BASE_URL: 'https://auxilios.up.railway.app'
 };
 
+// Build visible para distinguir previews y evitar confundir ramas antiguas.
+window.AUXILIOS_BUILD_ID = 'billing-phase2-clean-preview-20260824';
+
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
 
@@ -58,7 +61,16 @@ function setNavigationBooting(booting) {
 }
 
 async function loadCriticalAuxiliosModules() {
+  // Un único set de estilos canónicos. La creación de servicios es parte del arranque crítico.
   loadAuxiliosStyle('auxilios-service-module-configuration-css', '/service-module-configuration.css');
+  loadAuxiliosStyle('auxilios-operator-services-css', '/operator-services.css');
+  loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
+  loadAuxiliosStyle('auxilios-operator-service-commercial-addons-v1-css', '/operator-service-commercial-addons-v1.css');
+  loadAuxiliosStyle('auxilios-operator-billing-css', '/operator-billing.css');
+  loadAuxiliosStyle('auxilios-toll-management-css', '/toll-management.css');
+  loadAuxiliosStyle('auxilios-operator-invoices-css', '/operator-invoices.css');
+  loadAuxiliosStyle('auxilios-configuration-center-css', '/configuration-center.css');
+
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
@@ -68,7 +80,15 @@ async function loadCriticalAuxiliosModules() {
     loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),
     loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js')
   ]);
+
+  // El botón Nuevo servicio no se habilita hasta que el modal definitivo y sus dependencias estén listos.
+  await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
+  await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
+  await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
+  await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
+
   await loadAuxiliosModule('auxilios-operator-billing-export', '/operator-billing-export.js');
+  await loadAuxiliosModule('auxilios-operator-invoices', '/operator-invoices.js');
 
   // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
   await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
@@ -82,9 +102,6 @@ function loadGeographicBasesInBackground() {
 }
 
 async function loadSecondaryAuxiliosModules() {
-  loadAuxiliosStyle('auxilios-operator-service-workspace-v2-css', '/operator-service-workspace-v2.css');
-  loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
-  loadAuxiliosStyle('auxilios-operator-service-commercial-addons-v1-css', '/operator-service-commercial-addons-v1.css');
   loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
 
   await Promise.all([
@@ -94,17 +111,9 @@ async function loadSecondaryAuxiliosModules() {
     loadAuxiliosModule('auxilios-company-tariffs-v4', '/company-tariffs-v4.js'),
     loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js'),
     loadAuxiliosModule('auxilios-company-billing-parameters-v4', '/company-billing-parameters-v4.js'),
-    loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js'),
     loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js'),
     loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js'),
-    loadAuxiliosModule('auxilios-feature-flags', '/feature-flags.js'),
     loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js')
-  ]);
-
-  await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
-  await Promise.all([
-    loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js'),
-    loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js')
   ]);
 }
 

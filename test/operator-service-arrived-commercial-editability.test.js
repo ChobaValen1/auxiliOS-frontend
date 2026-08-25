@@ -13,7 +13,7 @@ test('ARRIBADO permanece editable desde el workspace sin exigir motivo',()=>{
 });
 
 test('la excepción de ARRIBADO no elimina el gate de motivo en otros estados iniciados',()=>{
-  assert.match(commercial,/Indicá el motivo de la corrección porque el viaje ya fue iniciado/);
+  assert.match(commercial,/v_service\.trip_id is not null or v_service\.status not in \(''pending'',''assigned''\)/);
   assert.match(commercial,/if v_sql=v_before then/);
   assert.match(commercial,/No se encontró el gate de motivo esperado en update_operator_service_base_v2/);
 });

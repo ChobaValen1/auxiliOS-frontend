@@ -6,7 +6,6 @@ const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf
 const workspaceCss=fs.readFileSync('operator-service-workspace-reactive-v1.css','utf8');
 const moduleConfig=fs.readFileSync('service-module-configuration.js','utf8');
 const config=fs.readFileSync('config.js','utf8');
-const flags=fs.readFileSync('feature-flags.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
 const editMigration=fs.readFileSync('migrations/20260812222500_canonical_service_edit_workspace_v1.sql','utf8');
 const effective=fs.readFileSync('migrations/20260812225500_operator_service_update_split_v1.sql','utf8');
@@ -21,7 +20,15 @@ test('Crear Ver y Editar comparten un único workspace y controlador',()=>{
   assert.match(workspace,/Editar Servicio/);
   assert.match(workspace,/Nuevo Servicio/);
   assert.doesNotMatch(config,/operator-service-edit\.js|operator-service-v2\.js|operator-active-desk/);
-  assert.doesNotMatch(flags,/service_workspace_v2|service_editing_tolls_v1|operator_console_v2/);
+});
+
+test('bootstrap carga solamente el workspace visual canónico',()=>{
+  assert.match(config,/['"]\/operator-service-workspace-reactive-v1\.css['"]/);
+  assert.match(config,/['"]\/operator-service-workspace-reactive-v1\.js['"]/);
+  assert.doesNotMatch(config,/operator-service-workspace-v2\.css|feature-flags\.js/);
+  assert.equal(fs.existsSync('feature-flags.js'),false);
+  assert.equal(fs.existsSync('operator-service-workspace-v2.css'),false);
+  assert.match(workspaceCss,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
 });
 
 test('modo Ver es solo lectura y puede pasar al mismo modo Editar',()=>{
@@ -91,7 +98,7 @@ test('cantidad de concepto puede editarse sin rerender por cada tecla',()=>{
 });
 
 test('conceptos crecen con el workspace y no crean un scroll interno',()=>{
-  assert.match(workspaceCss,/\.osv4-reactive \.osv2-concepts-section\{[^}]*overflow:visible!important/);
+  assert.match(workspaceCss,/\.osv2-concepts-section\{[^}]*overflow:visible/);
   assert.match(workspaceCss,/\.osv4-concept-table\{[^}]*overflow:visible/);
 });
 
@@ -99,16 +106,19 @@ test('origen destino es compacto y observaciones e indicaciones permanecen en co
   assert.match(workspace,/osv4-location-head/);
   assert.match(workspace,/rows="3" data-key="operator_notes"/);
   assert.match(workspace,/rows="3" data-key="driver_instructions"/);
-  assert.match(workspaceCss,/\.osv4-reactive \.osv2-location\{gap:3px;padding:6px 7px\}/);
+  assert.match(workspaceCss,/\.osv2-location\{display:grid;gap:3px;padding:6px 7px\}/);
   assert.match(workspaceCss,/\.osv4-reactive \.route-column textarea\{min-height:52px!important/);
 });
 
 test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloque fantasma',()=>{
   assert.match(workspace,/blocking_issues/);
   assert.match(workspace,/Sin precio/);
-  assert.doesNotMatch(wizard,/get_operator_resource_availability/);
+  assert.match(wizard,/function loadResourceAvailability\(\)/);
+  assert.match(wizard,/get_operator_resource_availability/);
   assert.match(wizard,/function setAssignment\(kind,value\)/);
-  assert.match(wizard,/setVal\(key,value\);render\(\)/);
+  assert.match(wizard,/w\.data\.assigned_driver_id=value/);
+  assert.match(wizard,/w\.data\.assigned_truck_id=value/);
+  assert.match(wizard,/markDirty\(\);render\(\)/);
   assert.match(workspace,/action:'autocomplete'/);
   assert.match(workspace,/action:'route'/);
   assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
@@ -130,11 +140,11 @@ test('edición conserva payload diferencial y privacidad backend',()=>{
 });
 
 test('PWA incluye solo el workspace y configuración canónicos',()=>{
-  const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
+  const version=Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1]||0);
   assert.ok(version>=171);
   assert.match(sw,/service-module-configuration\.js/);
   assert.match(sw,/operator-services\.js/);
-  assert.match(sw,/operator-service-wizard\.js/);
+  assert.doesNotMatch(sw,/operator-service-wizard\.js/);
   assert.match(sw,/operator-service-workspace-reactive-v1\.js/);
   assert.match(sw,/operator-service-commercial-addons-v1\.js/);
   assert.doesNotMatch(sw,/operator-active-desk|operator-services-block-a|operator-service-edit|operator-service-reajuste|operator-service-v2\.js|operator-reference-loader/);

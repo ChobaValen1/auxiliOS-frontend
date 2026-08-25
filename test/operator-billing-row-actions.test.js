@@ -6,9 +6,10 @@ const billing=fs.readFileSync('operator-billing.js','utf8');
 const css=fs.readFileSync('operator-billing.css','utf8');
 
 test('grilla reemplaza Ver por menu horizontal de tres puntos',()=>{
-  const row=billing.split('function rowMarkup(r)')[1].split('function tollTableMarkup()')[0];
+  const row=billing.split('function rowMarkup(row)')[1].split('function tollTableMarkup()')[0];
   assert.match(row,/data-ob-row-menu/);
-  assert.match(row,/aria-label="Acciones del servicio"/);
+  assert.match(row,/title="Acciones del servicio"/);
+  assert.match(row,/aria-haspopup="menu"/);
   assert.match(row,/⋯/);
   assert.doesNotMatch(row,/>Ver<\/button>/);
 });
@@ -22,12 +23,12 @@ test('menu de fila reúne Visualizar Modificar Revertir y Anular con permisos ac
 });
 
 test('acciones de fila reutilizan flujos canonicos sin duplicar logica de backend',()=>{
-  assert.match(billing,/if\(action==='view'\)return openDetail\(id\)/);
-  assert.match(billing,/if\(action==='edit'\)return editServiceById\(id\)/);
-  assert.match(billing,/if\(action==='revert'\)return openDetailAction\(id,'revert'\)/);
-  assert.match(billing,/if\(action==='annul'\)return openDetailAction\(id,'annul'\)/);
+  assert.match(billing,/if\s*\(action\s*===\s*'view'\)\s*return openDetail\(id\)/);
+  assert.match(billing,/if\s*\(action\s*===\s*'edit'\)\s*return editServiceById\(id\)/);
+  assert.match(billing,/if\s*\(action\s*===\s*'revert'\)\s*return openDetailAction\(id,\s*'revert'\)/);
+  assert.match(billing,/if\s*\(action\s*===\s*'annul'\)\s*return openDetailAction\(id,\s*'annul'\)/);
   assert.match(billing,/window\.editarServicioOperador\(id\)/);
-  assert.match(billing,/get_operator_billing_service_detail_v2/);
+  assert.match(billing,/get_operator_billing_service_detail_v3/);
   assert.match(billing,/revert_operator_billing_service_v2/);
   assert.match(billing,/annul_operator_billing_service_v2/);
 });

@@ -12,7 +12,6 @@ const wizard = fs.readFileSync('operator-service-wizard.js','utf8');
 const workspace = fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const operatorServices = fs.readFileSync('operator-services.js','utf8');
 const config = fs.readFileSync('config.js','utf8');
-const flags = fs.readFileSync('feature-flags.js','utf8');
 const sw = fs.readFileSync('sw.js','utf8');
 const pkg = fs.readFileSync('package.json','utf8');
 const contractRules = fs.readFileSync('migrations/20260815121000_operator_quote_contract_rules_v2.sql','utf8');
@@ -24,10 +23,13 @@ const edit = fs.readFileSync('migrations/20260812222500_canonical_service_edit_w
 const effectiveEdit = fs.readFileSync('migrations/20260812225500_operator_service_update_split_v1.sql','utf8');
 
 const canonical = ['empresas-v2.js','service-types-catalog-v2.js','company-services-configuration-v4.js','company-billing-parameters-v4.js','company-tariffs-v4.js','operator-services.js','operator-service-wizard.js','operator-service-workspace-reactive-v1.js'];
+const precachedCanonical = canonical.filter(name => name !== 'operator-service-wizard.js');
 const removed = ['empresas.js','configuration-reference.js','billing-base-operator-adapter.js','comercial.js','tariff-composition.js','tariff-matrix-v3.js','tariff-new-rate-flow-v1.js','operator-active-desk-clean-v1.js','operator-services-canonical-view-v1.js','operator-services-stability-v1.js','operator-services-block-a-v1.js','operator-reference-loader.js','operator-service-edit.js','operator-service-code-warnings-v1.js','operator-service-workspace-behavior-v1.js','operator-service-reajuste-v3.js','operator-service-v2.js','phase3b-modal-visibility-guard.js'];
 
 test('runtime, CI y PWA contienen solo los módulos canónicos',()=>{
-  for(const name of canonical){assert.ok(config.includes(name),`${name} debe cargar`);assert.ok(sw.includes(name),`${name} debe precachearse`);if(name.endsWith('.js'))assert.ok(pkg.includes(name),`${name} debe pasar syntax check`);}
+  for(const name of canonical){assert.ok(config.includes(name),`${name} debe cargar`);if(name.endsWith('.js'))assert.ok(pkg.includes(name),`${name} debe pasar syntax check`);}
+  for(const name of precachedCanonical)assert.ok(sw.includes(name),`${name} debe precachearse`);
+  assert.equal(sw.includes('operator-service-wizard.js'),false,'wizard usa red primero y no forma parte del precache phase2');
   for(const name of removed){assert.equal(config.includes(name),false,`${name} no debe cargar`);assert.equal(sw.includes(name),false,`${name} no debe precachearse`);assert.equal(pkg.includes(name),false,`${name} no debe estar en CI`);}
 });
 
@@ -111,7 +113,9 @@ test('Servicios es tabla compacta única y no contiene renderer monetario ni res
   assert.doesNotMatch(operatorServices,/os-kpis|os-board|renderKpis|canSeeCommercial|money\(|company_estimated_total|estimated_total|pricing_snapshot/);
   assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total/);
   assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
-  assert.doesNotMatch(flags,/service_workspace_v2|service_editing_tolls_v1|operator_console_v2/);
+  assert.equal(fs.existsSync('feature-flags.js'),false,'feature-flags.js legacy debe permanecer eliminado');
+  assert.doesNotMatch(config,/feature-flags\.js/);
+  assert.doesNotMatch(sw,/feature-flags\.js/);
 });
 
 test('edición pública separa correcciones operativas de cambios que recotizan',()=>{
@@ -162,6 +166,6 @@ test('configuración inválida no admite Cobrar movida hasta menor que Radio',()
 });
 
 test('PWA invalida el cache del runtime consolidado',()=>{
-  const version=Number(sw.match(/auxilios-v(\d+)/)?.[1]||0);
+  const version=Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1]||0);
   assert.ok(version>=171,`Expected cache version 171 or newer, received ${version}`);
 });
