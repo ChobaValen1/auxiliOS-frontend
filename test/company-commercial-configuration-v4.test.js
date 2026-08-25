@@ -23,10 +23,13 @@ const edit = fs.readFileSync('migrations/20260812222500_canonical_service_edit_w
 const effectiveEdit = fs.readFileSync('migrations/20260812225500_operator_service_update_split_v1.sql','utf8');
 
 const canonical = ['empresas-v2.js','service-types-catalog-v2.js','company-services-configuration-v4.js','company-billing-parameters-v4.js','company-tariffs-v4.js','operator-services.js','operator-service-wizard.js','operator-service-workspace-reactive-v1.js'];
+const precachedCanonical = canonical.filter(name => name !== 'operator-service-wizard.js');
 const removed = ['empresas.js','configuration-reference.js','billing-base-operator-adapter.js','comercial.js','tariff-composition.js','tariff-matrix-v3.js','tariff-new-rate-flow-v1.js','operator-active-desk-clean-v1.js','operator-services-canonical-view-v1.js','operator-services-stability-v1.js','operator-services-block-a-v1.js','operator-reference-loader.js','operator-service-edit.js','operator-service-code-warnings-v1.js','operator-service-workspace-behavior-v1.js','operator-service-reajuste-v3.js','operator-service-v2.js','phase3b-modal-visibility-guard.js'];
 
 test('runtime, CI y PWA contienen solo los módulos canónicos',()=>{
-  for(const name of canonical){assert.ok(config.includes(name),`${name} debe cargar`);assert.ok(sw.includes(name),`${name} debe precachearse`);if(name.endsWith('.js'))assert.ok(pkg.includes(name),`${name} debe pasar syntax check`);}
+  for(const name of canonical){assert.ok(config.includes(name),`${name} debe cargar`);if(name.endsWith('.js'))assert.ok(pkg.includes(name),`${name} debe pasar syntax check`);}
+  for(const name of precachedCanonical)assert.ok(sw.includes(name),`${name} debe precachearse`);
+  assert.equal(sw.includes('operator-service-wizard.js'),false,'wizard usa red primero y no forma parte del precache phase2');
   for(const name of removed){assert.equal(config.includes(name),false,`${name} no debe cargar`);assert.equal(sw.includes(name),false,`${name} no debe precachearse`);assert.equal(pkg.includes(name),false,`${name} no debe estar en CI`);}
 });
 

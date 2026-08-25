@@ -116,7 +116,9 @@ test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloqu
   assert.match(wizard,/function loadResourceAvailability\(\)/);
   assert.match(wizard,/get_operator_resource_availability/);
   assert.match(wizard,/function setAssignment\(kind,value\)/);
-  assert.match(wizard,/setVal\(key,value\);render\(\)/);
+  assert.match(wizard,/w\.data\.assigned_driver_id=value/);
+  assert.match(wizard,/w\.data\.assigned_truck_id=value/);
+  assert.match(wizard,/markDirty\(\);render\(\)/);
   assert.match(workspace,/action:'autocomplete'/);
   assert.match(workspace,/action:'route'/);
   assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
@@ -142,7 +144,7 @@ test('PWA incluye solo el workspace y configuración canónicos',()=>{
   assert.ok(version>=171);
   assert.match(sw,/service-module-configuration\.js/);
   assert.match(sw,/operator-services\.js/);
-  assert.match(sw,/operator-service-wizard\.js/);
+  assert.doesNotMatch(sw,/operator-service-wizard\.js/);
   assert.match(sw,/operator-service-workspace-reactive-v1\.js/);
   assert.match(sw,/operator-service-commercial-addons-v1\.js/);
   assert.doesNotMatch(sw,/operator-active-desk|operator-services-block-a|operator-service-edit|operator-service-reajuste|operator-service-v2\.js|operator-reference-loader/);
