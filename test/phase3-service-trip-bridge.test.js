@@ -42,11 +42,17 @@ test('el chofer tiene historial propio y no finaliza el servicio',()=>{
 });
 
 test('los servicios asignados del Chofer viven dentro de Remitos y no en el Panel',()=>{
-  const js=read('operator-service-bridge.js');
+  const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   assert.match(js,/document\.getElementById\('screen-remitos'\)/);
   assert.match(js,/data-location="remitos"/);
   assert.match(js,/＋ Sin asignación/);
   assert.doesNotMatch(js,/document\.getElementById\('screen-dashboard'\)/);
+  assert.match(js,/hideArchive=P3\.view==='active'&&P3\.queue\.length>0/);
+  assert.match(js,/classList\.toggle\('p3-hide-remitos-archive',hideArchive\)/);
+  assert.match(js,/render\(\);loadQueue\(\)/);
+  assert.match(css,/#btn-nuevo-remito-desktop,.p3-driver-remitos #btn-nuevo-remito-fab/);
+  assert.match(css,/p3-hide-remitos-archive #filtros-remitos/);
+  assert.match(css,/p3-hide-remitos-archive #remitos-lista/);
 });
 
 test('runtime conserva puente canónico sin journey guard muerto',()=>{
