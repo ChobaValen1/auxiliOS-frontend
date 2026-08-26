@@ -1240,24 +1240,36 @@ function drawDemoSignature() {
 
 // ── FINALIZAR BTN LOGIC ───────────────────────
 let arrastreRequerido = false;
-
-
+let _finalizacionRemitoEnCurso = false;
 
 async function finalizarRemito() {
+  if (_finalizacionRemitoEnCurso) {
+    toast('El remito ya se está guardando. Esperá un momento.', 'info');
+    return false;
+  }
+  const btn = document.getElementById('rem-btn-next');
+  const originalText = btn?.textContent || '✅ Finalizar';
+  _finalizacionRemitoEnCurso = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Guardando…';
+  }
   try {
     return await _finalizarRemitoInner();
   } catch (e) {
     console.error('Error en finalizarRemito:', e);
     toast('Error al finalizar: ' + (e?.message || e), 'error');
+    return false;
+  } finally {
+    _finalizacionRemitoEnCurso = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = _remPasoActual === REM_TOTAL_PASOS ? '✅ Finalizar' : originalText;
+    }
   }
 }
 
 async function _finalizarRemitoInner() {
-  const btn = document.getElementById('btn-finalizar');
-  if (btn && btn.style.opacity === '0.5') {
-    toast('Se requiere firma para finalizar', 'error'); return;
-  }
-
   // ── Leer datos del formulario ─────────────────────────
   const _fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const _rand  = Math.floor(Math.random() * 9000) + 1000;

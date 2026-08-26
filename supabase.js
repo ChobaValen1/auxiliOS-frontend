@@ -964,9 +964,45 @@ function _operatorRemitoClientOperationId(serviceId, nroRemito, explicitId = nul
   return id;
 }
 
+let _remitoBackendCapabilitiesPromise = null;
+
+function _remitoBackendUnavailable(error) {
+  const missing = error?.code === 'PGRST202'
+    || /could not find the function|schema cache/i.test(error?.message || '');
+  const friendly = missing
+    ? 'El módulo de Servicios todavía no está habilitado en el servidor. Actualizá la pantalla y reintentá en unos minutos.'
+    : (error?.message || 'No se pudo validar el módulo de Servicios');
+  const normalized = new Error(friendly);
+  normalized.code = error?.code || (missing ? 'REMITO_BACKEND_UNAVAILABLE' : 'REMITO_BACKEND_CHECK_FAILED');
+  return normalized;
+}
+
+async function verificarBackendRemitoDisponible(mode) {
+  if (!_remitoBackendCapabilitiesPromise) {
+    _remitoBackendCapabilitiesPromise = _db
+      .rpc('get_driver_remito_capabilities_v1')
+      .then(({ data, error }) => {
+        if (error) throw _remitoBackendUnavailable(error);
+        return data || {};
+      })
+      .catch(error => {
+        _remitoBackendCapabilitiesPromise = null;
+        throw error;
+      });
+  }
+  const capabilities = await _remitoBackendCapabilitiesPromise;
+  const enabled = mode === 'assigned' ? capabilities.assigned : capabilities.ad_hoc;
+  if (!enabled) {
+    _remitoBackendCapabilitiesPromise = null;
+    throw _remitoBackendUnavailable({ code: 'PGRST202' });
+  }
+  return capabilities;
+}
+
 async function guardarRemitoVinculado(remito, explicitServiceId = null) {
   const serviceId = _operatorServiceIdActivo(explicitServiceId || remito?.operator_service_id);
   if (!serviceId) return null;
+  await verificarBackendRemitoDisponible('assigned');
   const clientOperationId = _operatorRemitoClientOperationId(
     serviceId,
     remito?.nro_remito,
@@ -987,6 +1023,7 @@ async function guardarRemitoVinculado(remito, explicitServiceId = null) {
 }
 
 async function guardarRemitoAdHoc(remito) {
+  await verificarBackendRemitoDisponible('ad_hoc');
   const clientOperationId = _operatorRemitoClientOperationId(
     'driver-ad-hoc',
     remito?.nro_remito,
@@ -1011,6 +1048,7 @@ Object.assign(window, {
   obtenerServicioActivoRemito: _operatorServiceIdActivo,
   obtenerOperacionRemito: _operatorRemitoClientOperationId,
   esRemitoAdHocActivo: _driverAdHocActivo,
+  verificarBackendRemitoDisponible,
 });
 
 // Arma el registro de la tabla remitos a partir de los datos del wizard.
@@ -1083,6 +1121,23 @@ async function guardarRemitoCompleto(datosRemito) {
     const _f = new Date().toISOString().slice(0,10).replace(/-/g,'');
     const _r = Math.floor(Math.random() * 9000) + 1000;
     const nroFinal = datosRemito.nro || `REM-${_f}-${_r}`;
+    const operatorServiceId = _operatorServiceIdActivo(datosRemito.operator_service_id);
+    const driverAdHoc = !operatorServiceId && _driverAdHocActivo(
+      datosRemito.document_source === 'driver_ad_hoc' ? true : null
+    );
+    const clientOperationId = _operatorRemitoClientOperationId(
+      operatorServiceId || (driverAdHoc ? 'driver-ad-hoc' : null),
+      nroFinal,
+      datosRemito.client_operation_id
+    );
+
+    // El backend se valida antes de subir evidencia. Así un preview adelantado
+    // a sus migraciones no deja fotos ni firmas huérfanas en Storage.
+    if (operatorServiceId || driverAdHoc) {
+      await verificarBackendRemitoDisponible(operatorServiceId ? 'assigned' : 'ad_hoc');
+    }
+    const storageOperationToken = String(clientOperationId || Date.now())
+      .replace(/[^a-zA-Z0-9-]/g, '');
 
     // ── 3. Parseo de Pago Mixto ───────────────────────────────
     const metodosValidos = ['efectivo', 'transferencia', 'tarjeta', 'app'];
@@ -1122,8 +1177,9 @@ async function guardarRemitoCompleto(datosRemito) {
 
     // ── 5b. ONLINE: Subida de Fotos ───────────────────────────
     const fotoUrls = [];
-    for (const file of archivosFotos) {
-      const nombre = `${nroFinal}_${Date.now()}.${file.name.split('.').pop()}`;
+    for (const [index, file] of archivosFotos.entries()) {
+      const extension = String(file.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+      const nombre = `${nroFinal}_${storageOperationToken}_foto_${index}.${extension}`;
       const { error: ue } = await _db.storage.from('remitos').upload(nombre, file, { upsert: true });
       if (!ue) {
         const { data: ud } = _db.storage.from('remitos').getPublicUrl(nombre);
@@ -1136,7 +1192,7 @@ async function guardarRemitoCompleto(datosRemito) {
     if (firmaDataURL) {
       try {
         const blob = await (await fetch(firmaDataURL)).blob();
-        const nombre = `firma_${nroFinal}_${Date.now()}.png`;
+        const nombre = `firma_${nroFinal}_${storageOperationToken}.png`;
         const { error: fe } = await _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true });
         if (!fe) {
           const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);

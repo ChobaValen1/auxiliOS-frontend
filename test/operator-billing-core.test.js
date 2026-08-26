@@ -244,5 +244,5 @@ test('runtime carga Facturación y Excel canónicos sin assets de revisión para
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-billing-phase2-v206/);
+  assert.match(sw,/auxilios-billing-phase2-v207/);
 });

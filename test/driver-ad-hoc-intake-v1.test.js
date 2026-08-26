@@ -59,3 +59,17 @@ test('el mismo contrato viaja por pendiente firma completa y outbox',()=>{
   assert.match(sigma,/remito_firmar/);
   assert.match(sigma,/document_source === 'driver_ad_hoc'/);
 });
+
+test('el frontend valida compatibilidad antes de subir evidencia y bloquea envíos duplicados',()=>{
+  assert.match(migration,/create or replace function public\.get_driver_remito_capabilities_v1/);
+  assert.match(migration,/security invoker/);
+  assert.match(migration,/revoke all on function public\.get_driver_remito_capabilities_v1\(\) from public,anon/);
+  assert.match(migration,/grant execute on function public\.get_driver_remito_capabilities_v1\(\) to authenticated/);
+  assert.match(supabase,/await verificarBackendRemitoDisponible\(operatorServiceId \? 'assigned' : 'ad_hoc'\)/);
+  assert.match(supabase,/firma_\$\{nroFinal\}_\$\{storageOperationToken\}\.png/);
+  assert.match(supabase,/\$\{storageOperationToken\}_foto_\$\{index\}/);
+  assert.match(sigma,/_finalizacionRemitoEnCurso/);
+  assert.match(sigma,/document\.getElementById\('rem-btn-next'\)/);
+  assert.match(sigma,/btn\.disabled = true/);
+  assert.doesNotMatch(sigma,/document\.getElementById\('btn-finalizar'\)/);
+});

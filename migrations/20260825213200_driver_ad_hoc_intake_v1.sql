@@ -325,6 +325,25 @@ $function$;
 revoke all on function public.save_driver_ad_hoc_remito_v1(jsonb,uuid) from public,anon;
 grant execute on function public.save_driver_ad_hoc_remito_v1(jsonb,uuid) to authenticated;
 
+-- Contrato de compatibilidad para que el frontend valide que ambas rutas de
+-- guardado están instaladas antes de subir fotos o firmas a Storage.
+create or replace function public.get_driver_remito_capabilities_v1()
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public, pg_temp
+as $function$
+  select jsonb_build_object(
+    'version',1,
+    'assigned',to_regprocedure('public.save_driver_operator_service_remito_v3(uuid,jsonb,uuid)') is not null,
+    'ad_hoc',to_regprocedure('public.save_driver_ad_hoc_remito_v1(jsonb,uuid)') is not null
+  );
+$function$;
+
+revoke all on function public.get_driver_remito_capabilities_v1() from public,anon;
+grant execute on function public.get_driver_remito_capabilities_v1() to authenticated;
+
 create or replace function public.list_driver_service_intakes_v1(p_limit integer default 200)
 returns jsonb
 language plpgsql
