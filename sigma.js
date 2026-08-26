@@ -2747,8 +2747,16 @@ async function confirmarFirma() {
 // Sube la firma (Blob PNG) al bucket 'firmas' con el naming del flujo online.
 // Devuelve la URL pública o null si falló. Compartida por confirmarFirma y
 // el handler offline 'remito_firmar'.
-async function _subirFirmaStorage(blob, nro) {
-  const nombre = `firma_${nro}_${Date.now()}.png`;
+function _remitoEvidenceToken(value) {
+  return String(value || Date.now()).replace(/[^a-zA-Z0-9-]/g, '');
+}
+
+function _nombreFirmaStorage(nro, operationToken = null) {
+  return `firma_${nro}_${_remitoEvidenceToken(operationToken)}.png`;
+}
+
+async function _subirFirmaStorage(blob, nro, operationToken = null) {
+  const nombre = _nombreFirmaStorage(nro, operationToken);
   const { error: fe } = await _db.storage
     .from('firmas')
     .upload(nombre, blob, { contentType: 'image/png', upsert: true });
@@ -5528,36 +5536,53 @@ if (typeof obRegistrarHandler === 'function') {
   // y hace el mismo upsert idempotente por nro_remito que el flujo online.
   obRegistrarHandler('remito_completo', async (payload, blobs) => {
     const remito = { ...payload };
-    if (blobs) {
-      const fotoUrls = [];
-      for (const [campo, blob] of Object.entries(blobs)) {
-        if (campo === 'firma') continue;
-        const nombre = `${remito.nro_remito}_${Date.now()}_${campo}.jpg`;
-        const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
-        if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
-        fotoUrls.push(_db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl);
+    const uploads = [];
+    const operationToken = _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito);
+    try {
+      if (blobs) {
+        const fotoUrls = [];
+        for (const [campo, blob] of Object.entries(blobs)) {
+          if (campo === 'firma') continue;
+          const nombre = `${remito.nro_remito}_${operationToken}_${campo}.jpg`;
+          const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
+          if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
+          const url = _db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl;
+          fotoUrls.push(url);
+          uploads.push({ bucket: 'remitos', path: nombre, url });
+        }
+        if (fotoUrls.length) remito.foto_urls = fotoUrls;
+        if (blobs.firma) {
+          const path = _nombreFirmaStorage(remito.nro_remito, operationToken);
+          const url = await _subirFirmaStorage(blobs.firma, remito.nro_remito, operationToken);
+          if (!url) throw new Error('No se pudo subir la firma al almacenamiento');
+          remito.firma_imagen_url = url;
+          uploads.push({ bucket: 'firmas', path, url });
+        }
       }
-      if (fotoUrls.length) remito.foto_urls = fotoUrls;
-      if (blobs.firma) {
-        const url = await _subirFirmaStorage(blobs.firma, remito.nro_remito);
-        if (!url) throw new Error('No se pudo subir la firma al almacenamiento');
-        remito.firma_imagen_url = url;
+      if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+        const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
+        return { realId: linked?.remito_id || null };
       }
+      if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+        const intake = await guardarRemitoAdHoc(remito);
+        return { realId: intake?.remito_id || null };
+      }
+      const { data, error } = await _db.from('remitos')
+        .upsert(remito, { onConflict: 'nro_remito' })
+        .select('remito_id')
+        .single();
+      if (error) throw new Error(error.message);
+      return { realId: data?.remito_id || null };
+    } catch (error) {
+      if (uploads.length && typeof limpiarEvidenciaRemitoFallido === 'function') {
+        await limpiarEvidenciaRemitoFallido({
+          nroRemito: remito.nro_remito,
+          clientOperationId: remito.client_operation_id || null,
+          uploads,
+        });
+      }
+      throw error;
     }
-    if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
-      const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
-      return { realId: linked?.remito_id || null };
-    }
-    if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
-      const intake = await guardarRemitoAdHoc(remito);
-      return { realId: intake?.remito_id || null };
-    }
-    const { data, error } = await _db.from('remitos')
-      .upsert(remito, { onConflict: 'nro_remito' })
-      .select('remito_id')
-      .single();
-    if (error) throw new Error(error.message);
-    return { realId: data?.remito_id || null };
   });
 
   // Firma de remito: sube el blob de la firma al bucket 'firmas' con el mismo

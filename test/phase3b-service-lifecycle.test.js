@@ -138,6 +138,6 @@ test('runtime carga lifecycle antes de liberar UI y cache de phase2',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-billing-phase2-v207/);
+  assert.match(sw,/auxilios-billing-phase2-v208/);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });

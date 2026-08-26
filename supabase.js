@@ -999,6 +999,44 @@ async function verificarBackendRemitoDisponible(mode) {
   return capabilities;
 }
 
+async function _limpiarEvidenciaRemitoFallido({ nroRemito, clientOperationId, uploads = [] } = {}) {
+  if (!uploads.length || !_db || !USUARIO_ACTUAL?.id) return { removed: 0, preserved: uploads.length };
+
+  let query = _db
+    .from('remitos')
+    .select('remito_id,firma_imagen_url,foto_urls')
+    .eq('driver_id', USUARIO_ACTUAL.id);
+  query = clientOperationId
+    ? query.eq('client_operation_id', clientOperationId)
+    : query.eq('nro_remito', nroRemito);
+
+  const { data: persisted, error: lookupError } = await query.limit(1);
+  if (lookupError) {
+    console.warn('No se pudo verificar la evidencia huérfana del remito:', lookupError.message);
+    return { removed: 0, preserved: uploads.length };
+  }
+
+  const row = persisted?.[0] || null;
+  const referencedUrls = new Set([
+    row?.firma_imagen_url,
+    ...(Array.isArray(row?.foto_urls) ? row.foto_urls : []),
+  ].filter(Boolean));
+  const removable = uploads.filter(item => !referencedUrls.has(item.url));
+  let removed = 0;
+
+  for (const bucket of [...new Set(removable.map(item => item.bucket))]) {
+    const paths = removable.filter(item => item.bucket === bucket).map(item => item.path);
+    if (!paths.length) continue;
+    const { error } = await _db.storage.from(bucket).remove(paths);
+    if (error) {
+      console.warn(`No se pudo limpiar evidencia huérfana de ${bucket}:`, error.message);
+    } else {
+      removed += paths.length;
+    }
+  }
+  return { removed, preserved: uploads.length - removed };
+}
+
 async function guardarRemitoVinculado(remito, explicitServiceId = null) {
   const serviceId = _operatorServiceIdActivo(explicitServiceId || remito?.operator_service_id);
   if (!serviceId) return null;
@@ -1049,6 +1087,7 @@ Object.assign(window, {
   obtenerOperacionRemito: _operatorRemitoClientOperationId,
   esRemitoAdHocActivo: _driverAdHocActivo,
   verificarBackendRemitoDisponible,
+  limpiarEvidenciaRemitoFallido: _limpiarEvidenciaRemitoFallido,
 });
 
 // Arma el registro de la tabla remitos a partir de los datos del wizard.
@@ -1106,6 +1145,8 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
 }
 
 async function guardarRemitoCompleto(datosRemito) {
+  const evidenciaSubida = [];
+  let contextoEvidencia = null;
   try {
     _toast('Guardando remito...', 'info');
 
@@ -1138,6 +1179,7 @@ async function guardarRemitoCompleto(datosRemito) {
     }
     const storageOperationToken = String(clientOperationId || Date.now())
       .replace(/[^a-zA-Z0-9-]/g, '');
+    contextoEvidencia = { nroRemito: nroFinal, clientOperationId, uploads: evidenciaSubida };
 
     // ── 3. Parseo de Pago Mixto ───────────────────────────────
     const metodosValidos = ['efectivo', 'transferencia', 'tarjeta', 'app'];
@@ -1184,6 +1226,7 @@ async function guardarRemitoCompleto(datosRemito) {
       if (!ue) {
         const { data: ud } = _db.storage.from('remitos').getPublicUrl(nombre);
         fotoUrls.push(ud.publicUrl);
+        evidenciaSubida.push({ bucket: 'remitos', path: nombre, url: ud.publicUrl });
       }
     }
 
@@ -1197,6 +1240,7 @@ async function guardarRemitoCompleto(datosRemito) {
         if (!fe) {
           const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
           firmaUrl = fd.publicUrl;
+          evidenciaSubida.push({ bucket: 'firmas', path: nombre, url: fd.publicUrl });
         } else {
           console.warn('⚠️ No se pudo subir la firma:', fe.message);
           _toast('Firma guardada localmente (no se pudo subir): ' + fe.message, 'warn');
@@ -1231,6 +1275,7 @@ async function guardarRemitoCompleto(datosRemito) {
 
     if (error) { 
       console.error("❌ Error de inserción Supabase:", error);
+      await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
       _toast('Error: ' + error.message, 'error'); 
       return false; 
     }
@@ -1242,6 +1287,7 @@ async function guardarRemitoCompleto(datosRemito) {
 
   } catch (err) {
     console.error('❌ Error inesperado en guardarRemitoCompleto:', err);
+    if (contextoEvidencia) await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
     _toast('Error inesperado al guardar', 'error');
     return false;
   }

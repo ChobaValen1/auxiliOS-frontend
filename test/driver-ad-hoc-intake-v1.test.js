@@ -9,6 +9,7 @@ const supabase=read('supabase.js');
 const sigma=read('sigma.js');
 const bridge=read('operator-service-bridge.js');
 const services=read('operator-services.js');
+const orphanCleanup=read('migrations/20260826130000_driver_remito_orphan_cleanup_v1.sql');
 
 test('el ingreso del Chofer es operacional y no fabrica clasificación comercial',()=>{
   assert.match(migration,/create table if not exists public\.driver_service_intakes/);
@@ -72,4 +73,18 @@ test('el frontend valida compatibilidad antes de subir evidencia y bloquea enví
   assert.match(sigma,/document\.getElementById\('rem-btn-next'\)/);
   assert.match(sigma,/btn\.disabled = true/);
   assert.doesNotMatch(sigma,/document\.getElementById\('btn-finalizar'\)/);
+});
+
+test('un rechazo posterior a la subida limpia sólo evidencia propia no referenciada',()=>{
+  assert.match(supabase,/async function _limpiarEvidenciaRemitoFallido/);
+  assert.match(supabase,/\.select\('remito_id,firma_imagen_url,foto_urls'\)/);
+  assert.match(supabase,/await _db\.storage\.from\(bucket\)\.remove\(paths\)/);
+  assert.match(supabase,/await _limpiarEvidenciaRemitoFallido\(contextoEvidencia\)/);
+  assert.match(sigma,/limpiarEvidenciaRemitoFallido/);
+  assert.match(sigma,/remito\.client_operation_id \|\| remito\.nro_remito/);
+  assert.match(orphanCleanup,/for delete\s+to authenticated/i);
+  assert.match(orphanCleanup,/owner_id = auth\.uid\(\)::text/);
+  assert.match(orphanCleanup,/not exists \(\s*select 1\s*from public\.remitos/s);
+  assert.match(orphanCleanup,/right\(coalesce\(r\.firma_imagen_url/);
+  assert.doesNotMatch(orphanCleanup,/to anon|to public/i);
 });
