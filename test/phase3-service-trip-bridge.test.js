@@ -33,10 +33,12 @@ test('los obligatorios sin campo nativo aparecen en una card antes de la firma',
   assert.match(js,/Antes de firmar completá:/);
 });
 
-test('el chofer tiene historial propio y no finaliza el servicio',()=>{
+test('Historial reutiliza la lista canónica de remitos y no duplica otra pantalla',()=>{
   const js=read('operator-service-bridge.js');
-  assert.match(js,/get_driver_operator_history_v2/);
-  assert.match(js,/Historial de servicios/);
+  assert.doesNotMatch(js,/get_driver_operator_history_v2|Historial de servicios/);
+  assert.match(js,/window\.cargarRemitos/);
+  assert.match(js,/panel\.classList\.toggle\('p3-history-only',history\)/);
+  assert.match(js,/if\(history\)\{list\.innerHTML='';return\}/);
   assert.match(js,/No tenés servicios activos asignados/);
   assert.doesNotMatch(js,/Finalizar servicio|No se pudo completar|abrirModalIncidente/);
 });
@@ -47,14 +49,23 @@ test('los servicios asignados del Chofer viven dentro de Remitos y no en el Pane
   assert.match(js,/data-location="remitos"/);
   assert.match(js,/＋ Sin asignación/);
   assert.doesNotMatch(js,/document\.getElementById\('screen-dashboard'\)/);
-  assert.match(js,/hideArchive=P3\.view==='active'/);
-  assert.match(js,/classList\.toggle\('p3-hide-remitos-archive',hideArchive\)/);
-  assert.match(js,/render\(\);loadQueue\(\)/);
+  assert.match(js,/screen\.classList\.toggle\('p3-hide-remitos-archive',!history\)/);
   assert.match(css,/#btn-nuevo-remito-desktop,.p3-driver-remitos #btn-nuevo-remito-fab/);
-  assert.match(css,/p3-hide-remitos-archive #filtros-remitos/);
+  assert.match(css,/p3-driver-remitos #filtros-remitos/);
+  assert.match(css,/p3-driver-remitos #filtro-info/);
   assert.match(css,/p3-hide-remitos-archive #remitos-lista/);
   assert.match(css,/p3-hide-remitos-archive\{display:flex/);
   assert.match(css,/p3-remitos-assigned\{display:flex;flex:1/);
+});
+
+test('el módulo del Chofer se presenta como Servicios con una sola cabecera minimalista',()=>{
+  const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
+  assert.match(js,/label\.textContent='Servicios'/);
+  assert.match(js,/title\.textContent='SERVICIOS'/);
+  assert.match(js,/sub\.textContent='Asignados e historial'/);
+  assert.doesNotMatch(js,/p3-panel-title|p3-eyebrow/);
+  assert.match(css,/p3-driver-remitos>\.sec-header/);
+  assert.match(css,/p3-history-only/);
 });
 
 test('runtime conserva puente canónico sin journey guard muerto',()=>{
