@@ -68,6 +68,22 @@ test('el módulo del Chofer se presenta como Servicios con una sola cabecera min
   assert.match(css,/p3-history-only/);
 });
 
+test('la tarjeta activa muestra sólo el resumen operativo solicitado y se abre completa',()=>{
+  const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
+  const card=js.split('function activeCard(s)')[1].split('function findService')[0];
+  for(const expected of ['Empresa','N° Prestación','Origen','Destino','Estado','Cliente','Fecha'])assert.match(card,new RegExp(expected));
+  for(const expected of ['company_name','service_order_number','origin','destination','vehicle_make_model','vehicle_plate','scheduled_for'])assert.match(card,new RegExp(expected));
+  for(const fallback of ['Sin N° prestación','Vehículo sin informar','Sin patente'])assert.match(card,new RegExp(fallback));
+  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Completar remito','Continuar remito','Ver remito'])assert.doesNotMatch(card,new RegExp(forbidden));
+  assert.match(card,/role="button" tabindex="0"/);
+  assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
+  assert.match(card,/abrirRemitoServicio\(this\.dataset\.serviceId\)/);
+  assert.match(js,/toLocaleDateString\('es-AR',\{day:'2-digit',month:'2-digit',year:'numeric'\}\)/);
+  assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
+  assert.match(css,/\.p3-service-card\.is-actionable:active/);
+  assert.doesNotMatch(css,/\.p3-service-card\.priority-/);
+});
+
 test('runtime conserva puente canónico sin journey guard muerto',()=>{
   const config=read('config.js'),pkg=read('package.json'),sw=read('sw.js');
   assert.match(config,/auxilios-phase3-service-bridge/);
