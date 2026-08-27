@@ -611,6 +611,8 @@ function _mapRemitoRow(r) {
     driverIntakeId: r.driver_intake_id || null,
     clientOperationId: r.client_operation_id || null,
     documentSource: r.document_source || 'legacy_driver',
+    addonsVersion: r.addons_version || 1,
+    addonsReviewStatus: r.addons_review_status || 'legacy',
   };
 }
 
@@ -980,7 +982,7 @@ function _remitoBackendUnavailable(error) {
 async function verificarBackendRemitoDisponible(mode) {
   if (!_remitoBackendCapabilitiesPromise) {
     _remitoBackendCapabilitiesPromise = _db
-      .rpc('get_driver_remito_capabilities_v1')
+      .rpc('get_driver_remito_capabilities_v2')
       .then(({ data, error }) => {
         if (error) throw _remitoBackendUnavailable(error);
         return data || {};
@@ -1051,7 +1053,10 @@ async function guardarRemitoVinculado(remito, explicitServiceId = null) {
     operator_service_id: serviceId,
     client_operation_id: clientOperationId,
   };
-  const { data, error } = await _db.rpc('save_driver_operator_service_remito_v3', {
+  const rpcName = payload.addons_version === 2
+    ? 'save_driver_operator_service_remito_v4'
+    : 'save_driver_operator_service_remito_v3';
+  const { data, error } = await _db.rpc(rpcName, {
     p_service_id: serviceId,
     p_payload: payload,
     p_client_operation_id: clientOperationId,
@@ -1072,7 +1077,10 @@ async function guardarRemitoAdHoc(remito) {
     client_operation_id: clientOperationId,
     document_source: 'driver_ad_hoc',
   };
-  const { data, error } = await _db.rpc('save_driver_ad_hoc_remito_v1', {
+  const rpcName = payload.addons_version === 2
+    ? 'save_driver_ad_hoc_remito_v2'
+    : 'save_driver_ad_hoc_remito_v1';
+  const { data, error } = await _db.rpc(rpcName, {
     p_payload: payload,
     p_client_operation_id: clientOperationId,
   });
@@ -1102,6 +1110,7 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
     nroFinal,
     datosRemito.client_operation_id
   );
+  const addonPayload = datosRemito.remitoAddons?.payload || datosRemito.remitoAddons || null;
   return {
     nro_remito:           nroFinal,
     driver_id:            USUARIO_ACTUAL.id,
@@ -1133,6 +1142,13 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
     conformidad_arrastre: datosRemito.confirmaciones.includes('Conformidad de Arrastre') || null,
     status:               'firmado',
     created_at_device:    new Date().toISOString(),
+    ...(addonPayload?.addons_version === 2 ? {
+      addons_version: 2,
+      tolls: Array.isArray(addonPayload.tolls) ? addonPayload.tolls : [],
+      excesses: Array.isArray(addonPayload.excesses) ? addonPayload.excesses : [],
+      evidence: Array.isArray(addonPayload.evidence) ? addonPayload.evidence : [],
+      customer_collections: addonPayload.customer_collections || null,
+    } : {}),
     ...(operatorServiceId ? {
       operator_service_id: operatorServiceId,
       client_operation_id: clientOperationId,
@@ -1147,13 +1163,16 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
 async function guardarRemitoCompleto(datosRemito) {
   const evidenciaSubida = [];
   let contextoEvidencia = null;
+  let remitoPersistido = false;
   try {
     _toast('Guardando remito...', 'info');
 
     // ── 1. Utilidad Matemática Segura (Bug $9.100) ────────────
     const parsearImporte = (val) => {
       if (!val) return 0;
-      const limpio = String(val).replace(/\./g, '').replace(',', '.');
+      let limpio = String(val).trim().replace(/[^0-9,.-]/g, '');
+      if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
+      else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, '');
       return parseFloat(limpio) || 0;
     };
 
@@ -1195,9 +1214,12 @@ async function guardarRemitoCompleto(datosRemito) {
         firmaDataURL = canvas.toDataURL('image/png');
       }
     }
+    const addonBundle = datosRemito.remitoAddons?.payload ? datosRemito.remitoAddons : null;
     const archivosFotos = [];
-    for (const input of document.querySelectorAll('#foto-grid input[type="file"]')) {
-      if (input.files?.length) archivosFotos.push(input.files[0]);
+    if (!addonBundle) {
+      for (const input of document.querySelectorAll('#foto-grid input[type="file"]')) {
+        if (input.files?.length) archivosFotos.push(input.files[0]);
+      }
     }
 
     // ── 5. SIN CONEXIÓN → outbox (fotos y firma quedan en el teléfono) ──
@@ -1206,6 +1228,10 @@ async function guardarRemitoCompleto(datosRemito) {
       const blobs = {};
       if (firmaDataURL) blobs.firma = firmaDataURL;
       archivosFotos.forEach((f, i) => { blobs['foto_' + i] = f; });
+      if (addonBundle) {
+        addonBundle.files.forEach(item => { blobs[item.blob_field] = item.file; });
+        remitoOffline.remito_addon_file_map = addonBundle.files.map(({ file, ...item }) => item);
+      }
       await obAdd({
         tipo: 'remito_completo',
         payload: remitoOffline,
@@ -1217,7 +1243,15 @@ async function guardarRemitoCompleto(datosRemito) {
       return true;
     }
 
-    // ── 5b. ONLINE: Subida de Fotos ───────────────────────────
+    let uploadedAddonPayload = addonBundle?.payload || null;
+    if (addonBundle) {
+      uploadedAddonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, storageOperationToken);
+      (uploadedAddonPayload.evidence || []).forEach(item => evidenciaSubida.push({
+        bucket: 'remito-evidence-v2', path: item.storage_path, url: null,
+      }));
+    }
+
+    // ── 5b. ONLINE: Subida de Fotos de compatibilidad ─────────
     const fotoUrls = [];
     for (const [index, file] of archivosFotos.entries()) {
       const extension = String(file.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
@@ -1254,7 +1288,10 @@ async function guardarRemitoCompleto(datosRemito) {
 
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
-    const remitoDB = _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl);
+    const remitoDB = _remitoDbDesdeDatos({
+      ...datosRemito,
+      remitoAddons: uploadedAddonPayload ? { payload: uploadedAddonPayload, files: [] } : null,
+    }, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl);
     let error = null;
     if (remitoDB.operator_service_id) {
       try {
@@ -1270,7 +1307,8 @@ async function guardarRemitoCompleto(datosRemito) {
         error = adHocError;
       }
     } else {
-      ({ error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));
+      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remitoDB;
+      ({ error } = await _db.from('remitos').upsert(legacyRemito, { onConflict: 'nro_remito' }));
     }
 
     if (error) { 
@@ -1280,6 +1318,9 @@ async function guardarRemitoCompleto(datosRemito) {
       return false; 
     }
 
+    // Desde este punto las rutas privadas forman parte del remito firmado. Si
+    // falla solamente la recarga visual, no deben eliminarse como huérfanas.
+    remitoPersistido = true;
     await cargarRemitos();
     _toast(`Remito ${nroFinal} guardado ✓`, 'success');
     showRemitosView('lista');
@@ -1287,7 +1328,9 @@ async function guardarRemitoCompleto(datosRemito) {
 
   } catch (err) {
     console.error('❌ Error inesperado en guardarRemitoCompleto:', err);
-    if (contextoEvidencia) await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
+    if (contextoEvidencia && !remitoPersistido) {
+      await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
+    }
     _toast('Error inesperado al guardar', 'error');
     return false;
   }

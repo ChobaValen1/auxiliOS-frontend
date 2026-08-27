@@ -70,6 +70,8 @@ async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-toll-management-css', '/toll-management.css');
   loadAuxiliosStyle('auxilios-operator-invoices-css', '/operator-invoices.css');
   loadAuxiliosStyle('auxilios-configuration-center-css', '/configuration-center.css');
+  loadAuxiliosStyle('auxilios-remito-addons-v2-css', '/remito-addons-v2.css');
+  loadAuxiliosStyle('auxilios-operator-remito-review-v2-css', '/operator-remito-review-v2.css');
 
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
   await Promise.all([
@@ -86,6 +88,8 @@ async function loadCriticalAuxiliosModules() {
   await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
   await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
+  await loadAuxiliosModule('auxilios-remito-addons-v2', '/remito-addons-v2.js');
+  await loadAuxiliosModule('auxilios-operator-remito-review-v2', '/operator-remito-review-v2.js');
 
   await loadAuxiliosModule('auxilios-operator-billing-export', '/operator-billing-export.js');
   await loadAuxiliosModule('auxilios-operator-invoices', '/operator-invoices.js');

@@ -556,6 +556,7 @@ function remWizardReset() {
   if (nro) nro.value = `REM-${f}-${r}`;
   
   if (typeof resetPagoForm === 'function') resetPagoForm();
+  window.AuxiliosRemitoAddonsV2?.reset?.();
   if (typeof limpiarFirma === 'function') limpiarFirma();
   
   fotosCount = 0;
@@ -687,6 +688,7 @@ function remWizardIr(delta) {
   _remPasoActual = Math.max(1, Math.min(REM_TOTAL_PASOS, _remPasoActual + delta));
   _remWizardActualizar();
   if (_remPasoActual === 5 && typeof initCanvas === 'function') {
+    window.AuxiliosRemitoAddonsV2?.renderSignatureSummary?.();
     setTimeout(() => initCanvas('sig-canvas'), 80);
   }
 }
@@ -713,6 +715,9 @@ function _remWizardValidar(paso) {
     marcar('rem-cuit', 'err-dni');
   }
   if (paso === 3) {
+    if (window.AuxiliosRemitoAddonsV2) {
+      return window.AuxiliosRemitoAddonsV2.validate().ok;
+    }
     const errorEl = document.getElementById('rem-pago-error');
 
     // ── NOTA 1: HELPER PARA ERRORES ──
@@ -1307,9 +1312,15 @@ async function _finalizarRemitoInner() {
     if (cuitInp) cuitInp.classList.add('rem-field-error');
     return;
   }
+  const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
+  if (addonValidation && !addonValidation.ok) {
+    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || 'Hay datos incompletos en el paso 3.');
+    remWizardIr(3 - _remPasoActual);
+    return;
+  }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';
   const totalVal = parseFloat(totalStr.replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
-  if (totalVal > 0 && (!pago || pago === '—')) {
+  if (!window.AuxiliosRemitoAddonsV2 && totalVal > 0 && (!pago || pago === '—')) {
     mostrarValidacion('⚠️ Falta medio de pago', 'Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso 3.');
     remWizardIr(3 - _remPasoActual);
     return;
@@ -1427,6 +1438,8 @@ async function _finalizarRemitoInner() {
     _saveSig(nro, firmaDataURL);
   }
 
+  const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
+
   resetPagoForm();
 
   // ⑥ → Recolectar confirmaciones
@@ -1442,7 +1455,9 @@ async function _finalizarRemitoInner() {
   // 1. Mini-función para arreglar el bug de los miles (ej: "9.100" -> 9100)
   const parsearImporte = (val) => {
     if (!val) return 0;
-    const limpio = String(val).replace(/\./g, '').replace(',', '.');
+    let limpio = String(val).trim().replace(/[^0-9,.-]/g, '');
+    if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, '');
     return parseFloat(limpio) || 0;
   };
 
@@ -1492,6 +1507,7 @@ async function _finalizarRemitoInner() {
     pago2Monto: parsearImporte(document.getElementById('pago2-monto')?.value) || null,
     observaciones: document.getElementById('rem-observaciones')?.value?.trim() || null,
     confirmaciones,
+    remitoAddons,
   });
 
   if (!ok) return;
@@ -1861,6 +1877,11 @@ function verRemitoModal(elemento) {
     set('vr-km',        (d.km || '—') + ' km');
     set('vr-peaje',     '$' + parseInt(d.peaje     || 0).toLocaleString('es-AR'));
     set('vr-excedente', '$' + (parseInt(d.excedente || 0) + parseInt(d.otros || 0)).toLocaleString('es-AR'));
+    const structuredHost = document.getElementById('vr-addons-structured');
+    if (structuredHost) {
+      structuredHost.style.display = d.addonsVersion === 2 ? 'block' : 'none';
+      if (d.addonsVersion === 2) void window.AuxiliosRemitoAddonsV2?.renderHistory?.(d.id, structuredHost);
+    }
 
     // ── Forma de pago ─────────────────────────────────────────────
     const pagoEl = document.getElementById('vr-pago');
@@ -5539,10 +5560,28 @@ if (typeof obRegistrarHandler === 'function') {
     const uploads = [];
     const operationToken = _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito);
     try {
+      const addonFileMap = Array.isArray(remito.remito_addon_file_map) ? remito.remito_addon_file_map : [];
+      delete remito.remito_addon_file_map;
+      if (remito.addons_version === 2 && window.AuxiliosRemitoAddonsV2) {
+        const addonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence({
+          payload: {
+            addons_version: 2,
+            tolls: remito.tolls || [],
+            excesses: remito.excesses || [],
+            evidence: [],
+            customer_collections: remito.customer_collections || null,
+          },
+          files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
+        }, operationToken);
+        remito.evidence = addonPayload.evidence;
+        (addonPayload.evidence || []).forEach(item => uploads.push({
+          bucket: 'remito-evidence-v2', path: item.storage_path, url: null,
+        }));
+      }
       if (blobs) {
         const fotoUrls = [];
         for (const [campo, blob] of Object.entries(blobs)) {
-          if (campo === 'firma') continue;
+          if (campo === 'firma' || campo.startsWith('addon_')) continue;
           const nombre = `${remito.nro_remito}_${operationToken}_${campo}.jpg`;
           const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
           if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
@@ -5567,8 +5606,9 @@ if (typeof obRegistrarHandler === 'function') {
         const intake = await guardarRemitoAdHoc(remito);
         return { realId: intake?.remito_id || null };
       }
+      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remito;
       const { data, error } = await _db.from('remitos')
-        .upsert(remito, { onConflict: 'nro_remito' })
+        .upsert(legacyRemito, { onConflict: 'nro_remito' })
         .select('remito_id')
         .single();
       if (error) throw new Error(error.message);
@@ -6872,7 +6912,12 @@ function actualizarContadorFotosRemito() {
 // ═══════════════════════════════════════════
 // 2. FUNCIONES DE RENDERIZADO Y LÓGICA
 // ═══════════════════════════════════════════
-function generarHtmlPill(estado) {
+function generarHtmlPill(estado, remito = null) {
+  if (estado === 'firmado' && remito?.addonsVersion === 2) {
+    if (remito.addonsReviewStatus === 'approved') return `<span class="pill pill-green">✓ Aprobado</span>`;
+    if (remito.addonsReviewStatus === 'adjusted') return `<span class="pill pill-blue">Ajustado por Administración</span>`;
+    return `<span class="pill pill-amber">En revisión</span>`;
+  }
   if (estado === 'firmado') return `<span class="pill pill-green">✓ Firmado</span>`;
   if (estado === 'anulado') return `<span class="pill pill-red">🚫 Anulado</span>`;
   if (estado === 'cerrado_admin') return `<span class="pill" style="background:rgba(88,166,255,0.12);color:var(--blue)">🏢 Cerrado por admin</span>`;
@@ -6953,7 +6998,7 @@ function renderTablaRemitos(data) {
       const esAsignadoAdmin = r.estado === 'pendiente' && r.creadoPor && r.creadoPor !== USUARIO_ACTUAL?.id;
 
       const estadoPill = esFirmado
-        ? `<span class="pill pill-green">✓ Firmado</span>`
+        ? generarHtmlPill(r.estado, r)
         : esAnulado
         ? `<span class="pill pill-red">🚫 Anulado</span>`
         : esCerradoAdmin
@@ -7053,7 +7098,7 @@ function renderTablaRemitos(data) {
             <span class="text-codigo">${r.nroSrv || 'S/SERVICIO'}</span>
             <span class="text-patente">${r.patente || '—'}</span>
           </div>
-          ${generarHtmlPill(r.estado)}
+          ${generarHtmlPill(r.estado, r)}
         </div>
         <div style="font-size:13px;font-weight:600">${r.tipo || '—'}</div>
         <div style="font-size:12px;color:var(--muted)">${r.origen || '—'} → ${r.destino || '—'}</div>
