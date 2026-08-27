@@ -78,6 +78,11 @@ test('la tarjeta activa muestra sólo el resumen operativo solicitado y se abre 
   assert.match(card,/role="button" tabindex="0"/);
   assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
   assert.match(card,/abrirRemitoServicio\(this\.dataset\.serviceId\)/);
+  assert.match(card,/p3-inline-divider[^>]*aria-hidden="true">\|/);
+  const markup=card.split('return`')[1];
+  const order=['Fecha','Estado','Empresa','N° Prestación','Cliente','Origen','Destino'];
+  for(let i=1;i<order.length;i++)assert.ok(markup.indexOf(order[i-1])<markup.indexOf(order[i]),`${order[i-1]} debe aparecer antes que ${order[i]}`);
+  assert.doesNotMatch(card,/p3-service-details/);
   assert.match(js,/toLocaleDateString\('es-AR',\{day:'2-digit',month:'2-digit',year:'numeric'\}\)/);
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);

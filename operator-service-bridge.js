@@ -33,17 +33,20 @@ function activeCard(s){
   const action=opensRemito?`role="button" tabindex="0" data-service-id="${esc(s.service_id)}" aria-label="Abrir prestación ${esc(order)} de ${esc(company)}" onclick="abrirRemitoServicio(this.dataset.serviceId)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirRemitoServicio(this.dataset.serviceId)}"`:'';
   return`<article class="p3-service-card${opensRemito?' is-actionable':''}" ${action}>
     <div class="p3-service-head">
-      <div class="p3-field"><span class="p3-field-label">Empresa</span><strong class="p3-company-value">${esc(company)}</strong></div>
-      <div class="p3-field p3-order-field"><span class="p3-field-label">N° Prestación</span><strong class="p3-order-value">${esc(order)}</strong></div>
+      <div class="p3-field"><span class="p3-field-label">Fecha</span><strong class="p3-date-value">${esc(serviceDate(s.scheduled_for))}</strong></div>
+      <div class="p3-field p3-status-field"><span class="p3-field-label">Estado</span><span class="p3-status ${meta.tone}">${esc(meta.label)}</span></div>
+    </div>
+    <div class="p3-company-order">
+      <span class="p3-inline-field p3-company-inline"><span class="p3-field-label">Empresa</span><strong>${esc(company)}</strong></span>
+      <span class="p3-inline-divider" aria-hidden="true">|</span>
+      <span class="p3-inline-field p3-order-inline"><span class="p3-field-label">N° Prestación</span><strong>${esc(order)}</strong></span>
+    </div>
+    <div class="p3-client-row">
+      <span class="p3-field-label">Cliente</span><div class="p3-vehicle"><strong>${esc(vehicle)}</strong><span class="p3-plate">${esc(plate)}</span></div>
     </div>
     <div class="p3-route">
       <div class="p3-route-row origin"><span class="p3-route-mark" aria-hidden="true"></span><span class="p3-field-label">Origen</span><strong>${esc(s.origin||'—')}</strong></div>
       <div class="p3-route-row destination"><span class="p3-route-mark" aria-hidden="true"></span><span class="p3-field-label">Destino</span><strong>${esc(s.destination||'—')}</strong></div>
-    </div>
-    <div class="p3-service-details">
-      <div class="p3-detail"><span class="p3-field-label">Estado</span><span class="p3-status ${meta.tone}">${esc(meta.label)}</span></div>
-      <div class="p3-detail p3-client-detail"><span class="p3-field-label">Cliente</span><div class="p3-vehicle"><strong>${esc(vehicle)}</strong><span class="p3-plate">${esc(plate)}</span></div></div>
-      <div class="p3-detail p3-date-detail"><span class="p3-field-label">Fecha</span><strong>${esc(serviceDate(s.scheduled_for))}</strong></div>
     </div>
   </article>`;
 }
