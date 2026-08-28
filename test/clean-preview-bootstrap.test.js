@@ -35,5 +35,5 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'remito-mobile-flow-v4-20260828'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'remito-mobile-flow-v5-20260828'/);
 });

@@ -10,6 +10,7 @@ test('el puente del chofer usa la cola v2 y el guardado transaccional para ARRIB
   const data=read('supabase.js');
   assert.match(js,/get_driver_operator_queue_v2/);
   assert.match(js,/ensure_operator_service_trip_v2/);
+  assert.match(js,/AuxiliosRemitoAddonsV2\?\.loadReference/);
   assert.match(js,/validate_operator_service_required_fields_v2/);
   assert.match(js,/complete_driver_operator_service_fields_v2/);
   assert.match(data,/save_driver_operator_service_remito_v3/);
