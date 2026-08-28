@@ -71,22 +71,44 @@ test('el módulo del Chofer se presenta como Servicios con una sola cabecera min
 test('la tarjeta activa muestra sólo el resumen operativo solicitado y se abre completa',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   const card=js.split('function activeCard(s)')[1].split('function findService')[0];
-  for(const expected of ['Empresa','N° Prestación','Origen','Destino','Estado','Cliente','Fecha'])assert.match(card,new RegExp(expected));
-  for(const expected of ['company_name','service_order_number','origin','destination','vehicle_make_model','vehicle_plate','scheduled_for'])assert.match(card,new RegExp(expected));
+  for(const expected of ['Fecha','N° Prestación','Estado','Datos del cliente','Vehículo','Patente','Origen','Destino','KM','Datos del servicio','Peajes','Excedentes'])assert.match(card,new RegExp(expected));
+  for(const expected of ['service_order_number','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters','toll_payment_summary','has_excesses'])assert.match(card,new RegExp(expected));
   for(const fallback of ['Sin N° prestación','Vehículo sin informar','Sin patente'])assert.match(card,new RegExp(fallback));
-  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Completar remito','Continuar remito','Ver remito'])assert.doesNotMatch(card,new RegExp(forbidden));
+  for(const forbidden of ['Empresa','company_name','service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Completar remito','Continuar remito','Ver remito'])assert.doesNotMatch(card,new RegExp(forbidden));
   assert.match(card,/role="button" tabindex="0"/);
   assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
   assert.match(card,/abrirRemitoServicio\(this\.dataset\.serviceId\)/);
-  assert.match(card,/p3-inline-divider[^>]*aria-hidden="true">\|/);
+  assert.match(card,/p3-bar-divider[^>]*aria-hidden="true">\|/);
   const markup=card.split('return`')[1];
-  const order=['Fecha','Estado','Empresa','N° Prestación','Cliente','Origen','Destino'];
+  const order=['Fecha','N° Prestación','Estado','Datos del cliente','Vehículo','Patente','Origen','Destino','KM','Datos del servicio','Peajes','Excedentes'];
   for(let i=1;i<order.length;i++)assert.ok(markup.indexOf(order[i-1])<markup.indexOf(order[i]),`${order[i-1]} debe aparecer antes que ${order[i]}`);
-  assert.doesNotMatch(card,/p3-service-details/);
-  assert.match(js,/toLocaleDateString\('es-AR',\{day:'2-digit',month:'2-digit',year:'numeric'\}\)/);
+  assert.match(card,/Google Maps · Origen → Destino/);
+  assert.match(js,/const currentDate=\(\)=>new Date\(\)\.toLocaleDateString/);
+  assert.match(js,/Math\.round\(value\/100\)\/10/);
+  assert.match(css,/p3-service-columns\{display:grid;grid-template-columns:/);
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);
   assert.doesNotMatch(css,/\.p3-service-card\.priority-/);
+});
+
+test('la cola del Chofer expone sólo el tramo Maps y el resumen comercial no monetario',()=>{
+  const sql=read('supabase/migrations/20260828012411_driver_service_card_summary_v1.sql');
+  assert.match(sql,/create or replace function public\.get_driver_operator_queue_v2\(\)/);
+  assert.match(sql,/security definer\s+set search_path = ''/);
+  assert.match(sql,/v_role<>'chofer' or v_uid is null/);
+  assert.match(sql,/s\.assigned_driver_id=v_uid/);
+  assert.match(sql,/origin_destination_distance_meters/);
+  assert.match(sql,/billing_snapshot->>'route_mode'='origin_destination'/);
+  assert.match(sql,/billing_snapshot->>'route_mode'='base_origin_destination_base'/);
+  assert.match(sql,/route_legs->1->>'distanceMeters'/);
+  assert.match(sql,/s\.route_provider='google_routes'/);
+  assert.match(sql,/toll_payment_summary/);
+  assert.match(sql,/has_excesses/);
+  assert.match(sql,/choice\.has_actual and toll\.source='actual'/);
+  assert.match(sql,/not choice\.has_actual and toll\.source in \('planned','manual'\)/);
+  assert.doesNotMatch(sql,/unit_amount|total_amount|estimated_total|customer_amount/);
+  assert.match(sql,/revoke all on function public\.get_driver_operator_queue_v2\(\) from public,anon,authenticated/);
+  assert.match(sql,/grant execute on function public\.get_driver_operator_queue_v2\(\) to authenticated/);
 });
 
 test('runtime conserva puente canónico sin journey guard muerto',()=>{

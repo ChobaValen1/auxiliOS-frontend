@@ -14,10 +14,10 @@ const role=()=>String(profile()?.roles?.name||profile()?.role||'').toLowerCase()
 const isDriver=()=>role()==='chofer';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const notify=(m,t='info')=>typeof window.toast==='function'?window.toast(m,t):console[t==='error'?'error':'log'](m);
-const serviceDate=v=>{
-  if(!v)return'—';
-  const value=new Date(v);
-  return Number.isNaN(value.getTime())?'—':value.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+const currentDate=()=>new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+const originDestinationKm=meters=>{
+  const value=Number(meters);
+  return Number.isFinite(value)&&value>0?`${(Math.round(value/100)/10).toLocaleString('es-AR')} km`:'Sin cálculo Maps';
 };
 function injectAssets(){if(document.getElementById('phase3-service-bridge-css'))return;const l=document.createElement('link');l.id='phase3-service-bridge-css';l.rel='stylesheet';l.href='/operator-service-bridge.css';document.head.appendChild(l)}
 function applyDriverModuleLabels(){if(!isDriver())return;const nav=document.getElementById('nav-remitos'),screen=document.getElementById('screen-remitos');const label=nav?.querySelector('.nav-label'),icon=nav?.querySelector('.nav-icon');if(label)label.textContent='Servicios';if(icon)icon.textContent='📡';if(screen?.classList.contains('active')){const title=document.getElementById('topbar-title'),sub=document.getElementById('topbar-sub');if(title)title.textContent='SERVICIOS';if(sub)sub.textContent='Asignados e historial'}}
@@ -27,26 +27,39 @@ async function loadQueue({silent=false}={}){if(!isDriver()||P3.loading||!db())re
 function render(){injectPanel();applyDriverModuleLabels();const list=document.getElementById('phase3-driver-services-list'),panel=document.getElementById('phase3-driver-services'),screen=document.getElementById('screen-remitos');if(!list||!panel||!screen)return;const history=P3.view==='history';document.getElementById('p3-view-active')?.classList.toggle('active',!history);document.getElementById('p3-view-history')?.classList.toggle('active',history);screen.classList.toggle('p3-hide-remitos-archive',!history);panel.classList.toggle('p3-history-only',history);if(history){list.innerHTML='';return}const rows=P3.queue;panel.classList.toggle('has-services',rows.length>0);if(!rows.length){list.innerHTML='<div class="p3-empty"><span>✓</span>No tenés servicios activos asignados.</div>';return}list.innerHTML=rows.map(activeCard).join('')}
 function activeCard(s){
   const meta=STATUS[s.status]||STATUS.assigned,hasRemito=!!s.remito_id;
-  const company=s.company_name||'Empresa sin informar',order=s.service_order_number||'Sin N° prestación';
+  const order=s.service_order_number||'Sin N° prestación';
   const vehicle=s.vehicle_make_model||'Vehículo sin informar',plate=s.vehicle_plate||'Sin patente';
+  const mapsKm=Number(s.origin_destination_distance_meters)>0&&s.origin_destination_distance_provider==='google_routes';
+  const tolls=s.toll_payment_summary||'Sin peajes previstos',hasExcesses=s.has_excesses===true;
   const opensRemito=s.status==='assigned'||hasRemito;
-  const action=opensRemito?`role="button" tabindex="0" data-service-id="${esc(s.service_id)}" aria-label="Abrir prestación ${esc(order)} de ${esc(company)}" onclick="abrirRemitoServicio(this.dataset.serviceId)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirRemitoServicio(this.dataset.serviceId)}"`:'';
+  const action=opensRemito?`role="button" tabindex="0" data-service-id="${esc(s.service_id)}" aria-label="Abrir prestación ${esc(order)}" onclick="abrirRemitoServicio(this.dataset.serviceId)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirRemitoServicio(this.dataset.serviceId)}"`:'';
   return`<article class="p3-service-card${opensRemito?' is-actionable':''}" ${action}>
-    <div class="p3-service-head">
-      <div class="p3-field"><span class="p3-field-label">Fecha</span><strong class="p3-date-value">${esc(serviceDate(s.scheduled_for))}</strong></div>
-      <div class="p3-field p3-status-field"><span class="p3-field-label">Estado</span><span class="p3-status ${meta.tone}">${esc(meta.label)}</span></div>
+    <div class="p3-service-bar">
+      <div class="p3-bar-left">
+        <span class="p3-bar-item"><span class="p3-field-label">Fecha</span><strong class="p3-date-value">${esc(currentDate())}</strong></span>
+        <span class="p3-bar-divider" aria-hidden="true">|</span>
+        <span class="p3-bar-item"><span class="p3-field-label">N° Prestación</span><strong class="p3-order-value">${esc(order)}</strong></span>
+      </div>
+      <div class="p3-status-field"><span class="p3-field-label">Estado</span><span class="p3-status ${meta.tone}">${esc(meta.label)}</span></div>
     </div>
-    <div class="p3-company-order">
-      <span class="p3-inline-field p3-company-inline"><span class="p3-field-label">Empresa</span><strong>${esc(company)}</strong></span>
-      <span class="p3-inline-divider" aria-hidden="true">|</span>
-      <span class="p3-inline-field p3-order-inline"><span class="p3-field-label">N° Prestación</span><strong>${esc(order)}</strong></span>
-    </div>
-    <div class="p3-client-row">
-      <span class="p3-field-label">Cliente</span><div class="p3-vehicle"><strong>${esc(vehicle)}</strong><span class="p3-plate">${esc(plate)}</span></div>
-    </div>
-    <div class="p3-route">
-      <div class="p3-route-row origin"><span class="p3-route-mark" aria-hidden="true"></span><span class="p3-field-label">Origen</span><strong>${esc(s.origin||'—')}</strong></div>
-      <div class="p3-route-row destination"><span class="p3-route-mark" aria-hidden="true"></span><span class="p3-field-label">Destino</span><strong>${esc(s.destination||'—')}</strong></div>
+    <div class="p3-service-columns">
+      <section class="p3-service-column p3-client-column">
+        <h3>Datos del cliente</h3>
+        <div class="p3-data-list">
+          <div class="p3-data-row"><span class="p3-field-label">Vehículo</span><strong>${esc(vehicle)}</strong></div>
+          <div class="p3-data-row"><span class="p3-field-label">Patente</span><strong class="p3-plate">${esc(plate)}</strong></div>
+          <div class="p3-data-row"><span class="p3-field-label">Origen</span><strong>${esc(s.origin||'—')}</strong></div>
+          <div class="p3-data-row"><span class="p3-field-label">Destino</span><strong>${esc(s.destination||'—')}</strong></div>
+          <div class="p3-data-row"><span class="p3-field-label">KM</span><span class="p3-value-stack"><strong class="p3-km-value">${esc(originDestinationKm(s.origin_destination_distance_meters))}</strong>${mapsKm?'<small>Google Maps · Origen → Destino</small>':''}</span></div>
+        </div>
+      </section>
+      <section class="p3-service-column p3-service-data-column">
+        <h3>Datos del servicio</h3>
+        <div class="p3-data-list">
+          <div class="p3-data-row"><span class="p3-field-label">Peajes</span><strong>${esc(tolls)}</strong></div>
+          <div class="p3-data-row"><span class="p3-field-label">Excedentes</span><strong class="p3-binary ${hasExcesses?'yes':'no'}">${hasExcesses?'Sí':'No'}</strong></div>
+        </div>
+      </section>
     </div>
   </article>`;
 }
