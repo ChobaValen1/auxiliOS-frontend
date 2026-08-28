@@ -38,6 +38,7 @@ test('el Chofer informa peajes y excedentes minimalistas con evidencia opcional'
   assert.match(driver,/Seleccionar peajes/);
   assert.match(driver,/rem-addon-picker/);
   assert.match(driver,/Confirmar selección/);
+  assert.match(driver,/if\(!pickerRows\(kind\)\.length\)/);
   assert.match(driver,/missing_evidence_reason/);
   assert.doesNotMatch(driver,/justificá su ausencia/);
   assert.match(driver,/Medio de pago/);

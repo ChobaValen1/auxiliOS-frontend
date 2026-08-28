@@ -66,7 +66,10 @@
   }
   function renumber(){$$('.rem-toll-line').forEach((x,i)=>$('.rem-addon-line-number',x).textContent=`Cruce de peaje ${i+1}`);$$('.rem-excess-line').forEach((x,i)=>$('.rem-addon-line-number',x).textContent=`Excedente ${i+1}`)}
   function pickerRows(kind){return kind==='toll'?(state.reference.tolls||[]).map(x=>({id:x.toll_id,label:x.name,detail:[x.road,x.direction].filter(Boolean).join(' · ')})):(state.reference.excess_concepts||[]).map(x=>({id:x.concept_id,label:x.name,detail:''}))}
-  function openPicker(kind){
+  async function openPicker(kind){
+    if(!pickerRows(kind).length){
+      try{await loadReference()}catch(error){const box=$('#rem-addons-errors');if(box){box.textContent=error.message||'No se pudo cargar el catálogo';box.classList.add('visible')}return}
+    }
     const modal=$('#rem-addon-picker');if(!modal)return;
     const field=kind==='toll'?'toll_id':'concept_id';const selected=new Set($$(`.rem-${kind}-line`).map(x=>$(`[data-field="${field}"]`,x)?.value).filter(Boolean));
     modal.dataset.kind=kind;$('#rem-addon-picker-title').textContent=kind==='toll'?'Seleccionar peajes':'Seleccionar excedentes';
