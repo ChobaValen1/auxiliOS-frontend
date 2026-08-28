@@ -24,6 +24,7 @@
   }
   const paymentOptions=value=>[['cash','Efectivo'],['transfer','Transferencia'],['card','Tarjeta'],['mercado_pago','Mercado Pago'],['other','Otro']].map(([v,l])=>`<option value="${v}" ${value===v?'selected':''}>${l}</option>`).join('');
   const tollPaymentOptions=value=>[['cash','Efectivo'],['electronic','Electrónico'],['telepass','TelePASE'],['manual','Manual'],['other','Otro']].map(([v,l])=>`<option value="${v}" ${value===v?'selected':''}>${l}</option>`).join('');
+  function reportedExcessPayment(x){try{return JSON.parse(x.notes||'{}').payment_method||''}catch{return''}}
   const decisions=value=>[['accepted','Aceptar'],['adjusted','Ajustar'],['rejected','Rechazar']].map(([v,l])=>`<option value="${v}" ${value===v?'selected':''}>${l}</option>`).join('');
   function evidenceButtons(items){return(items||[]).map(e=>`<button type="button" onclick="AuxiliosRemitoReviewV2.openEvidence('${esc(e.bucket)}','${esc(e.path)}')">${e.kind==='toll_ticket'?'Ticket':'Evidencia'} · ${esc(e.original_name||'archivo')}</button>`).join('')||'<span class="os-review-original">Sin archivo adjunto</span>'}
   function tollLine(x,i,d){
@@ -42,14 +43,14 @@
     </div><div class="os-review-evidence">${evidenceButtons(x.evidence)}</div></article>`;
   }
   function excessLine(x,i,d){
-    const refs=d.references?.excess_concepts||[],review=x.review&&x.review.decision?x.review:null,accepted=review?.accepted||{},readonly=!d.can_resolve;const conceptId=accepted.concept_id??x.concept_id??'';const quantity=accepted.quantity??x.quantity;const unit=accepted.unit_amount??x.unit_amount;const collector=accepted.collector_agent??'company';
-    return`<article class="os-review-line" data-kind="excess" data-report-id="${x.excess_report_id}" data-original-concept-id="${esc(x.concept_id||'')}" data-original-quantity="${x.quantity}" data-original-unit="${x.unit_amount}"><div class="os-review-line-head"><div><b>Excedente ${i+1} · ${esc(x.concept_name)}</b><small>${esc(x.reason)}</small></div><strong>${money(x.total_amount)}</strong></div><div class="os-review-original">Original firmado: ${esc(x.quantity)} × ${money(x.unit_amount)}</div><div class="os-review-grid">
+    const refs=d.references?.excess_concepts||[],review=x.review&&x.review.decision?x.review:null,accepted=review?.accepted||{},readonly=!d.can_resolve;const conceptId=accepted.concept_id??x.concept_id??'';const quantity=accepted.quantity??x.quantity;const unit=accepted.unit_amount??x.unit_amount;const collector=accepted.collector_agent??'company';const reportedMethod=reportedExcessPayment(x);const acceptedMethod=accepted.customer_payment_method??(reportedMethod==='not_collected'?'':reportedMethod);
+    return`<article class="os-review-line" data-kind="excess" data-report-id="${x.excess_report_id}" data-original-concept-id="${esc(x.concept_id||'')}" data-original-quantity="${x.quantity}" data-original-unit="${x.unit_amount}"><div class="os-review-line-head"><div><b>Excedente ${i+1} · ${esc(x.concept_name)}</b><small>${esc(x.reason)}${reportedMethod?` · Medio informado: ${esc(reportedMethod)}`:''}</small></div><strong>${money(x.total_amount)}</strong></div><div class="os-review-original">Original firmado: ${esc(x.quantity)} × ${money(x.unit_amount)}${reportedMethod?` · ${esc(reportedMethod)}`:''}</div><div class="os-review-grid">
       <label>Decisión<select data-field="decision" ${readonly?'disabled':''}>${decisions(review?.decision||'accepted')}</select></label>
       <label class="wide">Concepto comercial<select data-field="concept_id" ${readonly?'disabled':''}><option value="">Clasificar…</option>${refs.map(c=>`<option value="${c.concept_id}" ${String(conceptId)===String(c.concept_id)?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>
       <label>Cantidad<input data-field="quantity" inputmode="decimal" value="${esc(quantity)}" ${readonly?'disabled':''}></label>
       <label>Importe unitario<input data-field="unit_amount" inputmode="decimal" value="${esc(unit)}" ${readonly?'disabled':''}></label>
       <label>Cobrador<select data-field="collector_agent" ${readonly?'disabled':''}><option value="company" ${collector==='company'?'selected':''}>Empresa</option><option value="provider" ${collector==='provider'?'selected':''}>Prestadora</option></select></label>
-      <label>Medio de cobro<select data-field="customer_payment_method" ${readonly?'disabled':''}><option value="">Seleccionar…</option>${paymentOptions(accepted.customer_payment_method||'')}</select></label>
+      <label>Medio de cobro<select data-field="customer_payment_method" ${readonly?'disabled':''}><option value="">Seleccionar…</option>${paymentOptions(acceptedMethod)}</select></label>
       <label class="wide">Motivo del ajuste o rechazo<textarea data-field="reason" ${readonly?'disabled':''}>${esc(review?.reason||'')}</textarea></label>
     </div><div class="os-review-evidence">${evidenceButtons(x.evidence)}</div></article>`;
   }

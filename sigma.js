@@ -539,7 +539,7 @@ function selectTrigger(type) {
 
 // ── REMITO WIZARD ──────────────────────────────────────────
 let _remPasoActual = 1;
-const REM_TOTAL_PASOS = 5;
+const REM_TOTAL_PASOS = 4;
 
 function remWizardReset() {
   _remPasoActual = 1;
@@ -585,7 +585,7 @@ function remWizardReset() {
   if (total) total.textContent = '$0';
 
   // Reseteo de Toggles del Paso 5 (Arrastre apagado, el resto encendido)
-  document.querySelectorAll('#rem-step-5 .acept-toggle').forEach(row => {
+  document.querySelectorAll('#rem-step-4 .acept-toggle').forEach(row => {
     const t = row.querySelector('.toggle');
     const titulo = row.querySelector('.toggle-title')?.textContent.trim();
     if (t) {
@@ -598,7 +598,7 @@ function remWizardReset() {
   });
 
   // Apagar Toggle de Firma de Chofer y resetear título
-  const toggleChofer = document.querySelector('#rem-step-5 .toggle-row[onclick*="toggleFirmaChofer"] .toggle');
+  const toggleChofer = document.querySelector('#rem-step-4 .toggle-row[onclick*="toggleFirmaChofer"] .toggle');
   if (toggleChofer) toggleChofer.classList.remove('on');
   const labelFirma = document.getElementById('label-firma-canvas');
   if (labelFirma) {
@@ -659,7 +659,7 @@ function _remWizardActualizar() {
   
   if (btnNext) {
     if (_remPasoActual === REM_TOTAL_PASOS) {
-      // ESTAMOS EN EL PASO 5 (FIRMA)
+      // ESTAMOS EN EL PASO FINAL (FIRMA)
       btnNext.textContent = '✅ Finalizar';
       if (btnPendiente) btnPendiente.style.display = 'none';
       btnNext.onclick = () => {
@@ -687,8 +687,7 @@ function remWizardIr(delta) {
   if (delta > 0 && !_remWizardValidar(_remPasoActual)) return;
   _remPasoActual = Math.max(1, Math.min(REM_TOTAL_PASOS, _remPasoActual + delta));
   _remWizardActualizar();
-  if (_remPasoActual === 5 && typeof initCanvas === 'function') {
-    window.AuxiliosRemitoAddonsV2?.renderSignatureSummary?.();
+  if (_remPasoActual === REM_TOTAL_PASOS && typeof initCanvas === 'function') {
     setTimeout(() => initCanvas('sig-canvas'), 80);
   }
 }
@@ -705,14 +704,7 @@ function _remWizardValidar(paso) {
   };
   
   if (paso === 1) {
-    marcar('rem-tipo-servicio', 'err-tipo');
-    marcar('rem-patente', 'err-patente');
-    marcar('rem-origen', 'err-origen');
-    marcar('rem-destino', 'err-destino');
-  }
-  if (paso === 2) {
     marcar('rem-cliente', 'err-cliente');
-    marcar('rem-cuit', 'err-dni');
   }
   if (paso === 3) {
     if (window.AuxiliosRemitoAddonsV2) {
@@ -840,7 +832,7 @@ function toggleFirmaChofer(elemento) {
 
 // ── 2. MATEMÁTICA ESTRICTA DE LA BARRA DE PROGRESO ──
 function actualizarProgresoFirmas() {
-    const panel = document.getElementById('rem-step-5');
+    const panel = document.getElementById('rem-step-4');
     if (!panel) return;
 
     let esperados = 0;
@@ -905,7 +897,7 @@ function cerrarModalFirmaFalta() {
 // Esta función se ejecuta cuando el chofer toca "Finalizar y Guardar"
 function validarPaso5Final() {
     // 1. Verificamos las confirmaciones obligatorias (excluye Arrastre por ser opcional)
-    const obligatorios = document.querySelectorAll('#rem-step-5 .acept-toggle:not(#row-arrastre) .toggle');
+    const obligatorios = document.querySelectorAll('#rem-step-4 .acept-toggle:not(#row-arrastre) .toggle');
     let todasConfirmadas = true;
     obligatorios.forEach(t => {
         if (!t.classList.contains('on')) todasConfirmadas = false;
@@ -1306,8 +1298,8 @@ async function _finalizarRemitoInner() {
   if (!origen)  { mostrarValidacion('⚠️ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
   if (!destino) { mostrarValidacion('⚠️ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
   if (cuit && !/^\d{7,11}$/.test(cuit) && !/^\d{2}-\d{7,8}-\d{1}$/.test(cuit)) {
-    mostrarValidacion('⚠️ DNI/CUIT inválido', 'El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso 2.');
-    remWizardIr(2 - _remPasoActual);
+    mostrarValidacion('⚠️ DNI/CUIT inválido', 'El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso 1.');
+    remWizardIr(1 - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
     return;

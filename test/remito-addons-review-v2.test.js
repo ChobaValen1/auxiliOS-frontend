@@ -4,6 +4,7 @@ const fs=require('node:fs');
 
 const read=file=>fs.readFileSync(file,'utf8');
 const migration=read('migrations/20260826181259_remito_addons_review_v2.sql');
+const optionalTicket=read('migrations/20260828163000_remito_ticket_optional_v1.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -26,17 +27,24 @@ test('normaliza peajes, excedentes y evidencia sin exponer tablas al frontend',(
   assert.doesNotMatch(generatedTotalFix,/imp_total_extras=round/);
 });
 
-test('el Chofer informa detalle, ticket por cruce y justificación obligatoria',()=>{
+test('el Chofer informa peajes y excedentes minimalistas con evidencia opcional',()=>{
   assert.match(driver,/DriverTollReport/);
   assert.match(driver,/DriverExcessReport/);
   assert.match(driver,/RemitoEvidence/);
   assert.match(driver,/Hubo peajes/);
   assert.match(driver,/Hubo excedentes/);
   assert.match(driver,/Cobros realizados al cliente/);
-  assert.match(driver,/Adjuntá el ticket del peaje/);
+  assert.match(driver,/Ticket <small>\(opcional\)<\/small>/);
+  assert.match(driver,/Seleccionar peajes/);
+  assert.match(driver,/rem-addon-picker/);
+  assert.match(driver,/Confirmar selección/);
   assert.match(driver,/missing_evidence_reason/);
+  assert.doesNotMatch(driver,/justificá su ausencia/);
+  assert.match(driver,/Medio de pago/);
   assert.match(driver,/customer_collections/);
-  assert.match(migration,/Adjuntá el ticket o justificá por qué no está disponible/);
+  assert.match(optionalTicket,/position\('Adjuntá el ticket o justificá por qué no está disponible'/);
+  assert.match(optionalTicket,/v_sql := replace\(v_sql, v_old, ''\)/);
+  assert.match(optionalTicket,/execute v_sql/);
 });
 
 test('los RPC v2/v4 son autenticados, idempotentes y preservan el original firmado',()=>{
@@ -87,6 +95,8 @@ test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega
   assert.match(review,/Remitos recibidos/);
   assert.match(review,/Planificado por Operaciones/);
   assert.match(review,/Aprobar y aplicar al servicio/);
+  assert.match(review,/reportedExcessPayment/);
+  assert.match(review,/Medio informado/);
   assert.match(review,/resolve_operator_service_document_v2/);
   assert.match(review,/Explicá cada peaje ajustado o rechazado/);
   assert.match(review,/Clasificá el concepto comercial/);

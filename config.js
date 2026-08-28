@@ -3,7 +3,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'billing-phase2-clean-preview-20260824';
+window.AUXILIOS_BUILD_ID = 'remito-mobile-flow-v4-20260828';
 
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
@@ -71,6 +71,7 @@ async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-operator-invoices-css', '/operator-invoices.css');
   loadAuxiliosStyle('auxilios-configuration-center-css', '/configuration-center.css');
   loadAuxiliosStyle('auxilios-remito-addons-v2-css', '/remito-addons-v2.css');
+  loadAuxiliosStyle('auxilios-remito-mobile-flow-v3-css', '/remito-mobile-flow-v3.css');
   loadAuxiliosStyle('auxilios-operator-remito-review-v2-css', '/operator-remito-review-v2.css');
 
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
@@ -87,6 +88,7 @@ async function loadCriticalAuxiliosModules() {
   await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
   await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
   await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
+  await loadAuxiliosModule('auxilios-remito-mobile-flow-v3', '/remito-mobile-flow-v3.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
   await loadAuxiliosModule('auxilios-remito-addons-v2', '/remito-addons-v2.js');
   await loadAuxiliosModule('auxilios-operator-remito-review-v2', '/operator-remito-review-v2.js');

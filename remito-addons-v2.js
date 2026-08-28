@@ -2,7 +2,7 @@
   'use strict';
 
   /** @typedef {{client_line_id:string,toll_id:string|null,toll_name:string,quantity:number,unit_amount:number,currency:string,payment_method:string,crossed_at:string|null,missing_evidence_reason:string|null,notes:string|null}} DriverTollReport */
-  /** @typedef {{client_line_id:string,concept_id:string|null,concept_name:string,quantity:number,unit_amount:number,currency:string,reason:string,notes:string|null}} DriverExcessReport */
+  /** @typedef {{client_line_id:string,concept_id:string|null,concept_name:string,quantity:number,unit_amount:number,currency:string,payment_method:string,reason:string,notes:string|null}} DriverExcessReport */
   /** @typedef {{client_evidence_id:string,client_line_id:string|null,evidence_kind:string,storage_path?:string,mime_type:string,original_name:string,size_bytes:number,blob_field?:string}} RemitoEvidence */
 
   const state={reference:{tolls:[],excess_concepts:[],evidence:{}},serviceId:null,initialized:false};
@@ -30,11 +30,9 @@
     return `<div class="rem-addon-line rem-toll-line" data-line-id="${lineId}"><div class="rem-addon-line-head"><span class="rem-addon-line-number">Cruce de peaje</span><button type="button" class="rem-addon-remove" data-remove>Eliminar</button></div><div class="rem-addon-grid">
       <div class="wide"><label>Peaje</label><select data-field="toll_id"><option value="">Seleccionar...</option>${options(state.reference.tolls||[],'toll_id',r=>[r.name,r.road,r.direction].filter(Boolean).join(' · '))}<option value="other">Otro peaje</option></select></div>
       <div class="wide" data-other-wrap hidden><label>Nombre del peaje</label><input data-field="toll_name" maxlength="120" placeholder="Nombre o ubicación"></div>
-      <div><label>Importe del cruce</label><input data-field="unit_amount" inputmode="decimal" placeholder="0"></div>
+      <div><label>Importe</label><input data-field="unit_amount" inputmode="decimal" placeholder="0"></div>
       <div><label>Medio utilizado</label><select data-field="payment_method"><option value="cash">Efectivo</option><option value="electronic">Pago electrónico</option><option value="telepass">TelePASE</option><option value="other">Otro</option></select></div>
-      <div><label>Hora del cruce</label><input data-field="crossed_at" type="time"></div>
-      <div><label>Ticket (imagen o PDF)</label><input class="rem-addon-file" data-field="ticket" type="file" accept="image/*,application/pdf"></div>
-      <div class="wide" data-no-ticket><label>Justificación si no hay ticket</label><textarea data-field="missing_reason" maxlength="500" placeholder="Explicá por qué no hay comprobante"></textarea></div>
+      <div class="wide"><label>Ticket <small>(opcional)</small></label><input class="rem-addon-file" data-field="ticket" type="file" accept="image/*,application/pdf"></div>
     </div></div>`;
   }
   function excessRow(){
@@ -42,21 +40,22 @@
     return `<div class="rem-addon-line rem-excess-line" data-line-id="${lineId}"><div class="rem-addon-line-head"><span class="rem-addon-line-number">Excedente informado</span><button type="button" class="rem-addon-remove" data-remove>Eliminar</button></div><div class="rem-addon-grid">
       <div class="wide"><label>Concepto</label><select data-field="concept_id"><option value="">Seleccionar...</option>${options(state.reference.excess_concepts||[],'concept_id',r=>r.name)}<option value="other">Otro concepto</option></select></div>
       <div class="wide" data-other-wrap hidden><label>Nombre del concepto</label><input data-field="concept_name" maxlength="120" placeholder="Detallá el excedente"></div>
-      <div><label>Cantidad</label><input data-field="quantity" inputmode="decimal" value="1"></div>
-      <div><label>Importe unitario</label><input data-field="unit_amount" inputmode="decimal" placeholder="0"></div>
-      <div class="wide"><label>Motivo</label><textarea data-field="reason" maxlength="500" placeholder="Por qué se generó este excedente"></textarea></div>
-      <div class="wide"><label>Evidencia opcional</label><input class="rem-addon-file" data-field="support" type="file" accept="image/*,application/pdf"></div>
+      <input data-field="quantity" type="hidden" value="1">
+      <div><label>Importe</label><input data-field="unit_amount" inputmode="decimal" placeholder="0"></div>
+      <div><label>Medio de pago</label><select data-field="payment_method"><option value="cash">Efectivo</option><option value="transfer">Transferencia</option><option value="card">Tarjeta</option><option value="mercado_pago">Mercado Pago</option><option value="not_collected">No cobrado</option><option value="other">Otro</option></select></div>
     </div></div>`;
   }
-  function ensureLine(kind){const box=$(`#rem-${kind}-lines`);if(box&&!box.children.length) addLine(kind)}
-  function addLine(kind){
+  function addLine(kind,preset=''){
     const box=$(`#rem-${kind}-lines`);if(!box)return;
     box.insertAdjacentHTML('beforeend',kind==='toll'?tollRow():excessRow());
-    bindLine(box.lastElementChild);renumber();recalculate();
+    const line=box.lastElementChild;bindLine(line);
+    const select=$('[data-field="toll_id"],[data-field="concept_id"]',line);
+    if(select&&preset){select.value=preset;select.dispatchEvent(new Event('change'))}
+    renumber();recalculate();
   }
   function bindLine(line){
     $('[data-remove]',line)?.addEventListener('click',()=>{line.remove();renumber();recalculate()});
-    $$('input,select,textarea',line).forEach(el=>el.addEventListener('input',()=>{if(el.dataset.field==='ticket') toggleTicketReason(line);recalculate()}));
+    $$('input,select,textarea',line).forEach(el=>el.addEventListener('input',recalculate));
     const select=$('[data-field="toll_id"],[data-field="concept_id"]',line);
     select?.addEventListener('change',()=>{
       const other=select.value==='other';$('[data-other-wrap]',line).hidden=!other;
@@ -64,10 +63,24 @@
       if(line.classList.contains('rem-excess-line')&&!other){const ref=(state.reference.excess_concepts||[]).find(x=>x.concept_id===select.value);if(ref)$('[data-field="concept_name"]',line).value=ref.name||''}
       recalculate();
     });
-    toggleTicketReason(line);
   }
-  function toggleTicketReason(line){const ticket=$('[data-field="ticket"]',line);const reason=$('[data-no-ticket]',line);if(reason)reason.hidden=!!ticket?.files?.length}
   function renumber(){$$('.rem-toll-line').forEach((x,i)=>$('.rem-addon-line-number',x).textContent=`Cruce de peaje ${i+1}`);$$('.rem-excess-line').forEach((x,i)=>$('.rem-addon-line-number',x).textContent=`Excedente ${i+1}`)}
+  function pickerRows(kind){return kind==='toll'?(state.reference.tolls||[]).map(x=>({id:x.toll_id,label:x.name,detail:[x.road,x.direction].filter(Boolean).join(' · ')})):(state.reference.excess_concepts||[]).map(x=>({id:x.concept_id,label:x.name,detail:''}))}
+  function openPicker(kind){
+    const modal=$('#rem-addon-picker');if(!modal)return;
+    const field=kind==='toll'?'toll_id':'concept_id';const selected=new Set($$(`.rem-${kind}-line`).map(x=>$(`[data-field="${field}"]`,x)?.value).filter(Boolean));
+    modal.dataset.kind=kind;$('#rem-addon-picker-title').textContent=kind==='toll'?'Seleccionar peajes':'Seleccionar excedentes';
+    $('#rem-addon-picker-list').innerHTML=[...pickerRows(kind),{id:'other',label:kind==='toll'?'Otro peaje':'Otro excedente',detail:'Carga manual'}].map(x=>`<label class="rem-picker-option"><input type="checkbox" value="${esc(x.id)}" ${selected.has(String(x.id))?'checked':''}><span><b>${esc(x.label)}</b>${x.detail?`<small>${esc(x.detail)}</small>`:''}</span></label>`).join('');
+    modal.hidden=false;document.body.classList.add('rem-picker-open');
+  }
+  function closePicker(){const modal=$('#rem-addon-picker');if(modal)modal.hidden=true;document.body.classList.remove('rem-picker-open')}
+  function confirmPicker(){
+    const modal=$('#rem-addon-picker'),kind=modal?.dataset.kind;if(!kind)return;
+    const field=kind==='toll'?'toll_id':'concept_id';const wanted=$$('#rem-addon-picker-list input:checked').map(x=>x.value);const box=$(`#rem-${kind}-lines`);
+    $$(`.rem-${kind}-line`,box).forEach(line=>{if(!wanted.includes($(`[data-field="${field}"]`,line)?.value||''))line.remove()});
+    const existing=new Set($$(`.rem-${kind}-line`,box).map(line=>$(`[data-field="${field}"]`,line)?.value));wanted.forEach(value=>{if(!existing.has(value))addLine(kind,value)});
+    renumber();recalculate();closePicker();
+  }
   function active(kind){return $(`#rem-had-${kind}`)?.checked===true}
   function totals(){
     const toll=active('tolls')?$$('.rem-toll-line').reduce((n,x)=>n+number($('[data-field="unit_amount"]',x)?.value),0):0;
@@ -82,8 +95,8 @@
   }
   function collectionEnabled(){return $('#rem-had-collections')?.checked===true}
   function collectLines(){
-    const tolls=active('tolls')?$$('.rem-toll-line').map(line=>{const selected=$('[data-field="toll_id"]',line)?.value;const ref=(state.reference.tolls||[]).find(x=>x.toll_id===selected);const time=$('[data-field="crossed_at"]',line)?.value;return{client_line_id:line.dataset.lineId,toll_id:selected&&selected!=='other'?selected:null,toll_name:selected==='other'?$('[data-field="toll_name"]',line)?.value.trim():(ref?.name||$('[data-field="toll_name"]',line)?.value.trim()),quantity:1,unit_amount:number($('[data-field="unit_amount"]',line)?.value),currency:'ARS',payment_method:$('[data-field="payment_method"]',line)?.value||'other',crossed_at:time?new Date(`${new Date().toISOString().slice(0,10)}T${time}:00`).toISOString():null,missing_evidence_reason:$('[data-field="ticket"]',line)?.files?.length?null:($('[data-field="missing_reason"]',line)?.value.trim()||null),notes:null}}):[];
-    const excesses=active('excesses')?$$('.rem-excess-line').map(line=>{const selected=$('[data-field="concept_id"]',line)?.value;const ref=(state.reference.excess_concepts||[]).find(x=>x.concept_id===selected);return{client_line_id:line.dataset.lineId,concept_id:selected&&selected!=='other'?selected:null,concept_name:selected==='other'?$('[data-field="concept_name"]',line)?.value.trim():(ref?.name||$('[data-field="concept_name"]',line)?.value.trim()),quantity:number($('[data-field="quantity"]',line)?.value),unit_amount:number($('[data-field="unit_amount"]',line)?.value),currency:'ARS',reason:$('[data-field="reason"]',line)?.value.trim(),notes:null}}):[];
+    const tolls=active('tolls')?$$('.rem-toll-line').map(line=>{const selected=$('[data-field="toll_id"]',line)?.value;const ref=(state.reference.tolls||[]).find(x=>x.toll_id===selected);return{client_line_id:line.dataset.lineId,toll_id:selected&&selected!=='other'?selected:null,toll_name:selected==='other'?$('[data-field="toll_name"]',line)?.value.trim():(ref?.name||$('[data-field="toll_name"]',line)?.value.trim()),quantity:1,unit_amount:number($('[data-field="unit_amount"]',line)?.value),currency:'ARS',payment_method:$('[data-field="payment_method"]',line)?.value||'other',crossed_at:null,missing_evidence_reason:null,notes:null}}):[];
+    const excesses=active('excesses')?$$('.rem-excess-line').map(line=>{const selected=$('[data-field="concept_id"]',line)?.value;const ref=(state.reference.excess_concepts||[]).find(x=>x.concept_id===selected);const name=selected==='other'?$('[data-field="concept_name"]',line)?.value.trim():(ref?.name||$('[data-field="concept_name"]',line)?.value.trim());const method=$('[data-field="payment_method"]',line)?.value||'other';return{client_line_id:line.dataset.lineId,concept_id:selected&&selected!=='other'?selected:null,concept_name:name,quantity:1,unit_amount:number($('[data-field="unit_amount"]',line)?.value),currency:'ARS',payment_method:method,reason:name||'Excedente informado',notes:JSON.stringify({payment_method:method})}}):[];
     return{tolls,excesses};
   }
   function descriptor(input,kind,lineId=null){
@@ -94,17 +107,16 @@
   function collectEvidence(){
     const list=[];
     if(active('tolls'))$$('.rem-toll-line').forEach(line=>{const d=descriptor($('[data-field="ticket"]',line),'toll_ticket',line.dataset.lineId);if(d)list.push(d)});
-    if(active('excesses'))$$('.rem-excess-line').forEach(line=>{const d=descriptor($('[data-field="support"]',line),'excess_support',line.dataset.lineId);if(d)list.push(d)});
-    const kinds=['vehicle_front','vehicle_side','extra','odometer','extra','extra'];
+    const kinds=['vehicle_front','odometer','extra','extra'];
     $$('#foto-grid input[type="file"]').forEach((input,i)=>{const d=descriptor(input,kinds[i]||'extra');if(d)list.push(d)});
     return list;
   }
   function validate(){
     const errors=[];const {tolls,excesses}=collectLines();const evidence=collectEvidence();
     if(active('tolls')&&!tolls.length)errors.push('Agregá al menos un cruce de peaje.');
-    tolls.forEach((x,i)=>{if(!x.toll_name)errors.push(`Indicá el peaje del cruce ${i+1}.`);if(x.unit_amount<0)errors.push(`Revisá el importe del peaje ${i+1}.`);const has=evidence.some(e=>e.evidence_kind==='toll_ticket'&&e.client_line_id===x.client_line_id);if(!has&&!x.missing_evidence_reason)errors.push(`Adjuntá el ticket del peaje ${i+1} o justificá su ausencia.`)});
+    tolls.forEach((x,i)=>{if(!x.toll_name)errors.push(`Indicá el peaje ${i+1}.`);if(x.unit_amount<=0)errors.push(`Ingresá el importe del peaje ${i+1}.`);if(!x.payment_method)errors.push(`Seleccioná el medio utilizado en el peaje ${i+1}.`)});
     if(active('excesses')&&!excesses.length)errors.push('Agregá al menos un excedente.');
-    excesses.forEach((x,i)=>{if(!x.concept_name)errors.push(`Indicá el concepto del excedente ${i+1}.`);if(x.quantity<=0||x.unit_amount<=0)errors.push(`Revisá cantidad e importe del excedente ${i+1}.`);if(!x.reason)errors.push(`Explicá el motivo del excedente ${i+1}.`)});
+    excesses.forEach((x,i)=>{if(!x.concept_name)errors.push(`Indicá el tipo de excedente ${i+1}.`);if(x.unit_amount<=0)errors.push(`Ingresá el importe del excedente ${i+1}.`);if(!x.payment_method)errors.push(`Seleccioná el medio de pago del excedente ${i+1}.`)});
     evidence.forEach(x=>{if(x.size_bytes>MAX_BYTES)errors.push(`${x.original_name} supera 10 MiB.`);if(!MIME.has(x.mime_type))errors.push(`${x.original_name} tiene un formato no admitido.`)});
     if(collectionEnabled()){if(!$('#rem-pago-selected')?.value)errors.push('Seleccioná cómo cobraste al cliente.');if(number($('#pago1-monto')?.value)+number($('#pago2-monto')?.value)<=0)errors.push('Ingresá el importe cobrado al cliente.')}
     const box=$('#rem-addons-errors');if(box){box.innerHTML=errors.map(esc).join('<br>');box.classList.toggle('visible',!!errors.length)}
@@ -153,16 +165,17 @@
     const payment=$('#rem-pago-selected')?.closest('.form-group');
     step.dataset.addonsV2='1';
     step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span>
-      <section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Hecho real</div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Un ticket por cruce. El medio corresponde al pago del peaje.</div></div><label class="rem-addons-switch"><input id="rem-had-tolls" type="checkbox"> Hubo peajes</label></div><div id="rem-tolls-body" hidden><div id="rem-toll-lines" class="rem-addon-lines"></div><button class="rem-addon-add" id="rem-add-toll" type="button">+ Agregar peaje</button><div class="rem-addon-total"><span>Total informado en peajes</span><strong id="rem-tolls-total">$0</strong></div></div></section>
-      <section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Hecho real</div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Detallá concepto, cantidad, importe y motivo.</div></div><label class="rem-addons-switch"><input id="rem-had-excesses" type="checkbox"> Hubo excedentes</label></div><div id="rem-excesses-body" hidden><div id="rem-excess-lines" class="rem-addon-lines"></div><button class="rem-addon-add" id="rem-add-excess" type="button">+ Agregar excedente</button><div class="rem-addon-total"><span>Total informado en excedentes</span><strong id="rem-excesses-total">$0</strong></div></div></section>
+      <section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Paso 3</div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Peaje, importe y medio utilizado.</div></div><label class="rem-addons-switch"><input id="rem-had-tolls" type="checkbox"> Hubo peajes</label></div><div id="rem-tolls-body" hidden><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-lines" class="rem-addon-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></div></section>
+      <section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Tipo, importe y medio de pago.</div></div><label class="rem-addons-switch"><input id="rem-had-excesses" type="checkbox"> Hubo excedentes</label></div><div id="rem-excesses-body" hidden><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-lines" class="rem-addon-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></div></section>
       <section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Separado de los peajes</div><div class="rem-addons-title">Cobros realizados al cliente</div><div class="rem-addons-help">Activá sólo si efectivamente recibiste un pago del cliente.</div></div><label class="rem-addons-switch"><input id="rem-had-collections" type="checkbox"> Hubo cobro</label></div><div id="rem-collections-slot" hidden></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
+    document.body.insertAdjacentHTML('beforeend','<div id="rem-addon-picker" class="rem-addon-picker" hidden><div class="rem-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="rem-addon-picker-title"><div class="rem-picker-head"><b id="rem-addon-picker-title">Seleccionar</b><button id="rem-addon-picker-close" type="button" aria-label="Cerrar">×</button></div><div id="rem-addon-picker-list" class="rem-picker-list"></div><button id="rem-addon-picker-confirm" class="rem-picker-confirm" type="button">Confirmar selección</button></div></div>');
     if(payment){$('#rem-collections-slot').appendChild(payment);const label=$('label.form-label',payment);if(label)label.textContent='Medio e importe cobrado'}
     try{await loadReference()}catch(e){console.warn('[remito-addons-v2]',e);const box=$('#rem-addons-errors');if(box){box.textContent=e.message;box.classList.add('visible')}}
-    $('#rem-had-tolls').addEventListener('change',e=>{$('#rem-tolls-body').hidden=!e.target.checked;if(e.target.checked)ensureLine('toll');recalculate()});
-    $('#rem-had-excesses').addEventListener('change',e=>{$('#rem-excesses-body').hidden=!e.target.checked;if(e.target.checked)ensureLine('excess');recalculate()});
+    $('#rem-had-tolls').addEventListener('change',e=>{$('#rem-tolls-body').hidden=!e.target.checked;if(e.target.checked&&!$('.rem-toll-line'))openPicker('toll');recalculate()});
+    $('#rem-had-excesses').addEventListener('change',e=>{$('#rem-excesses-body').hidden=!e.target.checked;if(e.target.checked&&!$('.rem-excess-line'))openPicker('excess');recalculate()});
     $('#rem-had-collections').addEventListener('change',e=>{$('#rem-collections-slot').hidden=!e.target.checked;if(!e.target.checked&&typeof window.resetPagoForm==='function')window.resetPagoForm();renderSignatureSummary()});
-    $('#rem-add-toll').addEventListener('click',()=>addLine('toll'));$('#rem-add-excess').addEventListener('click',()=>addLine('excess'));
-    const step5=$('#rem-step-5');if(step5&&!$('#rem-addon-signature-summary'))step5.insertAdjacentHTML('afterbegin','<div id="rem-addon-signature-summary" class="rem-addons-card rem-addon-summary"></div>');
+    $('#rem-add-toll').addEventListener('click',()=>openPicker('toll'));$('#rem-add-excess').addEventListener('click',()=>openPicker('excess'));
+    $('#rem-addon-picker-close').addEventListener('click',closePicker);$('#rem-addon-picker-confirm').addEventListener('click',confirmPicker);$('#rem-addon-picker').addEventListener('click',e=>{if(e.target.id==='rem-addon-picker')closePicker()});
     state.initialized=true;recalculate();
   }
 

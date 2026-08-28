@@ -69,3 +69,4 @@
 @media(max-width:980px){.os-table{min-width:1050px}}
 @media(max-width:900px){#screen-operaciones{margin-top:-12px}.os-commandbar{position:static;grid-template-columns:auto auto 1fr auto}.os-search{grid-column:1/-1;width:100%}#os-company{grid-column:1/3;width:100%}.os-commandbar .os-manage{grid-column:3/-1;justify-self:end}.os-table-wrap{max-height:calc(100vh - 180px)}}
 @media(max-width:620px){#screen-operaciones{margin:0}.os-commandbar{grid-template-columns:1fr auto}.os-view-switch{grid-column:1/2}.os-count{display:none}.os-search,#os-company{grid-column:1/-1;width:100%}.os-commandbar .os-manage{grid-column:1/-1;justify-self:stretch}.os-table-wrap{max-height:calc(100vh - 225px)}.os-modal{padding:0!important}.os-wizard-shell{min-height:100vh;border-radius:0}.os-location-settings{grid-template-columns:1fr}}
+.os-intake-create{width:100%;margin-top:12px}

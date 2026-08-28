@@ -68,24 +68,21 @@ test('el módulo del Chofer se presenta como Servicios con una sola cabecera min
   assert.match(css,/p3-history-only/);
 });
 
-test('la tarjeta activa muestra sólo el resumen operativo solicitado y se abre completa',()=>{
+test('la tarjeta activa muestra el resumen elemental y abre el preview móvil',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   const card=js.split('function activeCard(s)')[1].split('function findService')[0];
-  for(const expected of ['Fecha','N° Prestación','Estado','Datos del cliente','Vehículo','Patente','Origen','Destino','KM','Datos del servicio','Peajes','Excedentes'])assert.match(card,new RegExp(expected));
-  for(const expected of ['service_order_number','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters','toll_payment_summary','has_excesses'])assert.match(card,new RegExp(expected));
+  for(const expected of ['Fecha','N° Prestación','Estado','Origen','Destino'])assert.match(card,new RegExp(expected));
+  for(const expected of ['service_order_number','company_name','origin','destination','vehicle_make_model','vehicle_plate'])assert.match(card,new RegExp(expected));
   for(const fallback of ['Sin N° prestación','Vehículo sin informar','Sin patente'])assert.match(card,new RegExp(fallback));
-  for(const forbidden of ['Empresa','company_name','service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Completar remito','Continuar remito','Ver remito'])assert.doesNotMatch(card,new RegExp(forbidden));
+  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Peajes','Excedentes'])assert.doesNotMatch(card,new RegExp(forbidden));
   assert.match(card,/role="button" tabindex="0"/);
   assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
-  assert.match(card,/abrirRemitoServicio\(this\.dataset\.serviceId\)/);
+  assert.match(card,/abrirPreviewServicio\(this\.dataset\.serviceId\)/);
   assert.match(card,/p3-bar-divider[^>]*aria-hidden="true">\|/);
-  const markup=card.split('return`')[1];
-  const order=['Fecha','N° Prestación','Estado','Datos del cliente','Vehículo','Patente','Origen','Destino','KM','Datos del servicio','Peajes','Excedentes'];
-  for(let i=1;i<order.length;i++)assert.ok(markup.indexOf(order[i-1])<markup.indexOf(order[i]),`${order[i-1]} debe aparecer antes que ${order[i]}`);
-  assert.match(card,/Google Maps · Origen → Destino/);
-  assert.match(js,/const currentDate=\(\)=>new Date\(\)\.toLocaleDateString/);
-  assert.match(js,/Math\.round\(value\/100\)\/10/);
-  assert.match(css,/p3-service-columns\{display:grid;grid-template-columns:/);
+  assert.match(js,/Completar remito/);
+  assert.match(js,/Marcar como activado/);
+  assert.match(js,/mark_driver_operator_service_activated_v1/);
+  assert.match(css,/\.p3-preview/);
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);
   assert.doesNotMatch(css,/\.p3-service-card\.priority-/);

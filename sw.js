@@ -1,7 +1,7 @@
 // Mantiene el prefijo canónico para invalidación y contratos de previews previos.
 // Contrato histórico de previews: auxilios-billing-phase2-v208.
 // Versión inmediatamente anterior: auxilios-billing-phase2-v211.
-const CACHE_NAME='auxilios-billing-phase2-v212';
+const CACHE_NAME='auxilios-billing-phase2-v214';
 const PRECACHE_ASSETS=[
   '/sigma.css','/sigma.js',
   '/empresas-v2.js','/empresas-v2.css',
@@ -22,6 +22,7 @@ const PRECACHE_ASSETS=[
   '/toll-management.css','/toll-management.js',
   '/rendition-journey-source-v1.js',
   '/remito-addons-v2.css','/remito-addons-v2.js',
+  '/remito-mobile-flow-v3.css','/remito-mobile-flow-v3.js',
   '/operator-remito-review-v2.css','/operator-remito-review-v2.js',
   '/supabase.js','/offline.js','/manifest.json',
   '/assets/icons/icon-192.png','/assets/icons/icon-512.png'

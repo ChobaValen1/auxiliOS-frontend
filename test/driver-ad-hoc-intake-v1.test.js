@@ -48,6 +48,9 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   assert.match(link,/administrative_review_status='pending'/);
   assert.match(services,/Ingresos iniciados por Chofer/);
   assert.match(services,/link_driver_service_intake_v1/);
+  assert.match(services,/Crear servicio con estos datos/);
+  assert.match(services,/crearServicioDesdeIngresoChofer/);
+  assert.match(read('operator-service-wizard.js'),/Servicio creado e ingreso del Chofer vinculado/);
 });
 
 test('el mismo contrato viaja por pendiente firma completa y outbox',()=>{
