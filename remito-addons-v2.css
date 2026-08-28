@@ -8,6 +8,7 @@
 .rem-addons-switch input{accent-color:var(--amber);width:18px;height:18px}
 .rem-addon-lines{display:flex;flex-direction:column;gap:10px}
 .rem-addon-select{width:100%;margin-bottom:10px;border:1px solid var(--amber);background:var(--amber-lo);color:var(--amber);border-radius:8px;padding:11px;font-size:11px;font-weight:800;cursor:pointer}
+.rem-addon-select::before{content:'＋';margin-right:6px}.rem-addon-select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .rem-addon-line{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;position:relative}
 .rem-addon-line-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .rem-addon-line-number{font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:1px}
@@ -44,3 +45,4 @@
 .rem-picker-confirm{flex:0 0 auto;border:0;border-radius:10px;background:var(--amber);color:#111;padding:13px;font-size:12px;font-weight:900}
 body.rem-picker-open{overflow:hidden}
 @media(max-width:560px){.rem-addon-grid{grid-template-columns:1fr}.rem-addon-grid .wide{grid-column:auto}.rem-addons-head{align-items:center}.rem-addon-summary-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.rem-addons-v2{gap:8px}.rem-addons-card{padding:11px}.rem-addons-head{margin-bottom:8px}.rem-addon-select{min-height:44px;margin-bottom:7px;font-size:12px}.rem-addon-total{padding:7px 10px}.rem-addon-total strong{font-size:18px}}

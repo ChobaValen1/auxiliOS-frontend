@@ -707,7 +707,7 @@ function _remWizardValidar(paso) {
     marcar('rem-cliente', 'err-cliente');
     if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) ok=false;
   }
-  if (paso === 3) {
+  if (paso === 2) {
     if (window.AuxiliosRemitoAddonsV2) {
       return window.AuxiliosRemitoAddonsV2.validate().ok;
     }
@@ -1313,8 +1313,8 @@ async function _finalizarRemitoInner() {
   }
   const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
   if (addonValidation && !addonValidation.ok) {
-    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || 'Hay datos incompletos en el paso 3.');
-    remWizardIr(3 - _remPasoActual);
+    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || 'Hay datos incompletos en el paso 2.');
+    remWizardIr(2 - _remPasoActual);
     return;
   }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';

@@ -28,7 +28,7 @@ async function applyCompanyFieldModes(step=document.getElementById('rem-step-1')
 function validateCustomerFields(){let ok=true;for(const [key,id,errorId] of [['customer_document','rem-cuit','err-documento'],['customer_phone','rem-telefono','err-telefono']]){const row=document.querySelector(`[data-remito-field="${key}"]`),input=document.getElementById(id),error=document.getElementById(errorId),missing=row?.dataset.mode==='required'&&!String(input?.value||'').trim();input?.classList.toggle('rem-field-error',missing);error?.classList.toggle('visible',missing);if(missing)ok=false}return ok}
 
 function evidenceStep(step){
-  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 2</span><h2>Evidencia</h2><p>Adjuntá fotografías sólo si corresponde.</p></header><div id="rem-evidence-list" class="rmv-evidence-list"><div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div></div><button id="rem-add-evidence" class="rmv-add" type="button">＋ Agregar evidencia</button><small class="rmv-hint">La evidencia es opcional.</small><div id="foto-grid" class="rmv-hidden-files" aria-hidden="true">
+  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 3</span><h2>Evidencia</h2><p>Adjuntá fotografías sólo si corresponde.</p></header><div id="rem-evidence-list" class="rmv-evidence-list"><div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div></div><button id="rem-add-evidence" class="rmv-add" type="button">＋ Agregar evidencia</button><small class="rmv-hint">La evidencia es opcional.</small><div id="foto-grid" class="rmv-hidden-files" aria-hidden="true">
     <label class="foto-slot" data-label="Vehículo"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto1-status','rem-foto1-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto1-icon">📷</span><span id="rem-foto1-status">Vehículo</span></label>
     <label class="foto-slot" data-label="Odómetro"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto2-status','rem-foto2-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto2-icon">🔢</span><span id="rem-foto2-status">Odómetro</span></label>
     <label class="foto-slot" data-label="Daño o incidente"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto3-icon">⚠</span><span id="rem-foto3-status">Daño o incidente</span></label>
@@ -45,18 +45,20 @@ function evidenceStep(step){
 function signatureStep(step,source){
   while(source.firstChild)step.appendChild(source.firstChild);
   step.querySelector('.card-label')?.insertAdjacentHTML('beforebegin','<header class="rmv-step-head"><span>Paso 4</span><h2>Conformidad y firma</h2></header>');
+  const conformityLabel=step.querySelector('.card-label');if(conformityLabel)conformityLabel.textContent='Conformidades';
   step.classList.add('rmv-signature-step');
 }
 
 function transform(){
   const root=document.getElementById('remitos-nuevo');
-  const step1=document.getElementById('rem-step-1'),step2=document.getElementById('rem-step-2'),step4=document.getElementById('rem-step-4'),step5=document.getElementById('rem-step-5');
-  if(!root||!step1||!step2||!step4||!step5||root.dataset.mobileV3==='1')return false;
+  const step1=document.getElementById('rem-step-1'),step2=document.getElementById('rem-step-2'),step3=document.getElementById('rem-step-3'),step4=document.getElementById('rem-step-4'),step5=document.getElementById('rem-step-5');
+  if(!root||!step1||!step2||!step3||!step4||!step5||root.dataset.mobileV3==='1')return false;
   root.dataset.mobileV3='1';
   const hidden=document.createElement('div');hidden.id='rem-service-fields-hidden';hidden.hidden=true;root.appendChild(hidden);
   ['rem-nro','rem-fecha','rem-tipo-servicio','rem-nro-prestadora','rem-patente','rem-marca-modelo','rem-origen','rem-destino','rem-km','rem-observaciones'].forEach(id=>moveToHidden(hidden,id));
+  const legacyPayment=document.getElementById('rem-pago-selected')?.closest('.form-group');if(legacyPayment)hidden.appendChild(legacyPayment);
   customerStep(step1);
-  evidenceStep(step2);
+  evidenceStep(step3);
   step4.innerHTML='';
   signatureStep(step4,step5);
   step5.remove();

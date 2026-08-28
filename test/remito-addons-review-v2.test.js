@@ -35,8 +35,7 @@ test('el Chofer informa peajes y excedentes minimalistas con evidencia opcional'
   assert.match(driver,/DriverTollReport/);
   assert.match(driver,/DriverExcessReport/);
   assert.match(driver,/RemitoEvidence/);
-  assert.match(driver,/Hubo peajes/);
-  assert.match(driver,/Hubo excedentes/);
+  assert.doesNotMatch(driver,/id="rem-had-tolls"|id="rem-had-excesses"/);
   assert.match(driver,/Cobros realizados al cliente/);
   assert.match(driver,/Ticket <small>\(opcional\)<\/small>/);
   assert.match(driver,/Seleccionar peajes/);
@@ -65,7 +64,8 @@ test('DNI/CUIT y teléfono respetan field_modes y el paso de firma queda compact
   assert.match(mobile,/validateCustomerFields/);
   assert.match(mobile,/get_driver_remito_capabilities_v2/);
   assert.match(sigma,/telefono: telefono \|\| null/);
-  assert.match(mobileCss,/#sig-canvas\{height:118px!important\}/);
+  assert.match(mobileCss,/#sig-canvas\{height:96px!important\}/);
+  assert.match(mobileCss,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(mobileCss,/\.toggle-desc\{display:none!important\}/);
   assert.match(fieldModesMigration,/'field_modes',coalesce\(v_modes/);
   assert.match(fieldModesMigration,/auth\.uid\(\) is null/);

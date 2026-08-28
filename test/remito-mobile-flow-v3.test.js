@@ -21,6 +21,15 @@ test('la evidencia es opcional y usa un panel móvil por categoría',()=>{
   assert.match(css,/\.rmv-sheet/);
 });
 
+test('peajes es el paso 2 y evidencia queda inmediatamente después en el paso 3',()=>{
+  const flow=read('remito-mobile-flow-v3.js'),addons=read('remito-addons-v2.js'),sigma=read('sigma.js');
+  assert.match(addons,/const step=\$\('#rem-step-2'\)/);
+  assert.match(addons,/rem-addons-kicker">Paso 2/);
+  assert.match(flow,/<span>Paso 3<\/span><h2>Evidencia/);
+  assert.match(flow,/evidenceStep\(step3\)/);
+  assert.match(sigma,/if \(paso === 2\) \{\s+if \(window\.AuxiliosRemitoAddonsV2\)/);
+});
+
 test('el ingreso sin asignación expande los datos operativos para vinculación posterior',()=>{
   const flow=read('remito-mobile-flow-v3.js'),bridge=read('operator-service-bridge.js');
   assert.match(flow,/function setAdHocMode/);
