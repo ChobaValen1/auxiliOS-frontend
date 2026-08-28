@@ -705,6 +705,7 @@ function _remWizardValidar(paso) {
   
   if (paso === 1) {
     marcar('rem-cliente', 'err-cliente');
+    if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) ok=false;
   }
   if (paso === 3) {
     if (window.AuxiliosRemitoAddonsV2) {
@@ -1278,6 +1279,7 @@ async function _finalizarRemitoInner() {
   const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
   const cliente   = document.getElementById('rem-cliente')?.value?.trim() || '';
   const cuit      = document.getElementById('rem-cuit')?.value || '';
+  const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
   const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
   const otros     = parseFloat(document.getElementById('imp-otros')?.value)     || 0;
@@ -1302,6 +1304,11 @@ async function _finalizarRemitoInner() {
     remWizardIr(1 - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
+    return;
+  }
+  if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) {
+    mostrarValidacion('⚠️ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
+    remWizardIr(1 - _remPasoActual);
     return;
   }
   const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
@@ -1480,7 +1487,7 @@ async function _finalizarRemitoInner() {
     marca:   document.getElementById('rem-marca-modelo')?.value || '',
     cliente,
     cuit,
-    telefono: document.getElementById('rem-telefono')?.value?.trim() || null,
+    telefono: telefono || null,
     tipo,
     origen,
     destino,

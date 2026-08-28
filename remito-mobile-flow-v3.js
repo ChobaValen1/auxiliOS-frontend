@@ -12,12 +12,20 @@ function customerStep(step){
   const customer=document.getElementById('rem-cliente');
   const documentId=document.getElementById('rem-cuit');
   const phone=document.getElementById('rem-telefono');
-  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 1</span><h2>Datos del cliente</h2><p>Completá sólo la información necesaria para identificar la firma.</p></header><div class="rmv-fields"><label><span>Nombre y apellido *</span><div data-slot="customer"></div><small id="err-cliente" class="rem-error-msg">El nombre del cliente es obligatorio</small></label><label><span>DNI / CUIT <em>opcional</em></span><div data-slot="document"></div><small class="rmv-hint">De 7 a 11 números.</small></label><details class="rmv-optional"><summary>Agregar teléfono</summary><label><span>Teléfono</span><div data-slot="phone"></div></label></details></div></section>`;
+  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 1</span><h2>Datos del cliente</h2><p>Completá la información necesaria para la conformidad.</p></header><div class="rmv-fields"><label data-remito-field="customer_name"><span>Nombre y apellido *</span><div data-slot="customer"></div><small id="err-cliente" class="rem-error-msg">El nombre del cliente es obligatorio</small></label><label data-remito-field="customer_document"><span>DNI / CUIT <em data-mode-label></em></span><div data-slot="document"></div><small class="rmv-hint">De 7 a 11 números.</small><small id="err-documento" class="rem-error-msg">El DNI / CUIT es obligatorio</small></label><label data-remito-field="customer_phone"><span>Teléfono <em data-mode-label></em></span><div data-slot="phone"></div><small id="err-telefono" class="rem-error-msg">El teléfono es obligatorio</small></label></div></section>`;
   const attach=(node,slot)=>{if(!node)return;node.classList.add('rmv-input');$(slot,step)?.appendChild(node)};
   attach(customer,'[data-slot="customer"]');
   attach(documentId,'[data-slot="document"]');
   attach(phone,'[data-slot="phone"]');
+  void applyCompanyFieldModes(step);
 }
+
+function normalizedMode(config,key){const mode=config?.field_modes?.[key];return ['required','optional','hidden'].includes(mode)?mode:'optional'}
+function renderFieldModes(step,config){
+  ['customer_document','customer_phone'].forEach(key=>{const mode=normalizedMode(config,key),row=$(`[data-remito-field="${key}"]`,step),input=key==='customer_document'?$('#rem-cuit'):$('#rem-telefono');if(!row)return;row.hidden=mode==='hidden';row.dataset.mode=mode;if(input){input.required=mode==='required';input.disabled=mode==='hidden';input.setAttribute('aria-required',mode==='required'?'true':'false')}const label=$('[data-mode-label]',row);if(label)label.textContent=mode==='required'?'obligatorio':'opcional'});
+}
+async function applyCompanyFieldModes(step=document.getElementById('rem-step-1')){if(!step)return;const module=window.AuxiliosServiceModuleConfiguration;renderFieldModes(step,module?.get?.()||null);try{if(window._db){const {data,error}=await _db.rpc('get_driver_remito_capabilities_v2');if(error)throw error;renderFieldModes(step,{field_modes:data?.field_modes||{}})}else if(module?.load)renderFieldModes(step,await module.load())}catch(error){console.warn('[Remito móvil] No se pudo cargar la configuración de campos:',error?.message||error)}}
+function validateCustomerFields(){let ok=true;for(const [key,id,errorId] of [['customer_document','rem-cuit','err-documento'],['customer_phone','rem-telefono','err-telefono']]){const row=document.querySelector(`[data-remito-field="${key}"]`),input=document.getElementById(id),error=document.getElementById(errorId),missing=row?.dataset.mode==='required'&&!String(input?.value||'').trim();input?.classList.toggle('rem-field-error',missing);error?.classList.toggle('visible',missing);if(missing)ok=false}return ok}
 
 function evidenceStep(step){
   step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 2</span><h2>Evidencia</h2><p>Adjuntá fotografías sólo si corresponde.</p></header><div id="rem-evidence-list" class="rmv-evidence-list"><div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div></div><button id="rem-add-evidence" class="rmv-add" type="button">＋ Agregar evidencia</button><small class="rmv-hint">La evidencia es opcional.</small><div id="foto-grid" class="rmv-hidden-files" aria-hidden="true">
@@ -78,6 +86,6 @@ function setAdHocMode(enabled){
   attach('rem-nro-prestadora','order');attach('rem-tipo-servicio','type');attach('rem-patente','plate');attach('rem-marca-modelo','vehicle');attach('rem-origen','origin');attach('rem-destino','destination');
 }
 
-window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode};
+window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode,applyCompanyFieldModes,validateCustomerFields};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',transform,{once:true});else transform();
 })();

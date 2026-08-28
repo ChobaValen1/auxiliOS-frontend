@@ -12,6 +12,10 @@ const review=read('operator-remito-review-v2.js');
 const services=read('operator-services.js');
 const supabase=read('supabase.js');
 const sigma=read('sigma.js');
+const mobile=read('remito-mobile-flow-v3.js');
+const mobileCss=read('remito-mobile-flow-v3.css');
+const moduleConfig=read('service-module-configuration.js');
+const fieldModesMigration=read('supabase/migrations/20260828234519_driver_remito_field_modes_v1.sql');
 
 test('normaliza peajes, excedentes y evidencia sin exponer tablas al frontend',()=>{
   for(const table of ['remito_toll_reports','remito_excess_reports','remito_evidence','operator_service_document_addon_reviews']){
@@ -36,6 +40,9 @@ test('el Chofer informa peajes y excedentes minimalistas con evidencia opcional'
   assert.match(driver,/Cobros realizados al cliente/);
   assert.match(driver,/Ticket <small>\(opcional\)<\/small>/);
   assert.match(driver,/Seleccionar peajes/);
+  assert.match(driver,/type="checkbox" value=/);
+  assert.match(driver,/Otro peaje/);
+  assert.match(driver,/Seleccionar excedentes/);
   assert.match(driver,/rem-addon-picker/);
   assert.match(driver,/Confirmar selección/);
   assert.match(driver,/if\(!pickerRows\(kind\)\.length\)/);
@@ -46,6 +53,23 @@ test('el Chofer informa peajes y excedentes minimalistas con evidencia opcional'
   assert.match(optionalTicket,/position\('Adjuntá el ticket o justificá por qué no está disponible'/);
   assert.match(optionalTicket,/v_sql := replace\(v_sql, v_old, ''\)/);
   assert.match(optionalTicket,/execute v_sql/);
+});
+
+test('DNI/CUIT y teléfono respetan field_modes y el paso de firma queda compacto',()=>{
+  assert.match(moduleConfig,/customer_document:'optional'/);
+  assert.match(moduleConfig,/customer_phone:'optional'/);
+  assert.match(mobile,/data-remito-field="customer_document"/);
+  assert.match(mobile,/data-remito-field="customer_phone"/);
+  assert.match(mobile,/mode==='hidden'/);
+  assert.match(mobile,/mode==='required'/);
+  assert.match(mobile,/validateCustomerFields/);
+  assert.match(mobile,/get_driver_remito_capabilities_v2/);
+  assert.match(sigma,/telefono: telefono \|\| null/);
+  assert.match(mobileCss,/#sig-canvas\{height:118px!important\}/);
+  assert.match(mobileCss,/\.toggle-desc\{display:none!important\}/);
+  assert.match(fieldModesMigration,/'field_modes',coalesce\(v_modes/);
+  assert.match(fieldModesMigration,/auth\.uid\(\) is null/);
+  assert.match(fieldModesMigration,/revoke all on function public\.get_driver_remito_capabilities_v2\(\) from public,anon/);
 });
 
 test('los RPC v2/v4 son autenticados, idempotentes y preservan el original firmado',()=>{
