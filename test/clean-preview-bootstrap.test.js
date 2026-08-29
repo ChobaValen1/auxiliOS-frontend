@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'driver-remito-steps-v18-20260829'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'driver-signature-layout-v19-20260829'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });
