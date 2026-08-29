@@ -69,16 +69,21 @@ test('el módulo del Chofer se presenta como Servicios con una sola cabecera min
   assert.match(css,/p3-history-only/);
 });
 
-test('la tarjeta activa muestra el resumen elemental, excedentes del socio y abre el preview móvil',()=>{
+test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el preview móvil',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   const card=js.split('function activeCard(s)')[1].split('function findService')[0];
-  for(const expected of ['Fecha','N° Prestación','Estado','Origen','Destino','customerExcessSummary'])assert.match(card,new RegExp(expected));
-  for(const expected of ['service_order_number','company_name','origin','destination','vehicle_make_model','vehicle_plate'])assert.match(card,new RegExp(expected));
-  for(const fallback of ['Sin N° prestación','Vehículo sin informar','Sin patente'])assert.match(card,new RegExp(fallback));
-  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Peajes'])assert.doesNotMatch(card,new RegExp(forbidden));
-  assert.match(js,/Excedentes socio/);
+  for(const expected of ['Fecha','N° Prestación','Estado','serviceFacts'])assert.match(card,new RegExp(expected));
+  for(const expected of ['Vehículo','Origen','Destino','KM','Excedentes','Peajes'])assert.match(js,new RegExp(expected));
+  for(const expected of ['service_order_number','company_name','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters'])assert.match(js,new RegExp(expected));
+  assert.match(card,/Sin N° prestación/);
+  for(const fallback of ['Vehículo sin informar','Sin patente'])assert.match(js,new RegExp(fallback));
+  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-'])assert.doesNotMatch(card,new RegExp(forbidden));
   assert.match(js,/\+\$\{remaining\} más/);
   assert.match(js,/customer_excess_summary/);
+  assert.match(js,/toll_charge_summary/);
+  assert.match(js,/A cargo del socio/);
+  assert.match(js,/A cargo de la prestadora/);
+  assert.match(js,/mixed:'Mixto'/);
   assert.match(card,/role="button" tabindex="0"/);
   assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
   assert.match(card,/abrirPreviewServicio\(this\.dataset\.serviceId\)/);
@@ -87,14 +92,14 @@ test('la tarjeta activa muestra el resumen elemental, excedentes del socio y abr
   assert.match(js,/Marcar como activado/);
   assert.match(js,/mark_driver_operator_service_activated_v2/);
   assert.match(css,/\.p3-preview/);
-  assert.match(css,/\.p3-customer-excess/);
+  assert.match(css,/\.p3-summary-block/);
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);
   assert.doesNotMatch(css,/\.p3-service-card\.priority-/);
 });
 
-test('la cola del Chofer expone sólo el tramo Maps y el resumen compacto de excedentes del socio',()=>{
-  const sql=read('supabase/migrations/20260829213500_driver_service_customer_excess_summary_v1.sql');
+test('la cola del Chofer expone tramo Maps, excedentes del socio y peajes por responsable',()=>{
+  const sql=read('supabase/migrations/20260829221000_driver_service_toll_charge_summary_v1.sql');
   assert.match(sql,/create or replace function public\.get_driver_operator_queue_v2\(\)/);
   assert.match(sql,/security definer\s+set search_path = ''/);
   assert.match(sql,/v_role<>'chofer' or v_uid is null/);
@@ -105,6 +110,12 @@ test('la cola del Chofer expone sólo el tramo Maps y el resumen compacto de exc
   assert.match(sql,/route_legs->1->>'distanceMeters'/);
   assert.match(sql,/s\.route_provider='google_routes'/);
   assert.match(sql,/toll_payment_summary/);
+  assert.match(sql,/toll_charge_summary/);
+  assert.match(sql,/A cargo del socio/);
+  assert.match(sql,/A cargo de la prestadora/);
+  assert.match(sql,/Mixto/);
+  assert.match(sql,/provider_unit_amount/);
+  assert.match(sql,/customer_unit_amount/);
   assert.match(sql,/has_excesses/);
   assert.match(sql,/customer_excess_summary/);
   assert.match(sql,/customer_amount_due/);
