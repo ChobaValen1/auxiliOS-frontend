@@ -7673,7 +7673,20 @@ document.addEventListener('keydown', e => {
 
 
 
+let _guardandoRemitoPendiente = false;
 async function guardarRemitoPendiente() {
+  if (_guardandoRemitoPendiente) {
+    toast('El remito ya se está guardando. Esperá un momento.', 'info');
+    return false;
+  }
+  const btnPendiente = document.getElementById('btn-pendiente-footer');
+  const textoPendiente = btnPendiente?.textContent || '💾 Guardar y seguir después';
+  _guardandoRemitoPendiente = true;
+  if (btnPendiente) {
+    btnPendiente.disabled = true;
+    btnPendiente.textContent = '⏳ Guardando…';
+  }
+  try {
   const nro       = document.getElementById('rem-nro')?.value;
   const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
   const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
@@ -7682,6 +7695,7 @@ async function guardarRemitoPendiente() {
   const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
   const cliente   = document.getElementById('rem-cliente')?.value || '';
   const cuit      = document.getElementById('rem-cuit')?.value || '';
+  const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
   const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
   const otros     = parseFloat(document.getElementById('imp-otros')?.value)     || 0;
@@ -7689,9 +7703,9 @@ async function guardarRemitoPendiente() {
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || null;
 
   // ── Validaciones ──────────────────────────────────────
-  if (!patente) { toast('Ingresá la patente del vehículo', 'error'); return; }
-  if (!origen)  { toast('Ingresá el origen del servicio', 'error'); return; }
-  if (!destino) { toast('Ingresá el destino del servicio', 'error'); return; }
+  if (!patente) { toast('Ingresá la patente del vehículo', 'error'); return false; }
+  if (!origen)  { toast('Ingresá el origen del servicio', 'error'); return false; }
+  if (!destino) { toast('Ingresá el destino del servicio', 'error'); return false; }
 
   // ── Registro Silencioso (Asignación a la jornada) ─────
   let _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
@@ -7716,6 +7730,7 @@ async function guardarRemitoPendiente() {
     marca_modelo:      document.getElementById('rem-marca-modelo')?.value || null,
     razon_social:      cliente || null,
     cuit:              cuit    || null,
+    telefono:          telefono || null,
     tipo_servicio:     tipo,
     origen:            origen,
     destino:           destino,
@@ -7747,7 +7762,7 @@ async function guardarRemitoPendiente() {
     try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
     showRemitosView('lista');
     toast(`Remito ${nro} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
-    return;
+    return true;
   }
 
   // 🚨 DIAGNÓSTICO DE SEGURIDAD (Mirar Consola F12) 🚨
@@ -7774,7 +7789,7 @@ async function guardarRemitoPendiente() {
   if (error) {
     console.error("❌ ERROR REAL DE SUPABASE:", error.message, "\nDetalles:", error.details, "\nPista:", error.hint);
     toast('Error al guardar: ' + error.message, 'error');
-    return;
+    return false;
   }
 
   console.log("✅ Remito guardado en BD exitosamente:", data);
@@ -7782,6 +7797,18 @@ async function guardarRemitoPendiente() {
   await cargarRemitos();
   showRemitosView('lista');
   toast(`Remito ${nro} guardado como pendiente ✓`, 'success');
+  return true;
+  } catch (e) {
+    console.error('Error en guardarRemitoPendiente:', e);
+    toast('Error al guardar: ' + (e?.message || e), 'error');
+    return false;
+  } finally {
+    _guardandoRemitoPendiente = false;
+    if (btnPendiente) {
+      btnPendiente.disabled = false;
+      btnPendiente.textContent = textoPendiente;
+    }
+  }
 }
 
 function completarRemitoPendiente(r) {

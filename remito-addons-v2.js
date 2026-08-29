@@ -1,8 +1,8 @@
 (function(){
   'use strict';
 
-  /** @typedef {{client_line_id:string,toll_id:string,toll_name:string,unit_amount:number,currency:string,customer_payment_method:string}} DriverTollReport */
-  /** @typedef {{client_line_id:string,concept_id:string,concept_name:string,quantity:number,unit_amount:number,currency:string,customer_payment_method:string,reason:string}} DriverExcessReport */
+  /** @typedef {{client_line_id:string,toll_id:string,toll_name:string,unit_amount:number,currency:string,customer_payment_method:string,amount_pending?:boolean}} DriverTollReport */
+  /** @typedef {{client_line_id:string,concept_id:string,concept_name:string,quantity:number,unit_amount:number,currency:string,customer_payment_method:string,reason:string,amount_pending?:boolean}} DriverExcessReport */
   /** @typedef {{client_evidence_id:string,client_line_id:string|null,evidence_kind:string,storage_path?:string,mime_type:string,original_name:string,size_bytes:number,blob_field?:string}} RemitoEvidence */
 
   const EMPTY_REFERENCE={version:2,tolls:[],excess_concepts:[],payment_methods:[],evidence:{}};
@@ -22,6 +22,7 @@
   const referenceRows=kind=>kind==='toll'?(state.reference.tolls||[]):(state.reference.excess_concepts||[]);
   const lineName=(kind,row)=>kind==='toll'?row.toll_name:row.concept_name;
   const paymentLabel=value=>PAYMENTS.find(([key])=>key===value)?.[1]||'Sin definir';
+  const amountText=line=>line.amount_pending||number(line.unit_amount)<=0?'A definir por Administración':money(line.unit_amount);
 
   async function loadReference(force=false){
     if(typeof _db==='undefined')return state.reference;
@@ -33,9 +34,10 @@
   }
 
   function blankLine(kind,ref){
+    const amount=number(ref.reference_amount);
     return kind==='toll'
-      ?{client_line_id:uid(),toll_id:ref.toll_id,toll_name:ref.name||'Peaje',unit_amount:'',currency:'ARS',customer_payment_method:''}
-      :{client_line_id:uid(),concept_id:ref.concept_id,concept_name:ref.name||'Excedente',quantity:1,unit_amount:'',currency:'ARS',customer_payment_method:'',reason:ref.name||'Excedente'};
+      ?{client_line_id:uid(),toll_id:ref.toll_id,toll_name:ref.name||'Peaje',unit_amount:amount,currency:ref.currency||'ARS',customer_payment_method:'',amount_pending:amount<=0}
+      :{client_line_id:uid(),concept_id:ref.concept_id,concept_name:ref.name||'Excedente',quantity:1,unit_amount:amount,currency:ref.currency||'ARS',customer_payment_method:'',reason:ref.name||'Excedente',amount_pending:amount<=0};
   }
 
   function pickerError(message=''){
@@ -45,14 +47,14 @@
   function selectionMarkup(){
     const {kind,lines}=state.draft;const key=lineKey(kind),selected=new Set(lines.map(line=>String(line[key])));const rows=referenceRows(kind);
     if(!rows.length)return'<div class="rem-addon-empty">No hay conceptos habilitados para seleccionar.</div>';
-    return rows.map(row=>{const value=String(row[key]);const detail=kind==='toll'?[row.road,row.direction].filter(Boolean).join(' · '):'';return`<label class="rem-picker-option"><input type="checkbox" value="${esc(value)}" ${selected.has(value)?'checked':''}><span><b>${esc(row.name)}</b>${detail?`<small>${esc(detail)}</small>`:''}</span></label>`}).join('');
+    return rows.map(row=>{const value=String(row[key]),amount=number(row.reference_amount),missing=amount<=0,disabled=kind==='toll'&&missing;const detail=kind==='toll'?[row.road,row.direction].filter(Boolean).join(' · '):row.price_source==='planned'?'Planificado por Operaciones':row.price_source==='tariff'?'Tarifa de la prestadora':'Revisión administrativa';return`<label class="rem-picker-option ${disabled?'is-disabled':''}"><input type="checkbox" value="${esc(value)}" ${selected.has(value)?'checked':''} ${disabled?'disabled':''}><span><b>${esc(row.name)}</b>${detail?`<small>${esc(detail)}</small>`:''}</span><strong>${missing?(kind==='toll'?'Sin tarifa vigente':'A definir'):money(amount)}</strong></label>`}).join('');
   }
 
   function paymentOptions(value){return`<option value="">Seleccionar…</option>`+PAYMENTS.map(([key,label])=>`<option value="${key}" ${key===value?'selected':''}>${label}</option>`).join('')}
   function detailsMarkup(){
     const {kind,lines}=state.draft;
     if(!lines.length)return'<div class="rem-addon-empty">La selección quedará vacía.</div>';
-    return lines.map((line,index)=>`<article class="rem-picker-detail" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}</b><small>${index+1} de ${lines.length}</small></div><div class="rem-picker-fields"><label><span>Importe</span><input data-draft-field="unit_amount" inputmode="decimal" placeholder="0" value="${esc(line.unit_amount||'')}"></label><label><span>Medio de pago</span><select data-draft-field="customer_payment_method">${paymentOptions(line.customer_payment_method||'')}</select></label></div></article>`).join('');
+    return`<label class="rem-picker-common-payment"><span>Medio de pago para toda la selección</span><select id="rem-picker-common-payment">${paymentOptions(state.draft.paymentMethod||'')}</select><small>Podés elegir “No cobrado”. Los importes se toman de la configuración.</small></label><div class="rem-picker-priced-list">${lines.map((line,index)=>`<article class="rem-picker-detail" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}</b><small>${index+1} de ${lines.length}</small></div><strong class="rem-picker-price ${line.amount_pending?'pending':''}">${amountText(line)}</strong></article>`).join('')}</div>`;
   }
 
   function renderPicker(){
@@ -73,26 +75,30 @@
 
   async function openPicker(kind){
     try{await loadReference()}catch(error){const box=$('#rem-addons-errors');if(box){box.textContent=error.message||'No se pudo cargar el catálogo';box.classList.add('visible')}return}
-    state.draft={kind,phase:'select',lines:clone(state.lines[kind])};
+    const lines=clone(state.lines[kind]),methods=[...new Set(lines.map(line=>line.customer_payment_method).filter(Boolean))];
+    state.draft={kind,phase:'select',lines,paymentMethod:methods.length===1?methods[0]:''};
     renderPicker();const modal=$('#rem-addon-picker');modal.hidden=false;document.body.classList.add('rem-picker-open');
   }
 
   function cancelPicker(){state.draft=null;const modal=$('#rem-addon-picker');if(modal)modal.hidden=true;document.body.classList.remove('rem-picker-open')}
   function captureDetails(){
     if(state.draft?.phase!=='details')return;
-    $$('.rem-picker-detail').forEach(card=>{const line=state.draft.lines[Number(card.dataset.draftIndex)];if(!line)return;line.unit_amount=$('[data-draft-field="unit_amount"]',card)?.value||'';line.customer_payment_method=$('[data-draft-field="customer_payment_method"]',card)?.value||''});
+    state.draft.paymentMethod=$('#rem-picker-common-payment')?.value||'';
+    state.draft.lines.forEach(line=>{line.customer_payment_method=state.draft.paymentMethod});
   }
   function continuePicker(){
     if(state.draft?.phase!=='select')return;
     const key=lineKey(state.draft.kind),wanted=$$('#rem-addon-picker-list input:checked').map(input=>input.value),existing=new Map(state.draft.lines.map(line=>[String(line[key]),line]));
-    state.draft.lines=wanted.map(value=>existing.get(value)||blankLine(state.draft.kind,referenceRows(state.draft.kind).find(row=>String(row[key])===value)));
+    state.draft.lines=wanted.map(value=>{const ref=referenceRows(state.draft.kind).find(row=>String(row[key])===value),current=existing.get(value),fresh=blankLine(state.draft.kind,ref);return current?{...current,...fresh,client_line_id:current.client_line_id,customer_payment_method:current.customer_payment_method||state.draft.paymentMethod||''}:fresh});
     state.draft.phase='details';renderPicker();
   }
   function backPicker(){captureDetails();if(!state.draft)return;state.draft.phase='select';renderPicker()}
   function savePicker(){
     captureDetails();if(!state.draft)return;
-    const invalid=state.draft.lines.find(line=>number(line.unit_amount)<=0||!PAYMENTS.some(([key])=>key===line.customer_payment_method));
-    if(invalid){pickerError(`Completá importe y medio de pago para ${lineName(state.draft.kind,invalid)}.`);return}
+    const invalidMethod=state.draft.lines.find(line=>!PAYMENTS.some(([key])=>key===line.customer_payment_method));
+    if(invalidMethod){pickerError('Elegí un medio de pago para la selección.');return}
+    const invalidToll=state.draft.kind==='toll'&&state.draft.lines.find(line=>number(line.unit_amount)<=0);
+    if(invalidToll){pickerError(`${lineName('toll',invalidToll)} no tiene una tarifa vigente.`);return}
     state.lines[state.draft.kind]=clone(state.draft.lines);cancelPicker();recalculate();
   }
 
@@ -104,21 +110,21 @@
   function compactSummary(kind){
     const lines=state.lines[kind],host=$(`#rem-${kind}-summary`);if(!host)return;
     if(!lines.length){host.innerHTML='<div class="rem-addon-empty compact">Sin conceptos informados</div>';return}
-    const first=lines[0];const rows=[`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,first))} · ${esc(paymentLabel(first.customer_payment_method))}</span><strong>${money(number(first.unit_amount)*number(first.quantity||1))}</strong></div>`];
-    if(lines.length===2){const second=lines[1];rows.push(`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,second))} · ${esc(paymentLabel(second.customer_payment_method))}</span><strong>${money(number(second.unit_amount)*number(second.quantity||1))}</strong></div>`)}
-    else if(lines.length>2)rows.push(`<div class="rem-addon-summary-line more"><span>+${lines.length-1} más</span><strong>${money(lines.slice(1).reduce((sum,line)=>sum+number(line.unit_amount)*number(line.quantity||1),0))}</strong></div>`);
+    const first=lines[0];const rows=[`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,first))} · ${esc(paymentLabel(first.customer_payment_method))}</span><strong>${first.amount_pending?'A definir':money(number(first.unit_amount)*number(first.quantity||1))}</strong></div>`];
+    if(lines.length===2){const second=lines[1];rows.push(`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,second))} · ${esc(paymentLabel(second.customer_payment_method))}</span><strong>${second.amount_pending?'A definir':money(number(second.unit_amount)*number(second.quantity||1))}</strong></div>`)}
+    else if(lines.length>2){const rest=lines.slice(1);rows.push(`<div class="rem-addon-summary-line more"><span>+${lines.length-1} más</span><strong>${rest.some(line=>line.amount_pending)?'Incluye importes a definir':money(rest.reduce((sum,line)=>sum+number(line.unit_amount)*number(line.quantity||1),0))}</strong></div>`)}
     host.innerHTML=rows.join('');
   }
   function recalculate(){
     const total=totals();const toll=$('#imp-peaje'),excess=$('#imp-excedente');if(toll)toll.value=String(total.toll);if(excess)excess.value=String(total.excess);
-    const tollTotal=$('#rem-tolls-total'),excessTotal=$('#rem-excesses-total');if(tollTotal)tollTotal.textContent=money(total.toll);if(excessTotal)excessTotal.textContent=money(total.excess);
+    const tollTotal=$('#rem-tolls-total'),excessTotal=$('#rem-excesses-total');if(tollTotal)tollTotal.textContent=state.lines.toll.some(line=>line.amount_pending)?'A definir':money(total.toll);if(excessTotal)excessTotal.textContent=state.lines.excess.some(line=>line.amount_pending)?'A definir':money(total.excess);
     compactSummary('toll');compactSummary('excess');if(typeof window.calcularTotal==='function')window.calcularTotal();renderSignatureSummary();
   }
 
   function collectLines(){
     return{
       tolls:state.lines.toll.map(line=>({client_line_id:line.client_line_id,toll_id:line.toll_id,toll_name:line.toll_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,crossed_at:null,missing_evidence_reason:null,notes:null})),
-      excesses:state.lines.excess.map(line=>({client_line_id:line.client_line_id,concept_id:line.concept_id,concept_name:line.concept_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,reason:line.concept_name,notes:null}))
+      excesses:state.lines.excess.map(line=>({client_line_id:line.client_line_id,concept_id:line.concept_id,concept_name:line.concept_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,reason:line.concept_name,notes:number(line.unit_amount)>0?null:'amount_pending_admin_review'}))
     };
   }
   function descriptor(input,kind){const file=input?.files?.[0];if(!file)return null;input.dataset.evidenceId=input.dataset.evidenceId||uid();return{client_evidence_id:input.dataset.evidenceId,client_line_id:null,evidence_kind:kind,mime_type:file.type,original_name:file.name,size_bytes:file.size,blob_field:`addon_${input.dataset.evidenceId}`,file}}
@@ -126,7 +132,7 @@
   function validate(){
     const errors=[];const {tolls,excesses}=collectLines(),evidence=collectEvidence();
     tolls.forEach((line,index)=>{if(!line.toll_id)errors.push(`Seleccioná el peaje ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del peaje ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el peaje ${index+1}.`)});
-    excesses.forEach((line,index)=>{if(!line.concept_id)errors.push(`Seleccioná el excedente ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del excedente ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el excedente ${index+1}.`)});
+    excesses.forEach((line,index)=>{if(!line.concept_id)errors.push(`Seleccioná el excedente ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el excedente ${index+1}.`)});
     evidence.forEach(item=>{if(item.size_bytes>MAX_BYTES)errors.push(`${item.original_name} supera 10 MiB.`);if(!MIME.has(item.mime_type))errors.push(`${item.original_name} tiene un formato no admitido.`)});
     const box=$('#rem-addons-errors');if(box){box.innerHTML=errors.map(esc).join('<br>');box.classList.toggle('visible',!!errors.length)}return{ok:!errors.length,errors};
   }
@@ -139,9 +145,9 @@
   }
 
   function renderSignatureSummary(){
-    const host=$('#rem-addon-signature-summary');if(!host)return;const total=totals(),lines=[...state.lines.toll.map(line=>({name:line.toll_name,amount:line.unit_amount})),...state.lines.excess.map(line=>({name:line.concept_name,amount:line.unit_amount}))];
+    const host=$('#rem-addon-signature-summary');if(!host)return;const total=totals(),tollPending=state.lines.toll.some(line=>line.amount_pending),excessPending=state.lines.excess.some(line=>line.amount_pending),lines=[...state.lines.toll.map(line=>({name:line.toll_name,amount:line.unit_amount,pending:line.amount_pending})),...state.lines.excess.map(line=>({name:line.concept_name,amount:line.unit_amount,pending:line.amount_pending}))];
     const visible=lines.length<=2?lines:lines.slice(0,1);const remainder=lines.length>2?lines.slice(1):[];
-    host.innerHTML=`<div class="rem-addons-kicker">Detalle que acepta el cliente</div><div class="rem-addon-summary-grid"><div class="rem-addon-summary-stat"><span>Peajes</span><strong>${money(total.toll)}</strong></div><div class="rem-addon-summary-stat"><span>Excedentes</span><strong>${money(total.excess)}</strong></div></div><div class="rem-addon-summary-lines">${visible.map(line=>`<div class="rem-addon-summary-line"><span>${esc(line.name)}</span><strong>${money(line.amount)}</strong></div>`).join('')}${remainder.length?`<div class="rem-addon-summary-line more"><span>+${remainder.length} más</span><strong>${money(remainder.reduce((sum,line)=>sum+number(line.amount),0))}</strong></div>`:''}${!lines.length?'<div class="rem-addon-empty compact">Sin peajes ni excedentes informados</div>':''}</div>`;
+    host.innerHTML=`<div class="rem-addons-kicker">Detalle que acepta el cliente</div><div class="rem-addon-summary-grid"><div class="rem-addon-summary-stat"><span>Peajes</span><strong>${tollPending?'A definir':money(total.toll)}</strong></div><div class="rem-addon-summary-stat"><span>Excedentes</span><strong>${excessPending?'A definir':money(total.excess)}</strong></div></div><div class="rem-addon-summary-lines">${visible.map(line=>`<div class="rem-addon-summary-line"><span>${esc(line.name)}</span><strong>${line.pending?'A definir':money(line.amount)}</strong></div>`).join('')}${remainder.length?`<div class="rem-addon-summary-line more"><span>+${remainder.length} más</span><strong>${remainder.some(line=>line.pending)?'Incluye importes a definir':money(remainder.reduce((sum,line)=>sum+number(line.amount),0))}</strong></div>`:''}${!lines.length?'<div class="rem-addon-empty compact">Sin peajes ni excedentes informados</div>':''}</div>`;
   }
   function reviewMeta(status){if(status==='approved')return{label:'Aprobado',css:'approved'};if(status==='adjusted')return{label:'Ajustado por Administración',css:'adjusted'};return{label:'En revisión',css:'pending'}}
   async function renderHistory(remitoId,host){
@@ -154,7 +160,7 @@
 
   async function init(){
     const step=$('#rem-step-2');if(!step||step.dataset.addonsV2==='1')return;step.dataset.addonsV2='1';
-    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Paso 2</div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Seleccioná los peajes utilizados y registrá el cobro dentro del modal.</div></div></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Usá únicamente conceptos habilitados y completá el cobro dentro del modal.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
+    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Paso 2</div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Seleccioná los utilizados. El precio vigente se completa automáticamente.</div></div></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Seleccioná los conceptos y un medio de pago. Si falta tarifa, Administración definirá el importe.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
     if(!$('#rem-addon-picker'))document.body.insertAdjacentHTML('beforeend','<div id="rem-addon-picker" class="rem-addon-picker" hidden><div class="rem-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="rem-addon-picker-title"><div class="rem-picker-head"><b id="rem-addon-picker-title">Seleccionar</b><button id="rem-addon-picker-close" type="button" aria-label="Cancelar">×</button></div><div id="rem-addon-picker-list" class="rem-picker-list"></div><div id="rem-picker-error" class="rem-addon-errors"></div><div class="rem-picker-actions"><button id="rem-picker-cancel" class="rem-picker-secondary" type="button">Cancelar</button><button id="rem-picker-back" class="rem-picker-secondary" type="button" hidden>← Volver</button><button id="rem-picker-next" class="rem-picker-confirm" type="button">Continuar</button><button id="rem-picker-save" class="rem-picker-confirm" type="button" hidden>Confirmar</button></div></div></div>');
     $('#rem-add-toll').addEventListener('click',()=>openPicker('toll'));$('#rem-add-excess').addEventListener('click',()=>openPicker('excess'));$('#rem-addon-picker-close').addEventListener('click',cancelPicker);$('#rem-picker-cancel').addEventListener('click',cancelPicker);$('#rem-picker-back').addEventListener('click',backPicker);$('#rem-picker-next').addEventListener('click',continuePicker);$('#rem-picker-save').addEventListener('click',savePicker);$('#rem-addon-picker-list').addEventListener('change',updateSelectionCount);$('#rem-addon-picker').addEventListener('click',event=>{if(event.target.id==='rem-addon-picker')cancelPicker()});
     try{await loadReference()}catch(error){console.warn('[remito-addons-v2]',error);const box=$('#rem-addons-errors');if(box){box.textContent=error.message;box.classList.add('visible')}}state.initialized=true;recalculate();

@@ -47,3 +47,13 @@ test('ACTIVADO tiene RPC propia con ownership, auditoría y sin facturación',()
   assert.match(sql,/billing_status = 'not_ready'/);
   assert.match(sql,/revoke all on function public\.mark_driver_operator_service_activated_v1\(uuid\) from public,anon,authenticated/);
 });
+
+test('FINALIZAR, ACTIVADO y guardar pendiente bloquean dobles envíos',()=>{
+  const sigma=read('sigma.js'),bridge=read('operator-service-bridge.js');
+  assert.match(sigma,/_finalizacionRemitoEnCurso/);
+  assert.match(sigma,/_guardandoRemitoPendiente/);
+  assert.match(sigma,/btnPendiente\.disabled = true/);
+  assert.match(sigma,/telefono:\s+telefono \|\| null/);
+  assert.match(bridge,/activationInFlight/);
+  assert.match(bridge,/mark_driver_operator_service_activated_v1/);
+});
