@@ -24,7 +24,7 @@
   const paymentLabel=value=>PAYMENTS.find(([key])=>key===value)?.[1]||'Sin definir';
 
   async function loadReference(force=false){
-    if(!window._db)return state.reference;
+    if(typeof _db==='undefined')return state.reference;
     const serviceId=currentServiceId();
     if(!force&&state.referenceLoaded&&state.serviceId===serviceId)return state.reference;
     const {data,error}=await _db.rpc('get_driver_remito_reference_v2',{p_service_id:serviceId});

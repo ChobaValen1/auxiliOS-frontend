@@ -77,6 +77,8 @@ test('el backend comparte catálogos habilitados y persiste el cobro por línea'
   assert.doesNotMatch(definitiveFlow,/Adjuntá el ticket o justificá/);
   assert.match(definitiveFlow,/persist_driver_remito_addons_v3\(\(v_result->>'remito_id'\)::integer,p_payload,v_uid\)/);
   assert.match(driver,/get_driver_remito_reference_v2/);
+  assert.match(driver,/typeof _db==='undefined'/);
+  assert.doesNotMatch(driver,/window\._db/);
   assert.doesNotMatch(driver,/\.from\('remito_toll_reports'|\.from\('remito_excess_reports'/);
 });
 
