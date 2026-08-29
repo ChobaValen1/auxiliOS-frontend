@@ -69,6 +69,8 @@ test('ACTIVADO exige uno de seis motivos cerrados y lo persiste mediante RPC v2'
   for(const code of ['absent_or_not_towable','delay','client','us','created_without_assignment','other'])assert.match(bridge,new RegExp(`'${code}'`));
   assert.doesNotMatch(lifecycle,/within_authorized_window/);
   assert.match(bridge,/Seleccioná el motivo de cancelación/);
+  assert.match(bridge,/data-reason-code/);
+  assert.match(bridge,/dataset\?\.reasonCode/);
   assert.doesNotMatch(bridge,/p3-activation-detail|Especificá el motivo|reasonCode==='other'&&!reasonDetail/);
   assert.match(sql,/'absent_or_not_towable'/);
   assert.match(sql,/'created_without_assignment'/);

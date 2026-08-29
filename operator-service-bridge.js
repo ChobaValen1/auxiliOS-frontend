@@ -73,13 +73,13 @@ function confirmActivated(id){
   const s=findService(id);if(!s)return;
   const body=document.getElementById('p3-preview-body'),actions=document.getElementById('p3-preview-actions');
   const detail=s.remito_id&&s.remito_status==='pendiente'?'El borrador guardado se anulará y el servicio se cerrará como cancelado o no realizado.':'El servicio se cerrará como cancelado o no realizado. No se generará un remito.';
-  const choices=ACTIVATION_REASONS.map(([value,label])=>`<label class="p3-activation-reason"><input type="radio" name="p3-activation-reason" value="${value}"><span>${label}</span></label>`).join('');
+  const choices=ACTIVATION_REASONS.map(([value,label])=>`<label class="p3-activation-reason"><input type="radio" name="p3-activation-reason" data-reason-code="${esc(value)}"><span>${label}</span></label>`).join('');
   body.innerHTML=`<div class="p3-activation-confirm"><b>¿Marcar este servicio como ACTIVADO?</b><p>${detail}</p><fieldset><legend>Motivo de cancelación</legend>${choices}</fieldset></div>${previewBody(s)}`;
   actions.innerHTML=`<button class="p3-preview-primary" type="button" onclick="abrirPreviewServicio('${esc(id)}')">Volver</button><button class="p3-preview-secondary danger" type="button" data-id="${esc(id)}" onclick="marcarServicioActivado(this.dataset.id)">Confirmar activado</button>`;
 }
 async function markActivated(id){
   if(P3.activationInFlight){notify('La activación ya se está confirmando. Esperá un momento.','info');return false}
-  const reasonCode=document.querySelector('input[name="p3-activation-reason"]:checked')?.value;
+  const reasonCode=document.querySelector('input[name="p3-activation-reason"]:checked')?.dataset?.reasonCode;
   if(!reasonCode){notify('Seleccioná el motivo de cancelación','warning');return false}
   const button=document.querySelector('#p3-preview-actions [data-id]');P3.activationInFlight=true;if(button){button.disabled=true;button.textContent='Confirmando…'}
   try{const {data,error}=await db().rpc('mark_driver_operator_service_activated_v2',{p_service_id:id,p_reason_code:reasonCode,p_reason_detail:null});if(error)throw error;if(data?.status!=='cancelled'||data?.business_status!=='activated')throw new Error('El servicio no confirmó el estado ACTIVADO');P3.queue=P3.queue.filter(s=>String(s.service_id)!==String(id));closePreview();render();notify('Servicio marcado como ACTIVADO','success');await loadQueue({silent:true});return true}catch(e){notify(e.message||'No se pudo marcar el servicio como ACTIVADO','error');if(button){button.disabled=false;button.textContent='Confirmar activado'}return false}finally{P3.activationInFlight=false}
