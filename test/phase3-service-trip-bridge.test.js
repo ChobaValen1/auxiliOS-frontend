@@ -82,7 +82,7 @@ test('la tarjeta activa muestra el resumen elemental y abre el preview móvil',(
   assert.match(card,/p3-bar-divider[^>]*aria-hidden="true">\|/);
   assert.match(js,/Completar remito/);
   assert.match(js,/Marcar como activado/);
-  assert.match(js,/mark_driver_operator_service_activated_v1/);
+  assert.match(js,/mark_driver_operator_service_activated_v2/);
   assert.match(css,/\.p3-preview/);
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);

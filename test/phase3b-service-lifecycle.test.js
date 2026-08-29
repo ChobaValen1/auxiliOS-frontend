@@ -22,12 +22,12 @@ test('mesa operativa expone sólo los cinco estados acordados',()=>{
   assert.match(services,/Anular servicio/);
 });
 
-test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cinco',()=>{
+test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cuatro',()=>{
   assert.match(lifecycle,/client_cannot_or_will_not_sign','Cliente\/Socio no pudo o no quiso firmar/);
   assert.match(lifecycle,/signature_technical_issue','Problema técnico con la firma/);
   assert.match(lifecycle,/operator_provider_confirmed','Arribo confirmado por Operador\/Prestadora/);
   assert.match(lifecycle,/delay','Cancelado por demora/);
-  assert.match(lifecycle,/within_authorized_window','Cancelado dentro del tiempo autorizado/);
+  assert.doesNotMatch(lifecycle,/within_authorized_window/);
   assert.match(lifecycle,/cancelled_by_us','Cancelado por nosotros/);
   assert.match(lifecycle,/client_or_provider','Cancelado por el cliente \/ prestadora/);
   assert.match(lifecycle,/\['other','Otro motivo'\]/);

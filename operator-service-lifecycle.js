@@ -8,7 +8,6 @@ const ARRIVAL_REASONS=[
 ];
 const ANNUL_REASONS=[
  ['delay','Cancelado por demora'],
- ['within_authorized_window','Cancelado dentro del tiempo autorizado'],
  ['cancelled_by_us','Cancelado por nosotros'],
  ['client_or_provider','Cancelado por el cliente / prestadora'],
  ['other','Otro motivo']

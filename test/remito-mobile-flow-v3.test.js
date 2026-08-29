@@ -36,6 +36,9 @@ test('el ingreso sin asignación expande los datos operativos para vinculación 
   assert.match(flow,/Este ingreso quedará pendiente de vinculación por Operaciones/);
   assert.match(bridge,/setAdHocMode\?\.\(true\)/);
   assert.match(bridge,/setAdHocMode\?\.\(false\)/);
+  const toggle=flow.slice(flow.indexOf('function setAdHocMode'),flow.indexOf('window.AuxiliosRemitoMobileV3'));
+  assert.ok(toggle.indexOf("moveToHidden(hidden,id)")<toggle.indexOf('adHoc?.remove()'),'al volver a un servicio asignado debe conservar la patente antes de quitar la tarjeta ad hoc');
+  assert.match(bridge,/remWizardReset\?\.\(\);window\.AuxiliosRemitoMobileV3\?\.setAdHocMode\?\.\(false\);prefillRemito/);
 });
 
 test('ACTIVADO tiene RPC propia con ownership, auditoría y descarte seguro de borrador',()=>{
@@ -57,7 +60,26 @@ test('FINALIZAR, ACTIVADO y guardar pendiente bloquean dobles envíos',()=>{
   assert.match(sigma,/btnPendiente\.disabled = true/);
   assert.match(sigma,/telefono:\s+telefono \|\| null/);
   assert.match(bridge,/activationInFlight/);
-  assert.match(bridge,/mark_driver_operator_service_activated_v1/);
+  assert.match(bridge,/mark_driver_operator_service_activated_v2/);
+});
+
+test('ACTIVADO exige uno de cuatro motivos y lo persiste mediante RPC v2',()=>{
+  const bridge=read('operator-service-bridge.js'),lifecycle=read('operator-service-lifecycle.js');
+  const sql=read('migrations/20260829170000_driver_activation_reason_v2.sql');
+  for(const code of ['delay','client_or_provider','cancelled_by_us','other'])assert.match(bridge,new RegExp(`'${code}'`));
+  assert.doesNotMatch(lifecycle,/within_authorized_window/);
+  assert.match(bridge,/Seleccioná el motivo de cancelación/);
+  assert.match(bridge,/reasonCode==='other'&&!reasonDetail/);
+  assert.match(sql,/v_reason_code not in \('delay','client_or_provider','cancelled_by_us','other'\)/);
+  assert.match(sql,/cancellation_reason_code = v_reason_code/);
+  assert.match(sql,/revoke all on function public\.mark_driver_operator_service_activated_v2\(uuid,text,text\) from public,anon,authenticated/);
+});
+
+test('Operaciones actualiza automáticamente los borradores visibles',()=>{
+  const services=read('operator-services.js');
+  assert.match(services,/list_operator_service_document_connections_v1/);
+  assert.match(services,/document\.visibilityState==='visible'.*loadServices\(\)/s);
+  assert.match(services,/},30000\)/);
 });
 
 test('guardar y seguir después restaura todos los datos del socio',()=>{

@@ -79,8 +79,9 @@ function syncEvidence(){
 
 function setAdHocMode(enabled){
   const step=document.getElementById('rem-step-1'),hidden=document.getElementById('rem-service-fields-hidden');if(!step||!hidden)return;
-  document.getElementById('rmv-ad-hoc-service')?.remove();
-  if(!enabled){['rem-tipo-servicio','rem-nro-prestadora','rem-patente','rem-marca-modelo','rem-origen','rem-destino'].forEach(id=>moveToHidden(hidden,id));return}
+  const adHoc=document.getElementById('rmv-ad-hoc-service');
+  if(!enabled){['rem-tipo-servicio','rem-nro-prestadora','rem-patente','rem-marca-modelo','rem-origen','rem-destino'].forEach(id=>moveToHidden(hidden,id));adHoc?.remove();return}
+  adHoc?.remove();
   const section=document.createElement('section');section.id='rmv-ad-hoc-service';section.className='rmv-card rmv-ad-hoc-card';section.innerHTML=`<header class="rmv-step-head"><span>Sin asignación</span><h2>Datos del servicio</h2><p>Este ingreso quedará pendiente de vinculación por Operaciones.</p></header><div class="rmv-fields"><label><span>N.º prestación</span><div data-ad-hoc="order"></div></label><label><span>Tipo de servicio</span><div data-ad-hoc="type"></div></label><label><span>Patente *</span><div data-ad-hoc="plate"></div></label><label><span>Marca y modelo</span><div data-ad-hoc="vehicle"></div></label><label><span>Origen *</span><div data-ad-hoc="origin"></div></label><label><span>Destino *</span><div data-ad-hoc="destination"></div></label></div></section>`;
   step.prepend(section);
   const attach=(id,slot)=>{const node=document.getElementById(id);if(node){node.classList.add('rmv-input');$(`[data-ad-hoc="${slot}"]`,section)?.appendChild(node)}};
