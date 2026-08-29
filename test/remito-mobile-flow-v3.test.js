@@ -134,3 +134,11 @@ test('el paso 4 reserva 38 por ciento para conformidades y 62 para firma en móv
   assert.match(css,/grid-template-rows:auto minmax\(0,38fr\) minmax\(0,62fr\)/);
   assert.match(css,/\.rmv-sign-zone #sig-canvas\{flex:1;height:100%!important/);
 });
+
+test('el wizard muestra exclusivamente el paso activo',()=>{
+  const css=read('remito-mobile-flow-v3.css');
+  assert.match(css,/\.rmv-flow \.rem-step-panel:not\(\.active\)\{display:none!important\}/);
+  assert.match(css,/\.rmv-flow \.rem-step-panel\.active\{display:block!important\}/);
+  assert.match(css,/\.rmv-flow \.rmv-signature-step\.active\{display:grid!important/);
+  assert.doesNotMatch(css,/@media\(max-width:480px\)\{\.rmv-signature-step\{display:grid!important/);
+});
