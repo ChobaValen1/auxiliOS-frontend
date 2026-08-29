@@ -1332,7 +1332,7 @@ async function guardarRemitoCompleto(datosRemito) {
     if (contextoEvidencia && !remitoPersistido) {
       await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
     }
-    _toast('Error inesperado al guardar', 'error');
+    _toast('Error inesperado al guardar: ' + (err?.message || err), 'error');
     return false;
   }
 }

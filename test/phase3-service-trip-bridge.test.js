@@ -19,7 +19,7 @@ test('el puente del chofer usa la cola v2 y el guardado transaccional para ARRIB
   assert.match(js,/firmaDataURL/);
   assert.match(js,/Confirmar firma y ARRIBADO/);
   assert.match(js,/OperatorServiceLifecycleV2\?\.confirmAction/);
-  assert.doesNotMatch(js,/window\.confirm/);
+  assert.match(js,/window\.confirm/);
   assert.doesNotMatch(js,/advance_operator_service|avanzarServicioAsignado|NEXT\s*=|en_route|loaded|at_destination/);
 });
 

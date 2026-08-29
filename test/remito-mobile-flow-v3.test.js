@@ -102,12 +102,16 @@ test('guardar y seguir después restaura todos los datos del socio',()=>{
 
 test('FINALIZAR limpia el formulario sólo después de confirmar el guardado',()=>{
   const sigma=read('sigma.js');
+  const supabase=read('supabase.js');
+  const bridge=read('operator-service-bridge.js');
   const start=sigma.indexOf('async function _finalizarRemitoInner()');
   const end=sigma.indexOf('// ── CÁLCULO DE TOTAL',start);
   const body=sigma.slice(start,end);
   assert.ok(body.indexOf('const ok = await guardarRemitoCompleto')<body.indexOf('resetPagoForm()'));
   assert.match(body,/if \(!ok\) return false;\s*resetPagoForm\(\);\s*return true;/);
   assert.doesNotMatch(body,/tbodyRemitos\.insertBefore|tbodyViajes\.appendChild|tbodyHistorial\.insertBefore/);
+  assert.match(bridge,/window\.confirm\(message\)/);
+  assert.match(supabase,/Error inesperado al guardar: '\s*\+\s*\(err\?\.message \|\| err\)/);
 });
 
 test('el borrador vinculado restaura DNI/CUIT y peajes o excedentes por RPC privada',()=>{
