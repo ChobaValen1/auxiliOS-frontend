@@ -61,6 +61,9 @@ test('el HTML base no conserva el formulario anterior de peajes',()=>{
   assert.doesNotMatch(legacyRemitoStep3,/>Total extras<\/span>/);
   assert.doesNotMatch(legacyRemitoStep3,/Cobros realizados al cliente|rem-pago-selected|pago1-monto/);
   assert.match(index,/PASO 3: EVIDENCIA/);
+  assert.match(index,/auxilios-remito-mobile-flow-v3/);
+  assert.match(index,/auxilios-remito-addons-v2/);
+  assert.match(index,/auxilios-phase3-service-bridge/);
 });
 
 test('el backend comparte catálogos habilitados y persiste el cobro por línea',()=>{

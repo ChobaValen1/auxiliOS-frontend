@@ -1,7 +1,7 @@
 // Mantiene el prefijo canónico para invalidación y contratos de previews previos.
 // Contrato histórico de previews: auxilios-billing-phase2-v208.
 // Versión inmediatamente anterior: auxilios-billing-phase2-v211.
-const CACHE_NAME='auxilios-billing-phase2-v220';
+const CACHE_NAME='auxilios-billing-phase2-v221';
 const PRECACHE_ASSETS=[
   '/sigma.css','/sigma.js',
   '/empresas-v2.js','/empresas-v2.css',
