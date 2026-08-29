@@ -7,6 +7,7 @@ const migration=read('migrations/20260826181259_remito_addons_review_v2.sql');
 const definitiveFlow=read('migrations/20260829003000_driver_addons_modal_v3.sql');
 const automaticAmounts=read('migrations/20260829090000_driver_addons_automatic_amounts_v4.sql');
 const amountPreferences=read('migrations/20260829113000_driver_addon_amount_preferences_v5.sql');
+const driverVisibility=read('migrations/20260829233000_driver_remito_admin_visibility_v1.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -166,6 +167,9 @@ test('offline conserva líneas y archivos estables para reintentos',()=>{
 test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega en el menú',()=>{
   assert.match(review,/Remitos recibidos/);
   assert.match(review,/Planificado por Operaciones/);
+  assert.match(review,/DNI\/CUIT/);
+  assert.match(review,/remito_excess_total/);
+  assert.match(review,/remito_toll_total/);
   assert.match(review,/Aprobar y aplicar al servicio/);
   assert.match(review,/reportedExcessPayment/);
   assert.match(review,/Medio informado/);
@@ -175,6 +179,19 @@ test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
   assert.match(menu,/Revisar remito recibido/);
   assert.doesNotMatch(menu,/Aprobar remito/);
+});
+
+test('la recepción documental expone el resumen completo para Operaciones y Administración',()=>{
+  assert.match(driverVisibility,/create or replace function public\.list_operator_service_document_connections_v1\(\)/);
+  for(const key of ['remito_customer_name','remito_customer_document','remito_customer_phone','remito_vehicle_plate','remito_vehicle_make_model','remito_origin','remito_destination','remito_km_reales']){
+    assert.match(driverVisibility,new RegExp(`'${key}'`));
+  }
+  assert.match(driverVisibility,/remito_toll_reports tr/);
+  assert.match(driverVisibility,/remito_excess_reports er/);
+  assert.match(driverVisibility,/create or replace function public\.get_operator_service_remito_review_v1/);
+  assert.match(driverVisibility,/'customer_document', r\.cuit/);
+  assert.match(driverVisibility,/'customer_phone', r\.telefono/);
+  assert.match(driverVisibility,/'vehicle_make_model', r\.marca_modelo/);
 });
 
 test('históricos no facturados se convierten a Total legado y los facturados quedan intactos',()=>{
