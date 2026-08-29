@@ -1280,10 +1280,6 @@ async function _finalizarRemitoInner() {
   const cliente   = document.getElementById('rem-cliente')?.value?.trim() || '';
   const cuit      = document.getElementById('rem-cuit')?.value || '';
   const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
-  const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
-  const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
-  const otros     = parseFloat(document.getElementById('imp-otros')?.value)     || 0;
-  const hora      = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
   const pago      = document.getElementById('rem-pago-selected')?.value || remPago1 || '—';
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || '';
 
@@ -1325,111 +1321,8 @@ async function _finalizarRemitoInner() {
     return;
   }
 
-  // Build display for split or single payment
-  const pagoPartes = pago.includes('+') ? pago.split('+') : [pago];
-  const payIcon    = pagoPartes.map(p => PAY_ICONS[p]||'💳').join('');
-  const payColor   = pagoPartes.length > 1 ? 'var(--amber)' : (PAY_COLORS[pago]||'var(--text)');
-  const pagoLabel  = pagoPartes.length > 1 ? pagoPartes.join(' + ') : pago;
-  const extras     = peaje > 0
-    ? `Peaje: $${peaje.toLocaleString('es-AR')}`
-    : excedente > 0
-      ? `Excedente: $${excedente.toLocaleString('es-AR')}`
-      : 'Sin extras';
-
-  // ① → Tabla de remitos
-  const tbodyRemitos = document.getElementById('tbody-remitos');
-  if (tbodyRemitos) {
-    const tr = document.createElement('tr');
-    tr.setAttribute('data-rem', JSON.stringify({
-      nro, fecha:`${new Date().toLocaleDateString('es-AR')} · ${hora}`,
-      nroSrv, patente, marca:'—', cliente: cliente||'Sin nombre',
-      origen, destino, km,
-      peaje: String(peaje), excedente: String(excedente), otros: String(otros),
-      pago, tipo,
-      confirmaciones:['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados']
-    }));
-    tr.innerHTML = `
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nro}</span></td>
-      <td style="font-family:'DM Mono'">${hora}</td>
-      <td style="font-size:11px;color:var(--muted2)">—</td>
-      <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${patente}</div></td>
-      <td>
-        <div style="font-size:12px">${tipo}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">${nroSrv || '—'}</div>
-      </td>
-      <td><div style="font-size:11px;color:var(--muted)">${extras}</div></td>
-      <td><div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:${payColor}"><span>${payIcon}</span>${pagoLabel}</div></td>
-      <td><span class="pill pill-green">✓ Firmado</span></td>
-      <td>
-        <div style="display:flex;gap:5px">
-          <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
-          <button class="btn btn-ghost btn-pdf-remito" style="padding:4px 10px;font-size:10px">PDF</button>
-        </div>
-      </td>`;
-    tbodyRemitos.insertBefore(tr, tbodyRemitos.firstChild);
-  }
-
-  // ② → Viajes del día
-  const tbodyViajes = document.querySelector('#tabla-viajes tbody');
-  if (tbodyViajes && origen && destino) {
-    const num = String(tbodyViajes.rows.length + 1).padStart(2,'0');
-    const tr  = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="color:var(--muted);font-family:'DM Mono'">${num}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nroSrv || '—'}</span></td>
-      <td><span style="font-family:'DM Mono';font-weight:600">${patente}</span></td>
-      <td><span class="pill pill-blue">🔧 ${tipo}</span></td>
-      <td>${origen}</td>
-      <td>${destino}</td>
-      <td style="font-family:'DM Mono'">${hora}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber)">${km} km</span></td>
-      <td><span class="pill pill-green">✓ Completado</span></td>`;
-    tbodyViajes.appendChild(tr);
-    const counter = document.getElementById('viajes-counter');
-    if (counter) counter.textContent = `${tbodyViajes.rows.length} servicios registrados`;
-  }
-
-  // ③ → Historial de jornadas
-  const tbodyHistorial = document.getElementById('tbody-historial-jornadas');
-  if (tbodyHistorial) {
-    const today = new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-    const existingRow = tbodyHistorial.querySelector('tr[data-today]');
-    if (existingRow) {
-      const kmCell = existingRow.querySelector('td:nth-child(4) span');
-      if (kmCell) kmCell.textContent = (parseInt(kmCell.textContent) + parseInt(km)) + ' km';
-    } else {
-      const tr = document.createElement('tr');
-      tr.setAttribute('data-today', '1');
-      tr.innerHTML = `
-        <td><b>${today}</b> <span class="pill pill-blue" style="font-size:8px;padding:2px 5px">Hoy</span></td>
-        <td style="font-family:'DM Mono'">—</td>
-        <td style="font-family:'DM Mono'">—</td>
-        <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${km} km</span></td>
-        <td>—</td>
-        <td><span class="pill pill-muted">No</span></td>
-        <td><span class="pill pill-amber">Abierta</span></td>`;
-      tbodyHistorial.insertBefore(tr, tbodyHistorial.firstChild);
-    }
-  }
-
-  // ④ → Últimas jornadas dashboard
-  const jornadasList = document.querySelector('#screen-dashboard div[style*="flex-direction:column;gap:8px"]');
-  if (jornadasList) {
-    const today = new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-    const div = document.createElement('div');
-    div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.3)';
-    div.innerHTML = `
-      <div>
-        <div style="font-size:12px;font-weight:600">📍 ${today} <span style="color:var(--amber)">· Nuevo</span></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:1px">${km} km · ${tipo} · ${patente}</div>
-      </div>
-      <span class="pill pill-amber">Abierta</span>`;
-    jornadasList.insertBefore(div, jornadasList.firstChild);
-  }
-
-  // ⑤ → Save signature (capturamos el dataURL ANTES de cambiar de vista, para evitar
-  // que se pierda al ocultarse el canvas. Lo guardamos en localStorage Y lo pasamos
-  // explícitamente a guardarRemitoCompleto para que no haya ambigüedad sobre qué canvas usar)
+  // Capturamos la firma antes de persistir para no perder el canvas. Se pasa
+  // explícitamente al guardado para no depender del estado visual del paso.
   const sigCanvas = document.getElementById('sig-canvas');
   let firmaDataURL = null;
   if (sigCanvas && hasSig) {
@@ -1439,9 +1332,7 @@ async function _finalizarRemitoInner() {
 
   const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
 
-  resetPagoForm();
-
-  // ⑥ → Recolectar confirmaciones
+  // Recolectar confirmaciones
   const confirmaciones = [];
   document.querySelectorAll('#remitos-nuevo .acept-toggle .toggle.on').forEach(el => {
     const row = el.closest('.toggle-row');
@@ -1450,7 +1341,8 @@ async function _finalizarRemitoInner() {
     }
   });
 
-  // ⑦ → Guardar en Supabase
+  // Guardar en Supabase antes de modificar la interfaz local. La vista se
+  // refresca desde la fuente canónica solamente cuando el RPC confirma el guardado.
   // 1. Mini-función para arreglar el bug de los miles (ej: "9.100" -> 9100)
   const parsearImporte = (val) => {
     if (!val) return 0;
@@ -1509,7 +1401,9 @@ async function _finalizarRemitoInner() {
     remitoAddons,
   });
 
-  if (!ok) return;
+  if (!ok) return false;
+  resetPagoForm();
+  return true;
 }
 
 // ── CÁLCULO DE TOTAL ──────────────────────────
@@ -7820,7 +7714,13 @@ function completarRemitoPendiente(r) {
     sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
   }
   showRemitosView('nuevo'); // calls remWizardReset() internally — clears all fields
-  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el || val == null) return;
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
   set('rem-nro',            r.nro);
   set('rem-patente',        r.patente);
   set('rem-tipo-servicio',  r.tipo);
@@ -7831,6 +7731,7 @@ function completarRemitoPendiente(r) {
   set('rem-marca-modelo',   r.marca);
   set('rem-cliente',        r.cliente);
   set('rem-cuit',           r.cuit);
+  set('rem-telefono',       r.telefono);
   set('imp-peaje',          r.peaje && r.peaje !== '0' ? r.peaje : '');
   const _excMasOtros = (parseInt(r.excedente) || 0) + (parseInt(r.otros) || 0);
   set('imp-excedente',      _excMasOtros ? String(_excMasOtros) : '');

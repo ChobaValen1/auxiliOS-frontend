@@ -38,12 +38,14 @@ test('el ingreso sin asignación expande los datos operativos para vinculación 
   assert.match(bridge,/setAdHocMode\?\.\(false\)/);
 });
 
-test('ACTIVADO tiene RPC propia con ownership, auditoría y sin facturación',()=>{
-  const sql=read('migrations/20260828160000_driver_mark_activated_v1.sql');
+test('ACTIVADO tiene RPC propia con ownership, auditoría y descarte seguro de borrador',()=>{
+  const sql=read('migrations/20260829150000_driver_remito_actions_reliability_v1.sql');
   assert.match(sql,/v_role <> 'chofer'/);
   assert.match(sql,/assigned_driver_id is distinct from v_uid/);
   assert.match(sql,/s\.status <> 'assigned'/);
-  assert.match(sql,/s\.remito_id is not null/);
+  assert.match(sql,/r\.status <> 'pendiente' or r\.firma_imagen_url is not null or r\.firmado_at is not null/);
+  assert.match(sql,/set status = 'anulado'/);
+  assert.match(sql,/'draft_remito_voided',v_draft_voided/);
   assert.match(sql,/billing_status = 'not_ready'/);
   assert.match(sql,/revoke all on function public\.mark_driver_operator_service_activated_v1\(uuid\) from public,anon,authenticated/);
 });
@@ -56,4 +58,24 @@ test('FINALIZAR, ACTIVADO y guardar pendiente bloquean dobles envíos',()=>{
   assert.match(sigma,/telefono:\s+telefono \|\| null/);
   assert.match(bridge,/activationInFlight/);
   assert.match(bridge,/mark_driver_operator_service_activated_v1/);
+});
+
+test('guardar y seguir después restaura todos los datos del socio',()=>{
+  const sigma=read('sigma.js');
+  assert.match(sigma,/razon_social:\s*cliente \|\| null/);
+  assert.match(sigma,/cuit:\s+cuit\s+\|\| null,\s*\n\s*telefono:\s+telefono \|\| null,/);
+  assert.match(sigma,/set\('rem-cliente',\s*r\.cliente\)/);
+  assert.match(sigma,/set\('rem-cuit',\s*r\.cuit\)/);
+  assert.match(sigma,/set\('rem-telefono',\s*r\.telefono\)/);
+  assert.match(sigma,/dispatchEvent\(new Event\('input', \{ bubbles: true \}\)\)/);
+});
+
+test('FINALIZAR limpia el formulario sólo después de confirmar el guardado',()=>{
+  const sigma=read('sigma.js');
+  const start=sigma.indexOf('async function _finalizarRemitoInner()');
+  const end=sigma.indexOf('// ── CÁLCULO DE TOTAL',start);
+  const body=sigma.slice(start,end);
+  assert.ok(body.indexOf('const ok = await guardarRemitoCompleto')<body.indexOf('resetPagoForm()'));
+  assert.match(body,/if \(!ok\) return false;\s*resetPagoForm\(\);\s*return true;/);
+  assert.doesNotMatch(body,/tbodyRemitos\.insertBefore|tbodyViajes\.appendChild|tbodyHistorial\.insertBefore/);
 });
