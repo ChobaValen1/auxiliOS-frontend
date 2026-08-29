@@ -4,7 +4,7 @@ const fs=require('node:fs');
 
 const read=file=>fs.readFileSync(file,'utf8');
 const migration=read('migrations/20260826181259_remito_addons_review_v2.sql');
-const optionalTicket=read('migrations/20260828163000_remito_ticket_optional_v1.sql');
+const definitiveFlow=read('migrations/20260829003000_driver_addons_modal_v3.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -33,34 +33,48 @@ test('normaliza peajes, excedentes y evidencia sin exponer tablas al frontend',(
   assert.doesNotMatch(generatedTotalFix,/imp_total_extras=round/);
 });
 
-test('el Chofer informa peajes y excedentes minimalistas con evidencia opcional',()=>{
+test('el Chofer completa peajes y excedentes dentro de un modal atómico de dos etapas',()=>{
   assert.match(driver,/DriverTollReport/);
   assert.match(driver,/DriverExcessReport/);
   assert.match(driver,/RemitoEvidence/);
   assert.doesNotMatch(driver,/id="rem-had-tolls"|id="rem-had-excesses"/);
-  assert.match(driver,/Cobros realizados al cliente/);
-  assert.match(driver,/Ticket <small>\(opcional\)<\/small>/);
+  assert.doesNotMatch(driver,/Cobros realizados al cliente|rem-had-collections|customer_collections/);
+  assert.doesNotMatch(driver,/Ticket|data-field="ticket"|Otro peaje|Otro excedente/);
   assert.match(driver,/Seleccionar peajes/);
   assert.match(driver,/type="checkbox" value=/);
-  assert.match(driver,/Otro peaje/);
   assert.match(driver,/Seleccionar excedentes/);
   assert.match(driver,/rem-addon-picker/);
-  assert.match(driver,/Confirmar selección/);
-  assert.match(driver,/if\(!pickerRows\(kind\)\.length\)/);
-  assert.match(driver,/missing_evidence_reason/);
-  assert.doesNotMatch(driver,/justificá su ausencia/);
+  assert.match(driver,/phase:'select'/);
+  assert.match(driver,/phase='details'/);
+  assert.match(driver,/state\.lines\[state\.draft\.kind\]=clone\(state\.draft\.lines\)/);
+  assert.match(driver,/Continuar/);
+  assert.match(driver,/Confirmar/);
   assert.match(driver,/Medio de pago/);
-  assert.match(driver,/customer_collections/);
-  assert.match(optionalTicket,/position\('Adjuntá el ticket o justificá por qué no está disponible'/);
-  assert.match(optionalTicket,/v_sql := replace\(v_sql, v_old, ''\)/);
-  assert.match(optionalTicket,/execute v_sql/);
+  assert.match(driver,/No cobrado/);
+  assert.match(driver,/customer_payment_method/);
+  assert.match(driver,/\+\$\{lines\.length-1\} más/);
 });
 
 test('el HTML base no conserva el formulario anterior de peajes',()=>{
   assert.doesNotMatch(legacyRemitoStep3,/<label class="form-label">Peajes<\/label>/);
   assert.doesNotMatch(legacyRemitoStep3,/id="imp-peaje"[^>]*type="tel"/);
   assert.doesNotMatch(legacyRemitoStep3,/>Total extras<\/span>/);
-  assert.match(index,/Peajes y excedentes se renderizan exclusivamente desde remito-addons-v2\.js/);
+  assert.doesNotMatch(legacyRemitoStep3,/Cobros realizados al cliente|rem-pago-selected|pago1-monto/);
+  assert.match(index,/PASO 3: EVIDENCIA/);
+});
+
+test('el backend comparte catálogos habilitados y persiste el cobro por línea',()=>{
+  assert.match(definitiveFlow,/create or replace function public\.get_driver_remito_reference_v2/);
+  assert.match(definitiveFlow,/from public\.toll_locations l[\s\S]*where l\.is_active/);
+  assert.match(definitiveFlow,/public\.company_service_settings css/);
+  assert.match(definitiveFlow,/v_company_id is null[\s\S]*css\.is_enabled/);
+  assert.match(definitiveFlow,/create or replace function app_private\.persist_driver_remito_addons_v3/);
+  assert.match(definitiveFlow,/customer_payment_method/);
+  assert.match(definitiveFlow,/'not_collected'/);
+  assert.doesNotMatch(definitiveFlow,/Adjuntá el ticket o justificá/);
+  assert.match(definitiveFlow,/persist_driver_remito_addons_v3\(\(v_result->>'remito_id'\)::integer,p_payload,v_uid\)/);
+  assert.match(driver,/get_driver_remito_reference_v2/);
+  assert.doesNotMatch(driver,/\.from\('remito_toll_reports'|\.from\('remito_excess_reports'/);
 });
 
 test('DNI/CUIT y teléfono respetan field_modes y el paso de firma queda compacto',()=>{

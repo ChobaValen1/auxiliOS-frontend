@@ -56,7 +56,6 @@ function transform(){
   root.dataset.mobileV3='1';
   const hidden=document.createElement('div');hidden.id='rem-service-fields-hidden';hidden.hidden=true;root.appendChild(hidden);
   ['rem-nro','rem-fecha','rem-tipo-servicio','rem-nro-prestadora','rem-patente','rem-marca-modelo','rem-origen','rem-destino','rem-km','rem-observaciones'].forEach(id=>moveToHidden(hidden,id));
-  const legacyPayment=document.getElementById('rem-pago-selected')?.closest('.form-group');if(legacyPayment)hidden.appendChild(legacyPayment);
   customerStep(step1);
   evidenceStep(step3);
   step4.innerHTML='';

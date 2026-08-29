@@ -20,7 +20,7 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=219')
+      navigator.serviceWorker.register('/sw.js?v=220')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -33,7 +33,7 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=remito-tolls-definitive-v9-20260828" defer></script>
+<script src="config.js?v=remito-addons-modal-v10-20260829" defer></script>
 <script src="supabase.js" defer></script>
 <script src="offline.js" defer></script>
 <script src="sigma.js" defer></script>
@@ -1533,49 +1533,8 @@
   </div>
 </div>
 
-<!-- PASO 3: CONTENEDOR DE COMPATIBILIDAD PARA COBROS.
-     Peajes y excedentes se renderizan exclusivamente desde remito-addons-v2.js. -->
-<div class="rem-step-panel" id="rem-step-3">
-  <div class="card">
-    <div class="card-label" style="margin-bottom:14px">Cobros realizados al cliente</div>
-    <div class="form-group" style="margin-bottom:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <label class="form-label" style="margin-bottom:0">Forma de pago</label>
-        <button id="btn-add-pago2" class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="activarPagoMixto()">+ Segundo medio</button>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 1</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts">
-          <div onclick="selectRemPago(this,'Efectivo',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
-          <div onclick="selectRemPago(this,'Transferencia',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
-          <div onclick="selectRemPago(this,'Tarjeta',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
-          <div onclick="selectRemPago(this,'App',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
-          <input class="form-input" type="tel" id="pago1-monto" placeholder="Opcional" inputmode="decimal" style="font-size:12px;padding:6px 10px" oninput="calcPagoAuto()">
-        </div>
-      </div>
-      <div id="pago2-container" style="display:none;background:var(--bg);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:10px 12px;margin-bottom:8px;position:relative">
-        <button onclick="desactivarPagoMixto()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1">×</button>
-        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 2</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts2">
-          <div onclick="selectRemPago(this,'Efectivo',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
-          <div onclick="selectRemPago(this,'Transferencia',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
-          <div onclick="selectRemPago(this,'Tarjeta',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
-          <div onclick="selectRemPago(this,'App',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
-          <input class="form-input" type="tel" id="pago2-monto" readonly style="font-size:12px;padding:6px 10px;color:var(--amber)" placeholder="Auto-calculado">
-        </div>
-      </div>
-      <div class="rem-pago-error" id="rem-pago-error">⚠️ Usá dos medios de pago diferentes</div>
-      <div id="pago-mixto-resumen" style="display:none;padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:7px;font-size:11px"></div>
-      <input type="hidden" id="rem-pago-selected" value="">
-    </div>
-  </div>
-</div>
+<!-- PASO 3: EVIDENCIA. El flujo móvil reemplaza este contenedor al iniciar. -->
+<div class="rem-step-panel" id="rem-step-3"></div>
 
 <!-- PASO 4: EVIDENCIA + OBSERVACIONES -->
 <div class="rem-step-panel" id="rem-step-4">
