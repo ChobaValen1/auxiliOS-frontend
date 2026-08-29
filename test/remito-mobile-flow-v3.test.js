@@ -63,15 +63,17 @@ test('FINALIZAR, ACTIVADO y guardar pendiente bloquean dobles envíos',()=>{
   assert.match(bridge,/mark_driver_operator_service_activated_v2/);
 });
 
-test('ACTIVADO exige uno de cuatro motivos y lo persiste mediante RPC v2',()=>{
+test('ACTIVADO exige uno de seis motivos cerrados y lo persiste mediante RPC v2',()=>{
   const bridge=read('operator-service-bridge.js'),lifecycle=read('operator-service-lifecycle.js');
-  const sql=read('migrations/20260829170000_driver_activation_reason_v2.sql');
-  for(const code of ['delay','client_or_provider','cancelled_by_us','other'])assert.match(bridge,new RegExp(`'${code}'`));
+  const sql=read('migrations/20260829213000_driver_activation_reasons_v3.sql');
+  for(const code of ['absent_or_not_towable','delay','client','us','created_without_assignment','other'])assert.match(bridge,new RegExp(`'${code}'`));
   assert.doesNotMatch(lifecycle,/within_authorized_window/);
   assert.match(bridge,/Seleccioná el motivo de cancelación/);
-  assert.match(bridge,/reasonCode==='other'&&!reasonDetail/);
-  assert.match(sql,/v_reason_code not in \('delay','client_or_provider','cancelled_by_us','other'\)/);
+  assert.doesNotMatch(bridge,/p3-activation-detail|Especificá el motivo|reasonCode==='other'&&!reasonDetail/);
+  assert.match(sql,/'absent_or_not_towable'/);
+  assert.match(sql,/'created_without_assignment'/);
   assert.match(sql,/cancellation_reason_code = v_reason_code/);
+  assert.match(sql,/cancellation_reason_detail = null/);
   assert.match(sql,/revoke all on function public\.mark_driver_operator_service_activated_v2\(uuid,text,text\) from public,anon,authenticated/);
 });
 

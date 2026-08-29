@@ -3,11 +3,14 @@
 const P3=window.AuxiliosPhase3=window.AuxiliosPhase3||{queue:[],history:[],loading:false,timer:null,selectedServiceId:null,initialized:false,view:'active',activationInFlight:false};
 const STATUS={assigned:{label:'Asignado',icon:'●',tone:'blue'},at_origin:{label:'Arribado',icon:'⌖',tone:'violet'},completed:{label:'Finalizado',icon:'✓',tone:'green'},cancelled:{label:'Anulado',icon:'×',tone:'red'}};
 const ACTIVATION_REASONS=[
- ['delay','Cancelado por demora'],
- ['client_or_provider','Cancelado por cliente / prestadora'],
- ['cancelled_by_us','Cancelado por nosotros'],
- ['other','Otro motivo']
+ ['absent_or_not_towable','Cancelado por socio ausente / vehículo no se puede remolcar'],
+ ['delay','Cancelado por Demora'],
+ ['client','Cancelado por Cliente'],
+ ['us','Cancelado por nosotros'],
+ ['created_without_assignment','Creación sin Asignación'],
+ ['other','Otro']
 ];
+const PAYMENT_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado'};
 const EXTRA_FIELDS={
  'Email del cliente':{key:'customer_email',id:'phase3-service-email',label:'Email del cliente',type:'email'},
  'Observaciones':{key:'operator_notes',id:'phase3-service-operator-notes',label:'Observaciones del servicio',type:'textarea'},
@@ -21,10 +24,24 @@ const isDriver=()=>role()==='chofer';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const notify=(m,t='info')=>typeof window.toast==='function'?window.toast(m,t):console[t==='error'?'error':'log'](m);
 const currentDate=()=>new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+const money=value=>Number(value||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0});
 const originDestinationKm=meters=>{
   const value=Number(meters);
   return Number.isFinite(value)&&value>0?`${(Math.round(value/100)/10).toLocaleString('es-AR')} km`:'Sin cálculo Maps';
 };
+function customerExcessSummary(s,{compact=false}={}){
+  const data=s.customer_excess_summary||{};
+  const total=Number(data.total_amount||s.customer_amount_due||0);
+  const items=Array.isArray(data.items)?data.items.filter(Boolean):[];
+  const count=Number(data.count||items.length||0);
+  if(total<=0&&count<=0)return'';
+  const first=items[0]||{};
+  const firstName=first.concept_name||'Excedente';
+  const remaining=Math.max(0,count-1);
+  const methods=[...new Set([...(Array.isArray(data.payment_methods)?data.payment_methods:[]),first.customer_payment_method].filter(Boolean))].map(method=>PAYMENT_LABELS[method]||method);
+  const methodText=methods.length?` · ${esc(methods.join(' / '))}`:'';
+  return`<div class="p3-customer-excess ${compact?'compact':''}"><div class="p3-excess-line"><span>Excedentes socio</span><strong>${esc(money(total))}</strong></div><div class="p3-excess-line muted"><span>${esc(firstName)}${methodText}</span>${remaining?`<strong>+${remaining} más</strong>`:''}</div></div>`;
+}
 function injectAssets(){if(document.getElementById('phase3-service-bridge-css'))return;const l=document.createElement('link');l.id='phase3-service-bridge-css';l.rel='stylesheet';l.href='/operator-service-bridge.css';document.head.appendChild(l)}
 function applyDriverModuleLabels(){if(!isDriver())return;const nav=document.getElementById('nav-remitos'),screen=document.getElementById('screen-remitos');const label=nav?.querySelector('.nav-label'),icon=nav?.querySelector('.nav-icon');if(label)label.textContent='Servicios';if(icon)icon.textContent='📡';if(screen?.classList.contains('active')){const title=document.getElementById('topbar-title'),sub=document.getElementById('topbar-sub');if(title)title.textContent='SERVICIOS';if(sub)sub.textContent='Asignados e historial'}}
 function hookNavigation(){if(window.__p3DriverNavHook||typeof window.goTo!=='function')return false;const base=window.goTo;window.goTo=(name,...args)=>{const result=base(name,...args);if(name==='remitos')applyDriverModuleLabels();return result};window.__p3DriverNavHook=true;return true}
@@ -46,28 +63,26 @@ function activeCard(s){
       </div>
       <div class="p3-status-field"><span class="p3-field-label">Estado</span><span class="p3-status ${meta.tone}">${esc(meta.label)}</span></div>
     </div>
-    <div class="p3-compact-body"><div class="p3-company-line"><strong>${esc(s.company_name||'Empresa sin informar')}</strong><span aria-hidden="true">|</span><b>${esc(order)}</b></div><div class="p3-vehicle"><span>${esc(vehicle)}</span><strong class="p3-plate">${esc(plate)}</strong></div><div class="p3-route-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-route-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div></div>
+    <div class="p3-compact-body"><div class="p3-company-line"><strong>${esc(s.company_name||'Empresa sin informar')}</strong><span aria-hidden="true">|</span><b>${esc(order)}</b></div><div class="p3-vehicle"><span>${esc(vehicle)}</span><strong class="p3-plate">${esc(plate)}</strong></div>${customerExcessSummary(s,{compact:true})}<div class="p3-route-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-route-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div></div>
   </article>`;
 }
 function closePreview(){const modal=document.getElementById('p3-service-preview');if(modal)modal.hidden=true;document.body.classList.remove('p3-preview-open')}
-function previewBody(s){const order=s.service_order_number||'Sin N° prestación',vehicle=s.vehicle_make_model||'Vehículo sin informar',plate=s.vehicle_plate||'Sin patente';return`<div class="p3-preview-facts"><div class="p3-company-line"><strong>${esc(s.company_name||'Empresa sin informar')}</strong><span>|</span><b>${esc(order)}</b></div><div class="p3-vehicle"><span>${esc(vehicle)}</span><strong class="p3-plate">${esc(plate)}</strong></div><div class="p3-route-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-route-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div></div>`}
+function previewBody(s){const order=s.service_order_number||'Sin N° prestación',vehicle=s.vehicle_make_model||'Vehículo sin informar',plate=s.vehicle_plate||'Sin patente';return`<div class="p3-preview-facts"><div class="p3-company-line"><strong>${esc(s.company_name||'Empresa sin informar')}</strong><span>|</span><b>${esc(order)}</b></div><div class="p3-vehicle"><span>${esc(vehicle)}</span><strong class="p3-plate">${esc(plate)}</strong></div>${customerExcessSummary(s)}<div class="p3-route-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-route-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div></div>`}
 function openPreview(id){const s=findService(id);if(!s)return notify('El servicio ya no está disponible','error');ensurePreviewModal();const modal=document.getElementById('p3-service-preview'),title=document.getElementById('p3-preview-title'),body=document.getElementById('p3-preview-body'),actions=document.getElementById('p3-preview-actions');title.textContent=s.service_order_number||'Sin N° prestación';body.innerHTML=previewBody(s);actions.innerHTML=`<button class="p3-preview-primary" type="button" data-id="${esc(id)}" onclick="cerrarPreviewServicio();abrirRemitoServicio(this.dataset.id)">Completar remito</button><button class="p3-preview-secondary" type="button" data-id="${esc(id)}" onclick="confirmarServicioActivado(this.dataset.id)">Marcar como activado</button><small>Usar si el servicio fue cancelado o no se realizó.</small>`;modal.hidden=false;document.body.classList.add('p3-preview-open')}
 function confirmActivated(id){
   const s=findService(id);if(!s)return;
   const body=document.getElementById('p3-preview-body'),actions=document.getElementById('p3-preview-actions');
   const detail=s.remito_id&&s.remito_status==='pendiente'?'El borrador guardado se anulará y el servicio se cerrará como cancelado o no realizado.':'El servicio se cerrará como cancelado o no realizado. No se generará un remito.';
   const choices=ACTIVATION_REASONS.map(([value,label])=>`<label class="p3-activation-reason"><input type="radio" name="p3-activation-reason" value="${value}"><span>${label}</span></label>`).join('');
-  body.innerHTML=`<div class="p3-activation-confirm"><b>¿Marcar este servicio como ACTIVADO?</b><p>${detail}</p><fieldset><legend>Motivo de cancelación</legend>${choices}</fieldset><label id="p3-activation-other" class="p3-activation-other" hidden><span>Especificá el motivo *</span><textarea id="p3-activation-detail" rows="2" maxlength="500"></textarea></label></div>${previewBody(s)}`;
-  body.querySelector('fieldset')?.addEventListener('change',event=>{const other=event.target?.value==='other',wrap=document.getElementById('p3-activation-other'),input=document.getElementById('p3-activation-detail');if(wrap)wrap.hidden=!other;if(input){input.required=other;if(!other)input.value=''}});
+  body.innerHTML=`<div class="p3-activation-confirm"><b>¿Marcar este servicio como ACTIVADO?</b><p>${detail}</p><fieldset><legend>Motivo de cancelación</legend>${choices}</fieldset></div>${previewBody(s)}`;
   actions.innerHTML=`<button class="p3-preview-primary" type="button" onclick="abrirPreviewServicio('${esc(id)}')">Volver</button><button class="p3-preview-secondary danger" type="button" data-id="${esc(id)}" onclick="marcarServicioActivado(this.dataset.id)">Confirmar activado</button>`;
 }
 async function markActivated(id){
   if(P3.activationInFlight){notify('La activación ya se está confirmando. Esperá un momento.','info');return false}
-  const reasonCode=document.querySelector('input[name="p3-activation-reason"]:checked')?.value,reasonDetail=document.getElementById('p3-activation-detail')?.value.trim()||null;
+  const reasonCode=document.querySelector('input[name="p3-activation-reason"]:checked')?.value;
   if(!reasonCode){notify('Seleccioná el motivo de cancelación','warning');return false}
-  if(reasonCode==='other'&&!reasonDetail){notify('Especificá el otro motivo de cancelación','warning');return false}
   const button=document.querySelector('#p3-preview-actions [data-id]');P3.activationInFlight=true;if(button){button.disabled=true;button.textContent='Confirmando…'}
-  try{const {data,error}=await db().rpc('mark_driver_operator_service_activated_v2',{p_service_id:id,p_reason_code:reasonCode,p_reason_detail:reasonDetail});if(error)throw error;if(data?.status!=='cancelled'||data?.business_status!=='activated')throw new Error('El servicio no confirmó el estado ACTIVADO');P3.queue=P3.queue.filter(s=>String(s.service_id)!==String(id));closePreview();render();notify('Servicio marcado como ACTIVADO','success');await loadQueue({silent:true});return true}catch(e){notify(e.message||'No se pudo marcar el servicio como ACTIVADO','error');if(button){button.disabled=false;button.textContent='Confirmar activado'}return false}finally{P3.activationInFlight=false}
+  try{const {data,error}=await db().rpc('mark_driver_operator_service_activated_v2',{p_service_id:id,p_reason_code:reasonCode,p_reason_detail:null});if(error)throw error;if(data?.status!=='cancelled'||data?.business_status!=='activated')throw new Error('El servicio no confirmó el estado ACTIVADO');P3.queue=P3.queue.filter(s=>String(s.service_id)!==String(id));closePreview();render();notify('Servicio marcado como ACTIVADO','success');await loadQueue({silent:true});return true}catch(e){notify(e.message||'No se pudo marcar el servicio como ACTIVADO','error');if(button){button.disabled=false;button.textContent='Confirmar activado'}return false}finally{P3.activationInFlight=false}
 }
 function findService(id){return P3.queue.find(x=>String(x.service_id)===String(id))||null}
 function setValue(id,value){const el=document.getElementById(id);if(!el||value==null||value==='')return;el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}

@@ -69,13 +69,16 @@ test('el módulo del Chofer se presenta como Servicios con una sola cabecera min
   assert.match(css,/p3-history-only/);
 });
 
-test('la tarjeta activa muestra el resumen elemental y abre el preview móvil',()=>{
+test('la tarjeta activa muestra el resumen elemental, excedentes del socio y abre el preview móvil',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   const card=js.split('function activeCard(s)')[1].split('function findService')[0];
-  for(const expected of ['Fecha','N° Prestación','Estado','Origen','Destino'])assert.match(card,new RegExp(expected));
+  for(const expected of ['Fecha','N° Prestación','Estado','Origen','Destino','customerExcessSummary'])assert.match(card,new RegExp(expected));
   for(const expected of ['service_order_number','company_name','origin','destination','vehicle_make_model','vehicle_plate'])assert.match(card,new RegExp(expected));
   for(const fallback of ['Sin N° prestación','Vehículo sin informar','Sin patente'])assert.match(card,new RegExp(fallback));
-  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Peajes','Excedentes'])assert.doesNotMatch(card,new RegExp(forbidden));
+  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-','Peajes'])assert.doesNotMatch(card,new RegExp(forbidden));
+  assert.match(js,/Excedentes socio/);
+  assert.match(js,/\+\$\{remaining\} más/);
+  assert.match(js,/customer_excess_summary/);
   assert.match(card,/role="button" tabindex="0"/);
   assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
   assert.match(card,/abrirPreviewServicio\(this\.dataset\.serviceId\)/);
@@ -84,13 +87,14 @@ test('la tarjeta activa muestra el resumen elemental y abre el preview móvil',(
   assert.match(js,/Marcar como activado/);
   assert.match(js,/mark_driver_operator_service_activated_v2/);
   assert.match(css,/\.p3-preview/);
+  assert.match(css,/\.p3-customer-excess/);
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);
   assert.doesNotMatch(css,/\.p3-service-card\.priority-/);
 });
 
-test('la cola del Chofer expone sólo el tramo Maps y el resumen comercial no monetario',()=>{
-  const sql=read('supabase/migrations/20260828012411_driver_service_card_summary_v1.sql');
+test('la cola del Chofer expone sólo el tramo Maps y el resumen compacto de excedentes del socio',()=>{
+  const sql=read('supabase/migrations/20260829213500_driver_service_customer_excess_summary_v1.sql');
   assert.match(sql,/create or replace function public\.get_driver_operator_queue_v2\(\)/);
   assert.match(sql,/security definer\s+set search_path = ''/);
   assert.match(sql,/v_role<>'chofer' or v_uid is null/);
@@ -102,9 +106,14 @@ test('la cola del Chofer expone sólo el tramo Maps y el resumen comercial no mo
   assert.match(sql,/s\.route_provider='google_routes'/);
   assert.match(sql,/toll_payment_summary/);
   assert.match(sql,/has_excesses/);
+  assert.match(sql,/customer_excess_summary/);
+  assert.match(sql,/customer_amount_due/);
+  assert.match(sql,/operator_service_excess_charges/);
+  assert.match(sql,/coalesce\(e\.payer_agent,'customer'\)='customer'/);
+  assert.match(sql,/e\.collector_agent='company'/);
   assert.match(sql,/choice\.has_actual and toll\.source='actual'/);
   assert.match(sql,/not choice\.has_actual and toll\.source in \('planned','manual'\)/);
-  assert.doesNotMatch(sql,/unit_amount|total_amount|estimated_total|customer_amount/);
+  assert.doesNotMatch(sql,/estimated_total/);
   assert.match(sql,/revoke all on function public\.get_driver_operator_queue_v2\(\) from public,anon,authenticated/);
   assert.match(sql,/grant execute on function public\.get_driver_operator_queue_v2\(\) to authenticated/);
 });
