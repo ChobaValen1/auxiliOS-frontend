@@ -131,6 +131,8 @@ test('el paso 4 prioriza una firma amplia y conserva confirmaciones legibles en 
   const flow=read('remito-mobile-flow-v3.js'),css=read('remito-mobile-flow-v3.css');
   assert.match(flow,/rmv-confirm-zone/);
   assert.match(flow,/rmv-sign-zone/);
+  assert.match(flow,/step\.prepend\(head\)/);
+  assert.doesNotMatch(flow,/insertAdjacentHTML\('beforebegin','<header class="rmv-step-head"/);
   assert.match(css,/grid-template-rows:auto minmax\(0,32fr\) minmax\(0,68fr\)/);
   assert.match(css,/grid-template-columns:1fr/);
   assert.match(css,/\.rmv-confirm-zone \.toggle-title\{font-size:11px!important/);
