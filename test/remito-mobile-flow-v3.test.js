@@ -127,15 +127,14 @@ test('guardar pendiente conserva el detalle v2 y FINALIZAR valida sólo conformi
   assert.match(addons,/\{\.\.\.fresh,\.\.\.current,/);
 });
 
-test('el paso 4 prioriza una firma amplia y conserva confirmaciones legibles en móvil',()=>{
+test('el paso 4 conserva el diseño compacto anterior y prioriza una firma amplia en móvil',()=>{
   const flow=read('remito-mobile-flow-v3.js'),css=read('remito-mobile-flow-v3.css');
   assert.match(flow,/rmv-confirm-zone/);
   assert.match(flow,/rmv-sign-zone/);
-  assert.match(flow,/step\.prepend\(head\)/);
-  assert.doesNotMatch(flow,/insertAdjacentHTML\('beforebegin','<header class="rmv-step-head"/);
-  assert.match(css,/grid-template-rows:auto minmax\(0,32fr\) minmax\(0,68fr\)/);
-  assert.match(css,/grid-template-columns:1fr/);
-  assert.match(css,/\.rmv-confirm-zone \.toggle-title\{font-size:11px!important/);
+  assert.match(flow,/insertAdjacentHTML\('beforebegin','<header class="rmv-step-head"/);
+  assert.match(css,/grid-template-rows:minmax\(0,30fr\) minmax\(0,70fr\)/);
+  assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.rmv-confirm-zone \.toggle-title\{font-size:9px!important/);
   assert.match(css,/\.rmv-sign-zone #sig-canvas\{position:absolute;inset:0;width:100%!important;height:100%!important/);
 });
 

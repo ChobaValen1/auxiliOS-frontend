@@ -44,7 +44,7 @@ function evidenceStep(step){
 
 function signatureStep(step,source){
   while(source.firstChild)step.appendChild(source.firstChild);
-  const head=document.createElement('header');head.className='rmv-step-head';head.innerHTML='<span>Paso 4</span><h2>Conformidad y firma</h2>';step.prepend(head);
+  step.querySelector('.card-label')?.insertAdjacentHTML('beforebegin','<header class="rmv-step-head"><span>Paso 4</span><h2>Conformidad y firma</h2></header>');
   const conformityLabel=step.querySelector('.card-label');if(conformityLabel)conformityLabel.textContent='Conformidades';
   const cards=$$(':scope > .card',step),absent=$(':scope > .toggle-row',step),confirmZone=document.createElement('div'),signZone=document.createElement('div');
   confirmZone.className='rmv-confirm-zone';signZone.className='rmv-sign-zone';
