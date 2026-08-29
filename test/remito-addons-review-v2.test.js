@@ -6,6 +6,7 @@ const read=file=>fs.readFileSync(file,'utf8');
 const migration=read('migrations/20260826181259_remito_addons_review_v2.sql');
 const definitiveFlow=read('migrations/20260829003000_driver_addons_modal_v3.sql');
 const automaticAmounts=read('migrations/20260829090000_driver_addons_automatic_amounts_v4.sql');
+const amountPreferences=read('migrations/20260829113000_driver_addon_amount_preferences_v5.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -53,20 +54,24 @@ test('el Chofer completa peajes y excedentes dentro de un modal atómico de dos 
   assert.match(driver,/Medio de pago/);
   assert.match(driver,/Medio de pago para toda la selección/);
   assert.match(driver,/reference_amount/);
-  assert.doesNotMatch(driver,/data-draft-field="unit_amount"/);
+  assert.match(driver,/data-draft-field="unit_amount"/);
+  assert.match(driver,/Importe real/);
+  assert.match(driver,/Sugerido/);
   assert.match(driver,/No cobrado/);
   assert.match(driver,/customer_payment_method/);
   assert.match(driver,/\+\$\{lines\.length-1\} más/);
 });
 
-test('los importes se resuelven en backend y no se repiten controles por línea',()=>{
+test('el backend conserva la referencia tarifaria y permite configurar el importe real',()=>{
   assert.match(automaticAmounts,/from public\.toll_rates tr/);
-  assert.match(automaticAmounts,/select sum\(i\.subtotal\) into v_amount/);
-  assert.match(automaticAmounts,/from public\.company_tariff_matrix_rates x/);
-  assert.match(automaticAmounts,/amount_pending_admin_review/);
-  assert.match(automaticAmounts,/check\(unit_amount >= 0\)/);
-  assert.match(automaticAmounts,/round\(v_amount,2\)/);
-  assert.doesNotMatch(driver,/<input[^>]+unit_amount/);
+  assert.match(amountPreferences,/driver_amount_mode in \('fixed','manual'\)/);
+  assert.match(amountPreferences,/update public\.company_service_settings css/);
+  assert.match(amountPreferences,/'amount_mode',case when v_toll_setting='manual' then 'manual' else 'suggested' end/);
+  assert.match(amountPreferences,/v_amount:=nullif\(v_row->>'unit_amount',''\)::numeric/);
+  assert.match(amountPreferences,/if v_amount_mode='manual' then/);
+  assert.match(amountPreferences,/select sum\(i\.subtotal\) into v_amount/);
+  assert.match(amountPreferences,/from public\.company_tariff_matrix_rates x/);
+  assert.doesNotMatch(amountPreferences,/amount_pending_admin_review/);
 });
 
 test('el HTML base no conserva el formulario anterior de peajes',()=>{

@@ -34,10 +34,11 @@
   }
 
   function blankLine(kind,ref){
-    const amount=number(ref.reference_amount);
+    const suggested=number(ref.reference_amount),amountMode=ref.amount_mode||(kind==='toll'?'suggested':'fixed');
+    const amount=kind==='toll'||amountMode==='fixed'?suggested:0;
     return kind==='toll'
-      ?{client_line_id:uid(),toll_id:ref.toll_id,toll_name:ref.name||'Peaje',unit_amount:amount,currency:ref.currency||'ARS',customer_payment_method:'',amount_pending:amount<=0}
-      :{client_line_id:uid(),concept_id:ref.concept_id,concept_name:ref.name||'Excedente',quantity:1,unit_amount:amount,currency:ref.currency||'ARS',customer_payment_method:'',reason:ref.name||'Excedente',amount_pending:amount<=0};
+      ?{client_line_id:uid(),toll_id:ref.toll_id,toll_name:ref.name||'Peaje',unit_amount:amount,suggested_amount:suggested,amount_mode:amountMode,currency:ref.currency||'ARS',customer_payment_method:'',amount_pending:false}
+      :{client_line_id:uid(),concept_id:ref.concept_id,concept_name:ref.name||'Excedente',quantity:1,unit_amount:amount,suggested_amount:suggested,amount_mode:amountMode,currency:ref.currency||'ARS',customer_payment_method:'',reason:ref.name||'Excedente',amount_pending:false};
   }
 
   function pickerError(message=''){
@@ -47,14 +48,14 @@
   function selectionMarkup(){
     const {kind,lines}=state.draft;const key=lineKey(kind),selected=new Set(lines.map(line=>String(line[key])));const rows=referenceRows(kind);
     if(!rows.length)return'<div class="rem-addon-empty">No hay conceptos habilitados para seleccionar.</div>';
-    return rows.map(row=>{const value=String(row[key]),amount=number(row.reference_amount),missing=amount<=0,disabled=kind==='toll'&&missing;const detail=kind==='toll'?[row.road,row.direction].filter(Boolean).join(' · '):row.price_source==='planned'?'Planificado por Operaciones':row.price_source==='tariff'?'Tarifa de la prestadora':'Revisión administrativa';return`<label class="rem-picker-option ${disabled?'is-disabled':''}"><input type="checkbox" value="${esc(value)}" ${selected.has(value)?'checked':''} ${disabled?'disabled':''}><span><b>${esc(row.name)}</b>${detail?`<small>${esc(detail)}</small>`:''}</span><strong>${missing?(kind==='toll'?'Sin tarifa vigente':'A definir'):money(amount)}</strong></label>`}).join('');
+    return rows.map(row=>{const value=String(row[key]),amount=number(row.reference_amount),manual=row.amount_mode==='manual',missing=amount<=0,disabled=kind==='excess'&&!manual&&missing;const detail=kind==='toll'?[row.road,row.direction].filter(Boolean).join(' · '):manual?'Importe variable':row.price_source==='planned'?'Definido en el servicio':'Definido por Administración';const price=kind==='toll'?(missing?'Sin sugerencia':`Sugerido ${money(amount)}`):manual?'Carga manual':missing?'Sin precio configurado':money(amount);return`<label class="rem-picker-option ${disabled?'is-disabled':''}"><input type="checkbox" value="${esc(value)}" ${selected.has(value)?'checked':''} ${disabled?'disabled':''}><span><b>${esc(row.name)}</b>${detail?`<small>${esc(detail)}</small>`:''}</span><strong>${price}</strong></label>`}).join('');
   }
 
   function paymentOptions(value){return`<option value="">Seleccionar…</option>`+PAYMENTS.map(([key,label])=>`<option value="${key}" ${key===value?'selected':''}>${label}</option>`).join('')}
   function detailsMarkup(){
     const {kind,lines}=state.draft;
     if(!lines.length)return'<div class="rem-addon-empty">La selección quedará vacía.</div>';
-    return`<label class="rem-picker-common-payment"><span>Medio de pago para toda la selección</span><select id="rem-picker-common-payment">${paymentOptions(state.draft.paymentMethod||'')}</select><small>Podés elegir “No cobrado”. Los importes se toman de la configuración.</small></label><div class="rem-picker-priced-list">${lines.map((line,index)=>`<article class="rem-picker-detail" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}</b><small>${index+1} de ${lines.length}</small></div><strong class="rem-picker-price ${line.amount_pending?'pending':''}">${amountText(line)}</strong></article>`).join('')}</div>`;
+    return`<label class="rem-picker-common-payment"><span>Medio de pago para toda la selección</span><select id="rem-picker-common-payment">${paymentOptions(state.draft.paymentMethod||'')}</select><small>Podés elegir “No cobrado”.</small></label><div class="rem-picker-priced-list">${lines.map((line,index)=>{const editable=kind==='toll'||line.amount_mode==='manual',suggested=number(line.suggested_amount);return`<article class="rem-picker-detail ${editable?'is-editable':''}" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}</b><small>${index+1} de ${lines.length}${kind==='toll'&&suggested>0?` · sugerido ${money(suggested)}`:line.amount_mode==='manual'?' · variable':' · definido'}</small></div>${editable?`<label class="rem-picker-amount"><span>${kind==='toll'?'Importe real':'Importe'}</span><input data-draft-field="unit_amount" inputmode="decimal" placeholder="0" value="${esc(line.unit_amount||'')}"></label>`:`<strong class="rem-picker-price">${amountText(line)}</strong>`}</article>`}).join('')}</div>`;
   }
 
   function renderPicker(){
@@ -84,7 +85,7 @@
   function captureDetails(){
     if(state.draft?.phase!=='details')return;
     state.draft.paymentMethod=$('#rem-picker-common-payment')?.value||'';
-    state.draft.lines.forEach(line=>{line.customer_payment_method=state.draft.paymentMethod});
+    $$('.rem-picker-detail').forEach(card=>{const line=state.draft.lines[Number(card.dataset.draftIndex)];if(!line)return;const input=$('[data-draft-field="unit_amount"]',card);if(input)line.unit_amount=input.value;line.customer_payment_method=state.draft.paymentMethod});
   }
   function continuePicker(){
     if(state.draft?.phase!=='select')return;
@@ -97,8 +98,8 @@
     captureDetails();if(!state.draft)return;
     const invalidMethod=state.draft.lines.find(line=>!PAYMENTS.some(([key])=>key===line.customer_payment_method));
     if(invalidMethod){pickerError('Elegí un medio de pago para la selección.');return}
-    const invalidToll=state.draft.kind==='toll'&&state.draft.lines.find(line=>number(line.unit_amount)<=0);
-    if(invalidToll){pickerError(`${lineName('toll',invalidToll)} no tiene una tarifa vigente.`);return}
+    const invalidAmount=state.draft.lines.find(line=>number(line.unit_amount)<=0);
+    if(invalidAmount){pickerError(`Ingresá un importe válido para ${lineName(state.draft.kind,invalidAmount)}.`);return}
     state.lines[state.draft.kind]=clone(state.draft.lines);cancelPicker();recalculate();
   }
 
@@ -124,7 +125,7 @@
   function collectLines(){
     return{
       tolls:state.lines.toll.map(line=>({client_line_id:line.client_line_id,toll_id:line.toll_id,toll_name:line.toll_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,crossed_at:null,missing_evidence_reason:null,notes:null})),
-      excesses:state.lines.excess.map(line=>({client_line_id:line.client_line_id,concept_id:line.concept_id,concept_name:line.concept_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,reason:line.concept_name,notes:number(line.unit_amount)>0?null:'amount_pending_admin_review'}))
+      excesses:state.lines.excess.map(line=>({client_line_id:line.client_line_id,concept_id:line.concept_id,concept_name:line.concept_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,reason:line.concept_name,notes:null}))
     };
   }
   function descriptor(input,kind){const file=input?.files?.[0];if(!file)return null;input.dataset.evidenceId=input.dataset.evidenceId||uid();return{client_evidence_id:input.dataset.evidenceId,client_line_id:null,evidence_kind:kind,mime_type:file.type,original_name:file.name,size_bytes:file.size,blob_field:`addon_${input.dataset.evidenceId}`,file}}
@@ -132,7 +133,7 @@
   function validate(){
     const errors=[];const {tolls,excesses}=collectLines(),evidence=collectEvidence();
     tolls.forEach((line,index)=>{if(!line.toll_id)errors.push(`Seleccioná el peaje ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del peaje ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el peaje ${index+1}.`)});
-    excesses.forEach((line,index)=>{if(!line.concept_id)errors.push(`Seleccioná el excedente ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el excedente ${index+1}.`)});
+    excesses.forEach((line,index)=>{if(!line.concept_id)errors.push(`Seleccioná el excedente ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del excedente ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el excedente ${index+1}.`)});
     evidence.forEach(item=>{if(item.size_bytes>MAX_BYTES)errors.push(`${item.original_name} supera 10 MiB.`);if(!MIME.has(item.mime_type))errors.push(`${item.original_name} tiene un formato no admitido.`)});
     const box=$('#rem-addons-errors');if(box){box.innerHTML=errors.map(esc).join('<br>');box.classList.toggle('visible',!!errors.length)}return{ok:!errors.length,errors};
   }
@@ -160,7 +161,7 @@
 
   async function init(){
     const step=$('#rem-step-2');if(!step||step.dataset.addonsV2==='1')return;step.dataset.addonsV2='1';
-    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Paso 2</div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Seleccioná los utilizados. El precio vigente se completa automáticamente.</div></div></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Seleccioná los conceptos y un medio de pago. Si falta tarifa, Administración definirá el importe.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
+    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-kicker">Paso 2</div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">La tarifa es una sugerencia. Confirmá el importe real abonado.</div></div></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Cada concepto puede tener precio definido o importe variable, según la prestadora.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
     if(!$('#rem-addon-picker'))document.body.insertAdjacentHTML('beforeend','<div id="rem-addon-picker" class="rem-addon-picker" hidden><div class="rem-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="rem-addon-picker-title"><div class="rem-picker-head"><b id="rem-addon-picker-title">Seleccionar</b><button id="rem-addon-picker-close" type="button" aria-label="Cancelar">×</button></div><div id="rem-addon-picker-list" class="rem-picker-list"></div><div id="rem-picker-error" class="rem-addon-errors"></div><div class="rem-picker-actions"><button id="rem-picker-cancel" class="rem-picker-secondary" type="button">Cancelar</button><button id="rem-picker-back" class="rem-picker-secondary" type="button" hidden>← Volver</button><button id="rem-picker-next" class="rem-picker-confirm" type="button">Continuar</button><button id="rem-picker-save" class="rem-picker-confirm" type="button" hidden>Confirmar</button></div></div></div>');
     $('#rem-add-toll').addEventListener('click',()=>openPicker('toll'));$('#rem-add-excess').addEventListener('click',()=>openPicker('excess'));$('#rem-addon-picker-close').addEventListener('click',cancelPicker);$('#rem-picker-cancel').addEventListener('click',cancelPicker);$('#rem-picker-back').addEventListener('click',backPicker);$('#rem-picker-next').addEventListener('click',continuePicker);$('#rem-picker-save').addEventListener('click',savePicker);$('#rem-addon-picker-list').addEventListener('change',updateSelectionCount);$('#rem-addon-picker').addEventListener('click',event=>{if(event.target.id==='rem-addon-picker')cancelPicker()});
     try{await loadReference()}catch(error){console.warn('[remito-addons-v2]',error);const box=$('#rem-addons-errors');if(box){box.textContent=error.message;box.classList.add('visible')}}state.initialized=true;recalculate();
