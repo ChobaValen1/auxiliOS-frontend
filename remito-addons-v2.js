@@ -7,7 +7,7 @@
 
   const EMPTY_REFERENCE={version:2,tolls:[],excess_concepts:[],payment_methods:[],evidence:{}};
   const PAYMENTS=[['cash','Efectivo'],['transfer','Transferencia'],['card','Tarjeta'],['mercado_pago','Mercado Pago'],['other','Otro'],['not_collected','No cobrado']];
-  const state={reference:{...EMPTY_REFERENCE},referenceLoaded:false,serviceId:null,initialized:false,lines:{toll:[],excess:[]},draft:null};
+  const state={reference:{...EMPTY_REFERENCE},referenceLoaded:false,serviceId:null,initialized:false,lines:{toll:[],excess:[]},persistedEvidence:[],draft:null};
   const MAX_BYTES=10*1024*1024;
   const MIME=new Set(['image/jpeg','image/png','image/webp','image/heic','image/heif','application/pdf']);
   const $=(s,r=document)=>r.querySelector(s);
@@ -90,7 +90,7 @@
   function continuePicker(){
     if(state.draft?.phase!=='select')return;
     const key=lineKey(state.draft.kind),wanted=$$('#rem-addon-picker-list input:checked').map(input=>input.value),existing=new Map(state.draft.lines.map(line=>[String(line[key]),line]));
-    state.draft.lines=wanted.map(value=>{const ref=referenceRows(state.draft.kind).find(row=>String(row[key])===value),current=existing.get(value),fresh=blankLine(state.draft.kind,ref);return current?{...current,...fresh,client_line_id:current.client_line_id,customer_payment_method:current.customer_payment_method||state.draft.paymentMethod||''}:fresh});
+    state.draft.lines=wanted.map(value=>{const ref=referenceRows(state.draft.kind).find(row=>String(row[key])===value),current=existing.get(value),fresh=blankLine(state.draft.kind,ref);return current?{...fresh,...current,client_line_id:current.client_line_id,customer_payment_method:current.customer_payment_method||state.draft.paymentMethod||''}:fresh});
     state.draft.phase='details';renderPicker();
   }
   function backPicker(){captureDetails();if(!state.draft)return;state.draft.phase='select';renderPicker()}
@@ -137,10 +137,10 @@
     evidence.forEach(item=>{if(item.size_bytes>MAX_BYTES)errors.push(`${item.original_name} supera 10 MiB.`);if(!MIME.has(item.mime_type))errors.push(`${item.original_name} tiene un formato no admitido.`)});
     const box=$('#rem-addons-errors');if(box){box.innerHTML=errors.map(esc).join('<br>');box.classList.toggle('visible',!!errors.length)}return{ok:!errors.length,errors};
   }
-  function collect(){const lines=collectLines();return{payload:{addons_version:2,tolls:lines.tolls,excesses:lines.excesses,evidence:[]},files:collectEvidence()}}
+  function collect(){const lines=collectLines();return{payload:{addons_version:2,tolls:lines.tolls,excesses:lines.excesses,evidence:clone(state.persistedEvidence)},files:collectEvidence()}}
   async function uploadEvidence(bundle,operationToken){
     if(!bundle?.files?.length)return bundle?.payload||{addons_version:2,tolls:[],excesses:[],evidence:[]};
-    const {data:{user}}=await _db.auth.getUser();if(!user)throw new Error('La sesión del Chofer venció');const evidence=[];
+    const {data:{user}}=await _db.auth.getUser();if(!user)throw new Error('La sesión del Chofer venció');const evidence=clone(bundle.payload?.evidence||[]);
     for(const item of bundle.files){const ext=(item.original_name.split('.').pop()||item.mime_type.split('/').pop()||'bin').replace(/[^a-zA-Z0-9]/g,'').toLowerCase(),path=`${user.id}/${String(operationToken).replace(/[^a-zA-Z0-9-]/g,'')}/${item.client_evidence_id}.${ext}`;const {error}=await _db.storage.from('remito-evidence-v2').upload(path,item.file,{contentType:item.mime_type,upsert:true});if(error)throw new Error(`No se pudo subir ${item.original_name}: ${error.message}`);evidence.push({...item,storage_path:path,file:undefined,blob_field:undefined})}
     return{...bundle.payload,evidence};
   }
@@ -156,7 +156,16 @@
     const meta=reviewMeta(data.review_status),tolls=(data.tolls||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected',method=line.customer_payment_method||line.payment_method;return`<div class="rem-addon-summary-line"><span>${esc(line.toll_name)} · ${esc(paymentLabel(method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`}),excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
     host.innerHTML=`<div class="rem-addons-head"><div><div class="rem-addons-kicker">Peajes y excedentes informados</div><div class="rem-addons-help">El original firmado se conserva sin cambios.</div></div><span class="rem-addon-status ${meta.css}">${meta.label}</span></div><div class="rem-addon-summary-lines">${[...tolls,...excesses].join('')||'<div class="rem-addon-empty">El chofer confirmó que no hubo peajes ni excedentes.</div>'}</div>`;
   }
-  function reset(){state.lines={toll:[],excess:[]};cancelPicker();recalculate()}
+  async function restore(report){
+    if(!report){reset();return}
+    await loadReference();
+    const restored=(kind,rows)=>rows.map(row=>{const key=lineKey(kind),ref=referenceRows(kind).find(item=>String(item[key])===String(row[key])),base=ref?blankLine(kind,ref):kind==='toll'?{client_line_id:uid(),toll_id:row.toll_id,toll_name:row.toll_name||'Peaje',amount_mode:'suggested',suggested_amount:number(row.unit_amount),currency:row.currency||'ARS'}:{client_line_id:uid(),concept_id:row.concept_id,concept_name:row.concept_name||'Excedente',amount_mode:'manual',suggested_amount:number(row.unit_amount),currency:row.currency||'ARS',quantity:1,reason:row.concept_name||'Excedente'};return{...base,client_line_id:row.client_line_id||base.client_line_id,unit_amount:number(row.unit_amount),quantity:number(row.quantity)||1,customer_payment_method:row.customer_payment_method||row.payment_method||'',amount_pending:false}});
+    state.lines={toll:restored('toll',report.tolls||[]),excess:restored('excess',report.excesses||[])};
+    const evidence=[];const addEvidence=(item,owner=null)=>{if(!item?.evidence_id||!item?.path)return;evidence.push({client_evidence_id:item.evidence_id,client_line_id:owner,evidence_kind:item.kind,storage_path:item.path,mime_type:item.mime_type,original_name:item.original_name,size_bytes:item.size_bytes})};
+    (report.evidence||[]).forEach(item=>addEvidence(item));(report.tolls||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));(report.excesses||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));
+    state.persistedEvidence=evidence;cancelPicker();recalculate();
+  }
+  function reset(){state.lines={toll:[],excess:[]};state.persistedEvidence=[];cancelPicker();recalculate()}
   function hasCustomerCollection(){return[...state.lines.toll,...state.lines.excess].some(line=>line.customer_payment_method&&line.customer_payment_method!=='not_collected')}
 
   async function init(){
@@ -167,6 +176,6 @@
     try{await loadReference()}catch(error){console.warn('[remito-addons-v2]',error);const box=$('#rem-addons-errors');if(box){box.textContent=error.message;box.classList.add('visible')}}state.initialized=true;recalculate();
   }
 
-  window.AuxiliosRemitoAddonsV2={init,reset,validate,collect,uploadEvidence,renderSignatureSummary,renderHistory,recalculate,hasCustomerCollection,loadReference};
+  window.AuxiliosRemitoAddonsV2={init,reset,restore,validate,collect,uploadEvidence,renderSignatureSummary,renderHistory,recalculate,hasCustomerCollection,loadReference};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>void init(),{once:true});else void init();
 })();

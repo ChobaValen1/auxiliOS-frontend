@@ -1277,10 +1277,11 @@ async function guardarRemitoCompleto(datosRemito) {
           evidenciaSubida.push({ bucket: 'firmas', path: nombre, url: fd.publicUrl });
         } else {
           console.warn('⚠️ No se pudo subir la firma:', fe.message);
-          _toast('Firma guardada localmente (no se pudo subir): ' + fe.message, 'warn');
+          throw new Error('No se pudo subir la firma: ' + fe.message);
         }
       } catch (upErr) {
         console.warn('⚠️ Error procesando firma:', upErr);
+        throw upErr;
       }
     }
 

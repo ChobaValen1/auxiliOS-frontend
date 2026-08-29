@@ -15,15 +15,15 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-remito-restore-v17-20260829">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-remito-restore-v17-20260829">
 <link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=226')
+        navigator.serviceWorker.register('/sw.js?v=227')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=driver-cancellation-drafts-v16-20260829" defer></script>
-<script src="supabase.js" defer></script>
+<script src="config.js?v=driver-remito-restore-v17-20260829" defer></script>
+<script src="supabase.js?v=driver-remito-restore-v17-20260829" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-cancellation-drafts-v16-20260829" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remito-addons-preferences-v14-20260829" defer></script>
-<script src="sigma.js?v=driver-cancellation-drafts-v16-20260829" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-remito-restore-v17-20260829" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-remito-restore-v17-20260829" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-remito-restore-v17-20260829" defer></script>
+<script src="sigma.js?v=driver-remito-restore-v17-20260829" defer></script>
 </head>
 <body>
 

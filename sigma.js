@@ -1278,7 +1278,7 @@ async function _finalizarRemitoInner() {
   const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
   const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
   const cliente   = document.getElementById('rem-cliente')?.value?.trim() || '';
-  const cuit      = document.getElementById('rem-cuit')?.value || '';
+  const cuit      = document.getElementById('rem-cuit')?.value?.trim() || '';
   const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const pago      = document.getElementById('rem-pago-selected')?.value || remPago1 || '—';
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || '';
@@ -1307,6 +1307,10 @@ async function _finalizarRemitoInner() {
     remWizardIr(1 - _remPasoActual);
     return;
   }
+  const requiredConfirmations=[...document.querySelectorAll('#rem-step-4 .acept-toggle')]
+    .filter(row=>row.id!=='row-arrastre'&&row.offsetParent!==null);
+  if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠️ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
+  if(!hasSig){mostrarValidacion('⚠️ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
   const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
   if (addonValidation && !addonValidation.ok) {
     mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || 'Hay datos incompletos en el paso 2.');
@@ -5429,17 +5433,33 @@ if (typeof obRegistrarHandler === 'function') {
 
   // Remito pendiente: mismo upsert idempotente que el flujo online
   // (el nro_remito viene del talonario físico → replayable sin duplicar).
-  obRegistrarHandler('remito_pendiente', async (payload) => {
-    if (payload.operator_service_id && typeof guardarRemitoVinculado === 'function') {
-      const linked = await guardarRemitoVinculado(payload, payload.operator_service_id);
+  obRegistrarHandler('remito_pendiente', async (payload, blobs) => {
+    const remito = { ...payload };
+    const addonFileMap = Array.isArray(remito.remito_addon_file_map) ? remito.remito_addon_file_map : [];
+    delete remito.remito_addon_file_map;
+    if (remito.addons_version === 2 && addonFileMap.length && window.AuxiliosRemitoAddonsV2) {
+      const addonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence({
+        payload: {
+          addons_version: 2,
+          tolls: remito.tolls || [],
+          excesses: remito.excesses || [],
+          evidence: remito.evidence || [],
+          customer_collections: remito.customer_collections || null,
+        },
+        files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
+      }, _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito));
+      remito.evidence = addonPayload.evidence;
+    }
+    if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
       return { realId: linked?.remito_id || null };
     }
-    if (payload.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
-      const intake = await guardarRemitoAdHoc(payload);
+    if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc(remito);
       return { realId: intake?.remito_id || null };
     }
     const { data, error } = await _db.from('remitos')
-      .upsert(payload, { onConflict: 'nro_remito' })
+      .upsert(remito, { onConflict: 'nro_remito' })
       .select('remito_id')
       .single();
     if (error) throw new Error(error.message);
@@ -5461,7 +5481,7 @@ if (typeof obRegistrarHandler === 'function') {
             addons_version: 2,
             tolls: remito.tolls || [],
             excesses: remito.excesses || [],
-            evidence: [],
+            evidence: remito.evidence || [],
             customer_collections: remito.customer_collections || null,
           },
           files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
@@ -7588,7 +7608,7 @@ async function guardarRemitoPendiente() {
   const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
   const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
   const cliente   = document.getElementById('rem-cliente')?.value || '';
-  const cuit      = document.getElementById('rem-cuit')?.value || '';
+  const cuit      = document.getElementById('rem-cuit')?.value?.trim() || '';
   const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
   const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
@@ -7645,14 +7665,30 @@ async function guardarRemitoPendiente() {
     } : {}),
   };
 
+  const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
+  if (addonValidation && !addonValidation.ok) {
+    toast(addonValidation.errors[0] || 'Revisá los peajes y excedentes', 'error');
+    remWizardIr(2 - _remPasoActual);
+    return false;
+  }
+  const addonBundle = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
+
   // ── OFFLINE: encolar en el outbox y seguir el flujo normal ──
   // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
   // el upsert online fallaría con un id inválido.
   if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
+    const blobs = {};
+    if (addonBundle?.payload) {
+      Object.assign(remitoDB, addonBundle.payload);
+      if (addonBundle.files?.length) {
+        remitoDB.remito_addon_file_map = addonBundle.files.map(({ file, ...item }) => item);
+        addonBundle.files.forEach(item => { blobs[item.blob_field] = item.file; });
+      }
+    }
     const tempId = obTempId();
     _obRemitoTemp[nro] = tempId; // para que la firma del mismo nro dependa de esta op
     const dependeDe = _logIdEsTemporal(_logId) ? _logId : null;
-    await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, dependeDe, tempId });
+    await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, blobs: Object.keys(blobs).length ? blobs : null, dependeDe, tempId });
     try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
     showRemitosView('lista');
     toast(`Remito ${nro} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
@@ -7665,12 +7701,20 @@ async function guardarRemitoPendiente() {
   let data = null, error = null;
   if (operatorServiceId && typeof guardarRemitoVinculado === 'function') {
     try {
+      if (addonBundle?.payload) {
+        const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
+        Object.assign(remitoDB, uploaded);
+      }
       data = await guardarRemitoVinculado(remitoDB, operatorServiceId);
     } catch (linkedError) {
       error = linkedError;
     }
   } else if (adHocMode && typeof guardarRemitoAdHoc === 'function') {
     try {
+      if (addonBundle?.payload) {
+        const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
+        Object.assign(remitoDB, uploaded);
+      }
       data = await guardarRemitoAdHoc(remitoDB);
     } catch (adHocError) {
       error = adHocError;

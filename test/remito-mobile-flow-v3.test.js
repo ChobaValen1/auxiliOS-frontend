@@ -101,3 +101,36 @@ test('FINALIZAR limpia el formulario sólo después de confirmar el guardado',()
   assert.match(body,/if \(!ok\) return false;\s*resetPagoForm\(\);\s*return true;/);
   assert.doesNotMatch(body,/tbodyRemitos\.insertBefore|tbodyViajes\.appendChild|tbodyHistorial\.insertBefore/);
 });
+
+test('el borrador vinculado restaura DNI/CUIT y peajes o excedentes por RPC privada',()=>{
+  const bridge=read('operator-service-bridge.js'),addons=read('remito-addons-v2.js');
+  const sql=read('migrations/20260829200000_driver_remito_draft_restore_v1.sql');
+  assert.match(bridge,/get_driver_operator_service_remito_draft_v1/);
+  assert.match(bridge,/setValue\('rem-cuit',data\.customer_document\)/);
+  assert.match(bridge,/AuxiliosRemitoAddonsV2\?\.restore\?\.\(data\.addons\|\|null\)/);
+  assert.match(addons,/async function restore\(report\)/);
+  assert.match(sql,/assigned_driver_id is distinct from v_uid/);
+  assert.match(sql,/'customer_document',r\.cuit/);
+  assert.match(sql,/get_driver_remito_addons_v2\(r\.remito_id\)/);
+  assert.match(sql,/revoke all on function public\.get_driver_operator_service_remito_draft_v1\(uuid\) from public,anon,authenticated/);
+});
+
+test('guardar pendiente conserva el detalle v2 y FINALIZAR valida sólo conformidades obligatorias',()=>{
+  const sigma=read('sigma.js'),addons=read('remito-addons-v2.js');
+  assert.match(sigma,/const addonBundle = window\.AuxiliosRemitoAddonsV2\?\.collect\?\.\(\) \|\| null/);
+  assert.match(sigma,/AuxiliosRemitoAddonsV2\.uploadEvidence\(addonBundle, clientOperationId\)/);
+  assert.match(sigma,/Object\.assign\(remitoDB, uploaded\)/);
+  assert.match(sigma,/obRegistrarHandler\('remito_pendiente', async \(payload, blobs\)/);
+  assert.match(sigma,/row\.id!==['"]row-arrastre['"]/);
+  assert.match(sigma,/if\(!hasSig\)/);
+  assert.match(addons,/state\.persistedEvidence=evidence/);
+  assert.match(addons,/\{\.\.\.fresh,\.\.\.current,/);
+});
+
+test('el paso 4 reserva 38 por ciento para conformidades y 62 para firma en móvil',()=>{
+  const flow=read('remito-mobile-flow-v3.js'),css=read('remito-mobile-flow-v3.css');
+  assert.match(flow,/rmv-confirm-zone/);
+  assert.match(flow,/rmv-sign-zone/);
+  assert.match(css,/grid-template-rows:auto minmax\(0,38fr\) minmax\(0,62fr\)/);
+  assert.match(css,/\.rmv-sign-zone #sig-canvas\{flex:1;height:100%!important/);
+});

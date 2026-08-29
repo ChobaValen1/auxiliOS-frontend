@@ -46,6 +46,10 @@ function signatureStep(step,source){
   while(source.firstChild)step.appendChild(source.firstChild);
   step.querySelector('.card-label')?.insertAdjacentHTML('beforebegin','<header class="rmv-step-head"><span>Paso 4</span><h2>Conformidad y firma</h2></header>');
   const conformityLabel=step.querySelector('.card-label');if(conformityLabel)conformityLabel.textContent='Conformidades';
+  const cards=$$(':scope > .card',step),absent=$(':scope > .toggle-row',step),confirmZone=document.createElement('div'),signZone=document.createElement('div');
+  confirmZone.className='rmv-confirm-zone';signZone.className='rmv-sign-zone';
+  if(cards[0])confirmZone.appendChild(cards[0]);if(absent)confirmZone.appendChild(absent);if(cards[1])signZone.appendChild(cards[1]);
+  step.append(confirmZone,signZone);
   step.classList.add('rmv-signature-step');
 }
 
