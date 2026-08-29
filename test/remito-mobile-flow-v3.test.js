@@ -114,6 +114,19 @@ test('FINALIZAR limpia el formulario sólo después de confirmar el guardado',()
   assert.match(supabase,/Error inesperado al guardar: '\s*\+\s*\(err\?\.message \|\| err\)/);
 });
 
+test('FINALIZAR usa los datos del servicio asignado si el campo operativo oculto no está hidratado',()=>{
+  const sigma=read('sigma.js');
+  const bridge=read('operator-service-bridge.js');
+  const start=sigma.indexOf('async function _finalizarRemitoInner()');
+  const end=sigma.indexOf('// ── CÁLCULO DE TOTAL',start);
+  const body=sigma.slice(start,end);
+  assert.match(bridge,/obtenerServicioAsignadoRemito:\(\)=>findService\(sessionStorage\.getItem\('auxilios_phase3_service_id'\)\)/);
+  assert.match(body,/servicioAsignado\?\.vehicle_plate/);
+  assert.match(body,/servicioAsignado\?\.origin/);
+  assert.match(body,/servicioAsignado\?\.destination/);
+  assert.match(body,/\['rem-patente',patente\]/);
+});
+
 test('el borrador vinculado restaura DNI/CUIT y peajes o excedentes por RPC privada',()=>{
   const bridge=read('operator-service-bridge.js'),addons=read('remito-addons-v2.js');
   const sql=read('migrations/20260829200000_driver_remito_draft_restore_v1.sql');

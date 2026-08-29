@@ -1273,10 +1273,13 @@ async function _finalizarRemitoInner() {
   const _rand  = Math.floor(Math.random() * 9000) + 1000;
   const nro       = document.getElementById('rem-nro')?.value || `REM-${_fecha}-${_rand}`;
   const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
-  const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
+  const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
+    ? window.obtenerServicioAsignadoRemito()
+    : null;
+  let patente     = document.getElementById('rem-patente')?.value?.trim() || servicioAsignado?.vehicle_plate || '';
   const km        = document.getElementById('rem-km')?.value || '0';
-  const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
-  const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
+  let origen      = document.getElementById('rem-origen')?.value?.trim() || servicioAsignado?.origin || '';
+  let destino     = document.getElementById('rem-destino')?.value?.trim() || servicioAsignado?.destination || '';
   const cliente   = document.getElementById('rem-cliente')?.value?.trim() || '';
   const cuit      = document.getElementById('rem-cuit')?.value?.trim() || '';
   const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
@@ -1295,6 +1298,14 @@ async function _finalizarRemitoInner() {
   if (!patente) { mostrarValidacion('⚠️ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
   if (!origen)  { mostrarValidacion('⚠️ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
   if (!destino) { mostrarValidacion('⚠️ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  [
+    ['rem-patente',patente],
+    ['rem-origen',origen],
+    ['rem-destino',destino],
+  ].forEach(([id,value])=>{
+    const el=document.getElementById(id);
+    if(el&&!el.value&&value)el.value=value;
+  });
   if (cuit && !/^\d{7,11}$/.test(cuit) && !/^\d{2}-\d{7,8}-\d{1}$/.test(cuit)) {
     mostrarValidacion('⚠️ DNI/CUIT inválido', 'El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso 1.');
     remWizardIr(1 - _remPasoActual);
