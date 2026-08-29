@@ -3,7 +3,13 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'remito-mobile-flow-v8-20260828';
+window.AUXILIOS_BUILD_ID = 'remito-tolls-definitive-v9-20260828';
+
+const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
+function versionedAuxiliosAsset(path) {
+  if (!path || !path.startsWith('/')) return path;
+  return `${path}${path.includes('?') ? '&' : '?'}v=${AUXILIOS_ASSET_VERSION}`;
+}
 
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
@@ -13,7 +19,7 @@ function loadAuxiliosStyle(id, href) {
   const link = document.createElement('link');
   link.id = id;
   link.rel = 'stylesheet';
-  link.href = href;
+  link.href = versionedAuxiliosAsset(href);
   document.head.appendChild(link);
 }
 
@@ -30,7 +36,7 @@ function loadAuxiliosModule(id, src) {
     }
     const script = document.createElement('script');
     script.id = id;
-    script.src = src;
+    script.src = versionedAuxiliosAsset(src);
     script.async = false;
     script.addEventListener('load', () => {
       script.dataset.loaded = '1';

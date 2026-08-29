@@ -16,6 +16,8 @@ const mobile=read('remito-mobile-flow-v3.js');
 const mobileCss=read('remito-mobile-flow-v3.css');
 const moduleConfig=read('service-module-configuration.js');
 const fieldModesMigration=read('supabase/migrations/20260828234519_driver_remito_field_modes_v1.sql');
+const index=read('Index.html');
+const legacyRemitoStep3=index.split('id="rem-step-3"')[1]?.split('id="rem-step-4"')[0]||'';
 
 test('normaliza peajes, excedentes y evidencia sin exponer tablas al frontend',()=>{
   for(const table of ['remito_toll_reports','remito_excess_reports','remito_evidence','operator_service_document_addon_reviews']){
@@ -52,6 +54,13 @@ test('el Chofer informa peajes y excedentes minimalistas con evidencia opcional'
   assert.match(optionalTicket,/position\('Adjuntá el ticket o justificá por qué no está disponible'/);
   assert.match(optionalTicket,/v_sql := replace\(v_sql, v_old, ''\)/);
   assert.match(optionalTicket,/execute v_sql/);
+});
+
+test('el HTML base no conserva el formulario anterior de peajes',()=>{
+  assert.doesNotMatch(legacyRemitoStep3,/<label class="form-label">Peajes<\/label>/);
+  assert.doesNotMatch(legacyRemitoStep3,/id="imp-peaje"[^>]*type="tel"/);
+  assert.doesNotMatch(legacyRemitoStep3,/>Total extras<\/span>/);
+  assert.match(index,/Peajes y excedentes se renderizan exclusivamente desde remito-addons-v2\.js/);
 });
 
 test('DNI/CUIT y teléfono respetan field_modes y el paso de firma queda compacto',()=>{
