@@ -156,11 +156,14 @@ test('el paso 4 conserva el diseño compacto anterior y prioriza una firma ampli
   const flow=read('remito-mobile-flow-v3.js'),css=read('remito-mobile-flow-v3.css');
   assert.match(flow,/rmv-confirm-zone/);
   assert.match(flow,/rmv-sign-zone/);
+  assert.match(flow,/summary\.id='rem-addon-signature-summary'/);
+  assert.match(flow,/AuxiliosRemitoAddonsV2\?\.renderSignatureSummary/);
   assert.match(flow,/insertAdjacentHTML\('beforebegin','<header class="rmv-step-head"/);
   assert.match(css,/grid-template-rows:minmax\(0,30fr\) minmax\(0,70fr\)/);
   assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css,/\.rmv-confirm-zone \.toggle-title\{font-size:9px!important/);
   assert.match(css,/\.rmv-sign-zone #sig-canvas\{position:absolute;inset:0;width:100%!important;height:100%!important/);
+  assert.match(css,/\.rmv-confirm-zone>\.rem-addon-signature-summary/);
 });
 
 test('el wizard muestra exclusivamente el paso activo',()=>{

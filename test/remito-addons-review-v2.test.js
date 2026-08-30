@@ -204,6 +204,8 @@ test('el formato contractual de peajes se ve en todo el remito y en la recepció
   assert.match(driver,/A definir por Operaciones/);
   assert.match(driver,/Sin formato configurado/);
   assert.match(driver,/rem-toll-coverage/);
+  assert.match(driver,/rem-addon-signature-summary/);
+  assert.match(driver,/Formato de cobro de peajes/);
   assert.match(driver,/renderSignatureSummary/);
   assert.match(driver,/data\.toll_coverage_mode/);
   assert.match(review,/Formato de cobro de peajes/);

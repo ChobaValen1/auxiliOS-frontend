@@ -153,9 +153,8 @@
   }
 
   function renderSignatureSummary(){
-    const host=$('#rem-addon-signature-summary');if(!host)return;const total=totals(),tollPending=state.lines.toll.some(line=>line.amount_pending),excessPending=state.lines.excess.some(line=>line.amount_pending),lines=[...state.lines.toll.map(line=>({name:line.toll_name,amount:line.unit_amount,pending:line.amount_pending})),...state.lines.excess.map(line=>({name:line.concept_name,amount:line.unit_amount,pending:line.amount_pending}))];
-    const visible=lines.length<=2?lines:lines.slice(0,1);const remainder=lines.length>2?lines.slice(1):[];
-    host.innerHTML=`<div class="rem-addons-kicker">Detalle que acepta el cliente</div><div class="rem-toll-coverage-line compact"><span>Formato de peajes</span><strong>${esc(tollCoverageLabel(state.reference.toll_coverage_mode))}</strong></div><div class="rem-addon-summary-grid"><div class="rem-addon-summary-stat"><span>Peajes</span><strong>${tollPending?'A definir':money(total.toll)}</strong></div><div class="rem-addon-summary-stat"><span>Excedentes</span><strong>${excessPending?'A definir':money(total.excess)}</strong></div></div><div class="rem-addon-summary-lines">${visible.map(line=>`<div class="rem-addon-summary-line"><span>${esc(line.name)}</span><strong>${line.pending?'A definir':money(line.amount)}</strong></div>`).join('')}${remainder.length?`<div class="rem-addon-summary-line more"><span>+${remainder.length} más</span><strong>${remainder.some(line=>line.pending)?'Incluye importes a definir':money(remainder.reduce((sum,line)=>sum+number(line.amount),0))}</strong></div>`:''}${!lines.length?'<div class="rem-addon-empty compact">Sin peajes ni excedentes informados</div>':''}</div>`;
+    const host=$('#rem-addon-signature-summary');if(!host)return;
+    host.innerHTML=`<div class="rem-toll-coverage-line compact"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(state.reference.toll_coverage_mode))}</strong></div>`;
   }
   function reviewMeta(status){if(status==='approved')return{label:'Aprobado',css:'approved'};if(status==='adjusted')return{label:'Ajustado por Administración',css:'adjusted'};return{label:'En revisión',css:'pending'}}
   async function renderHistory(remitoId,host){
