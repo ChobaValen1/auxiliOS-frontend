@@ -6,6 +6,7 @@
 .os-remito-inbox-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:8px}
 .os-remito-inbox-item{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px}
 .os-remito-inbox-item b,.os-remito-inbox-item small{display:block}.os-remito-inbox-item b{font-size:11px}.os-remito-inbox-item small{font-size:9px;color:var(--muted);margin-top:3px}
+.os-remito-inbox-item .os-toll-coverage{color:var(--amber);font-weight:800}.os-review-compare .os-review-toll-format{color:var(--text);padding:6px 7px;border:1px solid rgba(245,166,35,.3);border-radius:7px;background:rgba(245,166,35,.07)}
 .os-review-modal{position:fixed;inset:0;z-index:10020;background:rgba(5,8,14,.88);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px}
 .os-review-modal[hidden]{display:none}
 .os-review-shell{width:min(1120px,100%);background:var(--bg2,#111827);border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 80px rgba(0,0,0,.5);overflow:hidden}

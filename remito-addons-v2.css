@@ -2,6 +2,7 @@
 .rem-addons-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px}
 .rem-addons-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
 .rem-addons-kicker{font-size:9px;color:var(--amber);font-weight:800;letter-spacing:1.4px;text-transform:uppercase}
+.rem-toll-coverage-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 9px;padding:7px 9px;border:1px solid rgba(245,166,35,.3);border-radius:8px;background:rgba(245,166,35,.07)}.rem-toll-coverage-line span{color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase}.rem-toll-coverage-line strong{color:var(--amber);font-family:'DM Mono',monospace;font-size:10px;text-align:right}.rem-toll-coverage-line.compact{margin:5px 0 6px;padding:5px 7px}
 .rem-addons-title{font-size:15px;font-weight:800;margin-top:3px}
 .rem-addons-help{font-size:10px;color:var(--muted);line-height:1.4;margin-top:3px}
 .rem-addon-select{width:100%;min-height:44px;margin-bottom:7px;border:1px solid var(--amber);background:var(--amber-lo);color:var(--amber);border-radius:8px;padding:10px;font-size:12px;font-weight:800;cursor:pointer}

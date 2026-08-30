@@ -9,6 +9,7 @@ const ACTIVATION_REASONS=[
  ['other','Otro']
 ];
 const PAYMENT_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado'};
+const TOLL_COVERAGE_LABELS={mixed_manual:'Uno y Uno',provider_roundtrip:'A cargo de la prestadora',customer_roundtrip:'A cargo del cliente'};
 const EXTRA_FIELDS={
  'Email del cliente':{key:'customer_email',id:'phase3-service-email',label:'Email del cliente',type:'email'},
  'Observaciones':{key:'operator_notes',id:'phase3-service-operator-notes',label:'Observaciones del servicio',type:'textarea'},
@@ -27,6 +28,7 @@ const originDestinationKm=meters=>{
   const value=Number(meters);
   return Number.isFinite(value)&&value>0?`${(Math.round(value/100)/10).toLocaleString('es-AR')} km`:'Sin cálculo Maps';
 };
+const tollCoverageLabel=mode=>TOLL_COVERAGE_LABELS[String(mode||'')]||'Sin formato configurado';
 function customerExcessSummary(s,{compact=false}={}){
   const data=s.customer_excess_summary||{};
   const total=Number(data.total_amount||s.customer_amount_due||0);
@@ -55,7 +57,7 @@ function tollSummary(s,{compact=false}={}){
 }
 function serviceFacts(s,{compact=false}={}){
   const vehicle=s.vehicle_make_model||'Vehículo sin informar',plate=s.vehicle_plate||'Sin patente';
-  return`<div class="p3-facts"><div class="p3-fact-row p3-vehicle-fact"><span>Vehículo</span><strong>${esc(vehicle)} <em>${esc(plate)}</em></strong></div><div class="p3-fact-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-fact-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div><div class="p3-fact-row"><span>KM</span><strong>${esc(originDestinationKm(s.origin_destination_distance_meters))}</strong></div>${customerExcessSummary(s,{compact})}${tollSummary(s,{compact})}</div>`;
+  return`<div class="p3-facts"><div class="p3-fact-row p3-vehicle-fact"><span>Vehículo</span><strong>${esc(vehicle)} <em>${esc(plate)}</em></strong></div><div class="p3-fact-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-fact-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div><div class="p3-fact-row"><span>KM</span><strong>${esc(originDestinationKm(s.origin_destination_distance_meters))}</strong></div><div class="p3-fact-row p3-toll-coverage-fact"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(s.toll_coverage_mode))}</strong></div>${customerExcessSummary(s,{compact})}${tollSummary(s,{compact})}</div>`;
 }
 function injectAssets(){if(document.getElementById('phase3-service-bridge-css'))return;const l=document.createElement('link');l.id='phase3-service-bridge-css';l.rel='stylesheet';l.href='/operator-service-bridge.css';document.head.appendChild(l)}
 function applyDriverModuleLabels(){if(!isDriver())return;const nav=document.getElementById('nav-remitos'),screen=document.getElementById('screen-remitos');const label=nav?.querySelector('.nav-label'),icon=nav?.querySelector('.nav-icon');if(label)label.textContent='Servicios';if(icon)icon.textContent='📡';if(screen?.classList.contains('active')){const title=document.getElementById('topbar-title'),sub=document.getElementById('topbar-sub');if(title)title.textContent='SERVICIOS';if(sub)sub.textContent='Asignados e historial'}}

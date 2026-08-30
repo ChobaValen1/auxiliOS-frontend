@@ -8,6 +8,7 @@ const definitiveFlow=read('migrations/20260829003000_driver_addons_modal_v3.sql'
 const automaticAmounts=read('migrations/20260829090000_driver_addons_automatic_amounts_v4.sql');
 const amountPreferences=read('migrations/20260829113000_driver_addon_amount_preferences_v5.sql');
 const driverVisibility=read('migrations/20260829233000_driver_remito_admin_visibility_v1.sql');
+const tollCoverageVisibility=read('supabase/migrations/20260830214300_driver_toll_coverage_visibility_v1.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -192,6 +193,26 @@ test('la recepción documental expone el resumen completo para Operaciones y Adm
   assert.match(driverVisibility,/'customer_document', r\.cuit/);
   assert.match(driverVisibility,/'customer_phone', r\.telefono/);
   assert.match(driverVisibility,/'vehicle_make_model', r\.marca_modelo/);
+});
+
+test('el formato contractual de peajes se ve en todo el remito y en la recepción administrativa',()=>{
+  for(const label of ['Uno y Uno','A cargo de la prestadora','A cargo del cliente']){
+    assert.match(driver,new RegExp(label));
+    assert.match(review,new RegExp(label));
+  }
+  assert.match(driver,/Formato de cobro de peajes/);
+  assert.match(driver,/A definir por Operaciones/);
+  assert.match(driver,/Sin formato configurado/);
+  assert.match(driver,/rem-toll-coverage/);
+  assert.match(driver,/renderSignatureSummary/);
+  assert.match(driver,/data\.toll_coverage_mode/);
+  assert.match(review,/Formato de cobro de peajes/);
+  assert.match(review,/s\.toll_coverage_mode/);
+  for(const rpc of ['get_driver_operator_queue_v2','get_driver_remito_reference_v2','get_driver_remito_addons_v2','list_operator_service_document_connections_v1']){
+    assert.match(tollCoverageVisibility,new RegExp(rpc));
+  }
+  assert.match(tollCoverageVisibility,/revoke all on function public\.get_driver_remito_addons_v2\(integer\) from public,anon,authenticated/);
+  assert.match(tollCoverageVisibility,/grant execute on function public\.get_driver_remito_addons_v2\(integer\) to authenticated/);
 });
 
 test('históricos no facturados se convierten a Total legado y los facturados quedan intactos',()=>{

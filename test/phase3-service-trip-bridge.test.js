@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.join(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const tollCoverageVisibility=read('supabase/migrations/20260830214300_driver_toll_coverage_visibility_v1.sql');
 
 test('el puente del chofer usa la cola v2 y el guardado transaccional para ARRIBADO',()=>{
   const js=read('operator-service-bridge.js');
@@ -81,6 +82,12 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   assert.match(js,/\+\$\{remaining\} más/);
   assert.match(js,/customer_excess_summary/);
   assert.match(js,/toll_charge_summary/);
+  assert.match(js,/Formato de cobro de peajes/);
+  assert.match(js,/toll_coverage_mode/);
+  assert.match(js,/mixed_manual:'Uno y Uno'/);
+  assert.match(js,/provider_roundtrip:'A cargo de la prestadora'/);
+  assert.match(js,/customer_roundtrip:'A cargo del cliente'/);
+  assert.match(js,/Sin formato configurado/);
   assert.match(js,/A cargo del socio/);
   assert.match(js,/A cargo de la prestadora/);
   assert.match(js,/mixed:'Mixto'/);
@@ -96,6 +103,14 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);
   assert.doesNotMatch(css,/\.p3-service-card\.priority-/);
+});
+
+test('la cola del Chofer propaga el formato contractual sin inferirlo de montos o medios',()=>{
+  assert.match(tollCoverageVisibility,/get_driver_operator_queue_v2/);
+  assert.match(tollCoverageVisibility,/''toll_coverage_mode'',s\.toll_coverage_mode/);
+  assert.match(tollCoverageVisibility,/get_driver_remito_reference_v2/);
+  assert.match(tollCoverageVisibility,/select s\.toll_coverage_mode from public\.operator_services/);
+  assert.doesNotMatch(tollCoverageVisibility,/mixed_manual.*customer_payment_method/);
 });
 
 test('la cola del Chofer expone tramo Maps, excedentes del socio y peajes por responsable',()=>{
