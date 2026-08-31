@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'signed-remito-close-v29-20260831'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'operator-remito-visibility-v30-20260831'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });

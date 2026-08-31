@@ -52,6 +52,6 @@ test('frontend conserva service_id y client_operation_id en pendiente, firma y o
   assert.match(sigma,/remito_firmar/);
   assert.match(bridge,/Pendiente de sincronización/);
   assert.doesNotMatch(bridge,/link_operator_service_remito/);
-  assert.match(read('operator-services.js'),/list_operator_service_document_connections_v1/);
+  assert.match(read('operator-services.js'),/list_operator_service_document_connections_v2/);
   assert.match(read('operator-services.js'),/Aprobar excepción sin remito/);
 });

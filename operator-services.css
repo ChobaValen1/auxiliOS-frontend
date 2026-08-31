@@ -46,6 +46,9 @@
 .os-payment-method{font-size:7px!important;color:var(--muted2)!important}
 .os-status{display:flex!important;align-items:center;justify-content:center;gap:4px;width:100%;max-width:100%;box-sizing:border-box;padding:3px 5px;border-radius:999px;font-size:7px!important;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .os-status.amber{color:var(--amber);background:var(--amber-lo)}.os-status.blue{color:var(--blue);background:var(--blue-lo)}.os-status.violet{color:#a986ff;background:rgba(169,134,255,.1)}.os-status.green{color:var(--green);background:var(--green-lo)}.os-status.red{color:var(--red);background:var(--red-lo)}
+.os-document-state{display:block;width:100%;max-width:100%;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:7px;text-align:center}
+.os-document-state.is-action{border:1px solid rgba(245,166,35,.35);border-radius:5px;background:rgba(245,166,35,.08);color:var(--amber);padding:3px 4px;font:inherit;font-size:7px;font-weight:900;cursor:pointer}
+.os-document-state.is-action:hover,.os-document-state.is-action:focus-visible{border-color:var(--amber);background:rgba(245,166,35,.16);outline:none}
 .os-table td.actions{text-align:center;overflow:visible}
 .os-more{width:27px;height:27px;border:0;border-radius:6px;background:var(--bg);color:var(--muted2);font-size:16px;cursor:pointer}.os-more:hover{color:var(--text);background:var(--border)}
 .os-empty{padding:30px;text-align:center;color:var(--muted);font-size:9px}

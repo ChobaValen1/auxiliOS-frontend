@@ -85,7 +85,7 @@ test('ACTIVADO exige uno de cuatro motivos cerrados y lo persiste mediante RPC v
 
 test('Operaciones actualiza automáticamente los borradores visibles',()=>{
   const services=read('operator-services.js');
-  assert.match(services,/list_operator_service_document_connections_v1/);
+  assert.match(services,/list_operator_service_document_connections_v2/);
   assert.match(services,/document\.visibilityState==='visible'.*loadServices\(\)/s);
   assert.match(services,/},30000\)/);
 });
