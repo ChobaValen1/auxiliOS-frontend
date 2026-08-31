@@ -2,6 +2,7 @@
 (()=>{'use strict';
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+let signedEditMode=false;
 
 function moveToHidden(root,id){
   const node=document.getElementById(id);
@@ -46,13 +47,11 @@ function signatureStep(step,source){
   while(source.firstChild)step.appendChild(source.firstChild);
   step.querySelector('.card-label')?.insertAdjacentHTML('beforebegin','<header class="rmv-step-head"><span>Paso 4</span><h2>Conformidad y firma</h2></header>');
   const conformityLabel=step.querySelector('.card-label');if(conformityLabel)conformityLabel.textContent='Conformidades';
-  const cards=$$(':scope > .card',step),absent=$(':scope > .toggle-row',step),confirmZone=document.createElement('div'),signZone=document.createElement('div'),summary=document.createElement('div');
+  const cards=$$(':scope > .card',step),absent=$(':scope > .toggle-row',step),confirmZone=document.createElement('div'),signZone=document.createElement('div');
   confirmZone.className='rmv-confirm-zone';signZone.className='rmv-sign-zone';
-  summary.id='rem-addon-signature-summary';summary.className='rem-addon-signature-summary';
-  if(cards[0])confirmZone.appendChild(cards[0]);confirmZone.appendChild(summary);if(absent)confirmZone.appendChild(absent);if(cards[1])signZone.appendChild(cards[1]);
+  if(cards[0])confirmZone.appendChild(cards[0]);if(absent)confirmZone.appendChild(absent);if(cards[1])signZone.appendChild(cards[1]);
   step.append(confirmZone,signZone);
   step.classList.add('rmv-signature-step');
-  window.AuxiliosRemitoAddonsV2?.renderSignatureSummary?.();
 }
 
 function transform(){
@@ -77,11 +76,25 @@ function transform(){
 function syncEvidence(){
   setTimeout(()=>{
     const host=document.getElementById('rem-evidence-list');if(!host)return;
-    const rows=$$('#foto-grid .foto-slot').map((slot,index)=>{const input=$('input[type="file"]',slot),file=input?.files?.[0];if(!file)return'';const label=slot.dataset.label||`Evidencia ${index+1}`;return`<article><span>${index===1?'🔢':'📷'}</span><div><b>${label}</b><small>${file.name}</small></div><button type="button" data-remove-evidence="${index}" aria-label="Eliminar ${label}">×</button></article>`}).filter(Boolean);
+    const saved=window.AuxiliosRemitoAddonsV2?.getPersistedEvidence?.()||[];
+    const savedRows=saved.map(item=>`<article class="rmv-evidence-saved"><span>📎</span><div><b>${item.evidence_kind==='odometer'?'Odómetro':item.evidence_kind==='vehicle_front'?'Vehículo':'Evidencia'}</b><small>${item.original_name||'Archivo guardado'}</small></div><button type="button" data-remove-saved-evidence="${item.client_evidence_id}" aria-label="Eliminar evidencia guardada">×</button></article>`);
+    const rows=[...savedRows,...$$('#foto-grid .foto-slot').map((slot,index)=>{const input=$('input[type="file"]',slot),file=input?.files?.[0];if(!file)return'';const label=slot.dataset.label||`Evidencia ${index+1}`;return`<article><span>${index===1?'🔢':'📷'}</span><div><b>${label}</b><small>${file.name}</small></div><button type="button" data-remove-evidence="${index}" aria-label="Eliminar ${label}">×</button></article>`}).filter(Boolean)];
     host.innerHTML=rows.join('')||'<div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div>';
     $$('[data-remove-evidence]',host).forEach(button=>button.addEventListener('click',()=>{const input=$$('#foto-grid input[type="file"]')[Number(button.dataset.removeEvidence)];if(input){input.value='';const slot=input.closest('.foto-slot');slot?.classList.remove('loaded');slot?.querySelector('.img-preview')?.remove();syncEvidence()}}));
+    $$('[data-remove-saved-evidence]',host).forEach(button=>button.addEventListener('click',()=>window.AuxiliosRemitoAddonsV2?.removePersistedEvidence?.(button.dataset.removeSavedEvidence)));
   },0);
 }
+
+function setSignedEditMode(enabled,data=null){
+  signedEditMode=!!enabled;const root=document.getElementById('remitos-nuevo'),step3=document.getElementById('rem-step-3'),hidden=document.getElementById('rem-service-fields-hidden'),observations=document.getElementById('rem-observaciones');
+  root?.classList.toggle('rmv-signed-edit',signedEditMode);document.getElementById('rmv-signed-edit-banner')?.remove();document.getElementById('rmv-signed-edit-notes')?.remove();
+  if(!signedEditMode){if(observations&&hidden)hidden.appendChild(observations);return}
+  const banner=document.createElement('section');banner.id='rmv-signed-edit-banner';banner.className='rmv-card rmv-edit-banner';banner.innerHTML='<b>Editar remito firmado</b><small>Podés corregir peajes, excedentes, observaciones y evidencia. La firma y los datos del socio permanecen bloqueados.</small>';
+  document.getElementById('rem-step-2')?.prepend(banner);
+  if(step3&&observations){const notes=document.createElement('section');notes.id='rmv-signed-edit-notes';notes.className='rmv-card';notes.innerHTML='<label class="rmv-edit-notes-label"><span>Observaciones</span><div data-edit-notes></div></label>';step3.querySelector('.rmv-card')?.after(notes);notes.querySelector('[data-edit-notes]')?.appendChild(observations);observations.classList.add('rmv-input');observations.value=data?.remito?.observations||''}
+  syncEvidence();
+}
+function isSignedEditMode(){return signedEditMode}
 
 function setAdHocMode(enabled){
   const step=document.getElementById('rem-step-1'),hidden=document.getElementById('rem-service-fields-hidden');if(!step||!hidden)return;
@@ -94,6 +107,6 @@ function setAdHocMode(enabled){
   attach('rem-nro-prestadora','order');attach('rem-tipo-servicio','type');attach('rem-patente','plate');attach('rem-marca-modelo','vehicle');attach('rem-origen','origin');attach('rem-destino','destination');
 }
 
-window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode,applyCompanyFieldModes,validateCustomerFields};
+window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode,setSignedEditMode,isSignedEditMode,applyCompanyFieldModes,validateCustomerFields};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',transform,{once:true});else transform();
 })();

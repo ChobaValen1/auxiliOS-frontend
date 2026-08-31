@@ -542,7 +542,7 @@ let _remPasoActual = 1;
 const REM_TOTAL_PASOS = 4;
 
 function remWizardReset() {
-  _remPasoActual = 1;
+  _remPasoActual = window.AuxiliosRemitoMobileV3?.isSignedEditMode?.() ? 2 : 1;
   _remWizardActualizar();
   
   const ahora = new Date();
@@ -617,26 +617,32 @@ function remWizardReset() {
 }
 
 function _remWizardActualizar() {
+  const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
   for (let i = 1; i <= REM_TOTAL_PASOS; i++) {
     const panel = document.getElementById(`rem-step-${i}`);
     if (panel) panel.classList.toggle('active', i === _remPasoActual);
   }
   
   const fill = document.getElementById('rem-progress-fill');
-  if (fill) fill.style.width = `${(_remPasoActual / REM_TOTAL_PASOS) * 100}%`;
+  if (fill) fill.style.width = signedEdit ? `${((_remPasoActual - 1) / 2) * 100}%` : `${(_remPasoActual / REM_TOTAL_PASOS) * 100}%`;
   
   const num = document.getElementById('rem-step-num');
-  if (num) num.textContent = _remPasoActual;
+  if (num) num.textContent = signedEdit ? (_remPasoActual - 1) : _remPasoActual;
+  const counter = document.querySelector('.rem-wizard-counter');
+  if (counter && signedEdit) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual - 1}</span> de 2`;
+  else if (counter) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual}</span> de 4`;
   
   document.querySelectorAll('.rem-step-dot').forEach((d, i) => {
     d.classList.remove('active', 'done');
-    if (i + 1 < _remPasoActual) d.classList.add('done');
-    else if (i + 1 === _remPasoActual) d.classList.add('active');
+    d.style.display = signedEdit && i > 1 ? 'none' : '';
+    const visibleStep = signedEdit ? _remPasoActual - 1 : _remPasoActual;
+    if (i + 1 < visibleStep) d.classList.add('done');
+    else if (i + 1 === visibleStep) d.classList.add('active');
   });
   
   const btnBack = document.getElementById('rem-btn-back');
   const btnNext = document.getElementById('rem-btn-next');
-  if (btnBack) btnBack.style.display = _remPasoActual === 1 ? 'none' : '';
+  if (btnBack) btnBack.style.display = signedEdit ? (_remPasoActual === 2 ? 'none' : '') : (_remPasoActual === 1 ? 'none' : '');
   
   // ── INYECCIÓN DEL BOTÓN PENDIENTE EN EL FOOTER ──
   const footer = document.querySelector('.rem-wizard-footer');
@@ -658,6 +664,11 @@ function _remWizardActualizar() {
   }
   
   if (btnNext) {
+    if (signedEdit) {
+      if (btnPendiente) btnPendiente.style.display = 'none';
+      btnNext.textContent = _remPasoActual === 3 ? 'Guardar cambios' : 'Siguiente →';
+      btnNext.onclick = _remPasoActual === 3 ? () => window.guardarEdicionRemitoFirmado?.() : () => remWizardIr(1);
+    } else
     if (_remPasoActual === REM_TOTAL_PASOS) {
       // ESTAMOS EN EL PASO FINAL (FIRMA)
       btnNext.textContent = '✅ Finalizar';
@@ -685,7 +696,8 @@ function _remWizardActualizar() {
 
 function remWizardIr(delta) {
   if (delta > 0 && !_remWizardValidar(_remPasoActual)) return;
-  _remPasoActual = Math.max(1, Math.min(REM_TOTAL_PASOS, _remPasoActual + delta));
+  const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
+  _remPasoActual = signedEdit ? Math.max(2, Math.min(3, _remPasoActual + delta)) : Math.max(1, Math.min(REM_TOTAL_PASOS, _remPasoActual + delta));
   _remWizardActualizar();
   if (_remPasoActual === REM_TOTAL_PASOS && typeof initCanvas === 'function') {
     setTimeout(() => initCanvas('sig-canvas'), 80);
@@ -1265,6 +1277,11 @@ async function finalizarRemito() {
       btn.textContent = _remPasoActual === REM_TOTAL_PASOS ? '✅ Finalizar' : originalText;
     }
   }
+}
+
+function remWizardAbrirEdicionFirmada() {
+  _remPasoActual = 2;
+  _remWizardActualizar();
 }
 
 async function _finalizarRemitoInner() {

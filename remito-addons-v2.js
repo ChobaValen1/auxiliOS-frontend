@@ -154,13 +154,13 @@
 
   function renderSignatureSummary(){
     const host=$('#rem-addon-signature-summary');if(!host)return;
-    host.innerHTML=`<div class="rem-toll-coverage-line compact"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(state.reference.toll_coverage_mode))}</strong></div>`;
+    host.innerHTML='';host.hidden=true;
   }
   function reviewMeta(status){if(status==='approved')return{label:'Aprobado',css:'approved'};if(status==='adjusted')return{label:'Ajustado por Administración',css:'adjusted'};return{label:'En revisión',css:'pending'}}
   async function renderHistory(remitoId,host){
     if(!host||!remitoId)return;host.innerHTML='<div class="rem-addon-empty">Cargando detalle informado…</div>';const {data,error}=await _db.rpc('get_driver_remito_addons_v2',{p_remito_id:Number(remitoId)});if(error){host.innerHTML=`<div class="rem-addon-empty">${esc(error.message||'No se pudo cargar el detalle')}</div>`;return}
     const meta=reviewMeta(data.review_status),tolls=(data.tolls||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected',method=line.customer_payment_method||line.payment_method;return`<div class="rem-addon-summary-line"><span>${esc(line.toll_name)} · ${esc(paymentLabel(method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`}),excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
-    host.innerHTML=`<div class="rem-addons-head"><div><div class="rem-addons-kicker">Peajes y excedentes informados</div><div class="rem-addons-help">El original firmado se conserva sin cambios.</div></div><span class="rem-addon-status ${meta.css}">${meta.label}</span></div><div class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(data.toll_coverage_mode,!!data.service_id))}</strong></div><div class="rem-addon-summary-lines">${[...tolls,...excesses].join('')||'<div class="rem-addon-empty">El chofer confirmó que no hubo peajes ni excedentes.</div>'}</div>`;
+    host.innerHTML=`<div class="rem-addons-head"><div><div class="rem-addons-kicker">Peajes y excedentes informados</div><div class="rem-addons-help">Última información registrada para este remito.</div></div><span class="rem-addon-status ${meta.css}">${meta.label}</span></div><div class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(data.toll_coverage_mode,!!data.service_id))}</strong></div><div class="rem-addon-summary-lines">${[...tolls,...excesses].join('')||'<div class="rem-addon-empty">El chofer confirmó que no hubo peajes ni excedentes.</div>'}</div>`;
   }
   async function restore(report){
     if(!report){reset();return}
@@ -169,9 +169,11 @@
     state.lines={toll:restored('toll',report.tolls||[]),excess:restored('excess',report.excesses||[])};
     const evidence=[];const addEvidence=(item,owner=null)=>{if(!item?.evidence_id||!item?.path)return;evidence.push({client_evidence_id:item.evidence_id,client_line_id:owner,evidence_kind:item.kind,storage_path:item.path,mime_type:item.mime_type,original_name:item.original_name,size_bytes:item.size_bytes})};
     (report.evidence||[]).forEach(item=>addEvidence(item));(report.tolls||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));(report.excesses||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));
-    state.persistedEvidence=evidence;cancelPicker();recalculate();
+    state.persistedEvidence=evidence;cancelPicker();recalculate();window.AuxiliosRemitoMobileV3?.syncEvidence?.();
   }
   function reset(){state.lines={toll:[],excess:[]};state.persistedEvidence=[];cancelPicker();recalculate()}
+  function getPersistedEvidence(){return clone(state.persistedEvidence)}
+  function removePersistedEvidence(id){state.persistedEvidence=state.persistedEvidence.filter(item=>String(item.client_evidence_id)!==String(id));window.AuxiliosRemitoMobileV3?.syncEvidence?.();return getPersistedEvidence()}
   function hasCustomerCollection(){return[...state.lines.toll,...state.lines.excess].some(line=>line.customer_payment_method&&line.customer_payment_method!=='not_collected')}
 
   async function init(){
@@ -182,6 +184,6 @@
     try{await loadReference()}catch(error){console.warn('[remito-addons-v2]',error);const box=$('#rem-addons-errors');if(box){box.textContent=error.message;box.classList.add('visible')}}state.initialized=true;recalculate();
   }
 
-  window.AuxiliosRemitoAddonsV2={init,reset,restore,validate,collect,uploadEvidence,renderSignatureSummary,renderHistory,recalculate,hasCustomerCollection,loadReference};
+  window.AuxiliosRemitoAddonsV2={init,reset,restore,validate,collect,uploadEvidence,renderSignatureSummary,renderHistory,recalculate,hasCustomerCollection,loadReference,getPersistedEvidence,removePersistedEvidence};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>void init(),{once:true});else void init();
 })();

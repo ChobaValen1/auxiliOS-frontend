@@ -171,14 +171,14 @@ test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega
   assert.match(review,/DNI\/CUIT/);
   assert.match(review,/remito_excess_total/);
   assert.match(review,/remito_toll_total/);
-  assert.match(review,/Aprobar y aplicar al servicio/);
+  assert.match(review,/Aprobar y finalizar servicio/);
   assert.match(review,/reportedExcessPayment/);
   assert.match(review,/Medio informado/);
-  assert.match(review,/resolve_operator_service_document_v2/);
+  assert.match(review,/resolve_operator_service_document_v3/);
   assert.match(review,/Explicá cada peaje ajustado o rechazado/);
   assert.match(review,/Clasificá el concepto comercial/);
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
-  assert.match(menu,/Revisar remito recibido/);
+  assert.match(menu,/Ver remito firmado/);
   assert.doesNotMatch(menu,/Aprobar remito/);
 });
 
@@ -204,9 +204,7 @@ test('el formato contractual de peajes se ve en todo el remito y en la recepció
   assert.match(driver,/A definir por Operaciones/);
   assert.match(driver,/Sin formato configurado/);
   assert.match(driver,/rem-toll-coverage/);
-  assert.match(driver,/rem-addon-signature-summary/);
-  assert.match(driver,/Formato de cobro de peajes/);
-  assert.match(driver,/renderSignatureSummary/);
+  assert.doesNotMatch(read('remito-mobile-flow-v3.js'),/rem-addon-signature-summary/);
   assert.match(driver,/data\.toll_coverage_mode/);
   assert.match(review,/Formato de cobro de peajes/);
   assert.match(review,/s\.toll_coverage_mode/);
@@ -228,5 +226,5 @@ test('históricos no facturados se convierten a Total legado y los facturados qu
   assert.match(legacyScopeFix,/r\.operator_service_id is null/);
   assert.match(legacyScopeFix,/t\.notes='legacy_scalar_v1'/);
   assert.match(driver,/Ajustado por Administración/);
-  assert.match(driver,/El original firmado se conserva sin cambios/);
+  assert.match(driver,/Última información registrada para este remito/);
 });
