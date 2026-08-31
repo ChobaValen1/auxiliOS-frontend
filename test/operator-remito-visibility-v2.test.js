@@ -21,11 +21,20 @@ test('la bandeja documental v2 exige identidad y rol y no transporta firmas en l
 test('Servicios usa la bandeja segura y permite abrir el remito sin depender del menu de tres puntos',()=>{
   assert.match(services,/list_operator_service_document_connections_v2/);
   assert.match(services,/hasSignedRemito/);
+  assert.match(services,/openSignedRemito/);
+  assert.match(services,/loadAuxiliosModule\('auxilios-operator-remito-review-v2'/);
+  assert.match(services,/abrirRemitoFirmadoOperador/);
   assert.match(services,/Abrir el remito firmado/);
   assert.match(services,/Remito recibido[\s\S]*Ver/);
   assert.match(commercial,/Documento del chofer/);
   assert.match(commercial,/data-ca="open-remito"/);
-  assert.match(commercial,/AuxiliosRemitoReviewV2\?\.open/);
+  assert.match(commercial,/abrirRemitoFirmadoOperador/);
+});
+
+test('el bootstrap no espera un segundo load de scripts defer ya ejecutados',()=>{
+  const config=read('config.js');
+  assert.match(config,/existing\.defer && document\.readyState !== 'loading'/);
+  assert.match(config,/existing\.dataset\.loaded = '1'/);
 });
 
 test('el documento administrativo muestra montos, evidencia embebida y firma',()=>{

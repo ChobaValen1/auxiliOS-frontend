@@ -3,7 +3,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'operator-remito-visibility-v30-20260831';
+window.AUXILIOS_BUILD_ID = 'operator-remito-open-v31-20260831';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -27,7 +27,13 @@ function loadAuxiliosModule(id, src) {
   return new Promise((resolve, reject) => {
     const existing = document.getElementById(id);
     if (existing) {
-      if (existing.dataset.loaded === '1') resolve();
+      // Los módulos declarados con defer en Index.html ya se ejecutaron cuando
+      // DOMContentLoaded dispara el arranque. Esperar otro evento load en ese
+      // punto deja la cadena crítica bloqueada para siempre.
+      if (existing.dataset.loaded === '1' || (existing.defer && document.readyState !== 'loading')) {
+        existing.dataset.loaded = '1';
+        resolve();
+      }
       else {
         existing.addEventListener('load', resolve, { once: true });
         existing.addEventListener('error', reject, { once: true });
