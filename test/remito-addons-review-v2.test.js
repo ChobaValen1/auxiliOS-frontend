@@ -194,6 +194,16 @@ test('la aprobación simplificada separa Peajes y Excedentes y sólo despliega e
   assert.doesNotMatch(review,/Responsable comercial|Cobrador<select|Decisión<select/);
 });
 
+test('Planificado e Informado viven en una única card con headers internos',()=>{
+  assert.match(review,/class="os-review-comparison-card"/);
+  assert.match(review,/class="os-review-comparison-header"/);
+  assert.match(review,/class="os-review-group-header"/);
+  assert.match(review,/class="os-review-column-header"><h4>Planificado<\/h4>/);
+  assert.match(review,/class="os-review-column-header"><h4>Informado<\/h4>/);
+  assert.match(review,/comparisonSection\('toll',data\)\}\$\{comparisonSection\('excess',data\)/);
+  assert.doesNotMatch(review,/os-review-compare-block|os-review-intro/);
+});
+
 test('la recepción documental expone el resumen completo para Operaciones y Administración',()=>{
   assert.match(driverVisibility,/create or replace function public\.list_operator_service_document_connections_v1\(\)/);
   for(const key of ['remito_customer_name','remito_customer_document','remito_customer_phone','remito_vehicle_plate','remito_vehicle_make_model','remito_origin','remito_destination','remito_km_reales']){
