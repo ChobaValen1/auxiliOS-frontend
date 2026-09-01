@@ -167,19 +167,31 @@ test('offline conserva líneas y archivos estables para reintentos',()=>{
 
 test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega en el menú',()=>{
   assert.match(review,/Remitos recibidos/);
-  assert.match(review,/Planificado por Operaciones/);
+  assert.match(review,/Planificado vs\. informado/);
   assert.match(review,/DNI\/CUIT/);
   assert.match(review,/remito_excess_total/);
   assert.match(review,/remito_toll_total/);
-  assert.match(review,/Aprobar y finalizar servicio/);
+  assert.match(review,/Confirmar revisión y finalizar servicio/);
   assert.match(review,/reportedExcessPayment/);
-  assert.match(review,/Medio informado/);
+  assert.match(review,/Método de pago/);
   assert.match(review,/resolve_operator_service_document_v3/);
-  assert.match(review,/Explicá cada peaje ajustado o rechazado/);
-  assert.match(review,/Clasificá el concepto comercial/);
+  assert.match(review,/Elegí Rechazar, Modificar o Aprobar para Peajes/);
+  assert.match(review,/Seleccioná el concepto de cada excedente/);
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
   assert.match(menu,/Ver remito firmado/);
   assert.doesNotMatch(menu,/Aprobar remito/);
+});
+
+test('la aprobación simplificada separa Peajes y Excedentes y sólo despliega edición al modificar',()=>{
+  for(const label of ['1. Peajes','2. Excedentes','Formato de cobro de peajes','Peajes adjuntados','Concepto','Cantidad','Monto','Método de pago'])assert.match(review,new RegExp(label));
+  for(const empty of ['Sin peajes planificados','Sin peajes informados','Sin excedentes planificados','Sin excedentes informados'])assert.match(review,new RegExp(empty));
+  for(const action of ['Rechazar','Modificar','Aprobar'])assert.match(review,new RegExp(`>${action}<`));
+  assert.match(review,/hasDifference\('toll'/);
+  assert.match(review,/hasDifference\('excess'/);
+  assert.match(review,/data-review-action="adjusted"/);
+  assert.match(review,/editor\.hidden=action!==\'adjusted\'/);
+  assert.match(review,/button\.disabled=pending/);
+  assert.doesNotMatch(review,/Responsable comercial|Cobrador<select|Decisión<select/);
 });
 
 test('la recepción documental expone el resumen completo para Operaciones y Administración',()=>{
