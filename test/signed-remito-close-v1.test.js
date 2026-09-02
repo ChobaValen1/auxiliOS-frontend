@@ -30,7 +30,7 @@ test('Servicios muestra el firmado y cierra documento servicio viaje y recursos 
   assert.match(services,/Ver remito firmado/);
   assert.match(review,/Remito firmado/);
   assert.match(review,/Revisión y cierre/);
-  assert.match(review,/resolve_operator_service_document_v3/);
+  assert.match(review,/resolve_operator_service_document_v4/);
   assert.match(review,/approve_and_finalize/);
   assert.match(migration,/remito_approved_and_service_finalized/);
   assert.match(migration,/document_status = 'approved'/);
@@ -47,4 +47,3 @@ test('Operaciones y Administración pueden resolver y el doble clic es idempoten
   assert.match(migration,/'idempotent',true/);
   assert.match(review,/\['administracion','operador'\]\.includes\(role\(\)\)/);
 });
-

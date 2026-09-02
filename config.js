@@ -3,7 +3,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'remito-review-headers-v34-20260901';
+window.AUXILIOS_BUILD_ID = 'remito-review-matrix-inline-v35-20260901';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

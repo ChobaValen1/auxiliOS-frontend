@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'remito-review-headers-v34-20260901'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'remito-review-matrix-inline-v35-20260901'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });

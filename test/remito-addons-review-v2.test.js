@@ -9,6 +9,7 @@ const automaticAmounts=read('migrations/20260829090000_driver_addons_automatic_a
 const amountPreferences=read('migrations/20260829113000_driver_addon_amount_preferences_v5.sql');
 const driverVisibility=read('migrations/20260829233000_driver_remito_admin_visibility_v1.sql');
 const tollCoverageVisibility=read('supabase/migrations/20260830214300_driver_toll_coverage_visibility_v1.sql');
+const matrixInlineReview=read('supabase/migrations/20260901123000_remito_review_matrix_inline_v4.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -171,10 +172,10 @@ test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega
   assert.match(review,/DNI\/CUIT/);
   assert.match(review,/remito_excess_total/);
   assert.match(review,/remito_toll_total/);
-  assert.match(review,/Confirmar revisión y finalizar servicio/);
+  assert.doesNotMatch(review,/Confirmar revisión y finalizar servicio|Confirmar revisión y habilitar Facturación/);
   assert.match(review,/reportedExcessPayment/);
   assert.match(review,/Método de pago/);
-  assert.match(review,/resolve_operator_service_document_v3/);
+  assert.match(review,/resolve_operator_service_document_v4/);
   assert.match(review,/Elegí Rechazar, Modificar o Aprobar para Peajes/);
   assert.match(review,/Seleccioná el concepto de cada excedente/);
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
@@ -182,26 +183,42 @@ test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega
   assert.doesNotMatch(menu,/Aprobar remito/);
 });
 
-test('la aprobación simplificada separa Peajes y Excedentes y sólo despliega edición al modificar',()=>{
-  for(const label of ['1. Peajes','2. Excedentes','Formato de cobro de peajes','Peajes adjuntados','Concepto','Cantidad','Monto','Método de pago'])assert.match(review,new RegExp(label));
+test('la aprobación simplificada usa matriz Planificado vs Informado con edición inline',()=>{
+  for(const label of ['Peajes','Excedentes','Formato de Pago de Peajes','Peaje','Concepto','Cantidad','Monto','Método de pago'])assert.match(review,new RegExp(label));
   for(const empty of ['Sin peajes planificados','Sin peajes informados','Sin excedentes planificados','Sin excedentes informados'])assert.match(review,new RegExp(empty));
   for(const action of ['Rechazar','Modificar','Aprobar'])assert.match(review,new RegExp(`>${action}<`));
   assert.match(review,/hasDifference\('toll'/);
   assert.match(review,/hasDifference\('excess'/);
   assert.match(review,/data-review-action="adjusted"/);
-  assert.match(review,/editor\.hidden=action!==\'adjusted\'/);
-  assert.match(review,/button\.disabled=pending/);
+  assert.match(review,/os-review-report-line/);
+  assert.match(review,/toggleLineCancel/);
+  assert.match(review,/addLine/);
+  assert.match(review,/resolve_operator_service_document_v4/);
+  assert.doesNotMatch(review,/os-review-apply/);
   assert.doesNotMatch(review,/Responsable comercial|Cobrador<select|Decisión<select/);
 });
 
-test('Planificado e Informado viven en una única card con headers internos',()=>{
+test('Planificado e Informado viven como columnas verticales en una única card',()=>{
   assert.match(review,/class="os-review-comparison-card"/);
   assert.match(review,/class="os-review-comparison-header"/);
+  assert.match(review,/class="os-review-matrix-head"[\s\S]*<b>Planificado<\/b><b>Informado<\/b>/);
   assert.match(review,/class="os-review-group-header"/);
-  assert.match(review,/class="os-review-column-header"><h4>Planificado<\/h4>/);
-  assert.match(review,/class="os-review-column-header"><h4>Informado<\/h4>/);
+  assert.match(review,/class="os-review-matrix-grid"/);
   assert.match(review,/comparisonSection\('toll',data\)\}\$\{comparisonSection\('excess',data\)/);
   assert.doesNotMatch(review,/os-review-compare-block|os-review-intro/);
+});
+
+test('la RPC v4 permite agregados administrativos auditados sin tocar el remito firmado',()=>{
+  assert.match(matrixInlineReview,/create or replace function public\.resolve_operator_service_document_v4/);
+  assert.match(matrixInlineReview,/review_client_line_id uuid/);
+  assert.match(matrixInlineReview,/review_line_kind in \('toll','excess'\)/);
+  assert.match(matrixInlineReview,/Un peaje agregado por Operaciones debe quedar como modificación/);
+  assert.match(matrixInlineReview,/Un excedente agregado por Operaciones debe quedar como modificación/);
+  assert.match(matrixInlineReview,/case when v_report_id is null then '\{\}'::jsonb else to_jsonb\(t\) end/);
+  assert.match(matrixInlineReview,/case when v_report_id is null then '\{\}'::jsonb else to_jsonb\(x\) end/);
+  assert.match(matrixInlineReview,/'actual',v_report_id/);
+  assert.match(matrixInlineReview,/revoke all on function public\.resolve_operator_service_document_v4\(uuid,text,jsonb\) from public, anon/);
+  assert.match(matrixInlineReview,/grant execute on function public\.resolve_operator_service_document_v4\(uuid,text,jsonb\) to authenticated/);
 });
 
 test('la recepción documental expone el resumen completo para Operaciones y Administración',()=>{
