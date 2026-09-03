@@ -205,6 +205,7 @@ test('Planificado e Informado viven como columnas verticales en una única card'
   assert.match(review,/class="os-review-group-header"/);
   assert.match(review,/class="os-review-matrix-grid"/);
   assert.match(review,/comparisonSection\('toll',data\)\}\$\{comparisonSection\('excess',data\)/);
+  assert.doesNotMatch(review,/data-review-panel="document"|data-review-tab="document"|os-review-tabs/);
   assert.doesNotMatch(review,/os-review-compare-block|os-review-intro/);
 });
 

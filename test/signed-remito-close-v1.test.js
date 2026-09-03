@@ -28,8 +28,8 @@ test('la corrección firmada acepta sólo cargos evidencia y observaciones',()=>
 
 test('Servicios muestra el firmado y cierra documento servicio viaje y recursos atómicamente',()=>{
   assert.match(services,/Ver remito firmado/);
-  assert.match(review,/Remito firmado/);
   assert.match(review,/Revisión y cierre/);
+  assert.doesNotMatch(review,/data-review-tab="document"|data-review-panel="document"|os-review-tabs/);
   assert.match(review,/resolve_operator_service_document_v4/);
   assert.match(review,/approve_and_finalize/);
   assert.match(migration,/remito_approved_and_service_finalized/);

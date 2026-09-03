@@ -37,14 +37,13 @@ test('el bootstrap no espera un segundo load de scripts defer ya ejecutados',()=
   assert.match(config,/existing\.dataset\.loaded = '1'/);
 });
 
-test('el documento administrativo muestra montos, evidencia embebida y firma',()=>{
-  assert.match(review,/Evidencias cargadas por el chofer/);
-  assert.match(review,/allEvidence/);
-  assert.match(review,/data-remito-evidence/);
-  assert.match(review,/createSignedUrl\(path,300\)/);
-  assert.match(review,/insertBefore\(img,card\.firstChild\)/);
-  assert.match(review,/Firma del socio/);
+test('el modal administrativo abre directo en revisión y cierre',()=>{
+  assert.match(review,/Revisión y cierre/);
+  assert.match(review,/Planificado vs\. informado/);
+  assert.match(review,/Formato de Pago de Peajes/);
   assert.match(review,/paymentLabel/);
-  assert.match(review,/Observaciones del chofer/);
+  assert.match(review,/resolve_operator_service_document_v4/);
+  assert.doesNotMatch(review,/Evidencias cargadas por el chofer|Firma del socio|data-remito-evidence|os-signed-document/);
+  assert.doesNotMatch(review,/download\(\)|toggleFullscreen\(\)|html2pdf/);
   assert.match(review,/Reintentar/);
 });
