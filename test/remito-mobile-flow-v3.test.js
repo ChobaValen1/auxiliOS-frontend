@@ -1,6 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+const vm=require('node:vm');
 const read=file=>fs.readFileSync(file,'utf8');
 
 test('el remito móvil usa cuatro pasos y no repite datos del servicio asignado',()=>{
@@ -124,6 +125,53 @@ test('la firma usa eventos de puntero con captura y fallback táctil no pasivo',
   assert.match(sigma,/pointercancel/);
   assert.match(sigma,/\{ passive: false \}/);
   assert.match(sigma,/startDraw\(e, canvas, ctx\)/);
+});
+
+test('el canvas principal firma con su propio contexto aunque se inicialice el canvas secundario',()=>{
+  const sigma=read('sigma.js');
+  const start=sigma.indexOf('function initCanvas(canvasId)');
+  const end=sigma.indexOf('function limpiarFirma()');
+  assert.ok(start>=0&&end>start);
+
+  const makeContext=()=>({
+    beginPathCalls:0,moveToCalls:0,lineToCalls:0,strokeCalls:0,
+    beginPath(){this.beginPathCalls++},moveTo(){this.moveToCalls++},
+    lineTo(){this.lineToCalls++},stroke(){this.strokeCalls++}
+  });
+  const mainCtx=makeContext(),secondaryCtx=makeContext();
+  const makeCanvas=(id,ctx)=>({
+    id,style:{},width:0,height:0,parentElement:{offsetWidth:300},listeners:new Map(),
+    getBoundingClientRect(){return {left:0,top:0,width:300,height:160}},
+    getContext(){return ctx},addEventListener(type,handler){this.listeners.set(type,handler)},
+    removeEventListener(type){this.listeners.delete(type)},setPointerCapture(){},
+    hasPointerCapture(){return false}
+  });
+  const main=makeCanvas('sig-canvas',mainCtx),secondary=makeCanvas('sig-canvas-firma',secondaryCtx);
+  const elements={
+    'sig-canvas':main,'sig-canvas-firma':secondary,'sig-placeholder':{style:{}},
+    'sig-status-dot':{style:{}},'sig-status-txt':{style:{},textContent:''},
+    'sig-status-firma':{style:{},textContent:''}
+  };
+  const context={
+    window:{PointerEvent:function PointerEvent(){}},
+    document:{getElementById:id=>elements[id]||null}
+  };
+  vm.runInNewContext(
+    `let activeCanvas=null,activeCtx=null,hasSig=false,drawing=false;${sigma.slice(start,end)};this.signatureApi={initCanvas};`,
+    context
+  );
+  context.signatureApi.initCanvas('sig-canvas');
+  context.signatureApi.initCanvas('sig-canvas-firma');
+
+  const event={clientX:20,clientY:30,pointerId:1,cancelable:true,preventDefault(){}};
+  main.listeners.get('pointerdown')(event);
+  main.listeners.get('pointermove')({...event,clientX:60,clientY:70});
+  main.listeners.get('pointerup')(event);
+
+  assert.equal(mainCtx.strokeCalls,1);
+  assert.equal(secondaryCtx.strokeCalls,0);
+  assert.equal(elements['sig-status-txt'].textContent,'✓ Firma registrada');
+  assert.equal(elements['sig-placeholder'].style.display,'none');
 });
 
 test('FINALIZAR limpia el formulario sólo después de confirmar el guardado',()=>{
