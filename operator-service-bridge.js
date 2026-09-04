@@ -55,16 +55,48 @@ function tollSummary(s,{compact=false}={}){
   }).join('');
   return`<div class="p3-summary-block p3-toll-summary ${compact?'compact':''}"><div class="p3-summary-title">Peajes</div>${rows}</div>`;
 }
+function customerSummary(s){
+  const name=String(s.customer_name||'').trim(),phone=String(s.customer_phone||'').trim();
+  if(!name&&!phone)return'';
+  return`<div class="p3-fact-row p3-customer-fact"><span>Socio</span><strong>${esc(name||'Sin nombre')}${phone?` <em>${esc(phone)}</em>`:''}</strong></div>`;
+}
+function draftState(s){return s.remito_status==='pendiente'?'<div class="p3-draft-state">✓ Borrador guardado</div>':''}
 function serviceFacts(s,{compact=false}={}){
   const vehicle=s.vehicle_make_model||'Vehículo sin informar',plate=s.vehicle_plate||'Sin patente';
-  return`<div class="p3-facts"><div class="p3-fact-row p3-vehicle-fact"><span>Vehículo</span><strong>${esc(vehicle)} <em>${esc(plate)}</em></strong></div><div class="p3-fact-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-fact-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div><div class="p3-fact-row"><span>KM</span><strong>${esc(originDestinationKm(s.origin_destination_distance_meters))}</strong></div><div class="p3-fact-row p3-toll-coverage-fact"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(s.toll_coverage_mode))}</strong></div>${customerExcessSummary(s,{compact})}${tollSummary(s,{compact})}</div>`;
+  return`${draftState(s)}<div class="p3-facts">${customerSummary(s)}<div class="p3-fact-row p3-vehicle-fact"><span>Vehículo</span><strong>${esc(vehicle)} <em>${esc(plate)}</em></strong></div><div class="p3-fact-row"><span>Origen</span><strong>${esc(s.origin||'—')}</strong></div><div class="p3-fact-row"><span>Destino</span><strong>${esc(s.destination||'—')}</strong></div><div class="p3-fact-row"><span>KM</span><strong>${esc(originDestinationKm(s.origin_destination_distance_meters))}</strong></div><div class="p3-fact-row p3-toll-coverage-fact"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(s.toll_coverage_mode))}</strong></div>${customerExcessSummary(s,{compact})}${tollSummary(s,{compact})}</div>`;
 }
 function injectAssets(){if(document.getElementById('phase3-service-bridge-css'))return;const l=document.createElement('link');l.id='phase3-service-bridge-css';l.rel='stylesheet';l.href='/operator-service-bridge.css';document.head.appendChild(l)}
 function applyDriverModuleLabels(){if(!isDriver())return;const nav=document.getElementById('nav-remitos'),screen=document.getElementById('screen-remitos');const label=nav?.querySelector('.nav-label'),icon=nav?.querySelector('.nav-icon');if(label)label.textContent='Servicios';if(icon)icon.textContent='📡';if(screen?.classList.contains('active')){const title=document.getElementById('topbar-title'),sub=document.getElementById('topbar-sub');if(title)title.textContent='SERVICIOS';if(sub)sub.textContent='Asignados e historial'}}
 function hookNavigation(){if(window.__p3DriverNavHook||typeof window.goTo!=='function')return false;const base=window.goTo;window.goTo=(name,...args)=>{const result=base(name,...args);if(name==='remitos')applyDriverModuleLabels();return result};window.__p3DriverNavHook=true;return true}
 function ensurePreviewModal(){if(document.getElementById('p3-service-preview'))return;document.body.insertAdjacentHTML('beforeend',`<div id="p3-service-preview" class="p3-preview" hidden><button type="button" class="p3-preview-backdrop" onclick="cerrarPreviewServicio()" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="p3-preview-title"><header><div><small>Servicio asignado</small><h2 id="p3-preview-title">Servicio</h2></div><button type="button" onclick="cerrarPreviewServicio()" aria-label="Cerrar">×</button></header><div id="p3-preview-body"></div><footer id="p3-preview-actions"></footer></section></div>`)}
 function injectPanel(){if(!isDriver()||document.getElementById('phase3-driver-services'))return;const remitos=document.getElementById('screen-remitos');if(!remitos)return;remitos.classList.add('p3-driver-remitos');const header=remitos.querySelector('.sec-header'),anchor=header||remitos;anchor.insertAdjacentHTML(header?'afterend':'afterbegin',`<section id="phase3-driver-services" class="p3-driver-panel p3-remitos-assigned" data-location="remitos" aria-live="polite"><div class="p3-panel-head"><div class="p3-head-actions"><button type="button" class="p3-refresh" onclick="abrirRemitoSinAsignacion()">＋ Sin asignación</button><button id="p3-view-active" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('active')">Activos</button><button id="p3-view-history" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('history')">Historial</button><button type="button" class="p3-refresh" onclick="actualizarServiciosAsignados()" aria-label="Actualizar">↻</button></div></div><div id="phase3-driver-services-list" class="p3-service-list"><div class="p3-empty">Buscando servicios…</div></div></section>`);ensurePreviewModal();applyDriverModuleLabels()}
-async function loadQueue({silent=false}={}){if(!isDriver()||P3.loading||!db())return;if(P3.view==='history')return render();P3.loading=true;try{const {data,error}=await db().rpc('get_driver_operator_queue_v3');if(error)throw error;P3.queue=Array.isArray(data)?data:[];render()}catch(e){if(!silent)notify(e.message||'No se pudieron cargar los servicios','error');const list=document.getElementById('phase3-driver-services-list');if(list)list.innerHTML='<div class="p3-empty">No se pudo actualizar la información.</div>'}finally{P3.loading=false}}
+async function loadQueue({silent=false,force=false}={}){
+  if(!isDriver()||!db())return false;
+  if(P3.view==='history'){render();return true}
+  if(P3.loading){if(force)P3.reloadAfterCurrent=true;return P3.queuePromise||false}
+  P3.loading=true;
+  P3.queuePromise=(async()=>{
+    try{
+      const {data,error}=await db().rpc('get_driver_operator_queue_v3');
+      if(error)throw error;
+      P3.queue=Array.isArray(data)?data:[];
+      render();
+      return true;
+    }catch(e){
+      if(!silent)notify(e.message||'No se pudieron cargar los servicios','error');
+      const list=document.getElementById('phase3-driver-services-list');
+      if(list)list.innerHTML='<div class="p3-empty">No se pudo actualizar la información.</div>';
+      return false;
+    }finally{
+      P3.loading=false;
+      P3.queuePromise=null;
+      const reload=P3.reloadAfterCurrent;
+      P3.reloadAfterCurrent=false;
+      if(reload)await loadQueue({silent:true});
+    }
+  })();
+  return P3.queuePromise;
+}
 function render(){injectPanel();applyDriverModuleLabels();const list=document.getElementById('phase3-driver-services-list'),panel=document.getElementById('phase3-driver-services'),screen=document.getElementById('screen-remitos');if(!list||!panel||!screen)return;const history=P3.view==='history';document.getElementById('p3-view-active')?.classList.toggle('active',!history);document.getElementById('p3-view-history')?.classList.toggle('active',history);screen.classList.toggle('p3-hide-remitos-archive',!history);panel.classList.toggle('p3-history-only',history);if(history){list.innerHTML='';return}const rows=P3.queue;panel.classList.toggle('has-services',rows.length>0);if(!rows.length){list.innerHTML='<div class="p3-empty"><span>✓</span>No tenés servicios activos asignados.</div>';return}list.innerHTML=rows.map(activeCard).join('')}
 function activeCard(s){
   const meta=STATUS[s.status]||STATUS.assigned;
@@ -129,6 +161,6 @@ function wrapRemitoSave(){if(window.__phase3RemitoWrappedV2||typeof window.guard
 function setView(view){P3.view=view==='history'?'history':'active';render();if(P3.view==='history'){if(typeof window.cargarRemitos==='function')Promise.resolve(window.cargarRemitos()).catch(e=>notify(e.message||'No se pudo actualizar el historial','error'));return}loadQueue()}
 function startPolling(){clearInterval(P3.timer);if(!isDriver())return;P3.timer=setInterval(()=>{if(document.visibilityState==='visible')loadQueue({silent:true})},30000)}
 function init(){if(P3.initialized||!db()||!profile())return false;P3.initialized=true;injectAssets();hookNavigation();injectPanel();let attempts=0;const wrap=setInterval(()=>{if(wrapRemitoSave()||++attempts>60)clearInterval(wrap)},250);if(isDriver()){loadQueue({silent:true});startPolling();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadQueue({silent:true})})}return true}
-Object.assign(window,{actualizarServiciosAsignados:()=>loadQueue(),abrirPreviewServicio:openPreview,cerrarPreviewServicio:closePreview,confirmarServicioActivado:confirmActivated,marcarServicioActivado:markActivated,abrirRemitoServicio:openRemito,abrirRemitoSinAsignacion:openAdHocRemito,guardarEdicionRemitoFirmado:saveSignedEdit,cambiarVistaServiciosChofer:setView,obtenerServicioAsignadoRemito:()=>findService(sessionStorage.getItem('auxilios_phase3_service_id'))});
+Object.assign(window,{actualizarServiciosAsignados:()=>loadQueue({force:true}),abrirPreviewServicio:openPreview,cerrarPreviewServicio:closePreview,confirmarServicioActivado:confirmActivated,marcarServicioActivado:markActivated,abrirRemitoServicio:openRemito,abrirRemitoSinAsignacion:openAdHocRemito,guardarEdicionRemitoFirmado:saveSignedEdit,cambiarVistaServiciosChofer:setView,obtenerServicioAsignadoRemito:()=>findService(sessionStorage.getItem('auxilios_phase3_service_id'))});
 const boot=setInterval(()=>{if(init())clearInterval(boot)},250);setTimeout(()=>clearInterval(boot),30000);
 })();

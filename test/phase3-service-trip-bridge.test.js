@@ -77,11 +77,11 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   const card=js.split('function activeCard(s)')[1].split('function findService')[0];
   for(const expected of ['Fecha','N° Prestación','Estado','serviceFacts'])assert.match(card,new RegExp(expected));
-  for(const expected of ['Vehículo','Origen','Destino','KM','Excedentes','Peajes'])assert.match(js,new RegExp(expected));
-  for(const expected of ['service_order_number','company_name','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters'])assert.match(js,new RegExp(expected));
+  for(const expected of ['Socio','Vehículo','Origen','Destino','KM','Excedentes','Peajes','Borrador guardado'])assert.match(js,new RegExp(expected));
+  for(const expected of ['service_order_number','company_name','customer_name','customer_phone','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters'])assert.match(js,new RegExp(expected));
   assert.match(card,/Sin N° prestación/);
   for(const fallback of ['Vehículo sin informar','Sin patente'])assert.match(js,new RegExp(fallback));
-  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','customer_name','priority-'])assert.doesNotMatch(card,new RegExp(forbidden));
+  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','priority-'])assert.doesNotMatch(card,new RegExp(forbidden));
   assert.match(js,/\+\$\{remaining\} más/);
   assert.match(js,/customer_excess_summary/);
   assert.match(js,/toll_charge_summary/);
@@ -103,9 +103,20 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   assert.match(js,/mark_driver_operator_service_activated_v2/);
   assert.match(css,/\.p3-preview/);
   assert.match(css,/\.p3-summary-block/);
+  assert.match(css,/\.p3-draft-state/);
+  assert.match(css,/\.p3-customer-fact em/);
   assert.match(css,/\.p3-service-card\.is-actionable:focus-visible/);
   assert.match(css,/\.p3-service-card\.is-actionable:active/);
   assert.doesNotMatch(css,/\.p3-service-card\.priority-/);
+});
+
+test('guardar pendiente fuerza un refresco de la cola aunque exista otra carga en curso',()=>{
+  const js=read('operator-service-bridge.js'),sigma=read('sigma.js');
+  assert.match(js,/async function loadQueue\(\{silent=false,force=false\}=\{\}\)/);
+  assert.match(js,/if\(P3\.loading\)\{if\(force\)P3\.reloadAfterCurrent=true;return P3\.queuePromise\|\|false\}/);
+  assert.match(js,/if\(reload\)await loadQueue\(\{silent:true\}\)/);
+  assert.match(js,/actualizarServiciosAsignados:\(\)=>loadQueue\(\{force:true\}\)/);
+  assert.match(sigma,/await window\.actualizarServiciosAsignados\?\.\(\)/);
 });
 
 test('la cola del Chofer propaga el formato contractual sin inferirlo de montos o medios',()=>{
