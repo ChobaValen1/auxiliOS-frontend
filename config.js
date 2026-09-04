@@ -3,7 +3,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'remito-review-global-summary-v37-20260904';
+window.AUXILIOS_BUILD_ID = 'remito-review-adjustment-no-reason-v38-20260904';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

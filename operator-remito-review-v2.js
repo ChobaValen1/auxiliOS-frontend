@@ -104,7 +104,7 @@
     const footer=$('#os-review-footer');if(!footer)return;
     const resolvable=data.can_resolve&&canResolve();footer.classList.toggle('is-readonly',!resolvable);
     if(!resolvable){footer.innerHTML='<small class="os-review-footer-note">Documento aprobado o servicio inmutable.</small><button class="btn btn-ghost" type="button" onclick="AuxiliosRemitoReviewV2.close()">Cerrar</button>';return}
-    footer.innerHTML=`<small class="os-review-footer-note">La decisión aplica a Peajes y Excedentes.</small><div class="os-review-global-actions" role="group" aria-label="Resolver peajes y excedentes"><button type="button" data-review-global-action="rejected" aria-pressed="false" onclick="AuxiliosRemitoReviewV2.chooseGlobalAction('rejected')">Rechazar</button><button type="button" data-review-global-action="adjusted" aria-pressed="false" onclick="AuxiliosRemitoReviewV2.chooseGlobalAction('adjusted')">Modificar</button><button type="button" data-review-global-action="accepted" aria-pressed="false" onclick="AuxiliosRemitoReviewV2.chooseGlobalAction('accepted')">Aprobar</button></div><div class="os-review-global-resolution" hidden><label><span data-review-reason-label>Motivo</span><textarea data-review-global-reason placeholder="Indicá brevemente el motivo"></textarea></label><div class="os-review-resolution-actions"><button type="button" class="btn btn-ghost" data-review-cancel-action onclick="AuxiliosRemitoReviewV2.cancelGlobalAction()">Cancelar cambios</button><button type="button" class="btn btn-primary" data-review-commit onclick="AuxiliosRemitoReviewV2.commitGlobalAction()">Guardar y finalizar</button></div></div>`;
+    footer.innerHTML=`<small class="os-review-footer-note">La decisión aplica a Peajes y Excedentes.</small><div class="os-review-global-actions" role="group" aria-label="Resolver peajes y excedentes"><button type="button" data-review-global-action="rejected" aria-pressed="false" onclick="AuxiliosRemitoReviewV2.chooseGlobalAction('rejected')">Rechazar</button><button type="button" data-review-global-action="adjusted" aria-pressed="false" onclick="AuxiliosRemitoReviewV2.chooseGlobalAction('adjusted')">Modificar</button><button type="button" data-review-global-action="accepted" aria-pressed="false" onclick="AuxiliosRemitoReviewV2.chooseGlobalAction('accepted')">Aprobar</button></div><div class="os-review-global-resolution" hidden><label data-review-reason-field hidden><span data-review-reason-label>Motivo del rechazo</span><textarea data-review-global-reason placeholder="Indicá brevemente el motivo del rechazo"></textarea></label><div class="os-review-resolution-actions"><button type="button" class="btn btn-ghost" data-review-cancel-action onclick="AuxiliosRemitoReviewV2.cancelGlobalAction()">Cancelar cambios</button><button type="button" class="btn btn-primary" data-review-commit onclick="AuxiliosRemitoReviewV2.commitGlobalAction()">Guardar y finalizar</button></div></div>`;
   }
 
   function render(data){
@@ -152,13 +152,13 @@
   }
 
   function showResolution(action){
-    const actions=$('.os-review-global-actions'),resolution=$('.os-review-global-resolution'),label=$('[data-review-reason-label]'),commit=$('[data-review-commit]'),cancel=$('[data-review-cancel-action]'),note=$('.os-review-footer-note');
+    const actions=$('.os-review-global-actions'),resolution=$('.os-review-global-resolution'),reasonField=$('[data-review-reason-field]'),commit=$('[data-review-commit]'),cancel=$('[data-review-cancel-action]'),note=$('.os-review-footer-note');
     if(actions)actions.hidden=true;if(resolution)resolution.hidden=false;
-    if(label)label.textContent=action==='rejected'?'Motivo del rechazo':'Motivo de la modificación';
+    if(reasonField)reasonField.hidden=action!=='rejected';
     if(commit)commit.textContent=action==='rejected'?'Rechazar y finalizar':'Guardar modificaciones y finalizar';
     if(cancel)cancel.textContent=action==='rejected'?'Cancelar rechazo':'Cancelar cambios';
     if(note)note.textContent=action==='rejected'?'El rechazo excluirá todos los peajes y excedentes informados.':'Editá directamente todos los valores de la columna Informado.';
-    $('[data-review-global-reason]')?.focus();
+    if(action==='rejected')$('[data-review-global-reason]')?.focus();
   }
 
   function chooseGlobalAction(action){
@@ -203,7 +203,7 @@
   function buildPayload(){
     const detail=R.detail||{},reported=detail.reported||{},errors=[],action=R.action,reason=globalReason();
     if(!action)errors.push('Elegí Rechazar, Modificar o Aprobar.');
-    if(['rejected','adjusted'].includes(action)&&!reason)errors.push(action==='rejected'?'Indicá el motivo del rechazo.':'Indicá el motivo de la modificación.');
+    if(action==='rejected'&&!reason)errors.push('Indicá el motivo del rechazo.');
     const tollLines=$$('.os-review-report-line[data-kind="toll"]'),excessLines=$$('.os-review-report-line[data-kind="excess"]'),reportedTolls=reported.tolls||[],reportedExcesses=reported.excesses||[];
     const tollById=new Map(reportedTolls.map(row=>[String(row.toll_report_id),row])),excessById=new Map(reportedExcesses.map(row=>[String(row.excess_report_id),row]));let tollChanged=false,excessChanged=false;
     const tolls=tollLines.map(line=>{
@@ -214,7 +214,7 @@
       const decision=cancelled?'rejected':action==='adjusted'&&changed?'adjusted':'accepted';if(decision!=='rejected'&&(quantity<1||unit<=0))errors.push('Cantidad e importe de cada peaje deben ser mayores a cero.');
       const mode=detail.service?.toll_coverage_mode,payer=mode==='provider_roundtrip'?'provider':mode==='customer_roundtrip'?'customer':customerMethod?'customer':'provider';if(decision!=='rejected'&&payer==='customer'&&!customerMethod)errors.push('Indicá el método de pago de los peajes a cargo del cliente.');
       const ref=(detail.references?.tolls||[]).find(item=>String(item.toll_id)===String(tollId));
-      return {toll_report_id:original.toll_report_id||null,review_line_client_id:line.dataset.newId||null,decision,reason:decision==='accepted'?null:reason,toll_id:tollId,toll_name:ref?.name||original.toll_name,quantity,unit_amount:unit,payment_method:original.payment_method||'manual',payer_agent:payer,customer_payment_method:customerMethod};
+      return {toll_report_id:original.toll_report_id||null,review_line_client_id:line.dataset.newId||null,decision,reason:decision==='rejected'?(reason||'Excluido durante la modificación'):null,toll_id:tollId,toll_name:ref?.name||original.toll_name,quantity,unit_amount:unit,payment_method:original.payment_method||'manual',payer_agent:payer,customer_payment_method:customerMethod};
     }).filter(Boolean);
     reportedTolls.forEach(row=>{if(!tolls.some(item=>String(item.toll_report_id)===String(row.toll_report_id)))errors.push('Revisá todos los peajes antes de aprobar.')});
     const excesses=excessLines.map(line=>{
@@ -224,7 +224,7 @@
       const changed=added||(!added&&cancelled)||String(conceptId||'')!==String(original.concept_id||'')||Math.abs(quantity-num(original.quantity||1))>.001||Math.abs(unit-num(original.unit_amount))>.001||String(method||'')!==String(originalMethod||'');excessChanged=excessChanged||changed;
       const decision=cancelled?'rejected':action==='adjusted'&&changed?'adjusted':'accepted';if(decision!=='rejected'&&!conceptId)errors.push('Seleccioná el concepto de cada excedente.');if(decision!=='rejected'&&(quantity<=0||unit<=0))errors.push('Cantidad e importe de cada excedente deben ser mayores a cero.');
       const collector=original.collector_agent||'company';if(decision!=='rejected'&&collector==='company'&&!method)errors.push('Indicá el método de pago de cada excedente.');
-      return {excess_report_id:original.excess_report_id||null,review_line_client_id:line.dataset.newId||null,decision,review_reason:decision==='accepted'?null:reason,concept_id:conceptId,quantity,unit_amount:unit,collector_agent:collector,customer_payment_method:method};
+      return {excess_report_id:original.excess_report_id||null,review_line_client_id:line.dataset.newId||null,decision,review_reason:decision==='rejected'?(reason||'Excluido durante la modificación'):null,concept_id:conceptId,quantity,unit_amount:unit,collector_agent:collector,customer_payment_method:method};
     }).filter(Boolean);
     reportedExcesses.forEach(row=>{if(!excesses.some(item=>String(item.excess_report_id)===String(row.excess_report_id)))errors.push('Revisá todos los excedentes antes de aprobar.')});
     if(action==='adjusted'&&!tollChanged&&!excessChanged)errors.push('Modificá, agregá o cancelá al menos un peaje o excedente.');
