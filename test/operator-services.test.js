@@ -9,6 +9,7 @@ const settings=fs.readFileSync('service-module-configuration.js','utf8');
 const lifecycle=fs.readFileSync('migrations/20260813104500_service_module_configuration_v1.sql','utf8');
 const listMigration=fs.readFileSync('migrations/20260814125000_operator_service_list_v3.sql','utf8');
 const amountDueMigration=fs.readFileSync('migrations/20260815110500_operator_service_amount_due_excess_only_v1.sql','utf8');
+const driverVisibilityMigration=fs.readFileSync('migrations/20260829233000_driver_remito_admin_visibility_v1.sql','utf8');
 const settingsMigration=fs.readFileSync('migrations/20260814125500_service_module_columns_v2.sql','utf8');
 
 test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=>{
@@ -43,6 +44,21 @@ test('Cliente representa patente marca y modelo, no el nombre del socio',()=>{
   assert.match(customer,/vehicle_plate/);
   assert.match(customer,/vehicle_make_model/);
   assert.doesNotMatch(customer,/customer_name/);
+});
+
+test('Operaciones prioriza los datos recibidos del remito del Chofer',()=>{
+  assert.match(services,/remito_vehicle_plate\|\|s\.vehicle_plate/);
+  assert.match(services,/remito_vehicle_make_model\|\|s\.vehicle_make_model/);
+  assert.match(services,/remito_customer_document/);
+  assert.match(services,/remito_customer_phone\|\|s\.customer_phone/);
+  assert.match(services,/remito_origin/);
+  assert.match(services,/remito_destination/);
+  assert.match(services,/remito_km_reales\|\|s\.estimated_distance_km/);
+  assert.match(driverVisibilityMigration,/create trigger remitos_driver_admin_visibility_v1/);
+  assert.match(driverVisibilityMigration,/customer_phone = coalesce\(nullif\(btrim\(new\.telefono\),''\), s\.customer_phone\)/);
+  assert.match(driverVisibilityMigration,/'remito_customer_document', r\.cuit/);
+  assert.match(driverVisibilityMigration,/'remito_toll_total', coalesce\(t\.toll_total,0\)/);
+  assert.match(driverVisibilityMigration,/'remito_excess_total', coalesce\(x\.excess_total,0\)/);
 });
 
 test('Origen y Destino son columnas separadas con detalle Dirección Localidad Provincia',()=>{
@@ -93,7 +109,10 @@ test('acciones de asignación desde la mesa usan el modal rápido y no abren el 
 test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido',()=>{
   assert.match(services,/customer_amount_due/);
   assert.match(services,/customer_payment_methods/);
-  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'\}/);
+  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado'\}/);
+  assert.match(services,/remito_excess_total/);
+  assert.match(services,/remito_toll_total/);
+  assert.match(services,/Informado por chofer/);
   assert.match(services,/os-payment-method/);
   assert.match(css,/\.os-payment-method\{/);
   assert.match(amountDueMigration,/from public\.operator_service_excess_charges oe/);

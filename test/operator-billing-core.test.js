@@ -130,7 +130,7 @@ test('parámetros separan obtención de peajes de tratamiento de facturación',(
   assert.match(tollSchema,/separate/);
   assert.match(tollConfig,/v_toll_billing_mode/);
   assert.match(tollConfig,/toll_billing_mode=v_toll_billing_mode/);
-  assert.match(companyBilling,/Obtención de peajes/);
+  assert.match(companyBilling,/Carga de peajes del chofer/);
   assert.match(companyBilling,/Facturación de peajes/);
   assert.match(companyBilling,/id="bp4-toll-billing"/);
   assert.match(companyBilling,/toll_billing_mode:document\.getElementById\('bp4-toll-billing'\)/);
@@ -244,5 +244,5 @@ test('runtime carga Facturación y Excel canónicos sin assets de revisión para
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-billing-phase2-v206/);
+  assert.match(sw,/auxilios-billing-phase2-v208/);
 });

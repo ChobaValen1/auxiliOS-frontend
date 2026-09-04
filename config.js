@@ -3,7 +3,13 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'billing-phase2-clean-preview-20260824';
+window.AUXILIOS_BUILD_ID = 'driver-draft-visibility-v40-20260904';
+
+const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
+function versionedAuxiliosAsset(path) {
+  if (!path || !path.startsWith('/')) return path;
+  return `${path}${path.includes('?') ? '&' : '?'}v=${AUXILIOS_ASSET_VERSION}`;
+}
 
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
@@ -13,7 +19,7 @@ function loadAuxiliosStyle(id, href) {
   const link = document.createElement('link');
   link.id = id;
   link.rel = 'stylesheet';
-  link.href = href;
+  link.href = versionedAuxiliosAsset(href);
   document.head.appendChild(link);
 }
 
@@ -21,7 +27,13 @@ function loadAuxiliosModule(id, src) {
   return new Promise((resolve, reject) => {
     const existing = document.getElementById(id);
     if (existing) {
-      if (existing.dataset.loaded === '1') resolve();
+      // Los módulos declarados con defer en Index.html ya se ejecutaron cuando
+      // DOMContentLoaded dispara el arranque. Esperar otro evento load en ese
+      // punto deja la cadena crítica bloqueada para siempre.
+      if (existing.dataset.loaded === '1' || (existing.defer && document.readyState !== 'loading')) {
+        existing.dataset.loaded = '1';
+        resolve();
+      }
       else {
         existing.addEventListener('load', resolve, { once: true });
         existing.addEventListener('error', reject, { once: true });
@@ -30,7 +42,7 @@ function loadAuxiliosModule(id, src) {
     }
     const script = document.createElement('script');
     script.id = id;
-    script.src = src;
+    script.src = versionedAuxiliosAsset(src);
     script.async = false;
     script.addEventListener('load', () => {
       script.dataset.loaded = '1';
@@ -70,6 +82,9 @@ async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-toll-management-css', '/toll-management.css');
   loadAuxiliosStyle('auxilios-operator-invoices-css', '/operator-invoices.css');
   loadAuxiliosStyle('auxilios-configuration-center-css', '/configuration-center.css');
+  loadAuxiliosStyle('auxilios-remito-addons-v2-css', '/remito-addons-v2.css');
+  loadAuxiliosStyle('auxilios-remito-mobile-flow-v3-css', '/remito-mobile-flow-v3.css');
+  loadAuxiliosStyle('auxilios-operator-remito-review-v2-css', '/operator-remito-review-v2.css');
 
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
   await Promise.all([
@@ -85,7 +100,10 @@ async function loadCriticalAuxiliosModules() {
   await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
   await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
   await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
+  await loadAuxiliosModule('auxilios-remito-mobile-flow-v3', '/remito-mobile-flow-v3.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
+  await loadAuxiliosModule('auxilios-remito-addons-v2', '/remito-addons-v2.js');
+  await loadAuxiliosModule('auxilios-operator-remito-review-v2', '/operator-remito-review-v2.js');
 
   await loadAuxiliosModule('auxilios-operator-billing-export', '/operator-billing-export.js');
   await loadAuxiliosModule('auxilios-operator-invoices', '/operator-invoices.js');

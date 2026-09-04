@@ -39,6 +39,9 @@ test('Tipos de Servicio es el único catálogo creador y Prestadora mantiene una
   assert.match(serviceCatalog,/distance_chargeable/);
   assert.match(services,/save_company_service_setting_v2/);
   assert.match(services,/Acá no se crean servicios/);
+  assert.match(services,/Precio definido/);
+  assert.match(services,/Importe variable/);
+  assert.match(services,/driver_amount_mode/);
   assert.doesNotMatch(services,/save_service_type_config/);
 });
 
@@ -49,6 +52,8 @@ test('Parámetros de facturación posee Bases y reglas contractuales, no Tarifas
   assert.match(billing,/Cobrar movida hasta \(km\)/);
   assert.match(billing,/covered_radius_km/);
   assert.match(billing,/movement_charge_until_km/);
+  assert.match(billing,/Sugerencia editable/);
+  assert.match(billing,/Importe manual sin sugerencia/);
   assert.doesNotMatch(billing,/ensure_company_tariff_draft_v4|publish_company_tariff_draft_v4/);
 });
 

@@ -15,12 +15,15 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-draft-visibility-v40-20260904">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-draft-visibility-v40-20260904">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=driver-draft-visibility-v40-20260904">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('/sw.js?v=250')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -33,10 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js" defer></script>
-<script src="supabase.js" defer></script>
+<script src="config.js?v=driver-draft-visibility-v40-20260904" defer></script>
+<script src="supabase.js?v=driver-draft-visibility-v40-20260904" defer></script>
 <script src="offline.js" defer></script>
-<script src="sigma.js" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-draft-visibility-v40-20260904" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-draft-visibility-v40-20260904" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-draft-visibility-v40-20260904" defer></script>
+<script src="sigma.js?v=driver-draft-visibility-v40-20260904" defer></script>
 </head>
 <body>
 
@@ -1533,62 +1539,8 @@
   </div>
 </div>
 
-<!-- PASO 3: EXTRAS Y PAGO -->
-<div class="rem-step-panel" id="rem-step-3">
-  <div class="card">
-    <div class="card-label" style="margin-bottom:14px"> Extras y forma de pago</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Peajes</label>
-        <input class="form-input" type="tel" placeholder="0" id="imp-peaje" inputmode="decimal" oninput="calcularTotal()">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Excedente <span style="color:var(--muted);font-weight:400;font-size:11px">(particulares, baterías, km, hs de espera)</span></label>
-        <input class="form-input" type="tel" placeholder="0" id="imp-excedente" inputmode="decimal" oninput="calcularTotal()">
-      </div>
-    </div>
-    <div style="padding:10px 14px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.2);display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <span style="font-size:11px;color:var(--muted)">Total extras</span>
-      <span style="font-family:'Bebas Neue';font-size:20px;color:var(--amber)" id="imp-total">$0</span>
-    </div>
-    <div class="form-group" style="margin-bottom:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <label class="form-label" style="margin-bottom:0">Forma de pago</label>
-        <button id="btn-add-pago2" class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="activarPagoMixto()">+ Segundo medio</button>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 1</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts">
-          <div onclick="selectRemPago(this,'Efectivo',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
-          <div onclick="selectRemPago(this,'Transferencia',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
-          <div onclick="selectRemPago(this,'Tarjeta',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
-          <div onclick="selectRemPago(this,'App',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
-          <input class="form-input" type="tel" id="pago1-monto" placeholder="Opcional" inputmode="decimal" style="font-size:12px;padding:6px 10px" oninput="calcPagoAuto()">
-        </div>
-      </div>
-      <div id="pago2-container" style="display:none;background:var(--bg);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:10px 12px;margin-bottom:8px;position:relative">
-        <button onclick="desactivarPagoMixto()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1">×</button>
-        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 2</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts2">
-          <div onclick="selectRemPago(this,'Efectivo',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
-          <div onclick="selectRemPago(this,'Transferencia',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
-          <div onclick="selectRemPago(this,'Tarjeta',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
-          <div onclick="selectRemPago(this,'App',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
-          <input class="form-input" type="tel" id="pago2-monto" readonly style="font-size:12px;padding:6px 10px;color:var(--amber)" placeholder="Auto-calculado">
-        </div>
-      </div>
-      <div class="rem-pago-error" id="rem-pago-error">⚠️ Usá dos medios de pago diferentes</div>
-      <div id="pago-mixto-resumen" style="display:none;padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:7px;font-size:11px"></div>
-      <input type="hidden" id="rem-pago-selected" value="">
-    </div>
-  </div>
-</div>
+<!-- PASO 3: EVIDENCIA. El flujo móvil reemplaza este contenedor al iniciar. -->
+<div class="rem-step-panel" id="rem-step-3"></div>
 
 <!-- PASO 4: EVIDENCIA + OBSERVACIONES -->
 <div class="rem-step-panel" id="rem-step-4">
@@ -1600,7 +1552,7 @@
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="foto-grid">
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Frente del vehículo"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto1-status','rem-foto1-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto1-icon">📸</div><div class="pu-text" id="rem-foto1-status">Frente</div><div class="pu-sub">Antes del servicio</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Lateral"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto2-status','rem-foto2-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto2-icon">📸</div><div class="pu-text" id="rem-foto2-status">Lateral</div><div class="pu-sub">Daños visibles</div></div></label>
-      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Ticket de peaje"><input type="file" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto3-icon">🧾</div><div class="pu-text" id="rem-foto3-status">Peaje</div><div class="pu-sub">JPG o PDF</div></div></label>
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Daños o estado adicional"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto3-icon">🔎</div><div class="pu-text" id="rem-foto3-status">Daños / estado</div><div class="pu-sub">Evidencia general</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Odómetro"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto4-status','rem-foto4-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto4-icon">🔢</div><div class="pu-text" id="rem-foto4-status">Odómetro</div><div class="pu-sub">KM al inicio</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Foto extra 1"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto5-status','rem-foto5-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto5-icon">➕</div><div class="pu-text" id="rem-foto5-status">Extra 1</div><div class="pu-sub">Opcional</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Foto extra 2"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto6-status','rem-foto6-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto6-icon">➕</div><div class="pu-text" id="rem-foto6-status">Extra 2</div><div class="pu-sub">Opcional</div></div></label>
@@ -3066,6 +3018,7 @@
       </div>
 
       <div style="padding:22px 28px">
+        <div id="vr-addons-structured" class="rem-addons-card" style="display:none;margin-bottom:18px"></div>
         <div style="margin-bottom:18px">
           <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">🚗 Vehículo Asistido</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">

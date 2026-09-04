@@ -35,5 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'billing-phase2-clean-preview-20260824'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'driver-draft-visibility-v40-20260904'/);
+  assert.match(config, /versionedAuxiliosAsset/);
 });

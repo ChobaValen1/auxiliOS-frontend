@@ -52,7 +52,7 @@ test('confirmación de reasignación es una card inline y no un overlay bloquean
 
 test('guardar servicio cierra el workspace y vuelve siempre a la tabla general',()=>{
   assert.match(wizard,/function performCloseWorkspace\(\)\{hideWorkspaceModal\(\);resetShell\(\);S\.wizard=null;S\.selected=null;return true;\}/);
-  assert.match(wizard,/performCloseWorkspace\(\);S\.view='active';S\.status='all';if\(typeof window\.goTo==='function'\)window\.goTo\('operaciones'\);await loadServices\(\)/);
+  assert.match(wizard,/performCloseWorkspace\(\);S\.view='active';S\.status='all';(?:S\.selectedIntakeId=null;)?if\(typeof window\.goTo==='function'\)window\.goTo\('operaciones'\);await loadServices\(\)/);
   assert.doesNotMatch(wizard,/if\(wasEdit&&id\)await openView\(id\)/);
   assert.match(wizard,/modal\.hidden=true;modal\.style\.display='none'/);
 });

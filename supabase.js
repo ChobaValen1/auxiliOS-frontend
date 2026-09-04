@@ -607,6 +607,12 @@ function _mapRemitoRow(r) {
     chofer:        r.users?.full_name || '—',
     createdAt:     r.created_at_device || null,
     firmadoAt:     r.firmado_at        || null,
+    operatorServiceId: r.operator_service_id || null,
+    driverIntakeId: r.driver_intake_id || null,
+    clientOperationId: r.client_operation_id || null,
+    documentSource: r.document_source || 'legacy_driver',
+    addonsVersion: r.addons_version || 1,
+    addonsReviewStatus: r.addons_review_status || 'legacy',
   };
 }
 
@@ -923,9 +929,188 @@ async function cargarServiciosDia() {
 
 // ── GUARDAR REMITO ────────────────────────────────────────────
 
+function _uuidV4Local() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  if (!bytes.some(Boolean)) {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(v => v.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
+function _operatorServiceIdActivo(explicitId = null) {
+  return explicitId
+    || sessionStorage.getItem('auxilios_phase3_service_id')
+    || null;
+}
+
+function _driverAdHocActivo(explicit = null) {
+  if (explicit != null) return !!explicit;
+  return sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1';
+}
+
+function _operatorRemitoClientOperationId(serviceId, nroRemito, explicitId = null) {
+  if (explicitId) return explicitId;
+  if (!serviceId) return null;
+  const key = `auxilios_remito_operation:${serviceId}:${nroRemito || 'draft'}`;
+  let id = null;
+  try { id = localStorage.getItem(key); } catch (e) { /* almacenamiento no disponible */ }
+  if (!id) {
+    id = _uuidV4Local();
+    try { localStorage.setItem(key, id); } catch (e) { /* el payload conserva el id */ }
+  }
+  return id;
+}
+
+let _remitoBackendCapabilitiesPromise = null;
+
+function _remitoBackendUnavailable(error) {
+  const missing = error?.code === 'PGRST202'
+    || /could not find the function|schema cache/i.test(error?.message || '');
+  const friendly = missing
+    ? 'El módulo de Servicios todavía no está habilitado en el servidor. Actualizá la pantalla y reintentá en unos minutos.'
+    : (error?.message || 'No se pudo validar el módulo de Servicios');
+  const normalized = new Error(friendly);
+  normalized.code = error?.code || (missing ? 'REMITO_BACKEND_UNAVAILABLE' : 'REMITO_BACKEND_CHECK_FAILED');
+  return normalized;
+}
+
+async function verificarBackendRemitoDisponible(mode) {
+  if (!_remitoBackendCapabilitiesPromise) {
+    _remitoBackendCapabilitiesPromise = _db
+      .rpc('get_driver_remito_capabilities_v2')
+      .then(({ data, error }) => {
+        if (error) throw _remitoBackendUnavailable(error);
+        return data || {};
+      })
+      .catch(error => {
+        _remitoBackendCapabilitiesPromise = null;
+        throw error;
+      });
+  }
+  const capabilities = await _remitoBackendCapabilitiesPromise;
+  const enabled = mode === 'assigned' ? capabilities.assigned : capabilities.ad_hoc;
+  if (!enabled) {
+    _remitoBackendCapabilitiesPromise = null;
+    throw _remitoBackendUnavailable({ code: 'PGRST202' });
+  }
+  return capabilities;
+}
+
+async function _limpiarEvidenciaRemitoFallido({ nroRemito, clientOperationId, uploads = [] } = {}) {
+  if (!uploads.length || !_db || !USUARIO_ACTUAL?.id) return { removed: 0, preserved: uploads.length };
+
+  let query = _db
+    .from('remitos')
+    .select('remito_id,firma_imagen_url,foto_urls')
+    .eq('driver_id', USUARIO_ACTUAL.id);
+  query = clientOperationId
+    ? query.eq('client_operation_id', clientOperationId)
+    : query.eq('nro_remito', nroRemito);
+
+  const { data: persisted, error: lookupError } = await query.limit(1);
+  if (lookupError) {
+    console.warn('No se pudo verificar la evidencia huérfana del remito:', lookupError.message);
+    return { removed: 0, preserved: uploads.length };
+  }
+
+  const row = persisted?.[0] || null;
+  const referencedUrls = new Set([
+    row?.firma_imagen_url,
+    ...(Array.isArray(row?.foto_urls) ? row.foto_urls : []),
+  ].filter(Boolean));
+  const removable = uploads.filter(item => !referencedUrls.has(item.url));
+  let removed = 0;
+
+  for (const bucket of [...new Set(removable.map(item => item.bucket))]) {
+    const paths = removable.filter(item => item.bucket === bucket).map(item => item.path);
+    if (!paths.length) continue;
+    const { error } = await _db.storage.from(bucket).remove(paths);
+    if (error) {
+      console.warn(`No se pudo limpiar evidencia huérfana de ${bucket}:`, error.message);
+    } else {
+      removed += paths.length;
+    }
+  }
+  return { removed, preserved: uploads.length - removed };
+}
+
+async function guardarRemitoVinculado(remito, explicitServiceId = null) {
+  const serviceId = _operatorServiceIdActivo(explicitServiceId || remito?.operator_service_id);
+  if (!serviceId) return null;
+  await verificarBackendRemitoDisponible('assigned');
+  const clientOperationId = _operatorRemitoClientOperationId(
+    serviceId,
+    remito?.nro_remito,
+    remito?.client_operation_id
+  );
+  const payload = {
+    ...remito,
+    operator_service_id: serviceId,
+    client_operation_id: clientOperationId,
+  };
+  const rpcName = payload.addons_version === 2
+    ? 'save_driver_operator_service_remito_v4'
+    : 'save_driver_operator_service_remito_v3';
+  const { data, error } = await _db.rpc(rpcName, {
+    p_service_id: serviceId,
+    p_payload: payload,
+    p_client_operation_id: clientOperationId,
+  });
+  if (error) throw new Error(error.message || 'No se pudo vincular el remito al servicio');
+  return data;
+}
+
+async function guardarRemitoAdHoc(remito) {
+  await verificarBackendRemitoDisponible('ad_hoc');
+  const clientOperationId = _operatorRemitoClientOperationId(
+    'driver-ad-hoc',
+    remito?.nro_remito,
+    remito?.client_operation_id
+  );
+  const payload = {
+    ...remito,
+    client_operation_id: clientOperationId,
+    document_source: 'driver_ad_hoc',
+  };
+  const rpcName = payload.addons_version === 2
+    ? 'save_driver_ad_hoc_remito_v2'
+    : 'save_driver_ad_hoc_remito_v1';
+  const { data, error } = await _db.rpc(rpcName, {
+    p_payload: payload,
+    p_client_operation_id: clientOperationId,
+  });
+  if (error) throw new Error(error.message || 'No se pudo registrar el ingreso sin asignación');
+  return data;
+}
+
+Object.assign(window, {
+  guardarRemitoVinculado,
+  guardarRemitoAdHoc,
+  obtenerServicioActivoRemito: _operatorServiceIdActivo,
+  obtenerOperacionRemito: _operatorRemitoClientOperationId,
+  esRemitoAdHocActivo: _driverAdHocActivo,
+  verificarBackendRemitoDisponible,
+  limpiarEvidenciaRemitoFallido: _limpiarEvidenciaRemitoFallido,
+});
+
 // Arma el registro de la tabla remitos a partir de los datos del wizard.
 // Única fuente para el camino online y el offline (outbox).
 function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl) {
+  const operatorServiceId = _operatorServiceIdActivo(datosRemito.operator_service_id);
+  const driverAdHoc = !operatorServiceId && _driverAdHocActivo(
+    datosRemito.document_source === 'driver_ad_hoc' ? true : null
+  );
+  const clientOperationId = _operatorRemitoClientOperationId(
+    operatorServiceId || (driverAdHoc ? 'driver-ad-hoc' : null),
+    nroFinal,
+    datosRemito.client_operation_id
+  );
+  const addonPayload = datosRemito.remitoAddons?.payload || datosRemito.remitoAddons || null;
   return {
     nro_remito:           nroFinal,
     driver_id:            USUARIO_ACTUAL.id,
@@ -957,17 +1142,37 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
     conformidad_arrastre: datosRemito.confirmaciones.includes('Conformidad de Arrastre') || null,
     status:               'firmado',
     created_at_device:    new Date().toISOString(),
+    ...(addonPayload?.addons_version === 2 ? {
+      addons_version: 2,
+      tolls: Array.isArray(addonPayload.tolls) ? addonPayload.tolls : [],
+      excesses: Array.isArray(addonPayload.excesses) ? addonPayload.excesses : [],
+      evidence: Array.isArray(addonPayload.evidence) ? addonPayload.evidence : [],
+      customer_collections: addonPayload.customer_collections || null,
+    } : {}),
+    ...(operatorServiceId ? {
+      operator_service_id: operatorServiceId,
+      client_operation_id: clientOperationId,
+      document_source: 'auxilios_driver',
+    } : driverAdHoc ? {
+      client_operation_id: clientOperationId,
+      document_source: 'driver_ad_hoc',
+    } : {}),
   };
 }
 
 async function guardarRemitoCompleto(datosRemito) {
+  const evidenciaSubida = [];
+  let contextoEvidencia = null;
+  let remitoPersistido = false;
   try {
     _toast('Guardando remito...', 'info');
 
     // ── 1. Utilidad Matemática Segura (Bug $9.100) ────────────
     const parsearImporte = (val) => {
       if (!val) return 0;
-      const limpio = String(val).replace(/\./g, '').replace(',', '.');
+      let limpio = String(val).trim().replace(/[^0-9,.-]/g, '');
+      if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
+      else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, '');
       return parseFloat(limpio) || 0;
     };
 
@@ -976,6 +1181,24 @@ async function guardarRemitoCompleto(datosRemito) {
     const _f = new Date().toISOString().slice(0,10).replace(/-/g,'');
     const _r = Math.floor(Math.random() * 9000) + 1000;
     const nroFinal = datosRemito.nro || `REM-${_f}-${_r}`;
+    const operatorServiceId = _operatorServiceIdActivo(datosRemito.operator_service_id);
+    const driverAdHoc = !operatorServiceId && _driverAdHocActivo(
+      datosRemito.document_source === 'driver_ad_hoc' ? true : null
+    );
+    const clientOperationId = _operatorRemitoClientOperationId(
+      operatorServiceId || (driverAdHoc ? 'driver-ad-hoc' : null),
+      nroFinal,
+      datosRemito.client_operation_id
+    );
+
+    // El backend se valida antes de subir evidencia. Así un preview adelantado
+    // a sus migraciones no deja fotos ni firmas huérfanas en Storage.
+    if (operatorServiceId || driverAdHoc) {
+      await verificarBackendRemitoDisponible(operatorServiceId ? 'assigned' : 'ad_hoc');
+    }
+    const storageOperationToken = String(clientOperationId || Date.now())
+      .replace(/[^a-zA-Z0-9-]/g, '');
+    contextoEvidencia = { nroRemito: nroFinal, clientOperationId, uploads: evidenciaSubida };
 
     // ── 3. Parseo de Pago Mixto ───────────────────────────────
     const metodosValidos = ['efectivo', 'transferencia', 'tarjeta', 'app'];
@@ -991,9 +1214,12 @@ async function guardarRemitoCompleto(datosRemito) {
         firmaDataURL = canvas.toDataURL('image/png');
       }
     }
+    const addonBundle = datosRemito.remitoAddons?.payload ? datosRemito.remitoAddons : null;
     const archivosFotos = [];
-    for (const input of document.querySelectorAll('#foto-grid input[type="file"]')) {
-      if (input.files?.length) archivosFotos.push(input.files[0]);
+    if (!addonBundle) {
+      for (const input of document.querySelectorAll('#foto-grid input[type="file"]')) {
+        if (input.files?.length) archivosFotos.push(input.files[0]);
+      }
     }
 
     // ── 5. SIN CONEXIÓN → outbox (fotos y firma quedan en el teléfono) ──
@@ -1002,6 +1228,10 @@ async function guardarRemitoCompleto(datosRemito) {
       const blobs = {};
       if (firmaDataURL) blobs.firma = firmaDataURL;
       archivosFotos.forEach((f, i) => { blobs['foto_' + i] = f; });
+      if (addonBundle) {
+        addonBundle.files.forEach(item => { blobs[item.blob_field] = item.file; });
+        remitoOffline.remito_addon_file_map = addonBundle.files.map(({ file, ...item }) => item);
+      }
       await obAdd({
         tipo: 'remito_completo',
         payload: remitoOffline,
@@ -1013,14 +1243,24 @@ async function guardarRemitoCompleto(datosRemito) {
       return true;
     }
 
-    // ── 5b. ONLINE: Subida de Fotos ───────────────────────────
+    let uploadedAddonPayload = addonBundle?.payload || null;
+    if (addonBundle) {
+      uploadedAddonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, storageOperationToken);
+      (uploadedAddonPayload.evidence || []).forEach(item => evidenciaSubida.push({
+        bucket: 'remito-evidence-v2', path: item.storage_path, url: null,
+      }));
+    }
+
+    // ── 5b. ONLINE: Subida de Fotos de compatibilidad ─────────
     const fotoUrls = [];
-    for (const file of archivosFotos) {
-      const nombre = `${nroFinal}_${Date.now()}.${file.name.split('.').pop()}`;
+    for (const [index, file] of archivosFotos.entries()) {
+      const extension = String(file.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+      const nombre = `${nroFinal}_${storageOperationToken}_foto_${index}.${extension}`;
       const { error: ue } = await _db.storage.from('remitos').upload(nombre, file, { upsert: true });
       if (!ue) {
         const { data: ud } = _db.storage.from('remitos').getPublicUrl(nombre);
         fotoUrls.push(ud.publicUrl);
+        evidenciaSubida.push({ bucket: 'remitos', path: nombre, url: ud.publicUrl });
       }
     }
 
@@ -1029,17 +1269,19 @@ async function guardarRemitoCompleto(datosRemito) {
     if (firmaDataURL) {
       try {
         const blob = await (await fetch(firmaDataURL)).blob();
-        const nombre = `firma_${nroFinal}_${Date.now()}.png`;
+        const nombre = `firma_${nroFinal}_${storageOperationToken}.png`;
         const { error: fe } = await _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true });
         if (!fe) {
           const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
           firmaUrl = fd.publicUrl;
+          evidenciaSubida.push({ bucket: 'firmas', path: nombre, url: fd.publicUrl });
         } else {
           console.warn('⚠️ No se pudo subir la firma:', fe.message);
-          _toast('Firma guardada localmente (no se pudo subir): ' + fe.message, 'warn');
+          throw new Error('No se pudo subir la firma: ' + fe.message);
         }
       } catch (upErr) {
         console.warn('⚠️ Error procesando firma:', upErr);
+        throw upErr;
       }
     }
 
@@ -1047,17 +1289,39 @@ async function guardarRemitoCompleto(datosRemito) {
 
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
-    const { error } = await _db.from('remitos').upsert(
-      _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl),
-      { onConflict: 'nro_remito' }
-    );
+    const remitoDB = _remitoDbDesdeDatos({
+      ...datosRemito,
+      remitoAddons: uploadedAddonPayload ? { payload: uploadedAddonPayload, files: [] } : null,
+    }, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl);
+    let error = null;
+    if (remitoDB.operator_service_id) {
+      try {
+        await guardarRemitoVinculado(remitoDB, remitoDB.operator_service_id);
+      } catch (linkedError) {
+        error = linkedError;
+      }
+    } else if (remitoDB.document_source === 'driver_ad_hoc') {
+      try {
+        await guardarRemitoAdHoc(remitoDB);
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+      } catch (adHocError) {
+        error = adHocError;
+      }
+    } else {
+      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remitoDB;
+      ({ error } = await _db.from('remitos').upsert(legacyRemito, { onConflict: 'nro_remito' }));
+    }
 
     if (error) { 
       console.error("❌ Error de inserción Supabase:", error);
+      await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
       _toast('Error: ' + error.message, 'error'); 
       return false; 
     }
 
+    // Desde este punto las rutas privadas forman parte del remito firmado. Si
+    // falla solamente la recarga visual, no deben eliminarse como huérfanas.
+    remitoPersistido = true;
     await cargarRemitos();
     _toast(`Remito ${nroFinal} guardado ✓`, 'success');
     showRemitosView('lista');
@@ -1065,7 +1329,10 @@ async function guardarRemitoCompleto(datosRemito) {
 
   } catch (err) {
     console.error('❌ Error inesperado en guardarRemitoCompleto:', err);
-    _toast('Error inesperado al guardar', 'error');
+    if (contextoEvidencia && !remitoPersistido) {
+      await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
+    }
+    _toast('Error inesperado al guardar: ' + (err?.message || err), 'error');
     return false;
   }
 }
