@@ -29,12 +29,14 @@ async function applyCompanyFieldModes(step=document.getElementById('rem-step-1')
 function validateCustomerFields(){let ok=true;for(const [key,id,errorId] of [['customer_document','rem-cuit','err-documento'],['customer_phone','rem-telefono','err-telefono']]){const row=document.querySelector(`[data-remito-field="${key}"]`),input=document.getElementById(id),error=document.getElementById(errorId),missing=row?.dataset.mode==='required'&&!String(input?.value||'').trim();input?.classList.toggle('rem-field-error',missing);error?.classList.toggle('visible',missing);if(missing)ok=false}return ok}
 
 function evidenceStep(step){
-  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 3</span><h2>Evidencia</h2><p>Adjuntá fotografías sólo si corresponde.</p></header><div id="rem-evidence-list" class="rmv-evidence-list"><div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div></div><button id="rem-add-evidence" class="rmv-add" type="button">＋ Agregar evidencia</button><small class="rmv-hint">La evidencia es opcional.</small><div id="foto-grid" class="rmv-hidden-files" aria-hidden="true">
+  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 3</span><h2>Evidencia y observaciones</h2><p>Adjuntá fotografías sólo si corresponde.</p></header><div id="rem-evidence-list" class="rmv-evidence-list"><div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div></div><button id="rem-add-evidence" class="rmv-add" type="button">＋ Agregar evidencia</button><small class="rmv-hint">La evidencia es opcional.</small><div id="foto-grid" class="rmv-hidden-files" aria-hidden="true">
     <label class="foto-slot" data-label="Vehículo"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto1-status','rem-foto1-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto1-icon">📷</span><span id="rem-foto1-status">Vehículo</span></label>
     <label class="foto-slot" data-label="Odómetro"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto2-status','rem-foto2-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto2-icon">🔢</span><span id="rem-foto2-status">Odómetro</span></label>
     <label class="foto-slot" data-label="Daño o incidente"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto3-icon">⚠</span><span id="rem-foto3-status">Daño o incidente</span></label>
     <label class="foto-slot" data-label="Otra evidencia"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto4-status','rem-foto4-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto4-icon">＋</span><span id="rem-foto4-status">Otra evidencia</span></label>
-  </div></section><div id="rem-evidence-sheet" class="rmv-sheet" hidden><button class="rmv-sheet-backdrop" type="button" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="rem-evidence-title"><header><h3 id="rem-evidence-title">Tipo de evidencia</h3><button type="button" data-close aria-label="Cerrar">×</button></header><button type="button" data-evidence="0">📷 Vehículo</button><button type="button" data-evidence="1">🔢 Odómetro</button><button type="button" data-evidence="2">⚠ Daño o incidente</button><button type="button" data-evidence="3">＋ Otra evidencia</button></section></div>`;
+  </div></section><section id="rmv-remito-notes" class="rmv-card rmv-notes-card"><label class="rmv-notes-label"><span>Observaciones</span><div data-observations-slot></div></label></section><div id="rem-evidence-sheet" class="rmv-sheet" hidden><button class="rmv-sheet-backdrop" type="button" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="rem-evidence-title"><header><h3 id="rem-evidence-title">Tipo de evidencia</h3><button type="button" data-close aria-label="Cerrar">×</button></header><button type="button" data-evidence="0">📷 Vehículo</button><button type="button" data-evidence="1">🔢 Odómetro</button><button type="button" data-evidence="2">⚠ Daño o incidente</button><button type="button" data-evidence="3">＋ Otra evidencia</button></section></div>`;
+  const observations=document.getElementById('rem-observaciones');
+  if(observations){observations.classList.add('rmv-input');$('[data-observations-slot]',step)?.appendChild(observations)}
   const sheet=$('#rem-evidence-sheet',step);
   const close=()=>{sheet.hidden=true;document.body.classList.remove('rmv-sheet-open')};
   $('#rem-add-evidence',step)?.addEventListener('click',()=>{sheet.hidden=false;document.body.classList.add('rmv-sheet-open')});
@@ -86,12 +88,12 @@ function syncEvidence(){
 }
 
 function setSignedEditMode(enabled,data=null){
-  signedEditMode=!!enabled;const root=document.getElementById('remitos-nuevo'),step3=document.getElementById('rem-step-3'),hidden=document.getElementById('rem-service-fields-hidden'),observations=document.getElementById('rem-observaciones');
+  signedEditMode=!!enabled;const root=document.getElementById('remitos-nuevo'),observations=document.getElementById('rem-observaciones');
   root?.classList.toggle('rmv-signed-edit',signedEditMode);document.getElementById('rmv-signed-edit-banner')?.remove();document.getElementById('rmv-signed-edit-notes')?.remove();
-  if(!signedEditMode){if(observations&&hidden)hidden.appendChild(observations);return}
+  if(!signedEditMode)return;
   const banner=document.createElement('section');banner.id='rmv-signed-edit-banner';banner.className='rmv-card rmv-edit-banner';banner.innerHTML='<b>Editar remito firmado</b><small>Podés corregir peajes, excedentes, observaciones y evidencia. La firma y los datos del socio permanecen bloqueados.</small>';
   document.getElementById('rem-step-2')?.prepend(banner);
-  if(step3&&observations){const notes=document.createElement('section');notes.id='rmv-signed-edit-notes';notes.className='rmv-card';notes.innerHTML='<label class="rmv-edit-notes-label"><span>Observaciones</span><div data-edit-notes></div></label>';step3.querySelector('.rmv-card')?.after(notes);notes.querySelector('[data-edit-notes]')?.appendChild(observations);observations.classList.add('rmv-input');observations.value=data?.remito?.observations||''}
+  if(observations)observations.value=data?.remito?.observations||'';
   syncEvidence();
 }
 function isSignedEditMode(){return signedEditMode}

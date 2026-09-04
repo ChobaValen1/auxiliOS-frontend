@@ -21,6 +21,15 @@ test('la evidencia es opcional y usa un panel móvil por categoría',()=>{
   assert.match(css,/\.rmv-sheet/);
 });
 
+test('el paso 3 muestra y persiste observaciones junto a la evidencia',()=>{
+  const flow=read('remito-mobile-flow-v3.js'),sigma=read('sigma.js');
+  assert.match(flow,/Evidencia y observaciones/);
+  assert.match(flow,/data-observations-slot/);
+  assert.match(flow,/appendChild\(observations\)/);
+  assert.doesNotMatch(flow,/if\(!signedEditMode\)\{if\(observations&&hidden\)hidden\.appendChild\(observations\)/);
+  assert.match(sigma,/observaciones:\s+observaciones/);
+});
+
 test('peajes es el paso 2 y evidencia queda inmediatamente después en el paso 3',()=>{
   const flow=read('remito-mobile-flow-v3.js'),addons=read('remito-addons-v2.js'),sigma=read('sigma.js');
   assert.match(addons,/const step=\$\('#rem-step-2'\)/);
@@ -81,6 +90,9 @@ test('ACTIVADO exige uno de cuatro motivos cerrados y lo persiste mediante RPC v
   assert.match(sql,/cancellation_reason_code = v_reason_code/);
   assert.match(sql,/cancellation_reason_detail = null/);
   assert.match(sql,/revoke all on function public\.mark_driver_operator_service_activated_v2\(uuid,text,text\) from public,anon,authenticated/);
+  const constraint=read('supabase/migrations/20260904203000_driver_activation_reason_constraint_v1.sql');
+  for(const code of ['absent_or_not_towable','provider','us','other'])assert.match(constraint,new RegExp(`'${code}'`));
+  assert.match(constraint,/validate constraint operator_services_cancellation_reason_code_check/);
 });
 
 test('Operaciones actualiza automáticamente los borradores visibles',()=>{
@@ -91,13 +103,27 @@ test('Operaciones actualiza automáticamente los borradores visibles',()=>{
 });
 
 test('guardar y seguir después restaura todos los datos del socio',()=>{
-  const sigma=read('sigma.js');
+  const sigma=read('sigma.js'),bridge=read('operator-service-bridge.js');
   assert.match(sigma,/razon_social:\s*cliente \|\| null/);
   assert.match(sigma,/cuit:\s+cuit\s+\|\| null,\s*\n\s*telefono:\s+telefono \|\| null,/);
   assert.match(sigma,/set\('rem-cliente',\s*r\.cliente\)/);
   assert.match(sigma,/set\('rem-cuit',\s*r\.cuit\)/);
   assert.match(sigma,/set\('rem-telefono',\s*r\.telefono\)/);
   assert.match(sigma,/dispatchEvent\(new Event\('input', \{ bubbles: true \}\)\)/);
+  assert.match(sigma,/await window\.actualizarServiciosAsignados\?\.\(\)/);
+  assert.match(bridge,/if\(!s\?\.service_id\)return false/);
+  assert.doesNotMatch(bridge,/if\(!s\?\.remito_id\|\|s\.remito_status!==['"]pendiente['"]\)return false/);
+});
+
+test('la firma usa eventos de puntero con captura y fallback táctil no pasivo',()=>{
+  const sigma=read('sigma.js');
+  assert.match(sigma,/if \(window\.PointerEvent\)/);
+  assert.match(sigma,/setPointerCapture/);
+  assert.match(sigma,/pointerdown/);
+  assert.match(sigma,/pointermove/);
+  assert.match(sigma,/pointercancel/);
+  assert.match(sigma,/\{ passive: false \}/);
+  assert.match(sigma,/startDraw\(e, canvas, ctx\)/);
 });
 
 test('FINALIZAR limpia el formulario sólo después de confirmar el guardado',()=>{

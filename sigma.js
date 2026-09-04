@@ -1141,15 +1141,47 @@ function initCanvas(canvasId) {
   hasSig = false;
   updateSigStatus(canvasId, false);
 
-  // 4. Asignar eventos de dibujo
-  canvas.onmousedown  = e => startDraw(e, canvas);
-  canvas.onmousemove  = e => draw(e, canvas);
-  canvas.onmouseup    = ()  => stopDraw(canvasId);
-  canvas.onmouseleave = ()  => stopDraw(canvasId);
-  
-  canvas.ontouchstart = e => { e.preventDefault(); startDraw(e.touches[0], canvas); };
-  canvas.ontouchmove  = e => { e.preventDefault(); draw(e.touches[0], canvas); };
-  canvas.ontouchend   = ()  => stopDraw(canvasId);
+  // 4. Pointer Events + captura mantienen el trazo aunque el dedo se mueva
+  // momentáneamente fuera del canvas. Cada handler conserva su propio contexto.
+  if (typeof canvas.__auxiliosSignatureCleanup === 'function') canvas.__auxiliosSignatureCleanup();
+  const ctx = activeCtx;
+  const listeners = [];
+  const on = (type, handler, options) => {
+    canvas.addEventListener(type, handler, options);
+    listeners.push([type, handler, options]);
+  };
+  const begin = e => {
+    if (e.cancelable) e.preventDefault();
+    if (e.pointerId != null && canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
+    startDraw(e, canvas, ctx);
+  };
+  const move = e => {
+    if (e.cancelable) e.preventDefault();
+    draw(e, canvas, ctx);
+  };
+  const end = e => {
+    if (e?.cancelable) e.preventDefault();
+    if (e?.pointerId != null && canvas.hasPointerCapture?.(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    stopDraw(canvasId);
+  };
+  if (window.PointerEvent) {
+    on('pointerdown', begin);
+    on('pointermove', move);
+    on('pointerup', end);
+    on('pointercancel', end);
+  } else {
+    on('mousedown', begin);
+    on('mousemove', move);
+    on('mouseup', end);
+    on('mouseleave', end);
+    on('touchstart', e => begin(e.touches[0]), { passive: false });
+    on('touchmove', e => move(e.touches[0]), { passive: false });
+    on('touchend', end, { passive: false });
+    on('touchcancel', end, { passive: false });
+  }
+  canvas.__auxiliosSignatureCleanup = () => {
+    listeners.forEach(([type, handler, options]) => canvas.removeEventListener(type, handler, options));
+  };
 }
 
 function getPos(e, canvas) {
@@ -1162,11 +1194,11 @@ function getPos(e, canvas) {
   };
 }
 
-function startDraw(e, canvas) {
+function startDraw(e, canvas, ctx = canvas.getContext('2d')) {
   drawing = true;
   const p = getPos(e, canvas);
-  activeCtx.beginPath();
-  activeCtx.moveTo(p.x, p.y);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
   // hide placeholder
   const ph = document.getElementById('sig-placeholder');
   if (ph) ph.style.display = 'none';
@@ -1174,11 +1206,11 @@ function startDraw(e, canvas) {
   canvas.style.background = 'rgba(245,166,35,0.04)';
 }
 
-function draw(e, canvas) {
+function draw(e, canvas, ctx = canvas.getContext('2d')) {
   if (!drawing) return;
   const p = getPos(e, canvas);
-  activeCtx.lineTo(p.x, p.y);
-  activeCtx.stroke();
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
 }
 
 function stopDraw(canvasId) {
@@ -7761,6 +7793,7 @@ async function guardarRemitoPendiente() {
   console.log("✅ Remito guardado en BD exitosamente:", data);
 
   await cargarRemitos();
+  await window.actualizarServiciosAsignados?.();
   showRemitosView('lista');
   toast(`Remito ${nro} guardado como pendiente ✓`, 'success');
   return true;
