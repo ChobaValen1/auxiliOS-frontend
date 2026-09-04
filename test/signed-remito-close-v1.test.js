@@ -30,6 +30,9 @@ test('Servicios muestra el firmado y cierra documento servicio viaje y recursos 
   assert.match(services,/Ver remito firmado/);
   assert.match(review,/Revisión y cierre/);
   assert.doesNotMatch(review,/data-review-tab="document"|data-review-panel="document"|os-review-tabs/);
+  assert.match(review,/chooseGlobalAction/);
+  assert.match(review,/data-review-global-action="accepted"/);
+  assert.doesNotMatch(review,/reviewActions|comparisonSection|applySection|data-review-action=/);
   assert.match(review,/resolve_operator_service_document_v4/);
   assert.match(review,/approve_and_finalize/);
   assert.match(migration,/remito_approved_and_service_finalized/);

@@ -166,47 +166,45 @@ test('offline conserva líneas y archivos estables para reintentos',()=>{
   assert.match(migration,/remito_excess_reports_line_unique unique\(remito_id,client_line_id\)/);
 });
 
-test('Servicios usa bandeja y revisión línea por línea, sin aprobación ciega en el menú',()=>{
+test('Servicios usa bandeja y una revisión global mínima, sin aprobación ciega en el menú',()=>{
   assert.match(review,/Remitos recibidos/);
-  assert.match(review,/Planificado vs\. informado/);
+  assert.match(review,/Planificado/);
+  assert.match(review,/Informado/);
   assert.match(review,/DNI\/CUIT/);
   assert.match(review,/remito_excess_total/);
   assert.match(review,/remito_toll_total/);
   assert.doesNotMatch(review,/Confirmar revisión y finalizar servicio|Confirmar revisión y habilitar Facturación/);
   assert.match(review,/reportedExcessPayment/);
-  assert.match(review,/Método de pago/);
   assert.match(review,/resolve_operator_service_document_v4/);
-  assert.match(review,/Elegí Rechazar, Modificar o Aprobar para Peajes/);
-  assert.match(review,/Seleccioná el concepto de cada excedente/);
+  assert.match(review,/Elegí Rechazar, Modificar o Aprobar/);
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
   assert.match(menu,/Ver remito firmado/);
   assert.doesNotMatch(menu,/Aprobar remito/);
 });
 
-test('la aprobación simplificada usa matriz Planificado vs Informado con edición inline',()=>{
-  for(const label of ['Peajes','Excedentes','Formato de Pago de Peajes','Peaje','Concepto','Cantidad','Monto','Método de pago'])assert.match(review,new RegExp(label));
+test('la aprobación simplificada usa dos resúmenes y una única decisión global',()=>{
+  for(const label of ['Peajes','Excedentes','Formato de cobro de peajes','Planificado','Informado'])assert.match(review,new RegExp(label));
   for(const empty of ['Sin peajes planificados','Sin peajes informados','Sin excedentes planificados','Sin excedentes informados'])assert.match(review,new RegExp(empty));
-  for(const action of ['Rechazar','Modificar','Aprobar'])assert.match(review,new RegExp(`>${action}<`));
+  for(const action of ['rejected','adjusted','accepted'])assert.match(review,new RegExp(`data-review-global-action="${action}"`));
   assert.match(review,/hasDifference\('toll'/);
   assert.match(review,/hasDifference\('excess'/);
-  assert.match(review,/data-review-action="adjusted"/);
+  assert.match(review,/chooseGlobalAction/);
   assert.match(review,/os-review-report-line/);
   assert.match(review,/toggleLineCancel/);
   assert.match(review,/addLine/);
   assert.match(review,/resolve_operator_service_document_v4/);
-  assert.doesNotMatch(review,/os-review-apply/);
+  assert.doesNotMatch(review,/reviewActions|comparisonSection|applySection|data-review-action=/);
+  assert.doesNotMatch(review,/<table|os-review-table|os-review-comparison-group|os-review-group-header/);
   assert.doesNotMatch(review,/Responsable comercial|Cobrador<select|Decisión<select/);
 });
 
-test('Planificado e Informado viven como columnas verticales en una única card',()=>{
-  assert.match(review,/class="os-review-comparison-card"/);
-  assert.match(review,/class="os-review-comparison-header"/);
-  assert.match(review,/class="os-review-matrix-head"[\s\S]*<b>Planificado<\/b><b>Informado<\/b>/);
-  assert.match(review,/class="os-review-group-header"/);
-  assert.match(review,/class="os-review-matrix-grid"/);
-  assert.match(review,/comparisonSection\('toll',data\)\}\$\{comparisonSection\('excess',data\)/);
+test('Planificado e Informado son las dos columnas raíz y ambas contienen Peajes y Excedentes',()=>{
+  assert.match(review,/class="os-review-summary-grid"/);
+  assert.match(review,/class="os-review-summary-column" data-review-side="planned"[\s\S]*>Planificado<[\s\S]*summarySection\('toll',[^)]*'planned'\)[\s\S]*summarySection\('excess',[^)]*'planned'\)/);
+  assert.match(review,/class="os-review-summary-column" data-review-side="reported"[\s\S]*>Informado<[\s\S]*summarySection\('toll',[^)]*'reported'\)[\s\S]*summarySection\('excess',[^)]*'reported'\)/);
+  assert.match(review,/class="os-review-global-actions"/);
   assert.doesNotMatch(review,/data-review-panel="document"|data-review-tab="document"|os-review-tabs/);
-  assert.doesNotMatch(review,/os-review-compare-block|os-review-intro/);
+  assert.doesNotMatch(review,/os-review-matrix-row|os-review-matrix-head|os-review-comparison-card|os-review-compare-block|os-review-intro/);
 });
 
 test('la RPC v4 permite agregados administrativos auditados sin tocar el remito firmado',()=>{

@@ -37,12 +37,17 @@ test('el bootstrap no espera un segundo load de scripts defer ya ejecutados',()=
   assert.match(config,/existing\.dataset\.loaded = '1'/);
 });
 
-test('el modal administrativo abre directo en revisión y cierre',()=>{
+test('el modal administrativo abre directo en una revisión global de dos columnas',()=>{
   assert.match(review,/Revisión y cierre/);
-  assert.match(review,/Planificado vs\. informado/);
-  assert.match(review,/Formato de Pago de Peajes/);
+  assert.match(review,/data-review-side="planned"/);
+  assert.match(review,/data-review-side="reported"/);
+  assert.match(review,/Formato de cobro de peajes/);
   assert.match(review,/paymentLabel/);
+  assert.match(review,/chooseGlobalAction/);
+  for(const action of ['rejected','adjusted','accepted'])assert.match(review,new RegExp(`data-review-global-action="${action}"`));
   assert.match(review,/resolve_operator_service_document_v4/);
+  assert.doesNotMatch(review,/reviewActions|comparisonSection|applySection|data-review-action=/);
+  assert.doesNotMatch(review,/<table|os-review-table|os-review-comparison-group|os-review-group-header/);
   assert.doesNotMatch(review,/Evidencias cargadas por el chofer|Firma del socio|data-remito-evidence|os-signed-document/);
   assert.doesNotMatch(review,/download\(\)|toggleFullscreen\(\)|html2pdf/);
   assert.match(review,/Reintentar/);
