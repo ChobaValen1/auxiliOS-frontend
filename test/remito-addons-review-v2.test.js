@@ -11,6 +11,7 @@ const driverVisibility=read('migrations/20260829233000_driver_remito_admin_visib
 const tollCoverageVisibility=read('supabase/migrations/20260830214300_driver_toll_coverage_visibility_v1.sql');
 const matrixInlineReview=read('supabase/migrations/20260901123000_remito_review_matrix_inline_v4.sql');
 const adjustmentWithoutReason=read('supabase/migrations/20260904173000_remito_adjustment_without_reason_v1.sql');
+const reviewRetry=read('supabase/migrations/20260904183000_remito_review_retry_v1.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -208,6 +209,15 @@ test('Modificar no solicita motivo y Rechazar sí lo conserva obligatorio',()=>{
   assert.match(adjustmentWithoutReason,/Explicá el ajuste realizado al peaje/);
   assert.match(adjustmentWithoutReason,/Explicá el ajuste realizado al excedente/);
   assert.doesNotMatch(adjustmentWithoutReason,/Explicá por qué se rechaza el peaje|Explicá por qué se rechaza el excedente/);
+});
+
+test('una revisión histórica pendiente puede reemplazarse atómicamente sin duplicar cargos',()=>{
+  assert.match(reviewRetry,/stale_remito_review_replaced/);
+  assert.match(reviewRetry,/previous_reviews/);
+  assert.match(reviewRetry,/operator_invoice_services/);
+  assert.match(reviewRetry,/operator_invoice_tolls/);
+  assert.match(reviewRetry,/delete from public\.operator_service_document_addon_reviews[\s\S]*delete from public\.operator_service_tolls[\s\S]*delete from public\.operator_service_excess_charges/);
+  assert.match(reviewRetry,/v_has_review := false/);
 });
 
 test('Planificado e Informado son las dos columnas raíz y ambas contienen Peajes y Excedentes',()=>{
