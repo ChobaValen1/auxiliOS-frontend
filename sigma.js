@@ -540,6 +540,12 @@ function selectTrigger(type) {
 // ── REMITO WIZARD ──────────────────────────────────────────
 let _remPasoActual = 1;
 const REM_TOTAL_PASOS = 4;
+const REM_TOTAL_PASOS_SIN_ASIGNACION = 5;
+const _remWizardEsAdHoc = () => !!window.AuxiliosRemitoMobileV3?.isAdHocMode?.();
+const _remWizardTotalPasos = () => _remWizardEsAdHoc() ? REM_TOTAL_PASOS_SIN_ASIGNACION : REM_TOTAL_PASOS;
+const _remWizardPasoCliente = () => _remWizardEsAdHoc() ? 2 : 1;
+const _remWizardPasoCargos = () => _remWizardEsAdHoc() ? 3 : 2;
+const _remWizardPasoFirma = () => _remWizardTotalPasos();
 
 function remWizardReset() {
   _remPasoActual = window.AuxiliosRemitoMobileV3?.isSignedEditMode?.() ? 2 : 1;
@@ -585,7 +591,7 @@ function remWizardReset() {
   if (total) total.textContent = '$0';
 
   // Reseteo de Toggles del Paso 5 (Arrastre apagado, el resto encendido)
-  document.querySelectorAll('#rem-step-4 .acept-toggle').forEach(row => {
+  document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`).forEach(row => {
     const t = row.querySelector('.toggle');
     const titulo = row.querySelector('.toggle-title')?.textContent.trim();
     if (t) {
@@ -598,7 +604,7 @@ function remWizardReset() {
   });
 
   // Apagar Toggle de Firma de Chofer y resetear título
-  const toggleChofer = document.querySelector('#rem-step-4 .toggle-row[onclick*="toggleFirmaChofer"] .toggle');
+  const toggleChofer = document.querySelector(`#rem-step-${_remWizardPasoFirma()} .toggle-row[onclick*="toggleFirmaChofer"] .toggle`);
   if (toggleChofer) toggleChofer.classList.remove('on');
   const labelFirma = document.getElementById('label-firma-canvas');
   if (labelFirma) {
@@ -618,23 +624,21 @@ function remWizardReset() {
 
 function _remWizardActualizar() {
   const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
-  for (let i = 1; i <= REM_TOTAL_PASOS; i++) {
-    const panel = document.getElementById(`rem-step-${i}`);
-    if (panel) panel.classList.toggle('active', i === _remPasoActual);
-  }
+  const totalPasos = _remWizardTotalPasos();
+  document.querySelectorAll('#remitos-nuevo .rem-step-panel').forEach(panel => panel.classList.toggle('active', panel.id === `rem-step-${_remPasoActual}`));
   
   const fill = document.getElementById('rem-progress-fill');
-  if (fill) fill.style.width = signedEdit ? `${((_remPasoActual - 1) / 2) * 100}%` : `${(_remPasoActual / REM_TOTAL_PASOS) * 100}%`;
+  if (fill) fill.style.width = signedEdit ? `${((_remPasoActual - 1) / 2) * 100}%` : `${(_remPasoActual / totalPasos) * 100}%`;
   
   const num = document.getElementById('rem-step-num');
   if (num) num.textContent = signedEdit ? (_remPasoActual - 1) : _remPasoActual;
   const counter = document.querySelector('.rem-wizard-counter');
   if (counter && signedEdit) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual - 1}</span> de 2`;
-  else if (counter) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual}</span> de 4`;
+  else if (counter) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual}</span> de ${totalPasos}`;
   
   document.querySelectorAll('.rem-step-dot').forEach((d, i) => {
     d.classList.remove('active', 'done');
-    d.style.display = signedEdit && i > 1 ? 'none' : '';
+    d.style.display = i >= (signedEdit ? 2 : totalPasos) ? 'none' : '';
     const visibleStep = signedEdit ? _remPasoActual - 1 : _remPasoActual;
     if (i + 1 < visibleStep) d.classList.add('done');
     else if (i + 1 === visibleStep) d.classList.add('active');
@@ -669,7 +673,7 @@ function _remWizardActualizar() {
       btnNext.textContent = _remPasoActual === 3 ? 'Guardar cambios' : 'Siguiente →';
       btnNext.onclick = _remPasoActual === 3 ? () => window.guardarEdicionRemitoFirmado?.() : () => remWizardIr(1);
     } else
-    if (_remPasoActual === REM_TOTAL_PASOS) {
+    if (_remPasoActual === totalPasos) {
       // ESTAMOS EN EL PASO FINAL (FIRMA)
       btnNext.textContent = '✅ Finalizar';
       if (btnPendiente) btnPendiente.style.display = 'none';
@@ -694,12 +698,15 @@ function _remWizardActualizar() {
   document.querySelector('.content')?.scrollTo(0, 0);
 }
 
+window.remWizardActualizarFlujo = _remWizardActualizar;
+
 function remWizardIr(delta) {
   if (delta > 0 && !_remWizardValidar(_remPasoActual)) return;
   const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
-  _remPasoActual = signedEdit ? Math.max(2, Math.min(3, _remPasoActual + delta)) : Math.max(1, Math.min(REM_TOTAL_PASOS, _remPasoActual + delta));
+  const totalPasos = _remWizardTotalPasos();
+  _remPasoActual = signedEdit ? Math.max(2, Math.min(3, _remPasoActual + delta)) : Math.max(1, Math.min(totalPasos, _remPasoActual + delta));
   _remWizardActualizar();
-  if (_remPasoActual === REM_TOTAL_PASOS && typeof initCanvas === 'function') {
+  if (_remPasoActual === totalPasos && typeof initCanvas === 'function') {
     setTimeout(() => initCanvas('sig-canvas'), 80);
   }
 }
@@ -715,11 +722,17 @@ function _remWizardValidar(paso) {
     if (vacio) ok = false;
   };
   
-  if (paso === 1) {
+  if (_remWizardEsAdHoc() && paso === 1) {
+    marcar('rem-tipo-servicio', 'err-tipo');
+    marcar('rem-patente', 'err-patente');
+    marcar('rem-origen', 'err-origen');
+    marcar('rem-destino', 'err-destino');
+  }
+  if (paso === _remWizardPasoCliente()) {
     marcar('rem-cliente', 'err-cliente');
     if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) ok=false;
   }
-  if (paso === 2) {
+  if (paso === _remWizardPasoCargos()) {
     if (window.AuxiliosRemitoAddonsV2) {
       return window.AuxiliosRemitoAddonsV2.validate().ok;
     }
@@ -845,7 +858,7 @@ function toggleFirmaChofer(elemento) {
 
 // ── 2. MATEMÁTICA ESTRICTA DE LA BARRA DE PROGRESO ──
 function actualizarProgresoFirmas() {
-    const panel = document.getElementById('rem-step-4');
+    const panel = document.getElementById(`rem-step-${_remWizardPasoFirma()}`);
     if (!panel) return;
 
     let esperados = 0;
@@ -910,7 +923,7 @@ function cerrarModalFirmaFalta() {
 // Esta función se ejecuta cuando el chofer toca "Finalizar y Guardar"
 function validarPaso5Final() {
     // 1. Verificamos las confirmaciones obligatorias (excluye Arrastre por ser opcional)
-    const obligatorios = document.querySelectorAll('#rem-step-4 .acept-toggle:not(#row-arrastre) .toggle');
+    const obligatorios = document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle:not(#row-arrastre) .toggle`);
     let todasConfirmadas = true;
     obligatorios.forEach(t => {
         if (!t.classList.contains('on')) todasConfirmadas = false;
@@ -1306,7 +1319,7 @@ async function finalizarRemito() {
     _finalizacionRemitoEnCurso = false;
     if (btn) {
       btn.disabled = false;
-      btn.textContent = _remPasoActual === REM_TOTAL_PASOS ? '✅ Finalizar' : originalText;
+      btn.textContent = _remPasoActual === _remWizardTotalPasos() ? '✅ Finalizar' : originalText;
     }
   }
 }
@@ -1356,32 +1369,32 @@ async function _finalizarRemitoInner() {
     if(el&&!el.value&&value)el.value=value;
   });
   if (cuit && !/^\d{7,11}$/.test(cuit) && !/^\d{2}-\d{7,8}-\d{1}$/.test(cuit)) {
-    mostrarValidacion('⚠️ DNI/CUIT inválido', 'El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso 1.');
-    remWizardIr(1 - _remPasoActual);
+    mostrarValidacion('⚠️ DNI/CUIT inválido', `El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso ${_remWizardPasoCliente()}.`);
+    remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
     return;
   }
   if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) {
     mostrarValidacion('⚠️ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
-    remWizardIr(1 - _remPasoActual);
+    remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     return;
   }
-  const requiredConfirmations=[...document.querySelectorAll('#rem-step-4 .acept-toggle')]
+  const requiredConfirmations=[...document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`)]
     .filter(row=>row.id!=='row-arrastre'&&row.offsetParent!==null);
   if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠️ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
   if(!hasSig){mostrarValidacion('⚠️ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
   const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
   if (addonValidation && !addonValidation.ok) {
-    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || 'Hay datos incompletos en el paso 2.');
-    remWizardIr(2 - _remPasoActual);
+    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || `Hay datos incompletos en el paso ${_remWizardPasoCargos()}.`);
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';
   const totalVal = parseFloat(totalStr.replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
   if (!window.AuxiliosRemitoAddonsV2 && totalVal > 0 && (!pago || pago === '—')) {
-    mostrarValidacion('⚠️ Falta medio de pago', 'Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso 3.');
-    remWizardIr(3 - _remPasoActual);
+    mostrarValidacion('⚠️ Falta medio de pago', `Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso ${_remWizardPasoCargos()}.`);
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
 
@@ -7728,7 +7741,7 @@ async function guardarRemitoPendiente() {
   const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
   if (addonValidation && !addonValidation.ok) {
     toast(addonValidation.errors[0] || 'Revisá los peajes y excedentes', 'error');
-    remWizardIr(2 - _remPasoActual);
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return false;
   }
   const addonBundle = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
@@ -7811,13 +7824,16 @@ async function guardarRemitoPendiente() {
 }
 
 function completarRemitoPendiente(r) {
+  let adHocMode = false;
   if (r?.operatorServiceId) {
     sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
     sessionStorage.setItem('auxilios_phase3_service_id', r.operatorServiceId);
   } else if (r?.driverIntakeId || r?.documentSource === 'driver_ad_hoc') {
+    adHocMode = true;
     sessionStorage.removeItem('auxilios_phase3_service_id');
     sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
   }
+  window.AuxiliosRemitoMobileV3?.setAdHocMode?.(adHocMode);
   showRemitosView('nuevo'); // calls remWizardReset() internally — clears all fields
   const set = (id, val) => {
     const el = document.getElementById(id);

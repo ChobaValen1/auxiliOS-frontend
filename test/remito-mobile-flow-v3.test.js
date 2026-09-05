@@ -4,10 +4,11 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const read=file=>fs.readFileSync(file,'utf8');
 
-test('el remito móvil usa cuatro pasos y no repite datos del servicio asignado',()=>{
+test('el remito asignado conserva cuatro pasos y no repite datos del servicio',()=>{
   const flow=read('remito-mobile-flow-v3.js'),sigma=read('sigma.js');
   assert.match(sigma,/const REM_TOTAL_PASOS = 4/);
-  assert.match(flow,/Datos del cliente/);
+  assert.match(sigma,/const REM_TOTAL_PASOS_SIN_ASIGNACION = 5/);
+  assert.match(flow,/Datos del socio/);
   assert.match(flow,/Adjuntá fotografías sólo si corresponde/);
   assert.match(flow,/Conformidad y firma/);
   assert.match(flow,/step5\.remove\(\)/);
@@ -22,7 +23,7 @@ test('la evidencia es opcional y usa un panel móvil por categoría',()=>{
   assert.match(css,/\.rmv-sheet/);
 });
 
-test('el paso 3 muestra y persiste observaciones junto a la evidencia',()=>{
+test('evidencia y observaciones permanecen juntas y persisten en ambos flujos',()=>{
   const flow=read('remito-mobile-flow-v3.js'),sigma=read('sigma.js');
   assert.match(flow,/Evidencia y observaciones/);
   assert.match(flow,/data-observations-slot/);
@@ -31,24 +32,37 @@ test('el paso 3 muestra y persiste observaciones junto a la evidencia',()=>{
   assert.match(sigma,/observaciones:\s+observaciones/);
 });
 
-test('peajes es el paso 2 y evidencia queda inmediatamente después en el paso 3',()=>{
+test('peajes es el paso 2 asignado y se desplaza al paso 3 sin asignación',()=>{
   const flow=read('remito-mobile-flow-v3.js'),addons=read('remito-addons-v2.js'),sigma=read('sigma.js');
   assert.match(addons,/const step=\$\('#rem-step-2'\)/);
-  assert.match(addons,/rem-addons-kicker">Paso 2/);
+  assert.match(addons,/id="rem-addons-step-head"[^>]*><span>Paso 2<\/span><h2>Peajes y excedentes<\/h2>/);
+  assert.match(flow,/addonsHead\.textContent=`Paso \$\{adHocMode\?3:2\}`/);
   assert.match(flow,/<span>Paso 3<\/span><h2>Evidencia/);
   assert.match(flow,/evidenceStep\(step3\)/);
-  assert.match(sigma,/if \(paso === 2\) \{\s+if \(window\.AuxiliosRemitoAddonsV2\)/);
+  assert.match(sigma,/const _remWizardPasoCargos = \(\) => _remWizardEsAdHoc\(\) \? 3 : 2/);
+  assert.match(sigma,/if \(paso === _remWizardPasoCargos\(\)\)/);
 });
 
-test('el ingreso sin asignación expande los datos operativos para vinculación posterior',()=>{
-  const flow=read('remito-mobile-flow-v3.js'),bridge=read('operator-service-bridge.js');
+test('el ingreso sin asignación usa cinco pasos independientes y validaciones propias',()=>{
+  const flow=read('remito-mobile-flow-v3.js'),bridge=read('operator-service-bridge.js'),sigma=read('sigma.js');
   assert.match(flow,/function setAdHocMode/);
+  assert.match(flow,/function reindexPanels/);
+  assert.match(flow,/reindexPanels\(panels,2\)/);
+  assert.match(flow,/reindexPanels\(panels,1\)/);
   assert.match(flow,/Este ingreso quedará pendiente de vinculación por Operaciones/);
+  for(const slot of ['order','type','plate','vehicle','origin','destination','km'])assert.match(flow,new RegExp(`data-ad-hoc="${slot}"`));
+  assert.match(flow,/setHeader\(customer,adHocMode\?2:1,'Datos del socio'\)/);
+  assert.match(flow,/setHeader\(evidence,adHocMode\?4:3,'Evidencia y observaciones'\)/);
+  assert.match(flow,/adHocMode\?'Confirmaciones y firma':'Conformidad y firma'/);
+  assert.match(flow,/function isAdHocMode\(\)\{return adHocMode\}/);
+  assert.match(sigma,/const _remWizardPasoCliente = \(\) => _remWizardEsAdHoc\(\) \? 2 : 1/);
+  assert.match(sigma,/marcar\('rem-patente', 'err-patente'\)/);
+  assert.match(sigma,/marcar\('rem-origen', 'err-origen'\)/);
+  assert.match(sigma,/marcar\('rem-destino', 'err-destino'\)/);
   assert.match(bridge,/setAdHocMode\?\.\(true\)/);
   assert.match(bridge,/setAdHocMode\?\.\(false\)/);
-  const toggle=flow.slice(flow.indexOf('function setAdHocMode'),flow.indexOf('window.AuxiliosRemitoMobileV3'));
-  assert.ok(toggle.indexOf("moveToHidden(hidden,id)")<toggle.indexOf('adHoc?.remove()'),'al volver a un servicio asignado debe conservar la patente antes de quitar la tarjeta ad hoc');
-  assert.match(bridge,/remWizardReset\?\.\(\);window\.AuxiliosRemitoMobileV3\?\.setAdHocMode\?\.\(false\);prefillRemito/);
+  assert.match(bridge,/setAdHocMode\?\.\(true\);window\.remWizardReset\?\.\(\)/);
+  assert.match(bridge,/setAdHocMode\?\.\(false\);window\.remWizardReset\?\.\(\);prefillRemito/);
 });
 
 test('ACTIVADO tiene RPC propia con ownership, auditoría y descarte seguro de borrador',()=>{
