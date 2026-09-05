@@ -588,6 +588,14 @@ function _mapRemitoRow(r) {
     telefono:      r.telefono        || '',
     origen:        r.origen,
     destino:       r.destino,
+    origin_place_id:r.origin_place_id||null,
+    origin_lat:     r.origin_lat??null,
+    origin_lng:     r.origin_lng??null,
+    origin_formatted_address:r.origin_formatted_address||null,
+    destination_place_id:r.destination_place_id||null,
+    destination_lat:r.destination_lat??null,
+    destination_lng:r.destination_lng??null,
+    destination_formatted_address:r.destination_formatted_address||null,
     km:            String(r.km_reales     || '—'),
     peaje:         String(r.imp_peaje     || 0),
     excedente:     String(r.imp_excedente || 0),
@@ -1077,9 +1085,9 @@ async function guardarRemitoAdHoc(remito) {
     client_operation_id: clientOperationId,
     document_source: 'driver_ad_hoc',
   };
-  const rpcName = payload.addons_version === 2
-    ? 'save_driver_ad_hoc_remito_v2'
-    : 'save_driver_ad_hoc_remito_v1';
+  const rpcName = payload.maps_version === 1
+    ? 'save_driver_ad_hoc_remito_v3'
+    : payload.addons_version === 2 ? 'save_driver_ad_hoc_remito_v2' : 'save_driver_ad_hoc_remito_v1';
   const { data, error } = await _db.rpc(rpcName, {
     p_payload: payload,
     p_client_operation_id: clientOperationId,
@@ -1124,6 +1132,7 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
     tipo_servicio:        datosRemito.tipo,
     origen:               datosRemito.origen,
     destino:              datosRemito.destino,
+    ...(['maps_version','origin_place_id','origin_lat','origin_lng','origin_formatted_address','destination_place_id','destination_lat','destination_lng','destination_formatted_address'].reduce((out,key)=>{if(datosRemito[key]!=null&&datosRemito[key]!=='')out[key]=datosRemito[key];return out},{})),
     km_reales:            parseInt(datosRemito.km)   || null,
     imp_peaje:            parsearImporte(datosRemito.peaje),
     imp_excedente:        parsearImporte(datosRemito.excedente),

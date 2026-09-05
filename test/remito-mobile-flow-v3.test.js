@@ -65,6 +65,21 @@ test('el ingreso sin asignación usa cinco pasos independientes y validaciones p
   assert.match(bridge,/setAdHocMode\?\.\(false\);window\.remWizardReset\?\.\(\);prefillRemito/);
 });
 
+test('origen y destino sin asignación se validan con Google Maps y persisten su referencia',()=>{
+  const flow=read('remito-mobile-flow-v3.js'),sigma=read('sigma.js'),supabase=read('supabase.js');
+  assert.match(flow,/functions\.invoke\('maps-proxy'/);
+  assert.match(flow,/action:'autocomplete'/);
+  assert.match(flow,/action:'place'/);
+  assert.match(flow,/sessionToken/);
+  assert.match(flow,/Seleccioná una sugerencia de Google Maps/);
+  assert.match(flow,/function validateMapLocations/);
+  assert.match(flow,/origin_place_id/);
+  assert.match(flow,/destination_place_id/);
+  assert.match(sigma,/getMapLocations/);
+  assert.match(sigma,/restoreMapLocations/);
+  assert.match(supabase,/save_driver_ad_hoc_remito_v3/);
+});
+
 test('ACTIVADO tiene RPC propia con ownership, auditoría y descarte seguro de borrador',()=>{
   const sql=read('migrations/20260829150000_driver_remito_actions_reliability_v1.sql');
   assert.match(sql,/v_role <> 'chofer'/);

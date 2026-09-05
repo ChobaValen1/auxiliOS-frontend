@@ -3,6 +3,10 @@
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 let signedEditMode=false,adHocMode=false;
+const mapLocations={origin:{token:'',timer:null,seq:0,suggestions:[],place:null},destination:{token:'',timer:null,seq:0,suggestions:[],place:null}};
+const mapKey={origin:'origen',destination:'destino'};
+const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const newMapToken=()=>crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 function moveToHidden(root,id){
   const node=document.getElementById(id);
@@ -63,6 +67,29 @@ function reindexPanels(panels,start){
   panels.forEach((panel,index)=>{panel.id=`rem-step-staging-${index}`});
   panels.forEach((panel,index)=>{panel.id=`rem-step-${start+index}`});
 }
+
+function renderMapSuggestions(kind){
+  const state=mapLocations[kind],box=document.getElementById(`rmv-${kind}-suggestions`),status=document.getElementById(`rmv-${kind}-status`);if(!box||!status)return;
+  if(state.loading){box.hidden=false;box.innerHTML='<div class="rmv-map-state">Buscando en Google Maps…</div>';return}
+  if(state.error){box.hidden=false;box.innerHTML=`<div class="rmv-map-state error">${esc(state.error)}</div>`;return}
+  box.innerHTML=state.suggestions.map((item,index)=>`<button type="button" data-rmv-map-kind="${kind}" data-rmv-map-index="${index}"><b>${esc(item.mainText||item.text)}</b><span>${esc(item.secondaryText||'')}</span></button>`).join('');box.hidden=!state.suggestions.length;
+  if(state.place){status.className='rmv-map-status ok';status.textContent='✓ Dirección verificada con Google Maps'}else{status.className='rmv-map-status';status.textContent='Seleccioná una sugerencia de Google Maps'}
+}
+function invalidateMapLocation(kind){const state=mapLocations[kind];state.place=null;state.error='';state.suggestions=[];state.seq+=1;renderMapSuggestions(kind)}
+async function searchMapLocation(kind,value){
+  const state=mapLocations[kind],input=String(value||'').trim();invalidateMapLocation(kind);if(state.timer)clearTimeout(state.timer);if(input.length<3)return;
+  const seq=state.seq,token=state.token||(state.token=newMapToken());state.timer=setTimeout(async()=>{state.loading=true;renderMapSuggestions(kind);try{if(!window._db)throw new Error('Maps no está disponible');const {data,error}=await _db.functions.invoke('maps-proxy',{body:{action:'autocomplete',input,sessionToken:token,regionCode:'AR'}});if(error)throw error;if(seq!==state.seq)return;state.suggestions=Array.isArray(data?.suggestions)?data.suggestions.slice(0,6):[];state.error=state.suggestions.length?'':'No se encontraron direcciones';}catch(error){if(seq!==state.seq)return;state.suggestions=[];state.error=error?.message||'No se pudo consultar Google Maps';}finally{if(seq===state.seq){state.loading=false;renderMapSuggestions(kind)}}},350)
+}
+async function selectMapLocation(kind,index){
+  const state=mapLocations[kind],suggestion=state.suggestions[index];if(!suggestion?.placeId||!window._db)return;
+  state.loading=true;renderMapSuggestions(kind);try{const {data,error}=await _db.functions.invoke('maps-proxy',{body:{action:'place',placeId:suggestion.placeId,sessionToken:state.token||newMapToken()}});if(error)throw error;const formatted=data?.formattedAddress||suggestion.text||suggestion.mainText||'';state.place={place_id:data?.placeId||suggestion.placeId,latitude:data?.location?.latitude??null,longitude:data?.location?.longitude??null,formatted_address:formatted};const input=document.getElementById(`rem-${mapKey[kind]}`);if(input)input.value=formatted;state.token=newMapToken();state.suggestions=[];state.error='';}catch(error){state.place=null;state.error=error?.message||'No se pudo validar la dirección'}finally{state.loading=false;renderMapSuggestions(kind)}}
+function setupMapLocations(service){
+  ['origin','destination'].forEach(kind=>{const input=document.getElementById(`rem-${mapKey[kind]}`),slot=$(`[data-ad-hoc="${kind}"]`,service);if(!input||!slot)return;const wrap=document.createElement('div');wrap.className='rmv-map-wrap';input.parentNode?.insertBefore(wrap,input);wrap.appendChild(input);wrap.insertAdjacentHTML('beforeend',`<div id="rmv-${kind}-suggestions" class="rmv-map-suggestions" role="listbox" hidden></div><small id="rmv-${kind}-status" class="rmv-map-status">Seleccioná una sugerencia de Google Maps</small>`);input.setAttribute('autocomplete','off');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-controls',`rmv-${kind}-suggestions`);input.oninput=()=>searchMapLocation(kind,input.value);document.getElementById(`rmv-${kind}-suggestions`)?.addEventListener('click',event=>{const button=event.target.closest('[data-rmv-map-index]');if(button)void selectMapLocation(kind,Number(button.dataset.rmvMapIndex))});renderMapSuggestions(kind)})
+}
+function resetMapLocations(){for(const state of Object.values(mapLocations)){if(state.timer)clearTimeout(state.timer);Object.assign(state,{token:'',timer:null,seq:state.seq+1,suggestions:[],place:null,loading:false,error:''})}}
+function getMapLocations(){const origin=mapLocations.origin.place,destination=mapLocations.destination.place;if(!origin||!destination)return null;return{maps_version:1,origin_place_id:origin.place_id,origin_lat:origin.latitude,origin_lng:origin.longitude,origin_formatted_address:origin.formatted_address,destination_place_id:destination.place_id,destination_lat:destination.latitude,destination_lng:destination.longitude,destination_formatted_address:destination.formatted_address}}
+function restoreMapLocations(data={}){for(const kind of ['origin','destination']){const state=mapLocations[kind],placeId=data[`${kind}_place_id`],formatted=data[`${kind}_formatted_address`]||data[mapKey[kind]];state.place=placeId?{place_id:placeId,latitude:data[`${kind}_lat`]??null,longitude:data[`${kind}_lng`]??null,formatted_address:formatted||''}:null;state.suggestions=[];state.error='';state.loading=false;renderMapSuggestions(kind)}}
+function validateMapLocations(){if(!adHocMode)return true;let ok=true;for(const kind of ['origin','destination']){const valid=!!mapLocations[kind].place,el=document.getElementById(`rem-${mapKey[kind]}`),status=document.getElementById(`rmv-${kind}-status`);el?.classList.toggle('rem-field-error',!valid);if(!valid&&status){status.className='rmv-map-status error';status.textContent='Seleccioná una dirección de Google Maps'}if(!valid)ok=false}return ok}
 
 function serviceStepMarkup(){
   return`<section class="rmv-card rmv-ad-hoc-card"><header class="rmv-step-head"><span>Paso 1</span><h2>Datos del servicio</h2><p>Este ingreso quedará pendiente de vinculación por Operaciones.</p></header><div class="rmv-fields"><label><span>N.º prestación</span><div data-ad-hoc="order"></div></label><label><span>Tipo de servicio *</span><div data-ad-hoc="type"></div><small id="err-tipo" class="rem-error-msg">Seleccioná el tipo de servicio</small></label><label><span>Patente *</span><div data-ad-hoc="plate"></div><small id="err-patente" class="rem-error-msg">Ingresá la patente</small></label><label><span>Marca y modelo</span><div data-ad-hoc="vehicle"></div></label><label><span>Origen *</span><div data-ad-hoc="origin"></div><small id="err-origen" class="rem-error-msg">Ingresá el origen</small></label><label><span>Destino *</span><div data-ad-hoc="destination"></div><small id="err-destino" class="rem-error-msg">Ingresá el destino</small></label><label><span>Kilómetros recorridos</span><div data-ad-hoc="km"></div></label></div></section>`;
@@ -129,6 +156,7 @@ function setAdHocMode(enabled){
     const service=document.createElement('div');service.id='rem-step-1';service.className='rem-step-panel';service.dataset.remitoServiceStep='1';service.innerHTML=serviceStepMarkup();panels[0].before(service);
     const attach=(id,slot)=>{const node=document.getElementById(id);if(node){node.classList.add('rmv-input');$(`[data-ad-hoc="${slot}"]`,service)?.appendChild(node)}};
     attach('rem-nro-prestadora','order');attach('rem-tipo-servicio','type');attach('rem-patente','plate');attach('rem-marca-modelo','vehicle');attach('rem-origen','origin');attach('rem-destino','destination');attach('rem-km','km');
+    resetMapLocations();setupMapLocations(service);
   }else if(!next&&adHocMode){
     ['rem-tipo-servicio','rem-nro-prestadora','rem-patente','rem-marca-modelo','rem-origen','rem-destino','rem-km'].forEach(id=>moveToHidden(hidden,id));
     document.querySelector('[data-remito-service-step="1"]')?.remove();
@@ -142,6 +170,6 @@ function setAdHocMode(enabled){
 
 function isAdHocMode(){return adHocMode}
 
-window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode,isAdHocMode,setSignedEditMode,isSignedEditMode,applyCompanyFieldModes,validateCustomerFields};
+window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode,isAdHocMode,setSignedEditMode,isSignedEditMode,applyCompanyFieldModes,validateCustomerFields,validateMapLocations,getMapLocations,restoreMapLocations};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',transform,{once:true});else transform();
 })();

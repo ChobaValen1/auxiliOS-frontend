@@ -727,6 +727,7 @@ function _remWizardValidar(paso) {
     marcar('rem-patente', 'err-patente');
     marcar('rem-origen', 'err-origen');
     marcar('rem-destino', 'err-destino');
+    if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateMapLocations()) ok=false;
   }
   if (paso === _remWizardPasoCliente()) {
     marcar('rem-cliente', 'err-cliente');
@@ -1408,6 +1409,13 @@ async function _finalizarRemitoInner() {
   }
 
   const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
+  const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
+  if (_remWizardEsAdHoc() && !mapLocations) {
+    mostrarValidacion('⚠️ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
+    remWizardIr(1 - _remPasoActual);
+    window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
+    return false;
+  }
 
   // Recolectar confirmaciones
   const confirmaciones = [];
@@ -1476,6 +1484,7 @@ async function _finalizarRemitoInner() {
     observaciones: document.getElementById('rem-observaciones')?.value?.trim() || null,
     confirmaciones,
     remitoAddons,
+    ...(mapLocations||{}),
   });
 
   if (!ok) return false;
@@ -7705,6 +7714,13 @@ async function guardarRemitoPendiente() {
   const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
     ? esRemitoAdHocActivo()
     : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+  const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
+  if (adHocMode && !mapLocations) {
+    toast('Seleccioná origen y destino desde Google Maps', 'error');
+    remWizardIr(1 - _remPasoActual);
+    window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
+    return false;
+  }
   const clientOperationId = (operatorServiceId || adHocMode) && typeof obtenerOperacionRemito === 'function'
     ? obtenerOperacionRemito(operatorServiceId || 'driver-ad-hoc', nro)
     : null;
@@ -7735,6 +7751,7 @@ async function guardarRemitoPendiente() {
     } : adHocMode ? {
       client_operation_id: clientOperationId,
       document_source: 'driver_ad_hoc',
+      ...(mapLocations||{}),
     } : {}),
   };
 
@@ -7847,6 +7864,7 @@ function completarRemitoPendiente(r) {
   set('rem-tipo-servicio',  r.tipo);
   set('rem-origen',         r.origen);
   set('rem-destino',        r.destino);
+  window.AuxiliosRemitoMobileV3?.restoreMapLocations?.(r);
   set('rem-km',             r.km !== '—' ? r.km : '');
   set('rem-nro-prestadora', r.nroSrv);
   set('rem-marca-modelo',   r.marca);

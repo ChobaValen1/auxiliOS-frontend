@@ -10,6 +10,7 @@ const sigma=read('sigma.js');
 const bridge=read('operator-service-bridge.js');
 const services=read('operator-services.js');
 const orphanCleanup=read('migrations/20260826130000_driver_remito_orphan_cleanup_v1.sql');
+const mapsLocations=read('supabase/migrations/20260905184058_driver_remito_maps_locations.sql');
 
 test('el ingreso del Chofer es operacional y no fabrica clasificación comercial',()=>{
   assert.match(migration,/create table if not exists public\.driver_service_intakes/);
@@ -90,4 +91,16 @@ test('un rechazo posterior a la subida limpia sólo evidencia propia no referenc
   assert.match(orphanCleanup,/not exists \(\s*select 1\s*from public\.remitos/s);
   assert.match(orphanCleanup,/right\(coalesce\(r\.firma_imagen_url/);
   assert.doesNotMatch(orphanCleanup,/to anon|to public/i);
+});
+
+test('el ingreso sin asignación conserva ubicaciones verificadas y las transfiere al servicio',()=>{
+  assert.match(mapsLocations,/create or replace function public\.save_driver_ad_hoc_remito_v3/);
+  assert.match(mapsLocations,/origin_place_id text/);
+  assert.match(mapsLocations,/destination_place_id text/);
+  assert.match(mapsLocations,/Seleccioná origen y destino desde Google Maps/);
+  assert.match(mapsLocations,/where intake_id=v_intake_id and driver_id=v_uid/);
+  assert.match(mapsLocations,/where remito_id=v_remito_id and driver_id=v_uid/);
+  assert.match(mapsLocations,/where trip_id=v_trip_id and driver_id=v_uid/);
+  assert.match(mapsLocations,/sync_driver_intake_maps_to_service/);
+  assert.match(mapsLocations,/revoke all on function public\.save_driver_ad_hoc_remito_v3\(jsonb,uuid\) from public,anon/);
 });
