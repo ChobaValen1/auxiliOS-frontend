@@ -729,8 +729,16 @@ async function cargarRemitos(opts = {}) {
       }
     }
 
-    window._remitosTotal = resultado?.total ?? 0;
-    if (typeof renderTablaRemitos === 'function') renderTablaRemitos(resultado?.remitos || []);
+    const remitos = resultado?.remitos || [];
+    window._driverRemitosSnapshot = remitos;
+    if (esChofer && typeof window.actualizarRemitosActivosChofer === 'function') {
+      window.actualizarRemitosActivosChofer(remitos);
+    }
+    const remitosHistorial = esChofer
+      ? remitos.filter(r => !(r.estado === 'pendiente' && (r.driverIntakeId || r.documentSource === 'driver_ad_hoc') && !r.operatorServiceId))
+      : remitos;
+    window._remitosTotal = esChofer ? remitosHistorial.length : (resultado?.total ?? 0);
+    if (typeof renderTablaRemitos === 'function') renderTablaRemitos(remitosHistorial);
     if (typeof renderRemitosPagination === 'function') renderRemitosPagination();
     if (typeof actualizarInfoFiltroRemitos === 'function') actualizarInfoFiltroRemitos();
 

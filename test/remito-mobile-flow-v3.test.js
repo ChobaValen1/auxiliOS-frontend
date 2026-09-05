@@ -67,6 +67,9 @@ test('el ingreso sin asignación usa cinco pasos independientes y validaciones p
 
 test('origen y destino sin asignación se validan con Google Maps y persisten su referencia',()=>{
   const flow=read('remito-mobile-flow-v3.js'),sigma=read('sigma.js'),supabase=read('supabase.js');
+  assert.match(flow,/const db=\(\)=>typeof _db!==['"]undefined['"]\?_db:/);
+  assert.doesNotMatch(flow,/if\(!window\._db\)throw new Error\('Maps no está disponible'\)/);
+  assert.match(flow,/client\.functions\.invoke\('maps-proxy'/);
   assert.match(flow,/functions\.invoke\('maps-proxy'/);
   assert.match(flow,/action:'autocomplete'/);
   assert.match(flow,/action:'place'/);

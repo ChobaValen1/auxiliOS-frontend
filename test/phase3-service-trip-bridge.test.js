@@ -119,6 +119,22 @@ test('guardar pendiente fuerza un refresco de la cola aunque exista otra carga e
   assert.match(sigma,/await window\.actualizarServiciosAsignados\?\.\(\)/);
 });
 
+test('el remito sin asignación pendiente de firma permanece en Activos y no en Historial',()=>{
+  const bridge=read('operator-service-bridge.js'),supabase=read('supabase.js');
+  assert.match(bridge,/adHocDrafts/);
+  assert.match(bridge,/Pendiente de firma/);
+  assert.match(bridge,/function activeAdHocCard/);
+  assert.match(bridge,/abrirRemitoSinAsignacionPendiente/);
+  assert.match(bridge,/window\.completarRemitoPendiente\(draft\)/);
+  assert.match(bridge,/get_driver_remito_addons_v2/);
+  assert.match(bridge,/AuxiliosRemitoAddonsV2\?\.restore\?\.\(data\|\|null\)/);
+  assert.match(bridge,/r\.estado==='pendiente'.*r\.documentSource==='driver_ad_hoc'.*!r\.operatorServiceId/);
+  assert.match(supabase,/window\._driverRemitosSnapshot = remitos/);
+  assert.match(supabase,/actualizarRemitosActivosChofer\(remitos\)/);
+  assert.match(supabase,/const remitosHistorial = esChofer/);
+  assert.match(supabase,/r\.estado === 'pendiente'.*r\.documentSource === 'driver_ad_hoc'.*!r\.operatorServiceId/);
+});
+
 test('la cola del Chofer propaga el formato contractual sin inferirlo de montos o medios',()=>{
   assert.match(tollCoverageVisibility,/get_driver_operator_queue_v2/);
   assert.match(tollCoverageVisibility,/''toll_coverage_mode'',s\.toll_coverage_mode/);
