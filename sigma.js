@@ -583,6 +583,11 @@ function remWizardReset() {
       const el = document.getElementById(id); 
       if (el) { el.value = ''; el.readOnly = false; el.style.opacity = ''; } 
   });
+  const kmRemito = document.getElementById('rem-km');
+  if (kmRemito && _remWizardEsAdHoc()) {
+    kmRemito.readOnly = true;
+    kmRemito.setAttribute('aria-readonly', 'true');
+  }
 
   const tipo = document.getElementById('rem-tipo-servicio'); 
   if (tipo) tipo.value = 'Servicio de grúa'; 
@@ -7670,6 +7675,10 @@ document.addEventListener('keydown', e => {
 
 
 let _guardandoRemitoPendiente = false;
+function _mostrarBorradorEnServiciosActivos() {
+  showRemitosView('lista');
+  window.cambiarVistaServiciosChofer?.('active');
+}
 async function guardarRemitoPendiente() {
   if (_guardandoRemitoPendiente) {
     toast('El remito ya se está guardando. Esperá un momento.', 'info');
@@ -7780,7 +7789,7 @@ async function guardarRemitoPendiente() {
     const dependeDe = _logIdEsTemporal(_logId) ? _logId : null;
     await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, blobs: Object.keys(blobs).length ? blobs : null, dependeDe, tempId });
     try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
-    showRemitosView('lista');
+    _mostrarBorradorEnServiciosActivos();
     toast(`Remito ${nro} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
     return true;
   }
@@ -7824,7 +7833,7 @@ async function guardarRemitoPendiente() {
 
   await cargarRemitos();
   await window.actualizarServiciosAsignados?.();
-  showRemitosView('lista');
+  _mostrarBorradorEnServiciosActivos();
   toast(`Remito ${nro} guardado como pendiente ✓`, 'success');
   return true;
   } catch (e) {

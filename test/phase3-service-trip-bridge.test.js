@@ -133,6 +133,7 @@ test('el remito sin asignación pendiente de firma permanece en Activos y no en 
   assert.match(supabase,/actualizarRemitosActivosChofer\(remitos\)/);
   assert.match(supabase,/const remitosHistorial = esChofer/);
   assert.match(supabase,/r\.estado === 'pendiente'.*r\.documentSource === 'driver_ad_hoc'.*!r\.operatorServiceId/);
+  assert.match(read('sigma.js'),/function _mostrarBorradorEnServiciosActivos\(\).*cambiarVistaServiciosChofer\?\.\('active'\)/s);
 });
 
 test('la cola del Chofer propaga el formato contractual sin inferirlo de montos o medios',()=>{
