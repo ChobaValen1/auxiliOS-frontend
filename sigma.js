@@ -563,6 +563,7 @@ function remWizardReset() {
   
   if (typeof resetPagoForm === 'function') resetPagoForm();
   window.AuxiliosRemitoAddonsV2?.reset?.();
+  window.AuxiliosRemitoMobileV3?.resetMapLocations?.();
   if (typeof limpiarFirma === 'function') limpiarFirma();
   
   fotosCount = 0;
