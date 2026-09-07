@@ -15,7 +15,7 @@ test('la jornada activa vuelve a enlazar chofer y móvil antes de asignar',()=>{
   assert.match(wizard,/active_truck_id/);
   assert.match(wizard,/active_driver_id/);
   assert.match(wizard,/if\(mode==='edit'\)await loadResourceAvailability\(\)/);
-  assert.match(wizard,/await loadResourceAvailability\(\);render\(\);window\.dispatchEvent/);
+  assert.match(wizard,/await loadResourceAvailability\(\);if\(S\.wizard!==w\)return;w\.busy=false;render\(\);window\.dispatchEvent/);
 });
 
 test('seleccionar chofer o móvil resuelve su pareja en memoria sin una consulta de red por click',()=>{

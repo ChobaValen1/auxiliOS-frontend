@@ -78,7 +78,7 @@ async function loadQueue({silent=false,force=false}={}){
   P3.loading=true;
   P3.queuePromise=(async()=>{
     try{
-      const {data,error}=await db().rpc('get_driver_operator_queue_v3');
+      const {data,error}=await db().rpc('get_driver_operator_queue_v4');
       if(error)throw error;
       P3.queue=Array.isArray(data)?data:[];
       render();
@@ -139,11 +139,11 @@ async function markActivated(id){
 }
 function findService(id){return P3.queue.find(x=>String(x.service_id)===String(id))||null}
 function setValue(id,value){const el=document.getElementById(id);if(!el||value==null||value==='')return;el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}
-function prefillRemito(s){setValue('rem-nro-prestadora',s.service_order_number||s.service_number);setValue('rem-patente',s.vehicle_plate);setValue('rem-marca-modelo',s.vehicle_make_model);setValue('rem-origen',s.origin);setValue('rem-destino',s.destination);setValue('rem-cliente',s.customer_name);setValue('rem-telefono',s.customer_phone);const type=document.getElementById('rem-tipo-servicio');if(type&&s.concept_name){const match=[...type.options].find(o=>o.value.toLowerCase()===String(s.concept_name).toLowerCase()||o.textContent.toLowerCase().includes(String(s.concept_name).toLowerCase()));if(match)type.value=match.value}const marker=document.getElementById('phase3-remito-context')||document.createElement('div');marker.id='phase3-remito-context';marker.className='p3-remito-context';marker.innerHTML=`<b>${esc(s.service_order_number||s.service_number)}</b> · Servicio asignado`;document.getElementById('remitos-nuevo')?.prepend(marker)}
+function prefillRemito(s){setValue('rem-nro-prestadora',s.service_order_number||s.service_number);setValue('rem-patente',s.vehicle_plate);setValue('rem-marca-modelo',s.vehicle_make_model);setValue('rem-origen',s.origin);setValue('rem-destino',s.destination);setValue('rem-cliente',s.customer_name);setValue('rem-telefono',s.customer_phone);setValue('rem-cuit',s.customer_document);window.AuxiliosRemitoMobileV3?.restoreMapLocations?.(s);const type=document.getElementById('rem-tipo-servicio');if(type&&s.concept_name){const match=[...type.options].find(o=>o.value.toLowerCase()===String(s.concept_name).toLowerCase()||o.textContent.toLowerCase().includes(String(s.concept_name).toLowerCase()));if(match)type.value=match.value}const marker=document.getElementById('phase3-remito-context')||document.createElement('div');marker.id='phase3-remito-context';marker.className='p3-remito-context';marker.innerHTML=`<b>${esc(s.service_order_number||s.service_number)}</b> · Servicio asignado`;document.getElementById('remitos-nuevo')?.prepend(marker)}
 async function restoreServiceDraft(s){
   if(!s?.service_id)return false;
   const {data,error}=await db().rpc('get_driver_operator_service_remito_draft_v1',{p_service_id:s.service_id});if(error)throw error;if(!data)return false;
-  setValue('rem-nro',data.nro_remito);setValue('rem-patente',data.vehicle_plate);setValue('rem-marca-modelo',data.vehicle_make_model);setValue('rem-origen',data.origin);setValue('rem-destino',data.destination);setValue('rem-km',data.km_reales);setValue('rem-cliente',data.customer_name);setValue('rem-cuit',data.customer_document);setValue('rem-telefono',data.customer_phone);setValue('rem-observaciones',data.observations);
+  setValue('rem-nro',data.nro_remito);setValue('rem-nro-prestadora',data.nro_servicio||s.service_order_number);window.AuxiliosRemitoMobileV3?.restoreMapLocations?.({...data,km:data.km_reales});setValue('rem-patente',data.vehicle_plate);setValue('rem-marca-modelo',data.vehicle_make_model);setValue('rem-origen',data.origin);setValue('rem-destino',data.destination);setValue('rem-km',data.km_reales);setValue('rem-cliente',data.customer_name);setValue('rem-cuit',data.customer_document);setValue('rem-telefono',data.customer_phone);setValue('rem-observaciones',data.observations);
   await window.AuxiliosRemitoAddonsV2?.restore?.(data.addons||null);return true;
 }
 function extraFieldMarkup(meta){return meta.type==='textarea'?`<label><span>${esc(meta.label)} *</span><textarea id="${meta.id}" rows="2"></textarea></label>`:`<label><span>${esc(meta.label)} *</span><input id="${meta.id}" type="${meta.type}" autocomplete="off"></label>`;}

@@ -14,7 +14,7 @@ test('Crear Ver y Editar comparten un único workspace y controlador',()=>{
   assert.match(wizard,/openExisting/);
   assert.match(wizard,/openView/);
   assert.match(wizard,/openEdit/);
-  assert.match(wizard,/get_operator_service_edit_context/);
+  assert.match(wizard,/get_operator_service_handoff_context_v1/);
   assert.match(workspace,/data-mode="\$\{w\.mode\}"/);
   assert.match(workspace,/Ver Servicio/);
   assert.match(workspace,/Editar Servicio/);

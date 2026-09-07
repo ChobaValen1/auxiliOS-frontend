@@ -9,7 +9,7 @@ const tollCoverageVisibility=read('supabase/migrations/20260830214300_driver_tol
 test('el puente del chofer usa la cola versionada y distingue completar de editar',()=>{
   const js=read('operator-service-bridge.js');
   const data=read('supabase.js');
-  assert.match(js,/get_driver_operator_queue_v3/);
+  assert.match(js,/get_driver_operator_queue_v4/);
   assert.match(js,/get_driver_signed_remito_edit_v1/);
   assert.match(js,/update_driver_signed_remito_v1/);
   assert.match(js,/remito_action==='edit'/);

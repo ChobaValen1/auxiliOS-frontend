@@ -59,3 +59,64 @@ test('nuevo remito limpia confirmaciones Maps, distancia y resultados tardíos d
   assert.equal(document.getElementById('rmv-origin-suggestions').hidden,true);
   assert.notEqual(document.getElementById('rem-origen').value,'Respuesta anterior');
 });
+
+function wizardContext(rpc=async()=>({data:{},error:null})){
+  return moduleContext('operator-service-wizard.js','fresh,fillFromIntake,fillFromContext,loadCommercial,createPayload,editPayload,selectCompany,selectPrimary,changeBase,requiredErrors,locked,setVal',{
+    _db:{rpc},window:{addEventListener(){},OperatorServices:{S:{moduleConfig:{field_modes:{}},drivers:[],trucks:[]},num:v=>Number(v)||0,canManage:()=>true,canRead:()=>true,loadServices:async()=>{}}}
+  });
+}
+
+test('intake preloads all signed fields and keeps reported charges apart through provider/base/type changes',async()=>{
+  const {api,window}=wizardContext(async name=>({data:name==='get_operator_service_context_v1'?{bases:[{base_id:'base'}],services:[{concept_id:'type',name:'Remolque',category:'primary',available:true,has_price:true}]}:[],error:null}));
+  const w=window.OperatorServices.S.wizard=api.fresh();
+  api.fillFromIntake(w,{intake_id:'intake',status:'pending_admin',document_status:'submitted',
+    service:{service_order_number:'EXT-008',customer_name:'Socio',customer_document:'20111222333',customer_phone:'1155554444',
+      vehicle_make_model:'Ford Fiesta',origin:'Origen Maps',destination:'Destino Maps',origin_place_id:'map-o',origin_lat:-34.6,origin_lng:-58.4,
+      destination_place_id:'map-d',destination_lat:-34.7,destination_lng:-58.5,assigned_driver_id:'driver',assigned_truck_id:3},
+    remito:{remito_id:99,status:'firmado',km_reales:28},
+    addons:{tolls:[{toll_name:'Peaje',quantity:2,total_amount:5000,customer_payment_method:'cash'}],
+      excesses:[{concept_name:'Espera',quantity:1,total_amount:8000,customer_payment_method:'not_collected'}]}
+  });
+  const reported=JSON.stringify(w.reportedAddons);
+  await api.selectCompany('provider');await api.changeBase('base');await api.selectPrimary('type');
+  assert.equal(w.data.service_order_number,'EXT-008');assert.equal(w.data.customer_document,'20111222333');assert.equal(w.data.customer_phone,'1155554444');
+  assert.equal(w.data.origin_place_id,'map-o');assert.equal(w.data.destination_place_id,'map-d');assert.equal(w.reportedDistanceKm,28);
+  assert.equal(JSON.stringify(w.reportedAddons),reported);
+  const payload=api.createPayload();assert.equal(payload.commercial_addons.tolls.length,0);assert.equal(payload.commercial_addons.excess_charges.length,0);
+  for(const key of ['customer_name','customer_document','customer_phone','origin','destination','origin_place_id','assigned_driver_id'])assert.equal(api.locked(key),true,key);
+  api.setVal('customer_document','changed');assert.equal(w.data.customer_document,'20111222333');
+  assert.equal(api.locked('company_id'),false);assert.equal(api.locked('billing_base_id'),false);
+});
+
+test('service details read current remito and charges without consulting a stale desk row',async()=>{
+  const {api,window}=wizardContext();
+  window.OperatorServices.service=()=>{throw Error('stale table read');};
+  const w=window.OperatorServices.S.wizard=api.fresh('view','service');
+  const ctx={service:{service_id:'service',remito_id:44,remito_status:'firmado',customer_document:'20333444555',reported_distance_km:15},
+    commercial_addons:{tolls:[],excess_charges:[]},reported_addons:{tolls:[{total_amount:3500}],excesses:[]}};
+  api.fillFromContext(w,ctx);await api.loadCommercial('service',ctx);
+  assert.equal(w.remitoId,44);assert.equal(w.data.customer_document,'20333444555');assert.equal(w.reportedAddons.tolls[0].total_amount,3500);
+});
+
+test('customer document participates in general required modes and edit payload',()=>{
+  const {api,window}=wizardContext();const s=window.OperatorServices.S,w=s.wizard=api.fresh('edit','service');
+  s.moduleConfig.field_modes.customer_document='required';
+  assert.ok(api.requiredErrors(w.data).some(e=>e.includes('DNI / CUIT')));
+  w.original=JSON.parse(JSON.stringify(w.data));w.data.customer_document='20123456789';
+  assert.equal(api.editPayload().customer_document,'20123456789');
+  s.moduleConfig.field_modes.customer_document='hidden';
+  assert.equal(api.requiredErrors(w.data).some(e=>e.includes('DNI / CUIT')),false);
+});
+
+test('Maps status never treats empty or null coordinates as verified zero',()=>{
+  const {api}=moduleContext('operator-service-workspace-reactive-v1.js','hasCoordinate');
+  for(const value of [null,undefined,'',' ','abc'])assert.equal(api.hasCoordinate(value),false);
+  for(const value of [0,'0',-34.6])assert.equal(api.hasCoordinate(value),true);
+});
+
+test('link preview shows conflicts while missing administrative fields remain fillable',()=>{
+  const {api}=moduleContext('operator-services.js','intakeDifferences');
+  const result=api.intakeDifferences({customer_name:'Nombre Operaciones',customer_phone:'',origin:'Origen Operaciones'},{customer_name:'Nombre firmado',customer_phone:'1155555555',origin:'Origen firmado'});
+  assert.deepEqual(Array.from(result,row=>row.key),['customer_name','origin']);
+  assert.equal(result[0].administrative,'Nombre Operaciones');assert.equal(result[0].reported,'Nombre firmado');
+});

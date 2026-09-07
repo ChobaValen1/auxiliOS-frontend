@@ -17,7 +17,7 @@ const config=read('config.js'),sw=read('sw.js'),pkg=read('package.json');
 test('edición sigue auditada y usa un solo workspace',()=>{
  assert.match(legacy,/operator_service_changes/i);
  assert.match(canonical,/create or replace function public\.update_operator_service/i);
- assert.match(wizard,/get_operator_service_edit_context/);
+ assert.match(wizard,/get_operator_service_handoff_context_v1/);
  assert.match(wizard,/update_operator_service/);
  assert.match(workspace,/data-mode="\$\{w\.mode\}"/);
  assert.doesNotMatch(config,/operator-service-edit\.js|operator-service-edit\.css/);
