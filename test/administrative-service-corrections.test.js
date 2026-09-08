@@ -1,6 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const {PGlite}=require('@electric-sql/pglite');
 const sql=fs.readFileSync('migrations/20260908125223_administrative_service_corrections_v1.sql','utf8');
+const commercialUi=fs.readFileSync('operator-service-commercial-addons-v1.js','utf8');
+const commercialCss=fs.readFileSync('operator-service-commercial-addons-v1.css','utf8');
 test('administrative RPC: protects signed customer, keeps original, rejects stale edits and never finalizes',async t=>{
  const db=new PGlite();t.after(()=>db.close());
  await db.exec(fs.readFileSync('test/fixtures/driver-handoff-schema.sql','utf8'));
@@ -41,4 +43,12 @@ test('administrative pricing core never rewrites a signed remito',()=>{
  assert.match(core,/v_remito_locked:=coalesce\(v_remito_status in/);
  assert.match(core,/if v_service.remito_id is not null and not v_remito_locked then update public.remitos/);
  assert.doesNotMatch(core,/if v_remito_locked and v_structural_changed then/);
+});
+test('administrative corrections reuse the canonical Nuevo servicio commercial UI',()=>{
+ assert.match(commercialUi,/osca-actions/);
+ assert.match(commercialUi,/osca-panel tolls/);
+ assert.match(commercialUi,/osca-matrix-row/);
+ assert.match(commercialUi,/Guardar no aprueba ni finaliza/);
+ assert.doesNotMatch(commercialUi,/class="osaa-line"/);
+ assert.match(commercialCss,/Administrative corrections reuse the same commercial matrix as Nuevo servicio/);
 });
