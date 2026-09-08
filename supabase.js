@@ -1542,13 +1542,13 @@ async function cargarCombustible(truckId) {
 
 async function registrarCombustible(datos) {
   try {
-    const { error } = await _db.from('fuel_records').insert(datos);
+    const { data, error } = await _db.rpc('create_driver_fuel_record_v1', { p_payload: datos });
     if (error) {
       console.error('[Combustible] Error al insertar:', error.message);
       // Error de validación/DB → no tiene sentido reintentar
       return { ok: false, isValidation: true, errorMsg: error.message };
     }
-    return { ok: true };
+    return { ok: true, data };
   } catch (err) {
     // Error de red/conexión → se puede reintentar
     console.error('[Combustible] Error de red:', err);

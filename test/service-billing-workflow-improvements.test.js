@@ -28,7 +28,7 @@ function sourceSlice(source, startMarker, endMarker) {
 
 test('el modal definitivo de creación se carga antes de liberar la navegación', () => {
   const critical = functionBody(config, 'loadCriticalAuxiliosModules', 'loadGeographicBasesInBackground');
-  const secondary = sourceSlice(config, 'async function loadSecondaryAuxiliosModules()', '\n\nsetNavigationBooting(true);');
+  const secondary = sourceSlice(config, 'async function loadSecondaryAuxiliosModules()', 'setNavigationBooting(true);');
 
   assert.match(critical, /operator-service-workspace-reactive-v1\.css/);
   assert.match(critical, /operator-service-commercial-addons-v1\.css/);

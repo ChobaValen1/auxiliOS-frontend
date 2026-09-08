@@ -5847,7 +5847,15 @@ try {
     set('cb-precio',  d.precio_por_litro);
     set('cb-km',      d.km);
     set('cb-estacion', d.estacion);
-    set('cb-fecha',   d.fecha);
+    // Un año mal leído hacía que la carga se guardara, pero desapareciera del
+    // listado reciente (que ordena por fuel_date). Solo aceptar fechas cercanas.
+    let fechaTicketValida = false;
+    if (d.fecha) {
+      const fechaDetectada = new Date(`${d.fecha}T12:00:00`);
+      const diferenciaDias = Math.abs(Date.now() - fechaDetectada.getTime()) / 86400000;
+      fechaTicketValida = Number.isFinite(fechaDetectada.getTime()) && diferenciaDias <= 7;
+      if (fechaTicketValida) set('cb-fecha', d.fecha);
+    }
     if (d.litros && d.precio_por_litro) calcCombTotal();
 
     if (d.metodo_pago) {
@@ -5875,7 +5883,7 @@ try {
       d.total           && `Total $${d.total}`,
       d.estacion        && d.estacion,
       d.km              && `${d.km} km`,
-      d.fecha           && d.fecha,
+      d.fecha           && (fechaTicketValida ? d.fecha : `Fecha detectada descartada: ${d.fecha}`),
       d.patente         && `Patente: ${d.patente}`,
     ].filter(Boolean);
 
@@ -5937,9 +5945,13 @@ async function guardarCombustible() {
   if (selectedPayMethod === 'app' && !selectedApp) { _modalError('cb-error', 'Seleccioná la app de pago'); return; }
   _modalError('cb-error', '');
 
+  const jornadaCombustible = (_jornadasAbiertasCache || []).find(j =>
+    Number(j?.truck_id) === Number(_truckActual?.truck_id)
+  ) || (Number(_jornadaActivaLocal?.truck_id) === Number(_truckActual?.truck_id) ? _jornadaActivaLocal : null);
+
   const datos = {
     truck_id:        _truckActual.truck_id,
-    log_id:          _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null,
+    log_id:          jornadaCombustible?.log_id || null,
     fuel_date:       fecha || new Date().toISOString().slice(0, 10),
     liters:          litros,
     price_per_liter: precio,
@@ -5947,6 +5959,7 @@ async function guardarCombustible() {
     payment_method:  selectedPayMethod,
     payment_app:     selectedPayMethod === 'app' ? selectedApp : null,
     gas_station:     estacion,
+    created_at_device: new Date().toISOString(),
   };
   datos.log_id = await _resolverLogIdLocal(datos.log_id);
 
@@ -5954,7 +5967,6 @@ async function guardarCombustible() {
   // encolar en el outbox unificado
   if (!navigator.onLine || _logIdEsTemporal(datos.log_id)) {
     // created_at_device = momento real de la carga → clave de idempotencia del handler
-    datos.created_at_device = new Date().toISOString();
     await obAdd({
       tipo: 'fuel',
       payload: datos,
@@ -10409,7 +10421,10 @@ async function guardarNuevoVehiculo() {
   // LÓGICA BIFURCADA: ¿Insertamos o Actualizamos?
   if (vehiculoEditandoId) {
     // MODO EDICIÓN
-    const { error } = await _db.from('trucks').update(payload).eq('truck_id', vehiculoEditandoId);
+    const { error } = await _db.rpc('admin_update_truck_v2', {
+      p_truck_id: vehiculoEditandoId,
+      p_payload: payload,
+    });
     error_res = error;
   } else {
     // MODO CREACIÓN (Le agregamos status activo por defecto)
