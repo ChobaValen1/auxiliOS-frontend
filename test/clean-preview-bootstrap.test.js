@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'driver-operator-handoff-v46-20260907'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'administrative-service-corrections-v47-20260908'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });

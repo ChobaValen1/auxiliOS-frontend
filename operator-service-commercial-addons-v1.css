@@ -111,3 +111,18 @@
 [data-intake="true"] .osca-remito-card>small{font-size:11px;line-height:1.5}
 [data-intake="true"] .osca-format-list>button{min-height:44px}
 [data-intake="true"] .osca-format-list b{font-size:12px}
+/* Editable operational values; the signed report remains a collapsed reference. */
+.osaa-current{display:grid;gap:14px;color:var(--text,#e6edf3)}
+.osaa-current>header,.osaa-group>header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.osaa-current small{color:var(--muted,#9ca9bb)}
+.osaa-group{border-top:1px solid var(--border,#303744);padding-top:12px;display:grid;gap:10px}
+.osaa-line{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;background:var(--surface,#171d28);border-radius:10px}
+.osaa-line label{display:grid;gap:4px;font-size:12px;min-width:0}
+.osaa-line input,.osaa-line select{width:100%;min-width:0;min-height:40px;background:#10151e;color:#e6edf3;border:1px solid #3b4554;border-radius:6px;padding:8px}
+.osaa-concept,.osaa-line small{grid-column:1/-1}
+.osaa-line>[data-aa-remove]{min-height:36px;border:1px solid rgba(226,80,74,.35);border-radius:7px;background:rgba(226,80,74,.1);color:#ff8580;font-size:11px;font-weight:800;cursor:pointer}
+.osaa-line>[data-aa-remove]:hover,.osaa-line>[data-aa-remove]:focus-visible{outline:none;border-color:#e2504a;background:rgba(226,80,74,.18)}
+.osaa-original summary{cursor:pointer;color:#9ca9bb;padding:10px 0}
+.osaa-correction{color:#ffbd54;font-size:11px;cursor:pointer;max-width:100%;margin-top:4px}
+.osaa-correction p{overflow-wrap:anywhere;color:#bdc7d5;font-size:12px}
+@media(max-width:600px){.osaa-line input,.osaa-line select{font-size:16px;min-height:44px}}

@@ -45,7 +45,7 @@ test('el modal administrativo abre directo en una revisión global de dos column
   assert.match(review,/paymentLabel/);
   assert.match(review,/chooseGlobalAction/);
   for(const action of ['rejected','adjusted','accepted'])assert.match(review,new RegExp(`data-review-global-action="${action}"`));
-  assert.match(review,/resolve_operator_service_document_v4/);
+  assert.match(review,/resolve_operator_service_document_v5/);
   assert.doesNotMatch(review,/reviewActions|comparisonSection|applySection|data-review-action=/);
   assert.doesNotMatch(review,/<table|os-review-table|os-review-comparison-group|os-review-group-header/);
   assert.doesNotMatch(review,/Evidencias cargadas por el chofer|Firma del socio|data-remito-evidence|os-signed-document/);

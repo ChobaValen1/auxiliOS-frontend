@@ -102,7 +102,7 @@ test('vigencias se resuelven por fecha del servicio y propagan herencia hasta un
 
 test('Nuevo/Ver/Editar Servicio consumen Base real y el mismo workspace',()=>{
   assert.match(wizard,/get_operator_service_context_v1/);
-  assert.match(wizard,/get_operator_service_handoff_context_v1/);
+  assert.match(wizard,/get_operator_service_handoff_context_v2/);
   assert.match(wizard,/billing_base_id/);
   assert.match(wizard,/openCreate/);
   assert.match(wizard,/openView/);

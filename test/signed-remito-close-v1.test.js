@@ -33,7 +33,7 @@ test('Servicios muestra el firmado y cierra documento servicio viaje y recursos 
   assert.match(review,/chooseGlobalAction/);
   assert.match(review,/data-review-global-action="accepted"/);
   assert.doesNotMatch(review,/reviewActions|comparisonSection|applySection|data-review-action=/);
-  assert.match(review,/resolve_operator_service_document_v4/);
+  assert.match(review,/resolve_operator_service_document_v5/);
   assert.match(review,/approve_and_finalize/);
   assert.match(migration,/remito_approved_and_service_finalized/);
   assert.match(migration,/document_status = 'approved'/);

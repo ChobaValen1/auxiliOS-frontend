@@ -82,8 +82,9 @@ test('intake preloads all signed fields and keeps reported charges apart through
   assert.equal(w.data.service_order_number,'EXT-008');assert.equal(w.data.customer_document,'20111222333');assert.equal(w.data.customer_phone,'1155554444');
   assert.equal(w.data.origin_place_id,'map-o');assert.equal(w.data.destination_place_id,'map-d');assert.equal(w.reportedDistanceKm,28);
   assert.equal(JSON.stringify(w.reportedAddons),reported);
-  const payload=api.createPayload();assert.equal(payload.commercial_addons.tolls.length,0);assert.equal(payload.commercial_addons.excess_charges.length,0);
-  for(const key of ['customer_name','customer_document','customer_phone','origin','destination','origin_place_id','assigned_driver_id'])assert.equal(api.locked(key),true,key);
+  assert.equal(w.data.commercial_addons.tolls.length,1);assert.equal(w.data.commercial_addons.excess_charges.length,1);
+  for(const key of ['customer_name','customer_document','customer_phone','assigned_driver_id'])assert.equal(api.locked(key),true,key);
+  for(const key of ['service_order_number','origin','destination','origin_place_id'])assert.equal(api.locked(key),false,key);
   api.setVal('customer_document','changed');assert.equal(w.data.customer_document,'20111222333');
   assert.equal(api.locked('company_id'),false);assert.equal(api.locked('billing_base_id'),false);
 });

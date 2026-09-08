@@ -21,11 +21,11 @@ window._db={rpc:async(name,args)=>{
       origin_place_id:'qa-o',destination_place_id:'qa-d',origin_formatted_address:'Av. Corrientes 1234, Buenos Aires',destination_formatted_address:'Av. Maipú 2450, Olivos',
       assigned_driver_id:'driver',assigned_truck_id:1,operator_notes:'Traslado completado. Sin observaciones adicionales.'},
     remito:{remito_id:999,nro_remito:'R-QA-001',status:'firmado',km_reales:28},
-    addons:{tolls:[{toll_name:'Peaje Acceso Norte',quantity:1,total_amount:3000,customer_payment_method:'cash'},{toll_name:'Peaje Ramal Tigre',quantity:1,total_amount:2500,customer_payment_method:'transfer'}],
-      excesses:[{concept_name:'Espera adicional',quantity:1,total_amount:10000,customer_payment_method:'not_collected'}],evidence:[]}},error:null};
-  if(name==='get_operator_service_context_v1')return {data:{bases:[{base_id:'base',name:'Base central',latitude:-34.6,longitude:-58.4}],services:[{concept_id:'type',name:'Remolque',category:'primary',available:true,has_price:true}],billing:{route_mode:'origin_destination'}},error:null};
+    addons:{tolls:[{toll_id:'toll1',toll_report_id:'report1',toll_name:'Peaje Acceso Norte',quantity:1,unit_amount:3000,total_amount:3000,customer_payment_method:'cash'},{toll_id:'toll2',toll_report_id:'report2',toll_name:'Peaje Ramal Tigre',quantity:1,unit_amount:2500,total_amount:2500,customer_payment_method:'transfer'}],
+      excesses:[{concept_id:'excess1',excess_report_id:'report3',concept_name:'Espera adicional',quantity:1,unit_amount:10000,total_amount:10000,customer_payment_method:'not_collected'}],evidence:[]}},error:null};
+  if(name==='get_operator_service_context_v1')return {data:{bases:[{base_id:'base',name:'Base central',latitude:-34.6,longitude:-58.4}],services:[{concept_id:'type',name:'Remolque',category:'primary',available:true,has_price:true},{concept_id:'excess1',name:'Espera adicional',category:'secondary',can_be_secondary:true,available:true,has_price:true}],billing:{route_mode:'origin_destination'}},error:null};
   if(name==='get_operator_resource_availability')return {data:{drivers:[],trucks:[]},error:null};
-  if(name==='list_toll_catalog')return {data:[],error:null};
+  if(name==='list_toll_catalog')return {data:[{toll_id:'toll1',name:'Peaje Acceso Norte',rates:[]},{toll_id:'toll2',name:'Peaje Ramal Tigre',rates:[]}],error:null};
   if(name==='check_recent_provider_code_v3')return {data:{duplicate:false},error:null};
   return {data:null,error:{message:'QA: guardado deshabilitado; esta pantalla no se conecta a datos reales.'}};
 },functions:{invoke:async()=>({data:{distanceMeters:28000,durationSeconds:2100,provider:'google_routes'},error:null})}};
