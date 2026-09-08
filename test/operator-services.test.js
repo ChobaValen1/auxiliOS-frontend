@@ -4,6 +4,8 @@ const fs=require('node:fs');
 const services=fs.readFileSync('operator-services.js','utf8');
 const css=fs.readFileSync('operator-services.css','utf8');
 const workspaceCss=fs.readFileSync('operator-service-workspace-reactive-v1.css','utf8');
+const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
+const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
 const config=fs.readFileSync('config.js','utf8');
 const settings=fs.readFileSync('service-module-configuration.js','utf8');
 const lifecycle=fs.readFileSync('migrations/20260813104500_service_module_configuration_v1.sql','utf8');
@@ -123,11 +125,19 @@ test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido
 });
 
 test('Agregar concepto y Observaciones mantienen el workspace compacto',()=>{
+  assert.doesNotMatch(workspace,/toggleAttribute\('hidden',!!w\.intakeId\)/);
+  assert.match(workspace,/if\(concepts\)concepts\.hidden=false/);
   assert.match(workspaceCss,/\.osv2-add-concept-trigger\{min-height:25px!important;padding:0 8px!important[^}]*font-size:7\.7px!important/);
   assert.match(workspaceCss,/\.vehicle-card,.osv4-reactive \.distance-card,.osv4-reactive \.osv2-observations\{padding:7px!important/);
   assert.doesNotMatch(workspaceCss,/driver-instructions-card/);
   assert.match(workspaceCss,/\.osv2-observations\{display:grid!important;min-width:0;border:1px solid var\(--osv2-border\);border-radius:11px;background:var\(--osv2-card\)/);
   assert.match(workspaceCss,/\.route-column textarea\{min-height:52px!important;padding:6px 8px!important\}/);
+});
+
+test('un código duplicado conserva la integridad y explica cómo vincular el remito',()=>{
+  assert.match(wizard,/function duplicateProviderMessage/);
+  assert.match(wizard,/volvé a Vincular para asociar el remito al servicio existente/);
+  assert.match(wizard,/duplicateProviderMessage\(error\.message,w\.data\.service_order_number\)/);
 });
 
 test('Servicios registra header, Activos e Historial y mantiene el flujo de facturación',()=>{
