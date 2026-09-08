@@ -33,7 +33,7 @@ test('los obligatorios sin campo nativo aparecen en una card antes de la firma',
   assert.match(js,/Configuración → Servicios → Formulario/);
   assert.match(js,/Email del cliente/);
   assert.match(js,/Observaciones del servicio/);
-  assert.match(js,/Indicaciones para el chofer/);
+  assert.doesNotMatch(js,/Indicaciones para el chofer|phase3-service-driver-instructions/);
   assert.match(js,/Orden de compra/);
   assert.match(js,/Antes de firmar completá:/);
 });

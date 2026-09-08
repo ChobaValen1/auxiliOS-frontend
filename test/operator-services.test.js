@@ -122,9 +122,10 @@ test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido
   assert.doesNotMatch(amountDueMigration,/from public\.operator_service_tolls/);
 });
 
-test('Agregar concepto es más compacto y Observaciones e Indicaciones comparten tarjeta y padding',()=>{
+test('Agregar concepto y Observaciones mantienen el workspace compacto',()=>{
   assert.match(workspaceCss,/\.osv2-add-concept-trigger\{min-height:25px!important;padding:0 8px!important[^}]*font-size:7\.7px!important/);
-  assert.match(workspaceCss,/\.vehicle-card,.osv4-reactive \.distance-card,.osv4-reactive \.driver-instructions-card,.osv4-reactive \.osv2-observations\{padding:7px!important/);
+  assert.match(workspaceCss,/\.vehicle-card,.osv4-reactive \.distance-card,.osv4-reactive \.osv2-observations\{padding:7px!important/);
+  assert.doesNotMatch(workspaceCss,/driver-instructions-card/);
   assert.match(workspaceCss,/\.osv2-observations\{display:grid!important;min-width:0;border:1px solid var\(--osv2-border\);border-radius:11px;background:var\(--osv2-card\)/);
   assert.match(workspaceCss,/\.route-column textarea\{min-height:52px!important;padding:6px 8px!important\}/);
 });

@@ -170,11 +170,9 @@
 .osv4-note{min-height:16px;color:var(--osv2-muted2);font-size:8px;line-height:1.3}
 .osv4-note:empty{display:none}
 
-.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{padding:7px!important;gap:5px!important}
+.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .osv2-observations{padding:7px!important;gap:5px!important}
 .osv4-reactive .osv2-observations{display:grid!important;min-width:0;border:1px solid var(--osv2-border);border-radius:11px;background:var(--osv2-card);color:var(--osv2-text)!important}
 .osv4-reactive .osv2-observations>span{min-height:13px;color:var(--osv2-text);font-size:10px;font-weight:800;line-height:1.2}
-.osv4-reactive .driver-instructions-card .osv2-section-label{min-height:13px;margin:0}
-.osv4-reactive .driver-instructions-card .osv2-section-label b{font-size:10px}
 .osv4-reactive .route-column textarea{min-height:52px!important;padding:6px 8px!important}
 .osv4-reactive .route-column>.osv2-card,.osv4-reactive .route-column>.osv2-observations{flex:none}
 

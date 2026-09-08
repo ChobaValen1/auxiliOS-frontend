@@ -102,10 +102,10 @@ test('conceptos crecen con el workspace y no crean un scroll interno',()=>{
   assert.match(workspaceCss,/\.osv4-concept-table\{[^}]*overflow:visible/);
 });
 
-test('origen destino es compacto y observaciones e indicaciones permanecen en columna 2',()=>{
+test('origen destino y observaciones permanecen compactos en columna 2',()=>{
   assert.match(workspace,/osv4-location-head/);
   assert.match(workspace,/rows="3" data-key="operator_notes"/);
-  assert.match(workspace,/rows="3" data-key="driver_instructions"/);
+  assert.doesNotMatch(workspace,/driver_instructions|Indicaciones para el chofer|osv4-driver-notes/);
   assert.match(workspaceCss,/\.osv2-location\{display:grid;gap:3px;padding:6px 7px\}/);
   assert.match(workspaceCss,/\.osv4-reactive \.route-column textarea\{min-height:52px!important/);
 });
