@@ -15420,15 +15420,15 @@ function _jadminRenderKpis(k) {
   const $ = (id) => document.getElementById(id);
   if (!k) return;
   if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = k.abiertasAhora ?? 0;
-  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = `${k.choferesActivos ?? 0} choferes activos`;
+  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = k.abiertasContexto || `${k.choferesActivos ?? 0} choferes activos`;
   if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
   if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
-  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${Math.round(k.horasTotalPeriodo ?? 0)}h`;
-  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `prom. ${k.promHorasJornada ?? 0} h/jornada`;
-  if ($('jadmin-kpi-taller'))       $('jadmin-kpi-taller').textContent       = k.tallerPeriodo ?? 0;
-  if ($('jadmin-kpi-taller-sub'))   $('jadmin-kpi-taller-sub').textContent   = `${k.pctTaller ?? 0}% del período`;
+  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${k.promHorasJornada ?? 0}h`;
+  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = 'promedio por jornada';
+  if ($('jadmin-kpi-servicios'))     $('jadmin-kpi-servicios').textContent    = (k.serviciosPeriodo ?? 0).toLocaleString('es-AR');
+  if ($('jadmin-kpi-servicios-sub')) $('jadmin-kpi-servicios-sub').textContent = 'en el período';
 }
 
 function _jadminAplicarFiltrosClientSide(rows) {
@@ -15696,6 +15696,12 @@ function _jadminRenderDetalle(det) {
         border: 1px solid var(--border, #1f2937); border-radius: 8px; font-size: 12px;
       }
       #jd-content .jd-item .lft { display:flex; flex-direction:column; gap:2px; min-width:0; }
+      #jd-content .jd-service-seq {
+        width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.38);
+        color: var(--blue, #3b82f6); font-family: 'DM Mono', monospace; font-weight: 800;
+      }
       #jd-content .jd-item .rgt { font-family: 'DM Mono', monospace; font-weight: 600; white-space: nowrap; }
       #jd-content .jd-empty { color: var(--muted2); font-size: 12px; padding: 6px 2px; }
       #jd-content .jd-badge {
@@ -15786,7 +15792,7 @@ function _jadminRenderDetalle(det) {
   const serviciosCard = `
     <div class="jd-card">
       <h4>Servicios <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${trips.length})</span></h4>
-      ${trips.length ? `<div class="jd-list">${trips.map(t => {
+      ${trips.length ? `<div class="jd-list">${trips.map((t, index) => {
         const nro     = t.nro_servicio ? `#${_escHtml(t.nro_servicio)}` : (t.nro_remito ? `#${_escHtml(t.nro_remito)}` : '');
         const origen  = _escHtml(t.origin || '—');
         const destino = _escHtml(t.destination || '—');
@@ -15803,6 +15809,7 @@ function _jadminRenderDetalle(det) {
 
         return `
           <div class="jd-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px">
+            <span class="jd-service-seq" aria-label="Servicio ${index + 1}">${index + 1}</span>
             <div style="min-width:0;flex:1">
               <div style="font-weight:600">${nro}${patente ? ` <span style="color:var(--muted2);font-weight:400;font-size:11px">· ${patente}</span>` : ''}</div>
               <div style="color:var(--muted2);font-size:11.5px">${origen} → ${destino}</div>

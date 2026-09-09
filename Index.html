@@ -2160,8 +2160,8 @@
   #screen-jornadas-admin .kpi.km       .kpi-val { color: var(--green); }
   #screen-jornadas-admin .kpi.horas    { border-left-color: #a855f7; }
   #screen-jornadas-admin .kpi.horas    .kpi-val { color: #a855f7; }
-  #screen-jornadas-admin .kpi.taller   { border-left-color: var(--red); }
-  #screen-jornadas-admin .kpi.taller   .kpi-val { color: var(--red); }
+  #screen-jornadas-admin .kpi.servicios   { border-left-color: var(--red); }
+  #screen-jornadas-admin .kpi.servicios   .kpi-val { color: var(--red); }
 
   #screen-jornadas-admin .filtros {
     background: var(--card);
@@ -2415,17 +2415,6 @@
     font-size: 11px;
   }
 
-  #screen-jornadas-admin .leyenda {
-    margin-top: 16px;
-    padding: 10px 14px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    display: flex; gap: 20px; flex-wrap: wrap;
-    font-size: 11px; color: var(--muted2);
-  }
-  #screen-jornadas-admin .leyenda span { display: inline-flex; align-items: center; gap: 6px; }
-
   @media (max-width: 900px) {
     #screen-jornadas-admin .jadmin-kpis { grid-template-columns: repeat(2, 1fr); }
     #screen-jornadas-admin .filtros { grid-template-columns: 1fr 1fr; }
@@ -2454,10 +2443,10 @@
       <div class="kpi-val" id="jadmin-kpi-horas">—</div>
       <div class="kpi-sub" id="jadmin-kpi-horas-sub">—</div>
     </div>
-    <div class="kpi taller">
-      <div class="kpi-lbl">En taller</div>
-      <div class="kpi-val" id="jadmin-kpi-taller">—</div>
-      <div class="kpi-sub" id="jadmin-kpi-taller-sub">—</div>
+    <div class="kpi servicios">
+      <div class="kpi-lbl">Servicios</div>
+      <div class="kpi-val" id="jadmin-kpi-servicios">—</div>
+      <div class="kpi-sub" id="jadmin-kpi-servicios-sub">—</div>
     </div>
   </div>
 
@@ -2550,18 +2539,6 @@
         <button id="jadmin-next">→</button>
       </div>
     </div>
-  </div>
-
-  <!-- LEYENDA -->
-  <div class="leyenda">
-    <span><span class="dot g"></span> Cerrada</span>
-    <span><span class="dot a"></span> Abierta</span>
-    <span><span class="dot r"></span> Anulada</span>
-    <span style="color:var(--green)">✓ OK</span><span>rendición cuadra</span>
-    <span style="color:var(--red)">-$X</span><span>faltante</span>
-    <span style="color:var(--amber)">+$X</span><span>sobrante</span>
-    <span>⚠ N incidentes registrados</span>
-    <span><span class="pill pill-amber" style="padding:1px 6px;font-size:9px">Sí</span> en taller</span>
   </div>
 
 </div><!-- /screen-jornadas-admin -->
