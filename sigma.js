@@ -8188,13 +8188,33 @@ async function abrirModalNuevaJornada() {
     const modal = document.getElementById('modal-nueva-jornada');
     if (modal) { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
 
+    const lista = document.getElementById('lista-camiones-selector');
+    if (lista) lista.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Comprobando disponibilidad...</div>';
+    const camiones = typeof cargarDisponibilidadCamiones === 'function'
+      ? await cargarDisponibilidadCamiones()
+      : [];
+
     // Si hay camión pre-seleccionado desde la pantalla de selección, usarlo directamente
     const preview    = document.getElementById('camion-seleccionado-preview');
     const previewTxt = document.getElementById('camion-preview-texto');
     const btnSelector = document.getElementById('btn-abrir-selector-camion');
     const panel = document.getElementById('panel-selector-camion');
 
-    if (_camionActual) {
+    const camionActualDisponible = camiones.find(c => Number(c.truck_id) === Number(_camionActual?.truck_id));
+    if (_camionActual && camionActualDisponible?.has_open_journey) {
+      closeModal('modal-nueva-jornada');
+      toast(
+        camionActualDisponible.is_own_open_journey
+          ? 'Ya tenés una jornada abierta. Cerrala antes de iniciar otra.'
+          : 'Este camión ya tiene una jornada abierta y no puede seleccionarse.',
+        'warning'
+      );
+      if (camionActualDisponible.is_own_open_journey) goTo('registro');
+      return;
+    }
+
+    if (_camionActual && camionActualDisponible) {
+      _camionActual = { ..._camionActual, ...camionActualDisponible };
       jornadaSeleccionada = _camionActual;
       const kmInput2 = document.getElementById('nj-km-inicio');
       if (kmInput2 && _camionActual.current_km) kmInput2.value = _camionActual.current_km;
@@ -8209,17 +8229,11 @@ async function abrirModalNuevaJornada() {
     if (btnSelector) { btnSelector.style.display = ''; btnSelector.textContent = '🚛 Seleccionar Camión'; }
     if (panel)      panel.style.display = 'none';
 
-    // Precargar camiones en background
-    const hoy = new Date().toISOString().slice(0, 10);
-    const [camiones, { data: jornadasAbiertas }] = await Promise.all([
-        cargarCamiones(),
-        _db.from('daily_logs').select('truck_id, users(full_name)').eq('log_date', hoy).eq('status', 'open')
-    ]);
-
     const enUso = {};
-    (jornadasAbiertas || []).forEach(j => { enUso[j.truck_id] = j.users?.full_name || 'otro chofer'; });
+    camiones.filter(c => c.has_open_journey).forEach(c => {
+      enUso[c.truck_id] = c.occupied_by_name || 'otro chofer';
+    });
 
-    const lista = document.getElementById('lista-camiones-selector');
     if (!lista) return;
 
     if (!camiones.length) {

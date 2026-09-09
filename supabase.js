@@ -343,6 +343,15 @@ async function _finalizarInicializacion() {
 let _camionSelTmp  = null;
 let _selCamionData = null;
 
+async function cargarDisponibilidadCamiones() {
+  const { data, error } = await _db.rpc('get_driver_truck_availability_v1');
+  if (error) {
+    console.error('[Camiones] No se pudo cargar la disponibilidad:', error.message);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
+}
+
 async function mostrarPantallaSeleccionCamion() {
   document.querySelector('.sidenav').style.display = 'none';
   document.querySelector('.main').style.display    = 'none';
@@ -381,27 +390,20 @@ async function mostrarPantallaSeleccionCamion() {
 
   div.style.display = 'block';
 
-  const [camiones, { data: jornadasAbiertas }, { data: miJornada }] = await Promise.all([
-    cargarCamiones(),
-    _db.from('daily_logs').select('truck_id, driver_id, users(full_name)').eq('status', 'open'),
-    _db.from('daily_logs')
-      .select('log_id, truck_id, trucks(truck_id, plate, brand, model, current_km, numero_interno)')
-      .eq('driver_id', USUARIO_ACTUAL.id)
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-  ]);
+  const camiones = await cargarDisponibilidadCamiones();
+  const miJornada = camiones.find(c => c.is_own_open_journey) || null;
 
   const enUso = {};
-  (jornadasAbiertas || []).forEach(j => { enUso[j.truck_id] = j.users?.full_name || 'otro chofer'; });
+  camiones.filter(c => c.has_open_journey).forEach(c => {
+    enUso[c.truck_id] = c.occupied_by_name || 'otro chofer';
+  });
 
   const lista = document.getElementById('lista-sel-camion');
   if (!lista) return;
 
   // ── El conductor tiene una jornada abierta: mostrar aviso y bloquear selección ──
-  if (miJornada?.trucks) {
-    const t      = miJornada.trucks;
+  if (miJornada) {
+    const t      = miJornada;
     const patente = t.plate || '—';
     const modelo  = [t.brand, t.model].filter(Boolean).join(' ');
     const interno = t.numero_interno ? ` · N° ${t.numero_interno}` : '';
@@ -433,7 +435,7 @@ async function mostrarPantallaSeleccionCamion() {
     lista.before(aviso);
 
     // Guardar datos de la jornada para los botones
-    window._jornadaActivaPendiente = { truck: t, logId: miJornada.log_id };
+    window._jornadaActivaPendiente = { truck: t, logId: miJornada.open_log_id };
 
     // Mostrar las cards de todos los camiones pero todas bloqueadas
     lista.style.opacity = '0.35';
