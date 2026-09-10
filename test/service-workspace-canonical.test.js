@@ -149,3 +149,14 @@ test('PWA incluye solo el workspace y configuración canónicos',()=>{
   assert.match(sw,/operator-service-commercial-addons-v1\.js/);
   assert.doesNotMatch(sw,/operator-active-desk|operator-services-block-a|operator-service-edit|operator-service-reajuste|operator-service-v2\.js|operator-reference-loader/);
 });
+
+test('teléfono DNI CUIT y kilómetros aceptan sólo formato numérico',()=>{
+  assert.match(workspace,/id="osv4-phone" type="tel" inputmode="numeric" pattern="\[0-9\]\*"/);
+  assert.match(workspace,/id="osv4-document" type="tel" inputmode="numeric" pattern="\[0-9\]\{7,11\}" minlength="7" maxlength="11"/);
+  assert.match(workspace,/id="osv4-asphalt" type="text" inputmode="decimal"/);
+  assert.match(workspace,/id="osv4-gravel" type="text" inputmode="decimal"/);
+  assert.match(workspace,/function decimal\(value\)/);
+  assert.match(wizard,/if\(key==='customer_phone'\)value=digits\(value,15\)/);
+  assert.match(wizard,/if\(key==='customer_document'\)value=digits\(value,11\)/);
+  assert.match(wizard,/DNI \/ CUIT debe contener únicamente entre 7 y 11 dígitos/);
+});

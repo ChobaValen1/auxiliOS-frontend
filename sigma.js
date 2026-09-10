@@ -590,8 +590,8 @@ function remWizardReset() {
     kmRemito.setAttribute('aria-readonly', 'true');
   }
 
-  const tipo = document.getElementById('rem-tipo-servicio'); 
-  if (tipo) tipo.value = 'Servicio de grúa'; 
+  const tipo = document.getElementById('rem-tipo-servicio');
+  if (tipo) tipo.value = '';
 
   const total = document.getElementById('imp-total'); 
   if (total) total.textContent = '$0';
@@ -729,7 +729,6 @@ function _remWizardValidar(paso) {
   };
   
   if (_remWizardEsAdHoc() && paso === 1) {
-    marcar('rem-tipo-servicio', 'err-tipo');
     marcar('rem-patente', 'err-patente');
     marcar('rem-origen', 'err-origen');
     marcar('rem-destino', 'err-destino');
@@ -1341,10 +1340,10 @@ async function _finalizarRemitoInner() {
   const _fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const _rand  = Math.floor(Math.random() * 9000) + 1000;
   const nro       = document.getElementById('rem-nro')?.value || `REM-${_fecha}-${_rand}`;
-  const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
   const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
     ? window.obtenerServicioAsignadoRemito()
     : null;
+  const tipo      = String(servicioAsignado?.concept_name || '').trim() || (_remWizardEsAdHoc() ? 'A definir por Operaciones' : 'Servicio');
   let patente     = document.getElementById('rem-patente')?.value?.trim() || servicioAsignado?.vehicle_plate || '';
   const km        = document.getElementById('rem-km')?.value || '0';
   let origen      = document.getElementById('rem-origen')?.value?.trim() || servicioAsignado?.origin || '';
@@ -1375,8 +1374,8 @@ async function _finalizarRemitoInner() {
     const el=document.getElementById(id);
     if(el&&!el.value&&value)el.value=value;
   });
-  if (cuit && !/^\d{7,11}$/.test(cuit) && !/^\d{2}-\d{7,8}-\d{1}$/.test(cuit)) {
-    mostrarValidacion('⚠️ DNI/CUIT inválido', `El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso ${_remWizardPasoCliente()}.`);
+  if (cuit && !/^\d{7,11}$/.test(cuit)) {
+    mostrarValidacion('⚠️ DNI/CUIT inválido', `El DNI/CUIT debe contener únicamente entre 7 y 11 dígitos. Corregilo en el paso ${_remWizardPasoCliente()}.`);
     remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
@@ -7709,7 +7708,6 @@ async function guardarRemitoPendiente() {
   }
   try {
   const nro       = document.getElementById('rem-nro')?.value;
-  const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
   const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
   const km        = document.getElementById('rem-km')?.value || '0';
   const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
@@ -7736,9 +7734,13 @@ async function guardarRemitoPendiente() {
   const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
     ? obtenerServicioActivoRemito()
     : sessionStorage.getItem('auxilios_phase3_service_id');
+  const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
+    ? window.obtenerServicioAsignadoRemito()
+    : null;
   const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
     ? esRemitoAdHocActivo()
     : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+  const tipo = String(servicioAsignado?.concept_name || '').trim() || (adHocMode ? 'A definir por Operaciones' : 'Servicio');
   const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
   if (adHocMode && !mapLocations) {
     toast('Seleccioná origen y destino desde Google Maps', 'error');
@@ -7888,7 +7890,6 @@ function completarRemitoPendiente(r) {
   };
   set('rem-nro',            r.nro);
   set('rem-patente',        r.patente);
-  set('rem-tipo-servicio',  r.tipo);
   set('rem-origen',         r.origen);
   set('rem-destino',        r.destino);
   window.AuxiliosRemitoMobileV3?.restoreMapLocations?.(r);

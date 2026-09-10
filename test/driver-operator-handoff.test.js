@@ -109,6 +109,18 @@ test('customer document participates in general required modes and edit payload'
   assert.equal(api.requiredErrors(w.data).some(e=>e.includes('DNI / CUIT')),false);
 });
 
+test('service creation normalizes phone and DNI and validates document length',()=>{
+  const {api,window}=wizardContext(),w=window.OperatorServices.S.wizard=api.fresh();
+  api.setVal('customer_phone','+54 (11) 5555-4444');
+  api.setVal('customer_document','20-12345678-9');
+  assert.equal(w.data.customer_phone,'541155554444');
+  assert.equal(w.data.customer_document,'20123456789');
+  w.data.customer_document='123456';
+  assert.ok(api.requiredErrors(w.data).some(e=>e.includes('entre 7 y 11 dígitos')));
+  w.data.customer_document='1234567';
+  assert.equal(api.requiredErrors(w.data).some(e=>e.includes('entre 7 y 11 dígitos')),false);
+});
+
 test('Maps status never treats empty or null coordinates as verified zero',()=>{
   const {api}=moduleContext('operator-service-workspace-reactive-v1.js','hasCoordinate');
   for(const value of [null,undefined,'',' ','abc'])assert.equal(api.hasCoordinate(value),false);

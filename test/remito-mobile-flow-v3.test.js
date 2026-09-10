@@ -49,8 +49,9 @@ test('el ingreso sin asignación usa cinco pasos independientes y validaciones p
   assert.match(flow,/function reindexPanels/);
   assert.match(flow,/reindexPanels\(panels,2\)/);
   assert.match(flow,/reindexPanels\(panels,1\)/);
-  assert.match(flow,/Este ingreso quedará pendiente de vinculación por Operaciones/);
-  for(const slot of ['order','type','plate','vehicle','origin','destination','km'])assert.match(flow,new RegExp(`data-ad-hoc="${slot}"`));
+  assert.match(flow,/Este ingreso quedará pendiente de vinculación y clasificación por Operaciones/);
+  for(const slot of ['order','plate','vehicle','origin','destination','km'])assert.match(flow,new RegExp(`data-ad-hoc="${slot}"`));
+  assert.doesNotMatch(flow,/data-ad-hoc="type"/);
   assert.match(flow,/setHeader\(customer,adHocMode\?2:1,'Datos del socio'\)/);
   assert.match(flow,/setHeader\(evidence,adHocMode\?4:3,'Evidencia y observaciones'\)/);
   assert.match(flow,/adHocMode\?'Confirmaciones y firma':'Conformidad y firma'/);
@@ -290,4 +291,13 @@ test('el wizard muestra exclusivamente el paso activo',()=>{
   assert.match(css,/\.rmv-flow \.rem-step-panel\.active\{display:block!important\}/);
   assert.match(css,/\.rmv-flow \.rmv-signature-step\.active\{display:grid!important/);
   assert.doesNotMatch(css,/@media\(max-width:480px\)\{\.rmv-signature-step\{display:grid!important/);
+});
+
+test('el Chofer no clasifica el tipo de servicio y Operaciones queda como fuente',()=>{
+  const html=read('Index.html'),flow=read('remito-mobile-flow-v3.js'),sigma=read('sigma.js'),bridge=read('operator-service-bridge.js');
+  assert.match(html,/<input type="hidden" id="rem-tipo-servicio" value="">/);
+  assert.doesNotMatch(flow,/data-ad-hoc="type"|err-tipo|attach\('rem-tipo-servicio','type'\)/);
+  assert.doesNotMatch(sigma,/marcar\('rem-tipo-servicio', 'err-tipo'\)/);
+  assert.match(sigma,/servicioAsignado\?\.concept_name[\s\S]*A definir por Operaciones/);
+  assert.doesNotMatch(bridge,/const type=document\.getElementById\('rem-tipo-servicio'\)/);
 });
