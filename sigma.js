@@ -7692,6 +7692,9 @@ function _mostrarBorradorEnServiciosActivos() {
   showRemitosView('lista');
   window.cambiarVistaServiciosChofer?.('active');
 }
+function _actualizarEstadoGuardadoRemito(btn, texto) {
+  if (btn) btn.textContent = texto;
+}
 async function guardarRemitoPendiente() {
   if (_guardandoRemitoPendiente) {
     toast('El remito ya se está guardando. Esperá un momento.', 'info');
@@ -7801,7 +7804,6 @@ async function guardarRemitoPendiente() {
     _obRemitoTemp[nro] = tempId; // para que la firma del mismo nro dependa de esta op
     const dependeDe = _logIdEsTemporal(_logId) ? _logId : null;
     await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, blobs: Object.keys(blobs).length ? blobs : null, dependeDe, tempId });
-    try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
     _mostrarBorradorEnServiciosActivos();
     toast(`Remito ${nro} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
     return true;
@@ -7814,9 +7816,11 @@ async function guardarRemitoPendiente() {
   if (operatorServiceId && typeof guardarRemitoVinculado === 'function') {
     try {
       if (addonBundle?.payload) {
+        if (addonBundle.files?.length) _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Subiendo evidencia…');
         const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
         Object.assign(remitoDB, uploaded);
       }
+      _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
       data = await guardarRemitoVinculado(remitoDB, operatorServiceId);
     } catch (linkedError) {
       error = linkedError;
@@ -7824,14 +7828,17 @@ async function guardarRemitoPendiente() {
   } else if (adHocMode && typeof guardarRemitoAdHoc === 'function') {
     try {
       if (addonBundle?.payload) {
+        if (addonBundle.files?.length) _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Subiendo evidencia…');
         const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
         Object.assign(remitoDB, uploaded);
       }
+      _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
       data = await guardarRemitoAdHoc(remitoDB);
     } catch (adHocError) {
       error = adHocError;
     }
   } else {
+    _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
     ({ data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));
   }
 
@@ -7844,8 +7851,6 @@ async function guardarRemitoPendiente() {
 
   console.log("✅ Remito guardado en BD exitosamente:", data);
 
-  await cargarRemitos();
-  await window.actualizarServiciosAsignados?.();
   _mostrarBorradorEnServiciosActivos();
   toast(`Remito ${nro} guardado como pendiente ✓`, 'success');
   return true;

@@ -151,7 +151,9 @@ test('guardar y seguir después restaura todos los datos del socio',()=>{
   assert.match(sigma,/set\('rem-cuit',\s*r\.cuit\)/);
   assert.match(sigma,/set\('rem-telefono',\s*r\.telefono\)/);
   assert.match(sigma,/dispatchEvent\(new Event\('input', \{ bubbles: true \}\)\)/);
-  assert.match(sigma,/await window\.actualizarServiciosAsignados\?\.\(\)/);
+  const save=sigma.slice(sigma.indexOf('async function guardarRemitoPendiente()'),sigma.indexOf('function completarRemitoPendiente'));
+  assert.doesNotMatch(save,/await window\.actualizarServiciosAsignados\?\.\(\)/);
+  assert.match(save,/_mostrarBorradorEnServiciosActivos\(\)/);
   assert.match(bridge,/if\(!s\?\.service_id\)return false/);
   assert.doesNotMatch(bridge,/if\(!s\?\.remito_id\|\|s\.remito_status!==['"]pendiente['"]\)return false/);
 });

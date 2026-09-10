@@ -110,13 +110,16 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   assert.doesNotMatch(css,/\.p3-service-card\.priority-/);
 });
 
-test('guardar pendiente fuerza un refresco de la cola aunque exista otra carga en curso',()=>{
+test('guardar pendiente vuelve a Activos sin esperar recargas duplicadas',()=>{
   const js=read('operator-service-bridge.js'),sigma=read('sigma.js');
   assert.match(js,/async function loadQueue\(\{silent=false,force=false\}=\{\}\)/);
   assert.match(js,/if\(P3\.loading\)\{if\(force\)P3\.reloadAfterCurrent=true;return P3\.queuePromise\|\|false\}/);
   assert.match(js,/if\(reload\)await loadQueue\(\{silent:true\}\)/);
   assert.match(js,/actualizarServiciosAsignados:\(\)=>loadQueue\(\{force:true\}\)/);
-  assert.match(sigma,/await window\.actualizarServiciosAsignados\?\.\(\)/);
+  const save=sigma.slice(sigma.indexOf('async function guardarRemitoPendiente()'),sigma.indexOf('function completarRemitoPendiente'));
+  assert.doesNotMatch(save,/await cargarRemitos\(\)/);
+  assert.doesNotMatch(save,/await window\.actualizarServiciosAsignados\?\.\(\)/);
+  assert.match(save,/_mostrarBorradorEnServiciosActivos\(\);\s*toast\(`Remito \$\{nro\} guardado como pendiente/);
 });
 
 test('el remito sin asignación pendiente de firma permanece en Activos y no en Historial',()=>{
