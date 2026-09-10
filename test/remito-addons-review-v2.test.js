@@ -169,13 +169,15 @@ test('offline conserva líneas y archivos estables para reintentos',()=>{
   assert.match(migration,/remito_excess_reports_line_unique unique\(remito_id,client_line_id\)/);
 });
 
-test('Servicios usa bandeja y una revisión global mínima, sin aprobación ciega en el menú',()=>{
-  assert.match(review,/Remitos recibidos/);
+test('Servicios abre la revisión desde cada servicio y no duplica una bandeja de remitos',()=>{
+  assert.doesNotMatch(review,/Remitos recibidos|os-remito-inbox|renderInbox/);
+  assert.match(services,/Remitos a revisar/);
+  assert.match(services,/S\.status==='remito_review'\?pendingRemitoReview\(s\)/);
   assert.match(review,/Planificado/);
   assert.match(review,/Informado/);
-  assert.match(review,/DNI\/CUIT/);
-  assert.match(review,/remito_excess_total/);
-  assert.match(review,/remito_toll_total/);
+  assert.match(services,/DNI\/CUIT/);
+  assert.match(services,/remito_excess_total/);
+  assert.match(services,/remito_toll_total/);
   assert.doesNotMatch(review,/Confirmar revisión y finalizar servicio|Confirmar revisión y habilitar Facturación/);
   assert.match(review,/reportedExcessPayment/);
   assert.match(review,/resolve_operator_service_document_v5/);

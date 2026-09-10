@@ -1,7 +1,7 @@
 (function(){
   'use strict';
 
-  const R={detail:null,services:[],serviceId:null,action:null,resolving:false};
+  const R={detail:null,serviceId:null,action:null,resolving:false};
   const $=(selector,root=document)=>root.querySelector(selector);
   const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
   const esc=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
@@ -12,7 +12,6 @@
   const EMPTY_LABELS={toll:{planned:'Sin peajes planificados',reported:'Sin peajes informados'},excess:{planned:'Sin excedentes planificados',reported:'Sin excedentes informados'}};
   const tollCoverageLabel=(mode,assigned=true)=>TOLL_COVERAGE_LABELS[String(mode||'')]||(assigned?'Sin formato configurado':'A definir por Operaciones');
   const paymentLabel=value=>PAYMENT_LABELS[String(value||'')]||String(value||'Sin medio informado');
-  const dateTime=value=>value?new Date(value).toLocaleString('es-AR'):'—';
   const role=()=>String(typeof PERFIL_USUARIO==='undefined'?'':(PERFIL_USUARIO?.roles?.name||PERFIL_USUARIO?.role||'')).toLowerCase();
   const canResolve=()=>['administracion','operador'].includes(role());
   const rowKey=()=>globalThis.crypto?.randomUUID?.()||'10000000-1000-4000-8000-100000000000'.replace(/[018]/g,char=>(Number(char)^Math.random()*16>>Number(char)/4).toString(16));
@@ -20,27 +19,9 @@
   function inject(){
     const screen=$('#screen-operaciones');
     if(!screen)return false;
-    if(!$('#os-remito-inbox'))$('#os-driver-intakes',screen)?.insertAdjacentHTML('afterend','<section id="os-remito-inbox" class="os-remito-inbox" hidden><header><div><b>Remitos recibidos</b><small>Revisión y cierre de remitos firmados.</small></div><span id="os-remito-inbox-count" class="os-remito-inbox-count">0</span></header><div id="os-remito-inbox-list" class="os-remito-inbox-list"></div></section>');
     if(!$('#os-remito-review-modal'))document.body.insertAdjacentHTML('beforeend','<div id="os-remito-review-modal" class="os-review-modal" hidden><div class="os-review-shell"><header><div><b id="os-review-title">Revisión y cierre</b><small id="os-review-subtitle">Control operativo del remito</small></div><div class="os-review-header-actions"><button class="os-review-close" type="button" onclick="AuxiliosRemitoReviewV2.close()" aria-label="Cerrar revisión">×</button></div></header><div id="os-review-body" class="os-review-body"></div><footer id="os-review-footer" class="os-review-footer"></footer></div></div>');
     bindBodyEvents();
     return true;
-  }
-
-  function needsReview(service){return !!service.remito_id&&(service.document_status==='submitted'||(service.document_status==='approved'&&['pending','legacy'].includes(service.remito_addons_review_status)))&&service.billing_status!=='invoiced'}
-
-  function renderInbox(services){
-    if(!inject())return;
-    R.services=services||[];
-    const rows=R.services.filter(needsReview),panel=$('#os-remito-inbox'),list=$('#os-remito-inbox-list'),count=$('#os-remito-inbox-count');
-    if(!panel||!list)return;
-    panel.hidden=!rows.length;
-    if(count)count.textContent=String(rows.length);
-    list.innerHTML=rows.map(service=>{
-      const extras=[`Peajes: ${num(service.remito_toll_count)} · ${money(service.remito_toll_total)}`,`Excedentes: ${num(service.remito_excess_count)} · ${money(service.remito_excess_total)}`,`Evidencias: ${num(service.remito_evidence_count)}`].join(' · ');
-      const driverData=[service.remito_customer_name,service.remito_customer_document&&`DNI/CUIT ${service.remito_customer_document}`,service.remito_customer_phone&&`Tel. ${service.remito_customer_phone}`].filter(Boolean).join(' · ');
-      const action=canResolve()&&['at_origin','completed'].includes(service.status)?'Revisar y cerrar':'Ver remito';
-      return `<article class="os-remito-inbox-item"><div><b>${esc(service.service_order_number||service.service_number)} · ${esc(service.remito_number||'Remito')}</b><small>${esc(service.company_name||'Prestadora')} · ${esc(service.remito_vehicle_plate||service.vehicle_plate||'Sin patente')} · Firmado ${esc(dateTime(service.remito_signed_at))}</small><small class="os-toll-coverage">Formato de cobro de peajes: ${esc(tollCoverageLabel(service.toll_coverage_mode))}</small>${driverData?`<small>${esc(driverData)}</small>`:''}<small>${esc(extras)}</small></div><button type="button" class="btn btn-primary" onclick="AuxiliosRemitoReviewV2.open('${service.service_id}')">${action}</button></article>`;
-    }).join('');
   }
 
   function paymentOptions(value){
@@ -240,6 +221,6 @@
   }
 
   function tab(){}
-  window.AuxiliosRemitoReviewV2={renderInbox,open,retry,close,openEvidence,resolve,chooseGlobalAction,cancelGlobalAction,commitGlobalAction,addLine,toggleLineCancel,tab};
-  const boot=setInterval(()=>{if(inject()){clearInterval(boot);renderInbox(window.OperatorServices?.S?.services||[])}},100);setTimeout(()=>clearInterval(boot),15000);
+  window.AuxiliosRemitoReviewV2={open,retry,close,openEvidence,resolve,chooseGlobalAction,cancelGlobalAction,commitGlobalAction,addLine,toggleLineCancel,tab};
+  const boot=setInterval(()=>{if(inject())clearInterval(boot)},100);setTimeout(()=>clearInterval(boot),15000);
 })();

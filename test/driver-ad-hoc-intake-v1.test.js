@@ -47,7 +47,8 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   assert.match(link,/s\.assigned_truck_id is distinct from i\.truck_id/);
   assert.match(link,/service_origin='driver_ad_hoc'/);
   assert.match(link,/administrative_review_status='pending'/);
-  assert.match(services,/Ingresos iniciados por Chofer/);
+  assert.match(services,/Ingresos sin servicio/);
+  assert.match(services,/<details id="os-driver-intakes"/);
   assert.match(services,/link_driver_service_intake_v1/);
   assert.match(services,/Crear servicio con estos datos/);
   assert.match(services,/crearServicioDesdeIngresoChofer/);
