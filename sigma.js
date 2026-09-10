@@ -6029,7 +6029,15 @@ try {
     set('cb-precio',  d.precio_por_litro);
     set('cb-km',      d.km);
     set('cb-estacion', d.estacion);
-    set('cb-fecha',   d.fecha);
+    // Un año mal leído hacía que la carga se guardara, pero desapareciera del
+    // listado reciente (que ordena por fuel_date). Solo aceptar fechas cercanas.
+    let fechaTicketValida = false;
+    if (d.fecha) {
+      const fechaDetectada = new Date(`${d.fecha}T12:00:00`);
+      const diferenciaDias = Math.abs(Date.now() - fechaDetectada.getTime()) / 86400000;
+      fechaTicketValida = Number.isFinite(fechaDetectada.getTime()) && diferenciaDias <= 7;
+      if (fechaTicketValida) set('cb-fecha', d.fecha);
+    }
     if (d.litros && d.precio_por_litro) calcCombTotal();
 
     if (d.metodo_pago) {
@@ -6057,7 +6065,7 @@ try {
       d.total           && `Total $${d.total}`,
       d.estacion        && d.estacion,
       d.km              && `${d.km} km`,
-      d.fecha           && d.fecha,
+      d.fecha           && (fechaTicketValida ? d.fecha : `Fecha detectada descartada: ${d.fecha}`),
       d.patente         && `Patente: ${d.patente}`,
     ].filter(Boolean);
 
@@ -6119,9 +6127,13 @@ async function guardarCombustible() {
   if (selectedPayMethod === 'app' && !selectedApp) { _modalError('cb-error', 'Seleccioná la app de pago'); return; }
   _modalError('cb-error', '');
 
+  const jornadaCombustible = (_jornadasAbiertasCache || []).find(j =>
+    Number(j?.truck_id) === Number(_truckActual?.truck_id)
+  ) || (Number(_jornadaActivaLocal?.truck_id) === Number(_truckActual?.truck_id) ? _jornadaActivaLocal : null);
+
   const datos = {
     truck_id:        _truckActual.truck_id,
-    log_id:          _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null,
+    log_id:          jornadaCombustible?.log_id || null,
     fuel_date:       fecha || new Date().toISOString().slice(0, 10),
     liters:          litros,
     price_per_liter: precio,
@@ -6129,6 +6141,7 @@ async function guardarCombustible() {
     payment_method:  selectedPayMethod,
     payment_app:     selectedPayMethod === 'app' ? selectedApp : null,
     gas_station:     estacion,
+    created_at_device: new Date().toISOString(),
   };
   datos.log_id = await _resolverLogIdLocal(datos.log_id);
 
@@ -6136,7 +6149,6 @@ async function guardarCombustible() {
   // encolar en el outbox unificado
   if (!navigator.onLine || _logIdEsTemporal(datos.log_id)) {
     // created_at_device = momento real de la carga → clave de idempotencia del handler
-    datos.created_at_device = new Date().toISOString();
     await obAdd({
       tipo: 'fuel',
       payload: datos,
@@ -8477,13 +8489,33 @@ async function abrirModalNuevaJornada() {
     const modal = document.getElementById('modal-nueva-jornada');
     if (modal) { modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
 
+    const lista = document.getElementById('lista-camiones-selector');
+    if (lista) lista.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">Comprobando disponibilidad...</div>';
+    const camiones = typeof cargarDisponibilidadCamiones === 'function'
+      ? await cargarDisponibilidadCamiones()
+      : [];
+
     // Si hay camión pre-seleccionado desde la pantalla de selección, usarlo directamente
     const preview    = document.getElementById('camion-seleccionado-preview');
     const previewTxt = document.getElementById('camion-preview-texto');
     const btnSelector = document.getElementById('btn-abrir-selector-camion');
     const panel = document.getElementById('panel-selector-camion');
 
-    if (_camionActual) {
+    const camionActualDisponible = camiones.find(c => Number(c.truck_id) === Number(_camionActual?.truck_id));
+    if (_camionActual && camionActualDisponible?.has_open_journey) {
+      closeModal('modal-nueva-jornada');
+      toast(
+        camionActualDisponible.is_own_open_journey
+          ? 'Ya tenés una jornada abierta. Cerrala antes de iniciar otra.'
+          : 'Este camión ya tiene una jornada abierta y no puede seleccionarse.',
+        'warning'
+      );
+      if (camionActualDisponible.is_own_open_journey) goTo('registro');
+      return;
+    }
+
+    if (_camionActual && camionActualDisponible) {
+      _camionActual = { ..._camionActual, ...camionActualDisponible };
       jornadaSeleccionada = _camionActual;
       const kmInput2 = document.getElementById('nj-km-inicio');
       if (kmInput2 && _camionActual.current_km) kmInput2.value = _camionActual.current_km;
@@ -8498,17 +8530,11 @@ async function abrirModalNuevaJornada() {
     if (btnSelector) { btnSelector.style.display = ''; btnSelector.textContent = '🚛 Seleccionar Camión'; }
     if (panel)      panel.style.display = 'none';
 
-    // Precargar camiones en background
-    const hoy = new Date().toISOString().slice(0, 10);
-    const [camiones, { data: jornadasAbiertas }] = await Promise.all([
-        cargarCamiones(),
-        _db.from('daily_logs').select('truck_id, users(full_name)').eq('log_date', hoy).eq('status', 'open')
-    ]);
-
     const enUso = {};
-    (jornadasAbiertas || []).forEach(j => { enUso[j.truck_id] = j.users?.full_name || 'otro chofer'; });
+    camiones.filter(c => c.has_open_journey).forEach(c => {
+      enUso[c.truck_id] = c.occupied_by_name || 'otro chofer';
+    });
 
-    const lista = document.getElementById('lista-camiones-selector');
     if (!lista) return;
 
     if (!camiones.length) {
@@ -10710,7 +10736,10 @@ async function guardarNuevoVehiculo() {
   // LÓGICA BIFURCADA: ¿Insertamos o Actualizamos?
   if (vehiculoEditandoId) {
     // MODO EDICIÓN
-    const { error } = await _db.from('trucks').update(payload).eq('truck_id', vehiculoEditandoId);
+    const { error } = await _db.rpc('admin_update_truck_v2', {
+      p_truck_id: vehiculoEditandoId,
+      p_payload: payload,
+    });
     error_res = error;
   } else {
     // MODO CREACIÓN (Le agregamos status activo por defecto)
@@ -15692,15 +15721,15 @@ function _jadminRenderKpis(k) {
   const $ = (id) => document.getElementById(id);
   if (!k) return;
   if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = k.abiertasAhora ?? 0;
-  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = `${k.choferesActivos ?? 0} choferes activos`;
+  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = k.abiertasContexto || `${k.choferesActivos ?? 0} choferes activos`;
   if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
   if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
-  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${Math.round(k.horasTotalPeriodo ?? 0)}h`;
-  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `prom. ${k.promHorasJornada ?? 0} h/jornada`;
-  if ($('jadmin-kpi-taller'))       $('jadmin-kpi-taller').textContent       = k.tallerPeriodo ?? 0;
-  if ($('jadmin-kpi-taller-sub'))   $('jadmin-kpi-taller-sub').textContent   = `${k.pctTaller ?? 0}% del período`;
+  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${k.promHorasJornada ?? 0}h`;
+  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = 'promedio por jornada';
+  if ($('jadmin-kpi-servicios'))     $('jadmin-kpi-servicios').textContent    = (k.serviciosPeriodo ?? 0).toLocaleString('es-AR');
+  if ($('jadmin-kpi-servicios-sub')) $('jadmin-kpi-servicios-sub').textContent = 'en el período';
 }
 
 function _jadminAplicarFiltrosClientSide(rows) {
@@ -15968,6 +15997,12 @@ function _jadminRenderDetalle(det) {
         border: 1px solid var(--border, #1f2937); border-radius: 8px; font-size: 12px;
       }
       #jd-content .jd-item .lft { display:flex; flex-direction:column; gap:2px; min-width:0; }
+      #jd-content .jd-service-seq {
+        width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.38);
+        color: var(--blue, #3b82f6); font-family: 'DM Mono', monospace; font-weight: 800;
+      }
       #jd-content .jd-item .rgt { font-family: 'DM Mono', monospace; font-weight: 600; white-space: nowrap; }
       #jd-content .jd-empty { color: var(--muted2); font-size: 12px; padding: 6px 2px; }
       #jd-content .jd-badge {
@@ -16058,7 +16093,7 @@ function _jadminRenderDetalle(det) {
   const serviciosCard = `
     <div class="jd-card">
       <h4>Servicios <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${trips.length})</span></h4>
-      ${trips.length ? `<div class="jd-list">${trips.map(t => {
+      ${trips.length ? `<div class="jd-list">${trips.map((t, index) => {
         const nro     = t.nro_servicio ? `#${_escHtml(t.nro_servicio)}` : (t.nro_remito ? `#${_escHtml(t.nro_remito)}` : '');
         const origen  = _escHtml(t.origin || '—');
         const destino = _escHtml(t.destination || '—');
@@ -16075,6 +16110,7 @@ function _jadminRenderDetalle(det) {
 
         return `
           <div class="jd-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px">
+            <span class="jd-service-seq" aria-label="Servicio ${index + 1}">${index + 1}</span>
             <div style="min-width:0;flex:1">
               <div style="font-weight:600">${nro}${patente ? ` <span style="color:var(--muted2);font-weight:400;font-size:11px">· ${patente}</span>` : ''}</div>
               <div style="color:var(--muted2);font-size:11.5px">${origen} → ${destino}</div>

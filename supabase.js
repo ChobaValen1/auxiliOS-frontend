@@ -343,6 +343,15 @@ async function _finalizarInicializacion() {
 let _camionSelTmp  = null;
 let _selCamionData = null;
 
+async function cargarDisponibilidadCamiones() {
+  const { data, error } = await _db.rpc('get_driver_truck_availability_v1');
+  if (error) {
+    console.error('[Camiones] No se pudo cargar la disponibilidad:', error.message);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
+}
+
 async function mostrarPantallaSeleccionCamion() {
   document.querySelector('.sidenav').style.display = 'none';
   document.querySelector('.main').style.display    = 'none';
@@ -381,27 +390,20 @@ async function mostrarPantallaSeleccionCamion() {
 
   div.style.display = 'block';
 
-  const [camiones, { data: jornadasAbiertas }, { data: miJornada }] = await Promise.all([
-    cargarCamiones(),
-    _db.from('daily_logs').select('truck_id, driver_id, users(full_name)').eq('status', 'open'),
-    _db.from('daily_logs')
-      .select('log_id, truck_id, trucks(truck_id, plate, brand, model, current_km, numero_interno)')
-      .eq('driver_id', USUARIO_ACTUAL.id)
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-  ]);
+  const camiones = await cargarDisponibilidadCamiones();
+  const miJornada = camiones.find(c => c.is_own_open_journey) || null;
 
   const enUso = {};
-  (jornadasAbiertas || []).forEach(j => { enUso[j.truck_id] = j.users?.full_name || 'otro chofer'; });
+  camiones.filter(c => c.has_open_journey).forEach(c => {
+    enUso[c.truck_id] = c.occupied_by_name || 'otro chofer';
+  });
 
   const lista = document.getElementById('lista-sel-camion');
   if (!lista) return;
 
   // ── El conductor tiene una jornada abierta: mostrar aviso y bloquear selección ──
-  if (miJornada?.trucks) {
-    const t      = miJornada.trucks;
+  if (miJornada) {
+    const t      = miJornada;
     const patente = t.plate || '—';
     const modelo  = [t.brand, t.model].filter(Boolean).join(' ');
     const interno = t.numero_interno ? ` · N° ${t.numero_interno}` : '';
@@ -433,7 +435,7 @@ async function mostrarPantallaSeleccionCamion() {
     lista.before(aviso);
 
     // Guardar datos de la jornada para los botones
-    window._jornadaActivaPendiente = { truck: t, logId: miJornada.log_id };
+    window._jornadaActivaPendiente = { truck: t, logId: miJornada.open_log_id };
 
     // Mostrar las cards de todos los camiones pero todas bloqueadas
     lista.style.opacity = '0.35';
@@ -1439,19 +1441,19 @@ function mostrarPantallaLogin() {
     const div = document.createElement('div');
     div.id = 'pantalla-login';
     div.innerHTML = `
-      <div style="min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--bg);font-family:'DM Sans',sans-serif;padding:20px;box-sizing:border-box">
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:36px 32px;width:360px;max-width:100%;box-sizing:border-box">
-          <div style="text-align:center;margin-bottom:28px">
-            <img src="/assets/logo-auxilios-main.png" alt="AuxiliOS" style="max-width:180px;height:auto;display:block;margin:0 auto 12px" onerror="this.style.display='none';document.getElementById('login-title-fallback').style.display='block'">
+      <div class="login-shell">
+        <div class="login-card">
+          <div class="login-brand">
+            <img class="login-logo" src="/assets/logo-auxilios-main.png" alt="AuxiliOS" onerror="this.style.display='none';document.getElementById('login-title-fallback').style.display='block'">
             <div id="login-title-fallback" style="display:none;font-family:'Bebas Neue';font-size:32px;letter-spacing:3px;color:var(--amber)">AuxiliOS</div>
             <div style="font-size:12px;color:var(--muted);margin-top:6px">Iniciá sesión para continuar</div>
           </div>
-          <div style="margin-bottom:14px">
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Email o DNI</div>
+          <div class="login-field">
+            <label for="login-identifier">Email o DNI</label>
             <input id="login-identifier" class="form-input" type="text" placeholder="tu@email.com o 30123456" style="width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')ejecutarLogin()">
           </div>
-          <div style="margin-bottom:22px">
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Contraseña</div>
+          <div class="login-field login-password-field">
+            <label for="login-pass">Contraseña</label>
             <div style="position:relative">
               <input id="login-pass" class="form-input" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding-right:42px" onkeydown="if(event.key==='Enter')ejecutarLogin()">
               <button type="button" onclick="toggleLoginPassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1" id="login-pass-toggle">👁</button>
@@ -1826,13 +1828,13 @@ async function cargarCombustible(truckId) {
 
 async function registrarCombustible(datos) {
   try {
-    const { error } = await _db.from('fuel_records').insert(datos);
+    const { data, error } = await _db.rpc('create_driver_fuel_record_v1', { p_payload: datos });
     if (error) {
       console.error('[Combustible] Error al insertar:', error.message);
       // Error de validación/DB → no tiene sentido reintentar
       return { ok: false, isValidation: true, errorMsg: error.message };
     }
-    return { ok: true };
+    return { ok: true, data };
   } catch (err) {
     // Error de red/conexión → se puede reintentar
     console.error('[Combustible] Error de red:', err);
@@ -3774,14 +3776,27 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
     return q;
   };
 
-  const [abiertasRes, choferesRes, mesRes, tallerRes] = await Promise.all([
-    _db.from('daily_logs').select('log_id', { count: 'exact', head: true }).eq('status', 'open'),
+  let abiertasQuery = _db.from('daily_logs').select('log_id', { count: 'exact', head: true }).eq('status', 'open');
+  if (driverId) abiertasQuery = abiertasQuery.eq('driver_id', driverId);
+  if (truckId)  abiertasQuery = abiertasQuery.eq('truck_id', truckId);
+
+  const [abiertasRes, choferesRes, mesRes] = await Promise.all([
+    abiertasQuery,
     _db.from('users').select('user_id, roles!inner(name)', { count: 'exact', head: true }).eq('roles.name', 'chofer'),
     withRange(_db.from('daily_logs').select('log_id, km_recorridos, hora_inicio, hora_fin, in_workshop')),
-    withRange(_db.from('daily_logs').select('log_id', { count: 'exact', head: true }).eq('in_workshop', true)),
   ]);
 
   const jornadas = mesRes.data || [];
+  const logIds = jornadas.map(j => j.log_id);
+  let serviciosPeriodo = 0;
+  if (logIds.length) {
+    const serviciosRes = await _db
+      .from('remitos')
+      .select('remito_id', { count: 'exact', head: true })
+      .in('log_id', logIds)
+      .neq('status', 'anulado');
+    serviciosPeriodo = serviciosRes.count || 0;
+  }
   const kmTotal    = jornadas.reduce((s, j) => s + (Number(j.km_recorridos) || 0), 0);
   const horasTotal = jornadas.reduce((s, j) => s + _horasEntre(j.hora_inicio, j.hora_fin), 0);
 
@@ -3791,10 +3806,14 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
     jornadasPeriodo: jornadas.length,
     kmTotalPeriodo: kmTotal,
     horasTotalPeriodo: horasTotal,
-    tallerPeriodo: tallerRes.count || 0,
+    serviciosPeriodo,
     promKmJornada:   jornadas.length ? Math.round(kmTotal / jornadas.length)   : 0,
     promHorasJornada: jornadas.length ? (horasTotal / jornadas.length).toFixed(1) : '0',
-    pctTaller: jornadas.length ? ((tallerRes.count || 0) / jornadas.length * 100).toFixed(1) : '0',
+    abiertasContexto: driverId
+      ? 'del chofer seleccionado'
+      : truckId
+        ? 'del camión seleccionado'
+        : `${choferesRes.count || 0} choferes activos`,
   };
 }
 

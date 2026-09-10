@@ -3568,3 +3568,62 @@ body {
 @media (max-width: 640px) {
   .ra-grid { grid-template-columns: 1fr !important; }
 }
+
+/* Login: ocupa siempre el viewport completo y se adapta a desktop, tablet y teléfono. */
+#pantalla-login {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  min-height: 100dvh;
+  z-index: 10000;
+  overflow: auto;
+  background: var(--bg);
+}
+#pantalla-login .login-shell {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 48px);
+  box-sizing: border-box;
+  background: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+}
+#pantalla-login .login-card {
+  width: min(100%, 420px);
+  box-sizing: border-box;
+  padding: clamp(24px, 4vw, 38px) clamp(20px, 4vw, 34px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+}
+#pantalla-login .login-brand { text-align: center; margin-bottom: 28px; }
+#pantalla-login .login-logo {
+  display: block;
+  width: min(180px, 65%);
+  height: auto;
+  margin: 0 auto 12px;
+}
+#pantalla-login .login-field { margin-bottom: 14px; }
+#pantalla-login .login-password-field { margin-bottom: 22px; }
+#pantalla-login .login-field > label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+@media (max-width: 520px) {
+  #pantalla-login .login-shell { padding: 14px; }
+  #pantalla-login .login-card { padding: 26px 20px; border-radius: 12px; }
+  #pantalla-login .login-brand { margin-bottom: 24px; }
+}
+@media (max-height: 560px) {
+  #pantalla-login .login-shell { align-items: flex-start; padding-top: 14px; padding-bottom: 14px; }
+  #pantalla-login .login-card { padding-top: 20px; padding-bottom: 20px; }
+  #pantalla-login .login-brand { margin-bottom: 16px; }
+  #pantalla-login .login-logo { width: 140px; margin-bottom: 6px; }
+}
