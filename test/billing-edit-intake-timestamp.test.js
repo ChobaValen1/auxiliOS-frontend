@@ -7,6 +7,7 @@ const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
 const billing=fs.readFileSync('operator-billing.js','utf8');
 const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
 const services=fs.readFileSync('operator-services.js','utf8');
+const sigma=fs.readFileSync('sigma.js','utf8');
 
 test('el alta desde remito conserva la fecha y hora original del documento',()=>{
   assert.match(migration,/'scheduled_for',coalesce\(/);
@@ -19,6 +20,7 @@ test('el alta desde remito conserva la fecha y hora original del documento',()=>
   assert.match(wizard,/typeof intake==='string'\?intake:intake\?\.intake_id/);
   assert.match(wizard,/OperatorServiceWorkspaceV2\?\.hydrate\?\.\(\)/);
   assert.match(workspace,/function hydrate\(\)\{[\s\S]*sync\(true\);[\s\S]*requestAnimationFrame/);
+  assert.match(sigma,/inp\.closest\('\.osv4-reactive'\)/);
   assert.match(workspace,/if\(force&&\('defaultValue'in el\)\)el\.defaultValue=next/);
   assert.match(services,/openWizard\?\.\(intakeId\)/);
 });

@@ -9,6 +9,7 @@ let _jornadaActivaLocal = null;
 function _antiAutofillPatch(root = document) {
   const inputs = root.querySelectorAll('input:not([data-af-patched]), textarea:not([data-af-patched])');
   inputs.forEach(inp => {
+    if (inp.closest('.osv4-reactive')) return;
     inp.setAttribute('autocomplete', 'new-password');
     inp.setAttribute('autocorrect', 'off');
     inp.setAttribute('autocapitalize', 'off');
