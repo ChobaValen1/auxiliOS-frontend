@@ -20,6 +20,8 @@ test('el alta desde remito conserva la fecha y hora original del documento',()=>
   assert.match(wizard,/typeof intake==='string'\?intake:intake\?\.intake_id/);
   assert.match(wizard,/OperatorServiceWorkspaceV2\?\.hydrate\?\.\(\)/);
   assert.match(workspace,/function hydrate\(\)\{[\s\S]*sync\(true\);[\s\S]*requestAnimationFrame/);
+  assert.match(workspace,/setTimeout\(restoreLockedIntakeFields,500\)/);
+  assert.match(workspace,/function restoreLockedIntakeFields\(\)[\s\S]*if\(locked\(key\)\)setControl\(id,d\[key\],true\)/);
   assert.match(sigma,/inp\.closest\('\.osv4-reactive'\)/);
   assert.match(workspace,/if\(force&&\('defaultValue'in el\)\)el\.defaultValue=next/);
   assert.match(services,/openWizard\?\.\(intakeId\)/);
