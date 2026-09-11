@@ -151,8 +151,8 @@ test('PWA incluye solo el workspace y configuración canónicos',()=>{
 });
 
 test('teléfono DNI CUIT y kilómetros aceptan sólo formato numérico',()=>{
-  assert.match(workspace,/id="osv4-phone" type="tel" inputmode="numeric" pattern="\[0-9\]\*"/);
-  assert.match(workspace,/id="osv4-document" type="tel" inputmode="numeric" pattern="\[0-9\]\{7,11\}" minlength="7" maxlength="11"/);
+  assert.match(workspace,/id="osv4-phone" type="text" inputmode="numeric" pattern="\[0-9\]\*" maxlength="15" autocomplete="off"/);
+  assert.match(workspace,/id="osv4-document" type="text" inputmode="numeric" pattern="\[0-9\]\{7,11\}" minlength="7" maxlength="11" autocomplete="off"/);
   assert.match(workspace,/id="osv4-asphalt" type="text" inputmode="decimal"/);
   assert.match(workspace,/id="osv4-gravel" type="text" inputmode="decimal"/);
   assert.match(workspace,/function decimal\(value\)/);
