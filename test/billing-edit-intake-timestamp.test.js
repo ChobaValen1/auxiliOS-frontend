@@ -13,6 +13,7 @@ test('el alta desde remito conserva la fecha y hora original del documento',()=>
   assert.match(migration,/p_intake->>'created_at_device'/);
   assert.match(migration,/p_intake->>'created_at'/);
   assert.match(migration,/'created_at_device',r\.created_at_device/);
+  assert.match(wizard,/Object\.assign\(w\.data,service,\{scheduled_for:localDateTime\(service\.scheduled_for\)/);
 });
 
 test('el contexto del ingreso es authenticated-only y fuerza recarga de PostgREST',()=>{
