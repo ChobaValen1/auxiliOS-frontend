@@ -14,7 +14,7 @@ const locked=key=>Boolean(O()?.isServiceFieldLocked?.(key));
 const conceptsLocked=()=>Boolean(O()?.isSecondaryServiceLocked?.());
 
 function localParts(v){const [date,time='']=String(v||'').split('T');return{date,time:time.slice(0,5)}}
-function setControl(id,value,force=false){const el=document.getElementById(id);if(!el||(!force&&document.activeElement===el))return;el.value=value??'';}
+function setControl(id,value,force=false){const el=document.getElementById(id);if(!el||(!force&&document.activeElement===el))return;const next=value??'';if(force&&('defaultValue'in el))el.defaultValue=next;el.value=next;}
 function setText(id,value){const el=document.getElementById(id);if(el)el.textContent=value??'';}
 function setOptions(el,rows,value,placeholder){if(!el)return;el.innerHTML=`<option value="">${esc(placeholder)}</option>`+rows.map(x=>`<option value="${esc(x.value)}" ${x.disabled?'disabled':''}>${esc(x.label)}</option>`).join('');el.value=value??'';}
 function selectedBase(){const d=W()?.data||{};return(W()?.context?.bases||[]).find(x=>String(x.base_id)===String(d.billing_base_id));}
