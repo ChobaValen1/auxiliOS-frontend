@@ -162,6 +162,27 @@
   text-align: right;
 }
 
+.os-review-reconciliation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 24px;
+  border-bottom: 1px solid var(--osr-border);
+  background: rgba(39, 196, 122, .045);
+  color: var(--osr-muted-strong);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.os-review-reconciliation b {
+  flex: 0 0 auto;
+  color: var(--osr-green);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
 .os-review-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

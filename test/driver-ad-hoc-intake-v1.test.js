@@ -11,6 +11,7 @@ const bridge=read('operator-service-bridge.js');
 const services=read('operator-services.js');
 const orphanCleanup=read('migrations/20260826130000_driver_remito_orphan_cleanup_v1.sql');
 const mapsLocations=read('supabase/migrations/20260905184058_driver_remito_maps_locations.sql');
+const intakeWorkspace=read('supabase/migrations/20260911014705_operator_intake_workspace_and_addon_reconciliation_v1.sql');
 
 test('el ingreso del Chofer es operacional y no fabrica clasificación comercial',()=>{
   assert.match(migration,/create table if not exists public\.driver_service_intakes/);
@@ -51,8 +52,20 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   assert.match(services,/<details id="os-driver-intakes"/);
   assert.match(services,/link_driver_service_intake_v1/);
   assert.match(services,/Crear servicio con estos datos/);
+  assert.match(services,/list_driver_service_intakes_v2/);
+  assert.match(services,/Crear servicio/);
   assert.match(services,/crearServicioDesdeIngresoChofer/);
   assert.match(read('operator-service-wizard.js'),/Servicio creado e ingreso del Chofer vinculado/);
+});
+
+test('la mesa de ingresos expone por RPC el resumen operativo y de facturación',()=>{
+  assert.match(intakeWorkspace,/create or replace function public\.list_driver_service_intakes_v2/);
+  for(const key of ['service_code','created_at','origin_formatted_address','destination_formatted_address','km_traveled','customer_name','customer_document','customer_phone','driver_name','truck_label']){
+    assert.match(intakeWorkspace,new RegExp(`'${key}'`));
+  }
+  assert.match(intakeWorkspace,/coalesce\(r\.km_reales,tr\.km_traveled,0\)/);
+  assert.match(intakeWorkspace,/revoke all on function public\.list_driver_service_intakes_v2\(integer\) from public,anon/);
+  assert.match(services,/Código<\/span><span>Fecha<\/span><span>Origen<\/span><span>Destino<\/span><span>Km<\/span><span>Cliente<\/span><span>Chofer/);
 });
 
 test('el mismo contrato viaja por pendiente firma completa y outbox',()=>{

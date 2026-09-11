@@ -137,3 +137,18 @@ test('canonical navigation assets are loaded checked and precached', () => {
   assert.doesNotMatch(pkg, /frequent-navigation/);
   assert.ok(cacheVersion >= 163, `Expected cache version 163 or newer, received ${cacheVersion}`);
 });
+
+test('the desktop sidenav expands to labels and can collapse to emoji-only mode', () => {
+  const index = read('Index.html');
+  const css = read('sigma.css');
+  const sigma = read('sigma.js');
+
+  assert.match(index, /class="nav-collapse"/);
+  assert.match(index, /onclick="toggleSidenav\(\)"/);
+  assert.match(css, /--nav-w:\s+188px/);
+  assert.match(css, /body\.nav-collapsed\s*\{\s*--nav-w:\s*72px/);
+  assert.match(css, /body\.nav-collapsed \.nav-item \.nav-label/);
+  assert.match(sigma, /const SIDENAV_COLLAPSED_KEY/);
+  assert.match(sigma, /function toggleSidenav\(\)/);
+  assert.match(sigma, /aria-expanded/);
+});

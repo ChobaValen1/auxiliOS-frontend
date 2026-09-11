@@ -13,6 +13,7 @@ const matrixInlineReview=read('supabase/migrations/20260901123000_remito_review_
 const adjustmentWithoutReason=read('supabase/migrations/20260904173000_remito_adjustment_without_reason_v1.sql');
 const reviewRetry=read('supabase/migrations/20260904183000_remito_review_retry_v1.sql');
 const rejectedReasonOnly=read('supabase/migrations/20260904191000_remito_review_reason_rejected_only_v1.sql');
+const reconciliation=read('supabase/migrations/20260911014705_operator_intake_workspace_and_addon_reconciliation_v1.sql');
 const generatedTotalFix=read('migrations/20260827133500_remito_addons_generated_total_fix_v1.sql');
 const legacyScopeFix=read('migrations/20260827140500_remito_legacy_capture_scope_fix_v1.sql');
 const driver=read('remito-addons-v2.js');
@@ -180,7 +181,7 @@ test('Servicios abre la revisión desde cada servicio y no duplica una bandeja d
   assert.match(services,/remito_toll_total/);
   assert.doesNotMatch(review,/Confirmar revisión y finalizar servicio|Confirmar revisión y habilitar Facturación/);
   assert.match(review,/reportedExcessPayment/);
-  assert.match(review,/resolve_operator_service_document_v5/);
+  assert.match(review,/resolve_operator_service_document_v6/);
   assert.match(review,/Elegí Rechazar, Modificar o Aprobar/);
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
   assert.match(menu,/Ver remito firmado/);
@@ -197,10 +198,22 @@ test('la aprobación simplificada usa dos resúmenes y una única decisión glob
   assert.match(review,/os-review-report-line/);
   assert.match(review,/toggleLineCancel/);
   assert.match(review,/addLine/);
-  assert.match(review,/resolve_operator_service_document_v5/);
+  assert.match(review,/resolve_operator_service_document_v6/);
   assert.doesNotMatch(review,/reviewActions|comparisonSection|applySection|data-review-action=/);
   assert.doesNotMatch(review,/<table|os-review-table|os-review-comparison-group|os-review-group-header/);
   assert.doesNotMatch(review,/Responsable comercial|Cobrador<select|Decisión<select/);
+});
+
+test('la conciliación conserva lo planificado no reemplazado y completa el conjunto actual',()=>{
+  assert.match(reconciliation,/create or replace function public\.resolve_operator_service_document_v6/);
+  assert.match(reconciliation,/public\.resolve_operator_service_document_v5\(p_service_id,p_action,p_payload\)/);
+  assert.match(reconciliation,/planned\.source in \('planned','manual'\)/);
+  assert.match(reconciliation,/actual\.source='actual'/);
+  assert.match(reconciliation,/coalesce\(actual\.payer_agent,'provider'\)=coalesce\(planned\.payer_agent,'provider'\)/);
+  assert.match(reconciliation,/actual\.concept_id=planned\.concept_id/);
+  assert.match(reconciliation,/remito_addons_reconciled/);
+  assert.match(reconciliation,/accepted_imp_total_extras=round/);
+  assert.match(review,/Todo lo demás planificado se conserva para Facturación/);
 });
 
 test('Modificar no solicita motivo y Rechazar sí lo conserva obligatorio',()=>{
@@ -228,8 +241,8 @@ test('una revisión histórica pendiente puede reemplazarse atómicamente sin du
 
 test('Planificado e Informado son las dos columnas raíz y ambas contienen Peajes y Excedentes',()=>{
   assert.match(review,/class="os-review-summary-grid"/);
-  assert.match(review,/class="os-review-summary-column" data-review-side="planned"[\s\S]*>Planificado<[\s\S]*summarySection\('toll',[^)]*'planned'\)[\s\S]*summarySection\('excess',[^)]*'planned'\)/);
-  assert.match(review,/class="os-review-summary-column" data-review-side="reported"[\s\S]*Vigente · Corregido[\s\S]*Informado[\s\S]*summarySection\('toll',[^)]*'reported'\)[\s\S]*summarySection\('excess',[^)]*'reported'\)/);
+  assert.match(review,/class="os-review-summary-column" data-review-side="planned"[\s\S]*>Planificado por Operaciones<[\s\S]*summarySection\('toll',[^)]*'planned'\)[\s\S]*summarySection\('excess',[^)]*'planned'\)/);
+  assert.match(review,/class="os-review-summary-column" data-review-side="reported"[\s\S]*Informado · Corregido[\s\S]*Informado por el chofer[\s\S]*summarySection\('toll',[^)]*'reported'\)[\s\S]*summarySection\('excess',[^)]*'reported'\)/);
   assert.match(review,/class="os-review-global-actions"/);
   assert.doesNotMatch(review,/data-review-panel="document"|data-review-tab="document"|os-review-tabs/);
   assert.doesNotMatch(review,/os-review-matrix-row|os-review-matrix-head|os-review-comparison-card|os-review-compare-block|os-review-intro/);

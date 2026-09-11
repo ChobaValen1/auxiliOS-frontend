@@ -7691,6 +7691,21 @@ function _mostrarBorradorEnServiciosActivos() {
   showRemitosView('lista');
   window.cambiarVistaServiciosChofer?.('active');
 }
+
+const SIDENAV_COLLAPSED_KEY = 'auxilios.sidenav.collapsed';
+function setSidenavCollapsed(collapsed) {
+  const value = !!collapsed;
+  document.body.classList.toggle('nav-collapsed', value);
+  const button = document.querySelector('.nav-collapse');
+  if (button) {
+    button.setAttribute('aria-expanded', String(!value));
+    button.setAttribute('aria-label', value ? 'Expandir menú' : 'Contraer menú');
+    button.title = value ? 'Expandir menú' : 'Contraer menú';
+  }
+  try { localStorage.setItem(SIDENAV_COLLAPSED_KEY, value ? '1' : '0'); } catch (_) {}
+}
+function toggleSidenav() { setSidenavCollapsed(!document.body.classList.contains('nav-collapsed')); }
+try { setSidenavCollapsed(localStorage.getItem(SIDENAV_COLLAPSED_KEY) === '1'); } catch (_) { setSidenavCollapsed(false); }
 function _actualizarEstadoGuardadoRemito(btn, texto) {
   if (btn) btn.textContent = texto;
 }
