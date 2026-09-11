@@ -128,7 +128,7 @@ test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloqu
 
 test('renderer elimina callbacks vacíos sin consumidores',()=>{
   assert.doesNotMatch(workspace,/validationErrors:\(\)=>\[\]|updateValidationUI:\(\)=>\{\}/);
-  assert.match(workspace,/window\.OperatorServiceWorkspaceV2=\{render,sync,reset\}/);
+  assert.match(workspace,/window\.OperatorServiceWorkspaceV2=\{render,sync,hydrate,reset\}/);
 });
 
 test('edición conserva payload diferencial y privacidad backend',()=>{

@@ -5,6 +5,8 @@ const fs=require('node:fs');
 const migration=fs.readFileSync('supabase/migrations/20260911124327_billing_edit_intake_timestamp_and_rpc_grants_v1.sql','utf8');
 const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
 const billing=fs.readFileSync('operator-billing.js','utf8');
+const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
+const services=fs.readFileSync('operator-services.js','utf8');
 
 test('el alta desde remito conserva la fecha y hora original del documento',()=>{
   assert.match(migration,/'scheduled_for',coalesce\(/);
@@ -14,6 +16,10 @@ test('el alta desde remito conserva la fecha y hora original del documento',()=>
   assert.match(migration,/p_intake->>'created_at'/);
   assert.match(migration,/'created_at_device',r\.created_at_device/);
   assert.match(wizard,/Object\.assign\(w\.data,service,\{scheduled_for:localDateTime\(service\.scheduled_for\)/);
+  assert.match(wizard,/typeof intake==='string'\?intake:intake\?\.intake_id/);
+  assert.match(wizard,/OperatorServiceWorkspaceV2\?\.hydrate\?\.\(\)/);
+  assert.match(workspace,/const hydrate=\(\)=>sync\(true\)/);
+  assert.match(services,/openWizard\?\.\(intakeId\)/);
 });
 
 test('el contexto del ingreso es authenticated-only y fuerza recarga de PostgREST',()=>{
