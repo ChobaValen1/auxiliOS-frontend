@@ -18,7 +18,7 @@ test('el alta desde remito conserva la fecha y hora original del documento',()=>
   assert.match(wizard,/Object\.assign\(w\.data,service,\{scheduled_for:localDateTime\(service\.scheduled_for\)/);
   assert.match(wizard,/typeof intake==='string'\?intake:intake\?\.intake_id/);
   assert.match(wizard,/OperatorServiceWorkspaceV2\?\.hydrate\?\.\(\)/);
-  assert.match(workspace,/const hydrate=\(\)=>sync\(true\)/);
+  assert.match(workspace,/function hydrate\(\)\{sync\(true\)/);
   assert.match(workspace,/if\(force&&\('defaultValue'in el\)\)el\.defaultValue=next/);
   assert.match(services,/openWizard\?\.\(intakeId\)/);
 });
