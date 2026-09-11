@@ -24,7 +24,7 @@ test('bootstrap releases navigation before secondary modules finish loading', ()
 
 test('services table is responsive in the canonical stylesheet', () => {
   const css = read('operator-services.css');
-  assert.match(css, /\.os-table\{width:100%;min-width:0;/);
+  assert.match(css, /\.os-table\{width:100%;min-width:1320px;/);
   assert.doesNotMatch(css, /min-width:1740px/);
   assert.match(css, /\.os-table th\.col-origin,\.os-table th\.col-destination\{width:13%\}/);
 });

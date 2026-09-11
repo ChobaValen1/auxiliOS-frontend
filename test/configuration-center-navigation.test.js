@@ -144,10 +144,12 @@ test('the desktop sidenav expands to labels and can collapse to emoji-only mode'
   const sigma = read('sigma.js');
 
   assert.match(index, /class="nav-collapse"/);
+  assert.doesNotMatch(index, /nav-collapse-label/);
   assert.match(index, /onclick="toggleSidenav\(\)"/);
   assert.match(css, /--nav-w:\s+188px/);
   assert.match(css, /body\.nav-collapsed\s*\{\s*--nav-w:\s*72px/);
   assert.match(css, /body\.nav-collapsed \.nav-item \.nav-label/);
+  assert.match(css, /body\.nav-collapsed \.nav-item \.nav-label\s*\{\s*display:\s*block\s*!important;/);
   assert.match(sigma, /const SIDENAV_COLLAPSED_KEY/);
   assert.match(sigma, /function toggleSidenav\(\)/);
   assert.match(sigma, /aria-expanded/);

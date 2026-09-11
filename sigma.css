@@ -62,20 +62,20 @@ body {
 .nav-collapse {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 34px;
-  margin-bottom: 4px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--bg);
+  justify-content: center;
+  align-self: flex-end;
+  width: 28px;
+  height: 28px;
+  margin: 0 2px 4px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
   color: var(--muted2);
-  font: 600 10px 'DM Sans', sans-serif;
   cursor: pointer;
 }
-.nav-collapse:hover { border-color: var(--amber); color: var(--amber); }
-.nav-collapse > span:first-child { font-size: 19px; line-height: 1; }
+.nav-collapse:hover { background: var(--card); color: var(--amber); }
+.nav-collapse > span:first-child { font-size: 22px; line-height: 1; }
 
 .nav-item {
   width: 100%; height: 42px;
@@ -126,7 +126,7 @@ body {
 body.nav-collapsed { --nav-w: 72px; }
 body.nav-collapsed .sidenav { padding-right: 9px; padding-left: 9px; }
 body.nav-collapsed .nav-logo { padding-right: 0; padding-left: 0; text-align:center; }
-body.nav-collapsed .nav-collapse { justify-content:center; padding:0; }
+body.nav-collapsed .nav-collapse { align-self:center; margin-right:0; }
 body.nav-collapsed .nav-collapse > span:first-child { transform:rotate(180deg); }
 body.nav-collapsed .nav-collapse-label,
 body.nav-collapsed .nav-item .nav-label { display:none; }
@@ -1810,10 +1810,21 @@ body {
   .nav-logo, .nav-divider, .nav-bottom, .nav-collapse { display: none !important; }
   .nav-item {
     flex: 1;
+    min-width: 54px;
     height: 60px;
+    padding: 5px 2px 4px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
     border-radius: 0;
     border: none !important;
   }
+  body.nav-collapsed .nav-item { padding: 5px 2px 4px; }
+  body.nav-collapsed .nav-item .nav-label {
+    display: block !important;
+  }
+  .nav-item .nav-icon { flex: 0 0 auto; font-size: 18px; }
+  .nav-item .nav-label { font-size: 7px; line-height: 1; letter-spacing: .2px; }
   .nav-item.active {
     background: transparent;
     border-top: 2px solid var(--amber) !important;

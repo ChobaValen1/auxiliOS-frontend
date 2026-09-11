@@ -23,10 +23,10 @@ test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=
   assert.doesNotMatch(services,/os-board|renderKpis|renderDetail|modal-operador-servicio|get_operator_service_detail|os-detail-shell/);
 });
 
-test('mesa compacta ubica Nuevo servicio a la derecha y adapta las 17 columnas al viewport',()=>{
+test('mesa legible ubica Nuevo servicio a la derecha y conserva ancho útil con scroll',()=>{
   assert.match(css,/grid-template-columns:auto auto 180px 120px 34px 34px minmax\(0,1fr\)/);
   assert.match(css,/\.os-commandbar \.os-manage\{justify-self:end\}/);
-  assert.match(css,/\.os-table\{width:100%;min-width:0;/);
+  assert.match(css,/\.os-table\{width:100%;min-width:1320px;/);
   assert.doesNotMatch(css,/min-width:1740px/);
   assert.match(css,/100vh - 126px/);
   assert.match(css,/\.os-table th\.col-origin,\.os-table th\.col-destination\{width:13%\}/);
@@ -37,7 +37,7 @@ test('Fecha Hora muestra sólo la fecha programada y su hora en menor jerarquía
   assert.match(services,/fmtDay\(s\.scheduled_for\)/);
   assert.match(services,/fmtTime\(s\.scheduled_for\)/);
   assert.match(services,/os-scheduled-time/);
-  assert.match(css,/\.os-scheduled-time\{font-size:8px!important/);
+  assert.match(css,/\.os-scheduled-time\{font-size:9px!important/);
   assert.doesNotMatch(services,/Creado ·|fmtTimeSeconds/);
 });
 
