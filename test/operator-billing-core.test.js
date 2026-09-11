@@ -85,7 +85,7 @@ test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
 });
 
 test('Administración puede corregir o anular un servicio FINALIZADO',()=>{
-  assert.match(billing,/window\.editarServicioOperador/);
+  assert.match(billing,/window\.editarServicioFacturacion/);
   assert.match(billing,/openDetailAction\(id,\s*'annul'\)/);
   assert.match(legacyDesk,/update_operator_billing_service_v2/);
   assert.match(legacyDesk,/Sólo Administración puede modificar un servicio FINALIZADO/);
@@ -244,5 +244,5 @@ test('runtime carga Facturación y Excel canónicos sin assets de revisión para
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-billing-phase2-v267/);
+  assert.match(sw,/auxilios-billing-phase2-v268/);
 });
