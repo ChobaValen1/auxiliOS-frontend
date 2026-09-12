@@ -170,11 +170,9 @@
 .osv4-note{min-height:16px;color:var(--osv2-muted2);font-size:8px;line-height:1.3}
 .osv4-note:empty{display:none}
 
-.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{padding:7px!important;gap:5px!important}
+.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .osv2-observations{padding:7px!important;gap:5px!important}
 .osv4-reactive .osv2-observations{display:grid!important;min-width:0;border:1px solid var(--osv2-border);border-radius:11px;background:var(--osv2-card);color:var(--osv2-text)!important}
 .osv4-reactive .osv2-observations>span{min-height:13px;color:var(--osv2-text);font-size:10px;font-weight:800;line-height:1.2}
-.osv4-reactive .driver-instructions-card .osv2-section-label{min-height:13px;margin:0}
-.osv4-reactive .driver-instructions-card .osv2-section-label b{font-size:10px}
 .osv4-reactive .route-column textarea{min-height:52px!important;padding:6px 8px!important}
 .osv4-reactive .route-column>.osv2-card,.osv4-reactive .route-column>.osv2-observations{flex:none}
 
@@ -225,4 +223,21 @@
   .osv2-footer>div{flex:1;flex-wrap:wrap}
   .osv2-footer>span{display:none}
   .osv2-footer button{flex:1}
+}
+
+/* Signed intake: readable reference fields, without changing the driver form. */
+.osv4-reactive[data-intake="true"] input:disabled,.osv4-reactive[data-intake="true"] select:disabled{color:var(--osv2-text)!important;opacity:1!important}
+.osv4-reactive[data-intake="true"] .osv2-section-label b{font-size:12px}
+.osv4-reactive[data-intake="true"] .osv4-address-status{font-size:10px}
+.osv4-reactive[data-intake="true"] .osv4-note{font-size:11px;line-height:1.5}
+.osv4-reactive[data-intake="true"] .osv2-column{gap:12px}
+.osv4-reactive[data-intake="true"] .osv2-header h2{font-size:20px}
+.osv4-reactive[data-intake="true"] .osv2-footer button{font-size:13px;min-height:44px}
+@media(max-width:620px){
+  .osv4-reactive[data-intake="true"]{grid-template-rows:auto auto 84px}
+  .osv4-reactive[data-intake="true"] .osv2-header{min-height:76px;height:auto;padding:10px 12px;gap:10px}
+  .osv4-reactive[data-intake="true"] .osv2-header h2{font-size:18px;line-height:1.2}
+  .osv4-reactive[data-intake="true"] .osv4-header-actions{flex-shrink:0}
+  .osv4-reactive[data-intake="true"] input,.osv4-reactive[data-intake="true"] select,.osv4-reactive[data-intake="true"] textarea{font-size:16px!important;min-height:44px!important}
+  .osv4-reactive[data-intake="true"] .osv2-footer{position:sticky;bottom:0;z-index:2}
 }

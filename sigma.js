@@ -9,6 +9,7 @@ let _jornadaActivaLocal = null;
 function _antiAutofillPatch(root = document) {
   const inputs = root.querySelectorAll('input:not([data-af-patched]), textarea:not([data-af-patched])');
   inputs.forEach(inp => {
+    if (inp.closest('.osv4-reactive')) return;
     inp.setAttribute('autocomplete', 'new-password');
     inp.setAttribute('autocorrect', 'off');
     inp.setAttribute('autocapitalize', 'off');
@@ -539,10 +540,16 @@ function selectTrigger(type) {
 
 // ── REMITO WIZARD ──────────────────────────────────────────
 let _remPasoActual = 1;
-const REM_TOTAL_PASOS = 5;
+const REM_TOTAL_PASOS = 4;
+const REM_TOTAL_PASOS_SIN_ASIGNACION = 5;
+const _remWizardEsAdHoc = () => !!window.AuxiliosRemitoMobileV3?.isAdHocMode?.();
+const _remWizardTotalPasos = () => _remWizardEsAdHoc() ? REM_TOTAL_PASOS_SIN_ASIGNACION : REM_TOTAL_PASOS;
+const _remWizardPasoCliente = () => _remWizardEsAdHoc() ? 2 : 1;
+const _remWizardPasoCargos = () => _remWizardEsAdHoc() ? 3 : 2;
+const _remWizardPasoFirma = () => _remWizardTotalPasos();
 
 function remWizardReset() {
-  _remPasoActual = 1;
+  _remPasoActual = window.AuxiliosRemitoMobileV3?.isSignedEditMode?.() ? 2 : 1;
   _remWizardActualizar();
   
   const ahora = new Date();
@@ -556,6 +563,8 @@ function remWizardReset() {
   if (nro) nro.value = `REM-${f}-${r}`;
   
   if (typeof resetPagoForm === 'function') resetPagoForm();
+  window.AuxiliosRemitoAddonsV2?.reset?.();
+  window.AuxiliosRemitoMobileV3?.resetMapLocations?.();
   if (typeof limpiarFirma === 'function') limpiarFirma();
   
   fotosCount = 0;
@@ -576,15 +585,20 @@ function remWizardReset() {
       const el = document.getElementById(id); 
       if (el) { el.value = ''; el.readOnly = false; el.style.opacity = ''; } 
   });
+  const kmRemito = document.getElementById('rem-km');
+  if (kmRemito && _remWizardEsAdHoc()) {
+    kmRemito.readOnly = true;
+    kmRemito.setAttribute('aria-readonly', 'true');
+  }
 
-  const tipo = document.getElementById('rem-tipo-servicio'); 
-  if (tipo) tipo.value = 'Servicio de grúa'; 
+  const tipo = document.getElementById('rem-tipo-servicio');
+  if (tipo) tipo.value = '';
 
   const total = document.getElementById('imp-total'); 
   if (total) total.textContent = '$0';
 
   // Reseteo de Toggles del Paso 5 (Arrastre apagado, el resto encendido)
-  document.querySelectorAll('#rem-step-5 .acept-toggle').forEach(row => {
+  document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`).forEach(row => {
     const t = row.querySelector('.toggle');
     const titulo = row.querySelector('.toggle-title')?.textContent.trim();
     if (t) {
@@ -597,7 +611,7 @@ function remWizardReset() {
   });
 
   // Apagar Toggle de Firma de Chofer y resetear título
-  const toggleChofer = document.querySelector('#rem-step-5 .toggle-row[onclick*="toggleFirmaChofer"] .toggle');
+  const toggleChofer = document.querySelector(`#rem-step-${_remWizardPasoFirma()} .toggle-row[onclick*="toggleFirmaChofer"] .toggle`);
   if (toggleChofer) toggleChofer.classList.remove('on');
   const labelFirma = document.getElementById('label-firma-canvas');
   if (labelFirma) {
@@ -616,26 +630,30 @@ function remWizardReset() {
 }
 
 function _remWizardActualizar() {
-  for (let i = 1; i <= REM_TOTAL_PASOS; i++) {
-    const panel = document.getElementById(`rem-step-${i}`);
-    if (panel) panel.classList.toggle('active', i === _remPasoActual);
-  }
+  const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
+  const totalPasos = _remWizardTotalPasos();
+  document.querySelectorAll('#remitos-nuevo .rem-step-panel').forEach(panel => panel.classList.toggle('active', panel.id === `rem-step-${_remPasoActual}`));
   
   const fill = document.getElementById('rem-progress-fill');
-  if (fill) fill.style.width = `${(_remPasoActual / REM_TOTAL_PASOS) * 100}%`;
+  if (fill) fill.style.width = signedEdit ? `${((_remPasoActual - 1) / 2) * 100}%` : `${(_remPasoActual / totalPasos) * 100}%`;
   
   const num = document.getElementById('rem-step-num');
-  if (num) num.textContent = _remPasoActual;
+  if (num) num.textContent = signedEdit ? (_remPasoActual - 1) : _remPasoActual;
+  const counter = document.querySelector('.rem-wizard-counter');
+  if (counter && signedEdit) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual - 1}</span> de 2`;
+  else if (counter) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual}</span> de ${totalPasos}`;
   
   document.querySelectorAll('.rem-step-dot').forEach((d, i) => {
     d.classList.remove('active', 'done');
-    if (i + 1 < _remPasoActual) d.classList.add('done');
-    else if (i + 1 === _remPasoActual) d.classList.add('active');
+    d.style.display = i >= (signedEdit ? 2 : totalPasos) ? 'none' : '';
+    const visibleStep = signedEdit ? _remPasoActual - 1 : _remPasoActual;
+    if (i + 1 < visibleStep) d.classList.add('done');
+    else if (i + 1 === visibleStep) d.classList.add('active');
   });
   
   const btnBack = document.getElementById('rem-btn-back');
   const btnNext = document.getElementById('rem-btn-next');
-  if (btnBack) btnBack.style.display = _remPasoActual === 1 ? 'none' : '';
+  if (btnBack) btnBack.style.display = signedEdit ? (_remPasoActual === 2 ? 'none' : '') : (_remPasoActual === 1 ? 'none' : '');
   
   // ── INYECCIÓN DEL BOTÓN PENDIENTE EN EL FOOTER ──
   const footer = document.querySelector('.rem-wizard-footer');
@@ -657,8 +675,13 @@ function _remWizardActualizar() {
   }
   
   if (btnNext) {
-    if (_remPasoActual === REM_TOTAL_PASOS) {
-      // ESTAMOS EN EL PASO 5 (FIRMA)
+    if (signedEdit) {
+      if (btnPendiente) btnPendiente.style.display = 'none';
+      btnNext.textContent = _remPasoActual === 3 ? 'Guardar cambios' : 'Siguiente →';
+      btnNext.onclick = _remPasoActual === 3 ? () => window.guardarEdicionRemitoFirmado?.() : () => remWizardIr(1);
+    } else
+    if (_remPasoActual === totalPasos) {
+      // ESTAMOS EN EL PASO FINAL (FIRMA)
       btnNext.textContent = '✅ Finalizar';
       if (btnPendiente) btnPendiente.style.display = 'none';
       btnNext.onclick = () => {
@@ -682,11 +705,15 @@ function _remWizardActualizar() {
   document.querySelector('.content')?.scrollTo(0, 0);
 }
 
+window.remWizardActualizarFlujo = _remWizardActualizar;
+
 function remWizardIr(delta) {
   if (delta > 0 && !_remWizardValidar(_remPasoActual)) return;
-  _remPasoActual = Math.max(1, Math.min(REM_TOTAL_PASOS, _remPasoActual + delta));
+  const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
+  const totalPasos = _remWizardTotalPasos();
+  _remPasoActual = signedEdit ? Math.max(2, Math.min(3, _remPasoActual + delta)) : Math.max(1, Math.min(totalPasos, _remPasoActual + delta));
   _remWizardActualizar();
-  if (_remPasoActual === 5 && typeof initCanvas === 'function') {
+  if (_remPasoActual === totalPasos && typeof initCanvas === 'function') {
     setTimeout(() => initCanvas('sig-canvas'), 80);
   }
 }
@@ -702,17 +729,20 @@ function _remWizardValidar(paso) {
     if (vacio) ok = false;
   };
   
-  if (paso === 1) {
-    marcar('rem-tipo-servicio', 'err-tipo');
+  if (_remWizardEsAdHoc() && paso === 1) {
     marcar('rem-patente', 'err-patente');
     marcar('rem-origen', 'err-origen');
     marcar('rem-destino', 'err-destino');
+    if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateMapLocations()) ok=false;
   }
-  if (paso === 2) {
+  if (paso === _remWizardPasoCliente()) {
     marcar('rem-cliente', 'err-cliente');
-    marcar('rem-cuit', 'err-dni');
+    if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) ok=false;
   }
-  if (paso === 3) {
+  if (paso === _remWizardPasoCargos()) {
+    if (window.AuxiliosRemitoAddonsV2) {
+      return window.AuxiliosRemitoAddonsV2.validate().ok;
+    }
     const errorEl = document.getElementById('rem-pago-error');
 
     // ── NOTA 1: HELPER PARA ERRORES ──
@@ -835,7 +865,7 @@ function toggleFirmaChofer(elemento) {
 
 // ── 2. MATEMÁTICA ESTRICTA DE LA BARRA DE PROGRESO ──
 function actualizarProgresoFirmas() {
-    const panel = document.getElementById('rem-step-5');
+    const panel = document.getElementById(`rem-step-${_remWizardPasoFirma()}`);
     if (!panel) return;
 
     let esperados = 0;
@@ -900,7 +930,7 @@ function cerrarModalFirmaFalta() {
 // Esta función se ejecuta cuando el chofer toca "Finalizar y Guardar"
 function validarPaso5Final() {
     // 1. Verificamos las confirmaciones obligatorias (excluye Arrastre por ser opcional)
-    const obligatorios = document.querySelectorAll('#rem-step-5 .acept-toggle:not(#row-arrastre) .toggle');
+    const obligatorios = document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle:not(#row-arrastre) .toggle`);
     let todasConfirmadas = true;
     obligatorios.forEach(t => {
         if (!t.classList.contains('on')) todasConfirmadas = false;
@@ -1040,6 +1070,13 @@ if (view === 'nuevo') {
     }
 
     if (d) {
+      if (d.operatorServiceId) {
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+        sessionStorage.setItem('auxilios_phase3_service_id', d.operatorServiceId);
+      } else if (d.driverIntakeId || d.documentSource === 'driver_ad_hoc') {
+        sessionStorage.removeItem('auxilios_phase3_service_id');
+        sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
+      }
       const setT = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '—'; };
       const setV = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
 
@@ -1124,15 +1161,47 @@ function initCanvas(canvasId) {
   hasSig = false;
   updateSigStatus(canvasId, false);
 
-  // 4. Asignar eventos de dibujo
-  canvas.onmousedown  = e => startDraw(e, canvas);
-  canvas.onmousemove  = e => draw(e, canvas);
-  canvas.onmouseup    = ()  => stopDraw(canvasId);
-  canvas.onmouseleave = ()  => stopDraw(canvasId);
-  
-  canvas.ontouchstart = e => { e.preventDefault(); startDraw(e.touches[0], canvas); };
-  canvas.ontouchmove  = e => { e.preventDefault(); draw(e.touches[0], canvas); };
-  canvas.ontouchend   = ()  => stopDraw(canvasId);
+  // 4. Pointer Events + captura mantienen el trazo aunque el dedo se mueva
+  // momentáneamente fuera del canvas. Cada handler conserva su propio contexto.
+  if (typeof canvas.__auxiliosSignatureCleanup === 'function') canvas.__auxiliosSignatureCleanup();
+  const ctx = activeCtx;
+  const listeners = [];
+  const on = (type, handler, options) => {
+    canvas.addEventListener(type, handler, options);
+    listeners.push([type, handler, options]);
+  };
+  const begin = e => {
+    if (e.cancelable) e.preventDefault();
+    if (e.pointerId != null && canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
+    startDraw(e, canvas, ctx);
+  };
+  const move = e => {
+    if (e.cancelable) e.preventDefault();
+    draw(e, canvas, ctx);
+  };
+  const end = e => {
+    if (e?.cancelable) e.preventDefault();
+    if (e?.pointerId != null && canvas.hasPointerCapture?.(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    stopDraw(canvasId);
+  };
+  if (window.PointerEvent) {
+    on('pointerdown', begin);
+    on('pointermove', move);
+    on('pointerup', end);
+    on('pointercancel', end);
+  } else {
+    on('mousedown', begin);
+    on('mousemove', move);
+    on('mouseup', end);
+    on('mouseleave', end);
+    on('touchstart', e => begin(e.touches[0]), { passive: false });
+    on('touchmove', e => move(e.touches[0]), { passive: false });
+    on('touchend', end, { passive: false });
+    on('touchcancel', end, { passive: false });
+  }
+  canvas.__auxiliosSignatureCleanup = () => {
+    listeners.forEach(([type, handler, options]) => canvas.removeEventListener(type, handler, options));
+  };
 }
 
 function getPos(e, canvas) {
@@ -1145,11 +1214,11 @@ function getPos(e, canvas) {
   };
 }
 
-function startDraw(e, canvas) {
+function startDraw(e, canvas, ctx = canvas.getContext('2d')) {
   drawing = true;
   const p = getPos(e, canvas);
-  activeCtx.beginPath();
-  activeCtx.moveTo(p.x, p.y);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
   // hide placeholder
   const ph = document.getElementById('sig-placeholder');
   if (ph) ph.style.display = 'none';
@@ -1157,11 +1226,11 @@ function startDraw(e, canvas) {
   canvas.style.background = 'rgba(245,166,35,0.04)';
 }
 
-function draw(e, canvas) {
+function draw(e, canvas, ctx = canvas.getContext('2d')) {
   if (!drawing) return;
   const p = getPos(e, canvas);
-  activeCtx.lineTo(p.x, p.y);
-  activeCtx.stroke();
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
 }
 
 function stopDraw(canvasId) {
@@ -1233,39 +1302,56 @@ function drawDemoSignature() {
 
 // ── FINALIZAR BTN LOGIC ───────────────────────
 let arrastreRequerido = false;
-
-
+let _finalizacionRemitoEnCurso = false;
 
 async function finalizarRemito() {
+  if (_finalizacionRemitoEnCurso) {
+    toast('El remito ya se está guardando. Esperá un momento.', 'info');
+    return false;
+  }
+  const btn = document.getElementById('rem-btn-next');
+  const originalText = btn?.textContent || '✅ Finalizar';
+  _finalizacionRemitoEnCurso = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Guardando…';
+  }
   try {
     return await _finalizarRemitoInner();
   } catch (e) {
     console.error('Error en finalizarRemito:', e);
     toast('Error al finalizar: ' + (e?.message || e), 'error');
+    return false;
+  } finally {
+    _finalizacionRemitoEnCurso = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = _remPasoActual === _remWizardTotalPasos() ? '✅ Finalizar' : originalText;
+    }
   }
 }
 
-async function _finalizarRemitoInner() {
-  const btn = document.getElementById('btn-finalizar');
-  if (btn && btn.style.opacity === '0.5') {
-    toast('Se requiere firma para finalizar', 'error'); return;
-  }
+function remWizardAbrirEdicionFirmada() {
+  _remPasoActual = 2;
+  _remWizardActualizar();
+}
 
+async function _finalizarRemitoInner() {
   // ── Leer datos del formulario ─────────────────────────
   const _fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const _rand  = Math.floor(Math.random() * 9000) + 1000;
   const nro       = document.getElementById('rem-nro')?.value || `REM-${_fecha}-${_rand}`;
-  const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
-  const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
+  const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
+    ? window.obtenerServicioAsignadoRemito()
+    : null;
+  const tipo      = String(servicioAsignado?.concept_name || '').trim() || (_remWizardEsAdHoc() ? 'A definir por Operaciones' : 'Servicio');
+  let patente     = document.getElementById('rem-patente')?.value?.trim() || servicioAsignado?.vehicle_plate || '';
   const km        = document.getElementById('rem-km')?.value || '0';
-  const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
-  const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
+  let origen      = document.getElementById('rem-origen')?.value?.trim() || servicioAsignado?.origin || '';
+  let destino     = document.getElementById('rem-destino')?.value?.trim() || servicioAsignado?.destination || '';
   const cliente   = document.getElementById('rem-cliente')?.value?.trim() || '';
-  const cuit      = document.getElementById('rem-cuit')?.value || '';
-  const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
-  const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
-  const otros     = parseFloat(document.getElementById('imp-otros')?.value)     || 0;
-  const hora      = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+  const cuit      = document.getElementById('rem-cuit')?.value?.trim() || '';
+  const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const pago      = document.getElementById('rem-pago-selected')?.value || remPago1 || '—';
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || '';
 
@@ -1281,126 +1367,46 @@ async function _finalizarRemitoInner() {
   if (!patente) { mostrarValidacion('⚠️ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
   if (!origen)  { mostrarValidacion('⚠️ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
   if (!destino) { mostrarValidacion('⚠️ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
-  if (cuit && !/^\d{7,11}$/.test(cuit) && !/^\d{2}-\d{7,8}-\d{1}$/.test(cuit)) {
-    mostrarValidacion('⚠️ DNI/CUIT inválido', 'El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso 2.');
-    remWizardIr(2 - _remPasoActual);
+  [
+    ['rem-patente',patente],
+    ['rem-origen',origen],
+    ['rem-destino',destino],
+  ].forEach(([id,value])=>{
+    const el=document.getElementById(id);
+    if(el&&!el.value&&value)el.value=value;
+  });
+  if (cuit && !/^\d{7,11}$/.test(cuit)) {
+    mostrarValidacion('⚠️ DNI/CUIT inválido', `El DNI/CUIT debe contener únicamente entre 7 y 11 dígitos. Corregilo en el paso ${_remWizardPasoCliente()}.`);
+    remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
     return;
   }
+  if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) {
+    mostrarValidacion('⚠️ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
+    remWizardIr(_remWizardPasoCliente() - _remPasoActual);
+    return;
+  }
+  const requiredConfirmations=[...document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`)]
+    .filter(row=>row.id!=='row-arrastre'&&row.offsetParent!==null);
+  if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠️ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
+  if(!hasSig){mostrarValidacion('⚠️ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
+  const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
+  if (addonValidation && !addonValidation.ok) {
+    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || `Hay datos incompletos en el paso ${_remWizardPasoCargos()}.`);
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
+    return;
+  }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';
   const totalVal = parseFloat(totalStr.replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
-  if (totalVal > 0 && (!pago || pago === '—')) {
-    mostrarValidacion('⚠️ Falta medio de pago', 'Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso 3.');
-    remWizardIr(3 - _remPasoActual);
+  if (!window.AuxiliosRemitoAddonsV2 && totalVal > 0 && (!pago || pago === '—')) {
+    mostrarValidacion('⚠️ Falta medio de pago', `Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso ${_remWizardPasoCargos()}.`);
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
 
-  // Build display for split or single payment
-  const pagoPartes = pago.includes('+') ? pago.split('+') : [pago];
-  const payIcon    = pagoPartes.map(p => PAY_ICONS[p]||'💳').join('');
-  const payColor   = pagoPartes.length > 1 ? 'var(--amber)' : (PAY_COLORS[pago]||'var(--text)');
-  const pagoLabel  = pagoPartes.length > 1 ? pagoPartes.join(' + ') : pago;
-  const extras     = peaje > 0
-    ? `Peaje: $${peaje.toLocaleString('es-AR')}`
-    : excedente > 0
-      ? `Excedente: $${excedente.toLocaleString('es-AR')}`
-      : 'Sin extras';
-
-  // ① → Tabla de remitos
-  const tbodyRemitos = document.getElementById('tbody-remitos');
-  if (tbodyRemitos) {
-    const tr = document.createElement('tr');
-    tr.setAttribute('data-rem', JSON.stringify({
-      nro, fecha:`${new Date().toLocaleDateString('es-AR')} · ${hora}`,
-      nroSrv, patente, marca:'—', cliente: cliente||'Sin nombre',
-      origen, destino, km,
-      peaje: String(peaje), excedente: String(excedente), otros: String(otros),
-      pago, tipo,
-      confirmaciones:['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados']
-    }));
-    tr.innerHTML = `
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nro}</span></td>
-      <td style="font-family:'DM Mono'">${hora}</td>
-      <td style="font-size:11px;color:var(--muted2)">—</td>
-      <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${patente}</div></td>
-      <td>
-        <div style="font-size:12px">${tipo}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">${nroSrv || '—'}</div>
-      </td>
-      <td><div style="font-size:11px;color:var(--muted)">${extras}</div></td>
-      <td><div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:${payColor}"><span>${payIcon}</span>${pagoLabel}</div></td>
-      <td><span class="pill pill-green">✓ Firmado</span></td>
-      <td>
-        <div style="display:flex;gap:5px">
-          <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
-          <button class="btn btn-ghost btn-pdf-remito" style="padding:4px 10px;font-size:10px">PDF</button>
-        </div>
-      </td>`;
-    tbodyRemitos.insertBefore(tr, tbodyRemitos.firstChild);
-  }
-
-  // ② → Viajes del día
-  const tbodyViajes = document.querySelector('#tabla-viajes tbody');
-  if (tbodyViajes && origen && destino) {
-    const num = String(tbodyViajes.rows.length + 1).padStart(2,'0');
-    const tr  = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="color:var(--muted);font-family:'DM Mono'">${num}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nroSrv || '—'}</span></td>
-      <td><span style="font-family:'DM Mono';font-weight:600">${patente}</span></td>
-      <td><span class="pill pill-blue">🔧 ${tipo}</span></td>
-      <td>${origen}</td>
-      <td>${destino}</td>
-      <td style="font-family:'DM Mono'">${hora}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber)">${km} km</span></td>
-      <td><span class="pill pill-green">✓ Completado</span></td>`;
-    tbodyViajes.appendChild(tr);
-    const counter = document.getElementById('viajes-counter');
-    if (counter) counter.textContent = `${tbodyViajes.rows.length} servicios registrados`;
-  }
-
-  // ③ → Historial de jornadas
-  const tbodyHistorial = document.getElementById('tbody-historial-jornadas');
-  if (tbodyHistorial) {
-    const today = new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-    const existingRow = tbodyHistorial.querySelector('tr[data-today]');
-    if (existingRow) {
-      const kmCell = existingRow.querySelector('td:nth-child(4) span');
-      if (kmCell) kmCell.textContent = (parseInt(kmCell.textContent) + parseInt(km)) + ' km';
-    } else {
-      const tr = document.createElement('tr');
-      tr.setAttribute('data-today', '1');
-      tr.innerHTML = `
-        <td><b>${today}</b> <span class="pill pill-blue" style="font-size:8px;padding:2px 5px">Hoy</span></td>
-        <td style="font-family:'DM Mono'">—</td>
-        <td style="font-family:'DM Mono'">—</td>
-        <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${km} km</span></td>
-        <td>—</td>
-        <td><span class="pill pill-muted">No</span></td>
-        <td><span class="pill pill-amber">Abierta</span></td>`;
-      tbodyHistorial.insertBefore(tr, tbodyHistorial.firstChild);
-    }
-  }
-
-  // ④ → Últimas jornadas dashboard
-  const jornadasList = document.querySelector('#screen-dashboard div[style*="flex-direction:column;gap:8px"]');
-  if (jornadasList) {
-    const today = new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-    const div = document.createElement('div');
-    div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.3)';
-    div.innerHTML = `
-      <div>
-        <div style="font-size:12px;font-weight:600">📍 ${today} <span style="color:var(--amber)">· Nuevo</span></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:1px">${km} km · ${tipo} · ${patente}</div>
-      </div>
-      <span class="pill pill-amber">Abierta</span>`;
-    jornadasList.insertBefore(div, jornadasList.firstChild);
-  }
-
-  // ⑤ → Save signature (capturamos el dataURL ANTES de cambiar de vista, para evitar
-  // que se pierda al ocultarse el canvas. Lo guardamos en localStorage Y lo pasamos
-  // explícitamente a guardarRemitoCompleto para que no haya ambigüedad sobre qué canvas usar)
+  // Capturamos la firma antes de persistir para no perder el canvas. Se pasa
+  // explícitamente al guardado para no depender del estado visual del paso.
   const sigCanvas = document.getElementById('sig-canvas');
   let firmaDataURL = null;
   if (sigCanvas && hasSig) {
@@ -1408,9 +1414,16 @@ async function _finalizarRemitoInner() {
     _saveSig(nro, firmaDataURL);
   }
 
-  resetPagoForm();
+  const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
+  const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
+  if (_remWizardEsAdHoc() && !mapLocations) {
+    mostrarValidacion('⚠️ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
+    remWizardIr(1 - _remPasoActual);
+    window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
+    return false;
+  }
 
-  // ⑥ → Recolectar confirmaciones
+  // Recolectar confirmaciones
   const confirmaciones = [];
   document.querySelectorAll('#remitos-nuevo .acept-toggle .toggle.on').forEach(el => {
     const row = el.closest('.toggle-row');
@@ -1419,11 +1432,14 @@ async function _finalizarRemitoInner() {
     }
   });
 
-  // ⑦ → Guardar en Supabase
+  // Guardar en Supabase antes de modificar la interfaz local. La vista se
+  // refresca desde la fuente canónica solamente cuando el RPC confirma el guardado.
   // 1. Mini-función para arreglar el bug de los miles (ej: "9.100" -> 9100)
   const parsearImporte = (val) => {
     if (!val) return 0;
-    const limpio = String(val).replace(/\./g, '').replace(',', '.');
+    let limpio = String(val).trim().replace(/[^0-9,.-]/g, '');
+    if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, '');
     return parseFloat(limpio) || 0;
   };
 
@@ -1454,7 +1470,7 @@ async function _finalizarRemitoInner() {
     marca:   document.getElementById('rem-marca-modelo')?.value || '',
     cliente,
     cuit,
-    telefono: document.getElementById('rem-telefono')?.value?.trim() || null,
+    telefono: telefono || null,
     tipo,
     origen,
     destino,
@@ -1473,9 +1489,13 @@ async function _finalizarRemitoInner() {
     pago2Monto: parsearImporte(document.getElementById('pago2-monto')?.value) || null,
     observaciones: document.getElementById('rem-observaciones')?.value?.trim() || null,
     confirmaciones,
+    remitoAddons,
+    ...(mapLocations||{}),
   });
 
-  if (!ok) return;
+  if (!ok) return false;
+  resetPagoForm();
+  return true;
 }
 
 // ── CÁLCULO DE TOTAL ──────────────────────────
@@ -1842,6 +1862,11 @@ function verRemitoModal(elemento) {
     set('vr-km',        (d.km || '—') + ' km');
     set('vr-peaje',     '$' + parseInt(d.peaje     || 0).toLocaleString('es-AR'));
     set('vr-excedente', '$' + (parseInt(d.excedente || 0) + parseInt(d.otros || 0)).toLocaleString('es-AR'));
+    const structuredHost = document.getElementById('vr-addons-structured');
+    if (structuredHost) {
+      structuredHost.style.display = d.addonsVersion === 2 ? 'block' : 'none';
+      if (d.addonsVersion === 2) void window.AuxiliosRemitoAddonsV2?.renderHistory?.(d.id, structuredHost);
+    }
 
     // ── Forma de pago ─────────────────────────────────────────────
     const pagoEl = document.getElementById('vr-pago');
@@ -2556,6 +2581,16 @@ async function confirmarFirma() {
     // ── OFFLINE: encolar la firma en el outbox ────────────
     // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
     // el flujo online haría un update con un id inválido.
+    const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
+      ? obtenerServicioActivoRemito()
+      : sessionStorage.getItem('auxilios_phase3_service_id');
+    const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
+      ? esRemitoAdHocActivo()
+      : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+    const clientOperationId = (operatorServiceId || adHocMode) && typeof obtenerOperacionRemito === 'function'
+      ? obtenerOperacionRemito(operatorServiceId || 'driver-ad-hoc', nro2)
+      : null;
+
     if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
       const payloadFirma = {
         nro_remito:           nro2,
@@ -2581,6 +2616,14 @@ async function confirmarFirma() {
         cliente_presente:     clientePresente,
         status:               'firmado',
         edicion:              edicion, // el handler la agrega al historial al sincronizar
+        ...(operatorServiceId ? {
+          operator_service_id: operatorServiceId,
+          client_operation_id: clientOperationId,
+          document_source: 'auxilios_driver',
+        } : adHocMode ? {
+          client_operation_id: clientOperationId,
+          document_source: 'driver_ad_hoc',
+        } : {}),
       };
       // Si el remito pendiente del mismo nro está en la cola, la firma depende de él.
       // _obRemitoTemp vive solo en memoria: si la app se recargó, buscamos la op
@@ -2610,7 +2653,7 @@ async function confirmarFirma() {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones, cliente_presente')
+      .select('historial_ediciones,cliente_presente,operator_service_id,driver_intake_id,client_operation_id,document_source')
       .eq('nro_remito', nro2)
       .single();
 
@@ -2630,8 +2673,8 @@ async function confirmarFirma() {
     // ── Actualizar remito en Supabase ─────────────────────
     toast('Guardando en base de datos...', 'info');
 
-    const { error } = await _db.from('remitos')
-      .update({
+    const firmaDB = {
+        nro_remito:           nro2,
         ...(_logId ? { log_id: _logId } : {}),
         patente:              datosActualizados.patente,
         marca_modelo:         datosActualizados.marca,
@@ -2655,8 +2698,37 @@ async function confirmarFirma() {
         cliente_presente:     clientePresente,
         historial_ediciones:  historialActual,
         status:               'firmado',
-      })
-      .eq('nro_remito', nro2);
+        ...((operatorServiceId || remitoActual?.operator_service_id) ? {
+          operator_service_id: operatorServiceId || remitoActual.operator_service_id,
+          client_operation_id: clientOperationId || remitoActual?.client_operation_id || null,
+          document_source: 'auxilios_driver',
+        } : (adHocMode || remitoActual?.driver_intake_id || remitoActual?.document_source === 'driver_ad_hoc') ? {
+          driver_intake_id: remitoActual?.driver_intake_id || null,
+          client_operation_id: clientOperationId || remitoActual?.client_operation_id || null,
+          document_source: 'driver_ad_hoc',
+        } : {}),
+      };
+
+    let error = null;
+    const linkedServiceId = operatorServiceId || remitoActual?.operator_service_id || null;
+    if (linkedServiceId && typeof guardarRemitoVinculado === 'function') {
+      try {
+        await guardarRemitoVinculado(firmaDB, linkedServiceId);
+      } catch (linkedError) {
+        error = linkedError;
+      }
+    } else if ((adHocMode || remitoActual?.driver_intake_id || remitoActual?.document_source === 'driver_ad_hoc') && typeof guardarRemitoAdHoc === 'function') {
+      try {
+        await guardarRemitoAdHoc(firmaDB);
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+      } catch (adHocError) {
+        error = adHocError;
+      }
+    } else {
+      ({ error } = await _db.from('remitos')
+        .update(firmaDB)
+        .eq('nro_remito', nro2));
+    }
 
     if (error) {
       toast('Error al guardar: ' + error.message, 'error');
@@ -2681,8 +2753,16 @@ async function confirmarFirma() {
 // Sube la firma (Blob PNG) al bucket 'firmas' con el naming del flujo online.
 // Devuelve la URL pública o null si falló. Compartida por confirmarFirma y
 // el handler offline 'remito_firmar'.
-async function _subirFirmaStorage(blob, nro) {
-  const nombre = `firma_${nro}_${Date.now()}.png`;
+function _remitoEvidenceToken(value) {
+  return String(value || Date.now()).replace(/[^a-zA-Z0-9-]/g, '');
+}
+
+function _nombreFirmaStorage(nro, operationToken = null) {
+  return `firma_${nro}_${_remitoEvidenceToken(operationToken)}.png`;
+}
+
+async function _subirFirmaStorage(blob, nro, operationToken = null) {
+  const nombre = _nombreFirmaStorage(nro, operationToken);
   const { error: fe } = await _db.storage
     .from('firmas')
     .upload(nombre, blob, { contentType: 'image/png', upsert: true });
@@ -2801,7 +2881,9 @@ function limpiarRangoKM() {
 // ── PANEL PRINCIPAL: Dual-Contexto ────────────
 
 let _dashVistaActual = 'rendimiento';
-let _rendPeriodo     = 'hoy';
+let _rendPeriodo     = 'mes';
+let _rendMes = _rendFechaLocal(new Date()).slice(0,7);
+let _rendRequest = 0;
 let _negocioData     = null;
 let _negocioRaw      = null;   // datos sin filtrar
 let _negocioRawAnt   = null;   // datos período anterior (comparativo)
@@ -2905,26 +2987,13 @@ function _buildChartBuckets(tipo, logs, remitos) {
     const hoyKey = now.toISOString().slice(0,10);
     return dias.map(d => ({ ...d, actual: d.key === hoyKey }));
   }
-  // mes = últimos 12 meses
-  const meses = [];
-  const labelsMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    meses.push({ key, label: labelsMes[d.getMonth()], km: 0, srvs: 0 });
-  }
-  logs.forEach(j => {
-    const k = (j.log_date||'').slice(0,7);
-    const m = meses.find(m => m.key === k);
-    if (m) m.km += Math.max(0, (j.km_final||0) - (j.km_inicio||0));
-  });
-  remitos.forEach(r => {
-    const k = (r.created_at_device||'').slice(0,7);
-    const m = meses.find(m => m.key === k);
-    if (m) m.srvs++;
-  });
-  const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return meses.map(m => ({ ...m, actual: m.key === mesActual }));
+  const {desde, hasta} = _rendRangoMes();
+  const dias = Array.from({length:Number(hasta.slice(8,10))}, (_,i) => ({
+    key: desde.slice(0,8)+String(i+1).padStart(2,'0'), label:String(i+1), km:0, srvs:0
+  }));
+  logs.forEach(j => { const d=dias.find(d=>d.key===j.log_date); if(d) d.km+=Math.max(0,(j.km_final||0)-(j.km_inicio||0)); });
+  remitos.forEach(r => { const d=dias.find(d=>d.key===_rendFechaLocal(r.created_at_device)); if(d) d.srvs++; });
+  return dias.map(d=>({...d,actual:d.key===_rendFechaLocal(now)}));
 }
 
 function _desde(tipo) {
@@ -2936,11 +3005,7 @@ function _desde(tipo) {
     d.setDate(d.getDate() - (day - 1));
     return d.toISOString().slice(0,10);
   }
-  // mes = últimos 12 meses (primer día del mes hace 11 meses)
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - 11);
-  d.setDate(1);
-  return d.toISOString().slice(0,10);
+  return _rendRangoMes().desde;
 }
 
 // Rango del período equivalente inmediatamente anterior (Vista Chofer)
@@ -2962,16 +3027,9 @@ function _periodoAnterior(tipo) {
       label: 'semana anterior',
     };
   }
-  // mes = últimos 12 meses → comparar contra 12 meses previos
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - 23); d.setDate(1);
-  const desde = d.toISOString().slice(0, 10);
-  const h = new Date(now.getFullYear(), now.getMonth() - 11, 0); // último día del mes previo al rango actual
-  return {
-    desde,
-    hasta: h.toISOString().slice(0, 10),
-    label: '12 meses previos',
-  };
+  const [year,month] = _rendMes.split('-').map(Number);
+  const anterior = _rendRangoMes(_rendFechaLocal(new Date(Date.UTC(year,month-2,1,12))).slice(0,7));
+  return {...anterior,label:'mes anterior'};
 }
 
 // Rango del período equivalente anterior (Vista Negocio: 1m/3m/6m/12m/año)
@@ -3071,8 +3129,6 @@ async function cargarDashboard() {
   if (ctxBar) ctxBar.style.display = esAdmin ? '' : 'none';
   const emergQuick = document.getElementById('dash-emergencias-quick');
   if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
-  const incQuick = document.getElementById('dash-incidente-quick');
-  if (incQuick) incQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
   _alxActualizarBadges(); // badges de alertas (campanita + pestaña) en segundo plano
   if (esAdmin && _dashVistaActual === 'negocio') await _cargarViewNegocio();
@@ -3097,17 +3153,39 @@ function dashCambiarVista(vista, el) {
   if (vista === 'alertas')     cargarCentroAlertas();
 }
 
-function dashRendPeriod(tipo, el) {
-  el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  _rendPeriodo = tipo;
-  const lbl = document.getElementById('dash-rend-periodo-lbl');
-  if (lbl) lbl.textContent = { hoy:'Hoy', semana:'Semana actual (Lun–Dom)', mes:'Últimos 12 meses' }[tipo];
+function _rendFechaLocal(value) {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+}
+function _rendRangoMes(mes = _rendMes) {
+  const [year,month] = mes.split('-').map(Number);
+  return {desde:mes+'-01',hasta:mes+'-'+new Date(year,month,0).getDate()};
+}
+function dashRendMes(value) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return;
+  _rendMes=value;
   _cargarViewRendimiento();
+}
+function dashRendMoverMes(delta) {
+  const [year,month]=_rendMes.split('-').map(Number);
+  const date=new Date(Date.UTC(year,month-1+delta,15,12));
+  dashRendMes(date.toISOString().slice(0,7));
+}
+function _rendSyncPeriodo() {
+  const date=new Date(_rendMes+'-15T12:00:00');
+  const label=date.toLocaleDateString('es-AR',{month:'long'});
+  const lbl=document.getElementById('dash-rend-periodo-lbl'); if(lbl) lbl.textContent=label;
+  const year=document.getElementById('dash-rend-year'); if(year) year.textContent=String(date.getFullYear());
+  const title=document.getElementById('dash-evolucion-title'); if(title) title.textContent='Evolución — '+label+' '+date.getFullYear();
 }
 
 // ── Vista Chofer ──────────────────────────────
 async function _cargarViewRendimiento() {
+  const request=++_rendRequest;
+  _rendSyncPeriodo();
   document.getElementById('dash-view-rendimiento').style.display = '';
   document.getElementById('dash-view-negocio').style.display     = 'none';
   const _vAlx = document.getElementById('dash-view-alertas');
@@ -3144,7 +3222,7 @@ async function _cargarViewRendimiento() {
   // Fetch separado del render para cachearlo (Fase 3 offline — solo chofer)
   const fnOnlineRend = async () => {
     const [datos, jornadas, alertasPers, datosAnt] = await Promise.all([
-      cargarDatosChofer(targetUserId, desde, targetTruck),
+      cargarDatosChofer(targetUserId, desde, targetTruck, _rendPeriodo==='mes' ? _rendRangoMes().hasta : undefined),
       cargarJornadasAbiertas(),
       esChofer ? cargarAlertasPersonales() : Promise.resolve([]),
       cargarComparativoChofer(targetUserId, periodoAnt.desde, periodoAnt.hasta, targetTruck),
@@ -3155,7 +3233,7 @@ async function _cargarViewRendimiento() {
   let paqueteRend = null, rendDeCache = false, rendGuardadoAt = null;
   try {
     if (esChofer && typeof obLecturaConCache === 'function') {
-      const lectura = await obLecturaConCache(`dash_rend_${targetUserId}_${_rendPeriodo}`, fnOnlineRend);
+      const lectura = await obLecturaConCache(`dash_rend_${targetUserId}_${_rendPeriodo}_${_rendMes}_v2`, fnOnlineRend);
       paqueteRend    = lectura.data;
       rendDeCache    = lectura.deCache;
       rendGuardadoAt = lectura.guardadoAt;
@@ -3167,6 +3245,7 @@ async function _cargarViewRendimiento() {
     rendDeCache = true;
   }
 
+  if(request!==_rendRequest) return;
   if (!paqueteRend) {
     // Offline sin caché: vacío elegante, jamás pantalla rota
     ['dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
@@ -3360,7 +3439,7 @@ async function _cargarViewRendimiento() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             display: true,
@@ -3377,7 +3456,7 @@ async function _cargarViewRendimiento() {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: '#6b7280', font: { size: 10 } },
+            ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 },
           },
           y: {
             position: 'left',
@@ -5441,35 +5520,109 @@ if (typeof obRegistrarHandler === 'function') {
 
   // Remito pendiente: mismo upsert idempotente que el flujo online
   // (el nro_remito viene del talonario físico → replayable sin duplicar).
-  obRegistrarHandler('remito_pendiente', async (payload) => {
-    const { error } = await _db.from('remitos').upsert(payload, { onConflict: 'nro_remito' });
+  obRegistrarHandler('remito_pendiente', async (payload, blobs) => {
+    const remito = { ...payload };
+    const addonFileMap = Array.isArray(remito.remito_addon_file_map) ? remito.remito_addon_file_map : [];
+    delete remito.remito_addon_file_map;
+    if (remito.addons_version === 2 && addonFileMap.length && window.AuxiliosRemitoAddonsV2) {
+      const addonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence({
+        payload: {
+          addons_version: 2,
+          tolls: remito.tolls || [],
+          excesses: remito.excesses || [],
+          evidence: remito.evidence || [],
+          customer_collections: remito.customer_collections || null,
+        },
+        files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
+      }, _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito));
+      remito.evidence = addonPayload.evidence;
+    }
+    if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
+      return { realId: linked?.remito_id || null };
+    }
+    if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc(remito);
+      return { realId: intake?.remito_id || null };
+    }
+    const { data, error } = await _db.from('remitos')
+      .upsert(remito, { onConflict: 'nro_remito' })
+      .select('remito_id')
+      .single();
     if (error) throw new Error(error.message);
-    return {};
+    return { realId: data?.remito_id || null };
   });
 
   // Remito completo (wizard con firma y fotos hecho offline): sube los blobs
   // y hace el mismo upsert idempotente por nro_remito que el flujo online.
   obRegistrarHandler('remito_completo', async (payload, blobs) => {
     const remito = { ...payload };
-    if (blobs) {
-      const fotoUrls = [];
-      for (const [campo, blob] of Object.entries(blobs)) {
-        if (campo === 'firma') continue;
-        const nombre = `${remito.nro_remito}_${Date.now()}_${campo}.jpg`;
-        const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
-        if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
-        fotoUrls.push(_db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl);
+    const uploads = [];
+    const operationToken = _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito);
+    try {
+      const addonFileMap = Array.isArray(remito.remito_addon_file_map) ? remito.remito_addon_file_map : [];
+      delete remito.remito_addon_file_map;
+      if (remito.addons_version === 2 && window.AuxiliosRemitoAddonsV2) {
+        const addonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence({
+          payload: {
+            addons_version: 2,
+            tolls: remito.tolls || [],
+            excesses: remito.excesses || [],
+            evidence: remito.evidence || [],
+            customer_collections: remito.customer_collections || null,
+          },
+          files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
+        }, operationToken);
+        remito.evidence = addonPayload.evidence;
+        (addonPayload.evidence || []).forEach(item => uploads.push({
+          bucket: 'remito-evidence-v2', path: item.storage_path, url: null,
+        }));
       }
-      if (fotoUrls.length) remito.foto_urls = fotoUrls;
-      if (blobs.firma) {
-        const url = await _subirFirmaStorage(blobs.firma, remito.nro_remito);
-        if (!url) throw new Error('No se pudo subir la firma al almacenamiento');
-        remito.firma_imagen_url = url;
+      if (blobs) {
+        const fotoUrls = [];
+        for (const [campo, blob] of Object.entries(blobs)) {
+          if (campo === 'firma' || campo.startsWith('addon_')) continue;
+          const nombre = `${remito.nro_remito}_${operationToken}_${campo}.jpg`;
+          const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
+          if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
+          const url = _db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl;
+          fotoUrls.push(url);
+          uploads.push({ bucket: 'remitos', path: nombre, url });
+        }
+        if (fotoUrls.length) remito.foto_urls = fotoUrls;
+        if (blobs.firma) {
+          const path = _nombreFirmaStorage(remito.nro_remito, operationToken);
+          const url = await _subirFirmaStorage(blobs.firma, remito.nro_remito, operationToken);
+          if (!url) throw new Error('No se pudo subir la firma al almacenamiento');
+          remito.firma_imagen_url = url;
+          uploads.push({ bucket: 'firmas', path, url });
+        }
       }
+      if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+        const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
+        return { realId: linked?.remito_id || null };
+      }
+      if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+        const intake = await guardarRemitoAdHoc(remito);
+        return { realId: intake?.remito_id || null };
+      }
+      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remito;
+      const { data, error } = await _db.from('remitos')
+        .upsert(legacyRemito, { onConflict: 'nro_remito' })
+        .select('remito_id')
+        .single();
+      if (error) throw new Error(error.message);
+      return { realId: data?.remito_id || null };
+    } catch (error) {
+      if (uploads.length && typeof limpiarEvidenciaRemitoFallido === 'function') {
+        await limpiarEvidenciaRemitoFallido({
+          nroRemito: remito.nro_remito,
+          clientOperationId: remito.client_operation_id || null,
+          uploads,
+        });
+      }
+      throw error;
     }
-    const { error } = await _db.from('remitos').upsert(remito, { onConflict: 'nro_remito' });
-    if (error) throw new Error(error.message);
-    return {};
   });
 
   // Firma de remito: sube el blob de la firma al bucket 'firmas' con el mismo
@@ -5477,7 +5630,7 @@ if (typeof obRegistrarHandler === 'function') {
   // viaja en el payload y se agrega al historial recién al sincronizar (el
   // historial existente no se puede leer offline).
   obRegistrarHandler('remito_firmar', async (payload, blobs) => {
-    const { nro_remito, edicion, ...campos } = payload;
+    const { nro_remito, edicion, operator_service_id, driver_intake_id, client_operation_id, document_source, ...campos } = payload;
 
     let firmaUrl = null;
     if (blobs && blobs.firma) {
@@ -5487,13 +5640,41 @@ if (typeof obRegistrarHandler === 'function') {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones')
+      .select('historial_ediciones,operator_service_id,driver_intake_id,client_operation_id,document_source')
       .eq('nro_remito', nro_remito)
       .single();
     const historial = Array.isArray(remitoActual?.historial_ediciones)
       ? remitoActual.historial_ediciones
       : [];
     if (edicion) historial.push(edicion);
+
+    const serviceId = operator_service_id || remitoActual?.operator_service_id || null;
+    if (serviceId && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado({
+        nro_remito,
+        ...campos,
+        firma_imagen_url: firmaUrl,
+        operator_service_id: serviceId,
+        client_operation_id: client_operation_id || remitoActual?.client_operation_id || null,
+      }, serviceId);
+      return { realId: linked?.remito_id || null };
+    }
+
+    const adHoc = document_source === 'driver_ad_hoc'
+      || !!driver_intake_id
+      || remitoActual?.document_source === 'driver_ad_hoc'
+      || !!remitoActual?.driver_intake_id;
+    if (adHoc && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc({
+        nro_remito,
+        ...campos,
+        firma_imagen_url: firmaUrl,
+        driver_intake_id: driver_intake_id || remitoActual?.driver_intake_id || null,
+        client_operation_id: client_operation_id || remitoActual?.client_operation_id || null,
+        document_source: 'driver_ad_hoc',
+      });
+      return { realId: intake?.remito_id || null };
+    }
 
     const { data: actualizados, error } = await _db.from('remitos')
       .update({ ...campos, firma_imagen_url: firmaUrl, historial_ediciones: historial })
@@ -6743,7 +6924,12 @@ function actualizarContadorFotosRemito() {
 // ═══════════════════════════════════════════
 // 2. FUNCIONES DE RENDERIZADO Y LÓGICA
 // ═══════════════════════════════════════════
-function generarHtmlPill(estado) {
+function generarHtmlPill(estado, remito = null) {
+  if (estado === 'firmado' && remito?.addonsVersion === 2) {
+    if (remito.addonsReviewStatus === 'approved') return `<span class="pill pill-green">✓ Aprobado</span>`;
+    if (remito.addonsReviewStatus === 'adjusted') return `<span class="pill pill-blue">Ajustado por Administración</span>`;
+    return `<span class="pill pill-amber">En revisión</span>`;
+  }
   if (estado === 'firmado') return `<span class="pill pill-green">✓ Firmado</span>`;
   if (estado === 'anulado') return `<span class="pill pill-red">🚫 Anulado</span>`;
   if (estado === 'cerrado_admin') return `<span class="pill" style="background:rgba(88,166,255,0.12);color:var(--blue)">🏢 Cerrado por admin</span>`;
@@ -6824,7 +7010,7 @@ function renderTablaRemitos(data) {
       const esAsignadoAdmin = r.estado === 'pendiente' && r.creadoPor && r.creadoPor !== USUARIO_ACTUAL?.id;
 
       const estadoPill = esFirmado
-        ? `<span class="pill pill-green">✓ Firmado</span>`
+        ? generarHtmlPill(r.estado, r)
         : esAnulado
         ? `<span class="pill pill-red">🚫 Anulado</span>`
         : esCerradoAdmin
@@ -6924,7 +7110,7 @@ function renderTablaRemitos(data) {
             <span class="text-codigo">${r.nroSrv || 'S/SERVICIO'}</span>
             <span class="text-patente">${r.patente || '—'}</span>
           </div>
-          ${generarHtmlPill(r.estado)}
+          ${generarHtmlPill(r.estado, r)}
         </div>
         <div style="font-size:13px;font-weight:600">${r.tipo || '—'}</div>
         <div style="font-size:12px;color:var(--muted)">${r.origen || '—'} → ${r.destino || '—'}</div>
@@ -7202,6 +7388,14 @@ function _abrirDetalleMovil(titulo, htmlContent) {
   openModal('modal-mobile-detalle');
 }
 
+function _journeyColumns(fecha, movil, km, servicios, pill) {
+  const esc=value=>String(value??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const shortDate=String(fecha).replace(/^(\d{2})-(\d{2})-\d{2}(\d{2})$/, '$1/$2/$3');
+  return '<div class="journey-col"><span class="journey-col-label">Fecha</span><strong>'+esc(shortDate)+'</strong>'+pill+'</div>'
+    +'<div class="journey-col"><span class="journey-col-label">Móvil</span><strong>'+esc(movil)+'</strong></div>'
+    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span></div>';
+}
+
 function renderHistorialJornadas(data) {
   const tbody    = document.getElementById('tbody-historial-jornadas');
   const mList    = document.getElementById('mobile-jornadas-list');
@@ -7217,7 +7411,7 @@ function renderHistorialJornadas(data) {
       : `<span class="pill pill-muted">No</span>`;
     const estadoPill = j.estado === 'abierta'
       ? `<span class="pill pill-amber">Abierta</span>`
-      : `<span class="pill pill-green">Cerrada</span>`;
+      : j.estado === 'anulada' ? `<span class="pill pill-red">Anulada</span>` : `<span class="pill pill-green">Cerrada</span>`;
 
     // ── Desktop: fila de tabla (sin cambios) ──
     const tr = document.createElement('tr');
@@ -7261,16 +7455,9 @@ function renderHistorialJornadas(data) {
       </div>`;
 
     const row = document.createElement('div');
-    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
-    row.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${titulo}</div>
-        <div style="color:var(--muted);font-size:10px">${j.kmRec} km recorridos</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-        ${estadoPill}
-        <span style="color:var(--muted2);font-size:16px">›</span>
-      </div>`;
+    row.className = 'journey-columns';
+    row.style.borderLeftColor = color;
+    row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill);
     row.onclick = () => _abrirDetalleMovil(titulo, detalle);
     mList.appendChild(row);
   });
@@ -7356,7 +7543,7 @@ async function _jhistCargarPagina(reset) {
   }
 
   const { data, error } = await _db.from('daily_logs')
-    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate, numero_interno)')
+    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate), remitos!remitos_log_id_fkey(status)')
     .eq('driver_id', _jhistDriverId)
     .order('log_date', { ascending: false })
     .range(_jhistOffset, _jhistOffset + _JHIST_PAGINA - 1);
@@ -7380,23 +7567,19 @@ async function _jhistCargarPagina(reset) {
 
   rows.forEach(j => {
     const abierta = j.status === 'open';
-    const movil   = j.trucks?.numero_interno ? `N° ${j.trucks.numero_interno}` : (j.trucks?.plate || '—');
+    const movil   = j.trucks?.plate || '—';
     const kmRec   = (j.km_final != null && j.km_inicio != null)
       ? Math.max(0, Number(j.km_final) - Number(j.km_inicio)).toLocaleString('es-AR') + ' km'
       : '—';
-    const horas   = `${_jhistHora(j.hora_inicio)} → ${_jhistHora(j.hora_fin)}`;
+    const servicios = (j.remitos || []).filter(r=>r.status!=='anulado').length;
     const pill    = abierta
       ? '<span class="pill pill-amber">Abierta</span>'
-      : '<span class="pill pill-green">Cerrada</span>';
+      : j.status === 'void' ? '<span class="pill pill-red">Anulada</span>' : '<span class="pill pill-green">Cerrada</span>';
 
     const row = document.createElement('div');
-    row.className = 'jhist-row' + (abierta ? ' jhist-row--abierta' : '');
-    row.innerHTML = `
-      <div class="jhist-row-main">
-        <div class="jhist-row-titulo">${_jhistFecha(j.log_date)} · ${movil}</div>
-        <div class="jhist-row-sub">${kmRec} · ${horas}</div>
-      </div>
-      ${pill}`;
+    row.className = 'journey-columns';
+    row.style.borderLeftColor = abierta ? 'var(--amber)' : j.status==='void' ? 'var(--red)' : 'var(--green)';
+    row.innerHTML = _journeyColumns(_jhistFecha(j.log_date),movil,kmRec.replace(/ km$/, ''),servicios,pill);
     lista.appendChild(row);
   });
 
@@ -7500,15 +7683,50 @@ document.addEventListener('keydown', e => {
 
 
 
+let _guardandoRemitoPendiente = false;
+function _mostrarBorradorEnServiciosActivos() {
+  showRemitosView('lista');
+  window.cambiarVistaServiciosChofer?.('active');
+}
+
+const SIDENAV_COLLAPSED_KEY = 'auxilios.sidenav.collapsed';
+function setSidenavCollapsed(collapsed) {
+  const value = !!collapsed;
+  document.body.classList.toggle('nav-collapsed', value);
+  const button = document.querySelector('.nav-collapse');
+  if (button) {
+    button.setAttribute('aria-expanded', String(!value));
+    button.setAttribute('aria-label', value ? 'Expandir menú' : 'Contraer menú');
+    button.title = value ? 'Expandir menú' : 'Contraer menú';
+  }
+  try { localStorage.setItem(SIDENAV_COLLAPSED_KEY, value ? '1' : '0'); } catch (_) {}
+}
+function toggleSidenav() { setSidenavCollapsed(!document.body.classList.contains('nav-collapsed')); }
+try { setSidenavCollapsed(localStorage.getItem(SIDENAV_COLLAPSED_KEY) === '1'); } catch (_) { setSidenavCollapsed(false); }
+function _actualizarEstadoGuardadoRemito(btn, texto) {
+  if (btn) btn.textContent = texto;
+}
 async function guardarRemitoPendiente() {
+  if (_guardandoRemitoPendiente) {
+    toast('El remito ya se está guardando. Esperá un momento.', 'info');
+    return false;
+  }
+  const btnPendiente = document.getElementById('btn-pendiente-footer');
+  const textoPendiente = btnPendiente?.textContent || '💾 Guardar y seguir después';
+  _guardandoRemitoPendiente = true;
+  if (btnPendiente) {
+    btnPendiente.disabled = true;
+    btnPendiente.textContent = '⏳ Guardando…';
+  }
+  try {
   const nro       = document.getElementById('rem-nro')?.value;
-  const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
   const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
   const km        = document.getElementById('rem-km')?.value || '0';
   const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
   const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
   const cliente   = document.getElementById('rem-cliente')?.value || '';
-  const cuit      = document.getElementById('rem-cuit')?.value || '';
+  const cuit      = document.getElementById('rem-cuit')?.value?.trim() || '';
+  const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
   const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
   const otros     = parseFloat(document.getElementById('imp-otros')?.value)     || 0;
@@ -7516,15 +7734,35 @@ async function guardarRemitoPendiente() {
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || null;
 
   // ── Validaciones ──────────────────────────────────────
-  if (!patente) { toast('Ingresá la patente del vehículo', 'error'); return; }
-  if (!origen)  { toast('Ingresá el origen del servicio', 'error'); return; }
-  if (!destino) { toast('Ingresá el destino del servicio', 'error'); return; }
+  if (!patente) { toast('Ingresá la patente del vehículo', 'error'); return false; }
+  if (!origen)  { toast('Ingresá el origen del servicio', 'error'); return false; }
+  if (!destino) { toast('Ingresá el destino del servicio', 'error'); return false; }
 
   // ── Registro Silencioso (Asignación a la jornada) ─────
   let _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
   _logId = await _resolverLogIdLocal(_logId);
 
   // ── Empaquetado de Datos ──────────────────────────────
+  const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
+    ? obtenerServicioActivoRemito()
+    : sessionStorage.getItem('auxilios_phase3_service_id');
+  const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
+    ? window.obtenerServicioAsignadoRemito()
+    : null;
+  const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
+    ? esRemitoAdHocActivo()
+    : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+  const tipo = String(servicioAsignado?.concept_name || '').trim() || (adHocMode ? 'A definir por Operaciones' : 'Servicio');
+  const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
+  if (adHocMode && !mapLocations) {
+    toast('Seleccioná origen y destino desde Google Maps', 'error');
+    remWizardIr(1 - _remPasoActual);
+    window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
+    return false;
+  }
+  const clientOperationId = (operatorServiceId || adHocMode) && typeof obtenerOperacionRemito === 'function'
+    ? obtenerOperacionRemito(operatorServiceId || 'driver-ad-hoc', nro)
+    : null;
   const remitoDB = {
     nro_remito:        nro,
     driver_id:         USUARIO_ACTUAL.id,
@@ -7534,6 +7772,7 @@ async function guardarRemitoPendiente() {
     marca_modelo:      document.getElementById('rem-marca-modelo')?.value || null,
     razon_social:      cliente || null,
     cuit:              cuit    || null,
+    telefono:          telefono || null,
     tipo_servicio:     tipo,
     origen:            origen,
     destino:           destino,
@@ -7544,54 +7783,134 @@ async function guardarRemitoPendiente() {
     observaciones:     observaciones,
     status:            'pendiente',
     created_at_device: new Date().toISOString(),
+    ...(operatorServiceId ? {
+      operator_service_id: operatorServiceId,
+      client_operation_id: clientOperationId,
+      document_source: 'auxilios_driver',
+    } : adHocMode ? {
+      client_operation_id: clientOperationId,
+      document_source: 'driver_ad_hoc',
+      ...(mapLocations||{}),
+    } : {}),
   };
+
+  const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
+  if (addonValidation && !addonValidation.ok) {
+    toast(addonValidation.errors[0] || 'Revisá los peajes y excedentes', 'error');
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
+    return false;
+  }
+  const addonBundle = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
 
   // ── OFFLINE: encolar en el outbox y seguir el flujo normal ──
   // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
   // el upsert online fallaría con un id inválido.
   if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
+    const blobs = {};
+    if (addonBundle?.payload) {
+      Object.assign(remitoDB, addonBundle.payload);
+      if (addonBundle.files?.length) {
+        remitoDB.remito_addon_file_map = addonBundle.files.map(({ file, ...item }) => item);
+        addonBundle.files.forEach(item => { blobs[item.blob_field] = item.file; });
+      }
+    }
     const tempId = obTempId();
     _obRemitoTemp[nro] = tempId; // para que la firma del mismo nro dependa de esta op
     const dependeDe = _logIdEsTemporal(_logId) ? _logId : null;
-    await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, dependeDe, tempId });
-    try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
-    showRemitosView('lista');
+    await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, blobs: Object.keys(blobs).length ? blobs : null, dependeDe, tempId });
+    _mostrarBorradorEnServiciosActivos();
     toast(`Remito ${nro} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
-    return;
+    return true;
   }
 
   // 🚨 DIAGNÓSTICO DE SEGURIDAD (Mirar Consola F12) 🚨
   console.log("ID del chofer enviado a Supabase:", USUARIO_ACTUAL.id);
 
-  const { data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' });
+  let data = null, error = null;
+  if (operatorServiceId && typeof guardarRemitoVinculado === 'function') {
+    try {
+      if (addonBundle?.payload) {
+        if (addonBundle.files?.length) _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Subiendo evidencia…');
+        const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
+        Object.assign(remitoDB, uploaded);
+      }
+      _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
+      data = await guardarRemitoVinculado(remitoDB, operatorServiceId);
+    } catch (linkedError) {
+      error = linkedError;
+    }
+  } else if (adHocMode && typeof guardarRemitoAdHoc === 'function') {
+    try {
+      if (addonBundle?.payload) {
+        if (addonBundle.files?.length) _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Subiendo evidencia…');
+        const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
+        Object.assign(remitoDB, uploaded);
+      }
+      _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
+      data = await guardarRemitoAdHoc(remitoDB);
+    } catch (adHocError) {
+      error = adHocError;
+    }
+  } else {
+    _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
+    ({ data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));
+  }
 
   // 🚨 CAPTURA DE ERRORES DE SUPABASE (RLS/Foreign Keys) 🚨
   if (error) {
     console.error("❌ ERROR REAL DE SUPABASE:", error.message, "\nDetalles:", error.details, "\nPista:", error.hint);
     toast('Error al guardar: ' + error.message, 'error');
-    return;
+    return false;
   }
 
   console.log("✅ Remito guardado en BD exitosamente:", data);
 
-  await cargarRemitos();
-  showRemitosView('lista');
+  _mostrarBorradorEnServiciosActivos();
   toast(`Remito ${nro} guardado como pendiente ✓`, 'success');
+  return true;
+  } catch (e) {
+    console.error('Error en guardarRemitoPendiente:', e);
+    toast('Error al guardar: ' + (e?.message || e), 'error');
+    return false;
+  } finally {
+    _guardandoRemitoPendiente = false;
+    if (btnPendiente) {
+      btnPendiente.disabled = false;
+      btnPendiente.textContent = textoPendiente;
+    }
+  }
 }
 
 function completarRemitoPendiente(r) {
+  let adHocMode = false;
+  if (r?.operatorServiceId) {
+    sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+    sessionStorage.setItem('auxilios_phase3_service_id', r.operatorServiceId);
+  } else if (r?.driverIntakeId || r?.documentSource === 'driver_ad_hoc') {
+    adHocMode = true;
+    sessionStorage.removeItem('auxilios_phase3_service_id');
+    sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
+  }
+  window.AuxiliosRemitoMobileV3?.setAdHocMode?.(adHocMode);
   showRemitosView('nuevo'); // calls remWizardReset() internally — clears all fields
-  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el || val == null) return;
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
   set('rem-nro',            r.nro);
   set('rem-patente',        r.patente);
-  set('rem-tipo-servicio',  r.tipo);
   set('rem-origen',         r.origen);
   set('rem-destino',        r.destino);
+  window.AuxiliosRemitoMobileV3?.restoreMapLocations?.(r);
   set('rem-km',             r.km !== '—' ? r.km : '');
   set('rem-nro-prestadora', r.nroSrv);
   set('rem-marca-modelo',   r.marca);
   set('rem-cliente',        r.cliente);
   set('rem-cuit',           r.cuit);
+  set('rem-telefono',       r.telefono);
   set('imp-peaje',          r.peaje && r.peaje !== '0' ? r.peaje : '');
   const _excMasOtros = (parseInt(r.excedente) || 0) + (parseInt(r.otros) || 0);
   set('imp-excedente',      _excMasOtros ? String(_excMasOtros) : '');
@@ -9479,7 +9798,7 @@ function _abrirPanelChofer() {
         <div class="cfg-ch-card cfg-ch-card--action ${tieneJornada ? 'cfg-ch-card--disabled' : ''}"
              onclick="${tieneJornada ? '' : '_cambiarSesionChofer()'}">
           <div>
-            <div>🔄 Cambiar sesión</div>
+            <div>🔄 Cambiar de unidad/vehículo</div>
             ${tieneJornada ? '<div class="cfg-ch-hint">Cerrá tu jornada activa primero</div>' : ''}
           </div>
           <span class="cfg-ch-arrow">›</span>
@@ -12541,6 +12860,40 @@ function abrirModalPendienteRendir() {
   openModal('modal-desglose-pago');
 }
 
+function _cashCollectionLines(r, addons) {
+  const cash=[1,2].reduce((sum,n)=>sum+(r['pago_'+n+'_metodo']==='efectivo'?Number(r['pago_'+n+'_monto'])||0:0),0);
+  const lines=[];
+  for(const [key,label] of [['tolls','Peaje'],['excesses','Excedente']]) {
+    for(const item of addons?.[key] || []) if(['cash','efectivo'].includes(item.customer_payment_method) && Number(item.total_amount)>0) lines.push({type:label,amount:Number(item.total_amount)});
+  }
+  if(!lines.length && addons && !(addons.tolls?.length || addons.excesses?.length)) {
+    const otherPayment=[1,2].some(n=>r['pago_'+n+'_metodo'] && r['pago_'+n+'_metodo']!=='efectivo' && Number(r['pago_'+n+'_monto'])>0);
+    if(!otherPayment) for(const [key,type] of [['imp_peaje','Peaje'],['imp_excedente','Excedente']]) if(Number(r[key])>0) lines.push({type,amount:Number(r[key])});
+  }
+  const allocated=lines.reduce((sum,line)=>sum+line.amount,0);
+  // Nunca atribuir arbitrariamente un pago mixto histórico a un concepto.
+  if(allocated>cash+0.01) return [{type:'Sin desglose histórico',amount:cash}];
+  if(cash>allocated+0.01) lines.push({type:addons?'Sin desglose histórico':'Detalle no disponible',amount:cash-allocated});
+  return lines;
+}
+let _cashDetailRequest=0;
+async function _loadCashCollectionRows(remitos) {
+  const request=++_cashDetailRequest;
+  const results=[];
+  for(let offset=0;offset<remitos.length;offset+=6) {
+    results.push(...await Promise.all(remitos.slice(offset,offset+6).map(async r=>{
+      try { const {data,error}=await _db.rpc('get_driver_remito_addons_v2',{p_remito_id:Number(r.remito_id)}); return {r,addons:error?null:data}; }
+      catch { return {r,addons:null}; }
+    })));
+  }
+  if(request!==_cashDetailRequest) return;
+  const host=document.getElementById('cash-collection-rows'); if(!host) return;
+  const esc=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  host.innerHTML=results.flatMap(({r,addons})=>_cashCollectionLines(r,addons).map(line=>
+    '<div class="cash-collection-row"><span>'+esc(_jhistFecha(_rendFechaLocal(r.created_at_device)))+'</span><span>'+esc(r.daily_logs?.trucks?.plate||'—')+'</span><span>'+esc(line.type)+'</span><strong>+$'+_AR(line.amount)+'</strong></div>'
+  )).join('') || '<div class="cash-collection-row">Sin cobros en efectivo</div>';
+}
+
 function abrirModalDesgloseEfectivo() {
   const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const remitos   = _rendRemitosActuales || [];
@@ -12569,16 +12922,7 @@ function abrirModalDesgloseEfectivo() {
   const body = document.getElementById('modal-desglose-body');
   if (!body) return;
 
-  const rowsCobrado = cobradosEf.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cobros en efectivo</div>'
-    : cobradosEf.map(r => {
-        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
-        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
-          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
-          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
-          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">+$' + _AR(getEf(r)) + '</span>'
-          + '</div>';
-      }).join('');
+  const rowsCobrado = '<div id="cash-collection-rows" aria-live="polite"><div class="cash-collection-row">Cargando cobros…</div></div>';
 
   const rowsFuel = cargasFuel.length === 0
     ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cargas de combustible</div>'
@@ -12634,6 +12978,7 @@ function abrirModalDesgloseEfectivo() {
   `;
 
   openModal('modal-desglose-pago');
+  _loadCashCollectionRows([...cobradosEf].sort((a,b)=>(b.created_at_device||'').localeCompare(a.created_at_device||'')));
 }
 
 function abrirModalDesglosePago(tipo) {

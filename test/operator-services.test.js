@@ -4,11 +4,14 @@ const fs=require('node:fs');
 const services=fs.readFileSync('operator-services.js','utf8');
 const css=fs.readFileSync('operator-services.css','utf8');
 const workspaceCss=fs.readFileSync('operator-service-workspace-reactive-v1.css','utf8');
+const workspace=fs.readFileSync('operator-service-workspace-reactive-v1.js','utf8');
+const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
 const config=fs.readFileSync('config.js','utf8');
 const settings=fs.readFileSync('service-module-configuration.js','utf8');
 const lifecycle=fs.readFileSync('migrations/20260813104500_service_module_configuration_v1.sql','utf8');
 const listMigration=fs.readFileSync('migrations/20260814125000_operator_service_list_v3.sql','utf8');
 const amountDueMigration=fs.readFileSync('migrations/20260815110500_operator_service_amount_due_excess_only_v1.sql','utf8');
+const driverVisibilityMigration=fs.readFileSync('migrations/20260829233000_driver_remito_admin_visibility_v1.sql','utf8');
 const settingsMigration=fs.readFileSync('migrations/20260814125500_service_module_columns_v2.sql','utf8');
 
 test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=>{
@@ -20,10 +23,10 @@ test('Servicios usa una sola mesa y sólo conserva las columnas definitivas',()=
   assert.doesNotMatch(services,/os-board|renderKpis|renderDetail|modal-operador-servicio|get_operator_service_detail|os-detail-shell/);
 });
 
-test('mesa compacta ubica Nuevo servicio a la derecha y adapta las 17 columnas al viewport',()=>{
+test('mesa legible ubica Nuevo servicio a la derecha y conserva ancho útil con scroll',()=>{
   assert.match(css,/grid-template-columns:auto auto 180px 120px 34px 34px minmax\(0,1fr\)/);
   assert.match(css,/\.os-commandbar \.os-manage\{justify-self:end\}/);
-  assert.match(css,/\.os-table\{width:100%;min-width:0;/);
+  assert.match(css,/\.os-table\{width:100%;min-width:1320px;/);
   assert.doesNotMatch(css,/min-width:1740px/);
   assert.match(css,/100vh - 126px/);
   assert.match(css,/\.os-table th\.col-origin,\.os-table th\.col-destination\{width:13%\}/);
@@ -34,7 +37,7 @@ test('Fecha Hora muestra sólo la fecha programada y su hora en menor jerarquía
   assert.match(services,/fmtDay\(s\.scheduled_for\)/);
   assert.match(services,/fmtTime\(s\.scheduled_for\)/);
   assert.match(services,/os-scheduled-time/);
-  assert.match(css,/\.os-scheduled-time\{font-size:8px!important/);
+  assert.match(css,/\.os-scheduled-time\{font-size:9px!important/);
   assert.doesNotMatch(services,/Creado ·|fmtTimeSeconds/);
 });
 
@@ -43,6 +46,21 @@ test('Cliente representa patente marca y modelo, no el nombre del socio',()=>{
   assert.match(customer,/vehicle_plate/);
   assert.match(customer,/vehicle_make_model/);
   assert.doesNotMatch(customer,/customer_name/);
+});
+
+test('Operaciones prioriza los datos recibidos del remito del Chofer',()=>{
+  assert.match(services,/remito_vehicle_plate\|\|s\.vehicle_plate/);
+  assert.match(services,/remito_vehicle_make_model\|\|s\.vehicle_make_model/);
+  assert.match(services,/remito_customer_document/);
+  assert.match(services,/remito_customer_phone\|\|s\.customer_phone/);
+  assert.match(services,/remito_origin/);
+  assert.match(services,/remito_destination/);
+  assert.match(services,/remito_km_reales\|\|s\.estimated_distance_km/);
+  assert.match(driverVisibilityMigration,/create trigger remitos_driver_admin_visibility_v1/);
+  assert.match(driverVisibilityMigration,/customer_phone = coalesce\(nullif\(btrim\(new\.telefono\),''\), s\.customer_phone\)/);
+  assert.match(driverVisibilityMigration,/'remito_customer_document', r\.cuit/);
+  assert.match(driverVisibilityMigration,/'remito_toll_total', coalesce\(t\.toll_total,0\)/);
+  assert.match(driverVisibilityMigration,/'remito_excess_total', coalesce\(x\.excess_total,0\)/);
 });
 
 test('Origen y Destino son columnas separadas con detalle Dirección Localidad Provincia',()=>{
@@ -93,7 +111,10 @@ test('acciones de asignación desde la mesa usan el modal rápido y no abren el 
 test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido',()=>{
   assert.match(services,/customer_amount_due/);
   assert.match(services,/customer_payment_methods/);
-  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'\}/);
+  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado'\}/);
+  assert.match(services,/remito_excess_total/);
+  assert.match(services,/remito_toll_total/);
+  assert.match(services,/Informado por chofer/);
   assert.match(services,/os-payment-method/);
   assert.match(css,/\.os-payment-method\{/);
   assert.match(amountDueMigration,/from public\.operator_service_excess_charges oe/);
@@ -103,11 +124,20 @@ test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido
   assert.doesNotMatch(amountDueMigration,/from public\.operator_service_tolls/);
 });
 
-test('Agregar concepto es más compacto y Observaciones e Indicaciones comparten tarjeta y padding',()=>{
+test('Agregar concepto y Observaciones mantienen el workspace compacto',()=>{
+  assert.doesNotMatch(workspace,/toggleAttribute\('hidden',!!w\.intakeId\)/);
+  assert.match(workspace,/if\(concepts\)concepts\.hidden=false/);
   assert.match(workspaceCss,/\.osv2-add-concept-trigger\{min-height:25px!important;padding:0 8px!important[^}]*font-size:7\.7px!important/);
-  assert.match(workspaceCss,/\.vehicle-card,.osv4-reactive \.distance-card,.osv4-reactive \.driver-instructions-card,.osv4-reactive \.osv2-observations\{padding:7px!important/);
+  assert.match(workspaceCss,/\.vehicle-card,.osv4-reactive \.distance-card,.osv4-reactive \.osv2-observations\{padding:7px!important/);
+  assert.doesNotMatch(workspaceCss,/driver-instructions-card/);
   assert.match(workspaceCss,/\.osv2-observations\{display:grid!important;min-width:0;border:1px solid var\(--osv2-border\);border-radius:11px;background:var\(--osv2-card\)/);
   assert.match(workspaceCss,/\.route-column textarea\{min-height:52px!important;padding:6px 8px!important\}/);
+});
+
+test('un código duplicado conserva la integridad y explica cómo vincular el remito',()=>{
+  assert.match(wizard,/function duplicateProviderMessage/);
+  assert.match(wizard,/volvé a Vincular para asociar el remito al servicio existente/);
+  assert.match(wizard,/duplicateProviderMessage\(error\.message,w\.data\.service_order_number\)/);
 });
 
 test('Servicios registra header, Activos e Historial y mantiene el flujo de facturación',()=>{
