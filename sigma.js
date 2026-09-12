@@ -3129,8 +3129,6 @@ async function cargarDashboard() {
   if (ctxBar) ctxBar.style.display = esAdmin ? '' : 'none';
   const emergQuick = document.getElementById('dash-emergencias-quick');
   if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
-  const incQuick = document.getElementById('dash-incidente-quick');
-  if (incQuick) incQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
   _alxActualizarBadges(); // badges de alertas (campanita + pestaña) en segundo plano
   if (esAdmin && _dashVistaActual === 'negocio') await _cargarViewNegocio();
@@ -3167,27 +3165,21 @@ function _rendRangoMes(mes = _rendMes) {
   return {desde:mes+'-01',hasta:mes+'-'+new Date(year,month,0).getDate()};
 }
 function dashRendMes(value) {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value) || value > _rendFechaLocal(new Date()).slice(0,7)) return;
-  _rendMes=value; _rendPeriodo='mes';
-  document.querySelectorAll('#dash-rend-periods .ftab').forEach(t=>t.classList.toggle('active',t.dataset.period==='mes'));
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return;
+  _rendMes=value;
   _cargarViewRendimiento();
+}
+function dashRendMoverMes(delta) {
+  const [year,month]=_rendMes.split('-').map(Number);
+  const date=new Date(Date.UTC(year,month-1+delta,15,12));
+  dashRendMes(date.toISOString().slice(0,7));
 }
 function _rendSyncPeriodo() {
-  const input=document.getElementById('dash-rend-mes');
-  if(input) { input.value=_rendMes; input.max=_rendFechaLocal(new Date()).slice(0,7); }
-  const wrap=document.getElementById('dash-rend-mes-wrap');
-  if(wrap) wrap.hidden=_rendPeriodo!=='mes';
-  const label=_rendPeriodo==='mes' ? new Date(_rendMes+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'}) : {hoy:'Hoy',semana:'Semana actual (Lun–Dom)'}[_rendPeriodo];
+  const date=new Date(_rendMes+'-15T12:00:00');
+  const label=date.toLocaleDateString('es-AR',{month:'long'});
   const lbl=document.getElementById('dash-rend-periodo-lbl'); if(lbl) lbl.textContent=label;
-  const title=document.getElementById('dash-evolucion-title'); if(title) title.textContent='Evolución — '+label;
-}
-
-function dashRendPeriod(tipo, el) {
-  el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  _rendPeriodo = tipo;
-  _rendSyncPeriodo();
-  _cargarViewRendimiento();
+  const year=document.getElementById('dash-rend-year'); if(year) year.textContent=String(date.getFullYear());
+  const title=document.getElementById('dash-evolucion-title'); if(title) title.textContent='Evolución — '+label+' '+date.getFullYear();
 }
 
 // ── Vista Chofer ──────────────────────────────
@@ -7396,6 +7388,14 @@ function _abrirDetalleMovil(titulo, htmlContent) {
   openModal('modal-mobile-detalle');
 }
 
+function _journeyColumns(fecha, movil, km, servicios, pill) {
+  const esc=value=>String(value??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const shortDate=String(fecha).replace(/^(\d{2})-(\d{2})-\d{2}(\d{2})$/, '$1/$2/$3');
+  return '<div class="journey-col"><span class="journey-col-label">Fecha</span><strong>'+esc(shortDate)+'</strong>'+pill+'</div>'
+    +'<div class="journey-col"><span class="journey-col-label">Móvil</span><strong>'+esc(movil)+'</strong></div>'
+    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span></div>';
+}
+
 function renderHistorialJornadas(data) {
   const tbody    = document.getElementById('tbody-historial-jornadas');
   const mList    = document.getElementById('mobile-jornadas-list');
@@ -7455,16 +7455,9 @@ function renderHistorialJornadas(data) {
       </div>`;
 
     const row = document.createElement('div');
-    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
-    row.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${titulo}</div>
-        <div style="color:var(--muted);font-size:10px">${j.kmRec} km · ${j.servicios ?? 0} servicios</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-        ${estadoPill}
-        <span style="color:var(--muted2);font-size:16px">›</span>
-      </div>`;
+    row.className = 'journey-columns';
+    row.style.borderLeftColor = color;
+    row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill);
     row.onclick = () => _abrirDetalleMovil(titulo, detalle);
     mList.appendChild(row);
   });
@@ -7584,13 +7577,9 @@ async function _jhistCargarPagina(reset) {
       : j.status === 'void' ? '<span class="pill pill-red">Anulada</span>' : '<span class="pill pill-green">Cerrada</span>';
 
     const row = document.createElement('div');
-    row.className = 'jhist-row' + (abierta ? ' jhist-row--abierta' : '');
-    row.innerHTML = `
-      <div class="jhist-row-main">
-        <div class="jhist-row-titulo">${_jhistFecha(j.log_date)} · ${movil}</div>
-        <div class="jhist-row-sub">${kmRec} · ${servicios} servicios</div>
-      </div>
-      ${pill}`;
+    row.className = 'journey-columns';
+    row.style.borderLeftColor = abierta ? 'var(--amber)' : j.status==='void' ? 'var(--red)' : 'var(--green)';
+    row.innerHTML = _journeyColumns(_jhistFecha(j.log_date),movil,kmRec.replace(/ km$/, ''),servicios,pill);
     lista.appendChild(row);
   });
 
@@ -9809,7 +9798,7 @@ function _abrirPanelChofer() {
         <div class="cfg-ch-card cfg-ch-card--action ${tieneJornada ? 'cfg-ch-card--disabled' : ''}"
              onclick="${tieneJornada ? '' : '_cambiarSesionChofer()'}">
           <div>
-            <div>🔄 Cambiar sesión</div>
+            <div>🔄 Cambiar de unidad/vehículo</div>
             ${tieneJornada ? '<div class="cfg-ch-hint">Cerrá tu jornada activa primero</div>' : ''}
           </div>
           <span class="cfg-ch-arrow">›</span>

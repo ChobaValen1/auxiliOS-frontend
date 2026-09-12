@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-metrics-v61-20260912">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-metrics-v61-20260912">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=driver-metrics-v61-20260912">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-layout-v62-20260912">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-layout-v62-20260912">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=driver-layout-v62-20260912">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=driver-metrics-v61-20260912" defer></script>
-<script src="supabase.js?v=driver-metrics-v61-20260912" defer></script>
+<script src="config.js?v=driver-layout-v62-20260912" defer></script>
+<script src="supabase.js?v=driver-layout-v62-20260912" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-metrics-v61-20260912" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-metrics-v61-20260912" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-metrics-v61-20260912" defer></script>
-<script src="sigma.js?v=driver-metrics-v61-20260912" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-layout-v62-20260912" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-layout-v62-20260912" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-layout-v62-20260912" defer></script>
+<script src="sigma.js?v=driver-layout-v62-20260912" defer></script>
 </head>
 <body>
 
@@ -543,7 +543,7 @@
         <div id="camion-seleccionado-preview" style="display:none;padding:12px 14px;border-radius:10px;border:2px solid var(--amber);background:var(--amber-lo);margin-bottom:10px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Camión seleccionado</div>
           <div id="camion-preview-texto" style="font-weight:700;font-size:15px"></div>
-          <div style="margin-top:8px;font-size:11px;color:var(--muted)">Para cambiar de camión ir a <strong style="color:var(--amber)">Configuración → Cambiar sesión</strong></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted)">Para cambiar de camión ir a <strong style="color:var(--amber)">Configuración → Cambiar de unidad/vehículo</strong></div>
         </div>
         <button id="btn-abrir-selector-camion" onclick="toggleSelectorCamion()" class="btn btn-ghost" style="width:100%;justify-content:center;gap:8px;font-size:14px">
           🚛 Seleccionar Camión
@@ -791,14 +791,6 @@
           </div>
         </div>
 
-        <!-- Reportar incidente (solo chofer) -->
-        <div id="dash-incidente-quick" style="display:none;margin-bottom:16px">
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-            <button class="btn-incidente" onclick="abrirModalIncidente()">⚠️ Reportar incidente</button>
-            <div class="inc-aviso-offline">📴 Funciona sin señal — se sincroniza solo</div>
-          </div>
-        </div>
-
         <!-- Filtros solo para admin/supervisor -->
         <div id="dash-rend-filtros-admin" style="display:none;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Rendimiento Individual</div>
@@ -818,17 +810,12 @@
           </div>
         </div>
 
-        <!-- Selector período -->
-        <div class="dash-rend-period-selector">
-          <span style="font-size:11px;color:var(--muted)"><span id="dash-rend-periodo-lbl">Mes actual</span> <span id="dash-rend-comparado" style="font-size:9px;opacity:0.7;margin-left:4px"></span></span>
-          <div class="filter-tabs" id="dash-rend-periods">
-            <div class="ftab" data-period="hoy" onclick="dashRendPeriod('hoy',this)">Hoy</div>
-            <div class="ftab" data-period="semana" onclick="dashRendPeriod('semana',this)">Semana</div>
-            <div class="ftab active" data-period="mes" onclick="dashRendPeriod('mes',this)">Mes</div>
-          </div>
-        </div>
-
-        <label id="dash-rend-mes-wrap" class="dash-rend-month">Mes <input id="dash-rend-mes" type="month" class="form-input" onchange="dashRendMes(this.value)"></label>
+        <nav class="dash-month-navigation" aria-label="Mes de las métricas">
+          <button type="button" onclick="dashRendMoverMes(-1)" aria-label="Mes anterior">‹</button>
+          <div class="dash-month-current" aria-live="polite"><span id="dash-rend-periodo-lbl">Mes actual</span><span id="dash-rend-year"></span></div>
+          <button type="button" onclick="dashRendMoverMes(1)" aria-label="Mes siguiente">›</button>
+        </nav>
+        <div id="dash-rend-comparado" class="dash-month-comparison"></div>
 
         <!-- KPIs financieros -->
         <div class="dash-section">Financiero</div>

@@ -1731,15 +1731,16 @@ body {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.75);
   z-index: 9000;
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
 }
 .cfg-ch-box {
   background: var(--card);
-  border-radius: 20px 20px 0 0;
+  border-radius: 20px;
   width: 100%; max-width: 560px;
   padding: 24px 20px 36px;
   display: flex; flex-direction: column; gap: 8px;
-  max-height: 90vh; overflow-y: auto;
+  max-height: calc(100dvh - 32px); overflow-y: auto;
 }
 .cfg-ch-header {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -3668,12 +3669,23 @@ body {
 }
 
 /* Jornadas y rendimiento: anotaciones móviles */
-.dash-rend-period-selector{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.dash-rend-month{display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:12px}
-.dash-rend-month[hidden]{display:none}
-.dash-rend-month input{width:auto;max-width:100%;min-height:40px}
 #dash-evolucion-chart{position:relative;width:100%;min-width:0;height:clamp(220px,32vw,360px)}
 #dash-evolucion-canvas{display:block;width:100%!important;height:100%!important}
 .cash-collection-row{display:grid;grid-template-columns:80px minmax(70px,1fr) minmax(65px,1fr) auto;gap:8px;padding:10px;border-bottom:1px solid var(--border);font-size:12px;align-items:center}
 .cash-collection-row strong{text-align:right;color:var(--green)}
 @media(max-width:400px){.cash-collection-row{grid-template-columns:1fr 1fr;gap:4px 8px}.cash-collection-row span:nth-child(2){text-align:right}}
+
+/* Estructura de jornadas y navegación mensual */
+.journey-columns{display:grid;grid-template-columns:1fr 1fr 1.15fr;align-items:start;gap:0;padding:14px 10px;margin-bottom:8px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px}
+.journey-col{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;padding:0 10px;font-size:12px}
+.journey-col+.journey-col{border-left:1px solid var(--border)}
+.journey-col-label{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);white-space:nowrap}
+.journey-col strong{font-size:12px;white-space:nowrap}
+.journey-col .pill{font-size:8px;padding:2px 5px}
+.dash-month-navigation{display:flex;align-items:center;justify-content:center;gap:24px;margin:24px auto 4px;width:100%}
+.dash-month-navigation button{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--border);border-radius:50%;background:var(--card);color:var(--amber);font-size:30px;cursor:pointer}
+.dash-month-navigation button:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+.dash-month-current{display:flex;flex-direction:column;text-align:center;min-width:140px;gap:3px}
+#dash-rend-periodo-lbl{text-transform:capitalize;font-size:21px;font-weight:700;color:var(--text)}
+#dash-rend-year{font-size:12px;color:var(--muted)}
+.dash-month-comparison{text-align:center;color:var(--muted);font-size:10px;margin-bottom:24px}
