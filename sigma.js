@@ -2881,7 +2881,9 @@ function limpiarRangoKM() {
 // ── PANEL PRINCIPAL: Dual-Contexto ────────────
 
 let _dashVistaActual = 'rendimiento';
-let _rendPeriodo     = 'hoy';
+let _rendPeriodo     = 'mes';
+let _rendMes = _rendFechaLocal(new Date()).slice(0,7);
+let _rendRequest = 0;
 let _negocioData     = null;
 let _negocioRaw      = null;   // datos sin filtrar
 let _negocioRawAnt   = null;   // datos período anterior (comparativo)
@@ -2985,26 +2987,13 @@ function _buildChartBuckets(tipo, logs, remitos) {
     const hoyKey = now.toISOString().slice(0,10);
     return dias.map(d => ({ ...d, actual: d.key === hoyKey }));
   }
-  // mes = últimos 12 meses
-  const meses = [];
-  const labelsMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    meses.push({ key, label: labelsMes[d.getMonth()], km: 0, srvs: 0 });
-  }
-  logs.forEach(j => {
-    const k = (j.log_date||'').slice(0,7);
-    const m = meses.find(m => m.key === k);
-    if (m) m.km += Math.max(0, (j.km_final||0) - (j.km_inicio||0));
-  });
-  remitos.forEach(r => {
-    const k = (r.created_at_device||'').slice(0,7);
-    const m = meses.find(m => m.key === k);
-    if (m) m.srvs++;
-  });
-  const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return meses.map(m => ({ ...m, actual: m.key === mesActual }));
+  const {desde, hasta} = _rendRangoMes();
+  const dias = Array.from({length:Number(hasta.slice(8,10))}, (_,i) => ({
+    key: desde.slice(0,8)+String(i+1).padStart(2,'0'), label:String(i+1), km:0, srvs:0
+  }));
+  logs.forEach(j => { const d=dias.find(d=>d.key===j.log_date); if(d) d.km+=Math.max(0,(j.km_final||0)-(j.km_inicio||0)); });
+  remitos.forEach(r => { const d=dias.find(d=>d.key===_rendFechaLocal(r.created_at_device)); if(d) d.srvs++; });
+  return dias.map(d=>({...d,actual:d.key===_rendFechaLocal(now)}));
 }
 
 function _desde(tipo) {
@@ -3016,11 +3005,7 @@ function _desde(tipo) {
     d.setDate(d.getDate() - (day - 1));
     return d.toISOString().slice(0,10);
   }
-  // mes = últimos 12 meses (primer día del mes hace 11 meses)
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - 11);
-  d.setDate(1);
-  return d.toISOString().slice(0,10);
+  return _rendRangoMes().desde;
 }
 
 // Rango del período equivalente inmediatamente anterior (Vista Chofer)
@@ -3042,16 +3027,9 @@ function _periodoAnterior(tipo) {
       label: 'semana anterior',
     };
   }
-  // mes = últimos 12 meses → comparar contra 12 meses previos
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - 23); d.setDate(1);
-  const desde = d.toISOString().slice(0, 10);
-  const h = new Date(now.getFullYear(), now.getMonth() - 11, 0); // último día del mes previo al rango actual
-  return {
-    desde,
-    hasta: h.toISOString().slice(0, 10),
-    label: '12 meses previos',
-  };
+  const [year,month] = _rendMes.split('-').map(Number);
+  const anterior = _rendRangoMes(_rendFechaLocal(new Date(Date.UTC(year,month-2,1,12))).slice(0,7));
+  return {...anterior,label:'mes anterior'};
 }
 
 // Rango del período equivalente anterior (Vista Negocio: 1m/3m/6m/12m/año)
@@ -3177,17 +3155,45 @@ function dashCambiarVista(vista, el) {
   if (vista === 'alertas')     cargarCentroAlertas();
 }
 
+function _rendFechaLocal(value) {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+}
+function _rendRangoMes(mes = _rendMes) {
+  const [year,month] = mes.split('-').map(Number);
+  return {desde:mes+'-01',hasta:mes+'-'+new Date(year,month,0).getDate()};
+}
+function dashRendMes(value) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value) || value > _rendFechaLocal(new Date()).slice(0,7)) return;
+  _rendMes=value; _rendPeriodo='mes';
+  document.querySelectorAll('#dash-rend-periods .ftab').forEach(t=>t.classList.toggle('active',t.dataset.period==='mes'));
+  _cargarViewRendimiento();
+}
+function _rendSyncPeriodo() {
+  const input=document.getElementById('dash-rend-mes');
+  if(input) { input.value=_rendMes; input.max=_rendFechaLocal(new Date()).slice(0,7); }
+  const wrap=document.getElementById('dash-rend-mes-wrap');
+  if(wrap) wrap.hidden=_rendPeriodo!=='mes';
+  const label=_rendPeriodo==='mes' ? new Date(_rendMes+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'}) : {hoy:'Hoy',semana:'Semana actual (Lun–Dom)'}[_rendPeriodo];
+  const lbl=document.getElementById('dash-rend-periodo-lbl'); if(lbl) lbl.textContent=label;
+  const title=document.getElementById('dash-evolucion-title'); if(title) title.textContent='Evolución — '+label;
+}
+
 function dashRendPeriod(tipo, el) {
   el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   _rendPeriodo = tipo;
-  const lbl = document.getElementById('dash-rend-periodo-lbl');
-  if (lbl) lbl.textContent = { hoy:'Hoy', semana:'Semana actual (Lun–Dom)', mes:'Últimos 12 meses' }[tipo];
+  _rendSyncPeriodo();
   _cargarViewRendimiento();
 }
 
 // ── Vista Chofer ──────────────────────────────
 async function _cargarViewRendimiento() {
+  const request=++_rendRequest;
+  _rendSyncPeriodo();
   document.getElementById('dash-view-rendimiento').style.display = '';
   document.getElementById('dash-view-negocio').style.display     = 'none';
   const _vAlx = document.getElementById('dash-view-alertas');
@@ -3224,7 +3230,7 @@ async function _cargarViewRendimiento() {
   // Fetch separado del render para cachearlo (Fase 3 offline — solo chofer)
   const fnOnlineRend = async () => {
     const [datos, jornadas, alertasPers, datosAnt] = await Promise.all([
-      cargarDatosChofer(targetUserId, desde, targetTruck),
+      cargarDatosChofer(targetUserId, desde, targetTruck, _rendPeriodo==='mes' ? _rendRangoMes().hasta : undefined),
       cargarJornadasAbiertas(),
       esChofer ? cargarAlertasPersonales() : Promise.resolve([]),
       cargarComparativoChofer(targetUserId, periodoAnt.desde, periodoAnt.hasta, targetTruck),
@@ -3235,7 +3241,7 @@ async function _cargarViewRendimiento() {
   let paqueteRend = null, rendDeCache = false, rendGuardadoAt = null;
   try {
     if (esChofer && typeof obLecturaConCache === 'function') {
-      const lectura = await obLecturaConCache(`dash_rend_${targetUserId}_${_rendPeriodo}`, fnOnlineRend);
+      const lectura = await obLecturaConCache(`dash_rend_${targetUserId}_${_rendPeriodo}_${_rendMes}_v2`, fnOnlineRend);
       paqueteRend    = lectura.data;
       rendDeCache    = lectura.deCache;
       rendGuardadoAt = lectura.guardadoAt;
@@ -3247,6 +3253,7 @@ async function _cargarViewRendimiento() {
     rendDeCache = true;
   }
 
+  if(request!==_rendRequest) return;
   if (!paqueteRend) {
     // Offline sin caché: vacío elegante, jamás pantalla rota
     ['dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
@@ -3440,7 +3447,7 @@ async function _cargarViewRendimiento() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             display: true,
@@ -3457,7 +3464,7 @@ async function _cargarViewRendimiento() {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: '#6b7280', font: { size: 10 } },
+            ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 },
           },
           y: {
             position: 'left',
@@ -7404,7 +7411,7 @@ function renderHistorialJornadas(data) {
       : `<span class="pill pill-muted">No</span>`;
     const estadoPill = j.estado === 'abierta'
       ? `<span class="pill pill-amber">Abierta</span>`
-      : `<span class="pill pill-green">Cerrada</span>`;
+      : j.estado === 'anulada' ? `<span class="pill pill-red">Anulada</span>` : `<span class="pill pill-green">Cerrada</span>`;
 
     // ── Desktop: fila de tabla (sin cambios) ──
     const tr = document.createElement('tr');
@@ -7452,7 +7459,7 @@ function renderHistorialJornadas(data) {
     row.innerHTML = `
       <div style="flex:1;min-width:0">
         <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${titulo}</div>
-        <div style="color:var(--muted);font-size:10px">${j.kmRec} km recorridos</div>
+        <div style="color:var(--muted);font-size:10px">${j.kmRec} km · ${j.servicios ?? 0} servicios</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         ${estadoPill}
@@ -7543,7 +7550,7 @@ async function _jhistCargarPagina(reset) {
   }
 
   const { data, error } = await _db.from('daily_logs')
-    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate, numero_interno)')
+    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate), remitos!remitos_log_id_fkey(status)')
     .eq('driver_id', _jhistDriverId)
     .order('log_date', { ascending: false })
     .range(_jhistOffset, _jhistOffset + _JHIST_PAGINA - 1);
@@ -7567,21 +7574,21 @@ async function _jhistCargarPagina(reset) {
 
   rows.forEach(j => {
     const abierta = j.status === 'open';
-    const movil   = j.trucks?.numero_interno ? `N° ${j.trucks.numero_interno}` : (j.trucks?.plate || '—');
+    const movil   = j.trucks?.plate || '—';
     const kmRec   = (j.km_final != null && j.km_inicio != null)
       ? Math.max(0, Number(j.km_final) - Number(j.km_inicio)).toLocaleString('es-AR') + ' km'
       : '—';
-    const horas   = `${_jhistHora(j.hora_inicio)} → ${_jhistHora(j.hora_fin)}`;
+    const servicios = (j.remitos || []).filter(r=>r.status!=='anulado').length;
     const pill    = abierta
       ? '<span class="pill pill-amber">Abierta</span>'
-      : '<span class="pill pill-green">Cerrada</span>';
+      : j.status === 'void' ? '<span class="pill pill-red">Anulada</span>' : '<span class="pill pill-green">Cerrada</span>';
 
     const row = document.createElement('div');
     row.className = 'jhist-row' + (abierta ? ' jhist-row--abierta' : '');
     row.innerHTML = `
       <div class="jhist-row-main">
         <div class="jhist-row-titulo">${_jhistFecha(j.log_date)} · ${movil}</div>
-        <div class="jhist-row-sub">${kmRec} · ${horas}</div>
+        <div class="jhist-row-sub">${kmRec} · ${servicios} servicios</div>
       </div>
       ${pill}`;
     lista.appendChild(row);
@@ -12864,6 +12871,40 @@ function abrirModalPendienteRendir() {
   openModal('modal-desglose-pago');
 }
 
+function _cashCollectionLines(r, addons) {
+  const cash=[1,2].reduce((sum,n)=>sum+(r['pago_'+n+'_metodo']==='efectivo'?Number(r['pago_'+n+'_monto'])||0:0),0);
+  const lines=[];
+  for(const [key,label] of [['tolls','Peaje'],['excesses','Excedente']]) {
+    for(const item of addons?.[key] || []) if(['cash','efectivo'].includes(item.customer_payment_method) && Number(item.total_amount)>0) lines.push({type:label,amount:Number(item.total_amount)});
+  }
+  if(!lines.length && addons && !(addons.tolls?.length || addons.excesses?.length)) {
+    const otherPayment=[1,2].some(n=>r['pago_'+n+'_metodo'] && r['pago_'+n+'_metodo']!=='efectivo' && Number(r['pago_'+n+'_monto'])>0);
+    if(!otherPayment) for(const [key,type] of [['imp_peaje','Peaje'],['imp_excedente','Excedente']]) if(Number(r[key])>0) lines.push({type,amount:Number(r[key])});
+  }
+  const allocated=lines.reduce((sum,line)=>sum+line.amount,0);
+  // Nunca atribuir arbitrariamente un pago mixto histórico a un concepto.
+  if(allocated>cash+0.01) return [{type:'Sin desglose histórico',amount:cash}];
+  if(cash>allocated+0.01) lines.push({type:addons?'Sin desglose histórico':'Detalle no disponible',amount:cash-allocated});
+  return lines;
+}
+let _cashDetailRequest=0;
+async function _loadCashCollectionRows(remitos) {
+  const request=++_cashDetailRequest;
+  const results=[];
+  for(let offset=0;offset<remitos.length;offset+=6) {
+    results.push(...await Promise.all(remitos.slice(offset,offset+6).map(async r=>{
+      try { const {data,error}=await _db.rpc('get_driver_remito_addons_v2',{p_remito_id:Number(r.remito_id)}); return {r,addons:error?null:data}; }
+      catch { return {r,addons:null}; }
+    })));
+  }
+  if(request!==_cashDetailRequest) return;
+  const host=document.getElementById('cash-collection-rows'); if(!host) return;
+  const esc=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  host.innerHTML=results.flatMap(({r,addons})=>_cashCollectionLines(r,addons).map(line=>
+    '<div class="cash-collection-row"><span>'+esc(_jhistFecha(_rendFechaLocal(r.created_at_device)))+'</span><span>'+esc(r.daily_logs?.trucks?.plate||'—')+'</span><span>'+esc(line.type)+'</span><strong>+$'+_AR(line.amount)+'</strong></div>'
+  )).join('') || '<div class="cash-collection-row">Sin cobros en efectivo</div>';
+}
+
 function abrirModalDesgloseEfectivo() {
   const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const remitos   = _rendRemitosActuales || [];
@@ -12892,16 +12933,7 @@ function abrirModalDesgloseEfectivo() {
   const body = document.getElementById('modal-desglose-body');
   if (!body) return;
 
-  const rowsCobrado = cobradosEf.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cobros en efectivo</div>'
-    : cobradosEf.map(r => {
-        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
-        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
-          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
-          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
-          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">+$' + _AR(getEf(r)) + '</span>'
-          + '</div>';
-      }).join('');
+  const rowsCobrado = '<div id="cash-collection-rows" aria-live="polite"><div class="cash-collection-row">Cargando cobros…</div></div>';
 
   const rowsFuel = cargasFuel.length === 0
     ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cargas de combustible</div>'
@@ -12957,6 +12989,7 @@ function abrirModalDesgloseEfectivo() {
   `;
 
   openModal('modal-desglose-pago');
+  _loadCashCollectionRows([...cobradosEf].sort((a,b)=>(b.created_at_device||'').localeCompare(a.created_at_device||'')));
 }
 
 function abrirModalDesglosePago(tipo) {

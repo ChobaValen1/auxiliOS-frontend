@@ -842,7 +842,7 @@ async function cargarJornadas() {
     const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
     
     let q = _db.from('daily_logs')
-               .select('*, trucks(plate, brand, model, current_km)')
+               .select('*, trucks(plate, brand, model, current_km), remitos!remitos_log_id_fkey(status)')
                .order('log_date', { ascending: false })
                .limit(30);
                
@@ -861,14 +861,15 @@ async function cargarJornadas() {
     }
 
     const mapped = data.map(j => ({
-      fecha:    formatearFechaCorta(j.log_date),
+      fecha:    _jhistFecha(j.log_date),
+      servicios: (j.remitos || []).filter(r=>r.status!=='anulado').length,
       camion:   j.trucks?.plate || '—',
       kmInicio: j.km_inicio?.toLocaleString('es-AR') || '—',
       kmFinal:  j.km_final?.toLocaleString('es-AR')  || '—',
-      kmRec:    j.km_recorridos?.toString()          || '—',
+      kmRec:    j.km_final != null && j.km_inicio != null ? Math.max(0,Number(j.km_final)-Number(j.km_inicio)).toLocaleString('es-AR') : '—',
       horas:    calcularHoras(j.hora_inicio, j.hora_fin),
       taller:   j.in_workshop,
-      estado:   j.status === 'open' ? 'abierta' : 'cerrada',
+      estado:   j.status === 'open' ? 'abierta' : j.status === 'void' ? 'anulada' : 'cerrada',
     }));
 
     if (typeof renderHistorialJornadas === 'function') {
@@ -2201,33 +2202,34 @@ async function registrarControlNeumaticos(datos) {
   }
 }
 
-async function cargarDatosChofer(userId, desde, truckId = null) {
+async function cargarDatosChofer(userId, desde, truckId = null, hasta = _rendFechaLocal(new Date())) {
   const hoy = new Date().toISOString().slice(0, 10);
 
   let jornadasQ = _db.from('daily_logs')
-    .select('km_inicio, km_final, truck_id, log_date, log_id, status')
+    .select('km_inicio, km_final, truck_id, log_date, log_id, status, trucks(plate)')
     .eq('driver_id', userId)
-    .gte('log_date', desde)
+    .gte('log_date', desde).lte('log_date', hasta)
     .in('status', ['open', 'closed']);
   if (truckId) jornadasQ = jornadasQ.eq('truck_id', truckId);
 
   let fuelQ = _db.from('fuel_records')
     .select('liters, total_cost, fuel_date, truck_id, payment_method')
-    .gte('fuel_date', desde);
+    .gte('fuel_date', desde).lte('fuel_date', hasta);
   if (truckId) fuelQ = fuelQ.eq('truck_id', truckId);
 
   const [remitosRes, jornadasRes, fuelRes, rendicionRes, alertasRes, jornadaHoyRes] = await Promise.all([
     _db.from('remitos')
-      .select('pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status, created_at_device, log_id, nro_remito, patente, origen, destino, imp_peaje, imp_excedente, imp_otros')
+      .select('remito_id, daily_logs!remitos_log_id_fkey(trucks(plate)), pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status, created_at_device, log_id, nro_remito, patente, origen, destino, imp_peaje, imp_excedente, imp_otros')
       .eq('driver_id', userId)
       .gte('created_at_device', desde + 'T00:00:00-03:00')
+      .lt('created_at_device', _nextDay(hasta) + 'T00:00:00-03:00')
       .neq('status', 'anulado'),
     jornadasQ,
     fuelQ,
     _db.from('rendicion_cierre')
       .select('efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra:motivo_gastos_extra, estado, fecha')
       .eq('driver_id', userId)
-      .gte('fecha', desde)
+      .gte('fecha', desde).lte('fecha', hasta)
       .neq('estado', 'rechazado'),
     _db.from('alertas_operativas')
       .select('tipo, diferencia_monto, fecha')
@@ -2241,6 +2243,7 @@ async function cargarDatosChofer(userId, desde, truckId = null) {
       .maybeSingle(),
   ]);
 
+  for (const result of [remitosRes,jornadasRes,fuelRes,rendicionRes]) { if(result.error) throw result.error; }
   let remitos = remitosRes.data || [];
   if (truckId) {
     const logIds = new Set((jornadasRes.data || []).map(j => j.log_id).filter(Boolean));

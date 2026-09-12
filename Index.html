@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=intake-concepts-v60-20260911">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=intake-concepts-v60-20260911">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=intake-concepts-v60-20260911">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-metrics-v61-20260912">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-metrics-v61-20260912">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=driver-metrics-v61-20260912">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=intake-concepts-v60-20260911" defer></script>
-<script src="supabase.js?v=intake-concepts-v60-20260911" defer></script>
+<script src="config.js?v=driver-metrics-v61-20260912" defer></script>
+<script src="supabase.js?v=driver-metrics-v61-20260912" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=intake-concepts-v60-20260911" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=intake-concepts-v60-20260911" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=intake-concepts-v60-20260911" defer></script>
-<script src="sigma.js?v=intake-concepts-v60-20260911" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-metrics-v61-20260912" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-metrics-v61-20260912" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-metrics-v61-20260912" defer></script>
+<script src="sigma.js?v=driver-metrics-v61-20260912" defer></script>
 </head>
 <body>
 
@@ -819,14 +819,16 @@
         </div>
 
         <!-- Selector período -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <span style="font-size:11px;color:var(--muted)"><span id="dash-rend-periodo-lbl">Hoy</span> <span id="dash-rend-comparado" style="font-size:9px;opacity:0.7;margin-left:4px"></span></span>
-          <div class="filter-tabs">
-            <div class="ftab active" onclick="dashRendPeriod('hoy',this)">Hoy</div>
-            <div class="ftab" onclick="dashRendPeriod('semana',this)">7 días</div>
-            <div class="ftab" onclick="dashRendPeriod('mes',this)">Mes</div>
+        <div class="dash-rend-period-selector">
+          <span style="font-size:11px;color:var(--muted)"><span id="dash-rend-periodo-lbl">Mes actual</span> <span id="dash-rend-comparado" style="font-size:9px;opacity:0.7;margin-left:4px"></span></span>
+          <div class="filter-tabs" id="dash-rend-periods">
+            <div class="ftab" data-period="hoy" onclick="dashRendPeriod('hoy',this)">Hoy</div>
+            <div class="ftab" data-period="semana" onclick="dashRendPeriod('semana',this)">Semana</div>
+            <div class="ftab active" data-period="mes" onclick="dashRendPeriod('mes',this)">Mes</div>
           </div>
         </div>
+
+        <label id="dash-rend-mes-wrap" class="dash-rend-month">Mes <input id="dash-rend-mes" type="month" class="form-input" onchange="dashRendMes(this.value)"></label>
 
         <!-- KPIs financieros -->
         <div class="dash-section">Financiero</div>
@@ -841,9 +843,9 @@
 
         <!-- Evolución 7 días -->
         <div class="card mb16">
-          <div class="card-label" style="margin-bottom:14px">Evolución — últimos 7 días</div>
-          <div id="dash-evolucion-chart" style="min-height:100px;position:relative">
-  <canvas id="dash-evolucion-canvas" style="max-height:180px"></canvas>
+          <div id="dash-evolucion-title" class="card-label" style="margin-bottom:14px">Evolución — mes actual</div>
+          <div id="dash-evolucion-chart">
+  <canvas id="dash-evolucion-canvas" role="img" aria-label="Kilómetros y servicios del período seleccionado"></canvas>
 </div>
         </div>
 
