@@ -3183,7 +3183,15 @@ function _rendSyncPeriodo() {
 }
 
 // ── Vista Chofer ──────────────────────────────
+let _metricsLoadingCount = 0;
 async function _cargarViewRendimiento() {
+  const status = document.getElementById('metrics-loading');
+  _metricsLoadingCount++;
+  if (status) status.hidden = false;
+  try { return await _cargarViewRendimientoDatos(); }
+  finally { if (--_metricsLoadingCount === 0 && status) status.hidden = true; }
+}
+async function _cargarViewRendimientoDatos() {
   const request=++_rendRequest;
   _rendSyncPeriodo();
   document.getElementById('dash-view-rendimiento').style.display = '';
@@ -6177,14 +6185,19 @@ async function guardarCombustible() {
 }
 
 // ── NEUMÁTICOS & FRENOS ───────────────────────
+function seleccionarCondicion(id, value) {
+  if (!['neu-cond','neu-frenos'].includes(id) || !['','bueno','regular','malo'].includes(value)) return;
+  document.getElementById(id).value = value;
+  document.querySelectorAll('[data-condition="'+id+'"]').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.value === value)));
+}
 function openNeumaticosModal() {
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('neu-camion-info');
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
   const fecha = document.getElementById('neu-fecha');
   if (fecha) fecha.value = new Date().toISOString().slice(0, 10);
-  ['neu-cond','neu-frenos'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  ['neu-psi','neu-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['neu-cond','neu-frenos'].forEach(id => seleccionarCondicion(id, ''));
+  ['neu-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   _modalError('neu-error', '');
   openModal('modal-neumaticos');
 }
@@ -6218,17 +6231,27 @@ function renderUltimoControlNeumaticos(data) {
   }
 }
 
+let _guardandoNeumaticos = false;
 async function guardarNeumaticos() {
+  if (_guardandoNeumaticos) return;
+  _guardandoNeumaticos = true;
+  const button = document.getElementById('btn-guardar-neumaticos');
+  if (button) { button.disabled = true; button.setAttribute('aria-busy','true'); }
+  try { await _guardarNeumaticos(); }
+  catch (error) { console.error('Control neumáticos:', error); _modalError('neu-error','No se pudo guardar el control. Reintentá.'); }
+  finally {
+    _guardandoNeumaticos = false;
+    if (button) { button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = '🔩 Guardar control'; button.style.pointerEvents = 'auto'; }
+  }
+}
+async function _guardarNeumaticos() {
   const cond   = document.getElementById('neu-cond')?.value;
   const frenos = document.getElementById('neu-frenos')?.value;
   const fecha  = document.getElementById('neu-fecha')?.value;
-  const psi    = parseFloat(document.getElementById('neu-psi')?.value) || null;
   const notas  = document.getElementById('neu-notas')?.value || null;
 
   if (!cond)                        { _modalError('neu-error', 'Seleccioná el estado de los neumáticos'); return; }
   if (!frenos)                      { _modalError('neu-error', 'Seleccioná el estado de los frenos'); return; }
-  if (psi !== null && psi <= 0)     { _modalError('neu-error', 'La presión PSI debe ser mayor a 0'); return; }
-  if (psi !== null && psi > 250)    { _modalError('neu-error', 'La presión PSI parece incorrecta (máx. 250)'); return; }
   _modalError('neu-error', '');
 
   const btn = document.getElementById('btn-guardar-neumaticos');
@@ -6263,7 +6286,6 @@ async function guardarNeumaticos() {
     check_date:      fechaCheck,
     tire_condition:  cond,
     brake_condition: frenos,
-    pressure_psi:    psi,
     notes:           notas,
   };
 
@@ -12741,8 +12763,7 @@ function _kmRenderModal() {
   });
 
   const totalKm = logs.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
-  const jornadasCerradas = logs.filter(j=>j.km_final!=null).length;
-  const promKm = jornadasCerradas>0 ? Math.round(totalKm/jornadasCerradas) : 0;
+  const totalServicios = remitos.filter(r => r.status !== 'anulado').length;
 
   const tituloEl = document.getElementById('modal-desglose-titulo');
   if (tituloEl) tituloEl.textContent = `🚛 Km recorridos · ${totalKm.toLocaleString('es-AR')} km`;
@@ -12792,16 +12813,16 @@ function _kmRenderModal() {
   body.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Total km</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">${totalKm.toLocaleString('es-AR')}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
         <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Jornadas</div>
-        <div style="color:var(--text);font-weight:700;font-size:14px">${logs.length}</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">${logs.length}</div>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Promedio</div>
-        <div style="color:var(--green);font-weight:700;font-size:14px">${promKm.toLocaleString('es-AR')} km</div>
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Kilómetros</div>
+        <div style="color:var(--text);font-weight:700;font-size:14px">${totalKm.toLocaleString('es-AR')}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Servicios</div>
+        <div style="color:var(--green);font-weight:700;font-size:14px">${totalServicios.toLocaleString('es-AR')}</div>
       </div>
     </div>
     <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">${_kmHistExpandido ? `Historial completo (${logs.length})` : 'Últimas jornadas'}</div>

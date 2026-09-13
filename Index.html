@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=journey-close-v63-20260913">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=journey-close-v63-20260913">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=journey-close-v63-20260913">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=truck-controls-v64-20260913">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=truck-controls-v64-20260913">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=truck-controls-v64-20260913">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=journey-close-v63-20260913" defer></script>
-<script src="supabase.js?v=journey-close-v63-20260913" defer></script>
+<script src="config.js?v=truck-controls-v64-20260913" defer></script>
+<script src="supabase.js?v=truck-controls-v64-20260913" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=journey-close-v63-20260913" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=journey-close-v63-20260913" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=journey-close-v63-20260913" defer></script>
-<script src="sigma.js?v=journey-close-v63-20260913" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=truck-controls-v64-20260913" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=truck-controls-v64-20260913" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=truck-controls-v64-20260913" defer></script>
+<script src="sigma.js?v=truck-controls-v64-20260913" defer></script>
 </head>
 <body>
 
@@ -222,30 +222,8 @@
         <label class="form-label">Fecha del control <span style="color:var(--red)">*</span></label>
         <input class="form-input" type="date" id="neu-fecha">
       </div>
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label class="form-label">Estado neumáticos <span style="color:var(--red)">*</span></label>
-          <select class="form-input" id="neu-cond">
-            <option value="">— Seleccioná —</option>
-            <option value="bueno">✅ Bueno (En buen estado) </option>
-            <option value="regular">⚠️ Regular (Requiere Reparación) </option>
-            <option value="malo">❌ Malo (Enviar al taller urgente) </option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Presión (PSI)</label>
-          <input class="form-input" type="tel" id="neu-psi" placeholder="Ej: 110" inputmode="decimal" oninput="sanitizeDecimal(this)">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Estado frenos <span style="color:var(--red)">*</span></label>
-        <select class="form-input" id="neu-frenos">
-          <option value="">— Seleccioná —</option>
-          <option value="bueno">✅ Bueno (En buen estado) </option>
-          <option value="regular">⚠️ Regular (Requiere Reparación) </option>
-          <option value="malo">❌ Malo (Enviar al taller urgente) </option>
-        </select>
-      </div>
+      <fieldset class="condition-field"><legend class="form-label">Estado neumáticos *</legend><input type="hidden" id="neu-cond"><div class="condition-cards" role="group" aria-label="Estado neumáticos"><button type="button" data-condition="neu-cond" data-value="bueno" aria-pressed="false" onclick="seleccionarCondicion('neu-cond','bueno')"><span>✓</span><strong>Bueno</strong><small>En buen estado</small></button><button type="button" data-condition="neu-cond" data-value="regular" aria-pressed="false" onclick="seleccionarCondicion('neu-cond','regular')"><span>⚠</span><strong>Regular</strong><small>Requiere reparación</small></button><button type="button" data-condition="neu-cond" data-value="malo" aria-pressed="false" onclick="seleccionarCondicion('neu-cond','malo')"><span>!</span><strong>Malo</strong><small>Taller urgente</small></button></div></fieldset>
+      <fieldset class="condition-field"><legend class="form-label">Estado frenos *</legend><input type="hidden" id="neu-frenos"><div class="condition-cards" role="group" aria-label="Estado frenos"><button type="button" data-condition="neu-frenos" data-value="bueno" aria-pressed="false" onclick="seleccionarCondicion('neu-frenos','bueno')"><span>✓</span><strong>Bueno</strong><small>En buen estado</small></button><button type="button" data-condition="neu-frenos" data-value="regular" aria-pressed="false" onclick="seleccionarCondicion('neu-frenos','regular')"><span>⚠</span><strong>Regular</strong><small>Requiere reparación</small></button><button type="button" data-condition="neu-frenos" data-value="malo" aria-pressed="false" onclick="seleccionarCondicion('neu-frenos','malo')"><span>!</span><strong>Malo</strong><small>Taller urgente</small></button></div></fieldset>
       <div class="form-group">
         <label class="form-label">Observaciones</label>
         <textarea class="form-input" id="neu-notas" placeholder="Detalles del estado, desgaste, etc." style="min-height:70px;resize:vertical" maxlength="500"></textarea>
@@ -810,6 +788,7 @@
           <div class="dash-month-current" aria-live="polite"><span id="dash-rend-periodo-lbl">Mes actual</span><span id="dash-rend-year"></span></div>
           <button type="button" onclick="dashRendMoverMes(1)" aria-label="Mes siguiente">›</button>
         </nav>
+        <div id="metrics-loading" class="loading-status" role="status" hidden><span class="loading-spinner"></span> Cargando métricas del mes…</div>
         <div id="dash-rend-comparado" class="dash-month-comparison"></div>
 
         <!-- KPIs financieros -->
@@ -1078,7 +1057,7 @@
     <!-- Reportar incidente (solo chofer) -->
     <div id="camion-incidente-quick" style="display:none;margin-bottom:16px">
       <button class="btn-incidente" onclick="abrirModalIncidente()">⚠️ Reportar incidente</button>
-      <div class="inc-aviso-offline">📴 Funciona sin señal — se sincroniza solo</div>
+
     </div>
 
     <!-- Cards de módulos (renderizadas por JS) -->
