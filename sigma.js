@@ -7391,9 +7391,10 @@ function _abrirDetalleMovil(titulo, htmlContent) {
 function _journeyColumns(fecha, movil, km, servicios, pill) {
   const esc=value=>String(value??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const shortDate=String(fecha).replace(/^(\d{2})-(\d{2})-\d{2}(\d{2})$/, '$1/$2/$3');
-  return '<div class="journey-col"><span class="journey-col-label">Fecha</span><strong>'+esc(shortDate)+'</strong>'+pill+'</div>'
+  return '<div class="journey-col"><span class="journey-col-label">Fecha</span><strong>'+esc(shortDate)+'</strong></div>'
     +'<div class="journey-col"><span class="journey-col-label">Móvil</span><strong>'+esc(movil)+'</strong></div>'
-    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span></div>';
+    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span></div>'
+    +'<div class="journey-col journey-status"><span class="journey-col-label">Estado</span>'+pill+'</div>';
 }
 
 function renderHistorialJornadas(data) {
@@ -8914,7 +8915,7 @@ function abrirModalCerrarJornada(jornada) {
   kmIaFinal = null; kmOrigenFinal = null;
 
   // Limpiar inputs viejos
-  ['cj-km-final', 'cj-workshop-detail', 'cj-notas'].forEach(id => {
+  ['cj-km-final', 'cj-workshop-detail'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -8928,7 +8929,9 @@ function abrirModalCerrarJornada(jornada) {
   const fotoBox = document.getElementById('cj-foto-box');
   const inputFoto = document.getElementById('cj-foto-km');
   
-  if (fotoStatus) fotoStatus.textContent = 'Tocar para sacar foto';
+  if (fotoStatus) { fotoStatus.textContent = 'Tocar para sacar foto'; fotoStatus.style.color = ''; }
+  const fotoHint=document.getElementById('cj-foto-hint');
+  if(fotoHint) fotoHint.textContent='La IA extraerá el kilometraje automáticamente';
   if (fotoIcon) fotoIcon.textContent = '📷';
   if (fotoBox) {
     fotoBox.style.borderColor = '';
@@ -8967,6 +8970,7 @@ function abrirModalCerrarJornada(jornada) {
   if (tallerToggle)   { tallerToggle.style.background = 'var(--border)'; }
   if (tallerKnob)     { tallerKnob.style.left = '3px'; }
   const tallerTipo = document.getElementById('cj-taller-tipo'); if (tallerTipo) tallerTipo.value = '';
+  actualizarBotonesTaller();
   const tallerDet  = document.getElementById('cj-workshop-detail'); if (tallerDet) { tallerDet.value = ''; tallerDet.placeholder = 'Detalle del trabajo realizado...'; }
   _modalError('cj-error', '');
   if (tallerRow)      { tallerRow.style.borderColor = 'var(--border)'; tallerRow.style.background = 'var(--bg-darker)'; }
@@ -8983,6 +8987,23 @@ const _TALLER_EJ = {
   'Eléctrico':     'Ej: Alternador, Arranque, Luces',
   'Otro':          'Ej: Limpieza, Pintura, Carrocería',
 };
+function seleccionarTipoTaller(tipo) {
+  if (!['Mantenimiento','Preventivo','Repuestos'].includes(tipo)) return;
+  const input=document.getElementById('cj-taller-tipo');
+  if(!input) return;
+  input.value=input.value===tipo?'':tipo;
+  actualizarBotonesTaller();
+  onTallerTipoChange();
+}
+function actualizarBotonesTaller() {
+  const selected=document.getElementById('cj-taller-tipo')?.value || '';
+  document.querySelectorAll('#cj-taller-opciones button').forEach(button=>{
+    const active=button.dataset.workshopType===selected;
+    button.hidden=!!selected&&!active;
+    button.setAttribute('aria-pressed',String(active));
+    button.title=active?'Tocá para cambiar el tipo de trabajo':'';
+  });
+}
 function onTallerTipoChange() {
   const tipo = document.getElementById('cj-taller-tipo')?.value;
   const det  = document.getElementById('cj-workshop-detail');
@@ -9177,7 +9198,6 @@ function calcularKmRecorridos() {
 async function confirmarCerrarJornada() {
   const kmFinal        = parseInt(document.getElementById('cj-km-final')?.value);
   const workshopDetail = document.getElementById('cj-workshop-detail')?.value || null;
-  const notas          = document.getElementById('cj-notas')?.value || null;
 
   const tallerTipo = document.getElementById('cj-taller-tipo')?.value || null;
 
@@ -9239,7 +9259,6 @@ async function confirmarCerrarJornada() {
         kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
         inWorkshop:     enTaller,
         workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
-        notas:          notas,
         kmExcepcion:    kmExcepcion,
         // Hora real del cierre — al sincronizar se guarda esta, no la del sync
         horaFin:        new Date().toTimeString().slice(0, 5),
@@ -9291,7 +9310,6 @@ async function confirmarCerrarJornada() {
     fotoKmFinal:    fotoKmFinal,
     inWorkshop:     enTaller,
     workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
-    notas:          notas,
     kmExcepcion:    kmExcepcion,
   });
 
@@ -11252,6 +11270,8 @@ async function procesarFotoConIA(event, contexto) {
         return;
     }
 
+    if (isInicio) fotoKmInicio=archivo; else fotoKmFinal=archivo;
+
     // Sin conexión: no se puede subir la foto ni usar la IA. La foto queda
     // guardada en el teléfono (se sube al sincronizar) y los KM van a mano.
     if (!navigator.onLine) {
@@ -11285,13 +11305,16 @@ async function procesarFotoConIA(event, contexto) {
     fotoBox.style.borderColor = 'var(--amber)';
     fotoIcon.textContent = '🔄';
     fotoStatusTxt.textContent = 'Procesando...';
+    fotoStatusTxt.style.color = '';
+    const fotoHint=document.getElementById(prefix+'-foto-hint');
+    if(fotoHint) fotoHint.textContent='La IA extraerá el kilometraje automáticamente';
     if(btnConfirmar) btnConfirmar.disabled = true;
 
     try {
 
       msgStatus.innerHTML = '<span style="color: var(--amber);">⬆️ Subiendo evidencia a la nube...</span>';
         const urlPublica = await subirFotoOdometro(archivo, contexto);
-        console.log("Foto disponible en:", urlPublica);
+        if(isInicio) fotoKmInicio=urlPublica; else fotoKmFinal=urlPublica;
         // 3. LLAMAMOS A LA IA REAL (Edge Function)
         const resultadoIA = await llamarIA_Real(urlPublica, contexto, kmBaseReferencia);
 
@@ -11388,14 +11411,18 @@ async function procesarFotoConIA(event, contexto) {
         else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; }
         const manualAreaErr = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualAreaErr) manualAreaErr.style.display = 'block';
-        msgStatus.innerHTML = `<span style="color: var(--red);">❌ ${error.message} Podés reintentar la foto o cargar los KM a mano.</span>`;
-        inputKmReal.placeholder = 'Reintentar foto';
-        fotoBox.style.borderColor = 'var(--red)';
+        msgStatus.textContent = isInicio ? 'Ingresá el kilometraje manualmente. La foto se guardará para auditoría.' : '';
+        inputKmReal.placeholder = 'Ingresá el kilometraje';
+        const result=document.getElementById(prefix+'-km-result'); if(result) result.style.display='none';
+        const photoArea=document.getElementById(prefix+'-foto-area'); if(photoArea) photoArea.style.display='block';
+        const hint=document.getElementById(prefix+'-foto-hint');
+        if(hint) hint.textContent='Ingresá el kilometraje manualmente. La foto se guardará para auditoría.';
+        fotoBox.style.borderColor = 'var(--amber)';
         fotoIcon.textContent = '⚠️';
-        fotoStatusTxt.textContent = 'Rechazado - Reintentar';
-        fotoStatusTxt.style.color = 'var(--red)';
+        fotoStatusTxt.textContent = 'No se pudo analizar la foto';
+        fotoStatusTxt.style.color = 'var(--amber)';
         if (btnConfirmar) btnConfirmar.disabled = false;
-        toast('Falló la validación', 'error');
+        toast('No se pudo analizar la foto. Ingresá los kilómetros manualmente.', 'info');
     }
 }
 

@@ -3676,8 +3676,8 @@ body {
 @media(max-width:400px){.cash-collection-row{grid-template-columns:1fr 1fr;gap:4px 8px}.cash-collection-row span:nth-child(2){text-align:right}}
 
 /* Estructura de jornadas y navegación mensual */
-.journey-columns{display:grid;grid-template-columns:1fr 1fr 1.15fr;align-items:start;gap:0;padding:14px 10px;margin-bottom:8px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px}
-.journey-col{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;padding:0 10px;font-size:12px}
+.journey-columns{display:grid;grid-template-columns:68px 72px minmax(0,1fr) 66px;align-items:start;gap:0;padding:12px 6px;margin-bottom:8px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px}
+.journey-col{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;padding:0 5px;font-size:11px}
 .journey-col+.journey-col{border-left:1px solid var(--border)}
 .journey-col-label{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);white-space:nowrap}
 .journey-col strong{font-size:12px;white-space:nowrap}
@@ -3689,3 +3689,12 @@ body {
 #dash-rend-periodo-lbl{text-transform:capitalize;font-size:21px;font-weight:700;color:var(--text)}
 #dash-rend-year{font-size:12px;color:var(--muted)}
 .dash-month-comparison{text-align:center;color:var(--muted);font-size:10px;margin-bottom:24px}
+
+.journey-status{align-items:flex-end;text-align:right}
+.journey-col-label{font-size:8px;letter-spacing:0}
+.journey-col strong{font-size:11px}
+.workshop-options{display:flex;gap:6px;margin-bottom:8px}
+.workshop-options button{flex:1;min-width:0;min-height:44px;padding:8px 4px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:11px;cursor:pointer}
+.workshop-options button[hidden]{display:none}
+.workshop-options button[aria-pressed="true"]{flex:0 1 auto;padding:8px 16px;border-color:var(--amber);background:var(--amber-lo);color:var(--amber)}
+.workshop-options button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}

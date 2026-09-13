@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-layout-v62-20260912">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-layout-v62-20260912">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=driver-layout-v62-20260912">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=journey-close-v63-20260913">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=journey-close-v63-20260913">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=journey-close-v63-20260913">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=driver-layout-v62-20260912" defer></script>
-<script src="supabase.js?v=driver-layout-v62-20260912" defer></script>
+<script src="config.js?v=journey-close-v63-20260913" defer></script>
+<script src="supabase.js?v=journey-close-v63-20260913" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-layout-v62-20260912" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-layout-v62-20260912" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-layout-v62-20260912" defer></script>
-<script src="sigma.js?v=driver-layout-v62-20260912" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=journey-close-v63-20260913" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=journey-close-v63-20260913" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=journey-close-v63-20260913" defer></script>
+<script src="sigma.js?v=journey-close-v63-20260913" defer></script>
 </head>
 <body>
 
@@ -390,7 +390,7 @@
             <div id="cj-foto-box" class="photo-upload" style="padding:16px;border:2px dashed var(--amber);background:var(--amber-lo);border-radius:8px;text-align:center;transition:all 0.2s">
               <div id="cj-foto-icon" style="font-size:24px">📷</div>
               <div id="cj-foto-status" style="font-weight:bold;margin-top:5px">Tocar para escanear odómetro</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:3px">La IA extraerá el kilometraje automáticamente</div>
+              <div id="cj-foto-hint" style="font-size:11px;color:var(--muted);margin-top:3px">La IA extraerá el kilometraje automáticamente</div>
             </div>
           </label>
         </div>
@@ -439,20 +439,15 @@
 
       <!-- Detalle taller (expandible) -->
       <div id="cj-taller-detalle" style="display:none">
-        <select class="form-input" id="cj-taller-tipo" onchange="onTallerTipoChange()" style="margin-bottom:8px">
-          <option value="" disabled selected>Tipo de trabajo...</option>
-          <option value="Mantenimiento">Mantenimiento</option>
-          <option value="Preventivo">Preventivo</option>
-          <option value="Repuestos">Repuestos</option>
-          <option value="Reparación">Reparación</option>
-          <option value="Eléctrico">Eléctrico</option>
-          <option value="Otro">Otro</option>
-        </select>
+        <input type="hidden" id="cj-taller-tipo" value="">
+        <div id="cj-taller-opciones" class="workshop-options" role="group" aria-label="Tipo de trabajo en taller">
+          <button type="button" data-workshop-type="Mantenimiento" aria-pressed="false" onclick="seleccionarTipoTaller('Mantenimiento')">Mantenimiento</button>
+          <button type="button" data-workshop-type="Preventivo" aria-pressed="false" onclick="seleccionarTipoTaller('Preventivo')">Preventivo</button>
+          <button type="button" data-workshop-type="Repuestos" aria-pressed="false" onclick="seleccionarTipoTaller('Repuestos')">Repuestos</button>
+        </div>
         <textarea class="form-input" id="cj-workshop-detail" placeholder="Detalle del trabajo realizado..." rows="2"></textarea>
       </div>
 
-      <!-- Notas -->
-      <textarea class="form-input" id="cj-notas" placeholder="Notas del turno (opcional)..." rows="2"></textarea>
     </div>
 
     <div id="cj-error" class="modal-error" style="display:none;"></div>
