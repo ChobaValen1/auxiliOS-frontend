@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-details-v66-20260914">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-details-v66-20260914">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=driver-details-v66-20260914">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=fuel-white-icons-v67-20260914">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=fuel-white-icons-v67-20260914">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=fuel-white-icons-v67-20260914">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=driver-details-v66-20260914" defer></script>
-<script src="supabase.js?v=driver-details-v66-20260914" defer></script>
+<script src="config.js?v=fuel-white-icons-v67-20260914" defer></script>
+<script src="supabase.js?v=fuel-white-icons-v67-20260914" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-details-v66-20260914" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-details-v66-20260914" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-details-v66-20260914" defer></script>
-<script src="sigma.js?v=driver-details-v66-20260914" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=fuel-white-icons-v67-20260914" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=fuel-white-icons-v67-20260914" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=fuel-white-icons-v67-20260914" defer></script>
+<script src="sigma.js?v=fuel-white-icons-v67-20260914" defer></script>
 </head>
 <body>
 
@@ -77,19 +77,19 @@
 
 <div class="modal-backdrop" id="modal-combustible">
  <div class="modal-box fuel-box">
-  <div class="modal-head"><span class="modal-head-title">⛽ Cargar combustible</span><button class="modal-close" aria-label="Cerrar" onclick="closeModal('modal-combustible')">×</button></div>
+  <div class="modal-head"><span class="modal-head-title"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h10v17M2 21h14M4 10h10m3-7 4 4v10a2 2 0 0 1-4 0v-5h-3"/></svg> Cargar combustible</span><button class="modal-close" aria-label="Cerrar" onclick="closeModal('modal-combustible')">×</button></div>
   <div class="modal-body fuel-body">
-   <div class="fuel-context"><div><small>CAMIÓN</small><strong id="cb-camion-info">—</strong></div><label class="fuel-field" for="cb-fecha"><span>📅 Fecha *</span><input class="form-input" id="cb-fecha" placeholder="" type="date"></label></div>
+   <div class="fuel-context"><div><small>CAMIÓN</small><strong id="cb-camion-info">—</strong></div><label class="fuel-field" for="cb-fecha"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 11h18"/></svg> Fecha *</span><input class="form-input" id="cb-fecha" placeholder="" type="date"></label></div>
    <input type="file" id="cb-ticket-input" accept="image/*" capture="environment" hidden onchange="leerTicketCombustible(this)">
-   <button id="cb-scan-btn" class="fuel-scan" onclick="document.getElementById('cb-ticket-input').click()"><span aria-hidden="true">📷</span><span><strong id="cb-scan-label">Escanear ticket</strong><small>O completá los datos manualmente</small></span></button>
+   <button id="cb-scan-btn" class="fuel-scan" onclick="document.getElementById('cb-ticket-input').click()"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5 10 2h4l2 3h4v15H4V5Z"/><circle cx="12" cy="12" r="4"/></svg></span><span><strong id="cb-scan-label">Escanear ticket</strong><small>O completá los datos manualmente</small></span></button>
    <div id="cb-scan-status" class="fuel-status" role="status" aria-live="polite" style="display:none"></div>
    <h3 class="fuel-section">Datos de la carga</h3>
-   <div class="fuel-grid fuel-numbers"><label class="fuel-field" for="cb-litros"><span>⛽ Litros *</span><input class="form-input" id="cb-litros" placeholder="Ej: 80" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label><label class="fuel-field" for="cb-precio"><span>💲 Precio / litro *</span><input class="form-input" id="cb-precio" placeholder="Ej: 1250" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label></div>
+   <div class="fuel-grid fuel-numbers"><label class="fuel-field" for="cb-litros"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h10v17M2 21h14M4 10h10m3-7 4 4v10a2 2 0 0 1-4 0v-5h-3"/></svg> Litros *</span><input class="form-input" id="cb-litros" placeholder="Ej: 80" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label><label class="fuel-field" for="cb-precio"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20m5-15c0-4-10-4-10 1s10 3 10 8-10 5-10 1"/></svg> Precio / litro *</span><input class="form-input" id="cb-precio" placeholder="Ej: 1250" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label></div>
    <div class="fuel-total"><span>Total</span><strong id="cb-total" aria-live="polite">$0</strong></div>
    <h3 class="fuel-section">Datos opcionales</h3>
-   <div class="fuel-grid"><label class="fuel-field" for="cb-km"><span>🛣️ KM al cargar</span><input class="form-input" id="cb-km" placeholder="Ej: 180240" type="text" inputmode="numeric" oninput="sanitizeInt(this)"></label><label class="fuel-field" for="cb-estacion"><span>📍 Estación</span><input class="form-input" id="cb-estacion" placeholder="Ej: YPF Ruta 2" type="text" maxlength="100"></label></div>
+   <div class="fuel-grid"><label class="fuel-field" for="cb-km"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2 3 22M17 2l4 20M12 3v4m0 3v4m0 3v4"/></svg> KM al cargar</span><input class="form-input" id="cb-km" placeholder="Ej: 180240" type="text" inputmode="numeric" oninput="sanitizeInt(this)"></label><label class="fuel-field" for="cb-estacion"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> Estación</span><input class="form-input" id="cb-estacion" placeholder="Ej: YPF Ruta 2" type="text" maxlength="100"></label></div>
    <h3 class="fuel-section">Forma de pago *</h3>
-   <div class="fuel-pay" role="group" aria-label="Forma de pago"><button id="cb-efectivo" aria-pressed="false" onclick="selectPayBtn('cb','efectivo')"><span aria-hidden="true">💵</span>Efectivo</button><button id="cb-transferencia" aria-pressed="false" onclick="selectPayBtn('cb','transferencia')"><span aria-hidden="true">🏦</span>Transfer.</button><button id="cb-app" aria-pressed="false" onclick="selectPayBtn('cb','app')"><span aria-hidden="true">📱</span>App</button></div>
+   <div class="fuel-pay" role="group" aria-label="Forma de pago"><button id="cb-efectivo" aria-pressed="false" onclick="selectPayBtn('cb','efectivo')"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 8h1M18 16h1"/></svg></span>Efectivo</button><button id="cb-transferencia" aria-pressed="false" onclick="selectPayBtn('cb','transferencia')"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5H3Zm1 13h16M6 10v8m6-8v8m6-8v8"/></svg></span>Transfer.</button><button id="cb-app" aria-pressed="false" onclick="selectPayBtn('cb','app')"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></span>App</button></div>
    <div id="cb-app-select" style="display:none"><h3 class="fuel-section">¿Qué app usaste?</h3><div class="fuel-apps"><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Shell Flota')">Shell Flota</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'YPF Ruta')">YPF Ruta</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Axion')">Axion</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Otra')">Otra</button></div></div>
   </div>
   <div id="cb-error" class="modal-error" role="alert" style="display:none"></div>
