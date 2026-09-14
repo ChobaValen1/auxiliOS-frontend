@@ -8,7 +8,6 @@ body.aux-backoffice-nav .sidenav {
 body.aux-backoffice-nav .sidenav > .nav-divider,
 body.aux-backoffice-nav .sidenav > #nav-registro,
 body.aux-backoffice-nav .sidenav > #nav-documentos,
-body.aux-backoffice-nav .sidenav > #nav-sueldos,
 body.aux-backoffice-nav .sidenav > #nav-grilla,
 body.aux-backoffice-nav #btn-admin-settings {
   display: none !important;

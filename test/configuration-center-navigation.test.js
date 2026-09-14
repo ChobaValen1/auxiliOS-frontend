@@ -154,3 +154,5 @@ test('the desktop sidenav expands to labels and can collapse to emoji-only mode'
   assert.match(sigma, /function toggleSidenav\(\)/);
   assert.match(sigma, /aria-expanded/);
 });
+
+test("payroll is not hidden by the former configuration CSS rule",()=>{assert.doesNotMatch(read("configuration-center.css"),/sidenav > #nav-sueldos/);assert.match(read("configuration-center.js"),/ensureNavNode\('nav-sueldos', 'sueldos'/);});
