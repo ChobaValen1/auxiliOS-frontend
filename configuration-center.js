@@ -248,7 +248,7 @@
       addAction(management, '🆘', 'Contactos de emergencia', 'Teléfonos y referencias operativas', () => openLegacySettingsTab('tab-emergencias'));
       moveTo(administration, document.getElementById('nav-documentos'));
       moveTo(administration, document.getElementById('nav-grilla'));
-      moveTo(administration, document.getElementById('nav-sueldos'));
+
       addAction(administration, '👤', 'Mi cuenta', 'Datos y preferencias de la cuenta', () => openLegacySettingsTab('tab-mi-cuenta'));
     } else {
       ['nav-documentos', 'nav-grilla', 'nav-sueldos'].forEach(id => {
@@ -324,11 +324,12 @@
 
     const configuration = ensureNavNode('nav-configuracion', 'configuracion', '⚙️', 'Configuración', false);
     configuration.setAttribute('onclick', 'abrirCentroConfiguracion(event)');
-    const tariffs = ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas', false);
+    const payroll = canUseManagementTools() ? ensureNavNode('nav-sueldos', 'sueldos', '💵', 'Sueldos', false) : null;
+    document.getElementById('nav-config-tariff-matrix')?.remove();
     const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
 
     populateFlyout();
-    orderTop([dashboard, canUseManagementTools() ? operations : null, jornadas, camion, remitos, configuration, tariffs, history]);
+    orderTop([dashboard, canUseManagementTools() ? operations : null, jornadas, camion, remitos, payroll, configuration, history]);
   }
 
   function managementToolsMarkup() {
@@ -348,7 +349,6 @@
       <div class="aux-center-tool-grid">
         <button class="aux-center-tool" onclick="irModuloConfiguracion('documentos')"><span>📄</span><b>Documentación</b><small>Legajos y vencimientos.</small></button>
         <button class="aux-center-tool" onclick="irModuloConfiguracion('grilla')"><span>🗓️</span><b>Grilla</b><small>Asignaciones y francos.</small></button>
-        <button class="aux-center-tool" onclick="irModuloConfiguracion('sueldos')"><span>💵</span><b>Sueldos</b><small>Liquidaciones y rendiciones.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-mi-cuenta')"><span>👤</span><b>Mi cuenta</b><small>Datos de la cuenta actual.</small></button>
       </div>
     </section>`;
@@ -359,7 +359,28 @@
     if (!screen || !canUseCenter()) return;
     const admin = role() === 'administracion';
     const manage = canUseManagementTools();
-    const link = (label, detail, action) => '<button class="aux-area-link" onclick="'+action+'"><span><b>'+label+'</b><small>'+detail+'</small></span><span aria-hidden="true">→</span></button>';
+    const sectionIcon = label => {
+      const paths = {
+        'Datos de empresa y firma':'M4 3h12l4 4v14H4Z M8 9h8 M8 13h8 M8 17h5',
+        'Documentación':'M5 3h14v18H5Z M8 7h8 M8 11h8 M8 15h5',
+        'Servicios':'M4 6h16 M4 12h16 M4 18h16',
+        'Camiones':'M2 6h12v11H2Z M14 10h5l3 4v3h-8 M7 18a2 2 0 1 1-4 0a2 2 0 1 1 4 0 M21 18a2 2 0 1 1-4 0a2 2 0 1 1 4 0',
+        'Planes de mantenimiento':'M6 4h12v17H6Z M9 2h6v4H9Z M9 10h6 M9 14h6',
+        'Mantenimiento':'M14 3a6 6 0 0 0-6 8L2 17l5 5 6-6a6 6 0 0 0 8-7l-4 4-4-4 4-4Z',
+        'Contactos de emergencia':'M8 3H4v4c0 7 6 13 13 13h4v-4l-5-2-2 2-6-6 2-2Z',
+        'Grilla':'M3 5h18v16H3Z M7 2v6 M17 2v6 M3 10h18 M9 10v11 M15 10v11',
+        'Tipos de servicio':'M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h7v7h-7Z',
+        'Tipos de tarifa':'M3 4h12l6 8-6 8H3Z M7 9h3 M7 14h6',
+        'Peajes':'M3 21V8h18v13 M2 8l10-5 10 5 M7 12v9 M17 12v9 M12 15v3',
+        'Bases geográficas':'M12 22S4 15 4 9a8 8 0 1 1 16 0c0 6-8 13-8 13Z M12 6a3 3 0 1 0 0 6a3 3 0 1 0 0-6',
+        'Prestadoras':'M4 21V3h12v18 M16 10h4v11 M8 7h4 M8 11h4 M8 15h4 M2 21h20',
+        'Tarifas':'M4 3h16v18H4Z M8 7h8 M8 11h2 M14 11h2 M8 15h2 M14 15h2',
+        'Personal / Choferes':'M8 11a4 4 0 1 0 0-8a4 4 0 1 0 0 8 M1 21v-3a7 7 0 0 1 14 0v3 M17 4a4 4 0 0 1 0 8 M18 15a5 5 0 0 1 5 5',
+        'Mi cuenta':'M12 12a5 5 0 1 0 0-10a5 5 0 1 0 0 10 M3 22v-2a9 9 0 0 1 18 0v2'
+      };
+      return '<svg class="aux-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+(paths[label]||paths.Servicios)+'"/></svg>';
+    };
+    const link = (label, detail, action) => '<button class="aux-area-link" onclick="'+action+'">'+sectionIcon(label)+'<span class="aux-section-label"><b>'+label+'</b><small>'+detail+'</small></span><span aria-hidden="true">→</span></button>';
     const route = (label, detail, name) => link(label, detail, "irModuloConfiguracion('"+name+"')");
     const legacy = (label, detail, name) => link(label, detail, "abrirHerramientaConfiguracion('"+name+"')");
     const area = (title, subtitle, icon, links) => '<details class="aux-area"><summary><span class="aux-area-icon" aria-hidden="true">'+icon+'</span><h3>'+title+'</h3><p>'+subtitle+'</p><span class="aux-area-open">Ver opciones <span aria-hidden="true">↓</span></span></summary><div class="aux-area-links">'+links+'</div></details>';
@@ -375,7 +396,7 @@
       + area('Prestadoras y tarifas','Servicios habilitados, precios y vigencias.','▥',
           route('Prestadoras','Datos, servicios habilitados y parámetros de facturación.','empresas')+route('Tarifas','Valores y vigencias por prestadora.','config-tariff-matrix'))
       + area('Usuarios y permisos','Personal, roles y administración interna.','♙',
-          manage ? legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios')+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta')+route('Sueldos','Acceso a las liquidaciones actuales.','sueldos') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
+          manage ? legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios')+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
       + '</div></div>';
   }
 

@@ -13,7 +13,7 @@ test('configuration center remains the single backoffice navigation owner', () =
 
   assert.match(center, /BACKOFFICE_ROLES = new Set\(\['administracion', 'supervision', 'facturacion'\]\)/);
   assert.match(center, /function configureBackofficeNavigation/);
-  assert.match(center, /orderTop\(\[dashboard, canUseManagementTools\(\) \? operations : null, jornadas, camion, remitos, configuration, tariffs, history\]\)/);
+  assert.match(center, /orderTop\(\[dashboard, canUseManagementTools\(\) \? operations : null, jornadas, camion, remitos, payroll, configuration, history\]\)/);
   assert.match(center, /document\.getElementById\('nav-registro'\)/);
   assert.match(center, /registro\.remove\(\)/);
   assert.doesNotMatch(config, /frequent-navigation/);
@@ -48,7 +48,7 @@ test('configuration restores existing personnel vehicle and maintenance tools wi
   assert.match(center, /Planes de mantenimiento/);
   assert.match(center, /moveTo\(administration, document\.getElementById\('nav-documentos'\)\)/);
   assert.match(center, /moveTo\(administration, document\.getElementById\('nav-grilla'\)\)/);
-  assert.match(center, /moveTo\(administration, document\.getElementById\('nav-sueldos'\)\)/);
+  assert.doesNotMatch(center, /moveTo\(administration, document\.getElementById\('nav-sueldos'\)\)/);
   assert.doesNotMatch(center, /function openNuevoUsuarioModal/);
   assert.doesNotMatch(center, /function openNuevoVehiculoModal/);
   assert.doesNotMatch(center, /function openAdminPlanModal/);
