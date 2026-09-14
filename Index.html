@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=truck-controls-v64-20260913">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=truck-controls-v64-20260913">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=truck-controls-v64-20260913">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=fuel-compact-v65-20260914">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=fuel-compact-v65-20260914">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=fuel-compact-v65-20260914">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=truck-controls-v64-20260913" defer></script>
-<script src="supabase.js?v=truck-controls-v64-20260913" defer></script>
+<script src="config.js?v=fuel-compact-v65-20260914" defer></script>
+<script src="supabase.js?v=fuel-compact-v65-20260914" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=truck-controls-v64-20260913" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=truck-controls-v64-20260913" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=truck-controls-v64-20260913" defer></script>
-<script src="sigma.js?v=truck-controls-v64-20260913" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=fuel-compact-v65-20260914" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=fuel-compact-v65-20260914" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=fuel-compact-v65-20260914" defer></script>
+<script src="sigma.js?v=fuel-compact-v65-20260914" defer></script>
 </head>
 <body>
 
@@ -76,77 +76,25 @@
 </div>
 
 <div class="modal-backdrop" id="modal-combustible">
-  <div class="modal-box">
-    <div class="modal-head">
-      <span class="modal-head-title">⛽ Cargar combustible</span>
-      <button class="modal-close" onclick="closeModal('modal-combustible')">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="padding:10px 14px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:8px;margin-bottom:16px">
-        <div style="font-size:11px;color:var(--muted)">Camión</div>
-        <div style="font-family:'Bebas Neue';font-size:18px;color:var(--amber)" id="cb-camion-info">—</div>
-      </div>
-
-      <!-- Lector de ticket OCR -->
-      <div style="margin-bottom:20px">
-        <input type="file" id="cb-ticket-input" accept="image/*" capture="environment" style="display:none" onchange="leerTicketCombustible(this)">
-        <button id="cb-scan-btn" class="btn btn-ghost" style="width:100%;padding:12px;border:1.5px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px" onclick="document.getElementById('cb-ticket-input').click()">
-          <span style="font-size:18px">📷</span>
-          <span id="cb-scan-label">Escanear ticket con IA</span>
-        </button>
-        <div id="cb-scan-status" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;font-size:12px"></div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Fecha <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="date" id="cb-fecha">
-      </div>
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label class="form-label">Litros <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="cb-litros" placeholder="Ej: 80" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Precio / litro <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="cb-precio" placeholder="Ej: 420" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()">
-        </div>
-      </div>
-      <div style="padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:12px;color:var(--muted)">Total</div>
-        <div style="font-family:'DM Mono';font-size:20px;font-weight:700;color:var(--amber)" id="cb-total">$0</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">KM al cargar</label>
-        <input class="form-input" type="tel" id="cb-km" placeholder="Opcional" inputmode="numeric" oninput="sanitizeInt(this)">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Estación de servicio</label>
-        <input class="form-input" type="text" id="cb-estacion" placeholder="Ej: YPF Ruta 2 km 340" maxlength="100">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Medio de pago <span style="color:var(--red)">*</span></label>
-        <div style="display:flex;gap:8px">
-          <button id="cb-efectivo" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','efectivo')">💵 Efectivo</button>
-          <button id="cb-transferencia" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','transferencia')">🏦 Transfer.</button>
-          <button id="cb-app" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','app')">📱 App</button>
-        </div>
-      </div>
-      <div id="cb-app-select" style="display:none;margin-top:8px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Seleccioná la app</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Shell Flota')">Shell Flota</button>
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'YPF Ruta')">YPF Ruta</button>
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Axion')">Axion</button>
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Otra')">Otra</button>
-        </div>
-      </div>
-    </div>
-    <div id="cb-error" class="modal-error" style="display:none;"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-combustible')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-combustible" onclick="guardarCombustible()">⛽ Guardar carga</button>
-    </div>
+ <div class="modal-box fuel-box">
+  <div class="modal-head"><span class="modal-head-title">⛽ Cargar combustible</span><button class="modal-close" aria-label="Cerrar" onclick="closeModal('modal-combustible')">×</button></div>
+  <div class="modal-body fuel-body">
+   <div class="fuel-context"><div><small>CAMIÓN</small><strong id="cb-camion-info">—</strong></div><label class="fuel-field" for="cb-fecha"><span>Fecha *</span><input class="form-input" id="cb-fecha" placeholder="" type="date"></label></div>
+   <input type="file" id="cb-ticket-input" accept="image/*" capture="environment" hidden onchange="leerTicketCombustible(this)">
+   <button id="cb-scan-btn" class="fuel-scan" onclick="document.getElementById('cb-ticket-input').click()"><span aria-hidden="true">📷</span><span><strong id="cb-scan-label">Escanear ticket</strong><small>O completá los datos manualmente</small></span></button>
+   <div id="cb-scan-status" class="fuel-status" role="status" aria-live="polite" style="display:none"></div>
+   <h3 class="fuel-section">Datos de la carga</h3>
+   <div class="fuel-grid fuel-numbers"><label class="fuel-field" for="cb-litros"><span>Litros *</span><input class="form-input" id="cb-litros" placeholder="Ej: 80" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label><label class="fuel-field" for="cb-precio"><span>Precio / litro *</span><input class="form-input" id="cb-precio" placeholder="Ej: 1250" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label></div>
+   <div class="fuel-total"><span>Total</span><strong id="cb-total" aria-live="polite">$0</strong></div>
+   <h3 class="fuel-section">Datos opcionales</h3>
+   <div class="fuel-grid"><label class="fuel-field" for="cb-km"><span>KM al cargar</span><input class="form-input" id="cb-km" placeholder="Ej: 180240" type="text" inputmode="numeric" oninput="sanitizeInt(this)"></label><label class="fuel-field" for="cb-estacion"><span>Estación</span><input class="form-input" id="cb-estacion" placeholder="Ej: YPF Ruta 2" type="text" maxlength="100"></label></div>
+   <h3 class="fuel-section">Forma de pago *</h3>
+   <div class="fuel-pay" role="group" aria-label="Forma de pago"><button id="cb-efectivo" aria-pressed="false" onclick="selectPayBtn('cb','efectivo')"><span aria-hidden="true">💵</span>Efectivo</button><button id="cb-transferencia" aria-pressed="false" onclick="selectPayBtn('cb','transferencia')"><span aria-hidden="true">🏦</span>Transfer.</button><button id="cb-app" aria-pressed="false" onclick="selectPayBtn('cb','app')"><span aria-hidden="true">📱</span>App</button></div>
+   <div id="cb-app-select" style="display:none"><h3 class="fuel-section">¿Qué app usaste?</h3><div class="fuel-apps"><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Shell Flota')">Shell Flota</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'YPF Ruta')">YPF Ruta</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Axion')">Axion</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Otra')">Otra</button></div></div>
   </div>
+  <div id="cb-error" class="modal-error" role="alert" style="display:none"></div>
+  <div class="modal-footer fuel-footer"><div id="cb-save-status" role="status" aria-live="polite"></div><button class="btn btn-primary" id="btn-guardar-combustible" onclick="guardarCombustible()">Guardar carga</button></div>
+ </div>
 </div>
 
 <div class="modal-backdrop" id="modal-service-log">

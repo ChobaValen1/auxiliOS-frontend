@@ -294,6 +294,10 @@ document.querySelectorAll('.filter-tabs').forEach(group => {
 // ── MODALS ───────────────────────────────────
 
 function openFuelModal() {
+  if (_fuelBusy) return;
+  selectPayBtn('cb', '');
+  document.querySelectorAll('.app-btn2').forEach(el => { el.setAttribute('aria-pressed','false'); el.style.borderColor='var(--border)'; el.style.background='var(--bg)'; });
+  _actualizarEstadoConexion();
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('cb-camion-info');
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
@@ -5807,13 +5811,14 @@ window.addEventListener('offline', _actualizarEstadoConexion);
 window.addEventListener('online',  _actualizarEstadoConexion);
 
 function _actualizarEstadoConexion() {
+  if (typeof _fuelBusy !== 'undefined' && _fuelBusy) return;
   const btn   = document.getElementById('cb-scan-btn');
   const label = document.getElementById('cb-scan-label');
   if (!btn || !label) return;
   if (navigator.onLine) {
     btn.disabled      = false;
     btn.style.opacity = '1';
-    label.textContent = 'Escanear ticket con IA';
+    label.textContent = 'Escanear ticket';
   } else {
     btn.disabled      = true;
     btn.style.opacity = '0.4';
@@ -5973,7 +5978,9 @@ async function _renderIndicadorOffline() {
 // ── LECTOR DE TICKET OCR ──────────────────────
 async function leerTicketCombustible(input) {
   const file = input.files[0];
-  if (!file) return;
+  if (!file || _fuelBusy) return;
+  _setFuelBusy('scan');
+  try {
 
   const status = document.getElementById('cb-scan-status');
   const mostrar = (msg, color, bg) => {
@@ -5981,10 +5988,10 @@ async function leerTicketCombustible(input) {
     status.style.color = color;
     status.style.background = bg;
     status.style.border = `1px solid ${color}44`;
-    status.innerHTML = msg;
+    status.textContent = msg;
   };
 
-  mostrar('⏳ Analizando ticket con IA...', 'var(--amber)', 'var(--amber-lo)');
+  mostrar('Leyendo ticket… Esperá un momento.', 'var(--amber)', 'var(--amber-lo)');
 
   // Comprimir imagen si es muy grande
   const base64 = await new Promise((resolve, reject) => {
@@ -6020,13 +6027,13 @@ try {
 
     if (!res.ok) { 
       const errData = await res.json().catch(() => ({}));
-      mostrar(`❌ Error: ${errData.error || res.statusText}`, 'var(--red)', 'rgba(255,59,48,0.1)'); 
+      mostrar('No se pudo leer el ticket. Completá los datos manualmente o volvé a sacar la foto.', 'var(--amber)', 'var(--amber-lo)');
       return; 
     }
     
     const d = await res.json();
     if (d.error || !d.success) { 
-      mostrar(`❌ ${d.error || 'No se pudo leer el ticket'}`, 'var(--red)', 'rgba(255,59,48,0.1)'); 
+      mostrar('No se pudo leer el ticket. Completá los datos manualmente o volvé a sacar la foto.', 'var(--amber)', 'var(--amber-lo)');
       return; 
     }
 
@@ -6077,35 +6084,38 @@ try {
     ].filter(Boolean);
 
     mostrar(
-      `✅ Detectado: ${campos.length ? campos.join(' · ') : 'Verificá los campos'}<br><span style="font-size:10px;opacity:0.7">Revisá que los datos sean correctos antes de guardar</span>`,
+      'Datos leídos. Revisá y corregí los campos antes de guardar.',
       'var(--green)', 'rgba(52,199,89,0.1)'
     );
   } catch (err) {
-    mostrar('❌ No se pudo conectar con el servidor local', 'var(--red)', 'rgba(255,59,48,0.1)');
+    mostrar('No se pudo leer el ticket. Completá los datos manualmente o reintentá.', 'var(--red)', 'rgba(255,59,48,0.1)');
     console.error('[OCR]', err);
   }
 
   // Limpiar el input para permitir re-escanear la misma imagen
-  input.value = '';
+  } catch (error) {
+    const status = document.getElementById('cb-scan-status');
+    if (status) { status.style.display = 'block'; status.textContent = 'No se pudo abrir la foto. Elegí otra imagen o completá los datos manualmente.'; }
+  } finally { input.value = ''; _setFuelBusy(''); }
 }
 
 // ── GUARDAR — COMBUSTIBLE ─────────────────────
 let selectedPayMethod = '';
 function selectPayBtn(prefix, method) {
-  document.querySelectorAll('[id^="'+prefix+'-"]').forEach(el => {
-    el.style.borderColor = 'var(--border)'; el.style.background = 'var(--bg)';
+  ['efectivo','transferencia','app'].forEach(name => {
+    const el=document.getElementById(prefix+'-'+name);
+    if(el) { el.setAttribute('aria-pressed',String(name===method)); el.style.borderColor=name===method?'var(--amber)':'var(--border)'; el.style.background=name===method?'var(--amber-lo)':'var(--bg)'; }
   });
-  const sel = document.getElementById(prefix + '-' + method);
-  if (sel) { sel.style.borderColor = 'var(--amber)'; sel.style.background = 'var(--amber-lo)'; }
-  selectedPayMethod = method;
-  const appSel = document.getElementById('cb-app-select');
-  if (appSel) appSel.style.display = method === 'app' ? 'block' : 'none';
+  selectedPayMethod=method;
+  const appSel=document.getElementById('cb-app-select');
+  if(appSel) appSel.style.display=method==='app'?'block':'none';
 }
 
 let selectedApp = '';
 function selectAppBtn(el, name) {
   document.querySelectorAll('.app-btn2').forEach(o => { o.style.borderColor='var(--border)'; o.style.background='var(--bg)'; });
   el.style.borderColor = 'var(--cyan)'; el.style.background = 'rgba(46,196,214,0.1)';
+  document.querySelectorAll('.app-btn2').forEach(o => o.setAttribute('aria-pressed',String(o===el)));
   selectedApp = name;
 }
 
@@ -6116,7 +6126,20 @@ function calcCombTotal() {
   if (el) el.textContent = '$' + (l * p).toLocaleString('es-AR');
 }
 
+let _fuelBusy = '';
+function _setFuelBusy(state) {
+  _fuelBusy = state;
+  document.querySelectorAll('#modal-combustible button, #modal-combustible input').forEach(el => { el.disabled = !!state; });
+  const btn=document.getElementById('btn-guardar-combustible');
+  if(btn) { btn.textContent=state==='save'?'Guardando carga…':'Guardar carga'; btn.style.pointerEvents=''; }
+  const status=document.getElementById('cb-save-status');
+  if(status) status.textContent=state==='save'?'Registrando la carga. Esperá un momento.':'';
+  const box=document.querySelector('#modal-combustible .modal-body');
+  if(box) box.setAttribute('aria-busy',String(!!state));
+  if(!state) _actualizarEstadoConexion();
+}
 async function guardarCombustible() {
+  if (_fuelBusy) return;
   const litros = parseFloat(document.getElementById('cb-litros')?.value);
   const precio = parseFloat(document.getElementById('cb-precio')?.value);
   const fecha  = document.getElementById('cb-fecha')?.value;
@@ -6150,6 +6173,8 @@ async function guardarCombustible() {
     gas_station:     estacion,
     created_at_device: new Date().toISOString(),
   };
+  _setFuelBusy('save');
+  try {
   datos.log_id = await _resolverLogIdLocal(datos.log_id);
 
   // Sin señal, o jornada abierta offline aún sin sincronizar (log_id TMP-*):
@@ -6182,6 +6207,10 @@ async function guardarCombustible() {
   } else {
     toast(`Error al guardar: ${resultado.errorMsg || 'Error desconocido'}`, 'error');
   }
+  } catch (error) {
+    console.error('[Combustible]',error);
+    _modalError('cb-error','No se pudo guardar la carga. Revisá la conexión y reintentá.');
+  } finally { _setFuelBusy(''); }
 }
 
 // ── NEUMÁTICOS & FRENOS ───────────────────────
