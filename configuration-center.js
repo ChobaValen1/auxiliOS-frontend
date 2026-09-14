@@ -335,7 +335,7 @@
     if (!canUseManagementTools()) return '';
     return `<section class="aux-center-tools">
       <div class="aux-center-tools-head"><div><h3>Personal, camiones y mantenimiento</h3><p>Altas y parámetros internos que ya existían en AuxiliOS.</p></div></div>
-      <div class="aux-center-tool-grid">
+      <div class="aux-center-tool-grid"><button class="aux-center-tool" onclick="CompanyDocuments.open()"><span>▤</span><b>Empresa y documentos</b><small>Datos fiscales y firma institucional.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-usuarios')"><span>👤</span><b>Personal / Choferes</b><small>Alta y gestión del personal.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-flota')"><span>🚛</span><b>Camiones</b><small>Alta y administración de vehículos.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-planes')"><span>🧰</span><b>Planes de mantenimiento</b><small>Catálogo de planes globales.</small></button>
@@ -357,22 +357,26 @@
   function renderCenter() {
     const screen = document.getElementById('screen-configuracion');
     if (!screen || !canUseCenter()) return;
-    screen.innerHTML = `<div class="aux-center-page">
-      <div class="aux-center-head"><div><div class="aux-center-eyebrow">Centro administrativo</div><h2>Configuración</h2><p>Acá viven las altas, catálogos y definiciones estructurales. Jornadas, Camión y Remitos quedan en la navegación principal porque son módulos de seguimiento diario.</p></div></div>
-      <section class="aux-center-tools">
-        <div class="aux-center-tools-head"><div><h3>Prestadoras y catálogos</h3><p>Definiciones reutilizables por la operación y la facturación.</p></div></div>
-        <div class="aux-center-tool-grid">
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('empresas')"><span>▦</span><b>Prestadoras</b><small>Datos y parámetros de facturación.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('bases-geograficas')"><span>⌖</span><b>Bases geográficas</b><small>Catálogo maestro de ubicaciones.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-service-types')"><span>🛠️</span><b>Tipos de servicio</b><small>Alta y definición de servicios.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-types')"><span>💰</span><b>Tipos de tarifa</b><small>Modalidades de cálculo.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('peajes')"><span>🛣️</span><b>Peajes y adicionales</b><small>Catálogo e importes vigentes.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-services')"><span>☷</span><b>Servicios</b><small>Columnas, formulario y flujo operativo.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-matrix')"><span>💳</span><b>Tarifas</b><small>Valores y vigencias por prestadora.</small></button>
-        </div>
-      </section>
-      ${managementToolsMarkup()}
-    </div>`;
+    const admin = role() === 'administracion';
+    const manage = canUseManagementTools();
+    const link = (label, detail, action) => '<button class="aux-area-link" onclick="'+action+'"><span><b>'+label+'</b><small>'+detail+'</small></span><span aria-hidden="true">→</span></button>';
+    const route = (label, detail, name) => link(label, detail, "irModuloConfiguracion('"+name+"')");
+    const legacy = (label, detail, name) => link(label, detail, "abrirHerramientaConfiguracion('"+name+"')");
+    const area = (title, subtitle, icon, links) => '<details class="aux-area"><summary><span class="aux-area-icon" aria-hidden="true">'+icon+'</span><h3>'+title+'</h3><p>'+subtitle+'</p><span class="aux-area-open">Ver opciones <span aria-hidden="true">↓</span></span></summary><div class="aux-area-links">'+links+'</div></details>';
+    screen.innerHTML = '<div class="aux-center-page"><div class="aux-center-head"><div><div class="aux-center-eyebrow">Configuración</div><h2>Configuración por áreas</h2><p>Elegí un área para ver sus herramientas y parámetros.</p></div></div><div class="aux-areas-grid">'
+      + area('Empresa y documentos','Identidad de la empresa y documentos emitidos.','▤',
+          (admin ? link('Datos de empresa y firma','Razón social, CUIT, contacto y firma institucional.','CompanyDocuments.open()') : '<p class="aux-area-note">Los datos de empresa los configura Administración.</p>')
+          + (manage ? route('Documentación','Legajos y vencimientos.','documentos') : ''))
+      + area('Operación','Formularios, flujo y recursos de trabajo.','⚙',
+          route('Servicios','Columnas, formulario y flujo operativo.','config-services')
+          + (manage ? legacy('Camiones','Alta y administración de vehículos.','tab-flota')+legacy('Planes de mantenimiento','Catálogo de planes globales.','tab-planes')+legacy('Mantenimiento','Seguimiento y asignaciones.','tab-mantenimiento')+legacy('Contactos de emergencia','Referencias operativas.','tab-emergencias')+route('Grilla','Asignaciones y francos.','grilla') : ''))
+      + area('Catálogos','Conceptos compartidos por toda la operación.','▦',
+          route('Tipos de servicio','Alta y definición de servicios.','config-service-types')+route('Tipos de tarifa','Modalidades de cálculo.','config-tariff-types')+route('Peajes','Catálogo e importes vigentes.','peajes')+route('Bases geográficas','Ubicaciones operativas.','bases-geograficas'))
+      + area('Prestadoras y tarifas','Servicios habilitados, precios y vigencias.','▥',
+          route('Prestadoras','Datos, servicios habilitados y parámetros de facturación.','empresas')+route('Tarifas','Valores y vigencias por prestadora.','config-tariff-matrix'))
+      + area('Usuarios y permisos','Personal, roles y administración interna.','♙',
+          manage ? legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios')+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta')+route('Sueldos','Acceso a las liquidaciones actuales.','sueldos') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
+      + '</div></div>';
   }
 
   function actionFor(row) {
@@ -475,7 +479,7 @@
     const actors = [...S.actors.entries()].sort((a, b) => String(a[1]?.full_name || a[1]?.email || '').localeCompare(String(b[1]?.full_name || b[1]?.email || ''), 'es'));
     screen.innerHTML = `<div class="aux-center-page">
       <div class="aux-center-head"><div><div class="aux-center-eyebrow">Auditoría</div><h2>Historial</h2><p>Lectura administrativa simple: qué se hizo, sobre qué registro, quién lo hizo y cuándo.</p></div><div id="aux-history-count" class="aux-center-readonly"></div></div>
-      <section class="aux-history-panel">
+      <section class="aux-center-tools"><button class="aux-center-tool" onclick="abrirHistorialServicios()"><span>▤</span><b>Historial de servicios</b><small>Consultar servicios finalizados y anulados.</small></button></section><section class="aux-history-panel">
         <div class="aux-history-toolbar">
           <input class="form-input" id="aux-history-query" type="search" placeholder="Buscar por registro o usuario" data-audit-filter>
           <select class="form-input" id="aux-history-action" data-audit-filter>
@@ -553,8 +557,8 @@
     event?.stopPropagation?.();
     if (!canUseCenter()) return notify('Sin permiso para acceder a Configuración', 'error');
     if (!document.getElementById('screen-configuracion')?.classList.contains('active') && typeof goTo === 'function') goTo('configuracion');
-    populateFlyout();
-    setFlyout(true);
+    closeFlyout();
+    renderCenter();
   }
 
   function installNavigationHook() {

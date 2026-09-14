@@ -1,8 +1,8 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v284';
+const CACHE_NAME='auxilios-billing-phase2-v285';
 const PRECACHE_ASSETS=[
-  '/sigma.css','/sigma.js',
+  '/sigma.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js',
   '/empresas-v2.js','/empresas-v2.css',
   '/billing-bases.js',
   '/service-types-catalog-v2.js','/tariff-types-catalog-v1.js',

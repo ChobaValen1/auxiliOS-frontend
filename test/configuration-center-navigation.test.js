@@ -62,7 +62,7 @@ test('Peajes belongs to Configuration and toll module has no navigation ownershi
   assert.match(center, /CONFIG_CHILD_ROUTES = new Set\([^\n]*'peajes'/);
   assert.match(center, /ensureNavNode\('nav-peajes', 'peajes', '🛣️', 'Peajes y Adicionales'\)/);
   assert.match(center, /moveTo\(catalogs, document\.getElementById\('nav-peajes'\)\)/);
-  assert.match(center, /irModuloConfiguracion\('peajes'\)/);
+  assert.match(center, /route\('Peajes',.*'peajes'\)/);
   assert.match(config, /loadAuxiliosModule\('auxilios-toll-management', '\/toll-management\.js'\)/);
   assert.doesNotMatch(tolls, /nav-peajes/);
   assert.doesNotMatch(tolls, /querySelector\('\.sidenav/);

@@ -5264,6 +5264,7 @@ function _renderSubCombustible() {
 }
 
 function _renderCombustibleList(data, esChofer) {
+  const canEditFuel = PERFIL_USUARIO?.roles?.name === 'administracion';
   const payIcons = { efectivo: '💵', transferencia: '🏦', app: '📱', tarjeta: '💳' };
   if (!data.length) return `
     <div style="text-align:center;color:var(--muted);padding:20px">
@@ -5276,6 +5277,7 @@ function _renderCombustibleList(data, esChofer) {
         <th>Litros</th>
         ${esChofer ? '' : '<th>Total</th>'}
         <th>Pago</th>
+        ${canEditFuel ? '<th>Acciones</th>' : ''}
       </tr>
     </thead>
     <tbody>
@@ -5289,6 +5291,7 @@ function _renderCombustibleList(data, esChofer) {
           <td style="font-family:'DM Mono'">${_L(r.liters)} L</td>
           ${esChofer ? '' : `<td style="font-family:'DM Mono';color:var(--amber)">${total}</td>`}
           <td style="font-size:11px;color:var(--muted)">${r.payment_app || r.payment_method || '—'}</td>
+        ${canEditFuel ? `<td><button class="btn btn-ghost" onclick="editarCargaCombustibleAdmin(${Number(r.fuel_id)})">Editar</button></td>` : ''}
         </tr>`;
       }).join('')}
     </tbody>
@@ -8119,6 +8122,8 @@ async function descargarRemitoPDF(tr) {
 
   const totalExtras = (parseFloat(d.peaje || 0) + parseFloat(d.excedente || 0) + parseFloat(d.otros || 0));
 
+  const companyDocument = await window.CompanyDocuments.load();
+  const companyEscape = window.CompanyDocuments.esc;
   // Código de verificación (hash) + QR
   const hash = await _remitoHash(d);
   const codVerif = hash ? `${hash.slice(0,4)}-${hash.slice(4,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}` : '';
@@ -8185,8 +8190,8 @@ async function descargarRemitoPDF(tr) {
       <table style="width:100%; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:8px;">
         <tr>
           <td>
-            <div style="font-size:18px; font-weight:bold; color:#f5a623; line-height:1.1;">SIGMA REMOLQUES</div>
-            <div style="font-size:9px; color:#777;">Auxilio y Traslados de Vehículos</div>
+            <div style="font-size:18px; font-weight:bold; color:#f5a623; line-height:1.1;">${companyEscape(companyDocument.legal_name || 'Empresa sin configurar')}</div>
+            <div style="font-size:9px; color:#777;">${companyEscape([companyDocument.tax_id && 'CUIT '+companyDocument.tax_id,companyDocument.address,companyDocument.contact].filter(Boolean).join(' · '))}</div>
           </td>
           <td style="text-align:right;">
             <div style="font-size:14px; font-weight:bold;">REMITO N° ${d.nro}</div>
@@ -8278,6 +8283,7 @@ async function descargarRemitoPDF(tr) {
             </table>
           </div>
           <div style="width:200px;">
+            ${companyDocument.signature_image ? `<img src="${companyDocument.signature_image}" style="max-width:180px;max-height:65px;object-fit:contain"><div style="font-size:9px">Firma institucional · ${companyEscape(companyDocument.representative)}</div>` : ''}
             <div style="font-size:8px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; font-weight:bold;">Verificación digital</div>
             <div style="font-size:9px; color:#555; line-height:1.3;">
               Código:<br>
@@ -8285,7 +8291,7 @@ async function descargarRemitoPDF(tr) {
             </div>
             ${qrDataUrl ? `<div style="text-align:center; margin-top:4px;">
               <img src="${qrDataUrl}" style="width:90px; height:90px; display:block; margin:0 auto; border:1px solid #eee;" alt="QR verificación">
-              <div style="font-size:7px; color:#999; margin-top:2px;">Escaneá para verificar</div>
+              <div style="font-size:7px; color:#999; margin-top:2px;">Identificador y hash del remito</div>
             </div>` : ''}
           </div>
         </div>
@@ -16385,7 +16391,7 @@ function _jadminRenderDetalle(det) {
                 <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> <span style="color:var(--muted2);font-size:11px">${_escHtml(f.gas_station || '')}</span> ${badge}</div>
                 <div style="color:var(--muted2);font-size:11px">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
               </div>
-              <div class="rgt">${_jadminMoney(f.total_cost)}</div>
+              <div class="rgt">${_jadminMoney(f.total_cost)}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button class="btn btn-ghost" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">Editar</button>` : ''}</div>
             </div>
           `}).join('')}
         </div>

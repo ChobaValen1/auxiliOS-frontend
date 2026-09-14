@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'fuel-white-icons-v67-20260914'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'configuration-areas-v68-20260914'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });

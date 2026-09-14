@@ -148,7 +148,8 @@
   function normalizeBulkValue(value) {
     const raw = String(value ?? '').trim();
     if (!raw) return '';
-    const number = Number(raw);
+    const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(\.\d{3})+$/.test(raw) ? raw.replace(/\./g, '') : raw;
+    const number = Number(normalized);
     return Number.isFinite(number) ? number : raw;
   }
 
@@ -163,7 +164,7 @@
     const key = bulkKey(service.concept_id, field);
     const value = bulkInputValue(instance, service, field);
     const dirty = instance.bulk.dirtyKeys.has(key);
-    return `<label class="ct4-bulk-field"><span>${esc(label)}</span><input type="number" min="0" step="0.01" value="${esc(value)}" class="${dirty ? 'dirty' : ''}" data-ct4-bulk-input data-concept="${esc(service.concept_id)}" data-field="${field}"></label>`;
+    return `<label class="ct4-bulk-field"><span>${esc(label)}</span><input type="text" inputmode="decimal" value="${esc(value)}" class="${dirty ? 'dirty' : ''}" data-ct4-bulk-input data-concept="${esc(service.concept_id)}" data-field="${field}"></label>`;
   }
 
   function bulkPriceEditor(instance, service) {
@@ -219,10 +220,9 @@
     instance.bulk.values.set(key, input.value);
     if (bulkChanged(service, input.dataset.field, input.value)) instance.bulk.dirtyKeys.add(key);
     else { instance.bulk.dirtyKeys.delete(key); instance.bulk.values.delete(key); }
-    renderInstance(instance);
-    const replacement = instance.root.querySelector(`[data-ct4-bulk-input][data-concept="${CSS.escape(String(service.concept_id))}"][data-field="${CSS.escape(input.dataset.field)}"]`);
-    replacement?.focus();
-    if (replacement) replacement.setSelectionRange?.(replacement.value.length, replacement.value.length);
+    input.classList.toggle('dirty', instance.bulk.dirtyKeys.has(key));
+    const bar = instance.root.querySelector('.ct4-bulk-savebar');
+    if (bar) { bar.outerHTML = bulkSavebar(instance); instance.root.querySelector('[data-ct4-bulk-save]')?.addEventListener('click', () => saveBulk(instance)); instance.root.querySelector('[data-ct4-bulk-discard]')?.addEventListener('click', () => discardBulk(instance)); }
   }
 
   function toggleBulk(instance) {
@@ -244,15 +244,15 @@
   function bulkPayloadForService(instance, service) {
     const payload = { concept_id: service.concept_id, billing_base_id: null };
     if (service.distance_chargeable) {
-      const movement = Number(bulkInputValue(instance, service, 'movement_price'));
-      const asphalt = Number(bulkInputValue(instance, service, 'asphalt_km_price'));
-      const gravel = Number(bulkInputValue(instance, service, 'gravel_km_price'));
+      const movement = normalizeBulkValue(bulkInputValue(instance, service, 'movement_price'));
+      const asphalt = normalizeBulkValue(bulkInputValue(instance, service, 'asphalt_km_price'));
+      const gravel = normalizeBulkValue(bulkInputValue(instance, service, 'gravel_km_price'));
       if (!Number.isFinite(movement) || movement < 0 || !Number.isFinite(asphalt) || asphalt < 0 || !Number.isFinite(gravel) || gravel < 0) throw new Error(`${service.name}: completá movida, KM asfalto y KM ripio con importes válidos.`);
       payload.movement_price = movement;
       payload.asphalt_km_price = asphalt;
       payload.gravel_km_price = gravel;
     } else {
-      const value = Number(bulkInputValue(instance, service, 'unit_price'));
+      const value = normalizeBulkValue(bulkInputValue(instance, service, 'unit_price'));
       if (!Number.isFinite(value) || value < 0) throw new Error(`${service.name}: ingresá un importe válido.`);
       payload.unit_price = value;
     }
