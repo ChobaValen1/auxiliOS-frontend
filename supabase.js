@@ -372,6 +372,7 @@ async function mostrarPantallaSeleccionCamion() {
           <div class="sel-sub">REMOLQUES</div>
           <div class="sel-welcome">Bienvenido, <strong>${nombre}</strong></div>
           <div class="sel-hint">Seleccioná el camión con el que vas a trabajar hoy</div>
+          <button type="button" class="btn btn-ghost" style="margin-top:12px;min-height:44px" onclick="cerrarSesion()">⏻ Cerrar sesión / Cambiar de usuario</button>
         </div>
         <input id="sel-camion-search" class="form-input" type="text"
           placeholder="🔍 Buscar patente o número interno..."

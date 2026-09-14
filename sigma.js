@@ -9095,6 +9095,7 @@ function editarKmManual() {
   if (manualArea) manualArea.style.display = 'block';
   if (input) {
     const currentVal = input.value || document.getElementById('cj-km-number')?.textContent?.replace(/\./g,'') || '';
+    input.placeholder = 'KM de inicio';
     input.value = currentVal;
     input.focus();
   }
@@ -11351,7 +11352,7 @@ async function procesarFotoConIA(event, contexto) {
     // 2. EFECTO VISUAL: "La IA está pensando..."
     inputKmReal.value = '';
     inputKmReal.style.color = 'var(--text)';
-    inputKmReal.placeholder = 'Analizando imagen...';
+    inputKmReal.placeholder = isInicio ? 'KM de inicio' : 'KM final';
     msgStatus.innerHTML = '<span style="color: var(--amber);">⏳ Extrayendo datos con IA...</span>';
     fotoBox.style.borderColor = 'var(--amber)';
     fotoIcon.textContent = '🔄';
