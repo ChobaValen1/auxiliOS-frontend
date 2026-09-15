@@ -1104,7 +1104,14 @@ async function guardarRemitoAdHoc(remito) {
     p_payload: payload,
     p_client_operation_id: clientOperationId,
   });
-  if (error) throw new Error(error.message || 'No se pudo registrar el ingreso sin asignación');
+  if (error) {
+    const assigned = /SERVICIO_ASIGNADO/i.test(error.message || '');
+    const normalized = new Error(assigned
+      ? 'Recibiste un servicio asignado mientras completabas este remito. Tus datos siguen en pantalla: abrí Servicios y completá el remito asignado.'
+      : (error.message || 'No se pudo registrar el ingreso sin asignación'));
+    normalized.code = assigned ? 'SERVICIO_ASIGNADO' : (error.code || 'REMITO_AD_HOC_ERROR');
+    throw normalized;
+  }
   return data;
 }
 

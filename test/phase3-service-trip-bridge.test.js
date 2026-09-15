@@ -63,6 +63,17 @@ test('los servicios asignados del Chofer viven dentro de Remitos y no en el Pane
   assert.match(css,/p3-remitos-assigned\{display:flex;flex:1/);
 });
 
+test('un servicio asignado bloquea el alta sin asignación antes de abrir el formulario',()=>{
+  const js=read('operator-service-bridge.js'),data=read('supabase.js');
+  const open=js.split('async function openAdHocRemito()')[1].split('async function openAdHocDraft')[0];
+  assert.match(open,/await loadQueue\(\{silent:true,force:true\}\)/);
+  assert.match(open,/\['assigned','at_origin'\]\.includes\(s\.status\)/);
+  assert.match(open,/openPreview\(assigned\.service_id\)/);
+  assert.match(open,/return false/);
+  assert.match(data,/normalized\.code = assigned \? 'SERVICIO_ASIGNADO'/);
+  assert.match(data,/Tus datos siguen en pantalla/);
+});
+
 test('el módulo del Chofer se presenta como Servicios con una sola cabecera minimalista',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   assert.match(js,/label\.textContent='Servicios'/);
