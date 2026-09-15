@@ -3,7 +3,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'payroll-journeys-v72-20260915';
+window.AUXILIOS_BUILD_ID = 'payroll-modal-v73-20260915';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

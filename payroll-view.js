@@ -14,10 +14,10 @@
     if(label && input?.value) label.textContent = new Date(input.value+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
   }
   function render(data) {
-    rows = data; request++; active = null; monthLabel();
+    closeDetail(); rows = data; request++; active = null; monthLabel();
     const sum = list => list.reduce((n,l)=>n+num(l.total),0);
     document.getElementById('pl-mes-stats').innerHTML = cell('Total del mes',cash(sum(rows)))+cell('Pendiente de pago',cash(sum(rows.filter(l=>l.estado!=='pagada'))))+cell('Pagado',cash(sum(rows.filter(l=>l.estado==='pagada'))));
-    document.getElementById('pl-mes-body').innerHTML = `<div class="pv-tools"><input class="form-input" placeholder="Buscar chofer…" aria-label="Buscar chofer" id="pv-search"><select class="form-input" id="pv-filter" aria-label="Estado"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="aprobada">Aprobadas</option><option value="pagada">Pagadas</option></select></div><div class="pv-layout"><div id="pv-cards"></div><aside id="pv-summary"><p>Seleccioná un chofer para revisar su liquidación.</p></aside></div><section id="pv-detail" hidden></section>`;
+    document.getElementById('pl-mes-body').innerHTML = `<div class="pv-tools"><input class="form-input" placeholder="Buscar chofer…" aria-label="Buscar chofer" id="pv-search"><select class="form-input" id="pv-filter" aria-label="Estado"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="aprobada">Aprobadas</option><option value="pagada">Pagadas</option></select></div><div id="pv-cards"></div>`;
     const input=document.getElementById('pv-search'), select=document.getElementById('pv-filter');
     input.value=search;select.value=filter;
     input.oninput=()=>{search=input.value;cards();};select.onchange=()=>{filter=select.value;cards();};cards();
@@ -29,10 +29,10 @@
   function summary(l){
     const values=[['Sueldo básico',l.sueldo_basico],[l.compensation_snapshot?.km_basis==='billed'?'Km facturados (histórico)':'Kilómetros de jornadas',l.adic_km],['Servicios',l.adic_serv],['Comisiones',l.commission_total],['Bonos mensuales',l.bonus_monthly],['Presentismo',l.bono_presentismo],['Objetivos',l.bonos_objetivos],['Descuento por rendición',-num(l.ajuste_rendiciones)]];
     document.getElementById('pv-summary').innerHTML=`<h3>${esc(l.chofer_nombre)}</h3><small>Importes guardados en la liquidación</small>${values.map(([label,v])=>`<div class="pv-payline"><span>${label}</span><b>${cash(v)}</b></div>`).join('')}<div class="pv-payline pv-total"><b>Total a pagar</b><strong>${cash(l.total)}</strong></div><div class="pv-actions"><button class="btn btn-ghost" id="pv-receipt">Ver recibo</button>${l.estado==='pendiente'?'<button class="btn btn-primary" id="pv-approve">Aprobar</button>':l.estado==='aprobada'?'<button class="btn btn-primary" id="pv-pay">Registrar pago</button>':''}</div>`;
-    document.getElementById('pv-receipt').onclick=()=>_abrirReciboPayroll(l.liquidacion_id);
+    document.getElementById('pv-receipt').onclick=()=>{closeDetail();_abrirReciboPayroll(l.liquidacion_id);};
     const approve=document.getElementById('pv-approve'),pay=document.getElementById('pv-pay');
-    if(approve)approve.onclick=()=>_cambiarEstadoLiq(l.liquidacion_id,'aprobada');
-    if(pay)pay.onclick=()=>_marcarPagada(l.liquidacion_id);
+    if(approve)approve.onclick=()=>{closeDetail();_cambiarEstadoLiq(l.liquidacion_id,'aprobada');};
+    if(pay)pay.onclick=()=>{closeDetail();_marcarPagada(l.liquidacion_id);};
   }
   async function paged(build){let out=[];for(let offset=0;;offset+=500){const r=await build().range(offset,offset+499);if(r.error)throw r.error;out.push(...(r.data||[]));if((r.data||[]).length<500)return out;}}
   async function load(l){
@@ -70,14 +70,39 @@
     const money=services.reduce((n,s)=>n+s.cash,0),commission=services.reduce((n,s)=>n+s.commission,0);
     return `<details class="pv-journey"><summary><span>${date(j.log_date)}</span><b>${esc(j.truck?.plate||'—')}</b><span>${km==null?'—':fmt(km)} km<small>${j.status==='closed'?'A liquidar':'Jornada abierta'}</small></span><span>${services.length} servicios</span><span>${services.reduce((n,s)=>n+s.sales.length,0)} ventas<small>${cash(commission)} comisión</small></span><b>${cash(money)}</b></summary><div class="pv-odometer">Odómetro inicial: <b>${j.km_inicio==null?'—':fmt(j.km_inicio)}</b> → Final: <b>${j.km_final==null?'—':fmt(j.km_final)}</b> = <b>${km==null?'Pendiente de cierre o revisión':fmt(km)+' km a liquidar'}</b></div><div class="pv-scroll"><table class="pv-services"><thead><tr>${['Hora','N° Servicio','Patente','Origen','Destino','Km informativos','Venta / concepto','Comisión','Efectivo cobrado'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${services.map(serviceRow).join('')||'<tr><td colspan="9">Sin servicios vinculados a esta jornada.</td></tr>'}</tbody><tfoot><tr><td colspan="7">Total jornada · ${km==null?'—':fmt(km)} km por odómetro</td><td>${cash(commission)}</td><td>${cash(money)}</td></tr></tfoot></table></div></details>`;
   }
+  function closeDetail(){
+    request++;
+    const modal=document.getElementById('pv-driver-modal');
+    if(modal?.open)modal.close();
+  }
+  function createDetail(l){
+    let modal=document.getElementById('pv-driver-modal');
+    if(!modal){modal=document.createElement('dialog');modal.id='pv-driver-modal';modal.setAttribute('aria-labelledby','pv-modal-title');document.body.appendChild(modal);modal.addEventListener('cancel',()=>{request++;});modal.addEventListener('click',e=>{if(e.target===modal)closeDetail();});}
+    const period=String(l.periodo_yyyymm),month=new Date(period.slice(0,4)+'-'+period.slice(4)+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    modal.innerHTML=`<header class="pv-modal-header"><div><h2 id="pv-modal-title">${esc(l.chofer_nombre)}</h2><p>${esc(l.chofer_legajo||'')} · ${esc(month)}</p></div><button class="btn btn-ghost" id="pv-modal-close" aria-label="Cerrar detalle">×</button></header><div class="pv-modal-body"><div id="pv-driver-totals" role="status">Cargando totales del chofer…</div><section id="pv-detail"></section><details class="pv-salary"><summary>Liquidación de sueldo y recibo</summary><aside id="pv-summary"></aside></details></div>`;
+    document.getElementById('pv-modal-close').onclick=closeDetail;
+    if(!modal.open)modal.showModal();
+    summary(l);
+    return document.getElementById('pv-detail');
+  }
+  function totals(logs,services,l){
+    let km=0,pending=0;
+    for(const j of logs){try{const value=PayrollMatrix.journeyKm(j);if(value===null)pending++;else km+=value;}catch{pending++;}}
+    return {journeys:logs.length,services:services.length,km,pending,cash:services.reduce((n,s)=>n+s.cash,0),commissions:num(l.commission_total)};
+  }
+  function renderTotals(logs,services,l){
+    const t=totals(logs,services,l);
+    return '<div class="pv-driver-kpis">'+cell('Jornadas',fmt(t.journeys))+cell('Servicios',fmt(t.services))+cell('Km por odómetro',fmt(t.km))+cell('Efectivo cobrado',cash(t.cash))+cell('Comisiones liquidadas',cash(t.commissions))+'</div>'+(t.pending?'<p class="pv-note">'+t.pending+' jornada(s) abierta(s) o con odómetros pendientes de revisión no suman kilómetros.</p>':'');
+  }
   async function open(id){
-    const l=rows.find(x=>x.liquidacion_id===id);if(!l)return;active=l;cards();summary(l);
-    const token=++request,root=document.getElementById('pv-detail');root.hidden=false;root.innerHTML='<p role="status">Cargando jornadas, servicios y cobros…</p>';
+    const l=rows.find(x=>x.liquidacion_id===id);if(!l)return;active=l;cards();
+    const root=createDetail(l),token=++request;root.innerHTML='<p role="status">Cargando jornadas, servicios y cobros…</p>';
     try{const data=await load(l);if(token!==request)return;const services=data.services.map(r=>serviceData(r,data.addons.get(r.remito_id),l,data.saleIds));
+      document.getElementById('pv-driver-totals').innerHTML=renderTotals(data.logs,services,l);
       root.innerHTML=`<div class="pv-detail-title"><div><h3>Jornadas de ${esc(l.chofer_nombre)}</h3><p>KM a liquidar = odómetro final − inicial. Los KM de los servicios son informativos.</p></div></div><div class="pv-journey-head"><span>Fecha</span><span>Móvil</span><span>Km jornada</span><span>Servicios</span><span>Ventas / comisiones</span><span>Efectivo cobrado</span></div>${data.logs.map(j=>journey(j,services.filter(s=>s.r.log_id===j.log_id))).join('')||'<p>No hay jornadas en este mes.</p>'}<p class="pv-note">Datos operativos actuales. Los importes aprobados se conservan en el recibo. Efectivo cobrado para rendir: ${cash(services.reduce((n,s)=>n+s.cash,0))}; consultá Rendiciones para conocer lo ya presentado.</p>${num(l.commission_total)&&!l.compensation_snapshot?.commission_details?.some(d=>d.record_details)?'<p class="pv-note">Esta liquidación anterior no tiene distribución de comisiones por servicio. El total guardado se consulta en el recibo.</p>':''}`;
-      root.querySelectorAll('[data-remito]').forEach(b=>b.onclick=()=>abrirDetalleRemitoAdmin(Number(b.dataset.remito)));
-    }catch(error){if(token!==request)return;root.innerHTML=`<p role="alert">No se pudo cargar el detalle: ${esc(error.message)}</p><button class="btn btn-ghost" id="pv-retry">Reintentar</button>`;document.getElementById('pv-retry').onclick=()=>open(id);}
+      root.querySelectorAll('[data-remito]').forEach(b=>b.onclick=()=>{closeDetail();abrirDetalleRemitoAdmin(Number(b.dataset.remito));});
+    }catch(error){if(token!==request)return;document.getElementById('pv-driver-totals').textContent='Totales no disponibles. Reintentá la carga.';root.innerHTML=`<p role="alert">No se pudo cargar el detalle: ${esc(error.message)}</p><button class="btn btn-ghost" id="pv-retry">Reintentar</button>`;document.getElementById('pv-retry').onclick=()=>open(id);}
   }
   function moveMonth(delta){const input=document.getElementById('pl-mes-periodo');if(!input.value)return;const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+delta,1));input.value=d.toISOString().slice(0,7);_cargarLiquidacionesMes();}
-  window.PayrollView={render,open,moveMonth,serviceData,journey,serviceRow};
+  window.PayrollView={totals,render,open,moveMonth,serviceData,journey,serviceRow};
 })();
