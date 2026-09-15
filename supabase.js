@@ -3176,19 +3176,19 @@ async function cargarPayrollSettingsFlota() {
   }));
 }
 
-// Aplicar esquema salarial masivo a todos los choferes activos.
+// Aplicar cambios únicamente a los choferes elegidos.
 // Los campos undefined/null NO se pisan (se preservan los del chofer).
-// Si onlySinEsquema=true, solo actualiza choferes sin fila en payroll_settings.
-async function guardarPayrollSettingsMasivo(patch, { onlySinEsquema = false } = {}) {
+async function guardarPayrollSettingsMasivo(patch, { driverIds = [] } = {}) {
   const flota = await cargarPayrollSettingsFlota();
-  const target = onlySinEsquema ? flota.filter(f => !f.settings) : flota;
+  const wanted = new Set(driverIds);
+  const target = flota.filter(f => wanted.has(f.user_id));
   if (!target.length) return { ok: true, actualizados: 0, insertados: 0, total: 0 };
   const nowIso = new Date().toISOString();
   const rows = target.map(c => {
     const base = c.settings || {};
     return {
       user_id: c.user_id,
-      compensation_matrix: base.compensation_matrix || {km_basis:'real',bonuses:[],commissions:[]},
+      compensation_matrix: PayrollMatrix.normalize({...base.compensation_matrix,...(patch.compensation_matrix || {})}),
       sueldo_basico:    patch.sueldo_basico    != null ? Number(patch.sueldo_basico)    : (Number(base.sueldo_basico)    || 0),
       valor_km:         patch.valor_km         != null ? Number(patch.valor_km)         : (Number(base.valor_km)         || 0),
       valor_servicio:   patch.valor_servicio   != null ? Number(patch.valor_servicio)   : (Number(base.valor_servicio)   || 0),
@@ -3425,15 +3425,15 @@ async function generarLiquidacionesMes(yyyymm) {
     const jornadasCount = jornadas.length;
 
     // Presentismo: sin incidents y con al menos una jornada.
-    const presentismo_paga = (incid.length === 0 && jornadasCount > 0);
+    const presentismo_paga = matrixResult.snapshot.pay_presentismo && incid.length === 0 && jornadasCount > 0;
 
     const sueldo_basico    = Number(s.sueldo_basico)    || 0;
     const valor_km         = Number(s.valor_km)         || 0;
     const valor_servicio   = Number(s.valor_servicio)   || 0;
     const bono_presentismo = Number(s.bono_presentismo) || 0;
 
-    const adic_km   = km_total  * valor_km;
-    const adic_serv = servicios * valor_servicio;
+    const adic_km   = matrixResult.snapshot.pay_km ? km_total * valor_km : 0;
+    const adic_serv = matrixResult.snapshot.pay_services ? servicios * valor_servicio : 0;
     const bonos_objetivos = cumpl.reduce((sum, c) => sum + (Number(c.bonus_calculado) || 0), 0);
 
     // Monthly administration entry is the only declaration used for payroll.

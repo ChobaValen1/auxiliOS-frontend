@@ -14271,6 +14271,7 @@ async function _csvImportarConfirm() {
 
 let _objetivosCache = [];
 let _esquemaCache   = [];
+let _esquemaSelected = new Set();
 let _objetivoEditId = null;
 let _esquemaEditDriverId = null;
 let _sueldosSubActual = 'mes';
@@ -14416,6 +14417,8 @@ async function _cargarEsquemaTab() {
   el.innerHTML = '<div class="cfg-rend-empty">Cargando esquema salarial...</div>';
   try {
     _esquemaCache = await cargarPayrollSettingsFlota();
+    const validIds = new Set(_esquemaCache.map(u => u.user_id));
+    _esquemaSelected = new Set([..._esquemaSelected].filter(id => validIds.has(id)));
     _renderEsquemaTabla();
   } catch (err) {
     console.error('_cargarEsquemaTab:', err);
@@ -14430,6 +14433,7 @@ function _renderEsquemaTabla() {
     el.innerHTML = '<div class="cfg-rend-empty">No hay choferes activos.</div>';
     return;
   }
+  const missing = _esquemaCache.filter(u => !u.settings);
   const rows = _esquemaCache.map(u => {
     const hasSet = !!u.settings;
     const basico = hasSet ? '$' + _AR(u.sueldo_basico || 0) : '—';
@@ -14438,7 +14442,9 @@ function _renderEsquemaTabla() {
     const bono   = hasSet ? '$' + _AR(u.bono_presentismo || 0) : '—';
     const pillCls = hasSet ? 'ok' : 'warn';
     const pillTxt = hasSet ? 'Configurado' : 'Sin esquema';
-    return `<tr>
+    const selected = _esquemaSelected.has(u.user_id);
+    return `<tr class="${selected ? 'is-selected' : ''}">
+      <td><input type="checkbox" aria-label="Seleccionar ${_escHtml(u.full_name || 'chofer')}" ${selected ? 'checked' : ''} onchange="_toggleEsquemaDriver('${u.user_id}',this.checked)"></td>
       <td>${_escHtml(u.full_name || '')}${u.legajo ? ` <span style="color:var(--muted);font-size:11px">#${_escHtml(u.legajo)}</span>` : ''}</td>
       <td style="font-family:'DM Mono',monospace">${basico}</td>
       <td style="font-family:'DM Mono',monospace">${vkm}</td>
@@ -14451,10 +14457,27 @@ function _renderEsquemaTabla() {
     </tr>`;
   }).join('');
   el.innerHTML = `
+    ${missing.length ? `<div class="payroll-scheme-alert"><strong>${missing.length} chofer${missing.length===1?'':'es'} sin esquema.</strong> No se incluirán al generar liquidaciones hasta configurarlos.</div>` : ''}
     <table class="cfg-rend-table">
-      <thead><tr><th>Chofer</th><th>Sueldo básico</th><th>$/km</th><th>$/servicio</th><th>Presentismo</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th><input type="checkbox" aria-label="Seleccionar todos" ${_esquemaSelected.size===_esquemaCache.length?'checked':''} onchange="_toggleTodosEsquema(this.checked)"></th><th>Chofer</th><th>Sueldo básico</th><th>Valor por km</th><th>Valor por servicio</th><th>Presentismo</th><th>Estado</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+  _actualizarSeleccionEsquema();
+}
+
+function _toggleEsquemaDriver(driverId, checked) {
+  if (checked) _esquemaSelected.add(driverId); else _esquemaSelected.delete(driverId);
+  _renderEsquemaTabla();
+}
+function _toggleTodosEsquema(checked) {
+  _esquemaSelected = checked ? new Set(_esquemaCache.map(u => u.user_id)) : new Set();
+  _renderEsquemaTabla();
+}
+function _actualizarSeleccionEsquema() {
+  const btn = document.getElementById('btn-esquema-masivo');
+  if (!btn) return;
+  btn.disabled = _esquemaSelected.size === 0;
+  btn.textContent = `Aplicar cambios · ${_esquemaSelected.size} seleccionado${_esquemaSelected.size===1?'':'s'}`;
 }
 
 function _abrirEsquemaModal(driverId) {
@@ -14475,29 +14498,28 @@ function _abrirEsquemaModal(driverId) {
 }
 
 function _abrirEsquemaMasivoModal() {
+  if (!_esquemaSelected.size) { toast('Seleccioná al menos un chofer', 'warning'); return; }
   const modal = document.getElementById('modal-esquema-masivo');
   if (!modal) { toast('Modal no encontrado', 'error'); return; }
   if (modal.parentElement !== document.body) document.body.appendChild(modal);
   ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres'].forEach(id => {
     const inp = document.getElementById(id); if (inp) inp.value = '';
   });
-  const chk = document.getElementById('esqm-solo-sin-esquema');
-  if (chk) chk.checked = false;
+  ['esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  const selected = _esquemaCache.filter(c => _esquemaSelected.has(c.user_id));
+  document.getElementById('esqm-selected-list').innerHTML = `<strong>${selected.length} chofer${selected.length===1?'':'es'}:</strong> ${selected.map(c=>_escHtml(c.full_name)).join(', ')}`;
   _actualizarPreviewEsquemaMasivo();
-  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-solo-sin-esquema'].forEach(id => {
+  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo'].forEach(id => {
     const inp = document.getElementById(id); if (inp) inp.oninput = inp.onchange = _actualizarPreviewEsquemaMasivo;
   });
   openModal('modal-esquema-masivo');
 }
 
 function _actualizarPreviewEsquemaMasivo() {
-  const solo = document.getElementById('esqm-solo-sin-esquema')?.checked;
-  const total = _esquemaCache.length;
-  const sin = _esquemaCache.filter(c => !c.settings).length;
-  const target = solo ? sin : total;
+  const target = _esquemaSelected.size;
   const previewEl = document.getElementById('esqm-preview');
   if (previewEl) {
-    previewEl.innerHTML = `Se aplicará a <strong style="color:var(--fg)">${target}</strong> chofer${target===1?'':'es'} ${solo ? '(sin esquema)' : '(todos activos)'}.`;
+    previewEl.innerHTML = `Se aplicará a <strong style="color:var(--fg)">${target}</strong> chofer${target===1?'':'es'} seleccionado${target===1?'':'s'}.`;
   }
 }
 
@@ -14512,17 +14534,24 @@ async function _guardarEsquemaMasivo() {
     valor_servicio:   parseOptional('esqm-valor-serv'),
     bono_presentismo: parseOptional('esqm-bono-pres'),
   };
+  const matrix = {};
+  const boolValue = id => { const v=document.getElementById(id)?.value; return v===''?null:v==='true'; };
+  const payServices=boolValue('esqm-pay-services'), payKm=boolValue('esqm-pay-km'), payPresentismo=boolValue('esqm-pay-presentismo');
+  const kmBasis=document.getElementById('esqm-km-basis')?.value;
+  if(payServices!==null) matrix.pay_services=payServices;
+  if(payKm!==null) matrix.pay_km=payKm;
+  if(payPresentismo!==null) matrix.pay_presentismo=payPresentismo;
+  if(kmBasis) matrix.km_basis=kmBasis;
+  if(Object.keys(matrix).length) patch.compensation_matrix=matrix;
   const algo = Object.values(patch).some(v => v != null);
   if (!algo) { toast('Completá al menos un campo', 'error'); return; }
   if (Object.values(patch).some(v => v != null && v < 0)) { toast('Los valores no pueden ser negativos', 'error'); return; }
-  const onlySinEsquema = !!document.getElementById('esqm-solo-sin-esquema')?.checked;
-  const totalTarget = onlySinEsquema
-    ? _esquemaCache.filter(c => !c.settings).length
-    : _esquemaCache.length;
+  const driverIds = [..._esquemaSelected];
+  const totalTarget = driverIds.length;
   if (totalTarget === 0) { toast('No hay choferes destino', 'error'); return; }
   if (!confirm(`¿Aplicar estos valores a ${totalTarget} chofer${totalTarget===1?'':'es'}?`)) return;
 
-  const res = await guardarPayrollSettingsMasivo(patch, { onlySinEsquema });
+  const res = await guardarPayrollSettingsMasivo(patch, { driverIds });
   if (!res.ok) { toast('Error al aplicar masivo', 'error'); return; }
   closeModal('modal-esquema-masivo');
   toast(`Esquema aplicado a ${res.total} choferes ✓`, 'success');
@@ -14632,7 +14661,14 @@ async function _generarLiquidacionesMes() {
   const inp = document.getElementById('pl-mes-periodo');
   const yyyymm = _mesInputToYyyymm(inp?.value);
   if (!yyyymm) { toast('Elegí un período', 'error'); return; }
-  if (!confirm('Se generarán/actualizarán las liquidaciones de todos los choferes con esquema salarial cargado. Las liquidaciones APROBADAS o PAGADAS no se modifican. ¿Continuar?')) return;
+  let drivers;
+  try { drivers = await cargarPayrollSettingsFlota(); } catch (_) { toast('No se pudieron validar los esquemas salariales', 'error'); return; }
+  const configured = drivers.filter(d => d.settings);
+  const missing = drivers.filter(d => !d.settings);
+  if (!configured.length) { toast('No hay choferes con esquema salarial. Configuralos antes de generar.', 'error', 7000); return; }
+  const omitted = missing.length ? `\n\nSe omitirán ${missing.length} sin esquema: ${missing.map(d=>d.full_name).join(', ')}.` : '';
+  if (missing.length) toast(`${missing.length} chofer${missing.length===1?'':'es'} sin esquema serán omitidos`, 'warning', 7000);
+  if (!confirm(`Se generarán/actualizarán ${configured.length} liquidaciones. Las aprobadas o pagadas no se modifican.${omitted}\n\n¿Continuar?`)) return;
   toast('Generando liquidaciones...', 'warning');
   const res = await generarLiquidacionesMes(yyyymm);
   if (!res.ok) { toast('Error al generar', 'error'); return; }

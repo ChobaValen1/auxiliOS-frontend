@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=cash-modal-redesign-v79-20260915">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=cash-modal-redesign-v79-20260915">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=cash-modal-redesign-v79-20260915">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=payroll-schemes-v80-20260915">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=payroll-schemes-v80-20260915">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=payroll-schemes-v80-20260915">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=cash-modal-redesign-v79-20260915" defer></script>
-<script src="supabase.js?v=cash-modal-redesign-v79-20260915" defer></script>
+<script src="config.js?v=payroll-schemes-v80-20260915" defer></script>
+<script src="supabase.js?v=payroll-schemes-v80-20260915" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=cash-modal-redesign-v79-20260915" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=cash-modal-redesign-v79-20260915" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=cash-modal-redesign-v79-20260915" defer></script>
-<script src="sigma.js?v=cash-modal-redesign-v79-20260915" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=payroll-schemes-v80-20260915" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=payroll-schemes-v80-20260915" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=payroll-schemes-v80-20260915" defer></script>
+<script src="sigma.js?v=payroll-schemes-v80-20260915" defer></script>
 </head>
 <body>
 
@@ -1898,10 +1898,10 @@
 
   <!-- SUB: esquema salarial -->
   <div id="sueldos-sub-esquema" class="sueldos-sub" style="display:none">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
-        <div style="color:var(--muted);font-size:12px;flex:1;min-width:200px">Configurá el esquema base de cada chofer. Se aplica al generar la liquidación del mes.</div>
-        <button class="btn btn-primary" onclick="_abrirEsquemaMasivoModal()" style="font-size:12px;padding:8px 14px">⚡ Aplicar a todos</button>
+    <div class="card payroll-scheme-card">
+      <div class="payroll-scheme-head">
+        <div><strong>Esquemas de pago</strong><p>Seleccioná uno o más choferes y definí qué conceptos se incluyen al generar sus liquidaciones.</p></div>
+        <button id="btn-esquema-masivo" class="btn btn-primary" onclick="_abrirEsquemaMasivoModal()" disabled>Aplicar cambios · 0 seleccionados</button>
       </div>
       <div id="cfg-esq-body" style="color:var(--muted);font-size:13px">Cargando esquema salarial...</div>
     </div>
@@ -3173,7 +3173,7 @@
 </div>
 
 <div class="modal-backdrop" id="modal-esquema-edit">
-  <div class="modal-box" style="max-width:480px">
+  <div class="modal-box payroll-scheme-modal">
     <div class="modal-head">
       <span class="modal-head-title">Esquema salarial</span>
       <button class="modal-close" onclick="closeModal('modal-esquema-edit')">×</button>
@@ -3188,61 +3188,65 @@
         <input class="form-input" id="esq-basico" type="number" step="0.01" min="0" placeholder="0">
       </div>
       <div class="form-group">
-        <label class="form-label">Valor por km ($/km)</label>
-        <input class="form-input" id="esq-valor-km" type="number" step="0.01" min="0" placeholder="0">
-      </div>
-      <div class="form-group">
         <label class="form-label">Valor por servicio ($/servicio)</label>
         <input class="form-input" id="esq-valor-serv" type="number" step="0.01" min="0" placeholder="0">
       </div>
       <div class="form-group">
-        <label class="form-label">Bono presentismo (todo o nada)</label>
+        <label class="form-label">Valor por kilómetro ($/km)</label>
+        <input class="form-input" id="esq-valor-km" type="number" step="0.01" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Importe de presentismo mensual</label>
         <input class="form-input" id="esq-bono-pres" type="number" step="0.01" min="0" placeholder="0">
-        <div style="color:var(--muted);font-size:11px;margin-top:4px">Se paga si el chofer no tuvo incidentes en el mes.</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">Si el concepto está activo, se paga completo cuando el chofer tuvo jornadas y no registró incidentes en el mes.</div>
       </div>
     </div>
-    <div class="modal-foot">
+    <div class="modal-foot payroll-scheme-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-esquema-edit')">Cancelar</button>
-      <button class="btn btn-primary" onclick="_guardarEsquema()">Guardar</button>
+      <button class="btn btn-primary" onclick="_guardarEsquema()">Aplicar</button>
     </div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="modal-esquema-masivo">
-  <div class="modal-box" style="max-width:520px">
+  <div class="modal-box payroll-scheme-modal">
     <div class="modal-head">
-      <span class="modal-head-title">⚡ Aplicar esquema a todos los choferes</span>
+      <span class="modal-head-title">Aplicar esquema a choferes seleccionados</span>
       <button class="modal-close" onclick="closeModal('modal-esquema-masivo')">×</button>
     </div>
     <div class="modal-body">
       <div style="padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;color:#f59e0b;font-size:12px;border-radius:4px;margin-bottom:14px">
-        ⚠ Los valores completados se sobrescriben en TODOS los choferes activos. Dejá vacío el campo que querés preservar tal cual está en cada chofer.
+        Los campos completados se aplicarán únicamente a los choferes seleccionados. Dejá vacío lo que quieras conservar.
       </div>
+      <div id="esqm-selected-list" class="payroll-selected-list"></div>
       <div class="form-group">
         <label class="form-label">Sueldo básico mensual</label>
         <input class="form-input" id="esqm-basico" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Valor por km ($/km)</label>
-        <input class="form-input" id="esqm-valor-km" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
       </div>
       <div class="form-group">
         <label class="form-label">Valor por servicio ($/servicio)</label>
         <input class="form-input" id="esqm-valor-serv" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
       </div>
       <div class="form-group">
-        <label class="form-label">Bono presentismo</label>
-        <input class="form-input" id="esqm-bono-pres" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+        <label class="form-label">Valor por kilómetro ($/km)</label>
+        <input class="form-input" id="esqm-valor-km" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
       </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="esqm-solo-sin-esquema">
-        <label for="esqm-solo-sin-esquema" style="color:var(--muted);font-size:12px;margin:0">Solo aplicar a choferes sin esquema (no pisar los ya configurados)</label>
+      <div class="form-group">
+        <label class="form-label">Importe de presentismo mensual</label>
+        <input class="form-input" id="esqm-bono-pres" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">Se paga completo si está activo, hubo jornadas y no se registraron incidentes.</div>
+      </div>
+      <div class="payroll-bulk-rules">
+        <div class="form-group"><label class="form-label">Pago por servicio</label><select class="form-input" id="esqm-pay-services"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
+        <div class="form-group"><label class="form-label">Pago por kilómetros</label><select class="form-input" id="esqm-pay-km"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
+        <div class="form-group"><label class="form-label">Base de kilómetros</label><select class="form-input" id="esqm-km-basis"><option value="">No modificar</option><option value="real">KM reales por odómetro</option><option value="billed">KM facturados en servicios</option></select></div>
+        <div class="form-group"><label class="form-label">Presentismo</label><select class="form-input" id="esqm-pay-presentismo"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
       </div>
       <div id="esqm-preview" style="margin-top:10px;color:var(--muted);font-size:12px"></div>
     </div>
-    <div class="modal-foot">
+    <div class="modal-foot payroll-scheme-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-esquema-masivo')">Cancelar</button>
-      <button class="btn btn-primary" onclick="_guardarEsquemaMasivo()">Aplicar a todos</button>
+      <button class="btn btn-primary" onclick="_guardarEsquemaMasivo()">Aplicar a seleccionados</button>
     </div>
   </div>
 </div>
