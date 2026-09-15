@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=payroll-monthly-cash-v78-20260915">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=payroll-monthly-cash-v78-20260915">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=payroll-monthly-cash-v78-20260915">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=cash-modal-redesign-v79-20260915">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=cash-modal-redesign-v79-20260915">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=cash-modal-redesign-v79-20260915">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=payroll-monthly-cash-v78-20260915" defer></script>
-<script src="supabase.js?v=payroll-monthly-cash-v78-20260915" defer></script>
+<script src="config.js?v=cash-modal-redesign-v79-20260915" defer></script>
+<script src="supabase.js?v=cash-modal-redesign-v79-20260915" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=payroll-monthly-cash-v78-20260915" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=payroll-monthly-cash-v78-20260915" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=payroll-monthly-cash-v78-20260915" defer></script>
-<script src="sigma.js?v=payroll-monthly-cash-v78-20260915" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=cash-modal-redesign-v79-20260915" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=cash-modal-redesign-v79-20260915" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=cash-modal-redesign-v79-20260915" defer></script>
+<script src="sigma.js?v=cash-modal-redesign-v79-20260915" defer></script>
 </head>
 <body>
 
@@ -389,58 +389,39 @@
 <div class="modal-backdrop" id="modal-rendicion-cierre">
   <div class="modal-box">
     <div class="modal-head">
-      <span class="modal-head-title">💰 Rendición de efectivo</span>
+      <span class="modal-head-title"><span class="rend-mono-icon">$</span> Rendición de efectivo</span>
+      <button class="modal-close" onclick="closeModal('modal-rendicion-cierre')" aria-label="Cerrar">×</button>
     </div>
     <div class="modal-body">
 
-      <!-- Resumen remitos del día -->
-      <div id="rend-resumen-remitos" style="background:var(--bg-darker);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Servicios del día</div>
-        <div id="rend-remitos-lista" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto"></div>
-        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:var(--muted)">Efectivo esperado por el sistema</span>
-          <span id="rend-efectivo-esperado" style="font-family:'Bebas Neue';font-size:22px;color:var(--amber)">$0</span>
+      <div id="rend-resumen-remitos" class="rend-cash-card">
+        <div class="rend-section-label">Efectivo del día</div>
+        <div class="rend-cash-kpis">
+          <div><span>Esperado</span><strong id="rend-efectivo-esperado">$0</strong></div>
+          <div><span>Gastos en efectivo</span><strong id="rend-gastos-sistema-val">$0</strong></div>
         </div>
+        <button type="button" class="rend-services-toggle" id="rend-services-toggle" onclick="rendToggleServicios()">Ver servicios</button>
+        <div id="rend-remitos-lista" class="rend-services-list" hidden></div>
       </div>
 
-      <p>Administración registrará el total presentado al cerrar la rendición mensual.</p>
-      <!-- Gastos del sistema (readonly) -->
-      <div id="rend-gastos-sistema-row" style="display:none;padding:10px 14px;background:var(--bg-darker);border:1px solid var(--border);border-radius:8px;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div>
-          <div style="font-size:11px;font-weight:600">⛽ Gastos del sistema (combustible)</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Cargado automáticamente</div>
-        </div>
-        <span id="rend-gastos-sistema-val" style="font-family:'DM Mono';font-weight:700;color:var(--red)">$0</span>
-      </div>
+      <div class="rend-admin-note">ⓘ <span>Administración registrará el total presentado en la rendición mensual.</span></div>
 
       <!-- Gastos extra -->
       <div class="form-group" style="margin-bottom:8px">
-        <label class="form-label">Gastos extra no registrados (opcional)</label>
+        <label class="form-label">Gasto en efectivo (opcional)</label>
         <input class="form-input" type="tel" id="rend-gastos-extra" placeholder="$0" oninput="rendActualizarDiferencia()">
       </div>
-      <div class="form-group" id="rend-motivo-row" style="display:none">
-        <label class="form-label">Motivo del gasto extra</label>
-        <input class="form-input" type="text" id="rend-motivo-extra" placeholder="Ej: Peón de descarga, repuesto de emergencia...">
+      <div class="form-group" id="rend-motivo-row">
+        <label class="form-label">Motivo o aclaración</label>
+        <textarea class="form-input" id="rend-motivo-extra" placeholder="Motivo o aclaración" rows="2"></textarea>
       </div>
-
-      <!-- Preview diferencia -->
-      <div id="rend-diferencia-preview" style="display:none;border-radius:8px;padding:12px 14px;margin-bottom:4px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;font-weight:600">Diferencia</span>
-          <span id="rend-diferencia-val" style="font-family:'Bebas Neue';font-size:24px"></span>
-        </div>
-        <div id="rend-diferencia-msg" style="font-size:11px;margin-top:4px;color:var(--muted)"></div>
-      </div>
-
-      <!-- Notas -->
-      <textarea class="form-input" id="rend-notas" placeholder="Aclaraciones o novedades del día (opcional)..." rows="2" style="margin-top:8px"></textarea>
 
       <div id="rend-error" class="modal-error" style="display:none;margin-top:10px"></div>
     </div>
 
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-ghost" onclick="omitirRendicion()">Omitir</button>
-      <button class="btn btn-primary" id="btn-confirmar-rendicion" onclick="confirmarRendicion()">✅ Confirmar rendición</button>
+      <button class="btn btn-primary" id="btn-confirmar-rendicion" onclick="confirmarRendicion()">Guardar gastos</button>
     </div>
   </div>
 </div>

@@ -3740,3 +3740,23 @@ body {
 .pv-modal-columns #pv-summary>h3{display:none}.pv-modal-columns #pv-summary>small{display:block;font-size:10px;margin-bottom:5px}.pv-modal-columns .pv-payline{padding:5px 0}.pv-modal-columns .pv-actions{gap:6px;margin-top:8px}.pv-export-footer{margin-top:8px;padding-top:8px}#pv-audit .pv-services{min-width:0;width:100%}#pv-audit .pv-services td{min-width:0}#pv-audit .pv-services th,#pv-audit .pv-services td{padding:10px 6px}
 
 .pv-salary[hidden],#pv-back[hidden],#pv-save-cash[hidden]{display:none!important}#pv-presented{max-width:320px;margin-top:8px;font-size:20px}#pv-cash-result{font-weight:700;font-size:15px;margin:12px 0}#cfg-rend-open{margin-top:16px}#cfg-rend-month,#cfg-rend-driver{max-width:400px;margin:8px 0 16px}
+
+/* Cash handover modal: daily facts first, expenses second. */
+#modal-rendicion-cierre .modal-box{max-width:430px;overflow:hidden}
+#modal-rendicion-cierre .modal-body{display:flex;flex-direction:column;gap:14px}
+.rend-cash-card{padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-darker)}
+.rend-section-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:13px}
+.rend-cash-kpis{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.rend-cash-kpis>div{display:flex;flex-direction:column;gap:5px;padding:0 14px}
+.rend-cash-kpis>div:first-child{padding-left:0;border-right:1px solid var(--border)}
+.rend-cash-kpis span{font-size:11px;color:var(--muted)}
+.rend-cash-kpis strong{font-family:'Bebas Neue';font-size:27px;color:var(--amber);letter-spacing:.5px}
+.rend-services-toggle{width:100%;margin-top:14px;padding:11px 2px 0;border:0;border-top:1px solid var(--border);background:none;color:var(--text);text-align:left;cursor:pointer}
+.rend-services-toggle::after{content:'⌄';float:right;color:var(--muted);font-size:18px;transition:transform .2s}.rend-services-toggle.open::after{transform:rotate(180deg)}
+.rend-services-list{margin-top:10px;max-height:125px;overflow:auto}.rend-services-list[hidden]{display:none}.rend-services-empty{padding:8px;text-align:center;color:var(--muted);font-size:12px}
+.rend-admin-note{display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid #315278;border-radius:10px;background:#142438;color:var(--text);font-size:12px;line-height:1.4}
+.rend-mono-icon{display:inline-grid;place-items:center;width:19px;height:19px;margin-right:5px;border:1px solid currentColor;border-radius:50%;font-family:'DM Mono';font-size:12px}
+#modal-rendicion-cierre .modal-footer{gap:10px}#modal-rendicion-cierre .modal-footer .btn{flex:1;justify-content:center}
+/* All driver receipt actions share one predictable footer. */
+.pv-export-footer{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:8px}
+.pv-export-footer .btn{flex:1 1 130px;max-width:190px;min-height:34px}

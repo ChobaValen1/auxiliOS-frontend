@@ -9410,18 +9410,18 @@ async function abrirRendicion(logId, driverId, truckId, fecha) {
   _rendicionEfEsperado    = 0;
   _rendicionGastosSistema = 0;
 
-  ['rend-efectivo-declarado', 'rend-gastos-extra', 'rend-motivo-extra', 'rend-notas'].forEach(id => {
+  ['rend-gastos-extra', 'rend-motivo-extra'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   const preview   = document.getElementById('rend-diferencia-preview');
   const motivoRow = document.getElementById('rend-motivo-row');
   if (preview)   preview.style.display   = 'none';
-  if (motivoRow) motivoRow.style.display = 'none';
+  if (motivoRow) motivoRow.classList.remove('has-expense');
   _modalError('rend-error', '');
 
   const lista = document.getElementById('rend-remitos-lista');
-  if (lista) lista.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px">Cargando servicios...</div>';
+  if (lista) { lista.hidden = true; lista.innerHTML = '<div class="rend-services-empty">Cargando servicios...</div>'; }
 
   openModal('modal-rendicion-cierre');
 
@@ -9445,20 +9445,22 @@ async function abrirRendicion(logId, driverId, truckId, fecha) {
       }).join('');
     }
   }
+  const servicesToggle = document.getElementById('rend-services-toggle');
+  if (servicesToggle) servicesToggle.textContent = `Ver ${remitos.length} ${remitos.length === 1 ? 'servicio' : 'servicios'}`;
 
   const espEl = document.getElementById('rend-efectivo-esperado');
   if (espEl) espEl.textContent = '$' + efectivoEsperado.toLocaleString('es-AR');
 
-  const gastosRow = document.getElementById('rend-gastos-sistema-row');
   const gastosVal = document.getElementById('rend-gastos-sistema-val');
-  if (gastosRow && gastosVal) {
-    if (gastosSistema > 0) {
-      gastosRow.style.display = 'flex';
-      gastosVal.textContent   = '-$' + gastosSistema.toLocaleString('es-AR');
-    } else {
-      gastosRow.style.display = 'none';
-    }
-  }
+  if (gastosVal) gastosVal.textContent = '$' + gastosSistema.toLocaleString('es-AR');
+}
+
+function rendToggleServicios() {
+  const list = document.getElementById('rend-remitos-lista');
+  const button = document.getElementById('rend-services-toggle');
+  if (!list || !button) return;
+  list.hidden = !list.hidden;
+  button.classList.toggle('open', !list.hidden);
 }
 
 function rendActualizarDiferencia() {
@@ -9472,7 +9474,7 @@ function rendActualizarDiferencia() {
   const declarado   = parseFloat(declaradoEl?.value) || 0;
   const gastosExtra = parseFloat(gastosExtraEl?.value) || 0;
 
-  if (motivoRow) motivoRow.style.display = gastosExtra > 0 ? '' : 'none';
+  if (motivoRow) motivoRow.classList.toggle('has-expense', gastosExtra > 0);
 
   if (!declaradoEl?.value) {
     if (previewEl) previewEl.style.display = 'none';
@@ -9549,7 +9551,7 @@ async function confirmarRendicion() {
     console.error('confirmarRendicion:', err);
     _modalError('rend-error', err.message || 'Error al enviar la rendición');
   } finally {
-    if (btn) { btn.textContent = '✅ Confirmar rendición'; btn.style.pointerEvents = 'auto'; }
+    if (btn) { btn.textContent = 'Guardar gastos'; btn.style.pointerEvents = 'auto'; }
   }
 }
 

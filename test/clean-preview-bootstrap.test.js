@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'payroll-monthly-cash-v78-20260915'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'cash-modal-redesign-v79-20260915'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });
