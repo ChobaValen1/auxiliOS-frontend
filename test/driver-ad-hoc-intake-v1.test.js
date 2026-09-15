@@ -12,6 +12,7 @@ const services=read('operator-services.js');
 const orphanCleanup=read('migrations/20260826130000_driver_remito_orphan_cleanup_v1.sql');
 const mapsLocations=read('supabase/migrations/20260905184058_driver_remito_maps_locations.sql');
 const intakeWorkspace=read('supabase/migrations/20260911014705_operator_intake_workspace_and_addon_reconciliation_v1.sql');
+const signedServiceGuard=read('supabase/migrations/20260915204500_driver_ad_hoc_ignore_signed_services_v1.sql');
 
 test('el ingreso del Chofer es operacional y no fabrica clasificación comercial',()=>{
   assert.match(migration,/create table if not exists public\.driver_service_intakes/);
@@ -38,6 +39,13 @@ test('el guardado ad hoc deriva jornada móvil viaje e identidad en servidor',()
   assert.doesNotMatch(migration,/save_driver_ad_hoc_remito_v1.*to service_role/s);
   assert.match(migration,/alter table public\.driver_service_intakes enable row level security/);
   assert.match(migration,/remitos_driver_intake_id_idx/);
+});
+
+test('un servicio operativo con remito firmado no bloquea un nuevo ingreso ad hoc',()=>{
+  assert.match(signedServiceGuard,/save_driver_ad_hoc_remito_v1\(jsonb,uuid\)/);
+  assert.match(signedServiceGuard,/active_remito\.operator_service_id=s\.service_id/);
+  assert.match(signedServiceGuard,/active_remito\.status='firmado'/);
+  assert.match(signedServiceGuard,/not exists\(/);
 });
 
 test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
