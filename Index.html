@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=payroll-unified-v77-20260915">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=payroll-unified-v77-20260915">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=payroll-unified-v77-20260915">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=payroll-monthly-cash-v78-20260915">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=payroll-monthly-cash-v78-20260915">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=payroll-monthly-cash-v78-20260915">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=payroll-unified-v77-20260915" defer></script>
-<script src="supabase.js?v=payroll-unified-v77-20260915" defer></script>
+<script src="config.js?v=payroll-monthly-cash-v78-20260915" defer></script>
+<script src="supabase.js?v=payroll-monthly-cash-v78-20260915" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=payroll-unified-v77-20260915" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=payroll-unified-v77-20260915" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=payroll-unified-v77-20260915" defer></script>
-<script src="sigma.js?v=payroll-unified-v77-20260915" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=payroll-monthly-cash-v78-20260915" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=payroll-monthly-cash-v78-20260915" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=payroll-monthly-cash-v78-20260915" defer></script>
+<script src="sigma.js?v=payroll-monthly-cash-v78-20260915" defer></script>
 </head>
 <body>
 
@@ -403,14 +403,7 @@
         </div>
       </div>
 
-      <!-- Input efectivo declarado -->
-      <div class="form-group">
-        <label class="form-label">¿Cuánto efectivo tenés en mano? <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="tel" id="rend-efectivo-declarado"
-          placeholder="Ej: 45000" style="font-family:'DM Mono';font-size:20px;font-weight:700;text-align:center"
-          oninput="rendActualizarDiferencia()">
-      </div>
-
+      <p>Administración registrará el total presentado al cerrar la rendición mensual.</p>
       <!-- Gastos del sistema (readonly) -->
       <div id="rend-gastos-sistema-row" style="display:none;padding:10px 14px;background:var(--bg-darker);border:1px solid var(--border);border-radius:8px;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div>
@@ -1903,32 +1896,13 @@
     </div>
   </div>
 
-  <!-- SUB: rendiciones (hub admin — aprobación/observación) -->
-  <div id="sueldos-sub-rendiciones" class="sueldos-sub" style="display:none">
-    <div class="card">
-      <div class="cfg-rend-filtros">
-        <input id="cfg-rend-buscar" type="text" placeholder="Buscar chofer…" oninput="_renderRendicionesTabla()">
-        <select id="cfg-rend-status" onchange="_renderRendicionesTabla()">
-          <option value="">Todos los estados</option>
-          <option value="pendiente">Pendiente aprobación</option>
-          <option value="observada">Observada / con diferencia</option>
-          <option value="aprobada">Aprobada</option>
-        </select>
-        <select id="cfg-rend-rango" onchange="cargarRendicionesTab()">
-          <option value="30">Últimos 30 días</option>
-          <option value="90">Últimos 90 días</option>
-          <option value="365">Último año</option>
-          <option value="all">Todo</option>
-        </select>
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" onclick="abrirModalExportRendicionMes()">📄 PDF mensual</button>
-      </div>
-      <div id="cfg-rend-stats" class="cfg-rend-stats"></div>
-      <div style="margin:10px 0;color:var(--muted);font-size:11px;line-height:1.5">
-        🟢 OK · 🟡 Sobrante (revisar, no acredita) · 🔴 Faltante (se descuenta del recibo del mes)
-      </div>
-      <div id="cfg-rend-body" style="color:var(--muted);font-size:13px">Cargando rendiciones...</div>
-    </div>
-  </div>
+  <!-- SUB: monthly administration cash handover -->
+  <div id="sueldos-sub-rendiciones" class="sueldos-sub" style="display:none"><div class="card">
+    <h3>Rendición mensual por chofer</h3><p>Fecha · Esperado · Gastos en efectivo. Administración registra un único total presentado.</p>
+    <label for="cfg-rend-month">Mes</label><input class="form-input" type="month" id="cfg-rend-month">
+    <label for="cfg-rend-driver">Chofer</label><select class="form-input" id="cfg-rend-driver"></select>
+    <button class="btn btn-primary" id="cfg-rend-open">Abrir rendición mensual</button><p id="cfg-rend-body" role="status"></p>
+  </div></div>
 
   <!-- SUB: objetivos -->
   <div id="sueldos-sub-objetivos" class="sueldos-sub" style="display:none">

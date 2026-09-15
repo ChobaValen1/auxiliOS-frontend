@@ -9502,10 +9502,7 @@ function rendActualizarDiferencia() {
 }
 
 async function confirmarRendicion() {
-  const declaradoEl = document.getElementById('rend-efectivo-declarado');
-  if (!declaradoEl?.value) {
-    _modalError('rend-error', 'Ingresá el efectivo que tenés en mano'); return;
-  }
+  // Cash handover is recorded monthly by Administration.
   const gastosExtra = parseFloat(document.getElementById('rend-gastos-extra')?.value) || 0;
   const motivoExtra = document.getElementById('rend-motivo-extra')?.value?.trim() || null;
   if (gastosExtra > 0 && !motivoExtra) {
@@ -9521,7 +9518,7 @@ async function confirmarRendicion() {
       log_id:             await _resolverLogIdLocal(_rendicionLogId),
       driver_id:          USUARIO_ACTUAL.id,
       fecha:              _rendicionFecha,
-      efectivo_declarado: parseFloat(declaradoEl.value),
+      cash_expenses_only: true,
       gastos_extra:       gastosExtra || null,
       motivo_extra:       motivoExtra,
       notas:              document.getElementById('rend-notas')?.value?.trim() || null,
@@ -9559,6 +9556,10 @@ async function confirmarRendicion() {
 // POST a la edge function de rendición — compartido entre el flujo online
 // y el handler del outbox (sync offline). Lanza Error si el server rechaza.
 async function _postRendicion(payload) {
+  if(payload.cash_expenses_only){
+    const result=await _db.rpc('save_journey_cash_expenses',{p_log:payload.log_id,p_amount:payload.gastos_extra||0,p_reason:payload.motivo_extra,p_notes:payload.notas});
+    if(result.error)throw result.error;return {success:true};
+  }
   const accessToken = await obtenerAccessToken();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/check-integridad`, {
     method:  'POST',
@@ -10088,27 +10089,12 @@ async function cargarTablaAdminPlanes() {
 let _rendicionesCache = [];
 
 async function cargarRendicionesTab() {
-  const bodyEl  = document.getElementById('cfg-rend-body');
-  const statsEl = document.getElementById('cfg-rend-stats');
-  if (bodyEl)  bodyEl.innerHTML  = '<div class="cfg-rend-empty">Cargando rendiciones...</div>';
-  if (statsEl) statsEl.innerHTML = '';
-
-  const rango = document.getElementById('cfg-rend-rango')?.value || '30';
-  let desde = null;
-  if (rango !== 'all') {
-    const d = new Date();
-    d.setDate(d.getDate() - parseInt(rango, 10));
-    desde = d.toISOString().slice(0, 10);
-  }
-
-  try {
-    const { rendiciones } = await cargarRendicionesAdmin({ desde });
-    _rendicionesCache = rendiciones;
-    _renderRendicionesTabla();
-  } catch (err) {
-    console.error('cargarRendicionesTab:', err);
-    if (bodyEl) bodyEl.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar rendiciones</div>';
-  }
+  const body=document.getElementById('cfg-rend-body'),month=document.getElementById('cfg-rend-month'),driver=document.getElementById('cfg-rend-driver'),button=document.getElementById('cfg-rend-open');
+  if(!month)return;
+  if(!month.value)month.value=_mesActualInputVal();body.textContent='Cargando choferes…';button.disabled=true;
+  try{const r=await _db.from('users').select('user_id,full_name').eq('role_id',3).order('full_name');if(r.error)throw r.error;driver.innerHTML=(r.data||[]).map(u=>'<option value="'+_escHtml(u.user_id)+'">'+_escHtml(u.full_name)+'</option>').join('');body.textContent='';button.disabled=!driver.value;
+  button.onclick=async()=>{try{if(!month.value||!driver.value)throw new Error('Seleccioná mes y chofer');button.disabled=true;body.textContent='Cargando rendición…';await PayrollView.openCash(driver.value,_mesInputToYyyymm(month.value),driver.selectedOptions[0].textContent);body.textContent='';}catch(e){body.textContent=e.message;}finally{button.disabled=false;}};
+  }catch(e){body.textContent=e.message;}
 }
 
 function _renderRendicionesTabla() {
@@ -15092,9 +15078,9 @@ function _exportarReciboPDF(liquidacion = null) {
     ? `Bono $${_AR(meta.bonoPresConf)} · Criterio: sin incidentes en el período`
     : `Bono configurado $${_AR(meta.bonoPresConf)} · No se paga: hubo incidente(s) o sin jornadas`;
 
-  const ajusteDetalle = ajusteRend > 0
-    ? `Faltante neto de rendiciones del mes ≥ $500 (sobrantes compensan)`
-    : `Sin faltante neto por sobre la tolerancia de $500`;
+  const ajusteDetalle = liq.cash_snapshot
+    ? (liq.cash_snapshot.presented===null?'Pendiente de rendición mensual · sin descuento':'Esperado menos gastos en efectivo, comparado con el total presentado por Administración')
+    : 'Importe histórico guardado en el recibo';
 
   const qrPayload = `liq:${liq.liquidacion_id}`;
   const qrImg = _qrDataUrl(qrPayload);

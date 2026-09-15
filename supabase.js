@@ -3230,7 +3230,7 @@ const _LIQ_SELECT_FIELDS = `
   jornadas, km_total, servicios,
   sueldo_basico, adic_km, adic_serv, bonus_monthly, commission_total, compensation_snapshot,
   presentismo_paga, bono_presentismo, bonos_objetivos,
-  ajuste_rendiciones, total, estado,
+  ajuste_rendiciones, cash_snapshot, total, estado,
   valor_km_snapshot, valor_servicio_snapshot, bono_presentismo_snapshot,
   generada_by, generada_at,
   aprobada_by, aprobada_at,
@@ -3436,17 +3436,10 @@ async function generarLiquidacionesMes(yyyymm) {
     const adic_serv = servicios * valor_servicio;
     const bonos_objetivos = cumpl.reduce((sum, c) => sum + (Number(c.bonus_calculado) || 0), 0);
 
-    // Arqueo NETO mensual (alineado con el PDF de rendición mensual):
-    // diff_mes = Σ (declarado + gastos_extra − esperado). Sobrantes compensan faltantes.
-    // Solo descuenta el faltante neto del mes si supera la tolerancia.
-    const diffMes = rendiciones.reduce((sum, r) => {
-      const declarado = Number(r.efectivo_declarado) || 0;
-      const esperado  = Number(r.efectivo_esperado)  || 0;
-      const gastos    = Number(r.gastos_extra)       || 0;
-      return sum + (declarado + gastos - esperado);
-    }, 0);
-    const faltanteNeto = Math.max(0, -diffMes);
-    const ajuste_rendiciones_calc = faltanteNeto >= PAYROLL_TOLERANCIA_RENDICION ? faltanteNeto : 0;
+    // Monthly administration entry is the only declaration used for payroll.
+    const monthlyCash=await _db.rpc('get_payroll_monthly_cash',{p_driver:driverId,p_period:yyyymm});
+    if(monthlyCash.error){detalle.push({driverId,error:true,motivo:monthlyCash.error.message});continue;}
+    const ajuste_rendiciones_calc=Number(monthlyCash.data.discount)||0;
 
     // ¿Existe ya la liquidación? Si está 'pagada', NO pisamos.
     // Si está 'aprobada' → congelamos ajuste_rendiciones (snapshot).
