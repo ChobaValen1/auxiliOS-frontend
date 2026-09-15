@@ -24,7 +24,7 @@ test('bootstrap releases navigation before secondary modules finish loading', ()
 
 test('services table is responsive in the canonical stylesheet', () => {
   const css = read('operator-services.css');
-  assert.match(css, /\.os-table\{width:100%;min-width:0;/);
+  assert.match(css, /\.os-table\{width:100%;min-width:1320px;/);
   assert.doesNotMatch(css, /min-width:1740px/);
   assert.match(css, /\.os-table th\.col-origin,\.os-table th\.col-destination\{width:13%\}/);
 });
@@ -32,7 +32,7 @@ test('services table is responsive in the canonical stylesheet', () => {
 test('crear o editar un servicio vuelve a la tabla general sin reabrir visualización', () => {
   const source = read('operator-service-wizard.js');
   assert.match(source, /const wasEdit=w\.mode==='edit'/);
-  assert.match(source, /performCloseWorkspace\(\);S\.view='active';S\.status='all';if\(typeof window\.goTo==='function'\)window\.goTo\('operaciones'\);await loadServices\(\)/);
+  assert.match(source, /performCloseWorkspace\(\);if\(returnToBilling\).*window\.goTo\('facturacion'\).*return;}S\.view='active';S\.status='all';S\.selectedIntakeId=null;if\(typeof window\.goTo==='function'\)window\.goTo\('operaciones'\);await loadServices\(\)/s);
   assert.doesNotMatch(source, /if\(wasEdit&&id\)await openView\(id\)/);
   assert.doesNotMatch(source, /await loadServices\(\);if\(id\)await openView\(id\)/);
 });
