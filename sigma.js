@@ -14445,7 +14445,7 @@ function _renderEsquemaTabla() {
   const rows = _esquemaCache.map(u => {
     const hasSet = !!u.settings;
     const basico = hasSet ? '$' + _AR(u.sueldo_basico || 0) : '—';
-    const vkm    = hasSet ? '$' + _AR(u.valor_km || 0)      : '—';
+    const vkm    = hasSet ? '$' + _AR(u.valor_km || 0) + (u.settings?.compensation_matrix?.km_basis === 'billed' ? ' / facturado' : ' / real')      : '—';
     const vserv  = hasSet ? '$' + _AR(u.valor_servicio || 0): '—';
     const bono   = hasSet ? '$' + _AR(u.bono_presentismo || 0) : '—';
     const pillCls = hasSet ? 'ok' : 'warn';
@@ -14483,6 +14483,7 @@ function _abrirEsquemaModal(driverId) {
   document.getElementById('esq-valor-serv').value = u.valor_servicio   ?? '';
   document.getElementById('esq-bono-pres').value  = u.bono_presentismo ?? '';
   openModal('modal-esquema-edit');
+  PayrollMatrix.open(u.settings?.compensation_matrix).catch(error=>toast(error.message,'error'));
 }
 
 function _abrirEsquemaMasivoModal() {
@@ -14552,6 +14553,7 @@ async function _guardarEsquema() {
   if ([payload.sueldo_basico, payload.valor_km, payload.valor_servicio, payload.bono_presentismo].some(n => n < 0)) {
     toast('Los valores no pueden ser negativos', 'error'); return;
   }
+  try { payload.compensation_matrix = PayrollMatrix.read(); } catch(error) { toast(error.message,'error'); return; }
   const res = await guardarPayrollSettings(driverId, payload);
   if (!res.ok) {
     const msg = res.error?.message || res.error?.hint || res.error?.details || 'desconocido';
@@ -14684,7 +14686,7 @@ function _renderLiquidacionesMes() {
       <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_km)}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_serv)}</td>
       <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR((l.presentismo_paga ? l.bono_presentismo : 0))}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.bonos_objetivos)}</td>
+      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.bonos_objetivos)}<small style="display:block">Mensual: $${_AR(l.bonus_monthly || 0)} · Comisiones: $${_AR(l.commission_total || 0)}</small></td>
       <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700">$${_AR(l.total)}</td>
       <td>${_pillEstadoLiq(l.estado)}</td>
       <td onclick="event.stopPropagation()" style="text-align:right;white-space:nowrap">${acciones.join('')}</td>
@@ -14710,12 +14712,14 @@ async function _generarLiquidacionesMes() {
   const inp = document.getElementById('pl-mes-periodo');
   const yyyymm = _mesInputToYyyymm(inp?.value);
   if (!yyyymm) { toast('Elegí un período', 'error'); return; }
-  if (!confirm('Se generarán/actualizarán las liquidaciones de todos los choferes con esquema salarial cargado. Las liquidaciones marcadas como PAGADAS no se pisan. ¿Continuar?')) return;
+  if (!confirm('Se generarán/actualizarán las liquidaciones de todos los choferes con esquema salarial cargado. Las liquidaciones APROBADAS o PAGADAS no se modifican. ¿Continuar?')) return;
   toast('Generando liquidaciones...', 'warning');
   const res = await generarLiquidacionesMes(yyyymm);
   if (!res.ok) { toast('Error al generar', 'error'); return; }
   const msg = `Creadas: ${res.creadas} · Actualizadas: ${res.actualizadas} · Saltadas: ${res.saltadas}`;
-  toast(msg, 'success', 5000);
+  const errores = (res.detalle || []).filter(d=>d.error);
+  toast(msg + (errores.length ? ' · Errores: '+errores.length : ''), errores.length ? 'warning' : 'success', 5000);
+  if(errores.length) toast(errores.map(d=>d.motivo || 'No se pudo calcular un chofer').join(' · '), 'error', 10000);
   if (res.nota) toast(res.nota, 'warning', 5000);
   await _cargarLiquidacionesMes();
 }
@@ -14824,7 +14828,7 @@ function _renderReciboResumen() {
   const meta = _reciboMeta(liq);
   const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo)||0 : 0;
   const ajusteRend   = Number(liq.ajuste_rendiciones) || 0;
-  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0);
+  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0) + (Number(liq.bonus_monthly)||0) + (Number(liq.commission_total)||0);
   const snapLock = (liq.estado === 'aprobada' || liq.estado === 'pagada') ? ' 🔒' : '';
 
   // Fórmulas legibles para km / servicios.
@@ -14858,6 +14862,9 @@ function _renderReciboResumen() {
     ${row('Adicional por km' + kmDetalle,       '$' + _AR(liq.adic_km))}
     ${row('Adicional por servicios' + servDetalle, '$' + _AR(liq.adic_serv))}
     ${row(presLabel,                            '$' + _AR(presMostrado), { color: liq.presentismo_paga?'#4ade80':'var(--muted)' })}
+    ${row('Bonos mensuales', '$' + _AR(liq.bonus_monthly || 0))}
+    ${row('Comisiones por concepto', '$' + _AR(liq.commission_total || 0))}
+    ${PayrollMatrix.receiptHtml(liq)}
     ${row('Bonos por objetivos',                '$' + _AR(liq.bonos_objetivos))}
     ${row('Subtotal bruto',                     '$' + _AR(bruto), { color:'var(--muted)' })}
     ${row(ajusteLabel,                          ajusteVal, { color: ajusteRend > 0 ? 'var(--red)' : 'var(--muted)' })}
@@ -15141,7 +15148,7 @@ function _exportarReciboPDF() {
   const meta = _reciboMeta(liq);
   const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo) || 0 : 0;
   const ajusteRend   = Number(liq.ajuste_rendiciones) || 0;
-  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0);
+  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0) + (Number(liq.bonus_monthly)||0) + (Number(liq.commission_total)||0);
   const emitidoStr  = liq.generada_at ? new Date(liq.generada_at).toLocaleString('es-AR') : new Date().toLocaleString('es-AR');
   const aprobadoStr = liq.aprobada_at ? `${new Date(liq.aprobada_at).toLocaleString('es-AR')}${liq.aprobador_nombre ? ' · ' + _escHtml(liq.aprobador_nombre) : ''}` : null;
   const pagadoStr   = liq.pagada_at   ? (liq.pagada_metodo ? _escHtml(liq.pagada_metodo) : '—') : null;
@@ -15250,7 +15257,7 @@ function _exportarReciboPDF() {
             <tr><td>Adicional por km<div class="muted">${kmFormula}</div></td><td class="right">$${_AR(liq.adic_km)}</td></tr>
             <tr><td>Adicional por servicios<div class="muted">${servFormula}</div></td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
             <tr><td>Presentismo ${liq.presentismo_paga ? '✓' : '✗'}<div class="muted">${presDetalle}</div></td><td class="right">$${_AR(presMostrado)}</td></tr>
-            <tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
+            <tr><td>Bonos mensuales</td><td class="right">$${_AR(liq.bonus_monthly || 0)}</td></tr><tr><td>Comisiones por concepto</td><td class="right">$${_AR(liq.commission_total || 0)}</td></tr><tr><td colspan="2">${PayrollMatrix.receiptHtml(liq)}</td></tr><tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
             <tr class="subtotal-row"><td>Subtotal bruto</td><td class="right">$${_AR(bruto)}</td></tr>
             <tr class="desc-row"><td>Descuentos por rendición<div class="muted">${ajusteDetalle}</div></td><td class="right">${ajusteRend > 0 ? '- $' + _AR(ajusteRend) : '$0'}</td></tr>
             <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>

@@ -3142,7 +3142,7 @@ async function cargarPayrollSettingsChofer(driverId) {
   if (!driverId) return null;
   const { data, error } = await _db
     .from('payroll_settings')
-    .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, updated_at')
+    .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, updated_at')
     .eq('user_id', driverId)
     .maybeSingle();
   if (error) { console.error('[Payroll cargarPayrollSettingsChofer]', error.message); return null; }
@@ -3158,7 +3158,7 @@ async function cargarPayrollSettingsFlota() {
       .eq('is_active', true)
       .order('full_name', { ascending: true }),
     _db.from('payroll_settings')
-      .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, updated_at'),
+      .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, updated_at'),
   ]);
   if (usersRes.error)    { console.error('[Payroll cargarPayrollSettingsFlota] users', usersRes.error.message); return []; }
   if (settingsRes.error) { console.error('[Payroll cargarPayrollSettingsFlota] settings', settingsRes.error.message); /* seguimos con [] */ }
@@ -3188,6 +3188,7 @@ async function guardarPayrollSettingsMasivo(patch, { onlySinEsquema = false } = 
     const base = c.settings || {};
     return {
       user_id: c.user_id,
+      compensation_matrix: base.compensation_matrix || {km_basis:'real',bonuses:[],commissions:[]},
       sueldo_basico:    patch.sueldo_basico    != null ? Number(patch.sueldo_basico)    : (Number(base.sueldo_basico)    || 0),
       valor_km:         patch.valor_km         != null ? Number(patch.valor_km)         : (Number(base.valor_km)         || 0),
       valor_servicio:   patch.valor_servicio   != null ? Number(patch.valor_servicio)   : (Number(base.valor_servicio)   || 0),
@@ -3201,9 +3202,10 @@ async function guardarPayrollSettingsMasivo(patch, { onlySinEsquema = false } = 
   return { ok: true, actualizados: target.length - insertados, insertados, total: target.length };
 }
 
-async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo }) {
+async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix }) {
   if (!driverId) return { ok: false, error: 'Falta driverId' };
   const payload = {
+    compensation_matrix: PayrollMatrix.normalize(compensation_matrix),
     user_id: driverId,
     sueldo_basico:    Number(sueldo_basico)    || 0,
     valor_km:         Number(valor_km)         || 0,
@@ -3226,7 +3228,7 @@ async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor
 const _LIQ_SELECT_FIELDS = `
   liquidacion_id, driver_id, periodo_yyyymm,
   jornadas, km_total, servicios,
-  sueldo_basico, adic_km, adic_serv,
+  sueldo_basico, adic_km, adic_serv, bonus_monthly, commission_total, compensation_snapshot,
   presentismo_paga, bono_presentismo, bonos_objetivos,
   ajuste_rendiciones, total, estado,
   valor_km_snapshot, valor_servicio_snapshot, bono_presentismo_snapshot,
@@ -3407,11 +3409,23 @@ async function generarLiquidacionesMes(yyyymm) {
     const incid    = incidRes.data    || [];
     const rendiciones = rendRes.data  || [];
 
-    const km_total = jornadas.reduce((sum, j) => {
+    const km_real = jornadas.reduce((sum, j) => {
       const ki = Number(j.km_inicio) || 0;
       const kf = Number(j.km_final)  || 0;
       return sum + Math.max(0, kf - ki);
     }, 0);
+    let matrixResult;
+    try {
+      const matrix = PayrollMatrix.normalize(s.compensation_matrix);
+      let sources = {invoices:[],extras:[]};
+      if(matrix.km_basis==='billed'||matrix.commissions.length){
+        const response=await _db.rpc('get_payroll_matrix_sources',{p_driver:driverId,p_from:desde,p_until:hastaExclusive});
+        if(response.error)throw response.error;
+        sources=response.data;
+      }
+      matrixResult=PayrollMatrix.calculate(matrix,sources,km_real);
+    } catch(error) { detalle.push({driverId,error:true,motivo:error.message});continue; }
+    const km_total=matrixResult.km;
     const servicios = remitos.length;
     const jornadasCount = jornadas.length;
 
@@ -3459,12 +3473,14 @@ async function generarLiquidacionesMes(yyyymm) {
       continue;
     }
 
+    if (existRes.data?.estado === 'aprobada') { saltadas++; detalle.push({driverId,accion:'saltada',motivo:'aprobada'}); continue; }
     // Snapshot: si ya está aprobada, se preserva el ajuste guardado; si no, se recalcula.
     const ajuste_rendiciones = (existRes.data && existRes.data.estado === 'aprobada')
       ? (Number(existRes.data.ajuste_rendiciones) || 0)
       : ajuste_rendiciones_calc;
 
     const bruto =
+      matrixResult.bonus + matrixResult.commission +
       sueldo_basico +
       adic_km +
       adic_serv +
@@ -3474,6 +3490,11 @@ async function generarLiquidacionesMes(yyyymm) {
     const total = Math.max(0, bruto - ajuste_rendiciones);
 
     const payload = {
+      review_required: false, review_reason: null, review_detected_at: null,
+      proposed_total: null, adjustment_pending: null,
+      bonus_monthly: matrixResult.bonus,
+      commission_total: matrixResult.commission,
+      compensation_snapshot: matrixResult.snapshot,
       driver_id:        driverId,
       periodo_yyyymm:   yyyymm,
       jornadas:         jornadasCount,
