@@ -6,7 +6,7 @@
   const fmt = v => num(v).toLocaleString('es-AR', {maximumFractionDigits:2});
   const cash = v => '$' + fmt(v);
   const date = v => v ? String(v).slice(0,10).split('-').reverse().join('/') : '—';
-  let rows = [], active = null, request = 0, filter = '', search = '';
+  let rows = [], active = null, request = 0, filter = '', search = '', detailData = null;
   const cell = (label,value) => `<div><small>${label}</small><strong>${value}</strong></div>`;
   function monthLabel() {
     const input = document.getElementById('pl-mes-periodo');
@@ -17,7 +17,7 @@
     closeDetail(); rows = data; request++; active = null; monthLabel();
     const sum = list => list.reduce((n,l)=>n+num(l.total),0);
     document.getElementById('pl-mes-stats').innerHTML = cell('Total del mes',cash(sum(rows)))+cell('Pendiente de pago',cash(sum(rows.filter(l=>l.estado!=='pagada'))))+cell('Pagado',cash(sum(rows.filter(l=>l.estado==='pagada'))));
-    document.getElementById('pl-mes-body').innerHTML = `<div class="pv-tools"><input class="form-input" placeholder="Buscar chofer…" aria-label="Buscar chofer" id="pv-search"><select class="form-input" id="pv-filter" aria-label="Estado"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="aprobada">Aprobadas</option><option value="pagada">Pagadas</option></select></div><div id="pv-cards"></div>`;
+    document.getElementById('pl-mes-body').innerHTML = `<div class="pv-tools"><button class="btn btn-ghost" onclick="PayrollView.exportMonth('xlsx')">Exportar Excel</button><button class="btn btn-ghost" onclick="PayrollView.exportMonth('csv')">Exportar CSV</button><input class="form-input" placeholder="Buscar chofer…" aria-label="Buscar chofer" id="pv-search"><select class="form-input" id="pv-filter" aria-label="Estado"><option value="">Todos los estados</option><option value="pendiente">Pendientes</option><option value="aprobada">Aprobadas</option><option value="pagada">Pagadas</option></select></div><div id="pv-cards"></div>`;
     const input=document.getElementById('pv-search'), select=document.getElementById('pv-filter');
     input.value=search;select.value=filter;
     input.oninput=()=>{search=input.value;cards();};select.onchange=()=>{filter=select.value;cards();};cards();
@@ -79,9 +79,12 @@
     let modal=document.getElementById('pv-driver-modal');
     if(!modal){modal=document.createElement('dialog');modal.id='pv-driver-modal';modal.setAttribute('aria-labelledby','pv-modal-title');document.body.appendChild(modal);modal.addEventListener('cancel',()=>{request++;});modal.addEventListener('click',e=>{if(e.target===modal)closeDetail();});}
     const period=String(l.periodo_yyyymm),month=new Date(period.slice(0,4)+'-'+period.slice(4)+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-    modal.innerHTML=`<header class="pv-modal-header"><div><h2 id="pv-modal-title">${esc(l.chofer_nombre)}</h2><p>${esc(l.chofer_legajo||'')} · ${esc(month)}</p></div><button class="btn btn-ghost" id="pv-modal-close" aria-label="Cerrar detalle">×</button></header><div class="pv-modal-body"><div id="pv-driver-totals" role="status">Cargando totales del chofer…</div><section id="pv-detail"></section><details class="pv-salary"><summary>Liquidación de sueldo y recibo</summary><aside id="pv-summary"></aside></details></div>`;
+    modal.innerHTML=`<header class="pv-modal-header"><div><h2 id="pv-modal-title">${esc(l.chofer_nombre)}</h2><p>${esc(l.chofer_legajo||'')} · ${esc(month)}</p></div><button class="btn btn-ghost" id="pv-modal-close" aria-label="Cerrar detalle">×</button></header><div class="pv-modal-body"><div id="pv-driver-totals" role="status">Cargando totales del chofer…</div><div class="pv-modal-columns"><section id="pv-detail"></section><aside class="pv-salary"><h3>Liquidación y recibo</h3><div class="pv-actions"><button class="btn btn-ghost" id="pv-export-xlsx" disabled>Excel</button><button class="btn btn-ghost" id="pv-export-csv" disabled>CSV</button></div><div id="pv-summary"></div></aside></div></div>`;
     document.getElementById('pv-modal-close').onclick=closeDetail;
     if(!modal.open)modal.showModal();
+    detailData=null;
+    document.getElementById('pv-export-xlsx').onclick=()=>exportDetail('xlsx');
+    document.getElementById('pv-export-csv').onclick=()=>exportDetail('csv');
     summary(l);
     return document.getElementById('pv-detail');
   }
@@ -98,11 +101,35 @@
     const l=rows.find(x=>x.liquidacion_id===id);if(!l)return;active=l;cards();
     const root=createDetail(l),token=++request;root.innerHTML='<p role="status">Cargando jornadas, servicios y cobros…</p>';
     try{const data=await load(l);if(token!==request)return;const services=data.services.map(r=>serviceData(r,data.addons.get(r.remito_id),l,data.saleIds));
+      detailData={...data,services,l};
+      document.getElementById('pv-export-xlsx').disabled=false;document.getElementById('pv-export-csv').disabled=false;
       document.getElementById('pv-driver-totals').innerHTML=renderTotals(data.logs,services,l);
       root.innerHTML=`<div class="pv-detail-title"><div><h3>Jornadas de ${esc(l.chofer_nombre)}</h3><p>KM a liquidar = odómetro final − inicial. Los KM de los servicios son informativos.</p></div></div><div class="pv-journey-head"><span>Fecha</span><span>Móvil</span><span>Km jornada</span><span>Servicios</span><span>Ventas / comisiones</span><span>Efectivo cobrado</span></div>${data.logs.map(j=>journey(j,services.filter(s=>s.r.log_id===j.log_id))).join('')||'<p>No hay jornadas en este mes.</p>'}<p class="pv-note">Datos operativos actuales. Los importes aprobados se conservan en el recibo. Efectivo cobrado para rendir: ${cash(services.reduce((n,s)=>n+s.cash,0))}; consultá Rendiciones para conocer lo ya presentado.</p>${num(l.commission_total)&&!l.compensation_snapshot?.commission_details?.some(d=>d.record_details)?'<p class="pv-note">Esta liquidación anterior no tiene distribución de comisiones por servicio. El total guardado se consulta en el recibo.</p>':''}`;
       root.querySelectorAll('[data-remito]').forEach(b=>b.onclick=()=>{closeDetail();abrirDetalleRemitoAdmin(Number(b.dataset.remito));});
     }catch(error){if(token!==request)return;document.getElementById('pv-driver-totals').textContent='Totales no disponibles. Reintentá la carga.';root.innerHTML=`<p role="alert">No se pudo cargar el detalle: ${esc(error.message)}</p><button class="btn btn-ghost" id="pv-retry">Reintentar</button>`;document.getElementById('pv-retry').onclick=()=>open(id);}
   }
+  const exportColumns=[['chofer_nombre','Chofer'],['chofer_legajo','Legajo'],['periodo_yyyymm','Período'],['jornadas','Jornadas','number'],['km_total','Km liquidados','number'],['servicios','Servicios','number'],['sueldo_basico','Básico','number'],['adic_km','Pago por km','number'],['adic_serv','Pago por servicios','number'],['bonus_monthly','Bonos mensuales','number'],['commission_total','Comisiones','number'],['bono_presentismo','Presentismo','number'],['bonos_objetivos','Objetivos','number'],['ajuste_rendiciones','Descuento rendición','number'],['total','Total sueldo','number'],['estado','Estado']].map(([key,header,type])=>({key,header,type}));
+  function csv(columns,data){
+    const quote=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+    const safe=v=>/^[\s]*[=+@-]/.test(String(v))?"'"+v:v;
+    return '\uFEFF'+[columns.map(c=>quote(c.header)).join(';'),...data.map(r=>columns.map(c=>{const v=r[c.key];return quote(c.type==='number'?(v==null?'':String(v).replace('.',',')):safe(v??''));}).join(';'))].join('\r\n');
+  }
+  function download(format,filename,columns,data,sheets){
+    if(!data.length)throw Error('No hay datos para exportar.');
+    if(format==='xlsx'){AuxiliosExcelExport.download({filename,sheets:sheets||[{name:'Sueldos',columns,rows:data}]});return;}
+    const url=URL.createObjectURL(new Blob([csv(columns,data)],{type:'text/csv;charset=utf-8;'}));const link=document.createElement('a');link.href=url;link.download=filename+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function exportMonth(format){try{const data=rows.filter(l=>(!filter||l.estado===filter)&&String(l.chofer_nombre).toLowerCase().includes(search.toLowerCase()));download(format,'Sueldos_'+document.getElementById('pl-mes-periodo').value,exportColumns,data);}catch(e){toast(e.message,'error');}}
+  function exportDetail(format){
+    if(!detailData)return;
+    try{const {logs,services,l}=detailData;
+      const columns=[['fecha','Fecha'],['movil','Móvil'],['hora','Hora'],['numero','N° Servicio'],['patente','Patente'],['origen','Origen'],['destino','Destino'],['km','Km servicio (informativos)','number'],['venta','Venta / concepto'],['comision','Comisión','number'],['efectivo','Efectivo cobrado','number']].map(([key,header,type])=>({key,header,type}));
+      const data=services.map(s=>{const j=logs.find(j=>j.log_id===s.r.log_id);return {fecha:j?.log_date,movil:j?.truck?.plate,hora:s.time,numero:s.r.nro_servicio||s.r.nro_remito,patente:s.r.patente,origen:s.r.origen,destino:s.r.destino,km:s.r.km_reales,venta:s.sales.map(x=>(x.concept_name||'')+' '+cash(x.total_amount)).join(' / '),comision:s.commission,efectivo:s.cash};});
+      const journeys=logs.map(j=>{let km=null;try{km=PayrollMatrix.journeyKm(j);}catch{}return {fecha:j.log_date,movil:j.truck?.plate,inicio:j.km_inicio,fin:j.km_final,km,estado:j.status};});
+      const jc=[['fecha','Fecha'],['movil','Móvil'],['inicio','Odómetro inicial','number'],['fin','Odómetro final','number'],['km','Km a liquidar','number'],['estado','Estado']].map(([key,header,type])=>({key,header,type}));
+      download(format,'Sueldo_'+l.periodo_yyyymm+'_'+String(l.chofer_legajo||l.driver_id).replace(/[^a-z0-9_-]/gi,'_'),columns,format==='xlsx'?[l]:data,[{name:'Liquidación',columns:exportColumns,rows:[l]},{name:'Jornadas',columns:jc,rows:journeys},{name:'Servicios',columns,rows:data}]);
+    }catch(e){toast(e.message,'error');}
+  }
   function moveMonth(delta){const input=document.getElementById('pl-mes-periodo');if(!input.value)return;const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+delta,1));input.value=d.toISOString().slice(0,7);_cargarLiquidacionesMes();}
-  window.PayrollView={totals,render,open,moveMonth,serviceData,journey,serviceRow};
+  window.PayrollView={csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow};
 })();
