@@ -3409,11 +3409,6 @@ async function generarLiquidacionesMes(yyyymm) {
     const incid    = incidRes.data    || [];
     const rendiciones = rendRes.data  || [];
 
-    const km_real = jornadas.reduce((sum, j) => {
-      const ki = Number(j.km_inicio) || 0;
-      const kf = Number(j.km_final)  || 0;
-      return sum + Math.max(0, kf - ki);
-    }, 0);
     let matrixResult;
     try {
       const matrix = PayrollMatrix.normalize(s.compensation_matrix);
@@ -3423,7 +3418,7 @@ async function generarLiquidacionesMes(yyyymm) {
         if(response.error)throw response.error;
         sources=response.data;
       }
-      matrixResult=PayrollMatrix.calculate(matrix,sources,km_real);
+      matrixResult=PayrollMatrix.calculate(matrix,sources,jornadas.reduce((sum,j)=>sum+(PayrollMatrix.journeyKm(j)||0),0));
     } catch(error) { detalle.push({driverId,error:true,motivo:error.message});continue; }
     const km_total=matrixResult.km;
     const servicios = remitos.length;

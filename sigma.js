@@ -14638,75 +14638,7 @@ async function _cargarLiquidacionesMes() {
   }
 }
 
-function _renderLiquidacionesMes() {
-  const bodyEl  = document.getElementById('pl-mes-body');
-  const statsEl = document.getElementById('pl-mes-stats');
-  if (!bodyEl) return;
-
-  // Stats
-  if (statsEl) {
-    const tot   = _liquidacionesMesCache.length;
-    const pend  = _liquidacionesMesCache.filter(l => l.estado === 'pendiente').length;
-    const apr   = _liquidacionesMesCache.filter(l => l.estado === 'aprobada').length;
-    const pag   = _liquidacionesMesCache.filter(l => l.estado === 'pagada').length;
-    const sumBy = est => _liquidacionesMesCache
-      .filter(l => l.estado === est)
-      .reduce((s,l) => s + (Number(l.total)||0), 0);
-    const sumaPend = sumBy('pendiente');
-    const sumaApr  = sumBy('aprobada');
-    const sumaPag  = sumBy('pagada');
-    const sumaComprometido = sumaPend + sumaApr;
-    statsEl.innerHTML = `
-      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Total</div><div class="cfg-rend-stat-val">${tot}</div></div>
-      <div class="cfg-rend-stat" title="Pendientes: $${_AR(sumaPend)}"><div class="cfg-rend-stat-lbl">Pendientes</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${pend}</div></div>
-      <div class="cfg-rend-stat" title="Aprobadas: $${_AR(sumaApr)}"><div class="cfg-rend-stat-lbl">Aprobadas</div><div class="cfg-rend-stat-val">${apr}</div></div>
-      <div class="cfg-rend-stat" title="Pagadas: $${_AR(sumaPag)}"><div class="cfg-rend-stat-lbl">Pagadas</div><div class="cfg-rend-stat-val" style="color:#4ade80">${pag}</div></div>
-      <div class="cfg-rend-stat" title="Pendiente + aprobada (aún no pagado)"><div class="cfg-rend-stat-lbl">Comprometido</div><div class="cfg-rend-stat-val" style="color:var(--amber);font-family:'DM Mono',monospace">$${_AR(sumaComprometido)}</div></div>
-      <div class="cfg-rend-stat" title="Ya pagado en el período"><div class="cfg-rend-stat-lbl">Pagado</div><div class="cfg-rend-stat-val" style="color:#4ade80;font-family:'DM Mono',monospace">$${_AR(sumaPag)}</div></div>
-    `;
-  }
-
-  if (!_liquidacionesMesCache.length) {
-    bodyEl.innerHTML = '<div class="cfg-rend-empty">No hay liquidaciones para este período. Presioná Generar.</div>';
-    return;
-  }
-
-  const rows = _liquidacionesMesCache.map(l => {
-    const acciones = [];
-    acciones.push(`<button class="cfg-rend-btn-mini primary" onclick="event.stopPropagation();_abrirReciboPayroll('${l.liquidacion_id}')">Recibo</button>`);
-    if (l.estado === 'pendiente') acciones.push(`<button class="cfg-rend-btn-mini" onclick="event.stopPropagation();_cambiarEstadoLiq('${l.liquidacion_id}','aprobada')">Aprobar</button>`);
-    if (l.estado === 'aprobada')  acciones.push(`<button class="cfg-rend-btn-mini" onclick="event.stopPropagation();_marcarPagada('${l.liquidacion_id}')">Pagar</button>`);
-
-    return `<tr onclick="_abrirReciboPayroll('${l.liquidacion_id}')" style="cursor:pointer">
-      <td>${_escHtml(l.chofer_nombre)}${l.chofer_legajo ? ` <span style="color:var(--muted);font-size:11px">#${_escHtml(l.chofer_legajo)}</span>` : ''}</td>
-      <td style="text-align:right">${l.jornadas}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">${_AR(l.km_total)}</td>
-      <td style="text-align:right">${l.servicios}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.sueldo_basico)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_km)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_serv)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR((l.presentismo_paga ? l.bono_presentismo : 0))}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.bonos_objetivos)}<small style="display:block">Mensual: $${_AR(l.bonus_monthly || 0)} · Comisiones: $${_AR(l.commission_total || 0)}</small></td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700">$${_AR(l.total)}</td>
-      <td>${_pillEstadoLiq(l.estado)}</td>
-      <td onclick="event.stopPropagation()" style="text-align:right;white-space:nowrap">${acciones.join('')}</td>
-    </tr>`;
-  }).join('');
-
-  bodyEl.innerHTML = `
-    <div style="overflow-x:auto">
-    <table class="cfg-rend-table">
-      <thead>
-        <tr>
-          <th>Chofer</th><th>Jornadas</th><th>KM</th><th>Servicios</th>
-          <th>Sueldo</th><th>Adic. KM</th><th>Adic. Serv</th><th>Presentismo</th><th>Bonos</th><th>TOTAL</th>
-          <th>Estado</th><th></th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    </div>`;
-}
+function _renderLiquidacionesMes() { PayrollView.render(_liquidacionesMesCache); }
 
 async function _generarLiquidacionesMes() {
   const inp = document.getElementById('pl-mes-periodo');
