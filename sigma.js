@@ -7798,12 +7798,21 @@ async function guardarRemitoPendiente() {
   _logId = await _resolverLogIdLocal(_logId);
 
   // ── Empaquetado de Datos ──────────────────────────────
-  const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
+  let operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
     ? obtenerServicioActivoRemito()
     : sessionStorage.getItem('auxilios_phase3_service_id');
-  const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
+  let servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
     ? window.obtenerServicioAsignadoRemito()
     : null;
+  if (!operatorServiceId && (typeof esRemitoAdHocActivo === 'function' ? esRemitoAdHocActivo() : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1')
+      && navigator.onLine && typeof window.resolverServicioAsignadoParaRemito === 'function') {
+    const detected = await window.resolverServicioAsignadoParaRemito();
+    if (detected?.service_id) {
+      operatorServiceId = detected.service_id;
+      servicioAsignado = detected;
+      toast(`El borrador se vinculará al servicio ${detected.service_order_number || detected.service_number || 'asignado'}`, 'info');
+    }
+  }
   const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
     ? esRemitoAdHocActivo()
     : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');

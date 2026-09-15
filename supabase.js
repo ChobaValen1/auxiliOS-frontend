@@ -1315,6 +1315,18 @@ async function guardarRemitoCompleto(datosRemito) {
 
     console.log('Enviando DTO a Supabase para:', nroFinal);
 
+    // Si la asignación llegó mientras se completaba un ingreso sin asignación,
+    // vinculamos el mismo formulario a esa prestación antes de persistirlo.
+    if (!_operatorServiceIdActivo(datosRemito.operator_service_id) && _driverAdHocActivo() && navigator.onLine
+        && typeof window.resolverServicioAsignadoParaRemito === 'function') {
+      const assigned = await window.resolverServicioAsignadoParaRemito();
+      if (assigned?.service_id) {
+        datosRemito.operator_service_id = assigned.service_id;
+        datosRemito.document_source = 'auxilios_driver';
+        _toast(`Se vinculó el remito al servicio ${assigned.service_order_number || assigned.service_number || 'asignado'}`, 'info');
+      }
+    }
+
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
     const remitoDB = _remitoDbDesdeDatos({

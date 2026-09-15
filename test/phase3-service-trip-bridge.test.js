@@ -74,6 +74,17 @@ test('un servicio asignado bloquea el alta sin asignación antes de abrir el for
   assert.match(data,/Tus datos siguen en pantalla/);
 });
 
+test('una asignación recibida con el formulario abierto conserva y vincula el remito',()=>{
+  const js=read('operator-service-bridge.js'),sigma=read('sigma.js'),data=read('supabase.js');
+  assert.match(js,/async function resolveAssignedServiceForOpenRemito/);
+  assert.match(js,/active\.length!==1/);
+  assert.match(js,/resolverServicioAsignadoParaRemito:resolveAssignedServiceForOpenRemito/);
+  assert.match(js,/let serviceId=sessionStorage\.getItem\('auxilios_phase3_service_id'\).*await resolveAssignedServiceForOpenRemito\(\)/s);
+  assert.match(sigma,/const detected = await window\.resolverServicioAsignadoParaRemito\(\)/);
+  assert.match(sigma,/operatorServiceId = detected\.service_id/);
+  assert.match(data,/datosRemito\.operator_service_id = assigned\.service_id/);
+});
+
 test('el módulo del Chofer se presenta como Servicios con una sola cabecera minimalista',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   assert.match(js,/label\.textContent='Servicios'/);
