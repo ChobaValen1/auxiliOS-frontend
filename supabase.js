@@ -2448,7 +2448,7 @@ async function cargarRefsCumplimiento(driverId, yyyymm) {
 // Devuelve rendiciones + faltante calculado por cada una y agregado por chofer.
 // faltante = max(0, efectivo_esperado - efectivo_declarado - gastos_extra)
 // sobrante = max(0, efectivo_declarado + gastos_extra - efectivo_esperado)
-async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
+async function cargarRendicionesPeriodo(yyyymm, driverId = null, { strict = false } = {}) {
   if (!yyyymm) return { rendiciones: [], porChofer: {} };
   const { desde, hastaExclusive } = _payrollRangoMes(yyyymm);
 
@@ -2464,7 +2464,7 @@ async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
     q,
     _db.from('users').select('user_id, full_name').eq('role_id', 3),
   ]);
-  if (rendRes.error) { console.error('cargarRendicionesPeriodo:', rendRes.error); return { rendiciones: [], porChofer: {} }; }
+  if (rendRes.error) { if(strict) throw rendRes.error; console.error('cargarRendicionesPeriodo:', rendRes.error); return { rendiciones: [], porChofer: {} }; }
   const mapU = {};
   (usuariosRes.data || []).forEach(u => { mapU[u.user_id] = u.full_name; });
 

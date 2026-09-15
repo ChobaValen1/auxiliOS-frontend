@@ -15074,8 +15074,8 @@ function _qrDataUrl(payload) {
   }
 }
 
-function _exportarReciboPDF() {
-  const liq = _reciboActual;
+function _exportarReciboPDF(liquidacion = null) {
+  const liq = liquidacion || _reciboActual;
   if (!liq) return;
   const meta = _reciboMeta(liq);
   const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo) || 0 : 0;

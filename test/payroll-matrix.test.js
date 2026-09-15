@@ -9,3 +9,4 @@ test('invalid commissions do not generate misleading amounts',()=>{assert.throws
 test('receipt escapes user-supplied bonus labels',()=>{assert.match(m.receiptHtml({compensation_snapshot:{km_basis:'real',bonuses:[{name:'<script>',amount:1}]}}),/&lt;script&gt;/);});
 
 test('journey odometers define payable kilometers',()=>{assert.equal(m.journeyKm({status:'closed',km_inicio:1000,km_final:1180}),180);assert.equal(m.journeyKm({status:'open',km_inicio:1000}),null);assert.throws(()=>m.journeyKm({status:'closed',km_inicio:1000,km_final:900}),/odómetros/);assert.throws(()=>m.journeyKm({status:'closed',km_inicio:null,km_final:900}),/odómetros/);});
+test('same sale source id is paid only once',()=>{const rule={commissions:[{concept_id:'battery',source:'extras',mode:'percent',value:10}]};const sale={id:'sale1',concept_id:'battery',amount:150000,currency:'ARS',quantity:1};assert.equal(m.calculate(rule,{extras:[sale,sale]},0).commission,15000);});

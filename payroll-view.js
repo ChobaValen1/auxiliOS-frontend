@@ -4,7 +4,7 @@
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num = v => Number(v) || 0;
   const fmt = v => num(v).toLocaleString('es-AR', {maximumFractionDigits:2});
-  const cash = v => '$' + fmt(v);
+  const cash = v => (num(v)<0?'−$':'$') + fmt(Math.abs(num(v)));
   const date = v => v ? String(v).slice(0,10).split('-').reverse().join('/') : '—';
   let rows = [], active = null, request = 0, filter = '', search = '', detailData = null;
   const cell = (label,value) => `<div><small>${label}</small><strong>${value}</strong></div>`;
@@ -28,11 +28,49 @@
   }
   function summary(l){
     const values=[['Sueldo básico',l.sueldo_basico],[l.compensation_snapshot?.km_basis==='billed'?'Km facturados (histórico)':'Kilómetros de jornadas',l.adic_km],['Servicios',l.adic_serv],['Comisiones',l.commission_total],['Bonos mensuales',l.bonus_monthly],['Presentismo',l.bono_presentismo],['Objetivos',l.bonos_objetivos],['Descuento por rendición',-num(l.ajuste_rendiciones)]];
-    document.getElementById('pv-summary').innerHTML=`<h3>${esc(l.chofer_nombre)}</h3><small>Importes guardados en la liquidación</small>${values.map(([label,v])=>`<div class="pv-payline"><span>${label}</span><b>${cash(v)}</b></div>`).join('')}<div class="pv-payline pv-total"><b>Total a pagar</b><strong>${cash(l.total)}</strong></div><div class="pv-actions"><button class="btn btn-ghost" id="pv-receipt">Ver recibo</button>${l.estado==='pendiente'?'<button class="btn btn-primary" id="pv-approve">Aprobar</button>':l.estado==='aprobada'?'<button class="btn btn-primary" id="pv-pay">Registrar pago</button>':''}</div>`;
-    document.getElementById('pv-receipt').onclick=()=>{closeDetail();_abrirReciboPayroll(l.liquidacion_id);};
+    document.getElementById('pv-summary').innerHTML=`<h3>${esc(l.chofer_nombre)}</h3><small>Importes guardados en la liquidación</small><div id="pv-commission-check"></div>${values.map(([label,v])=>`<div class="pv-payline"><span>${label}${formula(l,label)}</span><b>${cash(v)}</b></div>`).join('')}<div class="pv-payline pv-total"><b>Total a pagar</b><strong>${cash(l.total)}</strong></div><div class="pv-actions"><button class="btn btn-ghost" id="pv-audit-button" disabled>Rendiciones y datos</button>${l.estado==='pendiente'?'<button class="btn btn-primary" id="pv-approve">Aprobar</button>':l.estado==='aprobada'?'<button class="btn btn-primary" id="pv-pay">Registrar pago</button>':''}</div>`;
+    document.getElementById('pv-audit-button').onclick=()=>audit(l);
     const approve=document.getElementById('pv-approve'),pay=document.getElementById('pv-pay');
     if(approve)approve.onclick=()=>{closeDetail();_cambiarEstadoLiq(l.liquidacion_id,'aprobada');};
-    if(pay)pay.onclick=()=>{closeDetail();_marcarPagada(l.liquidacion_id);};
+    if(pay){pay.onclick=()=>{closeDetail();_marcarPagada(l.liquidacion_id);};const back=document.createElement('button');back.className='btn btn-ghost';back.textContent='Volver a pendiente';back.onclick=()=>{closeDetail();_cambiarEstadoLiq(l.liquidacion_id,'pendiente');};pay.parentElement.appendChild(back);}
+  }
+  function formula(l,label){
+    let text='';
+    if(label==='Servicios')text=fmt(l.servicios)+' servicios × '+cash(l.valor_servicio_snapshot??(num(l.servicios)?num(l.adic_serv)/num(l.servicios):0));
+    if(label==='Kilómetros de jornadas'||label==='Km facturados (histórico)')text=fmt(l.km_total)+' km × '+cash(l.valor_km_snapshot??(num(l.km_total)?num(l.adic_km)/num(l.km_total):0));
+    return text?'<small class="pv-formula">'+text+'</small>':'';
+  }
+  function compareCash(data,rendiciones){
+    const dates=new Set([...(data?.logs||[]).map(j=>j.log_date),...rendiciones.map(r=>r.fecha)]);
+    return [...dates].sort().map(fecha=>{const ids=new Set((data?.logs||[]).filter(j=>j.log_date===fecha).map(j=>j.log_id));const calculado=(data?.services||[]).filter(s=>ids.has(s.r.log_id)).reduce((n,s)=>n+s.cash,0);const reports=rendiciones.filter(r=>r.fecha===fecha);const declarado=reports.length?reports.reduce((n,r)=>n+num(r.efectivo_declarado),0):null;const gastos=reports.reduce((n,r)=>n+num(r.gastos_extra),0);return {fecha,calculado,declarado,gastos,delta:declarado===null?null:declarado+gastos-calculado};});
+  }
+  async function audit(l){
+    const root=document.getElementById('pv-audit'),detail=document.getElementById('pv-detail'),token=request;
+    detail.hidden=true;root.hidden=false;root.innerHTML='<button class="btn btn-ghost" id="pv-back">‹ Volver a jornadas</button><div id="pv-audit-content" role="status">Cargando rendiciones…</div>';
+    document.getElementById('pv-back').onclick=()=>{root.hidden=true;detail.hidden=false;};
+    const body=document.getElementById('pv-audit-content');
+    const stamp=v=>v?new Date(v).toLocaleString('es-AR'):'—';
+    const meta='<h3>Datos del recibo</h3><dl class="pv-metadata">'+[['N.º',String(l.liquidacion_id).slice(-8).toUpperCase()],['Emisión',stamp(l.generada_at)],['Generado por',l.generador_nombre],['Aprobación',stamp(l.aprobada_at)],['Aprobado por',l.aprobador_nombre],['Pago',stamp(l.pagada_at)],['Método de pago',l.pagada_metodo],['Notas',l.notas]].map(([k,v])=>'<dt>'+k+'</dt><dd>'+esc(v||'—')+'</dd>').join('')+'</dl>';
+    try{
+      const [{rendiciones},cumplimientos]=await Promise.all([cargarRendicionesPeriodo(l.periodo_yyyymm,l.driver_id,{strict:true}),cargarCumplimientos(l.driver_id,l.periodo_yyyymm)]);
+      const efectivos=compareCash(detailData,rendiciones);
+      if(token!==request)return;
+      const diff=rendiciones.reduce((n,r)=>n+num(r._diff),0),missing=Math.max(0,-diff),discount=missing>=PAYROLL_TOLERANCIA_RENDICION?missing:0;
+      body.innerHTML='<h3>Rendición de efectivo</h3><p>El efectivo cobrado se rinde. Solo el faltante neto, considerando gastos reconocidos y la tolerancia, puede descontarse del sueldo.</p><div class="pv-payline"><span>Descuento aplicado</span><b>'+cash(l.ajuste_rendiciones)+'</b></div><div class="pv-payline"><span>Descuento según rendiciones actuales</span><b>'+cash(discount)+'</b></div>'+(Math.abs(discount-num(l.ajuste_rendiciones))>.01?'<p class="pv-review-warning">Hay diferencias con el importe guardado. Revisá las rendiciones antes de regenerar una liquidación pendiente.</p>':'')+'<table class="pv-services"><thead><tr><th>Fecha</th><th>Esperado</th><th>Entregado</th><th>Gastos</th><th>Diferencia</th></tr></thead><tbody>'+rendiciones.map(r=>'<tr><td>'+date(r.fecha)+'</td><td>'+cash(r.efectivo_esperado)+'</td><td>'+cash(r.efectivo_declarado)+'</td><td>'+cash(r.gastos_extra)+'</td><td>'+cash(r._diff)+'</td></tr>').join('')+'</tbody></table>'+(!rendiciones.length?'<p>Sin rendiciones cargadas. Esto no confirma que todo el efectivo haya sido entregado.</p>':'')+'<h3>Efectivo esperado frente a entregado</h3><table class="pv-services"><thead><tr><th>Fecha</th><th>Esperado</th><th>Entregado</th><th>Diferencia</th></tr></thead><tbody>'+efectivos.map(e=>'<tr><td>'+date(e.fecha)+'</td><td>'+cash(e.calculado)+'</td><td>'+(e.declarado===null?'Sin rendir':cash(e.declarado))+'</td><td>'+(e.delta===null?'Sin rendir':cash(e.delta))+'</td></tr>').join('')+'</tbody></table><h3>Objetivos históricos</h3>'+cumplimientos.map(c=>'<p>'+date(c.fecha)+' · '+esc(c.payroll_objetivos?.nombre||'Objetivo')+' · '+fmt(c.cantidad)+' · '+cash(c.bonus_calculado)+'</p>').join('')+'<h3>Bonos y comisiones</h3>'+PayrollMatrix.receiptHtml(l)+'<p>Los objetivos históricos se conservan: '+cash(l.bonos_objetivos)+'. Las comisiones nuevas se calculan desde ventas según el esquema del chofer.</p>'+meta;
+    }catch(e){if(token===request)body.innerHTML='<p role="alert">No se pudieron cargar las rendiciones: '+esc(e.message)+'</p>'+meta;}
+  }
+  async function checkCommissions(l,token){
+    const matrix=l.compensation_snapshot;
+    if(!matrix?.commissions?.length)return;
+    const box=document.getElementById('pv-commission-check');
+    try{
+      const period=String(l.periodo_yyyymm),year=Number(period.slice(0,4)),month=Number(period.slice(4));
+      const r=await _db.rpc('get_payroll_matrix_sources',{p_driver:l.driver_id,p_from:year+'-'+String(month).padStart(2,'0')+'-01',p_until:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10)});if(r.error)throw r.error;
+      const result=PayrollMatrix.calculate(matrix,r.data,num(l.km_total));
+      const ids=details=>details.flatMap(d=>(d.records||[]).map(id=>d.source+':'+id)).sort().join('|');
+      if(token!==request)return;
+      if(Math.abs(result.commission-num(l.commission_total))>.01||ids(result.snapshot.commission_details)!==ids(matrix.commission_details||[]))box.innerHTML='<p class="pv-review-warning">Ventas modificadas: revisar comisiones. Guardado '+cash(l.commission_total)+' · cálculo actual '+cash(result.commission)+'.</p>';
+    }catch(e){if(token===request)box.innerHTML='<p class="pv-review-warning">No se pudo verificar si cambiaron las ventas. '+esc(e.message)+'</p>';}
   }
   async function paged(build){let out=[];for(let offset=0;;offset+=500){const r=await build().range(offset,offset+499);if(r.error)throw r.error;out.push(...(r.data||[]));if((r.data||[]).length<500)return out;}}
   async function load(l){
@@ -79,11 +117,12 @@
     let modal=document.getElementById('pv-driver-modal');
     if(!modal){modal=document.createElement('dialog');modal.id='pv-driver-modal';modal.setAttribute('aria-labelledby','pv-modal-title');document.body.appendChild(modal);modal.addEventListener('cancel',()=>{request++;});modal.addEventListener('click',e=>{if(e.target===modal)closeDetail();});}
     const period=String(l.periodo_yyyymm),month=new Date(period.slice(0,4)+'-'+period.slice(4)+'-15T12:00:00').toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-    modal.innerHTML=`<header class="pv-modal-header"><div><h2 id="pv-modal-title">${esc(l.chofer_nombre)}</h2><p>${esc(l.chofer_legajo||'')} · ${esc(month)}</p></div><button class="btn btn-ghost" id="pv-modal-close" aria-label="Cerrar detalle">×</button></header><div class="pv-modal-body"><div class="pv-modal-columns"><section id="pv-detail"></section><aside class="pv-salary"><h3>Liquidación y recibo</h3><div id="pv-summary"></div><div class="pv-export-footer"><button class="btn btn-ghost" id="pv-export-xlsx" disabled>Exportar Excel</button></div></aside></div></div>`;
+    modal.innerHTML=`<header class="pv-modal-header"><div><h2 id="pv-modal-title">${esc(l.chofer_nombre)}</h2><p>${esc(l.chofer_legajo||'')} · ${esc(month)}</p></div><button class="btn btn-ghost" id="pv-modal-close" aria-label="Cerrar detalle">×</button></header><div class="pv-modal-body"><div class="pv-modal-columns"><section id="pv-detail"></section><section id="pv-audit" hidden></section><aside class="pv-salary"><h3>Liquidación y recibo</h3><div id="pv-summary"></div><div class="pv-export-footer"><button class="btn btn-ghost" id="pv-export-xlsx" disabled>Exportar Excel</button><button class="btn btn-ghost" id="pv-pdf">Imprimir PDF</button></div></aside></div></div>`;
     document.getElementById('pv-modal-close').onclick=closeDetail;
     if(!modal.open)modal.showModal();
     detailData=null;
     document.getElementById('pv-export-xlsx').onclick=()=>exportDetail('xlsx');
+    document.getElementById('pv-pdf').onclick=()=>_exportarReciboPDF(l);
     summary(l);
     return document.getElementById('pv-detail');
   }
@@ -98,10 +137,10 @@
   }
   async function open(id){
     const l=rows.find(x=>x.liquidacion_id===id);if(!l)return;active=l;cards();
-    const root=createDetail(l),token=++request;root.innerHTML='<p role="status">Cargando jornadas, servicios y cobros…</p>';
+    const root=createDetail(l),token=++request;checkCommissions(l,token);root.innerHTML='<p role="status">Cargando jornadas, servicios y cobros…</p>';
     try{const data=await load(l);if(token!==request)return;const services=data.services.map(r=>serviceData(r,data.addons.get(r.remito_id),l,data.saleIds));
       detailData={...data,services,l};
-      document.getElementById('pv-export-xlsx').disabled=false;
+      document.getElementById('pv-export-xlsx').disabled=false;document.getElementById('pv-audit-button').disabled=false;
       root.innerHTML=`<div class="pv-detail-title"><div><h3>Jornadas de ${esc(l.chofer_nombre)}</h3><p>KM a liquidar = odómetro final − inicial. Los KM de los servicios son informativos.</p></div></div><div class="pv-journey-head"><span>Fecha</span><span>Móvil</span><span>Km jornada</span><span>Servicios</span><span>Ventas / comisiones</span><span>Efectivo cobrado</span></div><div class="pv-journey-list">${data.logs.map(j=>journey(j,services.filter(s=>s.r.log_id===j.log_id))).join('')||'<p>No hay jornadas en este mes.</p>'}</div>${renderTotals(data.logs,services,l)}<p class="pv-note">Datos operativos actuales. Los importes aprobados se conservan en el recibo. Efectivo cobrado para rendir: ${cash(services.reduce((n,s)=>n+s.cash,0))}; consultá Rendiciones para conocer lo ya presentado.</p>${num(l.commission_total)&&!l.compensation_snapshot?.commission_details?.some(d=>d.record_details)?'<p class="pv-note">Esta liquidación anterior no tiene distribución de comisiones por servicio. El total guardado se consulta en el recibo.</p>':''}`;
       root.querySelectorAll('[data-remito]').forEach(b=>b.onclick=()=>{closeDetail();abrirDetalleRemitoAdmin(Number(b.dataset.remito));});
     }catch(error){if(token!==request)return;root.innerHTML=`<p role="alert">No se pudo cargar el detalle: ${esc(error.message)}</p><button class="btn btn-ghost" id="pv-retry">Reintentar</button>`;document.getElementById('pv-retry').onclick=()=>open(id);}
@@ -129,5 +168,5 @@
     }catch(e){toast(e.message,'error');}
   }
   function moveMonth(delta){const input=document.getElementById('pl-mes-periodo');if(!input.value)return;const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+delta,1));input.value=d.toISOString().slice(0,7);_cargarLiquidacionesMes();}
-  window.PayrollView={csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow};
+  window.PayrollView={compareCash,formula,csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow};
 })();
