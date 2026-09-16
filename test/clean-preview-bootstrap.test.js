@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'driver-remito-relink-v82-20260915'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'admin-payroll-filters-v83-20260916'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });

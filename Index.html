@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=driver-remito-relink-v82-20260915">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=driver-remito-relink-v82-20260915">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=driver-remito-relink-v82-20260915">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=admin-payroll-filters-v83-20260916">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=admin-payroll-filters-v83-20260916">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=admin-payroll-filters-v83-20260916">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=driver-remito-relink-v82-20260915" defer></script>
-<script src="supabase.js?v=driver-remito-relink-v82-20260915" defer></script>
+<script src="config.js?v=admin-payroll-filters-v83-20260916" defer></script>
+<script src="supabase.js?v=admin-payroll-filters-v83-20260916" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=driver-remito-relink-v82-20260915" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=driver-remito-relink-v82-20260915" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=driver-remito-relink-v82-20260915" defer></script>
-<script src="sigma.js?v=driver-remito-relink-v82-20260915" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=admin-payroll-filters-v83-20260916" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=admin-payroll-filters-v83-20260916" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=admin-payroll-filters-v83-20260916" defer></script>
+<script src="sigma.js?v=admin-payroll-filters-v83-20260916" defer></script>
 </head>
 <body>
 
@@ -1982,7 +1982,7 @@
     padding: 14px 16px;
     margin-bottom: 16px;
     display: grid;
-    grid-template-columns: 2fr 1.4fr 1.4fr 1.2fr 1fr 1fr auto;
+    grid-template-columns: 2fr 1.5fr 1.5fr 1.1fr 1.4fr auto;
     gap: 10px;
     align-items: end;
   }
@@ -2011,6 +2011,24 @@
     outline: none;
     border-color: var(--accent);
   }
+  #screen-jornadas-admin .jadmin-picker { position: relative; }
+  #screen-jornadas-admin .jadmin-picker summary {
+    min-height: 32px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg, #111420); color: var(--text); font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; list-style: none;
+  }
+  #screen-jornadas-admin .jadmin-picker summary::-webkit-details-marker { display:none; }
+  #screen-jornadas-admin .jadmin-picker[open] summary { border-color: var(--accent); }
+  #screen-jornadas-admin .jadmin-picker-panel {
+    position: absolute; z-index: 30; top: calc(100% + 5px); left: 0; min-width: 100%; max-height: 270px;
+    overflow: auto; padding: 8px; border: 1px solid var(--border); border-radius: 8px;
+    background: #171d2a; box-shadow: 0 14px 34px #0008;
+  }
+  #screen-jornadas-admin .jadmin-option { display:flex; align-items:center; gap:8px; padding:7px 6px; color:var(--text); font-size:11px; cursor:pointer; white-space:nowrap; }
+  #screen-jornadas-admin .jadmin-option:hover { background:#ffffff0a; }
+  #screen-jornadas-admin .jadmin-option input { width:auto; accent-color:var(--accent); }
+  #screen-jornadas-admin .jadmin-period-panel { min-width:310px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #screen-jornadas-admin .jadmin-period-panel label { margin:0; }
   #screen-jornadas-admin .filtros .clear {
     background: transparent;
     border: 1px solid var(--border);
@@ -2028,8 +2046,11 @@
   #screen-jornadas-admin .chips {
     display: flex;
     gap: 6px;
-    margin-bottom: 16px;
+    margin: 4px 0 0;
     flex-wrap: wrap;
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
   }
   #screen-jornadas-admin .chip {
     background: var(--card);
@@ -2269,16 +2290,18 @@
       <input type="search" id="jadmin-f-q" placeholder="Buscar por chofer o patente…">
     </div>
     <div>
-      <label>Chofer</label>
-      <select id="jadmin-f-chofer">
-        <option value="">Todos los choferes</option>
-      </select>
+      <label>Choferes</label>
+      <details class="jadmin-picker" id="jadmin-f-chofer">
+        <summary><span id="jadmin-f-chofer-label">Todos los choferes</span><span>⌄</span></summary>
+        <div class="jadmin-picker-panel" id="jadmin-f-chofer-options"></div>
+      </details>
     </div>
     <div>
-      <label>Camión</label>
-      <select id="jadmin-f-camion">
-        <option value="">Todos los camiones</option>
-      </select>
+      <label>Móviles</label>
+      <details class="jadmin-picker" id="jadmin-f-camion">
+        <summary><span id="jadmin-f-camion-label">Todos los móviles</span><span>⌄</span></summary>
+        <div class="jadmin-picker-panel" id="jadmin-f-camion-options"></div>
+      </details>
     </div>
     <div>
       <label>Estado</label>
@@ -2289,18 +2312,18 @@
       </select>
     </div>
     <div>
-      <label>Desde</label>
-      <input type="date" id="jadmin-f-desde">
-    </div>
-    <div>
-      <label>Hasta</label>
-      <input type="date" id="jadmin-f-hasta">
+      <label>Período</label>
+      <details class="jadmin-picker" id="jadmin-f-periodo">
+        <summary><span id="jadmin-f-periodo-label">Seleccionar período</span><span>⌄</span></summary>
+        <div class="jadmin-picker-panel jadmin-period-panel">
+          <label>Desde<input type="date" id="jadmin-f-desde"></label>
+          <label>Hasta<input type="date" id="jadmin-f-hasta"></label>
+        </div>
+      </details>
     </div>
     <button class="clear" id="jadmin-f-clear">Limpiar</button>
-  </div>
-
-  <!-- CHIPS -->
-  <div class="chips">
+    <!-- ACCESOS RÁPIDOS -->
+    <div class="chips">
     <span class="chip active" data-chip="todas">Todas <span class="cnt"></span></span>
     <span class="chip" data-chip="hoy">Hoy <span class="cnt"></span></span>
     <span class="chip" data-chip="semana">Esta semana <span class="cnt"></span></span>
@@ -2309,6 +2332,7 @@
     <span class="chip" data-chip="taller">En taller <span class="cnt"></span></span>
     <span class="chip" data-chip="incidentes">Con incidentes <span class="cnt"></span></span>
     <span class="chip" data-chip="rendicion">Faltantes rendición <span class="cnt"></span></span>
+    </div>
   </div>
 
   <!-- TABLA -->

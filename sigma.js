@@ -15400,8 +15400,8 @@ let _jadminState = {
   // Filtros / paginación
   desde: null,          // 'YYYY-MM-DD'
   hasta: null,          // 'YYYY-MM-DD'
-  driverId: null,
-  truckId: null,
+  driverIds: [],
+  truckIds: [],
   estado: '',           // '' | 'open' | 'closed'
   q: '',                // búsqueda libre client-side
   offset: 0,
@@ -15526,33 +15526,46 @@ async function initJornadasAdmin() {
     _jadminState.ready = true;
   }
 
-  // Refrescar dropdown values según state
-  if ($('jadmin-f-chofer')) $('jadmin-f-chofer').value = _jadminState.driverId || '';
-  if ($('jadmin-f-camion')) $('jadmin-f-camion').value = _jadminState.truckId || '';
+  _jadminSyncPicker('chofer');
+  _jadminSyncPicker('camion');
+  _jadminSyncPeriodLabel();
 
   // Cargar datos
   await _jadminReload();
 }
 
 function _jadminPopularDropdowns() {
-  const selCh = document.getElementById('jadmin-f-chofer');
-  const selCa = document.getElementById('jadmin-f-camion');
-  if (selCh) {
-    const opts = ['<option value="">Todos los choferes</option>']
-      .concat(_jadminState.choferes.map(c => {
-        const lbl = c.legajo ? `${_escHtml(c.full_name)} (Leg. ${_escHtml(c.legajo)})` : _escHtml(c.full_name);
-        return `<option value="${_escHtml(c.user_id)}">${lbl}</option>`;
-      }));
-    selCh.innerHTML = opts.join('');
-  }
-  if (selCa) {
-    const opts = ['<option value="">Todos los camiones</option>']
-      .concat(_jadminState.camiones.map(t => {
-        const mov = t.numero_interno ? ` · #${_escHtml(t.numero_interno)}` : '';
-        return `<option value="${_escHtml(t.truck_id)}">${_escHtml(t.plate)}${mov}</option>`;
-      }));
-    selCa.innerHTML = opts.join('');
-  }
+  const drivers = document.getElementById('jadmin-f-chofer-options');
+  const trucks = document.getElementById('jadmin-f-camion-options');
+  if (drivers) drivers.innerHTML = _jadminState.choferes.map(c => {
+    const lbl = c.legajo ? `${_escHtml(c.full_name)} (Leg. ${_escHtml(c.legajo)})` : _escHtml(c.full_name);
+    return `<label class="jadmin-option"><input type="checkbox" value="${_escHtml(c.user_id)}"> <span>${lbl}</span></label>`;
+  }).join('') || '<span class="jadmin-option">Sin choferes disponibles</span>';
+  if (trucks) trucks.innerHTML = _jadminState.camiones.map(t => {
+    const mov = t.numero_interno ? ` · #${_escHtml(t.numero_interno)}` : '';
+    return `<label class="jadmin-option"><input type="checkbox" value="${_escHtml(t.truck_id)}"> <span>${_escHtml(t.plate)}${mov}</span></label>`;
+  }).join('') || '<span class="jadmin-option">Sin móviles disponibles</span>';
+}
+
+function _jadminSyncPicker(kind) {
+  const isDriver = kind === 'chofer';
+  const values = isDriver ? _jadminState.driverIds : _jadminState.truckIds;
+  const options = document.getElementById(`jadmin-f-${kind}-options`);
+  if (options) options.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = values.includes(input.value); });
+  const label = document.getElementById(`jadmin-f-${kind}-label`);
+  if (!label) return;
+  if (!values.length) label.textContent = isDriver ? 'Todos los choferes' : 'Todos los móviles';
+  else if (values.length === 1) {
+    const item = isDriver ? _jadminState.choferes.find(x => String(x.user_id) === values[0]) : _jadminState.camiones.find(x => String(x.truck_id) === values[0]);
+    label.textContent = isDriver ? (item?.full_name || '1 chofer') : (item?.plate || '1 móvil');
+  } else label.textContent = `${values.length} ${isDriver ? 'choferes' : 'móviles'}`;
+}
+
+function _jadminSyncPeriodLabel() {
+  const label = document.getElementById('jadmin-f-periodo-label');
+  if (!label) return;
+  const short = value => value ? value.split('-').reverse().join('/') : '—';
+  label.textContent = `${short(_jadminState.desde)} — ${short(_jadminState.hasta)}`;
 }
 
 function _jadminWireHandlers() {
@@ -15572,17 +15585,19 @@ function _jadminWireHandlers() {
   }
 
   // Chofer
-  const selCh = $('jadmin-f-chofer');
+  const selCh = $('jadmin-f-chofer-options');
   if (selCh) selCh.addEventListener('change', () => {
-    _jadminState.driverId = selCh.value || null;
+    _jadminState.driverIds = [...selCh.querySelectorAll('input:checked')].map(x => x.value);
+    _jadminSyncPicker('chofer');
     _jadminState.offset = 0;
     _jadminReload();
   });
 
   // Camión
-  const selCa = $('jadmin-f-camion');
+  const selCa = $('jadmin-f-camion-options');
   if (selCa) selCa.addEventListener('change', () => {
-    _jadminState.truckId = selCa.value || null;
+    _jadminState.truckIds = [...selCa.querySelectorAll('input:checked')].map(x => x.value);
+    _jadminSyncPicker('camion');
     _jadminState.offset = 0;
     _jadminReload();
   });
@@ -15599,12 +15614,14 @@ function _jadminWireHandlers() {
   const inpD = $('jadmin-f-desde');
   if (inpD) inpD.addEventListener('change', () => {
     _jadminState.desde = inpD.value || null;
+    _jadminSyncPeriodLabel();
     _jadminState.offset = 0;
     _jadminReload();
   });
   const inpH = $('jadmin-f-hasta');
   if (inpH) inpH.addEventListener('change', () => {
     _jadminState.hasta = inpH.value || null;
+    _jadminSyncPeriodLabel();
     _jadminState.offset = 0;
     _jadminReload();
   });
@@ -15687,8 +15704,8 @@ function _jadminActualizarClasesSort() {
 function _jadminResetFiltros() {
   _jadminState.desde = _jadminPrimerDiaMes();
   _jadminState.hasta = _jadminHoy();
-  _jadminState.driverId = null;
-  _jadminState.truckId = null;
+  _jadminState.driverIds = [];
+  _jadminState.truckIds = [];
   _jadminState.estado = '';
   _jadminState.q = '';
   _jadminState.offset = 0;
@@ -15700,8 +15717,9 @@ function _jadminResetFiltros() {
   const $ = (id) => document.getElementById(id);
   if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde;
   if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta;
-  if ($('jadmin-f-chofer')) $('jadmin-f-chofer').value = '';
-  if ($('jadmin-f-camion')) $('jadmin-f-camion').value = '';
+  _jadminSyncPicker('chofer');
+  _jadminSyncPicker('camion');
+  _jadminSyncPeriodLabel();
   if ($('jadmin-f-estado')) $('jadmin-f-estado').value = '';
   if ($('jadmin-f-q')) $('jadmin-f-q').value = '';
 
@@ -15765,6 +15783,7 @@ function _jadminAplicarChip(nombre) {
   if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde || '';
   if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta || '';
   if ($('jadmin-f-estado')) $('jadmin-f-estado').value = _jadminState.estado || '';
+  _jadminSyncPeriodLabel();
 
   _jadminReload();
 }
@@ -15783,8 +15802,8 @@ async function _jadminReload() {
     const kpiFiltros = {
       desde: _jadminState.desde,
       hasta: _jadminState.hasta,
-      driverId: _jadminState.driverId,
-      truckId: _jadminState.truckId,
+      driverIds: _jadminState.driverIds,
+      truckIds: _jadminState.truckIds,
     };
 
     // Tabla

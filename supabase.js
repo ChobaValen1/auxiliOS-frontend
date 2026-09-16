@@ -3649,6 +3649,8 @@ async function cargarJornadasAdmin(filtros = {}) {
     hasta       = null,   // 'YYYY-MM-DD' inclusive
     driverId    = null,
     truckId     = null,
+    driverIds   = [],
+    truckIds    = [],
     estado      = null,   // 'open' | 'closed'
     q           = '',
     offset      = 0,
@@ -3676,8 +3678,12 @@ async function cargarJornadasAdmin(filtros = {}) {
 
   if (desde)    query = query.gte('log_date', desde);
   if (hasta)    query = query.lte('log_date', hasta);
-  if (driverId) query = query.eq('driver_id', driverId);
-  if (truckId)  query = query.eq('truck_id', truckId);
+  const selectedDrivers = (Array.isArray(driverIds) ? driverIds : []).filter(Boolean);
+  const selectedTrucks = (Array.isArray(truckIds) ? truckIds : []).filter(Boolean);
+  if (selectedDrivers.length) query = query.in('driver_id', selectedDrivers);
+  else if (driverId) query = query.eq('driver_id', driverId);
+  if (selectedTrucks.length) query = query.in('truck_id', selectedTrucks);
+  else if (truckId) query = query.eq('truck_id', truckId);
   if (estado)   query = query.eq('status', estado);
 
   const { data: logs, error, count } = await query;
@@ -3686,8 +3692,8 @@ async function cargarJornadasAdmin(filtros = {}) {
   const logIds = (logs || []).map(l => l.log_id);
   if (!logIds.length) return { data: [], total: count || 0 };
 
-  const driverIds = [...new Set(logs.map(l => l.driver_id))];
-  const truckIds  = [...new Set(logs.map(l => l.truck_id))];
+  const pageDriverIds = [...new Set(logs.map(l => l.driver_id))];
+  const pageTruckIds  = [...new Set(logs.map(l => l.truck_id))];
   const fechaMin  = logs.reduce((m, l) => l.log_date < m ? l.log_date : m, logs[0].log_date);
   const fechaMax  = logs.reduce((m, l) => l.log_date > m ? l.log_date : m, logs[0].log_date);
 
@@ -3703,18 +3709,18 @@ async function cargarJornadasAdmin(filtros = {}) {
     // Fuel: correlacionar por truck_id + fuel_date (log_id suele venir NULL)
     _db.from('fuel_records')
        .select('log_id, truck_id, fuel_date, total_cost, liters')
-       .in('truck_id', truckIds)
+       .in('truck_id', pageTruckIds)
        .gte('fuel_date', fechaMin)
        .lte('fuel_date', fechaMax),
     // Tire: idem
     _db.from('tire_checks')
        .select('log_id, truck_id, check_date')
-       .in('truck_id', truckIds)
+       .in('truck_id', pageTruckIds)
        .gte('check_date', fechaMin)
        .lte('check_date', fechaMax),
     _db.from('rendicion_cierre')
        .select('driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, admin_status')
-       .in('driver_id', driverIds)
+       .in('driver_id', pageDriverIds)
        .gte('fecha', fechaMin)
        .lte('fecha', fechaMax),
   ]);
@@ -3798,19 +3804,25 @@ async function cargarJornadasAdmin(filtros = {}) {
 }
 
 async function cargarKpisJornadasAdmin(filtros = {}) {
-  const { desde = null, hasta = null, driverId = null, truckId = null } = filtros;
+  const { desde = null, hasta = null, driverId = null, truckId = null, driverIds = [], truckIds = [] } = filtros;
+  const selectedDrivers = (Array.isArray(driverIds) ? driverIds : []).filter(Boolean);
+  const selectedTrucks = (Array.isArray(truckIds) ? truckIds : []).filter(Boolean);
 
   const withRange = (q) => {
     if (desde)    q = q.gte('log_date', desde);
     if (hasta)    q = q.lte('log_date', hasta);
-    if (driverId) q = q.eq('driver_id', driverId);
-    if (truckId)  q = q.eq('truck_id', truckId);
+    if (selectedDrivers.length) q = q.in('driver_id', selectedDrivers);
+    else if (driverId) q = q.eq('driver_id', driverId);
+    if (selectedTrucks.length) q = q.in('truck_id', selectedTrucks);
+    else if (truckId) q = q.eq('truck_id', truckId);
     return q;
   };
 
   let abiertasQuery = _db.from('daily_logs').select('log_id', { count: 'exact', head: true }).eq('status', 'open');
-  if (driverId) abiertasQuery = abiertasQuery.eq('driver_id', driverId);
-  if (truckId)  abiertasQuery = abiertasQuery.eq('truck_id', truckId);
+  if (selectedDrivers.length) abiertasQuery = abiertasQuery.in('driver_id', selectedDrivers);
+  else if (driverId) abiertasQuery = abiertasQuery.eq('driver_id', driverId);
+  if (selectedTrucks.length) abiertasQuery = abiertasQuery.in('truck_id', selectedTrucks);
+  else if (truckId) abiertasQuery = abiertasQuery.eq('truck_id', truckId);
 
   const [abiertasRes, choferesRes, mesRes] = await Promise.all([
     abiertasQuery,
