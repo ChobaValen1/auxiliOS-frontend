@@ -11179,14 +11179,14 @@ function abrirResetPassword(userId, nombre) {
       </div>
       <div class="modal-body">
         <p style="font-size:13px;line-height:1.5;color:var(--muted);margin:0">
-          Se enviará un enlace seguro al correo registrado para que la persona defina
-          una nueva contraseña. Administración no podrá verla ni elegirla.
+          Se generará un enlace temporal para que la persona defina una nueva contraseña.
+          Administración podrá copiarlo, pero no verá ni elegirá la contraseña.
         </p>
         <div id="rp-error" style="display:none;margin-top:10px;color:var(--red);font-size:12px"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-reset-pass').remove()">Cancelar</button>
-        <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Enviar enlace</button>
+        <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Generar enlace</button>
       </div>
     </div>`;
   modal.style.zIndex = '10000001';
@@ -11209,8 +11209,26 @@ async function confirmarResetPassword(userId) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || data.message || 'No se pudo enviar el enlace. Intentá nuevamente.');
-    document.getElementById('modal-reset-pass').remove();
-    toast('Enlace de recuperación enviado ✓', 'success');
+    if (!data.action_link) throw new Error('El servidor no devolvió un enlace válido.');
+    const body = document.querySelector('#modal-reset-pass .modal-body');
+    const footer = document.querySelector('#modal-reset-pass .modal-footer');
+    if (body) {
+      body.innerHTML = `
+        <p style="font-size:13px;line-height:1.5;color:var(--muted);margin:0 0 12px">
+          Compartí este enlace únicamente con la persona indicada. Es temporal y permite definir una contraseña nueva.
+        </p>
+        <label class="form-label" for="rp-action-link">Enlace de recuperación</label>
+        <input class="form-input" id="rp-action-link" type="text" readonly>
+        <div id="rp-copy-status" style="min-height:18px;margin-top:8px;color:var(--green);font-size:12px"></div>`;
+      const linkInput = document.getElementById('rp-action-link');
+      if (linkInput) linkInput.value = data.action_link;
+    }
+    if (footer) {
+      footer.innerHTML = `
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-reset-pass').remove()">Cerrar</button>
+        <button class="btn btn-primary" onclick="copiarLinkRecuperacion()">Copiar enlace</button>`;
+    }
+    toast('Enlace de recuperación generado ✓', 'success');
   } catch (err) {
     if (errorEl) {
       errorEl.textContent = err instanceof TypeError
@@ -11218,7 +11236,21 @@ async function confirmarResetPassword(userId) {
         : err.message;
       errorEl.style.display = 'block';
     }
-    if (btn) { btn.textContent = 'Enviar enlace'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Generar enlace'; btn.disabled = false; }
+  }
+}
+
+async function copiarLinkRecuperacion() {
+  const input = document.getElementById('rp-action-link');
+  const status = document.getElementById('rp-copy-status');
+  if (!input?.value) return;
+  try {
+    await navigator.clipboard.writeText(input.value);
+    if (status) status.textContent = 'Enlace copiado al portapapeles.';
+  } catch (_) {
+    input.focus();
+    input.select();
+    if (status) status.textContent = 'Seleccionado. Presioná Ctrl+C para copiar.';
   }
 }
 

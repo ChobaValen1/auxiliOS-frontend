@@ -14,6 +14,8 @@ function harness(responses, refresh = { data: { session: { access_token: 'fresh'
     'rp-error': { style: {} }, 'rp-btn-confirmar': {},
     'modal-reset-pass': { remove: () => { removed = true; } },
   };
+  const modalBody = { innerHTML: '' };
+  const modalFooter = { innerHTML: '' };
   const context = vm.createContext({
     ENV: { ADMIN_API_BASE_URL: 'https://admin.example' },
     SUPABASE_KEY: 'public-key',
@@ -26,16 +28,23 @@ function harness(responses, refresh = { data: { session: { access_token: 'fresh'
       return response;
     },
     TypeError,
-    document: { getElementById: id => elements[id] },
+    document: {
+      getElementById: id => elements[id],
+      querySelector: selector => selector.includes('.modal-body') ? modalBody : modalFooter,
+    },
     toast: message => notices.push(message),
   });
   vm.runInContext(helper + reset, context);
   return { context, calls, notices, elements, get refreshes() { return refreshes; }, get removed() { return removed; } };
 }
-const response = (status, body = {}) => ({ status, ok: status < 400, json: async () => body });
+const response = (status, body = status < 400 ? { ok: true, action_link: 'https://example.com/recover?token=secret' } : {}) =>
+  ({ status, ok: status < 400, json: async () => body });
 
 test('recovery renews rejected session once, preserving target and using new JWT', async () => {
-  const h = harness([response(401, { message: 'Invalid JWT' }), response(200, { ok: true })]);
+  const h = harness([
+    response(401, { message: 'Invalid JWT' }),
+    response(200, { ok: true, action_link: 'https://example.com/recover?token=secret' }),
+  ]);
   await h.context.confirmarResetPassword('target-user');
   assert.equal(h.refreshes, 1);
   assert.equal(h.calls.length, 2);
@@ -43,7 +52,7 @@ test('recovery renews rejected session once, preserving target and using new JWT
   assert.equal(h.calls[1].options.headers.Authorization, 'Bearer fresh');
   assert.equal(h.calls[1].options.headers.apikey, 'public-key');
   assert.equal(h.calls[1].options.body, h.calls[0].options.body);
-  assert.equal(h.removed, true);
+  assert.equal(h.removed, false);
   assert.equal(h.notices.length, 1);
 });
 
@@ -52,7 +61,7 @@ test('valid session sends only one request', async () => {
   await h.context.confirmarResetPassword('target-user');
   assert.equal(h.refreshes, 0);
   assert.equal(h.calls.length, 1);
-  assert.equal(h.removed, true);
+  assert.equal(h.removed, false);
 });
 
 test('expired refresh and repeated 401 retain the modal and explain signing in again', async () => {

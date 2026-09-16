@@ -71,20 +71,13 @@ function endpoint(req: Request) {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+if (!supabaseUrl || !serviceRoleKey) {
   throw new Error("Faltan variables internas de Supabase");
 }
 
 const admin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
-
-function publicClient() {
-  return createClient(supabaseUrl!, anonKey!, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-}
 
 async function requireAdmin(req: Request) {
   const token = bearerToken(req);
@@ -213,18 +206,21 @@ async function sendPasswordReset(req: Request, requestId: string) {
 
   const redirectTo = Deno.env.get("APP_PASSWORD_RESET_REDIRECT") ||
     "https://auxilios-arg.vercel.app";
-  const { error } = await publicClient().auth.resetPasswordForEmail(profile.email, {
-    redirectTo,
+  const { data: recovery, error } = await admin.auth.admin.generateLink({
+    type: "recovery",
+    email: profile.email,
+    options: { redirectTo },
   });
-  if (error) {
+  const actionLink = recovery?.properties?.action_link;
+  if (error || !actionLink) {
     console.error(JSON.stringify({
-      event: "password_reset_email_failed",
+      event: "password_reset_link_failed",
       requestId,
       actorId: auth.userId,
       targetUserId: userId,
-      reason: error.message,
+      reason: error?.message || "missing_action_link",
     }));
-    return json(req, 502, { error: "No se pudo enviar el correo de recuperación" });
+    return json(req, 502, { error: "No se pudo generar el enlace de recuperación" });
   }
 
   console.info(JSON.stringify({
@@ -233,7 +229,7 @@ async function sendPasswordReset(req: Request, requestId: string) {
     actorId: auth.userId,
     targetUserId: userId,
   }));
-  return json(req, 200, { ok: true });
+  return json(req, 200, { ok: true, action_link: actionLink });
 }
 
 Deno.serve(async (req: Request) => {
