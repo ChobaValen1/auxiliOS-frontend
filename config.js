@@ -1,9 +1,10 @@
 const ENV = {
-  API_BASE_URL: 'https://auxilios.up.railway.app'
+  API_BASE_URL: 'https://auxilios.up.railway.app',
+  ADMIN_API_BASE_URL: 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin'
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'admin-payroll-filters-v83-20260916';
+window.AUXILIOS_BUILD_ID = 'admin-user-endpoint-v84-20260916';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

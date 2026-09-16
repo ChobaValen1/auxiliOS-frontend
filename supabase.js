@@ -150,6 +150,7 @@ async function obtenerAccessToken() {
 async function apiAuthHeaders(extra = {}) {
   return {
     ...extra,
+    apikey: SUPABASE_KEY,
     Authorization: `Bearer ${await obtenerAccessToken()}`,
   };
 }

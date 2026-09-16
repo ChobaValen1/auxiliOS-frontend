@@ -11084,14 +11084,14 @@ async function guardarNuevoUsuario() {
 
   let resp, data;
   try {
-    resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
+    resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/create-user`, {
       method: 'POST',
       headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ full_name: nombre, email, legajo, role_name: rol, phone: tel || null, dni: dni || null }),
     });
-    data = await resp.json();
+    data = await resp.json().catch(() => ({ error: 'El servicio de usuarios devolvió una respuesta inválida. Intentá nuevamente.' }));
   } catch (e) {
-    data = { error: 'No se pudo conectar con el servidor' };
+    data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios. Tus datos siguen en el formulario.' };
   }
 
   if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
@@ -11202,7 +11202,7 @@ async function confirmarResetPassword(userId) {
   if (btn) { btn.textContent = 'Enviando...'; btn.disabled = true; }
 
   try {
-    const res = await fetch(`${ENV.API_BASE_URL}/api/send-password-reset`, {
+    const res = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/send-password-reset`, {
       method: 'POST',
       headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ userId })
@@ -14240,7 +14240,7 @@ async function _csvImportarConfirm() {
       const o = valid[i];
       btn.textContent = `Importando… ${i + 1}/${valid.length}`;
       try {
-        const resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
+        const resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/create-user`, {
           method: 'POST',
           headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
