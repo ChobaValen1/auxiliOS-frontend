@@ -14513,7 +14513,7 @@ function _renderEsquemaTabla() {
       <td style="font-family:'DM Mono',monospace">${vkm}</td>
       <td style="font-family:'DM Mono',monospace">${vserv}</td>
       <td style="font-family:'DM Mono',monospace">${bono}</td>
-      <td>${commissionCount} comisión${commissionCount===1?'':'es'}</td>
+      <td>${commissionCount} ${commissionCount===1?'comisión':'comisiones'}</td>
       <td><span class="pill ${pillCls}">${pillTxt}</span></td>
       <td style="text-align:right;white-space:nowrap">
         <button class="cfg-rend-btn-mini primary" onclick="_abrirEsquemaModal('${u.user_id}')">Editar</button>
