@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=payroll-commission-catalog-v88-20260916">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=payroll-commission-catalog-v88-20260916">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=payroll-commission-catalog-v88-20260916">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=payroll-commission-catalog-v89-20260916">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=payroll-commission-catalog-v89-20260916">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=payroll-commission-catalog-v89-20260916">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=payroll-commission-catalog-v88-20260916" defer></script>
-<script src="supabase.js?v=payroll-commission-catalog-v88-20260916" defer></script>
+<script src="config.js?v=payroll-commission-catalog-v89-20260916" defer></script>
+<script src="supabase.js?v=payroll-commission-catalog-v89-20260916" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=payroll-commission-catalog-v88-20260916" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=payroll-commission-catalog-v88-20260916" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=payroll-commission-catalog-v88-20260916" defer></script>
-<script src="sigma.js?v=payroll-commission-catalog-v88-20260916" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=payroll-commission-catalog-v89-20260916" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=payroll-commission-catalog-v89-20260916" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=payroll-commission-catalog-v89-20260916" defer></script>
+<script src="sigma.js?v=payroll-commission-catalog-v89-20260916" defer></script>
 </head>
 <body>
 
@@ -1855,7 +1855,7 @@
   <div class="filter-tabs" style="margin-bottom:16px">
     <div class="ftab active" data-sub="mes"          onclick="_sueldosSwitchSub('mes', this)">Liquidaciones del mes</div>
     <div class="ftab"        data-sub="rendiciones"  onclick="_sueldosSwitchSub('rendiciones', this)">💵 Rendiciones</div>
-    <div class="ftab"        data-sub="objetivos"    onclick="_sueldosSwitchSub('objetivos', this)">🎯 Objetivos</div>
+    <div class="ftab"        data-sub="objetivos"    onclick="_sueldosSwitchSub('objetivos', this)">🎯 Comisiones y Bonos</div>
     <div class="ftab"        data-sub="esquema"      onclick="_sueldosSwitchSub('esquema', this)">Esquemas de pago</div>
     <div class="ftab"        data-sub="historial"    onclick="_sueldosSwitchSub('historial', this)">📜 Historial</div>
   </div>
@@ -1887,9 +1887,16 @@
 
   <!-- SUB: objetivos -->
   <div id="sueldos-sub-objetivos" class="sueldos-sub" style="display:none">
+    <div class="card payroll-scheme-card" style="margin-bottom:14px">
+      <div class="payroll-commission-head">
+        <div><strong>Comisiones por conceptos</strong><p>Crealas una sola vez y luego asigná qué choferes cobran cada una.</p></div>
+        <button class="btn btn-primary" onclick="_abrirComisionGeneral()">+ Nueva comisión</button>
+      </div>
+      <div id="cfg-commission-body" class="payroll-commission-grid"><p class="pm-help">Cargando comisiones...</p></div>
+    </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
-        <div style="color:var(--muted);font-size:12px;flex:1;min-width:200px">Bonos configurables por concepto. Los cambios afectan solo liquidaciones futuras.</div>
+        <div><strong>Bonos por objetivos</strong><p style="color:var(--muted);font-size:12px;margin:4px 0 0">Bonos configurables por concepto. Los cambios afectan solo liquidaciones futuras.</p></div>
         <button class="btn btn-primary" onclick="_abrirObjetivoModal()" style="font-size:12px;padding:8px 14px">+ Nuevo objetivo</button>
       </div>
       <div id="cfg-obj-body" style="color:var(--muted);font-size:13px">Cargando objetivos...</div>

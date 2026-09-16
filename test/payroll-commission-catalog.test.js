@@ -39,7 +39,10 @@ test('payroll settings hydrate assigned global rules and persist assignments sep
 });
 
 test('scheme UI creates rules globally and selects them individually or in bulk', () => {
-  assert.match(ui, /Comisiones por conceptos/);
+  assert.match(html, /Comisiones por conceptos/);
+  assert.match(html, /🎯 Comisiones y Bonos/);
+  assert.match(html, /id="cfg-commission-body"/);
+  assert.match(ui, /function _renderCommissionCatalog/);
   assert.match(ui, /_abrirComisionGeneral/);
   assert.match(ui, /_guardarComisionGeneral/);
   assert.match(ui, /data-bulk-commission/);

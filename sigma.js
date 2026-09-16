@@ -14347,20 +14347,44 @@ async function cargarSueldosTab() {
 // ── Objetivos ──
 async function _cargarObjetivosTab() {
   const el = document.getElementById('cfg-obj-body');
+  const commissionEl = document.getElementById('cfg-commission-body');
   if (!el) return;
   el.innerHTML = '<div class="cfg-rend-empty">Cargando objetivos...</div>';
+  if (commissionEl) commissionEl.innerHTML = '<p class="pm-help">Cargando comisiones...</p>';
   try {
     // cargarObjetivos filtra activos; para el admin, listamos todos:
-    const { data, error } = await _db.from('payroll_objetivos')
-      .select('objetivo_id, nombre, tipo, valor, descripcion, activo, created_at')
-      .order('nombre', { ascending: true });
+    const [objectiveResult, commissionData] = await Promise.all([
+      _db.from('payroll_objetivos')
+        .select('objetivo_id, nombre, tipo, valor, descripcion, activo, created_at')
+        .order('nombre', { ascending: true }),
+      cargarPayrollCommissionData()
+    ]);
+    const { data, error } = objectiveResult;
     if (error) throw error;
     _objetivosCache = data || [];
+    _commissionCatalog = commissionData.rules || [];
+    PayrollMatrix.setCommissionCatalog(_commissionCatalog);
+    _renderCommissionCatalog();
     _renderObjetivosTabla();
   } catch (err) {
     console.error('_cargarObjetivosTab:', err);
     el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar objetivos</div>';
   }
+}
+
+function _renderCommissionCatalog() {
+  const el = document.getElementById('cfg-commission-body');
+  if (!el) return;
+  el.innerHTML = _commissionCatalog.map(c => {
+    const formula = c.mode === 'percent' ? `${_AR(c.value)}% del importe` : `$${_AR(c.value)} por unidad`;
+    const source = c.source === 'invoices' ? 'Servicio principal' : 'Venta / adicional';
+    const assigned = c.assigned_driver_ids?.length || 0;
+    return `<div class="payroll-commission-card${c.active ? '' : ' is-inactive'}">
+      <div><strong>${_escHtml(c.name)}</strong><small>${source} · ${formula}</small></div>
+      <span>${assigned} chofer${assigned===1?'':'es'}</span>
+      <button class="cfg-rend-btn-mini" onclick="_abrirComisionGeneral('${c.commission_id}')">Editar</button>
+    </div>`;
+  }).join('') || '<p class="pm-help">Todavía no hay comisiones generales.</p>';
 }
 
 function _renderObjetivosTabla() {
@@ -14486,16 +14510,6 @@ function _renderEsquemaTabla() {
     return;
   }
   const missing = _esquemaCache.filter(u => !u.settings);
-  const commissionRows = _commissionCatalog.map(c => {
-    const formula = c.mode === 'percent' ? `${_AR(c.value)}% del importe` : `$${_AR(c.value)} por unidad`;
-    const source = c.source === 'invoices' ? 'Servicio principal' : 'Venta / adicional';
-    const assigned = c.assigned_driver_ids?.length || 0;
-    return `<div class="payroll-commission-card${c.active ? '' : ' is-inactive'}">
-      <div><strong>${_escHtml(c.name)}</strong><small>${source} · ${formula}</small></div>
-      <span>${assigned} chofer${assigned===1?'':'es'}</span>
-      <button class="cfg-rend-btn-mini" onclick="_abrirComisionGeneral('${c.commission_id}')">Editar</button>
-    </div>`;
-  }).join('');
   const rows = _esquemaCache.map(u => {
     const hasSet = !!u.settings;
     const basico = hasSet ? '$' + _AR(u.sueldo_basico || 0) : '—';
@@ -14521,13 +14535,6 @@ function _renderEsquemaTabla() {
     </tr>`;
   }).join('');
   el.innerHTML = `
-    <section class="payroll-commission-catalog">
-      <div class="payroll-commission-head">
-        <div><strong>Comisiones por conceptos</strong><p>Crealas una sola vez y asignalas desde cada chofer o mediante cambios masivos.</p></div>
-        <button class="btn btn-ghost" onclick="_abrirComisionGeneral()">+ Nueva comisión</button>
-      </div>
-      <div class="payroll-commission-grid">${commissionRows || '<p class="pm-help">Todavía no hay comisiones generales.</p>'}</div>
-    </section>
     ${missing.length ? `<div class="payroll-scheme-alert"><strong>${missing.length} chofer${missing.length===1?'':'es'} sin esquema.</strong> No se incluirán al generar liquidaciones hasta configurarlos.</div>` : ''}
     <table class="cfg-rend-table">
       <thead><tr><th><input type="checkbox" aria-label="Seleccionar todos" ${_esquemaSelected.size===_esquemaCache.length?'checked':''} onchange="_toggleTodosEsquema(this.checked)"></th><th>Chofer</th><th>Sueldo básico</th><th>Valor por km</th><th>Valor por servicio</th><th>Presentismo</th><th>Comisiones</th><th>Estado</th><th></th></tr></thead>
@@ -14608,7 +14615,7 @@ async function _guardarComisionGeneral() {
   if (!res.ok) { toast(res.error?.message || 'No se pudo guardar la comisión', 'error'); return; }
   closeModal('modal-comision-payroll');
   toast(_commissionEditId ? 'Comisión actualizada ✓' : 'Comisión creada ✓', 'success');
-  _cargarEsquemaTab();
+  _cargarObjetivosTab();
 }
 
 function _abrirEsquemaMasivoModal() {
