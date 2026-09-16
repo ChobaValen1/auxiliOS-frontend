@@ -155,6 +155,31 @@ async function apiAuthHeaders(extra = {}) {
   };
 }
 
+// Un 401 no ejecutó la operación: renovar la sesión y reintentar una sola vez.
+// Nunca reintentar fallos de red/5xx: el servidor podría haber enviado el correo.
+async function adminApiFetch(url, options = {}) {
+  const send = async (token) => fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  let response = await send(await obtenerAccessToken());
+  if (response.status !== 401) return response;
+
+  const { data, error } = await _db.auth.refreshSession();
+  if (error || !data?.session?.access_token) {
+    throw new Error('Sesión expirada. Volvé a ingresar con tu usuario administrador y reenviá el enlace.');
+  }
+  response = await send(data.session.access_token);
+  if (response.status === 401) {
+    throw new Error('No se pudo validar tu sesión de administrador. Volvé a ingresar e intentá nuevamente.');
+  }
+  return response;
+}
+
 async function cerrarSesion() {
   try {
     await _db.auth.signOut();

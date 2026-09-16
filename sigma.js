@@ -11202,17 +11202,22 @@ async function confirmarResetPassword(userId) {
   if (btn) { btn.textContent = 'Enviando...'; btn.disabled = true; }
 
   try {
-    const res = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/send-password-reset`, {
+    const res = await adminApiFetch(`${ENV.ADMIN_API_BASE_URL}/api/send-password-reset`, {
       method: 'POST',
-      headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error desconocido');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.message || 'No se pudo enviar el enlace. Intentá nuevamente.');
     document.getElementById('modal-reset-pass').remove();
     toast('Enlace de recuperación enviado ✓', 'success');
   } catch (err) {
-    if (errorEl) { errorEl.textContent = err.message; errorEl.style.display = 'block'; }
+    if (errorEl) {
+      errorEl.textContent = err instanceof TypeError
+        ? 'No se pudo confirmar el envío. Revisá la conexión y el correo antes de intentarlo nuevamente.'
+        : err.message;
+      errorEl.style.display = 'block';
+    }
     if (btn) { btn.textContent = 'Enviar enlace'; btn.disabled = false; }
   }
 }

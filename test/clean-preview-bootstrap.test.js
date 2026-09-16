@@ -35,6 +35,6 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'admin-user-endpoint-v84-20260916'/);
+  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'password-reset-session-v85-20260916'/);
   assert.match(config, /versionedAuxiliosAsset/);
 });
