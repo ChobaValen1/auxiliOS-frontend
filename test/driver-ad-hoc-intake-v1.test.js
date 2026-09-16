@@ -11,6 +11,7 @@ const bridge=read('operator-service-bridge.js');
 const services=read('operator-services.js');
 const orphanCleanup=read('migrations/20260826130000_driver_remito_orphan_cleanup_v1.sql');
 const mapsLocations=read('supabase/migrations/20260905184058_driver_remito_maps_locations.sql');
+const clockSkew=read('supabase/migrations/20260916175300_driver_ad_hoc_trip_range_clock_skew_v1.sql');
 const intakeWorkspace=read('supabase/migrations/20260911014705_operator_intake_workspace_and_addon_reconciliation_v1.sql');
 const signedServiceGuard=read('supabase/migrations/20260915204500_driver_ad_hoc_ignore_signed_services_v1.sql');
 
@@ -117,6 +118,7 @@ test('un rechazo posterior a la subida limpia sólo evidencia propia no referenc
 
 test('el ingreso sin asignación conserva ubicaciones verificadas y las transfiere al servicio',()=>{
   assert.match(mapsLocations,/create or replace function public\.save_driver_ad_hoc_remito_v3/);
+  assert.match(clockSkew,/greatest\(coalesce\(r\.firmado_at,now\(\)\),fecha_hora_inicio\)/);
   assert.match(mapsLocations,/origin_place_id text/);
   assert.match(mapsLocations,/destination_place_id text/);
   assert.match(mapsLocations,/Seleccioná origen y destino desde Google Maps/);

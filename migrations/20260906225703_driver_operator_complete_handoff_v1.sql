@@ -372,7 +372,10 @@ begin
 
   update public.trips set nro_servicio=r.nro_servicio where trip_id=i.trip_id;
   if r.status='firmado' then
-    update public.trips set fecha_hora_fin=coalesce(fecha_hora_fin,r.firmado_at,now()),
+    update public.trips set fecha_hora_fin=coalesce(
+        fecha_hora_fin,
+        greatest(coalesce(r.firmado_at,now()),fecha_hora_inicio)
+      ),
       received_at=now(),sync_status='synced'
     where trip_id=i.trip_id;
     if not exists(select 1 from public.driver_service_intake_events e where e.intake_id=i.intake_id and e.event_type='submitted') then

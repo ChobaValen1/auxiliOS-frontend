@@ -21,6 +21,7 @@ test('la evidencia es opcional y usa un panel móvil por categoría',()=>{
   assert.match(flow,/La evidencia es opcional/);
   assert.match(flow,/role="dialog" aria-modal="true"/);
   assert.match(css,/\.rmv-sheet/);
+  assert.match(css,/\.rmv-map-suggestions span\{color:#b7c3d6/);
 });
 
 test('evidencia y observaciones permanecen juntas y persisten en ambos flujos',()=>{
