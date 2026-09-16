@@ -15,9 +15,9 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=recovery-copy-link-v86-20260916">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=recovery-copy-link-v86-20260916">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=recovery-copy-link-v86-20260916">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=payroll-commission-catalog-v87-20260916">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=payroll-commission-catalog-v87-20260916">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=payroll-commission-catalog-v87-20260916">
 
 <!-- Service Worker -->
 <script>
@@ -36,13 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=recovery-copy-link-v86-20260916" defer></script>
-<script src="supabase.js?v=recovery-copy-link-v86-20260916" defer></script>
+<script src="config.js?v=payroll-commission-catalog-v87-20260916" defer></script>
+<script src="supabase.js?v=payroll-commission-catalog-v87-20260916" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=recovery-copy-link-v86-20260916" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=recovery-copy-link-v86-20260916" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=recovery-copy-link-v86-20260916" defer></script>
-<script src="sigma.js?v=recovery-copy-link-v86-20260916" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=payroll-commission-catalog-v87-20260916" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=payroll-commission-catalog-v87-20260916" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=payroll-commission-catalog-v87-20260916" defer></script>
+<script src="sigma.js?v=payroll-commission-catalog-v87-20260916" defer></script>
 </head>
 <body>
 
@@ -3232,6 +3232,50 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="modal-comision-payroll">
+  <div class="modal-box payroll-commission-modal">
+    <div class="modal-head">
+      <span class="modal-head-title" id="pc-title">Nueva comisión general</span>
+      <button class="modal-close" onclick="closeModal('modal-comision-payroll')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="pc-name">Nombre de la comisión</label>
+        <input class="form-input" id="pc-name" placeholder="Ej: Comisión por venta de batería">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="pc-concept">Concepto de venta</label>
+        <select class="form-input" id="pc-concept"><option value="">Seleccionar concepto...</option></select>
+      </div>
+      <div class="payroll-bulk-rules">
+        <div class="form-group">
+          <label class="form-label" for="pc-source">Origen</label>
+          <select class="form-input" id="pc-source">
+            <option value="extras">Venta / adicional del remito</option>
+            <option value="invoices">Servicio principal facturado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pc-mode">Cálculo</label>
+          <select class="form-input" id="pc-mode">
+            <option value="percent">Porcentaje del importe</option>
+            <option value="fixed">Importe fijo por unidad</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="pc-value">Valor</label>
+        <input class="form-input" id="pc-value" inputmode="decimal" placeholder="Ej: 10">
+      </div>
+      <label class="pm-commission-choice"><input type="checkbox" id="pc-active" checked><span><b>Comisión activa</b><small>Disponible para asignarla a choferes y liquidaciones futuras.</small></span></label>
+    </div>
+    <div class="modal-foot payroll-scheme-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-comision-payroll')">Cancelar</button>
+      <button class="btn btn-primary" onclick="_guardarComisionGeneral()">Guardar comisión</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-esquema-masivo">
   <div class="modal-box payroll-scheme-modal">
     <div class="modal-head">
@@ -3266,6 +3310,15 @@
         <div class="form-group"><label class="form-label">Base de kilómetros</label><select class="form-input" id="esqm-km-basis"><option value="">No modificar</option><option value="real">KM reales por odómetro</option><option value="billed">KM facturados en servicios</option></select></div>
         <div class="form-group"><label class="form-label">Presentismo</label><select class="form-input" id="esqm-pay-presentismo"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="esqm-commission-mode">Comisiones por conceptos</label>
+        <select class="form-input" id="esqm-commission-mode">
+          <option value="">No modificar</option>
+          <option value="replace">Reemplazar por la selección</option>
+        </select>
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">Al reemplazar, las comisiones marcadas quedarán asignadas a todos los choferes seleccionados.</div>
+      </div>
+      <div id="esqm-commission-list" class="pm-commission-choices"></div>
       <div id="esqm-preview" style="margin-top:10px;color:var(--muted);font-size:12px"></div>
     </div>
     <div class="modal-foot payroll-scheme-foot">

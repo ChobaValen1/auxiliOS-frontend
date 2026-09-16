@@ -3183,6 +3183,61 @@ async function toggleObjetivoActivo(objetivoId, activo) {
 }
 
 // ── Esquema salarial por chofer ──
+async function cargarPayrollCommissionData() {
+  const [rulesRes, assignmentsRes] = await Promise.all([
+    _db.from('payroll_commission_rules')
+      .select('commission_id, name, concept_id, source, mode, value, active, updated_at')
+      .order('active', { ascending: false })
+      .order('name', { ascending: true }),
+    _db.from('payroll_commission_assignments')
+      .select('commission_id, driver_id'),
+  ]);
+  if (rulesRes.error) throw rulesRes.error;
+  if (assignmentsRes.error) throw assignmentsRes.error;
+  const assignments = assignmentsRes.data || [];
+  const rules = (rulesRes.data || []).map(rule => ({
+    ...rule,
+    assigned_driver_ids: assignments
+      .filter(a => a.commission_id === rule.commission_id)
+      .map(a => a.driver_id),
+  }));
+  return { rules, assignments };
+}
+
+async function guardarPayrollCommissionRule(rule) {
+  const payload = {
+    name: String(rule.name || '').trim(),
+    concept_id: rule.concept_id,
+    source: rule.source,
+    mode: rule.mode,
+    value: Number(rule.value),
+    active: rule.active !== false,
+    updated_at: new Date().toISOString(),
+  };
+  if (!payload.name || !payload.concept_id || !['extras','invoices'].includes(payload.source) ||
+      !['fixed','percent'].includes(payload.mode) || !Number.isFinite(payload.value) || payload.value < 0 ||
+      (payload.mode === 'percent' && payload.value > 100)) {
+    return { ok: false, error: { message: 'Completá correctamente la comisión.' } };
+  }
+  if (rule.commission_id) {
+    const { data, error } = await _db.from('payroll_commission_rules')
+      .update(payload).eq('commission_id', rule.commission_id).select().maybeSingle();
+    return error ? { ok: false, error } : { ok: true, data };
+  }
+  payload.created_by = USUARIO_ACTUAL?.id || null;
+  const { data, error } = await _db.from('payroll_commission_rules')
+    .insert(payload).select().maybeSingle();
+  return error ? { ok: false, error } : { ok: true, data };
+}
+
+async function guardarPayrollCommissionAssignments(driverIds, commissionIds) {
+  const { data, error } = await _db.rpc('set_payroll_commission_assignments', {
+    p_drivers: driverIds,
+    p_commission_ids: commissionIds,
+  });
+  return error ? { ok: false, error } : { ok: true, total: Number(data) || 0 };
+}
+
 async function cargarPayrollSettingsChofer(driverId) {
   if (!driverId) return null;
   const { data, error } = await _db
@@ -3194,9 +3249,9 @@ async function cargarPayrollSettingsChofer(driverId) {
   return data || null;
 }
 
-async function cargarPayrollSettingsFlota() {
+async function cargarPayrollSettingsFlota(commissionData = null) {
   // LEFT JOIN manual: choferes activos + (opcional) su esquema.
-  const [usersRes, settingsRes] = await Promise.all([
+  const [usersRes, settingsRes, commissions] = await Promise.all([
     _db.from('users')
       .select('user_id, full_name, legajo, is_active')
       .eq('role_id', 3)
@@ -3204,16 +3259,30 @@ async function cargarPayrollSettingsFlota() {
       .order('full_name', { ascending: true }),
     _db.from('payroll_settings')
       .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, updated_at'),
+    commissionData ? Promise.resolve(commissionData) : cargarPayrollCommissionData(),
   ]);
   if (usersRes.error)    { console.error('[Payroll cargarPayrollSettingsFlota] users', usersRes.error.message); return []; }
   if (settingsRes.error) { console.error('[Payroll cargarPayrollSettingsFlota] settings', settingsRes.error.message); /* seguimos con [] */ }
   const mapSet = {};
   (settingsRes.data || []).forEach(s => { mapSet[s.user_id] = s; });
+  const activeRules = new Map((commissions.rules || []).filter(r => r.active !== false).map(r => [r.commission_id, r]));
+  const assignedByDriver = new Map();
+  (commissions.assignments || []).forEach(a => {
+    if (!activeRules.has(a.commission_id)) return;
+    if (!assignedByDriver.has(a.driver_id)) assignedByDriver.set(a.driver_id, []);
+    assignedByDriver.get(a.driver_id).push(activeRules.get(a.commission_id));
+  });
   return (usersRes.data || []).map(u => ({
     user_id:          u.user_id,
     full_name:        u.full_name,
     legajo:           u.legajo,
-    settings:         mapSet[u.user_id] || null,
+    settings:         mapSet[u.user_id] ? {
+      ...mapSet[u.user_id],
+      compensation_matrix: {
+        ...(mapSet[u.user_id].compensation_matrix || {}),
+        commissions: assignedByDriver.get(u.user_id) || [],
+      },
+    } : null,
     sueldo_basico:    mapSet[u.user_id]?.sueldo_basico    ?? null,
     valor_km:         mapSet[u.user_id]?.valor_km         ?? null,
     valor_servicio:   mapSet[u.user_id]?.valor_servicio   ?? null,
@@ -3231,9 +3300,10 @@ async function guardarPayrollSettingsMasivo(patch, { driverIds = [] } = {}) {
   const nowIso = new Date().toISOString();
   const rows = target.map(c => {
     const base = c.settings || {};
+    const normalized = PayrollMatrix.normalize({...base.compensation_matrix,...(patch.compensation_matrix || {})});
     return {
       user_id: c.user_id,
-      compensation_matrix: PayrollMatrix.normalize({...base.compensation_matrix,...(patch.compensation_matrix || {})}),
+      compensation_matrix: {...normalized, commissions: []},
       sueldo_basico:    patch.sueldo_basico    != null ? Number(patch.sueldo_basico)    : (Number(base.sueldo_basico)    || 0),
       valor_km:         patch.valor_km         != null ? Number(patch.valor_km)         : (Number(base.valor_km)         || 0),
       valor_servicio:   patch.valor_servicio   != null ? Number(patch.valor_servicio)   : (Number(base.valor_servicio)   || 0),
@@ -3243,14 +3313,19 @@ async function guardarPayrollSettingsMasivo(patch, { driverIds = [] } = {}) {
   });
   const { error } = await _db.from('payroll_settings').upsert(rows, { onConflict: 'user_id' });
   if (error) { console.error('[Payroll guardarPayrollSettingsMasivo]', error.message); return { ok: false, error }; }
+  if (Array.isArray(patch.commission_ids)) {
+    const assignment = await guardarPayrollCommissionAssignments(driverIds, patch.commission_ids);
+    if (!assignment.ok) return assignment;
+  }
   const insertados = target.filter(c => !c.settings).length;
   return { ok: true, actualizados: target.length - insertados, insertados, total: target.length };
 }
 
 async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix }) {
   if (!driverId) return { ok: false, error: 'Falta driverId' };
+  const normalized = PayrollMatrix.normalize(compensation_matrix);
   const payload = {
-    compensation_matrix: PayrollMatrix.normalize(compensation_matrix),
+    compensation_matrix: {...normalized, commissions: []},
     user_id: driverId,
     sueldo_basico:    Number(sueldo_basico)    || 0,
     valor_km:         Number(valor_km)         || 0,
@@ -3264,6 +3339,11 @@ async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor
     .select()
     .maybeSingle();
   if (error) { console.error('[Payroll guardarPayrollSettings]', error.message); return { ok: false, error }; }
+  const assignment = await guardarPayrollCommissionAssignments(
+    [driverId],
+    normalized.commissions.map(c => c.commission_id).filter(Boolean),
+  );
+  if (!assignment.ok) return assignment;
   return { ok: true, data };
 }
 

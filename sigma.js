@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (screenSueldos && contentEl && screenSueldos.parentElement !== contentEl) {
     contentEl.appendChild(screenSueldos);
   }
-  ['modal-objetivo-edit', 'modal-esquema-edit', 'modal-esquema-masivo', 'modal-recibo-payroll', 'modal-cumplimiento-nuevo'].forEach(id => {
+  ['modal-objetivo-edit', 'modal-esquema-edit', 'modal-comision-payroll', 'modal-esquema-masivo', 'modal-recibo-payroll', 'modal-cumplimiento-nuevo'].forEach(id => {
     const modal = document.getElementById(id);
     if (modal && modal.parentElement !== document.body) {
       document.body.appendChild(modal);
@@ -14318,6 +14318,9 @@ async function _csvImportarConfirm() {
 let _objetivosCache = [];
 let _esquemaCache   = [];
 let _esquemaSelected = new Set();
+let _commissionCatalog = [];
+let _commissionConcepts = [];
+let _commissionEditId = null;
 let _objetivoEditId = null;
 let _esquemaEditDriverId = null;
 let _sueldosSubActual = 'mes';
@@ -14462,7 +14465,10 @@ async function _cargarEsquemaTab() {
   if (!el) return;
   el.innerHTML = '<div class="cfg-rend-empty">Cargando esquema salarial...</div>';
   try {
-    _esquemaCache = await cargarPayrollSettingsFlota();
+    const commissionData = await cargarPayrollCommissionData();
+    _commissionCatalog = commissionData.rules || [];
+    PayrollMatrix.setCommissionCatalog(_commissionCatalog);
+    _esquemaCache = await cargarPayrollSettingsFlota(commissionData);
     const validIds = new Set(_esquemaCache.map(u => u.user_id));
     _esquemaSelected = new Set([..._esquemaSelected].filter(id => validIds.has(id)));
     _renderEsquemaTabla();
@@ -14480,12 +14486,23 @@ function _renderEsquemaTabla() {
     return;
   }
   const missing = _esquemaCache.filter(u => !u.settings);
+  const commissionRows = _commissionCatalog.map(c => {
+    const formula = c.mode === 'percent' ? `${_AR(c.value)}% del importe` : `$${_AR(c.value)} por unidad`;
+    const source = c.source === 'invoices' ? 'Servicio principal' : 'Venta / adicional';
+    const assigned = c.assigned_driver_ids?.length || 0;
+    return `<div class="payroll-commission-card${c.active ? '' : ' is-inactive'}">
+      <div><strong>${_escHtml(c.name)}</strong><small>${source} · ${formula}</small></div>
+      <span>${assigned} chofer${assigned===1?'':'es'}</span>
+      <button class="cfg-rend-btn-mini" onclick="_abrirComisionGeneral('${c.commission_id}')">Editar</button>
+    </div>`;
+  }).join('');
   const rows = _esquemaCache.map(u => {
     const hasSet = !!u.settings;
     const basico = hasSet ? '$' + _AR(u.sueldo_basico || 0) : '—';
     const vkm    = hasSet ? '$' + _AR(u.valor_km || 0) + (u.settings?.compensation_matrix?.km_basis === 'billed' ? ' / facturado' : ' / real')      : '—';
     const vserv  = hasSet ? '$' + _AR(u.valor_servicio || 0): '—';
     const bono   = hasSet ? '$' + _AR(u.bono_presentismo || 0) : '—';
+    const commissionCount = u.settings?.compensation_matrix?.commissions?.length || 0;
     const pillCls = hasSet ? 'ok' : 'warn';
     const pillTxt = hasSet ? 'Configurado' : 'Sin esquema';
     const selected = _esquemaSelected.has(u.user_id);
@@ -14496,6 +14513,7 @@ function _renderEsquemaTabla() {
       <td style="font-family:'DM Mono',monospace">${vkm}</td>
       <td style="font-family:'DM Mono',monospace">${vserv}</td>
       <td style="font-family:'DM Mono',monospace">${bono}</td>
+      <td>${commissionCount} comisión${commissionCount===1?'':'es'}</td>
       <td><span class="pill ${pillCls}">${pillTxt}</span></td>
       <td style="text-align:right;white-space:nowrap">
         <button class="cfg-rend-btn-mini primary" onclick="_abrirEsquemaModal('${u.user_id}')">Editar</button>
@@ -14503,9 +14521,16 @@ function _renderEsquemaTabla() {
     </tr>`;
   }).join('');
   el.innerHTML = `
+    <section class="payroll-commission-catalog">
+      <div class="payroll-commission-head">
+        <div><strong>Comisiones por conceptos</strong><p>Crealas una sola vez y asignalas desde cada chofer o mediante cambios masivos.</p></div>
+        <button class="btn btn-ghost" onclick="_abrirComisionGeneral()">+ Nueva comisión</button>
+      </div>
+      <div class="payroll-commission-grid">${commissionRows || '<p class="pm-help">Todavía no hay comisiones generales.</p>'}</div>
+    </section>
     ${missing.length ? `<div class="payroll-scheme-alert"><strong>${missing.length} chofer${missing.length===1?'':'es'} sin esquema.</strong> No se incluirán al generar liquidaciones hasta configurarlos.</div>` : ''}
     <table class="cfg-rend-table">
-      <thead><tr><th><input type="checkbox" aria-label="Seleccionar todos" ${_esquemaSelected.size===_esquemaCache.length?'checked':''} onchange="_toggleTodosEsquema(this.checked)"></th><th>Chofer</th><th>Sueldo básico</th><th>Valor por km</th><th>Valor por servicio</th><th>Presentismo</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th><input type="checkbox" aria-label="Seleccionar todos" ${_esquemaSelected.size===_esquemaCache.length?'checked':''} onchange="_toggleTodosEsquema(this.checked)"></th><th>Chofer</th><th>Sueldo básico</th><th>Valor por km</th><th>Valor por servicio</th><th>Presentismo</th><th>Comisiones</th><th>Estado</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   _actualizarSeleccionEsquema();
@@ -14540,7 +14565,50 @@ function _abrirEsquemaModal(driverId) {
   document.getElementById('esq-valor-serv').value = u.valor_servicio   ?? '';
   document.getElementById('esq-bono-pres').value  = u.bono_presentismo ?? '';
   openModal('modal-esquema-edit');
+  PayrollMatrix.setCommissionCatalog(_commissionCatalog);
   PayrollMatrix.open(u.settings?.compensation_matrix).catch(error=>toast(error.message,'error'));
+}
+
+async function _abrirComisionGeneral(commissionId = null) {
+  _commissionEditId = commissionId;
+  const current = _commissionCatalog.find(c => c.commission_id === commissionId) || {};
+  const modal = document.getElementById('modal-comision-payroll');
+  if (!modal) return;
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  document.getElementById('pc-title').textContent = commissionId ? 'Editar comisión general' : 'Nueva comisión general';
+  document.getElementById('pc-name').value = current.name || '';
+  document.getElementById('pc-source').value = current.source || 'extras';
+  document.getElementById('pc-mode').value = current.mode || 'percent';
+  document.getElementById('pc-value').value = current.value ?? '';
+  document.getElementById('pc-active').checked = current.active !== false;
+  const concept = document.getElementById('pc-concept');
+  concept.innerHTML = '<option value="">Cargando conceptos...</option>';
+  openModal('modal-comision-payroll');
+  const { data, error } = await _db.rpc('list_service_types_config', { p_include_inactive: true });
+  if (error) { toast('No se pudieron cargar los conceptos', 'error'); return; }
+  _commissionConcepts = data || [];
+  concept.innerHTML = '<option value="">Seleccionar concepto...</option>' + _commissionConcepts.map(item =>
+    `<option value="${_escHtml(item.concept_id)}">${_escHtml(item.name)}</option>`).join('');
+  concept.value = current.concept_id || '';
+}
+
+async function _guardarComisionGeneral() {
+  const conceptId = document.getElementById('pc-concept').value;
+  const selectedConcept = _commissionConcepts.find(c => c.concept_id === conceptId);
+  const payload = {
+    commission_id: _commissionEditId,
+    name: document.getElementById('pc-name').value.trim() || selectedConcept?.name || '',
+    concept_id: conceptId,
+    source: document.getElementById('pc-source').value,
+    mode: document.getElementById('pc-mode').value,
+    value: document.getElementById('pc-value').value,
+    active: document.getElementById('pc-active').checked,
+  };
+  const res = await guardarPayrollCommissionRule(payload);
+  if (!res.ok) { toast(res.error?.message || 'No se pudo guardar la comisión', 'error'); return; }
+  closeModal('modal-comision-payroll');
+  toast(_commissionEditId ? 'Comisión actualizada ✓' : 'Comisión creada ✓', 'success');
+  _cargarEsquemaTab();
 }
 
 function _abrirEsquemaMasivoModal() {
@@ -14552,10 +14620,17 @@ function _abrirEsquemaMasivoModal() {
     const inp = document.getElementById(id); if (inp) inp.value = '';
   });
   ['esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('esqm-commission-mode').value = '';
+  document.getElementById('esqm-commission-list').innerHTML = _commissionCatalog.filter(c => c.active).map(c =>
+    `<label class="pm-commission-choice"><input type="checkbox" data-bulk-commission="${c.commission_id}" disabled><span><b>${_escHtml(c.name)}</b><small>${c.mode==='percent'?_AR(c.value)+'%':'$'+_AR(c.value)+' por unidad'}</small></span></label>`).join('') || '<p class="pm-help">No hay comisiones generales activas.</p>';
+  document.getElementById('esqm-commission-mode').onchange = function() {
+    document.querySelectorAll('[data-bulk-commission]').forEach(input => { input.disabled = this.value !== 'replace'; });
+    _actualizarPreviewEsquemaMasivo();
+  };
   const selected = _esquemaCache.filter(c => _esquemaSelected.has(c.user_id));
   document.getElementById('esqm-selected-list').innerHTML = `<strong>${selected.length} chofer${selected.length===1?'':'es'}:</strong> ${selected.map(c=>_escHtml(c.full_name)).join(', ')}`;
   _actualizarPreviewEsquemaMasivo();
-  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo'].forEach(id => {
+  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo','esqm-commission-mode'].forEach(id => {
     const inp = document.getElementById(id); if (inp) inp.oninput = inp.onchange = _actualizarPreviewEsquemaMasivo;
   });
   openModal('modal-esquema-masivo');
@@ -14589,6 +14664,9 @@ async function _guardarEsquemaMasivo() {
   if(payPresentismo!==null) matrix.pay_presentismo=payPresentismo;
   if(kmBasis) matrix.km_basis=kmBasis;
   if(Object.keys(matrix).length) patch.compensation_matrix=matrix;
+  if (document.getElementById('esqm-commission-mode')?.value === 'replace') {
+    patch.commission_ids = [...document.querySelectorAll('[data-bulk-commission]:checked')].map(el => el.dataset.bulkCommission);
+  }
   const algo = Object.values(patch).some(v => v != null);
   if (!algo) { toast('Completá al menos un campo', 'error'); return; }
   if (Object.values(patch).some(v => v != null && v < 0)) { toast('Los valores no pueden ser negativos', 'error'); return; }
