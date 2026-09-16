@@ -1308,6 +1308,24 @@ function drawDemoSignature() {
 let arrastreRequerido = false;
 let _finalizacionRemitoEnCurso = false;
 
+function _mostrarConfirmacionRemitoCreado() {
+  let modal = document.getElementById('remito-created-confirmation');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'remito-created-confirmation';
+    modal.className = 'remito-created-confirmation';
+    modal.setAttribute('role', 'status');
+    modal.setAttribute('aria-live', 'assertive');
+    modal.innerHTML = '<div><span>✓</span><strong>Remito finalizado correctamente</strong><small>El servicio quedó guardado.</small></div>';
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('is-visible');
+  return new Promise(resolve => setTimeout(() => {
+    modal.classList.remove('is-visible');
+    resolve();
+  }, 1700));
+}
+
 async function finalizarRemito() {
   if (_finalizacionRemitoEnCurso) {
     toast('El remito ya se está guardando. Esperá un momento.', 'info');
@@ -1498,6 +1516,7 @@ async function _finalizarRemitoInner() {
   });
 
   if (!ok) return false;
+  await _mostrarConfirmacionRemitoCreado();
   resetPagoForm();
   return true;
 }

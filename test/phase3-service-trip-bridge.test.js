@@ -161,6 +161,23 @@ test('el remito sin asignación pendiente de firma permanece en Activos y no en 
   assert.match(read('sigma.js'),/function _mostrarBorradorEnServiciosActivos\(\).*cambiarVistaServiciosChofer\?\.\('active'\)/s);
 });
 
+test('el borrador sin asignación muestra el código y ofrece completar o marcar ACTIVADO',()=>{
+  const bridge=read('operator-service-bridge.js');
+  const sql=read('supabase/migrations/20260916191500_driver_ad_hoc_draft_activated_v1.sql');
+  const card=bridge.split('function activeAdHocCard(r)')[1].split('function closePreview')[0];
+  assert.match(card,/Código servicio/);
+  assert.match(card,/r\.nroSrv\|\|r\.nro/);
+  assert.match(card,/abrirPreviewRemitoSinAsignacion/);
+  assert.ok(card.indexOf('p3-facts')<card.lastIndexOf('p3-draft-state'));
+  assert.match(bridge,/Completar remito/);
+  assert.match(bridge,/Marcar como activado/);
+  assert.match(bridge,/mark_driver_ad_hoc_draft_activated_v1/);
+  assert.match(sql,/v_uid is null or v_role <> 'chofer'/);
+  assert.match(sql,/driver_id=v_uid/);
+  assert.match(sql,/set status='anulado'/);
+  assert.match(sql,/revoke all on function public\.mark_driver_ad_hoc_draft_activated_v1\(integer,text,text\) from public,anon/);
+});
+
 test('la cola del Chofer propaga el formato contractual sin inferirlo de montos o medios',()=>{
   assert.match(tollCoverageVisibility,/get_driver_operator_queue_v2/);
   assert.match(tollCoverageVisibility,/''toll_coverage_mode'',s\.toll_coverage_mode/);
