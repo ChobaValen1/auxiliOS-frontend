@@ -8,6 +8,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 test('los errores inline y avisos flotantes duran como máximo tres segundos',()=>{
   const js=read('sigma.js');
   assert.match(js,/_modalError[\s\S]*_autoClearTimer[\s\S]*3000/);
+  assert.match(js,/_modalError[\s\S]*operationFeedback\('Revisá los datos', msg, 'error', 2800\)/);
   assert.match(js,/Math\.min\(3000, Math\.max\(800, Number\(duration\) \|\| 3000\)\)/);
 });
 
@@ -15,9 +16,10 @@ test('jornada y combustible muestran confirmaciones válidas e inválidas',()=>{
   const js=read('sigma.js');
   assert.match(js,/operationFeedback\('Jornada iniciada'/);
   assert.match(js,/operationFeedback\('Jornada en curso'/);
-  assert.match(js,/operationFeedback\('No se pudo iniciar'/);
+  assert.match(js,/operationFeedback\('Revisá los datos', msg, 'error', 2800\)/);
   assert.match(js,/operationFeedback\('Carga registrada'/);
   assert.match(js,/operationFeedback\('Carga inválida'/);
+  assert.doesNotMatch(js,/toast\(`\$\{litros\}L registrados correctamente`/);
 });
 
 test('el móvil deja visible sólo la jornada abierta y deriva el resto al historial',()=>{

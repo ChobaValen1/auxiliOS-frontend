@@ -35,11 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function showModalError(errorDivId, msg) {
   const el = document.getElementById(errorDivId);
-  if (!el) { toast(msg, 'error'); return; }
+  if (!el) { operationFeedback('Revisá los datos', msg, 'error', 2800); return; }
   el.textContent = '⚠ ' + msg;
   el.style.display = 'block';
+  operationFeedback('Revisá los datos', msg, 'error', 2800);
   clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.style.display = 'none'; }, 5000);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 3000);
 }
 
 function _validarPatente(val, targetId) {
@@ -4397,10 +4398,13 @@ function _modalError(id, msg) {
   clearTimeout(el._autoClearTimer);
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
-  if (msg) el._autoClearTimer = setTimeout(() => {
-    el.textContent = '';
-    el.style.display = 'none';
-  }, 3000);
+  if (msg) {
+    if (typeof operationFeedback === 'function') operationFeedback('Revisá los datos', msg, 'error', 2800);
+    el._autoClearTimer = setTimeout(() => {
+      el.textContent = '';
+      el.style.display = 'none';
+    }, 3000);
+  }
 }
 
 function operationFeedback(title, message, type='success', duration=2200) {
@@ -6229,7 +6233,6 @@ async function guardarCombustible() {
       payload: datos,
       dependeDe: _logIdEsTemporal(datos.log_id) ? datos.log_id : null
     });
-    toast('Sin señal — carga guardada localmente. Se sincronizará al recuperar conexión.', 'warning');
     operationFeedback('Carga guardada', 'Se sincronizará automáticamente al recuperar conexión.', 'success', 2400);
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
@@ -6244,19 +6247,16 @@ async function guardarCombustible() {
   if (btn) { btn.textContent = '⛽ Guardar carga'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado.ok) {
-    toast(`${litros}L registrados correctamente`, 'success');
     operationFeedback('Carga registrada', `${litros} litros guardados correctamente.`, 'success', 2200);
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
     cargarScreenCamion();
   } else {
-    toast(`Error al guardar: ${resultado.errorMsg || 'Error desconocido'}`, 'error');
     operationFeedback('Carga inválida', resultado.errorMsg || 'No se pudo registrar la carga de combustible.', 'error', 2800);
   }
   } catch (error) {
     console.error('[Combustible]',error);
     _modalError('cb-error','No se pudo guardar la carga. Revisá la conexión y reintentá.');
-    operationFeedback('Carga inválida', 'No se pudo guardar la carga. Revisá la conexión y reintentá.', 'error', 2800);
   } finally { _setFuelBusy(''); }
 }
 
@@ -8888,7 +8888,6 @@ async function confirmarNuevaJornada() {
       _grillaDesvioConfirmado = false;
       _grillaMotivoPendiente  = null;
       if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
-      toast('Jornada iniciada — se sincroniza cuando haya señal 📴', 'success');
       operationFeedback('Jornada iniciada', 'Quedó guardada en el teléfono y se sincronizará al recuperar conexión.', 'success', 2400);
       closeModal('modal-nueva-jornada');
       actualizarBotonFinalizar(true);
@@ -8926,14 +8925,12 @@ async function confirmarNuevaJornada() {
   if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado && resultado.success) {
-    toast('Jornada iniciada ✓', 'success');
     operationFeedback('Jornada iniciada', 'La jornada quedó abierta correctamente.', 'success', 2200);
     closeModal('modal-nueva-jornada');
     if (typeof actualizarPantallaJornadas === 'function') await actualizarPantallaJornadas();
   } else {
     const msg = resultado?.error || 'No se pudo iniciar la jornada.';
     _modalError('nj-error', msg);
-    operationFeedback('No se pudo iniciar', msg.includes('jornada activa') ? 'Ya existe una jornada en curso. Cerrala antes de iniciar otra.' : msg, 'error', 2800);
     // Si el error es por camión duplicado, resaltar el selector
     if (msg.includes('camión') || msg.includes('jornada activa')) {
       const lista = document.getElementById('lista-camiones-selector');

@@ -52,5 +52,5 @@ test('el chofer puede cerrar una jornada válida después de reiniciar el odóme
 test('las RPC no quedan expuestas a anon y se renueva el cache', () => {
   assert.match(migration, /revoke all on function public\.admin_update_truck_v2\(integer, jsonb\) from public, anon/);
   assert.match(migration, /revoke all on function public\.create_driver_fuel_record_v1\(jsonb\) from public, anon/);
-  assert.match(sw, /auxilios-billing-phase2-v309/);
+  assert.match(sw, /auxilios-billing-phase2-v310/);
 });
