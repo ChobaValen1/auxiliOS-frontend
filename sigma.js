@@ -247,7 +247,7 @@ const SCREENS = {
   documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
   remitos:    { title:'REMITOS VIRTUALES',  sub:'Módulo 4 · Firma digital y archivo' },
   sueldos:    { title:'LIQUIDACIÓN DE SUELDOS', sub:'Objetivos, esquema salarial y recibos' },
-  'jornadas-admin': { title:'JORNADAS · ADMIN', sub:'Historial de jornadas de la flota' },
+  'jornadas-admin': { title:'JORNADAS', sub:'Historial de jornadas de la flota' },
   grilla:     { title:'GRILLA MENSUAL',     sub:'Asignaciones de móviles y francos' },
 };
 
@@ -15714,6 +15714,7 @@ async function initJornadasAdmin() {
   _jadminSyncPicker('chofer');
   _jadminSyncPicker('camion');
   _jadminSyncPeriodLabel();
+  _jadminSyncEstadoChip();
 
   // Cargar datos
   await _jadminReload();
@@ -15749,8 +15750,22 @@ function _jadminSyncPicker(kind) {
 function _jadminSyncPeriodLabel() {
   const label = document.getElementById('jadmin-f-periodo-label');
   if (!label) return;
-  const short = value => value ? value.split('-').reverse().join('/') : '—';
-  label.textContent = `${short(_jadminState.desde)} — ${short(_jadminState.hasta)}`;
+  const parts = value => (value ? String(value).split('-') : null); // [yyyy, mm, dd]
+  const full  = p => (p ? `${p[2]}/${p[1]}/${p[0]}` : '—');
+  const short = p => (p ? `${p[2]}/${p[1]}` : '—');
+  const d = parts(_jadminState.desde);
+  const h = parts(_jadminState.hasta);
+  // "01/09 – 17/09/2026" entra en una línea; si el rango cruza de año, se
+  // muestran las dos fechas completas.
+  const desdeTxt = (d && h && d[0] === h[0]) ? short(d) : full(d);
+  label.textContent = `${desdeTxt} – ${full(h)}`;
+}
+
+// "Abiertas ahora" y Estado = Abierta aplican exactamente el mismo filtro,
+// así que se marcan y se desmarcan juntos. Ninguno de los dos desaparece.
+function _jadminSyncEstadoChip() {
+  const chip = document.querySelector('#screen-jornadas-admin .chip[data-chip="abiertas"]');
+  if (chip) chip.classList.toggle('active', _jadminState.estado === 'open');
 }
 
 function _jadminWireHandlers() {
@@ -15792,6 +15807,7 @@ function _jadminWireHandlers() {
   if (selEst) selEst.addEventListener('change', () => {
     _jadminState.estado = selEst.value || '';
     _jadminState.offset = 0;
+    _jadminSyncEstadoChip();
     _jadminReload();
   });
 
@@ -15911,6 +15927,7 @@ function _jadminResetFiltros() {
   document.querySelectorAll('#screen-jornadas-admin .chip').forEach(c => c.classList.remove('active'));
   const chipTodas = document.querySelector('#screen-jornadas-admin .chip[data-chip="todas"]');
   if (chipTodas) chipTodas.classList.add('active');
+  _jadminSyncEstadoChip();
   _jadminActualizarClasesSort();
   _jadminReload();
 }
@@ -15969,6 +15986,7 @@ function _jadminAplicarChip(nombre) {
   if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta || '';
   if ($('jadmin-f-estado')) $('jadmin-f-estado').value = _jadminState.estado || '';
   _jadminSyncPeriodLabel();
+  _jadminSyncEstadoChip();
 
   _jadminReload();
 }

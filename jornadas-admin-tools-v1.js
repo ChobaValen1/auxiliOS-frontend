@@ -128,7 +128,20 @@
     if(!isAdmin())return;const root=mountModal({eyebrow:'Jornadas',title:'Jornadas anuladas',wide:true,body:'<div id="jat-voided-list">Cargando…</div>',footer:'<button class="btn btn-ghost" data-jat-close>Cerrar</button>'});
     try{const {data,error}=await db().rpc('list_voided_daily_logs_admin',{p_limit:100});if(error)throw error;const el=root.querySelector('#jat-voided-list');if(!data?.length){el.innerHTML='<div class="jat-warning">No hay jornadas anuladas.</div>';return;}el.innerHTML=`<div class="jat-voided-table">${data.map((r,i)=>`<div class="jat-voided-row"><div><b>#${r.log_id} · ${esc(r.driver_name||'—')}</b><span>${fmtDate(r.log_date)} · ${esc(r.truck_plate||'—')} · ${Number(r.km_inicio||0).toLocaleString('es-AR')} → ${Number(r.km_final||0).toLocaleString('es-AR')} km</span><small>${esc(r.void_reason||'Sin motivo')}</small></div><button class="btn btn-ghost" data-restore-index="${i}">Restaurar</button></div>`).join('')}</div>`;el.querySelectorAll('[data-restore-index]').forEach(btn=>btn.addEventListener('click',()=>restoreModal(data[Number(btn.dataset.restoreIndex)])));}catch(error){root.querySelector('#jat-voided-list').textContent=errorText(error);}
   }
-  function installVoidedButton(){if(!isAdmin()||$('jat-open-voided'))return;const clear=$('jadmin-f-clear');if(!clear?.parentElement)return;const btn=document.createElement('button');btn.id='jat-open-voided';btn.type='button';btn.className='btn btn-ghost';btn.textContent='Jornadas anuladas';btn.addEventListener('click',voidedListModal);clear.parentElement.appendChild(btn);}
+  // "Jornadas anuladas" es un acceso rapido mas: va al final de la fila de
+  // chips de estado, con el mismo cuerpo. Abre exactamente el mismo modal.
+  function installVoidedButton(){
+    if(!isAdmin()||$('jat-open-voided'))return;
+    const chips=$('jadmin-chips-estado');
+    const host=chips||$('jadmin-f-clear')?.parentElement;
+    if(!host)return;
+    const btn=document.createElement('button');
+    btn.id='jat-open-voided';btn.type='button';
+    btn.className=chips?'chip':'btn btn-ghost';
+    btn.textContent='Jornadas anuladas';
+    btn.addEventListener('click',voidedListModal);
+    host.appendChild(btn);
+  }
 
   async function surfacePayrollReviews(){
     if(!allowed()||!db())return;
