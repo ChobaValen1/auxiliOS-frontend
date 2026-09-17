@@ -220,7 +220,47 @@
     catch(error){R.resolving=false;box.textContent=error.message||'No se pudo aprobar y finalizar';box.classList.add('visible');$$('[data-review-global-action],[data-review-commit],[data-review-cancel-action],[data-review-add],.os-review-line-cancel').forEach(button=>{button.disabled=false});if(note)note.textContent=R.action==='accepted'?'Elegí Rechazar, Modificar o Aprobar para Peajes y Excedentes.':'Revisá el error y volvé a confirmar la decisión.'}
   }
 
+  const E={detail:null,serviceId:null,hostId:null,decisions:new Map(),busy:false};
+  function embeddedRows(detail){
+    const output=[];
+    for(const kind of ['toll','excess']){
+      const planned=rowsFor(kind,detail,'planned'),reported=rowsFor(kind,detail,'reported');
+      const plannedKeys=new Set(planned.map(row=>comparisonKey(kind,row)));
+      reported.forEach((row,index)=>{
+        if(!plannedKeys.has(comparisonKey(kind,row))){
+          const id=String((kind==='toll'?row.toll_report_id:row.excess_report_id)||row.review_line_client_id||`${kind}-${index}`);
+          output.push({kind,row,id});
+        }
+      });
+    }
+    return output;
+  }
+  function embeddedLine({kind,row,id}){
+    const title=kind==='toll'?'Peaje':'Excedente',name=kind==='toll'?(row.toll_name||'Peaje informado'):(row.concept_name||'Concepto informado'),method=kind==='toll'?row.customer_payment_method:reportedExcessPayment(row),decision=E.decisions.get(`${kind}:${id}`),rejected=decision?.value==='rejected';
+    return `<article class="os-embedded-difference ${decision?'is-resolved':''}" data-embedded-key="${esc(kind+':'+id)}"><div class="os-embedded-difference-head"><b>⚠ ${title}</b><span>${money(amountOf(row))}</span></div><div class="os-embedded-values"><small>Servicio: ${money(0)}</small><strong>Chofer: ${money(amountOf(row))} · ${esc(name)} · ${esc(paymentLabel(method))}</strong></div><div class="os-embedded-actions"><button type="button" class="reject ${rejected?'active':''}" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','rejected')">Rechazar</button><button type="button" class="approve ${decision?.value==='accepted'?'active':''}" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','accepted')">Aprobar</button></div><label class="os-embedded-reason" ${rejected?'':'hidden'}><span>Motivo del rechazo</span><input value="${esc(decision?.reason||'')}" oninput="AuxiliosRemitoReviewV2.reasonEmbedded('${kind}','${esc(id)}',this.value)" placeholder="Motivo breve"></label></article>`;
+  }
+  function renderEmbedded(){
+    const host=document.getElementById(E.hostId);if(!host||!E.detail)return;
+    const rows=embeddedRows(E.detail),pending=rows.filter(item=>!E.decisions.has(`${item.kind}:${item.id}`)||E.decisions.get(`${item.kind}:${item.id}`).value==='rejected'&&!E.decisions.get(`${item.kind}:${item.id}`).reason?.trim()).length;
+    host.innerHTML=`<section class="os-embedded-review"><header><b>Diferencias del remito</b><small>Aprobá o rechazá cada cargo informado por el chofer.</small></header><div class="os-embedded-list">${rows.length?rows.map(embeddedLine).join(''):'<div class="os-embedded-ok">✓ Peajes y excedentes coinciden</div>'}</div><div class="os-embedded-note">Al aprobar, se completa el cargo del socio con concepto, importe, medio de pago y peaje.</div><small class="os-embedded-immutable">El remito firmado queda preservado.</small><footer><span>${pending} de ${rows.length} pendientes</span><label class="os-embedded-pending-note"><span>Nota para dejar pendiente</span><textarea id="os-embedded-pending-note" placeholder="Indicá qué falta revisar"></textarea></label><div><button type="button" class="pending" onclick="AuxiliosRemitoReviewV2.leavePending()">Dejar pendiente</button><button type="button" class="edit" onclick="AuxiliosRemitoReviewV2.editEmbedded()">Editar servicio</button><button type="button" class="finish" ${pending||E.busy?'disabled':''} onclick="AuxiliosRemitoReviewV2.finalizeEmbedded()">${E.busy?'Cerrando…':'Finalizar y cerrar'}</button></div></footer></section>`;
+  }
+  async function embed(serviceId,hostId='osv4-review-slot'){
+    E.serviceId=serviceId;E.hostId=hostId;E.decisions=new Map();E.busy=false;const host=document.getElementById(hostId);if(!host)return;if(!canResolve()){host.innerHTML='<div class="os-embedded-ok">Documento disponible en modo lectura.</div>';return}host.innerHTML='<div class="os-review-loading">Cargando diferencias…</div>';
+    const {data,error}=await _db.rpc('get_operator_service_remito_review_v3',{p_service_id:serviceId});if(error){host.innerHTML=`<div class="os-review-errors visible">${esc(error.message)}</div>`;return}E.detail=data;renderEmbedded();
+  }
+  function decideEmbedded(kind,id,value){const key=`${kind}:${id}`,current=E.decisions.get(key)||{};E.decisions.set(key,{value,reason:value==='rejected'?(current.reason||''):''});renderEmbedded()}
+  function reasonEmbedded(kind,id,reason){const key=`${kind}:${id}`,current=E.decisions.get(key)||{value:'rejected'};E.decisions.set(key,{...current,reason});const host=document.getElementById(E.hostId),rows=embeddedRows(E.detail),pending=rows.filter(item=>!E.decisions.has(`${item.kind}:${item.id}`)||E.decisions.get(`${item.kind}:${item.id}`).value==='rejected'&&!E.decisions.get(`${item.kind}:${item.id}`).reason?.trim()).length,button=host?.querySelector('.finish'),counter=host?.querySelector('footer>span');if(button)button.disabled=!!pending;if(counter)counter.textContent=`${pending} de ${rows.length} pendientes`}
+  function embeddedPayload(){
+    const diffKeys=new Map(embeddedRows(E.detail).map(item=>[`${item.kind}:${item.id}`,E.decisions.get(`${item.kind}:${item.id}`)]));
+    const tolls=(E.detail.reported?.tolls||[]).map((row,index)=>{const id=String(row.toll_report_id||row.review_line_client_id||`toll-${index}`),decision=diffKeys.get(`toll:${id}`),rejected=decision?.value==='rejected';return{toll_report_id:row.toll_report_id||null,review_line_client_id:row.review_line_client_id||null,decision:rejected?'rejected':'accepted',reason:rejected?decision.reason:null,toll_id:row.toll_id||null,toll_name:row.toll_name,quantity:num(row.quantity||1),unit_amount:num(row.unit_amount)||amountOf(row),payment_method:row.payment_method||'manual',payer_agent:row.payer_agent||(row.customer_payment_method?'customer':'provider'),customer_payment_method:row.customer_payment_method||null}});
+    const excesses=(E.detail.reported?.excesses||[]).map((row,index)=>{const id=String(row.excess_report_id||row.review_line_client_id||`excess-${index}`),decision=diffKeys.get(`excess:${id}`),rejected=decision?.value==='rejected';return{excess_report_id:row.excess_report_id||null,review_line_client_id:row.review_line_client_id||null,decision:rejected?'rejected':'accepted',review_reason:rejected?decision.reason:null,concept_id:row.concept_id||null,quantity:num(row.quantity||1),unit_amount:num(row.unit_amount)||amountOf(row),payer_agent:row.payer_agent||'customer',collector_agent:row.collector_agent||'company',customer_payment_method:reportedExcessPayment(row)||null}});
+    return{tolls,excesses,administrative_revision:E.detail.administrative_revision||0};
+  }
+  async function finalizeEmbedded(){if(E.busy)return;const rows=embeddedRows(E.detail),unresolved=rows.some(item=>{const d=E.decisions.get(`${item.kind}:${item.id}`);return!d||d.value==='rejected'&&!d.reason?.trim()});if(unresolved)return;E.busy=true;renderEmbedded();const {data,error}=await _db.rpc('resolve_operator_service_document_v6',{p_service_id:E.serviceId,p_action:'approve_and_finalize',p_payload:embeddedPayload()});if(error){E.busy=false;renderEmbedded();window.toast?.(error.message,'error');return}window.toast?.('Servicio finalizado y enviado a Facturación','success');window.cerrarNuevoServicio?.(true);await window.OperatorServices?.loadServices?.()}
+  function editEmbedded(){const id=E.serviceId;window.cerrarNuevoServicio?.(true);window.editarServicioOperador?.(id)}
+  async function leavePending(){const note=document.getElementById('os-embedded-pending-note')?.value?.trim();if(!note)return window.toast?.('Escribí una nota para dejar la revisión pendiente','error');const {error}=await _db.rpc('leave_operator_service_review_pending_v1',{p_service_id:E.serviceId,p_note:note});if(error)return window.toast?.(error.message,'error');window.cerrarNuevoServicio?.(true);window.toast?.('La revisión quedó pendiente','info')}
+
   function tab(){}
-  window.AuxiliosRemitoReviewV2={open,retry,close,openEvidence,resolve,chooseGlobalAction,cancelGlobalAction,commitGlobalAction,addLine,toggleLineCancel,tab};
+  window.AuxiliosRemitoReviewV2={open,retry,close,openEvidence,resolve,chooseGlobalAction,cancelGlobalAction,commitGlobalAction,addLine,toggleLineCancel,embed,decideEmbedded,reasonEmbedded,finalizeEmbedded,editEmbedded,leavePending,tab};
   const boot=setInterval(()=>{if(inject())clearInterval(boot)},100);setTimeout(()=>clearInterval(boot),15000);
 })();

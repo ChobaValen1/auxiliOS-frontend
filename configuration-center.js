@@ -4,6 +4,7 @@
 
   const BACKOFFICE_ROLES = new Set(['administracion', 'supervision', 'facturacion']);
   const MANAGEMENT_ROLES = new Set(['administracion', 'supervision']);
+  const HISTORY_ROLES = new Set(['administracion', 'supervision', 'operador']);
   const CONFIG_CHILD_ROUTES = new Set(['empresas', 'bases-geograficas', 'bases-tarifarias', 'config-service-types', 'config-tariff-types', 'peajes', 'config-services', 'config-tariff-matrix']);
   const CANCELLATION_STATES = new Set(['cancelled', 'canceled', 'cancelado', 'cancelada', 'anulado', 'anulada', 'void', 'voided']);
   const ENTITY_LABELS = {
@@ -96,6 +97,7 @@
   const role = () => String(typeof PERFIL_USUARIO === 'undefined' ? '' : (PERFIL_USUARIO?.roles?.name || PERFIL_USUARIO?.role || '')).toLowerCase();
   const canUseCenter = () => BACKOFFICE_ROLES.has(role());
   const canUseManagementTools = () => MANAGEMENT_ROLES.has(role());
+  const canUseHistory = () => HISTORY_ROLES.has(role());
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const notify = (message, type = 'info') => typeof toast === 'function' ? toast(message, type) : console[type === 'error' ? 'error' : 'log'](message);
   const dateTime = value => value ? new Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value)).replace(',', ' ·') : '—';
@@ -143,6 +145,19 @@
     ensureScreen('screen-peajes');
     ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas');
     ensureScreen('screen-config-tariff-matrix');
+  }
+
+  function ensureHistoryShell() {
+    if (!canUseHistory()) return;
+    if (!document.getElementById('configuration-center-css')) {
+      const css = document.createElement('link');
+      css.id = 'configuration-center-css';
+      css.rel = 'stylesheet';
+      css.href = '/configuration-center.css';
+      document.head.appendChild(css);
+    }
+    ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
+    ensureScreen('screen-historial-sistema');
   }
 
   function injectCenter() {
@@ -330,6 +345,20 @@
 
     populateFlyout();
     orderTop([dashboard, canUseManagementTools() ? operations : null, jornadas, camion, remitos, payroll, configuration, history]);
+  }
+
+  function configureOperatorNavigation() {
+    document.body.classList.add('aux-backoffice-nav');
+    closeFlyout();
+    ['nav-registro','nav-jornadas-admin','nav-camion','nav-remitos','nav-sueldos','nav-configuracion'].forEach(id => {
+      const node = document.getElementById(id);
+      if (node) node.style.display = 'none';
+    });
+    const dashboard = ensureNavNode('nav-dashboard', 'dashboard', '📊', 'Resumen', false);
+    const operations = document.getElementById('nav-operaciones');
+    if (operations) operations.style.display = '';
+    const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
+    orderTop([dashboard, operations, history]);
   }
 
   function managementToolsMarkup() {
@@ -539,7 +568,7 @@
 
   async function loadHistory() {
     const screen = document.getElementById('screen-historial-sistema');
-    if (!screen || !canUseCenter() || S.auditLoading) return;
+    if (!screen || !canUseHistory() || S.auditLoading) return;
     S.auditLoading = true;
     screen.innerHTML = '<div class="aux-loading">Cargando historial…</div>';
     try {
@@ -586,7 +615,8 @@
     const previous = window.goTo;
     if (typeof previous !== 'function' || previous.__auxCanonicalNavigation) return;
     const wrapped = function(name, ...args) {
-      if ((name === 'configuracion' || name === 'historial-sistema' || CONFIG_CHILD_ROUTES.has(name)) && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
+      if (name === 'historial-sistema' && !canUseHistory()) return notify('Sin permiso para acceder a Historial', 'error');
+      if ((name === 'configuracion' || CONFIG_CHILD_ROUTES.has(name)) && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
       const result = previous.call(this, name, ...args);
       closeFlyout();
       if (canUseCenter() && CONFIG_CHILD_ROUTES.has(name)) document.getElementById('nav-configuracion')?.classList.add('active');
@@ -600,11 +630,14 @@
 
   function init() {
     ensureScreenMetadata();
+    ensureHistoryShell();
     if (canUseCenter()) {
       ensureRouteShells();
       injectCenter();
       configureBackofficeNavigation();
       renderCenter();
+    } else if (role() === 'operador') {
+      configureOperatorNavigation();
     } else {
       configureDriverNavigation();
     }
@@ -628,7 +661,7 @@
     abrirHerramientaConfiguracion: openLegacySettingsTab,
   });
   window.AuxiliosConfigurationCenter = {
-    configure: () => canUseCenter() ? configureBackofficeNavigation() : configureDriverNavigation(),
+    configure: () => canUseCenter() ? configureBackofficeNavigation() : role() === 'operador' ? configureOperatorNavigation() : configureDriverNavigation(),
     renderCenter,
     loadHistory,
   };

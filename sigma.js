@@ -11179,12 +11179,14 @@ async function cargarTablaAdminUsuarios() {
 
   const roleBadgeClass = (rol) => {
     if (rol === 'administracion') return 'cfg-badge-admin';
+    if (rol === 'operador')       return 'cfg-badge-operador';
     if (rol === 'supervision')    return 'cfg-badge-supervision';
     if (rol === 'chofer')         return 'cfg-badge-chofer';
     return 'cfg-badge-role';
   };
   const roleLabel = (rol) => {
     if (rol === 'administracion') return 'Admin';
+    if (rol === 'operador')       return 'Operador';
     if (rol === 'supervision')    return 'Supervision';
     if (rol === 'chofer')         return 'Chofer';
     return rol || 'Sin rol';
@@ -14089,7 +14091,7 @@ const _CSV_SCHEMA = {
   },
   usuarios: {
     title: '📥 Importar Personal desde CSV',
-    help: 'Subí un .csv o .xlsx con: <b>legajo</b>, <b>email</b>, <b>full_name</b>, dni, phone, <b>rol</b> (chofer / supervision / administracion).',
+    help: 'Subí un .csv o .xlsx con: <b>legajo</b>, <b>email</b>, <b>full_name</b>, dni, phone, <b>rol</b> (chofer / operador / supervision / administracion).',
     required: ['legajo','email','full_name','rol'],
     columns: ['legajo','email','full_name','dni','phone','rol'],
     template: [
@@ -14235,7 +14237,7 @@ function _csvRenderPreview(rows) {
       }
       if (!obj.full_name) errors.push('full_name vacío');
       const rolN = (obj.rol || '').toLowerCase();
-      if (!['chofer','supervision','administracion'].includes(rolN)) errors.push('rol inválido (chofer/supervision/administracion)');
+      if (!['chofer','operador','supervision','administracion'].includes(rolN)) errors.push('rol inválido (chofer/operador/supervision/administracion)');
       else obj.rol = rolN;
     }
 

@@ -64,7 +64,8 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   assert.match(services,/list_driver_service_intakes_v2/);
   assert.match(services,/Crear servicio/);
   assert.match(services,/crearServicioDesdeIngresoChofer/);
-  assert.match(read('operator-service-wizard.js'),/Servicio creado e ingreso del Chofer vinculado/);
+  assert.match(read('operator-service-wizard.js'),/Servicio creado y finalizado correctamente/);
+  assert.match(read('operator-service-wizard.js'),/resolve_operator_service_document_v6/);
 });
 
 test('la mesa de ingresos expone por RPC el resumen operativo y de facturación',()=>{

@@ -26,7 +26,7 @@ test('edición sigue auditada y usa un solo workspace',()=>{
 test('la tercera columna tiene un único renderer comercial',()=>{
  assert.match(workspace,/data-workspace="three-columns"/);
  assert.match(workspaceCss,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
- assert.match(workspace,/class="osv2-column actions-column"><\/section>/);
+ assert.match(workspace,/id="osv4-review-slot" class="osv4-review-slot"/);
  assert.match(workspace,/OperatorServiceCommercialAddonsV1\?\.render/);
  assert.doesNotMatch(workspace,/tollCard|extrasCard|renderTolls|renderRows|data-toll-field|data-row-concept/);
  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación/);

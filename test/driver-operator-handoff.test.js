@@ -83,9 +83,10 @@ test('intake preloads all signed fields and keeps reported charges apart through
   assert.equal(w.data.origin_place_id,'map-o');assert.equal(w.data.destination_place_id,'map-d');assert.equal(w.reportedDistanceKm,28);
   assert.equal(JSON.stringify(w.reportedAddons),reported);
   assert.equal(w.data.commercial_addons.tolls.length,1);assert.equal(w.data.commercial_addons.excess_charges.length,1);
-  for(const key of ['customer_name','customer_document','customer_phone','assigned_driver_id'])assert.equal(api.locked(key),true,key);
+  for(const key of ['customer_name','customer_document','customer_phone'])assert.equal(api.locked(key),false,key);
+  assert.equal(api.locked('assigned_driver_id'),true,'assigned_driver_id');
   for(const key of ['service_order_number','origin','destination','origin_place_id'])assert.equal(api.locked(key),false,key);
-  api.setVal('customer_document','changed');assert.equal(w.data.customer_document,'20111222333');
+  api.setVal('customer_document','20333444555');assert.equal(w.data.customer_document,'20333444555');
   assert.equal(api.locked('company_id'),false);assert.equal(api.locked('billing_base_id'),false);
 });
 

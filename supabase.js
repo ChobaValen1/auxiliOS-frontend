@@ -219,7 +219,7 @@ async function cargarPerfilUsuario() {
   }
   const badge = document.querySelector('.role-badge');
   if (badge && data.roles?.name) {
-    const map = { administracion:'🔑 Admin', supervision:'👁 Supervisor', chofer:'🚛 Chofer' };
+    const map = { administracion:'🔑 Admin', operador:'🧭 Operador', supervision:'👁 Supervisor', chofer:'🚛 Chofer' };
     badge.textContent = map[data.roles.name] || data.roles.name;
   }
 }
