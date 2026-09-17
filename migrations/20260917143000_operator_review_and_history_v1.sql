@@ -3,7 +3,7 @@ begin;
 
 drop policy if exists audit_events_admin_read on public.audit_events;
 create policy audit_events_admin_read on public.audit_events for select to authenticated
-using (public.current_auxilios_role() in ('administracion','supervision','operador'));
+using (app_private.current_auxilios_role() in ('administracion','supervision','operador'));
 
 create or replace function public.leave_operator_service_review_pending_v1(p_service_id uuid,p_note text)
 returns jsonb language plpgsql security definer set search_path='' as $$
@@ -46,3 +46,4 @@ revoke all on function public.list_driver_activated_services_v1(integer) from pu
 grant execute on function public.list_driver_activated_services_v1(integer) to authenticated;
 
 commit;
+
