@@ -16142,12 +16142,14 @@ function _jadminRenderFila(r) {
     ? `<span class="pill pill-red">🔧</span>`
     : `<span style="color:var(--muted)">—</span>`;
 
-  // Estado (solo open/closed/anulado — taller es columna independiente)
+  // Estado (solo open/closed/anulado — taller es columna independiente).
+  // "Cerrada" es el estado normal y va en gris neutro: el ámbar queda
+  // reservado para las jornadas que siguen abiertas.
   let estadoHtml;
   if (r.status === 'open') {
     estadoHtml = `<span class="pill pill-amber"><span class="dot a"></span>Abierta</span>`;
   } else if (r.status === 'closed') {
-    estadoHtml = `<span class="pill pill-green"><span class="dot g"></span>Cerrada</span>`;
+    estadoHtml = `<span class="pill pill-muted"><span class="dot n"></span>Cerrada</span>`;
   } else {
     estadoHtml = `<span class="pill pill-muted">${_escHtml(r.status || '—')}</span>`;
   }
@@ -16158,9 +16160,9 @@ function _jadminRenderFila(r) {
   const _orgs = [r.km_inicio_origen, r.km_final_origen];
   let origenBadge = '';
   if (_orgs.includes('manual_ia_fallo') || _orgs.includes('manual_editado')) {
-    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(245,166,35,0.12);color:var(--amber)">✏️ A MANO</span>';
+    origenBadge = '<span class="km-origen manual">A MANO</span>';
   } else if (_orgs.includes('manual_offline')) {
-    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(133,144,171,0.15);color:var(--muted2)">📴</span>';
+    origenBadge = '<span class="km-origen offline" title="Cargado sin conexión">OFFLINE</span>';
   }
 
   return `

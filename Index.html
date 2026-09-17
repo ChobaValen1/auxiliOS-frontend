@@ -1977,6 +1977,9 @@
     font-size: 26px;
     line-height: 1;
     letter-spacing: 1px;
+    /* El numero nunca lleva color: el color lo reserva la pantalla para
+       estado (ambar), alerta (rojo) y rendicion OK (verde). */
+    color: var(--text);
   }
   #screen-jornadas-admin .kpi-sub {
     font-size: 12px;
@@ -1984,16 +1987,14 @@
     color: var(--jadmin-muted);
     margin-top: 5px;
   }
-  #screen-jornadas-admin .kpi.abiertas { border-left-color: var(--amber); }
-  #screen-jornadas-admin .kpi.abiertas .kpi-val { color: var(--amber); }
-  #screen-jornadas-admin .kpi.jornadas { border-left-color: var(--blue); }
-  #screen-jornadas-admin .kpi.jornadas .kpi-val { color: var(--blue); }
-  #screen-jornadas-admin .kpi.km       { border-left-color: var(--green); }
-  #screen-jornadas-admin .kpi.km       .kpi-val { color: var(--green); }
-  #screen-jornadas-admin .kpi.horas    { border-left-color: #a855f7; }
-  #screen-jornadas-admin .kpi.horas    .kpi-val { color: #a855f7; }
-  #screen-jornadas-admin .kpi.servicios   { border-left-color: var(--red); }
-  #screen-jornadas-admin .kpi.servicios   .kpi-val { color: var(--red); }
+  /* Cada card conserva identidad solo en el borde izquierdo, en tono apagado.
+     "Abiertas ahora" es la unica que mantiene el ambar a full porque es la
+     unica que marca un estado operativo vivo. */
+  #screen-jornadas-admin .kpi.abiertas  { border-left-color: #f59e0b; }
+  #screen-jornadas-admin .kpi.jornadas  { border-left-color: #3f5a86; }
+  #screen-jornadas-admin .kpi.km        { border-left-color: #3d6f5c; }
+  #screen-jornadas-admin .kpi.horas     { border-left-color: #5b4a86; }
+  #screen-jornadas-admin .kpi.servicios { border-left-color: #4a5570; }
 
   #screen-jornadas-admin .filtros {
     background: var(--card);
@@ -2209,25 +2210,43 @@
     font-weight: 600;
     letter-spacing: 0.3px;
   }
-  #screen-jornadas-admin .pill-green { background: rgba(39,196,122,0.12); color: var(--green); }
-  #screen-jornadas-admin .pill-amber { background: rgba(245,166,35,0.12); color: var(--amber); }
-  #screen-jornadas-admin .pill-red   { background: rgba(226,80,74,0.12);  color: var(--red); }
-  #screen-jornadas-admin .pill-blue  { background: rgba(59,130,246,0.12); color: var(--blue); }
+  #screen-jornadas-admin .pill-green { background: rgba(16,185,129,0.14); color: #34d399; }
+  #screen-jornadas-admin .pill-amber { background: rgba(245,158,11,0.14);  color: #f59e0b; }
+  #screen-jornadas-admin .pill-red   { background: rgba(239,68,68,0.14);   color: #f87171; }
+  #screen-jornadas-admin .pill-blue  { background: rgba(59,130,246,0.14);  color: #60a5fa; }
   #screen-jornadas-admin .pill-muted { background: var(--jadmin-neutral-bg); color: var(--jadmin-muted); }
 
   #screen-jornadas-admin .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-  #screen-jornadas-admin .dot.g { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  #screen-jornadas-admin .dot.a { background: var(--amber); }
-  #screen-jornadas-admin .dot.r { background: var(--red); }
+  #screen-jornadas-admin .dot.g { background: #34d399; }
+  #screen-jornadas-admin .dot.a { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.75); }
+  #screen-jornadas-admin .dot.r { background: #f87171; }
+  #screen-jornadas-admin .dot.n { background: var(--jadmin-muted); }
 
-  #screen-jornadas-admin .km-cell { color: var(--amber); font-weight: 600; }
-  #screen-jornadas-admin .km-cell.zero { color: var(--muted); font-weight: 400; }
+  /* Los KM son un dato mas, no un aviso: competian con el ambar de estado. */
+  #screen-jornadas-admin .km-cell { color: var(--text); font-weight: 600; }
+  #screen-jornadas-admin .km-cell.zero { color: var(--jadmin-muted); font-weight: 400; }
+
+  /* Origen del KM. "A MANO" es lo unico que sigue en ambar en esta columna. */
+  #screen-jornadas-admin .km-origen {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
+  #screen-jornadas-admin .km-origen.manual { background: rgba(245,158,11,.14); color: #f59e0b; }
+  #screen-jornadas-admin .km-origen.offline { background: var(--jadmin-neutral-bg); color: var(--jadmin-muted); }
+
+  /* Celda sin dato: mismo tratamiento en todas las columnas. */
+  #screen-jornadas-admin .cell-empty { color: var(--jadmin-muted); font-weight: 400; }
 
   #screen-jornadas-admin .rend-cell { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 12px; }
-  #screen-jornadas-admin .rend-cell.ok   { color: var(--green); }
-  #screen-jornadas-admin .rend-cell.warn { color: var(--amber); }
-  #screen-jornadas-admin .rend-cell.bad  { color: var(--red); }
-  #screen-jornadas-admin .rend-cell.na   { color: var(--muted); font-weight: 400; }
+  #screen-jornadas-admin .rend-cell.ok   { color: #34d399; }
+  #screen-jornadas-admin .rend-cell.warn { color: #f59e0b; }
+  #screen-jornadas-admin .rend-cell.bad  { color: #f87171; }
+  #screen-jornadas-admin .rend-cell.na   { color: var(--jadmin-muted); font-weight: 400; }
 
   #screen-jornadas-admin .inc-cell {
     display: inline-flex;
@@ -2238,7 +2257,7 @@
     font-weight: 600;
   }
   #screen-jornadas-admin .inc-cell.zero { color: var(--jadmin-muted); font-weight: 400; }
-  #screen-jornadas-admin .inc-cell.some { color: var(--red); }
+  #screen-jornadas-admin .inc-cell.some { color: #f87171; }
 
   #screen-jornadas-admin .table-foot {
     display: flex; align-items: center; justify-content: space-between;
