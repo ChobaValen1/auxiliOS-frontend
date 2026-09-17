@@ -4394,8 +4394,29 @@ function sanitizeInt(input) {
 function _modalError(id, msg) {
   const el = document.getElementById(id);
   if (!el) return;
+  clearTimeout(el._autoClearTimer);
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
+  if (msg) el._autoClearTimer = setTimeout(() => {
+    el.textContent = '';
+    el.style.display = 'none';
+  }, 3000);
+}
+
+function operationFeedback(title, message, type='success', duration=2200) {
+  let modal = document.getElementById('operation-feedback');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'operation-feedback';
+    modal.className = 'operation-feedback';
+    modal.setAttribute('role','status');
+    modal.setAttribute('aria-live','assertive');
+    document.body.appendChild(modal);
+  }
+  clearTimeout(modal._closeTimer);
+  modal.className = `operation-feedback ${type} is-visible`;
+  modal.innerHTML = `<div><span>${type==='success'?'✓':'!'}</span><strong>${title}</strong><small>${message}</small></div>`;
+  modal._closeTimer = setTimeout(() => modal.classList.remove('is-visible'), Math.min(3000, Math.max(800, duration)));
 }
 
 // ── TOAST ─────────────────────────────────────
@@ -6209,6 +6230,7 @@ async function guardarCombustible() {
       dependeDe: _logIdEsTemporal(datos.log_id) ? datos.log_id : null
     });
     toast('Sin señal — carga guardada localmente. Se sincronizará al recuperar conexión.', 'warning');
+    operationFeedback('Carga guardada', 'Se sincronizará automáticamente al recuperar conexión.', 'success', 2400);
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
     return;
@@ -6223,15 +6245,18 @@ async function guardarCombustible() {
 
   if (resultado.ok) {
     toast(`${litros}L registrados correctamente`, 'success');
+    operationFeedback('Carga registrada', `${litros} litros guardados correctamente.`, 'success', 2200);
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
     cargarScreenCamion();
   } else {
     toast(`Error al guardar: ${resultado.errorMsg || 'Error desconocido'}`, 'error');
+    operationFeedback('Carga inválida', resultado.errorMsg || 'No se pudo registrar la carga de combustible.', 'error', 2800);
   }
   } catch (error) {
     console.error('[Combustible]',error);
     _modalError('cb-error','No se pudo guardar la carga. Revisá la conexión y reintentá.');
+    operationFeedback('Carga inválida', 'No se pudo guardar la carga. Revisá la conexión y reintentá.', 'error', 2800);
   } finally { _setFuelBusy(''); }
 }
 
@@ -7529,7 +7554,7 @@ function renderHistorialJornadas(data) {
       </div>`;
 
     const row = document.createElement('div');
-    row.className = 'journey-columns';
+    row.className = `journey-columns${j.estado === 'abierta' ? ' is-open' : ''}`;
     row.style.borderLeftColor = color;
     row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill);
     row.onclick = () => _abrirDetalleMovil(titulo, detalle);
@@ -7539,7 +7564,9 @@ function renderHistorialJornadas(data) {
   // Solo las últimas jornadas a la vista; el resto vive en el modal "Mis Jornadas"
   // que abre el botón "Ver historial completo" que ya está debajo del listado.
   // (Antes un "Ver más" desplegaba todo acá y colapsaba el módulo.)
-  if (mList) Array.from(mList.children).slice(4).forEach(el => { el.remove(); });
+  if (mList) Array.from(mList.children).forEach(el => {
+    if (!el.classList.contains('is-open')) el.remove();
+  });
   Array.from(tbody.children).slice(10).forEach(el => { el.remove(); });
 }
 
@@ -7548,7 +7575,9 @@ function _resetJornadasMobile() {
   if (!mList) return;
   const existingBtn = mList.querySelector('button');
   if (existingBtn) existingBtn.remove();
-  Array.from(mList.children).slice(4).forEach(el => { el.remove(); });
+  Array.from(mList.children).forEach(el => {
+    if (!el.classList.contains('is-open')) el.remove();
+  });
 }
 
 // ── MODAL "MIS JORNADAS" (historial completo paginado) ────────
@@ -8754,6 +8783,14 @@ function procesarFotoJornada(input, statusId, iconId) {
 async function confirmarNuevaJornada() {
   console.log("📍 PASO 1: Botón clickeado. Iniciando validaciones...");
 
+  const jornadaEnCurso = (_jornadasAbiertasCache || []).find(j => j?.log_id) || (_jornadaActivaLocal?.log_id ? _jornadaActivaLocal : null);
+  if (jornadaEnCurso) {
+    const msg = 'Ya existe una jornada en curso. Cerrala antes de iniciar otra.';
+    _modalError('nj-error', msg);
+    operationFeedback('Jornada en curso', msg, 'error', 2800);
+    return;
+  }
+
   // Guard Clauses
   if (!jornadaSeleccionada) {
     _modalError('nj-error', 'Seleccioná un camión de la lista'); return;
@@ -8852,6 +8889,7 @@ async function confirmarNuevaJornada() {
       _grillaMotivoPendiente  = null;
       if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
       toast('Jornada iniciada — se sincroniza cuando haya señal 📴', 'success');
+      operationFeedback('Jornada iniciada', 'Quedó guardada en el teléfono y se sincronizará al recuperar conexión.', 'success', 2400);
       closeModal('modal-nueva-jornada');
       actualizarBotonFinalizar(true);
       try { actualizarEstadoBtnNuevoRemito(); } catch (_) {}
@@ -8889,11 +8927,13 @@ async function confirmarNuevaJornada() {
 
   if (resultado && resultado.success) {
     toast('Jornada iniciada ✓', 'success');
+    operationFeedback('Jornada iniciada', 'La jornada quedó abierta correctamente.', 'success', 2200);
     closeModal('modal-nueva-jornada');
     if (typeof actualizarPantallaJornadas === 'function') await actualizarPantallaJornadas();
   } else {
     const msg = resultado?.error || 'No se pudo iniciar la jornada.';
     _modalError('nj-error', msg);
+    operationFeedback('No se pudo iniciar', msg.includes('jornada activa') ? 'Ya existe una jornada en curso. Cerrala antes de iniciar otra.' : msg, 'error', 2800);
     // Si el error es por camión duplicado, resaltar el selector
     if (msg.includes('camión') || msg.includes('jornada activa')) {
       const lista = document.getElementById('lista-camiones-selector');
@@ -11308,7 +11348,7 @@ function esVencida(fecha) {
  * @param {string} mensaje - El texto a mostrar
  * @param {string} tipo - 'success' (verde) o 'error' (rojo)
  */
-function toast(mensaje, tipo = 'success') {
+function toast(mensaje, tipo = 'success', duration = 3000) {
     // 1. Buscamos si ya existe el contenedor de notificaciones, si no, lo creamos
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -11348,7 +11388,7 @@ function toast(mensaje, tipo = 'success') {
     setTimeout(() => {
         el.style.opacity = '0';
         setTimeout(() => el.remove(), 300);
-    }, 3500);
+    }, Math.min(3000, Math.max(800, Number(duration) || 3000)));
 }
 //Nota: El código anterior es un ejemplo de cómo implementar un sistema de notificaciones tipo "toast" en tu aplicación. Puedes personalizar los estilos, la posición y la duración según tus necesidades. La función `toast` se puede llamar desde cualquier parte de tu código para mostrar mensajes de éxito o error al usuario.
 
@@ -17614,7 +17654,12 @@ function alxIrMantenimiento() {
 }
 
 function alxBellClick() {
-  if (!_alxEsAdminOSup()) return; // el chofer no tiene centro de alertas
+  if (!_alxEsAdminOSup()) {
+    const assigned = (window.AuxiliosPhase3?.queue || []).filter(s => ['assigned','at_origin'].includes(s.status)).length;
+    if (assigned > 0) { goTo('remitos'); return; }
+    toast('No tenés notificaciones pendientes', 'info');
+    return;
+  }
   _dashVistaActual = 'alertas';
   goTo('dashboard'); // cargarDashboard() activa la vista Alertas
 }

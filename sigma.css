@@ -2887,6 +2887,11 @@ body {
   cursor: pointer;
 }
 .jhist-open-btn:hover { border-color: var(--accent, var(--amber)); }
+.jhist-open-btn{min-height:48px;margin-top:10px;background:linear-gradient(135deg,rgba(245,166,35,.16),rgba(245,166,35,.05));border-color:rgba(245,166,35,.55);color:#ffc14d;font-size:13px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.journey-columns.is-open{border:1px solid rgba(245,166,35,.65);border-left:4px solid var(--amber)!important;background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(255,255,255,.015));box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.operation-feedback{position:fixed;inset:0;z-index:100000000;display:grid;place-items:center;padding:20px;background:rgba(3,8,18,.62);backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:.18s ease}.operation-feedback.is-visible{opacity:1;visibility:visible}.operation-feedback>div{width:min(360px,92vw);padding:25px 22px;border:1px solid var(--border);border-radius:16px;background:var(--panel);box-shadow:0 22px 70px rgba(0,0,0,.5);display:grid;justify-items:center;text-align:center;gap:8px}.operation-feedback span{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;font-size:28px;font-weight:900}.operation-feedback.success span{color:#052e1b;background:#34d399}.operation-feedback.error span{color:#fff;background:#ef4444}.operation-feedback strong{font-size:17px}.operation-feedback small{color:var(--muted);font-size:12px;line-height:1.45}
+.p3-nav-badge{position:absolute;right:5px;top:4px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#ef4444;color:#fff;font:800 10px/19px system-ui;text-align:center;box-shadow:0 0 0 2px var(--bg)}.p3-nav-badge[hidden]{display:none}
+.loading-status{position:fixed!important;inset:0!important;z-index:9999999!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px!important;background:rgba(6,12,24,.94);backdrop-filter:blur(6px);color:var(--text)!important;font-size:14px!important;font-weight:700}.loading-status[hidden]{display:none!important}.loading-status .loading-spinner{width:52px;height:52px;border-width:4px;border-color:rgba(245,166,35,.2);border-top-color:var(--amber);box-shadow:0 0 28px rgba(245,166,35,.18)}
 .jhist-row {
   display: flex;
   align-items: center;
