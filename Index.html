@@ -1953,29 +1953,29 @@
   #screen-jornadas-admin .jadmin-kpis {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 10px;
+    margin-bottom: 10px;
   }
   #screen-jornadas-admin .kpi {
     background: var(--card);
     border: 1px solid var(--border);
-    border-left: 3px solid var(--muted);
+    border-left: 3px solid var(--jadmin-muted);
     border-radius: 8px;
-    padding: 14px 16px;
+    padding: 8px 12px;
   }
   #screen-jornadas-admin .kpi-lbl {
     font-size: 12px;
-    line-height: 1.3;
+    line-height: 1.2;
     letter-spacing: var(--jadmin-label-tracking);
     text-transform: uppercase;
     color: var(--jadmin-muted);
     font-weight: 600;
-    margin-bottom: 6px;
+    margin-bottom: 3px;
   }
   #screen-jornadas-admin .kpi-val {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 26px;
-    line-height: 1;
+    font-size: 23px;
+    line-height: 1.05;
     letter-spacing: 1px;
     /* El numero nunca lleva color: el color lo reserva la pantalla para
        estado (ambar), alerta (rojo) y rendicion OK (verde). */
@@ -1983,9 +1983,9 @@
   }
   #screen-jornadas-admin .kpi-sub {
     font-size: 12px;
-    line-height: 1.35;
+    line-height: 1.25;
     color: var(--jadmin-muted);
-    margin-top: 5px;
+    margin-top: 3px;
   }
   /* Cada card conserva identidad solo en el borde izquierdo, en tono apagado.
      "Abiertas ahora" es la unica que mantiene el ambar a full porque es la
@@ -2000,13 +2000,18 @@
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 16px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
     display: grid;
-    grid-template-columns: 2fr 1.5fr 1.5fr 1.1fr 1.4fr auto;
+    grid-template-columns:
+      minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr)
+      minmax(0, 1.1fr) minmax(0, 1.5fr) auto;
     gap: 10px;
+    /* Todos los controles apoyan sobre la misma línea de base. */
     align-items: end;
   }
+  /* El período entra en una línea: el summary nunca parte la fecha. */
+  #screen-jornadas-admin #jadmin-f-periodo > summary { white-space: nowrap; }
   #screen-jornadas-admin .filtros label {
     display: block;
     font-size: 12px;
@@ -2015,7 +2020,7 @@
     text-transform: uppercase;
     color: var(--jadmin-muted);
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
   }
   #screen-jornadas-admin .filtros input,
   #screen-jornadas-admin .filtros select {
@@ -2031,16 +2036,21 @@
   #screen-jornadas-admin .filtros input:focus,
   #screen-jornadas-admin .filtros select:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--jadmin-accent);
+    box-shadow: 0 0 0 2px rgba(79,142,247,.25);
   }
+  #screen-jornadas-admin .filtros > div { min-width: 0; }
   #screen-jornadas-admin .jadmin-picker { position: relative; }
+  /* Un <details> cerrado igual maquetaba el panel (tiene display:grid propio)
+     y su min-width de 310px forzaba el ancho de la columna Período. */
+  #screen-jornadas-admin .jadmin-picker:not([open]) .jadmin-picker-panel { display: none; }
   #screen-jornadas-admin .jadmin-picker summary {
     min-height: 32px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
     background: var(--bg, #111420); color: var(--text); font-size: 12px; cursor: pointer;
     display: flex; align-items: center; justify-content: space-between; gap: 8px; list-style: none;
   }
   #screen-jornadas-admin .jadmin-picker summary::-webkit-details-marker { display:none; }
-  #screen-jornadas-admin .jadmin-picker[open] summary { border-color: var(--accent); }
+  #screen-jornadas-admin .jadmin-picker[open] summary { border-color: var(--jadmin-accent); }
   #screen-jornadas-admin .jadmin-picker-panel {
     position: absolute; z-index: 30; top: calc(100% + 5px); left: 0; min-width: 100%; max-height: 270px;
     overflow: auto; padding: 8px; border: 1px solid var(--border); border-radius: 8px;
@@ -2048,7 +2058,7 @@
   }
   #screen-jornadas-admin .jadmin-option { display:flex; align-items:center; gap:8px; padding:7px 6px; color:var(--text); font-size:12px; cursor:pointer; white-space:nowrap; }
   #screen-jornadas-admin .jadmin-option:hover { background:#ffffff0a; }
-  #screen-jornadas-admin .jadmin-option input { width:auto; accent-color:var(--accent); }
+  #screen-jornadas-admin .jadmin-option input { width:auto; accent-color:var(--jadmin-accent); }
   #screen-jornadas-admin .jadmin-period-panel { min-width:310px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   #screen-jornadas-admin .jadmin-period-panel label { margin:0; }
   #screen-jornadas-admin .filtros .clear {
@@ -2067,18 +2077,35 @@
 
   #screen-jornadas-admin .chips {
     display: flex;
-    gap: 6px;
-    margin: 4px 0 0;
+    gap: 7px 18px;
+    margin: 2px 0 0;
     flex-wrap: wrap;
+    align-items: center;
     grid-column: 1 / -1;
-    padding-top: 12px;
+    padding-top: 9px;
     border-top: 1px solid var(--border);
+  }
+  /* Los atajos de período pertenecen al selector Período; los de estado y
+     alerta filtran otra cosa. Se agrupan para que se lea cuál es cuál. */
+  #screen-jornadas-admin .chip-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  #screen-jornadas-admin .chip-group-lbl {
+    font-size: 12px;
+    letter-spacing: var(--jadmin-label-tracking);
+    text-transform: uppercase;
+    color: var(--jadmin-muted);
+    font-weight: 600;
+    margin-right: 2px;
   }
   #screen-jornadas-admin .chip {
     background: var(--card);
     border: 1px solid var(--border);
     color: var(--jadmin-muted);
-    padding: 5px 12px;
+    padding: 4px 10px;
     font-size: 12px;
     border-radius: 999px;
     cursor: pointer;
@@ -2092,9 +2119,17 @@
     border-color: var(--muted2);
   }
   #screen-jornadas-admin .chip.active {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--jadmin-accent);
+    border-color: var(--jadmin-accent);
     color: #fff;
+  }
+  /* jornadas-admin-tools-v1.js inyecta este botón: se le da el mismo cuerpo
+     que a los demás chips sin tocar su id ni su handler. */
+  #screen-jornadas-admin .chips #jat-open-voided {
+    font-family: inherit;
+    line-height: 1.2;
+    min-height: 0;
+    width: auto;
   }
   #screen-jornadas-admin .chip .cnt:empty { display: none; }
   #screen-jornadas-admin .chip .cnt {
@@ -2105,17 +2140,50 @@
     font-weight: 700;
   }
 
+  /* La pantalla ocupa el alto disponible para que la tabla arranque arriba
+     y scrollee sola, con el encabezado y el paginador siempre a la vista. */
+  #screen-jornadas-admin.screen.active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  /* Esta pantalla trae su propio aire en cada panel: el padding grande del
+     contenedor solo empujaba la tabla hacia abajo. */
+  .content:has(> #screen-jornadas-admin.screen.active) { padding: 12px 16px; }
+  /* .main es flex item de body, así que su min-width:auto dejaba que el ancho
+     mínimo de esta pantalla empujara el shell entero: por debajo de ~1200px
+     el navegador recortaba las últimas columnas sin dejar forma de llegar a
+     ellas. Con min-width:0 el shell se ajusta al viewport y el scroll queda
+     dentro de la tabla, que es donde corresponde. */
+  .main:has(#screen-jornadas-admin.screen.active) { min-width: 0; }
+
   #screen-jornadas-admin .table-wrap {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 10px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 200px;
+    min-width: 0;
+  }
+  /* Contenedor de scroll real de la tabla. Sin esto, el ancho mínimo de la
+     tabla empujaba el shell entero y el navegador recortaba las últimas
+     columnas sin dejar forma de llegar a ellas. */
+  #screen-jornadas-admin .table-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
   }
   #screen-jornadas-admin .table-hdr {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    gap: 12px;
+    padding: 8px 14px;
     border-bottom: 1px solid var(--border);
   }
   #screen-jornadas-admin .table-hdr .titulo {
@@ -2132,20 +2200,26 @@
 
   #screen-jornadas-admin table {
     width: 100%;
+    min-width: 840px;
     border-collapse: collapse;
     font-size: 12.5px;
   }
   #screen-jornadas-admin thead th {
     text-align: left;
-    padding: 10px 14px;
+    padding: 10px 8px;
     font-size: 12px;
-    letter-spacing: var(--jadmin-label-tracking);
+    letter-spacing: .03em;
     text-transform: uppercase;
     color: var(--jadmin-muted);
     font-weight: 700;
-    background: rgba(0,0,0,0.15);
+    /* Opaco a propósito: con el th sticky, las filas pasan por debajo.
+       Equivale al rgba(0,0,0,.15) anterior resuelto sobre --card. */
+    background: #151821;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
   }
   #screen-jornadas-admin thead th.right { text-align: right; }
   #screen-jornadas-admin thead th.center { text-align: center; }
@@ -2153,11 +2227,11 @@
   #screen-jornadas-admin thead th[data-sort]:hover { color: var(--text); }
   #screen-jornadas-admin thead th[data-sort]::after {
     content: '↕';
-    margin-left: 4px;
-    opacity: 0.4;
+    margin-left: 5px;
+    opacity: 0.85;
   }
-  #screen-jornadas-admin thead th.sort-desc::after { content: '↓'; opacity: 1; color: var(--accent); }
-  #screen-jornadas-admin thead th.sort-asc::after  { content: '↑'; opacity: 1; color: var(--accent); }
+  #screen-jornadas-admin thead th.sort-desc::after { content: '↓'; opacity: 1; color: var(--jadmin-accent); }
+  #screen-jornadas-admin thead th.sort-asc::after  { content: '↑'; opacity: 1; color: var(--jadmin-accent); }
 
   #screen-jornadas-admin tbody tr {
     border-bottom: 1px solid var(--border);
@@ -2167,9 +2241,14 @@
   #screen-jornadas-admin tbody tr:hover { background: rgba(255,255,255,0.03); }
   #screen-jornadas-admin tbody tr:last-child { border-bottom: none; }
   #screen-jornadas-admin tbody td {
-    padding: 11px 12px;
+    padding: 7px 8px;
     vertical-align: middle;
   }
+  /* Identidad de la jornada en una línea por dato: cuando fecha, chofer o
+     patente se partían, la fila pasaba de 48 a 77px de alto. */
+  #screen-jornadas-admin .fecha-cell,
+  #screen-jornadas-admin .camion-cell,
+  #screen-jornadas-admin .chofer-cell .name { white-space: nowrap; }
   #screen-jornadas-admin td.right  { text-align: right; font-family: 'DM Mono', 'Courier New', monospace; }
   #screen-jornadas-admin td.center { text-align: center; }
   #screen-jornadas-admin td.mono   { font-family: 'DM Mono', 'Courier New', monospace; }
@@ -2178,10 +2257,10 @@
   #screen-jornadas-admin .fecha-cell .dia { font-size: 12px; color: var(--jadmin-muted); margin-top: 2px; }
 
   #screen-jornadas-admin .chofer-cell {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 9px;
   }
   #screen-jornadas-admin .avatar {
-    width: 28px; height: 28px;
+    width: 26px; height: 26px;
     border-radius: 50%;
     background: linear-gradient(135deg, #3b82f6, #0f3460);
     color: #fff;
@@ -2205,11 +2284,11 @@
   #screen-jornadas-admin .pill {
     display: inline-flex;
     align-items: center; gap: 4px;
-    padding: 3px 9px;
+    padding: 3px 8px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
   }
   #screen-jornadas-admin .pill-green { background: rgba(16,185,129,0.14); color: #34d399; }
   #screen-jornadas-admin .pill-amber { background: rgba(245,158,11,0.14);  color: #f59e0b; }
@@ -2262,7 +2341,7 @@
 
   #screen-jornadas-admin .table-foot {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px;
+    padding: 7px 14px;
     border-top: 1px solid var(--border);
     background: rgba(0,0,0,0.15);
   }
@@ -2297,6 +2376,45 @@
   @media (max-width: 900px) {
     #screen-jornadas-admin .jadmin-kpis { grid-template-columns: repeat(2, 1fr); }
     #screen-jornadas-admin .filtros { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* Ventanas bajas (portátiles de 13", medio monitor): la cabecera de la
+     pantalla se comprime para que la tabla siga mostrando filas suficientes
+     sin scrollear. En pantallas altas todo mantiene su aire. */
+  @media (min-width: 768px) and (max-height: 720px) {
+    .content:has(> #screen-jornadas-admin.screen.active) { padding: 10px 14px; }
+    #screen-jornadas-admin .jadmin-kpis { gap: 8px; margin-bottom: 8px; }
+    #screen-jornadas-admin .kpi { padding: 6px 10px; }
+    #screen-jornadas-admin .kpi-lbl { line-height: 1.15; margin-bottom: 2px; }
+    #screen-jornadas-admin .kpi-val { font-size: 20px; }
+    #screen-jornadas-admin .kpi-sub { margin-top: 2px; }
+    #screen-jornadas-admin .filtros { padding: 8px 10px; margin-bottom: 8px; gap: 8px; }
+    #screen-jornadas-admin .filtros label { margin-bottom: 3px; }
+    #screen-jornadas-admin .filtros input,
+    #screen-jornadas-admin .filtros select,
+    #screen-jornadas-admin .jadmin-picker summary { padding: 5px 8px; min-height: 0; }
+    #screen-jornadas-admin .chips { padding-top: 7px; gap: 6px 14px; }
+    #screen-jornadas-admin .chip,
+    #screen-jornadas-admin .chips #jat-open-voided { padding: 3px 9px; }
+    #screen-jornadas-admin .table-hdr { padding: 6px 12px; }
+    #screen-jornadas-admin .table-hdr .titulo { font-size: 15px; }
+    #screen-jornadas-admin thead th { padding: 6px 8px; }
+    #screen-jornadas-admin tbody td { padding: 5px 8px; }
+    #screen-jornadas-admin .avatar { width: 24px; height: 24px; }
+    #screen-jornadas-admin .table-foot { padding: 5px 12px; }
+    #screen-jornadas-admin .pager button { height: 26px; }
+  }
+
+  @media (max-width: 767px) {
+    /* En mobile el scroll natural de la pantalla manda: la tabla solo
+       necesita poder correrse en horizontal. */
+    #screen-jornadas-admin.screen.active { display: block; height: auto; }
+    .content:has(> #screen-jornadas-admin.screen.active) { padding: 14px; }
+    #screen-jornadas-admin .table-wrap { min-height: 0; }
+    #screen-jornadas-admin .jadmin-kpis { gap: 8px; }
+    #screen-jornadas-admin .filtros { grid-template-columns: 1fr; }
+    #screen-jornadas-admin .filtros .clear { justify-self: start; }
+    #screen-jornadas-admin .chips { gap: 8px 12px; }
   }
   </style>
 
@@ -2370,14 +2488,21 @@
     <button class="clear" id="jadmin-f-clear">Limpiar</button>
     <!-- ACCESOS RÁPIDOS -->
     <div class="chips">
-    <span class="chip active" data-chip="todas">Todas <span class="cnt"></span></span>
-    <span class="chip" data-chip="hoy">Hoy <span class="cnt"></span></span>
-    <span class="chip" data-chip="semana">Esta semana <span class="cnt"></span></span>
-    <span class="chip" data-chip="mes">Este mes <span class="cnt"></span></span>
-    <span class="chip" data-chip="abiertas">Abiertas ahora <span class="cnt"></span></span>
-    <span class="chip" data-chip="taller">En taller <span class="cnt"></span></span>
-    <span class="chip" data-chip="incidentes">Con incidentes <span class="cnt"></span></span>
-    <span class="chip" data-chip="rendicion">Faltantes rendición <span class="cnt"></span></span>
+      <div class="chip-group">
+        <span class="chip-group-lbl">Período</span>
+        <span class="chip active" data-chip="todas">Todas <span class="cnt"></span></span>
+        <span class="chip" data-chip="hoy">Hoy <span class="cnt"></span></span>
+        <span class="chip" data-chip="semana">Esta semana <span class="cnt"></span></span>
+        <span class="chip" data-chip="mes">Este mes <span class="cnt"></span></span>
+      </div>
+      <div class="chip-group" id="jadmin-chips-estado">
+        <span class="chip-group-lbl">Estado y alertas</span>
+        <span class="chip" data-chip="abiertas">Abiertas ahora <span class="cnt"></span></span>
+        <span class="chip" data-chip="taller">En taller <span class="cnt"></span></span>
+        <span class="chip" data-chip="incidentes">Con incidentes <span class="cnt"></span></span>
+        <span class="chip" data-chip="rendicion">Faltantes rendición <span class="cnt"></span></span>
+        <!-- jornadas-admin-tools-v1.js inyecta acá #jat-open-voided -->
+      </div>
     </div>
   </div>
 
@@ -2388,6 +2513,7 @@
       <div class="count">Mostrando <b id="jadmin-count-shown">0</b> de <b id="jadmin-count-total">0</b></div>
     </div>
 
+    <div class="table-scroll">
     <table>
       <thead>
         <tr>
@@ -2405,6 +2531,7 @@
       </thead>
       <tbody id="jadmin-tbody"></tbody>
     </table>
+    </div>
 
     <div class="table-foot">
       <div class="per-page-lbl">
