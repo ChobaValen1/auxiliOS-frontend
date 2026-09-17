@@ -14,7 +14,7 @@ test('Crear Ver y Editar comparten un único workspace y controlador',()=>{
   assert.match(wizard,/openExisting/);
   assert.match(wizard,/openView/);
   assert.match(wizard,/openEdit/);
-  assert.match(wizard,/get_operator_service_edit_context/);
+  assert.match(wizard,/get_operator_service_handoff_context_v2/);
   assert.match(workspace,/data-mode="\$\{w\.mode\}"/);
   assert.match(workspace,/Ver Servicio/);
   assert.match(workspace,/Editar Servicio/);
@@ -102,10 +102,10 @@ test('conceptos crecen con el workspace y no crean un scroll interno',()=>{
   assert.match(workspaceCss,/\.osv4-concept-table\{[^}]*overflow:visible/);
 });
 
-test('origen destino es compacto y observaciones e indicaciones permanecen en columna 2',()=>{
+test('origen destino y observaciones permanecen compactos en columna 2',()=>{
   assert.match(workspace,/osv4-location-head/);
   assert.match(workspace,/rows="3" data-key="operator_notes"/);
-  assert.match(workspace,/rows="3" data-key="driver_instructions"/);
+  assert.doesNotMatch(workspace,/driver_instructions|Indicaciones para el chofer|osv4-driver-notes/);
   assert.match(workspaceCss,/\.osv2-location\{display:grid;gap:3px;padding:6px 7px\}/);
   assert.match(workspaceCss,/\.osv4-reactive \.route-column textarea\{min-height:52px!important/);
 });
@@ -128,7 +128,7 @@ test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloqu
 
 test('renderer elimina callbacks vacíos sin consumidores',()=>{
   assert.doesNotMatch(workspace,/validationErrors:\(\)=>\[\]|updateValidationUI:\(\)=>\{\}/);
-  assert.match(workspace,/window\.OperatorServiceWorkspaceV2=\{render,sync,reset\}/);
+  assert.match(workspace,/window\.OperatorServiceWorkspaceV2=\{render,sync,hydrate,reset\}/);
 });
 
 test('edición conserva payload diferencial y privacidad backend',()=>{
@@ -148,4 +148,15 @@ test('PWA incluye solo el workspace y configuración canónicos',()=>{
   assert.match(sw,/operator-service-workspace-reactive-v1\.js/);
   assert.match(sw,/operator-service-commercial-addons-v1\.js/);
   assert.doesNotMatch(sw,/operator-active-desk|operator-services-block-a|operator-service-edit|operator-service-reajuste|operator-service-v2\.js|operator-reference-loader/);
+});
+
+test('teléfono DNI CUIT y kilómetros aceptan sólo formato numérico',()=>{
+  assert.match(workspace,/id="osv4-phone" type="text" inputmode="numeric" pattern="\[0-9\]\*" maxlength="15" autocomplete="off"/);
+  assert.match(workspace,/id="osv4-document" type="text" inputmode="numeric" pattern="\[0-9\]\{7,11\}" minlength="7" maxlength="11" autocomplete="off"/);
+  assert.match(workspace,/id="osv4-asphalt" type="text" inputmode="decimal"/);
+  assert.match(workspace,/id="osv4-gravel" type="text" inputmode="decimal"/);
+  assert.match(workspace,/function decimal\(value\)/);
+  assert.match(wizard,/if\(key==='customer_phone'\)value=digits\(value,15\)/);
+  assert.match(wizard,/if\(key==='customer_document'\)value=digits\(value,11\)/);
+  assert.match(wizard,/DNI \/ CUIT debe contener únicamente entre 7 y 11 dígitos/);
 });

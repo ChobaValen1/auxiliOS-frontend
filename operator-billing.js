@@ -656,8 +656,8 @@
 
   function editServiceById(id) {
     if (!id || !canCorrect()) return;
-    if (typeof window.editarServicioOperador !== 'function') return notify('El editor de Servicios todavía se está cargando', 'warning');
-    window.editarServicioOperador(id);
+    if (typeof window.editarServicioFacturacion !== 'function') return notify('El editor de Servicios todavía se está cargando', 'warning');
+    window.editarServicioFacturacion(id);
   }
 
   function handleRowAction(action, id) {

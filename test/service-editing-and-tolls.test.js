@@ -17,7 +17,7 @@ const config=read('config.js'),sw=read('sw.js'),pkg=read('package.json');
 test('edición sigue auditada y usa un solo workspace',()=>{
  assert.match(legacy,/operator_service_changes/i);
  assert.match(canonical,/create or replace function public\.update_operator_service/i);
- assert.match(wizard,/get_operator_service_edit_context/);
+ assert.match(wizard,/get_operator_service_handoff_context_v2/);
  assert.match(wizard,/update_operator_service/);
  assert.match(workspace,/data-mode="\$\{w\.mode\}"/);
  assert.doesNotMatch(config,/operator-service-edit\.js|operator-service-edit\.css/);
@@ -26,7 +26,7 @@ test('edición sigue auditada y usa un solo workspace',()=>{
 test('la tercera columna tiene un único renderer comercial',()=>{
  assert.match(workspace,/data-workspace="three-columns"/);
  assert.match(workspaceCss,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
- assert.match(workspace,/class="osv2-column actions-column"><\/section>/);
+ assert.match(workspace,/id="osv4-review-slot" class="osv4-review-slot"/);
  assert.match(workspace,/OperatorServiceCommercialAddonsV1\?\.render/);
  assert.doesNotMatch(workspace,/tollCard|extrasCard|renderTolls|renderRows|data-toll-field|data-row-concept/);
  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación/);

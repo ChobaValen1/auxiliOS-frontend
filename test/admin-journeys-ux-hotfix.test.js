@@ -33,6 +33,21 @@ test('journey KPIs are filter-aware and show averages and services', () => {
   assert.match(data, /\.from\('remitos'\)[\s\S]*?serviciosPeriodo = serviciosRes\.count \|\| 0/);
 });
 
+test('journey filters support multiple drivers and trucks inside one filter panel', () => {
+  const html = read('Index.html');
+  const ui = read('sigma.js');
+  const data = read('supabase.js');
+
+  assert.match(html, /id="jadmin-f-chofer-options"/);
+  assert.match(html, /id="jadmin-f-camion-options"/);
+  assert.match(html, /id="jadmin-f-periodo"/);
+  assert.match(html, /class="chips"[\s\S]*data-chip="todas"/);
+  assert.match(ui, /driverIds:\s*\[\]/);
+  assert.match(ui, /truckIds:\s*\[\]/);
+  assert.match(data, /query = query\.in\('driver_id', selectedDrivers\)/);
+  assert.match(data, /query = query\.in\('truck_id', selectedTrucks\)/);
+});
+
 test('journey screen removes the visual legend and numbers services chronologically', () => {
   const html = read('Index.html');
   const ui = read('sigma.js');

@@ -30,11 +30,19 @@ test('monthly export loads remitos from the selected journeys, not created_at da
   assert.doesNotMatch(src, /\.gte\('created_at_device'/);
 });
 
-test('rendition preview uses the active journey RPCs', () => {
+test('rendition preview sums both cash payment slots from active journey remitos', () => {
   const src = read('rendition-journey-source-v1.js');
-  assert.match(src, /rpc\('calcular_efectivo_jornada', \{ p_log_id: logId \}\)/);
+  const ui = read('sigma.js');
+  const css = read('sigma.css');
   assert.match(src, /rpc\('calcular_gastos_jornada', \{ p_log_id: logId \}\)/);
   assert.match(src, /\.eq\('log_id', logId\)/);
+  assert.match(src, /esEfectivo\(remito\.pago_1_metodo\)/);
+  assert.match(src, /esEfectivo\(remito\.pago_2_metodo\)/);
+  assert.match(src, /nro_servicio, patente/);
+  assert.match(ui, /rend-service-identification/);
+  assert.match(ui, /r\.nro_servicio \|\| r\.nro_remito/);
+  assert.match(ui, /rend-service-cash/);
+  assert.match(css, /\.rend-service-identification strong\{color:#f4f7fb/);
 });
 
 test('edge function validates journey ownership and calculates by log_id', () => {

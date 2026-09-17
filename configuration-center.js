@@ -4,6 +4,7 @@
 
   const BACKOFFICE_ROLES = new Set(['administracion', 'supervision', 'facturacion']);
   const MANAGEMENT_ROLES = new Set(['administracion', 'supervision']);
+  const HISTORY_ROLES = new Set(['administracion', 'supervision', 'operador']);
   const CONFIG_CHILD_ROUTES = new Set(['empresas', 'bases-geograficas', 'bases-tarifarias', 'config-service-types', 'config-tariff-types', 'peajes', 'config-services', 'config-tariff-matrix']);
   const CANCELLATION_STATES = new Set(['cancelled', 'canceled', 'cancelado', 'cancelada', 'anulado', 'anulada', 'void', 'voided']);
   const ENTITY_LABELS = {
@@ -96,6 +97,7 @@
   const role = () => String(typeof PERFIL_USUARIO === 'undefined' ? '' : (PERFIL_USUARIO?.roles?.name || PERFIL_USUARIO?.role || '')).toLowerCase();
   const canUseCenter = () => BACKOFFICE_ROLES.has(role());
   const canUseManagementTools = () => MANAGEMENT_ROLES.has(role());
+  const canUseHistory = () => HISTORY_ROLES.has(role());
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const notify = (message, type = 'info') => typeof toast === 'function' ? toast(message, type) : console[type === 'error' ? 'error' : 'log'](message);
   const dateTime = value => value ? new Intl.DateTimeFormat('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value)).replace(',', ' ·') : '—';
@@ -143,6 +145,19 @@
     ensureScreen('screen-peajes');
     ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas');
     ensureScreen('screen-config-tariff-matrix');
+  }
+
+  function ensureHistoryShell() {
+    if (!canUseHistory()) return;
+    if (!document.getElementById('configuration-center-css')) {
+      const css = document.createElement('link');
+      css.id = 'configuration-center-css';
+      css.rel = 'stylesheet';
+      css.href = '/configuration-center.css';
+      document.head.appendChild(css);
+    }
+    ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
+    ensureScreen('screen-historial-sistema');
   }
 
   function injectCenter() {
@@ -248,7 +263,7 @@
       addAction(management, '🆘', 'Contactos de emergencia', 'Teléfonos y referencias operativas', () => openLegacySettingsTab('tab-emergencias'));
       moveTo(administration, document.getElementById('nav-documentos'));
       moveTo(administration, document.getElementById('nav-grilla'));
-      moveTo(administration, document.getElementById('nav-sueldos'));
+
       addAction(administration, '👤', 'Mi cuenta', 'Datos y preferencias de la cuenta', () => openLegacySettingsTab('tab-mi-cuenta'));
     } else {
       ['nav-documentos', 'nav-grilla', 'nav-sueldos'].forEach(id => {
@@ -324,18 +339,33 @@
 
     const configuration = ensureNavNode('nav-configuracion', 'configuracion', '⚙️', 'Configuración', false);
     configuration.setAttribute('onclick', 'abrirCentroConfiguracion(event)');
-    const tariffs = ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas', false);
+    const payroll = canUseManagementTools() ? ensureNavNode('nav-sueldos', 'sueldos', '💵', 'Sueldos', false) : null;
+    document.getElementById('nav-config-tariff-matrix')?.remove();
     const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
 
     populateFlyout();
-    orderTop([dashboard, canUseManagementTools() ? operations : null, jornadas, camion, remitos, configuration, tariffs, history]);
+    orderTop([dashboard, canUseManagementTools() ? operations : null, jornadas, camion, remitos, payroll, configuration, history]);
+  }
+
+  function configureOperatorNavigation() {
+    document.body.classList.add('aux-backoffice-nav');
+    closeFlyout();
+    ['nav-registro','nav-jornadas-admin','nav-camion','nav-remitos','nav-sueldos','nav-configuracion'].forEach(id => {
+      const node = document.getElementById(id);
+      if (node) node.style.display = 'none';
+    });
+    const dashboard = ensureNavNode('nav-dashboard', 'dashboard', '📊', 'Resumen', false);
+    const operations = document.getElementById('nav-operaciones');
+    if (operations) operations.style.display = '';
+    const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
+    orderTop([dashboard, operations, history]);
   }
 
   function managementToolsMarkup() {
     if (!canUseManagementTools()) return '';
     return `<section class="aux-center-tools">
       <div class="aux-center-tools-head"><div><h3>Personal, camiones y mantenimiento</h3><p>Altas y parámetros internos que ya existían en AuxiliOS.</p></div></div>
-      <div class="aux-center-tool-grid">
+      <div class="aux-center-tool-grid"><button class="aux-center-tool" onclick="CompanyDocuments.open()"><span>▤</span><b>Empresa y documentos</b><small>Datos fiscales y firma institucional.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-usuarios')"><span>👤</span><b>Personal / Choferes</b><small>Alta y gestión del personal.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-flota')"><span>🚛</span><b>Camiones</b><small>Alta y administración de vehículos.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-planes')"><span>🧰</span><b>Planes de mantenimiento</b><small>Catálogo de planes globales.</small></button>
@@ -348,7 +378,6 @@
       <div class="aux-center-tool-grid">
         <button class="aux-center-tool" onclick="irModuloConfiguracion('documentos')"><span>📄</span><b>Documentación</b><small>Legajos y vencimientos.</small></button>
         <button class="aux-center-tool" onclick="irModuloConfiguracion('grilla')"><span>🗓️</span><b>Grilla</b><small>Asignaciones y francos.</small></button>
-        <button class="aux-center-tool" onclick="irModuloConfiguracion('sueldos')"><span>💵</span><b>Sueldos</b><small>Liquidaciones y rendiciones.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-mi-cuenta')"><span>👤</span><b>Mi cuenta</b><small>Datos de la cuenta actual.</small></button>
       </div>
     </section>`;
@@ -357,22 +386,47 @@
   function renderCenter() {
     const screen = document.getElementById('screen-configuracion');
     if (!screen || !canUseCenter()) return;
-    screen.innerHTML = `<div class="aux-center-page">
-      <div class="aux-center-head"><div><div class="aux-center-eyebrow">Centro administrativo</div><h2>Configuración</h2><p>Acá viven las altas, catálogos y definiciones estructurales. Jornadas, Camión y Remitos quedan en la navegación principal porque son módulos de seguimiento diario.</p></div></div>
-      <section class="aux-center-tools">
-        <div class="aux-center-tools-head"><div><h3>Prestadoras y catálogos</h3><p>Definiciones reutilizables por la operación y la facturación.</p></div></div>
-        <div class="aux-center-tool-grid">
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('empresas')"><span>▦</span><b>Prestadoras</b><small>Datos y parámetros de facturación.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('bases-geograficas')"><span>⌖</span><b>Bases geográficas</b><small>Catálogo maestro de ubicaciones.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-service-types')"><span>🛠️</span><b>Tipos de servicio</b><small>Alta y definición de servicios.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-types')"><span>💰</span><b>Tipos de tarifa</b><small>Modalidades de cálculo.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('peajes')"><span>🛣️</span><b>Peajes y adicionales</b><small>Catálogo e importes vigentes.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-services')"><span>☷</span><b>Servicios</b><small>Columnas, formulario y flujo operativo.</small></button>
-          <button class="aux-center-tool" onclick="irModuloConfiguracion('config-tariff-matrix')"><span>💳</span><b>Tarifas</b><small>Valores y vigencias por prestadora.</small></button>
-        </div>
-      </section>
-      ${managementToolsMarkup()}
-    </div>`;
+    const admin = role() === 'administracion';
+    const manage = canUseManagementTools();
+    const sectionIcon = label => {
+      const paths = {
+        'Datos de empresa y firma':'M4 3h12l4 4v14H4Z M8 9h8 M8 13h8 M8 17h5',
+        'Documentación':'M5 3h14v18H5Z M8 7h8 M8 11h8 M8 15h5',
+        'Servicios':'M4 6h16 M4 12h16 M4 18h16',
+        'Camiones':'M2 6h12v11H2Z M14 10h5l3 4v3h-8 M7 18a2 2 0 1 1-4 0a2 2 0 1 1 4 0 M21 18a2 2 0 1 1-4 0a2 2 0 1 1 4 0',
+        'Planes de mantenimiento':'M6 4h12v17H6Z M9 2h6v4H9Z M9 10h6 M9 14h6',
+        'Mantenimiento':'M14 3a6 6 0 0 0-6 8L2 17l5 5 6-6a6 6 0 0 0 8-7l-4 4-4-4 4-4Z',
+        'Contactos de emergencia':'M8 3H4v4c0 7 6 13 13 13h4v-4l-5-2-2 2-6-6 2-2Z',
+        'Grilla':'M3 5h18v16H3Z M7 2v6 M17 2v6 M3 10h18 M9 10v11 M15 10v11',
+        'Tipos de servicio':'M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h7v7h-7Z',
+        'Tipos de tarifa':'M3 4h12l6 8-6 8H3Z M7 9h3 M7 14h6',
+        'Peajes':'M3 21V8h18v13 M2 8l10-5 10 5 M7 12v9 M17 12v9 M12 15v3',
+        'Bases geográficas':'M12 22S4 15 4 9a8 8 0 1 1 16 0c0 6-8 13-8 13Z M12 6a3 3 0 1 0 0 6a3 3 0 1 0 0-6',
+        'Prestadoras':'M4 21V3h12v18 M16 10h4v11 M8 7h4 M8 11h4 M8 15h4 M2 21h20',
+        'Tarifas':'M4 3h16v18H4Z M8 7h8 M8 11h2 M14 11h2 M8 15h2 M14 15h2',
+        'Personal / Choferes':'M8 11a4 4 0 1 0 0-8a4 4 0 1 0 0 8 M1 21v-3a7 7 0 0 1 14 0v3 M17 4a4 4 0 0 1 0 8 M18 15a5 5 0 0 1 5 5',
+        'Mi cuenta':'M12 12a5 5 0 1 0 0-10a5 5 0 1 0 0 10 M3 22v-2a9 9 0 0 1 18 0v2'
+      };
+      return '<svg class="aux-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+(paths[label]||paths.Servicios)+'"/></svg>';
+    };
+    const link = (label, detail, action) => '<button class="aux-area-link" onclick="'+action+'">'+sectionIcon(label)+'<span class="aux-section-label"><b>'+label+'</b><small>'+detail+'</small></span><span aria-hidden="true">→</span></button>';
+    const route = (label, detail, name) => link(label, detail, "irModuloConfiguracion('"+name+"')");
+    const legacy = (label, detail, name) => link(label, detail, "abrirHerramientaConfiguracion('"+name+"')");
+    const area = (title, subtitle, icon, links) => '<details class="aux-area"><summary><span class="aux-area-icon" aria-hidden="true">'+icon+'</span><h3>'+title+'</h3><p>'+subtitle+'</p><span class="aux-area-open">Ver opciones <span aria-hidden="true">↓</span></span></summary><div class="aux-area-links">'+links+'</div></details>';
+    screen.innerHTML = '<div class="aux-center-page"><div class="aux-center-head"><div><div class="aux-center-eyebrow">Configuración</div><h2>Configuración por áreas</h2><p>Elegí un área para ver sus herramientas y parámetros.</p></div></div><div class="aux-areas-grid">'
+      + area('Empresa y documentos','Identidad de la empresa y documentos emitidos.','▤',
+          (admin ? link('Datos de empresa y firma','Razón social, CUIT, contacto y firma institucional.','CompanyDocuments.open()') : '<p class="aux-area-note">Los datos de empresa los configura Administración.</p>')
+          + (manage ? route('Documentación','Legajos y vencimientos.','documentos') : ''))
+      + area('Operación','Formularios, flujo y recursos de trabajo.','⚙',
+          route('Servicios','Columnas, formulario y flujo operativo.','config-services')
+          + (manage ? legacy('Camiones','Alta y administración de vehículos.','tab-flota')+legacy('Planes de mantenimiento','Catálogo de planes globales.','tab-planes')+legacy('Mantenimiento','Seguimiento y asignaciones.','tab-mantenimiento')+legacy('Contactos de emergencia','Referencias operativas.','tab-emergencias')+route('Grilla','Asignaciones y francos.','grilla') : ''))
+      + area('Catálogos','Conceptos compartidos por toda la operación.','▦',
+          route('Tipos de servicio','Alta y definición de servicios.','config-service-types')+route('Tipos de tarifa','Modalidades de cálculo.','config-tariff-types')+route('Peajes','Catálogo e importes vigentes.','peajes')+route('Bases geográficas','Ubicaciones operativas.','bases-geograficas'))
+      + area('Prestadoras y tarifas','Servicios habilitados, precios y vigencias.','▥',
+          route('Prestadoras','Datos, servicios habilitados y parámetros de facturación.','empresas')+route('Tarifas','Valores y vigencias por prestadora.','config-tariff-matrix'))
+      + area('Usuarios y permisos','Personal, roles y administración interna.','♙',
+          manage ? legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios')+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
+      + '</div></div>';
   }
 
   function actionFor(row) {
@@ -475,7 +529,7 @@
     const actors = [...S.actors.entries()].sort((a, b) => String(a[1]?.full_name || a[1]?.email || '').localeCompare(String(b[1]?.full_name || b[1]?.email || ''), 'es'));
     screen.innerHTML = `<div class="aux-center-page">
       <div class="aux-center-head"><div><div class="aux-center-eyebrow">Auditoría</div><h2>Historial</h2><p>Lectura administrativa simple: qué se hizo, sobre qué registro, quién lo hizo y cuándo.</p></div><div id="aux-history-count" class="aux-center-readonly"></div></div>
-      <section class="aux-history-panel">
+      <section class="aux-center-tools"><button class="aux-center-tool" onclick="abrirHistorialServicios()"><span>▤</span><b>Historial de servicios</b><small>Consultar servicios finalizados y anulados.</small></button></section><section class="aux-history-panel">
         <div class="aux-history-toolbar">
           <input class="form-input" id="aux-history-query" type="search" placeholder="Buscar por registro o usuario" data-audit-filter>
           <select class="form-input" id="aux-history-action" data-audit-filter>
@@ -514,7 +568,7 @@
 
   async function loadHistory() {
     const screen = document.getElementById('screen-historial-sistema');
-    if (!screen || !canUseCenter() || S.auditLoading) return;
+    if (!screen || !canUseHistory() || S.auditLoading) return;
     S.auditLoading = true;
     screen.innerHTML = '<div class="aux-loading">Cargando historial…</div>';
     try {
@@ -553,15 +607,16 @@
     event?.stopPropagation?.();
     if (!canUseCenter()) return notify('Sin permiso para acceder a Configuración', 'error');
     if (!document.getElementById('screen-configuracion')?.classList.contains('active') && typeof goTo === 'function') goTo('configuracion');
-    populateFlyout();
-    setFlyout(true);
+    closeFlyout();
+    renderCenter();
   }
 
   function installNavigationHook() {
     const previous = window.goTo;
     if (typeof previous !== 'function' || previous.__auxCanonicalNavigation) return;
     const wrapped = function(name, ...args) {
-      if ((name === 'configuracion' || name === 'historial-sistema' || CONFIG_CHILD_ROUTES.has(name)) && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
+      if (name === 'historial-sistema' && !canUseHistory()) return notify('Sin permiso para acceder a Historial', 'error');
+      if ((name === 'configuracion' || CONFIG_CHILD_ROUTES.has(name)) && !canUseCenter()) return notify('Sin permiso para acceder a este módulo', 'error');
       const result = previous.call(this, name, ...args);
       closeFlyout();
       if (canUseCenter() && CONFIG_CHILD_ROUTES.has(name)) document.getElementById('nav-configuracion')?.classList.add('active');
@@ -575,11 +630,14 @@
 
   function init() {
     ensureScreenMetadata();
+    ensureHistoryShell();
     if (canUseCenter()) {
       ensureRouteShells();
       injectCenter();
       configureBackofficeNavigation();
       renderCenter();
+    } else if (role() === 'operador') {
+      configureOperatorNavigation();
     } else {
       configureDriverNavigation();
     }
@@ -603,7 +661,7 @@
     abrirHerramientaConfiguracion: openLegacySettingsTab,
   });
   window.AuxiliosConfigurationCenter = {
-    configure: () => canUseCenter() ? configureBackofficeNavigation() : configureDriverNavigation(),
+    configure: () => canUseCenter() ? configureBackofficeNavigation() : role() === 'operador' ? configureOperatorNavigation() : configureDriverNavigation(),
     renderCenter,
     loadHistory,
   };

@@ -170,11 +170,9 @@
 .osv4-note{min-height:16px;color:var(--osv2-muted2);font-size:8px;line-height:1.3}
 .osv4-note:empty{display:none}
 
-.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .driver-instructions-card,.osv4-reactive .osv2-observations{padding:7px!important;gap:5px!important}
+.osv4-reactive .vehicle-card,.osv4-reactive .distance-card,.osv4-reactive .osv2-observations{padding:7px!important;gap:5px!important}
 .osv4-reactive .osv2-observations{display:grid!important;min-width:0;border:1px solid var(--osv2-border);border-radius:11px;background:var(--osv2-card);color:var(--osv2-text)!important}
 .osv4-reactive .osv2-observations>span{min-height:13px;color:var(--osv2-text);font-size:10px;font-weight:800;line-height:1.2}
-.osv4-reactive .driver-instructions-card .osv2-section-label{min-height:13px;margin:0}
-.osv4-reactive .driver-instructions-card .osv2-section-label b{font-size:10px}
 .osv4-reactive .route-column textarea{min-height:52px!important;padding:6px 8px!important}
 .osv4-reactive .route-column>.osv2-card,.osv4-reactive .route-column>.osv2-observations{flex:none}
 
@@ -226,3 +224,35 @@
   .osv2-footer>span{display:none}
   .osv2-footer button{flex:1}
 }
+
+/* Signed intake: readable reference fields, without changing the driver form. */
+.osv4-reactive[data-intake="true"] input:disabled,.osv4-reactive[data-intake="true"] select:disabled{color:var(--osv2-text)!important;opacity:1!important}
+.osv4-reactive[data-intake="true"] .osv2-section-label b{font-size:12px}
+.osv4-reactive[data-intake="true"] .osv4-address-status{font-size:10px}
+.osv4-reactive[data-intake="true"] .osv4-note{font-size:11px;line-height:1.5}
+.osv4-reactive[data-intake="true"] .osv2-column{gap:12px}
+.osv4-reactive[data-intake="true"] .osv2-header h2{font-size:20px}
+.osv4-reactive[data-intake="true"] .osv2-footer button{font-size:13px;min-height:44px}
+@media(max-width:620px){
+  .osv4-reactive[data-intake="true"]{grid-template-rows:auto auto 84px}
+  .osv4-reactive[data-intake="true"] .osv2-header{min-height:76px;height:auto;padding:10px 12px;gap:10px}
+  .osv4-reactive[data-intake="true"] .osv2-header h2{font-size:18px;line-height:1.2}
+  .osv4-reactive[data-intake="true"] .osv4-header-actions{flex-shrink:0}
+  .osv4-reactive[data-intake="true"] input,.osv4-reactive[data-intake="true"] select,.osv4-reactive[data-intake="true"] textarea{font-size:16px!important;min-height:44px!important}
+  .osv4-reactive[data-intake="true"] .osv2-footer{position:sticky;bottom:0;z-index:2}
+}
+
+/* Revisión operativa integrada: sólo diferencias de peajes y excedentes. */
+.osv4-review-slot{min-width:0}
+.os-embedded-review{display:grid;gap:8px;min-width:0}
+.os-embedded-review>header{display:grid;gap:2px;padding:2px 2px 7px;border-bottom:1px solid var(--osv2-border)}
+.os-embedded-review>header b{font-size:11px;letter-spacing:.7px;text-transform:uppercase}.os-embedded-review>header small,.os-embedded-immutable{font-size:8px;color:var(--osv2-muted2)}
+.os-embedded-list{display:grid;gap:6px}.os-embedded-difference{position:relative;display:grid;gap:6px;padding:9px 10px;border:1px solid var(--osv2-border);border-left:3px solid var(--amber);border-radius:8px;background:var(--osv2-panel)}
+.os-embedded-difference.is-resolved{border-left-color:var(--green)}.os-embedded-difference-head,.os-embedded-values,.os-embedded-actions{display:flex;align-items:center;justify-content:space-between;gap:8px}.os-embedded-difference-head b{font-size:10px}.os-embedded-difference-head span{font-size:13px;font-weight:900;color:var(--amber)}
+.os-embedded-values{align-items:flex-start;flex-direction:column;gap:2px}.os-embedded-values small{font-size:8px;color:var(--osv2-muted2)}.os-embedded-values strong{font-size:9px;color:var(--text)}
+.os-embedded-actions{justify-content:flex-end}.os-embedded-actions button,.os-embedded-review footer button{min-height:28px;padding:5px 10px;border:1px solid var(--osv2-border);border-radius:6px;background:transparent;color:var(--text);font-size:8px;font-weight:800;cursor:pointer}.os-embedded-actions .reject{border-color:rgba(239,68,68,.55);color:#ff7474}.os-embedded-actions .approve,.os-embedded-review footer .finish{border-color:var(--amber);background:var(--amber);color:#15100a}.os-embedded-actions button.active{box-shadow:0 0 0 2px rgba(34,197,94,.25);border-color:var(--green)}
+.os-embedded-reason{display:grid;gap:3px}.os-embedded-reason span{font-size:8px;color:#ff8585}.os-embedded-reason input{min-height:28px!important}
+.os-embedded-note,.os-embedded-ok{padding:8px 9px;border:1px solid rgba(34,197,94,.28);border-radius:7px;background:rgba(34,197,94,.07);font-size:8px;line-height:1.35;color:#b9d6c2}
+.os-embedded-review>footer{display:grid;gap:7px;margin-top:2px;padding-top:8px;border-top:1px solid var(--osv2-border)}.os-embedded-review>footer>span{font-size:8px;color:var(--osv2-muted2);text-align:right}.os-embedded-review>footer>div{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}.os-embedded-review footer .pending{border:0;color:#ff7474}.os-embedded-review footer .edit{border-color:#3d79bd;color:#78aff0}.os-embedded-review footer .finish:disabled{opacity:.38;cursor:not-allowed}
+.os-embedded-pending-note{display:grid;gap:4px}.os-embedded-pending-note span{font-size:8px;color:var(--osv2-muted2);text-transform:uppercase}.os-embedded-pending-note textarea{min-height:48px;resize:vertical;border:1px solid var(--osv2-border);border-radius:6px;background:var(--osv2-input);color:var(--text);padding:7px;font:inherit;font-size:9px}
+@media(max-width:980px){.os-embedded-review>footer>div{display:grid;grid-template-columns:1fr}.os-embedded-review footer button{width:100%}}

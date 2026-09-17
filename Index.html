@@ -15,12 +15,15 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=operator-review-v95-20260917">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=operator-review-v95-20260917">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=operator-review-v95-20260917">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('/sw.js?v=256')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -33,10 +36,13 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js" defer></script>
-<script src="supabase.js" defer></script>
+<script src="config.js?v=operator-review-v95-20260917" defer></script>
+<script src="supabase.js?v=operator-review-v95-20260917" defer></script>
 <script src="offline.js" defer></script>
-<script src="sigma.js" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=operator-review-v95-20260917" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=operator-review-v95-20260917" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=operator-review-v95-20260917" defer></script>
+<script src="sigma.js?v=operator-review-v95-20260917" defer></script>
 </head>
 <body>
 
@@ -70,77 +76,25 @@
 </div>
 
 <div class="modal-backdrop" id="modal-combustible">
-  <div class="modal-box">
-    <div class="modal-head">
-      <span class="modal-head-title">⛽ Cargar combustible</span>
-      <button class="modal-close" onclick="closeModal('modal-combustible')">×</button>
-    </div>
-    <div class="modal-body">
-      <div style="padding:10px 14px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:8px;margin-bottom:16px">
-        <div style="font-size:11px;color:var(--muted)">Camión</div>
-        <div style="font-family:'Bebas Neue';font-size:18px;color:var(--amber)" id="cb-camion-info">—</div>
-      </div>
-
-      <!-- Lector de ticket OCR -->
-      <div style="margin-bottom:20px">
-        <input type="file" id="cb-ticket-input" accept="image/*" capture="environment" style="display:none" onchange="leerTicketCombustible(this)">
-        <button id="cb-scan-btn" class="btn btn-ghost" style="width:100%;padding:12px;border:1.5px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px" onclick="document.getElementById('cb-ticket-input').click()">
-          <span style="font-size:18px">📷</span>
-          <span id="cb-scan-label">Escanear ticket con IA</span>
-        </button>
-        <div id="cb-scan-status" style="display:none;margin-top:8px;padding:10px 14px;border-radius:8px;font-size:12px"></div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Fecha <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="date" id="cb-fecha">
-      </div>
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label class="form-label">Litros <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="cb-litros" placeholder="Ej: 80" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Precio / litro <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="tel" id="cb-precio" placeholder="Ej: 420" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()">
-        </div>
-      </div>
-      <div style="padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:12px;color:var(--muted)">Total</div>
-        <div style="font-family:'DM Mono';font-size:20px;font-weight:700;color:var(--amber)" id="cb-total">$0</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">KM al cargar</label>
-        <input class="form-input" type="tel" id="cb-km" placeholder="Opcional" inputmode="numeric" oninput="sanitizeInt(this)">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Estación de servicio</label>
-        <input class="form-input" type="text" id="cb-estacion" placeholder="Ej: YPF Ruta 2 km 340" maxlength="100">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Medio de pago <span style="color:var(--red)">*</span></label>
-        <div style="display:flex;gap:8px">
-          <button id="cb-efectivo" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','efectivo')">💵 Efectivo</button>
-          <button id="cb-transferencia" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','transferencia')">🏦 Transfer.</button>
-          <button id="cb-app" class="btn btn-ghost" style="flex:1;font-size:11px" onclick="selectPayBtn('cb','app')">📱 App</button>
-        </div>
-      </div>
-      <div id="cb-app-select" style="display:none;margin-top:8px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Seleccioná la app</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Shell Flota')">Shell Flota</button>
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'YPF Ruta')">YPF Ruta</button>
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Axion')">Axion</button>
-          <button class="btn btn-ghost app-btn2" style="font-size:11px" onclick="selectAppBtn(this,'Otra')">Otra</button>
-        </div>
-      </div>
-    </div>
-    <div id="cb-error" class="modal-error" style="display:none;"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-combustible')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-combustible" onclick="guardarCombustible()">⛽ Guardar carga</button>
-    </div>
+ <div class="modal-box fuel-box">
+  <div class="modal-head"><span class="modal-head-title"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h10v17M2 21h14M4 10h10m3-7 4 4v10a2 2 0 0 1-4 0v-5h-3"/></svg> Cargar combustible</span><button class="modal-close" aria-label="Cerrar" onclick="closeModal('modal-combustible')">×</button></div>
+  <div class="modal-body fuel-body">
+   <div class="fuel-context"><div><small>CAMIÓN</small><strong id="cb-camion-info">—</strong></div><label class="fuel-field" for="cb-fecha"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 11h18"/></svg> Fecha *</span><input class="form-input" id="cb-fecha" placeholder="" type="date"></label></div>
+   <input type="file" id="cb-ticket-input" accept="image/*" capture="environment" hidden onchange="leerTicketCombustible(this)">
+   <button id="cb-scan-btn" class="fuel-scan" onclick="document.getElementById('cb-ticket-input').click()"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5 10 2h4l2 3h4v15H4V5Z"/><circle cx="12" cy="12" r="4"/></svg></span><span><strong id="cb-scan-label">Escanear ticket</strong><small>O completá los datos manualmente</small></span></button>
+   <div id="cb-scan-status" class="fuel-status" role="status" aria-live="polite" style="display:none"></div>
+   <h3 class="fuel-section">Datos de la carga</h3>
+   <div class="fuel-grid fuel-numbers"><label class="fuel-field" for="cb-litros"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h10v17M2 21h14M4 10h10m3-7 4 4v10a2 2 0 0 1-4 0v-5h-3"/></svg> Litros *</span><input class="form-input" id="cb-litros" placeholder="Ej: 80" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label><label class="fuel-field" for="cb-precio"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20m5-15c0-4-10-4-10 1s10 3 10 8-10 5-10 1"/></svg> Precio / litro *</span><input class="form-input" id="cb-precio" placeholder="Ej: 1250" type="text" inputmode="decimal" oninput="sanitizeDecimal(this);calcCombTotal()"></label></div>
+   <div class="fuel-total"><span>Total</span><strong id="cb-total" aria-live="polite">$0</strong></div>
+   <h3 class="fuel-section">Datos opcionales</h3>
+   <div class="fuel-grid"><label class="fuel-field" for="cb-km"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2 3 22M17 2l4 20M12 3v4m0 3v4m0 3v4"/></svg> KM al cargar</span><input class="form-input" id="cb-km" placeholder="Ej: 180240" type="text" inputmode="numeric" oninput="sanitizeInt(this)"></label><label class="fuel-field" for="cb-estacion"><span><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> Estación</span><input class="form-input" id="cb-estacion" placeholder="Ej: YPF Ruta 2" type="text" maxlength="100"></label></div>
+   <h3 class="fuel-section">Forma de pago *</h3>
+   <div class="fuel-pay" role="group" aria-label="Forma de pago"><button id="cb-efectivo" aria-pressed="false" onclick="selectPayBtn('cb','efectivo')"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M5 8h1M18 16h1"/></svg></span>Efectivo</button><button id="cb-transferencia" aria-pressed="false" onclick="selectPayBtn('cb','transferencia')"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5H3Zm1 13h16M6 10v8m6-8v8m6-8v8"/></svg></span>Transfer.</button><button id="cb-app" aria-pressed="false" onclick="selectPayBtn('cb','app')"><span aria-hidden="true"><svg class="fuel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></span>App</button></div>
+   <div id="cb-app-select" style="display:none"><h3 class="fuel-section">¿Qué app usaste?</h3><div class="fuel-apps"><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Shell Flota')">Shell Flota</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'YPF Ruta')">YPF Ruta</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Axion')">Axion</button><button class="btn btn-ghost app-btn2" aria-pressed="false" onclick="selectAppBtn(this,'Otra')">Otra</button></div></div>
   </div>
+  <div id="cb-error" class="modal-error" role="alert" style="display:none"></div>
+  <div class="modal-footer fuel-footer"><div id="cb-save-status" role="status" aria-live="polite"></div><button class="btn btn-primary" id="btn-guardar-combustible" onclick="guardarCombustible()">Guardar carga</button></div>
+ </div>
 </div>
 
 <div class="modal-backdrop" id="modal-service-log">
@@ -216,30 +170,8 @@
         <label class="form-label">Fecha del control <span style="color:var(--red)">*</span></label>
         <input class="form-input" type="date" id="neu-fecha">
       </div>
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label class="form-label">Estado neumáticos <span style="color:var(--red)">*</span></label>
-          <select class="form-input" id="neu-cond">
-            <option value="">— Seleccioná —</option>
-            <option value="bueno">✅ Bueno (En buen estado) </option>
-            <option value="regular">⚠️ Regular (Requiere Reparación) </option>
-            <option value="malo">❌ Malo (Enviar al taller urgente) </option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Presión (PSI)</label>
-          <input class="form-input" type="tel" id="neu-psi" placeholder="Ej: 110" inputmode="decimal" oninput="sanitizeDecimal(this)">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Estado frenos <span style="color:var(--red)">*</span></label>
-        <select class="form-input" id="neu-frenos">
-          <option value="">— Seleccioná —</option>
-          <option value="bueno">✅ Bueno (En buen estado) </option>
-          <option value="regular">⚠️ Regular (Requiere Reparación) </option>
-          <option value="malo">❌ Malo (Enviar al taller urgente) </option>
-        </select>
-      </div>
+      <fieldset class="condition-field"><legend class="form-label">Estado neumáticos *</legend><input type="hidden" id="neu-cond"><div class="condition-cards" role="group" aria-label="Estado neumáticos"><button type="button" data-condition="neu-cond" data-value="bueno" aria-pressed="false" onclick="seleccionarCondicion('neu-cond','bueno')"><span>✓</span><strong>Bueno</strong><small>En buen estado</small></button><button type="button" data-condition="neu-cond" data-value="regular" aria-pressed="false" onclick="seleccionarCondicion('neu-cond','regular')"><span>⚠</span><strong>Regular</strong><small>Requiere reparación</small></button><button type="button" data-condition="neu-cond" data-value="malo" aria-pressed="false" onclick="seleccionarCondicion('neu-cond','malo')"><span>!</span><strong>Malo</strong><small>Taller urgente</small></button></div></fieldset>
+      <fieldset class="condition-field"><legend class="form-label">Estado frenos *</legend><input type="hidden" id="neu-frenos"><div class="condition-cards" role="group" aria-label="Estado frenos"><button type="button" data-condition="neu-frenos" data-value="bueno" aria-pressed="false" onclick="seleccionarCondicion('neu-frenos','bueno')"><span>✓</span><strong>Bueno</strong><small>En buen estado</small></button><button type="button" data-condition="neu-frenos" data-value="regular" aria-pressed="false" onclick="seleccionarCondicion('neu-frenos','regular')"><span>⚠</span><strong>Regular</strong><small>Requiere reparación</small></button><button type="button" data-condition="neu-frenos" data-value="malo" aria-pressed="false" onclick="seleccionarCondicion('neu-frenos','malo')"><span>!</span><strong>Malo</strong><small>Taller urgente</small></button></div></fieldset>
       <div class="form-group">
         <label class="form-label">Observaciones</label>
         <textarea class="form-input" id="neu-notas" placeholder="Detalles del estado, desgaste, etc." style="min-height:70px;resize:vertical" maxlength="500"></textarea>
@@ -384,7 +316,7 @@
             <div id="cj-foto-box" class="photo-upload" style="padding:16px;border:2px dashed var(--amber);background:var(--amber-lo);border-radius:8px;text-align:center;transition:all 0.2s">
               <div id="cj-foto-icon" style="font-size:24px">📷</div>
               <div id="cj-foto-status" style="font-weight:bold;margin-top:5px">Tocar para escanear odómetro</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:3px">La IA extraerá el kilometraje automáticamente</div>
+              <div id="cj-foto-hint" style="font-size:11px;color:var(--muted);margin-top:3px">La IA extraerá el kilometraje automáticamente</div>
             </div>
           </label>
         </div>
@@ -433,20 +365,15 @@
 
       <!-- Detalle taller (expandible) -->
       <div id="cj-taller-detalle" style="display:none">
-        <select class="form-input" id="cj-taller-tipo" onchange="onTallerTipoChange()" style="margin-bottom:8px">
-          <option value="" disabled selected>Tipo de trabajo...</option>
-          <option value="Mantenimiento">Mantenimiento</option>
-          <option value="Preventivo">Preventivo</option>
-          <option value="Repuestos">Repuestos</option>
-          <option value="Reparación">Reparación</option>
-          <option value="Eléctrico">Eléctrico</option>
-          <option value="Otro">Otro</option>
-        </select>
+        <input type="hidden" id="cj-taller-tipo" value="">
+        <div id="cj-taller-opciones" class="workshop-options" role="group" aria-label="Tipo de trabajo en taller">
+          <button type="button" data-workshop-type="Mantenimiento" aria-pressed="false" onclick="seleccionarTipoTaller('Mantenimiento')">Mantenimiento</button>
+          <button type="button" data-workshop-type="Preventivo" aria-pressed="false" onclick="seleccionarTipoTaller('Preventivo')">Preventivo</button>
+          <button type="button" data-workshop-type="Repuestos" aria-pressed="false" onclick="seleccionarTipoTaller('Repuestos')">Repuestos</button>
+        </div>
         <textarea class="form-input" id="cj-workshop-detail" placeholder="Detalle del trabajo realizado..." rows="2"></textarea>
       </div>
 
-      <!-- Notas -->
-      <textarea class="form-input" id="cj-notas" placeholder="Notas del turno (opcional)..." rows="2"></textarea>
     </div>
 
     <div id="cj-error" class="modal-error" style="display:none;"></div>
@@ -462,65 +389,39 @@
 <div class="modal-backdrop" id="modal-rendicion-cierre">
   <div class="modal-box">
     <div class="modal-head">
-      <span class="modal-head-title">💰 Rendición de efectivo</span>
+      <span class="modal-head-title"><span class="rend-mono-icon">$</span> Rendición de efectivo</span>
+      <button class="modal-close" onclick="closeModal('modal-rendicion-cierre')" aria-label="Cerrar">×</button>
     </div>
     <div class="modal-body">
 
-      <!-- Resumen remitos del día -->
-      <div id="rend-resumen-remitos" style="background:var(--bg-darker);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Servicios del día</div>
-        <div id="rend-remitos-lista" style="display:flex;flex-direction:column;gap:6px;max-height:140px;overflow-y:auto"></div>
-        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:var(--muted)">Efectivo esperado por el sistema</span>
-          <span id="rend-efectivo-esperado" style="font-family:'Bebas Neue';font-size:22px;color:var(--amber)">$0</span>
+      <div id="rend-resumen-remitos" class="rend-cash-card">
+        <div class="rend-section-label">Efectivo del día</div>
+        <div class="rend-cash-kpis">
+          <div><span>Esperado</span><strong id="rend-efectivo-esperado">$0</strong></div>
+          <div><span>Gastos en efectivo</span><strong id="rend-gastos-sistema-val">$0</strong></div>
         </div>
+        <button type="button" class="rend-services-toggle" id="rend-services-toggle" onclick="rendToggleServicios()">Ver servicios</button>
+        <div id="rend-remitos-lista" class="rend-services-list" hidden></div>
       </div>
 
-      <!-- Input efectivo declarado -->
-      <div class="form-group">
-        <label class="form-label">¿Cuánto efectivo tenés en mano? <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="tel" id="rend-efectivo-declarado"
-          placeholder="Ej: 45000" style="font-family:'DM Mono';font-size:20px;font-weight:700;text-align:center"
-          oninput="rendActualizarDiferencia()">
-      </div>
-
-      <!-- Gastos del sistema (readonly) -->
-      <div id="rend-gastos-sistema-row" style="display:none;padding:10px 14px;background:var(--bg-darker);border:1px solid var(--border);border-radius:8px;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div>
-          <div style="font-size:11px;font-weight:600">⛽ Gastos del sistema (combustible)</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Cargado automáticamente</div>
-        </div>
-        <span id="rend-gastos-sistema-val" style="font-family:'DM Mono';font-weight:700;color:var(--red)">$0</span>
-      </div>
+      <div class="rend-admin-note">ⓘ <span>Administración registrará el total presentado en la rendición mensual.</span></div>
 
       <!-- Gastos extra -->
       <div class="form-group" style="margin-bottom:8px">
-        <label class="form-label">Gastos extra no registrados (opcional)</label>
+        <label class="form-label">Gasto en efectivo (opcional)</label>
         <input class="form-input" type="tel" id="rend-gastos-extra" placeholder="$0" oninput="rendActualizarDiferencia()">
       </div>
-      <div class="form-group" id="rend-motivo-row" style="display:none">
-        <label class="form-label">Motivo del gasto extra</label>
-        <input class="form-input" type="text" id="rend-motivo-extra" placeholder="Ej: Peón de descarga, repuesto de emergencia...">
+      <div class="form-group" id="rend-motivo-row">
+        <label class="form-label">Motivo o aclaración</label>
+        <textarea class="form-input" id="rend-motivo-extra" placeholder="Motivo o aclaración" rows="2"></textarea>
       </div>
-
-      <!-- Preview diferencia -->
-      <div id="rend-diferencia-preview" style="display:none;border-radius:8px;padding:12px 14px;margin-bottom:4px">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:12px;font-weight:600">Diferencia</span>
-          <span id="rend-diferencia-val" style="font-family:'Bebas Neue';font-size:24px"></span>
-        </div>
-        <div id="rend-diferencia-msg" style="font-size:11px;margin-top:4px;color:var(--muted)"></div>
-      </div>
-
-      <!-- Notas -->
-      <textarea class="form-input" id="rend-notas" placeholder="Aclaraciones o novedades del día (opcional)..." rows="2" style="margin-top:8px"></textarea>
 
       <div id="rend-error" class="modal-error" style="display:none;margin-top:10px"></div>
     </div>
 
     <div class="modal-footer" style="justify-content:space-between">
       <button class="btn btn-ghost" onclick="omitirRendicion()">Omitir</button>
-      <button class="btn btn-primary" id="btn-confirmar-rendicion" onclick="confirmarRendicion()">✅ Confirmar rendición</button>
+      <button class="btn btn-primary" id="btn-confirmar-rendicion" onclick="confirmarRendicion()">Guardar gastos</button>
     </div>
   </div>
 </div>
@@ -537,7 +438,7 @@
         <div id="camion-seleccionado-preview" style="display:none;padding:12px 14px;border-radius:10px;border:2px solid var(--amber);background:var(--amber-lo);margin-bottom:10px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Camión seleccionado</div>
           <div id="camion-preview-texto" style="font-weight:700;font-size:15px"></div>
-          <div style="margin-top:8px;font-size:11px;color:var(--muted)">Para cambiar de camión ir a <strong style="color:var(--amber)">Configuración → Cambiar sesión</strong></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted)">Para cambiar de camión ir a <strong style="color:var(--amber)">Configuración → Cambiar de unidad/vehículo</strong></div>
         </div>
         <button id="btn-abrir-selector-camion" onclick="toggleSelectorCamion()" class="btn btn-ghost" style="width:100%;justify-content:center;gap:8px;font-size:14px">
           🚛 Seleccionar Camión
@@ -584,6 +485,7 @@
 
         <!-- Campo manual (oculto por defecto, aparece al editar) -->
         <div id="nj-km-manual-area" style="display:none">
+          <label for="nj-km-inicio" class="form-label">Ingresá el kilometraje de inicio manualmente</label>
           <input class="form-input" type="tel" id="nj-km-inicio" placeholder="Ingresá el KM inicial..." style="font-family:'DM Mono';font-size:22px;text-align:center;font-weight:700" oninput="onKmManualInicioInput()">
           <div id="nj-km-calc" style="margin-top:8px;font-size:12px;text-align:center;min-height:15px"></div>
         </div>
@@ -678,6 +580,9 @@
 
 <nav class="sidenav">
   <div class="nav-logo">FL</div>
+  <button class="nav-collapse" type="button" onclick="toggleSidenav()" aria-label="Contraer menú" aria-expanded="true" title="Contraer menú">
+    <span aria-hidden="true">‹</span>
+  </button>
 
   <div class="nav-item active" onclick="goTo('dashboard')" id="nav-dashboard">
     <span class="nav-icon">📊</span>
@@ -782,14 +687,6 @@
           </div>
         </div>
 
-        <!-- Reportar incidente (solo chofer) -->
-        <div id="dash-incidente-quick" style="display:none;margin-bottom:16px">
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
-            <button class="btn-incidente" onclick="abrirModalIncidente()">⚠️ Reportar incidente</button>
-            <div class="inc-aviso-offline">📴 Funciona sin señal — se sincroniza solo</div>
-          </div>
-        </div>
-
         <!-- Filtros solo para admin/supervisor -->
         <div id="dash-rend-filtros-admin" style="display:none;margin-bottom:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Rendimiento Individual</div>
@@ -809,15 +706,13 @@
           </div>
         </div>
 
-        <!-- Selector período -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <span style="font-size:11px;color:var(--muted)"><span id="dash-rend-periodo-lbl">Hoy</span> <span id="dash-rend-comparado" style="font-size:9px;opacity:0.7;margin-left:4px"></span></span>
-          <div class="filter-tabs">
-            <div class="ftab active" onclick="dashRendPeriod('hoy',this)">Hoy</div>
-            <div class="ftab" onclick="dashRendPeriod('semana',this)">7 días</div>
-            <div class="ftab" onclick="dashRendPeriod('mes',this)">Mes</div>
-          </div>
-        </div>
+        <nav class="dash-month-navigation" aria-label="Mes de las métricas">
+          <button type="button" onclick="dashRendMoverMes(-1)" aria-label="Mes anterior">‹</button>
+          <div class="dash-month-current" aria-live="polite"><span id="dash-rend-periodo-lbl">Mes actual</span><span id="dash-rend-year"></span></div>
+          <button type="button" onclick="dashRendMoverMes(1)" aria-label="Mes siguiente">›</button>
+        </nav>
+        <div id="metrics-loading" class="loading-status" role="status" hidden><span class="loading-spinner"></span> Cargando métricas del mes…</div>
+        <div id="dash-rend-comparado" class="dash-month-comparison"></div>
 
         <!-- KPIs financieros -->
         <div class="dash-section">Financiero</div>
@@ -832,9 +727,9 @@
 
         <!-- Evolución 7 días -->
         <div class="card mb16">
-          <div class="card-label" style="margin-bottom:14px">Evolución — últimos 7 días</div>
-          <div id="dash-evolucion-chart" style="min-height:100px;position:relative">
-  <canvas id="dash-evolucion-canvas" style="max-height:180px"></canvas>
+          <div id="dash-evolucion-title" class="card-label" style="margin-bottom:14px">Evolución — mes actual</div>
+          <div id="dash-evolucion-chart">
+  <canvas id="dash-evolucion-canvas" role="img" aria-label="Kilómetros y servicios del período seleccionado"></canvas>
 </div>
         </div>
 
@@ -1085,7 +980,7 @@
     <!-- Reportar incidente (solo chofer) -->
     <div id="camion-incidente-quick" style="display:none;margin-bottom:16px">
       <button class="btn-incidente" onclick="abrirModalIncidente()">⚠️ Reportar incidente</button>
-      <div class="inc-aviso-offline">📴 Funciona sin señal — se sincroniza solo</div>
+
     </div>
 
     <!-- Cards de módulos (renderizadas por JS) -->
@@ -1439,18 +1334,8 @@
         </div>
     </div>
 
+    <input type="hidden" id="rem-tipo-servicio" value="">
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Tipo de servicio <span style="color:var(--red)">*</span></label>
-        <select class="form-select" id="rem-tipo-servicio">
-          <option value="">— Seleccionar —</option>
-          <option>Remolque ruta</option>
-          <option>Traslado urbano</option>
-          <option>Servicio de grúa</option>
-          <option>Otro</option>
-        </select>
-        <div class="rem-error-msg" id="err-tipo">Seleccioná el tipo de servicio</div>
-      </div>
       <div class="form-group">
         <label class="form-label">N° Servicio Prestadora</label>
         <input class="form-input" id="rem-nro-prestadora" placeholder="Cód. asignado por la prestadora" style="font-family:'DM Mono'">
@@ -1533,62 +1418,8 @@
   </div>
 </div>
 
-<!-- PASO 3: EXTRAS Y PAGO -->
-<div class="rem-step-panel" id="rem-step-3">
-  <div class="card">
-    <div class="card-label" style="margin-bottom:14px"> Extras y forma de pago</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Peajes</label>
-        <input class="form-input" type="tel" placeholder="0" id="imp-peaje" inputmode="decimal" oninput="calcularTotal()">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Excedente <span style="color:var(--muted);font-weight:400;font-size:11px">(particulares, baterías, km, hs de espera)</span></label>
-        <input class="form-input" type="tel" placeholder="0" id="imp-excedente" inputmode="decimal" oninput="calcularTotal()">
-      </div>
-    </div>
-    <div style="padding:10px 14px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.2);display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <span style="font-size:11px;color:var(--muted)">Total extras</span>
-      <span style="font-family:'Bebas Neue';font-size:20px;color:var(--amber)" id="imp-total">$0</span>
-    </div>
-    <div class="form-group" style="margin-bottom:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <label class="form-label" style="margin-bottom:0">Forma de pago</label>
-        <button id="btn-add-pago2" class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="activarPagoMixto()">+ Segundo medio</button>
-      </div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 1</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts">
-          <div onclick="selectRemPago(this,'Efectivo',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
-          <div onclick="selectRemPago(this,'Transferencia',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
-          <div onclick="selectRemPago(this,'Tarjeta',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
-          <div onclick="selectRemPago(this,'App',1)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
-          <input class="form-input" type="tel" id="pago1-monto" placeholder="Opcional" inputmode="decimal" style="font-size:12px;padding:6px 10px" oninput="calcPagoAuto()">
-        </div>
-      </div>
-      <div id="pago2-container" style="display:none;background:var(--bg);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:10px 12px;margin-bottom:8px;position:relative">
-        <button onclick="desactivarPagoMixto()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1">×</button>
-        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Medio 2</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px" id="rem-pago-opts2">
-          <div onclick="selectRemPago(this,'Efectivo',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💵</div><div style="font-size:10px;font-weight:600">Efectivo</div></div>
-          <div onclick="selectRemPago(this,'Transferencia',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">🏦</div><div style="font-size:10px;font-weight:600">Transf.</div></div>
-          <div onclick="selectRemPago(this,'Tarjeta',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">💳</div><div style="font-size:10px;font-weight:600">Tarjeta</div></div>
-          <div onclick="selectRemPago(this,'App',2)" style="padding:8px 4px;background:var(--card);border:2px solid var(--border);border-radius:7px;text-align:center;cursor:pointer;transition:all 0.15s"><div style="font-size:16px;margin-bottom:2px">📱</div><div style="font-size:10px;font-weight:600">App</div></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:10px;color:var(--muted);white-space:nowrap">Monto:</label>
-          <input class="form-input" type="tel" id="pago2-monto" readonly style="font-size:12px;padding:6px 10px;color:var(--amber)" placeholder="Auto-calculado">
-        </div>
-      </div>
-      <div class="rem-pago-error" id="rem-pago-error">⚠️ Usá dos medios de pago diferentes</div>
-      <div id="pago-mixto-resumen" style="display:none;padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:7px;font-size:11px"></div>
-      <input type="hidden" id="rem-pago-selected" value="">
-    </div>
-  </div>
-</div>
+<!-- PASO 3: EVIDENCIA. El flujo móvil reemplaza este contenedor al iniciar. -->
+<div class="rem-step-panel" id="rem-step-3"></div>
 
 <!-- PASO 4: EVIDENCIA + OBSERVACIONES -->
 <div class="rem-step-panel" id="rem-step-4">
@@ -1600,7 +1431,7 @@
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="foto-grid">
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Frente del vehículo"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto1-status','rem-foto1-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto1-icon">📸</div><div class="pu-text" id="rem-foto1-status">Frente</div><div class="pu-sub">Antes del servicio</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Lateral"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto2-status','rem-foto2-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto2-icon">📸</div><div class="pu-text" id="rem-foto2-status">Lateral</div><div class="pu-sub">Daños visibles</div></div></label>
-      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Ticket de peaje"><input type="file" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto3-icon">🧾</div><div class="pu-text" id="rem-foto3-status">Peaje</div><div class="pu-sub">JPG o PDF</div></div></label>
+      <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Daños o estado adicional"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto3-icon">🔎</div><div class="pu-text" id="rem-foto3-status">Daños / estado</div><div class="pu-sub">Evidencia general</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Odómetro"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto4-status','rem-foto4-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto4-icon">🔢</div><div class="pu-text" id="rem-foto4-status">Odómetro</div><div class="pu-sub">KM al inicio</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Foto extra 1"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto5-status','rem-foto5-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto5-icon">➕</div><div class="pu-text" id="rem-foto5-status">Extra 1</div><div class="pu-sub">Opcional</div></div></label>
       <label class="photo-upload foto-slot" style="cursor:pointer;display:block;position:relative;overflow:hidden" data-label="Foto extra 2"><input type="file" accept="image/*" capture="environment" style="display:none" onchange="procesarArchivoReal(this,'rem-foto6-status','rem-foto6-icon')"><div style="pointer-events:none;display:flex;flex-direction:column;align-items:center"><div class="pu-icon" id="rem-foto6-icon">➕</div><div class="pu-text" id="rem-foto6-status">Extra 2</div><div class="pu-sub">Opcional</div></div></label>
@@ -2022,10 +1853,10 @@
 
   <!-- Sub-tab nav -->
   <div class="filter-tabs" style="margin-bottom:16px">
-    <div class="ftab active" data-sub="mes"          onclick="_sueldosSwitchSub('mes', this)">📅 Mes actual</div>
+    <div class="ftab active" data-sub="mes"          onclick="_sueldosSwitchSub('mes', this)">Liquidaciones del mes</div>
     <div class="ftab"        data-sub="rendiciones"  onclick="_sueldosSwitchSub('rendiciones', this)">💵 Rendiciones</div>
-    <div class="ftab"        data-sub="objetivos"    onclick="_sueldosSwitchSub('objetivos', this)">🎯 Objetivos</div>
-    <div class="ftab"        data-sub="esquema"      onclick="_sueldosSwitchSub('esquema', this)">💼 Esquema salarial</div>
+    <div class="ftab"        data-sub="objetivos"    onclick="_sueldosSwitchSub('objetivos', this)">🎯 Comisiones y Bonos</div>
+    <div class="ftab"        data-sub="esquema"      onclick="_sueldosSwitchSub('esquema', this)">Esquemas de pago</div>
     <div class="ftab"        data-sub="historial"    onclick="_sueldosSwitchSub('historial', this)">📜 Historial</div>
   </div>
 
@@ -2033,10 +1864,10 @@
   <div id="sueldos-sub-mes" class="sueldos-sub">
     <div class="card" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <label style="color:var(--muted);font-size:12px">Período</label>
-        <input type="month" id="pl-mes-periodo" class="form-input" style="max-width:180px" />
-        <button class="btn btn-primary" onclick="_generarLiquidacionesMes()" style="font-size:12px;padding:8px 14px">⚡ Generar liquidaciones</button>
-        <button class="btn btn-ghost" onclick="_cargarLiquidacionesMes()" style="font-size:12px;padding:8px 14px">🔄 Refrescar</button>
+        <div class="pv-month"><button class="btn btn-ghost" aria-label="Mes anterior" onclick="PayrollView.moveMonth(-1)">‹</button><strong id="pv-month"></strong><button class="btn btn-ghost" aria-label="Mes siguiente" onclick="PayrollView.moveMonth(1)">›</button></div>
+        <input type="hidden" id="pl-mes-periodo" class="form-input" hidden />
+        
+        
         <div style="flex:1"></div>
         <div id="pl-mes-stats" style="display:flex;gap:8px;flex-wrap:wrap"></div>
       </div>
@@ -2046,38 +1877,26 @@
     </div>
   </div>
 
-  <!-- SUB: rendiciones (hub admin — aprobación/observación) -->
-  <div id="sueldos-sub-rendiciones" class="sueldos-sub" style="display:none">
-    <div class="card">
-      <div class="cfg-rend-filtros">
-        <input id="cfg-rend-buscar" type="text" placeholder="Buscar chofer…" oninput="_renderRendicionesTabla()">
-        <select id="cfg-rend-status" onchange="_renderRendicionesTabla()">
-          <option value="">Todos los estados</option>
-          <option value="pendiente">Pendiente aprobación</option>
-          <option value="observada">Observada / con diferencia</option>
-          <option value="aprobada">Aprobada</option>
-        </select>
-        <select id="cfg-rend-rango" onchange="cargarRendicionesTab()">
-          <option value="30">Últimos 30 días</option>
-          <option value="90">Últimos 90 días</option>
-          <option value="365">Último año</option>
-          <option value="all">Todo</option>
-        </select>
-        <button class="btn btn-ghost" style="font-size:12px;padding:6px 10px" onclick="abrirModalExportRendicionMes()">📄 PDF mensual</button>
-      </div>
-      <div id="cfg-rend-stats" class="cfg-rend-stats"></div>
-      <div style="margin:10px 0;color:var(--muted);font-size:11px;line-height:1.5">
-        🟢 OK · 🟡 Sobrante (revisar, no acredita) · 🔴 Faltante (se descuenta del recibo del mes)
-      </div>
-      <div id="cfg-rend-body" style="color:var(--muted);font-size:13px">Cargando rendiciones...</div>
-    </div>
-  </div>
+  <!-- SUB: monthly administration cash handover -->
+  <div id="sueldos-sub-rendiciones" class="sueldos-sub" style="display:none"><div class="card">
+    <h3>Rendición mensual por chofer</h3><p>Fecha · Esperado · Gastos en efectivo. Administración registra un único total presentado.</p>
+    <label for="cfg-rend-month">Mes</label><input class="form-input" type="month" id="cfg-rend-month">
+    <label for="cfg-rend-driver">Chofer</label><select class="form-input" id="cfg-rend-driver"></select>
+    <button class="btn btn-primary" id="cfg-rend-open">Abrir rendición mensual</button><p id="cfg-rend-body" role="status"></p>
+  </div></div>
 
   <!-- SUB: objetivos -->
   <div id="sueldos-sub-objetivos" class="sueldos-sub" style="display:none">
+    <div class="card payroll-scheme-card" style="margin-bottom:14px">
+      <div class="payroll-commission-head">
+        <div><strong>Comisiones por conceptos</strong><p>Crealas una sola vez y luego asigná qué choferes cobran cada una.</p></div>
+        <button class="btn btn-primary" onclick="_abrirComisionGeneral()">+ Nueva comisión</button>
+      </div>
+      <div id="cfg-commission-body" class="payroll-commission-grid"><p class="pm-help">Cargando comisiones...</p></div>
+    </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
-        <div style="color:var(--muted);font-size:12px;flex:1;min-width:200px">Bonos configurables por concepto. Los cambios afectan solo liquidaciones futuras.</div>
+        <div><strong>Bonos por objetivos</strong><p style="color:var(--muted);font-size:12px;margin:4px 0 0">Bonos configurables por concepto. Los cambios afectan solo liquidaciones futuras.</p></div>
         <button class="btn btn-primary" onclick="_abrirObjetivoModal()" style="font-size:12px;padding:8px 14px">+ Nuevo objetivo</button>
       </div>
       <div id="cfg-obj-body" style="color:var(--muted);font-size:13px">Cargando objetivos...</div>
@@ -2086,10 +1905,10 @@
 
   <!-- SUB: esquema salarial -->
   <div id="sueldos-sub-esquema" class="sueldos-sub" style="display:none">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
-        <div style="color:var(--muted);font-size:12px;flex:1;min-width:200px">Configurá el esquema base de cada chofer. Se aplica al generar la liquidación del mes.</div>
-        <button class="btn btn-primary" onclick="_abrirEsquemaMasivoModal()" style="font-size:12px;padding:8px 14px">⚡ Aplicar a todos</button>
+    <div class="card payroll-scheme-card">
+      <div class="payroll-scheme-head">
+        <div><strong>Esquemas de pago</strong><p>Seleccioná uno o más choferes y definí qué conceptos se incluyen al generar sus liquidaciones.</p></div>
+        <button id="btn-esquema-masivo" class="btn btn-primary" onclick="_abrirEsquemaMasivoModal()" disabled>Aplicar cambios · 0 seleccionados</button>
       </div>
       <div id="cfg-esq-body" style="color:var(--muted);font-size:13px">Cargando esquema salarial...</div>
     </div>
@@ -2170,7 +1989,7 @@
     padding: 14px 16px;
     margin-bottom: 16px;
     display: grid;
-    grid-template-columns: 2fr 1.4fr 1.4fr 1.2fr 1fr 1fr auto;
+    grid-template-columns: 2fr 1.5fr 1.5fr 1.1fr 1.4fr auto;
     gap: 10px;
     align-items: end;
   }
@@ -2199,6 +2018,24 @@
     outline: none;
     border-color: var(--accent);
   }
+  #screen-jornadas-admin .jadmin-picker { position: relative; }
+  #screen-jornadas-admin .jadmin-picker summary {
+    min-height: 32px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg, #111420); color: var(--text); font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; list-style: none;
+  }
+  #screen-jornadas-admin .jadmin-picker summary::-webkit-details-marker { display:none; }
+  #screen-jornadas-admin .jadmin-picker[open] summary { border-color: var(--accent); }
+  #screen-jornadas-admin .jadmin-picker-panel {
+    position: absolute; z-index: 30; top: calc(100% + 5px); left: 0; min-width: 100%; max-height: 270px;
+    overflow: auto; padding: 8px; border: 1px solid var(--border); border-radius: 8px;
+    background: #171d2a; box-shadow: 0 14px 34px #0008;
+  }
+  #screen-jornadas-admin .jadmin-option { display:flex; align-items:center; gap:8px; padding:7px 6px; color:var(--text); font-size:11px; cursor:pointer; white-space:nowrap; }
+  #screen-jornadas-admin .jadmin-option:hover { background:#ffffff0a; }
+  #screen-jornadas-admin .jadmin-option input { width:auto; accent-color:var(--accent); }
+  #screen-jornadas-admin .jadmin-period-panel { min-width:310px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #screen-jornadas-admin .jadmin-period-panel label { margin:0; }
   #screen-jornadas-admin .filtros .clear {
     background: transparent;
     border: 1px solid var(--border);
@@ -2216,8 +2053,11 @@
   #screen-jornadas-admin .chips {
     display: flex;
     gap: 6px;
-    margin-bottom: 16px;
+    margin: 4px 0 0;
     flex-wrap: wrap;
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
   }
   #screen-jornadas-admin .chip {
     background: var(--card);
@@ -2457,16 +2297,18 @@
       <input type="search" id="jadmin-f-q" placeholder="Buscar por chofer o patente…">
     </div>
     <div>
-      <label>Chofer</label>
-      <select id="jadmin-f-chofer">
-        <option value="">Todos los choferes</option>
-      </select>
+      <label>Choferes</label>
+      <details class="jadmin-picker" id="jadmin-f-chofer">
+        <summary><span id="jadmin-f-chofer-label">Todos los choferes</span><span>⌄</span></summary>
+        <div class="jadmin-picker-panel" id="jadmin-f-chofer-options"></div>
+      </details>
     </div>
     <div>
-      <label>Camión</label>
-      <select id="jadmin-f-camion">
-        <option value="">Todos los camiones</option>
-      </select>
+      <label>Móviles</label>
+      <details class="jadmin-picker" id="jadmin-f-camion">
+        <summary><span id="jadmin-f-camion-label">Todos los móviles</span><span>⌄</span></summary>
+        <div class="jadmin-picker-panel" id="jadmin-f-camion-options"></div>
+      </details>
     </div>
     <div>
       <label>Estado</label>
@@ -2477,18 +2319,18 @@
       </select>
     </div>
     <div>
-      <label>Desde</label>
-      <input type="date" id="jadmin-f-desde">
-    </div>
-    <div>
-      <label>Hasta</label>
-      <input type="date" id="jadmin-f-hasta">
+      <label>Período</label>
+      <details class="jadmin-picker" id="jadmin-f-periodo">
+        <summary><span id="jadmin-f-periodo-label">Seleccionar período</span><span>⌄</span></summary>
+        <div class="jadmin-picker-panel jadmin-period-panel">
+          <label>Desde<input type="date" id="jadmin-f-desde"></label>
+          <label>Hasta<input type="date" id="jadmin-f-hasta"></label>
+        </div>
+      </details>
     </div>
     <button class="clear" id="jadmin-f-clear">Limpiar</button>
-  </div>
-
-  <!-- CHIPS -->
-  <div class="chips">
+    <!-- ACCESOS RÁPIDOS -->
+    <div class="chips">
     <span class="chip active" data-chip="todas">Todas <span class="cnt"></span></span>
     <span class="chip" data-chip="hoy">Hoy <span class="cnt"></span></span>
     <span class="chip" data-chip="semana">Esta semana <span class="cnt"></span></span>
@@ -2497,6 +2339,7 @@
     <span class="chip" data-chip="taller">En taller <span class="cnt"></span></span>
     <span class="chip" data-chip="incidentes">Con incidentes <span class="cnt"></span></span>
     <span class="chip" data-chip="rendicion">Faltantes rendición <span class="cnt"></span></span>
+    </div>
   </div>
 
   <!-- TABLA -->
@@ -2855,6 +2698,7 @@
           <label class="form-label">Rol <span style="color:var(--red)">*</span></label>
           <select class="form-input" id="nu-rol" onchange="toggleLicenciaSection()">
             <option value="chofer">🚛 Chofer</option>
+            <option value="operador">🧭 Operador</option>
             <option value="supervision">👁 Supervisor</option>
             <option value="administracion">👑 Administración</option>
           </select>
@@ -3043,6 +2887,7 @@
       </div>
 
       <div style="padding:22px 28px">
+        <div id="vr-addons-structured" class="rem-addons-card" style="display:none;margin-bottom:18px"></div>
         <div style="margin-bottom:18px">
           <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">🚗 Vehículo Asistido</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
@@ -3360,7 +3205,7 @@
 </div>
 
 <div class="modal-backdrop" id="modal-esquema-edit">
-  <div class="modal-box" style="max-width:480px">
+  <div class="modal-box payroll-scheme-modal">
     <div class="modal-head">
       <span class="modal-head-title">Esquema salarial</span>
       <button class="modal-close" onclick="closeModal('modal-esquema-edit')">×</button>
@@ -3375,61 +3220,118 @@
         <input class="form-input" id="esq-basico" type="number" step="0.01" min="0" placeholder="0">
       </div>
       <div class="form-group">
-        <label class="form-label">Valor por km ($/km)</label>
-        <input class="form-input" id="esq-valor-km" type="number" step="0.01" min="0" placeholder="0">
-      </div>
-      <div class="form-group">
         <label class="form-label">Valor por servicio ($/servicio)</label>
         <input class="form-input" id="esq-valor-serv" type="number" step="0.01" min="0" placeholder="0">
       </div>
       <div class="form-group">
-        <label class="form-label">Bono presentismo (todo o nada)</label>
+        <label class="form-label">Valor por kilómetro ($/km)</label>
+        <input class="form-input" id="esq-valor-km" type="number" step="0.01" min="0" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Importe de presentismo mensual</label>
         <input class="form-input" id="esq-bono-pres" type="number" step="0.01" min="0" placeholder="0">
-        <div style="color:var(--muted);font-size:11px;margin-top:4px">Se paga si el chofer no tuvo incidentes en el mes.</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">Si el concepto está activo, se paga completo cuando el chofer tuvo jornadas y no registró incidentes en el mes.</div>
       </div>
     </div>
-    <div class="modal-foot">
+    <div class="modal-foot payroll-scheme-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-esquema-edit')">Cancelar</button>
-      <button class="btn btn-primary" onclick="_guardarEsquema()">Guardar</button>
+      <button class="btn btn-primary" onclick="_guardarEsquema()">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-comision-payroll">
+  <div class="modal-box payroll-commission-modal">
+    <div class="modal-head">
+      <span class="modal-head-title" id="pc-title">Nueva comisión general</span>
+      <button class="modal-close" onclick="closeModal('modal-comision-payroll')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="pc-name">Nombre de la comisión</label>
+        <input class="form-input" id="pc-name" placeholder="Ej: Comisión por venta de batería">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="pc-concept">Concepto de venta</label>
+        <select class="form-input" id="pc-concept"><option value="">Seleccionar concepto...</option></select>
+      </div>
+      <div class="payroll-bulk-rules">
+        <div class="form-group">
+          <label class="form-label" for="pc-source">Origen</label>
+          <select class="form-input" id="pc-source">
+            <option value="extras">Venta / adicional del remito</option>
+            <option value="invoices">Servicio principal facturado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pc-mode">Cálculo</label>
+          <select class="form-input" id="pc-mode">
+            <option value="percent">Porcentaje del importe</option>
+            <option value="fixed">Importe fijo por unidad</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="pc-value">Valor</label>
+        <input class="form-input" id="pc-value" inputmode="decimal" placeholder="Ej: 10">
+      </div>
+      <label class="pm-commission-choice"><input type="checkbox" id="pc-active" checked><span><b>Comisión activa</b><small>Disponible para asignarla a choferes y liquidaciones futuras.</small></span></label>
+    </div>
+    <div class="modal-foot payroll-scheme-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-comision-payroll')">Cancelar</button>
+      <button class="btn btn-primary" onclick="_guardarComisionGeneral()">Guardar comisión</button>
     </div>
   </div>
 </div>
 
 <div class="modal-backdrop" id="modal-esquema-masivo">
-  <div class="modal-box" style="max-width:520px">
+  <div class="modal-box payroll-scheme-modal">
     <div class="modal-head">
-      <span class="modal-head-title">⚡ Aplicar esquema a todos los choferes</span>
+      <span class="modal-head-title">Aplicar esquema a choferes seleccionados</span>
       <button class="modal-close" onclick="closeModal('modal-esquema-masivo')">×</button>
     </div>
     <div class="modal-body">
       <div style="padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;color:#f59e0b;font-size:12px;border-radius:4px;margin-bottom:14px">
-        ⚠ Los valores completados se sobrescriben en TODOS los choferes activos. Dejá vacío el campo que querés preservar tal cual está en cada chofer.
+        Los campos completados se aplicarán únicamente a los choferes seleccionados. Dejá vacío lo que quieras conservar.
       </div>
+      <div id="esqm-selected-list" class="payroll-selected-list"></div>
       <div class="form-group">
         <label class="form-label">Sueldo básico mensual</label>
         <input class="form-input" id="esqm-basico" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Valor por km ($/km)</label>
-        <input class="form-input" id="esqm-valor-km" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
       </div>
       <div class="form-group">
         <label class="form-label">Valor por servicio ($/servicio)</label>
         <input class="form-input" id="esqm-valor-serv" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
       </div>
       <div class="form-group">
-        <label class="form-label">Bono presentismo</label>
+        <label class="form-label">Valor por kilómetro ($/km)</label>
+        <input class="form-input" id="esqm-valor-km" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Importe de presentismo mensual</label>
         <input class="form-input" id="esqm-bono-pres" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">Se paga completo si está activo, hubo jornadas y no se registraron incidentes.</div>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="esqm-solo-sin-esquema">
-        <label for="esqm-solo-sin-esquema" style="color:var(--muted);font-size:12px;margin:0">Solo aplicar a choferes sin esquema (no pisar los ya configurados)</label>
+      <div class="payroll-bulk-rules">
+        <div class="form-group"><label class="form-label">Pago por servicio</label><select class="form-input" id="esqm-pay-services"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
+        <div class="form-group"><label class="form-label">Pago por kilómetros</label><select class="form-input" id="esqm-pay-km"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
+        <div class="form-group"><label class="form-label">Base de kilómetros</label><select class="form-input" id="esqm-km-basis"><option value="">No modificar</option><option value="real">KM reales por odómetro</option><option value="billed">KM facturados en servicios</option></select></div>
+        <div class="form-group"><label class="form-label">Presentismo</label><select class="form-input" id="esqm-pay-presentismo"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
       </div>
+      <div class="form-group">
+        <label class="form-label" for="esqm-commission-mode">Comisiones por conceptos</label>
+        <select class="form-input" id="esqm-commission-mode">
+          <option value="">No modificar</option>
+          <option value="replace">Reemplazar por la selección</option>
+        </select>
+        <div style="color:var(--muted);font-size:11px;margin-top:4px">Al reemplazar, las comisiones marcadas quedarán asignadas a todos los choferes seleccionados.</div>
+      </div>
+      <div id="esqm-commission-list" class="pm-commission-choices"></div>
       <div id="esqm-preview" style="margin-top:10px;color:var(--muted);font-size:12px"></div>
     </div>
-    <div class="modal-foot">
+    <div class="modal-foot payroll-scheme-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-esquema-masivo')">Cancelar</button>
-      <button class="btn btn-primary" onclick="_guardarEsquemaMasivo()">Aplicar a todos</button>
+      <button class="btn btn-primary" onclick="_guardarEsquemaMasivo()">Aplicar a seleccionados</button>
     </div>
   </div>
 </div>
@@ -3799,5 +3701,10 @@
   </div>
 </div>
 
+<script src="/company-documents.js"></script>
+<script src="/fuel-admin-editor.js"></script>
+<script src="/payroll-matrix.js"></script>
+<script src="/excel-export.js"></script>
+<script src="/payroll-view.js"></script>
 </body>
 </html>
