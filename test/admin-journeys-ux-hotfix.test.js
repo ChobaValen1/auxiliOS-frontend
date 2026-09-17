@@ -26,7 +26,10 @@ test('journey KPIs are filter-aware and show averages and services', () => {
   assert.doesNotMatch(html, /id="jadmin-kpi-taller"/);
   assert.match(html, /id="jadmin-kpi-servicios"/);
   assert.match(ui, /jadmin-kpi-horas'[\s\S]*?k\.promHorasJornada/);
-  assert.match(ui, /promedio por jornada/);
+  // El promedio ahora se declara en el título de la card en vez de repetirse
+  // en el subtexto, que pasó a mostrar el total del período.
+  assert.match(html, /<div class="kpi-lbl">Horas prom\. \/ jornada<\/div>/);
+  assert.match(ui, /jadmin-kpi-horas-sub'[\s\S]*?horasTotalPeriodo/);
   assert.match(ui, /k\.serviciosPeriodo/);
   assert.match(data, /if \(driverId\) abiertasQuery = abiertasQuery\.eq\('driver_id', driverId\)/);
   assert.match(data, /if \(truckId\)\s+abiertasQuery = abiertasQuery\.eq\('truck_id', truckId\)/);
@@ -58,4 +61,25 @@ test('journey screen removes the visual legend and numbers services chronologica
   assert.match(data, /\.order\('created_at_device', \{ ascending: true \}\)/);
   assert.match(ui, /trips\.map\(\(t, index\) =>/);
   assert.match(ui, /class="jd-service-seq"[^>]*>\$\{index \+ 1\}<\/span>/);
+});
+
+test('journey table speaks one data language: es-AR hours, one rendition format, explicit gaps', () => {
+  const html = read('Index.html');
+  const ui = read('sigma.js');
+
+  // Horas con coma decimal, no con punto.
+  assert.match(ui, /function _jadminFmtHoras[\s\S]*?toLocaleString\('es-AR'/);
+  assert.doesNotMatch(ui, /horas\.toFixed\(1\)/);
+
+  // Rendición OK siempre con el punto medio: "$0 · OK" / "+$45 · OK".
+  assert.match(ui, /rendTxt = `\$\{_jadminMoneySigned\(r\.rendicion\.diff\)\} · OK`/);
+
+  // Sin dato es "—" y cero es "0", con el mismo tratamiento en INC. y TALLER.
+  assert.match(ui, /const kmTxt = kmSinDato \? '—'/);
+  assert.match(ui, /r\.hora_fin \? _jadminFmtHoras/);
+  assert.match(ui, /<span class="cell-empty">—<\/span>/);
+
+  // El contador del chip se oculta si no hay un número que se pueda afirmar.
+  assert.match(ui, /function _jadminRenderChipCounts/);
+  assert.match(html, /\.chip \.cnt:empty \{ display: none; \}/);
 });

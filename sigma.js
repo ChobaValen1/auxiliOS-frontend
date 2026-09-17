@@ -15648,6 +15648,12 @@ function _jadminLunesSemana() {
   const dd = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${dd}`;
 }
+// Formato argentino para horas: coma decimal, un decimal fijo ("11,9").
+function _jadminFmtHoras(n) {
+  const v = Number(n);
+  if (!isFinite(v)) return '0';
+  return v.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
 function _jadminMoney(n) {
   const v = Number(n) || 0;
   const sign = v < 0 ? '-' : '';
@@ -16018,16 +16024,37 @@ async function _jadminReload() {
 function _jadminRenderKpis(k) {
   const $ = (id) => document.getElementById(id);
   if (!k) return;
-  if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = k.abiertasAhora ?? 0;
-  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = k.abiertasContexto || `${k.choferesActivos ?? 0} choferes activos`;
+  const abiertas = Number(k.abiertasAhora) || 0;
+  const choferes = Number(k.choferesActivos) || 0;
+
+  if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = abiertas;
+  // El subtexto conecta los dos números en vez de repetir un total suelto.
+  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = choferes
+    ? `${abiertas} de ${choferes} choferes en ruta`
+    : (k.abiertasContexto || 'Sin choferes activos');
   if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
   if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
-  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${k.promHorasJornada ?? 0}h`;
-  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = 'promedio por jornada';
+  // El título de la card ya dice "Horas prom. / jornada": el subtexto aporta el total.
+  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${_jadminFmtHoras(k.promHorasJornada ?? 0)} h`;
+  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `${_jadminFmtHoras(k.horasTotalPeriodo ?? 0)} h en el período`;
   if ($('jadmin-kpi-servicios'))     $('jadmin-kpi-servicios').textContent    = (k.serviciosPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-servicios-sub')) $('jadmin-kpi-servicios-sub').textContent = 'en el período';
+
+  _jadminRenderChipCounts(k);
+}
+
+// Contadores de los chips de vista rápida. Solo se muestra el que se puede
+// afirmar con datos ya cargados: "Abiertas ahora" viene del mismo KPI, que
+// cuenta todas las jornadas abiertas y no solo la página en pantalla. Los
+// demás dependerían de consultas que esta pantalla no hace, así que su
+// contador queda oculto en vez de mostrar un guion o un número de la página.
+function _jadminRenderChipCounts(k) {
+  const chip = document.querySelector('#screen-jornadas-admin .chip[data-chip="abiertas"] .cnt');
+  if (!chip) return;
+  const abiertas = Number(k?.abiertasAhora);
+  chip.textContent = Number.isFinite(abiertas) ? String(abiertas) : '';
 }
 
 function _jadminAplicarFiltrosClientSide(rows) {
@@ -16100,17 +16127,19 @@ function _jadminRenderFila(r) {
   const iniciales = _jadminIniciales(r.chofer_nombre);
   const legajoTxt = r.chofer_legajo ? `Legajo ${_escHtml(r.chofer_legajo)}` : '—';
 
-  // KM
+  // KM — "—" cuando todavía no hay dato (jornada abierta), "0" cuando es cero.
+  const kmSinDato = r.km_recorridos === null || r.km_recorridos === undefined;
   const km = Number(r.km_recorridos) || 0;
-  const kmCls = km === 0 ? 'km-cell zero' : 'km-cell';
-  const kmTxt = km ? km.toLocaleString('es-AR') : '0';
+  const kmCls = kmSinDato || km === 0 ? 'km-cell zero' : 'km-cell';
+  const kmTxt = kmSinDato ? '—' : km.toLocaleString('es-AR');
 
-  // Horas
-  const horas = Number(r.horas) || 0;
-  const horasTxt = horas ? horas.toFixed(1) : '0';
+  // Horas — sin hora de fin no hay jornada medida todavía.
+  const horasTxt = r.hora_fin ? _jadminFmtHoras(Number(r.horas) || 0) : '—';
+  const horasCls = r.hora_fin ? 'mono' : 'mono cell-empty';
 
   // Servicios
-  const srv = r.servicios || 0;
+  const srv = Number(r.servicios) || 0;
+  const srvCls = srv ? 'mono' : 'mono cell-empty';
 
   // Rendición
   let rendCls = 'rend-cell na';
@@ -16118,8 +16147,8 @@ function _jadminRenderFila(r) {
   if (r.rendicion) {
     if (r.rendicion.estado === 'ok') {
       rendCls = 'rend-cell ok';
-      const d = Number(r.rendicion.diff) || 0;
-      rendTxt = d === 0 ? '$0 · OK' : `${_jadminMoneySigned(d)} OK`;
+      // Un solo formato: "$0 · OK" / "+$45 · OK", con el punto medio siempre.
+      rendTxt = `${_jadminMoneySigned(r.rendicion.diff)} · OK`;
     } else if (r.rendicion.estado === 'faltante') {
       rendCls = 'rend-cell bad';
       rendTxt = _jadminMoneySigned(r.rendicion.diff);
@@ -16129,18 +16158,20 @@ function _jadminRenderFila(r) {
     }
   }
 
-  // Incidentes
+  // Incidentes y Taller comparten criterio: "0" es un cero real, "—" es
+  // ausencia de dato, y ambos se ven igual de apagados cuando no hay nada.
+  const incidentes = Number(r.incidentes);
   let incCls = 'inc-cell zero';
-  let incTxt = '0';
-  if ((r.incidentes || 0) > 0) {
+  let incTxt = Number.isFinite(incidentes) ? '0' : '—';
+  if (incidentes > 0) {
     incCls = 'inc-cell some';
-    incTxt = r.inc_grave ? `⚠ ${r.incidentes}` : String(r.incidentes);
+    incTxt = r.inc_grave ? `⚠ ${incidentes}` : String(incidentes);
   }
 
   // Taller
   const tallerHtml = r.in_workshop
-    ? `<span class="pill pill-red">🔧</span>`
-    : `<span style="color:var(--muted)">—</span>`;
+    ? `<span class="pill pill-red" title="La unidad ingresó a taller">🔧</span>`
+    : `<span class="cell-empty">—</span>`;
 
   // Estado (solo open/closed/anulado — taller es columna independiente).
   // "Cerrada" es el estado normal y va en gris neutro: el ámbar queda
@@ -16189,8 +16220,8 @@ function _jadminRenderFila(r) {
         </div>
       </td>
       <td class="right"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
-      <td class="right mono">${horasTxt}</td>
-      <td class="right mono">${srv}</td>
+      <td class="right ${horasCls}">${horasTxt}</td>
+      <td class="right ${srvCls}">${srv}</td>
       <td class="right"><span class="${rendCls}">${rendTxt}</span></td>
       <td class="center"><span class="${incCls}">${incTxt}</span></td>
       <td class="center">${tallerHtml}</td>
