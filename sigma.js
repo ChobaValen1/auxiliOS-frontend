@@ -8637,12 +8637,10 @@ async function abrirModalNuevaJornada() {
     const camionActualDisponible = camiones.find(c => Number(c.truck_id) === Number(_camionActual?.truck_id));
     if (_camionActual && camionActualDisponible?.has_open_journey) {
       closeModal('modal-nueva-jornada');
-      toast(
-        camionActualDisponible.is_own_open_journey
-          ? 'Ya tenés una jornada abierta. Cerrala antes de iniciar otra.'
-          : 'Este camión ya tiene una jornada abierta y no puede seleccionarse.',
-        'warning'
-      );
+      const mensajeJornadaAbierta = camionActualDisponible.is_own_open_journey
+        ? 'Ya tenés una jornada abierta. Cerrala antes de iniciar otra.'
+        : 'Este camión ya tiene una jornada abierta y no puede seleccionarse.';
+      operationFeedback('Jornada en curso', mensajeJornadaAbierta, 'error', 2800);
       if (camionActualDisponible.is_own_open_journey) goTo('registro');
       return;
     }
@@ -9499,13 +9497,14 @@ async function abrirRendicion(logId, driverId, truckId, fecha) {
       lista.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px">Sin servicios registrados hoy</div>';
     } else {
       lista.innerHTML = remitos.map(r => {
-        const total = (r.pago_1_monto || 0) + (r.pago_2_monto || 0);
-        const esEf  = r.pago_1_metodo === 'efectivo' || r.pago_2_metodo === 'efectivo';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--muted)">#${r.nro_remito} ${r.tipo_servicio || ''}</span>
-          <span style="${esEf ? 'color:var(--amber);font-weight:600' : 'color:var(--muted)'}">
-            ${esEf ? '💵 ' : ''}$${total.toLocaleString('es-AR')}
-          </span>
+        const esEfectivo = metodo => String(metodo || '').trim().toLowerCase() === 'efectivo';
+        const efectivo = (esEfectivo(r.pago_1_metodo) ? Number(r.pago_1_monto) || 0 : 0)
+          + (esEfectivo(r.pago_2_metodo) ? Number(r.pago_2_monto) || 0 : 0);
+        const servicio = _escHtml(r.nro_servicio || r.nro_remito || 'Sin número');
+        const patente = _escHtml(r.patente || 'Sin patente');
+        return `<div class="rend-service-row">
+          <span class="rend-service-identification"><strong>N° ${servicio}</strong><span>${patente}</span></span>
+          <span class="rend-service-cash">$${efectivo.toLocaleString('es-AR')}</span>
         </div>`;
       }).join('');
     }

@@ -3761,7 +3761,10 @@ body {
 .rend-cash-kpis strong{font-family:'Bebas Neue';font-size:27px;color:var(--amber);letter-spacing:.5px}
 .rend-services-toggle{width:100%;margin-top:14px;padding:11px 2px 0;border:0;border-top:1px solid var(--border);background:none;color:var(--text);text-align:left;cursor:pointer}
 .rend-services-toggle::after{content:'⌄';float:right;color:var(--muted);font-size:18px;transition:transform .2s}.rend-services-toggle.open::after{transform:rotate(180deg)}
-.rend-services-list{margin-top:10px;max-height:125px;overflow:auto}.rend-services-list[hidden]{display:none}.rend-services-empty{padding:8px;text-align:center;color:var(--muted);font-size:12px}
+.rend-services-list{margin-top:10px;max-height:145px;overflow:auto}.rend-services-list[hidden]{display:none}.rend-services-empty{padding:8px;text-align:center;color:var(--muted);font-size:12px}
+.rend-service-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}
+.rend-service-identification{display:flex;align-items:center;gap:9px;min-width:0}.rend-service-identification strong{color:#f4f7fb;font-size:13px}.rend-service-identification span{color:#bcc7d8;font-weight:600;letter-spacing:.2px}
+.rend-service-cash{flex:none;color:var(--amber);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
 .rend-admin-note{display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid #315278;border-radius:10px;background:#142438;color:var(--text);font-size:12px;line-height:1.4}
 .rend-mono-icon{display:inline-grid;place-items:center;width:19px;height:19px;margin-right:5px;border:1px solid currentColor;border-radius:50%;font-family:'DM Mono';font-size:12px}
 #modal-rendicion-cierre .modal-footer{gap:10px}#modal-rendicion-cierre .modal-footer .btn{flex:1;justify-content:center}
