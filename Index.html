@@ -1939,6 +1939,17 @@
 <div class="screen" id="screen-jornadas-admin">
   <style>
   /* ===== Estilos scoped para screen-jornadas-admin ===== */
+
+  /* Tokens locales. :root define --amber/--green/--red/--blue/--border dos veces
+     con valores distintos, asi que la pantalla no depende de esos nombres para
+     nada que sea critico de contraste. --accent no esta definido en ninguna hoja. */
+  #screen-jornadas-admin {
+    --jadmin-muted: #8590ab;            /* ~5.3:1 sobre --card #191d27 */
+    --jadmin-neutral-bg: rgba(133,144,171,.12);
+    --jadmin-accent: #4F8EF7;
+    --jadmin-label-tracking: .07em;
+  }
+
   #screen-jornadas-admin .jadmin-kpis {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -1953,10 +1964,11 @@
     padding: 14px 16px;
   }
   #screen-jornadas-admin .kpi-lbl {
-    font-size: 9px;
-    letter-spacing: 1.5px;
+    font-size: 12px;
+    line-height: 1.3;
+    letter-spacing: var(--jadmin-label-tracking);
     text-transform: uppercase;
-    color: var(--muted2);
+    color: var(--jadmin-muted);
     font-weight: 600;
     margin-bottom: 6px;
   }
@@ -1967,9 +1979,10 @@
     letter-spacing: 1px;
   }
   #screen-jornadas-admin .kpi-sub {
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--jadmin-muted);
+    margin-top: 5px;
   }
   #screen-jornadas-admin .kpi.abiertas { border-left-color: var(--amber); }
   #screen-jornadas-admin .kpi.abiertas .kpi-val { color: var(--amber); }
@@ -1995,12 +2008,13 @@
   }
   #screen-jornadas-admin .filtros label {
     display: block;
-    font-size: 9px;
-    letter-spacing: 1.5px;
+    font-size: 12px;
+    line-height: 1.3;
+    letter-spacing: var(--jadmin-label-tracking);
     text-transform: uppercase;
-    color: var(--muted2);
+    color: var(--jadmin-muted);
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
   }
   #screen-jornadas-admin .filtros input,
   #screen-jornadas-admin .filtros select {
@@ -2031,7 +2045,7 @@
     overflow: auto; padding: 8px; border: 1px solid var(--border); border-radius: 8px;
     background: #171d2a; box-shadow: 0 14px 34px #0008;
   }
-  #screen-jornadas-admin .jadmin-option { display:flex; align-items:center; gap:8px; padding:7px 6px; color:var(--text); font-size:11px; cursor:pointer; white-space:nowrap; }
+  #screen-jornadas-admin .jadmin-option { display:flex; align-items:center; gap:8px; padding:7px 6px; color:var(--text); font-size:12px; cursor:pointer; white-space:nowrap; }
   #screen-jornadas-admin .jadmin-option:hover { background:#ffffff0a; }
   #screen-jornadas-admin .jadmin-option input { width:auto; accent-color:var(--accent); }
   #screen-jornadas-admin .jadmin-period-panel { min-width:310px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
@@ -2039,9 +2053,9 @@
   #screen-jornadas-admin .filtros .clear {
     background: transparent;
     border: 1px solid var(--border);
-    color: var(--muted2);
+    color: var(--jadmin-muted);
     padding: 7px 12px;
-    font-size: 11px;
+    font-size: 12px;
     border-radius: 6px;
     cursor: pointer;
   }
@@ -2062,9 +2076,9 @@
   #screen-jornadas-admin .chip {
     background: var(--card);
     border: 1px solid var(--border);
-    color: var(--muted2);
+    color: var(--jadmin-muted);
     padding: 5px 12px;
-    font-size: 11px;
+    font-size: 12px;
     border-radius: 999px;
     cursor: pointer;
     font-weight: 500;
@@ -2083,9 +2097,9 @@
   }
   #screen-jornadas-admin .chip .cnt {
     background: rgba(255,255,255,0.15);
-    padding: 1px 6px;
+    padding: 1px 7px;
     border-radius: 999px;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
   }
 
@@ -2109,8 +2123,8 @@
     color: var(--text);
   }
   #screen-jornadas-admin .table-hdr .count {
-    font-size: 11px;
-    color: var(--muted2);
+    font-size: 12px;
+    color: var(--jadmin-muted);
   }
   #screen-jornadas-admin .table-hdr .count b { color: var(--text); }
 
@@ -2122,10 +2136,10 @@
   #screen-jornadas-admin thead th {
     text-align: left;
     padding: 10px 14px;
-    font-size: 9.5px;
-    letter-spacing: 1.5px;
+    font-size: 12px;
+    letter-spacing: var(--jadmin-label-tracking);
     text-transform: uppercase;
-    color: var(--muted2);
+    color: var(--jadmin-muted);
     font-weight: 700;
     background: rgba(0,0,0,0.15);
     border-bottom: 1px solid var(--border);
@@ -2159,7 +2173,7 @@
   #screen-jornadas-admin td.mono   { font-family: 'DM Mono', 'Courier New', monospace; }
 
   #screen-jornadas-admin .fecha-cell b { display: block; }
-  #screen-jornadas-admin .fecha-cell .dia { font-size: 10.5px; color: var(--muted2); margin-top: 1px; }
+  #screen-jornadas-admin .fecha-cell .dia { font-size: 12px; color: var(--jadmin-muted); margin-top: 2px; }
 
   #screen-jornadas-admin .chofer-cell {
     display: flex; align-items: center; gap: 10px;
@@ -2180,18 +2194,18 @@
   #screen-jornadas-admin .avatar.c4 { background: linear-gradient(135deg, #e2504a, #8a2320); }
   #screen-jornadas-admin .avatar.c5 { background: linear-gradient(135deg, #a855f7, #5b21b6); }
   #screen-jornadas-admin .chofer-cell .name b { display: block; font-weight: 600; }
-  #screen-jornadas-admin .chofer-cell .name .lg { font-size: 10.5px; color: var(--muted2); }
+  #screen-jornadas-admin .chofer-cell .name .lg { font-size: 12px; color: var(--jadmin-muted); }
 
   #screen-jornadas-admin .camion-cell { display: flex; flex-direction: column; gap: 1px; }
   #screen-jornadas-admin .camion-cell .pat { font-family: 'DM Mono', monospace; font-weight: 600; }
-  #screen-jornadas-admin .camion-cell .mov { font-size: 10.5px; color: var(--muted2); }
+  #screen-jornadas-admin .camion-cell .mov { font-size: 12px; color: var(--jadmin-muted); }
 
   #screen-jornadas-admin .pill {
     display: inline-flex;
     align-items: center; gap: 4px;
     padding: 3px 9px;
     border-radius: 999px;
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.3px;
   }
@@ -2199,7 +2213,7 @@
   #screen-jornadas-admin .pill-amber { background: rgba(245,166,35,0.12); color: var(--amber); }
   #screen-jornadas-admin .pill-red   { background: rgba(226,80,74,0.12);  color: var(--red); }
   #screen-jornadas-admin .pill-blue  { background: rgba(59,130,246,0.12); color: var(--blue); }
-  #screen-jornadas-admin .pill-muted { background: rgba(90,98,120,0.15);  color: var(--muted2); }
+  #screen-jornadas-admin .pill-muted { background: var(--jadmin-neutral-bg); color: var(--jadmin-muted); }
 
   #screen-jornadas-admin .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 5px; }
   #screen-jornadas-admin .dot.g { background: var(--green); box-shadow: 0 0 6px var(--green); }
@@ -2209,7 +2223,7 @@
   #screen-jornadas-admin .km-cell { color: var(--amber); font-weight: 600; }
   #screen-jornadas-admin .km-cell.zero { color: var(--muted); font-weight: 400; }
 
-  #screen-jornadas-admin .rend-cell { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 11.5px; }
+  #screen-jornadas-admin .rend-cell { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 12px; }
   #screen-jornadas-admin .rend-cell.ok   { color: var(--green); }
   #screen-jornadas-admin .rend-cell.warn { color: var(--amber); }
   #screen-jornadas-admin .rend-cell.bad  { color: var(--red); }
@@ -2220,10 +2234,10 @@
     align-items: center;
     gap: 4px;
     font-family: 'DM Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
   }
-  #screen-jornadas-admin .inc-cell.zero { color: var(--muted); }
+  #screen-jornadas-admin .inc-cell.zero { color: var(--jadmin-muted); font-weight: 400; }
   #screen-jornadas-admin .inc-cell.some { color: var(--red); }
 
   #screen-jornadas-admin .table-foot {
@@ -2236,7 +2250,7 @@
   #screen-jornadas-admin .pager button {
     background: var(--card);
     border: 1px solid var(--border);
-    color: var(--muted2);
+    color: var(--jadmin-muted);
     min-width: 28px; height: 28px;
     padding: 0 8px;
     border-radius: 6px;
@@ -2245,14 +2259,19 @@
   }
   #screen-jornadas-admin .pager button:hover { color: var(--text); }
   #screen-jornadas-admin .pager button:disabled { opacity: 0.3; cursor: not-allowed; }
-  #screen-jornadas-admin .pager .info { font-size: 11px; color: var(--muted2); margin: 0 12px; }
+  #screen-jornadas-admin .pager .info { font-size: 12px; color: var(--jadmin-muted); margin: 0 12px; }
   #screen-jornadas-admin .per-page {
     background: var(--card);
     border: 1px solid var(--border);
     color: var(--text);
     padding: 5px 8px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 12px;
+  }
+  /* "Filas por pagina": mismo minimo legible que el resto de los textos de apoyo. */
+  #screen-jornadas-admin .per-page-lbl {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--jadmin-muted);
   }
 
   @media (max-width: 900px) {
@@ -2368,7 +2387,7 @@
     </table>
 
     <div class="table-foot">
-      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted2)">
+      <div class="per-page-lbl">
         Filas por página
         <select class="per-page" id="jadmin-per-page">
           <option value="20" selected>20</option>
