@@ -1951,6 +1951,7 @@
   }
 
   #screen-jornadas-admin .jadmin-kpis {
+    position: relative;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 10px;
@@ -2172,11 +2173,54 @@
   /* Contenedor de scroll real de la tabla. Sin esto, el ancho mínimo de la
      tabla empujaba el shell entero y el navegador recortaba las últimas
      columnas sin dejar forma de llegar a ellas. */
+  #screen-jornadas-admin .table-scroll-wrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
   #screen-jornadas-admin .table-scroll {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
+  }
+
+  /* Overlay de "cargando métricas": cubre solo el espacio de los datos
+     (KPIs o filas de la tabla), nunca los filtros ni los chips, para que
+     se pueda seguir viendo y tocando lo que se acaba de elegir mientras
+     llega la respuesta. */
+  #screen-jornadas-admin .jadmin-loading-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(12,14,20,.55);
+    border-radius: inherit;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .12s ease;
+  }
+  #screen-jornadas-admin .jadmin-loading-overlay.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  #screen-jornadas-admin .jadmin-spinner {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.15);
+    border-top-color: var(--jadmin-accent);
+    animation: jadmin-spin .7s linear infinite;
+  }
+  @keyframes jadmin-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    #screen-jornadas-admin .jadmin-spinner { animation: none; opacity: .8; }
   }
   #screen-jornadas-admin .table-hdr {
     display: flex;
@@ -2481,6 +2525,7 @@
       <div class="kpi-val" id="jadmin-kpi-servicios">—</div>
       <div class="kpi-sub" id="jadmin-kpi-servicios-sub">—</div>
     </div>
+    <div class="jadmin-loading-overlay" id="jadmin-kpis-loading" aria-hidden="true"><div class="jadmin-spinner"></div></div>
   </div>
 
   <!-- FILTROS -->
@@ -2549,6 +2594,7 @@
       <div class="count">Mostrando <b id="jadmin-count-shown">0</b> de <b id="jadmin-count-total">0</b></div>
     </div>
 
+    <div class="table-scroll-wrap">
     <div class="table-scroll">
     <table>
       <thead>
@@ -2568,6 +2614,8 @@
       </thead>
       <tbody id="jadmin-tbody"></tbody>
     </table>
+    </div>
+    <div class="jadmin-loading-overlay" id="jadmin-table-loading" aria-hidden="true"><div class="jadmin-spinner"></div></div>
     </div>
 
     <div class="table-foot">

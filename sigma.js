@@ -15600,6 +15600,14 @@ let _jadminState = {
   searchTimer: null,
 };
 
+// Si llega un cambio de filtro mientras ya hay un pedido en vuelo, la
+// recarga anterior se descarta silenciosamente (ver guard de abajo) y el
+// filtro nuevo queda seleccionado en pantalla pero sin datos que lo
+// reflejen. Esta bandera encola un único pedido más para cuando el que
+// está en curso termine, así el último estado de los filtros siempre
+// termina reflejado sin disparar una carrera de pedidos superpuestos.
+let _jadminReloadPending = false;
+
 // ─── Utilidades locales ───────────────────────────────────────────
 function _jadminFmtFecha(iso) {
   if (!iso) return '—';
@@ -15999,10 +16007,27 @@ function _jadminAplicarChip(nombre) {
   _jadminReload();
 }
 
+// Muestra/oculta el círculo de carga, acotado al espacio de los datos
+// (tarjetas de KPI y filas de la tabla). Los filtros y los chips nunca se
+// cubren: siguen respondiendo al toque mientras se espera la respuesta.
+function _jadminSetCargando(on) {
+  const kpiOverlay = document.getElementById('jadmin-kpis-loading');
+  const tablaOverlay = document.getElementById('jadmin-table-loading');
+  if (kpiOverlay) kpiOverlay.classList.toggle('show', on);
+  if (tablaOverlay) tablaOverlay.classList.toggle('show', on);
+}
+
 // ─── Data loading ─────────────────────────────────────────────────
 async function _jadminReload() {
-  if (_jadminState.loading) return;
+  if (_jadminState.loading) {
+    // Ya hay un pedido en curso: no se dispara uno en paralelo, pero se
+    // deja marcado que hace falta uno más apenas termine, para no perder
+    // el filtro que se acaba de tocar.
+    _jadminReloadPending = true;
+    return;
+  }
   _jadminState.loading = true;
+  _jadminSetCargando(true);
   try {
     const tbody = document.getElementById('jadmin-tbody');
     if (tbody && !tbody.innerHTML) {
@@ -16044,6 +16069,15 @@ async function _jadminReload() {
     if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
   } finally {
     _jadminState.loading = false;
+    if (_jadminReloadPending) {
+      // Se pidió otra recarga mientras esta corría: se encadena de una,
+      // sin apagar el spinner en el medio, para no mostrar un parpadeo con
+      // datos que ya quedaron viejos antes de mostrar los correctos.
+      _jadminReloadPending = false;
+      _jadminReload();
+    } else {
+      _jadminSetCargando(false);
+    }
   }
 }
 
