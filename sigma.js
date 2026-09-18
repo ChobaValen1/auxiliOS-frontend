@@ -16162,7 +16162,11 @@ function _jadminRenderFila(r) {
   const dia = _jadminDiaSemana(r.log_date);
   const avClass = _jadminAvatarClass(r.chofer_nombre, r.chofer_legajo);
   const iniciales = _jadminIniciales(r.chofer_nombre);
-  const legajoTxt = r.chofer_legajo ? `Legajo ${_escHtml(r.chofer_legajo)}` : '—';
+  // El legajo salió de la celda: no aportaba ancho ni alto y competía con el
+  // nombre. Sigue siendo buscable y ahora se lee al pasar el mouse.
+  const legajoTitle = r.chofer_legajo
+    ? ` title="${_escHtml(r.chofer_nombre || '')} · Legajo ${_escHtml(r.chofer_legajo)}"`
+    : '';
 
   // KM — "—" cuando todavía no hay dato (jornada abierta), "0" cuando es cero.
   const kmSinDato = r.km_recorridos === null || r.km_recorridos === undefined;
@@ -16244,11 +16248,10 @@ function _jadminRenderFila(r) {
         </div>
       </td>
       <td>
-        <div class="chofer-cell">
+        <div class="chofer-cell"${legajoTitle}>
           <div class="avatar ${avClass}">${_escHtml(iniciales)}</div>
           <div class="name">
             <b>${_escHtml(r.chofer_nombre || '—')}</b>
-            <div class="lg">${legajoTxt}</div>
           </div>
         </div>
       </td>

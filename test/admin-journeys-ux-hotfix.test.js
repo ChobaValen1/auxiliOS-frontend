@@ -115,4 +115,11 @@ test('la grilla cambia Rendición por caja, y Taller por una marca en Estado', (
 
   // Estado queda anclada a la derecha para que el scroll no la esconda.
   assert.match(html, /tbody td:last-child \{\s*\n?\s*position: sticky;/);
+
+  // El legajo salió de la celda del chofer: no aportaba ancho ni alto. Sigue
+  // siendo buscable y ahora se lee en el tooltip de la celda.
+  assert.doesNotMatch(ui, /<div class="lg">/);
+  assert.match(ui, /legajoTitle[\s\S]*?Legajo \$\{_escHtml\(r\.chofer_legajo\)\}/);
+  assert.match(ui, /class="chofer-cell"\$\{legajoTitle\}/);
+  assert.match(ui, /String\(r\.chofer_legajo \|\| ''\)\.toLowerCase\(\)\.includes\(q\)/);
 });
