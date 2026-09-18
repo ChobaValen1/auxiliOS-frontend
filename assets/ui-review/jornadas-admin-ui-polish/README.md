@@ -34,6 +34,10 @@ harness y solo cambia el código.
 Los números de las capturas son de muestra: lo que hay que mirar es la
 jerarquía visual, el contraste y el layout, no los valores.
 
+Las capturas "después" están regeneradas tras el cambio de columnas
+(Rendición → Efvo. esp. + Gastos, Taller → marca en el pill de Estado,
++ Combustible, legajo al tooltip). Las "antes" siguen siendo la rama base.
+
 **Queda pendiente confirmar la pantalla en el preview de Vercel con datos
 reales**, sobre todo nombres de chofer largos y períodos que cruzan de año.
 
