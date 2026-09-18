@@ -1,0 +1,273 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+
+const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+const sql = fs.readFileSync(
+  'migrations/20260918171000_dashboard_operaciones_rpc_v1.sql', 'utf8');
+
+/* ── Convenciones de la migración ──────────────────────────────────────── */
+
+test('la RPC sigue las convenciones de funciones del repo', () => {
+  assert.match(sql, /create or replace function public\.dashboard_operaciones_v1\(/);
+  assert.match(sql, /p_desde\s+date/);
+  assert.match(sql, /p_hasta\s+date/);
+  assert.match(sql, /p_camiones\s+int\[\]/);
+  assert.match(sql, /p_choferes\s+uuid\[\]/);
+  assert.match(sql, /returns jsonb/);
+  assert.match(sql, /security definer/);
+  assert.match(sql, /set search_path=''/);
+  assert.match(sql, /revoke all on function public\.dashboard_operaciones_v1[^\n]*from public, anon/);
+  assert.match(sql, /grant execute on function public\.dashboard_operaciones_v1[^\n]*to authenticated, service_role/);
+  // Con search_path vacío nada resuelve solo: todo va calificado con su esquema.
+  assert.ok(!/\sfrom\s+daily_logs\b/.test(sql), 'hay una tabla sin calificar con su esquema');
+  assert.ok(!/\sfrom\s+fuel_records\b/.test(sql), 'hay una tabla sin calificar con su esquema');
+});
+
+test('la RPC la ven administración y supervisión, y nadie más', () => {
+  assert.match(sql, /app_private\.current_auxilios_role\(\)/);
+  assert.match(sql, /not in \('administracion', 'supervision'\)/);
+  assert.match(sql, /raise exception 'Sin permiso[^']*'/);
+  assert.match(sql, /errcode = '42501'/);
+  // chofer y operador no pueden ver la operación de toda la flota.
+  const guarda = sql.match(/not in \(([^)]*)\)/)[1];
+  ['chofer', 'operador', 'facturacion'].forEach(rol =>
+    assert.ok(!guarda.includes(`'${rol}'`), `${rol} no debería tener acceso`));
+});
+
+/* ── Guardas aritméticas: km ───────────────────────────────────────────── */
+
+test('el km de la jornada descarta deltas negativos y disparatados', () => {
+  // km_final - km_inicio con el odómetro cargado a mano puede salir al revés.
+  // Sumar un negativo restaría kilómetros reales de otras jornadas.
+  assert.match(sql, /d\.km_final - d\.km_inicio < 0\s+then null/);
+  assert.match(sql, /d\.km_final - d\.km_inicio > 2000\s+then null/);
+  // Una jornada sin cierre de odómetro no aporta km.
+  assert.match(sql, /when d\.km_final is null\s+then null/);
+  // km_excepcion marca un odómetro reseteado: el delta no significa nada.
+  assert.match(sql, /coalesce\(d\.km_excepcion, false\)\s+then null/);
+  // Las descartadas se cuentan aparte (count(km) sobre el null) y se informan.
+  assert.match(sql, /count\(j\.km\)::int\s+as jornadas_con_km/);
+  assert.match(sql, /'jornadas_sin_km',\s+tot\.jornadas - tot\.jornadas_con_km/);
+});
+
+test('no se confía en km_recorridos como si fuera el delta crudo', () => {
+  // La columna generada es null cuando km_excepcion está marcada y NO valida el
+  // signo: usarla directamente volvería a meter los deltas negativos.
+  assert.ok(!/km_recorridos/.test(sql),
+    'volvió km_recorridos, que no valida el signo del delta');
+});
+
+/* ── Guardas aritméticas: horas ────────────────────────────────────────── */
+
+test('las jornadas que cruzan medianoche no dan horas negativas', () => {
+  // hora_inicio / hora_fin son `time` sin fecha: 22:00 → 06:00 resta -16 h.
+  assert.match(sql, /case when d\.hora_fin < d\.hora_inicio then 24 else 0 end/);
+  assert.match(sql, /extract\(epoch from \(d\.hora_fin - d\.hora_inicio\)\) \/ 3600\.0/);
+  // Y aun así una jornada no puede durar negativo ni un día entero: el cierre
+  // tipeado apenas antes del inicio (07:31 → 07:12) se leería como 23,7 h.
+  assert.match(sql, /when hj\.horas <= 0\s+then null/);
+  assert.match(sql, /when hj\.horas > 20\s+then null/);
+  assert.match(sql, /'jornadas_sin_horas',\s+tot\.jornadas - tot\.jornadas_con_horas/);
+});
+
+/* ── Guardas aritméticas: divisiones ───────────────────────────────────── */
+
+test('ninguna división queda sin guarda de denominador', () => {
+  // Un período sin cargas o sin km tiraría división por cero y la sección
+  // entera caería al overlay de error.
+  assert.match(sql, /'km_por_litro',\s*\n?\s*case when totf\.litros > 0 then round\(tot\.km \/ totf\.litros, 2\) end/);
+  assert.match(sql, /'costo_por_km',\s*\n?\s*case when tot\.km > 0 then round\(totf\.costo \/ tot\.km, 2\) end/);
+  assert.match(sql, /'horas_por_jornada',\s*\n?\s*case when tot\.jornadas_con_horas > 0 then round\(tot\.horas \/ tot\.jornadas_con_horas, 2\) end/);
+  // También por camión y por chofer, que es donde más fácil aparece el cero.
+  assert.match(sql, /'km_por_litro', case when x\.litros > 0 then round\(x\.km \/ x\.litros, 2\) end/);
+  assert.match(sql, /case when x\.jornadas_con_horas > 0 then round\(x\.horas \/ x\.jornadas_con_horas, 2\) end/);
+
+  // Toda barra de división del cuerpo de la función tiene que estar dentro de
+  // un `case when ... > 0`: si aparece una suelta, es una división sin guarda.
+  const cuerpo = sql.slice(sql.indexOf('as $function$'), sql.lastIndexOf('$function$'));
+  cuerpo.split('\n').forEach(linea => {
+    if (!/[a-z_.]+ \/ [a-z_.]+/.test(linea)) return;
+    if (/3600\.0/.test(linea)) return; // constante, nunca cero
+    assert.match(linea, /case when [^\n]*> 0 then/,
+      `división sin guarda de cero: ${linea.trim()}`);
+  });
+});
+
+/* ── Agregación del lado del servidor ──────────────────────────────────── */
+
+test('la RPC devuelve todo agregado, no filas crudas', () => {
+  ['totales', 'eficiencia', 'por_camion', 'por_chofer', 'serie_temporal', 'catalogo']
+    .forEach(k => assert.ok(sql.includes(`'${k}'`), `falta la clave ${k}`));
+  ['km', 'litros', 'costo', 'jornadas', 'horas', 'cargas']
+    .forEach(k => assert.match(sql, new RegExp(`'${k}',`), `falta el total ${k}`));
+  assert.match(sql, /jsonb_build_object/);
+  // Los arrays vacíos llegan como [] y no como null: el front itera sin chequear.
+  assert.match(sql, /coalesce\(jsonb_agg\([\s\S]*?\), '\[\]'::jsonb\)/);
+});
+
+test('la serie temporal cambia de grano según el largo del rango', () => {
+  assert.match(sql, /v_semanal\s*:=\s*\(v_hasta - v_desde\) > 62/);
+  assert.match(sql, /case when v_semanal then 'semana' else 'dia' end/);
+  assert.match(sql, /v_paso\s*:=\s*case when v_semanal then 7 else 1 end/);
+  // Los huecos se rellenan con cero: si la línea saltea los días sin jornadas
+  // sugiere una continuidad que no existe.
+  assert.match(sql, /generate_series\(/);
+  assert.match(sql, /left join jornada j/);
+  assert.match(sql, /coalesce\(sum\(j\.km\), 0\)::bigint as km/);
+});
+
+test('sólo entran jornadas cerradas, no anuladas y sin datos de QA', () => {
+  assert.match(sql, /d\.status = 'closed'/);
+  assert.match(sql, /d\.voided_at is null/);
+  assert.match(sql, /fr\.status = 'active'/);
+  assert.match(sql, /fr\.voided_at is null/);
+  assert.match(sql, /fr\.liters > 0/);
+  // El móvil QA-01 y el "Chofer de Prueba" moverían los promedios sin
+  // representar nada de la operación real.
+  assert.match(sql, /t\.is_test = false/);
+  assert.match(sql, /u\.is_test = false/);
+});
+
+test('un array de filtro vacío se trata igual que sin filtro', () => {
+  assert.match(sql, /case when coalesce\(array_length\(p_camiones, 1\), 0\) = 0 then null else p_camiones end/);
+  assert.match(sql, /case when coalesce\(array_length\(p_choferes, 1\), 0\) = 0 then null else p_choferes end/);
+  assert.match(sql, /v_camiones is null or d\.truck_id\s+= any \(v_camiones\)/);
+  assert.match(sql, /v_choferes is null or d\.driver_id = any \(v_choferes\)/);
+});
+
+test('el catálogo de los combos no se filtra con los filtros activos', () => {
+  // Si se filtrara, elegir un camión borraría del combo a todos los demás y no
+  // habría forma de volver atrás.
+  const cat = sql.slice(sql.indexOf('cat_cam as ('), sql.indexOf('select jsonb_build_object'));
+  assert.ok(!cat.includes('v_camiones'), 'el catálogo de camiones se filtra a sí mismo');
+  assert.ok(!cat.includes('v_choferes'), 'el catálogo de choferes se filtra a sí mismo');
+});
+
+test('hay índices para el acceso por rango de fecha del dashboard', () => {
+  // Los índices que había arrancan por driver_id / truck_id y no sirven para
+  // barrer un rango de fechas sobre toda la flota.
+  assert.match(sql, /create index if not exists daily_logs_dashboard_fecha_idx/);
+  assert.match(sql, /create index if not exists fuel_records_dashboard_fecha_idx/);
+});
+
+/* ── Front: contrato con el shell ──────────────────────────────────────── */
+
+test('la sección se registra en el shell y no reimplementa nada suyo', () => {
+  assert.match(ops, /AuxDash\.registrarSeccion\(/);
+  assert.match(ops, /id:\s*'operaciones'/);
+  assert.match(ops, /montar:/);
+  assert.match(ops, /cargar:/);
+  // El overlay, el coalescing y el estado de los filtros son del shell.
+  ['dashx-loading', 'recargaPendiente', 'setCargando', 'rangoDePeriodo']
+    .forEach(k => assert.ok(!ops.includes(k), `la sección reimplementa ${k}, que es del shell`));
+});
+
+test('los filtros propios se empujan con setFiltro, no recargando a mano', () => {
+  assert.match(ops, /AuxDash\.setFiltro\('camiones',/);
+  assert.match(ops, /AuxDash\.setFiltro\('choferes',/);
+  assert.ok(!/AuxDash\.recargar\(/.test(ops),
+    'la sección recarga por su cuenta: eso lo hace setFiltro');
+});
+
+test('el front llama a la RPC y no suma nada del lado del cliente', () => {
+  assert.match(ops, /_db\.rpc\('dashboard_operaciones_v1'/);
+  ['p_desde', 'p_hasta', 'p_camiones', 'p_choferes']
+    .forEach(p => assert.ok(ops.includes(p), `falta el parámetro ${p}`));
+  assert.match(ops, /if \(resp\.error\) throw resp\.error/);
+  // Nada de traerse filas crudas por PostgREST para agregarlas en JS.
+  assert.ok(!/_db\.from\(/.test(ops), 'la sección consulta tablas directo en vez de la RPC');
+  assert.ok(!/\.reduce\(/.test(ops), 'la sección agrega en JS lo que ya agregó la RPC');
+});
+
+test('sin _db la sección falla fuerte y el shell muestra el error', () => {
+  assert.match(ops, /Sin conexión con la base de datos/);
+  assert.match(ops, /alError/);
+  assert.match(ops, /G\.error\(id, msg\)/);
+});
+
+/* ── Front: reglas de la paleta y de los gráficos ──────────────────────── */
+
+test('los cinco canvas del markup se pintan', () => {
+  ['dashx-ops-comb', 'dashx-ops-kmchofer', 'dashx-ops-tendencia',
+   'dashx-ops-eficiencia', 'dashx-ops-horas']
+    .forEach(id => assert.ok(ops.includes(id), `no se usa el canvas ${id}`));
+  ['dashx-ops-filtros', 'dashx-ops-metrics', 'dashx-ops-sub']
+    .forEach(id => assert.ok(ops.includes(id), `no se llena el contenedor ${id}`));
+  // Y se usan las clases de métrica que ya existen, sin inventar CSS nuevo.
+  ['dashx-metric', 'dashx-metric-label', 'dashx-metric-value']
+    .forEach(c => assert.ok(ops.includes(c), `falta la clase ${c}`));
+});
+
+test('los colores salen de la paleta validada, nunca hex propios', () => {
+  const hex = ops.match(/#[0-9a-fA-F]{3,8}\b/g) || [];
+  assert.deepEqual(hex, [], `la sección escribe hex propios: ${hex.join(', ')}`);
+  assert.match(ops, /G\.PALETA\[/);
+  // ESTADO.ok/aviso/critico están reservados para semántica de estado.
+  assert.ok(!/G\.ESTADO/.test(ops),
+    'un color de estado usado como color de serie');
+});
+
+test('no hay gráficos de doble eje Y', () => {
+  // Dos magnitudes de escala distinta van en dos gráficos, no en dos ejes.
+  assert.ok(!/yAxisID|y1:|scales\s*:/.test(ops), 'la sección configura ejes por su cuenta');
+  const tendencia = ops.slice(ops.indexOf('function pintarTendencia'),
+                             ops.indexOf('function pintarEficiencia'));
+  const series = tendencia.match(/label:/g) || [];
+  assert.equal(series.length, 1, 'la tendencia tiene más de una serie en el mismo eje');
+});
+
+test('topN se usa donde "Otros" significa algo, y no donde sería un promedio', () => {
+  // Sumables: gasto de combustible y km por chofer. La cola agrupada en "Otros"
+  // es la suma de lo que quedó fuera.
+  const comb = ops.slice(ops.indexOf('function pintarCombustible'),
+                         ops.indexOf('function pintarKmChofer'));
+  const kmch = ops.slice(ops.indexOf('function pintarKmChofer'),
+                         ops.indexOf('function pintarTendencia'));
+  assert.match(comb, /G\.topN\(/);
+  assert.match(kmch, /G\.topN\(/);
+
+  // km/litro y horas/jornada son cocientes: sumarlos en un "Otros" no da nada.
+  const efic = ops.slice(ops.indexOf('function pintarEficiencia'),
+                         ops.indexOf('function pintarHoras'));
+  const horas = ops.slice(ops.indexOf('function pintarHoras'),
+                          ops.indexOf('function cadaCanvas'));
+  assert.ok(!/G\.topN\(/.test(efic), 'topN sobre km/litro sumaría cocientes');
+  assert.ok(!/G\.topN\(/.test(horas), 'topN sobre horas/jornada sumaría promedios');
+  assert.match(efic, /\.slice\(0, 7\)/);
+  assert.match(horas, /\.slice\(0, 7\)/);
+});
+
+test('un null de la RPC se muestra como guión, no como NaN ni como cero', () => {
+  // La RPC devuelve null cuando el denominador era cero. Number(null) es 0 y
+  // pintar un 0 donde no hay dato es peor que no pintar nada.
+  assert.match(ops, /return '—'/);
+  assert.match(ops, /!isFinite\(Number\(v\)\)/);
+  // Y los camiones sin cargas se omiten del gráfico de eficiencia.
+  assert.match(ops, /c\.km_por_litro !== null && c\.km_por_litro !== undefined/);
+});
+
+test('las jornadas descartadas se muestran en el subtítulo', () => {
+  // Un total silenciosamente incompleto es peor que un total con la advertencia.
+  assert.match(ops, /jornadas_sin_km/);
+  assert.match(ops, /jornadas_sin_horas/);
+  assert.match(ops, /sin km válido/);
+  assert.match(ops, /sin horas válidas/);
+});
+
+test('las fechas ISO no se parsean con new Date', () => {
+  // new Date('2026-07-10') es UTC y en Argentina imprime el 09/07.
+  const codigo = ops.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  assert.ok(!/new Date\(/.test(codigo), 'parsear un ISO corto con new Date corre el día');
+  assert.match(ops, /function diaMes/);
+  assert.match(ops, /String\(iso \|\| ''\)\.split\('-'\)/);
+});
+
+test('los nombres que vienen de la base no pasan por el parser de HTML', () => {
+  const combo = ops.slice(ops.indexOf('function pintarCombo'),
+                          ops.indexOf('function pintarFiltros'));
+  assert.match(combo, /createElement\('option'\)/);
+  assert.match(combo, /textContent/);
+  assert.ok(!/innerHTML\s*\+?=\s*[^;]*o\.texto/.test(combo),
+    'el nombre del catálogo se concatena en innerHTML');
+});
