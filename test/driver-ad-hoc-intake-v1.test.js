@@ -13,7 +13,7 @@ const orphanCleanup=read('migrations/20260826130000_driver_remito_orphan_cleanup
 const mapsLocations=read('supabase/migrations/20260905184058_driver_remito_maps_locations.sql');
 const clockSkew=read('supabase/migrations/20260916175300_driver_ad_hoc_trip_range_clock_skew_v1.sql');
 const intakeWorkspace=read('supabase/migrations/20260911014705_operator_intake_workspace_and_addon_reconciliation_v1.sql');
-const signedServiceGuard=read('supabase/migrations/20260915204500_driver_ad_hoc_ignore_signed_services_v1.sql');
+const signedServiceGuard=read('migrations/20260915204500_driver_ad_hoc_ignore_signed_services_v1.sql');
 
 test('el ingreso del Chofer es operacional y no fabrica clasificación comercial',()=>{
   assert.match(migration,/create table if not exists public\.driver_service_intakes/);
