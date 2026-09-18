@@ -3092,9 +3092,31 @@ function dashCambiarVista(vista, el) {
   document.getElementById('dash-view-negocio').style.display     = vista === 'negocio'     ? '' : 'none';
   const va = document.getElementById('dash-view-alertas');
   if (va) va.style.display = vista === 'alertas' ? '' : 'none';
+  const vx = document.getElementById('dash-view-analitica');
+  if (vx) vx.style.display = vista === 'analitica' ? '' : 'none';
   if (vista === 'negocio')     _cargarViewNegocio();
   if (vista === 'rendimiento') _cargarViewRendimiento();
   if (vista === 'alertas')     cargarCentroAlertas();
+  if (vista === 'analitica')   _cargarViewAnalitica();
+}
+
+let _dashxIniciado = false;
+
+// El dashboard nuevo se arma recién al abrir la pestaña: montar los gráficos de
+// tres secciones en un canvas oculto los deja con tamaño cero.
+function _cargarViewAnalitica() {
+  if (typeof AuxDash === 'undefined') return;
+  if (_dashxIniciado) { AuxDash.recargar(); return; }
+  _dashxIniciado = true;
+  AuxDash.init();
+}
+
+function dashxPeriodo(periodo, el) {
+  if (el) {
+    el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+  if (typeof AuxDash !== 'undefined') AuxDash.setPeriodo(periodo);
 }
 
 function dashRendPeriod(tipo, el) {

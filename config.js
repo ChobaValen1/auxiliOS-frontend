@@ -3,7 +3,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'billing-phase2-clean-preview-20260824';
+window.AUXILIOS_BUILD_ID = 'dashboard-redesign-base-v1-20260918';
 
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};

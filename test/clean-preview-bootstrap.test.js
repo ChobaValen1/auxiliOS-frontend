@@ -35,5 +35,12 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'billing-phase2-clean-preview-20260824'/);
+  // Se valida la forma, no un valor congelado: el build id se bumpea en cada
+  // deploy y fijarlo acá rompía la suite en cada cambio legítimo.
+  const m = config.match(/AUXILIOS_BUILD_ID\s*=\s*'([^']+)'/);
+  assert.ok(m, 'config.js debe definir AUXILIOS_BUILD_ID');
+  const buildId = m[1];
+  assert.ok(buildId.length >= 12, `build id demasiado corto: '${buildId}'`);
+  assert.match(buildId, /\d{8}$/, `el build id debe terminar en fecha YYYYMMDD: '${buildId}'`);
+  assert.doesNotMatch(buildId, /^(dev|test|local|tmp|placeholder)/i);
 });

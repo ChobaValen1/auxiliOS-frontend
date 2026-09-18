@@ -15,6 +15,7 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="sigma.css">
+<link rel="stylesheet" href="dashboard-v1.css">
 
 <!-- Service Worker -->
 <script>
@@ -27,6 +28,7 @@
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
@@ -37,6 +39,8 @@
 <script src="supabase.js" defer></script>
 <script src="offline.js" defer></script>
 <script src="sigma.js" defer></script>
+<script src="dashboard-charts-v1.js" defer></script>
+<script src="dashboard-shell-v1.js" defer></script>
 </head>
 <body>
 
@@ -763,6 +767,7 @@
         <div class="filter-tabs">
           <div class="ftab active" data-vista="rendimiento" onclick="dashCambiarVista('rendimiento',this)">📈 Mi Rendimiento</div>
           <div class="ftab" data-vista="negocio" onclick="dashCambiarVista('negocio',this)">🏢 Negocio</div>
+          <div class="ftab" data-vista="analitica" onclick="dashCambiarVista('analitica',this)">📊 Análisis</div>
           <div class="ftab" data-vista="alertas" id="dash-tab-alertas" style="position:relative" onclick="dashCambiarVista('alertas',this)">🔔 Alertas<span class="alx-bubble" id="alx-tab-badge" style="display:none"></span></div>
         </div>
       </div>
@@ -948,6 +953,115 @@
       </div>
 
       <!-- ── Vista Centro de Alertas (admin/supervisión) ── -->
+      <!-- ── Vista Análisis: Facturación · Operaciones · Flota ── -->
+      <div id="dash-view-analitica" style="display:none">
+
+        <div class="dashx-periodos filter-tabs" id="dashx-periodos">
+          <div class="ftab" data-p="7d"  onclick="dashxPeriodo('7d',this)">7 días</div>
+          <div class="ftab active" data-p="1m" onclick="dashxPeriodo('1m',this)">1 mes</div>
+          <div class="ftab" data-p="3m"  onclick="dashxPeriodo('3m',this)">3 meses</div>
+          <div class="ftab" data-p="6m"  onclick="dashxPeriodo('6m',this)">6 meses</div>
+          <div class="ftab" data-p="12m" onclick="dashxPeriodo('12m',this)">12 meses</div>
+          <div class="ftab" data-p="ano" onclick="dashxPeriodo('ano',this)">Este año</div>
+        </div>
+
+        <!-- SECCIÓN 1 · FACTURACIÓN -->
+        <div class="dashx-body" id="dashx-sec-facturacion">
+          <div class="dashx-loading" id="dashx-loading-facturacion"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="dashx-grid">
+            <div class="dashx-sec-head">
+              <span class="dashx-sec-title">FACTURACIÓN</span>
+              <span class="dashx-sec-sub" id="dashx-fact-sub"></span>
+            </div>
+
+            <div class="dashx-card dashx-kpis" id="dashx-fact-kpis"></div>
+
+            <div class="dashx-card dashx-donut">
+              <div class="dashx-card-title">Servicios por empresa</div>
+              <div class="auxch-wrap" style="height:230px"><canvas id="dashx-fact-donut"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-mapa">
+              <div class="dashx-card-title">Zonas de participación</div>
+              <div class="auxch-wrap" id="dashx-fact-mapa" style="height:230px"></div>
+            </div>
+
+            <div class="dashx-card dashx-cajas">
+              <div class="dashx-card-title">Composición de servicios</div>
+              <div class="auxch-wrap" style="height:210px"><canvas id="dashx-fact-cajas"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-bases">
+              <div class="dashx-card-title">Desglose por bases</div>
+              <div class="auxch-wrap" style="height:210px"><canvas id="dashx-fact-bases"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2 · OPERACIONES -->
+        <div class="dashx-body" id="dashx-sec-operaciones" style="margin-top:22px">
+          <div class="dashx-loading" id="dashx-loading-operaciones"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="dashx-grid">
+            <div class="dashx-sec-head">
+              <span class="dashx-sec-title">OPERACIONES</span>
+              <span class="dashx-sec-sub" id="dashx-ops-sub"></span>
+            </div>
+
+            <div class="dashx-card dashx-full" id="dashx-ops-filtros"></div>
+            <div class="dashx-full dashx-metrics" id="dashx-ops-metrics"></div>
+
+            <div class="dashx-card dashx-med">
+              <div class="dashx-card-title">Combustible por camión</div>
+              <div class="auxch-wrap" style="height:200px"><canvas id="dashx-ops-comb"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-med">
+              <div class="dashx-card-title">Kilómetros por chofer</div>
+              <div class="auxch-wrap" style="height:200px"><canvas id="dashx-ops-kmchofer"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-full">
+              <div class="dashx-card-title">Tendencia de kilómetros</div>
+              <div class="auxch-wrap" style="height:200px"><canvas id="dashx-ops-tendencia"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-med">
+              <div class="dashx-card-title">Eficiencia — km por litro</div>
+              <div class="auxch-wrap" style="height:190px"><canvas id="dashx-ops-eficiencia"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-med">
+              <div class="dashx-card-title">Horas por jornada</div>
+              <div class="auxch-wrap" style="height:190px"><canvas id="dashx-ops-horas"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3 · SALUD DE LA FLOTA -->
+        <div class="dashx-body" id="dashx-sec-flota" style="margin-top:22px">
+          <div class="dashx-loading" id="dashx-loading-flota"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="dashx-grid">
+            <div class="dashx-sec-head">
+              <span class="dashx-sec-title">SALUD DE LA FLOTA</span>
+              <span class="dashx-sec-sub" id="dashx-flota-sub"></span>
+            </div>
+
+            <div class="dashx-full dashx-metrics" id="dashx-flota-alertas"></div>
+
+            <div class="dashx-card dashx-tercio">
+              <div class="dashx-card-title">Estado de flota</div>
+              <div class="auxch-wrap" style="height:200px"><canvas id="dashx-flota-estado"></canvas></div>
+            </div>
+
+            <div class="dashx-card" style="grid-column:span 8">
+              <div class="dashx-card-title">Detalle por camión</div>
+              <div id="dashx-flota-tabla"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
       <div id="dash-view-alertas" style="display:none">
         <div id="alx-pendientes" style="margin-bottom:12px"></div>
         <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px">

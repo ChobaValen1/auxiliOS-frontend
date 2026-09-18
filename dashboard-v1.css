@@ -1,0 +1,261 @@
+/* Dashboard rediseñado: grilla mosaico + estados de los gráficos.
+   Todo scopeado a #screen-dashboard para no tocar el resto de la app. */
+
+/* ── Estados de gráfico (los monta dashboard-charts-v1.js) ── */
+#screen-dashboard .auxch-wrap {
+  position: relative;
+  min-height: 160px;
+}
+
+#screen-dashboard .auxch-wrap > canvas {
+  display: block;
+}
+
+#screen-dashboard .auxch-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+#screen-dashboard .auxch-overlay.auxch-error {
+  color: #e2504a;
+}
+
+#screen-dashboard .auxch-overlay.auxch-cargando::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: auxch-spin 0.7s linear infinite;
+}
+
+@keyframes auxch-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #screen-dashboard .auxch-overlay.auxch-cargando::before {
+    animation: none;
+  }
+}
+
+/* ── Grilla mosaico ── */
+#screen-dashboard .dashx-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 14px;
+}
+
+#screen-dashboard .dashx-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+
+#screen-dashboard .dashx-card-title {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 12px;
+}
+
+#screen-dashboard .dashx-sec-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+#screen-dashboard .dashx-sec-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--text);
+}
+
+#screen-dashboard .dashx-sec-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Anchos de la sección Facturación, según el boceto */
+#screen-dashboard .dashx-kpis     { grid-column: span 3; }
+#screen-dashboard .dashx-donut    { grid-column: span 5; }
+#screen-dashboard .dashx-mapa     { grid-column: span 4; }
+#screen-dashboard .dashx-cajas    { grid-column: span 5; }
+#screen-dashboard .dashx-bases    { grid-column: span 4; }
+#screen-dashboard .dashx-full     { grid-column: 1 / -1; }
+#screen-dashboard .dashx-med      { grid-column: span 6; }
+#screen-dashboard .dashx-tercio   { grid-column: span 4; }
+
+/* ── KPI ── */
+#screen-dashboard .dashx-kpi + .dashx-kpi {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+#screen-dashboard .dashx-kpi-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+#screen-dashboard .dashx-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-kpi-value.is-amber { color: var(--amber); }
+
+#screen-dashboard .dashx-kpi-delta {
+  font-size: 11px;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-kpi-delta.is-up   { color: #27c47a; }
+#screen-dashboard .dashx-kpi-delta.is-down { color: #e2504a; }
+#screen-dashboard .dashx-kpi-delta.is-flat { color: var(--muted); }
+
+/* ── Métricas en fila ── */
+#screen-dashboard .dashx-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+#screen-dashboard .dashx-metric {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+#screen-dashboard .dashx-metric-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+#screen-dashboard .dashx-metric-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Alertas de flota: color + ícono + texto, nunca color solo ── */
+#screen-dashboard .dashx-alert {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--muted);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+#screen-dashboard .dashx-alert.is-critico { border-left-color: #e2504a; }
+#screen-dashboard .dashx-alert.is-aviso   { border-left-color: #f5a623; }
+#screen-dashboard .dashx-alert.is-ok      { border-left-color: #27c47a; }
+
+#screen-dashboard .dashx-alert-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+#screen-dashboard .dashx-alert.is-critico .dashx-alert-value { color: #e2504a; }
+#screen-dashboard .dashx-alert.is-aviso   .dashx-alert-value { color: #f5a623; }
+
+/* ── Overlay de carga del área de datos (no tapa los filtros) ── */
+#screen-dashboard .dashx-body {
+  position: relative;
+}
+
+#screen-dashboard .dashx-loading {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+  background: rgba(12, 14, 18, 0.72);
+  border-radius: 12px;
+  z-index: 5;
+}
+
+#screen-dashboard .dashx-loading.show {
+  display: flex;
+}
+
+#screen-dashboard .dashx-loading-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted2);
+}
+
+#screen-dashboard .dashx-loading-inner::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: auxch-spin 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #screen-dashboard .dashx-loading-inner::before {
+    animation: none;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  #screen-dashboard .dashx-kpis,
+  #screen-dashboard .dashx-donut,
+  #screen-dashboard .dashx-mapa,
+  #screen-dashboard .dashx-cajas,
+  #screen-dashboard .dashx-bases,
+  #screen-dashboard .dashx-med,
+  #screen-dashboard .dashx-tercio {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 720px) {
+  #screen-dashboard .dashx-grid {
+    gap: 10px;
+  }
+  #screen-dashboard .dashx-grid > * {
+    grid-column: 1 / -1 !important;
+  }
+  #screen-dashboard .dashx-kpi-value {
+    font-size: 19px;
+  }
+}
