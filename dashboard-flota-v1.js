@@ -92,8 +92,12 @@
      texto "Sin pendientes". El "no se pudo cargar" es otra cosa y se pinta
      aparte, en pintarError(). */
   function tarjetas(alertas, umbrales) {
-    var diasDoc = num(umbrales.dias_doc_aviso) || 30;
-    var diasInc = num(umbrales.dias_incidente_abierto) || 30;
+    // Las ventanas las define el SQL y viajan en el payload: acá no se repite
+    // ningún umbral, así el rótulo no puede mentir sobre el filtro que corrió.
+    var diasDoc = num(umbrales.dias_doc_aviso);
+    var diasInc = num(umbrales.dias_incidente_abierto);
+    var ventanaDoc = diasDoc ? 'Vencen dentro de ' + diasDoc + ' días' : 'Dentro de la ventana de aviso';
+    var ventanaInc = diasInc ? 'Reportados en ' + diasInc + ' días' : 'Reportados hace poco';
 
     return [
       {
@@ -124,7 +128,7 @@
         etiqueta: 'Documentos por vencer',
         valor: num(alertas.docs_por_vencer),
         severidad: num(alertas.docs_por_vencer) > 0 ? 'aviso' : 'ok',
-        nota: 'Vencen dentro de ' + diasDoc + ' días'
+        nota: ventanaDoc
       },
       {
         etiqueta: 'Incidentes abiertos',
@@ -134,8 +138,8 @@
           : (num(alertas.incidentes_abiertos) > 0 ? 'aviso' : 'ok'),
         nota: num(alertas.incidentes_graves) > 0
           ? num(alertas.incidentes_graves) + ' grave' + (num(alertas.incidentes_graves) === 1 ? '' : 's')
-            + ' · últimos ' + diasInc + ' días'
-          : 'Reportados en ' + diasInc + ' días'
+            + ' · ' + ventanaInc.toLowerCase()
+          : ventanaInc
       },
       {
         etiqueta: 'Licencias por vencer',
