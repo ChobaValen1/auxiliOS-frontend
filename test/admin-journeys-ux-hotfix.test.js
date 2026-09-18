@@ -71,15 +71,48 @@ test('journey table speaks one data language: es-AR hours, one rendition format,
   assert.match(ui, /function _jadminFmtHoras[\s\S]*?toLocaleString\('es-AR'/);
   assert.doesNotMatch(ui, /horas\.toFixed\(1\)/);
 
-  // Rendición OK siempre con el punto medio: "$0 · OK" / "+$45 · OK".
-  assert.match(ui, /rendTxt = `\$\{_jadminMoneySigned\(r\.rendicion\.diff\)\} · OK`/);
+  // La columna Rendición se reemplazó por Efvo. esperado y Gastos: los montos
+  // van neutros y el rojo queda solo para la jornada que cerró en faltante.
+  assert.doesNotMatch(html, /<th[^>]*>Rendición<\/th>/);
+  assert.match(html, /<th class="right">Efvo\. esp\.<\/th>/);
+  assert.match(html, /<th class="right">Gastos<\/th>/);
+  assert.match(ui, /const faltante = rend\?\.estado === 'faltante'/);
+  assert.match(ui, /faltante \? 'money-cell faltante' : 'money-cell'/);
 
   // Sin dato es "—" y cero es "0", con el mismo tratamiento en INC. y TALLER.
   assert.match(ui, /const kmTxt = kmSinDato \? '—'/);
   assert.match(ui, /r\.hora_fin \? _jadminFmtHoras/);
-  assert.match(ui, /<span class="cell-empty">—<\/span>/);
+  assert.match(ui, /'mono cell-empty'/);
 
   // El contador del chip se oculta si no hay un número que se pueda afirmar.
   assert.match(ui, /function _jadminRenderChipCounts/);
   assert.match(html, /\.chip \.cnt:empty \{ display: none; \}/);
+});
+
+test('la grilla cambia Rendición por caja, y Taller por una marca en Estado', () => {
+  const html = read('Index.html');
+  const ui = read('sigma.js');
+  const data = read('supabase.js');
+
+  // Taller dejó de ser columna: el 🔧 viaja con el pill de estado.
+  assert.doesNotMatch(html, /<th class="center">Taller<\/th>/);
+  assert.match(ui, /if \(r\.in_workshop\) \{[\s\S]*?taller-mark/);
+  // El filtro por taller sigue existiendo y sigue leyendo el mismo campo.
+  assert.match(html, /data-chip="taller"/);
+  assert.match(ui, /clientFilter === 'taller'[\s\S]*?r\.in_workshop/);
+
+  // Combustible: la query ya traía liters y total_cost; solo se exponen.
+  assert.match(data, /\.select\('log_id, truck_id, fuel_date, total_cost, liters'\)/);
+  assert.match(data, /litros:\s+c\.litros \|\| 0/);
+  assert.match(data, /gasto_fuel:\s+c\.gastoFuel \|\| 0/);
+  assert.match(html, /<th class="right">Comb\.<\/th>/);
+
+  // 11 columnas: los estados vacíos tienen que cubrir la fila entera.
+  const adminScreen = html.match(/<div class="screen" id="screen-jornadas-admin">([\s\S]*?)<\/div><!-- \/screen-jornadas-admin -->/)[1];
+  const thead = adminScreen.match(/<thead>([\s\S]*?)<\/thead>/)[1];
+  assert.equal((thead.match(/<th/g) || []).length, 11);
+  assert.doesNotMatch(ui, /colspan="10"/);
+
+  // Estado queda anclada a la derecha para que el scroll no la esconda.
+  assert.match(html, /tbody td:last-child \{\s*\n?\s*position: sticky;/);
 });

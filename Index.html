@@ -2200,7 +2200,7 @@
 
   #screen-jornadas-admin table {
     width: 100%;
-    min-width: 840px;
+    min-width: 995px;
     border-collapse: collapse;
     font-size: 12.5px;
   }
@@ -2221,6 +2221,25 @@
     top: 0;
     z-index: 2;
   }
+  /* ESTADO es lo primero que hay que poder leer, así que queda anclada al
+     borde derecho: cuando la tabla no entra y scrollea, es la única columna
+     que no se va de pantalla. */
+  #screen-jornadas-admin thead th:last-child,
+  #screen-jornadas-admin tbody td:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--card);
+  }
+  #screen-jornadas-admin tbody td:last-child { z-index: 1; }
+  #screen-jornadas-admin thead th:last-child { z-index: 3; background: #151821; }
+  /* El hover de la fila no pinta debajo de una celda con fondo propio. */
+  #screen-jornadas-admin tbody tr:hover td:last-child { background: #20242d; }
+  /* Sombra sutil solo mientras haya algo escondido a la izquierda. */
+  #screen-jornadas-admin .table-scroll.has-x thead th:last-child,
+  #screen-jornadas-admin .table-scroll.has-x tbody td:last-child {
+    box-shadow: -10px 0 12px -10px #000a;
+  }
+
   #screen-jornadas-admin thead th.right { text-align: right; }
   #screen-jornadas-admin thead th.center { text-align: center; }
   #screen-jornadas-admin thead th[data-sort] { cursor: pointer; user-select: none; }
@@ -2249,6 +2268,10 @@
   #screen-jornadas-admin .fecha-cell,
   #screen-jornadas-admin .camion-cell,
   #screen-jornadas-admin .chofer-cell .name { white-space: nowrap; }
+  /* Las celdas numéricas tampoco se parten: el ancho mínimo de la tabla las
+     dejaba cortar en el espacio ("312,4" / "L", "141" / "A MANO"). */
+  #screen-jornadas-admin td.right,
+  #screen-jornadas-admin td.center { white-space: nowrap; }
   #screen-jornadas-admin td.right  { text-align: right; font-family: 'DM Mono', 'Courier New', monospace; }
   #screen-jornadas-admin td.center { text-align: center; }
   #screen-jornadas-admin td.mono   { font-family: 'DM Mono', 'Courier New', monospace; }
@@ -2302,6 +2325,15 @@
   #screen-jornadas-admin .dot.r { background: #f87171; }
   #screen-jornadas-admin .dot.n { background: var(--jadmin-muted); }
 
+  /* Taller dejó de tener columna propia: era un solo bit, vacío en casi todas
+     las filas. El 🔧 viaja con el estado, que es donde se lo busca. */
+  #screen-jornadas-admin .estado-cell { display: inline-flex; align-items: center; gap: 5px; }
+  #screen-jornadas-admin .taller-mark {
+    font-size: 12px;
+    line-height: 1;
+    cursor: help;
+  }
+
   /* Los KM son un dato mas, no un aviso: competian con el ambar de estado. */
   #screen-jornadas-admin .km-cell { color: var(--text); font-weight: 600; }
   #screen-jornadas-admin .km-cell.zero { color: var(--jadmin-muted); font-weight: 400; }
@@ -2322,11 +2354,16 @@
   /* Celda sin dato: mismo tratamiento en todas las columnas. */
   #screen-jornadas-admin .cell-empty { color: var(--jadmin-muted); font-weight: 400; }
 
-  #screen-jornadas-admin .rend-cell { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 12px; }
-  #screen-jornadas-admin .rend-cell.ok   { color: #34d399; }
-  #screen-jornadas-admin .rend-cell.warn { color: #f59e0b; }
-  #screen-jornadas-admin .rend-cell.bad  { color: #f87171; }
-  #screen-jornadas-admin .rend-cell.na   { color: var(--jadmin-muted); font-weight: 400; }
+  /* Montos de caja y litros: el número es un dato, no un aviso, así que va
+     neutro. El rojo aparece solo cuando la rendición cerró en faltante. */
+  #screen-jornadas-admin .money-cell {
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text);
+  }
+  #screen-jornadas-admin .money-cell.zero { color: var(--jadmin-muted); font-weight: 400; }
+  #screen-jornadas-admin .money-cell.faltante { color: #f87171; }
 
   #screen-jornadas-admin .inc-cell {
     display: inline-flex;
@@ -2523,9 +2560,10 @@
           <th class="right" data-sort="km">KM Rec.</th>
           <th class="right" data-sort="horas">Horas</th>
           <th class="right">Srv.</th>
-          <th class="right">Rendición</th>
+          <th class="right">Comb.</th>
+          <th class="right">Efvo. esp.</th>
+          <th class="right">Gastos</th>
           <th class="center">Inc.</th>
-          <th class="center">Taller</th>
           <th class="center">Estado</th>
         </tr>
       </thead>

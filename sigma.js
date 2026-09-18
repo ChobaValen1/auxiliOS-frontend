@@ -15879,6 +15879,14 @@ function _jadminWireHandlers() {
     _jadminReload();
   });
 
+  // La tabla puede pasar de entrar a no entrar al cambiar el ancho de ventana.
+  if (typeof ResizeObserver === 'function') {
+    const sc = document.querySelector('#screen-jornadas-admin .table-scroll');
+    if (sc) new ResizeObserver(_jadminMarcarScrollX).observe(sc);
+  } else {
+    window.addEventListener('resize', _jadminMarcarScrollX);
+  }
+
   // Row click (event delegation)
   const tbody = $('jadmin-tbody');
   if (tbody) tbody.addEventListener('click', (ev) => {
@@ -15998,7 +16006,7 @@ async function _jadminReload() {
   try {
     const tbody = document.getElementById('jadmin-tbody');
     if (tbody && !tbody.innerHTML) {
-      tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted2)">Cargando…</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--muted2)">Cargando…</td></tr>`;
     }
 
     // KPIs (rango + filtros de chofer/camión, no depende de estado/q)
@@ -16033,7 +16041,7 @@ async function _jadminReload() {
   } catch (e) {
     console.error('[jadmin] error al cargar:', e);
     const tbody = document.getElementById('jadmin-tbody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
   } finally {
     _jadminState.loading = false;
   }
@@ -16106,6 +16114,15 @@ function _jadminAplicarFiltrosClientSide(rows) {
   return out;
 }
 
+// La columna Estado queda anclada a la derecha. La sombra que la despega del
+// resto solo tiene sentido cuando hay algo escondido, así que se marca el
+// contenedor cuando la tabla efectivamente no entra.
+function _jadminMarcarScrollX() {
+  const sc = document.querySelector('#screen-jornadas-admin .table-scroll');
+  if (!sc) return;
+  sc.classList.toggle('has-x', sc.scrollWidth > sc.clientWidth + 1);
+}
+
 function _jadminRenderTabla() {
   const tbody = document.getElementById('jadmin-tbody');
   if (!tbody) return;
@@ -16113,7 +16130,7 @@ function _jadminRenderTabla() {
   const rows = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
   } else {
     tbody.innerHTML = rows.map(r => _jadminRenderFila(r)).join('');
   }
@@ -16136,6 +16153,8 @@ function _jadminRenderTabla() {
   const next = document.getElementById('jadmin-next');
   if (prev) prev.disabled = _jadminState.offset <= 0;
   if (next) next.disabled = (_jadminState.offset + perPage) >= total;
+
+  _jadminMarcarScrollX();
 }
 
 function _jadminRenderFila(r) {
@@ -16159,22 +16178,26 @@ function _jadminRenderFila(r) {
   const srv = Number(r.servicios) || 0;
   const srvCls = srv ? 'mono' : 'mono cell-empty';
 
-  // Rendición
-  let rendCls = 'rend-cell na';
-  let rendTxt = '—';
-  if (r.rendicion) {
-    if (r.rendicion.estado === 'ok') {
-      rendCls = 'rend-cell ok';
-      // Un solo formato: "$0 · OK" / "+$45 · OK", con el punto medio siempre.
-      rendTxt = `${_jadminMoneySigned(r.rendicion.diff)} · OK`;
-    } else if (r.rendicion.estado === 'faltante') {
-      rendCls = 'rend-cell bad';
-      rendTxt = _jadminMoneySigned(r.rendicion.diff);
-    } else if (r.rendicion.estado === 'sobrante') {
-      rendCls = 'rend-cell warn';
-      rendTxt = _jadminMoneySigned(r.rendicion.diff);
-    }
-  }
+  // Combustible: litros cargados en la jornada. Los litros contra los KM son
+  // el consumo, que no se puede leer de ninguna otra columna.
+  const litros = Number(r.litros) || 0;
+  const litrosTxt = litros
+    ? `${litros.toLocaleString('es-AR', { maximumFractionDigits: 1 })} L`
+    : '0';
+  const litrosCls = litros ? 'money-cell' : 'money-cell zero';
+
+  // Caja: lo que debería entregar y lo que gastó. El veredicto de la rendición
+  // (entregó vs. debería) vive en el detalle; acá solo queda el aviso en rojo
+  // cuando esa rendición cerró en faltante, para no perder la señal de la lista.
+  const rend = r.rendicion;
+  const faltante = rend?.estado === 'faltante';
+  const efvoTxt = rend ? _jadminMoney(rend.esperado) : '—';
+  const efvoCls = !rend ? 'money-cell zero' : faltante ? 'money-cell faltante' : 'money-cell';
+  const efvoTitle = faltante
+    ? ` title="La rendición de esta fecha cerró en faltante: ${_escHtml(_jadminMoneySigned(rend.diff))}"`
+    : '';
+  const gastosTxt = rend ? _jadminMoney(rend.gastos) : '—';
+  const gastosCls = rend && Number(rend.gastos) ? 'money-cell' : 'money-cell zero';
 
   // Incidentes y Taller comparten criterio: "0" es un cero real, "—" es
   // ausencia de dato, y ambos se ven igual de apagados cuando no hay nada.
@@ -16186,12 +16209,7 @@ function _jadminRenderFila(r) {
     incTxt = r.inc_grave ? `⚠ ${incidentes}` : String(incidentes);
   }
 
-  // Taller
-  const tallerHtml = r.in_workshop
-    ? `<span class="pill pill-red" title="La unidad ingresó a taller">🔧</span>`
-    : `<span class="cell-empty">—</span>`;
-
-  // Estado (solo open/closed/anulado — taller es columna independiente).
+  // Estado (open/closed/anulado). Taller ya no es columna: viaja acá.
   // "Cerrada" es el estado normal y va en gris neutro: el ámbar queda
   // reservado para las jornadas que siguen abiertas.
   let estadoHtml;
@@ -16201,6 +16219,9 @@ function _jadminRenderFila(r) {
     estadoHtml = `<span class="pill pill-muted"><span class="dot n"></span>Cerrada</span>`;
   } else {
     estadoHtml = `<span class="pill pill-muted">${_escHtml(r.status || '—')}</span>`;
+  }
+  if (r.in_workshop) {
+    estadoHtml += `<span class="taller-mark" title="La unidad ingresó a taller durante esta jornada">🔧</span>`;
   }
 
   const movil = r.truck_movil ? `#${_escHtml(r.truck_movil)}` : '';
@@ -16240,10 +16261,11 @@ function _jadminRenderFila(r) {
       <td class="right"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
       <td class="right ${horasCls}">${horasTxt}</td>
       <td class="right ${srvCls}">${srv}</td>
-      <td class="right"><span class="${rendCls}">${rendTxt}</span></td>
+      <td class="right"><span class="${litrosCls}">${litrosTxt}</span></td>
+      <td class="right"><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
+      <td class="right"><span class="${gastosCls}">${gastosTxt}</span></td>
       <td class="center"><span class="${incCls}">${incTxt}</span></td>
-      <td class="center">${tallerHtml}</td>
-      <td class="center">${estadoHtml}</td>
+      <td class="center"><span class="estado-cell">${estadoHtml}</span></td>
     </tr>
   `;
 }
