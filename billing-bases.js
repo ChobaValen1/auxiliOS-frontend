@@ -43,7 +43,7 @@
     </style>`);
 
     const bottom = document.querySelector('.sidenav .nav-bottom');
-    bottom?.insertAdjacentHTML('beforebegin', `<div class="nav-item" id="nav-bases-geograficas" onclick="goTo('bases-geograficas')" style="display:none"><span class="nav-icon">📍</span><span class="nav-label">Bases geográficas</span></div>`);
+    bottom?.insertAdjacentHTML('beforebegin', `<div class="nav-item" id="nav-bases-geograficas" onclick="goTo('bases-geograficas')" style="display:none"><span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M10 17.5s5.6-4.6 5.6-9a5.6 5.6 0 1 0-11.2 0c0 4.4 5.6 9 5.6 9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="8.4" r="1.8" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="nav-label">Bases geográficas</span></div>`);
 
     document.querySelector('.content')?.insertAdjacentHTML('beforeend', `<div class="screen" id="screen-bases-geograficas">
       <div class="gb-head"><div><h2>Bases geográficas</h2><div class="gb-sub">Catálogo reutilizable de puntos de referencia con dirección y coordenadas exactas.</div></div><button class="btn btn-primary gb-write" onclick="abrirBaseGeografica()">＋ Nueva base</button></div>

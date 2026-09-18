@@ -7,7 +7,7 @@ const navigation = fs.readFileSync('configuration-center.js', 'utf8');
 
 test('Camión remains available to management in the canonical daily navigation', () => {
   assert.match(navigation, /MANAGEMENT_ROLES = new Set\(\['administracion', 'supervision'\]\)/);
-  assert.match(navigation, /ensureNavNode\('nav-camion', 'camion', '🚛', 'Camión', false\)/);
+  assert.match(navigation, /ensureNavNode\('nav-camion', 'camion', '[^']*', 'Camión', false\)/);
   assert.match(navigation, /orderTop\(\[dashboard, canUseManagementTools\(\) \? operations : null, jornadas, camion, remitos, payroll, configuration, history\]\)/);
   assert.doesNotMatch(source, /insertBefore/);
 });

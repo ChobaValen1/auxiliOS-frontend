@@ -23,9 +23,11 @@ test('daily administration modules stay in the main sidenav', () => {
   const center = read('configuration-center.js');
   const css = read('configuration-center.css');
 
-  assert.match(center, /ensureNavNode\('nav-jornadas-admin', 'jornadas-admin', '🗓️', 'Jornadas', false\)/);
-  assert.match(center, /ensureNavNode\('nav-camion', 'camion', '🚛', 'Camión', false\)/);
-  assert.match(center, /ensureNavNode\('nav-remitos', 'remitos', '🧾', 'Remitos', false\)/);
+  // El ícono ya no es un emoji literal (ahora es un SVG monocromático),
+  // así que solo se verifica que el id/ruta/label sigan conectados igual.
+  assert.match(center, /ensureNavNode\('nav-jornadas-admin', 'jornadas-admin', '[^']*', 'Jornadas', false\)/);
+  assert.match(center, /ensureNavNode\('nav-camion', 'camion', '[^']*', 'Camión', false\)/);
+  assert.match(center, /ensureNavNode\('nav-remitos', 'remitos', '[^']*', 'Remitos', false\)/);
   assert.doesNotMatch(center, /moveTo\([^\n]*document\.getElementById\('nav-camion'\)/);
   assert.doesNotMatch(center, /moveTo\([^\n]*document\.getElementById\('nav-jornadas-admin'\)/);
   assert.doesNotMatch(center, /moveTo\([^\n]*document\.getElementById\('nav-remitos'\)/);
@@ -74,10 +76,10 @@ test('driver navigation remains explicit and isolated from backoffice navigation
   const center = read('configuration-center.js');
 
   assert.match(center, /function configureDriverNavigation/);
-  assert.match(center, /ensureDriverNode\('nav-dashboard', 'dashboard', '📊', 'Panel'\)/);
-  assert.match(center, /ensureDriverNode\('nav-registro', 'registro', '📋', 'Km'\)/);
-  assert.match(center, /ensureDriverNode\('nav-camion', 'camion', '🚛', 'Camión'\)/);
-  assert.match(center, /ensureDriverNode\('nav-remitos', 'remitos', '🧾', 'Remitos'\)/);
+  assert.match(center, /ensureDriverNode\('nav-dashboard', 'dashboard', '[^']*', 'Panel'\)/);
+  assert.match(center, /ensureDriverNode\('nav-registro', 'registro', '[^']*', 'Km'\)/);
+  assert.match(center, /ensureDriverNode\('nav-camion', 'camion', '[^']*', 'Camión'\)/);
+  assert.match(center, /ensureDriverNode\('nav-remitos', 'remitos', '[^']*', 'Remitos'\)/);
   assert.doesNotMatch(center, /BACKOFFICE_ROLES[^\n]*chofer/);
 });
 

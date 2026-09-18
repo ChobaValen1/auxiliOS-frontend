@@ -116,7 +116,10 @@
     }
     const iconNode = node.querySelector('.nav-icon');
     const labelNode = node.querySelector('.nav-label');
-    if (iconNode) iconNode.textContent = icon;
+    // innerHTML, no textContent: el ícono puede ser un SVG (los de la barra
+    // lateral lo son) y textContent lo habría convertido en texto plano,
+    // pisando cualquier ícono ya puesto ahí — incluido el de Index.html.
+    if (iconNode) iconNode.innerHTML = icon;
     if (labelNode) labelNode.textContent = label;
     if (hidden) node.style.display = 'none';
     return node;
@@ -156,7 +159,7 @@
       css.href = '/configuration-center.css';
       document.head.appendChild(css);
     }
-    ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
+    ensureNavNode('nav-historial-sistema', 'historial-sistema', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4.2 4.6A7 7 0 1 1 3.1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2.4 2.6v3.2h3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.8v3.6l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', 'Historial', false);
     ensureScreen('screen-historial-sistema');
   }
 
@@ -170,10 +173,10 @@
     }
 
     if (!document.getElementById('nav-configuracion')) {
-      const node = ensureNavNode('nav-configuracion', 'configuracion', '⚙️', 'Configuración');
+      const node = ensureNavNode('nav-configuracion', 'configuracion', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="10" cy="10" r="2.6" stroke="currentColor" stroke-width="1.6"/><path d="M10 2.6v2.1M10 15.3v2.1M17.4 10h-2.1M4.7 10H2.6M15.1 4.9l-1.5 1.5M6.4 13.6l-1.5 1.5M15.1 15.1l-1.5-1.5M6.4 6.4 4.9 4.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>', 'Configuración');
       node.setAttribute('onclick', 'abrirCentroConfiguracion(event)');
     }
-    ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial');
+    ensureNavNode('nav-historial-sistema', 'historial-sistema', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4.2 4.6A7 7 0 1 1 3.1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2.4 2.6v3.2h3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.8v3.6l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', 'Historial');
     ensureScreen('screen-configuracion');
     ensureScreen('screen-historial-sistema');
 
@@ -299,12 +302,12 @@
       if (node) node.style.display = 'none';
     });
     orderTop([
-      ensureDriverNode('nav-dashboard', 'dashboard', '📊', 'Panel'),
-      ensureDriverNode('nav-registro', 'registro', '📋', 'Km'),
-      ensureDriverNode('nav-camion', 'camion', '🚛', 'Camión'),
-      ensureDriverNode('nav-documentos', 'documentos', '📄', 'Docs'),
-      ensureDriverNode('nav-remitos', 'remitos', '🧾', 'Remitos'),
-      ensureDriverNode('nav-grilla', 'grilla', '🗓️', 'Grilla'),
+      ensureDriverNode('nav-dashboard', 'dashboard', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2.3" y="10.2" width="3.6" height="7.3" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="8.2" y="5.4" width="3.6" height="12.1" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14.1" y="2.4" width="3.6" height="15.1" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>', 'Panel'),
+      ensureDriverNode('nav-registro', 'registro', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="4" y="3.4" width="12" height="14.2" rx="1.6" stroke="currentColor" stroke-width="1.6"/><path d="M7.6 3V2.6c0-.72.58-1.3 1.3-1.3h2.2c.72 0 1.3.58 1.3 1.3V3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M7 8.6h6M7 11.6h6M7 14.6h3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>', 'Km'),
+      ensureDriverNode('nav-camion', 'camion', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 6.6h8.6v6.9H2v-6.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10.6 9.1h3.5l2.4 2.5v1.9h-5.9V9.1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="6" cy="14.7" r="1.6" stroke="currentColor" stroke-width="1.4"/><circle cx="13.4" cy="14.7" r="1.6" stroke="currentColor" stroke-width="1.4"/></svg>', 'Camión'),
+      ensureDriverNode('nav-documentos', 'documentos', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5.6 2.5h5.6l3 3v11.2c0 .55-.45 1-1 1h-7.6c-.55 0-1-.45-1-1V3.5c0-.55.45-1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M11.2 2.5v3h3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10.6h6M7 13.6h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>', 'Docs'),
+      ensureDriverNode('nav-remitos', 'remitos', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 2.5h10v14.3l-1.7-1.05-1.6 1.05-1.7-1.05-1.6 1.05-1.7-1.05-1.7 1.05V2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7.2 6.3h5.6M7.2 9h5.6M7.2 11.7h3.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>', 'Remitos'),
+      ensureDriverNode('nav-grilla', 'grilla', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2.5" y="4" width="15" height="13.5" rx="1.6" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 8h15" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 2.3v3M13.5 2.3v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6 11h2M10 11h2M14 11h1M6 14h2M10 14h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>', 'Grilla'),
     ]);
   }
 
@@ -313,12 +316,12 @@
     const registro = document.getElementById('nav-registro');
     if (registro) registro.remove();
 
-    const dashboard = ensureNavNode('nav-dashboard', 'dashboard', '📊', 'Resumen', false);
+    const dashboard = ensureNavNode('nav-dashboard', 'dashboard', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2.3" y="10.2" width="3.6" height="7.3" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="8.2" y="5.4" width="3.6" height="12.1" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14.1" y="2.4" width="3.6" height="15.1" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>', 'Resumen', false);
     const operations = document.getElementById('nav-operaciones');
     if (operations) {
       const icon = operations.querySelector('.nav-icon');
       const label = operations.querySelector('.nav-label');
-      if (icon) icon.textContent = '🧭';
+      if (icon) icon.innerHTML = '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="6.2" cy="13.8" r="1.6" fill="currentColor"/><path d="M6.2 10.4a3.4 3.4 0 0 1 3.4 3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.2 7a6.8 6.8 0 0 1 6.8 6.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.2 3.6a10.2 10.2 0 0 1 10.2 10.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
       if (label) label.textContent = 'Servicios';
       operations.style.display = canUseManagementTools() ? '' : 'none';
     }
@@ -327,9 +330,9 @@
     let camion = null;
     let remitos = null;
     if (canUseManagementTools()) {
-      jornadas = ensureNavNode('nav-jornadas-admin', 'jornadas-admin', '🗓️', 'Jornadas', false);
-      camion = ensureNavNode('nav-camion', 'camion', '🚛', 'Camión', false);
-      remitos = ensureNavNode('nav-remitos', 'remitos', '🧾', 'Remitos', false);
+      jornadas = ensureNavNode('nav-jornadas-admin', 'jornadas-admin', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="10" cy="10.6" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M10 6.7v3.9l2.7 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.6 1.9h4.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', 'Jornadas', false);
+      camion = ensureNavNode('nav-camion', 'camion', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 6.6h8.6v6.9H2v-6.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10.6 9.1h3.5l2.4 2.5v1.9h-5.9V9.1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="6" cy="14.7" r="1.6" stroke="currentColor" stroke-width="1.4"/><circle cx="13.4" cy="14.7" r="1.6" stroke="currentColor" stroke-width="1.4"/></svg>', 'Camión', false);
+      remitos = ensureNavNode('nav-remitos', 'remitos', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 2.5h10v14.3l-1.7-1.05-1.6 1.05-1.7-1.05-1.6 1.05-1.7-1.05-1.7 1.05V2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7.2 6.3h5.6M7.2 9h5.6M7.2 11.7h3.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>', 'Remitos', false);
     } else {
       ['nav-jornadas-admin', 'nav-camion', 'nav-remitos'].forEach(id => {
         const node = document.getElementById(id);
@@ -337,11 +340,11 @@
       });
     }
 
-    const configuration = ensureNavNode('nav-configuracion', 'configuracion', '⚙️', 'Configuración', false);
+    const configuration = ensureNavNode('nav-configuracion', 'configuracion', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="10" cy="10" r="2.6" stroke="currentColor" stroke-width="1.6"/><path d="M10 2.6v2.1M10 15.3v2.1M17.4 10h-2.1M4.7 10H2.6M15.1 4.9l-1.5 1.5M6.4 13.6l-1.5 1.5M15.1 15.1l-1.5-1.5M6.4 6.4 4.9 4.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>', 'Configuración', false);
     configuration.setAttribute('onclick', 'abrirCentroConfiguracion(event)');
-    const payroll = canUseManagementTools() ? ensureNavNode('nav-sueldos', 'sueldos', '💵', 'Sueldos', false) : null;
+    const payroll = canUseManagementTools() ? ensureNavNode('nav-sueldos', 'sueldos', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="5.6" width="16" height="9.3" rx="1.6" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10.25" r="2.3" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.1v-.01M15.5 12.4v.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>', 'Sueldos', false) : null;
     document.getElementById('nav-config-tariff-matrix')?.remove();
-    const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
+    const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4.2 4.6A7 7 0 1 1 3.1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2.4 2.6v3.2h3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.8v3.6l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', 'Historial', false);
 
     populateFlyout();
     orderTop([dashboard, canUseManagementTools() ? operations : null, jornadas, camion, remitos, payroll, configuration, history]);
@@ -354,10 +357,10 @@
       const node = document.getElementById(id);
       if (node) node.style.display = 'none';
     });
-    const dashboard = ensureNavNode('nav-dashboard', 'dashboard', '📊', 'Resumen', false);
+    const dashboard = ensureNavNode('nav-dashboard', 'dashboard', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2.3" y="10.2" width="3.6" height="7.3" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="8.2" y="5.4" width="3.6" height="12.1" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14.1" y="2.4" width="3.6" height="15.1" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>', 'Resumen', false);
     const operations = document.getElementById('nav-operaciones');
     if (operations) operations.style.display = '';
-    const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '◷', 'Historial', false);
+    const history = ensureNavNode('nav-historial-sistema', 'historial-sistema', '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4.2 4.6A7 7 0 1 1 3.1 11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M2.4 2.6v3.2h3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 6.8v3.6l2.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', 'Historial', false);
     orderTop([dashboard, operations, history]);
   }
 
