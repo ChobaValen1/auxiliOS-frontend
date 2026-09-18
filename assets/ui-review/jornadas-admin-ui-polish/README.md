@@ -38,6 +38,17 @@ Las capturas "después" están regeneradas tras el cambio de columnas
 (Rendición → Efvo. esp. + Gastos, Taller → marca en el pill de Estado,
 + Combustible, legajo al tooltip). Las "antes" siguen siendo la rama base.
 
+`sidenav-antes.webp` / `sidenav-despues.webp`: P6, sidenav monocromático.
+Los 8 emoji de color (📊 📋 🚛 📄 🧾 💵 🗓️ 🗓️ — Jornadas y Grilla
+compartían el mismo) se reemplazan por 8 SVG de línea inline, mismo
+viewBox y grosor de trazo, con `stroke="currentColor"`. El color por
+defecto es `--muted2`, sube a `--text` en hover y a `--amber` solo en
+`.nav-item.active` — nunca más color fijo por ítem. Jornadas pasa a un
+reloj (turnos) y Grilla se queda con el calendario en grilla, para que
+dejen de ser el mismo ícono. Se ve en todas las pantallas porque
+`nav.sidenav` es compartido; verificado en Registro, colapsado y en la
+barra inferior de mobile.
+
 **Queda pendiente confirmar la pantalla en el preview de Vercel con datos
 reales**, sobre todo nombres de chofer largos y períodos que cruzan de año.
 

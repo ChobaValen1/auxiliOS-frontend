@@ -97,7 +97,17 @@ body {
   border-color: rgba(245,166,35,0.3);
 }
 
-.nav-item .nav-icon { flex: 0 0 24px; font-size: 19px; line-height: 1; text-align:center; }
+.nav-item .nav-icon {
+  flex: 0 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted2);
+  transition: color 0.2s;
+}
+.nav-item .nav-icon svg { width: 19px; height: 19px; display: block; }
+.nav-item:hover .nav-icon { color: var(--text); }
+.nav-item.active .nav-icon { color: var(--amber); }
 .nav-item .nav-label {
   overflow:hidden; font-size: 10px; font-weight: 700;
   letter-spacing: 0.5px; text-transform: uppercase;
@@ -1825,7 +1835,8 @@ body {
   body.nav-collapsed .nav-item .nav-label {
     display: block !important;
   }
-  .nav-item .nav-icon { flex: 0 0 auto; font-size: 18px; }
+  .nav-item .nav-icon { flex: 0 0 auto; }
+  .nav-item .nav-icon svg { width: 18px; height: 18px; }
   .nav-item .nav-label { font-size: 7px; line-height: 1; letter-spacing: .2px; }
   .nav-item.active {
     background: transparent;
