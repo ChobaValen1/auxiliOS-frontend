@@ -305,8 +305,10 @@
   function alError(contenedor, e) {
     var msg = (e && e.message) ? e.message : 'No se pudieron cargar las métricas';
     cadaCanvas(function (id) { G.error(id, msg); });
+    // Se vacían: dejar las tarjetas de la carga anterior haría pasar números
+    // viejos por números del filtro nuevo.
     var metrics = document.getElementById('dashx-ops-metrics');
-    if (metrics) metrics.innerHTML = tarjeta('Operaciones', '—');
+    if (metrics) metrics.innerHTML = '';
     texto(document.getElementById('dashx-ops-sub'), 'No se pudieron cargar las métricas');
   }
 

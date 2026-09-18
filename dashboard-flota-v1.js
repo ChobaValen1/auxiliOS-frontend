@@ -50,9 +50,11 @@
     return global.AuxDashCharts ? global.AuxDashCharts.nfMiles(v) : String(v == null ? 0 : v);
   }
 
+  // Sin fallback a un hex propio: registrar() ya exige que el motor esté
+  // cargado, y duplicar el valor acá lo haría divergir en silencio si la
+  // paleta cambia del otro lado.
   function tinta(clave) {
-    var t = global.AuxDashCharts && global.AuxDashCharts.TINTA;
-    return (t && t[clave]) || '#8590ab';
+    return global.AuxDashCharts.TINTA[clave];
   }
 
   /* Color de estado: SOLO para estado. Nunca entra como color de serie. */
