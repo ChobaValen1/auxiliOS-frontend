@@ -35,6 +35,16 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  assert.match(config, /AUXILIOS_BUILD_ID\s*=\s*'operator-review-v95-20260917'/);
+  const buildId = config.match(/AUXILIOS_BUILD_ID\s*=\s*'([^']+)'/)?.[1];
+  assert.ok(buildId, 'config.js tiene que declarar AUXILIOS_BUILD_ID');
+  assert.match(buildId, /^[a-z0-9-]+-v\d+-\d{8}$/);
   assert.match(config, /versionedAuxiliosAsset/);
+
+  // Fijar el id literal obligaba a tocar el test en cada bump. Lo que importa
+  // es que los ?v= de Index.html apunten al mismo build: si queda uno viejo,
+  // el preview sirve una mezcla de dos versiones.
+  const html = read('Index.html');
+  const versions = [...html.matchAll(/\?v=([a-z0-9-]+-v\d+-\d{8})/g)].map(m => m[1]);
+  assert.ok(versions.length > 0, 'Index.html tiene que versionar sus assets');
+  assert.deepEqual([...new Set(versions)], [buildId]);
 });

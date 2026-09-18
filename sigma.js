@@ -247,7 +247,7 @@ const SCREENS = {
   documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
   remitos:    { title:'REMITOS VIRTUALES',  sub:'Módulo 4 · Firma digital y archivo' },
   sueldos:    { title:'LIQUIDACIÓN DE SUELDOS', sub:'Objetivos, esquema salarial y recibos' },
-  'jornadas-admin': { title:'JORNADAS · ADMIN', sub:'Historial de jornadas de la flota' },
+  'jornadas-admin': { title:'JORNADAS', sub:'Historial de jornadas de la flota' },
   grilla:     { title:'GRILLA MENSUAL',     sub:'Asignaciones de móviles y francos' },
 };
 
@@ -15600,6 +15600,14 @@ let _jadminState = {
   searchTimer: null,
 };
 
+// Si llega un cambio de filtro mientras ya hay un pedido en vuelo, la
+// recarga anterior se descarta silenciosamente (ver guard de abajo) y el
+// filtro nuevo queda seleccionado en pantalla pero sin datos que lo
+// reflejen. Esta bandera encola un único pedido más para cuando el que
+// está en curso termine, así el último estado de los filtros siempre
+// termina reflejado sin disparar una carrera de pedidos superpuestos.
+let _jadminReloadPending = false;
+
 // ─── Utilidades locales ───────────────────────────────────────────
 function _jadminFmtFecha(iso) {
   if (!iso) return '—';
@@ -15647,6 +15655,12 @@ function _jadminLunesSemana() {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${dd}`;
+}
+// Formato argentino para horas: coma decimal, un decimal fijo ("11,9").
+function _jadminFmtHoras(n) {
+  const v = Number(n);
+  if (!isFinite(v)) return '0';
+  return v.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 function _jadminMoney(n) {
   const v = Number(n) || 0;
@@ -15708,6 +15722,7 @@ async function initJornadasAdmin() {
   _jadminSyncPicker('chofer');
   _jadminSyncPicker('camion');
   _jadminSyncPeriodLabel();
+  _jadminSyncEstadoChip();
 
   // Cargar datos
   await _jadminReload();
@@ -15743,8 +15758,22 @@ function _jadminSyncPicker(kind) {
 function _jadminSyncPeriodLabel() {
   const label = document.getElementById('jadmin-f-periodo-label');
   if (!label) return;
-  const short = value => value ? value.split('-').reverse().join('/') : '—';
-  label.textContent = `${short(_jadminState.desde)} — ${short(_jadminState.hasta)}`;
+  const parts = value => (value ? String(value).split('-') : null); // [yyyy, mm, dd]
+  const full  = p => (p ? `${p[2]}/${p[1]}/${p[0]}` : '—');
+  const short = p => (p ? `${p[2]}/${p[1]}` : '—');
+  const d = parts(_jadminState.desde);
+  const h = parts(_jadminState.hasta);
+  // "01/09 – 17/09/2026" entra en una línea; si el rango cruza de año, se
+  // muestran las dos fechas completas.
+  const desdeTxt = (d && h && d[0] === h[0]) ? short(d) : full(d);
+  label.textContent = `${desdeTxt} – ${full(h)}`;
+}
+
+// "Abiertas ahora" y Estado = Abierta aplican exactamente el mismo filtro,
+// así que se marcan y se desmarcan juntos. Ninguno de los dos desaparece.
+function _jadminSyncEstadoChip() {
+  const chip = document.querySelector('#screen-jornadas-admin .chip[data-chip="abiertas"]');
+  if (chip) chip.classList.toggle('active', _jadminState.estado === 'open');
 }
 
 function _jadminWireHandlers() {
@@ -15786,6 +15815,7 @@ function _jadminWireHandlers() {
   if (selEst) selEst.addEventListener('change', () => {
     _jadminState.estado = selEst.value || '';
     _jadminState.offset = 0;
+    _jadminSyncEstadoChip();
     _jadminReload();
   });
 
@@ -15857,6 +15887,14 @@ function _jadminWireHandlers() {
     _jadminReload();
   });
 
+  // La tabla puede pasar de entrar a no entrar al cambiar el ancho de ventana.
+  if (typeof ResizeObserver === 'function') {
+    const sc = document.querySelector('#screen-jornadas-admin .table-scroll');
+    if (sc) new ResizeObserver(_jadminMarcarScrollX).observe(sc);
+  } else {
+    window.addEventListener('resize', _jadminMarcarScrollX);
+  }
+
   // Row click (event delegation)
   const tbody = $('jadmin-tbody');
   if (tbody) tbody.addEventListener('click', (ev) => {
@@ -15905,6 +15943,7 @@ function _jadminResetFiltros() {
   document.querySelectorAll('#screen-jornadas-admin .chip').forEach(c => c.classList.remove('active'));
   const chipTodas = document.querySelector('#screen-jornadas-admin .chip[data-chip="todas"]');
   if (chipTodas) chipTodas.classList.add('active');
+  _jadminSyncEstadoChip();
   _jadminActualizarClasesSort();
   _jadminReload();
 }
@@ -15963,18 +16002,36 @@ function _jadminAplicarChip(nombre) {
   if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta || '';
   if ($('jadmin-f-estado')) $('jadmin-f-estado').value = _jadminState.estado || '';
   _jadminSyncPeriodLabel();
+  _jadminSyncEstadoChip();
 
   _jadminReload();
 }
 
+// Muestra/oculta el círculo de carga, acotado al espacio de los datos
+// (tarjetas de KPI y filas de la tabla). Los filtros y los chips nunca se
+// cubren: siguen respondiendo al toque mientras se espera la respuesta.
+function _jadminSetCargando(on) {
+  const kpiOverlay = document.getElementById('jadmin-kpis-loading');
+  const tablaOverlay = document.getElementById('jadmin-table-loading');
+  if (kpiOverlay) kpiOverlay.classList.toggle('show', on);
+  if (tablaOverlay) tablaOverlay.classList.toggle('show', on);
+}
+
 // ─── Data loading ─────────────────────────────────────────────────
 async function _jadminReload() {
-  if (_jadminState.loading) return;
+  if (_jadminState.loading) {
+    // Ya hay un pedido en curso: no se dispara uno en paralelo, pero se
+    // deja marcado que hace falta uno más apenas termine, para no perder
+    // el filtro que se acaba de tocar.
+    _jadminReloadPending = true;
+    return;
+  }
   _jadminState.loading = true;
+  _jadminSetCargando(true);
   try {
     const tbody = document.getElementById('jadmin-tbody');
     if (tbody && !tbody.innerHTML) {
-      tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted2)">Cargando…</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--muted2)">Cargando…</td></tr>`;
     }
 
     // KPIs (rango + filtros de chofer/camión, no depende de estado/q)
@@ -16009,25 +16066,55 @@ async function _jadminReload() {
   } catch (e) {
     console.error('[jadmin] error al cargar:', e);
     const tbody = document.getElementById('jadmin-tbody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
   } finally {
     _jadminState.loading = false;
+    if (_jadminReloadPending) {
+      // Se pidió otra recarga mientras esta corría: se encadena de una,
+      // sin apagar el spinner en el medio, para no mostrar un parpadeo con
+      // datos que ya quedaron viejos antes de mostrar los correctos.
+      _jadminReloadPending = false;
+      _jadminReload();
+    } else {
+      _jadminSetCargando(false);
+    }
   }
 }
 
 function _jadminRenderKpis(k) {
   const $ = (id) => document.getElementById(id);
   if (!k) return;
-  if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = k.abiertasAhora ?? 0;
-  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = k.abiertasContexto || `${k.choferesActivos ?? 0} choferes activos`;
+  const abiertas = Number(k.abiertasAhora) || 0;
+  const choferes = Number(k.choferesActivos) || 0;
+
+  if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = abiertas;
+  // El subtexto conecta los dos números en vez de repetir un total suelto.
+  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = choferes
+    ? `${abiertas} de ${choferes} choferes en ruta`
+    : (k.abiertasContexto || 'Sin choferes activos');
   if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
   if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
-  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${k.promHorasJornada ?? 0}h`;
-  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = 'promedio por jornada';
+  // El título de la card ya dice "Horas prom. / jornada": el subtexto aporta el total.
+  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${_jadminFmtHoras(k.promHorasJornada ?? 0)} h`;
+  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `${_jadminFmtHoras(k.horasTotalPeriodo ?? 0)} h en el período`;
   if ($('jadmin-kpi-servicios'))     $('jadmin-kpi-servicios').textContent    = (k.serviciosPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-servicios-sub')) $('jadmin-kpi-servicios-sub').textContent = 'en el período';
+
+  _jadminRenderChipCounts(k);
+}
+
+// Contadores de los chips de vista rápida. Solo se muestra el que se puede
+// afirmar con datos ya cargados: "Abiertas ahora" viene del mismo KPI, que
+// cuenta todas las jornadas abiertas y no solo la página en pantalla. Los
+// demás dependerían de consultas que esta pantalla no hace, así que su
+// contador queda oculto en vez de mostrar un guion o un número de la página.
+function _jadminRenderChipCounts(k) {
+  const chip = document.querySelector('#screen-jornadas-admin .chip[data-chip="abiertas"] .cnt');
+  if (!chip) return;
+  const abiertas = Number(k?.abiertasAhora);
+  chip.textContent = Number.isFinite(abiertas) ? String(abiertas) : '';
 }
 
 function _jadminAplicarFiltrosClientSide(rows) {
@@ -16061,6 +16148,15 @@ function _jadminAplicarFiltrosClientSide(rows) {
   return out;
 }
 
+// La columna Estado queda anclada a la derecha. La sombra que la despega del
+// resto solo tiene sentido cuando hay algo escondido, así que se marca el
+// contenedor cuando la tabla efectivamente no entra.
+function _jadminMarcarScrollX() {
+  const sc = document.querySelector('#screen-jornadas-admin .table-scroll');
+  if (!sc) return;
+  sc.classList.toggle('has-x', sc.scrollWidth > sc.clientWidth + 1);
+}
+
 function _jadminRenderTabla() {
   const tbody = document.getElementById('jadmin-tbody');
   if (!tbody) return;
@@ -16068,7 +16164,7 @@ function _jadminRenderTabla() {
   const rows = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
   } else {
     tbody.innerHTML = rows.map(r => _jadminRenderFila(r)).join('');
   }
@@ -16091,6 +16187,8 @@ function _jadminRenderTabla() {
   const next = document.getElementById('jadmin-next');
   if (prev) prev.disabled = _jadminState.offset <= 0;
   if (next) next.disabled = (_jadminState.offset + perPage) >= total;
+
+  _jadminMarcarScrollX();
 }
 
 function _jadminRenderFila(r) {
@@ -16098,58 +16196,70 @@ function _jadminRenderFila(r) {
   const dia = _jadminDiaSemana(r.log_date);
   const avClass = _jadminAvatarClass(r.chofer_nombre, r.chofer_legajo);
   const iniciales = _jadminIniciales(r.chofer_nombre);
-  const legajoTxt = r.chofer_legajo ? `Legajo ${_escHtml(r.chofer_legajo)}` : '—';
+  // El legajo salió de la celda: no aportaba ancho ni alto y competía con el
+  // nombre. Sigue siendo buscable y ahora se lee al pasar el mouse.
+  const legajoTitle = r.chofer_legajo
+    ? ` title="${_escHtml(r.chofer_nombre || '')} · Legajo ${_escHtml(r.chofer_legajo)}"`
+    : '';
 
-  // KM
+  // KM — "—" cuando todavía no hay dato (jornada abierta), "0" cuando es cero.
+  const kmSinDato = r.km_recorridos === null || r.km_recorridos === undefined;
   const km = Number(r.km_recorridos) || 0;
-  const kmCls = km === 0 ? 'km-cell zero' : 'km-cell';
-  const kmTxt = km ? km.toLocaleString('es-AR') : '0';
+  const kmCls = kmSinDato || km === 0 ? 'km-cell zero' : 'km-cell';
+  const kmTxt = kmSinDato ? '—' : km.toLocaleString('es-AR');
 
-  // Horas
-  const horas = Number(r.horas) || 0;
-  const horasTxt = horas ? horas.toFixed(1) : '0';
+  // Horas — sin hora de fin no hay jornada medida todavía.
+  const horasTxt = r.hora_fin ? _jadminFmtHoras(Number(r.horas) || 0) : '—';
+  const horasCls = r.hora_fin ? 'mono' : 'mono cell-empty';
 
   // Servicios
-  const srv = r.servicios || 0;
+  const srv = Number(r.servicios) || 0;
+  const srvCls = srv ? 'mono' : 'mono cell-empty';
 
-  // Rendición
-  let rendCls = 'rend-cell na';
-  let rendTxt = '—';
-  if (r.rendicion) {
-    if (r.rendicion.estado === 'ok') {
-      rendCls = 'rend-cell ok';
-      const d = Number(r.rendicion.diff) || 0;
-      rendTxt = d === 0 ? '$0 · OK' : `${_jadminMoneySigned(d)} OK`;
-    } else if (r.rendicion.estado === 'faltante') {
-      rendCls = 'rend-cell bad';
-      rendTxt = _jadminMoneySigned(r.rendicion.diff);
-    } else if (r.rendicion.estado === 'sobrante') {
-      rendCls = 'rend-cell warn';
-      rendTxt = _jadminMoneySigned(r.rendicion.diff);
-    }
-  }
+  // Combustible: litros cargados en la jornada. Los litros contra los KM son
+  // el consumo, que no se puede leer de ninguna otra columna.
+  const litros = Number(r.litros) || 0;
+  const litrosTxt = litros
+    ? `${litros.toLocaleString('es-AR', { maximumFractionDigits: 1 })} L`
+    : '0';
+  const litrosCls = litros ? 'money-cell' : 'money-cell zero';
 
-  // Incidentes
+  // Caja: lo que debería entregar y lo que gastó. El veredicto de la rendición
+  // (entregó vs. debería) vive en el detalle; acá solo queda el aviso en rojo
+  // cuando esa rendición cerró en faltante, para no perder la señal de la lista.
+  const rend = r.rendicion;
+  const faltante = rend?.estado === 'faltante';
+  const efvoTxt = rend ? _jadminMoney(rend.esperado) : '—';
+  const efvoCls = !rend ? 'money-cell zero' : faltante ? 'money-cell faltante' : 'money-cell';
+  const efvoTitle = faltante
+    ? ` title="La rendición de esta fecha cerró en faltante: ${_escHtml(_jadminMoneySigned(rend.diff))}"`
+    : '';
+  const gastosTxt = rend ? _jadminMoney(rend.gastos) : '—';
+  const gastosCls = rend && Number(rend.gastos) ? 'money-cell' : 'money-cell zero';
+
+  // Incidentes y Taller comparten criterio: "0" es un cero real, "—" es
+  // ausencia de dato, y ambos se ven igual de apagados cuando no hay nada.
+  const incidentes = Number(r.incidentes);
   let incCls = 'inc-cell zero';
-  let incTxt = '0';
-  if ((r.incidentes || 0) > 0) {
+  let incTxt = Number.isFinite(incidentes) ? '0' : '—';
+  if (incidentes > 0) {
     incCls = 'inc-cell some';
-    incTxt = r.inc_grave ? `⚠ ${r.incidentes}` : String(r.incidentes);
+    incTxt = r.inc_grave ? `⚠ ${incidentes}` : String(incidentes);
   }
 
-  // Taller
-  const tallerHtml = r.in_workshop
-    ? `<span class="pill pill-red">🔧</span>`
-    : `<span style="color:var(--muted)">—</span>`;
-
-  // Estado (solo open/closed/anulado — taller es columna independiente)
+  // Estado (open/closed/anulado). Taller ya no es columna: viaja acá.
+  // "Cerrada" es el estado normal y va en gris neutro: el ámbar queda
+  // reservado para las jornadas que siguen abiertas.
   let estadoHtml;
   if (r.status === 'open') {
     estadoHtml = `<span class="pill pill-amber"><span class="dot a"></span>Abierta</span>`;
   } else if (r.status === 'closed') {
-    estadoHtml = `<span class="pill pill-green"><span class="dot g"></span>Cerrada</span>`;
+    estadoHtml = `<span class="pill pill-muted"><span class="dot n"></span>Cerrada</span>`;
   } else {
     estadoHtml = `<span class="pill pill-muted">${_escHtml(r.status || '—')}</span>`;
+  }
+  if (r.in_workshop) {
+    estadoHtml += `<span class="taller-mark" title="La unidad ingresó a taller durante esta jornada">🔧</span>`;
   }
 
   const movil = r.truck_movil ? `#${_escHtml(r.truck_movil)}` : '';
@@ -16158,9 +16268,9 @@ function _jadminRenderFila(r) {
   const _orgs = [r.km_inicio_origen, r.km_final_origen];
   let origenBadge = '';
   if (_orgs.includes('manual_ia_fallo') || _orgs.includes('manual_editado')) {
-    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(245,166,35,0.12);color:var(--amber)">✏️ A MANO</span>';
+    origenBadge = '<span class="km-origen manual">A MANO</span>';
   } else if (_orgs.includes('manual_offline')) {
-    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(133,144,171,0.15);color:var(--muted2)">📴</span>';
+    origenBadge = '<span class="km-origen offline" title="Cargado sin conexión">OFFLINE</span>';
   }
 
   return `
@@ -16172,11 +16282,10 @@ function _jadminRenderFila(r) {
         </div>
       </td>
       <td>
-        <div class="chofer-cell">
+        <div class="chofer-cell"${legajoTitle}>
           <div class="avatar ${avClass}">${_escHtml(iniciales)}</div>
           <div class="name">
             <b>${_escHtml(r.chofer_nombre || '—')}</b>
-            <div class="lg">${legajoTxt}</div>
           </div>
         </div>
       </td>
@@ -16187,12 +16296,13 @@ function _jadminRenderFila(r) {
         </div>
       </td>
       <td class="right"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
-      <td class="right mono">${horasTxt}</td>
-      <td class="right mono">${srv}</td>
-      <td class="right"><span class="${rendCls}">${rendTxt}</span></td>
+      <td class="right ${horasCls}">${horasTxt}</td>
+      <td class="right ${srvCls}">${srv}</td>
+      <td class="right"><span class="${litrosCls}">${litrosTxt}</span></td>
+      <td class="right"><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
+      <td class="right"><span class="${gastosCls}">${gastosTxt}</span></td>
       <td class="center"><span class="${incCls}">${incTxt}</span></td>
-      <td class="center">${tallerHtml}</td>
-      <td class="center">${estadoHtml}</td>
+      <td class="center"><span class="estado-cell">${estadoHtml}</span></td>
     </tr>
   `;
 }

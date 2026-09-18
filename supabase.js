@@ -3832,7 +3832,7 @@ async function cargarJornadasAdmin(filtros = {}) {
   ]);
 
   const cnt = {};
-  logIds.forEach(id => cnt[id] = { servicios: 0, incidentes: 0, incGrave: false, combustible: 0, litros: 0, revision: false });
+  logIds.forEach(id => cnt[id] = { servicios: 0, incidentes: 0, incGrave: false, combustible: 0, litros: 0, gastoFuel: 0, revision: false });
 
   const resolverLogId = (r, fechaField) => {
     if (r.log_id && cnt[r.log_id]) return r.log_id;
@@ -3850,6 +3850,7 @@ async function cargarJornadasAdmin(filtros = {}) {
     if (!lid || !cnt[lid]) return;
     cnt[lid].combustible++;
     cnt[lid].litros += Number(r.liters) || 0;
+    cnt[lid].gastoFuel += Number(r.total_cost) || 0;
   });
   (tireRes.data    || []).forEach(r => {
     const lid = resolverLogId(r, 'check_date');
@@ -3901,6 +3902,8 @@ async function cargarJornadasAdmin(filtros = {}) {
       incidentes:   c.incidentes || 0,
       inc_grave:    c.incGrave || false,
       combustible:  c.combustible || 0,
+      litros:       c.litros || 0,
+      gasto_fuel:   c.gastoFuel || 0,
       revision:     c.revision || false,
       rendicion:    rendInfo,
     };

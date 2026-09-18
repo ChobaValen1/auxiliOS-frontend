@@ -4,7 +4,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'operator-review-v95-20260917';
+window.AUXILIOS_BUILD_ID = 'jornadas-admin-sidenav-fix-v98-20260918';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

@@ -244,5 +244,9 @@ test('runtime carga Facturación y Excel canónicos sin assets de revisión para
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-billing-phase2-v312/);
+  // El nombre del cache tiene que renovarse en cada build que toque assets
+  // precacheados, así que se verifica que no retroceda en vez de fijar el
+  // literal, que obligaba a editar este test en cada bump.
+  const cacheVersion = Number(sw.match(/auxilios-billing-phase2-v(\d+)/)?.[1]);
+  assert.ok(cacheVersion >= 312, `el cache de phase2 no puede retroceder de v312 (es v${cacheVersion})`);
 });

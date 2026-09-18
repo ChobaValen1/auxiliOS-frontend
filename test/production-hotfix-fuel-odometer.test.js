@@ -52,5 +52,9 @@ test('el chofer puede cerrar una jornada válida después de reiniciar el odóme
 test('las RPC no quedan expuestas a anon y se renueva el cache', () => {
   assert.match(migration, /revoke all on function public\.admin_update_truck_v2\(integer, jsonb\) from public, anon/);
   assert.match(migration, /revoke all on function public\.create_driver_fuel_record_v1\(jsonb\) from public, anon/);
-  assert.match(sw, /auxilios-billing-phase2-v312/);
+  // El nombre del cache tiene que renovarse en cada build que toque assets
+  // precacheados, así que se verifica que no retroceda en vez de fijar el
+  // literal, que obligaba a editar este test en cada bump.
+  const cacheVersion = Number(sw.match(/auxilios-billing-phase2-v(\d+)/)?.[1]);
+  assert.ok(cacheVersion >= 312, `el cache de phase2 no puede retroceder de v312 (es v${cacheVersion})`);
 });
