@@ -14,7 +14,7 @@
 
   var RPC = 'dashboard_facturacion_v1';
 
-  var CV_DONUT = 'dashx-fact-donut';
+  var CV_EMPRESAS = 'dashx-fact-empresas';
   var CV_CAJAS = 'dashx-fact-cajas';
   var CV_BASES = 'dashx-fact-bases';
   var CV_PART  = 'dashx-fact-part';
@@ -34,7 +34,7 @@
 
   /* Mensajes del estado vacío. Explican que faltan servicios por cargar y qué va
      a mostrar cada gráfico, en vez de dejar un recuadro mudo. */
-  var VACIO_DONUT = 'Todavía no hay servicios cargados en este período. Acá va a verse el reparto de servicios por prestadora.';
+  var VACIO_EMPRESAS = 'Todavía no hay servicios cargados en este período. Acá va a verse cada prestadora con sus bases.';
   var VACIO_CAJAS = 'Todavía no hay servicios cargados en este período. Acá va a verse la composición por concepto.';
   var VACIO_BASES = 'Todavía no hay servicios cargados en este período. Acá va a verse el desglose facturado por base.';
   var VACIO_CONC  = 'Todavía no hay servicios cargados en este período. Acá va a verse cuántos servicios y cuántos km factura cada concepto.';
@@ -163,6 +163,35 @@
     };
   }
 
+  /* Una prestadora y, adentro, sus bases. Los km reales vuelven a viajar por
+     grupo, pero nunca solos: al lado van los km facturados de ESOS MISMOS
+     servicios (km_comp), que es contra lo que se compara. Dividir el total
+     facturado por los reales de un subconjunto daría un margen inventado. */
+  function filaEmpresa(r) {
+    var o = r && typeof r === 'object' ? r : {};
+    var f = fila(o);
+    f.kmReal = num(o.km_real);
+    f.kmComp = num(o.km_comp);
+    f.conDato = num(o.con_dato);
+    f.hijos = lista(o.bases).map(function (b) {
+      var h = fila(b);
+      h.kmReal = num(b.km_real);
+      h.kmComp = num(b.km_comp);
+      h.conDato = num(b.con_dato);
+      h.margen = margenDe(h);
+      return h;
+    });
+    f.margen = margenDe(f);
+    return f;
+  }
+
+  /* (facturado - real) / real, sobre el subconjunto que tiene los dos datos.
+     Null cuando ningún servicio del grupo tiene km real: guión, no un cero que
+     se lea como empate. */
+  function margenDe(f) {
+    return f.kmReal > 0 ? (f.kmComp - f.kmReal) * 100 / f.kmReal : null;
+  }
+
   function normalizar(d) {
     var o = d && typeof d === 'object' ? d : {};
     var t = o.totales && typeof o.totales === 'object' ? o.totales : {};
@@ -201,7 +230,7 @@
         empresas: lista(o.catalogo && o.catalogo.empresas),
         bases: lista(o.catalogo && o.catalogo.bases)
       },
-      porEmpresa: lista(o.por_empresa).map(fila),
+      porEmpresa: lista(o.por_empresa).map(filaEmpresa),
       porConcepto: lista(o.por_concepto).map(fila),
       porBase: lista(o.por_base).map(fila)
     };
@@ -369,7 +398,7 @@
     var g = ch();
 
     if (!d.hayDatos) {
-      g.vacio(CV_DONUT, VACIO_DONUT);
+      g.tabla(CV_EMPRESAS, { vacio: VACIO_EMPRESAS, columnas: [], filas: [] });
       g.vacio(CV_CAJAS, VACIO_CAJAS);
       g.vacio(CV_PART, VACIO_BASES);
       // Bases dejó de ser un canvas: su vacío lo dibuja la tabla.
@@ -377,15 +406,38 @@
       return [];
     }
 
-    // Servicios por prestadora: el reparto es de cantidad, no de plata (la plata
-    // está en los KPI y en el desglose por base).
-    var empresas = agrupar(d.porEmpresa, function (f) { return f.servicios; });
-    g.donut(CV_DONUT, {
-      labels: empresas.map(function (i) { return i.label; }),
-      values: empresas.map(function (i) { return i.value; }),
-      // Al costado: abajo la leyenda se comía el alto del anillo.
-      leyenda: 'derecha',
-      vacio: VACIO_DONUT
+    /* Prestadoras, y adentro sus bases. Era un anillo de participación: para
+       dos o tres prestadoras gastaba media pantalla en decir un reparto que se
+       lee mejor en dos renglones, y no dejaba lugar para lo demás que hay que
+       saber de cada una. La tabla entra en el mismo alto, agrega cuatro medidas
+       y se abre.
+
+       Anidar es lo que el anillo no podía hacer: una base atiende a más de una
+       prestadora —Piñeyro hoy trabaja para las dos—, así que una lista plana de
+       bases no se puede repartir entre empresas. */
+    g.tabla(CV_EMPRESAS, {
+      vacio: VACIO_EMPRESAS,
+      totalEtiqueta: 'Total',
+      columnas: [
+        { clave: 'nombre',    titulo: 'Prestadora', tipo: 'texto', swatch: true },
+        { clave: 'monto',     titulo: 'Facturado',  tipo: 'pesos', barra: true, total: 'suma' },
+        { clave: 'servicios', titulo: 'Servicios',  total: 'suma' },
+        { clave: 'km',        titulo: 'Km facturados', decimales: 0, unidad: 'km', total: 'suma' },
+        // Medidos por el chofer o calculados del tramo Origen→Destino.
+        { clave: 'kmReal',    titulo: 'Km reales',  decimales: 0, unidad: 'km', total: 'suma' },
+        /* Lo que el método de cobro agrega sobre el recorrido productivo. Acá
+           se sostiene porque sus dos operandos están en la misma fila, a la
+           vista: solo, de titular, se leería como rendimiento. Compara siempre
+           el mismo subconjunto —km_comp contra km reales—, y el cierre es el
+           margen de los totales, no el promedio de los márgenes. */
+        { clave: 'margen',    titulo: 'Margen', decimales: 1, unidad: '%',
+          total: function (filas) {
+            var real = 0, comp = 0;
+            filas.forEach(function (f) { real += num(f.kmReal); comp += num(f.kmComp); });
+            return real > 0 ? (comp - real) * 100 / real : null;
+          } }
+      ],
+      filas: d.porEmpresa
     });
 
     // Composición de servicios por concepto, en cantidad de servicios.
@@ -487,7 +539,7 @@
     var msg = mensajeError(e);
     var g = ch();
     if (g) {
-      g.error(CV_DONUT, msg);
+      g.tabla(CV_EMPRESAS, { vacio: msg, columnas: [], filas: [] });
       g.error(CV_CAJAS, msg);
       g.error(CV_PART, msg);
       g.tabla(CV_BASES, { vacio: msg, columnas: [], filas: [] });

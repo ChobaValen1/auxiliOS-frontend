@@ -588,15 +588,78 @@
         + escapar(c.titulo) + '</th>';
     }).join('') + '</tr>';
 
+    /* Una fila puede traer `hijos`: el desglose que se abre debajo. La fila
+       madre suma exactamente lo que suman sus hijas —eso se garantiza del lado
+       del SQL, plegando el mismo agrupamiento— así que abrir no cambia ningún
+       total, sólo lo reparte. */
+    var base = (cont.id || 'auxtb') + '-f';
     var cuerpo = filas.map(function (f, i) {
-      return '<tr>' + cols.map(function (c) {
+      var hijos = (f.hijos && f.hijos.length) ? f.hijos : null;
+      var ref = base + i;
+      var tr = '<tr' + (hijos ? ' class="auxtb-padre"' : '') + '>' + cols.map(function (c, j) {
+        if (j === 0 && hijos) return celdaPadre(c, f, i, ref, hijos.length);
         return celda(c, f, maximos[c.clave] || 0, false, i);
       }).join('') + '</tr>';
+      if (!hijos) return tr;
+
+      /* Las hijas van sin barra: la barra compara contra el máximo de la
+         columna, que es un máximo entre empresas. Una barra de base medida con
+         esa vara se leería como si las dos cosas fueran comparables. */
+      return tr + hijos.map(function (h) {
+        return '<tr class="auxtb-hijo" data-padre="' + escapar(ref) + '" hidden>'
+          + cols.map(function (c, j) {
+              if (j === 0) {
+                var vh = h[c.clave];
+                return '<td class="auxtb-txt auxtb-sangria">'
+                  + escapar((vh === null || vh === undefined || vh === '') ? '—' : vh) + '</td>';
+              }
+              return celda(c, h, 0, true);
+            }).join('')
+          + '</tr>';
+      }).join('');
     }).join('');
 
     cont.innerHTML = '<div class="auxtb-wrap"><table class="auxtb">'
       + '<thead>' + head + '</thead><tbody>' + cuerpo + '</tbody>'
       + pie(cols, filas, datos) + '</table></div>';
+
+    engancharDespliegue(cont);
+  }
+
+  /* Celda madre: el nombre convertido en disparador. Va como <button> y no como
+     <td onclick> para que llegue por teclado y para que un lector de pantalla
+     diga que se puede abrir, y cuántas filas hay adentro. */
+  function celdaPadre(col, fila, indice, ref, cuantos) {
+    var chip = col.swatch
+      ? '<span class="auxtb-chip" style="background:' + escapar(color(indice)) + '"></span>'
+      : '';
+    var v = fila[col.clave];
+    return '<td class="auxtb-txt">'
+      + '<button type="button" class="auxtb-toggle" aria-expanded="false"'
+      +         ' data-padre="' + escapar(ref) + '">'
+      +   '<span class="auxtb-caret" aria-hidden="true"></span>'
+      +   chip
+      +   '<span class="auxtb-nombre">'
+      +     escapar((v === null || v === undefined || v === '') ? '—' : v) + '</span>'
+      +   '<span class="auxtb-cuantos">' + cuantos + '</span>'
+      + '</button>'
+      + '</td>';
+  }
+
+  /* Delegado y enganchado una sola vez por contenedor: tabla() reescribe el
+     innerHTML en cada carga, y un listener por render se iría apilando hasta
+     que un click abriera y cerrara la misma fila varias veces. */
+  function engancharDespliegue(cont) {
+    if (cont.dataset.auxtbDespliegue === '1') return;
+    cont.dataset.auxtbDespliegue = '1';
+    cont.addEventListener('click', function (ev) {
+      var btn = ev.target && ev.target.closest && ev.target.closest('.auxtb-toggle');
+      if (!btn || !cont.contains(btn)) return;
+      var abierto = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', abierto ? 'false' : 'true');
+      var hijas = cont.querySelectorAll('tr.auxtb-hijo[data-padre="' + btn.dataset.padre + '"]');
+      Array.prototype.forEach.call(hijas, function (tr) { tr.hidden = abierto; });
+    });
   }
 
   /* Fila de totales. Una columna declara cómo se cierra:

@@ -40,7 +40,7 @@ test('los colores salen siempre del motor, nunca hardcodeados', () => {
   assert.doesNotMatch(js, /#[0-9a-fA-F]{6}\b/,
     'hay un hex propio: la paleta validada vive en dashboard-charts-v1.js');
   // Todo lo que dibuja pasa por el motor: ni un color ni un formato propio.
-  ['donut', 'treemap', 'tabla'].forEach(f =>
+  ['treemap', 'tabla'].forEach(f =>
     assert.match(js, new RegExp('(g|ch\\(\\))\\.' + f + '\\('), `no usa el ${f} del motor`));
   // ESTADO.ok/aviso/critico está reservado para semántica de estado.
   assert.doesNotMatch(js, /ESTADO\./);
@@ -74,7 +74,7 @@ test('con el dataset vacío no se pinta ningún cero como si fuera un dato', () 
 });
 
 test('cada gráfico vacío explica que faltan servicios y qué va a mostrar', () => {
-  ['VACIO_DONUT', 'VACIO_CAJAS', 'VACIO_BASES'].forEach(k => {
+  ['VACIO_EMPRESAS', 'VACIO_CAJAS', 'VACIO_BASES'].forEach(k => {
     const msg = js.match(new RegExp(k + "\\s*=\\s*'([^']+)'"));
     assert.ok(msg, `falta el mensaje ${k}`);
     assert.match(msg[1], /Todavía no hay servicios cargados/,
@@ -83,9 +83,9 @@ test('cada gráfico vacío explica que faltan servicios y qué va a mostrar', ()
       `${k} no dice qué va a aparecer cuando lleguen los datos`);
   });
   // Y se pintan con el estado vacío del motor, no con un gráfico en cero.
-  assert.match(js, /g\.vacio\(CV_DONUT, VACIO_DONUT\)/);
   assert.match(js, /g\.vacio\(CV_CAJAS, VACIO_CAJAS\)/);
-  // Bases dejó de ser un canvas: su vacío lo dibuja la tabla, con el mismo texto.
+  // Prestadoras y bases son tablas: su vacío lo dibuja la tabla, mismo texto.
+  assert.match(js, /g\.tabla\(CV_EMPRESAS, \{ vacio: VACIO_EMPRESAS/);
   assert.match(js, /g\.tabla\(CV_BASES, \{ vacio: VACIO_BASES/);
 });
 
@@ -161,11 +161,13 @@ test('la tabla de conceptos se lee junto al treemap, no aparte', () => {
 });
 
 test('la fila de la grilla de Facturación cubre las doce columnas', () => {
-  // cajas(7) + bases(5). Antes eran 5 + 4 y quedaba un hueco de tres columnas.
   const span = k => Number(css.match(
     new RegExp('#screen-dashboard \\.dashx-' + k + '\\s*\\{\\s*grid-column: span (\\d+)'))[1]);
   assert.equal(span('cajas') + span('bases'), 12);
-  assert.equal(span('kpis') + span('donut') + span('mapa'), 12);
+  // Sin el anillo, la primera fila la comparten los KPI y el mapa.
+  assert.equal(span('kpis') + span('mapa'), 12);
+  // La tabla de prestadoras va sola, a ancho completo.
+  assert.match(css, /#screen-dashboard \.dashx-full\s*\{\s*grid-column: 1 \/ -1/);
 });
 
 test('prestadora, base y fecha son los filtros de la sección', () => {
@@ -322,7 +324,7 @@ test('el módulo se carga después del motor y del shell', () => {
   }
   assert.match(js, /document\.addEventListener\('DOMContentLoaded', registrar/);
   // Los nodos que la sección llena existen en el markup.
-  ['dashx-fact-kpis', 'dashx-fact-sub', 'dashx-fact-donut', 'dashx-fact-cajas',
+  ['dashx-fact-kpis', 'dashx-fact-sub', 'dashx-fact-empresas', 'dashx-fact-cajas',
    'dashx-fact-bases'].forEach(id =>
     assert.ok(index.includes(`id="${id}"`), `falta ${id} en el markup`));
   // El mapa lo llena otro trabajo: esta sección no lo toca.
@@ -336,6 +338,8 @@ const sqlV3 = fs.readFileSync(
   'migrations/20260919220000_dashboard_facturacion_km_reales_v3.sql', 'utf8');
 const sqlV5 = fs.readFileSync(
   'migrations/20260919250000_dashboard_facturacion_sin_margen_v5.sql', 'utf8');
+const sqlV6 = fs.readFileSync(
+  'migrations/20260919260000_dashboard_facturacion_empresas_bases_v6.sql', 'utf8');
 
 test('km_reales <= 0 es "no informado", no "cero kilómetros"', () => {
   assert.match(sqlV3, /case when coalesce\(r\.km_reales, 0\) > 0 then r\.km_reales end/);
@@ -357,29 +361,53 @@ test('la tarjeta distingue lo medido de lo calculado', () => {
   assert.match(sqlV5, /'calculados',          t\.n_calculado/);
 });
 
-/* ── v5: no se publica ninguna razón entre facturado y real ─────────────────
+/* ── el margen sólo existe al lado de sus dos operandos ─────────────────────
 
    La flota NO sale de la base: los tramos Base→Origen y Destino→Base son el
-   método de cobro, no un recorrido. Dividir km facturados por km reales mide la
-   fórmula de facturación, no el rendimiento, y con datos reales daba 240,9%.
+   método de cobro, no un recorrido. Por eso (km facturados - km reales) / km
+   reales no mide rendimiento: mide la fórmula de facturación, y con datos
+   reales da 240,9%. De titular, solo, se lee como que la operación rinde el
+   triple — por eso v5 lo sacó de la tarjeta de KM reales.
 
-   Estos tests existen para que nadie la reponga sin volver a pensarla. */
+   Vive en la tabla de prestadoras, donde en la misma fila están los km
+   facturados Y los km reales: con sus dos entradas a la vista deja de ser un
+   veredicto y pasa a ser una comparación entre métodos de cobro.
 
-test('ni el SQL ni el front calculan un margen', () => {
+   Estos tests fijan las dos mitades de esa regla. */
+
+test('la tarjeta de KM reales no publica ninguna razón', () => {
+  // Ahí no hay con qué contextualizarla: es un número grande y solo.
   assert.doesNotMatch(sqlV5, /'margen'/);
   assert.doesNotMatch(sqlV5, /'margen_anterior'/);
-  assert.doesNotMatch(sqlV5, /'km_comparable'/);
   assert.doesNotMatch(sqlV5, /'km_facturados'/);
-  // En el front no queda ni el cálculo ni la columna ni el dato que la alimenta.
-  assert.doesNotMatch(js, /i\.margen\s*=/);
-  assert.doesNotMatch(js, /clave: 'margen'/);
-  assert.doesNotMatch(js, /kmComparable/);
+  const tarjeta = js.slice(js.indexOf('function kpiReales'), js.indexOf('function fila('));
+  assert.doesNotMatch(tarjeta, /margen/);
+  assert.match(js, /kpi\('KM reales', nfKm\(x\.km\), false, pie\)/);
 });
 
-test('los km reales se siguen publicando crudos', () => {
-  // Sacar la razón no puede llevarse puesto el número, que sí es verificable.
-  assert.match(sqlV5, /'km_reales',           round\(t\.kr_act, 2\)/);
-  assert.match(js, /kpi\('KM reales', nfKm\(x\.km\), false, pie\)/);
+test('el margen de la tabla va con sus dos operandos en la misma fila', () => {
+  const cols = js.slice(js.indexOf("g.tabla(CV_EMPRESAS"), js.indexOf("filas: d.porEmpresa"));
+  ['km', 'kmReal', 'margen'].forEach(c =>
+    assert.match(cols, new RegExp("clave: '" + c + "'"),
+      `el margen no puede ir sin la columna ${c}`));
+});
+
+test('el margen compara el mismo subconjunto de los dos lados', () => {
+  // km_comp son los facturados DE LOS SERVICIOS QUE TIENEN km real. Dividir el
+  // total facturado por los reales de unos pocos daría un margen inventado.
+  assert.match(sqlV6, /'km_comp',   round\(e\.km_comp, 2\)/);
+  assert.match(sqlV6, /coalesce\(sum\(b\.km\)      filter \(where b\.km_real is not null\), 0\) as km_comp/);
+  assert.match(js, /\(f\.kmComp - f\.kmReal\) \* 100 \/ f\.kmReal/);
+  // Y el cierre es el margen de los totales, no el promedio de los márgenes.
+  assert.match(js, /real > 0 \? \(comp - real\) \* 100 \/ real : null/);
+});
+
+test('cada prestadora trae sus bases adentro', () => {
+  // Una base atiende a más de una prestadora: la lista plana no se puede
+  // repartir entre empresas, por eso el SQL anida en vez de que cruce el front.
+  assert.match(sqlV6, /'bases',     e\.bases/);
+  assert.match(sqlV6, /group by g\.company_id, g\.nombre/);
+  assert.match(js, /f\.hijos = lista\(o\.bases\)/);
 });
 
 

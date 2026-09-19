@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=sin-margen-v113-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=sin-margen-v113-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=sin-margen-v113-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=sin-margen-v113-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=sin-margen-v113-20260919">
+<link rel="stylesheet" href="sigma.css?v=prestadoras-bases-v114-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=prestadoras-bases-v114-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=prestadoras-bases-v114-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=prestadoras-bases-v114-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=prestadoras-bases-v114-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=274')
+        navigator.serviceWorker.register('/sw.js?v=275')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=sin-margen-v113-20260919" defer></script>
-<script src="supabase.js?v=sin-margen-v113-20260919" defer></script>
+<script src="config.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="supabase.js?v=prestadoras-bases-v114-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=sin-margen-v113-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=sin-margen-v113-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=sin-margen-v113-20260919" defer></script>
-<script src="sigma.js?v=sin-margen-v113-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=sin-margen-v113-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=sin-margen-v113-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=sin-margen-v113-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=sin-margen-v113-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=sin-margen-v113-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=sin-margen-v113-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="sigma.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=prestadoras-bases-v114-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=prestadoras-bases-v114-20260919" defer></script>
 </head>
 <body>
 
@@ -765,16 +765,19 @@
 
             <div class="dashx-card dashx-kpis" id="dashx-fact-kpis"></div>
 
-            <div class="dashx-card dashx-donut">
-              <div class="dashx-card-title">Servicios por empresa</div>
-              <div class="auxch-wrap" style="height:230px"><canvas id="dashx-fact-donut"></canvas></div>
-            </div>
-
             <div class="dashx-card dashx-mapa">
               <div class="dashx-card-title">Zonas de participación</div>
               <div class="auxch-wrap" id="dashx-fact-mapa" style="height:196px"></div>
               <!-- El mapa dice dónde; esto dice qué hacer con eso. -->
               <div class="dashx-mapa-lectura" id="dashx-fact-mapa-lectura"></div>
+            </div>
+
+            <!-- Se abre cada prestadora y aparecen sus bases. Una base atiende a
+                 más de una prestadora, así que el desglose de abajo (por base,
+                 sumando todas las empresas) es otro corte, no el mismo. -->
+            <div class="dashx-card dashx-full dashx-card-tabla">
+              <div class="dashx-card-title">Prestadoras y sus bases</div>
+              <div class="dashx-tabla-pegada" id="dashx-fact-empresas"></div>
             </div>
 
             <!-- El treemap dice cuál es el servicio más común; la tabla de abajo,
