@@ -14,35 +14,43 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=jornadas-admin-sidenav-fix-v98-20260918">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=jornadas-admin-sidenav-fix-v98-20260918">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=jornadas-admin-sidenav-fix-v98-20260918">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=jornadas-admin-sidenav-fix-v98-20260918">
+<link rel="stylesheet" href="sigma.css?v=bases-prestadoras-v115-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=bases-prestadoras-v115-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=bases-prestadoras-v115-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=bases-prestadoras-v115-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=bases-prestadoras-v115-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=259')
+        navigator.serviceWorker.register('/sw.js?v=276')
         .catch(err => console.warn('SW:', err));
     });
   }
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@3.1.0/dist/chartjs-chart-treemap.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=jornadas-admin-sidenav-fix-v98-20260918" defer></script>
-<script src="supabase.js?v=jornadas-admin-sidenav-fix-v98-20260918" defer></script>
+<script src="config.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="supabase.js?v=bases-prestadoras-v115-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=jornadas-admin-sidenav-fix-v98-20260918" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=jornadas-admin-sidenav-fix-v98-20260918" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=jornadas-admin-sidenav-fix-v98-20260918" defer></script>
-<script src="sigma.js?v=jornadas-admin-sidenav-fix-v98-20260918" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="sigma.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=bases-prestadoras-v115-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=bases-prestadoras-v115-20260919" defer></script>
 </head>
 <body>
 
@@ -539,22 +547,6 @@
 </div>
 
 <!-- Modal: Caja en Calle — Desglose -->
-<div class="modal-backdrop" id="modal-caja-calle">
-  <div class="modal-box" style="max-width:680px;width:95vw">
-    <div class="modal-head">
-      <span class="modal-head-title">💰 Caja en Calle — Desglose</span>
-      <button class="modal-close" onclick="closeModal('modal-caja-calle')">×</button>
-    </div>
-    <div class="modal-body" style="padding:0">
-      <div id="caja-calle-body" style="padding:16px">
-        <div style="text-align:center;color:var(--muted);padding:20px">Cargando...</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-caja-calle')">Cerrar</button>
-    </div>
-  </div>
-</div>
 
 <!-- Detalle de jornada (admin/supervisor) -->
 <div class="modal-backdrop" id="modal-jornada-detalle">
@@ -666,8 +658,7 @@
       <!-- Switcher de contexto: solo admin/supervisor -->
       <div id="dash-ctx-bar" style="display:none;margin-bottom:16px">
         <div class="filter-tabs">
-          <div class="ftab active" data-vista="rendimiento" onclick="dashCambiarVista('rendimiento',this)">📈 Mi Rendimiento</div>
-          <div class="ftab" data-vista="negocio" onclick="dashCambiarVista('negocio',this)">🏢 Negocio</div>
+          <div class="ftab active" data-vista="analitica" onclick="dashCambiarVista('analitica',this)">📊 Análisis</div>
           <div class="ftab" data-vista="alertas" id="dash-tab-alertas" style="position:relative" onclick="dashCambiarVista('alertas',this)">🔔 Alertas<span class="alx-bubble" id="alx-tab-badge" style="display:none"></span></div>
         </div>
       </div>
@@ -741,108 +732,149 @@
 
       </div>
 
-      <!-- ── Vista Manager: Negocio ── -->
-      <div id="dash-view-negocio" style="display:none">
+      <div id="dash-view-analitica" style="display:none">
 
-        <!-- Filter bar -->
-        <div class="dash-filter-bar" id="dash-filter-bar">
-          <div class="dash-period-row">
-            <span class="dash-period-label">📅 Período:</span>
-            <button class="dash-period-btn" data-p="1m"  onclick="dashFiltroPeriodo('1m')">1 mes</button>
-            <button class="dash-period-btn" data-p="3m"  onclick="dashFiltroPeriodo('3m')">3 meses</button>
-            <button class="dash-period-btn active" data-p="6m" onclick="dashFiltroPeriodo('6m')">6 meses</button>
-            <button class="dash-period-btn" data-p="12m" onclick="dashFiltroPeriodo('12m')">12 meses</button>
-            <button class="dash-period-btn" data-p="año" onclick="dashFiltroPeriodo('año')">Este año</button>
+        <div class="filter-tabs dashx-tabs" id="dashx-tabs">
+          <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">FACTURACIÓN</div>
+          <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">OPERACIONES</div>
+          <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">SALUD DE LA FLOTA</div>
+        </div>
+
+        <div class="dashx-toolbar">
+          <div class="dashx-periodos filter-tabs" id="dashx-periodos">
+            <div class="ftab" data-p="7d"  onclick="dashxPeriodo('7d',this)">7 días</div>
+            <div class="ftab active" data-p="1m" onclick="dashxPeriodo('1m',this)">1 mes</div>
+            <div class="ftab" data-p="3m"  onclick="dashxPeriodo('3m',this)">3 meses</div>
+            <div class="ftab" data-p="6m"  onclick="dashxPeriodo('6m',this)">6 meses</div>
+            <div class="ftab" data-p="12m" onclick="dashxPeriodo('12m',this)">12 meses</div>
+            <div class="ftab" data-p="ano" onclick="dashxPeriodo('ano',this)">Este año</div>
           </div>
-          <div class="dash-filter-row">
-            <span class="dash-filter-label">Ver:</span>
-            <div class="dash-filter-group">
-              <button class="dash-filter-btn" id="flt-trucks-btn" onclick="dashFiltroToggle('trucks')">
-                🚛 <span id="flt-trucks-lbl">Todos los camiones</span>
-                <span class="flt-chevron">▼</span>
-              </button>
-              <div class="dash-filter-dd" id="flt-trucks-dd">
-                <div class="dash-filter-dd-head">
-                  <span>Camiones</span>
-                  <div style="display:flex;gap:4px">
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroTodos('trucks')">Seleccionar todos</button>
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroNinguno('trucks')">Deseleccionar todos</button>
-                  </div>
-                </div>
-                <div class="dash-filter-search"><input type="text" placeholder="Buscar patente..." oninput="dashFiltroSearch('trucks',this.value)"></div>
-                <div id="flt-trucks-list"></div>
+          <!-- Lo llena la sección que lo declara; el shell lo muestra y lo
+               esconde junto con ella. -->
+          <div class="dashx-toolbar-filtros" id="dashx-fact-filtros" hidden></div>
+          <div class="dashx-toolbar-filtros" id="dashx-ops-filtros" hidden></div>
+        </div>
+
+        <!-- SECCIÓN 1 · FACTURACIÓN -->
+        <div class="dashx-body" id="dashx-sec-facturacion">
+          <div class="dashx-loading" id="dashx-loading-facturacion"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="dashx-grid">
+            <div class="dashx-sec-head">
+              <span class="dashx-sec-sub" id="dashx-fact-sub"></span>
+            </div>
+
+            <div class="dashx-card dashx-kpis" id="dashx-fact-kpis"></div>
+
+            <div class="dashx-card dashx-mapa">
+              <div class="dashx-card-title">Zonas de participación</div>
+              <div class="auxch-wrap" id="dashx-fact-mapa" style="height:196px"></div>
+              <!-- El mapa dice dónde; esto dice qué hacer con eso. -->
+              <div class="dashx-mapa-lectura" id="dashx-fact-mapa-lectura"></div>
+            </div>
+
+            <!-- Se abre cada prestadora y aparecen sus bases. Una base atiende a
+                 más de una prestadora, así que el desglose de abajo (por base,
+                 sumando todas las empresas) es otro corte, no el mismo. -->
+            <div class="dashx-card dashx-full dashx-card-tabla">
+              <div class="dashx-card-title">Prestadoras y sus bases</div>
+              <div class="dashx-tabla-pegada" id="dashx-fact-empresas"></div>
+            </div>
+
+            <!-- El treemap dice cuál es el servicio más común; la tabla de abajo,
+                 con el mismo orden y el mismo color, dice cuántos son y cuántos
+                 km facturan. Son el mismo corte leído de dos maneras. -->
+            <div class="dashx-card dashx-cajas">
+              <div class="dashx-card-title">Composición de servicios</div>
+              <div class="auxch-wrap" style="height:210px"><canvas id="dashx-fact-cajas"></canvas></div>
+              <div class="dashx-tabla-pegada" id="dashx-fact-conceptos"></div>
+            </div>
+
+            <!-- El corte inverso al de arriba. Las dos tablas son las dos
+                 direcciones del mismo cubo: allá se pregunta cuánto factura una
+                 prestadora y en qué bases se reparte; acá, cuánto mueve una base
+                 y para quiénes trabaja. Ese total por base es lo que allá queda
+                 partido entre prestadoras. -->
+            <div class="dashx-card dashx-bases dashx-card-tabla">
+              <div class="dashx-card-title">Bases y a quiénes atienden</div>
+              <div class="auxch-wrap dashx-barra-part" style="height:78px"><canvas id="dashx-fact-part"></canvas></div>
+              <div class="dashx-tabla-pegada" id="dashx-fact-bases"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2 · OPERACIONES -->
+        <div class="dashx-body" id="dashx-sec-operaciones">
+          <div class="dashx-loading" id="dashx-loading-operaciones"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="dashx-grid dashx-grid-compacta">
+            <div class="dashx-sec-head">
+              <span class="dashx-sec-sub" id="dashx-ops-sub"></span>
+            </div>
+
+            <div class="dashx-full dashx-metrics" id="dashx-ops-ratios"></div>
+
+            <div class="dashx-card dashx-dostercios">
+              <div class="dashx-card-title">Kilómetros por período</div>
+              <div class="auxch-wrap" style="height:172px"><canvas id="dashx-ops-tendencia"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-tercio">
+              <div class="dashx-card-title">Participación en los km</div>
+              <div class="dashx-chart-total">
+                <div class="dashx-chart-total-value" id="dashx-ops-anillo-total">—</div>
+                <div class="dashx-chart-total-label" id="dashx-ops-anillo-pie"></div>
               </div>
+              <div class="auxch-wrap" style="height:150px"><canvas id="dashx-ops-anillo"></canvas></div>
             </div>
-            <div class="dash-filter-group">
-              <button class="dash-filter-btn" id="flt-drivers-btn" onclick="dashFiltroToggle('drivers')">
-                👤 <span id="flt-drivers-lbl">Todos los choferes</span>
-                <span class="flt-chevron">▼</span>
-              </button>
-              <div class="dash-filter-dd" id="flt-drivers-dd">
-                <div class="dash-filter-dd-head">
-                  <span>Choferes</span>
-                  <div style="display:flex;gap:4px">
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroTodos('drivers')">Seleccionar todos</button>
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroNinguno('drivers')">Deseleccionar todos</button>
-                  </div>
-                </div>
-                <div class="dash-filter-search"><input type="text" placeholder="Buscar nombre..." oninput="dashFiltroSearch('drivers',this.value)"></div>
-                <div id="flt-drivers-list"></div>
+
+            <div class="dashx-card dashx-tercio">
+              <div class="dashx-card-title">Combustible por medio de pago</div>
+              <div class="dashx-chart-total">
+                <div class="dashx-chart-total-value" id="dashx-ops-comb-total">—</div>
+                <div class="dashx-chart-total-label" id="dashx-ops-comb-total-pie"></div>
               </div>
+              <div class="auxch-wrap" style="height:150px"><canvas id="dashx-ops-combustible"></canvas></div>
             </div>
-            <button class="dash-filter-reset" id="flt-reset-btn" style="display:none" onclick="dashFiltroReset()">✕ Limpiar</button>
-            <button class="dash-export-btn" onclick="exportarNegocioExcel()" title="Exportar a Excel">
-              📊 Exportar Excel
-            </button>
-          </div>
-          <div class="dash-filter-pills" id="flt-pills" style="display:none"></div>
-        </div>
-        <div class="dash-filter-status" id="dash-filter-status"></div>
 
-        <!-- KPIs principales -->
-        <div class="grid-3 mb16" id="dash-neg-kpis-main"></div>
+            <div class="dashx-card dashx-dostercios">
+              <div class="dashx-card-title">Rendimiento del combustible<span class="dashx-card-sub" id="dashx-ops-comb-sub"></span></div>
+              <div class="dashx-metrics dashx-metrics-hint" id="dashx-ops-comb-metrics"></div>
+            </div>
 
-        <!-- KPIs secundarios -->
-        <div class="grid-4 mb16" id="dash-neg-kpis-sec"></div>
+            <div class="dashx-card dashx-med dashx-card-tabla">
+              <div class="dashx-card-title">Por camión</div>
+              <div id="dashx-ops-tabla-camiones"></div>
+            </div>
 
-        <!-- Facturación + Gastos detalle -->
-        <div class="grid-2 mb16">
-          <div class="card" id="dash-panel-fact"></div>
-          <div class="card" id="dash-panel-gastos"></div>
-        </div>
-
-        <!-- Gráfico tendencia -->
-        <div class="card mb16">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <div class="card-label">Tendencia — últimos 6 meses</div>
-            <div class="filter-tabs">
-              <div class="ftab active" onclick="dashChartSwitch('fact',this)">Facturación</div>
-              <div class="ftab" onclick="dashChartSwitch('km',this)">KM</div>
-              <div class="ftab" onclick="dashChartSwitch('srvs',this)">Servicios</div>
+            <div class="dashx-card dashx-med dashx-card-tabla">
+              <div class="dashx-card-title">Por chofer</div>
+              <div id="dashx-ops-tabla-choferes"></div>
             </div>
           </div>
-          <div id="dash-chart-wrap" style="min-height:120px;position:relative">
-  <canvas id="dash-chart-canvas" style="max-height:220px"></canvas>
-</div>
         </div>
+        <!-- SECCIÓN 3 · SALUD DE LA FLOTA -->
+        <div class="dashx-body" id="dashx-sec-flota">
+          <div class="dashx-loading" id="dashx-loading-flota"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="dashx-grid">
+            <div class="dashx-sec-head">
+              <span class="dashx-sec-sub" id="dashx-flota-sub"></span>
+            </div>
 
-        <!-- Ranking choferes -->
-        <div class="card mb16">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div class="card-label">Ranking de choferes</div>
-            <div class="filter-tabs">
-              <div class="ftab active" onclick="dashRankSwitch('ingresos',this)">Ingresos</div>
-              <div class="ftab" onclick="dashRankSwitch('km',this)">KM</div>
-              <div class="ftab" onclick="dashRankSwitch('eficiencia',this)">Eficiencia</div>
-              <div class="ftab" onclick="dashRankSwitch('deuda',this)">Deuda</div>
+            <div class="dashx-full dashx-metrics" id="dashx-flota-alertas"></div>
+
+            <div class="dashx-card dashx-tercio">
+              <div class="dashx-card-title">Estado de flota</div>
+              <div class="auxch-wrap" style="height:200px"><canvas id="dashx-flota-estado"></canvas></div>
+            </div>
+
+            <div class="dashx-card" style="grid-column:span 8">
+              <div class="dashx-card-title">Detalle por camión</div>
+              <div id="dashx-flota-tabla"></div>
             </div>
           </div>
-          <div id="dash-ranking-body"></div>
         </div>
 
       </div>
 
-      <!-- ── Vista Centro de Alertas (admin/supervisión) ── -->
       <div id="dash-view-alertas" style="display:none">
         <div id="alx-pendientes" style="margin-bottom:12px"></div>
         <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px">

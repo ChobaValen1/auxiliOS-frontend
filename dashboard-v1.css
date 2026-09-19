@@ -1,0 +1,756 @@
+/* Dashboard rediseñado: grilla mosaico + estados de los gráficos.
+   Todo scopeado a #screen-dashboard para no tocar el resto de la app. */
+
+/* ── Estados de gráfico (los monta dashboard-charts-v1.js) ── */
+#screen-dashboard .auxch-wrap {
+  position: relative;
+  min-height: 160px;
+}
+
+#screen-dashboard .auxch-wrap > canvas {
+  display: block;
+}
+
+#screen-dashboard .auxch-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+#screen-dashboard .auxch-overlay.auxch-error {
+  color: #e2504a;
+}
+
+#screen-dashboard .auxch-overlay.auxch-cargando::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: auxch-spin 0.7s linear infinite;
+}
+
+@keyframes auxch-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #screen-dashboard .auxch-overlay.auxch-cargando::before {
+    animation: none;
+  }
+}
+
+/* ── Barras de pestañas y filtros ──
+   Las franjas ocupan lo que miden. A ancho completo, el fondo oscuro de
+   .filter-tabs cruzaba la pantalla como una línea negra de lado a lado. */
+#screen-dashboard .dashx-tabs,
+#screen-dashboard .dashx-periodos {
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+
+#screen-dashboard .dashx-tabs {
+  margin-bottom: 8px;
+}
+
+/* Período, camión y chofer eran tres renglones para tres controles. */
+#screen-dashboard .dashx-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#screen-dashboard .dashx-toolbar-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  /* Que la fila le dé el ancho que pide antes de encogerlo: si no, los dos
+     selects se apilan aunque sobre lugar al lado del selector de período. */
+  flex: 0 0 auto;
+}
+
+/* Los selects imitan la altura de las pestañas para que la fila se lea como
+   una sola barra y no como dos controles apilados de distinto alto. */
+#screen-dashboard .dashx-toolbar-filtros select {
+  width: 190px;
+  flex: 0 0 auto;
+  height: 32px;
+  margin-bottom: 0;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted2);
+  background-color: var(--bg);
+  cursor: pointer;
+}
+
+#screen-dashboard .dashx-toolbar-filtros select:focus {
+  outline: none;
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+/* ── Grilla mosaico ── */
+
+#screen-dashboard .dashx-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 14px;
+}
+
+#screen-dashboard .dashx-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+
+#screen-dashboard .dashx-card-title {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 12px;
+}
+
+#screen-dashboard .dashx-sec-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+#screen-dashboard .dashx-sec-sub {
+  font-size: 11px;
+  color: var(--muted2);
+  letter-spacing: 0.2px;
+}
+
+/* Anchos de la sección Facturación, según el boceto */
+/* Sin el anillo, la primera fila la comparten los KPI y el mapa. El mapa gana
+   el ancho que dejó: un mapa angosto es un mapa que no se puede leer. */
+#screen-dashboard .dashx-kpis     { grid-column: span 4; }
+#screen-dashboard .dashx-mapa     { grid-column: span 8; }
+#screen-dashboard .dashx-cajas    { grid-column: span 6; }
+/* Seis y seis: con 7 + 5 la tabla de bases quedaba 39 px corta a 1366 y
+   escondía Km/servicio detrás del scroll. */
+#screen-dashboard .dashx-bases    { grid-column: span 6; }
+#screen-dashboard .dashx-full     { grid-column: 1 / -1; }
+#screen-dashboard .dashx-med      { grid-column: span 6; }
+#screen-dashboard .dashx-tercio   { grid-column: span 4; }
+
+/* ── KPI ── */
+#screen-dashboard .dashx-kpi + .dashx-kpi {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+#screen-dashboard .dashx-kpi-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+#screen-dashboard .dashx-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-kpi-value.is-amber { color: var(--amber); }
+
+#screen-dashboard .dashx-kpi-delta {
+  font-size: 11px;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-kpi-delta.is-up   { color: #27c47a; }
+#screen-dashboard .dashx-kpi-delta.is-down { color: #e2504a; }
+#screen-dashboard .dashx-kpi-delta.is-flat { color: var(--muted); }
+
+/* ── Métricas en fila ── */
+#screen-dashboard .dashx-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+#screen-dashboard .dashx-metric {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+#screen-dashboard .dashx-metric-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+#screen-dashboard .dashx-metric-value {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dos niveles de lectura: el volumen del período pesa más que las razones,
+   que son de segundo orden. Con todas las tarjetas iguales no había dónde
+   mirar primero. */
+#screen-dashboard .dashx-metrics-hero {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+#screen-dashboard .dashx-metric.is-hero {
+  background: var(--card);
+  border-color: var(--border2);
+  padding: 16px;
+}
+
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-value {
+  font-size: 26px;
+  letter-spacing: -0.3px;
+}
+
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-label {
+  margin-bottom: 8px;
+}
+
+/* El número que resume el gráfico va arriba del gráfico, no escondido en el
+   subtítulo de la tarjeta de al lado. En una torta no hay agujero donde
+   ponerlo, así que encabeza la tarjeta. */
+#screen-dashboard .dashx-chart-total {
+  margin-bottom: 6px;
+}
+
+#screen-dashboard .dashx-chart-total-value {
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.3px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-chart-total-value.is-amber { color: var(--amber); }
+
+#screen-dashboard .dashx-chart-total-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  min-height: 15px;
+}
+
+/* La tabla que va pegada a su gráfico: una línea los separa, no un recuadro
+   nuevo. Son el mismo corte, no dos tarjetas distintas. */
+#screen-dashboard .dashx-tabla-pegada {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* La barra de participación no lleva ejes: el aire de abajo es sólo el de la
+   leyenda. */
+#screen-dashboard .dashx-barra-part {
+  min-height: 0;
+}
+
+/* Una razón sin explicación es un número que nadie sabe si está bien: "12,8"
+   no dice nada; "litros cada 100 km" sí. */
+#screen-dashboard .dashx-metric-hint {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+/* Tres columnas fijas: con auto-fit las seis razones caían 4 + 2 y la segunda
+   fila quedaba con dos tarjetas estiradas al doble de ancho. */
+/* Cuando se tacha un medio de pago en la leyenda, las razones contra los
+   kilómetros no se pueden recalcular (los km no son de ningún medio de pago).
+   Se atenúan para que nadie las lea como filtradas. */
+#screen-dashboard .dashx-metric.is-no-filtrable {
+  opacity: 0.55;
+}
+
+#screen-dashboard .dashx-metrics-hint {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1100px) {
+  /* Cuando se tacha un medio de pago en la leyenda, las razones contra los
+   kilómetros no se pueden recalcular (los km no son de ningún medio de pago).
+   Se atenúan para que nadie las lea como filtradas. */
+#screen-dashboard .dashx-metric.is-no-filtrable {
+  opacity: 0.55;
+}
+
+#screen-dashboard .dashx-metrics-hint {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+}
+
+/* ── Alertas de flota: color + ícono + texto, nunca color solo ── */
+#screen-dashboard .dashx-alert {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--muted);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+#screen-dashboard .dashx-alert.is-critico { border-left-color: #e2504a; }
+#screen-dashboard .dashx-alert.is-aviso   { border-left-color: #f5a623; }
+#screen-dashboard .dashx-alert.is-ok      { border-left-color: #27c47a; }
+
+#screen-dashboard .dashx-alert-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+#screen-dashboard .dashx-alert.is-critico .dashx-alert-value { color: #e2504a; }
+#screen-dashboard .dashx-alert.is-aviso   .dashx-alert-value { color: #f5a623; }
+
+/* ── Overlay de carga del área de datos (no tapa los filtros) ── */
+#screen-dashboard .dashx-body {
+  position: relative;
+}
+
+#screen-dashboard .dashx-loading {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+  background: rgba(12, 14, 18, 0.72);
+  border-radius: 12px;
+  z-index: 5;
+}
+
+#screen-dashboard .dashx-loading.show {
+  display: flex;
+}
+
+#screen-dashboard .dashx-loading-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted2);
+}
+
+#screen-dashboard .dashx-loading-inner::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: auxch-spin 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #screen-dashboard .dashx-loading-inner::before {
+    animation: none;
+  }
+}
+
+/* ── Operaciones compacta ──
+   La pantalla entraba en dos scrolls. Se recortan paddings, la altura de los
+   gráficos y la fila de filtros, que gastaba una tarjeta entera en dos selects. */
+#screen-dashboard .dashx-grid-compacta {
+  gap: 10px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-card {
+  padding: 12px 14px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-card-title {
+  margin-bottom: 8px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric {
+  padding: 8px 12px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric-label {
+  margin-bottom: 4px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric.is-hero {
+  padding: 12px 14px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric.is-hero .dashx-metric-value {
+  font-size: 23px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-sec-head {
+  margin-top: 0;
+}
+
+#screen-dashboard .dashx-dostercios { grid-column: span 8; }
+
+@media (max-width: 1100px) {
+  #screen-dashboard .dashx-dostercios,
+  #screen-dashboard .dashx-tercio {
+    grid-column: 1 / -1;
+  }
+}
+
+/* El título de la tarjeta lleva al lado el dato de contexto (cuántas cargas
+   hay detrás de los promedios), en el mismo renglón para no gastar otro. */
+#screen-dashboard .dashx-card-sub {
+  margin-left: 8px;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted2);
+}
+
+/* ── Tabla con barras embebidas ── */
+#screen-dashboard .auxtb-wrap {
+  overflow-x: auto;
+}
+
+#screen-dashboard .auxtb {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+#screen-dashboard .auxtb th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+#screen-dashboard .auxtb td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+#screen-dashboard .auxtb tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+#screen-dashboard .auxtb tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* La columna de texto absorbe el espacio sobrante: si no, la tabla se lo
+   reparte a las numéricas y la barra se estira hasta perder proporción. */
+#screen-dashboard .auxtb .auxtb-txt {
+  text-align: left;
+  width: 100%;
+}
+
+/* El color que la fila tiene en el gráfico de al lado. Va antes del nombre,
+   nunca en lugar del nombre. */
+#screen-dashboard .auxtb .auxtb-chip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 7px;
+  vertical-align: baseline;
+}
+
+#screen-dashboard .auxtb .auxtb-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── filas que se abren ───────────────────────────────────────────────────
+   El nombre de la fila madre es el disparador. Va como <button> para que
+   llegue por teclado, pero se tiene que ver como el texto de al lado: nada de
+   aspecto de botón dentro de una tabla. */
+#screen-dashboard .auxtb .auxtb-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+#screen-dashboard .auxtb .auxtb-toggle:hover .auxtb-nombre { color: var(--text); }
+#screen-dashboard .auxtb .auxtb-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* El triángulo gira en vez de cambiar de glifo: así el movimiento dice hacia
+   dónde se abrió, y no hay dos íconos que mantener parecidos. */
+#screen-dashboard .auxtb .auxtb-caret {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  margin-right: 7px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--muted);
+  transition: transform .15s ease;
+}
+#screen-dashboard .auxtb .auxtb-toggle[aria-expanded="true"] .auxtb-caret {
+  transform: rotate(90deg);
+}
+
+#screen-dashboard .auxtb .auxtb-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cuántas filas hay adentro, para que abrir no sea una apuesta. */
+#screen-dashboard .auxtb .auxtb-cuantos {
+  flex: 0 0 auto;
+  margin-left: 7px;
+  padding: 0 5px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .07);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+/* Las hijas se leen como desglose, no como pares de la madre: sangradas, más
+   chicas y más apagadas. */
+#screen-dashboard .auxtb tr.auxtb-hijo td {
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .02);
+}
+#screen-dashboard .auxtb tr.auxtb-hijo .auxtb-sangria { padding-left: 26px; }
+
+/* La barra tiene carril propio a la izquierda del número. Cuando iba de fondo,
+   el valor más alto llegaba justo hasta las cifras y parecía chocarlas. */
+/* Lo justo para que entren carril, aire y número. Más que esto y la tabla se
+   sale del recuadro en las tarjetas angostas de Facturación, escondiendo la
+   última columna detrás de un scroll horizontal que nadie descubre. */
+#screen-dashboard .auxtb .auxtb-barra {
+  min-width: 118px;
+}
+
+#screen-dashboard .auxtb .auxtb-cel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* El carril se dibuja completo aunque la barra sea corta: así se lee tanto el
+   valor como lo que le falta para el máximo. */
+#screen-dashboard .auxtb .auxtb-track {
+  flex: 1 1 auto;
+  /* Un carril de 20 px no se lee como barra. 40 es el piso donde todavía se
+     compara, y entra en las tarjetas angostas de Facturación. */
+  min-width: 40px;
+  max-width: 104px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+#screen-dashboard .auxtb .auxtb-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: #3987e5;
+  opacity: 0.85;
+}
+
+#screen-dashboard .auxtb .auxtb-val {
+  flex: 0 0 auto;
+}
+
+/* La fila de totales cierra la tabla: se despega del cuerpo con una línea y
+   pesa más que las filas, pero sin gritar como un título. */
+#screen-dashboard .auxtb tfoot td {
+  border-top: 1px solid var(--border2);
+  border-bottom: 0;
+  padding-top: 9px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+#screen-dashboard .auxtb tfoot .auxtb-txt {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#screen-dashboard .auxtb-vacio {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* La lectura del mapa: dos renglones debajo, no otra tarjeta. Son conclusiones
+   sobre lo que se está viendo arriba, no un cuadro aparte. */
+#screen-dashboard .dashx-mapa-lectura {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted2);
+}
+
+#screen-dashboard .dashx-mapa-lectura b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-mapa-lectura .is-aviso b { color: #f5a623; }
+
+#screen-dashboard .dashx-mapa-lectura > div + div {
+  margin-top: 4px;
+}
+
+/* ── Mapa de zonas (MapLibre) ── */
+#screen-dashboard #dashx-fact-mapa {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-map {
+  font: inherit;
+}
+
+/* El basemap de CARTO es oscuro; los controles por defecto vienen claros. */
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-group {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  box-shadow: none;
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border2);
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-group button span {
+  filter: invert(1) brightness(1.6);
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-attrib {
+  background: rgba(12, 14, 18, 0.7);
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-attrib a {
+  color: var(--muted2);
+}
+
+#screen-dashboard #dashx-fact-mapa .dashx-mapa-popup .maplibregl-popup-content {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+#screen-dashboard #dashx-fact-mapa .dashx-mapa-popup .maplibregl-popup-tip {
+  display: none;
+}
+
+/* En un portátil de 1366 las dos tarjetas angostas de Facturación quedaban
+   14 px cortas y escondían la última columna detrás del scroll. El carril se
+   achica antes que perder una columna: una barra corta sigue comparando, una
+   columna invisible no informa nada. */
+@media (max-width: 1400px) {
+  #screen-dashboard .dashx-bases .auxtb-track,
+  #screen-dashboard .dashx-cajas .auxtb-track {
+    min-width: 22px;
+    max-width: 52px;
+  }
+}
+
+/* Seis columnas de números no entran en media pantalla: por debajo de esto las
+   tablas van a ancho completo, en vez de esconder la última columna detrás de
+   un scroll horizontal que nadie descubre. */
+@media (max-width: 1340px) {
+  #screen-dashboard .dashx-card-tabla {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  #screen-dashboard .dashx-kpis,
+  #screen-dashboard .dashx-mapa,
+  #screen-dashboard .dashx-cajas,
+  #screen-dashboard .dashx-bases,
+  #screen-dashboard .dashx-med,
+  #screen-dashboard .dashx-tercio {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 720px) {
+  #screen-dashboard .dashx-toolbar-filtros,
+  #screen-dashboard .dashx-toolbar-filtros select {
+    width: 100%;
+    max-width: none;
+  }
+  #screen-dashboard .auxtb .auxtb-track {
+    display: none;
+  }
+  #screen-dashboard .dashx-grid {
+    gap: 10px;
+  }
+  #screen-dashboard .dashx-grid > * {
+    grid-column: 1 / -1 !important;
+  }
+  #screen-dashboard .dashx-kpi-value {
+    font-size: 19px;
+  }
+}
