@@ -148,3 +148,15 @@ test('firmar el remito confirma con el mismo cuadro que iniciar jornada', () => 
                              sigma.indexOf("operationFeedback('Servicio finalizado'"));
   assert.match(cierre, /actualizarServiciosAsignados/);
 });
+
+
+test('crear un servicio confirma con el mismo cuadro', () => {
+  const wizard = fs.readFileSync('operator-service-wizard.js', 'utf8');
+  assert.match(wizard, /const confirmar=/);
+  assert.match(wizard, /window\.operationFeedback==='function'/);
+  // Cae al toast si sigma.js no está cargado: es lo que había antes, no un error.
+  assert.match(wizard, /:notify\(titulo,'success'\)/);
+  assert.match(wizard, /confirmar\('Servicio creado'/);
+  // Editar sigue siendo un toast: no tiene las mismas consecuencias que crear.
+  assert.match(wizard, /if\(wasEdit\)notify\('Servicio actualizado','success'\)/);
+});
