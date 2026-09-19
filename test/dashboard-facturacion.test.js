@@ -330,40 +330,56 @@ test('el módulo se carga después del motor y del shell', () => {
 });
 
 
-/* ── v3: KM reales y margen ─────────────────────────────────────────────── */
+/* ── v3: KM reales ──────────────────────────────────────────────────────── */
 
 const sqlV3 = fs.readFileSync(
   'migrations/20260919220000_dashboard_facturacion_km_reales_v3.sql', 'utf8');
+const sqlV5 = fs.readFileSync(
+  'migrations/20260919250000_dashboard_facturacion_sin_margen_v5.sql', 'utf8');
 
-test('el margen se calcula sobre el mismo subconjunto de los dos lados', () => {
-  // Sumar TODOS los km facturados contra los pocos con km reales informados
-  // daría un margen inventado. Los dos lados salen del mismo filtro.
-  assert.match(sqlV3, /sum\(km\)\s+filter \(where tramo = 'actual' and km_real is not null\)/);
-  assert.match(sqlV3, /sum\(km_real\) filter \(where tramo = 'actual' and km_real is not null\)/);
-  assert.match(sqlV3, /\(t\.kfc_act - t\.kr_act\) \* 100 \/ t\.kr_act/);
-  // km_reales <= 0 es "no informado", no "cero kilómetros".
+test('km_reales <= 0 es "no informado", no "cero kilómetros"', () => {
   assert.match(sqlV3, /case when coalesce\(r\.km_reales, 0\) > 0 then r\.km_reales end/);
 });
 
-test('la tarjeta de KM reales dice sobre cuántos servicios está el margen', () => {
-  // Un margen sobre 3 de 200 servicios no se lee igual que uno sobre 190.
+test('la tarjeta de KM reales dice sobre cuántos servicios está el dato', () => {
+  // Un número sobre 3 de 200 servicios no se lee igual que uno sobre 190.
   assert.match(js, /function kpiReales/);
   assert.match(js, /' de ' \+ ch\(\)\.nfMiles\(x\.servicios\)/);
   assert.match(js, /Ningún servicio del período tiene km informados ni ruta calculada/);
-  assert.match(sqlV3, /'servicios_con_dato',  t\.n_comp_act/);
-  // Positivo verde, negativo rojo: los km que se recorren y no se cobran duelen.
-  assert.match(js, /x\.margen < 0 \? 'is-down'/);
+  assert.match(sqlV5, /'servicios_con_dato',  t\.n_comp_act/);
 });
 
-test('el margen por base divide contra los facturados comparables', () => {
-  assert.match(sqlV3, /'km_comparable', round\(g\.km_comp, 2\)/);
-  assert.match(js, /\(i\.kmComparable - i\.kmReal\) \* 100 \/ i\.kmReal/);
-  // Y el cierre es el margen de los totales, no el promedio de los márgenes.
-  const graf = js.slice(js.indexOf('function pintarGraficos'), js.indexOf('function pintar('));
-  assert.match(graf, /total: function \(filas\)/);
-  assert.match(charts, /typeof col\.total === 'function'/);
-  // La fila "Otros" no puede quedar sin km reales: se le devuelven los del resto.
-  assert.match(js, /i\.kmReal = real/);
+test('la tarjeta distingue lo medido de lo calculado', () => {
+  // Un dato tomado en la calle y uno estimado por Google no valen igual.
+  assert.match(js, /informados por el chofer/);
+  assert.match(js, /calculados de la ruta/);
+  assert.match(sqlV5, /'medidos',             t\.n_medido/);
+  assert.match(sqlV5, /'calculados',          t\.n_calculado/);
+});
+
+/* ── v5: no se publica ninguna razón entre facturado y real ─────────────────
+
+   La flota NO sale de la base: los tramos Base→Origen y Destino→Base son el
+   método de cobro, no un recorrido. Dividir km facturados por km reales mide la
+   fórmula de facturación, no el rendimiento, y con datos reales daba 240,9%.
+
+   Estos tests existen para que nadie la reponga sin volver a pensarla. */
+
+test('ni el SQL ni el front calculan un margen', () => {
+  assert.doesNotMatch(sqlV5, /'margen'/);
+  assert.doesNotMatch(sqlV5, /'margen_anterior'/);
+  assert.doesNotMatch(sqlV5, /'km_comparable'/);
+  assert.doesNotMatch(sqlV5, /'km_facturados'/);
+  // En el front no queda ni el cálculo ni la columna ni el dato que la alimenta.
+  assert.doesNotMatch(js, /i\.margen\s*=/);
+  assert.doesNotMatch(js, /clave: 'margen'/);
+  assert.doesNotMatch(js, /kmComparable/);
+});
+
+test('los km reales se siguen publicando crudos', () => {
+  // Sacar la razón no puede llevarse puesto el número, que sí es verificable.
+  assert.match(sqlV5, /'km_reales',           round\(t\.kr_act, 2\)/);
+  assert.match(js, /kpi\('KM reales', nfKm\(x\.km\), false, pie\)/);
 });
 
 
