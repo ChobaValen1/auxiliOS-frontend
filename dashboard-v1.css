@@ -144,14 +144,18 @@
 }
 
 /* Anchos de la sección Facturación, según el boceto */
-/* Sin el anillo, la primera fila la comparten los KPI y el mapa. El mapa gana
-   el ancho que dejó: un mapa angosto es un mapa que no se puede leer. */
-#screen-dashboard .dashx-kpis     { grid-column: span 4; }
-#screen-dashboard .dashx-mapa     { grid-column: span 8; }
+/* Los KPI van en tira, a todo el ancho. Apilados en una columna gastaban
+   477 px —una pantalla entera— en cinco cifras, porque cada uno se llevaba
+   28 px de separador. En fila ocupan menos de 100 y se comparan de un vistazo,
+   que es para lo que están arriba de todo. */
+#screen-dashboard .dashx-kpis     { grid-column: 1 / -1; }
+#screen-dashboard .dashx-mapa     { grid-column: span 6; }
 #screen-dashboard .dashx-cajas    { grid-column: span 6; }
+/* Composición va al lado del mapa: miden casi lo mismo de alto, y sin un
+   compañero el mapa dejaba media fila vacía. */
 /* Seis y seis: con 7 + 5 la tabla de bases quedaba 39 px corta a 1366 y
    escondía Km/servicio detrás del scroll. */
-#screen-dashboard .dashx-bases    { grid-column: span 6; }
+#screen-dashboard .dashx-bases    { grid-column: 1 / -1; }
 #screen-dashboard .dashx-full     { grid-column: 1 / -1; }
 
 /* Torta a la izquierda y tabla a la derecha, dentro de la misma tarjeta. La
@@ -185,10 +189,40 @@
 #screen-dashboard .dashx-tercio   { grid-column: span 4; }
 
 /* ── KPI ── */
+#screen-dashboard .dashx-kpis {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+#screen-dashboard .dashx-kpi {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* En fila el separador va al costado, no arriba. */
 #screen-dashboard .dashx-kpi + .dashx-kpi {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
+  margin-left: 18px;
+  padding-left: 18px;
+  border-left: 1px solid var(--border);
+}
+
+/* Angosto: los KPI vuelven a apilarse. Cinco en fila en un celular serían
+   cinco columnas de 60 px.
+
+   Va DESPUÉS de las reglas de arriba: misma especificidad, gana la última. Lo
+   había escrito antes y la regla de tira lo pisaba, así que en un celular los
+   KPI seguían en fila. Un test compara las posiciones en el archivo. */
+@media (max-width: 900px) {
+  #screen-dashboard .dashx-kpis { display: block; }
+  #screen-dashboard .dashx-kpi + .dashx-kpi {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
 }
 
 #screen-dashboard .dashx-kpi-label {
@@ -678,9 +712,9 @@
      1920 el mapa daba 461 px de ancho contra 420 de alto y dejaba de ser más
      alto que ancho justo donde sobra lugar. Con el tope en 380 no puede pasar
      a ningún ancho de pantalla. */
-  flex: 0 0 clamp(260px, 40%, 380px);
-  max-width: 380px;
-  min-height: 420px;
+  flex: 0 0 clamp(220px, 34%, 290px);
+  max-width: 290px;
+  min-height: 340px;
 }
 
 #screen-dashboard .dashx-mapa-lectura {

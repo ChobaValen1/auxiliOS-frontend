@@ -163,11 +163,26 @@ test('la tabla de conceptos se lee junto al treemap, no aparte', () => {
 test('la fila de la grilla de Facturación cubre las doce columnas', () => {
   const span = k => Number(css.match(
     new RegExp('#screen-dashboard \\.dashx-' + k + '\\s*\\{\\s*grid-column: span (\\d+)'))[1]);
-  assert.equal(span('cajas') + span('bases'), 12);
-  // Sin el anillo, la primera fila la comparten los KPI y el mapa.
-  assert.equal(span('kpis') + span('mapa'), 12);
-  // La tabla de prestadoras va sola, a ancho completo.
-  assert.match(css, /#screen-dashboard \.dashx-full\s*\{\s*grid-column: 1 \/ -1/);
+  // Mapa y composición comparten fila: miden casi lo mismo de alto.
+  assert.equal(span('mapa') + span('cajas'), 12);
+  // Las dos tablas de seis columnas van solas, a ancho completo. Ponerlas a la
+  // par ahorra 190 px de alto pero la de prestadoras desborda 306 a 1440 y
+  // esconde Margen detrás del scroll: cambiar una columna por espacio vertical
+  // es mal negocio.
+  ['full', 'bases', 'kpis'].forEach(k =>
+    assert.match(css, new RegExp('#screen-dashboard \\.dashx-' + k + '\\s*\\{\\s*grid-column: 1 \\/ -1'),
+      `.dashx-${k} tiene que ocupar las doce columnas`));
+});
+
+test('los KPI van en tira, no apilados', () => {
+  /* Apilados en columna gastaban 477 px —una pantalla entera— en cinco cifras,
+     porque cada uno se llevaba 28 px de separador. En fila ocupan 104. */
+  assert.match(css, /\.dashx-kpis \{[^}]*display: flex/);
+  assert.match(css, /\.dashx-kpi \+ \.dashx-kpi \{[^}]*border-left/);
+  // En un celular cinco en fila serían cinco columnas de 60 px: vuelven a apilarse.
+  const angosto = css.lastIndexOf('#screen-dashboard .dashx-kpis { display: block; }');
+  assert.ok(angosto > css.indexOf('#screen-dashboard .dashx-kpis {'),
+    'la regla de apilado tiene que ir después de la de tira');
 });
 
 test('prestadora, base y fecha son los filtros de la sección', () => {
@@ -207,11 +222,13 @@ test('el desglose por bases responde si una base factura más por volumen o por 
   assert.match(js, /i\.ticket = i\.servicios > 0 \? i\.monto \/ i\.servicios : null/);
   // Y el cierre divide los totales entre sí, que no es promediar la columna.
   assert.match(graf, /total: \{ dividir: 'value', por: 'servicios' \}/);
-  // La barra de participación da lo que la tabla no muestra de un vistazo.
-  assert.match(graf, /g\.barraParticipacion\(CV_PART/);
-  assert.match(charts, /function barraParticipacion/);
-  assert.match(charts, /indexAxis: 'y'/);
-  assert.match(charts, /x: \{ stacked: true, display: false/);
+  /* El reparto del facturado va en la barra de la celda, no en una franja
+     aparte: la barra de participación costaba 78 px para decir lo mismo que ya
+     dice la columna Facturado. */
+  const bases = graf.slice(graf.indexOf('g.tabla(CV_BASES'));
+  assert.match(bases, /clave: 'value',     titulo: 'Facturado', tipo: 'pesos', barra: true/);
+  assert.doesNotMatch(js, /barraParticipacion/);
+  assert.doesNotMatch(index, /dashx-fact-part/);
 });
 
 /* ── datos ─────────────────────────────────────────────────────────────── */

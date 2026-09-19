@@ -18,7 +18,6 @@
   var CV_TORTA    = 'dashx-fact-torta';
   var CV_CAJAS = 'dashx-fact-cajas';
   var CV_BASES = 'dashx-fact-bases';
-  var CV_PART  = 'dashx-fact-part';
   var ID_CONC  = 'dashx-fact-conceptos';
   var ID_KPIS  = 'dashx-fact-kpis';
   var ID_SUB   = 'dashx-fact-sub';
@@ -438,7 +437,6 @@
       g.vacio(CV_TORTA, VACIO_EMPRESAS);
       g.tabla(CV_EMPRESAS, { vacio: VACIO_EMPRESAS, columnas: [], filas: [] });
       g.vacio(CV_CAJAS, VACIO_CAJAS);
-      g.vacio(CV_PART, VACIO_BASES);
       // Bases dejó de ser un canvas: su vacío lo dibuja la tabla.
       g.tabla(CV_BASES, { vacio: VACIO_BASES, columnas: [], filas: [] });
       return [];
@@ -502,28 +500,22 @@
 
     /* Desglose por base: una barra de participación arriba y la tabla abajo.
 
-       La tabla da los absolutos y los promedios; la barra da lo que la tabla no
-       muestra de un vistazo —qué porción del facturado se lleva cada base— y
-       cuesta 78 px, contra los 200 de un anillo. Además no repite ninguna forma
-       que ya esté en pantalla: arriba hay un anillo y al lado un treemap.
+       La participación por base era una barra aparte arriba de la tabla, de
+       78 px. Decía qué porción del facturado se lleva cada una — que es lo
+       mismo que dice la barra dentro de la celda de Facturado, sin una franja
+       propia. Dos dibujos del mismo reparto, uno gratis y el otro no.
 
        Los promedios son la pregunta real de este cuadro: una base puede
        facturar más porque hace más servicios o porque cobra más caro cada uno,
        y los totales solos no distinguen una cosa de la otra. */
     var bases = agrupar(d.porBase, function (f) { return f.monto; });
 
-    g.barraParticipacion(CV_PART, {
-      items: bases,
-      formato: 'pesos',
-      vacio: VACIO_BASES
-    });
-
     g.tabla(CV_BASES, {
       vacio: VACIO_BASES,
       totalEtiqueta: 'Total',
       columnas: [
         { clave: 'label',     titulo: 'Base',      tipo: 'texto', swatch: true },
-        { clave: 'value',     titulo: 'Facturado', tipo: 'pesos', total: 'suma' },
+        { clave: 'value',     titulo: 'Facturado', tipo: 'pesos', barra: true, total: 'suma' },
         { clave: 'servicios', titulo: 'Servicios', total: 'suma' },
         { clave: 'km',        titulo: 'Km',        decimales: 0, unidad: 'km', total: 'suma' },
         // Promedios, no sumas: el cierre divide los totales entre sí, que no es
@@ -598,7 +590,6 @@
       g.error(CV_TORTA, msg);
       g.tabla(CV_EMPRESAS, { vacio: msg, columnas: [], filas: [] });
       g.error(CV_CAJAS, msg);
-      g.error(CV_PART, msg);
       g.tabla(CV_BASES, { vacio: msg, columnas: [], filas: [] });
       g.tabla(ID_CONC, { vacio: msg, columnas: [], filas: [] });
     }

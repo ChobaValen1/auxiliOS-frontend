@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=mapa-vertical-v117-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=mapa-vertical-v117-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=mapa-vertical-v117-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=mapa-vertical-v117-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=mapa-vertical-v117-20260919">
+<link rel="stylesheet" href="sigma.css?v=densidad-v118-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=densidad-v118-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=densidad-v118-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=densidad-v118-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=densidad-v118-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=278')
+        navigator.serviceWorker.register('/sw.js?v=279')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="supabase.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="config.js?v=densidad-v118-20260919" defer></script>
+<script src="supabase.js?v=densidad-v118-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=mapa-vertical-v117-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=mapa-vertical-v117-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="sigma.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=mapa-vertical-v117-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=mapa-vertical-v117-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=densidad-v118-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=densidad-v118-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=densidad-v118-20260919" defer></script>
+<script src="sigma.js?v=densidad-v118-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=densidad-v118-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=densidad-v118-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=densidad-v118-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=densidad-v118-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=densidad-v118-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=densidad-v118-20260919" defer></script>
 </head>
 <body>
 
@@ -777,6 +777,15 @@
               </div>
             </div>
 
+            <!-- El treemap dice cuál es el servicio más común; la tabla de abajo,
+                 con el mismo orden y el mismo color, dice cuántos son y cuántos
+                 km facturan. Son el mismo corte leído de dos maneras. -->
+            <div class="dashx-card dashx-cajas">
+              <div class="dashx-card-title">Composición de servicios</div>
+              <div class="auxch-wrap" style="height:170px"><canvas id="dashx-fact-cajas"></canvas></div>
+              <div class="dashx-tabla-pegada" id="dashx-fact-conceptos"></div>
+            </div>
+
             <!-- Se abre cada prestadora y aparecen sus bases. Una base atiende a
                  más de una prestadora, así que el desglose de abajo (por base,
                  sumando todas las empresas) es otro corte, no el mismo. -->
@@ -786,18 +795,9 @@
                    de cada fila es su porción, así que la tabla hace de leyenda
                    y la torta no lleva una propia. -->
               <div class="dashx-torta-tabla">
-                <div class="auxch-wrap dashx-torta" style="height:208px"><canvas id="dashx-fact-torta"></canvas></div>
+                <div class="auxch-wrap dashx-torta" style="height:160px"><canvas id="dashx-fact-torta"></canvas></div>
                 <div class="dashx-tabla-pegada" id="dashx-fact-empresas"></div>
               </div>
-            </div>
-
-            <!-- El treemap dice cuál es el servicio más común; la tabla de abajo,
-                 con el mismo orden y el mismo color, dice cuántos son y cuántos
-                 km facturan. Son el mismo corte leído de dos maneras. -->
-            <div class="dashx-card dashx-cajas">
-              <div class="dashx-card-title">Composición de servicios</div>
-              <div class="auxch-wrap" style="height:210px"><canvas id="dashx-fact-cajas"></canvas></div>
-              <div class="dashx-tabla-pegada" id="dashx-fact-conceptos"></div>
             </div>
 
             <!-- El corte inverso al de arriba. Las dos tablas son las dos
@@ -807,7 +807,6 @@
                  partido entre prestadoras. -->
             <div class="dashx-card dashx-bases dashx-card-tabla">
               <div class="dashx-card-title">Bases y a quiénes atienden</div>
-              <div class="auxch-wrap dashx-barra-part" style="height:78px"><canvas id="dashx-fact-part"></canvas></div>
               <div class="dashx-tabla-pegada" id="dashx-fact-bases"></div>
             </div>
           </div>
