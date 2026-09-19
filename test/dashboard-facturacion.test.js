@@ -340,6 +340,8 @@ const sqlV5 = fs.readFileSync(
   'migrations/20260919250000_dashboard_facturacion_sin_margen_v5.sql', 'utf8');
 const sqlV6 = fs.readFileSync(
   'migrations/20260919260000_dashboard_facturacion_empresas_bases_v6.sql', 'utf8');
+const sqlV7 = fs.readFileSync(
+  'migrations/20260919270000_dashboard_facturacion_bases_prestadoras_v7.sql', 'utf8');
 
 test('km_reales <= 0 es "no informado", no "cero kilómetros"', () => {
   assert.match(sqlV3, /case when coalesce\(r\.km_reales, 0\) > 0 then r\.km_reales end/);
@@ -400,6 +402,32 @@ test('el margen compara el mismo subconjunto de los dos lados', () => {
   assert.match(js, /\(f\.kmComp - f\.kmReal\) \* 100 \/ f\.kmReal/);
   // Y el cierre es el margen de los totales, no el promedio de los márgenes.
   assert.match(js, /real > 0 \? \(comp - real\) \* 100 \/ real : null/);
+});
+
+test('las dos tablas son los dos cortes del mismo cubo, no el mismo dos veces', () => {
+  /* por_empresa se pliega por empresa y por_base por base, sobre el MISMO
+     agrupamiento (empresa, base). Lo que conserva el corte por base es su
+     total: Piñeyro mueve $593.920, que en la tabla de prestadoras aparece
+     partido en $364.680 bajo Addiuva y $229.240 bajo Teleassitance. */
+  assert.match(sqlV7, /group by g\.company_id, g\.nombre/);
+  assert.match(sqlV7, /group by g\.base_id, g\.base_nombre/);
+  assert.match(sqlV7, /'empresas',  b2\.empresas/);
+  assert.match(js, /f\.hijos = lista\(o\.empresas\)\.map\(fila\)/);
+  assert.match(js, /porBase: lista\(o\.por_base\)\.map\(filaBase\)/);
+});
+
+test('la fila Otros nunca se despliega', () => {
+  // Ya es un agregado de varias bases: abrirla mostraría las prestadoras de
+  // bases distintas mezcladas, como si fueran de una sola.
+  assert.match(js, /i\.esOtros = true/);
+  assert.match(js, /if \(i\.esOtros \|\| !i\.hijos\) \{ i\.hijos = null; return; \}/);
+});
+
+test('las filas hijas traen los mismos promedios que la madre', () => {
+  // Si la madre muestra $/servicio y la hija un guión, la hija parece rota.
+  const ag = js.slice(js.indexOf('function agrupar'), js.indexOf('/* ── filtros'));
+  assert.match(ag, /function promedios\(i\)/);
+  assert.match(ag, /promedios\(c\);/);
 });
 
 test('cada prestadora trae sus bases adentro', () => {

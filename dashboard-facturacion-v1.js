@@ -36,7 +36,7 @@
      a mostrar cada gráfico, en vez de dejar un recuadro mudo. */
   var VACIO_EMPRESAS = 'Todavía no hay servicios cargados en este período. Acá va a verse cada prestadora con sus bases.';
   var VACIO_CAJAS = 'Todavía no hay servicios cargados en este período. Acá va a verse la composición por concepto.';
-  var VACIO_BASES = 'Todavía no hay servicios cargados en este período. Acá va a verse el desglose facturado por base.';
+  var VACIO_BASES = 'Todavía no hay servicios cargados en este período. Acá va a verse cada base con las prestadoras que atiende.';
   var VACIO_CONC  = 'Todavía no hay servicios cargados en este período. Acá va a verse cuántos servicios y cuántos km factura cada concepto.';
   var VACIO_KPIS  = 'Todavía no hay servicios cargados en este período.';
 
@@ -192,6 +192,18 @@
     return f.kmReal > 0 ? (f.kmComp - f.kmReal) * 100 / f.kmReal : null;
   }
 
+  /* La base con sus prestadoras adentro: el corte inverso al de arriba. Lo que
+     conserva es el total de la base —Piñeyro mueve $593.920— que en la tabla de
+     prestadoras queda partido entre las dos que atiende y habría que sumar a
+     mano. Una base es un lugar físico con camiones y gente: su carga total
+     importa sin importar quién la paga. */
+  function filaBase(r) {
+    var o = r && typeof r === 'object' ? r : {};
+    var f = fila(o);
+    f.hijos = lista(o.empresas).map(fila);
+    return f;
+  }
+
   function normalizar(d) {
     var o = d && typeof d === 'object' ? d : {};
     var t = o.totales && typeof o.totales === 'object' ? o.totales : {};
@@ -232,7 +244,7 @@
       },
       porEmpresa: lista(o.por_empresa).map(filaEmpresa),
       porConcepto: lista(o.por_concepto).map(fila),
-      porBase: lista(o.por_base).map(fila)
+      porBase: lista(o.por_base).map(filaBase)
     };
   }
 
@@ -242,7 +254,7 @@
   function agrupar(filas, valorDe) {
     var items = filas.map(function (f) {
       return { label: f.nombre, value: num(valorDe(f)), km: f.km, servicios: f.servicios,
-               monto: f.monto };
+               monto: f.monto, hijos: f.hijos };
     });
     var top = ch().topN(items, MAX_CATEGORIAS) || [];
 
@@ -261,14 +273,29 @@
         });
         i.km = km;
         i.servicios = srv;
+        i.esOtros = true;
       }
     });
 
-    // Promedios por fila. Con guarda: sin servicios devuelven null y la tabla
-    // muestra guión, nunca una división por cero.
-    top.forEach(function (i) {
+    /* Promedios por fila, y los mismos por fila hija: si la madre muestra
+       $/servicio y la hija un guión, la hija parece rota. Con guarda: sin
+       servicios devuelven null, nunca una división por cero.
+
+       La fila "Otros" no lleva hijas: ya es un agregado de varias filas, y
+       abrirla mostraría las prestadoras de bases distintas mezcladas. */
+    function promedios(i) {
       i.ticket = i.servicios > 0 ? i.monto / i.servicios : null;
       i.kmServicio = i.servicios > 0 ? i.km / i.servicios : null;
+    }
+    top.forEach(function (i) {
+      promedios(i);
+      if (i.esOtros || !i.hijos) { i.hijos = null; return; }
+      i.hijos = i.hijos.map(function (h) {
+        var c = { label: h.nombre, value: num(valorDe(h)), km: h.km,
+                  servicios: h.servicios, monto: h.monto };
+        promedios(c);
+        return c;
+      });
     });
     return top;
   }
