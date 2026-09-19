@@ -169,7 +169,12 @@
     return chart;
   }
 
-  /* Dona. Etiquetas directas en el tooltip + leyenda, nunca color solo. */
+  /* Dona o torta. Etiquetas directas en el tooltip + leyenda, nunca color solo.
+     `tipo: 'torta'` saca el agujero: sirve para distinguir dos gráficos de
+     parte-sobre-total que están en la misma pantalla y responden preguntas
+     distintas.
+     `alFiltrar` recibe las etiquetas que quedaron visibles cuando alguien tacha
+     una de la leyenda, para que los números del costado acompañen al gráfico. */
   function donut(id, datos) {
     var labels = (datos && datos.labels) || [];
     var values = (datos && datos.values) || [];
@@ -193,9 +198,14 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '62%',
+        cutout: (datos && datos.tipo) === 'torta' ? 0 : '62%',
         plugins: {
-          legend: leyendaBase((datos && datos.leyenda) === 'derecha' ? 'right' : 'bottom'),
+          legend: Object.assign(
+            leyendaBase((datos && datos.leyenda) === 'derecha' ? 'right' : 'bottom'),
+            (datos && typeof datos.alFiltrar === 'function')
+              ? { onClick: alTocarLeyenda(datos.alFiltrar) }
+              : {}
+          ),
           tooltip: Object.assign(tooltipBase(), {
             callbacks: {
               label: function (ctx) {
@@ -208,6 +218,25 @@
         }
       }
     });
+  }
+
+  /* Envuelve el toggle propio de Chart.js: hace lo de siempre y después avisa
+     qué etiquetas quedaron visibles. Si el callback falla, el gráfico ya se
+     actualizó igual: no se lleva puesto el toggle. */
+  function alTocarLeyenda(avisar) {
+    return function (evento, item, leyenda) {
+      var chart = leyenda.chart;
+      chart.toggleDataVisibility(item.index);
+      chart.update();
+      var visibles = chart.data.labels.filter(function (_, i) {
+        return chart.getDataVisibility(i);
+      });
+      try {
+        avisar(visibles);
+      } catch (e) {
+        console.error('[dashboard] falló el callback de la leyenda', e);
+      }
+    };
   }
 
   /* Barras. Horizontal cuando las etiquetas son nombres (choferes, camiones). */
@@ -409,7 +438,7 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  function celda(col, fila, maximo) {
+  function celda(col, fila, maximo, sinBarra) {
     var v = fila[col.clave];
     var vacia = (v === null || v === undefined || v === '');
 
@@ -425,7 +454,7 @@
     else txt = nfMiles(v);
     if (!vacia && col.unidad) txt += ' ' + col.unidad;
 
-    if (!col.barra) return '<td class="auxtb-num">' + escapar(txt) + '</td>';
+    if (!col.barra || sinBarra) return '<td class="auxtb-num">' + escapar(txt) + '</td>';
 
     /* Carril propio para la barra, a la izquierda del número. Antes la barra
        iba de fondo y el número encima: con valores altos la barra llegaba justo
@@ -480,7 +509,49 @@
     }).join('');
 
     cont.innerHTML = '<div class="auxtb-wrap"><table class="auxtb">'
-      + '<thead>' + head + '</thead><tbody>' + cuerpo + '</tbody></table></div>';
+      + '<thead>' + head + '</thead><tbody>' + cuerpo + '</tbody>'
+      + pie(cols, filas, datos) + '</table></div>';
+  }
+
+  /* Fila de totales. Una columna declara cómo se cierra:
+       total: 'suma'                       → suma la columna
+       total: { dividir: 'a', por: 'b' }   → razón entre dos sumas
+     La razón nunca es el promedio de la columna: promediar km/litro de siete
+     camiones le da el mismo peso al que hizo 9.700 km que al que hizo 446. */
+  function totalDe(col, filas) {
+    if (col.total === 'suma') {
+      return filas.reduce(function (a, f) {
+        var n = Number(f[col.clave]);
+        return a + (isFinite(n) ? n : 0);
+      }, 0);
+    }
+    if (col.total && col.total.dividir) {
+      var arriba = 0, abajo = 0;
+      filas.forEach(function (f) {
+        var a = Number(f[col.total.dividir]);
+        var b = Number(f[col.total.por]);
+        if (isFinite(a)) arriba += a;
+        if (isFinite(b)) abajo += b;
+      });
+      return abajo > 0 ? arriba / abajo : null;
+    }
+    return null;
+  }
+
+  function pie(cols, filas, datos) {
+    if (!cols.some(function (c) { return c.total; })) return '';
+    var resumen = {};
+    cols.forEach(function (c) { if (c.total) resumen[c.clave] = totalDe(c, filas); });
+    var celdas = cols.map(function (c, i) {
+      if (i === 0) {
+        return '<td class="auxtb-txt">'
+          + escapar((datos && datos.totalEtiqueta) || 'Total') + '</td>';
+      }
+      if (!c.total) return '<td class="auxtb-num"></td>';
+      // sinBarra: la fila de totales no compara contra nada.
+      return celda(c, resumen, 0, true);
+    }).join('');
+    return '<tfoot><tr class="auxtb-total">' + celdas + '</tr></tfoot>';
   }
 
   /* Agrupa la cola larga en "Otros": la paleta tiene 7 slots y no se cicla. */

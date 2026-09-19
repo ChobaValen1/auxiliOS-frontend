@@ -4,6 +4,8 @@ const fs = require('node:fs');
 
 const index = fs.readFileSync('Index.html', 'utf8');
 const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+const charts = fs.readFileSync('dashboard-charts-v1.js', 'utf8');
+const css = fs.readFileSync('dashboard-v1.css', 'utf8');
 const sql = fs.readFileSync(
   'migrations/20260918171000_dashboard_operaciones_rpc_v1.sql', 'utf8');
 
@@ -203,7 +205,7 @@ test('el canvas y las dos tablas del markup se llenan', () => {
   // cuatro gráficos de barras que había que cruzar con la vista.
   ['dashx-ops-tendencia', 'dashx-ops-tabla-camiones', 'dashx-ops-tabla-choferes']
     .forEach(id => assert.ok(ops.includes(id), `no se usa el contenedor ${id}`));
-  ['dashx-ops-filtros', 'dashx-ops-metrics', 'dashx-ops-ratios', 'dashx-ops-sub']
+  ['dashx-ops-filtros', 'dashx-ops-ratios', 'dashx-ops-sub', 'dashx-ops-comb-metrics']
     .forEach(id => assert.ok(ops.includes(id), `no se llena el contenedor ${id}`));
   // Y se usan las clases de métrica que ya existen, sin inventar CSS nuevo.
   ['dashx-metric', 'dashx-metric-label', 'dashx-metric-value']
@@ -308,11 +310,13 @@ test('SERVICIOS se cuenta y se corta por camión, chofer y período', () => {
   // Y las razones que la variable habilita.
   assert.match(sqlV2, /'servicios_por_jornada'/);
   assert.match(sqlV2, /'km_por_servicio'/);
-  // El front la muestra en las tarjetas y en las dos tablas.
-  assert.match(ops, /tarjeta\('Servicios'/);
+  // El front la muestra en la razón de arriba y en las dos tablas, donde
+  // además cierra con su total.
   assert.match(ops, /'Servicios por jornada'/);
   assert.ok((ops.match(/clave: 'servicios'/g) || []).length === 2,
     'servicios tiene que estar en las dos tablas');
+  assert.ok((ops.match(/clave: 'servicios',\s*titulo: 'Servicios', total: 'suma'/g) || []).length === 2,
+    'servicios tiene que cerrar con su total en las dos tablas');
 });
 
 test('un remito sin jornada cuenta en el total pero no se cuelga de un camión', () => {
@@ -341,4 +345,87 @@ test('el anillo responde una pregunta que la tabla no contesta de un vistazo', (
   assert.match(ops, /function pintarAnillo/);
   assert.match(ops, /dashx-ops-anillo/);
   assert.match(index, /id="dashx-ops-anillo"/);
+});
+
+
+/* ── v3/v4: totales de tabla y combustible filtrable ───────────────────── */
+
+const sqlV4 = fs.readFileSync(
+  'migrations/20260919180000_dashboard_operaciones_cierres_v4.sql', 'utf8');
+
+test('las tablas cierran con una fila de totales', () => {
+  // Los KPI de arriba repetían el volumen del período. El total al pie del
+  // cuadro dice el mismo número y además de qué se compone.
+  assert.match(charts, /function totalDe/);
+  assert.match(charts, /<tfoot><tr class="auxtb-total">/);
+  assert.ok(!ops.includes('dashx-ops-metrics'), 'volvió la fila de KPI de arriba');
+  assert.ok(!index.includes('dashx-ops-metrics'), 'quedó el contenedor de los KPI');
+  // Las dos tablas suman sus columnas de volumen.
+  ['km', 'servicios', 'jornadas'].forEach(c =>
+    assert.ok((ops.match(new RegExp("clave: '" + c + "'[^}]*total: 'suma'", 'g')) || []).length === 2,
+      `${c} no cierra en las dos tablas`));
+  assert.match(ops, /clave: 'litros'[^}]*total: 'suma'/);
+  assert.match(ops, /clave: 'costo'[^}]*total: 'suma'/);
+});
+
+test('las razones del pie son razones, no promedios de la columna', () => {
+  // Promediar km/litro de siete camiones le da el mismo peso al que hizo 9.700
+  // km que al que hizo 446.
+  assert.match(ops, /total: \{ dividir: 'km', por: 'litros' \}/);
+  // Y el denominador es el mismo que usa cada fila: las jornadas con horario
+  // utilizable. Con 'jornadas' a secas el pie decía 12,2 contra el 12,7 de la
+  // razón de arriba, que es el mismo número con otro divisor.
+  assert.match(ops, /total: \{ dividir: 'horas', por: 'jornadas_con_horas' \}/);
+  assert.match(sqlV4, /'jornadas_con_horas', x\.jornadas_con_horas/);
+  assert.match(charts, /abajo > 0 \? arriba \/ abajo : null/);
+});
+
+test('tachar un medio de pago recalcula sólo lo que se puede recalcular', () => {
+  // Litros, ticket y precio salen de las cargas: se recalculan.
+  // Km/litro, litros cada 100 km y costo por km dividen por kilómetros, y los
+  // km no son de ningún medio de pago: filtrar a "Efectivo" dejaría el
+  // denominador entero de la flota contra cinco cargas.
+  assert.match(ops, /function pintarRazonesCombustible/);
+  assert.match(ops, /alFiltrar: function \(visibles\)/);
+  assert.match(charts, /function alTocarLeyenda/);
+  assert.match(charts, /chart\.toggleDataVisibility\(item\.index\)/);
+  const razones = ops.slice(ops.indexOf('function pintarRazonesCombustible'),
+                            ops.indexOf('function pintarCombustible'));
+  // Las tres de kilómetros siguen leyendo el payload, no la selección.
+  ['km_por_litro', 'litros_por_100km', 'costo_por_km'].forEach(k =>
+    assert.ok(razones.includes('c.' + k), `${k} se recalcularía con el filtro`));
+  assert.match(razones, /is-no-filtrable/);
+  assert.match(css, /#screen-dashboard \.dashx-metric\.is-no-filtrable/);
+  // Y una carga nueva arranca con todo visible.
+  assert.match(ops, /combustible\.visibles = null/);
+});
+
+test('el gráfico de combustible es torta, para no repetir la forma del anillo', () => {
+  assert.match(ops, /tipo: 'torta'/);
+  assert.match(charts, /datos\.tipo\) === 'torta' \? 0 : '62%'/);
+  // El anillo de participación sigue siendo anillo.
+  const anillo = ops.slice(ops.indexOf('function pintarAnillo'),
+                           ops.indexOf('/* ── combustible'));
+  assert.ok(!anillo.includes("tipo: 'torta'"));
+});
+
+test('el agrupado de medios mantiene el gráfico y los números en las mismas filas', () => {
+  // G.topN devuelve {label, value}: alcanzaría para el gráfico, pero después no
+  // se podrían sumar litros ni cargas de lo que quedó visible.
+  assert.match(ops, /function agruparMedios/);
+  const agrupar = ops.slice(ops.indexOf('function agruparMedios'),
+                            ops.indexOf('function pintarRazonesCombustible'));
+  assert.ok(!agrupar.includes('G.topN'), 'agruparMedios perdería litros y cargas');
+  assert.match(agrupar, /medio: 'Otros'/);
+  assert.match(agrupar, /G\.PALETA\.length/);
+});
+
+test('los servicios que no cuelgan de nadie se avisan', () => {
+  // 622 en el período, 620 en la tabla por camión, 621 en la por chofer. Los
+  // tres están bien; sin decir por qué difieren, la fila de totales parece un
+  // bug.
+  assert.match(ops, /' sin camión'/);
+  assert.match(ops, /' sin chofer'/);
+  assert.match(sqlV4, /'servicios_sin_chofer'/);
+  assert.match(sqlV4, /not exists \(select 1 from jornada j where j\.driver_id = s\.driver_id\)/);
 });

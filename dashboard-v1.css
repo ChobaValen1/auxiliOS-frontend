@@ -250,12 +250,26 @@
 
 /* Tres columnas fijas: con auto-fit las seis razones caían 4 + 2 y la segunda
    fila quedaba con dos tarjetas estiradas al doble de ancho. */
+/* Cuando se tacha un medio de pago en la leyenda, las razones contra los
+   kilómetros no se pueden recalcular (los km no son de ningún medio de pago).
+   Se atenúan para que nadie las lea como filtradas. */
+#screen-dashboard .dashx-metric.is-no-filtrable {
+  opacity: 0.55;
+}
+
 #screen-dashboard .dashx-metrics-hint {
   grid-template-columns: repeat(3, 1fr);
 }
 
 @media (max-width: 1100px) {
-  #screen-dashboard .dashx-metrics-hint {
+  /* Cuando se tacha un medio de pago en la leyenda, las razones contra los
+   kilómetros no se pueden recalcular (los km no son de ningún medio de pago).
+   Se atenúan para que nadie las lea como filtradas. */
+#screen-dashboard .dashx-metric.is-no-filtrable {
+  opacity: 0.55;
+}
+
+#screen-dashboard .dashx-metrics-hint {
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   }
 }
@@ -465,6 +479,24 @@
 
 #screen-dashboard .auxtb .auxtb-val {
   flex: 0 0 auto;
+}
+
+/* La fila de totales cierra la tabla: se despega del cuerpo con una línea y
+   pesa más que las filas, pero sin gritar como un título. */
+#screen-dashboard .auxtb tfoot td {
+  border-top: 1px solid var(--border2);
+  border-bottom: 0;
+  padding-top: 9px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+#screen-dashboard .auxtb tfoot .auxtb-txt {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 #screen-dashboard .auxtb-vacio {

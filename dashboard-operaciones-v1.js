@@ -175,21 +175,12 @@
            '</div>';
   }
 
-  /* Dos niveles a propósito: arriba lo que se mira primero (volumen del
-     período), abajo las razones, que son lectura de segundo orden y con ocho
-     tarjetas iguales quedaban al mismo peso que el titular. */
+  /* Los totales del período (servicios, km, jornadas, litros, gasto) se leen en
+     la fila de cierre de cada tabla, donde el número viene con su composición
+     al lado. Acá arriba quedan sólo las razones, que no se sacan mirando una
+     columna. */
   function pintarMetricas(datos) {
-    var t = (datos && datos.totales) || {};
     var e = (datos && datos.eficiencia) || {};
-
-    var principal = document.getElementById('dashx-ops-metrics');
-    if (principal) {
-      principal.innerHTML =
-        tarjeta('Servicios', miles(t.servicios), 'is-hero') +
-        tarjeta('Km recorridos', miles(t.km) + ' km', 'is-hero') +
-        tarjeta('Gasto combustible', pesos(t.costo), 'is-hero') +
-        tarjeta('Jornadas', miles(t.jornadas), 'is-hero');
-    }
 
     var razones = document.getElementById('dashx-ops-ratios');
     if (razones) {
@@ -220,6 +211,16 @@
     if (num(d.jornadas_sin_horas) > 0) {
       partes.push(num(d.jornadas_sin_horas) + ' sin horario utilizable');
     }
+    // Sin esto, el total de servicios de la tabla por camión no da igual que el
+    // de la tabla por chofer y no hay forma de saber por qué.
+    if (num(d.servicios_sin_camion) > 0) {
+      partes.push(num(d.servicios_sin_camion) + ' sin camión');
+    }
+    // Un remito de alguien que no cerró jornada en el rango: cuenta en el total
+    // pero no tiene fila propia en la tabla por chofer.
+    if (num(d.servicios_sin_chofer) > 0) {
+      partes.push(num(d.servicios_sin_chofer) + ' sin chofer');
+    }
     texto(sub, partes.join(' · '));
   }
 
@@ -230,16 +231,21 @@
       .sort(function (a, b) { return num(b.km) - num(a.km); });
     G.tabla(TABLAS.camiones, {
       vacio: 'Sin jornadas ni cargas de camión en el período',
+      totalEtiqueta: 'Total',
       columnas: [
         { clave: 'etiqueta',     titulo: 'Camión',   tipo: 'texto' },
-        { clave: 'km',           titulo: 'Km',       barra: true, unidad: 'km' },
-        { clave: 'servicios',    titulo: 'Servicios' },
-        { clave: 'jornadas',     titulo: 'Jornadas' },
-        { clave: 'litros',       titulo: 'Litros',   decimales: 0 },
-        { clave: 'costo',        titulo: 'Gasto',    tipo: 'pesos' },
+        { clave: 'km',           titulo: 'Km',       barra: true, unidad: 'km', total: 'suma' },
+        { clave: 'servicios',    titulo: 'Servicios', total: 'suma' },
+        { clave: 'jornadas',     titulo: 'Jornadas',  total: 'suma' },
+        { clave: 'litros',       titulo: 'Litros',   decimales: 0, total: 'suma' },
+        { clave: 'costo',        titulo: 'Gasto',    tipo: 'pesos', total: 'suma' },
         // Llega null cuando el camión no tuvo cargas: la RPC no divide por cero
         // y la tabla lo muestra como guión en vez de omitir la fila entera.
-        { clave: 'km_por_litro', titulo: 'Km/L',     decimales: 2 }
+        // El cierre es km totales / litros totales, no el promedio de la
+        // columna: promediar le daría el mismo peso al móvil que hizo 9.700 km
+        // que al que hizo 446.
+        { clave: 'km_por_litro', titulo: 'Km/L',     decimales: 2,
+          total: { dividir: 'km', por: 'litros' } }
       ],
       filas: filas
     });
@@ -250,13 +256,15 @@
       .sort(function (a, b) { return num(b.km) - num(a.km); });
     G.tabla(TABLAS.choferes, {
       vacio: 'Sin jornadas de chofer en el período',
+      totalEtiqueta: 'Total',
       columnas: [
         { clave: 'nombre',            titulo: 'Chofer',   tipo: 'texto' },
-        { clave: 'km',                titulo: 'Km',       barra: true, unidad: 'km' },
-        { clave: 'servicios',         titulo: 'Servicios' },
-        { clave: 'jornadas',          titulo: 'Jornadas' },
-        { clave: 'horas',             titulo: 'Horas',    decimales: 0, unidad: 'h' },
-        { clave: 'horas_por_jornada', titulo: 'H/jornada', decimales: 1 }
+        { clave: 'km',                titulo: 'Km',       barra: true, unidad: 'km', total: 'suma' },
+        { clave: 'servicios',         titulo: 'Servicios', total: 'suma' },
+        { clave: 'jornadas',          titulo: 'Jornadas',  total: 'suma' },
+        { clave: 'horas',             titulo: 'Horas',    decimales: 0, unidad: 'h', total: 'suma' },
+        { clave: 'horas_por_jornada', titulo: 'H/jornada', decimales: 1,
+          total: { dividir: 'horas', por: 'jornadas_con_horas' } }
       ],
       filas: filas
     });
@@ -321,49 +329,112 @@
   /* ── combustible ──────────────────────────────────────────────────────────
      El combustible era dos números sueltos dentro del resumen general. Es el
      costo variable más grande de la operación y merece su propio bloque: cómo
-     se paga, cuánto sale una carga y cuánto rinde. */
-  function pintarCombustible(datos) {
-    var c = (datos && datos.combustible) || {};
+     se paga, cuánto sale una carga y cuánto rinde.
+
+     Torta, no anillo: en la misma pantalla está el anillo de participación en
+     los km, y dos gráficos con la misma forma se confunden aunque respondan
+     preguntas distintas. */
+
+  // Lo último que vino, más qué medios quedaron visibles en la leyenda. Se
+  // guarda porque tachar un medio recalcula los números sin volver a la base.
+  var combustible = { datos: null, medios: [], visibles: null };
+
+  /* La paleta tiene 7 slots y no se cicla, así que la cola larga se agrupa.
+     Se agrupa acá, sobre los objetos completos, y no con G.topN: el gráfico y
+     los números del costado tienen que hablar de las mismas filas, y topN
+     devuelve sólo {label, value}. */
+  function agruparMedios(lista) {
+    var orden = (lista || []).filter(function (m) { return num(m.gasto) > 0; })
+      .sort(function (a, b) { return num(b.gasto) - num(a.gasto); });
+    var max = G.PALETA.length;
+    if (orden.length <= max) return orden;
+    var otros = orden.slice(max - 1).reduce(function (a, m) {
+      a.cargas += num(m.cargas); a.litros += num(m.litros); a.gasto += num(m.gasto);
+      return a;
+    }, { medio: 'Otros', cargas: 0, litros: 0, gasto: 0 });
+    return orden.slice(0, max - 1).concat([otros]);
+  }
+
+  function pintarRazonesCombustible() {
+    var c = combustible.datos || {};
+    var medios = combustible.medios;
+    var vis = combustible.visibles;
+    var filtrado = !!(vis && vis.length < medios.length);
+    var sel = filtrado
+      ? medios.filter(function (m) { return vis.indexOf(m.medio) !== -1; })
+      : medios;
+
+    var cargas = 0, litros = 0, gasto = 0;
+    sel.forEach(function (m) {
+      cargas += num(m.cargas); litros += num(m.litros); gasto += num(m.gasto);
+    });
 
     var sub = document.getElementById('dashx-ops-comb-sub');
     if (sub) {
       // El contexto de los promedios: 12 cargas y 120 no dan la misma confianza.
-      sub.textContent = num(c.cargas) > 0
-        ? '· ' + miles(c.cargas) + ' cargas · ' + pesos(c.gasto) + ' en total'
+      sub.textContent = medios.length
+        ? '· ' + miles(cargas) + ' cargas · ' + pesos(gasto)
+          + (filtrado ? ' · ' + sel.length + ' de ' + medios.length + ' medios' : ' en total')
         : '';
     }
 
     var cont = document.getElementById('dashx-ops-comb-metrics');
-    if (cont) {
-      cont.innerHTML =
-        tarjeta('Litros cargados', miles(c.litros) + ' L', '',
-                'Suma de todas las cargas del período.') +
-        tarjeta('Ticket promedio', pesos(c.ticket_promedio), '',
-                'Lo que sale una carga, en promedio.') +
-        tarjeta('Precio por litro', pesosFinos(c.precio_litro), '',
-                'Gasto dividido litros, no el promedio de los precios.') +
-        tarjeta('Km por litro', decimales(c.km_por_litro, 2), '',
-                'Cuánto rinde un litro. Más alto es mejor.') +
-        tarjeta('Litros cada 100 km', decimales(c.litros_por_100km, 2) + ' L', '',
-                'El consumo, como viene en la ficha del camión. Es la inversa del rendimiento.') +
-        tarjeta('Costo por km', pesosFinos(c.costo_por_km), '',
-                'Cuánto combustible cuesta mover el camión un kilómetro.');
-    }
+    if (!cont) return;
 
-    var medios = (c.por_medio || []).filter(function (m) { return num(m.gasto) > 0; });
-    if (!medios.length) {
+    /* Dos familias distintas, y la diferencia importa:
+
+       Las primeras tres salen sólo de las cargas, así que tachar un medio de
+       pago las recalcula bien.
+
+       Las otras tres dividen por los kilómetros, y los kilómetros no son de
+       ningún medio de pago: filtrar a "Efectivo" dejaría el denominador entero
+       de la flota contra los litros de cinco cargas y daría 269 km/litro. Se
+       quedan en el valor del total y se atenúan para que nadie las lea como
+       filtradas. */
+    var aclaracion = filtrado
+      ? ' Sobre el total del período: los km no son de ningún medio de pago.'
+      : '';
+    var fijo = filtrado ? 'is-no-filtrable' : '';
+
+    cont.innerHTML =
+      tarjeta('Litros cargados', litros > 0 ? miles(litros) + ' L' : '—', '',
+              'Suma de las cargas del período.') +
+      tarjeta('Ticket promedio', cargas > 0 ? pesos(gasto / cargas) : '—', '',
+              'Lo que sale una carga, en promedio.') +
+      tarjeta('Precio por litro', litros > 0 ? pesosFinos(gasto / litros) : '—', '',
+              'Gasto dividido litros, no el promedio de los precios.') +
+      tarjeta('Km por litro', decimales(c.km_por_litro, 2), fijo,
+              'Cuánto rinde un litro. Más alto es mejor.' + aclaracion) +
+      tarjeta('Litros cada 100 km', decimales(c.litros_por_100km, 2) + ' L', fijo,
+              'El consumo, como viene en la ficha del camión.' + aclaracion) +
+      tarjeta('Costo por km', pesosFinos(c.costo_por_km), fijo,
+              'Cuánto combustible cuesta mover el camión un kilómetro.' + aclaracion);
+  }
+
+  function pintarCombustible(datos) {
+    combustible.datos = (datos && datos.combustible) || {};
+    combustible.medios = agruparMedios(combustible.datos.por_medio);
+    // Cada carga nueva arranca con todo visible: la selección era de los datos
+    // anteriores y un medio que ya no existe dejaría todo tachado.
+    combustible.visibles = null;
+
+    pintarRazonesCombustible();
+
+    if (!combustible.medios.length) {
       return G.vacio(CANVAS.combustible, 'Sin cargas de combustible en el período');
     }
     // El reparto es por gasto, no por litros: la pregunta es por dónde se va la
     // plata. Los litros y las cargas quedan en el tooltip.
-    var top = G.topN(medios.map(function (m) {
-      return { label: m.medio, value: num(m.gasto) };
-    }), 7);
     G.donut(CANVAS.combustible, {
-      labels: top.map(function (x) { return x.label; }),
-      values: top.map(function (x) { return x.value; }),
+      labels: combustible.medios.map(function (m) { return m.medio; }),
+      values: combustible.medios.map(function (m) { return num(m.gasto); }),
       formato: 'pesos',
-      leyenda: 'derecha'
+      tipo: 'torta',
+      leyenda: 'derecha',
+      alFiltrar: function (visibles) {
+        combustible.visibles = visibles;
+        pintarRazonesCombustible();
+      }
     });
   }
 
@@ -407,7 +478,7 @@
     cadaCanvas(function (id) { G.error(id, msg); });
     // Se vacían: dejar las tarjetas de la carga anterior haría pasar números
     // viejos por números del filtro nuevo.
-    ['dashx-ops-metrics', 'dashx-ops-ratios', 'dashx-ops-comb-metrics'].forEach(function (id) {
+    ['dashx-ops-ratios', 'dashx-ops-comb-metrics'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.innerHTML = '';
     });
