@@ -348,8 +348,8 @@ test('el margen se calcula sobre el mismo subconjunto de los dos lados', () => {
 test('la tarjeta de KM reales dice sobre cuántos servicios está el margen', () => {
   // Un margen sobre 3 de 200 servicios no se lee igual que uno sobre 190.
   assert.match(js, /function kpiReales/);
-  assert.match(js, /con km informados/);
-  assert.match(js, /Ningún remito del período informó kilómetros/);
+  assert.match(js, /' de ' \+ ch\(\)\.nfMiles\(x\.servicios\)/);
+  assert.match(js, /Ningún servicio del período tiene km informados ni ruta calculada/);
   assert.match(sqlV3, /'servicios_con_dato',  t\.n_comp_act/);
   // Positivo verde, negativo rojo: los km que se recorren y no se cobran duelen.
   assert.match(js, /x\.margen < 0 \? 'is-down'/);
@@ -364,4 +364,33 @@ test('el margen por base divide contra los facturados comparables', () => {
   assert.match(charts, /typeof col\.total === 'function'/);
   // La fila "Otros" no puede quedar sin km reales: se le devuelven los del resto.
   assert.match(js, /i\.kmReal = real/);
+});
+
+
+/* ── v4: los km de Origen a Destino salen de la ruta guardada ───────────── */
+
+const sqlV4 = fs.readFileSync(
+  'migrations/20260919240000_dashboard_facturacion_km_ruta_v4.sql', 'utf8');
+
+test('el tramo Origen→Destino se deduce de la cantidad de tramos', () => {
+  /* base_origin_destination_base deja 3 tramos y el del medio es Origen→Destino;
+     origin_destination deja 1 y es ése. El modo no se persiste en el servicio,
+     por eso se deduce. */
+  assert.match(sqlV4, /jsonb_array_length\(coalesce\(s\.route_legs, '\[\]'::jsonb\)\) = 3/);
+  assert.match(sqlV4, /s\.route_legs -> 1 ->> 'distanceMeters'/);
+  // Con un solo tramo hay ambigüedad: sin destino cargado, ese tramo sólo puede
+  // ser Base→Origen y no sirve como Origen→Destino.
+  assert.match(sqlV4, /= 1\s*\n\s*and s\.destination_lat is not null/);
+  assert.match(sqlV4, /s\.route_legs -> 0 ->> 'distanceMeters'/);
+  // Lo medido por el chofer manda sobre lo calculado.
+  assert.match(sqlV4, /coalesce\(\s*\n\s*case when coalesce\(r\.km_reales, 0\) > 0/);
+});
+
+test('la tarjeta distingue lo medido de lo calculado', () => {
+  // Un dato medido en la calle y uno estimado por Google no valen igual.
+  assert.match(sqlV4, /'medidos',             t\.n_medido/);
+  assert.match(sqlV4, /'calculados',          t\.n_calculado/);
+  assert.match(js, /informados por el chofer/);
+  assert.match(js, /calculados de la ruta/);
+  assert.match(js, /x\.calculados && !x\.medidos/);
 });

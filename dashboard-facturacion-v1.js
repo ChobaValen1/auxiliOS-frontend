@@ -123,7 +123,7 @@
     var x = d.reales;
     if (!x.conDato) {
       return kpi('KM reales', GUION, false,
-        '<div class="dashx-kpi-delta is-flat">Ningún remito del período informó kilómetros</div>');
+        '<div class="dashx-kpi-delta is-flat">Ningún servicio del período tiene km informados ni ruta calculada</div>');
     }
     var pie = '';
     if (x.margen !== null) {
@@ -132,9 +132,19 @@
         (x.margen > 0 ? '▲ +' : (x.margen < 0 ? '▼ -' : '= ')) + nfPct(x.margen) +
         ' de margen sobre lo recorrido</div>';
     }
+    /* De dónde sale cada km importa: uno lo midió el chofer en la calle y el
+       otro lo calculó Google sobre el tramo Origen→Destino de la ruta. Miden lo
+       mismo —se verificó que coinciden— pero un dato medido y uno estimado no
+       valen igual, y quien mira el tablero tiene derecho a saber cuál es cuál. */
+    var fuente;
+    if (x.calculados && !x.medidos) fuente = 'calculados de la ruta';
+    else if (x.medidos && !x.calculados) fuente = 'informados por el chofer';
+    else fuente = ch().nfMiles(x.medidos) + ' informados, ' +
+                  ch().nfMiles(x.calculados) + ' calculados de la ruta';
+
     pie += '<div class="dashx-kpi-delta is-flat">' +
       ch().nfMiles(x.conDato) + ' de ' + ch().nfMiles(x.servicios) +
-      (x.servicios === 1 ? ' servicio' : ' servicios') + ' con km informados</div>';
+      (x.servicios === 1 ? ' servicio' : ' servicios') + ' · ' + esc(fuente) + '</div>';
     return kpi('KM reales', nfKm(x.km), false, pie);
   }
 
@@ -187,6 +197,8 @@
           kmFacturados: num(x.km_facturados),
           conDato: num(x.servicios_con_dato),
           servicios: num(x.servicios),
+          medidos: num(x.medidos),
+          calculados: num(x.calculados),
           // null es "no se puede calcular", distinto de 0 que sería "clavado".
           margen: (x.margen === null || x.margen === undefined) ? null : num(x.margen)
         };
