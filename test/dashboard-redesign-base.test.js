@@ -92,9 +92,9 @@ test('los canvas que consumen las secciones existen en el markup', () => {
 
 test('el plugin de treemap y los módulos del dashboard están cargados', () => {
   assert.match(index, /chartjs-chart-treemap@[\d.]+/);
-  assert.match(index, /<script src="dashboard-charts-v1\.js" defer><\/script>/);
-  assert.match(index, /<script src="dashboard-shell-v1\.js" defer><\/script>/);
-  assert.match(index, /<link rel="stylesheet" href="dashboard-v1\.css">/);
+  assert.match(index, /<script src="dashboard-charts-v1\.js(\?v=[^"]*)?" defer><\/script>/);
+  assert.match(index, /<script src="dashboard-shell-v1\.js(\?v=[^"]*)?" defer><\/script>/);
+  assert.match(index, /<link rel="stylesheet" href="dashboard-v1\.css(\?v=[^"]*)?">/);
   // El motor debe cargarse antes del shell.
   assert.ok(index.indexOf('dashboard-charts-v1.js') < index.indexOf('dashboard-shell-v1.js'));
 });

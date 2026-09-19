@@ -10,9 +10,12 @@
 
 ## Dependencias de despliegue
 
-El frontend requiere que el backend exponga `POST /api/login-by-dni`,
-`POST /api/create-user` y `POST /api/send-password-reset`. Los dos últimos deben exigir
-JWT y rol `administracion`.
+El alta de personal (individual e importación) y la recuperación de acceso usan
+`ENV.ADMIN_API_BASE_URL`, que apunta a la Edge Function `auxilios-admin` de Supabase.
+Sus rutas `POST /api/create-user` y `POST /api/send-password-reset` exigen JWT,
+usuario activo y rol `administracion` validado en el servidor. El preview de la
+rama integrada tiene un origen permitido explícito; no se admite cualquier dominio Vercel.
+El endpoint heredado `POST /api/login-by-dni` usa `ENV.API_BASE_URL`.
 
 Antes de habilitar nuevas empresas, todas las tablas y buckets deben contar con RLS/policies
 versionadas y aislamiento por organización. Los buckets con firmas, remitos, odómetros,

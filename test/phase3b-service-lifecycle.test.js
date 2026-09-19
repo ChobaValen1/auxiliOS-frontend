@@ -22,12 +22,12 @@ test('mesa operativa expone sólo los cinco estados acordados',()=>{
   assert.match(services,/Anular servicio/);
 });
 
-test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cinco',()=>{
+test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cuatro',()=>{
   assert.match(lifecycle,/client_cannot_or_will_not_sign','Cliente\/Socio no pudo o no quiso firmar/);
   assert.match(lifecycle,/signature_technical_issue','Problema técnico con la firma/);
   assert.match(lifecycle,/operator_provider_confirmed','Arribo confirmado por Operador\/Prestadora/);
   assert.match(lifecycle,/delay','Cancelado por demora/);
-  assert.match(lifecycle,/within_authorized_window','Cancelado dentro del tiempo autorizado/);
+  assert.doesNotMatch(lifecycle,/within_authorized_window/);
   assert.match(lifecycle,/cancelled_by_us','Cancelado por nosotros/);
   assert.match(lifecycle,/client_or_provider','Cancelado por el cliente \/ prestadora/);
   assert.match(lifecycle,/\['other','Otro motivo'\]/);
@@ -138,9 +138,10 @@ test('runtime carga lifecycle antes de liberar UI y cache de phase2',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  // Versión mínima, no literal: congelarla rompía el test en cada bump legítimo
-  // del cache, que es justamente lo que debe pasar al publicar.
-  assert.ok(Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1] || 0) >= 209,
-    'el cache del service worker debe ser v209 o posterior');
+  // El nombre del cache tiene que renovarse en cada build que toque assets
+  // precacheados, así que se verifica que no retroceda en vez de fijar el
+  // literal, que obligaba a editar este test en cada bump.
+  const cacheVersion = Number(sw.match(/auxilios-billing-phase2-v(\d+)/)?.[1]);
+  assert.ok(cacheVersion >= 312, `el cache de phase2 no puede retroceder de v312 (es v${cacheVersion})`);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });

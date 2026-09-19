@@ -231,7 +231,7 @@ test('el módulo se carga después del motor y del shell', () => {
   // alguna vez quedara antes que el shell.
   const tag = index.indexOf('dashboard-facturacion-v1.js');
   if (tag >= 0) {
-    assert.match(index, /<script src="dashboard-facturacion-v1\.js" defer><\/script>/);
+    assert.match(index, /<script src="dashboard-facturacion-v1\.js(\?v=[^"]*)?" defer><\/script>/);
     assert.ok(index.indexOf('dashboard-charts-v1.js') < tag, 'el motor tiene que cargar antes');
     assert.ok(index.indexOf('dashboard-shell-v1.js') < tag, 'el shell tiene que cargar antes');
   }

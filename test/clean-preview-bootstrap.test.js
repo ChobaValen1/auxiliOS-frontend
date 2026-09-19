@@ -35,12 +35,16 @@ test('el service worker no congela una versión vieja del HTML', () => {
 });
 
 test('el preview tiene un identificador de build inequívoco', () => {
-  // Se valida la forma, no un valor congelado: el build id se bumpea en cada
-  // deploy y fijarlo acá rompía la suite en cada cambio legítimo.
-  const m = config.match(/AUXILIOS_BUILD_ID\s*=\s*'([^']+)'/);
-  assert.ok(m, 'config.js debe definir AUXILIOS_BUILD_ID');
-  const buildId = m[1];
-  assert.ok(buildId.length >= 12, `build id demasiado corto: '${buildId}'`);
-  assert.match(buildId, /\d{8}$/, `el build id debe terminar en fecha YYYYMMDD: '${buildId}'`);
-  assert.doesNotMatch(buildId, /^(dev|test|local|tmp|placeholder)/i);
+  const buildId = config.match(/AUXILIOS_BUILD_ID\s*=\s*'([^']+)'/)?.[1];
+  assert.ok(buildId, 'config.js tiene que declarar AUXILIOS_BUILD_ID');
+  assert.match(buildId, /^[a-z0-9-]+-v\d+-\d{8}$/);
+  assert.match(config, /versionedAuxiliosAsset/);
+
+  // Fijar el id literal obligaba a tocar el test en cada bump. Lo que importa
+  // es que los ?v= de Index.html apunten al mismo build: si queda uno viejo,
+  // el preview sirve una mezcla de dos versiones.
+  const html = read('Index.html');
+  const versions = [...html.matchAll(/\?v=([a-z0-9-]+-v\d+-\d{8})/g)].map(m => m[1]);
+  assert.ok(versions.length > 0, 'Index.html tiene que versionar sus assets');
+  assert.deepEqual([...new Set(versions)], [buildId]);
 });

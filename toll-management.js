@@ -1,4 +1,4 @@
-/* AuxiliOS · Peajes y Adicionales · ubicación Google canónica */
+/* AuxiliOS · Peajes · ubicación Google canónica */
 (()=>{'use strict';
 const ID='toll-management';
 if(window.AuxiliosTolls)return;
@@ -26,8 +26,8 @@ function loadCss(){
 function inject(){
  if(!document.getElementById('screen-peajes')){
   document.querySelector('.content')?.insertAdjacentHTML('beforeend',`<div class="screen" id="screen-peajes">
-   <div class="tm-head"><div><div class="tm-eyebrow">Configuración operativa</div><h2>Peajes y Adicionales</h2><p>Alta, consulta y mantenimiento de conceptos complementarios del servicio.</p></div><button type="button" class="btn btn-ghost" data-tm-refresh>↻ Actualizar</button></div>
-   <div class="tm-tabs" role="tablist"><button type="button" class="active" data-tm-section="tolls">Peajes</button><button type="button" data-tm-section="additionals">Adicionales <small>Próxima configuración</small></button></div>
+   <div class="tm-head"><div><div class="tm-eyebrow">Configuración operativa</div><h2>Peajes</h2><p>Alta, consulta y mantenimiento de conceptos complementarios del servicio.</p></div><button type="button" class="btn btn-ghost" data-tm-refresh>↻ Actualizar</button></div>
+   <div class="tm-tabs" role="tablist"><button type="button" class="active" data-tm-section="tolls">Peajes</button></div>
    <section id="tm-section-tolls" class="tm-section">
     <div class="tm-workspace">
      <aside class="tm-entry-card tm-admin">
@@ -71,7 +71,7 @@ function bind(){
  document.addEventListener('input',event=>{if(event.target.id==='tm-query')render();if(event.target.matches('#tm-simple-form [name="address"]'))searchAddress(event.target.value);});
  document.addEventListener('submit',event=>{if(event.target.id==='tm-simple-form')saveSimple(event);});
 }
-function hookNavigation(){if(window.__tmNavHook||typeof window.goTo!=='function')return false;const base=window.goTo;window.goTo=(name,...args)=>{if(name==='peajes'&&!canRead())return notify('Sin permiso para consultar Peajes y Adicionales.','error');const result=base(name,...args);if(name==='peajes')load();return result;};window.__tmNavHook=true;return true;}
+function hookNavigation(){if(window.__tmNavHook||typeof window.goTo!=='function')return false;const base=window.goTo;window.goTo=(name,...args)=>{if(name==='peajes'&&!canRead())return notify('Sin permiso para consultar Peajes.','error');const result=base(name,...args);if(name==='peajes')load();return result;};window.__tmNavHook=true;return true;}
 function showSection(section){STATE.section=section==='additionals'?'additionals':'tolls';document.querySelectorAll('[data-tm-section]').forEach(button=>button.classList.toggle('active',button.dataset.tmSection===STATE.section));const tolls=document.getElementById('tm-section-tolls'),additionals=document.getElementById('tm-section-additionals');if(tolls)tolls.hidden=STATE.section!=='tolls';if(additionals)additionals.hidden=STATE.section!=='additionals';if(STATE.section==='tolls'&&!STATE.rows.length)load();}
 
 async function mapsInvoke(body){const{data,error}=await db().functions.invoke('maps-proxy',{body});if(error)throw new Error(error.message||'No se pudo consultar Google Maps');if(data?.error)throw new Error(data.error);return data||{};}
@@ -96,7 +96,7 @@ async function toggleActive(id,active){if(!canManage())return notify('Solo admin
 function openModal(html){STATE.modal.innerHTML=`<section class="tm-modal-shell">${html}</section>`;STATE.modal.hidden=false;STATE.modal.setAttribute('aria-hidden','false');}
 function closeModal(){if(!STATE.modal)return;STATE.modal.hidden=true;STATE.modal.setAttribute('aria-hidden','true');STATE.modal.innerHTML='';}
 function openHistory(tollId){const row=STATE.rows.find(item=>String(item.toll_id)===String(tollId));if(!row)return;const rates=[...(row.rates||[])].sort((a,b)=>String(b.valid_from||'').localeCompare(String(a.valid_from||'')));openModal(`<div><header><div><small>Historial de importes</small><h3>${esc(row.name)}</h3><p>Los valores anteriores permanecen registrados.</p></div><button type="button" data-tm-close>×</button></header><div class="tm-modal-body"><div class="tm-history">${rates.length?rates.map(rate=>`<article class="${rate.is_current?'current':''}"><div><b>${money(rate.amount,rate.currency||'ARS')}</b><span>${rate.is_current?'Importe actual':'Importe anterior'}</span></div><small>${esc(rate.valid_from||'—')} → ${esc(rate.valid_until||'vigente')}</small></article>`).join(''):'<p>Sin importes registrados.</p>'}</div></div><footer><button type="button" class="btn btn-ghost" data-tm-close>Cerrar</button></footer></div>`);}
-function init(){loadCss();inject();resetForm();let attempts=0;const timer=setInterval(()=>{applyRole();if(hookNavigation()&&canRead()&&db()){clearInterval(timer);}else if(++attempts>120)clearInterval(timer);},250);}
+function init(){loadCss();inject();resetForm();let attempts=0;const timer=setInterval(()=>{applyRole();if(hookNavigation()&&canRead()&&db()){clearInterval(timer);const screen=document.getElementById('screen-peajes');if(screen){let visible=false;const sync=()=>{const active=screen.classList.contains('active');if(active&&!visible)load();visible=active;};new MutationObserver(sync).observe(screen,{attributes:true,attributeFilter:['class']});sync();}}else if(++attempts>120)clearInterval(timer);},250);}
 window.AuxiliosTolls={state:STATE,load,beginEdit,openLocation:beginEdit,openHistory,resetForm,showSection};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();

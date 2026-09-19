@@ -13,7 +13,7 @@ test('configuration center remains the single backoffice navigation owner', () =
 
   assert.match(center, /BACKOFFICE_ROLES = new Set\(\['administracion', 'supervision', 'facturacion'\]\)/);
   assert.match(center, /function configureBackofficeNavigation/);
-  assert.match(center, /orderTop\(\[dashboard, canUseManagementTools\(\) \? operations : null, jornadas, camion, remitos, configuration, tariffs, history\]\)/);
+  assert.match(center, /orderTop\(\[dashboard, canUseManagementTools\(\) \? operations : null, jornadas, camion, remitos, payroll, configuration, history\]\)/);
   assert.match(center, /document\.getElementById\('nav-registro'\)/);
   assert.match(center, /registro\.remove\(\)/);
   assert.doesNotMatch(config, /frequent-navigation/);
@@ -23,9 +23,11 @@ test('daily administration modules stay in the main sidenav', () => {
   const center = read('configuration-center.js');
   const css = read('configuration-center.css');
 
-  assert.match(center, /ensureNavNode\('nav-jornadas-admin', 'jornadas-admin', '🗓️', 'Jornadas', false\)/);
-  assert.match(center, /ensureNavNode\('nav-camion', 'camion', '🚛', 'Camión', false\)/);
-  assert.match(center, /ensureNavNode\('nav-remitos', 'remitos', '🧾', 'Remitos', false\)/);
+  // El ícono ya no es un emoji literal (ahora es un SVG monocromático),
+  // así que solo se verifica que el id/ruta/label sigan conectados igual.
+  assert.match(center, /ensureNavNode\('nav-jornadas-admin', 'jornadas-admin', '[^']*', 'Jornadas', false\)/);
+  assert.match(center, /ensureNavNode\('nav-camion', 'camion', '[^']*', 'Camión', false\)/);
+  assert.match(center, /ensureNavNode\('nav-remitos', 'remitos', '[^']*', 'Remitos', false\)/);
   assert.doesNotMatch(center, /moveTo\([^\n]*document\.getElementById\('nav-camion'\)/);
   assert.doesNotMatch(center, /moveTo\([^\n]*document\.getElementById\('nav-jornadas-admin'\)/);
   assert.doesNotMatch(center, /moveTo\([^\n]*document\.getElementById\('nav-remitos'\)/);
@@ -48,7 +50,7 @@ test('configuration restores existing personnel vehicle and maintenance tools wi
   assert.match(center, /Planes de mantenimiento/);
   assert.match(center, /moveTo\(administration, document\.getElementById\('nav-documentos'\)\)/);
   assert.match(center, /moveTo\(administration, document\.getElementById\('nav-grilla'\)\)/);
-  assert.match(center, /moveTo\(administration, document\.getElementById\('nav-sueldos'\)\)/);
+  assert.doesNotMatch(center, /moveTo\(administration, document\.getElementById\('nav-sueldos'\)\)/);
   assert.doesNotMatch(center, /function openNuevoUsuarioModal/);
   assert.doesNotMatch(center, /function openNuevoVehiculoModal/);
   assert.doesNotMatch(center, /function openAdminPlanModal/);
@@ -62,7 +64,7 @@ test('Peajes belongs to Configuration and toll module has no navigation ownershi
   assert.match(center, /CONFIG_CHILD_ROUTES = new Set\([^\n]*'peajes'/);
   assert.match(center, /ensureNavNode\('nav-peajes', 'peajes', '🛣️', 'Peajes y Adicionales'\)/);
   assert.match(center, /moveTo\(catalogs, document\.getElementById\('nav-peajes'\)\)/);
-  assert.match(center, /irModuloConfiguracion\('peajes'\)/);
+  assert.match(center, /route\('Peajes',.*'peajes'\)/);
   assert.match(config, /loadAuxiliosModule\('auxilios-toll-management', '\/toll-management\.js'\)/);
   assert.doesNotMatch(tolls, /nav-peajes/);
   assert.doesNotMatch(tolls, /querySelector\('\.sidenav/);
@@ -74,10 +76,10 @@ test('driver navigation remains explicit and isolated from backoffice navigation
   const center = read('configuration-center.js');
 
   assert.match(center, /function configureDriverNavigation/);
-  assert.match(center, /ensureDriverNode\('nav-dashboard', 'dashboard', '📊', 'Panel'\)/);
-  assert.match(center, /ensureDriverNode\('nav-registro', 'registro', '📋', 'Km'\)/);
-  assert.match(center, /ensureDriverNode\('nav-camion', 'camion', '🚛', 'Camión'\)/);
-  assert.match(center, /ensureDriverNode\('nav-remitos', 'remitos', '🧾', 'Remitos'\)/);
+  assert.match(center, /ensureDriverNode\('nav-dashboard', 'dashboard', '[^']*', 'Panel'\)/);
+  assert.match(center, /ensureDriverNode\('nav-registro', 'registro', '[^']*', 'Km'\)/);
+  assert.match(center, /ensureDriverNode\('nav-camion', 'camion', '[^']*', 'Camión'\)/);
+  assert.match(center, /ensureDriverNode\('nav-remitos', 'remitos', '[^']*', 'Remitos'\)/);
   assert.doesNotMatch(center, /BACKOFFICE_ROLES[^\n]*chofer/);
 });
 
@@ -137,3 +139,22 @@ test('canonical navigation assets are loaded checked and precached', () => {
   assert.doesNotMatch(pkg, /frequent-navigation/);
   assert.ok(cacheVersion >= 163, `Expected cache version 163 or newer, received ${cacheVersion}`);
 });
+
+test('the desktop sidenav expands to labels and can collapse to emoji-only mode', () => {
+  const index = read('Index.html');
+  const css = read('sigma.css');
+  const sigma = read('sigma.js');
+
+  assert.match(index, /class="nav-collapse"/);
+  assert.doesNotMatch(index, /nav-collapse-label/);
+  assert.match(index, /onclick="toggleSidenav\(\)"/);
+  assert.match(css, /--nav-w:\s+188px/);
+  assert.match(css, /body\.nav-collapsed\s*\{\s*--nav-w:\s*72px/);
+  assert.match(css, /body\.nav-collapsed \.nav-item \.nav-label/);
+  assert.match(css, /body\.nav-collapsed \.nav-item \.nav-label\s*\{\s*display:\s*block\s*!important;/);
+  assert.match(sigma, /const SIDENAV_COLLAPSED_KEY/);
+  assert.match(sigma, /function toggleSidenav\(\)/);
+  assert.match(sigma, /aria-expanded/);
+});
+
+test("payroll is not hidden by the former configuration CSS rule",()=>{assert.doesNotMatch(read("configuration-center.css"),/sidenav > #nav-sueldos/);assert.match(read("configuration-center.js"),/ensureNavNode\('nav-sueldos', 'sueldos'/);});

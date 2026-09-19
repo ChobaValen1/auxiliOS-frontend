@@ -70,7 +70,7 @@ test('se registra en el shell y recibe los filtros', () => {
   assert.match(mapa, /id: 'mapa'/);
   assert.match(mapa, /dashboard_zonas_v1/);
   assert.match(mapa, /p_empresas/);
-  assert.match(index, /<script src="dashboard-mapa-v1\.js" defer><\/script>/);
+  assert.match(index, /<script src="dashboard-mapa-v1\.js(\?v=[^"]*)?" defer><\/script>/);
 });
 
 test('la RPC agrega del lado del servidor y descarta coordenadas inválidas', () => {

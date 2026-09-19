@@ -9,6 +9,7 @@ const sigma = read('sigma.js');
 const supabase = read('supabase.js');
 const sw = read('sw.js');
 const migration = read('migrations/20260908193000_fuel_capture_and_odometer_epochs_hotfix.sql');
+const driverCloseMigration = read('migrations/20260916120000_driver_close_odometer_epoch_v1.sql');
 
 test('combustible usa la jornada del mismo camion y guarda mediante RPC', () => {
   assert.match(sigma, /\.find\(j =>[\s\S]*j\?\.truck_id[\s\S]*_truckActual\?\.truck_id/);
@@ -42,11 +43,18 @@ test('el recalculo ignora lecturas anteriores al ciclo vigente', () => {
   assert.match(migration, /coalesce\(v_epoch_base_km, 0\)/);
 });
 
+test('el chofer puede cerrar una jornada válida después de reiniciar el odómetro', () => {
+  assert.match(driverCloseMigration, /coalesce\(d\.closed_at, d\.updated_at, d\.created_at\) >= old\.odometer_epoch_started_at/);
+  assert.match(driverCloseMigration, /new\.current_km >= coalesce\(old\.odometer_epoch_base_km, 0\)/);
+  assert.match(driverCloseMigration, /new\.odometer_epoch_started_at is distinct from old\.odometer_epoch_started_at/);
+});
+
 test('las RPC no quedan expuestas a anon y se renueva el cache', () => {
   assert.match(migration, /revoke all on function public\.admin_update_truck_v2\(integer, jsonb\) from public, anon/);
   assert.match(migration, /revoke all on function public\.create_driver_fuel_record_v1\(jsonb\) from public, anon/);
-  // Versión mínima, no literal: el test se llama "se renueva el cache", así que
-  // romperse justo cuando se renueva era el comportamiento opuesto al buscado.
-  assert.ok(Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1] || 0) >= 209,
-    'el cache del service worker debe ser v209 o posterior');
+  // El nombre del cache tiene que renovarse en cada build que toque assets
+  // precacheados, así que se verifica que no retroceda en vez de fijar el
+  // literal, que obligaba a editar este test en cada bump.
+  const cacheVersion = Number(sw.match(/auxilios-billing-phase2-v(\d+)/)?.[1]);
+  assert.ok(cacheVersion >= 312, `el cache de phase2 no puede retroceder de v312 (es v${cacheVersion})`);
 });
