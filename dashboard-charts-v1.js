@@ -239,6 +239,60 @@
     };
   }
 
+  /* Una sola barra al 100%: el reparto de un total entre pocas categorías.
+     Va pegada a una tabla que ya tiene los valores absolutos, y aporta lo que
+     la tabla no da de un vistazo — qué porción se lleva cada una — en 70 px de
+     alto en vez de los 200 de un anillo. */
+  function barraParticipacion(id, datos) {
+    var items = (datos && datos.items) || [];
+    if (!items.length || !items.some(function (i) { return Number(i.value) > 0; })) {
+      return vacio(id, datos && datos.vacio);
+    }
+    var total = items.reduce(function (a, b) { return a + Number(b.value || 0); }, 0);
+    var fmt = (datos && datos.formato) === 'pesos' ? nfPesos : nfMiles;
+    return montar(id, {
+      type: 'bar',
+      data: {
+        // Una sola fila: cada categoría es un dataset para que se apilen.
+        labels: [''],
+        datasets: items.map(function (it, i) {
+          return {
+            label: String(it.label),
+            data: [Number(it.value) || 0],
+            backgroundColor: color(i),
+            borderColor: SUP,
+            borderWidth: 1,
+            barThickness: 20
+          };
+        })
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        // Sin ejes: la escala es el ancho de la barra y los valores están en la
+        // tabla de abajo. Una regla numérica acá sería ruido.
+        scales: {
+          x: { stacked: true, display: false, grid: { display: false } },
+          y: { stacked: true, display: false, grid: { display: false } }
+        },
+        plugins: {
+          legend: leyendaBase('bottom'),
+          tooltip: Object.assign(tooltipBase(), {
+            callbacks: {
+              title: function () { return ''; },
+              label: function (ctx) {
+                var v = Number(ctx.parsed.x || 0);
+                var pct = total ? Math.round(v * 1000 / total) / 10 : 0;
+                return ' ' + ctx.dataset.label + ': ' + fmt(v) + ' (' + pct + '%)';
+              }
+            }
+          })
+        }
+      }
+    });
+  }
+
   /* Barras. Horizontal cuando las etiquetas son nombres (choferes, camiones). */
   function barras(id, datos) {
     var labels = (datos && datos.labels) || [];
@@ -456,12 +510,19 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  function celda(col, fila, maximo, sinBarra) {
+  function celda(col, fila, maximo, sinBarra, indice) {
     var v = fila[col.clave];
     var vacia = (v === null || v === undefined || v === '');
 
     if (col.tipo === 'texto') {
-      return '<td class="auxtb-txt">' + escapar(vacia ? '—' : v) + '</td>';
+      /* `swatch` pinta el cuadradito del color que le tocó a esa fila en el
+         gráfico de al lado. Es lo que ata la tabla al gráfico: sin él son dos
+         listas del mismo dato que hay que emparejar de memoria. El nombre va
+         igual al lado, nunca el color solo. */
+      var chip = (col.swatch && indice != null)
+        ? '<span class="auxtb-chip" style="background:' + escapar(color(indice)) + '"></span>'
+        : '';
+      return '<td class="auxtb-txt">' + chip + escapar(vacia ? '—' : v) + '</td>';
     }
 
     var txt;
@@ -520,9 +581,9 @@
         + escapar(c.titulo) + '</th>';
     }).join('') + '</tr>';
 
-    var cuerpo = filas.map(function (f) {
+    var cuerpo = filas.map(function (f, i) {
       return '<tr>' + cols.map(function (c) {
-        return celda(c, f, maximos[c.clave] || 0);
+        return celda(c, f, maximos[c.clave] || 0, false, i);
       }).join('') + '</tr>';
     }).join('');
 
@@ -595,6 +656,7 @@
     color: color,
     donut: donut,
     barras: barras,
+    barraParticipacion: barraParticipacion,
     linea: linea,
     treemap: treemap,
     tabla: tabla,

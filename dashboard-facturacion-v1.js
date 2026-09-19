@@ -17,22 +17,27 @@
   var CV_DONUT = 'dashx-fact-donut';
   var CV_CAJAS = 'dashx-fact-cajas';
   var CV_BASES = 'dashx-fact-bases';
+  var CV_PART  = 'dashx-fact-part';
+  var ID_CONC  = 'dashx-fact-conceptos';
   var ID_KPIS  = 'dashx-fact-kpis';
   var ID_SUB   = 'dashx-fact-sub';
-  var ID_KM    = 'dashx-fact-km';
+  var ID_FILT  = 'dashx-fact-filtros';
 
   /* La paleta tiene 7 slots y no se cicla: la cola larga se agrupa en "Otros". */
   var MAX_CATEGORIAS = 7;
 
   var GUION = '—';
 
-  var nodoKm = null;
+  // Firma del catálogo con el que se pintaron los combos: reconstruirlos en cada
+  // recarga le borraría la selección al usuario justo después de elegirla.
+  var firmaCatalogo = { empresas: null, bases: null };
 
   /* Mensajes del estado vacío. Explican que faltan servicios por cargar y qué va
      a mostrar cada gráfico, en vez de dejar un recuadro mudo. */
   var VACIO_DONUT = 'Todavía no hay servicios cargados en este período. Acá va a verse el reparto de servicios por prestadora.';
   var VACIO_CAJAS = 'Todavía no hay servicios cargados en este período. Acá va a verse la composición por concepto.';
   var VACIO_BASES = 'Todavía no hay servicios cargados en este período. Acá va a verse el desglose facturado por base.';
+  var VACIO_CONC  = 'Todavía no hay servicios cargados en este período. Acá va a verse cuántos servicios y cuántos km factura cada concepto.';
   var VACIO_KPIS  = 'Todavía no hay servicios cargados en este período.';
 
   /* ── utilidades ───────────────────────────────────────────────────────── */
@@ -145,6 +150,10 @@
         servicios: num(a.servicios)
       },
       rangoAnterior: c.desde && c.hasta ? fecha(c.desde) + ' al ' + fecha(c.hasta) : '',
+      catalogo: {
+        empresas: lista(o.catalogo && o.catalogo.empresas),
+        bases: lista(o.catalogo && o.catalogo.bases)
+      },
       porEmpresa: lista(o.por_empresa).map(fila),
       porConcepto: lista(o.por_concepto).map(fila),
       porBase: lista(o.por_base).map(fila)
@@ -159,6 +168,9 @@
       return { label: f.nombre, value: num(valorDe(f)), km: f.km, servicios: f.servicios, monto: f.monto };
     });
     var top = ch().topN(items, MAX_CATEGORIAS) || [];
+    // Promedios por fila. Van con guarda: una base sin servicios devuelve null
+    // y la tabla muestra guión, nunca una división por cero.
+
     var totalKm = 0, totalServicios = 0;
     items.forEach(function (i) { totalKm += i.km; totalServicios += i.servicios; });
     top.forEach(function (i) {
@@ -169,7 +181,68 @@
         i.servicios = srv;
       }
     });
+    top.forEach(function (i) {
+      i.ticket = i.servicios > 0 ? i.monto / i.servicios : null;
+      i.kmServicio = i.servicios > 0 ? i.km / i.servicios : null;
+    });
     return top;
+  }
+
+  /* ── filtros ──────────────────────────────────────────────────────────────
+     Prestadora y base son, con la fecha, los filtros principales de la sección.
+     Viven en la barra de arriba junto al selector de período, fuera del cuerpo,
+     para que el overlay de carga no los tape. El shell los muestra y los esconde
+     con la sección. */
+
+  function montarFiltros() {
+    var cont = el(ID_FILT);
+    if (!cont || cont.dataset.listo === '1') return;
+    cont.dataset.listo = '1';
+    cont.innerHTML =
+      '<select id="dashx-fact-f-empresa" class="input-field" aria-label="Filtrar por prestadora"></select>' +
+      '<select id="dashx-fact-f-base" class="input-field" aria-label="Filtrar por base"></select>';
+
+    [['dashx-fact-f-empresa', 'empresas'], ['dashx-fact-f-base', 'bases']].forEach(function (par) {
+      var sel = el(par[0]);
+      if (!sel) return;
+      sel.addEventListener('change', function () {
+        // El shell recarga, coalesce y prende el overlay: acá sólo se empuja.
+        global.AuxDash.setFiltro(par[1], sel.value ? [sel.value] : []);
+      });
+    });
+  }
+
+  function pintarCombo(id, opciones, etiquetaTodos, seleccionado, clave) {
+    var sel = el(id);
+    if (!sel) return;
+    var firma = opciones.map(function (o) { return o.id; }).join('|');
+    if (firmaCatalogo[clave] !== firma) {
+      firmaCatalogo[clave] = firma;
+      // createElement/textContent: una razón social con "&" o "<" no tiene por
+      // qué pasar por el parser de HTML.
+      sel.innerHTML = '';
+      var todos = document.createElement('option');
+      todos.value = '';
+      todos.textContent = etiquetaTodos;
+      sel.appendChild(todos);
+      opciones.forEach(function (o) {
+        var op = document.createElement('option');
+        op.value = String(o.id);
+        op.textContent = String(o.nombre == null ? '' : o.nombre);
+        sel.appendChild(op);
+      });
+    }
+    // El dueño del filtro es el shell, no el combo: el valor se reafirma siempre.
+    var v = (seleccionado === null || seleccionado === undefined) ? '' : String(seleccionado);
+    if (sel.value !== v) sel.value = v;
+  }
+
+  function pintarFiltros(d, f) {
+    var cat = (d && d.catalogo) || {};
+    pintarCombo('dashx-fact-f-empresa', lista(cat.empresas), 'Todas las prestadoras',
+      (lista(f.empresas).length === 1) ? f.empresas[0] : '', 'empresas');
+    pintarCombo('dashx-fact-f-base', lista(cat.bases), 'Todas las bases',
+      (lista(f.bases).length === 1) ? f.bases[0] : '', 'bases');
   }
 
   /* ── pintado ──────────────────────────────────────────────────────────── */
@@ -213,48 +286,24 @@
           delta(d.totales.servicios, d.anterior.servicios, true, r));
   }
 
-  /* Los km facturados tienen tarjeta propia, al lado de la composición de la
-     que salen. Antes colgaban del pie del treemap: es el dato que más se mira
-     de esta sección y estaba abajo de todo, y encima dejaba tres columnas de
-     la grilla vacías a la derecha. */
-  function bloqueKm() {
-    if (nodoKm) return nodoKm;
-    nodoKm = el(ID_KM);
-    return nodoKm;
-  }
+  /* La tabla que va pegada al treemap. El treemap responde "cuál es el servicio
+     más común"; ésta responde "cuántos son y cuántos km facturan", que es la
+     misma pregunta con los números al lado. Mismo orden y mismo color que las
+     cajas, así que se leen como una sola cosa.
 
-  function encabezadoKm(valor) {
-    return '<div class="dashx-card-title">KM facturados</div>' +
-      '<div class="dashx-chart-total">' +
-        '<div class="dashx-chart-total-value is-amber">' + valor + '</div>' +
-        '<div class="dashx-chart-total-label" id="' + ID_KM + '-pie"></div>' +
-      '</div>';
-  }
-
-  function pintarKm(d, items) {
-    var nodo = bloqueKm();
-    if (!nodo) return;
-
-    if (!d.hayDatos) {
-      nodo.innerHTML = encabezadoKm(GUION) +
-        '<div class="auxtb-vacio">' + esc(VACIO_KPIS) + '</div>';
-      return;
-    }
-
-    /* Tabla con barras y no chips de colores: en una tarjeta angosta los chips
-       se acomodaban en tres renglones desparejos, y acá lo que se compara es
-       cuánto aporta cada concepto. Mismo orden y mismos colores que el treemap
-       de al lado, que es de dónde salen estos km. */
-    nodo.innerHTML = encabezadoKm(nfKm(d.totales.km)) + '<div id="' + ID_KM + '-tabla"></div>';
-    var pie = el(ID_KM + '-pie');
-    if (pie) pie.textContent = 'en ' + ch().nfMiles(d.totales.servicios) + ' servicios';
-    ch().tabla(ID_KM + '-tabla', {
-      vacio: VACIO_KPIS,
+     Sin fila de totales a propósito: los totales de servicios y de km ya están
+     en la columna de KPI, y repetirlos acá sería decir lo mismo dos veces en la
+     misma pantalla. */
+  function pintarConceptos(d, items) {
+    ch().tabla(ID_CONC, {
+      vacio: VACIO_CONC,
       columnas: [
-        { clave: 'label', titulo: 'Concepto', tipo: 'texto' },
-        { clave: 'km',    titulo: 'Km',       barra: true, unidad: 'km' }
+        { clave: 'label',     titulo: 'Concepto',  tipo: 'texto', swatch: true },
+        { clave: 'servicios', titulo: 'Servicios', barra: true },
+        { clave: 'km',        titulo: 'Km',        decimales: 0, unidad: 'km' },
+        { clave: 'monto',     titulo: 'Facturado', tipo: 'pesos' }
       ],
-      filas: (items || []).slice().sort(function (a, b) { return num(b.km) - num(a.km); })
+      filas: d.hayDatos ? (items || []) : []
     });
   }
 
@@ -264,6 +313,7 @@
     if (!d.hayDatos) {
       g.vacio(CV_DONUT, VACIO_DONUT);
       g.vacio(CV_CAJAS, VACIO_CAJAS);
+      g.vacio(CV_PART, VACIO_BASES);
       // Bases dejó de ser un canvas: su vacío lo dibuja la tabla.
       g.tabla(CV_BASES, { vacio: VACIO_BASES, columnas: [], filas: [] });
       return [];
@@ -284,20 +334,40 @@
     var conceptos = agrupar(d.porConcepto, function (f) { return f.servicios; });
     g.treemap(CV_CAJAS, { items: conceptos, vacio: VACIO_CAJAS });
 
-    /* Desglose por base: tabla con barras y no cuatro barras sueltas. Son
-       pocas filas con varias medidas, y así se ve de un vistazo que una base
-       factura más pero con menos servicios —que es la pregunta real— en vez de
-       cruzar tres gráficos. */
+    /* Desglose por base: una barra de participación arriba y la tabla abajo.
+
+       La tabla da los absolutos y los promedios; la barra da lo que la tabla no
+       muestra de un vistazo —qué porción del facturado se lleva cada base— y
+       cuesta 78 px, contra los 200 de un anillo. Además no repite ninguna forma
+       que ya esté en pantalla: arriba hay un anillo y al lado un treemap.
+
+       Los promedios son la pregunta real de este cuadro: una base puede
+       facturar más porque hace más servicios o porque cobra más caro cada uno,
+       y los totales solos no distinguen una cosa de la otra. */
+    var bases = agrupar(d.porBase, function (f) { return f.monto; });
+
+    g.barraParticipacion(CV_PART, {
+      items: bases,
+      formato: 'pesos',
+      vacio: VACIO_BASES
+    });
+
     g.tabla(CV_BASES, {
       vacio: VACIO_BASES,
       totalEtiqueta: 'Total',
       columnas: [
-        { clave: 'label',     titulo: 'Base',      tipo: 'texto' },
-        { clave: 'value',     titulo: 'Facturado', tipo: 'pesos', barra: true, total: 'suma' },
+        { clave: 'label',     titulo: 'Base',      tipo: 'texto', swatch: true },
+        { clave: 'value',     titulo: 'Facturado', tipo: 'pesos', total: 'suma' },
         { clave: 'servicios', titulo: 'Servicios', total: 'suma' },
-        { clave: 'km',        titulo: 'Km',        decimales: 0, unidad: 'km', total: 'suma' }
+        { clave: 'km',        titulo: 'Km',        decimales: 0, unidad: 'km', total: 'suma' },
+        // Promedios, no sumas: el cierre divide los totales entre sí, que no es
+        // lo mismo que promediar la columna.
+        { clave: 'ticket',    titulo: '$/servicio', tipo: 'pesos',
+          total: { dividir: 'value', por: 'servicios' } },
+        { clave: 'kmServicio', titulo: 'Km/serv.', decimales: 1,
+          total: { dividir: 'km', por: 'servicios' } }
       ],
-      filas: agrupar(d.porBase, function (f) { return f.monto; })
+      filas: bases
     });
 
     return conceptos;
@@ -305,7 +375,7 @@
 
   function pintar(d) {
     pintarKpis(d);
-    pintarKm(d, pintarGraficos(d));
+    pintarConceptos(d, pintarGraficos(d));
   }
 
   /* ── carga ────────────────────────────────────────────────────────────── */
@@ -348,7 +418,9 @@
   async function cargar(filtros) {
     var f = filtros || {};
     pintarSub(f);
-    pintar(normalizar(await consultar(f)));
+    var d = normalizar(await consultar(f));
+    pintarFiltros(d, f);
+    pintar(d);
   }
 
   /* El shell llama a esto cuando cargar() rompe: él ya loguea y apaga el overlay,
@@ -359,7 +431,9 @@
     if (g) {
       g.error(CV_DONUT, msg);
       g.error(CV_CAJAS, msg);
+      g.error(CV_PART, msg);
       g.tabla(CV_BASES, { vacio: msg, columnas: [], filas: [] });
+      g.tabla(ID_CONC, { vacio: msg, columnas: [], filas: [] });
     }
     var nodo = el(ID_KPIS);
     if (nodo) {
@@ -370,14 +444,12 @@
         kpi('Servicios', GUION) +
         '<div class="dashx-kpi-delta is-down" style="margin-top:12px">' + esc(msg) + '</div>';
     }
-    var km = bloqueKm();
-    if (km) km.innerHTML = encabezadoKm(GUION) + '<div class="auxtb-vacio">' + esc(msg) + '</div>';
   }
 
   function montar() {
     // Esqueleto antes de la primera respuesta: las etiquetas ya dicen qué va a
     // haber en cada lugar y ningún número inventado.
-    bloqueKm();
+    montarFiltros();
     pintarKpis(normalizar(null));
   }
 
@@ -385,6 +457,9 @@
     if (!global.AuxDash || !global.AuxDashCharts) return false;
     global.AuxDash.registrarSeccion({
       id: 'facturacion',
+      // Viven en la barra de herramientas, fuera del cuerpo: el shell los
+      // muestra y los esconde junto con la sección.
+      filtros: ID_FILT,
       montar: montar,
       cargar: cargar,
       alError: alError

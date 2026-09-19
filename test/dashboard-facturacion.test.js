@@ -9,6 +9,9 @@ const sql = fs.readFileSync(
   'migrations/20260918170000_dashboard_facturacion_rpc_v1.sql', 'utf8');
 const index = fs.readFileSync('Index.html', 'utf8');
 const css = fs.readFileSync('dashboard-v1.css', 'utf8');
+const charts = fs.readFileSync('dashboard-charts-v1.js', 'utf8');
+const sqlV2 = fs.readFileSync(
+  'migrations/20260919200000_dashboard_facturacion_catalogo_v2.sql', 'utf8');
 
 /* Varias aserciones son sobre lo que el código HACE, no sobre lo que los
    comentarios explican: los comentarios de estos dos archivos nombran a propósito
@@ -61,10 +64,13 @@ test('con el dataset vacío no se pinta ningún cero como si fuera un dato', () 
   // Ni "$0" ni "0%" escritos en ningún lado.
   assert.doesNotMatch(jsCodigo, /\$0\b/);
   assert.doesNotMatch(jsCodigo, /\b0%/);
-  // Los tres pintores cortan por el estado vacío antes de formatear un número.
-  const cortes = js.match(/if \(!d\.hayDatos\)/g) || [];
-  assert.ok(cortes.length >= 3,
-    `sólo ${cortes.length} pintores contemplan el dataset vacío`);
+  // Todo pintor mira hayDatos antes de formatear un número.
+  ['pintarKpis', 'pintarGraficos', 'pintarConceptos'].forEach(fn => {
+    const i = js.indexOf('function ' + fn);
+    assert.ok(i > -1, `falta ${fn}`);
+    const cuerpo = js.slice(i, i + 1600);
+    assert.match(cuerpo, /hayDatos/, `${fn} no contempla el dataset vacío`);
+  });
 });
 
 test('cada gráfico vacío explica que faltan servicios y qué va a mostrar', () => {
@@ -127,26 +133,83 @@ test('el delta se lee sin depender del color', () => {
 test('los KM facturados se ven, no quedan escondidos', () => {
   // Uno de los KPI de la columna...
   assert.match(js, /kpi\('KM facturados', nfKm\(d\.totales\.km\), true/);
-  // ...y además con tarjeta propia, al lado de la composición de la que salen.
-  // Antes colgaban del pie del treemap: el dato que más se mira quedaba abajo
-  // de todo y dejaba tres columnas de la grilla vacías.
-  assert.match(js, /ID_KM\s*=\s*'dashx-fact-km'/);
-  assert.ok(index.includes('dashx-card dashx-km" id="dashx-fact-km"'),
-    'los km no tienen tarjeta propia en la grilla');
-  assert.match(css, /#screen-dashboard \.dashx-km\s*\{\s*grid-column: span 3/);
-  assert.match(js, /function encabezadoKm/);
-  assert.match(js, /dashx-chart-total-value is-amber/);
   assert.match(js, /function nfKm/);
   assert.match(js, /' km'/);
+  // ...y además por concepto, en la tabla pegada al treemap: ahí se ve cuántos
+  // km factura cada tipo de servicio, que es lo que el treemap no dice.
+  assert.match(js, /function pintarConceptos/);
+  const conc = js.slice(js.indexOf('function pintarConceptos'),
+                        js.indexOf('function pintarGraficos'));
+  ["clave: 'servicios'", "clave: 'km'", "clave: 'monto'"].forEach(c =>
+    assert.ok(conc.includes(c), `la tabla de conceptos no trae ${c}`));
+  assert.ok(index.includes('id="dashx-fact-conceptos"'));
+});
+
+test('la tabla de conceptos se lee junto al treemap, no aparte', () => {
+  // Mismo orden y mismo color que las cajas: si no, son dos listas del mismo
+  // dato que hay que emparejar de memoria.
+  const conc = js.slice(js.indexOf('function pintarConceptos'),
+                        js.indexOf('function pintarGraficos'));
+  assert.match(conc, /swatch: true/);
+  assert.match(charts, /col\.swatch && indice != null/);
+  assert.match(css, /#screen-dashboard \.auxtb \.auxtb-chip/);
+  // Y sin fila de totales: servicios y km ya están en la columna de KPI.
+  assert.ok(!conc.includes("total: 'suma'"),
+    'la tabla de conceptos repite un total que ya está en los KPI');
+  // Va pegada al gráfico, separada por una línea y no por otra tarjeta.
+  assert.match(css, /#screen-dashboard \.dashx-tabla-pegada/);
 });
 
 test('la fila de la grilla de Facturación cubre las doce columnas', () => {
-  // cajas(5) + bases(4) + km(3). Con 5 + 4 quedaba un hueco de tres columnas
-  // a la derecha.
+  // cajas(7) + bases(5). Antes eran 5 + 4 y quedaba un hueco de tres columnas.
   const span = k => Number(css.match(
     new RegExp('#screen-dashboard \\.dashx-' + k + '\\s*\\{\\s*grid-column: span (\\d+)'))[1]);
-  assert.equal(span('cajas') + span('bases') + span('km'), 12);
+  assert.equal(span('cajas') + span('bases'), 12);
   assert.equal(span('kpis') + span('donut') + span('mapa'), 12);
+});
+
+test('prestadora, base y fecha son los filtros de la sección', () => {
+  assert.match(js, /function montarFiltros/);
+  assert.match(js, /ID_FILT\s*=\s*'dashx-fact-filtros'/);
+  assert.match(js, /filtros: ID_FILT/);
+  assert.ok(index.includes('id="dashx-fact-filtros" hidden'));
+  ['dashx-fact-f-empresa', 'dashx-fact-f-base'].forEach(id =>
+    assert.ok(js.includes(id), `falta el combo ${id}`));
+  assert.match(js, /setFiltro\(par\[1\], sel\.value \? \[sel\.value\] : \[\]\)/);
+  // Reconstruir el <select> en cada recarga le borraría la selección al usuario
+  // justo después de elegirla.
+  assert.match(js, /firmaCatalogo\[clave\] !== firma/);
+  // Y el catálogo viene de la RPC, que sigue siendo una sola llamada.
+  assert.match(js, /catalogo: \{/);
+  assert.match(sqlV2, /'catalogo', jsonb_build_object/);
+});
+
+test('el catálogo de los filtros no se filtra a sí mismo', () => {
+  // Si se filtrara por los filtros activos, elegir una prestadora borraría las
+  // demás del combo y no habría forma de volver.
+  assert.match(sqlV2, /from public\.companies co/);
+  assert.match(sqlV2, /from public\.billing_bases bb/);
+  // Y sale de las tablas maestras, no de los servicios: con operator_services
+  // vacía los combos tienen que funcionar igual desde el primer día.
+  const cat = sqlV2.slice(sqlV2.indexOf("'catalogo'"), sqlV2.indexOf('into v_out'));
+  assert.ok(!/from base b\b(?![\s\S]{0,80}exists)/.test(cat.replace(/exists \(select 1 from base b/g, '')),
+    'el catálogo sale de los servicios del período');
+});
+
+test('el desglose por bases responde si una base factura más por volumen o por precio', () => {
+  // Los totales solos no distinguen una cosa de la otra.
+  const graf = js.slice(js.indexOf('function pintarGraficos'), js.indexOf('function pintar('));
+  assert.match(graf, /clave: 'ticket'/);
+  assert.match(graf, /clave: 'kmServicio'/);
+  // Promedios por fila con guarda: una base sin servicios no divide por cero.
+  assert.match(js, /i\.ticket = i\.servicios > 0 \? i\.monto \/ i\.servicios : null/);
+  // Y el cierre divide los totales entre sí, que no es promediar la columna.
+  assert.match(graf, /total: \{ dividir: 'value', por: 'servicios' \}/);
+  // La barra de participación da lo que la tabla no muestra de un vistazo.
+  assert.match(graf, /g\.barraParticipacion\(CV_PART/);
+  assert.match(charts, /function barraParticipacion/);
+  assert.match(charts, /indexAxis: 'y'/);
+  assert.match(charts, /x: \{ stacked: true, display: false/);
 });
 
 /* ── datos ─────────────────────────────────────────────────────────────── */

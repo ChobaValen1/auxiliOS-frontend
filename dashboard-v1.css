@@ -147,9 +147,10 @@
 #screen-dashboard .dashx-kpis     { grid-column: span 3; }
 #screen-dashboard .dashx-donut    { grid-column: span 5; }
 #screen-dashboard .dashx-mapa     { grid-column: span 4; }
-#screen-dashboard .dashx-cajas    { grid-column: span 5; }
-#screen-dashboard .dashx-bases    { grid-column: span 4; }
-#screen-dashboard .dashx-km       { grid-column: span 3; }
+#screen-dashboard .dashx-cajas    { grid-column: span 6; }
+/* Seis y seis: con 7 + 5 la tabla de bases quedaba 39 px corta a 1366 y
+   escondía Km/servicio detrás del scroll. */
+#screen-dashboard .dashx-bases    { grid-column: span 6; }
 #screen-dashboard .dashx-full     { grid-column: 1 / -1; }
 #screen-dashboard .dashx-med      { grid-column: span 6; }
 #screen-dashboard .dashx-tercio   { grid-column: span 4; }
@@ -263,6 +264,20 @@
   color: var(--muted);
   margin-top: 2px;
   min-height: 15px;
+}
+
+/* La tabla que va pegada a su gráfico: una línea los separa, no un recuadro
+   nuevo. Son el mismo corte, no dos tarjetas distintas. */
+#screen-dashboard .dashx-tabla-pegada {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* La barra de participación no lleva ejes: el aire de abajo es sólo el de la
+   leyenda. */
+#screen-dashboard .dashx-barra-part {
+  min-height: 0;
 }
 
 /* Una razón sin explicación es un número que nadie sabe si está bien: "12,8"
@@ -466,6 +481,17 @@
   width: 100%;
 }
 
+/* El color que la fila tiene en el gráfico de al lado. Va antes del nombre,
+   nunca en lugar del nombre. */
+#screen-dashboard .auxtb .auxtb-chip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-right: 7px;
+  vertical-align: baseline;
+}
+
 #screen-dashboard .auxtb .auxtb-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -591,7 +617,7 @@
    columna invisible no informa nada. */
 @media (max-width: 1400px) {
   #screen-dashboard .dashx-bases .auxtb-track,
-  #screen-dashboard .dashx-km .auxtb-track {
+  #screen-dashboard .dashx-cajas .auxtb-track {
     min-width: 22px;
     max-width: 52px;
   }
@@ -601,10 +627,7 @@
    tablas van a ancho completo, en vez de esconder la última columna detrás de
    un scroll horizontal que nadie descubre. */
 @media (max-width: 1340px) {
-  #screen-dashboard .dashx-card-tabla,
-  /* La misma razón: la tarjeta de km es una tabla con encabezado, y a 1.280
-     su última columna se caía fuera del recuadro. */
-  #screen-dashboard .dashx-km {
+  #screen-dashboard .dashx-card-tabla {
     grid-column: 1 / -1;
   }
 }
@@ -616,7 +639,6 @@
   #screen-dashboard .dashx-mapa,
   #screen-dashboard .dashx-cajas,
   #screen-dashboard .dashx-bases,
-  #screen-dashboard .dashx-km,
   #screen-dashboard .dashx-med,
   #screen-dashboard .dashx-tercio {
     grid-column: span 6;

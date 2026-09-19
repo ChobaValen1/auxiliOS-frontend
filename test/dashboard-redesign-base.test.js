@@ -259,6 +259,7 @@ test('las barras de la tabla no empujan una columna fuera del recuadro', () => {
   // Las tarjetas de Facturación son la mitad de anchas que las de Operaciones:
   // el carril cede antes que perderse una columna detrás del scroll.
   assert.match(css, /#screen-dashboard \.auxtb \.auxtb-barra \{[^}]*min-width: 118px/);
-  assert.match(css, /@media \(max-width: 1400px\)[\s\S]*?\.dashx-km \.auxtb-track/);
-  assert.match(css, /#screen-dashboard \.dashx-km \{\s*\n?\s*grid-column: 1 \/ -1/);
+  assert.match(css, /@media \(max-width: 1400px\)[\s\S]*?\.dashx-cajas \.auxtb-track/);
+  // Y por debajo de 1340 las tarjetas con tabla pasan a ancho completo.
+  assert.match(css, /@media \(max-width: 1340px\)[\s\S]*?\.dashx-card-tabla \{\s*\n?\s*grid-column: 1 \/ -1/);
 });

@@ -312,6 +312,15 @@
      Acá el topN sí corresponde: "Otros" es una suma real de km, no un promedio. */
   function pintarAnillo(datos) {
     var filas = (datos.por_camion || []).filter(function (c) { return num(c.km) > 0; });
+
+    // El total encabeza el gráfico que lo reparte, igual que el gasto en el
+    // bloque de combustible: el número primero, el reparto abajo.
+    var t = (datos && datos.totales) || {};
+    texto(document.getElementById('dashx-ops-anillo-total'),
+          filas.length ? miles(t.km) + ' km' : '—');
+    texto(document.getElementById('dashx-ops-anillo-pie'),
+          filas.length ? 'en ' + miles(filas.length) + (filas.length === 1 ? ' camión' : ' camiones') : '');
+
     if (!filas.length) return G.vacio(CANVAS.anillo, 'Sin kilómetros en el período');
     var top = G.topN(filas.map(function (c) {
       return { label: c.etiqueta, value: num(c.km) };
@@ -498,6 +507,8 @@
       if (el) el.innerHTML = '';
     });
     texto(document.getElementById('dashx-ops-comb-sub'), '');
+    texto(document.getElementById('dashx-ops-anillo-total'), '—');
+    texto(document.getElementById('dashx-ops-anillo-pie'), '');
     texto(document.getElementById('dashx-ops-comb-total'), '—');
     texto(document.getElementById('dashx-ops-comb-total-pie'), '');
     texto(document.getElementById('dashx-ops-sub'), 'No se pudieron cargar las métricas');
