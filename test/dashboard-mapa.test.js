@@ -148,3 +148,53 @@ test('la lectura del mapa aclara que los km son en línea recta', () => {
   // Se pinta aunque el mapa no tenga puntos que dibujar.
   assert.ok(mapaJs.indexOf('pintarLectura(data)') < mapaJs.indexOf("if (!puntos.length)"));
 });
+
+
+/* ── la caja del mapa: alto contra ancho ────────────────────────────────── */
+
+test('el mapa va a la izquierda y la lectura a la derecha', () => {
+  assert.match(index, /<div class="dashx-mapa-cuerpo">/);
+  // Los dos adentro del mismo contenedor flexible, el mapa primero.
+  const cuerpo = index.slice(index.indexOf('dashx-mapa-cuerpo'),
+                             index.indexOf('dashx-fact-mapa-lectura'));
+  assert.match(cuerpo, /id="dashx-fact-mapa"/);
+  assert.match(css, /\.dashx-mapa-cuerpo\s*\{[^}]*display:\s*flex/);
+  assert.match(css, /\.dashx-mapa-lectura\s*\{[^}]*border-left/);
+});
+
+test('el mapa no puede quedar más ancho que alto', () => {
+  /* El alto es fijo y el ancho tiene techo, así que la relación se sostiene a
+     cualquier ancho de pantalla. Con un porcentaje suelto no: a 42% libre, en
+     1920 el mapa daba 461 px de ancho contra 420 de alto. */
+  const ancho = Number(css.match(/\.dashx-mapa-lienzo\s*\{[\s\S]*?max-width:\s*(\d+)px/)[1]);
+  const alto  = Number(css.match(/\.dashx-mapa-lienzo\s*\{[\s\S]*?min-height:\s*(\d+)px/)[1]);
+  assert.ok(alto > ancho, `el mapa mide ${ancho}px de ancho y ${alto}px de alto`);
+  assert.match(css, /flex: 0 0 clamp\(\d+px, \d+%, \d+px\)/);
+  // Y el alto no puede volver a viajar en un style inline del markup.
+  assert.doesNotMatch(index, /id="dashx-fact-mapa"[^>]*style=/);
+});
+
+test('la regla de apilado va después de la base, o no gana', () => {
+  /* Misma especificidad: gana la última. Escrita antes, la regla base pisaba
+     la media query y el mapa se quedaba en 380 px de ancho al apilarse. */
+  const base = css.indexOf('#screen-dashboard .dashx-mapa-lienzo {');
+  const angosto = css.indexOf('#screen-dashboard .dashx-mapa-lienzo {', base + 1);
+  assert.ok(angosto > base, 'la regla angosta tiene que ir después de la base');
+  assert.ok(css.lastIndexOf('@media (max-width: 900px)', angosto) > base,
+    'la regla angosta tiene que estar dentro de la media query de 900px');
+});
+
+test('el mapa se re-dimensiona cuando cambia su caja', () => {
+  /* MapLibre mide el contenedor al crearse y después no se entera. Con el mapa
+     en una caja flexible, su ancho depende del de la tarjeta: sin esto, al
+     agrandar la ventana o al cruzar el breakpoint el canvas quedaba del tamaño
+     viejo hasta recargar. */
+  assert.match(mapa, /new global\.ResizeObserver/);
+  assert.match(mapa, /if \(mapa\) mapa\.resize\(\);/);
+  // Y se suelta con el mapa: un observador vivo sobre un mapa muerto es una fuga.
+  const destruir = mapa.slice(mapa.indexOf('function destruirMapa'),
+                              mapa.indexOf('function observarTamano'));
+  assert.match(destruir, /observador\.disconnect\(\)/);
+  // Sin ResizeObserver (browser viejo) no se rompe: sigue sin re-dimensionar.
+  assert.match(mapa, /typeof global\.ResizeObserver !== 'function'/);
+});

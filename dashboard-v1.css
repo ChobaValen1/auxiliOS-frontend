@@ -663,13 +663,63 @@
 
 /* La lectura del mapa: dos renglones debajo, no otra tarjeta. Son conclusiones
    sobre lo que se está viendo arriba, no un cuadro aparte. */
+/* Mapa y lectura lado a lado. El mapa va más alto que ancho: el área de
+   trabajo se estira de norte a sur, así que uno apaisado gasta el ancho en
+   océano y aprieta justo lo que hay que mirar. El ancho que no usa el mapa se
+   lo lleva la lectura, que es texto y sí lo aprovecha. */
+#screen-dashboard .dashx-mapa-cuerpo {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+}
+
+#screen-dashboard .dashx-mapa-lienzo {
+  /* Ancho acotado, no un porcentaje suelto: con 42% libre, en una pantalla de
+     1920 el mapa daba 461 px de ancho contra 420 de alto y dejaba de ser más
+     alto que ancho justo donde sobra lugar. Con el tope en 380 no puede pasar
+     a ningún ancho de pantalla. */
+  flex: 0 0 clamp(260px, 40%, 380px);
+  max-width: 380px;
+  min-height: 420px;
+}
+
 #screen-dashboard .dashx-mapa-lectura {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-  font-size: 11px;
-  line-height: 1.5;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+  /* 11 px era tamaño de nota al pie, de cuando esto iba apretado bajo el mapa.
+     Ahora tiene una columna entera: son las conclusiones de la sección y se
+     leen como tales. */
+  font-size: 12px;
+  line-height: 1.6;
   color: var(--muted2);
+}
+
+/* Angosto: el mapa arriba y la lectura debajo, con el borde de vuelta en el
+   tope. Apilados, un mapa de 420 px se come la pantalla: baja a 240.
+
+   Va DESPUÉS de las reglas de arriba a propósito: tiene la misma
+   especificidad, así que si fuera antes la regla base la pisaría y el mapa se
+   quedaría en 380 px de ancho al apilarse. */
+@media (max-width: 900px) {
+  #screen-dashboard .dashx-mapa-cuerpo { flex-direction: column; }
+  #screen-dashboard .dashx-mapa-lienzo {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+    min-height: 240px;
+  }
+  #screen-dashboard .dashx-mapa-lectura {
+    padding-left: 0;
+    border-left: 0;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  #screen-dashboard .dashx-mapa-lectura > div + div { margin-top: 6px; }
 }
 
 #screen-dashboard .dashx-mapa-lectura b {
@@ -680,7 +730,7 @@
 #screen-dashboard .dashx-mapa-lectura .is-aviso b { color: #f5a623; }
 
 #screen-dashboard .dashx-mapa-lectura > div + div {
-  margin-top: 4px;
+  margin-top: 12px;
 }
 
 /* ── Mapa de zonas (MapLibre) ── */

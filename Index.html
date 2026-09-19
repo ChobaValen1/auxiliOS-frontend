@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=torta-prestadoras-v116-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=torta-prestadoras-v116-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=torta-prestadoras-v116-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=torta-prestadoras-v116-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=torta-prestadoras-v116-20260919">
+<link rel="stylesheet" href="sigma.css?v=mapa-vertical-v117-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=mapa-vertical-v117-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=mapa-vertical-v117-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=mapa-vertical-v117-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=mapa-vertical-v117-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=277')
+        navigator.serviceWorker.register('/sw.js?v=278')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="supabase.js?v=torta-prestadoras-v116-20260919" defer></script>
+<script src="config.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="supabase.js?v=mapa-vertical-v117-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="sigma.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=torta-prestadoras-v116-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=torta-prestadoras-v116-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=mapa-vertical-v117-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=mapa-vertical-v117-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="sigma.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=mapa-vertical-v117-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=mapa-vertical-v117-20260919" defer></script>
 </head>
 <body>
 
@@ -767,9 +767,14 @@
 
             <div class="dashx-card dashx-mapa">
               <div class="dashx-card-title">Zonas de participación</div>
-              <div class="auxch-wrap" id="dashx-fact-mapa" style="height:196px"></div>
-              <!-- El mapa dice dónde; esto dice qué hacer con eso. -->
-              <div class="dashx-mapa-lectura" id="dashx-fact-mapa-lectura"></div>
+              <!-- Mapa a la izquierda, lectura a la derecha. El mapa va más alto
+                   que ancho porque el área de trabajo se estira de norte a sur:
+                   un mapa apaisado gasta el ancho en océano y aprieta la ruta.
+                   El mapa dice dónde; la lectura dice qué hacer con eso. -->
+              <div class="dashx-mapa-cuerpo">
+                <div class="auxch-wrap dashx-mapa-lienzo" id="dashx-fact-mapa"></div>
+                <div class="dashx-mapa-lectura" id="dashx-fact-mapa-lectura"></div>
+              </div>
             </div>
 
             <!-- Se abre cada prestadora y aparecen sus bases. Una base atiende a

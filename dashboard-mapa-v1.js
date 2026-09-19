@@ -21,6 +21,7 @@
   var VISTA_INICIAL = { center: [-64.0, -38.0], zoom: 3.2 };
 
   var mapa = null;
+  var observador = null;
   var cargandoLib = null;
   var ultimoPayload = null;
 
@@ -88,10 +89,26 @@
   }
 
   function destruirMapa() {
+    if (observador) { observador.disconnect(); observador = null; }
     if (mapa) {
       mapa.remove();
       mapa = null;
     }
+  }
+
+  /* MapLibre mide su contenedor una sola vez, al crearse, y después no se
+     entera si cambia. Con el mapa en una caja flexible al lado de la lectura,
+     su ancho depende del ancho de la tarjeta: al agrandar la ventana, o al
+     cruzar el breakpoint donde mapa y lectura pasan de estar lado a lado a
+     apilarse, el canvas quedaba del tamaño viejo —estirado o con una franja
+     muerta— hasta recargar. El observador se desconecta en destruirMapa(), que
+     es lo mismo que hace el mapa. */
+  function observarTamano(c) {
+    if (observador || typeof global.ResizeObserver !== 'function') return;
+    observador = new global.ResizeObserver(function () {
+      if (mapa) mapa.resize();
+    });
+    observador.observe(c);
   }
 
   function cargarLibreria() {
@@ -270,6 +287,7 @@
         pitchWithRotate: false
       });
       mapa.addControl(new global.maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+      observarTamano(c);
       mapa.on('load', function () {
         mapa.addSource('zonas', { type: 'geojson', data: gj });
         mapa.addLayer(capaHeatmap(data.max_servicios));
