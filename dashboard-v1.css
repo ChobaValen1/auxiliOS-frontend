@@ -235,6 +235,53 @@
   }
 }
 
+/* ── Mapa de zonas (MapLibre) ── */
+#screen-dashboard #dashx-fact-mapa {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-map {
+  font: inherit;
+}
+
+/* El basemap de CARTO es oscuro; los controles por defecto vienen claros. */
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-group {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  box-shadow: none;
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border2);
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-group button span {
+  filter: invert(1) brightness(1.6);
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-attrib {
+  background: rgba(12, 14, 18, 0.7);
+}
+
+#screen-dashboard #dashx-fact-mapa .maplibregl-ctrl-attrib a {
+  color: var(--muted2);
+}
+
+#screen-dashboard #dashx-fact-mapa .dashx-mapa-popup .maplibregl-popup-content {
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+#screen-dashboard #dashx-fact-mapa .dashx-mapa-popup .maplibregl-popup-tip {
+  display: none;
+}
+
 /* ── Responsive ── */
 @media (max-width: 1100px) {
   #screen-dashboard .dashx-kpis,

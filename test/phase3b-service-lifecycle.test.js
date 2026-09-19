@@ -138,6 +138,9 @@ test('runtime carga lifecycle antes de liberar UI y cache de phase2',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-billing-phase2-v209/);
+  // Versión mínima, no literal: congelarla rompía el test en cada bump legítimo
+  // del cache, que es justamente lo que debe pasar al publicar.
+  assert.ok(Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1] || 0) >= 209,
+    'el cache del service worker debe ser v209 o posterior');
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });

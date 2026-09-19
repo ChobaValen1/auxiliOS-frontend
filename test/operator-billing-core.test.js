@@ -244,5 +244,8 @@ test('runtime carga Facturación y Excel canónicos sin assets de revisión para
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-billing-phase2-v209/);
+  // Versión mínima, no literal: congelarla rompía el test en cada bump legítimo
+  // del cache, que es justamente lo que debe pasar al publicar.
+  assert.ok(Number(sw.match(/auxilios(?:-billing-phase2)?-v(\d+)/)?.[1] || 0) >= 209,
+    'el cache del service worker debe ser v209 o posterior');
 });
