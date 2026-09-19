@@ -15,11 +15,14 @@
   var G = global.AuxDashCharts;
 
   var CANVAS = {
-    comb:       'dashx-ops-comb',
-    kmchofer:   'dashx-ops-kmchofer',
-    tendencia:  'dashx-ops-tendencia',
-    eficiencia: 'dashx-ops-eficiencia',
-    horas:      'dashx-ops-horas'
+    tendencia: 'dashx-ops-tendencia'
+  };
+
+  // Por camión y por chofer son varias medidas sobre pocas filas: eso es una
+  // tabla, no cuatro gráficos de barras que obligan a cruzarlos con la vista.
+  var TABLAS = {
+    camiones: 'dashx-ops-tabla-camiones',
+    choferes: 'dashx-ops-tabla-choferes'
   };
 
   // Firma del catálogo con el que se pintaron los combos. Reconstruir el <select>
@@ -143,29 +146,39 @@
 
   /* ── métricas ─────────────────────────────────────────────────────────── */
 
-  function tarjeta(label, valor) {
-    return '<div class="dashx-metric">' +
+  function tarjeta(label, valor, clase) {
+    return '<div class="dashx-metric' + (clase ? ' ' + clase : '') + '">' +
              '<div class="dashx-metric-label">' + label + '</div>' +
              '<div class="dashx-metric-value">' + valor + '</div>' +
            '</div>';
   }
 
+  /* Dos niveles a propósito: arriba lo que se mira primero (volumen del
+     período), abajo las razones, que son lectura de segundo orden y con ocho
+     tarjetas iguales quedaban al mismo peso que el titular. */
   function pintarMetricas(datos) {
-    var cont = document.getElementById('dashx-ops-metrics');
-    if (!cont) return;
     var t = (datos && datos.totales) || {};
     var e = (datos && datos.eficiencia) || {};
-    cont.innerHTML =
-      tarjeta('Km recorridos',     miles(t.km) + ' km') +
-      tarjeta('Combustible',       decimales(t.litros, 0) + ' L') +
-      tarjeta('Gasto combustible', pesos(t.costo)) +
-      tarjeta('Jornadas',          miles(t.jornadas)) +
-      tarjeta('Horas totales',     decimales(t.horas, 0) + ' h') +
+
+    var principal = document.getElementById('dashx-ops-metrics');
+    if (principal) {
+      principal.innerHTML =
+        tarjeta('Km recorridos', miles(t.km) + ' km', 'is-hero') +
+        tarjeta('Gasto combustible', pesos(t.costo), 'is-hero') +
+        tarjeta('Jornadas', miles(t.jornadas), 'is-hero');
+    }
+
+    var razones = document.getElementById('dashx-ops-ratios');
+    if (razones) {
       // Las tres salen de una división con guarda en la RPC: sin cargas o sin
       // km vienen null y acá se muestran como guión, nunca como NaN ni 0.
-      tarjeta('Km por litro',      decimales(e.km_por_litro, 2)) +
-      tarjeta('Costo por km',      pesos(e.costo_por_km)) +
-      tarjeta('Horas por jornada', decimales(e.horas_por_jornada, 1) + ' h');
+      razones.innerHTML =
+        tarjeta('Km por litro', decimales(e.km_por_litro, 2)) +
+        tarjeta('Costo por km', pesos(e.costo_por_km)) +
+        tarjeta('Horas por jornada', decimales(e.horas_por_jornada, 1) + ' h') +
+        tarjeta('Combustible', decimales(t.litros, 0) + ' L') +
+        tarjeta('Horas totales', decimales(t.horas, 0) + ' h');
+    }
   }
 
   function pintarSubtitulo(datos) {
@@ -176,97 +189,83 @@
     partes.push(datos.granularidad === 'semana' ? 'por semana' : 'por día');
     // Las jornadas descartadas se muestran: un total silenciosamente incompleto
     // es peor que un total con la advertencia al lado.
-    var sucias = num(d.jornadas_sin_km) + num(d.jornadas_sin_horas);
-    if (sucias > 0) {
-      partes.push(num(d.jornadas_sin_km) + ' sin km válido · ' +
-                  num(d.jornadas_sin_horas) + ' sin horas válidas');
+    // Sólo lo que no es cero: "0 sin km válido" es ruido, no información.
+    if (num(d.jornadas_sin_km) > 0) {
+      partes.push(num(d.jornadas_sin_km) + ' sin km utilizable');
+    }
+    if (num(d.jornadas_sin_horas) > 0) {
+      partes.push(num(d.jornadas_sin_horas) + ' sin horario utilizable');
     }
     texto(sub, partes.join(' · '));
   }
 
   /* ── gráficos ─────────────────────────────────────────────────────────── */
 
-  function pintarCombustible(datos) {
-    var filas = (datos.por_camion || []).filter(function (c) { return num(c.costo) > 0; });
-    if (!filas.length) return G.vacio(CANVAS.comb, 'Sin cargas de combustible en el período');
-    // topN es legítimo acá: "Otros" es la suma de los gastos que quedaron fuera.
-    var top = G.topN(filas.map(function (c) {
-      return { label: c.etiqueta, value: num(c.costo) };
-    }), 7);
-    G.barras(CANVAS.comb, {
-      labels: top.map(function (x) { return x.label; }),
-      values: top.map(function (x) { return x.value; }),
-      horizontal: true,
-      formato: 'pesos',
-      color: G.PALETA[1]
+  function pintarTablaCamiones(datos) {
+    var filas = (datos.por_camion || []).slice()
+      .sort(function (a, b) { return num(b.km) - num(a.km); });
+    G.tabla(TABLAS.camiones, {
+      vacio: 'Sin jornadas ni cargas de camión en el período',
+      columnas: [
+        { clave: 'etiqueta',     titulo: 'Camión',   tipo: 'texto' },
+        { clave: 'km',           titulo: 'Km',       barra: true, unidad: 'km' },
+        { clave: 'jornadas',     titulo: 'Jornadas' },
+        { clave: 'litros',       titulo: 'Litros',   decimales: 0 },
+        { clave: 'costo',        titulo: 'Gasto',    tipo: 'pesos' },
+        // Llega null cuando el camión no tuvo cargas: la RPC no divide por cero
+        // y la tabla lo muestra como guión en vez de omitir la fila entera.
+        { clave: 'km_por_litro', titulo: 'Km/L',     decimales: 2 }
+      ],
+      filas: filas
     });
   }
 
-  function pintarKmChofer(datos) {
-    var filas = (datos.por_chofer || []).filter(function (c) { return num(c.km) > 0; });
-    if (!filas.length) return G.vacio(CANVAS.kmchofer, 'Sin kilómetros registrados en el período');
-    var top = G.topN(filas.map(function (c) {
-      return { label: c.nombre, value: num(c.km) };
-    }), 7);
-    G.barras(CANVAS.kmchofer, {
-      labels: top.map(function (x) { return x.label; }),
-      values: top.map(function (x) { return x.value; }),
-      horizontal: true,
-      unidad: 'km',
-      color: G.PALETA[0]
+  function pintarTablaChoferes(datos) {
+    var filas = (datos.por_chofer || []).slice()
+      .sort(function (a, b) { return num(b.km) - num(a.km); });
+    G.tabla(TABLAS.choferes, {
+      vacio: 'Sin jornadas de chofer en el período',
+      columnas: [
+        { clave: 'nombre',            titulo: 'Chofer',   tipo: 'texto' },
+        { clave: 'km',                titulo: 'Km',       barra: true, unidad: 'km' },
+        { clave: 'jornadas',          titulo: 'Jornadas' },
+        { clave: 'horas',             titulo: 'Horas',    decimales: 0, unidad: 'h' },
+        { clave: 'horas_por_jornada', titulo: 'H/jornada', decimales: 1 }
+      ],
+      filas: filas
     });
   }
 
+  /* Barras, no línea: son valores de días sueltos, no una magnitud continua, y
+     la línea sugería una transición entre un día y el siguiente que no existe.
+     La referencia de promedio es lo que hace legible el zigzag: sin ella no se
+     sabe qué día estuvo bien y cuál mal. */
   function pintarTendencia(datos) {
     var serie = datos.serie_temporal || [];
     if (!serie.length) return G.vacio(CANVAS.tendencia, 'Sin jornadas en el período');
     var semanal = datos.granularidad === 'semana';
-    G.linea(CANVAS.tendencia, {
-      labels: serie.map(function (p) {
-        return (semanal ? 'sem ' : '') + diaMes(p.fecha);
-      }),
-      // Una sola serie: km y horas tienen escalas distintas y el doble eje Y
-      // hace que cualquier cruce entre las dos líneas parezca significar algo.
-      series: [{ label: 'Km recorridos', values: serie.map(function (p) { return num(p.km); }) }]
-    });
-  }
+    var kms = serie.map(function (p) { return num(p.km); });
+    var conDatos = kms.filter(function (v) { return v > 0; });
+    var promedio = conDatos.length
+      ? Math.round(conDatos.reduce(function (a, b) { return a + b; }, 0) / conDatos.length)
+      : 0;
 
-  function pintarEficiencia(datos) {
-    var filas = (datos.por_camion || []).filter(function (c) {
-      // km_por_litro llega null cuando el camión no tuvo cargas en el período:
-      // la RPC nunca divide por cero, devuelve null y acá el camión se omite.
-      return c.km_por_litro !== null && c.km_por_litro !== undefined && num(c.km_por_litro) > 0;
-    }).sort(function (a, b) { return num(b.km_por_litro) - num(a.km_por_litro); });
-    if (!filas.length) return G.vacio(CANVAS.eficiencia, 'Hace falta km y litros del mismo camión');
-    // Sin topN: "Otros" suma valores y km/l es un cociente. Sumar cocientes de
-    // camiones distintos no da nada. Se recorta la cola y listo.
-    filas = filas.slice(0, 7);
-    G.barras(CANVAS.eficiencia, {
-      labels: filas.map(function (c) { return c.etiqueta; }),
-      values: filas.map(function (c) { return num(c.km_por_litro); }),
-      horizontal: true,
-      unidad: 'km/L',
-      color: G.PALETA[2]
+    // Sábados y domingos en tono más tenue: la operación baja el fin de semana
+    // y sin distinguirlos los valles parecen caídas de productividad.
+    var colores = serie.map(function (p) {
+      var d = new Date(p.fecha + 'T12:00:00');
+      var finde = !semanal && (d.getDay() === 0 || d.getDay() === 6);
+      return finde ? 'rgba(57,135,229,0.38)' : G.PALETA[0];
     });
-  }
 
-  function pintarHoras(datos) {
-    var filas = (datos.por_chofer || []).filter(function (c) {
-      return c.horas_por_jornada !== null && c.horas_por_jornada !== undefined &&
-             num(c.horas_por_jornada) > 0;
-    });
-    if (!filas.length) return G.vacio(CANVAS.horas, 'Sin jornadas con horario válido');
-    // Se eligen los choferes con más jornadas (los que sostienen la operación) y
-    // recién ahí se ordena por promedio. Tampoco lleva topN: es un promedio.
-    filas = filas.slice().sort(function (a, b) { return num(b.jornadas) - num(a.jornadas); })
-                 .slice(0, 7)
-                 .sort(function (a, b) { return num(b.horas_por_jornada) - num(a.horas_por_jornada); });
-    G.barras(CANVAS.horas, {
-      labels: filas.map(function (c) { return c.nombre; }),
-      values: filas.map(function (c) { return num(c.horas_por_jornada); }),
-      horizontal: true,
-      unidad: 'h',
-      color: G.PALETA[6]
+    G.barras(CANVAS.tendencia, {
+      labels: serie.map(function (p) { return (semanal ? 'sem ' : '') + diaMes(p.fecha); }),
+      values: kms,
+      colores: colores,
+      unidad: 'km',
+      referencia: promedio > 0
+        ? { valor: promedio, label: 'Promedio ' + (semanal ? 'semanal' : 'diario') }
+        : null
     });
   }
 
@@ -298,11 +297,9 @@
     pintarFiltros(datos, filtros);
     pintarSubtitulo(datos);
     pintarMetricas(datos);
-    pintarCombustible(datos);
-    pintarKmChofer(datos);
+    pintarTablaCamiones(datos);
+    pintarTablaChoferes(datos);
     pintarTendencia(datos);
-    pintarEficiencia(datos);
-    pintarHoras(datos);
   }
 
   function alError(contenedor, e) {

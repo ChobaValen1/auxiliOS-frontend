@@ -83,11 +83,14 @@ test('las tres secciones tienen contenedor y overlay propios', () => {
   });
 });
 
-test('los canvas que consumen las secciones existen en el markup', () => {
+test('los canvas y tablas que consumen las secciones existen en el markup', () => {
   ['dashx-fact-donut', 'dashx-fact-cajas', 'dashx-fact-bases',
-   'dashx-ops-comb', 'dashx-ops-kmchofer', 'dashx-ops-tendencia',
-   'dashx-ops-eficiencia', 'dashx-ops-horas', 'dashx-flota-estado']
+   'dashx-ops-tendencia', 'dashx-flota-estado']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta el canvas ${id}`));
+  // Operaciones pasó de cuatro gráficos de barras a dos tablas: son varias
+  // medidas sobre pocas filas, y así se comparan sin cruzar dos gráficos.
+  ['dashx-ops-tabla-camiones', 'dashx-ops-tabla-choferes']
+    .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta la tabla ${id}`));
 });
 
 test('el plugin de treemap y los módulos del dashboard están cargados', () => {

@@ -87,7 +87,8 @@
 
 #screen-dashboard .dashx-sec-sub {
   font-size: 11px;
-  color: var(--muted);
+  color: var(--muted2);
+  letter-spacing: 0.2px;
 }
 
 /* Anchos de la sección Facturación, según el boceto */
@@ -164,6 +165,28 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Dos niveles de lectura: el volumen del período pesa más que las razones,
+   que son de segundo orden. Con todas las tarjetas iguales no había dónde
+   mirar primero. */
+#screen-dashboard .dashx-metrics-hero {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+#screen-dashboard .dashx-metric.is-hero {
+  background: var(--card);
+  border-color: var(--border2);
+  padding: 16px;
+}
+
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-value {
+  font-size: 26px;
+  letter-spacing: -0.3px;
+}
+
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-label {
+  margin-bottom: 8px;
+}
+
 /* ── Alertas de flota: color + ícono + texto, nunca color solo ── */
 #screen-dashboard .dashx-alert {
   background: var(--panel);
@@ -232,6 +255,82 @@
   }
 }
 
+/* ── Tabla con barras embebidas ── */
+#screen-dashboard .auxtb-wrap {
+  overflow-x: auto;
+}
+
+#screen-dashboard .auxtb {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+#screen-dashboard .auxtb th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+#screen-dashboard .auxtb td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+#screen-dashboard .auxtb tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+#screen-dashboard .auxtb tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* La columna de texto absorbe el espacio sobrante: si no, la tabla se lo
+   reparte a las numéricas y la barra se estira hasta perder proporción. */
+#screen-dashboard .auxtb .auxtb-txt {
+  text-align: left;
+  width: 100%;
+}
+
+#screen-dashboard .auxtb .auxtb-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La barra va de fondo, detrás del número, para no robarle lugar al dato. */
+#screen-dashboard .auxtb .auxtb-barra {
+  position: relative;
+  min-width: 132px;
+}
+
+#screen-dashboard .auxtb .auxtb-fill {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 18px;
+  border-radius: 3px;
+  background: rgba(57, 135, 229, 0.28);
+}
+
+#screen-dashboard .auxtb .auxtb-val {
+  position: relative;
+}
+
+#screen-dashboard .auxtb-vacio {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* ── Mapa de zonas (MapLibre) ── */
 #screen-dashboard #dashx-fact-mapa {
   overflow: hidden;
@@ -277,6 +376,15 @@
 
 #screen-dashboard #dashx-fact-mapa .dashx-mapa-popup .maplibregl-popup-tip {
   display: none;
+}
+
+/* Seis columnas de números no entran en media pantalla: por debajo de esto las
+   tablas van a ancho completo, en vez de esconder la última columna detrás de
+   un scroll horizontal que nadie descubre. */
+@media (max-width: 1340px) {
+  #screen-dashboard .dashx-card-tabla {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ── Responsive ── */

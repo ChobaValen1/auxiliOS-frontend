@@ -129,17 +129,26 @@
     };
   }
 
-  function ejeBase(mostrarGrilla) {
+  function ejeBase(mostrarGrilla, esValor) {
+    var ticks = {
+      color: TINTA.tenue,
+      font: { family: FUENTE, size: 10 }
+    };
+    if (esValor) {
+      // Sólo en el eje de valores: en el de categorías Chart.js pasa el índice
+      // al callback, y formatearlo reemplazaba las etiquetas por 0, 1, 2…
+      // Acá sí hace falta, porque por defecto escribe 3,500,000 y no 3.500.000.
+      ticks.callback = function (v) {
+        return typeof v === 'number' ? v.toLocaleString('es-AR') : v;
+      };
+    }
     return {
       grid: {
         color: TINTA.grilla,
         drawBorder: false,
         display: mostrarGrilla !== false
       },
-      ticks: {
-        color: TINTA.tenue,
-        font: { family: FUENTE, size: 10 }
-      }
+      ticks: ticks
     };
   }
 
@@ -207,28 +216,57 @@
     var horizontal = !!(datos && datos.horizontal);
     var fmt = (datos && datos.formato) === 'pesos' ? nfPesos : nfMiles;
     var unidad = (datos && datos.unidad) || '';
+    // Mismo eje que las barras: nunca un segundo eje Y.
+    var referencia = (datos && datos.referencia) || null;
     return montar(id, {
       type: 'bar',
       data: {
         labels: labels,
         datasets: [{
           data: values,
-          backgroundColor: (datos && datos.color) || CATEGORICA[0],
+          // Un array de colores pinta barra por barra (fines de semana, outliers).
+          backgroundColor: (datos && datos.colores) || (datos && datos.color) || CATEGORICA[0],
           borderRadius: 4,
           borderSkipped: false,
           barPercentage: 0.7,
-          categoryPercentage: 0.8
-        }]
+          categoryPercentage: 0.8,
+          order: 2
+        }].concat(referencia ? [{
+          type: 'line',
+          label: referencia.label || 'Promedio',
+          data: values.map(function () { return referencia.valor; }),
+          borderColor: TINTA.media,
+          borderWidth: 1,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+          order: 1
+        }] : [])
       },
       options: {
         indexAxis: horizontal ? 'y' : 'x',
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { display: false },
+          legend: referencia
+            ? Object.assign(leyendaBase(), {
+                labels: Object.assign(leyendaBase().labels, {
+                  // Como trazo y no como punto: es una línea de referencia, y el
+                  // círculo vacío del pointStyle parecía una viñeta suelta.
+                  usePointStyle: false,
+                  boxWidth: 18,
+                  boxHeight: 2,
+                  filter: function (it) { return it.datasetIndex === 1; }
+                })
+              })
+            : { display: false },
           tooltip: Object.assign(tooltipBase(), {
             callbacks: {
               label: function (ctx) {
+                if (ctx.datasetIndex === 1) {
+                  return ' ' + (referencia.label || 'Promedio') + ': ' + fmt(referencia.valor);
+                }
                 var v = horizontal ? ctx.parsed.x : ctx.parsed.y;
                 return ' ' + fmt(v) + (unidad ? ' ' + unidad : '');
               }
@@ -236,8 +274,8 @@
           })
         },
         scales: {
-          x: Object.assign(ejeBase(horizontal), { beginAtZero: true }),
-          y: Object.assign(ejeBase(!horizontal), { beginAtZero: true })
+          x: Object.assign(ejeBase(horizontal, horizontal), { beginAtZero: true }),
+          y: Object.assign(ejeBase(!horizontal, !horizontal), { beginAtZero: true })
         }
       }
     });
@@ -284,8 +322,8 @@
           })
         },
         scales: {
-          x: ejeBase(false),
-          y: Object.assign(ejeBase(true), { beginAtZero: true })
+          x: ejeBase(false, false),
+          y: Object.assign(ejeBase(true, true), { beginAtZero: true })
         }
       }
     });
@@ -362,6 +400,80 @@
     });
   }
 
+
+  function escapar(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function celda(col, fila, maximo) {
+    var v = fila[col.clave];
+    var vacia = (v === null || v === undefined || v === '');
+
+    if (col.tipo === 'texto') {
+      return '<td class="auxtb-txt">' + escapar(vacia ? '—' : v) + '</td>';
+    }
+
+    var txt;
+    if (vacia) txt = '—';
+    else if (col.tipo === 'pesos') txt = nfPesos(v);
+    else if (col.decimales != null) txt = Number(v).toLocaleString('es-AR', {
+      minimumFractionDigits: col.decimales, maximumFractionDigits: col.decimales });
+    else txt = nfMiles(v);
+    if (!vacia && col.unidad) txt += ' ' + col.unidad;
+
+    if (!col.barra) return '<td class="auxtb-num">' + escapar(txt) + '</td>';
+
+    // La barra va de fondo, detrás del número: compara sin robarle lugar al dato.
+    var pct = (!vacia && maximo > 0) ? Math.max(2, Math.round(Number(v) * 100 / maximo)) : 0;
+    return '<td class="auxtb-num auxtb-barra">'
+      + '<span class="auxtb-fill" style="width:' + pct + '%"></span>'
+      + '<span class="auxtb-val">' + escapar(txt) + '</span>'
+      + '</td>';
+  }
+
+  /* Tabla con la magnitud principal como barra dentro de la celda.
+     Para pocas filas y varias medidas se lee mejor que varios gráficos de
+     barras separados: se comparan todas las columnas de un vistazo, sin tener
+     que cruzar dos gráficos con la vista. */
+  function tabla(id, datos) {
+    var cont = typeof id === 'string' ? document.getElementById(id) : id;
+    if (!cont) return;
+    var filas = (datos && datos.filas) || [];
+    var cols = (datos && datos.columnas) || [];
+
+    if (!filas.length || !cols.length) {
+      cont.innerHTML = '<div class="auxtb-vacio">'
+        + escapar((datos && datos.vacio) || 'Sin datos para este período')
+        + '</div>';
+      return;
+    }
+
+    var maximos = {};
+    cols.forEach(function (c) {
+      if (!c.barra) return;
+      maximos[c.clave] = filas.reduce(function (m, f) {
+        var n = Number(f[c.clave]);
+        return isFinite(n) && n > m ? n : m;
+      }, 0);
+    });
+
+    var head = '<tr>' + cols.map(function (c) {
+      return '<th class="' + (c.tipo === 'texto' ? 'auxtb-txt' : 'auxtb-num') + '">'
+        + escapar(c.titulo) + '</th>';
+    }).join('') + '</tr>';
+
+    var cuerpo = filas.map(function (f) {
+      return '<tr>' + cols.map(function (c) {
+        return celda(c, f, maximos[c.clave] || 0);
+      }).join('') + '</tr>';
+    }).join('');
+
+    cont.innerHTML = '<div class="auxtb-wrap"><table class="auxtb">'
+      + '<thead>' + head + '</thead><tbody>' + cuerpo + '</tbody></table></div>';
+  }
+
   /* Agrupa la cola larga en "Otros": la paleta tiene 7 slots y no se cicla. */
   function topN(items, n) {
     var max = n || CATEGORICA.length;
@@ -387,6 +499,7 @@
     barras: barras,
     linea: linea,
     treemap: treemap,
+    tabla: tabla,
     topN: topN,
     destruir: destruir,
     vacio: vacio,

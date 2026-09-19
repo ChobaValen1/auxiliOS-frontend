@@ -179,7 +179,14 @@ test('el front llama a la RPC y no suma nada del lado del cliente', () => {
   assert.match(ops, /if \(resp\.error\) throw resp\.error/);
   // Nada de traerse filas crudas por PostgREST para agregarlas en JS.
   assert.ok(!/_db\.from\(/.test(ops), 'la sección consulta tablas directo en vez de la RPC');
-  assert.ok(!/\.reduce\(/.test(ops), 'la sección agrega en JS lo que ya agregó la RPC');
+  // El único reduce permitido es el promedio de la línea de referencia, que es
+  // una anotación sobre la serie ya agregada por la RPC, no un total recalculado.
+  const reduces = (ops.match(/\.reduce\(/g) || []).length;
+  const enTendencia = (ops.slice(ops.indexOf('function pintarTendencia'),
+                                 ops.indexOf('/* ── ciclo de vida'))
+                          .match(/\.reduce\(/g) || []).length;
+  assert.equal(reduces, enTendencia,
+    'hay un reduce fuera de la tendencia: la sección agrega en JS lo que ya agregó la RPC');
 });
 
 test('sin _db la sección falla fuerte y el shell muestra el error', () => {
@@ -190,11 +197,12 @@ test('sin _db la sección falla fuerte y el shell muestra el error', () => {
 
 /* ── Front: reglas de la paleta y de los gráficos ──────────────────────── */
 
-test('los cinco canvas del markup se pintan', () => {
-  ['dashx-ops-comb', 'dashx-ops-kmchofer', 'dashx-ops-tendencia',
-   'dashx-ops-eficiencia', 'dashx-ops-horas']
-    .forEach(id => assert.ok(ops.includes(id), `no se usa el canvas ${id}`));
-  ['dashx-ops-filtros', 'dashx-ops-metrics', 'dashx-ops-sub']
+test('el canvas y las dos tablas del markup se llenan', () => {
+  // Por camión y por chofer son varias medidas sobre pocas filas: tabla, no
+  // cuatro gráficos de barras que había que cruzar con la vista.
+  ['dashx-ops-tendencia', 'dashx-ops-tabla-camiones', 'dashx-ops-tabla-choferes']
+    .forEach(id => assert.ok(ops.includes(id), `no se usa el contenedor ${id}`));
+  ['dashx-ops-filtros', 'dashx-ops-metrics', 'dashx-ops-ratios', 'dashx-ops-sub']
     .forEach(id => assert.ok(ops.includes(id), `no se llena el contenedor ${id}`));
   // Y se usan las clases de métrica que ya existen, sin inventar CSS nuevo.
   ['dashx-metric', 'dashx-metric-label', 'dashx-metric-value']
@@ -219,25 +227,12 @@ test('no hay gráficos de doble eje Y', () => {
   assert.equal(series.length, 1, 'la tendencia tiene más de una serie en el mismo eje');
 });
 
-test('topN se usa donde "Otros" significa algo, y no donde sería un promedio', () => {
-  // Sumables: gasto de combustible y km por chofer. La cola agrupada en "Otros"
-  // es la suma de lo que quedó fuera.
-  const comb = ops.slice(ops.indexOf('function pintarCombustible'),
-                         ops.indexOf('function pintarKmChofer'));
-  const kmch = ops.slice(ops.indexOf('function pintarKmChofer'),
-                         ops.indexOf('function pintarTendencia'));
-  assert.match(comb, /G\.topN\(/);
-  assert.match(kmch, /G\.topN\(/);
-
-  // km/litro y horas/jornada son cocientes: sumarlos en un "Otros" no da nada.
-  const efic = ops.slice(ops.indexOf('function pintarEficiencia'),
-                         ops.indexOf('function pintarHoras'));
-  const horas = ops.slice(ops.indexOf('function pintarHoras'),
-                          ops.indexOf('function cadaCanvas'));
-  assert.ok(!/G\.topN\(/.test(efic), 'topN sobre km/litro sumaría cocientes');
-  assert.ok(!/G\.topN\(/.test(horas), 'topN sobre horas/jornada sumaría promedios');
-  assert.match(efic, /\.slice\(0, 7\)/);
-  assert.match(horas, /\.slice\(0, 7\)/);
+test('nadie termina escondido en "Otros"', () => {
+  // Antes el topN colapsaba al octavo chofer en "Otros" para no pasar de siete
+  // colores, en un gráfico de una sola serie donde el color no codificaba nada.
+  // La tabla muestra todas las filas, así que topN ya no tiene lugar acá.
+  assert.ok(!/G\.topN\(/.test(ops), 'topN esconde filas que la tabla puede mostrar');
+  assert.ok(!/'Otros'/.test(ops));
 });
 
 test('un null de la RPC se muestra como guión, no como NaN ni como cero', () => {
@@ -245,22 +240,34 @@ test('un null de la RPC se muestra como guión, no como NaN ni como cero', () =>
   // pintar un 0 donde no hay dato es peor que no pintar nada.
   assert.match(ops, /return '—'/);
   assert.match(ops, /!isFinite\(Number\(v\)\)/);
-  // Y los camiones sin cargas se omiten del gráfico de eficiencia.
-  assert.match(ops, /c\.km_por_litro !== null && c\.km_por_litro !== undefined/);
+  // km_por_litro llega null cuando el camión no tuvo cargas. La tabla lo muestra
+  // como guión en su fila, en vez de omitir el camión entero como hacía el
+  // gráfico: que un móvil no cargue combustible es justamente lo que hay que ver.
+  const charts = fs.readFileSync('dashboard-charts-v1.js', 'utf8');
+  assert.match(charts, /var vacia = \(v === null \|\| v === undefined \|\| v === ''\)/);
+  assert.match(charts, /txt = '—'/);
 });
 
 test('las jornadas descartadas se muestran en el subtítulo', () => {
   // Un total silenciosamente incompleto es peor que un total con la advertencia.
   assert.match(ops, /jornadas_sin_km/);
   assert.match(ops, /jornadas_sin_horas/);
-  assert.match(ops, /sin km válido/);
-  assert.match(ops, /sin horas válidas/);
+  assert.match(ops, /sin km utilizable/);
+  assert.match(ops, /sin horario utilizable/);
+  // Y sólo se nombran cuando no son cero: "0 sin km utilizable" es ruido.
+  assert.match(ops, /if \(num\(d\.jornadas_sin_km\) > 0\)/);
+  assert.match(ops, /if \(num\(d\.jornadas_sin_horas\) > 0\)/);
 });
 
 test('las fechas ISO no se parsean con new Date', () => {
   // new Date('2026-07-10') es UTC y en Argentina imprime el 09/07.
   const codigo = ops.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
-  assert.ok(!/new Date\(/.test(codigo), 'parsear un ISO corto con new Date corre el día');
+  // Se permite sólo la forma que fija hora local explícita: new Date('2026-07-10')
+  // es medianoche UTC y en Argentina cae el 09/07, pero con 'T12:00:00' el día
+  // es el correcto en cualquier huso.
+  const usos = codigo.match(/new Date\([^)]*\)/g) || [];
+  usos.forEach(u => assert.match(u, /T12:00:00/,
+    `parsear un ISO corto con new Date corre el día: ${u}`));
   assert.match(ops, /function diaMes/);
   assert.match(ops, /String\(iso \|\| ''\)\.split\('-'\)/);
 });
