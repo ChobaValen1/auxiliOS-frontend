@@ -404,6 +404,36 @@ test('el margen compara el mismo subconjunto de los dos lados', () => {
   assert.match(js, /real > 0 \? \(comp - real\) \* 100 \/ real : null/);
 });
 
+test('la torta y la tabla de prestadoras son el mismo dato en el mismo orden', () => {
+  /* El cuadradito de cada fila ES su porción de la torta: los dos salen del
+     mismo array y color(i) los pinta por índice. Si se alimentaran de listas
+     distintas, la fila azul podría no ser la porción azul. */
+  assert.match(js, /var empresas = agrupar\(d\.porEmpresa/);
+  // Desde la torta hacia adelante: el g.tabla(CV_EMPRESAS) del estado vacío
+  // aparece antes en el archivo y cortaría en el lugar equivocado.
+  const iTorta = js.indexOf("g.donut(CV_TORTA");
+  const t = js.slice(iTorta, js.indexOf("g.tabla(CV_EMPRESAS", iTorta));
+  assert.match(t, /labels: empresas\.map/);
+  assert.match(t, /values: empresas\.map/);
+  assert.match(t, /tipo: 'torta'/);
+  // Sin leyenda propia: la tabla de al lado ya es la leyenda.
+  assert.match(t, /leyenda: 'ninguna'/);
+  assert.match(charts, /=== 'ninguna' \? \{ display: false \}/);
+  assert.match(js, /filas: empresas/);
+});
+
+test('las prestadoras pasan por agrupar para no repetir colores', () => {
+  /* color(i) cicla con módulo sobre una paleta de 7: con ocho prestadoras dos
+     porciones distintas saldrían del mismo color sin que nada falle. La cola
+     larga va a "Otros", que es la regla del resto del tablero. */
+  assert.match(charts, /CATEGORICA\[i % CATEGORICA\.length\]/);
+  assert.match(js, /MAX_CATEGORIAS\s*=\s*7/);
+  // Y agrupar() tiene que arrastrar los km reales, o la tabla perdería columnas.
+  const ag = js.slice(js.indexOf('function agrupar'), js.indexOf('/* ── filtros'));
+  assert.match(ag, /kmReal: f\.kmReal, kmComp: f\.kmComp/);
+  assert.match(ag, /if \(hayReales\) \{ i\.kmReal = real; i\.kmComp = comp; \}/);
+});
+
 test('las dos tablas son los dos cortes del mismo cubo, no el mismo dos veces', () => {
   /* por_empresa se pliega por empresa y por_base por base, sobre el MISMO
      agrupamiento (empresa, base). Lo que conserva el corte por base es su

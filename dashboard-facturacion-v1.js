@@ -15,6 +15,7 @@
   var RPC = 'dashboard_facturacion_v1';
 
   var CV_EMPRESAS = 'dashx-fact-empresas';
+  var CV_TORTA    = 'dashx-fact-torta';
   var CV_CAJAS = 'dashx-fact-cajas';
   var CV_BASES = 'dashx-fact-bases';
   var CV_PART  = 'dashx-fact-part';
@@ -254,25 +255,31 @@
   function agrupar(filas, valorDe) {
     var items = filas.map(function (f) {
       return { label: f.nombre, value: num(valorDe(f)), km: f.km, servicios: f.servicios,
-               monto: f.monto, hijos: f.hijos };
+               monto: f.monto, kmReal: f.kmReal, kmComp: f.kmComp, hijos: f.hijos };
     });
     var top = ch().topN(items, MAX_CATEGORIAS) || [];
 
     /* topN() sólo sabe de `value`: la fila "Otros" sale sin las demás medidas.
        Se las devolvemos restando lo que sí quedó en cabeza, para que "Otros" no
        aparezca con guiones en km ni en servicios. */
-    var totalKm = 0, totalServicios = 0;
+    var totalKm = 0, totalSrv = 0, totalReal = 0, totalComp = 0;
+    var hayReales = items.some(function (i) { return i.kmReal !== undefined; });
     items.forEach(function (i) {
-      totalKm += i.km; totalServicios += i.servicios;
+      totalKm += i.km; totalSrv += i.servicios;
+      totalReal += num(i.kmReal); totalComp += num(i.kmComp);
     });
     top.forEach(function (i) {
       if (i.km === undefined) {
-        var km = totalKm, srv = totalServicios;
+        var km = totalKm, srv = totalSrv, real = totalReal, comp = totalComp;
         top.forEach(function (o) {
-          if (o !== i && o.km !== undefined) { km -= o.km; srv -= o.servicios; }
+          if (o !== i && o.km !== undefined) {
+            km -= o.km; srv -= o.servicios;
+            real -= num(o.kmReal); comp -= num(o.kmComp);
+          }
         });
         i.km = km;
         i.servicios = srv;
+        if (hayReales) { i.kmReal = real; i.kmComp = comp; }
         i.esOtros = true;
       }
     });
@@ -286,13 +293,16 @@
     function promedios(i) {
       i.ticket = i.servicios > 0 ? i.monto / i.servicios : null;
       i.kmServicio = i.servicios > 0 ? i.km / i.servicios : null;
+      // Sólo donde hay km reales: en conceptos y bases la columna no existe.
+      if (i.kmComp !== undefined) i.margen = margenDe(i);
     }
     top.forEach(function (i) {
       promedios(i);
       if (i.esOtros || !i.hijos) { i.hijos = null; return; }
       i.hijos = i.hijos.map(function (h) {
         var c = { label: h.nombre, value: num(valorDe(h)), km: h.km,
-                  servicios: h.servicios, monto: h.monto };
+                  servicios: h.servicios, monto: h.monto,
+                  kmReal: h.kmReal, kmComp: h.kmComp };
         promedios(c);
         return c;
       });
@@ -425,6 +435,7 @@
     var g = ch();
 
     if (!d.hayDatos) {
+      g.vacio(CV_TORTA, VACIO_EMPRESAS);
       g.tabla(CV_EMPRESAS, { vacio: VACIO_EMPRESAS, columnas: [], filas: [] });
       g.vacio(CV_CAJAS, VACIO_CAJAS);
       g.vacio(CV_PART, VACIO_BASES);
@@ -442,12 +453,30 @@
        Anidar es lo que el anillo no podía hacer: una base atiende a más de una
        prestadora —Piñeyro hoy trabaja para las dos—, así que una lista plana de
        bases no se puede repartir entre empresas. */
+    /* La torta reparte lo facturado y la tabla lo detalla. Van juntas y en el
+       mismo orden a propósito: el cuadradito de cada fila es la porción de la
+       torta, así que la tabla ES la leyenda y la torta no lleva una propia.
+
+       Por eso la tabla pasa por agrupar(): color(i) cicla con módulo, así que
+       con más de siete prestadoras se repetirían colores en silencio y dos
+       porciones distintas quedarían del mismo color. La cola larga va a
+       "Otros", que es la regla del resto del tablero. */
+    var empresas = agrupar(d.porEmpresa, function (f) { return f.monto; });
+    g.donut(CV_TORTA, {
+      labels: empresas.map(function (i) { return i.label; }),
+      values: empresas.map(function (i) { return i.value; }),
+      tipo: 'torta',
+      formato: 'pesos',
+      leyenda: 'ninguna',
+      vacio: VACIO_EMPRESAS
+    });
+
     g.tabla(CV_EMPRESAS, {
       vacio: VACIO_EMPRESAS,
       totalEtiqueta: 'Total',
       columnas: [
-        { clave: 'nombre',    titulo: 'Prestadora', tipo: 'texto', swatch: true },
-        { clave: 'monto',     titulo: 'Facturado',  tipo: 'pesos', barra: true, total: 'suma' },
+        { clave: 'label',     titulo: 'Prestadora', tipo: 'texto', swatch: true },
+        { clave: 'value',     titulo: 'Facturado',  tipo: 'pesos', barra: true, total: 'suma' },
         { clave: 'servicios', titulo: 'Servicios',  total: 'suma' },
         { clave: 'km',        titulo: 'Km facturados', decimales: 0, unidad: 'km', total: 'suma' },
         // Medidos por el chofer o calculados del tramo Origen→Destino.
@@ -464,7 +493,7 @@
             return real > 0 ? (comp - real) * 100 / real : null;
           } }
       ],
-      filas: d.porEmpresa
+      filas: empresas
     });
 
     // Composición de servicios por concepto, en cantidad de servicios.
@@ -566,6 +595,7 @@
     var msg = mensajeError(e);
     var g = ch();
     if (g) {
+      g.error(CV_TORTA, msg);
       g.tabla(CV_EMPRESAS, { vacio: msg, columnas: [], filas: [] });
       g.error(CV_CAJAS, msg);
       g.error(CV_PART, msg);

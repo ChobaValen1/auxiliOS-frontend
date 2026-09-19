@@ -153,6 +153,34 @@
    escondía Km/servicio detrás del scroll. */
 #screen-dashboard .dashx-bases    { grid-column: span 6; }
 #screen-dashboard .dashx-full     { grid-column: 1 / -1; }
+
+/* Torta a la izquierda y tabla a la derecha, dentro de la misma tarjeta. La
+   tarjeta es de ancho completo: apilarlas dejaría un círculo chico perdido
+   arriba de una tabla ancha. La torta va a ancho fijo porque un círculo no
+   gana nada con más lugar; el que sobra se lo lleva la tabla, que sí. */
+#screen-dashboard .dashx-torta-tabla {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+#screen-dashboard .dashx-torta-tabla .dashx-torta {
+  flex: 0 0 208px;
+  max-width: 208px;
+}
+#screen-dashboard .dashx-torta-tabla .dashx-tabla-pegada {
+  flex: 1 1 auto;
+  min-width: 0;   /* sin esto la tabla no deja encogerse al flex y desborda */
+}
+
+/* Angosto: la torta arriba, centrada, y la tabla debajo. */
+@media (max-width: 900px) {
+  #screen-dashboard .dashx-torta-tabla { flex-direction: column; }
+  #screen-dashboard .dashx-torta-tabla .dashx-torta {
+    flex: 0 0 auto;
+    max-width: 100%;
+    width: 100%;
+  }
+}
 #screen-dashboard .dashx-med      { grid-column: span 6; }
 #screen-dashboard .dashx-tercio   { grid-column: span 4; }
 

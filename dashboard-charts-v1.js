@@ -200,8 +200,12 @@
         maintainAspectRatio: false,
         cutout: (datos && datos.tipo) === 'torta' ? 0 : '62%',
         plugins: {
+          /* `leyenda: 'ninguna'` es para cuando al lado hay una tabla con los
+             mismos nombres y los mismos colores: repetirlos sería decir dos
+             veces lo mismo y comerse el alto del gráfico para hacerlo. */
           legend: Object.assign(
             leyendaBase((datos && datos.leyenda) === 'derecha' ? 'right' : 'bottom'),
+            (datos && datos.leyenda) === 'ninguna' ? { display: false } : {},
             (datos && typeof datos.alFiltrar === 'function')
               ? { onClick: alTocarLeyenda(datos.alFiltrar) }
               : {}
