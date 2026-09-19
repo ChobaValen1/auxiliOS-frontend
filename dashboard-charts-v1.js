@@ -531,7 +531,7 @@
     else if (col.decimales != null) txt = Number(v).toLocaleString('es-AR', {
       minimumFractionDigits: col.decimales, maximumFractionDigits: col.decimales });
     else txt = nfMiles(v);
-    if (!vacia && col.unidad) txt += ' ' + col.unidad;
+    if (!vacia && col.unidad) txt += (col.unidad === '%' ? '' : ' ') + col.unidad;
 
     if (!col.barra || sinBarra) return '<td class="auxtb-num">' + escapar(txt) + '</td>';
 
@@ -598,6 +598,10 @@
      La razón nunca es el promedio de la columna: promediar km/litro de siete
      camiones le da el mismo peso al que hizo 9.700 km que al que hizo 446. */
   function totalDe(col, filas) {
+    /* Una columna puede traer su propia cuenta cuando el cierre no es ni una
+       suma ni una razón entre dos columnas — un margen, por ejemplo, que es
+       (a - b) / b y no se arma con ninguno de los dos atajos. */
+    if (typeof col.total === 'function') return col.total(filas);
     if (col.total === 'suma') {
       return filas.reduce(function (a, f) {
         var n = Number(f[col.clave]);

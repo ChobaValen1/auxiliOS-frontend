@@ -328,3 +328,40 @@ test('el módulo se carga después del motor y del shell', () => {
   // El mapa lo llena otro trabajo: esta sección no lo toca.
   assert.doesNotMatch(js, /dashx-fact-mapa/);
 });
+
+
+/* ── v3: KM reales y margen ─────────────────────────────────────────────── */
+
+const sqlV3 = fs.readFileSync(
+  'migrations/20260919220000_dashboard_facturacion_km_reales_v3.sql', 'utf8');
+
+test('el margen se calcula sobre el mismo subconjunto de los dos lados', () => {
+  // Sumar TODOS los km facturados contra los pocos con km reales informados
+  // daría un margen inventado. Los dos lados salen del mismo filtro.
+  assert.match(sqlV3, /sum\(km\)\s+filter \(where tramo = 'actual' and km_real is not null\)/);
+  assert.match(sqlV3, /sum\(km_real\) filter \(where tramo = 'actual' and km_real is not null\)/);
+  assert.match(sqlV3, /\(t\.kfc_act - t\.kr_act\) \* 100 \/ t\.kr_act/);
+  // km_reales <= 0 es "no informado", no "cero kilómetros".
+  assert.match(sqlV3, /case when coalesce\(r\.km_reales, 0\) > 0 then r\.km_reales end/);
+});
+
+test('la tarjeta de KM reales dice sobre cuántos servicios está el margen', () => {
+  // Un margen sobre 3 de 200 servicios no se lee igual que uno sobre 190.
+  assert.match(js, /function kpiReales/);
+  assert.match(js, /con km informados/);
+  assert.match(js, /Ningún remito del período informó kilómetros/);
+  assert.match(sqlV3, /'servicios_con_dato',  t\.n_comp_act/);
+  // Positivo verde, negativo rojo: los km que se recorren y no se cobran duelen.
+  assert.match(js, /x\.margen < 0 \? 'is-down'/);
+});
+
+test('el margen por base divide contra los facturados comparables', () => {
+  assert.match(sqlV3, /'km_comparable', round\(g\.km_comp, 2\)/);
+  assert.match(js, /\(i\.kmComparable - i\.kmReal\) \* 100 \/ i\.kmReal/);
+  // Y el cierre es el margen de los totales, no el promedio de los márgenes.
+  const graf = js.slice(js.indexOf('function pintarGraficos'), js.indexOf('function pintar('));
+  assert.match(graf, /total: function \(filas\)/);
+  assert.match(charts, /typeof col\.total === 'function'/);
+  // La fila "Otros" no puede quedar sin km reales: se le devuelven los del resto.
+  assert.match(js, /i\.kmReal = real/);
+});

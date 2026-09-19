@@ -110,6 +110,34 @@
       '</div>';
   }
 
+  /* KM reales contra KM facturados.
+
+     El margen sale sólo de los servicios que tienen km_reales informado, así que
+     la tarjeta dice sobre cuántos está calculado: un margen sobre 3 de 200
+     servicios no se lee igual que uno sobre 190, y sin ese número no hay forma
+     de saber cuál de los dos se está mirando.
+
+     Positivo = se factura más recorrido del que el chofer informó. Negativo =
+     hay kilómetros que se recorren y no se cobran, que es el caso que duele. */
+  function kpiReales(d) {
+    var x = d.reales;
+    if (!x.conDato) {
+      return kpi('KM reales', GUION, false,
+        '<div class="dashx-kpi-delta is-flat">Ningún remito del período informó kilómetros</div>');
+    }
+    var pie = '';
+    if (x.margen !== null) {
+      var clase = x.margen < 0 ? 'is-down' : (x.margen > 0 ? 'is-up' : 'is-flat');
+      pie = '<div class="dashx-kpi-delta ' + clase + '">' +
+        (x.margen > 0 ? '▲ +' : (x.margen < 0 ? '▼ -' : '= ')) + nfPct(x.margen) +
+        ' de margen sobre lo recorrido</div>';
+    }
+    pie += '<div class="dashx-kpi-delta is-flat">' +
+      ch().nfMiles(x.conDato) + ' de ' + ch().nfMiles(x.servicios) +
+      (x.servicios === 1 ? ' servicio' : ' servicios') + ' con km informados</div>';
+    return kpi('KM reales', nfKm(x.km), false, pie);
+  }
+
   /* ── normalización de la respuesta ───────────────────────────────────────
      Todo lo que sigue asume que la RPC puede devolver null, un objeto a medio
      llenar o arrays vacíos (tabla vacía, migración sin aplicar, filtros que no
@@ -122,7 +150,9 @@
       nombre: String(o.nombre || 'Sin identificar'),
       monto: num(o.monto),
       servicios: num(o.servicios),
-      km: num(o.km)
+      km: num(o.km),
+      kmReal: num(o.km_real),
+      kmComparable: num(o.km_comparable)
     };
   }
 
@@ -150,6 +180,17 @@
         servicios: num(a.servicios)
       },
       rangoAnterior: c.desde && c.hasta ? fecha(c.desde) + ' al ' + fecha(c.hasta) : '',
+      reales: (function () {
+        var x = o.reales && typeof o.reales === 'object' ? o.reales : {};
+        return {
+          km: num(x.km_reales),
+          kmFacturados: num(x.km_facturados),
+          conDato: num(x.servicios_con_dato),
+          servicios: num(x.servicios),
+          // null es "no se puede calcular", distinto de 0 que sería "clavado".
+          margen: (x.margen === null || x.margen === undefined) ? null : num(x.margen)
+        };
+      })(),
       catalogo: {
         empresas: lista(o.catalogo && o.catalogo.empresas),
         bases: lista(o.catalogo && o.catalogo.bases)
@@ -165,25 +206,45 @@
      quede sin kilómetros. */
   function agrupar(filas, valorDe) {
     var items = filas.map(function (f) {
-      return { label: f.nombre, value: num(valorDe(f)), km: f.km, servicios: f.servicios, monto: f.monto };
+      return { label: f.nombre, value: num(valorDe(f)), km: f.km, servicios: f.servicios,
+               monto: f.monto, kmReal: f.kmReal, kmComparable: f.kmComparable };
     });
     var top = ch().topN(items, MAX_CATEGORIAS) || [];
-    // Promedios por fila. Van con guarda: una base sin servicios devuelve null
-    // y la tabla muestra guión, nunca una división por cero.
 
-    var totalKm = 0, totalServicios = 0;
-    items.forEach(function (i) { totalKm += i.km; totalServicios += i.servicios; });
+    /* topN() sólo sabe de `value`: la fila "Otros" sale sin las demás medidas.
+       Se las devolvemos restando lo que sí quedó en cabeza, para que "Otros" no
+       aparezca con guiones en km, servicios ni margen. */
+    var totalKm = 0, totalServicios = 0, totalReal = 0, totalComp = 0;
+    items.forEach(function (i) {
+      totalKm += i.km; totalServicios += i.servicios;
+      totalReal += num(i.kmReal); totalComp += num(i.kmComparable);
+    });
     top.forEach(function (i) {
       if (i.km === undefined) {
-        var km = totalKm, srv = totalServicios;
-        top.forEach(function (o) { if (o !== i && o.km !== undefined) { km -= o.km; srv -= o.servicios; } });
+        var km = totalKm, srv = totalServicios, real = totalReal, comp = totalComp;
+        top.forEach(function (o) {
+          if (o !== i && o.km !== undefined) {
+            km -= o.km; srv -= o.servicios;
+            real -= num(o.kmReal); comp -= num(o.kmComparable);
+          }
+        });
         i.km = km;
         i.servicios = srv;
+        i.kmReal = real;
+        i.kmComparable = comp;
       }
     });
+
+    // Promedios y margen por fila. Con guarda: sin servicios o sin km reales
+    // devuelven null y la tabla muestra guión, nunca una división por cero.
     top.forEach(function (i) {
       i.ticket = i.servicios > 0 ? i.monto / i.servicios : null;
       i.kmServicio = i.servicios > 0 ? i.km / i.servicios : null;
+      // km_comparable son los facturados del mismo subconjunto que los reales:
+      // dividir el total facturado por los pocos reales daría un margen falso.
+      i.margen = (i.kmReal > 0)
+        ? (i.kmComparable - i.kmReal) * 100 / i.kmReal
+        : null;
     });
     return top;
   }
@@ -270,6 +331,7 @@
         kpi('Total facturado', GUION, true) +
         kpi('Total peajes', GUION) +
         kpi('KM facturados', GUION, true) +
+        kpi('KM reales', GUION) +
         kpi('Servicios', GUION) +
         '<div class="dashx-kpi-delta is-flat" style="margin-top:12px">' + esc(VACIO_KPIS) + '</div>';
       return;
@@ -282,6 +344,7 @@
           delta(d.totales.peajes, d.anterior.peajes, false, r)) +
       kpi('KM facturados', nfKm(d.totales.km), true,
           delta(d.totales.km, d.anterior.km, false, r)) +
+      kpiReales(d) +
       kpi('Servicios', ch().nfMiles(d.totales.servicios), false,
           delta(d.totales.servicios, d.anterior.servicios, true, r));
   }
@@ -365,7 +428,18 @@
         { clave: 'ticket',    titulo: '$/servicio', tipo: 'pesos',
           total: { dividir: 'value', por: 'servicios' } },
         { clave: 'kmServicio', titulo: 'Km/serv.', decimales: 1,
-          total: { dividir: 'km', por: 'servicios' } }
+          total: { dividir: 'km', por: 'servicios' } },
+        // Margen contra los km reales de esa base. Null cuando ningún remito de
+        // la base informó kilómetros: guión, no un cero que se lea como empate.
+        { clave: 'margen', titulo: 'Margen', decimales: 1, unidad: '%',
+          // El cierre no es el promedio de los márgenes: es el margen de los
+          // totales. Promediar le daría el mismo peso a una base de 3 servicios
+          // que a una de 300.
+          total: function (filas) {
+            var real = 0, comp = 0;
+            filas.forEach(function (f) { real += num(f.kmReal); comp += num(f.kmComparable); });
+            return real > 0 ? (comp - real) * 100 / real : null;
+          } }
       ],
       filas: bases
     });
@@ -441,6 +515,7 @@
         kpi('Total facturado', GUION, true) +
         kpi('Total peajes', GUION) +
         kpi('KM facturados', GUION, true) +
+        kpi('KM reales', GUION) +
         kpi('Servicios', GUION) +
         '<div class="dashx-kpi-delta is-down" style="margin-top:12px">' + esc(msg) + '</div>';
     }

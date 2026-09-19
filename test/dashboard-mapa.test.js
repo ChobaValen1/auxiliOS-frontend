@@ -103,3 +103,48 @@ test('los estilos del mapa están scopeados como el resto del dashboard', () => 
   });
   assert.match(css, /#dashx-fact-mapa/);
 });
+
+
+/* ── v2: los dos insights ───────────────────────────────────────────────── */
+
+const sqlV2 = require('node:fs').readFileSync(
+  'migrations/20260919230000_dashboard_zonas_insights_v2.sql', 'utf8');
+const mapaJs = require('node:fs').readFileSync('dashboard-mapa-v1.js', 'utf8');
+
+test('los kilómetros muertos comparan contra la base más cercana, no contra cualquiera', () => {
+  assert.match(sqlV2, /function app_private\.km_entre/);
+  // Haversine: no hay PostGIS ni earthdistance en el proyecto.
+  assert.match(sqlV2, /6371 \* 2 \* asin/);
+  // least(1, ...) evita el error de dominio de asin() en dos puntos idénticos.
+  assert.match(sqlV2, /asin\(least\(1, sqrt/);
+  // La más cercana sale de un lateral ordenado por distancia, no de la asignada.
+  assert.match(sqlV2, /order by app_private\.km_entre\(b\.origin_lat, b\.origin_lng, s2\.lat, s2\.lng\)/);
+  assert.match(sqlV2, /cercana_id is distinct from billing_base_id/);
+  // Sólo bases activas y geocodificadas pueden ser "la más cercana".
+  assert.match(sqlV2, /bb\.latitude is not null/);
+});
+
+test('sólo se juzgan los servicios que se pueden juzgar', () => {
+  // Un servicio sin base geocodificada no es un hallazgo, es un dato faltante.
+  assert.match(sqlV2, /juzgable as \(\s*\n\s*select \* from ubicado\s*\n\s*where km_asignada is not null and km_cercana is not null/);
+  assert.match(sqlV2, /'evaluados',     \(select count\(\*\) from juzgable\)/);
+});
+
+test('la cobertura trae su umbral, no lo repite el front', () => {
+  assert.match(sqlV2, /v_umbral numeric := 80/);
+  assert.match(sqlV2, /'umbral_km', v_umbral/);
+  assert.match(mapaJs, /cob\.umbral_km/);
+  assert.ok(!/\b80\b/.test(mapaJs.slice(mapaJs.indexOf('function pintarLectura'),
+                                          mapaJs.indexOf('function destruirMapa'))),
+    'el front repite el umbral en vez de leerlo del payload');
+});
+
+test('la lectura del mapa aclara que los km son en línea recta', () => {
+  // Un ahorro prometido que después no cierra con la realidad quema la confianza
+  // en todo el tablero.
+  assert.match(mapaJs, /en línea recta/);
+  assert.match(sqlV2, /EN LÍNEA RECTA/);
+  assert.match(mapaJs, /function pintarLectura/);
+  // Se pinta aunque el mapa no tenga puntos que dibujar.
+  assert.ok(mapaJs.indexOf('pintarLectura(data)') < mapaJs.indexOf("if (!puntos.length)"));
+});

@@ -564,6 +564,28 @@
   color: var(--muted);
 }
 
+/* La lectura del mapa: dos renglones debajo, no otra tarjeta. Son conclusiones
+   sobre lo que se está viendo arriba, no un cuadro aparte. */
+#screen-dashboard .dashx-mapa-lectura {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted2);
+}
+
+#screen-dashboard .dashx-mapa-lectura b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-mapa-lectura .is-aviso b { color: #f5a623; }
+
+#screen-dashboard .dashx-mapa-lectura > div + div {
+  margin-top: 4px;
+}
+
 /* ── Mapa de zonas (MapLibre) ── */
 #screen-dashboard #dashx-fact-mapa {
   overflow: hidden;

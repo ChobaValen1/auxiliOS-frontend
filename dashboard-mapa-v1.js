@@ -26,6 +26,54 @@
 
   function cont() { return document.getElementById(ID_CONT); }
 
+  function lectura() { return document.getElementById(ID_CONT + '-lectura'); }
+
+  function nf(v) {
+    return Number(v || 0).toLocaleString('es-AR');
+  }
+
+  /* La lectura del mapa: dos conclusiones sobre lo que se está viendo arriba.
+
+     Los kilómetros son EN LÍNEA RECTA y de ida, así que son un piso: el
+     recorrido real por ruta siempre es mayor. Se dice en el texto, porque un
+     número de ahorro que después no cierra con la realidad quema la confianza
+     en todo el tablero. */
+  function pintarLectura(data) {
+    var nodo = lectura();
+    if (!nodo) return;
+    var km = (data && data.kilometros_muertos) || {};
+    var cob = (data && data.cobertura) || {};
+
+    if (!Number(km.evaluados) && !Number(cob.evaluados)) {
+      nodo.innerHTML = '';
+      return;
+    }
+
+    var filas = [];
+
+    if (Number(km.evaluados) > 0) {
+      filas.push(Number(km.mal_asignados) > 0
+        ? '<div class="is-aviso"><b>' + nf(km.mal_asignados) + '</b> de ' + nf(km.evaluados) +
+          ' servicios los tomó una base que no era la más cercana: <b>' + nf(km.km_extra) +
+          ' km</b> de más, en línea recta.</div>'
+        : '<div>Los <b>' + nf(km.evaluados) + '</b> servicios ubicados los tomó la base más cercana.</div>');
+    }
+
+    if (Number(cob.evaluados) > 0) {
+      var fuera = Number(cob.fuera) || 0;
+      filas.push(fuera > 0
+        ? '<div class="is-aviso"><b>' + nf(fuera) + '</b> de ' + nf(cob.evaluados) +
+          ' servicios caen a más de ' + nf(cob.umbral_km) + ' km de toda base' +
+          (cob.km_promedio_a_base ? ' · promedio <b>' + nf(cob.km_promedio_a_base) + ' km</b> a la base' : '') +
+          '.</div>'
+        : '<div>Todos dentro de ' + nf(cob.umbral_km) + ' km de una base' +
+          (cob.km_promedio_a_base ? ' · promedio <b>' + nf(cob.km_promedio_a_base) + ' km</b>' : '') +
+          '.</div>');
+    }
+
+    nodo.innerHTML = filas.join('');
+  }
+
   function mensaje(texto, esError) {
     var c = cont();
     if (!c) return;
@@ -179,6 +227,8 @@
   function pintar(data) {
     var c = cont();
     if (!c) return;
+
+    pintarLectura(data);
 
     var puntos = (data && data.puntos) || [];
     if (!puntos.length) {
