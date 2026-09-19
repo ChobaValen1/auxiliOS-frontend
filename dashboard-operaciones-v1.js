@@ -369,13 +369,28 @@
       cargas += num(m.cargas); litros += num(m.litros); gasto += num(m.gasto);
     });
 
+    /* El gasto es el número más importante del bloque y estaba escondido en el
+       subtítulo de la tarjeta de al lado. Ahora encabeza el gráfico que lo
+       reparte, y baja cuando se tacha un medio de pago. */
+    var totalEl = document.getElementById('dashx-ops-comb-total');
+    if (totalEl) totalEl.textContent = medios.length ? pesos(gasto) : '—';
+
+    var pieEl = document.getElementById('dashx-ops-comb-total-pie');
+    if (pieEl) {
+      pieEl.textContent = !medios.length ? ''
+        : filtrado
+          ? sel.length + ' de ' + medios.length + ' medios de pago'
+          : 'en ' + miles(cargas) + ' cargas';
+    }
+
     var sub = document.getElementById('dashx-ops-comb-sub');
     if (sub) {
       // El contexto de los promedios: 12 cargas y 120 no dan la misma confianza.
+      // "promedios sobre" y no sólo el número: al lado de la tarjeta que ya dice
+      // "en 102 cargas" quedaba leyéndose como un dato repetido, cuando acá lo
+      // que dice es sobre qué base están calculados los promedios.
       sub.textContent = medios.length
-        ? '· ' + miles(cargas) + ' cargas · ' + pesos(gasto)
-          + (filtrado ? ' · ' + sel.length + ' de ' + medios.length + ' medios' : ' en total')
-        : '';
+        ? '· promedios sobre ' + miles(cargas) + ' cargas' : '';
     }
 
     var cont = document.getElementById('dashx-ops-comb-metrics');
@@ -421,7 +436,7 @@
     pintarRazonesCombustible();
 
     if (!combustible.medios.length) {
-      return G.vacio(CANVAS.combustible, 'Sin cargas de combustible en el período');
+      return G.vacio(CANVAS.combustible, 'Sin cargas en el período');
     }
     // El reparto es por gasto, no por litros: la pregunta es por dónde se va la
     // plata. Los litros y las cargas quedan en el tooltip.
@@ -483,6 +498,8 @@
       if (el) el.innerHTML = '';
     });
     texto(document.getElementById('dashx-ops-comb-sub'), '');
+    texto(document.getElementById('dashx-ops-comb-total'), '—');
+    texto(document.getElementById('dashx-ops-comb-total-pie'), '');
     texto(document.getElementById('dashx-ops-sub'), 'No se pudieron cargar las métricas');
   }
 

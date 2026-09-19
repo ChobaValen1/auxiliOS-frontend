@@ -149,6 +149,7 @@
 #screen-dashboard .dashx-mapa     { grid-column: span 4; }
 #screen-dashboard .dashx-cajas    { grid-column: span 5; }
 #screen-dashboard .dashx-bases    { grid-column: span 4; }
+#screen-dashboard .dashx-km       { grid-column: span 3; }
 #screen-dashboard .dashx-full     { grid-column: 1 / -1; }
 #screen-dashboard .dashx-med      { grid-column: span 6; }
 #screen-dashboard .dashx-tercio   { grid-column: span 4; }
@@ -237,6 +238,31 @@
 
 #screen-dashboard .dashx-metric.is-hero .dashx-metric-label {
   margin-bottom: 8px;
+}
+
+/* El número que resume el gráfico va arriba del gráfico, no escondido en el
+   subtítulo de la tarjeta de al lado. En una torta no hay agujero donde
+   ponerlo, así que encabeza la tarjeta. */
+#screen-dashboard .dashx-chart-total {
+  margin-bottom: 6px;
+}
+
+#screen-dashboard .dashx-chart-total-value {
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.3px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+#screen-dashboard .dashx-chart-total-value.is-amber { color: var(--amber); }
+
+#screen-dashboard .dashx-chart-total-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  min-height: 15px;
 }
 
 /* Una razón sin explicación es un número que nadie sabe si está bien: "12,8"
@@ -390,9 +416,10 @@
    hay detrás de los promedios), en el mismo renglón para no gastar otro. */
 #screen-dashboard .dashx-card-sub {
   margin-left: 8px;
+  font-size: 11px;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--muted);
+  color: var(--muted2);
 }
 
 /* ── Tabla con barras embebidas ── */
@@ -412,13 +439,13 @@
   letter-spacing: 0.6px;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 0 10px 8px;
+  padding: 0 8px 8px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 #screen-dashboard .auxtb td {
-  padding: 7px 10px;
+  padding: 7px 8px;
   border-bottom: 1px solid var(--border);
   color: var(--text);
   white-space: nowrap;
@@ -446,22 +473,27 @@
 
 /* La barra tiene carril propio a la izquierda del número. Cuando iba de fondo,
    el valor más alto llegaba justo hasta las cifras y parecía chocarlas. */
+/* Lo justo para que entren carril, aire y número. Más que esto y la tabla se
+   sale del recuadro en las tarjetas angostas de Facturación, escondiendo la
+   última columna detrás de un scroll horizontal que nadie descubre. */
 #screen-dashboard .auxtb .auxtb-barra {
-  min-width: 156px;
+  min-width: 118px;
 }
 
 #screen-dashboard .auxtb .auxtb-cel {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
 }
 
 /* El carril se dibuja completo aunque la barra sea corta: así se lee tanto el
    valor como lo que le falta para el máximo. */
 #screen-dashboard .auxtb .auxtb-track {
   flex: 1 1 auto;
-  min-width: 36px;
+  /* Un carril de 20 px no se lee como barra. 40 es el piso donde todavía se
+     compara, y entra en las tarjetas angostas de Facturación. */
+  min-width: 40px;
   max-width: 104px;
   height: 6px;
   border-radius: 3px;
@@ -553,11 +585,26 @@
   display: none;
 }
 
+/* En un portátil de 1366 las dos tarjetas angostas de Facturación quedaban
+   14 px cortas y escondían la última columna detrás del scroll. El carril se
+   achica antes que perder una columna: una barra corta sigue comparando, una
+   columna invisible no informa nada. */
+@media (max-width: 1400px) {
+  #screen-dashboard .dashx-bases .auxtb-track,
+  #screen-dashboard .dashx-km .auxtb-track {
+    min-width: 22px;
+    max-width: 52px;
+  }
+}
+
 /* Seis columnas de números no entran en media pantalla: por debajo de esto las
    tablas van a ancho completo, en vez de esconder la última columna detrás de
    un scroll horizontal que nadie descubre. */
 @media (max-width: 1340px) {
-  #screen-dashboard .dashx-card-tabla {
+  #screen-dashboard .dashx-card-tabla,
+  /* La misma razón: la tarjeta de km es una tabla con encabezado, y a 1.280
+     su última columna se caía fuera del recuadro. */
+  #screen-dashboard .dashx-km {
     grid-column: 1 / -1;
   }
 }
@@ -569,6 +616,7 @@
   #screen-dashboard .dashx-mapa,
   #screen-dashboard .dashx-cajas,
   #screen-dashboard .dashx-bases,
+  #screen-dashboard .dashx-km,
   #screen-dashboard .dashx-med,
   #screen-dashboard .dashx-tercio {
     grid-column: span 6;

@@ -241,3 +241,24 @@ test('el mapa se carga con la pestaña de Facturación, no como una propia', () 
   assert.match(shell, /function grupoDe/);
   assert.ok(!index.includes("dashxSeccion('mapa'"), 'el mapa no debe tener pestaña propia');
 });
+
+test('el treemap no escribe fuera de su caja', () => {
+  // Con el nombre completo siempre, una caja chica mostraba "lque pe" en vez
+  // de "Remolque pesado", con el texto saliéndose por los bordes.
+  const fmt = charts.slice(charts.indexOf('formatter: function (ctx)'),
+                           charts.indexOf('backgroundColor: function (ctx)'));
+  assert.match(fmt, /ctx\.raw\.w/);
+  assert.match(fmt, /ctx\.raw\.h/);
+  assert.match(fmt, /txt\.slice\(0, caben - 1\) \+ '…'/);
+  // Y si no entra ni recortado, queda el porcentaje solo: el nombre está en
+  // el tooltip.
+  assert.match(fmt, /if \(caben < 7\) return pct \+ '%'/);
+});
+
+test('las barras de la tabla no empujan una columna fuera del recuadro', () => {
+  // Las tarjetas de Facturación son la mitad de anchas que las de Operaciones:
+  // el carril cede antes que perderse una columna detrás del scroll.
+  assert.match(css, /#screen-dashboard \.auxtb \.auxtb-barra \{[^}]*min-width: 118px/);
+  assert.match(css, /@media \(max-width: 1400px\)[\s\S]*?\.dashx-km \.auxtb-track/);
+  assert.match(css, /#screen-dashboard \.dashx-km \{\s*\n?\s*grid-column: 1 \/ -1/);
+});

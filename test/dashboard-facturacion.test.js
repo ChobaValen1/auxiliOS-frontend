@@ -8,6 +8,7 @@ const js = fs.readFileSync('dashboard-facturacion-v1.js', 'utf8');
 const sql = fs.readFileSync(
   'migrations/20260918170000_dashboard_facturacion_rpc_v1.sql', 'utf8');
 const index = fs.readFileSync('Index.html', 'utf8');
+const css = fs.readFileSync('dashboard-v1.css', 'utf8');
 
 /* Varias aserciones son sobre lo que el código HACE, no sobre lo que los
    comentarios explican: los comentarios de estos dos archivos nombran a propósito
@@ -35,7 +36,9 @@ test('la sección se registra en el shell y no le maneja el estado', () => {
 test('los colores salen siempre del motor, nunca hardcodeados', () => {
   assert.doesNotMatch(js, /#[0-9a-fA-F]{6}\b/,
     'hay un hex propio: la paleta validada vive en dashboard-charts-v1.js');
-  assert.match(js, /ch\(\)\.PALETA/);
+  // Todo lo que dibuja pasa por el motor: ni un color ni un formato propio.
+  ['donut', 'treemap', 'tabla'].forEach(f =>
+    assert.match(js, new RegExp('(g|ch\\(\\))\\.' + f + '\\('), `no usa el ${f} del motor`));
   // ESTADO.ok/aviso/critico está reservado para semántica de estado.
   assert.doesNotMatch(js, /ESTADO\./);
 });
@@ -76,7 +79,8 @@ test('cada gráfico vacío explica que faltan servicios y qué va a mostrar', ()
   // Y se pintan con el estado vacío del motor, no con un gráfico en cero.
   assert.match(js, /g\.vacio\(CV_DONUT, VACIO_DONUT\)/);
   assert.match(js, /g\.vacio\(CV_CAJAS, VACIO_CAJAS\)/);
-  assert.match(js, /g\.vacio\(CV_BASES, VACIO_BASES\)/);
+  // Bases dejó de ser un canvas: su vacío lo dibuja la tabla, con el mismo texto.
+  assert.match(js, /g\.tabla\(CV_BASES, \{ vacio: VACIO_BASES/);
 });
 
 test('una respuesta nula o a medio llenar no rompe el pintado', () => {
@@ -123,12 +127,26 @@ test('el delta se lee sin depender del color', () => {
 test('los KM facturados se ven, no quedan escondidos', () => {
   // Uno de los KPI de la columna...
   assert.match(js, /kpi\('KM facturados', nfKm\(d\.totales\.km\), true/);
-  // ...y además al lado de la composición de servicios, por concepto.
+  // ...y además con tarjeta propia, al lado de la composición de la que salen.
+  // Antes colgaban del pie del treemap: el dato que más se mira quedaba abajo
+  // de todo y dejaba tres columnas de la grilla vacías.
   assert.match(js, /ID_KM\s*=\s*'dashx-fact-km'/);
-  assert.match(js, /KM facturados en el período/);
-  assert.match(js, /nfKm\(it\.km\)/);
+  assert.ok(index.includes('dashx-card dashx-km" id="dashx-fact-km"'),
+    'los km no tienen tarjeta propia en la grilla');
+  assert.match(css, /#screen-dashboard \.dashx-km\s*\{\s*grid-column: span 3/);
+  assert.match(js, /function encabezadoKm/);
+  assert.match(js, /dashx-chart-total-value is-amber/);
   assert.match(js, /function nfKm/);
   assert.match(js, /' km'/);
+});
+
+test('la fila de la grilla de Facturación cubre las doce columnas', () => {
+  // cajas(5) + bases(4) + km(3). Con 5 + 4 quedaba un hueco de tres columnas
+  // a la derecha.
+  const span = k => Number(css.match(
+    new RegExp('#screen-dashboard \\.dashx-' + k + '\\s*\\{\\s*grid-column: span (\\d+)'))[1]);
+  assert.equal(span('cajas') + span('bases') + span('km'), 12);
+  assert.equal(span('kpis') + span('donut') + span('mapa'), 12);
 });
 
 /* ── datos ─────────────────────────────────────────────────────────────── */
@@ -148,8 +166,12 @@ test('todo el agregado lo hace la RPC: el frontend no consulta tablas', () => {
 test('los nombres que vienen de la base se escapan antes de ir al DOM', () => {
   assert.match(js, /function esc\(v\)/);
   assert.match(js, /replace\(\/</);
-  assert.match(js, /esc\(it\.label\)/);
   assert.match(js, /esc\(label\)/);
+  assert.match(js, /esc\(msg\)/);
+  // Las filas de las tablas las escapa el motor, que es donde se arma el HTML.
+  const charts = fs.readFileSync('dashboard-charts-v1.js', 'utf8');
+  assert.match(charts, /function escapar/);
+  assert.match(charts, /escapar\(vacia \? '—' : v\)/);
 });
 
 /* ── migración ─────────────────────────────────────────────────────────── */

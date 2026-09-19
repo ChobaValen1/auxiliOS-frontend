@@ -395,11 +395,29 @@
             display: true,
             color: '#ffffff',
             font: { family: FUENTE, size: 11, weight: '600' },
+            /* Una caja chica no tiene lugar para el nombre: el texto se
+               salía por los bordes y se leía "lque pe" en vez de "Remolque
+               pesado". Cuando no entra se muestra sólo el porcentaje, y
+               cuando tampoco entra eso, nada: el nombre está en el tooltip. */
             formatter: function (ctx) {
               var it = ctx.raw && ctx.raw._data;
               if (!it) return '';
               var pct = total ? Math.round(Number(it.value || 0) * 100 / total) : 0;
-              return [it.label, pct + '%'];
+              var w = Number(ctx.raw.w || 0);
+              var h = Number(ctx.raw.h || 0);
+              if (w < 38 || h < 18) return '';
+              if (h < 34) return pct + '%';
+              // ~6,2 px por carácter a 11px semibold, más el aire del borde.
+              var caben = Math.floor((w - 10) / 6.2);
+              var txt = String(it.label);
+              if (txt.length > caben) {
+                // Recortado dice más que nada: "Cambio de r…" ya se reconoce.
+                // Por debajo de seis caracteres no se reconoce, y ahí sí se cae
+                // al porcentaje solo.
+                if (caben < 7) return pct + '%';
+                txt = txt.slice(0, caben - 1) + '…';
+              }
+              return [txt, pct + '%'];
             }
           },
           backgroundColor: function (ctx) {

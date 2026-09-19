@@ -429,3 +429,17 @@ test('los servicios que no cuelgan de nadie se avisan', () => {
   assert.match(sqlV4, /'servicios_sin_chofer'/);
   assert.match(sqlV4, /not exists \(select 1 from jornada j where j\.driver_id = s\.driver_id\)/);
 });
+
+test('el gasto total encabeza el gráfico que lo reparte', () => {
+  // Estaba escondido en el subtítulo de la tarjeta de al lado. En una torta no
+  // hay agujero donde ponerlo, así que encabeza la tarjeta del gráfico.
+  assert.ok(index.includes('id="dashx-ops-comb-total"'), 'falta el total del gráfico');
+  assert.match(css, /#screen-dashboard \.dashx-chart-total-value/);
+  assert.match(ops, /totalEl\.textContent = medios\.length \? pesos\(gasto\)/);
+  // Y baja cuando se tacha un medio de pago: se pinta dentro de la misma
+  // función que recalcula las razones.
+  const razones = ops.slice(ops.indexOf('function pintarRazonesCombustible'),
+                            ops.indexOf('function pintarCombustible'));
+  assert.ok(razones.includes('dashx-ops-comb-total'),
+    'el total no acompaña al filtro de la leyenda');
+});
