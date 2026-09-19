@@ -380,7 +380,10 @@
   }
 
   if (global.AuxDash && typeof global.AuxDash.registrarSeccion === 'function') {
-    global.AuxDash.registrarSeccion({ id: 'flota', cargar: cargar });
+    /* Sin período: esta sección mira el estado de hoy —qué vence, qué service
+       toca, qué camión está parado— y su cargar() no recibe filtros. Ofrecer un
+       rango de fechas sería ofrecer un control que no hace nada. */
+    global.AuxDash.registrarSeccion({ id: 'flota', cargar: cargar, periodo: false });
   }
 
   // Expuesto para poder repintar la sección sin recargar todo el dashboard.

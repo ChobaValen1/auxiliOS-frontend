@@ -71,8 +71,19 @@
 
   /* Una sección puede declarar `filtros`: el id de un contenedor que vive en la
      barra de arriba, fuera de su cuerpo, para que el overlay de carga no lo
-     tape. Se muestra y se esconde con la sección igual que el cuerpo. */
+     tape. Se muestra y se esconde con la sección igual que el cuerpo.
+
+     Y puede declarar `periodo: false` cuando el rango de fechas no le dice
+     nada. Salud de la Flota es el caso: su cargar() no recibe filtros porque
+     mira el estado de hoy —qué vence, qué service toca, qué camión está
+     parado—, así que ofrecer "7 días / 3 meses / Este año" es ofrecer un
+     control que no hace nada. Un filtro que no filtra es peor que no tenerlo:
+     el que lo toca y no ve cambiar nada no sabe si el tablero está roto.
+
+     Si no queda nada visible en la barra, la barra entera se esconde: si no,
+     queda una franja vacía arriba de la sección. */
   function aplicarVisibilidad() {
+    var algoEnLaBarra = false;
     secciones.forEach(function (s) {
       var visible = esVisible(s);
       var cont = document.getElementById('dashx-sec-' + s.id);
@@ -80,8 +91,17 @@
       if (s.filtros) {
         var fil = document.getElementById(s.filtros);
         if (fil) fil.hidden = !visible;
+        if (visible) algoEnLaBarra = true;
       }
     });
+
+    var usaPeriodo = secciones.some(function (s) {
+      return esVisible(s) && s.periodo !== false;
+    });
+    var per = document.getElementById('dashx-periodos');
+    if (per) per.hidden = !usaPeriodo;
+    var barra = document.getElementById('dashx-toolbar');
+    if (barra) barra.hidden = !(usaPeriodo || algoEnLaBarra);
   }
 
   function setCargando(on) {

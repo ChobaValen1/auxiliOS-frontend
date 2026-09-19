@@ -7,6 +7,8 @@ const css = fs.readFileSync('dashboard-v1.css', 'utf8');
 const index = fs.readFileSync('Index.html', 'utf8');
 const sql = fs.readFileSync(
   'migrations/20260919120000_dashboard_zonas_rpc_v1.sql', 'utf8');
+const sqlV3 = fs.readFileSync(
+  'migrations/20260919290000_dashboard_zonas_bases_v3.sql', 'utf8');
 const proxy = fs.readFileSync('supabase/functions/maps-proxy/index.ts', 'utf8');
 
 test('el mapa no mete una API key de Google en el browser', () => {
@@ -145,8 +147,8 @@ test('la lectura del mapa aclara que los km son en línea recta', () => {
   assert.match(mapaJs, /en línea recta/);
   assert.match(sqlV2, /EN LÍNEA RECTA/);
   assert.match(mapaJs, /function pintarLectura/);
-  // Se pinta aunque el mapa no tenga puntos que dibujar.
-  assert.ok(mapaJs.indexOf('pintarLectura(data)') < mapaJs.indexOf("if (!puntos.length)"));
+  // Se pinta aunque el mapa no tenga nada que dibujar.
+  assert.ok(mapaJs.indexOf('pintarLectura(data)') < mapaJs.indexOf('if (!puntos.length && !bases.length)'));
 });
 
 
@@ -197,4 +199,47 @@ test('el mapa se re-dimensiona cuando cambia su caja', () => {
   assert.match(destruir, /observador\.disconnect\(\)/);
   // Sin ResizeObserver (browser viejo) no se rompe: sigue sin re-dimensionar.
   assert.match(mapa, /typeof global\.ResizeObserver !== 'function'/);
+});
+
+
+/* ── las bases como puntos fijos ────────────────────────────────────────── */
+
+test('las bases viajan en el payload y salen del mismo CTE que los km muertos', () => {
+  /* Si el mapa y el cálculo de kilómetros muertos sacaran las bases de lados
+     distintos, podrían discrepar sobre cuáles son. */
+  assert.match(sqlV3, /'bases', coalesce\(/);
+  assert.match(sqlV3, /from sede\n    \), '\[\]'::jsonb\)/);
+  // Activas y geocodificadas: una base sin coordenadas no se puede dibujar.
+  assert.match(sqlV3, /where coalesce\(bb\.is_active, true\)/);
+  assert.match(sqlV3, /not \(bb\.latitude = 0 and bb\.longitude = 0\)/);
+});
+
+test('el encuadre cubre servicios y bases', () => {
+  /* Encuadrando sólo sobre los servicios, una base sin trabajo cerca quedaba
+     fuera de cuadro justo cuando es el dato que hay que ver. Verificado contra
+     producción: con Pinamar sin servicios, el bbox llega a -37,107 de latitud. */
+  assert.match(sqlV3, /select lat, lng from puntos\s*\n\s*union all\s*\n\s*select lat, lng from sede/);
+});
+
+test('las bases se dibujan distinto del calor, y por encima', () => {
+  // El heatmap es demanda —una cantidad—; una base es un lugar. Y una base
+  // tapada por su propio foco no sirve de referencia.
+  assert.match(mapaJs, /function capaSedes/);
+  assert.match(mapaJs, /'circle-color': '#e8eaf2'/);
+  assert.ok(mapaJs.indexOf("mapa.addLayer(capaPuntos())") < mapaJs.indexOf("mapa.addLayer(capaSedes())"),
+    'las bases tienen que agregarse después del calor');
+  // Sin minzoom en el punto: es la referencia contra la que se lee todo.
+  const capa = mapaJs.slice(mapaJs.indexOf('function capaSedes'), mapaJs.indexOf('function capaSedesEtiqueta'));
+  assert.doesNotMatch(capa, /minzoom/);
+  // El nombre sí espera: desde lejos las etiquetas se pisan entre sí.
+  assert.match(mapaJs, /minzoom: 6/);
+});
+
+test('el mapa se dibuja aunque no haya servicios, si hay bases', () => {
+  /* Las bases son la red y existen tenga o no trabajo el período. Antes, sin
+     servicios ubicados, no se dibujaba nada. */
+  assert.match(mapaJs, /if \(!puntos\.length && !bases\.length\)/);
+  assert.match(mapaJs, /var bases  = \(data && data\.bases\)  \|\| \[\]/);
+  // Y al recargar se actualizan las dos fuentes, no sólo la del calor.
+  assert.match(mapaJs, /if \(srcSedes\) srcSedes\.setData\(gjSedes\)/);
 });

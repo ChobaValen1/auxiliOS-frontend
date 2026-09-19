@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=anillos-prestadoras-v120-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=anillos-prestadoras-v120-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=anillos-prestadoras-v120-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=anillos-prestadoras-v120-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=anillos-prestadoras-v120-20260919">
+<link rel="stylesheet" href="sigma.css?v=bases-en-mapa-v121-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=bases-en-mapa-v121-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=bases-en-mapa-v121-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=bases-en-mapa-v121-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=bases-en-mapa-v121-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=281')
+        navigator.serviceWorker.register('/sw.js?v=282')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="supabase.js?v=anillos-prestadoras-v120-20260919" defer></script>
+<script src="config.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="supabase.js?v=bases-en-mapa-v121-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="sigma.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=anillos-prestadoras-v120-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=anillos-prestadoras-v120-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="sigma.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=bases-en-mapa-v121-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=bases-en-mapa-v121-20260919" defer></script>
 </head>
 <body>
 
@@ -763,7 +763,7 @@
           </button>
         </div>
 
-        <div class="dashx-toolbar">
+        <div class="dashx-toolbar" id="dashx-toolbar">
           <div class="dashx-periodos filter-tabs" id="dashx-periodos">
             <div class="ftab" data-p="7d"  onclick="dashxPeriodo('7d',this)">7 días</div>
             <div class="ftab active" data-p="1m" onclick="dashxPeriodo('1m',this)">1 mes</div>

@@ -188,6 +188,60 @@
     };
   }
 
+  function geojsonSedes(bases) {
+    return {
+      type: 'FeatureCollection',
+      features: (bases || []).map(function (b) {
+        return {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [Number(b.lng), Number(b.lat)] },
+          properties: { nombre: String(b.nombre || 'Base') }
+        };
+      })
+    };
+  }
+
+  /* Las bases se ven distinto del calor a propósito: el heatmap y sus puntos
+     son naranjas porque son demanda —cuánto pasa dónde—, y una base no es una
+     cantidad, es un lugar. Va en claro, con halo oscuro, y sin minzoom: es la
+     referencia contra la que se lee todo lo demás, así que no puede aparecer
+     recién al acercarse. */
+  function capaSedes() {
+    return {
+      id: 'sedes-punto',
+      type: 'circle',
+      source: 'sedes',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 12, 7],
+        'circle-color': '#e8eaf2',
+        'circle-stroke-color': '#0c0e12',
+        'circle-stroke-width': 2
+      }
+    };
+  }
+
+  function capaSedesEtiqueta() {
+    return {
+      id: 'sedes-nombre',
+      type: 'symbol',
+      source: 'sedes',
+      // Desde lejos los nombres se pisan entre sí; el punto se ve igual.
+      minzoom: 6,
+      layout: {
+        'text-field': ['get', 'nombre'],
+        'text-size': 11,
+        'text-offset': [0, 1.1],
+        'text-anchor': 'top',
+        'text-allow-overlap': false
+      },
+      paint: {
+        'text-color': '#e8eaf2',
+        'text-halo-color': '#0c0e12',
+        'text-halo-width': 1.5
+      }
+    };
+  }
+
   function capaPuntos() {
     return {
       id: 'zonas-puntos',
@@ -239,6 +293,17 @@
       m.getCanvas().style.cursor = '';
       popup.remove();
     });
+
+    m.on('mouseenter', 'sedes-punto', function (e) {
+      m.getCanvas().style.cursor = 'pointer';
+      var f = e.features && e.features[0];
+      if (!f) return;
+      popup.setLngLat(f.geometry.coordinates).setText(f.properties.nombre).addTo(m);
+    });
+    m.on('mouseleave', 'sedes-punto', function () {
+      m.getCanvas().style.cursor = '';
+      popup.remove();
+    });
   }
 
   function pintar(data) {
@@ -248,7 +313,12 @@
     pintarLectura(data);
 
     var puntos = (data && data.puntos) || [];
-    if (!puntos.length) {
+    var bases  = (data && data.bases)  || [];
+
+    /* Sin servicios ubicados pero con bases, el mapa igual vale la pena: las
+       bases son la red, y existen tenga o no trabajo el período. Sólo cuando no
+       hay ni una cosa ni la otra no hay nada que dibujar. */
+    if (!puntos.length && !bases.length) {
       mensaje(data && data.hay_datos
         ? 'Los servicios del período no tienen ubicación cargada todavía.'
         : 'Todavía no hay servicios cargados en este período. Acá va a verse dónde se concentra la operación.');
@@ -258,11 +328,14 @@
     return cargarLibreria().then(function () {
       if (!cont()) return;
       var gj = geojson(puntos);
+      var gjSedes = geojsonSedes(bases);
 
       if (mapa) {
         var src = mapa.getSource('zonas');
         if (src) {
           src.setData(gj);
+          var srcSedes = mapa.getSource('sedes');
+          if (srcSedes) srcSedes.setData(gjSedes);
           if (mapa.getLayer('zonas-heat')) {
             mapa.setPaintProperty('zonas-heat', 'heatmap-weight', [
               'interpolate', ['linear'], ['get', 'servicios'],
@@ -292,6 +365,11 @@
         mapa.addSource('zonas', { type: 'geojson', data: gj });
         mapa.addLayer(capaHeatmap(data.max_servicios));
         mapa.addLayer(capaPuntos());
+        // Después del calor: una base tapada por su propio foco no sirve de
+        // referencia, y es justo donde más foco suele haber.
+        mapa.addSource('sedes', { type: 'geojson', data: gjSedes });
+        mapa.addLayer(capaSedes());
+        mapa.addLayer(capaSedesEtiqueta());
         tooltip(mapa);
         encuadrar(mapa, data.bbox);
       });

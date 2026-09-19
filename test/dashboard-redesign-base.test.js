@@ -181,7 +181,7 @@ test('los filtros propios de una sección se esconden con ella', () => {
 
 test('período, camión y chofer van en la misma fila', () => {
   const vista = index.match(/id="dash-view-analitica"([\s\S]*?)id="screen-registro"/)[1];
-  const barra = vista.match(/<div class="dashx-toolbar">([\s\S]*?)\n        <\/div>/);
+  const barra = vista.match(/<div class="dashx-toolbar" id="dashx-toolbar">([\s\S]*?)\n        <\/div>/);
   assert.ok(barra, 'falta la barra de herramientas');
   assert.ok(barra[1].includes('dashx-periodos'), 'el período quedó fuera de la fila');
   assert.ok(barra[1].includes('dashx-ops-filtros'), 'los selects quedaron fuera de la fila');
@@ -289,7 +289,7 @@ test('las secciones van en una sola fila, y son tres', () => {
   assert.doesNotMatch(index, /id="dash-ctx-bar"/);
   assert.doesNotMatch(index, /dashCambiarVista\('alertas'/);
   assert.match(index, /<div class="dashx-barra-secciones">/);
-  const barra = index.match(/<div class="dashx-barra-secciones">([\s\S]*?)<\/div>\s*<div class="dashx-toolbar">/)[1];
+  const barra = index.match(/<div class="dashx-barra-secciones">([\s\S]*?)<\/div>\s*<div class="dashx-toolbar" id="dashx-toolbar">/)[1];
   ['facturacion', 'operaciones', 'flota'].forEach(sec =>
     assert.ok(barra.includes(`data-sec="${sec}"`), `falta la sección ${sec}`));
   assert.equal((barra.match(/data-sec=/g) || []).length, 3, 'tienen que ser tres secciones');
@@ -320,4 +320,36 @@ test('el refresco de alertas mira el panel, no la vista que ya no existe', () =>
   assert.match(sigma, /if \(alxPanelAbierto\(\)\) _alxRender\(\);/);
   assert.doesNotMatch(sigma, /dash-view-alertas/);
   assert.doesNotMatch(sigma, /dash-ctx-bar/);
+});
+
+
+/* ── filtros: sólo los que la sección usa ───────────────────────────────── */
+
+test('el período desaparece en las secciones que no lo usan', () => {
+  /* Salud de la Flota mira el estado de hoy —qué vence, qué service toca, qué
+     camión está parado— y su cargar() no recibe filtros. Un filtro que no
+     filtra es peor que no tenerlo: el que lo toca y no ve cambiar nada no sabe
+     si el tablero está roto. */
+  const flota = fs.readFileSync('dashboard-flota-v1.js', 'utf8');
+  assert.match(flota, /registrarSeccion\(\{ id: 'flota', cargar: cargar, periodo: false \}\)/);
+  assert.match(flota, /async function cargar\(\) \{/, 'si pasara a recibir filtros, revisar periodo:false');
+
+  const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8');
+  assert.match(shell, /esVisible\(s\) && s\.periodo !== false/);
+  assert.match(shell, /per\.hidden = !usaPeriodo/);
+  // Y si no queda nada en la barra, la barra entera se esconde.
+  assert.match(shell, /barra\.hidden = !\(usaPeriodo \|\| algoEnLaBarra\)/);
+  assert.match(index, /id="dashx-toolbar"/);
+});
+
+test('cada grupo de filtros se muestra sólo con su sección', () => {
+  const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8');
+  assert.match(shell, /if \(fil\) fil\.hidden = !visible;/);
+  // Prestadora y base son de Facturación; camión y chofer, de Operaciones.
+  const fact = fs.readFileSync('dashboard-facturacion-v1.js', 'utf8');
+  const ops  = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  assert.match(fact, /ID_FILT\s*=\s*'dashx-fact-filtros'/);
+  assert.match(ops,  /filtros: 'dashx-ops-filtros'/);
+  assert.doesNotMatch(fact, /f-camion|f-chofer/);
+  assert.doesNotMatch(ops,  /f-empresa|f-base/);
 });
