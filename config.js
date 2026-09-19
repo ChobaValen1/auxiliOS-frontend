@@ -4,7 +4,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'servicio-creado-confirmacion-v109-20260919';
+window.AUXILIOS_BUILD_ID = 'panel-solo-analisis-v110-20260919';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

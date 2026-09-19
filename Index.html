@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=servicio-creado-confirmacion-v109-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=servicio-creado-confirmacion-v109-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=servicio-creado-confirmacion-v109-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=servicio-creado-confirmacion-v109-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=servicio-creado-confirmacion-v109-20260919">
+<link rel="stylesheet" href="sigma.css?v=panel-solo-analisis-v110-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=panel-solo-analisis-v110-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=panel-solo-analisis-v110-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=panel-solo-analisis-v110-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=panel-solo-analisis-v110-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=270')
+        navigator.serviceWorker.register('/sw.js?v=271')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="supabase.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
+<script src="config.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="supabase.js?v=panel-solo-analisis-v110-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="sigma.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=servicio-creado-confirmacion-v109-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="sigma.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=panel-solo-analisis-v110-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=panel-solo-analisis-v110-20260919" defer></script>
 </head>
 <body>
 
@@ -547,22 +547,6 @@
 </div>
 
 <!-- Modal: Caja en Calle — Desglose -->
-<div class="modal-backdrop" id="modal-caja-calle">
-  <div class="modal-box" style="max-width:680px;width:95vw">
-    <div class="modal-head">
-      <span class="modal-head-title">💰 Caja en Calle — Desglose</span>
-      <button class="modal-close" onclick="closeModal('modal-caja-calle')">×</button>
-    </div>
-    <div class="modal-body" style="padding:0">
-      <div id="caja-calle-body" style="padding:16px">
-        <div style="text-align:center;color:var(--muted);padding:20px">Cargando...</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-caja-calle')">Cerrar</button>
-    </div>
-  </div>
-</div>
 
 <!-- Detalle de jornada (admin/supervisor) -->
 <div class="modal-backdrop" id="modal-jornada-detalle">
@@ -674,9 +658,7 @@
       <!-- Switcher de contexto: solo admin/supervisor -->
       <div id="dash-ctx-bar" style="display:none;margin-bottom:16px">
         <div class="filter-tabs">
-          <div class="ftab active" data-vista="rendimiento" onclick="dashCambiarVista('rendimiento',this)">📈 Mi Rendimiento</div>
-          <div class="ftab" data-vista="negocio" onclick="dashCambiarVista('negocio',this)">🏢 Negocio</div>
-          <div class="ftab" data-vista="analitica" onclick="dashCambiarVista('analitica',this)">📊 Análisis</div>
+          <div class="ftab active" data-vista="analitica" onclick="dashCambiarVista('analitica',this)">📊 Análisis</div>
           <div class="ftab" data-vista="alertas" id="dash-tab-alertas" style="position:relative" onclick="dashCambiarVista('alertas',this)">🔔 Alertas<span class="alx-bubble" id="alx-tab-badge" style="display:none"></span></div>
         </div>
       </div>
@@ -750,109 +732,6 @@
 
       </div>
 
-      <!-- ── Vista Manager: Negocio ── -->
-      <div id="dash-view-negocio" style="display:none">
-
-        <!-- Filter bar -->
-        <div class="dash-filter-bar" id="dash-filter-bar">
-          <div class="dash-period-row">
-            <span class="dash-period-label">📅 Período:</span>
-            <button class="dash-period-btn" data-p="1m"  onclick="dashFiltroPeriodo('1m')">1 mes</button>
-            <button class="dash-period-btn" data-p="3m"  onclick="dashFiltroPeriodo('3m')">3 meses</button>
-            <button class="dash-period-btn active" data-p="6m" onclick="dashFiltroPeriodo('6m')">6 meses</button>
-            <button class="dash-period-btn" data-p="12m" onclick="dashFiltroPeriodo('12m')">12 meses</button>
-            <button class="dash-period-btn" data-p="año" onclick="dashFiltroPeriodo('año')">Este año</button>
-          </div>
-          <div class="dash-filter-row">
-            <span class="dash-filter-label">Ver:</span>
-            <div class="dash-filter-group">
-              <button class="dash-filter-btn" id="flt-trucks-btn" onclick="dashFiltroToggle('trucks')">
-                🚛 <span id="flt-trucks-lbl">Todos los camiones</span>
-                <span class="flt-chevron">▼</span>
-              </button>
-              <div class="dash-filter-dd" id="flt-trucks-dd">
-                <div class="dash-filter-dd-head">
-                  <span>Camiones</span>
-                  <div style="display:flex;gap:4px">
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroTodos('trucks')">Seleccionar todos</button>
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroNinguno('trucks')">Deseleccionar todos</button>
-                  </div>
-                </div>
-                <div class="dash-filter-search"><input type="text" placeholder="Buscar patente..." oninput="dashFiltroSearch('trucks',this.value)"></div>
-                <div id="flt-trucks-list"></div>
-              </div>
-            </div>
-            <div class="dash-filter-group">
-              <button class="dash-filter-btn" id="flt-drivers-btn" onclick="dashFiltroToggle('drivers')">
-                👤 <span id="flt-drivers-lbl">Todos los choferes</span>
-                <span class="flt-chevron">▼</span>
-              </button>
-              <div class="dash-filter-dd" id="flt-drivers-dd">
-                <div class="dash-filter-dd-head">
-                  <span>Choferes</span>
-                  <div style="display:flex;gap:4px">
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroTodos('drivers')">Seleccionar todos</button>
-                    <button class="dash-filter-dd-selall" onclick="dashFiltroNinguno('drivers')">Deseleccionar todos</button>
-                  </div>
-                </div>
-                <div class="dash-filter-search"><input type="text" placeholder="Buscar nombre..." oninput="dashFiltroSearch('drivers',this.value)"></div>
-                <div id="flt-drivers-list"></div>
-              </div>
-            </div>
-            <button class="dash-filter-reset" id="flt-reset-btn" style="display:none" onclick="dashFiltroReset()">✕ Limpiar</button>
-            <button class="dash-export-btn" onclick="exportarNegocioExcel()" title="Exportar a Excel">
-              📊 Exportar Excel
-            </button>
-          </div>
-          <div class="dash-filter-pills" id="flt-pills" style="display:none"></div>
-        </div>
-        <div class="dash-filter-status" id="dash-filter-status"></div>
-
-        <!-- KPIs principales -->
-        <div class="grid-3 mb16" id="dash-neg-kpis-main"></div>
-
-        <!-- KPIs secundarios -->
-        <div class="grid-4 mb16" id="dash-neg-kpis-sec"></div>
-
-        <!-- Facturación + Gastos detalle -->
-        <div class="grid-2 mb16">
-          <div class="card" id="dash-panel-fact"></div>
-          <div class="card" id="dash-panel-gastos"></div>
-        </div>
-
-        <!-- Gráfico tendencia -->
-        <div class="card mb16">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-            <div class="card-label">Tendencia — últimos 6 meses</div>
-            <div class="filter-tabs">
-              <div class="ftab active" onclick="dashChartSwitch('fact',this)">Facturación</div>
-              <div class="ftab" onclick="dashChartSwitch('km',this)">KM</div>
-              <div class="ftab" onclick="dashChartSwitch('srvs',this)">Servicios</div>
-            </div>
-          </div>
-          <div id="dash-chart-wrap" style="min-height:120px;position:relative">
-  <canvas id="dash-chart-canvas" style="max-height:220px"></canvas>
-</div>
-        </div>
-
-        <!-- Ranking choferes -->
-        <div class="card mb16">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div class="card-label">Ranking de choferes</div>
-            <div class="filter-tabs">
-              <div class="ftab active" onclick="dashRankSwitch('ingresos',this)">Ingresos</div>
-              <div class="ftab" onclick="dashRankSwitch('km',this)">KM</div>
-              <div class="ftab" onclick="dashRankSwitch('eficiencia',this)">Eficiencia</div>
-              <div class="ftab" onclick="dashRankSwitch('deuda',this)">Deuda</div>
-            </div>
-          </div>
-          <div id="dash-ranking-body"></div>
-        </div>
-
-      </div>
-
-      <!-- ── Vista Centro de Alertas (admin/supervisión) ── -->
-      <!-- ── Vista Análisis: Facturación · Operaciones · Flota ── -->
       <div id="dash-view-analitica" style="display:none">
 
         <div class="filter-tabs dashx-tabs" id="dashx-tabs">
