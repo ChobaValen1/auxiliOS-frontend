@@ -845,6 +845,36 @@ details.kpi-more[open] > summary::after { content: ' ▴'; }
   overflow-y: auto; /* Permite scroll interno si el contenido es largo */
 }
 .modal-box.wide { width: 680px; }
+
+/* ── Panel lateral de alertas ──────────────────────────────────
+   Variante del modal de siempre: mismo fondo, mismo z-index y mismo cierre por
+   click afuera. Lo único que cambia es dónde se ancla la caja — pegada al borde
+   derecho y de alto completo — porque las alertas son una lista larga: en una
+   caja centrada de 520 px se leen seis y el resto queda bajo scroll. */
+.alx-panel-backdrop.open { justify-content: flex-end; align-items: stretch; }
+
+.alx-panel-box {
+  width: 460px;
+  max-width: 100vw;
+  max-height: 100vh;
+  height: 100vh;
+  border-radius: 0;
+  border-right: 0;
+  border-top: 0;
+  border-bottom: 0;
+  animation: alxSlideIn 0.22s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes alxSlideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
+
+/* La cabecera queda fija y el cuerpo es lo que scrollea. */
+.alx-panel-box .modal-body { flex: 1 1 auto; overflow-y: auto; }
+
+@media (max-width: 560px) {
+  .alx-panel-box { width: 100vw; }
+}
 @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
 .modal-head {

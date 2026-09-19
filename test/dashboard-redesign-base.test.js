@@ -60,7 +60,7 @@ test('el overlay de carga cubre los datos pero no los filtros', () => {
   assert.match(css, /#screen-dashboard \.dashx-loading/);
   assert.match(css, /#screen-dashboard \.dashx-body\s*\{[^}]*position:\s*relative/);
   // El selector de período vive fuera de los .dashx-body.
-  const vista = index.match(/id="dash-view-analitica"([\s\S]*?)<div id="dash-view-alertas"/)[1];
+  const vista = index.match(/id="dash-view-analitica"([\s\S]*?)id="screen-registro"/)[1];
   const periodos = vista.indexOf('dashx-periodos');
   const primerBody = vista.indexOf('dashx-body');
   assert.ok(periodos < primerBody, 'los filtros de período quedaron dentro del área tapada');
@@ -180,7 +180,7 @@ test('los filtros propios de una sección se esconden con ella', () => {
 });
 
 test('período, camión y chofer van en la misma fila', () => {
-  const vista = index.match(/id="dash-view-analitica"([\s\S]*?)<div id="dash-view-alertas"/)[1];
+  const vista = index.match(/id="dash-view-analitica"([\s\S]*?)id="screen-registro"/)[1];
   const barra = vista.match(/<div class="dashx-toolbar">([\s\S]*?)\n        <\/div>/);
   assert.ok(barra, 'falta la barra de herramientas');
   assert.ok(barra[1].includes('dashx-periodos'), 'el período quedó fuera de la fila');
@@ -277,4 +277,47 @@ test('las barras de la tabla no empujan una columna fuera del recuadro', () => {
   assert.match(css, /@media \(max-width: 1400px\)[\s\S]*?\.dashx-cajas \.auxtb-track/);
   // Y por debajo de 1340 las tarjetas con tabla pasan a ancho completo.
   assert.match(css, /@media \(max-width: 1340px\)[\s\S]*?\.dashx-card-tabla \{\s*\n?\s*grid-column: 1 \/ -1/);
+});
+
+
+/* ── una sola fila de pestañas ──────────────────────────────────────────── */
+
+test('las secciones van en una sola fila, y son tres', () => {
+  /* Había dos filas: Análisis/Alertas arriba y las secciones abajo. La de
+     arriba tenía una sola opción real, porque Alertas no es una sección del
+     panel: no tiene período ni filtros y no se compara con las otras. */
+  assert.doesNotMatch(index, /id="dash-ctx-bar"/);
+  assert.doesNotMatch(index, /dashCambiarVista\('alertas'/);
+  assert.match(index, /<div class="dashx-barra-secciones">/);
+  const barra = index.match(/<div class="dashx-barra-secciones">([\s\S]*?)<\/div>\s*<div class="dashx-toolbar">/)[1];
+  ['facturacion', 'operaciones', 'flota'].forEach(sec =>
+    assert.ok(barra.includes(`data-sec="${sec}"`), `falta la sección ${sec}`));
+  assert.equal((barra.match(/data-sec=/g) || []).length, 3, 'tienen que ser tres secciones');
+  // Y Alertas en la misma fila, como botón.
+  assert.match(barra, /id="dashx-alertas-btn"[\s\S]*?onclick="alxAbrirPanel\(\)"/);
+});
+
+test('alertas abre un panel lateral, no una vista', () => {
+  assert.doesNotMatch(index, /id="dash-view-alertas"/);
+  // Se monta sobre el modal de siempre: hereda fondo, z-index y click afuera.
+  assert.match(index, /class="modal-backdrop alx-panel-backdrop" id="alx-panel"/);
+  assert.match(index, /role="dialog" aria-modal="true"/);
+  assert.match(index, /onclick="if\(event\.target===this\)alxCerrarPanel\(\)"/);
+  // El cuerpo de las alertas se mudó entero adentro.
+  ['alx-pendientes', 'alx-chips', 'alx-body'].forEach(id =>
+    assert.ok(index.includes(`id="${id}"`), `falta ${id} en el panel`));
+  const sigma = fs.readFileSync('sigma.js', 'utf8');
+  assert.match(sigma, /function alxAbrirPanel/);
+  assert.match(sigma, /function alxCerrarPanel/);
+  // Escape cierra, como cualquier modal.
+  assert.match(sigma, /ev\.key === 'Escape' && alxPanelAbierto\(\)/);
+  // Y la campanita abre el panel en vez de navegar al dashboard.
+  assert.doesNotMatch(sigma, /_dashVistaActual = 'alertas'/);
+});
+
+test('el refresco de alertas mira el panel, no la vista que ya no existe', () => {
+  const sigma = fs.readFileSync('sigma.js', 'utf8');
+  assert.match(sigma, /if \(alxPanelAbierto\(\)\) _alxRender\(\);/);
+  assert.doesNotMatch(sigma, /dash-view-alertas/);
+  assert.doesNotMatch(sigma, /dash-ctx-bar/);
 });

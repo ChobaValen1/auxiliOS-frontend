@@ -3146,24 +3146,24 @@ async function cargarDashboard() {
   if (!USUARIO_ACTUAL?.id) return;
   const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
                   PERFIL_USUARIO?.roles?.name === 'supervision';
-  const ctxBar = document.getElementById('dash-ctx-bar');
-  if (ctxBar) ctxBar.style.display = esAdmin ? '' : 'none';
+  /* El botón de Alertas vive en la barra de secciones, que ya es sólo del
+     admin: el chofer nunca ve esa barra. */
   const emergQuick = document.getElementById('dash-emergencias-quick');
   if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
-  _alxActualizarBadges(); // badges de alertas (campanita + pestaña) en segundo plano
+  _alxActualizarBadges(); // badges de alertas (campanita + botón) en segundo plano
   /* El admin entra directo a Análisis. El chofer no tiene barra de pestañas y su
      dashboard sigue siendo Mi Rendimiento: esa vista no se borró, dejó de ser
      alcanzable para el admin. */
   if (!esAdmin) { _dashVistaActual = 'rendimiento'; await _cargarViewRendimiento(); return; }
-  if (_dashVistaActual === 'alertas') { dashCambiarVista('alertas'); return; }
   _dashVistaActual = 'analitica';
   dashCambiarVista('analitica');
 }
 
+/* Quedan dos vistas y no las elige nadie: el rol decide. 'rendimiento' es el
+   dashboard del chofer y 'analitica' el del admin. El parámetro `el` sobrevive
+   porque el chofer todavía tiene pestañas propias dentro de su vista. */
 function dashCambiarVista(vista, el) {
-  const bar = document.getElementById('dash-ctx-bar');
-  if (!el && bar) el = bar.querySelector(`.ftab[data-vista="${vista}"]`);
   if (el) {
     el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
@@ -3171,14 +3171,43 @@ function dashCambiarVista(vista, el) {
   _dashVistaActual = vista;
   const vr = document.getElementById('dash-view-rendimiento');
   if (vr) vr.style.display = vista === 'rendimiento' ? '' : 'none';
-  const va = document.getElementById('dash-view-alertas');
-  if (va) va.style.display = vista === 'alertas' ? '' : 'none';
   const vx = document.getElementById('dash-view-analitica');
   if (vx) vx.style.display = vista === 'analitica' ? '' : 'none';
   if (vista === 'rendimiento') _cargarViewRendimiento();
-  if (vista === 'alertas')     cargarCentroAlertas();
   if (vista === 'analitica')   _cargarViewAnalitica();
 }
+
+/* Las alertas dejaron de ser una vista del panel y son un panel lateral: no
+   tienen período ni filtros, no se comparan con las otras secciones, y abrirlas
+   ya no obliga a perder de vista el tablero que estabas mirando. */
+function alxAbrirPanel() {
+  const p = document.getElementById('alx-panel');
+  if (!p) return;
+  p.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  cargarCentroAlertas();
+  const cerrar = p.querySelector('.modal-close');
+  if (cerrar) cerrar.focus();
+}
+
+function alxCerrarPanel() {
+  const p = document.getElementById('alx-panel');
+  if (!p) return;
+  p.classList.remove('open');
+  document.body.style.overflow = '';
+  const btn = document.getElementById('dashx-alertas-btn');
+  if (btn) btn.focus();
+}
+
+function alxPanelAbierto() {
+  const p = document.getElementById('alx-panel');
+  return !!p && p.classList.contains('open');
+}
+
+// Escape cierra, como cualquier modal.
+document.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Escape' && alxPanelAbierto()) alxCerrarPanel();
+});
 
 let _dashxIniciado = false;
 
@@ -3250,8 +3279,6 @@ async function _cargarViewRendimientoDatos() {
   _rendSyncPeriodo();
   const _vRend = document.getElementById('dash-view-rendimiento');
   if (_vRend) _vRend.style.display = '';
-  const _vAlx = document.getElementById('dash-view-alertas');
-  if (_vAlx) _vAlx.style.display = 'none';
 
   const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Cargando...</div>';
   ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
@@ -16641,8 +16668,10 @@ function alxBellClick() {
     toast('No tenés notificaciones pendientes', 'info');
     return;
   }
-  _dashVistaActual = 'alertas';
-  goTo('dashboard'); // cargarDashboard() activa la vista Alertas
+  /* Antes navegaba al panel para activar la pestaña Alertas. Ahora el panel es
+     lateral y se abre donde estés: la campanita vive en la barra de arriba y te
+     sacaba de la pantalla en la que estabas trabajando. */
+  alxAbrirPanel();
 }
 
 // ── Fuentes de datos (una por categoría) ───────────────────────
@@ -16957,7 +16986,7 @@ async function cargarCentroAlertas() {
 async function _alxRefrescar() {
   if (!_alxEsAdminOSup()) return;
   await _alxCargarDatos();
-  if (_dashVistaActual === 'alertas') _alxRender();
+  if (alxPanelAbierto()) _alxRender();
   _alxPintarBadges();
 }
 

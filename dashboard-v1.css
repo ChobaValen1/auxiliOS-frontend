@@ -60,8 +60,46 @@
   flex-wrap: wrap;
 }
 
+/* Las tres secciones a la izquierda, Alertas a la derecha, en una sola fila.
+   Antes había dos filas de pestañas —Análisis/Alertas arriba y las secciones
+   abajo— y la de arriba tenía una sola opción real, porque Alertas no es una
+   sección del panel: no tiene período ni filtros y no se compara con las
+   otras. Por eso pasó a abrir un panel lateral. */
+#screen-dashboard .dashx-barra-secciones {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* La fila ya trae su margen: la pestaña no suma el suyo. */
 #screen-dashboard .dashx-tabs {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+
+#screen-dashboard .dashx-alertas-btn {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+#screen-dashboard .dashx-alertas-btn:hover { border-color: var(--primary); color: var(--text); }
+#screen-dashboard .dashx-alertas-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* Período, camión y chofer eran tres renglones para tres controles. */

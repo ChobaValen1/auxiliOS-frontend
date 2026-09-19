@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=densidad-v118-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=densidad-v118-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=densidad-v118-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=densidad-v118-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=densidad-v118-20260919">
+<link rel="stylesheet" href="sigma.css?v=alertas-panel-v119-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=alertas-panel-v119-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=alertas-panel-v119-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=alertas-panel-v119-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=alertas-panel-v119-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=279')
+        navigator.serviceWorker.register('/sw.js?v=280')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=densidad-v118-20260919" defer></script>
-<script src="supabase.js?v=densidad-v118-20260919" defer></script>
+<script src="config.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="supabase.js?v=alertas-panel-v119-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=densidad-v118-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=densidad-v118-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=densidad-v118-20260919" defer></script>
-<script src="sigma.js?v=densidad-v118-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=densidad-v118-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=densidad-v118-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=densidad-v118-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=densidad-v118-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=densidad-v118-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=densidad-v118-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=alertas-panel-v119-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=alertas-panel-v119-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="sigma.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=alertas-panel-v119-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=alertas-panel-v119-20260919" defer></script>
 </head>
 <body>
 
@@ -61,6 +61,27 @@
 </div>
 
 <!-- Modal: Cola Offline -->
+<!-- Centro de alertas. Se monta sobre el modal-backdrop de siempre, con una
+     variante lateral: hereda el fondo, el z-index y el cierre por click afuera,
+     y sólo cambia dónde se ancla la caja. -->
+<div class="modal-backdrop alx-panel-backdrop" id="alx-panel" role="dialog" aria-modal="true"
+     aria-label="Centro de alertas" onclick="if(event.target===this)alxCerrarPanel()">
+  <div class="modal-box alx-panel-box">
+    <div class="modal-head">
+      <div class="modal-head-title">🔔 Alertas</div>
+      <button class="modal-close" type="button" onclick="alxCerrarPanel()" aria-label="Cerrar">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="alx-pendientes" style="margin-bottom:12px"></div>
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px">
+        <div class="alx-cats" id="alx-chips" style="flex:1"></div>
+        <button class="btn btn-ghost" style="font-size:11px;padding:7px 12px;white-space:nowrap" onclick="alxMarcarTodasVistas()">✓ Marcar todas como vistas</button>
+      </div>
+      <div id="alx-body"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-offline-queue">
   <div class="modal-box">
     <div class="modal-head">
@@ -655,14 +676,6 @@
 
     <div class="screen active" id="screen-dashboard">
 
-      <!-- Switcher de contexto: solo admin/supervisor -->
-      <div id="dash-ctx-bar" style="display:none;margin-bottom:16px">
-        <div class="filter-tabs">
-          <div class="ftab active" data-vista="analitica" onclick="dashCambiarVista('analitica',this)">📊 Análisis</div>
-          <div class="ftab" data-vista="alertas" id="dash-tab-alertas" style="position:relative" onclick="dashCambiarVista('alertas',this)">🔔 Alertas<span class="alx-bubble" id="alx-tab-badge" style="display:none"></span></div>
-        </div>
-      </div>
-
       <!-- ── Vista Chofer: Mi Rendimiento ── -->
       <div id="dash-view-rendimiento">
 
@@ -734,10 +747,20 @@
 
       <div id="dash-view-analitica" style="display:none">
 
-        <div class="filter-tabs dashx-tabs" id="dashx-tabs">
-          <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">FACTURACIÓN</div>
-          <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">OPERACIONES</div>
-          <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">SALUD DE LA FLOTA</div>
+        <!-- Una sola fila: las tres secciones a la izquierda y Alertas a la
+             derecha. Alertas no es una sección del panel —no tiene período ni
+             filtros y no se compara con las otras—, así que abre un panel
+             lateral en vez de ocupar una pestaña. -->
+        <div class="dashx-barra-secciones">
+          <div class="filter-tabs dashx-tabs" id="dashx-tabs">
+            <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">FACTURACIÓN</div>
+            <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">OPERACIONES</div>
+            <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">SALUD DE LA FLOTA</div>
+          </div>
+          <button type="button" class="dashx-alertas-btn" id="dashx-alertas-btn"
+                  onclick="alxAbrirPanel()" aria-haspopup="dialog" aria-controls="alx-panel">
+            🔔 Alertas<span class="alx-bubble" id="alx-tab-badge" style="display:none"></span>
+          </button>
         </div>
 
         <div class="dashx-toolbar">
@@ -883,15 +906,6 @@
           </div>
         </div>
 
-      </div>
-
-      <div id="dash-view-alertas" style="display:none">
-        <div id="alx-pendientes" style="margin-bottom:12px"></div>
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px">
-          <div class="alx-cats" id="alx-chips" style="flex:1"></div>
-          <button class="btn btn-ghost" style="font-size:11px;padding:7px 12px;white-space:nowrap" onclick="alxMarcarTodasVistas()">✓ Marcar todas como vistas</button>
-        </div>
-        <div id="alx-body"></div>
       </div>
 
     </div>
