@@ -41,6 +41,31 @@
     return CATEGORICA[i % CATEGORICA.length];
   }
 
+  /* Mezcla un color con otro. Sirve para que las hijas de un anillo salgan del
+     color de su madre en vez de un color nuevo: el parentesco se ve, y la
+     paleta validada no se estira a catorce entradas que ya no pasarían el
+     control de contraste ni el de daltonismo. */
+  function mezclar(hex, hacia, t) {
+    function partes(h) {
+      var v = h.replace('#', '');
+      return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
+    }
+    var a = partes(hex), b = partes(hacia);
+    return '#' + a.map(function (c, i) {
+      var n = Math.round(c + (b[i] - c) * t);
+      return ('0' + Math.max(0, Math.min(255, n)).toString(16)).slice(-2);
+    }).join('');
+  }
+
+  /* Tono de la hija n de una madre: se va aclarando hacia el blanco. El primer
+     hijo queda casi igual que la madre —cuando hay uno solo, que es el caso
+     común, el anillo de afuera se lee como continuación del de adentro— y a
+     partir del segundo se separan lo suficiente para distinguirse. */
+  function tonoHijo(colorMadre, indice, cuantos) {
+    if (cuantos <= 1) return mezclar(colorMadre, '#ffffff', 0.12);
+    return mezclar(colorMadre, '#ffffff', 0.08 + (indice / (cuantos - 1)) * 0.42);
+  }
+
   function nfMiles(v) {
     return Number(v || 0).toLocaleString('es-AR');
   }
@@ -711,6 +736,86 @@
     return '<tfoot><tr class="auxtb-total">' + celdas + '</tr></tfoot>';
   }
 
+  /* Torta de dos anillos: adentro el total de cada madre, afuera cómo se
+     reparte entre sus hijas. Los dos anillos suman lo mismo, así que el de
+     afuera no agrega una magnitud nueva: desarma la de adentro.
+
+     Chart.js dibuja un dataset por anillo, pero el PRIMERO va afuera, no
+     adentro. Medido: con madres en el dataset 0 quedaban en el radio 46–79 y
+     las hijas en el 25–46, o sea el desglose adentro y el total afuera, que es
+     al revés de lo que dice un anillo anidado. Por eso las hijas van primero.
+
+     Las hijas van en el orden de sus madres para que cada arco caiga justo
+     sobre la porción de la que sale; si se desordenaran, el anillo de afuera
+     diría algo falso sin que nada falle. */
+  function donutAnidado(id, datos) {
+    var madres = (datos && datos.madres) || [];
+    if (!madres.length || !madres.some(function (m) { return Number(m.value) > 0; })) {
+      return vacio(id, datos && datos.vacio);
+    }
+    var fmt = (datos && datos.formato) === 'pesos' ? nfPesos : nfMiles;
+    var total = madres.reduce(function (a, m) { return a + Number(m.value || 0); }, 0);
+
+    var hijas = [], colorHijas = [], deQuien = [];
+    madres.forEach(function (m, i) {
+      var hs = (m.hijos && m.hijos.length) ? m.hijos : [{ label: m.label, value: m.value }];
+      hs.forEach(function (h, j) {
+        hijas.push(h);
+        colorHijas.push(tonoHijo(color(i), j, hs.length));
+        deQuien.push(m.label);
+      });
+    });
+
+    function pct(v) { return total ? Math.round(Number(v || 0) * 1000 / total) / 10 : 0; }
+
+    var HIJAS = 0, MADRES = 1;  // el dataset 0 es el anillo de afuera
+    return montar(id, {
+      type: 'doughnut',
+      data: {
+        datasets: [
+          {
+            data: hijas.map(function (h) { return Number(h.value || 0); }),
+            backgroundColor: colorHijas,
+            borderColor: SUP, borderWidth: 2, weight: 1
+          },
+          {
+            data: madres.map(function (m) { return Number(m.value || 0); }),
+            backgroundColor: madres.map(function (_, i) { return color(i); }),
+            borderColor: SUP, borderWidth: 2, weight: 1.6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '32%',
+        plugins: {
+          // La tabla de al lado es la leyenda, con los mismos colores.
+          legend: { display: false },
+          tooltip: Object.assign(tooltipBase(), {
+            callbacks: {
+              /* El nombre sale del array, no de ctx.label: los dos anillos
+                 tienen distinta cantidad de porciones, así que un `labels`
+                 compartido le pondría a la madre el nombre de una hija. */
+              label: function (ctx) {
+                var v = Number(ctx.parsed || 0);
+                if (ctx.datasetIndex === MADRES) {
+                  var m = madres[ctx.dataIndex] || {};
+                  return ' ' + (m.label || '') + ': ' + fmt(v) + ' (' + pct(v) + '%)';
+                }
+                var h = hijas[ctx.dataIndex] || {};
+                // La hija dice de quién es: sola, "Base Piñeyro" aparece dos
+                // veces en el anillo y no se sabe cuál es cuál.
+                return ' ' + deQuien[ctx.dataIndex] + ' · ' + (h.label || '') +
+                       ': ' + fmt(v) + ' (' + pct(v) + '%)';
+              }
+            }
+          })
+        }
+      }
+    });
+  }
+
   /* Agrupa la cola larga en "Otros": la paleta tiene 7 slots y no se cicla. */
   function topN(items, n) {
     var max = n || CATEGORICA.length;
@@ -733,6 +838,7 @@
     SUPERFICIE: SUP,
     color: color,
     donut: donut,
+    donutAnidado: donutAnidado,
     barras: barras,
     barraParticipacion: barraParticipacion,
     linea: linea,

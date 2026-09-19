@@ -84,16 +84,16 @@ test('las tres secciones tienen contenedor y overlay propios', () => {
 });
 
 test('los canvas y tablas que consumen las secciones existen en el markup', () => {
-  ['dashx-fact-cajas', 'dashx-fact-bases',
+  ['dashx-fact-cajas', 'dashx-fact-torta',
    'dashx-ops-tendencia', 'dashx-ops-anillo', 'dashx-ops-combustible',
    'dashx-flota-estado']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta el canvas ${id}`));
-  /* Facturación pasó de un anillo de prestadoras a una tabla que se abre: para
-     dos o tres prestadoras el anillo gastaba media pantalla en un reparto que
-     se lee en dos renglones, y no dejaba lugar para las otras cuatro medidas
-     que hay que saber de cada una. */
+  /* Facturación tenía dos tablas haciendo el mismo corte con las puntas
+     cambiadas de lugar —prestadora → bases y base → prestadoras—. Quedó una,
+     que se abre, y las métricas de la otra se mudaron adentro. */
   ['dashx-fact-empresas']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta la tabla ${id}`));
+  assert.ok(!index.includes('id="dashx-fact-bases"'), 'la tabla de bases tenía que irse');
   // Operaciones pasó de cuatro gráficos de barras a dos tablas: son varias
   // medidas sobre pocas filas, y así se comparan sin cruzar dos gráficos.
   ['dashx-ops-tabla-camiones', 'dashx-ops-tabla-choferes']

@@ -74,7 +74,7 @@ test('con el dataset vacío no se pinta ningún cero como si fuera un dato', () 
 });
 
 test('cada gráfico vacío explica que faltan servicios y qué va a mostrar', () => {
-  ['VACIO_EMPRESAS', 'VACIO_CAJAS', 'VACIO_BASES'].forEach(k => {
+  ['VACIO_EMPRESAS', 'VACIO_CAJAS'].forEach(k => {
     const msg = js.match(new RegExp(k + "\\s*=\\s*'([^']+)'"));
     assert.ok(msg, `falta el mensaje ${k}`);
     assert.match(msg[1], /Todavía no hay servicios cargados/,
@@ -84,9 +84,8 @@ test('cada gráfico vacío explica que faltan servicios y qué va a mostrar', ()
   });
   // Y se pintan con el estado vacío del motor, no con un gráfico en cero.
   assert.match(js, /g\.vacio\(CV_CAJAS, VACIO_CAJAS\)/);
-  // Prestadoras y bases son tablas: su vacío lo dibuja la tabla, mismo texto.
+  // Prestadoras es una tabla: su vacío lo dibuja la tabla, con el mismo texto.
   assert.match(js, /g\.tabla\(CV_EMPRESAS, \{ vacio: VACIO_EMPRESAS/);
-  assert.match(js, /g\.tabla\(CV_BASES, \{ vacio: VACIO_BASES/);
 });
 
 test('una respuesta nula o a medio llenar no rompe el pintado', () => {
@@ -169,7 +168,7 @@ test('la fila de la grilla de Facturación cubre las doce columnas', () => {
   // par ahorra 190 px de alto pero la de prestadoras desborda 306 a 1440 y
   // esconde Margen detrás del scroll: cambiar una columna por espacio vertical
   // es mal negocio.
-  ['full', 'bases', 'kpis'].forEach(k =>
+  ['full', 'kpis'].forEach(k =>
     assert.match(css, new RegExp('#screen-dashboard \\.dashx-' + k + '\\s*\\{\\s*grid-column: 1 \\/ -1'),
       `.dashx-${k} tiene que ocupar las doce columnas`));
 });
@@ -213,22 +212,28 @@ test('el catálogo de los filtros no se filtra a sí mismo', () => {
     'el catálogo sale de los servicios del período');
 });
 
-test('el desglose por bases responde si una base factura más por volumen o por precio', () => {
-  // Los totales solos no distinguen una cosa de la otra.
+test('los promedios viven en la tabla de prestadoras, en los dos niveles', () => {
+  /* Había dos tablas haciendo el mismo corte con las puntas cambiadas de
+     lugar: prestadora → bases y base → prestadoras. Quedó una, y las métricas
+     que sólo tenía la otra se mudaron acá. Una prestadora puede facturar más
+     porque manda más servicios o porque paga mejor cada uno, y los totales
+     solos no distinguen una cosa de la otra. */
   const graf = js.slice(js.indexOf('function pintarGraficos'), js.indexOf('function pintar('));
-  assert.match(graf, /clave: 'ticket'/);
-  assert.match(graf, /clave: 'kmServicio'/);
-  // Promedios por fila con guarda: una base sin servicios no divide por cero.
+  const tabla = graf.slice(graf.indexOf('g.tabla(CV_EMPRESAS'));
+  ['label', 'value', 'servicios', 'km', 'kmReal', 'margen', 'ticket', 'kmServicio']
+    .forEach(c => assert.match(tabla, new RegExp("clave: '" + c + "'"), `falta la columna ${c}`));
+  // El cierre divide los totales entre sí, que no es promediar la columna.
+  assert.match(tabla, /total: \{ dividir: 'value', por: 'servicios' \}/);
+  // Y las filas hijas los traen calculados igual que la madre.
   assert.match(js, /i\.ticket = i\.servicios > 0 \? i\.monto \/ i\.servicios : null/);
-  // Y el cierre divide los totales entre sí, que no es promediar la columna.
-  assert.match(graf, /total: \{ dividir: 'value', por: 'servicios' \}/);
-  /* El reparto del facturado va en la barra de la celda, no en una franja
-     aparte: la barra de participación costaba 78 px para decir lo mismo que ya
-     dice la columna Facturado. */
-  const bases = graf.slice(graf.indexOf('g.tabla(CV_BASES'));
-  assert.match(bases, /clave: 'value',     titulo: 'Facturado', tipo: 'pesos', barra: true/);
+  assert.match(js, /promedios\(c\);/);
+});
+
+test('la tabla de bases se fue entera, sin dejar código muerto', () => {
+  assert.doesNotMatch(js, /CV_BASES|VACIO_BASES|filaBase|porBase/);
   assert.doesNotMatch(js, /barraParticipacion/);
-  assert.doesNotMatch(index, /dashx-fact-part/);
+  assert.doesNotMatch(index, /dashx-fact-bases|dashx-fact-part/);
+  assert.doesNotMatch(css, /dashx-bases/);
 });
 
 /* ── datos ─────────────────────────────────────────────────────────────── */
@@ -341,8 +346,8 @@ test('el módulo se carga después del motor y del shell', () => {
   }
   assert.match(js, /document\.addEventListener\('DOMContentLoaded', registrar/);
   // Los nodos que la sección llena existen en el markup.
-  ['dashx-fact-kpis', 'dashx-fact-sub', 'dashx-fact-empresas', 'dashx-fact-cajas',
-   'dashx-fact-bases'].forEach(id =>
+  ['dashx-fact-kpis', 'dashx-fact-sub', 'dashx-fact-torta', 'dashx-fact-empresas',
+   'dashx-fact-cajas'].forEach(id =>
     assert.ok(index.includes(`id="${id}"`), `falta ${id} en el markup`));
   // El mapa lo llena otro trabajo: esta sección no lo toca.
   assert.doesNotMatch(js, /dashx-fact-mapa/);
@@ -421,22 +426,54 @@ test('el margen compara el mismo subconjunto de los dos lados', () => {
   assert.match(js, /real > 0 \? \(comp - real\) \* 100 \/ real : null/);
 });
 
-test('la torta y la tabla de prestadoras son el mismo dato en el mismo orden', () => {
-  /* El cuadradito de cada fila ES su porción de la torta: los dos salen del
-     mismo array y color(i) los pinta por índice. Si se alimentaran de listas
-     distintas, la fila azul podría no ser la porción azul. */
+test('la torta y la tabla salen del mismo array, en el mismo orden', () => {
+  /* El cuadradito de cada fila ES su porción: los dos salen del mismo array y
+     color(i) los pinta por índice. Si se alimentaran de listas distintas, la
+     fila azul podría no ser la porción azul. */
   assert.match(js, /var empresas = agrupar\(d\.porEmpresa/);
-  // Desde la torta hacia adelante: el g.tabla(CV_EMPRESAS) del estado vacío
-  // aparece antes en el archivo y cortaría en el lugar equivocado.
-  const iTorta = js.indexOf("g.donut(CV_TORTA");
+  const iTorta = js.indexOf("g.donutAnidado(CV_TORTA");
   const t = js.slice(iTorta, js.indexOf("g.tabla(CV_EMPRESAS", iTorta));
-  assert.match(t, /labels: empresas\.map/);
-  assert.match(t, /values: empresas\.map/);
-  assert.match(t, /tipo: 'torta'/);
-  // Sin leyenda propia: la tabla de al lado ya es la leyenda.
-  assert.match(t, /leyenda: 'ninguna'/);
-  assert.match(charts, /=== 'ninguna' \? \{ display: false \}/);
+  assert.match(t, /madres: empresas/);
   assert.match(js, /filas: empresas/);
+  // Sin leyenda: la tabla de al lado ya la hace.
+  assert.match(charts, /legend: \{ display: false \}/);
+});
+
+test('el anillo de afuera desarma el de adentro, no agrega otra magnitud', () => {
+  const d = charts.slice(charts.indexOf('function donutAnidado'), charts.indexOf('function topN'));
+  // Las hijas van en el orden de sus madres: si se desordenaran, el anillo de
+  // afuera diría algo falso sin que nada falle.
+  assert.match(d, /madres\.forEach\(function \(m, i\) \{/);
+  // Una madre sin hijas ocupa su propio arco afuera, para que el anillo cierre.
+  assert.match(d, /m\.hijos && m\.hijos\.length\) \? m\.hijos : \[\{ label: m\.label, value: m\.value \}\]/);
+  // Y el tooltip de la hija dice de quién es: "Base Piñeyro" aparece dos veces.
+  assert.match(d, /deQuien\[ctx\.dataIndex\]/);
+});
+
+test('las madres van adentro y las hijas afuera', () => {
+  /* Chart.js dibuja el PRIMER dataset afuera, no adentro. Con las madres
+     primero quedaban en el radio 46–79 y las hijas en el 25–46: el desglose
+     adentro y el total afuera, al revés de lo que dice un anillo anidado, y sin
+     que nada falle a la vista. Por eso las hijas van primero. */
+  const d = charts.slice(charts.indexOf('function donutAnidado'), charts.indexOf('function topN'));
+  const iHijas  = d.indexOf('data: hijas.map');
+  const iMadres = d.indexOf('data: madres.map(function (m) { return Number(m.value || 0); })');
+  assert.ok(iHijas > 0 && iMadres > 0, 'faltan los dos datasets');
+  assert.ok(iHijas < iMadres, 'las hijas tienen que ser el dataset 0, que es el anillo de afuera');
+  assert.match(d, /var HIJAS = 0, MADRES = 1;/);
+  /* Y el nombre sale del array, no de ctx.label: los dos anillos tienen
+     distinta cantidad de porciones, así que un `labels` compartido le pondría
+     a la madre el nombre de una hija. */
+  assert.doesNotMatch(d, /labels:/);
+  assert.match(d, /madres\[ctx\.dataIndex\]/);
+});
+
+test('las hijas salen del color de su madre, no de la paleta', () => {
+  /* Darles colores propios rompería el parentesco y estiraría la paleta
+     validada a catorce entradas, que ya no pasarían contraste ni daltonismo. */
+  assert.match(charts, /function tonoHijo/);
+  assert.match(charts, /mezclar\(colorMadre, '#ffffff'/);
+  assert.match(charts, /colorHijas\.push\(tonoHijo\(color\(i\), j, hs\.length\)\)/);
 });
 
 test('las prestadoras pasan por agrupar para no repetir colores', () => {
@@ -451,16 +488,13 @@ test('las prestadoras pasan por agrupar para no repetir colores', () => {
   assert.match(ag, /if \(hayReales\) \{ i\.kmReal = real; i\.kmComp = comp; \}/);
 });
 
-test('las dos tablas son los dos cortes del mismo cubo, no el mismo dos veces', () => {
-  /* por_empresa se pliega por empresa y por_base por base, sobre el MISMO
-     agrupamiento (empresa, base). Lo que conserva el corte por base es su
-     total: Piñeyro mueve $593.920, que en la tabla de prestadoras aparece
-     partido en $364.680 bajo Addiuva y $229.240 bajo Teleassitance. */
-  assert.match(sqlV7, /group by g\.company_id, g\.nombre/);
-  assert.match(sqlV7, /group by g\.base_id, g\.base_nombre/);
-  assert.match(sqlV7, /'empresas',  b2\.empresas/);
-  assert.match(js, /f\.hijos = lista\(o\.empresas\)\.map\(fila\)/);
-  assert.match(js, /porBase: lista\(o\.por_base\)\.map\(filaBase\)/);
+test('las bases viven anidadas dentro de su prestadora', () => {
+  // Una base atiende a más de una prestadora, así que la lista plana no se
+  // puede repartir entre empresas: por eso el SQL anida en vez de que cruce el
+  // front. El corte por base suelto se fue: era el mismo dato al revés.
+  assert.match(sqlV6, /'bases',     e\.bases/);
+  assert.match(sqlV6, /group by g\.company_id, g\.nombre/);
+  assert.match(js, /f\.hijos = lista\(o\.bases\)/);
 });
 
 test('la fila Otros nunca se despliega', () => {

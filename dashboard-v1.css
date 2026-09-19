@@ -191,9 +191,6 @@
 #screen-dashboard .dashx-cajas    { grid-column: span 6; }
 /* Composición va al lado del mapa: miden casi lo mismo de alto, y sin un
    compañero el mapa dejaba media fila vacía. */
-/* Seis y seis: con 7 + 5 la tabla de bases quedaba 39 px corta a 1366 y
-   escondía Km/servicio detrás del scroll. */
-#screen-dashboard .dashx-bases    { grid-column: 1 / -1; }
 #screen-dashboard .dashx-full     { grid-column: 1 / -1; }
 
 /* Torta a la izquierda y tabla a la derecha, dentro de la misma tarjeta. La
@@ -214,8 +211,15 @@
   min-width: 0;   /* sin esto la tabla no deja encogerse al flex y desborda */
 }
 
-/* Angosto: la torta arriba, centrada, y la tabla debajo. */
-@media (max-width: 900px) {
+/* La torta pasa arriba bastante antes que el resto: la tabla tiene ocho
+   columnas y a 1180 px, con la torta al costado, la última quedaba 120 px
+   afuera y se escondía detrás del scroll horizontal. Apilada, la tabla se lleva
+   el ancho entero de la tarjeta y entra sin recortar nada.
+
+   El umbral es de la tabla, no de la pantalla: sale de medir dónde deja de
+   entrar (a 1366 entra, a 1280 se va 20 px), así que si algún día se le saca
+   una columna, este número baja con ella. */
+@media (max-width: 1320px) {
   #screen-dashboard .dashx-torta-tabla { flex-direction: column; }
   #screen-dashboard .dashx-torta-tabla .dashx-torta {
     flex: 0 0 auto;
@@ -857,7 +861,6 @@
    achica antes que perder una columna: una barra corta sigue comparando, una
    columna invisible no informa nada. */
 @media (max-width: 1400px) {
-  #screen-dashboard .dashx-bases .auxtb-track,
   #screen-dashboard .dashx-cajas .auxtb-track {
     min-width: 22px;
     max-width: 52px;
@@ -878,7 +881,6 @@
   #screen-dashboard .dashx-kpis,
   #screen-dashboard .dashx-mapa,
   #screen-dashboard .dashx-cajas,
-  #screen-dashboard .dashx-bases,
   #screen-dashboard .dashx-med,
   #screen-dashboard .dashx-tercio {
     grid-column: span 6;

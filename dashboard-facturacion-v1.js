@@ -17,7 +17,6 @@
   var CV_EMPRESAS = 'dashx-fact-empresas';
   var CV_TORTA    = 'dashx-fact-torta';
   var CV_CAJAS = 'dashx-fact-cajas';
-  var CV_BASES = 'dashx-fact-bases';
   var ID_CONC  = 'dashx-fact-conceptos';
   var ID_KPIS  = 'dashx-fact-kpis';
   var ID_SUB   = 'dashx-fact-sub';
@@ -36,7 +35,6 @@
      a mostrar cada gráfico, en vez de dejar un recuadro mudo. */
   var VACIO_EMPRESAS = 'Todavía no hay servicios cargados en este período. Acá va a verse cada prestadora con sus bases.';
   var VACIO_CAJAS = 'Todavía no hay servicios cargados en este período. Acá va a verse la composición por concepto.';
-  var VACIO_BASES = 'Todavía no hay servicios cargados en este período. Acá va a verse cada base con las prestadoras que atiende.';
   var VACIO_CONC  = 'Todavía no hay servicios cargados en este período. Acá va a verse cuántos servicios y cuántos km factura cada concepto.';
   var VACIO_KPIS  = 'Todavía no hay servicios cargados en este período.';
 
@@ -192,18 +190,6 @@
     return f.kmReal > 0 ? (f.kmComp - f.kmReal) * 100 / f.kmReal : null;
   }
 
-  /* La base con sus prestadoras adentro: el corte inverso al de arriba. Lo que
-     conserva es el total de la base —Piñeyro mueve $593.920— que en la tabla de
-     prestadoras queda partido entre las dos que atiende y habría que sumar a
-     mano. Una base es un lugar físico con camiones y gente: su carga total
-     importa sin importar quién la paga. */
-  function filaBase(r) {
-    var o = r && typeof r === 'object' ? r : {};
-    var f = fila(o);
-    f.hijos = lista(o.empresas).map(fila);
-    return f;
-  }
-
   function normalizar(d) {
     var o = d && typeof d === 'object' ? d : {};
     var t = o.totales && typeof o.totales === 'object' ? o.totales : {};
@@ -243,8 +229,7 @@
         bases: lista(o.catalogo && o.catalogo.bases)
       },
       porEmpresa: lista(o.por_empresa).map(filaEmpresa),
-      porConcepto: lista(o.por_concepto).map(fila),
-      porBase: lista(o.por_base).map(filaBase)
+      porConcepto: lista(o.por_concepto).map(fila)
     };
   }
 
@@ -438,7 +423,6 @@
       g.tabla(CV_EMPRESAS, { vacio: VACIO_EMPRESAS, columnas: [], filas: [] });
       g.vacio(CV_CAJAS, VACIO_CAJAS);
       // Bases dejó de ser un canvas: su vacío lo dibuja la tabla.
-      g.tabla(CV_BASES, { vacio: VACIO_BASES, columnas: [], filas: [] });
       return [];
     }
 
@@ -460,12 +444,17 @@
        porciones distintas quedarían del mismo color. La cola larga va a
        "Otros", que es la regla del resto del tablero. */
     var empresas = agrupar(d.porEmpresa, function (f) { return f.monto; });
-    g.donut(CV_TORTA, {
-      labels: empresas.map(function (i) { return i.label; }),
-      values: empresas.map(function (i) { return i.value; }),
-      tipo: 'torta',
+    /* Dos anillos: adentro cuánto factura cada prestadora, afuera cómo se
+       reparte ese mismo monto entre sus bases. El de afuera no agrega una
+       magnitud nueva —los dos suman lo mismo— sino que desarma la de adentro,
+       que es justo la pregunta que sigue después de ver el volumen.
+
+       Las hijas salen del color de su madre, aclarado. Darles colores propios
+       de la paleta rompería el parentesco y además la estiraría a catorce
+       entradas, que ya no pasarían el control de contraste ni el de daltonismo. */
+    g.donutAnidado(CV_TORTA, {
+      madres: empresas,
       formato: 'pesos',
-      leyenda: 'ninguna',
       vacio: VACIO_EMPRESAS
     });
 
@@ -489,7 +478,17 @@
             var real = 0, comp = 0;
             filas.forEach(function (f) { real += num(f.kmReal); comp += num(f.kmComp); });
             return real > 0 ? (comp - real) * 100 / real : null;
-          } }
+          } },
+        /* Los promedios venían del desglose por bases, que hacía el mismo corte
+           con las dos puntas cambiadas de lugar. Acá contestan la misma
+           pregunta y en el nivel que importa: una prestadora puede facturar más
+           porque manda más servicios o porque paga mejor cada uno, y los
+           totales solos no distinguen una cosa de la otra. Al desplegar, cada
+           base trae los suyos. */
+        { clave: 'ticket',     titulo: '$/servicio', tipo: 'pesos',
+          total: { dividir: 'value', por: 'servicios' } },
+        { clave: 'kmServicio', titulo: 'Km/serv.', decimales: 1,
+          total: { dividir: 'km', por: 'servicios' } }
       ],
       filas: empresas
     });
@@ -498,35 +497,6 @@
     var conceptos = agrupar(d.porConcepto, function (f) { return f.servicios; });
     g.treemap(CV_CAJAS, { items: conceptos, vacio: VACIO_CAJAS });
 
-    /* Desglose por base: una barra de participación arriba y la tabla abajo.
-
-       La participación por base era una barra aparte arriba de la tabla, de
-       78 px. Decía qué porción del facturado se lleva cada una — que es lo
-       mismo que dice la barra dentro de la celda de Facturado, sin una franja
-       propia. Dos dibujos del mismo reparto, uno gratis y el otro no.
-
-       Los promedios son la pregunta real de este cuadro: una base puede
-       facturar más porque hace más servicios o porque cobra más caro cada uno,
-       y los totales solos no distinguen una cosa de la otra. */
-    var bases = agrupar(d.porBase, function (f) { return f.monto; });
-
-    g.tabla(CV_BASES, {
-      vacio: VACIO_BASES,
-      totalEtiqueta: 'Total',
-      columnas: [
-        { clave: 'label',     titulo: 'Base',      tipo: 'texto', swatch: true },
-        { clave: 'value',     titulo: 'Facturado', tipo: 'pesos', barra: true, total: 'suma' },
-        { clave: 'servicios', titulo: 'Servicios', total: 'suma' },
-        { clave: 'km',        titulo: 'Km',        decimales: 0, unidad: 'km', total: 'suma' },
-        // Promedios, no sumas: el cierre divide los totales entre sí, que no es
-        // lo mismo que promediar la columna.
-        { clave: 'ticket',    titulo: '$/servicio', tipo: 'pesos',
-          total: { dividir: 'value', por: 'servicios' } },
-        { clave: 'kmServicio', titulo: 'Km/serv.', decimales: 1,
-          total: { dividir: 'km', por: 'servicios' } }
-      ],
-      filas: bases
-    });
 
     return conceptos;
   }
@@ -590,7 +560,6 @@
       g.error(CV_TORTA, msg);
       g.tabla(CV_EMPRESAS, { vacio: msg, columnas: [], filas: [] });
       g.error(CV_CAJAS, msg);
-      g.tabla(CV_BASES, { vacio: msg, columnas: [], filas: [] });
       g.tabla(ID_CONC, { vacio: msg, columnas: [], filas: [] });
     }
     var nodo = el(ID_KPIS);
