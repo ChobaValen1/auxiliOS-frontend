@@ -96,6 +96,15 @@ test('los canvas y tablas que consumen las secciones existen en el markup', () =
 
 test('el plugin de treemap y los módulos del dashboard están cargados', () => {
   assert.match(index, /chartjs-chart-treemap@[\d.]+/);
+  /* El paquete publica `chartjs-chart-treemap.min.js`. Pedirlo como
+     `.umd.min.js` devuelve 404, el plugin no se registra y el treemap se
+     dibuja como barras sin que nada falle a la vista: sólo desaparecen los
+     cuadrados. Pasó, y por eso el nombre del archivo está clavado acá. */
+  assert.match(index, /chartjs-chart-treemap@[\d.]+\/dist\/chartjs-chart-treemap\.min\.js/);
+  assert.doesNotMatch(index, /chartjs-chart-treemap[^"]*\.umd\./,
+    'ese archivo no existe en el paquete: da 404 y el treemap cae a barras');
+  // Y si alguna vez vuelve a no registrarse, que se vea en la consola.
+  assert.match(charts, /chartjs-chart-treemap no está registrado/);
   assert.match(index, /<script src="dashboard-charts-v1\.js(\?v=[^"]*)?" defer><\/script>/);
   assert.match(index, /<script src="dashboard-shell-v1\.js(\?v=[^"]*)?" defer><\/script>/);
   assert.match(index, /<link rel="stylesheet" href="dashboard-v1\.css(\?v=[^"]*)?">/);

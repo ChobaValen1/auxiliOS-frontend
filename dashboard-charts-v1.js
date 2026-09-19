@@ -430,6 +430,13 @@
       })();
 
     if (!registrado) {
+      /* El fallback existe para que un CDN caído no deje un recuadro vacío,
+         pero cuando se dispara hay que enterarse: durante semanas el plugin se
+         pedía con un nombre de archivo que no existe en el paquete (.umd.min.js
+         en vez de .min.js), el <script> daba 404 y acá se dibujaban barras sin
+         que nadie lo notara. */
+      console.warn('[dashboard] chartjs-chart-treemap no está registrado: ' +
+                   'el treemap se dibuja como barras. Revisá que el <script> cargue.');
       return barras(id, {
         labels: items.map(function (x) { return x.label; }),
         values: items.map(function (x) { return x.value; }),
