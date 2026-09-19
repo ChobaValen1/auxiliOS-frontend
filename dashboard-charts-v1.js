@@ -113,10 +113,12 @@
     };
   }
 
-  function leyendaBase() {
+  function leyendaBase(posicion) {
     return {
       display: true,
-      position: 'bottom',
+      position: posicion || 'bottom',
+      // Abajo la leyenda se come alto del gráfico; al costado se come ancho,
+      // que en una tarjeta de un tercio sobra y en el alto no.
       labels: {
         color: TINTA.media,
         font: { family: FUENTE, size: 11 },
@@ -124,7 +126,7 @@
         boxHeight: 10,
         usePointStyle: true,
         pointStyle: 'circle',
-        padding: 12
+        padding: posicion === 'right' ? 9 : 12
       }
     };
   }
@@ -193,7 +195,7 @@
         maintainAspectRatio: false,
         cutout: '62%',
         plugins: {
-          legend: leyendaBase(),
+          legend: leyendaBase((datos && datos.leyenda) === 'derecha' ? 'right' : 'bottom'),
           tooltip: Object.assign(tooltipBase(), {
             callbacks: {
               label: function (ctx) {
@@ -425,11 +427,18 @@
 
     if (!col.barra) return '<td class="auxtb-num">' + escapar(txt) + '</td>';
 
-    // La barra va de fondo, detrás del número: compara sin robarle lugar al dato.
+    /* Carril propio para la barra, a la izquierda del número. Antes la barra
+       iba de fondo y el número encima: con valores altos la barra llegaba justo
+       hasta las cifras y parecía que las tocaba. Ahora nunca se cruzan, y el
+       carril gris de atrás hace legible el "cuánto le falta" además del cuánto. */
     var pct = (!vacia && maximo > 0) ? Math.max(2, Math.round(Number(v) * 100 / maximo)) : 0;
     return '<td class="auxtb-num auxtb-barra">'
-      + '<span class="auxtb-fill" style="width:' + pct + '%"></span>'
-      + '<span class="auxtb-val">' + escapar(txt) + '</span>'
+      + '<span class="auxtb-cel">'
+      +   '<span class="auxtb-track">'
+      +     '<span class="auxtb-fill" style="width:' + pct + '%"></span>'
+      +   '</span>'
+      +   '<span class="auxtb-val">' + escapar(txt) + '</span>'
+      + '</span>'
       + '</td>';
   }
 

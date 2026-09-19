@@ -50,10 +50,62 @@
   }
 }
 
-/* ── Grilla mosaico ── */
-#screen-dashboard .dashx-tabs {
-  margin-bottom: 10px;
+/* ── Barras de pestañas y filtros ──
+   Las franjas ocupan lo que miden. A ancho completo, el fondo oscuro de
+   .filter-tabs cruzaba la pantalla como una línea negra de lado a lado. */
+#screen-dashboard .dashx-tabs,
+#screen-dashboard .dashx-periodos {
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
 }
+
+#screen-dashboard .dashx-tabs {
+  margin-bottom: 8px;
+}
+
+/* Período, camión y chofer eran tres renglones para tres controles. */
+#screen-dashboard .dashx-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#screen-dashboard .dashx-toolbar-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  /* Que la fila le dé el ancho que pide antes de encogerlo: si no, los dos
+     selects se apilan aunque sobre lugar al lado del selector de período. */
+  flex: 0 0 auto;
+}
+
+/* Los selects imitan la altura de las pestañas para que la fila se lea como
+   una sola barra y no como dos controles apilados de distinto alto. */
+#screen-dashboard .dashx-toolbar-filtros select {
+  width: 190px;
+  flex: 0 0 auto;
+  height: 32px;
+  margin-bottom: 0;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted2);
+  background-color: var(--bg);
+  cursor: pointer;
+}
+
+#screen-dashboard .dashx-toolbar-filtros select:focus {
+  outline: none;
+  border-color: var(--border2);
+  color: var(--text);
+}
+
+/* ── Grilla mosaico ── */
 
 #screen-dashboard .dashx-grid {
   display: grid;
@@ -187,6 +239,27 @@
   margin-bottom: 8px;
 }
 
+/* Una razón sin explicación es un número que nadie sabe si está bien: "12,8"
+   no dice nada; "litros cada 100 km" sí. */
+#screen-dashboard .dashx-metric-hint {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+/* Tres columnas fijas: con auto-fit las seis razones caían 4 + 2 y la segunda
+   fila quedaba con dos tarjetas estiradas al doble de ancho. */
+#screen-dashboard .dashx-metrics-hint {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1100px) {
+  #screen-dashboard .dashx-metrics-hint {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+}
+
 /* ── Alertas de flota: color + ícono + texto, nunca color solo ── */
 #screen-dashboard .dashx-alert {
   background: var(--panel);
@@ -271,7 +344,11 @@
 }
 
 #screen-dashboard .dashx-grid-compacta .dashx-metric {
-  padding: 9px 12px;
+  padding: 8px 12px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric-label {
+  margin-bottom: 4px;
 }
 
 #screen-dashboard .dashx-grid-compacta .dashx-metric.is-hero {
@@ -288,16 +365,20 @@
 
 #screen-dashboard .dashx-dostercios { grid-column: span 8; }
 
-/* Los filtros sin tarjeta: dos selects no justifican un recuadro propio. */
-#screen-dashboard .dashx-ops-filtros-fila .dashx-metric-label {
-  margin-bottom: 4px;
-}
-
 @media (max-width: 1100px) {
   #screen-dashboard .dashx-dostercios,
   #screen-dashboard .dashx-tercio {
     grid-column: 1 / -1;
   }
+}
+
+/* El título de la tarjeta lleva al lado el dato de contexto (cuántas cargas
+   hay detrás de los promedios), en el mismo renglón para no gastar otro. */
+#screen-dashboard .dashx-card-sub {
+  margin-left: 8px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
 }
 
 /* ── Tabla con barras embebidas ── */
@@ -349,24 +430,41 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* La barra va de fondo, detrás del número, para no robarle lugar al dato. */
+/* La barra tiene carril propio a la izquierda del número. Cuando iba de fondo,
+   el valor más alto llegaba justo hasta las cifras y parecía chocarlas. */
 #screen-dashboard .auxtb .auxtb-barra {
-  position: relative;
-  min-width: 132px;
+  min-width: 156px;
+}
+
+#screen-dashboard .auxtb .auxtb-cel {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* El carril se dibuja completo aunque la barra sea corta: así se lee tanto el
+   valor como lo que le falta para el máximo. */
+#screen-dashboard .auxtb .auxtb-track {
+  flex: 1 1 auto;
+  min-width: 36px;
+  max-width: 104px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
 }
 
 #screen-dashboard .auxtb .auxtb-fill {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 18px;
+  display: block;
+  height: 100%;
   border-radius: 3px;
-  background: rgba(57, 135, 229, 0.28);
+  background: #3987e5;
+  opacity: 0.85;
 }
 
 #screen-dashboard .auxtb .auxtb-val {
-  position: relative;
+  flex: 0 0 auto;
 }
 
 #screen-dashboard .auxtb-vacio {
@@ -446,11 +544,15 @@
 }
 
 @media (max-width: 720px) {
-  #screen-dashboard .dashx-tabs {
-  margin-bottom: 10px;
-}
-
-#screen-dashboard .dashx-grid {
+  #screen-dashboard .dashx-toolbar-filtros,
+  #screen-dashboard .dashx-toolbar-filtros select {
+    width: 100%;
+    max-width: none;
+  }
+  #screen-dashboard .auxtb .auxtb-track {
+    display: none;
+  }
+  #screen-dashboard .dashx-grid {
     gap: 10px;
   }
   #screen-dashboard .dashx-grid > * {

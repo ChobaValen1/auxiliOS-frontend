@@ -85,7 +85,8 @@ test('las tres secciones tienen contenedor y overlay propios', () => {
 
 test('los canvas y tablas que consumen las secciones existen en el markup', () => {
   ['dashx-fact-donut', 'dashx-fact-cajas', 'dashx-fact-bases',
-   'dashx-ops-tendencia', 'dashx-flota-estado']
+   'dashx-ops-tendencia', 'dashx-ops-anillo', 'dashx-ops-combustible',
+   'dashx-flota-estado']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta el canvas ${id}`));
   // Operaciones pasó de cuatro gráficos de barras a dos tablas: son varias
   // medidas sobre pocas filas, y así se comparan sin cruzar dos gráficos.
@@ -144,7 +145,93 @@ test('sólo se carga y se pinta la sección visible', () => {
   // la sección se carga recién cuando se muestra.
   assert.match(shell, /secciones\.filter\(esVisible\)/);
   assert.match(shell, /function esVisible/);
-  assert.match(shell, /cont\.hidden = \(grupoDe\(s\) !== activa\)/);
+  assert.match(shell, /function aplicarVisibilidad/);
+  assert.match(shell, /cont\.hidden = !visible/);
+  // Un solo lugar decide qué se ve: init y mostrarSeccion llaman al mismo.
+  assert.equal((shell.match(/aplicarVisibilidad\(\)/g) || []).length, 3);
+});
+
+test('los filtros propios de una sección se esconden con ella', () => {
+  // Viven en la barra de arriba (fuera del cuerpo, para que el overlay de carga
+  // no los tape), así que esconder el cuerpo no alcanza para esconderlos.
+  assert.match(shell, /if \(s\.filtros\)/);
+  assert.match(shell, /fil\.hidden = !visible/);
+  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  assert.match(ops, /filtros: 'dashx-ops-filtros'/);
+  // Arranca oculto: la pestaña inicial es Facturación, que no los usa.
+  assert.match(index, /id="dashx-ops-filtros" hidden/);
+  // Montar es lo que los crea, así que la visibilidad se aplica después.
+  assert.ok(shell.indexOf('montarTodas();') < shell.indexOf('aplicarVisibilidad();\n    return recargar'));
+});
+
+test('período, camión y chofer van en la misma fila', () => {
+  const vista = index.match(/id="dash-view-analitica"([\s\S]*?)<div id="dash-view-alertas"/)[1];
+  const barra = vista.match(/<div class="dashx-toolbar">([\s\S]*?)\n        <\/div>/);
+  assert.ok(barra, 'falta la barra de herramientas');
+  assert.ok(barra[1].includes('dashx-periodos'), 'el período quedó fuera de la fila');
+  assert.ok(barra[1].includes('dashx-ops-filtros'), 'los selects quedaron fuera de la fila');
+  assert.match(css, /#screen-dashboard \.dashx-toolbar \{[^}]*display:\s*flex/);
+  // Ya no hay una fila de filtros dentro del cuerpo comiéndose una franja.
+  assert.ok(!index.includes('dashx-ops-filtros-fila'));
+  assert.ok(!css.includes('dashx-ops-filtros-fila'));
+});
+
+test('las barras de pestañas miden lo que ocupan, no el ancho de la pantalla', () => {
+  // .filter-tabs trae fondo oscuro: a ancho completo dibujaba una línea negra
+  // de lado a lado arriba del tablero.
+  const regla = css.match(/#screen-dashboard \.dashx-tabs,\s*\n#screen-dashboard \.dashx-periodos \{([^}]*)\}/);
+  assert.ok(regla, 'falta la regla que acota el ancho de las barras');
+  assert.match(regla[1], /width:\s*fit-content/);
+});
+
+test('la barra de la tabla no se superpone con el número', () => {
+  // Iba de fondo y el valor encima: con el máximo la barra llegaba justo hasta
+  // las cifras y parecía tocarlas.
+  assert.match(charts, /auxtb-track/);
+  assert.ok(!/auxtb-fill[^]*?position: absolute/.test(css),
+    'la barra volvió a posicionarse encima del número');
+  assert.match(css, /#screen-dashboard \.auxtb \.auxtb-cel \{[^}]*display:\s*flex/);
+  assert.match(css, /#screen-dashboard \.auxtb \.auxtb-val \{[^}]*flex:\s*0 0 auto/);
+});
+
+test('el anillo lleva la leyenda al costado', () => {
+  assert.match(charts, /function leyendaBase\(posicion\)/);
+  assert.match(charts, /position: posicion \|\| 'bottom'/);
+  assert.match(charts, /datos\.leyenda\) === 'derecha' \? 'right' : 'bottom'/);
+  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  assert.equal((ops.match(/leyenda: 'derecha'/g) || []).length, 2);
+});
+
+test('Operaciones tiene el bloque de combustible con sus explicaciones', () => {
+  assert.ok(index.includes('id="dashx-ops-combustible"'), 'falta el gráfico de medios de pago');
+  assert.ok(index.includes('id="dashx-ops-comb-metrics"'), 'faltan las razones de combustible');
+  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  assert.match(ops, /function pintarCombustible/);
+  // Cada razón trae su explicación: "12,81" solo no dice si está bien o mal.
+  ['Litros cargados', 'Ticket promedio', 'Precio por litro',
+   'Km por litro', 'Litros cada 100 km', 'Costo por km']
+    .forEach(m => assert.ok(ops.includes(m), `falta la métrica ${m}`));
+  assert.match(css, /#screen-dashboard \.dashx-metric-hint/);
+  // Los importes por unidad no se redondean a pesos enteros.
+  assert.match(ops, /function pesosFinos/);
+  assert.match(ops, /pesosFinos\(c\.costo_por_km\)/);
+  // No se repiten arriba y abajo: km/litro y costo/km viven en esta tarjeta.
+  const razones = ops.match(/razones\.innerHTML =([\s\S]*?);\n/)[1];
+  assert.ok(!razones.includes('Km por litro'));
+  assert.ok(!razones.includes('Costo por km'));
+});
+
+test('la RPC de operaciones devuelve el bloque de combustible', () => {
+  const sql = fs.readFileSync(
+    'migrations/20260919160000_dashboard_operaciones_combustible_v3.sql', 'utf8');
+  ['ticket_promedio', 'precio_litro', 'litros_por_100km', 'costo_por_km', 'por_medio']
+    .forEach(k => assert.ok(sql.includes(k), `falta ${k} en el payload`));
+  // 'app' no es un medio de pago: el medio es la app (Shell Flota, YPF Ruta…).
+  assert.match(sql, /nullif\(btrim\(fr\.payment_app\), ''\)/);
+  // El precio por litro se saca del total, no promediando price_per_liter.
+  assert.match(sql, /'precio_litro',\s*\n\s*case when totf\.litros > 0 then round\(totf\.costo \/ totf\.litros/);
+  assert.match(sql, /set search_path=''/);
+  assert.match(sql, /revoke all on function .* from public, anon/);
 });
 
 test('el mapa se carga con la pestaña de Facturación, no como una propia', () => {

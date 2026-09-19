@@ -69,6 +69,21 @@
 
   function esVisible(sec) { return grupoDe(sec) === activa; }
 
+  /* Una sección puede declarar `filtros`: el id de un contenedor que vive en la
+     barra de arriba, fuera de su cuerpo, para que el overlay de carga no lo
+     tape. Se muestra y se esconde con la sección igual que el cuerpo. */
+  function aplicarVisibilidad() {
+    secciones.forEach(function (s) {
+      var visible = esVisible(s);
+      var cont = document.getElementById('dashx-sec-' + s.id);
+      if (cont) cont.hidden = !visible;
+      if (s.filtros) {
+        var fil = document.getElementById(s.filtros);
+        if (fil) fil.hidden = !visible;
+      }
+    });
+  }
+
   function setCargando(on) {
     secciones.filter(esVisible).forEach(function (s) {
       var ov = document.getElementById('dashx-loading-' + s.id);
@@ -147,10 +162,7 @@
   function mostrarSeccion(id) {
     if (!id || id === activa) return Promise.resolve();
     activa = id;
-    secciones.forEach(function (s) {
-      var cont = document.getElementById('dashx-sec-' + s.id);
-      if (cont) cont.hidden = (grupoDe(s) !== activa);
-    });
+    aplicarVisibilidad();
     // Se recarga al mostrar: los gráficos se montan con el contenedor ya
     // visible y toman el ancho real.
     return recargar();
@@ -159,11 +171,10 @@
   function seccionActiva() { return activa; }
 
   function init() {
-    secciones.forEach(function (s) {
-      var cont = document.getElementById('dashx-sec-' + s.id);
-      if (cont) cont.hidden = (grupoDe(s) !== activa);
-    });
     montarTodas();
+    // Después de montar: una sección que crea sus filtros en montar() no tiene
+    // el contenedor lleno antes de este punto.
+    aplicarVisibilidad();
     return recargar();
   }
 

@@ -4,7 +4,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'dashboard-operaciones-servicios-v102-20260919';
+window.AUXILIOS_BUILD_ID = 'dashboard-operaciones-combustible-v103-20260919';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

@@ -15,8 +15,9 @@
   var G = global.AuxDashCharts;
 
   var CANVAS = {
-    tendencia: 'dashx-ops-tendencia',
-    anillo:    'dashx-ops-anillo'
+    tendencia:   'dashx-ops-tendencia',
+    anillo:      'dashx-ops-anillo',
+    combustible: 'dashx-ops-combustible'
   };
 
   // Por camión y por chofer son varias medidas sobre pocas filas: eso es una
@@ -50,6 +51,17 @@
     return G.nfPesos(v);
   }
 
+  /* Los importes por unidad van con centavos. nfPesos redondea, y redondear
+     $304,53 a $305 borra justo la diferencia que se quiere comparar entre un
+     camión y otro. */
+  function pesosFinos(v) {
+    if (v === null || v === undefined || !isFinite(Number(v))) return '—';
+    return '$' + Number(v).toLocaleString('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
   function miles(v) {
     if (v === null || v === undefined || !isFinite(Number(v))) return '—';
     return G.nfMiles(Math.round(Number(v)));
@@ -80,21 +92,17 @@
 
   /* ── filtros ──────────────────────────────────────────────────────────── */
 
+  /* Los selects van en la barra de arriba, en la misma fila que el período: son
+     tres controles y eran tres renglones. Sin etiqueta encima: la primera opción
+     ya dice "Todos los camiones", así que el rótulo repetía el dato y costaba
+     una línea de alto. El aria-label queda para quien no ve el combo abierto. */
   function montarFiltros() {
     var cont = document.getElementById('dashx-ops-filtros');
     if (!cont || cont.dataset.listo === '1') return;
     cont.dataset.listo = '1';
     cont.innerHTML =
-      '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end">' +
-        '<label style="flex:1 1 180px;min-width:0">' +
-          '<span class="dashx-metric-label">Camión</span>' +
-          '<select id="dashx-ops-f-camion" class="input-field" style="margin-bottom:0"></select>' +
-        '</label>' +
-        '<label style="flex:1 1 180px;min-width:0">' +
-          '<span class="dashx-metric-label">Chofer</span>' +
-          '<select id="dashx-ops-f-chofer" class="input-field" style="margin-bottom:0"></select>' +
-        '</label>' +
-      '</div>';
+      '<select id="dashx-ops-f-camion" class="input-field" aria-label="Filtrar por camión"></select>' +
+      '<select id="dashx-ops-f-chofer" class="input-field" aria-label="Filtrar por chofer"></select>';
 
     var camion = document.getElementById('dashx-ops-f-camion');
     var chofer = document.getElementById('dashx-ops-f-chofer');
@@ -159,10 +167,11 @@
 
   /* ── métricas ─────────────────────────────────────────────────────────── */
 
-  function tarjeta(label, valor, clase) {
+  function tarjeta(label, valor, clase, explicacion) {
     return '<div class="dashx-metric' + (clase ? ' ' + clase : '') + '">' +
              '<div class="dashx-metric-label">' + label + '</div>' +
              '<div class="dashx-metric-value">' + valor + '</div>' +
+             (explicacion ? '<div class="dashx-metric-hint">' + explicacion + '</div>' : '') +
            '</div>';
   }
 
@@ -186,11 +195,11 @@
     if (razones) {
       // Las tres salen de una división con guarda en la RPC: sin cargas o sin
       // km vienen null y acá se muestran como guión, nunca como NaN ni 0.
+      // Km/litro y costo/km se fueron a la tarjeta de combustible: son razones
+      // de combustible y ahí se leen junto a las que las explican.
       razones.innerHTML =
         tarjeta('Servicios por jornada', decimales(e.servicios_por_jornada, 2)) +
         tarjeta('Km por servicio', decimales(e.km_por_servicio, 1) + ' km') +
-        tarjeta('Km por litro', decimales(e.km_por_litro, 2)) +
-        tarjeta('Costo por km', pesos(e.costo_por_km)) +
         tarjeta('Horas por jornada', decimales(e.horas_por_jornada, 1) + ' h');
     }
   }
@@ -301,7 +310,60 @@
     }), 6);
     G.donut(CANVAS.anillo, {
       labels: top.map(function (x) { return x.label; }),
-      values: top.map(function (x) { return x.value; })
+      values: top.map(function (x) { return x.value; }),
+      // Al costado: abajo la leyenda se comía el alto del anillo y los móviles
+      // quedaban en una fila de chips que había que leer en zigzag. A la
+      // derecha es una lista, y el orden de la lista es el orden del reparto.
+      leyenda: 'derecha'
+    });
+  }
+
+  /* ── combustible ──────────────────────────────────────────────────────────
+     El combustible era dos números sueltos dentro del resumen general. Es el
+     costo variable más grande de la operación y merece su propio bloque: cómo
+     se paga, cuánto sale una carga y cuánto rinde. */
+  function pintarCombustible(datos) {
+    var c = (datos && datos.combustible) || {};
+
+    var sub = document.getElementById('dashx-ops-comb-sub');
+    if (sub) {
+      // El contexto de los promedios: 12 cargas y 120 no dan la misma confianza.
+      sub.textContent = num(c.cargas) > 0
+        ? '· ' + miles(c.cargas) + ' cargas · ' + pesos(c.gasto) + ' en total'
+        : '';
+    }
+
+    var cont = document.getElementById('dashx-ops-comb-metrics');
+    if (cont) {
+      cont.innerHTML =
+        tarjeta('Litros cargados', miles(c.litros) + ' L', '',
+                'Suma de todas las cargas del período.') +
+        tarjeta('Ticket promedio', pesos(c.ticket_promedio), '',
+                'Lo que sale una carga, en promedio.') +
+        tarjeta('Precio por litro', pesosFinos(c.precio_litro), '',
+                'Gasto dividido litros, no el promedio de los precios.') +
+        tarjeta('Km por litro', decimales(c.km_por_litro, 2), '',
+                'Cuánto rinde un litro. Más alto es mejor.') +
+        tarjeta('Litros cada 100 km', decimales(c.litros_por_100km, 2) + ' L', '',
+                'El consumo, como viene en la ficha del camión. Es la inversa del rendimiento.') +
+        tarjeta('Costo por km', pesosFinos(c.costo_por_km), '',
+                'Cuánto combustible cuesta mover el camión un kilómetro.');
+    }
+
+    var medios = (c.por_medio || []).filter(function (m) { return num(m.gasto) > 0; });
+    if (!medios.length) {
+      return G.vacio(CANVAS.combustible, 'Sin cargas de combustible en el período');
+    }
+    // El reparto es por gasto, no por litros: la pregunta es por dónde se va la
+    // plata. Los litros y las cargas quedan en el tooltip.
+    var top = G.topN(medios.map(function (m) {
+      return { label: m.medio, value: num(m.gasto) };
+    }), 7);
+    G.donut(CANVAS.combustible, {
+      labels: top.map(function (x) { return x.label; }),
+      values: top.map(function (x) { return x.value; }),
+      formato: 'pesos',
+      leyenda: 'derecha'
     });
   }
 
@@ -337,6 +399,7 @@
     pintarTablaChoferes(datos);
     pintarTendencia(datos);
     pintarAnillo(datos);
+    pintarCombustible(datos);
   }
 
   function alError(contenedor, e) {
@@ -344,14 +407,20 @@
     cadaCanvas(function (id) { G.error(id, msg); });
     // Se vacían: dejar las tarjetas de la carga anterior haría pasar números
     // viejos por números del filtro nuevo.
-    var metrics = document.getElementById('dashx-ops-metrics');
-    if (metrics) metrics.innerHTML = '';
+    ['dashx-ops-metrics', 'dashx-ops-ratios', 'dashx-ops-comb-metrics'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+    texto(document.getElementById('dashx-ops-comb-sub'), '');
     texto(document.getElementById('dashx-ops-sub'), 'No se pudieron cargar las métricas');
   }
 
   if (global.AuxDash && typeof global.AuxDash.registrarSeccion === 'function') {
     global.AuxDash.registrarSeccion({
       id: 'operaciones',
+      // Vive en la barra de herramientas, fuera del cuerpo: el shell lo muestra
+      // y lo esconde junto con la sección.
+      filtros: 'dashx-ops-filtros',
       montar: montarFiltros,
       cargar: cargar,
       alError: alError
