@@ -2761,8 +2761,18 @@ async function confirmarFirma() {
 
     console.log('✅ Remito actualizado en Supabase:', nro2);
     await cargarRemitos();
+    // La cola de servicios asignados también cambió: el que se acaba de firmar
+    // ya no está para completar. Sin esto el chofer sigue viendo el botón de un
+    // servicio que ya cerró, y el segundo intento falla contra la base.
+    if (typeof window.actualizarServiciosAsignados === 'function') {
+      try { await window.actualizarServiciosAsignados(); }
+      catch (e) { console.error('No se pudo refrescar la cola de servicios:', e); }
+    }
     showRemitosView('lista');
-    toast(`Remito ${nro2} firmado y guardado ✓`, 'success');
+    // Mismo cuadro que al iniciar jornada: cerrar un servicio es una acción con
+    // consecuencias y un toast chico en una esquina se pierde en la calle.
+    operationFeedback('Servicio finalizado',
+      `El remito ${nro2} quedó firmado y enviado.`, 'success', 2400);
 
   } catch (err) {
     console.error('Error inesperado en confirmarFirma:', err);
