@@ -7,6 +7,9 @@
 
   var secciones = [];
   var montadas = false;
+  // Qué pestaña se está viendo. Sólo se carga y se pinta esa: montar un
+  // gráfico en un contenedor oculto lo deja con tamaño cero.
+  var activa = 'facturacion';
 
   var estado = {
     cargando: false,
@@ -60,8 +63,14 @@
     };
   }
 
+  // El mapa vive dentro del recuadro de Facturación, así que declara ese grupo
+  // en vez de ser una pestaña propia.
+  function grupoDe(sec) { return sec.grupo || sec.id; }
+
+  function esVisible(sec) { return grupoDe(sec) === activa; }
+
   function setCargando(on) {
-    secciones.forEach(function (s) {
+    secciones.filter(esVisible).forEach(function (s) {
       var ov = document.getElementById('dashx-loading-' + s.id);
       if (ov) ov.classList.toggle('show', !!on);
     });
@@ -101,7 +110,7 @@
     setCargando(true);
     var f = filtros();
     try {
-      await Promise.all(secciones.map(function (s) {
+      await Promise.all(secciones.filter(esVisible).map(function (s) {
         return Promise.resolve()
           .then(function () { return s.cargar(f); })
           .catch(function (e) {
@@ -135,7 +144,25 @@
     recargar();
   }
 
+  function mostrarSeccion(id) {
+    if (!id || id === activa) return Promise.resolve();
+    activa = id;
+    secciones.forEach(function (s) {
+      var cont = document.getElementById('dashx-sec-' + s.id);
+      if (cont) cont.hidden = (grupoDe(s) !== activa);
+    });
+    // Se recarga al mostrar: los gráficos se montan con el contenedor ya
+    // visible y toman el ancho real.
+    return recargar();
+  }
+
+  function seccionActiva() { return activa; }
+
   function init() {
+    secciones.forEach(function (s) {
+      var cont = document.getElementById('dashx-sec-' + s.id);
+      if (cont) cont.hidden = (grupoDe(s) !== activa);
+    });
     montarTodas();
     return recargar();
   }
@@ -146,6 +173,8 @@
     registrarSeccion: registrarSeccion,
     recargar: recargar,
     setPeriodo: setPeriodo,
+    mostrarSeccion: mostrarSeccion,
+    seccionActiva: seccionActiva,
     setFiltro: setFiltro,
     rangoDePeriodo: rangoDePeriodo,
     init: init

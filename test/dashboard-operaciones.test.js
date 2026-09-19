@@ -171,7 +171,9 @@ test('los filtros propios se empujan con setFiltro, no recargando a mano', () =>
 });
 
 test('el front llama a la RPC y no suma nada del lado del cliente', () => {
-  assert.match(ops, /_db\.rpc\('dashboard_operaciones_v1'/);
+  // El cliente se resuelve a una local antes de llamar: _db es un const del
+  // scope del script, no una propiedad de window.
+  assert.match(ops, /\bdb\.rpc\('dashboard_operaciones_v1'/);
   ['p_desde', 'p_hasta', 'p_camiones', 'p_choferes']
     .forEach(p => assert.ok(ops.includes(p), `falta el parámetro ${p}`));
   assert.match(ops, /if \(resp\.error\) throw resp\.error/);

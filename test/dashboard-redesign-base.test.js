@@ -128,3 +128,26 @@ test('el fallback de provincia toma el último componente, no el penúltimo', ()
   // Google antepone el CPA en algunas direcciones.
   assert.match(migracion, /\[A-Za-z\]\?\\d\{4\}/);
 });
+
+test('Panel es una sola página con pestañas entre las tres secciones', () => {
+  ['facturacion', 'operaciones', 'flota'].forEach(sec =>
+    assert.ok(index.includes(`dashxSeccion('${sec}'`), `falta la pestaña de ${sec}`));
+  assert.match(sigma, /function dashxSeccion/);
+  assert.match(shell, /function mostrarSeccion/);
+});
+
+test('sólo se carga y se pinta la sección visible', () => {
+  // Montar un gráfico en un contenedor oculto lo deja con tamaño cero, así que
+  // la sección se carga recién cuando se muestra.
+  assert.match(shell, /secciones\.filter\(esVisible\)/);
+  assert.match(shell, /function esVisible/);
+  assert.match(shell, /cont\.hidden = \(grupoDe\(s\) !== activa\)/);
+});
+
+test('el mapa se carga con la pestaña de Facturación, no como una propia', () => {
+  // Vive dentro de ese recuadro: como pestaña separada quedaría huérfano.
+  const mapa = fs.readFileSync('dashboard-mapa-v1.js', 'utf8');
+  assert.match(mapa, /grupo: 'facturacion'/);
+  assert.match(shell, /function grupoDe/);
+  assert.ok(!index.includes("dashxSeccion('mapa'"), 'el mapa no debe tener pestaña propia');
+});

@@ -277,11 +277,14 @@
   }
 
   async function cargar(filtros) {
-    if (!global._db || typeof global._db.rpc !== 'function') {
+    // _db es un const de nivel superior en supabase.js: vive en el scope del
+    // script, no en window, así que global._db da undefined.
+    var db = (typeof _db !== 'undefined') ? _db : null;
+    if (!db || typeof db.rpc !== 'function') {
       throw new Error('Sin conexión con la base de datos');
     }
 
-    var resp = await global._db.rpc('dashboard_operaciones_v1', {
+    var resp = await db.rpc('dashboard_operaciones_v1', {
       p_desde:    filtros.desde,
       p_hasta:    filtros.hasta,
       // Arrays vacíos: la RPC los trata igual que null (sin filtro).

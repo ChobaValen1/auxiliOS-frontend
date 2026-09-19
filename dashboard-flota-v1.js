@@ -353,7 +353,9 @@
   }
 
   async function consultar() {
-    var db = global._db;
+    // _db es un const de nivel superior en supabase.js: vive en el scope del
+    // script, no en window, así que global._db da undefined.
+    var db = (typeof _db !== 'undefined') ? _db : null;
     if (!db || typeof db.rpc !== 'function') {
       throw new Error('Sin conexión con la base');
     }

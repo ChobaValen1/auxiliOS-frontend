@@ -3191,6 +3191,14 @@ function _cargarViewAnalitica() {
   AuxDash.init();
 }
 
+function dashxSeccion(seccion, el) {
+  if (el) {
+    el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+  if (typeof AuxDash !== 'undefined') AuxDash.mostrarSeccion(seccion);
+}
+
 function dashxPeriodo(periodo, el) {
   if (el) {
     el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));

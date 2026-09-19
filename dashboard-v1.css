@@ -51,6 +51,10 @@
 }
 
 /* ── Grilla mosaico ── */
+#screen-dashboard .dashx-tabs {
+  margin-bottom: 10px;
+}
+
 #screen-dashboard .dashx-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -79,13 +83,6 @@
   align-items: baseline;
   gap: 10px;
   margin-top: 8px;
-}
-
-#screen-dashboard .dashx-sec-title {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  color: var(--text);
 }
 
 #screen-dashboard .dashx-sec-sub {
@@ -296,7 +293,11 @@
 }
 
 @media (max-width: 720px) {
-  #screen-dashboard .dashx-grid {
+  #screen-dashboard .dashx-tabs {
+  margin-bottom: 10px;
+}
+
+#screen-dashboard .dashx-grid {
     gap: 10px;
   }
   #screen-dashboard .dashx-grid > * {

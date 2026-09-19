@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=dashboard-redesign-v99-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=dashboard-redesign-v99-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=dashboard-redesign-v99-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=dashboard-redesign-v99-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=dashboard-redesign-v99-20260919">
+<link rel="stylesheet" href="sigma.css?v=dashboard-redesign-v100-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=dashboard-redesign-v100-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=dashboard-redesign-v100-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=dashboard-redesign-v100-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=dashboard-redesign-v100-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=260')
+        navigator.serviceWorker.register('/sw.js?v=261')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="supabase.js?v=dashboard-redesign-v99-20260919" defer></script>
+<script src="config.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="supabase.js?v=dashboard-redesign-v100-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="sigma.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=dashboard-redesign-v99-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=dashboard-redesign-v99-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="sigma.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=dashboard-redesign-v100-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=dashboard-redesign-v100-20260919" defer></script>
 </head>
 <body>
 
@@ -855,6 +855,12 @@
       <!-- ── Vista Análisis: Facturación · Operaciones · Flota ── -->
       <div id="dash-view-analitica" style="display:none">
 
+        <div class="filter-tabs dashx-tabs" id="dashx-tabs">
+          <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">FACTURACIÓN</div>
+          <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">OPERACIONES</div>
+          <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">SALUD DE LA FLOTA</div>
+        </div>
+
         <div class="dashx-periodos filter-tabs" id="dashx-periodos">
           <div class="ftab" data-p="7d"  onclick="dashxPeriodo('7d',this)">7 días</div>
           <div class="ftab active" data-p="1m" onclick="dashxPeriodo('1m',this)">1 mes</div>
@@ -869,7 +875,6 @@
           <div class="dashx-loading" id="dashx-loading-facturacion"><div class="dashx-loading-inner">Cargando métricas…</div></div>
           <div class="dashx-grid">
             <div class="dashx-sec-head">
-              <span class="dashx-sec-title">FACTURACIÓN</span>
               <span class="dashx-sec-sub" id="dashx-fact-sub"></span>
             </div>
 
@@ -898,11 +903,10 @@
         </div>
 
         <!-- SECCIÓN 2 · OPERACIONES -->
-        <div class="dashx-body" id="dashx-sec-operaciones" style="margin-top:22px">
+        <div class="dashx-body" id="dashx-sec-operaciones">
           <div class="dashx-loading" id="dashx-loading-operaciones"><div class="dashx-loading-inner">Cargando métricas…</div></div>
           <div class="dashx-grid">
             <div class="dashx-sec-head">
-              <span class="dashx-sec-title">OPERACIONES</span>
               <span class="dashx-sec-sub" id="dashx-ops-sub"></span>
             </div>
 
@@ -937,11 +941,10 @@
         </div>
 
         <!-- SECCIÓN 3 · SALUD DE LA FLOTA -->
-        <div class="dashx-body" id="dashx-sec-flota" style="margin-top:22px">
+        <div class="dashx-body" id="dashx-sec-flota">
           <div class="dashx-loading" id="dashx-loading-flota"><div class="dashx-loading-inner">Cargando métricas…</div></div>
           <div class="dashx-grid">
             <div class="dashx-sec-head">
-              <span class="dashx-sec-title">SALUD DE LA FLOTA</span>
               <span class="dashx-sec-sub" id="dashx-flota-sub"></span>
             </div>
 

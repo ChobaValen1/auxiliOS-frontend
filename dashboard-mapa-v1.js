@@ -233,7 +233,9 @@
   }
 
   async function cargar(filtros) {
-    if (typeof _db === 'undefined') return;
+    // Tirar en vez de return: un corte silencioso deja la sección en blanco
+    // sin que el shell pueda mostrar el error.
+    if (typeof _db === 'undefined') throw new Error('Sin conexión con la base de datos');
     var { data, error } = await _db.rpc('dashboard_zonas_v1', {
       p_desde: filtros.desde,
       p_hasta: filtros.hasta,
@@ -251,6 +253,9 @@
     // Facturación: así recibe cada recarga con los filtros ya resueltos.
     global.AuxDash.registrarSeccion({
       id: 'mapa',
+      // Vive dentro del recuadro de Facturación: se carga con esa pestaña,
+      // no como una propia.
+      grupo: 'facturacion',
       cargar: cargar,
       alError: function (_c, e) {
         mensaje((e && e.message) || 'No se pudo cargar el mapa de zonas', true);
