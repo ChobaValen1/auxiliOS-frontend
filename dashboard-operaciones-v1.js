@@ -15,7 +15,8 @@
   var G = global.AuxDashCharts;
 
   var CANVAS = {
-    tendencia: 'dashx-ops-tendencia'
+    tendencia: 'dashx-ops-tendencia',
+    anillo:    'dashx-ops-anillo'
   };
 
   // Por camión y por chofer son varias medidas sobre pocas filas: eso es una
@@ -59,6 +60,18 @@
   function diaMes(iso) {
     var p = String(iso || '').split('-');
     return p.length === 3 ? p[2] + '/' + p[1] : String(iso || '');
+  }
+
+  var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  // Cada grano quiere su etiqueta: un "19/08" repetido doce veces en una serie
+  // mensual no dice de qué mes se habla.
+  function etiquetaEje(iso, grano) {
+    var partes = String(iso || '').split('-');
+    if (partes.length < 3) return iso || '';
+    if (grano === 'mes') return MESES[Number(partes[1]) - 1] + ' ' + partes[0].slice(2);
+    if (grano === 'semana') return partes[2] + '/' + partes[1];
+    return partes[2] + '/' + partes[1];
   }
 
   function texto(el, valor) {
@@ -163,6 +176,7 @@
     var principal = document.getElementById('dashx-ops-metrics');
     if (principal) {
       principal.innerHTML =
+        tarjeta('Servicios', miles(t.servicios), 'is-hero') +
         tarjeta('Km recorridos', miles(t.km) + ' km', 'is-hero') +
         tarjeta('Gasto combustible', pesos(t.costo), 'is-hero') +
         tarjeta('Jornadas', miles(t.jornadas), 'is-hero');
@@ -173,11 +187,11 @@
       // Las tres salen de una división con guarda en la RPC: sin cargas o sin
       // km vienen null y acá se muestran como guión, nunca como NaN ni 0.
       razones.innerHTML =
+        tarjeta('Servicios por jornada', decimales(e.servicios_por_jornada, 2)) +
+        tarjeta('Km por servicio', decimales(e.km_por_servicio, 1) + ' km') +
         tarjeta('Km por litro', decimales(e.km_por_litro, 2)) +
         tarjeta('Costo por km', pesos(e.costo_por_km)) +
-        tarjeta('Horas por jornada', decimales(e.horas_por_jornada, 1) + ' h') +
-        tarjeta('Combustible', decimales(t.litros, 0) + ' L') +
-        tarjeta('Horas totales', decimales(t.horas, 0) + ' h');
+        tarjeta('Horas por jornada', decimales(e.horas_por_jornada, 1) + ' h');
     }
   }
 
@@ -186,7 +200,8 @@
     if (!sub) return;
     var d = (datos && datos.descartes) || {};
     var partes = [diaMes(datos.desde) + ' – ' + diaMes(datos.hasta)];
-    partes.push(datos.granularidad === 'semana' ? 'por semana' : 'por día');
+    // Tres granos desde la v2: sin el caso 'mes' la vista anual decía "por día".
+    partes.push({ dia: 'por día', semana: 'por semana', mes: 'por mes' }[datos.granularidad] || 'por día');
     // Las jornadas descartadas se muestran: un total silenciosamente incompleto
     // es peor que un total con la advertencia al lado.
     // Sólo lo que no es cero: "0 sin km válido" es ruido, no información.
@@ -209,6 +224,7 @@
       columnas: [
         { clave: 'etiqueta',     titulo: 'Camión',   tipo: 'texto' },
         { clave: 'km',           titulo: 'Km',       barra: true, unidad: 'km' },
+        { clave: 'servicios',    titulo: 'Servicios' },
         { clave: 'jornadas',     titulo: 'Jornadas' },
         { clave: 'litros',       titulo: 'Litros',   decimales: 0 },
         { clave: 'costo',        titulo: 'Gasto',    tipo: 'pesos' },
@@ -228,6 +244,7 @@
       columnas: [
         { clave: 'nombre',            titulo: 'Chofer',   tipo: 'texto' },
         { clave: 'km',                titulo: 'Km',       barra: true, unidad: 'km' },
+        { clave: 'servicios',         titulo: 'Servicios' },
         { clave: 'jornadas',          titulo: 'Jornadas' },
         { clave: 'horas',             titulo: 'Horas',    decimales: 0, unidad: 'h' },
         { clave: 'horas_por_jornada', titulo: 'H/jornada', decimales: 1 }
@@ -243,7 +260,7 @@
   function pintarTendencia(datos) {
     var serie = datos.serie_temporal || [];
     if (!serie.length) return G.vacio(CANVAS.tendencia, 'Sin jornadas en el período');
-    var semanal = datos.granularidad === 'semana';
+    var grano = datos.granularidad || 'dia';
     var kms = serie.map(function (p) { return num(p.km); });
     var conDatos = kms.filter(function (v) { return v > 0; });
     var promedio = conDatos.length
@@ -254,18 +271,37 @@
     // y sin distinguirlos los valles parecen caídas de productividad.
     var colores = serie.map(function (p) {
       var d = new Date(p.fecha + 'T12:00:00');
-      var finde = !semanal && (d.getDay() === 0 || d.getDay() === 6);
+      var finde = grano === 'dia' && (d.getDay() === 0 || d.getDay() === 6);
       return finde ? 'rgba(57,135,229,0.38)' : G.PALETA[0];
     });
 
+    var nombreGrano = { dia: 'diario', semana: 'semanal', mes: 'mensual' }[grano] || 'diario';
+
     G.barras(CANVAS.tendencia, {
-      labels: serie.map(function (p) { return (semanal ? 'sem ' : '') + diaMes(p.fecha); }),
+      labels: serie.map(function (p) { return etiquetaEje(p.fecha, grano); }),
       values: kms,
       colores: colores,
       unidad: 'km',
       referencia: promedio > 0
-        ? { valor: promedio, label: 'Promedio ' + (semanal ? 'semanal' : 'diario') }
+        ? { valor: promedio, label: 'Promedio ' + nombreGrano }
         : null
+    });
+  }
+
+  /* Anillo de participación en los km. Es la única pregunta de esta pantalla
+     que es parte-sobre-total: qué tan concentrada está la operación en pocos
+     móviles. La tabla tiene los valores, pero para sacar el reparto habría que
+     sumar siete filas de memoria.
+     Acá el topN sí corresponde: "Otros" es una suma real de km, no un promedio. */
+  function pintarAnillo(datos) {
+    var filas = (datos.por_camion || []).filter(function (c) { return num(c.km) > 0; });
+    if (!filas.length) return G.vacio(CANVAS.anillo, 'Sin kilómetros en el período');
+    var top = G.topN(filas.map(function (c) {
+      return { label: c.etiqueta, value: num(c.km) };
+    }), 6);
+    G.donut(CANVAS.anillo, {
+      labels: top.map(function (x) { return x.label; }),
+      values: top.map(function (x) { return x.value; })
     });
   }
 
@@ -300,6 +336,7 @@
     pintarTablaCamiones(datos);
     pintarTablaChoferes(datos);
     pintarTendencia(datos);
+    pintarAnillo(datos);
   }
 
   function alError(contenedor, e) {

@@ -255,6 +255,51 @@
   }
 }
 
+/* ── Operaciones compacta ──
+   La pantalla entraba en dos scrolls. Se recortan paddings, la altura de los
+   gráficos y la fila de filtros, que gastaba una tarjeta entera en dos selects. */
+#screen-dashboard .dashx-grid-compacta {
+  gap: 10px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-card {
+  padding: 12px 14px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-card-title {
+  margin-bottom: 8px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric {
+  padding: 9px 12px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric.is-hero {
+  padding: 12px 14px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-metric.is-hero .dashx-metric-value {
+  font-size: 23px;
+}
+
+#screen-dashboard .dashx-grid-compacta .dashx-sec-head {
+  margin-top: 0;
+}
+
+#screen-dashboard .dashx-dostercios { grid-column: span 8; }
+
+/* Los filtros sin tarjeta: dos selects no justifican un recuadro propio. */
+#screen-dashboard .dashx-ops-filtros-fila .dashx-metric-label {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 1100px) {
+  #screen-dashboard .dashx-dostercios,
+  #screen-dashboard .dashx-tercio {
+    grid-column: 1 / -1;
+  }
+}
+
 /* ── Tabla con barras embebidas ── */
 #screen-dashboard .auxtb-wrap {
   overflow-x: auto;

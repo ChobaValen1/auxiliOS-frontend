@@ -14,17 +14,17 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=dashboard-operaciones-ux-v101-20260919">
-<link rel="stylesheet" href="dashboard-v1.css?v=dashboard-operaciones-ux-v101-20260919">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=dashboard-operaciones-ux-v101-20260919">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=dashboard-operaciones-ux-v101-20260919">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=dashboard-operaciones-ux-v101-20260919">
+<link rel="stylesheet" href="sigma.css?v=dashboard-operaciones-servicios-v102-20260919">
+<link rel="stylesheet" href="dashboard-v1.css?v=dashboard-operaciones-servicios-v102-20260919">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=dashboard-operaciones-servicios-v102-20260919">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=dashboard-operaciones-servicios-v102-20260919">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=dashboard-operaciones-servicios-v102-20260919">
 
 <!-- Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=262')
+        navigator.serviceWorker.register('/sw.js?v=263')
         .catch(err => console.warn('SW:', err));
     });
   }
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="supabase.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
+<script src="config.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="supabase.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="sigma.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="dashboard-charts-v1.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="dashboard-shell-v1.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="dashboard-facturacion-v1.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="dashboard-operaciones-v1.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="dashboard-flota-v1.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
-<script src="dashboard-mapa-v1.js?v=dashboard-operaciones-ux-v101-20260919" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="sigma.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="dashboard-charts-v1.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="dashboard-shell-v1.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="dashboard-facturacion-v1.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="dashboard-operaciones-v1.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="dashboard-flota-v1.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
+<script src="dashboard-mapa-v1.js?v=dashboard-operaciones-servicios-v102-20260919" defer></script>
 </head>
 <body>
 
@@ -905,19 +905,24 @@
         <!-- SECCIÓN 2 · OPERACIONES -->
         <div class="dashx-body" id="dashx-sec-operaciones">
           <div class="dashx-loading" id="dashx-loading-operaciones"><div class="dashx-loading-inner">Cargando métricas…</div></div>
-          <div class="dashx-grid">
+          <div class="dashx-grid dashx-grid-compacta">
             <div class="dashx-sec-head">
               <span class="dashx-sec-sub" id="dashx-ops-sub"></span>
             </div>
 
-            <div class="dashx-card dashx-full" id="dashx-ops-filtros"></div>
+            <div class="dashx-full dashx-ops-filtros-fila" id="dashx-ops-filtros"></div>
 
             <div class="dashx-full dashx-metrics dashx-metrics-hero" id="dashx-ops-metrics"></div>
             <div class="dashx-full dashx-metrics" id="dashx-ops-ratios"></div>
 
-            <div class="dashx-card dashx-full">
-              <div class="dashx-card-title">Kilómetros por día</div>
-              <div class="auxch-wrap" style="height:210px"><canvas id="dashx-ops-tendencia"></canvas></div>
+            <div class="dashx-card dashx-dostercios">
+              <div class="dashx-card-title">Kilómetros por período</div>
+              <div class="auxch-wrap" style="height:188px"><canvas id="dashx-ops-tendencia"></canvas></div>
+            </div>
+
+            <div class="dashx-card dashx-tercio">
+              <div class="dashx-card-title">Participación en los km</div>
+              <div class="auxch-wrap" style="height:188px"><canvas id="dashx-ops-anillo"></canvas></div>
             </div>
 
             <div class="dashx-card dashx-med dashx-card-tabla">

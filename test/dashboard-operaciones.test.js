@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
+const index = fs.readFileSync('Index.html', 'utf8');
 const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
 const sql = fs.readFileSync(
   'migrations/20260918171000_dashboard_operaciones_rpc_v1.sql', 'utf8');
@@ -222,17 +223,29 @@ test('no hay gráficos de doble eje Y', () => {
   // Dos magnitudes de escala distinta van en dos gráficos, no en dos ejes.
   assert.ok(!/yAxisID|y1:|scales\s*:/.test(ops), 'la sección configura ejes por su cuenta');
   const tendencia = ops.slice(ops.indexOf('function pintarTendencia'),
-                             ops.indexOf('function pintarEficiencia'));
-  const series = tendencia.match(/label:/g) || [];
-  assert.equal(series.length, 1, 'la tendencia tiene más de una serie en el mismo eje');
+                              ops.indexOf('function pintarAnillo'));
+  // La única serie graficada es km. La referencia de promedio va en el mismo eje
+  // y en las mismas unidades, que es justamente lo contrario a un doble eje.
+  assert.ok(!/values:\s*serie\.map[\s\S]*values:\s*serie\.map/.test(tendencia),
+    'la tendencia grafica dos magnitudes distintas');
+  assert.match(tendencia, /referencia:/);
+  assert.ok(!/servicios/.test(tendencia.split('G.barras')[1] || ''),
+    'la tendencia mezcla km con servicios en el mismo eje');
 });
 
-test('nadie termina escondido en "Otros"', () => {
-  // Antes el topN colapsaba al octavo chofer en "Otros" para no pasar de siete
-  // colores, en un gráfico de una sola serie donde el color no codificaba nada.
-  // La tabla muestra todas las filas, así que topN ya no tiene lugar acá.
-  assert.ok(!/G\.topN\(/.test(ops), 'topN esconde filas que la tabla puede mostrar');
-  assert.ok(!/'Otros'/.test(ops));
+test('"Otros" sólo donde es una suma real, nunca en las tablas', () => {
+  // En las tablas el topN escondía al octavo chofer para no pasar de siete
+  // colores, en gráficos de una sola serie donde el color no codificaba nada.
+  const tablas = ops.slice(ops.indexOf('function pintarTablaCamiones'),
+                           ops.indexOf('function pintarTendencia'));
+  assert.ok(!/G\.topN\(/.test(tablas), 'topN esconde filas que la tabla puede mostrar');
+
+  // En el anillo sí corresponde: es parte-sobre-total y "Otros" suma kilómetros
+  // de verdad, no promedia cocientes.
+  const anillo = ops.slice(ops.indexOf('function pintarAnillo'),
+                           ops.indexOf('/* ── ciclo de vida'));
+  assert.match(anillo, /G\.topN\(/);
+  assert.match(anillo, /G\.donut\(/);
 });
 
 test('un null de la RPC se muestra como guión, no como NaN ni como cero', () => {
@@ -279,4 +292,53 @@ test('los nombres que vienen de la base no pasan por el parser de HTML', () => {
   assert.match(combo, /textContent/);
   assert.ok(!/innerHTML\s*\+?=\s*[^;]*o\.texto/.test(combo),
     'el nombre del catálogo se concatena en innerHTML');
+});
+
+/* ── v2: servicios y granularidad ──────────────────────────────────────── */
+
+const sqlV2 = fs.readFileSync(
+  'migrations/20260919140000_dashboard_operaciones_servicios_v2.sql', 'utf8');
+
+test('SERVICIOS se cuenta y se corta por camión, chofer y período', () => {
+  // Un remito no anulado es un servicio hecho. Faltaba por completo.
+  assert.match(sqlV2, /r\.status <> 'anulado'/);
+  assert.match(sqlV2, /'servicios', tots\.servicios/);
+  ['cam_s', 'cho_s', 'serie_s'].forEach(cte =>
+    assert.ok(sqlV2.includes(cte + ' as ('), `falta el corte ${cte}`));
+  // Y las razones que la variable habilita.
+  assert.match(sqlV2, /'servicios_por_jornada'/);
+  assert.match(sqlV2, /'km_por_servicio'/);
+  // El front la muestra en las tarjetas y en las dos tablas.
+  assert.match(ops, /tarjeta\('Servicios'/);
+  assert.match(ops, /'Servicios por jornada'/);
+  assert.ok((ops.match(/clave: 'servicios'/g) || []).length === 2,
+    'servicios tiene que estar en las dos tablas');
+});
+
+test('un remito sin jornada cuenta en el total pero no se cuelga de un camión', () => {
+  // Si se colgara de cualquier móvil inventaría atribución; si se descartara,
+  // el total no cerraría con lo que hay en la base.
+  assert.match(sqlV2, /where s\.truck_id is not null group by s\.truck_id/);
+  assert.match(sqlV2, /'servicios_sin_camion'/);
+});
+
+test('la granularidad escala para que el gráfico no se vuelva ilegible', () => {
+  // Antes pasaba a semanal recién a los 62 días: un rango de 60 dibujaba 60
+  // barras. La escalera mantiene el máximo en ~31 marcas.
+  assert.match(sqlV2, /v_dias <=\s*31 then v_grano := 'dia'/);
+  assert.match(sqlV2, /v_dias <= 120 then v_grano := 'semana'/);
+  assert.match(sqlV2, /v_grano := 'mes'/);
+  assert.match(sqlV2, /interval '1 month'/);
+  // Y el front rotula cada grano distinto: doce "19/08" no dicen de qué mes.
+  assert.match(ops, /function etiquetaEje/);
+  assert.match(ops, /grano === 'mes'/);
+  assert.match(ops, /\{ dia: 'por día', semana: 'por semana', mes: 'por mes' \}/);
+});
+
+test('el anillo responde una pregunta que la tabla no contesta de un vistazo', () => {
+  // Parte-sobre-total: qué tan concentrada está la operación en pocos móviles.
+  // Sacarlo de la tabla exigiría sumar siete filas de memoria.
+  assert.match(ops, /function pintarAnillo/);
+  assert.match(ops, /dashx-ops-anillo/);
+  assert.match(index, /id="dashx-ops-anillo"/);
 });
