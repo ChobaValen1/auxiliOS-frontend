@@ -120,10 +120,11 @@ test('ACTIVADO exige uno de cuatro motivos cerrados y lo persiste mediante RPC v
   const sql=read('migrations/20260829220500_driver_activation_reasons_v4.sql');
   for(const code of ['absent_or_not_towable','provider','us','other'])assert.match(bridge,new RegExp(`'${code}'`));
   for(const oldCode of ['created_without_assignment','client_or_provider','cancelled_by_us'])assert.doesNotMatch(bridge,new RegExp(`'${oldCode}'`));
-  assert.match(bridge,/Cancelado por socio ausente \/ vehículo no apto/);
-  assert.match(bridge,/Cancelado por Prestadora/);
+  assert.match(bridge,/Socio ausente \/ vehículo no apto/);
+  assert.match(bridge,/La Prestadora lo dio de baja/);
+  assert.doesNotMatch(bridge,/\['absent_or_not_towable','Cancelado/);
   assert.doesNotMatch(lifecycle,/within_authorized_window/);
-  assert.match(bridge,/Seleccioná el motivo de cancelación/);
+  assert.match(bridge,/Seleccioná el motivo de la activación/);
   assert.match(bridge,/data-reason-code/);
   assert.match(bridge,/dataset\?\.reasonCode/);
   assert.doesNotMatch(bridge,/p3-activation-detail|Especificá el motivo|reasonCode==='other'&&!reasonDetail/);

@@ -4,7 +4,7 @@ const ENV = {
 };
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'periodo-mes-y-ceros-honestos-v126-20260920';
+window.AUXILIOS_BUILD_ID = 'activado-facturable-v127-20260920';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
