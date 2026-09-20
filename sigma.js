@@ -3723,6 +3723,17 @@ function operationFeedback(title, message, type='success', duration=2200) {
   modal._closeTimer = setTimeout(() => modal.classList.remove('is-visible'), Math.min(3000, Math.max(800, duration)));
 }
 
+// Confirmación de archivo — misma tilde que usan jornadas y servicios. Bajar un
+// Excel o subir un adjunto no puede quedar mudo: el navegador no avisa nada y
+// el usuario se queda sin saber si el archivo salió.
+function confirmarDescarga(nombreArchivo, detalle = '') {
+  operationFeedback('Descarga lista', detalle ? `${nombreArchivo} · ${detalle}` : nombreArchivo, 'success', 2400);
+}
+
+function confirmarSubida(nombreArchivo, detalle = '') {
+  operationFeedback('Archivo subido', detalle ? `${nombreArchivo} · ${detalle}` : nombreArchivo, 'success', 2400);
+}
+
 // ── TOAST ─────────────────────────────────────
 function toast(msg, type='success', duration=3000) {
   const icons = { success:'✅', error:'❌', info:'💡' };
@@ -11846,7 +11857,7 @@ async function subirDocCamion() {
     });
 
     closeModal('modal-upload-truck-doc');
-    toast('Documento guardado', 'success');
+    confirmarSubida(file.name, 'Documento guardado');
 
     _allTruckDocs = await cargarAllTruckDocs();
     if (_adminTruckSeleccionado?.truck_id === truckId) {
@@ -11902,7 +11913,7 @@ async function subirDocChofer() {
     });
 
     closeModal('modal-upload-driver-doc');
-    toast('Documento guardado', 'success');
+    confirmarSubida(file.name, 'Documento guardado');
 
     _allDriverDocs = await cargarAllDriverDocs();
     if (esAdmin && _adminChoferSeleccionado?.user_id === driverId) {
@@ -12959,7 +12970,7 @@ async function exportarRemitosExcel() {
     const stamp = new Date().toISOString().slice(0,10);
     XLSX.writeFile(wb, `remitos_${stamp}.xlsx`);
     const capMsg = all.length >= 5000 ? ' (límite 5000 aplicado)' : '';
-    toast(`✓ ${all.length} remito${all.length !== 1 ? 's' : ''} exportado${all.length !== 1 ? 's' : ''}${capMsg}`, 'success');
+    confirmarDescarga(`remitos_${stamp}.xlsx`, `${all.length} remito${all.length !== 1 ? 's' : ''} exportado${all.length !== 1 ? 's' : ''}${capMsg}`);
   } catch (e) {
     console.error('exportarRemitosExcel:', e);
     toast('Error al exportar', 'error');
@@ -13196,6 +13207,7 @@ function _csvDescargarPlantilla() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, tipo === 'flota' ? 'Flota' : 'Personal');
   XLSX.writeFile(wb, `plantilla_${tipo}.xlsx`);
+  confirmarDescarga(`plantilla_${tipo}.xlsx`, 'Completala y volvé a subirla acá.');
 }
 
 async function _csvImportarConfirm() {

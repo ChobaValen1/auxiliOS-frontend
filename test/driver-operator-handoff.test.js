@@ -157,6 +157,7 @@ test('crear un servicio confirma con el mismo cuadro', () => {
   // Cae al toast si sigma.js no está cargado: es lo que había antes, no un error.
   assert.match(wizard, /:notify\(titulo,'success'\)/);
   assert.match(wizard, /confirmar\('Servicio creado'/);
-  // Editar sigue siendo un toast: no tiene las mismas consecuencias que crear.
-  assert.match(wizard, /if\(wasEdit\)notify\('Servicio actualizado','success'\)/);
+  // Editar también confirma con el cuadro: desde Facturación se corrigen
+  // servicios ya facturados y el toast en la esquina pasaba desapercibido.
+  assert.match(wizard, /if\(wasEdit\)confirmar\('Servicio actualizado'/);
 });

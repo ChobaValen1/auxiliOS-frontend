@@ -487,7 +487,8 @@
         if (uploadError) throw uploadError;
         const { error: linkError } = await db().rpc('attach_operator_invoice_pdf_v1', { p_invoice_id: id, p_pdf_path: path, p_pdf_name: file.name });
         if (linkError) throw linkError;
-        notify('PDF adjuntado a la factura', 'success');
+        if (typeof window.confirmarSubida === 'function') window.confirmarSubida(file.name, 'PDF adjuntado a la factura');
+        else notify('PDF adjuntado a la factura', 'success');
         await load();
         if (String(S.detail?.invoice?.invoice_id) === String(id)) await openDetail(id);
       } catch (error) {
@@ -605,8 +606,7 @@
         sheets.push({ name: 'Peajes', columns: tollColumns, rows: tollRows });
       }
 
-      excel.download({ filename: `AuxiliOS_${cleanFilePart(invoice.invoice_number || 'Factura')}`, sheets });
-      notify('Excel de la factura descargado', 'success');
+      excel.download({ filename: `AuxiliOS_${cleanFilePart(invoice.invoice_number || 'Factura')}`, sheets, detalle: `Factura ${invoice.invoice_number || ''}`.trim() });
     } catch (error) {
       notify(error.message || 'No se pudo descargar el Excel', 'error');
     }
