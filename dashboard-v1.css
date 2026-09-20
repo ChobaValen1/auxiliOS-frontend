@@ -112,8 +112,9 @@
   top: calc(100% + 6px);
   left: 0;
   z-index: 60;
-  display: flex;
-  gap: 16px;
+  display: grid;
+  gap: 5px;
+  width: 268px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -123,11 +124,7 @@
 
 #screen-dashboard .dashx-per-pop[hidden] { display: none; }
 
-#screen-dashboard .dashx-per-col { display: grid; align-content: start; gap: 5px; }
-
-#screen-dashboard .dashx-per-der { width: 250px; }
-
-#screen-dashboard .dashx-per-col h4 {
+#screen-dashboard .dashx-per-pop h4 {
   margin: 0 0 2px;
   color: var(--muted);
   font-size: 9px;
@@ -136,9 +133,8 @@
   text-transform: uppercase;
 }
 
-#screen-dashboard .dashx-per-col h4 + h4 { margin-top: 10px; }
+#screen-dashboard .dashx-per-meses + h4 { margin-top: 10px; }
 
-#screen-dashboard .dashx-per-op,
 #screen-dashboard .dashx-per-mes,
 #screen-dashboard .dashx-per-aplicar {
   border: 1px solid transparent;
@@ -150,17 +146,8 @@
   cursor: pointer;
 }
 
-#screen-dashboard .dashx-per-op {
-  height: 28px;
-  padding: 0 10px;
-  text-align: left;
-  white-space: nowrap;
-}
-
-#screen-dashboard .dashx-per-op:hover,
 #screen-dashboard .dashx-per-mes:hover { background: var(--card); }
 
-#screen-dashboard .dashx-per-op.on,
 #screen-dashboard .dashx-per-mes.on {
   border-color: var(--primary);
   background: var(--card);
@@ -177,7 +164,7 @@
 
 #screen-dashboard .dashx-per-libre {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr;
   align-items: end;
   gap: 6px;
 }
@@ -207,6 +194,7 @@
 }
 
 #screen-dashboard .dashx-per-aplicar {
+  grid-column: 1 / -1;
   height: 28px;
   padding: 0 11px;
   border-color: var(--primary);
@@ -584,6 +572,10 @@
 #screen-dashboard .dashx-alert.is-critico { border-left-color: #e2504a; }
 #screen-dashboard .dashx-alert.is-aviso   { border-left-color: #f5a623; }
 #screen-dashboard .dashx-alert.is-ok      { border-left-color: #27c47a; }
+/* Sin dato no es verde: el contador no miró ningún registro, así que la
+   tarjeta no puede decir que está todo bien. Se queda con el borde neutro
+   que ya trae .dashx-alert. */
+#screen-dashboard .dashx-alert.is-sindato .dashx-alert-value { color: var(--muted); }
 
 #screen-dashboard .dashx-alert-value {
   font-size: 22px;
@@ -1073,16 +1065,5 @@
   #screen-dashboard .dashx-per-pop {
     right: 0;
     width: auto;
-    flex-direction: column;
-    gap: 12px;
-  }
-  #screen-dashboard .dashx-per-der {
-    width: auto;
-  }
-  #screen-dashboard .dashx-per-libre {
-    grid-template-columns: 1fr 1fr;
-  }
-  #screen-dashboard .dashx-per-aplicar {
-    grid-column: 1 / -1;
   }
 }

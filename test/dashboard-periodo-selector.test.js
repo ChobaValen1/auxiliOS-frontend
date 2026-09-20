@@ -19,13 +19,19 @@ test('el período dejó de ser seis pestañas fijas en el HTML', () => {
   assert.doesNotMatch(sigma, /function dashxPeriodo/);
 });
 
-test('hay tres formas de elegir período, no sólo ventanas móviles', () => {
-  assert.match(shell, /function setPeriodo\(p\)/);
+test('el esquema es mes o rango personalizado, y nada de ventanas móviles', () => {
   assert.match(shell, /function setMes\(ym\)/);
   assert.match(shell, /function setRango\(desde, hasta\)/);
   for (const api of ['setMes: setMes', 'setRango: setRango', 'descripcionPeriodo: descripcionPeriodo']) {
     assert.ok(shell.includes(api), `falta ${api} en la API del shell`);
   }
+  // "1 mes" iba del 21 de agosto al 20 de septiembre: un corte que no coincide
+  // con ninguna factura. Los rangos móviles se fueron enteros.
+  assert.doesNotMatch(shell, /PRESETS|setPeriodo|rangoDePeriodo/);
+  assert.doesNotMatch(shell, /Últimos 7 días|Últimos 3 meses|Este año/);
+  // Arranca en el mes actual, que es la unidad con la que se factura.
+  assert.match(shell, /periodo: 'mes'/);
+  assert.match(shell, /: rangoDeMes\(mesActual\(\)\);/);
 });
 
 test('un mes es el mes calendario completo, no treinta días móviles', () => {
@@ -60,5 +66,6 @@ test('el desplegable se achica en pantalla chica y la media query va después', 
   assert.ok(base > -1, 'falta la regla base del desplegable');
   assert.ok(chica > base, 'la media query tiene que ir después: con igual especificidad gana la última');
   assert.match(css.slice(base, chica), /position: absolute/);
-  assert.match(css.slice(chica), /flex-direction: column/);
+  // Anclado también a la derecha: con left solo se sale por el borde.
+  assert.match(css.slice(chica), /right: 0/);
 });

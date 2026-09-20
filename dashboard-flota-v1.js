@@ -24,7 +24,7 @@
 
   // Ícono por severidad: el ícono, no el color, es lo que distingue una tarjeta
   // crítica de una al día.
-  var ICONO = { critico: '⛔', aviso: '⚠', ok: '✓' };
+  var ICONO = { critico: '⛔', aviso: '⚠', ok: '✓', sindato: '–' };
 
   var ESTADO_CAMION = {
     activo:        'Activo',
@@ -89,11 +89,21 @@
   }
 
   /* ── Tarjetas de alerta ────────────────────────────────────────────────
-     Un contador en cero es un dato bueno y real (cero incidentes abiertos es
-     una buena noticia), así que se muestra el cero con su tarjeta en verde y el
-     texto "Sin pendientes". El "no se pudo cargar" es otra cosa y se pinta
-     aparte, en pintarError(). */
-  function tarjetas(alertas, umbrales) {
+     Un cero sin denominador no se puede leer. "Licencias por vencer: 0" pintado
+     de verde y con el texto "Sin pendientes" decía que estaba todo bien, cuando
+     lo que pasaba es que no había NINGUNA licencia cargada: el tablero afirmaba
+     algo que no sabía.
+
+     Por eso cada contador viaja con su `universo` —cuántos registros miró,
+     tomado de la misma fuente que el contador, en dashboard_flota_v2— y hay
+     tres lecturas del cero, no dos:
+
+       universo 0        → 'sindato', gris, dice qué falta cargar.
+       universo > 0, 0   → verde, "Sin pendientes" Y sobre cuántos.
+       valor > 0         → la alerta de siempre.
+
+     El "no se pudo cargar" es otra cosa todavía y se pinta en pintarError(). */
+  function tarjetas(alertas, umbrales, universo) {
     // Las ventanas las define el SQL y viajan en el payload: acá no se repite
     // ningún umbral, así el rótulo no puede mentir sobre el filtro que corrió.
     var diasDoc = num(umbrales.dias_doc_aviso);
@@ -106,31 +116,46 @@
         etiqueta: 'Camiones en taller',
         valor: num(alertas.camiones_mantenimiento),
         severidad: num(alertas.camiones_mantenimiento) > 0 ? 'critico' : 'ok',
-        nota: 'Fuera de servicio hoy'
+        nota: 'Fuera de servicio hoy',
+        universo: num(universo.camiones_activos),
+        unidad: 'camiones activos',
+        faltan: 'Sin camiones activos'
       },
       {
         etiqueta: 'Service vencido',
         valor: num(alertas.services_vencidos),
         severidad: num(alertas.services_vencidos) > 0 ? 'critico' : 'ok',
-        nota: 'Pasaron el km del plan'
+        nota: 'Pasaron el km del plan',
+        universo: num(universo.planes_service),
+        unidad: 'planes',
+        faltan: 'Sin planes de service cargados'
       },
       {
         etiqueta: 'Service próximo',
         valor: num(alertas.services_proximos),
         severidad: num(alertas.services_proximos) > 0 ? 'aviso' : 'ok',
-        nota: 'Dentro del aviso del plan'
+        nota: 'Dentro del aviso del plan',
+        universo: num(universo.planes_service),
+        unidad: 'planes',
+        faltan: 'Sin planes de service cargados'
       },
       {
         etiqueta: 'Documentos vencidos',
         valor: num(alertas.docs_vencidos),
         severidad: num(alertas.docs_vencidos) > 0 ? 'critico' : 'ok',
-        nota: 'Papeles de camión'
+        nota: 'Papeles de camión',
+        universo: num(universo.docs_camion),
+        unidad: 'documentos',
+        faltan: 'Sin documentos de camión cargados'
       },
       {
         etiqueta: 'Documentos por vencer',
         valor: num(alertas.docs_por_vencer),
         severidad: num(alertas.docs_por_vencer) > 0 ? 'aviso' : 'ok',
-        nota: ventanaDoc
+        nota: ventanaDoc,
+        universo: num(universo.docs_camion),
+        unidad: 'documentos',
+        faltan: 'Sin documentos de camión cargados'
       },
       {
         etiqueta: 'Incidentes abiertos',
@@ -141,7 +166,12 @@
         nota: num(alertas.incidentes_graves) > 0
           ? num(alertas.incidentes_graves) + ' grave' + (num(alertas.incidentes_graves) === 1 ? '' : 's')
             + ' · ' + ventanaInc.toLowerCase()
-          : ventanaInc
+          : ventanaInc,
+        // Sin ventana de fechas: separa "ninguno en 30 días" de "nunca se
+        // cargó uno".
+        universo: num(universo.incidentes),
+        unidad: 'incidentes',
+        faltan: 'Sin incidentes registrados'
       },
       {
         etiqueta: 'Licencias por vencer',
@@ -151,24 +181,31 @@
           : (num(alertas.licencias_por_vencer) > 0 ? 'aviso' : 'ok'),
         nota: num(alertas.licencias_vencidas) > 0
           ? num(alertas.licencias_vencidas) + ' ya vencida' + (num(alertas.licencias_vencidas) === 1 ? '' : 's')
-          : 'Choferes activos'
+          : 'Choferes activos',
+        universo: num(universo.licencias),
+        unidad: 'licencias',
+        faltan: 'Sin licencias cargadas'
       }
     ];
   }
 
-  function pintarAlertas(alertas, umbrales) {
+  function pintarAlertas(alertas, umbrales, universo) {
     var cont = elem(ID_ALERTAS);
     if (!cont) return;
-    cont.innerHTML = tarjetas(alertas || {}, umbrales || {}).map(function (t) {
-      var sinPendientes = t.valor === 0;
-      return '<div class="dashx-alert is-' + t.severidad + '">'
+    cont.innerHTML = tarjetas(alertas || {}, umbrales || {}, universo || {}).map(function (t) {
+      var sinDatos = t.universo === 0;
+      var severidad = sinDatos ? 'sindato' : t.severidad;
+      var nota = t.nota;
+      if (sinDatos) nota = t.faltan;
+      // El denominador va junto al cero: "Sin pendientes" solo no dice si son
+      // 28 planes revisados o ninguno.
+      else if (t.valor === 0) nota = 'Sin pendientes · ' + miles(t.universo) + ' ' + t.unidad;
+      return '<div class="dashx-alert is-' + severidad + '">'
         + '<div class="dashx-metric-label">'
-        +   '<span aria-hidden="true">' + ICONO[t.severidad] + '</span> ' + esc(t.etiqueta)
+        +   '<span aria-hidden="true">' + ICONO[severidad] + '</span> ' + esc(t.etiqueta)
         + '</div>'
-        + '<div class="dashx-alert-value">' + miles(t.valor) + '</div>'
-        + '<div style="font-size:10px;color:var(--muted);margin-top:4px">'
-        +   esc(sinPendientes ? 'Sin pendientes' : t.nota)
-        + '</div>'
+        + '<div class="dashx-alert-value">' + (sinDatos ? '—' : miles(t.valor)) + '</div>'
+        + '<div style="font-size:10px;color:var(--muted);margin-top:4px">' + esc(nota) + '</div>'
         + '</div>';
     }).join('');
   }
@@ -359,7 +396,7 @@
     if (!db || typeof db.rpc !== 'function') {
       throw new Error('Sin conexión con la base');
     }
-    var res = await db.rpc('dashboard_flota_v1');
+    var res = await db.rpc('dashboard_flota_v2');
     if (res && res.error) throw res.error;
     return (res && res.data) || {};
   }
@@ -373,7 +410,7 @@
       pintarError(e);
       throw e;
     }
-    pintarAlertas(data.alertas, data.umbrales);
+    pintarAlertas(data.alertas, data.umbrales, data.universo);
     pintarDonut(data.estado_flota);
     pintarTabla(data.camiones);
     pintarSubtitulo(data);

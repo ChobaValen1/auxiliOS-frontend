@@ -5,6 +5,8 @@ const fs = require('node:fs');
 const flota = fs.readFileSync('dashboard-flota-v1.js', 'utf8');
 const sql = fs.readFileSync(
   'migrations/20260918172000_dashboard_flota_rpc_v1.sql', 'utf8');
+const sqlUniverso = fs.readFileSync(
+  'migrations/20260920120000_dashboard_flota_universo_v2.sql', 'utf8');
 const css = fs.readFileSync('dashboard-v1.css', 'utf8');
 const index = fs.readFileSync('Index.html', 'utf8');
 
@@ -64,23 +66,46 @@ test('los colores de estado no se usan como color de serie', () => {
 
 test('cada alerta lleva ícono y texto, no sólo color', () => {
   // Regla del tablero: el color nunca es el único indicador.
-  assert.match(flota, /ICONO\s*=\s*\{[^}]*critico[^}]*aviso[^}]*ok[^}]*\}/);
-  assert.match(flota, /ICONO\[t\.severidad\]/);
+  assert.match(flota, /ICONO\s*=\s*\{[^}]*critico[^}]*aviso[^}]*ok[^}]*sindato[^}]*\}/);
+  assert.match(flota, /ICONO\[severidad\]/);
   assert.match(flota, /dashx-alert-value/);
   assert.match(flota, /esc\(t\.etiqueta\)/);
   // Las clases de severidad las pinta el CSS que ya existe.
-  assert.match(flota, /dashx-alert is-' \+ t\.severidad/);
-  ['is-critico', 'is-aviso', 'is-ok'].forEach(clase =>
+  assert.match(flota, /dashx-alert is-' \+ severidad/);
+  ['is-critico', 'is-aviso', 'is-ok', 'is-sindato'].forEach(clase =>
     assert.ok(css.includes(`.dashx-alert.${clase}`), `falta la clase ${clase} en el CSS`));
   // El chip de la tabla también: color + ícono + texto.
   assert.match(flota, /function chipSituacion/);
   assert.match(flota, /aria-hidden="true">' \+ ICONO\[sev\]/);
 });
 
-test('un contador en cero se muestra como cero, y el error se muestra como error', () => {
-  // Cero incidentes abiertos es una buena noticia, no "sin datos".
-  assert.match(flota, /valor === 0/);
-  assert.match(flota, /'Sin pendientes'/);
+test('v2 envuelve a v1 y saca los denominadores de la misma fuente', () => {
+  // Envolver y no reescribir: el payload viejo tiene que salir igual.
+  assert.match(sqlUniverso, /public\.dashboard_flota_v1\(\) \|\| jsonb_build_object/);
+  assert.match(sqlUniverso, /'universo'/);
+  // Las mismas tablas y vistas que usan los contadores de v1.
+  for (const fuente of ['public.trucks', 'public.truck_subscriptions',
+    'public.v_truck_docs_status', 'public.v_driver_docs_status', 'public.incidents']) {
+    assert.ok(sqlUniverso.includes(fuente), `el denominador no sale de ${fuente}`);
+  }
+  assert.match(sqlUniverso, /security definer/);
+  assert.match(sqlUniverso, /set search_path = ''/);
+  assert.match(sqlUniverso, /revoke all on function public\.dashboard_flota_v2\(\) from public, anon/);
+  // Sigue siendo la foto de hoy: sin parámetros de fecha.
+  assert.ok(!/p_desde|p_hasta|p_periodo/.test(sqlUniverso));
+});
+
+test('el cero se lee con su denominador, y el error se muestra como error', () => {
+  // Tres lecturas del cero, no dos: sin registros que mirar es 'sindato';
+  // cero sobre N registros es una buena noticia y dice sobre cuántos.
+  assert.match(flota, /var sinDatos = t\.universo === 0;/);
+  assert.match(flota, /t\.valor === 0/);
+  assert.match(flota, /'Sin pendientes · ' \+ miles\(t\.universo\)/);
+  assert.match(flota, /nota = t\.faltan/);
+  // Cada tarjeta declara de dónde sale su denominador.
+  for (const clave of ['camiones_activos', 'planes_service', 'docs_camion', 'licencias', 'incidentes']) {
+    assert.match(flota, new RegExp(`universo\\.${clave}`), `ninguna tarjeta usa universo.${clave}`);
+  }
   assert.ok(!/Sin datos para este período/.test(flota),
     'un contador en cero no puede caer en el mensaje de "sin datos"');
   // El fallo de carga tiene su propio camino y se propaga al shell para que lo loguee.
@@ -127,8 +152,8 @@ test('la RPC es una foto de hoy: no recibe rango de fechas', () => {
   // El estado actual no se filtra por período: un documento vencido lo está hoy.
   assert.ok(!/p_desde|p_hasta|p_periodo/.test(sql),
     'la función está recibiendo fechas y no debería');
-  assert.match(flota, /rpc\('dashboard_flota_v1'\)/);
-  assert.ok(!/rpc\('dashboard_flota_v1',/.test(flota),
+  assert.match(flota, /rpc\('dashboard_flota_v2'\)/);
+  assert.ok(!/rpc\('dashboard_flota_v2',/.test(flota),
     'el front le está pasando parámetros a una RPC sin parámetros');
 });
 

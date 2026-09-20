@@ -13,10 +13,10 @@
 
   var estado = {
     cargando: false,
-    // 'preset' guarda cuál de los rangos móviles está elegido; 'mes' un mes
-    // calendario; 'rango' lo que el usuario escribió a mano. desde/hasta
-    // mandan siempre que estén, así que los tres casos salen por el mismo lado.
-    periodo: '1m',
+    // 'mes' es un mes calendario; 'rango' lo que el usuario escribió a mano.
+    // Los dos resuelven a desde/hasta, así que las secciones ven siempre lo
+    // mismo. Arranca en el mes actual: es la unidad con la que se factura.
+    periodo: 'mes',
     mes: null,
     desde: null,
     hasta: null,
@@ -37,33 +37,15 @@
     return z.toISOString().slice(0, 10);
   }
 
-  function rangoDePeriodo(periodo) {
-    var hasta = new Date();
-    var desde = new Date();
-    switch (periodo) {
-      case '7d':  desde.setDate(desde.getDate() - 6); break;
-      case '3m':  desde.setMonth(desde.getMonth() - 3); break;
-      case '6m':  desde.setMonth(desde.getMonth() - 6); break;
-      case '12m': desde.setMonth(desde.getMonth() - 12); break;
-      case 'ano': desde = new Date(hasta.getFullYear(), 0, 1); break;
-      default:    desde.setMonth(desde.getMonth() - 1); break;
-    }
-    return { desde: fechaISO(desde), hasta: fechaISO(hasta) };
+  /* Dos formas de elegir y nada más: un mes calendario o un rango escrito a
+     mano. Antes eran seis ventanas móviles que terminaban hoy —"1 mes" iba del
+     21 de agosto al 20 de septiembre—, un corte que no coincide con ninguna
+     factura ni con ningún cierre. El mes es la unidad con la que se factura;
+     todo lo demás es el rango libre. */
+  function mesActual() {
+    var hoy = new Date();
+    return hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0');
   }
-
-  /* Los rangos móviles terminan hoy, que es lo que sirve para mirar cómo
-     viene la operación. Para Facturación no alcanza: un período que va del 21
-     de agosto al 20 de septiembre no coincide con ninguna factura ni con
-     ningún cierre. Por eso al lado de los móviles van los meses calendario y
-     un rango escrito a mano. */
-  var PRESETS = [
-    { id: '7d',  label: 'Últimos 7 días' },
-    { id: '1m',  label: 'Último mes' },
-    { id: '3m',  label: 'Últimos 3 meses' },
-    { id: '6m',  label: 'Últimos 6 meses' },
-    { id: '12m', label: 'Últimos 12 meses' },
-    { id: 'ano', label: 'Este año' }
-  ];
 
   function rangoDeMes(ym) {
     var partes = String(ym || '').split('-');
@@ -118,20 +100,16 @@
      etiqueta puede confundir. */
   function descripcionPeriodo() {
     var r = rangoActual();
-    var titulo;
-    if (estado.periodo === 'mes') titulo = etiquetaMes(estado.mes, true);
-    else if (estado.periodo === 'rango') titulo = 'Personalizado';
-    else {
-      var preset = PRESETS.filter(function (p) { return p.id === estado.periodo; })[0];
-      titulo = preset ? preset.label : 'Último mes';
-    }
+    var titulo = estado.periodo === 'rango'
+      ? 'Período personalizado'
+      : etiquetaMes(estado.mes || mesActual(), true);
     return { titulo: titulo, rango: rangoTexto(r.desde, r.hasta) };
   }
 
   function rangoActual() {
     return (estado.desde && estado.hasta)
       ? { desde: estado.desde, hasta: estado.hasta }
-      : rangoDePeriodo(estado.periodo);
+      : rangoDeMes(mesActual());
   }
 
   function filtros() {
@@ -161,8 +139,8 @@
      Y puede declarar `periodo: false` cuando el rango de fechas no le dice
      nada. Salud de la Flota es el caso: su cargar() no recibe filtros porque
      mira el estado de hoy —qué vence, qué service toca, qué camión está
-     parado—, así que ofrecer "7 días / 3 meses / Este año" es ofrecer un
-     control que no hace nada. Un filtro que no filtra es peor que no tenerlo:
+     parado—, así que ofrecer elegir un mes es ofrecer un control que no hace
+     nada. Un filtro que no filtra es peor que no tenerlo:
      el que lo toca y no ve cambiar nada no sabe si el tablero está roto.
 
      Si no queda nada visible en la barra, la barra entera se esconde: si no,
@@ -253,15 +231,6 @@
     }
   }
 
-  function setPeriodo(p) {
-    estado.periodo = p;
-    estado.mes = null;
-    estado.desde = null;
-    estado.hasta = null;
-    pintarPeriodo();
-    recargar();
-  }
-
   function setMes(ym) {
     var r = rangoDeMes(ym);
     if (!r) return;
@@ -298,15 +267,8 @@
   }
 
   function popPeriodo() {
-    var rapidos = PRESETS.map(function (p) {
-      var on = estado.periodo === p.id;
-      return '<button type="button" class="dashx-per-op' + (on ? ' on' : '') + '"'
-        + ' data-per="preset" data-v="' + p.id + '"' + (on ? ' aria-current="true"' : '') + '>'
-        + p.label + '</button>';
-    }).join('');
-
     var meses = mesesRecientes(12).map(function (ym) {
-      var on = estado.periodo === 'mes' && estado.mes === ym;
+      var on = estado.periodo === 'mes' && (estado.mes || mesActual()) === ym;
       return '<button type="button" class="dashx-per-mes' + (on ? ' on' : '') + '"'
         + ' data-per="mes" data-v="' + ym + '"' + (on ? ' aria-current="true"' : '') + '>'
         + etiquetaMes(ym) + '</button>';
@@ -315,14 +277,12 @@
     var hoy = fechaISO(new Date());
     var r = rangoActual();
     return '<div class="dashx-per-pop" role="dialog" aria-label="Elegir período" hidden>'
-      + '<div class="dashx-per-col"><h4>Rango móvil</h4>' + rapidos + '</div>'
-      + '<div class="dashx-per-col dashx-per-der">'
-      + '<h4>Mes cerrado</h4><div class="dashx-per-meses">' + meses + '</div>'
-      + '<h4>Personalizado</h4><div class="dashx-per-libre">'
+      + '<h4>Mes</h4><div class="dashx-per-meses">' + meses + '</div>'
+      + '<h4>Período personalizado</h4><div class="dashx-per-libre">'
       + '<label>Desde<input type="date" data-per-desde max="' + hoy + '" value="' + r.desde + '"></label>'
       + '<label>Hasta<input type="date" data-per-hasta max="' + hoy + '" value="' + r.hasta + '"></label>'
       + '<button type="button" class="dashx-per-aplicar" data-per="rango">Aplicar</button>'
-      + '</div><p class="dashx-per-error" role="alert" hidden></p></div></div>';
+      + '</div><p class="dashx-per-error" role="alert" hidden></p></div>';
   }
 
   function cajaPeriodo() { return document.getElementById('dashx-periodos'); }
@@ -359,7 +319,6 @@
       if (!b) return;
       var accion = b.getAttribute('data-per');
       if (accion === 'abrir') return abrirPop(!popAbierto());
-      if (accion === 'preset') { abrirPop(false); return setPeriodo(b.getAttribute('data-v')); }
       if (accion === 'mes') { abrirPop(false); return setMes(b.getAttribute('data-v')); }
       if (accion !== 'rango') return;
       var desde = caja.querySelector('[data-per-desde]');
@@ -413,14 +372,13 @@
     filtros: filtros,
     registrarSeccion: registrarSeccion,
     recargar: recargar,
-    setPeriodo: setPeriodo,
     setMes: setMes,
     setRango: setRango,
     descripcionPeriodo: descripcionPeriodo,
     mostrarSeccion: mostrarSeccion,
     seccionActiva: seccionActiva,
     setFiltro: setFiltro,
-    rangoDePeriodo: rangoDePeriodo,
+    rangoDeMes: rangoDeMes,
     init: init
   };
 })(window);
