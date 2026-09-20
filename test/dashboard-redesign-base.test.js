@@ -67,9 +67,16 @@ test('el overlay de carga cubre los datos pero no los filtros', () => {
 });
 
 test('todo el CSS del dashboard está scopeado', () => {
-  const reglas = css.split('}')
+  /* Los comentarios se sacan ANTES de partir por llaves. Partiendo primero, un
+     comentario que cite CSS —y varios lo hacen, porque explican la regla que
+     documentan— deja pedazos de prosa que parecen selectores: saltaba por un
+     texto que menciona `[hidden] { display: none }`. Y al revés es peor: el
+     filtro por `/*` sólo miraba el arranque del bloque, así que un selector sin
+     scopear escrito después de un comentario se colaba sin que nadie lo viera. */
+  const reglas = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('}')
     .map(b => b.split('{')[0].trim())
-    .filter(s => s && !s.startsWith('@') && !s.startsWith('/*') && !/^\s*to\s*$/.test(s));
+    .filter(s => s && !s.startsWith('@') && !/^\s*to\s*$/.test(s));
   reglas.forEach(sel => {
     assert.ok(sel.includes('#screen-dashboard'),
       `selector sin scopear, puede pisar otras pantallas: '${sel}'`);
@@ -293,8 +300,28 @@ test('las secciones van en una sola fila, y son tres', () => {
   ['facturacion', 'operaciones', 'flota'].forEach(sec =>
     assert.ok(barra.includes(`data-sec="${sec}"`), `falta la sección ${sec}`));
   assert.equal((barra.match(/data-sec=/g) || []).length, 3, 'tienen que ser tres secciones');
-  // Y Alertas en la misma fila, como botón.
-  assert.match(barra, /id="dashx-alertas-btn"[\s\S]*?onclick="alxAbrirPanel\(\)"/);
+  /* Y nada más: Alertas se saca de acá. La campanita de la barra de arriba
+     está fija y a la vista en todas las pantallas, así que un botón propio en
+     el panel era el mismo acceso dos veces. */
+  assert.doesNotMatch(index, /dashx-alertas-btn/);
+  assert.doesNotMatch(css, /dashx-alertas-btn/);
+});
+
+test('hidden le gana al display propio de cada caja', () => {
+  /* La hoja del browser trae [hidden] { display: none } con especificidad
+     0,1,0, así que cualquier regla propia con un id adelante la pisa. Las tres
+     cajas que el shell esconde declaran su propio display:flex, o sea que el
+     atributo se ponía y el elemento seguía ocupando lugar: los filtros de una
+     sección aparecían en las otras y el JS no podía hacer nada. */
+  assert.match(css, /#screen-dashboard \[hidden\] \{ display: none !important; \}/);
+  // Las que lo declaran acá...
+  ['dashx-toolbar', 'dashx-toolbar-filtros'].forEach(c => {
+    assert.match(css, new RegExp('\\.' + c + '\\s*\\{[^}]*display:\\s*flex', 's'),
+      `${c} ya no declara display propio: revisar si la regla de [hidden] sigue haciendo falta`);
+  });
+  // ...y el período, que lo hereda de .filter-tabs en sigma.css.
+  const sigmaCss = fs.readFileSync('sigma.css', 'utf8');
+  assert.match(sigmaCss, /\.filter-tabs \{\s*\n?\s*display: flex/);
 });
 
 test('alertas abre un panel lateral, no una vista', () => {

@@ -203,19 +203,50 @@
 
   /* Las bases se ven distinto del calor a propósito: el heatmap y sus puntos
      son naranjas porque son demanda —cuánto pasa dónde—, y una base no es una
-     cantidad, es un lugar. Va en claro, con halo oscuro, y sin minzoom: es la
-     referencia contra la que se lee todo lo demás, así que no puede aparecer
-     recién al acercarse. */
+     cantidad, es un lugar. Van en claro y sin minzoom: son la referencia contra
+     la que se lee todo lo demás, así que no pueden aparecer recién al acercarse.
+
+     Se dibujan en tres capas apiladas porque un punto solo, encima de un foco
+     naranja, se pierde: primero un cojín oscuro que lo despega del calor,
+     después un anillo claro, y en el centro un punto chico. El anillo con hueco
+     es lo que lo hace leer como "lugar" y no como un dato más del heatmap. */
+  function capaSedesCojin() {
+    return {
+      id: 'sedes-cojin',
+      type: 'circle',
+      source: 'sedes',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 9, 12, 14],
+        'circle-color': '#0c0e12',
+        'circle-opacity': 0.55,
+        'circle-blur': 0.35
+      }
+    };
+  }
+
   function capaSedes() {
     return {
       id: 'sedes-punto',
       type: 'circle',
       source: 'sedes',
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 12, 7],
-        'circle-color': '#e8eaf2',
-        'circle-stroke-color': '#0c0e12',
-        'circle-stroke-width': 2
+        // Relleno del color del fondo: queda un anillo, no un disco.
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 8],
+        'circle-color': '#0c0e12',
+        'circle-stroke-color': '#e8eaf2',
+        'circle-stroke-width': 2.5
+      }
+    };
+  }
+
+  function capaSedesCentro() {
+    return {
+      id: 'sedes-centro',
+      type: 'circle',
+      source: 'sedes',
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 1.6, 12, 2.8],
+        'circle-color': '#e8eaf2'
       }
     };
   }
@@ -230,14 +261,17 @@
       layout: {
         'text-field': ['get', 'nombre'],
         'text-size': 11,
-        'text-offset': [0, 1.1],
+        'text-offset': [0, 1.4],
         'text-anchor': 'top',
-        'text-allow-overlap': false
+        'text-allow-overlap': false,
+        // Si el nombre no entra, se cae el nombre y no la base.
+        'text-optional': true
       },
       paint: {
         'text-color': '#e8eaf2',
         'text-halo-color': '#0c0e12',
-        'text-halo-width': 1.5
+        'text-halo-width': 2,
+        'text-halo-blur': 0.5
       }
     };
   }
@@ -368,7 +402,9 @@
         // Después del calor: una base tapada por su propio foco no sirve de
         // referencia, y es justo donde más foco suele haber.
         mapa.addSource('sedes', { type: 'geojson', data: gjSedes });
+        mapa.addLayer(capaSedesCojin());
         mapa.addLayer(capaSedes());
+        mapa.addLayer(capaSedesCentro());
         mapa.addLayer(capaSedesEtiqueta());
         tooltip(mapa);
         encuadrar(mapa, data.bbox);

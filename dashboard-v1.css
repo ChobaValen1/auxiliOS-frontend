@@ -68,7 +68,6 @@
 #screen-dashboard .dashx-barra-secciones {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 14px;
@@ -79,30 +78,20 @@
   margin-bottom: 0;
 }
 
-#screen-dashboard .dashx-alertas-btn {
-  position: relative;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 8px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  color: var(--muted2);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color .15s, color .15s;
-}
-#screen-dashboard .dashx-alertas-btn:hover { border-color: var(--primary); color: var(--text); }
-#screen-dashboard .dashx-alertas-btn:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
 
 /* Período, camión y chofer eran tres renglones para tres controles. */
+/* `hidden` tiene que ganar, y acá no ganaba.
+   La hoja del browser trae [hidden] { display: none } con especificidad 0,1,0,
+   así que CUALQUIER regla propia con un id adelante la pisa. Las tres cajas que
+   el shell esconde —la barra, el selector de período y cada grupo de filtros—
+   declaran su propio display:flex, o sea que el atributo se ponía y el elemento
+   seguía ocupando lugar igual. Los filtros de una sección aparecían en las
+   otras y no había forma de que el JS lo arreglara.
+   Es una trampa conocida en este proyecto: sigma.css ya tiene media docena de
+   [hidden]{display:none!important} puntuales por lo mismo. Acá va una sola vez
+   para todo el panel. */
+#screen-dashboard [hidden] { display: none !important; }
+
 #screen-dashboard .dashx-toolbar {
   display: flex;
   flex-wrap: wrap;

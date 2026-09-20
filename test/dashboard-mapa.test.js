@@ -96,9 +96,12 @@ test('la RPC respeta las convenciones de permisos del repo', () => {
 });
 
 test('los estilos del mapa están scopeados como el resto del dashboard', () => {
-  const reglas = css.split('}')
+  // Comentarios fuera ANTES de partir: varios citan CSS y dejan pedazos de
+  // prosa que parecen selectores. Mismo arreglo que en redesign-base.
+  const reglas = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('}')
     .map(b => b.split('{')[0].trim())
-    .filter(s => s && !s.startsWith('@') && !s.startsWith('/*') && !/^\s*to\s*$/.test(s));
+    .filter(s => s && !s.startsWith('@') && !/^\s*to\s*$/.test(s));
   reglas.forEach(sel => {
     assert.ok(sel.includes('#screen-dashboard'),
       `selector sin scopear: '${sel}'`);

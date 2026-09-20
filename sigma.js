@@ -3195,7 +3195,8 @@ function alxCerrarPanel() {
   if (!p) return;
   p.classList.remove('open');
   document.body.style.overflow = '';
-  const btn = document.getElementById('dashx-alertas-btn');
+  // La campanita de la barra de arriba es el único acceso al panel.
+  const btn = document.getElementById('tb-bell');
   if (btn) btn.focus();
 }
 
@@ -17096,7 +17097,7 @@ function _alxPintarBadges() {
   const esAdmin = _alxEsAdminOSup();
   const n = _alxItems.length; // no cuenta la línea de rendiciones pendientes
   const txt = n > 99 ? '99+' : String(n);
-  ['alx-tab-badge', 'alx-bell-badge'].forEach(id => {
+  ['alx-bell-badge'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = txt;
