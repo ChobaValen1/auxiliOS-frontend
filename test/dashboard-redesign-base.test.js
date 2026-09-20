@@ -130,7 +130,7 @@ test('la vista se monta recién al abrirla', () => {
   assert.match(sigma, /vista === 'analitica'/);
   assert.match(sigma, /function _cargarViewAnalitica/);
   assert.match(sigma, /_dashxIniciado/);
-  assert.match(sigma, /function dashxPeriodo/);
+  assert.match(sigma, /function dashxSeccion/);
 });
 
 test('la migración agrega la zona sin backfill y deja índices utilizables', () => {
@@ -201,7 +201,7 @@ test('período, camión y chofer van en la misma fila', () => {
 test('las barras de pestañas miden lo que ocupan, no el ancho de la pantalla', () => {
   // .filter-tabs trae fondo oscuro: a ancho completo dibujaba una línea negra
   // de lado a lado arriba del tablero.
-  const regla = css.match(/#screen-dashboard \.dashx-tabs,\s*\n#screen-dashboard \.dashx-periodos \{([^}]*)\}/);
+  const regla = css.match(/#screen-dashboard \.dashx-tabs \{([^}]*)\}/);
   assert.ok(regla, 'falta la regla que acota el ancho de las barras');
   assert.match(regla[1], /width:\s*fit-content/);
 });

@@ -13,7 +13,11 @@
 
   var estado = {
     cargando: false,
+    // 'preset' guarda cuál de los rangos móviles está elegido; 'mes' un mes
+    // calendario; 'rango' lo que el usuario escribió a mano. desde/hasta
+    // mandan siempre que estén, así que los tres casos salen por el mismo lado.
     periodo: '1m',
+    mes: null,
     desde: null,
     hasta: null,
     empresas: [],
@@ -47,10 +51,91 @@
     return { desde: fechaISO(desde), hasta: fechaISO(hasta) };
   }
 
-  function filtros() {
-    var r = (estado.desde && estado.hasta)
+  /* Los rangos móviles terminan hoy, que es lo que sirve para mirar cómo
+     viene la operación. Para Facturación no alcanza: un período que va del 21
+     de agosto al 20 de septiembre no coincide con ninguna factura ni con
+     ningún cierre. Por eso al lado de los móviles van los meses calendario y
+     un rango escrito a mano. */
+  var PRESETS = [
+    { id: '7d',  label: 'Últimos 7 días' },
+    { id: '1m',  label: 'Último mes' },
+    { id: '3m',  label: 'Últimos 3 meses' },
+    { id: '6m',  label: 'Últimos 6 meses' },
+    { id: '12m', label: 'Últimos 12 meses' },
+    { id: 'ano', label: 'Este año' }
+  ];
+
+  function rangoDeMes(ym) {
+    var partes = String(ym || '').split('-');
+    var y = Number(partes[0]);
+    var m = Number(partes[1]);
+    if (!y || !m) return null;
+    // Día 0 del mes siguiente = último día de éste, sin tablas de días.
+    return { desde: fechaISO(new Date(y, m - 1, 1)), hasta: fechaISO(new Date(y, m, 0)) };
+  }
+
+  /* A mano y no con toLocaleDateString: es-AR devuelve "20 de sept de 26",
+     que en un botón de 32 px de alto no entra ni se lee. */
+  var MES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  var MES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+  function mayus(txt) { return txt.charAt(0).toUpperCase() + txt.slice(1); }
+
+  function etiquetaMes(ym, largo) {
+    var partes = String(ym || '').split('-');
+    var y = Number(partes[0]);
+    var m = Number(partes[1]) - 1;
+    if (!(m >= 0 && m < 12)) return String(ym || '');
+    return largo
+      ? mayus(MES_LARGO[m]) + ' ' + y
+      : mayus(MES_CORTO[m]) + ' ' + String(y).slice(-2);
+  }
+
+  function mesesRecientes(cuantos) {
+    var hoy = new Date();
+    var lista = [];
+    for (var i = 0; i < cuantos; i++) {
+      var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      lista.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+    }
+    return lista;
+  }
+
+  // "20 ago – 20 sep 2026": el año va una sola vez mientras sea el mismo.
+  function rangoTexto(desde, hasta) {
+    var a = String(desde || '').split('-');
+    var b = String(hasta || '').split('-');
+    if (a.length !== 3 || b.length !== 3) return (desde || '') + ' – ' + (hasta || '');
+    var dia = function (p) { return Number(p[2]) + ' ' + MES_CORTO[Number(p[1]) - 1]; };
+    return a[0] === b[0]
+      ? dia(a) + ' – ' + dia(b) + ' ' + a[0]
+      : dia(a) + ' ' + a[0].slice(-2) + ' – ' + dia(b) + ' ' + b[0].slice(-2);
+  }
+
+  /* El título puede mentir —"Último mes" no es el mes de la factura— así que
+     abajo va siempre el rango resuelto. Con las fechas a la vista ninguna
+     etiqueta puede confundir. */
+  function descripcionPeriodo() {
+    var r = rangoActual();
+    var titulo;
+    if (estado.periodo === 'mes') titulo = etiquetaMes(estado.mes, true);
+    else if (estado.periodo === 'rango') titulo = 'Personalizado';
+    else {
+      var preset = PRESETS.filter(function (p) { return p.id === estado.periodo; })[0];
+      titulo = preset ? preset.label : 'Último mes';
+    }
+    return { titulo: titulo, rango: rangoTexto(r.desde, r.hasta) };
+  }
+
+  function rangoActual() {
+    return (estado.desde && estado.hasta)
       ? { desde: estado.desde, hasta: estado.hasta }
       : rangoDePeriodo(estado.periodo);
+  }
+
+  function filtros() {
+    var r = rangoActual();
     return {
       desde: r.desde,
       hasta: r.hasta,
@@ -100,6 +185,8 @@
     });
     var per = document.getElementById('dashx-periodos');
     if (per) per.hidden = !usaPeriodo;
+    // Escondido con el desplegable abierto, al volver aparecería desplegado.
+    if (!usaPeriodo) abrirPop(false);
     var barra = document.getElementById('dashx-toolbar');
     if (barra) barra.hidden = !(usaPeriodo || algoEnLaBarra);
   }
@@ -168,9 +255,131 @@
 
   function setPeriodo(p) {
     estado.periodo = p;
+    estado.mes = null;
     estado.desde = null;
     estado.hasta = null;
+    pintarPeriodo();
     recargar();
+  }
+
+  function setMes(ym) {
+    var r = rangoDeMes(ym);
+    if (!r) return;
+    estado.periodo = 'mes';
+    estado.mes = ym;
+    estado.desde = r.desde;
+    estado.hasta = r.hasta;
+    pintarPeriodo();
+    recargar();
+  }
+
+  function setRango(desde, hasta) {
+    if (!desde || !hasta || desde > hasta) return false;
+    estado.periodo = 'rango';
+    estado.mes = null;
+    estado.desde = desde;
+    estado.hasta = hasta;
+    pintarPeriodo();
+    recargar();
+    return true;
+  }
+
+  /* ── Selector de período ───────────────────────────────────────────────
+     Antes eran seis pestañas fijas ocupando toda la fila para ofrecer sólo
+     ventanas móviles. Ahora es un control solo: muestra qué período está
+     puesto y con qué fechas, y despliega los tres modos. */
+  function botonPeriodo() {
+    var d = descripcionPeriodo();
+    return '<button type="button" class="dashx-per-btn" data-per="abrir"'
+      + ' aria-haspopup="dialog" aria-expanded="false">'
+      + '<span class="dashx-per-ico" aria-hidden="true">🗓</span>'
+      + '<span class="dashx-per-txt"><b>' + d.titulo + '</b><small>' + d.rango + '</small></span>'
+      + '<span class="dashx-per-caret" aria-hidden="true">▾</span></button>';
+  }
+
+  function popPeriodo() {
+    var rapidos = PRESETS.map(function (p) {
+      var on = estado.periodo === p.id;
+      return '<button type="button" class="dashx-per-op' + (on ? ' on' : '') + '"'
+        + ' data-per="preset" data-v="' + p.id + '"' + (on ? ' aria-current="true"' : '') + '>'
+        + p.label + '</button>';
+    }).join('');
+
+    var meses = mesesRecientes(12).map(function (ym) {
+      var on = estado.periodo === 'mes' && estado.mes === ym;
+      return '<button type="button" class="dashx-per-mes' + (on ? ' on' : '') + '"'
+        + ' data-per="mes" data-v="' + ym + '"' + (on ? ' aria-current="true"' : '') + '>'
+        + etiquetaMes(ym) + '</button>';
+    }).join('');
+
+    var hoy = fechaISO(new Date());
+    var r = rangoActual();
+    return '<div class="dashx-per-pop" role="dialog" aria-label="Elegir período" hidden>'
+      + '<div class="dashx-per-col"><h4>Rango móvil</h4>' + rapidos + '</div>'
+      + '<div class="dashx-per-col dashx-per-der">'
+      + '<h4>Mes cerrado</h4><div class="dashx-per-meses">' + meses + '</div>'
+      + '<h4>Personalizado</h4><div class="dashx-per-libre">'
+      + '<label>Desde<input type="date" data-per-desde max="' + hoy + '" value="' + r.desde + '"></label>'
+      + '<label>Hasta<input type="date" data-per-hasta max="' + hoy + '" value="' + r.hasta + '"></label>'
+      + '<button type="button" class="dashx-per-aplicar" data-per="rango">Aplicar</button>'
+      + '</div><p class="dashx-per-error" role="alert" hidden></p></div></div>';
+  }
+
+  function cajaPeriodo() { return document.getElementById('dashx-periodos'); }
+
+  function popAbierto() {
+    var caja = cajaPeriodo();
+    var pop = caja && caja.querySelector('.dashx-per-pop');
+    return !!pop && !pop.hidden;
+  }
+
+  function abrirPop(on) {
+    var caja = cajaPeriodo();
+    if (!caja) return;
+    var pop = caja.querySelector('.dashx-per-pop');
+    var btn = caja.querySelector('.dashx-per-btn');
+    if (!pop || !btn) return;
+    pop.hidden = !on;
+    btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+    if (!on) btn.focus();
+  }
+
+  function pintarPeriodo() {
+    var caja = cajaPeriodo();
+    if (!caja) return;
+    var abierto = popAbierto();
+    caja.innerHTML = botonPeriodo() + popPeriodo();
+    if (abierto) abrirPop(true);
+    // Un solo listener delegado: pintarPeriodo() reescribe el innerHTML en cada
+    // cambio, así que enganchar por nodo dejaría uno nuevo cada vez.
+    if (caja.dataset.perEnganchado === '1') return;
+    caja.dataset.perEnganchado = '1';
+    caja.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-per]');
+      if (!b) return;
+      var accion = b.getAttribute('data-per');
+      if (accion === 'abrir') return abrirPop(!popAbierto());
+      if (accion === 'preset') { abrirPop(false); return setPeriodo(b.getAttribute('data-v')); }
+      if (accion === 'mes') { abrirPop(false); return setMes(b.getAttribute('data-v')); }
+      if (accion !== 'rango') return;
+      var desde = caja.querySelector('[data-per-desde]');
+      var hasta = caja.querySelector('[data-per-hasta]');
+      var error = caja.querySelector('.dashx-per-error');
+      var ok = setRango(desde && desde.value, hasta && hasta.value);
+      if (ok) return abrirPop(false);
+      if (!error) return;
+      error.textContent = (desde && desde.value && hasta && hasta.value)
+        ? 'La fecha "desde" tiene que ser anterior a la de "hasta".'
+        : 'Completá las dos fechas.';
+      error.hidden = false;
+    });
+    document.addEventListener('click', function (ev) {
+      var dentro = ev.target && ev.target.closest && ev.target.closest('#dashx-periodos');
+      if (popAbierto() && !dentro) abrirPop(false);
+    });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && popAbierto()) abrirPop(false);
+    });
   }
 
   function setFiltro(nombre, valores) {
@@ -192,6 +401,7 @@
 
   function init() {
     montarTodas();
+    pintarPeriodo();
     // Después de montar: una sección que crea sus filtros en montar() no tiene
     // el contenedor lleno antes de este punto.
     aplicarVisibilidad();
@@ -204,6 +414,9 @@
     registrarSeccion: registrarSeccion,
     recargar: recargar,
     setPeriodo: setPeriodo,
+    setMes: setMes,
+    setRango: setRango,
+    descripcionPeriodo: descripcionPeriodo,
     mostrarSeccion: mostrarSeccion,
     seccionActiva: seccionActiva,
     setFiltro: setFiltro,

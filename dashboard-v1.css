@@ -53,12 +53,175 @@
 /* ── Barras de pestañas y filtros ──
    Las franjas ocupan lo que miden. A ancho completo, el fondo oscuro de
    .filter-tabs cruzaba la pantalla como una línea negra de lado a lado. */
-#screen-dashboard .dashx-tabs,
-#screen-dashboard .dashx-periodos {
+#screen-dashboard .dashx-tabs {
   width: fit-content;
   max-width: 100%;
   flex-wrap: wrap;
 }
+
+/* ── Selector de período ──
+   Eran seis pestañas fijas ocupando la fila entera para ofrecer sólo ventanas
+   móviles que terminan hoy. Ahora es un control solo que dice qué período está
+   puesto y con qué fechas, y despliega los tres modos: rango móvil, mes
+   calendario y rango escrito a mano. */
+#screen-dashboard .dashx-periodos {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+#screen-dashboard .dashx-per-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+#screen-dashboard .dashx-per-btn:hover,
+#screen-dashboard .dashx-per-btn[aria-expanded="true"] {
+  border-color: var(--primary);
+}
+
+#screen-dashboard .dashx-per-ico { font-size: 13px; }
+
+#screen-dashboard .dashx-per-txt {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+#screen-dashboard .dashx-per-txt b { font-size: 11px; font-weight: 700; }
+
+#screen-dashboard .dashx-per-txt small {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+#screen-dashboard .dashx-per-caret { color: var(--muted); font-size: 9px; }
+
+#screen-dashboard .dashx-per-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  display: flex;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, .46);
+}
+
+#screen-dashboard .dashx-per-pop[hidden] { display: none; }
+
+#screen-dashboard .dashx-per-col { display: grid; align-content: start; gap: 5px; }
+
+#screen-dashboard .dashx-per-der { width: 250px; }
+
+#screen-dashboard .dashx-per-col h4 {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+#screen-dashboard .dashx-per-col h4 + h4 { margin-top: 10px; }
+
+#screen-dashboard .dashx-per-op,
+#screen-dashboard .dashx-per-mes,
+#screen-dashboard .dashx-per-aplicar {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+#screen-dashboard .dashx-per-op {
+  height: 28px;
+  padding: 0 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+#screen-dashboard .dashx-per-op:hover,
+#screen-dashboard .dashx-per-mes:hover { background: var(--card); }
+
+#screen-dashboard .dashx-per-op.on,
+#screen-dashboard .dashx-per-mes.on {
+  border-color: var(--primary);
+  background: var(--card);
+  font-weight: 700;
+}
+
+#screen-dashboard .dashx-per-meses {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+#screen-dashboard .dashx-per-mes { height: 28px; padding: 0 2px; }
+
+#screen-dashboard .dashx-per-libre {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 6px;
+}
+
+#screen-dashboard .dashx-per-libre label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+#screen-dashboard .dashx-per-libre input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 28px;
+  margin: 0;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+}
+
+#screen-dashboard .dashx-per-aplicar {
+  height: 28px;
+  padding: 0 11px;
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+#screen-dashboard .dashx-per-error {
+  margin: 8px 0 0;
+  color: var(--red, #e2504a);
+  font-size: 10px;
+}
+
+#screen-dashboard .dashx-per-error[hidden] { display: none; }
 
 /* Las tres secciones a la izquierda, Alertas a la derecha, en una sola fila.
    Antes había dos filas de pestañas —Análisis/Alertas arriba y las secciones
@@ -893,5 +1056,33 @@
   }
   #screen-dashboard .dashx-kpi-value {
     font-size: 19px;
+  }
+}
+
+/* El desplegable de período mide ~500 px: en un teléfono se sale de la
+   pantalla. Va DESPUÉS de las reglas base — con la misma especificidad gana la
+   última, y escrita antes no ganaría nunca. */
+@media (max-width: 720px) {
+  #screen-dashboard .dashx-periodos {
+    width: 100%;
+  }
+  #screen-dashboard .dashx-per-btn {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  #screen-dashboard .dashx-per-pop {
+    right: 0;
+    width: auto;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #screen-dashboard .dashx-per-der {
+    width: auto;
+  }
+  #screen-dashboard .dashx-per-libre {
+    grid-template-columns: 1fr 1fr;
+  }
+  #screen-dashboard .dashx-per-aplicar {
+    grid-column: 1 / -1;
   }
 }

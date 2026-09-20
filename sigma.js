@@ -3229,14 +3229,6 @@ function dashxSeccion(seccion, el) {
   if (typeof AuxDash !== 'undefined') AuxDash.mostrarSeccion(seccion);
 }
 
-function dashxPeriodo(periodo, el) {
-  if (el) {
-    el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-  }
-  if (typeof AuxDash !== 'undefined') AuxDash.setPeriodo(periodo);
-}
-
 function _rendFechaLocal(value) {
   if (!value) return '';
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
