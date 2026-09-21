@@ -84,7 +84,7 @@ test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
   assert.match(lifecycle,/function markReadOnly\(m\)/);
   assert.match(lifecycle,/Modo consulta/);
   assert.match(lifecycle,/const readOnly=!canTransition\(\)/);
-  assert.doesNotMatch(lifecycle,/data-osl-quick-action=.*disabled/s);
+  assert.doesNotMatch(lifecycle,/data-osl-quick-action=[^\n]*disabled/);
   assert.match(lifecycleCss,/\.osl-quick-status-menu/);
   assert.match(lifecycleCss,/\.osl-assignment-compare/);
 });

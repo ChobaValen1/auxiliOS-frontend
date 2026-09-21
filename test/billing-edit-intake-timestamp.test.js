@@ -34,16 +34,24 @@ test('el contexto del ingreso es authenticated-only y fuerza recarga de PostgRES
   assert.doesNotMatch(migration,/grant execute on function public\.get_driver_service_intake_context_v1\(uuid\) to anon/);
 });
 
-test('Facturación abre el editor administrativo específico y vuelve a revisión',()=>{
+test('Facturación abre el editor administrativo específico',()=>{
   assert.match(billing,/window\.editarServicioFacturacion\(id\)/);
   assert.match(wizard,/get_operator_billing_service_edit_context_v1/);
-  assert.match(wizard,/update_operator_billing_service_v1/);
-  assert.match(wizard,/Volvió a revisión antes de Facturación/);
   assert.match(migration,/v_role<>'administracion'/);
   assert.match(migration,/s\.billing_status='invoiced'/);
   assert.match(migration,/s\.status='cancelled'/);
-  assert.match(migration,/completed_at=s\.completed_at/);
-  assert.match(migration,/administrative_review_status='pending'/);
-  assert.match(migration,/billing_status='not_ready'/);
   assert.match(migration,/transaction_timestamp\(\)/);
+});
+
+test('la corrección desde Facturación usa v2, no v1',()=>{
+  /* v1 reabre el servicio a 'at_origin' para reutilizar update_operator_service_v4
+     como validador, y restaura el estado antes de commitear. El truco dejó de
+     funcionar cuando apareció el trigger operator_services_before_update(), que
+     levanta "El servicio está cerrado y su estado operativo no puede reabrirse".
+
+     Como por Facturación sólo llegan servicios FINALIZADOS, v1 fallaba siempre
+     con 400 — reproducido contra la base. v2 corrige sin reabrir nada: valida y
+     tarifa en línea y deja billing_status en 'pending' con status='completed'. */
+  assert.match(wizard,/update_operator_billing_service_v2/);
+  assert.doesNotMatch(wizard,/update_operator_billing_service_v1/);
 });

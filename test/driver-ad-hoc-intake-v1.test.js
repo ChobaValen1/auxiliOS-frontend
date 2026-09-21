@@ -64,7 +64,9 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   assert.match(services,/list_driver_service_intakes_v2/);
   assert.match(services,/Crear servicio/);
   assert.match(services,/crearServicioDesdeIngresoChofer/);
-  assert.match(read('operator-service-wizard.js'),/Servicio creado y finalizado correctamente/);
+  // El aviso pasó de toast a cuadro de confirmación, pero sigue diciendo que el
+  // servicio quedó creado Y finalizado, que es lo que distingue este camino.
+  assert.match(read('operator-service-wizard.js'),/confirmar\('Servicio creado','Quedó creado y finalizado correctamente\.'\)/);
   assert.match(read('operator-service-wizard.js'),/resolve_operator_service_document_v6/);
 });
 

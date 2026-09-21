@@ -176,8 +176,10 @@
   }
   function download(format,filename,columns,data,sheets){
     if(!data.length)throw Error('No hay datos para exportar.');
-    if(format==='xlsx'){AuxiliosExcelExport.download({filename,sheets:sheets||[{name:'Sueldos',columns,rows:data}]});return;}
+    const detalle=`${data.length} registro${data.length===1?'':'s'} exportado${data.length===1?'':'s'}`;
+    if(format==='xlsx'){AuxiliosExcelExport.download({filename,sheets:sheets||[{name:'Sueldos',columns,rows:data}],detalle});return;}
     const url=URL.createObjectURL(new Blob([csv(columns,data)],{type:'text/csv;charset=utf-8;'}));const link=document.createElement('a');link.href=url;link.download=filename+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    if(typeof window.confirmarDescarga==='function')window.confirmarDescarga(filename+'.csv',detalle);
   }
   function exportMonth(format){try{const data=rows.filter(l=>(!filter||l.estado===filter)&&String(l.chofer_nombre).toLowerCase().includes(search.toLowerCase()));download(format,'Sueldos_'+document.getElementById('pl-mes-periodo').value,exportColumns,data);}catch(e){toast(e.message,'error');}}
   function exportDetail(format){

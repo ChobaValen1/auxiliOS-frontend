@@ -86,7 +86,7 @@ test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
 
 test('Administración puede corregir o anular un servicio FINALIZADO',()=>{
   assert.match(billing,/window\.editarServicioFacturacion/);
-  assert.match(billing,/openDetailAction\(id,\s*'annul'\)/);
+  assert.match(billing,/openRowAction\(id,\s*'annul'\)/);
   assert.match(legacyDesk,/update_operator_billing_service_v2/);
   assert.match(legacyDesk,/Sólo Administración puede modificar un servicio FINALIZADO/);
   assert.match(legacyDesk,/billing_status='pending'/);
@@ -101,18 +101,21 @@ test('revertir Facturación vuelve a Servicios sin reabrir lifecycle ni recursos
   assert.match(revertFn,/set billing_status='not_ready'/);
   assert.match(revertFn,/billing_reverted/);
   assert.doesNotMatch(revertFn,/set\s+status\s*=|assigned_driver_id\s*=|assigned_truck_id\s*=/);
-  assert.match(billing,/window\.cambiarVistaServicios\?\.\('history'\)/);
+  // La acción sale de una fila de Facturación, así que la vista se queda ahí:
+  // el confirmar dice adónde fue el servicio en vez de mudar al usuario.
+  assert.doesNotMatch(billing,/window\.cambiarVistaServicios/);
+  assert.match(billing,/Servicios → Historial/);
 });
 
 test('acciones administrativas de servicio siguen auditadas sin duplicar formularios',()=>{
-  assert.match(billing,/function actionConfirmMarkup/);
-  assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio/);
+  assert.match(billing,/function confirmActionMarkup/);
+  assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio|data-ob-reason/);
   assert.match(billing,/p_reason:\s*null/);
   assert.match(adminNoReason,/Acción administrativa/);
   assert.match(adminNoReason,/revert_operator_billing_service_v2/);
   assert.match(adminNoReason,/annul_operator_billing_service_v2/);
   assert.doesNotMatch(billing,/window\.confirm|[^\.]confirm\(/);
-  assert.match(billingCss,/\.ob-action-confirm/);
+  assert.match(billingCss,/\.ob-confirm-modal/);
   assert.match(billingCss,/\.ob-selection/);
 });
 

@@ -532,7 +532,7 @@
     const actors = [...S.actors.entries()].sort((a, b) => String(a[1]?.full_name || a[1]?.email || '').localeCompare(String(b[1]?.full_name || b[1]?.email || ''), 'es'));
     screen.innerHTML = `<div class="aux-center-page">
       <div class="aux-center-head"><div><div class="aux-center-eyebrow">Auditoría</div><h2>Historial</h2><p>Lectura administrativa simple: qué se hizo, sobre qué registro, quién lo hizo y cuándo.</p></div><div id="aux-history-count" class="aux-center-readonly"></div></div>
-      <section class="aux-center-tools"><button class="aux-center-tool" onclick="abrirHistorialServicios()"><span>▤</span><b>Historial de servicios</b><small>Consultar servicios finalizados y anulados.</small></button></section><section class="aux-history-panel">
+      <section class="aux-history-panel">
         <div class="aux-history-toolbar">
           <input class="form-input" id="aux-history-query" type="search" placeholder="Buscar por registro o usuario" data-audit-filter>
           <select class="form-input" id="aux-history-action" data-audit-filter>

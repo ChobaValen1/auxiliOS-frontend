@@ -134,3 +134,30 @@ test('link preview shows conflicts while missing administrative fields remain fi
   assert.deepEqual(Array.from(result,row=>row.key),['customer_name','origin']);
   assert.equal(result[0].administrative,'Nombre Operaciones');assert.equal(result[0].reported,'Nombre firmado');
 });
+
+
+test('firmar el remito confirma con el mismo cuadro que iniciar jornada', () => {
+  // Un toast chico en una esquina se pierde en la calle: cerrar un servicio es
+  // una acción con consecuencias y se confirma como el inicio de jornada.
+  const sigma = fs.readFileSync('sigma.js', 'utf8');
+  assert.match(sigma, /operationFeedback\('Servicio finalizado'/);
+  // Y la cola de servicios asignados se refresca en el acto: si no, el chofer
+  // sigue viendo el botón de un servicio que ya cerró y el segundo intento
+  // falla contra la base.
+  const cierre = sigma.slice(sigma.indexOf("console.log('✅ Remito actualizado en Supabase:'"),
+                             sigma.indexOf("operationFeedback('Servicio finalizado'"));
+  assert.match(cierre, /actualizarServiciosAsignados/);
+});
+
+
+test('crear un servicio confirma con el mismo cuadro', () => {
+  const wizard = fs.readFileSync('operator-service-wizard.js', 'utf8');
+  assert.match(wizard, /const confirmar=/);
+  assert.match(wizard, /window\.operationFeedback==='function'/);
+  // Cae al toast si sigma.js no está cargado: es lo que había antes, no un error.
+  assert.match(wizard, /:notify\(titulo,'success'\)/);
+  assert.match(wizard, /confirmar\('Servicio creado'/);
+  // Editar también confirma con el cuadro: desde Facturación se corrigen
+  // servicios ya facturados y el toast en la esquina pasaba desapercibido.
+  assert.match(wizard, /if\(wasEdit\)confirmar\('Servicio actualizado'/);
+});

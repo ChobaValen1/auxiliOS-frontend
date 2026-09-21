@@ -17,7 +17,7 @@
     loading: false,
     detail: null,
     detailLoading: false,
-    actionConfirm: null,
+    rowAction: null,
     invoiceOpen: false,
     invoiceForm: null,
     invoiceBusy: false,
@@ -47,6 +47,12 @@
   const notify = (message, type = 'info') => typeof window.toast === 'function'
     ? window.toast(message, type)
     : console[type === 'error' ? 'error' : 'log'](message);
+  /* Anular y revertir son acciones con consecuencias contables: se confirman
+     con el mismo cuadro que el resto de AuxiliOS, no con un toast en la
+     esquina. Si sigma.js no está cargado cae al toast, que es lo que había. */
+  const confirmar = (titulo, detalle) => typeof window.operationFeedback === 'function'
+    ? window.operationFeedback(titulo, detalle, 'success', 2400)
+    : notify(titulo, 'success');
   const money = (value, currency = 'ARS') => new Intl.NumberFormat('es-AR', {
     style: 'currency', currency: currency || 'ARS', maximumFractionDigits: 2
   }).format(num(value));
@@ -404,14 +410,42 @@
     return `<div class="ob-history">${rows.map(row => `<article><b>${esc(revisionLabel(row.billing_status))} · ${esc(money(row.company_amount, row.currency || currency))}</b><small>${esc(row.created_by_name || 'Usuario')} · ${esc(date(row.created_at))}${row.reason ? ` · ${esc(row.reason)}` : ''}</small></article>`).join('')}</div>`;
   }
 
-  function actionConfirmMarkup() {
-    if (!S.actionConfirm) return '';
-    const type = S.actionConfirm;
-    const title = type === 'annul' ? 'Anular servicio FINALIZADO' : 'Revertir Facturación';
-    const copy = type === 'annul'
+  /* Revertir y Anular se resuelven desde la fila. Antes el menú abría el
+     detalle completo —una RPC entera— sólo para mostrar el confirmar adentro:
+     había que entrar al servicio para sacarlo. Las dos RPC piden nada más que
+     el service_id, así que el confirmar se arma con lo que la fila ya tiene. */
+  function rowById(id) {
+    return S.rows.find(item => String(item.service_id) === String(id)) || {};
+  }
+
+  function confirmActionMarkup() {
+    const { id, type, busy } = S.rowAction;
+    const row = rowById(id);
+    const annul = type === 'annul';
+    const parts = dateParts(row.scheduled_for);
+    const copy = annul
       ? 'El servicio pasará a ANULADO, saldrá de Facturación y quedará en Servicios → Historial. La acción queda auditada automáticamente.'
       : 'El servicio saldrá de Facturación y conservará FINALIZADO en Servicios → Historial. La acción queda auditada automáticamente.';
-    return `<section class="ob-action-confirm ${type === 'annul' ? 'danger' : ''}"><div><b>${title}</b><small>${copy}</small></div><div class="ob-review-actions"><button class="ob-button" data-ob="cancel-action">Cancelar</button><button class="ob-button ${type === 'annul' ? 'danger' : 'primary'}" data-ob="confirm-action">Confirmar</button></div></section>`;
+    return `<section role="dialog" aria-modal="true" aria-labelledby="ob-confirm-title" class="ob-confirm-modal${annul ? ' danger' : ''}">
+      <header class="ob-invoice-head">
+        <div><small>Facturación</small><h3 id="ob-confirm-title">${annul ? 'Anular servicio FINALIZADO' : 'Revertir Facturación'}</h3><p>${esc(copy)}</p></div>
+        <button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>× Cerrar</button>
+      </header>
+      <div class="ob-confirm-body">
+        <div class="ob-confirm-service">
+          <article><small>Servicio</small><b>${esc(row.service_order_number || row.service_number || '—')}</b></article>
+          <article><small>Fecha</small><b>${esc(parts.day || '—')} ${esc(parts.time || '')}</b></article>
+          <article><small>Prestadora</small><b>${esc(row.company_name || '—')}</b></article>
+          <article><small>Base</small><b>${esc(row.billing_base_name || '—')}</b></article>
+          <article><small>Cliente</small><b>${esc(row.customer_name || '—')}</b></article>
+          <article><small>Importe</small><b>${esc(money(row.current_company_amount, row.currency))}</b></article>
+        </div>
+      </div>
+      <footer class="ob-invoice-footer">
+        <small>${annul ? 'El servicio deja de ser facturable.' : 'Se puede volver a enviar a Facturación.'}</small>
+        <div><button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>Cancelar</button><button class="ob-button ${annul ? 'danger' : 'primary'}" type="button" data-ob="confirm-action" ${busy ? 'disabled' : ''}>${busy ? 'Procesando…' : (annul ? 'Anular servicio' : 'Revertir Facturación')}</button></div>
+      </footer>
+    </section>`;
   }
 
   function detailMarkup() {
@@ -426,7 +460,7 @@
       ${Math.abs(delta) > .009 ? `<section class="ob-section"><h4>Cambio tarifario detectado</h4><div class="ob-field"><b>${delta > 0 ? '+' : ''}${esc(money(delta, quote.currency))} respecto del cierre operativo.</b><small>Revisá esta diferencia antes de facturar el servicio.</small></div></section>` : ''}
       <section class="ob-section"><h4>Servicio</h4><div class="ob-grid"><div class="ob-field"><small>Fecha/Hora</small><b>${esc(date(service.scheduled_for))}</b></div><div class="ob-field"><small>Prestadora</small><b>${esc(service.company_name || '—')}</b></div><div class="ob-field"><small>Base</small><b>${esc(service.billing_base_name || '—')}</b></div><div class="ob-field"><small>Tipo</small><b>${esc(service.service_name || '—')}</b></div><div class="ob-field"><small>Origen</small><b>${esc(service.origin || '—')}</b></div><div class="ob-field"><small>Destino</small><b>${esc(service.destination || '—')}</b></div><div class="ob-field"><small>Cliente</small><b>${esc(service.customer_name || '—')}</b></div><div class="ob-field"><small>Patente</small><b>${esc(service.vehicle_plate || '—')}</b></div></div></section>
       <section class="ob-section"><h4>Tarifa aplicada ahora</h4><div class="ob-grid"><div class="ob-field"><small>Tarifario</small><b>${esc(quote.rate_card_name || '—')} · v${esc(quote.rate_card_version || '—')}</b></div><div class="ob-field"><small>Contrato</small><b>${esc(quote.contract_name || '—')}</b></div><div class="ob-field"><small>Radio cubierto</small><b>${quote.covered_radius_km == null ? '—' : esc(`${quote.covered_radius_km} km`)}</b></div><div class="ob-field"><small>KM facturables</small><b>${esc(`${quote.billable_distance_km ?? 0} km`)}</b></div></div></section>
-      <section class="ob-section"><h4>Composición</h4>${componentMarkup(quote)}</section>${actionConfirmMarkup()}
+      <section class="ob-section"><h4>Composición</h4>${componentMarkup(quote)}</section>
       <section class="ob-section"><h4>Historial de Facturación</h4>${revisionsMarkup(detail.revisions, quote.currency)}</section>
     </div></aside>`;
   }
@@ -440,17 +474,22 @@
     const excelControl = S.selected.size
       ? '<div id="obx-wrap" class="obx-wrap"><button type="button" class="obx-trigger" id="obx-trigger" aria-haspopup="menu" aria-expanded="false" data-ob="excel-toggle">⇩ Excel</button></div>'
       : '';
-    const overlayOpen = S.invoiceOpen || S.detail || S.detailLoading;
-    const overlay = S.invoiceOpen
-      ? invoiceModalMarkup()
-      : S.detailLoading
-        ? '<aside class="ob-detail"><div class="ob-empty">Calculando detalle de facturación…</div></aside>'
-        : S.detail ? detailMarkup() : '';
+    const overlayOpen = S.invoiceOpen || S.rowAction || S.detail || S.detailLoading;
+    const overlay = S.rowAction
+      ? confirmActionMarkup()
+      : S.invoiceOpen
+        ? invoiceModalMarkup()
+        : S.detailLoading
+          ? '<aside class="ob-detail"><div class="ob-empty">Calculando detalle de facturación…</div></aside>'
+          : S.detail ? detailMarkup() : '';
+    // Centrado para la factura y para el confirmar; el detalle va pegado a la
+    // derecha, que es de donde sale.
+    const backdropClass = S.invoiceOpen ? ' ob-invoice-backdrop' : S.rowAction ? ' ob-confirm-backdrop' : '';
     screen.innerHTML = `<div class="ob-shell">
       <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes</button></div>
       <div class="ob-filters"><input class="ob-search" id="ob-search" placeholder="Buscar código, cliente, origen, destino…" value="${esc(S.search)}"><select class="ob-filter" id="ob-company-filter">${opts.companies}</select><select class="ob-filter" id="ob-period-filter">${opts.periods}</select>${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh">↻ Actualizar</button></div></div>
       ${selectionMarkup()}<div class="ob-table-card">${S.loading ? '<div class="ob-empty">Actualizando Facturación…</div>' : tableMarkup()}</div>
-      <div id="ob-detail-backdrop" class="ob-detail-backdrop ${S.invoiceOpen ? 'ob-invoice-backdrop' : ''}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
+      <div id="ob-detail-backdrop" class="ob-detail-backdrop${backdropClass}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
     </div>`;
   }
 
@@ -492,7 +531,7 @@
     S.invoiceOpen = false;
     S.detail = null;
     S.detailLoading = true;
-    S.actionConfirm = null;
+    S.rowAction = null;
     render();
     try {
       const { data, error } = await db().rpc('get_operator_billing_service_detail_v3', { p_service_id: id });
@@ -507,19 +546,17 @@
     }
   }
 
-  async function openDetailAction(id, type) {
+  function openRowAction(id, type) {
     if (type === 'annul' && !canCorrect()) return notify('Sin permiso para anular', 'error');
     if (type === 'revert' && !canRevert()) return notify('Sin permiso para revertir Facturación', 'error');
-    await openDetail(id);
-    if (String(S.detail?.service?.service_id || '') !== String(id)) return;
-    S.actionConfirm = type;
+    if (!rowById(id).service_id) return notify('Ese servicio ya no está en la mesa de Facturación', 'warning');
+    S.rowAction = { id: String(id), type: type, busy: false };
     render();
   }
 
   function closeDetail() {
     S.detail = null;
     S.detailLoading = false;
-    S.actionConfirm = null;
     render();
   }
 
@@ -569,7 +606,7 @@
     const error = validateSelection();
     if (error) return notify(error, 'warning');
     S.detail = null;
-    S.actionConfirm = null;
+    S.rowAction = null;
     S.invoiceForm = freshInvoiceForm();
     S.invoiceOpen = true;
     render();
@@ -630,25 +667,27 @@
   }
 
   async function confirmAdminAction() {
-    const id = S.detail?.service?.service_id;
-    const type = S.actionConfirm;
-    if (!id || !type) return;
-    const button = document.querySelector('[data-ob="confirm-action"]');
-    if (button) { button.disabled = true; button.textContent = 'Procesando…'; }
+    if (!S.rowAction || S.rowAction.busy) return;
+    const { id, type } = S.rowAction;
+    const label = rowById(id).service_order_number || rowById(id).service_number || 'El servicio';
+    S.rowAction.busy = true;
+    render();
     try {
       const rpc = type === 'annul' ? 'annul_operator_billing_service_v2' : 'revert_operator_billing_service_v2';
       const { error } = await db().rpc(rpc, { p_service_id: id, p_reason: null });
       if (error) throw error;
-      notify(type === 'annul' ? 'Servicio ANULADO' : 'Facturación revertida', 'success');
+      S.rowAction = null;
       S.detail = null;
-      S.actionConfirm = null;
       clearSelection();
       await load();
-      if (typeof window.goTo === 'function') {
-        window.goTo('operaciones');
-        window.cambiarVistaServicios?.('history');
-      }
+      // Se queda en Facturación: la acción se disparó desde una fila de esta
+      // mesa, y mandarlo a Operaciones lo sacaba de donde estaba trabajando.
+      confirmar(
+        type === 'annul' ? 'Servicio anulado' : 'Facturación revertida',
+        `${label} salió de Facturación y queda en Servicios → Historial.`
+      );
     } catch (error) {
+      if (S.rowAction) S.rowAction.busy = false;
       notify(error.message || 'No se pudo completar la acción', 'error');
       render();
     }
@@ -663,8 +702,8 @@
   function handleRowAction(action, id) {
     if (action === 'view') return openDetail(id);
     if (action === 'edit') return editServiceById(id);
-    if (action === 'revert') return openDetailAction(id, 'revert');
-    if (action === 'annul') return openDetailAction(id, 'annul');
+    if (action === 'revert') return openRowAction(id, 'revert');
+    if (action === 'annul') return openRowAction(id, 'annul');
   }
 
   function clearAndLoad() {
@@ -746,7 +785,7 @@
     if (action === 'close-invoice') return closeInvoice();
     if (action === 'confirm-invoice') return createInvoice();
     if (action === 'close-detail') return closeDetail();
-    if (action === 'cancel-action') { S.actionConfirm = null; return render(); }
+    if (action === 'cancel-action') { if (S.rowAction?.busy) return; S.rowAction = null; return render(); }
     if (action === 'confirm-action') return confirmAdminAction();
   }
 
