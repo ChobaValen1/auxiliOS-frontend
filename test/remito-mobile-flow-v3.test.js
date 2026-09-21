@@ -112,7 +112,7 @@ test('FINALIZAR, ACTIVADO y guardar pendiente bloquean dobles envíos',()=>{
   assert.match(sigma,/btnPendiente\.disabled = true/);
   assert.match(sigma,/telefono:\s+telefono \|\| null/);
   assert.match(bridge,/activationInFlight/);
-  assert.match(bridge,/mark_driver_operator_service_activated_v2/);
+  assert.match(bridge,/mark_driver_operator_service_activated_v3/);
 });
 
 test('ACTIVADO exige uno de cuatro motivos cerrados y lo persiste mediante RPC v2',()=>{

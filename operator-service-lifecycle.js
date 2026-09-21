@@ -71,42 +71,6 @@ function syncQuickStatusAvailability(){document.body?.classList.toggle('osl-quic
 function init(){injectCss();ensureModal();ensureQuickMenu();syncQuickStatusAvailability();window.addEventListener('auxilios:service-workspace-opened',onWorkspaceOpened);window.addEventListener('popstate',()=>close(false));window.addEventListener('hashchange',()=>close(false));window.addEventListener('resize',closeQuickMenu);window.addEventListener('scroll',closeQuickMenu,true);document.addEventListener('click',onDocumentClickCapture,true);const w=O()?.S?.wizard;if(w?.serviceId)renderHistory(w.serviceId)}
 const api={ARRIVAL_REASONS,ANNUL_REASONS,STATUS,openArrival,openFinalize,openAnnul,openAssignment,renderHistory,confirmAction,confirmAssignmentChange,close};
 window.OperatorServiceLifecycleV2=api;
-/* ¿Un servicio ACTIVADO se factura?
-   El chofer informa el hecho —fue y el servicio no se prestó— pero no decide
-   la plata. Que no se haya prestado no significa que no se cobre: la salida
-   existió, y el tarifario tiene el concepto "Cancelación" para eso. La decisión
-   la toman Operaciones o Facturación, desde la fila, sin entrar al servicio. */
-const ACTIVATION_BILLING=[['si','Sí, se factura la salida'],['no','No se factura']];
-async function openActivationBilling(id,readOnly=false){
-  const s=service(id);if(!s)return notify('No se encontró el servicio','error');
-  const body=ref(s)+radioCards('activation_billing',ACTIVATION_BILLING)
-    +`<div class="osl-warning"><b>Se cobra con el concepto "Cancelación"</b><span>Si esa tarifa todavía no está cargada para la prestadora, el servicio va a aparecer en Facturación con el error tarifario a la vista.</span></div>`;
-  const m=openModal(shell('¿Este servicio activado se factura?','El chofer informó que no se prestó el servicio. Falta decidir si la salida se cobra.',body,'Guardar decisión'),id);
-  if(readOnly)markReadOnly(m);
-  const form=m.querySelector('#osl-form');
-  form.addEventListener('submit',async e=>{
-    e.preventDefault();
-    if(readOnly||rejectStaleContext()||state.busy||!db())return;
-    const submit=form.querySelector('[type="submit"]');
-    state.busy=true;if(submit){submit.disabled=true;submit.textContent='Guardando…'}
-    try{
-      const billable=new FormData(form).get('activation_billing')==='si';
-      const {error}=await db().rpc('decide_activated_service_billing_v1',{p_service_id:id,p_billable:billable,p_reason:null});
-      if(error)throw error;
-      close(true);
-      const titulo=billable?'Se factura':'No se factura';
-      const detalle=billable
-        ?'El servicio pasó a Facturación con el concepto Cancelación.'
-        :'Queda cerrado sin cobro, y sigue en el historial.';
-      if(typeof window.operationFeedback==='function')window.operationFeedback(titulo,detalle,'success',2400);
-      else notify(titulo,'success');
-      await O()?.loadServices?.();
-    }catch(err){
-      notify(err.message||'No se pudo guardar la decisión','error');
-      state.busy=false;if(submit){submit.disabled=false;submit.textContent='Guardar decisión'}
-    }
-  });
-}
-Object.assign(window,{marcarArribadoManual:openArrival,finalizarServicioOperador:openFinalize,anularServicioOperador:openAnnul,asignarServicioRapido:openAssignment,cerrarModalLifecycleServicio:close,definirCobroActivado:openActivationBilling});
+Object.assign(window,{marcarArribadoManual:openArrival,finalizarServicioOperador:openFinalize,anularServicioOperador:openAnnul,asignarServicioRapido:openAssignment,cerrarModalLifecycleServicio:close});
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();

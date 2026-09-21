@@ -122,7 +122,7 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   assert.match(card,/p3-bar-divider[^>]*aria-hidden="true">\|/);
   assert.match(js,/Completar remito/);
   assert.match(js,/Marcar como activado/);
-  assert.match(js,/mark_driver_operator_service_activated_v2/);
+  assert.match(js,/mark_driver_operator_service_activated_v3/);
   assert.match(css,/\.p3-preview/);
   assert.match(css,/\.p3-summary-block/);
   assert.match(css,/\.p3-draft-state/);
