@@ -1236,18 +1236,27 @@ let arrastreRequerido = false;
 
 
 
+let _finalizacionRemitoEnCurso = false;
 async function finalizarRemito() {
+  if (_finalizacionRemitoEnCurso) return false;
+  const btn = document.getElementById('rem-btn-next');
+  const label = btn?.textContent;
+  _finalizacionRemitoEnCurso = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
   try {
     return await _finalizarRemitoInner();
   } catch (e) {
     console.error('Error en finalizarRemito:', e);
     toast('Error al finalizar: ' + (e?.message || e), 'error');
+    return false;
+  } finally {
+    _finalizacionRemitoEnCurso = false;
+    if (btn) { btn.disabled = false; btn.textContent = label; }
   }
 }
 
 async function _finalizarRemitoInner() {
-  const btn = document.getElementById('btn-finalizar');
-  if (btn && btn.style.opacity === '0.5') {
+  if (!hasSig) {
     toast('Se requiere firma para finalizar', 'error'); return;
   }
 
@@ -1255,6 +1264,8 @@ async function _finalizarRemitoInner() {
   const _fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const _rand  = Math.floor(Math.random() * 9000) + 1000;
   const nro       = document.getElementById('rem-nro')?.value || `REM-${_fecha}-${_rand}`;
+  const nroInput = document.getElementById('rem-nro');
+  if (nroInput) nroInput.value = nro; // Reintentos usan el mismo remito.
   const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
   const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
   const km        = document.getElementById('rem-km')?.value || '0';
@@ -1296,108 +1307,7 @@ async function _finalizarRemitoInner() {
     return;
   }
 
-  // Build display for split or single payment
-  const pagoPartes = pago.includes('+') ? pago.split('+') : [pago];
-  const payIcon    = pagoPartes.map(p => PAY_ICONS[p]||'💳').join('');
-  const payColor   = pagoPartes.length > 1 ? 'var(--amber)' : (PAY_COLORS[pago]||'var(--text)');
-  const pagoLabel  = pagoPartes.length > 1 ? pagoPartes.join(' + ') : pago;
-  const extras     = peaje > 0
-    ? `Peaje: $${peaje.toLocaleString('es-AR')}`
-    : excedente > 0
-      ? `Excedente: $${excedente.toLocaleString('es-AR')}`
-      : 'Sin extras';
-
-  // ① → Tabla de remitos
-  const tbodyRemitos = document.getElementById('tbody-remitos');
-  if (tbodyRemitos) {
-    const tr = document.createElement('tr');
-    tr.setAttribute('data-rem', JSON.stringify({
-      nro, fecha:`${new Date().toLocaleDateString('es-AR')} · ${hora}`,
-      nroSrv, patente, marca:'—', cliente: cliente||'Sin nombre',
-      origen, destino, km,
-      peaje: String(peaje), excedente: String(excedente), otros: String(otros),
-      pago, tipo,
-      confirmaciones:['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados']
-    }));
-    tr.innerHTML = `
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nro}</span></td>
-      <td style="font-family:'DM Mono'">${hora}</td>
-      <td style="font-size:11px;color:var(--muted2)">—</td>
-      <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${patente}</div></td>
-      <td>
-        <div style="font-size:12px">${tipo}</div>
-        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">${nroSrv || '—'}</div>
-      </td>
-      <td><div style="font-size:11px;color:var(--muted)">${extras}</div></td>
-      <td><div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:${payColor}"><span>${payIcon}</span>${pagoLabel}</div></td>
-      <td><span class="pill pill-green">✓ Firmado</span></td>
-      <td>
-        <div style="display:flex;gap:5px">
-          <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
-          <button class="btn btn-ghost btn-pdf-remito" style="padding:4px 10px;font-size:10px">PDF</button>
-        </div>
-      </td>`;
-    tbodyRemitos.insertBefore(tr, tbodyRemitos.firstChild);
-  }
-
-  // ② → Viajes del día
-  const tbodyViajes = document.querySelector('#tabla-viajes tbody');
-  if (tbodyViajes && origen && destino) {
-    const num = String(tbodyViajes.rows.length + 1).padStart(2,'0');
-    const tr  = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="color:var(--muted);font-family:'DM Mono'">${num}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nroSrv || '—'}</span></td>
-      <td><span style="font-family:'DM Mono';font-weight:600">${patente}</span></td>
-      <td><span class="pill pill-blue">🔧 ${tipo}</span></td>
-      <td>${origen}</td>
-      <td>${destino}</td>
-      <td style="font-family:'DM Mono'">${hora}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber)">${km} km</span></td>
-      <td><span class="pill pill-green">✓ Completado</span></td>`;
-    tbodyViajes.appendChild(tr);
-    const counter = document.getElementById('viajes-counter');
-    if (counter) counter.textContent = `${tbodyViajes.rows.length} servicios registrados`;
-  }
-
-  // ③ → Historial de jornadas
-  const tbodyHistorial = document.getElementById('tbody-historial-jornadas');
-  if (tbodyHistorial) {
-    const today = new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-    const existingRow = tbodyHistorial.querySelector('tr[data-today]');
-    if (existingRow) {
-      const kmCell = existingRow.querySelector('td:nth-child(4) span');
-      if (kmCell) kmCell.textContent = (parseInt(kmCell.textContent) + parseInt(km)) + ' km';
-    } else {
-      const tr = document.createElement('tr');
-      tr.setAttribute('data-today', '1');
-      tr.innerHTML = `
-        <td><b>${today}</b> <span class="pill pill-blue" style="font-size:8px;padding:2px 5px">Hoy</span></td>
-        <td style="font-family:'DM Mono'">—</td>
-        <td style="font-family:'DM Mono'">—</td>
-        <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${km} km</span></td>
-        <td>—</td>
-        <td><span class="pill pill-muted">No</span></td>
-        <td><span class="pill pill-amber">Abierta</span></td>`;
-      tbodyHistorial.insertBefore(tr, tbodyHistorial.firstChild);
-    }
-  }
-
-  // ④ → Últimas jornadas dashboard
-  const jornadasList = document.querySelector('#screen-dashboard div[style*="flex-direction:column;gap:8px"]');
-  if (jornadasList) {
-    const today = new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
-    const div = document.createElement('div');
-    div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid rgba(245,166,35,0.3)';
-    div.innerHTML = `
-      <div>
-        <div style="font-size:12px;font-weight:600">📍 ${today} <span style="color:var(--amber)">· Nuevo</span></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:1px">${km} km · ${tipo} · ${patente}</div>
-      </div>
-      <span class="pill pill-amber">Abierta</span>`;
-    jornadasList.insertBefore(div, jornadasList.firstChild);
-  }
-
+  // La interfaz se actualiza sólo después de confirmar el guardado.
   // ⑤ → Save signature (capturamos el dataURL ANTES de cambiar de vista, para evitar
   // que se pierda al ocultarse el canvas. Lo guardamos en localStorage Y lo pasamos
   // explícitamente a guardarRemitoCompleto para que no haya ambigüedad sobre qué canvas usar)
@@ -1408,7 +1318,6 @@ async function _finalizarRemitoInner() {
     _saveSig(nro, firmaDataURL);
   }
 
-  resetPagoForm();
 
   // ⑥ → Recolectar confirmaciones
   const confirmaciones = [];
@@ -1423,7 +1332,9 @@ async function _finalizarRemitoInner() {
   // 1. Mini-función para arreglar el bug de los miles (ej: "9.100" -> 9100)
   const parsearImporte = (val) => {
     if (!val) return 0;
-    const limpio = String(val).replace(/\./g, '').replace(',', '.');
+    let limpio = String(val).trim().replace(/[^0-9,.-]/g, '');
+    if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, '');
     return parseFloat(limpio) || 0;
   };
 
@@ -1475,7 +1386,9 @@ async function _finalizarRemitoInner() {
     confirmaciones,
   });
 
-  if (!ok) return;
+  if (!ok) return false;
+  resetPagoForm();
+  return true;
 }
 
 // ── CÁLCULO DE TOTAL ──────────────────────────

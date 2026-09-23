@@ -962,6 +962,25 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
   };
 }
 
+// Cada etapa termina con éxito o error; nunca deja el formulario esperando sin límite.
+async function _esperarPasoRemito(operation, label, timeoutMs = 45000) {
+  const controller = new AbortController();
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => operation(controller.signal)),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          const error = new Error(label + ': se agotó el tiempo de espera. Tus datos siguen en pantalla; reintentá con el mismo remito.');
+          error.code = 'REMITO_TIMEOUT';
+          reject(error);
+          controller.abort();
+        }, timeoutMs);
+      }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 async function guardarRemitoCompleto(datosRemito) {
   try {
     _toast('Guardando remito...', 'info');
@@ -969,7 +988,9 @@ async function guardarRemitoCompleto(datosRemito) {
     // ── 1. Utilidad Matemática Segura (Bug $9.100) ────────────
     const parsearImporte = (val) => {
       if (!val) return 0;
-      const limpio = String(val).replace(/\./g, '').replace(',', '.');
+      let limpio = String(val).trim().replace(/[^0-9,.-]/g, '');
+      if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
+      else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, '');
       return parseFloat(limpio) || 0;
     };
 
@@ -1015,11 +1036,14 @@ async function guardarRemitoCompleto(datosRemito) {
       return true;
     }
 
+    if (!firmaDataURL) throw new Error('Falta la firma del remito.');
+
     // ── 5b. ONLINE: Subida de Fotos ───────────────────────────
     const fotoUrls = [];
-    for (const file of archivosFotos) {
-      const nombre = `${nroFinal}_${Date.now()}.${file.name.split('.').pop()}`;
-      const { error: ue } = await _db.storage.from('remitos').upload(nombre, file, { upsert: true });
+    for (const [index, file] of archivosFotos.entries()) {
+      const nombre = `${nroFinal}_${Date.now()}_foto_${index}.${file.name.split('.').pop()}`;
+      const { error: ue } = await _esperarPasoRemito(() => _db.storage.from('remitos').upload(nombre, file, { upsert: true }), 'Subida de foto');
+      if (ue) throw new Error('No se pudo subir la foto: ' + ue.message);
       if (!ue) {
         const { data: ud } = _db.storage.from('remitos').getPublicUrl(nombre);
         fotoUrls.push(ud.publicUrl);
@@ -1032,16 +1056,17 @@ async function guardarRemitoCompleto(datosRemito) {
       try {
         const blob = await (await fetch(firmaDataURL)).blob();
         const nombre = `firma_${nroFinal}_${Date.now()}.png`;
-        const { error: fe } = await _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true });
+        const { error: fe } = await _esperarPasoRemito(() => _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true }), 'Subida de firma');
         if (!fe) {
           const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
           firmaUrl = fd.publicUrl;
         } else {
           console.warn('⚠️ No se pudo subir la firma:', fe.message);
-          _toast('Firma guardada localmente (no se pudo subir): ' + fe.message, 'warn');
+          throw new Error('No se pudo subir la firma: ' + fe.message);
         }
       } catch (upErr) {
         console.warn('⚠️ Error procesando firma:', upErr);
+        throw upErr;
       }
     }
 
@@ -1049,10 +1074,10 @@ async function guardarRemitoCompleto(datosRemito) {
 
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
-    const { error } = await _db.from('remitos').upsert(
+    const { error } = await _esperarPasoRemito(signal => _db.from('remitos').upsert(
       _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl),
       { onConflict: 'nro_remito' }
-    );
+    ).abortSignal(signal), 'Guardado del remito');
 
     if (error) { 
       console.error("❌ Error de inserción Supabase:", error);
@@ -1060,14 +1085,15 @@ async function guardarRemitoCompleto(datosRemito) {
       return false; 
     }
 
-    await cargarRemitos();
+    // La recarga es secundaria: el servidor ya confirmó el remito firmado.
+    Promise.resolve().then(() => cargarRemitos()).catch(err => console.warn('No se pudo actualizar el listado de remitos:', err));
     _toast(`Remito ${nroFinal} guardado ✓`, 'success');
     showRemitosView('lista');
     return true;
 
   } catch (err) {
     console.error('❌ Error inesperado en guardarRemitoCompleto:', err);
-    _toast('Error inesperado al guardar', 'error');
+    _toast('No se pudo guardar el remito: ' + (err?.message || err), 'error');
     return false;
   }
 }
