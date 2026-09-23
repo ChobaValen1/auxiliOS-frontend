@@ -8,8 +8,8 @@ const sigma = read('sigma.js');
 const data = read('supabase.js');
 const pending = () => new Promise(() => {});
 
-function dataContext({ reload = async () => {}, uploadError = null, upload = null, online = true, saveError = null } = {}) {
-  const calls = { uploads: [], writes: [], views: [], messages: [], outbox: [] };
+function dataContext({ reload = async () => {}, uploadError = null, upload = null, online = true, saveError = null, existingLogId = null, lookupError = null } = {}) {
+  const calls = { uploads: [], writes: [], lookups: [], views: [], messages: [], outbox: [] };
   const context = vm.createContext({
     console: { log() {}, warn() {}, error() {} }, setTimeout, clearTimeout, AbortController,
     USUARIO_ACTUAL: { id: 'driver-test' }, navigator: { onLine: online },
@@ -22,7 +22,13 @@ function dataContext({ reload = async () => {}, uploadError = null, upload = nul
         upload: async (...args) => { calls.uploads.push([bucket, ...args]); return upload ? upload() : { error: uploadError }; },
         getPublicUrl: name => ({ data: { publicUrl: `https://example.test/${bucket}/${name}` } }),
       }) },
-      from: () => ({ upsert: (payload) => { calls.writes.push(payload); return { abortSignal: async () => ({ error: saveError }) }; } }),
+      from: () => ({
+        select: () => {
+          const query = { filters: {}, eq(field, value) { this.filters[field] = value; return this; }, maybeSingle() { return this; }, abortSignal: async () => { calls.lookups.push(query.filters); return { data: lookupError ? null : (existingLogId === undefined ? null : { log_id: existingLogId }), error: lookupError }; } };
+          return query;
+        },
+        upsert: (payload) => { calls.writes.push(payload); return { abortSignal: async () => ({ error: saveError }) }; },
+      }),
     },
   });
   vm.runInContext(data.slice(data.indexOf('function _remitoDbDesdeDatos'), data.indexOf('// Nota: esta función maneja')), context);
@@ -66,6 +72,29 @@ test('una subida tardía después del timeout no continúa con la escritura del 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls.writes.length, 0);
   assert.equal(calls.views.length, 0);
+});
+
+test('al completar un remito pendiente conserva el log_id inmutable guardado', async () => {
+  const { context, calls, payload } = dataContext({ existingLogId: 'jornada-original' });
+  payload.log_id = 'jornada-activa-distinta';
+  assert.equal(await context.guardarRemitoCompleto(payload), true);
+  assert.deepEqual(calls.lookups[0], { driver_id: 'driver-test', nro_remito: 'REM-TEST' });
+  assert.equal(calls.writes[0].log_id, 'jornada-original');
+});
+
+test('un remito nuevo conserva el log_id de la jornada activa', async () => {
+  const { context, calls, payload } = dataContext({ existingLogId: null });
+  payload.log_id = 'jornada-activa';
+  assert.equal(await context.guardarRemitoCompleto(payload), true);
+  assert.equal(calls.writes[0].log_id, 'jornada-activa');
+});
+
+test('si no se puede leer el borrador, falla antes de subir evidencia o escribir', async () => {
+  const { context, calls, payload } = dataContext({ lookupError: { message: 'Lectura rechazada' } });
+  assert.equal(await context.guardarRemitoCompleto(payload), false);
+  assert.equal(calls.uploads.length, 0);
+  assert.equal(calls.writes.length, 0);
+  assert.match(calls.messages.at(-1)[0], /Lectura rechazada/);
 });
 
 test('sin conexión se conserva firma y pago mixto en el outbox', async () => {
