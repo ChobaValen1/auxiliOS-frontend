@@ -1,4 +1,4 @@
-const CACHE_NAME='auxilios-billing-phase2-v209-remito-fix-1';
+const CACHE_NAME='auxilios-billing-phase2-v209-remito-fix-2';
 const PRECACHE_ASSETS=[
   '/sigma.css','/sigma.js',
   '/empresas-v2.js','/empresas-v2.css',

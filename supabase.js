@@ -1036,6 +1036,22 @@ async function guardarRemitoCompleto(datosRemito) {
       return true;
     }
 
+    // El vínculo de un remito con su jornada es inmutable en Postgres. Al
+    // completar un borrador existente, el formulario puede estar abierto desde
+    // otra jornada o sin jornada activa; preservar la relación guardada evita
+    // que el upsert intente moverla y reciba REMITO_LOG_IMMUTABLE.
+    const { data: remitoExistente, error: remitoExistenteError } = await _esperarPasoRemito(
+      signal => _db.from('remitos')
+        .select('log_id')
+        .eq('driver_id', USUARIO_ACTUAL.id)
+        .eq('nro_remito', nroFinal)
+        .maybeSingle()
+        .abortSignal(signal),
+      'Lectura del remito pendiente'
+    );
+    if (remitoExistenteError) throw new Error('No se pudo recuperar el remito pendiente: ' + remitoExistenteError.message);
+    const logIdPersistido = remitoExistente?.log_id ?? datosRemito.log_id ?? null;
+
     if (!firmaDataURL) throw new Error('Falta la firma del remito.');
 
     // ── 5b. ONLINE: Subida de Fotos ───────────────────────────
@@ -1075,7 +1091,7 @@ async function guardarRemitoCompleto(datosRemito) {
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
     const { error } = await _esperarPasoRemito(signal => _db.from('remitos').upsert(
-      _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl),
+      _remitoDbDesdeDatos({ ...datosRemito, log_id: logIdPersistido }, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl),
       { onConflict: 'nro_remito' }
     ).abortSignal(signal), 'Guardado del remito');
 
