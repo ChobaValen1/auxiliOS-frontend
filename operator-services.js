@@ -34,6 +34,7 @@ const truck=id=>S.trucks.find(x=>String(x.truck_id)===String(id));
 const concept=id=>S.concepts.find(x=>String(x.concept_id)===String(id));
 const service=id=>S.services.find(x=>String(x.service_id)===String(id));
 async function openSignedRemito(id){
+  if(canManage()&&!['completed','cancelled'].includes(service(id)?.status)&&typeof window.editarServicioOperador==='function')return window.editarServicioOperador(id);
   try{
     if(!window.AuxiliosRemitoReviewV2?.open){
       if(typeof window.loadAuxiliosModule!=='function')throw new Error('El cargador del visor no está disponible');

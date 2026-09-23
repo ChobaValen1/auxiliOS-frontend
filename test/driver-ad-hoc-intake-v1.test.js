@@ -67,7 +67,8 @@ test('Administración recibe y vincula sólo con el mismo Chofer y Móvil',()=>{
   // El aviso pasó de toast a cuadro de confirmación, pero sigue diciendo que el
   // servicio quedó creado Y finalizado, que es lo que distingue este camino.
   assert.match(read('operator-service-wizard.js'),/confirmar\('Servicio creado','Quedó creado y finalizado correctamente\.'\)/);
-  assert.match(read('operator-service-wizard.js'),/resolve_operator_service_document_v6/);
+  assert.match(read('operator-service-wizard.js'),/create_and_finalize_driver_service_intake_v1/);
+  assert.match(read('migrations/20260923120000_operator_review_draft_v1.sql'),/v_result:=public\.resolve_operator_service_document_v6/);
 });
 
 test('la mesa de ingresos expone por RPC el resumen operativo y de facturación',()=>{

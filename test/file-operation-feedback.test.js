@@ -62,7 +62,7 @@ test('adjuntar el PDF de una factura y subir la firma de empresa confirman', () 
 });
 
 test('modificar un servicio desde Facturación muestra la validación', () => {
-  const save = wizard.split('async function save()')[1];
+  const save = wizard.split('async function save(')[1];
   assert.match(save, /returnToBilling\)confirmar\('Servicio actualizado'/);
   assert.match(save, /wasEdit\)confirmar\('Servicio actualizado'/);
   assert.doesNotMatch(save, /notify\('Servicio actualizado'/);
