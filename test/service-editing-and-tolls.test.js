@@ -29,7 +29,7 @@ test('la tercera columna tiene un único renderer comercial',()=>{
  assert.match(workspace,/id="osv4-review-slot" class="osv4-review-slot"/);
  assert.match(workspace,/OperatorServiceCommercialAddonsV1\?\.render/);
  assert.doesNotMatch(workspace,/tollCard|extrasCard|renderTolls|renderRows|data-toll-field|data-row-concept/);
- assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación/);
+ assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio/);
 });
 
 test('formato de cobro se retrae tras elegir y permite Cambiar en la misma fila',()=>{

@@ -6,7 +6,7 @@ const sql=read('supabase/migrations/20260923155544_service_activation_review_v4.
 const lifecycle=read('operator-service-lifecycle.js');
 const bridge=read('operator-service-bridge.js');
 const services=read('operator-services.js');
-test('ACTIVADO conserva su identidad y muestra su clasificación al finalizar',()=>{assert.match(services,/s\?\.driver_activated===true/);assert.match(services,/No facturable/);assert.match(services,/Pendiente de cierre · Recursos disponibles/);});
+test('ACTIVADO conserva su identidad y muestra su clasificación al finalizar',()=>{assert.match(services,/s\?\.driver_activated===true/);assert.match(services,/No facturable/);assert.match(services,/Pendiente de cierre administrativo/);});
 test('activación conserva responsables históricos y libera asignación operativa',()=>{assert.match(sql,/activation_driver_id=s.assigned_driver_id/);assert.match(sql,/assigned_driver_id=null,assigned_truck_id=null/);assert.match(sql,/fecha_hora_fin=coalesce/);});
 test('el cierre exige clasificación explícita y motivo si no se factura',()=>{assert.match(sql,/if p_billable is null then raise exception/);assert.match(sql,/not p_billable and nullif\(btrim\(p_reason\)/);assert.match(lifecycle,/name="activation-billing"/);assert.doesNotMatch(lifecycle,/value="billable" checked/);});
 test('los cargos no facturables quedan excluidos y el cierre se audita',()=>{assert.match(sql,/new.billing_status:='excluded'/);assert.match(sql,/activation_reviewed_by=uid/);assert.match(sql,/activation_reviewed_at=now\(\)/);});

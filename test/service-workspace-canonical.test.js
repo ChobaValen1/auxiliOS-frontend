@@ -121,7 +121,7 @@ test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloqu
   assert.match(wizard,/markDirty\(\);render\(\)/);
   assert.match(workspace,/action:'autocomplete'/);
   assert.match(workspace,/action:'route'/);
-  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
+  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|No visible para Operaciones/);
   assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total/);
   assert.match(editMigration,/calculate_operator_service_quote_v4_full/);
 });

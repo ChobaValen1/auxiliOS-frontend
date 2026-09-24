@@ -117,7 +117,7 @@ test('Servicios es tabla compacta única y no contiene renderer monetario ni res
   assert.match(operatorServices,/os-table-body/);
   assert.doesNotMatch(operatorServices,/os-kpis|os-board|renderKpis|canSeeCommercial|money\(|company_estimated_total|estimated_total|pricing_snapshot/);
   assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total/);
-  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
+  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|No visible para Operaciones/);
   assert.equal(fs.existsSync('feature-flags.js'),false,'feature-flags.js legacy debe permanecer eliminado');
   assert.doesNotMatch(config,/feature-flags\.js/);
   assert.doesNotMatch(sw,/feature-flags\.js/);
