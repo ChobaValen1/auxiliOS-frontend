@@ -30,14 +30,10 @@ test('finalizar sin arribo da el campo, no sólo el reto', () => {
   assert.ok(fn.indexOf('update_operator_service_v4') < fn.indexOf("transition('finalize')"));
 });
 
-test('un activado avisa que se factura completo antes de cerrarlo', () => {
-  const fn = lifecycle.split('async function openFinalize')[1].split('function openAnnul')[0];
-  assert.match(fn, /s\.driver_activated===true/);
-  assert.match(fn, /revisá los kilómetros/);
-});
+test('el activado tiene un cierre con decisión explícita y motivo si no se factura',()=>{const fn=lifecycle.split('function openActivatedFinalize')[1].split('function closeQuickMenu')[0];assert.match(fn,/finalize_activated_service_v1/);assert.match(fn,/non_billable/);assert.match(fn,/reason.value.trim/);assert.doesNotMatch(fn,/value="billable" checked/);});
 
 test('el operador puede reasignar el Chofer de un servicio arribado, con aviso', () => {
-  assert.match(services, /\['pending','assigned','at_origin'\]\.includes\(s\.status\)\)actions\+=/);
+  assert.match(services, /entries.push\(\['edit','Editar'\]\)/);
   const fn = lifecycle.split('function openAssignment')[1].split('function openActivation')[0];
   assert.match(fn, /\['pending','assigned','at_origin'\]\.includes\(status\)/);
   assert.match(fn, /El servicio ya está arribado/);

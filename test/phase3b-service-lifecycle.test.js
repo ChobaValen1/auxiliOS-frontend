@@ -19,7 +19,7 @@ test('mesa operativa expone sólo los cinco estados acordados',()=>{
   assert.match(services,/\['assigned','Asignados'\]/);
   assert.match(services,/\['at_origin','Arribados'\]/);
   assert.doesNotMatch(services,/\['en_route','En camino'\]|\['loaded','Cargados'\]|\['at_destination','En destino'\]/);
-  assert.match(services,/Anular servicio/);
+  assert.match(services,/\['annul','Anular'\]/);
 });
 
 test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cuatro',()=>{
@@ -74,7 +74,7 @@ test('las confirmaciones viven dentro de AuxiliOS y la reasignación del editor 
 test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
   assert.match(lifecycle,/function quickActions\(s\)/);
   assert.match(lifecycle,/status==='pending'.*\['assign','Asignar'/s);
-  assert.match(lifecycle,/status==='assigned'.*\['reassign','Re-asignar'.*\['finalize','Finalizar'/s);
+  assert.match(lifecycle,/status==='assigned'.*\['reassign','Reasignar'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/status==='at_origin'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/\.col-status \.os-status/);
   assert.match(lifecycle,/function openAssignment\(id,readOnly=false\)/);
@@ -108,9 +108,9 @@ test('historial permanece en el workspace pero cambios de estado viven sólo en 
   assert.match(lifecycle,/osv4-lifecycle-slot/);
   assert.doesNotMatch(commercial,/lifecyclePanel|data-ca="lifecycle-arrive"|data-ca="lifecycle-finalize"|data-ca="lifecycle-annul"|Estado del servicio|Guardá los cambios antes de cambiar el estado/);
   assert.doesNotMatch(commercialCss,/osca-lifecycle/);
-  assert.match(services,/accionMenuServicio\('arrive'/);
-  assert.match(services,/accionMenuServicio\('finalize'/);
-  assert.match(services,/accionMenuServicio\('annul'/);
+  assert.match(lifecycle,/\['arrive','Arribado'/);
+  assert.match(services,/\['finalize','Finalizar'\]/);
+  assert.match(services,/\['annul','Anular'\]/);
   assert.match(services,/asignarServicioRapido/);
 });
 

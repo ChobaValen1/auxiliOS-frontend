@@ -27,7 +27,7 @@ test('la corrección firmada acepta sólo cargos evidencia y observaciones',()=>
 });
 
 test('Servicios muestra el firmado y cierra documento servicio viaje y recursos atómicamente',()=>{
-  assert.match(services,/Ver remito firmado/);
+  assert.match(read("operator-service-commercial-addons-v1.js"),/Ver remito firmado/);
   assert.match(review,/Revisión y cierre/);
   assert.doesNotMatch(review,/data-review-tab="document"|data-review-panel="document"|os-review-tabs/);
   assert.match(review,/chooseGlobalAction/);

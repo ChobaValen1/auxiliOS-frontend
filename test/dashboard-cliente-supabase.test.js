@@ -25,7 +25,7 @@ test('ningún módulo busca el cliente de Supabase en window', () => {
   // módulos caían ahí y la sección quedaba en blanco sin un error visible,
   // porque la guarda de "sin conexión" se disparaba sola.
   MODULOS.forEach(ruta => {
-    const codigo = soloCodigo(fs.readFileSync(ruta, 'utf8'));
+    const codigo = soloCodigo(fs.readFileSync(ruta, 'utf8').replace(/\r\n/g,'\n'));
     assert.doesNotMatch(codigo, /\bglobal\._db\b/,
       `${ruta} usa global._db, que siempre es undefined`);
     assert.doesNotMatch(codigo, /\bwindow\._db\b/,
@@ -35,7 +35,7 @@ test('ningún módulo busca el cliente de Supabase en window', () => {
 
 test('cada módulo resuelve _db por el scope del script', () => {
   MODULOS.forEach(ruta => {
-    const codigo = soloCodigo(fs.readFileSync(ruta, 'utf8'));
+    const codigo = soloCodigo(fs.readFileSync(ruta, 'utf8').replace(/\r\n/g,'\n'));
     assert.match(codigo, /typeof _db\s*[!=]==\s*'undefined'/,
       `${ruta} debe comprobar _db con typeof antes de usarlo`);
   });
@@ -44,7 +44,7 @@ test('cada módulo resuelve _db por el scope del script', () => {
 test('las RPC que invoca el front son las que existen en las migraciones', () => {
   const llamadas = new Set();
   MODULOS.forEach(ruta => {
-    const codigo = soloCodigo(fs.readFileSync(ruta, 'utf8'));
+    const codigo = soloCodigo(fs.readFileSync(ruta, 'utf8').replace(/\r\n/g,'\n'));
     for (const m of codigo.matchAll(/\.rpc\(\s*'([a-z0-9_]+)'/g)) llamadas.add(m[1]);
     // Facturación guarda el nombre en una constante.
     for (const m of codigo.matchAll(/RPC\s*=\s*'([a-z0-9_]+)'/g)) llamadas.add(m[1]);
@@ -52,7 +52,7 @@ test('las RPC que invoca el front son las que existen en las migraciones', () =>
 
   const sql = fs.readdirSync('migrations')
     .filter(f => f.includes('dashboard'))
-    .map(f => fs.readFileSync('migrations/' + f, 'utf8'))
+    .map(f => fs.readFileSync('migrations/' + f, 'utf8').replace(/\r\n/g,'\n'))
     .join('\n');
 
   assert.ok(llamadas.size >= 4, `se esperaban al menos 4 RPC, hay ${llamadas.size}`);

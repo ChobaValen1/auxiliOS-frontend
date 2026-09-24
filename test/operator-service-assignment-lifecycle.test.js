@@ -3,11 +3,11 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const wizard=fs.readFileSync('operator-service-wizard.js','utf8');
 const lifecycle=fs.readFileSync('operator-service-lifecycle.js','utf8');
+const vm=require('node:vm');
+function runtime(){const O={S:{drivers:[{user_id:'d1',active_truck_id:1,active_log_id:1},{user_id:'d2',active_truck_id:2,active_log_id:2},{user_id:'manual'}],trucks:[{truck_id:1,active_driver_id:'d1',active_log_id:1},{truck_id:2,active_driver_id:'d2',active_log_id:2},{truck_id:3}],wizard:{mode:'create',data:{},dirty:false}},num:Number};const notices=[];const window={OperatorServices:O,addEventListener:()=>{},OperatorServiceWorkspaceV2:{render:()=>{}}};vm.runInNewContext(wizard,{window,document:{getElementById:()=>null},toast:m=>notices.push(m),setTimeout:()=>0,clearTimeout:()=>{},console,crypto:require('node:crypto').webcrypto});return{O,window,notices};}
 const lifecycleCss=fs.readFileSync('operator-service-lifecycle.css','utf8');
 
-test('quitar chofer o móvil limpia ambos recursos',()=>{
-  assert.match(wizard,/if\(!value\)\{w\.data\.assigned_driver_id='';w\.data\.assigned_truck_id='';markDirty\(\);return render\(\);\}/);
-});
+test('quitar chofer o móvil limpia ambos recursos',()=>{const {O}=runtime();for(const kind of ['driver','truck']){const pair=O.pairedResources(kind,'',{assigned_driver_id:'d1',assigned_truck_id:'1'});assert.equal(pair.assigned_driver_id,'');assert.equal(pair.assigned_truck_id,'');}});
 
 test('la jornada activa vuelve a enlazar chofer y móvil antes de asignar',()=>{
   assert.match(wizard,/async function loadResourceAvailability\(\)/);
@@ -18,15 +18,8 @@ test('la jornada activa vuelve a enlazar chofer y móvil antes de asignar',()=>{
   assert.match(wizard,/await loadResourceAvailability\(\);if\(S\.wizard!==w\)return;w\.busy=false;render\(\);if\(intakeId\)window\.OperatorServiceWorkspaceV2\?\.hydrate\?\.\(\);window\.dispatchEvent/);
 });
 
-test('seleccionar chofer o móvil resuelve su pareja en memoria sin una consulta de red por click',()=>{
-  const assignment=wizard.split('function setAssignment(kind,value)')[1].split("window.addEventListener('beforeunload'")[0];
-  assert.match(assignment,/current\?\.active_truck_id/);
-  assert.match(assignment,/current\?\.active_driver_id/);
-  assert.match(assignment,/w\.data\.assigned_truck_id=String\(current\.active_truck_id\)/);
-  assert.match(assignment,/w\.data\.assigned_driver_id=String\(current\.active_driver_id\)/);
-  assert.doesNotMatch(assignment,/_db\.rpc|get_operator_resource_availability|await/);
-  assert.doesNotMatch(wizard,/async function setAssignment/);
-});
+test('chofer y móvil autocompletan la pareja de jornada y permiten la asignación manual',()=>{const {O}=runtime();let pair=O.pairedResources('driver','d1',{});assert.equal(pair.assigned_truck_id,'1');pair=O.pairedResources('truck','2',pair);assert.equal(pair.assigned_driver_id,'d2');pair=O.pairedResources('driver','manual',pair);assert.equal(pair.assigned_truck_id,'');pair=O.pairedResources('truck','3',pair);assert.equal(pair.assigned_driver_id,'manual');assert.equal(pair.assigned_truck_id,'3');assert.equal(O.resourceHint('driver','manual'),'Disponible · Sin jornada abierta');});
+test('crear sin prestadora muestra un aviso y conserva el formulario',async()=>{const {O,window,notices}=runtime();await window.guardarServicioWorkspace();assert.match(notices[0],/Completá prestadora/);assert.ok(O.S.wizard);});
 
 test('guardar confirma cambios de asignación dentro de AuxiliOS',()=>{
   assert.match(wizard,/function confirmAssignmentChange/);

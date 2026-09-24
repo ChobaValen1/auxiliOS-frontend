@@ -2,14 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const mapa = fs.readFileSync('dashboard-mapa-v1.js', 'utf8');
-const css = fs.readFileSync('dashboard-v1.css', 'utf8');
-const index = fs.readFileSync('Index.html', 'utf8');
+const mapa = fs.readFileSync('dashboard-mapa-v1.js', 'utf8').replace(/\r\n/g,'\n');
+const css = fs.readFileSync('dashboard-v1.css', 'utf8').replace(/\r\n/g,'\n');
+const index = fs.readFileSync('Index.html', 'utf8').replace(/\r\n/g,'\n');
 const sql = fs.readFileSync(
-  'migrations/20260919120000_dashboard_zonas_rpc_v1.sql', 'utf8');
+  'migrations/20260919120000_dashboard_zonas_rpc_v1.sql', 'utf8').replace(/\r\n/g,'\n');
 const sqlV3 = fs.readFileSync(
-  'migrations/20260919290000_dashboard_zonas_bases_v3.sql', 'utf8');
-const proxy = fs.readFileSync('supabase/functions/maps-proxy/index.ts', 'utf8');
+  'migrations/20260919290000_dashboard_zonas_bases_v3.sql', 'utf8').replace(/\r\n/g,'\n');
+const proxy = fs.readFileSync('supabase/functions/maps-proxy/index.ts', 'utf8').replace(/\r\n/g,'\n');
 
 test('el mapa no mete una API key de Google en el browser', () => {
   // La key vive en maps-proxy, server-side, y hay un test aparte que lo exige.

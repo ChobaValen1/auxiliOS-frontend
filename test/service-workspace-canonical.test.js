@@ -116,8 +116,8 @@ test('warnings Maps y privacidad siguen dentro del workspace canónico sin bloqu
   assert.match(wizard,/function loadResourceAvailability\(\)/);
   assert.match(wizard,/get_operator_resource_availability/);
   assert.match(wizard,/function setAssignment\(kind,value\)/);
-  assert.match(wizard,/w\.data\.assigned_driver_id=value/);
-  assert.match(wizard,/w\.data\.assigned_truck_id=value/);
+  assert.match(wizard,/Object.assign\(w.data,pairedResources\(kind,value,w.data\)\)/);
+  assert.match(wizard,/function pairedResources\(kind,value,current\)/);
   assert.match(wizard,/markDirty\(\);render\(\)/);
   assert.match(workspace,/action:'autocomplete'/);
   assert.match(workspace,/action:'route'/);

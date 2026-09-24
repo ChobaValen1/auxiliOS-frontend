@@ -2,13 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const charts = fs.readFileSync('dashboard-charts-v1.js', 'utf8');
-const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8');
-const css = fs.readFileSync('dashboard-v1.css', 'utf8');
-const index = fs.readFileSync('Index.html', 'utf8');
-const sigma = fs.readFileSync('sigma.js', 'utf8');
+const charts = fs.readFileSync('dashboard-charts-v1.js', 'utf8').replace(/\r\n/g,'\n');
+const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8').replace(/\r\n/g,'\n');
+const css = fs.readFileSync('dashboard-v1.css', 'utf8').replace(/\r\n/g,'\n');
+const index = fs.readFileSync('Index.html', 'utf8').replace(/\r\n/g,'\n');
+const sigma = fs.readFileSync('sigma.js', 'utf8').replace(/\r\n/g,'\n');
 const migracion = fs.readFileSync(
-  'migrations/20260918160000_dashboard_analytics_base_v1.sql', 'utf8');
+  'migrations/20260918160000_dashboard_analytics_base_v1.sql', 'utf8').replace(/\r\n/g,'\n');
 
 test('la paleta categórica es la validada y no se cicla sola', () => {
   // Estos hex pasaron los cinco checks (banda de luminosidad, croma, separación
@@ -178,7 +178,7 @@ test('los filtros propios de una sección se esconden con ella', () => {
   // no los tape), así que esconder el cuerpo no alcanza para esconderlos.
   assert.match(shell, /if \(s\.filtros\)/);
   assert.match(shell, /fil\.hidden = !visible/);
-  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(ops, /filtros: 'dashx-ops-filtros'/);
   // Arranca oculto: la pestaña inicial es Facturación, que no los usa.
   assert.match(index, /id="dashx-ops-filtros" hidden/);
@@ -220,14 +220,14 @@ test('el anillo lleva la leyenda al costado', () => {
   assert.match(charts, /function leyendaBase\(posicion\)/);
   assert.match(charts, /position: posicion \|\| 'bottom'/);
   assert.match(charts, /datos\.leyenda\) === 'derecha' \? 'right' : 'bottom'/);
-  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.equal((ops.match(/leyenda: 'derecha'/g) || []).length, 2);
 });
 
 test('Operaciones tiene el bloque de combustible con sus explicaciones', () => {
   assert.ok(index.includes('id="dashx-ops-combustible"'), 'falta el gráfico de medios de pago');
   assert.ok(index.includes('id="dashx-ops-comb-metrics"'), 'faltan las razones de combustible');
-  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(ops, /function pintarCombustible/);
   // Cada razón trae su explicación: "12,81" solo no dice si está bien o mal.
   ['Litros cargados', 'Ticket promedio', 'Precio por litro',
@@ -245,7 +245,7 @@ test('Operaciones tiene el bloque de combustible con sus explicaciones', () => {
 
 test('la RPC de operaciones devuelve el bloque de combustible', () => {
   const sql = fs.readFileSync(
-    'migrations/20260919160000_dashboard_operaciones_combustible_v3.sql', 'utf8');
+    'migrations/20260919160000_dashboard_operaciones_combustible_v3.sql', 'utf8').replace(/\r\n/g,'\n');
   ['ticket_promedio', 'precio_litro', 'litros_por_100km', 'costo_por_km', 'por_medio']
     .forEach(k => assert.ok(sql.includes(k), `falta ${k} en el payload`));
   // 'app' no es un medio de pago: el medio es la app (Shell Flota, YPF Ruta…).
@@ -258,7 +258,7 @@ test('la RPC de operaciones devuelve el bloque de combustible', () => {
 
 test('el mapa se carga con la pestaña de Facturación, no como una propia', () => {
   // Vive dentro de ese recuadro: como pestaña separada quedaría huérfano.
-  const mapa = fs.readFileSync('dashboard-mapa-v1.js', 'utf8');
+  const mapa = fs.readFileSync('dashboard-mapa-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(mapa, /grupo: 'facturacion'/);
   assert.match(shell, /function grupoDe/);
   assert.ok(!index.includes("dashxSeccion('mapa'"), 'el mapa no debe tener pestaña propia');
@@ -320,7 +320,7 @@ test('hidden le gana al display propio de cada caja', () => {
       `${c} ya no declara display propio: revisar si la regla de [hidden] sigue haciendo falta`);
   });
   // ...y el período, que lo hereda de .filter-tabs en sigma.css.
-  const sigmaCss = fs.readFileSync('sigma.css', 'utf8');
+  const sigmaCss = fs.readFileSync('sigma.css', 'utf8').replace(/\r\n/g,'\n');
   assert.match(sigmaCss, /\.filter-tabs \{\s*\n?\s*display: flex/);
 });
 
@@ -333,7 +333,7 @@ test('alertas abre un panel lateral, no una vista', () => {
   // El cuerpo de las alertas se mudó entero adentro.
   ['alx-pendientes', 'alx-chips', 'alx-body'].forEach(id =>
     assert.ok(index.includes(`id="${id}"`), `falta ${id} en el panel`));
-  const sigma = fs.readFileSync('sigma.js', 'utf8');
+  const sigma = fs.readFileSync('sigma.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(sigma, /function alxAbrirPanel/);
   assert.match(sigma, /function alxCerrarPanel/);
   // Escape cierra, como cualquier modal.
@@ -343,7 +343,7 @@ test('alertas abre un panel lateral, no una vista', () => {
 });
 
 test('el refresco de alertas mira el panel, no la vista que ya no existe', () => {
-  const sigma = fs.readFileSync('sigma.js', 'utf8');
+  const sigma = fs.readFileSync('sigma.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(sigma, /if \(alxPanelAbierto\(\)\) _alxRender\(\);/);
   assert.doesNotMatch(sigma, /dash-view-alertas/);
   assert.doesNotMatch(sigma, /dash-ctx-bar/);
@@ -357,11 +357,11 @@ test('el período desaparece en las secciones que no lo usan', () => {
      camión está parado— y su cargar() no recibe filtros. Un filtro que no
      filtra es peor que no tenerlo: el que lo toca y no ve cambiar nada no sabe
      si el tablero está roto. */
-  const flota = fs.readFileSync('dashboard-flota-v1.js', 'utf8');
+  const flota = fs.readFileSync('dashboard-flota-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(flota, /registrarSeccion\(\{ id: 'flota', cargar: cargar, periodo: false \}\)/);
   assert.match(flota, /async function cargar\(\) \{/, 'si pasara a recibir filtros, revisar periodo:false');
 
-  const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8');
+  const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(shell, /esVisible\(s\) && s\.periodo !== false/);
   assert.match(shell, /per\.hidden = !usaPeriodo/);
   // Y si no queda nada en la barra, la barra entera se esconde.
@@ -370,11 +370,11 @@ test('el período desaparece en las secciones que no lo usan', () => {
 });
 
 test('cada grupo de filtros se muestra sólo con su sección', () => {
-  const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8');
+  const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(shell, /if \(fil\) fil\.hidden = !visible;/);
   // Prestadora y base son de Facturación; camión y chofer, de Operaciones.
-  const fact = fs.readFileSync('dashboard-facturacion-v1.js', 'utf8');
-  const ops  = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8');
+  const fact = fs.readFileSync('dashboard-facturacion-v1.js', 'utf8').replace(/\r\n/g,'\n');
+  const ops  = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(fact, /ID_FILT\s*=\s*'dashx-fact-filtros'/);
   assert.match(ops,  /filtros: 'dashx-ops-filtros'/);
   assert.doesNotMatch(fact, /f-camion|f-chofer/);

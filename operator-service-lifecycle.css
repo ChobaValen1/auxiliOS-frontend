@@ -12,3 +12,5 @@
 .osl-resumen{grid-template-columns:auto 1fr;gap:6px 14px}
 @media(min-width:620px){.osl-resumen{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);column-gap:22px}}
 .osl-resumen b{overflow-wrap:anywhere}
+
+.os-resource-hint{display:block;font-size:10px;line-height:1.3;color:var(--muted);margin-top:3px;font-weight:400}.osv4-reactive [aria-invalid="true"]{outline:1px solid #ef4444;outline-offset:1px}

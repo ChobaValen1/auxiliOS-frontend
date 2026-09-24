@@ -184,7 +184,8 @@ test('Servicios abre la revisión desde cada servicio y no duplica una bandeja d
   assert.match(review,/resolve_operator_service_document_v6/);
   assert.match(review,/Elegí Rechazar, Modificar o Aprobar/);
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
-  assert.match(menu,/Ver remito firmado/);
+  assert.match(menu,/Ver servicio/);
+  assert.match(read("operator-service-commercial-addons-v1.js"),/Ver remito firmado/);
   assert.doesNotMatch(menu,/Aprobar remito/);
 });
 
