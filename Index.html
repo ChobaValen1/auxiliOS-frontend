@@ -14,12 +14,12 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=remitos-sin-alta-admin-v144-20260925">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-sin-alta-admin-v144-20260925">
-<link rel="stylesheet" href="dashboard-v1.css?v=remitos-sin-alta-admin-v144-20260925">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-sin-alta-admin-v144-20260925">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-sin-alta-admin-v144-20260925">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-sin-alta-admin-v144-20260925">
+<link rel="stylesheet" href="sigma.css?v=remitos-tabla-v2-v145-20260925">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-tabla-v2-v145-20260925">
+<link rel="stylesheet" href="dashboard-v1.css?v=remitos-tabla-v2-v145-20260925">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-tabla-v2-v145-20260925">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-tabla-v2-v145-20260925">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-tabla-v2-v145-20260925">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +39,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="supabase.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
+<script src="config.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="supabase.js?v=remitos-tabla-v2-v145-20260925" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="sigma.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="dashboard-charts-v1.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="dashboard-shell-v1.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="dashboard-facturacion-v1.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="dashboard-operaciones-v1.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="dashboard-flota-v1.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
-<script src="dashboard-mapa-v1.js?v=remitos-sin-alta-admin-v144-20260925" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="sigma.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="dashboard-charts-v1.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="dashboard-shell-v1.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="dashboard-facturacion-v1.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="dashboard-operaciones-v1.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="dashboard-flota-v1.js?v=remitos-tabla-v2-v145-20260925" defer></script>
+<script src="dashboard-mapa-v1.js?v=remitos-tabla-v2-v145-20260925" defer></script>
 </head>
 <body>
 
@@ -1196,6 +1196,7 @@
           <div id="rmx-clear-host" class="rmx-host"></div>
         </div>
         <div class="rmx-actions">
+          <span class="rmx-chips" id="rmx-chips"></span>
           <span class="rmx-count" id="filtro-count">—</span>
           <button class="rmx-btn" id="btn-export-remitos" type="button" onclick="exportarRemitosExcel()" style="display:none">⇩ Exportar</button>
         </div>
@@ -1226,36 +1227,25 @@
       </div>
 
 <div id="remitos-lista" style="display:block; margin-top:14px">
-  <!-- KPIs de remitos: solo admin/supervisión (se muestra por JS) -->
-  <div id="remitos-kpis" style="display:none;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:20px;font-weight:800" id="rkpi-cantidad">—</div>
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Remitos del período</div>
-    </div>
-    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:20px;font-weight:800" id="rkpi-facturado">—</div>
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Facturado</div>
-    </div>
-    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:20px;font-weight:800" id="rkpi-km">—</div>
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">KM facturados</div>
-    </div>
-    <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:20px;font-weight:800;color:var(--red)" id="rkpi-incompletos">—</div>
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">Con datos incompletos</div>
+  <div id="rmx-bulk" class="rmx-bulk" hidden>
+    <span id="rmx-bulk-count">0 remitos seleccionados</span>
+    <div class="rmx-bulk-actions">
+      <button class="rmx-btn" type="button" onclick="exportarRemitosSeleccionados()">⇩ Exportar selección</button>
+      <button class="rmx-btn" id="rmx-bulk-pdf" type="button" onclick="descargarPdfsSeleccionados()">Descargar PDF</button>
+      <button class="rmx-btn ghost" type="button" onclick="_rmxLimpiarSeleccion()">Quitar selección</button>
     </div>
   </div>
-  <div class="card desktop-only" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-    <table class="data-table" id="tabla-remitos" style="display: table !important; width: 100%; min-width: 700px;">
+  <div class="card desktop-only rmx-table-card" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+    <table class="data-table rmx-table" id="tabla-remitos" style="display: table !important; width: 100%; min-width: 860px;">
       <thead>
         <tr>
-          <th>Nº Remito</th>
-          <th>Hora</th>
-          <th>Chofer</th>
-          <th>Patente</th>
-          <th>Servicio · N° Srv</th>
-          <th>Peaje · Excedente</th>
-          <th>Pago</th>
+          <th class="rmx-col-check"><input type="checkbox" id="rmx-sel-all" aria-label="Seleccionar los remitos de esta página"></th>
+          <th>N° Servicio</th>
+          <th>Fecha y hora</th>
+          <th>Cliente</th>
+          <th>Tipo de servicio</th>
+          <th class="rmx-money">Cobrado en el lugar</th>
+          <th>Medio de pago</th>
           <th>Estado</th>
           <th>Acciones</th>
         </tr>

@@ -1622,10 +1622,21 @@ function _rmxRenderFilters() {
   let rol = '';
   try { rol = PERFIL_USUARIO?.roles?.name || ''; } catch (_) { /* perfil todavía no cargado */ }
   const opts = id => [...($(id)?.options || [])].filter(o => o.value).map(o => ({ value: o.value, label: o.textContent.trim() }));
-  const estados = [['firmado','Firmados'],['pendiente','Pendientes'],['anulado','Anulados']];
+  const estados = [['firmado','Firmados'],['pendiente','Pendientes'],['revisar','Por revisar'],['anulado','Anulados']];
   if (rol === 'administracion' || rol === 'supervision') estados.push(['cerrado_admin','Cerrados admin']);
   $('rmx-estado-host').innerHTML = F.select({ id: 'estado', label: 'Estado', value: filtroEstado === 'todos' ? '' : filtroEstado, options: estados.map(([value, label]) => ({ value, label })), allLabel: 'Todos' });
   const admin = $('filtros-admin') && $('filtros-admin').style.display !== 'none';
+  if (admin && !window._rmxTiposCargados && typeof _rmxCargarConceptos === 'function') {
+    window._rmxTiposCargados = true;
+    _rmxCargarConceptos().then(conceptos => {
+      const tipoSel = $('filtro-tipo-servicio');
+      if (!tipoSel) return;
+      const actual = tipoSel.value;
+      tipoSel.innerHTML = '<option value="">Todos</option>' + conceptos.filter(c => c.is_active !== false).map(c => `<option value="${_rmxEsc(c.concept_id)}">${_rmxEsc(c.name)}</option>`).join('') + '<option value="__sin__">Sin clasificar</option>';
+      tipoSel.value = [...tipoSel.options].some(o => o.value === actual) ? actual : '';
+      _rmxRenderFilters();
+    });
+  }
   let count = [filtroEstado !== 'todos', (filtroBuscar || '').trim()].filter(Boolean).length;
   if (admin) {
     const desde = $('filtro-desde')?.value, hasta = $('filtro-hasta')?.value, dia = $('filtro-dia-especifico')?.value;
@@ -1665,6 +1676,7 @@ function aplicarFiltrosRemitos() {
   _rmxRenderFilters();
   window._remitosFiltros = filtros;
   window._remitosPagina = 1;
+  _rmxLimpiarSeleccion();
   if (typeof cargarRemitos === 'function') cargarRemitos({ filtros, page: 1 });
   actualizarKpisRemitos();
 }
@@ -6325,30 +6337,106 @@ function _remitoIncompleto(r) {
   return !r.telefono || r.km === '—' || !r.fotosCount || sinFirma;
 }
 
+// Chips de la barra de Remitos (admin/supervisión): solo lo que pide una acción.
+// Respetan los filtros activos salvo el de estado, y al tocarlos filtran la lista.
 async function actualizarKpisRemitos() {
   const rol = PERFIL_USUARIO?.roles?.name;
-  const cont = document.getElementById('remitos-kpis');
-  if (!cont) return;
   // Los remitos nacen del chofer o de un Servicio: Administración y Supervisión solo los consultan.
   document.getElementById('btn-nuevo-remito-fab')?.classList.toggle('is-role-hidden', !rol || rol === 'administracion' || rol === 'supervision');
   const ftabCerrado = document.getElementById('ftab-cerrado-admin');
   if (ftabCerrado) ftabCerrado.style.display = (rol === 'administracion' || rol === 'supervision') ? '' : 'none';
-  if (rol !== 'administracion' && rol !== 'supervision') { cont.style.display = 'none'; return; }
-  cont.style.display = 'flex';
+  const host = document.getElementById('rmx-chips');
+  if (!host) return;
+  if ((rol !== 'administracion' && rol !== 'supervision') || typeof contarRemitosFiltrados !== 'function') { host.innerHTML = ''; return; }
+  const base = { ...(window._remitosFiltros || _leerFiltrosRemitosUI()) };
+  const turno = (window._rmxChipsTurno || 0) + 1; window._rmxChipsTurno = turno;
+  const [pend, rev] = await Promise.all([
+    contarRemitosFiltrados({ ...base, estado: 'pendiente' }),
+    contarRemitosFiltrados({ ...base, estado: 'revisar' }),
+  ]);
+  if (turno !== window._rmxChipsTurno) return;
+  const chip = (estado, n, txt, cls) => n ? `<button type="button" class="rmx-chip ${cls}${filtroEstado === estado ? ' is-active' : ''}" onclick="_rmxChip('${estado}')" title="${filtroEstado === estado ? 'Quitar filtro' : 'Ver solo estos'}"><b>${n}</b> ${txt}</button>` : '';
+  host.innerHTML = chip('pendiente', pend, pend === 1 ? 'pendiente' : 'pendientes', 'is-amber') + chip('revisar', rev, 'por revisar', 'is-red');
+}
 
-  const filas = await fetchRemitosFiltrados({ filtros: window._remitosFiltros || {} });
-  const activos = filas.filter(r => r.estado !== 'anulado');
+function _rmxChip(estado) {
+  filtroEstado = filtroEstado === estado ? 'todos' : estado;
+  aplicarFiltrosRemitos();
+}
 
-  const facturado = activos.reduce((s, r) =>
-    s + (parseInt(r.peaje) || 0) + (parseInt(r.excedente) || 0) + (parseInt(r.otros) || 0), 0);
-  const km = activos.reduce((s, r) => s + (parseInt(r.km) || 0), 0);
-  const incompletos = activos.filter(_remitoIncompleto).length;
+// ── Remitos · selección múltiple ────────────────────────────────
+// La selección se mantiene al cambiar de página y se limpia al cambiar filtros.
+function _rmxEsc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function _rmxSeleccion() { return window._rmxSel || (window._rmxSel = new Map()); }
+function _rmxLimpiarSeleccion() { _rmxSeleccion().clear(); _rmxSyncSeleccionUI(); }
+function _rmxSyncSeleccionUI() {
+  const sel = _rmxSeleccion();
+  const rows = [...document.querySelectorAll('#tbody-remitos tr.rmx-row')];
+  rows.forEach(tr => {
+    const on = sel.has(String(tr.dataset.remitoId));
+    tr.classList.toggle('is-selected', on);
+    const cb = tr.querySelector('.rmx-check'); if (cb) cb.checked = on;
+  });
+  const all = document.getElementById('rmx-sel-all');
+  if (all) {
+    const marcadas = rows.filter(tr => sel.has(String(tr.dataset.remitoId))).length;
+    all.checked = rows.length > 0 && marcadas === rows.length;
+    all.indeterminate = marcadas > 0 && marcadas < rows.length;
+  }
+  const bar = document.getElementById('rmx-bulk');
+  if (!bar) return;
+  bar.hidden = sel.size === 0;
+  const n = document.getElementById('rmx-bulk-count');
+  if (n) n.textContent = `${sel.size} ${sel.size === 1 ? 'remito seleccionado' : 'remitos seleccionados'}`;
+  const pdf = document.getElementById('rmx-bulk-pdf');
+  if (pdf) pdf.hidden = PERFIL_USUARIO?.roles?.name !== 'administracion';
+}
+document.addEventListener('change', e => {
+  const cb = e.target.closest?.('#tbody-remitos .rmx-check, #rmx-sel-all');
+  if (!cb) return;
+  const sel = _rmxSeleccion();
+  const filas = cb.id === 'rmx-sel-all' ? [...document.querySelectorAll('#tbody-remitos tr.rmx-row')] : [cb.closest('tr')];
+  filas.forEach(tr => {
+    const id = String(tr?.dataset.remitoId || ''); if (!id) return;
+    if (cb.checked) { try { sel.set(id, JSON.parse(tr.getAttribute('data-rem'))); } catch (_) {} }
+    else sel.delete(id);
+  });
+  _rmxSyncSeleccionUI();
+});
+// Cerrar el menú ⋯ al elegir una opción o al tocar afuera.
+document.addEventListener('click', e => {
+  document.querySelectorAll('#tbody-remitos details.rmx-more[open]').forEach(d => {
+    if (!d.contains(e.target) || e.target.closest('.rmx-more-menu button')) d.removeAttribute('open');
+  });
+});
 
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('rkpi-cantidad',    activos.length);
-  set('rkpi-facturado',   '$ ' + facturado.toLocaleString('es-AR'));
-  set('rkpi-km',          km.toLocaleString('es-AR') + ' km');
-  set('rkpi-incompletos', incompletos);
+async function exportarRemitosSeleccionados() {
+  const filas = [..._rmxSeleccion().values()];
+  if (!filas.length) return;
+  _rmxExportarFilas(filas, 'remitos_seleccion');
+}
+
+async function descargarPdfsSeleccionados() {
+  const filas = [..._rmxSeleccion().values()];
+  if (!filas.length) return;
+  if (filas.length > 1) toast(`Descargando ${filas.length} PDF…`);
+  for (const d of filas) {
+    const holder = document.createElement('div');
+    holder.setAttribute('data-rem', JSON.stringify(d));
+    try { await descargarRemitoPDF(holder); } catch (e) { console.error('PDF', d.nro, e); toast(`No se pudo generar el PDF de ${d.srvOrden || d.nro}`, 'error'); }
+    await new Promise(r => setTimeout(r, 350));
+  }
+}
+
+// Editar: abre el detalle del remito con el primer bloque ya en edición.
+async function editarRemitoAdmin(card) {
+  let d = null;
+  try { d = JSON.parse(card.getAttribute('data-rem')); } catch (_) {}
+  if (!d?.id || !_raEsAdmin()) return;
+  await abrirDetalleRemitoAdmin(d.id);
+  if (_raRemito) _raEditar('servicio');
 }
 
 function renderTablaRemitos(data) {
@@ -6367,107 +6455,60 @@ function renderTablaRemitos(data) {
   const iconosPago = typeof PAY_ICONS !== 'undefined' ? PAY_ICONS : {};
   const coloresPago = typeof PAY_COLORS !== 'undefined' ? PAY_COLORS : {};
 
-  data.forEach((r, index) => {
+  const puedeEditar = esAdmin;
+  const esGestion = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
+  const sel = _rmxSeleccion();
+  data.forEach(r => {
     try {
-      const peaje     = parseInt(r.peaje)     || 0;
-      const excedente = parseInt(r.excedente) || 0;
-      const otros     = parseInt(r.otros)     || 0;
-
-      const extrasHTML = `
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <div style="font-size:11px;color:${peaje > 0 ? 'var(--muted)' : 'var(--border2)'}">
-            Peaje: $${peaje.toLocaleString('es-AR')}
-          </div>
-          <div style="font-size:11px;color:${excedente > 0 ? 'var(--amber)' : 'var(--border2)'}">
-            Excedente: $${excedente.toLocaleString('es-AR')}
-          </div>
-          ${otros > 0 ? `<div style="font-size:11px;color:var(--muted)">Otros: $${otros.toLocaleString('es-AR')}</div>` : ''}
-        </div>`;
-
-      const esAnulado     = r.estado === 'anulado';
-      const esFirmado     = r.estado === 'firmado';
+      const esAnulado = r.estado === 'anulado';
+      const esFirmado = r.estado === 'firmado';
       const esCerradoAdmin = r.estado === 'cerrado_admin';
       const esAsignadoAdmin = r.estado === 'pendiente' && r.creadoPor && r.creadoPor !== USUARIO_ACTUAL?.id;
-
-      const estadoPill = esFirmado
+      const estadoPill = esFirmado || esAnulado || esCerradoAdmin
         ? generarHtmlPill(r.estado, r)
-        : esAnulado
-        ? `<span class="pill pill-red">🚫 Anulado</span>`
-        : esCerradoAdmin
-        ? `<span class="pill" style="background:rgba(88,166,255,0.12);color:var(--blue)">🏢 Cerrado por admin</span>`
-        : esAsignadoAdmin
-        ? `<span class="pill pill-amber">📥 Asignado por admin</span>`
-        : `<span class="pill pill-amber">⏳ Pendiente</span>`;
+        : esAsignadoAdmin ? `<span class="pill pill-amber">📥 Asignado por admin</span>` : generarHtmlPill(r.estado, r);
 
-      const pagoParts  = (r.pago || '—').split('+').map(p => p.trim());
-      const pagoHTML = pagoParts.map(p => {
-        const icon  = iconosPago[p]  || '💳';
-        const color = coloresPago[p] || 'var(--text)';
-        return `<span style="color:${color};font-size:11px;font-weight:600">${icon} ${p}</span>`;
-      }).join('<span style="color:var(--muted);font-size:10px;margin:0 2px">+</span>');
+      const peaje = parseFloat(r.peaje) || 0, excedente = parseFloat(r.excedente) || 0, otros = parseFloat(r.otros) || 0;
+      const cobrado = peaje + excedente + otros;
+      const detalle = [peaje && `Peaje $${peaje.toLocaleString('es-AR')}`, excedente && `Excedente $${excedente.toLocaleString('es-AR')}`, otros && `Otros $${otros.toLocaleString('es-AR')}`].filter(Boolean).join(' · ');
+      const pagos = (r.pago || '—').split('+').map(p => p.trim()).filter(p => p && p !== '—');
+      const pagoHTML = pagos.length
+        ? pagos.map(p => `<span class="rmx-pay" style="--c:${coloresPago[p] || 'var(--muted2)'}">${iconosPago[p] || '💳'} ${_rmxEsc(p)}</span>`).join('')
+        : '<span class="rmx-muted">—</span>';
+      const [fecha, hora] = String(r.fecha || '—').split(' ');
+      const vehiculo = [r.patente, r.marca].filter(Boolean).join(' · ');
 
-      const _extras = (parseFloat(r.peaje)||0)+(parseFloat(r.excedente)||0)+(parseFloat(r.otros)||0);
-      const whatsappMsg = encodeURIComponent(
-        `*Remito Sigma Remolques*\n` +
-        `N°: ${r.nro}\nFecha: ${r.fecha}\n` +
-        `Vehículo: ${r.patente}${r.marca ? ' · '+r.marca : ''}\n` +
-        `Cliente: ${r.cliente || '—'}\n` +
-        `Servicio: ${r.origen} → ${r.destino}\n` +
-        `KM: ${r.km || '—'}` +
-        (_extras > 0 ? `\nExtras: $${_extras.toLocaleString('es-AR')}` : '') +
-        (r.pago && r.pago !== '—' ? `\nPago: ${r.pago}` : '') +
-        `\nEstado: ✓ Firmado digitalmente`
-      );
-
-      const btnWA  = `<a href="https://wa.me/?text=${whatsappMsg}" target="_blank"
-        class="btn btn-ghost" style="padding:4px 10px;font-size:10px;text-decoration:none">📲</a>`;
-      const btnPDF = esAdmin
-        ? `<button class="btn btn-ghost btn-pdf-remito" style="padding:4px 10px;font-size:10px">PDF</button>`
-        : '';
-
-      const acciones = (esFirmado || esCerradoAdmin)
-        ? `<div style="display:flex;gap:5px;align-items:center">
-             <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
-             ${btnPDF}
-             ${esFirmado ? btnWA : ''}
-           </div>`
-        : esAnulado
-          ? `<div style="display:flex;gap:5px">
-               <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px;opacity:0.5">Ver</button>
-             </div>`
-          : `<div style="display:flex;gap:5px;align-items:center">
-               <button class="btn btn-primary btn-firmar-remito" style="padding:4px 10px;font-size:10px">Completar</button>
-               <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
-             </div>`;
+      const menu = [
+        esAdmin ? `<button type="button" class="btn-pdf-remito">Descargar PDF</button>` : '',
+        esFirmado ? `<button type="button" class="btn-whatsapp-remito">Compartir por WhatsApp</button>` : '',
+      ].filter(Boolean).join('');
+      const acciones = `<div class="rmx-row-actions">
+          ${!esFirmado && !esAnulado && !esCerradoAdmin && !esGestion ? `<button class="rmx-act primary btn-firmar-remito" type="button">Completar</button>` : ''}
+          <button class="rmx-act btn-ver-remito" type="button">Ver</button>
+          ${puedeEditar && !esAnulado ? `<button class="rmx-act btn-editar-remito" type="button">Editar</button>` : ''}
+          ${menu ? `<details class="rmx-more"><summary aria-label="Más acciones" title="Más acciones">⋯</summary><div class="rmx-more-menu">${menu}</div></details>` : ''}
+        </div>`;
 
       const tr = document.createElement('tr');
-      if (esAnulado) tr.style.opacity = '0.5';
-      else if (!esFirmado) tr.style.background = 'rgba(245,166,35,0.03)';
-      
       tr.setAttribute('data-rem', JSON.stringify(r));
-      // Agregamos una clase de estado por si el CSS los está ocultando
-      tr.className = `fila-remito estado-${r.estado}`; 
-
+      tr.className = `fila-remito rmx-row estado-${r.estado}${esAnulado ? ' is-anulado' : ''}${sel.has(String(r.id)) ? ' is-selected' : ''}`;
+      tr.dataset.remitoId = r.id;
       tr.innerHTML = `
-        <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${r.nro}</span></td>
-        <td style="font-family:'DM Mono';font-size:11px">${r.fecha || '—'}</td>
-        <td style="font-size:11px;color:var(--muted2)">${r.chofer || '—'}</td>
-        <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${r.patente}</div></td>
-        <td>
-          <div style="font-size:12px">${r.tipo || '—'}</div>
-          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">${r.nroSrv || '—'}</div>
-        </td>
-        <td>${extrasHTML}</td>
-        <td>${pagoHTML}</td>
+        <td class="rmx-col-check"><input type="checkbox" class="rmx-check" aria-label="Seleccionar remito ${_rmxEsc(r.nro)}" ${sel.has(String(r.id)) ? 'checked' : ''}></td>
+        <td title="Remito ${_rmxEsc(r.nro)}"><span class="rmx-srv">${_rmxEsc(r.srvOrden || '—')}</span>${r.srvNumero ? `<span class="rmx-sub">${_rmxEsc(r.srvNumero)}</span>` : ''}</td>
+        <td class="rmx-date"><span>${_rmxEsc(fecha)}</span><span class="rmx-sub">${_rmxEsc(hora || '')}</span></td>
+        <td class="rmx-client"><span>${_rmxEsc(r.cliente || '—')}</span>${vehiculo ? `<span class="rmx-sub">${_rmxEsc(vehiculo)}</span>` : ''}</td>
+        <td>${r.tipoReal ? `<span class="rmx-type">${_rmxEsc(r.tipoReal)}</span>` : '<span class="rmx-type is-empty">Sin clasificar</span>'}</td>
+        <td class="rmx-money"${detalle ? ` title="${_rmxEsc(detalle)}"` : ''}>${cobrado ? `$ ${cobrado.toLocaleString('es-AR')}` : '<span class="rmx-muted">—</span>'}</td>
+        <td><div class="rmx-pays">${pagoHTML}</div></td>
         <td>${estadoPill}</td>
         <td>${acciones}</td>`;
-      
       tbody.appendChild(tr);
-
     } catch (err) {
       console.error(`❌ Error dibujando remito ${r?.nro}:`, err);
     }
   });
+  _rmxSyncSeleccionUI();
 
   // Mobile card list — pendientes primero, máximo 3 visible inicialmente
   if (mobileList) {
@@ -6477,6 +6518,7 @@ function renderTablaRemitos(data) {
       (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1)
     );
 
+    const esAdminM = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
     mobileSorted.forEach((r, mIdx) => {
       const esFirmado = r.estado === 'firmado' || r.estado === 'cerrado_admin';
       const esAnulado = r.estado === 'anulado';
@@ -6487,12 +6529,12 @@ function renderTablaRemitos(data) {
       mcard.innerHTML = `
         <div class="card-header-main">
           <div>
-            <span class="text-codigo">${r.nroSrv || 'S/SERVICIO'}</span>
+            <span class="text-codigo">${r.srvOrden || r.nroSrv || 'S/SERVICIO'}</span>
             <span class="text-patente">${r.patente || '—'}</span>
           </div>
           ${generarHtmlPill(r.estado, r)}
         </div>
-        <div style="font-size:13px;font-weight:600">${r.tipo || '—'}</div>
+        <div style="font-size:13px;font-weight:600">${r.tipoReal || (esAdminM ? 'Sin clasificar' : (r.tipo || '—'))}</div>
         <div style="font-size:12px;color:var(--muted)">${r.origen || '—'} → ${r.destino || '—'}</div>
         <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)">
           <span>N° ${r.nro}</span><span>${r.fecha || '—'}</span>
@@ -6556,11 +6598,11 @@ async function _renderRemitosOutboxPendientes() {
       tr.className = 'remito-outbox-pendiente';
       tr.style.cssText = 'background:rgba(245,166,35,0.06);pointer-events:none';
       tr.innerHTML = `
-        <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nro}</span></td>
+        <td class="rmx-col-check"></td>
+        <td><span class="rmx-srv">${p.nro_servicio || '—'}</span><span class="rmx-sub">${nro}</span></td>
         <td style="font-size:11px;color:var(--muted)">—</td>
-        <td style="font-size:11px;color:var(--muted2)">${cliente}</td>
-        <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${patente}</div></td>
-        <td><div style="font-size:12px">${tipo}</div></td>
+        <td class="rmx-client"><span>${cliente}</span><span class="rmx-sub">${patente}</span></td>
+        <td><span class="rmx-type">${tipo}</span></td>
         <td style="font-size:11px;color:var(--muted)">—</td>
         <td style="font-size:11px;color:var(--muted)">—</td>
         <td>${badge}</td>
@@ -12913,41 +12955,44 @@ async function exportarRemitosExcel() {
     const all = await fetchRemitosFiltrados({ filtros, max: 5000 });
 
     if (!all.length) { toast('No hay remitos que exportar con los filtros actuales', 'warn'); return; }
-
-    const headers = [
-      'Nº Remito','Fecha','Nº Servicio','Chofer','Patente','Marca/Modelo',
-      'Cliente','CUIT','Teléfono','Origen','Destino','KM','Tipo Servicio',
-      'Peaje','Excedente','Otros','Extras Total','Pago','Estado','Observaciones'
-    ];
-
-    const rowsAoA = [headers, ...all.map(d => {
-      const peaje = parseInt(d.peaje) || 0;
-      const excedente = parseInt(d.excedente) || 0;
-      const otros = parseInt(d.otros) || 0;
-      return [
-        d.nro, d.fecha, d.nroSrv || '', d.chofer || '', d.patente || '', d.marca || '',
-        d.cliente || '', d.cuit || '', d.telefono || '', d.origen || '', d.destino || '',
-        d.km || '', d.tipo || '',
-        peaje, excedente, otros, peaje + excedente + otros,
-        d.pago || '', d.estado || '', d.observaciones || ''
-      ];
-    })];
-
-    const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
-    ws['!cols'] = headers.map((h, i) => ({ wch: [12,11,12,22,10,16,24,13,15,22,22,7,18,10,11,10,12,14,11,30][i] || 14 }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Remitos');
-
-    const stamp = new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, `remitos_${stamp}.xlsx`);
-    const capMsg = all.length >= 5000 ? ' (límite 5000 aplicado)' : '';
-    confirmarDescarga(`remitos_${stamp}.xlsx`, `${all.length} remito${all.length !== 1 ? 's' : ''} exportado${all.length !== 1 ? 's' : ''}${capMsg}`);
+    _rmxExportarFilas(all, 'remitos', all.length >= 5000 ? ' (límite 5000 aplicado)' : '');
   } catch (e) {
     console.error('exportarRemitosExcel:', e);
     toast('Error al exportar', 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = originalTxt || '📊 Exportar a Excel'; }
+    if (btn) { btn.disabled = false; btn.textContent = originalTxt || '⇩ Exportar'; }
   }
+}
+
+function _rmxExportarFilas(all, prefijo, nota = '') {
+  if (typeof XLSX === 'undefined') { toast('Librería XLSX no cargó — refrescá la página', 'error'); return; }
+  const headers = [
+    'Nº Servicio','Nº Remito','Fecha','Chofer','Patente','Marca/Modelo',
+    'Cliente','CUIT','Teléfono','Origen','Destino','KM','Tipo Servicio',
+    'Peaje','Excedente','Otros','Extras Total','Pago','Estado','Observaciones'
+  ];
+
+  const rowsAoA = [headers, ...all.map(d => {
+    const peaje = parseInt(d.peaje) || 0;
+    const excedente = parseInt(d.excedente) || 0;
+    const otros = parseInt(d.otros) || 0;
+    return [
+      d.srvOrden || d.nroSrv || '', d.nro, d.fecha, d.chofer || '', d.patente || '', d.marca || '',
+      d.cliente || '', d.cuit || '', d.telefono || '', d.origen || '', d.destino || '',
+      d.km || '', d.tipoReal || 'Sin clasificar',
+      peaje, excedente, otros, peaje + excedente + otros,
+      d.pago || '', d.estado || '', d.observaciones || ''
+    ];
+  })];
+
+  const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
+  ws['!cols'] = headers.map((h, i) => ({ wch: [12,11,12,22,10,16,24,13,15,22,22,7,18,10,11,10,12,14,11,30][i] || 14 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Remitos');
+
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `${prefijo}_${stamp}.xlsx`);
+  confirmarDescarga(`${prefijo}_${stamp}.xlsx`, `${all.length} remito${all.length !== 1 ? 's' : ''} exportado${all.length !== 1 ? 's' : ''}${nota}`);
 }
 
 // ── REMITO PDF desde modal ─────────────────────

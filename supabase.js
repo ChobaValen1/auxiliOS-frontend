@@ -698,14 +698,25 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   if (filtros.patente) {
     q = q.ilike('patente', `%${_escPostgrest(filtros.patente)}%`);
   }
-  if (filtros.tipoServicio) {
-    q = q.eq('tipo_servicio', filtros.tipoServicio);
+  // Tipo de servicio real = el del Servicio vinculado. '__sin__' = remitos sin
+  // servicio ("Sin clasificar"); un concept_id se resuelve antes a los ids de
+  // servicio (_rmxResolverFiltros). Si no se pudo resolver (p. ej. sin permiso
+  // sobre Servicios) se cae al texto guardado en el remito.
+  if (filtros.tipoServicio === '__sin__') {
+    q = q.is('operator_service_id', null);
+  } else if (Array.isArray(filtros._serviceIds)) {
+    q = q.in('operator_service_id', filtros._serviceIds.length ? filtros._serviceIds : ['00000000-0000-0000-0000-000000000000']);
+  } else if (filtros.tipoServicio) {
+    q = q.eq('tipo_servicio', filtros._tipoNombre || filtros.tipoServicio);
   }
   if (filtros.pagoMetodo) {
     const p = filtros.pagoMetodo.toLowerCase();
     q = q.or(`pago_1_metodo.eq.${p},pago_2_metodo.eq.${p}`);
   }
-  if (filtros.estado && filtros.estado !== 'todos') {
+  if (filtros.estado === 'revisar') {
+    // Firmados con cargos (addons v2) que Administración todavía no aprobó ni ajustó.
+    q = q.eq('status', 'firmado').eq('addons_version', 2).not('addons_review_status', 'in', '(approved,adjusted)');
+  } else if (filtros.estado && filtros.estado !== 'todos') {
     q = q.eq('status', filtros.estado);
   }
 
@@ -735,6 +746,58 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   return q;
 }
 
+// ── Remitos · datos del Servicio vinculado ─────────────────────────
+// El tipo de servicio real (Liviano, Semipesado, UML…) y el N° de servicio
+// viven en operator_services; el texto del remito puede estar desactualizado
+// ("A definir por Operaciones") o ser genérico en el flujo viejo del chofer.
+let _rmxConceptos = null;
+async function _rmxCargarConceptos() {
+  if (_rmxConceptos) return _rmxConceptos;
+  try {
+    const { data, error } = await _db.from('service_concepts').select('concept_id,name,is_active').order('name');
+    if (error) throw error;
+    _rmxConceptos = data || [];
+  } catch (e) { _rmxConceptos = []; }
+  return _rmxConceptos;
+}
+
+async function _rmxResolverFiltros(filtros = {}) {
+  const f = { ...filtros };
+  delete f._serviceIds; delete f._tipoNombre;
+  if (!f.tipoServicio || f.tipoServicio === '__sin__') return f;
+  const conceptos = await _rmxCargarConceptos();
+  const c = conceptos.find(x => x.concept_id === f.tipoServicio);
+  if (!c) return f;
+  f._tipoNombre = c.name;
+  try {
+    const { data, error } = await _db.from('operator_services').select('service_id').eq('primary_concept_id', c.concept_id).limit(5000);
+    if (error) throw error;
+    f._serviceIds = (data || []).map(x => x.service_id);
+  } catch (e) { /* sin acceso a Servicios: filtra por el texto del remito */ }
+  return f;
+}
+
+async function _rmxEnriquecerServicios(rows) {
+  const ids = [...new Set(rows.map(r => r.operatorServiceId).filter(Boolean))];
+  let servicios = new Map();
+  if (ids.length) {
+    try {
+      const { data, error } = await _db.from('operator_services').select('service_id,service_order_number,service_number,primary_concept_id').in('service_id', ids);
+      if (error) throw error;
+      const conceptos = new Map((await _rmxCargarConceptos()).map(c => [c.concept_id, c.name]));
+      servicios = new Map((data || []).map(s => [s.service_id, { orden: s.service_order_number || '', numero: s.service_number || '', tipo: conceptos.get(s.primary_concept_id) || '' }]));
+    } catch (e) { /* sin acceso a Servicios: se usa lo guardado en el remito */ }
+  }
+  const GENERICOS = new Set(['', '—', 'A definir por Operaciones', 'Servicio de grúa', 'Otro']);
+  rows.forEach(r => {
+    const s = r.operatorServiceId ? servicios.get(r.operatorServiceId) : null;
+    r.srvOrden  = s?.orden || r.nroSrv || '';
+    r.srvNumero = s?.numero || '';
+    r.tipoReal  = s?.tipo || (r.operatorServiceId && !GENERICOS.has(r.tipo) ? r.tipo : '');
+  });
+  return rows;
+}
+
 async function cargarRemitos(opts = {}) {
   try {
     const page     = opts.page     ?? window._remitosPagina ?? 1;
@@ -746,13 +809,13 @@ async function cargarRemitos(opts = {}) {
 
     // Fetch puro (separado del render para poder cachearlo — Fase 3 offline)
     const fnOnline = async () => {
-      let query = _buildRemitosQuery({ filtros });
+      let query = _buildRemitosQuery({ filtros: await _rmxResolverFiltros(filtros) });
       const start = (page - 1) * pageSize;
       const end   = start + pageSize - 1;
       query = query.range(start, end);
       const { data, error, count } = await query;
       if (error) throw new Error(error.message || 'Error Supabase remitos');
-      return { remitos: (data || []).map(_mapRemitoRow), total: count ?? 0 };
+      return { remitos: await _rmxEnriquecerServicios((data || []).map(_mapRemitoRow)), total: count ?? 0 };
     };
 
     const esChofer = typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name === 'chofer';
@@ -813,11 +876,18 @@ async function cargarRemitos(opts = {}) {
 
 async function fetchRemitosFiltrados({ filtros, max = 5000 } = {}) {
   const f = filtros ?? window._remitosFiltros ?? {};
-  let query = _buildRemitosQuery({ filtros: f });
+  let query = _buildRemitosQuery({ filtros: await _rmxResolverFiltros(f) });
   query = query.range(0, Math.max(0, max - 1));
   const { data, error } = await query;
   if (error) { console.error('❌ fetchRemitosFiltrados:', error); return []; }
-  return (data || []).map(_mapRemitoRow);
+  return _rmxEnriquecerServicios((data || []).map(_mapRemitoRow));
+}
+
+// Cantidad de remitos con los filtros dados, sin traer filas (chips de la barra).
+async function contarRemitosFiltrados(filtros) {
+  const { error, count } = await _buildRemitosQuery({ filtros: await _rmxResolverFiltros(filtros) }).range(0, 0);
+  if (error) { console.error('❌ contarRemitosFiltrados:', error); return null; }
+  return count ?? 0;
 }
 // Nota: esta función carga los remitos más recientes (hasta 200) y los mapea al formato que necesita la tabla. Incluye lógica para formatear fechas, mostrar métodos de pago combinados, y armar el texto de confirmaciones. Si hay un error o no hay remitos, muestra mensajes en la consola.
 
@@ -1667,6 +1737,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('.btn-pdf-remito'))      { descargarRemitoPDF(card); return; }
+  if (e.target.closest('.btn-editar-remito'))   { editarRemitoAdmin(card); return; }
   if (e.target.closest('.btn-whatsapp-remito')) { compartirRemitoPorWhatsApp(card); return; }
 });
 
