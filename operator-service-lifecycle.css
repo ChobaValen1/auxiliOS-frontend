@@ -16,3 +16,8 @@
 .os-resource-hint{display:block;font-size:10px;line-height:1.3;color:var(--muted);margin-top:3px;font-weight:400}.osv4-reactive [aria-invalid="true"]{outline:1px solid #ef4444;outline-offset:1px}
 .osl-choice-list label span small{display:block;font-size:11px;line-height:1.4;color:var(--muted);margin-top:4px} #osv4-activation-classification{padding:12px 20px;border-top:1px solid rgba(160,170,185,.2)}
 .os-activation-reason{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;margin-top:3px}
+
+/* Avisos de asignación dentro del modal y de la tarjeta de confirmación */
+.os-resource-hint.is-blocked{color:#d64545;font-weight:700}
+.osl-assignment-inline.is-error{border-color:rgba(214,69,69,.55);box-shadow:inset 3px 0 0 #d64545}
+.osl-assignment-inline-error{color:#e05252!important;font-weight:700}
