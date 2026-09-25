@@ -39,11 +39,16 @@ test('importe se recalcula por período sin pisar snapshot de FINALIZADO',()=>{
   assert.doesNotMatch(calc,/update public\.operator_services/);
 });
 
-test('mesa acepta búsqueda, Prestadora y período mensual',()=>{
+test('mesa acepta búsqueda, Prestadora, período, Base y Tipo con los filtros compartidos',()=>{
   assert.match(billing,/list_operator_billing_services_v3/);
   assert.match(billing,/id="ob-search"/);
+  assert.match(billing,/F\.period\(\{ id: 'period'/);
+  assert.match(billing,/F\.select\(\{ id: 'company'/);
+  assert.match(billing,/F\.select\(\{ id: 'base'/);
+  assert.match(billing,/F\.select\(\{ id: 'serviceType'/);
+  assert.match(billing,/AuxFilters\.periodBounds\(S\.periodSel\)/);
+  // Sin el módulo compartido cae a los selects de antes.
   assert.match(billing,/id="ob-company-filter"/);
-  assert.match(billing,/id="ob-period-filter"/);
   assert.match(billing,/function periodBounds\(value\)/);
 });
 

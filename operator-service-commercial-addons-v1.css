@@ -150,3 +150,20 @@
 .os-activation-choices b,.os-activation-choices legend{color:var(--osv2-text)}
 .os-activation-card dl{grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:10px}
 .os-activation-card dt{margin-top:0}
+
+/* Revisión de cargos en filas compactas: una línea por cargo. */
+.os-charge-report.is-compact>p{margin:0 0 6px;font-size:10px;line-height:1.4}
+.os-charge-report.is-compact h4{margin:8px 0 4px;font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2,#8590ab)}
+.os-charge-row{display:grid;grid-template-columns:minmax(0,1fr) auto 12px;grid-template-areas:"name amount saved" "meta meta meta";align-items:center;gap:1px 8px;padding:5px 8px;border:1px solid rgba(160,170,185,.14);border-left:3px solid rgba(160,170,185,.3);border-radius:6px;margin-bottom:3px;font-size:11px}
+.os-charge-row.accepted{border-left-color:#38ad77}
+.os-charge-row.rejected{border-left-color:#dc5a5a}
+.os-charge-row>b{grid-area:name;overflow:hidden;font-size:11px;white-space:nowrap;text-overflow:ellipsis}
+.os-charge-row .os-charge-amount{grid-area:amount;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.os-charge-row .os-charge-saved{grid-area:saved}
+.os-charge-meta{grid-area:meta;display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-width:0;color:var(--muted2,#a6b2c3);font-size:10px}
+.os-charge-row .os-charge-badge{padding:0 5px;font-size:9px}
+.os-charge-meta em{font-style:normal;color:#f49d9d;overflow-wrap:anywhere}
+.os-charge-saved{font-style:normal;font-size:9px;color:var(--amber,#f5a623);text-align:center}
+.os-charge-saved.is-saved{color:#38ad77}
+.os-charge-empty{display:block;padding:4px 2px;color:var(--muted2,#8590ab);font-size:10px}
+.os-charge-legend{display:block;margin-top:6px;color:var(--muted2,#8590ab);font-size:9px}

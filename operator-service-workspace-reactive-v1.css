@@ -256,3 +256,14 @@
 .os-embedded-review>footer{display:grid;gap:7px;margin-top:2px;padding-top:8px;border-top:1px solid var(--osv2-border)}.os-embedded-review>footer>span{font-size:8px;color:var(--osv2-muted2);text-align:right}.os-embedded-review>footer>div{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}.os-embedded-review footer .pending{border:0;color:#ff7474}.os-embedded-review footer .edit{border-color:#3d79bd;color:#78aff0}.os-embedded-review footer .finish:disabled{opacity:.38;cursor:not-allowed}
 .os-embedded-pending-note{display:grid;gap:4px}.os-embedded-pending-note span{font-size:8px;color:var(--osv2-muted2);text-transform:uppercase}.os-embedded-pending-note textarea{min-height:48px;resize:vertical;border:1px solid var(--osv2-border);border-radius:6px;background:var(--osv2-input);color:var(--text);padding:7px;font:inherit;font-size:9px}
 @media(max-width:980px){.os-embedded-review>footer>div{display:grid;grid-template-columns:1fr}.os-embedded-review footer button{width:100%}}
+
+/* Diferencias a revisar en filas compactas: nombre, importe y acciones en una línea. */
+.os-embedded-difference.is-compact{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 8px;padding:5px 8px}
+.os-embedded-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:2px 7px;min-width:0}
+.os-embedded-kind{padding:1px 5px;border-radius:4px;background:rgba(245,166,35,.14);color:var(--amber);font-size:8px;font-weight:800;text-transform:uppercase}
+.os-embedded-row>b{overflow:hidden;font-size:10px;white-space:nowrap;text-overflow:ellipsis}
+.os-embedded-amount{font-size:11px;font-weight:900;color:var(--amber);white-space:nowrap}
+.os-embedded-row>small{grid-column:2/-1;font-size:8px;color:var(--osv2-muted2)}
+.os-embedded-difference.is-compact .os-embedded-actions{gap:4px}
+.os-embedded-difference.is-compact .os-embedded-actions button{min-height:24px;padding:3px 8px}
+.os-embedded-difference.is-compact .os-embedded-reason,.os-embedded-difference.is-compact .os-review-confirm-reject{grid-column:1/-1}

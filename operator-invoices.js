@@ -10,6 +10,7 @@
     search: '',
     company: '',
     period: '',
+    periodSel: { mode: 'all' },
     loading: false,
     detail: null,
     detailLoading: false,
@@ -324,14 +325,37 @@
     const detail = S.detailLoading
       ? '<aside class="oi-detail"><div class="oi-empty">Cargando factura…</div></aside>'
       : S.detail ? detailMarkup() : '';
-    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters"><input class="oi-search" id="oi-search" placeholder="Buscar factura, prestadora, servicio o peaje…" value="${esc(S.search)}"><select class="oi-filter" id="oi-company-filter">${opts.companies}</select><select class="oi-filter" id="oi-period-filter">${opts.periods}</select><button class="oi-button" type="button" data-oi="refresh">↻ Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
+    window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
+    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button" type="button" data-oi="refresh">↻ Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
+  }
+
+  function filtersMarkup(opts) {
+    const F = window.AuxFilters;
+    const searchInput = `<label class="auxf-search"><span aria-hidden="true">⌕</span><input class="oi-search" id="oi-search" type="search" autocomplete="off" placeholder="Buscar factura, prestadora, servicio o peaje…" value="${esc(S.search)}"></label>`;
+    if (!F) return `${searchInput}<select class="oi-filter" id="oi-company-filter">${opts.companies}</select><select class="oi-filter" id="oi-period-filter">${opts.periods}</select>`;
+    const count = [S.search.trim(), S.company, S.periodSel.mode !== 'all'].filter(Boolean).length;
+    return searchInput
+      + F.period({ id: 'period', value: S.periodSel, allLabel: 'Todos los períodos', months: S.filters.periods })
+      + F.select({ id: 'company', label: 'Prestadora', icon: '🏢', value: S.company, options: S.filters.companies.map(item => ({ value: String(item.company_id), label: item.company_name })), allLabel: 'Todas' })
+      + F.clear({ count });
+  }
+
+  function onFilterChange(id, value) {
+    if (id === 'period') { S.periodSel = value; S.period = value.mode === 'mes' ? value.mes : ''; }
+    if (id === 'company') S.company = value || '';
+    load();
+  }
+
+  function clearFilters() {
+    Object.assign(S, { search: '', company: '', period: '', periodSel: { mode: 'all' } });
+    load();
   }
 
   async function load() {
     if (S.loading || !db() || !canRead()) return;
     S.loading = true;
     render();
-    const bounds = periodBounds(S.period);
+    const bounds = window.AuxFilters ? window.AuxFilters.periodBounds(S.periodSel) : periodBounds(S.period);
     try {
       const { data, error } = await db().rpc('list_operator_invoices_v2', {
         p_search: S.search || null,
