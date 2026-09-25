@@ -3837,7 +3837,6 @@ body {
 #screen-remitos .rmx-btn.primary:hover{filter:brightness(1.08)}
 #screen-remitos .rmx-sources{display:none!important}
 /* Si Administración ve su propio "Nuevo remito", el del chofer no se duplica. */
-#screen-remitos .rmx-actions #btn-remito-nuevo-admin:not([style*="none"]) ~ #btn-nuevo-remito-desktop{display:none!important}
 #screen-remitos #remitos-kpis{margin-bottom:10px!important}
 @media (max-width:720px){
   #screen-remitos .rmx-toolbar{padding:0}
@@ -3845,3 +3844,6 @@ body {
   #screen-remitos .rmx-search,#screen-remitos .rmx-plate{max-width:none}
   #screen-remitos .rmx-actions{width:100%;justify-content:flex-end}
 }
+
+/* Remitos: Administración y Supervisión no crean remitos (nacen del chofer o de un Servicio). */
+#btn-nuevo-remito-fab.is-role-hidden{display:none!important}

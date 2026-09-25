@@ -2391,76 +2391,6 @@ async function _raGuardar(grupoId) {
   if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
 }
 
-// ── CREAR REMITO DESDE ADMINISTRACIÓN ───────────────────────────
-async function abrirModalRemitoAdmin() {
-  if (PERFIL_USUARIO?.roles?.name !== 'administracion') return;
-
-  ['rna-nro-srv','rna-tipo','rna-patente','rna-marca','rna-cliente','rna-cuit','rna-telefono',
-   'rna-origen','rna-destino','rna-km','rna-peaje','rna-excedente','rna-pago-monto','rna-obs']
-    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const met = document.getElementById('rna-pago-metodo'); if (met) met.value = '';
-  const err = document.getElementById('rna-error'); if (err) err.textContent = '';
-
-  const sel = document.getElementById('rna-chofer');
-  if (sel) {
-    const { data } = await _db.from('users').select('user_id, full_name').eq('role_id', 3).eq('is_active', true).order('full_name');
-    sel.innerHTML = '<option value="">Elegí un chofer…</option>' +
-      (data || []).map(c => `<option value="${c.user_id}">${c.full_name}</option>`).join('');
-  }
-  openModal('modal-remito-nuevo-admin');
-}
-
-async function _rnaGuardar(modo) {
-  if (PERFIL_USUARIO?.roles?.name !== 'administracion') return;
-  const v = id => document.getElementById(id)?.value.trim() || null;
-  const n = id => { const x = parseFloat(document.getElementById(id)?.value); return isNaN(x) ? null : x; };
-  const err = document.getElementById('rna-error');
-
-  const patente = v('rna-patente');
-  const cliente = v('rna-cliente');
-  const choferId = document.getElementById('rna-chofer')?.value || null;
-
-  if (!patente && !cliente) { if (err) err.textContent = 'Cargá al menos la patente o el cliente.'; return; }
-  if (modo === 'precarga' && !choferId) { if (err) err.textContent = 'Para asignar la pre-carga elegí un chofer.'; return; }
-  if (err) err.textContent = '';
-
-  const metodo = document.getElementById('rna-pago-metodo')?.value || null;
-  const campos = {
-    nro_servicio:  v('rna-nro-srv'),
-    tipo_servicio: v('rna-tipo'),
-    patente:       patente ? patente.toUpperCase() : null,
-    marca_modelo:  v('rna-marca'),
-    razon_social:  cliente,
-    cuit:          v('rna-cuit'),
-    telefono:      v('rna-telefono'),
-    origen:        v('rna-origen'),
-    destino:       v('rna-destino'),
-    km_reales:     n('rna-km'),
-    imp_peaje:     n('rna-peaje'),
-    imp_excedente: n('rna-excedente'),
-    pago_1_metodo: metodo,
-    pago_1_monto:  metodo ? (n('rna-pago-monto') || 0) : null,
-    observaciones: v('rna-obs'),
-  };
-
-  const btns = ['rna-btn-asignar', 'rna-btn-cerrar'].map(id => document.getElementById(id));
-  btns.forEach(b => { if (b) b.disabled = true; });
-
-  const res = await crearRemitoAdmin(campos, modo, choferId);
-
-  btns.forEach(b => { if (b) b.disabled = false; });
-
-  if (!res.ok) { if (err) err.textContent = 'No se pudo crear: ' + res.msg; return; }
-
-  const choferNombre = document.getElementById('rna-chofer')?.selectedOptions?.[0]?.textContent;
-  toast(modo === 'cerrado_admin'
-    ? `Remito ${res.nro} cerrado por administración ✓`
-    : `Remito ${res.nro} asignado a ${choferNombre} ✓`);
-  closeModal('modal-remito-nuevo-admin');
-  if (typeof cargarRemitos === 'function') cargarRemitos();
-  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
-}
-
 // ── FORMA DE PAGO — soporta pago mixto ────────
 let remPago1 = '', remPago2 = '', pagoMixtoActivo = false;
 
@@ -6399,8 +6329,8 @@ async function actualizarKpisRemitos() {
   const rol = PERFIL_USUARIO?.roles?.name;
   const cont = document.getElementById('remitos-kpis');
   if (!cont) return;
-  const btnNuevo = document.getElementById('btn-remito-nuevo-admin');
-  if (btnNuevo) btnNuevo.style.display = rol === 'administracion' ? '' : 'none';
+  // Los remitos nacen del chofer o de un Servicio: Administración y Supervisión solo los consultan.
+  document.getElementById('btn-nuevo-remito-fab')?.classList.toggle('is-role-hidden', !rol || rol === 'administracion' || rol === 'supervision');
   const ftabCerrado = document.getElementById('ftab-cerrado-admin');
   if (ftabCerrado) ftabCerrado.style.display = (rol === 'administracion' || rol === 'supervision') ? '' : 'none';
   if (rol !== 'administracion' && rol !== 'supervision') { cont.style.display = 'none'; return; }

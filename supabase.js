@@ -832,32 +832,6 @@ async function obtenerRemitoCompleto(remitoId) {
   return data;
 }
 
-// Crea un remito desde administración: pre-carga asignada a un chofer
-// (status 'pendiente') o cierre directo sin firma (status 'cerrado_admin').
-async function crearRemitoAdmin(campos, modo, driverId) {
-  const f = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const nro = `REM-${f}-${Math.floor(Math.random() * 9000) + 1000}`;
-  const fila = {
-    ...campos,
-    nro_remito: nro,
-    status:     modo === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
-    // Cierre admin: si se eligió chofer, el remito queda a su cuenta
-    // (lo ve en su lista y cuenta en rendiciones/facturación/KPIs)
-    driver_id:  driverId || null,
-    creado_por: USUARIO_ACTUAL?.id || null,
-    created_at_device: new Date().toISOString(),
-    historial_ediciones: [{
-      fecha: new Date().toISOString(),
-      user_id: USUARIO_ACTUAL?.id || null,
-      user_nombre: PERFIL_USUARIO?.full_name || '—',
-      cambios: [{ campo: '_creacion', antes: null, despues: modo === 'cerrado_admin' ? 'cerrado por administración' : 'pre-carga asignada' }],
-    }],
-  };
-  const { error } = await _db.from('remitos').insert(fila);
-  if (error) { console.error('❌ crearRemitoAdmin:', error); return { ok: false, msg: error.message }; }
-  return { ok: true, nro };
-}
-
 // Elimina definitivamente un remito (solo admin — irreversible)
 async function eliminarRemitoAdmin(remitoId) {
   const { error } = await _db.from('remitos').delete().eq('remito_id', remitoId);
