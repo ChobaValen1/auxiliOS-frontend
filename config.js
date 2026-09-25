@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'remitos-panel-v149-20260925';
+window.AUXILIOS_BUILD_ID = 'remitos-celular-v150-20260925';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -165,6 +165,8 @@ async function loadCriticalAuxiliosModules() {
   await loadAuxiliosModule('auxilios-filters-v1', '/auxilios-filters-v1.js');
   loadAuxiliosStyle('auxilios-remitos-admin-panel-v1-css', '/remitos-admin-panel-v1.css');
   await loadAuxiliosModule('auxilios-remitos-admin-panel-v1', '/remitos-admin-panel-v1.js');
+  loadAuxiliosStyle('auxilios-remitos-filtros-sheet-v1-css', '/remitos-filtros-sheet-v1.css');
+  await loadAuxiliosModule('auxilios-remitos-filtros-sheet-v1', '/remitos-filtros-sheet-v1.js');
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),

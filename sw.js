@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v366';
+const CACHE_NAME='auxilios-billing-phase2-v367';
 const PRECACHE_ASSETS=[
   '/sigma.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/payroll-matrix.js', '/payroll-view.js',
   '/empresas-v2.js','/empresas-v2.css',
@@ -12,7 +12,7 @@ const PRECACHE_ASSETS=[
   '/fleet-operational-status-v1.js',
   '/jornadas-admin-tools-v1.css','/jornadas-admin-tools-v1.js',
   '/operator-services.css','/operator-services.js',
-  '/auxilios-filters-v1.css','/auxilios-filters-v1.js','/auxilios-date-inputs-v1.css','/auxilios-date-inputs-v1.js','/remitos-admin-panel-v1.css','/remitos-admin-panel-v1.js','/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js',
+  '/auxilios-filters-v1.css','/auxilios-filters-v1.js','/auxilios-date-inputs-v1.css','/auxilios-date-inputs-v1.js','/remitos-admin-panel-v1.css','/remitos-admin-panel-v1.js','/remitos-filtros-sheet-v1.css','/remitos-filtros-sheet-v1.js','/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js',
   '/operator-invoices.css','/operator-invoices.js',
   '/operator-service-workspace-reactive-v1.css','/operator-service-workspace-reactive-v1.js',
   '/operator-service-commercial-addons-v1.css','/operator-service-commercial-addons-v1.js',

@@ -93,3 +93,18 @@ test('panel de remito: lo firmado no se corrige, la corrección pide motivo y no
   assert.match(read('sw.js'),/'\/remitos-admin-panel-v1\.js'/);
   assert.match(sigma,/REMITO ANULADO/);
 });
+
+test('celular: filtros agrupados con permisos por rol y tarjetas compactas',()=>{
+  const js=read('remitos-filtros-sheet-v1.js');
+  assert.match(js,/if\(gestion\(\)\)rows\.push\(\[/,'Chofer, Tipo y Pago solo para Administración/Supervisión');
+  assert.match(js,/if\(gestion\(\)\)base\.push\(\['revisar','Por revisar'\]\)/);
+  assert.match(js,/contarRemitosFiltrados\(aFiltros\(S\.draft\)\)/,'el botón muestra cuántos remitos va a ver');
+  assert.match(js,/aplicarFiltrosRemitos\(\)/);
+  const html=read('Index.html'),css=read('sigma.css'),sigma=read('sigma.js');
+  assert.match(html,/id="rmx-sheet-btn"[^>]*onclick="RemitosFiltros\.open\(\)"/);
+  assert.match(css,/#screen-remitos\.p3-driver-remitos:not\(\.p3-hide-remitos-archive\) #filtros-remitos\{display:flex!important\}/,'el chofer ve los filtros en su historial');
+  assert.match(sigma,/rmx-mcard/);
+  assert.doesNotMatch(sigma,/mobile-ver-todos-btn/,'ya no se esconden tarjetas detrás de "Ver todos"');
+  assert.match(read('config.js'),/'\/remitos-filtros-sheet-v1\.js'/);
+  assert.match(read('sw.js'),/'\/remitos-filtros-sheet-v1\.js'/);
+});

@@ -14,12 +14,12 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=remitos-panel-v149-20260925">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-panel-v149-20260925">
-<link rel="stylesheet" href="dashboard-v1.css?v=remitos-panel-v149-20260925">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-panel-v149-20260925">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-panel-v149-20260925">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-panel-v149-20260925">
+<link rel="stylesheet" href="sigma.css?v=remitos-celular-v150-20260925">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-celular-v150-20260925">
+<link rel="stylesheet" href="dashboard-v1.css?v=remitos-celular-v150-20260925">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-celular-v150-20260925">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-celular-v150-20260925">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-celular-v150-20260925">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +39,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="supabase.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="config.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="supabase.js?v=remitos-celular-v150-20260925" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-panel-v149-20260925" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-panel-v149-20260925" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="sigma.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="dashboard-charts-v1.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="dashboard-shell-v1.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="dashboard-facturacion-v1.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="dashboard-operaciones-v1.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="dashboard-flota-v1.js?v=remitos-panel-v149-20260925" defer></script>
-<script src="dashboard-mapa-v1.js?v=remitos-panel-v149-20260925" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-celular-v150-20260925" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-celular-v150-20260925" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="sigma.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="dashboard-charts-v1.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="dashboard-shell-v1.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="dashboard-facturacion-v1.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="dashboard-operaciones-v1.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="dashboard-flota-v1.js?v=remitos-celular-v150-20260925" defer></script>
+<script src="dashboard-mapa-v1.js?v=remitos-celular-v150-20260925" defer></script>
 </head>
 <body>
 
@@ -1185,6 +1185,7 @@
       <div class="rmx-toolbar" id="filtros-remitos">
         <div class="rmx-filters auxf-bar" id="rmx-filters">
           <label class="auxf-search rmx-search"><span aria-hidden="true">⌕</span><input id="input-buscar-remitos" type="search" autocomplete="off" placeholder="Nº remito, cliente, patente..." oninput="filtrarBusqueda(this.value)"></label>
+          <button class="rmx-sheet-btn" id="rmx-sheet-btn" type="button" onclick="RemitosFiltros.open()" aria-label="Filtros"><span aria-hidden="true">⚙</span> Filtros <b id="rmx-sheet-count" hidden></b></button>
           <div id="rmx-estado-host" class="rmx-host"></div>
           <div id="filtros-admin" class="rmx-admin" style="display:none">
             <div id="rmx-periodo-host" class="rmx-host"></div>

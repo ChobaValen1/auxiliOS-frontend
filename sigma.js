@@ -1651,6 +1651,7 @@ function _rmxRenderFilters() {
     count += [periodo.mode !== 'all', $('filtro-chofer-input')?.value, $('filtro-tipo-servicio')?.value, $('filtro-pago')?.value].filter(Boolean).length;
   }
   $('rmx-clear-host').innerHTML = F.clear({ count });
+  window.RemitosFiltros?.sync();
   F.bind($('rmx-filters'), (id, v) => {
     if (id === 'estado') filtroEstado = v || 'todos';
     if (id === 'periodo') {
@@ -6115,6 +6116,19 @@ document.addEventListener('change', e => {
   });
   _rmxSyncSeleccionUI();
 });
+// Tarjeta del celular: tocarla abre el detalle (salvo que se toque un botón).
+document.addEventListener('click', e => {
+  const card = e.target.closest?.('#mobile-remitos-list .rmx-mcard');
+  if (!card || e.target.closest('button, a')) return;
+  verRemitoModal(card);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const card = e.target.closest?.('#mobile-remitos-list .rmx-mcard');
+  if (!card || e.target !== card) return;
+  e.preventDefault();
+  verRemitoModal(card);
+});
 // Cerrar el menú ⋯ al elegir una opción o al tocar afuera.
 document.addEventListener('click', e => {
   document.querySelectorAll('#tbody-remitos details.rmx-more[open]').forEach(d => {
@@ -6222,54 +6236,29 @@ function renderTablaRemitos(data) {
   if (mobileList) {
     mobileList.innerHTML = '';
 
+    // Tarjetas compactas (misma paleta que la tabla): una línea de identificación,
+    // una de cliente + monto y una de datos. Tocar la tarjeta abre el detalle.
+    const esGestionM = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
     const mobileSorted = [...data].sort((a, b) =>
       (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1)
     );
-
-    const esAdminM = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
-    mobileSorted.forEach((r, mIdx) => {
-      const esFirmado = r.estado === 'firmado' || r.estado === 'cerrado_admin';
-      const esAnulado = r.estado === 'anulado';
+    mobileSorted.forEach(r => {
+      const pendiente = r.estado === 'pendiente';
+      const cobrado = (parseFloat(r.peaje) || 0) + (parseFloat(r.excedente) || 0) + (parseFloat(r.otros) || 0);
+      const tipo = r.tipoReal || (esGestionM || !r.tipo || r.tipo === '—' ? 'Sin clasificar' : r.tipo);
+      const meta = [r.patente, tipo, r.fecha].filter(Boolean).map(_rmxEsc).join(' · ');
       const mcard = document.createElement('div');
-      mcard.className = `mobile-card-remito estado-${r.estado}`;
+      mcard.className = `mobile-card-remito rmx-mcard estado-${r.estado}${r.estado === 'anulado' ? ' is-anulado' : ''}`;
       mcard.setAttribute('data-rem', JSON.stringify(r));
-      if (mIdx >= 3) mcard.style.display = 'none';
+      mcard.setAttribute('role', 'button');
+      mcard.tabIndex = 0;
       mcard.innerHTML = `
-        <div class="card-header-main">
-          <div>
-            <span class="text-codigo">${r.srvOrden || r.nroSrv || 'S/SERVICIO'}</span>
-            <span class="text-patente">${r.patente || '—'}</span>
-          </div>
-          ${generarHtmlPill(r.estado, r)}
-        </div>
-        <div style="font-size:13px;font-weight:600">${r.tipoReal || (esAdminM ? 'Sin clasificar' : (r.tipo || '—'))}</div>
-        <div style="font-size:12px;color:var(--muted)">${r.origen || '—'} → ${r.destino || '—'}</div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)">
-          <span>N° ${r.nro}</span><span>${r.fecha || '—'}</span>
-        </div>
-        <div style="margin-top:12px">
-          ${!esFirmado && !esAnulado
-            ? `<button class="btn btn-primary btn-firmar-remito" style="width:100%;padding:14px;font-weight:800">✍️ COMPLETAR REMITO</button>`
-            : esAnulado
-            ? `<button class="btn btn-ghost btn-ver-remito" style="width:100%;padding:12px;opacity:0.5">Ver detalles</button>`
-            : `<button class="btn-ver-full btn-ver-remito">🔍 VER DETALLES</button>`
-          }
-        </div>`;
+        <div class="rmx-mc-top"><span class="rmx-mc-srv">${_rmxEsc(r.srvOrden || r.nroSrv || 'Sin N° de servicio')}</span>${_rmxEstadoHTML(r)}</div>
+        <div class="rmx-mc-main"><span class="rmx-mc-client">${_rmxEsc(r.cliente || '—')}</span>${cobrado ? `<span class="rmx-mc-money">$ ${cobrado.toLocaleString('es-AR')}</span>` : ''}</div>
+        <div class="rmx-mc-meta">${meta}</div>
+        ${pendiente && !esGestionM ? `<button class="rmx-mc-cta btn-firmar-remito" type="button">Completar remito</button>` : ''}`;
       mobileList.appendChild(mcard);
     });
-
-    if (mobileSorted.length > 3) {
-      const verTodosBtn = document.createElement('button');
-      verTodosBtn.id = 'mobile-ver-todos-btn';
-      verTodosBtn.className = 'btn btn-ghost';
-      verTodosBtn.style.cssText = 'width:100%;margin-top:4px;font-size:12px;padding:12px';
-      verTodosBtn.textContent = `Ver todos los remitos (${mobileSorted.length})`;
-      verTodosBtn.onclick = () => {
-        mobileList.querySelectorAll('.mobile-card-remito').forEach(c => c.style.display = '');
-        verTodosBtn.remove();
-      };
-      mobileList.appendChild(verTodosBtn);
-    }
   }
 
 }

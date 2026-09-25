@@ -1,0 +1,34 @@
+/* AuxiliOS · Remitos · filtros agrupados (celular) v1 */
+.rfs-backdrop{position:fixed;inset:0;z-index:9980;background:rgba(0,0,0,.5)}
+.rfs-backdrop[hidden],.rfs-sheet[hidden]{display:none!important}
+.rfs-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9981;display:flex;flex-direction:column;max-height:88dvh;padding-bottom:env(safe-area-inset-bottom);border-radius:18px 18px 0 0;background:var(--bg,#0d1117);border-top:1px solid var(--border2);box-shadow:0 -14px 40px rgba(0,0,0,.4);color:var(--text);transform:translateY(24px);opacity:0;transition:transform .18s ease,opacity .18s ease}
+.rfs-sheet.is-open{transform:none;opacity:1}
+.rfs-sheet::before{content:"";align-self:center;width:38px;height:4px;margin-top:8px;border-radius:4px;background:var(--border2)}
+.rfs-head{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;padding:6px 12px 10px}
+.rfs-head h2{margin:0;text-align:center;font-size:16px;font-weight:800}
+.rfs-back,.rfs-close{width:36px;height:36px;border:0;border-radius:10px;background:none;color:var(--text);font-size:24px;line-height:1;cursor:pointer}
+.rfs-close{grid-column:3;font-size:22px}
+.rfs-back[hidden]{visibility:hidden;display:block!important}
+.rfs-body{flex:1;overflow:auto;display:grid;align-content:start;gap:10px;padding:2px 14px 14px}
+.rfs-group{overflow:hidden;border:1px solid var(--border);border-radius:14px;background:var(--card)}
+.rfs-row,.rfs-opt{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;border:0;background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.rfs-row+.rfs-row,.rfs-opt+.rfs-opt{border-top:1px solid var(--border)}
+.rfs-row:active,.rfs-opt:active{background:rgba(255,255,255,.04)}
+.rfs-label{flex:1;font-size:14px;font-weight:600}
+.rfs-value{max-width:55%;overflow:hidden;color:var(--muted2);font-size:13px;white-space:nowrap;text-overflow:ellipsis}
+.rfs-value.is-set{color:var(--amber);font-weight:600}
+.rfs-chev{color:var(--muted);font-size:20px;line-height:1}
+.rfs-opt span:first-child{flex:1;font-size:14px}
+.rfs-opt.is-on span:first-child{font-weight:700}
+.rfs-check{color:var(--amber);font-weight:800}
+.rfs-range{display:flex;align-items:flex-end;gap:8px;padding:12px 14px}
+.rfs-range label{flex:1;display:grid;gap:4px;min-width:0;color:var(--muted2);font-size:11px}
+.rfs-range input{width:100%;box-sizing:border-box;height:40px;padding:0 10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;font-size:14px}
+.rfs-dash{padding-bottom:10px;color:var(--muted)}
+.rfs-foot{display:grid;grid-template-columns:1fr 1.2fr;gap:10px;padding:10px 14px 14px;border-top:1px solid var(--border)}
+.rfs-clear,.rfs-apply{height:46px;border-radius:999px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.rfs-clear{border:1px solid var(--border2);background:none;color:var(--text)}
+.rfs-clear:disabled{opacity:.45;cursor:default}
+.rfs-apply{border:0;background:var(--amber);color:#111}
+.rfs-apply:disabled{opacity:.55;cursor:default}
+@media(min-width:721px){.rfs-sheet{left:50%;right:auto;bottom:24px;width:420px;border:1px solid var(--border2);border-radius:18px;transform:translate(-50%,24px)}.rfs-sheet.is-open{transform:translate(-50%,0)}}

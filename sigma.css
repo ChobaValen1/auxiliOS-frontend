@@ -3922,3 +3922,30 @@ body {
 #screen-remitos .rmx-act.is-review{border-color:color-mix(in srgb,var(--red) 60%,transparent);color:var(--red)}
 #screen-remitos .rmx-act.is-review:hover{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border-color:var(--red)}
 #screen-remitos .rmx-more-menu button.is-danger{color:var(--red)}
+
+/* Remitos · celular: buscador + botón Filtros (hoja agrupada) y tarjetas compactas */
+#screen-remitos .rmx-sheet-btn{display:none;align-items:center;gap:6px;height:36px;padding:0 13px;border:1px solid var(--border2);border-radius:999px;background:var(--card);color:var(--text);font:inherit;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+#screen-remitos .rmx-sheet-btn b{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--amber);color:#111;font-size:10px}
+#screen-remitos .rmx-sheet-btn b[hidden]{display:none}
+/* El chofer ve la barra solo en su historial */
+#screen-remitos.p3-driver-remitos:not(.p3-hide-remitos-archive) #filtros-remitos{display:flex!important}
+#screen-remitos.p3-driver-remitos #filtros-remitos .rmx-actions{display:none}
+@media (max-width:720px){
+  #screen-remitos .rmx-filters{display:flex;flex-wrap:nowrap;gap:8px}
+  #screen-remitos .rmx-filters>.rmx-host,#screen-remitos .rmx-filters>.rmx-admin{display:none!important}
+  #screen-remitos .rmx-search{flex:1 1 auto;max-width:none}
+  #screen-remitos .rmx-sheet-btn{display:inline-flex}
+  #screen-remitos .rmx-actions{justify-content:space-between}
+  #screen-remitos .remitos-container-mobile{gap:8px;padding:0 0 110px}
+  #screen-remitos .rmx-mcard{display:grid;gap:4px;padding:11px 13px;border:1px solid var(--border);border-left:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:none;cursor:pointer}
+  #screen-remitos .rmx-mcard:active{background:rgba(255,255,255,.03)}
+  #screen-remitos .rmx-mcard.estado-pendiente{border-left:3px solid var(--amber)}
+  #screen-remitos .rmx-mcard.is-anulado{opacity:.55}
+  #screen-remitos .rmx-mc-top,#screen-remitos .rmx-mc-main{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+  #screen-remitos .rmx-mc-srv{font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
+  #screen-remitos .rmx-mc-client{min-width:0;overflow:hidden;font-size:13px;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+  #screen-remitos .rmx-mc-money{flex:0 0 auto;font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
+  #screen-remitos .rmx-mc-meta{overflow:hidden;color:var(--muted);font-size:11px;white-space:nowrap;text-overflow:ellipsis}
+  #screen-remitos .rmx-mc-cta{margin-top:6px;height:38px;border:0;border-radius:10px;background:var(--amber);color:#111;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+  #screen-remitos .rmx-mcard .rmx-state{font-size:11px}
+}
