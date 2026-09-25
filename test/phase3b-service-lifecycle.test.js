@@ -22,7 +22,7 @@ test('mesa operativa expone sólo los cinco estados acordados',()=>{
   assert.match(services,/\['annul','Anular'\]/);
 });
 
-test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cuatro',()=>{
+test('ARRIBADO manual tiene exactamente tres motivos; ANULADO conserva sus etiquetas',()=>{
   assert.match(lifecycle,/client_cannot_or_will_not_sign','Cliente\/Socio no pudo o no quiso firmar/);
   assert.match(lifecycle,/signature_technical_issue','Problema técnico con la firma/);
   assert.match(lifecycle,/operator_provider_confirmed','Arribo confirmado por Operador\/Prestadora/);
@@ -31,7 +31,16 @@ test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cuatro',()=>{
   assert.match(lifecycle,/cancelled_by_us','Cancelado por nosotros/);
   assert.match(lifecycle,/client_or_provider','Cancelado por el cliente \/ prestadora/);
   assert.match(lifecycle,/\['other','Otro motivo'\]/);
-  assert.match(lifecycle,/reason==='other'.*detail\.required=other/s);
+});
+
+test('Anular no pide motivos: exige confirmar y anula como no facturable',()=>{
+  const annul=lifecycle.split('function openAnnul(')[1].split('\nfunction ')[0];
+  assert.doesNotMatch(annul,/radioCards\('annul_reason'/);
+  assert.match(annul,/id="osl-annul-check"/);
+  assert.match(annul,/submit\.disabled=true/);
+  assert.match(annul,/if\(readOnly\|\|!check\?\.checked\)return/);
+  assert.match(annul,/transition\('annul','other',note\|\|'Anulado desde Operaciones'\)/);
+  assert.match(annul,/no se factura/);
 });
 
 test('lifecycle usa una sola RPC canónica y eliminó cierres por excepción viejos',()=>{
