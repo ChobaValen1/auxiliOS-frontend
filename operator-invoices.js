@@ -173,7 +173,7 @@
     return { companies, periods };
   }
 
-  const statusLabel = value => value === 'cancelled' ? 'ANULADA' : value === 'credited' ? 'ACREDITADA' : 'FACTURADA';
+  const statusLabel = value => value === 'cancelled' ? 'Anulada' : value === 'credited' ? 'Acreditada' : 'Facturada';
   const statusClass = value => value === 'cancelled' ? 'cancelled' : value === 'credited' ? 'credited' : '';
   const rowById = id => S.rows.find(row => String(row.invoice_id) === String(id)) || null;
   const creditType = invoiceType => invoiceType === 'FA' ? 'NCA' : invoiceType === 'FB' ? 'NCB' : invoiceType === 'FC' ? 'NCC' : '';

@@ -420,7 +420,7 @@
       <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
       <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td>
       <td><b>${esc(row.company_name || '—')}</b></td><td><b>${esc(row.billing_base_name || '—')}</b></td>
-      <td><b>${esc(row.service_name || '—')}</b><small>PENDIENTE</small>${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}</td>
+      <td><b>${esc(row.service_name || '—')}</b><small class="ob-state is-pending">Pendiente</small>${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}</td>
       <td class="ob-place">${esc(row.origin || '—')}</td><td class="ob-place">${esc(row.destination || '—')}</td>
       <td><b>${esc(row.customer_name || '—')}</b></td><td class="ob-km">${esc(num(row.km).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km</td>
       <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio">⋯</button></td>
@@ -447,7 +447,7 @@
       <td><b>${esc(row.service_order_number || row.service_number || '—')}</b><small>${esc(row.vehicle_plate || '')}</small></td>
       <td><b>${esc(row.toll_name || 'Peaje')}</b><small>${esc(row.source || '')}</small></td><td class="ob-place">${esc(route)}</td>
       <td><b>${esc(row.billing_base_name || '—')}</b></td><td><b class="ob-money">${esc(money(row.amount, row.currency))}</b></td>
-      <td><b>DISPONIBLE</b><small>Peaje separado del servicio</small></td>
+      <td><span class="ob-state is-pending">Disponible</span><small>Peaje separado del servicio</small></td>
     </tr>`;
   }
 

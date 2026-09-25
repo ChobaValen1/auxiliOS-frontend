@@ -85,3 +85,34 @@
 .os-commandbar .os-manage{justify-self:end}
 @media(max-width:900px){.os-commandbar{grid-template-columns:auto auto 1fr auto}.os-filters{grid-column:1/-1}}
 @media(max-width:720px){.os-filters{display:grid;grid-template-columns:1fr 1fr}.os-filters .auxf-search{grid-column:1/-1;max-width:none}}
+
+/* Servicios · paleta sobria (misma regla que Remitos, #screen-remitos .rmx-*):
+   color solo para lo que pide acción. Naranja (--amber) = pendiente e interacción;
+   rojo (--red) = por revisar y destructivo; el resto neutro, sin pills de fondo. */
+.os-view-switch button.active{background:var(--card);color:var(--text)}
+.os-status-tabs button.active{border-color:var(--border2);background:var(--card);color:var(--text)}
+.os-status-tabs button.warning{border-color:color-mix(in srgb,var(--amber) 45%,transparent);color:var(--amber)}
+.os-status-tabs button.warning[data-os-tab="remito_review"]{border-color:color-mix(in srgb,var(--red) 55%,transparent);color:var(--red)}
+.os-status-tabs button.warning.active{border-color:var(--amber);background:var(--amber);color:#111}
+.os-status-tabs button.warning.active[data-os-tab="remito_review"]{border-color:var(--red);background:var(--red);color:#111}
+#screen-operaciones .auxf-btn.is-active{border-color:color-mix(in srgb,var(--amber) 55%,transparent);background:rgba(245,166,35,.06)}
+.os-intakes{border-color:var(--border);border-left:3px solid var(--amber);background:var(--panel)}
+.os-intake-list article:hover,.os-table tbody tr:hover{background:rgba(255,255,255,.025)}
+.os-table tbody tr:hover{box-shadow:inset 3px 0 0 var(--border2)}
+/* Estado: punto + texto. */
+.os-status,.os-intake-status{display:inline-flex!important;align-items:center;justify-content:flex-start;gap:6px;width:auto;padding:0;border:0;border-radius:0;background:none!important;color:var(--muted2);font-size:9px!important;font-weight:700}
+.os-status::before,.os-intake-status::before{content:"";flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:var(--border2)}
+.os-status.amber,.os-intake-status.ready{color:var(--amber)}
+.os-status.amber::before,.os-intake-status.ready::before{background:var(--amber)}
+.os-status.blue,.os-status.violet,.os-status.green,.os-intake-status.waiting{color:var(--muted2)}
+.os-status.red{color:var(--muted);text-decoration:line-through}
+.os-status.red::before{background:transparent;border:1px solid var(--muted)}
+.os-intakes>summary strong{background:none;padding:0}
+/* Montos y medios de pago en neutro; "Sin asignar" sigue en naranja (pendiente). */
+.os-amount-due{color:var(--text);font-weight:800}
+/* Remito: "Ver" es un enlace neutro; "Revisar" es lo único en rojo. */
+.os-document-state.is-action{border-color:var(--border2);background:transparent;color:var(--muted2);font-weight:700;text-align:left}
+.os-document-state.is-action:hover,.os-document-state.is-action:focus-visible{border-color:var(--amber);background:transparent;color:var(--text)}
+.os-document-state.awaiting-review{border-color:color-mix(in srgb,var(--red) 60%,transparent);background:transparent;color:var(--red)}
+.os-document-state.awaiting-review:hover,.os-document-state.awaiting-review:focus-visible{border-color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red)}
+.os-table tr.os-remito-awaiting-review>td:first-child{box-shadow:inset 3px 0 var(--red)}
