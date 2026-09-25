@@ -3949,3 +3949,20 @@ body {
   #screen-remitos .rmx-mc-cta{margin-top:6px;height:38px;border:0;border-radius:10px;background:var(--amber);color:#111;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
   #screen-remitos .rmx-mcard .rmx-state{font-size:11px}
 }
+
+/* Enviar remito al cliente por WhatsApp (al finalizar el servicio) */
+.rwa-sheet{position:fixed;inset:0;z-index:10050;display:flex;align-items:flex-end;justify-content:center}
+.rwa-backdrop{position:absolute;inset:0;border:0;background:rgba(0,0,0,.6)}
+.rwa-sheet section{position:relative;display:grid;gap:10px;width:min(100%,460px);padding:18px 16px calc(16px + env(safe-area-inset-bottom));border:1px solid var(--border2);border-radius:18px 18px 0 0;background:var(--card);box-shadow:0 -12px 40px rgba(0,0,0,.35)}
+.rwa-sheet h3{margin:0;font-size:17px}
+.rwa-sheet p{margin:-4px 0 4px;color:var(--muted2);font-size:12px}
+.rwa-sheet label{display:grid;gap:5px;color:var(--muted2);font-size:11px;font-weight:700}
+.rwa-sheet input{height:46px;padding:0 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;font-size:16px;letter-spacing:.5px}
+.rwa-sheet input:focus{outline:none;border-color:var(--amber)}
+.rwa-sheet small{color:var(--red);font-size:11px}
+.rwa-sheet small[hidden]{display:none}
+.rwa-send,.rwa-alt,.rwa-skip{height:46px;border-radius:12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.rwa-send{border:0;background:var(--amber);color:#111}
+.rwa-alt{border:1px solid var(--border2);background:none;color:var(--text)}
+.rwa-skip{border:0;background:none;color:var(--muted2);font-weight:600}
+@media(min-width:721px){.rwa-sheet{align-items:center}.rwa-sheet section{border-radius:16px}}
