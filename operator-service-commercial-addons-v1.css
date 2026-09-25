@@ -130,3 +130,23 @@
 .os-charge-report>p{font-size:11px;line-height:1.5;color:var(--muted,#a6b2c3)}.os-charge-report h4{font-size:12px;margin:14px 0 7px}.os-charge-result{border:1px solid rgba(160,170,185,.18);border-radius:8px;padding:10px;margin-bottom:7px}.os-charge-result>div{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.os-charge-result b{font-size:12px;overflow-wrap:anywhere}.os-charge-result small{display:block;margin-top:6px;font-size:11px;color:var(--muted,#a6b2c3)}.os-charge-result p{font-size:11px;margin:7px 0;overflow-wrap:anywhere}
 .os-charge-badge{font-size:10px;line-height:1.4;border-radius:5px;padding:3px 6px;white-space:nowrap}.os-charge-badge.accepted{background:rgba(56,173,119,.14);color:#77dbaa}.os-charge-badge.rejected{background:rgba(220,90,90,.14);color:#f49d9d}.os-charge-badge.neutral{background:rgba(160,170,185,.1);color:var(--muted,#a6b2c3)}
 .os-review-confirm-reject{border:1px solid #a65555;background:rgba(220,90,90,.12);color:#f2aeae;padding:8px;border-radius:6px;margin-top:7px;width:100%;cursor:pointer}
+/* Activated intake classification belongs to the service form, beside its charges. */
+.os-activation-billing{padding:16px;border:1px solid var(--osv2-border-strong);border-radius:14px;background:var(--osv2-card);color:var(--osv2-text);margin-top:12px}
+.os-activation-billing[hidden]{display:none}
+.os-activation-billing-head>span{font-size:10px;letter-spacing:.08em;font-weight:700;color:var(--osv2-muted2)}
+.os-activation-billing h3{font-size:16px;margin:5px 0 7px}
+.os-activation-billing p{font-size:12px;color:var(--osv2-muted2);line-height:1.5;margin:0 0 14px}
+.os-activation-choices{border:0;margin:0;padding:0;display:grid;gap:8px;min-width:0}
+.os-activation-choices legend{font-size:12px;font-weight:600;margin-bottom:10px;padding:0}
+.os-activation-choices label{display:flex!important;flex-direction:row!important;gap:10px;align-items:flex-start;padding:12px!important;border:1px solid var(--osv2-border-strong);border-radius:10px;cursor:pointer;background:var(--osv2-panel)}
+.os-activation-choices label:has(input:checked){border-color:var(--osv2-blue);background:var(--osv2-blue-lo);box-shadow:0 0 0 1px var(--osv2-blue)}
+.os-activation-choices input[type=radio]{appearance:auto;width:16px!important;height:16px!important;min-height:0!important;margin:2px 0 0;accent-color:var(--osv2-blue);flex:none}
+.os-activation-choices span{display:grid;gap:4px;font-size:13px}
+.os-activation-choices small{font-size:11px;color:var(--osv2-muted2);line-height:1.4}
+.os-activation-billing .osl-other{display:grid;gap:6px;margin-top:12px;font-size:12px}
+.os-activation-billing .osl-other[hidden]{display:none}
+.os-activation-billing textarea{width:100%;box-sizing:border-box;border:1px solid var(--osv2-border-strong);border-radius:8px;padding:9px;resize:vertical;font:inherit}
+
+.os-activation-choices b,.os-activation-choices legend{color:var(--osv2-text)}
+.os-activation-card dl{grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:10px}
+.os-activation-card dt{margin-top:0}
