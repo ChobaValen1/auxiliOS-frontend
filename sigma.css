@@ -3893,3 +3893,29 @@ body {
 #screen-remitos .rmx-bulk-link{padding:0;border:0;background:none;color:var(--amber);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 #screen-remitos .rmx-bulk-link[hidden]{display:none}
 #screen-remitos .rmx-table.rmx-no-select .rmx-col-check{display:none}
+
+/* Remitos · paleta sobria: color solo para lo que pide acción.
+   Naranja (--amber) = pendiente e interacción; rojo (--red) = por revisar; el resto neutro. */
+#screen-remitos .rmx-srv{color:var(--text)}
+#screen-remitos .rmx-plate{display:block;font-family:'DM Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.3px}
+#screen-remitos .rmx-vehicle{max-width:170px}
+#screen-remitos .rmx-vehicle .rmx-sub{font-family:inherit}
+#screen-remitos .rmx-client>span:first-child{font-weight:500}
+#screen-remitos .rmx-type{padding:0;border:0;background:none;color:var(--muted2);font-weight:500}
+#screen-remitos .rmx-type.is-empty{border:0;color:var(--muted);font-style:italic}
+#screen-remitos .rmx-money{color:var(--text)}
+#screen-remitos .rmx-pays{align-items:center;gap:4px}
+#screen-remitos .rmx-pay{padding:0;border:0;color:var(--muted2);font-size:11px;font-weight:500}
+#screen-remitos .rmx-pay-sep{color:var(--muted);font-size:10px}
+#screen-remitos .rmx-state{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;white-space:nowrap;color:var(--muted2)}
+#screen-remitos .rmx-state::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--border2)}
+#screen-remitos .rmx-state.is-pending{color:var(--amber)}
+#screen-remitos .rmx-state.is-pending::before{background:var(--amber)}
+#screen-remitos .rmx-state.is-review{color:var(--red)}
+#screen-remitos .rmx-state.is-review::before{background:var(--red)}
+#screen-remitos .rmx-state.is-void{color:var(--muted);text-decoration:line-through}
+#screen-remitos .rmx-state.is-void::before{background:transparent;border:1px solid var(--muted)}
+#screen-remitos .rmx-bulk{border-color:var(--border2);background:var(--card);color:var(--text)}
+#screen-remitos .rmx-bulk .rmx-btn.primary{background:var(--amber);border-color:var(--amber);color:#111}
+#screen-remitos .rmx-row.is-selected td{background:rgba(245,166,35,.06)}
+#screen-remitos .rmx-table th.rmx-money{font-family:inherit;font-weight:inherit}

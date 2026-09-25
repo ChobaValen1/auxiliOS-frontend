@@ -1743,7 +1743,7 @@ function actualizarInfoFiltroRemitos() {
     if (!emptyRow) {
       emptyRow = document.createElement('tr');
       emptyRow.id = 'remitos-empty-row';
-      emptyRow.innerHTML = `<td colspan="9" style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No se encontraron remitos</td>`;
+      emptyRow.innerHTML = `<td colspan="${document.querySelectorAll('#tabla-remitos thead th').length || 1}" style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No se encontraron remitos</td>`;
       tbody.appendChild(emptyRow);
     }
     emptyRow.style.display = '';
@@ -6358,6 +6358,21 @@ async function actualizarKpisRemitos() {
   host.innerHTML = chip('pendiente', pend, pend === 1 ? 'pendiente' : 'pendientes', 'is-amber') + chip('revisar', rev, 'por revisar', 'is-red');
 }
 
+// Estado en la tabla de Remitos: color solo si pide acción.
+// Naranja = pendiente, rojo = por revisar; el resto (firmado, aprobado, ajustado…) va neutro.
+function _rmxEstadoHTML(r, asignadoAdmin = false) {
+  const tag = (cls, txt) => `<span class="rmx-state ${cls}">${txt}</span>`;
+  if (r.estado === 'anulado') return tag('is-void', 'Anulado');
+  if (r.estado === 'cerrado_admin') return tag('is-ok', 'Cerrado por admin');
+  if (r.estado === 'firmado') {
+    if (r.addonsVersion === 2 && r.addonsReviewStatus === 'approved') return tag('is-ok', 'Aprobado');
+    if (r.addonsVersion === 2 && r.addonsReviewStatus === 'adjusted') return tag('is-ok', 'Ajustado');
+    if (r.addonsVersion === 2) return tag('is-review', 'Por revisar');
+    return tag('is-ok', 'Firmado');
+  }
+  return tag('is-pending', asignadoAdmin ? 'Pendiente · asignado' : 'Pendiente');
+}
+
 function _rmxChip(estado) {
   filtroEstado = filtroEstado === estado ? 'todos' : estado;
   aplicarFiltrosRemitos();
@@ -6470,9 +6485,6 @@ function renderTablaRemitos(data) {
   const esAdmin = typeof PERFIL_USUARIO !== 'undefined' &&
                   PERFIL_USUARIO?.roles?.name === 'administracion';
 
-  // Protegemos las variables globales por si no cargan a tiempo
-  const iconosPago = typeof PAY_ICONS !== 'undefined' ? PAY_ICONS : {};
-  const coloresPago = typeof PAY_COLORS !== 'undefined' ? PAY_COLORS : {};
 
   const puedeEditar = esAdmin;
   const esGestion = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
@@ -6483,19 +6495,16 @@ function renderTablaRemitos(data) {
       const esFirmado = r.estado === 'firmado';
       const esCerradoAdmin = r.estado === 'cerrado_admin';
       const esAsignadoAdmin = r.estado === 'pendiente' && r.creadoPor && r.creadoPor !== USUARIO_ACTUAL?.id;
-      const estadoPill = esFirmado || esAnulado || esCerradoAdmin
-        ? generarHtmlPill(r.estado, r)
-        : esAsignadoAdmin ? `<span class="pill pill-amber">📥 Asignado por admin</span>` : generarHtmlPill(r.estado, r);
+      const estadoPill = _rmxEstadoHTML(r, esAsignadoAdmin);
 
       const peaje = parseFloat(r.peaje) || 0, excedente = parseFloat(r.excedente) || 0, otros = parseFloat(r.otros) || 0;
       const cobrado = peaje + excedente + otros;
       const detalle = [peaje && `Peaje $${peaje.toLocaleString('es-AR')}`, excedente && `Excedente $${excedente.toLocaleString('es-AR')}`, otros && `Otros $${otros.toLocaleString('es-AR')}`].filter(Boolean).join(' · ');
       const pagos = (r.pago || '—').split('+').map(p => p.trim()).filter(p => p && p !== '—');
       const pagoHTML = pagos.length
-        ? pagos.map(p => `<span class="rmx-pay" style="--c:${coloresPago[p] || 'var(--muted2)'}">${iconosPago[p] || '💳'} ${_rmxEsc(p)}</span>`).join('')
+        ? pagos.map(p => `<span class="rmx-pay">${_rmxEsc(p)}</span>`).join('<span class="rmx-pay-sep">+</span>')
         : '<span class="rmx-muted">—</span>';
       const [fecha, hora] = String(r.fecha || '—').split(' ');
-      const vehiculo = [r.patente, r.marca].filter(Boolean).join(' · ');
 
       const menu = [
         esAdmin ? `<button type="button" class="btn-pdf-remito">Descargar PDF</button>` : '',
@@ -6516,7 +6525,8 @@ function renderTablaRemitos(data) {
         <td class="rmx-col-check"><input type="checkbox" class="rmx-check" aria-label="Seleccionar remito ${_rmxEsc(r.nro)}" ${sel.has(String(r.id)) ? 'checked' : ''}></td>
         <td title="Remito ${_rmxEsc(r.nro)}"><span class="rmx-srv">${_rmxEsc(r.srvOrden || '—')}</span>${r.srvNumero ? `<span class="rmx-sub">${_rmxEsc(r.srvNumero)}</span>` : ''}</td>
         <td class="rmx-date"><span>${_rmxEsc(fecha)}</span><span class="rmx-sub">${_rmxEsc(hora || '')}</span></td>
-        <td class="rmx-client"><span>${_rmxEsc(r.cliente || '—')}</span>${vehiculo ? `<span class="rmx-sub">${_rmxEsc(vehiculo)}</span>` : ''}</td>
+        <td class="rmx-client"><span>${_rmxEsc(r.cliente || '—')}</span></td>
+        <td class="rmx-vehicle"><span class="rmx-plate">${_rmxEsc(r.patente || '—')}</span>${r.marca ? `<span class="rmx-sub">${_rmxEsc(r.marca)}</span>` : ''}</td>
         <td>${r.tipoReal ? `<span class="rmx-type">${_rmxEsc(r.tipoReal)}</span>` : '<span class="rmx-type is-empty">Sin clasificar</span>'}</td>
         <td class="rmx-money"${detalle ? ` title="${_rmxEsc(detalle)}"` : ''}>${cobrado ? `$ ${cobrado.toLocaleString('es-AR')}` : '<span class="rmx-muted">—</span>'}</td>
         <td><div class="rmx-pays">${pagoHTML}</div></td>
@@ -6620,7 +6630,8 @@ async function _renderRemitosOutboxPendientes() {
         <td class="rmx-col-check"></td>
         <td><span class="rmx-srv">${p.nro_servicio || '—'}</span><span class="rmx-sub">${nro}</span></td>
         <td style="font-size:11px;color:var(--muted)">—</td>
-        <td class="rmx-client"><span>${cliente}</span><span class="rmx-sub">${patente}</span></td>
+        <td class="rmx-client"><span>${cliente}</span></td>
+        <td class="rmx-vehicle"><span class="rmx-plate">${patente}</span></td>
         <td><span class="rmx-type">${tipo}</span></td>
         <td style="font-size:11px;color:var(--muted)">—</td>
         <td style="font-size:11px;color:var(--muted)">—</td>

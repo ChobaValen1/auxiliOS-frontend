@@ -58,7 +58,7 @@ test('la tabla de Remitos muestra las columnas acordadas, con selección múltip
   const html=read('Index.html');
   const head=slice(html,'id="tabla-remitos"','</thead>');
   const cols=[...head.matchAll(/<th[^>]*>([^<]*)</g)].map(m=>m[1].trim()).filter(Boolean);
-  assert.deepEqual(cols,['N° Servicio','Fecha y hora','Cliente','Tipo de servicio','Cobrado en el lugar','Medio de pago','Estado','Acciones']);
+  assert.deepEqual(cols,['N° Servicio','Fecha y hora','Cliente','Vehículo','Tipo de servicio','Cobrado en el lugar','Medio de pago','Estado','Acciones']);
   assert.match(head,/id="rmx-sel-all"/);
   assert.match(html,/id="rmx-bulk"[^>]*hidden/);
   assert.match(html,/exportarRemitosSeleccionados\(\)/);

@@ -860,7 +860,7 @@ async function cargarRemitos(opts = {}) {
       const mobileList = document.getElementById('mobile-remitos-list');
       if (mobileList) mobileList.innerHTML = msg;
       const tbody = document.getElementById('tbody-remitos');
-      if (tbody) tbody.innerHTML = `<tr><td colspan="9">${msg}</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="10">${msg}</td></tr>`;
     }
 
     // Remitos del outbox sin sincronizar, al tope de la lista (online u offline)
