@@ -1612,8 +1612,57 @@ function _leerFiltrosRemitosUI() {
   };
 }
 
+/* Barra de filtros de Remitos con los filtros compartidos (auxilios-filters-v1).
+   Los <select>/<input> ocultos de #filtros-remitos siguen siendo la fuente de
+   valores que lee _leerFiltrosRemitosUI; acá solo se dibujan los botones. */
+function _rmxRenderFilters() {
+  const F = window.AuxFilters;
+  const $ = id => document.getElementById(id);
+  if (!F || !$('rmx-estado-host')) return;
+  let rol = '';
+  try { rol = PERFIL_USUARIO?.roles?.name || ''; } catch (_) { /* perfil todavía no cargado */ }
+  const opts = id => [...($(id)?.options || [])].filter(o => o.value).map(o => ({ value: o.value, label: o.textContent.trim() }));
+  const estados = [['firmado','Firmados'],['pendiente','Pendientes'],['anulado','Anulados']];
+  if (rol === 'administracion' || rol === 'supervision') estados.push(['cerrado_admin','Cerrados admin']);
+  $('rmx-estado-host').innerHTML = F.select({ id: 'estado', label: 'Estado', value: filtroEstado === 'todos' ? '' : filtroEstado, options: estados.map(([value, label]) => ({ value, label })), allLabel: 'Todos' });
+  const admin = $('filtros-admin') && $('filtros-admin').style.display !== 'none';
+  let count = [filtroEstado !== 'todos', (filtroBuscar || '').trim()].filter(Boolean).length;
+  if (admin) {
+    const desde = $('filtro-desde')?.value, hasta = $('filtro-hasta')?.value, dia = $('filtro-dia-especifico')?.value;
+    const hoy = new Date(), mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    const periodo = filtroPeriodo === 'mes' ? { mode: 'mes', mes: mesActual }
+      : filtroPeriodo === 'dia' && dia ? { mode: 'rango', desde: dia, hasta: dia }
+      : filtroPeriodo === 'rango' && desde && hasta ? (/-01$/.test(desde) && F.rangoDeMes(desde.slice(0, 7))?.hasta === hasta ? { mode: 'mes', mes: desde.slice(0, 7) } : { mode: 'rango', desde, hasta })
+      : { mode: 'all' };
+    $('rmx-periodo-host').innerHTML = F.period({ id: 'periodo', value: periodo, allLabel: 'Todas las fechas' });
+    $('rmx-chofer-host').innerHTML = F.select({ id: 'chofer', label: 'Chofer', icon: '👤', value: $('filtro-chofer-input')?.value || '', options: opts('filtro-chofer-input'), allLabel: 'Todos' });
+    $('rmx-tipo-host').innerHTML = F.select({ id: 'tipo', label: 'Servicio', value: $('filtro-tipo-servicio')?.value || '', options: opts('filtro-tipo-servicio'), allLabel: 'Todos' });
+    $('rmx-pago-host').innerHTML = F.select({ id: 'pago', label: 'Pago', value: $('filtro-pago')?.value || '', options: opts('filtro-pago'), allLabel: 'Todos' });
+    count += [periodo.mode !== 'all', $('filtro-chofer-input')?.value, ($('filtro-patente')?.value || '').trim(), $('filtro-tipo-servicio')?.value, $('filtro-pago')?.value].filter(Boolean).length;
+  }
+  $('rmx-clear-host').innerHTML = F.clear({ count });
+  F.bind($('rmx-filters'), (id, v) => {
+    if (id === 'estado') filtroEstado = v || 'todos';
+    if (id === 'periodo') {
+      const b = F.periodBounds(v);
+      if (v.mode === 'all') filtroPeriodo = 'todos';
+      else { filtroPeriodo = 'rango'; if ($('filtro-desde')) $('filtro-desde').value = b.start || ''; if ($('filtro-hasta')) $('filtro-hasta').value = b.end || ''; }
+    }
+    const sel = { chofer: 'filtro-chofer-input', tipo: 'filtro-tipo-servicio', pago: 'filtro-pago' }[id];
+    if (sel && $(sel)) $(sel).value = v || '';
+    aplicarFiltrosRemitos();
+  }, () => limpiarFiltrosAdmin());
+  if (!window._rmxChoferObserver && $('filtro-chofer-input') && typeof MutationObserver === 'function') {
+    window._rmxChoferObserver = new MutationObserver(() => _rmxRenderFilters());
+    window._rmxChoferObserver.observe($('filtro-chofer-input'), { childList: true });
+  }
+}
+window._rmxRenderFilters = _rmxRenderFilters;
+document.addEventListener('DOMContentLoaded', () => _rmxRenderFilters());
+
 function aplicarFiltrosRemitos() {
   const filtros = _leerFiltrosRemitosUI();
+  _rmxRenderFilters();
   window._remitosFiltros = filtros;
   window._remitosPagina = 1;
   if (typeof cargarRemitos === 'function') cargarRemitos({ filtros, page: 1 });
@@ -1657,7 +1706,7 @@ function renderRemitosPagination() {
 function actualizarInfoFiltroRemitos() {
   const total = window._remitosTotal || 0;
   const countEl = document.getElementById('filtro-count');
-  if (countEl) countEl.textContent = `— ${total} remito${total !== 1 ? 's' : ''}`;
+  if (countEl) countEl.textContent = `${total} remito${total !== 1 ? 's' : ''}`;
 
   const labelEl = document.getElementById('filtro-label');
   if (labelEl) {

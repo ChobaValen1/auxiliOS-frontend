@@ -361,7 +361,10 @@ async function _finalizarInicializacion() {
   }
   if (PERFIL_USUARIO?.roles?.name === 'administracion') {
     const panel = document.getElementById('filtros-admin');
-    if (panel) panel.style.display = 'block';
+    if (panel) panel.style.display = 'contents';
+    const exportBtn = document.getElementById('btn-export-remitos');
+    if (exportBtn) exportBtn.style.display = '';
+    window._rmxRenderFilters?.();
     await cargarChoferes();
   }
 

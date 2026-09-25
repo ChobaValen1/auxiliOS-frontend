@@ -14,12 +14,12 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=fechas-una-direccion-v141-20260925">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=fechas-una-direccion-v141-20260925">
-<link rel="stylesheet" href="dashboard-v1.css?v=fechas-una-direccion-v141-20260925">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=fechas-una-direccion-v141-20260925">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=fechas-una-direccion-v141-20260925">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=fechas-una-direccion-v141-20260925">
+<link rel="stylesheet" href="sigma.css?v=remitos-filtros-v142-20260925">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-filtros-v142-20260925">
+<link rel="stylesheet" href="dashboard-v1.css?v=remitos-filtros-v142-20260925">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-filtros-v142-20260925">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-filtros-v142-20260925">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-filtros-v142-20260925">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +39,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="supabase.js?v=fechas-una-direccion-v141-20260925" defer></script>
+<script src="config.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="supabase.js?v=remitos-filtros-v142-20260925" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="sigma.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="dashboard-charts-v1.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="dashboard-shell-v1.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="dashboard-facturacion-v1.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="dashboard-operaciones-v1.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="dashboard-flota-v1.js?v=fechas-una-direccion-v141-20260925" defer></script>
-<script src="dashboard-mapa-v1.js?v=fechas-una-direccion-v141-20260925" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-filtros-v142-20260925" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-filtros-v142-20260925" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="sigma.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="dashboard-charts-v1.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="dashboard-shell-v1.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="dashboard-facturacion-v1.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="dashboard-operaciones-v1.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="dashboard-flota-v1.js?v=remitos-filtros-v142-20260925" defer></script>
+<script src="dashboard-mapa-v1.js?v=remitos-filtros-v142-20260925" defer></script>
 </head>
 <body>
 
@@ -1179,116 +1179,55 @@
 
 
     <div class="screen" id="screen-remitos">
-      <div class="sec-header mb24">
-        <div><div class="sec-title">REMITOS VIRTUALES</div><div class="sec-sub">Generación, firma digital y archivo de remitos</div></div>
-        <button id="btn-nuevo-remito-desktop" class="btn btn-primary desktop-only" onclick="abrirNuevoRemito()">+ Nuevo remito</button>
+      <!-- Barra única de Remitos: buscador y filtros en una fila, Exportar y Nuevo remito a la derecha.
+           El título ya lo muestra la barra superior. Los controles originales (ids que leen
+           _leerFiltrosRemitosUI y limpiarFiltrosAdmin) quedan como fuente de valores. -->
+      <div class="rmx-toolbar" id="filtros-remitos">
+        <div class="rmx-filters auxf-bar" id="rmx-filters">
+          <label class="auxf-search rmx-search"><span aria-hidden="true">⌕</span><input id="input-buscar-remitos" type="search" autocomplete="off" placeholder="Nº remito, cliente, patente..." oninput="filtrarBusqueda(this.value)"></label>
+          <div id="rmx-estado-host" class="rmx-host"></div>
+          <div id="filtros-admin" class="rmx-admin" style="display:none">
+            <div id="rmx-periodo-host" class="rmx-host"></div>
+            <div id="rmx-chofer-host" class="rmx-host"></div>
+            <label class="auxf-search rmx-plate"><span aria-hidden="true">🚗</span><input id="filtro-patente" autocomplete="off" placeholder="Patente" oninput="aplicarFiltrosRemitosDebounced()"></label>
+            <div id="rmx-tipo-host" class="rmx-host"></div>
+            <div id="rmx-pago-host" class="rmx-host"></div>
+          </div>
+          <div id="rmx-clear-host" class="rmx-host"></div>
+        </div>
+        <div class="rmx-actions">
+          <span class="rmx-count" id="filtro-count">—</span>
+          <button class="rmx-btn" id="btn-export-remitos" type="button" onclick="exportarRemitosExcel()" style="display:none">⇩ Exportar</button>
+          <button class="rmx-btn primary" id="btn-remito-nuevo-admin" type="button" style="display:none" onclick="abrirModalRemitoAdmin()">＋ Nuevo remito</button>
+          <button id="btn-nuevo-remito-desktop" class="rmx-btn primary desktop-only" type="button" onclick="abrirNuevoRemito()">＋ Nuevo remito</button>
+        </div>
+        <!-- Fuentes de valor de los filtros (ocultas): el código existente las lee por id. -->
+        <div class="rmx-sources" hidden aria-hidden="true">
+          <div class="filter-tabs" id="ftabs-estado"><div class="ftab active"></div></div>
+          <div class="ftab" id="ftab-cerrado-admin" style="display:none"></div>
+          <div class="filter-tabs" id="ftabs-periodo-admin"><div class="ftab active"></div></div>
+          <select id="filtro-chofer-input" onchange="aplicarFiltrosRemitos()"><option value="">Todos los choferes</option></select>
+          <select id="filtro-tipo-servicio" onchange="aplicarFiltrosRemitos()">
+            <option value="">Todos</option>
+            <option value="Remolque ruta">Remolque ruta</option>
+            <option value="Traslado urbano">Traslado urbano</option>
+            <option value="Servicio de grúa">Servicio de grúa</option>
+            <option value="Otro">Otro</option>
+          </select>
+          <select id="filtro-pago" onchange="aplicarFiltrosRemitos()">
+            <option value="">Todos</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="App">App</option>
+          </select>
+          <div id="panel-dia"><input type="date" id="filtro-dia-especifico" data-aux-date-skip></div>
+          <div id="panel-rango"><input type="date" id="filtro-desde" data-aux-date-skip><input type="date" id="filtro-hasta" data-aux-date-skip></div>
+          <span id="filtro-label"></span><span id="filtro-total-extras"></span>
+        </div>
       </div>
-      
-      <div class="card mb24" id="filtros-remitos">
-
-  <!-- Filtros básicos — todos los usuarios -->
-  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px">
-    <div>
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Estado</div>
-      <div class="filter-tabs" id="ftabs-estado">
-        <div class="ftab active" onclick="filtrarEstado('todos',this)">Todos</div>
-        <div class="ftab" onclick="filtrarEstado('firmado',this)">Firmados</div>
-        <div class="ftab" onclick="filtrarEstado('pendiente',this)">Pendientes</div>
-        <div class="ftab" onclick="filtrarEstado('anulado',this)">Anulados</div>
-        <div class="ftab" onclick="filtrarEstado('cerrado_admin',this)" id="ftab-cerrado-admin" style="display:none">Cerrados admin</div>
-      </div>
-    </div>
-    <div style="margin-left:auto">
-      <input class="form-input" id="input-buscar-remitos"
-        placeholder="Nº remito, cliente, patente..."
-        style="width:220px;padding:7px 12px;font-size:12px"
-        oninput="filtrarBusqueda(this.value)">
-    </div>
-  </div>
-
- <div id="filtros-admin" style="display:none; border-top:1px solid var(--border); padding-top:14px">
-  <div style="font-size:9px; color:var(--amber); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; font-weight:700"> Filtros de administración</div>
-
-  <div style="display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end">
-    <div>
-      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Chofer</div>
-      <select class="form-input" id="filtro-chofer-input" style="width:180px; padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
-        <option value="">Todos los choferes</option>
-      </select>
-    </div> <div>
-      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Patente</div>
-      <input class="form-input" id="filtro-patente" placeholder="Ej: AB 123 CD" style="width:140px; padding:7px 12px; font-size:12px; font-family:'DM Mono'" oninput="aplicarFiltrosRemitosDebounced()">
-    </div>
-
-    <div>
-      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Tipo de servicio</div>
-      <select class="form-input" id="filtro-tipo-servicio" style="padding:7px 12px; font-size:12px; min-width:160px" onchange="aplicarFiltrosRemitos()">
-        <option value="">Todos</option>
-        <option value="Remolque ruta">Remolque ruta</option>
-        <option value="Traslado urbano">Traslado urbano</option>
-        <option value="Servicio de grúa">Servicio de grúa</option>
-        <option value="Otro">Otro</option>
-      </select>
-    </div>
-
-    <div>
-      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Medio de pago</div>
-      <select class="form-input" id="filtro-pago" style="padding:7px 12px; font-size:12px; min-width:150px" onchange="aplicarFiltrosRemitos()">
-        <option value="">Todos</option>
-        <option value="Efectivo">💵 Efectivo</option>
-        <option value="Transferencia">🏦 Transferencia</option>
-        <option value="Tarjeta">💳 Tarjeta</option>
-        <option value="App">📱 App</option>
-      </select>
-    </div>
-  </div>
-
-  <div style="margin-top:14px; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end">
-    <div>
-      <div style="font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px">Período</div>
-      <div class="filter-tabs" id="ftabs-periodo-admin">
-        <div class="ftab active" onclick="filtrarPeriodo('todos',this)">Todos</div>
-        <div class="ftab" onclick="filtrarPeriodo('mes',this)">Este mes</div>
-        <div class="ftab" onclick="filtrarPeriodo('dia',this)">Día específico</div>
-        <div class="ftab" onclick="filtrarPeriodo('rango',this)">Rango</div>
-      </div>
-    </div>
-    
-    <div id="panel-dia" style="display:none">
-      <div style="font-size:9px; color:var(--muted); margin-bottom:6px">Fecha</div>
-      <input class="form-input" type="date" id="filtro-dia-especifico" style="padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
-    </div>
-
-    <div id="panel-rango" style="display:none; gap:8px; align-items:flex-end">
-      <div>
-        <div style="font-size:9px; color:var(--muted); margin-bottom:6px">Desde</div>
-        <input class="form-input" type="date" id="filtro-desde" style="padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
-      </div>
-      <div>
-        <div style="font-size:9px; color:var(--muted); margin-bottom:6px">Hasta</div>
-        <input class="form-input" type="date" id="filtro-hasta" style="padding:7px 12px; font-size:12px" onchange="aplicarFiltrosRemitos()">
-      </div>
-    </div>
-
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-ghost" style="font-size:11px; padding:7px 14px" onclick="limpiarFiltrosAdmin()">✕ Limpiar filtros</button>
-      <button class="btn btn-ghost" id="btn-export-remitos" style="font-size:11px; padding:7px 14px" onclick="exportarRemitosExcel()">📊 Exportar a Excel</button>
-    </div>
-  </div>
-</div>
-
-</div>
-
-<div id="filtro-info" style="margin-top:14px; padding:8px 12px; background:var(--bg); border-radius:6px; border:1px solid var(--border); display:flex; align-items:center; gap:8px">
-  <span style="font-size:11px; color:var(--muted)">Mostrando:</span>
-  <span id="filtro-label" style="font-size:11px; color:var(--amber); font-weight:600">Todos los remitos</span>
-  <span id="filtro-count" style="font-size:10px; color:var(--muted)">—</span>
-  <span id="filtro-total-extras" style="margin-left:auto; font-size:11px; color:var(--muted)"></span>
-</div>
 
 <div id="remitos-lista" style="display:block; margin-top:14px">
-  <!-- Crear remito desde admin (se muestra por JS solo a administración) -->
-  <button class="btn btn-primary" id="btn-remito-nuevo-admin" style="display:none;margin-bottom:12px" onclick="abrirModalRemitoAdmin()">➕ Nuevo remito</button>
   <!-- KPIs de remitos: solo admin/supervisión (se muestra por JS) -->
   <div id="remitos-kpis" style="display:none;gap:12px;flex-wrap:wrap;margin-bottom:14px">
     <div style="flex:1;min-width:140px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px">

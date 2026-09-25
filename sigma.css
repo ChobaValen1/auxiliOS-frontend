@@ -3816,3 +3816,32 @@ body {
 .remito-created-confirmation{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:20px;background:rgba(4,8,15,.72);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease}.remito-created-confirmation.is-visible{opacity:1;visibility:visible}.remito-created-confirmation>div{display:grid;justify-items:center;gap:8px;width:min(330px,88vw);padding:28px 22px;border:1px solid rgba(39,196,122,.5);border-radius:16px;background:var(--card);box-shadow:0 22px 60px rgba(0,0,0,.55);text-align:center}.remito-created-confirmation span{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:rgba(39,196,122,.14);color:var(--green);font-size:27px;font-weight:900}.remito-created-confirmation strong{font-size:15px}.remito-created-confirmation small{color:var(--muted2);font-size:10px}
 /* Remito de un servicio de una sola dirección: sin campo Destino. */
 .p3-single-address-hidden{display:none!important}
+
+/* ── Remitos · barra única de filtros y acciones ─────────────────────────
+   Una sola fila: buscador y filtros a la izquierda; cantidad, Exportar y
+   Nuevo remito a la derecha. Antes eran tres bloques (título, tarjeta de
+   filtros con dos niveles y la franja "Mostrando") y la tabla arrancaba a
+   mitad de pantalla. */
+#screen-remitos .rmx-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;margin:0 0 10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+#screen-remitos .rmx-filters{flex:1 1 520px;min-width:0}
+#screen-remitos .rmx-admin{display:contents}
+#screen-remitos .rmx-host{display:contents}
+#screen-remitos .rmx-search{flex:1 1 200px;max-width:260px}
+#screen-remitos .rmx-plate{flex:0 1 130px;min-width:110px;max-width:140px}
+#screen-remitos .rmx-plate input{font-family:'DM Mono',monospace;text-transform:uppercase}
+#screen-remitos .rmx-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto;margin-left:auto}
+#screen-remitos .rmx-count{color:var(--muted2);font-size:10px;font-weight:700;white-space:nowrap}
+#screen-remitos .rmx-btn{height:34px;padding:0 13px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:11px;font-weight:800;white-space:nowrap;cursor:pointer}
+#screen-remitos .rmx-btn:hover{border-color:var(--primary)}
+#screen-remitos .rmx-btn.primary{border-color:var(--primary);background:var(--primary);color:#fff}
+#screen-remitos .rmx-btn.primary:hover{filter:brightness(1.08)}
+#screen-remitos .rmx-sources{display:none!important}
+/* Si Administración ve su propio "Nuevo remito", el del chofer no se duplica. */
+#screen-remitos .rmx-actions #btn-remito-nuevo-admin:not([style*="none"]) ~ #btn-nuevo-remito-desktop{display:none!important}
+#screen-remitos #remitos-kpis{margin-bottom:10px!important}
+@media (max-width:720px){
+  #screen-remitos .rmx-toolbar{padding:8px}
+  #screen-remitos .rmx-filters{flex-basis:100%}
+  #screen-remitos .rmx-search,#screen-remitos .rmx-plate{max-width:none}
+  #screen-remitos .rmx-actions{width:100%;justify-content:flex-end}
+}
