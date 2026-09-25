@@ -6369,7 +6369,10 @@ function _rmxEsc(v) {
   return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 function _rmxSeleccion() { return window._rmxSel || (window._rmxSel = new Map()); }
-function _rmxLimpiarSeleccion() { _rmxSeleccion().clear(); _rmxSyncSeleccionUI(); }
+function _rmxLimpiarSeleccion() { _rmxSeleccion().clear(); window._rmxSelTodos = false; _rmxSyncSeleccionUI(); }
+// Con la página completa marcada se puede pasar a "todos los remitos del filtro"
+// (para exportar sin recorrer páginas). Destildar cualquier fila vuelve a la selección manual.
+function _rmxSeleccionarTodoElFiltro() { window._rmxSelTodos = true; _rmxSyncSeleccionUI(); }
 function _rmxSyncSeleccionUI() {
   const sel = _rmxSeleccion();
   const rows = [...document.querySelectorAll('#tbody-remitos tr.rmx-row')];
@@ -6384,13 +6387,24 @@ function _rmxSyncSeleccionUI() {
     all.checked = rows.length > 0 && marcadas === rows.length;
     all.indeterminate = marcadas > 0 && marcadas < rows.length;
   }
+  // Exportar y descargar son de Administración: sin ese rol no hay columna de selección.
+  document.getElementById('tabla-remitos')?.classList.toggle('rmx-no-select', PERFIL_USUARIO?.roles?.name !== 'administracion');
   const bar = document.getElementById('rmx-bulk');
   if (!bar) return;
+  if (!sel.size) window._rmxSelTodos = false;
   bar.hidden = sel.size === 0;
+  const total = window._remitosTotal || 0;
+  const todos = !!window._rmxSelTodos;
   const n = document.getElementById('rmx-bulk-count');
-  if (n) n.textContent = `${sel.size} ${sel.size === 1 ? 'remito seleccionado' : 'remitos seleccionados'}`;
-  const pdf = document.getElementById('rmx-bulk-pdf');
-  if (pdf) pdf.hidden = PERFIL_USUARIO?.roles?.name !== 'administracion';
+  if (n) n.textContent = todos
+    ? `Los ${total.toLocaleString('es-AR')} remitos del filtro seleccionados`
+    : `${sel.size} ${sel.size === 1 ? 'remito seleccionado' : 'remitos seleccionados'}`;
+  const link = document.getElementById('rmx-bulk-all');
+  if (link) {
+    const paginaCompleta = rows.length > 0 && rows.every(tr => sel.has(String(tr.dataset.remitoId)));
+    link.hidden = todos || !paginaCompleta || total <= sel.size;
+    link.textContent = `Seleccionar los ${total.toLocaleString('es-AR')} remitos del filtro`;
+  }
 }
 document.addEventListener('change', e => {
   const cb = e.target.closest?.('#tbody-remitos .rmx-check, #rmx-sel-all');
@@ -6400,7 +6414,7 @@ document.addEventListener('change', e => {
   filas.forEach(tr => {
     const id = String(tr?.dataset.remitoId || ''); if (!id) return;
     if (cb.checked) { try { sel.set(id, JSON.parse(tr.getAttribute('data-rem'))); } catch (_) {} }
-    else sel.delete(id);
+    else { sel.delete(id); window._rmxSelTodos = false; }
   });
   _rmxSyncSeleccionUI();
 });
@@ -6412,13 +6426,19 @@ document.addEventListener('click', e => {
 });
 
 async function exportarRemitosSeleccionados() {
+  if (window._rmxSelTodos) { exportarRemitosExcel(); return; }
   const filas = [..._rmxSeleccion().values()];
   if (!filas.length) return;
   _rmxExportarFilas(filas, 'remitos_seleccion');
 }
 
 async function descargarPdfsSeleccionados() {
-  const filas = [..._rmxSeleccion().values()];
+  let filas = [..._rmxSeleccion().values()];
+  if (window._rmxSelTodos) {
+    const total = window._remitosTotal || 0;
+    if (total > 20 && !confirm(`Vas a descargar ${total} PDF, uno por remito. ¿Seguir?`)) return;
+    filas = await fetchRemitosFiltrados({ filtros: window._remitosFiltros ?? _leerFiltrosRemitosUI(), max: 5000 });
+  }
   if (!filas.length) return;
   if (filas.length > 1) toast(`Descargando ${filas.length} PDF…`);
   for (const d of filas) {

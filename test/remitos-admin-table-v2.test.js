@@ -62,6 +62,8 @@ test('la tabla de Remitos muestra las columnas acordadas, con selección múltip
   assert.match(head,/id="rmx-sel-all"/);
   assert.match(html,/id="rmx-bulk"[^>]*hidden/);
   assert.match(html,/exportarRemitosSeleccionados\(\)/);
+  assert.doesNotMatch(html,/btn-export-remitos/,'Exportar vive solo en la barra de selección');
+  assert.match(html,/_rmxSeleccionarTodoElFiltro\(\)/);
   assert.match(html,/id="rmx-chips"/);
   assert.doesNotMatch(html,/remitos-kpis|rkpi-/);
   assert.doesNotMatch(html,/modal-remito-nuevo-admin|btn-remito-nuevo-admin|btn-nuevo-remito-desktop/);

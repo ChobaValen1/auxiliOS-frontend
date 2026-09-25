@@ -3889,3 +3889,7 @@ body {
 #screen-remitos .rmx-more-menu button:hover{background:rgba(245,166,35,.1);color:var(--amber)}
 #screen-remitos .rmx-table th:last-child{text-align:right}
 #screen-remitos .rmx-table .pill{white-space:nowrap}
+#screen-remitos .rmx-bulk-info{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+#screen-remitos .rmx-bulk-link{padding:0;border:0;background:none;color:var(--amber);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+#screen-remitos .rmx-bulk-link[hidden]{display:none}
+#screen-remitos .rmx-table.rmx-no-select .rmx-col-check{display:none}

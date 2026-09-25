@@ -14,12 +14,12 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=remitos-sin-filtro-patente-v146-20260925">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-sin-filtro-patente-v146-20260925">
-<link rel="stylesheet" href="dashboard-v1.css?v=remitos-sin-filtro-patente-v146-20260925">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-sin-filtro-patente-v146-20260925">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-sin-filtro-patente-v146-20260925">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-sin-filtro-patente-v146-20260925">
+<link rel="stylesheet" href="sigma.css?v=remitos-exportar-seleccion-v147-20260925">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-exportar-seleccion-v147-20260925">
+<link rel="stylesheet" href="dashboard-v1.css?v=remitos-exportar-seleccion-v147-20260925">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-exportar-seleccion-v147-20260925">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-exportar-seleccion-v147-20260925">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-exportar-seleccion-v147-20260925">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +39,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="supabase.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
+<script src="config.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="supabase.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="sigma.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="dashboard-charts-v1.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="dashboard-shell-v1.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="dashboard-facturacion-v1.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="dashboard-operaciones-v1.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="dashboard-flota-v1.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
-<script src="dashboard-mapa-v1.js?v=remitos-sin-filtro-patente-v146-20260925" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="sigma.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="dashboard-charts-v1.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="dashboard-shell-v1.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="dashboard-facturacion-v1.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="dashboard-operaciones-v1.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="dashboard-flota-v1.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
+<script src="dashboard-mapa-v1.js?v=remitos-exportar-seleccion-v147-20260925" defer></script>
 </head>
 <body>
 
@@ -1197,7 +1197,6 @@
         <div class="rmx-actions">
           <span class="rmx-chips" id="rmx-chips"></span>
           <span class="rmx-count" id="filtro-count">—</span>
-          <button class="rmx-btn" id="btn-export-remitos" type="button" onclick="exportarRemitosExcel()" style="display:none">⇩ Exportar</button>
         </div>
         <!-- Fuentes de valor de los filtros (ocultas): el código existente las lee por id. -->
         <div class="rmx-sources" hidden aria-hidden="true">
@@ -1227,9 +1226,9 @@
 
 <div id="remitos-lista" style="display:block; margin-top:14px">
   <div id="rmx-bulk" class="rmx-bulk" hidden>
-    <span id="rmx-bulk-count">0 remitos seleccionados</span>
+    <span class="rmx-bulk-info"><span id="rmx-bulk-count">0 remitos seleccionados</span><button class="rmx-bulk-link" id="rmx-bulk-all" type="button" hidden onclick="_rmxSeleccionarTodoElFiltro()"></button></span>
     <div class="rmx-bulk-actions">
-      <button class="rmx-btn" type="button" onclick="exportarRemitosSeleccionados()">⇩ Exportar selección</button>
+      <button class="rmx-btn primary" type="button" onclick="exportarRemitosSeleccionados()">⇩ Exportar</button>
       <button class="rmx-btn" id="rmx-bulk-pdf" type="button" onclick="descargarPdfsSeleccionados()">Descargar PDF</button>
       <button class="rmx-btn ghost" type="button" onclick="_rmxLimpiarSeleccion()">Quitar selección</button>
     </div>
