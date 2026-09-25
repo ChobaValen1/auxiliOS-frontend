@@ -2205,7 +2205,7 @@ function _raRender() {
 
   document.getElementById('ra-titulo').textContent = `📄 ${r.nro_remito || '—'}`;
   const movil = r.daily_logs?.trucks ? ` · Móvil ${r.daily_logs.trucks.numero_interno || r.daily_logs.trucks.plate}` : '';
-  const jornada = r.daily_logs?.log_date ? ` · Jornada del ${r.daily_logs.log_date.split('-').reverse().join('/')}` : '';
+  const jornada = r.daily_logs?.log_date ? ` · Jornada del ${window.auxFormatDate ? window.auxFormatDate(r.daily_logs.log_date) : r.daily_logs.log_date.split('-').reverse().join('/')}` : '';
   document.getElementById('ra-sub').textContent =
     `Cargado por ${r.users?.full_name || '—'}${jornada}${movil}`;
 
@@ -6921,10 +6921,10 @@ function _jhistCambiarChofer() {
 }
 
 function _jhistFecha(iso) {
-  // 'AAAA-MM-DD' → 'DD-MM-AAAA'
+  // 'AAAA-MM-DD' → 'DD/MM/AA'
   if (!iso) return '—';
   const p = String(iso).slice(0, 10).split('-');
-  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '—';
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(2)}` : '—';
 }
 
 function _jhistHora(h) {
@@ -9665,8 +9665,8 @@ function _abrirRendicionMensualPDF({ chofer, servicios, gastos, totales, arqueo,
   const rangoStr  = `01-${mm}-${anio} — ${String(new Date(anio, mes, 0).getDate()).padStart(2,'0')}-${mm}-${anio}`;
   const _p2 = (n) => String(n).padStart(2, '0');
   const ahora = new Date();
-  const emitido = `${_p2(ahora.getDate())}-${_p2(ahora.getMonth()+1)}-${ahora.getFullYear()} ${_p2(ahora.getHours())}:${_p2(ahora.getMinutes())}`;
-  const _dmy = (iso) => (iso || '').split('-').reverse().join('-');
+  const emitido = `${_p2(ahora.getDate())}/${_p2(ahora.getMonth()+1)}/${String(ahora.getFullYear()).slice(2)} ${_p2(ahora.getHours())}:${_p2(ahora.getMinutes())}`;
+  const _dmy = (iso) => { const [y, m, d] = String(iso || '').slice(0, 10).split('-'); return y && m && d ? `${d}/${m}/${y.slice(2)}` : (iso || ''); };
   const _chip = {
     'Servicio': 'chip-servicio', 'Peaje': 'chip-peaje', 'Excedente': 'chip-excedente',
     'Otro': 'chip-otro', 'Combustible': 'chip-combustible', 'Gasto extra': 'chip-extra',
@@ -12917,7 +12917,7 @@ function _incFmtFecha(iso) {
   if (esHoy) return `hoy ${hm}`;
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}-${mm}-${d.getFullYear()} ${hm}`;
+  return `${dd}/${mm}/${String(d.getFullYear()).slice(2)} ${hm}`;
 }
 
 // ── Exportar remitos filtrados a Excel ─────────────
@@ -14520,7 +14520,7 @@ function _jadminFmtFecha(iso) {
   if (isNaN(d)) return _escHtml(iso);
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = d.getFullYear();
+  const yy = String(d.getFullYear()).slice(2);
   return `${dd}/${mm}/${yy}`;
 }
 function _jadminDiaSemana(iso) {
@@ -16630,7 +16630,7 @@ function _alxEsAdminOSup() {
 // 'YYYY-MM-DD' → 'DD-MM-AAAA'
 function _alxFecha(iso) {
   if (!iso || iso.length < 10) return iso || '';
-  return `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}`;
 }
 
 // ── Vistos (localStorage 'alertasVistas', purga > 30 días) ─────

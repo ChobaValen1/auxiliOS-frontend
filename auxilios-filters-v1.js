@@ -19,7 +19,9 @@ function hoyISO(){const d=new Date();return`${d.getFullYear()}-${pad(d.getMonth(
 function mesActual(){const d=new Date();return`${d.getFullYear()}-${pad(d.getMonth()+1)}`;}
 function mesesRecientes(n=12){const out=[],d=new Date();d.setDate(1);for(let i=0;i<n;i++){out.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}`);d.setMonth(d.getMonth()-1);}return out;}
 function rangoDeMes(ym){const [y,m]=String(ym||'').split('-').map(Number);if(!y||!m)return null;const last=new Date(y,m,0).getDate();return{desde:`${y}-${pad(m)}-01`,hasta:`${y}-${pad(m)}-${pad(last)}`};}
-function fechaCorta(iso){const [y,m,d]=String(iso||'').split('-').map(Number);return y&&m&&d?`${d} ${MESES[m-1].toLowerCase()} ${y}`:'';}
+function fechaCorta(iso){const [y,m,d]=String(iso||'').split('-');return y&&m&&d?`${d}/${m}/${y.slice(2)}`:'';}
+/* 'DD/MM/AA' (o DD/MM/AAAA) → 'AAAA-MM-DD'; '' si no es una fecha válida. */
+function parseCorta(text){const m=String(text||'').trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2}|\d{4})$/);if(!m)return'';const d=+m[1],mo=+m[2],y=m[3].length===2?2000+ +m[3]:+m[3];const dt=new Date(y,mo-1,d);if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return'';return`${y}-${pad(mo)}-${pad(d)}`;}
 function etiquetaMes(ym){const [y,m]=ym.split('-').map(Number);return`${MESES[m-1]} ${String(y).slice(2)}`;}
 
 /* ── Período ─────────────────────────────────────────────────────────── */
@@ -41,9 +43,8 @@ function period({id,value,allLabel='Todas las fechas',allowAll=true,months}={}){
   const p=value||{mode:allowAll?'all':'mes',mes:mesActual()},d=describePeriod(p,allLabel),b=periodBounds(p),active=p.mode!=='all';
   const lista=(Array.isArray(months)&&months.length?[...new Set(months)].sort().reverse().slice(0,12):mesesRecientes(12));
   const meses=lista.map(ym=>{const on=p.mode==='mes'&&p.mes===ym;return`<button type="button" class="auxf-mes${on?' on':''}" data-auxf-mes="${esc(ym)}"${on?' aria-current="true"':''}>${esc(etiquetaMes(ym))}</button>`;}).join('');
-  const hoy=hoyISO();
   return`<div class="auxf" data-auxf="${esc(id)}" data-auxf-kind="period"><button type="button" class="auxf-btn${active?' is-active':''}" data-auxf-open aria-haspopup="dialog" aria-expanded="false"><span class="auxf-ico" aria-hidden="true">🗓</span><span class="auxf-txt"><b>${esc(d.titulo)}</b>${d.rango?`<small>${esc(d.rango)}</small>`:''}</span><span class="auxf-caret" aria-hidden="true">▾</span></button>`
-   +`<div class="auxf-pop auxf-pop-period" role="dialog" aria-label="Elegir período" hidden>${allowAll?`<button type="button" class="auxf-all${p.mode==='all'?' on':''}" data-auxf-all>${esc(allLabel)}</button>`:''}<h4>Mes</h4><div class="auxf-meses">${meses}</div><h4>Período personalizado</h4><div class="auxf-libre"><label>Desde<input type="date" data-auxf-desde max="${hoy}" value="${esc(b.start||'')}"></label><label>Hasta<input type="date" data-auxf-hasta max="${hoy}" value="${esc(b.end||'')}"></label><button type="button" class="auxf-aplicar" data-auxf-rango>Aplicar</button></div><p class="auxf-error" role="alert" hidden></p></div></div>`;
+   +`<div class="auxf-pop auxf-pop-period" role="dialog" aria-label="Elegir período" hidden>${allowAll?`<button type="button" class="auxf-all${p.mode==='all'?' on':''}" data-auxf-all>${esc(allLabel)}</button>`:''}<h4>Mes</h4><div class="auxf-meses">${meses}</div><h4>Período personalizado</h4><div class="auxf-libre"><label>Desde<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-desde value="${esc(fechaCorta(b.start||''))}"></label><label>Hasta<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-hasta value="${esc(fechaCorta(b.end||''))}"></label><button type="button" class="auxf-aplicar" data-auxf-rango>Aplicar</button></div><p class="auxf-error" role="alert" hidden></p></div></div>`;
 }
 
 /* ── Selección ───────────────────────────────────────────────────────── */
@@ -79,12 +80,14 @@ function bind(root,onChange,onClear){
     const mes=ev.target.closest('[data-auxf-mes]');
     if(mes){ev.preventDefault();closeAll();h.onChange?.(id,{mode:'mes',mes:mes.dataset.auxfMes});return;}
     if(ev.target.closest('[data-auxf-rango]')){
-      ev.preventDefault();const desde=box.querySelector('[data-auxf-desde]')?.value,hasta=box.querySelector('[data-auxf-hasta]')?.value,err=box.querySelector('.auxf-error');
-      if(!desde||!hasta||desde>hasta){if(err){err.textContent=desde&&hasta?'La fecha "desde" tiene que ser anterior a la de "hasta".':'Completá las dos fechas.';err.hidden=false;}return;}
+      ev.preventDefault();const rawDesde=box.querySelector('[data-auxf-desde]')?.value,rawHasta=box.querySelector('[data-auxf-hasta]')?.value,desde=parseCorta(rawDesde),hasta=parseCorta(rawHasta),err=box.querySelector('.auxf-error');
+      if(!desde||!hasta||desde>hasta){if(err){err.textContent=!String(rawDesde||'').trim()||!String(rawHasta||'').trim()?'Completá las dos fechas.':!desde||!hasta?'Escribí las fechas como DD/MM/AA.':'La fecha "desde" tiene que ser anterior a la de "hasta".';err.hidden=false;}return;}
       closeAll();h.onChange?.(id,{mode:'rango',desde,hasta});
     }
   });
   root.addEventListener('input',ev=>{
+    const date=ev.target.closest?.('[data-auxf-desde],[data-auxf-hasta]');
+    if(date&&ev.inputType!=='deleteContentBackward'){const digits=date.value.replace(/\D/g,'').slice(0,6);date.value=digits.replace(/^(\d{2})(\d)/,'$1/$2').replace(/^(\d{2}\/\d{2})(\d)/,'$1/$2');return;}
     const find=ev.target.closest?.('[data-auxf-find]');if(!find)return;
     const q=find.value.toLowerCase().trim(),pop=find.closest('.auxf-pop');let shown=0;
     pop.querySelectorAll('[data-auxf-value]').forEach(o=>{const show=!q||o.dataset.auxfText.includes(q);o.hidden=!show;if(show)shown++;});
@@ -98,5 +101,5 @@ function bind(root,onChange,onClear){
 document.addEventListener('click',ev=>{if(!ev.target.closest?.('.auxf'))closeAll();});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeAll();});
 
-window.AuxFilters={period,select,search,clear,bind,closeAll,periodBounds,periodFromMonth,periodMonth,describePeriod,inPeriod,rangoDeMes};
+window.AuxFilters={parseCorta,period,select,search,clear,bind,closeAll,periodBounds,periodFromMonth,periodMonth,describePeriod,inPeriod,rangoDeMes};
 })();

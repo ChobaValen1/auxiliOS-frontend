@@ -3,8 +3,82 @@ const ENV = {
   ADMIN_API_BASE_URL: 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin'
 };
 
+/* Formato de fecha único en toda la app: DD/MM/AA (y HH:MM cuando hay hora).
+   Las pantallas formatean fechas de muchas formas (toLocaleDateString,
+   toLocaleString, Intl.DateTimeFormat con 'es-AR'); en vez de tocar cada una,
+   se normaliza acá, que carga antes que el resto. Solo afecta a los locales en
+   español o sin locale: 'en-CA' / 'sv-SE' se usan para armar fechas ISO y no
+   se tocan. Los formatos con mes en texto ("Septiembre 2026", "lun 14 mar")
+   son rótulos de período y quedan como están. */
+(function installAuxiliosDateFormat() {
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  if (root.__auxDateFormat) return;
+  root.__auxDateFormat = true;
+  const isSpanish = locales => {
+    const first = Array.isArray(locales) ? locales[0] : locales;
+    return first == null || /^es\b/i.test(String(first));
+  };
+  const DATE_KEYS = ['day', 'month', 'year'];
+  const TIME_KEYS = ['hour', 'minute', 'second'];
+  function normalize(options, kind) {
+    const o = options ? { ...options } : {};
+    if (o.dateStyle || o.timeStyle) {
+      const withDate = !!o.dateStyle, withTime = !!o.timeStyle;
+      delete o.dateStyle; delete o.timeStyle;
+      if (withDate) Object.assign(o, { day: '2-digit', month: '2-digit', year: '2-digit' });
+      if (withTime) Object.assign(o, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      return o;
+    }
+    const hasDate = DATE_KEYS.some(k => o[k]) || o.weekday || o.era;
+    const hasTime = TIME_KEYS.some(k => o[k]) || o.dayPeriod || o.fractionalSecondDigits;
+    if (!hasDate && !hasTime) {
+      if (kind !== 'time') Object.assign(o, { day: '2-digit', month: '2-digit', year: '2-digit' });
+      if (kind === 'datetime' || kind === 'time') Object.assign(o, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      return o;
+    }
+    if (o.hour && o.hour12 == null && !o.hourCycle) o.hourCycle = 'h23';
+    const textualMonth = o.month && !['numeric', '2-digit'].includes(o.month);
+    if (hasDate && !textualMonth && !o.weekday && o.day && o.month) {
+      o.day = '2-digit'; o.month = '2-digit';
+      if (o.year) o.year = '2-digit';
+    }
+    return o;
+  }
+  const nativeDate = Date.prototype.toLocaleDateString;
+  const nativeString = Date.prototype.toLocaleString;
+  Date.prototype.toLocaleDateString = function (locales, options) {
+    return isSpanish(locales) ? nativeDate.call(this, 'es-AR', normalize(options, 'date')) : nativeDate.call(this, locales, options);
+  };
+  Date.prototype.toLocaleString = function (locales, options) {
+    return isSpanish(locales) ? nativeString.call(this, 'es-AR', normalize(options, 'datetime')) : nativeString.call(this, locales, options);
+  };
+  const NativeDTF = Intl.DateTimeFormat;
+  function AuxDateTimeFormat(locales, options) {
+    if (!isSpanish(locales)) return new NativeDTF(locales, options);
+    return new NativeDTF('es-AR', normalize(options, 'date'));
+  }
+  AuxDateTimeFormat.prototype = NativeDTF.prototype;
+  AuxDateTimeFormat.supportedLocalesOf = NativeDTF.supportedLocalesOf.bind(NativeDTF);
+  Intl.DateTimeFormat = AuxDateTimeFormat;
+  /* Para las pantallas que arman la fecha a mano. Acepta Date, ISO con hora o
+     'AAAA-MM-DD' (sin corrimiento de zona). */
+  root.auxFormatDate = function (value, { time = false } = {}) {
+    if (!value) return '';
+    const raw = String(value);
+    if (!time && /^\d{4}-\d{2}-\d{2}$/.test(raw.slice(0, 10)) && raw.length <= 10) {
+      const [y, m, d] = raw.split('-');
+      return `${d}/${m}/${y.slice(2)}`;
+    }
+    const date = value instanceof Date ? value : new Date(raw);
+    if (Number.isNaN(date.getTime())) return raw;
+    const p = n => String(n).padStart(2, '0');
+    const out = `${p(date.getDate())}/${p(date.getMonth() + 1)}/${String(date.getFullYear()).slice(2)}`;
+    return time ? `${out} ${p(date.getHours())}:${p(date.getMinutes())}` : out;
+  };
+})();
+
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'anular-confirmado-v138-20260925';
+window.AUXILIOS_BUILD_ID = 'fechas-cierre-v139-20260925';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

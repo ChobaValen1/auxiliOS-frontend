@@ -270,6 +270,9 @@
     const host=document.getElementById(E.hostId);if(!host||!E.detail)return;
     if(embeddedReadOnly()||!canResolve()){host.innerHTML='';return;}
     const rows=pendingEmbeddedRows();
+    /* Sin diferencias no hay nada que revisar: una sola línea con el cierre, sin
+       la nota ni "Dejar pendiente", que solo sirven mientras falta decidir algo. */
+    if(!rows.length){host.innerHTML=`<section class="os-embedded-review is-clear"><div class="os-embedded-clear"><span><b>✓ Remito sin diferencias</b><small>Las decisiones están en «Ver cargos del remito firmado».</small>${E.note.trim()?`<small class="os-embedded-clear-note">Nota: ${esc(E.note.trim())}</small>`:''}</span><button type="button" class="finish" ${E.busy?'disabled':''} onclick="AuxiliosRemitoReviewV2.finalizeEmbedded()">${E.busy?'Cerrando…':'Finalizar y cerrar'}</button></div></section>`;return;}
     host.innerHTML=`<section class="os-embedded-review"><header><b>${rows.length?'Diferencias pendientes':'Revisión del remito'}</b><small>${rows.length?'Resolvé cada diferencia para poder finalizar.':'No quedan diferencias pendientes.'}</small></header><div class="os-embedded-list">${rows.map(embeddedLine).join('')}</div><div class="os-embedded-note">${rows.length?'Aprobar incorpora el cargo al servicio. Rechazar lo excluye y requiere un motivo.':'Consultá las decisiones en «Ver cargos del remito firmado».'}</div><footer><span>${rows.length} pendientes</span><label class="os-embedded-pending-note"><span>Nota para dejar pendiente</span><textarea id="os-embedded-pending-note" oninput="AuxiliosRemitoReviewV2.noteEmbedded(this.value)" placeholder="Indicá qué falta revisar">${esc(E.note)}</textarea></label><div><button type="button" class="pending" ${E.busy?'disabled':''} onclick="AuxiliosRemitoReviewV2.leavePending()">Dejar pendiente</button><button type="button" class="finish" ${E.busy?'disabled':''} onclick="AuxiliosRemitoReviewV2.finalizeEmbedded()">${E.busy?'Cerrando…':'Finalizar y cerrar'}</button></div></footer></section>`;
   }
   async function embed(serviceId,hostId='osv4-review-slot'){
@@ -312,9 +315,32 @@
   async function finalizeEmbedded(){if(E.busy||embeddedReadOnly()||!E.detail)return;if(unresolvedEmbedded()){window.alert('No se puede cerrar el servicio. Debés aprobar o rechazar todas las diferencias antes de finalizar.');return;}E.busy=true;renderEmbedded();try{const wizard=window.OperatorServices?.S?.wizard;if(wizard?.dirty){const saved=await window.guardarServicioWorkspace?.({keepOpen:true,silent:true});if(!saved)return;E.busy=true;if(unresolvedEmbedded()){window.alert('No se puede cerrar el servicio. Debés aprobar o rechazar todas las diferencias antes de finalizar.');return;}}const {data,error}=await _db.rpc('resolve_operator_service_document_v6',{p_service_id:E.serviceId,p_action:'approve_and_finalize',p_payload:embeddedPayload()});if(error)throw error;if(data?.status!=='completed')throw Error('No se confirmó el cierre del servicio');window.cerrarNuevoServicio?.(true);window.operationFeedback?.('Servicio finalizado','Remito aprobado y enviado a Facturación.','success',2400);await window.OperatorServices?.loadServices?.();}catch(error){window.toast?.(error.message||'No se pudo finalizar','error');}finally{E.busy=false;renderEmbedded();}}
   function editEmbedded(){const id=E.serviceId;window.cerrarNuevoServicio?.(true);window.editarServicioOperador?.(id)}
   async function leavePending(){if(E.busy||embeddedReadOnly()||!E.detail)return;if(E.rejections.size)return window.toast?.('Confirmá el rechazo con su motivo antes de guardar','error');const note=E.note.trim();if(note.length<3)return window.toast?.('Escribí una nota para dejar la revisión pendiente','error');if([...E.decisions.values()].some(d=>d.value==='rejected'&&!d.reason?.trim()))return window.toast?.('Indicá el motivo de cada rechazo','error');E.busy=true;try{const wizard=window.OperatorServices?.S?.wizard;if(wizard?.dirty){if(!await window.guardarServicioWorkspace?.({keepOpen:true,silent:true}))return;}else{const {error}=await _db.rpc('save_operator_service_review_draft_v1',{p_service_id:E.serviceId,p_note:note,p_decisions:Object.fromEntries(E.decisions)});if(error)throw error;}window.cerrarNuevoServicio?.(true);window.operationFeedback?.('Revisión pendiente','La nota y los cambios quedaron guardados.','success',2400);}catch(error){window.toast?.(error.message,'error');}finally{E.busy=false;renderEmbedded();}}
+  /* Finalizar desde Estado: si el remito firmado no tiene diferencias sin
+     resolver, no hace falta abrir la revisión. Calcula con la misma lógica que
+     el panel embebido (embeddedRows / isResolved / embeddedPayload) sobre un
+     estado temporal, y restaura el del panel si estaba abierto. */
+  async function quickFinalizeCheck(serviceId){
+    const [{data,error},report]=await Promise.all([
+      _db.rpc('get_operator_service_remito_review_v3',{p_service_id:serviceId}),
+      _db.rpc('get_operator_service_charge_review_report_v1',{p_service_id:serviceId})
+    ]);
+    if(error||report.error)throw error||report.error;
+    const saved={detail:E.detail,decisions:E.decisions,rejections:E.rejections,serviceId:E.serviceId};
+    try{
+      E.detail=data;E.serviceId=serviceId;E.rejections=new Map();E.decisions=new Map(Object.entries(report.data?.decisions||{}));
+      const pending=embeddedRows(data).filter(({kind,id})=>!isResolved(kind,id)).length;
+      return{pending,payload:pending?null:embeddedPayload()};
+    }finally{Object.assign(E,saved);}
+  }
+  async function quickFinalize(serviceId,payload){
+    const {data,error}=await _db.rpc('resolve_operator_service_document_v6',{p_service_id:serviceId,p_action:'approve_and_finalize',p_payload:payload});
+    if(error)throw error;
+    if(data?.status!=='completed')throw Error('No se confirmó el cierre del servicio');
+    return data;
+  }
   function resetEmbedded(){E.detail=null;E.serviceId=null;E.hostId=null;E.decisions=new Map();E.rejections=new Map();E.note='';E.busy=false;E.loadSeq++}
 
   function tab(){}
-  window.AuxiliosRemitoReviewV2={open,retry,close,openEvidence,resolve,chooseGlobalAction,cancelGlobalAction,commitGlobalAction,addLine,toggleLineCancel,embed,decideEmbedded,reasonEmbedded,confirmRejection,reviewReport,noteEmbedded,finalizeEmbedded,editEmbedded,leavePending,resetEmbedded,refreshEmbedded,getSaveState,preservePlannedRows,tab};
+  window.AuxiliosRemitoReviewV2={open,retry,close,openEvidence,resolve,chooseGlobalAction,cancelGlobalAction,commitGlobalAction,addLine,toggleLineCancel,embed,decideEmbedded,reasonEmbedded,confirmRejection,reviewReport,noteEmbedded,finalizeEmbedded,editEmbedded,leavePending,resetEmbedded,refreshEmbedded,getSaveState,preservePlannedRows,quickFinalizeCheck,quickFinalize,tab};
   const boot=setInterval(()=>{if(inject())clearInterval(boot)},100);setTimeout(()=>clearInterval(boot),15000);
 })();

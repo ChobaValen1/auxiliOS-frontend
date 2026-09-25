@@ -69,7 +69,7 @@ function resumenCierre(s){
 }
 async function openFinalize(id,readOnly=false){
   const s=service(id);if(!s)return notify('No se encontró el servicio','error');
-  if(s.driver_activated)return openActivatedFinalize(id,readOnly);if(s.remito_id&&['submitted','approved'].includes(s.document_status))return O()?.openSignedRemito?.(id);
+  if(s.driver_activated)return openActivatedFinalize(id,readOnly);if(s.remito_id&&['submitted','approved'].includes(s.document_status))return openSignedFinalize(s,readOnly);
   if(!['assigned','at_origin'].includes(s.status))return notify('Solo un servicio ASIGNADO o ARRIBADO puede finalizarse','error');
   const direct=s.status==='assigned';
   const aviso='<div class="osl-warning"><b>Cierre sin remito firmado</b><span>Al confirmar, registrás la excepción documental y enviás el servicio a Facturación.</span></div>';
@@ -93,6 +93,26 @@ async function openFinalize(id,readOnly=false){
       }
     }
     transition('finalize');
+  });
+}
+/* Remito firmado: si quedan diferencias sin resolver se abre la revisión; si no,
+   se confirma acá mismo y se finaliza con el mismo cierre que la revisión
+   (aprueba el remito y pasa a Facturación). */
+async function openSignedFinalize(s,readOnly=false){
+  const review=window.AuxiliosRemitoReviewV2,id=s.service_id;
+  if(s.document_status!=='submitted'||!review?.quickFinalizeCheck)return O()?.openSignedRemito?.(id);
+  let check;
+  try{check=await review.quickFinalizeCheck(id)}catch(e){return O()?.openSignedRemito?.(id)}
+  if(check.pending>0){notify(check.pending===1?'El remito tiene 1 diferencia para revisar antes de finalizar.':`El remito tiene ${check.pending} diferencias para revisar antes de finalizar.`,'info');return O()?.openSignedRemito?.(id)}
+  const aviso='<div class="osl-warning ok"><b>Remito firmado sin diferencias</b><span>Al confirmar, se aprueba el remito y el servicio pasa a Facturación.</span></div>';
+  const m=openModal(shell('¿Finalizar servicio?','Queda cerrado para Operaciones y pasa a Facturación.',resumenCierre(s)+aviso,'Finalizar servicio'),id);
+  if(readOnly)markReadOnly(m);
+  m.querySelector('#osl-form').addEventListener('submit',async e=>{
+    e.preventDefault();if(readOnly||state.busy||rejectStaleContext())return;
+    const submit=m.querySelector('[type="submit"]');state.busy=true;if(submit){submit.disabled=true;submit.textContent='Finalizando…'}
+    try{await review.quickFinalize(id,check.payload);close();if(O()?.S?.wizard?.serviceId===id)window.cerrarNuevoServicio?.(true);success('Servicio finalizado','Remito aprobado y enviado a Facturación.');await O()?.loadServices?.()}
+    catch(err){notify(err.message||'No se pudo finalizar','error')}
+    finally{state.busy=false;if(submit?.isConnected){submit.disabled=false;submit.textContent='Finalizar servicio'}}
   });
 }
 /* Anular es anular: el servicio pasa a Historial como no facturable. No pide

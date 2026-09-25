@@ -5,7 +5,7 @@
   const num = v => Number(v) || 0;
   const fmt = v => num(v).toLocaleString('es-AR', {maximumFractionDigits:2});
   const cash = v => (num(v)<0?'−$':'$') + fmt(Math.abs(num(v)));
-  const date = v => v ? String(v).slice(0,10).split('-').reverse().join('/') : '—';
+  const date = v => { if (!v) return '—'; const [y, m, d] = String(v).slice(0,10).split('-'); return y && m && d ? `${d}/${m}/${y.slice(2)}` : String(v); };
   let rows = [], active = null, request = 0, filter = '', search = '', detailData = null;
   const cell = (label,value) => `<div><small>${label}</small><strong>${value}</strong></div>`;
   function monthLabel() {

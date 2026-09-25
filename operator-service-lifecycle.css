@@ -35,3 +35,4 @@
 .osl-quick-status-menu button[data-osl-quick-action="finalize"]{--osl-act:var(--green,#27c47a)}
 .osl-quick-status-menu button[data-osl-quick-action="annul"]{--osl-act:var(--red,#e2504a)}
 .osl-annul-confirm{display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 13px;border:1px solid #f0b7b1;border-radius:10px;font-size:.84rem;font-weight:700;cursor:pointer}.osl-annul-confirm input{width:auto;margin:0}.osl-annul-confirm:has(input:checked){background:var(--osl-red-soft)}
+.osl-warning.ok{border-color:#a7dcbf;background:rgba(39,196,122,.1);color:#1c6b43}
