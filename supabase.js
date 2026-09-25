@@ -108,9 +108,21 @@ async function verificarSesion() {
 }
 // Nota: esta función se llama al cargar la página para verificar si el usuario ya tiene una sesión activa. Si la hay, carga su perfil y arranca la app. Si no, muestra la pantalla de login.
 
+function _loginErrorMessage(error) {
+  if (error?.status === 429 || /rate_limit|too_many/i.test(error?.code || '')) return 'El servidor limitó temporalmente los intentos. Esperá unos minutos antes de volver a ingresar.';
+  if (error?.code === 'email_not_confirmed') return 'Falta confirmar el email de esta cuenta.';
+  if (error?.code === 'user_banned') return 'Esta cuenta está suspendida. Consultá con Administración.';
+  if (!error?.status || error.status >= 500) return 'No se pudo conectar con el servicio de acceso. Revisá la conexión y volvé a intentar.';
+  return 'No se pudo iniciar sesión. Código: ' + (error.code || 'HTTP ' + error.status) + '. No se comprobó que la contraseña sea incorrecta.';
+}
+
 async function loginUsuario(email, password) {
   const { data, error } = await _db.auth.signInWithPassword({ email, password });
-  if (error) return false;
+  if (error) {
+    if (error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message || '')) return false;
+    console.warn('[Acceso]', { code: error.code || 'auth_error', status: error.status || 0 });
+    throw Object.assign(new Error(_loginErrorMessage(error)), { loginMessage: true });
+  }
   USUARIO_ACTUAL = data.user;
   await cargarPerfilUsuario();
   await inicializarApp();
@@ -1601,8 +1613,9 @@ async function ejecutarLogin() {
     ok = loginConDni
       ? await loginUsuarioPorDni(identifier, pass)
       : await loginUsuario(identifier, pass);
-  } catch (_) {
-    _handleLoginFail('Error inesperado. Intentá de nuevo.', b, e);
+  } catch (error) {
+    if (b) { b.textContent = 'Ingresar →'; b.style.opacity = '1'; b.disabled = false; }
+    if (e) { e.textContent = error.loginMessage ? error.message : 'No se pudo completar el acceso. Revisá la conexión y volvé a intentar.'; e.style.display = 'block'; }
     return;
   }
   if (ok) {

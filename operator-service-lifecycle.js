@@ -72,7 +72,7 @@ async function openFinalize(id,readOnly=false){
   if(s.driver_activated)return openActivatedFinalize(id,readOnly);if(s.remito_id&&['submitted','approved'].includes(s.document_status))return O()?.openSignedRemito?.(id);
   if(!['assigned','at_origin'].includes(s.status))return notify('Solo un servicio ASIGNADO o ARRIBADO puede finalizarse','error');
   const direct=s.status==='assigned';
-  const aviso='';
+  const aviso='<div class="osl-warning"><b>Cierre sin remito firmado</b><span>Al confirmar, registrás la excepción documental y enviás el servicio a Facturación.</span></div>';
   /* El campo va acá. El backend exige operator_notes para cerrar sin arribo, y
      el modal se limitaba a avisarlo sin dar dónde escribirlo: el usuario
      apretaba Finalizar, le rebotaba "completá Observaciones" y no tenía a mano

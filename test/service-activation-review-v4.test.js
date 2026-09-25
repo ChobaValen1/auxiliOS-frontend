@@ -17,9 +17,21 @@ async function setup(t){
  await db.query("select set_config('test.uid',$1,false),set_config('test.role','operador',false)",[operator]);
  await db.query("insert into trips(trip_id,driver_id,fecha_hora_inicio) values(1,$1,now())",[driver]);
  await db.query("insert into operator_services(service_id,status,assigned_driver_id,assigned_truck_id,trip_id,company_id,billing_base_id,primary_concept_id,service_order_number,origin,destination,operator_notes) values($1,'assigned',$2,1,1,$1,$1,$1,'TEST','Origen','Destino','Cierre verificado')",[service,driver]);
+ await db.exec(fs.readFileSync('test/fixtures/document-billing-guard.sql','utf8'));
  return db;
 }
 const activate=db=>db.query("select mark_operator_service_activated_v4($1,'provider',null) as result",[service]);
+test('vinculación del activado rechaza otro chofer, otro documento o un documento firmado',async t=>{
+ const db=await setup(t);await activate(db);
+ await db.query('update operator_services set remito_id=77 where service_id=$1',[service]);
+ await db.exec(fs.readFileSync('supabase/migrations/20260925021039_activated_intake_remito_link_fix.sql','utf8'));
+ await db.exec('create trigger remito_link before insert or update on remitos for each row execute function app_private.normalize_operator_service_remito_v3();');
+ const link=(id,who,status)=>db.query('insert into remitos(remito_id,operator_service_id,driver_id,status) values($1,$2,$3,$4)',[id,service,who,status]);
+ await assert.rejects(link(77,operator,'anulado'),/no corresponde a la salida activada/);
+ await assert.rejects(link(78,driver,'anulado'),/no corresponde a la salida activada/);
+ await assert.rejects(link(77,driver,'firmado'),/no corresponde a la salida activada/);
+ await link(77,driver,'anulado');
+});
 test('activar libera los recursos y el viaje, preserva responsables y es idempotente',async t=>{
  const db=await setup(t);await db.query("select set_config('test.uid',$1,false),set_config('test.role','chofer',false)",[driver]);await activate(db);await activate(db);
  const s=(await db.query('select * from operator_services')).rows[0];assert.equal(s.status,'at_origin');assert.equal(s.assigned_driver_id,null);assert.equal(s.assigned_truck_id,null);assert.equal(s.activation_driver_id,driver);assert.equal(s.activation_truck_id,1);assert.equal(s.activation_billing,null);
@@ -55,6 +67,11 @@ test('un activado sin servicio queda visible y se crea y finaliza una sola vez, 
  await db.query("select set_config('test.uid',$1,false),set_config('test.role','operador',false)",[operator]);
  const payload={company_id:service,billing_base_id:service,primary_concept_id:service,service_order_number:'ADHOC'};
  const create=()=>db.query('select create_finalize_activated_intake_v1($1,$2,true,null) as result',[intake,JSON.stringify(payload)]);
+ await db.exec(fs.readFileSync('test/fixtures/remito-link-trigger-before-activation-fix.sql','utf8'));
+ await db.exec('create trigger remito_link before insert or update on remitos for each row execute function app_private.normalize_operator_service_remito_v3();');
+ await assert.rejects(create(),/El remito no pertenece al chofer asignado/);
+ assert.equal((await db.query('select linked_service_id from driver_service_intakes')).rows[0].linked_service_id,null);
+ await db.exec(fs.readFileSync('supabase/migrations/20260925021039_activated_intake_remito_link_fix.sql','utf8'));
  const first=(await create()).rows[0].result,again=(await create()).rows[0].result;assert.equal(first.service_id,again.service_id);assert.equal(again.idempotent,true);
  const s=(await db.query('select * from operator_services where service_id=$1',[first.service_id])).rows[0];assert.equal(s.status,'completed');assert.equal(s.billing_status,'pending');assert.equal(s.activation_driver_id,driver);assert.equal(s.activation_truck_id,1);assert.equal(s.assigned_driver_id,null);assert.equal((await db.query('select status from remitos where remito_id=2')).rows[0].status,'anulado');
 });
