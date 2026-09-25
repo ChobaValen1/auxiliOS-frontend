@@ -3827,8 +3827,6 @@ body {
 #screen-remitos .rmx-admin{display:contents}
 #screen-remitos .rmx-host{display:contents}
 #screen-remitos .rmx-search{flex:1 1 200px;max-width:260px}
-#screen-remitos .rmx-plate{flex:0 1 130px;min-width:110px;max-width:140px}
-#screen-remitos .rmx-plate input{font-family:'DM Mono',monospace;text-transform:uppercase}
 #screen-remitos .rmx-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto;margin-left:auto}
 #screen-remitos .rmx-count{color:var(--muted2);font-size:10px;font-weight:700;white-space:nowrap}
 #screen-remitos .rmx-btn{height:34px;padding:0 13px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:11px;font-weight:800;white-space:nowrap;cursor:pointer}
@@ -3841,8 +3839,7 @@ body {
 @media (max-width:720px){
   #screen-remitos .rmx-toolbar{padding:0}
   #screen-remitos .rmx-filters{flex-basis:100%}
-  #screen-remitos .rmx-search,#screen-remitos .rmx-plate{max-width:none}
-  #screen-remitos .rmx-actions{width:100%;justify-content:flex-end}
+  #screen-remitos .rmx-search,  #screen-remitos .rmx-actions{width:100%;justify-content:flex-end}
 }
 
 /* Remitos: Administración y Supervisión no crean remitos (nacen del chofer o de un Servicio). */

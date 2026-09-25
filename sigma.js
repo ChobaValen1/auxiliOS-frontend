@@ -1577,7 +1577,7 @@ function limpiarFiltrosAdmin() {
   filtroBuscar  = '';
   filtroPeriodo = 'todos';
   filtroEstado  = 'todos';
-  ['filtro-chofer-input','filtro-patente',
+  ['filtro-chofer-input',
    'input-buscar-remitos','filtro-dia-especifico','filtro-desde','filtro-hasta']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const tipoSel = document.getElementById('filtro-tipo-servicio');
@@ -1600,7 +1600,6 @@ function limpiarFiltrosAdmin() {
 function _leerFiltrosRemitosUI() {
   return {
     driverId:     document.getElementById('filtro-chofer-input')?.value || '',
-    patente:      (document.getElementById('filtro-patente')?.value || '').trim(),
     tipoServicio: document.getElementById('filtro-tipo-servicio')?.value || '',
     pagoMetodo:   document.getElementById('filtro-pago')?.value || '',
     estado:       filtroEstado,
@@ -1649,7 +1648,7 @@ function _rmxRenderFilters() {
     $('rmx-chofer-host').innerHTML = F.select({ id: 'chofer', label: 'Chofer', icon: '👤', value: $('filtro-chofer-input')?.value || '', options: opts('filtro-chofer-input'), allLabel: 'Todos' });
     $('rmx-tipo-host').innerHTML = F.select({ id: 'tipo', label: 'Servicio', value: $('filtro-tipo-servicio')?.value || '', options: opts('filtro-tipo-servicio'), allLabel: 'Todos' });
     $('rmx-pago-host').innerHTML = F.select({ id: 'pago', label: 'Pago', value: $('filtro-pago')?.value || '', options: opts('filtro-pago'), allLabel: 'Todos' });
-    count += [periodo.mode !== 'all', $('filtro-chofer-input')?.value, ($('filtro-patente')?.value || '').trim(), $('filtro-tipo-servicio')?.value, $('filtro-pago')?.value].filter(Boolean).length;
+    count += [periodo.mode !== 'all', $('filtro-chofer-input')?.value, $('filtro-tipo-servicio')?.value, $('filtro-pago')?.value].filter(Boolean).length;
   }
   $('rmx-clear-host').innerHTML = F.clear({ count });
   F.bind($('rmx-filters'), (id, v) => {
