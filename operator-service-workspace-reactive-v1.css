@@ -282,3 +282,7 @@
 .os-activation-summary b{color:#b9f0cf}
 .os-activation-summary button{flex:0 0 auto;min-height:26px;padding:3px 10px;border:1px solid var(--osv2-border-strong);border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:9px;font-weight:800;cursor:pointer}
 .os-activation-summary button:hover{border-color:var(--primary,#4F8EF7)}
+/* Tipo de servicio de una sola dirección: sin bloque Destino. */
+.osv4-reactive .osv2-location.destination[hidden]{display:none!important}
+.osv4-single-address-note{display:block;margin-top:5px;padding:5px 8px;border-radius:6px;background:rgba(74,144,226,.1);color:#9cc3f5;font-size:8px;line-height:1.35}
+.osv4-single-address-note[hidden]{display:none}
