@@ -3919,3 +3919,6 @@ body {
 #screen-remitos .rmx-bulk .rmx-btn.primary{background:var(--amber);border-color:var(--amber);color:#111}
 #screen-remitos .rmx-row.is-selected td{background:rgba(245,166,35,.06)}
 #screen-remitos .rmx-table th.rmx-money{font-family:inherit;font-weight:inherit}
+#screen-remitos .rmx-act.is-review{border-color:color-mix(in srgb,var(--red) 60%,transparent);color:var(--red)}
+#screen-remitos .rmx-act.is-review:hover{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border-color:var(--red)}
+#screen-remitos .rmx-more-menu button.is-danger{color:var(--red)}

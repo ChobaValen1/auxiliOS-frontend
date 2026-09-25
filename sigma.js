@@ -2076,330 +2076,12 @@ function verRemitoModal(elemento) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DETALLE COMPLETO DE REMITO (admin/supervisión) + edición por grupos
-// ═══════════════════════════════════════════════════════════════
-
-let _raRemito = null;        // fila completa de la DB del remito abierto
-let _raGrupoEditando = null; // id del grupo en modo edición (uno a la vez)
-
-const _RA_PAGOS = ['', 'efectivo', 'transferencia', 'tarjeta', 'app'];
-
-const _RA_GRUPOS = [
-  { id: 'servicio', titulo: '🚗 Servicio', editable: true, campos: [
-    { col: 'nro_servicio',   label: 'Nro de servicio', tipo: 'text' },
-    { col: 'tipo_servicio',  label: 'Tipo de servicio', tipo: 'text' },
-    { col: 'patente',        label: 'Patente', tipo: 'text' },
-    { col: 'marca_modelo',   label: 'Marca / modelo', tipo: 'text' },
-    { col: 'cliente_presente', label: 'Cliente presente', tipo: 'bool' },
-  ]},
-  { id: 'cliente', titulo: '👤 Cliente', editable: true, campos: [
-    { col: 'razon_social',  label: 'Razón social', tipo: 'text' },
-    { col: 'cuit',          label: 'CUIT', tipo: 'text' },
-    { col: 'telefono',      label: 'Teléfono', tipo: 'text' },
-  ]},
-  { id: 'recorrido', titulo: '📍 Recorrido', editable: true, full: true, campos: [
-    { col: 'origen',    label: 'Origen', tipo: 'text' },
-    { col: 'destino',   label: 'Destino', tipo: 'text' },
-    { col: 'km_reales', label: 'KM reales del servicio', tipo: 'number' },
-  ]},
-  { id: 'importes', titulo: '💳 Importes y pago', editable: true, campos: [
-    { col: 'imp_peaje',     label: 'Peaje', tipo: 'number' },
-    { col: 'imp_excedente', label: 'Excedente (particulares, baterías, km, hs de espera)', tipo: 'number' },
-    { col: 'imp_total_extras', label: 'Total extras', tipo: 'number', soloLectura: true },
-    { col: 'pago_1_metodo', label: 'Pago 1 — método', tipo: 'pago' },
-    { col: 'pago_1_monto',  label: 'Pago 1 — monto', tipo: 'number' },
-    { col: 'pago_2_metodo', label: 'Pago 2 — método', tipo: 'pago' },
-    { col: 'pago_2_monto',  label: 'Pago 2 — monto', tipo: 'number' },
-  ]},
-  { id: 'conformidades', titulo: '☑️ Conformidades', editable: true, campos: [
-    { col: 'conformidad_servicio', label: 'Conformidad del servicio', tipo: 'bool' },
-    { col: 'conformidad_cargos',   label: 'Conformidad de cargos', tipo: 'bool' },
-    { col: 'sin_danos',            label: 'Sin daños', tipo: 'bool' },
-    { col: 'conformidad_arrastre', label: 'Conformidad de arrastre', tipo: 'bool' },
-  ]},
-  { id: 'observaciones', titulo: '📝 Observaciones', editable: true, full: true, campos: [
-    { col: 'observaciones', label: 'Observaciones', tipo: 'textarea' },
-  ]},
-];
-
-function _raEsAdmin() { return PERFIL_USUARIO?.roles?.name === 'administracion'; }
-
-function _raEscape(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// Valor legible de un campo (solo lectura). Vacío → "— sin cargar" en rojo.
-function _raValorHTML(campo, r) {
-  const v = r[campo.col];
-  const vacioHTML = '<span style="color:var(--red);font-style:italic;font-weight:400">— sin cargar</span>';
-  // Arrastre: NO es un dato faltante — solo avisa cuando está activada
-  if (campo.col === 'conformidad_arrastre') {
-    return v === true
-      ? '<span style="color:var(--amber);font-weight:700">⚠ Activada</span>'
-      : '<span style="color:var(--muted)">No</span>';
-  }
-  if (campo.tipo === 'bool') {
-    if (v === true)  return '<span style="color:var(--green);font-weight:600">✓ Sí</span>';
-    if (v === false) return '<span style="color:var(--red);font-weight:600">✗ No</span>';
-    return vacioHTML;
-  }
-  if (v === null || v === undefined || v === '') return vacioHTML;
-  if (campo.tipo === 'number') {
-    const n = Number(v);
-    return campo.col.startsWith('imp_') || campo.col.endsWith('_monto')
-      ? '$ ' + n.toLocaleString('es-AR')
-      : n.toLocaleString('es-AR') + (campo.col === 'km_reales' ? ' km' : '');
-  }
-  if (campo.tipo === 'pago') return _raEscape(String(v).charAt(0).toUpperCase() + String(v).slice(1));
-  return _raEscape(v);
-}
-
-// Input de edición para un campo
-function _raInputHTML(campo, r) {
-  const v = r[campo.col];
-  const idInput = `ra-in-${campo.col}`;
-  const base = 'width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-size:12px;font-family:inherit';
-  if (campo.tipo === 'bool') {
-    return `<select id="${idInput}" style="${base}">
-      <option value="" ${v === null || v === undefined ? 'selected' : ''}>—</option>
-      <option value="true" ${v === true ? 'selected' : ''}>Sí</option>
-      <option value="false" ${v === false ? 'selected' : ''}>No</option>
-    </select>`;
-  }
-  if (campo.tipo === 'pago') {
-    return `<select id="${idInput}" style="${base}">` +
-      _RA_PAGOS.map(p => `<option value="${p}" ${String(v || '') === p ? 'selected' : ''}>${p ? p.charAt(0).toUpperCase() + p.slice(1) : '— sin pago'}</option>`).join('') +
-      `</select>`;
-  }
-  if (campo.tipo === 'textarea') {
-    return `<textarea id="${idInput}" rows="3" style="${base};resize:vertical">${_raEscape(v)}</textarea>`;
-  }
-  if (campo.tipo === 'number') {
-    return `<input id="${idInput}" type="number" value="${v ?? ''}" style="${base}">`;
-  }
-  return `<input id="${idInput}" type="text" value="${_raEscape(v)}" style="${base}">`;
-}
-
-function _raGrupoHTML(g, r) {
-  const editando = _raGrupoEditando === g.id;
-  const btnEditar = g.editable && _raEsAdmin() && !editando
-    ? `<button class="btn btn-ghost" style="padding:2px 10px;font-size:10px" onclick="_raEditar('${g.id}')">✏️ Editar</button>` : '';
-  const botonesEdicion = editando
-    ? `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-         <button class="btn btn-ghost" style="font-size:11px" onclick="_raCancelar()">Cancelar</button>
-         <button class="btn btn-primary" style="font-size:11px" onclick="_raGuardar('${g.id}')">Guardar</button>
-       </div>` : '';
-
-  const filas = g.campos.map(c => {
-    const esEditable = editando && !c.soloLectura;
-    return `<span style="color:var(--muted);font-size:11px;align-self:center">${c.label}</span>
-            <span style="font-weight:600;text-align:${esEditable ? 'left' : 'right'}">${esEditable ? _raInputHTML(c, r) : _raValorHTML(c, r)}</span>`;
-  }).join('');
-
-  const fullStyle = g.full || editando ? 'grid-column:1 / -1;' : '';
-  return `
-    <div style="${fullStyle}background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px" id="ra-grupo-${g.id}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:11px;font-weight:700">${g.titulo}</span>
-        ${btnEditar}
-      </div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12px">${filas}</div>
-      ${botonesEdicion}
-    </div>`;
-}
-
-function _raFotosHTML(r) {
-  const fotos = Array.isArray(r.foto_urls) ? r.foto_urls : [];
-  const cuerpo = fotos.length
-    ? `<div style="display:flex;gap:8px;flex-wrap:wrap">` + fotos.map(u =>
-        `<img src="${_raEscape(u)}" onclick="window.open('${_raEscape(u)}','_blank')"
-           style="width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--border2);cursor:pointer">`).join('') + `</div>`
-    : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin fotos cargadas</span>';
-  return `
-    <div style="grid-column:1 / -1;background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;margin-bottom:10px">📷 Fotos del servicio (${fotos.length})</div>
-      ${cuerpo}
-    </div>`;
-}
-
-function _raFirmaHTML(r) {
-  const cuerpo = r.firma_imagen_url
-    ? `<img src="${_raEscape(r.firma_imagen_url)}" style="max-width:240px;background:#fff;border-radius:8px;padding:6px">
-       <div style="font-size:11px;color:var(--muted);margin-top:6px">Firmado el ${r.firmado_at ? formatearFecha(r.firmado_at) : '—'}</div>`
-    : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin firma</span>';
-  return `
-    <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;margin-bottom:10px">✍️ Firma del cliente</div>
-      ${cuerpo}
-    </div>`;
-}
-
-function _raTrazabilidadHTML(r) {
-  const hist = Array.isArray(r.historial_ediciones) ? r.historial_ediciones : [];
-  const ediciones = hist.length
-    ? hist.map(h => {
-        // Entrada de creación (remito nacido desde administración)
-        if ((h.cambios || [])[0]?.campo === '_creacion') {
-          return `🏷 ${h.fecha ? formatearFecha(h.fecha) : '—'} — Creado por <b>${_raEscape(h.user_nombre || '¿?')}</b> (${_raEscape(h.cambios[0].despues || '')})`;
-        }
-        const cambios = (h.cambios || []).map(c =>
-          `<b>${_raEscape(c.campo)}</b>: ${_raEscape(c.antes ?? '—')} → ${_raEscape(c.despues ?? '—')}`).join(' · ');
-        return `✏️ ${h.fecha ? formatearFecha(h.fecha) : '—'} — <b>${_raEscape(h.user_nombre || '¿?')}</b>: ${cambios}`;
-      }).join('<br>')
-    : 'Sin ediciones registradas';
-  return `
-    <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;margin-bottom:10px">🕓 Trazabilidad</div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.9">
-        📱 Creado en el dispositivo: <b style="color:var(--text)">${r.created_at_device ? formatearFecha(r.created_at_device) : '—'}</b><br>
-        ☁️ Recibido en el servidor: <b style="color:var(--text)">${r.received_at ? formatearFecha(r.received_at) : (r.created_at ? formatearFecha(r.created_at) : '—')}</b>${r.sync_status ? ` (${_raEscape(r.sync_status)})` : ''}<br>
-        ${ediciones}
-      </div>
-    </div>`;
-}
-
-function _raRender() {
-  const r = _raRemito;
-  if (!r) return;
-
-  document.getElementById('ra-titulo').textContent = `📄 ${r.nro_remito || '—'}`;
-  const movil = r.daily_logs?.trucks ? ` · Móvil ${r.daily_logs.trucks.numero_interno || r.daily_logs.trucks.plate}` : '';
-  const jornada = r.daily_logs?.log_date ? ` · Jornada del ${window.auxFormatDate ? window.auxFormatDate(r.daily_logs.log_date) : r.daily_logs.log_date.split('-').reverse().join('/')}` : '';
-  document.getElementById('ra-sub').textContent =
-    `Cargado por ${r.users?.full_name || '—'}${jornada}${movil}`;
-
-  const pill = document.getElementById('ra-estado-pill');
-  const est = r.status === 'firmado' ? ['pill-green', '✓ Firmado']
-    : r.status === 'anulado' ? ['pill-red', '🚫 Anulado']
-    : r.status === 'cerrado_admin' ? ['', '🏢 Cerrado por administración']
-    : ['pill-amber', '⏳ Pendiente'];
-  pill.className = `pill ${est[0]}`;
-  pill.style.cssText = r.status === 'cerrado_admin' ? 'background:rgba(88,166,255,0.12);color:var(--blue)' : '';
-  pill.textContent = est[1];
-
-  // Hero: números clave del remito
-  const km = r.km_reales != null ? `${Number(r.km_reales).toLocaleString('es-AR')} km` : '—';
-  const extras = '$ ' + Number(r.imp_total_extras || 0).toLocaleString('es-AR');
-  const cobrado = '$ ' + ((Number(r.pago_1_monto) || 0) + (Number(r.pago_2_monto) || 0)).toLocaleString('es-AR');
-  const statHTML = (v, l, color) => `
-    <div style="flex:1;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
-      <div style="font-family:'DM Mono',monospace;font-size:17px;font-weight:800;${color ? `color:${color}` : ''}">${v}</div>
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">${l}</div>
-    </div>`;
-  const avisoArrastre = r.conformidad_arrastre === true
-    ? `<div style="margin-top:10px;padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.4);border-radius:8px;font-size:12px;color:var(--amber);font-weight:600">⚠ Este remito tiene la conformidad de ARRASTRE activada</div>`
-    : '';
-  const heroHTML = `
-    <div style="background:linear-gradient(135deg,#13161d,rgba(245,166,35,0.10));padding:16px 22px;border-bottom:1px solid var(--border)">
-      <div style="display:flex;gap:10px">
-        ${statHTML(km, 'Recorrido')}
-        ${statHTML(extras, 'Extras')}
-        ${statHTML(cobrado, 'Cobrado', 'var(--green)')}
-      </div>
-      ${avisoArrastre}
-    </div>`;
-
-  document.getElementById('ra-body').innerHTML =
-    heroHTML +
-    `<div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px" class="ra-grid">` +
-    _RA_GRUPOS.map(g => _raGrupoHTML(g, r)).join('') +
-    _raFotosHTML(r) +
-    _raFirmaHTML(r) +
-    _raTrazabilidadHTML(r) +
-    `</div>`;
-}
-
-async function abrirDetalleRemitoAdmin(remitoId) {
-  const r = await obtenerRemitoCompleto(remitoId);
-  if (!r) { toast('No se pudo cargar el remito', 'error'); return; }
-  _raRemito = r;
-  _raGrupoEditando = null;
-  _raRender();
-  const btnDel = document.getElementById('ra-btn-eliminar');
-  if (btnDel) btnDel.style.display = _raEsAdmin() ? '' : 'none';
-  openModal('modal-remito-admin');
-}
-
-async function eliminarRemitoActual() {
-  if (!_raEsAdmin() || !_raRemito) return;
-  const nro = _raRemito.nro_remito || '';
-  if (!confirm(`⚠ Vas a ELIMINAR definitivamente el remito ${nro}.\n\nNo es lo mismo que anular: desaparece de todos los listados, KPIs y rendiciones, y NO se puede recuperar.\n\n¿Eliminar igual?`)) return;
-
-  const res = await eliminarRemitoAdmin(_raRemito.remito_id);
-  if (!res.ok) { toast('No se pudo eliminar: ' + res.msg, 'error'); return; }
-
-  toast(`Remito ${nro} eliminado`);
-  _raRemito = null;
-  closeModal('modal-remito-admin');
-  if (typeof cargarRemitos === 'function') cargarRemitos();
-  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
-}
-
-function _raEditar(grupoId) {
-  if (!_raEsAdmin()) return;
-  _raGrupoEditando = grupoId;
-  _raRender();
-}
-
-function _raCancelar() {
-  _raGrupoEditando = null;
-  _raRender();
-}
-
-// Lee el valor tipado de un input de edición
-function _raLeerInput(campo) {
-  const el = document.getElementById(`ra-in-${campo.col}`);
-  if (!el) return undefined;
-  const raw = el.value;
-  if (campo.tipo === 'bool')   return raw === '' ? null : raw === 'true';
-  if (campo.tipo === 'number') return raw === '' ? null : Number(raw);
-  if (campo.tipo === 'pago')   return raw === '' ? null : raw;
-  return raw.trim() === '' ? null : raw.trim();
-}
-
-async function _raGuardar(grupoId) {
-  if (!_raEsAdmin() || !_raRemito) return;
-  const grupo = _RA_GRUPOS.find(g => g.id === grupoId);
-  if (!grupo) return;
-
-  // Diff: solo campos que cambiaron
-  const updates = {};
-  const cambios = [];
-  grupo.campos.filter(c => !c.soloLectura).forEach(c => {
-    const nuevo = _raLeerInput(c);
-    if (nuevo === undefined) return;
-    const actual = _raRemito[c.col] ?? null;
-    const iguales = (c.tipo === 'number')
-      ? Number(actual ?? NaN) === Number(nuevo ?? NaN) || (actual === null && nuevo === null)
-      : actual === nuevo;
-    if (!iguales) {
-      updates[c.col] = nuevo;
-      cambios.push({ campo: c.col, antes: actual, despues: nuevo });
-    }
-  });
-
-  if (!cambios.length) { _raCancelar(); return; }
-
-  const entrada = {
-    fecha: new Date().toISOString(),
-    user_id: USUARIO_ACTUAL?.id || null,
-    user_nombre: PERFIL_USUARIO?.full_name || '—',
-    cambios,
-  };
-
-  const res = await actualizarRemitoAdmin(_raRemito.remito_id, updates, entrada, _raRemito.historial_ediciones);
-  if (!res.ok) { toast('No se pudo guardar: ' + res.msg, 'error'); return; }
-
-  toast('Cambios guardados ✓');
-  _raGrupoEditando = null;
-  // Recargar el remito completo (imp_total_extras es columna generada: se recalcula en la DB)
-  const r = await obtenerRemitoCompleto(_raRemito.remito_id);
-  if (r) _raRemito = r;
-  _raRender();
-  // Refrescar lista y KPIs de fondo
-  if (typeof cargarRemitos === 'function') cargarRemitos();
-  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
+// ── DETALLE DE REMITO (admin/supervisión) ─────────────────────
+// Panel lateral en remitos-admin-panel-v1.js (corrección de datos, anular,
+// revisar cargos). Se usa también desde Jornadas y Liquidaciones.
+function abrirDetalleRemitoAdmin(remitoId, opts) {
+  if (window.RemitoPanel?.open) return window.RemitoPanel.open(remitoId, opts);
+  toast('El detalle de remitos todavía se está cargando', 'warn');
 }
 
 // ── FORMA DE PAGO — soporta pago mixto ────────
@@ -6464,15 +6146,6 @@ async function descargarPdfsSeleccionados() {
   }
 }
 
-// Editar: abre el detalle del remito con el primer bloque ya en edición.
-async function editarRemitoAdmin(card) {
-  let d = null;
-  try { d = JSON.parse(card.getAttribute('data-rem')); } catch (_) {}
-  if (!d?.id || !_raEsAdmin()) return;
-  await abrirDetalleRemitoAdmin(d.id);
-  if (_raRemito) _raEditar('servicio');
-}
-
 function renderTablaRemitos(data) {
   const tbody = document.getElementById('tbody-remitos');
   const mobileList = document.getElementById('mobile-remitos-list');
@@ -6487,6 +6160,7 @@ function renderTablaRemitos(data) {
 
 
   const puedeEditar = esAdmin;
+  const esPendiente = r => r.estado === 'pendiente';
   const esGestion = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
   const sel = _rmxSeleccion();
   data.forEach(r => {
@@ -6506,14 +6180,19 @@ function renderTablaRemitos(data) {
         : '<span class="rmx-muted">—</span>';
       const [fecha, hora] = String(r.fecha || '—').split(' ');
 
+      // Una acción visible según el caso; el resto en ⋯ (ver remitos-admin-panel-v1.js).
+      const vinculado = !!r.operatorServiceId;
+      const revisar = esAdmin && vinculado && esFirmado && r.addonsVersion === 2 && !['approved', 'adjusted'].includes(r.addonsReviewStatus);
       const menu = [
-        esAdmin ? `<button type="button" class="btn-pdf-remito">Descargar PDF</button>` : '',
+        esAdmin && !esPendiente(r) ? `<button type="button" class="btn-pdf-remito">Descargar PDF</button>` : '',
         esFirmado ? `<button type="button" class="btn-whatsapp-remito">Compartir por WhatsApp</button>` : '',
+        esAdmin && vinculado ? `<button type="button" data-rmx-action="servicio">Ir al servicio</button>` : '',
+        puedeEditar && !esAnulado ? `<button type="button" data-rmx-action="corregir">Corregir datos</button>` : '',
+        esAdmin && !vinculado && !esAnulado ? `<button type="button" class="is-danger" data-rmx-action="anular">Anular remito</button>` : '',
       ].filter(Boolean).join('');
       const acciones = `<div class="rmx-row-actions">
           ${!esFirmado && !esAnulado && !esCerradoAdmin && !esGestion ? `<button class="rmx-act primary btn-firmar-remito" type="button">Completar</button>` : ''}
-          <button class="rmx-act btn-ver-remito" type="button">Ver</button>
-          ${puedeEditar && !esAnulado ? `<button class="rmx-act btn-editar-remito" type="button">Editar</button>` : ''}
+          ${revisar ? `<button class="rmx-act is-review" type="button" data-rmx-action="revisar">Revisar</button>` : `<button class="rmx-act btn-ver-remito" type="button">Ver</button>`}
           ${menu ? `<details class="rmx-more"><summary aria-label="Más acciones" title="Más acciones">⋯</summary><div class="rmx-more-menu">${menu}</div></details>` : ''}
         </div>`;
 
@@ -7597,6 +7276,7 @@ async function descargarRemitoPDF(tr) {
 
   const contenido = `
     <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:24px 26px; color:#333; background:#fff; width:794px; box-sizing:border-box;">
+      ${d.estado === 'anulado' ? '<div style="margin-bottom:10px;padding:8px;border:2px solid #d63b35;border-radius:6px;color:#d63b35;font-size:16px;font-weight:800;letter-spacing:4px;text-align:center">REMITO ANULADO</div>' : ''}
 
       <table style="width:100%; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:8px;">
         <tr>

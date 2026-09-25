@@ -69,8 +69,27 @@ test('la tabla de Remitos muestra las columnas acordadas, con selección múltip
   assert.doesNotMatch(html,/modal-remito-nuevo-admin|btn-remito-nuevo-admin|btn-nuevo-remito-desktop/);
   const js=read('sigma.js');
   assert.match(js,/Sin clasificar/);
-  assert.match(js,/btn-editar-remito/);
+  assert.match(js,/data-rmx-action="corregir"/);
+  assert.match(js,/data-rmx-action="revisar"/);
   assert.match(js,/function _rmxChip\(estado\)/);
   assert.match(js,/\['revisar','Por revisar'\]/);
-  assert.match(read('supabase.js'),/\.btn-editar-remito'\)\)\s*\{ editarRemitoAdmin\(card\)/);
+});
+
+test('panel de remito: lo firmado no se corrige, la corrección pide motivo y no hay eliminación',()=>{
+  const js=read('remitos-admin-panel-v1.js');
+  const corregibles=slice(js,'const CORREGIBLES=[','];');
+  const cols=[...corregibles.matchAll(/col:'([a-z_0-9]+)'/g)].map(m=>m[1]);
+  assert.deepEqual(cols,['razon_social','cuit','telefono','email_cliente','patente','marca_modelo','nro_servicio','observaciones']);
+  for(const firmado of ['imp_peaje','imp_excedente','imp_otros','km_reales','pago_1_monto','conformidad_servicio','conformidad_cargos','sin_danos','firma_imagen_url'])
+    assert.ok(!cols.includes(firmado),`${firmado} no debe ser corregible`);
+  assert.match(js,/if\(!motivo\)\{\$\('rmp-motivo'\)\?\.focus\(\);return notify\('Escribí el motivo de la corrección'/);
+  assert.match(js,/motivo,cambios:/,'el motivo queda en historial_ediciones');
+  assert.match(js,/const puedeAnular=\(\)=>isAdmin\(\)&&P\.remito&&P\.remito\.status!=='anulado'&&!P\.remito\.operator_service_id/);
+  assert.match(js,/AuxiliosRemitoReviewV2\.open\(id\)/);
+  const sigma=read('sigma.js'),supa=read('supabase.js'),html=read('Index.html');
+  assert.match(sigma,/function abrirDetalleRemitoAdmin\(remitoId, opts\) \{\n  if \(window\.RemitoPanel\?\.open\) return window\.RemitoPanel\.open\(remitoId, opts\)/);
+  assert.doesNotMatch(sigma+supa+html,/eliminarRemito|modal-remito-admin|_RA_GRUPOS/);
+  assert.match(read('config.js'),/loadAuxiliosModule\('auxilios-remitos-admin-panel-v1', '\/remitos-admin-panel-v1\.js'\)/);
+  assert.match(read('sw.js'),/'\/remitos-admin-panel-v1\.js'/);
+  assert.match(sigma,/REMITO ANULADO/);
 });

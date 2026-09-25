@@ -14,12 +14,12 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=remitos-paleta-sobria-v148-20260925">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-paleta-sobria-v148-20260925">
-<link rel="stylesheet" href="dashboard-v1.css?v=remitos-paleta-sobria-v148-20260925">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-paleta-sobria-v148-20260925">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-paleta-sobria-v148-20260925">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-paleta-sobria-v148-20260925">
+<link rel="stylesheet" href="sigma.css?v=remitos-panel-v149-20260925">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=remitos-panel-v149-20260925">
+<link rel="stylesheet" href="dashboard-v1.css?v=remitos-panel-v149-20260925">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=remitos-panel-v149-20260925">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=remitos-panel-v149-20260925">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=remitos-panel-v149-20260925">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +39,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="supabase.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
+<script src="config.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="supabase.js?v=remitos-panel-v149-20260925" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="sigma.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="dashboard-charts-v1.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="dashboard-shell-v1.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="dashboard-facturacion-v1.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="dashboard-operaciones-v1.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="dashboard-flota-v1.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
-<script src="dashboard-mapa-v1.js?v=remitos-paleta-sobria-v148-20260925" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=remitos-panel-v149-20260925" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=remitos-panel-v149-20260925" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="sigma.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="dashboard-charts-v1.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="dashboard-shell-v1.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="dashboard-facturacion-v1.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="dashboard-operaciones-v1.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="dashboard-flota-v1.js?v=remitos-panel-v149-20260925" defer></script>
+<script src="dashboard-mapa-v1.js?v=remitos-panel-v149-20260925" defer></script>
 </head>
 <body>
 
@@ -3203,26 +3203,6 @@
 </div>
 
 <!-- Modal: detalle COMPLETO de remito para admin/supervisión -->
-<div class="modal-backdrop" id="modal-remito-admin">
-  <div class="modal-box wide" style="max-width:640px">
-    <div class="modal-head">
-      <div>
-        <span class="modal-head-title" id="ra-titulo">📄 REMITO</span>
-        <div style="font-size:11px;color:var(--muted2);margin-top:4px" id="ra-sub">—</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span class="pill" id="ra-estado-pill">—</span>
-        <button class="modal-close" onclick="closeModal('modal-remito-admin')">×</button>
-      </div>
-    </div>
-    <div class="modal-body" id="ra-body" style="max-height:70vh;overflow-y:auto"></div>
-    <div class="modal-footer" style="display:flex;gap:8px;justify-content:space-between;align-items:center">
-      <button class="btn btn-ghost" id="ra-btn-eliminar" style="display:none;color:var(--red);border-color:rgba(226,80,74,0.4);font-size:11px" onclick="eliminarRemitoActual()">🗑 Eliminar</button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-remito-admin')">Cerrar</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-backdrop" id="modal-validacion" style="z-index:10001">
   <div class="modal-box" style="max-width:380px">
     <div class="modal-head">
