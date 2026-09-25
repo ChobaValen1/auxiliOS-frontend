@@ -14660,11 +14660,42 @@ function _jadminSyncPicker(kind) {
   } else label.textContent = `${values.length} ${isDriver ? 'choferes' : 'móviles'}`;
 }
 
+/* Período y Estado con los filtros compartidos (auxilios-filters-v1): mismo
+   aspecto que el Panel, fechas DD/MM/AA. Si el módulo no cargó, queda el
+   rótulo de texto de antes. */
+function _jadminRenderAuxFilters() {
+  const F = window.AuxFilters;
+  const per = document.getElementById('jadmin-f-periodo-host');
+  const est = document.getElementById('jadmin-f-estado-host');
+  if (!F || !per || !est) return false;
+  const d = _jadminState.desde, h = _jadminState.hasta;
+  const mes = d && /-01$/.test(d) && h && h.slice(0, 7) === d.slice(0, 7) && (h === F.rangoDeMes(d.slice(0, 7))?.hasta || h === _jadminHoy()) ? d.slice(0, 7) : null;
+  const value = mes ? { mode: 'mes', mes } : (d || h ? { mode: 'rango', desde: d, hasta: h } : { mode: 'all' });
+  per.innerHTML = F.period({ id: 'jadmin-periodo', value, allowAll: false });
+  est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.estado || '', options: [{ value: 'open', label: 'Abierta' }, { value: 'closed', label: 'Cerrada' }], allLabel: 'Todos' });
+  const root = document.querySelector('#screen-jornadas-admin .filtros');
+  F.bind(root, (id, v) => {
+    if (id === 'jadmin-periodo') {
+      const b = F.periodBounds(v);
+      _jadminState.desde = b.start; _jadminState.hasta = v.mode === 'mes' && b.end > _jadminHoy() ? _jadminHoy() : b.end;
+      _jadminState.chip = null;
+      document.querySelectorAll('#screen-jornadas-admin .chip-group:first-child .chip').forEach(c => c.classList.remove('active'));
+    }
+    if (id === 'jadmin-estado') _jadminState.estado = v || '';
+    _jadminState.offset = 0;
+    _jadminSyncPeriodLabel();
+    _jadminSyncEstadoChip();
+    _jadminReload();
+  }, () => _jadminResetFiltros());
+  return true;
+}
+
 function _jadminSyncPeriodLabel() {
+  if (_jadminRenderAuxFilters()) return;
   const label = document.getElementById('jadmin-f-periodo-label');
   if (!label) return;
   const parts = value => (value ? String(value).split('-') : null); // [yyyy, mm, dd]
-  const full  = p => (p ? `${p[2]}/${p[1]}/${p[0]}` : '—');
+  const full  = p => (p ? `${p[2]}/${p[1]}/${p[0].slice(2)}` : '—');
   const short = p => (p ? `${p[2]}/${p[1]}` : '—');
   const d = parts(_jadminState.desde);
   const h = parts(_jadminState.hasta);

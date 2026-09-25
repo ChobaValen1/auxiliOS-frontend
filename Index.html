@@ -14,11 +14,11 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=fechas-cierre-v139-20260925">
-<link rel="stylesheet" href="dashboard-v1.css?v=fechas-cierre-v139-20260925">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=fechas-cierre-v139-20260925">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=fechas-cierre-v139-20260925">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=fechas-cierre-v139-20260925">
+<link rel="stylesheet" href="sigma.css?v=jornadas-activados-v140-20260925">
+<link rel="stylesheet" href="dashboard-v1.css?v=jornadas-activados-v140-20260925">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=jornadas-activados-v140-20260925">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=jornadas-activados-v140-20260925">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=jornadas-activados-v140-20260925">
 
 <!-- Service Worker -->
 <script>
@@ -38,19 +38,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="supabase.js?v=fechas-cierre-v139-20260925" defer></script>
+<script src="config.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="supabase.js?v=jornadas-activados-v140-20260925" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=fechas-cierre-v139-20260925" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=fechas-cierre-v139-20260925" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="sigma.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="dashboard-charts-v1.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="dashboard-shell-v1.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="dashboard-facturacion-v1.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="dashboard-operaciones-v1.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="dashboard-flota-v1.js?v=fechas-cierre-v139-20260925" defer></script>
-<script src="dashboard-mapa-v1.js?v=fechas-cierre-v139-20260925" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=jornadas-activados-v140-20260925" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=jornadas-activados-v140-20260925" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="sigma.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="dashboard-charts-v1.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="dashboard-shell-v1.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="dashboard-facturacion-v1.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="dashboard-operaciones-v1.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="dashboard-flota-v1.js?v=jornadas-activados-v140-20260925" defer></script>
+<script src="dashboard-mapa-v1.js?v=jornadas-activados-v140-20260925" defer></script>
 </head>
 <body>
 
@@ -2109,6 +2109,25 @@
     border-radius: 6px;
     cursor: pointer;
   }
+  /* Mismo aspecto que los filtros compartidos (auxilios-filters-v1). */
+  #screen-jornadas-admin .jadmin-auxf-host .auxf,
+  #screen-jornadas-admin .jadmin-auxf-host .auxf-btn { width: 100%; max-width: none; }
+  #screen-jornadas-admin .filtros input[type="search"],
+  #screen-jornadas-admin .jadmin-picker summary {
+    height: 34px; min-height: 34px; box-sizing: border-box; border-radius: 8px;
+    background: var(--card, #191d27); border-color: var(--border, #252a38); font-size: 11px;
+  }
+  #screen-jornadas-admin .jadmin-picker summary:hover,
+  #screen-jornadas-admin .filtros input[type="search"]:hover { border-color: var(--primary, #4F8EF7); }
+  #screen-jornadas-admin .jadmin-picker summary > span:first-child { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #screen-jornadas-admin .jadmin-picker summary > span:last-child { color: var(--muted2, #8590ab); font-size: 9px; }
+  #screen-jornadas-admin .jadmin-picker-panel {
+    padding: 10px; border-radius: 12px; background: var(--panel, #13161d);
+    box-shadow: 0 18px 52px rgba(0,0,0,.46); z-index: 60;
+  }
+  #screen-jornadas-admin .jadmin-option { border-radius: 7px; font-size: 11px; }
+  #screen-jornadas-admin .jadmin-option:has(input:checked) { background: var(--card, #191d27); font-weight: 700; }
+  #screen-jornadas-admin .filtros .clear { height: 34px; border-radius: 8px; border-style: dashed; font-size: 11px; font-weight: 700; }
   #screen-jornadas-admin .filtros .clear:hover {
     color: var(--text);
     border-color: var(--muted2);
@@ -2588,21 +2607,11 @@
     </div>
     <div>
       <label>Estado</label>
-      <select id="jadmin-f-estado">
-        <option value="">Todos</option>
-        <option value="open">Abierta</option>
-        <option value="closed">Cerrada</option>
-      </select>
+      <div id="jadmin-f-estado-host" class="jadmin-auxf-host"></div>
     </div>
     <div>
       <label>Período</label>
-      <details class="jadmin-picker" id="jadmin-f-periodo">
-        <summary><span id="jadmin-f-periodo-label">Seleccionar período</span><span>⌄</span></summary>
-        <div class="jadmin-picker-panel jadmin-period-panel">
-          <label>Desde<input type="date" id="jadmin-f-desde"></label>
-          <label>Hasta<input type="date" id="jadmin-f-hasta"></label>
-        </div>
-      </details>
+      <div id="jadmin-f-periodo-host" class="jadmin-auxf-host"></div>
     </div>
     <button class="clear" id="jadmin-f-clear">Limpiar</button>
     <!-- ACCESOS RÁPIDOS -->

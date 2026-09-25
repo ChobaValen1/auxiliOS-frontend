@@ -43,7 +43,7 @@ test('journey filters support multiple drivers and trucks inside one filter pane
 
   assert.match(html, /id="jadmin-f-chofer-options"/);
   assert.match(html, /id="jadmin-f-camion-options"/);
-  assert.match(html, /id="jadmin-f-periodo"/);
+  assert.match(html, /id="jadmin-f-periodo-host"/);
   assert.match(html, /class="chips"[\s\S]*data-chip="todas"/);
   assert.match(ui, /driverIds:\s*\[\]/);
   assert.match(ui, /truckIds:\s*\[\]/);

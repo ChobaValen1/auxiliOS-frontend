@@ -275,3 +275,10 @@
 .os-embedded-clear small{font-size:8px;color:var(--osv2-muted2)}
 .os-embedded-clear .finish{flex:0 0 auto;min-height:28px;padding:5px 12px;border:1px solid var(--amber);border-radius:6px;background:var(--amber);color:#15100a;font-size:9px;font-weight:800;cursor:pointer}
 .os-embedded-clear .finish:disabled{opacity:.5;cursor:wait}
+/* Destino del activado elegido: formulario retraído a una línea. */
+.os-activation-billing.is-chosen .os-activation-billing-head p,.os-activation-billing.is-chosen .os-activation-choices{display:none}
+.os-activation-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid rgba(34,197,94,.3);border-left:3px solid var(--green);border-radius:8px;background:rgba(34,197,94,.07);font-size:10px;color:var(--text)}
+.os-activation-summary[hidden]{display:none}
+.os-activation-summary b{color:#b9f0cf}
+.os-activation-summary button{flex:0 0 auto;min-height:26px;padding:3px 10px;border:1px solid var(--osv2-border-strong);border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:9px;font-weight:800;cursor:pointer}
+.os-activation-summary button:hover{border-color:var(--primary,#4F8EF7)}
