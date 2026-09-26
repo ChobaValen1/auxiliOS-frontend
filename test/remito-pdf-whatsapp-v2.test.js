@@ -72,3 +72,27 @@ test('link público del remito: página, encuesta y envío por WhatsApp',()=>{
   assert.match(sigma,/Descargá tu remito y contanos cómo te atendimos/);
   assert.match(read('remitos-admin-panel-v1.js'),/seccion\('Encuesta del cliente'/);
 });
+
+test('calidad y cobros: el cliente confirma lo cobrado y Administración ve el resumen',()=>{
+  const mig=read('migrations/20260926120000_remito_quality_and_cash_check_v1.sql');
+  assert.match(mig,/add column if not exists cobro_confirmado boolean/);
+  assert.match(mig,/add column if not exists cobro_informado numeric\(12,2\)/);
+  assert.match(mig,/create or replace function public\.get_remito_quality_summary_v1\(p_desde date default null, p_hasta date default null\)/);
+  assert.match(mig,/app_private\.current_auxilios_role\(\) = any \(array\['administracion','supervision'\]\)/);
+  assert.match(mig,/revoke all on function public\.get_remito_quality_summary_v1\(date, date\) from public, anon/);
+  assert.match(mig,/app_private\.current_auxilios_role\(\) is distinct from 'administracion'/,'solo Administración marca revisado');
+  const html=read('remito.html');
+  assert.match(html,/Según el remito, pagaste/);
+  assert.match(html,/if\(S\.cobro===null\)\{err\.textContent='Contanos si el importe que pagaste en el lugar es correcto\.'/,'el control de cobro es obligatorio');
+  assert.match(html,/payload\.cobro_confirmado=S\.cobro;if\(S\.cobro===false\)payload\.cobro_informado=S\.cobroMonto/);
+  const cal=read('remitos-calidad-v1.js');
+  assert.match(cal,/rpc\('get_remito_quality_summary_v1'/);
+  assert.match(cal,/rpc\('mark_remito_survey_reviewed_v1'/);
+  assert.match(cal,/Cobros no confirmados/);
+  const index=read('Index.html');
+  assert.match(index,/id="rmx-views"[^>]*hidden/,'la pestaña solo aparece para Administración/Supervisión');
+  assert.match(index,/data-view="calidad"/);
+  assert.match(read('sigma.js'),/window\.RemitosCalidad\?\.syncRole\(\)/);
+  assert.match(read('config.js'),/'\/remitos-calidad-v1\.js'/);
+  assert.match(read('sw.js'),/'\/remitos-calidad-v1\.js'/);
+});

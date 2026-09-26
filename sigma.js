@@ -6029,6 +6029,8 @@ async function actualizarKpisRemitos() {
   document.getElementById('btn-nuevo-remito-fab')?.classList.toggle('is-role-hidden', !rol || rol === 'administracion' || rol === 'supervision');
   const ftabCerrado = document.getElementById('ftab-cerrado-admin');
   if (ftabCerrado) ftabCerrado.style.display = (rol === 'administracion' || rol === 'supervision') ? '' : 'none';
+  window.RemitosCalidad?.syncRole();
+  window.RemitosCalidad?.refrescarBadge();
   const host = document.getElementById('rmx-chips');
   if (!host) return;
   if ((rol !== 'administracion' && rol !== 'supervision') || typeof contarRemitosFiltrados !== 'function') { host.innerHTML = ''; return; }

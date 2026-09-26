@@ -44,6 +44,13 @@ dd{margin:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
 .stars-hint{min-height:18px;margin-top:4px;color:var(--muted);font-size:12px}
 .yesno{display:flex;gap:8px}
 .yesno button{flex:1;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font:inherit;font-weight:700;cursor:pointer}
+.monto{display:grid;gap:6px;margin-top:10px;font-size:13px;font-weight:600}
+.monto div{display:flex;align-items:center;gap:8px;height:48px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.monto div:focus-within{border-color:var(--brand)}
+.monto b{color:var(--muted)}
+.monto input{flex:1;min-width:0;border:0;background:none;color:var(--text);font:inherit;font-size:18px;font-weight:700;outline:none}
+.q-cobro legend{font-weight:600;line-height:1.4}
+.q-cobro .yesno button{font-size:14px}
 .yesno button.on{border-color:var(--brand);background:color-mix(in srgb,var(--brand) 14%,var(--card))}
 textarea{width:100%;min-height:90px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font:inherit;resize:vertical}
 textarea:focus,button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
@@ -79,7 +86,7 @@ const money=n=>'$ '+(Number(n)||0).toLocaleString('es-AR');
 const cap=s=>s?String(s).charAt(0).toUpperCase()+String(s).slice(1):'';
 const token=(location.pathname.match(/\/r\/([A-Za-z0-9]{24,64})/)||[])[1]||new URLSearchParams(location.search).get('t')||'';
 let db=null,data=null,d=null;
-const S={rating_general:0,rating_puntualidad:0,rating_trato:0,recomendaria:null,sending:false};
+const S={rating_general:0,rating_puntualidad:0,rating_trato:0,recomendaria:null,cobro:null,cobroMonto:'',sending:false};
 const ETIQUETAS=['','Muy malo','Malo','Regular','Bueno','Excelente'];
 
 /* Mismo formato que la app (_mapRemitoRow) para que el PDF y su código de verificación coincidan. */
@@ -131,6 +138,7 @@ function renderEncuesta(){
   const estrellas=(k)=>`<div class="stars" role="radiogroup">${[1,2,3,4,5].map(n=>`<button type="button" role="radio" aria-checked="${S[k]===n}" aria-label="${n} de 5 · ${ETIQUETAS[n]}" data-k="${k}" data-v="${n}" class="${S[k]>=n?'on':''}">★</button>`).join('')}</div><div class="stars-hint">${S[k]?ETIQUETAS[S[k]]:''}</div>`;
   box.innerHTML=`<h3>¿Cómo fue tu experiencia?</h3><p>Son 30 segundos y nos ayudan mucho.</p>
     <fieldset class="q"><legend>Calificación general</legend>${estrellas('rating_general')}</fieldset>
+    ${controlCobro()}
     <fieldset class="q"><legend>Puntualidad <small>(opcional)</small></legend>${estrellas('rating_puntualidad')}</fieldset>
     <fieldset class="q"><legend>Trato del chofer <small>(opcional)</small></legend>${estrellas('rating_trato')}</fieldset>
     <fieldset class="q"><legend>¿Nos recomendarías? <small>(opcional)</small></legend><div class="yesno"><button type="button" data-rec="1" class="${S.recomendaria===true?'on':''}" aria-pressed="${S.recomendaria===true}">Sí</button><button type="button" data-rec="0" class="${S.recomendaria===false?'on':''}" aria-pressed="${S.recomendaria===false}">No</button></div></fieldset>
@@ -141,15 +149,31 @@ function renderEncuesta(){
   box.querySelector('#comentario').addEventListener('input',e=>{S.comentario=e.target.value});
   box.querySelectorAll('.stars button').forEach(b=>b.addEventListener('click',()=>{S[b.dataset.k]=+b.dataset.v;renderEncuesta()}));
   box.querySelectorAll('[data-rec]').forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.rec==='1';S.recomendaria=S.recomendaria===v?null:v;renderEncuesta()}));
+  box.querySelectorAll('[data-cobro]').forEach(b=>b.addEventListener('click',()=>{S.cobro=b.dataset.cobro==='1';renderEncuesta();if(S.cobro===false)document.getElementById('cobro-monto')?.focus()}));
+  box.querySelector('#cobro-monto')?.addEventListener('input',e=>{e.target.value=e.target.value.replace(/[^\d]/g,'').slice(0,9);S.cobroMonto=e.target.value});
   box.querySelector('#enviar').addEventListener('click',enviar);
+}
+
+/* Control de cobro: el cliente confirma lo que el remito dice que pagó en el
+   lugar. Es la forma de detectar un cobro que no quedó registrado. */
+const cobrado=()=>(+d.peaje||0)+(+d.excedente||0)+(+d.otros||0);
+function controlCobro(){
+  const x=cobrado();
+  const pregunta=x>0?`Según el remito, pagaste <b>${money(x)}</b> en el lugar. ¿Es correcto?`:'El remito no registra pagos en el lugar. ¿Es correcto?';
+  const si=x>0?'Sí, es correcto':'Sí, no pagué nada',no=x>0?'No, pagué otro monto':'No, pagué algo';
+  return`<fieldset class="q q-cobro"><legend>${pregunta}</legend><div class="yesno"><button type="button" data-cobro="1" class="${S.cobro===true?'on':''}" aria-pressed="${S.cobro===true}">${si}</button><button type="button" data-cobro="0" class="${S.cobro===false?'on':''}" aria-pressed="${S.cobro===false}">${no}</button></div>
+    ${S.cobro===false?`<label class="monto"><span>¿Cuánto le pagaste al chofer en total?</span><div><b>$</b><input id="cobro-monto" inputmode="numeric" autocomplete="off" placeholder="0" value="${esc(S.cobroMonto)}"></div></label>`:''}</fieldset>`;
 }
 
 async function enviar(){
   const err=document.getElementById('err'),btn=document.getElementById('enviar');
   if(!S.rating_general){err.textContent='Elegí una calificación general (de 1 a 5 estrellas).';err.hidden=false;return}
+  if(S.cobro===null){err.textContent='Contanos si el importe que pagaste en el lugar es correcto.';err.hidden=false;return}
+  if(S.cobro===false&&!S.cobroMonto){err.textContent='Escribí cuánto le pagaste al chofer (0 si no pagaste nada).';err.hidden=false;document.getElementById('cobro-monto')?.focus();return}
   if(S.sending)return;S.sending=true;btn.disabled=true;btn.textContent='Enviando…';err.hidden=true;
   const payload={rating_general:S.rating_general,rating_puntualidad:S.rating_puntualidad||null,rating_trato:S.rating_trato||null,comentario:S.comentario||''};
   if(S.recomendaria!==null)payload.recomendaria=S.recomendaria;
+  payload.cobro_confirmado=S.cobro;if(S.cobro===false)payload.cobro_informado=S.cobroMonto;
   try{const {error}=await db.rpc('submit_remito_survey_v1',{p_token:token,p_payload:payload});if(error)throw error;S.done=true;renderEncuesta()}
   catch(e){err.textContent=e?.message||'No se pudo enviar. Probá de nuevo.';err.hidden=false;btn.disabled=false;btn.textContent='Enviar opinión'}
   finally{S.sending=false}

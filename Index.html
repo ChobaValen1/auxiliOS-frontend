@@ -14,12 +14,12 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=paleta-sobria-v154-20260926">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=paleta-sobria-v154-20260926">
-<link rel="stylesheet" href="dashboard-v1.css?v=paleta-sobria-v154-20260926">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=paleta-sobria-v154-20260926">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=paleta-sobria-v154-20260926">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=paleta-sobria-v154-20260926">
+<link rel="stylesheet" href="sigma.css?v=calidad-cobros-v155-20260926">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=calidad-cobros-v155-20260926">
+<link rel="stylesheet" href="dashboard-v1.css?v=calidad-cobros-v155-20260926">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=calidad-cobros-v155-20260926">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=calidad-cobros-v155-20260926">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=calidad-cobros-v155-20260926">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +39,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="supabase.js?v=paleta-sobria-v154-20260926" defer></script>
+<script src="config.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="supabase.js?v=calidad-cobros-v155-20260926" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=paleta-sobria-v154-20260926" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=paleta-sobria-v154-20260926" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="sigma.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="dashboard-charts-v1.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="dashboard-shell-v1.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="dashboard-facturacion-v1.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="dashboard-operaciones-v1.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="dashboard-flota-v1.js?v=paleta-sobria-v154-20260926" defer></script>
-<script src="dashboard-mapa-v1.js?v=paleta-sobria-v154-20260926" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=calidad-cobros-v155-20260926" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=calidad-cobros-v155-20260926" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="sigma.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="dashboard-charts-v1.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="dashboard-shell-v1.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="dashboard-facturacion-v1.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="dashboard-operaciones-v1.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="dashboard-flota-v1.js?v=calidad-cobros-v155-20260926" defer></script>
+<script src="dashboard-mapa-v1.js?v=calidad-cobros-v155-20260926" defer></script>
 </head>
 <body>
 
@@ -1182,6 +1182,11 @@
       <!-- Barra única de Remitos: buscador y filtros en una fila, Exportar y Nuevo remito a la derecha.
            El título ya lo muestra la barra superior. Los controles originales (ids que leen
            _leerFiltrosRemitosUI y limpiarFiltrosAdmin) quedan como fuente de valores. -->
+      <nav class="rmx-views" id="rmx-views" role="tablist" hidden>
+        <button type="button" role="tab" data-view="lista" class="is-active" aria-selected="true">Remitos</button>
+        <button type="button" role="tab" data-view="calidad" aria-selected="false">Calidad y cobros <b id="rmx-views-badge" hidden></b></button>
+      </nav>
+      <div class="rmx-calidad" id="rmx-calidad"></div>
       <div class="rmx-toolbar" id="filtros-remitos">
         <div class="rmx-filters auxf-bar" id="rmx-filters">
           <label class="auxf-search rmx-search"><span aria-hidden="true">⌕</span><input id="input-buscar-remitos" type="search" autocomplete="off" placeholder="Nº remito, cliente, patente..." oninput="filtrarBusqueda(this.value)"></label>

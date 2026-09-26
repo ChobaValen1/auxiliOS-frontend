@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'paleta-sobria-v154-20260926';
+window.AUXILIOS_BUILD_ID = 'calidad-cobros-v155-20260926';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -166,6 +166,8 @@ async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-remitos-admin-panel-v1-css', '/remitos-admin-panel-v1.css');
   await loadAuxiliosModule('auxilios-remitos-admin-panel-v1', '/remitos-admin-panel-v1.js');
   await loadAuxiliosModule('auxilios-remito-pdf-v2', '/remito-pdf-v2.js');
+  loadAuxiliosStyle('auxilios-remitos-calidad-v1-css', '/remitos-calidad-v1.css');
+  await loadAuxiliosModule('auxilios-remitos-calidad-v1', '/remitos-calidad-v1.js');
   loadAuxiliosStyle('auxilios-remitos-filtros-sheet-v1-css', '/remitos-filtros-sheet-v1.css');
   await loadAuxiliosModule('auxilios-remitos-filtros-sheet-v1', '/remitos-filtros-sheet-v1.js');
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');

@@ -1,0 +1,67 @@
+/* AuxiliOS · Remitos · Calidad y cobros v1 — misma paleta sobria que la tabla */
+#screen-remitos .rmx-views{display:flex;gap:4px;margin:0 0 12px;border-bottom:1px solid var(--border)}
+#screen-remitos .rmx-views[hidden]{display:none}
+#screen-remitos .rmx-views button{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted2);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+#screen-remitos .rmx-views button.is-active{color:var(--text);border-bottom-color:var(--amber)}
+#screen-remitos .rmx-views b{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--red);color:#fff;font-size:10px}
+#screen-remitos .rmx-views b[hidden]{display:none}
+#screen-remitos .rmx-calidad{display:none}
+#screen-remitos.rmx-view-calidad .rmx-calidad{display:block}
+#screen-remitos.rmx-view-calidad #filtros-remitos,#screen-remitos.rmx-view-calidad #remitos-lista,#screen-remitos.rmx-view-calidad #btn-nuevo-remito-fab{display:none!important}
+
+.rmx-calidad .rqc-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.rmx-calidad .rqc-note{color:var(--muted);font-size:11px}
+.rmx-calidad .rqc-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.rmx-calidad .rqc-tile{display:grid;gap:3px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.rmx-calidad .rqc-tile span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.9px;text-transform:uppercase}
+.rmx-calidad .rqc-tile b{font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--text)}
+.rmx-calidad .rqc-tile b small{color:var(--muted);font-size:12px}
+.rmx-calidad .rqc-tile em{color:var(--muted2);font-size:11px;font-style:normal}
+.rmx-calidad .rqc-tile.is-alert{border-color:color-mix(in srgb,var(--red) 55%,transparent)}
+.rmx-calidad .rqc-tile.is-alert b{color:var(--red)}
+.rmx-calidad .rqc-hint{margin:0 0 12px;color:var(--muted2);font-size:11px}
+.rmx-calidad .rqc-sec{margin:14px 0;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.rmx-calidad .rqc-sec h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.rmx-calidad .rqc-count{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;border:1px solid var(--border2);color:var(--muted2);font-size:10px;font-weight:800;letter-spacing:0}
+.rmx-calidad .rqc-count.is-alert{border-color:var(--red);background:var(--red);color:#fff}
+.rmx-calidad .rqc-alert{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.rmx-calidad .rqc-sec h3+.rqc-alert{border-top:0;padding-top:2px}
+.rmx-calidad .rqc-alert.is-done{opacity:.6}
+.rmx-calidad .rqc-alert-main{display:grid;gap:5px;min-width:0}
+.rmx-calidad .rqc-alert-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:12px}
+.rmx-calidad .rqc-alert-head b{font-family:'DM Mono',monospace}
+.rmx-calidad .rqc-alert-head span{color:var(--muted2);font-size:11px}
+.rmx-calidad .rqc-tags{display:flex;flex-wrap:wrap;gap:6px}
+.rmx-calidad .rqc-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border:1px solid var(--border2);border-radius:999px;color:var(--muted2);font-size:11px;font-weight:600}
+.rmx-calidad .rqc-tag.is-alert{border-color:color-mix(in srgb,var(--red) 55%,transparent);color:var(--red)}
+.rmx-calidad .rqc-quote{margin:0;color:var(--muted2);font-size:12px;font-style:italic}
+.rmx-calidad .rqc-done{margin:0;color:var(--muted);font-size:11px}
+.rmx-calidad .rqc-alert-actions{display:flex;gap:6px;flex:0 0 auto}
+.rmx-calidad .rqc-btn{height:28px;padding:0 11px;border:1px solid var(--border2);border-radius:7px;background:transparent;color:var(--text);font:inherit;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
+.rmx-calidad .rqc-btn:hover{border-color:var(--amber);color:var(--amber)}
+.rmx-calidad .rqc-btn.primary{border-color:var(--amber);background:var(--amber);color:#111}
+.rmx-calidad .rqc-link{padding:0;border:0;background:none;color:var(--amber);font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.rmx-calidad .rqc-rev summary{margin-top:8px;color:var(--muted2);font-size:11px;font-weight:700;cursor:pointer}
+.rmx-calidad .rqc-empty,.rmx-calidad .rqc-empty-line{color:var(--muted);font-size:12px}
+.rmx-calidad .rqc-empty{padding:30px 0;text-align:center}
+.rmx-calidad .rqc-empty.is-error{color:var(--red)}
+.rmx-calidad .rqc-table-wrap{overflow-x:auto}
+.rmx-calidad .rqc-table{width:100%;min-width:760px;border-collapse:collapse;font-size:12px}
+.rmx-calidad .rqc-table th{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.9px;text-align:left;text-transform:uppercase;white-space:nowrap}
+.rmx-calidad .rqc-table td{padding:8px;border-bottom:1px solid var(--border);white-space:nowrap}
+.rmx-calidad .rqc-table tr:last-child td{border-bottom:0}
+.rmx-calidad .rqc-table .n{text-align:right;font-family:'DM Mono',monospace}
+.rmx-calidad .rqc-table th.n{font-family:inherit}
+.rmx-calidad .rqc-table small{color:var(--muted);font-size:10px}
+.rmx-calidad .rqc-stars{color:var(--amber);letter-spacing:1px}
+.rmx-calidad .rqc-stars i{color:var(--border2);font-style:normal}
+.rmx-calidad .rqc-num{margin-left:4px;font-family:'DM Mono',monospace;font-weight:700}
+.rmx-calidad .rqc-num.is-alert{color:var(--red)}
+.rmx-calidad .rqc-muted{color:var(--muted)}
+.rmx-calidad .rqc-comment{display:grid;gap:3px;padding:9px 0;border-top:1px solid var(--border);font-size:12px}
+.rmx-calidad .rqc-sec h3+.rqc-comment{border-top:0;padding-top:0}
+.rmx-calidad .rqc-comment span{color:var(--muted2);font-size:11px}
+.rmx-calidad .rqc-comment p{margin:0;color:var(--text)}
+.rmx-calidad .rqc-comment .rqc-link{justify-self:start}
+@media(max-width:900px){.rmx-calidad .rqc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.rmx-calidad .rqc-tiles{grid-template-columns:1fr}.rmx-calidad .rqc-alert{flex-direction:column}}
