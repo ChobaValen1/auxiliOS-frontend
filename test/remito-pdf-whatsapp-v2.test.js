@@ -96,3 +96,18 @@ test('calidad y cobros: el cliente confirma lo cobrado y Administración ve el r
   assert.match(read('config.js'),/'\/remitos-calidad-v1\.js'/);
   assert.match(read('sw.js'),/'\/remitos-calidad-v1\.js'/);
 });
+
+test('al firmar, enviar el remito al cliente es obligatorio y queda registrado el canal',()=>{
+  const sigma=read('sigma.js');
+  const sheet=slice(sigma,'async function ofrecerEnvioRemitoWhatsApp(nro) {','// Con teléfono: abre el chat de ese número');
+  assert.doesNotMatch(sheet,/Ahora no|data-rwa-close/,'no se puede saltear ni cerrar tocando afuera');
+  assert.match(sheet,/El cliente no tiene WhatsApp/);
+  assert.match(sheet,/registrarEntregaRemito\(d\.id, 'sin_whatsapp'\)/);
+  assert.match(sigma,/registrarEntregaRemito\(d\.id, 'whatsapp'\)/);
+  assert.match(sigma,/registrarEntregaRemito\(d\.id, 'compartido'\)/);
+  assert.match(sigma,/rpc\('register_remito_delivery_v1'/);
+  const mig=read('migrations/20260926140000_remito_delivery_channel_v1.sql');
+  assert.match(mig,/canal in \('whatsapp','compartido','sin_whatsapp'\)/);
+  assert.match(mig,/v_driver = auth\.uid\(\)/);
+  assert.match(mig,/'sin_whatsapp', count\(\*\) filter/);
+});

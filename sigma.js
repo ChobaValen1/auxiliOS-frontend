@@ -7111,6 +7111,17 @@ function telefonoWhatsApp(tel) {
   return n.length === 10 ? '549' + n : '';
 }
 
+// Cómo se entregó el remito al cliente (whatsapp | compartido | sin_whatsapp):
+// mide la cobertura del control de cobro en Calidad y cobros.
+async function registrarEntregaRemito(remitoId, canal) {
+  if (!remitoId) return false;
+  try {
+    const { error } = await _db.rpc('register_remito_delivery_v1', { p_remito_id: Number(remitoId), p_canal: canal });
+    if (error) throw error;
+    return true;
+  } catch (e) { console.warn('registrarEntregaRemito:', e?.message || e); return false; }
+}
+
 // Link público del remito (/r/<token>): resumen, PDF y encuesta de calidad
 // para el cliente, sin login. Si no se puede crear, el mensaje sale sin link.
 async function linkPublicoRemito(remitoId) {
@@ -7156,19 +7167,30 @@ async function ofrecerEnvioRemitoWhatsApp(nro) {
   box.id = 'rwa-sheet';
   box.className = 'rwa-sheet';
   const tel = String(d.telefono || '').replace(/\D/g, '');
-  box.innerHTML = `<button class="rwa-backdrop" type="button" aria-label="Cerrar" data-rwa-close></button>
+  // Obligatorio: no se cierra tocando afuera; el chofer elige cómo se entrega.
+  box.innerHTML = `<div class="rwa-backdrop" aria-hidden="true"></div>
     <section role="dialog" aria-modal="true" aria-labelledby="rwa-title">
-      <h3 id="rwa-title">¿Enviar el remito al cliente?</h3>
+      <h3 id="rwa-title">Enviá el remito al cliente</h3>
       <p>${_rmxEsc(d.cliente || 'Cliente')} · ${_rmxEsc(d.srvOrden ? 'Servicio ' + d.srvOrden : 'Remito ' + d.nro)}</p>
       <label><span>WhatsApp del cliente</span><input id="rwa-tel" type="tel" inputmode="numeric" maxlength="13" placeholder="Ej: 1123456789" value="${_rmxEsc(tel)}"></label>
       <small id="rwa-err" hidden>Revisá el número: 10 dígitos, código de área sin 0 y número sin 15.</small>
       <button class="rwa-send" type="button" id="rwa-send">Enviar por WhatsApp</button>
       ${navigator.canShare ? '<button class="rwa-alt" type="button" id="rwa-share">Compartir el PDF</button>' : ''}
-      <button class="rwa-skip" type="button" data-rwa-close>Ahora no</button>
+      <button class="rwa-skip" type="button" id="rwa-none">El cliente no tiene WhatsApp</button>
+      <div class="rwa-confirm" id="rwa-confirm" hidden>
+        <p>¿Confirmás que el cliente no tiene WhatsApp? Queda registrado y no recibe la encuesta ni el control de cobro.</p>
+        <div><button class="rwa-skip" type="button" id="rwa-none-back">Volver</button><button class="rwa-alt" type="button" id="rwa-none-ok">Sí, no tiene</button></div>
+      </div>
     </section>`;
   document.body.appendChild(box);
   const cerrar = () => box.remove();
-  box.querySelectorAll('[data-rwa-close]').forEach(b => b.addEventListener('click', cerrar));
+  box.querySelector('#rwa-none').addEventListener('click', () => { box.querySelector('#rwa-confirm').hidden = false; box.querySelector('#rwa-none').hidden = true; });
+  box.querySelector('#rwa-none-back').addEventListener('click', () => { box.querySelector('#rwa-confirm').hidden = true; box.querySelector('#rwa-none').hidden = false; });
+  box.querySelector('#rwa-none-ok').addEventListener('click', async e => {
+    e.target.disabled = true;
+    await registrarEntregaRemito(d.id, 'sin_whatsapp');
+    cerrar();
+  });
   box.querySelector('#rwa-send').addEventListener('click', async () => {
     const valor = box.querySelector('#rwa-tel').value;
     if (!telefonoWhatsApp(valor)) { box.querySelector('#rwa-err').hidden = false; box.querySelector('#rwa-tel').focus(); return; }
@@ -7198,6 +7220,7 @@ async function compartirRemitoPorWhatsApp(tr, opts = {}) {
       const file = new File([await window.RemitoPdf.blob(d)], window.RemitoPdf.fileName(d), { type: 'application/pdf' });
       if (navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: file.name, text: texto });
+        registrarEntregaRemito(d.id, 'compartido');
         return true;
       }
     } catch (err) {
@@ -7206,6 +7229,7 @@ async function compartirRemitoPorWhatsApp(tr, opts = {}) {
     }
   }
   window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+  registrarEntregaRemito(d.id, 'whatsapp');
   return true;
 }
 

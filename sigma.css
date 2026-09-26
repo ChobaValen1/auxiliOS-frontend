@@ -3966,3 +3966,7 @@ body {
 .rwa-alt{border:1px solid var(--border2);background:none;color:var(--text)}
 .rwa-skip{border:0;background:none;color:var(--muted2);font-weight:600}
 @media(min-width:721px){.rwa-sheet{align-items:center}.rwa-sheet section{border-radius:16px}}
+.rwa-sheet .rwa-confirm{display:grid;gap:10px;padding:12px;border:1px solid var(--border2);border-radius:12px;background:var(--bg)}
+.rwa-sheet .rwa-confirm[hidden],.rwa-sheet .rwa-skip[hidden]{display:none}
+.rwa-sheet .rwa-confirm p{margin:0;color:var(--muted2);font-size:12px;line-height:1.45}
+.rwa-sheet .rwa-confirm div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
