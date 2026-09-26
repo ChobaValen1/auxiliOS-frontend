@@ -12,6 +12,11 @@
     search: '',
     company: '',
     period: '',
+    periodSel: { mode: 'all' },
+    base: '',
+    serviceType: '',
+    allRows: [],
+    allTollRows: [],
     selected: new Set(),
     selectedTolls: new Set(),
     loading: false,
@@ -213,6 +218,56 @@
     document_type: 'FA', point_of_sale: '', document_number: '', issued_on: todayLocalDate(), notes: ''
   });
 
+  /* Base y Tipo se filtran sobre lo que ya trajo el servidor: las RPC de
+     Facturación solo reciben prestadora, período y búsqueda. */
+  const uniqueOptions = (rows, key) => [...new Set(rows.map(row => row[key]).filter(Boolean))]
+    .sort((a, b) => String(a).localeCompare(String(b), 'es'))
+    .map(value => ({ value, label: value }));
+
+  function applyLocalFilters() {
+    S.rows = S.allRows.filter(row => (!S.base || row.billing_base_name === S.base) && (!S.serviceType || row.service_name === S.serviceType));
+    S.tollRows = S.allTollRows.filter(row => !S.base || row.billing_base_name === S.base);
+    for (const id of [...S.selected]) if (!S.rows.some(row => String(row.service_id) === id)) S.selected.delete(id);
+    for (const id of [...S.selectedTolls]) if (!S.tollRows.some(row => String(row.service_toll_id) === id)) S.selectedTolls.delete(id);
+  }
+
+  function activeFilterCount() {
+    return [S.search.trim(), S.company, S.periodSel.mode !== 'all', S.base, S.tab === 'services' && S.serviceType].filter(Boolean).length;
+  }
+
+  function filtersMarkup() {
+    const F = window.AuxFilters;
+    const searchInput = `<label class="auxf-search"><span aria-hidden="true">⌕</span><input class="ob-search" id="ob-search" type="search" autocomplete="off" placeholder="Buscar código, cliente, origen, destino…" value="${esc(S.search)}"></label>`;
+    if (!F) return `${searchInput}<select class="ob-filter" id="ob-company-filter">${filterOptions().companies}</select>`;
+    const companies = S.filters.companies.map(item => ({ value: String(item.company_id), label: item.company_name }));
+    const bases = uniqueOptions([...S.allRows, ...S.allTollRows], 'billing_base_name');
+    return searchInput
+      + F.period({ id: 'period', value: S.periodSel, allLabel: 'Todos los períodos', months: S.filters.periods })
+      + F.select({ id: 'company', label: 'Prestadora', icon: '🏢', value: S.company, options: companies, allLabel: 'Todas' })
+      + F.select({ id: 'base', label: 'Base', icon: '📍', value: S.base, options: bases, allLabel: 'Todas' })
+      + (S.tab === 'services' ? F.select({ id: 'serviceType', label: 'Tipo', icon: '🚚', value: S.serviceType, options: uniqueOptions(S.allRows, 'service_name'), allLabel: 'Todos' }) : '')
+      + F.clear({ count: activeFilterCount() });
+  }
+
+  function onFilterChange(id, value) {
+    if (id === 'period') {
+      S.periodSel = value;
+      const bounds = window.AuxFilters.periodBounds(value);
+      S.period = value.mode === 'mes' ? value.mes : value.mode === 'rango' ? `${bounds.start}_${bounds.end}` : '';
+      return clearAndLoad();
+    }
+    if (id === 'company') { S.company = value || ''; return clearAndLoad(); }
+    if (id === 'base') S.base = value || '';
+    if (id === 'serviceType') S.serviceType = value || '';
+    applyLocalFilters();
+    render();
+  }
+
+  function clearFilters() {
+    Object.assign(S, { search: '', company: '', period: '', periodSel: { mode: 'all' }, base: '', serviceType: '' });
+    clearAndLoad();
+  }
+
   function filterOptions() {
     const companies = [
       '<option value="">Todas las prestadoras</option>',
@@ -365,7 +420,7 @@
       <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
       <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td>
       <td><b>${esc(row.company_name || '—')}</b></td><td><b>${esc(row.billing_base_name || '—')}</b></td>
-      <td><b>${esc(row.service_name || '—')}</b><small>PENDIENTE</small>${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}</td>
+      <td><b>${esc(row.service_name || '—')}</b><small class="ob-state is-pending">Pendiente</small>${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}</td>
       <td class="ob-place">${esc(row.origin || '—')}</td><td class="ob-place">${esc(row.destination || '—')}</td>
       <td><b>${esc(row.customer_name || '—')}</b></td><td class="ob-km">${esc(num(row.km).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km</td>
       <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio">⋯</button></td>
@@ -392,7 +447,7 @@
       <td><b>${esc(row.service_order_number || row.service_number || '—')}</b><small>${esc(row.vehicle_plate || '')}</small></td>
       <td><b>${esc(row.toll_name || 'Peaje')}</b><small>${esc(row.source || '')}</small></td><td class="ob-place">${esc(route)}</td>
       <td><b>${esc(row.billing_base_name || '—')}</b></td><td><b class="ob-money">${esc(money(row.amount, row.currency))}</b></td>
-      <td><b>DISPONIBLE</b><small>Peaje separado del servicio</small></td>
+      <td><span class="ob-state is-pending">Disponible</span><small>Peaje separado del servicio</small></td>
     </tr>`;
   }
 
@@ -469,8 +524,8 @@
     const screen = ensureShell();
     if (!screen) return;
     closeRowActionMenu();
+    window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
     document.querySelector('.topbar-right #obx-wrap')?.remove();
-    const opts = filterOptions();
     const excelControl = S.selected.size
       ? '<div id="obx-wrap" class="obx-wrap"><button type="button" class="obx-trigger" id="obx-trigger" aria-haspopup="menu" aria-expanded="false" data-ob="excel-toggle">⇩ Excel</button></div>'
       : '';
@@ -487,7 +542,7 @@
     const backdropClass = S.invoiceOpen ? ' ob-invoice-backdrop' : S.rowAction ? ' ob-confirm-backdrop' : '';
     screen.innerHTML = `<div class="ob-shell">
       <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes</button></div>
-      <div class="ob-filters"><input class="ob-search" id="ob-search" placeholder="Buscar código, cliente, origen, destino…" value="${esc(S.search)}"><select class="ob-filter" id="ob-company-filter">${opts.companies}</select><select class="ob-filter" id="ob-period-filter">${opts.periods}</select>${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh">↻ Actualizar</button></div></div>
+      <div class="ob-filters auxf-bar">${filtersMarkup()}${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh">↻ Actualizar</button></div></div>
       ${selectionMarkup()}<div class="ob-table-card">${S.loading ? '<div class="ob-empty">Actualizando Facturación…</div>' : tableMarkup()}</div>
       <div id="ob-detail-backdrop" class="ob-detail-backdrop${backdropClass}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
     </div>`;
@@ -497,7 +552,7 @@
     if (S.loading || !db() || !canRead()) return;
     S.loading = true;
     render();
-    const bounds = periodBounds(S.period);
+    const bounds = window.AuxFilters ? window.AuxFilters.periodBounds(S.periodSel) : periodBounds(S.period);
     try {
       const [services, tolls] = await Promise.all([
         db().rpc('list_operator_billing_services_v3', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
@@ -505,19 +560,20 @@
       ]);
       if (services.error) throw services.error;
       if (tolls.error) throw tolls.error;
-      S.rows = Array.isArray(services.data?.rows) ? services.data.rows : [];
+      S.allRows = Array.isArray(services.data?.rows) ? services.data.rows : [];
       S.filters = {
         companies: Array.isArray(services.data?.filters?.companies) ? services.data.filters.companies : [],
         periods: Array.isArray(services.data?.filters?.periods) ? services.data.filters.periods : []
       };
-      S.tollRows = Array.isArray(tolls.data?.rows) ? tolls.data.rows : [];
+      S.allTollRows = Array.isArray(tolls.data?.rows) ? tolls.data.rows : [];
       S.tollTotal = num(tolls.data?.total_amount);
-      for (const id of [...S.selected]) if (!S.rows.some(row => String(row.service_id) === id)) S.selected.delete(id);
-      for (const id of [...S.selectedTolls]) if (!S.tollRows.some(row => String(row.service_toll_id) === id)) S.selectedTolls.delete(id);
+      applyLocalFilters();
     } catch (error) {
       notify(error.message || 'No se pudo cargar Facturación', 'error');
       S.rows = [];
       S.tollRows = [];
+      S.allRows = [];
+      S.allTollRows = [];
       S.tollTotal = 0;
       clearSelection();
     } finally {

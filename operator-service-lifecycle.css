@@ -16,3 +16,46 @@
 .os-resource-hint{display:block;font-size:10px;line-height:1.3;color:var(--muted);margin-top:3px;font-weight:400}.osv4-reactive [aria-invalid="true"]{outline:1px solid #ef4444;outline-offset:1px}
 .osl-choice-list label span small{display:block;font-size:11px;line-height:1.4;color:var(--muted);margin-top:4px} #osv4-activation-classification{padding:12px 20px;border-top:1px solid rgba(160,170,185,.2)}
 .os-activation-reason{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;margin-top:3px}
+
+/* Avisos de asignación dentro del modal y de la tarjeta de confirmación */
+.os-resource-hint.is-blocked{color:#d64545;font-weight:700}
+.osl-assignment-inline.is-error{border-color:rgba(214,69,69,.55);box-shadow:inset 3px 0 0 #d64545}
+.osl-assignment-inline-error{color:#e05252!important;font-weight:700}
+
+/* El aviso usa display:flex y le ganaba al atributo hidden: se veía siempre. */
+.osl-warning[hidden]{display:none!important}
+/* Menú de Estado: cada acción con el color del estado al que lleva. */
+.osl-quick-status-menu button{display:flex;align-items:center;gap:8px;border-left:3px solid transparent}
+.osl-quick-status-menu button:before{content:"";flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:var(--osl-act,#8590ab)}
+.osl-quick-status-menu button:hover{background:color-mix(in srgb,var(--osl-act,#8590ab) 14%,transparent)!important;border-left-color:var(--osl-act,#8590ab)}
+.osl-quick-status-menu button[data-osl-quick-action="assign"],.osl-quick-status-menu button[data-osl-quick-action="reassign"],.osl-quick-status-menu button[data-osl-quick-action="unarrive"]{--osl-act:var(--blue,#4a90e2)}
+.osl-quick-status-menu button[data-osl-quick-action="unassign"]{--osl-act:var(--amber,#f5a623)}
+.osl-quick-status-menu button[data-osl-quick-action="arrive"]{--osl-act:#a986ff}
+.osl-quick-status-menu button[data-osl-quick-action="activate"]{--osl-act:var(--cyan,#2ec4d6)}
+.osl-quick-status-menu button[data-osl-quick-action="finalize"]{--osl-act:var(--green,#27c47a)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]{--osl-act:var(--red,#e2504a)}
+.osl-annul-confirm{display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 13px;border:1px solid #f0b7b1;border-radius:10px;font-size:.84rem;font-weight:700;cursor:pointer}.osl-annul-confirm input{width:auto;margin:0}.osl-annul-confirm:has(input:checked){background:var(--osl-red-soft)}
+.osl-warning.ok{border-color:#a7dcbf;background:rgba(39,196,122,.1);color:#1c6b43}
+
+/* Servicios · paleta sobria: el menú de Estado ya no pinta cada destino con su
+   color (azul, violeta, cian, verde). Punto neutro; naranja al pasar el mouse
+   (interacción) y rojo solo para Anular (destructivo). */
+.osl-quick-status-menu button{--osl-act:var(--border2,#3b4458)}
+.osl-quick-status-menu button[data-osl-quick-action]{--osl-act:var(--border2,#3b4458)}
+.osl-quick-status-menu button:hover{background:rgba(245,166,35,.08)!important;border-left-color:var(--amber,#f5a623)}
+.osl-quick-status-menu button:hover:before{background:var(--amber,#f5a623)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]{--osl-act:var(--red,#e2504a);color:var(--red,#e2504a)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]:hover{background:color-mix(in srgb,var(--red,#e2504a) 12%,transparent)!important;border-left-color:var(--red,#e2504a)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]:hover:before{background:var(--red,#e2504a)}
+/* Modales de estado y asignación: botón principal y selección en naranja, sin azul ni verde. */
+.osl-modal footer button.primary{border-color:var(--amber,#f5a623);background:var(--amber,#f5a623);color:#111}
+.osl-choice-list label:has(input:checked){border-color:var(--amber,#f5a623);background:var(--osl-amber-soft);box-shadow:0 0 0 2px rgba(245,166,35,.12)}
+.osl-choice-list input,.osl-annul-confirm input{accent-color:var(--amber,#f5a623)}
+.osl-assignment-fields select:focus{outline:2px solid rgba(245,166,35,.22);border-color:var(--amber,#f5a623)}
+.osl-assignment-compare>section.new{border-color:#f0d18f;background:var(--osl-amber-soft)}
+.osl-warning.ok{border-color:var(--osl-line);background:var(--osl-soft);color:var(--osl-ink)}
+.osl-history-head>span{background:none;padding:0}
+.osv4-reactive .osl-assignment-inline{border-color:color-mix(in srgb,var(--amber,#f5a623) 45%,transparent);background:rgba(245,166,35,.05);box-shadow:inset 3px 0 0 var(--amber,#f5a623)}
+.osv4-reactive .osl-assignment-inline-actions button.primary{border-color:var(--amber,#f5a623);background:var(--amber,#f5a623);color:#111}
+.osv4-reactive .osl-assignment-inline.is-error{border-color:color-mix(in srgb,var(--red,#e2504a) 55%,transparent);background:transparent;box-shadow:inset 3px 0 0 var(--red,#e2504a)}
+.os-resource-hint.is-blocked,.osl-assignment-inline-error{color:var(--red,#e2504a)!important}

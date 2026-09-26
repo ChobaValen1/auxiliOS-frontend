@@ -3814,3 +3814,163 @@ body {
 .pv-export-footer{display:flex;flex-direction:column;gap:8px}.pv-action-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pv-export-footer .btn{width:100%;max-width:none;min-height:36px}.pv-action-row--exports{padding-top:8px;border-top:1px solid var(--border)}
 .pv-audit-hero{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px;margin-bottom:12px;border:1px solid #f5a62355;border-radius:12px;background:linear-gradient(135deg,#f5a62314,transparent 65%)}.pv-audit-hero h3{margin:3px 0 4px!important;font-size:20px}.pv-audit-hero p{margin:0;color:#aebbd0}.pv-audit-kicker{color:var(--amber);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em}.pv-audit-hero-total{text-align:right;white-space:nowrap}.pv-audit-hero-total small{display:block;color:#aebbd0}.pv-audit-hero-total b{display:block;margin-top:3px;font-size:22px;color:var(--amber)}.pv-audit-card{margin-bottom:12px;padding:16px;border:1px solid var(--border);border-radius:10px;background:#ffffff05}.pv-audit-card h4{margin:0 0 12px;font-size:14px}.pv-audit-entry .pv-payline{border-top:0}.pv-audit-input-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.pv-audit-input-row .btn{min-height:38px}.pv-no-commission{display:block;color:#aebbd0}.pv-no-commission small{display:block;max-width:130px;margin-top:3px;color:var(--amber);line-height:1.2}
 .remito-created-confirmation{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:20px;background:rgba(4,8,15,.72);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease}.remito-created-confirmation.is-visible{opacity:1;visibility:visible}.remito-created-confirmation>div{display:grid;justify-items:center;gap:8px;width:min(330px,88vw);padding:28px 22px;border:1px solid rgba(39,196,122,.5);border-radius:16px;background:var(--card);box-shadow:0 22px 60px rgba(0,0,0,.55);text-align:center}.remito-created-confirmation span{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:rgba(39,196,122,.14);color:var(--green);font-size:27px;font-weight:900}.remito-created-confirmation strong{font-size:15px}.remito-created-confirmation small{color:var(--muted2);font-size:10px}
+/* Remito de un servicio de una sola dirección: sin campo Destino. */
+.p3-single-address-hidden{display:none!important}
+
+/* ── Remitos · barra única de filtros y acciones ─────────────────────────
+   Una sola fila: buscador y filtros a la izquierda; cantidad, Exportar y
+   Nuevo remito a la derecha. Antes eran tres bloques (título, tarjeta de
+   filtros con dos niveles y la franja "Mostrando") y la tabla arrancaba a
+   mitad de pantalla. */
+#screen-remitos .rmx-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;margin:0 0 10px;padding:0;border:0;background:transparent}
+#screen-remitos .rmx-filters{flex:1 1 520px;min-width:0}
+#screen-remitos .rmx-admin{display:contents}
+#screen-remitos .rmx-host{display:contents}
+#screen-remitos .rmx-search{flex:1 1 200px;max-width:260px}
+#screen-remitos .rmx-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto;margin-left:auto}
+#screen-remitos .rmx-count{color:var(--muted2);font-size:10px;font-weight:700;white-space:nowrap}
+#screen-remitos .rmx-btn{height:34px;padding:0 13px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:11px;font-weight:800;white-space:nowrap;cursor:pointer}
+#screen-remitos .rmx-btn:hover{border-color:var(--primary)}
+#screen-remitos .rmx-btn.primary{border-color:var(--primary);background:var(--primary);color:#fff}
+#screen-remitos .rmx-btn.primary:hover{filter:brightness(1.08)}
+#screen-remitos .rmx-sources{display:none!important}
+/* Si Administración ve su propio "Nuevo remito", el del chofer no se duplica. */
+
+@media (max-width:720px){
+  #screen-remitos .rmx-toolbar{padding:0}
+  #screen-remitos .rmx-filters{flex-basis:100%}
+  #screen-remitos .rmx-search,  #screen-remitos .rmx-actions{width:100%;justify-content:flex-end}
+}
+
+/* Remitos: Administración y Supervisión no crean remitos (nacen del chofer o de un Servicio). */
+#btn-nuevo-remito-fab.is-role-hidden{display:none!important}
+
+/* Remitos · tabla v2: chips accionables, selección múltiple y filas compactas */
+#screen-remitos .rmx-chips{display:inline-flex;gap:6px;flex-wrap:wrap}
+#screen-remitos .rmx-chip{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;border:1px solid var(--c);border-radius:999px;background:color-mix(in srgb,var(--c) 10%,transparent);color:var(--c);font-family:inherit;font-size:11px;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap}
+#screen-remitos .rmx-chip b{font-family:'DM Mono',monospace;font-size:12px}
+#screen-remitos .rmx-chip.is-amber{--c:var(--amber)}
+#screen-remitos .rmx-chip.is-red{--c:var(--red)}
+#screen-remitos .rmx-chip:hover{background:color-mix(in srgb,var(--c) 18%,transparent)}
+#screen-remitos .rmx-chip.is-active{background:var(--c);color:#111}
+#screen-remitos .rmx-bulk{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 8px;padding:8px 12px;border:1px solid rgba(88,166,255,.4);border-radius:10px;background:rgba(88,166,255,.08);font-size:12px;font-weight:600;color:var(--blue)}
+#screen-remitos .rmx-bulk[hidden]{display:none!important}
+#screen-remitos .rmx-bulk-actions{display:flex;gap:6px;flex-wrap:wrap}
+#screen-remitos .rmx-bulk .rmx-btn[hidden]{display:none}
+#screen-remitos .rmx-btn.ghost{background:transparent;border-color:transparent;color:var(--muted2)}
+#screen-remitos .rmx-table th{font-size:9px;letter-spacing:.9px;white-space:nowrap}
+#screen-remitos .rmx-table td{padding-top:8px;padding-bottom:8px;vertical-align:middle;font-size:12px}
+#screen-remitos .rmx-col-check{width:34px;padding-right:0!important;text-align:center}
+#screen-remitos .rmx-col-check input{width:15px;height:15px;accent-color:var(--amber);cursor:pointer}
+#screen-remitos .rmx-row.is-selected td{background:rgba(245,166,35,.07)}
+#screen-remitos .rmx-row.is-anulado td:not(:last-child){opacity:.5}
+#screen-remitos .rmx-srv{display:block;font-family:'DM Mono',monospace;font-weight:700;font-size:12px;color:var(--amber)}
+#screen-remitos .rmx-sub{display:block;margin-top:2px;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen-remitos .rmx-date span:first-child{font-family:'DM Mono',monospace;font-size:12px}
+#screen-remitos .rmx-client{max-width:230px}
+#screen-remitos .rmx-client>span:first-child{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#screen-remitos .rmx-type{display:inline-block;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid var(--border);font-size:11px;font-weight:600;white-space:nowrap}
+#screen-remitos .rmx-type.is-empty{background:transparent;border-style:dashed;color:var(--muted);font-weight:500}
+#screen-remitos .rmx-money{text-align:right;font-family:'DM Mono',monospace;font-weight:700;white-space:nowrap}
+#screen-remitos td.rmx-money[title]{cursor:help;text-decoration:underline dotted var(--border2);text-underline-offset:3px}
+#screen-remitos .rmx-muted{color:var(--muted);font-weight:400}
+#screen-remitos .rmx-pays{display:flex;gap:4px;flex-wrap:wrap}
+#screen-remitos .rmx-pay{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;border:1px solid color-mix(in srgb,var(--c) 45%,transparent);color:var(--c);font-size:10px;font-weight:700;white-space:nowrap}
+#screen-remitos .rmx-row-actions{display:flex;align-items:center;gap:5px;justify-content:flex-end}
+#screen-remitos .rmx-act{height:26px;padding:0 10px;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text);font-size:11px;font-weight:600;cursor:pointer}
+#screen-remitos .rmx-act:hover{border-color:var(--amber);color:var(--amber)}
+#screen-remitos .rmx-act.primary{background:var(--amber);border-color:var(--amber);color:#111}
+#screen-remitos .rmx-more{position:relative}
+#screen-remitos .rmx-more summary{display:grid;place-items:center;width:26px;height:26px;border:1px solid var(--border2);border-radius:6px;color:var(--muted2);cursor:pointer;list-style:none;font-weight:800}
+#screen-remitos .rmx-more summary::-webkit-details-marker{display:none}
+#screen-remitos .rmx-more[open] summary{border-color:var(--amber);color:var(--amber)}
+#screen-remitos .rmx-more-menu{position:absolute;right:0;top:30px;z-index:20;display:grid;min-width:190px;padding:4px;border:1px solid var(--border2);border-radius:8px;background:var(--card);box-shadow:0 10px 26px rgba(0,0,0,.35)}
+#screen-remitos .rmx-more-menu button{padding:8px 10px;border:0;border-radius:5px;background:transparent;color:var(--text);font-size:12px;text-align:left;cursor:pointer}
+#screen-remitos .rmx-more-menu button:hover{background:rgba(245,166,35,.1);color:var(--amber)}
+#screen-remitos .rmx-table th:last-child{text-align:right}
+#screen-remitos .rmx-table .pill{white-space:nowrap}
+#screen-remitos .rmx-bulk-info{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}
+#screen-remitos .rmx-bulk-link{padding:0;border:0;background:none;color:var(--amber);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+#screen-remitos .rmx-bulk-link[hidden]{display:none}
+#screen-remitos .rmx-table.rmx-no-select .rmx-col-check{display:none}
+
+/* Remitos · paleta sobria: color solo para lo que pide acción.
+   Naranja (--amber) = pendiente e interacción; rojo (--red) = por revisar; el resto neutro. */
+#screen-remitos .rmx-srv{color:var(--text)}
+#screen-remitos .rmx-plate{display:block;font-family:'DM Mono',monospace;font-weight:700;font-size:12px;letter-spacing:.3px}
+#screen-remitos .rmx-vehicle{max-width:170px}
+#screen-remitos .rmx-vehicle .rmx-sub{font-family:inherit}
+#screen-remitos .rmx-client>span:first-child{font-weight:500}
+#screen-remitos .rmx-type{padding:0;border:0;background:none;color:var(--muted2);font-weight:500}
+#screen-remitos .rmx-type.is-empty{border:0;color:var(--muted);font-style:italic}
+#screen-remitos .rmx-money{color:var(--text)}
+#screen-remitos .rmx-pays{align-items:center;gap:4px}
+#screen-remitos .rmx-pay{padding:0;border:0;color:var(--muted2);font-size:11px;font-weight:500}
+#screen-remitos .rmx-pay-sep{color:var(--muted);font-size:10px}
+#screen-remitos .rmx-state{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;white-space:nowrap;color:var(--muted2)}
+#screen-remitos .rmx-state::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--border2)}
+#screen-remitos .rmx-state.is-pending{color:var(--amber)}
+#screen-remitos .rmx-state.is-pending::before{background:var(--amber)}
+#screen-remitos .rmx-state.is-review{color:var(--red)}
+#screen-remitos .rmx-state.is-review::before{background:var(--red)}
+#screen-remitos .rmx-state.is-void{color:var(--muted);text-decoration:line-through}
+#screen-remitos .rmx-state.is-void::before{background:transparent;border:1px solid var(--muted)}
+#screen-remitos .rmx-bulk{border-color:var(--border2);background:var(--card);color:var(--text)}
+#screen-remitos .rmx-bulk .rmx-btn.primary{background:var(--amber);border-color:var(--amber);color:#111}
+#screen-remitos .rmx-row.is-selected td{background:rgba(245,166,35,.06)}
+#screen-remitos .rmx-table th.rmx-money{font-family:inherit;font-weight:inherit}
+#screen-remitos .rmx-act.is-review{border-color:color-mix(in srgb,var(--red) 60%,transparent);color:var(--red)}
+#screen-remitos .rmx-act.is-review:hover{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border-color:var(--red)}
+#screen-remitos .rmx-more-menu button.is-danger{color:var(--red)}
+
+/* Remitos · celular: buscador + botón Filtros (hoja agrupada) y tarjetas compactas */
+#screen-remitos .rmx-sheet-btn{display:none;align-items:center;gap:6px;height:36px;padding:0 13px;border:1px solid var(--border2);border-radius:999px;background:var(--card);color:var(--text);font:inherit;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+#screen-remitos .rmx-sheet-btn b{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--amber);color:#111;font-size:10px}
+#screen-remitos .rmx-sheet-btn b[hidden]{display:none}
+/* El chofer ve la barra solo en su historial */
+#screen-remitos.p3-driver-remitos:not(.p3-hide-remitos-archive) #filtros-remitos{display:flex!important}
+#screen-remitos.p3-driver-remitos #filtros-remitos .rmx-actions{display:none}
+@media (max-width:720px){
+  #screen-remitos .rmx-filters{display:flex;flex-wrap:nowrap;gap:8px}
+  #screen-remitos .rmx-filters>.rmx-host,#screen-remitos .rmx-filters>.rmx-admin{display:none!important}
+  #screen-remitos .rmx-search{flex:1 1 auto;max-width:none}
+  #screen-remitos .rmx-sheet-btn{display:inline-flex}
+  #screen-remitos .rmx-actions{justify-content:space-between}
+  #screen-remitos .remitos-container-mobile{gap:8px;padding:0 0 110px}
+  #screen-remitos .rmx-mcard{display:grid;gap:4px;padding:11px 13px;border:1px solid var(--border);border-left:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:none;cursor:pointer}
+  #screen-remitos .rmx-mcard:active{background:rgba(255,255,255,.03)}
+  #screen-remitos .rmx-mcard.estado-pendiente{border-left:3px solid var(--amber)}
+  #screen-remitos .rmx-mcard.is-anulado{opacity:.55}
+  #screen-remitos .rmx-mc-top,#screen-remitos .rmx-mc-main{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+  #screen-remitos .rmx-mc-srv{font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
+  #screen-remitos .rmx-mc-client{min-width:0;overflow:hidden;font-size:13px;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+  #screen-remitos .rmx-mc-money{flex:0 0 auto;font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
+  #screen-remitos .rmx-mc-meta{overflow:hidden;color:var(--muted);font-size:11px;white-space:nowrap;text-overflow:ellipsis}
+  #screen-remitos .rmx-mc-cta{margin-top:6px;height:38px;border:0;border-radius:10px;background:var(--amber);color:#111;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+  #screen-remitos .rmx-mcard .rmx-state{font-size:11px}
+}
+
+/* Enviar remito al cliente por WhatsApp (al finalizar el servicio) */
+.rwa-sheet{position:fixed;inset:0;z-index:10050;display:flex;align-items:flex-end;justify-content:center}
+.rwa-backdrop{position:absolute;inset:0;border:0;background:rgba(0,0,0,.6)}
+.rwa-sheet section{position:relative;display:grid;gap:10px;width:min(100%,460px);padding:18px 16px calc(16px + env(safe-area-inset-bottom));border:1px solid var(--border2);border-radius:18px 18px 0 0;background:var(--card);box-shadow:0 -12px 40px rgba(0,0,0,.35)}
+.rwa-sheet h3{margin:0;font-size:17px}
+.rwa-sheet p{margin:-4px 0 4px;color:var(--muted2);font-size:12px}
+.rwa-sheet label{display:grid;gap:5px;color:var(--muted2);font-size:11px;font-weight:700}
+.rwa-sheet input{height:46px;padding:0 12px;border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;font-size:16px;letter-spacing:.5px}
+.rwa-sheet input:focus{outline:none;border-color:var(--amber)}
+.rwa-sheet small{color:var(--red);font-size:11px}
+.rwa-sheet small[hidden]{display:none}
+.rwa-send,.rwa-alt,.rwa-skip{height:46px;border-radius:12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.rwa-send{border:0;background:var(--amber);color:#111}
+.rwa-alt{border:1px solid var(--border2);background:none;color:var(--text)}
+.rwa-skip{border:0;background:none;color:var(--muted2);font-weight:600}
+@media(min-width:721px){.rwa-sheet{align-items:center}.rwa-sheet section{border-radius:16px}}
+.rwa-sheet .rwa-confirm{display:grid;gap:10px;padding:12px;border:1px solid var(--border2);border-radius:12px;background:var(--bg)}
+.rwa-sheet .rwa-confirm[hidden],.rwa-sheet .rwa-skip[hidden]{display:none}
+.rwa-sheet .rwa-confirm p{margin:0;color:var(--muted2);font-size:12px;line-height:1.45}
+.rwa-sheet .rwa-confirm div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#screen-remitos .rmx-act.is-send{border-color:var(--amber);color:var(--amber)}
+#screen-remitos .rmx-act.is-send:hover{background:var(--amber);color:#111}
+#screen-remitos .rmx-row{cursor:pointer}
+#screen-remitos .rmx-row:hover td{background:rgba(255,255,255,.025)}

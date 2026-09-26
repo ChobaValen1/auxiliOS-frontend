@@ -66,7 +66,8 @@ test('una corrección administrativa no exige aprobar una línea que no vino del
     {review_line_client_id:'33333333-3333-4333-8333-333333333333',toll_name:'Peaje corregido',quantity:1,unit_amount:18000,customer_payment_method:'cash'}
   ]}};
   const app=setup(undefined,corrected);await app.review.embed(serviceId);
-  assert.match(app.host.innerHTML,/No quedan diferencias pendientes/);
+  assert.match(app.host.innerHTML,/Remito sin diferencias/);
+  assert.doesNotMatch(app.host.innerHTML,/Dejar pendiente/);
   await app.review.finalizeEmbedded();
   const tolls=app.calls.find(entry=>entry.name==='resolve_operator_service_document_v6').args.p_payload.tolls;
   assert.equal(tolls[0].decision,'rejected');

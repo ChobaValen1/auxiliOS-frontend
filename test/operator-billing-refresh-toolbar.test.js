@@ -7,10 +7,9 @@ const css=fs.readFileSync('operator-billing.css','utf8');
 
 test('Actualizar vive en la misma fila que busqueda filtros y Excel condicional',()=>{
   const render=billing.split('function render()')[1].split('function selectionMarkup()')[0];
-  const filters=render.split('<div class="ob-filters">')[1].split('</div></div>')[0];
-  assert.match(filters,/id="ob-search"/);
-  assert.match(filters,/id="ob-company-filter"/);
-  assert.match(filters,/id="ob-period-filter"/);
+  const filters=render.split('<div class="ob-filters auxf-bar">')[1].split('</div></div>')[0];
+  assert.match(filters,/\$\{filtersMarkup\(\)\}/);
+  assert.match(billing,/id="ob-search"/);
   assert.match(filters,/\$\{excelControl\}/);
   assert.match(filters,/data-ob="refresh">↻ Actualizar/);
   assert.ok(filters.indexOf('${excelControl}')<filters.indexOf('data-ob="refresh"'));
