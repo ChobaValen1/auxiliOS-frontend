@@ -91,7 +91,7 @@ test('panel de remito: lo firmado no se corrige, la corrección pide motivo y no
   assert.doesNotMatch(sigma+supa+html,/eliminarRemito|modal-remito-admin|_RA_GRUPOS/);
   assert.match(read('config.js'),/loadAuxiliosModule\('auxilios-remitos-admin-panel-v1', '\/remitos-admin-panel-v1\.js'\)/);
   assert.match(read('sw.js'),/'\/remitos-admin-panel-v1\.js'/);
-  assert.match(sigma,/REMITO ANULADO/);
+  assert.match(read('remito-pdf-v2.js'),/REMITO ANULADO/);
 });
 
 test('celular: filtros agrupados con permisos por rol y tarjetas compactas',()=>{

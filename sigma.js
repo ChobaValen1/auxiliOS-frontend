@@ -2446,6 +2446,8 @@ async function confirmarFirma() {
     // consecuencias y un toast chico en una esquina se pierde en la calle.
     operationFeedback('Servicio finalizado',
       `El remito ${nro2} quedó firmado y enviado.`, 'success', 2400);
+    // Envío semiautomático al cliente: se ofrece siempre al terminar.
+    setTimeout(() => ofrecerEnvioRemitoWhatsApp(nro2), 2500);
 
   } catch (err) {
     console.error('Error inesperado en confirmarFirma:', err);
@@ -7092,360 +7094,129 @@ window.addEventListener('load', () => {
    }
 });
 
-async function compartirRemitoPorWhatsApp(tr) {
-  const raw = tr?.getAttribute('data-rem');
-  const d = raw ? JSON.parse(raw) : null;
+// ── WhatsApp del remito ────────────────────────────────────────
+// Teléfono argentino → número internacional para wa.me (549 + área + número).
+// Acepta 10 dígitos (11 5555 1234), con 0 inicial, con 15 después del área
+// de Buenos Aires, o ya con 54/549. Devuelve '' si no se puede armar.
+function telefonoWhatsApp(tel) {
+  let n = String(tel || '').replace(/\D/g, '');
+  if (!n) return '';
+  if (n.startsWith('00')) n = n.slice(2);
+  if (n.startsWith('549') && n.length === 13) return n;
+  if (n.startsWith('54') && n.length === 12) return '549' + n.slice(2);
+  if (n.startsWith('0')) n = n.slice(1);
+  if (/^1115\d{8}$/.test(n)) n = '11' + n.slice(4);
+  return n.length === 10 ? '549' + n : '';
+}
+
+// Link público del remito (/r/<token>): resumen, PDF y encuesta de calidad
+// para el cliente, sin login. Si no se puede crear, el mensaje sale sin link.
+async function linkPublicoRemito(remitoId) {
+  if (!remitoId) return '';
+  try {
+    const { data, error } = await _db.rpc('create_remito_public_link_v1', { p_remito_id: Number(remitoId) });
+    if (error) throw error;
+    return data ? `${location.origin}/r/${data}` : '';
+  } catch (e) { console.warn('linkPublicoRemito:', e?.message || e); return ''; }
+}
+
+function textoWhatsAppRemito(d, empresa = '', link = '') {
+  const srv = d.srvOrden || d.nroSrv;
+  const extras = (parseFloat(d.peaje) || 0) + (parseFloat(d.excedente) || 0) + (parseFloat(d.otros) || 0);
+  const lineas = [
+    `*${empresa || 'Remito digital'}*`,
+    srv ? `Servicio N° ${srv}` : `Remito N° ${d.nro}`,
+    `Fecha: ${d.fecha || '—'}`,
+    `Vehículo: ${[d.patente, d.marca].filter(Boolean).join(' · ') || '—'}`,
+    d.origen ? (d.destino && d.destino !== d.origen ? `Recorrido: ${d.origen} → ${d.destino}` : `Dirección: ${d.origen}`) : '',
+    extras > 0 ? `Cargos cobrados: $ ${extras.toLocaleString('es-AR')}${d.pago && d.pago !== '—' ? ` (${d.pago})` : ''}` : '',
+    d.estado === 'firmado' ? 'Remito firmado digitalmente.' : '',
+    link ? `\nDescargá tu remito y contanos cómo te atendimos:\n${link}` : '',
+    'Gracias por confiar en nosotros.',
+  ];
+  return lineas.filter(Boolean).join('\n');
+}
+
+// Al firmar un remito se ofrece mandarlo al cliente por WhatsApp. El chofer
+// confirma (o carga) el número y toca Enviar: WhatsApp no permite enviar sin
+// que alguien toque "Enviar" salvo con la API de WhatsApp Business.
+async function ofrecerEnvioRemitoWhatsApp(nro) {
+  if (!nro || !navigator.onLine) return;
+  let d = null;
+  try {
+    const { data } = await _db.from('remitos').select('*, users!remitos_driver_id_fkey(full_name)').eq('nro_remito', nro).maybeSingle();
+    if (data) d = _mapRemitoRow(data);
+    if (d && typeof _rmxEnriquecerServicios === 'function') await _rmxEnriquecerServicios([d]);
+  } catch (e) { console.warn('ofrecerEnvioRemitoWhatsApp:', e); }
   if (!d) return;
+  document.getElementById('rwa-sheet')?.remove();
+  const box = document.createElement('div');
+  box.id = 'rwa-sheet';
+  box.className = 'rwa-sheet';
+  const tel = String(d.telefono || '').replace(/\D/g, '');
+  box.innerHTML = `<button class="rwa-backdrop" type="button" aria-label="Cerrar" data-rwa-close></button>
+    <section role="dialog" aria-modal="true" aria-labelledby="rwa-title">
+      <h3 id="rwa-title">¿Enviar el remito al cliente?</h3>
+      <p>${_rmxEsc(d.cliente || 'Cliente')} · ${_rmxEsc(d.srvOrden ? 'Servicio ' + d.srvOrden : 'Remito ' + d.nro)}</p>
+      <label><span>WhatsApp del cliente</span><input id="rwa-tel" type="tel" inputmode="numeric" maxlength="13" placeholder="Ej: 1123456789" value="${_rmxEsc(tel)}"></label>
+      <small id="rwa-err" hidden>Revisá el número: 10 dígitos, código de área sin 0 y número sin 15.</small>
+      <button class="rwa-send" type="button" id="rwa-send">Enviar por WhatsApp</button>
+      ${navigator.canShare ? '<button class="rwa-alt" type="button" id="rwa-share">Compartir el PDF</button>' : ''}
+      <button class="rwa-skip" type="button" data-rwa-close>Ahora no</button>
+    </section>`;
+  document.body.appendChild(box);
+  const cerrar = () => box.remove();
+  box.querySelectorAll('[data-rwa-close]').forEach(b => b.addEventListener('click', cerrar));
+  box.querySelector('#rwa-send').addEventListener('click', async () => {
+    const valor = box.querySelector('#rwa-tel').value;
+    if (!telefonoWhatsApp(valor)) { box.querySelector('#rwa-err').hidden = false; box.querySelector('#rwa-tel').focus(); return; }
+    await compartirRemitoPorWhatsApp(d, { telefono: valor });
+    cerrar();
+  });
+  box.querySelector('#rwa-share')?.addEventListener('click', async () => {
+    if (await compartirRemitoPorWhatsApp(d, { telefono: '' })) cerrar();
+  });
+}
 
-  // 1. Preparamos el texto profesional (Tu lógica mejorada)
-  const totalExtras = (parseFloat(d.peaje) || 0) + (parseFloat(d.excedente) || 0) + (parseFloat(d.otros) || 0);
-  const extrasLinea = totalExtras > 0 
-    ? `\n*Extras:* $${totalExtras.toLocaleString('es-AR')} (Peaje: $${parseFloat(d.peaje) || 0} / Exc: $${parseFloat(d.excedente) || 0})` 
-    : '';
-  
-  const mapsUrl = d.destino
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.destino)}`
-    : null;
+// Con teléfono: abre el chat de ese número con el resumen (WhatsApp no deja
+// adjuntar archivos por link). Sin teléfono, en el celular comparte el PDF del
+// remito (el usuario elige el contacto); en la PC abre WhatsApp con el texto.
+async function compartirRemitoPorWhatsApp(tr, opts = {}) {
+  const raw = tr?.getAttribute?.('data-rem');
+  const d = raw ? JSON.parse(raw) : (tr && typeof tr === 'object' && !tr.getAttribute ? tr : null);
+  if (!d) return;
+  let empresa = '';
+  try { empresa = (await window.CompanyDocuments?.load?.())?.legal_name || ''; } catch (_) {}
+  const link = d.estado === 'anulado' ? '' : await linkPublicoRemito(d.id);
+  const texto = textoWhatsAppRemito(d, empresa, link);
+  const numero = telefonoWhatsApp(opts.telefono ?? d.telefono);
 
-  const texto = `*SIGMA REMOLQUES - REMITO DIGITAL*\n` +
-    `-----------------------------------\n` +
-    `📄 *N°:* ${d.nro}\n` +
-    `📅 *Fecha:* ${d.fecha}\n` +
-    `🚗 *Vehículo:* ${d.patente}${d.marca ? ' · ' + d.marca : ''}\n` +
-    `👤 *Cliente:* ${d.cliente || '—'}\n` +
-    `📍 *Ruta:* ${d.origen} → ${d.destino}\n` +
-    (mapsUrl ? `🗺️ *Ver destino:* ${mapsUrl}\n` : '') +
-    `🛣️ *KM:* ${d.km || '—'}` +
-    extrasLinea + `\n` +
-    `✅ *Estado:* Firmado digitalmente`;
-
-  // 2. Intentamos compartir como ARCHIVO (Funciona en Celulares/Tablets)
-  if (navigator.share && navigator.canShare) {
+  if (!numero && !opts.soloTexto && navigator.canShare && window.RemitoPdf) {
     try {
-      toast('Generando archivo para WhatsApp...', 'info');
-      
-      // Creamos el HTML temporal para el PDF (Usamos la función de PDF que ya tenés)
-      const elemento = document.createElement('div');
-      // NOTA: Aquí asumo que tu función de PDF se puede llamar o que el contenido es el mismo
-      elemento.innerHTML = `<div>${texto.replace(/\n/g, '<br>')}</div>`; 
-      
-      // Generamos el Blob del PDF
-      const pdfBlob = await html2pdf().set({
-        margin: 10,
-        filename: `Remito_${d.nro}.pdf`,
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).from(elemento).output('blob');
-
-      const file = new File([pdfBlob], `Remito_${d.nro}_${d.patente}.pdf`, { type: 'application/pdf' });
-
-      // Verificamos si el sistema permite compartir este archivo específico
+      const file = new File([await window.RemitoPdf.blob(d)], window.RemitoPdf.fileName(d), { type: 'application/pdf' });
       if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Remito Sigma ${d.nro}`,
-          text: texto // El texto va como "caption" del archivo
-        });
-        return; // Éxito: terminamos la función aquí
+        await navigator.share({ files: [file], title: file.name, text: texto });
+        return true;
       }
     } catch (err) {
-      console.error("Error al compartir archivo:", err);
-      // Si falla la generación del archivo, el código seguirá al fallback de abajo
+      if (err?.name === 'AbortError') return false;
+      console.warn('Compartir PDF:', err);
     }
   }
-
-  // 3. FALLBACK: Si es PC o el navegador no permite compartir archivos, enviamos LINK/TEXTO
-  // Limpiamos el teléfono del cliente (si existe) para enviarlo directo
-  const telLimpio = d.telefono ? d.telefono.replace(/\D/g, '') : '';
-  const url = `https://wa.me/${telLimpio}?text=${encodeURIComponent(texto)}`;
-  
-  window.open(url, '_blank');
-}
-
-/**
- * Genera y descarga el remito en formato PDF profesional.
- * Versión: 0.2.0 - Sigma Remolques
- */
-// Datos de contacto/pie del PDF de remito (ajustar cuando SIGMA confirme los definitivos)
-const _REMITO_EMPRESA = {
-  nombre:    'SIGMA REMOLQUES',
-  direccion: 'Av. Ejemplo 1234 · CABA',
-  telefono:  '+54 11 5555-5555',
-  email:     'contacto@sigmaremolques.com',
-  web:       'sigmaremolques.com'
-};
-
-async function _remitoHash(d) {
-  try {
-    const payload = [d.nro, d.patente, d.createdAt || '', d.firmadoAt || '', d.km || '', String(d.peaje||0), String(d.excedente||0), String(d.otros||0)].join('|');
-    const buf = new TextEncoder().encode(payload);
-    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-    const hex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
-    return hex.slice(0, 16).toUpperCase();
-  } catch(_) { return ''; }
-}
-
-function _qrDataURL(text) {
-  try {
-    if (typeof qrcode !== 'function') return '';
-    const qr = qrcode(0, 'M');
-    qr.addData(text);
-    qr.make();
-    return qr.createDataURL(4, 2);
-  } catch(_) { return ''; }
+  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+  return true;
 }
 
 async function descargarRemitoPDF(tr) {
   const raw = tr?.getAttribute('data-rem');
   const d = raw ? JSON.parse(raw) : null;
   if (!d) { toast('No hay datos para el PDF', 'error'); return; }
-
-  const totalExtras = (parseFloat(d.peaje || 0) + parseFloat(d.excedente || 0) + parseFloat(d.otros || 0));
-
-  const companyDocument = await window.CompanyDocuments.load();
-  const companyEscape = window.CompanyDocuments.esc;
-  // Código de verificación (hash) + QR
-  const hash = await _remitoHash(d);
-  const codVerif = hash ? `${hash.slice(0,4)}-${hash.slice(4,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}` : '';
-  const qrPayload = `SIGMA-REMITO|${d.nro}|${d.patente}|${d.firmadoAt || ''}|${hash}`;
-  const qrDataUrl = _qrDataURL(qrPayload);
-
-  // --- LÓGICA: PROCESAMIENTO DE FOTOS ---
-  const fotosArray = d.foto_urls || d.fotos || [];
-  let seccionFotos = '';
-  if (fotosArray.length > 0) {
-    seccionFotos = `
-      <div style="margin-bottom:10px;">
-        <div style="font-size:10px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:3px;">
-          📷 Registro Fotográfico de la Unidad
-        </div>
-        <div style="display:grid; grid-template-columns: repeat(${Math.min(fotosArray.length, 4)}, 1fr); gap:6px;">
-          ${fotosArray.slice(0, 4).map(url => `
-            <div style="border:1px solid #eee; border-radius:4px; overflow:hidden; height:105px; background:#fdfdfd;">
-              <img src="${(typeof ENV !== 'undefined' && ENV.API_BASE_URL && !url.startsWith('http')) ? ENV.API_BASE_URL + url : url}" style="width:100%; height:100%; object-fit:cover;" crossorigin="anonymous">
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  // --- LÓGICA: CONFORMIDAD DE ARRASTRE (NUEVO) ---
-  // Buscamos si "Conformidad de Arrastre" está dentro del array de confirmaciones
-  const requiereArrastre = d.confirmaciones && d.confirmaciones.includes('Conformidad de Arrastre');
-  
-  const bloqueLegalArrastre = requiereArrastre ? `
-    <div style="background:#fff3cd; border:1px solid #ffeeba; border-radius:4px; padding:6px 8px; margin-bottom:8px;">
-      <div style="font-size:9px; color:#856404; font-weight:bold; margin-bottom:2px;">
-        ⚠️ DECLARACIÓN DE CONFORMIDAD DE ARRASTRE
-      </div>
-      <div style="font-size:8px; color:#856404; line-height:1.3; text-align:justify;">
-        El cliente autoriza expresamente a Sigma Remolques a realizar maniobras de arrastre sobre el vehículo, asumiendo total responsabilidad por posibles daños mecánicos o estéticos derivados de la condición actual de la unidad. El operador queda eximido de reclamos posteriores por dichos conceptos.
-      </div>
-    </div>
-  ` : '';
-
-  // --- ARMADO DEL HTML ---
-  const _firmaUrl = (() => { const u = d.firma_imagen_url || d.firmaUrl || ''; return (typeof ENV !== 'undefined' && ENV.API_BASE_URL && u && !u.startsWith('http')) ? ENV.API_BASE_URL + u : u; })();
-
-  // Formateo fecha+hora inicio (creación) y fin (firma)
-  const _fmtDT = iso => {
-    if (!iso) return '—';
-    try {
-      const dt = new Date(iso);
-      const dd = String(dt.getDate()).padStart(2,'0');
-      const mm = String(dt.getMonth()+1).padStart(2,'0');
-      const yy = String(dt.getFullYear()).slice(-2);
-      const hh = String(dt.getHours()).padStart(2,'0');
-      const mi = String(dt.getMinutes()).padStart(2,'0');
-      return `${dd}/${mm}/${yy} ${hh}:${mi}`;
-    } catch(_) { return '—'; }
-  };
-  const _fechaInicio = _fmtDT(d.createdAt);
-  const _fechaFin    = _fmtDT(d.firmadoAt);
-
-  const contenido = `
-    <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:24px 26px; color:#333; background:#fff; width:794px; box-sizing:border-box;">
-      ${d.estado === 'anulado' ? '<div style="margin-bottom:10px;padding:8px;border:2px solid #d63b35;border-radius:6px;color:#d63b35;font-size:16px;font-weight:800;letter-spacing:4px;text-align:center">REMITO ANULADO</div>' : ''}
-
-      <table style="width:100%; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:8px;">
-        <tr>
-          <td>
-            <div style="font-size:18px; font-weight:bold; color:#f5a623; line-height:1.1;">${companyEscape(companyDocument.legal_name || 'Empresa sin configurar')}</div>
-            <div style="font-size:9px; color:#777;">${companyEscape([companyDocument.tax_id && 'CUIT '+companyDocument.tax_id,companyDocument.address,companyDocument.contact].filter(Boolean).join(' · '))}</div>
-          </td>
-          <td style="text-align:right;">
-            <div style="font-size:14px; font-weight:bold;">REMITO N° ${d.nro}</div>
-            <div style="font-size:10px; color:#888;">${d.fecha}</div>
-          </td>
-        </tr>
-      </table>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:6px; font-size:10px;">
-        <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px;">
-          <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Datos de la Unidad</b>
-          <div style="margin-top:2px;"><b>Patente:</b> ${d.patente} &nbsp;·&nbsp; <b>Marca/Mod:</b> ${d.marca || '—'}</div>
-        </div>
-        <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px;">
-          <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Cliente / Servicio</b>
-          <div style="margin-top:2px;"><b>Titular:</b> ${d.cliente || '—'} &nbsp;·&nbsp; <b>Tipo:</b> ${d.tipo}</div>
-        </div>
-      </div>
-
-      <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px; margin-bottom:8px; font-size:10px;">
-        <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Detalle del Servicio</b>
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:2px 12px; margin-top:2px;">
-          <div><b>Origen:</b> ${d.origen || '—'}</div>
-          <div><b>Destino:</b> ${d.destino || '—'}</div>
-          <div><b>KM:</b> ${d.km || '—'}</div>
-          <div><b>N° Srv:</b> ${d.nroSrv || '—'}</div>
-          <div><b>Chofer:</b> ${d.chofer || '—'}</div>
-          <div><b>Nº Remito:</b> ${d.nro}</div>
-          <div><b>Inicio:</b> ${_fechaInicio}</div>
-          <div><b>Fin firma:</b> ${_fechaFin}</div>
-        </div>
-      </div>
-
-      <table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:10px;">
-        <tr style="background:#f5a623; color:#fff; font-weight:bold;">
-          <td style="padding:4px 8px;">Concepto de Extras</td>
-          <td style="padding:4px 8px; text-align:right;">Monto</td>
-        </tr>
-        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Peajes y Gastos de Ruta</td>
-            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.peaje||0).toLocaleString('es-AR')}</td></tr>
-        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Excedente a cargo del socio <span style="color:#888;font-size:9px">(km, carritos u hs. de trabajo fuera de plan)</span></td>
-            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.excedente||0).toLocaleString('es-AR')}</td></tr>
-        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Otros cargos adicionales</td>
-            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.otros||0).toLocaleString('es-AR')}</td></tr>
-        <tr style="font-weight:bold; font-size:11px; background:#fafafa;">
-          <td style="padding:6px 8px; text-align:right;">TOTAL A ABONAR POR EL SOCIO:</td>
-          <td style="padding:6px 8px; text-align:right; color:#f5a623;">$${totalExtras.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})} ARS</td>
-        </tr>
-        <tr style="font-size:10px;">
-          <td style="padding:4px 8px; text-align:right; color:#666;">Forma de pago:</td>
-          <td style="padding:4px 8px; text-align:right; color:#333; font-weight:600;">${(d.pago && d.pago !== '—') ? d.pago : '— No informado —'}</td>
-        </tr>
-      </table>
-
-      ${seccionFotos}
-
-      ${(() => {
-        const confs = Array.isArray(d.confirmaciones) ? d.confirmaciones : [];
-        if (!confs.length) return '';
-        return `
-        <div style="margin-bottom:8px;">
-          <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:2px;">
-            ✓ Confirmaciones firmadas por el cliente
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 16px; font-size:10px; color:#333;">
-            ${confs.map(c => `<div><span style="color:#2ea043;font-weight:bold">✓</span> ${c}</div>`).join('')}
-          </div>
-        </div>`;
-      })()}
-
-      ${bloqueLegalArrastre}
-
-      <div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px;">
-          <div style="flex:1;">
-            <div style="border:1px solid #ddd; background:#fff; border-radius:4px; padding:6px; height:200px; display:flex; align-items:center; justify-content:center;">
-              ${_firmaUrl
-                ? `<img src="${_firmaUrl}" style="max-width:100%; max-height:188px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
-                : '<div style="color:#bbb; font-size:10px;">Firma pendiente</div>'}
-            </div>
-            <div style="text-align:center; font-size:9px; color:#999; margin-top:3px;">Firma de Conformidad del Cliente</div>
-            <table style="width:100%; margin-top:4px; font-size:9px; color:#444; border-collapse:collapse;">
-              <tr><td style="padding:1px 0; width:80px; color:#888;">Aclaración:</td>
-                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${d.cliente || ''}</td></tr>
-              <tr><td style="padding:1px 0; color:#888;">DNI / CUIT:</td>
-                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${d.cuit || ''}</td></tr>
-              <tr><td style="padding:1px 0; color:#888;">Fecha y hora:</td>
-                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${_fechaFin}</td></tr>
-            </table>
-          </div>
-          <div style="width:200px;">
-            ${companyDocument.signature_image ? `<img src="${companyDocument.signature_image}" style="max-width:180px;max-height:65px;object-fit:contain"><div style="font-size:9px">Firma institucional · ${companyEscape(companyDocument.representative)}</div>` : ''}
-            <div style="font-size:8px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; font-weight:bold;">Verificación digital</div>
-            <div style="font-size:9px; color:#555; line-height:1.3;">
-              Código:<br>
-              <span style="font-family:'Courier New',monospace; font-size:10px; color:#111; font-weight:bold; letter-spacing:0.5px;">${codVerif || 'N/D'}</span>
-            </div>
-            ${qrDataUrl ? `<div style="text-align:center; margin-top:4px;">
-              <img src="${qrDataUrl}" style="width:90px; height:90px; display:block; margin:0 auto; border:1px solid #eee;" alt="QR verificación">
-              <div style="font-size:7px; color:#999; margin-top:2px;">Identificador y hash del remito</div>
-            </div>` : ''}
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:8px; border-top:2px solid #f5a623; padding-top:4px; text-align:center; font-size:8px; color:#666; line-height:1.4;">
-        <b style="color:#f5a623;">${_REMITO_EMPRESA.nombre}</b> · ${_REMITO_EMPRESA.direccion}
-        &nbsp;·&nbsp; 📞 ${_REMITO_EMPRESA.telefono} &nbsp;·&nbsp; ✉ ${_REMITO_EMPRESA.email} &nbsp;·&nbsp; 🌐 ${_REMITO_EMPRESA.web}
-      </div>
-
-    </div>
-  `;
-
-  if (typeof toast === 'function') toast('Generando PDF...', 'info');
-
-  const elemento = document.createElement('div');
-  elemento.style.position = 'fixed';
-  elemento.style.left = '-10000px';
-  elemento.style.top = '0';
-  elemento.style.width = '794px';
-  elemento.style.background = '#fff';
-  elemento.innerHTML = contenido;
-  document.body.appendChild(elemento);
-
   try {
-    if (typeof html2canvas !== 'function') {
-      throw new Error('html2canvas no cargó — refrescá la página');
-    }
-    const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-    if (typeof jsPDFCtor !== 'function') {
-      throw new Error('jsPDF no cargó — refrescá la página');
-    }
-
-    // Esperar a que las imágenes (firma, fotos, QR) carguen antes de capturar
-    const imgs = Array.from(elemento.querySelectorAll('img'));
-    await Promise.all(imgs.map(img => img.complete
-      ? Promise.resolve()
-      : new Promise(res => { img.onload = img.onerror = () => res(); })
-    ));
-
-    const canvas = await html2canvas(elemento, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      letterRendering: true,
-      windowWidth: 794
-    });
-
-    const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const pageW = pdf.internal.pageSize.getWidth();   // 210
-    const pageH = pdf.internal.pageSize.getHeight();  // 297
-    const margin = 6;
-    const availW = pageW - margin * 2;
-    const availH = pageH - margin * 2;
-
-    // Shrink-to-fit: escalar la imagen entera para que entre en 1 hoja A4
-    const ratioCanvas = canvas.width / canvas.height;
-    let drawW = availW;
-    let drawH = drawW / ratioCanvas;
-    if (drawH > availH) {
-      drawH = availH;
-      drawW = drawH * ratioCanvas;
-    }
-    const x = (pageW - drawW) / 2;
-    const y = margin;
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    pdf.addImage(imgData, 'JPEG', x, y, drawW, drawH);
-    pdf.save(`REMITO_${d.nro}_${d.patente}.pdf`);
+    if (!window.RemitoPdf) throw new Error('El generador de PDF todavía se está cargando');
+    await window.RemitoPdf.download(d);
   } catch (err) {
     console.error('descargarRemitoPDF:', err);
-    if (typeof toast === 'function') toast('Error al generar el PDF: ' + (err?.message || err), 'error');
-  } finally {
-    if (elemento.parentNode) document.body.removeChild(elemento);
+    toast('Error al generar el PDF: ' + (err?.message || err), 'error');
   }
 }
 

@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/r/:token", "destination": "/remito.html" },
     { "source": "/(.*)", "destination": "/Index.html" }
   ]
 }

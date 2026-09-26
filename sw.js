@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v368';
+const CACHE_NAME='auxilios-billing-phase2-v371';
 const PRECACHE_ASSETS=[
   '/sigma.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/payroll-matrix.js', '/payroll-view.js',
   '/empresas-v2.js','/empresas-v2.css',
@@ -12,7 +12,7 @@ const PRECACHE_ASSETS=[
   '/fleet-operational-status-v1.js',
   '/jornadas-admin-tools-v1.css','/jornadas-admin-tools-v1.js',
   '/operator-services.css','/operator-services.js',
-  '/auxilios-filters-v1.css','/auxilios-filters-v1.js','/auxilios-date-inputs-v1.css','/auxilios-date-inputs-v1.js','/remitos-admin-panel-v1.css','/remitos-admin-panel-v1.js','/remitos-filtros-sheet-v1.css','/remitos-filtros-sheet-v1.js','/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js',
+  '/auxilios-filters-v1.css','/auxilios-filters-v1.js','/auxilios-date-inputs-v1.css','/auxilios-date-inputs-v1.js','/remitos-admin-panel-v1.css','/remitos-admin-panel-v1.js','/remitos-filtros-sheet-v1.css','/remitos-filtros-sheet-v1.js','/remito-pdf-v2.js','/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js',
   '/operator-invoices.css','/operator-invoices.js',
   '/operator-service-workspace-reactive-v1.css','/operator-service-workspace-reactive-v1.js',
   '/operator-service-commercial-addons-v1.css','/operator-service-commercial-addons-v1.js',
@@ -46,7 +46,9 @@ self.addEventListener('fetch',event=>{
     url.hostname.includes('supabase.co')||
     url.hostname.includes('railway.app')||
     url.pathname.startsWith('/api/')||
-    url.pathname.startsWith('/uploads/')
+    url.pathname.startsWith('/uploads/')||
+    // Página pública del remito (link de WhatsApp): no es la app, no se cachea como Index.html.
+    url.pathname.startsWith('/r/')||url.pathname==='/remito.html'
   ) return;
 
   // La aplicación/HTML siempre intenta red primero. Así un nuevo preview no queda
