@@ -133,3 +133,11 @@ test('correcciones de la prueba QA: clic en fila, nota sin prompt, cobro en el p
   assert.match(read('operator-service-bridge.js'),/\$\{s\.single_address\?'':`<div class="p3-fact-row"><span>Destino<\/span>/);
   assert.match(read('operator-service-lifecycle.js'),/\['Tipo',s\.service_name\|\|s\.concept_name\|\|O\(\)\?\.concept\?\.\(s\.primary_concept_id\)\?\.name\|\|'—'\]/);
 });
+
+test('panel del remito: pestañas Detalle | Encuesta | Cambios',()=>{
+  const panel=read('remitos-admin-panel-v1.js');
+  assert.match(panel,/\[\['detalle','Detalle'\],\['encuesta',etiquetaEncuesta\],\['cambios',/);
+  assert.match(panel,/P\.tab==='encuesta'\?renderEncuesta\(\)/);
+  assert.doesNotMatch(slice(panel,'function renderDetalle(','function renderAnular('),/renderEncuesta\(\)/,'la encuesta ya no está dentro de Detalle');
+  assert.match(read('remitos-calidad-v1.js'),/abrirDetalleRemitoAdmin\(\$\{Number\(a\.remito_id\)\},\{tab:'encuesta'\}\)/);
+});

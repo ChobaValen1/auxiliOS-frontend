@@ -101,15 +101,16 @@ function renderEncuesta(){
     (sv.recomendaria!=null?fila('Nos recomendaría',sv.recomendaria?'Sí':'<span class="rmp-warn">No</span>'):'')+
     (sv.cobro_confirmado===true?fila('Cobro en el lugar','Confirmado por el cliente'):sv.cobro_confirmado===false?fila('Cobro en el lugar',`<span class="rmp-bad">No confirmado · el remito dice ${money(P.remito.imp_total_extras)}${sv.cobro_informado!=null?` · el cliente dice ${money(sv.cobro_informado)}`:''}</span>`):'')+
     (sv.revisado_at?fila('Revisado',`${esc(fecha(sv.revisado_at))}${sv.revisado_nota?` · ${esc(sv.revisado_nota)}`:''}`):'')+
+    (!sv.revisado_at&&isAdmin()&&(sv.rating_general<=2||sv.cobro_confirmado===false)&&window.RemitosCalidad?.revisar?`<div class="rmp-survey-actions"><button class="rmp-btn primary" type="button" onclick="RemitosCalidad.revisar(${Number(sv.survey_id)},()=>RemitoPanel.open(${Number(P.remito.remito_id)},{tab:'encuesta'}))">Marcar revisado</button></div>`:'')+
     (sv.comentario?`<div class="rmp-quote">“${esc(sv.comentario)}”</div>`:'')+
     fila('Respondida',esc(fecha(sv.created_at))));
   const txt=e.enviado?`Link enviado el ${esc(fecha(e.enviado))} · todavía sin respuesta`:'Todavía no se envió al cliente';
   return seccion('Encuesta del cliente',`<div class="rmp-survey-empty"><span class="rmp-empty">${txt}</span>${P.remito.status==='firmado'?`<button class="rmp-link" type="button" onclick="RemitoPanel.whatsapp()">Enviar por WhatsApp</button>`:''}</div>`);
 }
 
-async function open(remitoId,{editar=false,anular=false}={}){
+async function open(remitoId,{editar=false,anular=false,tab='detalle'}={}){
   ensure();
-  P.editing=false;P.annulling=false;P.tab='detalle';
+  P.editing=false;P.annulling=false;P.tab=['detalle','encuesta','cambios'].includes(tab)?tab:'detalle';
   $('rmp-title').textContent='Cargando…';$('rmp-sub').textContent='';$('rmp-tabs').innerHTML='';$('rmp-foot').innerHTML='';
   $('rmp-body').innerHTML='<div class="rmp-loading">Cargando remito…</div>';
   $('rmp-backdrop').hidden=false;$('rmp-panel').hidden=false;
@@ -177,8 +178,11 @@ function render(){
   $('rmp-title').textContent=orden?`Servicio ${orden}`:`Remito ${r.nro_remito||''}`;
   $('rmp-sub').innerHTML=`<span class="rmx-state ${cls}">${label}</span><span>Remito ${esc(r.nro_remito||'—')}</span>${s?.service_number?`<span>${esc(s.service_number)}</span>`:''}<span>${esc(r.users?.full_name||'—')}</span>`;
   const hist=Array.isArray(r.historial_ediciones)?r.historial_ediciones.length:0;
-  $('rmp-tabs').innerHTML=[['detalle','Detalle'],['cambios',`Cambios${hist?` (${hist})`:''}`]].map(([id,t])=>`<button type="button" class="${P.tab===id?'is-active':''}" onclick="RemitoPanel.tab('${id}')">${t}</button>`).join('');
-  $('rmp-body').innerHTML=P.tab==='cambios'?renderCambios(r):renderDetalle(r,s);
+  // Pestañas: Detalle | Encuesta | Cambios. La de Encuesta marca en rojo si hay una alerta sin revisar.
+  const sv=P.encuesta?.respuesta,alertaEncuesta=sv&&!sv.revisado_at&&(sv.rating_general<=2||sv.cobro_confirmado===false);
+  const etiquetaEncuesta=sv?`Encuesta <span class="rmp-tab-note is-stars${alertaEncuesta?' is-alert':''}">${'★'.repeat(sv.rating_general)}</span>`:`Encuesta${P.encuesta?.enviado?' <span class="rmp-tab-note">sin respuesta</span>':''}`;
+  $('rmp-tabs').innerHTML=[['detalle','Detalle'],['encuesta',etiquetaEncuesta],['cambios',`Cambios${hist?` (${hist})`:''}`]].map(([id,t])=>`<button type="button" class="${P.tab===id?'is-active':''}" onclick="RemitoPanel.tab('${id}')">${t}</button>`).join('');
+  $('rmp-body').innerHTML=P.tab==='cambios'?renderCambios(r):P.tab==='encuesta'?renderEncuesta():renderDetalle(r,s);
   renderFoot();
 }
 
@@ -212,7 +216,7 @@ function renderDetalle(r,s){
   const fotos=Array.isArray(r.foto_urls)?r.foto_urls:[];
   const media=seccion(`Fotos y firma`,`<div class="rmp-media">${fotos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto del servicio" loading="lazy"></a>`).join('')||'<span class="rmp-empty">Sin fotos</span>'}</div>
     <div class="rmp-sign">${r.firma_imagen_url?`<img src="${esc(r.firma_imagen_url)}" alt="Firma del cliente"><span>Firmado el ${esc(fecha(r.firmado_at))}</span>`:'<span class="rmp-empty">Sin firma</span>'}</div>`);
-  return aviso+anulado+editando+`<div class="rmp-grid">${cliente}${vehiculo}</div>`+servicio+cargos+conf+renderEncuesta()+obs+media+(P.annulling?renderAnular():'');
+  return aviso+anulado+editando+`<div class="rmp-grid">${cliente}${vehiculo}</div>`+servicio+cargos+conf+obs+media+(P.annulling?renderAnular():'');
 }
 
 function renderAnular(){

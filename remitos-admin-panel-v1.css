@@ -98,3 +98,8 @@
 .rmp-survey-empty{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
 .rmp-survey-empty .rmp-link{margin-left:0}
 .rmp-bad{color:var(--red);font-weight:700}
+.rmp-tab-note{margin-left:4px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.5px}
+.rmp-tab-note.is-alert{color:var(--red)}
+.rmp-tab-note.is-stars{color:var(--amber);letter-spacing:0}
+.rmp-tab-note.is-stars.is-alert{color:var(--red)}
+.rmp-survey-actions{display:flex;justify-content:flex-end;margin-top:10px}

@@ -73,7 +73,7 @@ function render(){
       <div class="rqc-alert-main"><div class="rqc-alert-head"><b>Servicio ${esc(a.nro_servicio||a.nro_remito)}</b><span>${esc(a.cliente||'—')} · ${esc(a.chofer)} · ${fecha(a.firmado_at)}</span></div>
       <div class="rqc-tags">${tags}</div>${a.comentario?`<p class="rqc-quote">“${esc(a.comentario)}”</p>`:''}
       ${a.revisado_at?`<p class="rqc-done">Revisado el ${fecha(a.revisado_at)}${a.revisado_nota?` · ${esc(a.revisado_nota)}`:''}</p>`:''}</div>
-      <div class="rqc-alert-actions"><button class="rqc-btn" type="button" onclick="abrirDetalleRemitoAdmin(${Number(a.remito_id)})">Ver remito</button>${!a.revisado_at&&role()==='administracion'?`<button class="rqc-btn primary" type="button" onclick="RemitosCalidad.revisar(${Number(a.survey_id)})">Marcar revisado</button>`:''}</div>
+      <div class="rqc-alert-actions"><button class="rqc-btn" type="button" onclick="abrirDetalleRemitoAdmin(${Number(a.remito_id)},{tab:'encuesta'})">Ver remito</button>${!a.revisado_at&&role()==='administracion'?`<button class="rqc-btn primary" type="button" onclick="RemitosCalidad.revisar(${Number(a.survey_id)})">Marcar revisado</button>`:''}</div>
     </article>`;
   };
   const seccionAlertas=`<section class="rqc-sec"><h3>Para revisar${pend.length?` <span class="rqc-count is-alert">${pend.length}</span>`:''}</h3>
@@ -84,7 +84,7 @@ function render(){
     ${ch.length?ch.map(c=>`<tr><td>${esc(c.chofer)}</td><td class="n">${c.remitos}</td><td class="n">${c.enviados}<small> ${pct(c.enviados,c.remitos)}</small>${c.sin_whatsapp?`<small title="Sin WhatsApp"> · ${c.sin_whatsapp} s/WA</small>`:''}</td><td class="n">${c.respondidas}</td><td>${c.promedio_general!=null?`${estrellas(c.promedio_general)} <span class="rqc-num${c.promedio_general<3.5?' is-alert':''}">${prom(c.promedio_general)}</span>`:'<span class="rqc-muted">Sin respuestas</span>'}</td><td class="n">${prom(c.promedio_trato)}</td><td class="n">${prom(c.promedio_puntualidad)}</td><td class="n">${money(c.cobrado_total)}</td><td class="n">${c.cobros_no_confirmados?`<span class="rqc-count is-alert">${c.cobros_no_confirmados}</span>`:'<span class="rqc-muted">0</span>'}</td></tr>`).join(''):'<tr><td colspan="9" class="rqc-empty-line">Sin remitos firmados en el período.</td></tr>'}
   </tbody></table></div></section>`;
   const com=(d.comentarios||[]);
-  const comentarios=com.length?`<section class="rqc-sec"><h3>Comentarios recientes</h3>${com.map(c=>`<div class="rqc-comment"><div>${estrellas(c.rating_general)} <b>Servicio ${esc(c.nro_servicio||'—')}</b> <span>${esc(c.chofer)} · ${fecha(c.respondida_at)}</span></div><p>${esc(c.comentario)}</p><button class="rqc-link" type="button" onclick="abrirDetalleRemitoAdmin(${Number(c.remito_id)})">Ver remito</button></div>`).join('')}</section>`:'';
+  const comentarios=com.length?`<section class="rqc-sec"><h3>Comentarios recientes</h3>${com.map(c=>`<div class="rqc-comment"><div>${estrellas(c.rating_general)} <b>Servicio ${esc(c.nro_servicio||'—')}</b> <span>${esc(c.chofer)} · ${fecha(c.respondida_at)}</span></div><p>${esc(c.comentario)}</p><button class="rqc-link" type="button" onclick="abrirDetalleRemitoAdmin(${Number(c.remito_id)},{tab:'encuesta'})">Ver remito</button></div>`).join('')}</section>`:'';
   box.innerHTML=filtros+tiles+pocoEnvio+seccionAlertas+tabla+comentarios;
   bind();
   const badge=$('rmx-views-badge');if(badge){badge.textContent=t.alertas_pendientes?String(t.alertas_pendientes):'';badge.hidden=!t.alertas_pendientes}
@@ -93,7 +93,7 @@ function render(){
 function bind(){const F=window.AuxFilters,root=$('rqc-filters');if(F&&root)F.bind(root,(id,v)=>{if(id==='periodo'){S.periodo=v;cargar()}})}
 
 /* Marcar revisado: cuadro propio de la app (no el cuadro nativo del navegador, que bloquea la página). */
-function revisar(id){
+function revisar(id,alTerminar){
   if(role()!=='administracion')return;
   document.getElementById('rqc-modal')?.remove();
   const box=document.createElement('div');box.id='rqc-modal';box.className='rqc-modal';
@@ -108,7 +108,7 @@ function revisar(id){
   const ok=box.querySelector('#rqc-ok');
   ok.addEventListener('click',async()=>{
     ok.disabled=true;ok.textContent='Guardando…';
-    try{const {error}=await _db.rpc('mark_remito_survey_reviewed_v1',{p_survey_id:id,p_nota:box.querySelector('#rqc-nota').value});if(error)throw error;cerrar();if(typeof toast==='function')toast('Marcado como revisado');cargar()}
+    try{const {error}=await _db.rpc('mark_remito_survey_reviewed_v1',{p_survey_id:id,p_nota:box.querySelector('#rqc-nota').value});if(error)throw error;cerrar();if(typeof toast==='function')toast('Marcado como revisado');if(S.view==='calidad')cargar();else refrescarBadge();if(typeof alTerminar==='function')alTerminar()}
     catch(e){ok.disabled=false;ok.textContent='Marcar revisado';if(typeof toast==='function')toast('No se pudo marcar: '+(e?.message||e),'error')}
   });
   setTimeout(()=>box.querySelector('#rqc-nota')?.focus(),0);
