@@ -43,7 +43,7 @@ test('el CSV de sueldos también confirma, no solo el xlsx', () => {
 });
 
 test('las descargas propias de sigma confirman igual que el exportador', () => {
-  assert.match(sigma, /confirmarDescarga\(`remitos_\$\{stamp\}\.xlsx`/);
+  assert.match(sigma, /confirmarDescarga\(`\$\{prefijo\}_\$\{stamp\}\.xlsx`/);
   assert.match(sigma, /confirmarDescarga\(`plantilla_\$\{tipo\}\.xlsx`/);
 });
 

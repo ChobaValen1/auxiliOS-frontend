@@ -256,3 +256,33 @@
 .os-embedded-review>footer{display:grid;gap:7px;margin-top:2px;padding-top:8px;border-top:1px solid var(--osv2-border)}.os-embedded-review>footer>span{font-size:8px;color:var(--osv2-muted2);text-align:right}.os-embedded-review>footer>div{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}.os-embedded-review footer .pending{border:0;color:#ff7474}.os-embedded-review footer .edit{border-color:#3d79bd;color:#78aff0}.os-embedded-review footer .finish:disabled{opacity:.38;cursor:not-allowed}
 .os-embedded-pending-note{display:grid;gap:4px}.os-embedded-pending-note span{font-size:8px;color:var(--osv2-muted2);text-transform:uppercase}.os-embedded-pending-note textarea{min-height:48px;resize:vertical;border:1px solid var(--osv2-border);border-radius:6px;background:var(--osv2-input);color:var(--text);padding:7px;font:inherit;font-size:9px}
 @media(max-width:980px){.os-embedded-review>footer>div{display:grid;grid-template-columns:1fr}.os-embedded-review footer button{width:100%}}
+
+/* Diferencias a revisar en filas compactas: nombre, importe y acciones en una línea. */
+.os-embedded-difference.is-compact{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 8px;padding:5px 8px}
+.os-embedded-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:2px 7px;min-width:0}
+.os-embedded-kind{padding:1px 5px;border-radius:4px;background:rgba(245,166,35,.14);color:var(--amber);font-size:8px;font-weight:800;text-transform:uppercase}
+.os-embedded-row>b{overflow:hidden;font-size:10px;white-space:nowrap;text-overflow:ellipsis}
+.os-embedded-amount{font-size:11px;font-weight:900;color:var(--amber);white-space:nowrap}
+.os-embedded-row>small{grid-column:2/-1;font-size:8px;color:var(--osv2-muted2)}
+.os-embedded-difference.is-compact .os-embedded-actions{gap:4px}
+.os-embedded-difference.is-compact .os-embedded-actions button{min-height:24px;padding:3px 8px}
+.os-embedded-difference.is-compact .os-embedded-reason,.os-embedded-difference.is-compact .os-review-confirm-reject{grid-column:1/-1}
+/* Revisión sin diferencias: una línea con el cierre. */
+.os-embedded-review.is-clear{gap:0}
+.os-embedded-clear{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid rgba(34,197,94,.28);border-left:3px solid var(--green);border-radius:8px;background:rgba(34,197,94,.07)}
+.os-embedded-clear>span{display:grid;gap:2px;min-width:0}
+.os-embedded-clear b{font-size:10px;color:#b9f0cf}
+.os-embedded-clear small{font-size:8px;color:var(--osv2-muted2)}
+.os-embedded-clear .finish{flex:0 0 auto;min-height:28px;padding:5px 12px;border:1px solid var(--amber);border-radius:6px;background:var(--amber);color:#15100a;font-size:9px;font-weight:800;cursor:pointer}
+.os-embedded-clear .finish:disabled{opacity:.5;cursor:wait}
+/* Destino del activado elegido: formulario retraído a una línea. */
+.os-activation-billing.is-chosen .os-activation-billing-head p,.os-activation-billing.is-chosen .os-activation-choices{display:none}
+.os-activation-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid rgba(34,197,94,.3);border-left:3px solid var(--green);border-radius:8px;background:rgba(34,197,94,.07);font-size:10px;color:var(--text)}
+.os-activation-summary[hidden]{display:none}
+.os-activation-summary b{color:#b9f0cf}
+.os-activation-summary button{flex:0 0 auto;min-height:26px;padding:3px 10px;border:1px solid var(--osv2-border-strong);border-radius:6px;background:transparent;color:var(--text);font:inherit;font-size:9px;font-weight:800;cursor:pointer}
+.os-activation-summary button:hover{border-color:var(--primary,#4F8EF7)}
+/* Tipo de servicio de una sola dirección: sin bloque Destino. */
+.osv4-reactive .osv2-location.destination[hidden]{display:none!important}
+.osv4-single-address-note{display:block;margin-top:5px;padding:5px 8px;border-radius:6px;background:rgba(74,144,226,.1);color:#9cc3f5;font-size:8px;line-height:1.35}
+.osv4-single-address-note[hidden]{display:none}

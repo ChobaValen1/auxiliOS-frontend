@@ -361,7 +361,8 @@ async function _finalizarInicializacion() {
   }
   if (PERFIL_USUARIO?.roles?.name === 'administracion') {
     const panel = document.getElementById('filtros-admin');
-    if (panel) panel.style.display = 'block';
+    if (panel) panel.style.display = 'contents';
+    window._rmxRenderFilters?.();
     await cargarChoferes();
   }
 
@@ -651,6 +652,9 @@ function _mapRemitoRow(r) {
     estado:        r.status === 'firmado' ? 'firmado' : r.status === 'anulado' ? 'anulado' : r.status === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
     creadoPor:     r.creado_por || null,
     confirmaciones: armarConfirmaciones(r),
+    conformidades: { servicio: r.conformidad_servicio ?? null, cargos: r.conformidad_cargos ?? null, danos: r.sin_danos ?? null, arrastre: r.conformidad_arrastre ?? null },
+    foto_urls:     Array.isArray(r.foto_urls) ? r.foto_urls : [],
+    acceptedTotal: r.accepted_imp_total_extras ?? null,
     observaciones: r.observaciones || null,
     firmaUrl:      r.firma_imagen_url || null,
     chofer:        r.users?.full_name || '—',
@@ -695,14 +699,28 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   if (filtros.patente) {
     q = q.ilike('patente', `%${_escPostgrest(filtros.patente)}%`);
   }
-  if (filtros.tipoServicio) {
-    q = q.eq('tipo_servicio', filtros.tipoServicio);
+  // Tipo de servicio real = el del Servicio vinculado. '__sin__' = remitos sin
+  // servicio ("Sin clasificar"); un concept_id se resuelve antes a los ids de
+  // servicio (_rmxResolverFiltros). Si no se pudo resolver (p. ej. sin permiso
+  // sobre Servicios) se cae al texto guardado en el remito.
+  if (filtros.tipoServicio === '__sin__') {
+    q = q.is('operator_service_id', null);
+  } else if (Array.isArray(filtros._remitoIdsTipo)) {
+    q = q.in('remito_id', filtros._remitoIdsTipo.length ? filtros._remitoIdsTipo : [-1]);
+  } else if (filtros.tipoServicio) {
+    q = q.eq('tipo_servicio', filtros._tipoNombre || filtros.tipoServicio);
   }
   if (filtros.pagoMetodo) {
     const p = filtros.pagoMetodo.toLowerCase();
     q = q.or(`pago_1_metodo.eq.${p},pago_2_metodo.eq.${p}`);
   }
-  if (filtros.estado && filtros.estado !== 'todos') {
+  if (filtros.estado === 'sin_enviar') {
+    // Firmados de los últimos 60 días que todavía no se enviaron al cliente (ids resueltos en _rmxResolverFiltros).
+    q = q.in('remito_id', Array.isArray(filtros._pendientesEnvio) && filtros._pendientesEnvio.length ? filtros._pendientesEnvio : [-1]);
+  } else if (filtros.estado === 'revisar') {
+    // Firmados con cargos (addons v2) que Administración todavía no aprobó ni ajustó.
+    q = q.eq('status', 'firmado').eq('addons_version', 2).not('addons_review_status', 'in', '(approved,adjusted)');
+  } else if (filtros.estado && filtros.estado !== 'todos') {
     q = q.eq('status', filtros.estado);
   }
 
@@ -732,6 +750,77 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   return q;
 }
 
+// ── Remitos · datos del Servicio vinculado ─────────────────────────
+// El tipo de servicio real (Liviano, Semipesado, UML…) y el N° de servicio
+// viven en operator_services; el texto del remito puede estar desactualizado
+// ("A definir por Operaciones") o ser genérico en el flujo viejo del chofer.
+let _rmxConceptos = null;
+async function _rmxCargarConceptos() {
+  if (_rmxConceptos) return _rmxConceptos;
+  try {
+    const { data, error } = await _db.from('service_concepts').select('concept_id,name,is_active').order('name');
+    if (error) throw error;
+    _rmxConceptos = data || [];
+  } catch (e) { _rmxConceptos = []; }
+  return _rmxConceptos;
+}
+
+async function _rmxResolverFiltros(filtros = {}) {
+  const f = { ...filtros };
+  delete f._serviceIds; delete f._remitoIdsTipo; delete f._tipoNombre; delete f._pendientesEnvio;
+  if (f.estado === 'sin_enviar') {
+    try {
+      const { data, error } = await _db.rpc('get_remitos_pendientes_envio_v1');
+      if (error) throw error;
+      f._pendientesEnvio = Array.isArray(data) ? data : [];
+    } catch (e) { f._pendientesEnvio = []; }
+  }
+  if (!f.tipoServicio || f.tipoServicio === '__sin__') return f;
+  const conceptos = await _rmxCargarConceptos();
+  const c = conceptos.find(x => x.concept_id === f.tipoServicio);
+  if (!c) return f;
+  f._tipoNombre = c.name;
+  try {
+    // operator_services no se lee directo (sin SELECT para authenticated): la RPC devuelve los remitos de ese tipo.
+    const { data, error } = await _db.rpc('get_remito_ids_by_concept_v1', { p_concept_id: c.concept_id });
+    if (error) throw error;
+    f._remitoIdsTipo = Array.isArray(data) ? data : [];
+  } catch (e) { /* sin permiso (p. ej. chofer): filtra por el texto del remito */ }
+  return f;
+}
+
+async function _rmxEnriquecerServicios(rows) {
+  const ids = [...new Set(rows.filter(r => r.operatorServiceId).map(r => r.id).filter(Boolean))];
+  let servicios = new Map();
+  if (ids.length && ['administracion', 'supervision', 'facturacion'].includes(PERFIL_USUARIO?.roles?.name)) {
+    try {
+      // Por RPC: authenticated no tiene SELECT sobre operator_services.
+      const { data, error } = await _db.rpc('get_remitos_service_info_v1', { p_remito_ids: ids.map(Number) });
+      if (error) throw error;
+      servicios = new Map((data || []).map(s => [s.service_id, { orden: s.service_order_number || '', numero: s.service_number || '', tipo: s.concept_name || '' }]));
+    } catch (e) { /* sin permiso: se usa lo guardado en el remito */ }
+  }
+  // Envío al cliente (link público): solo lo ve Administración/Supervisión.
+  let envios = null;
+  const remitoIds = rows.map(r => r.id).filter(Boolean);
+  if (remitoIds.length && ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name)) {
+    try {
+      const { data, error } = await _db.from('remito_public_links').select('remito_id,canal,canal_at,created_at').in('remito_id', remitoIds);
+      if (error) throw error;
+      envios = new Map((data || []).map(l => [l.remito_id, { canal: l.canal || null, at: l.canal_at || l.created_at }]));
+    } catch (e) { envios = null; }
+  }
+  const GENERICOS = new Set(['', '—', 'A definir por Operaciones', 'Servicio de grúa', 'Otro']);
+  rows.forEach(r => {
+    const s = r.operatorServiceId ? servicios.get(r.operatorServiceId) : null;
+    r.srvOrden  = s?.orden || r.nroSrv || '';
+    r.srvNumero = s?.numero || '';
+    r.tipoReal  = s?.tipo || (r.operatorServiceId && !GENERICOS.has(r.tipo) ? r.tipo : '');
+    if (envios) r.envio = envios.get(r.id) || null;
+  });
+  return rows;
+}
+
 async function cargarRemitos(opts = {}) {
   try {
     const page     = opts.page     ?? window._remitosPagina ?? 1;
@@ -743,13 +832,13 @@ async function cargarRemitos(opts = {}) {
 
     // Fetch puro (separado del render para poder cachearlo — Fase 3 offline)
     const fnOnline = async () => {
-      let query = _buildRemitosQuery({ filtros });
+      let query = _buildRemitosQuery({ filtros: await _rmxResolverFiltros(filtros) });
       const start = (page - 1) * pageSize;
       const end   = start + pageSize - 1;
       query = query.range(start, end);
       const { data, error, count } = await query;
       if (error) throw new Error(error.message || 'Error Supabase remitos');
-      return { remitos: (data || []).map(_mapRemitoRow), total: count ?? 0 };
+      return { remitos: await _rmxEnriquecerServicios((data || []).map(_mapRemitoRow)), total: count ?? 0 };
     };
 
     const esChofer = typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name === 'chofer';
@@ -796,7 +885,7 @@ async function cargarRemitos(opts = {}) {
       const mobileList = document.getElementById('mobile-remitos-list');
       if (mobileList) mobileList.innerHTML = msg;
       const tbody = document.getElementById('tbody-remitos');
-      if (tbody) tbody.innerHTML = `<tr><td colspan="9">${msg}</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="10">${msg}</td></tr>`;
     }
 
     // Remitos del outbox sin sincronizar, al tope de la lista (online u offline)
@@ -810,11 +899,18 @@ async function cargarRemitos(opts = {}) {
 
 async function fetchRemitosFiltrados({ filtros, max = 5000 } = {}) {
   const f = filtros ?? window._remitosFiltros ?? {};
-  let query = _buildRemitosQuery({ filtros: f });
+  let query = _buildRemitosQuery({ filtros: await _rmxResolverFiltros(f) });
   query = query.range(0, Math.max(0, max - 1));
   const { data, error } = await query;
   if (error) { console.error('❌ fetchRemitosFiltrados:', error); return []; }
-  return (data || []).map(_mapRemitoRow);
+  return _rmxEnriquecerServicios((data || []).map(_mapRemitoRow));
+}
+
+// Cantidad de remitos con los filtros dados, sin traer filas (chips de la barra).
+async function contarRemitosFiltrados(filtros) {
+  const { error, count } = await _buildRemitosQuery({ filtros: await _rmxResolverFiltros(filtros) }).range(0, 0);
+  if (error) { console.error('❌ contarRemitosFiltrados:', error); return null; }
+  return count ?? 0;
 }
 // Nota: esta función carga los remitos más recientes (hasta 200) y los mapea al formato que necesita la tabla. Incluye lógica para formatear fechas, mostrar métodos de pago combinados, y armar el texto de confirmaciones. Si hay un error o no hay remitos, muestra mensajes en la consola.
 
@@ -827,39 +923,6 @@ async function obtenerRemitoCompleto(remitoId) {
     .single();
   if (error) { console.error('❌ obtenerRemitoCompleto:', error); return null; }
   return data;
-}
-
-// Crea un remito desde administración: pre-carga asignada a un chofer
-// (status 'pendiente') o cierre directo sin firma (status 'cerrado_admin').
-async function crearRemitoAdmin(campos, modo, driverId) {
-  const f = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const nro = `REM-${f}-${Math.floor(Math.random() * 9000) + 1000}`;
-  const fila = {
-    ...campos,
-    nro_remito: nro,
-    status:     modo === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
-    // Cierre admin: si se eligió chofer, el remito queda a su cuenta
-    // (lo ve en su lista y cuenta en rendiciones/facturación/KPIs)
-    driver_id:  driverId || null,
-    creado_por: USUARIO_ACTUAL?.id || null,
-    created_at_device: new Date().toISOString(),
-    historial_ediciones: [{
-      fecha: new Date().toISOString(),
-      user_id: USUARIO_ACTUAL?.id || null,
-      user_nombre: PERFIL_USUARIO?.full_name || '—',
-      cambios: [{ campo: '_creacion', antes: null, despues: modo === 'cerrado_admin' ? 'cerrado por administración' : 'pre-carga asignada' }],
-    }],
-  };
-  const { error } = await _db.from('remitos').insert(fila);
-  if (error) { console.error('❌ crearRemitoAdmin:', error); return { ok: false, msg: error.message }; }
-  return { ok: true, nro };
-}
-
-// Elimina definitivamente un remito (solo admin — irreversible)
-async function eliminarRemitoAdmin(remitoId) {
-  const { error } = await _db.from('remitos').delete().eq('remito_id', remitoId);
-  if (error) { console.error('❌ eliminarRemitoAdmin:', error); return { ok: false, msg: error.message }; }
-  return { ok: true };
 }
 
 // Update de campos editados por admin + registro en historial_ediciones.

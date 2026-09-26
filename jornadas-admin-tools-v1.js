@@ -9,7 +9,7 @@
   const isAdmin = () => role() === 'administracion';
   const allowed = () => ['administracion', 'supervision'].includes(role());
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const fmtDate = value => { if (!value) return '—'; const raw=String(value).slice(0,10); const [y,m,d]=raw.split('-'); return y&&m&&d?`${d}/${m}/${y}`:raw; };
+  const fmtDate = value => { if (!value) return '—'; const raw=String(value).slice(0,10); const [y,m,d]=raw.split('-'); return y&&m&&d?`${d}/${m}/${y.slice(2)}`:raw; };
   const fmtTime = value => value ? String(value).slice(0,5) : '—';
   const fmtMoney = value => Number(value || 0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2});
   const todayAR = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'});

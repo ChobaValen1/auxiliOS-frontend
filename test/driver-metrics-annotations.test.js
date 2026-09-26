@@ -37,7 +37,7 @@ test('cash modal uses the journey truck and leaves pending-rendition modal intac
   const c=context({document:{getElementById:id=>elements[id]},_db:{rpc:async()=>({data:{tolls:[{customer_payment_method:'cash',total_amount:80}],excesses:[]}})}});
   vm.runInContext('let _cashDetailRequest=0; const _AR=n=>String(n);'+fn(ui,'_loadCashCollectionRows'),c);
   await c._loadCashCollectionRows([{remito_id:1,created_at_device:'2026-09-12T10:00:00-03:00',daily_logs:{trucks:{plate:'PHG898'}},patente:'SOCIO99',pago_1_metodo:'efectivo',pago_1_monto:80}]);
-  assert.match(elements['cash-collection-rows'].innerHTML,/12-09-2026.*PHG898.*Peaje.*80/);
+  assert.match(elements['cash-collection-rows'].innerHTML,/12\/09\/26.*PHG898.*Peaje.*80/);
   assert.doesNotMatch(elements['cash-collection-rows'].innerHTML,/SOCIO99/);
   assert.match(fn(ui,'abrirModalPendienteRendir'),/rowsRend/);
   assert.match(fn(ui,'abrirModalDesgloseEfectivo'),/_loadCashCollectionRows/);

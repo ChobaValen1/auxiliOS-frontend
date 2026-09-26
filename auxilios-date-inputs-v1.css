@@ -1,0 +1,11 @@
+/* AuxiliOS · Campos de fecha en DD/MM/AA v1 */
+.aux-date-wrap{position:relative;display:block;min-width:0;width:100%}
+.aux-date-wrap[hidden]{display:none!important}
+.aux-date-proxy{width:100%;box-sizing:border-box;padding-right:30px!important;font-variant-numeric:tabular-nums}
+.aux-date-proxy.is-invalid{border-color:var(--red,#e2504a)!important;box-shadow:0 0 0 2px rgba(226,80,74,.18)}
+.aux-date-pick{position:absolute;top:50%;right:4px;transform:translateY(-50%);width:24px;height:24px;padding:0;border:0;border-radius:5px;background:transparent;font-size:12px;line-height:1;cursor:pointer;opacity:.75}
+.aux-date-pick:hover{opacity:1;background:rgba(255,255,255,.06)}
+.aux-date-pick:disabled{opacity:.3;cursor:not-allowed}
+/* El nativo queda debajo del campo de texto: invisible, pero presente para el
+   calendario (showPicker) y para el código que lo lee. */
+.aux-date-native{position:absolute!important;left:0;bottom:0;width:100%!important;height:1px!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;opacity:0!important;pointer-events:none!important}
