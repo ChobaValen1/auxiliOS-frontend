@@ -705,8 +705,8 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   // sobre Servicios) se cae al texto guardado en el remito.
   if (filtros.tipoServicio === '__sin__') {
     q = q.is('operator_service_id', null);
-  } else if (Array.isArray(filtros._serviceIds)) {
-    q = q.in('operator_service_id', filtros._serviceIds.length ? filtros._serviceIds : ['00000000-0000-0000-0000-000000000000']);
+  } else if (Array.isArray(filtros._remitoIdsTipo)) {
+    q = q.in('remito_id', filtros._remitoIdsTipo.length ? filtros._remitoIdsTipo : [-1]);
   } else if (filtros.tipoServicio) {
     q = q.eq('tipo_servicio', filtros._tipoNombre || filtros.tipoServicio);
   }
@@ -767,7 +767,7 @@ async function _rmxCargarConceptos() {
 
 async function _rmxResolverFiltros(filtros = {}) {
   const f = { ...filtros };
-  delete f._serviceIds; delete f._tipoNombre; delete f._pendientesEnvio;
+  delete f._serviceIds; delete f._remitoIdsTipo; delete f._tipoNombre; delete f._pendientesEnvio;
   if (f.estado === 'sin_enviar') {
     try {
       const { data, error } = await _db.rpc('get_remitos_pendientes_envio_v1');
@@ -781,23 +781,24 @@ async function _rmxResolverFiltros(filtros = {}) {
   if (!c) return f;
   f._tipoNombre = c.name;
   try {
-    const { data, error } = await _db.from('operator_services').select('service_id').eq('primary_concept_id', c.concept_id).limit(5000);
+    // operator_services no se lee directo (sin SELECT para authenticated): la RPC devuelve los remitos de ese tipo.
+    const { data, error } = await _db.rpc('get_remito_ids_by_concept_v1', { p_concept_id: c.concept_id });
     if (error) throw error;
-    f._serviceIds = (data || []).map(x => x.service_id);
-  } catch (e) { /* sin acceso a Servicios: filtra por el texto del remito */ }
+    f._remitoIdsTipo = Array.isArray(data) ? data : [];
+  } catch (e) { /* sin permiso (p. ej. chofer): filtra por el texto del remito */ }
   return f;
 }
 
 async function _rmxEnriquecerServicios(rows) {
-  const ids = [...new Set(rows.map(r => r.operatorServiceId).filter(Boolean))];
+  const ids = [...new Set(rows.filter(r => r.operatorServiceId).map(r => r.id).filter(Boolean))];
   let servicios = new Map();
-  if (ids.length) {
+  if (ids.length && ['administracion', 'supervision', 'facturacion'].includes(PERFIL_USUARIO?.roles?.name)) {
     try {
-      const { data, error } = await _db.from('operator_services').select('service_id,service_order_number,service_number,primary_concept_id').in('service_id', ids);
+      // Por RPC: authenticated no tiene SELECT sobre operator_services.
+      const { data, error } = await _db.rpc('get_remitos_service_info_v1', { p_remito_ids: ids.map(Number) });
       if (error) throw error;
-      const conceptos = new Map((await _rmxCargarConceptos()).map(c => [c.concept_id, c.name]));
-      servicios = new Map((data || []).map(s => [s.service_id, { orden: s.service_order_number || '', numero: s.service_number || '', tipo: conceptos.get(s.primary_concept_id) || '' }]));
-    } catch (e) { /* sin acceso a Servicios: se usa lo guardado en el remito */ }
+      servicios = new Map((data || []).map(s => [s.service_id, { orden: s.service_order_number || '', numero: s.service_number || '', tipo: s.concept_name || '' }]));
+    } catch (e) { /* sin permiso: se usa lo guardado en el remito */ }
   }
   // Envío al cliente (link público): solo lo ve Administración/Supervisión.
   let envios = null;

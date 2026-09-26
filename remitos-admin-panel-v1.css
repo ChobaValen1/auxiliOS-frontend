@@ -97,3 +97,4 @@
 .rmp-quote{margin:6px 0;padding:8px 10px;border-left:2px solid var(--border2);color:var(--muted2);font-size:12px;font-style:italic;white-space:pre-wrap}
 .rmp-survey-empty{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
 .rmp-survey-empty .rmp-link{margin-left:0}
+.rmp-bad{color:var(--red);font-weight:700}

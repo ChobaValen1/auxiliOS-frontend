@@ -70,13 +70,14 @@ function ensure(){
   });
 }
 
-async function cargarServicio(id){
-  if(!id)return null;
+async function cargarServicio(remitoId,serviceId){
+  if(!serviceId)return null;
   try{
-    const {data,error}=await _db.from('operator_services').select('service_id,service_order_number,service_number,status,primary_concept_id,origin,destination').eq('service_id',id).maybeSingle();
-    if(error||!data)return null;
-    const conceptos=typeof _rmxCargarConceptos==='function'?await _rmxCargarConceptos():[];
-    return{...data,tipo:conceptos.find(c=>c.concept_id===data.primary_concept_id)?.name||''};
+    // Por RPC: authenticated no tiene SELECT sobre operator_services.
+    const {data,error}=await _db.rpc('get_remitos_service_info_v1',{p_remito_ids:[Number(remitoId)]});
+    if(error)throw error;
+    const s=(data||[])[0];
+    return s?{service_id:s.service_id,service_order_number:s.service_order_number,service_number:s.service_number,tipo:s.concept_name||''}:null;
   }catch(_){return null}
 }
 
@@ -98,6 +99,8 @@ function renderEncuesta(){
     (sv.rating_puntualidad?fila('Puntualidad',estrellas(sv.rating_puntualidad)):'')+
     (sv.rating_trato?fila('Trato del chofer',estrellas(sv.rating_trato)):'')+
     (sv.recomendaria!=null?fila('Nos recomendaría',sv.recomendaria?'Sí':'<span class="rmp-warn">No</span>'):'')+
+    (sv.cobro_confirmado===true?fila('Cobro en el lugar','Confirmado por el cliente'):sv.cobro_confirmado===false?fila('Cobro en el lugar',`<span class="rmp-bad">No confirmado · el remito dice ${money(P.remito.imp_total_extras)}${sv.cobro_informado!=null?` · el cliente dice ${money(sv.cobro_informado)}`:''}</span>`):'')+
+    (sv.revisado_at?fila('Revisado',`${esc(fecha(sv.revisado_at))}${sv.revisado_nota?` · ${esc(sv.revisado_nota)}`:''}`):'')+
     (sv.comentario?`<div class="rmp-quote">“${esc(sv.comentario)}”</div>`:'')+
     fila('Respondida',esc(fecha(sv.created_at))));
   const txt=e.enviado?`Link enviado el ${esc(fecha(e.enviado))} · todavía sin respuesta`:'Todavía no se envió al cliente';
@@ -114,7 +117,7 @@ async function open(remitoId,{editar=false,anular=false}={}){
   const r=typeof obtenerRemitoCompleto==='function'?await obtenerRemitoCompleto(remitoId):null;
   if(!r){$('rmp-body').innerHTML='<div class="rmp-loading is-error">No se pudo cargar el remito.</div>';return}
   P.remito=r;
-  [P.servicio,P.encuesta]=await Promise.all([cargarServicio(r.operator_service_id),cargarEncuesta(r.remito_id)]);
+  [P.servicio,P.encuesta]=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id)]);
   if(editar&&isAdmin()&&r.status!=='anulado')P.editing=true;
   if(anular&&puedeAnular())P.annulling=true;
   render();

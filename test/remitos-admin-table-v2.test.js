@@ -7,11 +7,16 @@ const read=f=>fs.readFileSync(f,'utf8');
 /* Extrae del archivo el bloque que va desde `start` hasta `end` (sin incluirlo). */
 const slice=(src,start,end)=>{const a=src.indexOf(start),b=src.indexOf(end,a);assert.ok(a>=0&&b>a,`no se encontró ${start}`);return src.slice(a,b);};
 
-function remitosData(tables){
+function remitosData(tables,rol='administracion'){
   const calls=[];
   const from=table=>{const q={_t:table,_f:[],select(){return q},order(){return q},limit(){return q},eq(k,v){q._f.push(['eq',k,v]);return q},in(k,v){q._f.push(['in',k,v]);return q},
     then(res){calls.push(table);res({data:(tables[table]||[]).filter(r=>q._f.every(([op,k,v])=>op==='eq'?r[k]===v:v.includes(r[k]))),error:null})}};return q;};
-  const ctx={_db:{from},console};
+  // operator_services no se lee directo: las RPC devuelven lo necesario.
+  const rpc=async(name,args)=>{calls.push(name);
+    if(name==='get_remitos_service_info_v1')return{data:tables.remitos.filter(r=>args.p_remito_ids.includes(r.remito_id)&&r.service_id).map(r=>{const s=tables.operator_services.find(x=>x.service_id===r.service_id);return{remito_id:r.remito_id,service_id:s.service_id,service_order_number:s.service_order_number,service_number:s.service_number,concept_id:s.primary_concept_id,concept_name:tables.service_concepts.find(c=>c.concept_id===s.primary_concept_id)?.name}}),error:null};
+    if(name==='get_remito_ids_by_concept_v1')return{data:tables.remitos.filter(r=>tables.operator_services.find(x=>x.service_id===r.service_id)?.primary_concept_id===args.p_concept_id).map(r=>r.remito_id),error:null};
+    return{data:null,error:{message:'no'}}};
+  const ctx={_db:{from,rpc},console,PERFIL_USUARIO:{roles:{name:rol}}};
   vm.runInNewContext(slice(read('supabase.js'),'let _rmxConceptos = null;','async function cargarRemitos(')+';this.api={_rmxEnriquecerServicios,_rmxResolverFiltros};',ctx);
   return {...ctx.api,calls};
 }
@@ -19,36 +24,38 @@ function remitosData(tables){
 const tables={
   service_concepts:[{concept_id:'c-liv',name:'Liviano',is_active:true},{concept_id:'c-uml',name:'UML',is_active:true}],
   operator_services:[{service_id:'s1',service_order_number:'302243',service_number:'SRV-1',primary_concept_id:'c-liv'},{service_id:'s2',service_order_number:'445',service_number:'SRV-2',primary_concept_id:'c-uml'}],
+  remitos:[{remito_id:10,service_id:'s1'},{remito_id:11,service_id:null},{remito_id:12,service_id:'s2'}],
 };
 
 test('el tipo de servicio real sale del Servicio y los remitos sin servicio quedan "Sin clasificar"',async()=>{
   const {_rmxEnriquecerServicios}=remitosData(tables);
   const rows=await _rmxEnriquecerServicios([
-    {operatorServiceId:'s1',tipo:'A definir por Operaciones',nroSrv:'302243'},
-    {operatorServiceId:null,tipo:'Servicio de grúa',nroSrv:'99887'},
+    {id:10,operatorServiceId:'s1',tipo:'A definir por Operaciones',nroSrv:'302243'},
+    {id:11,operatorServiceId:null,tipo:'Servicio de grúa',nroSrv:'99887'},
   ]);
   assert.equal(rows[0].tipoReal,'Liviano');
   assert.equal(rows[0].srvOrden,'302243');
   assert.equal(rows[0].srvNumero,'SRV-1');
   assert.equal(rows[1].tipoReal,'');
   assert.equal(rows[1].srvOrden,'99887');
+  assert.ok(!remitosData(tables).calls.includes('operator_services'),'no lee operator_services directo');
 });
 
 test('sin acceso a Servicios no rompe la lista: usa lo guardado en el remito salvo textos genéricos',async()=>{
-  const ctx={_db:{from:()=>{const q={select:()=>q,order:()=>q,in:()=>q,eq:()=>q,limit:()=>q,then:res=>res({data:null,error:{message:'permission denied'}})};return q;}},console};
+  const ctx={_db:{from:()=>{const q={select:()=>q,order:()=>q,in:()=>q,eq:()=>q,limit:()=>q,then:res=>res({data:null,error:{message:'permission denied'}})};return q;},rpc:async()=>({data:null,error:{message:'permission denied'}})},console,PERFIL_USUARIO:{roles:{name:'administracion'}}};
   vm.runInNewContext(slice(read('supabase.js'),'let _rmxConceptos = null;','async function cargarRemitos(')+';this.fn=_rmxEnriquecerServicios;',ctx);
-  const rows=await ctx.fn([{operatorServiceId:'s1',tipo:'Semipesado',nroSrv:'1'},{operatorServiceId:'s2',tipo:'A definir por Operaciones',nroSrv:'2'}]);
+  const rows=await ctx.fn([{id:10,operatorServiceId:'s1',tipo:'Semipesado',nroSrv:'1'},{id:12,operatorServiceId:'s2',tipo:'A definir por Operaciones',nroSrv:'2'}]);
   assert.equal(rows[0].tipoReal,'Semipesado');
   assert.equal(rows[1].tipoReal,'');
 });
 
-test('el filtro de tipo se resuelve a los servicios de ese tipo',async()=>{
+test('el filtro de tipo se resuelve a los remitos de ese tipo',async()=>{
   const {_rmxResolverFiltros}=remitosData(tables);
   const f=await _rmxResolverFiltros({tipoServicio:'c-uml',estado:'todos'});
-  assert.deepEqual([...f._serviceIds],['s2']);
+  assert.deepEqual([...f._remitoIdsTipo],[12]);
   assert.equal(f._tipoNombre,'UML');
   const sin=await _rmxResolverFiltros({tipoServicio:'__sin__'});
-  assert.equal(sin._serviceIds,undefined);
+  assert.equal(sin._remitoIdsTipo,undefined);
   const q=read('supabase.js');
   assert.match(q,/filtros\.tipoServicio === '__sin__'[\s\S]*?\.is\('operator_service_id', null\)/);
   assert.match(q,/filtros\.estado === 'revisar'[\s\S]*?addons_version', 2\)[\s\S]*?\(approved,adjusted\)/);

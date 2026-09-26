@@ -3972,3 +3972,5 @@ body {
 .rwa-sheet .rwa-confirm div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 #screen-remitos .rmx-act.is-send{border-color:var(--amber);color:var(--amber)}
 #screen-remitos .rmx-act.is-send:hover{background:var(--amber);color:#111}
+#screen-remitos .rmx-row{cursor:pointer}
+#screen-remitos .rmx-row:hover td{background:rgba(255,255,255,.025)}

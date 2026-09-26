@@ -65,3 +65,13 @@
 .rmx-calidad .rqc-comment .rqc-link{justify-self:start}
 @media(max-width:900px){.rmx-calidad .rqc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.rmx-calidad .rqc-tiles{grid-template-columns:1fr}.rmx-calidad .rqc-alert{flex-direction:column}}
+.rqc-modal{position:fixed;inset:0;z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px}
+.rqc-modal-bg{position:absolute;inset:0;border:0;background:rgba(0,0,0,.55)}
+.rqc-modal section{position:relative;display:grid;gap:12px;width:min(100%,420px);padding:18px;border:1px solid var(--border2);border-radius:14px;background:var(--card);color:var(--text);box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.rqc-modal h3{margin:0;font-size:16px}
+.rqc-modal label{display:grid;gap:5px;color:var(--muted2);font-size:11px;font-weight:700}
+.rqc-modal textarea{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--border2);border-radius:9px;background:var(--bg);color:var(--text);font:inherit;font-size:13px;resize:vertical}
+.rqc-modal textarea:focus{outline:none;border-color:var(--amber)}
+.rqc-modal-actions{display:flex;justify-content:flex-end;gap:8px}
+.rqc-modal .rqc-btn{height:34px;padding:0 14px;border:1px solid var(--border2);border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.rqc-modal .rqc-btn.primary{border-color:var(--amber);background:var(--amber);color:#111}

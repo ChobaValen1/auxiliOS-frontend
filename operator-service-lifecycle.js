@@ -56,7 +56,7 @@ function resumenCierre(s){
     ['Fecha',date(s.scheduled_for)],
     ['Prestadora',s.company_name||'—'],
     ['Base',s.billing_base_name||'—'],
-    ['Tipo',s.service_name||'—'],
+    ['Tipo',s.service_name||s.concept_name||O()?.concept?.(s.primary_concept_id)?.name||'—'],
     ['Cliente',s.customer_name||'—'],
     ['Vehículo',[s.vehicle_make_model,s.vehicle_plate].filter(Boolean).join(' · ')||'—'],
     ['Origen',s.origin||'—'],

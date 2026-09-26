@@ -6119,6 +6119,13 @@ document.addEventListener('change', e => {
   });
   _rmxSyncSeleccionUI();
 });
+// Fila de la tabla: el clic abre el detalle (salvo casilla, botones, menú ⋯ o links).
+document.addEventListener('click', e => {
+  const tr = e.target.closest?.('#tbody-remitos tr.rmx-row');
+  if (!tr || e.target.closest('button, a, input, label, details, .rmx-col-check')) return;
+  if (window.getSelection && String(window.getSelection()).length) return;
+  verRemitoModal(tr);
+});
 // Tarjeta del celular: tocarla abre el detalle (salvo que se toque un botón).
 document.addEventListener('click', e => {
   const card = e.target.closest?.('#mobile-remitos-list .rmx-mcard');

@@ -117,3 +117,19 @@ test('enviar al cliente es tarea de Administración y queda registrado el canal'
   assert.match(pend,/array\['administracion','supervision'\]/);
   assert.match(read('remitos-calidad-v1.js'),/function vigilar\(\)/,'la pestaña se sincroniza aunque el módulo cargue tarde');
 });
+
+test('correcciones de la prueba QA: clic en fila, nota sin prompt, cobro en el panel y datos del Servicio por RPC',()=>{
+  const sigma=read('sigma.js');
+  assert.match(sigma,/closest\?\.\('#tbody-remitos tr\.rmx-row'\)[\s\S]{0,200}verRemitoModal\(tr\)/,'clic en la fila abre el detalle');
+  const cal=read('remitos-calidad-v1.js');
+  assert.doesNotMatch(cal,/prompt\(/,'la nota de revisión usa un cuadro propio');
+  assert.match(cal,/id="rqc-nota"/);
+  const panel=read('remitos-admin-panel-v1.js');
+  assert.match(panel,/el cliente dice \$\{money\(sv\.cobro_informado\)\}/);
+  assert.match(panel,/rpc\('get_remitos_service_info_v1'/);
+  assert.doesNotMatch(panel+read('supabase.js'),/from\('operator_services'\)/,'authenticated no tiene SELECT sobre operator_services');
+  const mig=read('migrations/20260926160000_remito_service_info_v1.sql');
+  assert.match(mig,/array\['administracion','supervision','facturacion'\]/);
+  assert.match(read('operator-service-bridge.js'),/\$\{s\.single_address\?'':`<div class="p3-fact-row"><span>Destino<\/span>/);
+  assert.match(read('operator-service-lifecycle.js'),/\['Tipo',s\.service_name\|\|s\.concept_name\|\|O\(\)\?\.concept\?\.\(s\.primary_concept_id\)\?\.name\|\|'—'\]/);
+});

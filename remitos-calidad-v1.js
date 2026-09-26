@@ -92,12 +92,26 @@ function render(){
 
 function bind(){const F=window.AuxFilters,root=$('rqc-filters');if(F&&root)F.bind(root,(id,v)=>{if(id==='periodo'){S.periodo=v;cargar()}})}
 
-async function revisar(id){
+/* Marcar revisado: cuadro propio de la app (no el cuadro nativo del navegador, que bloquea la página). */
+function revisar(id){
   if(role()!=='administracion')return;
-  const nota=prompt('Nota de la revisión (opcional). Ej.: se llamó al cliente, se habló con el chofer.','');
-  if(nota===null)return;
-  try{const {error}=await _db.rpc('mark_remito_survey_reviewed_v1',{p_survey_id:id,p_nota:nota});if(error)throw error;if(typeof toast==='function')toast('Marcado como revisado');cargar()}
-  catch(e){if(typeof toast==='function')toast('No se pudo marcar: '+(e?.message||e),'error')}
+  document.getElementById('rqc-modal')?.remove();
+  const box=document.createElement('div');box.id='rqc-modal';box.className='rqc-modal';
+  box.innerHTML=`<button class="rqc-modal-bg" type="button" aria-label="Cerrar" data-close></button>
+    <section role="dialog" aria-modal="true" aria-labelledby="rqc-modal-t"><h3 id="rqc-modal-t">Marcar como revisado</h3>
+      <label><span>Nota (opcional)</span><textarea id="rqc-nota" rows="3" maxlength="500" placeholder="Ej.: se llamó al cliente, se habló con el chofer"></textarea></label>
+      <div class="rqc-modal-actions"><button class="rqc-btn" type="button" data-close>Cancelar</button><button class="rqc-btn primary" type="button" id="rqc-ok">Marcar revisado</button></div></section>`;
+  document.body.appendChild(box);
+  const cerrar=()=>box.remove();
+  box.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',cerrar));
+  box.addEventListener('keydown',e=>{if(e.key==='Escape')cerrar()});
+  const ok=box.querySelector('#rqc-ok');
+  ok.addEventListener('click',async()=>{
+    ok.disabled=true;ok.textContent='Guardando…';
+    try{const {error}=await _db.rpc('mark_remito_survey_reviewed_v1',{p_survey_id:id,p_nota:box.querySelector('#rqc-nota').value});if(error)throw error;cerrar();if(typeof toast==='function')toast('Marcado como revisado');cargar()}
+    catch(e){ok.disabled=false;ok.textContent='Marcar revisado';if(typeof toast==='function')toast('No se pudo marcar: '+(e?.message||e),'error')}
+  });
+  setTimeout(()=>box.querySelector('#rqc-nota')?.focus(),0);
 }
 
 /* Contador de alertas pendientes en la pestaña, aunque la vista no esté abierta. */
