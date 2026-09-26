@@ -107,5 +107,9 @@ async function refrescarBadge(){
 }
 
 document.addEventListener('click',e=>{const b=e.target.closest?.('#rmx-views [data-view]');if(b)setView(b.dataset.view)});
+/* El módulo puede cargar después de que se abrió Remitos: sincronizar la
+   pestaña al cargar y cada vez que la pantalla se activa. */
+function vigilar(){const sc=$('screen-remitos');if(!sc)return;syncRole();refrescarBadge();new MutationObserver(()=>{if(sc.classList.contains('active')){syncRole();refrescarBadge()}}).observe(sc,{attributes:true,attributeFilter:['class','style']})}
+document.readyState==='loading'?document.addEventListener('DOMContentLoaded',vigilar,{once:true}):vigilar();
 window.RemitosCalidad={setView,syncRole,reload:cargar,revisar,refrescarBadge,_state:S,_render:render};
 })();

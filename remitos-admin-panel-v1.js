@@ -250,7 +250,7 @@ function renderFoot(){
   const admin=isAdmin();
   const menu=[
     admin&&r.status!=='pendiente'?`<button type="button" onclick="RemitoPanel.pdf()">Descargar PDF</button>`:'',
-    r.status==='firmado'?`<button type="button" onclick="RemitoPanel.whatsapp()">Compartir por WhatsApp</button>`:'',
+    r.status==='firmado'&&admin?`<button type="button" onclick="RemitoPanel.whatsapp()">Enviar al cliente</button>`:'',
     puedeAnular()?`<button type="button" class="is-danger" onclick="RemitoPanel.anular()">Anular remito</button>`:'',
   ].filter(Boolean).join('');
   const conRevision=porRevisar(r)&&r.operator_service_id&&admin;
@@ -300,7 +300,7 @@ async function confirmarAnular(){
 
 function tarjeta(){const d=typeof _mapRemitoRow==='function'?_mapRemitoRow(P.remito):null;if(!d)return null;if(P.servicio){d.srvOrden=P.servicio.service_order_number||d.nroSrv;d.tipoReal=P.servicio.tipo}const el=document.createElement('div');el.setAttribute('data-rem',JSON.stringify(d));return el}
 function pdf(){const el=tarjeta();if(el&&typeof descargarRemitoPDF==='function')descargarRemitoPDF(el)}
-function whatsapp(){const el=tarjeta();if(el&&typeof compartirRemitoPorWhatsApp==='function')compartirRemitoPorWhatsApp(el)}
+function whatsapp(){const el=tarjeta();if(!el)return;let d=null;try{d=JSON.parse(el.getAttribute('data-rem'))}catch(_){}if(d&&P.encuesta?.enviado)d.envio={canal:null};if(d&&typeof window.abrirEnvioRemitoCliente==='function'){close();window.abrirEnvioRemitoCliente(d)}else if(typeof compartirRemitoPorWhatsApp==='function')compartirRemitoPorWhatsApp(el)}
 function revisar(){const id=P.remito?.operator_service_id;if(!id||!window.AuxiliosRemitoReviewV2?.open)return notify('La revisión de cargos todavía se está cargando','warn');P.editing=false;close();window.AuxiliosRemitoReviewV2.open(id)}
 function irAlServicio(){const id=P.remito?.operator_service_id;if(!id)return;const ver=window.OperatorServices?.viewService;if(typeof ver!=='function')return notify('Servicios todavía se está cargando','warn');P.editing=false;close();ver(id)}
 
@@ -311,6 +311,7 @@ const desdeFila={
   corregir:card=>{const id=idDe(card);if(id)open(id,{editar:true})},
   anular:card=>{const id=idDe(card);if(id)open(id,{anular:true})},
   revisar:card=>{let d=null;try{d=JSON.parse(card.getAttribute('data-rem'))}catch(_){}if(d?.operatorServiceId&&window.AuxiliosRemitoReviewV2?.open)window.AuxiliosRemitoReviewV2.open(d.operatorServiceId);else if(d?.id)open(d.id)},
+  enviar:card=>{let d=null;try{d=JSON.parse(card.getAttribute('data-rem'))}catch(_){}if(d&&typeof window.abrirEnvioRemitoCliente==='function')window.abrirEnvioRemitoCliente(d)},
   servicio:card=>{let d=null;try{d=JSON.parse(card.getAttribute('data-rem'))}catch(_){}const ver=window.OperatorServices?.viewService;if(d?.operatorServiceId&&typeof ver==='function')ver(d.operatorServiceId);else notify('Servicios todavía se está cargando','warn')},
 };
 document.addEventListener('click',e=>{

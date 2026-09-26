@@ -26,7 +26,7 @@ test('WhatsApp: con número va directo al chat; sin número comparte el PDF real
   assert.match(js,/window\.RemitoPdf\.blob\(d\)/,'el archivo compartido es el PDF del remito, no un texto');
   assert.doesNotMatch(js,/html2pdf\(\)/);
   const sigma=read('sigma.js');
-  assert.match(sigma,/setTimeout\(\(\) => ofrecerEnvioRemitoWhatsApp\(nro2\), 2500\)/,'se ofrece enviar al cliente al finalizar');
+  assert.doesNotMatch(sigma,/ofrecerEnvioRemitoWhatsApp/,'el chofer no envía el remito: lo hace Administración');
 });
 
 test('PDF v2: documento de texto, datos de empresa reales y mismo código de verificación',()=>{
@@ -97,17 +97,23 @@ test('calidad y cobros: el cliente confirma lo cobrado y Administración ve el r
   assert.match(read('sw.js'),/'\/remitos-calidad-v1\.js'/);
 });
 
-test('al firmar, enviar el remito al cliente es obligatorio y queda registrado el canal',()=>{
-  const sigma=read('sigma.js');
-  const sheet=slice(sigma,'async function ofrecerEnvioRemitoWhatsApp(nro) {','// Con teléfono: abre el chat de ese número');
-  assert.doesNotMatch(sheet,/Ahora no|data-rwa-close/,'no se puede saltear ni cerrar tocando afuera');
+test('enviar al cliente es tarea de Administración y queda registrado el canal',()=>{
+  const sigma=read('sigma.js'),supa=read('supabase.js');
+  const sheet=slice(sigma,'async function abrirEnvioRemitoCliente(d) {','// Con teléfono: abre el chat de ese número');
   assert.match(sheet,/El cliente no tiene WhatsApp/);
   assert.match(sheet,/registrarEntregaRemito\(d\.id, 'sin_whatsapp'\)/);
+  assert.doesNotMatch(slice(sigma,'async function confirmarFirma','function _remitoEvidenceToken'),/abrirEnvioRemitoCliente|rwa-sheet/,'el chofer no ve el aviso al firmar');
   assert.match(sigma,/registrarEntregaRemito\(d\.id, 'whatsapp'\)/);
   assert.match(sigma,/registrarEntregaRemito\(d\.id, 'compartido'\)/);
   assert.match(sigma,/rpc\('register_remito_delivery_v1'/);
+  assert.match(sigma,/chip\('sin_enviar', env, 'por enviar', 'is-amber'\)/);
+  assert.match(sigma,/data-rmx-action="enviar"/);
+  assert.match(supa,/rpc\('get_remitos_pendientes_envio_v1'\)/);
+  assert.match(supa,/filtros\.estado === 'sin_enviar'/);
   const mig=read('migrations/20260926140000_remito_delivery_channel_v1.sql');
   assert.match(mig,/canal in \('whatsapp','compartido','sin_whatsapp'\)/);
-  assert.match(mig,/v_driver = auth\.uid\(\)/);
-  assert.match(mig,/'sin_whatsapp', count\(\*\) filter/);
+  const pend=read('migrations/20260926150000_remitos_pendientes_envio_v1.sql');
+  assert.match(pend,/interval '60 days' and l\.remito_id is null/);
+  assert.match(pend,/array\['administracion','supervision'\]/);
+  assert.match(read('remitos-calidad-v1.js'),/function vigilar\(\)/,'la pestaña se sincroniza aunque el módulo cargue tarde');
 });

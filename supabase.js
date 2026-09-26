@@ -714,7 +714,10 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
     const p = filtros.pagoMetodo.toLowerCase();
     q = q.or(`pago_1_metodo.eq.${p},pago_2_metodo.eq.${p}`);
   }
-  if (filtros.estado === 'revisar') {
+  if (filtros.estado === 'sin_enviar') {
+    // Firmados de los últimos 60 días que todavía no se enviaron al cliente (ids resueltos en _rmxResolverFiltros).
+    q = q.in('remito_id', Array.isArray(filtros._pendientesEnvio) && filtros._pendientesEnvio.length ? filtros._pendientesEnvio : [-1]);
+  } else if (filtros.estado === 'revisar') {
     // Firmados con cargos (addons v2) que Administración todavía no aprobó ni ajustó.
     q = q.eq('status', 'firmado').eq('addons_version', 2).not('addons_review_status', 'in', '(approved,adjusted)');
   } else if (filtros.estado && filtros.estado !== 'todos') {
@@ -764,7 +767,14 @@ async function _rmxCargarConceptos() {
 
 async function _rmxResolverFiltros(filtros = {}) {
   const f = { ...filtros };
-  delete f._serviceIds; delete f._tipoNombre;
+  delete f._serviceIds; delete f._tipoNombre; delete f._pendientesEnvio;
+  if (f.estado === 'sin_enviar') {
+    try {
+      const { data, error } = await _db.rpc('get_remitos_pendientes_envio_v1');
+      if (error) throw error;
+      f._pendientesEnvio = Array.isArray(data) ? data : [];
+    } catch (e) { f._pendientesEnvio = []; }
+  }
   if (!f.tipoServicio || f.tipoServicio === '__sin__') return f;
   const conceptos = await _rmxCargarConceptos();
   const c = conceptos.find(x => x.concept_id === f.tipoServicio);
@@ -789,12 +799,23 @@ async function _rmxEnriquecerServicios(rows) {
       servicios = new Map((data || []).map(s => [s.service_id, { orden: s.service_order_number || '', numero: s.service_number || '', tipo: conceptos.get(s.primary_concept_id) || '' }]));
     } catch (e) { /* sin acceso a Servicios: se usa lo guardado en el remito */ }
   }
+  // Envío al cliente (link público): solo lo ve Administración/Supervisión.
+  let envios = null;
+  const remitoIds = rows.map(r => r.id).filter(Boolean);
+  if (remitoIds.length && ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name)) {
+    try {
+      const { data, error } = await _db.from('remito_public_links').select('remito_id,canal,canal_at,created_at').in('remito_id', remitoIds);
+      if (error) throw error;
+      envios = new Map((data || []).map(l => [l.remito_id, { canal: l.canal || null, at: l.canal_at || l.created_at }]));
+    } catch (e) { envios = null; }
+  }
   const GENERICOS = new Set(['', '—', 'A definir por Operaciones', 'Servicio de grúa', 'Otro']);
   rows.forEach(r => {
     const s = r.operatorServiceId ? servicios.get(r.operatorServiceId) : null;
     r.srvOrden  = s?.orden || r.nroSrv || '';
     r.srvNumero = s?.numero || '';
     r.tipoReal  = s?.tipo || (r.operatorServiceId && !GENERICOS.has(r.tipo) ? r.tipo : '');
+    if (envios) r.envio = envios.get(r.id) || null;
   });
   return rows;
 }

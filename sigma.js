@@ -1621,7 +1621,7 @@ function _rmxRenderFilters() {
   let rol = '';
   try { rol = PERFIL_USUARIO?.roles?.name || ''; } catch (_) { /* perfil todavía no cargado */ }
   const opts = id => [...($(id)?.options || [])].filter(o => o.value).map(o => ({ value: o.value, label: o.textContent.trim() }));
-  const estados = [['firmado','Firmados'],['pendiente','Pendientes'],['revisar','Por revisar'],['anulado','Anulados']];
+  const estados = [['firmado','Firmados'],['pendiente','Pendientes'],['revisar','Por revisar'],['sin_enviar','Por enviar al cliente'],['anulado','Anulados']];
   if (rol === 'administracion' || rol === 'supervision') estados.push(['cerrado_admin','Cerrados admin']);
   $('rmx-estado-host').innerHTML = F.select({ id: 'estado', label: 'Estado', value: filtroEstado === 'todos' ? '' : filtroEstado, options: estados.map(([value, label]) => ({ value, label })), allLabel: 'Todos' });
   const admin = $('filtros-admin') && $('filtros-admin').style.display !== 'none';
@@ -2446,8 +2446,6 @@ async function confirmarFirma() {
     // consecuencias y un toast chico en una esquina se pierde en la calle.
     operationFeedback('Servicio finalizado',
       `El remito ${nro2} quedó firmado y enviado.`, 'success', 2400);
-    // Envío semiautomático al cliente: se ofrece siempre al terminar.
-    setTimeout(() => ofrecerEnvioRemitoWhatsApp(nro2), 2500);
 
   } catch (err) {
     console.error('Error inesperado en confirmarFirma:', err);
@@ -6036,13 +6034,14 @@ async function actualizarKpisRemitos() {
   if ((rol !== 'administracion' && rol !== 'supervision') || typeof contarRemitosFiltrados !== 'function') { host.innerHTML = ''; return; }
   const base = { ...(window._remitosFiltros || _leerFiltrosRemitosUI()) };
   const turno = (window._rmxChipsTurno || 0) + 1; window._rmxChipsTurno = turno;
-  const [pend, rev] = await Promise.all([
+  const [pend, rev, env] = await Promise.all([
     contarRemitosFiltrados({ ...base, estado: 'pendiente' }),
     contarRemitosFiltrados({ ...base, estado: 'revisar' }),
+    contarRemitosFiltrados({ ...base, estado: 'sin_enviar' }),
   ]);
   if (turno !== window._rmxChipsTurno) return;
   const chip = (estado, n, txt, cls) => n ? `<button type="button" class="rmx-chip ${cls}${filtroEstado === estado ? ' is-active' : ''}" onclick="_rmxChip('${estado}')" title="${filtroEstado === estado ? 'Quitar filtro' : 'Ver solo estos'}"><b>${n}</b> ${txt}</button>` : '';
-  host.innerHTML = chip('pendiente', pend, pend === 1 ? 'pendiente' : 'pendientes', 'is-amber') + chip('revisar', rev, 'por revisar', 'is-red');
+  host.innerHTML = chip('pendiente', pend, pend === 1 ? 'pendiente' : 'pendientes', 'is-amber') + chip('revisar', rev, 'por revisar', 'is-red') + chip('sin_enviar', env, 'por enviar', 'is-amber');
 }
 
 // Estado en la tabla de Remitos: color solo si pide acción.
@@ -6201,16 +6200,18 @@ function renderTablaRemitos(data) {
       // Una acción visible según el caso; el resto en ⋯ (ver remitos-admin-panel-v1.js).
       const vinculado = !!r.operatorServiceId;
       const revisar = esAdmin && vinculado && esFirmado && r.addonsVersion === 2 && !['approved', 'adjusted'].includes(r.addonsReviewStatus);
+      const firmadoMs = Date.parse(r.firmadoAt || '') || 0;
+      const porEnviar = esAdmin && esFirmado && !r.envio && r.envio !== undefined && Date.now() - firmadoMs < 60 * 864e5;
       const menu = [
         esAdmin && !esPendiente(r) ? `<button type="button" class="btn-pdf-remito">Descargar PDF</button>` : '',
-        esFirmado ? `<button type="button" class="btn-whatsapp-remito">Compartir por WhatsApp</button>` : '',
+        esAdmin && esFirmado ? `<button type="button" data-rmx-action="enviar">${r.envio ? 'Reenviar al cliente' : 'Enviar al cliente'}</button>` : '',
         esAdmin && vinculado ? `<button type="button" data-rmx-action="servicio">Ir al servicio</button>` : '',
         puedeEditar && !esAnulado ? `<button type="button" data-rmx-action="corregir">Corregir datos</button>` : '',
         esAdmin && !vinculado && !esAnulado ? `<button type="button" class="is-danger" data-rmx-action="anular">Anular remito</button>` : '',
       ].filter(Boolean).join('');
       const acciones = `<div class="rmx-row-actions">
           ${!esFirmado && !esAnulado && !esCerradoAdmin && !esGestion ? `<button class="rmx-act primary btn-firmar-remito" type="button">Completar</button>` : ''}
-          ${revisar ? `<button class="rmx-act is-review" type="button" data-rmx-action="revisar">Revisar</button>` : `<button class="rmx-act btn-ver-remito" type="button">Ver</button>`}
+          ${revisar ? `<button class="rmx-act is-review" type="button" data-rmx-action="revisar">Revisar</button>` : porEnviar ? `<button class="rmx-act is-send" type="button" data-rmx-action="enviar" title="Todavía no se envió al cliente">Enviar</button>` : `<button class="rmx-act btn-ver-remito" type="button">Ver</button>`}
           ${menu ? `<details class="rmx-more"><summary aria-label="Más acciones" title="Más acciones">⋯</summary><div class="rmx-more-menu">${menu}</div></details>` : ''}
         </div>`;
 
@@ -7150,28 +7151,20 @@ function textoWhatsAppRemito(d, empresa = '', link = '') {
   return lineas.filter(Boolean).join('\n');
 }
 
-// Al firmar un remito se ofrece mandarlo al cliente por WhatsApp. El chofer
-// confirma (o carga) el número y toca Enviar: WhatsApp no permite enviar sin
-// que alguien toque "Enviar" salvo con la API de WhatsApp Business.
-async function ofrecerEnvioRemitoWhatsApp(nro) {
-  if (!nro || !navigator.onLine) return;
-  let d = null;
-  try {
-    const { data } = await _db.from('remitos').select('*, users!remitos_driver_id_fkey(full_name)').eq('nro_remito', nro).maybeSingle();
-    if (data) d = _mapRemitoRow(data);
-    if (d && typeof _rmxEnriquecerServicios === 'function') await _rmxEnriquecerServicios([d]);
-  } catch (e) { console.warn('ofrecerEnvioRemitoWhatsApp:', e); }
-  if (!d) return;
+// Enviar el remito al cliente (Operaciones / Administración): WhatsApp al
+// número del cliente, compartir el PDF o registrar que no tiene WhatsApp.
+// Queda registrado el canal (Calidad y cobros mide la cobertura).
+async function abrirEnvioRemitoCliente(d) {
+  if (!d?.id) return;
   document.getElementById('rwa-sheet')?.remove();
   const box = document.createElement('div');
   box.id = 'rwa-sheet';
   box.className = 'rwa-sheet';
   const tel = String(d.telefono || '').replace(/\D/g, '');
-  // Obligatorio: no se cierra tocando afuera; el chofer elige cómo se entrega.
-  box.innerHTML = `<div class="rwa-backdrop" aria-hidden="true"></div>
+  box.innerHTML = `<button class="rwa-backdrop" type="button" aria-label="Cerrar" data-rwa-close></button>
     <section role="dialog" aria-modal="true" aria-labelledby="rwa-title">
-      <h3 id="rwa-title">Enviá el remito al cliente</h3>
-      <p>${_rmxEsc(d.cliente || 'Cliente')} · ${_rmxEsc(d.srvOrden ? 'Servicio ' + d.srvOrden : 'Remito ' + d.nro)}</p>
+      <h3 id="rwa-title">Enviar el remito al cliente</h3>
+      <p>${_rmxEsc(d.cliente || 'Cliente')} · ${_rmxEsc(d.srvOrden ? 'Servicio ' + d.srvOrden : 'Remito ' + d.nro)}${d.envio ? ` · ya enviado (${_rmxEsc(_rmxCanal(d.envio.canal))})` : ''}</p>
       <label><span>WhatsApp del cliente</span><input id="rwa-tel" type="tel" inputmode="numeric" maxlength="13" placeholder="Ej: 1123456789" value="${_rmxEsc(tel)}"></label>
       <small id="rwa-err" hidden>Revisá el número: 10 dígitos, código de área sin 0 y número sin 15.</small>
       <button class="rwa-send" type="button" id="rwa-send">Enviar por WhatsApp</button>
@@ -7181,26 +7174,32 @@ async function ofrecerEnvioRemitoWhatsApp(nro) {
         <p>¿Confirmás que el cliente no tiene WhatsApp? Queda registrado y no recibe la encuesta ni el control de cobro.</p>
         <div><button class="rwa-skip" type="button" id="rwa-none-back">Volver</button><button class="rwa-alt" type="button" id="rwa-none-ok">Sí, no tiene</button></div>
       </div>
+      <button class="rwa-skip" type="button" data-rwa-close>Cancelar</button>
     </section>`;
   document.body.appendChild(box);
-  const cerrar = () => box.remove();
+  const listo = () => {
+    box.remove();
+    if (typeof cargarRemitos === 'function') cargarRemitos();
+    if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
+  };
+  box.querySelectorAll('[data-rwa-close]').forEach(b => b.addEventListener('click', () => box.remove()));
   box.querySelector('#rwa-none').addEventListener('click', () => { box.querySelector('#rwa-confirm').hidden = false; box.querySelector('#rwa-none').hidden = true; });
   box.querySelector('#rwa-none-back').addEventListener('click', () => { box.querySelector('#rwa-confirm').hidden = true; box.querySelector('#rwa-none').hidden = false; });
   box.querySelector('#rwa-none-ok').addEventListener('click', async e => {
     e.target.disabled = true;
-    await registrarEntregaRemito(d.id, 'sin_whatsapp');
-    cerrar();
+    if (await registrarEntregaRemito(d.id, 'sin_whatsapp')) listo(); else { e.target.disabled = false; toast('No se pudo registrar', 'error'); }
   });
   box.querySelector('#rwa-send').addEventListener('click', async () => {
     const valor = box.querySelector('#rwa-tel').value;
     if (!telefonoWhatsApp(valor)) { box.querySelector('#rwa-err').hidden = false; box.querySelector('#rwa-tel').focus(); return; }
     await compartirRemitoPorWhatsApp(d, { telefono: valor });
-    cerrar();
+    listo();
   });
   box.querySelector('#rwa-share')?.addEventListener('click', async () => {
-    if (await compartirRemitoPorWhatsApp(d, { telefono: '' })) cerrar();
+    if (await compartirRemitoPorWhatsApp(d, { telefono: '' })) listo();
   });
 }
+const _rmxCanal = c => ({ whatsapp: 'WhatsApp', compartido: 'PDF compartido', sin_whatsapp: 'sin WhatsApp' }[c] || 'link');
 
 // Con teléfono: abre el chat de ese número con el resumen (WhatsApp no deja
 // adjuntar archivos por link). Sin teléfono, en el celular comparte el PDF del
