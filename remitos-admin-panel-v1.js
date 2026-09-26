@@ -80,6 +80,30 @@ async function cargarServicio(id){
   }catch(_){return null}
 }
 
+/* Encuesta de calidad (link público /r/<token>) y estado del envío. */
+async function cargarEncuesta(id){
+  try{
+    const [sv,ln]=await Promise.all([
+      _db.from('remito_surveys').select('*').eq('remito_id',id).maybeSingle(),
+      _db.from('remito_public_links').select('created_at').eq('remito_id',id).maybeSingle(),
+    ]);
+    return{respuesta:sv.error?null:sv.data,enviado:ln.error?null:ln.data?.created_at||null};
+  }catch(_){return{respuesta:null,enviado:null}}
+}
+function renderEncuesta(){
+  const e=P.encuesta||{},sv=e.respuesta;
+  const estrellas=n=>n?`<span class="rmp-stars" aria-label="${n} de 5">${'★'.repeat(n)}<span>${'★'.repeat(5-n)}</span></span>`:'<span class="rmp-empty">Sin respuesta</span>';
+  if(sv)return seccion('Encuesta del cliente',
+    fila('General',estrellas(sv.rating_general))+
+    (sv.rating_puntualidad?fila('Puntualidad',estrellas(sv.rating_puntualidad)):'')+
+    (sv.rating_trato?fila('Trato del chofer',estrellas(sv.rating_trato)):'')+
+    (sv.recomendaria!=null?fila('Nos recomendaría',sv.recomendaria?'Sí':'<span class="rmp-warn">No</span>'):'')+
+    (sv.comentario?`<div class="rmp-quote">“${esc(sv.comentario)}”</div>`:'')+
+    fila('Respondida',esc(fecha(sv.created_at))));
+  const txt=e.enviado?`Link enviado el ${esc(fecha(e.enviado))} · todavía sin respuesta`:'Todavía no se envió al cliente';
+  return seccion('Encuesta del cliente',`<div class="rmp-survey-empty"><span class="rmp-empty">${txt}</span>${P.remito.status==='firmado'?`<button class="rmp-link" type="button" onclick="RemitoPanel.whatsapp()">Enviar por WhatsApp</button>`:''}</div>`);
+}
+
 async function open(remitoId,{editar=false,anular=false}={}){
   ensure();
   P.editing=false;P.annulling=false;P.tab='detalle';
@@ -89,7 +113,8 @@ async function open(remitoId,{editar=false,anular=false}={}){
   requestAnimationFrame(()=>$('rmp-panel').classList.add('is-open'));
   const r=typeof obtenerRemitoCompleto==='function'?await obtenerRemitoCompleto(remitoId):null;
   if(!r){$('rmp-body').innerHTML='<div class="rmp-loading is-error">No se pudo cargar el remito.</div>';return}
-  P.remito=r;P.servicio=await cargarServicio(r.operator_service_id);
+  P.remito=r;
+  [P.servicio,P.encuesta]=await Promise.all([cargarServicio(r.operator_service_id),cargarEncuesta(r.remito_id)]);
   if(editar&&isAdmin()&&r.status!=='anulado')P.editing=true;
   if(anular&&puedeAnular())P.annulling=true;
   render();
@@ -101,7 +126,7 @@ function close(){
   if(P.editing&&cambios().length&&!confirm('Tenés cambios sin guardar. ¿Descartarlos?'))return;
   panel.classList.remove('is-open');$('rmp-backdrop').hidden=true;
   setTimeout(()=>{panel.hidden=true},180);
-  P.remito=null;P.servicio=null;P.editing=false;P.annulling=false;
+  P.remito=null;P.servicio=null;P.encuesta=null;P.editing=false;P.annulling=false;
 }
 
 const puedeAnular=()=>isAdmin()&&P.remito&&P.remito.status!=='anulado'&&!P.remito.operator_service_id;
@@ -184,7 +209,7 @@ function renderDetalle(r,s){
   const fotos=Array.isArray(r.foto_urls)?r.foto_urls:[];
   const media=seccion(`Fotos y firma`,`<div class="rmp-media">${fotos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto del servicio" loading="lazy"></a>`).join('')||'<span class="rmp-empty">Sin fotos</span>'}</div>
     <div class="rmp-sign">${r.firma_imagen_url?`<img src="${esc(r.firma_imagen_url)}" alt="Firma del cliente"><span>Firmado el ${esc(fecha(r.firmado_at))}</span>`:'<span class="rmp-empty">Sin firma</span>'}</div>`);
-  return aviso+anulado+editando+`<div class="rmp-grid">${cliente}${vehiculo}</div>`+servicio+cargos+conf+obs+media+(P.annulling?renderAnular():'');
+  return aviso+anulado+editando+`<div class="rmp-grid">${cliente}${vehiculo}</div>`+servicio+cargos+conf+renderEncuesta()+obs+media+(P.annulling?renderAnular():'');
 }
 
 function renderAnular(){

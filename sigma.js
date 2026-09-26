@@ -7109,7 +7109,18 @@ function telefonoWhatsApp(tel) {
   return n.length === 10 ? '549' + n : '';
 }
 
-function textoWhatsAppRemito(d, empresa = '') {
+// Link público del remito (/r/<token>): resumen, PDF y encuesta de calidad
+// para el cliente, sin login. Si no se puede crear, el mensaje sale sin link.
+async function linkPublicoRemito(remitoId) {
+  if (!remitoId) return '';
+  try {
+    const { data, error } = await _db.rpc('create_remito_public_link_v1', { p_remito_id: Number(remitoId) });
+    if (error) throw error;
+    return data ? `${location.origin}/r/${data}` : '';
+  } catch (e) { console.warn('linkPublicoRemito:', e?.message || e); return ''; }
+}
+
+function textoWhatsAppRemito(d, empresa = '', link = '') {
   const srv = d.srvOrden || d.nroSrv;
   const extras = (parseFloat(d.peaje) || 0) + (parseFloat(d.excedente) || 0) + (parseFloat(d.otros) || 0);
   const lineas = [
@@ -7120,6 +7131,7 @@ function textoWhatsAppRemito(d, empresa = '') {
     d.origen ? (d.destino && d.destino !== d.origen ? `Recorrido: ${d.origen} → ${d.destino}` : `Dirección: ${d.origen}`) : '',
     extras > 0 ? `Cargos cobrados: $ ${extras.toLocaleString('es-AR')}${d.pago && d.pago !== '—' ? ` (${d.pago})` : ''}` : '',
     d.estado === 'firmado' ? 'Remito firmado digitalmente.' : '',
+    link ? `\nDescargá tu remito y contanos cómo te atendimos:\n${link}` : '',
     'Gracias por confiar en nosotros.',
   ];
   return lineas.filter(Boolean).join('\n');
@@ -7175,7 +7187,8 @@ async function compartirRemitoPorWhatsApp(tr, opts = {}) {
   if (!d) return;
   let empresa = '';
   try { empresa = (await window.CompanyDocuments?.load?.())?.legal_name || ''; } catch (_) {}
-  const texto = textoWhatsAppRemito(d, empresa);
+  const link = d.estado === 'anulado' ? '' : await linkPublicoRemito(d.id);
+  const texto = textoWhatsAppRemito(d, empresa, link);
   const numero = telefonoWhatsApp(opts.telefono ?? d.telefono);
 
   if (!numero && !opts.soloTexto && navigator.canShare && window.RemitoPdf) {
@@ -7192,27 +7205,6 @@ async function compartirRemitoPorWhatsApp(tr, opts = {}) {
   }
   window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
   return true;
-}
-
-// Código de verificación del remito (lo usan el PDF y su QR: no cambiar el formato).
-async function _remitoHash(d) {
-  try {
-    const payload = [d.nro, d.patente, d.createdAt || '', d.firmadoAt || '', d.km || '', String(d.peaje||0), String(d.excedente||0), String(d.otros||0)].join('|');
-    const buf = new TextEncoder().encode(payload);
-    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-    const hex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
-    return hex.slice(0, 16).toUpperCase();
-  } catch(_) { return ''; }
-}
-
-function _qrDataURL(text) {
-  try {
-    if (typeof qrcode !== 'function') return '';
-    const qr = qrcode(0, 'M');
-    qr.addData(text);
-    qr.make();
-    return qr.createDataURL(4, 2);
-  } catch(_) { return ''; }
 }
 
 async function descargarRemitoPDF(tr) {

@@ -8,7 +8,7 @@
    · Tipo de servicio real (del Servicio) cuando se conoce.
    · Cargos: solo las líneas con importe, total, medio de pago y, si
      Administración ajustó los cargos, el importe aprobado.
-   · Verificación: mismo código y QR que la versión anterior (_remitoHash),
+   · Verificación: mismo código y QR que la versión anterior (hashRemito),
      así los PDF ya entregados siguen verificando igual.
 
    API: RemitoPdf.build(d) → jsPDF · RemitoPdf.blob(d) → Blob ·
@@ -26,6 +26,17 @@ const pad=n=>String(n).padStart(2,'0');
 function fechaHora(iso){if(!iso)return'—';const d=new Date(iso);if(isNaN(d))return'—';return`${pad(d.getDate())}/${pad(d.getMonth()+1)}/${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`}
 const tipoDe=d=>d.tipoReal||(GENERICOS.has(String(d.tipo||'').trim())?'':d.tipo);
 const srvDe=d=>d.srvOrden||d.nroSrv||'';
+
+/* Código de verificación del remito: mismo cálculo que la versión anterior
+   (sigma.js), así los PDF ya entregados siguen verificando. No cambiar. */
+async function hashRemito(d){
+  try{
+    const payload=[d.nro,d.patente,d.createdAt||'',d.firmadoAt||'',d.km||'',String(d.peaje||0),String(d.excedente||0),String(d.otros||0)].join('|');
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(payload));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16).toUpperCase();
+  }catch(_){return''}
+}
+function qrDataURL(text){try{if(typeof qrcode!=='function')return'';const qr=qrcode(0,'M');qr.addData(text);qr.make();return qr.createDataURL(4,2)}catch(_){return''}}
 
 function ctor(){const C=window.jspdf?.jsPDF||window.jsPDF;if(!C)throw new Error('No se cargó la librería de PDF. Recargá la página e intentá de nuevo.');return C}
 
@@ -48,9 +59,9 @@ async function build(d){
   if(!d)throw new Error('No hay datos para el PDF');
   const J=ctor(),doc=new J({unit:'mm',format:'a4',orientation:'portrait',compress:true});
   let empresa={};try{empresa=await window.CompanyDocuments?.load?.()||{}}catch(_){}
-  const hash=typeof _remitoHash==='function'?await _remitoHash(d):'';
+  const hash=await hashRemito(d);
   const codigo=hash?`${hash.slice(0,4)}-${hash.slice(4,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}`:'';
-  const qrSrc=typeof _qrDataURL==='function'&&hash?_qrDataURL(`SIGMA-REMITO|${d.nro}|${d.patente}|${d.firmadoAt||''}|${hash}`):'';
+  const qrSrc=hash?qrDataURL(`SIGMA-REMITO|${d.nro}|${d.patente}|${d.firmadoAt||''}|${hash}`):'';
   const fotosSrc=(d.foto_urls||d.fotos||[]).slice(0,4).map(urlDe);
   const [qr,firma,...fotos]=await Promise.all([imagen(qrSrc,{png:true,max:400}),imagen(urlDe(d.firma_imagen_url||d.firmaUrl),{png:true}),...fotosSrc.map(u=>imagen(u,{max:520}))]);
 
@@ -174,5 +185,5 @@ function fileName(d){const base=clean(srvDe(d)||d.nro||'remito').replace(/[^\w.-
 async function blob(d){return(await build(d)).output('blob')}
 async function download(d){const doc=await build(d);doc.save(fileName(d));return true}
 
-window.RemitoPdf={build,blob,download,fileName,_clean:clean};
+window.RemitoPdf={build,blob,download,fileName,hash:hashRemito,_clean:clean};
 })();

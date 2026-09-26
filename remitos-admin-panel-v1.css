@@ -92,3 +92,8 @@
 .rmp-panel .rmx-state.is-review{color:var(--red)}.rmp-panel .rmx-state.is-review::before{background:var(--red)}
 .rmp-panel .rmx-state.is-void{color:var(--muted);text-decoration:line-through}
 @media(max-width:640px){.rmp-panel{width:100vw;border-left:0}.rmp-grid{grid-template-columns:1fr}.rmp-head,.rmp-body,.rmp-foot{padding-left:16px;padding-right:16px}.rmp-tabs{padding:0 16px}}
+.rmp-stars{color:var(--amber);letter-spacing:1px}
+.rmp-stars span{color:var(--border2)}
+.rmp-quote{margin:6px 0;padding:8px 10px;border-left:2px solid var(--border2);color:var(--muted2);font-size:12px;font-style:italic;white-space:pre-wrap}
+.rmp-survey-empty{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
+.rmp-survey-empty .rmp-link{margin-left:0}
