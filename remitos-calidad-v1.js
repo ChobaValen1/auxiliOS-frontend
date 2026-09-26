@@ -24,6 +24,15 @@ const S={view:'lista',periodo:{mode:'mes',mes:mesActual},data:null,loading:false
 
 function estrellas(v){if(v==null)return'<span class="rqc-muted">—</span>';const n=Math.round(Number(v));return`<span class="rqc-stars" aria-label="${prom(v)} de 5">${'★'.repeat(n)}<i>${'★'.repeat(5-n)}</i></span>`}
 
+/* Desglose completo de una respuesta: todas las preguntas, respondidas o no. */
+function desglose(x){
+  const nr='<span class="rqc-muted">No respondió</span>';
+  const est=v=>v?`${estrellas(v)} <span class="rqc-num">${v}</span>`:nr;
+  const cobro=x.cobro_confirmado===true?'Confirmado':x.cobro_confirmado===false?`<span class="rqc-bad">No confirmado${x.cobrado!=null?` · remito ${money(x.cobrado)}`:''}${x.cobro_informado!=null?` · cliente dice ${money(x.cobro_informado)}`:''}</span>`:nr;
+  const item=(k,v)=>`<div><span>${k}</span><b>${v}</b></div>`;
+  return`<div class="rqc-breakdown">${item('General',est(x.rating_general))}${item('Puntualidad',est(x.rating_puntualidad))}${item('Trato',est(x.rating_trato))}${item('¿Recomendaría?',x.recomendaria==null?nr:x.recomendaria?'Sí':'<span class="rqc-bad">No</span>')}${item('Cobro en el lugar',cobro)}</div>`;
+}
+
 function syncRole(){
   const tabs=$('rmx-views');if(!tabs)return;
   tabs.hidden=!gestion();
@@ -71,7 +80,7 @@ function render(){
     const tags=[a.cobro_mal?`<span class="rqc-tag is-alert">Cobro no confirmado · remito ${money(a.cobrado)}${a.cobro_informado!=null?` · cliente dice ${money(a.cobro_informado)}`:''}</span>`:'',a.mala?`<span class="rqc-tag is-alert">${estrellas(a.rating_general)} calificación baja</span>`:''].join('');
     return`<article class="rqc-alert${a.revisado_at?' is-done':''}">
       <div class="rqc-alert-main"><div class="rqc-alert-head"><b>Servicio ${esc(a.nro_servicio||a.nro_remito)}</b><span>${esc(a.cliente||'—')} · ${esc(a.chofer)} · ${fecha(a.firmado_at)}</span></div>
-      <div class="rqc-tags">${tags}</div>${a.comentario?`<p class="rqc-quote">“${esc(a.comentario)}”</p>`:''}
+      <div class="rqc-tags">${tags}</div>${desglose(a)}${a.comentario?`<p class="rqc-quote">“${esc(a.comentario)}”</p>`:''}
       ${a.revisado_at?`<p class="rqc-done">Revisado el ${fecha(a.revisado_at)}${a.revisado_nota?` · ${esc(a.revisado_nota)}`:''}</p>`:''}</div>
       <div class="rqc-alert-actions"><button class="rqc-btn" type="button" onclick="abrirDetalleRemitoAdmin(${Number(a.remito_id)},{tab:'encuesta'})">Ver remito</button>${!a.revisado_at&&role()==='administracion'?`<button class="rqc-btn primary" type="button" onclick="RemitosCalidad.revisar(${Number(a.survey_id)})">Marcar revisado</button>`:''}</div>
     </article>`;
@@ -84,7 +93,7 @@ function render(){
     ${ch.length?ch.map(c=>`<tr><td>${esc(c.chofer)}</td><td class="n">${c.remitos}</td><td class="n">${c.enviados}<small> ${pct(c.enviados,c.remitos)}</small>${c.sin_whatsapp?`<small title="Sin WhatsApp"> · ${c.sin_whatsapp} s/WA</small>`:''}</td><td class="n">${c.respondidas}</td><td>${c.promedio_general!=null?`${estrellas(c.promedio_general)} <span class="rqc-num${c.promedio_general<3.5?' is-alert':''}">${prom(c.promedio_general)}</span>`:'<span class="rqc-muted">Sin respuestas</span>'}</td><td class="n">${prom(c.promedio_trato)}</td><td class="n">${prom(c.promedio_puntualidad)}</td><td class="n">${money(c.cobrado_total)}</td><td class="n">${c.cobros_no_confirmados?`<span class="rqc-count is-alert">${c.cobros_no_confirmados}</span>`:'<span class="rqc-muted">0</span>'}</td></tr>`).join(''):'<tr><td colspan="9" class="rqc-empty-line">Sin remitos firmados en el período.</td></tr>'}
   </tbody></table></div></section>`;
   const com=(d.comentarios||[]);
-  const comentarios=com.length?`<section class="rqc-sec"><h3>Comentarios recientes</h3>${com.map(c=>`<div class="rqc-comment"><div>${estrellas(c.rating_general)} <b>Servicio ${esc(c.nro_servicio||'—')}</b> <span>${esc(c.chofer)} · ${fecha(c.respondida_at)}</span></div><p>${esc(c.comentario)}</p><button class="rqc-link" type="button" onclick="abrirDetalleRemitoAdmin(${Number(c.remito_id)},{tab:'encuesta'})">Ver remito</button></div>`).join('')}</section>`:'';
+  const comentarios=com.length?`<section class="rqc-sec"><h3>Respuestas recientes <span class="rqc-count">${com.length}</span></h3>${com.map(c=>`<div class="rqc-comment"><div class="rqc-comment-head"><b>Servicio ${esc(c.nro_servicio||'—')}</b> <span>${esc(c.chofer)} · ${fecha(c.respondida_at)}</span><button class="rqc-link" type="button" onclick="abrirDetalleRemitoAdmin(${Number(c.remito_id)},{tab:'encuesta'})">Ver remito</button></div>${desglose(c)}${c.comentario?`<p class="rqc-quote">“${esc(c.comentario)}”</p>`:''}</div>`).join('')}</section>`:'';
   box.innerHTML=filtros+tiles+pocoEnvio+seccionAlertas+tabla+comentarios;
   bind();
   const badge=$('rmx-views-badge');if(badge){badge.textContent=t.alertas_pendientes?String(t.alertas_pendientes):'';badge.hidden=!t.alertas_pendientes}

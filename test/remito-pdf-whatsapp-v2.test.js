@@ -141,3 +141,17 @@ test('panel del remito: pestañas Detalle | Encuesta | Cambios',()=>{
   assert.doesNotMatch(slice(panel,'function renderDetalle(','function renderAnular('),/renderEncuesta\(\)/,'la encuesta ya no está dentro de Detalle');
   assert.match(read('remitos-calidad-v1.js'),/abrirDetalleRemitoAdmin\(\$\{Number\(a\.remito_id\)\},\{tab:'encuesta'\}\)/);
 });
+
+test('encuesta: desglose completo de las respuestas en el panel y en Calidad y cobros',()=>{
+  const panel=read('remitos-admin-panel-v1.js');
+  for(const k of ['Calificación general','Puntualidad','Trato del chofer','¿Nos recomendaría?','Cobro en el lugar','Comentario'])assert.ok(panel.includes(`fila('${k}'`),`panel muestra ${k}`);
+  assert.match(panel,/No respondió/);
+  const cal=read('remitos-calidad-v1.js');
+  assert.match(cal,/function desglose\(x\)/);
+  assert.match(cal,/\$\{desglose\(a\)\}/);
+  assert.match(cal,/\$\{desglose\(c\)\}/);
+  assert.match(cal,/Respuestas recientes/);
+  const mig=read('migrations/20260926170000_remito_quality_summary_breakdown_v1.sql');
+  assert.match(mig,/'rating_puntualidad', a\.rating_puntualidad/);
+  assert.match(mig,/where b\.survey_id is not null order by b\.created_at desc limit 50/);
+});

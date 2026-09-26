@@ -75,3 +75,13 @@
 .rqc-modal-actions{display:flex;justify-content:flex-end;gap:8px}
 .rqc-modal .rqc-btn{height:34px;padding:0 14px;border:1px solid var(--border2);border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .rqc-modal .rqc-btn.primary{border-color:var(--amber);background:var(--amber);color:#111}
+.rmx-calidad .rqc-breakdown{display:grid;grid-template-columns:repeat(5,minmax(0,auto));gap:4px 18px;justify-content:start;margin:2px 0;font-size:11px}
+.rmx-calidad .rqc-breakdown div{display:grid;gap:1px}
+.rmx-calidad .rqc-breakdown>div>span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}
+.rmx-calidad .rqc-breakdown b{font-weight:600;color:var(--text)}
+.rmx-calidad .rqc-breakdown b .rqc-muted{font-weight:400;font-style:italic;text-transform:none;letter-spacing:0;font-size:11px}
+.rmx-calidad .rqc-bad{color:var(--red);font-weight:700;text-transform:none;letter-spacing:0;font-size:11px}
+.rmx-calidad .rqc-breakdown .rqc-num{font-size:11px;letter-spacing:0;color:var(--muted2);text-transform:none}
+.rmx-calidad .rqc-comment-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.rmx-calidad .rqc-comment-head .rqc-link{margin-left:auto}
+@media(max-width:900px){.rmx-calidad .rqc-breakdown{grid-template-columns:repeat(2,minmax(0,1fr))}}

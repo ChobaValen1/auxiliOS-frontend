@@ -103,3 +103,5 @@
 .rmp-tab-note.is-stars{color:var(--amber);letter-spacing:0}
 .rmp-tab-note.is-stars.is-alert{color:var(--red)}
 .rmp-survey-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.rmp-stars-num{margin-left:4px;color:var(--muted2);font-family:'DM Mono',monospace;font-size:11px}
+.rmp-quote-inline{color:var(--muted2);font-style:italic;font-weight:400;white-space:pre-wrap}

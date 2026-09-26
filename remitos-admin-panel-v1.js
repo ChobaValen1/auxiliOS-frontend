@@ -94,16 +94,19 @@ async function cargarEncuesta(id){
 function renderEncuesta(){
   const e=P.encuesta||{},sv=e.respuesta;
   const estrellas=n=>n?`<span class="rmp-stars" aria-label="${n} de 5">${'★'.repeat(n)}<span>${'★'.repeat(5-n)}</span></span>`:'<span class="rmp-empty">Sin respuesta</span>';
+  // Desglose completo: todas las preguntas, respondidas o no.
+  const nr='<span class="rmp-empty">No respondió</span>';
+  const est=v=>v?`${estrellas(v)} <span class="rmp-stars-num">${v}/5</span>`:nr;
   if(sv)return seccion('Encuesta del cliente',
-    fila('General',estrellas(sv.rating_general))+
-    (sv.rating_puntualidad?fila('Puntualidad',estrellas(sv.rating_puntualidad)):'')+
-    (sv.rating_trato?fila('Trato del chofer',estrellas(sv.rating_trato)):'')+
-    (sv.recomendaria!=null?fila('Nos recomendaría',sv.recomendaria?'Sí':'<span class="rmp-warn">No</span>'):'')+
-    (sv.cobro_confirmado===true?fila('Cobro en el lugar','Confirmado por el cliente'):sv.cobro_confirmado===false?fila('Cobro en el lugar',`<span class="rmp-bad">No confirmado · el remito dice ${money(P.remito.imp_total_extras)}${sv.cobro_informado!=null?` · el cliente dice ${money(sv.cobro_informado)}`:''}</span>`):'')+
+    fila('Calificación general',est(sv.rating_general))+
+    fila('Puntualidad',est(sv.rating_puntualidad))+
+    fila('Trato del chofer',est(sv.rating_trato))+
+    fila('¿Nos recomendaría?',sv.recomendaria==null?nr:sv.recomendaria?'Sí':'<span class="rmp-warn">No</span>')+
+    fila('Cobro en el lugar',sv.cobro_confirmado===true?`Confirmado por el cliente · ${money(P.remito.imp_total_extras)}`:sv.cobro_confirmado===false?`<span class="rmp-bad">No confirmado · el remito dice ${money(P.remito.imp_total_extras)}${sv.cobro_informado!=null?` · el cliente dice ${money(sv.cobro_informado)}`:''}</span>`:nr)+
+    fila('Comentario',sv.comentario?`<span class="rmp-quote-inline">“${esc(sv.comentario)}”</span>`:'<span class="rmp-empty">Sin comentario</span>')+
+    fila('Respondida',esc(fecha(sv.created_at)))+
     (sv.revisado_at?fila('Revisado',`${esc(fecha(sv.revisado_at))}${sv.revisado_nota?` · ${esc(sv.revisado_nota)}`:''}`):'')+
-    (!sv.revisado_at&&isAdmin()&&(sv.rating_general<=2||sv.cobro_confirmado===false)&&window.RemitosCalidad?.revisar?`<div class="rmp-survey-actions"><button class="rmp-btn primary" type="button" onclick="RemitosCalidad.revisar(${Number(sv.survey_id)},()=>RemitoPanel.open(${Number(P.remito.remito_id)},{tab:'encuesta'}))">Marcar revisado</button></div>`:'')+
-    (sv.comentario?`<div class="rmp-quote">“${esc(sv.comentario)}”</div>`:'')+
-    fila('Respondida',esc(fecha(sv.created_at))));
+    (!sv.revisado_at&&isAdmin()&&(sv.rating_general<=2||sv.cobro_confirmado===false)&&window.RemitosCalidad?.revisar?`<div class="rmp-survey-actions"><button class="rmp-btn primary" type="button" onclick="RemitosCalidad.revisar(${Number(sv.survey_id)},()=>RemitoPanel.open(${Number(P.remito.remito_id)},{tab:'encuesta'}))">Marcar revisado</button></div>`:''));
   const txt=e.enviado?`Link enviado el ${esc(fecha(e.enviado))} · todavía sin respuesta`:'Todavía no se envió al cliente';
   return seccion('Encuesta del cliente',`<div class="rmp-survey-empty"><span class="rmp-empty">${txt}</span>${P.remito.status==='firmado'?`<button class="rmp-link" type="button" onclick="RemitoPanel.whatsapp()">Enviar por WhatsApp</button>`:''}</div>`);
 }
