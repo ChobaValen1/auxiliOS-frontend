@@ -115,9 +115,8 @@ function render(){
     </dl>
     ${extras>0?`<div class="total"><span>Cargos cobrados</span><span>${money(extras)}</span></div>`:''}
   </section>
-  <button class="btn" id="pdf" type="button">Descargar remito (PDF)</button>
-  <div style="height:12px"></div>
   <section class="card survey" id="survey"></section>
+  <button class="btn secondary" id="pdf" type="button">Descargar remito (PDF)</button>
   <footer>${esc([e.legal_name,e.address,e.contact].filter(Boolean).join(' · '))}</footer>`;
   document.getElementById('pdf').addEventListener('click',descargar);
   renderEncuesta();
@@ -125,6 +124,8 @@ function render(){
 
 function renderEncuesta(){
   const box=document.getElementById('survey');if(!box)return;
+  const pdf=document.getElementById('pdf');
+  if(pdf)pdf.classList.toggle('secondary',!!data.survey_open&&!data.survey?.submitted&&!S.done);
   if(data.survey?.submitted||S.done){box.innerHTML=`<div class="thanks"><div class="big">🙌</div><h3>¡Gracias por tu opinión!</h3><p>Nos ayuda a mejorar cada servicio.</p></div>`;return}
   if(!data.survey_open){box.hidden=true;return}
   const estrellas=(k)=>`<div class="stars" role="radiogroup">${[1,2,3,4,5].map(n=>`<button type="button" role="radio" aria-checked="${S[k]===n}" aria-label="${n} de 5 · ${ETIQUETAS[n]}" data-k="${k}" data-v="${n}" class="${S[k]>=n?'on':''}">★</button>`).join('')}</div><div class="stars-hint">${S[k]?ETIQUETAS[S[k]]:''}</div>`;
