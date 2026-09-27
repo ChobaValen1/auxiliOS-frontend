@@ -147,15 +147,21 @@
      queda una franja vacía arriba de la sección. */
   function aplicarVisibilidad() {
     var algoEnLaBarra = false;
+    // Dos secciones pueden compartir la misma barra de filtros (Resumen y
+    // Tendencia usan prestadora y base): se muestra si la usa alguna visible.
+    var barras = {};
     secciones.forEach(function (s) {
       var visible = esVisible(s);
       var cont = document.getElementById('dashx-sec-' + s.id);
       if (cont) cont.hidden = !visible;
       if (s.filtros) {
-        var fil = document.getElementById(s.filtros);
-        if (fil) fil.hidden = !visible;
+        barras[s.filtros] = barras[s.filtros] || visible;
         if (visible) algoEnLaBarra = true;
       }
+    });
+    Object.keys(barras).forEach(function (id) {
+      var fil = document.getElementById(id);
+      if (fil) fil.hidden = !barras[id];
     });
 
     var usaPeriodo = secciones.some(function (s) {

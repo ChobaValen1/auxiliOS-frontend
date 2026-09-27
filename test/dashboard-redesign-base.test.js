@@ -175,7 +175,9 @@ test('los filtros propios de una sección se esconden con ella', () => {
   // Viven en la barra de arriba (fuera del cuerpo, para que el overlay de carga
   // no los tape), así que esconder el cuerpo no alcanza para esconderlos.
   assert.match(shell, /if \(s\.filtros\)/);
-  assert.match(shell, /fil\.hidden = !visible/);
+  // Resumen y Tendencia comparten la barra: se muestra si la usa alguna visible.
+  assert.match(shell, /barras\[s\.filtros\] = barras\[s\.filtros\] \|\| visible/);
+  assert.match(shell, /fil\.hidden = !barras\[id\]/);
   const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(ops, /filtros: 'dashx-ops-filtros'/);
   // Arranca oculto: la pestaña inicial es Facturación, que no los usa.
@@ -286,7 +288,7 @@ test('las barras de la tabla no empujan una columna fuera del recuadro', () => {
 
 /* ── una sola fila de pestañas ──────────────────────────────────────────── */
 
-test('las secciones van en una sola fila, y son tres', () => {
+test('las secciones van en una sola fila, y son cuatro', () => {
   /* Había dos filas: Análisis/Alertas arriba y las secciones abajo. La de
      arriba tenía una sola opción real, porque Alertas no es una sección del
      panel: no tiene período ni filtros y no se compara con las otras. */
@@ -294,9 +296,9 @@ test('las secciones van en una sola fila, y son tres', () => {
   assert.doesNotMatch(index, /dashCambiarVista\('alertas'/);
   assert.match(index, /<div class="dashx-barra-secciones">/);
   const barra = index.match(/<div class="dashx-barra-secciones">([\s\S]*?)<!-- SECCIÓN 1/)[1];
-  ['facturacion', 'operaciones', 'flota'].forEach(sec =>
+  ['facturacion', 'tendencia', 'operaciones', 'flota'].forEach(sec =>
     assert.ok(barra.includes(`data-sec="${sec}"`), `falta la sección ${sec}`));
-  assert.equal((barra.match(/data-sec=/g) || []).length, 3, 'tienen que ser tres secciones');
+  assert.equal((barra.match(/data-sec=/g) || []).length, 4, 'tienen que ser cuatro secciones');
   /* Y nada más: Alertas se saca de acá. La campanita de la barra de arriba
      está fija y a la vista en todas las pantallas, así que un botón propio en
      el panel era el mismo acceso dos veces. */
@@ -368,7 +370,7 @@ test('el período desaparece en las secciones que no lo usan', () => {
 
 test('cada grupo de filtros se muestra sólo con su sección', () => {
   const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8').replace(/\r\n/g,'\n');
-  assert.match(shell, /if \(fil\) fil\.hidden = !visible;/);
+  assert.match(shell, /if \(fil\) fil\.hidden = !barras\[id\];/);
   // Prestadora y base son de Resumen; camión y chofer, de Operaciones.
   const fact = fs.readFileSync('dashboard-resumen-v1.js', 'utf8').replace(/\r\n/g,'\n');
   const ops  = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');

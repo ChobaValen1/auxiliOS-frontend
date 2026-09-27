@@ -14,14 +14,14 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="auxilios-emoji-mono-v1.css?v=iconos-mono-v162-20260927">
-<link rel="stylesheet" href="sigma.css?v=iconos-mono-v162-20260927">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=iconos-mono-v162-20260927">
-<link rel="stylesheet" href="dashboard-v1.css?v=iconos-mono-v162-20260927">
-<link rel="stylesheet" href="dashboard-resumen-v1.css?v=iconos-mono-v162-20260927">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=iconos-mono-v162-20260927">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=iconos-mono-v162-20260927">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=iconos-mono-v162-20260927">
+<link rel="stylesheet" href="auxilios-emoji-mono-v1.css?v=panel-tendencia-v163-20260927">
+<link rel="stylesheet" href="sigma.css?v=panel-tendencia-v163-20260927">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=panel-tendencia-v163-20260927">
+<link rel="stylesheet" href="dashboard-v1.css?v=panel-tendencia-v163-20260927">
+<link rel="stylesheet" href="dashboard-resumen-v1.css?v=panel-tendencia-v163-20260927">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=panel-tendencia-v163-20260927">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=panel-tendencia-v163-20260927">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=panel-tendencia-v163-20260927">
 
 <!-- Service Worker -->
 <script>
@@ -41,19 +41,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="supabase.js?v=iconos-mono-v162-20260927" defer></script>
+<script src="config.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="supabase.js?v=panel-tendencia-v163-20260927" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=iconos-mono-v162-20260927" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=iconos-mono-v162-20260927" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="sigma.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="dashboard-charts-v1.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="dashboard-shell-v1.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="dashboard-resumen-v1.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="dashboard-operaciones-v1.js?v=iconos-mono-v162-20260927" defer></script>
-<script src="dashboard-flota-v1.js?v=iconos-mono-v162-20260927" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=panel-tendencia-v163-20260927" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=panel-tendencia-v163-20260927" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="sigma.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="dashboard-charts-v1.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="dashboard-shell-v1.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="dashboard-resumen-v1.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="dashboard-tendencia-v1.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="dashboard-operaciones-v1.js?v=panel-tendencia-v163-20260927" defer></script>
+<script src="dashboard-flota-v1.js?v=panel-tendencia-v163-20260927" defer></script>
 </head>
 <body>
 
@@ -771,6 +772,7 @@
         <div class="dashx-barra-secciones">
           <div class="filter-tabs dashx-tabs" id="dashx-tabs">
             <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">Resumen</div>
+            <div class="ftab" data-sec="tendencia" onclick="dashxSeccion('tendencia',this)">Tendencia</div>
             <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">Operaciones</div>
             <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">Salud de la flota</div>
           </div>
@@ -816,10 +818,13 @@
             </div>
 
             <div class="rsm-fila rsm-fila-evol">
-              <section class="rsm-card">
-                <header class="rsm-card-head">
-                  <h3>Evolución de facturado</h3>
-                  <p id="rsm-evol-sub">Línea punteada: período anterior</p>
+              <section class="rsm-card rsm-evol-card" id="rsm-evol-card" role="link" tabindex="0" aria-label="Ver la tendencia completa" onclick="dashxIrATendencia()" onkeydown="if(event.key==='Enter'){dashxIrATendencia()}">
+                <header class="rsm-card-head rsm-card-head-link">
+                  <div>
+                    <h3>Evolución de facturado</h3>
+                    <p id="rsm-evol-sub">Línea punteada: período anterior</p>
+                  </div>
+                  <span class="rsm-link">Ver tendencia →</span>
                 </header>
                 <div class="rsm-evol"><canvas id="rsm-evol-canvas" role="img" aria-label="Facturado por día, período actual y anterior"></canvas></div>
               </section>
@@ -839,6 +844,52 @@
               </header>
               <div id="dashx-fact-empresas"></div>
             </section>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 1b · TENDENCIA (dashboard-tendencia-v1.js) -->
+        <div class="dashx-body" id="dashx-sec-tendencia" hidden>
+          <div class="dashx-loading" id="dashx-loading-tendencia"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="rsm tnd">
+            <section class="rsm-card">
+              <header class="rsm-card-head tnd-head">
+                <div>
+                  <h3 id="tnd-titulo">Evolución temporal</h3>
+                  <p id="tnd-sub">Línea punteada: período anterior · Facturado</p>
+                </div>
+                <div class="tnd-segs">
+                  <div class="tnd-seg" role="group" aria-label="Métrica">
+                    <button type="button" data-tnd-metrica="facturado" aria-pressed="true">Facturado</button>
+                    <button type="button" data-tnd-metrica="servicios" aria-pressed="false">Servicios</button>
+                    <button type="button" data-tnd-metrica="km_reales" aria-pressed="false">Km reales</button>
+                  </div>
+                  <div class="tnd-seg" role="group" aria-label="Agrupar por">
+                    <button type="button" data-tnd-escala="dia" aria-pressed="true">Día</button>
+                    <button type="button" data-tnd-escala="semana" aria-pressed="false">Semana</button>
+                  </div>
+                </div>
+              </header>
+              <div class="tnd-linea"><canvas id="tnd-linea" role="img" aria-label="Evolución del período actual y del anterior"></canvas></div>
+            </section>
+
+            <div class="rsm-fila rsm-fila-evol">
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3 id="tnd-barras-titulo">Facturación por prestadora</h3>
+                  <p id="tnd-barras-sub">Composición apilada de cada día</p>
+                </header>
+                <div class="tnd-barras"><canvas id="tnd-barras" role="img" aria-label="Composición por prestadora"></canvas>
+                  <div class="rsm-vacio tnd-barras-vacio" id="tnd-barras-vacio" hidden>Sin datos en el período.</div></div>
+                <div class="tnd-leyenda" id="tnd-barras-leyenda"></div>
+              </section>
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Comparación de períodos</h3>
+                  <p id="tnd-comp-sub">Período actual vs. período anterior</p>
+                </header>
+                <div class="tnd-comp" id="tnd-comparacion"></div>
+              </section>
+            </div>
           </div>
         </div>
 

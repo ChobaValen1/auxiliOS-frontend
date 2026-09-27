@@ -2897,8 +2897,13 @@ function _cargarViewAnalitica() {
 const _DASHX_TITULOS = {
   facturacion: ['Resumen', 'Operación, facturación y cobertura de la flota'],
   operaciones: ['Operaciones', 'Kilómetros, combustible y rendimiento por camión y chofer'],
+  tendencia: ['Tendencia', 'Evolución del período y comparación con el anterior'],
   flota: ['Salud de la flota', 'Vencimientos, services y estado de cada camión hoy']
 };
+function dashxIrATendencia() {
+  dashxSeccion('tendencia', document.querySelector('#dashx-tabs .ftab[data-sec="tendencia"]'));
+  document.getElementById('dashx-titulo')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
 function dashxSeccion(seccion, el) {
   if (el) {
     el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));

@@ -338,3 +338,66 @@
   #screen-dashboard .rsm-tipo { grid-template-columns: 10px 1fr auto 40px; }
   #screen-dashboard .rsm-tipo-det { display: none; }
 }
+
+/* Resumen → Tendencia: la evolución de Resumen es la vista previa y abre la
+   pestaña completa. */
+#screen-dashboard .rsm-evol-card { cursor: pointer; transition: border-color .15s ease; }
+#screen-dashboard .rsm-evol-card:hover,
+#screen-dashboard .rsm-evol-card:focus-visible { border-color: color-mix(in srgb, var(--amber) 45%, var(--border)); outline: none; }
+#screen-dashboard .rsm-card-head-link { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+#screen-dashboard .rsm-link { color: var(--amber); font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+/* ── Pestaña TENDENCIA (dashboard-tendencia-v1.js) ── */
+#screen-dashboard .tnd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+#screen-dashboard .tnd-segs { display: flex; gap: 8px; flex-wrap: wrap; }
+#screen-dashboard .tnd-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border2);
+  border-radius: 9px;
+  background: var(--bg);
+}
+#screen-dashboard .tnd-seg button {
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#screen-dashboard .tnd-seg button:hover { color: var(--text); }
+#screen-dashboard .tnd-seg button[aria-pressed="true"] { background: var(--amber); color: #111; }
+#screen-dashboard .tnd-seg button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+#screen-dashboard .tnd-linea { position: relative; height: 240px; }
+#screen-dashboard .tnd-barras { position: relative; height: 230px; }
+#screen-dashboard .tnd-barras-vacio { position: absolute; inset: 0; display: grid; place-items: center; }
+#screen-dashboard .tnd-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 11px; color: var(--muted2); }
+#screen-dashboard .tnd-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+#screen-dashboard .tnd-leyenda i { width: 9px; height: 9px; border-radius: 2px; }
+#screen-dashboard .tnd-comp { display: grid; }
+#screen-dashboard .tnd-comp-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 76px;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+#screen-dashboard .tnd-comp-fila:last-child { border-bottom: 0; }
+#screen-dashboard .tnd-comp-fila div { display: grid; gap: 2px; min-width: 0; }
+#screen-dashboard .tnd-comp-fila b { color: var(--text); font-size: 12px; }
+#screen-dashboard .tnd-comp-fila span:not(.rsm-delta) { color: var(--muted2); font-size: 10px; }
+#screen-dashboard .tnd-comp-fila strong { color: var(--text); font-size: 13px; font-weight: 800; white-space: nowrap; text-align: right; }
+#screen-dashboard .tnd-comp-fila .rsm-delta { justify-self: end; }
+@media (max-width: 600px) {
+  #screen-dashboard .tnd-linea { height: 210px; }
+  #screen-dashboard .tnd-barras { height: 200px; }
+}
+@media (max-width: 600px) {
+  #screen-dashboard .dashx-barra-secciones .dashx-tabs { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  #screen-dashboard .dashx-barra-secciones .dashx-tabs .ftab { flex: 0 0 auto; white-space: nowrap; }
+}
