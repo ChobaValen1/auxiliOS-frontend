@@ -3,10 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const MODULOS = [
-  'dashboard-facturacion-v1.js',
+  'dashboard-resumen-v1.js',
   'dashboard-operaciones-v1.js',
   'dashboard-flota-v1.js',
-  'dashboard-mapa-v1.js',
 ];
 
 // Quita comentarios para no confundir una explicación con una llamada real.
@@ -46,8 +45,8 @@ test('las RPC que invoca el front son las que existen en las migraciones', () =>
   MODULOS.forEach(ruta => {
     const codigo = soloCodigo(fs.readFileSync(ruta, 'utf8').replace(/\r\n/g,'\n'));
     for (const m of codigo.matchAll(/\.rpc\(\s*'([a-z0-9_]+)'/g)) llamadas.add(m[1]);
-    // Facturación guarda el nombre en una constante.
-    for (const m of codigo.matchAll(/RPC\s*=\s*'([a-z0-9_]+)'/g)) llamadas.add(m[1]);
+    // Resumen guarda los nombres en constantes (RPC_FACT, RPC_RES).
+    for (const m of codigo.matchAll(/RPC\w*\s*=\s*'([a-z0-9_]+)'/g)) llamadas.add(m[1]);
   });
 
   const sql = fs.readdirSync('migrations')

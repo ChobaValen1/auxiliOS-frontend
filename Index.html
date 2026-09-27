@@ -14,12 +14,13 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=encuesta-desglose-v160-20260926">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=encuesta-desglose-v160-20260926">
-<link rel="stylesheet" href="dashboard-v1.css?v=encuesta-desglose-v160-20260926">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=encuesta-desglose-v160-20260926">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=encuesta-desglose-v160-20260926">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=encuesta-desglose-v160-20260926">
+<link rel="stylesheet" href="sigma.css?v=panel-resumen-v161-20260927">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=panel-resumen-v161-20260927">
+<link rel="stylesheet" href="dashboard-v1.css?v=panel-resumen-v161-20260927">
+<link rel="stylesheet" href="dashboard-resumen-v1.css?v=panel-resumen-v161-20260927">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=panel-resumen-v161-20260927">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=panel-resumen-v161-20260927">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=panel-resumen-v161-20260927">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +40,19 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="supabase.js?v=encuesta-desglose-v160-20260926" defer></script>
+<script src="config.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="supabase.js?v=panel-resumen-v161-20260927" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="sigma.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-charts-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-shell-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-facturacion-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-operaciones-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-flota-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-mapa-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=panel-resumen-v161-20260927" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=panel-resumen-v161-20260927" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="sigma.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="dashboard-charts-v1.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="dashboard-shell-v1.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="dashboard-resumen-v1.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="dashboard-operaciones-v1.js?v=panel-resumen-v161-20260927" defer></script>
+<script src="dashboard-flota-v1.js?v=panel-resumen-v161-20260927" defer></script>
 </head>
 <body>
 
@@ -749,73 +749,95 @@
 
       <div id="dash-view-analitica" style="display:none">
 
-        <!-- Las tres secciones, y nada más. Alertas abre un panel lateral
-             desde la campanita de la barra de arriba, que está fija y a la vista
-             en todas las pantallas: un segundo botón acá era el mismo acceso
-             dos veces. -->
+        <!-- Encabezado del Panel: título de la pestaña a la izquierda, período y
+             filtros a la derecha; debajo, las tres pestañas. Alertas se abre
+             desde la campanita de la barra de arriba. -->
+        <div class="dashx-head">
+          <div class="dashx-head-txt">
+            <h1 class="dashx-titulo" id="dashx-titulo">Resumen</h1>
+            <p class="dashx-subtitulo" id="dashx-subtitulo">Operación, facturación y cobertura de la flota</p>
+          </div>
+          <div class="dashx-toolbar" id="dashx-toolbar">
+            <!-- Lo pinta dashboard-shell-v1.js: los meses del desplegable
+                 dependen de la fecha de hoy, así que no pueden ser markup fijo. -->
+            <div class="dashx-periodos" id="dashx-periodos"></div>
+            <!-- Lo llena la sección que lo declara; el shell lo muestra y lo
+                 esconde junto con ella. -->
+            <div class="dashx-toolbar-filtros" id="dashx-fact-filtros" hidden></div>
+            <div class="dashx-toolbar-filtros" id="dashx-ops-filtros" hidden></div>
+          </div>
+        </div>
         <div class="dashx-barra-secciones">
           <div class="filter-tabs dashx-tabs" id="dashx-tabs">
-            <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">FACTURACIÓN</div>
-            <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">OPERACIONES</div>
-            <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">SALUD DE LA FLOTA</div>
+            <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">Resumen</div>
+            <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">Operaciones</div>
+            <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">Salud de la flota</div>
           </div>
         </div>
 
-        <div class="dashx-toolbar" id="dashx-toolbar">
-          <!-- Lo pinta dashboard-shell-v1.js: los meses del desplegable
-               dependen de la fecha de hoy, así que no pueden ser markup fijo. -->
-          <div class="dashx-periodos" id="dashx-periodos"></div>
-          <!-- Lo llena la sección que lo declara; el shell lo muestra y lo
-               esconde junto con ella. -->
-          <div class="dashx-toolbar-filtros" id="dashx-fact-filtros" hidden></div>
-          <div class="dashx-toolbar-filtros" id="dashx-ops-filtros" hidden></div>
-        </div>
-
-        <!-- SECCIÓN 1 · FACTURACIÓN -->
+        <!-- SECCIÓN 1 · RESUMEN (dashboard-resumen-v1.js) -->
         <div class="dashx-body" id="dashx-sec-facturacion">
           <div class="dashx-loading" id="dashx-loading-facturacion"><div class="dashx-loading-inner">Cargando métricas…</div></div>
-          <div class="dashx-grid">
-            <div class="dashx-sec-head">
-              <span class="dashx-sec-sub" id="dashx-fact-sub"></span>
+          <div class="rsm">
+            <div class="rsm-kpis" id="dashx-fact-kpis"></div>
+
+            <div class="rsm-fila rsm-fila-mapa">
+              <section class="rsm-card rsm-mapa-card">
+                <header class="rsm-card-head">
+                  <h3>Zonas de participación</h3>
+                  <p id="rsm-mapa-sub"></p>
+                </header>
+                <div class="rsm-mapa-lienzo">
+                  <div class="rsm-mapa" id="dashx-fact-mapa"></div>
+                  <div class="rsm-mapa-stats" id="rsm-mapa-stats"></div>
+                  <div class="rsm-mapa-leyenda" id="rsm-mapa-leyenda" hidden></div>
+                </div>
+                <footer class="rsm-mapa-foot">
+                  <label class="rsm-radio"><span>Radio</span>
+                    <input type="range" id="rsm-radio" min="5" max="100" step="5" value="20" aria-label="Radio de cobertura en km">
+                    <b id="rsm-radio-valor">20 km</b></label>
+                  <button type="button" class="rsm-switch" id="rsm-circulos" role="switch" aria-checked="true"><i></i>Círculos</button>
+                  <button type="button" class="rsm-switch" id="rsm-lineas" role="switch" aria-checked="false"><i></i>Líneas a la base</button>
+                </footer>
+              </section>
+
+              <section class="rsm-card rsm-tipos-card">
+                <header class="rsm-card-head">
+                  <h3>Composición por tipo</h3>
+                  <p>Reparto de la facturación según capacidad del vehículo</p>
+                </header>
+                <div class="rsm-tipos-dona">
+                  <canvas id="rsm-tipos-canvas" role="img" aria-label="Facturación por tipo de vehículo"></canvas>
+                  <div class="rsm-tipos-centro" id="rsm-tipos-centro"></div>
+                </div>
+                <div class="rsm-tipos-lista" id="rsm-tipos-lista"></div>
+              </section>
             </div>
 
-            <div class="dashx-card dashx-kpis" id="dashx-fact-kpis"></div>
-
-            <div class="dashx-card dashx-mapa">
-              <div class="dashx-card-title">Zonas de participación</div>
-              <!-- Mapa a la izquierda, lectura a la derecha. El mapa va más alto
-                   que ancho porque el área de trabajo se estira de norte a sur:
-                   un mapa apaisado gasta el ancho en océano y aprieta la ruta.
-                   El mapa dice dónde; la lectura dice qué hacer con eso. -->
-              <div class="dashx-mapa-cuerpo">
-                <div class="auxch-wrap dashx-mapa-lienzo" id="dashx-fact-mapa"></div>
-                <div class="dashx-mapa-lectura" id="dashx-fact-mapa-lectura"></div>
-              </div>
+            <div class="rsm-fila rsm-fila-evol">
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Evolución de facturado</h3>
+                  <p id="rsm-evol-sub">Línea punteada: período anterior</p>
+                </header>
+                <div class="rsm-evol"><canvas id="rsm-evol-canvas" role="img" aria-label="Facturado por día, período actual y anterior"></canvas></div>
+              </section>
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Eficiencia operativa</h3>
+                  <p>Km facturados vs. km reales recorridos</p>
+                </header>
+                <div id="rsm-eficiencia"></div>
+              </section>
             </div>
 
-            <!-- El treemap dice cuál es el servicio más común; la tabla de abajo,
-                 con el mismo orden y el mismo color, dice cuántos son y cuántos
-                 km facturan. Son el mismo corte leído de dos maneras. -->
-            <div class="dashx-card dashx-cajas">
-              <div class="dashx-card-title">Composición de servicios</div>
-              <div class="auxch-wrap" style="height:170px"><canvas id="dashx-fact-cajas"></canvas></div>
-              <div class="dashx-tabla-pegada" id="dashx-fact-conceptos"></div>
-            </div>
-
-            <!-- Se abre cada prestadora y aparecen sus bases. Una base atiende a
-                 más de una prestadora, así que el desglose de abajo (por base,
-                 sumando todas las empresas) es otro corte, no el mismo. -->
-            <div class="dashx-card dashx-full dashx-card-tabla">
-              <div class="dashx-card-title">Prestadoras y sus bases</div>
-              <!-- Torta y tabla van pegadas y en el mismo orden: el cuadradito
-                   de cada fila es su porción, así que la tabla hace de leyenda
-                   y la torta no lleva una propia. -->
-              <div class="dashx-torta-tabla">
-                <div class="auxch-wrap dashx-torta" style="height:160px"><canvas id="dashx-fact-torta"></canvas></div>
-                <div class="dashx-tabla-pegada" id="dashx-fact-empresas"></div>
-              </div>
-            </div>
-
+            <section class="rsm-card rsm-card-tabla">
+              <header class="rsm-card-head">
+                <h3>Prestadoras y sus bases</h3>
+                <p>Ordenado por facturación · participación sobre el total del período</p>
+              </header>
+              <div id="dashx-fact-empresas"></div>
+            </section>
           </div>
         </div>
 

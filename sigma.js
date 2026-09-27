@@ -2894,10 +2894,20 @@ function _cargarViewAnalitica() {
   AuxDash.init();
 }
 
+const _DASHX_TITULOS = {
+  facturacion: ['Resumen', 'Operación, facturación y cobertura de la flota'],
+  operaciones: ['Operaciones', 'Kilómetros, combustible y rendimiento por camión y chofer'],
+  flota: ['Salud de la flota', 'Vencimientos, services y estado de cada camión hoy']
+};
 function dashxSeccion(seccion, el) {
   if (el) {
     el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
+  }
+  const t = _DASHX_TITULOS[seccion];
+  if (t) {
+    const h = document.getElementById('dashx-titulo'); if (h) h.textContent = t[0];
+    const p = document.getElementById('dashx-subtitulo'); if (p) p.textContent = t[1];
   }
   if (typeof AuxDash !== 'undefined') AuxDash.mostrarSeccion(seccion);
 }
