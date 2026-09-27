@@ -432,7 +432,7 @@
       cerrarForm(true);
       if (global.confirmar) {
         global.confirmar('Servicio particular creado',
-          (res.service_number ? res.service_number + ' · ' : '') + 'Presupuesto ' + pesos(res.quoted_total) +
+          ((res.service_order_number || res.service_number) ? (res.service_order_number || res.service_number) + ' · ' : '') + 'Presupuesto ' + pesos(res.quoted_total) +
           (Number(res.deposit) > 0 ? ' · Seña ' + pesos(res.deposit) : '') + ' · A cobrar ' + pesos(res.balance));
       } else {
         notify('Servicio particular creado', 'success');

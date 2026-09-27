@@ -1,6 +1,4 @@
 -- Servicios particulares v1.
--- ESTADO: pendiente de aplicar. Espera la decisión sobre cómo activar la cuenta
--- "Particulares" en la base compartida con producción.
 --
 -- Hay dos tipos de cliente: los derivados de una prestadora y los particulares
 -- (clientes de una sola vez que pagan en el momento o dejan una seña, a veces
