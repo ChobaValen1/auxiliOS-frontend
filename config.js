@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'panel-tendencia-v163-20260927';
+window.AUXILIOS_BUILD_ID = 'particulares-v164-20260928';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -194,6 +194,9 @@ async function loadCriticalAuxiliosModules() {
 
   // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
   await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
+  // Nuevo servicio: primero Particular | Prestadora (envuelve abrirNuevoServicio).
+  loadAuxiliosStyle('auxilios-private-service-v1-css', '/private-service-v1.css');
+  await loadAuxiliosModule('auxilios-private-service-v1', '/private-service-v1.js');
   window.AuxiliosConfigurationCenter?.configure?.();
 }
 
