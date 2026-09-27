@@ -237,6 +237,7 @@
       '<div class="psv-body">' +
         (st.error ? '<div class="psv-error" role="alert">' + esc(st.error) + '</div>' : '') +
 
+        '<div class="psv-cols"><div class="psv-col">' +
         '<section><h3>Cliente</h3><div class="psv-grid">' +
           campo('customer_name', 'Nombre y apellido *', input('customer_name', d.customer_name, 'autocomplete="name"')) +
           campo('customer_phone', 'Teléfono *', input('customer_phone', d.customer_phone, 'inputmode="tel" placeholder="11 2345 6789"')) +
@@ -256,9 +257,13 @@
             '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
           (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : '') +
         '</div>' +
-        '<div class="psv-grid psv-grid-addr">' + direccion('origin', 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + '</div>' +
+        '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + '</div>' +
         (d.route ? '<p class="psv-hint">Recorrido: ' + esc(d.route) + '</p>' : '') +
         '</section>' +
+        '<section><h3>Observaciones</h3>' +
+          '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="2" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
+        '</section>' +
+        '</div><div class="psv-col">' +
 
         '<section><h3>Precio y cobro</h3><div class="psv-grid">' +
           campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
@@ -281,9 +286,7 @@
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id">' + opciones(drivers, d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
         '</div></section>' +
 
-        '<section><h3>Observaciones</h3>' +
-          '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="2" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
-        '</section>' +
+        '</div></div>' +
       '</div>' +
       '<footer><button type="button" class="psv-btn" data-psv="cerrar-form">Cancelar</button>' +
         '<button type="button" class="psv-btn primary" data-psv="guardar"' + (st.busy ? ' disabled' : '') + '>' +

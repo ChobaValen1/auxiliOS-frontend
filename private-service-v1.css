@@ -21,17 +21,22 @@ body.psv-open { overflow: hidden; }
 .psv-choice small { color: var(--muted2); font-size: 12px; line-height: 1.45; }
 
 /* Formulario */
-.psv-form { width: min(100%, 640px); }
-.psv-body { flex: 1; overflow: auto; padding: 6px 20px 16px; }
+.psv-form { width: min(100%, 1180px); }
+.psv-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0 28px; }
+.psv-col { min-width: 0; }
+.psv-col + .psv-col { padding-left: 28px; border-left: 1px solid var(--border); }
+.psv-body { flex: 1; overflow: auto; padding: 4px 24px 12px; }
 .psv-loading { padding: 50px 20px; text-align: center; color: var(--muted2); font-size: 13px; }
 .psv-error { margin: 12px 0 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); border-radius: 9px; color: var(--red); font-size: 12px; line-height: 1.5; }
-.psv-body section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.psv-body section { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.psv-col > section:last-child { border-bottom: 0; }
 .psv-body section:last-child { border-bottom: 0; }
 .psv-body h3 { margin: 0 0 10px; color: var(--muted2); font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
 .psv-body h3 small { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
-.psv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; }
+.psv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; }
 .psv-grid + .psv-grid { margin-top: 10px; }
-.psv-grid-addr { grid-template-columns: 1fr; margin-top: 10px; }
+.psv-grid-addr { grid-template-columns: 1fr 1fr; margin-top: 10px; }
+.psv-grid-addr.is-single { grid-template-columns: 1fr; }
 .psv-field { position: relative; display: grid; gap: 5px; min-width: 0; }
 .psv-field > span { color: var(--muted2); font-size: 11px; font-weight: 700; }
 .psv-body input:not([type=checkbox]), .psv-body select, .psv-body textarea { width: 100%; box-sizing: border-box; min-height: 38px; padding: 8px 10px; border: 1px solid var(--border2); border-radius: 9px; background: var(--bg); color: var(--text); font: inherit; font-size: 13px; }
@@ -64,6 +69,12 @@ body.psv-open { overflow: hidden; }
 .psv-btn.primary { border-color: var(--amber); background: var(--amber); color: #111; }
 .psv-btn:disabled { opacity: .55; cursor: wait; }
 
+@media (max-width: 980px) {
+  .psv-form { width: min(100%, 680px); }
+  .psv-cols { grid-template-columns: 1fr; }
+  .psv-col + .psv-col { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); }
+  .psv-grid-addr { grid-template-columns: 1fr; }
+}
 @media (max-width: 560px) {
   .psv-backdrop { align-items: flex-end; padding: 0; }
   .psv-dialog { width: 100%; max-height: 94vh; border-radius: 16px 16px 0 0; }
