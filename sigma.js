@@ -51,7 +51,7 @@ function _validarPatente(val, targetId) {
     el.textContent = '';
     el.className = 'rem-warn-patente';
   } else if (n <= 3) {
-    el.textContent = '⚠️ La patente parece muy corta. Verificá que esté completa.';
+    el.textContent = '⚠ La patente parece muy corta. Verificá que esté completa.';
     el.className = 'rem-warn-patente warn-strong';
   } else {
     el.textContent = 'La patente tiene menos de 6 caracteres. Formato: ABC123 o AB123CD';
@@ -340,7 +340,7 @@ async function openPlanModal() {
   // 5. Poblamos la lista
   if (select) {
     if (catalogo.length === 0) {
-      select.innerHTML = '<option value="">⚠️ No hay planes globales creados</option>';
+      select.innerHTML = '<option value="">⚠ No hay planes globales creados</option>';
       return;
     }
 
@@ -358,7 +358,7 @@ async function openPlanModal() {
 }
 function closeModal(id) {
   const m = document.getElementById(id);
-  if (!m) { console.warn('⚠️ Modal no encontrado:', id); return; }
+  if (!m) { console.warn('⚠ Modal no encontrado:', id); return; }
   m.classList.remove('open');
   m.style.display = m.classList.contains('modal-overlay') ? 'none' : '';
   document.body.style.overflow = '';
@@ -422,7 +422,7 @@ function abrirEditarPlan(planId) {
   if (alertaEl) alertaEl.value = plan.alert_before_km || 500;
 
   const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
-  if (titulo) titulo.textContent = '✏️ Editar Plan Maestro';
+  if (titulo) titulo.textContent = '✏ Editar Plan Maestro';
   const btn = document.getElementById('btn-guardar-global');
   if (btn) btn.textContent = '💾 Actualizar Plan';
 
@@ -620,7 +620,7 @@ function remWizardReset() {
   if (toggleChofer) toggleChofer.classList.remove('on');
   const labelFirma = document.getElementById('label-firma-canvas');
   if (labelFirma) {
-      labelFirma.textContent = '✍️ Firma digital del socio';
+      labelFirma.textContent = '✍ Firma digital del socio';
       labelFirma.style.color = 'var(--text)';
   }
 
@@ -860,10 +860,10 @@ function toggleFirmaChofer(elemento) {
     const labelFirma = document.getElementById('label-firma-canvas'); // Asegurate de ponerle este ID al <label> de tu firma
     
     if (btn.classList.contains('on')) {
-        labelFirma.textContent = '✍️ Firma del Chofer (En representación)';
+        labelFirma.textContent = '✍ Firma del Chofer (En representación)';
         labelFirma.style.color = 'var(--green)';
     } else {
-        labelFirma.textContent = '✍️ Firma digital del socio';
+        labelFirma.textContent = '✍ Firma digital del socio';
         labelFirma.style.color = 'var(--text)';
     }
 }
@@ -944,7 +944,7 @@ function validarPaso5Final() {
     if (!todasConfirmadas) {
         const titulo = document.getElementById('modal-validacion-titulo');
         const msgEl  = document.getElementById('modal-validacion-msg');
-        if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+        if (titulo) titulo.textContent = '⚠ Faltan confirmaciones';
         if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
         openModal('modal-validacion');
         return false;
@@ -1387,9 +1387,9 @@ async function _finalizarRemitoInner() {
     openModal('modal-validacion');
   };
 
-  if (!patente) { mostrarValidacion('⚠️ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
-  if (!origen)  { mostrarValidacion('⚠️ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
-  if (!destino) { mostrarValidacion('⚠️ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  if (!patente) { mostrarValidacion('⚠ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  if (!origen)  { mostrarValidacion('⚠ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
+  if (!destino) { mostrarValidacion('⚠ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
   [
     ['rem-patente',patente],
     ['rem-origen',origen],
@@ -1399,31 +1399,31 @@ async function _finalizarRemitoInner() {
     if(el&&!el.value&&value)el.value=value;
   });
   if (cuit && !/^\d{7,11}$/.test(cuit)) {
-    mostrarValidacion('⚠️ DNI/CUIT inválido', `El DNI/CUIT debe contener únicamente entre 7 y 11 dígitos. Corregilo en el paso ${_remWizardPasoCliente()}.`);
+    mostrarValidacion('⚠ DNI/CUIT inválido', `El DNI/CUIT debe contener únicamente entre 7 y 11 dígitos. Corregilo en el paso ${_remWizardPasoCliente()}.`);
     remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
     return;
   }
   if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) {
-    mostrarValidacion('⚠️ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
+    mostrarValidacion('⚠ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
     remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     return;
   }
   const requiredConfirmations=[...document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`)]
     .filter(row=>row.id!=='row-arrastre'&&row.offsetParent!==null);
-  if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠️ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
-  if(!hasSig){mostrarValidacion('⚠️ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
+  if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
+  if(!hasSig){mostrarValidacion('⚠ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
   const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
   if (addonValidation && !addonValidation.ok) {
-    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || `Hay datos incompletos en el paso ${_remWizardPasoCargos()}.`);
+    mostrarValidacion('⚠ Revisá peajes y excedentes', addonValidation.errors[0] || `Hay datos incompletos en el paso ${_remWizardPasoCargos()}.`);
     remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';
   const totalVal = parseFloat(totalStr.replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
   if (!window.AuxiliosRemitoAddonsV2 && totalVal > 0 && (!pago || pago === '—')) {
-    mostrarValidacion('⚠️ Falta medio de pago', `Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso ${_remWizardPasoCargos()}.`);
+    mostrarValidacion('⚠ Falta medio de pago', `Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso ${_remWizardPasoCargos()}.`);
     remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
@@ -1440,7 +1440,7 @@ async function _finalizarRemitoInner() {
   const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
   const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
   if (_remWizardEsAdHoc() && !mapLocations) {
-    mostrarValidacion('⚠️ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
+    mostrarValidacion('⚠ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
     remWizardIr(1 - _remPasoActual);
     window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
     return false;
@@ -1486,8 +1486,8 @@ async function _finalizarRemitoInner() {
   const ok = await guardarRemitoCompleto({
     nro,
     firmaDataURL,
-    driver_id: USUARIO_ACTUAL.id, // 🛠️ INYECCIÓN DE SEGURIDAD
-    log_id:  _logIdRemito, // 🛠️ REGISTRO SILENCIOSO
+    driver_id: USUARIO_ACTUAL.id, // 🛠 INYECCIÓN DE SEGURIDAD
+    log_id:  _logIdRemito, // 🛠 REGISTRO SILENCIOSO
     nroSrv,
     patente,
     marca:   document.getElementById('rem-marca-modelo')?.value || '',
@@ -1857,7 +1857,7 @@ function guardarDocForm() {
   const pillClass = dias < 30 ? 'pill-red' : dias < 60 ? 'pill-amber' : 'pill-green';
   const color     = dias < 30 ? 'var(--red)' : dias < 60 ? 'var(--amber)' : 'var(--green)';
   const estado    = dias < 30 ? 'Urgente' : dias < 60 ? 'Próximo' : 'Vigente';
-  const icons     = { VTV:'🔍', Seguro:'🛡️', 'Habilitación de ruta':'📋', 'Libreta de porte':'⚖️', Matafuegos:'🧯', Otro:'📄' };
+  const icons     = { VTV:'🔍', Seguro:'🛡', 'Habilitación de ruta':'📋', 'Libreta de porte':'⚖', Matafuegos:'🧯', Otro:'📄' };
   const icon      = icons[tipo] || '📄';
   const grid = document.getElementById('doc-grid');
   const addCard = document.getElementById('doc-add-card');
@@ -1931,7 +1931,7 @@ function verRemitoModal(elemento) {
       if (el) {
         el.textContent = val ?? '—';
       } else {
-        console.warn(`${TAG} ⚠️ El HTML no tiene el ID: '${id}'. El dato [${val}] no se mostrará.`);
+        console.warn(`${TAG} ⚠ El HTML no tiene el ID: '${id}'. El dato [${val}] no se mostrará.`);
       }
     };
 
@@ -2040,7 +2040,7 @@ function verRemitoModal(elemento) {
       setTimeout(() => {
         const c = document.getElementById('vr-sig-display');
         if (!c) {
-          console.warn(`${TAG} ⚠️ No se encontró el canvas 'vr-sig-display' para la firma.`);
+          console.warn(`${TAG} ⚠ No se encontró el canvas 'vr-sig-display' para la firma.`);
           return;
         }
         
@@ -2065,7 +2065,7 @@ function verRemitoModal(elemento) {
           };
           img.src = savedSig;
         } else {
-          console.log(`${TAG} ℹ️ No hay firma real, dibujando demo/vacío.`);
+          console.log(`${TAG} ℹ No hay firma real, dibujando demo/vacío.`);
           if (typeof dibujarFirmaDemo === 'function') dibujarFirmaDemo(ctx, c.width, c.height);
         }
       }, 100);
@@ -2205,7 +2205,7 @@ async function confirmarFirma() {
   if (!todasConf) {
     const titulo = document.getElementById('modal-validacion-titulo');
     const msgEl  = document.getElementById('modal-validacion-msg');
-    if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+    if (titulo) titulo.textContent = '⚠ Faltan confirmaciones';
     if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
     openModal('modal-validacion');
     return;
@@ -2474,7 +2474,7 @@ async function _subirFirmaStorage(blob, nro, operationToken = null) {
     .from('firmas')
     .upload(nombre, blob, { contentType: 'image/png', upsert: true });
   if (fe) {
-    console.warn('⚠️ No se pudo subir la firma:', fe.message);
+    console.warn('⚠ No se pudo subir la firma:', fe.message);
     return null;
   }
   const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
@@ -3131,7 +3131,7 @@ async function _cargarViewRendimientoDatos() {
       _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
         `${trCount} cobros${_deltaBadge(factTr, factTrAnt)}`, null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
-      _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
+      _KPI('⚠', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
         (pendiente>0?'sin rendir':'al día ✓') + _deltaBadge(pendiente, pendienteAnt, {invert:true}), null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalPendienteRendir()">📋 Ver detalle</span>`);
   }
@@ -3259,7 +3259,7 @@ async function _cargarViewRendimientoDatos() {
       </div>`;
     }).join('');
 
-    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición', km_manual: '✏️ KM cargado a mano' };
+    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠ Sin rendición', km_manual: '✏ KM cargado a mano' };
     const opHTML = (alertas || []).map(a =>
       `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--red-lo);border:1px solid rgba(231,76,60,0.3);border-radius:7px;margin-bottom:6px">
         <div><div style="font-size:12px;font-weight:600">${TIPO[a.tipo]||a.tipo}</div>
@@ -3568,7 +3568,7 @@ function guardarCerrarJornada() {
   const strip = document.querySelector('.alert-strip.ok');
   if (strip) {
     strip.className = 'alert-strip warn mb16';
-    strip.innerHTML = `<span>ℹ️</span><span>No hay jornada activa hoy. <b>Iniciá una nueva jornada</b> para comenzar.</span>`;
+    strip.innerHTML = `<span>ℹ</span><span>No hay jornada activa hoy. <b>Iniciá una nueva jornada</b> para comenzar.</span>`;
   }
   toast('Jornada cerrada y guardada correctamente', 'success');
 }
@@ -3962,19 +3962,19 @@ function _pintarFlotaAdmin() {
     // Regla de negocio: un camion con service vencido NO figura como Disponible.
     // sin_datos = estado neutro: no afirma "Disponible" pero tampoco alarma con amarillo.
     const labelOperativo = st.conductor
-      ? `<span style="color:#3b82f6">🔵 En ruta</span>`
+      ? `<span style="color:#3b82f6">● En ruta</span>`
       : (st.severidad === 'critico'
           ? `<span style="color:#ef4444">⛔ No apto</span>`
           : st.severidad === 'alerta'
-            ? `<span style="color:#f59e0b">🟡 Apto con alerta</span>`
+            ? `<span style="color:#f59e0b">● Apto con alerta</span>`
             : st.severidad === 'sin_datos'
-              ? `<span style="color:#9ca3af">⚪ Sin historial</span>`
-              : `<span style="color:#22c55e">🟢 Disponible</span>`);
+              ? `<span style="color:#9ca3af">● Sin historial</span>`
+              : `<span style="color:#22c55e">● Disponible</span>`);
     // Etiqueta de mantenimiento (si aplica). sin_datos no genera badge (ya se refleja en labelOperativo)
     const labelMant = st.severidad === 'critico'
-      ? `<span style="color:#ef4444">🔴 Service vencido</span>`
+      ? `<span style="color:#ef4444">● Service vencido</span>`
       : st.severidad === 'alerta'
-        ? `<span style="color:#f59e0b">🟡 Service próximo</span>`
+        ? `<span style="color:#f59e0b">● Service próximo</span>`
         : '';
     // No duplicar la info: si labelOperativo ya dice "No apto"/"Apto con alerta", no repetir el detalle de mant
     const estadoLabel = (labelMant && st.conductor)
@@ -4905,11 +4905,11 @@ const _OB_ETIQUETAS = {
   jornada_abrir:    () => '🚚 Inicio de jornada',
   jornada_cerrar:   () => '🏁 Cierre de jornada',
   remito_pendiente: p  => `🧾 Remito N° ${p?.nro_remito || '—'}`,
-  remito_firmar:    p  => `✍️ Firma remito N° ${p?.nro_remito || '—'}`,
+  remito_firmar:    p  => `✍ Firma remito N° ${p?.nro_remito || '—'}`,
   fuel:             () => '⛽ Carga de combustible',
   rendicion:        () => '💵 Rendición',
   tire_check:       () => '🛞 Control de gomas',
-  incidente:        () => '⚠️ Incidente'
+  incidente:        () => '⚠ Incidente'
 };
 
 async function abrirColaOffline() {
@@ -5413,7 +5413,7 @@ async function openAsignarPlanModal() {
   // 3. Pobramos el select
   if (select) {
     if (catalogo.length === 0) {
-      select.innerHTML = '<option value="">⚠️ No hay planes globales creados</option>';
+      select.innerHTML = '<option value="">⚠ No hay planes globales creados</option>';
       return;
     }
 
@@ -5492,7 +5492,7 @@ function renderPlanes(data) {
       <div class="kebab-wrap">
         <button class="kebab-btn" onclick="event.stopPropagation();togglePlanMenu(${p.plan_id})" aria-label="Acciones del plan">⋮</button>
         <div class="kebab-menu" id="plan-menu-${p.plan_id}">
-          <button class="kebab-item" onclick="event.stopPropagation();editarParametrosPlan(${p.plan_id})">✏️ Editar parámetros</button>
+          <button class="kebab-item" onclick="event.stopPropagation();editarParametrosPlan(${p.plan_id})">✏ Editar parámetros</button>
           <button class="kebab-item danger" onclick="event.stopPropagation();desvincularPlanUI(${p.plan_id})">🔌 Desvincular plan</button>
         </div>
       </div>` : '';
@@ -6352,7 +6352,7 @@ let firmaPago1 = '';
 let firmaPago2 = '';
 let firmaPagoMixtoActivo = false;
 
-// 🛠️ HELPER: Centraliza la lectura de inputs para evitar errores y código repetido
+// 🛠 HELPER: Centraliza la lectura de inputs para evitar errores y código repetido
 function obtenerValorNumericoFirma(id) {
   const valor = parseFloat(document.getElementById(id)?.value);
   return isNaN(valor) ? 0 : valor;
@@ -7531,7 +7531,7 @@ async function abrirModalNuevaJornada() {
       <div style="font-size:9px;color:var(--amber);margin:2px 0">🛣 ${c.current_km ? c.current_km.toLocaleString('es-AR') + ' km' : 'Sin km'}</div>
       ${[c.brand, c.model].filter(Boolean).length ? `<div style="font-size:9px;color:var(--muted)">${[c.brand,c.model].filter(Boolean).join(' ')}</div>` : ''}
       <div style="font-size:9px;margin-top:4px;padding:1px 5px;border-radius:4px;display:inline-block;background:${ocupado ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'};color:${ocupado ? 'var(--red)' : '#10b981'}">
-        ${ocupado ? '🔴 En uso' : '🟢 Libre'}
+        ${ocupado ? '● En uso' : '● Libre'}
       </div>
       <div class="camion-check-icon" style="text-align:right;font-size:14px;margin-top:2px"></div>
   </div>`;
@@ -7661,7 +7661,7 @@ async function confirmarNuevaJornada() {
       box.style.transition  = 'all 0.3s';
       setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
     }
-    if (status) { status.textContent = '⚠️ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
+    if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
   }
 
@@ -8121,10 +8121,10 @@ function validarKmInicioJornada() {
   }
 
   if (kmIngresado < kmRegistrado) {
-    display.textContent = `⚠️ El KM ingresado (${kmIngresado.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
+    display.textContent = `⚠ El KM ingresado (${kmIngresado.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
     display.style.color = 'var(--red)';
   } else if (kmRegistrado > 0 && (kmIngresado - kmRegistrado) > 5000) {
-    display.textContent = `⚠️ Salto de +${(kmIngresado - kmRegistrado).toLocaleString('es-AR')} km respecto al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
+    display.textContent = `⚠ Salto de +${(kmIngresado - kmRegistrado).toLocaleString('es-AR')} km respecto al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
     display.style.color = 'var(--red)';
   }
 }
@@ -8146,7 +8146,7 @@ function calcularKmRecorridos() {
   const diff = kmFinal - kmInicio;
 
   diffDisplay.textContent = diff < 0
-    ? '⚠️ KM menor al inicio'
+    ? '⚠ KM menor al inicio'
     : `+${diff.toLocaleString('es-AR')} km recorridos`;
 
   diffDisplay.style.color = diff < 0 ? 'var(--red)' : 'var(--green)';
@@ -8181,7 +8181,7 @@ async function confirmarCerrarJornada() {
       box.style.transition  = 'all 0.3s';
       setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
     }
-    if (status) { status.textContent = '⚠️ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
+    if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
   }
   if (enTaller && !tallerTipo) {
@@ -9837,7 +9837,7 @@ async function abrirEditarVehiculo(truckId) {
     const warnEl = document.getElementById('warn-patente-nv');
     if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
 
-    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏️ Editar Flota';
+    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏ Editar Flota';
     document.getElementById('btn-guardar-vehiculo').innerHTML = '💾 Actualizar Flota';
     
     // 4. Abrimos el modal con fuerza bruta (z-index)
@@ -9904,7 +9904,7 @@ function abrirEditarUsuario(userId) {
 
   // Cambiar título y botón
   const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
-  if (tituloModal) tituloModal.textContent = '✏️ Editar Personal';
+  if (tituloModal) tituloModal.textContent = '✏ Editar Personal';
   const btnGuardar = document.getElementById('btn-guardar-usuario');
   if (btnGuardar) btnGuardar.innerHTML = '💾 Actualizar Usuario';
 
@@ -10297,7 +10297,7 @@ async function procesarFotoConIA(event, contexto) {
 
     try {
 
-      msgStatus.innerHTML = '<span style="color: var(--amber);">⬆️ Subiendo evidencia a la nube...</span>';
+      msgStatus.innerHTML = '<span style="color: var(--amber);">⬆ Subiendo evidencia a la nube...</span>';
         const urlPublica = await subirFotoOdometro(archivo, contexto);
         if(isInicio) fotoKmInicio=urlPublica; else fotoKmFinal=urlPublica;
         // 3. LLAMAMOS A LA IA REAL (Edge Function)
@@ -10403,7 +10403,7 @@ async function procesarFotoConIA(event, contexto) {
         const hint=document.getElementById(prefix+'-foto-hint');
         if(hint) hint.textContent='Ingresá el kilometraje manualmente. La foto se guardará para auditoría.';
         fotoBox.style.borderColor = 'var(--amber)';
-        fotoIcon.textContent = '⚠️';
+        fotoIcon.textContent = '⚠';
         fotoStatusTxt.textContent = 'No se pudo analizar la foto';
         fotoStatusTxt.style.color = 'var(--amber)';
         if (btnConfirmar) btnConfirmar.disabled = false;
@@ -10654,14 +10654,14 @@ async function eliminarDoc(docId, isChofer, event) {
 
 const DOC_CAMION_META = {
   VTV:               { icon: '🔍', name: 'VTV', fields: ['vencimiento'] },
-  SEGURO_POLIZA:     { icon: '🛡️', name: 'Póliza de Seguro', fields: ['vencimiento'] },
+  SEGURO_POLIZA:     { icon: '🛡', name: 'Póliza de Seguro', fields: ['vencimiento'] },
  PAGO_SEGURO:       { icon: '📄', name: 'Comprobante de pago', fields: ['periodo'] },
   HABILITACION_RUTA: { icon: '📋', name: 'Habilitación RUTA', fields: ['vencimiento'] },
   PERMISO_ESPECIAL:  { icon: '🚧', name: 'Permiso Especial', fields: ['vencimiento', 'observaciones'] },
   CEDULA_VERDE:      { icon: '🪪', name: 'Cédula Verde' },
   CEDULA_AZUL:       { icon: '🪪', name: 'Cédula Azul' },
   MATAFUEGOS:        { icon: '🧯', name: 'Matafuegos' },
-  LIBRETA_PORTE:     { icon: '⚖️', name: 'Libreta de Porte' },
+  LIBRETA_PORTE:     { icon: '⚖', name: 'Libreta de Porte' },
 };
 
 function _badgeDocsCamion(docs) {
@@ -11195,7 +11195,7 @@ function mostrarSkeletonDocs() {
 
 function mostrarErrorDocs() {
   const html = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted)">
-    <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+    <div style="font-size:28px;margin-bottom:8px">⚠</div>
     <div style="font-size:13px;margin-bottom:12px">No se pudieron cargar los documentos</div>
     <button class="btn btn-ghost" onclick="cargarDocumentos()" style="font-size:11px">Reintentar</button>
   </div>`;
@@ -11210,7 +11210,7 @@ function actualizarBannerAlertasDocs(camion, chofer) {
   if (!banner) return;
   const criticos = [...camion, ...chofer].filter(d => d.status === 'vencido' || d.status === 'falta_archivo');
   if (criticos.length > 0) {
-    banner.innerHTML = `⚠️ <strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong>`;
+    banner.innerHTML = `⚠ <strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong>`;
     banner.style.display = 'block';
   } else {
     banner.style.display = 'none';
@@ -11813,7 +11813,7 @@ function abrirModalPendienteRendir() {
   const pendiente = Math.max(0, totalCobrado - totalRendido);
 
   const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `⚠️ Pendiente de rendir · $${_AR(pendiente)}`;
+  if (tituloEl) tituloEl.textContent = `⚠ Pendiente de rendir · $${_AR(pendiente)}`;
 
   const body = document.getElementById('modal-desglose-body');
   if (!body) return;
@@ -12150,7 +12150,7 @@ function abrirModalIncidente(opts = {}) {
   const btn = document.getElementById('inc-btn-enviar');
   if (btn) { btn.textContent = 'Enviar reporte'; btn.disabled = false; btn.style.opacity = '1'; }
   const titulo = document.querySelector('#modal-incidente h3');
-  if (titulo) titulo.textContent = '⚠️ Reportar incidente';
+  if (titulo) titulo.textContent = '⚠ Reportar incidente';
 
   const sub = document.getElementById('inc-sub');
   const ctx = document.getElementById('inc-ctx');
@@ -12168,7 +12168,7 @@ function abrirModalIncidente(opts = {}) {
     if (ubic) ubic.value = incidente.location || '';
     if (_incTipoSel) document.querySelector(`#inc-tipos .inc-tipo[data-tipo="${_incTipoSel}"]`)?.classList.add('sel');
     if (_incSevSel)  document.querySelector(`#inc-sev .inc-sev-op[data-sev="${_incSevSel}"]`)?.classList.add('sel');
-    if (titulo) titulo.textContent = '✏️ Editar incidente';
+    if (titulo) titulo.textContent = '✏ Editar incidente';
     if (btn) btn.textContent = 'Guardar cambios';
     if (sub) sub.textContent = contexto || _jadminIncCtx?.contexto || 'Incidente registrado';
     if (ctx) ctx.innerHTML = `Estás <strong>editando</strong> un incidente ya registrado. Los cambios se guardan al confirmar.`;
@@ -12798,7 +12798,7 @@ async function _csvImportarConfirm() {
   const body = document.getElementById('csv-result-body');
   body.innerHTML = `
     <div style="padding:18px;text-align:center">
-      <div style="font-size:32px;margin-bottom:8px">${results.fail ? '⚠️' : '✅'}</div>
+      <div style="font-size:32px;margin-bottom:8px">${results.fail ? '⚠' : '✅'}</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:10px">Importación finalizada</div>
       <div style="color:#22c55e">✓ ${results.ok} ${tipo === 'flota' ? 'vehículos creados' : 'usuarios creados'}</div>
       ${results.fail ? `<div style="color:#f87171;margin-top:6px">✗ ${results.fail} fallaron</div>` : ''}
@@ -13561,7 +13561,7 @@ function _renderReciboEfectivos() {
     return;
   }
   const rows = _reciboEfectivosCache.map(e => {
-    const semaforo = e.estado === 'ok' ? '🟢' : e.estado === 'warn' ? '🟡' : '🔴';
+    const semaforo = e.estado === 'ok' ? '<span style="color:#22c55e">●</span>' : e.estado === 'warn' ? '<span style="color:#f59e0b">●</span>' : '<span style="color:var(--red)">●</span>';
     const declaradoTxt = e.declarado === null ? '<span style="color:var(--red)">— (sin rendir)</span>' : ('$' + _AR(e.declarado));
     const deltaColor = Math.abs(e.delta) < 50 ? 'var(--muted)' : e.delta < 0 ? '#ef4444' : '#4ade80';
     const deltaTxt = e.delta === 0 ? '$0' : (e.delta > 0 ? '+$' : '−$') + _AR(Math.abs(e.delta));
@@ -13970,7 +13970,7 @@ async function _renderReciboRendiciones() {
     }
 
     const rows = rendiciones.map(r => {
-      const sem = r._faltante > 0 ? '🔴' : r._sobrante > 0 ? '🟡' : '🟢';
+      const sem = r._faltante > 0 ? '<span style="color:var(--red)">●</span>' : r._sobrante > 0 ? '<span style="color:#f59e0b">●</span>' : '<span style="color:#22c55e">●</span>';
       const diffTxt = r._faltante > 0
         ? `<span style="color:var(--red);font-weight:600">-$${_AR(r._faltante)}</span>`
         : r._sobrante > 0
@@ -15050,7 +15050,7 @@ function _jadminRenderDetalle(det) {
           <div class="kebab-wrap" style="align-self:flex-start">
             <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">⋮</button>
             <div class="kebab-menu" id="inc-menu-${_escHtml(i.incident_id)}">
-              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">✏️ Editar</button>
+              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">✏ Editar</button>
               <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">🗑 Eliminar</button>
             </div>
           </div>` : '';
@@ -16176,9 +16176,9 @@ async function corregirGrillaDesdeAlerta(fecha, truckId) {
 
 const ALX_CATS = [
   { key: 'efectivo',      lbl: '💵 Efectivo',        titulo: '💵 Efectivo faltante' },
-  { key: 'incidentes',    lbl: '⚠️ Incidentes',      titulo: '⚠️ Incidentes' },
-  { key: 'grilla',        lbl: '🗓️ Jornadas/Grilla', titulo: '🗓️ Jornadas / Grilla' },
-  { key: 'km_manual',     lbl: '✏️ KM a mano',       titulo: '✏️ KM cargados a mano' },
+  { key: 'incidentes',    lbl: '⚠ Incidentes',      titulo: '⚠ Incidentes' },
+  { key: 'grilla',        lbl: '🗓 Jornadas/Grilla', titulo: '🗓 Jornadas / Grilla' },
+  { key: 'km_manual',     lbl: '✏ KM a mano',       titulo: '✏ KM cargados a mano' },
   { key: 'documentos',    lbl: '📄 Documentos',      titulo: '📄 Documentos' },
   { key: 'mantenimiento', lbl: '🔧 Mantenimiento',   titulo: '🔧 Mantenimiento' },
 ];
@@ -16383,7 +16383,7 @@ function _alxItemsGrilla() {
     texto: a.texto,
     sub: a.sub,
     motivo: a.motivo || null,
-    acciones: [{ lbl: '✏️ Corregir grilla', fn: `corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})` }],
+    acciones: [{ lbl: '✏ Corregir grilla', fn: `corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})` }],
     vistoFn: `marcarAlertaGrillaVista('${a.id}')`,
   }));
 }
@@ -16407,7 +16407,7 @@ async function _alxFetchKmManual() {
     id: `km_manual|${a.alerta_id}`,
     cat: 'km_manual',
     sev: 'ambar',
-    ico: '✏️',
+    ico: '✏',
     html: _alxCardKmManual(a), // tarjeta propia (no usa el layout genérico ni el "Visto")
   }));
 }
@@ -16422,7 +16422,7 @@ function _alxCardKmManual(a) {
   return `
     <div style="background:var(--panel);border:1px solid rgba(245,166,35,0.4);border-left:4px solid var(--amber);border-radius:10px;padding:12px 14px;margin-bottom:10px" id="alx-km-${a.alerta_id}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:700;color:var(--amber)">✏️ KM cargado a mano</span>
+        <span style="font-size:12px;font-weight:700;color:var(--amber)">✏ KM cargado a mano</span>
         <span style="font-size:11px;color:var(--muted2)">${_alxFecha(a.fecha)}</span>
       </div>
       <div style="font-size:12.5px;line-height:1.5;margin:6px 0 10px">

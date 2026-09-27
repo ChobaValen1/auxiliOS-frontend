@@ -302,7 +302,7 @@ async function _hidratarSesionChofer() {
           banner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#f5a623;color:#1a1a1a;padding:7px 16px;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.3px;transition: opacity 0.5s ease;';
           document.querySelector('.main')?.prepend(banner);
         }
-        banner.textContent = `⚠️ Jornada activa · Camión ${patente}${modelo ? ' · ' + modelo : ''} · No podés cambiar de camión hasta cerrar la jornada`;
+        banner.textContent = `⚠ Jornada activa · Camión ${patente}${modelo ? ' · ' + modelo : ''} · No podés cambiar de camión hasta cerrar la jornada`;
 
         // 3. Remover el banner a los 4 segundos
         setTimeout(() => {
@@ -458,7 +458,7 @@ async function mostrarPantallaSeleccionCamion() {
     aviso.id = 'sel-aviso-jornada';
     aviso.style.cssText = 'background:rgba(245,166,35,0.12);border:1.5px solid #f5a623;border-radius:10px;padding:18px 16px;margin-bottom:16px;';
     aviso.innerHTML = `
-      <div style="font-size:13px;font-weight:800;color:#f5a623;margin-bottom:6px;">⚠️ Tenés una jornada abierta</div>
+      <div style="font-size:13px;font-weight:800;color:#f5a623;margin-bottom:6px;">⚠ Tenés una jornada abierta</div>
       <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">Camión: ${patente}${interno}</div>
       ${modelo ? `<div style="font-size:12px;color:#aaa;margin-bottom:12px;">${modelo}</div>` : '<div style="margin-bottom:12px;"></div>'}
       <div style="font-size:12px;color:#ccc;margin-bottom:14px;">No podés seleccionar otro camión hasta cerrar la jornada activa.</div>
@@ -524,8 +524,8 @@ async function mostrarPantallaSeleccionCamion() {
       <div class="sel-card-badges">
         <span class="sel-badge sel-badge--km">🛣 ${c.current_km ? c.current_km.toLocaleString('es-AR') + ' km' : 'Sin km registrado'}</span>
         ${ocupado
-          ? `<span class="sel-badge sel-badge--red">🔴 ${enUso[c.truck_id]} está utilizando actualmente este camión</span>`
-          : `<span class="sel-badge sel-badge--green">🟢 Disponible</span>`}
+          ? `<span class="sel-badge sel-badge--red">● ${enUso[c.truck_id]} está utilizando actualmente este camión</span>`
+          : `<span class="sel-badge sel-badge--green">● Disponible</span>`}
       </div>
     </div>`;
   };
@@ -986,7 +986,7 @@ async function cargarJornadas() {
 
 async function cargarServiciosDia() {
   try {
-    // 🛠️ FIX: Forzamos la zona horaria de Argentina para evitar el bug de las 21:00 hs (UTC)
+    // 🛠 FIX: Forzamos la zona horaria de Argentina para evitar el bug de las 21:00 hs (UTC)
     const hoy = new Date().toLocaleDateString('en-CA', { 
       timeZone: 'America/Argentina/Buenos_Aires' 
     });
@@ -1405,11 +1405,11 @@ async function guardarRemitoCompleto(datosRemito) {
           firmaUrl = fd.publicUrl;
           evidenciaSubida.push({ bucket: 'firmas', path: nombre, url: fd.publicUrl });
         } else {
-          console.warn('⚠️ No se pudo subir la firma:', fe.message);
+          console.warn('⚠ No se pudo subir la firma:', fe.message);
           throw new Error('No se pudo subir la firma: ' + fe.message);
         }
       } catch (upErr) {
-        console.warn('⚠️ Error procesando firma:', upErr);
+        console.warn('⚠ Error procesando firma:', upErr);
         throw upErr;
       }
     }
@@ -2937,7 +2937,7 @@ async function cargarAlertasPersonales() {
     docsRes.value.data.forEach(d => {
       alertas.push({
         sev: d.status === 'vencido' ? 'critico' : 'advertencia',
-        icon: d.status === 'vencido' ? '⛔' : '⚠️',
+        icon: d.status === 'vencido' ? '⛔' : '⚠',
         title: d.status === 'vencido' ? 'Documento vencido' : 'Documento por vencer',
         detail: `${d.doc_type}${d.expiry_date ? ' — ' + d.expiry_date : ''}`,
         cta: 'Ver documentos',
