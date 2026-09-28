@@ -44,7 +44,10 @@ test('journey filters support multiple drivers and trucks inside one filter pane
   assert.match(html, /id="jadmin-f-chofer-options"/);
   assert.match(html, /id="jadmin-f-camion-options"/);
   assert.match(html, /id="jadmin-f-periodo-host"/);
-  assert.match(html, /class="chips"[\s\S]*data-chip="todas"/);
+  // Período y Estado unificados: sin chips duplicados.
+  assert.doesNotMatch(html, /data-chip="todas"/);
+  assert.match(ui, /F\.period\(\{ id: 'jadmin-periodo', value, allowAll: false, quick: true \}\)/);
+  assert.match(ui, /\{ group: 'Alertas' \}/);
   assert.match(ui, /driverIds:\s*\[\]/);
   assert.match(ui, /truckIds:\s*\[\]/);
   assert.match(data, /query = query\.in\('driver_id', selectedDrivers\)/);
@@ -98,7 +101,7 @@ test('la grilla cambia Rendición por caja, y Taller por una marca en Estado', (
   assert.doesNotMatch(html, /<th class="center">Taller<\/th>/);
   assert.match(ui, /if \(r\.in_workshop\) \{[\s\S]*?taller-mark/);
   // El filtro por taller sigue existiendo y sigue leyendo el mismo campo.
-  assert.match(html, /data-chip="taller"/);
+  assert.match(read('sigma.js'), /{ value: 'taller', label: 'En taller' }/);
   assert.match(ui, /clientFilter === 'taller'[\s\S]*?r\.in_workshop/);
 
   // Combustible: la query ya traía liters y total_cost; solo se exponen.

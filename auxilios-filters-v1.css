@@ -53,3 +53,6 @@
   .auxf-btn{width:100%;max-width:none}
   .auxf-pop{position:fixed;top:auto;left:16px!important;right:16px!important;bottom:16px;width:auto;max-height:calc(100vh - 96px);overflow:auto}
 }
+.auxf-quick{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.auxf-quick .auxf-mes{padding:0 6px}
+.auxf-group{margin:8px 4px 2px;color:var(--muted2,#8590ab);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}

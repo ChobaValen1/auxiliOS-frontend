@@ -7,7 +7,9 @@
    innerHTML; los eventos se resuelven con un listener delegado por raíz, así
    que re-pintar no duplica handlers.
 
-   Período: {mode:'all'|'mes'|'rango', mes:'AAAA-MM', desde:'AAAA-MM-DD', hasta}.
+   Período: {mode:'all'|'mes'|'rango', mes:'AAAA-MM', desde:'AAAA-MM-DD', hasta, quick?}.
+   Con quick:true suma accesos rápidos (Hoy, Ayer, Esta semana, Últimos 7 días)
+   arriba de los meses; un rango rápido lleva quick:'hoy'|'ayer'|'semana'|'7d'.
    Selección: un valor string; '' significa "todos". */
 (()=>{'use strict';
 if(window.AuxFilters)return;
@@ -22,6 +24,16 @@ function rangoDeMes(ym){const [y,m]=String(ym||'').split('-').map(Number);if(!y|
 function fechaCorta(iso){const [y,m,d]=String(iso||'').split('-');return y&&m&&d?`${d}/${m}/${y.slice(2)}`:'';}
 /* 'DD/MM/AA' (o DD/MM/AAAA) → 'AAAA-MM-DD'; '' si no es una fecha válida. */
 function parseCorta(text){const m=String(text||'').trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2}|\d{4})$/);if(!m)return'';const d=+m[1],mo=+m[2],y=m[3].length===2?2000+ +m[3]:+m[3];const dt=new Date(y,mo-1,d);if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return'';return`${y}-${pad(mo)}-${pad(d)}`;}
+const QUICK=[['hoy','Hoy'],['ayer','Ayer'],['semana','Esta semana'],['7d','Últimos 7 días']];
+function isoDe(d){return`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function rangoRapido(key){
+  const hoy=new Date(),d=new Date(hoy);
+  if(key==='hoy')return{desde:isoDe(hoy),hasta:isoDe(hoy)};
+  if(key==='ayer'){d.setDate(d.getDate()-1);return{desde:isoDe(d),hasta:isoDe(d)};}
+  if(key==='semana'){d.setDate(d.getDate()-((d.getDay()+6)%7));return{desde:isoDe(d),hasta:isoDe(hoy)};}
+  if(key==='7d'){d.setDate(d.getDate()-6);return{desde:isoDe(d),hasta:isoDe(hoy)};}
+  return null;
+}
 function etiquetaMes(ym){const [y,m]=ym.split('-').map(Number);return`${MESES[m-1]} ${String(y).slice(2)}`;}
 
 /* ── Período ─────────────────────────────────────────────────────────── */
@@ -31,6 +43,8 @@ function periodMonth(p){return p?.mode==='mes'?p.mes:'';}
 function describePeriod(p,allLabel){
   if(!p||p.mode==='all')return{titulo:allLabel||'Todas las fechas',rango:''};
   if(p.mode==='mes'){const r=rangoDeMes(p.mes),[y,m]=p.mes.split('-').map(Number);return{titulo:`${MESES_LARGOS[m-1]} ${y}`,rango:r?`${fechaCorta(r.desde)} – ${fechaCorta(r.hasta)}`:''};}
+  const q=p.quick&&QUICK.find(x=>x[0]===p.quick);
+  if(q)return{titulo:q[1],rango:p.desde===p.hasta?fechaCorta(p.desde):`${fechaCorta(p.desde)} – ${fechaCorta(p.hasta)}`};
   return{titulo:'Período personalizado',rango:`${fechaCorta(p.desde)} – ${fechaCorta(p.hasta)}`};
 }
 function inPeriod(p,value){
@@ -39,19 +53,19 @@ function inPeriod(p,value){
   const iso=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   return(!b.start||iso>=b.start)&&(!b.end||iso<=b.end);
 }
-function period({id,value,allLabel='Todas las fechas',allowAll=true,months}={}){
+function period({id,value,allLabel='Todas las fechas',allowAll=true,months,quick=false}={}){
   const p=value||{mode:allowAll?'all':'mes',mes:mesActual()},d=describePeriod(p,allLabel),b=periodBounds(p),active=p.mode!=='all';
   const lista=(Array.isArray(months)&&months.length?[...new Set(months)].sort().reverse().slice(0,12):mesesRecientes(12));
   const meses=lista.map(ym=>{const on=p.mode==='mes'&&p.mes===ym;return`<button type="button" class="auxf-mes${on?' on':''}" data-auxf-mes="${esc(ym)}"${on?' aria-current="true"':''}>${esc(etiquetaMes(ym))}</button>`;}).join('');
   return`<div class="auxf" data-auxf="${esc(id)}" data-auxf-kind="period"><button type="button" class="auxf-btn${active?' is-active':''}" data-auxf-open aria-haspopup="dialog" aria-expanded="false"><span class="auxf-ico" aria-hidden="true">🗓</span><span class="auxf-txt"><b>${esc(d.titulo)}</b>${d.rango?`<small>${esc(d.rango)}</small>`:''}</span><span class="auxf-caret" aria-hidden="true">▾</span></button>`
-   +`<div class="auxf-pop auxf-pop-period" role="dialog" aria-label="Elegir período" hidden>${allowAll?`<button type="button" class="auxf-all${p.mode==='all'?' on':''}" data-auxf-all>${esc(allLabel)}</button>`:''}<h4>Mes</h4><div class="auxf-meses">${meses}</div><h4>Período personalizado</h4><div class="auxf-libre"><label>Desde<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-desde value="${esc(fechaCorta(b.start||''))}"></label><label>Hasta<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-hasta value="${esc(fechaCorta(b.end||''))}"></label><button type="button" class="auxf-aplicar" data-auxf-rango>Aplicar</button></div><p class="auxf-error" role="alert" hidden></p></div></div>`;
+   +`<div class="auxf-pop auxf-pop-period" role="dialog" aria-label="Elegir período" hidden>${allowAll?`<button type="button" class="auxf-all${p.mode==='all'?' on':''}" data-auxf-all>${esc(allLabel)}</button>`:''}${quick?`<h4>Rápido</h4><div class="auxf-meses auxf-quick">${QUICK.map(([k,l])=>`<button type="button" class="auxf-mes${p.quick===k?' on':''}" data-auxf-quick="${k}">${esc(l)}</button>`).join('')}</div>`:''}<h4>Mes</h4><div class="auxf-meses">${meses}</div><h4>Período personalizado</h4><div class="auxf-libre"><label>Desde<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-desde value="${esc(fechaCorta(b.start||''))}"></label><label>Hasta<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-hasta value="${esc(fechaCorta(b.end||''))}"></label><button type="button" class="auxf-aplicar" data-auxf-rango>Aplicar</button></div><p class="auxf-error" role="alert" hidden></p></div></div>`;
 }
 
 /* ── Selección ───────────────────────────────────────────────────────── */
 /* options: [{value,label,hint}]. Con más de 8 opciones suma un buscador. */
 function select({id,label,icon='',value='',options=[],allLabel='Todos'}={}){
-  const current=options.find(o=>String(o.value)===String(value)),active=!!value&&!!current;
-  const rows=[{value:'',label:allLabel},...options].map(o=>{const on=String(o.value)===String(value||'')&&(o.value!==''||!active);return`<button type="button" class="auxf-opt${on?' on':''}" role="option" aria-selected="${on}" data-auxf-value="${esc(o.value)}" data-auxf-text="${esc(String(o.label||'').toLowerCase())}"><span>${esc(o.label)}</span>${o.hint?`<small>${esc(o.hint)}</small>`:''}${on?'<i aria-hidden="true">✓</i>':''}</button>`;}).join('');
+  const current=options.find(o=>!o.group&&String(o.value)===String(value)),active=!!value&&!!current;
+  const rows=[{value:'',label:allLabel},...options].map(o=>{if(o.group)return`<h5 class="auxf-group">${esc(o.group)}</h5>`;const on=String(o.value)===String(value||'')&&(o.value!==''||!active);return`<button type="button" class="auxf-opt${on?' on':''}" role="option" aria-selected="${on}" data-auxf-value="${esc(o.value)}" data-auxf-text="${esc(String(o.label||'').toLowerCase())}"><span>${esc(o.label)}</span>${o.hint?`<small>${esc(o.hint)}</small>`:''}${on?'<i aria-hidden="true">✓</i>':''}</button>`;}).join('');
   return`<div class="auxf" data-auxf="${esc(id)}" data-auxf-kind="select"><button type="button" class="auxf-btn${active?' is-active':''}" data-auxf-open aria-haspopup="listbox" aria-expanded="false">${icon?`<span class="auxf-ico" aria-hidden="true">${icon}</span>`:''}<span class="auxf-txt"><small class="auxf-label">${esc(label)}</small><b>${esc(active?current.label:allLabel)}</b></span><span class="auxf-caret" aria-hidden="true">▾</span></button>`
    +`<div class="auxf-pop auxf-pop-select" hidden><h4>${esc(label)}</h4>${options.length>8?`<input type="search" class="auxf-find" data-auxf-find placeholder="Buscar ${esc(label.toLowerCase())}…" autocomplete="off">`:''}<div class="auxf-opts" role="listbox" aria-label="${esc(label)}">${rows}</div><p class="auxf-none" hidden>Sin coincidencias</p></div></div>`;
 }
@@ -77,6 +91,8 @@ function bind(root,onChange,onClear){
     const opt=ev.target.closest('[data-auxf-value]');
     if(opt){ev.preventDefault();closeAll();h.onChange?.(id,opt.dataset.auxfValue);return;}
     if(ev.target.closest('[data-auxf-all]')){ev.preventDefault();closeAll();h.onChange?.(id,{mode:'all'});return;}
+    const rap=ev.target.closest('[data-auxf-quick]');
+    if(rap){ev.preventDefault();closeAll();const r=rangoRapido(rap.dataset.auxfQuick);if(r)h.onChange?.(id,{mode:'rango',desde:r.desde,hasta:r.hasta,quick:rap.dataset.auxfQuick});return;}
     const mes=ev.target.closest('[data-auxf-mes]');
     if(mes){ev.preventDefault();closeAll();h.onChange?.(id,{mode:'mes',mes:mes.dataset.auxfMes});return;}
     if(ev.target.closest('[data-auxf-rango]')){
@@ -101,5 +117,5 @@ function bind(root,onChange,onClear){
 document.addEventListener('click',ev=>{if(!ev.target.closest?.('.auxf'))closeAll();});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeAll();});
 
-window.AuxFilters={parseCorta,period,select,search,clear,bind,closeAll,periodBounds,periodFromMonth,periodMonth,describePeriod,inPeriod,rangoDeMes};
+window.AuxFilters={rangoRapido,parseCorta,period,select,search,clear,bind,closeAll,periodBounds,periodFromMonth,periodMonth,describePeriod,inPeriod,rangoDeMes};
 })();

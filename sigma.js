@@ -14182,7 +14182,7 @@ function _jadminPopularDropdowns() {
   const drivers = document.getElementById('jadmin-f-chofer-options');
   const trucks = document.getElementById('jadmin-f-camion-options');
   if (drivers) drivers.innerHTML = _jadminState.choferes.map(c => {
-    const lbl = c.legajo ? `${_escHtml(c.full_name)} (Leg. ${_escHtml(c.legajo)})` : _escHtml(c.full_name);
+    const lbl = _escHtml(c.full_name);
     return `<label class="jadmin-option"><input type="checkbox" value="${_escHtml(c.user_id)}"> <span>${lbl}</span></label>`;
   }).join('') || '<span class="jadmin-option">Sin choferes disponibles</span>';
   if (trucks) trucks.innerHTML = _jadminState.camiones.map(t => {
@@ -14215,18 +14215,27 @@ function _jadminRenderAuxFilters() {
   if (!F || !per || !est) return false;
   const d = _jadminState.desde, h = _jadminState.hasta;
   const mes = d && /-01$/.test(d) && h && h.slice(0, 7) === d.slice(0, 7) && (h === F.rangoDeMes(d.slice(0, 7))?.hasta || h === _jadminHoy()) ? d.slice(0, 7) : null;
-  const value = mes ? { mode: 'mes', mes } : (d || h ? { mode: 'rango', desde: d, hasta: h } : { mode: 'all' });
-  per.innerHTML = F.period({ id: 'jadmin-periodo', value, allowAll: false });
-  est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.estado || '', options: [{ value: 'open', label: 'Abierta' }, { value: 'closed', label: 'Cerrada' }], allLabel: 'Todos' });
+  const value = _jadminState.quick ? { mode: 'rango', desde: d, hasta: h, quick: _jadminState.quick }
+    : mes ? { mode: 'mes', mes } : (d || h ? { mode: 'rango', desde: d, hasta: h } : { mode: 'all' });
+  // Un solo Período (rápidos, meses y personalizado) y un solo Estado (estados y alertas).
+  per.innerHTML = F.period({ id: 'jadmin-periodo', value, allowAll: false, quick: true });
+  est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.clientFilter || _jadminState.estado || '', allLabel: 'Todas',
+    options: [{ value: 'open', label: 'Abiertas' }, { value: 'closed', label: 'Cerradas' }, { group: 'Alertas' },
+      { value: 'taller', label: 'En taller' }, { value: 'incidentes', label: 'Con incidentes' }, { value: 'rendicion', label: 'Faltantes de rendición' }] });
   const root = document.querySelector('#screen-jornadas-admin .filtros');
   F.bind(root, (id, v) => {
     if (id === 'jadmin-periodo') {
       const b = F.periodBounds(v);
       _jadminState.desde = b.start; _jadminState.hasta = v.mode === 'mes' && b.end > _jadminHoy() ? _jadminHoy() : b.end;
+      _jadminState.quick = v.quick || null;
       _jadminState.chip = null;
       document.querySelectorAll('#screen-jornadas-admin .chip-group:first-child .chip').forEach(c => c.classList.remove('active'));
     }
-    if (id === 'jadmin-estado') _jadminState.estado = v || '';
+    if (id === 'jadmin-estado') {
+      const alerta = ['taller', 'incidentes', 'rendicion'].includes(v);
+      _jadminState.estado = alerta ? '' : (v || '');
+      _jadminState.clientFilter = alerta ? v : null;
+    }
     _jadminState.offset = 0;
     _jadminSyncPeriodLabel();
     _jadminSyncEstadoChip();
@@ -14411,6 +14420,7 @@ function _jadminResetFiltros() {
   _jadminState.orderAsc = false;
   _jadminState.chip = 'todas';
   _jadminState.clientFilter = null;
+  _jadminState.quick = null;
 
   const $ = (id) => document.getElementById(id);
   if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde;
