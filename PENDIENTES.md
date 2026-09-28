@@ -16,6 +16,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] AuxiliosQA carga combustible con la foto del ticket: que siga leyéndolo (procesar-ticket ahora exige sesión). Si falla, volver verify_jwt a false.
 - [ ] Subir documento (Camión) con una foto y un PDF reales de VTV o póliza: que complete vencimiento y número, y avise si la patente no coincide. No hace falta guardar.
 - [ ] AuxiliosQA firma un remito → el servicio desaparece de su lista y se le puede asignar otro servicio enseguida.
 
@@ -25,6 +26,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] procesar-ticket exige sesión (verify_jwt, v6). Antes cualquiera con la dirección podía usarla.
 - [x] Documentación del camión: al elegir la foto o el PDF se lee el vencimiento, el número y el período (función leer-documento-camion).
 - [x] Control del camión · detalle del móvil en una sola pantalla: Para resolver, Mantenimiento (planes, últimos services y gasto del año), Documentación (obligatorios que faltan), Combustible (cargas y gasto del mes) y Neumáticos y frenos (historial).
 - [x] Flota: la columna Documentación detecta los obligatorios sin cargar.
