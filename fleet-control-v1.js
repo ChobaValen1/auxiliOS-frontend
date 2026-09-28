@@ -78,8 +78,13 @@
     return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + ' km', tono: '' };
   }
 
+  /* Documentos obligatorios (misma lista que marca is_obligatorio al subirlos). */
+  var DOC_OBLIGATORIOS = { VTV: 'VTV', SEGURO_POLIZA: 'Seguro', HABILITACION_RUTA: 'RUTA', CEDULA_VERDE: 'Cédula verde', MATAFUEGOS: 'Matafuegos' };
+
   function documentos(t) {
-    if (num(t.docs_vencidos)) return { txt: num(t.docs_vencidos) + (num(t.docs_vencidos) === 1 ? ' vencido' : ' vencidos'), tono: 'critico', alerta: true };
+    var sin = (t.docs_sin_cargar || []).filter(function (c) { return DOC_OBLIGATORIOS[c]; });
+    if (num(t.docs_vencidos)) return { txt: num(t.docs_vencidos) + (num(t.docs_vencidos) === 1 ? ' vencido' : ' vencidos'), tono: 'critico', alerta: true, sub: sin.length ? 'Faltan ' + sin.length + ' obligatorios' : '' };
+    if (sin.length) return { txt: 'Faltan ' + sin.length, tono: 'alerta', alerta: true, sub: sin.map(function (c) { return DOC_OBLIGATORIOS[c]; }).join(', ') };
     if (num(t.docs_proximos)) return { txt: num(t.docs_proximos) + ' por vencer', tono: 'alerta', alerta: true };
     if (num(t.docs_faltan)) return { txt: num(t.docs_faltan) + ' sin archivo', tono: 'alerta', alerta: true };
     return { txt: 'Al día', tono: '' };
@@ -219,6 +224,10 @@
 
   global.AuxiliosControlFlota = {
     cargar: cargar,
+    titulo: titulo,
+    estado: estado,
+    hoy: function () { return st.today; },
+    DOC_OBLIGATORIOS: DOC_OBLIGATORIOS,
     _test: {
       set: function (s) { st = Object.assign(st, s); },
       estado: estado, neumaticos: neumaticos, service: service, documentos: documentos, alertas: alertas
