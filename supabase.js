@@ -1174,8 +1174,11 @@ async function guardarRemitoVinculado(remito, explicitServiceId = null) {
     operator_service_id: serviceId,
     client_operation_id: clientOperationId,
   };
+  // v5 = v4 + el cobro del servicio particular (customer_collections).
   const rpcName = payload.addons_version === 2
-    ? 'save_driver_operator_service_remito_v4'
+    ? (payload.customer_collections?.kind === 'private_service'
+        ? 'save_driver_operator_service_remito_v5'
+        : 'save_driver_operator_service_remito_v4')
     : 'save_driver_operator_service_remito_v3';
   const { data, error } = await _db.rpc(rpcName, {
     p_service_id: serviceId,

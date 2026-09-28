@@ -19,10 +19,10 @@
     ['exento', 'Exento']
   ];
   var MEDIOS = [
-    ['efectivo', 'Efectivo'],
-    ['transferencia', 'Transferencia'],
-    ['mercadopago', 'Mercado Pago'],
-    ['tarjeta', 'Tarjeta']
+    ['cash', 'Efectivo'],
+    ['transfer', 'Transferencia'],
+    ['mercado_pago', 'Mercado Pago'],
+    ['card', 'Tarjeta']
   ];
 
   var st = null;          // estado del formulario abierto
@@ -130,7 +130,7 @@
         origin: '', origin_lat: '', origin_lng: '', origin_place_id: '', origin_formatted_address: '',
         destination: '', destination_lat: '', destination_lng: '', destination_place_id: '', destination_formatted_address: '',
         route: null,
-        presupuesto: '', sena: false, sena_monto: '', sena_medio: 'efectivo',
+        presupuesto: '', sena: false, sena_monto: '', sena_medio: 'cash',
         factura: false, condicion: 'consumidor_final',
         assigned_truck_id: '', assigned_driver_id: '',
         operator_notes: ''

@@ -121,7 +121,7 @@ async function open(remitoId,{editar=false,anular=false,tab='detalle'}={}){
   const r=typeof obtenerRemitoCompleto==='function'?await obtenerRemitoCompleto(remitoId):null;
   if(!r){$('rmp-body').innerHTML='<div class="rmp-loading is-error">No se pudo cargar el remito.</div>';return}
   P.remito=r;
-  [P.servicio,P.encuesta]=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id)]);
+  [P.servicio,P.encuesta,P.cobro]=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id),cargarCobro(r.remito_id)]);P.rechazandoCobro=false;
   if(editar&&isAdmin()&&r.status!=='anulado')P.editing=true;
   if(anular&&puedeAnular())P.annulling=true;
   render();
@@ -219,7 +219,46 @@ function renderDetalle(r,s){
   const fotos=Array.isArray(r.foto_urls)?r.foto_urls:[];
   const media=seccion(`Fotos y firma`,`<div class="rmp-media">${fotos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto del servicio" loading="lazy"></a>`).join('')||'<span class="rmp-empty">Sin fotos</span>'}</div>
     <div class="rmp-sign">${r.firma_imagen_url?`<img src="${esc(r.firma_imagen_url)}" alt="Firma del cliente"><span>Firmado el ${esc(fecha(r.firmado_at))}</span>`:'<span class="rmp-empty">Sin firma</span>'}</div>`);
-  return aviso+anulado+editando+`<div class="rmp-grid">${cliente}${vehiculo}</div>`+servicio+cargos+conf+obs+media+(P.annulling?renderAnular():'');
+  return aviso+avisoCobro()+anulado+editando+`<div class="rmp-grid">${cliente}${vehiculo}</div>`+servicio+renderCobro()+cargos+conf+obs+media+(P.annulling?renderAnular():'');
+}
+
+/* ── Cobro del servicio particular (lo que informó el chofer) ─────────────── */
+const MEDIOS_COBRO={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'};
+const puedeRevisarCobro=()=>['administracion','operador'].includes(role());
+async function cargarCobro(remitoId){
+  if(typeof _db==='undefined')return null;
+  try{const {data,error}=await _db.rpc('get_service_collection_v1',{p_remito_id:Number(remitoId)});return error?null:data||null}catch(e){return null}
+}
+function avisoCobro(){
+  const c=P.cobro;if(!c||c.status!=='pending')return'';
+  return`<div class="rmp-alert is-review"><div><b>Cobro del servicio por aprobar</b><span>El chofer informó ${c.not_collected?'que no cobró el saldo':'el cobro del saldo'}. Al aprobarlo se registra como pago del servicio.</span></div></div>`;
+}
+function renderCobro(){
+  const c=P.cobro;if(!c)return'';
+  const estado={pending:'<span class="rmp-warn">Por aprobar</span>',approved:'Aprobado',rejected:'<span class="rmp-warn">Rechazado</span>'}[c.status]||esc(c.status);
+  const lineas=(c.lines||[]).map(l=>fila(esc(MEDIOS_COBRO[l.method]||l.method),money(l.amount))).join('');
+  const cuerpo=(c.not_collected?fila('Saldo','<span class="rmp-warn">No cobrado</span>')+fila('Motivo',esc(c.reason||'—')):lineas+fila('<b>Cobrado</b>',`<b>${money(c.collected_total)}</b>`))+
+    fila('Presupuesto',money(c.quoted_total))+fila('Pagado del servicio',money(c.paid))+fila('Saldo pendiente',Number(c.balance)>0?`<span class="rmp-warn">${money(c.balance)}</span>`:money(0))+
+    fila('Estado',estado)+(c.review_note?fila('Nota',esc(c.review_note)):'');
+  const acciones=c.status==='pending'&&puedeRevisarCobro()?(P.rechazandoCobro
+    ?`<label class="rmp-field"><span>Motivo del rechazo</span><textarea id="rmp-cobro-nota" rows="2" maxlength="500" placeholder="Ej.: el cliente dice que pagó otro monto"></textarea></label><div class="rmp-actions"><span></span><button class="rmp-btn ghost" type="button" onclick="RemitoPanel.cobro('cancelar')">Cancelar</button><button class="rmp-btn danger" type="button" onclick="RemitoPanel.cobro('rechazar')">Rechazar cobro</button></div>`
+    :`<div class="rmp-actions"><span></span><button class="rmp-btn" type="button" onclick="RemitoPanel.cobro('pedir-rechazo')">Rechazar</button><button class="rmp-btn primary" type="button" onclick="RemitoPanel.cobro('aprobar')"${P.busy?' disabled':''}>${c.not_collected?'Aprobar (queda pendiente)':'Aprobar cobro'}</button></div>`):'';
+  return seccion('Cobro del servicio · particular',cuerpo+acciones);
+}
+async function revisarCobro(accion){
+  const c=P.cobro;if(!c)return;
+  if(accion==='pedir-rechazo'){P.rechazandoCobro=true;return render()}
+  if(accion==='cancelar'){P.rechazandoCobro=false;return render()}
+  const nota=accion==='rechazar'?String($('rmp-cobro-nota')?.value||'').trim():null;
+  if(accion==='rechazar'&&!nota){window.toast?.('Indicá el motivo del rechazo','error');return}
+  P.busy=true;render();
+  try{
+    const {error}=await _db.rpc('review_service_collection_v1',{p_report_id:c.report_id,p_decision:accion==='aprobar'?'approved':'rejected',p_note:nota});
+    if(error)throw error;
+    P.cobro=await cargarCobro(P.remito.remito_id);P.rechazandoCobro=false;
+    window.operationFeedback?.(accion==='aprobar'?'Cobro aprobado':'Cobro rechazado',accion==='aprobar'?'Quedó registrado como pago del servicio.':'El saldo sigue pendiente.','success',2400);
+  }catch(e){window.toast?.(e.message||'No se pudo revisar el cobro','error')}
+  finally{P.busy=false;render()}
 }
 
 function renderAnular(){
@@ -332,5 +371,5 @@ document.addEventListener('click',e=>{
   if(card&&fn){e.preventDefault();fn(card)}
 });
 
-window.RemitoPanel={open,close,tab,corregir,cancelar,guardar,anular,confirmarAnular,revisar,irAlServicio,pdf,whatsapp,_state:P};
+window.RemitoPanel={open,close,tab,corregir,cancelar,guardar,anular,confirmarAnular,revisar,irAlServicio,pdf,whatsapp,cobro:revisarCobro,_state:P};
 })();

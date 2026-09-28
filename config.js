@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'particulares-v166-20260928';
+window.AUXILIOS_BUILD_ID = 'particulares-v167-20260928';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -187,6 +187,9 @@ async function loadCriticalAuxiliosModules() {
   await loadAuxiliosModule('auxilios-remito-mobile-flow-v3', '/remito-mobile-flow-v3.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
   await loadAuxiliosModule('auxilios-remito-addons-v2', '/remito-addons-v2.js');
+  // Remito de un particular: cobro del saldo en el paso 2 (envuelve los adicionales).
+  loadAuxiliosStyle('auxilios-private-collection-v1-css', '/private-collection-v1.css');
+  await loadAuxiliosModule('auxilios-private-collection-v1', '/private-collection-v1.js');
   await loadAuxiliosModule('auxilios-operator-remito-review-v2', '/operator-remito-review-v2.js');
 
   await loadAuxiliosModule('auxilios-operator-billing-export', '/operator-billing-export.js');

@@ -1,0 +1,23 @@
+/* AuxiliOS · Cobro del servicio particular en el remito del chofer (v1) */
+.pcv-card { border-color: color-mix(in srgb, var(--amber) 40%, var(--border)); }
+.pcv-resumen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; }
+.pcv-resumen > div { display: grid; gap: 2px; padding: 10px; border-radius: 10px; background: var(--bg); }
+.pcv-resumen span { color: var(--muted2); font-size: 11px; }
+.pcv-resumen b { font-size: 14px; }
+.pcv-resumen .pcv-saldo b { color: var(--amber); font-size: 16px; }
+.pcv-resumen b { white-space: nowrap; }
+.pcv-modo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.pcv-modo button, .pcv-chips button { min-height: 44px; padding: 8px 10px; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pcv-modo button[aria-pressed="true"], .pcv-chips button[aria-pressed="true"] { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 16%, var(--bg)); color: var(--amber); }
+.pcv-linea { display: grid; gap: 8px; margin-bottom: 12px; }
+.pcv-linea > span { color: var(--muted2); font-size: 12px; font-weight: 700; }
+.pcv-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pcv-monto { display: flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg); color: var(--muted2); }
+.pcv-monto:focus-within { border-color: var(--amber); }
+.pcv-monto input { flex: 1; min-height: 44px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 16px; font-weight: 700; outline: none; }
+.pcv-link { padding: 4px 0; border: 0; background: none; color: var(--amber); font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.pcv-motivo { display: grid; gap: 6px; }
+.pcv-motivo span { color: var(--muted2); font-size: 12px; font-weight: 700; }
+.pcv-motivo textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; font-size: 16px; resize: vertical; }
+.pcv-help, .pcv-ok { margin: 8px 0 0; color: var(--muted2); font-size: 12px; }
+.pcv-ok { color: #27c47a; font-weight: 600; }

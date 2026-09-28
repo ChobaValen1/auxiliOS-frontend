@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v383';
+const CACHE_NAME='auxilios-billing-phase2-v384';
 const PRECACHE_ASSETS=[
   '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/payroll-matrix.js', '/payroll-view.js',
   '/empresas-v2.js','/empresas-v2.css',
@@ -20,7 +20,7 @@ const PRECACHE_ASSETS=[
   '/operator-service-lifecycle.css','/operator-service-lifecycle.js',
   '/toll-management.css','/toll-management.js',
   '/rendition-journey-source-v1.js',
-  '/remito-addons-v2.css','/remito-addons-v2.js',
+  '/remito-addons-v2.css','/remito-addons-v2.js','/private-collection-v1.css','/private-collection-v1.js',
   '/remito-mobile-flow-v3.css','/remito-mobile-flow-v3.js',
   '/operator-remito-review-v2.css','/operator-remito-review-v2.js',
   '/supabase.js','/offline.js','/manifest.json',
