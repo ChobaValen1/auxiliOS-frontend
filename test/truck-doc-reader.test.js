@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const js = fs.readFileSync('truck-doc-reader-v1.js', 'utf8');
-const fn = fs.readFileSync('supabase/functions/leer-documento-camion/index.ts', 'utf8');
+const fn = fs.readFileSync('edge-functions/leer-documento-camion/index.ts', 'utf8');
 const config = fs.readFileSync('config.js', 'utf8');
 
 function load(campos) {
