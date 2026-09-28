@@ -15,7 +15,8 @@
 (function (global) {
   'use strict';
 
-  var MEDIOS = [['cash', 'Efectivo'], ['transfer', 'Transferencia'], ['card', 'Tarjeta'], ['mercado_pago', 'Mercado Pago']];
+  var MEDIOS = [['cash', 'Efectivo'], ['transfer', 'Transferencia'], ['card', 'Tarjeta']];
+  var origCollect = null;
 
   var st = { serviceId: null, info: null, modo: 'cobrado', dividir: false, l1: { method: '', amount: '' }, l2: { method: '', amount: '' }, motivo: '' };
   var cache = Object.create(null);
@@ -34,6 +35,19 @@
   }
   function activo() { return !!(st.info && st.info.particular); }
   function saldo() { return st.info ? num(st.info.balance) : 0; }
+
+  /* Adicionales fuera del presupuesto que el cliente pagó en el lugar: se suman
+     a lo que hay que cobrarle. Cada adicional lleva su propio medio de pago. */
+  function adicionales() {
+    try {
+      var b = origCollect ? origCollect.call(global.AuxiliosRemitoAddonsV2) : null;
+      return ((b && b.payload && b.payload.excesses) || []);
+    } catch (e) { return []; }
+  }
+  function totalAdicionales(lista) {
+    return (lista || adicionales()).filter(function (l) { return l.customer_payment_method !== 'not_collected'; })
+      .reduce(function (s, l) { return s + num(l.unit_amount) * (num(l.quantity) || 1); }, 0);
+  }
 
   function lineas() {
     if (!activo() || st.modo !== 'cobrado') return [];
@@ -89,6 +103,7 @@
       if (card) card.remove();
       if (tollCard) tollCard.hidden = false;
       if (excessCard) {
+        excessCard.hidden = false;
         var t0 = excessCard.querySelector('.rem-addons-title'); if (t0 && t0.dataset.pcvOrig) t0.textContent = t0.dataset.pcvOrig;
         var h0 = excessCard.querySelector('.rem-addons-help'); if (h0 && h0.dataset.pcvOrig) h0.textContent = h0.dataset.pcvOrig;
         var b0 = $('#rem-add-excess'); if (b0 && b0.dataset.pcvOrig) b0.textContent = b0.dataset.pcvOrig;
@@ -117,31 +132,33 @@
       var ref = step.querySelector('.rem-addons-card');
       step.insertBefore(card, ref || null);
     }
-    var i = st.info, pendiente = saldo();
+    var i = st.info, pendiente = saldo(), extras = adicionales(), extra = totalAdicionales(extras);
+    if (excessCard) excessCard.hidden = !extras.length;
     card.innerHTML =
       '<div class="rem-addons-head"><div><div class="rem-addons-title">Cliente particular' + (i.customer_name ? ' · ' + esc(i.customer_name) : '') + '</div>' +
-        '<div class="rem-addons-help">Cobrá el saldo del servicio. Los peajes están incluidos en el presupuesto.</div></div></div>' +
+        '<div class="rem-addons-help">Los peajes están incluidos en el presupuesto.</div></div></div>' +
       '<div class="pcv-resumen">' +
         '<div><span>Presupuesto</span><b>' + money(i.quoted_total) + '</b></div>' +
-        '<div><span>Seña / pagado</span><b>' + money(i.paid) + '</b></div>' +
-        '<div class="pcv-saldo"><span>A cobrar</span><b>' + money(pendiente) + '</b></div>' +
+        '<div><span>Saldo</span><b>' + money(pendiente) + '</b>' + (num(i.paid) > 0 ? '<small>Pagó ' + money(i.paid) + '</small>' : '') + '</div>' +
+        '<div class="pcv-saldo"><span>A cobrar</span><b>' + money(pendiente + extra) + '</b>' + (extra > 0 ? '<small>+ ' + money(extra) + ' adicionales</small>' : '') + '</div>' +
       '</div>' +
-      (pendiente <= 0 ? '<p class="pcv-ok">El servicio ya está pago. No hay saldo para cobrar.</p>' :
-        '<div class="pcv-modo" role="group" aria-label="Cobro del saldo">' +
-          '<button type="button" data-pcv-modo="cobrado" aria-pressed="' + (st.modo === 'cobrado') + '">Cobré el saldo</button>' +
-          '<button type="button" data-pcv-modo="no_cobrado" aria-pressed="' + (st.modo === 'no_cobrado') + '">No cobré</button></div>' +
-        (st.modo === 'cobrado'
-          ? (st.dividir
+      (pendiente <= 0 ? '<p class="pcv-ok">El presupuesto ya está pago.</p>' :
+        st.modo === 'no_cobrado'
+          ? '<label class="pcv-motivo"><span>¿Por qué no cobraste el saldo?</span><textarea data-pcv-motivo rows="2" placeholder="Ej.: paga por transferencia mañana">' + esc(st.motivo) + '</textarea></label>' +
+            '<p class="pcv-help">Podés cerrar el servicio igual. El saldo queda pendiente para Administración.</p>' +
+            '<div class="pcv-links"><button type="button" class="pcv-link" data-pcv-modo="cobrado">Sí, cobré el saldo</button></div>'
+          : (st.dividir
               ? '<div class="pcv-linea"><span>Medio 1</span>' + chips(st.l1.method, 'l1') +
                   '<label class="pcv-monto">$<input data-pcv-monto="l1" inputmode="decimal" value="' + esc(st.l1.amount) + '" placeholder="0"></label></div>' +
                 '<div class="pcv-linea"><span>Medio 2</span>' + chips(st.l2.method, 'l2') +
                   '<label class="pcv-monto">$<input data-pcv-monto="l2" inputmode="decimal" value="' + esc(st.l2.amount) + '" placeholder="0"></label></div>' +
-                '<button type="button" class="pcv-link" data-pcv="un-medio">Pagó con un solo medio</button>'
-              : '<div class="pcv-linea"><span>¿Cómo pagó ' + money(pendiente) + '?</span>' + chips(st.l1.method, 'l1') + '</div>' +
-                '<button type="button" class="pcv-link" data-pcv="dividir">Pagó con dos medios</button>')
-          : '<label class="pcv-motivo"><span>¿Por qué no se cobró?</span><textarea data-pcv-motivo rows="2" placeholder="Ej.: paga por transferencia mañana">' + esc(st.motivo) + '</textarea></label>' +
-            '<p class="pcv-help">Podés cerrar el servicio igual. El saldo queda pendiente para Administración.</p>')
-      );
+                '<div class="pcv-links"><button type="button" class="pcv-link" data-pcv="un-medio">Pagó con un solo medio</button>' +
+                  '<button type="button" class="pcv-link" data-pcv-modo="no_cobrado">No cobré</button></div>'
+              : '<div class="pcv-linea"><span>Medio de pago del saldo</span>' + chips(st.l1.method, 'l1') + '</div>' +
+                '<div class="pcv-links"><button type="button" class="pcv-link" data-pcv="dividir">Pagó con dos medios</button>' +
+                  '<button type="button" class="pcv-link" data-pcv-modo="no_cobrado">No cobré</button></div>')) +
+      '<div class="pcv-extra"><span>¿Tuvo que pagar algo más?</span>' +
+        '<button type="button" class="pcv-extra-btn" data-pcv="adicional">+ Agregar adicional</button></div>';
   }
 
   /* ── Datos del servicio ───────────────────────────────────────────────── */
@@ -169,6 +186,7 @@
     var A = global.AuxiliosRemitoAddonsV2;
     if (!A || A.__pcv) return !!(A && A.__pcv);
     var validate = A.validate, collect = A.collect, reset = A.reset, restore = A.restore;
+    origCollect = collect;
     A.validate = function () {
       var r = validate.apply(this, arguments) || { ok: true, errors: [] };
       var e = errores();
@@ -197,6 +215,7 @@
     else if (b.hasAttribute('data-pcv-medio')) st[b.getAttribute('data-pcv-medio')].method = b.getAttribute('data-v');
     else if (b.getAttribute('data-pcv') === 'dividir') { st.dividir = true; st.l1.amount = st.l1.amount || String(Math.round(saldo())); }
     else if (b.getAttribute('data-pcv') === 'un-medio') { st.dividir = false; }
+    else if (b.getAttribute('data-pcv') === 'adicional') { var add = $('#rem-add-excess'); if (add) add.click(); return; }
     pintar();
   });
   document.addEventListener('input', function (ev) {
@@ -223,6 +242,9 @@
     step.dataset.pcvObs = '1';
     new MutationObserver(function () { if (step.offsetParent !== null) sync(); })
       .observe(step, { attributes: true, attributeFilter: ['class', 'style', 'hidden'], childList: true });
+    // Al agregar o quitar un adicional cambia el total: se repinta "A cobrar".
+    var tot = document.getElementById('rem-excess-summary');
+    if (tot) new MutationObserver(function () { if (activo()) pintar(); }).observe(tot, { childList: true, subtree: true });
     return true;
   }
 
@@ -239,7 +261,7 @@
     sync: sync,
     _test: {
       set: function (s) { st = Object.assign({ serviceId: 'x', modo: 'cobrado', dividir: false, l1: { method: '', amount: '' }, l2: { method: '', amount: '' }, motivo: '' }, s); },
-      errores: errores, payload: payload
+      errores: errores, payload: payload, totalAdicionales: totalAdicionales
     }
   };
 })(window);

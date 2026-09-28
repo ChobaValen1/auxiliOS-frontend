@@ -22,14 +22,27 @@ test('el formulario de particular exige cliente, tipo, origen y presupuesto', ()
   ['nombre del cliente', 'teléfono', 'tipo de servicio', 'origen', 'presupuesto'].forEach(t => assert.match(e, new RegExp(t)));
 });
 
-test('la seña no puede superar el presupuesto y el saldo se calcula solo', () => {
+test('sin pago, seña o pago total: el saldo a cobrar se calcula solo', () => {
   const P = cargar();
   const s = P._test.estadoInicial();
-  Object.assign(s.d, { presupuesto: '85000', sena: true, sena_monto: '20000' });
-  assert.equal(P._test.saldo(s), 65000);
-  s.d.sena_monto = '90000';
   s.ctx = { services: [] };
-  assert.match(P._test.errores(s).join(' '), /no puede superar el presupuesto/);
+  Object.assign(s.d, { presupuesto: '85000', pago: 'sena', sena_monto: '20000', sena_medio: 'transfer' });
+  assert.equal(P._test.saldo(s), 65000);
+  assert.equal(JSON.stringify(P._test.deposito(s)), JSON.stringify({ amount: 20000, method: 'transfer' }));
+  s.d.sena_monto = '90000';
+  assert.match(P._test.errores(s).join(' '), /menor al presupuesto/);
+  s.d.pago = 'total';
+  assert.equal(P._test.saldo(s), 0);
+  assert.equal(P._test.deposito(s).amount, 85000);
+  assert.doesNotMatch(P._test.errores(s).join(' '), /seña/);
+  s.d.pago = 'no';
+  assert.equal(P._test.saldo(s), 85000);
+  assert.equal(P._test.deposito(s), null);
+});
+
+test('medios de pago del operador: efectivo, transferencia y tarjeta', () => {
+  assert.match(js, /\['cash', 'Efectivo'\],\s*\['transfer', 'Transferencia'\],\s*\['card', 'Tarjeta'\]\s*\]/);
+  assert.match(js, /'Pago total'/);
 });
 
 test('pedir factura exige DNI o CUIT', () => {

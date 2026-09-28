@@ -71,3 +71,19 @@ test('Administración aprueba el cobro y recién ahí baja el saldo', () => {
 test('medios de pago iguales al remito', () => {
   assert.match(sql, /check \(method in \('cash', 'transfer', 'card', 'mercado_pago', 'other'\)\)/);
 });
+
+test('el chofer elige entre efectivo, transferencia y tarjeta', () => {
+  assert.match(js, /var MEDIOS = \[\['cash', 'Efectivo'\], \['transfer', 'Transferencia'\], \['card', 'Tarjeta'\]\];/);
+  assert.match(js, /¿Tuvo que pagar algo más\?/);
+  assert.match(js, /<span>Saldo<\/span>/);
+});
+
+test('A cobrar suma los adicionales que el cliente pagó en el lugar', () => {
+  const T = cargar();
+  const total = T.totalAdicionales([
+    { unit_amount: 15000, quantity: 1, customer_payment_method: 'cash' },
+    { unit_amount: 5000, quantity: 2, customer_payment_method: 'transfer' },
+    { unit_amount: 9000, quantity: 1, customer_payment_method: 'not_collected' }
+  ]);
+  assert.equal(total, 25000);
+});

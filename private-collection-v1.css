@@ -11,7 +11,7 @@
 .pcv-modo button[aria-pressed="true"], .pcv-chips button[aria-pressed="true"] { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 16%, var(--bg)); color: var(--amber); }
 .pcv-linea { display: grid; gap: 8px; margin-bottom: 12px; }
 .pcv-linea > span { color: var(--muted2); font-size: 12px; font-weight: 700; }
-.pcv-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pcv-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .pcv-monto { display: flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg); color: var(--muted2); }
 .pcv-monto:focus-within { border-color: var(--amber); }
 .pcv-monto input { flex: 1; min-height: 44px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 16px; font-weight: 700; outline: none; }
@@ -21,3 +21,11 @@
 .pcv-motivo textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; font-size: 16px; resize: vertical; }
 .pcv-help, .pcv-ok { margin: 8px 0 0; color: var(--muted2); font-size: 12px; }
 .pcv-ok { color: #27c47a; font-weight: 600; }
+.pcv-resumen small { color: var(--muted2); font-size: 11px; }
+.pcv-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin: -4px 0 4px; }
+.pcv-links .pcv-link { color: var(--muted2); font-weight: 600; }
+.pcv-extra { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.pcv-extra span { font-size: 14px; font-weight: 700; }
+.pcv-extra-btn { min-height: 44px; padding: 8px 14px; border: 1px dashed var(--amber); border-radius: 10px; background: transparent; color: var(--amber); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+.pcv-chips button { padding: 8px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 420px) { .pcv-chips button { font-size: 12px; padding: 8px 2px; letter-spacing: -.1px; } }

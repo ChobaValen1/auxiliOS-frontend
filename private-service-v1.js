@@ -21,9 +21,10 @@
   var MEDIOS = [
     ['cash', 'Efectivo'],
     ['transfer', 'Transferencia'],
-    ['mercado_pago', 'Mercado Pago'],
     ['card', 'Tarjeta']
   ];
+  // Pago previo al servicio: nada, una seña o el total (queda $0 a cobrar).
+  var PAGOS = [['no', 'Sin pago'], ['sena', 'Seña'], ['total', 'Pago total']];
 
   var st = null;          // estado del formulario abierto
   var cuenta = null;      // { company_id, name } de la cuenta Particulares
@@ -130,7 +131,7 @@
         origin: '', origin_lat: '', origin_lng: '', origin_place_id: '', origin_formatted_address: '',
         destination: '', destination_lat: '', destination_lng: '', destination_place_id: '', destination_formatted_address: '',
         route: null,
-        presupuesto: '', sena: false, sena_monto: '', sena_medio: 'cash',
+        presupuesto: '', pago: 'no', sena_monto: '', sena_medio: 'cash',
         factura: false, condicion: 'consumidor_final',
         assigned_truck_id: '', assigned_driver_id: '',
         operator_notes: ''
@@ -168,8 +169,16 @@
   function unaDireccion() { var s = servicioElegido(); return !!(s && s.single_address); }
 
   function saldo() {
-    var p = num(st.d.presupuesto), s = st.d.sena ? num(st.d.sena_monto) : 0;
-    return Math.max(p - s, 0);
+    return Math.max(num(st.d.presupuesto) - pagado(), 0);
+  }
+  function pagado() {
+    var d = st.d;
+    if (d.pago === 'total') return num(d.presupuesto);
+    return d.pago === 'sena' ? num(d.sena_monto) : 0;
+  }
+  function deposito() {
+    var d = st.d, monto = pagado();
+    return d.pago !== 'no' && monto > 0 ? { amount: monto, method: d.sena_medio } : null;
   }
 
   function errores() {
@@ -181,8 +190,8 @@
     if (!unaDireccion() && !d.destination.trim()) e.push('Completá el destino.');
     if (d.cuando === 'programar' && !d.scheduled_for) e.push('Elegí fecha y hora.');
     if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
-    if (d.sena && num(d.sena_monto) <= 0) e.push('Completá el monto de la seña.');
-    if (d.sena && num(d.sena_monto) > num(d.presupuesto)) e.push('La seña no puede superar el presupuesto.');
+    if (d.pago === 'sena' && num(d.sena_monto) <= 0) e.push('Completá el monto de la seña.');
+    if (d.pago === 'sena' && num(d.sena_monto) >= num(d.presupuesto) && num(d.presupuesto) > 0) e.push('La seña tiene que ser menor al presupuesto. Si pagó todo, elegí Pago total.');
     var doc = digits(d.customer_document);
     if (doc && doc.length !== 8 && doc.length !== 11) e.push('El DNI tiene 8 dígitos y el CUIT 11.');
     else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
@@ -198,6 +207,14 @@
 
   function campo(id, label, html, extra) {
     return '<label class="psv-field' + (extra ? ' ' + extra : '') + '" for="psv-' + id + '"><span>' + label + '</span>' + html + '</label>';
+  }
+  function grupo(label, html) {
+    return '<div class="psv-field"><span>' + label + '</span>' + html + '</div>';
+  }
+  function seg(k, lista, sel) {
+    return '<div class="psv-seg psv-seg-wide" role="group">' + lista.map(function (o) {
+      return '<button type="button" data-psv-seg="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (sel === o[0]) + '">' + esc(o[1]) + '</button>';
+    }).join('') + '</div>';
   }
   function input(id, value, attrs) {
     return '<input id="psv-' + id + '" data-psv-k="' + id + '" value="' + esc(value) + '" ' + (attrs || '') + '>';
@@ -266,11 +283,13 @@
 
         '<section><h3>Precio y cobro</h3><div class="psv-grid">' +
           campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
-          '<label class="psv-check"><input type="checkbox" data-psv-k="sena"' + (d.sena ? ' checked' : '') + '> Deja seña</label>' +
+          grupo('¿Pagó algo antes del servicio?', seg('pago', PAGOS, d.pago)) +
         '</div>' +
-        (d.sena ? '<div class="psv-grid">' +
-          campo('sena_monto', 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>') +
-          campo('sena_medio', 'Medio', '<select id="psv-sena_medio" data-psv-k="sena_medio">' + opciones(MEDIOS, d.sena_medio) + '</select>') +
+        (d.pago !== 'no' ? '<div class="psv-grid">' +
+          (d.pago === 'sena'
+            ? campo('sena_monto', 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
+            : campo('pago_total', 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
+          grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
         '</div>' : '') +
         '<div class="psv-total"><span>A cobrar en el lugar</span><b>' + pesos(saldo()) + '</b></div>' +
         '</section>' +
@@ -295,7 +314,7 @@
 
   /* Repintar pierde el foco del campo que se está escribiendo; sólo se repinta
      cuando cambia la forma del formulario, no en cada tecla. */
-  var ESTRUCTURALES = { primary_concept_id: 1, sena: 1, factura: 1 };
+  var ESTRUCTURALES = { primary_concept_id: 1, factura: 1 };
 
   function onInput(ev) {
     var t = ev.target;
@@ -311,6 +330,8 @@
       if (k === 'presupuesto' || k === 'sena_monto') {
         var tot = document.querySelector('#psv-form .psv-total b');
         if (tot) tot.textContent = pesos(saldo());
+        var pt = el('psv-pago_total');
+        if (pt) pt.value = Math.round(num(st.d.presupuesto)).toLocaleString('es-AR');
       }
       if (k === 'primary_concept_id' && ev.type === 'change') calcularRuta();
       return;
@@ -456,7 +477,7 @@
       var r = await db().rpc('create_private_service_v1', {
         p_payload: payload(),
         p_quoted_total: num(d.presupuesto),
-        p_deposit: d.sena ? { amount: num(d.sena_monto), method: d.sena_medio } : null
+        p_deposit: deposito()
       });
       if (r.error) throw r.error;
       var res = r.data || {};
@@ -488,7 +509,7 @@
   /* ── Eventos ──────────────────────────────────────────────────────────── */
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick]');
+    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg]');
     if (!b) {
       if (ev.target.classList && ev.target.classList.contains('psv-backdrop')) {
         if (ev.target.id === 'psv-tipo') cerrar('psv-tipo');
@@ -501,6 +522,7 @@
     if (a === 'particular') { cerrar('psv-tipo'); return abrirParticular(); }
     if (a === 'cerrar-form') return cerrarForm(false);
     if (a === 'guardar') return guardar();
+    if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
     if (b.hasAttribute('data-psv-cuando')) { st.d.cuando = b.getAttribute('data-psv-cuando'); return pintar(); }
     if (b.hasAttribute('data-psv-pick')) return elegirDireccion(b.getAttribute('data-psv-pick'), Number(b.getAttribute('data-i')));
   });
@@ -533,6 +555,7 @@
     elegirTipo: elegirTipo,
     esCuentaParticular: esCuentaParticular,
     _test: { estadoInicial: estadoInicial, errores: function (s) { var prev = st; st = s; try { return errores(); } finally { st = prev; } },
-             saldo: function (s) { var prev = st; st = s; try { return saldo(); } finally { st = prev; } } }
+             saldo: function (s) { var prev = st; st = s; try { return saldo(); } finally { st = prev; } },
+             deposito: function (s) { var prev = st; st = s; try { return deposito(); } finally { st = prev; } } }
   };
 })(window);
