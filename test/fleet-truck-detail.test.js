@@ -60,7 +60,7 @@ test('mantenimiento, combustible y neumáticos', () => {
 test('flota: la columna Documentación detecta los obligatorios sin cargar', () => {
   const { C } = load();
   const d = C.documentos({ docs_sin_cargar: ['VTV', 'MATAFUEGOS'] });
-  assert.equal(d.txt, 'Faltan 2'); assert.equal(d.tono, 'alerta'); assert.equal(d.sub, 'VTV, Matafuegos');
+  assert.equal(d.txt, '3/5'); assert.equal(d.tono, 'alerta'); assert.equal(d.sub, 'Falta VTV, Matafuegos');
   assert.equal(C.documentos({ docs_vencidos: 1, docs_sin_cargar: ['VTV'] }).tono, 'critico');
   assert.match(sql, /'docs_sin_cargar', coalesce\(dr\.sin_cargar, '\[\]'::jsonb\)/);
   assert.match(sql, /array\['VTV', 'SEGURO_POLIZA', 'HABILITACION_RUTA', 'CEDULA_VERDE', 'MATAFUEGOS'\]/);

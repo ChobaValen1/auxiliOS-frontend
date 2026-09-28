@@ -2,7 +2,7 @@
 
    Administración y Supervisión ven todos los móviles en una tabla, con lo que
    importa de cada uno sin entrar: estado (en servicio, en jornada, sin jornada,
-   en taller), chofer, km, neumáticos y frenos, combustible, próximo service y
+   en taller), chofer, km, neumáticos y frenos, próximo service y
    documentación. Colores sólo para lo que requiere atención: rojo (vencido,
    malo) y ámbar (próximo, sin control hoy). Al tocar un móvil se abre su
    detalle de siempre.
@@ -44,50 +44,48 @@
     return { key: 'sin_jornada', label: 'Sin jornada', tono: 'muted' };
   }
 
+  /* Corto: "Bien" si el último control está todo bien; si no, qué marcó mal. */
   function neumaticos(t) {
+    if (!t.tire_date) return { txt: 'Sin controles', tono: t.log_id ? 'alerta' : '', alerta: !!t.log_id };
     var d = diasDesde(t.tire_date, st.today);
-    var malo = t.tire_condition === 'malo' || t.brake_condition === 'malo';
-    var txt = t.tire_date
-      ? (d === 0 ? 'Hoy' : d === 1 ? 'Ayer' : 'Hace ' + d + ' días') + ' · ' + (COND[t.tire_condition] || '—') + ' / ' + (COND[t.brake_condition] || '—')
-      : 'Sin controles';
-    // En jornada y sin control de hoy: alerta. Malo: crítico.
-    var tono = malo ? 'critico' : (t.log_id && d !== 0) ? 'alerta' : '';
-    return { txt: txt, tono: tono, alerta: !!tono, sub: t.log_id && d !== 0 ? 'Falta el control de hoy' : '' };
-  }
-
-  function combustible(t) {
-    if (!t.fuel_date) return { txt: 'Sin cargas', tono: '' };
-    var hoy = num(t.fuel_today_liters) > 0;
-    return {
-      txt: hoy ? 'Hoy · ' + num(t.fuel_today_liters).toLocaleString('es-AR') + ' L' : fechaCorta(t.fuel_date) + ' · ' + num(t.fuel_liters).toLocaleString('es-AR') + ' L',
-      tono: ''
+    var partes = function (cond) {
+      return [t.tire_condition === cond ? 'neumáticos' : '', t.brake_condition === cond ? 'frenos' : ''].filter(Boolean).join(' y ');
     };
+    var cuando = 'Control del ' + fechaCorta(t.tire_date);
+    var mal = partes('malo'), regular = partes('regular');
+    if (mal) return { txt: 'Mal: ' + mal, tono: 'critico', alerta: true, sub: cuando };
+    if (t.log_id && d !== 0) return { txt: 'Sin control hoy', tono: 'alerta', alerta: true, sub: regular ? 'Último: regular ' + regular : '' };
+    if (regular) return { txt: 'Regular: ' + regular, tono: 'alerta', alerta: true, sub: cuando };
+    return { txt: 'Bien', tono: '' };
   }
 
-  /* Plan de service más urgente (misma regla que el detalle del camión). */
+  /* Por defecto, el service con el vencimiento más cercano. */
   function service(t) {
     var planes = st.planes[t.truck_id];
     if (planes === undefined) return { txt: '…', tono: '' };
-    var p = (planes || []).filter(function (x) { return x.plan_estado && x.plan_estado !== '_error'; })
-      .sort(function (a, b) { return (a.km_restantes == null ? Infinity : a.km_restantes) - (b.km_restantes == null ? Infinity : b.km_restantes); })[0];
-    if (!p) return { txt: (planes || []).length ? 'Al día' : 'Sin planes', tono: '' };
+    var p = (planes || []).filter(function (x) { return x.plan_estado && x.plan_estado !== '_error' && x.km_restantes != null; })
+      .sort(function (a, b) { return a.km_restantes - b.km_restantes; })[0];
+    if (!p) return { txt: 'Sin service informado', tono: '' };
     var k = p.km_restantes;
-    if (p.plan_estado === 'vencido' || (k != null && k <= 0)) return { txt: p.name + ' · vencido' + (k != null ? ' por ' + Math.abs(k).toLocaleString('es-AR') + ' km' : ''), tono: 'critico', alerta: true };
-    if (p.plan_estado === 'proximo' || (k != null && k <= 1000)) return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + ' km', tono: 'alerta', alerta: true };
-    if (k == null) return { txt: p.plan_estado === 'sin_odometro' ? 'Sin odómetro inicial' : 'Sin ejecución registrada', tono: '' };
+    if (p.plan_estado === 'vencido' || k <= 0) return { txt: p.name + ' · vencido por ' + Math.abs(k).toLocaleString('es-AR') + ' km', tono: 'critico', alerta: true };
+    if (p.plan_estado === 'proximo' || k <= 1000) return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + ' km', tono: 'alerta', alerta: true };
     return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + ' km', tono: '' };
   }
 
   /* Documentos obligatorios (misma lista que marca is_obligatorio al subirlos). */
   var DOC_OBLIGATORIOS = { VTV: 'VTV', SEGURO_POLIZA: 'Seguro', HABILITACION_RUTA: 'RUTA', CEDULA_VERDE: 'Cédula verde', MATAFUEGOS: 'Matafuegos' };
 
+  /* Obligatorios cargados sobre 5; "Completo" si están todos. */
   function documentos(t) {
+    var total = Object.keys(DOC_OBLIGATORIOS).length;
     var sin = (t.docs_sin_cargar || []).filter(function (c) { return DOC_OBLIGATORIOS[c]; });
-    if (num(t.docs_vencidos)) return { txt: num(t.docs_vencidos) + (num(t.docs_vencidos) === 1 ? ' vencido' : ' vencidos'), tono: 'critico', alerta: true, sub: sin.length ? 'Faltan ' + sin.length + ' obligatorios' : '' };
-    if (sin.length) return { txt: 'Faltan ' + sin.length, tono: 'alerta', alerta: true, sub: sin.map(function (c) { return DOC_OBLIGATORIOS[c]; }).join(', ') };
-    if (num(t.docs_proximos)) return { txt: num(t.docs_proximos) + ' por vencer', tono: 'alerta', alerta: true };
-    if (num(t.docs_faltan)) return { txt: num(t.docs_faltan) + ' sin archivo', tono: 'alerta', alerta: true };
-    return { txt: 'Al día', tono: '' };
+    var txt = sin.length ? (total - sin.length) + '/' + total : 'Completo';
+    var venc = num(t.docs_vencidos), prox = num(t.docs_proximos), arch = num(t.docs_faltan);
+    if (venc) return { txt: txt, tono: 'critico', alerta: true, sub: venc + (venc === 1 ? ' vencido' : ' vencidos') };
+    if (sin.length) return { txt: txt, tono: 'alerta', alerta: true, sub: 'Falta ' + sin.map(function (c) { return DOC_OBLIGATORIOS[c]; }).join(', ') };
+    if (prox) return { txt: txt, tono: 'alerta', alerta: true, sub: prox + ' por vencer' };
+    if (arch) return { txt: txt, tono: 'alerta', alerta: true, sub: arch + ' sin archivo' };
+    return { txt: txt, tono: '' };
   }
 
   function alertas(t) {
@@ -134,7 +132,7 @@
           '<button type="button" class="fcv-refresh" data-fcv="refresh">Actualizar</button></div>' +
         (filas.length
           ? '<div class="fcv-table-wrap"><table class="fcv-table"><thead><tr>' +
-              '<th>Móvil</th><th>Estado</th><th>Km</th><th>Neumáticos y frenos</th><th>Combustible</th><th>Service</th><th>Documentación</th><th></th>' +
+              '<th>Móvil</th><th>Estado</th><th>Km</th><th>Neumáticos y frenos</th><th>Service</th><th>Documentación</th><th></th>' +
             '</tr></thead><tbody>' + filas.map(function (t) {
               var e = estado(t);
               return '<tr data-fcv-truck="' + esc(t.truck_id) + '" tabindex="0">' +
@@ -142,7 +140,7 @@
                 '<td data-label="Estado"><span class="fcv-estado fcv-e-' + e.tono + '">' + esc(e.label) + '</span><small>' +
                   esc(e.key === 'servicio' ? e.det + (t.driver_name ? ' · ' + t.driver_name : '') : e.key === 'taller' ? (t.workshop_detail || t.driver_name || '') : (t.driver_name || '')) + '</small></td>' +
                 '<td data-label="Km" class="fcv-num">' + (t.current_km != null ? esc(num(t.current_km).toLocaleString('es-AR')) : '—') + '</td>' +
-                celda('Neumáticos y frenos', neumaticos(t)) + celda('Combustible', combustible(t)) +
+                celda('Neumáticos y frenos', neumaticos(t)) +
                 celda('Service', service(t)) + celda('Documentación', documentos(t)) +
                 '<td class="fcv-go" aria-hidden="true">›</td></tr>';
             }).join('') + '</tbody></table></div>'

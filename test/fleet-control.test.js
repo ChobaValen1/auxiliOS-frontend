@@ -25,14 +25,17 @@ test('estado del móvil: taller, en servicio, disponible, sin jornada, inactivo'
   assert.equal(T.estado({ status: 'active' }).key, 'sin_jornada');
 });
 
-test('neumáticos: malo es crítico, en jornada sin control de hoy es alerta', () => {
+test('neumáticos: corto si está bien, qué marcó mal si no', () => {
   const T = load();
   T.set({ today: '2026-09-28' });
-  assert.equal(T.neumaticos({ tire_date: '2026-09-28', tire_condition: 'malo', brake_condition: 'bueno' }).tono, 'critico');
+  const bien = T.neumaticos({ log_id: 1, tire_date: '2026-09-28', tire_condition: 'bueno', brake_condition: 'bueno' });
+  assert.equal(bien.txt, 'Bien'); assert.equal(bien.tono, '');
+  const mal = T.neumaticos({ tire_date: '2026-09-26', tire_condition: 'bueno', brake_condition: 'malo' });
+  assert.equal(mal.txt, 'Mal: frenos'); assert.equal(mal.tono, 'critico'); assert.equal(mal.sub, 'Control del 26/09');
+  assert.equal(T.neumaticos({ tire_date: '2026-09-28', tire_condition: 'malo', brake_condition: 'malo' }).txt, 'Mal: neumáticos y frenos');
+  assert.equal(T.neumaticos({ tire_date: '2026-09-28', tire_condition: 'regular', brake_condition: 'bueno' }).txt, 'Regular: neumáticos');
   const falta = T.neumaticos({ log_id: 1, tire_date: '2026-09-26', tire_condition: 'bueno', brake_condition: 'bueno' });
-  assert.equal(falta.tono, 'alerta');
-  assert.match(falta.sub, /Falta el control de hoy/);
-  assert.equal(T.neumaticos({ log_id: 1, tire_date: '2026-09-28', tire_condition: 'bueno', brake_condition: 'bueno' }).tono, '');
+  assert.equal(falta.txt, 'Sin control hoy'); assert.equal(falta.tono, 'alerta');
 });
 
 test('service y documentación: color sólo si vence o está por vencer', () => {
@@ -41,9 +44,14 @@ test('service y documentación: color sólo si vence o está por vencer', () => 
   assert.equal(T.service({ truck_id: 1 }).tono, 'critico');
   assert.equal(T.service({ truck_id: 2 }).tono, 'alerta');
   assert.equal(T.service({ truck_id: 3 }).tono, '');
+  T.set({ planes: { 1: [{ name: 'Aceite', plan_estado: 'vencido', km_restantes: -200 }], 4: [{ name: 'Frenos', plan_estado: 'ok', km_restantes: 9000 }, { name: 'Aceite', plan_estado: 'ok', km_restantes: 3000 }, { name: 'Filtros', plan_estado: 'sin_registro', km_restantes: null }], 5: [], 6: [{ name: 'Aceite', plan_estado: 'sin_registro', km_restantes: null }] } });
+  assert.equal(T.service({ truck_id: 4 }).txt, 'Aceite · en 3.000 km');
+  assert.equal(T.service({ truck_id: 5 }).txt, 'Sin service informado');
+  assert.equal(T.service({ truck_id: 6 }).txt, 'Sin service informado');
   assert.equal(T.documentos({ docs_vencidos: 2 }).tono, 'critico');
   assert.equal(T.documentos({ docs_proximos: 1 }).tono, 'alerta');
-  assert.equal(T.documentos({}).txt, 'Al día');
+  assert.equal(T.documentos({}).txt, 'Completo');
+  assert.equal(T.documentos({ docs_sin_cargar: ['VTV', 'SEGURO_POLIZA', 'MATAFUEGOS', 'CEDULA_VERDE'] }).txt, '1/5');
   assert.equal(T.alertas({ truck_id: 1, status: 'active', in_workshop: true, docs_vencidos: 1 }), 3);
 });
 
