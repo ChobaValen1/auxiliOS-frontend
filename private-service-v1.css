@@ -91,3 +91,5 @@ body.psv-open { overflow: hidden; }
 .psv-seg-wide { min-height: 38px; }
 .psv-captado { margin-top: 10px; align-items: end; }
 .psv-check small { color: var(--muted2); font-size: 11px; }
+.psv-hecho { margin: 0; font-size: 13px; color: var(--muted2); }
+.psv-hecho b { color: var(--text); }

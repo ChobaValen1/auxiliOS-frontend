@@ -25,6 +25,8 @@
   ];
   // Pago previo al servicio: nada, una seña o el total (queda $0 a cobrar).
   var PAGOS = [['no', 'Sin pago'], ['sena', 'Seña'], ['total', 'Pago total']];
+  // Desde el remito de un chofer: lo que cobró en el lugar.
+  var COBROS = [['no', 'No cobró'], ['sena', 'Una parte'], ['total', 'Todo']];
 
   var st = null;          // estado del formulario abierto
   var cuenta = null;      // { company_id, name } de la cuenta Particulares
@@ -92,11 +94,12 @@
 
   function cerrar(id) { var m = el(id); if (m) { m.hidden = true; m.innerHTML = ''; } document.body.classList.remove('psv-open'); }
 
-  function elegirTipo() {
+  function elegirTipo(intakeId) {
+    intakeElegido = intakeId || null;
     var m = modal('psv-tipo');
     m.innerHTML =
       '<div class="psv-dialog psv-choose" role="dialog" aria-modal="true" aria-labelledby="psv-tipo-t">' +
-        '<header><div><h2 id="psv-tipo-t">Nuevo servicio</h2><p>¿Para quién es el servicio?</p></div>' +
+        '<header><div><h2 id="psv-tipo-t">' + (intakeElegido ? 'Crear servicio desde el remito' : 'Nuevo servicio') + '</h2><p>¿Para quién es el servicio?</p></div>' +
           '<button type="button" class="psv-x" data-psv="cerrar-tipo" aria-label="Cerrar">×</button></header>' +
         '<div class="psv-choices">' +
           '<button type="button" class="psv-choice" data-psv="particular">' +
@@ -112,9 +115,16 @@
     if (primero) primero.focus();
   }
 
+  var intakeElegido = null;  // ingreso del chofer desde el que se crea el servicio
+
   function nuevoServicio(intake) {
-    // Un ingreso del chofer ya viene con su prestadora: sigue por el alta de siempre.
-    if (intake) return abrirPrestadora(intake);
+    if (intake) {
+      var id = typeof intake === 'string' ? intake : intake.intake_id;
+      var info = ((OS().intakes) || []).find(function (x) { return String(x.intake_id) === String(id); });
+      // Un activado (el chofer salió y no hubo servicio) sigue por el alta de prestadora.
+      if (info && info.driver_activated) return abrirPrestadora(intake);
+      return elegirTipo(id);
+    }
     elegirTipo();
   }
 
@@ -141,7 +151,7 @@
     };
   }
 
-  async function abrirParticular() {
+  async function abrirParticular(intakeId) {
     st = estadoInicial();
     st.busy = true;
     pintar();
@@ -152,6 +162,14 @@
       st.ctx = r.data || {};
       var bases = st.ctx.bases || [];
       if (bases.length) st.d.billing_base_id = bases[0].base_id;
+      if (intakeId) {
+        var ir = await db().rpc('get_driver_service_intake_context_v1', { p_intake_id: intakeId });
+        if (ir.error) throw ir.error;
+        if (!ir.data || ir.data.status !== 'pending_admin' || (ir.data.remito && ir.data.remito.status !== 'firmado')) {
+          throw new Error('Este ingreso no tiene un remito firmado pendiente de clasificación.');
+        }
+        desdeIngreso(ir.data);
+      }
     } catch (e) {
       st.error = e.message || 'No se pudo preparar el formulario.';
     }
@@ -159,6 +177,27 @@
     pintar();
     var f = el('psv-customer_name');
     if (f) f.focus();
+  }
+
+  /* El remito del chofer ya trae cliente, vehículo, direcciones, chofer y móvil. */
+  function desdeIngreso(ctx) {
+    var s = ctx.service || {}, d = st.d;
+    var info = ((OS().intakes) || []).find(function (x) { return String(x.intake_id) === String(ctx.intake_id); }) || {};
+    st.intake = {
+      id: ctx.intake_id, numero: (ctx.remito && ctx.remito.nro_remito) || ctx.intake_number,
+      chofer: info.driver_name || 'Chofer', movil: info.truck_label || '', scheduled_for: s.scheduled_for || null
+    };
+    ['customer_name', 'vehicle_plate', 'vehicle_make_model', 'origin', 'destination', 'operator_notes'].forEach(function (k) { if (s[k]) d[k] = String(s[k]); });
+    d.customer_phone = digits(s.customer_phone);
+    d.customer_document = digits(s.customer_document);
+    ['origin', 'destination'].forEach(function (k) {
+      ['_lat', '_lng', '_place_id', '_formatted_address'].forEach(function (x) { if (s[k + x] != null) d[k + x] = String(s[k + x]); });
+    });
+    d.assigned_driver_id = s.assigned_driver_id || '';
+    d.assigned_truck_id = s.assigned_truck_id != null ? String(s.assigned_truck_id) : '';
+    // Si no había servicio asignado, en general lo consiguió el chofer.
+    d.captado = !!s.assigned_driver_id;
+    d.referred_by_driver_id = s.assigned_driver_id || '';
   }
 
   function servicios() {
@@ -191,8 +230,8 @@
     if (!unaDireccion() && !d.destination.trim()) e.push('Completá el destino.');
     if (d.cuando === 'programar' && !d.scheduled_for) e.push('Elegí fecha y hora.');
     if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
-    if (d.pago === 'sena' && num(d.sena_monto) <= 0) e.push('Completá el monto de la seña.');
-    if (d.pago === 'sena' && num(d.sena_monto) >= num(d.presupuesto) && num(d.presupuesto) > 0) e.push('La seña tiene que ser menor al presupuesto. Si pagó todo, elegí Pago total.');
+    if (d.pago === 'sena' && num(d.sena_monto) <= 0) e.push(st.intake ? 'Completá cuánto cobró el chofer.' : 'Completá el monto de la seña.');
+    if (d.pago === 'sena' && num(d.sena_monto) >= num(d.presupuesto) && num(d.presupuesto) > 0) e.push(st.intake ? 'Lo cobrado tiene que ser menor al presupuesto. Si cobró todo, elegí Todo.' : 'La seña tiene que ser menor al presupuesto. Si pagó todo, elegí Pago total.');
     var doc = digits(d.customer_document);
     if (doc && doc.length !== 8 && doc.length !== 11) e.push('El DNI tiene 8 dígitos y el CUIT 11.');
     else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
@@ -243,6 +282,10 @@
     var S = OS();
     var drivers = (S.drivers || []).filter(function (x) { return x.is_active !== false; })
       .map(function (x) { return [x.user_id, x.full_name || x.name || x.email]; });
+    // El chofer del remito siempre aparece para elegirlo como el que consiguió el servicio.
+    if (st.intake && d.assigned_driver_id && !drivers.some(function (x) { return String(x[0]) === String(d.assigned_driver_id); })) {
+      drivers.unshift([d.assigned_driver_id, st.intake.chofer]);
+    }
     var trucks = (S.trucks || []).filter(function (x) { return x.is_active !== false; })
       .map(function (x) { return [x.truck_id, [x.numero_interno, x.plate || x.patente].filter(Boolean).join(' · ') || x.truck_id]; });
     var bases = (ctx.bases || []).map(function (b) { return [b.base_id, b.name]; });
@@ -250,7 +293,8 @@
 
     m.innerHTML =
       '<div class="psv-dialog psv-form" role="dialog" aria-modal="true" aria-labelledby="psv-form-t">' +
-      '<header><div><h2 id="psv-form-t">Nuevo servicio · Particular</h2><p>Cliente de una sola vez con precio presupuestado.</p></div>' +
+      '<header><div><h2 id="psv-form-t">Nuevo servicio · Particular</h2><p>' +
+        (st.intake ? 'Desde el remito ' + esc(st.intake.numero || '') + ' de ' + esc(st.intake.chofer) + '. Al crearlo queda finalizado.' : 'Cliente de una sola vez con precio presupuestado.') + '</p></div>' +
         '<button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></header>' +
       '<div class="psv-body">' +
         (st.error ? '<div class="psv-error" role="alert">' + esc(st.error) + '</div>' : '') +
@@ -270,10 +314,11 @@
         '<section><h3>Servicio</h3><div class="psv-grid">' +
           campo('primary_concept_id', 'Tipo de servicio *', '<select id="psv-primary_concept_id" data-psv-k="primary_concept_id">' + opciones(tipos, d.primary_concept_id, 'Elegí…') + '</select>') +
           (bases.length > 1 ? campo('billing_base_id', 'Base que lo atiende', '<select id="psv-billing_base_id" data-psv-k="billing_base_id">' + opciones(bases, d.billing_base_id) + '</select>') : '') +
+          (st.intake ? '' :
           '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo">' +
             '<button type="button" data-psv-cuando="ahora" aria-pressed="' + (d.cuando === 'ahora') + '">Ahora</button>' +
             '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
-          (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : '') +
+          (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : '')) +
         '</div>' +
         '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + '</div>' +
         (d.route ? '<p class="psv-hint">Recorrido: ' + esc(d.route) + '</p>' : '') +
@@ -285,15 +330,15 @@
 
         '<section><h3>Precio y cobro</h3><div class="psv-grid">' +
           campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
-          grupo('¿Pagó algo antes del servicio?', seg('pago', PAGOS, d.pago)) +
+          grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago)) +
         '</div>' +
         (d.pago !== 'no' ? '<div class="psv-grid">' +
           (d.pago === 'sena'
-            ? campo('sena_monto', 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
-            : campo('pago_total', 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
+            ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
+            : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
           grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
         '</div>' : '') +
-        '<div class="psv-total"><span>A cobrar en el lugar</span><b>' + pesos(saldo()) + '</b></div>' +
+        '<div class="psv-total"><span>' + (st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>' +
         '</section>' +
 
         '<section><h3>Factura</h3>' +
@@ -301,10 +346,12 @@
           (d.factura ? '<div class="psv-grid">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
         '</section>' +
 
-        '<section><h3>Asignación <small>(opcional)</small></h3><div class="psv-grid">' +
+        (st.intake
+          ? '<section><h3>Lo hizo</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
+          : '<section><h3>Asignación <small>(opcional)</small></h3><div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id">' + opciones(drivers, d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
-        '</div>' +
+        '</div>') +
         '<div class="psv-grid psv-captado">' +
           '<label class="psv-check"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
           (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
@@ -314,7 +361,7 @@
       '</div>' +
       '<footer><button type="button" class="psv-btn" data-psv="cerrar-form">Cancelar</button>' +
         '<button type="button" class="psv-btn primary" data-psv="guardar"' + (st.busy ? ' disabled' : '') + '>' +
-        (st.busy ? 'Guardando…' : 'Crear servicio') + '</button></footer>' +
+        (st.busy ? 'Guardando…' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
       '</div>';
   }
 
@@ -451,7 +498,8 @@
 
   function payload() {
     var d = st.d, single = unaDireccion();
-    var when = d.cuando === 'programar' && d.scheduled_for ? new Date(d.scheduled_for) : new Date();
+    var when = st.intake && st.intake.scheduled_for ? new Date(st.intake.scheduled_for)
+      : d.cuando === 'programar' && d.scheduled_for ? new Date(d.scheduled_for) : new Date();
     var p = {
       billing_base_id: d.billing_base_id || null,
       primary_concept_id: d.primary_concept_id, category_id: d.primary_concept_id,
@@ -483,14 +531,29 @@
     pintar();
     try {
       var d = st.d;
-      var r = await db().rpc('create_private_service_v1', {
-        p_payload: payload(),
-        p_quoted_total: num(d.presupuesto),
-        p_deposit: deposito()
-      });
+      var intake = st.intake, dep = deposito();
+      var r = intake
+        ? await db().rpc('create_private_service_from_intake_v1', {
+            p_intake_id: intake.id,
+            p_payload: payload(),
+            p_quoted_total: num(d.presupuesto),
+            p_collection: { lines: dep ? [{ method: dep.method, amount: dep.amount }] : [] }
+          })
+        : await db().rpc('create_private_service_v1', {
+            p_payload: payload(),
+            p_quoted_total: num(d.presupuesto),
+            p_deposit: dep
+          });
       if (r.error) throw r.error;
       var res = r.data || {};
       cerrarForm(true);
+      if (intake) {
+        var nro = res.service_order_number || res.service_number;
+        if (typeof global.operationFeedback === 'function') global.operationFeedback('Servicio creado y finalizado', 'Particular' + (nro ? ' N° ' + nro : '') + ' con el remito del chofer.', 'success', 2400);
+        var S0 = OS(); S0.selectedIntakeId = null;
+        if (global.cargarServiciosOperador) await global.cargarServiciosOperador();
+        return;
+      }
       // Igual que el alta de prestadoras: mismo aviso, y vuelve a la lista de Servicios activos.
       var numero = res.service_order_number || res.service_number;
       var detalle = 'Quedó cargado' + (numero ? ' con el N° ' + numero : '') + '.';
@@ -527,8 +590,8 @@
     }
     var a = b.getAttribute('data-psv');
     if (a === 'cerrar-tipo') return cerrar('psv-tipo');
-    if (a === 'prestadora') { cerrar('psv-tipo'); ocultarCuentaEnPrestadoras(); return abrirPrestadora(); }
-    if (a === 'particular') { cerrar('psv-tipo'); return abrirParticular(); }
+    if (a === 'prestadora') { cerrar('psv-tipo'); ocultarCuentaEnPrestadoras(); return intakeElegido ? abrirPrestadora(intakeElegido) : abrirPrestadora(); }
+    if (a === 'particular') { cerrar('psv-tipo'); return abrirParticular(intakeElegido); }
     if (a === 'cerrar-form') return cerrarForm(false);
     if (a === 'guardar') return guardar();
     if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
@@ -552,6 +615,13 @@
     abrirPrestadora = global.abrirNuevoServicio;
     nuevoServicio.__psv = true;
     global.abrirNuevoServicio = nuevoServicio;
+    // "Crear servicio con estos datos" (ingreso del chofer) abre el asistente directo.
+    var O = global.OperatorServices;
+    if (O && typeof O.openWizard === 'function' && !O.openWizard.__psv) {
+      var w = function (intake) { return intake ? nuevoServicio(intake) : abrirPrestadora(); };
+      w.__psv = true;
+      O.openWizard = w;
+    }
     cargarCuenta().then(ocultarCuentaEnPrestadoras).catch(function () {});
     return true;
   }
@@ -563,7 +633,7 @@
     abrir: abrirParticular,
     elegirTipo: elegirTipo,
     esCuentaParticular: esCuentaParticular,
-    _test: { estadoInicial: estadoInicial, errores: function (s) { var prev = st; st = s; try { return errores(); } finally { st = prev; } },
+    _test: { estadoInicial: estadoInicial, desdeIngreso: function (s, ctx) { var prev = st; st = s; try { desdeIngreso(ctx); return st; } finally { st = prev; } }, errores: function (s) { var prev = st; st = s; try { return errores(); } finally { st = prev; } },
              saldo: function (s) { var prev = st; st = s; try { return saldo(); } finally { st = prev; } },
              payload: function (s) { var prev = st; st = s; try { return payload(); } finally { st = prev; } },
              deposito: function (s) { var prev = st; st = s; try { return deposito(); } finally { st = prev; } } }
