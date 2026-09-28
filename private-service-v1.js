@@ -49,6 +49,11 @@
     var d = new Date();
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
+  function localDe(iso) {
+    var d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return localNow();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
   function newToken() { return (global.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random(); }
 
   /* La cuenta interna nunca es una prestadora elegible. */
@@ -182,6 +187,43 @@
     if (f) f.focus();
   }
 
+  /* Editar un particular con este mismo formulario (no el de prestadora). */
+  async function editarParticular(id) {
+    st = estadoInicial();
+    st.busy = true;
+    st.edit = { id: id };
+    pintar();
+    try {
+      await cargarCuenta();
+      var er = await db().rpc('get_private_service_edit_v1', { p_service_id: id });
+      if (er.error) throw er.error;
+      var e = er.data || {};
+      var r = await db().rpc('get_operator_service_context_v1', { p_company_id: cuenta.company_id, p_scheduled_for: e.scheduled_for || new Date().toISOString() });
+      if (r.error) throw r.error;
+      st.ctx = r.data || {};
+      var d = st.d;
+      ['customer_name', 'vehicle_plate', 'vehicle_make_model', 'origin', 'destination', 'operator_notes', 'primary_concept_id', 'billing_base_id', 'assigned_driver_id'].forEach(function (k) { if (e[k] != null) d[k] = String(e[k]); });
+      ['origin', 'destination'].forEach(function (k) {
+        ['_lat', '_lng', '_place_id', '_formatted_address'].forEach(function (x) { if (e[k + x] != null) d[k + x] = String(e[k + x]); });
+      });
+      d.customer_phone = digits(e.customer_phone);
+      d.customer_document = digits(e.customer_document);
+      d.assigned_truck_id = e.assigned_truck_id != null ? String(e.assigned_truck_id) : '';
+      d.cuando = 'programar';
+      d.scheduled_for = localDe(e.scheduled_for);
+      d.presupuesto = String(Math.round(num(e.quoted_total)));
+      d.factura = !!e.invoice_requested;
+      d.condicion = e.customer_tax_condition || 'consumidor_final';
+      d.captado = !!e.referred_by_driver_id;
+      d.referred_by_driver_id = e.referred_by_driver_id || '';
+      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: e.status === 'completed' };
+    } catch (err) {
+      st.error = err.message || 'No se pudo abrir el servicio.';
+    }
+    st.busy = false;
+    pintar();
+  }
+
   /* El remito del chofer ya trae cliente, vehículo, direcciones, chofer y móvil. */
   function desdeIngreso(ctx) {
     var s = ctx.service || {}, d = st.d;
@@ -248,8 +290,9 @@
     if (!unaDireccion() && !d.destination.trim()) e.push('Completá el destino.');
     if (d.cuando === 'programar' && !d.scheduled_for) e.push('Elegí fecha y hora.');
     if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
-    if (d.pago === 'sena' && num(d.sena_monto) <= 0) e.push(st.intake ? 'Completá cuánto cobró el chofer.' : 'Completá el monto de la seña.');
-    if (d.pago === 'sena' && num(d.sena_monto) >= num(d.presupuesto) && num(d.presupuesto) > 0) e.push(st.intake ? 'Lo cobrado tiene que ser menor al presupuesto. Si cobró todo, elegí Todo.' : 'La seña tiene que ser menor al presupuesto. Si pagó todo, elegí Pago total.');
+    if (st.edit && num(d.presupuesto) > 0 && num(d.presupuesto) < st.edit.pagado) e.push('El presupuesto no puede ser menor a lo ya cobrado (' + pesos(st.edit.pagado) + ').');
+    if (!st.edit && d.pago === 'sena' && num(d.sena_monto) <= 0) e.push(st.intake ? 'Completá cuánto cobró el chofer.' : 'Completá el monto de la seña.');
+    if (!st.edit && d.pago === 'sena' && num(d.sena_monto) >= num(d.presupuesto) && num(d.presupuesto) > 0) e.push(st.intake ? 'Lo cobrado tiene que ser menor al presupuesto. Si cobró todo, elegí Todo.' : 'La seña tiene que ser menor al presupuesto. Si pagó todo, elegí Pago total.');
     var doc = digits(d.customer_document);
     if (doc && doc.length !== 8 && doc.length !== 11) e.push('El DNI tiene 8 dígitos y el CUIT 11.');
     else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
@@ -313,8 +356,9 @@
 
     m.innerHTML =
       '<div class="psv-dialog psv-form" role="dialog" aria-modal="true" aria-labelledby="psv-form-t">' +
-      '<header><div><h2 id="psv-form-t">Nuevo servicio · Particular</h2><p>' +
-        (st.intake ? 'Desde el remito ' + esc(st.intake.numero || '') + ' de ' + esc(st.intake.chofer) + '. Al crearlo queda finalizado.' : 'Cliente de una sola vez con precio presupuestado.') + '</p></div>' +
+      '<header><div><h2 id="psv-form-t">' + (st.edit ? 'Editar servicio · Particular' : 'Nuevo servicio · Particular') + '</h2><p>' +
+        (st.edit ? esc(st.edit.numero || '') + (st.edit.firmado ? ' · Con remito firmado: cliente, vehículo y asignación vienen del remito.' : '') :
+         st.intake ? 'Desde el remito ' + esc(st.intake.numero || '') + ' de ' + esc(st.intake.chofer) + '. Al crearlo queda finalizado.' : 'Cliente de una sola vez con precio presupuestado.') + '</p></div>' +
         '<button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></header>' +
       '<div class="psv-body">' +
         (st.error ? '<div class="psv-error" role="alert">' + esc(st.error) + '</div>' : '') +
@@ -334,7 +378,7 @@
         '<section><h3>Servicio</h3><div class="psv-grid">' +
           campo('primary_concept_id', 'Tipo de servicio *', '<select id="psv-primary_concept_id" data-psv-k="primary_concept_id">' + opciones(tipos, d.primary_concept_id, 'Elegí…') + '</select>') +
           (bases.length > 1 ? campo('billing_base_id', 'Base que lo atiende', '<select id="psv-billing_base_id" data-psv-k="billing_base_id">' + opciones(bases, d.billing_base_id) + '</select>') : '') +
-          (st.intake ? '' :
+          (st.edit ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : st.intake ? '' :
           '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo">' +
             '<button type="button" data-psv-cuando="ahora" aria-pressed="' + (d.cuando === 'ahora') + '">Ahora</button>' +
             '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
@@ -350,16 +394,18 @@
 
         '<section><h3>Precio y cobro</h3><div class="psv-grid">' +
           campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
-          grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago)) +
+          (st.edit ? '' : grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago))) +
         '</div>' +
-        (d.pago !== 'no' ? '<div class="psv-grid">' +
+        (st.edit ? '<div class="psv-total"><span>Pagado ' + pesos(st.edit.pagado) + ' · Saldo</span><b>' + pesos(Math.max(num(d.presupuesto) - st.edit.pagado, 0)) + '</b></div>' +
+          '<p class="psv-hint">Los pagos se registran con "Registrar cobro".</p>' : '') +
+        (!st.edit && d.pago !== 'no' ? '<div class="psv-grid">' +
           (d.pago === 'sena'
             ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
             : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
           grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
         '</div>' : '') +
         (st.intake && st.intake.informe ? '<p class="psv-hint psv-informe">' + esc(st.intake.informe) + '</p>' : '') +
-        '<div class="psv-total"><span>' + (st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>' +
+        (st.edit ? '' : '<div class="psv-total"><span>' + (st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>') +
         '</section>' +
 
         '<section><h3>Factura</h3>' +
@@ -382,8 +428,14 @@
       '</div>' +
       '<footer><button type="button" class="psv-btn" data-psv="cerrar-form">Cancelar</button>' +
         '<button type="button" class="psv-btn primary" data-psv="guardar"' + (st.busy ? ' disabled' : '') + '>' +
-        (st.busy ? 'Guardando…' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
+        (st.busy ? 'Guardando…' : st.edit ? 'Guardar cambios' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
       '</div>';
+    // Con remito firmado, cliente, vehículo y asignación vienen del remito.
+    if (st.edit && st.edit.firmado) {
+      ['customer_name', 'customer_phone', 'vehicle_plate', 'vehicle_make_model', 'assigned_truck_id', 'assigned_driver_id'].forEach(function (k) {
+        var f = el('psv-' + k); if (f) { f.disabled = true; f.title = 'Viene del remito firmado'; }
+      });
+    }
   }
 
   /* Repintar pierde el foco del campo que se está escribiendo; sólo se repinta
@@ -519,7 +571,8 @@
 
   function payload() {
     var d = st.d, single = unaDireccion();
-    var when = st.intake && st.intake.scheduled_for ? new Date(st.intake.scheduled_for)
+    var when = st.edit && d.scheduled_for ? new Date(d.scheduled_for)
+      : st.intake && st.intake.scheduled_for ? new Date(st.intake.scheduled_for)
       : d.cuando === 'programar' && d.scheduled_for ? new Date(d.scheduled_for) : new Date();
     var p = {
       billing_base_id: d.billing_base_id || null,
@@ -563,6 +616,19 @@
     pintar();
     try {
       var d = st.d;
+      if (st.edit) {
+        var eid = st.edit.id;
+        var ru = await db().rpc('update_private_service_v1', {
+          p_service_id: eid, p_payload: payload(), p_quoted_total: num(d.presupuesto),
+          p_invoice: { invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null, customer_document: digits(d.customer_document) || null },
+          p_reason: null
+        });
+        if (ru.error) throw ru.error;
+        cerrarForm(true);
+        if (typeof global.operationFeedback === 'function') global.operationFeedback('Servicio actualizado', 'Los cambios quedaron guardados.', 'success', 2400);
+        if (global.cargarServiciosOperador) await global.cargarServiciosOperador();
+        return;
+      }
       var intake = st.intake, dep = deposito();
       var r = intake
         ? await db().rpc('create_private_service_from_intake_v1', {
@@ -647,6 +713,17 @@
     abrirPrestadora = global.abrirNuevoServicio;
     nuevoServicio.__psv = true;
     global.abrirNuevoServicio = nuevoServicio;
+    // Editar un particular abre este formulario, no el de prestadora.
+    if (typeof global.editarServicioOperador === 'function' && !global.editarServicioOperador.__psv) {
+      var editarOriginal = global.editarServicioOperador;
+      var ed = function (id) {
+        var S0 = OS(), sv = (S0.services || []).find(function (x) { return String(x.service_id) === String(id); });
+        if (sv && esCuentaParticular({ company_id: sv.company_id, trade_name: sv.company_name, client_kind: sv.client_kind })) return editarParticular(id);
+        return editarOriginal.apply(this, arguments);
+      };
+      ed.__psv = true;
+      global.editarServicioOperador = ed;
+    }
     // "Crear servicio con estos datos" (ingreso del chofer) abre el asistente directo.
     var O = global.OperatorServices;
     if (O && typeof O.openWizard === 'function' && !O.openWizard.__psv) {
@@ -663,6 +740,7 @@
 
   global.AuxiliosParticulares = {
     abrir: abrirParticular,
+    editar: editarParticular,
     elegirTipo: elegirTipo,
     esCuentaParticular: esCuentaParticular,
     _test: { estadoInicial: estadoInicial, desdeIngreso: function (s, ctx) { var prev = st; st = s; try { desdeIngreso(ctx); return st; } finally { st = prev; } }, errores: function (s) { var prev = st; st = s; try { return errores(); } finally { st = prev; } },

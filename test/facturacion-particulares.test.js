@@ -48,3 +48,15 @@ test('el período tiene accesos rápidos dentro del mismo selector', () => {
   assert.match(F.period({ id: 'x', quick: true }), /data-auxf-quick="semana"/);
   assert.match(F.select({ id: 'e', label: 'Estado', options: [{ value: 'a', label: 'A' }, { group: 'Alertas' }] }), /<h5 class="auxf-group">Alertas<\/h5>/);
 });
+
+test('Editar un particular usa su propio formulario', () => {
+  const form = fs.readFileSync('private-service-v1.js', 'utf8');
+  const v12 = fs.readFileSync('migrations/20260928220000_particulares_editar_v12.sql', 'utf8');
+  assert.match(form, /if \(sv && esCuentaParticular\(\{ company_id: sv\.company_id, trade_name: sv\.company_name, client_kind: sv\.client_kind \}\)\) return editarParticular\(id\);/);
+  assert.match(form, /get_private_service_edit_v1/);
+  assert.match(form, /update_private_service_v1/);
+  assert.match(form, /'Editar servicio · Particular'/);
+  assert.match(form, /El presupuesto no puede ser menor a lo ya cobrado/);
+  assert.match(v12, /perform public\.update_private_service_quote_v1\(p_service_id, p_quoted_total, p_invoice, p_reason\);/);
+  assert.match(v12, /where k = any\(v_allowed\)/);
+});
