@@ -65,3 +65,10 @@
   .ftd-docs .ftd-li-acc { grid-column: 1 / -1; justify-content: flex-start; }
   .ftd-table th:nth-child(4), .ftd-table td:nth-child(4) { display: none; }
 }
+
+/* Subir documento (Camión): resultado de leer el documento desde la foto. */
+.tdr-status { margin: 8px 0 4px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted2); font-size: 12px; line-height: 1.45; }
+.tdr-status[hidden] { display: none; }
+.tdr-ok { color: var(--text); }
+.tdr-aviso { border-color: color-mix(in srgb, var(--amber) 45%, transparent); color: var(--text); }
+.tdr-aviso b { color: var(--amber); font-weight: 700; }

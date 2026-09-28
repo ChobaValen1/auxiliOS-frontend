@@ -7,7 +7,6 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 - [ ] Control del camión · vista del chofer: checklist simple del día (neumáticos, frenos, combustible). Falta confirmar.
 - [ ] Mantenimiento: planes base por tipo de camión (se aplican a todos los móviles de una vez). Falta confirmar.
 - [ ] Mantenimiento: pasar el móvil a taller desde un service vencido y bloquear asignaciones. Falta decidir: puede frenar a choferes en producción.
-- [ ] Documentación: leer el vencimiento desde la foto del documento (como el ticket de combustible). Falta confirmar.
 
 ## Para confirmar
 
@@ -17,6 +16,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] Subir documento (Camión) con una foto y un PDF reales de VTV o póliza: que complete vencimiento y número, y avise si la patente no coincide. No hace falta guardar.
 - [ ] AuxiliosQA firma un remito → el servicio desaparece de su lista y se le puede asignar otro servicio enseguida.
 
 - [ ] Editar un particular con el remito sin firmar (el caso con remito firmado ya se probó).
@@ -25,6 +25,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] Documentación del camión: al elegir la foto o el PDF se lee el vencimiento, el número y el período (función leer-documento-camion).
 - [x] Control del camión · detalle del móvil en una sola pantalla: Para resolver, Mantenimiento (planes, últimos services y gasto del año), Documentación (obligatorios que faltan), Combustible (cargas y gasto del mes) y Neumáticos y frenos (historial).
 - [x] Flota: la columna Documentación detecta los obligatorios sin cargar.
 - [x] Control del camión: un solo título, toda la flota en una tabla (estado, chofer, km, neumáticos y frenos, combustible, service, documentación), filtros por estado y color sólo para alertas.

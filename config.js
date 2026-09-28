@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'particulares-v181-20260928';
+window.AUXILIOS_BUILD_ID = 'particulares-v182-20260928';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -231,6 +231,7 @@ async function loadSecondaryAuxiliosModules() {
     // Control del camión: flota en una tabla (reemplaza las tarjetas de a una).
     loadAuxiliosModule('auxilios-fleet-control-v1', '/fleet-control-v1.js'),
     loadAuxiliosModule('auxilios-fleet-truck-detail-v1', '/fleet-truck-detail-v1.js'),
+    loadAuxiliosModule('auxilios-truck-doc-reader-v1', '/truck-doc-reader-v1.js'),
     loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js'),
     loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js')
   ]);
