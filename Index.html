@@ -14,14 +14,14 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="auxilios-emoji-mono-v1.css?v=particulares-v177-20260928">
-<link rel="stylesheet" href="sigma.css?v=particulares-v177-20260928">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=particulares-v177-20260928">
-<link rel="stylesheet" href="dashboard-v1.css?v=particulares-v177-20260928">
-<link rel="stylesheet" href="dashboard-resumen-v1.css?v=particulares-v177-20260928">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=particulares-v177-20260928">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=particulares-v177-20260928">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=particulares-v177-20260928">
+<link rel="stylesheet" href="auxilios-emoji-mono-v1.css?v=particulares-v178-20260928">
+<link rel="stylesheet" href="sigma.css?v=particulares-v178-20260928">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=particulares-v178-20260928">
+<link rel="stylesheet" href="dashboard-v1.css?v=particulares-v178-20260928">
+<link rel="stylesheet" href="dashboard-resumen-v1.css?v=particulares-v178-20260928">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=particulares-v178-20260928">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=particulares-v178-20260928">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=particulares-v178-20260928">
 
 <!-- Service Worker -->
 <script>
@@ -41,20 +41,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=particulares-v177-20260928" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=particulares-v177-20260928" defer></script>
-<script src="supabase.js?v=particulares-v177-20260928" defer></script>
+<script src="config.js?v=particulares-v178-20260928" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=particulares-v178-20260928" defer></script>
+<script src="supabase.js?v=particulares-v178-20260928" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=particulares-v177-20260928" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=particulares-v177-20260928" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=particulares-v177-20260928" defer></script>
-<script src="sigma.js?v=particulares-v177-20260928" defer></script>
-<script src="dashboard-charts-v1.js?v=particulares-v177-20260928" defer></script>
-<script src="dashboard-shell-v1.js?v=particulares-v177-20260928" defer></script>
-<script src="dashboard-resumen-v1.js?v=particulares-v177-20260928" defer></script>
-<script src="dashboard-tendencia-v1.js?v=particulares-v177-20260928" defer></script>
-<script src="dashboard-operaciones-v1.js?v=particulares-v177-20260928" defer></script>
-<script src="dashboard-flota-v1.js?v=particulares-v177-20260928" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=particulares-v178-20260928" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=particulares-v178-20260928" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=particulares-v178-20260928" defer></script>
+<script src="sigma.js?v=particulares-v178-20260928" defer></script>
+<script src="dashboard-charts-v1.js?v=particulares-v178-20260928" defer></script>
+<script src="dashboard-shell-v1.js?v=particulares-v178-20260928" defer></script>
+<script src="dashboard-resumen-v1.js?v=particulares-v178-20260928" defer></script>
+<script src="dashboard-tendencia-v1.js?v=particulares-v178-20260928" defer></script>
+<script src="dashboard-operaciones-v1.js?v=particulares-v178-20260928" defer></script>
+<script src="dashboard-flota-v1.js?v=particulares-v178-20260928" defer></script>
 </head>
 <body>
 
@@ -2050,9 +2050,10 @@
     padding: 10px 12px;
     margin-bottom: 10px;
     display: grid;
+    /* Buscar más angosto; Jornadas anuladas y Limpiar al final de la misma fila. */
     grid-template-columns:
-      minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr)
-      minmax(0, 1.1fr) minmax(0, 1.5fr) auto;
+      minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 1.4fr)
+      minmax(0, 1.1fr) minmax(0, 1.5fr) auto auto;
     gap: 10px;
     /* Todos los controles apoyan sobre la misma línea de base. */
     align-items: end;
@@ -2191,6 +2192,14 @@
   }
   /* jornadas-admin-tools-v1.js inyecta este botón: se le da el mismo cuerpo
      que a los demás chips sin tocar su id ni su handler. */
+  #screen-jornadas-admin .jadmin-voided-host { display: flex; align-items: end; min-width: 0; }
+  #screen-jornadas-admin .jadmin-voided-host:empty { display: none; }
+  #screen-jornadas-admin .jadmin-voided-host #jat-open-voided {
+    height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 700;
+    white-space: nowrap; cursor: pointer;
+  }
+  #screen-jornadas-admin .jadmin-voided-host #jat-open-voided:hover { border-color: var(--primary, #4F8EF7); }
   #screen-jornadas-admin .chips #jat-open-voided {
     font-family: inherit;
     line-height: 1.2;
@@ -2597,7 +2606,7 @@
   <div class="filtros">
     <div>
       <label>Buscar</label>
-      <input type="search" id="jadmin-f-q" placeholder="Buscar por chofer o patente…">
+      <input type="search" id="jadmin-f-q" placeholder="Chofer o patente…">
     </div>
     <div>
       <label>Choferes</label>
@@ -2621,13 +2630,9 @@
       <label>Período</label>
       <div id="jadmin-f-periodo-host" class="jadmin-auxf-host"></div>
     </div>
+    <!-- Jornadas anuladas va en la misma fila de los filtros (lo inyecta jornadas-admin-tools-v1.js). -->
+    <div class="jadmin-voided-host" id="jadmin-chips-estado"></div>
     <button class="clear" id="jadmin-f-clear">Limpiar</button>
-    <!-- ACCESOS RÁPIDOS -->
-    <div class="chips">
-      <!-- Período y Estado se unificaron en sus filtros de arriba. Acá queda sólo
-           el acceso a Jornadas anuladas (lo inyecta jornadas-admin-tools-v1.js). -->
-      <div class="chip-group" id="jadmin-chips-estado"></div>
-    </div>
   </div>
 
   <!-- TABLA -->
