@@ -14,6 +14,8 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] AuxiliosQA firma un remito → el servicio desaparece de su lista y se le puede asignar otro servicio enseguida.
+
 - [ ] Editar un particular con el remito sin firmar (el caso con remito firmado ya se probó).
 - [ ] Remito sin asignación marcado como Particular (AuxiliosQA) → Crear y finalizar desde Operaciones → Registrar cobro del saldo.
 - [ ] Facturación → Particulares: Facturar uno y cerrar otro Sin factura.
@@ -21,3 +23,4 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 ## Hechos
 
 - [x] Jornadas: Jornadas anuladas en la misma fila de los filtros y buscador más angosto.
+- [x] Chofer liberado al firmar el remito (sin edición posterior del chofer).
