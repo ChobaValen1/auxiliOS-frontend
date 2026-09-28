@@ -13,3 +13,7 @@
 .ppv-todo { margin-top: 8px; }
 .ppv-nota { margin-top: 10px; }
 .ppv-ok { margin: 0 0 8px; color: #27c47a; font-size: 13px; font-weight: 600; }
+.ppv-aviso { margin: 12px 0 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent); border-radius: 9px; color: var(--amber); font-size: 13px; font-weight: 600; }
+.ppv-chofer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px dashed var(--border2); border-radius: 9px; font-size: 13px; }
+.ppv-chofer span { display: grid; gap: 2px; }
+.ppv-chofer small { color: var(--muted2); font-size: 11px; }

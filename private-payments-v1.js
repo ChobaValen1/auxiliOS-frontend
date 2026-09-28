@@ -3,7 +3,11 @@
    Si el cliente dejó una seña (o el chofer no cobró todo), el operador completa
    el pago desde el menú ⋯ del servicio: "Registrar cobro". Muestra
    Presupuesto · Pagado · Saldo, los pagos hechos, y registra el nuevo con
-   register_service_payment_v1. */
+   register_service_payment_v1.
+
+   Un particular no se finaliza hasta que los pagos cubren el presupuesto (la
+   base lo bloquea). "Finalizar" abre primero este cobro si falta; si el chofer
+   informó un cobro pendiente de aprobación, se puede aprobar desde acá. */
 (function (global) {
   'use strict';
 
@@ -71,6 +75,7 @@
           '<button type="button" class="psv-x" data-ppv="cerrar" aria-label="Cerrar">×</button></header>' +
         '<div class="psv-body">' +
           (st.error ? '<div class="psv-error" role="alert">' + esc(st.error) + '</div>' : '') +
+          (st.finalizar && saldo > 0 ? '<div class="ppv-aviso">Para finalizar el servicio, registrá el cobro del total. Falta ' + money(saldo) + '.</div>' : '') +
           '<div class="ppv-resumen">' +
             '<div><span>Presupuesto</span><b>' + money(i.quoted_total) + '</b></div>' +
             '<div><span>Pagado</span><b>' + money(i.paid) + '</b></div>' +
@@ -82,8 +87,16 @@
                   '<small>' + esc(fecha(p.paid_at)) + (p.received_by ? ' · ' + esc(p.received_by) : '') + '</small></span><b>' + money(p.amount) + '</b></li>';
               }).join('') + '</ul>'
             : '<p class="psv-hint">Todavía no hay pagos registrados.</p>') +
+          (st.reporte && saldo > 0
+            ? '<div class="ppv-chofer"><span>Cobro informado por ' + esc(st.reporte.driver_name || 'el chofer') + '<small>' +
+                (st.reporte.lines || []).map(function (l) { return money(l.amount) + ' ' + esc(NOMBRE[l.method] || l.method); }).join(' + ') +
+                ' · pendiente de aprobación</small></span>' +
+                '</div>'
+            : '') +
           (saldo <= 0
             ? '<p class="ppv-ok">El servicio está pago.</p>'
+            : st.reporte
+            ? '<p class="psv-hint">Aprobá el cobro del chofer. Si no es correcto, rechazalo desde el detalle del remito y registrá el pago acá.</p>'
             : '<section class="ppv-form"><h3>Registrar pago</h3>' +
                 '<div class="psv-grid">' +
                   '<label class="psv-field" for="ppv-monto"><span>Monto *</span><div class="psv-money"><i>$</i><input id="ppv-monto" data-ppv-k="monto" inputmode="decimal" value="' + esc(st.monto) + '"></div></label>' +
@@ -96,7 +109,9 @@
               '</section>') +
         '</div>' +
         '<footer><button type="button" class="psv-btn" data-ppv="cerrar">' + (saldo <= 0 ? 'Cerrar' : 'Cancelar') + '</button>' +
-          (saldo > 0 ? '<button type="button" class="psv-btn primary" data-ppv="guardar"' + (st.busy ? ' disabled' : '') + '>' + (st.busy ? 'Guardando…' : 'Registrar pago') + '</button>' : '') +
+          (saldo > 0 && st.reporte ? '<button type="button" class="psv-btn primary" data-ppv="aprobar"' + (st.busy ? ' disabled' : '') + '>' + (st.busy ? 'Aprobando…' : st.finalizar ? 'Aprobar y finalizar' : 'Aprobar cobro') + '</button>'
+            : saldo > 0 ? '<button type="button" class="psv-btn primary" data-ppv="guardar"' + (st.busy ? ' disabled' : '') + '>' + (st.busy ? 'Guardando…' : st.finalizar ? 'Registrar pago y finalizar' : 'Registrar pago') + '</button>'
+            : st.finalizar ? '<button type="button" class="psv-btn primary" data-ppv="finalizar">Finalizar servicio</button>' : '') +
         '</footer>' +
       '</div>';
   }
@@ -107,10 +122,16 @@
     st.info = r.data || {};
     if (!st.info.particular) throw new Error('Este servicio no es particular.');
     st.monto = String(Math.round(num(st.info.balance)));
+    st.reporte = null;
+    try {
+      var c = await db().rpc('get_service_collection_v1', { p_service_id: st.id });
+      if (!c.error && c.data && c.data.status === 'pending' && (c.data.lines || []).length) st.reporte = c.data;
+    } catch (e) { /* sin reporte del chofer */ }
   }
 
-  async function abrir(id) {
-    st = { id: id, servicio: servicio(id), info: null, monto: '', medio: 'cash', nota: '', busy: false, error: '' };
+  async function abrir(id, opciones) {
+    st = { id: id, servicio: servicio(id), info: null, monto: '', medio: 'cash', nota: '', busy: false, error: '',
+           finalizar: !!(opciones && opciones.finalizar), reporte: null };
     pintar();
     try { await cargar(); } catch (e) { st.error = e.message || 'No se pudieron cargar los cobros.'; }
     pintar();
@@ -130,13 +151,15 @@
     st.busy = true; st.error = '';
     pintar();
     try {
-      var monto = num(st.monto);
+      var monto = num(st.monto), st_id = st.id;
       var r = await db().rpc('register_service_payment_v1', {
         p_service_id: st.id, p_kind: 'saldo', p_amount: monto, p_method: st.medio, p_note: st.nota.trim() || null
       });
       if (r.error) throw r.error;
       var saldo = num((r.data || {}).balance);
+      var fin = st.finalizar;
       cerrar();
+      if (fin && saldo <= 0) return seguirFinalizar(st_id);
       if (typeof global.operationFeedback === 'function') {
         global.operationFeedback('Pago registrado', money(monto) + (saldo > 0 ? ' · Queda ' + money(saldo) + ' de saldo.' : ' · El servicio quedó pago.'), 'success', 2400);
       }
@@ -145,6 +168,28 @@
       st.error = err.message || 'No se pudo registrar el pago.';
       pintar();
     }
+  }
+
+  async function aprobarReporte() {
+    if (!st || !st.reporte || st.busy) return;
+    st.busy = true; st.error = ''; pintar();
+    try {
+      var r = await db().rpc('review_service_collection_v1', { p_report_id: st.reporte.report_id, p_decision: 'approved', p_note: null });
+      if (r.error) throw r.error;
+      await cargar();
+      st.busy = false;
+      if (st.finalizar && num(st.info.balance) <= 0) { var id = st.id; cerrar(); return seguirFinalizar(id); }
+      pintar();
+    } catch (err) {
+      st.busy = false;
+      st.error = err.message || 'No se pudo aprobar el cobro.';
+      pintar();
+    }
+  }
+
+  var finalizarOriginal = null;
+  function seguirFinalizar(id) {
+    if (finalizarOriginal) return finalizarOriginal(id);
   }
 
   document.addEventListener('click', function (ev) {
@@ -157,6 +202,8 @@
     var a = b.getAttribute('data-ppv');
     if (a === 'cerrar') return cerrar();
     if (a === 'guardar') return guardar();
+    if (a === 'aprobar') return aprobarReporte();
+    if (a === 'finalizar') { var fid = st.id; cerrar(); return seguirFinalizar(fid); }
     if (a === 'todo') { st.monto = String(Math.round(num(st.info.balance))); return pintar(); }
     if (b.hasAttribute('data-ppv-medio')) { st.medio = b.getAttribute('data-ppv-medio'); return pintar(); }
   });
@@ -170,9 +217,27 @@
   });
 
   /* Menú ⋯ del servicio: "Registrar cobro" en los particulares. */
+  /* Finalizar un particular con saldo: primero el cobro. */
+  function engancharFinalizar() {
+    if (typeof global.finalizarServicioOperador !== 'function' || global.finalizarServicioOperador.__ppv) return;
+    finalizarOriginal = global.finalizarServicioOperador;
+    var w = async function (id) {
+      var s = servicio(id);
+      if (!esParticular(s) || !db()) return finalizarOriginal.apply(this, arguments);
+      try {
+        var r = await db().rpc('get_service_payments_v1', { p_service_id: id });
+        if (!r.error && r.data && r.data.particular && num(r.data.balance) > 0) return abrir(id, { finalizar: true });
+      } catch (e) { /* si no se puede consultar, la base igual lo bloquea */ }
+      return finalizarOriginal.apply(this, arguments);
+    };
+    w.__ppv = true;
+    global.finalizarServicioOperador = w;
+  }
+
   function enganchar() {
+    engancharFinalizar();
     if (typeof global.abrirMenuServicio !== 'function') return false;
-    if (global.abrirMenuServicio.__ppv) return true;
+    if (global.abrirMenuServicio.__ppv) return !!(global.finalizarServicioOperador && global.finalizarServicioOperador.__ppv);
     var original = global.abrirMenuServicio;
     var w = function (event, id) {
       var r = original.apply(this, arguments);
@@ -189,7 +254,7 @@
     };
     w.__ppv = true;
     global.abrirMenuServicio = w;
-    return true;
+    return !!(global.finalizarServicioOperador && global.finalizarServicioOperador.__ppv);
   }
   if (!enganchar()) {
     var n = 0, t = setInterval(function () { if (enganchar() || ++n > 40) clearInterval(t); }, 250);

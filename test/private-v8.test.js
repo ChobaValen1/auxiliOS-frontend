@@ -70,3 +70,13 @@ test('si el chofer lo marcó Particular, Operaciones abre directo ese formulario
   assert.equal(P.lineasCobro(r.intake, { amount: 70000, method: 'cash' }).length, 1);
   assert.match(form, /if \(info && info\.client_kind === 'particular'\) return abrirParticular\(id\);/);
 });
+
+test('un particular no se finaliza sin el cobro del total', () => {
+  const v10 = fs.readFileSync('migrations/20260928200000_particulares_cobro_para_finalizar_v10.sql', 'utf8');
+  assert.match(v10, /when \(new\.status = 'completed' and old\.status is distinct from 'completed' and new\.quoted_total is not null\)/);
+  assert.match(v10, /No se puede finalizar: falta registrar el cobro de \$%/);
+  assert.match(pay, /global\.finalizarServicioOperador = w;/);
+  assert.match(pay, /return abrir\(id, \{ finalizar: true \}\)/);
+  assert.match(pay, /review_service_collection_v1/);
+  assert.match(form, /Para crear y finalizar, el cobro tiene que cubrir el presupuesto/);
+});

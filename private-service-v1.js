@@ -255,6 +255,8 @@
     else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
     if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
     if (d.captado && !d.referred_by_driver_id) e.push('Elegí el chofer que consiguió el servicio.');
+    // Crear y finalizar: un particular no se finaliza sin el cobro del total.
+    if (st.intake && num(d.presupuesto) > 0 && d.pago !== 'total') e.push('Para crear y finalizar, el cobro tiene que cubrir el presupuesto. Marcá Todo si ya se cobró el total.');
     return e;
   }
 
