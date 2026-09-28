@@ -38,15 +38,36 @@ test('documentación: los obligatorios que faltan se muestran como faltantes', (
   assert.equal(por.PERMISO_ESPECIAL.tono, '');
 });
 
-test('para resolver: lo crítico primero y nada si está todo en orden', () => {
+test('tarjetas de resumen: mismo lenguaje corto que la flota', () => {
+  const { D, C } = load();
+  C.set({ today: HOY });
+  const todos = ['VTV', 'SEGURO_POLIZA', 'HABILITACION_RUTA', 'CEDULA_VERDE', 'MATAFUEGOS'].map(c => ({ internal_code: c, file_url: 'x', expiry_date: '2027-06-01' }));
+  assert.equal(D.resumenDocs(todos, HOY).txt, 'Completo');
+  const tres = D.resumenDocs(todos.slice(0, 3), HOY);
+  assert.equal(tres.txt, '3/5'); assert.equal(tres.tono, 'alerta'); assert.equal(tres.sub, 'Falta Cédula verde, Matafuegos');
+  const venc = D.resumenDocs([{ internal_code: 'VTV', file_url: 'x', expiry_date: '2026-09-01' }], HOY);
+  assert.equal(venc.tono, 'critico'); assert.equal(venc.sub, 'Vencido: VTV');
+  assert.equal(D.resumenService([{ name: 'Aceite', plan_estado: 'al_dia', km_restantes: 3000 }, { name: 'Frenos', plan_estado: 'al_dia', km_restantes: 9000 }]).txt, 'Aceite · en 3.000 km');
+  assert.equal(D.resumenService([]).txt, 'Sin service informado');
+  assert.equal(D.resumenNeumaticos({ log_id: 1 }, [{ check_date: HOY, tire_condition: 'bueno', brake_condition: 'bueno' }]).txt, 'Bien');
+  assert.equal(D.resumenNeumaticos({ log_id: 1 }, [{ check_date: '2026-09-27', tire_condition: 'bueno', brake_condition: 'malo' }]).txt, 'Mal: frenos');
+  const comb = D.resumenCombustible([{ fuel_date: '2026-09-28', liters: 60, total_cost: 78000 }, { fuel_date: '2026-09-20', liters: 50, total_cost: 60000 }], HOY);
+  assert.equal(comb.txt, '28/09 · 60 L'); assert.equal(comb.sub, 'Este mes: 2 cargas · $ 138.000');
+  assert.equal(D.resumenCombustible([], HOY).txt, 'Sin cargas');
+});
+
+test('km del mes a partir de las jornadas, sin las anuladas', () => {
   const { D } = load();
-  const docs = ['VTV', 'SEGURO_POLIZA', 'HABILITACION_RUTA', 'CEDULA_VERDE', 'MATAFUEGOS'].map(c => ({ internal_code: c, file_url: 'x', expiry_date: '2027-06-01' }));
-  assert.equal(D.pendientes({ t: { log_id: 1 }, planes: [{ name: 'Aceite', plan_estado: 'al_dia', km_restantes: 5000 }], docs, tires: [{ check_date: HOY, tire_condition: 'bueno', brake_condition: 'bueno' }], today: HOY }).length, 0);
-  const p = D.pendientes({ t: { log_id: 1 }, planes: [{ name: 'Aceite', plan_estado: 'proximo', km_restantes: 600 }, { name: 'Frenos', plan_estado: 'vencido', km_restantes: -300 }], docs: [], tires: [{ check_date: '2026-09-27', tire_condition: 'bueno', brake_condition: 'bueno' }], today: HOY });
-  assert.equal(p[0].tono, 'critico');
-  assert.match(p.map(x => x.txt).join('|'), /Service Aceite: faltan 600 km/);
-  assert.match(p.map(x => x.txt).join('|'), /VTV: falta cargar/);
-  assert.match(p.map(x => x.txt).join('|'), /falta el control de hoy/);
+  const r = D.kmMes([{ log_date: '2026-09-28', km_recorridos: 120 }, { log_date: '2026-09-02', km_recorridos: 300 }, { log_date: '2026-09-03', km_recorridos: 50, voided_at: 'x' }, { log_date: '2026-08-30', km_recorridos: 999 }], HOY);
+  assert.deepEqual(JSON.parse(JSON.stringify(r)), { km: 420, jornadas: 2 });
+});
+
+test('una pestaña por tema; tocar una tarjeta abre su pestaña', () => {
+  assert.match(js, /var TABS = \[\['mantenimiento', 'Mantenimiento'\], \['documentacion', 'Documentación'\], \['neumaticos', 'Neumáticos y frenos'\], \['combustible', 'Combustible'\]\]/);
+  assert.match(js, /data-ftd-tab="' \+ tab \+ '"/);
+  assert.match(js, /if \(tab && st\.id\) \{ st\.tab = tab\.getAttribute\('data-ftd-tab'\); return pintar\(\); \}/);
+  assert.match(js, /if \(opts\.seccion && TABS\.some/);
+  assert.doesNotMatch(js, /Para resolver/);
 });
 
 test('mantenimiento, combustible y neumáticos', () => {

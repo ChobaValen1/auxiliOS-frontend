@@ -10,15 +10,30 @@
 .ftd-meta dt { color: var(--muted2); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .ftd-meta dd { margin: 2px 0 0; font-size: 13px; font-weight: 700; }
 
-.ftd-pend { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
-.ftd-pend h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.ftd-pend h3 span { padding: 1px 7px; border-radius: 10px; background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); font-size: 11px; }
-.ftd-pend ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
-.ftd-ok { color: var(--muted2); font-size: 13px; }
+.ftd-tipo { margin-left: 8px; padding: 2px 8px; border: 1px solid var(--border2); border-radius: 20px; color: var(--muted2); font-size: 11px; font-weight: 700; letter-spacing: 0; vertical-align: 3px; }
+.ftd-meta { flex-wrap: wrap; row-gap: 8px; }
+.ftd-meta dd small { display: block; margin-top: 1px; color: var(--muted2); font-size: 11px; font-weight: 500; }
 
-.ftd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+/* Resumen: cuatro tarjetas, cada una abre su pestaña. */
+.ftd-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ftd-card { display: grid; align-content: start; gap: 4px; min-width: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text); font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+.ftd-card:hover { border-color: var(--border2); }
+.ftd-card.on { border-color: var(--amber); }
+.ftd-card-t { color: var(--muted2); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.ftd-card small { color: var(--muted2); font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Pestañas */
+.ftd-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+.ftd-tabs::-webkit-scrollbar { display: none; }
+.ftd-tab { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted2); font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.ftd-tab:hover { color: var(--text); }
+.ftd-tab.on { border-bottom-color: var(--amber); color: var(--text); }
+.ftd-dot { width: 6px; height: 6px; border-radius: 50%; }
+.ftd-dot-alerta { background: var(--amber); }
+.ftd-dot-critico { background: var(--red); }
+
 .ftd-sec { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); min-width: 0; }
-.ftd-sec > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.ftd-sec > header { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 6px; }
 .ftd-sec h3 { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .ftd-sec h4 { display: flex; justify-content: space-between; gap: 8px; margin: 14px 0 6px; color: var(--muted2); font-size: 11px; font-weight: 700; }
 .ftd-sec h4 span { font-weight: 600; }
@@ -55,11 +70,13 @@
 .ftd-n { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ftd-notas { max-width: 180px; color: var(--muted2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-@media (max-width: 1100px) { .ftd-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) { .ftd-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .ftd-head { gap: 10px; }
   .ftd-meta { width: 100%; gap: 16px; }
-  .ftd-pend ul { grid-template-columns: minmax(0, 1fr); }
+  .ftd-meta > div { min-width: 42%; }
+  .ftd-cards { gap: 8px; }
+  .ftd-card { padding: 10px 12px; font-size: 13px; }
   .ftd-sec { padding: 10px 12px; overflow-x: auto; }
   .ftd-docs li { grid-template-columns: minmax(0, 1fr) auto; }
   .ftd-docs .ftd-li-acc { grid-column: 1 / -1; justify-content: flex-start; }

@@ -27,6 +27,12 @@
     return Math.round((new Date(hoy + 'T12:00:00') - new Date(iso + 'T12:00:00')) / 86400000);
   }
   var COND = { bueno: 'Bueno', regular: 'Regular', malo: 'Malo' };
+  /* Fecha de hoy en Argentina: la del servidor si ya cargó la flota, si no la del dispositivo. */
+  function hoy() {
+    if (st.today) return st.today;
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
 
   function titulo(t) {
     if (t.numero_interno != null && String(t.numero_interno).trim()) {
@@ -48,7 +54,7 @@
   /* Corto: "Bien" si el último control está todo bien; si no, qué marcó mal. */
   function neumaticos(t) {
     if (!t.tire_date) return { txt: 'Sin controles', tono: t.log_id ? 'alerta' : '', alerta: !!t.log_id };
-    var d = diasDesde(t.tire_date, st.today);
+    var d = diasDesde(t.tire_date, hoy());
     var partes = function (cond) {
       return [t.tire_condition === cond ? 'neumáticos' : '', t.brake_condition === cond ? 'frenos' : ''].filter(Boolean).join(' y ');
     };
@@ -64,6 +70,9 @@
   function service(t) {
     var planes = st.planes[t.truck_id];
     if (planes === undefined) return { txt: '…', tono: '' };
+    return servicioDe(planes);
+  }
+  function servicioDe(planes) {
     var p = (planes || []).filter(function (x) { return x.plan_estado && x.plan_estado !== '_error' && x.km_restantes != null; })
       .sort(function (a, b) { return a.km_restantes - b.km_restantes; })[0];
     if (!p) return { txt: 'Sin service informado', tono: '' };
@@ -218,7 +227,9 @@
     renderFlota: renderFlota,
     titulo: titulo,
     estado: estado,
-    hoy: function () { return st.today; },
+    servicioDe: servicioDe,
+    neumaticos: neumaticos,
+    hoy: hoy,
     DOC_OBLIGATORIOS: DOC_OBLIGATORIOS,
     _test: {
       set: function (s) { st = Object.assign(st, s); },

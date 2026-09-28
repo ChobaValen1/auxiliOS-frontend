@@ -1,16 +1,20 @@
 /* AuxiliOS · Control del camión · detalle de un móvil (v1)
 
-   Administración y Supervisión ven todo el camión en una sola pantalla, sin
-   sub-pantallas: arriba lo que hay que resolver y debajo Mantenimiento,
-   Documentación, Combustible y Neumáticos y frenos. La documentación
-   obligatoria que el móvil no tiene cargada se muestra como faltante.
+   Administración y Supervisión ven el camión en una sola pantalla: arriba los
+   datos del móvil (tipo, chofer y jornada, km actuales y del mes), cuatro
+   tarjetas de resumen con el mismo lenguaje corto de la flota (Service,
+   Documentación, Neumáticos y frenos, Combustible) y debajo una pestaña por
+   tema. Tocar una tarjeta abre su pestaña. La documentación obligatoria que el
+   móvil no tiene cargada se muestra como faltante.
    Las acciones (cargar, registrar, subir) son sólo de Administración y usan
    los mismos formularios de siempre; al guardar se vuelve a esta pantalla.
    La vista del chofer no cambia. */
 (function (global) {
   'use strict';
 
-  var st = { id: null, t: null, planes: [], services: [], fuel: [], tires: [], docs: [], cargando: false, error: '', cerradoAt: 0 };
+  var st = { id: null, t: null, planes: [], services: [], fuel: [], tires: [], docs: [], logs: [], tab: 'mantenimiento', cargando: false, error: '', cerradoAt: 0 };
+  var TABS = [['mantenimiento', 'Mantenimiento'], ['documentacion', 'Documentación'], ['neumaticos', 'Neumáticos y frenos'], ['combustible', 'Combustible']];
+  var TIPO = { plancha: 'Plancha', asistencia: 'Asistencia', pesado: 'Pesado' };
   var MODALES = ['modal-combustible', 'modal-neumaticos', 'modal-service-log', 'modal-asignar-plan', 'modal-upload-truck-doc', 'fuel-edit-admin'];
   var COND = { bueno: 'Bueno', regular: 'Regular', malo: 'Malo' };
   var PAGO = { efectivo: 'Efectivo', transferencia: 'Transferencia', app: 'App', tarjeta: 'Tarjeta' };
@@ -91,21 +95,50 @@
     return { txt: 'Neumáticos ' + (COND[ultimo.tire_condition] || '—') + ' · Frenos ' + (COND[ultimo.brake_condition] || '—'), tono: '' };
   }
 
-  /* Lo que hay que resolver, lo más grave primero. */
-  function pendientes(d) {
-    var out = [];
-    var today = d.today || hoy();
-    if (d.t && d.t.in_workshop) out.push({ tono: 'alerta', txt: 'En taller' + (d.t.workshop_detail ? ': ' + d.t.workshop_detail : '') });
-    (d.planes || []).filter(function (p) { return p.plan_estado && p.plan_estado !== '_error'; }).forEach(function (p) {
-      var e = planEstado(p);
-      if (e.tono) out.push({ tono: e.tono, txt: 'Service ' + p.name + ': ' + e.txt.toLowerCase() });
+  /* Tarjetas de resumen: el mismo lenguaje corto que la tabla de flota. */
+  function resumenService(planes) {
+    var ok = (planes || []).filter(function (p) { return p.plan_estado !== '_error'; });
+    if (F().servicioDe) return F().servicioDe(ok);
+    return { txt: ok.length ? ok[0].name : 'Sin service informado', tono: '' };
+  }
+  function resumenDocs(docs, today) {
+    var filas = docsLista(docs, today).filter(function (f) { return f.obligatorio; });
+    var cargados = filas.filter(function (f) { return f.doc; }).length;
+    var txt = cargados === filas.length ? 'Completo' : cargados + '/' + filas.length;
+    var venc = filas.filter(function (f) { return f.tono === 'critico'; });
+    var falta = filas.filter(function (f) { return !f.doc; });
+    var otros = filas.filter(function (f) { return f.doc && f.tono === 'alerta'; });
+    var corto = function (l) { return l.map(function (f) { return obligatorios()[f.code] || f.nombre; }).join(', '); };
+    if (venc.length) return { txt: txt, tono: 'critico', sub: 'Vencido: ' + corto(venc) };
+    if (falta.length) return { txt: txt, tono: 'alerta', sub: 'Falta ' + corto(falta) };
+    if (otros.length) return { txt: txt, tono: 'alerta', sub: otros.map(function (f) { return (obligatorios()[f.code] || f.nombre) + ' ' + f.txt.toLowerCase(); }).join(', ') };
+    return { txt: txt, tono: '' };
+  }
+  function resumenNeumaticos(t, tires) {
+    var u = (tires || [])[0];
+    var fila = { log_id: t && t.log_id, tire_date: u && u.check_date, tire_condition: u && u.tire_condition, brake_condition: u && u.brake_condition };
+    if (F().neumaticos) return F().neumaticos(fila);
+    return { txt: u ? 'Control del ' + fecha(u.check_date) : 'Sin controles', tono: '' };
+  }
+  function resumenCombustible(fuel, today) {
+    var u = (fuel || [])[0];
+    if (!u) return { txt: 'Sin cargas', tono: '' };
+    var mes = combustibleMes(fuel, today);
+    return {
+      txt: fecha(u.fuel_date).slice(0, 5) + ' · ' + num(u.liters).toLocaleString('es-AR') + ' L',
+      tono: '',
+      sub: mes.cargas ? 'Este mes: ' + mes.cargas + (mes.cargas === 1 ? ' carga' : ' cargas') + ' · ' + money(mes.total) : 'Sin cargas este mes'
+    };
+  }
+  /* Km recorridos en el mes según las jornadas del móvil. */
+  function kmMes(logs, today) {
+    var mes = String(today || '').slice(0, 7);
+    var r = { km: 0, jornadas: 0 };
+    (logs || []).forEach(function (l) {
+      if (String(l.log_date || '').slice(0, 7) !== mes || l.voided_at) return;
+      r.jornadas++; r.km += num(l.km_recorridos);
     });
-    docsLista(d.docs, today).forEach(function (f) {
-      if (f.tono) out.push({ tono: f.tono, txt: f.nombre + ': ' + f.txt.toLowerCase() });
-    });
-    var n = neumaticosEstado(d.t, (d.tires || [])[0], today);
-    if (n.tono) out.push({ tono: n.tono, txt: n.tono === 'critico' ? n.txt : 'Neumáticos y frenos: ' + n.txt.toLowerCase() });
-    return out.sort(function (a, b) { return (a.tono === 'critico' ? 0 : 1) - (b.tono === 'critico' ? 0 : 1); });
+    return r;
   }
 
   function combustibleMes(fuel, today) {
@@ -128,8 +161,9 @@
   /* ── Vista ──────────────────────────────────────────────────────── */
 
   function seccion(clave, titulo, acciones, cuerpo) {
-    return '<section class="ftd-sec" data-ftd-sec="' + clave + '"><header><h3>' + titulo + '</h3>' +
-      (acciones.length ? '<div class="ftd-acc">' + acciones.join('') + '</div>' : '') + '</header>' + cuerpo + '</section>';
+    acciones = acciones.filter(Boolean);
+    return '<section class="ftd-sec" role="tabpanel" id="ftd-panel-' + clave + '" aria-label="' + esc(titulo) + '" data-ftd-sec="' + clave + '">' +
+      (acciones.length ? '<header><div class="ftd-acc">' + acciones.join('') + '</div></header>' : '') + cuerpo + '</section>';
   }
   function boton(accion, label, extra) {
     return admin() ? '<button type="button" class="ftd-btn" data-ftd="' + accion + '"' + (extra || '') + '>' + label + '</button>' : '';
@@ -207,31 +241,59 @@
     return seccion('neumaticos', 'Neumáticos y frenos', [boton('neumaticos', '+ Control')], cab + tabla);
   }
 
+  function tarjeta(tab, titulo, r) {
+    return '<button type="button" class="ftd-card' + (st.tab === tab ? ' on' : '') + '" data-ftd-tab="' + tab + '" aria-controls="ftd-panel-' + tab + '">' +
+      '<span class="ftd-card-t">' + titulo + '</span>' + val(r.txt, r.tono) + (r.sub ? '<small>' + esc(r.sub) + '</small>' : '') + '</button>';
+  }
+
+  function cabecera(t) {
+    var titulo = F().titulo ? F().titulo(t) : (t.numero_interno || t.plate);
+    var e = F().estado ? F().estado(t) : { label: '', key: '' };
+    var tipo = t.tipo_equipo ? (TIPO[t.tipo_equipo] || t.tipo_equipo) : '';
+    var sub = [t.plate, [t.brand, t.model].filter(Boolean).join(' '), t.year].filter(Boolean).join(' · ');
+    var estadoTxt = e.label + (e.key === 'servicio' && e.det ? ' · ' + e.det : '') + (e.key === 'taller' && t.workshop_detail ? ': ' + t.workshop_detail : '');
+    var jornada = (st.logs || []).find(function (l) { return t.log_id && Number(l.log_id) === Number(t.log_id); });
+    var chofer = t.driver_name ? t.driver_name + (jornada && jornada.hora_inicio ? ' · desde las ' + String(jornada.hora_inicio).slice(0, 5) : '') : 'Sin jornada abierta';
+    var mes = kmMes(st.logs, hoy());
+    var dato = function (dt, dd, cls) { return '<div><dt>' + dt + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + dd + '</dd></div>'; };
+    return '<div class="ftd-head">' +
+        '<button type="button" class="ftd-back" data-ftd="volver">← Flota</button>' +
+        '<div class="ftd-id"><h2>' + esc(titulo) + (tipo ? '<span class="ftd-tipo">' + esc(tipo) + '</span>' : '') + '</h2><p>' + esc(sub) + '</p></div>' +
+        '<dl class="ftd-meta">' +
+          dato('Estado', '<span class="fcv-estado fcv-e-' + esc(e.tono || '') + '">' + esc(estadoTxt || '—') + '</span>') +
+          dato('Chofer', esc(chofer)) +
+          dato('Km actuales', t.current_km != null ? km(t.current_km) : '—', 'ftd-n') +
+          dato('Km este mes', st.cargando ? '…' : km(mes.km) + '<small>' + mes.jornadas + (mes.jornadas === 1 ? ' jornada' : ' jornadas') + '</small>', 'ftd-n') +
+        '</dl>' +
+      '</div>';
+  }
+
   function pintar() {
     var cont = document.getElementById('camion-cards-container');
     if (!cont || !st.t) return;
-    var t = st.t;
-    var titulo = F().titulo ? F().titulo(t) : (t.numero_interno || t.plate);
-    var e = F().estado ? F().estado(t) : { label: '', key: '' };
-    var sub = [t.plate, [t.brand, t.model].filter(Boolean).join(' '), t.year].filter(Boolean).join(' · ');
-    var estadoTxt = e.label + (e.key === 'servicio' && e.det ? ' · ' + e.det : '') + (t.driver_name ? ' · ' + t.driver_name : '');
-    var cab =
-      '<div class="ftd-head">' +
-        '<button type="button" class="ftd-back" data-ftd="volver">← Flota</button>' +
-        '<div class="ftd-id"><h2>' + esc(titulo) + '</h2><p>' + esc(sub) + '</p></div>' +
-        '<dl class="ftd-meta"><div><dt>Estado</dt><dd>' + esc(estadoTxt || '—') + '</dd></div>' +
-          '<div><dt>Km actuales</dt><dd class="ftd-n">' + (t.current_km != null ? km(t.current_km) : '—') + '</dd></div></dl>' +
-      '</div>';
+    var t = st.t, today = hoy();
+    var cab = cabecera(t);
     if (st.cargando) { cont.innerHTML = '<div class="ftd">' + cab + '<div class="fcv-empty">Cargando el camión…</div></div>'; return; }
     if (st.error) { cont.innerHTML = '<div class="ftd">' + cab + '<div class="fcv-empty fcv-error">' + esc(st.error) + '</div></div>'; return; }
-    var pend = pendientes({ t: t, planes: st.planes, docs: st.docs, tires: st.tires, today: hoy() });
+    var res = {
+      mantenimiento: resumenService(st.planes),
+      documentacion: resumenDocs(st.docs, today),
+      neumaticos: resumenNeumaticos(t, st.tires),
+      combustible: resumenCombustible(st.fuel, today)
+    };
+    var panel = { mantenimiento: mantenimiento, documentacion: documentacion, combustible: combustible, neumaticos: neumaticos }[st.tab] || mantenimiento;
     cont.innerHTML =
       '<div class="ftd">' + cab +
-        (pend.length
-          ? '<div class="ftd-pend"><h3>Para resolver <span>' + pend.length + '</span></h3><ul>' +
-              pend.map(function (p) { return '<li>' + val(p.txt, p.tono) + '</li>'; }).join('') + '</ul></div>'
-          : '<div class="ftd-pend ftd-ok">Todo en orden: sin services vencidos, documentación al día y controles hechos.</div>') +
-        '<div class="ftd-grid">' + mantenimiento() + documentacion() + combustible() + neumaticos() + '</div>' +
+        '<div class="ftd-cards">' +
+          tarjeta('mantenimiento', 'Service', res.mantenimiento) + tarjeta('documentacion', 'Documentación', res.documentacion) +
+          tarjeta('neumaticos', 'Neumáticos y frenos', res.neumaticos) + tarjeta('combustible', 'Combustible', res.combustible) +
+        '</div>' +
+        '<div class="ftd-tabs" role="tablist">' + TABS.map(function (x) {
+          var r = res[x[0]];
+          return '<button type="button" role="tab" class="ftd-tab' + (st.tab === x[0] ? ' on' : '') + '" aria-selected="' + (st.tab === x[0]) + '" aria-controls="ftd-panel-' + x[0] + '" data-ftd-tab="' + x[0] + '">' +
+            x[1] + (r && r.tono ? '<i class="ftd-dot ftd-dot-' + r.tono + '" aria-hidden="true"></i>' : '') + '</button>';
+        }).join('') + '</div>' +
+        panel() +
       '</div>';
   }
 
@@ -239,14 +301,19 @@
     var q = db();
     var tires = q ? q.from('tire_checks').select('check_id, check_date, tire_condition, brake_condition, pressure_psi, notes')
       .eq('truck_id', id).order('check_date', { ascending: false }).order('created_at', { ascending: false }).limit(10) : null;
+    var mes = hoy().slice(0, 8) + '01';
+    var logs = q ? q.from('daily_logs').select('log_id, log_date, hora_inicio, km_recorridos, voided_at')
+      .eq('truck_id', id).gte('log_date', mes).order('log_date', { ascending: false }).limit(62) : null;
     var r = await Promise.all([
       typeof cargarPlanesDetalleOptimizados === 'function' ? cargarPlanesDetalleOptimizados(id) : [],
       typeof cargarHistorialServices === 'function' ? cargarHistorialServices(id) : [],
       typeof cargarCombustible === 'function' ? cargarCombustible(id) : [],
       tires ? tires.then(function (x) { if (x.error) throw x.error; return x.data || []; }) : [],
-      typeof cargarTruckDocs === 'function' ? cargarTruckDocs(id) : []
+      typeof cargarTruckDocs === 'function' ? cargarTruckDocs(id) : [],
+      // Los km del mes son un dato más: si falla, el detalle se muestra igual.
+      logs ? logs.then(function (x) { return x.error ? [] : (x.data || []); }, function () { return []; }) : []
     ]);
-    return { planes: Array.isArray(r[0]) ? r[0] : [], services: r[1] || [], fuel: (r[2] || []).filter(function (f) { return !f.voided_at && f.status !== 'anulado'; }), tires: r[3] || [], docs: r[4] || [] };
+    return { planes: Array.isArray(r[0]) ? r[0] : [], services: r[1] || [], fuel: (r[2] || []).filter(function (f) { return !f.voided_at && f.status !== 'anulado'; }), tires: r[3] || [], docs: r[4] || [], logs: r[5] || [] };
   }
 
   function buscar(id) {
@@ -260,7 +327,8 @@
     // Desde otra pantalla (p. ej. Jornadas) la flota puede no estar cargada todavía.
     if (!t && F().cargar) { st.id = Number(id); st.t = null; await F().cargar(); t = buscar(id); }
     if (!t) { st.id = null; return; }
-    if (st.id !== Number(id)) Object.assign(st, { planes: [], services: [], fuel: [], tires: [], docs: [] });
+    if (st.id !== Number(id)) Object.assign(st, { planes: [], services: [], fuel: [], tires: [], docs: [], logs: [], tab: 'mantenimiento' });
+    if (opts.seccion && TABS.some(function (x) { return x[0] === opts.seccion; })) st.tab = opts.seccion;
     st = Object.assign(st, { id: Number(id), t: t, cargando: true, error: '' });
     // Los formularios de siempre (combustible, service, plan, neumáticos) usan estos globales.
     try { _camionVistaAdmin = 'detalle'; _camionLogDate = null; _truckActual = t; } catch (e) { /* sin globales */ }
@@ -284,10 +352,9 @@
   }
 
   function irA(opts) {
-    var sec = opts.seccion && document.querySelector('[data-ftd-sec="' + opts.seccion + '"]');
     var fila = opts.carga && document.querySelector('[data-ftd-carga="' + String(opts.carga).replace(/"/g, '') + '"]');
     if (fila) fila.classList.add('jat-highlight');
-    var el = fila || sec;
+    var el = fila || (opts.seccion && document.querySelector('.ftd-tabs'));
     if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
@@ -321,6 +388,8 @@
   }
 
   document.addEventListener('click', function (ev) {
+    var tab = ev.target.closest && ev.target.closest('[data-ftd-tab]');
+    if (tab && st.id) { st.tab = tab.getAttribute('data-ftd-tab'); return pintar(); }
     var b = ev.target.closest && ev.target.closest('[data-ftd]');
     if (!b || !st.id) return;
     var a = b.getAttribute('data-ftd');
@@ -380,7 +449,8 @@
     _test: {
       set: function (s) { st = Object.assign(st, s); },
       planEstado: planEstado, planAvance: planAvance, docsLista: docsLista, neumaticosEstado: neumaticosEstado,
-      pendientes: pendientes, combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento
+      resumenService: resumenService, resumenDocs: resumenDocs, resumenNeumaticos: resumenNeumaticos, resumenCombustible: resumenCombustible,
+      kmMes: kmMes, combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento
     }
   };
 })(window);

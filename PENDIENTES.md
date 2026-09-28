@@ -4,6 +4,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para hacer
 
+- [ ] Detalle del camión, segunda parte: barra de service con fecha estimada por km/día, rendimiento de combustible (km/l) e historial en una línea de tiempo.
 - [ ] Control del camión · vista del chofer: checklist simple del día (neumáticos, frenos, combustible). Falta confirmar.
 - [ ] Mantenimiento: pasar el móvil a taller desde un service vencido y bloquear asignaciones. Falta decidir: puede frenar a choferes en producción.
 
@@ -26,6 +27,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] Detalle del camión: encabezado con tipo, chofer y hora de inicio de la jornada, km actuales y km del mes; cuatro tarjetas de resumen y una pestaña por tema.
 - [x] Planes base por tipo de camión (Control del camión → Planes base). Los móviles nuevos, o los que cambian de tipo, los reciben solos.
 - [x] Se borraron las versiones anteriores de Control del camión: la grilla de tarjetas, las sub-pantallas de admin (Planes e Historial) y el decorador fleet-operational-status-v1.
 - [x] procesar-ticket exige sesión (verify_jwt, v6). Antes cualquiera con la dirección podía usarla.
