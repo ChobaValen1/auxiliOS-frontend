@@ -1201,7 +1201,10 @@ async function guardarRemitoAdHoc(remito) {
     client_operation_id: clientOperationId,
     document_source: 'driver_ad_hoc',
   };
-  const rpcName = payload.maps_version === 1
+  // El chofer lo marcó como Particular: v4 guarda el monto acordado y lo cobrado.
+  const rpcName = payload.customer_collections?.kind === 'private_ad_hoc'
+    ? 'save_driver_ad_hoc_remito_v4'
+    : payload.maps_version === 1
     ? 'save_driver_ad_hoc_remito_v3'
     : payload.addons_version === 2 ? 'save_driver_ad_hoc_remito_v2' : 'save_driver_ad_hoc_remito_v1';
   const { data, error } = await _db.rpc(rpcName, {

@@ -1,0 +1,15 @@
+/* AuxiliOS · Registrar cobro de un servicio particular (Operaciones) */
+.ppv-dialog { width: min(100%, 520px); }
+.ppv-resumen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0 12px; }
+.ppv-resumen > div { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--bg); }
+.ppv-resumen span { color: var(--muted2); font-size: 11px; }
+.ppv-resumen b { font-size: 15px; white-space: nowrap; }
+.ppv-resumen .ppv-saldo b { color: var(--amber); font-size: 17px; }
+.ppv-pagos { display: grid; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; }
+.ppv-pagos li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 9px; font-size: 13px; }
+.ppv-pagos li span { display: grid; gap: 2px; }
+.ppv-pagos small { color: var(--muted2); font-size: 11px; }
+.ppv-form { padding-top: 12px; border-top: 1px solid var(--border); }
+.ppv-todo { margin-top: 8px; }
+.ppv-nota { margin-top: 10px; }
+.ppv-ok { margin: 0 0 8px; color: #27c47a; font-size: 13px; font-weight: 600; }

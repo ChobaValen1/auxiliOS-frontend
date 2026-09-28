@@ -24,6 +24,7 @@
     ['card', 'Tarjeta']
   ];
   // Pago previo al servicio: nada, una seña o el total (queda $0 a cobrar).
+  var NOMBRE_MEDIO = { cash: 'en efectivo', transfer: 'por transferencia', card: 'con tarjeta', mercado_pago: 'por Mercado Pago', other: '' };
   var PAGOS = [['no', 'Sin pago'], ['sena', 'Seña'], ['total', 'Pago total']];
   // Desde el remito de un chofer: lo que cobró en el lugar.
   var COBROS = [['no', 'No cobró'], ['sena', 'Una parte'], ['total', 'Todo']];
@@ -123,6 +124,8 @@
       var info = ((OS().intakes) || []).find(function (x) { return String(x.intake_id) === String(id); });
       // Un activado (el chofer salió y no hubo servicio) sigue por el alta de prestadora.
       if (info && info.driver_activated) return abrirPrestadora(intake);
+      // Si el chofer ya lo marcó como Particular, se abre directo ese formulario.
+      if (info && info.client_kind === 'particular') return abrirParticular(id);
       return elegirTipo(id);
     }
     elegirTipo();
@@ -198,6 +201,21 @@
     // Si no había servicio asignado, en general lo consiguió el chofer.
     d.captado = !!s.assigned_driver_id;
     d.referred_by_driver_id = s.assigned_driver_id || '';
+    // El chofer lo marcó como Particular: monto acordado y lo que cobró.
+    if (ctx.client_kind === 'particular') {
+      var c = ctx.private_collection || {}, lineas = (c.lines || []).filter(function (l) { return num(l.amount) > 0; });
+      var cobrado = lineas.reduce(function (t, l) { return t + num(l.amount); }, 0);
+      if (num(ctx.agreed_amount) > 0) d.presupuesto = String(Math.round(num(ctx.agreed_amount)));
+      d.pago = cobrado <= 0 ? 'no' : cobrado >= num(ctx.agreed_amount) ? 'total' : 'sena';
+      d.sena_monto = cobrado > 0 ? String(Math.round(cobrado)) : '';
+      if (lineas[0]) d.sena_medio = lineas[0].method;
+      st.intake.particular = true;
+      st.intake.lineas = lineas;
+      st.intake.cobrado = cobrado;
+      st.intake.informe = lineas.length
+        ? 'El chofer informó que cobró ' + lineas.map(function (l) { return pesos(l.amount) + ' ' + (NOMBRE_MEDIO[l.method] || l.method); }).join(' + ') + '.'
+        : c.not_collected ? 'El chofer no cobró' + (c.reason ? ': ' + c.reason : '.') : '';
+    }
   }
 
   function servicios() {
@@ -338,6 +356,7 @@
             : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
           grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
         '</div>' : '') +
+        (st.intake && st.intake.informe ? '<p class="psv-hint psv-informe">' + esc(st.intake.informe) + '</p>' : '') +
         '<div class="psv-total"><span>' + (st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>' +
         '</section>' +
 
@@ -523,6 +542,17 @@
     return Object.assign(p, st.routeData || { estimated_asphalt_km: 0, estimated_gravel_km: 0, estimated_distance_km: 0 });
   }
 
+  /* Si el operador deja lo que informó el chofer, se guardan sus líneas tal cual
+     (pueden ser dos medios); si lo cambia, vale lo del formulario. */
+  function lineasCobro(intake, dep) {
+    if (!dep) return [];
+    if (intake && intake.lineas && intake.lineas.length && Math.abs(num(dep.amount) - num(intake.cobrado)) < 0.5 &&
+        (intake.lineas.length > 1 || intake.lineas[0].method === dep.method)) {
+      return intake.lineas.map(function (l) { return { method: l.method, amount: num(l.amount) }; });
+    }
+    return [{ method: dep.method, amount: dep.amount }];
+  }
+
   async function guardar() {
     if (!st || st.busy) return;
     var e = errores();
@@ -537,7 +567,7 @@
             p_intake_id: intake.id,
             p_payload: payload(),
             p_quoted_total: num(d.presupuesto),
-            p_collection: { lines: dep ? [{ method: dep.method, amount: dep.amount }] : [] }
+            p_collection: { lines: lineasCobro(intake, dep) }
           })
         : await db().rpc('create_private_service_v1', {
             p_payload: payload(),
@@ -635,6 +665,7 @@
     esCuentaParticular: esCuentaParticular,
     _test: { estadoInicial: estadoInicial, desdeIngreso: function (s, ctx) { var prev = st; st = s; try { desdeIngreso(ctx); return st; } finally { st = prev; } }, errores: function (s) { var prev = st; st = s; try { return errores(); } finally { st = prev; } },
              saldo: function (s) { var prev = st; st = s; try { return saldo(); } finally { st = prev; } },
+             lineasCobro: lineasCobro,
              payload: function (s) { var prev = st; st = s; try { return payload(); } finally { st = prev; } },
              deposito: function (s) { var prev = st; st = s; try { return deposito(); } finally { st = prev; } } }
   };

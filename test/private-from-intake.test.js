@@ -34,14 +34,15 @@ test('el formulario se completa con los datos del remito del chofer', () => {
 });
 
 test('desde un ingreso se pregunta Particular | Prestadora; un activado sigue por prestadora', () => {
-  assert.match(js, /if \(info && info\.driver_activated\) return abrirPrestadora\(intake\);\s*return elegirTipo\(id\);/);
+  assert.match(js, /if \(info && info\.driver_activated\) return abrirPrestadora\(intake\);/);
+  assert.match(js, /return elegirTipo\(id\);/);
   assert.match(js, /O\.openWizard = w;/);
   assert.match(js, /return abrirParticular\(intakeElegido\)/);
 });
 
 test('guardar desde un ingreso crea, vincula, registra lo cobrado y finaliza', () => {
   assert.match(js, /create_private_service_from_intake_v1/);
-  assert.match(js, /p_collection: \{ lines: dep \? \[\{ method: dep\.method, amount: dep\.amount \}\] : \[\] \}/);
+  assert.match(js, /p_collection: \{ lines: lineasCobro\(intake, dep\) \}/);
   assert.match(sql, /create_and_link_driver_service_intake_v2\(p_intake_id,/);
   assert.match(sql, /'approved', 'Cargado por Operaciones al crear el servicio desde el ingreso'/);
   assert.match(sql, /resolve_operator_service_document_v6\(v_service, 'approve_and_finalize'/);

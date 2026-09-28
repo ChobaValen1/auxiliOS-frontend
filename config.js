@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'particulares-v172-20260928';
+window.AUXILIOS_BUILD_ID = 'particulares-v173-20260928';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -200,6 +200,9 @@ async function loadCriticalAuxiliosModules() {
   // Nuevo servicio: primero Particular | Prestadora (envuelve abrirNuevoServicio).
   loadAuxiliosStyle('auxilios-private-service-v1-css', '/private-service-v1.css');
   await loadAuxiliosModule('auxilios-private-service-v1', '/private-service-v1.js');
+  // Registrar cobro de un particular desde el menú ⋯ del servicio.
+  loadAuxiliosStyle('auxilios-private-payments-v1-css', '/private-payments-v1.css');
+  await loadAuxiliosModule('auxilios-private-payments-v1', '/private-payments-v1.js');
   window.AuxiliosConfigurationCenter?.configure?.();
 }
 

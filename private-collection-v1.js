@@ -18,6 +18,8 @@
   var MEDIOS = [['cash', 'Efectivo'], ['transfer', 'Transferencia'], ['card', 'Tarjeta']];
   var origCollect = null;
 
+  // Remito sin servicio asignado: el chofer elige Prestadora | Particular en el paso 1.
+  var adhoc = { particular: false, monto: '' };
   var st = { serviceId: null, info: null, modo: 'cobrado', dividir: false, l1: { method: '', amount: '' }, l2: { method: '', amount: '' }, motivo: '' };
   var cache = Object.create(null);
 
@@ -57,6 +59,7 @@
   }
 
   function errores() {
+    if (adhoc.particular && enAdHoc() && num(adhoc.monto) <= 0) return ['Completá el monto acordado con el cliente (paso 1).'];
     if (!activo()) return [];
     var e = [];
     if (saldo() <= 0) return e;
@@ -77,7 +80,8 @@
   function payload() {
     if (!activo()) return null;
     return {
-      kind: 'private_service',
+      kind: st.info.ad_hoc ? 'private_ad_hoc' : 'private_service',
+      quoted_total: st.info.ad_hoc ? num(st.info.quoted_total) : undefined,
       lines: lineas(),
       not_collected: st.modo === 'no_cobrado',
       reason: st.modo === 'no_cobrado' ? st.motivo.trim() : null
@@ -93,7 +97,7 @@
   }
 
   function pintar() {
-    var step = $('#rem-step-2 .rem-addons-v2');
+    var step = $('.rem-addons-v2');
     if (!step) return;
     var card = $('#pcv-card');
     var tollCard = $('#rem-add-toll') && $('#rem-add-toll').closest('.rem-addons-card');
@@ -136,9 +140,9 @@
     if (excessCard) excessCard.hidden = !extras.length;
     card.innerHTML =
       '<div class="rem-addons-head"><div><div class="rem-addons-title">Cliente particular' + (i.customer_name ? ' · ' + esc(i.customer_name) : '') + '</div>' +
-        '<div class="rem-addons-help">Los peajes están incluidos en el presupuesto.</div></div></div>' +
+        '<div class="rem-addons-help">' + (i.ad_hoc ? 'Cobrá el monto acordado. Los peajes están incluidos.' : 'Los peajes están incluidos en el presupuesto.') + '</div></div></div>' +
       '<div class="pcv-resumen">' +
-        '<div><span>Presupuesto</span><b>' + money(i.quoted_total) + '</b></div>' +
+        '<div><span>' + (i.ad_hoc ? 'Acordado' : 'Presupuesto') + '</span><b>' + money(i.quoted_total) + '</b></div>' +
         '<div><span>Saldo</span><b>' + money(pendiente) + '</b>' + (num(i.paid) > 0 ? '<small>Pagó ' + money(i.paid) + '</small>' : '') + '</div>' +
         '<div class="pcv-saldo"><span>A cobrar</span><b>' + money(pendiente + extra) + '</b>' + (extra > 0 ? '<small>+ ' + money(extra) + ' adicionales</small>' : '') + '</div>' +
       '</div>' +
@@ -163,9 +167,22 @@
 
   /* ── Datos del servicio ───────────────────────────────────────────────── */
 
+  function enAdHoc() {
+    try { return !!(global.AuxiliosRemitoMobileV3 && global.AuxiliosRemitoMobileV3.isAdHocMode && global.AuxiliosRemitoMobileV3.isAdHocMode()); }
+    catch (e) { return false; }
+  }
+
   async function sync() {
     var id = servicioActivo();
-    if (!id) { st.serviceId = null; st.info = null; pintar(); return; }
+    if (!id) {
+      if (st.serviceId !== 'adhoc') st = { serviceId: 'adhoc', info: null, modo: 'cobrado', dividir: false, l1: { method: '', amount: '' }, l2: { method: '', amount: '' }, motivo: '' };
+      var cli = document.getElementById('rem-cliente');
+      st.info = enAdHoc() && adhoc.particular && num(adhoc.monto) > 0
+        ? { particular: true, ad_hoc: true, quoted_total: num(adhoc.monto), paid: 0, balance: num(adhoc.monto), customer_name: cli ? cli.value.trim() : '' }
+        : null;
+      pintar();
+      return;
+    }
     if (id !== st.serviceId) {
       st = { serviceId: id, info: null, modo: 'cobrado', dividir: false, l1: { method: '', amount: '' }, l2: { method: '', amount: '' }, motivo: '' };
     }
@@ -202,13 +219,22 @@
       if (p && b && b.payload) b.payload.customer_collections = p;
       return b;
     };
-    A.reset = function () { var r = reset.apply(this, arguments); setTimeout(sync, 0); return r; };
+    A.reset = function () { var r = reset.apply(this, arguments); adhoc = { particular: false, monto: '' }; setTimeout(function () { pintarTipo(); sync(); }, 0); return r; };
     A.restore = function () { var r = restore.apply(this, arguments); Promise.resolve(r).then(function () { sync(); }); return r; };
     A.__pcv = true;
     return true;
   }
 
   document.addEventListener('click', function (ev) {
+    var tipo = ev.target.closest && ev.target.closest('[data-pcv-tipo]');
+    if (tipo) {
+      adhoc.particular = tipo.getAttribute('data-pcv-tipo') === 'particular';
+      pintarTipo();
+      sync();
+      var inp = adhoc.particular && document.querySelector('[data-pcv-acordado]');
+      if (inp) inp.focus();
+      return;
+    }
     var b = ev.target.closest('[data-pcv],[data-pcv-modo],[data-pcv-medio]');
     if (!b || !b.closest('#pcv-card')) return;
     if (b.hasAttribute('data-pcv-modo')) st.modo = b.getAttribute('data-pcv-modo');
@@ -220,6 +246,7 @@
   });
   document.addEventListener('input', function (ev) {
     var t = ev.target;
+    if (t.hasAttribute && t.hasAttribute('data-pcv-acordado')) { adhoc.monto = t.value; return; }
     if (!t.closest || !t.closest('#pcv-card')) return;
     if (t.hasAttribute('data-pcv-monto')) {
       var k = t.getAttribute('data-pcv-monto');
@@ -236,12 +263,45 @@
 
   /* El paso 2 se muestra y se esconde con el avance del remito: cuando aparece
      se vuelve a consultar el servicio activo. */
+  /* Paso 1 del remito sin asignación: ¿Prestadora o Particular? */
+  function pintarTipo() {
+    var card = document.querySelector('.rmv-ad-hoc-card');
+    if (!card) return;
+    var box = card.querySelector('#pcv-tipo');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'pcv-tipo';
+      box.className = 'pcv-tipo';
+      var head = card.querySelector('.rmv-step-head');
+      if (head) head.after(box); else card.prepend(box);
+    }
+    var order = card.querySelector('[data-ad-hoc="order"]');
+    var orderLabel = order && order.closest('label');
+    if (orderLabel) orderLabel.hidden = adhoc.particular;
+    box.innerHTML =
+      '<span>¿Para quién es el servicio?</span>' +
+      '<div class="pcv-modo" role="group" aria-label="Tipo de cliente">' +
+        '<button type="button" data-pcv-tipo="prestadora" aria-pressed="' + !adhoc.particular + '">Prestadora</button>' +
+        '<button type="button" data-pcv-tipo="particular" aria-pressed="' + adhoc.particular + '">Particular</button></div>' +
+      (adhoc.particular
+        ? '<label class="pcv-acordado"><span>Monto acordado con el cliente *</span><span class="pcv-monto">$<input data-pcv-acordado inputmode="decimal" value="' + esc(adhoc.monto) + '" placeholder="0"></span>' +
+          '<small class="pcv-help">Lo cobrás en el paso de cobro. Operaciones lo confirma.</small></label>'
+        : '');
+  }
+
   function observar() {
-    var step = document.getElementById('rem-step-2');
+    var addons = document.querySelector('.rem-addons-v2');
+    var step = addons && addons.closest('.rem-step-panel');
     if (!step || step.dataset.pcvObs === '1') return !!step;
     step.dataset.pcvObs = '1';
     new MutationObserver(function () { if (step.offsetParent !== null) sync(); })
       .observe(step, { attributes: true, attributeFilter: ['class', 'style', 'hidden'], childList: true });
+    // El paso de servicio del remito sin asignación se crea y se quita según el modo.
+    var root = document.getElementById('remitos-nuevo');
+    if (root) new MutationObserver(function () {
+      var card = document.querySelector('.rmv-ad-hoc-card');
+      if (card && !card.querySelector('#pcv-tipo')) pintarTipo();
+    }).observe(root, { childList: true, subtree: true });
     // Al agregar o quitar un adicional cambia el total: se repinta "A cobrar".
     var tot = document.getElementById('rem-excess-summary');
     if (tot) new MutationObserver(function () { if (activo()) pintar(); }).observe(tot, { childList: true, subtree: true });
@@ -260,6 +320,7 @@
   global.AuxiliosCobroParticular = {
     sync: sync,
     _test: {
+      setAdHoc: function (a) { adhoc = Object.assign({ particular: false, monto: '' }, a); },
       set: function (s) { st = Object.assign({ serviceId: 'x', modo: 'cobrado', dividir: false, l1: { method: '', amount: '' }, l2: { method: '', amount: '' }, motivo: '' }, s); },
       errores: errores, payload: payload, totalAdicionales: totalAdicionales
     }
