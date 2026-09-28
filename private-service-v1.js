@@ -134,6 +134,7 @@
         presupuesto: '', pago: 'no', sena_monto: '', sena_medio: 'cash',
         factura: false, condicion: 'consumidor_final',
         assigned_truck_id: '', assigned_driver_id: '',
+        captado: false, referred_by_driver_id: '',
         operator_notes: ''
       },
       addr: { origin: { seq: 0, list: [], token: '' }, destination: { seq: 0, list: [], token: '' } }
@@ -196,6 +197,7 @@
     if (doc && doc.length !== 8 && doc.length !== 11) e.push('El DNI tiene 8 dígitos y el CUIT 11.');
     else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
     if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
+    if (d.captado && !d.referred_by_driver_id) e.push('Elegí el chofer que consiguió el servicio.');
     return e;
   }
 
@@ -302,6 +304,10 @@
         '<section><h3>Asignación <small>(opcional)</small></h3><div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id">' + opciones(drivers, d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
+        '</div>' +
+        '<div class="psv-grid psv-captado">' +
+          '<label class="psv-check"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
+          (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
         '</div></section>' +
 
         '</div></div>' +
@@ -314,7 +320,7 @@
 
   /* Repintar pierde el foco del campo que se está escribiendo; sólo se repinta
      cuando cambia la forma del formulario, no en cada tecla. */
-  var ESTRUCTURALES = { primary_concept_id: 1, factura: 1 };
+  var ESTRUCTURALES = { primary_concept_id: 1, factura: 1, captado: 1 };
 
   function onInput(ev) {
     var t = ev.target;
@@ -326,6 +332,8 @@
         if (limpio !== t.value) t.value = limpio;
       }
       st.d[k] = t.type === 'checkbox' ? t.checked : t.value;
+      // Por defecto lo consiguió el chofer asignado.
+      if (k === 'captado' && st.d.captado && !st.d.referred_by_driver_id) st.d.referred_by_driver_id = st.d.assigned_driver_id || '';
       if (ESTRUCTURALES[k] && ev.type === 'change') return pintar();
       if (k === 'presupuesto' || k === 'sena_monto') {
         var tot = document.querySelector('#psv-form .psv-total b');
@@ -461,6 +469,7 @@
       destination_place_id: (single ? d.origin_place_id : d.destination_place_id) || null,
       destination_formatted_address: (single ? d.origin_formatted_address : d.destination_formatted_address) || null,
       assigned_truck_id: d.assigned_truck_id || null, assigned_driver_id: d.assigned_driver_id || null,
+      referred_by_driver_id: d.captado ? d.referred_by_driver_id || null : null,
       operator_notes: d.operator_notes.trim(), logistics_type: 'own', is_holiday: false, granted_delay_minutes: 0
     };
     return Object.assign(p, st.routeData || { estimated_asphalt_km: 0, estimated_gravel_km: 0, estimated_distance_km: 0 });
@@ -556,6 +565,7 @@
     esCuentaParticular: esCuentaParticular,
     _test: { estadoInicial: estadoInicial, errores: function (s) { var prev = st; st = s; try { return errores(); } finally { st = prev; } },
              saldo: function (s) { var prev = st; st = s; try { return saldo(); } finally { st = prev; } },
+             payload: function (s) { var prev = st; st = s; try { return payload(); } finally { st = prev; } },
              deposito: function (s) { var prev = st; st = s; try { return deposito(); } finally { st = prev; } } }
   };
 })(window);

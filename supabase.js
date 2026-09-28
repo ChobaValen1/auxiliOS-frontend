@@ -3296,7 +3296,8 @@ async function guardarPayrollCommissionRule(rule) {
     active: rule.active !== false,
     updated_at: new Date().toISOString(),
   };
-  if (!payload.name || !payload.concept_id || !['extras','invoices'].includes(payload.source) ||
+  if (payload.source === 'captacion') payload.concept_id = null;
+  if (!payload.name || (!payload.concept_id && payload.source !== 'captacion') || !['extras','invoices','captacion'].includes(payload.source) ||
       !['fixed','percent'].includes(payload.mode) || !Number.isFinite(payload.value) || payload.value < 0 ||
       (payload.mode === 'percent' && payload.value > 100)) {
     return { ok: false, error: { message: 'Completá correctamente la comisión.' } };

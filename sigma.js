@@ -12867,8 +12867,8 @@ function _renderCommissionCatalog() {
   const el = document.getElementById('cfg-commission-body');
   if (!el) return;
   el.innerHTML = _commissionCatalog.map(c => {
-    const formula = c.mode === 'percent' ? `${_AR(c.value)}% del importe` : `$${_AR(c.value)} por unidad`;
-    const source = c.source === 'invoices' ? 'Servicio principal' : 'Venta / adicional';
+    const formula = PayrollMatrix.commissionFormula(c);
+    const source = PayrollMatrix.commissionSourceLabel(c.source);
     const assigned = c.assigned_driver_ids?.length || 0;
     return `<div class="payroll-commission-card${c.active ? '' : ' is-inactive'}">
       <div><strong>${_escHtml(c.name)}</strong><small>${source} · ${formula}</small></div>
@@ -13081,6 +13081,8 @@ async function _abrirComisionGeneral(commissionId = null) {
   document.getElementById('pc-active').checked = current.active !== false;
   const concept = document.getElementById('pc-concept');
   concept.innerHTML = '<option value="">Cargando conceptos...</option>';
+  _syncComisionOrigen();
+  document.getElementById('pc-source').onchange = _syncComisionOrigen;
   openModal('modal-comision-payroll');
   const { data, error } = await _db.rpc('list_service_types_config', { p_include_inactive: true });
   if (error) { toast('No se pudieron cargar los conceptos', 'error'); return; }
@@ -13090,12 +13092,26 @@ async function _abrirComisionGeneral(commissionId = null) {
   concept.value = current.concept_id || '';
 }
 
+// Captación: el chofer consiguió un servicio particular. No depende de un
+// concepto; se paga fijo por servicio o un % de lo cobrado al cliente.
+function _syncComisionOrigen() {
+  const captacion = document.getElementById('pc-source')?.value === 'captacion';
+  const group = document.getElementById('pc-concept')?.closest('.form-group');
+  if (group) group.hidden = captacion;
+  const mode = document.getElementById('pc-mode');
+  if (mode) {
+    mode.options[0].textContent = captacion ? 'Porcentaje de lo cobrado' : 'Porcentaje del importe';
+    mode.options[1].textContent = captacion ? 'Importe fijo por servicio' : 'Importe fijo por unidad';
+  }
+}
+
 async function _guardarComisionGeneral() {
-  const conceptId = document.getElementById('pc-concept').value;
+  const captacion = document.getElementById('pc-source').value === 'captacion';
+  const conceptId = captacion ? null : document.getElementById('pc-concept').value;
   const selectedConcept = _commissionConcepts.find(c => c.concept_id === conceptId);
   const payload = {
     commission_id: _commissionEditId,
-    name: document.getElementById('pc-name').value.trim() || selectedConcept?.name || '',
+    name: document.getElementById('pc-name').value.trim() || selectedConcept?.name || (captacion ? 'Captación de particular' : ''),
     concept_id: conceptId,
     source: document.getElementById('pc-source').value,
     mode: document.getElementById('pc-mode').value,

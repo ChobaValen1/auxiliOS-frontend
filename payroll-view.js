@@ -111,7 +111,7 @@
     const privateCash=(collection?.lines||[]).filter(isPrivateCash).reduce((n,x)=>n+num(x.amount),0);
     const details=l.compensation_snapshot?.commission_details||[];
     const sales=extras.filter(x=>saleIds.has(x.concept_id)||details.some(d=>d.concept_id===x.concept_id));
-    for(const d of details.filter(d=>d.source==='invoices')){for(const x of d.record_details||[]){if(x.service_id&&x.service_id===r.operator_service_id)sales.push({concept_name:d.name,total_amount:x.amount,evidence:[]});}}
+    for(const d of details.filter(d=>d.source==='invoices'||d.source==='captacion')){for(const x of d.record_details||[]){if(x.service_id&&x.service_id===r.operator_service_id)sales.push({concept_name:d.name,total_amount:x.amount,evidence:[]});}}
     const records=details.flatMap(d=>(d.record_details||[]).filter(x=>String(x.remito_id)===String(r.remito_id)||(x.service_id&&x.service_id===r.operator_service_id)).map(x=>num(x.total)));
     const time=r.created_at_device?new Date(r.created_at_device).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}):'—';
     return {r,time,sales,commission:records.reduce((n,v)=>n+v,0),cash:(structured?tollCash+extraCash:legacyCash)+privateCash,tollCash,extraCash,privateCash,structured,extras};
