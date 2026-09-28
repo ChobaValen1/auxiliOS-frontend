@@ -127,8 +127,8 @@
 
   /* ── Vista ──────────────────────────────────────────────────────── */
 
-  function seccion(titulo, acciones, cuerpo) {
-    return '<section class="ftd-sec"><header><h3>' + titulo + '</h3>' +
+  function seccion(clave, titulo, acciones, cuerpo) {
+    return '<section class="ftd-sec" data-ftd-sec="' + clave + '"><header><h3>' + titulo + '</h3>' +
       (acciones.length ? '<div class="ftd-acc">' + acciones.join('') + '</div>' : '') + '</header>' + cuerpo + '</section>';
   }
   function boton(accion, label, extra) {
@@ -141,7 +141,8 @@
       ? '<ul class="ftd-planes">' + planes.map(function (p) {
           var e = planEstado(p), av = planAvance(p);
           return '<li><div><b>' + esc(p.name) + '</b><small>' + (p.interval_km ? 'Cada ' + km(p.interval_km) : '') +
-            (p.next_due_km ? ' · próximo a los ' + km(p.next_due_km) : '') + '</small></div>' + val(e.txt, e.tono) +
+            (p.next_due_km ? ' · próximo a los ' + km(p.next_due_km) : '') + '</small></div>' +
+            '<span class="ftd-li-acc">' + val(e.txt, e.tono) + (admin() && p.plan_id != null ? '<button type="button" class="ftd-link ftd-quitar" data-ftd="quitar-plan" data-id="' + esc(p.plan_id) + '" title="Quitar este plan del móvil">Quitar</button>' : '') + '</span>' +
             (av != null ? '<span class="ftd-bar' + (e.tono ? ' ftd-bar-' + e.tono : '') + '"><span style="width:' + av + '%"></span></span>' : '') + '</li>';
         }).join('') + '</ul>'
       : '<p class="ftd-vacio">Sin planes de service.' + (admin() ? ' Asigná uno con "+ Plan".' : '') + '</p>';
@@ -156,12 +157,12 @@
             '<td class="ftd-r ftd-n">' + (s.cost ? money(s.cost) : '—') + '</td></tr>';
         }).join('') + '</tbody></table>'
       : '<p class="ftd-vacio">Todavía no hay services registrados.</p>';
-    return seccion('Mantenimiento', [boton('service', '+ Service'), boton('plan', '+ Plan')], filas + tabla);
+    return seccion('mantenimiento', 'Mantenimiento', [boton('service', '+ Service'), boton('plan', '+ Plan')], filas + tabla);
   }
 
   function documentacion() {
     var filas = docsLista(st.docs, hoy());
-    return seccion('Documentación', [boton('doc', '+ Documento')],
+    return seccion('documentacion', 'Documentación', [boton('doc', '+ Documento')],
       '<ul class="ftd-docs">' + filas.map(function (f) {
         var d = f.doc;
         return '<li><div><b>' + esc(f.nombre) + '</b>' + (d && d.doc_number ? '<small>N° ' + esc(d.doc_number) + '</small>' : '') + '</div>' +
@@ -182,13 +183,13 @@
     var tabla = lista.length
       ? '<table class="ftd-table"><thead><tr><th>Fecha</th><th class="ftd-r">Litros</th><th class="ftd-r">Total</th><th class="ftd-r">Km</th><th>Pago</th>' + (admin() ? '<th></th>' : '') + '</tr></thead><tbody>' +
         lista.map(function (f) {
-          return '<tr><td>' + fecha(f.fuel_date) + '</td><td class="ftd-r ftd-n">' + num(f.liters).toLocaleString('es-AR') + ' L</td>' +
+          return '<tr data-ftd-carga="' + esc(f.fuel_id) + '"><td>' + fecha(f.fuel_date) + '</td><td class="ftd-r ftd-n">' + num(f.liters).toLocaleString('es-AR') + ' L</td>' +
             '<td class="ftd-r ftd-n">' + money(f.total_cost) + '</td><td class="ftd-r ftd-n">' + (f.km_at_load != null ? num(f.km_at_load).toLocaleString('es-AR') : '—') + '</td>' +
             '<td>' + esc(f.payment_app || PAGO[f.payment_method] || f.payment_method || '—') + '</td>' +
             (admin() ? '<td class="ftd-r"><button type="button" class="ftd-link" data-ftd="editar-carga" data-id="' + esc(f.fuel_id) + '">Editar</button></td>' : '') + '</tr>';
         }).join('') + '</tbody></table>'
       : '<p class="ftd-vacio">Sin cargas registradas.</p>';
-    return seccion('Combustible', [boton('carga', '+ Carga')], resumen + tabla);
+    return seccion('combustible', 'Combustible', [boton('carga', '+ Carga')], resumen + tabla);
   }
 
   function neumaticos() {
@@ -203,7 +204,7 @@
           return '<tr><td>' + fecha(c.check_date) + '</td><td>' + m(c.tire_condition) + '</td><td>' + m(c.brake_condition) + '</td><td class="ftd-notas">' + esc(c.notes || '') + '</td></tr>';
         }).join('') + '</tbody></table>'
       : '';
-    return seccion('Neumáticos y frenos', [boton('neumaticos', '+ Control')], cab + tabla);
+    return seccion('neumaticos', 'Neumáticos y frenos', [boton('neumaticos', '+ Control')], cab + tabla);
   }
 
   function pintar() {
@@ -248,10 +249,17 @@
     return { planes: Array.isArray(r[0]) ? r[0] : [], services: r[1] || [], fuel: (r[2] || []).filter(function (f) { return !f.voided_at && f.status !== 'anulado'; }), tires: r[3] || [], docs: r[4] || [] };
   }
 
-  async function abrir(id) {
-    var t = null;
-    try { t = (_flotaAdmin || []).find(function (x) { return Number(x.truck_id) === Number(id); }); } catch (e) { /* sin flota */ }
-    if (!t) return;
+  function buscar(id) {
+    try { return (_flotaAdmin || []).find(function (x) { return Number(x.truck_id) === Number(id); }) || null; } catch (e) { return null; }
+  }
+
+  /* opts.seccion ('combustible', 'neumaticos', …) lleva a esa sección; opts.carga resalta esa carga. */
+  async function abrir(id, opts) {
+    opts = opts || {};
+    var t = buscar(id);
+    // Desde otra pantalla (p. ej. Jornadas) la flota puede no estar cargada todavía.
+    if (!t && F().cargar) { st.id = Number(id); st.t = null; await F().cargar(); t = buscar(id); }
+    if (!t) { st.id = null; return; }
     if (st.id !== Number(id)) Object.assign(st, { planes: [], services: [], fuel: [], tires: [], docs: [] });
     st = Object.assign(st, { id: Number(id), t: t, cargando: true, error: '' });
     // Los formularios de siempre (combustible, service, plan, neumáticos) usan estos globales.
@@ -272,6 +280,15 @@
     }
     st.cargando = false;
     pintar();
+    irA(opts);
+  }
+
+  function irA(opts) {
+    var sec = opts.seccion && document.querySelector('[data-ftd-sec="' + opts.seccion + '"]');
+    var fila = opts.carga && document.querySelector('[data-ftd-carga="' + String(opts.carga).replace(/"/g, '') + '"]');
+    if (fila) fila.classList.add('jat-highlight');
+    var el = fila || sec;
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function recargar() { if (st.id) return abrir(st.id); }
@@ -316,6 +333,7 @@
     if (a === 'neumaticos' && typeof openNeumaticosModal === 'function') return openNeumaticosModal();
     if (a === 'editar-carga' && typeof global.editarCargaCombustibleAdmin === 'function') return global.editarCargaCombustibleAdmin(Number(b.getAttribute('data-id')));
     if (a === 'doc') return subirDoc(b.getAttribute('data-code'));
+    if (a === 'quitar-plan' && typeof desactivarPlanUI === 'function') return desactivarPlanUI(Number(b.getAttribute('data-id')));
   });
 
   /* ── Enganches ──────────────────────────────────────────────────── */
@@ -330,12 +348,9 @@
   }
 
   function enganchar() {
-    var ok = envolver('_abrirCamionDetalleAdmin', function (orig) {
-      return function (id) { return gestion() ? abrir(id) : orig.apply(this, arguments); };
-    });
     // Al guardar desde un formulario, los de siempre vuelven a la flota: si se abrió
     // desde este detalle, se recarga el detalle.
-    envolver('closeModal', function (orig) {
+    var ok = envolver('closeModal', function (orig) {
       return function (id) { if (st.id && MODALES.indexOf(id) >= 0) st.cerradoAt = Date.now(); return orig.apply(this, arguments); };
     });
     envolver('cargarScreenCamion', function (orig) {
@@ -345,15 +360,6 @@
         return orig.apply(this, arguments);
       };
     });
-    var refrescar = function (orig) {
-      return function () {
-        var r = orig.apply(this, arguments);
-        if (gestion() && st.id && Date.now() - st.cerradoAt < 5000) { clearTimeout(refrescar.t); refrescar.t = setTimeout(recargar, 80); }
-        return r;
-      };
-    };
-    envolver('renderPlanes', refrescar);
-    envolver('renderHistorialServices', refrescar);
     envolver('subirDocCamion', function (orig) {
       return async function () {
         var r = await orig.apply(this, arguments);
@@ -370,6 +376,7 @@
   global.AuxiliosDetalleCamion = {
     abrir: abrir,
     recargar: recargar,
+    abierto: function () { return st.id; },
     _test: {
       set: function (s) { st = Object.assign(st, s); },
       planEstado: planEstado, planAvance: planAvance, docsLista: docsLista, neumaticosEstado: neumaticosEstado,

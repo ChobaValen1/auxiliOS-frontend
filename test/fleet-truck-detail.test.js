@@ -8,6 +8,8 @@ const control = fs.readFileSync('fleet-control-v1.js', 'utf8');
 const sql = fs.readFileSync('migrations/20260928250000_control_camion_docs_obligatorios_v2.sql', 'utf8');
 const config = fs.readFileSync('config.js', 'utf8');
 const sw = fs.readFileSync('sw.js', 'utf8');
+const sigma = fs.readFileSync('sigma.js', 'utf8');
+const html = fs.readFileSync('Index.html', 'utf8');
 
 function load() {
   const win = {};
@@ -67,10 +69,21 @@ test('flota: la columna Documentación detecta los obligatorios sin cargar', () 
 });
 
 test('detalle en una sola pantalla, acciones sólo para Administración, módulo cargado', () => {
-  assert.match(js, /envolver\('_abrirCamionDetalleAdmin'/);
+  assert.match(sigma, /async function _abrirCamionDetalleAdmin\(truckId\) \{\n  if \(window\.AuxiliosDetalleCamion\) return window\.AuxiliosDetalleCamion\.abrir\(truckId\);/);
   assert.match(js, /function admin\(\) \{ return rol\(\) === 'administracion'; \}/);
   assert.match(js, /return admin\(\) \? '<button/);
   assert.match(config, /\/fleet-truck-detail-v1\.js/);
   assert.match(config, /\/fleet-truck-detail-v1\.css/);
   assert.match(sw, /\/fleet-truck-detail-v1\.js/);
+});
+
+test('sin versiones anteriores del módulo: ni grilla de tarjetas, ni sub-pantallas de admin, ni decorador', () => {
+  assert.equal(fs.existsSync('fleet-operational-status-v1.js'), false);
+  assert.doesNotMatch(config + sw + fs.readFileSync('package.json', 'utf8'), /fleet-operational-status/);
+  assert.doesNotMatch(sigma, /function _pintarFlotaAdmin|_flotaFiltro|camion-flota-card|function renderPlanes|function renderHistorialServices/);
+  assert.doesNotMatch(html, /camion-sub-planes|camion-sub-historial|planes-lista|tbody-services/);
+  assert.doesNotMatch(fs.readFileSync('sigma.css', 'utf8'), /\.camion-flota-|\.flota-pill/);
+  assert.match(sigma, /async function _renderCamionFlotaAdmin\(\) \{\n  if \(window\.AuxiliosControlFlota\) return window\.AuxiliosControlFlota\.renderFlota\(\);/);
+  assert.match(sigma, /async function _refrescarPlanesCamion\(kmOverride = null\)/);
+  assert.doesNotMatch(control, /global\._renderCamionFlotaAdmin = /);
 });

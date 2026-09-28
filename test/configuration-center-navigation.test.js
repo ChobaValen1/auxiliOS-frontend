@@ -108,17 +108,6 @@ test('history exposes the four business questions and extracts only safe audit f
   assert.doesNotMatch(center, /<td>\$\{esc\(row\.actor_id\)/);
 });
 
-test('fleet operational status decorates Camión without renaming or reordering it', () => {
-  const fleet = read('fleet-operational-status-v1.js');
-
-  assert.match(fleet, /list_operator_services/);
-  assert.doesNotMatch(fleet, /title: 'FLOTA'/);
-  assert.doesNotMatch(fleet, /SCREENS\.camion\s*=/);
-  assert.doesNotMatch(fleet, /querySelector\('\.sidenav'\)/);
-  assert.doesNotMatch(fleet, /insertBefore/);
-  assert.doesNotMatch(fleet, /nav-/);
-});
-
 test('canonical navigation assets are loaded checked and precached', () => {
   const config = read('config.js');
   const serviceWorker = read('sw.js');
@@ -127,13 +116,13 @@ test('canonical navigation assets are loaded checked and precached', () => {
 
   assert.match(config, /auxilios-configuration-center/);
   assert.match(config, /auxilios-toll-management/);
-  assert.match(config, /auxilios-fleet-operational-status-v1/);
+  assert.match(config, /auxilios-fleet-control-v1/);
   assert.match(serviceWorker, /'\/configuration-center\.js'/);
   assert.match(serviceWorker, /'\/toll-management\.js'/);
-  assert.match(serviceWorker, /'\/fleet-operational-status-v1\.js'/);
+  assert.match(serviceWorker, /'\/fleet-control-v1\.js'/);
   assert.match(pkg, /node --check configuration-center\.js/);
   assert.match(pkg, /node --check toll-management\.js/);
-  assert.match(pkg, /node --check fleet-operational-status-v1\.js/);
+  assert.match(pkg, /node --check fleet-control-v1\.js/);
   assert.doesNotMatch(config, /frequent-navigation/);
   assert.doesNotMatch(serviceWorker, /frequent-navigation/);
   assert.doesNotMatch(pkg, /frequent-navigation/);

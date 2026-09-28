@@ -14,14 +14,14 @@
 <link rel="icon" href="/assets/icons/icon-192.png">
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="auxilios-emoji-mono-v1.css?v=particulares-v183-20260928">
-<link rel="stylesheet" href="sigma.css?v=particulares-v183-20260928">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=particulares-v183-20260928">
-<link rel="stylesheet" href="dashboard-v1.css?v=particulares-v183-20260928">
-<link rel="stylesheet" href="dashboard-resumen-v1.css?v=particulares-v183-20260928">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=particulares-v183-20260928">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=particulares-v183-20260928">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=particulares-v183-20260928">
+<link rel="stylesheet" href="auxilios-emoji-mono-v1.css?v=particulares-v184-20260928">
+<link rel="stylesheet" href="sigma.css?v=particulares-v184-20260928">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=particulares-v184-20260928">
+<link rel="stylesheet" href="dashboard-v1.css?v=particulares-v184-20260928">
+<link rel="stylesheet" href="dashboard-resumen-v1.css?v=particulares-v184-20260928">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=particulares-v184-20260928">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=particulares-v184-20260928">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=particulares-v184-20260928">
 
 <!-- Service Worker -->
 <script>
@@ -41,20 +41,20 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=particulares-v183-20260928" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=particulares-v183-20260928" defer></script>
-<script src="supabase.js?v=particulares-v183-20260928" defer></script>
+<script src="config.js?v=particulares-v184-20260928" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=particulares-v184-20260928" defer></script>
+<script src="supabase.js?v=particulares-v184-20260928" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=particulares-v183-20260928" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=particulares-v183-20260928" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=particulares-v183-20260928" defer></script>
-<script src="sigma.js?v=particulares-v183-20260928" defer></script>
-<script src="dashboard-charts-v1.js?v=particulares-v183-20260928" defer></script>
-<script src="dashboard-shell-v1.js?v=particulares-v183-20260928" defer></script>
-<script src="dashboard-resumen-v1.js?v=particulares-v183-20260928" defer></script>
-<script src="dashboard-tendencia-v1.js?v=particulares-v183-20260928" defer></script>
-<script src="dashboard-operaciones-v1.js?v=particulares-v183-20260928" defer></script>
-<script src="dashboard-flota-v1.js?v=particulares-v183-20260928" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=particulares-v184-20260928" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=particulares-v184-20260928" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=particulares-v184-20260928" defer></script>
+<script src="sigma.js?v=particulares-v184-20260928" defer></script>
+<script src="dashboard-charts-v1.js?v=particulares-v184-20260928" defer></script>
+<script src="dashboard-shell-v1.js?v=particulares-v184-20260928" defer></script>
+<script src="dashboard-resumen-v1.js?v=particulares-v184-20260928" defer></script>
+<script src="dashboard-tendencia-v1.js?v=particulares-v184-20260928" defer></script>
+<script src="dashboard-operaciones-v1.js?v=particulares-v184-20260928" defer></script>
+<script src="dashboard-flota-v1.js?v=particulares-v184-20260928" defer></script>
 </head>
 <body>
 
@@ -1132,36 +1132,6 @@
         onclick="openServiceModal()">+ Registrar</button>
     </div>
     <div id="camion-sub-mantenimiento-body"></div>
-  </div>
-
-  <!-- ── SUB-PANTALLA: PLANES DE SERVICE (admin/sup) ──── -->
-  <div id="camion-sub-planes" style="display:none">
-    <div class="camion-sub-header">
-      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
-      <div class="camion-sub-title">📋 Planes asignados a este vehículo</div>
-      <button id="btn-nuevo-plan" class="btn btn-primary"
-        style="font-size:11px;padding:6px 12px" onclick="openPlanModal()">+ Plan</button>
-    </div>
-    <div id="planes-lista"></div>
-  </div>
-
-  <!-- ── SUB-PANTALLA: HISTORIAL EJECUCIONES (admin/sup) ─ -->
-  <div id="camion-sub-historial" style="display:none">
-    <div class="camion-sub-header">
-      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
-      <div class="camion-sub-title">🔧 Historial Ejecuciones</div>
-      <button class="btn btn-primary" style="font-size:11px;padding:6px 12px"
-        onclick="openServiceModal()">+ Service</button>
-    </div>
-    <div class="card desktop-only">
-      <table class="data-table">
-        <thead>
-          <tr><th>Fecha</th><th>Service</th><th>KM</th><th>Taller</th><th>Costo</th><th>Próximo</th></tr>
-        </thead>
-        <tbody id="tbody-services"></tbody>
-      </table>
-    </div>
-    <div id="mobile-services-list" class="mobile-only"></div>
   </div>
 
 </div>

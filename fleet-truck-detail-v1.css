@@ -72,3 +72,20 @@
 .tdr-ok { color: var(--text); }
 .tdr-aviso { border-color: color-mix(in srgb, var(--amber) 45%, transparent); color: var(--text); }
 .tdr-aviso b { color: var(--amber); font-weight: 700; }
+
+/* Planes base por tipo de camión. */
+.ftp-dialog { width: min(640px, calc(100vw - 32px)); }
+.ftp-tipos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.ftp-tipo { display: grid; gap: 1px; padding: 7px 12px; border: 1px solid var(--border2); border-radius: 9px; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 700; text-align: left; cursor: pointer; }
+.ftp-tipo small { color: var(--muted2); font-size: 10.5px; font-weight: 600; }
+.ftp-tipo.on { border-color: var(--amber); }
+.ftp-planes { display: grid; margin: 0 0 8px; padding: 0; list-style: none; }
+.ftp-planes li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.ftp-planes li:last-child { border-bottom: 0; }
+.ftp-plan { flex: 1; min-width: 0; margin: 0; }
+.ftp-plan span { display: grid; gap: 1px; }
+.ftp-plan b { font-size: 13px; font-weight: 700; }
+.ftp-plan small { color: var(--muted2); font-size: 11px; }
+.ftp-cob { flex: 0 0 auto; color: var(--muted2); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.ftp-falta { color: var(--amber); }
+.ftd-quitar { color: var(--muted2); font-weight: 600; }

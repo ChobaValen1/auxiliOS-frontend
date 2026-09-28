@@ -3809,8 +3809,6 @@ function _renderCamionChoferDatos(d) {
   _camionHistorial   = d.services || [];
 
   _renderCamionCards();
-  renderPlanes(_camionPlanes);
-  renderHistorialServices(_camionHistorial);
   _volverCamionMain();
 }
 
@@ -3851,266 +3849,15 @@ function _renderCamionSinJornada() {
   _volverCamionMain();
 }
 
-// ── Vista flota para admin/supervisor (sin jornada) ──
-let _flotaFiltro = 'todos';   // 'todos' | 'enRuta' | 'enBase' | 'alertas' | 'sinDatos'
-let _flotaQuery  = '';
-let _flotaEstado = {};        // truck_id -> { conductor, severidad, planUrgente }
-
+// ── Control del camión · Administración y Supervisión ──
+// La flota (tabla) está en fleet-control-v1.js y el detalle de cada móvil en
+// fleet-truck-detail-v1.js. Estas dos funciones quedan como punto de entrada.
 async function _renderCamionFlotaAdmin() {
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('camion-sec-sub', 'Flota completa');
-  ['camion-nombre','camion-detalle'].forEach(id => set(id, ''));
-  const hero = document.getElementById('camion-hero-card');
-  if (hero) hero.style.display = 'none';
-  const cont = document.getElementById('camion-cards-container');
-  if (!cont) return;
-  cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando flota...</div>';
-
-  try {
-    const [camiones, jornadasResp] = await Promise.all([
-      cargarCamiones(),
-      _db.from('daily_logs').select('truck_id, driver_id, users(full_name)').eq('status', 'open'),
-    ]);
-    _flotaAdmin = camiones || [];
-    const enUso = {};
-    (jornadasResp?.data || []).forEach(j => {
-      if (j.truck_id) enUso[j.truck_id] = j.users?.full_name || 'En uso';
-    });
-
-    // Calcular plan urgente por camión (para borde de color)
-    const planesPorCamion = await Promise.all(
-      _flotaAdmin.map(t => cargarPlanesDetalleOptimizados(t.truck_id).catch(() => []))
-    );
-    _flotaEstado = {};
-    _flotaAdmin.forEach((t, i) => {
-      const planes = planesPorCamion[i] || [];
-      const urgente = planes
-        .filter(p => p.plan_estado && p.plan_estado !== '_error')
-        .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
-      let severidad = 'al_dia';
-      if (urgente) {
-        const est = urgente.plan_estado;
-        const kmR = urgente.km_restantes;
-        if (est === 'vencido' || (kmR != null && kmR <= 0)) severidad = 'critico';
-        else if (est === 'proximo' || (kmR != null && kmR <= 1000)) severidad = 'alerta';
-        else if (est === 'sin_registro' || est === 'sin_odometro') severidad = 'sin_datos';
-      }
-      _flotaEstado[t.truck_id] = { conductor: enUso[t.truck_id] || null, severidad, planUrgente: urgente || null };
-    });
-  } catch (e) {
-    console.error('Error cargando flota:', e);
-    cont.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">Error al cargar la flota</div>';
-    return;
-  }
-
-  _pintarFlotaAdmin();
-  _volverCamionMain();
+  if (window.AuxiliosControlFlota) return window.AuxiliosControlFlota.renderFlota();
 }
-
-function _pintarFlotaAdmin() {
-  const cont = document.getElementById('camion-cards-container');
-  if (!cont) return;
-
-  if (!_flotaAdmin.length) {
-    cont.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:30px">No hay camiones registrados</div>';
-    return;
-  }
-
-  const counts = { todos: 0, enRuta: 0, enBase: 0, alertas: 0, sinDatos: 0 };
-  _flotaAdmin.forEach(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    counts.todos++;
-    if (st.conductor) counts.enRuta++;
-    else counts.enBase++;
-    if (st.severidad === 'critico' || st.severidad === 'alerta') counts.alertas++;
-    if (st.severidad === 'sin_datos') counts.sinDatos++;
-  });
-
-  const q = _flotaQuery.trim().toLowerCase();
-  const filtrados = _flotaAdmin.filter(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    if (_flotaFiltro === 'enRuta' && !st.conductor) return false;
-    if (_flotaFiltro === 'enBase' && st.conductor) return false;
-    if (_flotaFiltro === 'alertas' && st.severidad !== 'critico' && st.severidad !== 'alerta') return false;
-    if (_flotaFiltro === 'sinDatos' && st.severidad !== 'sin_datos') return false;
-    if (q) {
-      const hay = `${t.plate || ''} ${t.numero_interno || ''} ${t.brand || ''} ${t.model || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  const mkPill = (key, label, n) => `
-    <button class="flota-pill ${_flotaFiltro === key ? 'active' : ''}"
-      onclick="_setFlotaFiltro('${key}')">${label} <span class="flota-pill-count">${n}</span></button>`;
-
-  const cards = filtrados.map(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    // Borde: prioriza severidad de mantenimiento; sin_datos es neutro (gris).
-    const borderColor = st.severidad === 'critico' ? '#ef4444'
-      : st.severidad === 'alerta'  ? '#f59e0b'
-      : st.conductor               ? '#3b82f6'
-      : st.severidad === 'sin_datos' ? '#6b7280'
-      : '#22c55e';
-    // Regla de negocio: un camion con service vencido NO figura como Disponible.
-    // sin_datos = estado neutro: no afirma "Disponible" pero tampoco alarma con amarillo.
-    const labelOperativo = st.conductor
-      ? `<span style="color:#3b82f6">● En ruta</span>`
-      : (st.severidad === 'critico'
-          ? `<span style="color:#ef4444">⛔ No apto</span>`
-          : st.severidad === 'alerta'
-            ? `<span style="color:#f59e0b">● Apto con alerta</span>`
-            : st.severidad === 'sin_datos'
-              ? `<span style="color:#9ca3af">● Sin historial</span>`
-              : `<span style="color:#22c55e">● Disponible</span>`);
-    // Etiqueta de mantenimiento (si aplica). sin_datos no genera badge (ya se refleja en labelOperativo)
-    const labelMant = st.severidad === 'critico'
-      ? `<span style="color:#ef4444">● Service vencido</span>`
-      : st.severidad === 'alerta'
-        ? `<span style="color:#f59e0b">● Service próximo</span>`
-        : '';
-    // No duplicar la info: si labelOperativo ya dice "No apto"/"Apto con alerta", no repetir el detalle de mant
-    const estadoLabel = (labelMant && st.conductor)
-      ? `${labelOperativo} · ${labelMant}`
-      : labelOperativo;
-    // Titulo: si numero_interno ya contiene "MOVIL"/"MOBIL", no duplicar el prefijo
-    let titulo;
-    if (t.numero_interno != null) {
-      const ni = String(t.numero_interno).trim();
-      titulo = /^m[oó]vil/i.test(ni) ? ni.toUpperCase() : `MÓVIL ${ni}`;
-    } else {
-      titulo = t.plate || `ID ${t.truck_id}`;
-    }
-    const subtitulo = `${t.plate || '—'}${t.brand || t.model ? ' · ' + `${t.brand || ''} ${t.model || ''}`.trim() : ''}`;
-    const km = t.current_km != null ? Number(t.current_km).toLocaleString('es-AR') + ' km' : '— km';
-    // KM: gris por defecto, ambar/rojo solo si entra en ventana de service
-    const kmColor = st.severidad === 'critico' ? 'var(--red)'
-      : st.severidad === 'alerta' ? 'var(--amber)'
-      : 'var(--muted2)';
-    const conductorLine = st.conductor
-      ? `<div class="camion-flota-meta">👤 ${st.conductor}</div>`
-      : `<div class="camion-flota-meta" style="color:var(--muted)">👤 Sin asignar</div>`;
-    // Texto del plan urgente: respeta el estado real, no inventa "vencido" si km_restantes es null
-    let planLine = '';
-    if (st.planUrgente) {
-      const p = st.planUrgente;
-      const kmR = p.km_restantes;
-      const color = st.severidad === 'critico' ? 'var(--red)'
-        : st.severidad === 'alerta' ? 'var(--amber)'
-        : st.severidad === 'sin_datos' ? 'var(--muted2)'
-        : 'var(--green)';
-      let detalle;
-      if (kmR == null) {
-        detalle = p.plan_estado === 'sin_registro' ? 'sin ejecución registrada'
-          : p.plan_estado === 'sin_odometro' ? 'sin odómetro inicial'
-          : (p.plan_estado || '—');
-      } else if (kmR <= 0) {
-        detalle = `vencido por ${Math.abs(kmR).toLocaleString('es-AR')} km`;
-      } else {
-        detalle = `en ${kmR.toLocaleString('es-AR')} km`;
-      }
-      planLine = `<div class="camion-flota-meta" style="color:${color}">⚙ ${p.name} · ${detalle}</div>`;
-    }
-    return `
-      <div class="camion-flota-card" style="border-left-color:${borderColor}" onclick="_abrirCamionDetalleAdmin(${t.truck_id})">
-        <div class="camion-flota-icon">🚛</div>
-        <div class="camion-flota-info">
-          <div class="camion-flota-name">${titulo}</div>
-          <div class="camion-flota-sub">${subtitulo}</div>
-          <div class="camion-flota-km" style="color:${kmColor}">${km}</div>
-          ${conductorLine}
-          ${planLine}
-          <div class="camion-flota-status">${estadoLabel}</div>
-        </div>
-        <div class="camion-flota-arrow">›</div>
-      </div>`;
-  }).join('');
-
-  const empty = filtrados.length === 0
-    ? `<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:30px;font-size:13px">Sin coincidencias</div>`
-    : '';
-
-  cont.innerHTML = `
-    <div class="flota-toolbar">
-      <input id="flota-search" class="flota-search" type="search"
-        placeholder="Buscar por patente, móvil o marca…"
-        value="${_flotaQuery.replace(/"/g,'&quot;')}"
-        oninput="_setFlotaQuery(this.value)">
-      <div class="flota-pills">
-        ${mkPill('todos','Todos', counts.todos)}
-        ${mkPill('enRuta','En ruta', counts.enRuta)}
-        ${mkPill('enBase','Disponibles', counts.enBase)}
-        ${mkPill('alertas','Alertas', counts.alertas)}
-        ${mkPill('sinDatos','Sin datos', counts.sinDatos)}
-      </div>
-    </div>
-    <div class="camion-flota-grid">${cards}${empty}</div>`;
-
-  // Reenfocar input si el usuario estaba escribiendo
-  const inp = document.getElementById('flota-search');
-  if (inp && _flotaQuery) {
-    inp.focus();
-    const v = inp.value;
-    inp.setSelectionRange(v.length, v.length);
-  }
-}
-
-function _setFlotaFiltro(key) { _flotaFiltro = key; _pintarFlotaAdmin(); }
-function _setFlotaQuery(q)    { _flotaQuery = q || ''; _pintarFlotaAdmin(); }
 
 async function _abrirCamionDetalleAdmin(truckId) {
-  const truck = (_flotaAdmin || []).find(t => t.truck_id === truckId);
-  if (!truck) return;
-
-  _camionVistaAdmin = 'detalle';
-  _camionLogDate = null; // sin filtro por jornada — vista global
-  _truckActual = truck;
-
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  const nombre  = `${truck.brand || ''} ${truck.model || ''}`.trim() || '—';
-  const patente = truck.plate || '—';
-  const km = truck.current_km != null ? Number(truck.current_km).toLocaleString('es-AR') : null;
-  const hero = document.getElementById('camion-hero-card');
-  if (hero) hero.style.display = '';
-  set('camion-nombre',  nombre.toUpperCase());
-  set('camion-detalle', `Patente: ${patente}`);
-  set('camion-km-pill', km != null ? `${km} km actuales` : '— km actuales');
-  set('camion-sec-sub', `${nombre} · ${patente}`);
-  const statusPill = document.getElementById('camion-status-pill');
-  if (statusPill) {
-    statusPill.textContent = '● Vista global';
-    statusPill.className = 'pill pill-blue';
-  }
-
-  const cont = document.getElementById('camion-cards-container');
-  if (cont) cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando datos del camión...</div>';
-
-  const [combustible, ultimoControl, services, planes] = await Promise.all([
-    cargarCombustible(truckId),
-    cargarUltimoControlNeumaticos(truckId),
-    cargarHistorialServices(truckId),
-    cargarPlanesDetalleOptimizados(truckId),
-  ]);
-
-  _camionCombustible = combustible || [];
-  _camionNeumaticos  = ultimoControl || null;
-  _camionPlanes      = planes || [];
-  _camionHistorial   = services || [];
-
-  _renderCamionCards();
-  renderPlanes(_camionPlanes);
-  renderHistorialServices(_camionHistorial);
-  _volverCamionMain();
-
-  // Inyectar boton "volver a flota" al inicio del contenedor
-  if (cont) {
-    const back = document.createElement('button');
-    back.className = 'btn-camion-back';
-    back.style.cssText = 'margin-bottom:12px';
-    back.textContent = '← Volver a flota';
-    back.onclick = () => { _camionVistaAdmin = 'flota'; _renderCamionFlotaAdmin(); };
-    cont.insertBefore(back, cont.firstChild);
-  }
+  if (window.AuxiliosDetalleCamion) return window.AuxiliosDetalleCamion.abrir(truckId);
 }
 
 function _renderCamionCards() {
@@ -4141,26 +3888,17 @@ function _renderCamionCards() {
     : 'Sin cargas esta jornada';
   const combColor = _camionCombustible.length ? '#4ade80' : 'var(--muted)';
 
-  // ── Estado Mantenimiento / Planes ──
+  // ── Estado Mantenimiento: el plan más urgente ──
   const planUrgente = (_camionPlanes || [])
     .filter(p => p.plan_estado && p.plan_estado !== '_error')
     .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
   const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro' };
-  // Severidad real basada en km_restantes: <=0 rojo (vencido), <=1000 ámbar, resto verde
-  const _planSeveridad = (p) => {
-    if (!p) return 'al_dia';
-    if (p.plan_estado === 'al_dia') return 'al_dia';
-    if (p.plan_estado === 'vencido' || (p.km_restantes != null && p.km_restantes <= 0)) return 'critico';
-    if (p.km_restantes != null && p.km_restantes <= 1000) return 'alerta';
-    return 'al_dia';
-  };
-  const mantSeveridad = _planSeveridad(planUrgente);
+  const mantCritico = planUrgente && (planUrgente.plan_estado === 'vencido' || (planUrgente.km_restantes != null && planUrgente.km_restantes <= 0));
+  const mantAlerta  = planUrgente && !mantCritico && planUrgente.km_restantes != null && planUrgente.km_restantes <= 1000;
   const mantStatus  = planUrgente
     ? `${estadoLabel[planUrgente.plan_estado] || ''} · ${planUrgente.name}`
     : (_camionPlanes.length ? 'Al día' : 'Sin planes');
-  const mantColor   = mantSeveridad === 'critico' ? '#ef4444'
-    : mantSeveridad === 'alerta' ? '#f59e0b'
-    : '#4ade80';
+  const mantColor   = mantCritico ? '#ef4444' : mantAlerta ? '#f59e0b' : '#4ade80';
 
   const mkCard = (icon, title, status, statusColor, borderColor, actionLabel, actionBg, actionFg, actionFn, subId) => `
     <div class="camion-module-card" style="border-left-color:${borderColor}">
@@ -4177,53 +3915,21 @@ function _renderCamionCards() {
       </div>
     </div>`;
 
+  // Sólo el chofer ve estas tarjetas: Administración y Supervisión usan el detalle nuevo.
   let html = '';
-  if (esChofer) {
-    html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
-      '+ Registrar','#ef4444','#fff','openNeumaticosModal()','camion-sub-neumaticos');
-    html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
-      '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
-    html += mkCard('🔩','Mantenimiento', mantStatus, mantColor,'#4ade80',
-      '+ Registrar','#4ade80','#000','openServiceModal()','camion-sub-mantenimiento');
-  } else {
-    html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
-      '+ Registrar','#f59e0b','#000','openNeumaticosModal()','camion-sub-neumaticos');
-    html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
-      '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
-    html += mkCard('📋','Planes de Service',
-      `${(_camionPlanes || []).filter(p => !p._error).length} planes activos`,
-      '#a78bfa','#a78bfa',
-      '+ Plan','#a78bfa','#000','openPlanModal()','camion-sub-planes');
-    html += mkCard('🔩','Historial Ejecuciones',
-      _camionHistorial.length ? 'Últimos services del camión' : 'Sin services registrados',
-      'var(--muted)','#4ade80',
-      '+ Service','#4ade80','#000','openServiceModal()','camion-sub-historial');
-  }
+  html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
+    '+ Registrar','#ef4444','#fff','openNeumaticosModal()','camion-sub-neumaticos');
+  html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
+    '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
+  html += mkCard('🔩','Mantenimiento', mantStatus, mantColor,'#4ade80',
+    '+ Registrar','#4ade80','#000','openServiceModal()','camion-sub-mantenimiento');
   cont.innerHTML = html;
-
-  // Próximo service pill en hero (admin/supervisor)
-  if (!esChofer && planUrgente) {
-    const pill = document.getElementById('camion-next-service-pill');
-    if (pill) {
-      const kmR = planUrgente.km_restantes;
-      const vencido = kmR != null && kmR <= 0;
-      const txt = vencido
-        ? `⚠ ${planUrgente.name} VENCIDO por ${Math.abs(kmR).toLocaleString('es-AR')} km`
-        : `⚙ ${planUrgente.name} en ${Math.abs(kmR || 0).toLocaleString('es-AR')} km`;
-      pill.textContent = txt;
-      pill.className = 'pill ' + (mantSeveridad === 'critico' ? 'pill-red'
-        : mantSeveridad === 'alerta' ? 'pill-amber' : 'pill-green');
-      pill.style.display = '';
-    }
-  }
 }
 
 const _CAMION_SUBS = [
   'camion-sub-combustible',
   'camion-sub-neumaticos',
   'camion-sub-mantenimiento',
-  'camion-sub-planes',
-  'camion-sub-historial',
 ];
 
 function _volverCamionMain() {
@@ -4248,7 +3954,28 @@ function _abrirSubCamion(subId) {
   if (subId === 'camion-sub-combustible')   _renderSubCombustible();
   if (subId === 'camion-sub-neumaticos')    _renderSubNeumaticos();
   if (subId === 'camion-sub-mantenimiento') _renderSubMantenimiento();
-  // 'camion-sub-planes' and 'camion-sub-historial' are pre-rendered by renderPlanes/renderHistorialServices
+}
+
+/* Después de asignar o quitar un plan, registrar un service o cerrar la jornada:
+   Administración y Supervisión recargan el detalle del móvil si está abierto; el
+   chofer, sus tarjetas y la sub-pantalla de mantenimiento. */
+async function _refrescarPlanesCamion(kmOverride = null) {
+  if (!_truckActual?.truck_id) return;
+  const rol = PERFIL_USUARIO?.roles?.name;
+  if (rol === 'administracion' || rol === 'supervision') {
+    if (window.AuxiliosDetalleCamion?.abierto?.() === _truckActual.truck_id) await window.AuxiliosDetalleCamion.recargar();
+    return;
+  }
+  const [planes, services] = await Promise.all([
+    cargarPlanesDetalleOptimizados(_truckActual.truck_id, kmOverride),
+    cargarHistorialServices(_truckActual.truck_id),
+  ]);
+  _camionPlanes    = Array.isArray(planes) ? planes : [];
+  _camionHistorial = services || [];
+  if (document.getElementById('screen-camion')?.classList.contains('active')) {
+    _renderCamionCards();
+    if (document.getElementById('camion-sub-mantenimiento')?.style.display !== 'none') _renderSubMantenimiento();
+  }
 }
 
 function _renderSubCombustible() {
@@ -5441,103 +5168,20 @@ async function asignarPlanAlCamion() {
     toast('Plan asignado exitosamente', 'success');
     closeModal('modal-asignar-plan');
     
-    // Refrescamos la UI del camión
-    const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-    renderPlanes(planesActualizados);
+    await _refrescarPlanesCamion();
   } else {
     toast(`Error: ${resultado.errorMsg}`, 'error');
   }
 }
 
-function renderPlanes(data) {
-  const lista = document.getElementById('planes-lista');
-  if (!lista) return;
 
-  if (data?._error) {
-    lista.innerHTML = '<div style="text-align:center;color:var(--red);padding:20px;font-size:13px">⚠ Error al cargar planes de service. Revisá la conexión.</div>';
-    return;
-  }
-
-  const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
-                  PERFIL_USUARIO?.roles?.name === 'supervision';
-
-  if (!data?.length) {
-    lista.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin planes de service</div>';
-    return;
-  }
-
-  const estadoColor = { al_dia:'var(--green)', proximo:'var(--amber)', vencido:'var(--red)', sin_registro:'var(--muted)', sin_odometro:'var(--muted)' };
-  const estadoLabel = { al_dia:'✓ Al día', proximo:'⚠ Próximo', vencido:'✕ Vencido', sin_registro:'— Sin ejecución', sin_odometro:'— Sin odómetro' };
-
-  lista.innerHTML = data.map(p => {
-    const estado   = p.plan_estado || 'sin_registro';
-    const color    = estadoColor[estado];
-    const label    = estadoLabel[estado];
-    const kmInfo   = p.interval_km    ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${p.interval_km.toLocaleString('es-AR')} km</b>` : '';
-    const hsInfo   = p.interval_hours ? `${p.interval_km ? ' / ' : 'Cada '}<b style="color:var(--blue);font-family:'DM Mono'">${p.interval_hours.toLocaleString('es-AR')} hs</b>` : '';
-    const nextDue  = p.next_due_km    ? p.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const restante = p.km_restantes  != null ? `${p.km_restantes > 0 ? 'Faltan' : 'Excedidos'} <b>${Math.abs(p.km_restantes).toLocaleString('es-AR')} km</b>` : '';
-    const progreso = (p.next_due_km && p.interval_km && p.km_restantes != null)
-      ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
-      : 0;
-
-    const kebab = esAdmin ? `
-      <div class="kebab-wrap">
-        <button class="kebab-btn" onclick="event.stopPropagation();togglePlanMenu(${p.plan_id})" aria-label="Acciones del plan">⋮</button>
-        <div class="kebab-menu" id="plan-menu-${p.plan_id}">
-          <button class="kebab-item" onclick="event.stopPropagation();editarParametrosPlan(${p.plan_id})">✏ Editar parámetros</button>
-          <button class="kebab-item danger" onclick="event.stopPropagation();desvincularPlanUI(${p.plan_id})">🔌 Desvincular plan</button>
-        </div>
-      </div>` : '';
-
-    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:flex-start;gap:12px">
-        <div style="width:40px;height:40px;border-radius:8px;background:var(--amber-lo);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔧</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:600;flex:1;min-width:0">${p.name}</span>
-            <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${label}</span>
-          </div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${kmInfo}${hsInfo}</div>
-          <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px">
-            <div style="width:${progreso}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s"></div>
-          </div>
-          <div>
-            <div style="font-size:9px;color:var(--muted)">PRÓXIMO VENCIMIENTO</div>
-            <div style="font-family:'DM Mono';font-size:14px;font-weight:700;color:${color}">${nextDue}</div>
-            ${restante ? `<div style="font-size:10px;color:var(--muted)">${restante}</div>` : ''}
-          </div>
-        </div>
-        ${kebab}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function togglePlanMenu(planId) {
-  const menu = document.getElementById(`plan-menu-${planId}`);
-  if (!menu) return;
-  const wasOpen = menu.classList.contains('open');
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  if (!wasOpen) menu.classList.add('open');
-}
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('.kebab-wrap')) return;
   document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
 });
 
-async function desvincularPlanUI(masterPlanId) {
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  return desactivarPlanUI(masterPlanId);
-}
 
-function editarParametrosPlan(masterPlanId) {
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  const plan = (_camionPlanes || []).find(p => p.plan_id === masterPlanId);
-  if (!plan) { toast('No se encontró el plan', 'error'); return; }
-  toast('Edición de parámetros por camión: próximamente (requiere overrides en truck_subscriptions)', 'info');
-}
 
 async function desactivarPlanUI(masterPlanId) {
   if (!_truckActual?.truck_id) { toast('Error: no hay camión activo', 'error'); return; }
@@ -5552,8 +5196,7 @@ async function desactivarPlanUI(masterPlanId) {
   }
 
   toast('Plan desvinculado del camión', 'success');
-  const planes = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-  renderPlanes(planes);
+  await _refrescarPlanesCamion();
 }
 
 
@@ -5662,77 +5305,6 @@ function validateServiceForm() {
   btn.disabled = !ok;
 }
 
-function renderHistorialServices(data) {
-  const tbody = document.getElementById('tbody-services');
-  const mList = document.getElementById('mobile-services-list');
-  if (!tbody) return;
-
-  if (!data?.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Sin services registrados</td></tr>';
-    if (mList) mList.innerHTML = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin services registrados</div>`;
-    return;
-  }
-
-  tbody.innerHTML = data.map(s => {
-    const fecha   = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
-    const km      = (s.km_at_service || 0).toLocaleString('es-AR');
-    const nextKm  = s.next_due_km ? s.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const costo   = s.cost ? Number(s.cost).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }) : '—';
-    const taller  = s.workshop_name || '—';
-    const plan    = s.master_service_plans?.name || '—';
-    return `<tr>
-      <td>${fecha}</td>
-      <td style="font-weight:600">${plan}</td>
-      <td style="font-family:'DM Mono'">${km} km</td>
-      <td style="font-size:11px;color:var(--muted)">${taller}</td>
-      <td style="font-family:'DM Mono';color:var(--amber)">${costo}</td>
-      <td style="font-family:'DM Mono';font-size:11px;color:var(--amber)">${nextKm}</td>
-    </tr>`;
-  }).join('');
-
-  // ── Mobile: lista compacta ──
-  if (!mList) return;
-  mList.innerHTML = '';
-  data.forEach(s => {
-    const fecha  = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
-    const km     = (s.km_at_service || 0).toLocaleString('es-AR');
-    const nextKm = s.next_due_km ? s.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const costo  = s.cost ? Number(s.cost).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }) : '—';
-    const taller = s.workshop_name || '—';
-    const plan   = s.master_service_plans?.name || '—';
-    const titulo = `${plan} — ${fecha}`;
-    const detalle = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">KM al service</div>
-          <div style="color:var(--text);font-size:12px;font-family:'DM Mono';font-weight:600">${km} km</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Taller</div>
-          <div style="color:var(--text);font-size:12px">${taller}</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Costo</div>
-          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${costo}</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Próximo</div>
-          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${nextKm}</div>
-        </div>
-      </div>`;
-
-    const row = document.createElement('div');
-    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid #4ade80;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
-    row.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${plan}</div>
-        <div style="color:var(--muted);font-size:10px">${fecha} · ${km} km</div>
-      </div>
-      <span style="color:var(--muted2);font-size:16px;flex-shrink:0">›</span>`;
-    row.onclick = () => _abrirDetalleMovil(titulo, detalle);
-    mList.appendChild(row);
-  });
-}
 
 async function guardarServiceLog() {
   const planId  = document.getElementById('sl-plan')?.value;
@@ -5789,11 +5361,7 @@ async function guardarServiceLog() {
     toast('Service registrado correctamente', 'success');
     closeModal('modal-service-log');
     
-    // Refrescamos ambas tablas (el log y las barras de progreso de planes)
-    const services = await cargarHistorialServices(_truckActual.truck_id);
-    renderHistorialServices(services);
-    const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-    renderPlanes(planesActualizados);
+    await _refrescarPlanesCamion();
   } else {
     // Si falla por internet o validación, mostramos el motivo real
     toast(`Error al guardar: ${resultado.errorMsg}`, 'error');
@@ -8278,8 +7846,7 @@ async function confirmarCerrarJornada() {
     // actualizar KM en memoria y refrescar las barras de service
     if (_truckActual?.truck_id === jornadaParaCerrar.truck_id) {
       _truckActual.current_km = kmFinal;
-      const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id, kmFinal);
-      renderPlanes(planesActualizados);
+      await _refrescarPlanesCamion(kmFinal);
     }
 
     // Abrir rendición de efectivo

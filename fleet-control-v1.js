@@ -15,6 +15,7 @@
   var st = { rows: [], planes: {}, filtro: 'todos', q: '', today: null, cargando: false };
 
   function db() { return typeof _db !== 'undefined' ? _db : null; }
+  function esAdmin() { try { return PERFIL_USUARIO.roles.name === 'administracion'; } catch (e) { return false; } }
   function esc(v) {
     return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -101,6 +102,8 @@
   function pintar() {
     var cont = document.getElementById('camion-cards-container');
     if (!cont) return;
+    // Con el detalle de un móvil abierto, la flota no se vuelve a dibujar encima.
+    if (global.AuxiliosDetalleCamion && global.AuxiliosDetalleCamion.abierto()) return;
     if (st.cargando && !st.rows.length) { cont.innerHTML = '<div class="fcv-empty">Cargando la flota…</div>'; return; }
 
     var cuenta = { todos: 0, alertas: 0, servicio: 0, jornada: 0, sin_jornada: 0, taller: 0 };
@@ -129,7 +132,8 @@
         '<div class="fcv-kpis">' + kpi('todos', 'Móviles') + kpi('servicio', 'En servicio') + kpi('jornada', 'Disponibles') +
           kpi('sin_jornada', 'Sin jornada') + kpi('taller', 'En taller') + kpi('alertas', 'Con alertas') + '</div>' +
         '<div class="fcv-toolbar"><input type="search" class="fcv-search" data-fcv-q placeholder="Buscar móvil, patente o chofer…" value="' + esc(st.q) + '">' +
-          '<button type="button" class="fcv-refresh" data-fcv="refresh">Actualizar</button></div>' +
+          '<button type="button" class="fcv-refresh" data-fcv="refresh">Actualizar</button>' +
+          (esAdmin() ? '<button type="button" class="fcv-refresh" data-fcv="planes-base">Planes base</button>' : '') + '</div>' +
         (filas.length
           ? '<div class="fcv-table-wrap"><table class="fcv-table"><thead><tr>' +
               '<th>Móvil</th><th>Estado</th><th>Km</th><th>Neumáticos y frenos</th><th>Service</th><th>Documentación</th><th></th>' +
@@ -178,7 +182,7 @@
     pintar();
   }
 
-  /* Reemplaza la vista de flota anterior (tarjetas de a una). */
+  /* Punto de entrada: _renderCamionFlotaAdmin (sigma.js) llama acá. */
   async function renderFlota() {
     var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
     set('camion-sec-sub', 'Flota completa');
@@ -209,19 +213,9 @@
     if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (e) {} }
   });
 
-  function enganchar() {
-    if (typeof global._renderCamionFlotaAdmin !== 'function') return false;
-    if (global._renderCamionFlotaAdmin.__fcv) return true;
-    renderFlota.__fcv = true;
-    global._renderCamionFlotaAdmin = renderFlota;
-    return true;
-  }
-  if (!enganchar()) {
-    var n = 0, tm = setInterval(function () { if (enganchar() || ++n > 40) clearInterval(tm); }, 250);
-  }
-
   global.AuxiliosControlFlota = {
     cargar: cargar,
+    renderFlota: renderFlota,
     titulo: titulo,
     estado: estado,
     hoy: function () { return st.today; },
