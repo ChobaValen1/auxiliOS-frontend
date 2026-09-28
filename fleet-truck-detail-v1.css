@@ -54,8 +54,17 @@
 .ftd-bar > span { display: block; height: 100%; background: var(--muted2); }
 .ftd-bar-alerta > span { background: var(--amber); }
 .ftd-bar-critico > span { background: var(--red); }
+.ftd-bar-leyenda { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 12px; margin-top: -2px; color: var(--muted2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ftd-nota { margin: 8px 0 0; color: var(--muted2); font-size: 11px; }
 
-.ftd-resumen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+/* Historial: una línea de tiempo, agrupada por día. */
+.ftd-hist { display: grid; margin: 0; padding: 0; list-style: none; }
+.ftd-hist li { display: grid; grid-template-columns: 70px 96px minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.ftd-hist li:last-child { border-bottom: 0; }
+.ftd-hist-f { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ftd-hist-t { color: var(--muted2); font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+
+.ftd-resumen { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
 .ftd-resumen div { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
 .ftd-resumen span { display: block; color: var(--muted2); font-size: 10.5px; font-weight: 700; }
 .ftd-resumen b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -81,6 +90,9 @@
   .ftd-docs li { grid-template-columns: minmax(0, 1fr) auto; }
   .ftd-docs .ftd-li-acc { grid-column: 1 / -1; justify-content: flex-start; }
   .ftd-table th:nth-child(4), .ftd-table td:nth-child(4) { display: none; }
+  .ftd-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ftd-hist li { grid-template-columns: 58px minmax(0, 1fr); }
+  .ftd-hist li > :last-child { grid-column: 2; }
 }
 
 /* Subir documento (Camión): resultado de leer el documento desde la foto. */

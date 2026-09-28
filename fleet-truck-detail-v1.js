@@ -4,7 +4,9 @@
    datos del móvil (tipo, chofer y jornada, km actuales y del mes), cuatro
    tarjetas de resumen con el mismo lenguaje corto de la flota (Service,
    Documentación, Neumáticos y frenos, Combustible) y debajo una pestaña por
-   tema. Tocar una tarjeta abre su pestaña. La documentación obligatoria que el
+   tema, más Historial (todo en una línea de tiempo). Tocar una tarjeta abre su
+   pestaña. Mantenimiento estima la fecha de cada service con los km por día;
+   Combustible muestra cuánto rinde cada carga (km/l). La documentación obligatoria que el
    móvil no tiene cargada se muestra como faltante.
    Las acciones (cargar, registrar, subir) son sólo de Administración y usan
    los mismos formularios de siempre; al guardar se vuelve a esta pantalla.
@@ -13,7 +15,7 @@
   'use strict';
 
   var st = { id: null, t: null, planes: [], services: [], fuel: [], tires: [], docs: [], logs: [], tab: 'mantenimiento', cargando: false, error: '', cerradoAt: 0 };
-  var TABS = [['mantenimiento', 'Mantenimiento'], ['documentacion', 'Documentación'], ['neumaticos', 'Neumáticos y frenos'], ['combustible', 'Combustible']];
+  var TABS = [['mantenimiento', 'Mantenimiento'], ['documentacion', 'Documentación'], ['neumaticos', 'Neumáticos y frenos'], ['combustible', 'Combustible'], ['historial', 'Historial']];
   var TIPO = { plancha: 'Plancha', asistencia: 'Asistencia', pesado: 'Pesado' };
   var MODALES = ['modal-combustible', 'modal-neumaticos', 'modal-service-log', 'modal-asignar-plan', 'modal-upload-truck-doc', 'fuel-edit-admin'];
   var COND = { bueno: 'Bueno', regular: 'Regular', malo: 'Malo' };
@@ -141,6 +143,71 @@
     return r;
   }
 
+  /* Km por día: promedio de las jornadas de los últimos 30 días (calendario). */
+  function kmPorDia(logs, today) {
+    var total = 0, alguna = false;
+    (logs || []).forEach(function (l) {
+      var n = dias(l.log_date, today);
+      if (l.voided_at || n == null || n < 0 || n >= 30) return;
+      total += num(l.km_recorridos); alguna = true;
+    });
+    return alguna && total > 0 ? total / 30 : 0;
+  }
+  /* Fecha estimada en que el móvil llega a los km del próximo service. */
+  function estimarService(p, porDia, today) {
+    if (!porDia || p.km_restantes == null || p.km_restantes <= 0) return null;
+    var d = Math.ceil(p.km_restantes / porDia);
+    if (d > 730) return { dias: d, txt: 'Más de 2 años' };
+    var f = new Date(String(today).slice(0, 10) + 'T12:00:00');
+    f.setDate(f.getDate() + d);
+    var iso = f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+    return { dias: d, fecha: iso, txt: 'En unos ' + d + (d === 1 ? ' día' : ' días') + ' (' + fecha(iso).slice(0, 5) + ')' };
+  }
+
+  /* Rendimiento km/l: km entre una carga y la anterior, sobre los litros de la carga nueva.
+     Se descartan saltos imposibles (km en baja o más de 3.000 km entre cargas). */
+  function rendimientos(fuel) {
+    var lista = (fuel || []).filter(function (f) { return f.km_at_load != null && num(f.liters) > 0; })
+      .slice().sort(function (a, b) { return num(b.km_at_load) - num(a.km_at_load); });
+    var out = {};
+    for (var i = 0; i < lista.length - 1; i++) {
+      var km = num(lista[i].km_at_load) - num(lista[i + 1].km_at_load);
+      if (km <= 0 || km > 3000) continue;
+      out[lista[i].fuel_id] = Math.round(km / num(lista[i].liters) * 10) / 10;
+    }
+    var vals = Object.keys(out).map(function (k) { return out[k]; });
+    var prom = vals.length ? Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length * 10) / 10 : null;
+    return { porCarga: out, promedio: prom };
+  }
+  /* Consumo alto: una carga que rinde menos del 75 % del promedio del móvil. */
+  function consumoAlto(v, prom) { return v != null && prom != null && prom > 0 && v < prom * 0.75; }
+
+  /* Historial del móvil en una sola línea de tiempo, lo más nuevo primero. */
+  function historial(d) {
+    var ev = [];
+    (d.fuel || []).forEach(function (f) {
+      ev.push({ f: f.fuel_date, tipo: 'Combustible', txt: num(f.liters).toLocaleString('es-AR') + ' L · ' + money(f.total_cost) + (f.gas_station ? ' · ' + f.gas_station : '') });
+    });
+    (d.tires || []).forEach(function (c) {
+      var mal = [c.tire_condition === 'malo' ? 'neumáticos' : '', c.brake_condition === 'malo' ? 'frenos' : ''].filter(Boolean).join(' y ');
+      var reg = [c.tire_condition === 'regular' ? 'neumáticos' : '', c.brake_condition === 'regular' ? 'frenos' : ''].filter(Boolean).join(' y ');
+      ev.push({ f: c.check_date, tipo: 'Control', txt: mal ? 'Mal: ' + mal : reg ? 'Regular: ' + reg : 'Bien', tono: mal ? 'critico' : reg ? 'alerta' : '' });
+    });
+    (d.services || []).forEach(function (x) {
+      ev.push({ f: x.performed_at, tipo: 'Service', txt: ((x.master_service_plans && x.master_service_plans.name) || 'Service') + (x.km_at_service != null ? ' · ' + km(x.km_at_service) : '') + (x.workshop_name ? ' · ' + x.workshop_name : '') + (x.cost ? ' · ' + money(x.cost) : '') });
+    });
+    (d.docs || []).forEach(function (x) {
+      if (x.created_at) ev.push({ f: String(x.created_at).slice(0, 10), tipo: 'Documento', txt: nombreDoc(x.internal_code) + ' cargado' + (x.expiry_date ? ' · vence ' + fecha(x.expiry_date) : '') });
+    });
+    (d.logs || []).forEach(function (l) {
+      if (!l.voided_at) ev.push({ f: l.log_date, tipo: 'Jornada', txt: l.km_recorridos ? km(l.km_recorridos) + ' recorridos' : 'Jornada abierta' });
+    });
+    var orden = { Jornada: 0, Combustible: 1, Control: 2, Service: 3, Documento: 4 };
+    return ev.filter(function (e) { return e.f; }).sort(function (a, b) {
+      return String(b.f).localeCompare(String(a.f)) || orden[a.tipo] - orden[b.tipo];
+    });
+  }
+
   function combustibleMes(fuel, today) {
     var mes = String(today || '').slice(0, 7);
     var r = { cargas: 0, litros: 0, total: 0 };
@@ -171,15 +238,20 @@
 
   function mantenimiento() {
     var planes = (st.planes || []).filter(function (p) { return p.plan_estado !== '_error'; });
+    var porDia = kmPorDia(st.logs, hoy());
     var filas = planes.length
       ? '<ul class="ftd-planes">' + planes.map(function (p) {
-          var e = planEstado(p), av = planAvance(p);
+          var e = planEstado(p), av = planAvance(p), est = estimarService(p, porDia, hoy());
+          var hecho = p.interval_km && p.km_restantes != null ? Math.max(0, p.interval_km - p.km_restantes) : null;
           return '<li><div><b>' + esc(p.name) + '</b><small>' + (p.interval_km ? 'Cada ' + km(p.interval_km) : '') +
             (p.next_due_km ? ' · próximo a los ' + km(p.next_due_km) : '') + '</small></div>' +
             '<span class="ftd-li-acc">' + val(e.txt, e.tono) + (admin() && p.plan_id != null ? '<button type="button" class="ftd-link ftd-quitar" data-ftd="quitar-plan" data-id="' + esc(p.plan_id) + '" title="Quitar este plan del móvil">Quitar</button>' : '') + '</span>' +
-            (av != null ? '<span class="ftd-bar' + (e.tono ? ' ftd-bar-' + e.tono : '') + '"><span style="width:' + av + '%"></span></span>' : '') + '</li>';
+            (av != null ? '<span class="ftd-bar' + (e.tono ? ' ftd-bar-' + e.tono : '') + '"><span style="width:' + av + '%"></span></span>' +
+              '<span class="ftd-bar-leyenda"><span>' + (hecho != null ? num(hecho).toLocaleString('es-AR') + ' de ' + km(p.interval_km) : '') + '</span>' +
+              (est ? '<span>' + esc(est.txt) + '</span>' : '') + '</span>' : '') + '</li>';
         }).join('') + '</ul>'
       : '<p class="ftd-vacio">Sin planes de service.' + (admin() ? ' Asigná uno con "+ Plan".' : '') + '</p>';
+    if (planes.length) filas += '<p class="ftd-nota">' + (porDia ? 'Fechas estimadas con el promedio de los últimos 30 días: ' + Math.round(porDia).toLocaleString('es-AR') + ' km por día.' : 'Sin jornadas en los últimos 30 días: no se pueden estimar fechas.') + '</p>';
     var hist = (st.services || []).slice(0, 5);
     var gasto = gastoMantenimiento(st.services, hoy());
     var tabla = hist.length
@@ -210,19 +282,25 @@
 
   function combustible() {
     var mes = combustibleMes(st.fuel, hoy());
-    var lista = (st.fuel || []).slice(0, 8);
+    var rend = rendimientos(st.fuel);
+    var lista = (st.fuel || []).slice(0, 10);
+    var kml = function (v) { return v == null ? '—' : v.toLocaleString('es-AR') + ' km/l'; };
     var resumen = '<div class="ftd-resumen"><div><span>Cargas del mes</span><b>' + mes.cargas + '</b></div>' +
       '<div><span>Litros</span><b>' + Math.round(mes.litros).toLocaleString('es-AR') + ' L</b></div>' +
-      '<div><span>Gastado</span><b>' + money(mes.total) + '</b></div></div>';
+      '<div><span>Gastado</span><b>' + money(mes.total) + '</b></div>' +
+      '<div><span>Rendimiento promedio</span><b>' + kml(rend.promedio) + '</b></div></div>';
     var tabla = lista.length
-      ? '<table class="ftd-table"><thead><tr><th>Fecha</th><th class="ftd-r">Litros</th><th class="ftd-r">Total</th><th class="ftd-r">Km</th><th>Pago</th>' + (admin() ? '<th></th>' : '') + '</tr></thead><tbody>' +
+      ? '<table class="ftd-table"><thead><tr><th>Fecha</th><th class="ftd-r">Litros</th><th class="ftd-r">Total</th><th class="ftd-r">Km</th><th class="ftd-r">Rinde</th><th>Pago</th>' + (admin() ? '<th></th>' : '') + '</tr></thead><tbody>' +
         lista.map(function (f) {
+          var v = rend.porCarga[f.fuel_id];
           return '<tr data-ftd-carga="' + esc(f.fuel_id) + '"><td>' + fecha(f.fuel_date) + '</td><td class="ftd-r ftd-n">' + num(f.liters).toLocaleString('es-AR') + ' L</td>' +
             '<td class="ftd-r ftd-n">' + money(f.total_cost) + '</td><td class="ftd-r ftd-n">' + (f.km_at_load != null ? num(f.km_at_load).toLocaleString('es-AR') : '—') + '</td>' +
+            '<td class="ftd-r ftd-n">' + (consumoAlto(v, rend.promedio) ? val(kml(v), 'alerta') : kml(v)) + '</td>' +
             '<td>' + esc(f.payment_app || PAGO[f.payment_method] || f.payment_method || '—') + '</td>' +
             (admin() ? '<td class="ftd-r"><button type="button" class="ftd-link" data-ftd="editar-carga" data-id="' + esc(f.fuel_id) + '">Editar</button></td>' : '') + '</tr>';
         }).join('') + '</tbody></table>'
       : '<p class="ftd-vacio">Sin cargas registradas.</p>';
+    if (lista.length) tabla += '<p class="ftd-nota">Rinde: km desde la carga anterior sobre los litros cargados. En ámbar, las cargas que rinden menos del 75 % del promedio.</p>';
     return seccion('combustible', 'Combustible', [boton('carga', '+ Carga')], resumen + tabla);
   }
 
@@ -239,6 +317,19 @@
         }).join('') + '</tbody></table>'
       : '';
     return seccion('neumaticos', 'Neumáticos y frenos', [boton('neumaticos', '+ Control')], cab + tabla);
+  }
+
+  function historialPanel() {
+    var ev = historial({ fuel: st.fuel, tires: st.tires, services: st.services, docs: st.docs, logs: st.logs });
+    var lista = ev.slice(0, 40), ultimo = null;
+    var cuerpo = lista.length
+      ? '<ol class="ftd-hist">' + lista.map(function (e) {
+          var dia = e.f !== ultimo ? '<span class="ftd-hist-f">' + fecha(e.f) + '</span>' : '<span class="ftd-hist-f"></span>';
+          ultimo = e.f;
+          return '<li>' + dia + '<span class="ftd-hist-t">' + esc(e.tipo) + '</span>' + (e.tono ? val(e.txt, e.tono) : '<span>' + esc(e.txt) + '</span>') + '</li>';
+        }).join('') + '</ol>' + (ev.length > lista.length ? '<p class="ftd-nota">Se muestran los últimos ' + lista.length + ' movimientos.</p>' : '')
+      : '<p class="ftd-vacio">Todavía no hay movimientos del móvil.</p>';
+    return seccion('historial', 'Historial', [], cuerpo);
   }
 
   function tarjeta(tab, titulo, r) {
@@ -281,7 +372,7 @@
       neumaticos: resumenNeumaticos(t, st.tires),
       combustible: resumenCombustible(st.fuel, today)
     };
-    var panel = { mantenimiento: mantenimiento, documentacion: documentacion, combustible: combustible, neumaticos: neumaticos }[st.tab] || mantenimiento;
+    var panel = { mantenimiento: mantenimiento, documentacion: documentacion, combustible: combustible, neumaticos: neumaticos, historial: historialPanel }[st.tab] || mantenimiento;
     cont.innerHTML =
       '<div class="ftd">' + cab +
         '<div class="ftd-cards">' +
@@ -301,9 +392,11 @@
     var q = db();
     var tires = q ? q.from('tire_checks').select('check_id, check_date, tire_condition, brake_condition, pressure_psi, notes')
       .eq('truck_id', id).order('check_date', { ascending: false }).order('created_at', { ascending: false }).limit(10) : null;
+    var desde = new Date(hoy() + 'T12:00:00'); desde.setDate(desde.getDate() - 45);
     var mes = hoy().slice(0, 8) + '01';
+    var d45 = desde.getFullYear() + '-' + String(desde.getMonth() + 1).padStart(2, '0') + '-' + String(desde.getDate()).padStart(2, '0');
     var logs = q ? q.from('daily_logs').select('log_id, log_date, hora_inicio, km_recorridos, voided_at')
-      .eq('truck_id', id).gte('log_date', mes).order('log_date', { ascending: false }).limit(62) : null;
+      .eq('truck_id', id).gte('log_date', d45 < mes ? d45 : mes).order('log_date', { ascending: false }).limit(90) : null;
     var r = await Promise.all([
       typeof cargarPlanesDetalleOptimizados === 'function' ? cargarPlanesDetalleOptimizados(id) : [],
       typeof cargarHistorialServices === 'function' ? cargarHistorialServices(id) : [],
@@ -450,7 +543,8 @@
       set: function (s) { st = Object.assign(st, s); },
       planEstado: planEstado, planAvance: planAvance, docsLista: docsLista, neumaticosEstado: neumaticosEstado,
       resumenService: resumenService, resumenDocs: resumenDocs, resumenNeumaticos: resumenNeumaticos, resumenCombustible: resumenCombustible,
-      kmMes: kmMes, combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento
+      kmMes: kmMes, kmPorDia: kmPorDia, estimarService: estimarService, rendimientos: rendimientos, consumoAlto: consumoAlto, historial: historial,
+      combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento
     }
   };
 })(window);
