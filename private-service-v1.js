@@ -183,10 +183,9 @@
     if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
     if (d.sena && num(d.sena_monto) <= 0) e.push('Completá el monto de la seña.');
     if (d.sena && num(d.sena_monto) > num(d.presupuesto)) e.push('La seña no puede superar el presupuesto.');
-    if (d.factura) {
-      var doc = digits(d.customer_document);
-      if (doc.length < 7 || doc.length > 11) e.push('Para facturar completá el DNI o CUIT.');
-    }
+    var doc = digits(d.customer_document);
+    if (doc && doc.length !== 8 && doc.length !== 11) e.push('El DNI tiene 8 dígitos y el CUIT 11.');
+    else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
     if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
     return e;
   }
@@ -241,7 +240,7 @@
         '<section><h3>Cliente</h3><div class="psv-grid">' +
           campo('customer_name', 'Nombre y apellido *', input('customer_name', d.customer_name, 'autocomplete="name"')) +
           campo('customer_phone', 'Teléfono *', input('customer_phone', d.customer_phone, 'inputmode="tel" placeholder="11 2345 6789"')) +
-          campo('customer_document', 'DNI / CUIT' + (d.factura ? ' *' : ''), input('customer_document', d.customer_document, 'inputmode="numeric"')) +
+          campo('customer_document', 'DNI / CUIT' + (d.factura ? ' *' : ''), input('customer_document', d.customer_document, 'inputmode="numeric" placeholder="8 u 11 dígitos"')) +
         '</div></section>' +
 
         '<section><h3>Vehículo</h3><div class="psv-grid">' +
@@ -303,6 +302,10 @@
     if (!st || !t) return;
     var k = t.getAttribute('data-psv-k');
     if (k) {
+      if (k === 'customer_document' || k === 'customer_phone') {
+        var limpio = digits(t.value).slice(0, k === 'customer_document' ? 11 : 13);
+        if (limpio !== t.value) t.value = limpio;
+      }
       st.d[k] = t.type === 'checkbox' ? t.checked : t.value;
       if (ESTRUCTURALES[k] && ev.type === 'change') return pintar();
       if (k === 'presupuesto' || k === 'sena_monto') {
@@ -313,7 +316,7 @@
       return;
     }
     var kind = t.getAttribute('data-psv-addr');
-    if (kind) escribirDireccion(kind, t.value);
+    if (kind && ev.type === 'input') escribirDireccion(kind, t.value);
   }
 
   /* ── Direcciones (maps-proxy, igual que el alta de prestadoras) ───────── */
@@ -327,23 +330,48 @@
     var seq = a.seq;
     clearTimeout(a.timer);
     var q = value.trim();
-    if (q.length < 3) return mostrarSugerencias(kind, []);
+    if (q.length < 3) return mostrarSugerencias(kind, null, '');
     a.timer = setTimeout(async function () {
       try {
         if (!a.token) a.token = newToken();
+        mostrarSugerencias(kind, null, 'Buscando direcciones…');
         var r = await db().functions.invoke('maps-proxy', { body: { action: 'autocomplete', input: q, sessionToken: a.token, regionCode: 'AR',
-          locationBias: { latitude: -34.6037, longitude: -58.3816, radius: 150000 } } });
+          locationBias: sesgo(kind) } });
         if (seq !== a.seq) return;
+        if (r.error) throw r.error;
         a.list = (r.data && r.data.suggestions || []).slice(0, 6);
-        mostrarSugerencias(kind, a.list);
-      } catch (e) { mostrarSugerencias(kind, []); }
+        mostrarSugerencias(kind, a.list, a.list.length ? '' : 'Sin resultados. Probá con calle y altura.');
+      } catch (e) {
+        if (seq !== a.seq) return;
+        console.error('[particulares] autocomplete ' + kind, e);
+        mostrarSugerencias(kind, null, 'No se pudieron buscar direcciones: ' + (e.message || 'error'));
+      }
     }, 400);
   }
 
-  function mostrarSugerencias(kind, list) {
+  /* Sesgo de búsqueda: cerca del origen para el destino, cerca de la base
+     elegida para el origen. Radio dentro del máximo que acepta Google (50 km). */
+  function sesgo(kind) {
+    var d = st.d;
+    if (kind === 'destination' && d.origin_lat && d.origin_lng) {
+      return { latitude: Number(d.origin_lat), longitude: Number(d.origin_lng), radius: 50000 };
+    }
+    var b = ((st.ctx && st.ctx.bases) || []).find(function (x) { return String(x.base_id) === String(d.billing_base_id); });
+    if (b && isFinite(Number(b.latitude)) && isFinite(Number(b.longitude)) && b.latitude != null) {
+      return { latitude: Number(b.latitude), longitude: Number(b.longitude), radius: 50000 };
+    }
+    return { latitude: -34.6037, longitude: -58.3816, radius: 50000 };
+  }
+
+  function mostrarSugerencias(kind, list, estado) {
     var box = el('psv-' + kind + '-sugs');
     if (!box) return;
-    box.hidden = !list.length;
+    if (!list || !list.length) {
+      box.hidden = !estado;
+      box.innerHTML = estado ? '<div class="psv-sug-state">' + esc(estado) + '</div>' : '';
+      return;
+    }
+    box.hidden = false;
     box.innerHTML = list.map(function (x, i) {
       return '<button type="button" data-psv-pick="' + kind + '" data-i="' + i + '"><b>' + esc(x.mainText || x.text) + '</b><span>' + esc(x.secondaryText || '') + '</span></button>';
     }).join('');
@@ -433,14 +461,15 @@
       if (r.error) throw r.error;
       var res = r.data || {};
       cerrarForm(true);
-      if (global.confirmar) {
-        global.confirmar('Servicio particular creado',
-          ((res.service_order_number || res.service_number) ? (res.service_order_number || res.service_number) + ' · ' : '') + 'Presupuesto ' + pesos(res.quoted_total) +
-          (Number(res.deposit) > 0 ? ' · Seña ' + pesos(res.deposit) : '') + ' · A cobrar ' + pesos(res.balance));
-      } else {
-        notify('Servicio particular creado', 'success');
-      }
-      if (global.cargarServiciosOperador) global.cargarServiciosOperador();
+      // Igual que el alta de prestadoras: mismo aviso, y vuelve a la lista de Servicios activos.
+      var numero = res.service_order_number || res.service_number;
+      var detalle = 'Quedó cargado' + (numero ? ' con el N° ' + numero : '') + '.';
+      if (typeof global.operationFeedback === 'function') global.operationFeedback('Servicio creado', detalle, 'success', 2400);
+      else notify('Servicio creado', 'success');
+      var S = OS();
+      S.view = 'active'; S.status = 'all'; S.selectedIntakeId = null;
+      if (typeof global.goTo === 'function') global.goTo('operaciones');
+      if (global.cargarServiciosOperador) await global.cargarServiciosOperador();
     } catch (err) {
       st.busy = false;
       st.error = err.message || 'No se pudo crear el servicio.';

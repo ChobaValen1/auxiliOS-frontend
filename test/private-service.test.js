@@ -72,3 +72,25 @@ test('la migración: presupuesto como total, seña retenida, anulación sólo de
   assert.match(sql, /v_role = 'chofer' and v_s\.assigned_driver_id = auth\.uid\(\)/);
   assert.match(sql, /set search_path to ''/);
 });
+
+test('DNI de 8 dígitos o CUIT de 11, sólo números', () => {
+  const P = cargar();
+  const s = P._test.estadoInicial();
+  s.ctx = { services: [] };
+  for (const [doc, ok] of [['12345678', true], ['20123456789', true], ['1234567', false], ['123456789', false], ['2012345678', false]]) {
+    s.d.customer_document = doc;
+    const e = P._test.errores(s).join(' ');
+    assert.equal(!/8 dígitos y el CUIT 11/.test(e), ok, doc);
+  }
+});
+
+test('la confirmación es la misma que el alta de prestadoras', () => {
+  assert.match(js, /operationFeedback\('Servicio creado', detalle, 'success', 2400\)/);
+  assert.match(js, /'Quedó cargado' \+ \(numero \? ' con el N° ' \+ numero : ''\)/);
+});
+
+test('las direcciones se buscan al escribir y muestran por qué no hay sugerencias', () => {
+  assert.match(js, /if \(kind && ev\.type === 'input'\) escribirDireccion/);
+  assert.match(js, /No se pudieron buscar direcciones/);
+  assert.match(js, /radius: 50000/);
+});

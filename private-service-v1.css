@@ -81,3 +81,5 @@ body.psv-open { overflow: hidden; }
   .psv-choices { grid-template-columns: 1fr; }
   .psv-body input:not([type=checkbox]), .psv-body select, .psv-body textarea { font-size: 16px; }
 }
+
+.psv-sug-state { padding: 8px 10px; color: var(--muted2); font-size: 12px; }
