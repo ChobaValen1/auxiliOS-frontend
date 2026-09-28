@@ -229,16 +229,16 @@ test('FINALIZAR limpia el formulario sólo después de confirmar el guardado',()
   assert.ok(body.indexOf('const ok = await guardarRemitoCompleto')<body.indexOf('resetPagoForm()'));
   assert.match(body,/if \(!ok\) return false;\s*await _mostrarConfirmacionRemitoCreado\(\);\s*resetPagoForm\(\);\s*return true;/);
   assert.doesNotMatch(body,/tbodyRemitos\.insertBefore|tbodyViajes\.appendChild|tbodyHistorial\.insertBefore/);
-  assert.match(bridge,/window\.confirm\(message\)/);
+  assert.doesNotMatch(bridge,/window\.confirm\(message\)/);
   assert.match(supabase,/Error inesperado al guardar: '\s*\+\s*\(err\?\.message \|\| err\)/);
 });
 
-test('FINALIZAR confirma el guardado durante 1,7 segundos',()=>{
+test('FINALIZAR avisa que el remito se creó, igual que al crear un servicio',()=>{
   const sigma=read('sigma.js'),css=read('sigma.css');
   const helper=sigma.slice(sigma.indexOf('function _mostrarConfirmacionRemitoCreado()'),sigma.indexOf('async function finalizarRemito'));
   assert.match(helper,/Remito finalizado correctamente/);
-  assert.match(helper,/setTimeout\(\(\) => \{[\s\S]*\}, 1700\)/);
-  assert.match(css,/\.remito-created-confirmation/);
+  assert.match(helper,/operationFeedback\('Remito finalizado correctamente', 'Se creó y quedó guardado\.', 'success', 2400\)/);
+  assert.match(helper,/setTimeout\(resolve, 1700\)/);
 });
 
 test('FINALIZAR usa los datos del servicio asignado si el campo operativo oculto no está hidratado',()=>{
