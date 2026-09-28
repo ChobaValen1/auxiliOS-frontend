@@ -70,8 +70,8 @@ test('la cuenta Particulares no aparece como prestadora', () => {
   assert.equal(P.esCuentaParticular({ trade_name: 'Addiuva' }), false);
 });
 
-test('Nuevo servicio pregunta primero; un ingreso del chofer sigue por prestadora', () => {
-  assert.match(js, /if \(intake\) return abrirPrestadora\(intake\);/);
+test('Nuevo servicio pregunta primero; un activado del chofer sigue por prestadora', () => {
+  assert.match(js, /if \(info && info\.driver_activated\) return abrirPrestadora\(intake\);/);
   assert.match(js, /data-psv="particular"/);
   assert.match(js, /data-psv="prestadora"/);
   assert.ok(config.indexOf("'/private-service-v1.js'") > config.indexOf("'/operator-service-wizard.js'"), 'se carga después del alta de prestadoras');
