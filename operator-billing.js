@@ -227,6 +227,7 @@
   function applyLocalFilters() {
     S.rows = S.allRows.filter(row => (!S.base || row.billing_base_name === S.base) && (!S.serviceType || row.service_name === S.serviceType));
     S.tollRows = S.allTollRows.filter(row => !S.base || row.billing_base_name === S.base);
+    S.extraRows = (S.allExtraRows || []).filter(row => !S.base || row.billing_base_name === S.base);
     for (const id of [...S.selected]) if (!S.rows.some(row => String(row.service_id) === id)) S.selected.delete(id);
     for (const id of [...S.selectedTolls]) if (!S.tollRows.some(row => String(row.service_toll_id) === id)) S.selectedTolls.delete(id);
   }
@@ -400,15 +401,70 @@
     </section>`;
   }
 
+  /* Particulares: tienen su propia pestaña; en Servicios quedan sólo las prestadoras. */
+  const privIds = () => new Set((S.privRows || []).map(row => String(row.service_id)));
+  const isPrivate = row => privIds().has(String(row.service_id)) || /^particulares$/i.test(String(row.company_name || '').trim());
+  const serviceRows = () => S.rows.filter(row => !isPrivate(row));
+  const MEDIO = { cash: 'Efectivo', transfer: 'Transferencia', card: 'Tarjeta', mercado_pago: 'Mercado Pago', other: 'Otro' };
+  const PAGA = { customer: 'Cliente', company: 'Prestadora', provider: 'Prestadora' };
+  const ESTADO_FACT = { pending: 'Pendiente', reviewed: 'Pendiente', invoiced: 'Facturado', excluded: 'Excluido' };
+  const IVA = { consumidor_final: 'Consumidor final', monotributo: 'Monotributo', responsable_inscripto: 'Responsable inscripto', exento: 'Exento' };
+
+  function privateTableMarkup() {
+    const rows = S.privRows || [];
+    if (!rows.length) return '<div class="ob-empty">No hay servicios particulares pendientes de facturar con estos filtros.</div>';
+    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
+      <th>Fecha/Hora</th><th>Servicio</th><th>Cliente</th><th>DNI / CUIT</th><th>Factura</th><th>Presupuesto</th><th>Cobro</th><th class="ob-actions"></th>
+      </tr></thead><tbody>${rows.map(row => {
+        const id = String(row.service_id), parts = dateParts(row.scheduled_for), saldo = num(row.balance);
+        const medios = (row.methods || []).map(m => MEDIO[m] || m).join(' · ');
+        return `<tr data-billing-private="${esc(id)}" class="${S.selected.has(id) ? 'selected' : ''}">
+          <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td>
+          <td><b>${esc(row.service_order_number || row.service_number || '—')}</b><small>${esc(row.service_name || '')}</small></td>
+          <td><b>${esc(row.customer_name || '—')}</b><small>${esc(row.driver_name ? 'Chofer: ' + row.driver_name : '')}</small></td>
+          <td>${esc(row.customer_document || '—')}</td>
+          <td>${row.invoice_requested ? `<b>Pide factura</b><small>${esc(IVA[row.customer_tax_condition] || row.customer_tax_condition || '')}</small>` : '<small>No pide</small>'}</td>
+          <td><b class="ob-money">${esc(money(row.quoted_total, row.currency))}</b></td>
+          <td>${saldo > 0 ? `<span class="ob-state is-pending">Saldo ${esc(money(saldo, row.currency))}</span>` : '<span class="ob-state">Pagado</span>'}<small>${esc(medios)}</small></td>
+          <td class="ob-actions ob-private-actions">${canInvoice() ? `<button class="ob-button primary" type="button" data-ob-private="invoice" data-service-id="${esc(id)}">Facturar</button><button class="ob-button" type="button" data-ob-private="no-invoice" data-service-id="${esc(id)}">Sin factura</button>` : ''}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  function extraTableMarkup() {
+    const rows = S.extraRows || [];
+    if (!rows.length) return '<div class="ob-empty">No hay adicionales en los servicios finalizados de este período.</div>';
+    const total = rows.reduce((t, r) => t + num(r.total_amount), 0);
+    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
+      <th>Fecha/Hora</th><th>Servicio</th><th>Prestadora</th><th>Adicional</th><th>Cant.</th><th>Importe</th><th>Paga</th><th>Cobro</th><th>Facturación</th>
+      </tr></thead><tbody>${rows.map(row => {
+        const parts = dateParts(row.scheduled_for);
+        return `<tr data-billing-extra="${esc(row.excess_charge_id)}">
+          <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td>
+          <td><b>${esc(row.service_order_number || row.service_number || '—')}</b><small>${esc(row.vehicle_plate || '')}</small></td>
+          <td><b>${esc(row.company_name || '—')}</b><small>${esc(row.billing_base_name || '')}</small></td>
+          <td><b>${esc(row.concept_name || 'Adicional')}</b></td>
+          <td>${esc(num(row.quantity).toLocaleString('es-AR'))}</td>
+          <td><b class="ob-money">${esc(money(row.total_amount, row.currency))}</b></td>
+          <td>${esc(PAGA[row.payer_agent] || row.payer_agent || '—')}</td>
+          <td>${esc(MEDIO[row.customer_payment_method] || (row.customer_payment_method === 'not_collected' ? 'No cobrado' : row.customer_payment_method) || '—')}</td>
+          <td><span class="ob-state ${row.billing_status === 'invoiced' ? '' : 'is-pending'}">${esc(ESTADO_FACT[row.billing_status] || row.billing_status || '—')}</span></td>
+        </tr>`;
+      }).join('')}</tbody><tfoot><tr><td colspan="5"><b>Total adicionales</b></td><td><b class="ob-money">${esc(money(total, rows[0]?.currency || 'ARS'))}</b></td><td colspan="3"></td></tr></tfoot></table></div>`;
+  }
+
   function tableMarkup() {
     if (S.tab === 'tolls') return tollTableMarkup();
-    if (!S.rows.length) return '<div class="ob-empty">No hay servicios disponibles para facturar con estos filtros.</div>';
-    const selectable = S.rows.filter(row => !row.pricing_error);
+    if (S.tab === 'private') return privateTableMarkup();
+    if (S.tab === 'extras') return extraTableMarkup();
+    const rowsSrv = serviceRows();
+    if (!rowsSrv.length) return '<div class="ob-empty">No hay servicios disponibles para facturar con estos filtros.</div>';
+    const selectable = rowsSrv.filter(row => !row.pricing_error);
     const allSelected = selectable.length > 0 && selectable.every(row => S.selected.has(String(row.service_id)));
     return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
       <th class="ob-check"><input type="checkbox" data-ob-select-all ${allSelected ? 'checked' : ''}></th>
       <th>Fecha/Hora</th><th>Prestadora</th><th>Base</th><th>Tipo de Servicio</th><th>Origen</th><th>Destino</th><th>Cliente</th><th>KM</th><th class="ob-actions"></th>
-      </tr></thead><tbody>${S.rows.map(rowMarkup).join('')}</tbody></table></div>`;
+      </tr></thead><tbody>${rowsSrv.map(rowMarkup).join('')}</tbody></table></div>`;
   }
 
   function rowMarkup(row) {
@@ -473,7 +529,31 @@
     return S.rows.find(item => String(item.service_id) === String(id)) || {};
   }
 
+  function noInvoiceMarkup() {
+    const { id, busy } = S.rowAction;
+    const row = (S.privRows || []).find(item => String(item.service_id) === String(id)) || {};
+    return `<section role="dialog" aria-modal="true" aria-labelledby="ob-confirm-title" class="ob-confirm-modal">
+      <header class="ob-invoice-head">
+        <div><small>Facturación · Particulares</small><h3 id="ob-confirm-title">Cerrar sin factura</h3><p>${row.invoice_requested ? 'El cliente pidió factura. Indicá por qué se cierra sin facturar.' : 'El servicio sale de Facturación sin emitir factura. Queda auditado.'}</p></div>
+        <button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>× Cerrar</button>
+      </header>
+      <div class="ob-confirm-body">
+        <div class="ob-confirm-service">
+          <article><small>Servicio</small><b>${esc(row.service_order_number || row.service_number || '—')}</b></article>
+          <article><small>Cliente</small><b>${esc(row.customer_name || '—')}</b></article>
+          <article><small>Importe</small><b>${esc(money(row.quoted_total, row.currency))}</b></article>
+        </div>
+        <label class="ob-field ob-sin-factura-nota"><small>Motivo${row.invoice_requested ? ' *' : ' (opcional)'}</small><textarea data-ob-sin-factura-nota rows="2" placeholder="Ej.: consumidor final, no pidió factura">${esc(S.rowAction.reason || '')}</textarea></label>
+      </div>
+      <footer class="ob-invoice-footer">
+        <small>No se puede deshacer desde Facturación.</small>
+        <div><button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>Cancelar</button><button class="ob-button primary" type="button" data-ob="confirm-action" ${busy ? 'disabled' : ''}>${busy ? 'Procesando…' : 'Cerrar sin factura'}</button></div>
+      </footer>
+    </section>`;
+  }
+
   function confirmActionMarkup() {
+    if (S.rowAction.type === 'no-invoice') return noInvoiceMarkup();
     const { id, type, busy } = S.rowAction;
     const row = rowById(id);
     const annul = type === 'annul';
@@ -541,7 +621,7 @@
     // derecha, que es de donde sale.
     const backdropClass = S.invoiceOpen ? ' ob-invoice-backdrop' : S.rowAction ? ' ob-confirm-backdrop' : '';
     screen.innerHTML = `<div class="ob-shell">
-      <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes</button></div>
+      <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes</button><button class="ob-tab ${S.tab === 'extras' ? 'active' : ''}" type="button" data-ob-tab="extras">Adicionales</button><button class="ob-tab ${S.tab === 'private' ? 'active' : ''}" type="button" data-ob-tab="private">Particulares${(S.privRows || []).length ? ` <span class="ob-tab-count">${S.privRows.length}</span>` : ''}</button></div>
       <div class="ob-filters auxf-bar">${filtersMarkup()}${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh">↻ Actualizar</button></div></div>
       ${selectionMarkup()}<div class="ob-table-card">${S.loading ? '<div class="ob-empty">Actualizando Facturación…</div>' : tableMarkup()}</div>
       <div id="ob-detail-backdrop" class="ob-detail-backdrop${backdropClass}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
@@ -554,9 +634,11 @@
     render();
     const bounds = window.AuxFilters ? window.AuxFilters.periodBounds(S.periodSel) : periodBounds(S.period);
     try {
-      const [services, tolls] = await Promise.all([
+      const [services, tolls, privs, extras] = await Promise.all([
         db().rpc('list_operator_billing_services_v3', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
-        db().rpc('list_operator_billing_tolls_v2', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end })
+        db().rpc('list_operator_billing_tolls_v2', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
+        db().rpc('list_operator_billing_private_v1', { p_search: S.search || null, p_period_start: bounds.start, p_period_end: bounds.end }),
+        db().rpc('list_operator_billing_extras_v1', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end })
       ]);
       if (services.error) throw services.error;
       if (tolls.error) throw tolls.error;
@@ -566,6 +648,9 @@
         periods: Array.isArray(services.data?.filters?.periods) ? services.data.filters.periods : []
       };
       S.allTollRows = Array.isArray(tolls.data?.rows) ? tolls.data.rows : [];
+      // Particulares y Adicionales: si su consulta falla, el resto de Facturación sigue.
+      S.privRows = !privs.error && Array.isArray(privs.data) ? privs.data : [];
+      S.allExtraRows = !extras.error && Array.isArray(extras.data) ? extras.data : [];
       S.tollTotal = num(tolls.data?.total_amount);
       applyLocalFilters();
     } catch (error) {
@@ -625,7 +710,7 @@
 
   function toggleAll(on) {
     if (S.invoiceBusy) return;
-    const rows = S.rows.filter(row => !row.pricing_error);
+    const rows = serviceRows().filter(row => !row.pricing_error);
     if (on) rows.forEach(row => S.selected.add(String(row.service_id)));
     else rows.forEach(row => S.selected.delete(String(row.service_id)));
     render();
@@ -726,6 +811,25 @@
     if (!S.rowAction || S.rowAction.busy) return;
     const { id, type } = S.rowAction;
     const label = rowById(id).service_order_number || rowById(id).service_number || 'El servicio';
+    if (type === 'no-invoice') {
+      const reason = (document.querySelector('[data-ob-sin-factura-nota]')?.value || '').trim();
+      S.rowAction.reason = reason;
+      S.rowAction.busy = true;
+      render();
+      try {
+        const { error } = await db().rpc('close_private_billing_without_invoice_v1', { p_service_id: id, p_reason: reason || null });
+        if (error) throw error;
+        S.rowAction = null;
+        clearSelection();
+        await load();
+        confirmar('Cerrado sin factura', `${label} salió de Facturación.`);
+      } catch (error) {
+        if (S.rowAction) S.rowAction.busy = false;
+        notify(error.message || 'No se pudo cerrar sin factura', 'error');
+        render();
+      }
+      return;
+    }
     S.rowAction.busy = true;
     render();
     try {
@@ -826,8 +930,23 @@
       return;
     }
 
+    const priv = event.target.closest('[data-ob-private]');
+    if (priv) {
+      const id = priv.dataset.serviceId;
+      if (priv.dataset.obPrivate === 'invoice') {
+        // Una factura por cliente: se factura de a un servicio particular.
+        clearSelection();
+        if (S.rows.some(row => String(row.service_id) === String(id))) S.selected.add(String(id));
+        else return notify('Actualizá Facturación: el servicio no está en la lista.', 'warning');
+        return openInvoice();
+      }
+      S.rowAction = { id, type: 'no-invoice', busy: false, reason: '' };
+      return render();
+    }
+
     const tab = event.target.closest('[data-ob-tab]');
     if (tab) {
+      if (S.tab !== tab.dataset.obTab) clearSelection();
       S.tab = tab.dataset.obTab;
       S.invoiceOpen = false;
       return render();
