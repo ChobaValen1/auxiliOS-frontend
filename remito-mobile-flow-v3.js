@@ -15,12 +15,22 @@ function moveToHidden(root,id){
   if(node)root.appendChild(node);
 }
 
+// Un servicio asignado trae la patente y el campo queda oculto. Si llegó sin
+// patente (p. ej. un particular), el chofer la carga en el paso 1.
+function syncPlateField(){
+  const step=document.querySelector('[data-remito-customer-step="1"]'),box=step&&$('[data-remito-field="vehicle_plate"]',step),slot=box&&$('[data-slot="plate"]',box),input=document.getElementById('rem-patente'),hidden=document.getElementById('rem-service-fields-hidden');
+  if(!box||!slot||!input||adHocMode)return;
+  if(!input.value.trim()){input.classList.add('rmv-input');slot.appendChild(input);box.hidden=false;}
+  else if(!slot.contains(input)||!box.dataset.typed){if(hidden&&slot.contains(input))hidden.appendChild(input);box.hidden=true;}
+}
+document.addEventListener('input',e=>{if(e.target?.id==='rem-patente'){const box=e.target.closest('[data-remito-field="vehicle_plate"]');if(box)box.dataset.typed='1';}});
+
 function customerStep(step){
   const customer=document.getElementById('rem-cliente');
   const documentId=document.getElementById('rem-cuit');
   const phone=document.getElementById('rem-telefono');
   step.dataset.remitoCustomerStep='1';
-  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 1</span><h2>Datos del socio</h2><p>Completá la información necesaria para la conformidad.</p></header><div class="rmv-fields"><label data-remito-field="customer_name"><span>Nombre y apellido *</span><div data-slot="customer"></div><small id="err-cliente" class="rem-error-msg">El nombre del socio es obligatorio</small></label><label data-remito-field="customer_document"><span>DNI / CUIT <em data-mode-label></em></span><div data-slot="document"></div><small class="rmv-hint">De 7 a 11 números.</small><small id="err-documento" class="rem-error-msg">El DNI / CUIT es obligatorio</small></label><label data-remito-field="customer_phone"><span>Teléfono <em data-mode-label></em></span><div data-slot="phone"></div><small id="err-telefono" class="rem-error-msg">El teléfono es obligatorio</small></label><label class="rmv-no-phone" data-no-phone hidden><input type="checkbox" id="rem-telefono-no-informa"><span>El cliente no informa teléfono</span></label></div></section>`;
+  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 1</span><h2>Datos del socio</h2><p>Completá la información necesaria para la conformidad.</p></header><div class="rmv-fields"><label data-remito-field="customer_name"><span>Nombre y apellido *</span><div data-slot="customer"></div><small id="err-cliente" class="rem-error-msg">El nombre del socio es obligatorio</small></label><label data-remito-field="customer_document"><span>DNI / CUIT <em data-mode-label></em></span><div data-slot="document"></div><small class="rmv-hint">De 7 a 11 números.</small><small id="err-documento" class="rem-error-msg">El DNI / CUIT es obligatorio</small></label><label data-remito-field="customer_phone"><span>Teléfono <em data-mode-label></em></span><div data-slot="phone"></div><small id="err-telefono" class="rem-error-msg">El teléfono es obligatorio</small></label><label data-remito-field="vehicle_plate" hidden><span>Patente del vehículo *</span><div data-slot="plate"></div><small class="rmv-hint">El servicio no trae la patente: cargala acá.</small></label><label class="rmv-no-phone" data-no-phone hidden><input type="checkbox" id="rem-telefono-no-informa"><span>El cliente no informa teléfono</span></label></div></section>`;
   const attach=(node,slot)=>{if(!node)return;node.classList.add('rmv-input');$(slot,step)?.appendChild(node)};
   attach(customer,'[data-slot="customer"]');
   attach(documentId,'[data-slot="document"]');
@@ -182,6 +192,6 @@ function setAdHocMode(enabled){
 
 function isAdHocMode(){return adHocMode}
 
-window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode,isAdHocMode,setSignedEditMode,isSignedEditMode,applyCompanyFieldModes,validateCustomerFields,validateMapLocations,getMapLocations,resetMapLocations,restoreMapLocations};
+window.AuxiliosRemitoMobileV3={transform,syncPlateField,syncEvidence,setAdHocMode,isAdHocMode,setSignedEditMode,isSignedEditMode,applyCompanyFieldModes,validateCustomerFields,validateMapLocations,getMapLocations,resetMapLocations,restoreMapLocations};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',transform,{once:true});else transform();
 })();
