@@ -1,6 +1,10 @@
 /* AuxiliOS · Componentes base (v1). Usan sólo tokens de ui/tokens.css.
    Prefijo ax- para convivir con los estilos actuales mientras se migra. */
 
+/* Lo oculto con [hidden] queda oculto aunque el componente defina display (un modal
+   cerrado no puede tapar la pantalla). */
+.ax-backdrop[hidden], .ax-drawer[hidden], .ax-menu[hidden], .ax-toast[hidden], .ax-collapse[hidden], .ax-alert[hidden] { display: none !important; }
+
 /* Íconos (Lucide, ui/icons.svg) */
 .ax-icon { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -3px; }
 .ax-icon-sm { width: 14px; height: 14px; }
@@ -17,7 +21,7 @@
 .ax-code { font-family: var(--ax-font-mono); font-size: .95em; letter-spacing: .02em; white-space: nowrap; }
 
 /* Botones */
-.ax-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); white-space: nowrap; cursor: pointer; transition: background var(--ax-dur), border-color var(--ax-dur), color var(--ax-dur); }
+.ax-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); white-space: nowrap; cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
 .ax-btn:hover { background: var(--ax-surface-3); border-color: var(--ax-text-3); }
 .ax-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
 .ax-btn:disabled, .ax-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
@@ -37,7 +41,7 @@
 /* Campos */
 .ax-field { display: grid; gap: 6px; min-width: 0; }
 .ax-field > span:first-child { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
-.ax-input, .ax-select, .ax-textarea { width: 100%; height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); transition: border-color var(--ax-dur), box-shadow var(--ax-dur); }
+.ax-input, .ax-select, .ax-textarea { width: 100%; height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
 .ax-textarea { height: auto; min-height: 76px; padding: 10px 12px; resize: vertical; }
 .ax-select { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, var(--ax-text-3) 50%), linear-gradient(135deg, var(--ax-text-3) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
 .ax-input::placeholder, .ax-textarea::placeholder { color: var(--ax-text-3); }
@@ -53,8 +57,8 @@
 
 /* Interruptor (ON/OFF) */
 .ax-switch { display: inline-flex; align-items: center; gap: 10px; font-size: var(--ax-fs-md); cursor: pointer; }
-.ax-switch input { appearance: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: var(--ax-radius-pill); background: var(--ax-border-strong); cursor: pointer; transition: background var(--ax-dur); }
-.ax-switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ax-text); transition: transform var(--ax-dur); }
+.ax-switch input { appearance: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: var(--ax-radius-pill); background: var(--ax-border-strong); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+.ax-switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ax-text); transition: transform var(--ax-dur) var(--ax-ease); }
 .ax-switch input:checked { background: var(--ax-accent); }
 .ax-switch input:checked::after { transform: translateX(16px); background: var(--ax-accent-fg); }
 .ax-switch input:focus-visible { outline: none; box-shadow: var(--ax-focus); }
@@ -134,14 +138,14 @@ button.ax-chip { background: transparent; font: inherit; font-size: var(--ax-fs-
 .ax-menu .ax-menu-danger .ax-icon { color: var(--ax-danger); }
 
 /* Modal y panel lateral */
-.ax-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: var(--ax-sp-4); background: rgba(5, 6, 9, .72); }
+.ax-backdrop { position: fixed; inset: 0; z-index: var(--ax-z-modal); display: grid; place-items: center; padding: var(--ax-sp-4); background: rgba(5, 6, 9, .72); }
 .ax-modal { display: flex; flex-direction: column; width: min(560px, 100%); max-height: calc(100vh - 32px); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
 .ax-modal > header, .ax-drawer > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ax-sp-3); padding: var(--ax-sp-4) var(--ax-sp-5); border-bottom: 1px solid var(--ax-border); }
 .ax-modal > header h2, .ax-drawer > header h2 { margin: 0; font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
 .ax-modal > header p, .ax-drawer > header p { margin: 2px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
 .ax-modal-body { display: grid; gap: var(--ax-sp-4); padding: var(--ax-sp-5); overflow: auto; }
 .ax-modal > footer, .ax-drawer > footer { display: flex; justify-content: flex-end; gap: var(--ax-sp-2); padding: var(--ax-sp-3) var(--ax-sp-5); border-top: 1px solid var(--ax-border); }
-.ax-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1000; display: flex; flex-direction: column; width: min(440px, 100vw); border-left: 1px solid var(--ax-border-strong); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
+.ax-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: var(--ax-z-modal); display: flex; flex-direction: column; width: min(440px, 100vw); border-left: 1px solid var(--ax-border-strong); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
 
 /* Vacío y carga */
 .ax-empty { display: grid; justify-items: center; gap: 6px; padding: var(--ax-sp-8) var(--ax-sp-4); color: var(--ax-text-2); font-size: var(--ax-fs-md); text-align: center; }
@@ -150,7 +154,83 @@ button.ax-chip { background: transparent; font: inherit; font-size: var(--ax-fs-
 .ax-skeleton { height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--ax-surface-3), var(--ax-border), var(--ax-surface-3)); background-size: 200% 100%; animation: ax-shimmer 1.2s ease-in-out infinite; }
 @keyframes ax-shimmer { to { background-position: -200% 0; } }
 
+/* ── Comportamiento y movimiento ─────────────────────────────────────────
+   Todo usa las duraciones de tokens.css; con "reducir movimiento" son 0. */
+
+/* Apretar: el botón se hunde apenas. Cargando: el ícono pasa a ser un spinner y
+   el botón conserva su ancho. Listo: tilde un segundo. */
+.ax-btn:active:not(:disabled) { transform: scale(.98); }
+.ax-btn[data-state="loading"] { pointer-events: none; }
+.ax-btn[data-state="loading"] > .ax-icon { animation: ax-spin 1s linear infinite; }
+.ax-btn[data-state="done"] { border-color: var(--ax-ok); }
+.ax-btn-primary[data-state="done"] { background: var(--ax-ok); border-color: var(--ax-ok); color: var(--ax-accent-fg); }
+
+/* Modal: entra subiendo 8 px y aparece; se va más rápido de lo que entra. */
+.ax-backdrop[data-anim] { animation: ax-fade-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+.ax-backdrop[data-anim] > .ax-modal { animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+.ax-backdrop[data-closing] { animation: ax-fade-out var(--ax-dur) var(--ax-ease-in) both; }
+.ax-backdrop[data-closing] > .ax-modal { animation: ax-sink var(--ax-dur) var(--ax-ease-in) both; }
+/* Panel lateral: entra desde la derecha. */
+.ax-drawer[data-anim] { animation: ax-slide-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+.ax-drawer[data-closing] { animation: ax-slide-out var(--ax-dur) var(--ax-ease-in) both; }
+/* Menú ⋯: se abre desde la esquina del botón. */
+.ax-menu[data-anim] { transform-origin: top right; animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+.ax-menu-float { position: fixed; z-index: var(--ax-z-menu); }
+
+/* Avisos flotantes: abajo a la derecha (abajo al centro en el celular), de a 3 como máximo. */
+.ax-toasts { position: fixed; right: var(--ax-sp-4); bottom: var(--ax-sp-4); z-index: var(--ax-z-toast); display: grid; gap: var(--ax-sp-2); justify-items: end; pointer-events: none; }
+.ax-toasts > .ax-toast { pointer-events: auto; animation: ax-rise var(--ax-dur) var(--ax-ease-out) both; }
+.ax-toasts > .ax-toast[data-closing] { animation: ax-fade-out var(--ax-dur) var(--ax-ease-in) both; }
+.ax-toast { position: relative; overflow: hidden; }
+.ax-toast .ax-toast-close { margin-left: auto; }
+.ax-toast-bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--ax-ok); transform-origin: left; animation: ax-shrink linear forwards; }
+.ax-toast:hover .ax-toast-bar { animation-play-state: paused; }
+
+/* Pestañas: la raya se desliza a la pestaña elegida. */
+.ax-tabs { position: relative; }
+.ax-tabs-ink { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--ax-accent); transition: transform var(--ax-dur) var(--ax-ease), width var(--ax-dur) var(--ax-ease); pointer-events: none; }
+.ax-tabs[data-ink] .ax-tab[aria-selected="true"] { border-bottom-color: transparent; }
+.ax-tabpanel { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+
+/* Abrir y cerrar un bloque (acordeón): anima la altura sin saltos. */
+.ax-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--ax-dur) var(--ax-ease); }
+.ax-collapse > * { overflow: hidden; }
+.ax-collapse[data-open] { grid-template-rows: 1fr; }
+.ax-chevron { transition: transform var(--ax-dur) var(--ax-ease); }
+[aria-expanded="true"] > .ax-chevron { transform: rotate(180deg); }
+
+/* Algo cambió (se guardó, llegó un dato nuevo): la fila se marca en ámbar y se apaga. */
+.ax-flash, .ax-flash > td { animation: ax-flash 1.6s var(--ax-ease) both; }
+/* Contenido que llega después de cargar. */
+.ax-fade-in { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+
+/* Ayuda al pasar el mouse o con el foco del teclado; aparece con un poco de demora. */
+[data-ax-tip] { position: relative; }
+[data-ax-tip]::after { content: attr(data-ax-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); z-index: var(--ax-z-menu); width: max-content; max-width: 240px; padding: 6px 8px; border-radius: var(--ax-radius-sm); background: var(--ax-surface-3); box-shadow: var(--ax-shadow-pop); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); line-height: 1.35; white-space: normal; opacity: 0; transform: translate(-50%, 4px); transition: opacity var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); transition-delay: 0s; pointer-events: none; }
+[data-ax-tip]:hover::after, [data-ax-tip]:focus-visible::after { opacity: 1; transform: translate(-50%, 0); transition-delay: .4s; }
+
+/* Barra de "sin conexión": fija arriba, no tapa el contenido. */
+.ax-offline { position: sticky; top: 0; z-index: var(--ax-z-sticky); display: flex; align-items: center; gap: 8px; padding: 8px var(--ax-sp-4); border-bottom: 1px solid rgba(245, 166, 35, .45); background: var(--ax-warn-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+.ax-offline .ax-icon { color: var(--ax-warn); }
+
+@keyframes ax-fade-in { from { opacity: 0; } }
+@keyframes ax-fade-out { to { opacity: 0; } }
+@keyframes ax-rise { from { opacity: 0; transform: translateY(8px) scale(.985); } }
+@keyframes ax-sink { to { opacity: 0; transform: translateY(6px) scale(.985); } }
+@keyframes ax-pop { from { opacity: 0; transform: scale(.96); } }
+@keyframes ax-slide-in { from { transform: translateX(100%); } }
+@keyframes ax-slide-out { to { transform: translateX(100%); } }
+@keyframes ax-shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes ax-flash { 0%, 30% { background-color: var(--ax-accent-soft); } 100% { background-color: transparent; } }
+@keyframes ax-sheet-in { from { transform: translateY(100%); } }
+@keyframes ax-sheet-out { to { transform: translateY(100%); } }
+
 @media (max-width: 640px) {
+  /* En el celular el modal es una hoja que sube desde abajo. */
+  .ax-backdrop[data-anim] > .ax-modal { animation-name: ax-sheet-in; }
+  .ax-backdrop[data-closing] > .ax-modal { animation-name: ax-sheet-out; }
+  .ax-toasts { left: var(--ax-sp-3); right: var(--ax-sp-3); bottom: calc(var(--ax-sp-3) + env(safe-area-inset-bottom)); justify-items: stretch; }
+  .ax-toasts > .ax-toast { width: auto; max-width: none; }
   /* Tabla apilada: cada fila pasa a ser una tarjeta con "Etiqueta · valor" (usa data-label en cada celda). */
   .ax-table-stack thead { display: none; }
   .ax-table-stack, .ax-table-stack tbody, .ax-table-stack tr, .ax-table-stack td { display: block; }
@@ -171,5 +251,7 @@ button.ax-chip { background: transparent; font: inherit; font-size: var(--ax-fs-
   .ax-backdrop { padding: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ax-spin, .ax-skeleton { animation: none; }
+  .ax-spin, .ax-skeleton, .ax-btn[data-state="loading"] > .ax-icon { animation: none; }
+  .ax-flash, .ax-flash > td { animation: none; }
+  .ax-btn:active:not(:disabled) { transform: none; }
 }

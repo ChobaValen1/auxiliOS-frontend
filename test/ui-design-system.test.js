@@ -35,3 +35,32 @@ test('tokens: cuatro colores con significado y texto con contraste AA', () => {
     assert.ok(cr(val(n), val('--ax-surface-2')) >= 4.5, n);
   }
 });
+
+test('movimiento: tres duraciones, curvas y todo a 0 con "reducir movimiento"', () => {
+  assert.match(tokens, /--ax-dur-fast: 120ms;/);
+  assert.match(tokens, /--ax-dur: 180ms;/);
+  assert.match(tokens, /--ax-dur-slow: 260ms;/);
+  assert.match(tokens, /@media \(prefers-reduced-motion: reduce\) \{\s*:root \{ --ax-dur-fast: 0ms; --ax-dur: 0ms; --ax-dur-slow: 0ms; \}/);
+  // Ninguna animación usa una duración fija: todas salen de los tokens.
+  const sinComentarios = comp.replace(/\/\*[\s\S]*?\*\//g, '');
+  const fijas = [...sinComentarios.matchAll(/(?:animation|transition)[^;{]*?\b(\d+(?:\.\d+)?)(ms|s)\b/g)].map(m => m[0])
+    .filter(x => !/ax-spin 1s|ax-shimmer 1\.2s|ax-flash 1\.6s|delay/.test(x));
+  assert.deepEqual(fijas, []);
+  // Lo oculto con [hidden] no puede tapar la pantalla.
+  assert.match(comp, /\.ax-backdrop\[hidden\], \.ax-drawer\[hidden\], \.ax-menu\[hidden\][^{]*\{ display: none !important; \}/);
+});
+
+test('comportamiento en JS: avisos, modal, menú, botón que guarda, carga, pestañas y cambios', () => {
+  const vm = require('node:vm');
+  const js = fs.readFileSync('ui/ax.js', 'utf8');
+  const win = { addEventListener() {}, matchMedia: () => ({ matches: false }) };
+  const doc = { addEventListener() {}, documentElement: {}, querySelector: () => null };
+  win.document = doc;
+  vm.runInNewContext(js, { window: win, document: doc, setTimeout, clearTimeout, Promise });
+  for (const f of ['toast', 'openModal', 'closeModal', 'menu', 'busy', 'loading', 'tabs', 'flash']) assert.equal(typeof win.AxUI[f], 'function', f);
+  assert.match(js, /tone === 'danger' \? 0 : ms\('--ax-toast-ms', 4000\)/);   // errores no se van solos
+  assert.match(js, /Math\.max\(0, 400 - \(Date\.now\(\) - inicio\)\)/);        // "Guardando…" no parpadea
+  assert.match(js, /, 300\);/);                                                // esqueleto sólo si tarda más de 300 ms
+  assert.match(js, /ctx\.volver\.focus\(\)/);                                  // el foco vuelve a quien abrió el modal
+  assert.match(page, /id="reglas-uso"/);
+});

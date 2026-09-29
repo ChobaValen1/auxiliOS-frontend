@@ -40,6 +40,9 @@
   .stage .ax-backdrop, .stage .ax-drawer { position: absolute; }
   .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .mv-demo { display: inline-block; position: relative; width: 120px; height: 10px; border-radius: 5px; background: var(--ax-surface-3); }
+  .mv-demo::after { content: ''; position: absolute; left: 0; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--ax-accent); transition: transform var(--d) var(--ax-ease-out); }
+  tr:hover .mv-demo::after { transform: translateX(110px); }
   @media (max-width: 800px) { .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .g2, .g3, .g4, .form-grid { grid-template-columns: minmax(0, 1fr); } .type > div { grid-template-columns: 1fr; gap: 2px; } }
 </style>
@@ -51,7 +54,7 @@
   <nav class="toc" aria-label="Secciones">
     <a class="ax-chip" href="#reglas">Reglas</a><a class="ax-chip" href="#color">Color</a><a class="ax-chip" href="#tipo">Tipografía</a><a class="ax-chip" href="#iconos">Íconos</a>
     <a class="ax-chip" href="#botones">Botones</a><a class="ax-chip" href="#campos">Campos</a><a class="ax-chip" href="#estados">Estados</a><a class="ax-chip" href="#tabla">Tabla</a>
-    <a class="ax-chip" href="#tarjetas">Tarjetas</a><a class="ax-chip" href="#avisos">Avisos</a><a class="ax-chip" href="#modal">Modal y panel</a>
+    <a class="ax-chip" href="#tarjetas">Tarjetas</a><a class="ax-chip" href="#avisos">Avisos</a><a class="ax-chip" href="#modal">Modal y panel</a><a class="ax-chip" href="#comportamiento">Comportamiento</a><a class="ax-chip" href="#reglas-uso">Reglas de uso</a>
   </nav>
 
   <section id="reglas">
@@ -265,7 +268,156 @@
       </div>
     </div>
   </section>
+  <section id="comportamiento">
+    <h2>Comportamiento y movimiento</h2>
+    <p>El movimiento es corto y sirve para una sola cosa: mostrar de dónde viene o a dónde va algo. Nada rebota ni gira por adorno, y nada tarda más de un cuarto de segundo. Si en el teléfono o la computadora está activado "reducir movimiento", todo pasa a ser instantáneo.</p>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead><tr><th>Token</th><th>Duración</th><th>Curva</th><th>Para qué</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><span class="ax-code">--ax-dur-fast</span></td><td class="ax-num">120 ms</td><td>Estándar</td><td>Hover, apretar un botón, cambio de color, interruptor</td><td class="ax-r"><span class="mv-demo" style="--d:var(--ax-dur-fast)"></span></td></tr>
+          <tr><td><span class="ax-code">--ax-dur</span></td><td class="ax-num">180 ms</td><td>Estándar</td><td>Menús, avisos, pestañas, abrir y cerrar bloques; toda salida</td><td class="ax-r"><span class="mv-demo" style="--d:var(--ax-dur)"></span></td></tr>
+          <tr><td><span class="ax-code">--ax-dur-slow</span></td><td class="ax-num">260 ms</td><td>Entrada (frena)</td><td>Modal, panel lateral, hoja desde abajo en el celular</td><td class="ax-r"><span class="mv-demo" style="--d:var(--ax-dur-slow)"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:8px" class="ax-muted">Pasá el mouse por la fila para ver cada duración. Lo que entra frena al llegar, y lo que se va acelera y tarda menos que lo que entra.</p>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Botón que guarda</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Mientras guarda, el botón muestra "Guardando…" y no se puede apretar de nuevo. Si sale bien, muestra un tilde por un segundo. Si falla, vuelve a como estaba y aparece el error.</p>
+        <div class="row">
+          <button class="ax-btn ax-btn-primary" id="d-save"><svg class="ax-icon"><use href="/ui/icons.svg#check"/></svg>Guardar</button>
+          <button class="ax-btn" id="d-fail">Guardar (falla)</button>
+          <span data-ax-tip="Primero registrá el cobro del saldo ($ 60.000)." tabindex="0"><button class="ax-btn" disabled>Finalizar</button></span>
+        </div>
+        <p class="ax-field-help" style="margin:10px 0 0">Si un botón no se puede usar, se muestra desactivado y explica por qué. No se esconde.</p>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Avisos flotantes</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Abajo a la derecha, o abajo en el celular, con tres como máximo a la vez. Los de éxito se van solos a los 4 segundos, y si pasás el mouse encima el tiempo se frena. Los de error quedan hasta que los cierres.</p>
+        <div class="row">
+          <button class="ax-btn" id="d-toast-ok">Éxito</button>
+          <button class="ax-btn" id="d-toast-err">Error</button>
+          <button class="ax-btn" id="d-toast-undo">Con "Deshacer"</button>
+        </div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Modal, panel y menú</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Al abrirse, el foco va al primer campo. Esc cierra, y tocar el fondo también, salvo en formularios a medio completar. Al cerrar, el foco vuelve al botón que lo abrió. En el menú ⋯ se puede navegar con las flechas.</p>
+        <div class="row">
+          <button class="ax-btn" id="d-modal">Abrir modal</button>
+          <button class="ax-btn" id="d-drawer">Abrir panel lateral</button>
+          <button class="ax-btn ax-btn-icon" id="d-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button>
+        </div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Carga</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Si la respuesta tarda menos de 300 ms, no se muestra nada, para que no parpadee. Si tarda más, aparece un esqueleto con la forma del contenido, y cuando llega, el contenido aparece suave. No se usan spinners de página completa.</p>
+        <div class="row" style="margin-bottom:10px"><button class="ax-btn ax-btn-sm" id="d-load-fast">Rápida (150 ms)</button><button class="ax-btn ax-btn-sm" id="d-load-slow">Lenta (1,5 s)</button></div>
+        <div id="d-load-box" class="grid" style="min-height:62px"><span class="ax-muted">Tocá una de las dos.</span></div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Algo cambió</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Cuando se guarda algo o llega un dato nuevo, esa fila se marca en ámbar y se apaga en un segundo y medio. Así se ve qué cambió sin buscarlo.</p>
+        <div class="ax-table-wrap"><table class="ax-table"><tbody>
+          <tr><td>PART-00012</td><td><span class="ax-status ax-status-info">Asignado</span></td></tr>
+          <tr id="d-flash-row"><td>89909</td><td id="d-flash-state"><span class="ax-status ax-status-info">Asignado</span></td></tr>
+        </tbody></table></div>
+        <button class="ax-btn ax-btn-sm" id="d-flash" style="margin-top:10px">Simular: llegó el arribo</button>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Pestañas y bloques</h3></div>
+        <div class="ax-tabs" role="tablist" id="d-tabs">
+          <button class="ax-tab" role="tab" aria-selected="true">Mantenimiento</button>
+          <button class="ax-tab" role="tab" aria-selected="false">Documentación</button>
+          <button class="ax-tab" role="tab" aria-selected="false">Combustible</button>
+        </div>
+        <p class="ax-muted" style="margin:10px 0">La raya se desliza hasta la pestaña elegida, y con las flechas del teclado se cambia de pestaña.</p>
+        <button class="ax-btn ax-btn-ghost ax-btn-sm" data-ax-collapse="#d-col" aria-expanded="false">Ver últimos services <svg class="ax-icon ax-icon-sm ax-chevron"><use href="/ui/icons.svg#chevron-down"/></svg></button>
+        <div class="ax-collapse" id="d-col"><div><div class="grid" style="padding-top:8px">
+          <div class="row" style="justify-content:space-between"><span>10/08/26 · Service 10.000</span><span class="ax-num">$ 185.000</span></div>
+          <div class="row" style="justify-content:space-between"><span>02/03/26 · Cambio de aceite</span><span class="ax-num">$ 92.000</span></div>
+        </div></div></div>
+      </div>
+    </div>
+    <div class="ax-offline" style="margin-top:16px;border-radius:var(--ax-radius)"><svg class="ax-icon"><use href="/ui/icons.svg#wifi-off"/></svg>Sin conexión. Lo que cargues se guarda en el teléfono y se envía cuando vuelva la señal.</div>
+  </section>
+
+  <section id="reglas-uso">
+    <h2>Reglas de uso</h2>
+    <p>Cómo responde la app a lo que hace la persona. Valen para todas las pantallas.</p>
+    <div class="ax-table-wrap">
+      <table class="ax-table ax-table-stack">
+        <thead><tr><th>Tema</th><th>Regla</th></tr></thead>
+        <tbody>
+          <tr><td data-label=""><b>Tiempos de respuesta</b></td><td data-label="Regla">Cada toque tiene respuesta en menos de 0,1 s (hover, apretar, "Guardando…"). Si la acción tarda más de 1 s, se muestra un esqueleto o el avance. Si tarda más de 10 s, se explica qué está pasando y se ofrece cancelar.</td></tr>
+          <tr><td data-label=""><b>Confirmar</b></td><td data-label="Regla">Solo lo que no se puede deshacer, como anular, finalizar o cerrar un período, se confirma en un modal que dice qué va a pasar, con el botón que nombra la acción ("Anular servicio", no "Aceptar"). Lo que se puede deshacer no se confirma: se hace y aparece un aviso con "Deshacer".</td></tr>
+          <tr><td data-label=""><b>Errores</b></td><td data-label="Regla">Los errores de un campo se muestran debajo del campo, al salir de él y al guardar. Los errores del servidor van en un aviso que no se va solo y dice qué hacer. No se muestran códigos (400, RPC) ni textos en inglés.</td></tr>
+          <tr><td data-label=""><b>Botones</b></td><td data-label="Regla">Hay un solo botón principal por pantalla o modal, a la derecha. Si no se puede usar, se desactiva y explica por qué; no se esconde. Mientras guarda, no se puede volver a apretar.</td></tr>
+          <tr><td data-label=""><b>Teclado</b></td><td data-label="Regla">Esc cierra modales y menús. Enter guarda en los formularios cortos. Tab recorre la pantalla en orden, y el foco siempre se ve con el anillo ámbar. Al cerrar un modal, el foco vuelve a donde estaba.</td></tr>
+          <tr><td data-label=""><b>Celular</b></td><td data-label="Regla">Todo lo que se toca mide al menos 44 px. Los modales suben desde abajo. Nada depende del hover: la ayuda también aparece con el foco o al tocar. Las tablas pasan a ser tarjetas. Los campos usan letra de 16 px.</td></tr>
+          <tr><td data-label=""><b>Sin conexión</b></td><td data-label="Regla">Arriba aparece una barra fija. Lo cargado se guarda en el teléfono y se envía cuando vuelve la señal. Hasta que se envía, figura como "Pendiente de enviar".</td></tr>
+          <tr><td data-label=""><b>Vacío</b></td><td data-label="Regla">Cuando no hay datos, se explica por qué y qué hacer ("No hay servicios pendientes. Cuando entre uno nuevo aparece acá."). Nunca queda una tabla vacía sin explicación.</td></tr>
+          <tr><td data-label=""><b>Formatos</b></td><td data-label="Regla">Plata: $ 1.284.500, con punto de miles y sin centavos salvo en facturas. Fechas: 28/09/26. Horas en formato de 24 h: 07:45. Km: 184.230 km. Patentes en mayúsculas y sin espacios.</td></tr>
+          <tr><td data-label=""><b>Textos</b></td><td data-label="Regla">Los botones empiezan con un verbo ("Registrar cobro"). Solo la primera letra va en mayúscula. Se tutea con el voseo ("Completá", "Elegí"). Nada de "Error", "OK" ni "Submit".</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </main>
+
+<!-- Demos reales del comportamiento (usan ui/ax.js) -->
+<div class="ax-backdrop" id="d-modal-el" hidden>
+  <div class="ax-modal" role="dialog" aria-modal="true" aria-labelledby="dm-t">
+    <header><div><h2 id="dm-t">Anular servicio</h2><p>PART-00012 · María González</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" data-ax-close aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+    <div class="ax-modal-body">
+      <div class="ax-alert ax-alert-danger"><svg class="ax-icon"><use href="/ui/icons.svg#triangle-alert"/></svg><span>El servicio se anula y se libera el móvil. Esto no se puede deshacer.</span></div>
+      <label class="ax-field"><span>Motivo</span><select class="ax-select"><option>Cancelado por el cliente</option><option>Cancelado por demora</option><option>Otro</option></select></label>
+    </div>
+    <footer><button class="ax-btn ax-btn-ghost" data-ax-close>Volver</button><button class="ax-btn ax-btn-danger" id="d-modal-ok">Anular servicio</button></footer>
+  </div>
+</div>
+<aside class="ax-drawer" id="d-drawer-el" hidden aria-labelledby="dd-t">
+  <header><div><h2 id="dd-t">M12</h2><p>AB123CD · Iveco Daily · 2019</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" data-ax-close aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+  <div class="ax-modal-body">
+    <div><span class="ax-label">Estado</span><div><span class="ax-status ax-status-info">En servicio · PART-00012</span></div></div>
+    <div><span class="ax-label">Chofer</span><div>Juan Pérez · desde las 07:45</div></div>
+    <div><span class="ax-label">Km actuales</span><div class="ax-num">184.230 km</div></div>
+  </div>
+  <footer><button class="ax-btn" data-ax-close>Cerrar</button><button class="ax-btn ax-btn-primary">Abrir detalle</button></footer>
+</aside>
+<div class="ax-menu" id="d-menu-el" hidden>
+  <button><svg class="ax-icon"><use href="/ui/icons.svg#eye"/></svg>Ver servicio</button>
+  <button><svg class="ax-icon"><use href="/ui/icons.svg#pencil"/></svg>Editar</button>
+  <button><svg class="ax-icon"><use href="/ui/icons.svg#hand-coins"/></svg>Registrar cobro</button>
+  <hr>
+  <button class="ax-menu-danger" id="d-menu-annul"><svg class="ax-icon"><use href="/ui/icons.svg#circle-x"/></svg>Anular</button>
+</div>
+<script src="/ui/ax.js"></script>
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var wait = function (ms, fail) { return new Promise(function (ok, ko) { setTimeout(function () { fail ? ko(new Error('x')) : ok(); }, ms); }); };
+    $('d-save').onclick = function () { AxUI.busy(this, wait(1200)).then(function () { AxUI.toast({ title: 'Servicio guardado', text: 'Los cambios quedaron guardados.' }); }); };
+    $('d-fail').onclick = function () { AxUI.busy(this, wait(900, true)).catch(function () { AxUI.toast({ tone: 'danger', title: 'No se pudo guardar', text: 'Revisá la conexión y probá de nuevo.' }); }); };
+    $('d-toast-ok').onclick = function () { AxUI.toast({ title: 'Remito finalizado correctamente', text: 'Se creó y quedó guardado.' }); };
+    $('d-toast-err').onclick = function () { AxUI.toast({ tone: 'danger', title: 'No se puede finalizar', text: 'Falta cobrar $ 60.000.' }); };
+    $('d-toast-undo').onclick = function () { AxUI.toast({ tone: 'info', title: 'Chofer quitado del servicio', action: { label: 'Deshacer', onClick: function () { AxUI.toast({ title: 'Se volvió a asignar' }); } } }); };
+    $('d-modal').onclick = function () { AxUI.openModal($('d-modal-el')); };
+    $('d-modal-ok').onclick = function () { var b = this; AxUI.busy(b, wait(700), { loading: 'Anulando…', done: 'Anulado' }).then(function () { setTimeout(function () { AxUI.closeModal($('d-modal-el')); }, 500); }); };
+    $('d-drawer').onclick = function () { AxUI.openModal($('d-drawer-el')); };
+    $('d-menu').onclick = function () { AxUI.menu(this, $('d-menu-el')); };
+    $('d-menu-annul').onclick = function () { AxUI.openModal($('d-modal-el')); };
+    var skel = '<div class="grid" style="gap:8px"><div class="ax-skeleton" style="width:70%"></div><div class="ax-skeleton" style="width:45%"></div><div class="ax-skeleton" style="width:85%"></div></div>';
+    var listo = '<div class="grid" style="gap:4px"><b>M12 · Service Aceite y filtros TIPO 1</b><span class="ax-muted">Faltan 4.200 km · en unos 36 días</span></div>';
+    $('d-load-fast').onclick = function () { AxUI.loading($('d-load-box'), wait(150).then(function () { return listo; }), skel); };
+    $('d-load-slow').onclick = function () { AxUI.loading($('d-load-box'), wait(1500).then(function () { return listo; }), skel); };
+    $('d-flash').onclick = function () { $('d-flash-state').innerHTML = '<span class="ax-status ax-status-warn">Arribado</span>'; AxUI.flash($('d-flash-row')); };
+    AxUI.tabs($('d-tabs'));
+  })();
+</script>
 <script>
   // Muestras de color leídas de los tokens (una sola fuente).
   var css = getComputedStyle(document.documentElement);

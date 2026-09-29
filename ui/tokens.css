@@ -80,5 +80,22 @@
   --ax-shadow-pop: 0 8px 24px rgba(0, 0, 0, .35);
   --ax-shadow-modal: 0 20px 60px rgba(0, 0, 0, .5);
 
-  --ax-dur: .15s;
+  /* Movimiento: corto y funcional; sólo para explicar de dónde viene o a dónde va algo.
+     Con "reducir movimiento" del sistema operativo, todo pasa a ser instantáneo. */
+  --ax-dur-fast: 120ms;   /* hover, press, color, switch */
+  --ax-dur: 180ms;        /* menús, avisos, pestañas, abrir/cerrar bloques */
+  --ax-dur-slow: 260ms;   /* modal, panel lateral, hoja desde abajo en el celular */
+  --ax-ease: cubic-bezier(.2, 0, 0, 1);        /* estándar: cambios en el lugar */
+  --ax-ease-in: cubic-bezier(.3, 0, 1, 1);      /* salida: lo que se va, acelera */
+  --ax-ease-out: cubic-bezier(0, 0, 0, 1);      /* entrada: lo que llega, frena */
+  --ax-toast-ms: 4000;    /* los avisos de éxito se van solos a los 4 s (los de error no) */
+
+  /* Capas (z-index): siempre de esta lista */
+  --ax-z-sticky: 10;
+  --ax-z-menu: 900;
+  --ax-z-modal: 1000;
+  --ax-z-toast: 1100;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --ax-dur-fast: 0ms; --ax-dur: 0ms; --ax-dur-slow: 0ms; }
 }
