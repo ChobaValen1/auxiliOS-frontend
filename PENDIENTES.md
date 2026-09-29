@@ -15,10 +15,9 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] Particular asignado (móvil + "El de la jornada del móvil"), sin patente: Arribado y Finalizar sin arribo funcionan. El menú ⋯ ya no ofrece Activado.
 - [ ] Planes base: en Control del camión → Planes base, marcar los planes de cada tipo y guardar. Revisar que cada móvil del tipo los tenga en su detalle.
-- [ ] AuxiliosQA carga combustible con la foto del ticket: que siga leyéndolo (procesar-ticket ahora exige sesión). Si falla, volver verify_jwt a false.
 - [ ] Subir documento (Camión) con una foto y un PDF reales de VTV o póliza: que complete vencimiento y número, y avise si la patente no coincide. No hace falta guardar.
-- [ ] AuxiliosQA firma un remito → el servicio desaparece de su lista y se le puede asignar otro servicio enseguida.
 
 - [ ] Editar un particular con el remito sin firmar (el caso con remito firmado ya se probó).
 - [ ] Remito sin asignación marcado como Particular (AuxiliosQA) → Crear y finalizar desde Operaciones → Registrar cobro del saldo.
@@ -26,6 +25,9 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] Firmar un remito saca el servicio de la lista del chofer (probado).
+- [x] procesar-ticket con sesión: probado con una carga real.
+- [x] Particular sin patente: Arribar y Finalizar ya no fallan (400). Un particular no puede quedar Activado.
 - [x] Detalle del camión: fecha estimada de cada service (km por día de los últimos 30 días), rendimiento km/l por carga con aviso de consumo alto, y pestaña Historial.
 - [x] Detalle del camión: encabezado con tipo, chofer y hora de inicio de la jornada, km actuales y km del mes; cuatro tarjetas de resumen y una pestaña por tema.
 - [x] Planes base por tipo de camión (Control del camión → Planes base). Los móviles nuevos, o los que cambian de tipo, los reciben solos.
