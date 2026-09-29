@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AuxiliOS · Sistema visual</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ui/tokens.css">
+<link rel="stylesheet" href="/ui/components.css">
+<style>
+  /* Sólo la maqueta de esta página; los componentes están en ui/components.css. */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); line-height: var(--ax-lh); }
+  .ds { max-width: 1120px; margin: 0 auto; padding: 32px 16px 80px; }
+  .ds-top { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .ds-top .logo { font-family: var(--ax-font-brand); font-size: 30px; letter-spacing: 2px; color: var(--ax-accent); }
+  .ds-intro { max-width: 760px; margin: 0 0 28px; color: var(--ax-text-2); }
+  .ds section { margin-top: 40px; }
+  .ds h2 { margin: 0 0 4px; font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+  .ds h2 + p { margin: 0 0 16px; color: var(--ax-text-2); max-width: 760px; }
+  .ds h4 { margin: 18px 0 8px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .grid { display: grid; gap: 12px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sw { display: grid; gap: 6px; }
+  .sw i { display: block; height: 52px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); }
+  .sw b { font-size: var(--ax-fs-sm); }
+  .sw code { color: var(--ax-text-3); font-family: var(--ax-font-mono); font-size: var(--ax-fs-xs); }
+  .rule { padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+  .rule b { display: block; margin-bottom: 4px; }
+  .rule p { margin: 0; color: var(--ax-text-2); }
+  .type > div { display: grid; grid-template-columns: 150px 1fr; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--ax-border); }
+  .type code { color: var(--ax-text-3); font-family: var(--ax-font-mono); font-size: var(--ax-fs-xs); }
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+  .icons div { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-xs); text-align: center; }
+  .icons div .ax-icon { width: 20px; height: 20px; color: var(--ax-text); }
+  .stage { position: relative; min-height: 340px; overflow: hidden; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius-xl); }
+  .stage .ax-backdrop, .stage .ax-drawer { position: absolute; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  @media (max-width: 800px) { .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .g2, .g3, .g4, .form-grid { grid-template-columns: minmax(0, 1fr); } .type > div { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+</head>
+<body>
+<main class="ds">
+  <div class="ds-top"><span class="logo">AuxiliOS</span><span class="ax-label">Sistema visual · v1</span></div>
+  <p class="ds-intro">Hoja de muestra de los colores, la tipografía, los íconos y los componentes base. Es la referencia para renovar cada pantalla: todo lo que se ve acá sale de <span class="ax-code">ui/tokens.css</span> y <span class="ax-code">ui/components.css</span>.</p>
+  <nav class="toc" aria-label="Secciones">
+    <a class="ax-chip" href="#reglas">Reglas</a><a class="ax-chip" href="#color">Color</a><a class="ax-chip" href="#tipo">Tipografía</a><a class="ax-chip" href="#iconos">Íconos</a>
+    <a class="ax-chip" href="#botones">Botones</a><a class="ax-chip" href="#campos">Campos</a><a class="ax-chip" href="#estados">Estados</a><a class="ax-chip" href="#tabla">Tabla</a>
+    <a class="ax-chip" href="#tarjetas">Tarjetas</a><a class="ax-chip" href="#avisos">Avisos</a><a class="ax-chip" href="#modal">Modal y panel</a>
+  </nav>
+
+  <section id="reglas">
+    <h2>Reglas</h2>
+    <p>Cuatro reglas que valen para todas las pantallas.</p>
+    <div class="grid g4">
+      <div class="rule"><b>Neutro por defecto</b><p>Fondos, bordes y textos en grises. El color no decora.</p></div>
+      <div class="rule"><b>Ámbar = acción o atención</b><p>El botón principal de cada pantalla, lo seleccionado, y lo que está por vencer o falta.</p></div>
+      <div class="rule"><b>Rojo = vencido o mal</b><p>Documentos vencidos, frenos mal, errores. Verde sólo para confirmar que algo salió bien.</p></div>
+      <div class="rule"><b>Un solo estilo por cosa</b><p>Un botón, una tabla, un modal. Sin estilos en línea ni emojis.</p></div>
+    </div>
+  </section>
+
+  <section id="color">
+    <h2>Color</h2>
+    <p>Siete colores de acento pasan a cuatro con significado fijo. Se quitan el cian, el violeta y el segundo azul (<span class="ax-code">--primary</span>).</p>
+    <h4 class="ax-label">Superficies</h4>
+    <div class="grid g4" id="sw-surf"></div>
+    <h4 class="ax-label">Texto</h4>
+    <div class="grid g4" id="sw-text"></div>
+    <h4 class="ax-label">Acción y estados</h4>
+    <div class="grid g4" id="sw-state"></div>
+  </section>
+
+  <section id="tipo">
+    <h2>Tipografía</h2>
+    <p>DM Sans para todo, con cifras tabulares en los números. DM Mono sólo para códigos, como patentes y N° de servicio. Bebas Neue sólo para el logo.</p>
+    <div class="type">
+      <div><code>xl · 18 · 700</code><span style="font-size:var(--ax-fs-xl);font-weight:700">Control del camión</span></div>
+      <div><code>lg · 15 · 700</code><span style="font-size:var(--ax-fs-lg);font-weight:700">Mantenimiento</span></div>
+      <div><code>md · 13 · 400</code><span>Service Aceite y filtros TIPO 1 · faltan 4.200 km</span></div>
+      <div><code>sm · 12 · 400</code><span class="ax-muted" style="font-size:var(--ax-fs-sm)">Fechas estimadas con el promedio de los últimos 30 días</span></div>
+      <div><code>xs · 11 · 700 · mayús.</code><span class="ax-label">Km actuales</span></div>
+      <div><code>2xl · 24 · 700</code><span class="ax-num" style="font-size:var(--ax-fs-2xl);font-weight:700">$ 1.284.500</span></div>
+      <div><code>mono · códigos</code><span class="ax-code">AB123CD · PART-00012</span></div>
+    </div>
+  </section>
+
+  <section id="iconos">
+    <h2>Íconos</h2>
+    <p>Lucide, con un mismo trazo, a 16 px en botones y tablas y a 20 px en encabezados. Toman el color del texto. Reemplazan a los emojis. Los archivos están dentro del proyecto, así que funcionan sin internet.</p>
+    <div class="icons" id="icons"></div>
+  </section>
+
+  <section id="botones">
+    <h2>Botones</h2>
+    <p>Un botón principal (ámbar) por pantalla o por modal. El resto son secundarios o de texto. En celular miden 44 px de alto, para tocarlos con el dedo.</p>
+    <div class="row">
+      <button class="ax-btn ax-btn-primary"><svg class="ax-icon"><use href="/ui/icons.svg#plus"/></svg>Nuevo servicio</button>
+      <button class="ax-btn"><svg class="ax-icon"><use href="/ui/icons.svg#hand-coins"/></svg>Registrar cobro</button>
+      <button class="ax-btn ax-btn-ghost">Cancelar</button>
+      <button class="ax-btn ax-btn-danger"><svg class="ax-icon"><use href="/ui/icons.svg#trash-2"/></svg>Anular</button>
+      <button class="ax-btn" disabled>Deshabilitado</button>
+      <button class="ax-btn ax-btn-icon" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="ax-btn ax-btn-sm"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#refresh-cw"/></svg>Actualizar</button>
+      <button class="ax-btn ax-btn-sm"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#download"/></svg>Exportar</button>
+      <button class="ax-btn ax-btn-primary ax-btn-sm"><svg class="ax-icon ax-icon-sm ax-spin"><use href="/ui/icons.svg#loader-circle"/></svg>Guardando…</button>
+      <button class="ax-link">Ver remito</button>
+    </div>
+  </section>
+
+  <section id="campos">
+    <h2>Campos</h2>
+    <p>Etiqueta arriba, ayuda o error abajo. En el celular los campos usan letra de 16 px, así iPhone no hace zoom al tocarlos.</p>
+    <div class="ax-card">
+      <div class="form-grid">
+        <label class="ax-field"><span>Cliente</span><input class="ax-input" value="María González"></label>
+        <label class="ax-field"><span>Teléfono</span><input class="ax-input" inputmode="tel" placeholder="11 5555 5555"></label>
+        <label class="ax-field ax-invalid"><span>DNI / CUIT</span><input class="ax-input" value="3012"><small class="ax-field-error">Tiene que tener 8 u 11 números.</small></label>
+        <label class="ax-field"><span>Móvil</span><select class="ax-select"><option>M12 · AB123CD</option><option>M07 · AC987ZX</option></select><small class="ax-field-help">El chofer sale de la jornada del móvil.</small></label>
+        <label class="ax-field"><span>Buscar</span><span class="ax-input-group"><svg class="ax-icon"><use href="/ui/icons.svg#search"/></svg><input class="ax-input" placeholder="Móvil, patente o chofer…"></span></label>
+        <label class="ax-field"><span>Observaciones</span><textarea class="ax-textarea" placeholder="Opcional"></textarea></label>
+      </div>
+      <div class="row" style="margin-top:14px;gap:18px">
+        <div class="ax-seg" role="group" aria-label="Pago al crear"><button aria-pressed="false">Sin pago</button><button aria-pressed="true">Seña</button><button aria-pressed="false">Pago total</button></div>
+        <label class="ax-switch"><input type="checkbox" checked> Pide factura</label>
+        <label class="ax-switch"><input type="checkbox"> Captado por el chofer</label>
+      </div>
+    </div>
+  </section>
+
+  <section id="estados">
+    <h2>Estados y chips</h2>
+    <p>Un estado es texto con un punto de color, sin fondo de color. Los chips son neutros y sirven para filtrar o etiquetar.</p>
+    <h4 class="ax-label">Servicio</h4>
+    <div class="row">
+      <span class="ax-status ax-status-muted">Pendiente</span>
+      <span class="ax-status">Programado</span>
+      <span class="ax-status ax-status-info">Asignado</span>
+      <span class="ax-status ax-status-warn">Arribado</span>
+      <span class="ax-status ax-status-ok">Finalizado</span>
+      <span class="ax-status ax-status-muted" style="text-decoration:line-through">Anulado</span>
+    </div>
+    <h4 class="ax-label">Atención</h4>
+    <div class="row">
+      <span class="ax-status ax-status-warn">Vence en 14 días</span>
+      <span class="ax-status ax-status-danger">Mal: frenos</span>
+      <span class="ax-status ax-status-danger">2 vencidos</span>
+      <span class="ax-status ax-status-ok">Cobrado</span>
+    </div>
+    <h4 class="ax-label">Chips</h4>
+    <div class="row">
+      <button class="ax-chip" aria-pressed="true">Todos</button><button class="ax-chip" aria-pressed="false">Particulares</button><button class="ax-chip" aria-pressed="false">Prestadoras</button>
+      <span class="ax-chip"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#truck"/></svg>Plancha</span>
+      <span class="ax-chip">Seña $ 30.000</span>
+    </div>
+    <h4 class="ax-label">Pestañas</h4>
+    <div class="ax-tabs" role="tablist">
+      <button class="ax-tab" role="tab" aria-selected="true">Mantenimiento</button>
+      <button class="ax-tab" role="tab" aria-selected="false">Documentación <span class="ax-count">3/5</span></button>
+      <button class="ax-tab" role="tab" aria-selected="false">Neumáticos y frenos</button>
+      <button class="ax-tab" role="tab" aria-selected="false">Combustible</button>
+      <button class="ax-tab" role="tab" aria-selected="false">Historial</button>
+    </div>
+  </section>
+
+  <section id="tabla">
+    <h2>Tabla</h2>
+    <p>Encabezado chico en mayúsculas y números alineados a la derecha. Toda la fila se puede tocar. Hacia la derecha, solo las acciones. En el celular, cada fila pasa a ser una tarjeta.</p>
+    <div class="ax-table-wrap">
+      <table class="ax-table ax-table-stack">
+        <thead><tr><th>Servicio</th><th>Cliente</th><th>Estado</th><th>Móvil</th><th class="ax-r">Saldo</th><th></th></tr></thead>
+        <tbody>
+          <tr class="ax-clickable"><td data-label="Servicio"><b class="ax-code">PART-00012</b><small>Hoy 10:30 · Particular</small></td><td data-label="Cliente">María González<small>AB123CD · Fiat Cronos</small></td><td data-label="Estado"><span class="ax-status ax-status-info">Asignado</span></td><td data-label="Móvil">M12<small>Juan Pérez</small></td><td data-label="Saldo" class="ax-r ax-num">$ 60.000</td><td data-label="" class="ax-r"><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button></td></tr>
+          <tr class="ax-clickable"><td data-label="Servicio"><b class="ax-code">89909</b><small>Hoy 09:10 · La Segunda</small></td><td data-label="Cliente">Carlos Díaz<small>AE222RT · Toyota Hilux</small></td><td data-label="Estado"><span class="ax-status ax-status-warn">Arribado</span></td><td data-label="Móvil">M07<small>Carlos Gómez</small></td><td data-label="Saldo" class="ax-r ax-num ax-muted">—</td><td data-label="" class="ax-r"><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button></td></tr>
+          <tr class="ax-clickable"><td data-label="Servicio"><b class="ax-code">PART-00009</b><small>Ayer 18:45 · Particular</small></td><td data-label="Cliente">Lucía Ramos<small>Sin patente</small></td><td data-label="Estado"><span class="ax-status ax-status-ok">Finalizado</span></td><td data-label="Móvil">M03<small>Luis Díaz</small></td><td data-label="Saldo" class="ax-r ax-num">$ 0</td><td data-label="" class="ax-r"><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="ax-table-wrap"><div class="ax-empty"><svg class="ax-icon"><use href="/ui/icons.svg#clipboard-check"/></svg><b>No hay servicios pendientes</b><span>Cuando entre uno nuevo aparece acá.</span></div></div>
+      <div class="ax-card grid" style="align-content:start"><span class="ax-label">Cargando</span><div class="ax-skeleton" style="width:70%"></div><div class="ax-skeleton" style="width:90%"></div><div class="ax-skeleton" style="width:55%"></div></div>
+    </div>
+  </section>
+
+  <section id="tarjetas">
+    <h2>Tarjetas y números</h2>
+    <p>Un número grande con su etiqueta, y la variación sólo si ayuda a decidir.</p>
+    <div class="grid g4">
+      <div class="ax-kpi"><span class="ax-label">Facturado</span><b>$ 4.812.300</b><small><span class="ax-kpi-delta-up">▲ 12 %</span> vs. mes anterior</small></div>
+      <div class="ax-kpi"><span class="ax-label">Servicios</span><b>148</b><small>32 particulares</small></div>
+      <div class="ax-kpi"><span class="ax-label">Km reales</span><b>18.940</b><small><span class="ax-kpi-delta-down">▼ 4 %</span> vs. mes anterior</small></div>
+      <div class="ax-kpi"><span class="ax-label">Con alertas</span><b style="color:var(--ax-warn)">4</b><small>de 9 móviles</small></div>
+    </div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="ax-card">
+        <div class="ax-card-head"><h3><svg class="ax-icon ax-icon-lg" style="color:var(--ax-text-2)"><use href="/ui/icons.svg#wrench"/></svg> Mantenimiento</h3><button class="ax-btn ax-btn-sm"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#plus"/></svg>Service</button></div>
+        <div class="row" style="justify-content:space-between"><b>Service Aceite y filtros TIPO 1</b><span class="ax-status ax-status-warn">Faltan 640 km</span></div>
+        <small class="ax-muted">Cada 15.000 km · en unos 5 días (04/10)</small>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3><svg class="ax-icon ax-icon-lg" style="color:var(--ax-text-2)"><use href="/ui/icons.svg#file-text"/></svg> Documentación</h3><span class="ax-status ax-status-warn">3/5</span></div>
+        <div class="row" style="justify-content:space-between"><span>VTV</span><span class="ax-status ax-status-warn">Vence en 14 días</span></div>
+        <div class="row" style="justify-content:space-between;margin-top:6px"><span>Póliza de seguro</span><span class="ax-muted">Vigente hasta 01/03/27</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="avisos">
+    <h2>Avisos</h2>
+    <p>En la página, para lo que hay que resolver. Flotantes, para confirmar que algo salió bien o mal.</p>
+    <div class="grid g2">
+      <div class="grid">
+        <div class="ax-alert"><svg class="ax-icon"><use href="/ui/icons.svg#info"/></svg><span>Las fechas se estiman con los km por día de los últimos 30 días.</span></div>
+        <div class="ax-alert ax-alert-warn"><svg class="ax-icon"><use href="/ui/icons.svg#triangle-alert"/></svg><span><b>La patente del documento no es la del móvil.</b><br>El documento dice AC987ZX y el móvil elegido es AB123CD.</span></div>
+        <div class="ax-alert ax-alert-danger"><svg class="ax-icon"><use href="/ui/icons.svg#circle-alert"/></svg><span>No se puede finalizar: falta cobrar $ 60.000.</span></div>
+      </div>
+      <div class="grid" style="align-content:start">
+        <div class="ax-toast ax-toast-ok"><svg class="ax-icon ax-icon-lg"><use href="/ui/icons.svg#circle-check"/></svg><span><b>Remito finalizado correctamente</b><small>Se creó y quedó guardado.</small></span></div>
+        <div class="ax-toast ax-toast-danger"><svg class="ax-icon ax-icon-lg"><use href="/ui/icons.svg#circle-x"/></svg><span><b>No se pudo guardar</b><small>Revisá la conexión y probá de nuevo.</small></span></div>
+        <div class="ax-menu" role="menu" style="width:240px">
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#eye"/></svg>Ver servicio</button>
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#pencil"/></svg>Editar</button>
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#hand-coins"/></svg>Registrar cobro</button>
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#map-pin"/></svg>Arribado</button>
+          <hr>
+          <button role="menuitem" class="ax-menu-danger"><svg class="ax-icon"><use href="/ui/icons.svg#circle-x"/></svg>Anular</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modal">
+    <h2>Modal y panel lateral</h2>
+    <p>El modal sirve para tareas cortas, con un solo botón principal. El panel lateral sirve para ver un registro sin perder la lista. En el celular, el modal sube desde abajo.</p>
+    <div class="grid g2">
+      <div class="stage">
+        <div class="ax-backdrop">
+          <div class="ax-modal" role="dialog" aria-labelledby="m-t">
+            <header><div><h2 id="m-t">Registrar cobro</h2><p>PART-00012 · María González</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+            <div class="ax-modal-body">
+              <div class="grid g3"><div><span class="ax-label">Presupuesto</span><div class="ax-num"><b>$ 90.000</b></div></div><div><span class="ax-label">Pagado</span><div class="ax-num"><b>$ 30.000</b></div></div><div><span class="ax-label">Saldo</span><div class="ax-num"><b style="color:var(--ax-warn)">$ 60.000</b></div></div></div>
+              <label class="ax-field"><span>Monto</span><input class="ax-input ax-num" value="60.000"></label>
+            </div>
+            <footer><button class="ax-btn ax-btn-ghost">Cancelar</button><button class="ax-btn ax-btn-primary">Registrar cobro</button></footer>
+          </div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="ax-drawer" style="width:min(340px,100%)">
+          <header><div><h2>M12</h2><p>AB123CD · Iveco Daily · 2019</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+          <div class="ax-modal-body">
+            <div><span class="ax-label">Estado</span><div><span class="ax-status ax-status-info">En servicio · PART-00012</span></div></div>
+            <div><span class="ax-label">Chofer</span><div>Juan Pérez · desde las 07:45</div></div>
+            <div><span class="ax-label">Km actuales</span><div class="ax-num">184.230 km</div></div>
+          </div>
+          <footer><button class="ax-btn ax-btn-primary">Abrir detalle</button></footer>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+  // Muestras de color leídas de los tokens (una sola fuente).
+  var css = getComputedStyle(document.documentElement);
+  function swatches(id, list) {
+    document.getElementById(id).innerHTML = list.map(function (x) {
+      var v = css.getPropertyValue(x[0]).trim();
+      return '<div class="sw"><i style="background:' + v + '"></i><b>' + x[1] + '</b><code>' + x[0] + ' · ' + v + '</code></div>';
+    }).join('');
+  }
+  swatches('sw-surf', [['--ax-bg', 'Fondo'], ['--ax-surface', 'Barra y encabezados'], ['--ax-surface-2', 'Tarjetas y tablas'], ['--ax-surface-3', 'Hover y selección'], ['--ax-border', 'Borde'], ['--ax-border-strong', 'Borde fuerte']]);
+  swatches('sw-text', [['--ax-text', 'Texto'], ['--ax-text-2', 'Secundario'], ['--ax-text-3', 'Etiquetas y ayudas']]);
+  swatches('sw-state', [['--ax-accent', 'Acción principal y atención'], ['--ax-danger', 'Vencido, mal, error'], ['--ax-ok', 'Confirmado'], ['--ax-info', 'En servicio, enlaces']]);
+  // Íconos del sprite, con el uso de cada uno en AuxiliOS.
+  var ICONOS = [['truck', 'Móvil'], ['car', 'Vehículo del cliente'], ['file-text', 'Remito / documento'], ['receipt', 'Factura'], ['hand-coins', 'Cobro'], ['wallet', 'Rendición'], ['banknote', 'Efectivo'], ['credit-card', 'Tarjeta'],
+    ['fuel', 'Combustible'], ['wrench', 'Service'], ['disc', 'Neumáticos'], ['gauge', 'Km'], ['calendar', 'Fecha'], ['clock', 'Hora'], ['user', 'Chofer'], ['users', 'Choferes'],
+    ['map-pin', 'Arribado / origen'], ['route', 'Recorrido'], ['phone', 'Teléfono'], ['building-2', 'Prestadora'], ['signature', 'Firma'], ['camera', 'Foto'], ['clipboard-check', 'Control'], ['shield-check', 'Seguro'],
+    ['layout-dashboard', 'Panel'], ['chart-column', 'Tendencia'], ['history', 'Historial'], ['search', 'Buscar'], ['sliders-horizontal', 'Filtros'], ['plus', 'Nuevo'], ['pencil', 'Editar'], ['trash-2', 'Anular'],
+    ['ellipsis', 'Más acciones'], ['download', 'Exportar'], ['upload', 'Subir'], ['eye', 'Ver'], ['refresh-cw', 'Actualizar'], ['triangle-alert', 'Atención'], ['circle-check', 'Listo'], ['wifi-off', 'Sin conexión']];
+  document.getElementById('icons').innerHTML = ICONOS.map(function (x) {
+    return '<div><svg class="ax-icon"><use href="/ui/icons.svg#' + x[0] + '"/></svg>' + x[1] + '<span class="ax-code" style="color:var(--ax-text-3)">' + x[0] + '</span></div>';
+  }).join('');
+</script>
+</body>
+</html>
