@@ -36,6 +36,13 @@
   function db() { return typeof _db !== 'undefined' ? _db : null; }
   function OS() { return global.OperatorServices && global.OperatorServices.S || {}; }
   function el(id) { return document.getElementById(id); }
+  /* Sistema visual (ui/ax.js): íconos del sprite y la marca en curso / listo / error. */
+  function ico(name, cls) { return '<svg class="ax-icon' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="/ui/icons.svg#' + name + '"/></svg>'; }
+  function marca(state, text, extra) {
+    return '<span class="psv-status' + (extra ? ' ' + extra : '') + '" data-status="' + state + '">' +
+      (state === 'warn' ? ico('triangle-alert', 'ax-icon-sm') : '<i class="ax-mark" data-psv-mark="' + state + '"></i>') + '<span>' + esc(text) + '</span></span>';
+  }
+  function reduceMovimiento() { return !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches); }
   function num(v) { var n = Number(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.')); return isFinite(n) ? n : 0; }
   function digits(v) { return String(v == null ? '' : v).replace(/\D/g, ''); }
   function esc(v) {
@@ -165,6 +172,8 @@
     pintar();
     try {
       await cargarCuenta();
+      // Para confirmar si el móvil y el chofer que se eligen están libres.
+      try { if (global.OperatorServices && global.OperatorServices.loadResourceAvailability) await global.OperatorServices.loadResourceAvailability(); } catch (e) { /* sin disponibilidad, se asigna igual */ }
       var r = await db().rpc('get_operator_service_context_v1', { p_company_id: cuenta.company_id, p_scheduled_for: new Date().toISOString() });
       if (r.error) throw r.error;
       st.ctx = r.data || {};
@@ -281,8 +290,12 @@
     return d.pago !== 'no' && monto > 0 ? { amount: monto, method: d.sena_medio } : null;
   }
 
-  function errores() {
-    var d = st.d, e = [];
+  function errores() { return erroresPorCampo().map(function (x) { return x.m; }); }
+  /* Cada error dice a qué campo pertenece: se muestra debajo de ese campo.
+     Los que no tienen campo (k vacío) van en un aviso. */
+  function erroresPorCampo() {
+    var d = st.d, e = [], push = e.push;
+    e.push = function (m) { return push.call(e, { k: CAMPO_DE[m] || campoDe(m), m: m }); };
     if (!d.customer_name.trim()) e.push('Completá el nombre del cliente.');
     if (digits(d.customer_phone).length < 8) e.push('Completá el teléfono del cliente.');
     if (!d.primary_concept_id) e.push('Elegí el tipo de servicio.');
@@ -300,7 +313,20 @@
     if (d.captado && !d.referred_by_driver_id) e.push('Elegí el chofer que consiguió el servicio.');
     // Crear y finalizar: un particular no se finaliza sin el cobro del total.
     if (st.intake && num(d.presupuesto) > 0 && d.pago !== 'total') e.push('Para crear y finalizar, el cobro tiene que cubrir el presupuesto. Marcá Todo si ya se cobró el total.');
+    delete e.push;
     return e;
+  }
+  var CAMPO_DE = {
+    'Completá el nombre del cliente.': 'customer_name', 'Completá el teléfono del cliente.': 'customer_phone',
+    'Elegí el tipo de servicio.': 'primary_concept_id', 'Completá el origen.': 'origin', 'Completá el destino.': 'destination',
+    'Elegí fecha y hora.': 'scheduled_for', 'Completá el presupuesto.': 'presupuesto',
+    'El DNI tiene 8 dígitos y el CUIT 11.': 'customer_document', 'Para facturar completá el DNI o CUIT.': 'customer_document',
+    'Si asignás chofer, elegí también el móvil.': 'assigned_truck_id', 'Elegí el chofer que consiguió el servicio.': 'referred_by_driver_id'
+  };
+  function campoDe(m) {
+    if (/presupuesto no puede ser menor/.test(m)) return 'presupuesto';
+    if (/seña|cuánto cobró|Lo cobrado/i.test(m)) return 'sena_monto';
+    return '';
   }
 
   function opciones(lista, sel, vacio) {
@@ -310,7 +336,14 @@
   }
 
   function campo(id, label, html, extra) {
-    return '<label class="psv-field' + (extra ? ' ' + extra : '') + '" for="psv-' + id + '"><span>' + label + '</span>' + html + '</label>';
+    var err = st && st.fieldErrors && st.fieldErrors[id];
+    return '<label class="psv-field' + (extra ? ' ' + extra : '') + (err ? ' ax-invalid' : '') + '" for="psv-' + id + '"><span>' + label + '</span>' + html +
+      (err ? '<small class="psv-field-error" role="alert">' + esc(err) + '</small>' : '') + extraCampo(id) + '</label>';
+  }
+  /* Debajo de Móvil y Chofer: si está libre, la marca lo confirma. */
+  function extraCampo(id) {
+    if (id !== 'assigned_truck_id' && id !== 'assigned_driver_id') return '';
+    return '<span class="psv-res" id="psv-res-' + (id === 'assigned_truck_id' ? 'truck' : 'driver') + '"></span>';
   }
   function grupo(label, html) {
     return '<div class="psv-field"><span>' + label + '</span>' + html + '</div>';
@@ -325,16 +358,21 @@
   }
 
   function direccion(kind, label) {
-    var d = st.d, ok = d[kind + '_place_id'];
-    return '<div class="psv-field psv-addr"><span>' + label + '</span>' +
-      '<input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad">' +
-      '<em class="psv-addr-state ' + (ok ? 'ok' : d[kind] ? 'warn' : '') + '">' + (ok ? 'Validada' : d[kind] ? 'Sin validar' : '') + '</em>' +
+    var d = st.d, ok = d[kind + '_place_id'], a = st.addr[kind], err = st.fieldErrors && st.fieldErrors[kind];
+    var estado = a.validando ? marca('running', 'Validando…') : ok ? marca(a.recien ? 'running' : 'done', a.recien ? 'Validando…' : 'Validada', a.recien ? 'is-just' : '') :
+      d[kind] ? marca('warn', 'Sin validar') : '';
+    return '<div class="psv-field psv-addr' + (err ? ' ax-invalid' : '') + (ok ? ' is-valid' : '') + '"><span>' + label + '</span>' +
+      '<div class="psv-addr-input">' + ico('map-pin') + '<input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad"></div>' +
+      '<em class="psv-addr-state ' + (ok ? 'ok' : d[kind] ? 'warn' : '') + '">' + estado + '</em>' +
+      (err ? '<small class="psv-field-error" role="alert">' + esc(err) + '</small>' : '') +
       '<div class="psv-sugs" id="psv-' + kind + '-sugs" hidden></div></div>';
   }
 
   function pintar() {
     var m = modal('psv-form');
     if (!st) { m.hidden = true; return; }
+    // Sólo entra con movimiento al abrirse; repintar no lo vuelve a animar.
+    if (m.hidden) m.setAttribute('data-enter', ''); else m.removeAttribute('data-enter');
     m.hidden = false;
     document.body.classList.add('psv-open');
     if (st.busy && !st.ctx) {
@@ -385,7 +423,8 @@
           (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : '')) +
         '</div>' +
         '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + '</div>' +
-        (d.route ? '<p class="psv-hint">Recorrido: ' + esc(d.route) + '</p>' : '') +
+        (st.calculando ? '<p class="psv-hint psv-route">' + marca('running', 'Calculando el recorrido…') + '</p>' :
+          d.route ? '<p class="psv-hint psv-route">' + marca('done', 'Recorrido: ' + d.route) + '</p>' : '') +
         '</section>' +
         '<section><h3>Observaciones</h3>' +
           '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="2" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
@@ -430,12 +469,73 @@
         '<button type="button" class="psv-btn primary" data-psv="guardar"' + (st.busy ? ' disabled' : '') + '>' +
         (st.busy ? 'Guardando…' : st.edit ? 'Guardar cambios' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
       '</div>';
+    marcas(m);
+    confirmarRecientes(m);
+    pintarRecursos(false);
     // Con remito firmado, cliente, vehículo y asignación vienen del remito.
     if (st.edit && st.edit.firmado) {
       ['customer_name', 'customer_phone', 'vehicle_plate', 'vehicle_make_model', 'assigned_truck_id', 'assigned_driver_id'].forEach(function (k) {
         var f = el('psv-' + k); if (f) { f.disabled = true; f.title = 'Viene del remito firmado'; }
       });
     }
+  }
+
+  function marcas(root) {
+    if (!global.AxUI || !global.AxUI.mark) return;
+    root.querySelectorAll('[data-psv-mark]').forEach(function (x) { global.AxUI.mark(x, x.getAttribute('data-psv-mark')); });
+  }
+  /* Una dirección recién elegida: la marca gira un instante y confirma con el tilde. */
+  function confirmarRecientes(root) {
+    ['origin', 'destination'].forEach(function (kind) {
+      var a = st.addr[kind];
+      if (!a.recien) return;
+      a.recien = false;
+      var box = root.querySelector('#psv-' + kind);
+      var em = box && box.closest('.psv-addr') && box.closest('.psv-addr').querySelector('.psv-status');
+      if (!em) return;
+      setTimeout(function () {
+        if (!em.isConnected) return;
+        em.setAttribute('data-status', 'done');
+        em.querySelector('span').textContent = 'Validada';
+        if (global.AxUI && global.AxUI.mark) global.AxUI.mark(em.querySelector('.ax-mark'), 'done');
+      }, reduceMovimiento() ? 0 : 420);
+    });
+  }
+  /* Móvil y chofer: en lugar de "Disponible", la marca confirma que están libres
+     (o dice por qué no). Si no se elige chofer, va el de la jornada del móvil. */
+  function pintarRecursos(animar) {
+    var O = global.OperatorServices || {}, S = OS(), d = st && st.d;
+    if (!d) return;
+    function linea(id, state, text) {
+      var host = el(id);
+      if (!host) return;
+      var key = state + '|' + text;
+      if (host.dataset.key === key) return;
+      host.dataset.key = key;
+      if (!state) { host.innerHTML = text ? '<span class="psv-status"><span>' + esc(text) + '</span></span>' : ''; return; }
+      if (animar && state !== 'warn' && !reduceMovimiento()) {
+        host.innerHTML = marca('running', 'Verificando…');
+        marcas(host);
+        clearTimeout(host._t);
+        host._t = setTimeout(function () { host.innerHTML = marca(state, text); marcas(host); }, 420);
+        return;
+      }
+      host.innerHTML = marca(state, text);
+      marcas(host);
+    }
+    var t = d.assigned_truck_id, dr = d.assigned_driver_id;
+    var bT = t && O.resourceBlocker ? O.resourceBlocker('truck', t) : '';
+    var hT = t && O.resourceHint ? O.resourceHint('truck', t) : '';
+    linea('psv-res-truck', !t ? '' : bT ? 'error' : /Sin jornada/.test(hT) ? 'warn' : 'done', !t ? '' : bT || hT || 'Elegido');
+    if (dr) {
+      var bD = O.resourceBlocker ? O.resourceBlocker('driver', dr) : '';
+      var hD = O.resourceHint ? O.resourceHint('driver', dr) : '';
+      linea('psv-res-driver', bD ? 'error' : /Sin jornada/.test(hD) ? 'warn' : 'done', bD || hD || 'Elegido');
+    } else if (t) {
+      var truck = (S.trucks || []).find(function (x) { return String(x.truck_id) === String(t); });
+      var chofer = truck && truck.active_driver_id && (S.drivers || []).find(function (x) { return String(x.user_id) === String(truck.active_driver_id); });
+      linea('psv-res-driver', chofer ? 'done' : 'warn', chofer ? (chofer.full_name || chofer.name) + ' · jornada del móvil' : 'El móvil no tiene jornada abierta: elegí el chofer');
+    } else linea('psv-res-driver', '', '');
   }
 
   /* Repintar pierde el foco del campo que se está escribiendo; sólo se repinta
@@ -445,7 +545,13 @@
   function onInput(ev) {
     var t = ev.target;
     if (!st || !t) return;
-    var k = t.getAttribute('data-psv-k');
+    var k = t.getAttribute('data-psv-k') || t.getAttribute('data-psv-addr');
+    if (k && st.fieldErrors && st.fieldErrors[k]) {
+      delete st.fieldErrors[k];
+      var host = t.closest('.psv-field');
+      if (host) { host.classList.remove('ax-invalid'); var fe = host.querySelector('.psv-field-error'); if (fe) fe.remove(); }
+    }
+    k = t.getAttribute('data-psv-k');
     if (k) {
       if (k === 'customer_document' || k === 'customer_phone') {
         var limpio = digits(t.value).slice(0, k === 'customer_document' ? 11 : 13);
@@ -462,6 +568,7 @@
         if (pt) pt.value = Math.round(num(st.d.presupuesto)).toLocaleString('es-AR');
       }
       if (k === 'primary_concept_id' && ev.type === 'change') calcularRuta();
+      if ((k === 'assigned_truck_id' || k === 'assigned_driver_id') && ev.type === 'change') pintarRecursos(true);
       return;
     }
     var kind = t.getAttribute('data-psv-addr');
@@ -529,6 +636,9 @@
   async function elegirDireccion(kind, i) {
     var a = st.addr[kind], s = a.list[i];
     if (!s) return;
+    a.validando = true; st.d[kind] = s.text || s.mainText;
+    mostrarSugerencias(kind, null, '');
+    pintar();
     try {
       var r = await db().functions.invoke('maps-proxy', { body: { action: 'place', placeId: s.placeId, sessionToken: a.token || newToken() } });
       if (r.error) throw r.error;
@@ -541,15 +651,19 @@
       })());
       a.token = newToken();
       a.list = [];
+      a.validando = false; a.recien = true;
+      if (st.fieldErrors) delete st.fieldErrors[kind];
       pintar();
       calcularRuta();
-    } catch (e) { notify(e.message || 'No se pudo validar la dirección.', 'error'); }
+    } catch (e) { a.validando = false; pintar(); notify(e.message || 'No se pudo validar la dirección.', 'error'); }
   }
 
   async function calcularRuta() {
     var d = st.d;
     var dest = unaDireccion() ? { latitude: d.origin_lat, longitude: d.origin_lng } : { latitude: d.destination_lat, longitude: d.destination_lng };
     if (!d.origin_lat || !dest.latitude) return;
+    st.calculando = true;
+    pintarRuta();
     try {
       var r = await db().functions.invoke('maps-proxy', { body: { action: 'route', routeMode: 'origin_destination',
         origin: { latitude: d.origin_lat, longitude: d.origin_lng }, destination: dest,
@@ -560,11 +674,23 @@
         route_toll_estimate: Number(x.toll && x.toll.amount) || 0, route_toll_currency: (x.toll && x.toll.currencyCode) || '',
         route_provider: x.provider || 'google_routes', route_calculated_at: new Date().toISOString(), route_legs: x.legs || [],
         estimated_asphalt_km: km, estimated_gravel_km: 0, estimated_distance_km: km };
-      d.route = km ? km.toLocaleString('es-AR') + ' km' : null;
-      var h = document.querySelector('#psv-form .psv-hint');
-      if (h) h.textContent = d.route ? 'Recorrido: ' + d.route : '';
-      else if (d.route) pintar();
-    } catch (e) { st.routeData = null; }
+      d.route = km ? km.toLocaleString('es-AR') + ' km' + (x.durationSeconds ? ' · ' + Math.round(Number(x.durationSeconds) / 60) + ' min' : '') : null;
+      st.calculando = false;
+      pintarRuta(true);
+    } catch (e) { st.routeData = null; st.calculando = false; pintarRuta(); }
+  }
+  /* Repinta sólo la línea del recorrido (no el formulario, para no perder el foco). */
+  function pintarRuta(llego) {
+    if (!st) return;
+    var grid = document.querySelector('#psv-form .psv-grid-addr');
+    if (!grid) return;
+    var h = document.querySelector('#psv-form .psv-route');
+    var html = st.calculando ? marca('running', 'Calculando el recorrido…') : st.d.route ? marca('done', 'Recorrido: ' + st.d.route) : '';
+    if (!html) { if (h) h.remove(); return; }
+    if (!h) { h = document.createElement('p'); h.className = 'psv-hint psv-route'; grid.insertAdjacentElement('afterend', h); }
+    h.innerHTML = html;
+    marcas(h);
+    if (llego && global.AxUI && global.AxUI.flash) global.AxUI.flash(h);
   }
 
   /* ── Guardar ──────────────────────────────────────────────────────────── */
@@ -610,8 +736,18 @@
 
   async function guardar() {
     if (!st || st.busy) return;
-    var e = errores();
-    if (e.length) { st.error = e.join(' '); pintar(); return; }
+    var e = erroresPorCampo();
+    st.fieldErrors = {};
+    if (e.length) {
+      var sueltos = [];
+      e.forEach(function (x) { if (x.k && !st.fieldErrors[x.k]) st.fieldErrors[x.k] = x.m; else if (!x.k) sueltos.push(x.m); });
+      st.error = '';
+      pintar();
+      if (sueltos.length) notify(sueltos.join(' '), 'warning');
+      var primero = document.querySelector('#psv-form .ax-invalid input, #psv-form .ax-invalid select');
+      if (primero) primero.focus();
+      return;
+    }
     st.busy = true; st.error = '';
     pintar();
     try {
@@ -661,6 +797,7 @@
       S.view = 'active'; S.status = 'all'; S.selectedIntakeId = null;
       if (typeof global.goTo === 'function') global.goTo('operaciones');
       if (global.cargarServiciosOperador) await global.cargarServiciosOperador();
+      if (global.AuxiliosUI && global.AuxiliosUI.resaltarServicio) global.AuxiliosUI.resaltarServicio(res.service_id, numero);
     } catch (err) {
       st.busy = false;
       st.error = err.message || 'No se pudo crear el servicio.';

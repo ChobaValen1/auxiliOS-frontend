@@ -15,6 +15,8 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] Formularios de nuevo servicio (Prestadora y Particular) con QA: al elegir móvil y chofer aparece la marca de libre (o por qué no); al elegir una sugerencia de dirección, "Validando…" y el tilde; los km se calculan con la marca. Crear sin completar marca los campos, sin la franja roja.
+- [ ] Cambio de estado desde la fila (Asignar, Arribado, Finalizar, Anular) con QA: menú nuevo, modales oscuros y la fila se marca al volver.
 - [ ] Sistema visual en Servicios y en la lista del chofer: revisar en la vista previa la tabla (código fijo a la izquierda al desplazar), el menú ⋯, los filtros y, en el celular, las tarjetas. Los avisos de toda la app cambiaron: los de error quedan hasta cerrarlos.
 - [ ] Particular asignado (móvil + "El de la jornada del móvil"), sin patente: Arribado y Finalizar sin arribo funcionan. El menú ⋯ ya no ofrece Activado.
 - [ ] Planes base: en Control del camión → Planes base, marcar los planes de cada tipo y guardar. Revisar que cada móvil del tipo los tenga en su detalle.
@@ -26,6 +28,9 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] Registrar cobro ya no aparece en Historial, y la base rechaza cobros en servicios finalizados o anulados (register_service_payment_v1).
+- [x] Servicios: Activos/Historial se desliza, filtros sin caja de fondo, Personalizar columnas con el sistema visual.
+- [x] "Servicio creado" y los demás avisos de operación: en la oficina, aviso que no tapa la pantalla y la fila nueva marcada; al chofer, en el centro con el tilde.
 - [x] Sistema visual aplicado: tokens y componentes en toda la app, avisos nuevos, Servicios (tabla, filtros, estados, menú y tarjetas en el celular) y la lista del chofer (tarjeta y hoja del servicio). La pantalla de Servicios ya no se ensancha de costado.
 - [x] Firmar un remito saca el servicio de la lista del chofer (probado).
 - [x] procesar-ticket con sesión: probado con una carga real.

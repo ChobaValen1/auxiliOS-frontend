@@ -130,6 +130,10 @@
   }
 
   async function abrir(id, opciones) {
+    if (cerrado(servicio(id))) {
+      if (typeof global.toast === 'function') global.toast('El servicio ya está cerrado: los cobros se registran antes de finalizarlo', 'warning');
+      return;
+    }
     st = { id: id, servicio: servicio(id), info: null, monto: '', medio: 'cash', nota: '', busy: false, error: '',
            finalizar: !!(opciones && opciones.finalizar), reporte: null };
     pintar();
@@ -216,6 +220,8 @@
     if (ev.key === 'Escape' && st) cerrar();
   });
 
+  function cerrado(s) { return !!s && ['completed', 'cancelled'].indexOf(s.status) >= 0; }
+
   /* Menú ⋯ del servicio: "Registrar cobro" en los particulares. */
   /* Finalizar un particular con saldo: primero el cobro. */
   function engancharFinalizar() {
@@ -242,7 +248,9 @@
     var w = function (event, id) {
       var r = original.apply(this, arguments);
       var menu = document.getElementById('os-row-menu');
-      if (menu && !menu.hidden && esParticular(servicio(id))) {
+      // En Historial (finalizado o anulado) ya no se cobra: el saldo se registra antes de finalizar.
+      var sv = servicio(id);
+      if (menu && !menu.hidden && esParticular(sv) && !cerrado(sv)) {
         var b = document.createElement('button');
         b.type = 'button';
         b.textContent = 'Registrar cobro';

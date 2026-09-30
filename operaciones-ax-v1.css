@@ -11,11 +11,20 @@
 #screen-operaciones .os-status-tabs, #screen-operaciones .os-table-wrap, #screen-operaciones .os-intake-list { contain: inline-size; }
 
 /* ── Barra de comandos ─────────────────────────────────────────────── */
-#screen-operaciones .os-commandbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-2); padding: var(--ax-sp-2); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
-#screen-operaciones .os-view-switch { flex: 0 0 auto; padding: 3px; gap: 2px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
-#screen-operaciones .os-view-switch button { height: calc(var(--ax-h) - 8px); padding: 0 12px; border-radius: var(--ax-radius-sm); color: var(--ax-text-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+/* Sin caja de fondo: los filtros van sueltos arriba de la tabla. */
+#screen-operaciones .os-commandbar { position: static; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); padding: 0; border: 0; border-radius: 0; background: none; }
+/* Activos | Historial: la marca se desliza al lado elegido y la tabla entra suave. */
+#screen-operaciones .os-view-switch { position: relative; display: grid; grid-template-columns: 1fr 1fr; flex: 0 0 auto; padding: 3px; gap: 2px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-operaciones .os-view-switch:has(> button[hidden]) { grid-template-columns: 1fr; }
+#screen-operaciones .os-view-switch::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 4px); border-radius: var(--ax-radius-sm); background: var(--ax-surface-3); box-shadow: inset 0 0 0 1px var(--ax-border-strong); transition: transform var(--ax-dur-slow) var(--ax-ease); }
+#screen-operaciones .os-view-switch:has(> button[hidden])::before { width: calc(100% - 6px); }
+#screen-operaciones .os-view-switch.is-history::before { transform: translateX(calc(100% + 2px)); }
+#screen-operaciones .os-view-switch button { position: relative; z-index: 1; height: calc(var(--ax-h) - 8px); padding: 0 14px; border-radius: var(--ax-radius-sm); background: transparent !important; color: var(--ax-text-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: color var(--ax-dur) var(--ax-ease); }
 #screen-operaciones .os-view-switch button:hover { color: var(--ax-text); }
-#screen-operaciones .os-view-switch button.active { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#screen-operaciones .os-view-switch button.active { color: var(--ax-text); box-shadow: none; }
+#screen-operaciones .os-view-switch button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-operaciones .os-view-enter { animation: os-view-enter var(--ax-dur-slow) var(--ax-ease-out) both; }
+@keyframes os-view-enter { from { opacity: 0; transform: translateY(6px); } }
 #screen-operaciones .os-count { flex: 0 0 auto; color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
 #screen-operaciones .os-filters { flex: 1 1 520px; gap: var(--ax-sp-2); }
 #screen-operaciones .os-icon-btn { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--ax-h); height: var(--ax-h); padding: 0; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
@@ -151,3 +160,34 @@
   #screen-operaciones .os-table tr.os-remito-awaiting-review { box-shadow: inset 3px 0 var(--ax-danger); }
   #screen-operaciones .os-table tr.os-remito-awaiting-review > td:first-child { box-shadow: none; }
 }
+
+/* ── Personalizar vista ────────────────────────────────────────────── */
+#os-view-settings .os-view-dialog { width: min(520px, calc(100vw - 32px)); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#os-view-settings .os-view-dialog header, #os-view-settings .os-view-dialog footer { gap: var(--ax-sp-3); padding: var(--ax-sp-4) var(--ax-sp-5); border-color: var(--ax-border); }
+#os-view-settings .os-view-dialog header { align-items: flex-start; }
+#os-view-settings .os-view-dialog header b { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#os-view-settings .os-view-dialog header small { margin-top: 4px; color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: var(--ax-lh); }
+#os-view-settings .os-dialog-close { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--ax-h); height: var(--ax-h); border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#os-view-settings .os-dialog-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#os-view-settings #os-view-settings-body { padding: var(--ax-sp-3) var(--ax-sp-5); }
+#os-view-settings .os-location-settings { grid-template-columns: repeat(3, auto); justify-content: start; gap: var(--ax-sp-3) var(--ax-sp-5); margin-bottom: var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#os-view-settings .os-location-settings > div b, #os-view-settings .os-view-row b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-view-settings .os-location-settings > div small, #os-view-settings .os-view-row small { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#os-view-settings .os-location-settings > div { grid-column: 1 / -1; }
+#os-view-settings .os-location-settings .ax-switch { color: var(--ax-text); font-size: var(--ax-fs-md); }
+#os-view-settings .os-view-row { gap: var(--ax-sp-3); padding: 8px 2px; border-color: var(--ax-border); }
+#os-view-settings .os-view-row span { gap: 4px; }
+#os-view-settings .os-move { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#os-view-settings .os-move:hover:not(:disabled) { background: var(--ax-surface-3); color: var(--ax-text); }
+#os-view-settings .os-move:disabled { opacity: .35; cursor: default; }
+#os-view-settings .os-move-up .ax-icon { transform: rotate(180deg); }
+#os-view-settings .os-view-dialog footer .btn { height: var(--ax-h); padding: 0 14px; border-radius: var(--ax-radius); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-view-settings .os-view-dialog footer .btn-ghost { border: 1px solid transparent; background: transparent; color: var(--ax-text-2); }
+#os-view-settings .os-view-dialog footer .btn-ghost:hover { color: var(--ax-text); }
+#os-view-settings .os-view-dialog footer .btn-primary { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#os-view-settings .os-view-dialog footer .btn-primary:hover { background: var(--ax-accent-hover); }
+@media (max-width: 640px) {
+  #os-view-settings .os-view-dialog { width: 100%; margin: auto 0 0; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; animation-name: ax-sheet-in; }
+  #os-view-settings .os-location-settings { grid-template-columns: 1fr; }
+}
+

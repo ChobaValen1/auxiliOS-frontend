@@ -111,7 +111,7 @@
         '</div>' +
         '<footer><button type="button" class="psv-btn" data-pvw="cerrar">Cerrar</button>' +
           (!cerrado && typeof global.editarServicioOperador === 'function' ? '<button type="button" class="psv-btn" data-pvw="editar">Editar</button>' : '') +
-          (p && saldo > 0 && s.status !== 'cancelled' ? '<button type="button" class="psv-btn" data-pvw="cobro">Registrar cobro</button>' : '') +
+          (p && saldo > 0 && !cerrado ? '<button type="button" class="psv-btn" data-pvw="cobro">Registrar cobro</button>' : '') +
           (['assigned', 'at_origin'].indexOf(s.status) >= 0 && typeof global.finalizarServicioOperador === 'function' ? '<button type="button" class="psv-btn primary" data-pvw="finalizar">Finalizar</button>' : '') +
         '</footer>' +
       '</div>';

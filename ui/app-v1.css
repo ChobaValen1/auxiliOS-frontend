@@ -11,3 +11,12 @@
 @media (max-width: 767px) {
   .ax-toasts { bottom: calc(60px + var(--ax-sp-3) + env(safe-area-inset-bottom)); }
 }
+
+/* Confirmación en el centro (chofer): tilde que se dibuja; se va sola o al tocarla. */
+#ax-feedback { position: fixed; inset: 0; z-index: 20001; display: grid; place-items: center; padding: var(--ax-sp-5); background: rgba(0, 0, 0, .55); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; cursor: pointer; }
+#ax-feedback[data-closing] { animation: ax-fade-out var(--ax-dur) var(--ax-ease-in) both; }
+#ax-feedback > div { display: grid; justify-items: center; gap: var(--ax-sp-2); width: min(340px, 92vw); padding: var(--ax-sp-6) var(--ax-sp-5); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); text-align: center; animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#ax-feedback .ax-feedback-mark { width: 56px; height: 56px; margin-bottom: var(--ax-sp-2); }
+#ax-feedback .ax-feedback-mark .ax-mark-ring, #ax-feedback .ax-feedback-mark .ax-mark-arc, #ax-feedback .ax-feedback-mark .ax-mark-ok, #ax-feedback .ax-feedback-mark .ax-mark-ko { stroke-width: 1.6; }
+#ax-feedback strong { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#ax-feedback small { color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: var(--ax-lh); }

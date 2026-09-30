@@ -1,0 +1,255 @@
+/* AuxiliOS · Formulario de servicio de Prestadora con el sistema visual
+   Va encima de operator-service-workspace-reactive-v1.css y de
+   operator-service-commercial-addons-v1.css: todo cuelga de #modal-operador-wizard
+   para ganar sin depender del orden de carga. Sólo tokens.
+   · Letra legible (13 px en campos, 12 en ayudas) y campos de 36 px.
+   · Origen y Destino neutros: el estado lo dice la marca (validada / sin validar),
+     no el color de toda la caja.
+   · Lo que falta se marca en el campo con el texto debajo; no hay franja roja arriba. */
+
+#modal-operador-wizard .osv4-reactive {
+  --osv2-bg: var(--ax-bg);
+  --osv2-panel: var(--ax-surface);
+  --osv2-card: var(--ax-surface-2);
+  --osv2-border: var(--ax-border);
+  --osv2-border-strong: var(--ax-border-strong);
+  --osv2-text: var(--ax-text);
+  --osv2-muted: var(--ax-text-3);
+  --osv2-muted2: var(--ax-text-2);
+  --osv2-amber: var(--ax-accent);
+  --osv2-amber-lo: var(--ax-accent-soft);
+  --osv2-blue: var(--ax-info);
+  --osv2-blue-lo: var(--ax-info-soft);
+  --osv2-green: var(--ax-ok);
+  --osv2-green-lo: var(--ax-ok-soft);
+  --osv2-red: var(--ax-danger);
+  --osv2-red-lo: var(--ax-danger-soft);
+  grid-template-rows: 60px minmax(0, 1fr) 64px;
+  font-family: var(--ax-font);
+  font-size: var(--ax-fs-md);
+}
+
+/* ── Encabezado y pie ──────────────────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-header { padding: 0 var(--ax-sp-4) 0 var(--ax-sp-6); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osv2-header span { margin-bottom: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osv2-header h2 { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osv2-header button { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); min-height: 0; padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-header button:hover { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osv2-footer { padding: 0 var(--ax-sp-6); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osv2-footer > span { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv2-footer button.primary { height: var(--ax-h-lg); padding: 0 20px; border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-accent-fg); font-size: 14px; font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-footer button.primary:hover { background: var(--ax-accent-hover); }
+#modal-operador-wizard .osv4-reactive .osv2-footer button.primary:active:not(:disabled) { transform: scale(.98); }
+/* Errores del servidor: un aviso dentro del formulario, no una franja flotando encima. */
+#modal-operador-wizard .osv4-reactive .osv2-global-error { top: 68px; padding: 10px 14px; border: 1px solid rgba(226, 80, 74, .5); border-radius: var(--ax-radius); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); animation: ax-rise var(--ax-dur) var(--ax-ease-out) both; }
+
+/* ── Columnas, tarjetas y campos ───────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-grid { font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osv2-column { padding: var(--ax-sp-4); }
+#modal-operador-wizard .osv4-reactive .admin-column, #modal-operador-wizard .osv4-reactive .actions-column { gap: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .route-column { gap: var(--ax-sp-3) !important; }
+#modal-operador-wizard .osv4-reactive .osv2-inline-grid { gap: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .top-fields { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); }
+#modal-operador-wizard .osv4-reactive .top-fields label > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osv2-card, #modal-operador-wizard .osv4-reactive .osv2-location, #modal-operador-wizard .osv4-reactive .osv2-concepts-section, #modal-operador-wizard .osv4-reactive .osv2-observations { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-operador-wizard .osv4-reactive .admin-card, #modal-operador-wizard .osv4-reactive .vehicle-card, #modal-operador-wizard .osv4-reactive .distance-card, #modal-operador-wizard .osv4-reactive .osv2-observations, #modal-operador-wizard .osv4-reactive .osv2-concepts-section { gap: var(--ax-sp-3) !important; padding: var(--ax-sp-3) var(--ax-sp-4) var(--ax-sp-4) !important; }
+#modal-operador-wizard .osv4-reactive label { gap: 6px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive label > span { min-height: 0; line-height: 1.3; }
+#modal-operador-wizard .osv4-reactive input, #modal-operador-wizard .osv4-reactive select, #modal-operador-wizard .osv4-reactive textarea { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive input, #modal-operador-wizard .osv4-reactive select { height: var(--ax-h); padding: 0 12px; }
+#modal-operador-wizard .osv4-reactive select { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, var(--ax-text-3) 50%), linear-gradient(135deg, var(--ax-text-3) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+#modal-operador-wizard .osv4-reactive textarea { padding: 10px 12px; }
+#modal-operador-wizard .osv4-reactive input:hover:not(:disabled):not(:focus), #modal-operador-wizard .osv4-reactive select:hover:not(:disabled):not(:focus), #modal-operador-wizard .osv4-reactive textarea:hover:not(:disabled):not(:focus) { border-color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive input:focus, #modal-operador-wizard .osv4-reactive select:focus, #modal-operador-wizard .osv4-reactive textarea:focus { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#modal-operador-wizard .osv4-reactive input:disabled, #modal-operador-wizard .osv4-reactive select:disabled { border-color: var(--ax-border); background-color: var(--ax-surface); color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive input::placeholder, #modal-operador-wizard .osv4-reactive textarea::placeholder { color: var(--ax-text-3); }
+/* Lo que falta: borde rojo y el texto debajo del campo. */
+#modal-operador-wizard .osv4-reactive [aria-invalid="true"] { border-color: var(--ax-danger-strong) !important; outline: none !important; }
+#modal-operador-wizard .osv4-reactive .osv4-address-input:has([aria-invalid="true"]) { border-color: var(--ax-danger-strong); }
+#modal-operador-wizard .osv4-reactive .osv4-field-msg { display: block; margin-top: 4px; color: var(--ax-danger); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); line-height: 1.35; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osv3-code-warning { margin-top: 4px; color: var(--ax-warn); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv2-field-error { color: var(--ax-danger); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+
+/* Títulos de las tarjetas: etiqueta chica en mayúscula, sin punto de color. */
+#modal-operador-wizard .osv4-reactive .osv2-section-label, #modal-operador-wizard .osv4-reactive .osv2-location .osv2-section-label { gap: 8px; min-height: 18px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive .osv2-section-label > span { display: none; }
+#modal-operador-wizard .osv4-reactive .osv2-section-label b { color: var(--ax-text-3); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osv2-observations > span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+
+/* Tipo de logística: control segmentado. */
+#modal-operador-wizard .osv4-reactive .osv2-logistics { gap: 6px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics > div { display: inline-flex; align-self: start; gap: 2px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics button { height: calc(var(--ax-h) - 8px); min-height: 0; padding: 0 14px; border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics button:hover { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics button.active { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+
+/* Estado de la prestadora: aviso compacto con ícono. */
+#modal-operador-wizard .osv4-reactive .osv4-context-status { gap: 6px; }
+#modal-operador-wizard .osv4-reactive .osv4-context-line { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text); font-size: var(--ax-fs-sm); line-height: 1.4; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osv4-context-line .ax-icon { margin-top: 1px; }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.ok { border-color: rgba(39, 196, 122, .35); background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.ok .ax-icon { color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.warning { border-color: rgba(245, 166, 35, .45); background: var(--ax-warn-soft); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.warning .ax-icon { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.blocking { border-color: rgba(226, 80, 74, .5); background: var(--ax-danger-soft); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.blocking .ax-icon { color: var(--ax-danger); }
+
+/* Chofer y móvil: la marca confirma que está libre (o dice por qué no). */
+#modal-operador-wizard .osv4-reactive .os-resource-hint { display: flex; align-items: center; gap: 6px; min-height: 18px; margin-top: 6px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="done"] { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="error"], #modal-operador-wizard .osv4-reactive .os-resource-hint.is-blocked { color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="warn"] { color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="warn"] .ax-icon { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive [data-status] > .ax-mark { width: 16px; height: 16px; }
+#modal-operador-wizard .osv4-reactive [data-status] > span { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+
+/* ── Origen y destino ──────────────────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-location, #modal-operador-wizard .osv4-reactive .osv2-location.origin, #modal-operador-wizard .osv4-reactive .osv2-location.destination { gap: 8px; padding: var(--ax-sp-3) var(--ax-sp-4) var(--ax-sp-4); border-color: var(--ax-border); background: var(--ax-surface-2); transition: border-color var(--ax-dur) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-location[data-address-state="ok"] { border-color: rgba(39, 196, 122, .4); }
+#modal-operador-wizard .osv4-reactive .osv4-location-head { grid-template-columns: auto minmax(0, 1fr); gap: 8px !important; min-height: 18px; }
+#modal-operador-wizard .osv4-reactive .osv4-location-head > span:first-child { display: none; }
+#modal-operador-wizard .osv4-reactive .osv4-address-status { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); letter-spacing: 0; text-transform: none; }
+#modal-operador-wizard .osv4-reactive .osv4-address-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osv4-address-status[data-status="done"] { color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .osv4-address-status.warning:not([data-status]) { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input { gap: 8px; padding-left: 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input > span { display: inline-grid; place-items: center; color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input input { height: calc(var(--ax-h) - 2px) !important; padding-left: 0 !important; }
+/* Sugerencias con el aspecto de un menú del sistema. */
+#modal-operador-wizard .osv4-reactive .osv4-suggestions { top: calc(100% + 4px); padding: var(--ax-sp-1); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); transform-origin: top center; animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions button { gap: 2px; padding: 8px 10px; border: 0; border-radius: var(--ax-radius-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions button:hover, #modal-operador-wizard .osv4-reactive .osv4-suggestions button:focus-visible { outline: none; background: var(--ax-surface-3); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestion-state { padding: 10px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestion-state.error { color: var(--ax-danger); }
+
+/* Recorrido calculado: marca mientras calcula y los km se marcan al llegar. */
+#modal-operador-wizard .osv4-reactive .osv4-note { display: flex; align-items: center; gap: 6px; min-height: 18px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#modal-operador-wizard .osv4-reactive .osv4-note[data-status="done"] { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osv4-note[data-status="error"] { color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .distance-card.ax-flash { animation: ax-flash 1.6s var(--ax-ease) both; }
+
+/* ── Conceptos adicionales ─────────────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-concepts-head b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osv2-concepts-head small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv2-add-concept-trigger { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h-sm); min-height: 0 !important; padding: 0 10px !important; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-size: var(--ax-fs-sm) !important; font-weight: var(--ax-fw-semibold); white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osv2-add-concept-trigger:hover:not(:disabled) { background: var(--ax-surface-3); }
+#modal-operador-wizard .osv4-reactive .osv2-empty { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osv4-concept-head { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row { gap: 8px; padding: 8px; border-color: var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row select, #modal-operador-wizard .osv4-reactive .osv4-concept-row input { height: var(--ax-h-sm) !important; }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row > button { width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row > button:hover { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .osv4-code-cell, #modal-operador-wizard .osv4-reactive .osv4-qty-cell small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-code-cell span { line-height: calc(var(--ax-h-sm) - 2px); border-color: var(--ax-border); border-radius: var(--ax-radius-sm); background: var(--ax-bg); font-family: var(--ax-font-mono); }
+
+/* ── Peajes, excedentes y formato de cobro ─────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osca-actions { gap: var(--ax-sp-2); padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osca-actions button { min-height: 0; height: calc(var(--ax-h) - 8px); border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osca-actions button:hover { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osca-actions button.active { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#modal-operador-wizard .osv4-reactive .osca-actions em { min-width: 20px; height: 20px; margin-left: 6px; background: var(--ax-accent-soft); color: var(--ax-accent); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osca-panel { gap: var(--ax-sp-3); padding: var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osca-panel.tolls, #modal-operador-wizard .osv4-reactive .osca-panel.excess { border-top: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .osca-title b { font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-title small { margin-top: 4px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+/* Formato de cobro: tres opciones grandes; la elegida con borde y punto ámbar. */
+#modal-operador-wizard .osv4-reactive .osca-format-list { gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button { grid-template-columns: 18px 1fr; gap: 10px; min-height: var(--ax-h-lg); padding: 8px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button:hover:not(:disabled) { border-color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button.active, #modal-operador-wizard .osv4-reactive .osca-format-list > button[aria-checked="true"] { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .osca-format-list b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-format-list small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-radio { width: 18px; height: 18px; border: 2px solid var(--ax-border-strong); background: transparent; transition: border-width var(--ax-dur) var(--ax-ease-spring), border-color var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osca-format-list button.active .osca-radio, #modal-operador-wizard .osv4-reactive .osca-format-list button[aria-checked="true"] .osca-radio { border: 5px solid var(--ax-accent); background: var(--ax-accent-fg); }
+#modal-operador-wizard .osv4-reactive .osca-format-selected { gap: var(--ax-sp-3); min-height: var(--ax-h-lg); padding: 8px 8px 8px 12px; border: 1px solid rgba(245, 166, 35, .55); border-radius: var(--ax-radius); background: var(--ax-accent-soft); animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osca-format-selected span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osca-format-selected b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-format-selected button { height: var(--ax-h-sm); min-height: 0; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-surface-2); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-format-selected button:hover { border-color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osca-gate { gap: 4px; padding: var(--ax-sp-3); border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; }
+#modal-operador-wizard .osv4-reactive .osca-gate b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-gate span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-head { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row { gap: 6px; padding: 8px; border-color: var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row.excess { border-left: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row input, #modal-operador-wizard .osv4-reactive .osca-matrix-row select { height: var(--ax-h-sm); border-radius: var(--ax-radius-sm); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-total b { font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#modal-operador-wizard .osv4-reactive .osca-remove { width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; background: transparent; color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .osca-remove:hover { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .osca-add-row { min-height: var(--ax-h); border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-add-row:hover { border-color: var(--ax-text-3); background: var(--ax-surface-3); }
+#modal-operador-wizard .osv4-reactive .osca-empty-row { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-summary, #modal-operador-wizard .osv4-reactive .osca-actual { font-size: var(--ax-fs-md); font-variant-numeric: tabular-nums; }
+#modal-operador-wizard .osv4-reactive .osca-summary span, #modal-operador-wizard .osv4-reactive .osca-actual span { color: var(--ax-text-2); }
+@media (max-width: 1100px) {
+  #modal-operador-wizard .osv4-reactive .osca-matrix-row > div::before { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+}
+
+/* ── Particular (private-service-v1): mismo lenguaje que el de Prestadora ── */
+#psv-form .psv-dialog, #psv-tipo .psv-dialog { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+#psv-form[data-enter] .psv-dialog, #psv-tipo .psv-dialog { animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#psv-form .psv-dialog h2, #psv-tipo .psv-dialog h2 { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#psv-form .psv-dialog header p, #psv-tipo .psv-dialog header p { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#psv-form .psv-x, #psv-tipo .psv-x { display: inline-grid; place-items: center; width: var(--ax-h); height: var(--ax-h); border: 0; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#psv-form .psv-x:hover, #psv-tipo .psv-x:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#psv-tipo .psv-choice { border-color: var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-bg); transition: border-color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#psv-tipo .psv-choice:hover, #psv-tipo .psv-choice:focus-visible { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#psv-tipo .psv-choice:active { transform: scale(.98); }
+#psv-form .psv-body h3 { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#psv-form .psv-field > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#psv-form .psv-body input:not([type=checkbox]), #psv-form .psv-body select, #psv-form .psv-body textarea { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); font-family: var(--ax-font); font-size: var(--ax-fs-md); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-body input:not([type=checkbox]):focus, #psv-form .psv-body select:focus, #psv-form .psv-body textarea:focus, #psv-form .psv-money:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#psv-form .psv-money { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#psv-form .psv-body .psv-money input { box-shadow: none !important; }
+/* Lo que falta: borde rojo y el texto debajo (no un recuadro rojo arriba). */
+#psv-form .psv-field.ax-invalid input, #psv-form .psv-field.ax-invalid select, #psv-form .psv-field.ax-invalid .psv-money, #psv-form .psv-field.ax-invalid .psv-addr-input { border-color: var(--ax-danger-strong) !important; }
+#psv-form .psv-field-error { color: var(--ax-danger); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); line-height: 1.35; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+/* Errores del servidor o de configuración: aviso sobrio con ícono. */
+#psv-form .psv-error { display: flex; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border: 1px solid rgba(226, 80, 74, .5); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#psv-form .psv-error::before { content: ''; flex: 0 0 8px; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--ax-danger); }
+/* Controles segmentados neutros (la opción elegida no se pinta de ámbar). */
+#psv-form .psv-seg { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#psv-form .psv-seg button { height: calc(var(--ax-h) - 6px); padding: 0 14px; border-radius: var(--ax-radius-sm); color: var(--ax-text-2); font-size: var(--ax-fs-md); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-seg button:hover { color: var(--ax-text); }
+#psv-form .psv-seg button[aria-pressed="true"] { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#psv-form .psv-total { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#psv-form .psv-total span { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#psv-form .psv-total b { color: var(--ax-text); font-size: var(--ax-fs-xl); font-variant-numeric: tabular-nums; }
+#psv-form .psv-hint { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+/* Direcciones: ícono, marca de validada y sugerencias como menú. */
+#psv-form .psv-addr-input { position: relative; display: flex; align-items: center; gap: 8px; padding-left: 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-addr-input:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#psv-form .psv-addr-input > .ax-icon { color: var(--ax-text-3); }
+#psv-form .psv-body .psv-addr-input input { padding-left: 0; border: 0; background: transparent; box-shadow: none !important; }
+#psv-form .psv-addr.is-valid .psv-addr-input { border-color: rgba(39, 196, 122, .45); }
+#psv-form .psv-addr-state { top: 0; right: 0; }
+#psv-form .psv-sugs { padding: var(--ax-sp-1); border-color: var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); transform-origin: top center; animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#psv-form .psv-sugs button { border-radius: var(--ax-radius-sm); }
+#psv-form .psv-sugs button:hover, #psv-form .psv-sugs button:focus-visible { outline: none; background: var(--ax-surface-3); }
+/* Marcas: validada, verificando, recorrido, móvil y chofer libres. */
+#psv-form .psv-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-style: normal; font-weight: var(--ax-fw-medium); }
+#psv-form .psv-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#psv-form .psv-status > .ax-mark { width: 16px; height: 16px; }
+#psv-form .psv-status[data-status="done"] { color: var(--ax-text); }
+#psv-form .psv-addr-state .psv-status[data-status="done"] { color: var(--ax-ok); }
+#psv-form .psv-status[data-status="error"] { color: var(--ax-danger); }
+#psv-form .psv-status[data-status="warn"] .ax-icon { color: var(--ax-warn); }
+#psv-form .psv-res { display: block; min-height: 18px; }
+#psv-form .psv-route { display: flex; margin-top: 10px; border-radius: var(--ax-radius-sm); }
+#psv-form .psv-dialog > footer .psv-btn { height: var(--ax-h); padding: 0 16px; border-radius: var(--ax-radius); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-dialog > footer .psv-btn:active:not(:disabled) { transform: scale(.98); }
+#psv-form .psv-dialog > footer .psv-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#psv-form .psv-dialog > footer .psv-btn.primary:hover { background: var(--ax-accent-hover); }
+@media (max-width: 640px) {
+  #psv-form[data-enter] .psv-dialog { animation-name: ax-sheet-in; }
+}
+/* Con un error debajo de un campo, los de al lado no se corren: todo arriba. */
+#psv-form .psv-field { align-content: start; }
+#psv-form .psv-res { min-width: 0; overflow: hidden; }
+#psv-form .psv-res .psv-status { max-width: 100%; }
+#psv-form .psv-seg-wide { display: flex; width: 100%; box-sizing: border-box; }
+#psv-form .psv-seg-wide button { flex: 1 1 0; min-width: 0; padding: 0 8px; white-space: nowrap; }
