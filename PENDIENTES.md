@@ -15,6 +15,9 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] Remito del chofer con AuxiliosQA en el teléfono: los cuatro pasos (datos, peajes y excedentes, evidencia, conformidad y firma), "Guardar y seguir después" sólo en el paso 1, y la firma con la marca de listo.
+- [ ] Editar un particular con seña (QA): cambiar el medio en "Cómo se pagó" y guardar. En el menú ⋯ de un particular ya pago no tiene que aparecer Registrar cobro.
+- [ ] Peajes de una prestadora: Duplicar una fila y "Duplicar para la vuelta".
 - [ ] Formularios de nuevo servicio (Prestadora y Particular) con QA: al elegir móvil y chofer aparece la marca de libre (o por qué no); al elegir una sugerencia de dirección, "Validando…" y el tilde; los km se calculan con la marca. Crear sin completar marca los campos, sin la franja roja.
 - [ ] Cambio de estado desde la fila (Asignar, Arribado, Finalizar, Anular) con QA: menú nuevo, modales oscuros y la fila se marca al volver.
 - [ ] Sistema visual en Servicios y en la lista del chofer: revisar en la vista previa la tabla (código fijo a la izquierda al desplazar), el menú ⋯, los filtros y, en el celular, las tarjetas. Los avisos de toda la app cambiaron: los de error quedan hasta cerrarlos.
@@ -28,6 +31,9 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] Particular: interruptores, segmentados con marca que se desliza, listas del sistema; Registrar cobro sólo con saldo; editar cómo se pagó (update_service_payment_method_v1).
+- [x] Remito del chofer con el sistema visual en todos los pasos.
+- [x] Prestadora: sugerencias de Origen por encima de Destino; duplicar peajes.
 - [x] Registrar cobro ya no aparece en Historial, y la base rechaza cobros en servicios finalizados o anulados (register_service_payment_v1).
 - [x] Servicios: Activos/Historial se desliza, filtros sin caja de fondo, Personalizar columnas con el sistema visual.
 - [x] "Servicio creado" y los demás avisos de operación: en la oficina, aviso que no tapa la pantalla y la fila nueva marcada; al chofer, en el centro con el tilde.

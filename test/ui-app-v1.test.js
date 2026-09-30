@@ -7,11 +7,11 @@ const read = f => fs.readFileSync(f, 'utf8');
 const index = read('Index.html'), sw = read('sw.js'), pkg = read('package.json');
 
 test('la app carga el sistema visual: tokens, componentes, ax.js y su aplicación', () => {
-  for (const f of ['/ui/tokens.css', '/ui/components.css', '/ui/app-v1.css', '/operaciones-ax-v1.css', '/chofer-servicios-ax-v1.css', '/servicio-form-ax-v1.css', '/estado-servicio-ax-v1.css']) {
+  for (const f of ['/ui/tokens.css', '/ui/components.css', '/ui/app-v1.css', '/operaciones-ax-v1.css', '/chofer-servicios-ax-v1.css', '/servicio-form-ax-v1.css', '/estado-servicio-ax-v1.css', '/remito-chofer-ax-v1.css']) {
     assert.match(index, new RegExp('href="' + f.replace(/\./g, '\\.') + '\\?v='), f);
     assert.match(sw, new RegExp("'" + f.replace(/\./g, '\\.') + "'"), f);
   }
-  for (const f of ['/ui/ax.js', '/ui/app-v1.js']) {
+  for (const f of ['/ui/ax.js', '/ui/app-v1.js', '/remito-chofer-ax-v1.js']) {
     assert.match(index, new RegExp('src="' + f.replace(/\./g, '\\.') + '\\?v='), f);
     assert.match(sw, new RegExp("'" + f.replace(/\./g, '\\.') + "'"), f);
   }
@@ -35,7 +35,7 @@ test('toast() de la app pasa a ser el aviso del sistema visual con el tono corre
 });
 
 test('Servicios y la lista del chofer usan sólo tokens e íconos del sprite', () => {
-  for (const f of ['operaciones-ax-v1.css', 'chofer-servicios-ax-v1.css', 'servicio-form-ax-v1.css', 'estado-servicio-ax-v1.css', 'ui/app-v1.css']) {
+  for (const f of ['operaciones-ax-v1.css', 'chofer-servicios-ax-v1.css', 'servicio-form-ax-v1.css', 'estado-servicio-ax-v1.css', 'remito-chofer-ax-v1.css', 'ui/app-v1.css']) {
     const css = read(f).replace(/\/\*[\s\S]*?\*\//g, '');
     assert.deepEqual([...css.matchAll(/#[0-9a-fA-F]{3,8}\b(?![\w-])/g)].map(m => m[0]).filter(h => !/^#(screen|os|p3|phase3|toast|psv|modal|ax)/.test(h) && h.toLowerCase() !== '#fff'), [], f);   // blanco sólo en el botón de peligro
     // Cuelga de un id para ganarle a los estilos viejos sin importar el orden de carga.

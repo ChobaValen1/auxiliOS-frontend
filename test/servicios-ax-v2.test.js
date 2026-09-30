@@ -122,3 +122,24 @@ test('Prestadora: sugerencias por encima de Destino y duplicar peajes', () => {
   assert.match(wiz, /function duplicateCommercialToll\(index\)/);
   assert.match(wiz, /function duplicateCommercialTolls\(\)/);
 });
+
+test('Remito del chofer: sistema visual en todos los pasos sin tocar la lógica de sigma.js', () => {
+  const js = read('remito-chofer-ax-v1.js'), css = read('remito-chofer-ax-v1.css'), flow = read('remito-mobile-flow-v3.js');
+  assert.match(js, /envolver\('_remWizardActualizar', decorar\)/);
+  assert.match(js, /envolver\('updateSigStatus', firma\)/);
+  assert.match(js, /\/\/ El estilo en línea lo maneja sigma\.js/);            // no rompe mostrar/ocultar "Guardar y seguir después"
+  assert.match(js, /n > ultimoPaso \? 'rmx-enter-next' : 'rmx-enter-prev'/);
+  assert.match(css, /@keyframes rmx-enter-next/);
+  assert.match(css, /#remitos-nuevo \.form-input, #remitos-nuevo \.rmv-input, #remitos-nuevo textarea \{[^}]*font-size: 16px;/);   // sin zoom en el teléfono
+  assert.match(css, /#remitos-nuevo \.toggle\.on::after/);
+  assert.doesNotMatch(flow, /📷 Vehículo|🔢 Odómetro|＋ Agregar evidencia/);
+  const win = { setInterval: () => 0, clearInterval() {} };
+  const doc = { querySelector: () => null, getElementById: () => null };
+  win.document = doc;
+  const sigma = { calls: 0 };
+  win._remWizardActualizar = function () { sigma.calls++; };
+  vm.runInNewContext(js, { window: win, setInterval: () => 0, clearInterval() {} });
+  win._remWizardActualizar();
+  assert.equal(sigma.calls, 1);                                            // la original se sigue llamando
+  assert.equal(win._remWizardActualizar.__rmx, true);
+});

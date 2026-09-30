@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v407';
+const CACHE_NAME='auxilios-billing-phase2-v408';
 const PRECACHE_ASSETS=[
   '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/payroll-matrix.js', '/payroll-view.js',
   '/empresas-v2.js','/empresas-v2.css',
@@ -17,7 +17,7 @@ const PRECACHE_ASSETS=[
   '/operator-service-workspace-reactive-v1.css','/operator-service-workspace-reactive-v1.js',
   '/operator-service-commercial-addons-v1.css','/operator-service-commercial-addons-v1.js',
   '/operator-service-bridge.css','/operator-service-bridge.js',
-  '/ui/tokens.css','/ui/components.css','/ui/ax.js','/ui/icons.svg','/ui/app-v1.css','/ui/app-v1.js','/operaciones-ax-v1.css','/chofer-servicios-ax-v1.css','/servicio-form-ax-v1.css','/estado-servicio-ax-v1.css',
+  '/ui/tokens.css','/ui/components.css','/ui/ax.js','/ui/icons.svg','/ui/app-v1.css','/ui/app-v1.js','/operaciones-ax-v1.css','/chofer-servicios-ax-v1.css','/servicio-form-ax-v1.css','/estado-servicio-ax-v1.css','/remito-chofer-ax-v1.css','/remito-chofer-ax-v1.js',
   '/operator-service-lifecycle.css','/operator-service-lifecycle.js',
   '/toll-management.css','/toll-management.js',
   '/rendition-journey-source-v1.js',
