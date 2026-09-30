@@ -116,11 +116,17 @@ test('Particular: si ya está pago no se ofrece Registrar cobro; al editar se ca
 test('Prestadora: sugerencias por encima de Destino y duplicar peajes', () => {
   const css = read('servicio-form-ax-v1.css'), addons = read('operator-service-commercial-addons-v1.js'), wiz = read('operator-service-wizard.js');
   assert.match(css, /\.osv2-location:has\(\.osv4-suggestions:not\(\[hidden\]\)\) \{ position: relative; z-index: 40; \}/);
-  assert.match(addons, /data-ca="duplicate-toll"/);
+  // Sólo "Duplicar para la vuelta": duplicar una fila igual rompería la regla de sumar la cantidad.
+  assert.doesNotMatch(addons, /data-ca="duplicate-toll"/);
+  assert.doesNotMatch(addons, /data-aa-dup="/);
   assert.match(addons, /data-ca="duplicate-tolls"/);
-  assert.match(addons, /data-aa-dup="\$\{kind\}"/);
-  assert.match(wiz, /function duplicateCommercialToll\(index\)/);
+  assert.match(addons, /data-aa-dup-all="\$\{kind\}"/);
+  assert.doesNotMatch(wiz, /function duplicateCommercialToll\(index\)/);
   assert.match(wiz, /function duplicateCommercialTolls\(\)/);
+  // La copia lleva el peaje y la cantidad; quién paga (si el formato no lo fija) y el medio van vacíos.
+  assert.match(wiz, /payer_agent:payer,customer_payment_method:''\};const k=tollKey\(copy\)/);
+  assert.match(addons, /payer_agent:payer,customer_payment_method:''\};copy\.total_amount/);
+  assert.match(addons, /vueltas\.has\(row\)&&sumarSiRepetido\(commercial\(\)\.tolls,row\)/);
 });
 
 test('Remito del chofer: sistema visual en todos los pasos sin tocar la lógica de sigma.js', () => {

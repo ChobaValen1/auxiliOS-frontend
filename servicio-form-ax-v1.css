@@ -268,9 +268,7 @@
 #modal-operador-wizard .osv4-reactive .osca-matrix-row > div::before { content: attr(data-label); display: block; margin: 0 0 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
 #modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total { justify-content: flex-start; min-height: var(--ax-h-sm); padding: 0; flex-direction: column; align-items: flex-start; }
 #modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total b { font-size: var(--ax-fs-md); }
-#modal-operador-wizard .osv4-reactive .osca-row-actions, #modal-operador-wizard .osv4-reactive .osca-matrix-row > .osca-remove { grid-column: 1 / -1; justify-self: end; display: inline-flex; gap: 2px; margin-top: -2px; }
-#modal-operador-wizard .osv4-reactive .osca-duplicate { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); cursor: pointer; }
-#modal-operador-wizard .osv4-reactive .osca-duplicate:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > .osca-remove { grid-column: 1 / -1; justify-self: end; display: inline-flex; gap: 2px; margin-top: -2px; }
 #modal-operador-wizard .osv4-reactive .osca-add-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ax-sp-2); }
 #modal-operador-wizard .osv4-reactive .osca-add-row { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
 #modal-operador-wizard .osv4-reactive .osca-matrix-row { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
