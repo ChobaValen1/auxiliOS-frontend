@@ -134,9 +134,18 @@
 
   function geometria() { return global.AuxiliosRouteGeometry || null; }
 
-  function detect() {
-    var g = geometria(), w = W();
-    if (!g || !g.polyline) { notify('Primero completá origen y destino para calcular el recorrido.', 'warning'); return false; }
+  /* Al editar un servicio el recorrido no está calculado: se pide en el momento. */
+  async function detect() {
+    var w = W(), R = global.OperatorServiceWorkspaceReactiveV1;
+    var g = geometria();
+    if (!g || !g.polyline) {
+      state.detect = { loading: true };
+      repintar();
+      var r = R && R.loadRouteGeometry ? await R.loadRouteGeometry() : { error: 'Primero completá origen y destino para calcular el recorrido.' };
+      state.detect = null;
+      if (!r || !r.geometry) { notify((r && r.error) || 'No se pudo calcular el recorrido.', 'warning'); return false; }
+      g = r.geometry;
+    }
     var puntos = decode(g.polyline);
     if (puntos.length < 2) { notify('No se pudo leer el trazado del recorrido. Volvé a calcularlo.', 'warning'); return false; }
     var catalogo = (w && w.tollCatalog) || [];
@@ -158,6 +167,7 @@
   function panelHtml() {
     var d = state.detect;
     if (!d) return '';
+    if (d.loading) return '<section class="tdt-panel" aria-busy="true"><p class="tdt-empty">Calculando el recorrido…</p></section>';
     if (d.geometry !== geometria()) { state.detect = null; return ''; }     // el recorrido cambió: la propuesta ya no vale
     var ya = cargados();
     var g = d.geometry;
@@ -186,14 +196,15 @@
 
   function aplicar() {
     var d = state.detect, o = O();
-    if (!d || !o || !o.addDetectedTolls) return;
+    if (!d || d.loading || !o) return;
     var c = o.commercialState();
     if (!c.toll_coverage_mode) { notify('Elegí primero el formato de cobro de peajes.', 'warning'); return; }
     var ya = cargados();
     var items = d.hits.filter(function (h) { var id = String(h.toll.toll_id); return ya.indexOf(id) < 0 && d.elegidos.indexOf(id) >= 0; })
       .map(function (h) { return { toll_id: h.toll.toll_id, quantity: h.passes }; });
     if (!items.length) return;
-    var r = o.addDetectedTolls(items);
+    var w = W(), admin = global.OperatorServiceCommercialAddonsV1;
+    var r = w && w.administrativeEdit && admin && admin.addDetectedTollsAdmin ? admin.addDetectedTollsAdmin(items) : o.addDetectedTolls(items);
     state.detect = null;
     repintar();
     if (r && r.added) notify(r.added + ' peaje' + (r.added === 1 ? '' : 's') + ' agregado' + (r.added === 1 ? '' : 's') + '. Completá quién paga y el medio de pago.', 'success');
@@ -208,7 +219,7 @@
   });
   global.document.addEventListener('change', function (ev) {
     var t = ev.target;
-    if (!t || !t.hasAttribute || !t.hasAttribute('data-td-pick') || !state.detect) return;
+    if (!t || !t.hasAttribute || !t.hasAttribute('data-td-pick') || !state.detect || !state.detect.elegidos) return;
     var id = t.getAttribute('data-td-pick'), i = state.detect.elegidos.indexOf(id);
     if (t.checked && i < 0) state.detect.elegidos.push(id);
     if (!t.checked && i >= 0) state.detect.elegidos.splice(i, 1);

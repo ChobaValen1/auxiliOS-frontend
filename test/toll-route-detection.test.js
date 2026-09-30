@@ -81,4 +81,9 @@ test('el botón, el panel y la carga de peajes detectados están conectados', ()
   assert.match(read('config.js'), /toll-route-detection-v1\.js/);
   assert.match(read('sw.js'), /toll-route-detection-v1\.js/);
   assert.match(read('migrations/20260930180000_peajes_guardan_ubicacion_v1.sql'), /latitude=coalesce/);
+  // Al editar no hay recorrido calculado: se pide en el momento; y la revisión administrativa también tiene el botón.
+  assert.match(read('operator-service-workspace-reactive-v1.js'), /async function loadRouteGeometry\(\)/);
+  assert.match(read('toll-route-detection-v1.js'), /R\.loadRouteGeometry/);
+  assert.match(read('operator-service-commercial-addons-v1.js'), /function addDetectedTollsAdmin\(items\)/);
+  assert.match(read('operator-service-commercial-addons-v1.js'), /tolls\?`<button type="button" class="osca-add-row" data-ca="detect-tolls">/);
 });
