@@ -13,6 +13,8 @@
    Selección: un valor string; '' significa "todos". */
 (()=>{'use strict';
 if(window.AuxFilters)return;
+/* Íconos Lucide del sistema visual (ui/icons.svg). */
+const ICO=name=>`<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const MESES=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MESES_LARGOS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -57,7 +59,7 @@ function period({id,value,allLabel='Todas las fechas',allowAll=true,months,quick
   const p=value||{mode:allowAll?'all':'mes',mes:mesActual()},d=describePeriod(p,allLabel),b=periodBounds(p),active=p.mode!=='all';
   const lista=(Array.isArray(months)&&months.length?[...new Set(months)].sort().reverse().slice(0,12):mesesRecientes(12));
   const meses=lista.map(ym=>{const on=p.mode==='mes'&&p.mes===ym;return`<button type="button" class="auxf-mes${on?' on':''}" data-auxf-mes="${esc(ym)}"${on?' aria-current="true"':''}>${esc(etiquetaMes(ym))}</button>`;}).join('');
-  return`<div class="auxf" data-auxf="${esc(id)}" data-auxf-kind="period"><button type="button" class="auxf-btn${active?' is-active':''}" data-auxf-open aria-haspopup="dialog" aria-expanded="false"><span class="auxf-ico" aria-hidden="true">🗓</span><span class="auxf-txt"><b>${esc(d.titulo)}</b>${d.rango?`<small>${esc(d.rango)}</small>`:''}</span><span class="auxf-caret" aria-hidden="true">▾</span></button>`
+  return`<div class="auxf" data-auxf="${esc(id)}" data-auxf-kind="period"><button type="button" class="auxf-btn${active?' is-active':''}" data-auxf-open aria-haspopup="dialog" aria-expanded="false"><span class="auxf-ico" aria-hidden="true">${ICO('calendar')}</span><span class="auxf-txt"><b>${esc(d.titulo)}</b>${d.rango?`<small>${esc(d.rango)}</small>`:''}</span><span class="auxf-caret" aria-hidden="true">${ICO('chevron-down')}</span></button>`
    +`<div class="auxf-pop auxf-pop-period" role="dialog" aria-label="Elegir período" hidden>${allowAll?`<button type="button" class="auxf-all${p.mode==='all'?' on':''}" data-auxf-all>${esc(allLabel)}</button>`:''}${quick?`<h4>Rápido</h4><div class="auxf-meses auxf-quick">${QUICK.map(([k,l])=>`<button type="button" class="auxf-mes${p.quick===k?' on':''}" data-auxf-quick="${k}">${esc(l)}</button>`).join('')}</div>`:''}<h4>Mes</h4><div class="auxf-meses">${meses}</div><h4>Período personalizado</h4><div class="auxf-libre"><label>Desde<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-desde value="${esc(fechaCorta(b.start||''))}"></label><label>Hasta<input type="text" inputmode="numeric" maxlength="8" placeholder="DD/MM/AA" data-auxf-hasta value="${esc(fechaCorta(b.end||''))}"></label><button type="button" class="auxf-aplicar" data-auxf-rango>Aplicar</button></div><p class="auxf-error" role="alert" hidden></p></div></div>`;
 }
 
@@ -66,12 +68,12 @@ function period({id,value,allLabel='Todas las fechas',allowAll=true,months,quick
 function select({id,label,icon='',value='',options=[],allLabel='Todos'}={}){
   const current=options.find(o=>!o.group&&String(o.value)===String(value)),active=!!value&&!!current;
   const rows=[{value:'',label:allLabel},...options].map(o=>{if(o.group)return`<h5 class="auxf-group">${esc(o.group)}</h5>`;const on=String(o.value)===String(value||'')&&(o.value!==''||!active);return`<button type="button" class="auxf-opt${on?' on':''}" role="option" aria-selected="${on}" data-auxf-value="${esc(o.value)}" data-auxf-text="${esc(String(o.label||'').toLowerCase())}"><span>${esc(o.label)}</span>${o.hint?`<small>${esc(o.hint)}</small>`:''}${on?'<i aria-hidden="true">✓</i>':''}</button>`;}).join('');
-  return`<div class="auxf" data-auxf="${esc(id)}" data-auxf-kind="select"><button type="button" class="auxf-btn${active?' is-active':''}" data-auxf-open aria-haspopup="listbox" aria-expanded="false">${icon?`<span class="auxf-ico" aria-hidden="true">${icon}</span>`:''}<span class="auxf-txt"><small class="auxf-label">${esc(label)}</small><b>${esc(active?current.label:allLabel)}</b></span><span class="auxf-caret" aria-hidden="true">▾</span></button>`
+  return`<div class="auxf" data-auxf="${esc(id)}" data-auxf-kind="select"><button type="button" class="auxf-btn${active?' is-active':''}" data-auxf-open aria-haspopup="listbox" aria-expanded="false">${icon?`<span class="auxf-ico" aria-hidden="true">${icon}</span>`:''}<span class="auxf-txt"><small class="auxf-label">${esc(label)}</small><b>${esc(active?current.label:allLabel)}</b></span><span class="auxf-caret" aria-hidden="true">${ICO('chevron-down')}</span></button>`
    +`<div class="auxf-pop auxf-pop-select" hidden><h4>${esc(label)}</h4>${options.length>8?`<input type="search" class="auxf-find" data-auxf-find placeholder="Buscar ${esc(label.toLowerCase())}…" autocomplete="off">`:''}<div class="auxf-opts" role="listbox" aria-label="${esc(label)}">${rows}</div><p class="auxf-none" hidden>Sin coincidencias</p></div></div>`;
 }
 
 /* ── Buscador ────────────────────────────────────────────────────────── */
-function search({id,value='',placeholder='Buscar…'}={}){return`<label class="auxf-search"><span aria-hidden="true">⌕</span><input id="${esc(id)}" type="search" autocomplete="off" placeholder="${esc(placeholder)}" value="${esc(value)}"></label>`;}
+function search({id,value='',placeholder='Buscar…'}={}){return`<label class="auxf-search"><span aria-hidden="true">${ICO('search')}</span><input id="${esc(id)}" type="search" autocomplete="off" placeholder="${esc(placeholder)}" value="${esc(value)}"></label>`;}
 function clear({count=0}={}){return count?`<button type="button" class="auxf-clear" data-auxf-clear>Limpiar filtros <b>${count}</b></button>`:'';}
 
 /* ── Comportamiento ──────────────────────────────────────────────────── */

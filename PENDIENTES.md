@@ -15,6 +15,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para probar con datos de QA
 
+- [ ] Sistema visual en Servicios y en la lista del chofer: revisar en la vista previa la tabla (código fijo a la izquierda al desplazar), el menú ⋯, los filtros y, en el celular, las tarjetas. Los avisos de toda la app cambiaron: los de error quedan hasta cerrarlos.
 - [ ] Particular asignado (móvil + "El de la jornada del móvil"), sin patente: Arribado y Finalizar sin arribo funcionan. El menú ⋯ ya no ofrece Activado.
 - [ ] Planes base: en Control del camión → Planes base, marcar los planes de cada tipo y guardar. Revisar que cada móvil del tipo los tenga en su detalle.
 - [ ] Subir documento (Camión) con una foto y un PDF reales de VTV o póliza: que complete vencimiento y número, y avise si la patente no coincide. No hace falta guardar.
@@ -25,6 +26,7 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Hechos
 
+- [x] Sistema visual aplicado: tokens y componentes en toda la app, avisos nuevos, Servicios (tabla, filtros, estados, menú y tarjetas en el celular) y la lista del chofer (tarjeta y hoja del servicio). La pantalla de Servicios ya no se ensancha de costado.
 - [x] Firmar un remito saca el servicio de la lista del chofer (probado).
 - [x] procesar-ticket con sesión: probado con una carga real.
 - [x] Particular sin patente: Arribar y Finalizar ya no fallan (400). Un particular no puede quedar Activado.

@@ -1,0 +1,13 @@
+/* AuxiliOS · Sistema visual aplicado a la app (v1)
+   Ajustes para que los componentes de ui/components.css convivan con las
+   pantallas actuales. Sólo tokens. */
+
+/* Los modales viejos usan capas de hasta 17100: los avisos van por encima. */
+.ax-toasts { z-index: 20000; }
+/* Sin avisos, el contenedor viejo de sigma.js no ocupa lugar. */
+#toast-container:empty { display: none; }
+
+/* En el celular la barra de navegación ocupa 60 px abajo: los avisos quedan arriba de ella. */
+@media (max-width: 767px) {
+  .ax-toasts { bottom: calc(60px + var(--ax-sp-3) + env(safe-area-inset-bottom)); }
+}

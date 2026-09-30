@@ -1,0 +1,107 @@
+/* AuxiliOS · Servicios del chofer con el sistema visual (ui/tokens.css + ui/components.css)
+   Va encima de operator-service-bridge.css: cuelga de #phase3-driver-services y de
+   #p3-service-preview para ganar sin depender del orden de carga. Sólo tokens.
+   Pensado para el teléfono en la calle: letra de 13 px o más, todo lo que se toca
+   mide 44 px, y el color sólo marca el estado. */
+
+/* ── Panel y botones de arriba ─────────────────────────────────────── */
+#phase3-driver-services.p3-driver-panel { padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-xl); background: var(--ax-surface); font-family: var(--ax-font); }
+#phase3-driver-services .p3-panel-head { margin-bottom: var(--ax-sp-3); }
+#phase3-driver-services.p3-driver-panel, #phase3-driver-services > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+/* Arriba Activos / Historial a lo ancho; abajo "Sin asignación" y actualizar. */
+#phase3-driver-services .p3-head-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ax-sp-2); width: 100%; }
+#phase3-driver-services .p3-view-switch { grid-column: 1 / -1; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#phase3-driver-services .p3-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--ax-h-lg); height: var(--ax-h-lg); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#phase3-driver-services .p3-refresh:active { transform: scale(.97); }
+#phase3-driver-services .p3-refresh:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#phase3-driver-services .p3-view-switch .p3-refresh { flex: 1 1 0; height: calc(var(--ax-h-lg) - 8px); border: 0; border-radius: var(--ax-radius-sm); color: var(--ax-text-2); }
+#phase3-driver-services .p3-view-switch .p3-refresh.active { border: 0; background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#phase3-driver-services .p3-refresh-icon { width: var(--ax-h-lg); padding: 0; color: var(--ax-text-2); }
+@media (min-width: 721px) {
+  #phase3-driver-services .p3-head-actions { grid-template-columns: minmax(240px, 360px) auto auto; justify-content: start; }
+  #phase3-driver-services .p3-view-switch { grid-column: auto; }
+}
+
+/* ── Tarjeta del servicio ──────────────────────────────────────────── */
+#phase3-driver-services .p3-service-list { gap: var(--ax-sp-3); }
+#phase3-driver-services .p3-service-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text); }
+#phase3-driver-services .p3-service-card.is-actionable { transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#phase3-driver-services .p3-service-card.is-actionable:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-2); }
+#phase3-driver-services .p3-service-card.is-actionable:active { transform: scale(.99); }
+#phase3-driver-services .p3-service-card.is-actionable:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+#phase3-driver-services .p3-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ax-sp-3); padding: 14px 14px 0; }
+#phase3-driver-services .p3-card-id { display: grid; gap: 2px; min-width: 0; }
+#phase3-driver-services .p3-order-value { overflow: hidden; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-lg) var(--ax-font-mono); letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
+#phase3-driver-services .p3-card-company { overflow: hidden; color: var(--ax-text-2); font-size: var(--ax-fs-md); text-overflow: ellipsis; white-space: nowrap; }
+
+/* Estado: punto + texto (ámbar = falta algo del chofer; azul = en servicio). */
+#phase3-driver-services .p3-status { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; padding: 4px 0; border-radius: 0; background: none; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#phase3-driver-services .p3-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ax-text-3); }
+#phase3-driver-services .p3-status.blue::before { background: var(--ax-info); }
+#phase3-driver-services .p3-status.violet::before { background: transparent; box-shadow: inset 0 0 0 2px var(--ax-info); }
+#phase3-driver-services .p3-status.amber::before { background: var(--ax-warn); }
+#phase3-driver-services .p3-status.green::before { background: var(--ax-ok); }
+#phase3-driver-services .p3-status.red { color: var(--ax-text-3); }
+
+/* Datos del servicio */
+#phase3-driver-services .p3-compact-body { gap: 10px; padding: 12px 14px; }
+#p3-service-preview .p3-facts, #phase3-driver-services .p3-facts { gap: 8px; }
+#p3-service-preview .p3-fact-row, #phase3-driver-services .p3-fact-row,
+#p3-service-preview .p3-summary-line, #phase3-driver-services .p3-summary-line { grid-template-columns: 84px minmax(0, 1fr); gap: 10px; }
+#p3-service-preview .p3-fact-row span, #phase3-driver-services .p3-fact-row span,
+#p3-service-preview .p3-summary-line span, #phase3-driver-services .p3-summary-line span,
+#p3-service-preview .p3-summary-title, #phase3-driver-services .p3-summary-title { padding-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#p3-service-preview .p3-fact-row strong, #phase3-driver-services .p3-fact-row strong,
+#p3-service-preview .p3-summary-line strong, #phase3-driver-services .p3-summary-line strong { color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); line-height: 1.4; }
+#p3-service-preview .p3-vehicle-fact em, #phase3-driver-services .p3-vehicle-fact em,
+#p3-service-preview .p3-customer-fact em, #phase3-driver-services .p3-customer-fact em { margin-left: 6px; padding: 1px 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); white-space: nowrap; }
+/* Peajes y excedentes: bloque neutro; sólo el monto resalta. */
+#p3-service-preview .p3-toll-coverage-fact, #phase3-driver-services .p3-toll-coverage-fact { padding: 0; background: none; }
+#p3-service-preview .p3-toll-coverage-fact strong, #phase3-driver-services .p3-toll-coverage-fact strong { color: var(--ax-text-2); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+#p3-service-preview .p3-summary-block, #phase3-driver-services .p3-summary-block { gap: 6px; padding: 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#p3-service-preview .p3-summary-line strong, #phase3-driver-services .p3-summary-line strong { font-variant-numeric: tabular-nums; }
+#p3-service-preview .p3-summary-line.muted strong, #phase3-driver-services .p3-summary-line.muted strong { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#p3-service-preview .p3-draft-state, #phase3-driver-services .p3-draft-state { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 4px 10px; border: 1px solid rgba(39, 196, 122, .35); border-radius: var(--ax-radius-pill); background: var(--ax-ok-soft); color: var(--ax-ok); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); text-transform: none; }
+
+/* Pie: lo que pasa al tocar la tarjeta. */
+#phase3-driver-services .p3-card-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-2); min-height: var(--ax-h-lg); padding: 0 14px; border-top: 1px solid var(--ax-border); color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#phase3-driver-services .p3-card-foot .ax-icon { color: var(--ax-text-3); transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#phase3-driver-services .p3-service-card:hover .p3-card-foot .ax-icon { transform: translateX(2px); color: var(--ax-text-2); }
+
+/* Sin servicios */
+#phase3-driver-services .p3-empty { flex-direction: column; gap: 4px; padding: var(--ax-sp-6) var(--ax-sp-4); color: var(--ax-text-2); font-size: var(--ax-fs-md); text-align: center; }
+#phase3-driver-services .p3-empty > span { margin-bottom: 6px; color: var(--ax-ok); }
+#phase3-driver-services .p3-empty b { color: var(--ax-text); font-size: var(--ax-fs-lg); }
+#phase3-driver-services .p3-empty small { max-width: 280px; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+
+/* ── Hoja del servicio (sube desde abajo) ──────────────────────────── */
+#p3-service-preview .p3-preview-backdrop { background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#p3-service-preview > section { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border: 1px solid var(--ax-border-strong); border-bottom: 0; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); animation: ax-sheet-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#p3-service-preview > section > header small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#p3-service-preview > section > header h2 { margin-top: 4px; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-2xl) var(--ax-font-mono); letter-spacing: .02em; }
+#p3-service-preview > section > header button { width: var(--ax-h-lg); height: var(--ax-h-lg); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#p3-service-preview > section > header button:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#p3-service-preview .p3-preview-facts { padding: 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#p3-service-preview .p3-company-line { font-size: var(--ax-fs-md); }
+#p3-service-preview .p3-company-line b { color: var(--ax-text-2); font-family: var(--ax-font-mono); font-size: var(--ax-fs-sm); }
+#p3-service-preview footer { gap: var(--ax-sp-2); margin-top: var(--ax-sp-4); }
+#p3-service-preview footer button { min-height: 48px; border-radius: var(--ax-radius); font-family: var(--ax-font); font-size: 15px; font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#p3-service-preview footer button:active { transform: scale(.98); }
+#p3-service-preview footer button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#p3-service-preview .p3-preview-primary { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#p3-service-preview .p3-preview-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#p3-service-preview .p3-preview-secondary { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text); }
+#p3-service-preview .p3-preview-secondary:hover { background: var(--ax-surface-3); }
+#p3-service-preview .p3-preview-secondary.danger { border-color: rgba(226, 80, 74, .5); color: var(--ax-danger); }
+#p3-service-preview footer small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#p3-service-preview .p3-activation-confirm { padding: 14px; border: 1px solid rgba(226, 80, 74, .45); border-radius: var(--ax-radius-lg); background: var(--ax-danger-soft); }
+#p3-service-preview .p3-activation-confirm b { font-size: var(--ax-fs-lg); }
+#p3-service-preview .p3-activation-confirm p, #p3-service-preview .p3-activation-confirm legend { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#p3-service-preview .p3-activation-reason { min-height: var(--ax-h-lg); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+#p3-service-preview .p3-activation-reason:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#p3-service-preview .p3-activation-reason input { width: 18px; height: 18px; accent-color: var(--ax-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  #p3-service-preview > section, #p3-service-preview .p3-preview-backdrop { animation: none; }
+}
