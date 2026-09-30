@@ -39,7 +39,8 @@ function customerStep(step){
   void applyCompanyFieldModes(step);
 }
 
-function normalizedMode(config,key){const mode=config?.field_modes?.[key];return ['required','optional','hidden'].includes(mode)?mode:'optional'}
+/* El teléfono del cliente es obligatorio para el chofer (salvo "El cliente no informa teléfono"), sin importar la configuración de Servicios: esa es para Operaciones, donde es opcional. */
+function normalizedMode(config,key){if(key==='customer_phone')return 'required';const mode=config?.field_modes?.[key];return ['required','optional','hidden'].includes(mode)?mode:'optional'}
 function renderFieldModes(step,config){
   ['customer_document','customer_phone'].forEach(key=>{const mode=normalizedMode(config,key),row=$(`[data-remito-field="${key}"]`,step),input=key==='customer_document'?$('#rem-cuit'):$('#rem-telefono');if(!row)return;row.hidden=mode==='hidden';row.dataset.mode=mode;if(input){input.required=mode==='required';input.disabled=mode==='hidden';input.setAttribute('aria-required',mode==='required'?'true':'false')}const label=$('[data-mode-label]',row);if(label)label.textContent=mode==='required'?'obligatorio':'opcional';if(key==='customer_phone'){const noPhone=$('[data-no-phone]',step);if(noPhone)noPhone.hidden=mode!=='required';if(mode!=='required'){const cb=$('#rem-telefono-no-informa');if(cb&&cb.checked){cb.checked=false;if(input&&mode!=='hidden')input.disabled=false}}}});
 }

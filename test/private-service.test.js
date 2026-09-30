@@ -14,12 +14,15 @@ function cargar() {
   return win.AuxiliosParticulares;
 }
 
-test('el formulario de particular exige cliente, tipo, origen y presupuesto', () => {
+test('el formulario de particular exige cliente, tipo, origen y presupuesto (el teléfono es opcional)', () => {
   const P = cargar();
   const s = P._test.estadoInicial();
   s.ctx = { services: [{ concept_id: 'c1', name: 'Liviano', category: 'primary', available: true }] };
   const e = P._test.errores(s).join(' ');
-  ['nombre del cliente', 'teléfono', 'tipo de servicio', 'origen', 'presupuesto'].forEach(t => assert.match(e, new RegExp(t)));
+  ['nombre del cliente', 'tipo de servicio', 'origen', 'presupuesto'].forEach(t => assert.match(e, new RegExp(t)));
+  assert.doesNotMatch(e, /teléfono/);                       // obligatorio sólo para el chofer
+  s.d.customer_phone = '1234';
+  assert.match(P._test.errores(s).join(' '), /teléfono/);    // si lo carga, tiene que tener 8 o más números
 });
 
 test('sin pago, seña o pago total: el saldo a cobrar se calcula solo', () => {

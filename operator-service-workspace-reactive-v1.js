@@ -25,7 +25,8 @@ function setText(id,value){const el=document.getElementById(id);if(el)el.textCon
 function setOptions(el,rows,value,placeholder){if(!el)return;el.innerHTML=`<option value="">${esc(placeholder)}</option>`+rows.map(x=>`<option value="${esc(x.value)}" ${x.disabled?'disabled':''}>${esc(x.label)}</option>`).join('');el.value=value??'';}
 function selectedBase(){const d=W()?.data||{};return(W()?.context?.bases||[]).find(x=>String(x.base_id)===String(d.billing_base_id));}
 function routeMode(){return W()?.context?.billing?.route_mode||'base_origin_destination_base';}
-function fieldMode(key){const configured=O()?.S?.moduleConfig?.field_modes?.[key];if(configured)return configured;return key==='customer_email'?'hidden':'optional';}
+function fieldMode(key){const configured=O()?.S?.moduleConfig?.field_modes?.[key];if(key==='customer_phone')return configured==='hidden'?'hidden':'optional';   /* obligatorio sólo para el chofer */
+if(configured)return configured;return key==='customer_email'?'hidden':'optional';}
 function secondaryItems(){const w=W();if(!w)return[];return(w.items||[]).filter(x=>x.can_be_secondary&&x.available&&String(x.concept_id)!==String(w.data.primary_concept_id));}
 function conceptById(id){return(W()?.items||[]).find(x=>String(x.concept_id)===String(id));}
 /* Tipo de servicio de una sola dirección (p. ej. UML): se resuelve en el origen.

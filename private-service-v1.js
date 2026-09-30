@@ -303,7 +303,7 @@
     var d = st.d, e = [], push = e.push;
     e.push = function (m) { return push.call(e, { k: CAMPO_DE[m] || campoDe(m), m: m }); };
     if (!d.customer_name.trim()) e.push('Completá el nombre del cliente.');
-    if (digits(d.customer_phone).length < 8) e.push('Completá el teléfono del cliente.');
+    if (digits(d.customer_phone) && digits(d.customer_phone).length < 8) e.push('Completá el teléfono del cliente.');   // opcional; si lo carga, 8 o más números
     if (!d.primary_concept_id) e.push('Elegí el tipo de servicio.');
     if (!d.origin.trim()) e.push('Completá el origen.');
     if (!unaDireccion() && !d.destination.trim()) e.push('Completá el destino.');
@@ -425,7 +425,7 @@
         '<div class="psv-cols"><div class="psv-col">' +
         '<section><h3>Cliente</h3><div class="psv-grid">' +
           campo('customer_name', 'Nombre y apellido *', input('customer_name', d.customer_name, 'autocomplete="name"')) +
-          campo('customer_phone', 'Teléfono *', input('customer_phone', d.customer_phone, 'inputmode="tel" placeholder="11 2345 6789"')) +
+          campo('customer_phone', 'Teléfono', input('customer_phone', d.customer_phone, 'inputmode="tel" placeholder="11 2345 6789"')) +
           campo('customer_document', 'DNI / CUIT' + (d.factura ? ' *' : ''), input('customer_document', d.customer_document, 'inputmode="numeric" placeholder="8 u 11 dígitos"')) +
         '</div></section>' +
 

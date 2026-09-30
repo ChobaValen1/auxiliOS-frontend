@@ -217,3 +217,14 @@ test('Historial: "Remito aprobado · Ver" abre el remito (detalle, PDF, WhatsApp
   // Si el panel no está, el visor de revisión se abre en sólo lectura para un servicio cerrado.
   assert.match(svc, /AuxiliosRemitoReviewV2\.open\(id,\{readOnly:cerrado\}\)/);
 });
+
+test('Teléfono del cliente: obligatorio sólo para el chofer', () => {
+  const flow = read('remito-mobile-flow-v3.js'), wiz = read('operator-service-wizard.js'), cfg = read('service-module-configuration.js'), part = read('private-service-v1.js');
+  assert.match(flow, /if\(key==='customer_phone'\)return 'required'/);                    // chofer: siempre, salvo "El cliente no informa teléfono"
+  assert.doesNotMatch(wiz, /req\('customer_phone'\)/);                                    // Operaciones: nunca
+  assert.match(cfg, /fieldModes\.customer_phone==='required'\)fieldModes\.customer_phone='optional'/);
+  assert.match(part, /campo\('customer_phone', 'Teléfono',/);
+  const sql = read('migrations/20260930200000_telefono_obligatorio_solo_chofer_v1.sql');
+  assert.match(sql, /validate_private_customer_v1/);
+  assert.match(sql, /operator_service_missing_required_v2/);
+});
