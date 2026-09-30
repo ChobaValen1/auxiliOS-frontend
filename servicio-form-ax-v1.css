@@ -298,20 +298,10 @@
 #psv-form .ax-select-btn, .ax-select-btn { font-weight: var(--ax-fw-regular); }
 
 /* Historial del servicio: tarjeta en la columna derecha, debajo de la revisión. Línea de tiempo con un ícono por evento. */
-#modal-operador-wizard .osv4-reactive #osv4-history-panel { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); overflow: hidden; color: var(--ax-text); font-family: var(--ax-font); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel { display: grid; gap: var(--ax-sp-3); color: var(--ax-text); font-family: var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .osca-actions.has-history { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #modal-operador-wizard .osv4-reactive #osv4-history-panel[hidden] { display: none; }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary { display: flex; align-items: center; gap: var(--ax-sp-3); padding: var(--ax-sp-3) var(--ax-sp-4); cursor: pointer; list-style: none; }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary::-webkit-details-marker { display: none; }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary:hover { background: var(--ax-surface-2); }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary:focus-visible { outline: none; box-shadow: inset var(--ax-focus); }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary > .ax-icon:first-child { color: var(--ax-text-2); }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary > span { display: grid; gap: 2px; flex: 1; min-width: 0; }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); color: var(--ax-text); }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary small { font-size: var(--ax-fs-sm); color: var(--ax-text-3); }
-#modal-operador-wizard .osv4-reactive .osv4-history-chevron { color: var(--ax-text-3); transition: transform var(--ax-dur) var(--ax-ease-out); }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel:not([open]) .osv4-history-chevron { transform: rotate(-90deg); }
-#modal-operador-wizard .osv4-reactive #osv4-history-panel[open] > summary { border-bottom: 1px solid var(--ax-border); }
-#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot { padding: var(--ax-sp-4); }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot { padding: 0; }
 #modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history { padding: 0; }
 #modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); margin: 0 0 var(--ax-sp-3); }
 #modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head > span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
