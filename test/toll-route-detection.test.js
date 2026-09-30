@@ -115,4 +115,14 @@ test('el botón, el panel y la carga de peajes detectados están conectados', ()
   assert.match(css, /\.osca-add-actions \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(css, /\.osca-add-actions > :first-child \{ grid-column: 1 \/ -1; \}/);
   assert.match(css, /\.osca-add-actions > \[data-ca="detect-tolls"\]:last-child \{ grid-column: 1 \/ -1; \}/);
+  // Peajes compactos: la tabla del mapa lleva la selección y el botón de agregar (sin lista aparte) y las filas ocupan dos renglones.
+  const conSel = t.leyenda({ waypoints: wps }, hits, { elegidos: ['a'], ya: [] });
+  assert.match(conSel, /data-td-pick="a"[^>]*checked/);
+  assert.match(conSel, /data-td="apply"/);
+  assert.match(conSel, /Agregar 1 peaje/);
+  assert.match(t.leyenda({ waypoints: wps }, hits, { elegidos: ['a'], ya: ['a'] }), /ya está cargado/);
+  assert.doesNotMatch(read('toll-route-detection-v1.js'), /tdt-list/);
+  assert.match(css, /\.osca-matrix\.tolls \.osca-matrix-row:not\(\.osaa-canonical-row\) \{ grid-template-columns: minmax\(0, 1fr\) 64px auto 28px/);
+  assert.match(css, /\.osca-format-list \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(read('operator-service-commercial-addons-v1.js'), /function labelFields\(\)/);     // cada campo conserva su rótulo para lectores de pantalla
 });

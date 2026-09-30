@@ -32,17 +32,14 @@ test('la tercera columna tiene un único renderer comercial',()=>{
  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio/);
 });
 
-test('formato de cobro se retrae tras elegir y permite Cambiar en la misma fila',()=>{
+test('formato de cobro: botonera compacta siempre visible, sin banner ni Cambiar',()=>{
  for(const label of ['A cargo del cliente','A cargo de la Prestadora','Uno y Uno'])assert.match(commercial,new RegExp(label));
  assert.match(commercial,/Elegí el formato de cobro/);
  assert.match(commercial,/Quién paga/);
  assert.match(commercial,/Método de Pago/);
  assert.match(commercial,/function coverageControl/);
- assert.match(commercial,/osca-format-selected/);
- assert.match(commercial,/data-ca="change-coverage"/);
- assert.match(commercial,/state\.coverageEditing=false/);
- assert.match(commercial,/action==='change-coverage'/);
- assert.match(commercialCss,/\.osca-format-selected\{/);
+ assert.match(commercial,/Formato de cobro de peajes \*/);
+ assert.doesNotMatch(commercial,/data-ca="change-coverage"/);      // se cambia tocando otra opción
  assert.match(wizard,/PAYERS=new Set\(\['provider','customer'\]\)/);
  assert.match(wizard,/fixedPayer=mode=>mode==='provider_roundtrip'\?'provider':mode==='customer_roundtrip'\?'customer':''/);
  assert.match(wizard,/Seleccioná primero el formato de cobro de peajes/);

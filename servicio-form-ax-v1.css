@@ -384,3 +384,63 @@
 #modal-operador-wizard .osv4-reactive .tdt-code { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ax-text); color: var(--ax-bg); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
 #modal-operador-wizard .osv4-reactive .tdt-legend .tdt-num { width: 20px; height: 20px; }
 #modal-operador-wizard .osv4-reactive .osca-actions em.osca-required { background: var(--ax-warn-soft); color: var(--ax-warn); }
+
+/* Peajes y excedentes compactos: formato de cobro en una línea y cada peaje en dos renglones
+   (peaje · cantidad · total · quitar / quién paga · medio de pago). Los rótulos se leen en cada campo. */
+#modal-operador-wizard .osv4-reactive .osca-panel { gap: var(--ax-sp-2); padding: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .osca-field-label { display: block; margin: 0 0 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive .osca-format-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button { display: grid; place-items: center; grid-template-columns: 1fr; min-height: 34px; padding: 3px 6px; text-align: center; line-height: 1.15; }
+#modal-operador-wizard .osv4-reactive .osca-format-list .osca-radio { display: none; }
+#modal-operador-wizard .osv4-reactive .osca-format-list b { font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button.active, #modal-operador-wizard .osv4-reactive .osca-format-list > button[aria-checked="true"] { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .osca-panel .osca-matrix-body { gap: 6px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div::before { content: none; display: none; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cantidad"],
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cant."] { display: flex; align-items: center; gap: 3px; color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cantidad"]::before,
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cant."]::before { content: "×"; display: inline; margin: 0; letter-spacing: 0; text-transform: none; font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cantidad"] input,
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cant."] input { min-width: 0; padding: 0 6px; text-align: center; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total { min-height: 0; align-items: flex-end; justify-content: center; text-align: right; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total b { font-size: var(--ax-fs-sm); white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > .osca-remove { grid-column: 4; grid-row: 1; margin: 0; justify-self: end; align-self: center; }
+/* Peajes (alta): peaje · × cantidad · total · quitar / quién paga · medio de pago */
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) { grid-template-columns: minmax(0, 1fr) 64px auto 28px; gap: 6px; padding: 8px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Peaje"] { grid-column: 1; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Cantidad"] { grid-column: 2; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Total"] { grid-column: 3; grid-row: 1; min-width: 70px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Quién paga"] { grid-column: 1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Método de pago"] { grid-column: 2 / -1; grid-row: 2; }
+/* Peajes (revisión): peaje · × cantidad · quitar / quién paga · importe · medio de pago */
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 28px; gap: 6px; padding: 8px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Peaje"] { grid-column: 1 / 3; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Cantidad"] { grid-column: 3; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Quién paga"] { grid-column: 1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Importe"] { grid-column: 2; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Medio de pago"] { grid-column: 3 / -1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > .osaa-driver-payment { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+/* Excedentes: concepto · × cantidad · importe · quitar / cobrador · medio de pago */
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row { grid-template-columns: minmax(0, 1.4fr) 64px minmax(0, 1fr) 28px; gap: 6px; padding: 8px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Concepto"] { grid-column: 1; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Cant."],
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Cantidad"] { grid-column: 2; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Importe"] { grid-column: 3; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Cobrador"],
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="A cargo de"] { grid-column: 1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Medio Pago"],
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Medio de pago"] { grid-column: 2 / -1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-add-actions { gap: 6px; }
+#modal-operador-wizard .osv4-reactive .osca-add-row { min-height: 32px; padding: 0 8px; font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-summary, #modal-operador-wizard .osv4-reactive .osca-actual { padding-top: var(--ax-sp-2); font-size: var(--ax-fs-sm); }
+
+/* Tabla de peajes del mapa con la selección y el botón de agregar dentro. */
+#modal-operador-wizard .osv4-reactive .tdt-panel { gap: var(--ax-sp-2); margin-top: var(--ax-sp-2); padding: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .tdt-legend { width: 100%; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-head td em { margin-left: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-style: normal; font-weight: 400; letter-spacing: 0; text-transform: none; }
+#modal-operador-wizard .osv4-reactive .tdt-pick { display: inline-flex !important; flex-direction: row !important; flex-wrap: nowrap; align-items: center !important; gap: 6px; margin: 0; cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-pick input { width: 16px; height: 16px; margin: 0; accent-color: var(--ax-accent); flex: none; }
+#modal-operador-wizard .osv4-reactive .tdt-legend th:has(.tdt-pick) { width: 54px; }
+#modal-operador-wizard .osv4-reactive .tdt-legend tr.is-loaded { opacity: .6; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-actions td { padding-top: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .tdt-legend-actions .tdt-apply { width: 100%; justify-content: center; }

@@ -12,7 +12,7 @@
 
   var RADIO_M = 150;          // a qué distancia del trazado se considera que se pasa por el peaje
   var M_POR_GRADO = 111320;
-  var ANCHO = 320, ALTO = 210, MARGEN = 16;
+  var ANCHO = 320, ALTO = 180, MARGEN = 14;
 
   var state = { detect: null };
 
@@ -199,19 +199,27 @@
   }
 
   /* Tabla de referencias (abajo a la izquierda del mapa): Base, Origen y Destino con su dirección, y los peajes
-     por los que pasa. Las letras y los números son los que lleva cada punto en el dibujo. */
-  function leyenda(g, hits) {
+     por los que pasa. Las letras y los números son los que lleva cada punto en el dibujo. Con "sel" (elegidos y ya
+     cargados) cada peaje se puede tildar y la misma tabla tiene el botón para agregarlos: no hay otra lista aparte. */
+  function leyenda(g, hits, sel) {
     var vistos = [], filas = '';
     (g.waypoints || []).forEach(function (wp) {
       if (vistos.indexOf(wp.label) >= 0) return;
       vistos.push(wp.label);
       filas += '<tr><th scope="row"><span class="tdt-code">' + esc(wp.label.charAt(0)) + '</span></th><td><b>' + esc(wp.label) + '</b>' + (wp.name ? '<span>' + esc(wp.name) + '</span>' : '') + '</td></tr>';
     });
-    filas += '<tr class="tdt-legend-head"><td colspan="2">Peajes por los que pasa</td></tr>';
+    filas += '<tr class="tdt-legend-head"><td colspan="2">Peajes por los que pasa' + (sel && hits.length ? ' <em>tildá los que querés agregar</em>' : '') + '</td></tr>';
     if (!hits.length) filas += '<tr><td colspan="2" class="tdt-legend-none">Ninguno</td></tr>';
+    var cantidad = 0;
     hits.forEach(function (h, i) {
-      filas += '<tr><th scope="row"><span class="tdt-num">' + (i + 1) + '</span></th><td><b>' + esc(h.toll.name) + '</b><span>' + h.passes + ' pasada' + (h.passes === 1 ? '' : 's') + '</span></td></tr>';
+      var id = String(h.toll.toll_id), cargado = sel && sel.ya.indexOf(id) >= 0, marcado = sel && !cargado && sel.elegidos.indexOf(id) >= 0;
+      if (marcado) cantidad++;
+      var numero = '<span class="tdt-num">' + (i + 1) + '</span>';
+      var km2 = (h.at || []).length ? ' · ' + (h.at || []).map(function (m) { return 'km ' + km(m); }).join(' y ') : '';
+      filas += '<tr class="' + (cargado ? 'is-loaded' : '') + '"><th scope="row">' + (sel ? '<label class="tdt-pick"><input type="checkbox" data-td-pick="' + esc(id) + '"' + (marcado ? ' checked' : '') + (cargado ? ' disabled' : '') + ' aria-label="Agregar ' + esc(h.toll.name) + '">' + numero + '</label>' : numero) + '</th>' +
+        '<td><b>' + esc(h.toll.name) + '</b><span>' + h.passes + ' pasada' + (h.passes === 1 ? '' : 's') + km2 + (cargado ? ' · ya está cargado' : '') + '</span></td></tr>';
     });
+    if (sel && hits.length) filas += '<tr class="tdt-legend-actions"><td colspan="2"><button type="button" class="tdt-apply" data-td="apply"' + (cantidad ? '' : ' disabled') + '>' + ico('plus') + (cantidad ? 'Agregar ' + cantidad + ' peaje' + (cantidad === 1 ? '' : 's') : 'Nada para agregar') + '</button></td></tr>';
     return '<table class="tdt-legend"><caption class="sr-only">Referencias del mapa</caption><tbody>' + filas + '</tbody></table>';
   }
 
@@ -220,27 +228,15 @@
     if (!d) return '';
     if (d.loading) return '<section class="tdt-panel" aria-busy="true"><p class="tdt-empty">Calculando el recorrido…</p></section>';
     if (d.geometry !== geometria()) { state.detect = null; return ''; }     // el recorrido cambió: la propuesta ya no vale
-    var ya = cargados();
-    var g = d.geometry;
-    var lista = d.hits.map(function (h, i) {
-      var id = String(h.toll.toll_id), cargado = ya.indexOf(id) >= 0;
-      return '<li class="' + (cargado ? 'is-loaded' : '') + '"><label><input type="checkbox" data-td-pick="' + esc(id) + '"' + (!cargado && d.elegidos.indexOf(id) >= 0 ? ' checked' : '') + (cargado ? ' disabled' : '') + '>' +
-        '<span class="tdt-num">' + (i + 1) + '</span><span class="tdt-name"><b>' + esc(h.toll.name) + '</b>' +
-        '<small>' + h.passes + ' pasada' + (h.passes === 1 ? '' : 's') + ' · ' + (h.at || []).map(function (m) { return 'km ' + km(m); }).join(' y ') + (cargado ? ' · ya está cargado' : '') + '</small>' +
-        (h.toll.road ? '<small class="tdt-road">' + esc(corto(h.toll.road, 60)) + '</small>' : '') + '</span></label></li>';
-    }).join('');
-    var elegibles = d.hits.filter(function (h) { var id = String(h.toll.toll_id); return ya.indexOf(id) < 0 && d.elegidos.indexOf(id) >= 0; });
-    var cantidad = elegibles.length;
+    var g = d.geometry, ya = cargados();
     var notas = '';
     if (d.sinUbicar.length) notas += '<p class="tdt-note">' + ico('map-pin') + '<span>Sin ubicación cargada, no se pueden detectar: <b>' + d.sinUbicar.map(function (t) { return esc(t.name); }).join(', ') + '</b>. Se carga en Configuración › Peajes.</span></p>';
     if (d.sinTarifa.length) notas += '<p class="tdt-note">' + ico('triangle-alert') + '<span>Pasa por peajes sin tarifa vigente: <b>' + d.sinTarifa.map(function (t) { return esc(t.name); }).join(', ') + '</b>.</span></p>';
     return '<section class="tdt-panel" aria-label="Peajes del recorrido">' +
       '<div class="tdt-head"><div><b>Peajes del recorrido</b><small>' + esc(g.label || '') + (g.km ? ' · ' + num(g.km).toLocaleString('es-AR') + ' km' : '') + '</small></div>' +
       '<button type="button" class="tdt-close" data-td="close" aria-label="Cerrar">' + ico('x') + '</button></div>' +
-      '<div class="tdt-mapbox">' + mapa(d.points, g.waypoints || [], d.hits) + leyenda(g, d.hits) + '</div>' +
-      (d.hits.length ? '<ul class="tdt-list">' + lista + '</ul>' : '<p class="tdt-empty">No se detectaron peajes en este recorrido.</p>') +
+      '<div class="tdt-mapbox">' + mapa(d.points, g.waypoints || [], d.hits) + leyenda(g, d.hits, { elegidos: d.elegidos, ya: ya }) + '</div>' +
       notas +
-      (d.hits.length ? '<div class="tdt-actions"><button type="button" class="tdt-apply" data-td="apply"' + (cantidad ? '' : ' disabled') + '>' + ico('plus') + (cantidad ? 'Agregar ' + cantidad + ' peaje' + (cantidad === 1 ? '' : 's') : 'Nada para agregar') + '</button></div>' : '') +
       '</section>';
   }
 
