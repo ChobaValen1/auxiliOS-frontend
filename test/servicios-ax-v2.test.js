@@ -158,3 +158,11 @@ test('Remito sin asignación a medio completar: se avisa antes de empezar otro s
   assert.match(sb, /'No se pudo guardar el remito\. ' \+ String\(error\.message \|\| ''\)\.replace\(\/\^\[A-Z_\]\{4,\}:\\s\*\/, ''\)/);
   assert.match(sql, /VIAJE_EN_CURSO: tenés el servicio % sin terminar/);
 });
+
+test('Particular: Ahora empareja móvil y chofer; Programar toma el chofer de la jornada del móvil', () => {
+  const js = read('private-service-v1.js');
+  assert.match(js, /function programado\(\) \{ return !!\(st && st\.d && st\.d\.cuando === 'programar' && !st\.edit\); \}/);
+  assert.match(js, /O_pares\(\)\(k === 'assigned_driver_id' \? 'driver' : 'truck', t\.value, st\.d\)/);   // mismo emparejamiento que Prestadora
+  assert.match(js, /assigned_driver_id: \(programado\(\) \? '' : d\.assigned_driver_id\) \|\| null/);
+  assert.match(js, /data-psv-k="assigned_driver_id"' \+ \(programado\(\) \? ' disabled' : ''\)/);
+});

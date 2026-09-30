@@ -478,7 +478,7 @@
           ? '<section><h3>Lo hizo</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
           : '<section><h3>Asignación <small>(opcional)</small></h3><div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
-          campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id">' + opciones(drivers, d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
+          campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id"' + (programado() ? ' disabled' : '') + '>' + opciones(drivers, programado() ? '' : d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
         '</div>') +
         '<div class="psv-grid psv-captado">' +
           '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
@@ -529,6 +529,10 @@
   }
   /* Móvil y chofer: en lugar de "Disponible", la marca confirma que están libres
      (o dice por qué no). Si no se elige chofer, va el de la jornada del móvil. */
+  /* Programar: el chofer no se elige, sale de la jornada del móvil cuando llegue el momento.
+     Ahora: móvil y chofer van de a pares, igual que en el servicio de Prestadora. Al editar se respeta lo ya asignado. */
+  function programado() { return !!(st && st.d && st.d.cuando === 'programar' && !st.edit); }
+
   function pintarRecursos(animar) {
     var O = global.OperatorServices || {}, S = OS(), d = st && st.d;
     if (!d) return;
@@ -552,8 +556,11 @@
     var t = d.assigned_truck_id, dr = d.assigned_driver_id;
     var bT = t && O.resourceBlocker ? O.resourceBlocker('truck', t) : '';
     var hT = t && O.resourceHint ? O.resourceHint('truck', t) : '';
+    if (programado()) hT = hT.replace(/\s*·?\s*Sin jornada abierta/, '');
     linea('psv-res-truck', !t ? '' : bT ? 'error' : /Sin jornada/.test(hT) ? 'warn' : 'done', !t ? '' : bT || hT || 'Elegido');
-    if (dr) {
+    if (programado()) {
+      linea('psv-res-driver', '', 'Lo toma el chofer que tenga la jornada del móvil.');
+    } else if (dr) {
       var bD = O.resourceBlocker ? O.resourceBlocker('driver', dr) : '';
       var hD = O.resourceHint ? O.resourceHint('driver', dr) : '';
       linea('psv-res-driver', bD ? 'error' : /Sin jornada/.test(hD) ? 'warn' : 'done', bD || hD || 'Elegido');
@@ -567,6 +574,8 @@
   /* Repintar pierde el foco del campo que se está escribiendo; sólo se repinta
      cuando cambia la forma del formulario, no en cada tecla. */
   var ESTRUCTURALES = { primary_concept_id: 1, factura: 1, captado: 1 };
+
+  function O_pares() { var O = global.OperatorServices; return O && O.pairedResources; }
 
   function onInput(ev) {
     var t = ev.target;
@@ -594,7 +603,14 @@
         if (pt) pt.value = Math.round(num(st.d.presupuesto)).toLocaleString('es-AR');
       }
       if (k === 'primary_concept_id' && ev.type === 'change') calcularRuta();
-      if ((k === 'assigned_truck_id' || k === 'assigned_driver_id') && ev.type === 'change') pintarRecursos(true);
+      if ((k === 'assigned_truck_id' || k === 'assigned_driver_id') && ev.type === 'change') {
+        // Ahora: elegir uno trae al otro de su jornada (o lo limpia), como en Prestadora.
+        if (!programado() && !st.edit && O_pares()) {
+          Object.assign(st.d, O_pares()(k === 'assigned_driver_id' ? 'driver' : 'truck', t.value, st.d));
+          return pintar();
+        }
+        pintarRecursos(true);
+      }
       return;
     }
     var kind = t.getAttribute('data-psv-addr');
@@ -742,7 +758,7 @@
       destination_lng: (single ? d.origin_lng : d.destination_lng) || null,
       destination_place_id: (single ? d.origin_place_id : d.destination_place_id) || null,
       destination_formatted_address: (single ? d.origin_formatted_address : d.destination_formatted_address) || null,
-      assigned_truck_id: d.assigned_truck_id || null, assigned_driver_id: d.assigned_driver_id || null,
+      assigned_truck_id: d.assigned_truck_id || null, assigned_driver_id: (programado() ? '' : d.assigned_driver_id) || null,
       referred_by_driver_id: d.captado ? d.referred_by_driver_id || null : null,
       operator_notes: d.operator_notes.trim(), logistics_type: 'own', is_holiday: false, granted_delay_minutes: 0
     };
@@ -862,7 +878,12 @@
     if (a === 'guardar') return guardar();
     if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
     if (b.hasAttribute('data-psv-pmedio')) { st.d.medios[b.getAttribute('data-psv-pmedio')] = b.getAttribute('data-v'); return pintar(); }
-    if (b.hasAttribute('data-psv-cuando')) { st.d.cuando = b.getAttribute('data-psv-cuando'); return pintar(); }
+    if (b.hasAttribute('data-psv-cuando')) {
+      st.d.cuando = b.getAttribute('data-psv-cuando');
+      if (programado()) st.d.assigned_driver_id = '';
+      else if (!st.edit && st.d.assigned_truck_id && !st.d.assigned_driver_id && O_pares()) Object.assign(st.d, O_pares()('truck', st.d.assigned_truck_id, st.d));
+      return pintar();
+    }
     if (b.hasAttribute('data-psv-pick')) return elegirDireccion(b.getAttribute('data-psv-pick'), Number(b.getAttribute('data-i')));
   });
   document.addEventListener('input', function (ev) { if (ev.target.closest && ev.target.closest('#psv-form')) onInput(ev); });
