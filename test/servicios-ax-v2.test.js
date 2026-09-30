@@ -210,3 +210,10 @@ test('Revisión de cargos: lista corta, sin Dejar pendiente y Finalizar y cerrar
   assert.match(ws, /if\(a==='finish'\)return window\.AuxiliosRemitoReviewV2\?\.finalizeEmbedded/);
   assert.match(css, /#osv4-finalize \{ height: var\(--ax-h\)/);
 });
+
+test('Historial: "Remito aprobado · Ver" abre el remito (detalle, PDF, WhatsApp), no la pantalla de revisión', () => {
+  const svc = read('operator-services.js');
+  assert.match(svc, /svc\?\.status==='completed'&&svc\.remito_id&&window\.RemitoPanel\?\.open\)return window\.RemitoPanel\.open\(Number\(svc\.remito_id\)\)/);
+  // Si el panel no está, el visor de revisión se abre en sólo lectura para un servicio cerrado.
+  assert.match(svc, /AuxiliosRemitoReviewV2\.open\(id,\{readOnly:cerrado\}\)/);
+});

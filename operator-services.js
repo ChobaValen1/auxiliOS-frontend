@@ -36,14 +36,18 @@ const truck=id=>S.trucks.find(x=>String(x.truck_id)===String(id));
 const concept=id=>S.concepts.find(x=>String(x.concept_id)===String(id));
 const service=id=>S.services.find(x=>String(x.service_id)===String(id));
 async function openSignedRemito(id){
-  if(canManage()&&!['completed','cancelled'].includes(service(id)?.status)&&typeof window.editarServicioOperador==='function')return window.editarServicioOperador(id);
+  const svc=service(id);
+  if(canManage()&&!['completed','cancelled'].includes(svc?.status)&&typeof window.editarServicioOperador==='function')return window.editarServicioOperador(id);
+  /* Remito ya aprobado (servicio finalizado, Historial): se abre el remito de verdad (detalle, encuesta, cambios, PDF y WhatsApp) y no la pantalla de "Revisión y cierre", que es para decidir. */
+  if(svc?.status==='completed'&&svc.remito_id&&window.RemitoPanel?.open)return window.RemitoPanel.open(Number(svc.remito_id));
+  const cerrado=svc?.status==='completed';
   try{
     if(!window.AuxiliosRemitoReviewV2?.open){
       if(typeof window.loadAuxiliosModule!=='function')throw new Error('El cargador del visor no está disponible');
       await window.loadAuxiliosModule('auxilios-operator-remito-review-v2','/operator-remito-review-v2.js');
     }
     if(!window.AuxiliosRemitoReviewV2?.open)throw new Error('El visor del remito no pudo iniciarse');
-    return await window.AuxiliosRemitoReviewV2.open(id);
+    return await window.AuxiliosRemitoReviewV2.open(id,{readOnly:cerrado});
   }catch(error){
     console.error('[Servicios] No se pudo abrir el remito firmado:',error);
     notify(error?.message||'No se pudo abrir el remito firmado','error');
