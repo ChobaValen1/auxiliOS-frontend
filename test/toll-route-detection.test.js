@@ -86,4 +86,18 @@ test('el botón, el panel y la carga de peajes detectados están conectados', ()
   assert.match(read('toll-route-detection-v1.js'), /R\.loadRouteGeometry/);
   assert.match(read('operator-service-commercial-addons-v1.js'), /function addDetectedTollsAdmin\(items\)/);
   assert.match(read('operator-service-commercial-addons-v1.js'), /tolls\?`<button type="button" class="osca-add-row" data-ca="detect-tolls">/);
+
+  // Referencias del mapa: sentido, escala, norte, direcciones y km por tramo.
+  const t = load();
+  const svg = t.mapa([[-34.60, -58.40], [-34.70, -58.40], [-34.60, -58.40]],
+    [{ label: 'Base', lat: -34.60, lng: -58.40, name: 'Base Norte' }, { label: 'Origen', lat: -34.70, lng: -58.40, name: 'Av. Mitre 1200, Avellaneda' }],
+    [{ toll: { toll_id: 'a', name: 'Peaje Dock Sud', latitude: -34.65, longitude: -58.40 }, passes: 2 }]);
+  assert.match(svg, /class="tdt-arrow"/);
+  assert.match(svg, /class="tdt-scale"/);
+  assert.match(svg, /class="tdt-north"/);
+  assert.match(svg, />Av\. Mitre 1200</);                       // dirección corta bajo la etiqueta
+  assert.match(svg, />Dock Sud</);                              // nombre del peaje sin la palabra "Peaje"
+  const it = t.itinerario({ waypoints: [{ label: 'Base', name: 'Base Norte' }, { label: 'Origen', name: 'Av. Mitre 1200, Avellaneda' }], legs: [{ distanceMeters: 12400, durationSeconds: 1080 }] });
+  assert.match(it, /Av\. Mitre 1200, Avellaneda/);
+  assert.match(it, /12,4 km · 18 min/);
 });

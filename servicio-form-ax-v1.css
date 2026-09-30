@@ -359,3 +359,20 @@
 #modal-operador-wizard .osv4-reactive .tdt-apply:disabled { border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text-3); cursor: default; }
 #modal-operador-wizard .osv4-reactive .tdt-list input { margin: 0; }
 #modal-operador-wizard .osv4-reactive .osca-add-actions [data-ca="detect-tolls"] { grid-column: 1 / -1; }
+
+/* Referencias del mapa de peajes: sentido del recorrido, nombres, escala, norte e itinerario con direcciones y km por tramo. */
+#modal-operador-wizard .osv4-reactive .tdt-arrow { fill: none; stroke: var(--ax-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#modal-operador-wizard .osv4-reactive .tdt-wp .tdt-sub { fill: var(--ax-text-3); font: 400 8.5px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-toll-name { fill: var(--ax-accent); font: var(--ax-fw-semibold) 9px var(--ax-font); paint-order: stroke; stroke: var(--ax-bg); stroke-width: 3px; }
+#modal-operador-wizard .osv4-reactive .tdt-scale path { fill: none; stroke: var(--ax-text-2); stroke-width: 1.4; }
+#modal-operador-wizard .osv4-reactive .tdt-scale text { fill: var(--ax-text-2); font: var(--ax-fw-semibold) 9px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-north path { fill: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .tdt-north text { fill: var(--ax-text-2); font: var(--ax-fw-bold) 9px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-route-list { display: grid; margin: 0; padding: 0; list-style: none; }
+#modal-operador-wizard .osv4-reactive .tdt-stop { display: flex; align-items: flex-start; gap: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .tdt-stop > span:last-child { display: grid; min-width: 0; }
+#modal-operador-wizard .osv4-reactive .tdt-stop b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .tdt-stop small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); overflow-wrap: anywhere; }
+#modal-operador-wizard .osv4-reactive .tdt-dot { flex: none; width: 10px; height: 10px; margin: 5px 0 0 6px; border: 2px solid var(--ax-text); border-radius: 50%; background: var(--ax-surface-3); }
+#modal-operador-wizard .osv4-reactive .tdt-leg { position: relative; min-height: 26px; margin-left: 10px; padding-left: calc(var(--ax-sp-3) + 10px); border-left: 2px dotted var(--ax-border-strong); color: var(--ax-text-3); font-size: var(--ax-fs-sm); display: flex; align-items: center; }
+#modal-operador-wizard .osv4-reactive .tdt-road { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }

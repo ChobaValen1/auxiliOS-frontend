@@ -12,7 +12,7 @@
 
   var RADIO_M = 150;          // a qué distancia del trazado se considera que se pasa por el peaje
   var M_POR_GRADO = 111320;
-  var ANCHO = 320, ALTO = 190, MARGEN = 16;
+  var ANCHO = 320, ALTO = 230, MARGEN = 16;
 
   var state = { detect: null };
 
@@ -69,9 +69,9 @@
       if (c.d < minimo) minimo = c.d;
       if (c.d <= RADIO_M) posiciones.push(acum[i] + c.t * (acum[i + 1] - acum[i]));
     }
-    var n = posiciones.length ? 1 : 0;
-    for (var k = 1; k < posiciones.length; k++) if (posiciones[k] - posiciones[k - 1] > 2 * RADIO_M) n++;
-    return { pasadas: n, minimo: minimo, orden: posiciones.length ? posiciones[0] : Infinity };
+    var inicios = posiciones.length ? [posiciones[0]] : [];
+    for (var k = 1; k < posiciones.length; k++) if (posiciones[k] - posiciones[k - 1] > 2 * RADIO_M) inicios.push(posiciones[k]);
+    return { pasadas: inicios.length, at: inicios, minimo: minimo, orden: inicios.length ? inicios[0] : Infinity };
   }
 
   /* peajes: [{toll_id, name, latitude, longitude, ...}]. Devuelve los que el trazado cruza,
@@ -85,7 +85,7 @@
       var lat = Number(t.latitude), lng = Number(t.longitude);
       if (t.latitude == null || t.longitude == null || !isFinite(lat) || !isFinite(lng)) return;
       var r = pasadas(puntos, acum, [lat, lng]);
-      if (r.pasadas > 0) hits.push({ toll: t, passes: r.pasadas, distance: Math.round(r.minimo), order: r.orden });
+      if (r.pasadas > 0) hits.push({ toll: t, passes: r.pasadas, at: r.at, distance: Math.round(r.minimo), order: r.orden });
     });
     hits.sort(function (a, b) { return a.order - b.order; });
     return hits;
@@ -93,41 +93,80 @@
 
   /* ── Mapa (SVG, sin mosaicos: no depende de ningún servicio) ─────────── */
 
-  function mapa(puntos, waypoints, hits, sinUbicar) {
+  function corto(texto, max) {
+    var t = String(texto == null ? '' : texto).split(',')[0].trim();
+    return t.length > max ? t.slice(0, max - 1) + '…' : t;
+  }
+  function km(m) { return (Math.round(num(m) / 100) / 10).toLocaleString('es-AR'); }
+
+  // Largo "redondo" de la escala: el mayor que entra en un tercio del ancho del mapa.
+  function largoEscala(metrosPorPx, maxPx) {
+    var opciones = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000], elegido = opciones[0];
+    opciones.forEach(function (m) { if (m / metrosPorPx <= maxPx) elegido = m; });
+    return elegido;
+  }
+
+  function mapa(puntos, waypoints, hits) {
     var todos = puntos.concat(waypoints.map(function (w) { return [w.lat, w.lng]; }));
     hits.forEach(function (h) { todos.push([Number(h.toll.latitude), Number(h.toll.longitude)]); });
     var minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
     todos.forEach(function (p) { minLat = Math.min(minLat, p[0]); maxLat = Math.max(maxLat, p[0]); minLng = Math.min(minLng, p[1]); maxLng = Math.max(maxLng, p[1]); });
     var lat0 = (minLat + maxLat) / 2, k = Math.cos(lat0 * Math.PI / 180);
     var w = Math.max((maxLng - minLng) * k, 1e-5), h = Math.max(maxLat - minLat, 1e-5);
-    var escala = Math.min((ANCHO - 2 * MARGEN) / w, (ALTO - 2 * MARGEN) / h);
+    var margenX = MARGEN + 24, margenY = MARGEN + 10;                 // aire para las etiquetas
+    var escala = Math.min((ANCHO - 2 * margenX) / w, (ALTO - 2 * margenY) / h);
     var offX = (ANCHO - w * escala) / 2, offY = (ALTO - h * escala) / 2;
     function xy(p) { return [offX + (p[1] - minLng) * k * escala, ALTO - offY - (p[0] - minLat) * escala]; }
+    function ancla(x) { return x > ANCHO * 0.62 ? 'end' : 'start'; }
+    function dx(x, d) { return x > ANCHO * 0.62 ? -d : d; }
 
-    var paso = Math.max(1, Math.ceil(puntos.length / 400));
-    var d = '';
-    for (var i = 0; i < puntos.length; i += paso) { var q = xy(puntos[i]); d += (d ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); }
-    var f = xy(puntos[puntos.length - 1]); d += 'L' + f[0].toFixed(1) + ' ' + f[1].toFixed(1);
+    // Trazado y flechas de sentido cada ~70 px.
+    var paso = Math.max(1, Math.ceil(puntos.length / 400)), d = '', pts = [];
+    for (var i = 0; i < puntos.length; i += paso) pts.push(xy(puntos[i]));
+    pts.push(xy(puntos[puntos.length - 1]));
+    pts.forEach(function (q, n) { d += (n ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1); });
+    var flechas = '', desde = 0;
+    for (var n = 1; n < pts.length; n++) {
+      var ex = pts[n][0] - pts[n - 1][0], ey = pts[n][1] - pts[n - 1][1], largo = Math.sqrt(ex * ex + ey * ey);
+      desde += largo;
+      if (desde >= 70 && largo > 2) {
+        desde = 0;
+        var ang = Math.atan2(ey, ex) * 180 / Math.PI;
+        var mx = (pts[n][0] + pts[n - 1][0]) / 2, my = (pts[n][1] + pts[n - 1][1]) / 2;     // en medio del tramo, no sobre un vértice
+        flechas += '<path class="tdt-arrow" transform="translate(' + mx.toFixed(1) + ' ' + my.toFixed(1) + ') rotate(' + ang.toFixed(0) + ')" d="M-4 -4L3 0L-4 4"/>';
+      }
+    }
 
     // Un mismo lugar (la Base al inicio y al final, o un Origen igual al Destino) se dibuja una vez.
     var lugares = [];
     waypoints.forEach(function (wp) {
       var clave = wp.lat.toFixed(4) + '|' + wp.lng.toFixed(4);
       var lugar = lugares.filter(function (l) { return l.clave === clave; })[0];
-      if (!lugar) lugares.push({ clave: clave, lat: wp.lat, lng: wp.lng, labels: [wp.label] });
+      if (!lugar) lugares.push({ clave: clave, lat: wp.lat, lng: wp.lng, labels: [wp.label], nombre: wp.name || '' });
       else if (lugar.labels.indexOf(wp.label) < 0) lugar.labels.push(wp.label);
     });
     var marcas = lugares.map(function (l) {
-      var p = xy([l.lat, l.lng]), texto = l.labels.join(' · ');
+      var p = xy([l.lat, l.lng]), texto = l.labels.join(' · '), sub = corto(l.nombre, 26);
+      var x = p[0] + dx(p[0], 9);
       return '<g class="tdt-wp" data-wp="' + esc(texto) + '"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="5"/>' +
-        '<text x="' + (p[0] + 8).toFixed(1) + '" y="' + (p[1] + 3).toFixed(1) + '">' + esc(texto) + '</text></g>';
+        '<text x="' + x.toFixed(1) + '" y="' + (p[1] - (sub ? 1 : -3)).toFixed(1) + '" text-anchor="' + ancla(p[0]) + '">' + esc(texto) + '</text>' +
+        (sub ? '<text class="tdt-sub" x="' + x.toFixed(1) + '" y="' + (p[1] + 9).toFixed(1) + '" text-anchor="' + ancla(p[0]) + '">' + esc(sub) + '</text>' : '') + '</g>';
     }).join('');
+
     var peajes = hits.map(function (hit, idx) {
       var p = xy([Number(hit.toll.latitude), Number(hit.toll.longitude)]);
-      return '<g class="tdt-toll"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="8"/><text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 3.5).toFixed(1) + '" text-anchor="middle">' + (idx + 1) + '</text></g>';
+      return '<g class="tdt-toll"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="8"/><text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 3.5).toFixed(1) + '" text-anchor="middle">' + (idx + 1) + '</text></g>' +
+        '<text class="tdt-toll-name" x="' + (p[0] + dx(p[0], 12)).toFixed(1) + '" y="' + (p[1] - 10).toFixed(1) + '" text-anchor="' + ancla(p[0]) + '">' + esc(corto(String(hit.toll.name).replace(/^Peaje\s+/i, ''), 20)) + '</text>';
     }).join('');
+
+    // Escala (abajo a la izquierda) y norte (arriba a la derecha).
+    var mPorPx = M_POR_GRADO / escala, largoM = largoEscala(mPorPx, (ANCHO - 2 * MARGEN) / 3), largoPx = largoM / mPorPx;
+    var x0 = MARGEN, y0 = ALTO - 10;
+    var escalaSvg = '<g class="tdt-scale"><path d="M' + x0 + ' ' + (y0 - 4) + 'V' + y0 + 'H' + (x0 + largoPx).toFixed(1) + 'V' + (y0 - 4) + '"/><text x="' + x0 + '" y="' + (y0 - 7) + '">' + (largoM >= 1000 ? (largoM / 1000) + ' km' : largoM + ' m') + '</text></g>';
+    var norte = '<g class="tdt-north" transform="translate(' + (ANCHO - MARGEN) + ' ' + (MARGEN + 4) + ')"><path d="M0 -8L4 4L0 1L-4 4Z"/><text y="16" text-anchor="middle">N</text></g>';
+
     return '<svg class="tdt-map" viewBox="0 0 ' + ANCHO + ' ' + ALTO + '" role="img" aria-label="Recorrido con ' + hits.length + ' peaje' + (hits.length === 1 ? '' : 's') + '">' +
-      '<path class="tdt-route" d="' + d + '"/>' + marcas + peajes + '</svg>';
+      '<path class="tdt-route" d="' + d + '"/>' + flechas + marcas + peajes + escalaSvg + norte + '</svg>';
   }
 
   /* ── Panel ────────────────────────────────────────────────────────────── */
@@ -164,6 +203,19 @@
     return c ? c.tolls.map(function (r) { return String(r.toll_id); }) : [];
   }
 
+  /* Itinerario: cada punto del recorrido con su dirección y, entre uno y otro, los km y minutos del tramo. */
+  function itinerario(g) {
+    var wps = g.waypoints || [], legs = g.legs || [];
+    if (!wps.length) return '';
+    var filas = '';
+    wps.forEach(function (wp, i) {
+      filas += '<li class="tdt-stop"><span class="tdt-dot"></span><span><b>' + esc(wp.label) + '</b>' + (wp.name ? '<small>' + esc(wp.name) + '</small>' : '') + '</span></li>';
+      var leg = legs[i];
+      if (leg && i < wps.length - 1) filas += '<li class="tdt-leg"><span>' + km(leg.distanceMeters) + ' km' + (leg.durationSeconds ? ' · ' + Math.max(1, Math.round(num(leg.durationSeconds) / 60)) + ' min' : '') + '</span></li>';
+    });
+    return '<ol class="tdt-route-list" aria-label="Puntos del recorrido">' + filas + '</ol>';
+  }
+
   function panelHtml() {
     var d = state.detect;
     if (!d) return '';
@@ -175,7 +227,8 @@
       var id = String(h.toll.toll_id), cargado = ya.indexOf(id) >= 0;
       return '<li class="' + (cargado ? 'is-loaded' : '') + '"><label><input type="checkbox" data-td-pick="' + esc(id) + '"' + (!cargado && d.elegidos.indexOf(id) >= 0 ? ' checked' : '') + (cargado ? ' disabled' : '') + '>' +
         '<span class="tdt-num">' + (i + 1) + '</span><span class="tdt-name"><b>' + esc(h.toll.name) + '</b>' +
-        '<small>' + h.passes + ' pasada' + (h.passes === 1 ? '' : 's') + (cargado ? ' · ya está cargado' : '') + '</small></span></label></li>';
+        '<small>' + h.passes + ' pasada' + (h.passes === 1 ? '' : 's') + ' · ' + (h.at || []).map(function (m) { return 'km ' + km(m); }).join(' y ') + (cargado ? ' · ya está cargado' : '') + '</small>' +
+        (h.toll.road ? '<small class="tdt-road">' + esc(corto(h.toll.road, 60)) + '</small>' : '') + '</span></label></li>';
     }).join('');
     var elegibles = d.hits.filter(function (h) { var id = String(h.toll.toll_id); return ya.indexOf(id) < 0 && d.elegidos.indexOf(id) >= 0; });
     var cantidad = elegibles.length;
@@ -186,6 +239,7 @@
       '<div class="tdt-head"><div><b>Peajes del recorrido</b><small>' + esc(g.label || '') + (g.km ? ' · ' + num(g.km).toLocaleString('es-AR') + ' km' : '') + '</small></div>' +
       '<button type="button" class="tdt-close" data-td="close" aria-label="Cerrar">' + ico('x') + '</button></div>' +
       mapa(d.points, g.waypoints || [], d.hits) +
+      itinerario(g) +
       (d.hits.length ? '<ul class="tdt-list">' + lista + '</ul>' : '<p class="tdt-empty">No se detectaron peajes en este recorrido.</p>') +
       notas +
       (d.hits.length ? '<div class="tdt-actions"><button type="button" class="tdt-apply" data-td="apply"' + (cantidad ? '' : ' disabled') + '>' + ico('plus') + (cantidad ? 'Agregar ' + cantidad + ' peaje' + (cantidad === 1 ? '' : 's') : 'Nada para agregar') + '</button></div>' : '') +
@@ -230,6 +284,6 @@
 
   global.AuxiliosTollDetection = {
     detect: detect, panelHtml: panelHtml,
-    _test: { decode: decode, detectar: detectar, pasadas: pasadas, distanciaASegmento: distanciaASegmento, mapa: mapa, RADIO_M: RADIO_M }
+    _test: { itinerario: itinerario, decode: decode, detectar: detectar, pasadas: pasadas, distanciaASegmento: distanciaASegmento, mapa: mapa, RADIO_M: RADIO_M }
   };
 })(window);
