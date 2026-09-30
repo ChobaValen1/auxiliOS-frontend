@@ -106,17 +106,33 @@
     return elegido;
   }
 
+  /* Mosaicos de OpenStreetMap detrás del trazado. x0/y0: esquina superior izquierda visible (mundo 0..1); escala: unidades del mapa por mundo.
+     Si no hay red, cada imagen se oculta sola y queda el esquema sin fondo. */
+  function mosaicos(x0, y0, escala) {
+    var zc = Math.log(escala / 256) / Math.LN2, z = Math.max(0, Math.min(18, Math.round(zc) + 1)), n = Math.pow(2, z), t = escala / n, out = '';
+    var tx0 = Math.max(0, Math.floor(x0 * n)), tx1 = Math.min(n - 1, Math.floor((x0 + ANCHO / escala) * n));
+    var ty0 = Math.max(0, Math.floor(y0 * n)), ty1 = Math.min(n - 1, Math.floor((y0 + ALTO / escala) * n));
+    if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > 30) return '';
+    for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
+      out += '<image href="https://tile.openstreetmap.org/' + z + '/' + tx + '/' + ty + '.png" x="' + ((tx / n - x0) * escala).toFixed(2) + '" y="' + ((ty / n - y0) * escala).toFixed(2) + '" width="' + (t + 0.4).toFixed(2) + '" height="' + (t + 0.4).toFixed(2) + '" preserveAspectRatio="none" onerror="this.style.display=\'none\'"/>';
+    }
+    return '<g class="tdt-tiles">' + out + '</g>';
+  }
+
   function mapa(puntos, waypoints, hits) {
     var todos = puntos.concat(waypoints.map(function (w) { return [w.lat, w.lng]; }));
     hits.forEach(function (h) { todos.push([Number(h.toll.latitude), Number(h.toll.longitude)]); });
-    var minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-    todos.forEach(function (p) { minLat = Math.min(minLat, p[0]); maxLat = Math.max(maxLat, p[0]); minLng = Math.min(minLng, p[1]); maxLng = Math.max(maxLng, p[1]); });
-    var lat0 = (minLat + maxLat) / 2, k = Math.cos(lat0 * Math.PI / 180);
-    var w = Math.max((maxLng - minLng) * k, 1e-5), h = Math.max(maxLat - minLat, 1e-5);
+    // Proyección Web Mercator (la de los mapas de OpenStreetMap): así los mosaicos de fondo coinciden con el trazado.
+    function merc(p) { return [(p[1] + 180) / 360, 0.5 - Math.log(Math.tan(Math.PI / 4 + p[0] * Math.PI / 360)) / (2 * Math.PI)]; }
+    var mw = todos.map(merc), minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, latMedia = 0;
+    mw.forEach(function (q) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); });
+    todos.forEach(function (p) { latMedia += p[0] / todos.length; });
+    var w = Math.max(maxX - minX, 1e-9), h = Math.max(maxY - minY, 1e-9);
     var margenX = MARGEN + 12, margenY = MARGEN + 10;                 // aire para los marcadores
-    var escala = Math.min((ANCHO - 2 * margenX) / w, (ALTO - 2 * margenY) / h);
+    var escala = Math.min((ANCHO - 2 * margenX) / w, (ALTO - 2 * margenY) / h, 256 * Math.pow(2, 17));
     var offX = (ANCHO - w * escala) / 2, offY = (ALTO - h * escala) / 2;
-    function xy(p) { return [offX + (p[1] - minLng) * k * escala, ALTO - offY - (p[0] - minLat) * escala]; }
+    function xy(p) { var q = merc(p); return [offX + (q[0] - minX) * escala, offY + (q[1] - minY) * escala]; }
+    var fondo = mosaicos(minX - offX / escala, minY - offY / escala, escala);
 
     // Trazado y flechas de sentido cada ~70 px.
     var paso = Math.max(1, Math.ceil(puntos.length / 400)), d = '', pts = [];
@@ -155,13 +171,13 @@
     }).join('');
 
     // Escala (abajo a la derecha) y norte (arriba a la derecha). Los nombres van en la tabla de referencias.
-    var mPorPx = M_POR_GRADO / escala, largoM = largoEscala(mPorPx, (ANCHO - 2 * MARGEN) / 3), largoPx = largoM / mPorPx;
+    var mPorPx = 40075016.686 * Math.cos(latMedia * Math.PI / 180) / escala, largoM = largoEscala(mPorPx, (ANCHO - 2 * MARGEN) / 3), largoPx = largoM / mPorPx;
     var x1 = ANCHO - MARGEN, y0 = ALTO - 10;
     var escalaSvg = '<g class="tdt-scale"><path d="M' + (x1 - largoPx).toFixed(1) + ' ' + (y0 - 4) + 'V' + y0 + 'H' + x1 + 'V' + (y0 - 4) + '"/><text x="' + x1 + '" y="' + (y0 - 7) + '" text-anchor="end">' + (largoM >= 1000 ? (largoM / 1000) + ' km' : largoM + ' m') + '</text></g>';
     var norte = '<g class="tdt-north" transform="translate(' + (ANCHO - MARGEN) + ' ' + (MARGEN + 4) + ')"><path d="M0 -8L4 4L0 1L-4 4Z"/><text y="16" text-anchor="middle">N</text></g>';
 
     return '<svg class="tdt-map" viewBox="0 0 ' + ANCHO + ' ' + ALTO + '" role="img" aria-label="Recorrido con ' + hits.length + ' peaje' + (hits.length === 1 ? '' : 's') + '">' +
-      '<path class="tdt-route" d="' + d + '"/>' + flechas + marcas + peajes + escalaSvg + norte + '</svg>';
+      fondo + '<path class="tdt-route" d="' + d + '"/>' + flechas + marcas + peajes + escalaSvg + norte + (fondo ? '<text class="tdt-attr" x="' + (ANCHO - 3) + '" y="' + (ALTO - 2) + '" text-anchor="end">© OpenStreetMap</text>' : '') + '</svg>';
   }
 
   /* ── Panel ────────────────────────────────────────────────────────────── */
@@ -278,6 +294,6 @@
 
   global.AuxiliosTollDetection = {
     detect: detect, panelHtml: panelHtml,
-    _test: { leyenda: leyenda, decode: decode, detectar: detectar, pasadas: pasadas, distanciaASegmento: distanciaASegmento, mapa: mapa, RADIO_M: RADIO_M }
+    _test: { mosaicos: mosaicos, leyenda: leyenda, decode: decode, detectar: detectar, pasadas: pasadas, distanciaASegmento: distanciaASegmento, mapa: mapa, RADIO_M: RADIO_M }
   };
 })(window);

@@ -479,3 +479,7 @@
 #modal-operador-wizard .osv4-reactive #osv4-finalize:hover:not(:disabled) { background: var(--ax-ok-soft); }
 #modal-operador-wizard .osv4-reactive #osv4-finalize:disabled { border-color: var(--ax-border-strong); color: var(--ax-text-3); cursor: not-allowed; }
 #modal-operador-wizard .osv4-reactive #osv4-finalize[hidden] { display: none; }
+
+/* Fondo de calles (OpenStreetMap): atenuado y acorde al tema oscuro para que el trazado siga siendo lo principal. */
+#modal-operador-wizard .osv4-reactive .tdt-tiles { opacity: .55; filter: invert(1) hue-rotate(180deg) brightness(.85) saturate(.6); }
+#modal-operador-wizard .osv4-reactive .tdt-attr { fill: var(--ax-text-2); font: 6px var(--ax-font); paint-order: stroke; stroke: var(--ax-bg); stroke-width: 2px; }

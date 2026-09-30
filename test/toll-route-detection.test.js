@@ -126,3 +126,15 @@ test('el botón, el panel y la carga de peajes detectados están conectados', ()
   assert.match(css, /\.osca-format-list \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(read('operator-service-commercial-addons-v1.js'), /function labelFields\(\)/);     // cada campo conserva su rótulo para lectores de pantalla
 });
+
+test('el mapa dibuja mosaicos de OpenStreetMap alineados con el trazado y con atribución', () => {
+  const t = load();
+  const svg = t.mapa([[-34.60, -58.40], [-34.70, -58.30]], [{ label: 'Origen', lat: -34.6, lng: -58.4 }, { label: 'Destino', lat: -34.7, lng: -58.3 }], []);
+  const tiles = [...svg.matchAll(/href="https:\/\/tile\.openstreetmap\.org\/(\d+)\/(\d+)\/(\d+)\.png" x="(-?[\d.]+)" y="(-?[\d.]+)"/g)];
+  assert.ok(tiles.length >= 1 && tiles.length <= 30);
+  assert.match(svg, /© OpenStreetMap/);
+  // El mosaico que contiene el Origen debe cubrir su posición (marcador O) en el mapa.
+  const z = Number(tiles[0][1]), n = 2 ** z;
+  const wx = (-58.4 + 180) / 360, wy = 0.5 - Math.log(Math.tan(Math.PI / 4 + (-34.6 * Math.PI) / 360)) / (2 * Math.PI);
+  assert.ok(tiles.some(m => Number(m[2]) === Math.floor(wx * n) && Number(m[3]) === Math.floor(wy * n)));
+});
