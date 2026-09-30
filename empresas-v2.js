@@ -116,7 +116,7 @@
     try{
       const {data,error}=await _db.from('companies').select('*').order('legal_name');
       if(error)throw error;
-      S.companies=data||[];
+      S.companies=(data||[]).filter(c=>!(c&&(c.client_kind==='particular'||/^particulares$/i.test(String(c.trade_name||c.legal_name||'').trim()))));   // la cuenta interna "Particulares" no es una prestadora
       S.openMenuId=null;
       if(previous&&S.companies.some(company=>company.company_id===previous))S.selectedId=previous;
       else if(!preserveSelection){S.selectedId=null;S.selected=null;S.view='list';S.tab='summary';}

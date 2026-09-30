@@ -47,7 +47,7 @@ function close(result=false){closeQuickMenu();if(!state.modal)return;const resol
 function finishAssignmentConfirmation(result=false){const resolver=state.assignmentResolver;const card=state.assignmentCard;state.assignmentResolver=null;state.assignmentCard=null;state.assignmentKey=null;state.assignmentSaving=false;if(card?.isConnected)card.remove();if(resolver)resolver(!!result)}
 function radioCards(name,rows){return`<div class="osl-choice-list">${rows.map(([v,l],i)=>`<label><input type="radio" name="${name}" value="${esc(v)}" ${i===0?'checked':''}><span>${esc(l)}</span></label>`).join('')}</div>`}
 function confirmAction({title='Confirmar acción',subtitle='Revisá la información antes de continuar.',message='',confirmLabel='Confirmar',tone='primary'}={}){finishAssignmentConfirmation(false);return new Promise(resolve=>{const lines=String(message||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);const body=`<div class="osl-confirm-copy">${lines.map((line,i)=>i===0?`<b>${esc(line)}</b>`:`<span>${esc(line)}</span>`).join('')}</div>`;const m=openModal(shell(title,subtitle,body,confirmLabel,tone),null);state.confirmResolver=resolve;m.querySelector('#osl-form').addEventListener('submit',e=>{e.preventDefault();if(rejectStaleContext())return;close(true)})})}
-async function transition(action,reasonCode=null,reasonDetail=null){if(rejectStaleContext()||state.busy||!db()||!state.serviceId)return;const form=state.modal?.querySelector('form'),submit=form?.querySelector('[type="submit"]');state.busy=true;if(submit){submit.disabled=true;submit.dataset.text=submit.textContent;submit.setAttribute('aria-busy','true');submit.innerHTML=`${ico('loader-circle','ax-spin')}Confirmando…`}try{const {data,error}=await db().rpc('transition_operator_service_v2',{p_service_id:state.serviceId,p_action:action,p_reason_code:reasonCode,p_reason_detail:reasonDetail});if(error)throw error;const id=state.serviceId;close();success(({annul:'Servicio anulado',finalize:'Servicio finalizado',unarrive:'Arribo revertido',unassign:'Servicio sin asignar',arrive_manual:'Servicio marcado como ARRIBADO'})[action]||'Servicio actualizado');if(O()?.S?.wizard?.serviceId===id)window.cerrarNuevoServicio?.(true);await O()?.loadServices?.();window.AuxiliosUI?.resaltarServicio?.(id);return data}catch(e){notify(e.message||'No se pudo cambiar el estado','error')}finally{state.busy=false;if(submit?.isConnected){submit.disabled=false;submit.removeAttribute('aria-busy');submit.textContent=submit.dataset.text||'Confirmar'}}}
+async function transition(action,reasonCode=null,reasonDetail=null,finishAt=null){if(rejectStaleContext()||state.busy||!db()||!state.serviceId)return;const form=state.modal?.querySelector('form'),submit=form?.querySelector('[type="submit"]');state.busy=true;if(submit){submit.disabled=true;submit.dataset.text=submit.textContent;submit.setAttribute('aria-busy','true');submit.innerHTML=`${ico('loader-circle','ax-spin')}Confirmando…`}try{const {data,error}=await db().rpc('transition_operator_service_v2',{p_service_id:state.serviceId,p_action:action,p_reason_code:reasonCode,p_reason_detail:reasonDetail});if(error)throw error;const id=state.serviceId;if(action==='finalize'&&finishAt)await window.AuxiliosFinishTime?.apply?.(id,finishAt);close();success(({annul:'Servicio anulado',finalize:'Servicio finalizado',unarrive:'Arribo revertido',unassign:'Servicio sin asignar',arrive_manual:'Servicio marcado como ARRIBADO'})[action]||'Servicio actualizado');if(O()?.S?.wizard?.serviceId===id)window.cerrarNuevoServicio?.(true);await O()?.loadServices?.();window.AuxiliosUI?.resaltarServicio?.(id);return data}catch(e){notify(e.message||'No se pudo cambiar el estado','error')}finally{state.busy=false;if(submit?.isConnected){submit.disabled=false;submit.removeAttribute('aria-busy');submit.textContent=submit.dataset.text||'Confirmar'}}}
 function openArrival(id,readOnly=false){const s=service(id);if(!s)return notify('No se encontró el servicio','error');if(s.status!=='assigned')return notify('Solo un servicio ASIGNADO puede marcarse ARRIBADO manualmente','error');const m=openModal(shell('Marcar servicio como ARRIBADO','Este camino se usa cuando no fue posible obtener la firma del socio.',ref(s)+radioCards('arrival_reason',ARRIVAL_REASONS),'Confirmar ARRIBADO'),id);if(readOnly)markReadOnly(m);m.querySelector('#osl-form').addEventListener('submit',e=>{e.preventDefault();if(readOnly)return;if(rejectStaleContext())return;const reason=new FormData(e.currentTarget).get('arrival_reason');transition('arrive_manual',reason,null)})}
 /* El resumen de cierre: finalizar manda el servicio a Facturación y Operaciones
    ya no lo toca, así que antes de apretar hay que poder ver QUÉ se está
@@ -85,7 +85,7 @@ async function openFinalize(id,readOnly=false){
   const obs=direct
     ?`<label class="osl-other"><span>Observaciones · por qué se finaliza sin arribo *</span><textarea id="osl-finalize-notes" rows="3" maxlength="500" required>${esc(s.operator_notes||'')}</textarea></label>`
     :'';
-  const m=openModal(shell('¿Finalizar servicio?','Queda cerrado para Operaciones y pasa a Facturación.',resumenCierre(s)+aviso+obs,'Finalizar servicio'),id);
+  const m=openModal(shell('¿Finalizar servicio?','Queda cerrado para Operaciones y pasa a Facturación.',resumenCierre(s)+aviso+obs+(window.AuxiliosFinishTime?.field?.()||''),'Finalizar servicio'),id);
   if(readOnly)markReadOnly(m);
   m.querySelector('#osl-form').addEventListener('submit',async e=>{
     e.preventDefault();if(readOnly)return;if(rejectStaleContext())return;
@@ -97,7 +97,9 @@ async function openFinalize(id,readOnly=false){
         if(error)return notify(error.message||'No se pudieron guardar las Observaciones','error');
       }
     }
-    transition('finalize');
+    const finishAt=window.AuxiliosFinishTime?.read?.(m);
+    if(finishAt===undefined)return;
+    transition('finalize',null,null,finishAt);
   });
 }
 /* Remito firmado: si quedan diferencias sin resolver se abre la revisión; si no,
@@ -110,12 +112,13 @@ async function openSignedFinalize(s,readOnly=false){
   try{check=await review.quickFinalizeCheck(id)}catch(e){return O()?.openSignedRemito?.(id)}
   if(check.pending>0){notify(check.pending===1?'El remito tiene 1 diferencia para revisar antes de finalizar.':`El remito tiene ${check.pending} diferencias para revisar antes de finalizar.`,'info');return O()?.openSignedRemito?.(id)}
   const aviso='<div class="osl-warning ok"><b>Remito firmado sin diferencias</b><span>Al confirmar, se aprueba el remito y el servicio pasa a Facturación.</span></div>';
-  const m=openModal(shell('¿Finalizar servicio?','Queda cerrado para Operaciones y pasa a Facturación.',resumenCierre(s)+aviso,'Finalizar servicio'),id);
+  const m=openModal(shell('¿Finalizar servicio?','Queda cerrado para Operaciones y pasa a Facturación.',resumenCierre(s)+aviso+(window.AuxiliosFinishTime?.field?.()||''),'Finalizar servicio'),id);
   if(readOnly)markReadOnly(m);
   m.querySelector('#osl-form').addEventListener('submit',async e=>{
     e.preventDefault();if(readOnly||state.busy||rejectStaleContext())return;
+    const finishAt=window.AuxiliosFinishTime?.read?.(m);if(finishAt===undefined)return;
     const submit=m.querySelector('[type="submit"]');state.busy=true;if(submit){submit.disabled=true;submit.textContent='Finalizando…'}
-    try{await review.quickFinalize(id,check.payload);close();if(O()?.S?.wizard?.serviceId===id)window.cerrarNuevoServicio?.(true);success('Servicio finalizado','Remito aprobado y enviado a Facturación.');await O()?.loadServices?.()}
+    try{await review.quickFinalize(id,check.payload);if(finishAt)await window.AuxiliosFinishTime?.apply?.(id,finishAt);close();if(O()?.S?.wizard?.serviceId===id)window.cerrarNuevoServicio?.(true);success('Servicio finalizado','Remito aprobado y enviado a Facturación.');await O()?.loadServices?.()}
     catch(err){notify(err.message||'No se pudo finalizar','error')}
     finally{state.busy=false;if(submit?.isConnected){submit.disabled=false;submit.textContent='Finalizar servicio'}}
   });

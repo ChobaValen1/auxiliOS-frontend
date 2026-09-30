@@ -644,7 +644,7 @@
       if (tolls.error) throw tolls.error;
       S.allRows = Array.isArray(services.data?.rows) ? services.data.rows : [];
       S.filters = {
-        companies: Array.isArray(services.data?.filters?.companies) ? services.data.filters.companies : [],
+        companies: (Array.isArray(services.data?.filters?.companies) ? services.data.filters.companies : []).filter(c => !(c && (c.client_kind === 'particular' || /^particulares$/i.test(String(c.company_name || c.trade_name || '').trim())))),   // "Particulares" no es una prestadora
         periods: Array.isArray(services.data?.filters?.periods) ? services.data.filters.periods : []
       };
       S.allTollRows = Array.isArray(tolls.data?.rows) ? tolls.data.rows : [];

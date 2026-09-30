@@ -27,7 +27,7 @@ test('finalizar sin arribo da el campo, no sólo el reto', () => {
   assert.match(fn, /update_operator_service_v4/);
   assert.match(fn, /operator_notes:txt/);
   // Y se guardan ANTES de finalizar, si no la RPC rebota igual.
-  assert.ok(fn.indexOf('update_operator_service_v4') < fn.indexOf("transition('finalize')"));
+  assert.ok(fn.indexOf('update_operator_service_v4') < fn.indexOf("transition('finalize'"));
 });
 
 test('el activado tiene un cierre con decisión explícita y motivo si no se factura',()=>{const fn=lifecycle.split('function openActivatedFinalize')[1].split('function closeQuickMenu')[0];assert.match(fn,/finalize_activated_service_v1/);assert.match(fn,/non_billable/);assert.match(fn,/reason.value.trim/);assert.doesNotMatch(fn,/value="billable" checked/);});

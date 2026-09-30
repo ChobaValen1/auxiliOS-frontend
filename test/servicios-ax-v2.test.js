@@ -228,3 +228,28 @@ test('Teléfono del cliente: obligatorio sólo para el chofer', () => {
   assert.match(sql, /validate_private_customer_v1/);
   assert.match(sql, /operator_service_missing_required_v2/);
 });
+
+test('Hora de fin: por defecto la actual, editable al finalizar; el arribo ya se marca al firmar', () => {
+  const ft = read('finish-time-v1.js'), lc = read('operator-service-lifecycle.js'), rev = read('operator-remito-review-v2.js');
+  assert.match(ft, /set_service_finish_time_v1/);
+  assert.match(ft, /type="datetime-local"/);
+  assert.match(ft, /max="' \+ local\(now\)/);   // no deja elegir una hora futura
+  assert.match(ft, /no puede ser futura/);
+  // Estado > Finalizar (con y sin remito firmado) lleva el campo y lo guarda después de finalizar.
+  assert.match(lc, /AuxiliosFinishTime\?\.field\?\.\(\)/);
+  assert.match(lc, /if\(action==='finalize'&&finishAt\)await window\.AuxiliosFinishTime\?\.apply/);
+  assert.match(lc, /await review\.quickFinalize\(id,check\.payload\);if\(finishAt\)await window\.AuxiliosFinishTime/);
+  // Revisión y cierre pregunta la hora antes de aprobar y cerrar.
+  assert.equal((rev.match(/AuxiliosFinishTime\?\.ask\?\.\(\)/g) || []).length, 2);
+  const sql = read('migrations/20260930210000_hora_de_fin_editable_v1.sql');
+  assert.match(sql, /15 minutes/);
+  assert.match(sql, /anterior al arribo/);
+  assert.match(read('config.js'), /finish-time-v1\.js/);
+});
+
+test('La cuenta "Particulares" no aparece en ninguna lista de prestadoras', () => {
+  for (const f of ['operator-services.js', 'operator-billing.js', 'empresas-v2.js', 'company-tariffs-v4.js']) {
+    const src = read(f);
+    assert.match(src, /client_kind\s*===\s*'particular'\s*\|\|\s*\/\^particulares\$\/i/, f);
+  }
+});

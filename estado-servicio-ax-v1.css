@@ -88,3 +88,18 @@
 @media (max-width: 640px) {
   #os-lifecycle-modal .osl-modal { animation-name: ax-sheet-in; }
 }
+
+/* Hora de fin: campo dentro del modal de Estado y cuadro chico al cerrar desde la revisión del remito. */
+#os-lifecycle-modal .osl-finish-time small { display: block; margin-top: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#ax-finish-ask { position: fixed; inset: 0; z-index: 20003; display: grid; place-items: center; padding: var(--ax-sp-5); background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#ax-finish-ask > form { display: grid; gap: var(--ax-sp-3); width: min(380px, 94vw); padding: var(--ax-sp-5); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); }
+#ax-finish-ask b { font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-bold); }
+#ax-finish-ask p { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#ax-finish-ask label { display: grid; gap: 4px; }
+#ax-finish-ask label > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#ax-finish-ask input { height: var(--ax-h); padding: 0 var(--ax-sp-3); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; }
+#ax-finish-ask input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#ax-finish-ask small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#ax-finish-ask form > div { display: flex; justify-content: flex-end; gap: var(--ax-sp-2); }
+#ax-finish-ask button { height: var(--ax-h); padding: 0 var(--ax-sp-4); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-weight: var(--ax-fw-semibold); cursor: pointer; }
+#ax-finish-ask button.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-bg); font-weight: var(--ax-fw-bold); }
