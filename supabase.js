@@ -1462,7 +1462,8 @@ async function guardarRemitoCompleto(datosRemito) {
     if (error) { 
       console.error("❌ Error de inserción Supabase:", error);
       await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
-      _toast('Error: ' + error.message, 'error'); 
+      // Sin códigos técnicos (VIAJE_EN_CURSO:, JORNADA_REQUERIDA:…): sólo lo que el chofer tiene que hacer.
+      _toast('No se pudo guardar el remito. ' + String(error.message || '').replace(/^[A-Z_]{4,}:\s*/, ''), 'error'); 
       return false; 
     }
 

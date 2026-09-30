@@ -143,3 +143,12 @@ test('Remito del chofer: sistema visual en todos los pasos sin tocar la lógica 
   assert.equal(sigma.calls, 1);                                            // la original se sigue llamando
   assert.equal(win._remWizardActualizar.__rmx, true);
 });
+
+test('Remito sin asignación a medio completar: se avisa antes de empezar otro servicio, sin códigos', () => {
+  const bridge = read('operator-service-bridge.js'), sb = read('supabase.js');
+  const sql = read('migrations/20260930160000_viaje_en_curso_dice_cual_v1.sql');
+  assert.match(bridge, /const pendiente=!s\.trip_id&&\(P3\.adHocDrafts\|\|\[\]\)\.find\(r=>r&&r\.id\);if\(pendiente\)/);
+  assert.match(bridge, /return openAdHocPreview\(pendiente\.id\)/);
+  assert.match(sb, /'No se pudo guardar el remito\. ' \+ String\(error\.message \|\| ''\)\.replace\(\/\^\[A-Z_\]\{4,\}:\\s\*\/, ''\)/);
+  assert.match(sql, /VIAJE_EN_CURSO: tenés el servicio % sin terminar/);
+});
