@@ -54,7 +54,7 @@
   <nav class="toc" aria-label="Secciones">
     <a class="ax-chip" href="#reglas">Reglas</a><a class="ax-chip" href="#color">Color</a><a class="ax-chip" href="#tipo">Tipografía</a><a class="ax-chip" href="#iconos">Íconos</a>
     <a class="ax-chip" href="#botones">Botones</a><a class="ax-chip" href="#campos">Campos</a><a class="ax-chip" href="#estados">Estados</a><a class="ax-chip" href="#tabla">Tabla</a>
-    <a class="ax-chip" href="#tarjetas">Tarjetas</a><a class="ax-chip" href="#avisos">Avisos</a><a class="ax-chip" href="#modal">Modal y panel</a><a class="ax-chip" href="#comportamiento">Comportamiento</a><a class="ax-chip" href="#reglas-uso">Reglas de uso</a>
+    <a class="ax-chip" href="#tarjetas">Tarjetas</a><a class="ax-chip" href="#avisos">Avisos</a><a class="ax-chip" href="#modal">Modal y panel</a><a class="ax-chip" href="#comportamiento">Comportamiento</a><a class="ax-chip" href="#interaccion">Interacción</a><a class="ax-chip" href="#reglas-uso">Reglas de uso</a>
   </nav>
 
   <section id="reglas">
@@ -345,6 +345,61 @@
     <div class="ax-offline" style="margin-top:16px;border-radius:var(--ax-radius)"><svg class="ax-icon"><use href="/ui/icons.svg#wifi-off"/></svg>Sin conexión. Lo que cargues se guarda en el teléfono y se envía cuando vuelva la señal.</div>
   </section>
 
+  <section id="interaccion">
+    <h2>Interacción</h2>
+    <p>Piezas con un poco más de vida, para los lugares donde ayudan: el celular del chofer, los filtros y lo que se envía en segundo plano. Se tocan y responden al instante; el rebote se usa sólo en el interruptor y en el tilde de "listo".</p>
+    <div class="grid g2">
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Interruptor</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Al apretarlo, la perilla se estira hacia donde va. Se puede tocar o arrastrar con el dedo, y queda del lado donde se suelta.</p>
+        <div class="grid" style="gap:10px">
+          <label class="ax-switch"><input type="checkbox" checked id="i-sw1"> Pedir firma del cliente</label>
+          <label class="ax-switch"><input type="checkbox" id="i-sw2"> Avisar por WhatsApp al finalizar</label>
+          <span class="ax-field-help" id="i-sw-out">Cambiá uno para ver el aviso.</span>
+        </div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Selector múltiple</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Para filtros donde se eligen varias cosas. El menú queda abierto mientras elegís, y lo elegido queda a la vista como etiquetas que se quitan con la ×.</p>
+        <label class="ax-field"><span>Estado</span><div id="i-multi"></div></label>
+        <p class="ax-field-help" id="i-multi-out" style="margin:8px 0 0"></p>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Marca de estado</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Una sola marca para "en curso", "listo" y "error". Cuando se sabe el avance (una foto que sube), el arco lo muestra; si no, gira.</p>
+        <div class="row" style="gap:18px">
+          <span class="row" style="gap:6px"><i id="i-m1"></i>En curso</span>
+          <span class="row" style="gap:6px"><i id="i-m2"></i><span class="ax-num" id="i-m2-t">0 %</span></span>
+          <span class="row" style="gap:6px"><i id="i-m3"></i>Listo</span>
+          <span class="row" style="gap:6px"><i id="i-m4"></i>Error</span>
+        </div>
+        <button class="ax-btn ax-btn-sm" id="i-m-run" style="margin-top:12px">Simular subida de foto</button>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Tareas en segundo plano</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Lo que se envía mientras seguís trabajando: un remito que se sube, un ticket que se lee, la cola sin conexión. Si tarda, muestra el tiempo; si falla, queda con "Reintentar" hasta que salga.</p>
+        <div class="row" style="margin-bottom:10px">
+          <button class="ax-btn ax-btn-sm" id="i-t-ok">Enviar remito</button>
+          <button class="ax-btn ax-btn-sm" id="i-t-err">Enviar (falla la 1.ª vez)</button>
+        </div>
+        <div class="ax-tasks" id="i-tasks"></div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Deslizar la fila (celular)</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Un atajo para la acción más común de una lista. Si pasás la mitad, se hace al soltar; si no, vuelve. La misma acción siempre está también en el menú ⋯, porque deslizar no se descubre solo y con el teclado no se puede.</p>
+        <div class="grid" style="gap:8px" id="i-swipes">
+          <div class="i-sw-row"><div class="row" style="justify-content:space-between;padding:12px 14px"><span><b>89909</b> · Asistencia mecánica<br><small class="ax-muted">Ruta 2 km 48 · 07:45</small></span><span class="ax-status ax-status-info">Asignado</span></div></div>
+          <div class="i-sw-row"><div class="row" style="justify-content:space-between;padding:12px 14px"><span><b>PART-00012</b> · Traslado<br><small class="ax-muted">Av. Mitre 1200 · 09:10</small></span><span class="ax-status ax-status-warn">Arribado</span></div></div>
+        </div>
+        <p class="ax-field-help" style="margin:8px 0 0">A la derecha: marcar arribo. A la izquierda: llamar al cliente. También funciona arrastrando con el mouse.</p>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Lo que no usamos</h3></div>
+        <p class="ax-muted" style="margin:0">La barra tipo "dock" que agranda íconos y el menú de tarjetas que se despliega quedan afuera: la app ya tiene la barra lateral, y agrandar íconos al pasar el mouse no sirve en el celular ni ayuda a encontrar nada.</p>
+      </div>
+    </div>
+  </section>
+
   <section id="reglas-uso">
     <h2>Reglas de uso</h2>
     <p>Cómo responde la app a lo que hace la persona. Valen para todas las pantallas.</p>
@@ -416,6 +471,25 @@
     $('d-load-slow').onclick = function () { AxUI.loading($('d-load-box'), wait(1500).then(function () { return listo; }), skel); };
     $('d-flash').onclick = function () { $('d-flash-state').innerHTML = '<span class="ax-status ax-status-warn">Arribado</span>'; AxUI.flash($('d-flash-row')); };
     AxUI.tabs($('d-tabs'));
+    // Interacción
+    ["i-sw1", "i-sw2"].forEach(function (id) { $(id).addEventListener('change', function () { $('i-sw-out').textContent = this.parentNode.textContent.trim() + ': ' + (this.checked ? 'sí' : 'no'); }); });
+    var ms = AxUI.multi($('i-multi'), { placeholder: 'Todos los estados', value: ["asignado", "arribado"],
+      options: [{ value: 'pendiente', label: 'Pendiente' }, { value: 'asignado', label: 'Asignado' }, { value: 'arribado', label: 'Arribado' }, { value: 'finalizado', label: 'Finalizado' }, { value: 'anulado', label: 'Anulado' }],
+      onChange: function (v) { $('i-multi-out').textContent = v.length ? 'Filtrando ' + v.length + ' estado' + (v.length > 1 ? 's' : '') + '.' : 'Sin filtro de estado.'; } });
+    $('i-multi-out').textContent = 'Filtrando ' + ms.value().length + ' estados.';
+    AxUI.mark($('i-m1'), 'running'); AxUI.mark($('i-m2'), 'running', 0); AxUI.mark($('i-m3'), 'done'); AxUI.mark($('i-m4'), 'error');
+    $('i-m-run').onclick = function () {
+      var p = 0; AxUI.mark($('i-m2'), 'running', 0); $('i-m2-t').textContent = '0 %';
+      var t = setInterval(function () { p = Math.min(1, p + .12 + Math.random() * .1); AxUI.mark($('i-m2'), 'running', p); $('i-m2-t').textContent = Math.round(p * 100) + ' %';
+        if (p >= 1) { clearInterval(t); setTimeout(function () { AxUI.mark($('i-m2'), 'done'); $('i-m2-t').textContent = 'Subida'; }, 250); } }, 300);
+    };
+    $('i-t-ok').onclick = function () { AxUI.task($('i-tasks'), { label: 'Enviando remito 89909', done: 'Remito 89909 enviado', run: function () { return wait(1800); } }); };
+    var intentos = 0;
+    $('i-t-err').onclick = function () { intentos = 0; AxUI.task($('i-tasks'), { label: 'Leyendo ticket de combustible', done: 'Ticket leído: 182 l', error: 'No se pudo leer el ticket', run: function () { return wait(1200, intentos++ === 0); } }); };
+    document.querySelectorAll('.i-sw-row').forEach(function (r) {
+      AxUI.swipe(r, { start: { label: 'Arribé', icon: 'map-pin', onAction: function (row) { row.querySelector('.ax-status').outerHTML = '<span class="ax-status ax-status-warn">Arribado</span>'; AxUI.flash(row.querySelector('.ax-swipe-body')); } },
+        end: { label: 'Llamar', icon: 'phone', tone: 'info', onAction: function () { AxUI.toast({ tone: 'info', title: 'Llamando al cliente…' }); } } });
+    });
   })();
 </script>
 <script>

@@ -58,9 +58,17 @@
 /* Interruptor (ON/OFF) */
 .ax-switch { display: inline-flex; align-items: center; gap: 10px; font-size: var(--ax-fs-md); cursor: pointer; }
 .ax-switch input { appearance: none; position: relative; width: 36px; height: 20px; margin: 0; border-radius: var(--ax-radius-pill); background: var(--ax-border-strong); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
-.ax-switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ax-text); transition: transform var(--ax-dur) var(--ax-ease); }
+.ax-switch input { touch-action: pan-y; }
+.ax-switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--ax-radius-pill); background: var(--ax-text); transition: transform var(--ax-dur) var(--ax-ease-spring), width var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
 .ax-switch input:checked { background: var(--ax-accent); }
 .ax-switch input:checked::after { transform: translateX(16px); background: var(--ax-accent-fg); }
+/* Al apretar, la perilla se estira hacia donde va a ir (se siente que "responde"). */
+.ax-switch input:active::after, .ax-switch input[data-drag]::after { width: 21px; }
+.ax-switch input:checked:active::after, .ax-switch input:checked[data-drag]::after { transform: translateX(11px); }
+.ax-switch input[data-drag="on"] { background: var(--ax-accent); }
+.ax-switch input[data-drag="on"]::after { transform: translateX(11px); background: var(--ax-accent-fg); }
+.ax-switch input[data-drag="off"] { background: var(--ax-border-strong); }
+.ax-switch input[data-drag="off"]::after { transform: none; background: var(--ax-text); }
 .ax-switch input:focus-visible { outline: none; box-shadow: var(--ax-focus); }
 
 /* Selector segmentado (Particular | Prestadora, Sin pago | Seña | Pago total) */
@@ -255,3 +263,64 @@ button.ax-chip { background: transparent; font: inherit; font-size: var(--ax-fs-
   .ax-flash, .ax-flash > td { animation: none; }
   .ax-btn:active:not(:disabled) { transform: none; }
 }
+
+/* ── Interacción (v1.1) ─────────────────────────────────────────────── */
+
+/* Selector múltiple (filtros): lo elegido queda a la vista como etiquetas. */
+.ax-multi-btn { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; width: 100%; min-height: var(--ax-h); padding: 4px 32px 4px 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); text-align: left; cursor: pointer; position: relative; transition: border-color var(--ax-dur-fast) var(--ax-ease); }
+.ax-multi-btn:hover { border-color: var(--ax-text-3); }
+.ax-multi-btn:focus-visible, .ax-multi-btn[aria-expanded="true"] { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+.ax-multi-btn > .ax-chevron { position: absolute; right: 10px; top: 50%; margin-top: -8px; color: var(--ax-text-3); transition: transform var(--ax-dur) var(--ax-ease); }
+.ax-multi-ph { padding: 0 4px; color: var(--ax-text-3); }
+.ax-tag { display: inline-flex; align-items: center; gap: 2px; height: 24px; padding: 0 2px 0 8px; border-radius: var(--ax-radius-sm); background: var(--ax-surface-3); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+.ax-tag[data-closing] { animation: ax-tag-out var(--ax-dur-fast) var(--ax-ease-in) both; }
+.ax-tag i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 4px; color: var(--ax-text-3); cursor: pointer; }
+.ax-tag i:hover { background: var(--ax-border-strong); color: var(--ax-text); }
+.ax-menu [aria-checked] .ax-check { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--ax-border-strong); border-radius: 4px; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+.ax-menu [aria-checked] .ax-check .ax-icon { color: var(--ax-accent-fg); width: 12px; height: 12px; stroke-width: 3; transform: scale(0); transition: transform var(--ax-dur) var(--ax-ease-spring); }
+.ax-menu [aria-checked="true"] .ax-check { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+.ax-menu [aria-checked="true"] .ax-check .ax-icon { transform: scale(1); color: var(--ax-accent-fg); }
+@keyframes ax-tag-out { to { opacity: 0; transform: scale(.9); } }
+
+/* Marca de estado: en curso (arco que gira o avance real), listo (tilde) o error (cruz). */
+.ax-mark { display: inline-grid; place-items: center; width: 18px; height: 18px; flex: 0 0 auto; color: var(--ax-text-3); --p: 0; }
+.ax-mark svg { width: 100%; height: 100%; overflow: visible; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.ax-mark .ax-mark-ring { stroke: var(--ax-border-strong); stroke-width: 2; }
+.ax-mark .ax-mark-arc { stroke: var(--ax-accent); stroke-width: 2; stroke-dasharray: 50.27; stroke-dashoffset: calc(50.27 * (1 - var(--p))); transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset var(--ax-dur) var(--ax-ease), stroke var(--ax-dur-fast) var(--ax-ease); }
+.ax-mark .ax-mark-ok, .ax-mark .ax-mark-ko { stroke-width: 2.4; stroke-dasharray: 16; stroke-dashoffset: 16; }
+.ax-mark[data-state="running"]:not([data-p]) .ax-mark-arc { stroke-dashoffset: 36; animation: ax-spin 1s linear infinite; }
+.ax-mark[data-state="done"] { color: var(--ax-ok); }
+.ax-mark[data-state="done"] .ax-mark-arc { stroke: var(--ax-ok); stroke-dashoffset: 0; }
+.ax-mark[data-state="done"] .ax-mark-ok { stroke: var(--ax-ok); stroke-dashoffset: 0; transition: stroke-dashoffset var(--ax-dur-slow) var(--ax-ease-out) var(--ax-dur-fast); }
+.ax-mark[data-state="error"] { color: var(--ax-danger); animation: ax-shake var(--ax-dur-slow) var(--ax-ease) both; }
+.ax-mark[data-state="error"] .ax-mark-arc { stroke: var(--ax-danger); stroke-dashoffset: 0; }
+.ax-mark[data-state="error"] .ax-mark-ko { stroke: var(--ax-danger); stroke-dashoffset: 0; transition: stroke-dashoffset var(--ax-dur) var(--ax-ease-out); }
+@keyframes ax-shake { 20% { transform: translateX(-3px); } 45% { transform: translateX(3px); } 70% { transform: translateX(-2px); } 90% { transform: translateX(1px); } }
+
+/* Chip de tarea: algo que se está enviando o procesando en segundo plano
+   (remito que se sube, foto que se lee, cola sin conexión). */
+.ax-tasks { display: grid; gap: 6px; justify-items: start; }
+.ax-task { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; height: 32px; padding: 0 6px 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: var(--ax-surface-2); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+.ax-task > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-task time { color: var(--ax-text-3); font-variant-numeric: tabular-nums; }
+.ax-task[data-state="done"] { border-color: rgba(39, 196, 122, .4); }
+.ax-task[data-state="error"] { border-color: rgba(226, 80, 74, .55); background: var(--ax-danger-soft); animation: ax-shake var(--ax-dur-slow) var(--ax-ease) both; }
+.ax-task .ax-btn { height: 24px; padding: 0 8px; border-radius: var(--ax-radius-pill); }
+.ax-task[data-closing] { animation: ax-fade-out var(--ax-dur) var(--ax-ease-in) both; }
+
+/* Fila que se desliza (celular): atajo para la acción más común.
+   La misma acción siempre está también en el menú ⋯ de la fila. */
+.ax-swipe { position: relative; overflow: hidden; border-radius: var(--ax-radius-lg); background: var(--ax-surface-3); touch-action: pan-y; user-select: none; }
+.ax-swipe-body { position: relative; z-index: 1; border: 1px solid var(--ax-border); border-radius: inherit; background: var(--ax-surface-2); transition: transform var(--ax-dur) var(--ax-ease-out); will-change: transform; }
+.ax-swipe[data-drag] .ax-swipe-body { transition: none; }
+.ax-swipe-act { position: absolute; inset: 0; display: flex; align-items: center; gap: 6px; padding: 0 18px; border: 0; color: var(--ax-text); font: inherit; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-bold); cursor: pointer; opacity: 0; transition: opacity var(--ax-dur-fast) var(--ax-ease); }
+.ax-swipe-act[data-side="start"] { justify-content: flex-start; background: var(--ax-ok-soft); color: var(--ax-ok); }
+.ax-swipe-act[data-side="end"] { justify-content: flex-end; background: var(--ax-danger-soft); color: var(--ax-danger); }
+.ax-swipe-act[data-tone="info"] { background: var(--ax-info-soft); color: var(--ax-info); }
+.ax-swipe-act[data-tone="warn"] { background: var(--ax-warn-soft); color: var(--ax-warn); }
+.ax-swipe[data-show="start"] .ax-swipe-act[data-side="start"], .ax-swipe[data-show="end"] .ax-swipe-act[data-side="end"] { opacity: 1; }
+.ax-swipe-act .ax-icon { transition: transform var(--ax-dur) var(--ax-ease-spring); }
+.ax-swipe[data-armed] .ax-swipe-act .ax-icon { transform: scale(1.25); }
+.ax-swipe[data-gone] { animation: ax-row-out var(--ax-dur) var(--ax-ease-in) both; }
+@keyframes ax-row-out { to { opacity: 0; max-height: 0; margin: 0; } }
+

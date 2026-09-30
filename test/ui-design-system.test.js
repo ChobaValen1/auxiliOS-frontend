@@ -64,3 +64,22 @@ test('comportamiento en JS: avisos, modal, menú, botón que guarda, carga, pest
   assert.match(js, /ctx\.volver\.focus\(\)/);                                  // el foco vuelve a quien abrió el modal
   assert.match(page, /id="reglas-uso"/);
 });
+
+test('interacción: interruptor que se arrastra, selector múltiple, marca, tareas y fila que se desliza', () => {
+  const vm = require('node:vm');
+  const js = fs.readFileSync('ui/ax.js', 'utf8');
+  const win = { addEventListener() {}, matchMedia: () => ({ matches: false }) };
+  const doc = { addEventListener() {}, documentElement: {}, querySelector: () => null };
+  win.document = doc;
+  vm.runInNewContext(js, { window: win, document: doc, setTimeout, clearTimeout, Promise });
+  for (const f of ['multi', 'mark', 'task', 'swipe']) assert.equal(typeof win.AxUI[f], 'function', f);
+  // Las opciones con tilde no cierran el menú (se eligen varias).
+  assert.match(js, /!mb\.hasAttribute\('aria-checked'\)/);
+  // La fila deslizada tiene la acción también fuera del gesto: sus botones no entran al orden del teclado.
+  assert.match(js, /b\.tabIndex = -1/);
+  // El rebote es un token y sólo lo usan el interruptor, los tildes y el ícono de la fila.
+  assert.match(tokens, /--ax-ease-spring: cubic-bezier\(/);
+  const usos = (comp.match(/var\(--ax-ease-spring\)/g) || []).length;
+  assert.ok(usos >= 1 && usos <= 4, String(usos));
+  for (const id of ['i-multi', 'i-tasks', 'i-swipes', 'i-sw1']) assert.match(page, new RegExp('id="' + id + '"'));
+});
