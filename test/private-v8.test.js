@@ -31,7 +31,8 @@ test('el operador completa el cobro: monto hasta el saldo y medio de pago', () =
   assert.equal(T.esParticular({ quoted_total: 1 }), true);
   assert.equal(T.esParticular({ company_name: 'Addiuva' }), false);
   assert.match(pay, /register_service_payment_v1/);
-  assert.match(pay, /b\.textContent = 'Registrar cobro'/);
+  // Se ofrece sólo si queda saldo (se consulta al abrir el menú).
+  assert.match(pay, /Registrar cobro · ' \+ esc\(money\(r\.data\.balance\)\)/);
   assert.match(config, /'\/private-payments-v1\.js'/);
   assert.match(sql, /values \(p_service_id, p_kind, round\(p_amount, 2\), p_method, auth\.uid\(\)/);
 });

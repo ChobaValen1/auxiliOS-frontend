@@ -160,7 +160,8 @@
         factura: false, condicion: 'consumidor_final',
         assigned_truck_id: '', assigned_driver_id: '',
         captado: false, referred_by_driver_id: '',
-        operator_notes: ''
+        operator_notes: '',
+        medios: {}
       },
       addr: { origin: { seq: 0, list: [], token: '' }, destination: { seq: 0, list: [], token: '' } }
     };
@@ -225,7 +226,12 @@
       d.condicion = e.customer_tax_condition || 'consumidor_final';
       d.captado = !!e.referred_by_driver_id;
       d.referred_by_driver_id = e.referred_by_driver_id || '';
-      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: e.status === 'completed' };
+      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: e.status === 'completed', pagos: [] };
+      d.medios = {};
+      try {
+        var pr = await db().rpc('get_service_payments_v1', { p_service_id: id });
+        if (!pr.error && pr.data) st.edit.pagos = (pr.data.payments || []).filter(function (p) { return !p.voided_at; });
+      } catch (e2) { /* sin cobros: no se muestra "Cómo se pagó" */ }
     } catch (err) {
       st.error = err.message || 'No se pudo abrir el servicio.';
     }
@@ -349,10 +355,25 @@
     return '<div class="psv-field"><span>' + label + '</span>' + html + '</div>';
   }
   function seg(k, lista, sel) {
-    return '<div class="psv-seg psv-seg-wide" role="group">' + lista.map(function (o) {
+    return '<div class="psv-seg psv-seg-wide" role="group" data-ax-seg="' + k + '">' + lista.map(function (o) {
       return '<button type="button" data-psv-seg="' + k + '" data-v="' + o[0] + '" aria-pressed="' + (sel === o[0]) + '">' + esc(o[1]) + '</button>';
     }).join('') + '</div>';
   }
+  /* Editar: cómo se pagó cada cobro ya registrado (sólo el medio; el monto no cambia). */
+  function comoSePago() {
+    var pagos = (st.edit && st.edit.pagos) || [];
+    if (!pagos.length) return '';
+    return '<div class="psv-pagos"><span class="psv-pagos-t">Cómo se pagó</span>' + pagos.map(function (p) {
+      var elegido = st.d.medios[p.payment_id] || p.method;
+      var lista = MEDIOS.some(function (o) { return o[0] === p.method; }) ? MEDIOS : MEDIOS.concat([[p.method, NOMBRE_OTRO[p.method] || p.method]]);
+      return '<div class="psv-pago"><span><b>' + (p.kind === 'sena' ? 'Seña' : 'Pago') + ' · ' + pesos(p.amount) + '</b>' +
+        (elegido !== p.method ? '<small>Antes: ' + esc((MEDIOS.concat([[p.method, NOMBRE_OTRO[p.method] || p.method]]).find(function (o) { return o[0] === p.method; }) || [0, p.method])[1]) + '</small>' : '') + '</span>' +
+        '<div class="psv-seg" role="group" aria-label="Medio de pago" data-ax-seg="pago-' + esc(p.payment_id) + '">' + lista.map(function (o) {
+          return '<button type="button" data-psv-pmedio="' + esc(p.payment_id) + '" data-v="' + o[0] + '" aria-pressed="' + (elegido === o[0]) + '"' + (st.edit.cerrado ? ' disabled' : '') + '>' + esc(o[1]) + '</button>';
+        }).join('') + '</div></div>';
+    }).join('') + '</div>';
+  }
+  var NOMBRE_OTRO = { mercado_pago: 'Mercado Pago', other: 'Otro' };
   function input(id, value, attrs) {
     return '<input id="psv-' + id + '" data-psv-k="' + id + '" value="' + esc(value) + '" ' + (attrs || '') + '>';
   }
@@ -417,7 +438,7 @@
           campo('primary_concept_id', 'Tipo de servicio *', '<select id="psv-primary_concept_id" data-psv-k="primary_concept_id">' + opciones(tipos, d.primary_concept_id, 'Elegí…') + '</select>') +
           (bases.length > 1 ? campo('billing_base_id', 'Base que lo atiende', '<select id="psv-billing_base_id" data-psv-k="billing_base_id">' + opciones(bases, d.billing_base_id) + '</select>') : '') +
           (st.edit ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : st.intake ? '' :
-          '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo">' +
+          '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo" data-ax-seg="cuando">' +
             '<button type="button" data-psv-cuando="ahora" aria-pressed="' + (d.cuando === 'ahora') + '">Ahora</button>' +
             '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
           (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : '')) +
@@ -436,7 +457,8 @@
           (st.edit ? '' : grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago))) +
         '</div>' +
         (st.edit ? '<div class="psv-total"><span>Pagado ' + pesos(st.edit.pagado) + ' · Saldo</span><b>' + pesos(Math.max(num(d.presupuesto) - st.edit.pagado, 0)) + '</b></div>' +
-          '<p class="psv-hint">Los pagos se registran con "Registrar cobro".</p>' : '') +
+          comoSePago() +
+          (Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 ? '<p class="psv-hint">El saldo se registra con "Registrar cobro".</p>' : '') : '') +
         (!st.edit && d.pago !== 'no' ? '<div class="psv-grid">' +
           (d.pago === 'sena'
             ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
@@ -448,7 +470,7 @@
         '</section>' +
 
         '<section><h3>Factura</h3>' +
-          '<label class="psv-check"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> El cliente pide factura</label>' +
+          '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> El cliente pide factura</label>' +
           (d.factura ? '<div class="psv-grid">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
         '</section>' +
 
@@ -459,7 +481,7 @@
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id">' + opciones(drivers, d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
         '</div>') +
         '<div class="psv-grid psv-captado">' +
-          '<label class="psv-check"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
+          '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
           (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
         '</div></section>' +
 
@@ -471,6 +493,10 @@
       '</div>';
     marcas(m);
     confirmarRecientes(m);
+    if (global.AxUI) {
+      if (global.AxUI.select) m.querySelectorAll('.psv-body select').forEach(function (x) { global.AxUI.select(x); });
+      if (global.AxUI.seg) m.querySelectorAll('.psv-seg').forEach(function (x) { global.AxUI.seg(x); });
+    }
     pintarRecursos(false);
     // Con remito firmado, cliente, vehículo y asignación vienen del remito.
     if (st.edit && st.edit.firmado) {
@@ -760,6 +786,11 @@
           p_reason: null
         });
         if (ru.error) throw ru.error;
+        var cambios = (st.edit.pagos || []).filter(function (p) { return st.d.medios[p.payment_id] && st.d.medios[p.payment_id] !== p.method; });
+        for (var ci = 0; ci < cambios.length; ci++) {
+          var rm = await db().rpc('update_service_payment_method_v1', { p_payment_id: cambios[ci].payment_id, p_method: st.d.medios[cambios[ci].payment_id] });
+          if (rm.error) throw rm.error;
+        }
         cerrarForm(true);
         if (typeof global.operationFeedback === 'function') global.operationFeedback('Servicio actualizado', 'Los cambios quedaron guardados.', 'success', 2400);
         if (global.cargarServiciosOperador) await global.cargarServiciosOperador();
@@ -816,7 +847,7 @@
   /* ── Eventos ──────────────────────────────────────────────────────────── */
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg]');
+    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg],[data-psv-pmedio]');
     if (!b) {
       if (ev.target.classList && ev.target.classList.contains('psv-backdrop')) {
         if (ev.target.id === 'psv-tipo') cerrar('psv-tipo');
@@ -830,6 +861,7 @@
     if (a === 'cerrar-form') return cerrarForm(false);
     if (a === 'guardar') return guardar();
     if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
+    if (b.hasAttribute('data-psv-pmedio')) { st.d.medios[b.getAttribute('data-psv-pmedio')] = b.getAttribute('data-v'); return pintar(); }
     if (b.hasAttribute('data-psv-cuando')) { st.d.cuando = b.getAttribute('data-psv-cuando'); return pintar(); }
     if (b.hasAttribute('data-psv-pick')) return elegirDireccion(b.getAttribute('data-psv-pick'), Number(b.getAttribute('data-i')));
   });

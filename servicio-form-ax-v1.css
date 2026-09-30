@@ -274,3 +274,27 @@
 #modal-operador-wizard .osv4-reactive .osca-add-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ax-sp-2); }
 #modal-operador-wizard .osv4-reactive .osca-add-row { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
 #modal-operador-wizard .osv4-reactive .osca-matrix-row { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+/* Interruptores del sistema (se pueden arrastrar). */
+#psv-form .psv-check.ax-switch { gap: 10px; min-height: var(--ax-h); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#psv-form .psv-check.ax-switch input { width: 36px; height: 20px; flex: 0 0 auto; accent-color: auto; }
+/* Editar: cómo se pagó cada cobro. */
+#psv-form .psv-pagos { display: grid; gap: var(--ax-sp-2); margin-top: var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#psv-form .psv-pagos-t { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#psv-form .psv-pago { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ax-sp-3); }
+#psv-form .psv-pago > span { display: grid; gap: 2px; min-width: 0; }
+#psv-form .psv-pago b { font-size: var(--ax-fs-md); font-variant-numeric: tabular-nums; }
+#psv-form .psv-pago small { color: var(--ax-warn); font-size: var(--ax-fs-sm); }
+#psv-form .psv-pago .psv-seg button { height: calc(var(--ax-h-sm) - 4px); padding: 0 10px; font-size: var(--ax-fs-sm); }
+#psv-form .psv-pago .psv-seg button:disabled { cursor: not-allowed; opacity: .6; }
+/* Listas: el botón del sistema ocupa el lugar del select. */
+#psv-form .ax-select-btn { height: 38px; }
+#psv-form .ax-invalid .ax-select-btn { border-color: var(--ax-danger-strong); }
+/* Modal de cobro: mismo lenguaje. */
+#ppv-modal .psv-dialog { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#ppv-modal .psv-seg { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#ppv-modal .psv-seg button { height: calc(var(--ax-h) - 6px); color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#ppv-modal .psv-seg button[aria-pressed="true"] { color: var(--ax-text); }
+#ppv-modal .psv-dialog > footer .psv-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+/* "¿Pagó algo…?" y "Medio de pago" a lo ancho: con tres opciones no entraban en media columna. */
+#psv-form .psv-grid > .psv-field:has(> [data-ax-seg="pago"]), #psv-form .psv-grid > .psv-field:has(> [data-ax-seg="sena_medio"]) { grid-column: 1 / -1; }
+#psv-form .ax-select-btn, .ax-select-btn { font-weight: var(--ax-fw-regular); }

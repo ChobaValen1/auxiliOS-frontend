@@ -12,6 +12,8 @@
      AxUI.mark(el, estado, avance)           marca en curso / listo / error
      AxUI.task(caja, { label, run })         chip de tarea con tiempo y "Reintentar"
      AxUI.swipe(fila, { start, end })        deslizar la fila en el celular (atajo)
+     AxUI.seg(grupo, clave)                  control segmentado: la marca se desliza a la opción elegida
+     AxUI.select(select)                     lista desplegable con el aspecto del sistema (usa el <select>)
    Los interruptores .ax-switch también se pueden arrastrar con el dedo.
    Además: [data-ax-collapse="#id"] abre y cierra un bloque .ax-collapse.
    Las duraciones salen de ui/tokens.css; con "reducir movimiento" no hay animación. */
@@ -453,6 +455,102 @@
     row.addEventListener('pointercancel', function () { if (p) { p = null; row.removeAttribute('data-drag'); row.removeAttribute('data-armed'); mover(0); } });
   }
 
+  /* ── Control segmentado con marca que se desliza ──────────────────── */
+  /* grupo: contenedor con botones [aria-pressed]. clave: nombre estable; si la
+     pantalla se repinta, la marca sale de donde estaba y se desliza a la nueva. */
+  var segPrev = {};
+  function seg(box, clave) {
+    if (!box) return;
+    var on = box.querySelector('[aria-pressed="true"]');
+    box.classList.add('ax-seg-slide');
+    if (!on) { box.style.setProperty('--ax-seg-w', '0px'); return; }
+    var pos = { x: on.offsetLeft, w: on.offsetWidth };
+    var k = clave || box.getAttribute('data-ax-seg') || '';
+    var antes = k && segPrev[k];
+    if (antes && (antes.x !== pos.x || antes.w !== pos.w) && !reduce()) {
+      box.style.setProperty('--ax-seg-x', antes.x + 'px');
+      box.style.setProperty('--ax-seg-w', antes.w + 'px');
+      box.setAttribute('data-seg-static', '');
+      void box.offsetWidth;
+      box.removeAttribute('data-seg-static');
+    }
+    box.style.setProperty('--ax-seg-x', pos.x + 'px');
+    box.style.setProperty('--ax-seg-w', pos.w + 'px');
+    if (k) segPrev[k] = pos;
+  }
+
+  /* ── Lista desplegable ─────────────────────────────────────────────── */
+  /* Deja el <select> en su lugar (oculto) para que el formulario lo lea igual;
+     el botón muestra la opción elegida y el menú dispara "change" en el select. */
+  function select(sel) {
+    if (!sel || sel.hasAttribute('data-ax-enhanced') || sel.multiple) return;
+    sel.setAttribute('data-ax-enhanced', '');
+    sel.classList.add('ax-native-select');
+    sel.tabIndex = -1;
+    sel.setAttribute('aria-hidden', 'true');
+    var box = doc.createElement('span');
+    box.className = 'ax-select-box';
+    var btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ax-select-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    var lab = sel.id && doc.querySelector('label[for="' + sel.id + '"] > span');
+    if (lab) btn.setAttribute('aria-label', lab.textContent.replace(/\s*\*$/, ''));
+    var lista = doc.createElement('div');
+    lista.className = 'ax-menu ax-select-menu';
+    lista.hidden = true;
+    lista.setAttribute('role', 'listbox');
+    sel.insertAdjacentElement('afterend', box);
+    box.appendChild(btn);
+    doc.body.appendChild(lista);
+    var ultimo = null;
+    function texto() {
+      var o = sel.options[sel.selectedIndex];
+      var vacio = !o || o.value === '';
+      var clave = (o ? o.value + '|' + o.textContent : '') + '|' + sel.disabled + '|' + sel.getAttribute('aria-invalid');
+      if (clave === ultimo) return;   // sin cambios: no se toca el DOM (el observador no se dispara solo)
+      ultimo = clave;
+      btn.innerHTML = '<span class="ax-select-txt' + (vacio ? ' is-empty' : '') + '">' + esc(o ? o.textContent : '') + '</span>' + icon('chevron-down', 'ax-chevron');
+      btn.disabled = sel.disabled;
+      box.classList.toggle('is-invalid', sel.getAttribute('aria-invalid') === 'true');
+    }
+    function pintarLista() {
+      lista.innerHTML = [].map.call(sel.options, function (o, i) {
+        var elegido = i === sel.selectedIndex;
+        return '<button type="button" role="option" data-i="' + i + '" aria-selected="' + elegido + '"' + (o.disabled ? ' disabled' : '') + '>' +
+          '<span>' + esc(o.textContent) + '</span>' + (elegido ? icon('check', 'ax-select-check') : '') + '</button>';
+      }).join('');
+    }
+    btn.addEventListener('click', function () {
+      pintarLista();
+      lista.style.minWidth = btn.offsetWidth + 'px';
+      menu(btn, lista);
+      var elegido = lista.querySelector('[aria-selected="true"]');
+      if (elegido) { elegido.focus(); elegido.scrollIntoView({ block: 'nearest' }); }
+    });
+    lista.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-i]');
+      if (!b) return;
+      var i = Number(b.getAttribute('data-i'));
+      if (i !== sel.selectedIndex) {
+        sel.selectedIndex = i;
+        sel.dispatchEvent(new Event('input', { bubbles: true }));
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      texto();
+      btn.focus();
+    });
+    sel.addEventListener('change', texto);
+    // Si la pantalla se repinta y el select desaparece, la lista flotante también.
+    var obs = new MutationObserver(function () { if (!sel.isConnected) { lista.remove(); obs.disconnect(); } });
+    obs.observe(doc.body, { childList: true, subtree: true });
+    // Opciones que cambian por código (se rearma la lista del select).
+    new MutationObserver(texto).observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'aria-invalid'] });
+    texto();
+    return { refresh: texto };
+  }
+
   global.AxUI = { toast: toast, openModal: openModal, closeModal: closeModal, menu: menu, busy: busy, loading: loading, tabs: tabs, flash: flash, icon: icon,
-    multi: multi, mark: mark, task: task, swipe: swipe };
+    multi: multi, mark: mark, task: task, swipe: swipe, seg: seg, select: select };
 })(window);

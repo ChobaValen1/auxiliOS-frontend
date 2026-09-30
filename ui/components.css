@@ -324,3 +324,29 @@ button.ax-chip { background: transparent; font: inherit; font-size: var(--ax-fs-
 .ax-swipe[data-gone] { animation: ax-row-out var(--ax-dur) var(--ax-ease-in) both; }
 @keyframes ax-row-out { to { opacity: 0; max-height: 0; margin: 0; } }
 
+/* Control segmentado con marca que se desliza (AxUI.seg). */
+.ax-seg-slide { position: relative; isolation: isolate; }
+.ax-seg-slide::before { content: ''; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 0; width: var(--ax-seg-w, 0); border-radius: var(--ax-radius-sm); background: var(--ax-surface-3); box-shadow: inset 0 0 0 1px var(--ax-border-strong); transform: translateX(var(--ax-seg-x, 0)); transition: transform var(--ax-dur-slow) var(--ax-ease), width var(--ax-dur-slow) var(--ax-ease); }
+.ax-seg-slide[data-seg-static]::before { transition: none; }
+.ax-seg-slide > button, .ax-seg-slide > button[aria-pressed="true"] { background: transparent !important; box-shadow: none !important; }
+.ax-seg-slide > button[aria-pressed="true"] { color: var(--ax-text); }
+
+/* Lista desplegable (AxUI.select): el <select> queda oculto y lo reemplaza el botón. */
+.ax-native-select { position: absolute !important; width: 1px !important; height: 1px !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; opacity: 0; pointer-events: none; }
+.ax-select-box { display: block; min-width: 0; }
+.ax-select-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: var(--ax-h); padding: 0 10px 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); text-align: left; cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+.ax-select-btn:hover:not(:disabled) { border-color: var(--ax-text-3); }
+.ax-select-btn:focus-visible, .ax-select-btn[aria-expanded="true"] { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+.ax-select-btn:disabled { opacity: .55; cursor: not-allowed; }
+.ax-select-btn .ax-chevron { flex: 0 0 auto; color: var(--ax-text-3); transition: transform var(--ax-dur) var(--ax-ease); }
+.ax-select-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-select-txt.is-empty { color: var(--ax-text-3); }
+.ax-select-box.is-invalid .ax-select-btn { border-color: var(--ax-danger-strong); }
+.ax-select-menu { max-height: min(320px, 50vh); overflow-y: auto; transform-origin: top center; }
+/* Por encima de los modales de la app (que usan capas altas). */
+.ax-select-menu.ax-menu-float { z-index: 20002; }
+.ax-select-menu [role="option"] { justify-content: space-between; }
+.ax-select-menu [role="option"] > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-select-menu [aria-selected="true"] { font-weight: var(--ax-fw-semibold); }
+.ax-select-menu .ax-select-check { color: var(--ax-accent) !important; }
+

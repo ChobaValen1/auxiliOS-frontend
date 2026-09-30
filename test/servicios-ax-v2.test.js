@@ -82,3 +82,43 @@ test('Aviso de servicio creado: en la oficina no tapa la pantalla; al chofer se 
   assert.equal(typeof r.close, 'function');
   assert.equal(typeof chofer.AuxiliosUI.resaltarServicio, 'function');
 });
+
+test('Particular: interruptores, segmentados que se deslizan y listas del sistema', () => {
+  const js = read('private-service-v1.js'), ax = read('ui/ax.js');
+  assert.match(js, /<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"/);
+  assert.match(js, /<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="captado"/);
+  assert.match(js, /data-ax-seg="' \+ k \+ '"/);
+  assert.match(js, /global\.AxUI\.select\(x\)/);
+  assert.match(js, /global\.AxUI\.seg\(x\)/);
+  assert.match(ax, /function seg\(box, clave\)/);
+  assert.match(ax, /function select\(sel\)/);
+  assert.match(ax, /if \(clave === ultimo\) return;/);   // no se repinta solo (el observador no entra en bucle)
+  const win = { addEventListener() {}, matchMedia: () => ({ matches: false }) };
+  const doc = { addEventListener() {}, documentElement: {}, querySelector: () => null };
+  win.document = doc;
+  vm.runInNewContext(ax, { window: win, document: doc, setTimeout, clearTimeout, Promise });
+  assert.equal(typeof win.AxUI.seg, 'function');
+  assert.equal(typeof win.AxUI.select, 'function');
+});
+
+test('Particular: si ya está pago no se ofrece Registrar cobro; al editar se cambia cómo se pagó', () => {
+  const pagos = read('private-payments-v1.js'), js = read('private-service-v1.js');
+  const sql = read('migrations/20260930150000_cambiar_medio_de_cobro_v1.sql');
+  assert.match(pagos, /if \(r\.error \|\| !r\.data \|\| num\(r\.data\.balance\) <= 0\) return;/);
+  assert.doesNotMatch(pagos, /b\.textContent = 'Registrar cobro';/);
+  assert.match(js, /function comoSePago\(\)/);
+  assert.match(js, /rpc\('update_service_payment_method_v1', \{ p_payment_id: cambios\[ci\]\.payment_id/);
+  assert.match(sql, /if v_role not in \('operador', 'administracion'\) then/);
+  assert.match(sql, /if v_status in \('completed', 'cancelled'\) then/);
+  assert.match(sql, /revoke all on function public\.update_service_payment_method_v1\(uuid, text\) from public, anon;/);
+});
+
+test('Prestadora: sugerencias por encima de Destino y duplicar peajes', () => {
+  const css = read('servicio-form-ax-v1.css'), addons = read('operator-service-commercial-addons-v1.js'), wiz = read('operator-service-wizard.js');
+  assert.match(css, /\.osv2-location:has\(\.osv4-suggestions:not\(\[hidden\]\)\) \{ position: relative; z-index: 40; \}/);
+  assert.match(addons, /data-ca="duplicate-toll"/);
+  assert.match(addons, /data-ca="duplicate-tolls"/);
+  assert.match(addons, /data-aa-dup="\$\{kind\}"/);
+  assert.match(wiz, /function duplicateCommercialToll\(index\)/);
+  assert.match(wiz, /function duplicateCommercialTolls\(\)/);
+});

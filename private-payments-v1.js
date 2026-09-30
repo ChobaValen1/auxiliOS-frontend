@@ -114,6 +114,8 @@
             : st.finalizar ? '<button type="button" class="psv-btn primary" data-ppv="finalizar">Finalizar servicio</button>' : '') +
         '</footer>' +
       '</div>';
+    var sg = m.querySelector('.ppv-form .psv-seg');
+    if (sg && global.AxUI && global.AxUI.seg) global.AxUI.seg(sg, 'ppv-medio');
   }
 
   async function cargar() {
@@ -240,6 +242,24 @@
     global.finalizarServicioOperador = w;
   }
 
+  function agregarCobroSiHaySaldo(menu, id) {
+    var d = db();
+    if (!d) return;
+    d.rpc('get_service_payments_v1', { p_service_id: id }).then(function (r) {
+      if (r.error || !r.data || num(r.data.balance) <= 0) return;
+      // El menú puede haberse cerrado o abierto para otro servicio mientras tanto.
+      if (menu.hidden || menu.querySelector('[data-ppv-cobro]') || String((OS().menuServiceId) || '') !== String(id)) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'menuitem');
+      b.setAttribute('data-ppv-cobro', '');
+      b.innerHTML = '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#hand-coins"/></svg>Registrar cobro · ' + esc(money(r.data.balance));
+      b.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = true; abrir(id); });
+      var sep = menu.querySelector('hr');
+      menu.insertBefore(b, sep || menu.querySelector('.danger') || null);
+    }, function () { /* sin saldo no se ofrece */ });
+  }
+
   function enganchar() {
     engancharFinalizar();
     if (typeof global.abrirMenuServicio !== 'function') return false;
@@ -251,12 +271,8 @@
       // En Historial (finalizado o anulado) ya no se cobra: el saldo se registra antes de finalizar.
       var sv = servicio(id);
       if (menu && !menu.hidden && esParticular(sv) && !cerrado(sv)) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = 'Registrar cobro';
-        b.addEventListener('click', function (e) { e.stopPropagation(); menu.hidden = true; abrir(id); });
-        var anular = menu.querySelector('.danger');
-        menu.insertBefore(b, anular || null);
+        // Si ya está pago no se ofrece: el saldo se consulta al abrir el menú.
+        agregarCobroSiHaySaldo(menu, id);
       }
       return r;
     };
