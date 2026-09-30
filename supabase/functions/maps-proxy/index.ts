@@ -205,6 +205,7 @@ async function computeRoute(body: Record<string, any>, apiKey: string) {
       "routes.duration",
       "routes.legs.distanceMeters",
       "routes.legs.duration",
+      "routes.polyline.encodedPolyline",
     ].join(","),
   );
   const route = payload.routes?.[0];
@@ -221,6 +222,8 @@ async function computeRoute(body: Record<string, any>, apiKey: string) {
     distanceMeters: Number(route.distanceMeters || 0),
     durationSeconds: parseDurationSeconds(route.duration),
     legs,
+    // Trazado completo del recorrido: el cliente lo cruza con la ubicación de los peajes.
+    polyline: typeof route.polyline?.encodedPolyline === "string" ? route.polyline.encodedPolyline : null,
     provider: "google_routes",
     calculation: "billing_distance",
     hasTolls: null,

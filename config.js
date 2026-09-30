@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'particulares-v196-20260930';
+window.AUXILIOS_BUILD_ID = 'particulares-v197-20260930';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -183,6 +183,7 @@ async function loadCriticalAuxiliosModules() {
   // El botón Nuevo servicio no se habilita hasta que el modal definitivo y sus dependencias estén listos.
   await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
   await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
+  await loadAuxiliosModule('auxilios-toll-route-detection-v1', '/toll-route-detection-v1.js');
   await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
   await loadAuxiliosModule('auxilios-remito-mobile-flow-v3', '/remito-mobile-flow-v3.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');

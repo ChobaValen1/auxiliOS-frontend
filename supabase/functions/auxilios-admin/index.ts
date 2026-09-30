@@ -10,6 +10,7 @@ const ALLOWED_ORIGINS = new Set([
   "https://auxilios-frontend-git-main-auxili-os.vercel.app",
   "https://auxilios-frontend-git-feat-integrated-remito-flow-v1-auxili-os.vercel.app",
   "https://auxilios-frontend-git-agent-iso-security-foundation-auxili-os.vercel.app",
+  "https://auxilios-frontend-git-claude-auxilios-3zj57q-auxili-os.vercel.app",
 ]);
 const ROLE_NAMES = new Set(["administracion", "supervision", "chofer"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

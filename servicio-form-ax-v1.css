@@ -327,3 +327,35 @@
 #modal-operador-wizard .osv4-reactive .osl-assignments > div { padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
 #modal-operador-wizard .osv4-reactive .osl-assignments b { display: flex; align-items: center; gap: var(--ax-sp-2); color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
 #modal-operador-wizard .osv4-reactive .osl-assignments small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* Detectar peajes del recorrido: mapa chico (SVG) con el trazado, los puntos y un número en cada peaje. */
+#modal-operador-wizard .osv4-reactive .tdt-panel { display: grid; gap: var(--ax-sp-3); margin-top: var(--ax-sp-3); padding: var(--ax-sp-4); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .tdt-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .tdt-head b { display: block; font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-head small { display: block; margin-top: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .tdt-close { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-map { width: 100%; height: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .tdt-route { fill: none; stroke: var(--ax-text-3); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+#modal-operador-wizard .osv4-reactive .tdt-wp circle { fill: var(--ax-surface-3); stroke: var(--ax-text); stroke-width: 1.5; }
+#modal-operador-wizard .osv4-reactive .tdt-wp text { fill: var(--ax-text-2); font: var(--ax-fw-semibold) 10px var(--ax-font); paint-order: stroke; stroke: var(--ax-bg); stroke-width: 3px; }
+#modal-operador-wizard .osv4-reactive .tdt-toll circle { fill: var(--ax-accent); stroke: var(--ax-bg); stroke-width: 2; }
+#modal-operador-wizard .osv4-reactive .tdt-toll text { fill: var(--ax-bg); font: var(--ax-fw-bold) 10px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-list { display: grid; gap: var(--ax-sp-2); margin: 0; padding: 0; list-style: none; }
+#modal-operador-wizard .osv4-reactive .tdt-list label { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: flex-start; text-align: left; gap: var(--ax-sp-3); min-height: var(--ax-h); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-list label:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .tdt-list li.is-loaded label { opacity: .6; cursor: default; }
+#modal-operador-wizard .osv4-reactive .tdt-list input { width: 18px; height: 18px; accent-color: var(--ax-accent); flex: none; }
+#modal-operador-wizard .osv4-reactive .tdt-num { display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--ax-accent); color: var(--ax-bg); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .tdt-name { display: grid; min-width: 0; }
+#modal-operador-wizard .osv4-reactive .tdt-name b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .tdt-name small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .tdt-note { display: flex; align-items: flex-start; gap: var(--ax-sp-2); margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#modal-operador-wizard .osv4-reactive .tdt-note .ax-icon { flex: none; margin-top: 1px; color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .tdt-note b { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-empty { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .tdt-actions { display: flex; justify-content: flex-end; }
+#modal-operador-wizard .osv4-reactive .tdt-apply { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); padding: 0 var(--ax-sp-4); border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-bg); font-weight: var(--ax-fw-bold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-apply:disabled { border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text-3); cursor: default; }
+#modal-operador-wizard .osv4-reactive .tdt-list input { margin: 0; }
+#modal-operador-wizard .osv4-reactive .osca-add-actions [data-ca="detect-tolls"] { grid-column: 1 / -1; }
