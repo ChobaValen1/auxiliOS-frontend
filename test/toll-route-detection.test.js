@@ -87,17 +87,32 @@ test('el botón, el panel y la carga de peajes detectados están conectados', ()
   assert.match(read('operator-service-commercial-addons-v1.js'), /function addDetectedTollsAdmin\(items\)/);
   assert.match(read('operator-service-commercial-addons-v1.js'), /tolls\?`<button type="button" class="osca-add-row" data-ca="detect-tolls">/);
 
-  // Referencias del mapa: sentido, escala, norte, direcciones y km por tramo.
+  // Mapa: sentido, escala y norte; marcadores con letra/número. Los nombres van en la tabla de referencias (abajo a la izquierda).
   const t = load();
-  const svg = t.mapa([[-34.60, -58.40], [-34.70, -58.40], [-34.60, -58.40]],
-    [{ label: 'Base', lat: -34.60, lng: -58.40, name: 'Base Norte' }, { label: 'Origen', lat: -34.70, lng: -58.40, name: 'Av. Mitre 1200, Avellaneda' }],
-    [{ toll: { toll_id: 'a', name: 'Peaje Dock Sud', latitude: -34.65, longitude: -58.40 }, passes: 2 }]);
+  const wps = [{ label: 'Base', lat: -34.60, lng: -58.40, name: 'Base Norte' }, { label: 'Origen', lat: -34.70, lng: -58.40, name: 'Av. Mitre 1200, Avellaneda, Provincia de Buenos Aires' }, { label: 'Destino', lat: -34.68, lng: -58.40, name: 'Alsina 500, Quilmes, Provincia de Buenos Aires' }, { label: 'Base', lat: -34.60, lng: -58.40, name: 'Base Norte' }];
+  const hits = [{ toll: { toll_id: 'a', name: 'Peaje Dock Sud', latitude: -34.65, longitude: -58.40 }, passes: 2 }];
+  const svg = t.mapa([[-34.60, -58.40], [-34.70, -58.40], [-34.60, -58.40]], wps, hits);
   assert.match(svg, /class="tdt-arrow"/);
   assert.match(svg, /class="tdt-scale"/);
   assert.match(svg, /class="tdt-north"/);
-  assert.match(svg, />Av\. Mitre 1200</);                       // dirección corta bajo la etiqueta
-  assert.match(svg, />Dock Sud</);                              // nombre del peaje sin la palabra "Peaje"
-  const it = t.itinerario({ waypoints: [{ label: 'Base', name: 'Base Norte' }, { label: 'Origen', name: 'Av. Mitre 1200, Avellaneda' }], legs: [{ distanceMeters: 12400, durationSeconds: 1080 }] });
-  assert.match(it, /Av\. Mitre 1200, Avellaneda/);
-  assert.match(it, /12,4 km · 18 min/);
+  assert.match(svg, />B</);
+  assert.match(svg, />O</);
+  assert.match(svg, />D</);
+  assert.doesNotMatch(svg, /Mitre/);                               // el dibujo no lleva textos largos
+  const tabla = t.leyenda({ waypoints: wps }, hits);
+  assert.match(tabla, /<table class="tdt-legend">/);
+  assert.match(tabla, /Base Norte/);
+  assert.match(tabla, /Av\. Mitre 1200, Avellaneda, Provincia de Buenos Aires/);
+  assert.match(tabla, /Alsina 500, Quilmes/);
+  assert.match(tabla, /Peajes por los que pasa/);
+  assert.match(tabla, /Peaje Dock Sud/);
+  assert.equal((tabla.match(/<b>Base<\/b>/g) || []).length, 1);        // la Base de la vuelta no se repite
+  assert.match(t.leyenda({ waypoints: wps }, []), />Ninguno</);
+  // Origen igual a Destino: un solo marcador "O/D".
+  assert.match(t.mapa([[-34.60, -58.40], [-34.70, -58.40]], [{ label: 'Origen', lat: -34.7, lng: -58.4 }, { label: 'Destino', lat: -34.7, lng: -58.4 }], []), />O\/D</);
+  // Detectar y Duplicar comparten línea; si falta uno, el otro ocupa toda la línea.
+  const css = read('servicio-form-ax-v1.css');
+  assert.match(css, /\.osca-add-actions \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.osca-add-actions > :first-child \{ grid-column: 1 \/ -1; \}/);
+  assert.match(css, /\.osca-add-actions > \[data-ca="detect-tolls"\]:last-child \{ grid-column: 1 \/ -1; \}/);
 });

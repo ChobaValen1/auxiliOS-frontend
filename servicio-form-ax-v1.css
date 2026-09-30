@@ -269,8 +269,11 @@
 #modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total { justify-content: flex-start; min-height: var(--ax-h-sm); padding: 0; flex-direction: column; align-items: flex-start; }
 #modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total b { font-size: var(--ax-fs-md); }
 #modal-operador-wizard .osv4-reactive .osca-matrix-row > .osca-remove { grid-column: 1 / -1; justify-self: end; display: inline-flex; gap: 2px; margin-top: -2px; }
-#modal-operador-wizard .osv4-reactive .osca-add-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ax-sp-2); }
-#modal-operador-wizard .osv4-reactive .osca-add-row { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osca-add-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
+/* Agregar peaje va solo en su línea; Detectar y Duplicar comparten la siguiente, y si falta uno el otro ocupa toda la línea. */
+#modal-operador-wizard .osv4-reactive .osca-add-actions > :first-child { grid-column: 1 / -1; }
+#modal-operador-wizard .osv4-reactive .osca-add-actions > [data-ca="detect-tolls"]:last-child { grid-column: 1 / -1; }
+#modal-operador-wizard .osv4-reactive .osca-add-row { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-align: center; line-height: 1.25; }
 #modal-operador-wizard .osv4-reactive .osca-matrix-row { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
 /* Interruptores del sistema (se pueden arrastrar). */
 #psv-form .psv-check.ax-switch { gap: 10px; min-height: var(--ax-h); color: var(--ax-text); font-size: var(--ax-fs-md); }
@@ -335,10 +338,12 @@
 #modal-operador-wizard .osv4-reactive .tdt-head small { display: block; margin-top: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #modal-operador-wizard .osv4-reactive .tdt-close { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); cursor: pointer; }
 #modal-operador-wizard .osv4-reactive .tdt-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
-#modal-operador-wizard .osv4-reactive .tdt-map { width: 100%; height: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .tdt-mapbox { display: grid; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); overflow: hidden; }
+#modal-operador-wizard .osv4-reactive .tdt-map { display: block; width: 100%; height: auto; }
 #modal-operador-wizard .osv4-reactive .tdt-route { fill: none; stroke: var(--ax-text-3); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-#modal-operador-wizard .osv4-reactive .tdt-wp circle { fill: var(--ax-surface-3); stroke: var(--ax-text); stroke-width: 1.5; }
-#modal-operador-wizard .osv4-reactive .tdt-wp text { fill: var(--ax-text-2); font: var(--ax-fw-semibold) 10px var(--ax-font); paint-order: stroke; stroke: var(--ax-bg); stroke-width: 3px; }
+#modal-operador-wizard .osv4-reactive .tdt-wp circle { fill: var(--ax-text); stroke: var(--ax-bg); stroke-width: 2; }
+#modal-operador-wizard .osv4-reactive .tdt-wp text { fill: var(--ax-bg); font: var(--ax-fw-bold) 10px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-wp text.tdt-wp-multi { font-size: 7px; }
 #modal-operador-wizard .osv4-reactive .tdt-toll circle { fill: var(--ax-accent); stroke: var(--ax-bg); stroke-width: 2; }
 #modal-operador-wizard .osv4-reactive .tdt-toll text { fill: var(--ax-bg); font: var(--ax-fw-bold) 10px var(--ax-font); }
 #modal-operador-wizard .osv4-reactive .tdt-list { display: grid; gap: var(--ax-sp-2); margin: 0; padding: 0; list-style: none; }
@@ -358,21 +363,24 @@
 #modal-operador-wizard .osv4-reactive .tdt-apply { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); padding: 0 var(--ax-sp-4); border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-bg); font-weight: var(--ax-fw-bold); cursor: pointer; }
 #modal-operador-wizard .osv4-reactive .tdt-apply:disabled { border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text-3); cursor: default; }
 #modal-operador-wizard .osv4-reactive .tdt-list input { margin: 0; }
-#modal-operador-wizard .osv4-reactive .osca-add-actions [data-ca="detect-tolls"] { grid-column: 1 / -1; }
 
 /* Referencias del mapa de peajes: sentido del recorrido, nombres, escala, norte e itinerario con direcciones y km por tramo. */
 #modal-operador-wizard .osv4-reactive .tdt-arrow { fill: none; stroke: var(--ax-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-#modal-operador-wizard .osv4-reactive .tdt-wp .tdt-sub { fill: var(--ax-text-3); font: 400 8.5px var(--ax-font); }
-#modal-operador-wizard .osv4-reactive .tdt-toll-name { fill: var(--ax-accent); font: var(--ax-fw-semibold) 9px var(--ax-font); paint-order: stroke; stroke: var(--ax-bg); stroke-width: 3px; }
 #modal-operador-wizard .osv4-reactive .tdt-scale path { fill: none; stroke: var(--ax-text-2); stroke-width: 1.4; }
 #modal-operador-wizard .osv4-reactive .tdt-scale text { fill: var(--ax-text-2); font: var(--ax-fw-semibold) 9px var(--ax-font); }
 #modal-operador-wizard .osv4-reactive .tdt-north path { fill: var(--ax-text-2); }
 #modal-operador-wizard .osv4-reactive .tdt-north text { fill: var(--ax-text-2); font: var(--ax-fw-bold) 9px var(--ax-font); }
-#modal-operador-wizard .osv4-reactive .tdt-route-list { display: grid; margin: 0; padding: 0; list-style: none; }
-#modal-operador-wizard .osv4-reactive .tdt-stop { display: flex; align-items: flex-start; gap: var(--ax-sp-3); }
-#modal-operador-wizard .osv4-reactive .tdt-stop > span:last-child { display: grid; min-width: 0; }
-#modal-operador-wizard .osv4-reactive .tdt-stop b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
-#modal-operador-wizard .osv4-reactive .tdt-stop small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); overflow-wrap: anywhere; }
-#modal-operador-wizard .osv4-reactive .tdt-dot { flex: none; width: 10px; height: 10px; margin: 5px 0 0 6px; border: 2px solid var(--ax-text); border-radius: 50%; background: var(--ax-surface-3); }
-#modal-operador-wizard .osv4-reactive .tdt-leg { position: relative; min-height: 26px; margin-left: 10px; padding-left: calc(var(--ax-sp-3) + 10px); border-left: 2px dotted var(--ax-border-strong); color: var(--ax-text-3); font-size: var(--ax-fs-sm); display: flex; align-items: center; }
 #modal-operador-wizard .osv4-reactive .tdt-road { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* Tabla de referencias, abajo a la izquierda del mapa. */
+#modal-operador-wizard .osv4-reactive .tdt-legend { width: min(100%, 290px); margin: 0; padding: var(--ax-sp-2) var(--ax-sp-3) var(--ax-sp-3); border-collapse: collapse; font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .tdt-legend caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+#modal-operador-wizard .osv4-reactive .tdt-legend th { width: 30px; padding: 3px 0; vertical-align: top; text-align: left; font-weight: inherit; }
+#modal-operador-wizard .osv4-reactive .tdt-legend td { padding: 3px 0; vertical-align: top; color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-legend td b { display: block; color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .tdt-legend td span { display: block; color: var(--ax-text-2); font-size: var(--ax-fs-xs); overflow-wrap: anywhere; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-head td { padding-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-none { color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .tdt-code { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ax-text); color: var(--ax-bg); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .tdt-legend .tdt-num { width: 20px; height: 20px; }
+#modal-operador-wizard .osv4-reactive .osca-actions em.osca-required { background: var(--ax-warn-soft); color: var(--ax-warn); }

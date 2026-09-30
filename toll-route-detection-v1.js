@@ -12,7 +12,7 @@
 
   var RADIO_M = 150;          // a qué distancia del trazado se considera que se pasa por el peaje
   var M_POR_GRADO = 111320;
-  var ANCHO = 320, ALTO = 230, MARGEN = 16;
+  var ANCHO = 320, ALTO = 210, MARGEN = 16;
 
   var state = { detect: null };
 
@@ -113,12 +113,10 @@
     todos.forEach(function (p) { minLat = Math.min(minLat, p[0]); maxLat = Math.max(maxLat, p[0]); minLng = Math.min(minLng, p[1]); maxLng = Math.max(maxLng, p[1]); });
     var lat0 = (minLat + maxLat) / 2, k = Math.cos(lat0 * Math.PI / 180);
     var w = Math.max((maxLng - minLng) * k, 1e-5), h = Math.max(maxLat - minLat, 1e-5);
-    var margenX = MARGEN + 24, margenY = MARGEN + 10;                 // aire para las etiquetas
+    var margenX = MARGEN + 12, margenY = MARGEN + 10;                 // aire para los marcadores
     var escala = Math.min((ANCHO - 2 * margenX) / w, (ALTO - 2 * margenY) / h);
     var offX = (ANCHO - w * escala) / 2, offY = (ALTO - h * escala) / 2;
     function xy(p) { return [offX + (p[1] - minLng) * k * escala, ALTO - offY - (p[0] - minLat) * escala]; }
-    function ancla(x) { return x > ANCHO * 0.62 ? 'end' : 'start'; }
-    function dx(x, d) { return x > ANCHO * 0.62 ? -d : d; }
 
     // Trazado y flechas de sentido cada ~70 px.
     var paso = Math.max(1, Math.ceil(puntos.length / 400)), d = '', pts = [];
@@ -142,27 +140,24 @@
     waypoints.forEach(function (wp) {
       var clave = wp.lat.toFixed(4) + '|' + wp.lng.toFixed(4);
       var lugar = lugares.filter(function (l) { return l.clave === clave; })[0];
-      if (!lugar) lugares.push({ clave: clave, lat: wp.lat, lng: wp.lng, labels: [wp.label], nombre: wp.name || '' });
+      if (!lugar) lugares.push({ clave: clave, lat: wp.lat, lng: wp.lng, labels: [wp.label] });
       else if (lugar.labels.indexOf(wp.label) < 0) lugar.labels.push(wp.label);
     });
     var marcas = lugares.map(function (l) {
-      var p = xy([l.lat, l.lng]), texto = l.labels.join(' · '), sub = corto(l.nombre, 26);
-      var x = p[0] + dx(p[0], 9);
-      return '<g class="tdt-wp" data-wp="' + esc(texto) + '"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="5"/>' +
-        '<text x="' + x.toFixed(1) + '" y="' + (p[1] - (sub ? 1 : -3)).toFixed(1) + '" text-anchor="' + ancla(p[0]) + '">' + esc(texto) + '</text>' +
-        (sub ? '<text class="tdt-sub" x="' + x.toFixed(1) + '" y="' + (p[1] + 9).toFixed(1) + '" text-anchor="' + ancla(p[0]) + '">' + esc(sub) + '</text>' : '') + '</g>';
+      var p = xy([l.lat, l.lng]), codigo = l.labels.map(function (x) { return x.charAt(0); }).join('/');
+      return '<g class="tdt-wp" data-wp="' + esc(l.labels.join(' · ')) + '"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="8.5"/>' +
+        '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 3).toFixed(1) + '" text-anchor="middle"' + (codigo.length > 1 ? ' class="tdt-wp-multi"' : '') + '>' + esc(codigo) + '</text></g>';
     }).join('');
 
     var peajes = hits.map(function (hit, idx) {
       var p = xy([Number(hit.toll.latitude), Number(hit.toll.longitude)]);
-      return '<g class="tdt-toll"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="8"/><text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 3.5).toFixed(1) + '" text-anchor="middle">' + (idx + 1) + '</text></g>' +
-        '<text class="tdt-toll-name" x="' + (p[0] + dx(p[0], 12)).toFixed(1) + '" y="' + (p[1] - 10).toFixed(1) + '" text-anchor="' + ancla(p[0]) + '">' + esc(corto(String(hit.toll.name).replace(/^Peaje\s+/i, ''), 20)) + '</text>';
+      return '<g class="tdt-toll"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="8"/><text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 3.5).toFixed(1) + '" text-anchor="middle">' + (idx + 1) + '</text></g>';
     }).join('');
 
-    // Escala (abajo a la izquierda) y norte (arriba a la derecha).
+    // Escala (abajo a la derecha) y norte (arriba a la derecha). Los nombres van en la tabla de referencias.
     var mPorPx = M_POR_GRADO / escala, largoM = largoEscala(mPorPx, (ANCHO - 2 * MARGEN) / 3), largoPx = largoM / mPorPx;
-    var x0 = MARGEN, y0 = ALTO - 10;
-    var escalaSvg = '<g class="tdt-scale"><path d="M' + x0 + ' ' + (y0 - 4) + 'V' + y0 + 'H' + (x0 + largoPx).toFixed(1) + 'V' + (y0 - 4) + '"/><text x="' + x0 + '" y="' + (y0 - 7) + '">' + (largoM >= 1000 ? (largoM / 1000) + ' km' : largoM + ' m') + '</text></g>';
+    var x1 = ANCHO - MARGEN, y0 = ALTO - 10;
+    var escalaSvg = '<g class="tdt-scale"><path d="M' + (x1 - largoPx).toFixed(1) + ' ' + (y0 - 4) + 'V' + y0 + 'H' + x1 + 'V' + (y0 - 4) + '"/><text x="' + x1 + '" y="' + (y0 - 7) + '" text-anchor="end">' + (largoM >= 1000 ? (largoM / 1000) + ' km' : largoM + ' m') + '</text></g>';
     var norte = '<g class="tdt-north" transform="translate(' + (ANCHO - MARGEN) + ' ' + (MARGEN + 4) + ')"><path d="M0 -8L4 4L0 1L-4 4Z"/><text y="16" text-anchor="middle">N</text></g>';
 
     return '<svg class="tdt-map" viewBox="0 0 ' + ANCHO + ' ' + ALTO + '" role="img" aria-label="Recorrido con ' + hits.length + ' peaje' + (hits.length === 1 ? '' : 's') + '">' +
@@ -203,17 +198,21 @@
     return c ? c.tolls.map(function (r) { return String(r.toll_id); }) : [];
   }
 
-  /* Itinerario: cada punto del recorrido con su dirección y, entre uno y otro, los km y minutos del tramo. */
-  function itinerario(g) {
-    var wps = g.waypoints || [], legs = g.legs || [];
-    if (!wps.length) return '';
-    var filas = '';
-    wps.forEach(function (wp, i) {
-      filas += '<li class="tdt-stop"><span class="tdt-dot"></span><span><b>' + esc(wp.label) + '</b>' + (wp.name ? '<small>' + esc(wp.name) + '</small>' : '') + '</span></li>';
-      var leg = legs[i];
-      if (leg && i < wps.length - 1) filas += '<li class="tdt-leg"><span>' + km(leg.distanceMeters) + ' km' + (leg.durationSeconds ? ' · ' + Math.max(1, Math.round(num(leg.durationSeconds) / 60)) + ' min' : '') + '</span></li>';
+  /* Tabla de referencias (abajo a la izquierda del mapa): Base, Origen y Destino con su dirección, y los peajes
+     por los que pasa. Las letras y los números son los que lleva cada punto en el dibujo. */
+  function leyenda(g, hits) {
+    var vistos = [], filas = '';
+    (g.waypoints || []).forEach(function (wp) {
+      if (vistos.indexOf(wp.label) >= 0) return;
+      vistos.push(wp.label);
+      filas += '<tr><th scope="row"><span class="tdt-code">' + esc(wp.label.charAt(0)) + '</span></th><td><b>' + esc(wp.label) + '</b>' + (wp.name ? '<span>' + esc(wp.name) + '</span>' : '') + '</td></tr>';
     });
-    return '<ol class="tdt-route-list" aria-label="Puntos del recorrido">' + filas + '</ol>';
+    filas += '<tr class="tdt-legend-head"><td colspan="2">Peajes por los que pasa</td></tr>';
+    if (!hits.length) filas += '<tr><td colspan="2" class="tdt-legend-none">Ninguno</td></tr>';
+    hits.forEach(function (h, i) {
+      filas += '<tr><th scope="row"><span class="tdt-num">' + (i + 1) + '</span></th><td><b>' + esc(h.toll.name) + '</b><span>' + h.passes + ' pasada' + (h.passes === 1 ? '' : 's') + '</span></td></tr>';
+    });
+    return '<table class="tdt-legend"><caption class="sr-only">Referencias del mapa</caption><tbody>' + filas + '</tbody></table>';
   }
 
   function panelHtml() {
@@ -238,8 +237,7 @@
     return '<section class="tdt-panel" aria-label="Peajes del recorrido">' +
       '<div class="tdt-head"><div><b>Peajes del recorrido</b><small>' + esc(g.label || '') + (g.km ? ' · ' + num(g.km).toLocaleString('es-AR') + ' km' : '') + '</small></div>' +
       '<button type="button" class="tdt-close" data-td="close" aria-label="Cerrar">' + ico('x') + '</button></div>' +
-      mapa(d.points, g.waypoints || [], d.hits) +
-      itinerario(g) +
+      '<div class="tdt-mapbox">' + mapa(d.points, g.waypoints || [], d.hits) + leyenda(g, d.hits) + '</div>' +
       (d.hits.length ? '<ul class="tdt-list">' + lista + '</ul>' : '<p class="tdt-empty">No se detectaron peajes en este recorrido.</p>') +
       notas +
       (d.hits.length ? '<div class="tdt-actions"><button type="button" class="tdt-apply" data-td="apply"' + (cantidad ? '' : ' disabled') + '>' + ico('plus') + (cantidad ? 'Agregar ' + cantidad + ' peaje' + (cantidad === 1 ? '' : 's') : 'Nada para agregar') + '</button></div>' : '') +
@@ -284,6 +282,6 @@
 
   global.AuxiliosTollDetection = {
     detect: detect, panelHtml: panelHtml,
-    _test: { itinerario: itinerario, decode: decode, detectar: detectar, pasadas: pasadas, distanciaASegmento: distanciaASegmento, mapa: mapa, RADIO_M: RADIO_M }
+    _test: { leyenda: leyenda, decode: decode, detectar: detectar, pasadas: pasadas, distanciaASegmento: distanciaASegmento, mapa: mapa, RADIO_M: RADIO_M }
   };
 })(window);
