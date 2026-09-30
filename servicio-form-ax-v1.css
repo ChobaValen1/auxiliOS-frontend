@@ -296,3 +296,44 @@
 /* "¿Pagó algo…?" y "Medio de pago" a lo ancho: con tres opciones no entraban en media columna. */
 #psv-form .psv-grid > .psv-field:has(> [data-ax-seg="pago"]), #psv-form .psv-grid > .psv-field:has(> [data-ax-seg="sena_medio"]) { grid-column: 1 / -1; }
 #psv-form .ax-select-btn, .ax-select-btn { font-weight: var(--ax-fw-regular); }
+
+/* Historial del servicio: tarjeta en la columna derecha, debajo de la revisión. Línea de tiempo con un ícono por evento. */
+#modal-operador-wizard .osv4-reactive #osv4-history-panel { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); overflow: hidden; color: var(--ax-text); font-family: var(--ax-font); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel[hidden] { display: none; }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary { display: flex; align-items: center; gap: var(--ax-sp-3); padding: var(--ax-sp-3) var(--ax-sp-4); cursor: pointer; list-style: none; }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary::-webkit-details-marker { display: none; }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary:hover { background: var(--ax-surface-2); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary:focus-visible { outline: none; box-shadow: inset var(--ax-focus); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary > .ax-icon:first-child { color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary > span { display: grid; gap: 2px; flex: 1; min-width: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel > summary small { font-size: var(--ax-fs-sm); color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osv4-history-chevron { color: var(--ax-text-3); transition: transform var(--ax-dur) var(--ax-ease-out); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel:not([open]) .osv4-history-chevron { transform: rotate(-90deg); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel[open] > summary { border-bottom: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot { padding: var(--ax-sp-4); }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history { padding: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); margin: 0 0 var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head > span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head > b { padding: 2px var(--ax-sp-2); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-full, 999px); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osl-timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+#modal-operador-wizard .osv4-reactive .osl-timeline li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--ax-sp-3); padding: 0 0 var(--ax-sp-4); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li:last-child { padding-bottom: 0; }
+#modal-operador-wizard .osv4-reactive .osl-timeline li:not(:last-child)::before { content: ""; position: absolute; left: 11px; top: 26px; bottom: 2px; width: 1px; background: var(--ax-border-strong); }
+#modal-operador-wizard .osv4-reactive .osl-timeline-dot { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--ax-border-strong); border-radius: 50%; background: var(--ax-surface-2); color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li:last-child .osl-timeline-dot { border-color: var(--ax-accent); color: var(--ax-accent); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li[data-type="finalized"] .osl-timeline-dot { border-color: var(--ax-ok); color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li[data-type="annulled"] .osl-timeline-dot { border-color: var(--ax-danger); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .osl-timeline b { display: block; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); line-height: var(--ax-lh); }
+#modal-operador-wizard .osv4-reactive .osl-timeline small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osl-empty { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box { margin-top: var(--ax-sp-4); padding-top: var(--ax-sp-3); border-top: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary { display: flex; align-items: center; gap: var(--ax-sp-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); cursor: pointer; list-style: none; }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary::-webkit-details-marker { display: none; }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary em { font-style: normal; color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary .osl-chevron { margin-left: auto; transition: transform var(--ax-dur) var(--ax-ease-out); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box:not([open]) > summary .osl-chevron { transform: rotate(-90deg); }
+#modal-operador-wizard .osv4-reactive .osl-assignments { display: grid; gap: var(--ax-sp-2); margin-top: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .osl-assignments > div { padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osl-assignments b { display: flex; align-items: center; gap: var(--ax-sp-2); color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osl-assignments small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
