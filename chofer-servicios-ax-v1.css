@@ -105,3 +105,12 @@
 @media (prefers-reduced-motion: reduce) {
   #p3-service-preview > section, #p3-service-preview .p3-preview-backdrop { animation: none; }
 }
+
+/* Completar remito: estado de carga para que la pantalla no parezca congelada. */
+#p3-remito-loading { position: fixed; inset: 0; z-index: 20002; display: grid; place-items: center; padding: var(--ax-sp-5); background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#p3-remito-loading > div { display: grid; justify-items: center; gap: var(--ax-sp-2); width: min(300px, 90vw); padding: var(--ax-sp-6) var(--ax-sp-5); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); text-align: center; }
+#p3-remito-loading .p3-spin { width: 36px; height: 36px; color: var(--ax-accent); animation: p3-spin 1s linear infinite; }
+#p3-remito-loading strong { font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-bold); }
+#p3-remito-loading small { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+@keyframes p3-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #p3-remito-loading .p3-spin { animation-duration: 3s; } }

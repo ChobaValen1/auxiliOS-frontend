@@ -444,3 +444,38 @@
 #modal-operador-wizard .osv4-reactive .tdt-legend tr.is-loaded { opacity: .6; }
 #modal-operador-wizard .osv4-reactive .tdt-legend-actions td { padding-top: var(--ax-sp-2); }
 #modal-operador-wizard .osv4-reactive .tdt-legend-actions .tdt-apply { width: 100%; justify-content: center; }
+
+/* Revisión de cargos del remito firmado: lista corta "Por revisar" (Aprobar / Rechazar en cada línea),
+   sin botones de cierre adentro (Finalizar y cerrar está en el pie, junto a Guardar). */
+#modal-operador-wizard .osv4-reactive .os-embedded-review { gap: var(--ax-sp-2); padding: var(--ax-sp-3); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); font-family: var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--ax-sp-2); padding: 0 0 var(--ax-sp-2); border-bottom: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); letter-spacing: 0; text-transform: none; color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header em { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ax-accent-soft); color: var(--ax-accent); font-size: var(--ax-fs-xs); font-style: normal; font-weight: var(--ax-fw-bold); display: inline-grid; place-items: center; }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header small { flex-basis: 100%; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .os-embedded-list { gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .os-embedded-difference.is-compact { grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--ax-sp-2); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-left: 3px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .os-embedded-row { grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .os-embedded-kind { display: none; }
+#modal-operador-wizard .osv4-reactive .os-embedded-row > b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .os-embedded-amount { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); font-variant-numeric: tabular-nums; }
+#modal-operador-wizard .osv4-reactive .os-embedded-row > small { grid-column: 1 / -1; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .os-embedded-difference.is-compact .os-embedded-actions { grid-column: 1 / -1; display: flex; gap: 6px; }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button { flex: 1; height: 30px; min-height: 0; padding: 0 var(--ax-sp-3); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.approve { border-color: var(--ax-ok); color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.reject { border-color: var(--ax-danger); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.approve:hover { background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.reject:hover { background: var(--ax-danger-soft); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review.is-clear { padding: 0; border: 0; background: transparent; }
+#modal-operador-wizard .osv4-reactive .os-embedded-clear { justify-content: flex-start; padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive .os-embedded-clear b { color: var(--ax-ok); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+/* Cargos del remito firmado (consulta): cerrado por defecto, una línea por cargo. */
+#modal-operador-wizard .osv4-reactive .osaa-original > summary { min-height: 0; padding: var(--ax-sp-2) var(--ax-sp-3); color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .os-charge-report.is-compact h4 { margin: var(--ax-sp-2) 0 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .os-charge-row { padding: 4px var(--ax-sp-2); border-radius: var(--ax-radius-sm); }
+#modal-operador-wizard .osv4-reactive .os-charge-row > b { font-size: var(--ax-fs-sm); }
+/* Pie del formulario: Finalizar y cerrar junto a Guardar. */
+#modal-operador-wizard .osv4-reactive .osv2-footer > div { display: flex; align-items: center; gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive #osv4-finalize { height: var(--ax-h); padding: 0 var(--ax-sp-4); font-size: var(--ax-fs-md); border: 1px solid var(--ax-ok); border-radius: var(--ax-radius); background: transparent; color: var(--ax-ok); font-weight: var(--ax-fw-bold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive #osv4-finalize:hover:not(:disabled) { background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive #osv4-finalize:disabled { border-color: var(--ax-border-strong); color: var(--ax-text-3); cursor: not-allowed; }
+#modal-operador-wizard .osv4-reactive #osv4-finalize[hidden] { display: none; }

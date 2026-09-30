@@ -102,7 +102,7 @@ function administrativeRender(){
  const actions=`${actionTabs(c)}`;
  const tollPanel=state.open==='tolls'?`<section class="osca-panel tolls">${coverageControl(c,disabled)}${administrativeRows('tolls')}<div class="osca-summary single"><span>Total peajes</span><b>${money(tollTotal)}</b></div></section>`:'';
  const excessPanel=state.open==='excess'?`<section class="osca-panel excess">${administrativeRows('excess_charges')}<div class="osca-summary single"><span>Total excedentes</span><b>${money(excessTotal)}</b></div></section>`:'';
- const report=w.intakeActivated?'':`<details class="osaa-original" ${(state.reportOpen??reportOpenByDefault(w))?'open':''}><summary>Ver cargos del remito firmado</summary>${window.AuxiliosRemitoReviewV2?.reviewReport?.()||reportedCharges(w.reportedAddons)}</details>`;
+ const report=w.intakeActivated?'':`<details class="osaa-original" ${(state.reportOpen??reportOpenByDefault(w))?'open':''}><summary>Cargos del remito firmado</summary>${window.AuxiliosRemitoReviewV2?.reviewReport?.()||reportedCharges(w.reportedAddons)}</details>`;
  return `${activationCard()}${actions}${tollPanel}${excessPanel}${report}`;
 }
 function administrativeChange(event){const el=event.target;if(readOnly()||!W()?.administrativeEdit||!el.dataset.aaKey)return;const row=commercial()[el.dataset.aaKind]?.[Number(el.dataset.aaIndex)];if(!row)return;const key=el.dataset.aaKey;row[key]=['unit_amount','quantity'].includes(key)?num(el.value):el.value;if(key==='payer_agent'&&el.value==='provider')row.customer_payment_method='';if(key==='toll_id'){const ref=(W().tollCatalog||[]).find(x=>String(x.toll_id)===String(el.value));row.toll_name=ref?.name||'';if(!row.unit_amount)row.unit_amount=num(rateFor(el.value).rate?.amount);}if(key==='concept_id')row.concept_name=(W().items||[]).find(x=>String(x.concept_id)===String(el.value))?.name||'';row.total_amount=num(row.quantity)*num(row.unit_amount);W().dirty=true;W().quote=null;if(event.type==='change'){if(el.dataset.aaKind==='tolls'&&vueltas.has(row)&&sumarSiRepetido(commercial().tolls,row))notify('Ese peaje ya estaba cargado. Se aumentó la cantidad.','info');render();window.AuxiliosRemitoReviewV2?.refreshEmbedded?.();}}
@@ -124,7 +124,7 @@ function onChange(event){if(readOnly())return;const target=event.target;if(targe
 function bind(){if(state.bound)return;state.bound=true;document.addEventListener('click',onClick);document.addEventListener('click',administrativeClick);document.addEventListener('input',administrativeChange);document.addEventListener('change',administrativeChange);document.addEventListener('input',onInput);document.addEventListener('change',onChange);}
 /* Abierto mientras se revisa; retraído cuando el servicio ya está cerrado o
    se abre solo para consultar. Si el usuario lo abre o cierra, se respeta. */
-function reportOpenByDefault(w){return !(w?.mode==='view'||['completed','cancelled'].includes(w?.serviceSnapshot?.status||w?.serviceStatus));}
+function reportOpenByDefault(){return false;}   /* ya se ve en Por revisar y en cada fila; se abre sólo si se lo pide */
 function reset(){state.open=null;state.coverageEditing=false;state.reportOpen=null;}
 bind();window.addEventListener('auxilios:service-workspace-opened',()=>{reset();render();});window.OperatorServiceCommercialAddonsV1={render,reset,addDetectedTollsAdmin,activationCard,show:kind=>{state.open=kind==='toll'?'tolls':'excess';render();}};setTimeout(render,0);
 })();

@@ -35,7 +35,9 @@ test('las decisiones pendientes se recuperan y exigen motivo al rechazar',async(
   const key=`toll:${reportId}`;
   const app=setup({decisions:{[key]:{value:'rejected',reason:'Duplicado'}},note:'Consultar peaje'});
   await app.review.embed(serviceId);
-  assert.match(app.host.innerHTML,/Consultar peaje/);
+  // Sin nota ni "Dejar pendiente" en la lista: Guardar cambios conserva las decisiones.
+  assert.doesNotMatch(app.host.innerHTML,/Dejar pendiente|Nota para dejar pendiente|Finalizar y cerrar/);
+  assert.match(app.host.innerHTML,/Sin diferencias/);   // la decisión recuperada ya resuelve la única diferencia
   assert.match(app.review.reviewReport(),/Duplicado/);assert.doesNotMatch(app.host.innerHTML,/os-embedded-difference/);
   await app.review.finalizeEmbedded();
   const call=app.calls.find(entry=>entry.name==='resolve_operator_service_document_v6');
@@ -46,7 +48,7 @@ test('las decisiones pendientes se recuperan y exigen motivo al rechazar',async(
 test('la diferencia muestra el importe realmente planificado',async()=>{
   const planned={...detail,planned:{tolls:[{toll_name:'Peaje',quantity:1,unit_amount:15000}],excesses:[]}};
   const app=setup(undefined,planned);await app.review.embed(serviceId);
-  assert.match(app.host.innerHTML,/Servicio: \$&nbsp;15\.000|Servicio: \$\s*15\.000/);
+  assert.match(app.host.innerHTML,/en el servicio \$&nbsp;15\.000|en el servicio \$\s*15\.000/);
 });
 
 test('dejar pendiente guarda la nota y las decisiones individuales',async()=>{
@@ -66,7 +68,7 @@ test('una corrección administrativa no exige aprobar una línea que no vino del
     {review_line_client_id:'33333333-3333-4333-8333-333333333333',toll_name:'Peaje corregido',quantity:1,unit_amount:18000,customer_payment_method:'cash'}
   ]}};
   const app=setup(undefined,corrected);await app.review.embed(serviceId);
-  assert.match(app.host.innerHTML,/Remito sin diferencias/);
+  assert.match(app.host.innerHTML,/Sin diferencias con lo informado por el chofer/);
   assert.doesNotMatch(app.host.innerHTML,/Dejar pendiente/);
   await app.review.finalizeEmbedded();
   const tolls=app.calls.find(entry=>entry.name==='resolve_operator_service_document_v6').args.p_payload.tolls;

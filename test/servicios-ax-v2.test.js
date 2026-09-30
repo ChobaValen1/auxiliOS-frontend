@@ -180,3 +180,33 @@ test('Historial del servicio: solapa junto a Peajes y Excedentes, con el sistema
   assert.doesNotMatch(lc, /osl-history-head"><b>Historial del servicio/);
   assert.match(css, /\.osca-actions\.has-history \{ grid-template-columns: repeat\(3/);
 });
+
+test('Chofer: activar muestra sólo la pregunta; completar remito muestra carga; foto sin caja no rompe', () => {
+  const bridge = read('operator-service-bridge.js'), css = read('chofer-servicios-ax-v1.css'), sigma = read('sigma.js'), cfg = read('service-module-configuration.js');
+  // Activar: sólo el bloque rojo, sin la ficha del servicio debajo.
+  assert.doesNotMatch(bridge, /<\/fieldset><\/div>\$\{previewBody\(s\)\}/);
+  // Completar remito: "Preparando el remito…" si tarda más de 250 ms, y se quita al terminar o fallar.
+  assert.match(bridge, /function remitoLoading\(\)/);
+  assert.match(bridge, /const stopLoading=remitoLoading\(\);try\{/);
+  assert.match(bridge, /finally\{stopLoading\(\)\}/);
+  assert.match(bridge, /catch\(e\)\{stopLoading\(\);/);
+  assert.match(css, /#p3-remito-loading \{ position: fixed;/);
+  // El flujo móvil usa .foto-slot (no .photo-upload): no puede reventar con "reading 'style'".
+  assert.match(sigma, /input\.closest\('\.photo-upload, \.foto-slot'\)/);
+  assert.match(sigma, /if \(boxEl\) \{\s+boxEl\.style\.borderColor/);
+  // Sin permiso o sin sesión, la configuración de Servicios usa los valores por defecto y no avisa al chofer.
+  assert.match(cfg, /if\(canWrite\(\)\)notify\(error\.message/);
+  assert.match(read('migrations/20260930190000_config_servicios_lectura_chofer_v1.sql'), /'chofer'/);
+});
+
+test('Revisión de cargos: lista corta, sin Dejar pendiente y Finalizar y cerrar en el pie', () => {
+  const rev = read('operator-remito-review-v2.js'), ws = read('operator-service-workspace-reactive-v1.js'), css = read('servicio-form-ax-v1.css');
+  assert.doesNotMatch(rev, /Nota para dejar pendiente/);
+  assert.doesNotMatch(rev, /onclick="AuxiliosRemitoReviewV2\.leavePending\(\)"/);
+  assert.doesNotMatch(rev, /Importes originales del chofer y resultado de la revisión/);
+  assert.match(rev, /function syncFinishButton\(\)/);
+  assert.match(rev, /getElementById\('osv4-finalize'\)/);          // no el "osv4-finish" del campo Fin (hora)
+  assert.match(ws, /<button id="osv4-finalize"[^>]*data-click="finish"/);
+  assert.match(ws, /if\(a==='finish'\)return window\.AuxiliosRemitoReviewV2\?\.finalizeEmbedded/);
+  assert.match(css, /#osv4-finalize \{ height: var\(--ax-h\)/);
+});

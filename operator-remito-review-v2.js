@@ -245,13 +245,13 @@
   function pendingEmbeddedRows(){return embeddedRows(E.detail).filter(({kind,id})=>!isResolved(kind,id));}
   function embeddedLine({kind,row,id,plannedAmount}){
     const key=kind+':'+id,rejecting=E.rejections.has(key),reason=E.rejections.get(key)||'',title=kind==='toll'?'Peaje':'Excedente',name=kind==='toll'?(row.toll_name||'Peaje informado'):(row.concept_name||'Concepto informado'),method=kind==='toll'?row.customer_payment_method:reportedExcessPayment(row);
-    return `<article class="os-embedded-difference is-compact" data-embedded-key="${esc(key)}"><div class="os-embedded-row"><span class="os-embedded-kind">${title}</span><b title="${esc(name)}">${esc(name)}</b><span class="os-embedded-amount">${money(amountOf(row))}</span><small>Servicio: ${money(plannedAmount)} · ${esc(paymentLabel(method))}</small></div><div class="os-embedded-actions"><button type="button" class="reject" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','rejected')">Rechazar</button><button type="button" class="approve" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','accepted')">Aprobar</button></div>${rejecting?`<label class="os-embedded-reason"><span>Motivo del rechazo *</span><input value="${esc(reason)}" oninput="AuxiliosRemitoReviewV2.reasonEmbedded('${kind}','${esc(id)}',this.value)" placeholder="Explicá por qué se excluye el cargo"></label><button type="button" class="os-review-confirm-reject" onclick="AuxiliosRemitoReviewV2.confirmRejection('${kind}','${esc(id)}')">Confirmar rechazo</button>`:''}</article>`;
+    return `<article class="os-embedded-difference is-compact" data-embedded-key="${esc(key)}"><div class="os-embedded-row"><span class="os-embedded-kind">${title}</span><b title="${esc(name)}">${esc(name)}</b><span class="os-embedded-amount">${money(amountOf(row))}</span><small>${esc(paymentLabel(method))}${plannedAmount?` · en el servicio ${money(plannedAmount)}`:''}</small></div><div class="os-embedded-actions"><button type="button" class="reject" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','rejected')">Rechazar</button><button type="button" class="approve" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','accepted')">Aprobar</button></div>${rejecting?`<label class="os-embedded-reason"><span>Motivo del rechazo *</span><input value="${esc(reason)}" oninput="AuxiliosRemitoReviewV2.reasonEmbedded('${kind}','${esc(id)}',this.value)" placeholder="Explicá por qué se excluye el cargo"></label><button type="button" class="os-review-confirm-reject" onclick="AuxiliosRemitoReviewV2.confirmRejection('${kind}','${esc(id)}')">Confirmar rechazo</button>`:''}</article>`;
   }
   function reviewReport(){
     if(!E.detail||E.serviceId!==window.OperatorServices?.S?.wizard?.serviceId)return '';
     const differences=new Set(embeddedRows(E.detail).map(r=>r.kind+':'+r.id));
     const groups=[['toll','Peajes','tolls','toll_report_id','toll_name'],['excess','Excedentes','excesses','excess_report_id','concept_name']];
-    return '<div class="os-charge-report is-compact"><p>Importes originales del chofer y resultado de la revisión. El remito firmado se conserva.</p>'+groups.map(([kind,label,group,idKey,nameKey])=>{
+    return '<div class="os-charge-report is-compact">'+groups.map(([kind,label,group,idKey,nameKey])=>{
       const rows=E.detail.original_reported?.[group]||E.detail.reported?.[group]||[];
       return '<section><h4>'+label+'</h4>'+rows.filter(row=>row[idKey]).map(row=>{
         const key=kind+':'+row[idKey],decision=E.decisions.get(key),resolved=isResolved(kind,row[idKey]),status=resolved?(decision.value==='rejected'?'Rechazado':decision.value==='adjusted'?'Aprobado con cambios':'Aprobado'):differences.has(key)?'Pendiente de revisión':row.administratively_excluded?'Excluido del servicio':'Sin diferencias';
@@ -262,18 +262,29 @@
     }).join('')+(unsavedCount()?'<small class="os-charge-legend">○ Sin guardar · se conserva al guardar o finalizar</small>':'')+'</div>';
   }
   function unsavedCount(){return[...E.decisions.values()].filter(d=>d&&!d.saved).length;}
-  function syncReviewReport(){window.OperatorServiceCommercialAddonsV1?.render?.();}
+  function syncReviewReport(){window.OperatorServiceCommercialAddonsV1?.render?.();syncFinishButton();}
 
   function embeddedReadOnly(){const w=window.OperatorServices?.S?.wizard;return w?.mode==='view'||['completed','cancelled'].includes(w?.serviceSnapshot?.status);}
 
+  /* Las diferencias se resuelven en una lista corta (Aprobar / Rechazar en cada línea). Guardar cambios conserva las decisiones y
+     Finalizar y cerrar está en el pie del formulario, junto a Guardar: no hay botones de cierre dentro de esta sección. */
   function renderEmbedded(){
     const host=document.getElementById(E.hostId);if(!host||!E.detail)return;
-    if(embeddedReadOnly()||!canResolve()){host.innerHTML='';return;}
+    if(embeddedReadOnly()||!canResolve()){host.innerHTML='';syncFinishButton();return;}
     const rows=pendingEmbeddedRows();
-    /* Sin diferencias no hay nada que revisar: una sola línea con el cierre, sin
-       la nota ni "Dejar pendiente", que solo sirven mientras falta decidir algo. */
-    if(!rows.length){host.innerHTML=`<section class="os-embedded-review is-clear"><div class="os-embedded-clear"><span><b>✓ Remito sin diferencias</b><small>Las decisiones están en «Ver cargos del remito firmado».</small>${E.note.trim()?`<small class="os-embedded-clear-note">Nota: ${esc(E.note.trim())}</small>`:''}</span><button type="button" class="finish" ${E.busy?'disabled':''} onclick="AuxiliosRemitoReviewV2.finalizeEmbedded()">${E.busy?'Cerrando…':'Finalizar y cerrar'}</button></div></section>`;return;}
-    host.innerHTML=`<section class="os-embedded-review"><header><b>${rows.length?'Diferencias pendientes':'Revisión del remito'}</b><small>${rows.length?'Resolvé cada diferencia para poder finalizar.':'No quedan diferencias pendientes.'}</small></header><div class="os-embedded-list">${rows.map(embeddedLine).join('')}</div><div class="os-embedded-note">${rows.length?'Aprobar incorpora el cargo al servicio. Rechazar lo excluye y requiere un motivo.':'Consultá las decisiones en «Ver cargos del remito firmado».'}</div><footer><span>${rows.length} pendientes</span><label class="os-embedded-pending-note"><span>Nota para dejar pendiente</span><textarea id="os-embedded-pending-note" oninput="AuxiliosRemitoReviewV2.noteEmbedded(this.value)" placeholder="Indicá qué falta revisar">${esc(E.note)}</textarea></label><div><button type="button" class="pending" ${E.busy?'disabled':''} onclick="AuxiliosRemitoReviewV2.leavePending()">Dejar pendiente</button><button type="button" class="finish" ${E.busy?'disabled':''} onclick="AuxiliosRemitoReviewV2.finalizeEmbedded()">${E.busy?'Cerrando…':'Finalizar y cerrar'}</button></div></footer></section>`;
+    if(!rows.length){host.innerHTML='<section class="os-embedded-review is-clear"><div class="os-embedded-clear"><b>✓ Sin diferencias con lo informado por el chofer</b></div></section>';syncFinishButton();return;}
+    host.innerHTML=`<section class="os-embedded-review"><header><b>Por revisar</b><em>${rows.length}</em><small>Aprobar suma el cargo al servicio. Rechazar lo deja afuera y pide un motivo.</small></header><div class="os-embedded-list">${rows.map(embeddedLine).join('')}</div></section>`;
+    syncFinishButton();
+  }
+  /* Finalizar y cerrar vive en el pie del formulario; se habilita cuando no quedan diferencias. */
+  function syncFinishButton(){
+    const btn=document.getElementById('osv4-finalize');if(!btn)return;
+    const ready=!!E.detail&&E.serviceId===window.OperatorServices?.S?.wizard?.serviceId&&!embeddedReadOnly()&&canResolve()&&window.OperatorServices?.S?.wizard?.administrativeEdit;
+    btn.hidden=!ready;if(!ready)return;
+    const pending=pendingEmbeddedRows().length;
+    btn.disabled=!!E.busy||pending>0;
+    btn.textContent=E.busy?'Cerrando…':'Finalizar y cerrar';
+    btn.title=pending>0?`Falta resolver ${pending} diferencia${pending===1?'':'s'} de cargos`:'Aprueba el remito y envía el servicio a Facturación';
   }
   async function embed(serviceId,hostId='osv4-review-slot'){
     const seq=++E.loadSeq,changed=E.serviceId!==serviceId;

@@ -5455,7 +5455,7 @@ function procesarArchivoReal(input, statusId, iconId) {
   const file = input.files[0];
   const statusEl = document.getElementById(statusId);
   const iconEl = document.getElementById(iconId);
-  const boxEl = input.closest('.photo-upload');
+  const boxEl = input.closest('.photo-upload, .foto-slot');   // el flujo móvil del remito usa .foto-slot
 
   console.log("Procesando archivo:", file.name, "| Tipo:", file.type, "| Tamaño:", (file.size / 1024 / 1024).toFixed(2), "MB");
 
@@ -5485,8 +5485,10 @@ function procesarArchivoReal(input, statusId, iconId) {
   
   reader.onload = function(e) {
     try {
-      boxEl.style.borderColor = 'var(--green)';
-      boxEl.style.background = 'var(--bg)';
+      if (boxEl) {
+        boxEl.style.borderColor = 'var(--green)';
+        boxEl.style.background = 'var(--bg)';
+      }
 
       if (iconEl) iconEl.textContent = '✅';
       if (statusEl) {
@@ -5499,13 +5501,13 @@ function procesarArchivoReal(input, statusId, iconId) {
       }
 
       // ── INYECCIÓN 2: UX Cambio de subtítulo ──
-      let subEl = boxEl.querySelector('.pu-sub');
+      let subEl = boxEl && boxEl.querySelector('.pu-sub');
       if (subEl) {
         subEl.textContent = '🔄 Toca para volver a tomar foto';
         subEl.style.color = 'var(--text)'; 
       }
 
-      if (file.type.startsWith('image/')) {
+      if (boxEl && file.type.startsWith('image/')) {
         let preview = boxEl.querySelector('.img-preview');
         if (!preview) {
           preview = document.createElement('img');
