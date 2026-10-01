@@ -7,6 +7,7 @@ function moduleContext(file,exports,extra={}){
   const elements=new Map();
   const document={readyState:'loading',addEventListener(){},getElementById(id){if(!elements.has(id))elements.set(id,{value:'',textContent:'',className:'',innerHTML:'',hidden:true,classList:{remove(){}}});return elements.get(id)}};
   const context={window:{addEventListener(){}},document,setTimeout(){},clearTimeout(){},crypto:require('node:crypto').webcrypto,console,...extra};
+  context.window.AuxiliosPlate=require('../plate-validation.js');
   const source=fs.readFileSync(file,'utf8').replace(/\}\)\(\);\s*$/,`window.testApi={${exports}};})();`);
   vm.runInNewContext(source,context);
   return {...context,api:context.window.testApi,elements};
@@ -160,4 +161,13 @@ test('crear un servicio confirma con el mismo cuadro', () => {
   // Editar también confirma con el cuadro: desde Facturación se corrigen
   // servicios ya facturados y el toast en la esquina pasaba desapercibido.
   assert.match(wizard, /if\(wasEdit\)confirmar\('Servicio actualizado'/);
+});
+
+test('operator rejects malformed plates and normalizes valid ones before save',()=>{
+ const {api,window}=wizardContext(),w=window.OperatorServices.S.wizard=api.fresh();
+ w.data.vehicle_plate='AS12312131231321';
+ assert.ok(api.requiredErrors(w.data).some(e=>e.includes('Patente inválida')));
+ w.data.vehicle_plate='ab 123 cd';
+ assert.equal(api.requiredErrors(w.data).some(e=>e.includes('Patente inválida')),false);
+ assert.equal(w.data.vehicle_plate,'AB123CD');
 });

@@ -430,7 +430,7 @@
         '</div></section>' +
 
         '<section><h3>Vehículo</h3><div class="psv-grid">' +
-          campo('vehicle_plate', 'Patente', input('vehicle_plate', d.vehicle_plate, 'autocapitalize="characters"')) +
+          campo('vehicle_plate', 'Patente', input('vehicle_plate', d.vehicle_plate, 'maxlength="7" autocapitalize="characters" placeholder="ABC123 / AB123CD"')) +
           campo('vehicle_make_model', 'Marca y modelo', input('vehicle_make_model', d.vehicle_make_model)) +
         '</div></section>' +
 
@@ -778,7 +778,9 @@
 
   async function guardar() {
     if (!st || st.busy) return;
+    st.d.vehicle_plate=global.AuxiliosPlate.normalize(st.d.vehicle_plate);
     var e = erroresPorCampo();
+    if(st.d.vehicle_plate&&!global.AuxiliosPlate.valid(st.d.vehicle_plate))e.push({k:'vehicle_plate',m:global.AuxiliosPlate.message});
     st.fieldErrors = {};
     if (e.length) {
       var sueltos = [];

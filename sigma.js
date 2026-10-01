@@ -46,7 +46,8 @@ function showModalError(errorDivId, msg) {
 function _validarPatente(val, targetId) {
   const el = document.getElementById(targetId || 'warn-patente');
   if (!el) return;
-  const n = val.replace(/\s/g, '').length;
+  const n = AuxiliosPlate.normalize(val).length;
+  if(n && !AuxiliosPlate.valid(val)){el.textContent=AuxiliosPlate.message;el.className='rem-warn-patente warn-strong';return;}
   if (n === 0 || n >= 6) {
     el.textContent = '';
     el.className = 'rem-warn-patente';
@@ -736,6 +737,7 @@ function _remWizardValidar(paso) {
   
   if (_remWizardEsAdHoc() && paso === 1) {
     marcar('rem-patente', 'err-patente');
+    if(!AuxiliosPlate.valid(document.getElementById('rem-patente')?.value)){ok=false;_validarPatente(document.getElementById('rem-patente')?.value||'');}
     marcar('rem-origen', 'err-origen');
     marcar('rem-destino', 'err-destino');
     if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateMapLocations()) ok=false;
@@ -1376,6 +1378,8 @@ async function _finalizarRemitoInner() {
   };
 
   if (!patente) { window.AuxiliosRemitoMobileV3?.syncPlateField?.(); mostrarValidacion('⚠ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  if (!AuxiliosPlate.valid(patente)) { mostrarValidacion('Patente inválida', AuxiliosPlate.message); return; }
+  patente=AuxiliosPlate.normalize(patente);
   if (!origen)  { mostrarValidacion('⚠ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
   if (!destino) { mostrarValidacion('⚠ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
   [
@@ -6444,7 +6448,7 @@ async function guardarRemitoPendiente() {
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || null;
 
   // ── Validaciones ──────────────────────────────────────
-  if (!patente) { toast('Ingresá la patente del vehículo', 'error'); return false; }
+  if (!AuxiliosPlate.valid(patente)) { toast(AuxiliosPlate.message, 'error'); return false; }
   if (!origen)  { toast('Ingresá el origen del servicio', 'error'); return false; }
   if (!destino) { toast('Ingresá el destino del servicio', 'error'); return false; }
 
