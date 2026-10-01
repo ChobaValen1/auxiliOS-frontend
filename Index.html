@@ -57,7 +57,6 @@
 <script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=particulares-v206-20260930" defer></script>
 <script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=particulares-v206-20260930" defer></script>
 <script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=particulares-v206-20260930" defer></script>
-<script src="plate-validation.js" defer></script>
 <script src="sigma.js?v=particulares-v206-20260930" defer></script>
 <script id="auxilios-ui-ax" src="/ui/ax.js?v=particulares-v206-20260930" defer></script>
 <script id="auxilios-ui-app-v1" src="/ui/app-v1.js?v=particulares-v206-20260930" defer></script>
@@ -1375,8 +1374,8 @@
       <div class="form-group">
         <label class="form-label">Patente del vehículo <span style="color:var(--red)">*</span></label>
         <input type="text" id="rem-patente" class="form-input"
-               oninput="this.value = AuxiliosPlate.normalize(this.value); _validarPatente(this.value)"
-               maxlength="7" placeholder="Ej: AB123CD">
+               oninput="this.value = this.value.toUpperCase(); _validarPatente(this.value)"
+               placeholder="Patente completa o parcial">
         <div class="rem-warn-patente" id="warn-patente"></div>
         <div class="rem-error-msg" id="err-patente">Ingresá la patente</div>
       </div>
