@@ -7,9 +7,11 @@ const root=path.join(__dirname,'..');
 
 test('Servicios muestra Arribo y Fin por defecto',()=>{
   const js=fs.readFileSync(path.join(root,'operator-services.js'),'utf8');
+  const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
   assert.match(js,/arrival:true,finish:true/);
   assert.match(js,/s\.arrived_at\|\|s\.estimated_arrival_at/);
   assert.match(js,/s\.completed_at\|\|s\.estimated_finish_at/);
+  assert.match(sw,/v427-service-times-visible/);
 });
 
 test('la migracion expone arrived_at y habilita ambas columnas existentes',()=>{
