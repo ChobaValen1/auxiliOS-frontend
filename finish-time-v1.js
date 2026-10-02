@@ -5,13 +5,13 @@
    · field()  : campo "Hora de fin" para dentro de un formulario (modal de Estado).
    · read(el) : lee y valida ese campo; devuelve la fecha o null.
    · ask()    : pregunta la hora en un cuadro chico (cierre desde Revisión del remito).
-   · apply()  : guarda la hora en el servicio ya finalizado (set_service_finish_time_v1). */
+   · finalize(): guarda el cierre y la hora elegida en una única transacción. */
 (function (global) {
   'use strict';
 
   function pad(n) { return String(n).padStart(2, '0'); }
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function local(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function local(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
   function notify(m, t) { if (typeof global.toast === 'function') global.toast(m, t || 'info'); }
 
   var seq = 0;
@@ -19,14 +19,14 @@
     opts = opts || {};
     var id = opts.id || 'osl-finish-at', now = new Date();
     return '<label class="osl-other osl-finish-time"><span>Hora de fin</span>' +
-      '<input type="datetime-local" id="' + esc(id) + '" value="' + local(now) + '" max="' + local(now) + '" required>' +
+      '<input type="datetime-local" id="' + esc(id) + '" value="' + local(now) + '" data-default-value="' + local(now) + '" step="1" required>' +
       '<small>Por defecto es la hora actual. Podés cambiarla si el servicio terminó antes.</small></label>';
   }
 
   function read(root, id) {
     var input = root && root.querySelector('#' + (id || 'osl-finish-at'));
     if (!input) return null;
-    var d = new Date(input.value);
+    var d = input.value === input.dataset?.defaultValue ? new Date() : new Date(input.value);
     if (isNaN(d.getTime())) { notify('Indicá la hora de fin', 'error'); return undefined; }
     if (d.getTime() > Date.now() + 2 * 60 * 1000) { notify('La hora de fin no puede ser futura', 'error'); return undefined; }
     return d;
@@ -56,21 +56,14 @@
     });
   }
 
-  /* El servicio ya está finalizado con la hora actual: si eligió otra, se corrige. */
-  async function apply(serviceId, date) {
-    if (!serviceId || !date) return true;
-    if (Math.abs(Date.now() - date.getTime()) < 60 * 1000) return true;           // es la hora actual: no hay nada que cambiar
-    try {
-      var client = typeof _db !== 'undefined' ? _db : null;
-      if (!client) return false;
-      var res = await client.rpc('set_service_finish_time_v1', { p_service_id: serviceId, p_finished_at: date.toISOString() });
-      if (res.error) throw res.error;
-      return true;
-    } catch (e) {
-      notify('El servicio se finalizó, pero no se pudo guardar la hora de fin: ' + (e.message || e), 'warning');
-      return false;
-    }
+  async function finalize(serviceId, date, mode, payload) {
+    if (!date || isNaN(date.getTime())) throw new Error('Indicá la hora de fin');
+    var client = typeof _db !== 'undefined' ? _db : null;
+    if (!client) throw new Error('La sesión no está disponible');
+    return client.rpc('finalize_operator_service_at_v1', {
+      p_service_id: serviceId, p_finished_at: date.toISOString(),
+      p_mode: mode, p_payload: payload || {}
+    });
   }
-
-  global.AuxiliosFinishTime = { field: field, read: read, ask: ask, apply: apply };
+  global.AuxiliosFinishTime = { field: field, read: read, ask: ask, finalize: finalize };
 })(window);

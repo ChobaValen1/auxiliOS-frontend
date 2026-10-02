@@ -5,6 +5,22 @@ const vm=require('node:vm');
 
 const serviceId='11111111-1111-4111-8111-111111111111';
 const reportId='22222222-2222-4222-8222-222222222222';
+test('mixed coverage keeps provider planning when accepting the customer outbound toll',async()=>{
+ const row={toll_report_id:reportId,toll_id:'same-toll',toll_name:'Peaje',quantity:1,unit_amount:1000,payer_agent:'customer',customer_payment_method:'cash'};
+ const data={...detail,service:{service_id:serviceId,toll_coverage_mode:'mixed_manual'},planned:{tolls:[{...row,toll_report_id:null,payer_agent:'provider',customer_payment_method:null}],excesses:[]},reported:{tolls:[row],excesses:[]}};
+ const app=setup(undefined,data),w=app.window.OperatorServices.S.wizard;
+ Object.assign(w,{mode:'edit',administrativeEdit:true,data:{commercial_addons:{toll_coverage_mode:'mixed_manual',tolls:[{...data.planned.tolls[0]}],excess_charges:[]}}});
+ await app.review.embed(serviceId);app.review.decideEmbedded('toll',reportId,'accepted');
+ assert.equal(w.data.commercial_addons.tolls.length,2);
+ assert.deepEqual(w.data.commercial_addons.tolls.map(r=>r.payer_agent).sort(),['customer','provider']);
+ assert.equal(w.data.commercial_addons.toll_coverage_mode,'mixed_manual');
+});
+test('cancelling finish-time prompt does not close the service',async()=>{
+ const app=setup({decisions:{['toll:'+reportId]:{value:'accepted'}},note:''});
+ app.window.AuxiliosFinishTime.ask=async()=>null;
+ await app.review.embed(serviceId);await app.review.finalizeEmbedded();
+ assert.equal(app.calls.some(c=>c.name==='finalize_operator_service_at_v1'),false);
+});
 const detail={
   service:{service_id:serviceId},remito:{remito_id:42},can_resolve:true,administrative_revision:0,
   planned:{tolls:[],excesses:[]},
@@ -16,6 +32,7 @@ function setup(draft={decisions:{},note:''},reviewDetail=detail){
   const document={getElementById:id=>id==='osv4-review-slot'?host:null,querySelector:()=>null,querySelectorAll:()=>[]};
   const window={OperatorServices:{S:{wizard:{dirty:false,serviceId}},loadServices:async()=>{}},toast:()=>{},alert:message=>alerts.push(message),cerrarNuevoServicio:()=>{}};
   const db={rpc:async(name,args)=>{calls.push({name,args});if(name==='get_operator_service_remito_review_v3')return{data:reviewDetail};if(name==='get_operator_service_charge_review_report_v1')return{data:draft};return{data:{status:'completed'}}}};
+  window.AuxiliosFinishTime={ask:async()=>new Date(),finalize:(id,date,mode,payload)=>db.rpc('finalize_operator_service_at_v1',{p_service_id:id,p_finished_at:date.toISOString(),p_mode:mode,p_payload:payload})};
   const context={document,window,PERFIL_USUARIO:{role:'operador'},_db:db,setInterval:()=>0,clearInterval:()=>{},setTimeout:()=>0,console,Intl,Number,String,Math,Map,Set,JSON};
   vm.runInNewContext(fs.readFileSync('operator-remito-review-v2.js','utf8'),context);
   return{review:window.AuxiliosRemitoReviewV2,calls,alerts,host,window};
@@ -25,10 +42,10 @@ test('finalizar con una diferencia pendiente muestra el aviso y no guarda ni cie
   const app=setup();await app.review.embed(serviceId);
   await app.review.finalizeEmbedded();
   assert.match(app.alerts[0],/Debés aprobar o rechazar todas las diferencias/);
-  assert.equal(app.calls.filter(call=>call.name==='resolve_operator_service_document_v6').length,0);
+  assert.equal(app.calls.filter(call=>call.name==='finalize_operator_service_at_v1').length,0);
   app.review.decideEmbedded('toll',reportId,'accepted');
   await app.review.finalizeEmbedded();
-  assert.equal(app.calls.filter(call=>call.name==='resolve_operator_service_document_v6').length,1);
+  assert.equal(app.calls.filter(call=>call.name==='finalize_operator_service_at_v1').length,1);
 });
 
 test('las decisiones pendientes se recuperan y exigen motivo al rechazar',async()=>{
@@ -40,7 +57,7 @@ test('las decisiones pendientes se recuperan y exigen motivo al rechazar',async(
   assert.match(app.host.innerHTML,/Sin diferencias/);   // la decisión recuperada ya resuelve la única diferencia
   assert.match(app.review.reviewReport(),/Duplicado/);assert.doesNotMatch(app.host.innerHTML,/os-embedded-difference/);
   await app.review.finalizeEmbedded();
-  const call=app.calls.find(entry=>entry.name==='resolve_operator_service_document_v6');
+  const call=app.calls.find(entry=>entry.name==='finalize_operator_service_at_v1');
   assert.equal(call.args.p_payload.tolls[0].decision,'rejected');
   assert.equal(call.args.p_payload.tolls[0].reason,'Duplicado');
 });
@@ -71,7 +88,7 @@ test('una corrección administrativa no exige aprobar una línea que no vino del
   assert.match(app.host.innerHTML,/Sin diferencias con lo informado por el chofer/);
   assert.doesNotMatch(app.host.innerHTML,/Dejar pendiente/);
   await app.review.finalizeEmbedded();
-  const tolls=app.calls.find(entry=>entry.name==='resolve_operator_service_document_v6').args.p_payload.tolls;
+  const tolls=app.calls.find(entry=>entry.name==='finalize_operator_service_at_v1').args.p_payload.tolls;
   assert.equal(tolls[0].decision,'rejected');
   assert.equal(tolls[1].decision,'adjusted');
 });
@@ -83,7 +100,7 @@ test('rechazar quita el cargo administrativo y exige motivo antes de guardar pen
  const app=setup();const wizard=app.window.OperatorServices.S.wizard;Object.assign(wizard,{mode:'edit',administrativeEdit:true,serviceId,data:{commercial_addons:{tolls:[{...detail.reported.tolls[0]}],excess_charges:[]}}});await app.review.embed(serviceId);app.review.decideEmbedded('toll',reportId,'rejected');assert.equal(wizard.data.commercial_addons.tolls.length,1);app.review.noteEmbedded('Pendiente de control');await app.review.leavePending();assert.equal(app.calls.filter(c=>c.name==='save_operator_service_review_draft_v1').length,0);app.review.reasonEmbedded('toll',reportId,'Duplicado');app.review.confirmRejection('toll',reportId);assert.equal(wizard.data.commercial_addons.tolls.length,0);assert.equal(app.review.getSaveState(serviceId).decisions['toll:'+reportId].reason,'Duplicado');
 });
 test('finalizar con formulario modificado guarda antes de cerrar y se detiene si guardar falla',async()=>{
- const app=setup();await app.review.embed(serviceId);app.review.decideEmbedded('toll',reportId,'accepted');app.window.OperatorServices.S.wizard.dirty=true;let saves=0;app.window.guardarServicioWorkspace=async()=>{saves++;return false};await app.review.finalizeEmbedded();assert.equal(saves,1);assert.equal(app.calls.filter(c=>c.name==='resolve_operator_service_document_v6').length,0);
+ const app=setup();await app.review.embed(serviceId);app.review.decideEmbedded('toll',reportId,'accepted');app.window.OperatorServices.S.wizard.dirty=true;let saves=0;app.window.guardarServicioWorkspace=async()=>{saves++;return false};await app.review.finalizeEmbedded();assert.equal(saves,1);assert.equal(app.calls.filter(c=>c.name==='finalize_operator_service_at_v1').length,0);
 });
 
 test('aprobar quita el aviso y muestra Aprobado sin guardar en el informe del original',async()=>{
@@ -92,7 +109,7 @@ test('aprobar quita el aviso y muestra Aprobado sin guardar en el informe del or
 });
 test('el rechazo no se completa sin motivo y al confirmarlo pasa al informe',async()=>{
  const app=setup();await app.review.embed(serviceId);app.review.decideEmbedded('toll',reportId,'rejected');app.review.confirmRejection('toll',reportId);
- assert.match(app.host.innerHTML,/Confirmar rechazo/);await app.review.finalizeEmbedded();assert.equal(app.calls.filter(c=>c.name==='resolve_operator_service_document_v6').length,0);
+ assert.match(app.host.innerHTML,/Confirmar rechazo/);await app.review.finalizeEmbedded();assert.equal(app.calls.filter(c=>c.name==='finalize_operator_service_at_v1').length,0);
  app.review.reasonEmbedded('toll',reportId,'<No autorizado>');app.review.confirmRejection('toll',reportId);
  assert.doesNotMatch(app.host.innerHTML,/class="os-embedded-difference"/);assert.match(app.review.reviewReport(),/Rechazado/);assert.match(app.review.reviewReport(),/&lt;No autorizado&gt;/);
 });
@@ -100,7 +117,7 @@ test('Ver servicio carga decisiones guardadas y no permite mutarlas ni finalizar
  const app=setup({decisions:{['toll:'+reportId]:{value:'rejected',reason:'Duplicado',saved:true}}});
  app.window.OperatorServices.S.wizard.mode='view';await app.review.embed(serviceId);
  assert.equal(app.host.innerHTML,'');assert.match(app.review.reviewReport(),/Decisión guardada/);app.review.decideEmbedded('toll',reportId,'accepted');await app.review.finalizeEmbedded();
- assert.match(app.review.reviewReport(),/Rechazado/);assert.equal(app.calls.filter(c=>c.name==='resolve_operator_service_document_v6').length,0);
+ assert.match(app.review.reviewReport(),/Rechazado/);assert.equal(app.calls.filter(c=>c.name==='finalize_operator_service_at_v1').length,0);
 });
 test('el estado de rechazo guardado no depende de que el cargo siga en la matriz administrativa',async()=>{
  const original=detail.reported.tolls[0],data={...detail,original_reported:detail.reported,reported:{tolls:[{...original,administratively_excluded:true}],excesses:[]}};

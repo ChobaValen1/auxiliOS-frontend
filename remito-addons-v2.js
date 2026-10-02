@@ -24,6 +24,9 @@
   const lineName=(kind,row)=>kind==='toll'?row.toll_name:row.concept_name;
   const paymentLabel=value=>PAYMENTS.find(([key])=>key===value)?.[1]||'Sin definir';
   const tollCoverageLabel=(mode,assigned=!!currentServiceId())=>TOLL_COVERAGE_LABELS[String(mode||'')]||(assigned?'Sin formato configurado':'A definir por Operaciones');
+  const providerTolls=()=>state.reference.toll_coverage_mode==='provider_roundtrip';
+  const tollPayer=line=>line?.payer_agent||(providerTolls()?'provider':'customer');
+  const tollPaymentLabel=line=>tollPayer(line)==='provider'?'A cargo de la prestadora':paymentLabel(line.customer_payment_method);
   const amountText=line=>line.amount_pending||number(line.unit_amount)<=0?'A definir por Administración':money(line.unit_amount);
 
   async function loadReference(force=false){
@@ -37,7 +40,7 @@
 
   function renderTollCoverage(){
     const host=$('#rem-toll-coverage');if(!host)return;
-    host.innerHTML=`<span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(state.reference.toll_coverage_mode))}</strong>`;
+    host.innerHTML=`<span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(state.reference.toll_coverage_mode))}</strong><small>Cargá sólo los peajes que pasaste de origen a destino.${state.reference.toll_coverage_mode==='mixed_manual'?' Los del socio van acá; Operaciones carga los de la prestadora.':providerTolls()?' Se imputan a la prestadora, sin cobro al socio.':' Indicá cómo los pagó el socio.'}</small>`;
   }
 
   function blankLine(kind,ref){
@@ -62,7 +65,7 @@
   function detailsMarkup(){
     const {kind,lines}=state.draft;
     if(!lines.length)return'<div class="rem-addon-empty">La selección quedará vacía.</div>';
-    return`<label class="rem-picker-common-payment"><span>Medio de pago para toda la selección</span><select id="rem-picker-common-payment">${paymentOptions(state.draft.paymentMethod||'')}</select><small>Podés elegir “No cobrado”.</small></label><div class="rem-picker-priced-list">${lines.map((line,index)=>{const editable=kind==='toll'||line.amount_mode==='manual',suggested=number(line.suggested_amount);return`<article class="rem-picker-detail ${editable?'is-editable':''}" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}</b><small>${index+1} de ${lines.length}${kind==='toll'&&suggested>0?` · sugerido ${money(suggested)}`:line.amount_mode==='manual'?' · variable':' · definido'}</small></div>${editable?`<label class="rem-picker-amount"><span>${kind==='toll'?'Importe real':'Importe'}</span><input data-draft-field="unit_amount" inputmode="decimal" placeholder="0" value="${esc(line.unit_amount||'')}"></label>`:`<strong class="rem-picker-price">${amountText(line)}</strong>`}</article>`}).join('')}</div>`;
+    return(providerTolls()&&kind==='toll'?'<p class="rem-addons-help">Estos peajes quedan a cargo de la prestadora. No se cobra al socio.</p>':`<label class="rem-picker-common-payment"><span>Medio de pago para toda la selección</span><select id="rem-picker-common-payment">${paymentOptions(state.draft.paymentMethod||'')}</select><small>Podés elegir “No cobrado”.</small></label>`)+`<div class="rem-picker-priced-list">${lines.map((line,index)=>{const editable=kind==='toll'||line.amount_mode==='manual',suggested=number(line.suggested_amount);return`<article class="rem-picker-detail ${editable?'is-editable':''}" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}</b><small>${index+1} de ${lines.length}${kind==='toll'&&suggested>0?` · sugerido ${money(suggested)}`:line.amount_mode==='manual'?' · variable':' · definido'}</small></div>${editable?`<label class="rem-picker-amount"><span>${kind==='toll'?'Importe real':'Importe'}</span><input data-draft-field="unit_amount" inputmode="decimal" placeholder="0" value="${esc(line.unit_amount||'')}"></label>`:`<strong class="rem-picker-price">${amountText(line)}</strong>`}</article>`}).join('')}</div>`;
   }
 
   function renderPicker(){
@@ -83,6 +86,7 @@
 
   async function openPicker(kind){
     try{await loadReference()}catch(error){const box=$('#rem-addons-errors');if(box){box.textContent=error.message||'No se pudo cargar el catálogo';box.classList.add('visible')}return}
+    if(kind==='toll'&&currentServiceId()&&!['provider_roundtrip','customer_roundtrip','mixed_manual'].includes(state.reference.toll_coverage_mode)){const box=$('#rem-addons-errors');if(box){box.textContent='Operaciones debe definir el formato de cobro de peajes.';box.classList.add('visible')}return;}
     const lines=clone(state.lines[kind]),methods=[...new Set(lines.map(line=>line.customer_payment_method).filter(Boolean))];
     state.draft={kind,phase:'select',lines,paymentMethod:methods.length===1?methods[0]:''};
     renderPicker();const modal=$('#rem-addon-picker');modal.hidden=false;document.body.classList.add('rem-picker-open');
@@ -92,7 +96,7 @@
   function captureDetails(){
     if(state.draft?.phase!=='details')return;
     state.draft.paymentMethod=$('#rem-picker-common-payment')?.value||'';
-    $$('.rem-picker-detail').forEach(card=>{const line=state.draft.lines[Number(card.dataset.draftIndex)];if(!line)return;const input=$('[data-draft-field="unit_amount"]',card);if(input)line.unit_amount=input.value;line.customer_payment_method=state.draft.paymentMethod});
+    $$('.rem-picker-detail').forEach(card=>{const line=state.draft.lines[Number(card.dataset.draftIndex)];if(!line)return;const input=$('[data-draft-field="unit_amount"]',card);if(input)line.unit_amount=input.value;line.customer_payment_method=state.draft.kind==='toll'&&providerTolls()?null:state.draft.paymentMethod});
   }
   function continuePicker(){
     if(state.draft?.phase!=='select')return;
@@ -103,7 +107,7 @@
   function backPicker(){captureDetails();if(!state.draft)return;state.draft.phase='select';renderPicker()}
   function savePicker(){
     captureDetails();if(!state.draft)return;
-    const invalidMethod=state.draft.lines.find(line=>!PAYMENTS.some(([key])=>key===line.customer_payment_method));
+    const invalidMethod=!(state.draft.kind==='toll'&&providerTolls())&&state.draft.lines.find(line=>!PAYMENTS.some(([key])=>key===line.customer_payment_method));
     if(invalidMethod){pickerError('Elegí un medio de pago para la selección.');return}
     const invalidAmount=state.draft.lines.find(line=>number(line.unit_amount)<=0);
     if(invalidAmount){pickerError(`Ingresá un importe válido para ${lineName(state.draft.kind,invalidAmount)}.`);return}
@@ -118,20 +122,20 @@
   function compactSummary(kind){
     const lines=state.lines[kind],host=$(`#rem-${kind}-summary`);if(!host)return;
     if(!lines.length){host.innerHTML='<div class="rem-addon-empty compact">Sin conceptos informados</div>';return}
-    const first=lines[0];const rows=[`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,first))} · ${esc(paymentLabel(first.customer_payment_method))}</span><strong>${first.amount_pending?'A definir':money(number(first.unit_amount)*number(first.quantity||1))}</strong></div>`];
-    if(lines.length===2){const second=lines[1];rows.push(`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,second))} · ${esc(paymentLabel(second.customer_payment_method))}</span><strong>${second.amount_pending?'A definir':money(number(second.unit_amount)*number(second.quantity||1))}</strong></div>`)}
+    const first=lines[0];const rows=[`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,first))} · ${esc(kind==='toll'?tollPaymentLabel(first):paymentLabel(first.customer_payment_method))}</span><strong>${first.amount_pending?'A definir':money(number(first.unit_amount)*number(first.quantity||1))}</strong></div>`];
+    if(lines.length===2){const second=lines[1];rows.push(`<div class="rem-addon-summary-line"><span>${esc(lineName(kind,second))} · ${esc(kind==='toll'?tollPaymentLabel(second):paymentLabel(second.customer_payment_method))}</span><strong>${second.amount_pending?'A definir':money(number(second.unit_amount)*number(second.quantity||1))}</strong></div>`)}
     else if(lines.length>2){const rest=lines.slice(1);rows.push(`<div class="rem-addon-summary-line more"><span>+${lines.length-1} más</span><strong>${rest.some(line=>line.amount_pending)?'Incluye importes a definir':money(rest.reduce((sum,line)=>sum+number(line.unit_amount)*number(line.quantity||1),0))}</strong></div>`)}
     host.innerHTML=rows.join('');
   }
   function recalculate(){
-    const total=totals();const toll=$('#imp-peaje'),excess=$('#imp-excedente');if(toll)toll.value=String(total.toll);if(excess)excess.value=String(total.excess);
+    const total=totals();const customerToll=providerTolls()?0:total.toll;const toll=$('#imp-peaje'),excess=$('#imp-excedente');if(toll)toll.value=String(customerToll);if(excess)excess.value=String(total.excess);
     const tollTotal=$('#rem-tolls-total'),excessTotal=$('#rem-excesses-total');if(tollTotal)tollTotal.textContent=state.lines.toll.some(line=>line.amount_pending)?'A definir':money(total.toll);if(excessTotal)excessTotal.textContent=state.lines.excess.some(line=>line.amount_pending)?'A definir':money(total.excess);
     compactSummary('toll');compactSummary('excess');if(typeof window.calcularTotal==='function')window.calcularTotal();renderSignatureSummary();
   }
 
   function collectLines(){
     return{
-      tolls:state.lines.toll.map(line=>({client_line_id:line.client_line_id,toll_id:line.toll_id,toll_name:line.toll_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,crossed_at:null,missing_evidence_reason:null,notes:null})),
+      tolls:state.lines.toll.map(line=>({client_line_id:line.client_line_id,toll_id:line.toll_id,toll_name:line.toll_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',payer_agent:providerTolls()?'provider':'customer',customer_payment_method:providerTolls()?null:line.customer_payment_method,crossed_at:null,missing_evidence_reason:null,notes:null})),
       excesses:state.lines.excess.map(line=>({client_line_id:line.client_line_id,concept_id:line.concept_id,concept_name:line.concept_name,quantity:1,unit_amount:number(line.unit_amount),currency:'ARS',customer_payment_method:line.customer_payment_method,reason:line.concept_name,notes:null}))
     };
   }
@@ -139,7 +143,7 @@
   function collectEvidence(){const kinds=['vehicle_front','odometer','extra','extra'];return $$('#foto-grid input[type="file"]').map((input,index)=>descriptor(input,kinds[index]||'extra')).filter(Boolean)}
   function validate(){
     const errors=[];const {tolls,excesses}=collectLines(),evidence=collectEvidence();
-    tolls.forEach((line,index)=>{if(!line.toll_id)errors.push(`Seleccioná el peaje ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del peaje ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el peaje ${index+1}.`)});
+    tolls.forEach((line,index)=>{if(!line.toll_id)errors.push(`Seleccioná el peaje ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del peaje ${index+1}.`);if(line.payer_agent!=='provider'&&!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el peaje ${index+1}.`)});
     excesses.forEach((line,index)=>{if(!line.concept_id)errors.push(`Seleccioná el excedente ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del excedente ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el excedente ${index+1}.`)});
     evidence.forEach(item=>{if(item.size_bytes>MAX_BYTES)errors.push(`${item.original_name} supera 10 MiB.`);if(!MIME.has(item.mime_type))errors.push(`${item.original_name} tiene un formato no admitido.`)});
     const box=$('#rem-addons-errors');if(box){box.innerHTML=errors.map(esc).join('<br>');box.classList.toggle('visible',!!errors.length)}return{ok:!errors.length,errors};
@@ -159,13 +163,13 @@
   function reviewMeta(status){if(status==='approved')return{label:'Aprobado',css:'approved'};if(status==='adjusted')return{label:'Ajustado por Administración',css:'adjusted'};return{label:'En revisión',css:'pending'}}
   async function renderHistory(remitoId,host){
     if(!host||!remitoId)return;host.innerHTML='<div class="rem-addon-empty">Cargando detalle informado…</div>';const {data,error}=await _db.rpc('get_driver_remito_addons_v2',{p_remito_id:Number(remitoId)});if(error){host.innerHTML=`<div class="rem-addon-empty">${esc(error.message||'No se pudo cargar el detalle')}</div>`;return}
-    const meta=reviewMeta(data.review_status),tolls=(data.tolls||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected',method=line.customer_payment_method||line.payment_method;return`<div class="rem-addon-summary-line"><span>${esc(line.toll_name)} · ${esc(paymentLabel(method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`}),excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
+    const meta=reviewMeta(data.review_status),tolls=(data.tolls||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected',method=line.customer_payment_method||line.payment_method;return`<div class="rem-addon-summary-line"><span>${esc(line.toll_name)} · ${esc(tollPaymentLabel(line))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`}),excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
     host.innerHTML=`<div class="rem-addons-head"><div><div class="rem-addons-kicker">Peajes y excedentes informados</div><div class="rem-addons-help">Última información registrada para este remito.</div></div><span class="rem-addon-status ${meta.css}">${meta.label}</span></div><div class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(data.toll_coverage_mode,!!data.service_id))}</strong></div><div class="rem-addon-summary-lines">${[...tolls,...excesses].join('')||'<div class="rem-addon-empty">El chofer confirmó que no hubo peajes ni excedentes.</div>'}</div>`;
   }
   async function restore(report){
     if(!report){reset();return}
     await loadReference();
-    const restored=(kind,rows)=>rows.map(row=>{const key=lineKey(kind),ref=referenceRows(kind).find(item=>String(item[key])===String(row[key])),base=ref?blankLine(kind,ref):kind==='toll'?{client_line_id:uid(),toll_id:row.toll_id,toll_name:row.toll_name||'Peaje',amount_mode:'suggested',suggested_amount:number(row.unit_amount),currency:row.currency||'ARS'}:{client_line_id:uid(),concept_id:row.concept_id,concept_name:row.concept_name||'Excedente',amount_mode:'manual',suggested_amount:number(row.unit_amount),currency:row.currency||'ARS',quantity:1,reason:row.concept_name||'Excedente'};return{...base,client_line_id:row.client_line_id||base.client_line_id,unit_amount:number(row.unit_amount),quantity:number(row.quantity)||1,customer_payment_method:row.customer_payment_method||row.payment_method||'',amount_pending:false}});
+    const restored=(kind,rows)=>rows.map(row=>{const key=lineKey(kind),ref=referenceRows(kind).find(item=>String(item[key])===String(row[key])),base=ref?blankLine(kind,ref):kind==='toll'?{client_line_id:uid(),toll_id:row.toll_id,toll_name:row.toll_name||'Peaje',amount_mode:'suggested',suggested_amount:number(row.unit_amount),currency:row.currency||'ARS'}:{client_line_id:uid(),concept_id:row.concept_id,concept_name:row.concept_name||'Excedente',amount_mode:'manual',suggested_amount:number(row.unit_amount),currency:row.currency||'ARS',quantity:1,reason:row.concept_name||'Excedente'};return{...base,payer_agent:row.payer_agent,client_line_id:row.client_line_id||base.client_line_id,unit_amount:number(row.unit_amount),quantity:number(row.quantity)||1,customer_payment_method:row.customer_payment_method||row.payment_method||'',amount_pending:false}});
     state.lines={toll:restored('toll',report.tolls||[]),excess:restored('excess',report.excesses||[])};
     const evidence=[];const addEvidence=(item,owner=null)=>{if(!item?.evidence_id||!item?.path)return;evidence.push({client_evidence_id:item.evidence_id,client_line_id:owner,evidence_kind:item.kind,storage_path:item.path,mime_type:item.mime_type,original_name:item.original_name,size_bytes:item.size_bytes})};
     (report.evidence||[]).forEach(item=>addEvidence(item));(report.tolls||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));(report.excesses||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));
@@ -174,11 +178,11 @@
   function reset(){state.lines={toll:[],excess:[]};state.persistedEvidence=[];cancelPicker();recalculate()}
   function getPersistedEvidence(){return clone(state.persistedEvidence)}
   function removePersistedEvidence(id){state.persistedEvidence=state.persistedEvidence.filter(item=>String(item.client_evidence_id)!==String(id));window.AuxiliosRemitoMobileV3?.syncEvidence?.();return getPersistedEvidence()}
-  function hasCustomerCollection(){return[...state.lines.toll,...state.lines.excess].some(line=>line.customer_payment_method&&line.customer_payment_method!=='not_collected')}
+  function hasCustomerCollection(){return[...(providerTolls()?[]:state.lines.toll),...state.lines.excess].some(line=>line.customer_payment_method&&line.customer_payment_method!=='not_collected')}
 
   async function init(){
     const step=$('#rem-step-2');if(!step||step.dataset.addonsV2==='1')return;step.dataset.addonsV2='1';
-    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><header id="rem-addons-step-head" class="rmv-step-head rem-addons-step-head"><span>Paso 2</span><h2>Peajes y excedentes</h2></header><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">La tarifa es una sugerencia. Confirmá el importe real abonado.</div></div></div><div id="rem-toll-coverage" class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>A definir por Operaciones</strong></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Cada concepto puede tener precio definido o importe variable, según la prestadora.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
+    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><header id="rem-addons-step-head" class="rmv-step-head rem-addons-step-head"><span>Paso 2</span><h2>Peajes y excedentes</h2></header><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Informá únicamente los peajes de origen a destino y su importe real.</div></div></div><div id="rem-toll-coverage" class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>A definir por Operaciones</strong></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Cada concepto puede tener precio definido o importe variable, según la prestadora.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
     if(!$('#rem-addon-picker'))document.body.insertAdjacentHTML('beforeend','<div id="rem-addon-picker" class="rem-addon-picker" hidden><div class="rem-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="rem-addon-picker-title"><div class="rem-picker-head"><b id="rem-addon-picker-title">Seleccionar</b><button id="rem-addon-picker-close" type="button" aria-label="Cancelar">×</button></div><div id="rem-addon-picker-list" class="rem-picker-list"></div><div id="rem-picker-error" class="rem-addon-errors"></div><div class="rem-picker-actions"><button id="rem-picker-cancel" class="rem-picker-secondary" type="button">Cancelar</button><button id="rem-picker-back" class="rem-picker-secondary" type="button" hidden>← Volver</button><button id="rem-picker-next" class="rem-picker-confirm" type="button">Continuar</button><button id="rem-picker-save" class="rem-picker-confirm" type="button" hidden>Confirmar</button></div></div></div>');
     $('#rem-add-toll').addEventListener('click',()=>openPicker('toll'));$('#rem-add-excess').addEventListener('click',()=>openPicker('excess'));$('#rem-addon-picker-close').addEventListener('click',cancelPicker);$('#rem-picker-cancel').addEventListener('click',cancelPicker);$('#rem-picker-back').addEventListener('click',backPicker);$('#rem-picker-next').addEventListener('click',continuePicker);$('#rem-picker-save').addEventListener('click',savePicker);$('#rem-addon-picker-list').addEventListener('change',updateSelectionCount);$('#rem-addon-picker').addEventListener('click',event=>{if(event.target.id==='rem-addon-picker')cancelPicker()});
     if(typeof PERFIL_USUARIO!=='undefined'&&PERFIL_USUARIO?.roles?.name){try{await loadReference()}catch(error){console.warn('[remito-addons-v2]',error);const box=$('#rem-addons-errors');if(box){box.textContent=error.message;box.classList.add('visible')}}}state.initialized=true;recalculate();
