@@ -11,7 +11,7 @@ test('Servicios muestra Arribo y Fin por defecto',()=>{
   assert.match(js,/arrival:true,finish:true/);
   assert.match(js,/s\.arrived_at\|\|s\.estimated_arrival_at/);
   assert.match(js,/s\.completed_at\|\|s\.estimated_finish_at/);
-  assert.match(sw,/v428-user-email-maps-link/);
+  assert.match(sw,/v429-excel-maps-route/);
 });
 
 test('la migracion expone arrived_at y habilita ambas columnas existentes',()=>{
