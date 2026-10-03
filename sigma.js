@@ -6706,6 +6706,13 @@ async function linkPublicoRemito(remitoId) {
   } catch (e) { console.warn('linkPublicoRemito:', e?.message || e); return ''; }
 }
 
+function linkGoogleMapsRemito(d) {
+  const origen = String(d?.origen || '').trim();
+  const destino = String(d?.destino || '').trim();
+  if (!origen || !destino || origen === destino) return '';
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}&travelmode=driving`;
+}
+
 function textoWhatsAppRemito(d, empresa = '', link = '') {
   const srv = d.srvOrden || d.nroSrv;
   const extras = (parseFloat(d.peaje) || 0) + (parseFloat(d.excedente) || 0) + (parseFloat(d.otros) || 0);
@@ -6715,6 +6722,7 @@ function textoWhatsAppRemito(d, empresa = '', link = '') {
     `Fecha: ${d.fecha || '—'}`,
     `Vehículo: ${[d.patente, d.marca].filter(Boolean).join(' · ') || '—'}`,
     d.origen ? (d.destino && d.destino !== d.origen ? `Recorrido: ${d.origen} → ${d.destino}` : `Dirección: ${d.origen}`) : '',
+    linkGoogleMapsRemito(d) ? `Ver recorrido en Google Maps:\n${linkGoogleMapsRemito(d)}` : '',
     extras > 0 ? `Cargos cobrados: $ ${extras.toLocaleString('es-AR')}${d.pago && d.pago !== '—' ? ` (${d.pago})` : ''}` : '',
     d.estado === 'firmado' ? 'Remito firmado digitalmente.' : '',
     link ? `\nDescargá tu remito y contanos cómo te atendimos:\n${link}` : '',
@@ -9453,7 +9461,7 @@ function abrirEditarUsuario(userId) {
   // Deshabilitar campos no editables
   const emailEl = document.getElementById('nu-email');
   const legajoEl = document.getElementById('nu-legajo');
-  if (emailEl) { emailEl.value = u.email || ''; emailEl.disabled = true; }
+  if (emailEl) { emailEl.value = u.email || ''; emailEl.disabled = false; }
   if (legajoEl) { legajoEl.value = u.legajo || ''; legajoEl.disabled = true; }
 
   // Cambiar título y botón
@@ -9509,18 +9517,22 @@ async function guardarNuevoUsuario() {
   if (usuarioEditandoId) {
     const licencia    = document.getElementById('nu-licencia')?.value.trim() || null;
     const vencimiento = document.getElementById('nu-vencimiento')?.value || null;
-    const { data: rolRow } = await _db.from('roles').select('role_id').eq('name', rol).single();
-    const { error } = await _db.from('users').update({
-      full_name: nombre, phone: tel || null, role_id: rolRow?.role_id, dni: dni || null,
-      license_number: licencia, license_expiry: vencimiento
-    }).eq('user_id', usuarioEditandoId);
-    if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
+    let resp, data;
+    try {
+      resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/update-user`, {
+        method: 'POST',
+        headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ user_id: usuarioEditandoId, full_name: nombre, email, role_name: rol, phone: tel || null, dni: dni || null, license_number: licencia, license_expiry: vencimiento })
+      });
+      data = await resp.json().catch(() => ({ error: 'El servicio de usuarios devolvió una respuesta inválida.' }));
+    } catch (e) { data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios.' }; }
+    if (btn) { btn.textContent = '💾 Actualizar Usuario'; btn.style.pointerEvents = 'auto'; }
+    if (!resp?.ok || data?.error) { showModalError('nu-modal-error', data?.error || 'No se pudo actualizar el usuario'); return; }
     const emailEl2 = document.getElementById('nu-email');
     const legajoEl2 = document.getElementById('nu-legajo');
     if (emailEl2) emailEl2.disabled = false;
     if (legajoEl2) legajoEl2.disabled = false;
     usuarioEditandoId = null;
-    if (error) { toast(`Error: ${error.message}`, 'error'); return; }
     toast('Usuario actualizado', 'success');
     closeModal('modal-nuevo-usuario');
     cargarTablaAdminUsuarios();

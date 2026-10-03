@@ -12,7 +12,7 @@ const ALLOWED_ORIGINS = new Set([
   "https://auxilios-frontend-git-agent-iso-security-foundation-auxili-os.vercel.app",
   "https://auxilios-frontend-git-claude-auxilios-3zj57q-auxili-os.vercel.app",
 ]);
-const ROLE_NAMES = new Set(["administracion", "supervision", "chofer"]);
+const ROLE_NAMES = new Set(["administracion", "operador", "supervision", "chofer"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DNI_RE = /^\d{6,10}$/;
 const USER_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -66,6 +66,7 @@ function roleName(profile: { roles?: unknown }) {
 function endpoint(req: Request) {
   const pathname = new URL(req.url).pathname.replace(/\/+$/, "");
   if (pathname.endsWith("/api/create-user")) return "create-user";
+  if (pathname.endsWith("/api/update-user")) return "update-user";
   if (pathname.endsWith("/api/send-password-reset")) return "password-reset";
   return "not-found";
 }
@@ -186,6 +187,53 @@ async function createUser(req: Request, requestId: string) {
   return json(req, 201, { ok: true, invitation_sent: true });
 }
 
+async function updateUser(req: Request, requestId: string) {
+  const auth = await requireAdmin(req);
+  if (auth.error) return auth.error;
+
+  const body = await readJson(req);
+  const userId = cleanString(body.user_id, 36, 36);
+  const fullName = cleanString(body.full_name, 2, 120);
+  const email = cleanString(body.email, 5, 254)?.toLowerCase() ?? null;
+  const requestedRole = cleanString(body.role_name, 1, 40);
+  const phone = body.phone == null || body.phone === "" ? null : cleanString(body.phone, 6, 30);
+  const dni = body.dni == null || body.dni === "" ? null : cleanString(body.dni, 6, 10);
+  const licenseNumber = body.license_number == null || body.license_number === "" ? null : cleanString(body.license_number, 1, 60);
+  const licenseExpiry = body.license_expiry == null || body.license_expiry === "" ? null : cleanString(body.license_expiry, 10, 10);
+
+  if (!userId || !USER_ID_RE.test(userId) || !fullName || !email || !EMAIL_RE.test(email) ||
+      !requestedRole || !ROLE_NAMES.has(requestedRole) || (body.phone && !phone) ||
+      (dni && !DNI_RE.test(dni)) || (body.license_number && !licenseNumber) ||
+      (licenseExpiry && !/^\d{4}-\d{2}-\d{2}$/.test(licenseExpiry))) {
+    return json(req, 400, { error: "Datos de usuario inválidos" });
+  }
+
+  const [{ data: current, error: currentError }, { data: role, error: roleError }] = await Promise.all([
+    admin.from("users").select("email").eq("user_id", userId).single(),
+    admin.from("roles").select("role_id").eq("name", requestedRole).single(),
+  ]);
+  if (currentError || !current?.email) return json(req, 404, { error: "Usuario no encontrado" });
+  if (roleError || !role?.role_id) return json(req, 400, { error: "Rol inválido" });
+
+  const previousEmail = String(current.email).toLowerCase();
+  if (email !== previousEmail) {
+    const { error } = await admin.auth.admin.updateUserById(userId, { email, email_confirm: true });
+    if (error) return json(req, 400, { error: error.message.includes("already") ? "El email ya está en uso" : "No se pudo actualizar el email de acceso" });
+  }
+
+  const { error: profileError } = await admin.from("users").update({
+    full_name: fullName, email, phone, dni, role_id: role.role_id,
+    license_number: licenseNumber, license_expiry: licenseExpiry,
+  }).eq("user_id", userId);
+  if (profileError) {
+    if (email !== previousEmail) await admin.auth.admin.updateUserById(userId, { email: previousEmail, email_confirm: true });
+    return json(req, 400, { error: profileError.code === "23505" ? "El email ya está en uso" : "No se pudo actualizar el usuario" });
+  }
+
+  console.info(JSON.stringify({ event: "user_updated", requestId, actorId: auth.userId, targetUserId: userId }));
+  return json(req, 200, { ok: true });
+}
+
 async function sendPasswordReset(req: Request, requestId: string) {
   const auth = await requireAdmin(req);
   if (auth.error) return auth.error;
@@ -249,6 +297,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (route === "create-user") return await createUser(req, requestId);
+    if (route === "update-user") return await updateUser(req, requestId);
     return await sendPasswordReset(req, requestId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown";
