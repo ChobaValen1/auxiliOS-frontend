@@ -91,13 +91,11 @@ test('las tres secciones tienen contenedor y overlay propios', () => {
 });
 
 test('los canvas y tablas que consumen las secciones existen en el markup', () => {
-  ['dashx-fact-cajas', 'dashx-fact-torta',
+  ['rsm-tipos-canvas', 'rsm-evol-canvas', 'dashx-fact-mapa',
    'dashx-ops-tendencia', 'dashx-ops-anillo', 'dashx-ops-combustible',
    'dashx-flota-estado']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta el canvas ${id}`));
-  /* Facturación tenía dos tablas haciendo el mismo corte con las puntas
-     cambiadas de lugar —prestadora → bases y base → prestadoras—. Quedó una,
-     que se abre, y las métricas de la otra se mudaron adentro. */
+  /* Resumen tiene una sola tabla de prestadoras, que se abre en sus bases. */
   ['dashx-fact-empresas']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta la tabla ${id}`));
   assert.ok(!index.includes('id="dashx-fact-bases"'), 'la tabla de bases tenía que irse');
@@ -177,7 +175,9 @@ test('los filtros propios de una sección se esconden con ella', () => {
   // Viven en la barra de arriba (fuera del cuerpo, para que el overlay de carga
   // no los tape), así que esconder el cuerpo no alcanza para esconderlos.
   assert.match(shell, /if \(s\.filtros\)/);
-  assert.match(shell, /fil\.hidden = !visible/);
+  // Resumen y Tendencia comparten la barra: se muestra si la usa alguna visible.
+  assert.match(shell, /barras\[s\.filtros\] = barras\[s\.filtros\] \|\| visible/);
+  assert.match(shell, /fil\.hidden = !barras\[id\]/);
   const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(ops, /filtros: 'dashx-ops-filtros'/);
   // Arranca oculto: la pestaña inicial es Facturación, que no los usa.
@@ -256,12 +256,11 @@ test('la RPC de operaciones devuelve el bloque de combustible', () => {
   assert.match(sql, /revoke all on function .* from public, anon/);
 });
 
-test('el mapa se carga con la pestaña de Facturación, no como una propia', () => {
-  // Vive dentro de ese recuadro: como pestaña separada quedaría huérfano.
-  const mapa = fs.readFileSync('dashboard-mapa-v1.js', 'utf8').replace(/\r\n/g,'\n');
-  assert.match(mapa, /grupo: 'facturacion'/);
-  assert.match(shell, /function grupoDe/);
+test('el mapa vive dentro de Resumen, no como una pestaña propia', () => {
+  const res = fs.readFileSync('dashboard-resumen-v1.js', 'utf8').replace(/\r\n/g,'\n');
+  assert.match(res, /ID_MAPA\s*=\s*'dashx-fact-mapa'/);
   assert.ok(!index.includes("dashxSeccion('mapa'"), 'el mapa no debe tener pestaña propia');
+  assert.ok(!fs.existsSync('dashboard-mapa-v1.js'), 'el módulo viejo del mapa se fue');
 });
 
 test('el treemap no escribe fuera de su caja', () => {
@@ -289,17 +288,17 @@ test('las barras de la tabla no empujan una columna fuera del recuadro', () => {
 
 /* ── una sola fila de pestañas ──────────────────────────────────────────── */
 
-test('las secciones van en una sola fila, y son tres', () => {
+test('las secciones van en una sola fila, y son cuatro', () => {
   /* Había dos filas: Análisis/Alertas arriba y las secciones abajo. La de
      arriba tenía una sola opción real, porque Alertas no es una sección del
      panel: no tiene período ni filtros y no se compara con las otras. */
   assert.doesNotMatch(index, /id="dash-ctx-bar"/);
   assert.doesNotMatch(index, /dashCambiarVista\('alertas'/);
   assert.match(index, /<div class="dashx-barra-secciones">/);
-  const barra = index.match(/<div class="dashx-barra-secciones">([\s\S]*?)<\/div>\s*<div class="dashx-toolbar" id="dashx-toolbar">/)[1];
-  ['facturacion', 'operaciones', 'flota'].forEach(sec =>
+  const barra = index.match(/<div class="dashx-barra-secciones">([\s\S]*?)<!-- SECCIÓN 1/)[1];
+  ['facturacion', 'tendencia', 'operaciones', 'flota'].forEach(sec =>
     assert.ok(barra.includes(`data-sec="${sec}"`), `falta la sección ${sec}`));
-  assert.equal((barra.match(/data-sec=/g) || []).length, 3, 'tienen que ser tres secciones');
+  assert.equal((barra.match(/data-sec=/g) || []).length, 4, 'tienen que ser cuatro secciones');
   /* Y nada más: Alertas se saca de acá. La campanita de la barra de arriba
      está fija y a la vista en todas las pantallas, así que un botón propio en
      el panel era el mismo acceso dos veces. */
@@ -371,9 +370,9 @@ test('el período desaparece en las secciones que no lo usan', () => {
 
 test('cada grupo de filtros se muestra sólo con su sección', () => {
   const shell = fs.readFileSync('dashboard-shell-v1.js', 'utf8').replace(/\r\n/g,'\n');
-  assert.match(shell, /if \(fil\) fil\.hidden = !visible;/);
-  // Prestadora y base son de Facturación; camión y chofer, de Operaciones.
-  const fact = fs.readFileSync('dashboard-facturacion-v1.js', 'utf8').replace(/\r\n/g,'\n');
+  assert.match(shell, /if \(fil\) fil\.hidden = !barras\[id\];/);
+  // Prestadora y base son de Resumen; camión y chofer, de Operaciones.
+  const fact = fs.readFileSync('dashboard-resumen-v1.js', 'utf8').replace(/\r\n/g,'\n');
   const ops  = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(fact, /ID_FILT\s*=\s*'dashx-fact-filtros'/);
   assert.match(ops,  /filtros: 'dashx-ops-filtros'/);

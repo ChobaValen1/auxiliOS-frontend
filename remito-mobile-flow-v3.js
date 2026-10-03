@@ -15,12 +15,22 @@ function moveToHidden(root,id){
   if(node)root.appendChild(node);
 }
 
+// Un servicio asignado trae la patente y el campo queda oculto. Si llegó sin
+// patente (p. ej. un particular), el chofer la carga en el paso 1.
+function syncPlateField(){
+  const step=document.querySelector('[data-remito-customer-step="1"]'),box=step&&$('[data-remito-field="vehicle_plate"]',step),slot=box&&$('[data-slot="plate"]',box),input=document.getElementById('rem-patente'),hidden=document.getElementById('rem-service-fields-hidden');
+  if(!box||!slot||!input||adHocMode)return;
+  if(!input.value.trim()){input.classList.add('rmv-input');slot.appendChild(input);box.hidden=false;}
+  else if(!slot.contains(input)||!box.dataset.typed){if(hidden&&slot.contains(input))hidden.appendChild(input);box.hidden=true;}
+}
+document.addEventListener('input',e=>{if(e.target?.id==='rem-patente'){const box=e.target.closest('[data-remito-field="vehicle_plate"]');if(box)box.dataset.typed='1';}});
+
 function customerStep(step){
   const customer=document.getElementById('rem-cliente');
   const documentId=document.getElementById('rem-cuit');
   const phone=document.getElementById('rem-telefono');
   step.dataset.remitoCustomerStep='1';
-  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 1</span><h2>Datos del socio</h2><p>Completá la información necesaria para la conformidad.</p></header><div class="rmv-fields"><label data-remito-field="customer_name"><span>Nombre y apellido *</span><div data-slot="customer"></div><small id="err-cliente" class="rem-error-msg">El nombre del socio es obligatorio</small></label><label data-remito-field="customer_document"><span>DNI / CUIT <em data-mode-label></em></span><div data-slot="document"></div><small class="rmv-hint">De 7 a 11 números.</small><small id="err-documento" class="rem-error-msg">El DNI / CUIT es obligatorio</small></label><label data-remito-field="customer_phone"><span>Teléfono <em data-mode-label></em></span><div data-slot="phone"></div><small id="err-telefono" class="rem-error-msg">El teléfono es obligatorio</small></label><label class="rmv-no-phone" data-no-phone hidden><input type="checkbox" id="rem-telefono-no-informa"><span>El cliente no informa teléfono</span></label></div></section>`;
+  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 1</span><h2>Datos del socio</h2><p>Completá la información necesaria para la conformidad.</p></header><div class="rmv-fields"><label data-remito-field="customer_name"><span>Nombre y apellido *</span><div data-slot="customer"></div><small id="err-cliente" class="rem-error-msg">El nombre del socio es obligatorio</small></label><label data-remito-field="customer_document"><span>DNI / CUIT <em data-mode-label></em></span><div data-slot="document"></div><small class="rmv-hint">De 7 a 11 números.</small><small id="err-documento" class="rem-error-msg">El DNI / CUIT es obligatorio</small></label><label data-remito-field="customer_phone"><span>Teléfono <em data-mode-label></em></span><div data-slot="phone"></div><small id="err-telefono" class="rem-error-msg">El teléfono es obligatorio</small></label><label data-remito-field="vehicle_plate" hidden><span>Patente del vehículo *</span><div data-slot="plate"></div><small class="rmv-hint">El servicio no trae la patente: cargala acá.</small></label><label class="rmv-no-phone" data-no-phone hidden><input type="checkbox" id="rem-telefono-no-informa"><span>El cliente no informa teléfono</span></label></div></section>`;
   const attach=(node,slot)=>{if(!node)return;node.classList.add('rmv-input');$(slot,step)?.appendChild(node)};
   attach(customer,'[data-slot="customer"]');
   attach(documentId,'[data-slot="document"]');
@@ -29,7 +39,8 @@ function customerStep(step){
   void applyCompanyFieldModes(step);
 }
 
-function normalizedMode(config,key){const mode=config?.field_modes?.[key];return ['required','optional','hidden'].includes(mode)?mode:'optional'}
+/* El teléfono del cliente es obligatorio para el chofer (salvo "El cliente no informa teléfono"), sin importar la configuración de Servicios: esa es para Operaciones, donde es opcional. */
+function normalizedMode(config,key){if(key==='customer_phone')return 'required';const mode=config?.field_modes?.[key];return ['required','optional','hidden'].includes(mode)?mode:'optional'}
 function renderFieldModes(step,config){
   ['customer_document','customer_phone'].forEach(key=>{const mode=normalizedMode(config,key),row=$(`[data-remito-field="${key}"]`,step),input=key==='customer_document'?$('#rem-cuit'):$('#rem-telefono');if(!row)return;row.hidden=mode==='hidden';row.dataset.mode=mode;if(input){input.required=mode==='required';input.disabled=mode==='hidden';input.setAttribute('aria-required',mode==='required'?'true':'false')}const label=$('[data-mode-label]',row);if(label)label.textContent=mode==='required'?'obligatorio':'opcional';if(key==='customer_phone'){const noPhone=$('[data-no-phone]',step);if(noPhone)noPhone.hidden=mode!=='required';if(mode!=='required'){const cb=$('#rem-telefono-no-informa');if(cb&&cb.checked){cb.checked=false;if(input&&mode!=='hidden')input.disabled=false}}}});
 }
@@ -41,12 +52,12 @@ function validateCustomerFields(){let ok=true;for(const [key,id,errorId] of [['c
 
 function evidenceStep(step){
   step.dataset.remitoEvidenceStep='1';
-  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 3</span><h2>Evidencia y observaciones</h2><p>Adjuntá fotografías sólo si corresponde.</p></header><div id="rem-evidence-list" class="rmv-evidence-list"><div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div></div><button id="rem-add-evidence" class="rmv-add" type="button">＋ Agregar evidencia</button><small class="rmv-hint">La evidencia es opcional.</small><div id="foto-grid" class="rmv-hidden-files" aria-hidden="true">
+  step.innerHTML=`<section class="rmv-card"><header class="rmv-step-head"><span>Paso 3</span><h2>Evidencia y observaciones</h2><p>Adjuntá fotografías sólo si corresponde.</p></header><div id="rem-evidence-list" class="rmv-evidence-list"><div class="rmv-evidence-empty">Todavía no agregaste evidencia.</div></div><button id="rem-add-evidence" class="rmv-add" type="button"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#plus"/></svg>Agregar evidencia</button><small class="rmv-hint">La evidencia es opcional.</small><div id="foto-grid" class="rmv-hidden-files" aria-hidden="true">
     <label class="foto-slot" data-label="Vehículo"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto1-status','rem-foto1-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto1-icon">📷</span><span id="rem-foto1-status">Vehículo</span></label>
     <label class="foto-slot" data-label="Odómetro"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto2-status','rem-foto2-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto2-icon">🔢</span><span id="rem-foto2-status">Odómetro</span></label>
     <label class="foto-slot" data-label="Daño o incidente"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto3-status','rem-foto3-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto3-icon">⚠</span><span id="rem-foto3-status">Daño o incidente</span></label>
     <label class="foto-slot" data-label="Otra evidencia"><input type="file" accept="image/*" capture="environment" onchange="procesarArchivoReal(this,'rem-foto4-status','rem-foto4-icon');AuxiliosRemitoMobileV3.syncEvidence()"><span id="rem-foto4-icon">＋</span><span id="rem-foto4-status">Otra evidencia</span></label>
-  </div></section><section id="rmv-remito-notes" class="rmv-card rmv-notes-card"><label class="rmv-notes-label"><span>Observaciones</span><div data-observations-slot></div></label></section><div id="rem-evidence-sheet" class="rmv-sheet" hidden><button class="rmv-sheet-backdrop" type="button" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="rem-evidence-title"><header><h3 id="rem-evidence-title">Tipo de evidencia</h3><button type="button" data-close aria-label="Cerrar">×</button></header><button type="button" data-evidence="0">📷 Vehículo</button><button type="button" data-evidence="1">🔢 Odómetro</button><button type="button" data-evidence="2">⚠ Daño o incidente</button><button type="button" data-evidence="3">＋ Otra evidencia</button></section></div>`;
+  </div></section><section id="rmv-remito-notes" class="rmv-card rmv-notes-card"><label class="rmv-notes-label"><span>Observaciones</span><div data-observations-slot></div></label></section><div id="rem-evidence-sheet" class="rmv-sheet" hidden><button class="rmv-sheet-backdrop" type="button" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="rem-evidence-title"><header><h3 id="rem-evidence-title">Tipo de evidencia</h3><button type="button" data-close aria-label="Cerrar"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#x"/></svg></button></header><button type="button" data-evidence="0"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#camera"/></svg>Vehículo</button><button type="button" data-evidence="1"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#gauge"/></svg>Odómetro</button><button type="button" data-evidence="2"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#triangle-alert"/></svg>Daño o incidente</button><button type="button" data-evidence="3"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#plus"/></svg>Otra evidencia</button></section></div>`;
   const observations=document.getElementById('rem-observaciones');
   if(observations){observations.classList.add('rmv-input');$('[data-observations-slot]',step)?.appendChild(observations)}
   const sheet=$('#rem-evidence-sheet',step);
@@ -182,6 +193,6 @@ function setAdHocMode(enabled){
 
 function isAdHocMode(){return adHocMode}
 
-window.AuxiliosRemitoMobileV3={transform,syncEvidence,setAdHocMode,isAdHocMode,setSignedEditMode,isSignedEditMode,applyCompanyFieldModes,validateCustomerFields,validateMapLocations,getMapLocations,resetMapLocations,restoreMapLocations};
+window.AuxiliosRemitoMobileV3={transform,syncPlateField,syncEvidence,setAdHocMode,isAdHocMode,setSignedEditMode,isSignedEditMode,applyCompanyFieldModes,validateCustomerFields,validateMapLocations,getMapLocations,resetMapLocations,restoreMapLocations};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',transform,{once:true});else transform();
 })();

@@ -147,15 +147,21 @@
      queda una franja vacía arriba de la sección. */
   function aplicarVisibilidad() {
     var algoEnLaBarra = false;
+    // Dos secciones pueden compartir la misma barra de filtros (Resumen y
+    // Tendencia usan prestadora y base): se muestra si la usa alguna visible.
+    var barras = {};
     secciones.forEach(function (s) {
       var visible = esVisible(s);
       var cont = document.getElementById('dashx-sec-' + s.id);
       if (cont) cont.hidden = !visible;
       if (s.filtros) {
-        var fil = document.getElementById(s.filtros);
-        if (fil) fil.hidden = !visible;
+        barras[s.filtros] = barras[s.filtros] || visible;
         if (visible) algoEnLaBarra = true;
       }
+    });
+    Object.keys(barras).forEach(function (id) {
+      var fil = document.getElementById(id);
+      if (fil) fil.hidden = !barras[id];
     });
 
     var usaPeriodo = secciones.some(function (s) {
@@ -261,7 +267,7 @@
     var d = descripcionPeriodo();
     return '<button type="button" class="dashx-per-btn" data-per="abrir"'
       + ' aria-haspopup="dialog" aria-expanded="false">'
-      + '<span class="dashx-per-ico" aria-hidden="true">🗓</span>'
+      + '<svg class="dashx-per-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
       + '<span class="dashx-per-txt"><b>' + d.titulo + '</b><small>' + d.rango + '</small></span>'
       + '<span class="dashx-per-caret" aria-hidden="true">▾</span></button>';
   }

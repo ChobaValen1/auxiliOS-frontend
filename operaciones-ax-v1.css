@@ -1,0 +1,193 @@
+/* AuxiliOS · Servicios con el sistema visual (ui/tokens.css + ui/components.css)
+   Va encima de operator-services.css: todo cuelga de #screen-operaciones (o del
+   menú de fila) para ganar sin depender del orden de carga. Sólo tokens.
+   Color sólo para lo que pide acción: ámbar = pendiente (sin asignar, activado),
+   rojo = remito por revisar; en servicio en azul; lo demás neutro. */
+
+#screen-operaciones { min-width: 0; max-width: 100%; font-family: var(--ax-font); font-size: var(--ax-fs-md); color: var(--ax-text); }
+/* Nada de la pantalla puede ensanchar la página (en el celular se iba de costado). */
+#screen-operaciones > * { min-width: 0; max-width: 100%; }
+/* Las filas que se desplazan de costado no aportan su ancho a la página. */
+#screen-operaciones .os-status-tabs, #screen-operaciones .os-table-wrap, #screen-operaciones .os-intake-list { contain: inline-size; }
+
+/* ── Barra de comandos ─────────────────────────────────────────────── */
+/* Sin caja de fondo: los filtros van sueltos arriba de la tabla. */
+#screen-operaciones .os-commandbar { position: static; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); padding: 0; border: 0; border-radius: 0; background: none; }
+/* Activos | Historial: la marca se desliza al lado elegido y la tabla entra suave. */
+#screen-operaciones .os-view-switch { position: relative; display: grid; grid-template-columns: 1fr 1fr; flex: 0 0 auto; padding: 3px; gap: 2px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-operaciones .os-view-switch:has(> button[hidden]) { grid-template-columns: 1fr; }
+#screen-operaciones .os-view-switch::before { content: ''; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 4px); border-radius: var(--ax-radius-sm); background: var(--ax-surface-3); box-shadow: inset 0 0 0 1px var(--ax-border-strong); transition: transform var(--ax-dur-slow) var(--ax-ease); }
+#screen-operaciones .os-view-switch:has(> button[hidden])::before { width: calc(100% - 6px); }
+#screen-operaciones .os-view-switch.is-history::before { transform: translateX(calc(100% + 2px)); }
+#screen-operaciones .os-view-switch button { position: relative; z-index: 1; height: calc(var(--ax-h) - 8px); padding: 0 14px; border-radius: var(--ax-radius-sm); background: transparent !important; color: var(--ax-text-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: color var(--ax-dur) var(--ax-ease); }
+#screen-operaciones .os-view-switch button:hover { color: var(--ax-text); }
+#screen-operaciones .os-view-switch button.active { color: var(--ax-text); box-shadow: none; }
+#screen-operaciones .os-view-switch button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-operaciones .os-view-enter { animation: os-view-enter var(--ax-dur-slow) var(--ax-ease-out) both; }
+@keyframes os-view-enter { from { opacity: 0; transform: translateY(6px); } }
+#screen-operaciones .os-count { flex: 0 0 auto; color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#screen-operaciones .os-filters { flex: 1 1 520px; gap: var(--ax-sp-2); }
+#screen-operaciones .os-icon-btn { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--ax-h); height: var(--ax-h); padding: 0; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .os-icon-btn:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-operaciones .os-icon-btn:active { transform: scale(.96); }
+#screen-operaciones .os-icon-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-operaciones .os-icon-btn[data-state="loading"] .ax-icon { animation: ax-spin 1s linear infinite; }
+#screen-operaciones .os-commandbar .os-manage { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); margin-left: auto; padding: 0 14px; border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-accent-fg); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#screen-operaciones .os-commandbar .os-manage:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-operaciones .os-commandbar .os-manage[hidden] { display: none; }
+
+/* Filtros compartidos dentro de Servicios (auxilios-filters-v1). */
+#screen-operaciones .auxf-btn.is-active { border-color: rgba(245, 166, 35, .55); background: var(--ax-accent-soft); }
+
+/* ── Estados (pestañas con cantidad) ───────────────────────────────── */
+#screen-operaciones .os-status-tabs { gap: 6px; margin-bottom: var(--ax-sp-2); padding: 1px; scrollbar-width: none; }
+#screen-operaciones .os-status-tabs::-webkit-scrollbar { display: none; }
+#screen-operaciones .os-status-tabs button { gap: 6px; height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .os-status-tabs button:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-operaciones .os-status-tabs button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-operaciones .os-status-tabs button b { font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; color: var(--ax-text-3); }
+#screen-operaciones .os-status-tabs button.active { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-operaciones .os-status-tabs button.active b { color: var(--ax-text-2); }
+/* Con algo pendiente: borde y número en ámbar (o rojo, si hay remitos por revisar). */
+#screen-operaciones .os-status-tabs button.warning { border-color: rgba(245, 166, 35, .45); color: var(--ax-text); }
+#screen-operaciones .os-status-tabs button.warning b { color: var(--ax-warn); }
+#screen-operaciones .os-status-tabs button.warning[data-os-tab="remito_review"] { border-color: rgba(226, 80, 74, .55); }
+#screen-operaciones .os-status-tabs button.warning[data-os-tab="remito_review"] b { color: var(--ax-danger); }
+#screen-operaciones .os-status-tabs button.warning.active { border-color: var(--ax-warn); background: var(--ax-warn-soft); color: var(--ax-text); }
+#screen-operaciones .os-status-tabs button.warning.active[data-os-tab="remito_review"] { border-color: var(--ax-danger); background: var(--ax-danger-soft); }
+
+/* ── Ingresos del chofer sin servicio ──────────────────────────────── */
+#screen-operaciones .os-intakes { margin-bottom: var(--ax-sp-2); border: 1px solid rgba(245, 166, 35, .45); border-radius: var(--ax-radius-lg); background: var(--ax-warn-soft); }
+#screen-operaciones .os-intakes > summary { min-height: 44px; padding: 6px 12px; }
+#screen-operaciones .os-intakes > summary b { font-size: var(--ax-fs-md); }
+#screen-operaciones .os-intakes > summary small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-operaciones .os-intakes > summary > span { min-width: 0; }
+#screen-operaciones .os-intakes > summary b, #screen-operaciones .os-intakes > summary small { white-space: normal; }
+#screen-operaciones .os-intakes > summary strong { flex: 0 0 auto; color: var(--ax-warn); font: var(--ax-fw-bold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
+
+/* ── Tabla ─────────────────────────────────────────────────────────── */
+#screen-operaciones .os-table-wrap { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+/* Anchos fijos por columna: con letra legible no entra todo en 1366 px, así que la
+   tabla se desplaza de costado y el código queda fijo a la izquierda. */
+#screen-operaciones .os-table { width: 100%; min-width: 0; }
+#screen-operaciones .os-table th.col-code { width: 108px; }
+#screen-operaciones .os-table th.col-datetime { width: 96px; }
+#screen-operaciones .os-table th.col-arrival, #screen-operaciones .os-table th.col-finish, #screen-operaciones .os-table th.col-delay { width: 72px; }
+#screen-operaciones .os-table th.col-provider, #screen-operaciones .os-table th.col-type { width: 124px; }
+#screen-operaciones .os-table th.col-base { width: 100px; }
+#screen-operaciones .os-table th.col-origin, #screen-operaciones .os-table th.col-destination { width: 176px; }
+#screen-operaciones .os-table th.col-client { width: 124px; }
+#screen-operaciones .os-table th.col-km { width: 68px; }
+#screen-operaciones .os-table th.col-driver { width: 124px; }
+#screen-operaciones .os-table th.col-mobile { width: 72px; }
+#screen-operaciones .os-table th.col-status { width: 156px; }
+#screen-operaciones .os-table th.col-amount_due { width: 108px; }
+#screen-operaciones .os-table th.actions { width: 52px; }
+#screen-operaciones .os-table tr > :first-child { position: sticky; left: 0; z-index: 2; background: inherit; }
+#screen-operaciones .os-table thead tr > :first-child { z-index: 5; background: var(--ax-surface); }
+#screen-operaciones .os-table-wrap.is-scrolled tr > :first-child { box-shadow: 1px 0 0 var(--ax-border), 6px 0 8px -6px rgba(0, 0, 0, .5); }
+#screen-operaciones .os-table th { height: 38px; padding: 0 10px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#screen-operaciones .os-table td { padding: 10px; border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-operaciones .os-table tbody tr { background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .os-table tbody tr:hover { background: var(--ax-surface-3); box-shadow: none; }
+#screen-operaciones .os-table td b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-operaciones .os-table td small { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-operaciones .os-service-code { font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono) !important; letter-spacing: .02em; }
+#screen-operaciones .os-scheduled-time { color: var(--ax-text-2) !important; font-size: var(--ax-fs-xs) !important; font-variant-numeric: tabular-nums; }
+#screen-operaciones .os-location-cell b { font-size: var(--ax-fs-sm) !important; }
+#screen-operaciones .os-location-locality { color: var(--ax-text-2) !important; font-size: var(--ax-fs-xs) !important; }
+#screen-operaciones .os-location-province { font-size: var(--ax-fs-xs) !important; }
+#screen-operaciones .os-unassigned { color: var(--ax-warn); }
+#screen-operaciones .os-amount-due { color: var(--ax-text); font-variant-numeric: tabular-nums; }
+#screen-operaciones .os-payment-method { color: var(--ax-text-3) !important; font-size: var(--ax-fs-xs) !important; }
+#screen-operaciones .os-empty { padding: 40px 16px; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+/* Remito por revisar: marca roja a la izquierda de la fila. */
+#screen-operaciones .os-table tr.os-remito-awaiting-review > td:first-child { box-shadow: inset 3px 0 var(--ax-danger); }
+
+/* Estado: punto + texto (lo abre el menú rápido de estado). */
+#screen-operaciones .os-status { display: inline-flex !important; gap: 7px; width: auto; padding: 2px 0; background: none !important; color: var(--ax-text); font-size: var(--ax-fs-sm) !important; font-weight: var(--ax-fw-semibold); text-decoration: none; }
+#screen-operaciones .os-status::before { flex: 0 0 8px; width: 8px; height: 8px; border: 0; border-radius: 50%; background: var(--ax-text-3); }
+#screen-operaciones .os-status.amber { color: var(--ax-text); }
+#screen-operaciones .os-status.amber::before { background: var(--ax-warn); }
+#screen-operaciones .os-status.blue::before { background: var(--ax-info); }
+#screen-operaciones .os-status.violet::before { background: transparent; box-shadow: inset 0 0 0 2px var(--ax-info); }
+#screen-operaciones .os-status.green::before { background: var(--ax-ok); }
+#screen-operaciones .os-status.red { color: var(--ax-text-3); text-decoration: line-through; }
+#screen-operaciones .os-status.red::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ax-text-3); }
+#screen-operaciones .os-document-status, #screen-operaciones .os-activation-reason { color: var(--ax-text-3); font-size: var(--ax-fs-sm) !important; }
+#screen-operaciones .os-document-state { margin-top: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); text-align: left; }
+#screen-operaciones .os-document-state.is-action { width: auto; max-width: 100%; height: 24px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-operaciones .os-document-state.is-action:hover, #screen-operaciones .os-document-state.is-action:focus-visible { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); box-shadow: none; }
+#screen-operaciones .os-document-state.awaiting-review { border-color: rgba(226, 80, 74, .6); background: var(--ax-danger-soft); color: var(--ax-danger); white-space: nowrap; }
+#screen-operaciones .os-document-state.awaiting-review:hover, #screen-operaciones .os-document-state.awaiting-review:focus-visible { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
+
+/* Botón ⋯ de la fila */
+#screen-operaciones .os-more { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-operaciones .os-more:hover, #screen-operaciones .os-more[aria-expanded="true"] { border-color: var(--ax-border-strong); background: var(--ax-surface); color: var(--ax-text); }
+#screen-operaciones .os-more:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+/* ── Menú de la fila ───────────────────────────────────────────────── */
+#os-row-menu.os-row-menu { min-width: 200px; padding: var(--ax-sp-1); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); transform-origin: top right; animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#os-row-menu.os-row-menu button { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--ax-radius-sm); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); }
+#os-row-menu.os-row-menu button .ax-icon { color: var(--ax-text-2); }
+#os-row-menu.os-row-menu button:hover, #os-row-menu.os-row-menu button:focus-visible { outline: none; background: var(--ax-surface-3); }
+#os-row-menu.os-row-menu button.danger { color: var(--ax-danger); }
+#os-row-menu.os-row-menu button.danger .ax-icon { color: currentColor; }
+#os-row-menu.os-row-menu hr { margin: 4px 2px; border: 0; border-top: 1px solid var(--ax-border); }
+
+/* ── Celular: cada servicio es una tarjeta ─────────────────────────── */
+@media (max-width: 720px) {
+  #screen-operaciones .os-commandbar { padding: var(--ax-sp-2); }
+  #screen-operaciones .os-commandbar .os-manage { order: 9; flex: 1 1 100%; justify-content: center; height: var(--ax-h-lg); margin-left: 0; }
+  #screen-operaciones .os-filters { flex-basis: 100%; }
+  #screen-operaciones .os-table-wrap { max-height: none; overflow: visible; border: 0; background: transparent; }
+  #screen-operaciones .os-table { display: block; min-width: 0; table-layout: auto; }
+  #screen-operaciones .os-table thead { display: none; }
+  #screen-operaciones .os-table tr > :first-child { position: static; background: none; }
+  #screen-operaciones .os-table tbody { display: grid; gap: var(--ax-sp-2); }
+  #screen-operaciones .os-table tbody tr { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; padding: 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+  #screen-operaciones .os-table td { display: block; min-height: 0; padding: 0; border: 0; overflow: hidden; }
+  #screen-operaciones .os-table td::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+  #screen-operaciones .os-table td b, #screen-operaciones .os-table td small { white-space: normal; }
+  /* Arriba: código y estado, a lo ancho; el ⋯ en la esquina. */
+  #screen-operaciones .os-table td.col-code { grid-column: 1 / -1; order: -3; padding-right: 40px; }
+  #screen-operaciones .os-table td.col-code::before, #screen-operaciones .os-table td.col-status::before, #screen-operaciones .os-table td.actions::before { display: none; }
+  #screen-operaciones .os-table td.col-code b { font-size: var(--ax-fs-lg) !important; }
+  #screen-operaciones .os-table td.col-status { grid-column: 1 / -1; order: -2; }
+  #screen-operaciones .os-table td.col-origin, #screen-operaciones .os-table td.col-destination { grid-column: 1 / -1; }
+  #screen-operaciones .os-table td.actions { position: absolute; top: 8px; right: 8px; }
+  #screen-operaciones .os-table td.actions .os-more { width: 40px; height: 40px; }
+  #screen-operaciones .os-table tr.os-remito-awaiting-review { box-shadow: inset 3px 0 var(--ax-danger); }
+  #screen-operaciones .os-table tr.os-remito-awaiting-review > td:first-child { box-shadow: none; }
+}
+
+/* ── Personalizar vista ────────────────────────────────────────────── */
+#os-view-settings .os-view-dialog { width: min(520px, calc(100vw - 32px)); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#os-view-settings .os-view-dialog header, #os-view-settings .os-view-dialog footer { gap: var(--ax-sp-3); padding: var(--ax-sp-4) var(--ax-sp-5); border-color: var(--ax-border); }
+#os-view-settings .os-view-dialog header { align-items: flex-start; }
+#os-view-settings .os-view-dialog header b { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#os-view-settings .os-view-dialog header small { margin-top: 4px; color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: var(--ax-lh); }
+#os-view-settings .os-dialog-close { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--ax-h); height: var(--ax-h); border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#os-view-settings .os-dialog-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#os-view-settings #os-view-settings-body { padding: var(--ax-sp-3) var(--ax-sp-5); }
+#os-view-settings .os-location-settings { grid-template-columns: repeat(3, auto); justify-content: start; gap: var(--ax-sp-3) var(--ax-sp-5); margin-bottom: var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#os-view-settings .os-location-settings > div b, #os-view-settings .os-view-row b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-view-settings .os-location-settings > div small, #os-view-settings .os-view-row small { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#os-view-settings .os-location-settings > div { grid-column: 1 / -1; }
+#os-view-settings .os-location-settings .ax-switch { color: var(--ax-text); font-size: var(--ax-fs-md); }
+#os-view-settings .os-view-row { gap: var(--ax-sp-3); padding: 8px 2px; border-color: var(--ax-border); }
+#os-view-settings .os-view-row span { gap: 4px; }
+#os-view-settings .os-move { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#os-view-settings .os-move:hover:not(:disabled) { background: var(--ax-surface-3); color: var(--ax-text); }
+#os-view-settings .os-move:disabled { opacity: .35; cursor: default; }
+#os-view-settings .os-move-up .ax-icon { transform: rotate(180deg); }
+#os-view-settings .os-view-dialog footer .btn { height: var(--ax-h); padding: 0 14px; border-radius: var(--ax-radius); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-view-settings .os-view-dialog footer .btn-ghost { border: 1px solid transparent; background: transparent; color: var(--ax-text-2); }
+#os-view-settings .os-view-dialog footer .btn-ghost:hover { color: var(--ax-text); }
+#os-view-settings .os-view-dialog footer .btn-primary { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#os-view-settings .os-view-dialog footer .btn-primary:hover { background: var(--ax-accent-hover); }
+@media (max-width: 640px) {
+  #os-view-settings .os-view-dialog { width: 100%; margin: auto 0 0; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; animation-name: ax-sheet-in; }
+  #os-view-settings .os-location-settings { grid-template-columns: 1fr; }
+}
+

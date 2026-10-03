@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AuxiliOS · Sistema visual</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ui/tokens.css">
+<link rel="stylesheet" href="/ui/components.css">
+<style>
+  /* Sólo la maqueta de esta página; los componentes están en ui/components.css. */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); line-height: var(--ax-lh); }
+  .ds { max-width: 1120px; margin: 0 auto; padding: 32px 16px 80px; }
+  .ds-top { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  .ds-top .logo { font-family: var(--ax-font-brand); font-size: 30px; letter-spacing: 2px; color: var(--ax-accent); }
+  .ds-intro { max-width: 760px; margin: 0 0 28px; color: var(--ax-text-2); }
+  .ds section { margin-top: 40px; }
+  .ds h2 { margin: 0 0 4px; font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+  .ds h2 + p { margin: 0 0 16px; color: var(--ax-text-2); max-width: 760px; }
+  .ds h4 { margin: 18px 0 8px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .grid { display: grid; gap: 12px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .sw { display: grid; gap: 6px; }
+  .sw i { display: block; height: 52px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); }
+  .sw b { font-size: var(--ax-fs-sm); }
+  .sw code { color: var(--ax-text-3); font-family: var(--ax-font-mono); font-size: var(--ax-fs-xs); }
+  .rule { padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+  .rule b { display: block; margin-bottom: 4px; }
+  .rule p { margin: 0; color: var(--ax-text-2); }
+  .type > div { display: grid; grid-template-columns: 150px 1fr; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--ax-border); }
+  .type code { color: var(--ax-text-3); font-family: var(--ax-font-mono); font-size: var(--ax-fs-xs); }
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+  .icons div { display: grid; justify-items: center; gap: 6px; padding: 12px 6px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-xs); text-align: center; }
+  .icons div .ax-icon { width: 20px; height: 20px; color: var(--ax-text); }
+  .stage { position: relative; min-height: 340px; overflow: hidden; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius-xl); }
+  .stage .ax-backdrop, .stage .ax-drawer { position: absolute; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .mv-demo { display: inline-block; position: relative; width: 120px; height: 10px; border-radius: 5px; background: var(--ax-surface-3); }
+  .mv-demo::after { content: ''; position: absolute; left: 0; top: 0; width: 10px; height: 10px; border-radius: 50%; background: var(--ax-accent); transition: transform var(--d) var(--ax-ease-out); }
+  tr:hover .mv-demo::after { transform: translateX(110px); }
+  @media (max-width: 800px) { .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .g2, .g3, .g4, .form-grid { grid-template-columns: minmax(0, 1fr); } .type > div { grid-template-columns: 1fr; gap: 2px; } }
+</style>
+</head>
+<body>
+<main class="ds">
+  <div class="ds-top"><span class="logo">AuxiliOS</span><span class="ax-label">Sistema visual · v1</span></div>
+  <p class="ds-intro">Hoja de muestra de los colores, la tipografía, los íconos y los componentes base. Es la referencia para renovar cada pantalla: todo lo que se ve acá sale de <span class="ax-code">ui/tokens.css</span> y <span class="ax-code">ui/components.css</span>.</p>
+  <nav class="toc" aria-label="Secciones">
+    <a class="ax-chip" href="#reglas">Reglas</a><a class="ax-chip" href="#color">Color</a><a class="ax-chip" href="#tipo">Tipografía</a><a class="ax-chip" href="#iconos">Íconos</a>
+    <a class="ax-chip" href="#botones">Botones</a><a class="ax-chip" href="#campos">Campos</a><a class="ax-chip" href="#estados">Estados</a><a class="ax-chip" href="#tabla">Tabla</a>
+    <a class="ax-chip" href="#tarjetas">Tarjetas</a><a class="ax-chip" href="#avisos">Avisos</a><a class="ax-chip" href="#modal">Modal y panel</a><a class="ax-chip" href="#comportamiento">Comportamiento</a><a class="ax-chip" href="#interaccion">Interacción</a><a class="ax-chip" href="#reglas-uso">Reglas de uso</a>
+  </nav>
+
+  <section id="reglas">
+    <h2>Reglas</h2>
+    <p>Cuatro reglas que valen para todas las pantallas.</p>
+    <div class="grid g4">
+      <div class="rule"><b>Neutro por defecto</b><p>Fondos, bordes y textos en grises. El color no decora.</p></div>
+      <div class="rule"><b>Ámbar = acción o atención</b><p>El botón principal de cada pantalla, lo seleccionado, y lo que está por vencer o falta.</p></div>
+      <div class="rule"><b>Rojo = vencido o mal</b><p>Documentos vencidos, frenos mal, errores. Verde sólo para confirmar que algo salió bien.</p></div>
+      <div class="rule"><b>Un solo estilo por cosa</b><p>Un botón, una tabla, un modal. Sin estilos en línea ni emojis.</p></div>
+    </div>
+  </section>
+
+  <section id="color">
+    <h2>Color</h2>
+    <p>Siete colores de acento pasan a cuatro con significado fijo. Se quitan el cian, el violeta y el segundo azul (<span class="ax-code">--primary</span>).</p>
+    <h4 class="ax-label">Superficies</h4>
+    <div class="grid g4" id="sw-surf"></div>
+    <h4 class="ax-label">Texto</h4>
+    <div class="grid g4" id="sw-text"></div>
+    <h4 class="ax-label">Acción y estados</h4>
+    <div class="grid g4" id="sw-state"></div>
+  </section>
+
+  <section id="tipo">
+    <h2>Tipografía</h2>
+    <p>DM Sans para todo, con cifras tabulares en los números. DM Mono sólo para códigos, como patentes y N° de servicio. Bebas Neue sólo para el logo.</p>
+    <div class="type">
+      <div><code>xl · 18 · 700</code><span style="font-size:var(--ax-fs-xl);font-weight:700">Control del camión</span></div>
+      <div><code>lg · 15 · 700</code><span style="font-size:var(--ax-fs-lg);font-weight:700">Mantenimiento</span></div>
+      <div><code>md · 13 · 400</code><span>Service Aceite y filtros TIPO 1 · faltan 4.200 km</span></div>
+      <div><code>sm · 12 · 400</code><span class="ax-muted" style="font-size:var(--ax-fs-sm)">Fechas estimadas con el promedio de los últimos 30 días</span></div>
+      <div><code>xs · 11 · 700 · mayús.</code><span class="ax-label">Km actuales</span></div>
+      <div><code>2xl · 24 · 700</code><span class="ax-num" style="font-size:var(--ax-fs-2xl);font-weight:700">$ 1.284.500</span></div>
+      <div><code>mono · códigos</code><span class="ax-code">AB123CD · PART-00012</span></div>
+    </div>
+  </section>
+
+  <section id="iconos">
+    <h2>Íconos</h2>
+    <p>Lucide, con un mismo trazo, a 16 px en botones y tablas y a 20 px en encabezados. Toman el color del texto. Reemplazan a los emojis. Los archivos están dentro del proyecto, así que funcionan sin internet.</p>
+    <div class="icons" id="icons"></div>
+  </section>
+
+  <section id="botones">
+    <h2>Botones</h2>
+    <p>Un botón principal (ámbar) por pantalla o por modal. El resto son secundarios o de texto. En celular miden 44 px de alto, para tocarlos con el dedo.</p>
+    <div class="row">
+      <button class="ax-btn ax-btn-primary"><svg class="ax-icon"><use href="/ui/icons.svg#plus"/></svg>Nuevo servicio</button>
+      <button class="ax-btn"><svg class="ax-icon"><use href="/ui/icons.svg#hand-coins"/></svg>Registrar cobro</button>
+      <button class="ax-btn ax-btn-ghost">Cancelar</button>
+      <button class="ax-btn ax-btn-danger"><svg class="ax-icon"><use href="/ui/icons.svg#trash-2"/></svg>Anular</button>
+      <button class="ax-btn" disabled>Deshabilitado</button>
+      <button class="ax-btn ax-btn-icon" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="ax-btn ax-btn-sm"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#refresh-cw"/></svg>Actualizar</button>
+      <button class="ax-btn ax-btn-sm"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#download"/></svg>Exportar</button>
+      <button class="ax-btn ax-btn-primary ax-btn-sm"><svg class="ax-icon ax-icon-sm ax-spin"><use href="/ui/icons.svg#loader-circle"/></svg>Guardando…</button>
+      <button class="ax-link">Ver remito</button>
+    </div>
+  </section>
+
+  <section id="campos">
+    <h2>Campos</h2>
+    <p>Etiqueta arriba, ayuda o error abajo. En el celular los campos usan letra de 16 px, así iPhone no hace zoom al tocarlos.</p>
+    <div class="ax-card">
+      <div class="form-grid">
+        <label class="ax-field"><span>Cliente</span><input class="ax-input" value="María González"></label>
+        <label class="ax-field"><span>Teléfono</span><input class="ax-input" inputmode="tel" placeholder="11 5555 5555"></label>
+        <label class="ax-field ax-invalid"><span>DNI / CUIT</span><input class="ax-input" value="3012"><small class="ax-field-error">Tiene que tener 8 u 11 números.</small></label>
+        <label class="ax-field"><span>Móvil</span><select class="ax-select"><option>M12 · AB123CD</option><option>M07 · AC987ZX</option></select><small class="ax-field-help">El chofer sale de la jornada del móvil.</small></label>
+        <label class="ax-field"><span>Buscar</span><span class="ax-input-group"><svg class="ax-icon"><use href="/ui/icons.svg#search"/></svg><input class="ax-input" placeholder="Móvil, patente o chofer…"></span></label>
+        <label class="ax-field"><span>Observaciones</span><textarea class="ax-textarea" placeholder="Opcional"></textarea></label>
+      </div>
+      <div class="row" style="margin-top:14px;gap:18px">
+        <div class="ax-seg" role="group" aria-label="Pago al crear"><button aria-pressed="false">Sin pago</button><button aria-pressed="true">Seña</button><button aria-pressed="false">Pago total</button></div>
+        <label class="ax-switch"><input type="checkbox" checked> Pide factura</label>
+        <label class="ax-switch"><input type="checkbox"> Captado por el chofer</label>
+      </div>
+    </div>
+  </section>
+
+  <section id="estados">
+    <h2>Estados y chips</h2>
+    <p>Un estado es texto con un punto de color, sin fondo de color. Los chips son neutros y sirven para filtrar o etiquetar.</p>
+    <h4 class="ax-label">Servicio</h4>
+    <div class="row">
+      <span class="ax-status ax-status-muted">Pendiente</span>
+      <span class="ax-status">Programado</span>
+      <span class="ax-status ax-status-info">Asignado</span>
+      <span class="ax-status ax-status-warn">Arribado</span>
+      <span class="ax-status ax-status-ok">Finalizado</span>
+      <span class="ax-status ax-status-muted" style="text-decoration:line-through">Anulado</span>
+    </div>
+    <h4 class="ax-label">Atención</h4>
+    <div class="row">
+      <span class="ax-status ax-status-warn">Vence en 14 días</span>
+      <span class="ax-status ax-status-danger">Mal: frenos</span>
+      <span class="ax-status ax-status-danger">2 vencidos</span>
+      <span class="ax-status ax-status-ok">Cobrado</span>
+    </div>
+    <h4 class="ax-label">Chips</h4>
+    <div class="row">
+      <button class="ax-chip" aria-pressed="true">Todos</button><button class="ax-chip" aria-pressed="false">Particulares</button><button class="ax-chip" aria-pressed="false">Prestadoras</button>
+      <span class="ax-chip"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#truck"/></svg>Plancha</span>
+      <span class="ax-chip">Seña $ 30.000</span>
+    </div>
+    <h4 class="ax-label">Pestañas</h4>
+    <div class="ax-tabs" role="tablist">
+      <button class="ax-tab" role="tab" aria-selected="true">Mantenimiento</button>
+      <button class="ax-tab" role="tab" aria-selected="false">Documentación <span class="ax-count">3/5</span></button>
+      <button class="ax-tab" role="tab" aria-selected="false">Neumáticos y frenos</button>
+      <button class="ax-tab" role="tab" aria-selected="false">Combustible</button>
+      <button class="ax-tab" role="tab" aria-selected="false">Historial</button>
+    </div>
+  </section>
+
+  <section id="tabla">
+    <h2>Tabla</h2>
+    <p>Encabezado chico en mayúsculas y números alineados a la derecha. Toda la fila se puede tocar. Hacia la derecha, solo las acciones. En el celular, cada fila pasa a ser una tarjeta.</p>
+    <div class="ax-table-wrap">
+      <table class="ax-table ax-table-stack">
+        <thead><tr><th>Servicio</th><th>Cliente</th><th>Estado</th><th>Móvil</th><th class="ax-r">Saldo</th><th></th></tr></thead>
+        <tbody>
+          <tr class="ax-clickable"><td data-label="Servicio"><b class="ax-code">PART-00012</b><small>Hoy 10:30 · Particular</small></td><td data-label="Cliente">María González<small>AB123CD · Fiat Cronos</small></td><td data-label="Estado"><span class="ax-status ax-status-info">Asignado</span></td><td data-label="Móvil">M12<small>Juan Pérez</small></td><td data-label="Saldo" class="ax-r ax-num">$ 60.000</td><td data-label="" class="ax-r"><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button></td></tr>
+          <tr class="ax-clickable"><td data-label="Servicio"><b class="ax-code">89909</b><small>Hoy 09:10 · La Segunda</small></td><td data-label="Cliente">Carlos Díaz<small>AE222RT · Toyota Hilux</small></td><td data-label="Estado"><span class="ax-status ax-status-warn">Arribado</span></td><td data-label="Móvil">M07<small>Carlos Gómez</small></td><td data-label="Saldo" class="ax-r ax-num ax-muted">—</td><td data-label="" class="ax-r"><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button></td></tr>
+          <tr class="ax-clickable"><td data-label="Servicio"><b class="ax-code">PART-00009</b><small>Ayer 18:45 · Particular</small></td><td data-label="Cliente">Lucía Ramos<small>Sin patente</small></td><td data-label="Estado"><span class="ax-status ax-status-ok">Finalizado</span></td><td data-label="Móvil">M03<small>Luis Díaz</small></td><td data-label="Saldo" class="ax-r ax-num">$ 0</td><td data-label="" class="ax-r"><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="ax-table-wrap"><div class="ax-empty"><svg class="ax-icon"><use href="/ui/icons.svg#clipboard-check"/></svg><b>No hay servicios pendientes</b><span>Cuando entre uno nuevo aparece acá.</span></div></div>
+      <div class="ax-card grid" style="align-content:start"><span class="ax-label">Cargando</span><div class="ax-skeleton" style="width:70%"></div><div class="ax-skeleton" style="width:90%"></div><div class="ax-skeleton" style="width:55%"></div></div>
+    </div>
+  </section>
+
+  <section id="tarjetas">
+    <h2>Tarjetas y números</h2>
+    <p>Un número grande con su etiqueta, y la variación sólo si ayuda a decidir.</p>
+    <div class="grid g4">
+      <div class="ax-kpi"><span class="ax-label">Facturado</span><b>$ 4.812.300</b><small><span class="ax-kpi-delta-up">▲ 12 %</span> vs. mes anterior</small></div>
+      <div class="ax-kpi"><span class="ax-label">Servicios</span><b>148</b><small>32 particulares</small></div>
+      <div class="ax-kpi"><span class="ax-label">Km reales</span><b>18.940</b><small><span class="ax-kpi-delta-down">▼ 4 %</span> vs. mes anterior</small></div>
+      <div class="ax-kpi"><span class="ax-label">Con alertas</span><b style="color:var(--ax-warn)">4</b><small>de 9 móviles</small></div>
+    </div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="ax-card">
+        <div class="ax-card-head"><h3><svg class="ax-icon ax-icon-lg" style="color:var(--ax-text-2)"><use href="/ui/icons.svg#wrench"/></svg> Mantenimiento</h3><button class="ax-btn ax-btn-sm"><svg class="ax-icon ax-icon-sm"><use href="/ui/icons.svg#plus"/></svg>Service</button></div>
+        <div class="row" style="justify-content:space-between"><b>Service Aceite y filtros TIPO 1</b><span class="ax-status ax-status-warn">Faltan 640 km</span></div>
+        <small class="ax-muted">Cada 15.000 km · en unos 5 días (04/10)</small>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3><svg class="ax-icon ax-icon-lg" style="color:var(--ax-text-2)"><use href="/ui/icons.svg#file-text"/></svg> Documentación</h3><span class="ax-status ax-status-warn">3/5</span></div>
+        <div class="row" style="justify-content:space-between"><span>VTV</span><span class="ax-status ax-status-warn">Vence en 14 días</span></div>
+        <div class="row" style="justify-content:space-between;margin-top:6px"><span>Póliza de seguro</span><span class="ax-muted">Vigente hasta 01/03/27</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="avisos">
+    <h2>Avisos</h2>
+    <p>En la página, para lo que hay que resolver. Flotantes, para confirmar que algo salió bien o mal.</p>
+    <div class="grid g2">
+      <div class="grid">
+        <div class="ax-alert"><svg class="ax-icon"><use href="/ui/icons.svg#info"/></svg><span>Las fechas se estiman con los km por día de los últimos 30 días.</span></div>
+        <div class="ax-alert ax-alert-warn"><svg class="ax-icon"><use href="/ui/icons.svg#triangle-alert"/></svg><span><b>La patente del documento no es la del móvil.</b><br>El documento dice AC987ZX y el móvil elegido es AB123CD.</span></div>
+        <div class="ax-alert ax-alert-danger"><svg class="ax-icon"><use href="/ui/icons.svg#circle-alert"/></svg><span>No se puede finalizar: falta cobrar $ 60.000.</span></div>
+      </div>
+      <div class="grid" style="align-content:start">
+        <div class="ax-toast ax-toast-ok"><svg class="ax-icon ax-icon-lg"><use href="/ui/icons.svg#circle-check"/></svg><span><b>Remito finalizado correctamente</b><small>Se creó y quedó guardado.</small></span></div>
+        <div class="ax-toast ax-toast-danger"><svg class="ax-icon ax-icon-lg"><use href="/ui/icons.svg#circle-x"/></svg><span><b>No se pudo guardar</b><small>Revisá la conexión y probá de nuevo.</small></span></div>
+        <div class="ax-menu" role="menu" style="width:240px">
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#eye"/></svg>Ver servicio</button>
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#pencil"/></svg>Editar</button>
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#hand-coins"/></svg>Registrar cobro</button>
+          <button role="menuitem"><svg class="ax-icon"><use href="/ui/icons.svg#map-pin"/></svg>Arribado</button>
+          <hr>
+          <button role="menuitem" class="ax-menu-danger"><svg class="ax-icon"><use href="/ui/icons.svg#circle-x"/></svg>Anular</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modal">
+    <h2>Modal y panel lateral</h2>
+    <p>El modal sirve para tareas cortas, con un solo botón principal. El panel lateral sirve para ver un registro sin perder la lista. En el celular, el modal sube desde abajo.</p>
+    <div class="grid g2">
+      <div class="stage">
+        <div class="ax-backdrop">
+          <div class="ax-modal" role="dialog" aria-labelledby="m-t">
+            <header><div><h2 id="m-t">Registrar cobro</h2><p>PART-00012 · María González</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+            <div class="ax-modal-body">
+              <div class="grid g3"><div><span class="ax-label">Presupuesto</span><div class="ax-num"><b>$ 90.000</b></div></div><div><span class="ax-label">Pagado</span><div class="ax-num"><b>$ 30.000</b></div></div><div><span class="ax-label">Saldo</span><div class="ax-num"><b style="color:var(--ax-warn)">$ 60.000</b></div></div></div>
+              <label class="ax-field"><span>Monto</span><input class="ax-input ax-num" value="60.000"></label>
+            </div>
+            <footer><button class="ax-btn ax-btn-ghost">Cancelar</button><button class="ax-btn ax-btn-primary">Registrar cobro</button></footer>
+          </div>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="ax-drawer" style="width:min(340px,100%)">
+          <header><div><h2>M12</h2><p>AB123CD · Iveco Daily · 2019</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+          <div class="ax-modal-body">
+            <div><span class="ax-label">Estado</span><div><span class="ax-status ax-status-info">En servicio · PART-00012</span></div></div>
+            <div><span class="ax-label">Chofer</span><div>Juan Pérez · desde las 07:45</div></div>
+            <div><span class="ax-label">Km actuales</span><div class="ax-num">184.230 km</div></div>
+          </div>
+          <footer><button class="ax-btn ax-btn-primary">Abrir detalle</button></footer>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="comportamiento">
+    <h2>Comportamiento y movimiento</h2>
+    <p>El movimiento es corto y sirve para una sola cosa: mostrar de dónde viene o a dónde va algo. Nada rebota ni gira por adorno, y nada tarda más de un cuarto de segundo. Si en el teléfono o la computadora está activado "reducir movimiento", todo pasa a ser instantáneo.</p>
+    <div class="ax-table-wrap">
+      <table class="ax-table">
+        <thead><tr><th>Token</th><th>Duración</th><th>Curva</th><th>Para qué</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><span class="ax-code">--ax-dur-fast</span></td><td class="ax-num">120 ms</td><td>Estándar</td><td>Hover, apretar un botón, cambio de color, interruptor</td><td class="ax-r"><span class="mv-demo" style="--d:var(--ax-dur-fast)"></span></td></tr>
+          <tr><td><span class="ax-code">--ax-dur</span></td><td class="ax-num">180 ms</td><td>Estándar</td><td>Menús, avisos, pestañas, abrir y cerrar bloques; toda salida</td><td class="ax-r"><span class="mv-demo" style="--d:var(--ax-dur)"></span></td></tr>
+          <tr><td><span class="ax-code">--ax-dur-slow</span></td><td class="ax-num">260 ms</td><td>Entrada (frena)</td><td>Modal, panel lateral, hoja desde abajo en el celular</td><td class="ax-r"><span class="mv-demo" style="--d:var(--ax-dur-slow)"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:8px" class="ax-muted">Pasá el mouse por la fila para ver cada duración. Lo que entra frena al llegar, y lo que se va acelera y tarda menos que lo que entra.</p>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Botón que guarda</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Mientras guarda, el botón muestra "Guardando…" y no se puede apretar de nuevo. Si sale bien, muestra un tilde por un segundo. Si falla, vuelve a como estaba y aparece el error.</p>
+        <div class="row">
+          <button class="ax-btn ax-btn-primary" id="d-save"><svg class="ax-icon"><use href="/ui/icons.svg#check"/></svg>Guardar</button>
+          <button class="ax-btn" id="d-fail">Guardar (falla)</button>
+          <span data-ax-tip="Primero registrá el cobro del saldo ($ 60.000)." tabindex="0"><button class="ax-btn" disabled>Finalizar</button></span>
+        </div>
+        <p class="ax-field-help" style="margin:10px 0 0">Si un botón no se puede usar, se muestra desactivado y explica por qué. No se esconde.</p>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Avisos flotantes</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Abajo a la derecha, o abajo en el celular, con tres como máximo a la vez. Los de éxito se van solos a los 4 segundos, y si pasás el mouse encima el tiempo se frena. Los de error quedan hasta que los cierres.</p>
+        <div class="row">
+          <button class="ax-btn" id="d-toast-ok">Éxito</button>
+          <button class="ax-btn" id="d-toast-err">Error</button>
+          <button class="ax-btn" id="d-toast-undo">Con "Deshacer"</button>
+        </div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Modal, panel y menú</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Al abrirse, el foco va al primer campo. Esc cierra, y tocar el fondo también, salvo en formularios a medio completar. Al cerrar, el foco vuelve al botón que lo abrió. En el menú ⋯ se puede navegar con las flechas.</p>
+        <div class="row">
+          <button class="ax-btn" id="d-modal">Abrir modal</button>
+          <button class="ax-btn" id="d-drawer">Abrir panel lateral</button>
+          <button class="ax-btn ax-btn-icon" id="d-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Más acciones"><svg class="ax-icon"><use href="/ui/icons.svg#ellipsis"/></svg></button>
+        </div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Carga</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Si la respuesta tarda menos de 300 ms, no se muestra nada, para que no parpadee. Si tarda más, aparece un esqueleto con la forma del contenido, y cuando llega, el contenido aparece suave. No se usan spinners de página completa.</p>
+        <div class="row" style="margin-bottom:10px"><button class="ax-btn ax-btn-sm" id="d-load-fast">Rápida (150 ms)</button><button class="ax-btn ax-btn-sm" id="d-load-slow">Lenta (1,5 s)</button></div>
+        <div id="d-load-box" class="grid" style="min-height:62px"><span class="ax-muted">Tocá una de las dos.</span></div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Algo cambió</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Cuando se guarda algo o llega un dato nuevo, esa fila se marca en ámbar y se apaga en un segundo y medio. Así se ve qué cambió sin buscarlo.</p>
+        <div class="ax-table-wrap"><table class="ax-table"><tbody>
+          <tr><td>PART-00012</td><td><span class="ax-status ax-status-info">Asignado</span></td></tr>
+          <tr id="d-flash-row"><td>89909</td><td id="d-flash-state"><span class="ax-status ax-status-info">Asignado</span></td></tr>
+        </tbody></table></div>
+        <button class="ax-btn ax-btn-sm" id="d-flash" style="margin-top:10px">Simular: llegó el arribo</button>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Pestañas y bloques</h3></div>
+        <div class="ax-tabs" role="tablist" id="d-tabs">
+          <button class="ax-tab" role="tab" aria-selected="true">Mantenimiento</button>
+          <button class="ax-tab" role="tab" aria-selected="false">Documentación</button>
+          <button class="ax-tab" role="tab" aria-selected="false">Combustible</button>
+        </div>
+        <p class="ax-muted" style="margin:10px 0">La raya se desliza hasta la pestaña elegida, y con las flechas del teclado se cambia de pestaña.</p>
+        <button class="ax-btn ax-btn-ghost ax-btn-sm" data-ax-collapse="#d-col" aria-expanded="false">Ver últimos services <svg class="ax-icon ax-icon-sm ax-chevron"><use href="/ui/icons.svg#chevron-down"/></svg></button>
+        <div class="ax-collapse" id="d-col"><div><div class="grid" style="padding-top:8px">
+          <div class="row" style="justify-content:space-between"><span>10/08/26 · Service 10.000</span><span class="ax-num">$ 185.000</span></div>
+          <div class="row" style="justify-content:space-between"><span>02/03/26 · Cambio de aceite</span><span class="ax-num">$ 92.000</span></div>
+        </div></div></div>
+      </div>
+    </div>
+    <div class="ax-offline" style="margin-top:16px;border-radius:var(--ax-radius)"><svg class="ax-icon"><use href="/ui/icons.svg#wifi-off"/></svg>Sin conexión. Lo que cargues se guarda en el teléfono y se envía cuando vuelva la señal.</div>
+  </section>
+
+  <section id="interaccion">
+    <h2>Interacción</h2>
+    <p>Piezas con un poco más de vida, para los lugares donde ayudan: el celular del chofer, los filtros y lo que se envía en segundo plano. Se tocan y responden al instante; el rebote se usa sólo en el interruptor y en el tilde de "listo".</p>
+    <div class="grid g2">
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Interruptor</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Al apretarlo, la perilla se estira hacia donde va. Se puede tocar o arrastrar con el dedo, y queda del lado donde se suelta.</p>
+        <div class="grid" style="gap:10px">
+          <label class="ax-switch"><input type="checkbox" checked id="i-sw1"> Pedir firma del cliente</label>
+          <label class="ax-switch"><input type="checkbox" id="i-sw2"> Avisar por WhatsApp al finalizar</label>
+          <span class="ax-field-help" id="i-sw-out">Cambiá uno para ver el aviso.</span>
+        </div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Selector múltiple</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Para filtros donde se eligen varias cosas. El menú queda abierto mientras elegís, y lo elegido queda a la vista como etiquetas que se quitan con la ×.</p>
+        <label class="ax-field"><span>Estado</span><div id="i-multi"></div></label>
+        <p class="ax-field-help" id="i-multi-out" style="margin:8px 0 0"></p>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Marca de estado</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Una sola marca para "en curso", "listo" y "error". Cuando se sabe el avance (una foto que sube), el arco lo muestra; si no, gira.</p>
+        <div class="row" style="gap:18px">
+          <span class="row" style="gap:6px"><i id="i-m1"></i>En curso</span>
+          <span class="row" style="gap:6px"><i id="i-m2"></i><span class="ax-num" id="i-m2-t">0 %</span></span>
+          <span class="row" style="gap:6px"><i id="i-m3"></i>Listo</span>
+          <span class="row" style="gap:6px"><i id="i-m4"></i>Error</span>
+        </div>
+        <button class="ax-btn ax-btn-sm" id="i-m-run" style="margin-top:12px">Simular subida de foto</button>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Tareas en segundo plano</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Lo que se envía mientras seguís trabajando: un remito que se sube, un ticket que se lee, la cola sin conexión. Si tarda, muestra el tiempo; si falla, queda con "Reintentar" hasta que salga.</p>
+        <div class="row" style="margin-bottom:10px">
+          <button class="ax-btn ax-btn-sm" id="i-t-ok">Enviar remito</button>
+          <button class="ax-btn ax-btn-sm" id="i-t-err">Enviar (falla la 1.ª vez)</button>
+        </div>
+        <div class="ax-tasks" id="i-tasks"></div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Deslizar la fila (celular)</h3></div>
+        <p class="ax-muted" style="margin:0 0 12px">Un atajo para la acción más común de una lista. Si pasás la mitad, se hace al soltar; si no, vuelve. La misma acción siempre está también en el menú ⋯, porque deslizar no se descubre solo y con el teclado no se puede.</p>
+        <div class="grid" style="gap:8px" id="i-swipes">
+          <div class="i-sw-row"><div class="row" style="justify-content:space-between;padding:12px 14px"><span><b>89909</b> · Asistencia mecánica<br><small class="ax-muted">Ruta 2 km 48 · 07:45</small></span><span class="ax-status ax-status-info">Asignado</span></div></div>
+          <div class="i-sw-row"><div class="row" style="justify-content:space-between;padding:12px 14px"><span><b>PART-00012</b> · Traslado<br><small class="ax-muted">Av. Mitre 1200 · 09:10</small></span><span class="ax-status ax-status-warn">Arribado</span></div></div>
+        </div>
+        <p class="ax-field-help" style="margin:8px 0 0">A la derecha: marcar arribo. A la izquierda: llamar al cliente. También funciona arrastrando con el mouse.</p>
+      </div>
+      <div class="ax-card">
+        <div class="ax-card-head"><h3>Lo que no usamos</h3></div>
+        <p class="ax-muted" style="margin:0">La barra tipo "dock" que agranda íconos y el menú de tarjetas que se despliega quedan afuera: la app ya tiene la barra lateral, y agrandar íconos al pasar el mouse no sirve en el celular ni ayuda a encontrar nada.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="reglas-uso">
+    <h2>Reglas de uso</h2>
+    <p>Cómo responde la app a lo que hace la persona. Valen para todas las pantallas.</p>
+    <div class="ax-table-wrap">
+      <table class="ax-table ax-table-stack">
+        <thead><tr><th>Tema</th><th>Regla</th></tr></thead>
+        <tbody>
+          <tr><td data-label=""><b>Tiempos de respuesta</b></td><td data-label="Regla">Cada toque tiene respuesta en menos de 0,1 s (hover, apretar, "Guardando…"). Si la acción tarda más de 1 s, se muestra un esqueleto o el avance. Si tarda más de 10 s, se explica qué está pasando y se ofrece cancelar.</td></tr>
+          <tr><td data-label=""><b>Confirmar</b></td><td data-label="Regla">Solo lo que no se puede deshacer, como anular, finalizar o cerrar un período, se confirma en un modal que dice qué va a pasar, con el botón que nombra la acción ("Anular servicio", no "Aceptar"). Lo que se puede deshacer no se confirma: se hace y aparece un aviso con "Deshacer".</td></tr>
+          <tr><td data-label=""><b>Errores</b></td><td data-label="Regla">Los errores de un campo se muestran debajo del campo, al salir de él y al guardar. Los errores del servidor van en un aviso que no se va solo y dice qué hacer. No se muestran códigos (400, RPC) ni textos en inglés.</td></tr>
+          <tr><td data-label=""><b>Botones</b></td><td data-label="Regla">Hay un solo botón principal por pantalla o modal, a la derecha. Si no se puede usar, se desactiva y explica por qué; no se esconde. Mientras guarda, no se puede volver a apretar.</td></tr>
+          <tr><td data-label=""><b>Teclado</b></td><td data-label="Regla">Esc cierra modales y menús. Enter guarda en los formularios cortos. Tab recorre la pantalla en orden, y el foco siempre se ve con el anillo ámbar. Al cerrar un modal, el foco vuelve a donde estaba.</td></tr>
+          <tr><td data-label=""><b>Celular</b></td><td data-label="Regla">Todo lo que se toca mide al menos 44 px. Los modales suben desde abajo. Nada depende del hover: la ayuda también aparece con el foco o al tocar. Las tablas pasan a ser tarjetas. Los campos usan letra de 16 px.</td></tr>
+          <tr><td data-label=""><b>Sin conexión</b></td><td data-label="Regla">Arriba aparece una barra fija. Lo cargado se guarda en el teléfono y se envía cuando vuelve la señal. Hasta que se envía, figura como "Pendiente de enviar".</td></tr>
+          <tr><td data-label=""><b>Vacío</b></td><td data-label="Regla">Cuando no hay datos, se explica por qué y qué hacer ("No hay servicios pendientes. Cuando entre uno nuevo aparece acá."). Nunca queda una tabla vacía sin explicación.</td></tr>
+          <tr><td data-label=""><b>Formatos</b></td><td data-label="Regla">Plata: $ 1.284.500, con punto de miles y sin centavos salvo en facturas. Fechas: 28/09/26. Horas en formato de 24 h: 07:45. Km: 184.230 km. Patentes en mayúsculas y sin espacios.</td></tr>
+          <tr><td data-label=""><b>Textos</b></td><td data-label="Regla">Los botones empiezan con un verbo ("Registrar cobro"). Solo la primera letra va en mayúscula. Se tutea con el voseo ("Completá", "Elegí"). Nada de "Error", "OK" ni "Submit".</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- Demos reales del comportamiento (usan ui/ax.js) -->
+<div class="ax-backdrop" id="d-modal-el" hidden>
+  <div class="ax-modal" role="dialog" aria-modal="true" aria-labelledby="dm-t">
+    <header><div><h2 id="dm-t">Anular servicio</h2><p>PART-00012 · María González</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" data-ax-close aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+    <div class="ax-modal-body">
+      <div class="ax-alert ax-alert-danger"><svg class="ax-icon"><use href="/ui/icons.svg#triangle-alert"/></svg><span>El servicio se anula y se libera el móvil. Esto no se puede deshacer.</span></div>
+      <label class="ax-field"><span>Motivo</span><select class="ax-select"><option>Cancelado por el cliente</option><option>Cancelado por demora</option><option>Otro</option></select></label>
+    </div>
+    <footer><button class="ax-btn ax-btn-ghost" data-ax-close>Volver</button><button class="ax-btn ax-btn-danger" id="d-modal-ok">Anular servicio</button></footer>
+  </div>
+</div>
+<aside class="ax-drawer" id="d-drawer-el" hidden aria-labelledby="dd-t">
+  <header><div><h2 id="dd-t">M12</h2><p>AB123CD · Iveco Daily · 2019</p></div><button class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm" data-ax-close aria-label="Cerrar"><svg class="ax-icon"><use href="/ui/icons.svg#x"/></svg></button></header>
+  <div class="ax-modal-body">
+    <div><span class="ax-label">Estado</span><div><span class="ax-status ax-status-info">En servicio · PART-00012</span></div></div>
+    <div><span class="ax-label">Chofer</span><div>Juan Pérez · desde las 07:45</div></div>
+    <div><span class="ax-label">Km actuales</span><div class="ax-num">184.230 km</div></div>
+  </div>
+  <footer><button class="ax-btn" data-ax-close>Cerrar</button><button class="ax-btn ax-btn-primary">Abrir detalle</button></footer>
+</aside>
+<div class="ax-menu" id="d-menu-el" hidden>
+  <button><svg class="ax-icon"><use href="/ui/icons.svg#eye"/></svg>Ver servicio</button>
+  <button><svg class="ax-icon"><use href="/ui/icons.svg#pencil"/></svg>Editar</button>
+  <button><svg class="ax-icon"><use href="/ui/icons.svg#hand-coins"/></svg>Registrar cobro</button>
+  <hr>
+  <button class="ax-menu-danger" id="d-menu-annul"><svg class="ax-icon"><use href="/ui/icons.svg#circle-x"/></svg>Anular</button>
+</div>
+<script src="/ui/ax.js"></script>
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var wait = function (ms, fail) { return new Promise(function (ok, ko) { setTimeout(function () { fail ? ko(new Error('x')) : ok(); }, ms); }); };
+    $('d-save').onclick = function () { AxUI.busy(this, wait(1200)).then(function () { AxUI.toast({ title: 'Servicio guardado', text: 'Los cambios quedaron guardados.' }); }); };
+    $('d-fail').onclick = function () { AxUI.busy(this, wait(900, true)).catch(function () { AxUI.toast({ tone: 'danger', title: 'No se pudo guardar', text: 'Revisá la conexión y probá de nuevo.' }); }); };
+    $('d-toast-ok').onclick = function () { AxUI.toast({ title: 'Remito finalizado correctamente', text: 'Se creó y quedó guardado.' }); };
+    $('d-toast-err').onclick = function () { AxUI.toast({ tone: 'danger', title: 'No se puede finalizar', text: 'Falta cobrar $ 60.000.' }); };
+    $('d-toast-undo').onclick = function () { AxUI.toast({ tone: 'info', title: 'Chofer quitado del servicio', action: { label: 'Deshacer', onClick: function () { AxUI.toast({ title: 'Se volvió a asignar' }); } } }); };
+    $('d-modal').onclick = function () { AxUI.openModal($('d-modal-el')); };
+    $('d-modal-ok').onclick = function () { var b = this; AxUI.busy(b, wait(700), { loading: 'Anulando…', done: 'Anulado' }).then(function () { setTimeout(function () { AxUI.closeModal($('d-modal-el')); }, 500); }); };
+    $('d-drawer').onclick = function () { AxUI.openModal($('d-drawer-el')); };
+    $('d-menu').onclick = function () { AxUI.menu(this, $('d-menu-el')); };
+    $('d-menu-annul').onclick = function () { AxUI.openModal($('d-modal-el')); };
+    var skel = '<div class="grid" style="gap:8px"><div class="ax-skeleton" style="width:70%"></div><div class="ax-skeleton" style="width:45%"></div><div class="ax-skeleton" style="width:85%"></div></div>';
+    var listo = '<div class="grid" style="gap:4px"><b>M12 · Service Aceite y filtros TIPO 1</b><span class="ax-muted">Faltan 4.200 km · en unos 36 días</span></div>';
+    $('d-load-fast').onclick = function () { AxUI.loading($('d-load-box'), wait(150).then(function () { return listo; }), skel); };
+    $('d-load-slow').onclick = function () { AxUI.loading($('d-load-box'), wait(1500).then(function () { return listo; }), skel); };
+    $('d-flash').onclick = function () { $('d-flash-state').innerHTML = '<span class="ax-status ax-status-warn">Arribado</span>'; AxUI.flash($('d-flash-row')); };
+    AxUI.tabs($('d-tabs'));
+    // Interacción
+    ["i-sw1", "i-sw2"].forEach(function (id) { $(id).addEventListener('change', function () { $('i-sw-out').textContent = this.parentNode.textContent.trim() + ': ' + (this.checked ? 'sí' : 'no'); }); });
+    var ms = AxUI.multi($('i-multi'), { placeholder: 'Todos los estados', value: ["asignado", "arribado"],
+      options: [{ value: 'pendiente', label: 'Pendiente' }, { value: 'asignado', label: 'Asignado' }, { value: 'arribado', label: 'Arribado' }, { value: 'finalizado', label: 'Finalizado' }, { value: 'anulado', label: 'Anulado' }],
+      onChange: function (v) { $('i-multi-out').textContent = v.length ? 'Filtrando ' + v.length + ' estado' + (v.length > 1 ? 's' : '') + '.' : 'Sin filtro de estado.'; } });
+    $('i-multi-out').textContent = 'Filtrando ' + ms.value().length + ' estados.';
+    AxUI.mark($('i-m1'), 'running'); AxUI.mark($('i-m2'), 'running', 0); AxUI.mark($('i-m3'), 'done'); AxUI.mark($('i-m4'), 'error');
+    $('i-m-run').onclick = function () {
+      var p = 0; AxUI.mark($('i-m2'), 'running', 0); $('i-m2-t').textContent = '0 %';
+      var t = setInterval(function () { p = Math.min(1, p + .12 + Math.random() * .1); AxUI.mark($('i-m2'), 'running', p); $('i-m2-t').textContent = Math.round(p * 100) + ' %';
+        if (p >= 1) { clearInterval(t); setTimeout(function () { AxUI.mark($('i-m2'), 'done'); $('i-m2-t').textContent = 'Subida'; }, 250); } }, 300);
+    };
+    $('i-t-ok').onclick = function () { AxUI.task($('i-tasks'), { label: 'Enviando remito 89909', done: 'Remito 89909 enviado', run: function () { return wait(1800); } }); };
+    var intentos = 0;
+    $('i-t-err').onclick = function () { intentos = 0; AxUI.task($('i-tasks'), { label: 'Leyendo ticket de combustible', done: 'Ticket leído: 182 l', error: 'No se pudo leer el ticket', run: function () { return wait(1200, intentos++ === 0); } }); };
+    document.querySelectorAll('.i-sw-row').forEach(function (r) {
+      AxUI.swipe(r, { start: { label: 'Arribé', icon: 'map-pin', onAction: function (row) { row.querySelector('.ax-status').outerHTML = '<span class="ax-status ax-status-warn">Arribado</span>'; AxUI.flash(row.querySelector('.ax-swipe-body')); } },
+        end: { label: 'Llamar', icon: 'phone', tone: 'info', onAction: function () { AxUI.toast({ tone: 'info', title: 'Llamando al cliente…' }); } } });
+    });
+  })();
+</script>
+<script>
+  // Muestras de color leídas de los tokens (una sola fuente).
+  var css = getComputedStyle(document.documentElement);
+  function swatches(id, list) {
+    document.getElementById(id).innerHTML = list.map(function (x) {
+      var v = css.getPropertyValue(x[0]).trim();
+      return '<div class="sw"><i style="background:' + v + '"></i><b>' + x[1] + '</b><code>' + x[0] + ' · ' + v + '</code></div>';
+    }).join('');
+  }
+  swatches('sw-surf', [['--ax-bg', 'Fondo'], ['--ax-surface', 'Barra y encabezados'], ['--ax-surface-2', 'Tarjetas y tablas'], ['--ax-surface-3', 'Hover y selección'], ['--ax-border', 'Borde'], ['--ax-border-strong', 'Borde fuerte']]);
+  swatches('sw-text', [['--ax-text', 'Texto'], ['--ax-text-2', 'Secundario'], ['--ax-text-3', 'Etiquetas y ayudas']]);
+  swatches('sw-state', [['--ax-accent', 'Acción principal y atención'], ['--ax-danger', 'Vencido, mal, error'], ['--ax-ok', 'Confirmado'], ['--ax-info', 'En servicio, enlaces']]);
+  // Íconos del sprite, con el uso de cada uno en AuxiliOS.
+  var ICONOS = [['truck', 'Móvil'], ['car', 'Vehículo del cliente'], ['file-text', 'Remito / documento'], ['receipt', 'Factura'], ['hand-coins', 'Cobro'], ['wallet', 'Rendición'], ['banknote', 'Efectivo'], ['credit-card', 'Tarjeta'],
+    ['fuel', 'Combustible'], ['wrench', 'Service'], ['disc', 'Neumáticos'], ['gauge', 'Km'], ['calendar', 'Fecha'], ['clock', 'Hora'], ['user', 'Chofer'], ['users', 'Choferes'],
+    ['map-pin', 'Arribado / origen'], ['route', 'Recorrido'], ['phone', 'Teléfono'], ['building-2', 'Prestadora'], ['signature', 'Firma'], ['camera', 'Foto'], ['clipboard-check', 'Control'], ['shield-check', 'Seguro'],
+    ['layout-dashboard', 'Panel'], ['chart-column', 'Tendencia'], ['history', 'Historial'], ['search', 'Buscar'], ['sliders-horizontal', 'Filtros'], ['plus', 'Nuevo'], ['pencil', 'Editar'], ['trash-2', 'Anular'],
+    ['ellipsis', 'Más acciones'], ['download', 'Exportar'], ['upload', 'Subir'], ['eye', 'Ver'], ['refresh-cw', 'Actualizar'], ['triangle-alert', 'Atención'], ['circle-check', 'Listo'], ['wifi-off', 'Sin conexión']];
+  document.getElementById('icons').innerHTML = ICONOS.map(function (x) {
+    return '<div><svg class="ax-icon"><use href="/ui/icons.svg#' + x[0] + '"/></svg>' + x[1] + '<span class="ax-code" style="color:var(--ax-text-3)">' + x[0] + '</span></div>';
+  }).join('');
+</script>
+</body>
+</html>

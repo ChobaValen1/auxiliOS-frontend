@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'encuesta-desglose-v160-20260926';
+window.AUXILIOS_BUILD_ID = 'particulares-v206-20260930';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -183,10 +183,15 @@ async function loadCriticalAuxiliosModules() {
   // El botón Nuevo servicio no se habilita hasta que el modal definitivo y sus dependencias estén listos.
   await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
   await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
+  await loadAuxiliosModule('auxilios-toll-route-detection-v1', '/toll-route-detection-v1.js');
+  await loadAuxiliosModule('auxilios-finish-time-v1', '/finish-time-v1.js');
   await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
   await loadAuxiliosModule('auxilios-remito-mobile-flow-v3', '/remito-mobile-flow-v3.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
   await loadAuxiliosModule('auxilios-remito-addons-v2', '/remito-addons-v2.js');
+  // Remito de un particular: cobro del saldo en el paso 2 (envuelve los adicionales).
+  loadAuxiliosStyle('auxilios-private-collection-v1-css', '/private-collection-v1.css');
+  await loadAuxiliosModule('auxilios-private-collection-v1', '/private-collection-v1.js');
   await loadAuxiliosModule('auxilios-operator-remito-review-v2', '/operator-remito-review-v2.js');
 
   await loadAuxiliosModule('auxilios-operator-billing-export', '/operator-billing-export.js');
@@ -194,6 +199,15 @@ async function loadCriticalAuxiliosModules() {
 
   // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
   await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
+  // Nuevo servicio: primero Particular | Prestadora (envuelve abrirNuevoServicio).
+  loadAuxiliosStyle('auxilios-private-service-v1-css', '/private-service-v1.css');
+  await loadAuxiliosModule('auxilios-private-service-v1', '/private-service-v1.js');
+  // Registrar cobro de un particular desde el menú ⋯ del servicio.
+  loadAuxiliosStyle('auxilios-private-payments-v1-css', '/private-payments-v1.css');
+  await loadAuxiliosModule('auxilios-private-payments-v1', '/private-payments-v1.js');
+  // Ficha propia de un servicio particular (en lugar del workspace de prestadora).
+  loadAuxiliosStyle('auxilios-private-view-v1-css', '/private-view-v1.css');
+  await loadAuxiliosModule('auxilios-private-view-v1', '/private-view-v1.js');
   window.AuxiliosConfigurationCenter?.configure?.();
 }
 
@@ -206,6 +220,8 @@ function loadGeographicBasesInBackground() {
 async function loadSecondaryAuxiliosModules() {
   loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
 
+  loadAuxiliosStyle('auxilios-fleet-control-v1-css', '/fleet-control-v1.css');
+  loadAuxiliosStyle('auxilios-fleet-truck-detail-v1-css', '/fleet-truck-detail-v1.css');
   await Promise.all([
     loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js'),
     loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js'),
@@ -213,7 +229,11 @@ async function loadSecondaryAuxiliosModules() {
     loadAuxiliosModule('auxilios-company-tariffs-v4', '/company-tariffs-v4.js'),
     loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js'),
     loadAuxiliosModule('auxilios-company-billing-parameters-v4', '/company-billing-parameters-v4.js'),
-    loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js'),
+    // Control del camión: flota en una tabla (reemplaza las tarjetas de a una).
+    loadAuxiliosModule('auxilios-fleet-control-v1', '/fleet-control-v1.js'),
+    loadAuxiliosModule('auxilios-fleet-truck-detail-v1', '/fleet-truck-detail-v1.js'),
+    loadAuxiliosModule('auxilios-fleet-type-plans-v1', '/fleet-type-plans-v1.js'),
+    loadAuxiliosModule('auxilios-truck-doc-reader-v1', '/truck-doc-reader-v1.js'),
     loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js'),
     loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js')
   ]);

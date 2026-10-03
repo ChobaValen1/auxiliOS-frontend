@@ -76,9 +76,9 @@
 
   async function loadCompanies(instance) {
     if (instance.mode !== 'standalone' || !canRead()) return;
-    const result = await _db.from('companies').select('company_id,trade_name,legal_name,status').eq('status', 'active').order('trade_name');
+    const result = await _db.from('companies').select('company_id,trade_name,legal_name,status,client_kind').eq('status', 'active').order('trade_name');
     if (result.error) throw result.error;
-    instance.companies = result.data || [];
+    instance.companies = (result.data || []).filter(c => !(c && (c.client_kind === 'particular' || /^particulares$/i.test(String(c.trade_name || c.legal_name || '').trim()))));   // "Particulares" no es una prestadora
     const select = instance.root.querySelector('[data-ct4-company]'); if (!select) return;
     select.innerHTML = '<option value="">Seleccionar prestadora</option>' + instance.companies.map(c => `<option value="${esc(c.company_id)}">${esc(c.trade_name || c.legal_name || 'Prestadora')}</option>`).join('');
     select.value = instance.companyId || '';

@@ -21,9 +21,8 @@ test('el puente del chofer usa la cola versionada y distingue completar de edita
   assert.doesNotMatch(js,/link_operator_service_remito/);
   assert.match(js,/guardarRemitoCompleto/);
   assert.match(js,/firmaDataURL/);
-  assert.match(js,/Confirmar firma y ARRIBADO/);
-  assert.match(js,/OperatorServiceLifecycleV2\?\.confirmAction/);
-  assert.match(js,/window\.confirm/);
+  assert.doesNotMatch(js,/Confirmar firma y ARRIBADO/);
+  assert.doesNotMatch(js,/confirmSignedArrival\(/);
   assert.doesNotMatch(js,/advance_operator_service|avanzarServicioAsignado|NEXT\s*=|en_route|loaded|at_destination/);
 });
 
@@ -44,7 +43,7 @@ test('Historial reutiliza la lista canónica de remitos y no duplica otra pantal
   assert.match(js,/window\.cargarRemitos/);
   assert.match(js,/panel\.classList\.toggle\('p3-history-only',history\)/);
   assert.match(js,/if\(history\)\{list\.innerHTML='';return\}/);
-  assert.match(js,/No tenés servicios activos asignados/);
+  assert.match(js,/No tenés servicios asignados/);
   assert.doesNotMatch(js,/Finalizar servicio|No se pudo completar|abrirModalIncidente/);
 });
 
@@ -52,7 +51,7 @@ test('los servicios asignados del Chofer viven dentro de Remitos y no en el Pane
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   assert.match(js,/document\.getElementById\('screen-remitos'\)/);
   assert.match(js,/data-location="remitos"/);
-  assert.match(js,/＋ Sin asignación/);
+  assert.match(js,/\$\{ico\('plus'\)\}Sin asignación/);
   assert.doesNotMatch(js,/document\.getElementById\('screen-dashboard'\)/);
   assert.match(js,/screen\.classList\.toggle\('p3-hide-remitos-archive',!history\)/);
   assert.match(css,/#btn-nuevo-remito-desktop,.p3-driver-remitos #btn-nuevo-remito-fab/);
@@ -98,7 +97,10 @@ test('el módulo del Chofer se presenta como Servicios con una sola cabecera min
 test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el preview móvil',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   const card=js.split('function activeCard(s)')[1].split('function findService')[0];
-  for(const expected of ['Fecha','N° Prestación','Estado','serviceFacts'])assert.match(card,new RegExp(expected));
+  // Sistema visual: N° y empresa arriba, estado a la derecha, datos y un pie con lo que
+  // pasa al tocarla. La fecha no va: en la lista de activos siempre es hoy.
+  for(const expected of ['p3-order-value','p3-card-company','p3-status','serviceFacts','p3-card-foot','cardAction'])assert.match(card,new RegExp(expected));
+  assert.doesNotMatch(card.split('function activeAdHocCard')[0],/currentDate\(\)/);
   for(const expected of ['Socio','Vehículo','Origen','Destino','KM','Excedentes','Peajes','Borrador guardado'])assert.match(js,new RegExp(expected));
   for(const expected of ['service_order_number','company_name','customer_name','customer_phone','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters'])assert.match(js,new RegExp(expected));
   assert.match(card,/Sin N° prestación/);
@@ -119,7 +121,7 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   assert.match(card,/role="button" tabindex="0"/);
   assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
   assert.match(card,/abrirPreviewServicio\(this\.dataset\.serviceId\)/);
-  assert.match(card,/p3-bar-divider[^>]*aria-hidden="true">\|/);
+  assert.match(card,/\$\{ico\('chevron-right'\)\}<\/footer>/);
   assert.match(js,/Completar remito/);
   assert.match(js,/Marcar como activado/);
   assert.match(js,/mark_driver_operator_service_activated_v3/);
@@ -165,7 +167,8 @@ test('el borrador sin asignación muestra el código y ofrece completar o marcar
   const bridge=read('operator-service-bridge.js');
   const sql=read('supabase/migrations/20260916191500_driver_ad_hoc_draft_activated_v1.sql');
   const card=bridge.split('function activeAdHocCard(r)')[1].split('function closePreview')[0];
-  assert.match(card,/Código servicio/);
+  assert.match(card,/p3-order-value">\$\{esc\(order\)\}/);
+  assert.match(card,/Sin asignación · \$\{esc\(r\.fecha\|\|currentDate\(\)\)\}/);
   assert.match(card,/r\.nroSrv\|\|r\.nro/);
   assert.match(card,/abrirPreviewRemitoSinAsignacion/);
   assert.ok(card.indexOf('p3-facts')<card.lastIndexOf('p3-draft-state'));

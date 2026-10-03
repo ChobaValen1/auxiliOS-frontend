@@ -1,0 +1,171 @@
+/* AuxiliOS · Remito del chofer con el sistema visual (ui/tokens.css + ui/components.css)
+   Todos los pasos de "Completar remito": encabezado y avance, datos del socio,
+   peajes y excedentes (con su hoja para elegir), cobro del particular, evidencia,
+   conformidades y firma, y los botones de abajo. Cuelga de #remitos-nuevo y de
+   #rem-addon-picker para ganar sin depender del orden de carga. Sólo tokens.
+   En el teléfono: campos de 16 px (el navegador no hace zoom) y todo lo que se
+   toca mide 44 px o más. */
+
+#remitos-nuevo { font-family: var(--ax-font); color: var(--ax-text); }
+
+/* ── Encabezado y avance ───────────────────────────────────────────── */
+#remitos-nuevo .rem-wizard-header { align-items: center; gap: var(--ax-sp-2); }
+#remitos-nuevo .rem-wizard-back { display: inline-grid; place-items: center; width: var(--ax-h-lg); height: var(--ax-h-lg); border-radius: var(--ax-radius); color: var(--ax-text); }
+#remitos-nuevo .rem-wizard-back:hover { background: var(--ax-surface-3); }
+#remitos-nuevo .rem-wizard-back .ax-icon { width: 20px; height: 20px; }
+#remitos-nuevo .rem-wizard-title { color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); letter-spacing: 0; text-transform: none; }
+#remitos-nuevo .rem-wizard-counter { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#remitos-nuevo .rem-wizard-help { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font-weight: var(--ax-fw-bold); }
+#remitos-nuevo .rem-wizard-help:hover { background: var(--ax-surface-3); color: var(--ax-text); transform: none; }
+#remitos-nuevo .rem-progress { height: 4px; margin-bottom: var(--ax-sp-3); border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); }
+#remitos-nuevo .rem-progress-fill { border-radius: var(--ax-radius-pill); background: var(--ax-accent); transition: width var(--ax-dur-slow) var(--ax-ease); }
+#remitos-nuevo .rem-step-dots { gap: 6px; margin-bottom: var(--ax-sp-4); }
+#remitos-nuevo .rem-step-dot { width: 8px; height: 8px; background: var(--ax-border-strong); transition: width var(--ax-dur-slow) var(--ax-ease), background var(--ax-dur) var(--ax-ease); }
+#remitos-nuevo .rem-step-dot.done { background: var(--ax-accent); opacity: .55; }
+#remitos-nuevo .rem-step-dot.active { width: 24px; background: var(--ax-accent); }
+
+/* Servicio al que pertenece el remito (arriba de todo). */
+#remitos-nuevo .p3-remito-context { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#remitos-nuevo .p3-remito-context b { color: var(--ax-text); font-family: var(--ax-font-mono); font-weight: var(--ax-fw-medium); }
+
+/* El paso que entra: desde el lado hacia el que se avanza. */
+#remitos-nuevo .rem-step-panel.rmx-enter-next { animation: rmx-enter-next var(--ax-dur-slow) var(--ax-ease-out) both; }
+#remitos-nuevo .rem-step-panel.rmx-enter-prev { animation: rmx-enter-prev var(--ax-dur-slow) var(--ax-ease-out) both; }
+@keyframes rmx-enter-next { from { opacity: 0; transform: translateX(24px); } }
+@keyframes rmx-enter-prev { from { opacity: 0; transform: translateX(-24px); } }
+
+/* ── Tarjetas y títulos de paso ────────────────────────────────────── */
+#remitos-nuevo .rmv-card, #remitos-nuevo .rem-step-panel > .card, #remitos-nuevo .rem-addons-card, #remitos-nuevo .pcv-card { padding: var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#remitos-nuevo .rmv-step-head { margin-bottom: var(--ax-sp-4); }
+#remitos-nuevo .rmv-step-head > span, #remitos-nuevo .rem-addons-kicker { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#remitos-nuevo .rmv-step-head h2 { margin: 2px 0 0; color: var(--ax-text); font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#remitos-nuevo .rmv-step-head p, #remitos-nuevo .rem-addons-help, #remitos-nuevo .rmv-hint, #remitos-nuevo .form-hint { color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.45; }
+#remitos-nuevo .card-label { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+
+/* ── Campos ────────────────────────────────────────────────────────── */
+#remitos-nuevo .rmv-fields { gap: var(--ax-sp-4); }
+#remitos-nuevo .rmv-fields label > span, #remitos-nuevo .form-label, #remitos-nuevo .rmv-notes-label > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); letter-spacing: 0; text-transform: none; }
+#remitos-nuevo .rmv-fields label > span small, #remitos-nuevo .rmv-fields label > span em { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-style: normal; font-weight: var(--ax-fw-medium); text-transform: none; }
+#remitos-nuevo .form-input, #remitos-nuevo .rmv-input, #remitos-nuevo textarea { box-sizing: border-box; min-height: 48px; padding: 10px 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: 16px; transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#remitos-nuevo textarea { min-height: 96px; line-height: 1.45; }
+#remitos-nuevo .form-input::placeholder, #remitos-nuevo .rmv-input::placeholder, #remitos-nuevo textarea::placeholder { color: var(--ax-text-3); }
+#remitos-nuevo .form-input:focus, #remitos-nuevo .rmv-input:focus, #remitos-nuevo textarea:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#remitos-nuevo .form-input:disabled, #remitos-nuevo .rmv-input:disabled, #remitos-nuevo .form-input[readonly] { border-color: var(--ax-border); background: var(--ax-surface); color: var(--ax-text-2); }
+/* Lo que falta: borde rojo y el texto debajo del campo. */
+#remitos-nuevo .rem-field-error { border-color: var(--ax-danger-strong) !important; box-shadow: none !important; }
+#remitos-nuevo .rem-error-msg { color: var(--ax-danger); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#remitos-nuevo .rem-error-msg.visible { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#remitos-nuevo .rmv-fields label.rmv-no-phone { min-height: var(--ax-h-lg); margin-top: -8px; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#remitos-nuevo .rmv-fields label.rmv-no-phone input { width: 20px; height: 20px; accent-color: var(--ax-accent); }
+#remitos-nuevo .rmv-map-suggestions { padding: var(--ax-sp-1); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#remitos-nuevo .rmv-map-status { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+
+/* ── Peajes y excedentes ───────────────────────────────────────────── */
+#remitos-nuevo .rem-addons-v2 { gap: var(--ax-sp-3); }
+#remitos-nuevo .rem-addons-title { margin-top: 2px; font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); }
+#remitos-nuevo .rem-toll-coverage-line { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#remitos-nuevo .rem-toll-coverage-line span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#remitos-nuevo .rem-toll-coverage-line strong { color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+/* "Seleccionar peajes / excedentes": botón secundario grande (no un bloque ámbar). */
+#remitos-nuevo .rem-addon-select { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--ax-h-lg); margin-bottom: var(--ax-sp-2); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-family: var(--ax-font); font-size: 15px; font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#remitos-nuevo .rem-addon-select::before { content: '+'; margin: 0; color: var(--ax-accent); font-size: 20px; font-weight: var(--ax-fw-regular); line-height: 1; }
+#remitos-nuevo .rem-addon-select:active { transform: scale(.98); background: var(--ax-surface-3); }
+#remitos-nuevo .rem-addon-select:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#remitos-nuevo .rem-addon-empty { padding: var(--ax-sp-3); border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#remitos-nuevo .rem-addon-summary-line { min-height: 40px; padding: 8px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); font-size: var(--ax-fs-md); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#remitos-nuevo .rem-addon-summary-line strong, #remitos-nuevo .rem-addon-summary-line b { font-variant-numeric: tabular-nums; }
+#remitos-nuevo .rem-addon-total { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#remitos-nuevo .rem-addon-total span { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#remitos-nuevo .rem-addon-total strong { color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+#remitos-nuevo .rem-addon-errors, #rem-addon-picker .rem-addon-errors { padding: 10px 12px; border: 1px solid rgba(226, 80, 74, .5); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-md); }
+
+/* Hoja para elegir peajes o excedentes (sube desde abajo). */
+#rem-addon-picker.rem-addon-picker { background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#rem-addon-picker .rem-picker-sheet { padding: var(--ax-sp-4); padding-bottom: calc(var(--ax-sp-4) + env(safe-area-inset-bottom)); border: 1px solid var(--ax-border-strong); border-bottom: 0; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); color: var(--ax-text); animation: ax-sheet-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#rem-addon-picker .rem-picker-head b { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#rem-addon-picker .rem-picker-head button { display: inline-grid; place-items: center; width: var(--ax-h-lg); height: var(--ax-h-lg); padding: 0; border-radius: var(--ax-radius); color: var(--ax-text-2); font-size: 24px; }
+#rem-addon-picker .rem-picker-list { gap: var(--ax-sp-2); }
+#rem-addon-picker .rem-picker-option { min-height: 52px; padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#rem-addon-picker .rem-picker-option:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#rem-addon-picker .rem-picker-option input { accent-color: var(--ax-accent); }
+#rem-addon-picker .rem-picker-option b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#rem-addon-picker .rem-picker-option small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#rem-addon-picker .rem-picker-option > strong { color: var(--ax-text); font-size: var(--ax-fs-md); font-variant-numeric: tabular-nums; }
+#rem-addon-picker .rem-picker-detail { padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#rem-addon-picker .rem-picker-detail-head b { font-size: var(--ax-fs-md); }
+#rem-addon-picker .rem-picker-detail-head small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#rem-addon-picker .rem-picker-fields label span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); letter-spacing: 0; text-transform: none; }
+#rem-addon-picker .rem-picker-fields input, #rem-addon-picker .rem-picker-fields select { min-height: 48px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: 16px; }
+#rem-addon-picker .rem-picker-fields input:focus, #rem-addon-picker .rem-picker-fields select:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#rem-addon-picker .rem-picker-actions button, #rem-addon-picker .rem-picker-confirm, #rem-addon-picker .rem-picker-secondary { min-height: var(--ax-h-lg); border-radius: var(--ax-radius); font-family: var(--ax-font); font-size: 15px; font-weight: var(--ax-fw-semibold); }
+#rem-addon-picker .rem-picker-confirm { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#rem-addon-picker .rem-picker-secondary { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text); }
+
+/* Cobro del particular (lo que cobró el chofer). */
+#remitos-nuevo .pcv-resumen > div { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#remitos-nuevo .pcv-resumen span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#remitos-nuevo .pcv-resumen b { font-variant-numeric: tabular-nums; }
+#remitos-nuevo .pcv-resumen .pcv-saldo b { color: var(--ax-text); }
+#remitos-nuevo .pcv-modo button, #remitos-nuevo .pcv-chips button { min-height: var(--ax-h-lg); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text-2); font-family: var(--ax-font); font-size: 15px; font-weight: var(--ax-fw-semibold); transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#remitos-nuevo .pcv-modo button:active, #remitos-nuevo .pcv-chips button:active { transform: scale(.98); }
+#remitos-nuevo .pcv-modo button[aria-pressed="true"], #remitos-nuevo .pcv-chips button[aria-pressed="true"] { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); }
+#remitos-nuevo .pcv-monto { min-height: 48px; border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#remitos-nuevo .pcv-monto:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#remitos-nuevo .pcv-linea > span, #remitos-nuevo .pcv-motivo span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#remitos-nuevo .pcv-link { color: var(--ax-text); text-decoration-color: var(--ax-text-3); text-underline-offset: 3px; }
+#remitos-nuevo .pcv-ok { color: var(--ax-ok); }
+
+/* ── Evidencia ─────────────────────────────────────────────────────── */
+#remitos-nuevo .rmv-evidence-empty { padding: var(--ax-sp-5) var(--ax-sp-4); border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#remitos-nuevo .rmv-add { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: var(--ax-h-lg); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-family: var(--ax-font); font-size: 15px; font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#remitos-nuevo .rmv-add .ax-icon { color: var(--ax-accent); }
+#remitos-nuevo .rmv-add:active { transform: scale(.98); background: var(--ax-surface-3); }
+#remitos-nuevo .rmv-sheet-backdrop { background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#remitos-nuevo .rmv-sheet > section { border: 1px solid var(--ax-border-strong); border-bottom: 0; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); animation: ax-sheet-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#remitos-nuevo .rmv-sheet > section h3 { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#remitos-nuevo .rmv-sheet > section > button[data-evidence] { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: 15px; font-weight: var(--ax-fw-medium); text-align: left; }
+#remitos-nuevo .rmv-sheet > section > button[data-evidence] .ax-icon { width: 20px; height: 20px; color: var(--ax-text-2); }
+#remitos-nuevo .rmv-sheet > section > button[data-evidence]:active { background: var(--ax-surface-3); }
+#remitos-nuevo .rmv-sheet header button { display: inline-grid; place-items: center; width: var(--ax-h-lg); height: var(--ax-h-lg); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+
+/* ── Conformidad y firma ───────────────────────────────────────────── */
+#remitos-nuevo .toggle-row { gap: var(--ax-sp-3); min-height: var(--ax-h-lg); padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#remitos-nuevo .toggle-row:hover { border-color: var(--ax-text-3); }
+#remitos-nuevo .toggle-row:has(.toggle.on) { border-color: rgba(245, 166, 35, .45); }
+#remitos-nuevo .toggle-title { color: var(--ax-text) !important; font-size: var(--ax-fs-md) !important; font-weight: var(--ax-fw-semibold); }
+#remitos-nuevo .toggle-desc { color: var(--ax-text-2); font-size: var(--ax-fs-sm) !important; line-height: 1.4; }
+/* El interruptor de la fila: mismo que .ax-switch, con el estirón al apretar. */
+#remitos-nuevo .toggle { position: relative; flex: 0 0 auto; width: 40px !important; height: 24px !important; border-radius: var(--ax-radius-pill) !important; background: var(--ax-border-strong) !important; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#remitos-nuevo .toggle.on { background: var(--ax-accent) !important; }
+#remitos-nuevo .toggle::after { top: 3px !important; left: 3px !important; width: 18px !important; height: 18px !important; border-radius: var(--ax-radius-pill) !important; background: var(--ax-text) !important; transform: none; transition: transform var(--ax-dur) var(--ax-ease-spring), width var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease) !important; }
+#remitos-nuevo .toggle.on::after { background: var(--ax-accent-fg) !important; transform: translateX(16px) !important; }
+#remitos-nuevo .toggle-row:active .toggle::after { width: 23px !important; }
+#remitos-nuevo .toggle-row:active .toggle.on::after { transform: translateX(11px) !important; }
+/* Arrastre (se pide aparte) y socio ausente: se distinguen con borde, sin rayado. */
+#remitos-nuevo #row-arrastre { border: 1px solid rgba(245, 166, 35, .45) !important; background: var(--ax-warn-soft) !important; }
+#remitos-nuevo #row-arrastre .toggle-title { color: var(--ax-text) !important; }
+#remitos-nuevo .rem-step-panel [onclick^="toggleFirmaChofer"] { border: 1px solid var(--ax-border-strong) !important; background: var(--ax-bg) !important; }
+#remitos-nuevo .rem-step-panel [onclick^="toggleFirmaChofer"] .toggle-title { color: var(--ax-text) !important; }
+#remitos-nuevo #acept-progress { color: var(--ax-text) !important; font-family: var(--ax-font) !important; font-variant-numeric: tabular-nums; }
+#remitos-nuevo #acept-bar { background: var(--ax-ok) !important; transition: width var(--ax-dur-slow) var(--ax-ease) !important; }
+#remitos-nuevo #acept-status { color: var(--ax-ok) !important; font-size: var(--ax-fs-sm) !important; }
+/* Firma: recuadro neutro; el estado con la marca de listo. */
+#remitos-nuevo #label-firma-canvas { color: var(--ax-text-2) !important; font-size: var(--ax-fs-xs) !important; font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#remitos-nuevo #sig-canvas { border: 1px dashed var(--ax-border-strong) !important; border-radius: var(--ax-radius-lg) !important; background: var(--ax-bg) !important; }
+#remitos-nuevo #sig-placeholder span:last-child { color: var(--ax-text-3) !important; font-size: var(--ax-fs-sm) !important; }
+#remitos-nuevo .rmx-sig-clear { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h-sm); padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: var(--ax-surface-2); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); cursor: pointer; }
+#remitos-nuevo #sig-status-dot.ax-mark { width: 16px; height: 16px; background: none; }
+#remitos-nuevo #sig-status-txt { color: var(--ax-text-2) !important; font-size: var(--ax-fs-sm) !important; font-weight: var(--ax-fw-medium); }
+#remitos-nuevo .rmx-signed #sig-status-txt { color: var(--ax-ok) !important; }
+
+/* ── Botones de abajo ──────────────────────────────────────────────── */
+#remitos-nuevo .rem-wizard-footer { gap: var(--ax-sp-2); background: var(--ax-surface); border-top: 1px solid var(--ax-border); }
+#remitos-nuevo .rem-wizard-footer .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--ax-h-lg); margin: 0 !important; padding: 0 14px !important; border-radius: var(--ax-radius); font-family: var(--ax-font); font-size: 15px !important; font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#remitos-nuevo .rem-wizard-footer .btn:active { transform: scale(.98); }
+#remitos-nuevo .rem-wizard-footer .btn-primary { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#remitos-nuevo .rem-wizard-footer .btn-ghost { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text); }
+#remitos-nuevo .rem-wizard-footer #btn-pendiente-footer { line-height: 1.2; }
+
+@media (prefers-reduced-motion: reduce) {
+  #remitos-nuevo .rem-step-panel.rmx-enter-next, #remitos-nuevo .rem-step-panel.rmx-enter-prev { animation: none; }
+}

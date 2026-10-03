@@ -140,11 +140,11 @@
     if (!canUseCenter()) return;
     ensureNavNode('nav-empresas', 'empresas', '▦', 'Prestadoras / Empresas');
     ensureScreen('screen-empresas');
-    ensureNavNode('nav-config-service-types', 'config-service-types', '🛠️', 'Tipos de servicio');
+    ensureNavNode('nav-config-service-types', 'config-service-types', '🛠', 'Tipos de servicio');
     ensureScreen('screen-config-service-types');
     ensureNavNode('nav-config-tariff-types', 'config-tariff-types', '💰', 'Tipos de tarifa');
     ensureScreen('screen-config-tariff-types');
-    ensureNavNode('nav-peajes', 'peajes', '🛣️', 'Peajes y Adicionales');
+    ensureNavNode('nav-peajes', 'peajes', '🛣', 'Peajes y Adicionales');
     ensureScreen('screen-peajes');
     ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas');
     ensureScreen('screen-config-tariff-matrix');
@@ -380,7 +380,7 @@
       <div class="aux-center-tools-head"><div><h3>Administración interna</h3><p>Herramientas periódicas que no forman parte del seguimiento diario principal.</p></div></div>
       <div class="aux-center-tool-grid">
         <button class="aux-center-tool" onclick="irModuloConfiguracion('documentos')"><span>📄</span><b>Documentación</b><small>Legajos y vencimientos.</small></button>
-        <button class="aux-center-tool" onclick="irModuloConfiguracion('grilla')"><span>🗓️</span><b>Grilla</b><small>Asignaciones y francos.</small></button>
+        <button class="aux-center-tool" onclick="irModuloConfiguracion('grilla')"><span>🗓</span><b>Grilla</b><small>Asignaciones y francos.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-mi-cuenta')"><span>👤</span><b>Mi cuenta</b><small>Datos de la cuenta actual.</small></button>
       </div>
     </section>`;

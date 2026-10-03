@@ -50,7 +50,7 @@ test('administrative corrections reuse the canonical Nuevo servicio commercial U
  assert.match(commercialUi,/osca-actions/);
  assert.match(commercialUi,/osca-panel tolls/);
  assert.match(commercialUi,/osca-matrix-row/);
- assert.match(commercialUi,/Guardá para conservar los cambios/);
+ assert.doesNotMatch(commercialUi,/osca-title/);                  // sin títulos grandes: la solapa ya dice qué es
  assert.match(commercialUi,/data-aa-key="customer_payment_method"/);
  assert.match(commercialUi,/Medio Pago/);
  assert.doesNotMatch(commercialUi,/class="osaa-line"/);
