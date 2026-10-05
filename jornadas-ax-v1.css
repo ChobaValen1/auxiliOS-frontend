@@ -242,3 +242,22 @@
   #modal-jornada-detalle #jd-traza { order: -1; flex: 1 0 100%; }
   #jd-content .jd-info { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Km/l, Servicios clickeable, orden y exportar ──────────────────── */
+#screen-jornadas-admin.screen .kml-cell { color: var(--ax-text); font-weight: var(--ax-fw-medium); font-variant-numeric: tabular-nums; cursor: help; }
+#screen-jornadas-admin.screen .kml-cell.cell-empty { color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+#screen-jornadas-admin.screen .kml-cell.is-low { color: var(--ax-warn); font-weight: var(--ax-fw-semibold); }
+#screen-jornadas-admin.screen .jadmin-srv { min-width: 28px; height: 24px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text); font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-jornadas-admin.screen .jadmin-srv:hover { background: var(--ax-surface); border-color: var(--ax-text-3); }
+#screen-jornadas-admin.screen .jadmin-srv:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-jornadas-admin.screen .table-hdr { gap: var(--ax-sp-3); flex-wrap: wrap; }
+#screen-jornadas-admin.screen .jadmin-cap-note { color: var(--ax-warn); }
+#screen-jornadas-admin.screen .jadmin-sort { display: inline-flex; align-items: center; gap: var(--ax-sp-2); color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-jornadas-admin.screen .jadmin-sort select { height: var(--ax-h-sm); max-width: 260px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: var(--ax-fs-sm); }
+#screen-jornadas-admin.screen .jadmin-sort select:focus-visible { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-jornadas-admin.screen .jadmin-export { margin-left: auto; }
+@media (max-width: 767px) {
+  #screen-jornadas-admin.screen .jadmin-export { grid-column: 1 / -1; margin-left: 0; justify-content: center; }
+  #screen-jornadas-admin.screen .jadmin-sort { display: grid; grid-template-columns: auto minmax(0, 1fr); width: 100%; }
+  #screen-jornadas-admin.screen .jadmin-sort select { min-width: 0; max-width: none; }
+}

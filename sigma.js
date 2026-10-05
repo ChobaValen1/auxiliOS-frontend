@@ -13621,7 +13621,29 @@ let _jadminState = {
   ready: false,         // handlers wired
   loading: false,
   searchTimer: null,
+  modoTodo: false,      // true: se trajo todo el período (hasta el tope) y se filtra, ordena y pagina acá
+  totalVisible: 0,      // jornadas que cumplen los filtros (en modoTodo, las de todo el período)
+  verServicios: false,  // abrir el detalle ya parado en los servicios de la jornada
+  multiChofer: null,
+  multiCamion: null,
 };
+
+// Filtros que dependen de datos calculados acá (alertas, texto) y órdenes que el servidor no sabe hacer:
+// en esos casos se trae todo el período (hasta el tope) y se filtra, ordena y pagina en pantalla,
+// para que valga sobre todas las jornadas y no sólo sobre la página que se estaba viendo.
+const _JADMIN_TOPE_TODO = 500;
+const _JADMIN_TOPE_EXPORT = 5000;
+const _JADMIN_HORAS_ABIERTA_LARGA = 12;
+const _JADMIN_ALERTAS = ['taller', 'incidentes', 'rendicion', 'abierta_larga', 'sin_control', 'consumo_alto'];
+const _JADMIN_ORDENES = [
+  { key: 'log_date',      label: 'Fecha',                  asc: 'más vieja primero',    desc: 'más nueva primero' },
+  { key: 'km_recorridos', label: 'Km recorridos',          asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'horas',         label: 'Horas',                  asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'servicios',     label: 'Servicios',              asc: 'menos primero',        desc: 'más primero' },
+  { key: 'kml',           label: 'Km/l',                   asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'rendicion',     label: 'Diferencia de rendición', asc: 'faltantes primero',   desc: 'sobrantes primero' },
+];
+const _JADMIN_ORDEN_DE_COLUMNA = { km: 'km_recorridos', horas: 'horas', servicios: 'servicios', kml: 'kml' };
 
 // Si llega un cambio de filtro mientras ya hay un pedido en vuelo, la
 // recarga anterior se descarta silenciosamente (ver guard de abajo) y el
@@ -13742,6 +13764,7 @@ async function initJornadasAdmin() {
     _jadminState.ready = true;
   }
 
+  _jadminPopularOrden();
   _jadminSyncPicker('chofer');
   _jadminSyncPicker('camion');
   _jadminSyncPeriodLabel();
@@ -13792,6 +13815,8 @@ function _jadminRenderAuxFilters() {
   per.innerHTML = F.period({ id: 'jadmin-periodo', value, allowAll: false, quick: true });
   est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.clientFilter || _jadminState.estado || '', allLabel: 'Todas',
     options: [{ value: 'open', label: 'Abiertas' }, { value: 'closed', label: 'Cerradas' }, { group: 'Alertas' },
+      { value: 'abierta_larga', label: `Abierta hace más de ${_JADMIN_HORAS_ABIERTA_LARGA} h` }, { value: 'sin_control', label: 'Sin control de neumáticos' },
+      { value: 'consumo_alto', label: 'Consumo alto de combustible' },
       { value: 'taller', label: 'En taller' }, { value: 'incidentes', label: 'Con incidentes' }, { value: 'rendicion', label: 'Faltantes de rendición' }] });
   const root = document.querySelector('#screen-jornadas-admin .jadmin-bar');
   F.bind(root, (id, v) => {
@@ -13803,7 +13828,7 @@ function _jadminRenderAuxFilters() {
       document.querySelectorAll('#screen-jornadas-admin .chip-group:first-child .chip').forEach(c => c.classList.remove('active'));
     }
     if (id === 'jadmin-estado') {
-      const alerta = ['taller', 'incidentes', 'rendicion'].includes(v);
+      const alerta = _JADMIN_ALERTAS.includes(v);
       _jadminState.estado = alerta ? '' : (v || '');
       _jadminState.clientFilter = alerta ? v : null;
     }
@@ -13848,7 +13873,7 @@ function _jadminWireHandlers() {
       _jadminState.searchTimer = setTimeout(() => {
         _jadminState.q = inpQ.value.trim();
         _jadminState.offset = 0;
-        _jadminRenderTabla();
+        _jadminRefrescar();
       }, 300);
     });
   }
@@ -13887,32 +13912,39 @@ function _jadminWireHandlers() {
     chip.addEventListener('click', () => _jadminAplicarChip(chip.getAttribute('data-chip')));
   });
 
-  // Sortable headers
+  // Orden: encabezados de la tabla y selector "Ordenar por" (el único en el celular)
   document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
-      const rawKey = th.getAttribute('data-sort');
-      // Map header key → backend column
-      const key = rawKey === 'km' ? 'km_recorridos'
-                : rawKey === 'horas' ? 'horas'
-                : 'log_date';
+      const key = _JADMIN_ORDEN_DE_COLUMNA[th.getAttribute('data-sort')] || 'log_date';
       if (_jadminState.orderBy === key) {
         _jadminState.orderAsc = !_jadminState.orderAsc;
       } else {
         _jadminState.orderBy = key;
-        _jadminState.orderAsc = false;
+        _jadminState.orderAsc = key === 'kml';   // en km/l lo que importa es lo que menos rinde
       }
       _jadminState.offset = 0;
       _jadminActualizarClasesSort();
-      _jadminReload();
+      _jadminRefrescar();
     });
   });
+  const selOrden = $('jadmin-sort');
+  if (selOrden) selOrden.addEventListener('change', () => {
+    const [key, dir] = selOrden.value.split(':');
+    _jadminState.orderBy = key;
+    _jadminState.orderAsc = dir === 'asc';
+    _jadminState.offset = 0;
+    _jadminActualizarClasesSort();
+    _jadminRefrescar();
+  });
+  const btnExp = $('jadmin-export');
+  if (btnExp) btnExp.addEventListener('click', () => _jadminExportarExcel());
 
   // Per-page
   const selPP = $('jadmin-per-page');
   if (selPP) selPP.addEventListener('change', () => {
     _jadminState.limit = parseInt(selPP.value, 10) || 20;
     _jadminState.offset = 0;
-    _jadminReload();
+    _jadminIrAPagina();
   });
 
   // Pager
@@ -13920,14 +13952,14 @@ function _jadminWireHandlers() {
   if (btnPrev) btnPrev.addEventListener('click', () => {
     if (_jadminState.offset <= 0) return;
     _jadminState.offset = Math.max(0, _jadminState.offset - _jadminState.limit);
-    _jadminReload();
+    _jadminIrAPagina();
   });
   const btnNext = $('jadmin-next');
   if (btnNext) btnNext.addEventListener('click', () => {
     const next = _jadminState.offset + _jadminState.limit;
-    if (next >= _jadminState.lastTotal) return;
+    if (next >= _jadminState.totalVisible) return;
     _jadminState.offset = next;
-    _jadminReload();
+    _jadminIrAPagina();
   });
 
   // La tabla puede pasar de entrar a no entrar al cambiar el ancho de ventana.
@@ -13944,6 +13976,8 @@ function _jadminWireHandlers() {
     const tr = ev.target.closest('tr[data-log-id]');
     if (!tr) return;
     const id = tr.getAttribute('data-log-id');
+    // El número de Servicios abre el detalle ya parado en los servicios de esa jornada.
+    _jadminState.verServicios = !!ev.target.closest('.jadmin-srv');
     if (id) abrirDetalleJornadaAdmin(id);
   });
 }
@@ -13951,14 +13985,34 @@ function _jadminWireHandlers() {
 function _jadminActualizarClasesSort() {
   document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
     th.classList.remove('sort-asc', 'sort-desc');
-    const rawKey = th.getAttribute('data-sort');
-    const key = rawKey === 'km' ? 'km_recorridos'
-              : rawKey === 'horas' ? 'horas'
-              : 'log_date';
+    const key = _JADMIN_ORDEN_DE_COLUMNA[th.getAttribute('data-sort')] || 'log_date';
     if (key === _jadminState.orderBy) {
       th.classList.add(_jadminState.orderAsc ? 'sort-asc' : 'sort-desc');
     }
   });
+  const sel = document.getElementById('jadmin-sort');
+  if (sel) sel.value = `${_jadminState.orderBy}:${_jadminState.orderAsc ? 'asc' : 'desc'}`;
+}
+
+// Opciones de "Ordenar por": cada orden en sus dos sentidos.
+function _jadminPopularOrden() {
+  const sel = document.getElementById('jadmin-sort');
+  if (!sel || sel.options.length) return;
+  sel.innerHTML = _JADMIN_ORDENES.flatMap(o => [
+    `<option value="${o.key}:${o.key === 'kml' || o.key === 'rendicion' ? 'asc' : 'desc'}">${o.label} · ${o.key === 'kml' || o.key === 'rendicion' ? o.asc : o.desc}</option>`,
+    `<option value="${o.key}:${o.key === 'kml' || o.key === 'rendicion' ? 'desc' : 'asc'}">${o.label} · ${o.key === 'kml' || o.key === 'rendicion' ? o.desc : o.asc}</option>`,
+  ]).join('');
+  _jadminActualizarClasesSort();
+}
+
+// Si ya se trajo todo el período, filtrar u ordenar es sólo repintar; si no, hay que pedirlo al servidor.
+function _jadminRefrescar() {
+  if (_jadminNecesitaTodo() && _jadminState.modoTodo) _jadminRenderTabla();
+  else _jadminReload();
+}
+function _jadminIrAPagina() {
+  if (_jadminState.modoTodo) _jadminRenderTabla();
+  else _jadminReload();
 }
 
 function _jadminResetFiltros() {
@@ -14087,13 +14141,14 @@ async function _jadminReload() {
     };
 
     // Tabla
+    const todo = _jadminNecesitaTodo();
     const listaFiltros = {
       ...kpiFiltros,
       estado: _jadminState.estado || null,
-      offset: _jadminState.offset,
-      limit: _jadminState.limit,
-      orderBy: (_jadminState.orderBy === 'horas' ? 'hora_inicio' : _jadminState.orderBy),
-      orderAsc: _jadminState.orderAsc,
+      offset: todo ? 0 : _jadminState.offset,
+      limit: todo ? _JADMIN_TOPE_TODO : _jadminState.limit,
+      orderBy: todo ? 'log_date' : _jadminState.orderBy,
+      orderAsc: todo ? false : _jadminState.orderAsc,
     };
 
     const [kpis, resp] = await Promise.all([
@@ -14103,6 +14158,7 @@ async function _jadminReload() {
 
     _jadminState.lastPage = resp?.data || [];
     _jadminState.lastTotal = resp?.total || 0;
+    _jadminState.modoTodo = todo;
 
     _jadminRenderKpis(kpis);
     _jadminActualizarClasesSort();
@@ -14161,7 +14217,44 @@ function _jadminRenderChipCounts(k) {
   chip.textContent = Number.isFinite(abiertas) ? String(abiertas) : '';
 }
 
-function _jadminAplicarFiltrosClientSide(rows) {
+// Horas que lleva abierta una jornada (null si no está abierta). La hora de inicio es la local de la jornada.
+function _jadminHorasAbierta(r) {
+  if (r.status !== 'open') return null;
+  const ini = new Date(`${r.log_date}T${r.hora_inicio || '00:00:00'}`);
+  const h = (Date.now() - ini.getTime()) / 36e5;
+  return Number.isFinite(h) && h >= 0 ? h : null;
+}
+// Sin control de neumáticos y frenos: sólo cuenta cuando la jornada ya cerró o es de un día anterior.
+function _jadminSinControl(r) {
+  return !r.revision && (r.status === 'closed' || String(r.log_date) < _jadminHoy());
+}
+
+function _jadminNecesitaTodo() {
+  const o = _jadminState.orderBy;
+  return !!(_jadminState.q || _jadminState.clientFilter || ['horas', 'servicios', 'kml', 'rendicion'].includes(o));
+}
+
+function _jadminOrdenarClientSide(rows) {
+  const valor = {
+    log_date:      r => `${r.log_date || ''} ${r.hora_inicio || ''}`,
+    km_recorridos: r => (r.km_recorridos == null ? null : Number(r.km_recorridos)),
+    horas:         r => (r.hora_fin ? Number(r.horas) || 0 : null),
+    servicios:     r => Number(r.servicios) || 0,
+    kml:           r => (r.rendimiento?.estado === 'ok' ? r.rendimiento.kml : null),
+    rendicion:     r => (r.rendicion ? Number(r.rendicion.diff) || 0 : null),
+  }[_jadminState.orderBy] || (r => `${r.log_date || ''} ${r.hora_inicio || ''}`);
+  const dir = _jadminState.orderAsc ? 1 : -1;
+  // Sin dato va siempre al final, en el sentido que sea.
+  return [...rows].sort((a, b) => {
+    const va = valor(a), vb = valor(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+  });
+}
+
+function _jadminAplicarFiltrosClientSide(rows, { ordenar = _jadminState.modoTodo } = {}) {
   let out = rows;
 
   // Filtro por texto libre (q) sobre chofer/patente
@@ -14174,22 +14267,25 @@ function _jadminAplicarFiltrosClientSide(rows) {
     );
   }
 
-  // Filtros de chip client-side
-  if (_jadminState.clientFilter === 'taller') {
-    out = out.filter(r => r.in_workshop);
-  } else if (_jadminState.clientFilter === 'incidentes') {
-    out = out.filter(r => (r.incidentes || 0) > 0);
-  } else if (_jadminState.clientFilter === 'rendicion') {
-    out = out.filter(r => r.rendicion && r.rendicion.estado === 'faltante');
+  // Alertas (se calculan acá con los datos de cada jornada)
+  switch (_jadminState.clientFilter) {
+    case 'taller':        out = out.filter(r => r.in_workshop); break;
+    case 'incidentes':    out = out.filter(r => (r.incidentes || 0) > 0); break;
+    case 'rendicion':     out = out.filter(r => r.rendicion && r.rendicion.estado === 'faltante'); break;
+    case 'abierta_larga': out = out.filter(r => (_jadminHorasAbierta(r) || 0) > _JADMIN_HORAS_ABIERTA_LARGA); break;
+    case 'sin_control':   out = out.filter(_jadminSinControl); break;
+    case 'consumo_alto':  out = out.filter(r => r.rendimiento?.bajo); break;
   }
 
-  // Sort client-side por horas (no soportado backend directamente)
-  if (_jadminState.orderBy === 'horas') {
-    const dir = _jadminState.orderAsc ? 1 : -1;
-    out = [...out].sort((a, b) => ((a.horas || 0) - (b.horas || 0)) * dir);
-  }
+  return ordenar ? _jadminOrdenarClientSide(out) : out;
+}
 
-  return out;
+// Lo que se ve en la página actual y cuántas jornadas cumplen los filtros.
+function _jadminFilasVisibles() {
+  const todas = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
+  if (!_jadminState.modoTodo) return { rows: todas, total: _jadminState.lastTotal };
+  const desde = _jadminState.offset;
+  return { rows: todas.slice(desde, desde + _jadminState.limit), total: todas.length };
 }
 
 // La columna Estado queda anclada a la derecha. La sombra que la despega del
@@ -14205,7 +14301,8 @@ function _jadminRenderTabla() {
   const tbody = document.getElementById('jadmin-tbody');
   if (!tbody) return;
 
-  const rows = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
+  const { rows, total } = _jadminFilasVisibles();
+  _jadminState.totalVisible = total;
 
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
@@ -14215,7 +14312,6 @@ function _jadminRenderTabla() {
 
   // Contadores
   const shown = rows.length;
-  const total = _jadminState.lastTotal;
   const elS = document.getElementById('jadmin-count-shown');
   const elT = document.getElementById('jadmin-count-total');
   if (elS) elS.textContent = shown;
@@ -14231,6 +14327,14 @@ function _jadminRenderTabla() {
   const next = document.getElementById('jadmin-next');
   if (prev) prev.disabled = _jadminState.offset <= 0;
   if (next) next.disabled = (_jadminState.offset + perPage) >= total;
+
+  // Si el período tiene más jornadas que el tope, se avisa que el resto no está en esta lista.
+  const nota = document.getElementById('jadmin-cap-note');
+  if (nota) {
+    const corto = _jadminState.modoTodo && _jadminState.lastTotal > (_jadminState.lastPage || []).length;
+    nota.hidden = !corto;
+    nota.textContent = corto ? ` · se muestran las primeras ${(_jadminState.lastPage || []).length} jornadas del período; acotá el período para ver el resto` : '';
+  }
 
   _jadminMarcarScrollX();
 }
@@ -14260,13 +14364,16 @@ function _jadminRenderFila(r) {
   const srv = Number(r.servicios) || 0;
   const srvCls = srv ? 'mono' : 'mono cell-empty';
 
-  // Combustible: litros cargados en la jornada. Los litros contra los KM son
-  // el consumo, que no se puede leer de ninguna otra columna.
-  const litros = Number(r.litros) || 0;
-  const litrosTxt = litros
-    ? `${litros.toLocaleString('es-AR', { maximumFractionDigits: 1 })} L`
-    : '0';
-  const litrosCls = litros ? 'money-cell' : 'money-cell zero';
+  // Km/l: lo que rindió la jornada (km desde la carga anterior sobre los litros). Sin dato confiable, "—" con el motivo.
+  const efi = r.rendimiento;
+  let kmlTxt = '—', kmlCls = 'kml-cell cell-empty', kmlTitle = efi?.mensaje || 'Sin dato';
+  if (efi?.estado === 'ok') {
+    kmlTxt = efi.kml.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    kmlCls = efi.bajo ? 'kml-cell is-low' : 'kml-cell';
+    kmlTitle = `${efi.km.toLocaleString('es-AR')} km con ${efi.litros.toLocaleString('es-AR', { maximumFractionDigits: 1 })} L`
+      + (efi.parcial ? ` · ${efi.validas} de ${efi.cargas} cargas con dato` : (efi.cargas > 1 ? ` · ${efi.cargas} cargas` : ''))
+      + (efi.bajo ? ` · consumo alto: el promedio del móvil es ${efi.promedio.toLocaleString('es-AR', { minimumFractionDigits: 1 })} km/l` : '');
+  }
 
   // Caja: lo que debería entregar y lo que gastó. El veredicto de la rendición
   // (entregó vs. debería) vive en el detalle; acá solo queda el aviso en rojo
@@ -14296,7 +14403,9 @@ function _jadminRenderFila(r) {
   // reservado para las jornadas que siguen abiertas.
   let estadoHtml;
   if (r.status === 'open') {
-    estadoHtml = `<span class="pill pill-amber"><span class="dot a"></span>Abierta</span>`;
+    const hAb = _jadminHorasAbierta(r);
+    const larga = hAb != null && hAb > _JADMIN_HORAS_ABIERTA_LARGA;
+    estadoHtml = `<span class="pill pill-amber"${larga ? ` title="Abierta hace ${Math.floor(hAb)} horas"` : ''}><span class="dot a"></span>Abierta${larga ? ` · ${Math.floor(hAb)} h` : ''}</span>`;
   } else if (r.status === 'closed') {
     estadoHtml = `<span class="pill pill-muted"><span class="dot n"></span>Cerrada</span>`;
   } else {
@@ -14341,8 +14450,8 @@ function _jadminRenderFila(r) {
       </td>
       <td class="right" data-label="Km"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
       <td class="right ${horasCls}" data-label="Horas">${horasTxt}</td>
-      <td class="right ${srvCls}" data-label="Servicios">${srv}</td>
-      <td class="right" data-label="Combustible"><span class="${litrosCls}">${litrosTxt}</span></td>
+      <td class="right ${srvCls}" data-label="Servicios">${srv ? `<button type="button" class="jadmin-srv" title="Ver los servicios de esta jornada">${srv}</button>` : srv}</td>
+      <td class="right" data-label="Km/l"><span class="${kmlCls}" title="${_escHtml(kmlTitle)}">${kmlTxt}</span></td>
       <td class="right" data-label="Efectivo esp."><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
       <td class="right" data-label="Gastos"><span class="${gastosCls}">${gastosTxt}</span></td>
       <td class="center" data-label="Incidentes"><span class="${incCls}">${incTxt}</span></td>
@@ -14480,7 +14589,7 @@ function _jadminRenderDetalle(det) {
   const _payLbl  = (m) => m === 'efectivo' ? 'Efectivo' : m === 'transferencia' ? 'Transf.' : m === 'tarjeta' ? 'Tarjeta' : m === 'app' ? 'App' : '—';
 
   const serviciosCard = `
-    <section class="jd-card">
+    <section class="jd-card" data-card="servicios">
       <h4>Servicios ${apagado(`(${trips.length})`)}</h4>
       ${trips.length ? `<div class="jd-list">${trips.map((t, index) => {
         const nro     = t.nro_servicio ? `#${_escHtml(t.nro_servicio)}` : (t.nro_remito ? `#${_escHtml(t.nro_remito)}` : '');
@@ -14707,6 +14816,99 @@ function _jadminRenderDetalle(det) {
   `;
 
   if ($('jd-content')) $('jd-content').innerHTML = html;
+
+  // Venía del número de Servicios de la lista: se baja a esa tarjeta y se la marca un momento.
+  if (_jadminState.verServicios) {
+    _jadminState.verServicios = false;
+    const tarjeta = document.querySelector('#jd-content [data-card="servicios"]');
+    if (tarjeta) {
+      tarjeta.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      window.AxUI?.flash?.(tarjeta);
+    }
+  }
+}
+
+// ── Exportar la lista de Jornadas a Excel ─────────────────────────────────
+async function _jadminExportarExcel() {
+  const btn = document.getElementById('jadmin-export');
+  if (!window.AuxiliosExcelExport) { toast('El exportador Excel todavía no está disponible. Recargá la página.', 'error'); return; }
+  if (btn) btn.disabled = true;
+  try {
+    // Con los mismos filtros de la pantalla, pero todo el período (no sólo la página que se ve).
+    const resp = await cargarJornadasAdmin({
+      desde: _jadminState.desde, hasta: _jadminState.hasta,
+      driverIds: _jadminState.driverIds, truckIds: _jadminState.truckIds,
+      estado: _jadminState.estado || null,
+      offset: 0, limit: _JADMIN_TOPE_EXPORT, orderBy: 'log_date', orderAsc: false,
+    });
+    const rows = _jadminAplicarFiltrosClientSide(resp?.data || [], { ordenar: true });
+    if (!rows.length) { toast('No hay jornadas para exportar con estos filtros', 'warn'); return; }
+
+    const dia = iso => ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][new Date(`${iso}T12:00:00`).getDay()];
+    const hora = h => (h ? String(h).slice(0, 5) : '');
+    const si = v => (v ? 'Sí' : 'No');
+    const columnas = [
+      { header: 'Fecha', width: 12, value: r => _jadminFmtFecha(r.log_date) },
+      { header: 'Día', width: 11, value: r => dia(r.log_date) },
+      { header: 'Chofer', width: 24, value: r => r.chofer_nombre },
+      { header: 'Legajo', width: 10, value: r => r.chofer_legajo || '' },
+      { header: 'Patente', width: 12, value: r => r.truck_plate },
+      { header: 'N° móvil', width: 10, value: r => r.truck_movil || '' },
+      { header: 'Hora inicio', width: 11, value: r => hora(r.hora_inicio) },
+      { header: 'Hora fin', width: 10, value: r => hora(r.hora_fin) },
+      { header: 'Horas', width: 8, type: 'number', value: r => (r.hora_fin ? Math.round((Number(r.horas) || 0) * 10) / 10 : null) },
+      { header: 'KM inicio', width: 11, type: 'number', value: r => r.km_inicio },
+      { header: 'KM final', width: 11, type: 'number', value: r => r.km_final },
+      { header: 'KM recorridos', width: 14, type: 'number', value: r => r.km_recorridos },
+      { header: 'Origen del KM', width: 14, value: r => ([r.km_inicio_origen, r.km_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado') ? 'A mano' : [r.km_inicio_origen, r.km_final_origen].includes('manual_offline') ? 'Sin conexión' : 'IA') },
+      { header: 'Servicios del día', width: 16, type: 'number', value: r => r.servicios },
+      { header: 'Cargas de combustible', width: 20, type: 'number', value: r => r.combustible },
+      { header: 'Litros', width: 9, type: 'number', value: r => (r.litros ? Math.round(r.litros * 10) / 10 : 0) },
+      { header: 'Km/l', width: 8, type: 'number', value: r => (r.rendimiento?.estado === 'ok' ? r.rendimiento.kml : null) },
+      { header: 'Km/l: observación', width: 40, value: r => (r.rendimiento?.estado === 'ok' ? [r.rendimiento.parcial ? `${r.rendimiento.validas} de ${r.rendimiento.cargas} cargas con dato` : '', r.rendimiento.bajo ? 'Consumo alto (menos del 75 % del promedio del móvil)' : ''].filter(Boolean).join(' · ') : (r.rendimiento?.mensaje || '')) },
+      { header: 'Gasto en combustible', width: 20, type: 'number', value: r => r.gasto_fuel },
+      { header: 'Efectivo esperado', width: 17, type: 'number', value: r => r.rendicion?.esperado },
+      { header: 'Entregó', width: 11, type: 'number', value: r => r.rendicion?.declarado },
+      { header: 'Gastos', width: 10, type: 'number', value: r => r.rendicion?.gastos },
+      { header: 'Diferencia de rendición', width: 22, type: 'number', value: r => r.rendicion?.diff },
+      { header: 'Rendición', width: 11, value: r => (r.rendicion ? ({ ok: 'OK', faltante: 'Faltante', sobrante: 'Sobrante' }[r.rendicion.estado] || '') : 'Sin rendición') },
+      { header: 'Incidentes', width: 11, type: 'number', value: r => r.incidentes },
+      { header: 'En taller', width: 10, value: r => si(r.in_workshop) },
+      { header: 'Control de neumáticos', width: 21, value: r => si(r.revision) },
+      { header: 'Estado', width: 10, value: r => (r.status === 'open' ? 'Abierta' : r.status === 'closed' ? 'Cerrada' : (r.status || '')) },
+    ];
+    const suma = campo => rows.reduce((t, r) => t + (Number(campo(r)) || 0), 0);
+    const filtros = [
+      _jadminState.driverIds.length ? `${_jadminState.driverIds.length} chofer${_jadminState.driverIds.length === 1 ? '' : 'es'}` : 'Todos los choferes',
+      _jadminState.truckIds.length ? `${_jadminState.truckIds.length} móvil${_jadminState.truckIds.length === 1 ? '' : 'es'}` : 'Todos los móviles',
+      _jadminState.estado === 'open' ? 'Abiertas' : _jadminState.estado === 'closed' ? 'Cerradas' : '',
+      { taller: 'En taller', incidentes: 'Con incidentes', rendicion: 'Faltantes de rendición', abierta_larga: `Abiertas hace más de ${_JADMIN_HORAS_ABIERTA_LARGA} h`, sin_control: 'Sin control de neumáticos', consumo_alto: 'Consumo alto' }[_jadminState.clientFilter] || '',
+      _jadminState.q ? `Búsqueda: ${_jadminState.q}` : '',
+    ].filter(Boolean).join(' · ');
+    const resumen = [
+      { label: 'Período', value: `${_jadminFmtFecha(_jadminState.desde)} al ${_jadminFmtFecha(_jadminState.hasta)}` },
+      { label: 'Filtros', value: filtros },
+      { label: 'Jornadas', value: rows.length },
+      { label: 'KM recorridos', value: suma(r => r.km_recorridos) },
+      { label: 'Servicios', value: suma(r => r.servicios) },
+      { label: 'Litros cargados', value: Math.round(suma(r => r.litros) * 10) / 10 },
+    ];
+    const desdeTxt = String(_jadminState.desde || '').replace(/-/g, ''), hastaTxt = String(_jadminState.hasta || '').replace(/-/g, '');
+    AuxiliosExcelExport.download({
+      filename: `Jornadas_${desdeTxt}_${hastaTxt}`,
+      summaryRows: resumen,
+      sheets: [{ name: 'Jornadas', columns: columnas, rows }],
+      detalle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`,
+    });
+    if ((resp?.total || 0) > (resp?.data || []).length) {
+      toast(`Se exportaron las primeras ${resp.data.length} de ${resp.total} jornadas. Acotá el período para el resto.`, 'warn');
+    }
+  } catch (e) {
+    console.error('[jadmin] exportar Excel:', e);
+    toast(`No se pudo exportar: ${e?.message || e}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 

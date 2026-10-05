@@ -3895,13 +3895,17 @@ async function cargarJornadasAdmin(filtros = {}) {
   const truckFechaToLogId = {};
   logs.forEach(l => { truckFechaToLogId[`${l.truck_id}|${l.log_date}`] = l.log_id; });
 
-  const [remitosRes, incRes, fuelRes, tireRes, rendRes] = await Promise.all([
+  // Cargas de los 90 días anteriores: la primera carga de la página necesita la anterior para saber cuánto rindió.
+  const _dias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+
+  const [remitosRes, incRes, fuelRes, tireRes, rendRes, fuelPrevRes] = await Promise.all([
     // Servicios = remitos (la tabla trips no se usa)
     _db.from('remitos').select('log_id, status').in('log_id', logIds).neq('status', 'anulado'),
     _db.from('incidents').select('log_id, severity, type').in('log_id', logIds),
     // Fuel: correlacionar por truck_id + fuel_date (log_id suele venir NULL)
     _db.from('fuel_records')
-       .select('log_id, truck_id, fuel_date, total_cost, liters')
+       .select('fuel_id, log_id, truck_id, fuel_date, total_cost, liters, km_at_load')
+       .is('voided_at', null)
        .in('truck_id', pageTruckIds)
        .gte('fuel_date', fechaMin)
        .lte('fuel_date', fechaMax),
@@ -3916,6 +3920,12 @@ async function cargarJornadasAdmin(filtros = {}) {
        .in('driver_id', pageDriverIds)
        .gte('fecha', fechaMin)
        .lte('fecha', fechaMax),
+    _db.from('fuel_records')
+       .select('fuel_id, truck_id, fuel_date, liters, km_at_load')
+       .is('voided_at', null)
+       .in('truck_id', pageTruckIds)
+       .gte('fuel_date', _dias(fechaMin, 90))
+       .lt('fuel_date', fechaMin),
   ]);
 
   const cnt = {};
@@ -3932,9 +3942,20 @@ async function cargarJornadasAdmin(filtros = {}) {
     cnt[r.log_id].incidentes++;
     if (r.severity === 'grave') cnt[r.log_id].incGrave = true;
   });
+  // Rendimiento (km/l) de cada móvil con todas sus cargas conocidas (las anteriores y las de la página).
+  const Efi = (typeof window !== 'undefined') ? window.AuxiliosFuelEfficiency : null;
+  const cargasPorMovil = {}, mapaPorMovil = {}, promedioPorMovil = {};
+  [...(fuelPrevRes.data || []), ...(fuelRes.data || [])].forEach(f => { (cargasPorMovil[f.truck_id] = cargasPorMovil[f.truck_id] || []).push(f); });
+  if (Efi) Object.keys(cargasPorMovil).forEach(t => {
+    mapaPorMovil[t] = Efi.porCarga(cargasPorMovil[t]);
+    promedioPorMovil[t] = Efi.promedio(mapaPorMovil[t]);
+  });
+  logIds.forEach(id => { cnt[id].cargasDelDia = []; });
+
   (fuelRes.data    || []).forEach(r => {
     const lid = resolverLogId(r, 'fuel_date');
     if (!lid || !cnt[lid]) return;
+    cnt[lid].cargasDelDia.push(r);
     cnt[lid].combustible++;
     cnt[lid].litros += Number(r.liters) || 0;
     cnt[lid].gastoFuel += Number(r.total_cost) || 0;
@@ -3990,6 +4011,7 @@ async function cargarJornadasAdmin(filtros = {}) {
       inc_grave:    c.incGrave || false,
       combustible:  c.combustible || 0,
       litros:       c.litros || 0,
+      rendimiento:  Efi ? Efi.deJornada(c.cargasDelDia || [], mapaPorMovil[l.truck_id] || {}, promedioPorMovil[l.truck_id] ?? null) : null,
       gasto_fuel:   c.gastoFuel || 0,
       revision:     c.revision || false,
       rendicion:    rendInfo,
