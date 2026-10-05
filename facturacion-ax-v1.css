@@ -353,3 +353,37 @@
   #screen-facturacion .ob-invoice-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #screen-facturacion .ob-invoice-total b { font-size: var(--ax-fs-2xl); }
 }
+
+/* ── Pulido: pestañas segmentadas, tabla que entra en pantalla y casillas con el tema ── */
+#screen-facturacion .ob-tabs { display: inline-flex; max-width: 100%; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-facturacion .ob-tab { height: calc(var(--ax-h) - 8px); padding: 0 14px; border: 0; border-radius: 6px; }
+#screen-facturacion .ob-tab:hover { background: transparent; color: var(--ax-text); }
+#screen-facturacion .ob-tab.active { background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+@media (min-width: 761px) {
+  #screen-facturacion .ob-table th, #screen-facturacion .ob-table td { padding-left: 10px; padding-right: 10px; }
+  #screen-facturacion .ob-table td.ob-place { min-width: 120px; max-width: 190px; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+  #screen-facturacion .ob-table td[data-col="company"], #screen-facturacion .ob-table td[data-col="client"] { max-width: 150px; white-space: normal; line-height: 1.3; }
+  #screen-facturacion .ob-table td[data-col="amount"] { white-space: nowrap; }
+}
+#screen-facturacion .ob-check input[type="checkbox"], #screen-facturacion .ob-table input[type="checkbox"] { appearance: none; -webkit-appearance: none; display: inline-grid; place-content: center; width: 18px; height: 18px; margin: 0; border: 1.5px solid var(--ax-border-strong); border-radius: 5px; background: var(--ax-bg); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-table input[type="checkbox"]:hover:not(:disabled) { border-color: var(--ax-text-3); }
+#screen-facturacion .ob-table input[type="checkbox"]::after { content: ""; width: 9px; height: 5px; margin-top: -2px; border-left: 2px solid var(--ax-accent-fg); border-bottom: 2px solid var(--ax-accent-fg); transform: rotate(-45deg) scale(0); transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-table input[type="checkbox"]:checked { border-color: var(--ax-accent); background: var(--ax-accent); }
+#screen-facturacion .ob-table input[type="checkbox"]:checked::after { transform: rotate(-45deg) scale(1); }
+#screen-facturacion .ob-table input[type="checkbox"]:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-facturacion .ob-table input[type="checkbox"]:disabled { opacity: .4; cursor: not-allowed; }
+@media (min-width: 761px) {
+  #screen-facturacion .ob-toolbar { padding: 0; border: 0; background: transparent; }
+  #screen-facturacion .ob-filters .auxf-search { flex: 1 1 150px; min-width: 150px; max-width: none; }
+  #screen-facturacion .ob-filters .auxf-btn { padding-left: 10px; padding-right: 10px; }
+}
+#screen-facturacion .ob-tabs { flex: 0 1 auto; width: fit-content; }
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters .auxf-btn { height: 48px; }
+  #screen-facturacion .ob-filters .auxf-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; line-height: 1.2; }
+  #screen-facturacion .ob-filters .auxf-txt small.auxf-label { font-size: var(--ax-fs-xs); letter-spacing: 0; text-transform: none; font-weight: var(--ax-fw-medium); }
+  #screen-facturacion .ob-filters .auxf-txt b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ax-fs-md); }
+}
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters [data-auxf-kind="period"] .auxf-btn b { font-size: var(--ax-fs-sm); }
+}
