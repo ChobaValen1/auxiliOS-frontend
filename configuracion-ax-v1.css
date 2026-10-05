@@ -1,0 +1,134 @@
+/* AuxiliOS · Configuración con el sistema visual (v1)
+   Centro de configuración, menú flotante, Historial del sistema y las pantallas hijas:
+   Tipos de servicio, Tipos de tarifa, Peajes y adicionales, Bases geográficas y
+   Configuración de Servicios. Cada bloque cuelga del id de su pantalla (o del de su modal). */
+
+#screen-configuracion, #screen-historial-sistema, #screen-config-service-types, #screen-config-tariff-types,
+#screen-peajes, #screen-config-tariff-matrix, #screen-config-services, #screen-bases-geograficas { font-family: var(--ax-font); color: var(--ax-text); }
+
+/* ── Encabezados de página: sin etiqueta chica ni tipografía de logo ── */
+:is(#screen-configuracion, #screen-historial-sistema) :is(.aux-center-eyebrow) { display: none; }
+#screen-peajes .tm-eyebrow { display: none; }
+:is(#screen-configuracion, #screen-historial-sistema, #screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-config-services) :is(.aux-center-head h2, .st2-head h2, .tt1-head h2, .tm-head h2, .gb-head h2, .svc-config-toolbar h2) { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#screen-configuracion, #screen-historial-sistema, #screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-config-services) :is(.aux-center-head p, .st2-head p, .tt1-head p, .tm-head p, .gb-head p, .svc-config-toolbar span) { margin: 4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Botones ── */
+:is(#screen-configuracion, #screen-historial-sistema, #screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-config-services) :is(.btn, .st2-action, .tt1-action, .gb-write, .tm-link) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+:is(#screen-configuracion, #screen-historial-sistema, #screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-config-services) :is(.btn, .st2-action, .tt1-action, .gb-write, .tm-link):hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); opacity: 1; }
+:is(#screen-configuracion, #screen-historial-sistema, #screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-config-services) :is(.btn-primary, .st2-action.primary, .tt1-action.primary, .gb-write.primary) { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#screen-configuracion, #screen-historial-sistema, #screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-config-services) :is(.btn-primary, .st2-action.primary, .tt1-action.primary, .gb-write.primary):hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); color: var(--ax-accent-fg); }
+:is(#screen-config-service-types, #screen-config-tariff-types, #screen-bases-geograficas) :is(.st2-action.danger, .tt1-action.danger, .gb-write.danger) { color: var(--ax-danger); }
+:is(#screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas) button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+/* ── Campos ── */
+:is(#screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-historial-sistema, #screen-config-services) :is(input:not([type=checkbox]):not([type=radio]), select, textarea) { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); color: var(--ax-text); color-scheme: dark; font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+:is(#screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-historial-sistema, #screen-config-services) textarea { height: auto; }
+:is(#screen-config-service-types, #screen-config-tariff-types, #screen-peajes, #screen-bases-geograficas, #screen-historial-sistema, #screen-config-services) :is(input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#screen-peajes) :is(.form-label, label > span, .tm-section label) { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+
+/* ── Cifras (KPI) ── */
+:is(#screen-config-service-types .st2-kpi, #screen-bases-geograficas .gb-kpi, #screen-peajes .tm-summary > *) { padding: 12px 16px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+:is(#screen-config-service-types .st2-kpi, #screen-bases-geograficas .gb-kpi) small { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#screen-config-service-types .st2-kpi, #screen-bases-geograficas .gb-kpi) b { font: var(--ax-fw-semibold) 24px var(--ax-font); font-variant-numeric: tabular-nums; }
+
+/* ── Tablas y paneles ── */
+:is(#screen-config-service-types .st2-table-wrap, #screen-peajes .tm-table-wrap, #screen-historial-sistema .aux-history-table-wrap, #screen-config-tariff-types .tt1-card, #screen-bases-geograficas .gb-panel, #screen-peajes :is(.tm-entry-card, .tm-list-card)) { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+:is(#screen-config-service-types .st2-table, #screen-peajes .tm-table, #screen-historial-sistema .aux-history-table) th { height: 38px; padding: 0 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+:is(#screen-config-service-types .st2-table, #screen-peajes .tm-table, #screen-historial-sistema .aux-history-table) td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+:is(#screen-config-service-types .st2-table, #screen-peajes .tm-table, #screen-historial-sistema .aux-history-table) tbody tr:hover { background: var(--ax-surface-3); }
+:is(#screen-config-service-types .st2-table, #screen-peajes .tm-table, #screen-historial-sistema .aux-history-table) tbody tr:last-child td { border-bottom: 0; }
+:is(#screen-config-service-types .st2-empty, #screen-config-tariff-types .tt1-empty, #screen-bases-geograficas .gb-empty, #screen-historial-sistema .aux-empty, #screen-peajes .tm-additionals-placeholder) { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+:is(#screen-config-service-types .st2-error, #screen-config-tariff-types .tt1-error, #screen-bases-geograficas .gb-map-error, #screen-peajes .tm-map-error) { color: var(--ax-danger); font-size: var(--ax-fs-sm); }
+:is(#screen-config-service-types .st2-chip, #screen-config-tariff-types .tt1-chip, #screen-bases-geograficas .gb-pill) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+:is(#screen-config-service-types .st2-chip, #screen-config-tariff-types .tt1-chip, #screen-bases-geograficas .gb-pill):is(.on, .active, .ok) { color: var(--ax-text); }
+:is(#screen-config-service-types .st2-chip, #screen-config-tariff-types .tt1-chip, #screen-bases-geograficas .gb-pill):is(.off, .inactive, .warn) { color: var(--ax-text-3); }
+#screen-bases-geograficas .gb-notice { border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-info); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-bases-geograficas .gb-notice b { color: var(--ax-text); }
+#screen-bases-geograficas :is(.gb-row-name, .gb-detail-head h3, .gb-section-head h3) { font-weight: var(--ax-fw-semibold); letter-spacing: 0; text-transform: none; }
+#screen-bases-geograficas :is(.gb-row-meta, .gb-row-address, .gb-sub, .gb-coords, .gb-address-sub) { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-bases-geograficas .gb-row-code, #screen-bases-geograficas .gb-coords { font-family: var(--ax-font-mono); }
+#screen-bases-geograficas .gb-list > * { border-bottom: 1px solid var(--ax-border); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-bases-geograficas .gb-list > *:hover { background: var(--ax-surface-3); }
+#screen-bases-geograficas .gb-list > .active, #screen-bases-geograficas .gb-list > .is-selected { background: var(--ax-accent-soft); }
+#screen-bases-geograficas .gb-geo-state, #screen-peajes .tm-geo-state { font-size: var(--ax-fs-sm); }
+:is(#screen-bases-geograficas .gb-geo-state, #screen-peajes .tm-geo-state).warn { color: var(--ax-warn); }
+
+/* Peajes: pestañas, tarjetas y listas */
+#screen-peajes .tm-tabs { gap: 2px; padding: 0; border: 0; border-bottom: 1px solid var(--ax-border); border-radius: 0; background: transparent; }
+#screen-peajes .tm-tabs button { padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); }
+#screen-peajes .tm-tabs button.active { border-bottom-color: var(--ax-accent); background: transparent; color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#screen-peajes .tm-card-head h3, #screen-peajes .tm-list-head h3 { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-peajes :is(.tm-entry-note, .tm-address-meta, .tm-card-head p, .tm-list-head p) { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-peajes .tm-current-amount, #screen-peajes .tm-money-input { font-family: var(--ax-font-mono); }
+#screen-peajes .tm-map-suggestions { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+
+/* Tipos de tarifa */
+#screen-config-tariff-types :is(.tt1-code) { font-family: var(--ax-font-mono); color: var(--ax-text-3); }
+#screen-config-tariff-types .tt1-card h3 { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; }
+#screen-config-tariff-types .tt1-desc { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-config-tariff-types :is(.tt1-check, .tt1-service-check) { accent-color: var(--ax-accent); }
+
+/* Configuración de Servicios */
+#screen-config-services .svc-config-tabs button { padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); }
+#screen-config-services .svc-config-tabs { gap: 2px; border-bottom: 1px solid var(--ax-border); }
+#screen-config-services .svc-config-tabs button.active { border-bottom-color: var(--ax-accent); background: transparent; color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#screen-config-services :is(.svc-config-card, .svc-core-grid > *) { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-config-services :is(.svc-config-row, .svc-flow-row) { border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-config-services :is(.svc-config-row small, .svc-flow-row small, .svc-config-head p, .svc-config-note) { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-config-services .svc-drag { color: var(--ax-text-3); }
+
+/* ── Centro de configuración: áreas ── */
+#screen-configuracion .aux-area { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-configuracion .aux-area:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-configuracion .aux-area summary { cursor: pointer; }
+#screen-configuracion .aux-area summary:focus-visible { outline: none; box-shadow: var(--ax-focus); border-radius: var(--ax-radius-lg); }
+#screen-configuracion .aux-area-icon { color: var(--ax-text-2); }
+#screen-configuracion .aux-area h3 { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; }
+#screen-configuracion .aux-area p { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-configuracion .aux-area-open { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-configuracion .aux-area-link { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text); font-family: var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-configuracion .aux-area-link:hover { background: var(--ax-surface-3); }
+#screen-configuracion .aux-area-link b { font-weight: var(--ax-fw-semibold); font-size: var(--ax-fs-md); }
+#screen-configuracion .aux-area-link small, #screen-configuracion .aux-area-note, #screen-configuracion .aux-center-readonly { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-configuracion .aux-section-icon { color: var(--ax-text-2); }
+
+/* ── Menú flotante de Configuración ── */
+#aux-config-flyout { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+#aux-config-flyout .aux-config-flyout-head { border-bottom: 1px solid var(--ax-border); }
+#aux-config-flyout .aux-config-flyout-head small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); letter-spacing: .04em; }
+#aux-config-flyout .aux-config-flyout-head b { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#aux-config-flyout .aux-config-flyout-head p { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#aux-config-flyout .aux-config-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#aux-config-flyout .aux-config-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#aux-config-flyout .aux-config-group-title { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#aux-config-flyout :is(.nav-item, .aux-config-link) { height: auto; min-height: 40px; border: 0; border-radius: var(--ax-radius); }
+#aux-config-flyout :is(.nav-item, .aux-config-link):hover { background: var(--ax-surface-3); }
+#aux-config-flyout .nav-item.active { background: var(--ax-accent-soft); border: 0; }
+#aux-config-flyout .nav-item .nav-label, #aux-config-flyout .aux-config-link-label { font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; color: var(--ax-text); }
+#aux-config-flyout .aux-config-link small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#aux-config-flyout .nav-item .nav-icon, #aux-config-flyout .aux-config-link-icon { color: var(--ax-text-2); }
+
+/* ── Historial del sistema ── */
+#screen-historial-sistema .aux-history-toolbar { gap: var(--ax-sp-2); }
+#screen-historial-sistema .aux-history-panel { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-historial-sistema .aux-history-entity { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+
+/* ── Formularios (modales) ── */
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) { background: rgba(0, 0, 0, .6); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-box { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-head-title { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; color: var(--ax-text); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-body { padding: 18px 20px; }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-error { border-left: 3px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) :is(.form-label, .st2-field > span, .tt1-field > span, .gb-grid label > span) { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) :is(.form-input, .form-select, .form-textarea, input:not([type=checkbox]):not([type=radio]), select, textarea) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); color: var(--ax-text); color-scheme: dark; font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) :is(.form-input, .form-select, .form-textarea, input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) :is(.st2-help, .gb-sub) { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) :is(.st2-check, .tt1-check, .gb-check) { accent-color: var(--ax-accent); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-footer .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-footer .btn:hover { background: var(--ax-surface-3); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#modal-service-type-crud-v2, #modal-tariff-type-catalog-v1, #modal-geographic-base) .modal-footer .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
