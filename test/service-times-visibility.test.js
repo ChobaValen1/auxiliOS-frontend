@@ -11,7 +11,7 @@ test('Servicios muestra Arribo y Fin por defecto',()=>{
   assert.match(js,/arrival:true,finish:true/);
   assert.match(js,/s\.arrived_at\|\|s\.estimated_arrival_at/);
   assert.match(js,/s\.completed_at\|\|s\.estimated_finish_at/);
-  assert.match(sw,/v429-excel-maps-route/);
+  assert.match(sw,/CACHE_NAME='auxilios-billing-phase2-v\d+/);
 });
 
 test('la migracion expone arrived_at y habilita ambas columnas existentes',()=>{
