@@ -224,23 +224,37 @@
     trigger.setAttribute('aria-expanded', 'true');
   }
 
+  const DOC_TYPES = { FA: 'Factura A', FB: 'Factura B', FC: 'Factura C' };
+  const COLUMN_DEFS = [
+    { key: 'number', label: 'Factura', locked: true, td: row => `<b>${esc(row.invoice_number || '—')}</b>${row.credit_note_id ? `<small>${esc(`${creditTypeLabel(row.credit_note_type)} ${row.credit_note_point_of_sale}-${row.credit_note_number}`)}</small>` : ''}` },
+    { key: 'date', label: 'Fecha', td: row => esc(invoiceDate(row.issued_on, row.created_at)) },
+    { key: 'company', label: 'Prestadora', td: row => `<b>${esc(row.company_name || '—')}</b>` },
+    { key: 'services', label: 'Servicios', td: row => esc(row.service_count || 0) },
+    { key: 'tolls', label: 'Peajes', td: row => esc(row.toll_count || 0) },
+    { key: 'total', label: 'Total', td: row => `<b class="oi-money">${esc(money(row.total_amount, row.currency))}</b>` },
+    { key: 'status', label: 'Estado', td: row => `<span class="oi-status ${statusClass(row.status)}">${esc(statusLabel(row.status))}</span>` },
+    { key: 'pdf', label: 'PDF', td: row => row.pdf_path ? '<span class="oi-file">PDF adjunto</span>' : '<span class="oi-muted">Sin PDF</span>' },
+    { key: 'doctype', label: 'Tipo de comprobante', optional: true, td: row => esc(DOC_TYPES[row.document_type] || row.document_type || '—') },
+    { key: 'creditAmount', label: 'Importe de la Nota de Crédito', optional: true, td: row => row.credit_note_id ? `<b class="oi-money">${esc(money(row.credit_note_amount, row.currency))}</b>` : '<span class="oi-muted">—</span>' },
+    { key: 'createdBy', label: 'Creada por', optional: true, td: row => esc(row.created_by_name || '—') },
+    { key: 'createdAt', label: 'Fecha de creación', optional: true, td: row => esc(date(row.created_at)) },
+    { key: 'notes', label: 'Observaciones', optional: true, td: row => row.notes ? esc(row.notes) : '<span class="oi-muted">—</span>' }
+  ];
+  let columnSet = null;
+  function cols() {
+    const T = window.AuxiliosTableColumns;
+    if (!columnSet && T) columnSet = T.create({ id: 'facturas', columns: COLUMN_DEFS.map(({ key, label, locked, optional }) => ({ key, label, locked, optional })) });
+    return columnSet || { list: () => COLUMN_DEFS.filter(c => !c.optional).map(c => c.key), isCustom: () => false, open: () => {} };
+  }
+  const visibleDefs = () => cols().list().map(key => COLUMN_DEFS.find(c => c.key === key)).filter(Boolean);
+
   function tableMarkup() {
     if (!S.rows.length) return '<div class="oi-empty">Todavía no hay facturas con estos filtros.</div>';
-    const rows = S.rows.map(row => {
-      const credit = row.credit_note_id
-        ? `<small>${esc(`${creditTypeLabel(row.credit_note_type)} ${row.credit_note_point_of_sale}-${row.credit_note_number}`)}</small>`
-        : '';
-      const pdf = row.pdf_path ? '<span class="oi-file">PDF adjunto</span>' : '<span class="oi-muted">Sin PDF</span>';
-      return `<tr>
-        <td data-label="Factura" class="oi-c-main"><b>${esc(row.invoice_number || '—')}</b>${credit}</td>
-        <td data-label="Fecha">${esc(invoiceDate(row.issued_on, row.created_at))}</td><td data-label="Prestadora"><b>${esc(row.company_name || '—')}</b></td>
-        <td data-label="Servicios">${esc(row.service_count || 0)}</td><td data-label="Peajes">${esc(row.toll_count || 0)}</td>
-        <td data-label="Total"><b class="oi-money">${esc(money(row.total_amount, row.currency))}</b></td>
-        <td data-label="Estado"><span class="oi-status ${statusClass(row.status)}">${esc(statusLabel(row.status))}</span></td><td data-label="PDF">${pdf}</td>
+    const defs = visibleDefs();
+    const rows = S.rows.map(row => `<tr>${defs.map((c, i) => `<td data-label="${esc(c.label)}"${i === 0 ? ' class="oi-c-main"' : ''}>${c.td(row)}</td>`).join('')}
         <td class="oi-actions"><button class="oi-button" type="button" data-oi-detail="${esc(row.invoice_id)}">Ver</button><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(row.invoice_id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones" aria-label="Acciones">${ico('ellipsis')}</button></td>
-      </tr>`;
-    }).join('');
-    return `<div class="oi-table-wrap"><table class="oi-table"><thead><tr><th>Factura</th><th>Fecha</th><th>Prestadora</th><th>Servicios</th><th>Peajes</th><th>Total</th><th>Estado</th><th>PDF</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      </tr>`).join('');
+    return `<div class="oi-table-wrap"><table class="oi-table"><thead><tr>${defs.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   const BD = () => window.AuxiliosBillingBreakdown || null;
@@ -365,7 +379,7 @@
       ? '<aside class="oi-detail"><div class="oi-empty">Cargando factura…</div></aside>'
       : S.detail ? detailMarkup() : '';
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
-    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button" type="button" data-oi="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
+    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button oi-columns${cols().isCustom() ? ' is-custom' : ''}" type="button" data-oi="columns" title="Columnas" aria-label="Columnas">${ico('sliders-horizontal')}Columnas</button><button class="oi-button" type="button" data-oi="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
   }
 
   function filtersMarkup(opts) {
@@ -713,6 +727,7 @@
     if (detail) return openDetail(detail.dataset.oiDetail);
     const action = event.target.closest('[data-oi]')?.dataset.oi;
     if (action === 'refresh') return load();
+    if (action === 'columns') return cols().open(() => render());
     if (action === 'close-detail') return closeDetail();
     if (action === 'close-action') return closeAction();
     if (action === 'confirm-annul') return confirmAnnul();

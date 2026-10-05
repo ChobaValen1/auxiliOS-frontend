@@ -234,3 +234,39 @@
   #screen-facturacion .ob-detail-head { flex-wrap: wrap; gap: var(--ax-sp-2); }
   :is(#screen-facturacion, #screen-facturas) .bd-calc { white-space: normal; }
 }
+
+/* ── Columnas personalizables ── */
+#screen-facturacion .ob-filters .ob-columns, #screen-facturas .oi-filters .oi-columns { margin-left: auto; position: relative; }
+#screen-facturacion .ob-filters .obx-wrap { margin-left: 0; }
+#screen-facturacion .ob-columns.is-custom::after, #screen-facturas .oi-columns.is-custom::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-accent); }
+@media (max-width: 1500px) and (min-width: 761px) {
+  #screen-facturacion .ob-filters .ob-columns { width: var(--ax-h); padding: 0; font-size: 0; gap: 0; }
+}
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters .ob-columns { margin-left: 0; }
+}
+#screen-facturacion .ob-table td[data-col="amount"] { text-align: right; }
+#screen-facturacion .ob-table th[data-col="amount"] { text-align: right; }
+
+#tc-modal .tc-modal { width: min(460px, 100%); }
+#tc-modal .tc-body { gap: 0; padding: var(--ax-sp-3) var(--ax-sp-5); }
+#tc-modal .tc-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--ax-sp-3); padding: 6px 0; border-bottom: 1px solid var(--ax-border); }
+#tc-modal .tc-row:last-of-type { border-bottom: 0; }
+#tc-modal .tc-row .ax-switch { min-width: 0; font-size: var(--ax-fs-md); }
+#tc-modal .tc-row .ax-switch input:disabled { opacity: .55; cursor: not-allowed; }
+#tc-modal .tc-lock { display: inline-flex; align-items: center; gap: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); white-space: nowrap; }
+#tc-modal .tc-lock .ax-icon { width: 12px; height: 12px; vertical-align: 0; }
+#tc-modal .tc-row:not(:has(.tc-lock)) .tc-move { grid-column: 3; }
+#tc-modal .tc-move { display: inline-flex; gap: 2px; }
+#tc-modal .tc-move .ax-icon { width: 16px; height: 16px; }
+#tc-modal .tc-up .ax-icon { transform: rotate(180deg); }
+#tc-modal .tc-count { margin: var(--ax-sp-3) 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* Con muchas columnas la tabla se desplaza y las acciones quedan fijas a la derecha. */
+@media (min-width: 761px) {
+  #screen-facturacion .ob-table td.ob-actions, #screen-facturacion .ob-table thead th.ob-actions { position: sticky; right: 0; z-index: 1; background: var(--ax-surface-2); box-shadow: -1px 0 0 var(--ax-border); }
+  #screen-facturacion .ob-table thead th.ob-actions { background: var(--ax-surface); z-index: 3; }
+  #screen-facturacion .ob-table tbody tr:hover td.ob-actions { background: var(--ax-surface-3); }
+  #screen-facturacion .ob-table tbody tr.selected td.ob-actions { background: var(--ax-surface-2); }
+  #screen-facturacion .ob-table td[data-col="base"], #screen-facturacion .ob-table td[data-col="client"], #screen-facturacion .ob-table td[data-col="company"] { white-space: nowrap; }
+}

@@ -53,7 +53,7 @@ test('mesa acepta búsqueda, Prestadora, período, Base y Tipo con los filtros c
 });
 
 test('grilla general es sintética y deja pricing dentro del detalle',()=>{
-  const table=billing.split('function tableMarkup()')[1].split('function rowMarkup')[0];
+  const table=billing.split('services: [')[1].split('tolls: [')[0];
   for(const label of ['Fecha/Hora','Prestadora','Base','Tipo de Servicio','Origen','Destino','Cliente','KM'])assert.match(table,new RegExp(label));
   for(const forbidden of ['Importe cierre','Importe actual','Diferencia','Tarifa','Estado'])assert.doesNotMatch(table,new RegExp(forbidden));
   const detail=billing.split('function detailMarkup()')[1].split('function render()')[0];

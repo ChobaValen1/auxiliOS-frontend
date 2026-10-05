@@ -415,22 +415,85 @@
   const ESTADO_FACT = { pending: 'Pendiente', reviewed: 'Pendiente', invoiced: 'Facturado', excluded: 'Excluido' };
   const IVA = { consumidor_final: 'Consumidor final', monotributo: 'Monotributo', responsable_inscripto: 'Responsable inscripto', exento: 'Exento' };
 
+  /* ── Columnas: cada pestaña tiene su catálogo y cada usuario elige cuáles ve (table-columns-v1.js) ── */
+  const kmText = value => `${num(value).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`;
+  const stacked = (top, sub) => `<b>${esc(top)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}`;
+  const when = row => { const parts = dateParts(row.scheduled_for); return stacked(parts.day, parts.time); };
+  const orderCode = row => row.service_order_number || row.service_number || '—';
+  const paymentLabel = value => MEDIO[value] || (value === 'not_collected' ? 'No cobrado' : value) || '—';
+
+  const COLUMN_DEFS = {
+    services: [
+      { key: 'order', label: 'Código', optional: true, td: row => `<b>${esc(orderCode(row))}</b>` },
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: row => `${when(row)}${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}` },
+      { key: 'completed', label: 'Finalizado', optional: true, td: row => { const p = dateParts(row.completed_at); return row.completed_at ? stacked(p.day, p.time) : '<small>—</small>'; } },
+      { key: 'company', label: 'Prestadora', td: row => `<b>${esc(row.company_name || '—')}</b>` },
+      { key: 'base', label: 'Base', td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
+      { key: 'type', label: 'Tipo de Servicio', td: row => `<b>${esc(row.service_name || '—')}</b><small class="ob-state is-pending">Pendiente</small>` },
+      { key: 'origin', label: 'Origen', cls: 'ob-place', td: row => esc(row.origin || '—') },
+      { key: 'destination', label: 'Destino', cls: 'ob-place', td: row => esc(row.destination || '—') },
+      { key: 'client', label: 'Cliente', td: row => `<b>${esc(row.customer_name || '—')}</b>` },
+      { key: 'plate', label: 'Patente', optional: true, td: row => esc(row.vehicle_plate || '—') },
+      { key: 'vehicle', label: 'Vehículo', optional: true, td: row => esc(row.vehicle_make_model || '—') },
+      { key: 'km', label: 'KM', cls: 'ob-km', td: row => esc(kmText(row.km)) },
+      { key: 'kmsplit', label: 'Km asfalto / ripio', optional: true, cls: 'ob-km', td: row => (row.estimated_asphalt_km != null || row.estimated_gravel_km != null) ? esc(`${num(row.estimated_asphalt_km).toLocaleString('es-AR', { maximumFractionDigits: 1 })} / ${num(row.estimated_gravel_km).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`) : '<small>—</small>' },
+      { key: 'amount', label: 'Importe a facturar', cls: 'ob-money-cell', td: row => `<b class="ob-money">${esc(money(row.current_company_amount, row.currency))}</b>` },
+      { key: 'remito', label: 'Remito', optional: true, td: row => row.remito_id ? 'Con remito' : '<small>Sin remito</small>' }
+    ],
+    tolls: [
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
+      { key: 'company', label: 'Prestadora', td: row => `<b>${esc(row.company_name || '—')}</b>` },
+      { key: 'service', label: 'Servicio', td: row => stacked(orderCode(row), row.vehicle_plate || '') },
+      { key: 'toll', label: 'Peaje', td: row => stacked(row.toll_name || 'Peaje', row.source || '') },
+      { key: 'route', label: 'Ruta', cls: 'ob-place', td: row => esc([row.road, row.direction].filter(Boolean).join(' · ') || `${row.origin || '—'} → ${row.destination || '—'}`) },
+      { key: 'base', label: 'Base', td: row => `<b>${esc(row.billing_base_name || '—')}</b>` },
+      { key: 'quantity', label: 'Cantidad', optional: true, td: row => esc(num(row.quantity || 1).toLocaleString('es-AR')) },
+      { key: 'client', label: 'Cliente', optional: true, td: row => esc(row.customer_name || '—') },
+      { key: 'payment', label: 'Medio de pago', optional: true, td: row => esc(paymentLabel(row.payment_method)) },
+      { key: 'source', label: 'Origen del dato', optional: true, td: row => esc({ planned: 'Planificado', actual: 'Real', manual: 'Manual' }[row.source] || row.source || '—') },
+      { key: 'crossed', label: 'Hora de pasada', optional: true, td: row => { if (!row.crossed_at) return '<small>—</small>'; const p = dateParts(row.crossed_at); return stacked(p.day, p.time); } },
+      { key: 'amount', label: 'Importe', td: row => `<b class="ob-money">${esc(money(row.amount, row.currency))}</b>` },
+      { key: 'status', label: 'Estado', td: () => '<span class="ob-state is-pending">Disponible</span><small>Peaje separado del servicio</small>' }
+    ],
+    extras: [
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
+      { key: 'service', label: 'Servicio', td: row => stacked(orderCode(row), row.vehicle_plate || '') },
+      { key: 'company', label: 'Prestadora', td: row => stacked(row.company_name || '—', row.billing_base_name || '') },
+      { key: 'concept', label: 'Adicional', td: row => `<b>${esc(row.concept_name || 'Adicional')}</b>` },
+      { key: 'quantity', label: 'Cant.', td: row => esc(num(row.quantity).toLocaleString('es-AR')) },
+      { key: 'amount', label: 'Importe', td: row => `<b class="ob-money">${esc(money(row.total_amount, row.currency))}</b>` },
+      { key: 'payer', label: 'Paga', td: row => esc(PAGA[row.payer_agent] || row.payer_agent || '—') },
+      { key: 'collect', label: 'Cobro', td: row => esc(paymentLabel(row.customer_payment_method)) },
+      { key: 'billing', label: 'Facturación', td: row => `<span class="ob-state ${row.billing_status === 'invoiced' ? '' : 'is-pending'}">${esc(ESTADO_FACT[row.billing_status] || row.billing_status || '—')}</span>` }
+    ],
+    private: [
+      { key: 'datetime', label: 'Fecha/Hora', locked: true, td: when },
+      { key: 'service', label: 'Servicio', td: row => stacked(orderCode(row), row.service_name || '') },
+      { key: 'client', label: 'Cliente', td: row => stacked(row.customer_name || '—', (!colsFor('private').has('driver') && row.driver_name) ? 'Chofer: ' + row.driver_name : '') },
+      { key: 'driver', label: 'Chofer', optional: true, td: row => esc(row.driver_name || '—') },
+      { key: 'document', label: 'DNI / CUIT', td: row => esc(row.customer_document || '—') },
+      { key: 'invoice', label: 'Factura', td: row => row.invoice_requested ? stacked('Pide factura', IVA[row.customer_tax_condition] || row.customer_tax_condition || '') : '<small>No pide</small>' },
+      { key: 'budget', label: 'Presupuesto', td: row => `<b class="ob-money">${esc(money(row.quoted_total, row.currency))}</b>` },
+      { key: 'collect', label: 'Cobro', td: row => { const saldo = num(row.balance); const medios = (row.methods || []).map(m => MEDIO[m] || m).join(' · '); return `${saldo > 0 ? `<span class="ob-state is-pending">Saldo ${esc(money(saldo, row.currency))}</span>` : '<span class="ob-state">Pagado</span>'}<small>${esc(medios)}</small>`; } }
+    ]
+  };
+
+  const COLUMN_SETS = {};
+  function colsFor(tab) {
+    const T = window.AuxiliosTableColumns;
+    if (!COLUMN_SETS[tab] && T) COLUMN_SETS[tab] = T.create({ id: `facturacion.${tab}`, columns: COLUMN_DEFS[tab].map(({ key, label, locked, optional }) => ({ key, label, locked, optional })) });
+    return COLUMN_SETS[tab] || { list: () => COLUMN_DEFS[tab].filter(c => !c.optional).map(c => c.key), has: key => COLUMN_DEFS[tab].some(c => c.key === key && !c.optional), open: () => {}, isCustom: () => false };
+  }
+  const visibleDefs = tab => colsFor(tab).list().map(key => COLUMN_DEFS[tab].find(c => c.key === key)).filter(Boolean);
+  const headCells = tab => visibleDefs(tab).map(c => `<th data-col="${c.key}">${esc(c.label)}</th>`).join('');
+  const bodyCells = (tab, row) => visibleDefs(tab).map(c => `<td data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ''}>${c.td(row)}</td>`).join('');
+
   function privateTableMarkup() {
     const rows = S.privRows || [];
     if (!rows.length) return '<div class="ob-empty">No hay servicios particulares pendientes de facturar con estos filtros.</div>';
-    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
-      <th>Fecha/Hora</th><th>Servicio</th><th>Cliente</th><th>DNI / CUIT</th><th>Factura</th><th>Presupuesto</th><th>Cobro</th><th class="ob-actions"></th>
-      </tr></thead><tbody>${rows.map(row => {
-        const id = String(row.service_id), parts = dateParts(row.scheduled_for), saldo = num(row.balance);
-        const medios = (row.methods || []).map(m => MEDIO[m] || m).join(' · ');
-        return `<tr data-billing-private="${esc(id)}" class="${S.selected.has(id) ? 'selected' : ''}">
-          <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td>
-          <td><b>${esc(row.service_order_number || row.service_number || '—')}</b><small>${esc(row.service_name || '')}</small></td>
-          <td><b>${esc(row.customer_name || '—')}</b><small>${esc(row.driver_name ? 'Chofer: ' + row.driver_name : '')}</small></td>
-          <td>${esc(row.customer_document || '—')}</td>
-          <td>${row.invoice_requested ? `<b>Pide factura</b><small>${esc(IVA[row.customer_tax_condition] || row.customer_tax_condition || '')}</small>` : '<small>No pide</small>'}</td>
-          <td><b class="ob-money">${esc(money(row.quoted_total, row.currency))}</b></td>
-          <td>${saldo > 0 ? `<span class="ob-state is-pending">Saldo ${esc(money(saldo, row.currency))}</span>` : '<span class="ob-state">Pagado</span>'}<small>${esc(medios)}</small></td>
+    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>${headCells('private')}<th class="ob-actions"></th></tr></thead><tbody>${rows.map(row => {
+        const id = String(row.service_id);
+        return `<tr data-billing-private="${esc(id)}" class="${S.selected.has(id) ? 'selected' : ''}">${bodyCells('private', row)}
           <td class="ob-actions ob-private-actions">${canInvoice() ? `<button class="ob-button primary" type="button" data-ob-private="invoice" data-service-id="${esc(id)}">Facturar</button><button class="ob-button" type="button" data-ob-private="no-invoice" data-service-id="${esc(id)}">Sin factura</button>` : ''}</td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
@@ -440,22 +503,12 @@
     const rows = S.extraRows || [];
     if (!rows.length) return '<div class="ob-empty">No hay adicionales en los servicios finalizados de este período.</div>';
     const total = rows.reduce((t, r) => t + num(r.total_amount), 0);
-    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
-      <th>Fecha/Hora</th><th>Servicio</th><th>Prestadora</th><th>Adicional</th><th>Cant.</th><th>Importe</th><th>Paga</th><th>Cobro</th><th>Facturación</th>
-      </tr></thead><tbody>${rows.map(row => {
-        const parts = dateParts(row.scheduled_for);
-        return `<tr data-billing-extra="${esc(row.excess_charge_id)}">
-          <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td>
-          <td><b>${esc(row.service_order_number || row.service_number || '—')}</b><small>${esc(row.vehicle_plate || '')}</small></td>
-          <td><b>${esc(row.company_name || '—')}</b><small>${esc(row.billing_base_name || '')}</small></td>
-          <td><b>${esc(row.concept_name || 'Adicional')}</b></td>
-          <td>${esc(num(row.quantity).toLocaleString('es-AR'))}</td>
-          <td><b class="ob-money">${esc(money(row.total_amount, row.currency))}</b></td>
-          <td>${esc(PAGA[row.payer_agent] || row.payer_agent || '—')}</td>
-          <td>${esc(MEDIO[row.customer_payment_method] || (row.customer_payment_method === 'not_collected' ? 'No cobrado' : row.customer_payment_method) || '—')}</td>
-          <td><span class="ob-state ${row.billing_status === 'invoiced' ? '' : 'is-pending'}">${esc(ESTADO_FACT[row.billing_status] || row.billing_status || '—')}</span></td>
-        </tr>`;
-      }).join('')}</tbody><tfoot><tr><td colspan="5"><b>Total adicionales</b></td><td><b class="ob-money">${esc(money(total, rows[0]?.currency || 'ARS'))}</b></td><td colspan="3"></td></tr></tfoot></table></div>`;
+    const defs = visibleDefs('extras');
+    const foot = defs.map((c, i) => c.key === 'amount'
+      ? `<td><b class="ob-money">${esc(money(total, rows[0]?.currency || 'ARS'))}</b></td>`
+      : i === 0 ? '<td><b>Total adicionales</b></td>' : '<td></td>').join('');
+    return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>${headCells('extras')}</tr></thead><tbody>${rows.map(row =>
+        `<tr data-billing-extra="${esc(row.excess_charge_id)}">${bodyCells('extras', row)}</tr>`).join('')}</tbody><tfoot><tr>${foot}</tr></tfoot></table></div>`;
   }
 
   function tableMarkup() {
@@ -467,23 +520,18 @@
     const selectable = rowsSrv.filter(row => !row.pricing_error);
     const allSelected = selectable.length > 0 && selectable.every(row => S.selected.has(String(row.service_id)));
     return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
-      <th class="ob-check"><input type="checkbox" data-ob-select-all ${allSelected ? 'checked' : ''}></th>
-      <th>Fecha/Hora</th><th>Prestadora</th><th>Base</th><th>Tipo de Servicio</th><th>Origen</th><th>Destino</th><th>Cliente</th><th>KM</th><th class="ob-actions"></th>
+      <th class="ob-check"><input type="checkbox" data-ob-select-all ${allSelected ? 'checked' : ''} aria-label="Seleccionar todos"></th>
+      ${headCells('services')}<th class="ob-actions"></th>
       </tr></thead><tbody>${rowsSrv.map(rowMarkup).join('')}</tbody></table></div>`;
   }
 
   function rowMarkup(row) {
     const id = String(row.service_id);
-    const parts = dateParts(row.scheduled_for);
     const checked = S.selected.has(id);
     const disabled = Boolean(row.pricing_error);
     return `<tr data-billing-service="${esc(id)}" class="${checked ? 'selected' : ''}">
       <td class="ob-check"><input type="checkbox" data-ob-select="${esc(id)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled title="Corregí el error tarifario antes de seleccionar"' : ''}></td>
-      <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td>
-      <td><b>${esc(row.company_name || '—')}</b></td><td><b>${esc(row.billing_base_name || '—')}</b></td>
-      <td><b>${esc(row.service_name || '—')}</b><small class="ob-state is-pending">Pendiente</small>${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}</td>
-      <td class="ob-place">${esc(row.origin || '—')}</td><td class="ob-place">${esc(row.destination || '—')}</td>
-      <td><b>${esc(row.customer_name || '—')}</b></td><td class="ob-km">${esc(num(row.km).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km</td>
+      ${bodyCells('services', row)}
       <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio" aria-label="Acciones del servicio">${ico('ellipsis')}</button></td>
     </tr>`;
   }
@@ -492,23 +540,17 @@
     if (!S.tollRows.length) return '<div class="ob-empty">No hay peajes con facturación separada disponibles con estos filtros.</div>';
     const allSelected = S.tollRows.every(row => S.selectedTolls.has(String(row.service_toll_id)));
     return `<div class="ob-table-wrap"><table class="ob-table"><thead><tr>
-      <th class="ob-check"><input type="checkbox" data-ob-toll-select-all ${allSelected ? 'checked' : ''}></th>
-      <th>Fecha/Hora</th><th>Prestadora</th><th>Servicio</th><th>Peaje</th><th>Ruta</th><th>Base</th><th>Importe</th><th>Estado</th>
+      <th class="ob-check"><input type="checkbox" data-ob-toll-select-all ${allSelected ? 'checked' : ''} aria-label="Seleccionar todos"></th>
+      ${headCells('tolls')}
       </tr></thead><tbody>${S.tollRows.map(tollRowMarkup).join('')}</tbody></table></div>`;
   }
 
   function tollRowMarkup(row) {
     const id = String(row.service_toll_id);
-    const parts = dateParts(row.scheduled_for);
-    const route = [row.road, row.direction].filter(Boolean).join(' · ') || `${row.origin || '—'} → ${row.destination || '—'}`;
     const checked = S.selectedTolls.has(id);
     return `<tr data-billing-toll="${esc(id)}" class="${checked ? 'selected' : ''}">
       <td class="ob-check"><input type="checkbox" data-ob-toll-select="${esc(id)}" ${checked ? 'checked' : ''}></td>
-      <td><b>${esc(parts.day)}</b><small>${esc(parts.time)}</small></td><td><b>${esc(row.company_name || '—')}</b></td>
-      <td><b>${esc(row.service_order_number || row.service_number || '—')}</b><small>${esc(row.vehicle_plate || '')}</small></td>
-      <td><b>${esc(row.toll_name || 'Peaje')}</b><small>${esc(row.source || '')}</small></td><td class="ob-place">${esc(route)}</td>
-      <td><b>${esc(row.billing_base_name || '—')}</b></td><td><b class="ob-money">${esc(money(row.amount, row.currency))}</b></td>
-      <td><span class="ob-state is-pending">Disponible</span><small>Peaje separado del servicio</small></td>
+      ${bodyCells('tolls', row)}
     </tr>`;
   }
 
@@ -655,7 +697,7 @@
     const backdropClass = S.invoiceOpen ? ' ob-invoice-backdrop' : S.rowAction ? ' ob-confirm-backdrop' : '';
     screen.innerHTML = `<div class="ob-shell">
       <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios${serviceRows().length ? ` <span class="ob-tab-count">${serviceRows().length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes${S.tollRows.length ? ` <span class="ob-tab-count">${S.tollRows.length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'extras' ? 'active' : ''}" type="button" data-ob-tab="extras">Adicionales${(S.extraRows || []).length ? ` <span class="ob-tab-count">${S.extraRows.length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'private' ? 'active' : ''}" type="button" data-ob-tab="private">Particulares${(S.privRows || []).length ? ` <span class="ob-tab-count">${S.privRows.length}</span>` : ''}</button></div>
-      <div class="ob-filters auxf-bar">${filtersMarkup()}${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div>
+      <div class="ob-filters auxf-bar">${filtersMarkup()}<button class="ob-button ob-columns${colsFor(S.tab).isCustom() ? ' is-custom' : ''}" type="button" data-ob="columns" title="Columnas" aria-label="Columnas">${ico('sliders-horizontal')}Columnas</button>${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div>
       ${selectionMarkup()}<div class="ob-table-card">${S.loading ? '<div class="ob-empty">Actualizando Facturación…</div>' : tableMarkup()}</div>
       <div id="ob-detail-backdrop" class="ob-detail-backdrop${backdropClass}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
     </div>`;
@@ -992,6 +1034,7 @@
     if (action === 'invoice-selection') return openInvoice();
     if (action === 'close-invoice') return closeInvoice();
     if (action === 'confirm-invoice') return createInvoice();
+    if (action === 'columns') return colsFor(S.tab).open(() => render());
     if (action === 'close-detail') return closeDetail();
     if (action === 'open-remito') { const id = Number(event.target.closest('[data-remito-id]')?.dataset.remitoId); if (id && window.RemitoPanel?.open) window.RemitoPanel.open(id); return; }
     if (action === 'cancel-action') { if (S.rowAction?.busy) return; S.rowAction = null; return render(); }

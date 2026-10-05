@@ -134,3 +134,18 @@
 #screen-facturas .oi-groups-table td.oi-money { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; }
 #screen-facturas .oi-groups-table tfoot td { border-bottom: 0; border-top: 1px solid var(--ax-border-strong); font-weight: var(--ax-fw-semibold); }
 #screen-facturas .oi-groups-note { margin: var(--ax-sp-2) 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+@media (max-width: 1500px) and (min-width: 651px) {
+  #screen-facturas .oi-filters .oi-columns { width: var(--ax-h); padding: 0; font-size: 0; gap: 0; }
+}
+@media (max-width: 650px) {
+  #screen-facturas .oi-filters .oi-columns { margin-left: 0; }
+}
+
+/* Con muchas columnas la tabla se desplaza y las acciones quedan fijas a la derecha. */
+@media (min-width: 651px) {
+  #screen-facturas .oi-table td, #screen-facturas .oi-table th { white-space: nowrap; }
+  #screen-facturas .oi-table td.oi-actions, #screen-facturas .oi-table thead th:last-child { position: sticky; right: 0; z-index: 1; background: var(--ax-surface-2); box-shadow: -1px 0 0 var(--ax-border); }
+  #screen-facturas .oi-table thead th:last-child { background: var(--ax-surface); z-index: 3; }
+  #screen-facturas .oi-table tbody tr:hover td.oi-actions { background: var(--ax-surface-3); }
+}
