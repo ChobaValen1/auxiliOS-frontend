@@ -112,4 +112,25 @@
   #screen-facturas .oi-modal > header .oi-button { flex: 0 0 auto; width: var(--ax-h); padding: 0; }
   #screen-facturas .oi-detail-backdrop, #screen-facturas .oi-modal-backdrop { position: fixed; z-index: var(--ax-z-modal); }
   #screen-facturas .oi-detail { width: 100%; }
+  #screen-facturas .oi-summary { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Líneas con desglose y resumen por tipo ── */
+#screen-facturas .oi-line-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturas .oi-line-card > summary.oi-line { position: relative; padding-right: 38px; border: 0; background: transparent; cursor: pointer; list-style: none; }
+#screen-facturas .oi-line-card > summary::-webkit-details-marker { display: none; }
+#screen-facturas .oi-line-card > summary:focus-visible { outline: none; box-shadow: var(--ax-focus); border-radius: var(--ax-radius-lg); }
+#screen-facturas .oi-chev { position: absolute; right: 12px; top: 50%; margin-top: -8px; color: var(--ax-text-3); transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturas .oi-line-card[open] > summary .oi-chev { transform: rotate(180deg); }
+#screen-facturas .oi-line-body { display: grid; gap: var(--ax-sp-2); padding: 0 14px 14px; }
+#screen-facturas .oi-line-km { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturas .oi-line-card.released { opacity: .75; }
+#screen-facturas .oi-release { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--ax-warn); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+#screen-facturas .oi-release .ax-icon { width: 13px; height: 13px; vertical-align: 0; }
+#screen-facturas .oi-groups-table { width: 100%; border-collapse: collapse; font-size: var(--ax-fs-sm); }
+#screen-facturas .oi-groups-table th { padding: 6px 0; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; }
+#screen-facturas .oi-groups-table th:last-child, #screen-facturas .oi-groups-table td:last-child { text-align: right; }
+#screen-facturas .oi-groups-table td { padding: 8px 0; border-bottom: 1px solid var(--ax-border); }
+#screen-facturas .oi-groups-table td.oi-money { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturas .oi-groups-table tfoot td { border-bottom: 0; border-top: 1px solid var(--ax-border-strong); font-weight: var(--ax-fw-semibold); }
+#screen-facturas .oi-groups-note { margin: var(--ax-sp-2) 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }

@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'particulares-v216-20261005';
+window.AUXILIOS_BUILD_ID = 'particulares-v217-20261005';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -174,6 +174,7 @@ async function loadCriticalAuxiliosModules() {
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
     loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),
+    loadAuxiliosModule('auxilios-billing-breakdown', '/billing-breakdown-v1.js'),
     loadAuxiliosModule('auxilios-operator-billing', '/operator-billing.js'),
     loadAuxiliosModule('auxilios-toll-management', '/toll-management.js'),
     loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),

@@ -392,6 +392,10 @@
           <article><small>Semipesado</small><b>${groups.semipesado}</b></article>
           <article><small>UML</small><b>${groups.uml}</b></article>${other}
         </section>
+        <section class="ob-invoice-lines" aria-label="Qué se factura">
+          <h4>Se factura <small>${services.length} ${services.length === 1 ? 'servicio' : 'servicios'}${tolls.length ? ` y ${tolls.length} ${tolls.length === 1 ? 'peaje' : 'peajes'}` : ''}</small></h4>
+          <ul>${services.map(row => `<li><div><b>${esc(row.service_order_number || row.service_number || 'Servicio')}</b><small>${esc([row.service_name, dateParts(row.scheduled_for).day, row.customer_name].filter(Boolean).join(' · '))}</small><small>${esc([row.origin, row.destination].filter(Boolean).join(' → ') || '—')}</small></div><span class="ob-money">${esc(money(row.current_company_amount, row.currency))}</span></li>`).join('')}${tolls.map(row => `<li class="is-toll"><div><b>${esc(row.toll_name || 'Peaje')}</b><small>${esc([row.service_order_number || row.service_number, dateParts(row.scheduled_for).day].filter(Boolean).join(' · '))}</small></div><span class="ob-money">${esc(money(row.amount, row.currency))}</span></li>`).join('')}</ul>
+        </section>
         <section class="ob-invoice-total"><div><small>Total a facturar</small><b>${esc(money(selectedTotal(), currency))}</b></div><span>${esc(currency)}</span></section>
         <label class="ob-invoice-notes"><span>Observaciones <small>opcional</small></span><input data-ob-invoice-field="notes" maxlength="300" placeholder="Referencia u observación breve" value="${esc(form.notes)}"></label>
       </div>
@@ -508,20 +512,15 @@
     </tr>`;
   }
 
+  /* El desglose lo arma billing-breakdown-v1.js: el mismo que se ve en Facturas. */
   function componentMarkup(quote) {
-    const rows = [...(Array.isArray(quote.components) ? quote.components : [])];
-    if (num(quote.surcharge_total) > 0) rows.push({ service_name: 'Recargo', quantity: 1, unit_price: quote.surcharge_total, subtotal: quote.surcharge_total, pricing_unit: 'recargo' });
-    if (quote.toll_billing_mode !== 'separate' && num(quote.toll_total) > 0) rows.push({ service_name: 'Peajes facturables', quantity: 1, unit_price: quote.toll_total, subtotal: quote.toll_total, pricing_unit: 'peajes' });
-    if (!rows.length) return '<div class="ob-empty">Sin componentes.</div>';
-    return `<div class="ob-components">${rows.map(item => `<div class="ob-component"><div><b>${esc(item.service_name || item.role || 'Concepto')}</b><small>${esc(item.pricing_unit || '')} · ${esc(item.quantity ?? 1)} × ${esc(money(item.unit_price || 0, quote.currency))}</small></div><small>${esc(item.price_source || '')}</small><b class="ob-money">${esc(money(item.subtotal || 0, quote.currency))}</b></div>`).join('')}</div>`;
+    const bd = window.AuxiliosBillingBreakdown;
+    return bd
+      ? bd.tabla(quote, { currency: quote.currency, total: quote.current_company_amount })
+      : '<div class="ob-empty">El desglose no está disponible.</div>';
   }
 
   const revisionLabel = value => value === 'invoiced' ? 'FACTURADO' : value === 'excluded' ? 'EXCLUIDO' : 'PENDIENTE';
-  function revisionsMarkup(rows, currency) {
-    if (!rows?.length) return '<div class="ob-empty">Todavía no hay movimientos de Facturación.</div>';
-    return `<div class="ob-history">${rows.map(row => `<article><b>${esc(revisionLabel(row.billing_status))} · ${esc(money(row.company_amount, row.currency || currency))}</b><small>${esc(row.created_by_name || 'Usuario')} · ${esc(date(row.created_at))}${row.reason ? ` · ${esc(row.reason)}` : ''}</small></article>`).join('')}</div>`;
-  }
-
   /* Revertir y Anular se resuelven desde la fila. Antes el menú abría el
      detalle completo —una RPC entera— sólo para mostrar el confirmar adentro:
      había que entrar al servicio para sacarlo. Las dos RPC piden nada más que
@@ -584,20 +583,53 @@
     </section>`;
   }
 
+  const BD = () => window.AuxiliosBillingBreakdown || null;
+
+  function revisionTimeline(rows, currency) {
+    if (!rows?.length) return '<div class="ob-empty">Todavía no hay movimientos de Facturación.</div>';
+    return `<ol class="ob-timeline">${rows.map(row => {
+      const before = row.previous_company_amount;
+      const change = before != null && Math.abs(num(row.company_amount) - num(before)) > .009
+        ? `<small>Antes ${esc(money(before, row.currency || currency))}</small>` : '';
+      return `<li><span class="ob-tl-dot" aria-hidden="true"></span><div><b>${esc(ESTADO_FACT[row.billing_status] || revisionLabel(row.billing_status))} · ${esc(money(row.company_amount, row.currency || currency))}</b>${change}<small>${esc(row.created_by_name || 'Usuario')} · ${esc(date(row.created_at))}</small>${row.reason ? `<p>${esc(row.reason)}</p>` : ''}</div></li>`;
+    }).join('')}</ol>`;
+  }
+
   function detailMarkup() {
     const detail = S.detail;
     const service = detail.service || {};
     const quote = detail.current_quote || {};
+    const cur = quote.currency;
     const delta = num(quote.billing_delta);
+    const changed = Math.abs(delta) > .009;
     const separateTolls = quote.toll_billing_mode === 'separate' && num(quote.separate_toll_amount) > 0;
-    return `<aside class="ob-detail"><div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3>${esc(service.service_number || 'Servicio')}</h3></div><button class="ob-button" type="button" data-ob="close-detail">${ico('x')}Cerrar</button></div><div class="ob-detail-body">
-      <div class="ob-summary"><article><small>Importe actual</small><b>${esc(money(quote.current_company_amount, quote.currency))}</b></article><article><small>Importe al cierre</small><b>${esc(money(quote.stored_company_amount, quote.currency))}</b></article><article><small>Diferencia</small><b>${delta > 0 ? '+' : ''}${esc(money(delta, quote.currency))}</b></article></div>
-      ${separateTolls ? `<section class="ob-section"><h4>Peajes facturados por separado</h4><div class="ob-field"><b>${esc(money(quote.separate_toll_amount, quote.currency))}</b><small>Este importe no forma parte del total del servicio y se factura desde la pestaña Peajes.</small></div></section>` : ''}
-      ${Math.abs(delta) > .009 ? `<section class="ob-section"><h4>Cambio tarifario detectado</h4><div class="ob-field"><b>${delta > 0 ? '+' : ''}${esc(money(delta, quote.currency))} respecto del cierre operativo.</b><small>Revisá esta diferencia antes de facturar el servicio.</small></div></section>` : ''}
-      <section class="ob-section"><h4>Servicio</h4><div class="ob-grid"><div class="ob-field"><small>Fecha/Hora</small><b>${esc(date(service.scheduled_for))}</b></div><div class="ob-field"><small>Prestadora</small><b>${esc(service.company_name || '—')}</b></div><div class="ob-field"><small>Base</small><b>${esc(service.billing_base_name || '—')}</b></div><div class="ob-field"><small>Tipo</small><b>${esc(service.service_name || '—')}</b></div><div class="ob-field"><small>Origen</small><b>${esc(service.origin || '—')}</b></div><div class="ob-field"><small>Destino</small><b>${esc(service.destination || '—')}</b></div><div class="ob-field"><small>Cliente</small><b>${esc(service.customer_name || '—')}</b></div><div class="ob-field"><small>Patente</small><b>${esc(service.vehicle_plate || '—')}</b></div></div></section>
-      <section class="ob-section"><h4>Tarifa aplicada ahora</h4><div class="ob-grid"><div class="ob-field"><small>Tarifario</small><b>${esc(quote.rate_card_name || '—')} · v${esc(quote.rate_card_version || '—')}</b></div><div class="ob-field"><small>Contrato</small><b>${esc(quote.contract_name || '—')}</b></div><div class="ob-field"><small>Radio cubierto</small><b>${quote.covered_radius_km == null ? '—' : esc(`${quote.covered_radius_km} km`)}</b></div><div class="ob-field"><small>KM facturables</small><b>${esc(`${quote.billable_distance_km ?? 0} km`)}</b></div></div></section>
-      <section class="ob-section"><h4>Composición</h4>${componentMarkup(quote)}</section>
-      <section class="ob-section"><h4>Historial de Facturación</h4>${revisionsMarkup(detail.revisions, quote.currency)}</section>
+    const km = BD()?.kilometros(quote, service) || {};
+    const kmLine = [
+      km.asfalto ? `Asfalto ${esc(num(km.asfalto).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km` : '',
+      km.ripio ? `Ripio ${esc(num(km.ripio).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km` : '',
+      km.radio != null ? `Radio cubierto ${esc(km.radio)} km` : '',
+      km.facturable != null ? `<b>Facturable ${esc(num(km.facturable).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km</b>` : ''
+    ].filter(Boolean).join(' · ');
+    const vehicle = [service.vehicle_make_model, service.vehicle_plate].filter(Boolean).join(' · ');
+    const remito = service.remito_id && window.RemitoPanel?.open
+      ? `<button class="ob-button" type="button" data-ob="open-remito" data-remito-id="${esc(service.remito_id)}">${ico('file-text')}Ver remito</button>` : '';
+    const table = componentMarkup(quote);
+    return `<aside class="ob-detail"><div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3>${esc(service.service_order_number || service.service_number || 'Servicio')}</h3></div><div class="ob-detail-actions">${remito}<button class="ob-button" type="button" data-ob="close-detail">${ico('x')}Cerrar</button></div></div><div class="ob-detail-body">
+      <section class="ob-hero${changed ? ' has-change' : ''}"><small>Importe a facturar</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b>
+        ${changed ? `<div class="ob-hero-change">${ico('triangle-alert')}<span>La tarifa cambió desde el cierre: al cierre era <b>${esc(money(quote.stored_company_amount, cur))}</b> (${delta > 0 ? '+' : '−'}${esc(money(Math.abs(delta), cur))}). Revisá la diferencia antes de facturar.</span></div>` : `<small class="ob-hero-ok">Coincide con el importe al cierre.</small>`}
+        ${separateTolls ? `<small>Más ${esc(money(quote.separate_toll_amount, cur))} de peajes que se facturan por separado.</small>` : ''}
+      </section>
+      <section class="ob-section ob-ficha"><h4>Servicio</h4>
+        <div class="ob-route"><div><small>Origen</small><b>${esc(service.origin || '—')}</b></div><span class="ob-route-arrow" aria-hidden="true">${ico('chevron-right')}</span><div><small>Destino</small><b>${esc(service.destination || '—')}</b></div></div>
+        ${kmLine ? `<p class="ob-km-line">${kmLine}</p>` : ''}
+        <div class="ob-grid"><div class="ob-field"><small>Fecha del servicio</small><b>${esc(date(service.scheduled_for))}</b></div><div class="ob-field"><small>Finalizado</small><b>${esc(date(service.completed_at))}</b></div><div class="ob-field"><small>Prestadora</small><b>${esc(service.company_name || '—')}</b></div><div class="ob-field"><small>Base</small><b>${esc(service.billing_base_name || '—')}</b></div><div class="ob-field"><small>Tipo</small><b>${esc(service.service_name || '—')}</b></div><div class="ob-field"><small>Cliente</small><b>${esc(service.customer_name || '—')}</b></div><div class="ob-field"><small>Vehículo</small><b>${esc(vehicle || '—')}</b></div></div>
+        ${service.operator_notes ? `<div class="ob-note"><small>Notas del operador</small><p>${esc(service.operator_notes)}</p></div>` : ''}
+      </section>
+      <section class="ob-section"><h4>Desglose de costos</h4>${table}
+        <p class="ob-tariff">${ico('file-check')}<span>${esc(quote.rate_card_name || 'Sin tarifario')}${quote.rate_card_version ? ` · v${esc(quote.rate_card_version)}` : ''}${quote.contract_name ? ` · Contrato ${esc(quote.contract_name)}` : ''}</span></p>
+        ${changed ? `<div class="ob-compare"><div><small>Al cierre</small><b class="ob-money">${esc(money(quote.stored_company_amount, cur))}</b></div><div><small>Con la tarifa de hoy</small><b class="ob-money">${esc(money(quote.current_company_amount, cur))}</b></div><div class="${delta > 0 ? 'is-up' : 'is-down'}"><small>Diferencia</small><b class="ob-money">${delta > 0 ? '+' : '−'}${esc(money(Math.abs(delta), cur))}</b></div></div>` : ''}
+      </section>
+      <section class="ob-section"><h4>Historial de Facturación</h4>${revisionTimeline(detail.revisions, cur)}</section>
     </div></aside>`;
   }
 
@@ -961,6 +993,7 @@
     if (action === 'close-invoice') return closeInvoice();
     if (action === 'confirm-invoice') return createInvoice();
     if (action === 'close-detail') return closeDetail();
+    if (action === 'open-remito') { const id = Number(event.target.closest('[data-remito-id]')?.dataset.remitoId); if (id && window.RemitoPanel?.open) window.RemitoPanel.open(id); return; }
     if (action === 'cancel-action') { if (S.rowAction?.busy) return; S.rowAction = null; return render(); }
     if (action === 'confirm-action') return confirmAdminAction();
   }

@@ -57,11 +57,11 @@ test('grilla general es sintética y deja pricing dentro del detalle',()=>{
   for(const label of ['Fecha/Hora','Prestadora','Base','Tipo de Servicio','Origen','Destino','Cliente','KM'])assert.match(table,new RegExp(label));
   for(const forbidden of ['Importe cierre','Importe actual','Diferencia','Tarifa','Estado'])assert.doesNotMatch(table,new RegExp(forbidden));
   const detail=billing.split('function detailMarkup()')[1].split('function render()')[0];
-  assert.match(detail,/Importe actual/);
-  assert.match(detail,/Importe al cierre/);
+  assert.match(detail,/Importe a facturar/);
+  assert.match(detail,/Al cierre/);
   assert.match(detail,/Diferencia/);
-  assert.match(detail,/Tarifa aplicada ahora/);
-  assert.match(detail,/Composición/);
+  assert.match(detail,/Desglose de costos/);
+  assert.match(detail,/Historial de Facturación/);
   assert.match(billing,/function componentMarkup/);
 });
 
@@ -153,9 +153,10 @@ test('peaje separado no integra el importe del servicio',()=>{
   assert.match(tollQuote,/included_toll_amount/);
   assert.match(tollQuote,/service_company_amount/);
   assert.match(tollQuote,/company_amount_with_tolls/);
-  assert.match(billing,/quote\.toll_billing_mode\s*!==\s*'separate'/);
-  assert.match(billing,/Peajes facturados por separado/);
-  assert.match(billing,/no forma parte del total del servicio/i);
+  const breakdown=fs.readFileSync('billing-breakdown-v1.js','utf8');
+  assert.match(breakdown,/toll_billing_mode\s*===\s*'separate'/);
+  assert.match(breakdown,/Se facturan por separado/);
+  assert.match(billing,/peajes que se facturan por separado/i);
 });
 
 test('Facturación incorpora Peajes sin duplicar la carga operativa',()=>{

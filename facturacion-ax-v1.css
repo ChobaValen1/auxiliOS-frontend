@@ -166,3 +166,71 @@
   #screen-facturacion .ob-invoice-footer { flex-direction: column; align-items: stretch; }
   #screen-facturacion .ob-invoice-footer > div { justify-content: flex-end; }
 }
+
+/* ── Desglose de costos (Facturación y Facturas) ── */
+:is(#screen-facturacion, #screen-facturas) .bd-wrap { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); overflow: hidden; }
+:is(#screen-facturacion, #screen-facturas) .bd-table { width: 100%; border-collapse: collapse; font-size: var(--ax-fs-sm); }
+:is(#screen-facturacion, #screen-facturas) .bd-table th { padding: 8px 12px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; }
+:is(#screen-facturacion, #screen-facturas) .bd-table th:last-child, :is(#screen-facturacion, #screen-facturas) .bd-table td.bd-amount { text-align: right; }
+:is(#screen-facturacion, #screen-facturas) .bd-table td { padding: 9px 12px; border-bottom: 1px solid var(--ax-border); vertical-align: top; }
+:is(#screen-facturacion, #screen-facturas) .bd-table tbody tr:last-child td { border-bottom: 0; }
+:is(#screen-facturacion, #screen-facturas) .bd-what b { display: block; font-weight: var(--ax-fw-semibold); }
+:is(#screen-facturacion, #screen-facturas) .bd-what small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#screen-facturacion, #screen-facturas) .bd-calc { color: var(--ax-text-2); font-family: var(--ax-font-mono); font-size: var(--ax-fs-xs); white-space: nowrap; }
+:is(#screen-facturacion, #screen-facturas) .bd-amount { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+:is(#screen-facturacion, #screen-facturas) .bd-table tr.bd-copago .bd-amount { color: var(--ax-text-2); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tr.bd-peaje-aparte { color: var(--ax-text-3); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tr.bd-ajuste .bd-what b { color: var(--ax-warn); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tfoot td { padding: 11px 12px; border-top: 1px solid var(--ax-border-strong); background: var(--ax-surface-2); font-weight: var(--ax-fw-semibold); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tfoot .bd-amount { font-size: var(--ax-fs-lg); }
+:is(#screen-facturacion, #screen-facturas) .bd-empty { padding: 16px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Detalle de Facturación ── */
+#screen-facturacion .ob-detail-actions { display: flex; gap: var(--ax-sp-2); flex: 0 0 auto; }
+#screen-facturacion .ob-hero { display: grid; gap: 4px; padding: 16px 18px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-hero.has-change { border-left: 3px solid var(--ax-warn); }
+#screen-facturacion .ob-hero > small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-hero > b { font: var(--ax-fw-semibold) 30px var(--ax-font-mono); font-variant-numeric: tabular-nums; line-height: 1.15; }
+#screen-facturacion .ob-hero .ob-hero-ok { color: var(--ax-text-3); }
+#screen-facturacion .ob-hero-change { display: flex; gap: 8px; align-items: flex-start; margin-top: 4px; padding: 8px 10px; border-radius: var(--ax-radius); background: var(--ax-warn-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-hero-change .ax-icon { flex: 0 0 auto; margin-top: 2px; color: var(--ax-warn); }
+#screen-facturacion .ob-route { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--ax-sp-3); align-items: center; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-route small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-route b { display: block; margin-top: 2px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); overflow-wrap: anywhere; }
+#screen-facturacion .ob-route-arrow { color: var(--ax-text-3); }
+#screen-facturacion .ob-km-line { margin: var(--ax-sp-2) 0 var(--ax-sp-3); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-km-line b { color: var(--ax-text); }
+#screen-facturacion .ob-note { margin-top: var(--ax-sp-3); padding: 10px 12px; border-left: 2px solid var(--ax-border-strong); background: var(--ax-surface); border-radius: 0 var(--ax-radius) var(--ax-radius) 0; }
+#screen-facturacion .ob-note small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-note p { margin: 2px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); white-space: pre-wrap; }
+#screen-facturacion .ob-tariff { display: flex; gap: 6px; align-items: center; margin: var(--ax-sp-3) 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-sp-2); margin-top: var(--ax-sp-3); }
+#screen-facturacion .ob-compare > div { padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-facturacion .ob-compare small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-compare b { font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-compare .is-up b, #screen-facturacion .ob-compare .is-down b { color: var(--ax-warn); }
+#screen-facturacion .ob-timeline { position: relative; display: grid; gap: var(--ax-sp-3); margin: 0; padding: 0; list-style: none; }
+#screen-facturacion .ob-timeline li { position: relative; display: flex; gap: 12px; }
+#screen-facturacion .ob-timeline li:not(:last-child)::after { content: ""; position: absolute; left: 4px; top: 14px; bottom: -12px; width: 1px; background: var(--ax-border-strong); }
+#screen-facturacion .ob-tl-dot { flex: 0 0 9px; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--ax-text-3); }
+#screen-facturacion .ob-timeline b { display: block; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-timeline small { display: block; margin-top: 1px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-timeline p { margin: 4px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+
+/* ── Qué se factura (modal Crear factura) ── */
+#screen-facturacion .ob-invoice-lines { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-lines h4 { margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--ax-border); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-facturacion .ob-invoice-lines h4 small { margin-left: 6px; color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+#screen-facturacion .ob-invoice-lines ul { max-height: 190px; margin: 0; padding: 0; overflow: auto; list-style: none; }
+#screen-facturacion .ob-invoice-lines li { display: flex; justify-content: space-between; gap: var(--ax-sp-3); padding: 8px 14px; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-lines li:last-child { border-bottom: 0; }
+#screen-facturacion .ob-invoice-lines li b { display: block; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-invoice-lines li small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-invoice-lines li .ob-money { flex: 0 0 auto; font-family: var(--ax-font-mono); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  #screen-facturacion .ob-route { grid-template-columns: 1fr; }
+  #screen-facturacion .ob-route-arrow { display: none; }
+  #screen-facturacion .ob-compare { grid-template-columns: 1fr; }
+  #screen-facturacion .ob-detail-head { flex-wrap: wrap; gap: var(--ax-sp-2); }
+  :is(#screen-facturacion, #screen-facturas) .bd-calc { white-space: normal; }
+}

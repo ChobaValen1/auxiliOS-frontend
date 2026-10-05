@@ -243,27 +243,64 @@
     return `<div class="oi-table-wrap"><table class="oi-table"><thead><tr><th>Factura</th><th>Fecha</th><th>Prestadora</th><th>Servicios</th><th>Peajes</th><th>Total</th><th>Estado</th><th>PDF</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
+  const BD = () => window.AuxiliosBillingBreakdown || null;
+  const released = line => Boolean(line.released_at);
+  const releaseChip = line => released(line)
+    ? `<span class="oi-release">${ico('circle-alert')}Liberado por anulación${line.release_reason ? ` · ${esc(line.release_reason)}` : ''}</span>` : '';
+
   function lineMarkup(line) {
     const service = line.service_snapshot || {};
     const quote = line.quote_snapshot || {};
-    const released = Boolean(line.released_at);
-    return `<article class="oi-line ${released ? 'released' : ''}">
-      <div class="oi-line-main"><b>${esc(service.service_order_number || service.service_number || 'Servicio')}</b><small>${esc(date(service.scheduled_for))} · ${esc(service.customer_name || 'Sin cliente')}</small><small>${esc([service.vehicle_make_model, service.vehicle_plate].filter(Boolean).join(' · ') || 'Sin vehículo')}</small>${released ? '<small class="oi-release">Liberado por anulación</small>' : ''}</div>
-      <div class="oi-line-route"><small>Origen</small><b>${esc(service.origin || '—')}</b><small>Destino</small><b>${esc(service.destination || '—')}</b></div>
-      <div class="oi-line-price"><small>Importe congelado</small><b>${esc(money(line.company_amount, line.currency))}</b><small>${quote.rate_card_name ? `${esc(quote.rate_card_name)} · v${esc(quote.rate_card_version || '—')}` : 'Tarifa congelada'}</small></div>
-    </article>`;
+    const bd = BD();
+    const cur = line.currency || quote.currency;
+    const km = bd ? bd.kilometros(quote, service) : null;
+    const kmText = km && (km.asfalto || km.ripio)
+      ? [km.asfalto ? `Asfalto ${num(km.asfalto).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km` : '', km.ripio ? `Ripio ${num(km.ripio).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km` : '',
+          km.facturable != null ? `Facturable ${num(km.facturable).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km` : ''].filter(Boolean).join(' · ') : '';
+    const table = bd
+      ? bd.tabla(quote, { currency: cur, total: line.company_amount, totalLabel: 'Importe congelado' })
+      : '';
+    return `<details class="oi-line-card ${released(line) ? 'released' : ''}">
+      <summary class="oi-line">
+        <div class="oi-line-main"><b>${esc(service.service_order_number || service.service_number || 'Servicio')}</b><small>${esc(date(service.scheduled_for))} · ${esc(service.customer_name || 'Sin cliente')}</small><small>${esc([service.vehicle_make_model, service.vehicle_plate].filter(Boolean).join(' · ') || 'Sin vehículo')}</small>${releaseChip(line)}</div>
+        <div class="oi-line-route"><small>Origen</small><b>${esc(service.origin || '—')}</b><small>Destino</small><b>${esc(service.destination || '—')}</b></div>
+        <div class="oi-line-price"><small>Importe congelado</small><b>${esc(money(line.company_amount, line.currency))}</b><small>${quote.rate_card_name ? `${esc(quote.rate_card_name)} · v${esc(quote.rate_card_version || '—')}` : 'Tarifa congelada'}</small></div>
+        <span class="oi-chev" aria-hidden="true">${ico('chevron-down')}</span>
+      </summary>
+      <div class="oi-line-body">${kmText ? `<p class="oi-line-km">${esc(kmText)}</p>` : ''}${table || '<div class="oi-empty">No hay desglose guardado para esta línea.</div>'}</div>
+    </details>`;
   }
 
   function tollLineMarkup(line) {
     const toll = line.toll_snapshot || {};
     const service = line.service_snapshot || {};
-    const released = Boolean(line.released_at);
     const route = [toll.road, toll.direction].filter(Boolean).join(' · ') || `${service.origin || '—'} → ${service.destination || '—'}`;
-    return `<article class="oi-line oi-toll-line ${released ? 'released' : ''}">
-      <div class="oi-line-main"><b>${esc(toll.toll_name || 'Peaje')}</b><small>${esc(service.service_order_number || service.service_number || 'Servicio')} · ${esc(service.vehicle_plate || 'Sin patente')}</small><small>${esc(date(toll.crossed_at || service.scheduled_for))}</small>${released ? '<small class="oi-release">Liberado por anulación</small>' : ''}</div>
+    return `<article class="oi-line oi-toll-line ${released(line) ? 'released' : ''}">
+      <div class="oi-line-main"><b>${esc(toll.toll_name || 'Peaje')}</b><small>${esc(service.service_order_number || service.service_number || 'Servicio')} · ${esc(service.vehicle_plate || 'Sin patente')}</small><small>${esc(date(toll.crossed_at || service.scheduled_for))}</small>${releaseChip(line)}</div>
       <div class="oi-line-route"><small>Ruta / sentido</small><b>${esc(route)}</b><small>Cantidad</small><b>${esc(toll.quantity || 1)}</b></div>
       <div class="oi-line-price"><small>Importe congelado</small><b>${esc(money(line.amount, line.currency))}</b><small>Peaje separado</small></div>
     </article>`;
+  }
+
+  /* Cuánto aporta cada tipo de servicio a la factura (sin contar lo liberado por anulación). */
+  function groupsMarkup(lines, tollLines, invoice) {
+    const cur = invoice.currency;
+    const groups = new Map();
+    for (const line of lines.filter(l => !released(l))) {
+      const name = line.service_snapshot?.service_name || line.quote_snapshot?.primary_service_name || 'Servicios';
+      const g = groups.get(name) || { count: 0, amount: 0 };
+      g.count += 1; g.amount += num(line.company_amount);
+      groups.set(name, g);
+    }
+    const tolls = tollLines.filter(l => !released(l));
+    const tollAmount = tolls.reduce((t, l) => t + num(l.amount), 0);
+    const rows = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'es'))
+      .map(([name, g]) => `<tr><td>${esc(name)}</td><td>${g.count}</td><td class="oi-money">${esc(money(g.amount, cur))}</td></tr>`);
+    if (tolls.length) rows.push(`<tr><td>Peajes</td><td>${tolls.length}</td><td class="oi-money">${esc(money(tollAmount, cur))}</td></tr>`);
+    if (!rows.length) return '';
+    const active = [...groups.values()].reduce((t, g) => t + g.amount, 0) + tollAmount;
+    const releasedCount = lines.filter(released).length + tollLines.filter(released).length;
+    return `<section class="oi-section oi-groups"><h4>Qué incluye</h4><table class="oi-groups-table"><thead><tr><th>Tipo</th><th>Cant.</th><th>Importe</th></tr></thead><tbody>${rows.join('')}</tbody><tfoot><tr><td colspan="2">${releasedCount ? 'Vigente' : 'Total'}</td><td class="oi-money">${esc(money(releasedCount ? active : invoice.total_amount, cur))}</td></tr></tfoot></table>${releasedCount ? `<p class="oi-groups-note">${releasedCount} ${releasedCount === 1 ? 'línea liberada' : 'líneas liberadas'} por anulación no se cuentan.</p>` : ''}</section>`;
   }
 
   function detailMarkup() {
@@ -282,6 +319,7 @@
         <div class="oi-summary"><article><small>Prestadora</small><b>${esc(invoice.company_name || '—')}</b></article><article><small>Servicios</small><b>${esc(invoice.service_count || 0)}</b></article><article><small>Peajes</small><b>${esc(invoice.toll_count || 0)}</b></article><article><small>Total</small><b>${esc(money(invoice.total_amount, invoice.currency))}</b></article></div>
         <section class="oi-section"><h4>Datos de factura</h4><div class="oi-grid"><div><small>Fecha de emisión</small><b>${esc(invoiceDate(invoice.issued_on, invoice.created_at))}</b></div><div><small>Creada por</small><b>${esc(invoice.created_by_name || 'Usuario')}</b></div><div><small>Estado</small><b>${esc(statusLabel(invoice.status))}</b></div><div><small>Moneda</small><b>${esc(invoice.currency || 'ARS')}</b></div><div><small>PDF</small><b>${invoice.pdf_path ? esc(invoice.pdf_name || 'Adjunto') : 'Sin PDF'}</b></div>${invoice.notes ? `<div><small>Observaciones</small><b>${esc(invoice.notes)}</b></div>` : ''}${invoice.cancellation_reason ? `<div class="oi-wide"><small>Motivo de anulación</small><b>${esc(invoice.cancellation_reason)}</b></div>` : ''}</div></section>
         ${creditSection}
+        ${groupsMarkup(lines, tollLines, invoice)}
         ${lines.length ? `<section class="oi-section"><h4>Servicios facturados</h4><div class="oi-lines">${lines.map(lineMarkup).join('')}</div></section>` : ''}
         ${tollLines.length ? `<section class="oi-section"><h4>Peajes facturados</h4><div class="oi-lines">${tollLines.map(tollLineMarkup).join('')}</div></section>` : ''}
         ${!lines.length && !tollLines.length ? '<section class="oi-section"><div class="oi-empty">La factura no tiene líneas.</div></section>' : ''}
