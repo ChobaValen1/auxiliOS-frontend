@@ -1,0 +1,115 @@
+/* AuxiliOS · Facturas con el sistema visual (v1)
+   Cuelga de #screen-facturas y de los ids de sus capas para ganarle a operator-invoices.css. */
+
+#screen-facturas.oi-screen { min-height: calc(100vh - 100px); color: var(--ax-text); font-family: var(--ax-font); }
+#screen-facturas .oi-shell { grid-template-columns: minmax(0, 1fr); gap: var(--ax-sp-3); }
+
+/* ── Botones ── */
+#screen-facturas .oi-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); min-height: 0; padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); filter: none; cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturas .oi-button:hover { background: var(--ax-surface-3); filter: none; }
+#screen-facturas .oi-button:focus-visible, #screen-facturas .oi-menu-trigger:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-facturas .oi-button:disabled { opacity: .5; cursor: not-allowed; }
+#screen-facturas .oi-button.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-facturas .oi-button.primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-facturas .oi-button.danger { border-color: var(--ax-danger-strong); background: var(--ax-danger-strong); color: #fff; }
+#screen-facturas .oi-button.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger); }
+#screen-facturas .oi-button .ax-icon, #screen-facturas .oi-menu-trigger .ax-icon { width: 15px; height: 15px; vertical-align: 0; }
+#screen-facturas .oi-menu-trigger { vertical-align: middle; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: var(--ax-h-sm); height: var(--ax-h-sm); padding: 0 6px; border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#screen-facturas .oi-menu-trigger:hover, #screen-facturas .oi-menu-trigger[aria-expanded="true"] { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-facturas .oi-menu-trigger .ax-icon { width: 18px; height: 18px; }
+
+/* ── Filtros (sin caja de fondo) ── */
+#screen-facturas .oi-toolbar { justify-content: flex-start; padding: 0; border: 0; border-radius: 0; background: transparent; }
+#screen-facturas .oi-filters { flex-wrap: wrap; justify-content: flex-start; gap: var(--ax-sp-2); }
+#screen-facturas .oi-filters .auxf-search { flex: 1 1 260px; min-width: 200px; max-width: 420px; margin-right: 0; }
+@media (max-width: 1500px) and (min-width: 651px) {
+  #screen-facturas .oi-filters [data-oi="refresh"] { width: var(--ax-h); padding: 0; font-size: 0; gap: 0; }
+}
+
+/* ── Tabla ── */
+#screen-facturas .oi-table-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturas .oi-table-wrap { max-height: calc(100vh - 220px); }
+#screen-facturas .oi-table th { height: 38px; padding: 0 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-facturas .oi-table td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text); font-size: var(--ax-fs-sm); vertical-align: middle; }
+#screen-facturas .oi-table tbody tr { background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturas .oi-table tbody tr:hover { background: var(--ax-surface-3); }
+#screen-facturas .oi-table tbody tr:last-child td { border-bottom: 0; }
+#screen-facturas .oi-table td b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturas .oi-table td small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturas .oi-table td .oi-money { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; font-weight: var(--ax-fw-medium); }
+#screen-facturas .oi-table td.oi-actions { white-space: nowrap; text-align: right; }
+#screen-facturas .oi-table td.oi-actions .oi-button { vertical-align: middle; height: var(--ax-h-sm); padding: 0 12px; margin-right: 4px; }
+#screen-facturas .oi-status { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; white-space: nowrap; }
+#screen-facturas .oi-status::before { background: var(--ax-text-3); }
+#screen-facturas .oi-status.credited { color: var(--ax-text-2); }
+#screen-facturas .oi-status.cancelled { color: var(--ax-text-3); text-decoration: line-through; }
+#screen-facturas .oi-status.cancelled::before { background: transparent; border: 1px solid var(--ax-text-3); }
+#screen-facturas .oi-file { color: var(--ax-text); font-weight: var(--ax-fw-medium); }
+#screen-facturas .oi-muted { color: var(--ax-text-3); }
+#screen-facturas .oi-empty { padding: 40px 16px; text-align: center; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Menú de acciones ── */
+#oi-action-menu { min-width: 210px; padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); font-family: var(--ax-font); }
+#oi-action-menu button { display: block; width: 100%; height: var(--ax-h-sm); padding: 0 10px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-align: left; cursor: pointer; }
+#oi-action-menu button:hover { background: var(--ax-surface-3); }
+#oi-action-menu button.danger { color: var(--ax-danger); }
+#oi-action-menu button.danger:hover { background: var(--ax-danger-soft); }
+
+/* ── Detalle lateral ── */
+#screen-facturas .oi-detail-backdrop { background: rgba(0, 0, 0, .6); backdrop-filter: none; }
+#screen-facturas .oi-detail { border-left: 1px solid var(--ax-border-strong); background: var(--ax-surface); box-shadow: var(--ax-shadow-modal); }
+#screen-facturas .oi-detail-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-facturas .oi-detail-head small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .04em; text-transform: uppercase; }
+#screen-facturas .oi-detail-head h3 { margin: 2px 0 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font-mono); }
+#screen-facturas .oi-detail-head-actions .oi-menu-trigger { height: var(--ax-h); padding: 0 12px; border-color: var(--ax-border-strong); }
+#screen-facturas .oi-detail-body { padding: 16px 20px; gap: var(--ax-sp-3); }
+#screen-facturas .oi-summary article, #screen-facturas .oi-section, #screen-facturas .oi-line { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturas .oi-summary small, #screen-facturas .oi-grid small, #screen-facturas .oi-line small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: 0; text-transform: none; }
+#screen-facturas .oi-summary b { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); font-variant-numeric: tabular-nums; }
+#screen-facturas .oi-grid b, #screen-facturas .oi-line b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturas .oi-section h4 { margin: 0 0 var(--ax-sp-2); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-facturas .oi-line-price b { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturas .oi-line.released { opacity: .7; }
+#screen-facturas .oi-release { color: var(--ax-warn); }
+#screen-facturas .oi-credit, #screen-facturas .oi-credit-total { border-color: var(--ax-border); background: var(--ax-surface-2); }
+
+/* ── Anular y Nota de Crédito ── */
+#screen-facturas .oi-modal-backdrop { background: rgba(0, 0, 0, .6); backdrop-filter: none; }
+#screen-facturas .oi-modal { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
+#screen-facturas .oi-modal > header { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: transparent; }
+#screen-facturas .oi-modal > header small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .04em; text-transform: uppercase; }
+#screen-facturas .oi-modal > header h3 { margin: 2px 0 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); }
+#screen-facturas .oi-modal-body { padding: 16px 20px; gap: var(--ax-sp-3); }
+#screen-facturas .oi-modal label > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturas .oi-modal input { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-facturas .oi-modal input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-facturas .oi-modal input:disabled { color: var(--ax-text-3); }
+#screen-facturas .oi-warning { padding: 12px 14px; border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-warn); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturas .oi-warning b { display: block; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturas .oi-warning span { display: block; margin-top: 4px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturas .oi-credit-total { padding: 14px 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturas .oi-credit-total small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturas .oi-credit-total b { font: var(--ax-fw-semibold) 24px var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturas .oi-credit-total span { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturas .oi-modal > footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: transparent; }
+
+@media (max-width: 650px) {
+  #screen-facturas .oi-filters { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
+  #screen-facturas .oi-filters .auxf { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  #screen-facturas .oi-filters .auxf-btn { width: 100%; }
+  #screen-facturas .oi-filters .auxf-search { flex: 1 1 100%; max-width: none; }
+  #screen-facturas .oi-filters .oi-button { width: auto; }
+  #screen-facturas .oi-table-wrap { max-height: none; overflow: visible; }
+  #screen-facturas .oi-table { display: block; min-width: 0; }
+  #screen-facturas .oi-table thead { display: none; }
+  #screen-facturas .oi-table tbody { display: grid; gap: var(--ax-sp-2); padding: var(--ax-sp-2); }
+  #screen-facturas .oi-table tbody tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px var(--ax-sp-3); padding: 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+  #screen-facturas .oi-table td { display: block; padding: 4px 0; border: 0; }
+  #screen-facturas .oi-table td[data-label]::before { content: attr(data-label); display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+  #screen-facturas .oi-table td.oi-c-main { grid-column: 1 / -1; padding-bottom: 8px; }
+  #screen-facturas .oi-table td.oi-c-main::before { display: none; }
+  #screen-facturas .oi-table td.oi-actions { grid-column: 1 / -1; width: auto; max-width: none; padding-top: 8px; border-top: 1px solid var(--ax-border); text-align: left; }
+  #screen-facturas .oi-modal > header .oi-button { flex: 0 0 auto; width: var(--ax-h); padding: 0; }
+  #screen-facturas .oi-detail-backdrop, #screen-facturas .oi-modal-backdrop { position: fixed; z-index: var(--ax-z-modal); }
+  #screen-facturas .oi-detail { width: 100%; }
+}

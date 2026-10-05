@@ -40,6 +40,7 @@
   const notify = (message, type = 'info') => typeof window.toast === 'function'
     ? window.toast(message, type)
     : console[type === 'error' ? 'error' : 'log'](message);
+  const ico = name => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
   const money = (value, currency = 'ARS') => new Intl.NumberFormat('es-AR', {
     style: 'currency', currency: currency || 'ARS', maximumFractionDigits: 2
   }).format(num(value));
@@ -140,7 +141,7 @@
   function setTopbar() {
     const title = document.getElementById('topbar-title');
     const sub = document.getElementById('topbar-sub');
-    if (title) title.textContent = 'FACTURAS';
+    if (title) title.textContent = 'Facturas';
     if (sub) sub.textContent = 'Comprobantes · servicios · peajes · archivos · notas de crédito';
   }
 
@@ -231,12 +232,12 @@
         : '';
       const pdf = row.pdf_path ? '<span class="oi-file">PDF adjunto</span>' : '<span class="oi-muted">Sin PDF</span>';
       return `<tr>
-        <td><b>${esc(row.invoice_number || '—')}</b>${credit}</td>
-        <td>${esc(invoiceDate(row.issued_on, row.created_at))}</td><td><b>${esc(row.company_name || '—')}</b></td>
-        <td>${esc(row.service_count || 0)}</td><td>${esc(row.toll_count || 0)}</td>
-        <td><b class="oi-money">${esc(money(row.total_amount, row.currency))}</b></td>
-        <td><span class="oi-status ${statusClass(row.status)}">${esc(statusLabel(row.status))}</span></td><td>${pdf}</td>
-        <td class="oi-actions"><button class="oi-button" type="button" data-oi-detail="${esc(row.invoice_id)}">Ver</button><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(row.invoice_id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones">⋯</button></td>
+        <td data-label="Factura" class="oi-c-main"><b>${esc(row.invoice_number || '—')}</b>${credit}</td>
+        <td data-label="Fecha">${esc(invoiceDate(row.issued_on, row.created_at))}</td><td data-label="Prestadora"><b>${esc(row.company_name || '—')}</b></td>
+        <td data-label="Servicios">${esc(row.service_count || 0)}</td><td data-label="Peajes">${esc(row.toll_count || 0)}</td>
+        <td data-label="Total"><b class="oi-money">${esc(money(row.total_amount, row.currency))}</b></td>
+        <td data-label="Estado"><span class="oi-status ${statusClass(row.status)}">${esc(statusLabel(row.status))}</span></td><td data-label="PDF">${pdf}</td>
+        <td class="oi-actions"><button class="oi-button" type="button" data-oi-detail="${esc(row.invoice_id)}">Ver</button><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(row.invoice_id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones" aria-label="Acciones">${ico('ellipsis')}</button></td>
       </tr>`;
     }).join('');
     return `<div class="oi-table-wrap"><table class="oi-table"><thead><tr><th>Factura</th><th>Fecha</th><th>Prestadora</th><th>Servicios</th><th>Peajes</th><th>Total</th><th>Estado</th><th>PDF</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -276,7 +277,7 @@
       : '';
 
     return `<aside class="oi-detail">
-      <div class="oi-detail-head"><div><small>Factura · ${esc(statusLabel(invoice.status))}</small><h3>${esc(invoice.invoice_number || 'Factura')}</h3></div><div class="oi-detail-head-actions"><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(invoice.invoice_id)}" aria-haspopup="menu" aria-expanded="false">Acciones ⋯</button><button class="oi-button" type="button" data-oi="close-detail">× Cerrar</button></div></div>
+      <div class="oi-detail-head"><div><small>Factura · ${esc(statusLabel(invoice.status))}</small><h3>${esc(invoice.invoice_number || 'Factura')}</h3></div><div class="oi-detail-head-actions"><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(invoice.invoice_id)}" aria-haspopup="menu" aria-expanded="false">Acciones ${ico('ellipsis')}</button><button class="oi-button" type="button" data-oi="close-detail">${ico('x')}Cerrar</button></div></div>
       <div class="oi-detail-body">
         <div class="oi-summary"><article><small>Prestadora</small><b>${esc(invoice.company_name || '—')}</b></article><article><small>Servicios</small><b>${esc(invoice.service_count || 0)}</b></article><article><small>Peajes</small><b>${esc(invoice.toll_count || 0)}</b></article><article><small>Total</small><b>${esc(money(invoice.total_amount, invoice.currency))}</b></article></div>
         <section class="oi-section"><h4>Datos de factura</h4><div class="oi-grid"><div><small>Fecha de emisión</small><b>${esc(invoiceDate(invoice.issued_on, invoice.created_at))}</b></div><div><small>Creada por</small><b>${esc(invoice.created_by_name || 'Usuario')}</b></div><div><small>Estado</small><b>${esc(statusLabel(invoice.status))}</b></div><div><small>Moneda</small><b>${esc(invoice.currency || 'ARS')}</b></div><div><small>PDF</small><b>${invoice.pdf_path ? esc(invoice.pdf_name || 'Adjunto') : 'Sin PDF'}</b></div>${invoice.notes ? `<div><small>Observaciones</small><b>${esc(invoice.notes)}</b></div>` : ''}${invoice.cancellation_reason ? `<div class="oi-wide"><small>Motivo de anulación</small><b>${esc(invoice.cancellation_reason)}</b></div>` : ''}</div></section>
@@ -299,14 +300,14 @@
     const busy = S.actionBusy;
 
     if (action.type === 'annul') {
-      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>Factura</small><h3>Anular ${esc(row.invoice_number || 'factura')}</h3></div><button class="oi-button" data-oi="close-action" ${busy ? 'disabled' : ''}>×</button></header>
+      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>Factura</small><h3>Anular ${esc(row.invoice_number || 'factura')}</h3></div><button class="oi-button" data-oi="close-action" aria-label="Cerrar" ${busy ? 'disabled' : ''}>${ico('x')}</button></header>
         <div class="oi-modal-body"><div class="oi-warning"><b>Se devolverán ${esc(conceptCountText(row))} a Facturación.</b><span>La factura y sus líneas permanecen en el historial. Esta acción no anula fiscalmente el comprobante ante ARCA.</span></div><label><span>Motivo de anulación</span><input data-oi-action-field="reason" maxlength="300" placeholder="Motivo obligatorio" value="${esc(action.form.reason || '')}"></label></div>
         <footer><button class="oi-button" data-oi="close-action" ${busy ? 'disabled' : ''}>Cancelar</button><button class="oi-button danger" data-oi="confirm-annul" ${busy ? 'disabled' : ''}>${busy ? 'Anulando…' : 'Anular y liberar conceptos'}</button></footer></section>`;
     }
 
     if (action.type === 'credit-note') {
       const type = creditType(row.document_type);
-      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>${esc(row.invoice_number || 'Factura')}</small><h3>Emitir Nota de Crédito</h3></div><button class="oi-button" data-oi="close-action" ${busy ? 'disabled' : ''}>×</button></header>
+      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>${esc(row.invoice_number || 'Factura')}</small><h3>Emitir Nota de Crédito</h3></div><button class="oi-button" data-oi="close-action" aria-label="Cerrar" ${busy ? 'disabled' : ''}>${ico('x')}</button></header>
         <div class="oi-modal-body"><div class="oi-credit-total"><small>Nota de Crédito total</small><b>${esc(money(row.total_amount, row.currency))}</b><span>Los conceptos facturados permanecen vinculados a la factura original.</span></div>
         <div class="oi-modal-grid"><label><span>Comprobante</span><input value="${esc(creditTypeLabel(type))}" disabled></label><label><span>Punto de venta</span><input data-oi-action-field="point_of_sale" inputmode="numeric" maxlength="10" placeholder="0004" value="${esc(action.form.point_of_sale || '')}"></label><label><span>Número</span><input data-oi-action-field="document_number" inputmode="numeric" maxlength="20" placeholder="00000125" value="${esc(action.form.document_number || '')}"></label><label><span>Fecha</span><input type="date" data-oi-action-field="issued_on" value="${esc(action.form.issued_on || todayLocalDate())}"></label></div>
         <label><span>Observaciones <small>opcional</small></span><input data-oi-action-field="notes" maxlength="300" placeholder="Referencia breve" value="${esc(action.form.notes || '')}"></label></div>
@@ -326,17 +327,17 @@
       ? '<aside class="oi-detail"><div class="oi-empty">Cargando factura…</div></aside>'
       : S.detail ? detailMarkup() : '';
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
-    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button" type="button" data-oi="refresh">↻ Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
+    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button" type="button" data-oi="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
   }
 
   function filtersMarkup(opts) {
     const F = window.AuxFilters;
-    const searchInput = `<label class="auxf-search"><span aria-hidden="true">⌕</span><input class="oi-search" id="oi-search" type="search" autocomplete="off" placeholder="Buscar factura, prestadora, servicio o peaje…" value="${esc(S.search)}"></label>`;
+    const searchInput = `<label class="auxf-search"><span aria-hidden="true">${ico('search')}</span><input class="oi-search" id="oi-search" type="search" autocomplete="off" placeholder="Buscar factura, prestadora, servicio o peaje…" value="${esc(S.search)}"></label>`;
     if (!F) return `${searchInput}<select class="oi-filter" id="oi-company-filter">${opts.companies}</select><select class="oi-filter" id="oi-period-filter">${opts.periods}</select>`;
     const count = [S.search.trim(), S.company, S.periodSel.mode !== 'all'].filter(Boolean).length;
     return searchInput
       + F.period({ id: 'period', value: S.periodSel, allLabel: 'Todos los períodos', months: S.filters.periods })
-      + F.select({ id: 'company', label: 'Prestadora', icon: '🏢', value: S.company, options: S.filters.companies.map(item => ({ value: String(item.company_id), label: item.company_name })), allLabel: 'Todas' })
+      + F.select({ id: 'company', label: 'Prestadora', icon: ico('building-2'), value: S.company, options: S.filters.companies.map(item => ({ value: String(item.company_id), label: item.company_name })), allLabel: 'Todas' })
       + F.clear({ count });
   }
 
