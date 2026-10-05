@@ -19,7 +19,19 @@ const tabLabel=v=>v==='tolls'?'Peajes':'Servicios';
 function companyLabel(S){if(!S?.company)return'Todas';const found=S.filters?.companies?.find(x=>String(x.company_id)===String(S.company));return found?.company_name||'Prestadora';}
 function normalizeProvince(v){return text(v).replace(/^Provincia\s+de\s+/i,'').replace(/^Provincia\s+/i,'').replace(/^Ciudad Autónoma de Buenos Aires$/i,'CABA').trim();}
 function parseAddress(value){const raw=text(value);if(!raw)return{street:'',locality:'',province:''};let p=raw.split(',').map(x=>x.trim()).filter(Boolean),province='',locality='',street='';if(p.length>1&&/(provincia|caba|ciudad autónoma|buenos aires|catamarca|chaco|chubut|córdoba|corrientes|entre ríos|formosa|jujuy|la pampa|la rioja|mendoza|misiones|neuquén|río negro|salta|san juan|san luis|santa cruz|santa fe|santiago del estero|tierra del fuego|tucumán)$/i.test(p[p.length-1]))province=normalizeProvince(p.pop());if(p.length>=2){locality=p.pop().replace(/^[A-Z]?\d{4}\s+/i,'').trim();street=p.join(', ');}else if(p.length===1){if(province)locality=p[0].replace(/^[A-Z]?\d{4}\s+/i,'').trim();else street=p[0];}if(!street&&!locality)street=raw;return{street,locality,province};}
-function mapsRoute(r){const origin=text(r.origin_formatted_address||r.origin),destination=text(r.destination_formatted_address||r.destination);if(!origin||!destination||origin===destination)return'';return`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;}
+/* Recorrido facturado: según la prestadora es Base → Origen → Destino → Base, Base → Origen u Origen → Destino.
+   La base va por coordenadas (exactas) y, si no las tiene, por su dirección. Sin base cargada queda Origen → Destino. */
+function mapsRoute(r){
+  const origin=text(r.origin_formatted_address||r.origin),destination=text(r.destination_formatted_address||r.destination);
+  const lat=Number(r.billing_base_latitude),lng=Number(r.billing_base_longitude);
+  const base=r.billing_base_latitude!=null&&r.billing_base_longitude!=null&&Number.isFinite(lat)&&Number.isFinite(lng)?`${lat},${lng}`:text(r.billing_base_address);
+  const mode=r.billing_route_mode||'origin_destination';
+  let stops=mode==='base_origin_destination_base'&&base?[base,origin,destination,base]:mode==='base_origin'&&base?[base,origin]:[origin,destination];
+  stops=stops.filter(Boolean).filter((stop,i,list)=>i===0||stop!==list[i-1]);
+  if(stops.length<2)return'';
+  const enc=encodeURIComponent,middle=stops.slice(1,-1);
+  return`https://www.google.com/maps/dir/?api=1&origin=${enc(stops[0])}&destination=${enc(stops[stops.length-1])}${middle.length?`&waypoints=${middle.map(enc).join(enc('|'))}`:''}&travelmode=driving`;
+}
 function vehicleParts(v){const raw=text(v).replace(/\s+/g,' ');if(!raw)return{make:'',model:''};const [make,...rest]=raw.split(' ');return{make,model:rest.join(' ')};}
 const quote=r=>r?.quote&&typeof r.quote==='object'?r.quote:{};
 const comps=r=>Array.isArray(quote(r).components)?quote(r).components:[];
