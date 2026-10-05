@@ -8083,20 +8083,17 @@ async function actualizarPantallaJornadas() {
       jornadas.forEach(j => {
         const info = j.trucks;
         const div  = document.createElement('div');
-        div.style.cssText = 'display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border:1px solid rgba(245,166,35,0.3);border-radius:10px';
+        div.className = 'reg-open-card';
         div.innerHTML = `
-          <div style="width:44px;height:44px;background:var(--amber-lo);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🚛</div>
-          <div style="flex:1">
-            <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--amber)">${info?.plate || '—'}</div>
-            <div style="font-size:11px;color:var(--muted)">${info?.brand || ''} ${info?.model || ''} · N° ${info?.numero_interno || '—'}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">
-              Inicio: <span style="font-family:'DM Mono';color:var(--text)">${j.hora_inicio || '—'}</span> ·
-              KM: <span style="font-family:'DM Mono';color:var(--amber)">${(j.km_inicio||0).toLocaleString('es-AR')}</span>
-            </div>
+          <div class="reg-open-icon"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#truck"/></svg></div>
+          <div class="reg-open-info">
+            <div class="reg-open-plate">${info?.plate || '—'}</div>
+            <div class="reg-open-meta">${info?.brand || ''} ${info?.model || ''} · N° ${info?.numero_interno || '—'}</div>
+            <div class="reg-open-meta">Inicio <b>${j.hora_inicio || '—'}</b> · KM <b>${(j.km_inicio||0).toLocaleString('es-AR')}</b></div>
           </div>
-          <button class="btn btn-primary" style="font-size:11px;padding:8px 14px;flex-shrink:0"
+          <button class="btn btn-primary reg-open-close"
             onclick="iniciarCierreJornada(${JSON.stringify(j).replace(/"/g,'&quot;')})">
-            🏁 Cerrar
+            Cerrar jornada
           </button>`;
         lista.appendChild(div);
       });

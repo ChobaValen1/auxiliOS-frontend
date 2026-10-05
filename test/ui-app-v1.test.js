@@ -7,7 +7,7 @@ const read = f => fs.readFileSync(f, 'utf8');
 const index = read('Index.html'), sw = read('sw.js'), pkg = read('package.json');
 
 test('la app carga el sistema visual: tokens, componentes, ax.js y su aplicación', () => {
-  for (const f of ['/ui/tokens.css', '/ui/components.css', '/ui/app-v1.css', '/operaciones-ax-v1.css', '/chofer-servicios-ax-v1.css', '/servicio-form-ax-v1.css', '/estado-servicio-ax-v1.css', '/remito-chofer-ax-v1.css', '/jornadas-ax-v1.css', '/shell-ax-v1.css', '/facturacion-ax-v1.css', '/facturas-ax-v1.css', '/camion-ax-v1.css', '/camion-modales-ax-v1.css', '/remitos-ax-v1.css', '/empresas-ax-v1.css', '/configuracion-ax-v1.css', '/dashboard-ax-v1.css', '/sueldos-ax-v1.css']) {
+  for (const f of ['/ui/tokens.css', '/ui/components.css', '/ui/app-v1.css', '/operaciones-ax-v1.css', '/chofer-servicios-ax-v1.css', '/servicio-form-ax-v1.css', '/estado-servicio-ax-v1.css', '/remito-chofer-ax-v1.css', '/jornadas-ax-v1.css', '/shell-ax-v1.css', '/facturacion-ax-v1.css', '/facturas-ax-v1.css', '/camion-ax-v1.css', '/camion-modales-ax-v1.css', '/remitos-ax-v1.css', '/empresas-ax-v1.css', '/configuracion-ax-v1.css', '/dashboard-ax-v1.css', '/sueldos-ax-v1.css', '/grilla-ax-v1.css', '/documentos-ax-v1.css', '/registro-ax-v1.css']) {
     assert.match(index, new RegExp('href="' + f.replace(/\./g, '\\.') + '\\?v='), f);
     assert.match(sw, new RegExp("'" + f.replace(/\./g, '\\.') + "'"), f);
   }
@@ -41,7 +41,7 @@ test('las herramientas de Jornadas (modales de corregir, anular e historial) usa
 });
 
 test('Servicios y la lista del chofer usan sólo tokens e íconos del sprite', () => {
-  for (const f of ['operaciones-ax-v1.css', 'chofer-servicios-ax-v1.css', 'servicio-form-ax-v1.css', 'estado-servicio-ax-v1.css', 'remito-chofer-ax-v1.css', 'jornadas-ax-v1.css', 'facturacion-ax-v1.css', 'facturas-ax-v1.css', 'camion-ax-v1.css', 'camion-modales-ax-v1.css', 'remitos-ax-v1.css', 'empresas-ax-v1.css', 'configuracion-ax-v1.css', 'dashboard-ax-v1.css', 'sueldos-ax-v1.css', 'ui/app-v1.css']) {
+  for (const f of ['operaciones-ax-v1.css', 'chofer-servicios-ax-v1.css', 'servicio-form-ax-v1.css', 'estado-servicio-ax-v1.css', 'remito-chofer-ax-v1.css', 'jornadas-ax-v1.css', 'facturacion-ax-v1.css', 'facturas-ax-v1.css', 'camion-ax-v1.css', 'camion-modales-ax-v1.css', 'remitos-ax-v1.css', 'empresas-ax-v1.css', 'configuracion-ax-v1.css', 'dashboard-ax-v1.css', 'sueldos-ax-v1.css', 'grilla-ax-v1.css', 'documentos-ax-v1.css', 'registro-ax-v1.css', 'ui/app-v1.css']) {
     const css = read(f).replace(/\/\*[\s\S]*?\*\//g, '');
     assert.deepEqual([...css.matchAll(/#[0-9a-fA-F]{3,8}\b(?![\w-])/g)].map(m => m[0]).filter(h => !/^#(screen|os|p3|phase3|toast|psv|modal|ax)/.test(h) && h.toLowerCase() !== '#fff'), [], f);   // blanco sólo en el botón de peligro
     // Cuelga de un id para ganarle a los estilos viejos sin importar el orden de carga.

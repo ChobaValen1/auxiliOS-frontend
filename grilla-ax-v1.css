@@ -1,0 +1,88 @@
+/* AuxiliOS · Grilla de asignaciones con el sistema visual (v1)
+   Mes y semanas, filtros, tabla chofer × móvil, vista por día del celular, leyenda y modales de
+   edición de celda y carga rápida. Los colores de chip (chofer, franco, taller, feriado) son
+   estados, no decoración: verde/gris/ámbar/rojo salen de los tokens. */
+
+#screen-grilla { font-family: var(--ax-font); color: var(--ax-text); }
+
+/* ── Barra superior y controles ── */
+#screen-grilla .grilla-topbar { margin-bottom: var(--ax-sp-3); }
+#screen-grilla .grilla-controls select, #screen-grilla .grilla-filtros select { height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+#screen-grilla :is(.grilla-controls, .grilla-filtros) select:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-grilla .grilla-controls .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-grilla .grilla-controls .btn:hover { background: var(--ax-surface-3); }
+#screen-grilla .grilla-controls .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-grilla .grilla-controls .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-grilla .grilla-controls .btn:focus-visible, #screen-grilla .grilla-f-clear:focus-visible, #screen-grilla .grilla-semana-tab:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+/* ── Semanas: segmentadas ── */
+#screen-grilla .grilla-semana-tabs { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); margin-bottom: var(--ax-sp-3); }
+#screen-grilla .grilla-semana-tab { height: calc(var(--ax-h) - 8px); padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-grilla .grilla-semana-tab:hover { border: 0; color: var(--ax-text); }
+#screen-grilla .grilla-semana-tab.active { background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+
+/* ── Filtros ── */
+#screen-grilla .grilla-filtros label { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-grilla .grilla-f-clear { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-grilla .grilla-f-clear:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+
+/* ── Tabla ── */
+#screen-grilla .grilla-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-grilla .grilla-table th { background: var(--ax-surface); border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-grilla .grilla-table td { border-bottom: 1px solid var(--ax-border); }
+#screen-grilla .grilla-th-fecha { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-grilla .grilla-table th.grilla-feriado { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#screen-grilla .grilla-table th.grilla-hoy { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 -2px 0 var(--ax-accent); }
+#screen-grilla .grilla-table th.grilla-hoy .grilla-th-fecha { color: var(--ax-text); }
+#screen-grilla .grilla-table td.grilla-hoy-celda { background: var(--ax-accent-soft); }
+#screen-grilla .grilla-table td.grilla-movil { background: var(--ax-surface-2); color: var(--ax-text); font-family: var(--ax-font-mono); }
+#screen-grilla .grilla-cargando { color: var(--ax-text-3); }
+
+/* ── Chips: chofer, franco, taller, vacía ── */
+#screen-grilla .grilla-chip { border-radius: var(--ax-radius); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-grilla .grilla-chip-chofer { border: 1px solid var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 3px 0 0 var(--ax-ok); }
+#screen-grilla .grilla-chip-franco { border: 1px dashed var(--ax-border-strong); background: transparent; color: var(--ax-text-3); }
+#screen-grilla .grilla-chip-taller { border: 1px solid var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 3px 0 0 var(--ax-warn); }
+#screen-grilla .grilla-chip-vacia { border: 1px dashed var(--ax-border); color: var(--ax-text-3); }
+#screen-grilla .grilla-chip-mia { border: 1px solid var(--ax-accent); box-shadow: inset 3px 0 0 var(--ax-accent); font-weight: var(--ax-fw-semibold); }
+#screen-grilla .grilla-chip-resaltada { border: 1px solid var(--ax-accent); box-shadow: var(--ax-focus); }
+
+/* ── Leyenda ── */
+#screen-grilla .grilla-leyenda { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-grilla .grilla-dot { background: var(--ax-text-3) !important; }
+#screen-grilla .grilla-leyenda span:nth-child(1) .grilla-dot { background: var(--ax-ok) !important; }
+#screen-grilla .grilla-leyenda span:nth-child(3) .grilla-dot, #screen-grilla .grilla-leyenda span:nth-child(4) .grilla-dot { background: var(--ax-warn) !important; }
+#screen-grilla .grilla-leyenda span:nth-child(5) .grilla-dot { background: var(--ax-danger) !important; }
+
+/* ── Vista por día (celular) ── */
+#screen-grilla .grilla-dia-chip { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text-2); }
+#screen-grilla .grilla-dia-chip.hoy { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-grilla .grilla-dia-chip.hoy .gd-dn, #screen-grilla .grilla-dia-chip.hoy .gd-nu { color: var(--ax-text); }
+#screen-grilla .grilla-dia-chip.active { border-color: var(--ax-accent); box-shadow: inset 0 0 0 1px var(--ax-accent); }
+#screen-grilla .grilla-dia-head-fecha { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-grilla .grilla-dia-head.hoy .grilla-dia-head-fecha { color: var(--ax-text); }
+#screen-grilla .grilla-dia-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-grilla .grilla-dia-movil { font-family: var(--ax-font-mono); }
+#screen-grilla .grilla-dia-movil small { color: var(--ax-text-3); letter-spacing: .04em; }
+#screen-grilla .grilla-dia-conf { color: var(--ax-text-3); }
+
+/* ── Modales ── */
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) { background: rgba(0, 0, 0, .6); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) .modal-box { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); color: var(--ax-text); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) .modal-head-title { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; color: var(--ax-text); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) .modal-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) .modal-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) .modal-body { padding: 18px 20px; }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) :is(.modal-footer, .modal-foot) { display: flex; justify-content: flex-end; gap: var(--ax-sp-2); padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) .form-label { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) :is(.form-input, input:not([type=checkbox]):not([type=radio]), select, textarea) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) :is(.form-input, input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) :is(.modal-footer, .modal-foot) .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) :is(.modal-footer, .modal-foot) .btn:hover { background: var(--ax-surface-3); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) :is(.modal-footer, .modal-foot) .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#modal-grilla-celda, #modal-carga-rapida, #modal-motivo-grilla) :is(.modal-footer, .modal-foot) .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#modal-grilla-celda .grilla-opt { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text); }
+#modal-grilla-celda .grilla-opt:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#modal-grilla-celda .grilla-opt.sel { border-color: var(--ax-accent); background: var(--ax-accent-soft); box-shadow: inset 0 0 0 1px var(--ax-accent); }
+#modal-grilla-celda .grilla-opt.sel span { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }

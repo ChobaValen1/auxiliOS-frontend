@@ -1,0 +1,84 @@
+/* AuxiliOS · Documentación con el sistema visual (v1)
+   Legajo del camión y del chofer: pestañas, selector de móviles y choferes, tarjetas de
+   documentos con su vencimiento, filtros, emergencias y el modal de subida de chofer. */
+
+#screen-documentos { font-family: var(--ax-font); color: var(--ax-text); }
+
+/* ── Encabezado ── */
+#screen-documentos > .sec-header .sec-title { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-documentos > .sec-header .sec-sub { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-documentos .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-documentos .btn:hover { background: var(--ax-surface-3); }
+#screen-documentos .btn:focus-visible, #screen-documentos .doc-tab:focus-visible, #screen-documentos .doc-ftab:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-documentos .btn-ghost { border-color: transparent; }
+#screen-documentos .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-documentos .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+
+/* ── Avisos ── */
+#screen-documentos :is(.banner, .doc-warn-banner, .doc-alert-banner, .doc-offline-banner) { padding: 10px 14px; border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-warn); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-documentos .banner-error, #screen-documentos .doc-offline-banner { border-left-color: var(--ax-danger); }
+
+/* ── Pestañas y filtros: segmentados ── */
+#screen-documentos .doc-tab-bar { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); margin-bottom: var(--ax-sp-4); }
+#screen-documentos .doc-tab { height: calc(var(--ax-h) - 8px); display: inline-flex; align-items: center; padding: 0 16px; border: 0; border-radius: 6px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-documentos .doc-tab:hover { color: var(--ax-text); }
+#screen-documentos .doc-tab.active { background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#screen-documentos .doc-filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--ax-sp-3); }
+#screen-documentos .doc-ftab { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-documentos .doc-ftab:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-documentos .doc-ftab.active { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+
+/* ── Selector de móvil / chofer ── */
+#screen-documentos .doc-select-label { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-documentos .truck-select-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-documentos .truck-select-card:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-documentos .tscard-num { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; }
+#screen-documentos .tscard-plate { font-family: var(--ax-font-mono); color: var(--ax-text-2); }
+#screen-documentos .tscard-brand { color: var(--ax-text-3); }
+#screen-documentos .truck-badge { text-transform: none; letter-spacing: 0; border: 0; background: none; padding: 0; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+
+/* ── Encabezado del legajo ── */
+#screen-documentos .doc-view-header-title .dv-num { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); }
+#screen-documentos .doc-view-header-title .dv-plate { font-family: var(--ax-font-mono); color: var(--ax-text-3); }
+
+/* ── Tarjetas de documentos (el borde izquierdo lo pone el estado de vencimiento) ── */
+#screen-documentos .doc-card-v { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-documentos .doc-card-v:hover { border-color: var(--ax-border-strong); }
+#screen-documentos .doc-card-v .doc-name { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-documentos .doc-card-v .doc-meta, #screen-documentos .doc-card-v .doc-days-label { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-documentos .doc-card-v .doc-days { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font-mono); }
+#screen-documentos .doc-card-v .pill { display: inline-flex; text-transform: none; letter-spacing: 0; align-items: center; gap: 6px; padding: 0; border-radius: 0; background: none; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-documentos .doc-card-v .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-text-3); }
+#screen-documentos .doc-card-v .pill-green::before { background: var(--ax-ok); }
+#screen-documentos .doc-card-v :is(.pill-amber, .pill-orange)::before { background: var(--ax-warn); }
+#screen-documentos .doc-card-v .pill-red::before { background: var(--ax-danger); }
+#screen-documentos .doc-card-v :is(.btn-subir-ahora, .btn-compartir, .btn-actualizar) { height: var(--ax-h-sm); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-documentos .doc-card-v :is(.btn-subir-ahora, .btn-compartir, .btn-actualizar):hover { background: var(--ax-surface-3); }
+#screen-documentos .btn-eliminar-doc:hover { color: var(--ax-danger); }
+#screen-documentos .doc-card-v .doc-file-row { border-top: 1px solid var(--ax-border); }
+
+/* ── Emergencias ── */
+#screen-documentos .section-label, #screen-documentos .emerg-section-head .section-label { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: none; }
+#screen-documentos :is(.emerg-phone-card, .emerg-taller-card, .emerg-protocol-card) { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-documentos .emerg-protocol-card { border-left: 3px solid var(--ax-danger); }
+#screen-documentos .emerg-step-num { background: var(--ax-surface-3); color: var(--ax-text); border: 1px solid var(--ax-border-strong); }
+#screen-documentos .emerg-step-text { color: var(--ax-text-2); }
+#screen-documentos .btn-emerg-plus { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); }
+#screen-documentos .btn-emerg-plus:hover { background: var(--ax-surface-3); }
+#screen-documentos :is(.btn-maps, .btn-taller-call) { height: var(--ax-h-sm); display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); text-decoration: none; }
+#screen-documentos :is(.btn-maps, .btn-taller-call):hover { background: var(--ax-surface-3); }
+
+/* ── Botón flotante ── */
+#screen-documentos .doc-fab { background: var(--ax-accent); color: var(--ax-accent-fg); box-shadow: var(--ax-shadow-pop); }
+
+/* ── Modal: subir documento del chofer ── */
+#modal-upload-driver-doc { background-color: rgba(0, 0, 0, .6); backdrop-filter: none; font-family: var(--ax-font); }
+#modal-upload-driver-doc .modal-content { max-width: 440px; padding: 20px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); }
+#modal-upload-driver-doc .modal-content > h3, #modal-upload-driver-doc .modal-content > h2 { margin: 0 0 var(--ax-sp-4); font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); color: var(--ax-text); }
+#modal-upload-driver-doc label { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#modal-upload-driver-doc :is(.input-field, input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+#modal-upload-driver-doc :is(.input-field, input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#modal-upload-driver-doc .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#modal-upload-driver-doc .btn:hover { background: var(--ax-surface-3); }
+#modal-upload-driver-doc .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#modal-upload-driver-doc .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
