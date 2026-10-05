@@ -138,3 +138,15 @@ test('el mapa dibuja mosaicos de OpenStreetMap alineados con el trazado y con at
   const wx = (-58.4 + 180) / 360, wy = 0.5 - Math.log(Math.tan(Math.PI / 4 + (-34.6 * Math.PI) / 360)) / (2 * Math.PI);
   assert.ok(tiles.some(m => Number(m[2]) === Math.floor(wx * n) && Number(m[3]) === Math.floor(wy * n)));
 });
+
+test('con zoom el mapa pide mosaicos más detallados de la zona visible y deja los marcadores del mismo tamaño en pantalla', () => {
+  const t = load();
+  const ruta = [[-34.60, -58.40], [-34.70, -58.30]], wps = [{ label: 'Origen', lat: -34.6, lng: -58.4 }, { label: 'Destino', lat: -34.7, lng: -58.3 }];
+  const nivel = svg => Number(svg.match(/tile\.openstreetmap\.org\/(\d+)\//)[1]);
+  const base = t.mapa(ruta, wps, []);
+  const zoom = t.mapa(ruta, wps, [], { x: 100, y: 50, w: 40, h: 22.5 });
+  assert.ok(nivel(zoom) > nivel(base));
+  assert.match(zoom, /viewBox="100 50 40 22.5"/);
+  assert.match(zoom, /class="tdt-wp"[^>]*scale\(0\.1250\)/);
+  assert.match(zoom, /class="tdt-map is-zoomed"/);
+});

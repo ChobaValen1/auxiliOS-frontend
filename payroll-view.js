@@ -192,8 +192,8 @@
     try{const {logs,services,l}=detailData;
       const columns=[['fecha','Fecha'],['movil','Móvil'],['hora','Hora'],['numero','N° Servicio'],['patente','Patente'],['origen','Origen'],['destino','Destino'],['km','Km servicio (informativos)','number'],['venta','Venta / concepto'],['comision','Comisión','number'],['efectivo','Efectivo esperado','number']].map(([key,header,type])=>({key,header,type}));
       const data=services.map(s=>{const j=logs.find(j=>j.log_id===s.r.log_id);return {fecha:j?.log_date,movil:j?.truck?.plate,hora:s.time,numero:s.r.nro_servicio||s.r.nro_remito,patente:s.r.patente,origen:s.r.origen,destino:s.r.destino,km:s.r.km_reales,venta:s.sales.map(x=>(x.concept_name||'')+' '+cash(x.total_amount)).join(' / '),comision:s.commission,efectivo:s.cash};});
-      const journeys=logs.map(j=>{let km=null;try{km=PayrollMatrix.journeyKm(j);}catch{}return {fecha:j.log_date,movil:j.truck?.plate,inicio:j.km_inicio,fin:j.km_final,km,estado:j.status};});
-      const jc=[['fecha','Fecha'],['movil','Móvil'],['inicio','Odómetro inicial','number'],['fin','Odómetro final','number'],['km','Km a liquidar','number'],['estado','Estado']].map(([key,header,type])=>({key,header,type}));
+      const journeys=logs.map(j=>{let km=null;try{km=PayrollMatrix.journeyKm(j);}catch{}return {fecha:j.log_date,movil:j.truck?.plate,servicios:services.filter(s=>s.r.log_id===j.log_id).length,inicio:j.km_inicio,fin:j.km_final,km,estado:j.status};});
+      const jc=[['fecha','Fecha'],['movil','Móvil'],['servicios','Servicios del día','number'],['inicio','Odómetro inicial','number'],['fin','Odómetro final','number'],['km','Km a liquidar','number'],['estado','Estado']].map(([key,header,type])=>({key,header,type}));
       download(format,'Sueldo_'+l.periodo_yyyymm+'_'+String(l.chofer_legajo||l.driver_id).replace(/[^a-z0-9_-]/gi,'_'),columns,format==='xlsx'?[l]:data,[{name:'Liquidación',columns:exportColumns,rows:[l]},{name:'Jornadas',columns:jc,rows:journeys},{name:'Servicios',columns,rows:data}]);
     }catch(e){toast(e.message,'error');}
   }

@@ -483,3 +483,13 @@
 /* Fondo de calles (OpenStreetMap): atenuado y acorde al tema oscuro para que el trazado siga siendo lo principal. */
 #modal-operador-wizard .osv4-reactive .tdt-tiles { opacity: .55; filter: invert(1) hue-rotate(180deg) brightness(.85) saturate(.6); }
 #modal-operador-wizard .osv4-reactive .tdt-attr { fill: var(--ax-text-2); font: 6px var(--ax-font); paint-order: stroke; stroke: var(--ax-bg); stroke-width: 2px; }
+
+/* Zoom del mapa: rueda, pellizco, arrastre y botones. */
+#modal-operador-wizard .osv4-reactive .tdt-mapwrap { position: relative; }
+#modal-operador-wizard .osv4-reactive .tdt-map { touch-action: pan-y; cursor: grab; user-select: none; }
+#modal-operador-wizard .osv4-reactive .tdt-map.is-zoomed { touch-action: none; }
+#modal-operador-wizard .osv4-reactive .tdt-map:active { cursor: grabbing; }
+#modal-operador-wizard .osv4-reactive .tdt-route { vector-effect: non-scaling-stroke; }
+#modal-operador-wizard .osv4-reactive .tdt-zoom { position: absolute; top: var(--ax-sp-2); left: var(--ax-sp-2); display: grid; gap: 1px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-border-strong); overflow: hidden; }
+#modal-operador-wizard .osv4-reactive .tdt-zoom button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: var(--ax-surface); color: var(--ax-text); font-size: 16px; line-height: 1; cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-zoom button:hover { background: var(--ax-surface-3); }

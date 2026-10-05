@@ -108,18 +108,28 @@
 
   /* Mosaicos de OpenStreetMap detrás del trazado. x0/y0: esquina superior izquierda visible (mundo 0..1); escala: unidades del mapa por mundo.
      Si no hay red, cada imagen se oculta sola y queda el esquema sin fondo. */
-  function mosaicos(x0, y0, escala) {
-    var zc = Math.log(escala / 256) / Math.LN2, z = Math.max(0, Math.min(18, Math.round(zc) + 1)), n = Math.pow(2, z), t = escala / n, out = '';
-    var tx0 = Math.max(0, Math.floor(x0 * n)), tx1 = Math.min(n - 1, Math.floor((x0 + ANCHO / escala) * n));
-    var ty0 = Math.max(0, Math.floor(y0 * n)), ty1 = Math.min(n - 1, Math.floor((y0 + ALTO / escala) * n));
-    if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > 30) return '';
+  function mosaicos(x0, y0, escala, v) {
+    v = v || { x: 0, y: 0, w: ANCHO, h: ALTO };
+    var zc = Math.log(escala * (ANCHO / v.w) / 256) / Math.LN2, z = Math.max(0, Math.min(18, Math.round(zc) + 1)), n = Math.pow(2, z), t = escala / n, out = '';
+    var wx0 = x0 + v.x / escala, wy0 = y0 + v.y / escala;
+    var tx0 = Math.max(0, Math.floor(wx0 * n)), tx1 = Math.min(n - 1, Math.floor((wx0 + v.w / escala) * n));
+    var ty0 = Math.max(0, Math.floor(wy0 * n)), ty1 = Math.min(n - 1, Math.floor((wy0 + v.h / escala) * n));
+    if ((tx1 - tx0 + 1) * (ty1 - ty0 + 1) > 40) return '<g class="tdt-tiles"></g>';
     for (var ty = ty0; ty <= ty1; ty++) for (var tx = tx0; tx <= tx1; tx++) {
       out += '<image href="https://tile.openstreetmap.org/' + z + '/' + tx + '/' + ty + '.png" x="' + ((tx / n - x0) * escala).toFixed(2) + '" y="' + ((ty / n - y0) * escala).toFixed(2) + '" width="' + (t + 0.4).toFixed(2) + '" height="' + (t + 0.4).toFixed(2) + '" preserveAspectRatio="none" onerror="this.style.display=\'none\'"/>';
     }
     return '<g class="tdt-tiles">' + out + '</g>';
   }
 
-  function mapa(puntos, waypoints, hits) {
+  // Escala gráfica y norte: tamaño fijo en pantalla, sea cual sea el zoom (mPorPx: metros por unidad del mapa ya con zoom).
+  function escalaHtml(mPorPx) {
+    var largoM = largoEscala(mPorPx, (ANCHO - 2 * MARGEN) / 3), largoPx = largoM / mPorPx, x1 = ANCHO - MARGEN, y0 = ALTO - 10;
+    return '<path d="M' + (x1 - largoPx).toFixed(1) + ' ' + (y0 - 4) + 'V' + y0 + 'H' + x1 + 'V' + (y0 - 4) + '"/><text x="' + x1 + '" y="' + (y0 - 7) + '" text-anchor="end">' + (largoM >= 1000 ? (largoM / 1000) + ' km' : largoM + ' m') + '</text>';
+  }
+  function transFija(v) { return 'translate(' + v.x.toFixed(2) + ' ' + v.y.toFixed(2) + ') scale(' + (v.w / ANCHO).toFixed(4) + ')'; }
+
+  function mapa(puntos, waypoints, hits, vista) {
+    var v = vista || { x: 0, y: 0, w: ANCHO, h: ALTO }, inv = v.w / ANCHO;
     var todos = puntos.concat(waypoints.map(function (w) { return [w.lat, w.lng]; }));
     hits.forEach(function (h) { todos.push([Number(h.toll.latitude), Number(h.toll.longitude)]); });
     // Proyección Web Mercator (la de los mapas de OpenStreetMap): así los mosaicos de fondo coinciden con el trazado.
@@ -132,7 +142,8 @@
     var escala = Math.min((ANCHO - 2 * margenX) / w, (ALTO - 2 * margenY) / h, 256 * Math.pow(2, 17));
     var offX = (ANCHO - w * escala) / 2, offY = (ALTO - h * escala) / 2;
     function xy(p) { var q = merc(p); return [offX + (q[0] - minX) * escala, offY + (q[1] - minY) * escala]; }
-    var fondo = mosaicos(minX - offX / escala, minY - offY / escala, escala);
+    var x0m = minX - offX / escala, y0m = minY - offY / escala;
+    var fondo = mosaicos(x0m, y0m, escala, v);
 
     // Trazado y flechas de sentido cada ~70 px.
     var paso = Math.max(1, Math.ceil(puntos.length / 400)), d = '', pts = [];
@@ -147,7 +158,8 @@
         desde = 0;
         var ang = Math.atan2(ey, ex) * 180 / Math.PI;
         var mx = (pts[n][0] + pts[n - 1][0]) / 2, my = (pts[n][1] + pts[n - 1][1]) / 2;     // en medio del tramo, no sobre un vértice
-        flechas += '<path class="tdt-arrow" transform="translate(' + mx.toFixed(1) + ' ' + my.toFixed(1) + ') rotate(' + ang.toFixed(0) + ')" d="M-4 -4L3 0L-4 4"/>';
+        var base = 'translate(' + mx.toFixed(1) + ' ' + my.toFixed(1) + ') rotate(' + ang.toFixed(0) + ')';
+        flechas += '<path class="tdt-arrow" data-tf="' + base + '" transform="' + base + ' scale(' + inv.toFixed(4) + ')" d="M-4 -4L3 0L-4 4"/>';
       }
     }
 
@@ -161,24 +173,100 @@
     });
     var marcas = lugares.map(function (l) {
       var p = xy([l.lat, l.lng]), codigo = l.labels.map(function (x) { return x.charAt(0); }).join('/');
-      return '<g class="tdt-wp" data-wp="' + esc(l.labels.join(' · ')) + '"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="8.5"/>' +
-        '<text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 3).toFixed(1) + '" text-anchor="middle"' + (codigo.length > 1 ? ' class="tdt-wp-multi"' : '') + '>' + esc(codigo) + '</text></g>';
+      var base = 'translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ')';
+      return '<g class="tdt-wp" data-wp="' + esc(l.labels.join(' · ')) + '" data-tf="' + base + '" transform="' + base + ' scale(' + inv.toFixed(4) + ')"><circle r="8.5"/>' +
+        '<text y="3" text-anchor="middle"' + (codigo.length > 1 ? ' class="tdt-wp-multi"' : '') + '>' + esc(codigo) + '</text></g>';
     }).join('');
 
     var peajes = hits.map(function (hit, idx) {
       var p = xy([Number(hit.toll.latitude), Number(hit.toll.longitude)]);
-      return '<g class="tdt-toll"><circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="8"/><text x="' + p[0].toFixed(1) + '" y="' + (p[1] + 3.5).toFixed(1) + '" text-anchor="middle">' + (idx + 1) + '</text></g>';
+      var base = 'translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ')';
+      return '<g class="tdt-toll" data-tf="' + base + '" transform="' + base + ' scale(' + inv.toFixed(4) + ')"><circle r="8"/><text y="3.5" text-anchor="middle">' + (idx + 1) + '</text></g>';
     }).join('');
 
     // Escala (abajo a la derecha) y norte (arriba a la derecha). Los nombres van en la tabla de referencias.
-    var mPorPx = 40075016.686 * Math.cos(latMedia * Math.PI / 180) / escala, largoM = largoEscala(mPorPx, (ANCHO - 2 * MARGEN) / 3), largoPx = largoM / mPorPx;
-    var x1 = ANCHO - MARGEN, y0 = ALTO - 10;
-    var escalaSvg = '<g class="tdt-scale"><path d="M' + (x1 - largoPx).toFixed(1) + ' ' + (y0 - 4) + 'V' + y0 + 'H' + x1 + 'V' + (y0 - 4) + '"/><text x="' + x1 + '" y="' + (y0 - 7) + '" text-anchor="end">' + (largoM >= 1000 ? (largoM / 1000) + ' km' : largoM + ' m') + '</text></g>';
+    var mPorPx = 40075016.686 * Math.cos(latMedia * Math.PI / 180) / escala;
     var norte = '<g class="tdt-north" transform="translate(' + (ANCHO - MARGEN) + ' ' + (MARGEN + 4) + ')"><path d="M0 -8L4 4L0 1L-4 4Z"/><text y="16" text-anchor="middle">N</text></g>';
+    var fijos = '<g class="tdt-fixed" transform="' + transFija(v) + '"><g class="tdt-scale">' + escalaHtml(mPorPx * inv) + '</g>' + norte +
+      (fondo ? '<text class="tdt-attr" x="' + (ANCHO - 3) + '" y="' + (ALTO - 2) + '" text-anchor="end">© OpenStreetMap</text>' : '') + '</g>';
 
-    return '<svg class="tdt-map" viewBox="0 0 ' + ANCHO + ' ' + ALTO + '" role="img" aria-label="Recorrido con ' + hits.length + ' peaje' + (hits.length === 1 ? '' : 's') + '">' +
-      fondo + '<path class="tdt-route" d="' + d + '"/>' + flechas + marcas + peajes + escalaSvg + norte + (fondo ? '<text class="tdt-attr" x="' + (ANCHO - 3) + '" y="' + (ALTO - 2) + '" text-anchor="end">© OpenStreetMap</text>' : '') + '</svg>';
+    return '<svg class="tdt-map' + (inv < 0.999 ? ' is-zoomed' : '') + '" viewBox="' + [v.x, v.y, v.w, v.h].map(function (n) { return +n.toFixed(2); }).join(' ') + '" data-x0="' + x0m + '" data-y0="' + y0m + '" data-esc="' + escala + '" data-mpp="' + mPorPx + '" role="img" aria-label="Recorrido con ' + hits.length + ' peaje' + (hits.length === 1 ? '' : 's') + '">' +
+      fondo + '<path class="tdt-route" d="' + d + '"/>' + flechas + marcas + peajes + fijos + '</svg>';
   }
+
+  /* ── Zoom y arrastre del mapa ──────────────────────────────────────────── */
+
+  var ZOOM_MAX = 24;
+  function leerVista(svg) { var p = svg.getAttribute('viewBox').split(' ').map(Number); return { x: p[0], y: p[1], w: p[2], h: p[3] }; }
+  function ponerVista(svg, x, y, w) {
+    w = Math.max(ANCHO / ZOOM_MAX, Math.min(ANCHO, w));
+    var h = w * ALTO / ANCHO;
+    x = Math.max(0, Math.min(ANCHO - w, x)); y = Math.max(0, Math.min(ALTO - h, y));
+    var v = { x: x, y: y, w: w, h: h }, inv = w / ANCHO;
+    svg.setAttribute('viewBox', [x, y, w, h].map(function (n) { return +n.toFixed(2); }).join(' '));
+    svg.classList.toggle('is-zoomed', inv < 0.999);
+    var t = svg.querySelector('.tdt-tiles');
+    if (t) {
+      var tmp = global.document.createElement('div');
+      tmp.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + mosaicos(+svg.getAttribute('data-x0'), +svg.getAttribute('data-y0'), +svg.getAttribute('data-esc'), v) + '</svg>';
+      var nuevo = tmp.querySelector('.tdt-tiles');
+      if (nuevo) t.innerHTML = nuevo.innerHTML;
+    }
+    [].forEach.call(svg.querySelectorAll('[data-tf]'), function (el) { el.setAttribute('transform', el.getAttribute('data-tf') + ' scale(' + inv.toFixed(4) + ')'); });
+    var f = svg.querySelector('.tdt-fixed'); if (f) f.setAttribute('transform', transFija(v));
+    var e = svg.querySelector('.tdt-scale'); if (e) e.innerHTML = escalaHtml(+svg.getAttribute('data-mpp') * inv);
+    state.vista = v;
+    return v;
+  }
+  // Acerca/aleja manteniendo fijo el punto (px,py) en coordenadas del mapa.
+  function zoomEn(svg, factor, px, py) {
+    var v = leerVista(svg), w = Math.max(ANCHO / ZOOM_MAX, Math.min(ANCHO, v.w / factor)), f = w / v.w;
+    return ponerVista(svg, px - (px - v.x) * f, py - (py - v.y) * f, w);
+  }
+  function puntoMapa(svg, ev) {
+    var r = svg.getBoundingClientRect(), v = leerVista(svg);
+    return { x: v.x + (ev.clientX - r.left) / r.width * v.w, y: v.y + (ev.clientY - r.top) / r.height * v.h, r: r, v: v };
+  }
+  function mapaDe(ev) { return ev.target && ev.target.closest ? ev.target.closest('svg.tdt-map') : null; }
+
+  global.document.addEventListener('wheel', function (ev) {
+    var svg = mapaDe(ev); if (!svg) return;
+    ev.preventDefault();
+    var p = puntoMapa(svg, ev);
+    zoomEn(svg, ev.deltaY < 0 ? 1.35 : 1 / 1.35, p.x, p.y);
+  }, { passive: false });
+  global.document.addEventListener('dblclick', function (ev) {
+    var svg = mapaDe(ev); if (!svg) return;
+    var p = puntoMapa(svg, ev); zoomEn(svg, 2, p.x, p.y);
+  });
+  var punteros = {}, arrastre = null;
+  global.document.addEventListener('pointerdown', function (ev) {
+    var svg = mapaDe(ev); if (!svg) return;
+    punteros[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+    var ids = Object.keys(punteros);
+    arrastre = { svg: svg, v: leerVista(svg), ids: ids };
+    if (ids.length === 2) { var a = punteros[ids[0]], b = punteros[ids[1]]; arrastre.dist = Math.hypot(a.x - b.x, a.y - b.y); }
+    try { svg.setPointerCapture(ev.pointerId); } catch (e) { /* sin captura */ }
+  });
+  global.document.addEventListener('pointermove', function (ev) {
+    if (!arrastre || !punteros[ev.pointerId]) return;
+    var svg = arrastre.svg, prev = punteros[ev.pointerId];
+    punteros[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+    var ids = Object.keys(punteros), r = svg.getBoundingClientRect(), v = leerVista(svg);
+    if (ids.length >= 2 && arrastre.dist) {                              // pellizco
+      var a = punteros[ids[0]], b = punteros[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d > 0) {
+        var cx = v.x + ((a.x + b.x) / 2 - r.left) / r.width * v.w, cy = v.y + ((a.y + b.y) / 2 - r.top) / r.height * v.h;
+        zoomEn(svg, d / arrastre.dist, cx, cy); arrastre.dist = d;
+      }
+      return;
+    }
+    if (v.w >= ANCHO - 0.01) return;                                     // sin zoom no hay nada que mover
+    ponerVista(svg, v.x - (ev.clientX - prev.x) / r.width * v.w, v.y - (ev.clientY - prev.y) / r.height * v.h, v.w);
+  });
+  function soltar(ev) { delete punteros[ev.pointerId]; if (!Object.keys(punteros).length) arrastre = null; else if (arrastre) arrastre.dist = 0; }
+  global.document.addEventListener('pointerup', soltar);
+  global.document.addEventListener('pointercancel', soltar);
 
   /* ── Panel ────────────────────────────────────────────────────────────── */
 
@@ -205,6 +293,7 @@
     var hits = detectar(puntos, conUbicacion);
     var sinTarifa = [];
     hits = hits.filter(function (h) { if (h.toll.rates && !h.toll.rates.some(function (r) { return r.is_current && r.is_active; })) { sinTarifa.push(h.toll); return false; } return true; });
+    state.vista = null;
     state.detect = { geometry: g, points: puntos, hits: hits, sinUbicar: sinUbicar, sinTarifa: sinTarifa, elegidos: hits.map(function (h) { return String(h.toll.toll_id); }) };
     return true;
   }
@@ -251,7 +340,8 @@
     return '<section class="tdt-panel" aria-label="Peajes del recorrido">' +
       '<div class="tdt-head"><div><b>Peajes del recorrido</b><small>' + esc(g.label || '') + (g.km ? ' · ' + num(g.km).toLocaleString('es-AR') + ' km' : '') + '</small></div>' +
       '<button type="button" class="tdt-close" data-td="close" aria-label="Cerrar">' + ico('x') + '</button></div>' +
-      '<div class="tdt-mapbox">' + mapa(d.points, g.waypoints || [], d.hits) + leyenda(g, d.hits, { elegidos: d.elegidos, ya: ya }) + '</div>' +
+      '<div class="tdt-mapbox"><div class="tdt-mapwrap">' + mapa(d.points, g.waypoints || [], d.hits, state.vista) +
+        '<div class="tdt-zoom" role="group" aria-label="Zoom del mapa"><button type="button" data-td="zoom-in" aria-label="Acercar">' + ico('plus') + '</button><button type="button" data-td="zoom-out" aria-label="Alejar"><span aria-hidden="true">−</span></button><button type="button" data-td="zoom-reset" aria-label="Ver todo el recorrido"><span aria-hidden="true">⤢</span></button></div></div>' + leyenda(g, d.hits, { elegidos: d.elegidos, ya: ya }) + '</div>' +
       notas +
       '</section>';
   }
@@ -280,6 +370,11 @@
     var accion = b.getAttribute('data-td');
     if (accion === 'close') { state.detect = null; repintar(); }
     else if (accion === 'apply') aplicar();
+    else if (accion.indexOf('zoom-') === 0) {
+      var svg = b.closest('.tdt-mapwrap').querySelector('svg.tdt-map'), v = leerVista(svg);
+      if (accion === 'zoom-reset') ponerVista(svg, 0, 0, ANCHO);
+      else zoomEn(svg, accion === 'zoom-in' ? 1.6 : 1 / 1.6, v.x + v.w / 2, v.y + v.h / 2);
+    }
   });
   global.document.addEventListener('change', function (ev) {
     var t = ev.target;
