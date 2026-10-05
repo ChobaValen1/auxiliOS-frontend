@@ -196,16 +196,16 @@
   function ensureScreenMetadata() {
     if (typeof SCREENS === 'undefined') return;
     Object.assign(SCREENS, {
-      configuracion: { title: 'CENTRO DE CONFIGURACIÓN', sub: 'Altas, catálogos y definiciones estructurales' },
-      'historial-sistema': { title: 'HISTORIAL', sub: 'Auditoría administrativa' },
-      empresas: { title: 'PRESTADORAS / EMPRESAS', sub: 'Configuración contractual de clientes corporativos' },
-      'bases-geograficas': { title: 'BASES GEOGRÁFICAS', sub: 'Catálogo maestro de ubicaciones' },
-      'bases-tarifarias': { title: 'BASES GEOGRÁFICAS', sub: 'Catálogo maestro de ubicaciones' },
-      'config-service-types': { title: 'TIPOS DE SERVICIO', sub: 'Catálogo maestro global' },
-      'config-tariff-types': { title: 'TIPOS DE TARIFA', sub: 'Formas de cálculo disponibles' },
-      peajes: { title: 'PEAJES Y ADICIONALES', sub: 'Catálogo de conceptos complementarios' },
-      'config-services': { title: 'CONFIGURACIÓN · SERVICIOS', sub: 'Panel, formulario y flujo operativo' },
-      'config-tariff-matrix': { title: 'TARIFAS', sub: 'Valores versionados por prestadora' },
+      configuracion: { title: 'Centro de configuración', sub: 'Altas, catálogos y definiciones estructurales' },
+      'historial-sistema': { title: 'Historial', sub: 'Auditoría administrativa' },
+      empresas: { title: 'Prestadoras y empresas', sub: 'Configuración contractual de clientes corporativos' },
+      'bases-geograficas': { title: 'Bases geográficas', sub: 'Catálogo maestro de ubicaciones' },
+      'bases-tarifarias': { title: 'Bases geográficas', sub: 'Catálogo maestro de ubicaciones' },
+      'config-service-types': { title: 'Tipos de servicio', sub: 'Catálogo maestro global' },
+      'config-tariff-types': { title: 'Tipos de tarifa', sub: 'Formas de cálculo disponibles' },
+      peajes: { title: 'Peajes y adicionales', sub: 'Catálogo de conceptos complementarios' },
+      'config-services': { title: 'Configuración · Servicios', sub: 'Panel, formulario y flujo operativo' },
+      'config-tariff-matrix': { title: 'Tarifas', sub: 'Valores versionados por prestadora' },
     });
   }
 
