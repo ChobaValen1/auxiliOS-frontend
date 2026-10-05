@@ -21,6 +21,7 @@
   var COND = { bueno: 'Bueno', regular: 'Regular', malo: 'Malo' };
   var PAGO = { efectivo: 'Efectivo', transferencia: 'Transferencia', app: 'App', tarjeta: 'Tarjeta' };
 
+  function ico(name) { return '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#' + name + '"/></svg>'; }
   function db() { return typeof _db !== 'undefined' ? _db : null; }
   function F() { return global.AuxiliosControlFlota || {}; }
   function rol() { try { return String((PERFIL_USUARIO && PERFIL_USUARIO.roles && PERFIL_USUARIO.roles.name) || ''); } catch (e) { return ''; } }
@@ -263,12 +264,12 @@
             '<td class="ftd-r ftd-n">' + (s.cost ? money(s.cost) : '—') + '</td></tr>';
         }).join('') + '</tbody></table>'
       : '<p class="ftd-vacio">Todavía no hay services registrados.</p>';
-    return seccion('mantenimiento', 'Mantenimiento', [boton('service', '+ Service'), boton('plan', '+ Plan')], filas + tabla);
+    return seccion('mantenimiento', 'Mantenimiento', [boton('service', ico('plus') + 'Service'), boton('plan', ico('plus') + 'Plan')], filas + tabla);
   }
 
   function documentacion() {
     var filas = docsLista(st.docs, hoy());
-    return seccion('documentacion', 'Documentación', [boton('doc', '+ Documento')],
+    return seccion('documentacion', 'Documentación', [boton('doc', ico('plus') + 'Documento')],
       '<ul class="ftd-docs">' + filas.map(function (f) {
         var d = f.doc;
         return '<li><div><b>' + esc(f.nombre) + '</b>' + (d && d.doc_number ? '<small>N° ' + esc(d.doc_number) + '</small>' : '') + '</div>' +
@@ -301,7 +302,7 @@
         }).join('') + '</tbody></table>'
       : '<p class="ftd-vacio">Sin cargas registradas.</p>';
     if (lista.length) tabla += '<p class="ftd-nota">Rinde: km desde la carga anterior sobre los litros cargados. En ámbar, las cargas que rinden menos del 75 % del promedio.</p>';
-    return seccion('combustible', 'Combustible', [boton('carga', '+ Carga')], resumen + tabla);
+    return seccion('combustible', 'Combustible', [boton('carga', ico('plus') + 'Carga')], resumen + tabla);
   }
 
   function neumaticos() {
@@ -316,7 +317,7 @@
           return '<tr><td>' + fecha(c.check_date) + '</td><td>' + m(c.tire_condition) + '</td><td>' + m(c.brake_condition) + '</td><td class="ftd-notas">' + esc(c.notes || '') + '</td></tr>';
         }).join('') + '</tbody></table>'
       : '';
-    return seccion('neumaticos', 'Neumáticos y frenos', [boton('neumaticos', '+ Control')], cab + tabla);
+    return seccion('neumaticos', 'Neumáticos y frenos', [boton('neumaticos', ico('plus') + 'Control')], cab + tabla);
   }
 
   function historialPanel() {
@@ -348,7 +349,7 @@
     var mes = kmMes(st.logs, hoy());
     var dato = function (dt, dd, cls) { return '<div><dt>' + dt + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + dd + '</dd></div>'; };
     return '<div class="ftd-head">' +
-        '<button type="button" class="ftd-back" data-ftd="volver">← Flota</button>' +
+        '<button type="button" class="ftd-back" data-ftd="volver">' + ico('arrow-left') + 'Flota</button>' +
         '<div class="ftd-id"><h2>' + esc(titulo) + (tipo ? '<span class="ftd-tipo">' + esc(tipo) + '</span>' : '') + '</h2><p>' + esc(sub) + '</p></div>' +
         '<dl class="ftd-meta">' +
           dato('Estado', '<span class="fcv-estado fcv-e-' + esc(e.tono || '') + '">' + esc(estadoTxt || '—') + '</span>') +

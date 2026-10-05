@@ -14,6 +14,7 @@
 
   var st = { rows: [], planes: {}, filtro: 'todos', q: '', today: null, cargando: false };
 
+  function ico(name) { return '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#' + name + '"/></svg>'; }
   function db() { return typeof _db !== 'undefined' ? _db : null; }
   function esAdmin() { try { return PERFIL_USUARIO.roles.name === 'administracion'; } catch (e) { return false; } }
   function esc(v) {
@@ -140,9 +141,9 @@
       '<div class="fcv">' +
         '<div class="fcv-kpis">' + kpi('todos', 'Móviles') + kpi('servicio', 'En servicio') + kpi('jornada', 'Disponibles') +
           kpi('sin_jornada', 'Sin jornada') + kpi('taller', 'En taller') + kpi('alertas', 'Con alertas') + '</div>' +
-        '<div class="fcv-toolbar"><input type="search" class="fcv-search" data-fcv-q placeholder="Buscar móvil, patente o chofer…" value="' + esc(st.q) + '">' +
-          '<button type="button" class="fcv-refresh" data-fcv="refresh">Actualizar</button>' +
-          (esAdmin() ? '<button type="button" class="fcv-refresh" data-fcv="planes-base">Planes base</button>' : '') + '</div>' +
+        '<div class="fcv-toolbar"><label class="fcv-searchbox"><span aria-hidden="true">' + ico('search') + '</span><input type="search" class="fcv-search" data-fcv-q placeholder="Buscar móvil, patente o chofer…" value="' + esc(st.q) + '"></label>' +
+          '<button type="button" class="fcv-refresh" data-fcv="refresh">' + ico('refresh-cw') + 'Actualizar</button>' +
+          (esAdmin() ? '<button type="button" class="fcv-refresh" data-fcv="planes-base">' + ico('wrench') + 'Planes base</button>' : '') + '</div>' +
         (filas.length
           ? '<div class="fcv-table-wrap"><table class="fcv-table"><thead><tr>' +
               '<th>Móvil</th><th>Estado</th><th>Km</th><th>Neumáticos y frenos</th><th>Service</th><th>Documentación</th><th></th>' +
@@ -155,7 +156,7 @@
                 '<td data-label="Km" class="fcv-num">' + (t.current_km != null ? esc(num(t.current_km).toLocaleString('es-AR')) : '—') + '</td>' +
                 celda('Neumáticos y frenos', neumaticos(t)) +
                 celda('Service', service(t)) + celda('Documentación', documentos(t)) +
-                '<td class="fcv-go" aria-hidden="true">›</td></tr>';
+                '<td class="fcv-go" aria-hidden="true">' + ico('chevron-right') + '</td></tr>';
             }).join('') + '</tbody></table></div>'
           : '<div class="fcv-empty">' + (st.rows.length ? 'Ningún móvil con este filtro.' : 'No hay móviles cargados.') + '</div>') +
       '</div>';

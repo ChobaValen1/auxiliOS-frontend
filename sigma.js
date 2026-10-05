@@ -235,7 +235,7 @@ const SCREENS = {
     return 'Resumen · ' + fmt.charAt(0).toUpperCase() + fmt.slice(1);
   } },
   registro:   { title:'Registro diario',    sub:'Módulo 1 · Carga de kilómetros' },
-  camion:     { title:'Control del camión', sub:'Módulo 2 · Revisión y Carga' },
+  camion:     { title:'Control del camión', sub:'Estado de la flota y de cada móvil' },
   documentos: { title:'Documentación',      sub:'Módulo 3 · Vencimientos y archivos' },
   remitos:    { title:'Remitos virtuales',  sub:'Módulo 4 · Firma digital y archivo' },
   sueldos:    { title:'Liquidación de sueldos', sub:'Objetivos, esquema salarial y recibos' },

@@ -36,7 +36,7 @@ test('la base guarda los planes por tipo y los asigna sin pisar ni quitar', () =
 });
 
 test('botón Planes base sólo para Administración, módulo cargado', () => {
-  assert.match(control, /esAdmin\(\) \? '<button type="button" class="fcv-refresh" data-fcv="planes-base">Planes base<\/button>'/);
+  assert.match(control, /esAdmin\(\) \? '<button type="button" class="fcv-refresh" data-fcv="planes-base">' \+ ico\('wrench'\) \+ 'Planes base<\/button>'/);
   assert.match(js, /rpc\('set_truck_type_plans_v1', \{ p_tipo: st\.tipo, p_plan_ids:/);
   assert.match(config, /\/fleet-type-plans-v1\.js/);
 });
