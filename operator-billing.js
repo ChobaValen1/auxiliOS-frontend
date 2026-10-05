@@ -486,7 +486,7 @@
   }
   const visibleDefs = tab => colsFor(tab).list().map(key => COLUMN_DEFS[tab].find(c => c.key === key)).filter(Boolean);
   const headCells = tab => visibleDefs(tab).map(c => `<th data-col="${c.key}">${esc(c.label)}</th>`).join('');
-  const bodyCells = (tab, row) => visibleDefs(tab).map(c => `<td data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ''}>${c.td(row)}</td>`).join('');
+  const bodyCells = (tab, row) => visibleDefs(tab).map(c => `<td data-col="${c.key}" data-label="${esc(c.label)}"${c.cls ? ` class="${c.cls}"` : ''}>${c.td(row)}</td>`).join('');
 
   function privateTableMarkup() {
     const rows = S.privRows || [];

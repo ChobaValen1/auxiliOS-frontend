@@ -270,3 +270,39 @@
   #screen-facturacion .ob-table tbody tr.selected td.ob-actions { background: var(--ax-surface-2); }
   #screen-facturacion .ob-table td[data-col="base"], #screen-facturacion .ob-table td[data-col="client"], #screen-facturacion .ob-table td[data-col="company"] { white-space: nowrap; }
 }
+
+/* ── Celular: cada fila de la tabla pasa a ser una tarjeta ──
+   Fecha y hora arriba, importe destacado, el resto en dos columnas con su etiqueta
+   (data-label). El tilde queda a la izquierda y el menú de acciones a la derecha. */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-table-card { border: 0; background: transparent; }
+  #screen-facturacion .ob-table-wrap { overflow: visible; border: 0; background: transparent; }
+  #screen-facturacion .ob-table { min-width: 0; display: block; }
+  #screen-facturacion .ob-table thead { display: none; }
+  #screen-facturacion .ob-table tbody, #screen-facturacion .ob-table tfoot { display: flex; flex-direction: column; gap: var(--ax-sp-2); }
+  #screen-facturacion .ob-table tfoot { margin-top: var(--ax-sp-2); }
+  #screen-facturacion .ob-table tbody tr, #screen-facturacion .ob-table tfoot tr { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px var(--ax-sp-3); padding: 12px 12px 12px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+  #screen-facturacion .ob-table tbody tr.selected { border-color: var(--ax-accent); background: var(--ax-accent-soft); box-shadow: inset 3px 0 0 var(--ax-accent); }
+  #screen-facturacion .ob-table tbody tr:hover { background: var(--ax-surface-2); }
+  #screen-facturacion .ob-table tbody tr.selected:hover { background: var(--ax-accent-soft); }
+  #screen-facturacion .ob-table td { display: block; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; overflow-wrap: anywhere; }
+  #screen-facturacion .ob-table td[data-label]:not([data-col="datetime"])::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+  /* Fecha/hora: ocupa el ancho y deja lugar al tilde (izquierda) y al menú (derecha). */
+  #screen-facturacion .ob-table td[data-col="datetime"] { grid-column: 1 / -1; padding: 0 36px 8px 28px; border-bottom: 1px solid var(--ax-border); }
+  #screen-facturacion .ob-table td.ob-check { position: absolute; top: 12px; left: 12px; width: 18px; }
+  #screen-facturacion .ob-table td.ob-actions { position: absolute; top: 4px; right: 4px; width: auto; padding: 0; box-shadow: none; }
+  #screen-facturacion .ob-table tr:not(:has(td.ob-check)) td[data-col="datetime"] { padding-left: 0; }
+  /* Campos largos a todo el ancho. */
+  #screen-facturacion .ob-table td.ob-place, #screen-facturacion .ob-table td[data-col="type"], #screen-facturacion .ob-table td[data-col="toll"], #screen-facturacion .ob-table td[data-col="route"], #screen-facturacion .ob-table td[data-col="concept"], #screen-facturacion .ob-table td[data-col="invoice"], #screen-facturacion .ob-table td[data-col="collect"], #screen-facturacion .ob-table td[data-col="billing"] { grid-column: 1 / -1; }
+  /* Importe: destacado, con el estado/etiqueta a la izquierda. */
+  #screen-facturacion .ob-table td.ob-money-cell, #screen-facturacion .ob-table td[data-col="amount"], #screen-facturacion .ob-table td[data-col="budget"] { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: var(--ax-sp-3); padding-top: 8px; border-top: 1px solid var(--ax-border); text-align: right; }
+  #screen-facturacion .ob-table td[data-col="amount"]::before, #screen-facturacion .ob-table td[data-col="budget"]::before, #screen-facturacion .ob-table td.ob-money-cell::before { margin: 0; }
+  #screen-facturacion .ob-table td[data-col="amount"] .ob-money, #screen-facturacion .ob-table td[data-col="budget"] .ob-money { font-size: var(--ax-fs-lg); }
+  /* Particulares: acciones al pie, de ancho completo. */
+  #screen-facturacion .ob-table td.ob-private-actions { position: static; grid-column: 1 / -1; display: flex; gap: var(--ax-sp-2); padding-top: 8px; border-top: 1px solid var(--ax-border); }
+  #screen-facturacion .ob-private-actions .ob-button { flex: 1; margin-left: 0; }
+  /* Total de adicionales. */
+  #screen-facturacion .ob-table tfoot td { grid-column: 1 / -1; padding: 0; border: 0; background: transparent; }
+  #screen-facturacion .ob-table tfoot td:empty { display: none; }
+  #screen-facturacion .ob-table tfoot tr { display: flex; justify-content: space-between; align-items: baseline; background: var(--ax-surface); }
+}
