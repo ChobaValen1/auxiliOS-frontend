@@ -375,7 +375,9 @@
         <button class="ob-button" type="button" data-ob="close-invoice" ${S.invoiceBusy ? 'disabled' : ''}>${ico('x')}Cerrar</button>
       </header>
       <div class="ob-invoice-body">
+       <div class="ob-invoice-main">
         <section class="ob-invoice-fields" aria-label="Datos de la factura">
+          <h4 class="ob-invoice-section">Datos del comprobante</h4>
           <label><span>Comprobante</span><select data-ob-invoice-field="document_type">
             <option value="FA" ${form.document_type === 'FA' ? 'selected' : ''}>Factura A</option>
             <option value="FB" ${form.document_type === 'FB' ? 'selected' : ''}>Factura B</option>
@@ -385,22 +387,26 @@
           <label><span>Número</span><input data-ob-invoice-field="document_number" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="00001258" value="${esc(form.document_number)}"></label>
           <label><span>Fecha</span><input type="date" data-ob-invoice-field="issued_on" value="${esc(form.issued_on)}"></label>
         </section>
+        <label class="ob-invoice-notes"><span>Observaciones <small>opcional</small></span><input data-ob-invoice-field="notes" maxlength="300" placeholder="Referencia u observación breve" value="${esc(form.notes)}"></label>
         <section class="ob-invoice-summary" aria-label="Conceptos incluidos">
+          <h4 class="ob-invoice-section">Qué incluye</h4>
           <article class="total"><small>Servicios</small><b>${services.length}</b></article>
           <article class="tolls"><small>Peajes</small><b>${tolls.length}</b></article>
           <article><small>Liviano</small><b>${groups.liviano}</b></article>
           <article><small>Semipesado</small><b>${groups.semipesado}</b></article>
           <article><small>UML</small><b>${groups.uml}</b></article>${other}
         </section>
+       </div>
+       <div class="ob-invoice-side">
         <section class="ob-invoice-lines" aria-label="Qué se factura">
           <h4>Se factura <small>${services.length} ${services.length === 1 ? 'servicio' : 'servicios'}${tolls.length ? ` y ${tolls.length} ${tolls.length === 1 ? 'peaje' : 'peajes'}` : ''}</small></h4>
           <ul>${services.map(row => `<li><div><b>${esc(row.service_order_number || row.service_number || 'Servicio')}</b><small>${esc([row.service_name, dateParts(row.scheduled_for).day, row.customer_name].filter(Boolean).join(' · '))}</small><small>${esc([row.origin, row.destination].filter(Boolean).join(' → ') || '—')}</small></div><span class="ob-money">${esc(money(row.current_company_amount, row.currency))}</span></li>`).join('')}${tolls.map(row => `<li class="is-toll"><div><b>${esc(row.toll_name || 'Peaje')}</b><small>${esc([row.service_order_number || row.service_number, dateParts(row.scheduled_for).day].filter(Boolean).join(' · '))}</small></div><span class="ob-money">${esc(money(row.amount, row.currency))}</span></li>`).join('')}</ul>
         </section>
         <section class="ob-invoice-total"><div><small>Total a facturar</small><b>${esc(money(selectedTotal(), currency))}</b></div><span>${esc(currency)}</span></section>
-        <label class="ob-invoice-notes"><span>Observaciones <small>opcional</small></span><input data-ob-invoice-field="notes" maxlength="300" placeholder="Referencia u observación breve" value="${esc(form.notes)}"></label>
+       </div>
       </div>
       <footer class="ob-invoice-footer">
-        <small>Al crear la factura, ${services.length} servicios y ${tolls.length} peajes quedarán facturados con importes congelados.</small>
+        <small>Al crear la factura, ${services.length} ${services.length === 1 ? 'servicio' : 'servicios'} y ${tolls.length} ${tolls.length === 1 ? 'peaje' : 'peajes'} ${services.length + tolls.length === 1 ? 'quedará facturado' : 'quedarán facturados'} con importes congelados.</small>
         <div><button class="ob-button" type="button" data-ob="close-invoice" ${S.invoiceBusy ? 'disabled' : ''}>Cancelar</button><button class="ob-button success" type="button" data-ob="confirm-invoice" ${S.invoiceBusy ? 'disabled' : ''}>${S.invoiceBusy ? 'Creando factura…' : 'Crear factura'}</button></div>
       </footer>
     </section>`;
