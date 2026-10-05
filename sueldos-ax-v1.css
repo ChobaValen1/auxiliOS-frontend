@@ -1,0 +1,130 @@
+/* AuxiliOS · Sueldos con el sistema visual (v1)
+   Liquidaciones del mes, rendiciones, comisiones y bonos, esquemas de pago, historial, el panel
+   de liquidación de cada chofer y los modales de esquema/comisión/objetivo. Cuelga de
+   #screen-sueldos y de los ids de cada modal para ganarle a sigma.css y a payroll-view. */
+
+#screen-sueldos { font-family: var(--ax-font); color: var(--ax-text); }
+
+/* ── Pestañas segmentadas ── */
+#screen-sueldos > .filter-tabs { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-sueldos > .filter-tabs .ftab { display: inline-flex; align-items: center; height: calc(var(--ax-h) - 8px); padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#screen-sueldos > .filter-tabs .ftab:hover { color: var(--ax-text); }
+#screen-sueldos > .filter-tabs .ftab.active { background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+
+/* ── Tarjetas, textos y botones ── */
+#screen-sueldos .card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-sueldos .card strong { font-weight: var(--ax-fw-semibold); }
+#screen-sueldos .card h3 { margin: 0 0 4px; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-sueldos :is(.payroll-scheme-head, .payroll-commission-head) strong { font-size: var(--ax-fs-lg); }
+#screen-sueldos :is(.payroll-scheme-head, .payroll-commission-head) p, #screen-sueldos .card p { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-sueldos .pm-help { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-sueldos :is(#pl-mes-body, #cfg-obj-body, #cfg-esq-body, #pl-hist-body) { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-sueldos .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-sueldos .btn:hover { background: var(--ax-surface-3); }
+#screen-sueldos .btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-sueldos .btn:disabled { opacity: .5; cursor: not-allowed; }
+#screen-sueldos .btn-ghost { border-color: transparent; }
+#screen-sueldos .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-sueldos .btn-primary:hover:not(:disabled) { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-sueldos :is(.form-input, select, input[type=month], input[type=text], input[type=number], input[type=search]) { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+#screen-sueldos :is(.form-input, select, input):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-sueldos label { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-sueldos input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--ax-accent); }
+
+/* ── Mes: selector y cifras ── */
+#screen-sueldos .pv-month { text-transform: none; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); }
+#screen-sueldos #pl-mes-stats > div { padding: 10px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-sueldos #pl-mes-stats small { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-sueldos #pl-mes-stats strong { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); font-variant-numeric: tabular-nums; }
+
+/* ── Choferes del mes ── */
+#screen-sueldos .pv-driver { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-sueldos .pv-driver:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-sueldos .pv-driver.selected { border-color: var(--ax-border-strong); background: var(--ax-surface-3); box-shadow: inset 3px 0 0 var(--ax-accent); }
+#screen-sueldos .pv-driver strong { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#screen-sueldos .pv-driver > span:last-child { color: var(--ax-text-2); font-weight: var(--ax-fw-medium); }
+#screen-sueldos .pv-driver small, #screen-sueldos .pv-services small { color: var(--ax-text-3); }
+#screen-sueldos .pv-avatar { border: 1px solid var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text-2); font-weight: var(--ax-fw-semibold); }
+#screen-sueldos .pv-link, #pv-driver-modal .pv-link { color: var(--ax-text); text-decoration-color: var(--ax-border-strong); }
+#screen-sueldos .pv-link:hover, #pv-driver-modal .pv-link:hover { text-decoration-color: var(--ax-accent); }
+
+/* ── Tablas (esquemas, historial, rendiciones, objetivos) ── */
+#screen-sueldos .cfg-rend-table { font-size: var(--ax-fs-sm); }
+#screen-sueldos .cfg-rend-table th { height: 38px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-sueldos .cfg-rend-table td { border-bottom: 1px solid var(--ax-border); }
+#screen-sueldos .cfg-rend-table tr:hover td { background: var(--ax-surface-3); }
+#screen-sueldos .payroll-scheme-card tr.is-selected td { background: var(--ax-accent-soft); }
+#screen-sueldos .cfg-rend-table .pill { display: inline-flex; align-items: center; gap: 6px; padding: 0; border-radius: 0; background: none; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-sueldos .cfg-rend-table .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-text-3); }
+#screen-sueldos .cfg-rend-table .pill.ok::before { background: var(--ax-ok); }
+#screen-sueldos .cfg-rend-table .pill.warn::before { background: var(--ax-warn); }
+#screen-sueldos .cfg-rend-table .pill.err::before { background: var(--ax-danger); }
+#screen-sueldos .cfg-rend-table .pill.ok, #screen-sueldos .cfg-rend-table .pill.warn, #screen-sueldos .cfg-rend-table .pill.err { background: none; color: var(--ax-text-2); }
+#screen-sueldos .cfg-rend-btn-mini { height: var(--ax-h-sm); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-sueldos .cfg-rend-btn-mini:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-sueldos .payroll-scheme-alert, #screen-sueldos .pv-review-warning { border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-warn); border-radius: var(--ax-radius); background: var(--ax-surface-3); color: var(--ax-text-2); }
+
+/* ── Comisiones ── */
+#screen-sueldos .payroll-commission-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-sueldos .payroll-commission-card small, #screen-sueldos .payroll-commission-card > span { color: var(--ax-text-3); }
+
+/* ── Panel de liquidación del chofer ── */
+#pv-driver-modal { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); color: var(--ax-text); font-family: var(--ax-font); box-shadow: var(--ax-shadow-modal); }
+#pv-driver-modal::backdrop { background: rgba(0, 0, 0, .6); }
+#pv-driver-modal .pv-modal-header { border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+#pv-driver-modal .pv-modal-header h2 { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; }
+#pv-driver-modal .pv-modal-header p, #pv-driver-modal :is(.pv-note, .pv-formula, .pv-odometer, .pv-metadata dt, .pv-audit-hero p, .pv-audit-hero-total small, .pv-no-commission) { color: var(--ax-text-3); }
+#pv-driver-modal .pv-odometer { background: var(--ax-surface); }
+#pv-driver-modal .pv-modal-columns .pv-salary, #pv-driver-modal #pv-summary, #pv-driver-modal .pv-driver-kpis > div, #pv-driver-modal .pv-audit-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#pv-driver-modal .pv-modal-columns #pv-summary { border: 0; background: transparent; }
+#pv-driver-modal .pv-driver-kpis small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#pv-driver-modal .pv-driver-kpis strong, #pv-driver-modal .pv-total, #pv-driver-modal .pv-audit-hero-total b { font-variant-numeric: tabular-nums; }
+#pv-driver-modal .pv-audit-hero-total b { color: var(--ax-text); }
+#pv-driver-modal .pv-audit-hero { border: 1px solid var(--ax-border-strong); background: var(--ax-surface); }
+#pv-driver-modal .pv-audit-kicker { color: var(--ax-text-3); letter-spacing: .04em; text-transform: none; font-weight: var(--ax-fw-semibold); }
+#pv-driver-modal .pv-journey { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#pv-driver-modal .pv-journey summary { background: var(--ax-surface); }
+#pv-driver-modal .pv-journey summary > span:first-child::before { color: var(--ax-text-3); }
+#pv-driver-modal .pv-journey[open] summary { background: var(--ax-surface-3); }
+#pv-driver-modal .pv-journey summary small, #pv-driver-modal .pv-journey-head { color: var(--ax-text-3); letter-spacing: .04em; }
+#pv-driver-modal .pv-journey-totals { border-top: 1px solid var(--ax-border-strong); background: var(--ax-surface-3); }
+#pv-driver-modal .pv-services th { color: var(--ax-text-3); font-weight: var(--ax-fw-semibold); letter-spacing: .04em; border-bottom: 1px solid var(--ax-border); }
+#pv-driver-modal .pv-services td { border-bottom: 1px solid var(--ax-border); }
+#pv-driver-modal .pv-services tfoot { background: var(--ax-surface-3); }
+#pv-driver-modal .pv-salary > summary { color: var(--ax-text-2); }
+#pv-driver-modal .pv-review-warning { border-left-color: var(--ax-warn); background: var(--ax-surface-3); color: var(--ax-text-2); }
+#pv-driver-modal :is(.pv-audit-input-row, .pv-tools) :is(input, select) { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+#pv-driver-modal :is(input, select):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#pv-driver-modal .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#pv-driver-modal .btn:hover { background: var(--ax-surface-3); }
+#pv-driver-modal .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#pv-driver-modal .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#pv-driver-modal .btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+/* ── Modales de esquema, comisión, objetivo y recibo ── */
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) { background: rgba(0, 0, 0, .6); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) .modal-box { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); color: var(--ax-text); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) .modal-head-title { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; color: var(--ax-text); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) .modal-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) .modal-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) .modal-body { padding: 18px 20px; }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.modal-footer, .modal-foot) { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) .form-label { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.form-input, input:not([type=checkbox]):not([type=radio]), select, textarea) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.form-input, input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) input[type=checkbox] { accent-color: var(--ax-accent); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.pm-concepts label, .pm-commission-choice, .pm-commission, .payroll-selected-list) { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.pm-concepts small, .pm-commission-choice small, .pm-help) { color: var(--ax-text-3); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.modal-footer, .modal-foot) .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.modal-footer, .modal-foot) .btn:hover { background: var(--ax-surface-3); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.modal-footer, .modal-foot) .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#modal-esquema-edit, #modal-esquema-masivo, #modal-comision-payroll, #modal-objetivo-edit, #modal-recibo-payroll, #modal-rendicion-cierre, #modal-rendicion-observar, #modal-rendicion-detalle, #modal-export-rendicion-mes) :is(.modal-footer, .modal-foot) .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#modal-recibo-payroll .filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-recibo-payroll .ftab { border-radius: 6px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#modal-recibo-payroll .ftab.active { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+
+@media (max-width: 800px) {
+  #screen-sueldos > .filter-tabs { display: flex; overflow-x: auto; flex-wrap: nowrap; }
+  #screen-sueldos > .filter-tabs .ftab { flex: 0 0 auto; }
+}
