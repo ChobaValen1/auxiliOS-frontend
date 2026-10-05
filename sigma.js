@@ -237,7 +237,7 @@ const SCREENS = {
   registro:   { title:'Registro diario',    sub:'Módulo 1 · Carga de kilómetros' },
   camion:     { title:'Control del camión', sub:'Estado de la flota y de cada móvil' },
   documentos: { title:'Documentación',      sub:'Módulo 3 · Vencimientos y archivos' },
-  remitos:    { title:'Remitos virtuales',  sub:'Módulo 4 · Firma digital y archivo' },
+  remitos:    { title:'Remitos virtuales',  sub:'Remitos firmados, pendientes y cobros' },
   sueldos:    { title:'Liquidación de sueldos', sub:'Objetivos, esquema salarial y recibos' },
   'jornadas-admin': { title:'Jornadas', sub:'Historial de jornadas de la flota' },
   grilla:     { title:'Grilla mensual',     sub:'Asignaciones de móviles y francos' },

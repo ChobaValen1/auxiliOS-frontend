@@ -2,6 +2,9 @@
    Menú lateral, cabecera y barra inferior del celular. Se carga después de sigma.css:
    el prefijo "body" le da prioridad sobre sus reglas sin usar !important. */
 
+/* El contenido nunca ensancha la página: lo ancho (tablas, filtros) se desplaza adentro. */
+body .main { min-width: 0; }
+
 /* ── Menú lateral ── */
 body .sidenav { background: var(--ax-surface); border-right: 1px solid var(--ax-border); padding: 12px 10px; gap: 2px; }
 body .nav-logo { font-size: 22px; letter-spacing: 2px; color: var(--ax-accent); border-bottom: 1px solid var(--ax-border); margin-bottom: 8px; padding: 6px 10px 14px; }

@@ -1,0 +1,191 @@
+/* AuxiliOS · Remitos con el sistema visual (v1)
+   Lista y barra de filtros, "Calidad y cobros", panel de detalle y filtros del celular.
+   Todo cuelga de #screen-remitos o del id de cada capa para ganarle a sigma.css y a los
+   archivos propios de Remitos sin depender del orden de carga. */
+
+#screen-remitos { font-family: var(--ax-font); color: var(--ax-text); }
+
+/* ── Vistas: Remitos | Calidad y cobros ── */
+#screen-remitos .rmx-views { gap: 2px; margin: 0 0 var(--ax-sp-3); border-bottom: 1px solid var(--ax-border); }
+#screen-remitos .rmx-views button { padding: 10px 14px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); transition: color var(--ax-dur-fast) var(--ax-ease); }
+#screen-remitos .rmx-views button:hover { color: var(--ax-text); }
+#screen-remitos .rmx-views button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-remitos .rmx-views button.is-active { border-bottom-color: var(--ax-accent); color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#screen-remitos .rmx-views b { background: var(--ax-danger-strong); font-size: var(--ax-fs-xs); }
+
+/* ── Barra de filtros y acciones ── */
+#screen-remitos .rmx-toolbar { gap: var(--ax-sp-2) var(--ax-sp-3); margin-bottom: var(--ax-sp-3); }
+#screen-remitos .rmx-filters { flex-wrap: wrap; gap: var(--ax-sp-2); }
+#screen-remitos .rmx-search { flex: 1 1 240px; max-width: 340px; }
+#screen-remitos .rmx-count { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-remitos .rmx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-remitos .rmx-btn:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); filter: none; }
+#screen-remitos .rmx-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-remitos .rmx-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-remitos .rmx-btn.primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-remitos .rmx-btn.ghost { border-color: transparent; background: transparent; color: var(--ax-text-2); }
+#screen-remitos .rmx-btn.ghost:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-remitos .rmx-btn .ax-icon, #screen-remitos .rmx-sheet-btn .ax-icon { width: 15px; height: 15px; vertical-align: 0; }
+#screen-remitos .rmx-sheet-btn { height: var(--ax-h); border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-remitos .rmx-sheet-btn b { background: var(--ax-accent); color: var(--ax-accent-fg); }
+
+/* Chips de atajo: neutros; el color sólo aparece en el que pide atención */
+#screen-remitos .rmx-chip { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-remitos .rmx-chip b { font-family: var(--ax-font); font-size: var(--ax-fs-xs); font-variant-numeric: tabular-nums; }
+#screen-remitos .rmx-chip:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-remitos .rmx-chip.is-amber b { color: var(--ax-warn); }
+#screen-remitos .rmx-chip.is-red b { color: var(--ax-danger); }
+#screen-remitos .rmx-chip.is-active { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); }
+
+/* ── Selección múltiple ── */
+#screen-remitos .rmx-bulk { padding: 10px 14px; border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-accent); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-remitos .rmx-bulk-info { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-remitos .rmx-bulk-link { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-decoration: underline; text-underline-offset: 2px; }
+#screen-remitos .rmx-bulk-link:hover { color: var(--ax-text); }
+
+/* ── Tabla ── */
+#screen-remitos .rmx-table-card { padding: 0; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-remitos .rmx-table th { height: 38px; padding: 0 10px; white-space: normal; line-height: 1.2; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-remitos .rmx-table td { padding: 10px; border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-remitos .rmx-table tbody tr { background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-remitos .rmx-table tbody tr:hover { background: var(--ax-surface-3); }
+#screen-remitos .rmx-table tbody tr:last-child td { border-bottom: 0; }
+#screen-remitos .rmx-row.is-selected td { background: var(--ax-accent-soft); }
+#screen-remitos .rmx-col-check input { width: 16px; height: 16px; accent-color: var(--ax-accent); }
+#screen-remitos .rmx-srv { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font-mono); }
+#screen-remitos .rmx-sub { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-remitos .rmx-date span:first-child, #screen-remitos .rmx-plate { font-family: var(--ax-font-mono); }
+#screen-remitos .rmx-money { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-remitos td.rmx-money[title] { text-decoration-color: var(--ax-border-strong); }
+#screen-remitos .rmx-type, #screen-remitos .rmx-pay { color: var(--ax-text-2); }
+#screen-remitos .rmx-type.is-empty, #screen-remitos .rmx-muted { color: var(--ax-text-3); }
+#screen-remitos .rmx-state { gap: 6px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-remitos .rmx-state::before { background: var(--ax-text-3); }
+#screen-remitos .rmx-state.is-pending { color: var(--ax-warn); }
+#screen-remitos .rmx-state.is-pending::before { background: var(--ax-warn); }
+#screen-remitos .rmx-state.is-review { color: var(--ax-danger); }
+#screen-remitos .rmx-state.is-review::before { background: var(--ax-danger); }
+#screen-remitos .rmx-state.is-void { color: var(--ax-text-3); }
+#screen-remitos .rmx-act { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-remitos .rmx-act:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-remitos .rmx-act.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-remitos .rmx-more summary { width: var(--ax-h-sm); height: var(--ax-h-sm); border-color: var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#screen-remitos .rmx-more summary:hover, #screen-remitos .rmx-more[open] summary { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-remitos .rmx-more-menu { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+#screen-remitos .rmx-more-menu button { height: var(--ax-h-sm); border-radius: var(--ax-radius); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-remitos .rmx-more-menu button:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-remitos .rmx-more-menu button.is-danger { color: var(--ax-danger); }
+
+/* ── Paginación (estilos inline de Index.html) ── */
+#screen-remitos #remitos-pagination { padding: 10px 14px !important; border: 1px solid var(--ax-border) !important; border-radius: var(--ax-radius-lg) !important; background: var(--ax-surface-2) !important; }
+#screen-remitos #remitos-pagination-info { color: var(--ax-text-3) !important; font-size: var(--ax-fs-sm) !important; }
+#screen-remitos #remitos-pagination-page { color: var(--ax-text) !important; font-size: var(--ax-fs-sm) !important; }
+#screen-remitos #remitos-pagination .btn { height: var(--ax-h-sm); padding: 0 12px !important; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font) !important; }
+
+/* ── Lista del celular ── */
+#screen-remitos .remito-card { border: 1px solid var(--ax-border); border-left: 3px solid var(--ax-border-strong) !important; border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-remitos .remito-card.estado-pendiente { border-left-color: var(--ax-warn) !important; background: var(--ax-surface-2); }
+#screen-remitos .remito-card.estado-firmado { border-left-color: var(--ax-border-strong) !important; }
+
+/* ── Calidad y cobros ── */
+#screen-remitos .rmx-calidad .rqc-tile { padding: 14px 16px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-remitos .rmx-calidad .rqc-tile span { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-remitos .rmx-calidad .rqc-tile b { font: var(--ax-fw-semibold) 24px var(--ax-font); font-variant-numeric: tabular-nums; }
+#screen-remitos .rmx-calidad .rqc-tile em { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-remitos .rmx-calidad .rqc-tile.is-alert { border-color: var(--ax-border); border-left: 3px solid var(--ax-danger); }
+#screen-remitos .rmx-calidad .rqc-tile.is-alert b { color: var(--ax-danger); }
+#screen-remitos .rmx-calidad .rqc-sec { padding: 16px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-remitos .rmx-calidad .rqc-sec h3 { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-remitos .rmx-calidad .rqc-count { border-color: var(--ax-border-strong); color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+#screen-remitos .rmx-calidad .rqc-count.is-alert { border-color: var(--ax-danger-strong); background: var(--ax-danger-strong); color: #fff; }
+#screen-remitos .rmx-calidad .rqc-alert { border-top-color: var(--ax-border); }
+#screen-remitos .rmx-calidad .rqc-alert-head span, #screen-remitos .rmx-calidad .rqc-note, #screen-remitos .rmx-calidad .rqc-hint, #screen-remitos .rmx-calidad .rqc-quote { color: var(--ax-text-2); }
+#screen-remitos .rmx-calidad .rqc-tag { border-color: var(--ax-border-strong); color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+#screen-remitos .rmx-calidad .rqc-tag.is-alert { border-color: var(--ax-danger); color: var(--ax-danger); }
+#screen-remitos .rmx-calidad .rqc-btn { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-remitos .rmx-calidad .rqc-btn:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-remitos .rmx-calidad .rqc-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-remitos .rmx-calidad .rqc-link { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-decoration: underline; text-underline-offset: 2px; }
+#screen-remitos .rmx-calidad .rqc-table th { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-remitos .rmx-calidad .rqc-table th, #screen-remitos .rmx-calidad .rqc-table td { border-bottom-color: var(--ax-border); }
+#screen-remitos .rmx-calidad .rqc-stars, #screen-remitos .rmx-calidad .rqc-stars i { color: var(--ax-text-2); }
+#screen-remitos .rmx-calidad .rqc-stars i { color: var(--ax-border-strong); }
+#screen-remitos .rmx-calidad .rqc-num.is-alert, #screen-remitos .rmx-calidad .rqc-bad { color: var(--ax-danger); }
+
+/* ── Panel de detalle de un remito ── */
+#rmp-backdrop { background: rgba(0, 0, 0, .6); }
+#rmp-panel { border-left: 1px solid var(--ax-border-strong); background: var(--ax-surface); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+#rmp-panel .rmp-head { padding: 16px 20px 12px; }
+#rmp-panel .rmp-head h2 { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font-mono); letter-spacing: 0; }
+#rmp-panel .rmp-sub { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#rmp-panel .rmp-close { width: var(--ax-h); height: var(--ax-h); border-color: transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#rmp-panel .rmp-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#rmp-panel .rmp-tabs { border-bottom: 1px solid var(--ax-border); }
+#rmp-panel .rmp-tabs button { padding: 10px 12px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); }
+#rmp-panel .rmp-tabs button:hover { color: var(--ax-text); }
+#rmp-panel .rmp-tabs button.is-active { border-bottom-color: var(--ax-accent); color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#rmp-panel .rmp-sec h3 { color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#rmp-panel .rmp-sec, #rmp-panel .rmp-grid { border-bottom-color: var(--ax-border); }
+#rmp-panel .rmp-row { font-size: var(--ax-fs-sm); }
+#rmp-panel .rmp-label { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#rmp-panel .rmp-value { font-weight: var(--ax-fw-medium); }
+#rmp-panel .rmp-empty, #rmp-panel .rmp-lock-note, #rmp-panel .rmp-before { color: var(--ax-text-3); }
+#rmp-panel .rmp-warn { color: var(--ax-warn); }
+#rmp-panel .rmp-link { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-decoration: underline; text-underline-offset: 2px; }
+#rmp-panel .rmp-link:hover { color: var(--ax-text); }
+#rmp-panel .rmp-alert { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#rmp-panel .rmp-alert.is-review { border-color: var(--ax-border-strong); border-left: 3px solid var(--ax-danger); }
+#rmp-panel .rmp-alert.is-review b { color: var(--ax-text); }
+#rmp-panel .rmp-alert.is-edit { border-color: var(--ax-border-strong); border-left: 3px solid var(--ax-warn); }
+#rmp-panel .rmp-alert.is-edit b { color: var(--ax-text); }
+#rmp-panel .rmp-alert span { color: var(--ax-text-2); }
+#rmp-panel :is(.rmp-edit input, .rmp-edit textarea, .rmp-field textarea, .rmp-save input) { padding: 8px 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#rmp-panel :is(.rmp-edit input, .rmp-edit textarea, .rmp-field textarea, .rmp-save input):focus { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#rmp-panel .rmp-edit.is-changed input, #rmp-panel .rmp-edit.is-changed textarea { border-color: var(--ax-warn); }
+#rmp-panel .rmp-field { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#rmp-panel .rmp-foot { border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+#rmp-panel .rmp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#rmp-panel .rmp-btn:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#rmp-panel .rmp-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#rmp-panel .rmp-btn.danger { border-color: var(--ax-danger-strong); background: var(--ax-danger-strong); color: #fff; }
+#rmp-panel .rmp-btn.ghost { border-color: transparent; color: var(--ax-text-2); }
+#rmp-panel .rmp-more summary { width: var(--ax-h); height: var(--ax-h); border-color: var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#rmp-panel .rmp-more-menu { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+#rmp-panel .rmp-more-menu button { height: var(--ax-h-sm); border-radius: var(--ax-radius); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#rmp-panel .rmp-more-menu button:hover { background: var(--ax-surface-3); }
+#rmp-panel .rmp-more-menu button.is-danger { color: var(--ax-danger); }
+#rmp-panel .rmp-tl-item { border-left-color: var(--ax-border-strong); }
+#rmp-panel .rmp-tl-item::before { background: var(--ax-text-3); }
+#rmp-panel .rmp-tl-item.is-base::before { background: var(--ax-border-strong); }
+#rmp-panel .rmp-tl-head span, #rmp-panel .rmp-tl-reason, #rmp-panel .rmp-tl-item ul { color: var(--ax-text-3); }
+#rmp-panel .rmx-state { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#rmp-panel .rmx-state::before { background: var(--ax-text-3); }
+#rmp-panel .rmx-state.is-pending { color: var(--ax-warn); }
+#rmp-panel .rmx-state.is-pending::before { background: var(--ax-warn); }
+#rmp-panel .rmx-state.is-review { color: var(--ax-danger); }
+#rmp-panel .rmx-state.is-review::before { background: var(--ax-danger); }
+#rmp-panel .rmp-stars, #rmp-panel .rmp-stars-num { color: var(--ax-text-2); }
+#rmp-panel .rmp-stars span { color: var(--ax-border-strong); }
+#rmp-panel .rmp-bad { color: var(--ax-danger); }
+
+/* ── Filtros del celular ── */
+#rfs-sheet { border: 1px solid var(--ax-border-strong); background: var(--ax-surface-2); font-family: var(--ax-font); }
+#rfs-sheet .rfs-head h2 { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#rfs-sheet .rfs-group { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#rfs-sheet .rfs-row + .rfs-row, #rfs-sheet .rfs-opt + .rfs-opt { border-top-color: var(--ax-border); }
+#rfs-sheet .rfs-label { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+#rfs-sheet .rfs-value { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#rfs-sheet .rfs-value.is-set, #rfs-sheet .rfs-check { color: var(--ax-text); }
+#rfs-sheet .rfs-range input { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#rfs-sheet .rfs-foot { border-top: 1px solid var(--ax-border); }
+#rfs-sheet .rfs-clear, #rfs-sheet .rfs-apply { height: var(--ax-h-lg); border-radius: var(--ax-radius); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#rfs-sheet .rfs-clear { border: 1px solid var(--ax-border-strong); color: var(--ax-text); }
+#rfs-sheet .rfs-apply { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+
+/* Con muchas columnas la tabla se desplaza y las acciones quedan fijas a la derecha. */
+@media (min-width: 721px) {
+  #screen-remitos .rmx-table td:last-child, #screen-remitos .rmx-table thead th:last-child { position: sticky; right: 0; z-index: 1; background: var(--ax-surface-2); box-shadow: -1px 0 0 var(--ax-border); }
+  #screen-remitos .rmx-table thead th:last-child { background: var(--ax-surface); z-index: 3; }
+  #screen-remitos .rmx-table tbody tr:hover td:last-child { background: var(--ax-surface-3); }
+  #screen-remitos .rmx-row.is-selected td:last-child { background: var(--ax-surface-2); }
+}
