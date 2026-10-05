@@ -1,0 +1,168 @@
+/* AuxiliOS · Facturación con el sistema visual (v1)
+   Todo cuelga de #screen-facturacion (o de los ids de sus capas) para ganarle a
+   operator-billing.css y a los estilos que inyecta la exportación a Excel. */
+
+#screen-facturacion.ob-screen { min-height: calc(100vh - 100px); color: var(--ax-text); font-family: var(--ax-font); }
+#screen-facturacion .ob-shell { grid-template-columns: minmax(0, 1fr); gap: var(--ax-sp-3); }
+
+/* ── Botones ── */
+#screen-facturacion .ob-button, #screen-facturacion .obx-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); min-height: 0; padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); filter: none; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-button:hover, #screen-facturacion .obx-trigger:hover { background: var(--ax-surface-3); color: var(--ax-text); filter: none; }
+#screen-facturacion .ob-button:focus-visible, #screen-facturacion .obx-trigger:focus-visible, #screen-facturacion .ob-tab:focus-visible, #screen-facturacion .ob-row-menu-trigger:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-facturacion .ob-button:disabled { opacity: .5; cursor: not-allowed; }
+#screen-facturacion .ob-button.primary, #screen-facturacion .ob-button.success { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-button.primary:hover, #screen-facturacion .ob-button.success:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-facturacion .ob-button.danger { border-color: var(--ax-danger-strong); background: var(--ax-danger-strong); color: #fff; }
+#screen-facturacion .ob-button.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger); }
+#screen-facturacion .ob-button .ax-icon, #screen-facturacion .obx-trigger .ax-icon { width: 15px; height: 15px; vertical-align: 0; }
+
+/* ── Pestañas y filtros (sin caja de fondo) ── */
+#screen-facturacion .ob-toolbar { flex-direction: column; align-items: stretch; gap: var(--ax-sp-3); padding: 0; border: 0; border-radius: 0; background: transparent; }
+#screen-facturacion .ob-tabs { gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
+#screen-facturacion .ob-tabs::-webkit-scrollbar { display: none; }
+#screen-facturacion .ob-tab { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; height: var(--ax-h-sm); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-tab:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-facturacion .ob-tab.active { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-facturacion .ob-tab-count { font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; color: var(--ax-text-3); }
+#screen-facturacion .ob-tab.active .ob-tab-count { color: var(--ax-text-2); }
+#screen-facturacion .ob-filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--ax-sp-2); width: 100%; }
+#screen-facturacion .ob-filters .auxf-search { flex: 1 1 220px; min-width: 180px; max-width: 360px; }
+#screen-facturacion .ob-filters .obx-wrap { margin-left: auto; }
+#screen-facturacion .ob-filters .obx-wrap + .ob-filter-action, #screen-facturacion .ob-filters .ob-filter-action:first-of-type { margin-left: 0; }
+#screen-facturacion .ob-search:focus, #screen-facturacion .ob-filter:focus { border-color: var(--ax-accent); }
+#screen-facturacion .obx-menu { top: calc(100% + 6px); width: 270px; padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+#screen-facturacion .obx-menu button { padding: 10px; border-radius: var(--ax-radius); color: var(--ax-text); font-family: var(--ax-font); }
+#screen-facturacion .obx-menu button:hover:not(:disabled) { background: var(--ax-surface-3); }
+#screen-facturacion .obx-menu b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .obx-menu small { font-size: var(--ax-fs-xs); color: var(--ax-text-3); }
+
+/* En pantallas medianas Actualizar queda sólo con el ícono para que los filtros entren en una fila. */
+@media (max-width: 1500px) and (min-width: 761px) {
+  #screen-facturacion .ob-filters .ob-filter-action { width: var(--ax-h); padding: 0; font-size: 0; gap: 0; }
+}
+
+/* ── Selección ── */
+#screen-facturacion .ob-selection { padding: 10px 14px; border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-accent); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-selection > div:first-child b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-selection > div:first-child small { margin-top: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+
+/* ── Tabla ── */
+#screen-facturacion .ob-table-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-table-wrap { max-height: calc(100vh - 260px); }
+#screen-facturacion .ob-table { min-width: 960px; }
+#screen-facturacion .ob-table th { height: 38px; padding: 0 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-facturacion .ob-table td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); color: var(--ax-text); vertical-align: middle; }
+#screen-facturacion .ob-table tbody tr { background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-table tbody tr:hover { background: var(--ax-surface-3); }
+#screen-facturacion .ob-table tbody tr.selected { background: var(--ax-accent-soft); }
+#screen-facturacion .ob-table tbody tr:last-child td { border-bottom: 0; }
+#screen-facturacion .ob-table td b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-table td small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-table td .ob-money, #screen-facturacion .ob-table td.ob-km { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-table td.ob-place { color: var(--ax-text-2); }
+#screen-facturacion .ob-table tfoot td { border-top: 1px solid var(--ax-border-strong); background: var(--ax-surface); }
+#screen-facturacion .ob-table td .ob-state { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-table td .ob-state::before { background: var(--ax-border-strong); }
+#screen-facturacion .ob-table td .ob-state.is-pending { color: var(--ax-warn); }
+#screen-facturacion .ob-table td .ob-state.is-pending::before { background: var(--ax-warn); }
+#screen-facturacion .ob-table td small.ob-error { color: var(--ax-danger); }
+#screen-facturacion .ob-check input { accent-color: var(--ax-accent); width: 16px; height: 16px; }
+#screen-facturacion .ob-table td.ob-actions { white-space: nowrap; text-align: right; }
+#screen-facturacion .ob-private-actions { display: table-cell; }
+#screen-facturacion .ob-private-actions .ob-button { height: var(--ax-h-sm); padding: 0 10px; margin-left: 6px; white-space: nowrap; }
+#screen-facturacion .ob-row-menu-trigger { display: inline-flex; align-items: center; justify-content: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#screen-facturacion .ob-row-menu-trigger:hover, #screen-facturacion .ob-row-menu-trigger[aria-expanded="true"] { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-facturacion .ob-row-menu-trigger .ax-icon { width: 18px; height: 18px; vertical-align: 0; }
+#screen-facturacion .ob-empty { padding: 40px 16px; text-align: center; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Menú de acciones de la fila ── */
+#ob-row-action-menu { min-width: 190px; padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); font-family: var(--ax-font); }
+#ob-row-action-menu button { display: block; width: 100%; height: var(--ax-h-sm); padding: 0 10px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-align: left; cursor: pointer; }
+#ob-row-action-menu button:hover { background: var(--ax-surface-3); }
+#ob-row-action-menu button.danger { color: var(--ax-danger); }
+#ob-row-action-menu button.danger:hover { background: var(--ax-danger-soft); }
+
+/* ── Capas: factura, confirmaciones y detalle ── */
+#screen-facturacion #ob-detail-backdrop { background: rgba(0, 0, 0, .6); backdrop-filter: none; }
+#screen-facturacion .ob-invoice-modal, #screen-facturacion .ob-confirm-modal { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
+#screen-facturacion .ob-invoice-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: transparent; }
+#screen-facturacion .ob-invoice-head small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .04em; }
+#screen-facturacion .ob-invoice-head h3 { margin: 2px 0 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); }
+#screen-facturacion .ob-invoice-head p { margin: 4px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-confirm-modal.danger .ob-invoice-head { border-bottom-color: var(--ax-border); }
+#screen-facturacion .ob-confirm-modal.danger .ob-invoice-head h3 { color: var(--ax-text); }
+#screen-facturacion .ob-confirm-modal.danger .ob-invoice-head h3::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--ax-danger); vertical-align: 2px; }
+#screen-facturacion .ob-invoice-body, #screen-facturacion .ob-confirm-body { padding: 16px 20px; gap: var(--ax-sp-3); }
+#screen-facturacion .ob-invoice-fields label > span, #screen-facturacion .ob-invoice-notes > span, #screen-facturacion .ob-field > small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-invoice-fields input, #screen-facturacion .ob-invoice-fields select, #screen-facturacion .ob-invoice-notes input, #screen-facturacion .ob-field textarea { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-facturacion .ob-field textarea { height: auto; padding: 8px 10px; }
+#screen-facturacion .ob-invoice-fields input:focus, #screen-facturacion .ob-invoice-fields select:focus, #screen-facturacion .ob-invoice-notes input:focus, #screen-facturacion .ob-field textarea:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-facturacion .ob-invoice-summary article, #screen-facturacion .ob-confirm-service article { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-summary small, #screen-facturacion .ob-confirm-service small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .03em; text-transform: none; }
+#screen-facturacion .ob-invoice-summary b { margin-top: 2px; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font-mono); }
+#screen-facturacion .ob-confirm-service b { margin-top: 2px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-invoice-summary article.total, #screen-facturacion .ob-invoice-summary article.tolls { border-color: var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-total { padding: 14px 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-total small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-invoice-total b { font: var(--ax-fw-semibold) 26px var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-total > span { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-invoice-footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: transparent; }
+#screen-facturacion .ob-invoice-footer > small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-footer .ob-button { height: var(--ax-h); min-height: 0; padding: 0 16px; font-size: var(--ax-fs-sm); }
+
+/* Detalle lateral */
+#screen-facturacion .ob-detail { border-left: 1px solid var(--ax-border-strong); background: var(--ax-surface); box-shadow: var(--ax-shadow-modal); }
+#screen-facturacion .ob-detail-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-detail-head small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .04em; text-transform: uppercase; }
+#screen-facturacion .ob-detail-head h3 { margin: 2px 0 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font-mono); }
+#screen-facturacion .ob-detail-body { padding: 16px 20px; display: grid; gap: var(--ax-sp-3); align-content: start; }
+#screen-facturacion .ob-summary { gap: var(--ax-sp-2); }
+#screen-facturacion .ob-summary article, #screen-facturacion .ob-section { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-summary small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); text-transform: none; letter-spacing: 0; }
+#screen-facturacion .ob-summary b { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-section h4 { margin: 0 0 var(--ax-sp-2); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); text-transform: none; letter-spacing: 0; }
+#screen-facturacion .ob-grid .ob-field small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-grid .ob-field b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-component { padding: 8px 0; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-component small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-history article { border-left: 2px solid var(--ax-border-strong); padding-left: 10px; }
+#screen-facturacion .ob-history small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* ── Elegir columnas para Excel ── */
+#obx-picker-backdrop { background: rgba(0, 0, 0, .6); font-family: var(--ax-font); }
+#obx-picker-backdrop .obx-picker { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
+#obx-picker-backdrop .obx-picker > header { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); }
+#obx-picker-backdrop .obx-picker h3 { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; }
+#obx-picker-backdrop .obx-picker p { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#obx-picker-backdrop .obx-close { display: inline-flex; align-items: center; justify-content: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border-radius: var(--ax-radius); color: var(--ax-text-2); cursor: pointer; }
+#obx-picker-backdrop .obx-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#obx-picker-backdrop .obx-close .ax-icon { width: 18px; height: 18px; }
+#obx-picker-backdrop .obx-col-group { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+#obx-picker-backdrop .obx-col-head { background: var(--ax-surface); }
+#obx-picker-backdrop .obx-col-head b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#obx-picker-backdrop .obx-col-head small, #obx-picker-backdrop .obx-picker-count { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#obx-picker-backdrop .obx-col-head button, #obx-picker-backdrop .obx-secondary, #obx-picker-backdrop .obx-primary { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#obx-picker-backdrop .obx-col-head button:hover, #obx-picker-backdrop .obx-secondary:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#obx-picker-backdrop .obx-primary { height: var(--ax-h); padding: 0 16px; border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#obx-picker-backdrop .obx-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#obx-picker-backdrop .obx-col-grid label { font-size: var(--ax-fs-sm); color: var(--ax-text-2); }
+#obx-picker-backdrop .obx-col-grid label:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#obx-picker-backdrop .obx-col-grid input { accent-color: var(--ax-accent); }
+#obx-picker-backdrop .obx-picker > footer { border-top: 1px solid var(--ax-border); background: transparent; }
+
+/* ── Celular ── */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
+  #screen-facturacion .ob-filters .auxf { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  #screen-facturacion .ob-filters .auxf-btn { width: 100%; }
+  #screen-facturacion .ob-filters .auxf-search { flex: 1 1 100%; max-width: none; }
+  #screen-facturacion .ob-filters .obx-wrap { margin-left: 0; }
+  #screen-facturacion .ob-filters .ob-filter-action, #screen-facturacion .ob-filters .obx-trigger { width: auto; }
+  #screen-facturacion .ob-selection { align-items: stretch; }
+  #screen-facturacion .ob-selection-actions { justify-content: flex-end; }
+  #screen-facturacion .ob-table-wrap { max-height: none; }
+  #screen-facturacion #ob-detail-backdrop { position: fixed; z-index: var(--ax-z-modal); }
+  #screen-facturacion .ob-detail { width: 100%; }
+  #screen-facturacion .ob-invoice-footer { flex-direction: column; align-items: stretch; }
+  #screen-facturacion .ob-invoice-footer > div { justify-content: flex-end; }
+}

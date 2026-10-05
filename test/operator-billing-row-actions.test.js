@@ -10,7 +10,7 @@ test('grilla reemplaza Ver por menu horizontal de tres puntos',()=>{
   assert.match(row,/data-ob-row-menu/);
   assert.match(row,/title="Acciones del servicio"/);
   assert.match(row,/aria-haspopup="menu"/);
-  assert.match(row,/⋯/);
+  assert.match(row,/ico\('ellipsis'\)/);
   assert.doesNotMatch(row,/>Ver<\/button>/);
 });
 

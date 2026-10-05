@@ -58,6 +58,7 @@
   const confirmar = (titulo, detalle) => typeof window.operationFeedback === 'function'
     ? window.operationFeedback(titulo, detalle, 'success', 2400)
     : notify(titulo, 'success');
+  const ico = name => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
   const money = (value, currency = 'ARS') => new Intl.NumberFormat('es-AR', {
     style: 'currency', currency: currency || 'ARS', maximumFractionDigits: 2
   }).format(num(value));
@@ -152,7 +153,7 @@
   function setTopbar() {
     const title = document.getElementById('topbar-title');
     const sub = document.getElementById('topbar-sub');
-    if (title) title.textContent = 'FACTURACIÓN';
+    if (title) title.textContent = 'Facturación';
     if (sub) sub.textContent = 'Servicios y peajes disponibles para facturar';
   }
 
@@ -238,15 +239,15 @@
 
   function filtersMarkup() {
     const F = window.AuxFilters;
-    const searchInput = `<label class="auxf-search"><span aria-hidden="true">⌕</span><input class="ob-search" id="ob-search" type="search" autocomplete="off" placeholder="Buscar código, cliente, origen, destino…" value="${esc(S.search)}"></label>`;
+    const searchInput = `<label class="auxf-search"><span aria-hidden="true">${ico('search')}</span><input class="ob-search" id="ob-search" type="search" autocomplete="off" placeholder="Buscar código, cliente, origen, destino…" value="${esc(S.search)}"></label>`;
     if (!F) return `${searchInput}<select class="ob-filter" id="ob-company-filter">${filterOptions().companies}</select>`;
     const companies = S.filters.companies.map(item => ({ value: String(item.company_id), label: item.company_name }));
     const bases = uniqueOptions([...S.allRows, ...S.allTollRows], 'billing_base_name');
     return searchInput
       + F.period({ id: 'period', value: S.periodSel, allLabel: 'Todos los períodos', months: S.filters.periods })
-      + F.select({ id: 'company', label: 'Prestadora', icon: '🏢', value: S.company, options: companies, allLabel: 'Todas' })
-      + F.select({ id: 'base', label: 'Base', icon: '📍', value: S.base, options: bases, allLabel: 'Todas' })
-      + (S.tab === 'services' ? F.select({ id: 'serviceType', label: 'Tipo', icon: '🚚', value: S.serviceType, options: uniqueOptions(S.allRows, 'service_name'), allLabel: 'Todos' }) : '')
+      + F.select({ id: 'company', label: 'Prestadora', icon: ico('building-2'), value: S.company, options: companies, allLabel: 'Todas' })
+      + F.select({ id: 'base', label: 'Base', icon: ico('map-pin'), value: S.base, options: bases, allLabel: 'Todas' })
+      + (S.tab === 'services' ? F.select({ id: 'serviceType', label: 'Tipo', icon: ico('truck'), value: S.serviceType, options: uniqueOptions(S.allRows, 'service_name'), allLabel: 'Todos' }) : '')
       + F.clear({ count: activeFilterCount() });
   }
 
@@ -353,7 +354,7 @@
       <div><b>${S.selected.size} servicios · ${S.selectedTolls.size} peajes</b><small>${esc(summary)}</small></div>
       <div class="ob-selection-actions">
         <button class="ob-button" data-ob="clear-selection" ${S.invoiceBusy ? 'disabled' : ''}>Limpiar</button>
-        ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'FACTURAR'}</button>` : ''}
+        ${canInvoice() ? `<button class="ob-button success" data-ob="invoice-selection" ${disabled ? 'disabled' : ''} ${title ? `title="${esc(title)}"` : ''}>${S.invoiceBusy ? 'Facturando…' : 'Facturar'}</button>` : ''}
       </div>
     </section>`;
   }
@@ -371,7 +372,7 @@
     return `<section role="dialog" aria-modal="true" aria-labelledby="ob-invoice-title" class="ob-invoice-modal">
       <header class="ob-invoice-head">
         <div><small>Facturación</small><h3 id="ob-invoice-title">Crear factura</h3><p>${esc(company)}</p></div>
-        <button class="ob-button" type="button" data-ob="close-invoice" ${S.invoiceBusy ? 'disabled' : ''}>× Cerrar</button>
+        <button class="ob-button" type="button" data-ob="close-invoice" ${S.invoiceBusy ? 'disabled' : ''}>${ico('x')}Cerrar</button>
       </header>
       <div class="ob-invoice-body">
         <section class="ob-invoice-fields" aria-label="Datos de la factura">
@@ -479,7 +480,7 @@
       <td><b>${esc(row.service_name || '—')}</b><small class="ob-state is-pending">Pendiente</small>${row.pricing_error ? `<small class="ob-error">${esc(row.pricing_error)}</small>` : ''}</td>
       <td class="ob-place">${esc(row.origin || '—')}</td><td class="ob-place">${esc(row.destination || '—')}</td>
       <td><b>${esc(row.customer_name || '—')}</b></td><td class="ob-km">${esc(num(row.km).toLocaleString('es-AR', { maximumFractionDigits: 1 }))} km</td>
-      <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio">⋯</button></td>
+      <td class="ob-actions"><button class="ob-row-menu-trigger" type="button" data-ob-row-menu="${esc(id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones del servicio" aria-label="Acciones del servicio">${ico('ellipsis')}</button></td>
     </tr>`;
   }
 
@@ -535,7 +536,7 @@
     return `<section role="dialog" aria-modal="true" aria-labelledby="ob-confirm-title" class="ob-confirm-modal">
       <header class="ob-invoice-head">
         <div><small>Facturación · Particulares</small><h3 id="ob-confirm-title">Cerrar sin factura</h3><p>${row.invoice_requested ? 'El cliente pidió factura. Indicá por qué se cierra sin facturar.' : 'El servicio sale de Facturación sin emitir factura. Queda auditado.'}</p></div>
-        <button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>× Cerrar</button>
+        <button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>${ico('x')}Cerrar</button>
       </header>
       <div class="ob-confirm-body">
         <div class="ob-confirm-service">
@@ -564,7 +565,7 @@
     return `<section role="dialog" aria-modal="true" aria-labelledby="ob-confirm-title" class="ob-confirm-modal${annul ? ' danger' : ''}">
       <header class="ob-invoice-head">
         <div><small>Facturación</small><h3 id="ob-confirm-title">${annul ? 'Anular servicio FINALIZADO' : 'Revertir Facturación'}</h3><p>${esc(copy)}</p></div>
-        <button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>× Cerrar</button>
+        <button class="ob-button" type="button" data-ob="cancel-action" ${busy ? 'disabled' : ''}>${ico('x')}Cerrar</button>
       </header>
       <div class="ob-confirm-body">
         <div class="ob-confirm-service">
@@ -589,7 +590,7 @@
     const quote = detail.current_quote || {};
     const delta = num(quote.billing_delta);
     const separateTolls = quote.toll_billing_mode === 'separate' && num(quote.separate_toll_amount) > 0;
-    return `<aside class="ob-detail"><div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3>${esc(service.service_number || 'Servicio')}</h3></div><button class="ob-button" type="button" data-ob="close-detail">× Cerrar</button></div><div class="ob-detail-body">
+    return `<aside class="ob-detail"><div class="ob-detail-head"><div><small>Facturación · Pendiente</small><h3>${esc(service.service_number || 'Servicio')}</h3></div><button class="ob-button" type="button" data-ob="close-detail">${ico('x')}Cerrar</button></div><div class="ob-detail-body">
       <div class="ob-summary"><article><small>Importe actual</small><b>${esc(money(quote.current_company_amount, quote.currency))}</b></article><article><small>Importe al cierre</small><b>${esc(money(quote.stored_company_amount, quote.currency))}</b></article><article><small>Diferencia</small><b>${delta > 0 ? '+' : ''}${esc(money(delta, quote.currency))}</b></article></div>
       ${separateTolls ? `<section class="ob-section"><h4>Peajes facturados por separado</h4><div class="ob-field"><b>${esc(money(quote.separate_toll_amount, quote.currency))}</b><small>Este importe no forma parte del total del servicio y se factura desde la pestaña Peajes.</small></div></section>` : ''}
       ${Math.abs(delta) > .009 ? `<section class="ob-section"><h4>Cambio tarifario detectado</h4><div class="ob-field"><b>${delta > 0 ? '+' : ''}${esc(money(delta, quote.currency))} respecto del cierre operativo.</b><small>Revisá esta diferencia antes de facturar el servicio.</small></div></section>` : ''}
@@ -607,7 +608,7 @@
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
     document.querySelector('.topbar-right #obx-wrap')?.remove();
     const excelControl = S.selected.size
-      ? '<div id="obx-wrap" class="obx-wrap"><button type="button" class="obx-trigger" id="obx-trigger" aria-haspopup="menu" aria-expanded="false" data-ob="excel-toggle">⇩ Excel</button></div>'
+      ? `<div id="obx-wrap" class="obx-wrap"><button type="button" class="obx-trigger" id="obx-trigger" aria-haspopup="menu" aria-expanded="false" data-ob="excel-toggle">${ico('download')}Excel</button></div>`
       : '';
     const overlayOpen = S.invoiceOpen || S.rowAction || S.detail || S.detailLoading;
     const overlay = S.rowAction
@@ -621,8 +622,8 @@
     // derecha, que es de donde sale.
     const backdropClass = S.invoiceOpen ? ' ob-invoice-backdrop' : S.rowAction ? ' ob-confirm-backdrop' : '';
     screen.innerHTML = `<div class="ob-shell">
-      <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes</button><button class="ob-tab ${S.tab === 'extras' ? 'active' : ''}" type="button" data-ob-tab="extras">Adicionales</button><button class="ob-tab ${S.tab === 'private' ? 'active' : ''}" type="button" data-ob-tab="private">Particulares${(S.privRows || []).length ? ` <span class="ob-tab-count">${S.privRows.length}</span>` : ''}</button></div>
-      <div class="ob-filters auxf-bar">${filtersMarkup()}${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh">↻ Actualizar</button></div></div>
+      <div class="ob-toolbar"><div class="ob-tabs"><button class="ob-tab ${S.tab === 'services' ? 'active' : ''}" type="button" data-ob-tab="services">Servicios${serviceRows().length ? ` <span class="ob-tab-count">${serviceRows().length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'tolls' ? 'active' : ''}" type="button" data-ob-tab="tolls">Peajes${S.tollRows.length ? ` <span class="ob-tab-count">${S.tollRows.length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'extras' ? 'active' : ''}" type="button" data-ob-tab="extras">Adicionales${(S.extraRows || []).length ? ` <span class="ob-tab-count">${S.extraRows.length}</span>` : ''}</button><button class="ob-tab ${S.tab === 'private' ? 'active' : ''}" type="button" data-ob-tab="private">Particulares${(S.privRows || []).length ? ` <span class="ob-tab-count">${S.privRows.length}</span>` : ''}</button></div>
+      <div class="ob-filters auxf-bar">${filtersMarkup()}${excelControl}<button class="ob-button ob-filter-action" type="button" data-ob="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div>
       ${selectionMarkup()}<div class="ob-table-card">${S.loading ? '<div class="ob-empty">Actualizando Facturación…</div>' : tableMarkup()}</div>
       <div id="ob-detail-backdrop" class="ob-detail-backdrop${backdropClass}" ${overlayOpen ? '' : 'hidden'}>${overlay}</div>
     </div>`;

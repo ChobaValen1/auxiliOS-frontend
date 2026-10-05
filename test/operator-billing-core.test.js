@@ -72,7 +72,7 @@ test('selección factura conceptos de una sola Prestadora y una sola moneda',()=
   assert.match(billing,/seleccioná conceptos de una sola prestadora/i);
   assert.match(billing,/selección debe tener una sola moneda/i);
   assert.match(billing,/data-ob="invoice-selection"/);
-  assert.match(billing,/Facturando…'\s*:\s*'FACTURAR'/);
+  assert.match(billing,/Facturando…'\s*:\s*'Facturar'/);
 });
 
 test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
