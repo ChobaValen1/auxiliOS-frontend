@@ -76,6 +76,37 @@
     return true;
   }
 
+  /* Menú lateral: cada ítem lleva su nombre como ayuda (se lee al contraerlo) y, en el
+     celular, el ítem activo se acerca al centro de la barra inferior. */
+  function armarMenu() {
+    var doc = global.document, nav = doc && doc.querySelector ? doc.querySelector('.sidenav') : null;
+    if (!nav || nav.getAttribute('data-ax-shell')) return;
+    nav.setAttribute('data-ax-shell', '1');
+    function rotular() {
+      Array.prototype.forEach.call(nav.querySelectorAll('.nav-item'), function (it) {
+        var l = it.querySelector('.nav-label');
+        if (l && !it.title) it.title = l.textContent.trim();
+        if (!it.hasAttribute('tabindex')) { it.setAttribute('tabindex', '0'); it.setAttribute('role', 'link'); }
+      });
+    }
+    function centrar() {
+      var a = nav.querySelector('.nav-item.active');
+      if (!a || !global.matchMedia || !global.matchMedia('(max-width: 767px)').matches) return;
+      nav.scrollLeft = Math.max(0, a.offsetLeft - (nav.clientWidth - a.offsetWidth) / 2);
+    }
+    nav.addEventListener('keydown', function (e) {
+      var it = e.target.closest && e.target.closest('.nav-item');
+      if (it && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); it.click(); }
+    });
+    if (global.MutationObserver) {
+      new global.MutationObserver(function () { rotular(); centrar(); })
+        .observe(nav, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+    }
+    rotular(); centrar();
+  }
+  if (global.document && global.document.readyState === 'loading') global.document.addEventListener('DOMContentLoaded', armarMenu);
+  else armarMenu();
+
   instalar();
   if (global.AxUI) global.operationFeedback = operationFeedback;
   global.AuxiliosUI = { avisar: avisar, instalar: instalar, TONO: TONO, operationFeedback: operationFeedback, resaltarServicio: resaltarServicio };

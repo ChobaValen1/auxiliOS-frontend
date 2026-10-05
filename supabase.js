@@ -231,8 +231,10 @@ async function cargarPerfilUsuario() {
   }
   const badge = document.querySelector('.role-badge');
   if (badge && data.roles?.name) {
-    const map = { administracion:'🔑 Admin', operador:'🧭 Operador', supervision:'👁 Supervisor', chofer:'🚛 Chofer' };
-    badge.textContent = map[data.roles.name] || data.roles.name;
+    const map = { administracion:['shield-check','Admin'], operador:['navigation','Operador'], supervision:['eye','Supervisor'], chofer:['truck','Chofer'] };
+    const [icono, texto] = map[data.roles.name] || ['user', data.roles.name];
+    badge.innerHTML = '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#' + icono + '"/></svg><span class="role-badge-text"></span>';
+    badge.querySelector('.role-badge-text').textContent = texto;
   }
 }
 // Nota: esta función se llama justo después del login para cargar el perfil completo del usuario, incluyendo su rol. Esto permite mostrar su nombre en el avatar y ajustar la UI según su rol (ej: mostrar filtros admin).

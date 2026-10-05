@@ -230,17 +230,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // ── SCREENS ──────────────────────────────────
 const SCREENS = {
-  dashboard:  { title:'PANEL PRINCIPAL',    sub:() => {
+  dashboard:  { title:'Panel principal',    sub:() => {
     const fmt = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     return 'Resumen · ' + fmt.charAt(0).toUpperCase() + fmt.slice(1);
   } },
-  registro:   { title:'REGISTRO DIARIO',    sub:'Módulo 1 · Carga de kilómetros' },
-  camion:     { title:'CONTROL DEL CAMIÓN', sub:'Módulo 2 · Revisión y Carga' },
-  documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
-  remitos:    { title:'REMITOS VIRTUALES',  sub:'Módulo 4 · Firma digital y archivo' },
-  sueldos:    { title:'LIQUIDACIÓN DE SUELDOS', sub:'Objetivos, esquema salarial y recibos' },
-  'jornadas-admin': { title:'JORNADAS', sub:'Historial de jornadas de la flota' },
-  grilla:     { title:'GRILLA MENSUAL',     sub:'Asignaciones de móviles y francos' },
+  registro:   { title:'Registro diario',    sub:'Módulo 1 · Carga de kilómetros' },
+  camion:     { title:'Control del camión', sub:'Módulo 2 · Revisión y Carga' },
+  documentos: { title:'Documentación',      sub:'Módulo 3 · Vencimientos y archivos' },
+  remitos:    { title:'Remitos virtuales',  sub:'Módulo 4 · Firma digital y archivo' },
+  sueldos:    { title:'Liquidación de sueldos', sub:'Objetivos, esquema salarial y recibos' },
+  'jornadas-admin': { title:'Jornadas', sub:'Historial de jornadas de la flota' },
+  grilla:     { title:'Grilla mensual',     sub:'Asignaciones de móviles y francos' },
 };
 
 function goTo(name) {

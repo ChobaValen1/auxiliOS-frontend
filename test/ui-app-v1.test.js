@@ -7,7 +7,7 @@ const read = f => fs.readFileSync(f, 'utf8');
 const index = read('Index.html'), sw = read('sw.js'), pkg = read('package.json');
 
 test('la app carga el sistema visual: tokens, componentes, ax.js y su aplicación', () => {
-  for (const f of ['/ui/tokens.css', '/ui/components.css', '/ui/app-v1.css', '/operaciones-ax-v1.css', '/chofer-servicios-ax-v1.css', '/servicio-form-ax-v1.css', '/estado-servicio-ax-v1.css', '/remito-chofer-ax-v1.css', '/jornadas-ax-v1.css']) {
+  for (const f of ['/ui/tokens.css', '/ui/components.css', '/ui/app-v1.css', '/operaciones-ax-v1.css', '/chofer-servicios-ax-v1.css', '/servicio-form-ax-v1.css', '/estado-servicio-ax-v1.css', '/remito-chofer-ax-v1.css', '/jornadas-ax-v1.css', '/shell-ax-v1.css']) {
     assert.match(index, new RegExp('href="' + f.replace(/\./g, '\\.') + '\\?v='), f);
     assert.match(sw, new RegExp("'" + f.replace(/\./g, '\\.') + "'"), f);
   }
@@ -67,4 +67,13 @@ test('en el celular nada de Servicios ensancha la página', () => {
   const css = read('operaciones-ax-v1.css');
   assert.match(css, /#screen-operaciones \.os-status-tabs, #screen-operaciones \.os-table-wrap, #screen-operaciones \.os-intake-list \{ contain: inline-size; \}/);
   assert.match(css, /@media \(max-width: 720px\)[\s\S]*#screen-operaciones \.os-table thead \{ display: none; \}/);
+});
+
+test('el menú lateral y la cabecera usan sólo tokens, sin emojis ni colores sueltos', () => {
+  const css = read('shell-ax-v1.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.deepEqual([...css.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map(m => m[0]), []);
+  assert.ok(index.indexOf('href="/sigma.css') < index.indexOf('id="auxilios-shell-ax-v1-css"') || index.indexOf('sigma.css') < index.indexOf('auxilios-shell-ax-v1-css'));
+  const top = index.slice(index.indexOf('<div class="topbar"'), index.indexOf('<div class="content">'));
+  assert.doesNotMatch(top, /👑|🔔|⚙/);
+  assert.doesNotMatch(read('supabase.js'), /🔑 Admin|🧭 Operador|👁 Supervisor|🚛 Chofer/);
 });
