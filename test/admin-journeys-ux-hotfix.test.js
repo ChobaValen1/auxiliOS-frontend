@@ -41,8 +41,8 @@ test('journey filters support multiple drivers and trucks inside one filter pane
   const ui = read('sigma.js');
   const data = read('supabase.js');
 
-  assert.match(html, /id="jadmin-f-chofer-options"/);
-  assert.match(html, /id="jadmin-f-camion-options"/);
+  assert.match(html, /id="jadmin-f-chofer"/);
+  assert.match(html, /id="jadmin-f-camion"/);
   assert.match(html, /id="jadmin-f-periodo-host"/);
   // Período y Estado unificados: sin chips duplicados.
   assert.doesNotMatch(html, /data-chip="todas"/);

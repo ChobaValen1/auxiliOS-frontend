@@ -19,7 +19,7 @@ const PRECACHE_ASSETS=[
   '/toll-route-detection-v1.js',
   '/finish-time-v1.js',
   '/operator-service-bridge.css','/operator-service-bridge.js',
-  '/ui/tokens.css','/ui/components.css','/ui/ax.js','/ui/icons.svg','/ui/app-v1.css','/ui/app-v1.js','/operaciones-ax-v1.css','/chofer-servicios-ax-v1.css','/servicio-form-ax-v1.css','/estado-servicio-ax-v1.css','/remito-chofer-ax-v1.css','/remito-chofer-ax-v1.js',
+  '/ui/tokens.css','/ui/components.css','/ui/ax.js','/ui/icons.svg','/ui/app-v1.css','/ui/app-v1.js','/operaciones-ax-v1.css','/jornadas-ax-v1.css','/chofer-servicios-ax-v1.css','/servicio-form-ax-v1.css','/estado-servicio-ax-v1.css','/remito-chofer-ax-v1.css','/remito-chofer-ax-v1.js',
   '/operator-service-lifecycle.css','/operator-service-lifecycle.js',
   '/toll-management.css','/toll-management.js',
   '/rendition-journey-source-v1.js',

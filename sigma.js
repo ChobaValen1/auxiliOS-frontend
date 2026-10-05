@@ -13752,30 +13752,28 @@ async function initJornadasAdmin() {
 }
 
 function _jadminPopularDropdowns() {
-  const drivers = document.getElementById('jadmin-f-chofer-options');
-  const trucks = document.getElementById('jadmin-f-camion-options');
-  if (drivers) drivers.innerHTML = _jadminState.choferes.map(c => {
-    const lbl = _escHtml(c.full_name);
-    return `<label class="jadmin-option"><input type="checkbox" value="${_escHtml(c.user_id)}"> <span>${lbl}</span></label>`;
-  }).join('') || '<span class="jadmin-option">Sin choferes disponibles</span>';
-  if (trucks) trucks.innerHTML = _jadminState.camiones.map(t => {
-    const mov = t.numero_interno ? ` · #${_escHtml(t.numero_interno)}` : '';
-    return `<label class="jadmin-option"><input type="checkbox" value="${_escHtml(t.truck_id)}"> <span>${_escHtml(t.plate)}${mov}</span></label>`;
-  }).join('') || '<span class="jadmin-option">Sin móviles disponibles</span>';
+  const crear = (id, opciones, clave, placeholder, nombre) => {
+    const caja = document.getElementById(id);
+    if (!caja || !window.AxUI?.multi) return null;
+    const m = window.AxUI.multi(caja, {
+      options: opciones, value: _jadminState[clave], placeholder,
+      onChange: valores => { _jadminState[clave] = valores; _jadminState.offset = 0; _jadminReload(); }
+    });
+    caja.querySelector('.ax-multi-btn')?.setAttribute('aria-label', nombre);
+    return m;
+  };
+  _jadminState.multiChofer = crear('jadmin-f-chofer',
+    _jadminState.choferes.map(c => ({ value: String(c.user_id), label: c.full_name || 'Sin nombre' })),
+    'driverIds', 'Todos los choferes', 'Choferes');
+  _jadminState.multiCamion = crear('jadmin-f-camion',
+    _jadminState.camiones.map(t => ({ value: String(t.truck_id), label: `${t.plate}${t.numero_interno ? ` · #${t.numero_interno}` : ''}` })),
+    'truckIds', 'Todos los móviles', 'Móviles');
 }
 
 function _jadminSyncPicker(kind) {
   const isDriver = kind === 'chofer';
-  const values = isDriver ? _jadminState.driverIds : _jadminState.truckIds;
-  const options = document.getElementById(`jadmin-f-${kind}-options`);
-  if (options) options.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = values.includes(input.value); });
-  const label = document.getElementById(`jadmin-f-${kind}-label`);
-  if (!label) return;
-  if (!values.length) label.textContent = isDriver ? 'Todos los choferes' : 'Todos los móviles';
-  else if (values.length === 1) {
-    const item = isDriver ? _jadminState.choferes.find(x => String(x.user_id) === values[0]) : _jadminState.camiones.find(x => String(x.truck_id) === values[0]);
-    label.textContent = isDriver ? (item?.full_name || '1 chofer') : (item?.plate || '1 móvil');
-  } else label.textContent = `${values.length} ${isDriver ? 'choferes' : 'móviles'}`;
+  const m = isDriver ? _jadminState.multiChofer : _jadminState.multiCamion;
+  if (m) m.set(isDriver ? _jadminState.driverIds : _jadminState.truckIds);
 }
 
 /* Período y Estado con los filtros compartidos (auxilios-filters-v1): mismo
@@ -13795,7 +13793,7 @@ function _jadminRenderAuxFilters() {
   est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.clientFilter || _jadminState.estado || '', allLabel: 'Todas',
     options: [{ value: 'open', label: 'Abiertas' }, { value: 'closed', label: 'Cerradas' }, { group: 'Alertas' },
       { value: 'taller', label: 'En taller' }, { value: 'incidentes', label: 'Con incidentes' }, { value: 'rendicion', label: 'Faltantes de rendición' }] });
-  const root = document.querySelector('#screen-jornadas-admin .filtros');
+  const root = document.querySelector('#screen-jornadas-admin .jadmin-bar');
   F.bind(root, (id, v) => {
     if (id === 'jadmin-periodo') {
       const b = F.periodBounds(v);
@@ -13854,24 +13852,6 @@ function _jadminWireHandlers() {
       }, 300);
     });
   }
-
-  // Chofer
-  const selCh = $('jadmin-f-chofer-options');
-  if (selCh) selCh.addEventListener('change', () => {
-    _jadminState.driverIds = [...selCh.querySelectorAll('input:checked')].map(x => x.value);
-    _jadminSyncPicker('chofer');
-    _jadminState.offset = 0;
-    _jadminReload();
-  });
-
-  // Camión
-  const selCa = $('jadmin-f-camion-options');
-  if (selCa) selCa.addEventListener('change', () => {
-    _jadminState.truckIds = [...selCa.querySelectorAll('input:checked')].map(x => x.value);
-    _jadminSyncPicker('camion');
-    _jadminState.offset = 0;
-    _jadminReload();
-  });
 
   // Estado
   const selEst = $('jadmin-f-estado');
@@ -14339,13 +14319,13 @@ function _jadminRenderFila(r) {
 
   return `
     <tr data-log-id="${_escHtml(r.log_id)}" style="cursor:pointer">
-      <td>
+      <td data-label="Fecha">
         <div class="fecha-cell">
           <b>${_escHtml(fecha)}</b>
           <div class="dia">${_escHtml(dia)}</div>
         </div>
       </td>
-      <td>
+      <td data-label="Chofer">
         <div class="chofer-cell"${legajoTitle}>
           <div class="avatar ${avClass}">${_escHtml(iniciales)}</div>
           <div class="name">
@@ -14353,20 +14333,20 @@ function _jadminRenderFila(r) {
           </div>
         </div>
       </td>
-      <td>
+      <td data-label="Móvil">
         <div class="camion-cell">
           <span class="pat">${_escHtml(r.truck_plate || '—')}</span>
           <span class="mov">${movil}</span>
         </div>
       </td>
-      <td class="right"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
-      <td class="right ${horasCls}">${horasTxt}</td>
-      <td class="right ${srvCls}">${srv}</td>
-      <td class="right"><span class="${litrosCls}">${litrosTxt}</span></td>
-      <td class="right"><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
-      <td class="right"><span class="${gastosCls}">${gastosTxt}</span></td>
-      <td class="center"><span class="${incCls}">${incTxt}</span></td>
-      <td class="center"><span class="estado-cell">${estadoHtml}</span></td>
+      <td class="right" data-label="Km"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
+      <td class="right ${horasCls}" data-label="Horas">${horasTxt}</td>
+      <td class="right ${srvCls}" data-label="Servicios">${srv}</td>
+      <td class="right" data-label="Combustible"><span class="${litrosCls}">${litrosTxt}</span></td>
+      <td class="right" data-label="Efectivo esp."><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
+      <td class="right" data-label="Gastos"><span class="${gastosCls}">${gastosTxt}</span></td>
+      <td class="center" data-label="Incidentes"><span class="${incCls}">${incTxt}</span></td>
+      <td class="center" data-label="Estado"><span class="estado-cell">${estadoHtml}</span></td>
     </tr>
   `;
 }
@@ -14378,10 +14358,10 @@ function _jadminRenderFila(r) {
 async function abrirDetalleJornadaAdmin(logId) {
   if (!logId) return;
   const $ = (id) => document.getElementById(id);
-  if ($('jd-title')) $('jd-title').textContent = 'JORNADA · —';
+  if ($('jd-title')) $('jd-title').textContent = 'Jornada · —';
   if ($('jd-sub'))   $('jd-sub').textContent   = '—';
   if ($('jd-traza')) $('jd-traza').textContent = 'Cargando…';
-  if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted2)">Cargando detalle…</div>`;
+  if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center">Cargando detalle…</div>`;
 
   openModal('modal-jornada-detalle');
 
@@ -14390,14 +14370,14 @@ async function abrirDetalleJornadaAdmin(logId) {
       ? await cargarDetalleJornadaAdmin(logId)
       : null;
     if (!det) {
-      if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">No se pudo cargar el detalle.</div>`;
+      if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center is-bad">No se pudo cargar el detalle.</div>`;
       if ($('jd-traza')) $('jd-traza').textContent = '—';
       return;
     }
     _jadminRenderDetalle(det);
   } catch (e) {
     console.error('[jadmin] abrirDetalleJornadaAdmin:', e);
-    if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">Error al cargar el detalle.</div>`;
+    if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center is-bad">Error al cargar el detalle.</div>`;
     if ($('jd-traza')) $('jd-traza').textContent = '—';
   }
 }
@@ -14421,7 +14401,7 @@ function _jadminRenderDetalle(det) {
     contexto: `${truckPlate}${truckMovil ? ' #' + truckMovil : ''} · ${fecha} · ${chNombre}`,
   };
 
-  if ($('jd-title')) $('jd-title').textContent = `JORNADA · ${fecha}`;
+  if ($('jd-title')) $('jd-title').textContent = `Jornada · ${fecha}`;
   if ($('jd-sub')) {
     const sub = `${chNombre}${chLegajo ? ' (Leg. ' + chLegajo + ')' : ''} · ${truckPlate}${truckMovil ? ' #' + truckMovil : ''}`;
     $('jd-sub').textContent = sub;
@@ -14441,83 +14421,32 @@ function _jadminRenderDetalle(det) {
   const kmFin = Number(log.km_final) || 0;
   const kmRec = Number(log.km_recorridos) || 0;
 
-  // Estilo scoped
-  const styles = `
-    <style>
-      #jd-content .jd-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
-      @media (max-width: 900px) { #jd-content .jd-grid { grid-template-columns: 1fr; } }
-      #jd-content .jd-card {
-        background: var(--card, #131826);
-        border: 1px solid var(--border, #1f2937);
-        border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
-      }
-      #jd-content .jd-card h4 {
-        margin: 0 0 10px 0; font-size: 12px; letter-spacing: .8px;
-        color: var(--muted2, #93a2b8); text-transform: uppercase; font-weight: 600;
-      }
-      #jd-content .jd-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12.5px; }
-      #jd-content .jd-info .k { color: var(--muted2, #93a2b8); font-size: 11px; letter-spacing:.4px; text-transform: uppercase; }
-      #jd-content .jd-info .v { color: var(--text, #e5e7eb); font-weight: 600; margin-top: 2px; }
-      #jd-content .jd-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      #jd-content .jd-foto { display: block; border: 1px solid var(--border, #1f2937); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.02); text-align: center; color: var(--muted2); font-size: 11px; padding: 8px; }
-      #jd-content .jd-foto img { display: block; width: 100%; height: 130px; object-fit: cover; border-radius: 6px; }
-      #jd-content .jd-foto small { display:block; margin-top: 4px; }
-      #jd-content .jd-list { display: flex; flex-direction: column; gap: 8px; }
-      #jd-content .jd-item {
-        display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        padding: 8px 10px; background: rgba(255,255,255,0.02);
-        border: 1px solid var(--border, #1f2937); border-radius: 8px; font-size: 12px;
-      }
-      #jd-content .jd-item .lft { display:flex; flex-direction:column; gap:2px; min-width:0; }
-      #jd-content .jd-service-seq {
-        width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px;
-        display: inline-flex; align-items: center; justify-content: center;
-        background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.38);
-        color: var(--blue, #3b82f6); font-family: 'DM Mono', monospace; font-weight: 800;
-      }
-      #jd-content .jd-item .rgt { font-family: 'DM Mono', monospace; font-weight: 600; white-space: nowrap; }
-      #jd-content .jd-empty { color: var(--muted2); font-size: 12px; padding: 6px 2px; }
-      #jd-content .jd-badge {
-        display: inline-block; padding: 2px 6px; border-radius: 4px;
-        font-size: 10px; text-transform: uppercase; letter-spacing:.3px; font-weight: 600;
-      }
-      #jd-content .b-grave { background: rgba(226,80,74,0.15); color: var(--red, #e2504a); }
-      #jd-content .b-medio { background: rgba(245,166,35,0.15); color: var(--amber, #f5a623); }
-      #jd-content .b-leve  { background: rgba(59,130,246,0.15); color: var(--blue, #3b82f6); }
-      #jd-content .jd-rend-linea { display:flex; justify-content:space-between; font-size:12px; margin: 4px 0; }
-      #jd-content .jd-rend-linea .v { font-family: 'DM Mono', monospace; font-weight: 600; }
-      #jd-content .jd-rend-diff.ok   { color: var(--green, #27c47a); }
-      #jd-content .jd-rend-diff.bad  { color: var(--red, #e2504a); }
-      #jd-content .jd-rend-diff.warn { color: var(--amber, #f5a623); }
-      #jd-content .inc-menu-thumbs { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-      #jd-content .inc-menu-thumb { display: block; width: 48px; height: 48px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border, #1f2937); flex-shrink: 0; }
-      #jd-content .inc-menu-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
-    </style>
-  `;
+  const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
+  const dato = (k, v, cls = '') => `<div><div class="k">${k}</div><div class="v${cls ? ' ' + cls : ''}">${v}</div></div>`;
+  const apagado = (t) => `<span class="jd-dim">${t}</span>`;
 
   // ── Columna IZQ ────────────────────────
   const resumenCard = `
-    <div class="jd-card">
+    <section class="jd-card">
       <h4>Resumen</h4>
       <div class="jd-info">
-        <div><div class="k">Fecha</div><div class="v">${_escHtml(fecha)}</div></div>
-        <div><div class="k">Chofer</div><div class="v">${_escHtml(chNombre)}${chLegajo ? ' <span style="color:var(--muted2);font-weight:400">(Leg. ' + _escHtml(chLegajo) + ')</span>' : ''}</div></div>
-        <div><div class="k">Camión</div><div class="v">${_escHtml(truckPlate)}${truckMovil ? ' <span style="color:var(--muted2);font-weight:400">#' + _escHtml(truckMovil) + '</span>' : ''}${truckMarca ? '<br><span style="color:var(--muted2);font-weight:400;font-size:11px">' + _escHtml(truckMarca) + '</span>' : ''}</div></div>
-        <div><div class="k">Horas</div><div class="v">${_escHtml(_jadminFmtHora(log.hora_inicio))} → ${_escHtml(_jadminFmtHora(log.hora_fin))}<br><span style="color:var(--muted2);font-weight:400;font-size:11px">${_escHtml(horasTxt)}</span></div></div>
-        <div><div class="k">KM inicio</div><div class="v">${kmIni.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">KM final</div><div class="v">${kmFin.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">KM recorridos</div><div class="v" style="color:var(--amber)">${kmRec.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">Notas</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(log.notas || '—')}</div></div>
+        ${dato('Fecha', _escHtml(fecha))}
+        ${dato('Chofer', `${_escHtml(chNombre)}${chLegajo ? ' ' + apagado('Leg. ' + _escHtml(chLegajo)) : ''}`)}
+        ${dato('Camión', `${_escHtml(truckPlate)}${truckMovil ? ' ' + apagado('#' + _escHtml(truckMovil)) : ''}${truckMarca ? `<br>${apagado(_escHtml(truckMarca))}` : ''}`)}
+        ${dato('Horas', `${_escHtml(_jadminFmtHora(log.hora_inicio))} → ${_escHtml(_jadminFmtHora(log.hora_fin))}<br>${apagado(_escHtml(horasTxt))}`)}
+        ${dato('KM inicio', kmIni.toLocaleString('es-AR'))}
+        ${dato('KM final', kmFin.toLocaleString('es-AR'))}
+        ${dato('KM recorridos', kmRec.toLocaleString('es-AR'))}
+        ${dato('Notas', _escHtml(log.notas || '—'), 'jd-v-plain')}
       </div>
-    </div>
+    </section>
   `;
 
-  const fotoIni = log.foto_km_inicio
-    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_inicio)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_inicio)}" alt="KM inicio"><small>KM inicio</small></a>`
-    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM inicio</small></div>`;
-  const fotoFin = log.foto_km_final
-    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_final)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_final)}" alt="KM final"><small>KM final</small></a>`
-    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM final</small></div>`;
+  const foto = (url, etiqueta) => url
+    ? `<a class="jd-foto" href="${_escHtml(url)}" target="_blank" rel="noopener"><img src="${_escHtml(url)}" alt="${etiqueta}"><small>${etiqueta}</small></a>`
+    : `<div class="jd-foto is-empty"><div class="jd-foto-ph">${ic('camera')}<span>Sin foto</span></div><small>${etiqueta}</small></div>`;
+  const fotoIni = foto(log.foto_km_inicio, 'KM inicio');
+  const fotoFin = foto(log.foto_km_final, 'KM final');
 
   const _kmCmpBloque = (extremo, origen, kmIa, kmChofer) => {
     if (!origen || origen === 'ia') return '';
@@ -14527,44 +14456,32 @@ function _jadminRenderDetalle(det) {
       ? Number(kmIa).toLocaleString('es-AR') + ' km'
       : (esOffline ? '— sin conexión al momento de la carga' : '— no pudo leer la foto');
     const diff = (kmIa != null && kmChofer != null) ? kmChofer - kmIa : null;
-    const borde = esOffline ? 'var(--border2)' : 'rgba(245,166,35,0.45)';
-    const fondo = esOffline ? 'rgba(255,255,255,0.02)' : 'rgba(245,166,35,0.12)';
     const titulo = esOffline
-      ? `📴 ${lbl} cargado a mano por falta de señal`
-      : `⚠ ${lbl} modificado manualmente`;
-    const tituloColor = esOffline ? 'var(--muted2)' : 'var(--amber)';
+      ? `${ic('wifi-off')} ${lbl} cargado a mano por falta de señal`
+      : `${ic('triangle-alert')} ${lbl} modificado manualmente`;
     return `
-      <div style="border:1px solid ${borde};background:${fondo};border-radius:8px;padding:10px 12px;margin-top:10px">
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${tituloColor};margin-bottom:8px">${titulo}</div>
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Resultado generado por IA</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600">${iaTxt}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Resultado generado por chofer</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600">${kmChofer != null ? Number(kmChofer).toLocaleString('es-AR') + ' km' : '—'}</span>
-        </div>
-        ${diff != null ? `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Diferencia</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--amber)">${diff > 0 ? '+' : ''}${diff.toLocaleString('es-AR')} km</span>
-        </div>` : ''}
+      <div class="jd-note${esOffline ? ' is-offline' : ''}">
+        <div class="jd-note-title">${titulo}</div>
+        <div class="jd-line"><span>Resultado generado por IA</span><b>${iaTxt}</b></div>
+        <div class="jd-line"><span>Resultado generado por chofer</span><b>${kmChofer != null ? Number(kmChofer).toLocaleString('es-AR') + ' km' : '—'}</b></div>
+        ${diff != null ? `<div class="jd-line"><span>Diferencia</span><b class="${esOffline ? '' : 'is-warn'}">${diff > 0 ? '+' : ''}${diff.toLocaleString('es-AR')} km</b></div>` : ''}
       </div>`;
   };
   const kmCmpHtml = _kmCmpBloque('inicio', log.km_inicio_origen, log.km_inicio_ia, log.km_inicio)
                   + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final);
 
   const odomCard = `
-    <div class="jd-card">
+    <section class="jd-card">
       <h4>Odómetro</h4>
       <div class="jd-fotos">${fotoIni}${fotoFin}</div>${kmCmpHtml}
-    </div>
+    </section>
   `;
 
-  const _payLbl  = (m) => m === 'efectivo' ? '💵 Ef' : m === 'transferencia' ? '📲 Tr' : m === 'tarjeta' ? '💳 Tj' : m === 'app' ? '📱 App' : '—';
+  const _payLbl  = (m) => m === 'efectivo' ? 'Efectivo' : m === 'transferencia' ? 'Transf.' : m === 'tarjeta' ? 'Tarjeta' : m === 'app' ? 'App' : '—';
 
   const serviciosCard = `
-    <div class="jd-card">
-      <h4>Servicios <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${trips.length})</span></h4>
+    <section class="jd-card">
+      <h4>Servicios ${apagado(`(${trips.length})`)}</h4>
       ${trips.length ? `<div class="jd-list">${trips.map((t, index) => {
         const nro     = t.nro_servicio ? `#${_escHtml(t.nro_servicio)}` : (t.nro_remito ? `#${_escHtml(t.nro_remito)}` : '');
         const origen  = _escHtml(t.origin || '—');
@@ -14577,26 +14494,26 @@ function _jadminRenderDetalle(det) {
         const p2metodo = t.pago_2_metodo ? _payLbl(t.pago_2_metodo) : '';
         const metodos  = [p1metodo, p2metodo].filter(Boolean).join(' / ') || '—';
 
-        const stCls = t.status === 'firmado' ? 'b-leve' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
-        const stLbl = t.status === 'firmado' ? '✓ Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
+        const stCls = t.status === 'firmado' ? 'b-ok' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
+        const stLbl = t.status === 'firmado' ? 'Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
 
         return `
-          <div class="jd-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px">
+          <div class="jd-item jd-service">
             <span class="jd-service-seq" aria-label="Servicio ${index + 1}">${index + 1}</span>
-            <div style="min-width:0;flex:1">
-              <div style="font-weight:600">${nro}${patente ? ` <span style="color:var(--muted2);font-weight:400;font-size:11px">· ${patente}</span>` : ''}</div>
-              <div style="color:var(--muted2);font-size:11.5px">${origen} → ${destino}</div>
+            <div class="jd-service-main">
+              <div class="jd-service-nro"><b>${nro}</b>${patente ? ` ${apagado('· ' + patente)}` : ''}</div>
+              <div class="jd-dim">${origen} → ${destino}</div>
             </div>
-            <div style="text-align:right;flex-shrink:0;font-size:10.5px;color:var(--muted2);min-width:110px">
+            <div class="jd-service-side">
               ${(peaje>0||excede>0) ? `<div>Peaje $${_AR(peaje)} · Exc. $${_AR(excede)}</div>` : `<div>Sin extras</div>`}
-              <div style="color:var(--text)">${metodos}</div>
-              <div style="color:var(--amber)">${km.toLocaleString('es-AR')} km</div>
+              <div>${metodos}</div>
+              <div class="jd-service-km">${km.toLocaleString('es-AR')} km</div>
             </div>
-            <div style="flex-shrink:0"><span class="jd-badge ${stCls}">${stLbl}</span></div>
+            <div class="jd-service-st"><span class="jd-badge ${stCls}">${stLbl}</span></div>
           </div>
         `;
       }).join('')}</div>` : `<div class="jd-empty">Sin servicios registrados.</div>`}
-    </div>
+    </section>
   `;
 
   // Card de taller (solo si ingresó al taller)
@@ -14607,13 +14524,13 @@ function _jadminRenderDetalle(det) {
     const m = detalle.match(/^([^:]+):\s*(.*)$/);
     if (m) { tipo = m[1].trim(); desc = m[2].trim(); }
     tallerCard = `
-      <div class="jd-card">
-        <h4>🔧 Ingreso al taller</h4>
+      <section class="jd-card">
+        <h4>${ic('wrench')} Ingreso al taller</h4>
         <div class="jd-info">
-          ${tipo ? `<div><div class="k">Tipo de trabajo</div><div class="v">${_escHtml(tipo)}</div></div>` : ''}
-          <div><div class="k">Detalle</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(desc || '—')}</div></div>
+          ${tipo ? dato('Tipo de trabajo', _escHtml(tipo)) : ''}
+          ${dato('Detalle', _escHtml(desc || '—'), 'jd-v-plain')}
         </div>
-      </div>
+      </section>
     `;
   }
 
@@ -14622,11 +14539,10 @@ function _jadminRenderDetalle(det) {
   _jadminIncCache = incidents || [];
 
   const incidentesCard = `
-    <div class="jd-card">
-      <h4 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span>Incidentes <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${incidents.length})</span></span>
-        <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px;text-transform:none;letter-spacing:0"
-          onclick="abrirIncidenteDesdeJornadaAdmin()">+ Cargar incidente</button>
+    <section class="jd-card">
+      <h4 class="jd-h-row">
+        <span>Incidentes ${apagado(`(${incidents.length})`)}</span>
+        <button type="button" class="ax-btn ax-btn-sm" onclick="abrirIncidenteDesdeJornadaAdmin()">${ic('plus')} Cargar incidente</button>
       </h4>
       ${incidents.length ? `<div class="jd-list">${incidents.map(i => {
         const sev = String(i.severity || '').toLowerCase();
@@ -14639,70 +14555,63 @@ function _jadminRenderDetalle(det) {
             </a>`).join('')}
           </div>` : '';
         const kebabHtml = esAdminIncidentes ? `
-          <div class="kebab-wrap" style="align-self:flex-start">
-            <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">⋮</button>
+          <div class="kebab-wrap">
+            <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">${ic('ellipsis')}</button>
             <div class="kebab-menu" id="inc-menu-${_escHtml(i.incident_id)}">
-              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">✏ Editar</button>
-              <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">🗑 Eliminar</button>
+              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">${ic('pencil')} Editar</button>
+              <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">${ic('trash-2')} Eliminar</button>
             </div>
           </div>` : '';
         return `
           <div class="jd-item">
             <div class="lft">
               <div><b>${_escHtml(i.type || 'Incidente')}</b> <span class="jd-badge ${badgeCls}">${_escHtml(i.severity || '—')}</span></div>
-              <div style="color:var(--muted2);font-size:11px">${_escHtml(i.description || '—')}</div>
-              ${i.location ? `<div style="color:var(--muted2);font-size:10.5px">📍 ${_escHtml(i.location)}</div>` : ''}
+              <div class="jd-dim">${_escHtml(i.description || '—')}</div>
+              ${i.location ? `<div class="jd-dim jd-loc">${ic('map-pin')} ${_escHtml(i.location)}</div>` : ''}
               ${thumbsHtml}
             </div>
             ${kebabHtml}
           </div>
         `;
       }).join('')}</div>` : `<div class="jd-empty">Sin incidentes.</div>`}
-    </div>
+    </section>
   `;
 
   // ── Columna DER ────────────────────────
-  let tireCard;
+  let tireCard = '';
   if (tire_check) {
-    // Semáforo por condición: bueno=verde, regular=ámbar, malo=rojo
+    // Por condición: bueno = verde, regular = ámbar, malo = rojo
     const _condPill = (v) => {
       const map = {
-        bueno:   ['✓ Bueno',   'var(--green)', 'rgba(74,222,128,0.12)',  'rgba(74,222,128,0.3)'],
-        regular: ['⚠ Regular', 'var(--amber)', 'rgba(245,166,35,0.12)',  'rgba(245,166,35,0.35)'],
-        malo:    ['✗ Malo',    'var(--red)',   'rgba(226,80,74,0.12)',   'rgba(226,80,74,0.35)'],
+        bueno:   ['Bueno',   'is-ok',   'circle-check'],
+        regular: ['Regular', 'is-warn', 'triangle-alert'],
+        malo:    ['Malo',    'is-bad',  'circle-x'],
       };
-      const [label, color, bg, borde] = map[v] || ['— sin dato', 'var(--muted)', 'transparent', 'var(--border)'];
-      return `<span style="display:inline-block;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:700;color:${color};background:${bg};border:1px solid ${borde}">${label}</span>`;
+      const [label, cls, icono] = map[v] || ['Sin dato', '', 'info'];
+      return `<span class="jd-cond ${cls}">${ic(icono)} ${label}</span>`;
     };
     const peor = [tire_check.tire_condition, tire_check.brake_condition].includes('malo') ? 'malo'
                : [tire_check.tire_condition, tire_check.brake_condition].includes('regular') ? 'regular' : 'bueno';
-    const bordeCard = peor === 'malo' ? 'var(--red)' : peor === 'regular' ? 'var(--amber)' : 'var(--green)';
     tireCard = `
-      <div class="jd-card" style="border-left:3px solid ${bordeCard}">
-        <h4>🛞 Neumáticos y Frenos</h4>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">
-          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
-            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛞 Neumáticos</div>
-            ${_condPill(tire_check.tire_condition)}
-          </div>
-          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
-            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛑 Frenos</div>
-            ${_condPill(tire_check.brake_condition)}
-          </div>
+      <section class="jd-card jd-card--${peor}">
+        <h4>${ic('disc')} Neumáticos y frenos</h4>
+        <div class="jd-conds">
+          <div class="jd-cond-box"><div class="k">Neumáticos</div>${_condPill(tire_check.tire_condition)}</div>
+          <div class="jd-cond-box"><div class="k">Frenos</div>${_condPill(tire_check.brake_condition)}</div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
-          <span>Presión: <b style="color:var(--text)">${tire_check.pressure_psi != null ? _escHtml(tire_check.pressure_psi) + ' PSI' : '—'}</b></span>
+        <div class="jd-line">
+          <span>Presión: <b>${tire_check.pressure_psi != null ? _escHtml(tire_check.pressure_psi) + ' PSI' : '—'}</b></span>
           <span>${_escHtml(_jadminFmtDT(tire_check.check_date))}</span>
         </div>
-        ${tire_check.notes ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.02);border-radius:6px;font-size:11.5px;color:var(--muted2)">📝 ${_escHtml(tire_check.notes)}</div>` : ''}
-      </div>
+        ${tire_check.notes ? `<div class="jd-note-text">${_escHtml(tire_check.notes)}</div>` : ''}
+      </section>
     `;
   } else {
     tireCard = `
-      <div class="jd-card">
-        <h4>🛞 Neumáticos y Frenos</h4>
-        <div class="jd-empty" style="color:var(--red)">El chofer no cargó el control este día.</div>
-      </div>
+      <section class="jd-card jd-card--malo">
+        <h4>${ic('disc')} Neumáticos y frenos</h4>
+        <div class="jd-empty is-bad">El chofer no cargó el control este día.</div>
+      </section>
     `;
   }
 
@@ -14715,38 +14624,38 @@ function _jadminRenderDetalle(det) {
       .reduce((s, f) => s + (Number(f.total_cost) || 0), 0);
     const costoCredito = totalCosto - costoEfectivo;
     fuelCard = `
-      <div class="jd-card">
-        <h4>Combustible <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${fuel_records.length} carga${fuel_records.length===1?'':'s'})</span></h4>
+      <section class="jd-card">
+        <h4>${ic('fuel')} Combustible ${apagado(`(${fuel_records.length} carga${fuel_records.length===1?'':'s'})`)}</h4>
         <div class="jd-info">
-          <div><div class="k">Litros totales</div><div class="v">${totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1})} L</div></div>
-          <div><div class="k">Costo total</div><div class="v">${_jadminMoney(totalCosto)}</div></div>
-          ${costoEfectivo > 0 ? `<div><div class="k">💵 Efectivo</div><div class="v" style="color:var(--amber)">${_jadminMoney(costoEfectivo)}</div></div>` : ''}
-          ${costoCredito > 0 ? `<div><div class="k">📱 A crédito (15d)</div><div class="v" style="color:var(--muted2)">${_jadminMoney(costoCredito)}</div></div>` : ''}
+          ${dato('Litros totales', totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1}) + ' L')}
+          ${dato('Costo total', _jadminMoney(totalCosto))}
+          ${costoEfectivo > 0 ? dato('Efectivo', _jadminMoney(costoEfectivo)) : ''}
+          ${costoCredito > 0 ? dato('A crédito (15 días)', _jadminMoney(costoCredito)) : ''}
         </div>
-        <div class="jd-list" style="margin-top:10px">
+        <div class="jd-list">
           ${fuel_records.map(f => {
             const esCredito = f.payment_method !== 'efectivo';
             const badge = esCredito
-              ? `<span class="jd-badge b-medio" style="font-size:9px">Crédito</span>`
-              : `<span class="jd-badge b-leve" style="font-size:9px">Efectivo</span>`;
+              ? `<span class="jd-badge b-medio">Crédito</span>`
+              : `<span class="jd-badge b-leve">Efectivo</span>`;
             return `
             <div class="jd-item">
               <div class="lft">
-                <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> <span style="color:var(--muted2);font-size:11px">${_escHtml(f.gas_station || '')}</span> ${badge}</div>
-                <div style="color:var(--muted2);font-size:11px">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
+                <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> ${apagado(_escHtml(f.gas_station || ''))} ${badge}</div>
+                <div class="jd-dim">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
               </div>
-              <div class="rgt">${_jadminMoney(f.total_cost)}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button class="btn btn-ghost" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">Editar</button>` : ''}</div>
+              <div class="rgt">${_jadminMoney(f.total_cost)}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">${ic('pencil')} Editar</button>` : ''}</div>
             </div>
           `}).join('')}
         </div>
-      </div>
+      </section>
     `;
   } else {
     fuelCard = `
-      <div class="jd-card">
-        <h4>Combustible</h4>
+      <section class="jd-card">
+        <h4>${ic('fuel')} Combustible</h4>
         <div class="jd-empty">Sin cargas.</div>
-      </div>
+      </section>
     `;
   }
 
@@ -14760,29 +14669,27 @@ function _jadminRenderDetalle(det) {
     const cls = estado === 'ok' ? 'ok' : estado === 'faltante' ? 'bad' : 'warn';
     const lbl = estado === 'ok' ? 'OK' : estado === 'faltante' ? 'Faltante' : 'Sobrante';
     rendCard = `
-      <div class="jd-card">
-        <h4>Rendición</h4>
+      <section class="jd-card">
+        <h4>${ic('wallet')} Rendición</h4>
         <div class="jd-rend-linea"><span>Entregó</span><span class="v">${_jadminMoney(declarado)}</span></div>
         <div class="jd-rend-linea"><span>Debería entregar</span><span class="v">${_jadminMoney(esperado)}</span></div>
         <div class="jd-rend-linea"><span>Gastos</span><span class="v">${_jadminMoney(gastos)}</span></div>
-        <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
-        <div class="jd-rend-linea" style="font-size:13px">
-          <span>Diferencia <span class="jd-badge ${cls === 'ok' ? 'b-leve' : cls === 'bad' ? 'b-grave' : 'b-medio'}">${lbl}</span></span>
+        <div class="jd-rend-linea jd-rend-total">
+          <span>Diferencia <span class="jd-badge ${cls === 'ok' ? 'b-ok' : cls === 'bad' ? 'b-grave' : 'b-medio'}">${lbl}</span></span>
           <span class="v jd-rend-diff ${cls}">${_jadminMoneySigned(diff)}</span>
         </div>
-      </div>
+      </section>
     `;
   } else {
     rendCard = `
-      <div class="jd-card">
-        <h4>Rendición</h4>
+      <section class="jd-card">
+        <h4>${ic('wallet')} Rendición</h4>
         <div class="jd-empty">Sin rendición registrada para esta fecha.</div>
-      </div>
+      </section>
     `;
   }
 
   const html = `
-    ${styles}
     <div class="jd-grid">
       <div class="jd-col-l">
         ${resumenCard}
