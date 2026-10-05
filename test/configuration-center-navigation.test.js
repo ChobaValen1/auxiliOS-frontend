@@ -39,6 +39,7 @@ test('daily administration modules stay in the main sidenav', () => {
 
 test('configuration restores existing personnel vehicle and maintenance tools without duplicating their CRUD', () => {
   const center = read('configuration-center.js');
+  const sigma = read('sigma.js');
 
   for (const tab of ['tab-usuarios', 'tab-flota', 'tab-planes', 'tab-mantenimiento', 'tab-emergencias', 'tab-mi-cuenta']) {
     assert.ok(center.includes(tab), `${tab} must remain reachable from Configuration`);
@@ -54,6 +55,9 @@ test('configuration restores existing personnel vehicle and maintenance tools wi
   assert.doesNotMatch(center, /function openNuevoUsuarioModal/);
   assert.doesNotMatch(center, /function openNuevoVehiculoModal/);
   assert.doesNotMatch(center, /function openAdminPlanModal/);
+  assert.match(sigma, /'tab-usuarios':\s*\{[^\n]*action: openNuevoUsuarioModal/);
+  assert.match(sigma, /btnNew\.onclick = meta\.action/);
+  assert.doesNotMatch(sigma, /btnNew\.onclick = window\[meta\.action\]/);
 });
 
 test('Peajes belongs to Configuration and toll module has no navigation ownership', () => {
