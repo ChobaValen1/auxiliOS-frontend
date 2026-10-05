@@ -8391,9 +8391,9 @@ function _confirmarCerrarSesion() {
   if (confirm('¿Seguro que querés cerrar sesión?')) logoutUsuario();
 }
 const _cfgTabMeta = {
-  'tab-flota':       { title: 'Flota',       action: openNuevoVehiculoModal, importTipo: 'flota' },
-  'tab-usuarios':    { title: 'Personal',     action: openNuevoUsuarioModal, importTipo: 'usuarios' },
-  'tab-planes':      { title: 'Catálogo de Planes',       action: openAdminPlanModal },
+  'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal()', importTipo: 'flota' },
+  'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal()', importTipo: 'usuarios' },
+  'tab-planes':      { title: 'Catálogo de Planes',       action: 'openAdminPlanModal()' },
   'tab-mantenimiento':{ title: 'Mantenimiento',             action: null },
   'tab-emergencias': { title: 'Contactos de Emergencia',  action: null },
   'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
@@ -8416,7 +8416,7 @@ function switchConfigTab(tabId) {
     if (btnNew) {
       if (meta.action && !esSupervisor) {
         btnNew.style.display = '';
-        btnNew.onclick = meta.action;
+        btnNew.setAttribute('onclick', meta.action);
       } else {
         btnNew.style.display = 'none';
       }

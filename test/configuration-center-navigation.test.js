@@ -55,8 +55,8 @@ test('configuration restores existing personnel vehicle and maintenance tools wi
   assert.doesNotMatch(center, /function openNuevoUsuarioModal/);
   assert.doesNotMatch(center, /function openNuevoVehiculoModal/);
   assert.doesNotMatch(center, /function openAdminPlanModal/);
-  assert.match(sigma, /'tab-usuarios':\s*\{[^\n]*action: openNuevoUsuarioModal/);
-  assert.match(sigma, /btnNew\.onclick = meta\.action/);
+  assert.match(sigma, /'tab-usuarios':\s*\{[^\n]*action: 'openNuevoUsuarioModal\(\)'/);
+  assert.match(sigma, /btnNew\.setAttribute\('onclick', meta\.action\)/);
   assert.doesNotMatch(sigma, /btnNew\.onclick = window\[meta\.action\]/);
 });
 
