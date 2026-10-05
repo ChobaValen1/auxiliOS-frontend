@@ -1,0 +1,59 @@
+/* AuxiliOS · Panel (administración) con el sistema visual (v1)
+   El tablero ya tenía su estructura; acá se alinean los tokens, las etiquetas en texto normal,
+   las pestañas y el estado seleccionado en neutro (el ámbar queda para lo que pide atención).
+   Los colores de los gráficos y del mapa son la paleta de datos y no se tocan. */
+
+#screen-dashboard { font-family: var(--ax-font); }
+
+/* ── Encabezado y pestañas ── */
+#screen-dashboard .dashx-titulo { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; }
+#screen-dashboard .dashx-subtitulo { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs { gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs .ftab { padding: 0 14px; height: calc(var(--ax-h) - 8px); display: inline-flex; align-items: center; border-radius: 6px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; transition: color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs .ftab:hover { color: var(--ax-text); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs .ftab.active { background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+
+/* ── Selector de período ── */
+#screen-dashboard .dashx-per-btn { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard .dashx-per-btn:hover, #screen-dashboard .dashx-per-btn[aria-expanded="true"] { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-dashboard .dashx-per-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .dashx-per-aplicar { border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-accent-fg); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-dashboard .dashx-per-error { color: var(--ax-danger); }
+
+/* ── Cifras (KPI) ── */
+#screen-dashboard .dashx-kpi { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard .dashx-kpi:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-dashboard .dashx-metric.is-hero { border-color: var(--ax-border-strong); background: var(--ax-surface-3); box-shadow: none; }
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-label { color: var(--ax-text-2); }
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-value { color: var(--ax-text); }
+#screen-dashboard .dashx-kpi-label, #screen-dashboard .dashx-metric-label, #screen-dashboard .dashx-chart-total-label { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-dashboard .dashx-kpi-value, #screen-dashboard .dashx-metric-value, #screen-dashboard .dashx-chart-total-value { font-family: var(--ax-font); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#screen-dashboard .dashx-kpi-value.is-amber, #screen-dashboard .dashx-chart-total-value.is-amber { color: var(--ax-text); }
+#screen-dashboard .dashx-kpi-delta { font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-dashboard .dashx-metric-hint, #screen-dashboard .dashx-card-sub, #screen-dashboard .dashx-metrics-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* ── Tarjetas ── */
+#screen-dashboard .dashx-card, #screen-dashboard .dashx-metric, #screen-dashboard .dashx-mapa, #screen-dashboard .dashx-alert { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-dashboard .dashx-card-title { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-dashboard .dashx-sec-head, #screen-dashboard .dashx-grid-compacta .dashx-sec-head { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-dashboard .dashx-grid-compacta .dashx-card-title { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-dashboard .dashx-loading-inner { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+
+/* Alertas de la flota: borde de color a la izquierda, texto neutro */
+#screen-dashboard .dashx-alert.is-aviso { border-left: 3px solid var(--ax-warn); }
+#screen-dashboard .dashx-alert.is-critico { border-left: 3px solid var(--ax-danger); }
+#screen-dashboard .dashx-alert.is-ok { border-left: 3px solid var(--ax-ok); }
+#screen-dashboard .dashx-alert-value, #screen-dashboard .dashx-alert.is-aviso .dashx-alert-value, #screen-dashboard .dashx-alert.is-critico .dashx-alert-value { color: var(--ax-text); }
+
+/* ── Tablas ── */
+#screen-dashboard .auxtb th { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; border-bottom: 1px solid var(--ax-border); }
+#screen-dashboard .auxtb td { border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-dashboard .auxtb tbody tr:hover td { background: var(--ax-surface-3); }
+#screen-dashboard .auxtb-vacio { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-dashboard .auxtb .auxtb-val, #screen-dashboard .auxtb .auxtb-num { font-variant-numeric: tabular-nums; }
+
+/* ── Enlaces y controles de los bloques ── */
+#screen-dashboard .dashx-card a, #screen-dashboard .dashx-card .dashx-ver, #screen-dashboard [data-dashx-ir] { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-decoration: underline; text-underline-offset: 2px; }
+#screen-dashboard .dashx-card a:hover, #screen-dashboard .dashx-card .dashx-ver:hover, #screen-dashboard [data-dashx-ir]:hover { color: var(--ax-text); }
+#screen-dashboard .dashx-toolbar :is(select, .form-input) { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-surface-2); color: var(--ax-text); color-scheme: dark; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-dashboard .dashx-toolbar :is(select, .form-input):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
