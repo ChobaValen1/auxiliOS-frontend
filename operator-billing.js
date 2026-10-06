@@ -366,9 +366,10 @@
     const currency = selectedCurrency();
     const groups = invoiceGroupCounts(services);
     const form = S.invoiceForm || freshInvoiceForm();
-    const other = groups.otros
-      ? `<article><small>Otros servicios</small><b>${groups.otros}</b></article>`
-      : '';
+    const tipoChips = [['Liviano', groups.liviano], ['Semipesado', groups.semipesado], ['UML', groups.uml], ['Otros', groups.otros]]
+      .filter(([, n]) => n > 0).map(([label, n]) => `<span><b>${n}</b>${label}</span>`).join('');
+    const subServicios = services.reduce((t, row) => t + num(row.current_company_amount), 0);
+    const subPeajes = tolls.reduce((t, row) => t + num(row.amount), 0);
     return `<section role="dialog" aria-modal="true" aria-labelledby="ob-invoice-title" class="ob-invoice-modal">
       <header class="ob-invoice-head">
         <div><small>Facturación</small><h3 id="ob-invoice-title">Crear factura</h3><p>${esc(company)}</p></div>
@@ -376,33 +377,42 @@
       </header>
       <div class="ob-invoice-body">
        <div class="ob-invoice-main">
-        <section class="ob-invoice-fields" aria-label="Datos de la factura">
-          <h4 class="ob-invoice-section">Datos del comprobante</h4>
-          <label><span>Comprobante</span><select data-ob-invoice-field="document_type">
+        <section class="ob-invoice-card ob-invoice-fields" aria-label="Datos de la factura">
+          <h4 class="ob-invoice-section">Comprobante</h4>
+          <label class="ob-field-type"><span>Tipo</span><select data-ob-invoice-field="document_type">
             <option value="FA" ${form.document_type === 'FA' ? 'selected' : ''}>Factura A</option>
             <option value="FB" ${form.document_type === 'FB' ? 'selected' : ''}>Factura B</option>
             <option value="FC" ${form.document_type === 'FC' ? 'selected' : ''}>Factura C</option>
           </select></label>
-          <label><span>Punto de venta</span><input data-ob-invoice-field="point_of_sale" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="0004" value="${esc(form.point_of_sale)}"></label>
-          <label><span>Número</span><input data-ob-invoice-field="document_number" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="00001258" value="${esc(form.document_number)}"></label>
-          <label><span>Fecha</span><input type="date" data-ob-invoice-field="issued_on" value="${esc(form.issued_on)}"></label>
+          <div class="ob-field-number" role="group" aria-label="Número de comprobante">
+            <label><span>Punto de venta</span><input data-ob-invoice-field="point_of_sale" inputmode="numeric" autocomplete="off" maxlength="10" placeholder="0004" value="${esc(form.point_of_sale)}"></label>
+            <i aria-hidden="true">–</i>
+            <label><span>Número</span><input data-ob-invoice-field="document_number" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="00001258" value="${esc(form.document_number)}"></label>
+          </div>
+          <label class="ob-field-date"><span>Fecha de emisión</span><input type="date" data-ob-invoice-field="issued_on" value="${esc(form.issued_on)}"></label>
+          <label class="ob-invoice-notes"><span>Observaciones <small>opcional</small></span><input data-ob-invoice-field="notes" maxlength="300" placeholder="Referencia u observación breve" value="${esc(form.notes)}"></label>
         </section>
-        <label class="ob-invoice-notes"><span>Observaciones <small>opcional</small></span><input data-ob-invoice-field="notes" maxlength="300" placeholder="Referencia u observación breve" value="${esc(form.notes)}"></label>
-        <section class="ob-invoice-summary" aria-label="Conceptos incluidos">
+        <section class="ob-invoice-card ob-invoice-summary" aria-label="Conceptos incluidos">
           <h4 class="ob-invoice-section">Qué incluye</h4>
-          <article class="total"><small>Servicios</small><b>${services.length}</b></article>
-          <article class="tolls"><small>Peajes</small><b>${tolls.length}</b></article>
-          <article><small>Liviano</small><b>${groups.liviano}</b></article>
-          <article><small>Semipesado</small><b>${groups.semipesado}</b></article>
-          <article><small>UML</small><b>${groups.uml}</b></article>${other}
+          <dl>
+            <div><dt>Servicios</dt><dd>${services.length}</dd></div>
+            <div><dt>Peajes</dt><dd>${tolls.length}</dd></div>
+          </dl>
+          ${tipoChips ? `<div class="ob-invoice-types" aria-label="Servicios por tipo">${tipoChips}</div>` : ''}
         </section>
        </div>
        <div class="ob-invoice-side">
         <section class="ob-invoice-lines" aria-label="Qué se factura">
           <h4>Se factura <small>${services.length} ${services.length === 1 ? 'servicio' : 'servicios'}${tolls.length ? ` y ${tolls.length} ${tolls.length === 1 ? 'peaje' : 'peajes'}` : ''}</small></h4>
-          <ul>${services.map(row => `<li><div><b>${esc(row.service_order_number || row.service_number || 'Servicio')}</b><small>${esc([row.service_name, dateParts(row.scheduled_for).day, row.customer_name].filter(Boolean).join(' · '))}</small><small>${esc([row.origin, row.destination].filter(Boolean).join(' → ') || '—')}</small></div><span class="ob-money">${esc(money(row.current_company_amount, row.currency))}</span></li>`).join('')}${tolls.map(row => `<li class="is-toll"><div><b>${esc(row.toll_name || 'Peaje')}</b><small>${esc([row.service_order_number || row.service_number, dateParts(row.scheduled_for).day].filter(Boolean).join(' · '))}</small></div><span class="ob-money">${esc(money(row.amount, row.currency))}</span></li>`).join('')}</ul>
+          <div class="ob-invoice-table-wrap"><table class="ob-invoice-table">
+            <thead><tr><th>Servicio</th><th>Fecha</th><th>Recorrido</th><th>Importe</th></tr></thead>
+            <tbody>${services.map(row => `<tr><td><b>${esc(row.service_order_number || row.service_number || 'Servicio')}</b><small>${esc([row.service_name, row.customer_name].filter(Boolean).join(' · ') || '—')}</small></td><td class="ob-it-date">${esc(dateParts(row.scheduled_for).day || '—')}</td><td class="ob-it-route"><span>${esc(row.origin || '—')}</span><span>${esc(row.destination || '—')}</span></td><td class="ob-it-amount"><span class="ob-money">${esc(money(row.current_company_amount, row.currency))}</span></td></tr>`).join('')}${tolls.map(row => `<tr class="is-toll"><td><b>${esc(row.toll_name || 'Peaje')}</b><small>Peaje · ${esc(row.service_order_number || row.service_number || '—')}</small></td><td class="ob-it-date">${esc(dateParts(row.scheduled_for).day || '—')}</td><td class="ob-it-route"><span>${esc([row.road, row.direction].filter(Boolean).join(' · ') || '—')}</span></td><td class="ob-it-amount"><span class="ob-money">${esc(money(row.amount, row.currency))}</span></td></tr>`).join('')}</tbody>
+          </table></div>
         </section>
-        <section class="ob-invoice-total"><div><small>Total a facturar</small><b>${esc(money(selectedTotal(), currency))}</b></div><span>${esc(currency)}</span></section>
+        <section class="ob-invoice-total">
+          ${tolls.length ? `<dl class="ob-invoice-subtotals"><div><dt>Servicios</dt><dd>${esc(money(subServicios, currency))}</dd></div><div><dt>Peajes</dt><dd>${esc(money(subPeajes, currency))}</dd></div></dl>` : ''}
+          <div class="ob-invoice-total-row"><div><small>Total a facturar</small><b>${esc(money(selectedTotal(), currency))}</b></div><span>${esc(currency)}</span></div>
+        </section>
        </div>
       </div>
       <footer class="ob-invoice-footer">

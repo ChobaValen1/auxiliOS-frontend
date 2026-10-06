@@ -307,51 +307,86 @@
   #screen-facturacion .ob-table tfoot tr { display: flex; justify-content: space-between; align-items: baseline; background: var(--ax-surface); }
 }
 
-/* ── Crear factura: más ancho, dos columnas y más legible ──
-   Izquierda: datos del comprobante, observaciones y qué incluye. Derecha: la lista de lo que
-   se factura (con todo el alto disponible) y el total siempre a la vista. */
-#screen-facturacion .ob-invoice-modal { width: min(1120px, calc(100vw - 48px)); max-height: calc(100vh - 48px); height: min(760px, calc(100vh - 48px)); }
+/* ── Crear factura ──
+   Izquierda (angosta): comprobante y resumen, cada uno en su tarjeta. Derecha: la lista de lo que
+   se factura como tabla (servicio, fecha, recorrido, importe) y el total siempre a la vista. */
+#screen-facturacion .ob-invoice-modal { width: min(1160px, calc(100vw - 48px)); height: min(780px, calc(100vh - 48px)); max-height: calc(100vh - 48px); }
 #screen-facturacion .ob-invoice-head { padding: 18px 24px; }
 #screen-facturacion .ob-invoice-head h3 { font-size: var(--ax-fs-2xl); }
 #screen-facturacion .ob-invoice-head p { margin-top: 4px; font-size: var(--ax-fs-md); }
-#screen-facturacion .ob-invoice-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--ax-sp-6); padding: 20px 24px; overflow: hidden; }
-#screen-facturacion .ob-invoice-main { display: flex; flex-direction: column; gap: var(--ax-sp-5); min-width: 0; overflow-y: auto; padding-right: 4px; }
-#screen-facturacion .ob-invoice-side { display: flex; flex-direction: column; gap: var(--ax-sp-3); min-width: 0; min-height: 0; }
-#screen-facturacion .ob-invoice-section { margin: 0 0 var(--ax-sp-3); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; grid-column: 1 / -1; }
-#screen-facturacion .ob-invoice-fields { grid-template-columns: 1fr 1fr; gap: var(--ax-sp-4); }
-#screen-facturacion .ob-invoice-fields label, #screen-facturacion .ob-invoice-notes { gap: 6px; }
-#screen-facturacion .ob-invoice-fields label > span, #screen-facturacion .ob-invoice-notes > span { font-size: var(--ax-fs-md); }
+#screen-facturacion .ob-invoice-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--ax-sp-5); padding: 20px 24px; overflow: hidden; background: var(--ax-bg); }
+#screen-facturacion .ob-invoice-main { display: flex; flex-direction: column; gap: var(--ax-sp-3); min-width: 0; min-height: 0; overflow-y: auto; }
+#screen-facturacion .ob-invoice-side { display: flex; flex-direction: column; gap: var(--ax-sp-4); min-width: 0; min-height: 0; }
+#screen-facturacion .ob-invoice-card { flex: none; display: flex; flex-direction: column; gap: var(--ax-sp-3); padding: 16px 18px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-invoice-section { margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; text-transform: none; }
+
+/* Comprobante: tipo, número (punto de venta – número), fecha y observaciones, uno por renglón */
+#screen-facturacion .ob-invoice-fields { display: flex; }
+#screen-facturacion .ob-invoice-fields label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#screen-facturacion .ob-invoice-fields label > span, #screen-facturacion .ob-invoice-notes > span { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
 #screen-facturacion .ob-invoice-notes > span small { margin-left: 6px; color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
-#screen-facturacion .ob-invoice-fields input, #screen-facturacion .ob-invoice-fields select, #screen-facturacion .ob-invoice-notes input { height: 44px; padding: 0 14px; font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-medium); }
-#screen-facturacion .ob-invoice-fields input[data-ob-invoice-field="point_of_sale"], #screen-facturacion .ob-invoice-fields input[data-ob-invoice-field="document_number"] { font-family: var(--ax-font-mono); }
-#screen-facturacion .ob-invoice-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ax-sp-3); }
-#screen-facturacion .ob-invoice-summary article { padding: 12px 14px; }
-#screen-facturacion .ob-invoice-summary small { font-size: var(--ax-fs-sm); letter-spacing: 0; text-transform: none; }
-#screen-facturacion .ob-invoice-summary b { font-size: var(--ax-fs-2xl); }
-#screen-facturacion .ob-invoice-lines { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-#screen-facturacion .ob-invoice-lines h4 { padding: 14px 18px; font-size: var(--ax-fs-md); }
-#screen-facturacion .ob-invoice-lines ul { flex: 1; min-height: 0; max-height: none; }
-#screen-facturacion .ob-invoice-lines li { gap: var(--ax-sp-4); padding: 12px 18px; }
-#screen-facturacion .ob-invoice-lines li b { font-size: var(--ax-fs-md); }
-#screen-facturacion .ob-invoice-lines li small { margin-top: 2px; font-size: var(--ax-fs-sm); }
-#screen-facturacion .ob-invoice-lines li .ob-money { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
-#screen-facturacion .ob-invoice-total { flex: none; padding: 16px 20px; }
-#screen-facturacion .ob-invoice-total b { font-size: 32px; }
+#screen-facturacion .ob-invoice-fields input, #screen-facturacion .ob-invoice-fields select { width: 100%; height: 40px; padding: 0 12px; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-field-number { display: grid; grid-template-columns: 120px auto minmax(0, 1fr); align-items: end; gap: var(--ax-sp-2); }
+#screen-facturacion .ob-field-number i { padding-bottom: 10px; color: var(--ax-text-3); font-style: normal; }
+#screen-facturacion .ob-field-number input { font-family: var(--ax-font-mono); letter-spacing: .02em; }
+
+/* Qué incluye: una sola tarjeta, con cifras en renglones y los tipos como etiquetas */
+#screen-facturacion .ob-invoice-summary { gap: var(--ax-sp-3); }
+#screen-facturacion .ob-invoice-summary dl { display: flex; flex-direction: column; margin: 0; }
+#screen-facturacion .ob-invoice-summary dl > div { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-summary dl > div:last-child { border-bottom: 0; }
+#screen-facturacion .ob-invoice-summary dt { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#screen-facturacion .ob-invoice-summary dd { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-types { display: flex; flex-wrap: wrap; gap: var(--ax-sp-2); padding-top: var(--ax-sp-3); border-top: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-types span { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-types b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font-mono); }
+
+/* Se factura: tabla con encabezado fijo */
+#screen-facturacion .ob-invoice-lines { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); overflow: hidden; }
+#screen-facturacion .ob-invoice-lines h4 { flex: none; display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--ax-border); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#screen-facturacion .ob-invoice-lines h4 small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+#screen-facturacion .ob-invoice-table-wrap { flex: 1; min-height: 0; overflow: auto; }
+#screen-facturacion .ob-invoice-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-table th { position: sticky; top: 0; z-index: 1; height: 36px; padding: 0 14px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+#screen-facturacion .ob-invoice-table th:last-child { text-align: right; }
+#screen-facturacion .ob-invoice-table td { padding: 11px 14px; border-bottom: 1px solid var(--ax-border); vertical-align: top; }
+#screen-facturacion .ob-invoice-table tbody tr:last-child td { border-bottom: 0; }
+#screen-facturacion .ob-invoice-table tbody tr:nth-child(even) td { background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-table td b { display: block; font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-facturacion .ob-invoice-table td small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-invoice-table .ob-it-date { color: var(--ax-text-2); white-space: nowrap; }
+#screen-facturacion .ob-invoice-table .ob-it-route span { display: block; color: var(--ax-text-2); line-height: 1.35; }
+#screen-facturacion .ob-invoice-table .ob-it-route span + span::before { content: "→ "; color: var(--ax-text-3); }
+#screen-facturacion .ob-invoice-table .ob-it-amount { text-align: right; white-space: nowrap; }
+#screen-facturacion .ob-invoice-table .ob-money { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-table tr.is-toll td:first-child b::after { content: "Peaje"; margin-left: 8px; padding: 1px 7px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); vertical-align: 1px; }
+
+/* Total */
+#screen-facturacion .ob-invoice-total { flex: none; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--ax-sp-3); padding: 16px 20px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-invoice-subtotals { display: flex; gap: var(--ax-sp-6); margin: 0; padding-bottom: var(--ax-sp-3); border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-subtotals > div { display: flex; gap: 8px; align-items: baseline; }
+#screen-facturacion .ob-invoice-subtotals dt { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-subtotals dd { margin: 0; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); }
+#screen-facturacion .ob-invoice-total-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-4); }
+#screen-facturacion .ob-invoice-total-row small { display: block; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); }
+#screen-facturacion .ob-invoice-total-row b { display: block; margin-top: 2px; font: var(--ax-fw-semibold) 32px var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-total-row > span { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+
 #screen-facturacion .ob-invoice-footer { padding: 14px 24px; gap: var(--ax-sp-5); align-items: center; }
 #screen-facturacion .ob-invoice-footer > small { flex: 1; max-width: 560px; font-size: var(--ax-fs-sm); line-height: 1.45; }
 #screen-facturacion .ob-invoice-footer .ob-button { height: 40px; padding: 0 20px; font-size: var(--ax-fs-md); }
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   #screen-facturacion .ob-invoice-modal { width: calc(100vw - 24px); height: calc(100vh - 24px); max-height: calc(100vh - 24px); }
-  #screen-facturacion .ob-invoice-body { grid-template-columns: 1fr; gap: var(--ax-sp-4); padding: 16px; overflow-y: auto; }
-  #screen-facturacion .ob-invoice-main { overflow: visible; padding-right: 0; }
-  #screen-facturacion .ob-invoice-side { min-height: auto; }
-  #screen-facturacion .ob-invoice-lines ul { max-height: 280px; flex: none; }
+  #screen-facturacion .ob-invoice-body { display: flex; flex-direction: column; gap: var(--ax-sp-4); padding: 16px; overflow-y: auto; }
+  #screen-facturacion .ob-invoice-main, #screen-facturacion .ob-invoice-side { flex: none; overflow: visible; min-height: auto; }
+  #screen-facturacion .ob-invoice-lines { flex: none; }
+  #screen-facturacion .ob-invoice-table-wrap { max-height: 320px; }
   #screen-facturacion .ob-invoice-head, #screen-facturacion .ob-invoice-footer { padding-left: 16px; padding-right: 16px; }
 }
-@media (max-width: 480px) {
-  #screen-facturacion .ob-invoice-fields { grid-template-columns: 1fr; }
-  #screen-facturacion .ob-invoice-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  #screen-facturacion .ob-invoice-total b { font-size: var(--ax-fs-2xl); }
+@media (max-width: 560px) {
+  #screen-facturacion .ob-invoice-table th:nth-child(3), #screen-facturacion .ob-invoice-table td:nth-child(3) { display: none; }
+  #screen-facturacion .ob-invoice-total-row b { font-size: var(--ax-fs-2xl); }
+  #screen-facturacion .ob-field-number { grid-template-columns: 96px auto minmax(0, 1fr); }
 }
 
 /* ── Pulido: pestañas segmentadas, tabla que entra en pantalla y casillas con el tema ── */
