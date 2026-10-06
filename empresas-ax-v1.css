@@ -203,3 +203,139 @@
 @media (max-width: 760px) {
   #screen-empresas.emp-v2 .empv2-page .empv2-list-table { min-width: 0; width: 100%; }
 }
+
+/* ── Formularios de prestadora y contacto: secciones con título, campos en columnas ── */
+:is(#modal-empresa, #modal-emp-contact) .modal-box.emf-modal { width: min(680px, 96vw); max-width: none; max-height: 92vh; display: flex; flex-direction: column; }
+:is(#modal-empresa, #modal-emp-contact) .modal-box.emf-modal-sm { width: min(520px, 96vw); }
+:is(#modal-empresa, #modal-emp-contact) .modal-body { display: grid; gap: 22px; overflow-y: auto; }
+:is(#modal-empresa, #modal-emp-contact) .emf-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-title small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec { display: grid; gap: 12px; margin: 0; padding: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec + .emf-sec { padding-top: 18px; border-top: 1px solid var(--ax-border); }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec-title .ax-icon { width: 18px; height: 18px; color: var(--ax-accent); }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid .form-group { display: flex; flex-direction: column; gap: 6px; margin: 0; min-width: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-span-2 { grid-column: 1 / -1; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid textarea.form-input { height: auto; min-height: 84px; padding: 10px 12px; resize: vertical; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid select.form-input { color-scheme: dark; }
+:is(#modal-empresa, #modal-emp-contact) .emf-hint { margin: -4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-empresa .emf-days { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+#modal-empresa .emf-days-input { position: relative; width: 120px; }
+#modal-empresa .emf-days-input input { padding-right: 46px; }
+#modal-empresa .emf-days-input span { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--ax-text-3); font-size: var(--ax-fs-sm); pointer-events: none; }
+#modal-empresa .emf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+#modal-empresa .emf-chip { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#modal-empresa .emf-chip:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-empresa .emf-chip.is-on { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-accent); }
+#modal-emp-contact .emf-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); cursor: pointer; }
+#modal-emp-contact .emf-switch-text { display: flex; flex-direction: column; gap: 2px; }
+#modal-emp-contact .emf-switch-text b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-emp-contact .emf-switch-text small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+@media (max-width: 600px) {
+  :is(#modal-empresa, #modal-emp-contact) .emf-grid { grid-template-columns: 1fr; }
+  :is(#modal-empresa, #modal-emp-contact) .modal-box.emf-modal { width: 100vw; max-height: 100dvh; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; }
+}
+:is(#modal-empresa, #modal-emp-contact) .emf-grid .form-label { margin: 0; line-height: 1.3; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid .form-input { margin: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid select.form-input { height: var(--ax-h); }
+:is(#modal-empresa, #modal-emp-contact) .modal-body { min-height: 0; }
+
+/* ── Tarifas: tabla legible, acciones en una sola fila (en la ficha y en la pantalla Tarifas) ── */
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table-wrap { max-height: none; overflow-x: auto; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table { min-width: 980px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table th { height: 38px; padding: 0 14px; background: var(--ax-surface); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table td { padding: 14px; vertical-align: middle; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table strong { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table small, :is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-price-km { color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.4; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table tbody tr:hover td { background: var(--ax-surface-3); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-price-main { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font-mono); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-chip { height: 24px; padding: 0 10px; font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-chip.pending { border-color: var(--ax-warn); background: transparent; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel-head { padding: 14px 16px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel-head h3 { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel-head p { font-size: var(--ax-fs-sm); color: var(--ax-text-3); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions { flex-wrap: nowrap; gap: 6px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-action { height: var(--ax-h-sm); padding: 0 10px; font-size: var(--ax-fs-sm); white-space: nowrap; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions .ct4-action:not(.primary) { border-color: transparent; color: var(--ax-text-2); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions .ct4-action:not(.primary):hover { border-color: var(--ax-border-strong); color: var(--ax-text); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-name { font-size: var(--ax-fs-sm); color: var(--ax-text-2); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-price .ct4-price-main { font-size: var(--ax-fs-sm); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-price .ct4-price-km { font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-icon-action { color: var(--ax-danger); font-size: var(--ax-fs-md); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-next-row { border-color: var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-next-row > b { color: var(--ax-info); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-stat { height: 26px; padding: 0 10px; border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-stat b { font-size: var(--ax-fs-sm); color: var(--ax-text); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-stat.pending { color: var(--ax-warn); border-color: var(--ax-warn); }
+/* Edición en lote */
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field span { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field input { height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font-mono); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field input.dirty { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar { padding: 12px 16px; border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar b { font-size: var(--ax-fs-md); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar small { font-size: var(--ax-fs-sm); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar .btn { height: var(--ax-h); font-size: var(--ax-fs-sm); padding: 0 16px; }
+
+/* ── Servicios habilitados: interruptor en vez de casilla ── */
+#modal-company-enabled-services-v4 .modal-body { display: grid; gap: 14px; }
+#modal-company-enabled-services-v4 .cs4-note { margin: 0; padding: 12px 14px; border: 1px solid var(--ax-border); border-left: 3px solid var(--ax-info); border-radius: var(--ax-radius-lg); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-company-enabled-services-v4 .cs4-note b { color: var(--ax-text); }
+#modal-company-enabled-services-v4 .cs4-list { display: grid; gap: 8px; }
+#modal-company-enabled-services-v4 .cs4-row { grid-template-columns: auto minmax(0, 1fr) minmax(150px, 190px); gap: 14px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#modal-company-enabled-services-v4 .cs4-row:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-company-enabled-services-v4 .cs4-row .cs4-sw input { width: 36px; height: 20px; accent-color: initial; }
+#modal-company-enabled-services-v4 .cs4-name { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-enabled-services-v4 .cs4-chip { height: 22px; padding: 0 9px; border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#modal-company-enabled-services-v4 .cs4-row select { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-size: var(--ax-fs-sm); color-scheme: dark; }
+@media (max-width: 600px) {
+  #modal-company-enabled-services-v4 .cs4-row { grid-template-columns: auto minmax(0, 1fr); }
+  #modal-company-enabled-services-v4 .cs4-row select { grid-column: 1 / -1; }
+}
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel { min-width: 0; max-width: 100%; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table { min-width: 0; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table th { vertical-align: middle; position: static; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table td:first-child { min-width: 150px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exceptions { min-width: 210px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception { grid-template-columns: minmax(70px, auto) minmax(110px, 1fr) auto; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-price .ct4-price-km { white-space: nowrap; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions .ct4-action { padding: 0 8px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-chip { max-width: 100%; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4 { grid-template-columns: minmax(0, 1fr); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4 > * { min-width: 0; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table td:last-child .ct4-actions { flex-wrap: wrap; justify-content: flex-end; width: 240px; margin-left: auto; row-gap: 4px; }
+
+/* ── Parámetros de facturación: secciones más limpias, avisos como notas ── */
+#modal-company-billing-v4 .modal-box.bp4-dialog { width: min(860px, 96vw); max-width: none; }
+#modal-company-billing-v4 .bp4-shell { gap: 16px; }
+#modal-company-billing-v4 .bp4-section { overflow: visible; }
+#modal-company-billing-v4 .bp4-section-head { padding: 14px 18px; border-bottom: 1px solid var(--ax-border); background: transparent; }
+#modal-company-billing-v4 .bp4-section-head p { margin: 2px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-company-billing-v4 .bp4-section-body { padding: 16px 18px; }
+#modal-company-billing-v4 .bp4-grid { gap: 14px 16px; align-items: start; }
+#modal-company-billing-v4 .bp4-field > span, #modal-company-billing-v4 .bp4-label { text-transform: none; letter-spacing: 0; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); color: var(--ax-text-2); }
+#modal-company-billing-v4 .bp4-help { padding: 10px 14px; border: 0; border-left: 3px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.5; }
+#modal-company-billing-v4 .bp4-help b { color: var(--ax-text); }
+#modal-company-billing-v4 .bp4-help.route { border-left-color: var(--ax-info); }
+#modal-company-billing-v4 .bp4-help.manual { border-left-color: var(--ax-warn); }
+#modal-company-billing-v4 .bp4-help:empty { display: none; }
+#modal-company-billing-v4 .bp4-info { border-color: var(--ax-border-strong); color: var(--ax-info); }
+#modal-company-billing-v4 .bp4-optional { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-company-billing-v4 .bp4-rule { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-company-billing-v4 .bp4-rule.active { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-company-billing-v4 .bp4-rule h5 { margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-billing-v4 .bp4-rule p { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-company-billing-v4 .bp4-subtitle { color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); text-transform: none; letter-spacing: 0; }
+#modal-company-billing-v4 .bp4-base { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text); }
+#modal-company-billing-v4 .bp4-base:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-company-billing-v4 .bp4-active-sw { min-height: var(--ax-h); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#modal-company-billing-v4 .bp4-active-sw input { width: 36px; height: 20px; padding: 0; border: 0; }
+@media (max-width: 600px) { #modal-company-billing-v4 .bp4-grid, #modal-company-billing-v4 .bp4-grid.three, #modal-company-billing-v4 .bp4-base-list, #modal-company-billing-v4 .bp4-rule-grid { grid-template-columns: 1fr; } }
+#modal-company-billing-v4 .bp4-help.full { grid-column: 1 / -1; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-grid { gap: 8px; align-items: end; min-width: 330px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field { gap: 6px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field span { white-space: nowrap; }
+:is(#modal-ct4-rate, #modal-ct4-history) .modal-head small { font-size: var(--ax-fs-sm); }
+:is(#modal-ct4-rate, #modal-ct4-history) .ct4-note { padding: 10px 14px; border: 0; border-left: 3px solid var(--ax-info); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#modal-ct4-rate, #modal-ct4-history) .ct4-grid { gap: 14px 16px; }
