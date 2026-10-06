@@ -235,8 +235,7 @@
     if (!canUseManagementTools()) return notify('Sin permiso para administrar esta configuración', 'error');
     if (typeof openSettingsHub !== 'function' || typeof switchConfigTab !== 'function') return notify('La herramienta administrativa todavía no está disponible', 'error');
     closeFlyout();
-    await openSettingsHub();
-    switchConfigTab(tabId);
+    await openSettingsHub(tabId);
   }
 
   function populateFlyout() {

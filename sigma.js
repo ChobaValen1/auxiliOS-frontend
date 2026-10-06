@@ -8220,7 +8220,7 @@ function toggleNavAvatarMenu() {
 
 // ── CONTROLADOR DEL HUB DE CONFIGURACIÓN ───────────────────────
 
-async function openSettingsHub() {
+async function openSettingsHub(tabId = 'tab-flota') {
   const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
 
   if (esChofer) {
@@ -8233,8 +8233,10 @@ async function openSettingsHub() {
     document.body.appendChild(modal);
   }
   _renderPerfilAdminTab();
+  // Cada herramienta se abre sola (sin el menú lateral de la versión inicial).
+  modal?.classList.add('cfg-single');
   openModal('modal-settings');
-  switchConfigTab('tab-flota');
+  switchConfigTab(_cfgTabMeta[tabId] ? tabId : 'tab-flota');
 }
 
 function _renderPerfilAdminTab() {
@@ -8388,12 +8390,12 @@ function _confirmarCerrarSesion() {
   if (confirm('¿Seguro que querés cerrar sesión?')) logoutUsuario();
 }
 const _cfgTabMeta = {
-  'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal()', importTipo: 'flota' },
-  'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal()', importTipo: 'usuarios' },
-  'tab-planes':      { title: 'Catálogo de Planes',       action: 'openAdminPlanModal()' },
-  'tab-mantenimiento':{ title: 'Mantenimiento',             action: null },
-  'tab-emergencias': { title: 'Contactos de Emergencia',  action: null },
-  'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
+  'tab-flota':       { title: 'Camiones', sub: 'Alta y administración de los vehículos de la flota.', action: 'openNuevoVehiculoModal()', importTipo: 'flota' },
+  'tab-usuarios':    { title: 'Personal', sub: 'Alta y gestión de choferes, operadores y administración.', action: 'openNuevoUsuarioModal()', importTipo: 'usuarios' },
+  'tab-planes':      { title: 'Planes de mantenimiento', sub: 'Catálogo de planes globales.', action: 'openAdminPlanModal()' },
+  'tab-mantenimiento':{ title: 'Mantenimiento', sub: 'Services vencidos y próximos de cada móvil.', action: null },
+  'tab-emergencias': { title: 'Contactos de emergencia', sub: 'Teléfonos, talleres y protocolo de siniestro para los choferes.', action: null },
+  'tab-mi-cuenta':   { title: 'Mi cuenta', sub: 'Datos de la cuenta actual.', action: null },
 };
 
 function switchConfigTab(tabId) {
@@ -8409,6 +8411,8 @@ function switchConfigTab(tabId) {
   if (meta) {
     const titleEl = document.getElementById('cfg-tab-title');
     if (titleEl) titleEl.textContent = meta.title;
+    const subEl = document.getElementById('cfg-tab-sub');
+    if (subEl) subEl.textContent = meta.sub || '';
     const btnNew = document.getElementById('cfg-btn-new');
     if (btnNew) {
       if (meta.action && !esSupervisor) {
@@ -9120,7 +9124,7 @@ function _renderMantenimientoTab() {
   if (busq) list = list.filter(x => (x.plate || '').toLowerCase().includes(busq) || (x.plan_name || '').toLowerCase().includes(busq));
 
   if (!list.length) {
-    body.innerHTML = '<div class="cfg-rend-empty">Sin services pendientes 🎉</div>';
+    body.innerHTML = '<div class="cfg-rend-empty">Sin services pendientes</div>';
     return;
   }
 
@@ -15980,13 +15984,13 @@ function _alxGuardarVisto(id) {
 
 // ── Navegación desde las alertas ───────────────────────────────
 function alxIrRendiciones() {
-  _sueldosSubActual = 'rendiciones';
+  // La rendición mensual se registra en el detalle de cada chofer (Liquidaciones del mes).
+  _sueldosSubActual = 'mes';
   goTo('sueldos');
 }
 
 function alxIrMantenimiento() {
-  openSettingsHub();
-  switchConfigTab('tab-mantenimiento'); // dispara cargarMantenimientoTab()
+  openSettingsHub('tab-mantenimiento'); // dispara cargarMantenimientoTab()
 }
 
 function alxBellClick() {
