@@ -47,9 +47,9 @@ test('Tipos de Servicio es el único catálogo creador y Prestadora mantiene una
 
 test('Parámetros de facturación posee Bases y reglas contractuales, no Tarifas',()=>{
   assert.match(billing,/get_company_billing_configuration/);
-  assert.match(billing,/Bases habilitadas para esta prestadora/);
-  assert.match(billing,/Radio cubierto \(km\)/);
-  assert.match(billing,/Cobrar movida hasta \(km\)/);
+  assert.match(billing,/Bases habilitadas/);
+  assert.match(billing,/Radio cubierto/);
+  assert.match(billing,/Cobrar movida hasta un tope/);
   assert.match(billing,/covered_radius_km/);
   assert.match(billing,/movement_charge_until_km/);
   assert.match(billing,/Sugerencia editable/);
