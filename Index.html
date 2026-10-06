@@ -2916,10 +2916,10 @@
         <label class="form-group usr-span-2"><span class="form-label">Email *</span>
           <input class="form-input" type="email" id="nu-email" placeholder="Ej: juan@empresa.com" autocomplete="off"></label>
         <label class="form-group"><span class="form-label">DNI *</span>
-          <input class="form-input" type="text" id="nu-dni" placeholder="Ej: 30123456" inputmode="numeric"
+          <input class="form-input" type="text" id="nu-dni" placeholder="Ej: 30123456" inputmode="numeric" maxlength="8" autocomplete="off"
                  oninput="this.value = this.value.replace(/\D/g, '')"></label>
         <label class="form-group"><span class="form-label">Teléfono</span>
-          <input class="form-input" type="tel" id="nu-telefono" placeholder="Ej: 11 1234-5678"
+          <input class="form-input" type="tel" id="nu-telefono" placeholder="Ej: 11 1234-5678" maxlength="18" autocomplete="off"
                  oninput="this.value = this.value.replace(/[^+\d\s\-]/g, '')"></label>
         <div class="form-group usr-span-2"><span class="form-label">Rol *</span>
           <input type="hidden" id="nu-rol" value="chofer">

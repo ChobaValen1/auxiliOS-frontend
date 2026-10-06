@@ -9490,6 +9490,9 @@ async function guardarNuevoUsuario() {
   if (!email)   { showModalError('nu-modal-error', 'Para guardar completá Email'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showModalError('nu-modal-error', 'El email no tiene formato válido — revisá que tenga @ y dominio'); return; }
   if (!dni)     { showModalError('nu-modal-error', 'Para guardar completá DNI'); return; }
+  if (!/^\d{7,8}$/.test(dni)) { showModalError('nu-modal-error', 'El DNI debe tener 7 u 8 números'); return; }
+  const telDigitos = tel.replace(/\D/g, '');
+  if (tel && (telDigitos.length < 8 || telDigitos.length > 15)) { showModalError('nu-modal-error', 'El teléfono debe tener entre 8 y 15 números'); return; }
 
   const btn = document.getElementById('btn-guardar-usuario');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
