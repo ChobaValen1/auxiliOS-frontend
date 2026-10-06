@@ -465,3 +465,10 @@
 #modal-company-billing-v4 .bp4-cols-vig .bp4-grid.three > .bp4-field:nth-child(3) { grid-column: 1 / -1; align-content: start !important; }
 #modal-company-billing-v4 #bp4-summary { display: grid; gap: 16px; }
 @media (max-width: 900px) { #modal-company-billing-v4 .bp4-step-pill { flex: 0 0 48px; justify-content: center; padding: 10px 8px; } #modal-company-billing-v4 .bp4-step-pill.active { flex: 1; justify-content: flex-start; padding: 10px 12px; } }
+/* Bases habilitadas en cascada (una debajo de la otra) */
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base-list { display: flex; flex-direction: column; gap: 8px; }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--ax-accent); }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base span { display: grid; gap: 2px; min-width: 0; }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); overflow-wrap: anywhere; }
