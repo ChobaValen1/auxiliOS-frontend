@@ -189,3 +189,19 @@
   #screen-remitos .rmx-table tbody tr:hover td:last-child { background: var(--ax-surface-3); }
   #screen-remitos .rmx-row.is-selected td:last-child { background: var(--ax-surface-2); }
 }
+
+/* ── Pulido: pestañas segmentadas, encabezados completos y casillas con el tema ── */
+#screen-remitos .rmx-views { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-remitos .rmx-views button { display: inline-flex; align-items: center; gap: 6px; height: calc(var(--ax-h) - 8px); padding: 0 14px; border: 0; border-radius: 6px; font-size: var(--ax-fs-sm); }
+#screen-remitos .rmx-views button:hover { color: var(--ax-text); }
+#screen-remitos .rmx-views button.is-active { border: 0; background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#screen-remitos .rmx-table th { height: auto; padding: 9px 10px; vertical-align: bottom; }
+#screen-remitos .rmx-table input[type="checkbox"] { appearance: none; -webkit-appearance: none; display: inline-grid; place-content: center; width: 18px; height: 18px; margin: 0; border: 1.5px solid var(--ax-border-strong); border-radius: 5px; background: var(--ax-bg); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-remitos .rmx-table input[type="checkbox"]:hover:not(:disabled) { border-color: var(--ax-text-3); }
+#screen-remitos .rmx-table input[type="checkbox"]::after { content: ""; width: 9px; height: 5px; margin-top: -2px; border-left: 2px solid var(--ax-accent-fg); border-bottom: 2px solid var(--ax-accent-fg); transform: rotate(-45deg) scale(0); transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-remitos .rmx-table input[type="checkbox"]:checked, #screen-remitos .rmx-table input[type="checkbox"]:indeterminate { border-color: var(--ax-accent); background: var(--ax-accent); }
+#screen-remitos .rmx-table input[type="checkbox"]:checked::after { transform: rotate(-45deg) scale(1); }
+#screen-remitos .rmx-table input[type="checkbox"]:indeterminate::after { width: 8px; height: 0; margin-top: 0; border-left: 0; transform: none; }
+#screen-remitos .rmx-table input[type="checkbox"]:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-remitos .rmx-table input[type="checkbox"]:disabled { opacity: .4; cursor: not-allowed; }
+#screen-remitos .rmx-views { width: fit-content; align-self: flex-start; }

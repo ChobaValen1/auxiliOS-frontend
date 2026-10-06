@@ -142,7 +142,7 @@ test('un código duplicado conserva la integridad y explica cómo vincular el re
 
 test('Servicios registra header, Activos e Historial y mantiene el flujo de facturación',()=>{
   assert.match(services,/SCREENS\.operaciones/);
-  assert.match(services,/title:'SERVICIOS'/);
+  assert.match(services,/title:'Servicios'/);
   assert.match(services,/const ACTIVE=new Set/);
   assert.match(services,/historyServices/);
   assert.match(services,/cambiarVistaServicios/);

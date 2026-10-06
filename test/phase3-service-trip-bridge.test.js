@@ -87,7 +87,7 @@ test('una asignación recibida con el formulario abierto conserva y vincula el r
 test('el módulo del Chofer se presenta como Servicios con una sola cabecera minimalista',()=>{
   const js=read('operator-service-bridge.js'),css=read('operator-service-bridge.css');
   assert.match(js,/label\.textContent='Servicios'/);
-  assert.match(js,/title\.textContent='SERVICIOS'/);
+  assert.match(js,/title\.textContent='Servicios'/);
   assert.match(js,/sub\.textContent='Asignados e historial'/);
   assert.doesNotMatch(js,/p3-panel-title|p3-eyebrow/);
   assert.match(css,/p3-driver-remitos>\.sec-header/);
