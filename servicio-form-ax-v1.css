@@ -495,13 +495,13 @@
 #modal-operador-wizard .osv4-reactive .tdt-zoom button:hover { background: var(--ax-surface-3); }
 
 /* Conceptos sí/no (p. ej. Pinacars) en la 3ª columna */
-#modal-operador-wizard .osv4-reactive #osv4-toggles { display: grid; gap: var(--ax-sp-2); margin: 0 0 var(--ax-sp-3); padding: var(--ax-sp-3) var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles { display: grid; gap: var(--ax-sp-2); margin: 0 0 var(--ax-sp-3); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
 #modal-operador-wizard .osv4-reactive #osv4-toggles[hidden] { display: none; }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv2-section-label { margin: 0; }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-help { margin: 0; color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); text-transform: none; letter-spacing: 0; }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-list { display: grid; gap: var(--ax-sp-2); }
 #modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 0; padding: 0; text-transform: none; letter-spacing: 0; cursor: pointer; }
-#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row > span { min-width: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); text-transform: none; letter-spacing: 0; }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); text-transform: none; }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); text-transform: none; }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox] { flex: none; appearance: none; position: relative; width: 36px; min-width: 36px; height: 20px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: var(--ax-radius-pill); background: var(--ax-border-strong); box-shadow: none; cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }

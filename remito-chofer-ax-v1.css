@@ -173,7 +173,7 @@
 /* Conceptos sí/no del remito (p. ej. Pinacars) */
 #remitos-nuevo .rem-toggle-list { display: flex; flex-direction: column; gap: 10px; }
 #remitos-nuevo .rem-toggle-row { display: flex; justify-content: space-between; gap: 12px; width: 100%; }
-#remitos-nuevo .rem-toggle-row > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-#remitos-nuevo .rem-toggle-row b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
-#remitos-nuevo .rem-toggle-row small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#remitos-nuevo .rem-toggles-card { padding: var(--ax-sp-3) var(--ax-sp-4); }
+#remitos-nuevo .rem-toggle-row { align-items: center; }
+#remitos-nuevo .rem-toggle-row > span { min-width: 0; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
 #remitos-nuevo .rem-toggle-row input { flex: none; }
