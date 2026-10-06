@@ -1,3 +1,31 @@
+/* AuxiliOS · Servicio · conceptos sí/no sin precio (p. ej. Pinacars), 3ª columna */
+(()=>{'use strict';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function load(w){
+ const key=String(w.serviceId||'new');if(w.toggles?.key===key)return;
+ w.toggles={key,concepts:[],selected:new Set(),dirty:false,loading:true};
+ try{const {data,error}=await _db.rpc('get_service_toggle_concepts_v1',{p_company_id:null,p_service_id:w.serviceId||null});if(error)throw error;
+  if(w.toggles?.key!==key)return;w.toggles.concepts=Array.isArray(data?.concepts)?data.concepts:[];w.toggles.selected=new Set((data?.selected||[]).map(String));}
+ catch(e){console.warn('[osv4] interruptores',e);}
+ if(w.toggles?.key===key){w.toggles.loading=false;render(w);}
+}
+function render(w){
+ const card=document.getElementById('osv4-toggles'),list=document.getElementById('osv4-toggles-list');if(!card||!list||!w?.toggles)return;
+ const t=w.toggles;card.hidden=!t.concepts.length;const view=w.mode==='view';
+ list.innerHTML=t.concepts.map(c=>`<label class="ax-switch osv4-toggle-row"><span><b>${esc(c.name)}</b>${c.description?`<small>${esc(c.description)}</small>`:''}</span><input type="checkbox" data-osv4-toggle="${esc(c.concept_id)}" ${t.selected.has(String(c.concept_id))?'checked':''} ${view?'disabled':''}></label>`).join('');
+ list.querySelectorAll('[data-osv4-toggle]').forEach(input=>input.addEventListener('change',()=>{const id=input.dataset.osv4Toggle;if(input.checked)t.selected.add(id);else t.selected.delete(id);t.dirty=true;w.dirty=true;window.OperatorServiceWorkspaceReactiveV1?.sync?.();}));
+}
+function sync(w){if(!w||typeof _db==='undefined')return;if(w.toggles?.key!==String(w.serviceId||'new'))void load(w);else render(w);}
+async function persist(w,serviceId){
+ if(!w?.toggles||!serviceId||w.mode==='view')return true;
+ if(!w.toggles.dirty&&w.toggles.key===String(serviceId))return true;
+ const {error}=await _db.rpc('set_operator_service_toggles_v1',{p_service_id:serviceId,p_concept_ids:[...w.toggles.selected]});
+ if(error){const msg='El servicio se guardó, pero no se pudo registrar Pinacars: '+(error.message||'');if(typeof window.toast==='function')window.toast(msg,'warning');else console.warn(msg);return false;}
+ w.toggles.dirty=false;w.toggles.key=String(serviceId);return true;
+}
+window.OperatorServiceTogglesV1={sync,persist,load,render};
+})();
+
 /* AuxiliOS · Servicio · workspace reactivo canónico create/view/edit */
 (()=>{'use strict';
 const O=()=>window.OperatorServices;
@@ -57,7 +85,7 @@ function mount(){
    <section class="osv2-card distance-card"><div class="osv2-section-label neutral"><span></span><b>Kilómetros planificados</b></div><div class="osv2-inline-grid three"><label><span>KM Asfalto</span><input id="osv4-asphalt" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" data-distance="estimated_asphalt_km"></label><label><span>KM Ripio</span><input id="osv4-gravel" type="text" inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" data-distance="estimated_gravel_km"></label><label><span>KM Totales</span><input id="osv4-total-km" inputmode="decimal" disabled></label></div><div id="osv4-route-status" class="osv4-note"></div><div id="osv4-reported-km" class="osv4-note" hidden></div></section>
    <label class="osv2-observations" data-field-config="operator_notes"><span data-field-label>Observaciones</span><textarea id="osv4-notes" rows="3" data-key="operator_notes"></textarea></label>
   </section>
-  <section class="osv2-column actions-column"><section id="osv4-activation-classification" class="os-activation-billing" hidden></section><div id="osv4-review-slot" class="osv4-review-slot"></div><section id="osv4-history-panel" class="osv4-history-panel osca-panel" data-allowed="false" hidden><div class="osca-title"><b>Historial del servicio</b><small>Asignaciones, intervenciones y resultado</small></div><section id="osv4-lifecycle-slot" class="osv4-lifecycle-slot" hidden></section></section></section>
+  <section class="osv2-column actions-column"><section id="osv4-toggles" class="osv2-card osv4-toggles-card" hidden><div class="osv2-section-label neutral"><span></span><b>Otros</b></div><small class="osv4-toggles-help">Se marca sí o no. No se cobra ni se factura.</small><div id="osv4-toggles-list" class="osv4-toggles-list"></div></section><section id="osv4-activation-classification" class="os-activation-billing" hidden></section><div id="osv4-review-slot" class="osv4-review-slot"></div><section id="osv4-history-panel" class="osv4-history-panel osca-panel" data-allowed="false" hidden><div class="osca-title"><b>Historial del servicio</b><small>Asignaciones, intervenciones y resultado</small></div><section id="osv4-lifecycle-slot" class="osv4-lifecycle-slot" hidden></section></section></section>
   <section class="osv4-meta-row" hidden>
    <section id="osv4-edit-reason" class="osv2-card" hidden><label><span>Motivo de la corrección *</span><textarea id="osv4-change-reason" rows="4"></textarea></label></section>
   </section>
@@ -75,7 +103,7 @@ async function onFocusOut(e){if(W()?.mode==='view')return;const t=e.target;if(t.
 function outside(e){if(!e.target.closest?.('.osv4-address-wrap')){closeSuggestions('origin',true);closeSuggestions('destination',true);}}
 function setSchedule(kind,value){const w=W();if(!w||w.mode==='view')return;const p=localParts(w.data.scheduled_for),date=kind==='date'?value:p.date,time=kind==='time'?value:p.time||'00:00';window.osSetServicio?.('scheduled_for',`${date}T${time}`);w.contextKey='';window.actualizarContextoServicio?.();syncFooter();}
 function setTimeField(key,value){if(W()?.mode==='view')return;const date=localParts(W()?.data?.scheduled_for).date;if(value&&date)window.osSetServicio?.(key,`${date}T${value}`);else window.osSetServicio?.(key,'');syncFooter();}
-function sync(forceFields=false){if(!W())return;if(!ui.mounted||!document.querySelector('.osv4-reactive'))return mount();syncHeader();syncFields(forceFields);syncSingleAddress();syncCatalog();syncContext();syncResources();syncWarnings();syncFieldConfiguration();renderConcepts();syncLocks();syncFooter();window.OperatorServiceCommercialAddonsV1?.render?.();}
+function sync(forceFields=false){if(!W())return;if(!ui.mounted||!document.querySelector('.osv4-reactive'))return mount();window.OperatorServiceTogglesV1?.sync?.(W());syncHeader();syncFields(forceFields);syncSingleAddress();syncCatalog();syncContext();syncResources();syncWarnings();syncFieldConfiguration();renderConcepts();syncLocks();syncFooter();window.OperatorServiceCommercialAddonsV1?.render?.();}
 function syncCorrections(){const w=W();document.querySelectorAll('.osaa-correction').forEach(el=>el.remove());if(!w?.administrativeEdit)return;for(const change of w.administrativeChanges||[]){for(const key of change.fields||[]){const input=document.querySelector('[data-key="'+key+'"]')||(key==='service_order_number'?document.getElementById('osv4-service-order'):null);const host=input?.closest('label');if(!host||host.querySelector('.osaa-correction'))continue;const detail=document.createElement('details');detail.className='osaa-correction';const summary=document.createElement('summary');summary.textContent='Corregido';const body=document.createElement('p');body.textContent='Anterior: '+String(change.before?.[key]??'Sin dato')+' · '+(change.by||'Operaciones')+' · '+new Date(change.at).toLocaleString('es-AR');detail.append(summary,body);host.appendChild(detail);}}}
 function syncHeader(){const w=W(),edit=w.mode==='edit',view=w.mode==='view';document.querySelector('.osv4-reactive')?.setAttribute('data-intake',String(!!w.intakeId));setText('osv4-title',view?'Ver Servicio':edit?'Editar Servicio':w.intakeActivated?'Crear servicio desde activado':w.intakeId?'Crear servicio desde remito':'Nuevo Servicio');const save=document.getElementById('osv4-save'),reason=document.getElementById('osv4-edit-reason'),editBtn=document.getElementById('osv4-edit-from-view'),history=document.getElementById('osv4-history-panel'),meta=document.querySelector('.osv4-meta-row');const showReason=!!(edit&&w.locks?.requires_reason),showHistory=O()?.role?.()==='administracion'&&!!w.serviceId&&['completed','cancelled'].includes(w.serviceStatus);if(save){save.textContent=w.busy?'Guardando…':edit?'Guardar cambios':w.intakeId?'Crear y finalizar':'Crear servicio';save.hidden=view;}if(reason)reason.hidden=!showReason;if(editBtn)editBtn.hidden=!(view&&O()?.canManage?.()&&w.locks?.can_edit);if(history){history.dataset.allowed=String(showHistory);if(!showHistory)history.hidden=true;}if(meta)meta.hidden=!showReason;setControl('osv4-change-reason',w.changeReason||'');const reported=document.getElementById('osv4-reported-km');if(reported){reported.hidden=w.reportedDistanceKm==null;reported.textContent='Origen → Destino informado: '+num(w.reportedDistanceKm).toLocaleString('es-AR')+' km';}const concepts=document.querySelector('.osv2-concepts-section');if(concepts)concepts.hidden=false;syncCorrections();syncIntakeActivation();}
 function syncIntakeActivation(){const w=W(),host=document.getElementById('osv4-activation-classification');if(!host)return;host.hidden=!w?.intakeActivated;if(!w?.intakeActivated)return;if(!host.firstElementChild)host.innerHTML='<div class="os-activation-billing-head"><span>CIERRE ADMINISTRATIVO</span><h3>Destino del servicio</h3><p>Completá el formulario y los cargos antes de crear y finalizar.</p></div><fieldset class="os-activation-choices"><legend>Elegí cómo cerrar esta salida</legend><label><input type="radio" name="intake-billing" value="billable" data-activation-billing><span><b>Facturable</b><small>Finaliza y pasa a Facturación.</small></span></label><label><input type="radio" name="intake-billing" value="non_billable" data-activation-billing><span><b>No facturable</b><small>Finaliza y queda en Historial, sin facturar.</small></span></label></fieldset><div class="os-activation-summary" data-activation-summary hidden><span></span><button type="button" data-activation-change>Cambiar</button></div><label class="osl-other" data-activation-reason-wrap><span>Motivo por el que no se factura *</span><textarea data-activation-reason rows="2"></textarea></label>';host.querySelector('[data-activation-reason-wrap]').hidden=w.activationBilling!=='non_billable';for(const radio of host.querySelectorAll('[data-activation-billing]'))radio.checked=radio.value===w.activationBilling;
@@ -126,3 +154,4 @@ function hydrate(){
 window.OperatorServiceWorkspaceV2={render,sync,hydrate,reset};
 window.OperatorServiceWorkspaceReactiveV1={render,sync,hydrate,reset,computeRoute,loadRouteGeometry,closeSuggestions};
 })();
+

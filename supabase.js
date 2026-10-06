@@ -1162,6 +1162,19 @@ async function _limpiarEvidenciaRemitoFallido({ nroRemito, clientOperationId, up
   return { removed, preserved: uploads.length - removed };
 }
 
+// Conceptos sí/no del remito (p. ej. Pinacars): se guardan aparte, después del remito.
+async function _guardarTogglesRemito(remitoId, payload) {
+  if (!remitoId || !Array.isArray(payload?.toggle_concept_ids)) return;
+  const { error } = await _db.rpc('set_driver_remito_toggles_v1', {
+    p_remito_id: Number(remitoId),
+    p_concept_ids: payload.toggle_concept_ids,
+  });
+  if (error) {
+    console.warn('[remito] interruptores', error.message);
+    if (typeof toast === 'function') toast('El remito se guardó, pero no se pudo registrar Pinacars: ' + error.message, 'warning');
+  }
+}
+
 async function guardarRemitoVinculado(remito, explicitServiceId = null) {
   const serviceId = _operatorServiceIdActivo(explicitServiceId || remito?.operator_service_id);
   if (!serviceId) return null;
@@ -1188,6 +1201,7 @@ async function guardarRemitoVinculado(remito, explicitServiceId = null) {
     p_client_operation_id: clientOperationId,
   });
   if (error) throw new Error(error.message || 'No se pudo vincular el remito al servicio');
+  await _guardarTogglesRemito(data?.remito_id, payload);
   return data;
 }
 
@@ -1221,10 +1235,12 @@ async function guardarRemitoAdHoc(remito) {
     normalized.code = assigned ? 'SERVICIO_ASIGNADO' : (error.code || 'REMITO_AD_HOC_ERROR');
     throw normalized;
   }
+  await _guardarTogglesRemito(data?.remito_id, payload);
   return data;
 }
 
 Object.assign(window, {
+  _guardarTogglesRemito,
   guardarRemitoVinculado,
   guardarRemitoAdHoc,
   obtenerServicioActivoRemito: _operatorServiceIdActivo,

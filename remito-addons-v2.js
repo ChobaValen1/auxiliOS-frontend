@@ -8,7 +8,7 @@
   const EMPTY_REFERENCE={version:2,toll_coverage_mode:null,tolls:[],excess_concepts:[],payment_methods:[],evidence:{}};
   const PAYMENTS=[['cash','Efectivo'],['transfer','Transferencia'],['card','Tarjeta'],['mercado_pago','Mercado Pago'],['other','Otro'],['not_collected','No cobrado']];
   const TOLL_COVERAGE_LABELS={mixed_manual:'Uno y Uno',provider_roundtrip:'A cargo de la prestadora',customer_roundtrip:'A cargo del cliente'};
-  const state={reference:{...EMPTY_REFERENCE},referenceLoaded:false,serviceId:null,initialized:false,lines:{toll:[],excess:[]},persistedEvidence:[],draft:null};
+  const state={reference:{...EMPTY_REFERENCE},referenceLoaded:false,serviceId:null,initialized:false,lines:{toll:[],excess:[]},persistedEvidence:[],draft:null,toggles:{concepts:[],selected:new Set()}};
   const MAX_BYTES=10*1024*1024;
   const MIME=new Set(['image/jpeg','image/png','image/webp','image/heic','image/heif','application/pdf']);
   const $=(s,r=document)=>r.querySelector(s);
@@ -35,7 +35,20 @@
     if(!force&&state.referenceLoaded&&state.serviceId===serviceId)return state.reference;
     const {data,error}=await _db.rpc('get_driver_remito_reference_v2',{p_service_id:serviceId});
     if(error)throw new Error(error.message||'No se pudieron cargar peajes y excedentes');
-    state.reference={...EMPTY_REFERENCE,...(data||{})};state.referenceLoaded=true;state.serviceId=serviceId;renderTollCoverage();return state.reference;
+    state.reference={...EMPTY_REFERENCE,...(data||{})};state.referenceLoaded=true;state.serviceId=serviceId;renderTollCoverage();await loadToggles(serviceId);return state.reference;
+  }
+  /* Conceptos sí/no sin precio (p. ej. Pinacars): no son excedentes ni se cobran al cliente. */
+  async function loadToggles(serviceId){
+    try{const {data,error}=await _db.rpc('get_service_toggle_concepts_v1',{p_company_id:null,p_service_id:serviceId});if(error)throw error;
+      state.toggles={concepts:Array.isArray(data?.concepts)?data.concepts:[],selected:new Set((data?.selected||[]).map(String))};}
+    catch(error){console.warn('[remito-addons-v2] interruptores',error);state.toggles={concepts:[],selected:new Set()};}
+    renderToggles();
+  }
+  function renderToggles(){
+    const card=$('#rem-toggles-card'),list=$('#rem-toggles-list');if(!card||!list)return;
+    card.hidden=!state.toggles.concepts.length;
+    list.innerHTML=state.toggles.concepts.map(c=>`<label class="ax-switch rem-toggle-row"><span><b>${esc(c.name)}</b>${c.description?`<small>${esc(c.description)}</small>`:''}</span><input type="checkbox" data-toggle-concept="${esc(c.concept_id)}" ${state.toggles.selected.has(String(c.concept_id))?'checked':''}></label>`).join('');
+    list.querySelectorAll('[data-toggle-concept]').forEach(input=>input.addEventListener('change',()=>{const id=input.dataset.toggleConcept;if(input.checked)state.toggles.selected.add(id);else state.toggles.selected.delete(id);}));
   }
 
   function renderTollCoverage(){
@@ -148,7 +161,7 @@
     evidence.forEach(item=>{if(item.size_bytes>MAX_BYTES)errors.push(`${item.original_name} supera 10 MiB.`);if(!MIME.has(item.mime_type))errors.push(`${item.original_name} tiene un formato no admitido.`)});
     const box=$('#rem-addons-errors');if(box){box.innerHTML=errors.map(esc).join('<br>');box.classList.toggle('visible',!!errors.length)}return{ok:!errors.length,errors};
   }
-  function collect(){const lines=collectLines();return{payload:{addons_version:2,tolls:lines.tolls,excesses:lines.excesses,evidence:clone(state.persistedEvidence)},files:collectEvidence()}}
+  function collect(){const lines=collectLines();return{payload:{addons_version:2,tolls:lines.tolls,excesses:lines.excesses,evidence:clone(state.persistedEvidence),toggle_concept_ids:[...state.toggles.selected]},files:collectEvidence()}}
   async function uploadEvidence(bundle,operationToken){
     if(!bundle?.files?.length)return bundle?.payload||{addons_version:2,tolls:[],excesses:[],evidence:[]};
     const {data:{user}}=await _db.auth.getUser();if(!user)throw new Error('La sesión del Chofer venció');const evidence=clone(bundle.payload?.evidence||[]);
@@ -175,14 +188,14 @@
     (report.evidence||[]).forEach(item=>addEvidence(item));(report.tolls||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));(report.excesses||[]).forEach(line=>(line.evidence||[]).forEach(item=>addEvidence(item,line.client_line_id)));
     state.persistedEvidence=evidence;cancelPicker();recalculate();window.AuxiliosRemitoMobileV3?.syncEvidence?.();
   }
-  function reset(){state.lines={toll:[],excess:[]};state.persistedEvidence=[];cancelPicker();recalculate()}
+  function reset(){state.lines={toll:[],excess:[]};state.persistedEvidence=[];state.toggles.selected=new Set();renderToggles();cancelPicker();recalculate()}
   function getPersistedEvidence(){return clone(state.persistedEvidence)}
   function removePersistedEvidence(id){state.persistedEvidence=state.persistedEvidence.filter(item=>String(item.client_evidence_id)!==String(id));window.AuxiliosRemitoMobileV3?.syncEvidence?.();return getPersistedEvidence()}
   function hasCustomerCollection(){return[...(providerTolls()?[]:state.lines.toll),...state.lines.excess].some(line=>line.customer_payment_method&&line.customer_payment_method!=='not_collected')}
 
   async function init(){
     const step=$('#rem-step-2');if(!step||step.dataset.addonsV2==='1')return;step.dataset.addonsV2='1';
-    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><header id="rem-addons-step-head" class="rmv-step-head rem-addons-step-head"><span>Paso 2</span><h2>Peajes y excedentes</h2></header><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Informá únicamente los peajes de origen a destino y su importe real.</div></div></div><div id="rem-toll-coverage" class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>A definir por Operaciones</strong></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Cada concepto puede tener precio definido o importe variable, según la prestadora.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
+    step.innerHTML=`<div class="rem-addons-v2"><input id="imp-peaje" type="hidden" value="0"><input id="imp-excedente" type="hidden" value="0"><span id="imp-total" hidden>$0</span><header id="rem-addons-step-head" class="rmv-step-head rem-addons-step-head"><span>Paso 2</span><h2>Peajes y excedentes</h2></header><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Peajes</div><div class="rem-addons-help">Informá únicamente los peajes de origen a destino y su importe real.</div></div></div><div id="rem-toll-coverage" class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>A definir por Operaciones</strong></div><button class="rem-addon-select" id="rem-add-toll" type="button">Seleccionar peajes</button><div id="rem-toll-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total peajes</span><strong id="rem-tolls-total">$0</strong></div></section><section class="rem-addons-card"><div class="rem-addons-head"><div><div class="rem-addons-title">Excedentes</div><div class="rem-addons-help">Cada concepto puede tener precio definido o importe variable, según la prestadora.</div></div></div><button class="rem-addon-select" id="rem-add-excess" type="button">Seleccionar excedentes</button><div id="rem-excess-summary" class="rem-addon-summary-lines"></div><div class="rem-addon-total"><span>Total excedentes</span><strong id="rem-excesses-total">$0</strong></div></section><section class="rem-addons-card" id="rem-toggles-card" hidden><div class="rem-addons-head"><div><div class="rem-addons-title">Otros</div><div class="rem-addons-help">Marcá si corresponde. No se cobra al cliente.</div></div></div><div id="rem-toggles-list" class="rem-toggle-list"></div></section><div id="rem-addons-errors" class="rem-addon-errors"></div></div>`;
     if(!$('#rem-addon-picker'))document.body.insertAdjacentHTML('beforeend','<div id="rem-addon-picker" class="rem-addon-picker" hidden><div class="rem-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="rem-addon-picker-title"><div class="rem-picker-head"><b id="rem-addon-picker-title">Seleccionar</b><button id="rem-addon-picker-close" type="button" aria-label="Cancelar">×</button></div><div id="rem-addon-picker-list" class="rem-picker-list"></div><div id="rem-picker-error" class="rem-addon-errors"></div><div class="rem-picker-actions"><button id="rem-picker-cancel" class="rem-picker-secondary" type="button">Cancelar</button><button id="rem-picker-back" class="rem-picker-secondary" type="button" hidden>← Volver</button><button id="rem-picker-next" class="rem-picker-confirm" type="button">Continuar</button><button id="rem-picker-save" class="rem-picker-confirm" type="button" hidden>Confirmar</button></div></div></div>');
     $('#rem-add-toll').addEventListener('click',()=>openPicker('toll'));$('#rem-add-excess').addEventListener('click',()=>openPicker('excess'));$('#rem-addon-picker-close').addEventListener('click',cancelPicker);$('#rem-picker-cancel').addEventListener('click',cancelPicker);$('#rem-picker-back').addEventListener('click',backPicker);$('#rem-picker-next').addEventListener('click',continuePicker);$('#rem-picker-save').addEventListener('click',savePicker);$('#rem-addon-picker-list').addEventListener('change',updateSelectionCount);$('#rem-addon-picker').addEventListener('click',event=>{if(event.target.id==='rem-addon-picker')cancelPicker()});
     if(typeof PERFIL_USUARIO!=='undefined'&&PERFIL_USUARIO?.roles?.name){try{await loadReference()}catch(error){console.warn('[remito-addons-v2]',error);const box=$('#rem-addons-errors');if(box){box.textContent=error.message;box.classList.add('visible')}}}state.initialized=true;recalculate();
