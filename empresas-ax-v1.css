@@ -153,3 +153,53 @@
 @media (max-width: 760px) {
   #screen-empresas.emp-v2 .empv2-hero-stats { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Pulido de la lista: sin título repetido, buscador y filtro con el tema, tabla a su altura ── */
+#screen-empresas.emp-v2 .empv2-page-head { display: none; }
+#screen-empresas.emp-v2 .empv2-list-controls { margin-top: 0; }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search { height: var(--ax-h); padding: 0 12px; gap: 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search span { color: var(--ax-text-3); font-size: 16px; }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search input { height: calc(var(--ax-h) - 2px); border: 0; background: transparent; box-shadow: none; color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search input:focus { box-shadow: none; }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search input::placeholder { color: var(--ax-text-3); }
+#screen-empresas.emp-v2 .empv2-list-controls #empv2-filter { height: var(--ax-h); padding: 0 34px 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); outline: 0; background-color: var(--ax-bg); background-image: linear-gradient(45deg, transparent 50%, var(--ax-text-2) 50%), linear-gradient(135deg, var(--ax-text-2) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px, 5px 5px; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); box-shadow: none; transform: none; color-scheme: dark; }
+#screen-empresas.emp-v2 .empv2-list-controls #empv2-filter:hover { border-color: var(--ax-text-3); transform: none; box-shadow: none; }
+#screen-empresas.emp-v2 .empv2-list-controls #empv2-filter:focus-visible { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-empresas.emp-v2 .empv2-list-controls .btn { height: var(--ax-h); min-height: 0; }
+#screen-empresas.emp-v2 .empv2-list-table-wrap { flex: 0 1 auto; min-height: 0; border-color: var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-empresas.emp-v2 .empv2-list-table th { font-size: var(--ax-fs-xs); }
+#screen-empresas.emp-v2 .empv2-list-contact { font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-page > .empv2-list-table-wrap { flex: 0 1 auto; min-height: 0; }
+/* Celular: cada prestadora es una tarjeta (sin desplazar la tabla de costado). */
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-page > .empv2-list-table-wrap { max-height: none; overflow: visible !important; border: 0; background: transparent; }
+  #screen-empresas.emp-v2 .empv2-list-table { display: block; min-width: 0; }
+  #screen-empresas.emp-v2 .empv2-list-table colgroup, #screen-empresas.emp-v2 .empv2-list-table thead { display: none; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody { display: flex; flex-direction: column; gap: var(--ax-sp-2); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody tr { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td { display: block; min-width: 0; padding: 0; border: 0; background: transparent; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(1) { grid-column: 1 / -1; padding-right: 44px; padding-bottom: 10px; border-bottom: 1px solid var(--ax-border); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3) { grid-column: 1 / -1; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(5) { position: absolute; top: 12px; right: 12px; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(2)::before, #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3)::before, #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(4)::before { display: block; margin-bottom: 2px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(2)::before { content: "CUIT"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3)::before { content: "Contacto"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(4)::before { content: "Estado"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td[colspan] { grid-column: 1 / -1; padding: 0; border: 0; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td[colspan]::before { content: none; }
+}
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-list-table { width: 100%; table-layout: auto; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody tr { width: 100%; height: auto; min-height: 0; box-sizing: border-box; grid-template-areas: "nombre nombre" "cuit estado" "contacto contacto"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td { height: auto; min-height: 0; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(1) { grid-area: nombre; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(2) { grid-area: cuit; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3) { grid-area: contacto; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(4) { grid-area: estado; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(5) { z-index: 1; width: auto; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td[colspan] { grid-area: auto; }
+}
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-page .empv2-list-table { min-width: 0; width: 100%; }
+}
