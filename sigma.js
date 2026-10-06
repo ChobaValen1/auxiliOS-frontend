@@ -9405,31 +9405,40 @@ async function abrirEditarVehiculo(truckId) {
 // ── GESTIÓN DE PERSONAL ───────────────────────
 
 // ── 2. APERTURA DE ALTA PERSONAL ───────────────────────
+// Prefijo del legajo según el rol; el número sigue al último usado con ese prefijo.
+const _LEGAJO_PREFIJO = { chofer: 'CHO', operador: 'OPE', supervision: 'SUP', administracion: 'ADM' };
+async function _siguienteLegajo(rol) {
+  const pref = _LEGAJO_PREFIJO[rol] || 'USR';
+  const { data, error } = await _db.from('users').select('legajo');
+  if (error) throw error;
+  const re = new RegExp('^' + pref + '[-.]?(\\d+)$', 'i');
+  const max = (data || []).reduce((m, r) => { const k = re.exec(String(r.legajo || '').trim()); return k ? Math.max(m, Number(k[1])) : m; }, 0);
+  return `${pref}-${String(max + 1).padStart(3, '0')}`;
+}
+
+function _elegirRolUsuario(rol) {
+  const inp = document.getElementById('nu-rol');
+  if (inp) inp.value = rol;
+  document.querySelectorAll('#modal-nuevo-usuario [data-rol]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rol === rol)));
+}
+
+function _prepararModalUsuario(titulo, boton, info) {
+  const modal = document.getElementById('modal-nuevo-usuario');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  const t = document.querySelector('#modal-nuevo-usuario .modal-head-title'); if (t) t.textContent = titulo;
+  const btn = document.getElementById('btn-guardar-usuario'); if (btn) btn.textContent = boton;
+  const i = document.getElementById('nu-legajo-info'); if (i) i.textContent = info;
+  const err = document.getElementById('nu-modal-error'); if (err) err.style.display = 'none';
+  // El email se puede cambiar también al editar (lo actualiza el backend administrativo).
+  const emailEl = document.getElementById('nu-email'); if (emailEl) emailEl.disabled = false;
+}
+
 function openNuevoUsuarioModal() {
   usuarioEditandoId = null;
-  const emailEl = document.getElementById('nu-email');
-  const legajoEl = document.getElementById('nu-legajo');
-  if (emailEl) emailEl.disabled = false;
-  if (legajoEl) legajoEl.disabled = false;
-  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
-  if (tituloModal) tituloModal.textContent = '👤 Alta de Personal';
-  const btnGuardar = document.getElementById('btn-guardar-usuario');
-  if (btnGuardar) btnGuardar.textContent = '💾 Crear Usuario';
-  ['nu-nombre', 'nu-legajo', 'nu-email', 'nu-telefono', 'nu-dni', 'nu-licencia', 'nu-vencimiento'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const nuErrEl = document.getElementById('nu-modal-error');
-  if (nuErrEl) nuErrEl.style.display = 'none';
-  const rol = document.getElementById('nu-rol');
-  if(rol) rol.value = 'chofer';
-
-  // EL TRUCO Z-INDEX: Lo ponemos por encima del Hub
-  const modal = document.getElementById('modal-nuevo-usuario');
-  if (modal) {
-    document.body.appendChild(modal);
-    modal.style.zIndex = '10000000'; 
-  }
+  ['nu-nombre', 'nu-email', 'nu-telefono', 'nu-dni'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _elegirRolUsuario('chofer');
+  const hint = document.getElementById('nu-invite-hint'); if (hint) hint.hidden = false;
+  _prepararModalUsuario('Alta de personal', 'Crear usuario', 'El legajo se asigna automáticamente al crear.');
   openModal('modal-nuevo-usuario');
 }
 
@@ -9437,35 +9446,15 @@ function openNuevoUsuarioModal() {
 function abrirEditarUsuario(userId) {
   const u = (window._usuariosCache || []).find(x => String(x.user_id) === String(userId));
   if (!u) { toast('No se encontró el usuario', 'error'); return; }
-
   usuarioEditandoId = userId;
-
-  // Pre-llenar campos
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  set('nu-nombre',      u.full_name);
-  set('nu-telefono',    u.phone);
-  set('nu-dni',         u.dni);
-  set('nu-licencia',    u.license_number);
-  set('nu-vencimiento', u.license_expiry ? u.license_expiry.substring(0, 10) : '');
-
-  const rolEl = document.getElementById('nu-rol');
-  if (rolEl) rolEl.value = u.role || 'chofer';
-
-  // Deshabilitar campos no editables
-  const emailEl = document.getElementById('nu-email');
-  const legajoEl = document.getElementById('nu-legajo');
-  if (emailEl) { emailEl.value = u.email || ''; emailEl.disabled = false; }
-  if (legajoEl) { legajoEl.value = u.legajo || ''; legajoEl.disabled = true; }
-
-  // Cambiar título y botón
-  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
-  if (tituloModal) tituloModal.textContent = '✏ Editar Personal';
-  const btnGuardar = document.getElementById('btn-guardar-usuario');
-  if (btnGuardar) btnGuardar.innerHTML = '💾 Actualizar Usuario';
-
-  // Mover al body para z-index correcto
-  const modal = document.getElementById('modal-nuevo-usuario');
-  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  set('nu-nombre', u.full_name);
+  set('nu-telefono', u.phone);
+  set('nu-dni', u.dni);
+  set('nu-email', u.email);
+  _elegirRolUsuario(u.roles?.name || u.role || 'chofer');
+  const hint = document.getElementById('nu-invite-hint'); if (hint) hint.hidden = true;
+  _prepararModalUsuario('Editar personal', 'Guardar cambios', u.legajo ? `Legajo ${u.legajo}` : 'Sin legajo');
   openModal('modal-nuevo-usuario');
 }
 
@@ -9492,14 +9481,12 @@ async function toggleEstadoUsuario(userId, isActive) {
 
 async function guardarNuevoUsuario() {
   const nombre  = document.getElementById('nu-nombre').value.trim();
-  const legajo  = document.getElementById('nu-legajo').value.trim().toUpperCase();
   const email   = document.getElementById('nu-email').value.trim();
   const tel     = document.getElementById('nu-telefono').value.trim();
   const dni     = document.getElementById('nu-dni').value.trim();
   const rol     = document.getElementById('nu-rol').value;
 
   if (!nombre)  { showModalError('nu-modal-error', 'Para guardar completá Nombre Completo'); return; }
-  if (!legajo)  { showModalError('nu-modal-error', 'Para guardar completá Legajo'); return; }
   if (!email)   { showModalError('nu-modal-error', 'Para guardar completá Email'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showModalError('nu-modal-error', 'El email no tiene formato válido — revisá que tenga @ y dominio'); return; }
   if (!dni)     { showModalError('nu-modal-error', 'Para guardar completá DNI'); return; }
@@ -9508,8 +9495,10 @@ async function guardarNuevoUsuario() {
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
   if (usuarioEditandoId) {
-    const licencia    = document.getElementById('nu-licencia')?.value.trim() || null;
-    const vencimiento = document.getElementById('nu-vencimiento')?.value || null;
+    // La licencia no se edita acá (la carga el chofer en Documentos): se conserva la que tenga.
+    const actual      = (window._usuariosCache || []).find(x => String(x.user_id) === String(usuarioEditandoId)) || {};
+    const licencia    = actual.license_number || null;
+    const vencimiento = actual.license_expiry ? String(actual.license_expiry).substring(0, 10) : null;
     let resp, data;
     try {
       resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/update-user`, {
@@ -9519,12 +9508,8 @@ async function guardarNuevoUsuario() {
       });
       data = await resp.json().catch(() => ({ error: 'El servicio de usuarios devolvió una respuesta inválida.' }));
     } catch (e) { data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios.' }; }
-    if (btn) { btn.textContent = '💾 Actualizar Usuario'; btn.style.pointerEvents = 'auto'; }
+    if (btn) { btn.textContent = 'Guardar cambios'; btn.style.pointerEvents = 'auto'; }
     if (!resp?.ok || data?.error) { showModalError('nu-modal-error', data?.error || 'No se pudo actualizar el usuario'); return; }
-    const emailEl2 = document.getElementById('nu-email');
-    const legajoEl2 = document.getElementById('nu-legajo');
-    if (emailEl2) emailEl2.disabled = false;
-    if (legajoEl2) legajoEl2.disabled = false;
     usuarioEditandoId = null;
     toast('Usuario actualizado', 'success');
     closeModal('modal-nuevo-usuario');
@@ -9532,7 +9517,13 @@ async function guardarNuevoUsuario() {
     return;
   }
 
-  let resp, data;
+  let resp, data, legajo;
+  try {
+    legajo = await _siguienteLegajo(rol);
+  } catch (e) {
+    if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
+    showModalError('nu-modal-error', 'No se pudo asignar el legajo. Probá de nuevo.'); return;
+  }
   try {
     resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/create-user`, {
       method: 'POST',
@@ -9544,12 +9535,12 @@ async function guardarNuevoUsuario() {
     data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios. Tus datos siguen en el formulario.' };
   }
 
-  if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
 
   if (!resp?.ok || data?.error) {
     showModalError('nu-modal-error', data?.error || 'Error desconocido al crear el usuario');
   } else {
-    toast('Usuario invitado — recibirá un correo para definir su contraseña', 'success');
+    toast(`Usuario creado con legajo ${legajo}. Recibirá un correo para definir su contraseña.`, 'success');
     closeModal('modal-nuevo-usuario');
     cargarTablaAdminUsuarios();
   }
@@ -9572,47 +9563,50 @@ async function cargarTablaAdminUsuarios() {
     return;
   }
 
-  const roleBadgeClass = (rol) => {
-    if (rol === 'administracion') return 'cfg-badge-admin';
-    if (rol === 'operador')       return 'cfg-badge-operador';
-    if (rol === 'supervision')    return 'cfg-badge-supervision';
-    if (rol === 'chofer')         return 'cfg-badge-chofer';
-    return 'cfg-badge-role';
-  };
-  const roleLabel = (rol) => {
-    if (rol === 'administracion') return 'Admin';
-    if (rol === 'operador')       return 'Operador';
-    if (rol === 'supervision')    return 'Supervision';
-    if (rol === 'chofer')         return 'Chofer';
-    return rol || 'Sin rol';
-  };
+  // Último acceso (auth): solo informativo; si falla, la lista se muestra igual.
+  let lastAccess = {};
+  try {
+    const la = await _db.rpc('get_users_last_access_v1');
+    if (!la.error) (la.data || []).forEach(r => { lastAccess[r.user_id] = r.last_sign_in_at; });
+  } catch (e) { /* sin último acceso */ }
 
-  contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => {
+  const roleLabel = (rol) => ({ administracion: 'Admin', operador: 'Operador', supervision: 'Supervisor', chofer: 'Chofer' }[rol] || rol || 'Sin rol');
+  const hace = (iso) => {
+    if (!iso) return 'Nunca';
+    const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 5) return 'ahora';
+    if (min < 60) return `hace ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `hace ${h} h`;
+    return `hace ${Math.round(h / 24)} d`;
+  };
+  const iniciales = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+  const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
+  const yo = (typeof USUARIO_ACTUAL !== 'undefined' && USUARIO_ACTUAL?.id) || PERFIL_USUARIO?.user_id || null;
+
+  const filas = usuarios.map(u => {
     const rol = u.roles?.name || u.role || '';
     const activo = u.is_active !== false;
-    const userIdSeguro = _escHtml(u.user_id || '');
-    const nombreSeguro = _escHtml(u.full_name || '');
-    const licenciaSegura = _escHtml(u.license_number || '');
-    const vencimientoSeguro = _escHtml(u.license_expiry ? u.license_expiry.substring(0,10) : '');
-    return `
-    <div class="cfg-item${!activo ? ' inactive' : ''}">
-      <div class="cfg-item-main">
-        <div class="cfg-item-name">${nombreSeguro}</div>
-        <div class="cfg-item-sub">${u.license_number ? `Lic. ${licenciaSegura}${u.license_expiry ? ` · Vence ${vencimientoSeguro}` : ''}` : 'Sin licencia registrada'}</div>
-      </div>
-      <div class="cfg-item-side">
-        <span class="cfg-badge ${roleBadgeClass(rol)}">${roleLabel(rol)}</span>
-        <span class="cfg-status ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Inactivo'}</span>
-      </div>
-      <div class="cfg-item-actions">
-        <button class="cfg-btn-a ghost" onclick="abrirEditarUsuario('${userIdSeguro}')">Editar</button>
-        ${activo ? `<button class="cfg-btn-a ghost" data-user-name="${nombreSeguro}" onclick="abrirResetPassword('${userIdSeguro}',this.dataset.userName)">Recuperar acceso</button>` : ''}
-        <button class="cfg-btn-a ${activo ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${userIdSeguro}',${activo})">
-          ${activo ? 'Dar de baja' : 'Reactivar'}
-        </button>
-      </div>
-    </div>`;
-  }).join('')}</div>`;
+    const id = _escHtml(u.user_id || '');
+    const nombre = _escHtml(u.full_name || '');
+    const esYo = yo && String(u.user_id) === String(yo);
+    const acciones = esYo
+      ? '<span class="usr-noedit">No editable</span>'
+      : `<button class="usr-ic" title="Editar" aria-label="Editar ${nombre}" onclick="abrirEditarUsuario('${id}')">${ic('pencil')}</button>` +
+        (activo ? `<button class="usr-ic" title="Recuperar acceso" aria-label="Recuperar acceso de ${nombre}" data-user-name="${nombre}" onclick="abrirResetPassword('${id}',this.dataset.userName)">${ic('key')}</button>` : '') +
+        `<button class="usr-ic${activo ? ' danger' : ''}" title="${activo ? 'Suspender' : 'Reactivar'}" aria-label="${activo ? 'Suspender' : 'Reactivar'} a ${nombre}" onclick="toggleEstadoUsuario('${id}',${activo})">${ic(activo ? 'ban' : 'rotate-ccw')}</button>`;
+    return `<tr class="${esYo ? 'is-me' : ''}${activo ? '' : ' is-off'}">
+      <td class="usr-who" data-label="Usuario"><span class="usr-avatar">${_escHtml(iniciales(u.full_name))}</span><span class="usr-id"><b>${nombre}${esYo ? ' <em class="usr-tu">Tú</em>' : ''}</b><small>${_escHtml(u.email || '—')}</small></span></td>
+      <td data-label="Rol"><span class="usr-role usr-role-${_escHtml(rol)}">${_escHtml(roleLabel(rol))}</span></td>
+      <td class="usr-mono" data-label="Legajo">${_escHtml(u.legajo || '—')}</td>
+      <td data-label="Último acceso">${hace(lastAccess[u.user_id])}</td>
+      <td data-label="Estado"><span class="usr-state ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Suspendido'}</span></td>
+      <td class="usr-actions">${acciones}</td>
+    </tr>`;
+  }).join('');
+  contenedor.innerHTML = `<div class="usr-table-wrap"><table class="usr-table">
+    <thead><tr><th>Usuario</th><th>Rol</th><th>Legajo</th><th>Último acceso</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${filas}</tbody></table></div>`;
 }
 
 function abrirResetPassword(userId, nombre) {

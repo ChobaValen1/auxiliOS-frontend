@@ -210,6 +210,56 @@
 #modal-settings #tab-emergencias .cfg-emerg-section-header .btn-primary { border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text); font-weight: var(--ax-fw-medium); }
 #modal-settings #tab-emergencias .cfg-emerg-section-header .btn-primary:hover { background: var(--ax-surface-3); }
 
+/* Personal: tabla de usuarios */
+#modal-settings .usr-table-wrap { overflow-x: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#modal-settings .usr-table { width: 100%; border-collapse: collapse; font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+#modal-settings .usr-table th { height: 40px; padding: 0 16px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+#modal-settings .usr-table td { padding: 12px 16px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text); vertical-align: middle; white-space: nowrap; }
+#modal-settings .usr-table tr:last-child td { border-bottom: 0; }
+#modal-settings .usr-table tbody tr:hover td { background: var(--ax-surface-3); }
+#modal-settings .usr-table tr.is-me td { background: var(--ax-accent-soft); }
+#modal-settings .usr-who { display: flex; align-items: center; gap: 12px; white-space: normal; }
+#modal-settings .usr-avatar { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#modal-settings .usr-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#modal-settings .usr-id b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-settings .usr-id small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); overflow-wrap: anywhere; }
+#modal-settings .usr-tu { margin-left: 6px; padding: 1px 8px; border-radius: var(--ax-radius-pill); background: var(--ax-accent-soft); color: var(--ax-accent); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); font-style: normal; }
+#modal-settings .usr-role { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); }
+#modal-settings .usr-role-administracion { background: var(--ax-info-soft); color: var(--ax-info); }
+#modal-settings .usr-role-supervision, #modal-settings .usr-role-operador { color: var(--ax-text); }
+#modal-settings .usr-mono { font-family: var(--ax-font-mono); color: var(--ax-text-2); }
+#modal-settings .usr-state { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); }
+#modal-settings .usr-state.on { background: var(--ax-ok-soft, var(--ax-surface-3)); color: var(--ax-ok); }
+#modal-settings .usr-state.off { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-settings .usr-actions { width: 1%; text-align: right; }
+#modal-settings .usr-actions .usr-ic { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-left: 2px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#modal-settings .usr-actions .usr-ic .ax-icon { width: 18px; height: 18px; }
+#modal-settings .usr-actions .usr-ic:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-settings .usr-actions .usr-ic.danger:hover { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-settings .usr-noedit { color: var(--ax-text-3); font-style: italic; }
+
+/* Alta / edición de personal */
+#modal-nuevo-usuario { background: rgba(0, 0, 0, .6); }
+#modal-nuevo-usuario .modal-box.usr-modal { width: min(560px, 96vw); max-width: none; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); }
+#modal-nuevo-usuario .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+#modal-nuevo-usuario .usr-modal-title { display: flex; flex-direction: column; gap: 2px; }
+#modal-nuevo-usuario .modal-head-title { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#modal-nuevo-usuario .usr-modal-title small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+#modal-nuevo-usuario .modal-close { width: var(--ax-h); height: var(--ax-h); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#modal-nuevo-usuario .modal-body { padding: 18px 20px; }
+#modal-nuevo-usuario .usr-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+#modal-nuevo-usuario .usr-span-2 { grid-column: 1 / -1; }
+#modal-nuevo-usuario .form-group { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+#modal-nuevo-usuario .form-label { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#modal-nuevo-usuario .form-input { height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#modal-nuevo-usuario .form-input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#modal-nuevo-usuario .usr-roles { display: flex; flex-wrap: wrap; align-self: flex-start; }
+#modal-nuevo-usuario .usr-hint { margin: 14px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-nuevo-usuario .usr-error { margin: 0 20px 12px; padding: 10px 12px; border: 1px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-danger); font-size: var(--ax-fs-sm); }
+#modal-nuevo-usuario .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+#modal-nuevo-usuario .modal-footer .btn { height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#modal-nuevo-usuario .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+
 @media (max-width: 760px) {
   #modal-settings .modal-box.cfg-modal-box { width: 100vw; height: 100dvh; border-radius: 0; }
   #modal-settings .cfg-content-header { position: relative; flex-wrap: wrap; padding: 12px 56px 12px 16px; }
@@ -220,4 +270,16 @@
   #modal-settings .cfg-item { grid-template-columns: minmax(0, 1fr) auto; gap: var(--ax-sp-2) var(--ax-sp-3); padding: 12px; }
   #modal-settings .cfg-item-side { grid-column: 2; grid-row: 1; flex-direction: column; align-items: flex-end; gap: 4px; }
   #modal-settings .cfg-item-actions { grid-column: 1 / -1; flex-wrap: wrap; justify-content: flex-start; }
+  #modal-settings .usr-table-wrap { overflow: visible; border: 0; background: none; }
+  #modal-settings .usr-table thead { display: none; }
+  #modal-settings .usr-table, #modal-settings .usr-table tbody { display: block; }
+  #modal-settings .usr-table tr { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin-bottom: 10px; padding: 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+  #modal-settings .usr-table td { display: flex; justify-content: space-between; gap: 10px; grid-column: 1 / -1; padding: 0; border: 0; background: none !important; white-space: normal; }
+  #modal-settings .usr-table td[data-label]::before { content: attr(data-label); color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+  #modal-settings .usr-table td.usr-who { grid-column: 1; justify-content: flex-start; }
+  #modal-settings .usr-table td.usr-who::before { display: none; }
+  #modal-settings .usr-table td.usr-actions { grid-column: 2; grid-row: 1; width: auto; }
+  #modal-settings .usr-table tr.is-me { border-color: var(--ax-accent); }
+  #modal-nuevo-usuario .usr-form { grid-template-columns: 1fr; }
+
 }
