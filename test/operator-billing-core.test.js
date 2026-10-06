@@ -141,7 +141,7 @@ test('parámetros separan obtención de peajes de tratamiento de facturación',(
   assert.match(companyBilling,/Carga de peajes del chofer/);
   assert.match(companyBilling,/Facturación de peajes/);
   assert.match(companyBilling,/id="bp4-toll-billing"/);
-  assert.match(companyBilling,/toll_billing_mode:document\.getElementById\('bp4-toll-billing'\)/);
+  assert.match(companyBilling,/toll_billing_mode:f\.tollBilling/);assert.match(companyBilling,/tollBilling:g\('bp4-toll-billing'\)/);
   assert.match(companyBilling,/Junto con el servicio/);
   assert.match(companyBilling,/Por separado/);
 });
