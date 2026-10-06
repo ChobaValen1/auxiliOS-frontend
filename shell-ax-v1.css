@@ -65,3 +65,11 @@ body .alx-bubble { top: -6px; right: -6px; border: 2px solid var(--ax-surface); 
   body .role-badge-text { display: none; }
   body .role-badge { padding: 6px; }
 }
+
+/* Aviso con número en un ítem del menú (p. ej. choferes sin esquema en Sueldos) */
+body .nav-item .ax-nav-alert { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--ax-radius-pill); background: var(--ax-warn); color: var(--ax-accent-fg); font: 700 11px/18px var(--ax-font); text-align: center; }
+body .nav-item .ax-nav-alert[hidden] { display: none; }
+body.nav-collapsed .nav-item .ax-nav-alert { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; line-height: 16px; }
+@media (max-width: 760px) {
+  body .nav-item .ax-nav-alert { position: absolute; top: 6px; left: calc(50% + 6px); margin: 0; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; line-height: 16px; }
+}

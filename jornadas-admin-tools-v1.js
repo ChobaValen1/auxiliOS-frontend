@@ -270,8 +270,14 @@
     try{if(window.AuxiliosDetalleCamion)await window.AuxiliosDetalleCamion.abrir(truckId,{seccion:tab,carga:recordId});else if(typeof window._abrirCamionDetalleAdmin==='function')await window._abrirCamionDetalleAdmin(truckId);}catch(error){notify(errorText(error),'error');}
   }
   function openRenditionCanonical(rend){
-    if(typeof closeModal==='function')closeModal('modal-jornada-detalle');if(typeof goTo==='function')goTo('sueldos');setTimeout(()=>{const candidates=[...document.querySelectorAll('#screen-sueldos button,#screen-sueldos .ftab,#screen-sueldos [role="tab"]')];const target=candidates.find(el=>/rendiciones/i.test(el.textContent||''));if(target)target.click();else if(typeof cargarRendicionesTab==='function')cargarRendicionesTab();setTimeout(()=>{const needle=fmtDate(rend?.fecha||currentLog()?.log_date);const rows=[...document.querySelectorAll('#screen-sueldos tr,#screen-sueldos .rend-card')];const row=rows.find(el=>(el.textContent||'').includes(needle));if(row){row.classList.add('jat-highlight');row.scrollIntoView({behavior:'smooth',block:'center'});}},180);},80);
+    /* La rendición mensual se abre en el detalle del chofer de Sueldos (ya no hay pestaña Rendiciones). */
+    const log=currentLog()||{},date=String(rend?.fecha||log.log_date||'').slice(0,10),driver=log.driver_id||rend?.driver_id;
+    if(typeof closeModal==='function')closeModal('modal-jornada-detalle');if(typeof goTo==='function')goTo('sueldos');
+    if(!driver||!/^\d{4}-\d{2}/.test(date)||!window.PayrollView?.openCash)return;
+    const period=Number(date.slice(0,4))*100+Number(date.slice(5,7));
+    setTimeout(()=>{window.PayrollView.openCash(driver,period,log.chofer?.full_name||'').catch(error=>notify(errorText(error),'error'));},120);
   }
+
 
   function addHint(el,label='Abrir →'){if(!el||el.querySelector('.jat-open-hint'))return;const hint=document.createElement('span');hint.className='jat-open-hint';hint.textContent=label;(el.querySelector('.lft > div:first-child, h4, .v')||el).appendChild(hint);}
   function makeClickable(el,handler,label){if(!el||el.dataset.jatClickable==='1')return;el.dataset.jatClickable='1';el.classList.add('jat-clickable');el.tabIndex=0;el.setAttribute('role','button');const run=e=>{if(e.type==='keydown'&&!['Enter',' '].includes(e.key))return;if(e.target.closest('button,a,input,select,textarea'))return;e.preventDefault();handler();};el.addEventListener('click',run);el.addEventListener('keydown',run);addHint(el,label);}

@@ -8549,14 +8549,6 @@ async function cargarTablaAdminPlanes() {
 // ── Rendiciones (admin) ─────────────────────────
 let _rendicionesCache = [];
 
-async function cargarRendicionesTab() {
-  const body=document.getElementById('cfg-rend-body'),month=document.getElementById('cfg-rend-month'),driver=document.getElementById('cfg-rend-driver'),button=document.getElementById('cfg-rend-open');
-  if(!month)return;
-  if(!month.value)month.value=_mesActualInputVal();body.textContent='Cargando choferes…';button.disabled=true;
-  try{const r=await _db.from('users').select('user_id,full_name').eq('role_id',3).order('full_name');if(r.error)throw r.error;driver.innerHTML=(r.data||[]).map(u=>'<option value="'+_escHtml(u.user_id)+'">'+_escHtml(u.full_name)+'</option>').join('');body.textContent='';button.disabled=!driver.value;
-  button.onclick=async()=>{try{if(!month.value||!driver.value)throw new Error('Seleccioná mes y chofer');button.disabled=true;body.textContent='Cargando rendición…';await PayrollView.openCash(driver.value,_mesInputToYyyymm(month.value),driver.selectedOptions[0].textContent);body.textContent='';}catch(e){body.textContent=e.message;}finally{button.disabled=false;}};
-  }catch(e){body.textContent=e.message;}
-}
 
 function _renderRendicionesTabla() {
   const bodyEl  = document.getElementById('cfg-rend-body');
@@ -12566,6 +12558,7 @@ function _renderEsquemaTabla() {
     return;
   }
   const missing = _esquemaCache.filter(u => !u.settings);
+  _pintarAvisoEsquemas(missing.length);
   const money = n => '$' + _AR(Number(n) || 0);
   const off = '<span class="esq-off">No paga</span>';
   const rows = _esquemaCache.map(u => {
@@ -12602,6 +12595,32 @@ function _renderEsquemaTabla() {
     </table></div>`;
   _actualizarSeleccionEsquema();
 }
+
+// Aviso de choferes sin esquema de pago: en la pestaña Esquemas y en "Sueldos" del menú.
+function _pintarAvisoEsquemas(missing) {
+  const n = Number(missing) || 0;
+  const label = n ? `${n} chofer${n===1?'':'es'} sin esquema de pago` : '';
+  const tab = document.getElementById('esq-tab-alert');
+  if (tab) { tab.hidden = !n; tab.textContent = n ? String(n) : ''; tab.title = label; }
+  const nav = document.getElementById('nav-sueldos');
+  if (nav) {
+    let badge = nav.querySelector('.ax-nav-alert');
+    if (!badge && n) { badge = document.createElement('span'); badge.className = 'ax-nav-alert'; nav.appendChild(badge); }
+    if (badge) { badge.hidden = !n; badge.textContent = n ? String(n) : ''; badge.title = label; badge.setAttribute('aria-label', label); }
+  }
+}
+async function actualizarAvisoEsquemas() {
+  try {
+    const [users, settings] = await Promise.all([
+      _db.from('users').select('user_id').eq('role_id', 3).eq('is_active', true),
+      _db.from('payroll_settings').select('user_id'),
+    ]);
+    if (users.error || settings.error) return;
+    const configured = new Set((settings.data || []).map(r => r.user_id));
+    _pintarAvisoEsquemas((users.data || []).filter(u => !configured.has(u.user_id)).length);
+  } catch (err) { console.warn('actualizarAvisoEsquemas:', err); }
+}
+window.actualizarAvisoEsquemas = actualizarAvisoEsquemas;
 
 function _toggleEsquemaDriver(driverId, checked) {
   if (checked) _esquemaSelected.add(driverId); else _esquemaSelected.delete(driverId);
@@ -12879,9 +12898,6 @@ _sueldosSwitchSub = function(sub, btnEl) {
     _cargarLiquidacionesMes();
   } else if (sub === 'historial') {
     _initHistorialFiltros();
-  } else if (sub === 'rendiciones') {
-    // Hub admin de rendiciones (aprobación / observación) dentro de Sueldos.
-    cargarRendicionesTab();
   }
 };
 

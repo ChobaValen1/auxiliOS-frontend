@@ -373,6 +373,7 @@ async function _finalizarInicializacion() {
   const navSueldos = document.getElementById('nav-sueldos');
   if (navSueldos) {
     navSueldos.style.display = (rolActual === 'administracion' || rolActual === 'supervision') ? '' : 'none';
+    if (navSueldos.style.display === '') setTimeout(() => window.actualizarAvisoEsquemas?.(), 0);
   }
 
   const navJornadasAdmin = document.getElementById('nav-jornadas-admin');

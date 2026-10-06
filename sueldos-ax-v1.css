@@ -224,3 +224,7 @@
   #screen-sueldos .esq-table-wrap tr.is-selected { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
   #screen-sueldos .esq-table-wrap .esq-num small { display: inline; margin-left: 4px; }
 }
+
+/* Aviso en la pestaña Esquemas de pago */
+#screen-sueldos .ftab .ax-tab-alert { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: var(--ax-radius-pill); background: var(--ax-warn); color: var(--ax-accent-fg); font: 700 11px/1 var(--ax-font); vertical-align: 1px; }
+#screen-sueldos .ftab .ax-tab-alert[hidden] { display: none; }
