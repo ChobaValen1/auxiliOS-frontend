@@ -3580,7 +3580,9 @@ async function generarLiquidacionesMes(yyyymm) {
     // Query paralela: jornadas cerradas + remitos finalizados + cumplimientos + incidents.
     // Nota: remitos usa status IN ('pendiente','firmado','anulado'). Interpretamos
     // "finalizado" del mockup como los remitos ya firmados (no pendientes, no anulados).
-    const [jornadasRes, remitosRes, cumplRes, incidRes, rendRes] = await Promise.all([
+    // Los bonos por objetivos (payroll_objetivo_cumplimientos) se reemplazaron por las comisiones
+    // por concepto: ya no se leen ni suman. La columna bonos_objetivos queda en 0.
+    const [jornadasRes, remitosRes, incidRes, rendRes] = await Promise.all([
       _db.from('daily_logs')
         .select('log_id, log_date, km_inicio, km_final, status')
         .eq('driver_id', driverId)
@@ -3593,10 +3595,6 @@ async function generarLiquidacionesMes(yyyymm) {
         .eq('status', 'firmado')
         .gte('created_at_device', desdeTs)
         .lt('created_at_device', hastaTsExclusive),
-      _db.from('payroll_objetivo_cumplimientos')
-        .select('bonus_calculado')
-        .eq('driver_id', driverId)
-        .eq('periodo_yyyymm', yyyymm),
       _db.from('incidents')
         .select('incident_id, created_at_device')
         .eq('driver_id', driverId)
@@ -3610,16 +3608,15 @@ async function generarLiquidacionesMes(yyyymm) {
         .lt('fecha', hastaExclusive),
     ]);
 
-    if (jornadasRes.error || remitosRes.error || cumplRes.error || incidRes.error || rendRes.error) {
+    if (jornadasRes.error || remitosRes.error || incidRes.error || rendRes.error) {
       console.error('[Payroll generarLiquidaciones] error chofer', driverId,
-        jornadasRes.error || remitosRes.error || cumplRes.error || incidRes.error || rendRes.error);
+        jornadasRes.error || remitosRes.error || incidRes.error || rendRes.error);
       detalle.push({ driverId, error: true });
       continue;
     }
 
     const jornadas = jornadasRes.data || [];
     const remitos  = remitosRes.data  || [];
-    const cumpl    = cumplRes.data    || [];
     const incid    = incidRes.data    || [];
     const rendiciones = rendRes.data  || [];
 
@@ -3648,7 +3645,7 @@ async function generarLiquidacionesMes(yyyymm) {
 
     const adic_km   = matrixResult.snapshot.pay_km ? km_total * valor_km : 0;
     const adic_serv = matrixResult.snapshot.pay_services ? servicios * valor_servicio : 0;
-    const bonos_objetivos = cumpl.reduce((sum, c) => sum + (Number(c.bonus_calculado) || 0), 0);
+    const bonos_objetivos = 0;
 
     // Monthly administration entry is the only declaration used for payroll.
     const monthlyCash=await _db.rpc('get_payroll_monthly_cash',{p_driver:driverId,p_period:yyyymm});

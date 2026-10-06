@@ -12407,29 +12407,18 @@ async function cargarSueldosTab() {
 
 // ── Objetivos ──
 async function _cargarObjetivosTab() {
-  const el = document.getElementById('cfg-obj-body');
+  // Pestaña "Comisiones": los bonos por objetivos se reemplazaron por las comisiones por concepto.
   const commissionEl = document.getElementById('cfg-commission-body');
-  if (!el) return;
-  el.innerHTML = '<div class="cfg-rend-empty">Cargando objetivos...</div>';
-  if (commissionEl) commissionEl.innerHTML = '<p class="pm-help">Cargando comisiones...</p>';
+  if (!commissionEl) return;
+  commissionEl.innerHTML = '<p class="pm-help">Cargando comisiones...</p>';
   try {
-    // cargarObjetivos filtra activos; para el admin, listamos todos:
-    const [objectiveResult, commissionData] = await Promise.all([
-      _db.from('payroll_objetivos')
-        .select('objetivo_id, nombre, tipo, valor, descripcion, activo, created_at')
-        .order('nombre', { ascending: true }),
-      cargarPayrollCommissionData()
-    ]);
-    const { data, error } = objectiveResult;
-    if (error) throw error;
-    _objetivosCache = data || [];
+    const commissionData = await cargarPayrollCommissionData();
     _commissionCatalog = commissionData.rules || [];
     PayrollMatrix.setCommissionCatalog(_commissionCatalog);
     _renderCommissionCatalog();
-    _renderObjetivosTabla();
   } catch (err) {
     console.error('_cargarObjetivosTab:', err);
-    el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar objetivos</div>';
+    commissionEl.innerHTML = '<p class="pm-help" style="color:var(--red)">Error al cargar comisiones</p>';
   }
 }
 
@@ -13029,7 +13018,7 @@ function _renderReciboResumen() {
     ${row('Bonos mensuales', '$' + _AR(liq.bonus_monthly || 0))}
     ${row('Comisiones por concepto', '$' + _AR(liq.commission_total || 0))}
     ${PayrollMatrix.receiptHtml(liq)}
-    ${row('Bonos por objetivos',                '$' + _AR(liq.bonos_objetivos))}
+    ${Number(liq.bonos_objetivos) ? row('Bonos por objetivos (histórico)', '$' + _AR(liq.bonos_objetivos)) : ''}
     ${row('Subtotal bruto',                     '$' + _AR(bruto), { color:'var(--muted)' })}
     ${row(ajusteLabel,                          ajusteVal, { color: ajusteRend > 0 ? 'var(--red)' : 'var(--muted)' })}
     ${row('TOTAL',                              '$' + _AR(liq.total), { strong:true, color:'var(--amber)' })}
@@ -13421,7 +13410,7 @@ function _exportarReciboPDF(liquidacion = null) {
             <tr><td>Adicional por km<div class="muted">${kmFormula}</div></td><td class="right">$${_AR(liq.adic_km)}</td></tr>
             <tr><td>Adicional por servicios<div class="muted">${servFormula}</div></td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
             <tr><td>Presentismo ${liq.presentismo_paga ? '✓' : '✗'}<div class="muted">${presDetalle}</div></td><td class="right">$${_AR(presMostrado)}</td></tr>
-            <tr><td>Bonos mensuales</td><td class="right">$${_AR(liq.bonus_monthly || 0)}</td></tr><tr><td>Comisiones por concepto</td><td class="right">$${_AR(liq.commission_total || 0)}</td></tr><tr><td colspan="2">${PayrollMatrix.receiptHtml(liq)}</td></tr><tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
+            <tr><td>Bonos mensuales</td><td class="right">$${_AR(liq.bonus_monthly || 0)}</td></tr><tr><td>Comisiones por concepto</td><td class="right">$${_AR(liq.commission_total || 0)}</td></tr><tr><td colspan="2">${PayrollMatrix.receiptHtml(liq)}</td></tr>${Number(liq.bonos_objetivos)?`<tr><td>Bonos por objetivos (histórico)</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>`:''}
             <tr class="subtotal-row"><td>Subtotal bruto</td><td class="right">$${_AR(bruto)}</td></tr>
             <tr class="desc-row"><td>Descuentos por rendición<div class="muted">${ajusteDetalle}</div></td><td class="right">${ajusteRend > 0 ? '- $' + _AR(ajusteRend) : '$0'}</td></tr>
             <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>
