@@ -163,8 +163,33 @@
         operator_notes: '',
         medios: {}
       },
-      addr: { origin: { seq: 0, list: [], token: '' }, destination: { seq: 0, list: [], token: '' } }
+      addr: { origin: { seq: 0, list: [], token: '' }, destination: { seq: 0, list: [], token: '' } },
+      toggles: { concepts: [], selected: {} }
     };
+  }
+
+  /* Conceptos sí/no sin precio (p. ej. Pinacars). Se guardan aparte, después del servicio. */
+  async function cargarInterruptores(serviceId) {
+    try {
+      var r = await db().rpc('get_service_toggle_concepts_v1', { p_company_id: null, p_service_id: serviceId || null });
+      if (r.error) throw r.error;
+      var sel = {};
+      ((r.data && r.data.selected) || []).forEach(function (id) { sel[String(id)] = true; });
+      st.toggles = { concepts: (r.data && r.data.concepts) || [], selected: sel };
+    } catch (e) { console.warn('[particular] interruptores', e); }
+  }
+  async function guardarInterruptores(serviceId) {
+    if (!serviceId || !st.toggles || !st.toggles.concepts.length) return;
+    var ids = Object.keys(st.toggles.selected).filter(function (k) { return st.toggles.selected[k]; });
+    var r = await db().rpc('set_operator_service_toggles_v1', { p_service_id: serviceId, p_concept_ids: ids });
+    if (r.error) notify('El servicio se guardó, pero no se pudo registrar Pinacars: ' + (r.error.message || ''), 'warning');
+  }
+  function interruptoresHtml() {
+    var t = st.toggles;
+    if (!t || !t.concepts.length) return '';
+    return '<section class="psv-toggles">' + t.concepts.map(function (c) {
+      return '<label class="psv-toggle-row ax-switch"><span>' + esc(c.description || c.name) + '</span><input type="checkbox" data-psv-toggle="' + esc(c.concept_id) + '"' + (t.selected[String(c.concept_id)] ? ' checked' : '') + '></label>';
+    }).join('') + '</section>';
   }
 
   async function abrirParticular(intakeId) {
@@ -188,6 +213,7 @@
         }
         desdeIngreso(ir.data);
       }
+      await cargarInterruptores(null);
     } catch (e) {
       st.error = e.message || 'No se pudo preparar el formulario.';
     }
@@ -232,6 +258,7 @@
         var pr = await db().rpc('get_service_payments_v1', { p_service_id: id });
         if (!pr.error && pr.data) st.edit.pagos = (pr.data.payments || []).filter(function (p) { return !p.voided_at; });
       } catch (e2) { /* sin cobros: no se muestra "Cómo se pagó" */ }
+      await cargarInterruptores(id);
     } catch (err) {
       st.error = err.message || 'No se pudo abrir el servicio.';
     }
@@ -484,6 +511,7 @@
           '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
           (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
         '</div></section>' +
+        interruptoresHtml() +
 
         '</div></div>' +
       '</div>' +
@@ -580,6 +608,7 @@
   function onInput(ev) {
     var t = ev.target;
     if (!st || !t) return;
+    if (t.hasAttribute && t.hasAttribute('data-psv-toggle')) { st.toggles.selected[t.getAttribute('data-psv-toggle')] = !!t.checked; return; }
     var k = t.getAttribute('data-psv-k') || t.getAttribute('data-psv-addr');
     if (k && st.fieldErrors && st.fieldErrors[k]) {
       delete st.fieldErrors[k];
@@ -802,6 +831,7 @@
           p_reason: null
         });
         if (ru.error) throw ru.error;
+        await guardarInterruptores(eid);
         var cambios = (st.edit.pagos || []).filter(function (p) { return st.d.medios[p.payment_id] && st.d.medios[p.payment_id] !== p.method; });
         for (var ci = 0; ci < cambios.length; ci++) {
           var rm = await db().rpc('update_service_payment_method_v1', { p_payment_id: cambios[ci].payment_id, p_method: st.d.medios[cambios[ci].payment_id] });
@@ -827,6 +857,7 @@
           });
       if (r.error) throw r.error;
       var res = r.data || {};
+      await guardarInterruptores(res.service_id);
       cerrarForm(true);
       if (intake) {
         var nro = res.service_order_number || res.service_number;

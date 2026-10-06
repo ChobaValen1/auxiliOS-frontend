@@ -34,3 +34,11 @@ test('service type catalog edits the toggle mode like any other concept attribut
   assert.match(cat, /id="st2-toggle"/);
   assert.match(cat, /input_mode:checked\('st2-toggle'\)\?'toggle':'quantity'/);
 });
+
+test('private service form shows the toggle and saves it after the service', () => {
+  const psv = read('private-service-v1.js');
+  assert.match(psv, /get_service_toggle_concepts_v1/);
+  assert.match(psv, /set_operator_service_toggles_v1/);
+  assert.match(psv, /interruptoresHtml\(\)/);
+  assert.equal((psv.match(/await guardarInterruptores\(/g) || []).length, 2);
+});

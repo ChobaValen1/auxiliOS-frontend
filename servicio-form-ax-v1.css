@@ -509,3 +509,8 @@
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox]:checked { background: var(--ax-accent); }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox]:checked::after { transform: translateX(16px); background: var(--ax-accent-fg); }
 #modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox]:disabled { opacity: .5; cursor: default; }
+
+/* Particular: concepto sí/no (Pinacars), un renglón con interruptor */
+#psv-form .psv-toggles { display: grid; gap: var(--ax-sp-2); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#psv-form .psv-toggle-row.ax-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: var(--ax-h); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#psv-form .psv-toggle-row.ax-switch input { width: 36px; height: 20px; flex: 0 0 auto; }
