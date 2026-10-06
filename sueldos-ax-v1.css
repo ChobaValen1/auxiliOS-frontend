@@ -128,3 +128,99 @@
   #screen-sueldos > .filter-tabs { display: flex; overflow-x: auto; flex-wrap: nowrap; }
   #screen-sueldos > .filter-tabs .ftab { flex: 0 0 auto; }
 }
+
+/* ── Esquemas y Comisiones: tablas ── */
+#screen-sueldos .esq-table-wrap { overflow-x: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+#screen-sueldos .esq-table-wrap .cfg-rend-table { width: 100%; margin: 0; border-collapse: collapse; }
+#screen-sueldos .esq-table-wrap .cfg-rend-table th { padding: 0 12px; text-align: left; text-transform: uppercase; }
+#screen-sueldos .esq-table-wrap .cfg-rend-table td { padding: 10px 12px; color: var(--ax-text); vertical-align: middle; }
+#screen-sueldos .esq-table-wrap tr:last-child td { border-bottom: 0; }
+#screen-sueldos .esq-table-wrap .esq-num { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-sueldos .esq-table-wrap th.esq-num { font-family: var(--ax-font); }
+#screen-sueldos .esq-table-wrap .esq-num small, #screen-sueldos .esq-name small { display: block; color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); }
+#screen-sueldos .esq-name b { font-weight: var(--ax-fw-semibold); }
+#screen-sueldos .esq-off { color: var(--ax-text-3); font-family: var(--ax-font); }
+#screen-sueldos .esq-extras { color: var(--ax-text-2); }
+#screen-sueldos .esq-actions { width: 1%; text-align: right; white-space: nowrap; }
+#screen-sueldos .esq-check { width: 36px; }
+#screen-sueldos .esq-type { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); white-space: nowrap; }
+#screen-sueldos .esq-type-fixed_plus { border-color: var(--ax-accent); color: var(--ax-accent); }
+#screen-sueldos .esq-type-variable { border-color: var(--ax-info, var(--ax-accent)); color: var(--ax-text); }
+#screen-sueldos .payroll-commission-table tr.is-inactive td { color: var(--ax-text-3); }
+#screen-sueldos .payroll-scheme-alert { margin-bottom: 12px; padding: 10px 12px; }
+#screen-sueldos .esq-table-wrap input[type=checkbox] { appearance: none; position: relative; width: 16px; height: 16px; margin: 0; border: 1px solid var(--ax-border-strong); border-radius: 4px; background: var(--ax-bg); cursor: pointer; }
+#screen-sueldos .esq-table-wrap input[type=checkbox]:checked { border-color: var(--ax-accent); background: var(--ax-accent); }
+#screen-sueldos .esq-table-wrap input[type=checkbox]:checked::after { content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border: solid var(--ax-accent-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+/* ── Esquema de pago: modal en tres columnas ── */
+:is(#modal-esquema-edit, #modal-esquema-masivo) .modal-box.pm-modal { width: min(1120px, 96vw); max-width: none; max-height: 92vh; display: flex; flex-direction: column; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .modal-body { flex: 1 1 auto; overflow: auto; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-modal-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-modal-title small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+#payroll-matrix-fields { margin: 0; padding: 0; border: 0; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: start; }
+#payroll-matrix-fields.pm-grid[data-type=fixed] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#payroll-matrix-fields[data-type=fixed] .pm-col-matrix { display: none; }
+#payroll-matrix-fields[data-type=variable] .pm-basico { display: none; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-col h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-grid { counter-reset: pmcol; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-col { counter-increment: pmcol; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-col h3 span::before { content: counter(pmcol); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-col h3 span { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-types { display: flex; flex-direction: column; gap: 6px; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-types button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; text-align: left; cursor: pointer; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-types button b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-types button small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-types button:hover { background: var(--ax-surface-3); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-types button[aria-checked=true] { border-color: var(--ax-accent); background: var(--ax-accent-soft); box-shadow: inset 0 0 0 1px var(--ax-accent); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-block { display: flex; flex-direction: column; gap: 8px; padding: 10px 0 0; border-top: 1px solid var(--ax-border); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-col h3 + .pm-block { padding-top: 0; border-top: 0; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-block-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-block-head b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-switch.ax-switch { display: flex; justify-content: space-between; gap: 12px; width: 100%; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-switch-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-switch-text b { color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-switch-text small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.35; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-switch.ax-switch input { flex: none; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-switch-list { display: flex; flex-direction: column; gap: 10px; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-sub { display: flex; flex-direction: column; gap: 8px; transition: opacity var(--ax-dur-fast) var(--ax-ease); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-sub.is-off { opacity: .45; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-field { display: flex; flex-direction: column; gap: 4px; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-field > span:first-child { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-field > small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-money { position: relative; display: block; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-money i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--ax-text-3); font-style: normal; font-size: var(--ax-fs-sm); pointer-events: none; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-money .form-input { width: 100%; height: var(--ax-h); padding-left: 22px; font-family: var(--ax-font-mono); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-seg.ax-seg { align-self: flex-start; flex-wrap: wrap; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-seg.ax-seg button:disabled { opacity: .5; cursor: default; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 30px; gap: 6px; margin: 0; }
+:is(#modal-esquema-edit) .pm-row .form-input { height: var(--ax-h); min-width: 0; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-row-remove { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-row-remove:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-link { padding: 0; border: 0; background: none; color: var(--ax-accent); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-bulk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-bulk-preview { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#modal-esquema-edit, #modal-esquema-masivo) .pm-bulk-preview b { color: var(--ax-text); }
+#modal-esquema-masivo .payroll-selected-list { margin-bottom: 12px; padding: 10px 12px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-esquema-masivo .payroll-selected-list strong { color: var(--ax-text); }
+@media (max-width: 900px) {
+  :is(#modal-esquema-edit, #modal-esquema-masivo) .pm-grid, #payroll-matrix-fields.pm-grid[data-type=fixed] { grid-template-columns: minmax(0, 1fr); }
+  :is(#modal-esquema-edit, #modal-esquema-masivo) .modal-box.pm-modal { width: 100vw; max-height: 100dvh; border-radius: 0; }
+}
+@media (max-width: 760px) {
+  #screen-sueldos .esq-table-wrap { overflow: visible; border: 0; }
+  #screen-sueldos .esq-table-wrap thead { display: none; }
+  #screen-sueldos .esq-table-wrap table, #screen-sueldos .esq-table-wrap tbody { display: block; }
+  #screen-sueldos .esq-table-wrap tr { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; margin-bottom: 10px; padding: 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+  #screen-sueldos .esq-table-wrap td { display: flex; justify-content: flex-end; align-items: baseline; gap: 4px 10px; text-align: right; grid-column: 1 / -1; padding: 0; border: 0; }
+  #screen-sueldos .esq-table-wrap td[data-label]::before { content: attr(data-label); margin-right: auto; text-align: left; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+  #screen-sueldos .esq-table-wrap td.esq-check { grid-column: 1; grid-row: 1; align-items: center; }
+  #screen-sueldos .esq-table-wrap td.esq-name { grid-column: 2; grid-row: 1; flex-direction: column; justify-content: flex-start; gap: 0; }
+  #screen-sueldos .esq-table-wrap td.esq-name::before, #screen-sueldos .payroll-commission-table td:first-child::before { display: none; }
+  #screen-sueldos .esq-table-wrap td.esq-actions { grid-column: 3; grid-row: 1; width: auto; }
+  #screen-sueldos .payroll-commission-table td:first-child { grid-column: 1 / 3; grid-row: 1; }
+  #screen-sueldos .esq-table-wrap tr:hover td, #screen-sueldos .esq-table-wrap tr.is-selected td { background: none; }
+  #screen-sueldos .esq-table-wrap tr.is-selected { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+  #screen-sueldos .esq-table-wrap .esq-num small { display: inline; margin-left: 4px; }
+}

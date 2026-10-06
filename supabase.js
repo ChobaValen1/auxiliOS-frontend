@@ -3372,6 +3372,7 @@ async function cargarPayrollSettingsFlota(commissionData = null) {
         commissions: assignedByDriver.get(u.user_id) || [],
       },
     } : null,
+    assigned_commission_ids: (assignedByDriver.get(u.user_id) || []).map(r => r.commission_id),
     sueldo_basico:    mapSet[u.user_id]?.sueldo_basico    ?? null,
     valor_km:         mapSet[u.user_id]?.valor_km         ?? null,
     valor_servicio:   mapSet[u.user_id]?.valor_servicio   ?? null,
@@ -3387,13 +3388,21 @@ async function guardarPayrollSettingsMasivo(patch, { driverIds = [] } = {}) {
   const target = flota.filter(f => wanted.has(f.user_id));
   if (!target.length) return { ok: true, actualizados: 0, insertados: 0, total: 0 };
   const nowIso = new Date().toISOString();
+  const pm = patch.compensation_matrix || {};
   const rows = target.map(c => {
     const base = c.settings || {};
-    const normalized = PayrollMatrix.normalize({...base.compensation_matrix,...(patch.compensation_matrix || {})});
+    const merged = {...base.compensation_matrix, ...pm};
+    // Al pasar de "Fija" a un tipo con servicios, se vuelven a activar servicio y km si no se indicó otra cosa.
+    if (pm.pay_type && pm.pay_type !== 'fixed' && PayrollMatrix.payType(base.compensation_matrix, base.sueldo_basico) === 'fixed') {
+      if (pm.pay_services == null) merged.pay_services = true;
+      if (pm.pay_km == null) merged.pay_km = true;
+    }
+    const normalized = PayrollMatrix.normalize(merged);
+    const variable = normalized.pay_type === 'variable';
     return {
       user_id: c.user_id,
       compensation_matrix: {...normalized, commissions: []},
-      sueldo_basico:    patch.sueldo_basico    != null ? Number(patch.sueldo_basico)    : (Number(base.sueldo_basico)    || 0),
+      sueldo_basico:    variable ? 0 : patch.sueldo_basico != null ? Number(patch.sueldo_basico) : (Number(base.sueldo_basico) || 0),
       valor_km:         patch.valor_km         != null ? Number(patch.valor_km)         : (Number(base.valor_km)         || 0),
       valor_servicio:   patch.valor_servicio   != null ? Number(patch.valor_servicio)   : (Number(base.valor_servicio)   || 0),
       bono_presentismo: patch.bono_presentismo != null ? Number(patch.bono_presentismo) : (Number(base.bono_presentismo) || 0),
@@ -3402,9 +3411,20 @@ async function guardarPayrollSettingsMasivo(patch, { driverIds = [] } = {}) {
   });
   const { error } = await _db.from('payroll_settings').upsert(rows, { onConflict: 'user_id' });
   if (error) { console.error('[Payroll guardarPayrollSettingsMasivo]', error.message); return { ok: false, error }; }
-  if (Array.isArray(patch.commission_ids)) {
-    const assignment = await guardarPayrollCommissionAssignments(driverIds, patch.commission_ids);
-    if (!assignment.ok) return assignment;
+  if (patch.commission_changes) {
+    // Cada chofer parte de sus comisiones actuales: se suman las asignadas y se sacan las quitadas.
+    const add = patch.commission_changes.add || [], remove = new Set(patch.commission_changes.remove || []);
+    const groups = new Map();
+    target.forEach(c => {
+      const ids = [...new Set([...(c.assigned_commission_ids || []), ...add])].filter(id => !remove.has(id)).sort();
+      const key = ids.join(',');
+      if (!groups.has(key)) groups.set(key, { ids, drivers: [] });
+      groups.get(key).drivers.push(c.user_id);
+    });
+    for (const g of groups.values()) {
+      const assignment = await guardarPayrollCommissionAssignments(g.drivers, g.ids);
+      if (!assignment.ok) return assignment;
+    }
   }
   const insertados = target.filter(c => !c.settings).length;
   return { ok: true, actualizados: target.length - insertados, insertados, total: target.length };
