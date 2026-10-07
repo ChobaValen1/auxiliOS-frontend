@@ -283,3 +283,106 @@
   #modal-nuevo-usuario .usr-form { grid-template-columns: 1fr; }
 
 }
+
+/* ── Empresa y documentos: marca AuxiliOS, datos fiscales y firma institucional en pantalla ── */
+#company-document-modal { background: rgba(0, 0, 0, .6); }
+#company-document-modal .modal-box.cd-box { position: relative; display: flex; flex-direction: column; width: min(1040px, 96vw); max-width: none; max-height: 94vh; overflow: hidden; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); }
+#company-document-modal .cd-stripe { flex: none; height: 8px; background: repeating-linear-gradient(-45deg, var(--ax-warn) 0 10px, var(--ax-bg) 10px 20px); }
+#company-document-modal .cd-loading { padding: 32px 20px; color: var(--ax-text-3); text-align: center; }
+#company-document-modal .cd-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+#company-document-modal .cd-head-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
+#company-document-modal .cd-head-text { display: grid; gap: 2px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--ax-border); }
+#company-document-modal .cd-head .modal-head-title { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#company-document-modal .cd-head small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#company-document-modal .modal-close { width: var(--ax-h); height: var(--ax-h); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+/* Logo AuxiliOS: [Auxili] + insignia OS */
+#company-document-modal .cd-brand { display: inline-flex; align-items: center; gap: 8px; flex: none; line-height: 1; }
+#company-document-modal .cd-brand-word { color: var(--ax-text); font: var(--ax-fw-bold) 26px var(--ax-font); letter-spacing: -.02em; }
+#company-document-modal .cd-brand-word i { color: var(--ax-accent); font-style: normal; font-weight: var(--ax-fw-regular); }
+#company-document-modal .cd-brand-os { padding: 4px 7px 3px; border-radius: 3px; background: var(--ax-accent); color: var(--ax-accent-fg); font: var(--ax-fw-bold) 14px var(--ax-font-mono); letter-spacing: .04em; }
+#company-document-modal .cd-brand.sm .cd-brand-word { font-size: 13px; }
+#company-document-modal .cd-brand.sm .cd-brand-os { padding: 2px 4px 1px; font-size: 8px; }
+/* Cuerpo */
+#company-document-modal .cd-body { display: grid; gap: 16px; padding: 18px 20px; overflow-y: auto; }
+#company-document-modal .cd-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+#company-document-modal .cd-card { display: grid; gap: 14px; padding: 16px 18px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#company-document-modal .cd-card-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#company-document-modal .cd-card-title .ax-icon { width: 18px; height: 18px; color: var(--ax-accent); }
+#company-document-modal .cd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+#company-document-modal .cd-span { grid-column: 1 / -1; }
+#company-document-modal .cd-field { display: grid; gap: 6px; margin: 0; }
+#company-document-modal .cd-field > span { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#company-document-modal .form-input { width: 100%; height: var(--ax-h); margin: 0; padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#company-document-modal .form-input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#company-document-modal .cd-note { display: flex; gap: 8px; margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.45; }
+#company-document-modal .cd-note .ax-icon { flex: none; width: 15px; height: 15px; margin-top: 1px; }
+#company-document-modal .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#company-document-modal .btn.sm { height: var(--ax-h-sm); padding: 0 12px; }
+#company-document-modal .btn .ax-icon { width: 16px; height: 16px; }
+#company-document-modal .btn:hover:not(:disabled) { background: var(--ax-surface-3); }
+#company-document-modal .btn:disabled { opacity: .45; cursor: not-allowed; }
+#company-document-modal .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#company-document-modal .btn-primary:hover:not(:disabled) { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#company-document-modal .btn-ghost { border-color: transparent; color: var(--ax-text-2); }
+#company-document-modal .btn.danger { color: var(--ax-danger); }
+#company-document-modal .btn.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger-soft); }
+#company-document-modal :is(.btn, .cd-drop, .ax-seg button):focus-visible { outline: none; box-shadow: var(--ax-focus); }
+/* Firma: selector, recuadro tipo papel y acciones */
+#company-document-modal .cd-sign { display: grid; gap: 10px; }
+#company-document-modal .cd-seg { justify-self: start; }
+#company-document-modal .cd-seg button { display: inline-flex; align-items: center; gap: 6px; font-size: var(--ax-fs-sm); }
+#company-document-modal .cd-seg .ax-icon { width: 15px; height: 15px; }
+#company-document-modal .cd-pad-wrap { position: relative; height: 190px; overflow: hidden; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-text); }
+#company-document-modal .cd-pad { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+#company-document-modal .cd-pad-hint { position: absolute; inset: 0 0 46px; display: grid; place-items: center; color: var(--ax-text-3); font-size: var(--ax-fs-sm); pointer-events: none; }
+#company-document-modal .cd-pad-hint[hidden] { display: none; }
+#company-document-modal .cd-pad-line { position: absolute; right: 22px; bottom: 40px; left: 22px; border-top: 1px dashed var(--ax-text-3); pointer-events: none; }
+#company-document-modal .cd-pad-line span { position: absolute; top: -18px; left: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#company-document-modal .cd-pad-actions, #company-document-modal .cd-row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#company-document-modal .cd-pad-actions .btn-primary { margin-left: auto; }
+#company-document-modal .cd-back { justify-self: start; }
+#company-document-modal .cd-drop { position: relative; display: grid; justify-items: center; gap: 6px; padding: 26px 16px; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-bg); color: var(--ax-text-2); text-align: center; cursor: pointer; }
+#company-document-modal .cd-drop:hover { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#company-document-modal .cd-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+#company-document-modal .cd-drop .ax-icon { width: 24px; height: 24px; color: var(--ax-accent); }
+#company-document-modal .cd-drop b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#company-document-modal .cd-drop small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#company-document-modal .cd-current { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 14px; align-items: center; }
+#company-document-modal .cd-current-img { display: grid; place-items: center; height: 120px; padding: 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-text); }
+#company-document-modal .cd-current-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+#company-document-modal .cd-current-meta { display: grid; gap: 6px; }
+#company-document-modal .cd-current-meta b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#company-document-modal .cd-current-meta small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+/* Vista previa: hoja de documento */
+#company-document-modal .cd-paper { display: grid; gap: 14px; padding: 18px 22px; border-radius: var(--ax-radius); background: var(--ax-text); color: var(--ax-bg); box-shadow: inset 0 3px 0 var(--ax-accent); }
+#company-document-modal .cd-paper-head { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--ax-text-3); }
+#company-document-modal .cd-paper-co, #company-document-modal .cd-paper-doc { display: grid; gap: 2px; min-width: 0; }
+#company-document-modal .cd-paper-doc { text-align: right; }
+#company-document-modal .cd-paper b { color: var(--ax-bg); font: var(--ax-fw-bold) var(--ax-fs-md) var(--ax-font); overflow-wrap: anywhere; }
+#company-document-modal .cd-paper small { color: var(--ax-surface-3); font-size: var(--ax-fs-xs); overflow-wrap: anywhere; }
+#company-document-modal .cd-paper-lines { display: grid; gap: 6px; }
+#company-document-modal .cd-paper-lines i { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--ax-text-2); opacity: .35; }
+#company-document-modal .cd-paper-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+#company-document-modal .cd-paper-sign { display: grid; justify-items: center; gap: 2px; width: 220px; max-width: 60%; text-align: center; }
+#company-document-modal .cd-paper-sign img { max-width: 180px; max-height: 64px; object-fit: contain; }
+#company-document-modal .cd-paper-nosign { display: grid; place-items: center; height: 48px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-style: italic; }
+#company-document-modal .cd-paper-rule { width: 100%; margin: 2px 0 4px; border-top: 1px solid var(--ax-bg); }
+#company-document-modal .cd-paper-brand { display: grid; justify-items: end; gap: 4px; opacity: .9; }
+#company-document-modal .cd-paper-brand .cd-brand-word { color: var(--ax-bg); }
+#company-document-modal .cd-error { display: none; margin: 0; padding: 10px 12px; border: 1px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-danger); font-size: var(--ax-fs-sm); }
+#company-document-modal .cd-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+@media (max-width: 860px) { #company-document-modal .cd-cols { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  #company-document-modal .modal-box.cd-box { width: 100vw; max-height: 100dvh; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; }
+  #company-document-modal .cd-head-text { padding-left: 0; border-left: 0; }
+  #company-document-modal .cd-head-main { flex-direction: column; align-items: flex-start; gap: 8px; }
+  #company-document-modal .cd-grid, #company-document-modal .cd-current { grid-template-columns: 1fr; }
+  #company-document-modal .cd-paper-head, #company-document-modal .cd-paper-foot { flex-direction: column; align-items: stretch; }
+  #company-document-modal .cd-paper-doc { text-align: left; }
+  #company-document-modal .cd-paper-sign { width: 100%; max-width: none; }
+  #company-document-modal .cd-paper-brand { justify-items: start; }
+}
+#company-document-modal #company-document-form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+#company-document-modal .cd-body { flex: 1 1 auto; min-height: 0; }
+#company-document-modal .cd-footer { flex: none; }
+@media (max-width: 600px) { #company-document-modal .cd-seg { display: grid; grid-template-columns: 1fr 1fr; justify-self: stretch; } #company-document-modal .cd-seg button { justify-content: center; padding: 0 8px; white-space: nowrap; } #company-document-modal .cd-pad-wrap { height: 170px; } }
