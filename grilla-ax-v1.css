@@ -86,3 +86,119 @@
 #modal-grilla-celda .grilla-opt:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
 #modal-grilla-celda .grilla-opt.sel { border-color: var(--ax-accent); background: var(--ax-accent-soft); box-shadow: inset 0 0 0 1px var(--ax-accent); }
 #modal-grilla-celda .grilla-opt.sel span { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+
+/* ── Grilla v2: barra con navegación del mes, semanas en una fila, resumen y tabla más legible ── */
+#screen-grilla .grilla-topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: var(--ax-sp-3); }
+#screen-grilla .grilla-mes-nav { display: flex; align-items: center; gap: 6px; }
+#screen-grilla .grilla-nav-btn { display: inline-grid; place-items: center; width: var(--ax-h); height: var(--ax-h); padding: 0; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#screen-grilla .grilla-nav-btn .ax-icon { width: 18px; height: 18px; }
+#screen-grilla .grilla-nav-btn:hover:not(:disabled) { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-grilla .grilla-nav-btn:disabled, #screen-grilla .grilla-btn-hoy:disabled { opacity: .4; cursor: default; }
+#screen-grilla .grilla-mes-nav select { min-width: 170px; height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+#screen-grilla .grilla-mes-nav select:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-grilla .grilla-mes-nav .btn, #screen-grilla .grilla-controls .btn { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#screen-grilla .grilla-mes-nav .btn:hover:not(:disabled) { background: var(--ax-surface-3); }
+#screen-grilla .grilla-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+#screen-grilla .grilla-controls .btn .ax-icon { width: 16px; height: 16px; }
+#screen-grilla :is(.grilla-nav-btn, .grilla-mes-nav .btn):focus-visible { outline: none; box-shadow: var(--ax-focus); }
+/* Semanas: segmentado en una sola fila (con desplazamiento si no entra) */
+#screen-grilla .grilla-semana-tabs { display: flex; flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+#screen-grilla .grilla-semana-tabs::-webkit-scrollbar { display: none; }
+#screen-grilla .grilla-semana-tab { display: inline-flex; flex: none; align-items: baseline; gap: 8px; height: auto; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+#screen-grilla .grilla-semana-tab b { color: inherit; font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-grilla .grilla-semana-tab small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font-mono); }
+#screen-grilla .grilla-semana-tab.active small { color: var(--ax-text-2); }
+#screen-grilla .grilla-semana-tab.tiene-hoy b::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--ax-accent); vertical-align: middle; }
+/* Filtros en línea + resumen de la semana */
+#screen-grilla .grilla-subbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 16px; margin-bottom: var(--ax-sp-3); }
+#screen-grilla .grilla-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin: 0; padding: 0; border: 0; background: none; }
+#screen-grilla .grilla-f-field { display: grid; gap: 6px; margin: 0; }
+#screen-grilla .grilla-f-field > span { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-grilla .grilla-filtros select { min-width: 190px; height: var(--ax-h); padding: 0 12px; color-scheme: dark; }
+#screen-grilla .grilla-f-clear { height: var(--ax-h); padding: 0 14px; cursor: pointer; }
+#screen-grilla .grilla-resumen { display: flex; flex-wrap: wrap; gap: 6px; }
+#screen-grilla .grilla-res-item { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-pill); background: var(--ax-surface-2); color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+#screen-grilla .grilla-res-item b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); font-variant-numeric: tabular-nums; }
+#screen-grilla .grilla-res-item.ok b { color: var(--ax-ok); }
+#screen-grilla .grilla-res-item.warn b, #screen-grilla .grilla-res-item.pend b { color: var(--ax-warn); }
+#screen-grilla .grilla-res-item.bad { border-color: var(--ax-danger); }
+#screen-grilla .grilla-res-item.bad b { color: var(--ax-danger); }
+/* Tabla */
+#screen-grilla .grilla-card { overflow-x: auto; }
+#screen-grilla .grilla-table { table-layout: fixed; min-width: 820px; }
+#screen-grilla .grilla-table th { height: 64px; padding: 8px 6px; text-align: center; text-transform: none; vertical-align: middle; }
+#screen-grilla .grilla-table th:first-child { width: 120px; text-align: left; padding-left: 16px; text-transform: uppercase; }
+#screen-grilla .grilla-th-dn { display: block; color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-grilla .grilla-th-fecha { display: block; margin-top: 2px; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); font-variant-numeric: tabular-nums; line-height: 1.1; }
+#screen-grilla .grilla-th-fecha small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); }
+#screen-grilla .grilla-th-feriado { display: block; overflow: hidden; margin-top: 2px; color: var(--ax-danger); font: var(--ax-fw-medium) 10px var(--ax-font); text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0; text-transform: none; }
+#screen-grilla .grilla-table th.grilla-hoy { background: var(--ax-accent-soft); box-shadow: inset 0 3px 0 var(--ax-accent); }
+#screen-grilla .grilla-table th.grilla-hoy .grilla-th-dn { color: var(--ax-accent); }
+#screen-grilla .grilla-table th.grilla-feriado { background: var(--ax-danger-soft); }
+#screen-grilla .grilla-table th.grilla-finde:not(.grilla-hoy):not(.grilla-feriado) { background: var(--ax-bg); }
+#screen-grilla .grilla-table td { height: 58px; padding: 6px; text-align: center; vertical-align: middle; }
+#screen-grilla .grilla-table td.grilla-finde:not(.grilla-hoy-celda) { background: var(--ax-surface); }
+#screen-grilla .grilla-table td.grilla-feriado-celda:not(.grilla-hoy-celda) { background: var(--ax-danger-soft); }
+#screen-grilla .grilla-table td.grilla-hoy-celda { background: var(--ax-accent-soft); }
+#screen-grilla .grilla-table tbody tr:hover td { background: var(--ax-surface-3); }
+#screen-grilla .grilla-table td.grilla-movil { padding-left: 16px; text-align: left; }
+#screen-grilla .grilla-table td.grilla-movil b { display: block; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font-mono); }
+#screen-grilla .grilla-table td.grilla-movil small { display: block; color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font-mono); }
+/* Chips: ocupan la celda; el chofer lleva sus iniciales en un círculo de color propio */
+#screen-grilla .grilla-chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; max-width: 132px; height: 34px; padding: 0 8px; border-radius: var(--ax-radius); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-grilla .grilla-chip .ax-icon { flex: none; width: 15px; height: 15px; }
+#screen-grilla .grilla-chip-chofer { justify-content: flex-start; padding-left: 4px; border: 1px solid var(--ax-border); background: var(--ax-surface-3); color: var(--ax-text); box-shadow: none; }
+#screen-grilla .gc-av, #modal-grilla-celda .gc-av { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: hsl(var(--gc-h, 210) 55% 50% / .22); color: hsl(var(--gc-h, 210) 80% 74%); font: var(--ax-fw-bold) 10px var(--ax-font); font-style: normal; letter-spacing: .02em; }
+#screen-grilla .gc-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-grilla .grilla-chip-franco { border: 1px dashed var(--ax-border-strong); background: transparent; color: var(--ax-text-3); }
+#screen-grilla .grilla-chip-taller { border: 1px solid var(--ax-warn); background: var(--ax-warn-soft, var(--ax-surface-3)); color: var(--ax-warn); box-shadow: none; }
+#screen-grilla .grilla-chip-vacia { width: 34px; border: 1px dashed var(--ax-border); background: transparent; color: var(--ax-text-3); }
+#screen-grilla .grilla-admin .grilla-chip:hover { border-color: var(--ax-accent); }
+#screen-grilla .grilla-admin .grilla-chip-vacia:hover { background: var(--ax-accent-soft); color: var(--ax-accent); }
+#screen-grilla .grilla-chip-mia { border: 1px solid var(--ax-accent); background: var(--ax-accent-soft); font-weight: var(--ax-fw-semibold); box-shadow: none; }
+#screen-grilla .grilla-chip-resaltada { border: 1px solid var(--ax-accent); box-shadow: 0 0 0 2px var(--ax-accent-soft); }
+#screen-grilla .grilla-chip-atenuada { opacity: .28; }
+#screen-grilla .grilla-chip-alerta { box-shadow: 0 0 0 2px var(--ax-danger); }
+/* Leyenda con los mismos chips de la tabla */
+#screen-grilla .grilla-leyenda { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-top: var(--ax-sp-3); padding: 12px 16px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); text-align: left; }
+#screen-grilla .grilla-leyenda > span { display: inline-flex; align-items: center; gap: 8px; }
+#screen-grilla .grilla-chip-demo { width: auto; height: 28px; font-size: var(--ax-fs-xs); cursor: default; }
+#screen-grilla .grilla-chip-demo .gc-av { width: 20px; height: 20px; font-size: 9px; }
+#screen-grilla .grilla-leg-swatch { display: inline-block; width: 18px; height: 18px; border-radius: 4px; }
+#screen-grilla .grilla-leg-swatch.hoy { background: var(--ax-accent-soft); box-shadow: inset 0 3px 0 var(--ax-accent); }
+#screen-grilla .grilla-leg-swatch.feriado { background: var(--ax-danger-soft); }
+/* Modal de celda: opciones con iniciales */
+#modal-grilla-celda .modal-box { max-width: 420px !important; }
+#modal-grilla-celda #grilla-celda-opts { display: grid; gap: 6px; max-height: 56vh; overflow-y: auto; }
+#modal-grilla-celda .grilla-opt { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; }
+#modal-grilla-celda .grilla-opt-nm { flex: 1; min-width: 0; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); }
+#modal-grilla-celda .grilla-opt-nm small { margin-left: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
+#modal-grilla-celda .grilla-opt > span { color: var(--ax-accent); font-weight: var(--ax-fw-bold); }
+#modal-grilla-celda .grilla-opt-sep { margin-top: 6px; color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#modal-grilla-celda .gc-av-franco { background: var(--ax-surface-3); color: var(--ax-text-3); }
+#modal-grilla-celda .gc-av-taller { background: var(--ax-warn-soft, var(--ax-surface-3)); color: var(--ax-warn); }
+#modal-grilla-celda .gc-av-taller .ax-icon { width: 14px; height: 14px; }
+/* Celular */
+@media (max-width: 767px) {
+  #screen-grilla .grilla-topbar { align-items: stretch; }
+  #screen-grilla .grilla-mes-nav { width: 100%; }
+  #screen-grilla .grilla-mes-nav select { flex: 1; min-width: 0; }
+  #screen-grilla .grilla-controls { width: 100%; }
+  #screen-grilla .grilla-controls .btn { flex: 1 1 auto; justify-content: center; }
+  #screen-grilla .grilla-controls .btn-primary { order: -1; flex-basis: 100%; }
+  #screen-grilla .grilla-semana-tabs { width: 100%; }
+  #screen-grilla .grilla-filtros { width: 100%; }
+  #screen-grilla .grilla-f-field { flex: 1 1 140px; }
+  #screen-grilla .grilla-filtros select { width: 100%; min-width: 0; }
+  #screen-grilla .grilla-resumen { width: 100%; }
+  #screen-grilla .grilla-dia-view .grilla-chip { width: auto; max-width: none; min-width: 120px; height: 36px; padding: 0 12px 0 5px; border-radius: var(--ax-radius); font-size: var(--ax-fs-sm); }
+  #screen-grilla .grilla-dia-view .grilla-chip-franco, #screen-grilla .grilla-dia-view .grilla-chip-taller { padding: 0 12px; justify-content: center; }
+  #screen-grilla .grilla-dia-view .grilla-chip-vacia { min-width: 36px; width: 36px; padding: 0; }
+  #screen-grilla .grilla-dia-movil small { letter-spacing: 0; }
+  #screen-grilla .grilla-leyenda { gap: 8px 14px; font-size: var(--ax-fs-xs); }
+}
+#screen-grilla .grilla-controls .btn.btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-grilla .grilla-controls .btn:not(.btn-primary):hover { background: var(--ax-surface-3); }
+#screen-grilla .grilla-controls .btn.btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-grilla .grilla-semana-tabs { width: fit-content; }
+@media (max-width: 767px) { #screen-grilla .grilla-semana-tabs { width: 100%; } }

@@ -10076,112 +10076,106 @@ function abrirDocumentoChofer(pathOrUrl) {
   }
 }
 
-function crearDocCard(doc, meta) {
-  const esAdmin = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
-  const statusConfig = {
-    vigente:         { border: 'var(--green)',  pill: 'pill-green',  pillTxt: 'Vigente'     },
-    proximo:         { border: 'var(--amber)',  pill: 'pill-amber',  pillTxt: 'Próximo'     },
-    vencido:         { border: 'var(--red)',    pill: 'pill-red',    pillTxt: 'Vencido'     },
-    falta_archivo:   { border: '#f97316',       pill: 'pill-orange', pillTxt: 'Sin archivo' },
-    sin_vencimiento: { border: 'var(--border)', pill: 'pill-muted',  pillTxt: 'Sin venc.'   },
-  };
+// Ícono del sprite por tipo de documento (los emojis de DOC_*_META quedan para los selects)
+const DOC_ICONOS = {
+  VTV: 'clipboard-check', SEGURO_POLIZA: 'shield-check', PAGO_SEGURO: 'receipt', HABILITACION_RUTA: 'route',
+  PERMISO_ESPECIAL: 'flag', CEDULA_VERDE: 'credit-card', CEDULA_AZUL: 'credit-card', MATAFUEGOS: 'circle-alert',
+  LIBRETA_PORTE: 'file-text', licencia_particular: 'credit-card', licencia_linti: 'credit-card',
+  psicofisico: 'clipboard-check', art_credencial: 'shield-check', art_cnr: 'shield-check', curso_cargas: 'file-check', otro: 'file',
+};
+const _docIcon = name => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
+const _docFecha = iso => iso ? `${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(2,4)}` : '';
 
-  // Usar UTC para ambos extremos — evita error de ±1 día en cambio de horario
-  const dias = doc.expiry_date
+// Días hasta el vencimiento (UTC en ambos extremos: evita ±1 día por cambio de horario)
+function _docDias(doc) {
+  return doc.expiry_date
     ? Math.round((new Date(doc.expiry_date + 'T00:00:00Z') - new Date(new Date().toISOString().slice(0,10) + 'T00:00:00Z')) / 86400000)
     : null;
+}
+// Estado que se muestra: siempre por vigencia (el "sin archivo" va aparte)
+function _docEstado(doc) {
+  const dias = _docDias(doc);
+  if (dias === null) return 'sin_vencimiento';
+  if (dias < 0) return 'vencido';
+  if (dias <= 30) return 'proximo';
+  return 'vigente';
+}
 
-  // El pill principal SIEMPRE refleja vigencia (no archivo).
-  // El "sin archivo" se comunica abajo en la fila de archivo.
-  let statusEfectivo;
-  if (dias === null) {
-    statusEfectivo = doc.status === 'sin_vencimiento' ? 'sin_vencimiento' : 'sin_vencimiento';
-  } else if (dias < 0) {
-    statusEfectivo = 'vencido';
-  } else if (dias <= 30) {
-    statusEfectivo = 'proximo';
-  } else {
-    statusEfectivo = 'vigente';
-  }
-  const sc = statusConfig[statusEfectivo] || statusConfig.sin_vencimiento;
+function crearDocCard(doc, meta) {
+  const esAdmin = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
+  const dias = _docDias(doc);
+  const estado = _docEstado(doc);
   const sinArchivo = !doc.file_url;
+  const pill = {
+    vigente: 'Vigente',
+    proximo: dias === 0 ? 'Vence hoy' : `Vence en ${dias} ${dias === 1 ? 'día' : 'días'}`,
+    vencido: 'Vencido',
+    sin_vencimiento: 'Sin vencimiento',
+  }[estado];
 
-let fileSectionHtml = '';
-  if (doc.file_url) {
-    // 1. Traducimos la ruta local al link de internet real ACÁ MISMO
-    let linkReal = doc.file_url;
-    if (!linkReal.startsWith('http')) {
-      // Usamos tu variable _db para pedirle el link a Supabase
-      linkReal = _db.storage.from('docs').getPublicUrl(doc.file_url).data.publicUrl;
-    }
-
-    const safePath  = _escHtml(linkReal);
-    const safeTitle = _escHtml(meta.name || doc.doc_type || '');
-    const onclickUpd = meta.isChofer
-      ? `abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')`
-      : `abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')`;
-      
-    // 2. Cambiamos el <button> de abrir por un <a> (enlace nativo)
-    const puedeActualizar = meta.isChofer || esAdmin;
-    fileSectionHtml = `
-      <div style="display: flex; gap: 4px;">
-        ${puedeActualizar ? `<button class="btn-actualizar" onclick="${onclickUpd}" title="Reemplazar archivo">🔄</button>` : ''}
-        <a href="${safePath}" target="_blank" rel="noopener noreferrer" class="btn-compartir" style="color:var(--amber); border: 1px solid var(--amber); text-decoration: none; display: flex; align-items: center; justify-content: center;">
-          👁 Abrir
-        </a>
-        <button class="btn-compartir" onclick="compartirDoc('${safePath}', '${safeTitle}', event)">⤴ Compartir</button>
-      </div>`;
-
-  } else if (doc.is_obligatorio && (meta.isChofer || esAdmin)) {
-    const onclick = meta.isChofer
-      ? `onclick="abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')"`
-      : `onclick="abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')"`;
-    fileSectionHtml = `<button class="btn-subir-ahora" ${onclick}>⚠ Subir ahora</button>`;
+  // Bloque central: días que faltan (o hace cuánto venció) y la fecha
+  let cuerpo;
+  if (dias === null) {
+    const periodo = doc.periodo ? `${doc.periodo.slice(5,7)}/${doc.periodo.slice(0,4)}` : '';
+    cuerpo = `<div class="dcv-days none"><b>—</b><span>${periodo ? `Período ${periodo}` : 'No vence'}</span></div>`;
   } else {
-    fileSectionHtml = `<span style="font-size:10px;color:var(--muted)">Sin archivo</span>`;
+    const abs = Math.abs(dias);
+    const txt = dias < 0 ? `${abs === 1 ? 'día' : 'días'} vencido` : dias === 0 ? 'vence hoy' : `${abs === 1 ? 'día' : 'días'} restantes`;
+    cuerpo = `<div class="dcv-days"><b>${abs}</b><span>${txt}</span></div><div class="dcv-date"><small>${dias < 0 ? 'Venció el' : 'Vence el'}</small><b>${_docFecha(doc.expiry_date)}</b></div>`;
   }
+  // Barra: cuánto queda del último año de vigencia
+  const barra = dias === null ? '' : `<div class="dcv-bar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round((dias / 365) * 100)))}%"></i></div>`;
 
-
+  const onclickUpd = meta.isChofer
+    ? `abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')`
+    : `abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')`;
+  const puedeActualizar = meta.isChofer || esAdmin;
   const docIdField = meta.isChofer ? doc.driver_doc_id : doc.doc_id;
-  const deleteBtn = esAdmin
-    ? `<button class="btn-eliminar-doc" onclick="eliminarDoc(${docIdField}, ${meta.isChofer ? 'true' : 'false'}, event)" title="Eliminar">🗑</button>`
+  const btnEliminar = esAdmin
+    ? `<button class="btn-eliminar-doc dcv-icon danger" onclick="eliminarDoc(${docIdField}, ${meta.isChofer ? 'true' : 'false'}, event)" title="Eliminar documento" aria-label="Eliminar documento">${_docIcon('trash-2')}</button>`
     : '';
 
+  let acciones;
+  if (doc.file_url) {
+    let linkReal = doc.file_url;
+    if (!linkReal.startsWith('http')) linkReal = _db.storage.from('docs').getPublicUrl(doc.file_url).data.publicUrl;
+    const safePath  = _escHtml(linkReal);
+    const safeTitle = _escHtml(meta.name || doc.doc_type || '');
+    acciones = `<a href="${safePath}" target="_blank" rel="noopener noreferrer" class="dcv-btn primary">${_docIcon('eye')}Abrir</a>
+      <button class="dcv-btn btn-compartir" onclick="compartirDoc('${safePath}', '${safeTitle}', event)">${_docIcon('share-2')}Compartir</button>
+      <span class="dcv-gap"></span>
+      ${puedeActualizar ? `<button class="btn-actualizar dcv-icon" onclick="${onclickUpd}" title="Reemplazar archivo" aria-label="Reemplazar archivo">${_docIcon('refresh-cw')}</button>` : ''}${btnEliminar}`;
+  } else if (doc.is_obligatorio && puedeActualizar) {
+    acciones = `<span class="dcv-missing">${_docIcon('file-warning')}Falta el archivo</span><span class="dcv-gap"></span>
+      <button class="btn-subir-ahora dcv-btn warn" onclick="${onclickUpd}">${_docIcon('upload')}Subir ahora</button>${btnEliminar}`;
+  } else {
+    acciones = `<span class="dcv-missing muted">${_docIcon('file-x')}Sin archivo</span><span class="dcv-gap"></span>${btnEliminar}`;
+  }
+
   const safeDocName = _escHtml(meta.name || doc.doc_type || '');
-  const safeDocNum  = doc.doc_number ? _escHtml('Nº ' + doc.doc_number) : '—';
+  const safeDocNum  = doc.doc_number ? _escHtml('Nº ' + doc.doc_number) : 'Sin número';
+  const icono = DOC_ICONOS[meta.isChofer ? doc.doc_type : doc.internal_code] || 'file-text';
 
   return `
-    <div class="doc-card-v" style="border-left:3px solid ${sc.border}">
-      <div class="doc-card-header">
-        <div class="doc-icon">${meta.icon}</div>
-        <div class="doc-card-title">
-          <div class="doc-name">${safeDocName}</div>
-          <div class="doc-meta">${safeDocNum}</div>
-        </div>
-        ${deleteBtn}
+    <article class="doc-card-v dcv dcv-${estado}${sinArchivo ? ' dcv-nofile' : ''}">
+      <div class="dcv-head">
+        <span class="dcv-ic">${_docIcon(icono)}</span>
+        <div class="dcv-title"><div class="doc-name">${safeDocName}</div><div class="doc-meta">${safeDocNum}</div></div>
+        <span class="dcv-pill">${pill}</span>
       </div>
-      <div class="doc-expiry-row">
-        <div>
-          <div class="doc-days" style="color:${sc.border}">${dias !== null ? Math.abs(dias) : '—'}</div>
-          <div class="doc-days-label">${
-            dias === null ? 'sin vencimiento'
-            : dias < 0 ? `vencido hace ${Math.abs(dias) === 1 ? '1 día' : Math.abs(dias) + ' días'}`
-            : dias === 0 ? 'vence hoy'
-            : `${dias === 1 ? '1 día' : dias + ' días'} restantes`
-          }</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-          <span class="pill ${sc.pill}">${sc.pillTxt}</span>
-          ${sinArchivo ? `<span class="pill pill-orange" style="font-size:9px;padding:2px 6px">Sin archivo</span>` : ''}
-        </div>
-      </div>
-      <div class="doc-file-row">${fileSectionHtml}</div>
-    </div>`;
+      <div class="dcv-body">${cuerpo}</div>
+      ${barra}
+      <div class="doc-file-row dcv-foot">${acciones}</div>
+    </article>`;
 }
 
 async function eliminarDoc(docId, isChofer, event) {
   if (event) event.stopPropagation();
-  if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+  const _conf = window.AuxiliosBillingParametersV4?.confirm;
+  const ok = typeof _conf === 'function'
+    ? await _conf({ title: 'Eliminar documento', html: '<p class="bp4-confirm-text">Se borra el documento y su archivo. <b>Esta acción no se puede deshacer.</b></p>', confirmLabel: 'Sí, eliminar', danger: true })
+    : confirm('¿Eliminar este documento? Esta acción no se puede deshacer.');
+  if (!ok) return;
   try {
     if (isChofer) {
       await eliminarDriverDoc(docId);
@@ -10220,6 +10214,35 @@ const DOC_CAMION_META = {
   LIBRETA_PORTE:     { icon: '⚖', name: 'Libreta de Porte' },
 };
 
+// Conteos de un legajo: total, vencidos (o sin archivo obligatorio), por vencer y al día
+function _docConteos(docs) {
+  const venc = docs.filter(d => d.status === 'vencido' || d.status === 'falta_archivo').length;
+  const prox = docs.filter(d => d.status === 'proximo').length;
+  const sinArchivo = docs.filter(d => !d.file_url).length;
+  return { total: docs.length, venc, prox, sinArchivo, ok: Math.max(docs.length - venc - prox, 0) };
+}
+function _docTono(c) { return !c.total ? 'none' : c.venc ? 'bad' : c.prox ? 'warn' : 'ok'; }
+function _docSelectorCard({ onclick, icon, avatar, titulo, sub, extra, docs }) {
+  const c = _docConteos(docs), tono = _docTono(c);
+  const pill = { none: 'Sin documentos', bad: `${c.venc} vencido${c.venc > 1 ? 's' : ''}`, warn: `${c.prox} por vencer`, ok: 'Al día' }[tono];
+  const pct = c.total ? Math.round((c.ok / c.total) * 100) : 0;
+  const lead = avatar ? `<span class="dsc-av">${avatar}</span>` : `<span class="dsc-ic">${_docIcon(icon)}</span>`;
+  return `<div class="truck-select-card dsc dsc-${tono}" role="button" tabindex="0" onclick="${onclick}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${onclick}}">
+    <div class="dsc-top">${lead}<div class="dsc-id"><b>${titulo}</b>${sub ? `<small>${sub}</small>` : ''}</div><span class="dsc-pill">${pill}</span></div>
+    ${extra ? `<div class="dsc-extra">${extra}</div>` : ''}
+    <div class="dsc-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    <div class="dsc-foot"><div class="dsc-counts"><span>${c.total} documento${c.total === 1 ? '' : 's'}</span>${c.venc ? `<span class="bad">${c.venc} vencido${c.venc > 1 ? 's' : ''}</span>` : ''}${c.prox ? `<span class="warn">${c.prox} por vencer</span>` : ''}${c.sinArchivo ? `<span>${c.sinArchivo} sin archivo</span>` : ''}</div><span class="dsc-go">${_docIcon('chevron-right')}</span></div>
+  </div>`;
+}
+function _docResumenSelector(contId, grupos) {
+  const cont = document.getElementById(contId);
+  if (!cont) return;
+  const t = { ok: 0, warn: 0, bad: 0, none: 0 };
+  grupos.forEach(docs => { t[_docTono(_docConteos(docs))]++; });
+  const item = (n, txt, cls) => n ? `<span class="doc-sum-item ${cls}"><b>${n}</b> ${txt}</span>` : '';
+  cont.innerHTML = item(t.ok, 'al día', 'ok') + item(t.warn, 'por vencer', 'warn') + item(t.bad, 'con vencidos', 'bad') + item(t.none, 'sin documentos', '');
+}
+
 function _badgeDocsCamion(docs) {
   if (!docs.length) return { cls: 'badge-muted', txt: 'Sin docs' };
   const venc = docs.filter(d => d.status === 'vencido' || d.status === 'falta_archivo').length;
@@ -10245,16 +10268,14 @@ function _renderSelectorCamiones() {
 
   grid.innerHTML = _listaCamiones.map(truck => {
     const docsTruck = _allTruckDocs.filter(d => d.truck_id === truck.truck_id);
-    const badge = _badgeDocsCamion(docsTruck);
     const num   = String(truck.numero_interno || '?').padStart(2, '0');
-    return `<div class="truck-select-card" onclick="seleccionarCamionAdmin(${truck.truck_id})">
-      <div class="tscard-icon">🚛</div>
-      <div class="tscard-num">#${_escHtml(num)}</div>
-      <div class="tscard-plate">${_escHtml(truck.plate || '')}</div>
-      <div class="tscard-brand">${_escHtml((truck.brand || '') + ' ' + (truck.model || ''))}</div>
-      <span class="truck-badge ${badge.cls}">${badge.txt}</span>
-    </div>`;
+    return _docSelectorCard({
+      onclick: `seleccionarCamionAdmin(${truck.truck_id})`, icon: 'truck',
+      titulo: `Móvil ${_escHtml(num)}`, sub: _escHtml(truck.plate || ''),
+      extra: _escHtml(`${truck.brand || ''} ${truck.model || ''}`.trim()), docs: docsTruck,
+    });
   }).join('');
+  _docResumenSelector('doc-sum-trucks', _listaCamiones.map(t => _allTruckDocs.filter(d => d.truck_id === t.truck_id)));
 
   const fab = document.getElementById('doc-fab');
   if (fab) fab.style.display = 'none';
@@ -10276,8 +10297,8 @@ function seleccionarCamionAdmin(truckId) {
   const titulo = document.getElementById('doc-camion-docs-titulo');
   if (titulo) {
     const num = String(truck.numero_interno || '?').padStart(2, '0');
-    titulo.innerHTML = `<div class="dv-num">Móvil #${_escHtml(num)}</div>
-      <div class="dv-plate">${_escHtml(truck.plate || '')} — ${_escHtml(truck.brand || '')}</div>`;
+    titulo.innerHTML = `<span class="dv-ic">${_docIcon('truck')}</span><div><div class="dv-num">Móvil ${_escHtml(num)}</div>
+      <div class="dv-plate">${_escHtml(truck.plate || '')} · ${_escHtml(`${truck.brand || ''} ${truck.model || ''}`.trim())}</div></div>`;
   }
 
   renderDocsCamion(_docsCamion);
@@ -10310,13 +10331,13 @@ function _renderSelectorChoferes() {
 
   grid.innerHTML = _listaChoferes.map(chofer => {
     const docsChofer = _allDriverDocs.filter(d => d.driver_id === chofer.user_id);
-    const badge = _badgeDocsCamion(docsChofer);
-    return `<div class="truck-select-card" onclick="seleccionarChoferAdmin('${chofer.user_id}')">
-      <div class="tscard-icon">👤</div>
-      <div class="tscard-num" style="font-size:14px;letter-spacing:0">${_escHtml(chofer.full_name || '')}</div>
-      <span class="truck-badge ${badge.cls}">${badge.txt}</span>
-    </div>`;
+    const ini = String(chofer.full_name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    return _docSelectorCard({
+      onclick: `seleccionarChoferAdmin('${chofer.user_id}')`, avatar: _escHtml(ini || '?'),
+      titulo: _escHtml(chofer.full_name || ''), sub: 'Chofer', docs: docsChofer,
+    });
   }).join('');
+  _docResumenSelector('doc-sum-choferes', _listaChoferes.map(c => _allDriverDocs.filter(d => d.driver_id === c.user_id)));
 }
 
 function seleccionarChoferAdmin(driverId) {
@@ -10334,7 +10355,8 @@ function seleccionarChoferAdmin(driverId) {
 
   const titulo = document.getElementById('doc-chofer-docs-titulo');
   if (titulo) {
-    titulo.innerHTML = `<div class="dv-num">${_escHtml(chofer.full_name || '')}</div>`;
+    const ini = String(chofer.full_name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    titulo.innerHTML = `<span class="dv-av">${_escHtml(ini)}</span><div><div class="dv-num">${_escHtml(chofer.full_name || '')}</div><div class="dv-plate">Legajo del chofer</div></div>`;
   }
 
   renderDocsChofer(_docsChofer);
@@ -10390,9 +10412,26 @@ function _aplicarFiltroDocs(docs, filtro) {
   return docs;
 }
 
+// Chips de resumen arriba del legajo y conteos en los filtros
+function _docResumenLegajo(contId, filtroId, docs) {
+  const c = _docConteos(docs);
+  const cont = document.getElementById(contId);
+  if (cont) {
+    const item = (n, txt, cls = '') => `<span class="doc-sum-item ${cls}"><b>${n}</b> ${txt}</span>`;
+    cont.innerHTML = docs.length
+      ? item(c.total, c.total === 1 ? 'documento' : 'documentos') + item(c.ok, 'al día', 'ok')
+        + (c.prox ? item(c.prox, 'por vencer', 'warn') : '') + (c.venc ? item(c.venc, c.venc === 1 ? 'vencido' : 'vencidos', 'bad') : '')
+        + (c.sinArchivo ? item(c.sinArchivo, 'sin archivo', 'warn') : '')
+      : '';
+  }
+  const labels = [['Todos', c.total], ['Por vencer', c.prox], ['Vencidos', c.venc]];
+  document.querySelectorAll(`#${filtroId} .doc-ftab`).forEach((b, i) => { if (labels[i]) b.innerHTML = `${labels[i][0]} <b>${labels[i][1]}</b>`; });
+}
+
 function renderDocsCamion(docs) {
   const grid = document.getElementById('doc-grid-camion');
   if (!grid) return;
+  _docResumenLegajo('doc-resumen-camion', 'doc-filter-camion', docs);
 
   const filtrados = _aplicarFiltroDocs(docs, _docFiltro.camion);
 
@@ -10419,8 +10458,8 @@ function renderDocsCamion(docs) {
   if (bannerPago) {
     if (!pagoDoc || !pagoDoc.periodo || pagoDoc.periodo < mesActual) {
       const mesNombre = new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' });
-      bannerPago.textContent = `⚠ Falta el comprobante de pago de ${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}`;
-      bannerPago.style.display = 'block';
+      bannerPago.innerHTML = `${_docIcon('triangle-alert')}<span>Falta el comprobante de pago de <b>${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}</b></span>`;
+      bannerPago.style.display = 'flex';
     } else {
       bannerPago.style.display = 'none';
     }
@@ -10440,6 +10479,7 @@ const DOC_CHOFER_META = {
 function renderDocsChofer(docs) {
   const grid = document.getElementById('doc-grid-chofer');
   if (!grid) return;
+  _docResumenLegajo('doc-resumen-chofer', 'doc-filter-chofer', docs);
 
   const filtrados = _aplicarFiltroDocs(docs, _docFiltro.chofer);
 
@@ -10475,35 +10515,33 @@ function renderEmergencias(items) {
   telSection.innerHTML = `
     <div class="emerg-section-head">
       <div class="section-label">Teléfonos de emergencia</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('telefono')" title="Agregar teléfono">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('telefono')" title="Agregar teléfono" aria-label="Agregar teléfono">${_docIcon('plus')}Agregar teléfono</button>` : ''}
     </div>
-    ${telefonos.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin teléfonos cargados.</div>` : ''}
-    ${telefonos.map(t => {
+    ${telefonos.length === 0 ? `<div class="emerg-empty">Sin teléfonos cargados.</div>` : ''}
+    <div class="emerg-phone-grid">${telefonos.map(t => {
       const phone     = t.metadata?.phone || '';
       const safeTitle = _escHtml(t.title || '');
       const safeValue = _escHtml(t.value || '');
       return `
         <div class="emerg-phone-card">
-          <div style="font-size:22px">📞</div>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700">${safeTitle}</div>
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${safeValue}</div>
+          <span class="emerg-ic">${_docIcon('phone')}</span>
+          <div class="emerg-txt">
+            <div class="emerg-title">${safeTitle}</div>
+            <div class="emerg-value">${safeValue}</div>
           </div>
-          ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn btn-primary" style="font-size:11px;padding:7px 12px;text-decoration:none">📞 Llamar</a>` : ''}
+          ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn btn-primary emerg-call">${_docIcon('phone')}Llamar</a>` : ''}
         </div>`;
-    }).join('')}`;
+    }).join('')}</div>`;
 
   // ── Protocolo ───────────────────────────────────────────
   protSection.innerHTML = `
     <div class="emerg-section-head" style="margin-top:20px">
       <div class="section-label">Protocolo de siniestro</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('protocolo')" title="Agregar paso">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('protocolo')" title="Agregar paso" aria-label="Agregar paso">${_docIcon('plus')}Agregar paso</button>` : ''}
     </div>
-    ${protocolo.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin pasos cargados.</div>` : `
+    ${protocolo.length === 0 ? `<div class="emerg-empty">Sin pasos cargados.</div>` : `
     <div class="emerg-protocol-card">
-      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
-        🚨 Qué hacer en caso de accidente
-      </div>
+      <div class="emerg-protocol-title">${_docIcon('triangle-alert')}Qué hacer en caso de accidente</div>
       ${protocolo.map((p, idx) => {
         const isCritical = p.metadata?.critical;
         const safeTitle  = _escHtml(p.title || '');
@@ -10511,9 +10549,7 @@ function renderEmergencias(items) {
         return `
           <div class="emerg-step">
             <div class="emerg-step-num">${idx + 1}</div>
-            <div class="emerg-step-text" style="${isCritical ? 'color:var(--red);font-weight:700' : ''}">
-              ${safeTitle}: ${safeValue}
-            </div>
+            <div class="emerg-step-text ${isCritical ? 'critical' : ''}"><b>${safeTitle}</b><span>${safeValue}</span>${isCritical ? '<em>Prioridad</em>' : ''}</div>
           </div>`;
       }).join('')}
     </div>`}`;
@@ -10522,10 +10558,10 @@ function renderEmergencias(items) {
   talSection.innerHTML = `
     <div class="emerg-section-head" style="margin-top:8px">
       <div class="section-label">Talleres y gomerías de confianza</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('taller')" title="Agregar taller">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('taller')" title="Agregar taller" aria-label="Agregar taller">${_docIcon('plus')}Agregar taller</button>` : ''}
     </div>
-    ${talleres.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin talleres cargados.</div>` : ''}
-    ${talleres.map(t => {
+    ${talleres.length === 0 ? `<div class="emerg-empty">Sin talleres cargados.</div>` : ''}
+    <div class="emerg-taller-grid">${talleres.map(t => {
       const phone      = t.metadata?.phone   || '';
       const badge      = _escHtml(t.metadata?.badge    || '');
       const address    = _escHtml(t.metadata?.address  || '');
@@ -10538,19 +10574,19 @@ function renderEmergencias(items) {
       return `
         <div class="emerg-taller-card">
           <div class="emerg-taller-top">
-            <div style="font-size:20px">🔧</div>
-            <div style="flex:1">
-              <div style="font-size:12px;font-weight:700">${safeTitle}${badge ? ` <span style="font-size:9px;color:var(--muted);font-weight:400">· ${badge}</span>` : ''}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">${safeValue}</div>
-              ${address ? `<div class="emerg-taller-addr">📍 ${address}</div>` : ''}
+            <span class="emerg-ic">${_docIcon('wrench')}</span>
+            <div class="emerg-txt">
+              <div class="emerg-title">${safeTitle}${badge ? ` <span class="emerg-badge">${badge}</span>` : ''}</div>
+              <div class="emerg-sub">${safeValue}</div>
+              ${address ? `<div class="emerg-taller-addr">${_docIcon('map-pin')}${address}</div>` : ''}
             </div>
           </div>
           <div class="emerg-taller-actions">
-            ${mapsUrl ? `<a href="${_escHtml(mapsUrl)}" target="_blank" rel="noopener" class="btn-maps">🗺 Ver en Maps</a>` : ''}
-            ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn-taller-call">📞 Llamar</a>` : ''}
+            ${mapsUrl ? `<a href="${_escHtml(mapsUrl)}" target="_blank" rel="noopener" class="btn-maps">${_docIcon('map')}Ver en Maps</a>` : ''}
+            ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn-taller-call">${_docIcon('phone')}Llamar</a>` : ''}
           </div>
         </div>`;
-    }).join('')}`;
+    }).join('')}</div>`;
 }
 
 async function cargarDocumentos() {
@@ -10766,8 +10802,8 @@ function actualizarBannerAlertasDocs(camion, chofer) {
   if (!banner) return;
   const criticos = [...camion, ...chofer].filter(d => d.status === 'vencido' || d.status === 'falta_archivo');
   if (criticos.length > 0) {
-    banner.innerHTML = `⚠ <strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong>`;
-    banner.style.display = 'block';
+    banner.innerHTML = `${_docIcon('triangle-alert')}<span><strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong> · vencidos o sin el archivo obligatorio</span>`;
+    banner.style.display = 'flex';
   } else {
     banner.style.display = 'none';
   }
@@ -15062,6 +15098,49 @@ async function initGrilla() {
   await cargarGrilla();
 }
 
+// Flechas ‹ › del mes: se mueven dentro de las opciones del selector (3 meses atrás a 3 adelante).
+function moverMesGrilla(delta) {
+  const sel = document.getElementById('grilla-mes-select');
+  if (!sel) return;
+  const opts = [...sel.options].map(o => o.value);
+  const idx = opts.indexOf(_grillaMesKey) + delta;
+  if (idx < 0 || idx >= opts.length) return;
+  sel.value = opts[idx];
+  cambiarMesGrilla(opts[idx]);
+}
+function _grillaSyncMesNav() {
+  const sel = document.getElementById('grilla-mes-select');
+  if (!sel) return;
+  const opts = [...sel.options].map(o => o.value);
+  const idx = opts.indexOf(_grillaMesKey);
+  const prev = document.getElementById('grilla-mes-prev'), next = document.getElementById('grilla-mes-next');
+  if (prev) prev.disabled = idx <= 0;
+  if (next) next.disabled = idx < 0 || idx >= opts.length - 1;
+  const hoyIso = _gHoyIso();
+  const semana = _grillaSemanas[_grillaSemanaIdx] || [];
+  const btnHoy = document.getElementById('grilla-btn-hoy');
+  if (btnHoy) btnHoy.disabled = semana.includes(hoyIso);
+}
+async function irHoyGrilla() {
+  const hoy = new Date();
+  const key = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const sel = document.getElementById('grilla-mes-select');
+  if (sel) sel.value = key;
+  if (key !== _grillaMesKey) { await cambiarMesGrilla(key); return; }
+  const idx = _grillaSemanas.findIndex(sem => sem.includes(_gHoyIso()));
+  if (idx >= 0) setSemanaGrilla(idx);
+}
+
+// Color estable por chofer (solo para reconocerlo de un vistazo en la grilla)
+function _grillaHue(id) {
+  let h = 0;
+  for (const ch of String(id || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (h * 137) % 360;
+}
+function _grillaIniciales(nombre) {
+  return String(nombre || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+}
+
 async function cambiarMesGrilla(mesKey) {
   _grillaMesKey = mesKey;
   _grillaSemanaIdx = 0;
@@ -15173,7 +15252,8 @@ function renderGrillaTabs() {
     const rango = ini.slice(5,7) === fin.slice(5,7)
       ? `${ini.slice(8,10)} – ${_gDDbarraMM(fin)}`
       : `${_gDDbarraMM(ini)} – ${_gDDbarraMM(fin)}`;
-    return `<div class="grilla-semana-tab ${i === _grillaSemanaIdx ? 'active' : ''}" onclick="setSemanaGrilla(${i})">Semana ${i+1} · ${rango}</div>`;
+    const tieneHoy = sem.includes(_gHoyIso());
+    return `<div class="grilla-semana-tab ${i === _grillaSemanaIdx ? 'active' : ''} ${tieneHoy ? 'tiene-hoy' : ''}" role="tab" tabindex="0" aria-selected="${i === _grillaSemanaIdx}" onclick="setSemanaGrilla(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setSemanaGrilla(${i})}"><b>Semana ${i+1}</b><small>${rango}</small></div>`;
   }).join('');
 }
 
@@ -15233,9 +15313,9 @@ function _grillaChipHtml(iso, t, clickCelda) {
 
   let chip = '';
   if (!a) {
-    chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda}>${esAdmin ? '+' : '—'}</span>`;
+    chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda} ${esAdmin ? 'title="Asignar"' : ''}>${esAdmin ? '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#plus"/></svg>' : '—'}</span>`;
   } else if (a.estado === 'taller') {
-    chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}>🔧 Taller</span>`;
+    chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#wrench"/></svg>Taller</span>`;
   } else if (a.estado === 'franco') {
     chip = `<span class="grilla-chip grilla-chip-franco" ${clickCelda}>Franco</span>`;
   } else {
@@ -15246,7 +15326,7 @@ function _grillaChipHtml(iso, t, clickCelda) {
     if (_grillaFiltroChofer) {
       extra += a.driver_id === _grillaFiltroChofer ? ' grilla-chip-resaltada' : ' grilla-chip-atenuada';
     }
-    chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} title="${nombreCompleto.replace(/"/g, '&quot;')}">${nombre}</span>`;
+    chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} style="--gc-h:${_grillaHue(a.driver_id)}" title="${nombreCompleto.replace(/"/g, '&quot;')}"><i class="gc-av" aria-hidden="true">${_grillaIniciales(nombreCompleto)}</i><span class="gc-nm">${nombre}</span></span>`;
   }
 
   // Atenuar también francos/taller/vacías cuando hay filtro por chofer
@@ -15281,7 +15361,8 @@ function renderGrillaTabla() {
     const clases    = [esHoy ? 'grilla-hoy' : '', feriado ? 'grilla-feriado' : ''].filter(Boolean).join(' ');
     const click     = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')" style="cursor:pointer"` : '';
     const tooltip   = feriado ? `title="${feriado.replace(/"/g, '&quot;')}"` : (esAdmin ? 'title="Clic para marcar/desmarcar feriado"' : '');
-    ths += `<th class="${clases}" ${click} ${tooltip}>${diasNom[i]}<span class="grilla-th-fecha">${_gDDMM(iso)}</span>${feriado ? `<span class="grilla-th-feriado">${feriado}</span>` : ''}</th>`;
+    const finde = i >= 5 ? ' grilla-finde' : '';
+    ths += `<th class="${clases}${finde}" ${click} ${tooltip}><span class="grilla-th-dn">${diasNom[i]}${esHoy ? ' · Hoy' : ''}</span><span class="grilla-th-fecha">${parseInt(iso.slice(8,10), 10)}<small>/${iso.slice(5,7)}</small></span>${feriado ? `<span class="grilla-th-feriado">${feriado}</span>` : ''}</th>`;
   });
   ths += '</tr>';
   thead.innerHTML = ths;
@@ -15292,13 +15373,14 @@ function renderGrillaTabla() {
   let filas = '';
 
   trucks.forEach(t => {
-    let tds = `<td class="grilla-movil">${t.numero_interno || t.plate || '—'}</td>`;
+    let tds = `<td class="grilla-movil"><b>${t.numero_interno || t.plate || '—'}</b>${t.numero_interno && t.plate ? `<small>${t.plate}</small>` : ''}</td>`;
 
-    semana.forEach(iso => {
+    semana.forEach((iso, i) => {
       const esHoy = iso === hoyIso;
       const clickCelda = esAdmin ? `onclick="abrirGrillaCelda('${iso}', ${t.truck_id})"` : '';
       const { chip } = _grillaChipHtml(iso, t, clickCelda);
-      tds += `<td class="${esHoy ? 'grilla-hoy-celda' : ''}">${chip}</td>`;
+      const clases = [esHoy ? 'grilla-hoy-celda' : '', i >= 5 ? 'grilla-finde' : '', _grillaFeriados[iso] ? 'grilla-feriado-celda' : ''].filter(Boolean).join(' ');
+      tds += `<td class="${clases}">${chip}</td>`;
     });
 
     filas += `<tr>${tds}</tr>`;
@@ -15311,9 +15393,35 @@ function renderGrillaTabla() {
   }
   tbody.innerHTML = filas;
   tbody.classList.toggle('grilla-admin', esAdmin);
+  _grillaRenderResumen(semana, trucks);
+  _grillaSyncMesNav();
 
   // Vista día (mobile) desde el mismo estado
   renderGrillaDia();
+}
+
+// Resumen de la semana visible: cuántos turnos asignados, francos, taller y sin asignar
+function _grillaRenderResumen(semana, trucks) {
+  const cont = document.getElementById('grilla-resumen');
+  if (!cont) return;
+  if (_grillaEsChofer() || !trucks.length) { cont.innerHTML = ''; return; }
+  let asig = 0, franco = 0, taller = 0, vacias = 0, alertas = 0;
+  const hoyIso = _gHoyIso();
+  trucks.forEach(t => semana.forEach(iso => {
+    const a = _grillaAsig[`${iso}|${t.truck_id}`];
+    if (!a) vacias++;
+    else if (a.estado === 'franco') franco++;
+    else if (a.estado === 'taller') taller++;
+    else asig++;
+    if (iso <= hoyIso && _grillaConflictos[`${iso}|${t.truck_id}`]) alertas++;
+  }));
+  const item = (n, txt, cls = '') => `<span class="grilla-res-item ${cls}"><b>${n}</b> ${txt}</span>`;
+  cont.innerHTML = item(trucks.length, trucks.length === 1 ? 'móvil' : 'móviles')
+    + item(asig, asig === 1 ? 'turno asignado' : 'turnos asignados', 'ok')
+    + item(franco, franco === 1 ? 'franco' : 'francos')
+    + (taller ? item(taller, taller === 1 ? 'día en taller' : 'días en taller', 'warn') : '')
+    + (vacias ? item(vacias, vacias === 1 ? 'sin asignar' : 'sin asignar', 'pend') : '')
+    + (alertas ? item(alertas, alertas === 1 ? 'diferencia con la jornada' : 'diferencias con la jornada', 'bad') : '');
 }
 
 // ── Vista día (mobile ≤767px) ───────────────────────────────────
@@ -15457,7 +15565,7 @@ function _grillaHtmlDiaAdmin(semana) {
     const { chip, conflicto } = _grillaChipHtml(iso, t, '');
     cards += `
       <div class="grilla-dia-card ${esAdmin ? 'grilla-admin' : ''}" ${clickCard}>
-        <div class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}<small>MÓVIL</small></div>
+        <div class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}<small>${t.numero_interno && t.plate ? t.plate : 'MÓVIL'}</small></div>
         <div class="grilla-dia-der">
           ${chip}
           ${conflicto ? `<div class="grilla-dia-conf">⚠ ${conflicto}</div>` : ''}
@@ -15509,10 +15617,11 @@ function _grillaRenderOpciones() {
   let html = _grillaChoferes.map(c => {
     const val = `chofer:${c.user_id}`;
     const sel = _grillaSeleccion === val;
-    return `<div class="grilla-opt ${sel ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('${val}')">👤 ${c.full_name} <span>${sel ? '✓' : ''}</span></div>`;
+    return `<div class="grilla-opt ${sel ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('${val}')"><i class="gc-av" style="--gc-h:${_grillaHue(c.user_id)}" aria-hidden="true">${_grillaIniciales(c.full_name)}</i><b class="grilla-opt-nm">${c.full_name}</b><span>${sel ? '✓' : ''}</span></div>`;
   }).join('');
-  html += `<div class="grilla-opt ${_grillaSeleccion === 'franco' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('franco')">😴 Franco (sin asignación) <span>${_grillaSeleccion === 'franco' ? '✓' : ''}</span></div>`;
-  html += `<div class="grilla-opt ${_grillaSeleccion === 'taller' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('taller')">🔧 Taller (mantenimiento) <span>${_grillaSeleccion === 'taller' ? '✓' : ''}</span></div>`;
+  html += `<div class="grilla-opt-sep">Sin chofer</div>`;
+  html += `<div class="grilla-opt ${_grillaSeleccion === 'franco' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('franco')"><i class="gc-av gc-av-franco" aria-hidden="true">F</i><b class="grilla-opt-nm">Franco <small>descanso, sin asignación</small></b><span>${_grillaSeleccion === 'franco' ? '✓' : ''}</span></div>`;
+  html += `<div class="grilla-opt ${_grillaSeleccion === 'taller' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('taller')"><i class="gc-av gc-av-taller" aria-hidden="true"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#wrench"/></svg></i><b class="grilla-opt-nm">Taller <small>el móvil está en mantenimiento</small></b><span>${_grillaSeleccion === 'taller' ? '✓' : ''}</span></div>`;
   cont.innerHTML = html;
 }
 
