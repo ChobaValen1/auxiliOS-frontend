@@ -339,13 +339,11 @@
   #screen-dashboard .rsm-tipo-det { display: none; }
 }
 
-/* Resumen → Tendencia: la evolución de Resumen es la vista previa y abre la
-   pestaña completa. */
-#screen-dashboard .rsm-evol-card { cursor: pointer; transition: border-color .15s ease; }
-#screen-dashboard .rsm-evol-card:hover,
-#screen-dashboard .rsm-evol-card:focus-visible { border-color: color-mix(in srgb, var(--amber) 45%, var(--border)); outline: none; }
+/* Resumen → Tendencia: la evolución de Resumen tiene zoom propio; el botón
+   del encabezado abre la pestaña completa. */
 #screen-dashboard .rsm-card-head-link { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-#screen-dashboard .rsm-link { color: var(--amber); font-size: 11px; font-weight: 700; white-space: nowrap; }
+#screen-dashboard .rsm-link { padding: 0; border: 0; background: none; color: var(--amber); font: inherit; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+#screen-dashboard .rsm-link:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* ── Pestaña TENDENCIA (dashboard-tendencia-v1.js) ── */
 #screen-dashboard .tnd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

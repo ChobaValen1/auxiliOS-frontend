@@ -58,6 +58,10 @@
   var cargandoLib = null;
   var chartTipos = null;
   var chartEvol = null;
+  var zoomEvol = null;
+  /* Zoom de la evolución (dashboard-zoom-v1.js): serie diaria larga, días
+     del período dentro de ella y la ventana que se está mirando. */
+  var evol = { hist: null, per: null, linea: null };
   var firmaCatalogo = { empresas: null, bases: null };
 
   /* ── utilidades ───────────────────────────────────────────────────────── */
@@ -616,7 +620,113 @@
     return out;
   }
 
+  function ventanaEvol(L, i0, i1) {
+    var span = i1 - i0 + 1;
+    var cs = L.cs.slice(i0, i1 + 1);
+    var conAnio = cs.length && cs[0].ini.getFullYear() !== cs[cs.length - 1].fin.getFullYear();
+    var ant = [];
+    for (var k = 0; k < span; k++) { var j = i0 + k - span; ant.push(j >= 0 ? L.vals[j] : null); }
+    return {
+      span: span,
+      labels: cs.map(function (c) { return conAnio ? c.et + '/' + String(c.ini.getFullYear()).slice(2) : c.et; }),
+      act: L.vals.slice(i0, i1 + 1).map(function (v, k) { return cs[k].a > L.hoy ? null : v; }), ant: ant,
+      hayAnt: ant.some(function (v) { return v > 0; })
+    };
+  }
+
+  function subEvol(w) {
+    var sub = el('rsm-evol-sub');
+    if (sub) sub.textContent = w.hayAnt ? 'Línea punteada: los ' + w.span + ' días anteriores' : 'Sin facturación en los ' + w.span + ' días anteriores para comparar';
+  }
+
+  function alCambiarEvol(i0, i1) {
+    var L = evol.linea;
+    if (!L) return;
+    L.i0 = i0;
+    var w = ventanaEvol(L, i0, i1);
+    subEvol(w);
+    if (!chartEvol) return;
+    chartEvol.data.labels = w.labels;
+    chartEvol.data.datasets[0].data = w.act;
+    chartEvol.data.datasets[0].pointRadius = w.span <= 16 ? 3 : 0;
+    chartEvol.data.datasets[1].data = w.ant;
+    chartEvol.data.datasets[1].hidden = !w.hayAnt;
+    chartEvol.update('none');
+  }
+
+  function controlEvol() {
+    var Z = global.AuxZoom, cv = el('rsm-evol-canvas');
+    if (zoomEvol || !Z || !cv) return zoomEvol;
+    zoomEvol = Z.crear(cv.closest('.rsm-card') || cv.parentNode.parentNode, {
+      canvas: cv,
+      grafico: function () { return chartEvol; },
+      alCambiar: alCambiarEvol,
+      rangos: ['periodo', 'd90', 'd180', 'd365', 'todo'],
+      ventanaDeRango: function (id) { return evol.linea ? Z.ventanaRango(id, evol.linea.cs, evol.per, evol.hist) : null; },
+      texto: function (i0, i1) { return evol.linea ? Z.textoVentana(evol.linea.cs, i0, i1) : ''; }
+    });
+    return zoomEvol;
+  }
+
   function pintarEvolucion(d) {
+    var Z = global.AuxZoom, h = evol.hist;
+    if (!Z || !h || !evol.per) { pintarEvolucionPeriodo(d); return; }
+    var cv = el('rsm-evol-canvas');
+    if (chartEvol) { chartEvol.destroy(); chartEvol = null; }
+    var hoy = Z.diasEntre(h.desde, Z.hoy());
+    var cs = Z.cubos(h.desde, h.n, 'dia', hoy);
+    var L = { cs: cs, vals: Z.sumar(cs, h.facturado), i0: 0, hoy: hoy };
+    evol.linea = L;
+    var v = Z.ventanaRango('periodo', cs, evol.per, h);
+    v = Z.acotar(v[0], v[1], cs.length, 3);
+    L.i0 = v[0];
+    var w = ventanaEvol(L, v[0], v[1]);
+    subEvol(w);
+    var ctl = controlEvol();
+    if (!cv || typeof global.Chart === 'undefined') { if (ctl) ctl.datos(cs.length, v, L.vals, 3); return; }
+    var grad = cv.getContext('2d').createLinearGradient(0, 0, 0, cv.clientHeight || 200);
+    grad.addColorStop(0, 'rgba(245,166,35,0.28)');
+    grad.addColorStop(1, 'rgba(245,166,35,0)');
+    chartEvol = new global.Chart(cv, {
+      type: 'line',
+      data: {
+        labels: w.labels,
+        datasets: [{
+          label: 'Actual', data: w.act, borderColor: '#f5a623', backgroundColor: grad,
+          fill: true, borderWidth: 2, tension: 0.35, pointRadius: w.span <= 16 ? 3 : 0, pointHoverRadius: 4
+        }, {
+          label: 'Anterior', data: w.ant, hidden: !w.hayAnt, borderColor: 'rgba(232,234,242,0.55)',
+          borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 3
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: function (it) { var c = it.length ? L.cs[L.i0 + it[0].dataIndex] : null; return c ? c.tit : ''; },
+            label: function (c) {
+              if (c.datasetIndex === 0) return ' Actual: ' + pesos(c.parsed.y);
+              var prev = L.cs[L.i0 + c.dataIndex - c.chart.data.labels.length];
+              return ' Anterior' + (prev ? ' (' + prev.et + ')' : '') + ': ' + pesos(c.parsed.y);
+            } } }
+        },
+        scales: {
+          x: { grid: { display: false }, border: { display: false },
+               ticks: { color: '#8590ab', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+          y: { beginAtZero: true, border: { display: false },
+               grid: { color: 'rgba(37,42,56,0.9)', borderDash: [3, 3] },
+               ticks: { color: '#8590ab', font: { size: 10 }, maxTicksLimit: 5,
+                        callback: function (v) { return pesosCorto(v).replace('$', '$ '); } } }
+        }
+      }
+    });
+    if (ctl) ctl.datos(cs.length, v, L.vals, 3);
+  }
+
+  /* Sin el control de zoom: sólo el período y su anterior, como antes. */
+  function pintarEvolucionPeriodo(d) {
     var cv = el('rsm-evol-canvas');
     if (chartEvol) { chartEvol.destroy(); chartEvol = null; }
     if (!cv || typeof global.Chart === 'undefined') return;
@@ -826,11 +936,15 @@
       p_desde: f.desde || null, p_hasta: f.hasta || null,
       p_empresas: paramArray(f.empresas), p_bases: paramArray(f.bases)
     };
+    var Z = global.AuxZoom;
     var r = await Promise.all([
       rpc(RPC_FACT, Object.assign({ p_conceptos: paramArray(f.conceptos) }, base)),
-      rpc(RPC_RES, base)
+      rpc(RPC_RES, base),
+      Z ? Z.historia(f) : null
     ]);
     var d = normalizar(r[0], r[1]);
+    evol.hist = Z && d.desde ? (r[2] || Z.historiaDePeriodo(d.desde, { facturado: d.porDia.anterior }, { facturado: d.porDia.actual })) : null;
+    evol.per = evol.hist ? [Z.diasEntre(evol.hist.desde, d.desde), Z.diasEntre(evol.hist.desde, d.hasta || d.desde)] : null;
     estado.res = d;
     pintarFiltros(d, f);
     pintar(d);

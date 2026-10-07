@@ -57,3 +57,42 @@
 #screen-dashboard .dashx-card a:hover, #screen-dashboard .dashx-card .dashx-ver:hover, #screen-dashboard [data-dashx-ir]:hover { color: var(--ax-text); }
 #screen-dashboard .dashx-toolbar :is(select, .form-input) { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-surface-2); color: var(--ax-text); color-scheme: dark; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
 #screen-dashboard .dashx-toolbar :is(select, .form-input):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+
+/* ── Zoom de los gráficos de evolución (dashboard-zoom-v1.js) ──
+   Barra de rangos y zoom arriba del gráfico, navegador con toda la historia abajo. */
+#screen-dashboard .axz-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 10px; }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button { display: inline-grid; place-items: center; min-width: 36px; height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button:hover:not(:disabled) { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-dashboard .axz-rangos button[aria-pressed="true"] { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button:disabled { opacity: .35; cursor: default; }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .axz-zoom button { width: 30px; min-width: 30px; padding: 0; }
+#screen-dashboard .axz-zoom button b { font-size: 17px; font-weight: var(--ax-fw-semibold); line-height: 1; }
+#screen-dashboard .axz-zoom .ax-icon { width: 14px; height: 14px; }
+#screen-dashboard .axz-der { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+#screen-dashboard .axz-lbl { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-dashboard .axz-lienzo { touch-action: pan-y; border-radius: var(--ax-radius); }
+#screen-dashboard .axz-lienzo canvas { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+#screen-dashboard .axz-lienzo:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .axz-nav { position: relative; height: 42px; margin-top: 12px; overflow: hidden; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-accent); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+#screen-dashboard .axz-nav canvas { position: absolute; inset: 0; pointer-events: none; }
+#screen-dashboard .axz-dim { position: absolute; top: 0; bottom: 0; background: hsl(222 30% 6% / .62); pointer-events: none; }
+#screen-dashboard .axz-dim.is-izq { left: 0; }
+#screen-dashboard .axz-dim.is-der { right: 0; }
+#screen-dashboard .axz-sel { position: absolute; top: 0; bottom: 0; min-width: 6px; border: 1px solid var(--ax-accent); border-radius: 5px; background: var(--ax-accent-soft); cursor: grab; }
+#screen-dashboard .axz-sel:active { cursor: grabbing; }
+#screen-dashboard .axz-h { position: absolute; top: 50%; width: 8px; height: 24px; margin-top: -12px; border-radius: 3px; background: var(--ax-accent); cursor: ew-resize; }
+#screen-dashboard .axz-h.is-izq { left: -4px; }
+#screen-dashboard .axz-h.is-der { right: -4px; }
+#screen-dashboard .axz-tip { margin: 8px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-dashboard .axz-tip-tactil { display: none; }
+@media (hover: none) {
+  #screen-dashboard .axz-tip-pc { display: none; }
+  #screen-dashboard .axz-tip-tactil { display: inline; }
+}
+@media (max-width: 640px) {
+  #screen-dashboard .axz-der { width: 100%; margin-left: 0; justify-content: space-between; }
+  #screen-dashboard .axz-rangos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  #screen-dashboard .axz-rangos button { min-width: 34px; padding: 0 7px; }
+}

@@ -25,7 +25,7 @@ test('la pestaña va después de Resumen y la evolución de Resumen lleva a Tend
   const tabs = index.match(/<div class="filter-tabs dashx-tabs" id="dashx-tabs">([\s\S]*?)<\/div>\s*<\/div>/)[1];
   const orden = [...tabs.matchAll(/data-sec="([a-z]+)"/g)].map(m => m[1]);
   assert.equal(orden.join(','), 'facturacion,tendencia,operaciones,flota');
-  assert.match(index, /id="rsm-evol-card"[^>]*onclick="dashxIrATendencia\(\)"/);
+  assert.match(index, /id="rsm-evol-card">[\s\S]*?<button type="button" class="rsm-link" onclick="dashxIrATendencia\(\)">/);
   assert.match(sigma, /function dashxIrATendencia\(\)/);
   assert.match(sigma, /tendencia: \['Tendencia',/);
 });

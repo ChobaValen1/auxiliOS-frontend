@@ -26,9 +26,13 @@
     km_reales: { nombre: 'Km reales', barras: 'Km reales por prestadora' }
   };
 
-  var estado = { metrica: 'facturado', escala: 'dia', datos: null };
+  /* hist: serie diaria larga para el zoom (dashboard-zoom-v1.js); per: días
+     del período dentro de esa serie; vista: días que se están mirando, para
+     no perder el zoom al cambiar de métrica o de escala. */
+  var estado = { metrica: 'facturado', escala: 'dia', datos: null, hist: null, per: null, vista: null, linea: null };
   var chartLinea = null;
   var chartBarras = null;
+  var zoomLinea = null;
 
   function el(id) { return document.getElementById(id); }
   function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
@@ -167,7 +171,124 @@
     };
   }
 
+  var UNIDAD = { dia: ['día', 'días'], semana: ['semana', 'semanas'], mes: ['mes', 'meses'] };
+
+  /* La ventana [i0, i1] de la serie larga: etiquetas, valores y, para la
+     línea punteada, la ventana del mismo largo justo antes. */
+  function datosVentana(L, i0, i1) {
+    var span = i1 - i0 + 1;
+    var cs = L.cs.slice(i0, i1 + 1);
+    var conAnio = cs.length && cs[0].ini.getFullYear() !== cs[cs.length - 1].fin.getFullYear() && estado.escala !== 'mes';
+    var ant = [];
+    for (var k = 0; k < span; k++) { var j = i0 + k - span; ant.push(j >= 0 ? L.vals[j] : null); }
+    return {
+      span: span,
+      labels: cs.map(function (c) { return conAnio ? c.et + '/' + String(c.ini.getFullYear()).slice(2) : c.et; }),
+      act: L.vals.slice(i0, i1 + 1).map(function (v, k) { return cs[k].a > L.hoy ? null : v; }),
+      ant: ant,
+      hayAnt: ant.some(function (v) { return v > 0; })
+    };
+  }
+
+  function textoSub(w) {
+    var u = UNIDAD[estado.escala] || UNIDAD.dia;
+    var cuantos = w.span === 1 ? 'el ' + u[0] + ' anterior' : (estado.escala === 'semana' ? 'las ' : 'los ') + w.span + ' ' + u[1] + ' anteriores';
+    return (w.hayAnt ? 'Línea punteada: ' + cuantos : 'Sin datos en ' + cuantos + ' para comparar') +
+      ' · ' + METRICAS[estado.metrica].nombre + ' por ' + u[0];
+  }
+
+  function alCambiarZoom(i0, i1) {
+    var L = estado.linea;
+    if (!L) return;
+    estado.vista = [L.cs[i0].a, L.cs[i1].b];
+    L.i0 = i0;
+    var w = datosVentana(L, i0, i1);
+    var sub = el('tnd-sub');
+    if (sub) sub.textContent = textoSub(w);
+    if (!chartLinea) return;
+    chartLinea.data.labels = w.labels;
+    chartLinea.data.datasets[0].data = w.act;
+    chartLinea.data.datasets[0].pointRadius = w.span <= 16 ? 3 : 0;
+    chartLinea.data.datasets[1].data = w.ant;
+    chartLinea.data.datasets[1].hidden = !w.hayAnt;
+    chartLinea.update('none');
+  }
+
+  function controlZoom() {
+    var Z = global.AuxZoom, cv = el('tnd-linea');
+    if (zoomLinea || !Z || !cv) return zoomLinea;
+    zoomLinea = Z.crear(cv.closest('.rsm-card') || cv.parentNode.parentNode, {
+      canvas: cv,
+      grafico: function () { return chartLinea; },
+      alCambiar: alCambiarZoom,
+      navegador: true,
+      ventanaDeRango: function (id) {
+        return estado.linea ? Z.ventanaRango(id, estado.linea.cs, estado.per, estado.hist) : null;
+      },
+      texto: function (i0, i1) { return estado.linea ? Z.textoVentana(estado.linea.cs, i0, i1) : ''; }
+    });
+    return zoomLinea;
+  }
+
   function pintarLinea(d) {
+    var Z = global.AuxZoom, h = estado.hist;
+    if (!Z || !h || !estado.per) { pintarLineaPeriodo(d); return; }
+    var cv = el('tnd-linea');
+    if (chartLinea) { chartLinea.destroy(); chartLinea = null; }
+    var m = estado.metrica;
+    var titulo = el('tnd-titulo');
+    var per = global.AuxDash && global.AuxDash.descripcionPeriodo ? global.AuxDash.descripcionPeriodo().titulo : '';
+    if (titulo) titulo.textContent = 'Evolución temporal' + (per ? ' · ' + per : '');
+    var hoy = Z.diasEntre(h.desde, Z.hoy());
+    var cs = Z.cubos(h.desde, h.n, estado.escala, hoy);
+    var L = { cs: cs, vals: Z.sumar(cs, h[m]), i0: 0, hoy: hoy };
+    estado.linea = L;
+    var minimo = estado.escala === 'dia' ? 3 : 2;
+    var v = estado.vista ? [Z.cuboDe(cs, estado.vista[0]), Z.cuboDe(cs, estado.vista[1])] : Z.ventanaRango('periodo', cs, estado.per, h);
+    v = Z.acotar(v[0], v[1], cs.length, minimo);
+    L.i0 = v[0];
+    var w = datosVentana(L, v[0], v[1]);
+    var sub = el('tnd-sub');
+    if (sub) sub.textContent = textoSub(w);
+    var ctl = controlZoom();
+    if (!cv || typeof global.Chart === 'undefined') { if (ctl) ctl.datos(cs.length, v, L.vals, minimo); return; }
+    var grad = cv.getContext('2d').createLinearGradient(0, 0, 0, cv.clientHeight || 240);
+    grad.addColorStop(0, 'rgba(245,166,35,0.28)');
+    grad.addColorStop(1, 'rgba(245,166,35,0)');
+    chartLinea = new global.Chart(cv, {
+      type: 'line',
+      data: {
+        labels: w.labels,
+        datasets: [{
+          label: 'Actual', data: w.act, borderColor: '#f5a623', backgroundColor: grad,
+          fill: true, borderWidth: 2, tension: 0.35, pointRadius: w.span <= 16 ? 3 : 0, pointHoverRadius: 4
+        }, {
+          label: 'Anterior', data: w.ant, hidden: !w.hayAnt, borderColor: 'rgba(232,234,242,0.55)', borderDash: [4, 4],
+          fill: false, borderWidth: 1.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 3, spanGaps: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: function (it) { var c = it.length ? L.cs[L.i0 + it[0].dataIndex] : null; return c ? c.tit : ''; },
+            label: function (c) {
+              if (c.datasetIndex === 0) return ' Actual: ' + formato(m, c.parsed.y);
+              var span = c.chart.data.labels.length;
+              var prev = L.cs[L.i0 + c.dataIndex - span];
+              return ' Anterior' + (prev ? ' (' + prev.et + ')' : '') + ': ' + formato(m, c.parsed.y);
+            } } }
+        },
+        scales: ejes(m)
+      }
+    });
+    if (ctl) ctl.datos(cs.length, v, L.vals, minimo);
+  }
+
+  /* Sin el control de zoom: sólo el período y su anterior, como antes. */
+  function pintarLineaPeriodo(d) {
     var cv = el('tnd-linea');
     if (chartLinea) { chartLinea.destroy(); chartLinea = null; }
     var m = estado.metrica;
@@ -215,7 +336,7 @@
     var h = el('tnd-barras-titulo');
     if (h) h.textContent = METRICAS[m].barras;
     var sub = el('tnd-barras-sub');
-    if (sub) sub.textContent = 'Composición apilada de cada ' + (estado.escala === 'semana' ? 'semana' : 'día');
+    if (sub) sub.textContent = 'Composición apilada de cada ' + (estado.escala === 'dia' ? 'día' : 'semana') + ' del período';
     var lg = el('tnd-barras-leyenda');
     if (lg) {
       lg.innerHTML = d.empresas.map(function (e) {
@@ -322,11 +443,17 @@
     if (rango) rango.textContent = f.desde && f.hasta ? 'del ' + fecha(f.desde) + ' al ' + fecha(f.hasta) : '';
     var base = { p_desde: f.desde || null, p_hasta: f.hasta || null,
                  p_empresas: paramArray(f.empresas), p_bases: paramArray(f.bases) };
+    var Z = global.AuxZoom;
     var r = await Promise.all([
       rpc(RPC_TEND, base),
-      rpc(RPC_FACT, Object.assign({ p_conceptos: null }, base))
+      rpc(RPC_FACT, Object.assign({ p_conceptos: null }, base)),
+      Z ? Z.historia(f) : null
     ]);
-    estado.datos = normalizar(r[0], r[1]);
+    var d = normalizar(r[0], r[1]);
+    estado.datos = d;
+    estado.hist = Z && d.desde ? (r[2] || Z.historiaDePeriodo(d.desde, d.anterior, d.actual)) : null;
+    estado.per = estado.hist ? [Z.diasEntre(estado.hist.desde, d.desde), Z.diasEntre(estado.hist.desde, d.hasta || d.desde)] : null;
+    estado.vista = null;
     pintar();
   }
 
