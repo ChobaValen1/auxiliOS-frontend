@@ -6979,6 +6979,110 @@ let kmIaInicio     = null;  // lectura IA al abrir (null = no leyó)
 let kmIaFinal      = null;  // lectura IA al cerrar
 let kmOrigenInicio = null;  // 'ia' | 'manual_ia_fallo' | 'manual_editado' | 'manual_offline'
 let kmOrigenFinal  = null;
+// Horas de motor (sólo camiones con horómetro): lectura IA y de dónde salió el dato
+let horasIaInicio     = null;
+let horasIaFinal      = null;
+let horasOrigenInicio = null;  // 'ia' | 'manual_ia_fallo' | 'manual_offline' (se resuelve al confirmar)
+let horasOrigenFinal  = null;
+
+/* "1.234,5", "1234,5" o "1234.5" → 1234.5 (un decimal). NaN si no es un número. */
+function _parseHoras(v) {
+  let t = String(v == null ? '' : v).trim().replace(/\s/g, '');
+  if (!t) return NaN;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  const n = Number(t);
+  return isFinite(n) && n >= 0 ? Math.round(n * 10) / 10 : NaN;
+}
+function _fmtHoras(n) {
+  return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+}
+/* De dónde salieron las horas confirmadas: igual que con los km. */
+function _horasResolverOrigen(ia, valor, origen) {
+  if (ia != null && valor === ia) return 'ia';
+  if (ia != null) return 'manual_editado';
+  return origen || 'manual';
+}
+/* Muestra u oculta el bloque de horas de un modal ('nj' abrir, 'cj' cerrar). */
+function _horasPreparar(pre, necesita) {
+  const area = document.getElementById(pre + '-horas-area');
+  const input = document.getElementById(pre + '-horas');
+  const fuente = document.getElementById(pre + '-horas-fuente');
+  const calc = document.getElementById(pre + '-horas-calc');
+  if (area) area.hidden = !necesita;
+  if (input) { input.value = ''; input.removeAttribute('aria-invalid'); }
+  if (fuente) { fuente.textContent = 'La IA las lee de la misma foto. Si no las encuentra, escribilas.'; fuente.className = 'jh-fuente'; }
+  if (calc) { calc.textContent = ''; calc.className = 'jh-calc'; }
+}
+function _horasNecesitaInicio() { return !!jornadaSeleccionada?.registra_horas; }
+function _horasNecesitaCierre() { return jornadaParaCerrar?.horas_inicio != null; }
+function _horasReferencia(pre) {
+  const v = pre === 'nj' ? jornadaSeleccionada?.current_hours : jornadaParaCerrar?.horas_inicio;
+  const n = Number(v);
+  return v != null && isFinite(n) && n > 0 ? n : null;
+}
+/* Diferencia contra la referencia: último cierre (abrir) o inicio de la jornada (cerrar). */
+function onHorasInput(pre) {
+  const input = document.getElementById(pre + '-horas');
+  const calc = document.getElementById(pre + '-horas-calc');
+  if (!input || !calc) return;
+  input.removeAttribute('aria-invalid');
+  const v = _parseHoras(input.value), ref = _horasReferencia(pre);
+  calc.className = 'jh-calc';
+  if (isNaN(v)) { calc.textContent = input.value.trim() ? 'Escribí un número, por ejemplo 1234,5' : ''; if (input.value.trim()) calc.className = 'jh-calc is-error'; return; }
+  if (ref == null) { calc.textContent = ''; return; }
+  const d = Math.round((v - ref) * 10) / 10;
+  if (d < 0) {
+    calc.textContent = `⚠ ${_fmtHoras(-d)} h menos que ${pre === 'nj' ? 'el último cierre' : 'al iniciar'} (${_fmtHoras(ref)} h)`;
+    calc.className = 'jh-calc is-error';
+  } else if (pre === 'cj' && d > 24) {
+    calc.textContent = `+${_fmtHoras(d)} h de motor en la jornada: revisá el horómetro`;
+    calc.className = 'jh-calc is-aviso';
+  } else {
+    calc.textContent = pre === 'nj' ? `+${_fmtHoras(d)} h desde el último cierre` : `+${_fmtHoras(d)} h de motor en la jornada`;
+    calc.className = 'jh-calc is-ok';
+  }
+}
+/* Lo que devolvió la IA para las horas (o que no las vio). */
+function _horasDesdeIA(pre, horas) {
+  const input = document.getElementById(pre + '-horas');
+  const fuente = document.getElementById(pre + '-horas-fuente');
+  const leidas = horas != null && isFinite(Number(horas));
+  if (pre === 'nj') { horasIaInicio = leidas ? Number(horas) : null; horasOrigenInicio = leidas ? 'ia' : 'manual_ia_fallo'; }
+  else { horasIaFinal = leidas ? Number(horas) : null; horasOrigenFinal = leidas ? 'ia' : 'manual_ia_fallo'; }
+  if (input) input.value = leidas ? _fmtHoras(horas) : '';
+  if (fuente) {
+    fuente.textContent = leidas ? '✓ Leídas por la IA · revisá que coincidan con el tablero' : 'La IA no encontró las horas en la foto: escribilas a mano';
+    fuente.className = 'jh-fuente ' + (leidas ? 'is-ia' : 'is-manual');
+  }
+  onHorasInput(pre);
+  if (!leidas) input?.focus();
+}
+/* Valida las horas antes de confirmar. Devuelve {ok, horas, ia, origen} o {ok:false}. */
+function _horasValidar(pre, errorId) {
+  const necesita = pre === 'nj' ? _horasNecesitaInicio() : _horasNecesitaCierre();
+  if (!necesita) return { ok: true, horas: null, ia: null, origen: null };
+  const input = document.getElementById(pre + '-horas');
+  const v = _parseHoras(input?.value);
+  const ref = _horasReferencia(pre);
+  if (isNaN(v)) {
+    input?.setAttribute('aria-invalid', 'true'); input?.focus();
+    _modalError(errorId, 'Este camión registra horas de motor: cargá las horas ' + (pre === 'nj' ? 'iniciales' : 'finales') + '.');
+    return { ok: false };
+  }
+  if (ref != null && v < ref) {
+    input?.setAttribute('aria-invalid', 'true'); input?.focus();
+    _modalError(errorId, `Las horas (${_fmtHoras(v)} h) son menores a ${pre === 'nj' ? 'las del último cierre' : 'las del inicio de la jornada'} (${_fmtHoras(ref)} h). Revisá el horómetro.`);
+    return { ok: false };
+  }
+  if (pre === 'cj' && ref != null && v - ref > 24 &&
+      !confirm(`La jornada suma ${_fmtHoras(v - ref)} h de motor. ¿Es correcto?`)) {
+    input?.focus();
+    return { ok: false };
+  }
+  const ia = pre === 'nj' ? horasIaInicio : horasIaFinal;
+  const origen = pre === 'nj' ? horasOrigenInicio : horasOrigenFinal;
+  return { ok: true, horas: v, ia, origen: _horasResolverOrigen(ia, v, origen) };
+}
 let _jornadasAbiertasCache    = [];
 let _jornadaPendienteCerrar   = null;
 
@@ -6988,6 +7092,8 @@ async function abrirModalNuevaJornada() {
     jornadaSeleccionada = null;
     fotoKmInicio = null;
     kmIaInicio = null; kmOrigenInicio = null;
+    horasIaInicio = null; horasOrigenInicio = null;
+    _horasPreparar('nj', false);
     _modalError('nj-error', '');
 
     const kmInput = document.getElementById('nj-km-inicio');
@@ -7049,6 +7155,7 @@ async function abrirModalNuevaJornada() {
       jornadaSeleccionada = _camionActual;
       const kmInput2 = document.getElementById('nj-km-inicio');
       if (kmInput2 && _camionActual.current_km) kmInput2.value = _camionActual.current_km;
+      _horasPreparar('nj', _horasNecesitaInicio());
       if (preview)    preview.style.display = 'block';
       if (previewTxt) previewTxt.textContent = `${_camionActual.plate}${_camionActual.numero_interno ? ' · N° ' + _camionActual.numero_interno : ''}`;
       if (btnSelector) btnSelector.style.display = 'none';
@@ -7124,6 +7231,7 @@ function reabrirSelectorCamion() {
     const searchInput = document.getElementById('camion-search-input');
     if (searchInput) { searchInput.value = ''; filtrarCamionesPorBusqueda(''); }
     jornadaSeleccionada = null;
+    _horasPreparar('nj', false);
     const preview = document.getElementById('camion-seleccionado-preview');
     const btnSelector = document.getElementById('btn-abrir-selector-camion');
     const panel = document.getElementById('panel-selector-camion');
@@ -7160,6 +7268,8 @@ function seleccionarCamion(camion, el) {
   // Pre-llenar KM inicial
   const kmInput = document.getElementById('nj-km-inicio');
   if (kmInput && camion.current_km) kmInput.value = camion.current_km;
+  horasIaInicio = null; horasOrigenInicio = null;
+  _horasPreparar('nj', !!camion.registra_horas);
 }
 
 function procesarFotoJornada(input, statusId, iconId) {
@@ -7228,6 +7338,10 @@ async function confirmarNuevaJornada() {
     return;
   }
 
+  // Horas de motor: obligatorias en los camiones con horómetro
+  const horasIni = _horasValidar('nj', 'nj-error');
+  if (!horasIni.ok) return;
+
   const btn = document.querySelector('#modal-nueva-jornada .btn-primary');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
@@ -7253,6 +7367,9 @@ async function confirmarNuevaJornada() {
         kmInicio:     kmInicio,
         kmInicioIa:     kmIaInicio,
         kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
+        horasInicio:       horasIni.horas,
+        horasInicioIa:     horasIni.ia,
+        horasInicioOrigen: horasIni.origen,
         grillaMotivo: _grillaMotivoPendiente,
         marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
         // Fecha/hora del momento REAL de la apertura (no del sync).
@@ -7277,6 +7394,7 @@ async function confirmarNuevaJornada() {
         patente:      jornadaSeleccionada.plate,
         marca_modelo: payloadOffline.marcaModelo,
         km_inicio:    kmInicio,
+        horas_inicio: horasIni.horas,
         log_date:     payloadOffline.logDate,
         hora_inicio:  payloadOffline.horaInicio,
       };
@@ -7309,6 +7427,9 @@ async function confirmarNuevaJornada() {
     kmInicio:     kmInicio,
     kmInicioIa:     kmIaInicio,
     kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
+    horasInicio:       horasIni.horas,
+    horasInicioIa:     horasIni.ia,
+    horasInicioOrigen: horasIni.origen,
     fotoKmInicio: fotoKmInicio,
     grillaMotivo: _grillaMotivoPendiente,
     marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
@@ -7432,6 +7553,9 @@ function abrirModalCerrarJornada(jornada) {
   fotoKmFinal = null;
   kmExcepcion = false;
   kmIaFinal = null; kmOrigenFinal = null;
+  horasIaFinal = null; horasOrigenFinal = null;
+  _horasPreparar('cj', _horasNecesitaCierre());
+  _cargarHorasInicioCierre(jornada);
 
   // Limpiar inputs viejos
   ['cj-km-final', 'cj-workshop-detail'].forEach(id => {
@@ -7496,6 +7620,31 @@ function abrirModalCerrarJornada(jornada) {
 
   // Y finalmente... ¡Tu función nativa hace la magia!
   openModal('modal-cerrar-jornada');
+}
+
+/* Las listas de jornadas abiertas no traen las horas de inicio: se piden
+   aparte (o salen de la jornada guardada en el teléfono si no hay señal). Si
+   la jornada abrió con horas, el cierre las pide. */
+async function _cargarHorasInicioCierre(jornada) {
+  if (!jornada) return;
+  if (jornada.horas_inicio === undefined && _jornadaActivaLocal && String(_jornadaActivaLocal.log_id) === String(jornada.log_id)) {
+    jornada.horas_inicio = _jornadaActivaLocal.horas_inicio ?? null;
+  }
+  const real = jornada.log_id != null && !_logIdEsTemporal(jornada.log_id);
+  if (real && navigator.onLine && typeof _db !== 'undefined') {
+    try {
+      const { data } = await _db.from('daily_logs').select('horas_inicio').eq('log_id', jornada.log_id).maybeSingle();
+      if (data) jornada.horas_inicio = data.horas_inicio;
+    } catch (e) { /* sin dato: queda lo que había */ }
+  }
+  if (jornadaParaCerrar !== jornada) return;
+  const area = document.getElementById('cj-horas-area');
+  const necesita = _horasNecesitaCierre();
+  if (area && area.hidden === necesita) _horasPreparar('cj', necesita);
+  if (necesita) {
+    const fuente = document.getElementById('cj-horas-fuente');
+    if (fuente && !document.getElementById('cj-horas')?.value) fuente.textContent = `Al iniciar: ${_fmtHoras(jornada.horas_inicio)} h. La IA las lee de la misma foto.`;
+  }
 }
 
 const _TALLER_EJ = {
@@ -7753,6 +7902,8 @@ async function confirmarCerrarJornada() {
   if (enTaller && !workshopDetail) {
     _modalError('cj-error', 'Ingresá el detalle del trabajo realizado en taller'); return;
   }
+  const horasFin = _horasValidar('cj', 'cj-error');
+  if (!horasFin.ok) return;
   _modalError('cj-error', '');
 
   // Bloquear botón mientras Supabase procesa (evita doble envío en redes lentas)
@@ -7777,6 +7928,9 @@ async function confirmarCerrarJornada() {
         kmFinal:        kmFinal,
         kmFinalIa:     kmIaFinal,
         kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
+        horasFinal:       horasFin.horas,
+        horasFinalIa:     horasFin.ia,
+        horasFinalOrigen: horasFin.origen,
         inWorkshop:     enTaller,
         workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
         kmExcepcion:    kmExcepcion,
@@ -7827,6 +7981,9 @@ async function confirmarCerrarJornada() {
     kmFinal:        kmFinal,
     kmFinalIa:     kmIaFinal,
     kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
+    horasFinal:       horasFin.horas,
+    horasFinalIa:     horasFin.ia,
+    horasFinalOrigen: horasFin.origen,
     fotoKmFinal:    fotoKmFinal,
     inWorkshop:     enTaller,
     workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
@@ -9227,6 +9384,7 @@ function openNuevoVehiculoModal() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const regHorasNv = document.getElementById('nv-registra-horas'); if (regHorasNv) regHorasNv.checked = false;
   const warnEl = document.getElementById('warn-patente-nv');
   if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
   const errEl = document.getElementById('nv-modal-error');
@@ -9251,6 +9409,7 @@ async function guardarNuevoVehiculo() {
   const modelo = document.getElementById('nv-modelo').value.trim();
   const km = parseInt(document.getElementById('nv-km').value);
   const horas = parseInt(document.getElementById('nv-horas').value) || 0;
+  const registraHoras = !!document.getElementById('nv-registra-horas')?.checked;
   const anio = parseInt(document.getElementById('nv-anio').value) || null;
   const interno = document.getElementById('nv-interno').value.trim();
 
@@ -9265,7 +9424,7 @@ async function guardarNuevoVehiculo() {
   const payload = {
     plate: patente, brand: marca, model: modelo,
     year: anio, numero_interno: interno, current_km: km,
-    current_hours: horas, tipo_equipo: tipo
+    current_hours: horas, tipo_equipo: tipo, registra_horas: registraHoras
   };
 
   let error_res;
@@ -9388,6 +9547,7 @@ async function abrirEditarVehiculo(truckId) {
     document.getElementById('nv-interno').value = data.numero_interno || '';
     document.getElementById('nv-km').value = data.current_km || '';
     document.getElementById('nv-horas').value = data.current_hours || '';
+    const regHoras = document.getElementById('nv-registra-horas'); if (regHoras) regHoras.checked = !!data.registra_horas;
     if (data.tipo_equipo) document.getElementById('nv-tipo').value = data.tipo_equipo;
     const warnEl = document.getElementById('warn-patente-nv');
     if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
@@ -9817,8 +9977,10 @@ async function procesarFotoConIA(event, contexto) {
     // guardada en el teléfono (se sube al sincronizar) y los KM van a mano.
     if (!navigator.onLine) {
         if (isInicio) { fotoKmInicio = archivo; } else { fotoKmFinal = archivo; }
-        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_offline'; }
-        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_offline'; }
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_offline'; horasIaInicio = null; horasOrigenInicio = 'manual_offline'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_offline'; horasIaFinal = null; horasOrigenFinal = 'manual_offline'; }
+        const fuenteOff = document.getElementById(prefix + '-horas-fuente');
+        if (fuenteOff) { fuenteOff.textContent = 'Sin conexión: escribí las horas de motor a mano'; fuenteOff.className = 'jh-fuente is-manual'; }
         const manualArea = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualArea) manualArea.style.display = 'block';
         if (msgStatus) msgStatus.innerHTML = '<span style="color: var(--amber);">📴 Sin conexión: la foto quedó guardada en el teléfono. Ingresá los KM a mano.</span>';
@@ -9857,7 +10019,9 @@ async function procesarFotoConIA(event, contexto) {
         const urlPublica = await subirFotoOdometro(archivo, contexto);
         if(isInicio) fotoKmInicio=urlPublica; else fotoKmFinal=urlPublica;
         // 3. LLAMAMOS A LA IA REAL (Edge Function)
-        const resultadoIA = await llamarIA_Real(urlPublica, contexto, kmBaseReferencia);
+        const leerHoras = isInicio ? _horasNecesitaInicio() : _horasNecesitaCierre();
+        const resultadoIA = await llamarIA_Real(urlPublica, contexto, kmBaseReferencia, leerHoras ? { horasReferencia: _horasReferencia(prefix) } : null);
+        if (leerHoras && resultadoIA.success) _horasDesdeIA(prefix, resultadoIA.horas_extraidas);
 
         if (!resultadoIA.success) throw new Error('La IA no encontró números claros.');
 
@@ -9948,8 +10112,9 @@ async function procesarFotoConIA(event, contexto) {
 
     } catch (error) {
         // 5. ERROR: Manejo visual
-        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_ia_fallo'; }
-        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; }
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_ia_fallo'; horasIaInicio = null; horasOrigenInicio = 'manual_ia_fallo'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; horasIaFinal = null; horasOrigenFinal = 'manual_ia_fallo'; }
+        if (isInicio ? _horasNecesitaInicio() : _horasNecesitaCierre()) _horasDesdeIA(prefix, null);
         const manualAreaErr = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualAreaErr) manualAreaErr.style.display = 'block';
         msgStatus.textContent = isInicio ? 'Ingresá el kilometraje manualmente. La foto se guardará para auditoría.' : '';
@@ -9970,7 +10135,7 @@ async function procesarFotoConIA(event, contexto) {
 /**
  * Llama a la Edge Function de Supabase para leer el odómetro con IA real
  */
-async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
+async function llamarIA_Real(urlPublica, contexto, kmReferencia, horas = null) {
     const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/procesar-odometro`;
     const accessToken = await obtenerAccessToken();
 
@@ -9989,6 +10154,8 @@ async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
                 url_foto: urlPublica,
                 contexto: contexto,
                 km_referencia: kmReferencia,
+                // Camiones con horómetro: la misma foto trae las horas de motor
+                ...(horas ? { leer_horas: true, horas_referencia: horas.horasReferencia } : {}),
             }),
             signal: controller.signal,
         });

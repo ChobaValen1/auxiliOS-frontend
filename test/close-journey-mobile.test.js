@@ -21,8 +21,10 @@ for(const uploadFails of [false,true])test('OCR failure retains '+(uploadFails?'
   const file={name:'odometro.jpg'};
   const c=vm.createContext({document:{getElementById:get},navigator:{onLine:true},jornadaParaCerrar:{km_inicio:100},toast(){},console,
     subirFotoOdometro:async()=>{if(uploadFails)throw Error('offline');return 'https://example.test/photo.jpg';},
-    llamarIA_Real:async()=>({success:false})});
-  vm.runInContext('let fotoKmFinal=null,kmIaFinal=null,kmOrigenFinal=null;'+fn('procesarFotoConIA'),c);
+    llamarIA_Real:async()=>({success:false}),
+    // Camión sin horómetro: el bloque de horas no participa.
+    _horasNecesitaInicio:()=>false,_horasNecesitaCierre:()=>false,_horasReferencia:()=>null,_horasDesdeIA(){}});
+  vm.runInContext('let fotoKmFinal=null,kmIaFinal=null,kmOrigenFinal=null,horasIaInicio=null,horasOrigenInicio=null,horasIaFinal=null,horasOrigenFinal=null;'+fn('procesarFotoConIA'),c);
   await c.procesarFotoConIA({target:{files:[file]}},'cierre');
   assert.equal(vm.runInContext('fotoKmFinal',c),uploadFails?file:'https://example.test/photo.jpg');
   assert.equal(vm.runInContext('kmOrigenFinal',c),'manual_ia_fallo');

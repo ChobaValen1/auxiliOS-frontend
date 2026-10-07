@@ -261,3 +261,23 @@
   #screen-jornadas-admin.screen .jadmin-sort { display: grid; grid-template-columns: auto minmax(0, 1fr); width: 100%; }
   #screen-jornadas-admin.screen .jadmin-sort select { min-width: 0; max-width: none; }
 }
+
+/* ── Horas de motor al abrir y cerrar la jornada (camiones con horómetro) ── */
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-horas { display: grid; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ax-border); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-horas[hidden] { display: none; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-label { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-input { font: var(--ax-fw-semibold) 22px var(--ax-font-mono); text-align: center; font-variant-numeric: tabular-nums; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-input[aria-invalid="true"] { border-color: var(--ax-danger); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-fuente { color: var(--ax-text-3); font-size: var(--ax-fs-xs); text-align: center; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-fuente.is-ia { color: var(--ax-ok); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-fuente.is-manual { color: var(--ax-warn); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc { min-height: 16px; color: var(--ax-text-2); font-size: var(--ax-fs-xs); text-align: center; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc.is-ok { color: var(--ax-ok); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc.is-aviso { color: var(--ax-warn); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc.is-error { color: var(--ax-danger); }
+
+/* Interruptor "Registra horas de motor" en el alta y edición de un móvil */
+#modal-nuevo-vehiculo .nv-horas-switch { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 6px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); cursor: pointer; }
+#modal-nuevo-vehiculo .nv-horas-switch > span:first-child { display: grid; gap: 3px; }
+#modal-nuevo-vehiculo .nv-horas-switch b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#modal-nuevo-vehiculo .nv-horas-switch small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.4; }

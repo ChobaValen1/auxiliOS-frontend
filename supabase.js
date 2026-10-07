@@ -1842,6 +1842,10 @@ async function iniciarJornada(datos) {
       km_inicio:         parseInt(datos.kmInicio),
       km_inicio_ia:      datos.kmInicioIa ?? null,
       km_inicio_origen:  datos.kmInicioOrigen || null,
+      // Horas de motor: sólo los camiones con horómetro las mandan
+      horas_inicio:        datos.horasInicio ?? null,
+      horas_inicio_ia:     datos.horasInicioIa ?? null,
+      horas_inicio_origen: datos.horasInicio != null ? (datos.horasInicioOrigen || null) : null,
       hora_inicio:       datos.horaInicio || new Date().toTimeString().slice(0, 5),
       foto_km_inicio:    fotoUrl,
       grilla_motivo:     datos.grillaMotivo || null,
@@ -1860,6 +1864,7 @@ async function iniciarJornada(datos) {
         truck_id:    data.truck_id,
         patente:     datos.patente,
         marca_modelo: datos.marcaModelo || null,
+        horas_inicio: datos.horasInicio ?? null,
       };
       localStorage.setItem('sigma_jornada_activa', JSON.stringify(jornadaLocal));
     } catch (e) { /* localStorage no disponible — no crítico */ }
@@ -1909,6 +1914,9 @@ async function cerrarJornada(logId, datos) {
       km_final:        kmFinal,
       km_final_ia:     datos.kmFinalIa ?? null,
       km_final_origen: datos.kmFinalOrigen || null,
+      horas_final:        datos.horasFinal ?? null,
+      horas_final_ia:     datos.horasFinalIa ?? null,
+      horas_final_origen: datos.horasFinal != null ? (datos.horasFinalOrigen || null) : null,
       foto_km_final:   fotoUrl,
       status:          'closed',
       // horaFin puede venir en datos (sync offline: hora del evento real);
