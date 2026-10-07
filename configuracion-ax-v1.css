@@ -386,3 +386,32 @@
 #company-document-modal .cd-body { flex: 1 1 auto; min-height: 0; }
 #company-document-modal .cd-footer { flex: none; }
 @media (max-width: 600px) { #company-document-modal .cd-seg { display: grid; grid-template-columns: 1fr 1fr; justify-self: stretch; } #company-document-modal .cd-seg button { justify-content: center; padding: 0 8px; white-space: nowrap; } #company-document-modal .cd-pad-wrap { height: 170px; } }
+/* Empresa y documentos: opción de imprimir la firma y vista previa igual al PDF del remito */
+#company-document-modal .cd-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); cursor: pointer; }
+#company-document-modal .cd-switch-row:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#company-document-modal .cd-switch-text { display: grid; gap: 2px; }
+#company-document-modal .cd-switch-text b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#company-document-modal .cd-switch-text small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#company-document-modal .cd-switch-row .ax-switch input { width: 36px; height: 20px; padding: 0; border: 0; }
+#company-document-modal .cd-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+#company-document-modal .cd-paper { gap: 12px; padding: 22px 26px 14px; box-shadow: none; font-family: var(--ax-font); }
+#company-document-modal .cd-paper em { display: block; margin-bottom: 4px; color: var(--ax-surface-3); font: var(--ax-fw-bold) 9px var(--ax-font); font-style: normal; letter-spacing: .08em; }
+#company-document-modal .cd-pp-head { display: flex; justify-content: space-between; gap: 16px; }
+#company-document-modal .cd-pp-co, #company-document-modal .cd-pp-doc { display: grid; gap: 3px; min-width: 0; }
+#company-document-modal .cd-pp-co b { font-size: var(--ax-fs-lg); }
+#company-document-modal .cd-pp-doc { text-align: right; }
+#company-document-modal .cd-pp-doc b { font-size: var(--ax-fs-lg); }
+#company-document-modal .cd-pp-brandline { display: block; height: 3px; border-radius: 2px; background: var(--ax-accent); }
+#company-document-modal .cd-pp-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+#company-document-modal .cd-pp-cols i, #company-document-modal .cd-paper-lines i { display: block; height: 6px; margin-top: 5px; border-radius: 3px; background: var(--ax-text-2); opacity: .3; }
+#company-document-modal .cd-pp-cols i.s { width: 60%; }
+#company-document-modal .cd-pp-sign { display: grid; grid-template-columns: 1.55fr 1fr; gap: 20px; align-items: start; padding-top: 4px; }
+#company-document-modal .cd-pp-box { display: grid; place-items: center; height: 70px; margin-bottom: 6px; border: 1px solid var(--ax-text-3); border-radius: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-style: italic; }
+#company-document-modal .cd-pp-qr { display: flex; gap: 10px; align-items: flex-start; }
+#company-document-modal .cd-pp-qrbox { flex: none; width: 56px; height: 56px; background: repeating-conic-gradient(var(--ax-bg) 0 25%, transparent 0 50%) 0 0 / 14px 14px; border: 3px solid var(--ax-bg); }
+#company-document-modal .cd-pp-qr b { font: var(--ax-fw-bold) var(--ax-fs-xs) var(--ax-font-mono); }
+#company-document-modal .cd-pp-esign { display: grid; justify-items: center; gap: 2px; margin-top: 10px; text-align: center; }
+#company-document-modal .cd-pp-esign img { max-width: 160px; max-height: 48px; object-fit: contain; }
+#company-document-modal .cd-pp-esign.off { padding: 10px; border: 1px dashed var(--ax-text-3); border-radius: 4px; }
+#company-document-modal .cd-pp-foot { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--ax-text-3); }
+@media (max-width: 600px) { #company-document-modal .cd-pp-head, #company-document-modal .cd-pp-sign { display: grid; grid-template-columns: 1fr; } #company-document-modal .cd-pp-doc { text-align: left; } #company-document-modal .cd-pp-cols { grid-template-columns: 1fr; gap: 8px; } }

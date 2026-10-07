@@ -55,15 +55,16 @@ function imagen(src,{png=false,max=900}={}){
 const urlDe=u=>{if(!u)return'';try{if(typeof ENV!=='undefined'&&ENV.API_BASE_URL&&!/^(https?:|data:)/.test(u))return ENV.API_BASE_URL+u}catch(_){}return u};
 function encajar(im,w,h){const r=Math.min(w/im.w,h/im.h);return{w:im.w*r,h:im.h*r}}
 
-async function build(d){
+async function build(d,opts={}){
   if(!d)throw new Error('No hay datos para el PDF');
   const J=ctor(),doc=new J({unit:'mm',format:'a4',orientation:'portrait',compress:true});
-  let empresa={};try{empresa=await window.CompanyDocuments?.load?.()||{}}catch(_){}
+  let empresa=opts.empresa||{};if(!opts.empresa){try{empresa=await window.CompanyDocuments?.load?.()||{}}catch(_){}}
+  const firmaEmpresaSrc=empresa.signature_in_pdf&&empresa.signature_image?empresa.signature_image:'';
   const hash=await hashRemito(d);
   const codigo=hash?`${hash.slice(0,4)}-${hash.slice(4,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}`:'';
   const qrSrc=hash?qrDataURL(`SIGMA-REMITO|${d.nro}|${d.patente}|${d.firmadoAt||''}|${hash}`):'';
   const fotosSrc=(d.foto_urls||d.fotos||[]).slice(0,4).map(urlDe);
-  const [qr,firma,...fotos]=await Promise.all([imagen(qrSrc,{png:true,max:400}),imagen(urlDe(d.firma_imagen_url||d.firmaUrl),{png:true}),...fotosSrc.map(u=>imagen(u,{max:520}))]);
+  const [qr,firma,firmaEmpresa,...fotos]=await Promise.all([imagen(qrSrc,{png:true,max:400}),imagen(urlDe(d.firma_imagen_url||d.firmaUrl),{png:true}),imagen(firmaEmpresaSrc,{png:true,max:700}),...fotosSrc.map(u=>imagen(u,{max:520}))]);
 
   const {w:W,m:M}=PAGE,CW=W-M*2;
   let y=M;
@@ -153,8 +154,8 @@ async function build(d){
     y+=fh+6;
   }
 
-  /* Firma + verificación */
-  nuevaPagina(44);
+  /* Firma + verificación (+ firma institucional de la empresa, si está activada) */
+  nuevaPagina(firmaEmpresa?62:44);
   const fw=CW*.6,fh=27;
   rotulo('Firma del cliente',M,y);rotulo('Verificación',M+fw+10,y);y+=3;
   doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.roundedRect(M,y,fw,fh,1.5,1.5);
@@ -170,6 +171,14 @@ async function build(d){
   font(8,'normal',MUTED);
   doc.text(clean(`Aclaración: ${d.cliente||'—'}`),M,y);doc.text(clean(`DNI / CUIT: ${d.cuit||'—'}`),M+fw*.55,y);y+=4.2;
   doc.text(clean(`Firmado el ${fechaHora(d.firmadoAt)}`),M,y);
+  if(firmaEmpresa){
+    const ex=vx,ew=W-M-ex,eh=15,ey=y-8.2;
+    const s=encajar(firmaEmpresa,ew-6,eh);doc.addImage(firmaEmpresa.data,firmaEmpresa.fmt,ex+(ew-s.w)/2,ey+(eh-s.h),s.w,s.h);
+    doc.setDrawColor(...INK);doc.setLineWidth(.3);doc.line(ex,ey+eh+1.2,W-M,ey+eh+1.2);
+    font(8.5,'bold');doc.text(clean(empresa.representative||'Representante autorizado'),ex+ew/2,ey+eh+5,{align:'center'});
+    font(7,'normal',MUTED);doc.text(doc.splitTextToSize(clean(`Firma institucional · ${nombre}`),ew),ex+ew/2,ey+eh+8.6,{align:'center'});
+    y=ey+eh+12;
+  }
 
   pie();
   return doc;
@@ -182,7 +191,7 @@ async function build(d){
 }
 
 function fileName(d){const base=clean(srvDe(d)||d.nro||'remito').replace(/[^\w.-]+/g,'_');return`Remito_${base}${d.patente?'_'+clean(d.patente).replace(/\W+/g,''):''}.pdf`}
-async function blob(d){return(await build(d)).output('blob')}
+async function blob(d,opts){return(await build(d,opts)).output('blob')}
 async function download(d){const doc=await build(d);doc.save(fileName(d));return true}
 
 window.RemitoPdf={build,blob,download,fileName,hash:hashRemito,_clean:clean};

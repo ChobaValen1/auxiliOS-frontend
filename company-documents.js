@@ -61,10 +61,11 @@ function modalHtml(data){
         <section class="cd-card"><h4 class="cd-card-title">${icon('signature')}Firma institucional</h4>
           ${field('representative','Representante autorizado','maxlength="200" placeholder="Nombre y apellido de quien firma"')}
           <div class="cd-sign" data-cd-sign></div>
+          <label class="cd-switch-row"><span class="cd-switch-text"><b>Imprimir la firma en los PDF de remitos</b><small>Aparece abajo a la derecha, debajo del código de verificación, con el nombre del representante.</small></span><span class="ax-switch"><input type="checkbox" name="signature_in_pdf" data-cd-inpdf ${data.signature_in_pdf?'checked':''}></span></label>
           <p class="cd-note">${icon('info')}<span>Es la firma de la empresa en los documentos que emite. No reemplaza la firma de conformidad del cliente.</span></p>
         </section>
       </div>
-      <section class="cd-card cd-preview-card"><h4 class="cd-card-title">${icon('eye')}Así se ve en los documentos</h4><div class="cd-paper" data-cd-preview></div></section>
+      <section class="cd-card cd-preview-card"><div class="cd-preview-head"><h4 class="cd-card-title">${icon('eye')}Así se ve en el PDF del remito</h4><button type="button" class="btn sm" data-cd-sample>${icon('file-text')}Ver PDF de ejemplo</button></div><div class="cd-paper" data-cd-preview></div><p class="cd-note">${icon('info')}<span>El ejemplo usa lo que tenés cargado ahora, aunque todavía no lo hayas guardado. Los datos del cliente son ficticios.</span></p></section>
       <div class="modal-error cd-error" role="alert" id="company-document-error"></div>
     </div>
     <div class="modal-footer cd-footer"><button class="btn btn-ghost" type="button" data-cd-close>Cancelar</button><button class="btn btn-primary" type="submit" data-cd-save>Guardar configuración</button></div></form>
@@ -83,10 +84,34 @@ function signHtml(){
 function previewHtml(form){
   const v=k=>String(form?.elements?.[k]?.value||'').trim();
   const legal=v('legal_name'),cuit=v('tax_id'),address=v('address'),contact=v('contact'),rep=v('representative');
-  const sign=S.signature?`<img src="${esc(S.signature)}" alt="">`:'<span class="cd-paper-nosign">Sin firma</span>';
-  return`<div class="cd-paper-head"><div class="cd-paper-co"><b>${esc(legal||'Razón social')}</b><small>${cuit?`CUIT ${esc(cuit)}`:'CUIT —'}</small><small>${esc(address||'Domicilio')}</small><small>${esc(contact||'Contacto')}</small></div><div class="cd-paper-doc"><b>REMITO</b><small>N.º 0001-00001234</small><small>${new Date().toLocaleDateString('es-AR')}</small></div></div>
-    <div class="cd-paper-lines" aria-hidden="true"><i></i><i></i><i style="width:62%"></i></div>
-    <div class="cd-paper-foot"><div class="cd-paper-sign">${sign}<span class="cd-paper-rule"></span><b>${esc(rep||'Representante autorizado')}</b><small>Firma institucional · ${esc(legal||'Empresa')}</small></div><div class="cd-paper-brand">${brandHtml(true)}<small>Emitido con AuxiliOS</small></div></div>`;
+  const datos=[cuit&&`CUIT ${cuit}`,address,contact].filter(Boolean).join(' · ');
+  const inPdf=Boolean(S.inPdf&&S.signature);
+  const company=inPdf?`<div class="cd-pp-esign"><img src="${esc(S.signature)}" alt=""><span class="cd-paper-rule"></span><b>${esc(rep||'Representante autorizado')}</b><small>Firma institucional · ${esc(legal||'Empresa')}</small></div>`:`<div class="cd-pp-esign off"><small>${S.signature?'La firma de la empresa no se imprime (opción apagada).':'Sin firma institucional cargada.'}</small></div>`;
+  return`<div class="cd-pp-head"><div class="cd-pp-co"><b>${esc(legal||'Empresa sin configurar')}</b><small>${esc(datos||'CUIT · domicilio · contacto')}</small></div><div class="cd-pp-doc"><small>N° DE SERVICIO</small><b>SRV-1042</b><small>Remito 0001-00001234 · ${new Date().toLocaleDateString('es-AR')}</small></div></div>
+    <span class="cd-pp-brandline" aria-hidden="true"></span>
+    <div class="cd-pp-cols"><div><em>CLIENTE</em><i></i><i class="s"></i></div><div><em>VEHÍCULO</em><i></i><i class="s"></i></div><div><em>SERVICIO</em><i></i><i class="s"></i></div></div>
+    <div class="cd-paper-lines" aria-hidden="true"><i></i><i style="width:70%"></i></div>
+    <div class="cd-pp-sign"><div class="cd-pp-client"><em>FIRMA DEL CLIENTE</em><div class="cd-pp-box"><span>Firma del cliente</span></div><small>Aclaración: Juan Pérez · DNI 30.123.456</small></div><div class="cd-pp-verif"><em>VERIFICACIÓN</em><div class="cd-pp-qr"><span class="cd-pp-qrbox" aria-hidden="true"></span><small>Código<br><b>A1B2-C3D4-E5F6-7890</b></small></div>${company}</div></div>
+    <div class="cd-pp-foot"><small>${esc([legal||'Empresa',address,contact].filter(Boolean).join(' · '))}</small><small>Página 1</small></div>`;
+}
+
+function sampleRemito(){const now=new Date();return{nro:'0001-00001234',srvOrden:'SRV-1042',fecha:now.toLocaleDateString('es-AR'),cliente:'Juan Pérez',cuit:'30.123.456',telefono:'11 5555-0000',patente:'AB123CD',marca:'Toyota Corolla',tipoReal:'Liviano',chofer:'Chofer de ejemplo',km:'48',origen:'Av. Libertador 1200, Vicente López',destino:'Taller Mecánico Sur, Av. Mitre 450, Avellaneda',createdAt:new Date(now-90*60000).toISOString(),firmadoAt:now.toISOString(),estado:'firmado',peaje:2400,excedente:0,otros:0,pago:'Efectivo',conformidades:{servicio:true,cargos:true,danos:true},foto_urls:[]};}
+
+async function openSample(){
+  const form=document.getElementById('company-document-form');if(!form)return;
+  const button=document.querySelector('#company-document-modal [data-cd-sample]');
+  if(!window.RemitoPdf?.blob)return notify('El generador de PDF todavía no cargó. Probá de nuevo en unos segundos.','warning');
+  const win=window.open('','_blank');
+  if(button){button.disabled=true;}
+  try{
+    const empresa=Object.fromEntries(FIELDS.map(k=>[k,form.elements[k].value.trim()]));
+    empresa.signature_image=S.signature||'';empresa.signature_in_pdf=Boolean(S.inPdf);
+    const blob=await window.RemitoPdf.blob(sampleRemito(),{empresa});
+    const url=URL.createObjectURL(blob);
+    if(win){win.location.href=url;}else{const a=document.createElement('a');a.href=url;a.download='Remito_de_ejemplo.pdf';document.body.appendChild(a);a.click();a.remove();}
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(error){win?.close();notify(error.message||'No se pudo generar el PDF de ejemplo.','error');}
+  finally{if(button)button.disabled=false;}
 }
 
 function setError(message=''){const el=document.getElementById('company-document-error');if(!el)return;el.textContent=message;el.style.display=message?'block':'none';}
@@ -143,9 +168,10 @@ async function save(form){
     if(S.pad&&!S.pad.isEmpty()&&S.mode==='draw'){const url=S.pad.toDataURL();if(url.length>MAX_CHARS)throw Error('La firma quedó muy pesada. Borrala y hacela un poco más chica.');S.signature=url;S.origin='drawn';}
     const signature=S.signature||'';
     if(signature&&!values.representative)throw Error('Indicá el representante autorizado.');
+    if(S.inPdf&&!signature)throw Error('Para imprimir la firma en los PDF, primero cargala (o apagá la opción).');
     if(signature.length>MAX_CHARS)throw Error('La firma es demasiado pesada.');
     S.busy=true;if(button){button.disabled=true;button.textContent='Guardando…';}
-    const {error}=await _db.from('company_document_settings').upsert({id:true,...values,signature_image:signature,updated_at:new Date().toISOString(),updated_by:USUARIO_ACTUAL.id});
+    const {error}=await _db.from('company_document_settings').upsert({id:true,...values,signature_image:signature,signature_in_pdf:Boolean(S.inPdf&&signature),updated_at:new Date().toISOString(),updated_by:USUARIO_ACTUAL.id});
     if(error)throw error;
     const file=S.origin==='uploaded'?S.file:null,drawn=S.origin==='drawn';
     S.busy=false;close();
@@ -167,12 +193,14 @@ async function open(){
   box.classList.add('open');
   try{
     const data=await load();
-    Object.assign(S,{data,signature:data.signature_image||'',origin:'saved',mode:data.signature_image?'saved':'draw',dirty:false,busy:false,file:null});
+    Object.assign(S,{data,inPdf:Boolean(data.signature_in_pdf),signature:data.signature_image||'',origin:'saved',mode:data.signature_image?'saved':'draw',dirty:false,busy:false,file:null});
     box.innerHTML=modalHtml(data);
     const form=box.querySelector('form');
     box.querySelectorAll('[data-cd-close]').forEach(b=>b.addEventListener('click',requestClose));
     form.addEventListener('input',e=>{if(e.target.name==='tax_id'){e.target.value=formatCuit(e.target.value);}if(FIELDS.includes(e.target.name)){markDirty();refreshPreview();}});
     form.onsubmit=e=>{e.preventDefault();save(form);};
+    box.querySelector('[data-cd-inpdf]')?.addEventListener('change',e=>{S.inPdf=e.target.checked;markDirty();refreshPreview();});
+    box.querySelector('[data-cd-sample]')?.addEventListener('click',openSample);
     renderSign();refreshPreview();setError('');
   }catch(error){box.innerHTML='<div class="modal-box cd-box"><div class="cd-stripe" aria-hidden="true"></div><div class="modal-body">'+esc(error.message)+'</div><div class="modal-footer"><button class="btn" type="button" onclick="closeModal(\'company-document-modal\')">Cerrar</button></div></div>';}
 }
