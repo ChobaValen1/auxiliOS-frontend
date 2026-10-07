@@ -322,6 +322,15 @@
     });
   }
 
+  /* `maxEtiquetas`: en una serie larga las fechas van derechas y salteadas,
+     en vez de 31 etiquetas inclinadas que no se leen. */
+  function etiquetasCortas(max) {
+    if (!max) return {};
+    var e = ejeBase(false, false);
+    e.ticks = Object.assign(e.ticks, { maxRotation: 0, autoSkip: true, maxTicksLimit: max });
+    return { ticks: e.ticks };
+  }
+
   /* Barras. Horizontal cuando las etiquetas son nombres (choferes, camiones). */
   function barras(id, datos) {
     var labels = (datos && datos.labels) || [];
@@ -388,7 +397,7 @@
           })
         },
         scales: {
-          x: Object.assign(ejeBase(horizontal, horizontal), { beginAtZero: true }),
+          x: Object.assign(ejeBase(horizontal, horizontal), { beginAtZero: true }, etiquetasCortas(!horizontal && datos && datos.maxEtiquetas)),
           y: Object.assign(ejeBase(!horizontal, !horizontal), { beginAtZero: true })
         }
       }

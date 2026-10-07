@@ -205,11 +205,12 @@ test('el canvas y las dos tablas del markup se llenan', () => {
   // cuatro gráficos de barras que había que cruzar con la vista.
   ['dashx-ops-tendencia', 'dashx-ops-tabla-camiones', 'dashx-ops-tabla-choferes']
     .forEach(id => assert.ok(ops.includes(id), `no se usa el contenedor ${id}`));
-  ['dashx-ops-filtros', 'dashx-ops-ratios', 'dashx-ops-sub', 'dashx-ops-comb-metrics']
-    .forEach(id => assert.ok(ops.includes(id), `no se llena el contenedor ${id}`));
-  // Y se usan las clases de métrica que ya existen, sin inventar CSS nuevo.
-  ['dashx-metric', 'dashx-metric-label', 'dashx-metric-value']
+  ['dashx-ops-filtros', 'dashx-ops-kpis', 'dashx-ops-ratios', 'dashx-ops-sub', 'dashx-ops-comb-metrics', 'dashx-ops-comb-lista']
+    .forEach(id => assert.ok(ops.includes(id) && index.includes(`id="${id}"`), `no se llena el contenedor ${id}`));
+  // Mismo lenguaje que Resumen: sus cifras, tarjetas, listas y tablas.
+  ['rsm-kpi', 'rsm-kpi-value', 'rsm-delta', 'rsm-ef-dato', 'rsm-tipo', 'rsm-tabla', 'rsm-part']
     .forEach(c => assert.ok(ops.includes(c), `falta la clase ${c}`));
+  assert.match(index, /<div class="rsm opx">/);
 });
 
 test('los colores salen de la paleta validada, nunca hex propios', () => {
@@ -237,17 +238,13 @@ test('no hay gráficos de doble eje Y', () => {
 
 test('"Otros" sólo donde es una suma real, nunca en las tablas', () => {
   // En las tablas el topN escondía al octavo chofer para no pasar de siete
-  // colores, en gráficos de una sola serie donde el color no codificaba nada.
+  // colores. Ahí se ven todas las filas; el móvil número ocho va en gris.
   const tablas = ops.slice(ops.indexOf('function pintarTablaCamiones'),
-                           ops.indexOf('function pintarTendencia'));
-  assert.ok(!/G\.topN\(/.test(tablas), 'topN esconde filas que la tabla puede mostrar');
-
-  // En el anillo sí corresponde: es parte-sobre-total y "Otros" suma kilómetros
-  // de verdad, no promedia cocientes.
-  const anillo = ops.slice(ops.indexOf('function pintarAnillo'),
-                           ops.indexOf('/* ── ciclo de vida'));
-  assert.match(anillo, /G\.topN\(/);
-  assert.match(anillo, /G\.donut\(/);
+                           ops.indexOf('/* ── gráficos'));
+  assert.ok(!/G\.topN\(|medio: 'Otros'/.test(tablas), 'las tablas esconden filas que pueden mostrar');
+  assert.match(tablas, /i < G\.PALETA\.length \? G\.PALETA\[i\] : 'var\(--ax-text-3\)'/);
+  // En los medios de pago sí: "Otros" suma gasto, litros y cargas de verdad.
+  assert.match(ops, /medio: 'Otros'/);
 });
 
 test('un null de la RPC se muestra como guión, no como NaN ni como cero', () => {
@@ -281,8 +278,10 @@ test('las fechas ISO no se parsean con new Date', () => {
   // es medianoche UTC y en Argentina cae el 09/07, pero con 'T12:00:00' el día
   // es el correcto en cualquier huso.
   const usos = codigo.match(/new Date\([^)]*\)/g) || [];
-  usos.forEach(u => assert.match(u, /T12:00:00/,
-    `parsear un ISO corto con new Date corre el día: ${u}`));
+  // Las que arman la fecha por partes (año, mes, día, 12 h) no parsean nada.
+  usos.filter(u => !/^new Date\(\+a\[0\], \+a\[1\] - 1, /.test(u) && !/^new Date\(\+b\[0\]/.test(u))
+    .forEach(u => assert.match(u, /T12:00:00/, `parsear un ISO corto con new Date corre el día: ${u}`));
+  assert.match(ops, /new Date\(\+a\[0\], \+a\[1\] - 1, \+a\[2\], 12\)/);
   assert.match(ops, /function diaMes/);
   assert.match(ops, /String\(iso \|\| ''\)\.split\('-'\)/);
 });
@@ -313,9 +312,9 @@ test('SERVICIOS se cuenta y se corta por camión, chofer y período', () => {
   // El front la muestra en la razón de arriba y en las dos tablas, donde
   // además cierra con su total.
   assert.match(ops, /'Servicios por jornada'/);
-  assert.ok((ops.match(/clave: 'servicios'/g) || []).length === 2,
+  assert.equal((ops.match(/td\('Servicios', miles\(c\.servicios\)\)/g) || []).length, 2,
     'servicios tiene que estar en las dos tablas');
-  assert.ok((ops.match(/clave: 'servicios',\s*titulo: 'Servicios', total: 'suma'/g) || []).length === 2,
+  assert.equal((ops.match(/td\('Servicios', '<b>' \+ miles\(t\.servicios\)/g) || []).length, 2,
     'servicios tiene que cerrar con su total en las dos tablas');
 });
 
@@ -339,82 +338,57 @@ test('la granularidad escala para que el gráfico no se vuelva ilegible', () => 
   assert.match(ops, /\{ dia: 'por día', semana: 'por semana', mes: 'por mes' \}/);
 });
 
-test('el anillo responde una pregunta que la tabla no contesta de un vistazo', () => {
-  // Parte-sobre-total: qué tan concentrada está la operación en pocos móviles.
-  // Sacarlo de la tabla exigiría sumar siete filas de memoria.
-  assert.match(ops, /function pintarAnillo/);
-  assert.match(ops, /dashx-ops-anillo/);
-  assert.match(index, /id="dashx-ops-anillo"/);
+test('la participación en los km va en la tabla, con su barra', () => {
+  // El anillo de km repetía la tabla de al lado. Ahora cada móvil y cada
+  // chofer tiene su parte de los km en la misma fila, como las prestadoras.
+  assert.ok(!index.includes('id="dashx-ops-anillo"'), 'volvió el anillo de km');
+  assert.ok(!ops.includes('function pintarAnillo'));
+  assert.match(ops, /function part\(v, total, color\)/);
+  assert.equal((ops.match(/part\(c\.km, num\(t\.km\), color\)/g) || []).length, 2);
 });
-
 
 /* ── v3/v4: totales de tabla y combustible filtrable ───────────────────── */
 
 const sqlV4 = fs.readFileSync(
   'migrations/20260919180000_dashboard_operaciones_cierres_v4.sql', 'utf8');
 
-test('las tablas cierran con una fila de totales', () => {
-  // Los KPI de arriba repetían el volumen del período. El total al pie del
-  // cuadro dice el mismo número y además de qué se compone.
-  assert.match(charts, /function totalDe/);
-  assert.match(charts, /<tfoot><tr class="auxtb-total">/);
-  assert.ok(!ops.includes('dashx-ops-metrics'), 'volvió la fila de KPI de arriba');
-  assert.ok(!index.includes('dashx-ops-metrics'), 'quedó el contenedor de los KPI');
-  // Las dos tablas suman sus columnas de volumen.
+test('las tablas cierran con los totales de la RPC, no sumando la columna', () => {
+  // El pie dice el total del período tal como lo calculó la base: con los
+  // servicios sin camión incluidos (y avisados), no la suma de las filas.
+  assert.match(ops, /<tfoot><tr><td class="opx-td-nombre"><b>Total<\/b>/);
   ['km', 'servicios', 'jornadas'].forEach(c =>
-    assert.ok((ops.match(new RegExp("clave: '" + c + "'[^}]*total: 'suma'", 'g')) || []).length === 2,
+    assert.equal((ops.match(new RegExp("miles\\(t\\." + c + "\\)", 'g')) || []).length >= 2, true,
       `${c} no cierra en las dos tablas`));
-  assert.match(ops, /clave: 'litros'[^}]*total: 'suma'/);
-  assert.match(ops, /clave: 'costo'[^}]*total: 'suma'/);
+  assert.match(ops, /td\('Litros', '<b>' \+ miles\(t\.litros\)/);
+  assert.match(ops, /td\('Gasto', '<b>' \+ pesos\(t\.costo\)/);
 });
 
-test('las razones del pie son razones, no promedios de la columna', () => {
+test('las razones del pie son las de la RPC, no promedios de la columna', () => {
   // Promediar km/litro de siete camiones le da el mismo peso al que hizo 9.700
-  // km que al que hizo 446.
-  assert.match(ops, /total: \{ dividir: 'km', por: 'litros' \}/);
-  // Y el denominador es el mismo que usa cada fila: las jornadas con horario
-  // utilizable. Con 'jornadas' a secas el pie decía 12,2 contra el 12,7 de la
-  // razón de arriba, que es el mismo número con otro divisor.
-  assert.match(ops, /total: \{ dividir: 'horas', por: 'jornadas_con_horas' \}/);
+  // km que al que hizo 446: el pie usa km totales / litros totales.
+  assert.match(ops, /td\('Km\/L', '<b>' \+ decimales\(e\.km_por_litro, 2\)/);
+  // Y horas por jornada usa las jornadas con horario, igual que cada fila.
+  assert.match(ops, /td\('H\/jornada', decimales\(e\.horas_por_jornada, 1\)/);
   assert.match(sqlV4, /'jornadas_con_horas', x\.jornadas_con_horas/);
-  assert.match(charts, /abajo > 0 \? arriba \/ abajo : null/);
 });
 
-test('tachar un medio de pago recalcula sólo lo que se puede recalcular', () => {
-  // Litros, ticket y precio salen de las cargas: se recalculan.
-  // Km/litro, litros cada 100 km y costo por km dividen por kilómetros, y los
-  // km no son de ningún medio de pago: filtrar a "Efectivo" dejaría el
-  // denominador entero de la flota contra cinco cargas.
-  assert.match(ops, /function pintarRazonesCombustible/);
-  assert.match(ops, /alFiltrar: function \(visibles\)/);
-  assert.match(charts, /function alTocarLeyenda/);
-  assert.match(charts, /chart\.toggleDataVisibility\(item\.index\)/);
-  const razones = ops.slice(ops.indexOf('function pintarRazonesCombustible'),
-                            ops.indexOf('function pintarCombustible'));
-  // Las tres de kilómetros siguen leyendo el payload, no la selección.
-  ['km_por_litro', 'litros_por_100km', 'costo_por_km'].forEach(k =>
-    assert.ok(razones.includes('c.' + k), `${k} se recalcularía con el filtro`));
-  assert.match(razones, /is-no-filtrable/);
-  assert.match(css, /#screen-dashboard \.dashx-metric\.is-no-filtrable/);
-  // Y una carga nueva arranca con todo visible.
-  assert.match(ops, /combustible\.visibles = null/);
+test('el combustible es un anillo con el gasto en el centro y la lista de medios', () => {
+  // Igual que la composición por tipo de Resumen: el total adentro, cada medio
+  // con sus cargas, litros, monto y parte del gasto al lado.
+  assert.match(ops, /function pintarCombustible/);
+  assert.match(index, /id="dashx-ops-comb-total"/);
+  assert.match(ops, /'<b>' \+ pesosCorto\(total\) \+ '<\/b><span>Gasto<\/span>'/);
+  assert.match(ops, /leyenda: 'ninguna'/);
+  assert.match(ops, /formato: 'pesos'/);
+  assert.match(charts, /datos\.leyenda\) === 'ninguna' \? \{ display: false \}/);
 });
 
-test('el gráfico de combustible es torta, para no repetir la forma del anillo', () => {
-  assert.match(ops, /tipo: 'torta'/);
-  assert.match(charts, /datos\.tipo\) === 'torta' \? 0 : '62%'/);
-  // El anillo de participación sigue siendo anillo.
-  const anillo = ops.slice(ops.indexOf('function pintarAnillo'),
-                           ops.indexOf('/* ── combustible'));
-  assert.ok(!anillo.includes("tipo: 'torta'"));
-});
-
-test('el agrupado de medios mantiene el gráfico y los números en las mismas filas', () => {
+test('el agrupado de medios mantiene el gráfico y la lista en las mismas filas', () => {
   // G.topN devuelve {label, value}: alcanzaría para el gráfico, pero después no
-  // se podrían sumar litros ni cargas de lo que quedó visible.
+  // se podrían mostrar litros ni cargas de cada medio.
   assert.match(ops, /function agruparMedios/);
   const agrupar = ops.slice(ops.indexOf('function agruparMedios'),
-                            ops.indexOf('function pintarRazonesCombustible'));
+                            ops.indexOf('function pintarCombustible'));
   assert.ok(!agrupar.includes('G.topN'), 'agruparMedios perdería litros y cargas');
   assert.match(agrupar, /medio: 'Otros'/);
   assert.match(agrupar, /G\.PALETA\.length/);
@@ -430,16 +404,34 @@ test('los servicios que no cuelgan de nadie se avisan', () => {
   assert.match(sqlV4, /not exists \(select 1 from jornada j where j\.driver_id = s\.driver_id\)/);
 });
 
-test('el gasto total encabeza el gráfico que lo reparte', () => {
-  // Estaba escondido en el subtítulo de la tarjeta de al lado. En una torta no
-  // hay agujero donde ponerlo, así que encabeza la tarjeta del gráfico.
-  assert.ok(index.includes('id="dashx-ops-comb-total"'), 'falta el total del gráfico');
-  assert.match(css, /#screen-dashboard \.dashx-chart-total-value/);
-  assert.match(ops, /totalEl\.textContent = medios\.length \? pesos\(gasto\)/);
-  // Y baja cuando se tacha un medio de pago: se pinta dentro de la misma
-  // función que recalcula las razones.
-  const razones = ops.slice(ops.indexOf('function pintarRazonesCombustible'),
-                            ops.indexOf('function pintarCombustible'));
-  assert.ok(razones.includes('dashx-ops-comb-total'),
-    'el total no acompaña al filtro de la leyenda');
+test('cada cifra se compara con el período anterior del mismo largo', () => {
+  // Una segunda llamada a la misma RPC, con los mismos filtros; si falla, la
+  // sección se ve igual y dice "sin comparación".
+  assert.match(ops, /var prev = rangoAnterior\(filtros\.desde, filtros\.hasta\)/);
+  assert.match(ops, /\.catch\(function \(\) \{ return null; \}\)/);
+  assert.match(ops, /sin comparación/);
+  // Para costos y consumos subir es malo: el verde va con la baja.
+  assert.match(ops, /var bueno = alReves \? !sube : sube/);
+  assert.match(ops, /delta\(valor\(c\.costo_por_km\), ca && valor\(ca\.costo_por_km\), true\)/);
+});
+
+test('el período anterior termina el día antes y dura lo mismo', () => {
+  const vm = require('node:vm');
+  const win = { AuxDashCharts: { PALETA: ['a'], nfPesos: String, nfMiles: String } };
+  vm.runInNewContext(ops, { window: win, document: { getElementById: () => null, querySelectorAll: () => [] }, console });
+  const r = win.AuxDashOperaciones.rangoAnterior('2026-10-01', '2026-10-31');
+  assert.equal(r.desde, '2026-08-31');
+  assert.equal(r.hasta, '2026-09-30');
+  const s2 = win.AuxDashOperaciones.rangoAnterior('2026-03-01', '2026-03-07');
+  assert.equal(s2.desde + ' ' + s2.hasta, '2026-02-22 2026-02-28');
+});
+
+test('las tablas se ordenan tocando el título, sin volver a la base', () => {
+  assert.match(ops, /data-opx-orden="' \+ clave/);
+  assert.match(ops, /aria-sort="/);
+  assert.match(ops, /if \(tabla === 'camiones'\) pintarTablaCamiones\(estado\.datos\)/);
+  // El color de cada móvil sale del orden por km: reordenar no se lo cambia.
+  assert.match(ops, /var porKm = filas\.slice\(\)\.sort/);
+  // Y en el celular cada fila es una tarjeta con sus rótulos.
+  assert.match(ops, /data-label="' \+ esc\(label\)/);
 });

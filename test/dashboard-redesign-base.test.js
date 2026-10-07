@@ -92,7 +92,7 @@ test('las tres secciones tienen contenedor y overlay propios', () => {
 
 test('los canvas y tablas que consumen las secciones existen en el markup', () => {
   ['rsm-tipos-canvas', 'rsm-evol-canvas', 'dashx-fact-mapa',
-   'dashx-ops-tendencia', 'dashx-ops-anillo', 'dashx-ops-combustible',
+   'dashx-ops-tendencia', 'dashx-ops-combustible',
    'dashx-flota-estado']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta el canvas ${id}`));
   /* Resumen tiene una sola tabla de prestadoras, que se abre en sus bases. */
@@ -216,31 +216,27 @@ test('la barra de la tabla no se superpone con el número', () => {
   assert.match(css, /#screen-dashboard \.auxtb \.auxtb-val \{[^}]*flex:\s*0 0 auto/);
 });
 
-test('el anillo lleva la leyenda al costado', () => {
+test('la leyenda de los anillos puede ir al costado o no ir', () => {
   assert.match(charts, /function leyendaBase\(posicion\)/);
   assert.match(charts, /position: posicion \|\| 'bottom'/);
   assert.match(charts, /datos\.leyenda\) === 'derecha' \? 'right' : 'bottom'/);
+  // Operaciones lleva su propia lista de medios al lado, como Resumen.
   const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
-  assert.equal((ops.match(/leyenda: 'derecha'/g) || []).length, 2);
+  assert.equal((ops.match(/leyenda: 'ninguna'/g) || []).length, 1);
 });
 
-test('Operaciones tiene el bloque de combustible con sus explicaciones', () => {
+test('Operaciones tiene el bloque de combustible con sus razones', () => {
   assert.ok(index.includes('id="dashx-ops-combustible"'), 'falta el gráfico de medios de pago');
   assert.ok(index.includes('id="dashx-ops-comb-metrics"'), 'faltan las razones de combustible');
   const ops = fs.readFileSync('dashboard-operaciones-v1.js', 'utf8').replace(/\r\n/g,'\n');
   assert.match(ops, /function pintarCombustible/);
-  // Cada razón trae su explicación: "12,81" solo no dice si está bien o mal.
-  ['Litros cargados', 'Ticket promedio', 'Precio por litro',
-   'Km por litro', 'Litros cada 100 km', 'Costo por km']
+  ['Km por litro', 'Litros cada 100 km', 'Costo por km', 'Precio por litro', 'Ticket promedio', 'Litros por carga']
     .forEach(m => assert.ok(ops.includes(m), `falta la métrica ${m}`));
-  assert.match(css, /#screen-dashboard \.dashx-metric-hint/);
   // Los importes por unidad no se redondean a pesos enteros.
   assert.match(ops, /function pesosFinos/);
   assert.match(ops, /pesosFinos\(c\.costo_por_km\)/);
-  // No se repiten arriba y abajo: km/litro y costo/km viven en esta tarjeta.
-  const razones = ops.match(/razones\.innerHTML =([\s\S]*?);\n/)[1];
-  assert.ok(!razones.includes('Km por litro'));
-  assert.ok(!razones.includes('Costo por km'));
+  // Cada razón trae con qué se compara: "12,81" solo no dice si está bien o mal.
+  assert.match(ops, /antes\(ca && valor\(ca\.km_por_litro\)/);
 });
 
 test('la RPC de operaciones devuelve el bloque de combustible', () => {

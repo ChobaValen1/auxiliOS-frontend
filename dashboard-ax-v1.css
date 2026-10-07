@@ -96,3 +96,57 @@
   #screen-dashboard .axz-rangos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   #screen-dashboard .axz-rangos button { min-width: 34px; padding: 0 7px; }
 }
+
+/* ── Operaciones con el lenguaje de Resumen (dashboard-operaciones-v1.js) ──
+   Reusa las tarjetas, cifras, listas y tablas rsm-*; acá sólo lo propio. */
+#screen-dashboard .opx-sub { margin: -4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-dashboard .opx-sub:empty { display: none; }
+#screen-dashboard .opx-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px 12px; }
+#screen-dashboard .opx-graf { position: relative; height: 250px; }
+#screen-dashboard .opx-dona .auxch-wrap { position: absolute; inset: 0; height: auto; }
+#screen-dashboard .opx-fila-par { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#screen-dashboard .rsm-ef-grid.opx-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0; padding-top: 0; border-top: 0; }
+#screen-dashboard .opx-dato b { font-variant-numeric: tabular-nums; }
+#screen-dashboard .opx-dato em { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-height: 18px; }
+#screen-dashboard .opx-dato em i { color: var(--ax-text-3); font-style: normal; }
+#screen-dashboard .opx-notas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ax-border); }
+#screen-dashboard .opx-nota { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 2px 10px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-dashboard .opx-nota::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+#screen-dashboard .opx-nota.is-aviso { background: var(--ax-warn-soft); color: var(--ax-warn); }
+#screen-dashboard .opx-nota.is-ok { background: var(--ax-ok-soft); color: var(--ax-ok); }
+#screen-dashboard .opx-tabla th.opx-th { padding: 0; }
+#screen-dashboard .opx-th button { display: inline-flex; align-items: center; gap: 4px; width: 100%; padding: 10px 18px; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; white-space: nowrap; cursor: pointer; }
+#screen-dashboard .opx-th.rsm-num button { justify-content: flex-end; }
+#screen-dashboard .opx-th button:hover, #screen-dashboard .opx-th.is-orden button { color: var(--ax-text); }
+#screen-dashboard .opx-th button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .opx-th i { width: 8px; font-size: 8px; font-style: normal; }
+#screen-dashboard .opx-chofer { display: flex; align-items: center; gap: 9px; }
+#screen-dashboard .opx-chofer i { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) 10px var(--ax-font); font-style: normal; }
+@media (max-width: 900px) {
+  #screen-dashboard .opx-fila-par { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  #screen-dashboard .rsm-ef-grid.opx-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #screen-dashboard .opx-graf { height: 210px; }
+}
+#screen-dashboard .opx-dato .rsm-delta { font-size: 10px; letter-spacing: 0; text-transform: none; }
+#screen-dashboard .rsm-ef-grid.opx-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 901px) {
+  #screen-dashboard .opx-graf { height: 300px; }
+}
+/* En el celular cada fila de Móviles y Choferes es una tarjeta: nombre y
+   participación arriba, las cifras de a dos con su rótulo. */
+@media (max-width: 600px) {
+  #screen-dashboard .rsm-tabla.opx-tabla { min-width: 0; }
+  #screen-dashboard .opx-tabla thead { display: none; }
+  #screen-dashboard .opx-tabla, #screen-dashboard .opx-tabla tbody, #screen-dashboard .opx-tabla tfoot { display: block; }
+  #screen-dashboard .opx-tabla tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; padding: 12px 16px; border-bottom: 1px solid var(--ax-border); }
+  #screen-dashboard .opx-tabla td { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; padding: 0; border: 0; font-size: var(--ax-fs-xs); white-space: normal; }
+  #screen-dashboard .opx-tabla td[data-label]::before { content: attr(data-label); color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+  #screen-dashboard .opx-tabla td.opx-td-nombre, #screen-dashboard .opx-tabla td.opx-td-part { grid-column: 1 / -1; }
+  #screen-dashboard .opx-tabla td.opx-td-nombre { font-size: var(--ax-fs-sm); }
+  #screen-dashboard .opx-tabla .rsm-part { width: 100%; }
+  #screen-dashboard .opx-tabla .rsm-part-track { flex: 1; width: auto; }
+  #screen-dashboard .opx-tabla tfoot tr { background: var(--ax-surface-3); }
+  #screen-dashboard .opx-tabla tfoot td { padding: 0; }
+}
