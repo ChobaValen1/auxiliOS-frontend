@@ -472,3 +472,170 @@
 #modal-company-billing-v4 .bp4-cols-vig .bp4-base span { display: grid; gap: 2px; min-width: 0; }
 #modal-company-billing-v4 .bp4-cols-vig .bp4-base b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
 #modal-company-billing-v4 .bp4-cols-vig .bp4-base small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); overflow-wrap: anywhere; }
+
+/* ── Tarifas (v2): tabla limpia y legible, en la ficha de la prestadora y en la pantalla Tarifas ──
+   Dos grupos (con kilómetros / precio por unidad), una columna por importe, filtros por estado,
+   buscador, menú «⋯» por fila, excepciones por base desplegables y edición en lote en las mismas celdas. */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 { gap: 14px; font-family: var(--ax-font); color: var(--ax-text); }
+#screen-config-tariff-matrix .ct4-head h2 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; }
+#screen-config-tariff-matrix .ct4-head p { margin: 4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; padding: 0; border: 0; background: transparent; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-company-field { display: grid; gap: 6px; width: min(300px, 100%); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-company-field > span { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-company-field select { height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-embedded .ct4-company-field, :is(#screen-empresas, #screen-config-tariff-matrix) .ct4.ct4-embedded .ct4-company-field { display: none; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search { position: relative; display: flex; align-items: center; flex: 0 1 300px; min-width: 200px; margin: 0; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search .ax-icon { position: absolute; left: 12px; width: 16px; height: 16px; color: var(--ax-text-3); pointer-events: none; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search input { width: 100%; height: var(--ax-h); padding: 0 12px 0 36px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 :is(.ct4-search input, .ct4-company-field select, .ct4-cell-input):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat b { color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat.pending b { color: var(--ax-warn); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat.on { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); }
+
+/* Panel y grupos */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel { overflow: visible; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--ax-border); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head-main { display: grid; gap: 2px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head h3 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head p { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head .ct4-btn { height: var(--ax-h); padding: 0 14px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group + .ct4-group { border-top: 1px solid var(--ax-border); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 16px 18px 10px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head p { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* Tabla */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-table-wrap { max-height: none; overflow-x: auto; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable { width: 100%; min-width: 860px; border-collapse: collapse; table-layout: fixed; font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-num { width: 132px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-unit { width: 150px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-news { width: 264px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-act { width: 150px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable th { position: static; height: 38px; padding: 0 14px; border-top: 1px solid var(--ax-border); border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap; vertical-align: middle; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td { height: 58px; padding: 10px 14px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text); font-size: var(--ax-fs-sm); vertical-align: middle; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tbody tr:last-child td { border-bottom: 0; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(th, td).num { text-align: right; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td.num { font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row:hover > td { background: var(--ax-surface-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-open > td { border-bottom-color: transparent; background: var(--ax-surface-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-pending > td:first-child { box-shadow: inset 3px 0 0 var(--ax-warn); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-name { display: grid; gap: 2px; min-width: 0; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-name b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); overflow-wrap: anywhere; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-name small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-c-unit { color: var(--ax-text-2); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .is-km td.ct4-c-none { text-align: center; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .is-unit td.ct4-c-none { text-align: right; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-none { display: inline-flex; align-items: center; gap: 6px; color: var(--ax-warn); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-none .ax-icon { width: 16px; height: 16px; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-muted { color: var(--ax-text-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Novedades: cambio programado y precio por base */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 28px; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 button.ct4-tag { cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 button.ct4-tag:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag > span { overflow: hidden; text-overflow: ellipsis; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag .ax-icon { flex: none; width: 14px; height: 14px; transition: transform var(--ax-dur-fast) var(--ax-ease); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag em { color: inherit; font-style: normal; opacity: .75; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag.info { border-color: var(--ax-info); background: var(--ax-info-soft); color: var(--ax-info); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag.on { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag.on .ax-icon:last-child { transform: rotate(180deg); }
+
+/* Botones de la fila */
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn:hover { background: var(--ax-surface-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn .ax-icon { width: 16px; height: 16px; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.danger { color: var(--ax-danger); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger-soft); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn:disabled { opacity: .5; cursor: not-allowed; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon .ax-icon { width: 18px; height: 18px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon:is(:hover, [aria-expanded="true"]) { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) :is(.ct4-btn, .ct4-icon, .ct4-tag, .ct4-stat, .ct4-link):focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+/* Excepciones por base (filas desplegadas) */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead td { height: auto; padding: 8px 14px 6px 32px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td { height: 50px; background: var(--ax-surface); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td:first-child { padding-left: 32px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td.num { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-diff { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-base-name { display: flex; align-items: center; gap: 8px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-base-name .ax-icon { flex: none; width: 16px; height: 16px; color: var(--ax-text-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-base-name b { font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+
+/* Edición en lote dentro de la tabla */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-bulk-hint { padding: 10px 18px; border-bottom: 1px solid var(--ax-border); background: var(--ax-accent-soft); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-cell-input { display: block; width: 100%; max-width: 116px; height: 36px; margin-left: auto; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-cell-input.dirty { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel.is-bulk .ct4-bulk-savebar { position: sticky; bottom: 0; z-index: 2; border-radius: 0 0 var(--ax-radius-lg) var(--ax-radius-lg); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-empty { padding: 28px 18px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); text-align: center; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-link { padding: 0; border: 0; background: none; color: var(--ax-accent); font: inherit; font-weight: var(--ax-fw-semibold); text-decoration: underline; cursor: pointer; }
+
+/* Menú «⋯» de cada fila (se dibuja en el body) */
+#ct4-row-menu { position: fixed; z-index: var(--ax-z-menu, 1400); display: grid; gap: 2px; min-width: 270px; max-width: min(320px, calc(100vw - 16px)); padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop, var(--ax-shadow-modal)); font-family: var(--ax-font); }
+#ct4-row-menu button { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); text-align: left; cursor: pointer; }
+#ct4-row-menu button:is(:hover, :focus-visible) { outline: none; background: var(--ax-surface-3); }
+#ct4-row-menu .ax-icon { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--ax-text-2); }
+#ct4-row-menu b { display: block; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#ct4-row-menu small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* Cambios programados e historial: tablas dentro del modal */
+#modal-ct4-history .modal-box.ct4-dialog.wide { width: min(920px, 96vw); max-width: none; }
+#modal-ct4-history .ct4-modal-lead { margin: 0 0 12px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-ct4-history .ct4-mtable-wrap { overflow-x: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+#modal-ct4-history .ct4-mtable { width: 100%; border-collapse: collapse; font-size: var(--ax-fs-sm); }
+#modal-ct4-history .ct4-mtable th { height: 36px; padding: 0 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+#modal-ct4-history .ct4-mtable td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text); vertical-align: top; }
+#modal-ct4-history .ct4-mtable tbody tr:last-child td { border-bottom: 0; }
+#modal-ct4-history .ct4-mtable td.act { vertical-align: middle; white-space: nowrap; }
+#modal-ct4-history .ct4-stack { display: grid; gap: 2px; min-width: 150px; }
+#modal-ct4-history .ct4-stack span { display: flex; justify-content: space-between; gap: 12px; }
+#modal-ct4-history .ct4-stack small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-ct4-history .ct4-stack b { font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#modal-ct4-history .ct4-op { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+#modal-ct4-history .ct4-op.add { background: var(--ax-ok-soft); color: var(--ax-ok); }
+#modal-ct4-history .ct4-op.upd { background: var(--ax-info-soft); color: var(--ax-info); }
+#modal-ct4-history .ct4-op.del { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-ct4-history .ct4-empty { padding: 24px; color: var(--ax-text-3); text-align: center; }
+
+/* Celular: cada fila es una tarjeta con sus importes rotulados */
+@media (max-width: 700px) {
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search { flex: 1 1 100%; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stats { margin-left: 0; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head { flex-wrap: wrap; padding: 14px; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head { padding: 14px 14px 8px; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable { min-width: 0; table-layout: auto; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(colgroup, thead) { display: none; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(tbody, td) { display: block; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; padding: 14px; border-top: 1px solid var(--ax-border); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable.is-unit tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td, :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td:first-child { height: auto; padding: 0; border: 0; background: none !important; box-shadow: none !important; text-align: left !important; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(td.ct4-c-name, td.ct4-c-none, td.ct4-c-news, td.ct4-c-act) { grid-column: 1 / -1; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(td.ct4-c-none, td.ct4-c-news)::before { display: none !important; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td.ct4-c-news:has(.ct4-muted), :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td:empty { display: none; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-pending { box-shadow: inset 3px 0 0 var(--ax-warn); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-open { background: var(--ax-surface-3); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr:is(.ct4-subrow, .ct4-subhead) { padding-left: 28px; background: var(--ax-surface); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead { display: block; padding-top: 10px; padding-bottom: 4px; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead td { padding: 0 !important; border: 0; background: none; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead + tr.ct4-subrow { border-top: 0; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-row-actions { justify-content: flex-start; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-cell-input { max-width: none; margin-left: 0; text-align: left; }
+  #modal-ct4-history .ct4-mtable thead { display: none; }
+  #modal-ct4-history .ct4-mtable :is(tbody, tr, td) { display: block; }
+  #modal-ct4-history .ct4-mtable tr { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); }
+  #modal-ct4-history .ct4-mtable td { padding: 4px 0; border: 0; }
+  #modal-ct4-history .ct4-mtable td[data-label]::before { content: attr(data-label); display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+}
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat.pending:not(.on) { border-color: var(--ax-border-strong); color: var(--ax-text-2); }
+#modal-ct4-history .ct4-stack { max-width: 230px; }

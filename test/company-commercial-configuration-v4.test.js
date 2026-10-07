@@ -85,6 +85,23 @@ test('Tarifas separa Movida, KM Asfalto y KM Ripio en lectura y edición',()=>{
   assert.match(tariffs,/id="ct4-gravel"/);
 });
 
+test('Tarifas se ve como tabla: un grupo por forma de cobro, filtros, menú por fila y confirmaciones',()=>{
+  assert.match(tariffs,/title: 'Con kilómetros'/);
+  assert.match(tariffs,/title: 'Precio por unidad'/);
+  assert.match(tariffs,/<th class="num">Movida<\/th><th class="num">KM asfalto<\/th><th class="num">KM ripio<\/th>/);
+  assert.match(tariffs,/data-ct4-filter=/);
+  assert.match(tariffs,/data-ct4-search/);
+  assert.match(tariffs,/data-ct4-menu=/);
+  assert.match(tariffs,/data-ct4-toggle-bases=/);
+  assert.match(tariffs,/data-ct4-edit-base=/);
+  assert.match(tariffs,/async function askConfirm/);
+  assert.match(tariffs,/Sí, descartar/);
+  assert.match(tariffs,/Sí, actualizar/);
+  assert.match(tariffs,/Quitar el precio de la base/);
+  assert.match(tariffs,/Cancelar el cambio programado/);
+  assert.match(tariffs,/<th>Antes<\/th><th>Después<\/th>/);
+});
+
 test('Prestadoras embebe la misma implementación de precios y no contiene Sucursales',()=>{
   assert.match(companies,/get_company_service_prices_v1/);
   assert.match(companies,/mountEmbedded/);

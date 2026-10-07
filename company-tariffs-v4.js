@@ -20,6 +20,16 @@
   const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   const nextMonth = () => { const [y, m] = today().split('-').map(Number); const d = new Date(Date.UTC(y, m, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`; };
   const dateLabel = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString('es-AR') : '—';
+  const shortDate = value => { const [y, m, d] = String(value || '').slice(0, 10).split('-'); return y && m && d ? `${d}/${m}/${y.slice(2)}` : '—'; };
+  const amount = (value, currency = 'ARS') => { const n = Number(value) || 0; return new Intl.NumberFormat('es-AR', { style: 'currency', currency: currency || 'ARS', minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }).format(n); };
+  const icon = name => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
+  async function askConfirm({ title, html, confirmLabel = 'Confirmar', danger = false, fallback = '' }) {
+    const dialog = window.AuxiliosBillingParametersV4?.confirm;
+    if (typeof dialog === 'function') return dialog({ title, html, confirmLabel, danger });
+    return window.confirm(fallback || title);
+  }
+  const KM_FIELDS = [['movement_price', 'Movida'], ['asphalt_km_price', 'KM asfalto'], ['gravel_km_price', 'KM ripio']];
+  const fieldValue = (price, field) => { if (!price) return null; const value = field === 'asphalt_km_price' ? (price.asphalt_km_price ?? price.km_price) : field === 'gravel_km_price' ? (price.gravel_km_price ?? price.km_price) : price[field]; return value === null || value === undefined ? null : Number(value); };
 
   function injectStyles() {
     if (document.getElementById('company-tariffs-v4-css')) return;
@@ -64,14 +74,16 @@
     const embedded = instance.mode === 'embedded';
     instance.root.innerHTML = `<div class="ct4 ${embedded ? 'ct4-embedded' : ''}">
       <div class="ct4-head"><div><h2>Tarifas</h2><p>Precio vigente y cambios futuros por servicio.</p></div></div>
-      <section class="ct4-toolbar"><label class="ct4-field ct4-company-field"><span>Prestadora</span><select class="form-input" data-ct4-company><option value="">Seleccionar prestadora</option></select></label><div class="ct4-stats" data-ct4-stats></div></section>
+      <section class="ct4-toolbar"><label class="ct4-field ct4-company-field"><span>Prestadora</span><select class="form-input" data-ct4-company><option value="">Seleccionar prestadora</option></select></label><label class="ct4-search">${icon('search')}<input type="search" placeholder="Buscar servicio" aria-label="Buscar servicio" autocomplete="off" data-ct4-search></label><div class="ct4-stats" data-ct4-stats></div></section>
       <div data-ct4-error></div><div data-ct4-content><div class="ct4-empty">${embedded ? 'Cargando precios…' : 'Seleccioná una prestadora.'}</div></div>
     </div>`;
     instance.root.querySelector('[data-ct4-company]')?.addEventListener('change', async e => {
       instance.companyId = e.target.value;
+      instance.expanded = new Set();
       resetBulk(instance);
       await loadInstance(instance);
     });
+    instance.root.querySelector('[data-ct4-search]')?.addEventListener('input', e => { instance.query = e.target.value; renderInstance(instance); });
   }
 
   async function loadCompanies(instance) {
@@ -84,11 +96,11 @@
     select.value = instance.companyId || '';
   }
 
-  function formatPrice(instance, service, price) {
-    if (!price) return '<span class="ct4-chip pending">Sin precio</span>';
+  function priceStack(instance, service, price) {
+    if (!price) return '<span class="ct4-none">Sin precio</span>';
     const currency = instance.data?.currency || 'ARS';
-    if (service.distance_chargeable) return `<div><div class="ct4-price-main">${money(price.movement_price, currency)} movida</div><div class="ct4-price-km">Asfalto · ${money(price.asphalt_km_price ?? price.km_price, currency)} / KM</div><div class="ct4-price-km">Ripio · ${money(price.gravel_km_price ?? price.km_price, currency)} / KM</div></div>`;
-    return `<div><div class="ct4-price-main">${money(price.unit_price, currency)}</div><div class="ct4-price-km">${esc(unitLabel(price.pricing_unit || service.pricing_unit))}</div></div>`;
+    if (service.distance_chargeable) return `<div class="ct4-stack">${KM_FIELDS.map(([field, label]) => `<span><small>${label}</small><b>${amount(fieldValue(price, field), currency)}</b></span>`).join('')}</div>`;
+    return `<div class="ct4-stack"><span><small>${esc(unitLabel(price.pricing_unit || service.pricing_unit))}</small><b>${amount(price.unit_price, currency)}</b></span></div>`;
   }
 
   function samePrice(service, a, b) {
@@ -121,20 +133,6 @@
     return rows.sort((a, b) => String(a.valid_from).localeCompare(String(b.valid_from)));
   }
 
-  function nextPriceHtml(instance, service) {
-    const changes = priceChanges(instance, service, null);
-    if (!changes.length) return '<span class="ct4-chip">Sin cambios programados</span>';
-    const next = changes[0];
-    return `<div class="ct4-next"><div class="ct4-next-row"><b>Desde ${dateLabel(next.valid_from)}</b><div class="ct4-next-value">${formatPrice(instance, service, next)}</div></div>${changes.length > 1 ? `<button class="ct4-action" type="button" data-ct4-schedules="${esc(service.concept_id)}">Ver ${changes.length} vigencias</button>` : ''}</div>`;
-  }
-
-  function exceptionsHtml(instance, service) {
-    const current = service.base_exceptions || [];
-    const scheduled = allScheduleChanges(instance, service).filter(x => x.billing_base_id);
-    if (!current.length && !scheduled.length) return '<span class="ct4-chip">Sin excepciones</span>';
-    return `<div class="ct4-exceptions">${current.slice(0, 2).map(row => `<div class="ct4-exception"><span class="ct4-exception-name" title="${esc(row.base_name || 'Base')}">${esc(row.base_name || 'Base')}</span><div class="ct4-exception-price">${formatPrice(instance, service, row)}</div>${canWrite() ? `<button class="ct4-icon-action" type="button" title="Eliminar excepción" data-ct4-delete-base="${esc(service.concept_id)}" data-base="${esc(row.base_id)}">×</button>` : '<span></span>'}</div>`).join('')}${current.length > 2 ? `<span class="ct4-chip">+${current.length - 2} bases</span>` : ''}${scheduled.length ? `<button class="ct4-action" type="button" data-ct4-schedules="${esc(service.concept_id)}">${scheduled.length} cambio${scheduled.length === 1 ? '' : 's'} por base programado${scheduled.length === 1 ? '' : 's'}</button>` : ''}</div>`;
-  }
-
   function originalBulkValue(service, field) {
     const price = service?.general_price;
     if (!price) return '';
@@ -160,16 +158,10 @@
   }
   function bulkChanged(service, field, value) { return normalizeBulkValue(value) !== normalizeBulkValue(originalBulkValue(service, field)); }
 
-  function bulkInput(instance, service, field, label) {
+  function bulkCell(instance, service, field, label) {
     const key = bulkKey(service.concept_id, field);
-    const value = bulkInputValue(instance, service, field);
     const dirty = instance.bulk.dirtyKeys.has(key);
-    return `<label class="ct4-bulk-field"><span>${esc(label)}</span><input type="text" inputmode="decimal" value="${esc(value)}" class="${dirty ? 'dirty' : ''}" data-ct4-bulk-input data-concept="${esc(service.concept_id)}" data-field="${field}"></label>`;
-  }
-
-  function bulkPriceEditor(instance, service) {
-    if (service.distance_chargeable) return `<div class="ct4-bulk-grid">${bulkInput(instance, service, 'movement_price', 'Movida')}${bulkInput(instance, service, 'asphalt_km_price', 'KM Asfalto')}${bulkInput(instance, service, 'gravel_km_price', 'KM Ripio')}</div>`;
-    return `<div class="ct4-bulk-grid single">${bulkInput(instance, service, 'unit_price', 'Valor')}</div>`;
+    return `<input type="text" inputmode="decimal" class="ct4-cell-input ${dirty ? 'dirty' : ''}" value="${esc(bulkInputValue(instance, service, field))}" placeholder="—" aria-label="${esc(service.name)} · ${esc(label)}" data-ct4-bulk-input data-concept="${esc(service.concept_id)}" data-field="${field}">`;
   }
 
   function bulkSavebar(instance) {
@@ -177,7 +169,62 @@
     return `<div class="ct4-bulk-savebar"><div><b>Edición masiva de precios vigentes</b><small>${count} celda${count === 1 ? '' : 's'} modificada${count === 1 ? '' : 's'}</small></div><div class="ct4-bulk-savebar-actions"><button class="btn btn-ghost" type="button" data-ct4-bulk-discard ${instance.bulk.saving ? 'disabled' : ''}>Descartar</button><button class="btn btn-primary" type="button" data-ct4-bulk-save ${count === 0 || instance.bulk.saving ? 'disabled' : ''}>${instance.bulk.saving ? 'Actualizando…' : `Actualizar (${count})`}</button></div></div>`;
   }
 
+  const FILTERS = [
+    ['all', 'servicios', () => true],
+    ['priced', 'con precio', service => Boolean(service.general_price)],
+    ['pending', 'sin precio', service => !service.general_price],
+    ['scheduled', 'con cambio programado', (service, instance) => allScheduleChanges(instance, service).length > 0],
+    ['bases', 'con precio por base', service => (service.base_exceptions || []).length > 0]
+  ];
+
+  function newsHtml(instance, service, bases, expanded, bulk) {
+    const id = esc(service.concept_id), tags = [];
+    const general = priceChanges(instance, service, null), all = allScheduleChanges(instance, service);
+    if (all.length) {
+      const first = general[0] || all[0];
+      const label = general.length ? `Cambia el ${shortDate(first.valid_from)}` : `Cambia en una base el ${shortDate(first.valid_from)}`;
+      tags.push(`<button type="button" class="ct4-tag info" data-ct4-schedules="${id}" title="Ver cambios programados">${icon('calendar-clock')}<span>${label}</span>${all.length > 1 ? `<em>+${all.length - 1}</em>` : ''}</button>`);
+    }
+    if (bases.length) {
+      const text = `${bases.length} base${bases.length === 1 ? '' : 's'} con precio propio`;
+      tags.push(bulk ? `<span class="ct4-tag">${icon('map-pin')}<span>${text}</span></span>` : `<button type="button" class="ct4-tag ${expanded ? 'on' : ''}" data-ct4-toggle-bases="${id}" aria-expanded="${expanded ? 'true' : 'false'}">${icon('map-pin')}<span>${text}</span>${icon('chevron-down')}</button>`);
+    }
+    return tags.length ? `<div class="ct4-tags">${tags.join('')}</div>` : '<span class="ct4-muted">—</span>';
+  }
+
+  function actionsHtml(instance, service) {
+    const id = esc(service.concept_id);
+    const main = canWrite() ? `<button type="button" class="ct4-btn ${service.general_price ? '' : 'primary'}" data-ct4-edit="${id}">${service.general_price ? 'Editar' : 'Cargar precio'}</button>` : '';
+    return `<div class="ct4-row-actions">${main}<button type="button" class="ct4-icon" data-ct4-menu="${id}" aria-haspopup="menu" aria-expanded="false" aria-label="Más opciones: ${esc(service.name)}" title="Más opciones">${icon('ellipsis')}</button></div>`;
+  }
+
+  function baseRowsHtml(instance, service, km) {
+    const currency = instance.data?.currency || 'ARS', general = service.general_price, id = esc(service.concept_id);
+    const cell = (row, field, label) => { const value = fieldValue(row, field), base = fieldValue(general, field); return `<td class="num" data-label="${label}"><span class="${base !== null && value !== base ? 'ct4-diff' : ''}">${value === null ? '—' : amount(value, currency)}</span></td>`; };
+    const head = `<tr class="ct4-subhead"><td colspan="${km ? 6 : 5}">Excepciones por base · en estas bases se cobra este precio en lugar del general</td></tr>`;
+    return head + (service.base_exceptions || []).map(row => `<tr class="ct4-subrow"><td class="ct4-c-name"><div class="ct4-name ct4-base-name">${icon('map-pin')}<b>${esc(row.base_name || 'Base')}</b></div></td>${km ? KM_FIELDS.map(([field, label]) => cell(row, field, label)).join('') : `${cell(row, 'unit_price', 'Precio')}<td class="ct4-c-unit" data-label="Se cobra">${esc(unitLabel(row.pricing_unit || service.pricing_unit))}</td>`}<td class="ct4-c-news"></td><td class="ct4-c-act">${canWrite() ? `<div class="ct4-row-actions"><button type="button" class="ct4-btn sm" data-ct4-edit-base="${id}" data-base="${esc(row.base_id)}">Editar</button><button type="button" class="ct4-icon danger" data-ct4-delete-base="${id}" data-base="${esc(row.base_id)}" title="Quitar el precio de esta base" aria-label="Quitar el precio de ${esc(row.base_name || 'la base')}">${icon('trash-2')}</button></div>` : ''}</td></tr>`).join('');
+  }
+
+  function rowHtml(instance, service, km, bulk) {
+    const price = service.general_price, currency = instance.data?.currency || 'ARS', bases = service.base_exceptions || [];
+    const expanded = !bulk && bases.length > 0 && instance.expanded.has(String(service.concept_id));
+    let cells;
+    if (km) cells = bulk ? KM_FIELDS.map(([field, label]) => `<td class="num" data-label="${label}">${bulkCell(instance, service, field, label)}</td>`).join('')
+      : price ? KM_FIELDS.map(([field, label]) => `<td class="num" data-label="${label}">${amount(fieldValue(price, field), currency)}</td>`).join('')
+      : `<td class="ct4-c-none" colspan="3" data-label="Precio"><span class="ct4-none">${icon('circle-alert')}Sin precio cargado</span></td>`;
+    else cells = `${bulk ? `<td class="num" data-label="Precio">${bulkCell(instance, service, 'unit_price', 'Precio')}</td>` : price ? `<td class="num" data-label="Precio">${amount(price.unit_price, currency)}</td>` : `<td class="ct4-c-none" data-label="Precio"><span class="ct4-none">${icon('circle-alert')}Sin precio</span></td>`}<td class="ct4-c-unit" data-label="Se cobra">${esc(unitLabel(price?.pricing_unit || service.pricing_unit))}</td>`;
+    return `<tr class="ct4-row ${price ? '' : 'is-pending'} ${expanded ? 'is-open' : ''}"><td class="ct4-c-name"><div class="ct4-name"><b>${esc(service.name)}</b><small>${esc(categoryLabel(service.category))}</small></div></td>${cells}<td class="ct4-c-news" data-label="Novedades">${newsHtml(instance, service, bases, expanded, bulk)}</td><td class="ct4-c-act">${bulk ? '' : actionsHtml(instance, service)}</td></tr>${expanded ? baseRowsHtml(instance, service, km) : ''}`;
+  }
+
+  function groupHtml(instance, group, bulk) {
+    const km = group.key === 'km';
+    const cols = km ? '<col class="c-name"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-news"><col class="c-act">' : '<col class="c-name"><col class="c-num"><col class="c-unit"><col class="c-news"><col class="c-act">';
+    const head = km ? '<th>Servicio</th><th class="num">Movida</th><th class="num">KM asfalto</th><th class="num">KM ripio</th><th>Novedades</th><th><span class="ct4-sr">Acciones</span></th>' : '<th>Servicio</th><th class="num">Precio</th><th>Se cobra</th><th>Novedades</th><th><span class="ct4-sr">Acciones</span></th>';
+    return `<section class="ct4-group"><div class="ct4-group-head"><h4>${group.title}<span class="ct4-count">${group.rows.length}</span></h4><p>${group.sub}</p></div><div class="ct4-table-wrap"><table class="ct4-ptable ${km ? 'is-km' : 'is-unit'}"><colgroup>${cols}</colgroup><thead><tr>${head}</tr></thead><tbody>${group.rows.map(service => rowHtml(instance, service, km, bulk)).join('')}</tbody></table></div></section>`;
+  }
+
   function renderInstance(instance) {
+    closeRowMenu();
     const content = instance.root.querySelector('[data-ct4-content]');
     const error = instance.root.querySelector('[data-ct4-error]');
     const stats = instance.root.querySelector('[data-ct4-stats]');
@@ -189,29 +236,86 @@
 
     const d = instance.data;
     const services = Array.isArray(d.services) ? d.services : [];
-    const enabled = Number(d.enabled_count || 0);
-    const priced = Number(d.priced_count || 0);
-    const pending = Math.max(enabled - priced, 0);
-    const scheduledServices = services.filter(service => allScheduleChanges(instance, service).length > 0).length;
-    if (stats) stats.innerHTML = `<span class="ct4-stat"><b>${enabled}</b> servicios</span><span class="ct4-stat"><b>${priced}</b> con precio</span>${pending ? `<span class="ct4-stat pending"><b>${pending}</b> sin precio</span>` : ''}${scheduledServices ? `<span class="ct4-stat"><b>${scheduledServices}</b> con cambio futuro</span>` : ''}`;
+    let filter = FILTERS.find(([key]) => key === instance.filter) || FILTERS[0];
+    if (filter[0] !== 'all' && !services.some(service => filter[2](service, instance))) { instance.filter = 'all'; filter = FILTERS[0]; }
+    if (stats) stats.innerHTML = FILTERS.map(([key, label, test]) => {
+      const count = services.filter(service => test(service, instance)).length;
+      if (!['all', 'priced'].includes(key) && !count) return '';
+      const on = filter[0] === key;
+      return `<button type="button" class="ct4-stat ${key === 'pending' ? 'pending' : ''} ${on ? 'on' : ''}" data-ct4-filter="${key}" aria-pressed="${on ? 'true' : 'false'}"><b>${count}</b> ${label}</button>`;
+    }).join('');
 
+    const query = norm(instance.query);
+    const visible = services.filter(service => filter[2](service, instance) && (!query || norm(service.name).includes(query)));
     const bulk = canWrite() && instance.bulk.editing;
-    content.innerHTML = `<section class="ct4-panel"><div class="ct4-panel-head"><div class="ct4-panel-head-main"><h3>Servicios</h3><p>Precio efectivo hoy · ${dateLabel(today())}</p></div>${canWrite() ? `<div class="ct4-panel-head-actions"><button class="ct4-action primary" type="button" data-ct4-bulk-toggle ${instance.bulk.saving ? 'disabled' : ''}>${bulk ? 'Salir de edición' : 'Editar en lote'}</button></div>` : ''}</div><div class="ct4-table-wrap"><table class="ct4-table"><thead><tr><th>Servicio</th><th>Tipo</th><th>Precio vigente</th><th>Próxima vigencia</th><th>Excepciones por base</th><th></th></tr></thead><tbody>${services.length ? services.map(service => `<tr><td><strong>${esc(service.name)}</strong><small>${service.distance_chargeable ? 'Movida + KM Asfalto + KM Ripio' : esc(unitLabel(service.pricing_unit))}</small></td><td><span class="ct4-chip">${esc(categoryLabel(service.category))}</span></td><td>${bulk ? bulkPriceEditor(instance, service) : formatPrice(instance, service, service.general_price)}</td><td>${nextPriceHtml(instance, service)}</td><td>${exceptionsHtml(instance, service)}</td><td><div class="ct4-actions">${canWrite() ? `${bulk ? '' : `<button class="ct4-action primary" type="button" data-ct4-edit="${esc(service.concept_id)}">${service.general_price ? 'Editar' : 'Cargar precio'}</button>`}<button class="ct4-action" type="button" data-ct4-program="${esc(service.concept_id)}">Programar</button>${(d.bases || []).length ? `<button class="ct4-action" type="button" data-ct4-base-price="${esc(service.concept_id)}">Precio por base</button>` : ''}` : ''}<button class="ct4-action" type="button" data-ct4-history="${esc(service.concept_id)}">Historial</button></div></td></tr>`).join('') : '<tr><td colspan="6"><div class="ct4-empty">No hay servicios habilitados para esta prestadora.</div></td></tr>'}</tbody></table></div>${bulk ? bulkSavebar(instance) : ''}</section>`;
+    const groups = [
+      { key: 'km', title: 'Con kilómetros', sub: 'Se cobra Movida + KM Asfalto + KM Ripio.', rows: visible.filter(service => service.distance_chargeable) },
+      { key: 'unit', title: 'Precio por unidad', sub: 'Se cobra un valor por servicio, hora, día, km o unidad.', rows: visible.filter(service => !service.distance_chargeable) }
+    ];
+    const head = `<div class="ct4-panel-head"><div class="ct4-panel-head-main"><h3>Precios vigentes</h3><p>Hoy, ${dateLabel(today())}. Los cambios programados se aplican solos en su fecha.</p></div>${canWrite() ? `<div class="ct4-panel-head-actions"><button class="ct4-btn ${bulk ? '' : 'primary'}" type="button" data-ct4-bulk-toggle ${instance.bulk.saving ? 'disabled' : ''}>${icon(bulk ? 'x' : 'pencil')}${bulk ? 'Salir de edición' : 'Editar en lote'}</button></div>` : ''}</div>`;
+    let body;
+    if (!services.length) body = '<div class="ct4-empty">No hay servicios habilitados para esta prestadora.</div>';
+    else if (!visible.length) body = '<div class="ct4-empty">Ningún servicio coincide con la búsqueda o el filtro. <button type="button" class="ct4-link" data-ct4-filter="all" data-ct4-clear>Ver todos</button></div>';
+    else body = groups.filter(group => group.rows.length).map(group => groupHtml(instance, group, bulk)).join('');
+    content.innerHTML = `<section class="ct4-panel ${bulk ? 'is-bulk' : ''}">${head}${bulk ? '<div class="ct4-bulk-hint">Cambiá los importes directamente en la tabla. Las celdas modificadas quedan marcadas y se guardan todas juntas con «Actualizar».</div>' : ''}${body}${bulk ? bulkSavebar(instance) : ''}</section>`;
     bindInstance(instance);
   }
 
   function bindInstance(instance) {
     instance.root.querySelectorAll('[data-ct4-edit]').forEach(b => b.addEventListener('click', () => openPriceEditor(instance, b.dataset.ct4Edit, { validFrom: today() })));
-    instance.root.querySelectorAll('[data-ct4-program]').forEach(b => b.addEventListener('click', () => openPriceEditor(instance, b.dataset.ct4Program, { validFrom: nextMonth(), programming: true })));
-    instance.root.querySelectorAll('[data-ct4-base-price]').forEach(b => b.addEventListener('click', () => openPriceEditor(instance, b.dataset.ct4BasePrice, { validFrom: today(), selectingBase: true })));
-    instance.root.querySelectorAll('[data-ct4-history]').forEach(b => b.addEventListener('click', () => openHistory(instance, b.dataset.ct4History)));
+    instance.root.querySelectorAll('[data-ct4-edit-base]').forEach(b => b.addEventListener('click', () => openPriceEditor(instance, b.dataset.ct4EditBase, { baseId: b.dataset.base, validFrom: today() })));
     instance.root.querySelectorAll('[data-ct4-schedules]').forEach(b => b.addEventListener('click', () => openSchedules(instance, b.dataset.ct4Schedules)));
     instance.root.querySelectorAll('[data-ct4-delete-base]').forEach(b => b.addEventListener('click', () => deleteBaseException(instance, b.dataset.ct4DeleteBase, b.dataset.base)));
+    instance.root.querySelectorAll('[data-ct4-toggle-bases]').forEach(b => b.addEventListener('click', () => { const key = String(b.dataset.ct4ToggleBases); if (instance.expanded.has(key)) instance.expanded.delete(key); else instance.expanded.add(key); renderInstance(instance); }));
+    instance.root.querySelectorAll('[data-ct4-menu]').forEach(b => b.addEventListener('click', () => openRowMenu(instance, b.dataset.ct4Menu, b)));
+    instance.root.querySelectorAll('[data-ct4-filter]').forEach(b => b.addEventListener('click', () => {
+      instance.filter = b.dataset.ct4Filter;
+      if (b.hasAttribute('data-ct4-clear')) { instance.query = ''; const search = instance.root.querySelector('[data-ct4-search]'); if (search) search.value = ''; }
+      renderInstance(instance);
+    }));
     instance.root.querySelector('[data-ct4-bulk-toggle]')?.addEventListener('click', () => toggleBulk(instance));
     instance.root.querySelectorAll('[data-ct4-bulk-input]').forEach(input => input.addEventListener('input', () => onBulkInput(instance, input)));
     instance.root.querySelector('[data-ct4-bulk-discard]')?.addEventListener('click', () => discardBulk(instance));
     instance.root.querySelector('[data-ct4-bulk-save]')?.addEventListener('click', () => saveBulk(instance));
   }
+
+  let rowMenu = null;
+  function closeRowMenu() { if (!rowMenu) return; rowMenu.el.remove(); rowMenu.anchor?.setAttribute('aria-expanded', 'false'); rowMenu = null; }
+  function openRowMenu(instance, conceptId, anchor) {
+    const same = rowMenu && rowMenu.anchor === anchor;
+    closeRowMenu();
+    if (same) return;
+    const service = serviceFor(instance, conceptId); if (!service) return;
+    const changes = allScheduleChanges(instance, service), items = [];
+    if (canWrite()) items.push(['program', 'calendar-clock', 'Programar cambio de precio', 'Elegís desde qué fecha rige el precio nuevo']);
+    if (canWrite() && (instance.data?.bases || []).length) items.push(['base', 'map-pin', 'Precio para una base', 'Un precio distinto solo para esa base']);
+    if (changes.length) items.push(['schedules', 'calendar', `Ver cambios programados (${changes.length})`, '']);
+    items.push(['history', 'history', 'Historial de cambios', 'Quién cambió el precio y cuándo']);
+    const el = document.createElement('div');
+    el.id = 'ct4-row-menu';
+    el.setAttribute('role', 'menu');
+    el.innerHTML = items.map(([action, name, label, hint]) => `<button type="button" role="menuitem" data-ct4-menu-action="${action}">${icon(name)}<span><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</span></button>`).join('');
+    document.body.appendChild(el);
+    const rect = anchor.getBoundingClientRect(), width = el.offsetWidth, height = el.offsetHeight;
+    el.style.left = `${Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))}px`;
+    el.style.top = `${rect.bottom + 6 + height > window.innerHeight - 8 ? Math.max(8, rect.top - height - 6) : rect.bottom + 6}px`;
+    anchor.setAttribute('aria-expanded', 'true');
+    rowMenu = { el, anchor };
+    el.addEventListener('click', event => {
+      const button = event.target.closest('[data-ct4-menu-action]'); if (!button) return;
+      const action = button.dataset.ct4MenuAction;
+      closeRowMenu();
+      if (action === 'program') openPriceEditor(instance, conceptId, { validFrom: nextMonth(), programming: true });
+      else if (action === 'base') openPriceEditor(instance, conceptId, { validFrom: today(), selectingBase: true });
+      else if (action === 'schedules') openSchedules(instance, conceptId);
+      else if (action === 'history') openHistory(instance, conceptId);
+    });
+    el.querySelector('button')?.focus({ preventScroll: true });
+  }
+  document.addEventListener('click', event => { if (rowMenu && !rowMenu.el.contains(event.target) && !rowMenu.anchor.contains(event.target)) closeRowMenu(); }, true);
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && rowMenu) { event.stopPropagation(); const anchor = rowMenu.anchor; closeRowMenu(); anchor?.focus(); } }, true);
+  window.addEventListener('resize', closeRowMenu);
+  window.addEventListener('scroll', event => { if (rowMenu && !rowMenu.el.contains(event.target)) closeRowMenu(); }, true);
 
   function onBulkInput(instance, input) {
     const service = serviceFor(instance, input.dataset.concept);
@@ -234,9 +338,10 @@
     renderInstance(instance);
   }
 
-  function discardBulk(instance) {
+  async function discardBulk(instance) {
     if (instance.bulk.saving) return;
-    if (instance.bulk.dirtyKeys.size && !window.confirm('¿Descartar los cambios de tarifas sin guardar?')) return;
+    const count = instance.bulk.dirtyKeys.size;
+    if (count && !(await askConfirm({ title: '¿Descartar los cambios?', html: `<p class="bp4-confirm-text">Tenés <b>${count} importe${count === 1 ? '' : 's'} modificado${count === 1 ? '' : 's'}</b> sin guardar. Si salís de la edición, se pierden.</p>`, confirmLabel: 'Sí, descartar', danger: true, fallback: '¿Descartar los cambios de tarifas sin guardar?' }))) return;
     resetBulk(instance);
     renderInstance(instance);
   }
@@ -272,6 +377,11 @@
     } catch (error) {
       return notify(error.message || 'Revisá los importes modificados.', 'error');
     }
+    const currency = instance.data?.currency || 'ARS';
+    const fieldLabel = field => ({ movement_price: 'Movida', asphalt_km_price: 'KM asfalto', gravel_km_price: 'KM ripio', unit_price: 'Precio' }[field] || field);
+    const rows = [...instance.bulk.dirtyKeys].map(key => { const [conceptId, field] = key.split(':'); const service = serviceFor(instance, conceptId); const before = originalBulkValue(service, field); const after = normalizeBulkValue(bulkInputValue(instance, service, field)); return `<div class="bp4-diff-row"><b>${esc(service?.name || 'Servicio')} · ${esc(fieldLabel(field))}</b><span class="was">${before === '' ? 'Sin precio' : esc(amount(before, currency))}</span><i>→</i><span class="now">${esc(amount(after, currency))}</span></div>`; });
+    const confirmed = await askConfirm({ title: `Actualizar ${prices.length} precio${prices.length === 1 ? '' : 's'}`, html: `<p class="bp4-confirm-text">Los precios nuevos rigen desde hoy para los servicios que se carguen de ahora en más. El cambio queda en el historial.</p><div class="bp4-diff">${rows.join('')}</div>`, confirmLabel: 'Sí, actualizar', fallback: `¿Actualizar ${prices.length} precio(s)?` });
+    if (!confirmed) return;
     instance.bulk.saving = true;
     renderInstance(instance);
     const result = await _db.rpc('bulk_save_company_service_prices_v1', { p_payload: { company_id: instance.companyId, prices } });
@@ -358,7 +468,7 @@
     if (!canWrite()) return;
     const service = serviceFor(instance, conceptId);
     const base = (instance.data?.bases || []).find(x => String(x.base_id) === String(baseId));
-    if (!window.confirm(`¿Eliminar la excepción de ${base?.name || 'esta base'} para ${service?.name || 'este servicio'}?`)) return;
+    if (!(await askConfirm({ title: 'Quitar el precio de la base', html: `<p class="bp4-confirm-text">En <b>${esc(base?.name || 'esta base')}</b> se va a cobrar el precio general de <b>${esc(service?.name || 'este servicio')}</b>. El cambio queda en el historial.</p>`, confirmLabel: 'Sí, quitar', danger: true, fallback: `¿Eliminar la excepción de ${base?.name || 'esta base'} para ${service?.name || 'este servicio'}?` }))) return;
     const result = await _db.rpc('delete_company_service_price_exception_v1', { p_company_id: instance.companyId, p_concept_id: conceptId, p_base_id: baseId });
     if (result.error) return notify(result.error.message || 'No se pudo eliminar la excepción', 'error');
     notify('Excepción por base eliminada', 'success');
@@ -366,7 +476,8 @@
   }
 
   async function cancelSchedule(instance, service, row) {
-    if (!canWrite() || !window.confirm(`¿Cancelar el cambio programado para el ${dateLabel(row.valid_from)}?`)) return;
+    if (!canWrite()) return;
+    if (!(await askConfirm({ title: 'Cancelar el cambio programado', html: `<p class="bp4-confirm-text">El precio programado para el <b>${esc(dateLabel(row.valid_from))}</b> no se va a aplicar. Sigue rigiendo el precio actual.</p>`, confirmLabel: 'Sí, cancelar el cambio', danger: true, fallback: `¿Cancelar el cambio programado para el ${dateLabel(row.valid_from)}?` }))) return;
     const result = await _db.rpc('cancel_company_service_price_schedule_v1', { p_company_id: instance.companyId, p_concept_id: service.concept_id, p_valid_from: row.valid_from, p_base_id: row.billing_base_id || null });
     if (result.error) return notify(result.error.message || 'No se pudo cancelar la vigencia', 'error');
     close('modal-ct4-history');
@@ -374,37 +485,32 @@
     await reloadCompany(instance.companyId);
   }
 
-  function scheduleItemHtml(instance, service, row) {
-    const scope = row.billing_base_id ? row.base_name || 'Base' : 'Precio general';
-    return `<div class="ct4-schedule-item"><div><b>${dateLabel(row.valid_from)}</b><small>${esc(scope)}</small></div><div>${formatPrice(instance, service, row)}</div><div class="ct4-actions">${canWrite() ? `<button class="ct4-action primary" type="button" data-ct4-edit-schedule data-date="${esc(row.valid_from)}" data-base="${esc(row.billing_base_id || '')}">Editar</button><button class="ct4-action danger" type="button" data-ct4-cancel-schedule data-date="${esc(row.valid_from)}" data-base="${esc(row.billing_base_id || '')}">Cancelar</button>` : ''}</div></div>`;
-  }
-
   function openSchedules(instance, conceptId) {
     const service = serviceFor(instance, conceptId); if (!service) return;
     const changes = allScheduleChanges(instance, service);
-    document.getElementById('ct4-history-title').textContent = `Vigencias programadas · ${service.name}`;
+    document.getElementById('ct4-history-title').textContent = `Cambios programados · ${service.name}`;
     const body = document.getElementById('ct4-history-body');
-    body.innerHTML = changes.length ? `<div class="ct4-schedule-list">${changes.map(row => scheduleItemHtml(instance, service, row)).join('')}</div>` : '<div class="ct4-empty">No hay cambios futuros programados.</div>';
+    body.innerHTML = changes.length ? `<p class="ct4-modal-lead">Cada precio empieza a regir solo, en la fecha indicada.</p><div class="ct4-mtable-wrap"><table class="ct4-mtable"><thead><tr><th>Desde</th><th>Dónde</th><th>Precio nuevo</th><th><span class="ct4-sr">Acciones</span></th></tr></thead><tbody>${changes.map(row => `<tr><td data-label="Desde"><b>${shortDate(row.valid_from)}</b></td><td data-label="Dónde">${esc(row.billing_base_id ? row.base_name || 'Base' : 'Precio general')}</td><td data-label="Precio nuevo">${priceStack(instance, service, row)}</td><td class="act">${canWrite() ? `<div class="ct4-row-actions"><button class="ct4-btn sm" type="button" data-ct4-edit-schedule data-date="${esc(row.valid_from)}" data-base="${esc(row.billing_base_id || '')}">Editar</button><button class="ct4-btn sm danger" type="button" data-ct4-cancel-schedule data-date="${esc(row.valid_from)}" data-base="${esc(row.billing_base_id || '')}">Cancelar</button></div>` : ''}</td></tr>`).join('')}</tbody></table></div>` : '<div class="ct4-empty">No hay cambios futuros programados.</div>';
     body.querySelectorAll('[data-ct4-edit-schedule]').forEach(b => b.addEventListener('click', () => { close('modal-ct4-history'); openPriceEditor(instance, conceptId, { baseId: b.dataset.base || null, validFrom: b.dataset.date, scheduled: true }); }));
     body.querySelectorAll('[data-ct4-cancel-schedule]').forEach(b => b.addEventListener('click', () => cancelSchedule(instance, service, { valid_from: b.dataset.date, billing_base_id: b.dataset.base || null })));
     open('modal-ct4-history');
   }
 
   function historyValue(instance, service, row) {
-    if (!row) return '—';
-    if (service.distance_chargeable) return `${money(row.movement_price, instance.data?.currency)} movida · ${money(row.asphalt_km_price ?? row.km_price, instance.data?.currency)}/km asfalto · ${money(row.gravel_km_price ?? row.km_price, instance.data?.currency)}/km ripio`;
-    return money(row.unit_price, instance.data?.currency);
+    return row ? priceStack(instance, service, row) : '<span class="ct4-muted">—</span>';
   }
 
   async function openHistory(instance, conceptId) {
     const service = serviceFor(instance, conceptId); if (!service) return;
-    document.getElementById('ct4-history-title').textContent = `Historial · ${service.name}`;
+    document.getElementById('ct4-history-title').textContent = `Historial de cambios · ${service.name}`;
     document.getElementById('ct4-history-body').innerHTML = '<div class="ct4-empty">Cargando historial…</div>';
     open('modal-ct4-history');
     const result = await _db.rpc('get_company_service_price_history_v1', { p_company_id: instance.companyId, p_concept_id: conceptId });
     if (result.error) { document.getElementById('ct4-history-body').innerHTML = `<div class="ct4-error">${esc(result.error.message || 'No se pudo cargar el historial.')}</div>`; return; }
     const rows = Array.isArray(result.data) ? result.data : [];
-    document.getElementById('ct4-history-body').innerHTML = rows.length ? `<div class="ct4-history">${rows.map(row => `<div class="ct4-history-row"><div><b>${esc(row.actor_name || 'Usuario')}</b><span>${row.occurred_at ? new Date(row.occurred_at).toLocaleString('es-AR') : '—'}</span></div><div><b>${esc(row.base_name || 'Precio general')}</b><span>${esc(row.operation === 'INSERT' ? 'CREACIÓN' : row.operation === 'DELETE' ? 'ELIMINACIÓN' : 'MODIFICACIÓN')}</span></div><div><b>${historyValue(instance, service, row.before)} → ${historyValue(instance, service, row.after)}</b><span>Cambio registrado automáticamente.</span></div></div>`).join('')}</div>` : '<div class="ct4-empty">Todavía no hay cambios registrados para este precio.</div>';
+    const operation = value => value === 'INSERT' ? ['add', 'Creación'] : value === 'DELETE' ? ['del', 'Eliminación'] : ['upd', 'Modificación'];
+    const when = value => value ? new Date(value).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+    document.getElementById('ct4-history-body').innerHTML = rows.length ? `<p class="ct4-modal-lead">Cada cambio queda registrado automáticamente.</p><div class="ct4-mtable-wrap"><table class="ct4-mtable"><thead><tr><th>Fecha</th><th>Quién</th><th>Dónde</th><th>Qué pasó</th><th>Antes</th><th>Después</th></tr></thead><tbody>${rows.map(row => { const [kind, label] = operation(row.operation); return `<tr><td data-label="Fecha">${esc(when(row.occurred_at))}</td><td data-label="Quién">${esc(row.actor_name || 'Usuario')}</td><td data-label="Dónde">${esc(row.base_name || 'Precio general')}</td><td data-label="Qué pasó"><span class="ct4-op ${kind}">${label}</span></td><td data-label="Antes">${historyValue(instance, service, row.before)}</td><td data-label="Después">${historyValue(instance, service, row.after)}</td></tr>`; }).join('')}</tbody></table></div>` : '<div class="ct4-empty">Todavía no hay cambios registrados para este precio.</div>';
   }
 
   async function reloadCompany(companyId) {
@@ -417,7 +523,7 @@
     if (!root) return null;
     injectStyles(); ensureModals();
     const instanceId = id || root.id || `ct4-${Math.random().toString(36).slice(2)}`;
-    const instance = { id: instanceId, root, mode, companyId: companyId || '', companies: [], data: null, schedule: [], loading: false, bulk: emptyBulkState() };
+    const instance = { id: instanceId, root, mode, companyId: companyId || '', companies: [], data: null, schedule: [], loading: false, bulk: emptyBulkState(), expanded: new Set(), filter: 'all', query: '' };
     instances.set(instanceId, instance);
     shell(instance);
     if (mode === 'standalone') await loadCompanies(instance);
@@ -429,6 +535,7 @@
   async function openForCompany(companyId) {
     const standalone = instances.get('standalone'); if (!standalone) return;
     standalone.companyId = companyId || '';
+    standalone.expanded = new Set();
     resetBulk(standalone);
     const select = standalone.root.querySelector('[data-ct4-company]'); if (select) select.value = standalone.companyId;
     await loadInstance(standalone);
