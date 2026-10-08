@@ -3120,8 +3120,21 @@ async function cargarResumenMes(userId, anio, mes) {
     .lte('mes', hasta);
   if (userId) q = q.eq('user_id', userId);
 
-  const { data, error } = await q;
+  // Horas de motor del mes: de las jornadas cerradas con horas al inicio y al final.
+  let qh = _db
+    .from('daily_logs')
+    .select('horas_inicio, horas_final')
+    .eq('status', 'closed')
+    .not('horas_final', 'is', null)
+    .gte('log_date', desde)
+    .lte('log_date', hasta);
+  if (userId) qh = qh.eq('driver_id', userId);
+
+  const [{ data, error }, horasRes] = await Promise.all([q, qh]);
   if (error) { console.error('Error resumen mes:', error); return null; }
+  if (horasRes?.error) console.error('Error horas de motor del mes:', horasRes.error);
+  const horasMotor = (horasRes?.data || []).reduce((s, j) => (j.horas_inicio != null && j.horas_final != null)
+    ? s + Math.max(0, Number(j.horas_final) - Number(j.horas_inicio)) : s, 0);
   const rows = data || [];
   const agg = rows.reduce((acc, r) => ({
     total_km:        acc.total_km        + (r.total_km        || 0),
@@ -3129,6 +3142,7 @@ async function cargarResumenMes(userId, anio, mes) {
     total_servicios: acc.total_servicios + (r.total_servicios || 0),
     total_anulados:  acc.total_anulados  + (r.total_anulados  || 0),
   }), { total_km: 0, total_jornadas: 0, total_servicios: 0, total_anulados: 0 });
+  agg.total_horas_motor = Math.round(horasMotor * 10) / 10;
   return agg;
 }
 
@@ -4162,7 +4176,7 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
   const [abiertasRes, choferesRes, mesRes] = await Promise.all([
     abiertasQuery,
     _db.from('users').select('user_id, roles!inner(name)', { count: 'exact', head: true }).eq('roles.name', 'chofer'),
-    withRange(_db.from('daily_logs').select('log_id, km_recorridos, hora_inicio, hora_fin, in_workshop')),
+    withRange(_db.from('daily_logs').select('log_id, km_recorridos, hora_inicio, hora_fin, horas_inicio, horas_final, in_workshop')),
   ]);
 
   const jornadas = mesRes.data || [];
@@ -4178,6 +4192,9 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
   }
   const kmTotal    = jornadas.reduce((s, j) => s + (Number(j.km_recorridos) || 0), 0);
   const horasTotal = jornadas.reduce((s, j) => s + _horasEntre(j.hora_inicio, j.hora_fin), 0);
+  // Horas de motor usadas en el período (sólo jornadas con horas al inicio y al final).
+  const horasMotorTotal = jornadas.reduce((s, j) => (j.horas_inicio != null && j.horas_final != null)
+    ? s + Math.max(0, Number(j.horas_final) - Number(j.horas_inicio)) : s, 0);
 
   return {
     abiertasAhora: abiertasRes.count || 0,
@@ -4185,6 +4202,7 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
     jornadasPeriodo: jornadas.length,
     kmTotalPeriodo: kmTotal,
     horasTotalPeriodo: horasTotal,
+    horasMotorPeriodo: Math.round(horasMotorTotal * 10) / 10,
     serviciosPeriodo,
     promKmJornada:   jornadas.length ? Math.round(kmTotal / jornadas.length)   : 0,
     promHorasJornada: jornadas.length ? (horasTotal / jornadas.length).toFixed(1) : '0',
@@ -4211,7 +4229,7 @@ async function cargarDetalleJornadaAdmin(logId) {
       foto_km_inicio, foto_km_final,
       status, notas, created_at_device,
       chofer:users!driver_id(user_id, full_name, legajo),
-      truck:trucks!truck_id(truck_id, plate, numero_interno, brand, model)
+      truck:trucks!truck_id(truck_id, plate, numero_interno, brand, model, registra_horas)
     `)
     .eq('log_id', logId)
     .single();

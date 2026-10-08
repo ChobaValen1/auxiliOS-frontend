@@ -75,11 +75,17 @@
       t.value = d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d;
     });
   }
+  /* Horas de motor: "1.234,5", "1234,5" o "1234.5" → 1234.5. Vacío → null; NaN si no es un número. */
+  const parseHs = v => { let t = String(v ?? '').trim().replace(/\s/g, ''); if (!t) return null; if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.'); const n = Number(t); return Number.isFinite(n) && n >= 0 ? Math.round(n * 10) / 10 : NaN; };
+  const fmtHs = v => Number(v).toLocaleString('es-AR', {maximumFractionDigits: 1});
+  const hsVal = v => (v == null || v === '' ? '' : String(Number(v)).replace('.', ','));
+  const hsField = (label, name, value, {disabled = false} = {}) =>
+    `<label class="ax-field"><span>${label}</span><input class="ax-input" name="${name}" inputmode="decimal" autocomplete="off" placeholder="Ej: 1234,5" value="${esc(value)}"${disabled ? ' disabled' : ''}></label>`;
   const validTime = v => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(v || ''));
   const minutesOf = v => { const [h, m] = String(v).split(':').map(Number); return h * 60 + m; };
 
   /* "184 km · 9 h 30 min" y lo que no cierra, mientras se escribe. */
-  function tripSummary(kmIni, kmFin, hIni, hFin, exception){
+  function tripSummary(kmIni, kmFin, hIni, hFin, exception, motorIni = null, motorFin = null){
     const out = {text: '', problems: []};
     const okKm = kmIni !== '' && kmFin !== '' && Number.isFinite(Number(kmIni)) && Number.isFinite(Number(kmFin));
     const km = okKm ? Number(kmFin) - Number(kmIni) : null;
@@ -88,7 +94,12 @@
     const parts = [];
     if (km !== null) parts.push(`${fmtKm(km)} km`);
     if (mins !== null) parts.push(`${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, '0')} min`);
+    // Horas de motor (sólo camiones con horómetro): las que usó la jornada.
+    const okMotor = Number.isFinite(motorIni) && Number.isFinite(motorFin);
+    if (okMotor && motorFin >= motorIni) parts.push(`${fmtHs(Math.round((motorFin - motorIni) * 10) / 10)} h de motor`);
     out.text = parts.join(' · ');
+    if (okMotor && motorFin < motorIni) out.problems.push('Las horas de motor finales son menores a las iniciales.');
+    if (okMotor && motorFin - motorIni > 24) out.problems.push('Más de 24 h de motor en una jornada: revisá las horas.');
     if (km !== null && km < 0 && !exception) out.problems.push('El KM final es menor al inicial. Si es correcto, activá la excepción.');
     if (km !== null && km > 1500) out.problems.push('Más de 1.500 km en una jornada: revisá el KM final.');
     if (mins !== null && mins > 16 * 60) out.problems.push('Jornada de más de 16 horas: revisá la hora de fin.');
@@ -113,11 +124,16 @@
     const finalFields=isOpen
       ? `<div class="jat-span-2">${alertBox('','info','<b>Jornada abierta.</b> KM final y hora fin no son datos editables: se completan únicamente desde <b>Cerrar jornada</b>.')}</div>`
       : `${kmField('KM final','km_final',log.km_final,{required:true})}${timeField('Hora fin','hora_fin',timeVal(log.hora_fin),{required:true})}`;
+    // Horas de motor: si la jornada las tiene o el camión las registra.
+    const conHoras=log.horas_inicio!=null||log.horas_final!=null||!!log.truck?.registra_horas;
+    const horasSection=conHoras?`<section class="jat-section"><h3>Horas de motor</h3><div class="jat-grid">${hsField('Horas al inicio','horas_inicio',hsVal(log.horas_inicio))}${isOpen?'':hsField('Horas al final','horas_final',hsVal(log.horas_final))}</div>
+          ${isOpen?'<p class="ax-field-help">Las horas al final se cargan al cerrar la jornada.</p>':''}<div id="jat-horas" class="jat-trip" aria-live="polite"></div></section>`:'';
     const root=mountModal({title:'Corregir jornada',subtitle:who(det),isStatic:true,
       body:`<div id="jat-impact"></div><form id="jat-edit-form" novalidate>
         <section class="jat-section"><h3>Recorrido</h3><div class="jat-grid">${kmField('KM inicial','km_inicio',log.km_inicio,{required:true})}${timeField('Hora inicio','hora_inicio',timeVal(log.hora_inicio),{required:true})}${finalFields}</div>
           <div id="jat-trip" class="jat-trip" aria-live="polite"></div>
           <label class="ax-switch jat-exc" id="jat-exc"${!isOpen && (log.km_excepcion || nz(log.km_final) < nz(log.km_inicio)) ? '' : ' hidden'}><input name="km_excepcion" type="checkbox" ${log.km_excepcion?'checked':''}><span>Permitir que el KM final quede por debajo del inicial (excepción)</span></label></section>
+        ${horasSection}
         <section class="jat-section"><h3>Taller</h3><label class="ax-switch"><input name="in_workshop" type="checkbox" ${log.in_workshop?'checked':''}><span>La unidad ingresó a taller durante esta jornada</span></label>
           <label class="ax-field" id="jat-workshop"${log.in_workshop?'':' hidden'}><span>Detalle del taller</span><textarea class="ax-textarea" name="workshop_detail" placeholder="Qué trabajo se hizo">${esc(log.workshop_detail||'')}</textarea></label></section>
         <section class="jat-section"><h3>Notas de la jornada</h3><textarea class="ax-textarea" name="notas" aria-label="Notas de la jornada">${esc(log.notas||'')}</textarea></section>
@@ -129,19 +145,33 @@
     const form=root.querySelector('#jat-edit-form'), save=root.querySelector('#jat-edit-save');
     bindTimeMask(root);
     let confirmed=false;
-    const LABELS={km_inicio:'KM inicial',hora_inicio:'Hora inicio',km_final:'KM final',hora_fin:'Hora fin',km_excepcion:'Excepción de KM',in_workshop:'Taller',workshop_detail:'Detalle del taller',notas:'Notas'};
+    const LABELS={km_inicio:'KM inicial',hora_inicio:'Hora inicio',km_final:'KM final',hora_fin:'Hora fin',km_excepcion:'Excepción de KM',horas_inicio:'Horas de motor al inicio',horas_final:'Horas de motor al final',in_workshop:'Taller',workshop_detail:'Detalle del taller',notas:'Notas'};
     function read(){
       const fd=new FormData(form);
       const patch={km_inicio:fd.get('km_inicio'),hora_inicio:fd.get('hora_inicio'),in_workshop:form.elements.in_workshop.checked,workshop_detail:fd.get('workshop_detail')||'',notas:fd.get('notas')||''};
       if(!isOpen){patch.km_final=fd.get('km_final');patch.hora_fin=fd.get('hora_fin');patch.km_excepcion=form.elements.km_excepcion.checked;}
+      if(conHoras){patch.horas_inicio=parseHs(fd.get('horas_inicio'));if(!isOpen)patch.horas_final=parseHs(fd.get('horas_final'));}
       return patch;
     }
-    const before={km_inicio:String(log.km_inicio??''),hora_inicio:timeVal(log.hora_inicio),km_final:String(log.km_final??''),hora_fin:timeVal(log.hora_fin),km_excepcion:!!log.km_excepcion,in_workshop:!!log.in_workshop,workshop_detail:log.workshop_detail||'',notas:log.notas||''};
-    function shown(k,x){ if(typeof x==='boolean') return x?'Sí':'No'; if(x===''||x==null) return '—'; return k.startsWith('km_')&&k!=='km_excepcion'?fmtKm(x):String(x); }
+    const numOrNull=v=>v==null||v===''?null:Number(v);
+    const before={km_inicio:String(log.km_inicio??''),hora_inicio:timeVal(log.hora_inicio),km_final:String(log.km_final??''),hora_fin:timeVal(log.hora_fin),km_excepcion:!!log.km_excepcion,horas_inicio:numOrNull(log.horas_inicio),horas_final:numOrNull(log.horas_final),in_workshop:!!log.in_workshop,workshop_detail:log.workshop_detail||'',notas:log.notas||''};
+    function shown(k,x){ if(typeof x==='boolean') return x?'Sí':'No'; if(x===''||x==null) return '—'; if(Number.isNaN(x)) return 'número inválido'; if(k.startsWith('horas_')) return `${fmtHs(x)} h`; return k.startsWith('km_')&&k!=='km_excepcion'?fmtKm(x):String(x); }
+    /* Lo que no cierra con las horas de motor: bloquea guardar salvo los avisos. */
+    function horasProblemas(v){
+      if(!conHoras)return {bloquea:[],avisos:[]};
+      const bloquea=[],avisos=[];
+      if(Number.isNaN(v.horas_inicio)||Number.isNaN(v.horas_final))bloquea.push('Escribí las horas como número, por ejemplo 1234,5.');
+      else if(v.horas_final!=null&&v.horas_inicio==null)bloquea.push('Cargá también las horas al inicio.');
+      else if(v.horas_final!=null&&v.horas_final<v.horas_inicio)bloquea.push('Las horas al final no pueden ser menores a las del inicio.');
+      if(!isOpen&&v.horas_inicio!=null&&v.horas_final==null&&!bloquea.length)avisos.push('Faltan las horas al final: el camión no actualiza sus horas.');
+      return {bloquea,avisos};
+    }
     function refresh(){
       const v=read(), reason=String(form.elements.reason.value||'').trim();
       root.querySelector('#jat-workshop').hidden=!v.in_workshop;
-      const sum=isOpen?{text:'',problems:[]}:tripSummary(v.km_inicio,v.km_final,v.hora_inicio,v.hora_fin,v.km_excepcion);
+      const sum=isOpen?{text:'',problems:[]}:tripSummary(v.km_inicio,v.km_final,v.hora_inicio,v.hora_fin,v.km_excepcion,v.horas_inicio,v.horas_final);
+      const hp=horasProblemas(v), horasEl=root.querySelector('#jat-horas');
+      if(horasEl)horasEl.innerHTML=[...hp.bloquea,...hp.avisos].map(p=>`<span class="jat-problem">${ic('triangle-alert')} ${esc(p)}</span>`).join('');
       const badTime=!validTime(v.hora_inicio)||(!isOpen&&!validTime(v.hora_fin));
       const trip=root.querySelector('#jat-trip');
       trip.innerHTML=(sum.text?`<b>Recorrido:</b> ${esc(sum.text)}`:'')+sum.problems.map(p=>`<span class="jat-problem">${ic('triangle-alert')} ${esc(p)}</span>`).join('')+(badTime?`<span class="jat-problem">${ic('triangle-alert')} Escribí la hora como hh:mm (24 h).</span>`:'');
@@ -150,7 +180,7 @@
       const changes=Object.keys(before).filter(k=>k in v).filter(k=>String(v[k])!==String(before[k])).map(k=>`<div class="jat-diff"><b>${LABELS[k]}</b><span><s>${esc(shown(k,before[k]))}</s> → ${esc(shown(k,v[k]))}</span></div>`);
       root.querySelector('#jat-edit-changes').innerHTML=changes.length?`<h3>Vas a cambiar</h3>${changes.join('')}`:'';
       const kmBad=sum.problems.some(p=>p.startsWith('El KM final es menor'));
-      save.disabled=!(changes.length&&reason.length>=5&&!badTime&&!kmBad&&v.km_inicio!=='');
+      save.disabled=!(changes.length&&reason.length>=5&&!badTime&&!kmBad&&!hp.bloquea.length&&v.km_inicio!=='');
       confirmed=false; root.querySelector('#jat-confirm').innerHTML=''; save.textContent='Guardar corrección';
     }
     form.addEventListener('input',refresh); form.addEventListener('change',refresh); bindQuickReasons(root,refresh); refresh();
@@ -178,6 +208,10 @@
       : 'No hay una rendición presentada. El cierre administrativo no inventará una declaración de efectivo: la rendición seguirá pendiente hasta que corresponda registrarla o revisarla.';
     const nTrips=det?.trips?.length||0, nFuel=det?.fuel_records?.length||0, nInc=det?.incidents?.length||0;
     const row=(ok,icon,label,detail)=>`<li class="${ok===null?'':ok?'is-ok':'is-warn'}">${ic(icon)}<div><b>${label}</b>${detail?`<span>${detail}</span>`:''}</div></li>`;
+    // Si la jornada abrió con horas de motor, se pueden cargar las del final (opcional).
+    const conHoras=log.horas_inicio!=null;
+    const horasCierre=conHoras?`<section class="jat-section"><h3>Horas de motor</h3><div class="jat-grid">${hsField('Horas al inicio','horas_inicio_ro',hsVal(log.horas_inicio),{disabled:true})}${hsField('Horas al final','horas_final','')}</div>
+          <p class="ax-field-help">Si no las sabés, dejalas vacías: las podés cargar después con Corregir jornada.</p></section>`:'';
     const root=mountModal({title:'Cerrar jornada',subtitle:`${who(det)} · desde Administración`,isStatic:true,
       body:`${alertBox('warn','triangle-alert','<b>Esta acción cambia el estado a Cerrada.</b> KM final y hora fin pasan a ser datos de cierre, se actualiza el odómetro del móvil y se recalculan los derivados correspondientes.')}
         <section class="jat-section"><h3>Antes de cerrar</h3><ul class="jat-checks">
@@ -190,6 +224,7 @@
         <form id="jat-close-form" novalidate><section class="jat-section"><h3>Cierre</h3><div class="jat-grid">${kmField('KM inicial','km_inicio_ro',log.km_inicio,{disabled:true})}${timeField('Hora inicio','hora_inicio_ro',timeVal(log.hora_inicio),{disabled:true})}${kmField('KM final *','km_final','',{required:true})}${timeField('Hora fin *','hora_fin',defaultTime,{required:true})}</div>
           <div id="jat-trip" class="jat-trip" aria-live="polite"></div>
           <label class="ax-switch jat-exc" id="jat-exc" hidden><input name="km_excepcion" type="checkbox"><span>Permitir que el KM final quede por debajo del inicial (excepción)</span></label></section>
+        ${horasCierre}
         <section class="jat-section"><h3>Taller</h3><label class="ax-switch"><input name="in_workshop" type="checkbox" ${log.in_workshop?'checked':''}><span>La unidad ingresó a taller durante esta jornada</span></label>
           <label class="ax-field" id="jat-workshop"${log.in_workshop?'':' hidden'}><span>Detalle del taller</span><textarea class="ax-textarea" name="workshop_detail">${esc(log.workshop_detail||'')}</textarea></label></section>
         <section class="jat-section"><h3>Notas de la jornada</h3><textarea class="ax-textarea" name="notas" aria-label="Notas de la jornada">${esc(log.notas||'')}</textarea></section>
@@ -201,16 +236,19 @@
     function refresh(){
       const fd=new FormData(form), reason=String(fd.get('reason')||'').trim(), kmFin=fd.get('km_final'), hFin=fd.get('hora_fin');
       root.querySelector('#jat-workshop').hidden=!form.elements.in_workshop.checked;
-      const exc=form.elements.km_excepcion.checked, sum=tripSummary(log.km_inicio,kmFin,timeVal(log.hora_inicio),hFin,exc), badTime=!validTime(hFin);
-      root.querySelector('#jat-trip').innerHTML=(sum.text?`<b>Recorrido:</b> ${esc(sum.text)}`:'')+sum.problems.map(p=>`<span class="jat-problem">${ic('triangle-alert')} ${esc(p)}</span>`).join('')+(hFin&&badTime?`<span class="jat-problem">${ic('triangle-alert')} Escribí la hora como hh:mm (24 h).</span>`:'');
+      const hsFin=conHoras?parseHs(fd.get('horas_final')):null, hsIni=conHoras?Number(log.horas_inicio):null;
+      const exc=form.elements.km_excepcion.checked, sum=tripSummary(log.km_inicio,kmFin,timeVal(log.hora_inicio),hFin,exc,hsIni,hsFin), badTime=!validTime(hFin);
+      const hsBad=Number.isNaN(hsFin);
+      root.querySelector('#jat-trip').innerHTML=(sum.text?`<b>Recorrido:</b> ${esc(sum.text)}`:'')+sum.problems.map(p=>`<span class="jat-problem">${ic('triangle-alert')} ${esc(p)}</span>`).join('')+(hFin&&badTime?`<span class="jat-problem">${ic('triangle-alert')} Escribí la hora como hh:mm (24 h).</span>`:'')+(hsBad?`<span class="jat-problem">${ic('triangle-alert')} Escribí las horas de motor como número, por ejemplo 1234,5.</span>`:'');
       const needExc=kmFin!==''&&nz(kmFin)<nz(log.km_inicio); root.querySelector('#jat-exc').hidden=!(needExc||exc);
-      save.disabled=!(kmFin!==''&&!badTime&&reason.length>=5&&!sum.problems.some(p=>p.startsWith('El KM final es menor')));
+      save.disabled=!(kmFin!==''&&!badTime&&!hsBad&&reason.length>=5&&!sum.problems.some(p=>p.startsWith('El KM final es menor')||p.startsWith('Las horas de motor finales son menores')));
     }
     form.addEventListener('input',refresh); form.addEventListener('change',refresh); bindQuickReasons(root,refresh); refresh();
     form.addEventListener('submit',async e=>{
       e.preventDefault(); if(save.disabled)return; const fd=new FormData(form);
       const reason=String(fd.get('reason')||'').trim();
       const payload={km_final:fd.get('km_final'),hora_fin:fd.get('hora_fin'),km_excepcion:form.elements.km_excepcion.checked,in_workshop:form.elements.in_workshop.checked,workshop_detail:fd.get('workshop_detail'),notas:fd.get('notas')};
+      if(conHoras){const hs=parseHs(fd.get('horas_final'));if(hs!=null)payload.horas_final=hs;}
       save.disabled=true;save.textContent='Cerrando…';
       try{const {data,error}=await db().rpc('close_daily_log_admin',{p_log_id:log.log_id,p_payload:payload,p_reason:reason});if(error)throw error;closeToolModal();notify(data?.rendicion_exists?'Jornada cerrada desde Administración':'Jornada cerrada. Rendición pendiente de presentación/revisión.');await refreshCurrent(log.log_id);setTimeout(surfacePayrollReviews,0);}catch(error){showError(root,'#jat-close-error',errorText(error));save.disabled=false;save.innerHTML=`${ic('lock')} Cerrar jornada`;}
     });
@@ -232,12 +270,13 @@
   }
 
   /* Historial de cambios: línea de tiempo con quién, cuándo y valor anterior → nuevo. */
-  const HISTORY_LABELS={km_inicio:'KM inicial',km_final:'KM final',hora_inicio:'Hora inicio',hora_fin:'Hora fin',status:'Estado',in_workshop:'Taller',workshop_detail:'Detalle del taller',notas:'Notas'};
+  const HISTORY_LABELS={km_inicio:'KM inicial',km_final:'KM final',hora_inicio:'Hora inicio',hora_fin:'Hora fin',horas_inicio:'Horas de motor al inicio',horas_final:'Horas de motor al final',status:'Estado',in_workshop:'Taller',workshop_detail:'Detalle del taller',notas:'Notas'};
   function historyValue(key,value){
     if(value===null||value===undefined||value==='')return '—';
     if(typeof value==='boolean')return value?'Sí':'No';
     if(key==='km_inicio'||key==='km_final')return fmtKm(value);
     if(key==='hora_inicio'||key==='hora_fin')return fmtTime(value);
+    if(key==='horas_inicio'||key==='horas_final')return `${fmtHs(value)} h`;
     if(key==='status')return {open:'Abierta',closed:'Cerrada',voided:'Anulada',void:'Anulada'}[value]||String(value);
     return String(value);
   }

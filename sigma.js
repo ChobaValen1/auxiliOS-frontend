@@ -8384,6 +8384,11 @@ async function cargarResumenMesPantalla() {
   if (elJor) elJor.textContent = data.total_jornadas;
   if (elSrv) elSrv.textContent = data.total_servicios;
   if (elAnu) elAnu.textContent = data.total_anulados > 0 ? `${data.total_anulados} anulado${data.total_anulados > 1 ? 's' : ''}` : '';
+  // Horas de motor: sólo aparece si en el mes hubo jornadas con horómetro.
+  const boxHs = document.getElementById('kpi-horas-mes-box');
+  const elHs  = document.getElementById('kpi-horas-mes');
+  if (boxHs) boxHs.hidden = !(Number(data.total_horas_motor) > 0);
+  if (elHs)  elHs.textContent = _fmtHoras(Number(data.total_horas_motor) || 0);
 }
 
 // ── NAV AVATAR POPUP ────────────────────────────────────────────
@@ -14492,7 +14497,9 @@ function _jadminRenderKpis(k) {
   if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
   if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
-  if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
+  // Con camiones con horómetro, las horas de motor del período van en un renglón propio debajo de los km.
+  if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').innerHTML         = _escHtml(`prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`)
+    + (Number(k.horasMotorPeriodo) > 0 ? `<br>${_escHtml(`${_fmtHoras(k.horasMotorPeriodo)} h de motor`)}` : '');
   // El título de la card ya dice "Horas prom. / jornada": el subtexto aporta el total.
   if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${_jadminFmtHoras(k.promHorasJornada ?? 0)} h`;
   if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `${_jadminFmtHoras(k.horasTotalPeriodo ?? 0)} h en el período`;

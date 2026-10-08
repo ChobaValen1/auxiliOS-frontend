@@ -53,6 +53,9 @@
 #screen-registro .reg-kpi-value { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); font-variant-numeric: tabular-nums; }
 #screen-registro .reg-kpi-label { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
 #screen-registro .reg-kpi-note { margin-top: 2px; min-height: 14px; color: var(--ax-danger); font-size: var(--ax-fs-xs); }
+#screen-registro .reg-kpi[hidden] { display: none; }
+/* Con horas de motor, el resumen del mes pasa a cuatro números (dos por fila en el celular). */
+#screen-registro .reg-kpis:has(> #kpi-horas-mes-box:not([hidden])) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 #screen-registro .journey-columns { border: 1px solid var(--ax-border); border-left-width: 3px; border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
 
 @media (max-width: 600px) {
@@ -61,4 +64,5 @@
   #screen-registro .reg-kpis { gap: var(--ax-sp-2); }
   #screen-registro .reg-kpi { padding: 10px; }
   #screen-registro .reg-kpi-value { font-size: var(--ax-fs-xl); }
+  #screen-registro .reg-kpis:has(> #kpi-horas-mes-box:not([hidden])) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
