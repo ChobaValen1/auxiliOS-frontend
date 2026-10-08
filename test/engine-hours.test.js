@@ -63,3 +63,14 @@ test('las horas aceptan coma o punto decimal', () => {
   assert.ok(Number.isNaN(parse('abc')));
   assert.ok(Number.isNaN(parse('-3')));
 });
+
+test('editar un camión: la base acepta todos los campos que manda el formulario', () => {
+  const fix = read('migrations/20261008120000_admin_update_truck_registra_horas_v1.sql');
+  const permitidos = /p_payload - array\[([^\]]+)\]/.exec(fix)[1].match(/'([a-z_]+)'/g).map(s => s.slice(1, -1));
+  const ini = sigma.indexOf('async function guardarNuevoVehiculo');
+  const bloque = sigma.slice(sigma.indexOf('const payload = {', ini), sigma.indexOf('};', sigma.indexOf('const payload = {', ini)));
+  const enviados = [...bloque.matchAll(/([a-z_]+):/g)].map(m => m[1]);
+  assert.ok(enviados.includes('registra_horas'));
+  enviados.forEach(k => assert.ok(permitidos.includes(k), `el formulario manda "${k}" y admin_update_truck_v2 lo rechaza`));
+  assert.match(fix, /registra_horas = case when p_payload \? 'registra_horas'/);
+});
