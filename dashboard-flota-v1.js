@@ -37,7 +37,8 @@
     proximo:      'Próximo',
     al_dia:       'Al día',
     sin_registro: 'Sin registro',
-    sin_odometro: 'Sin odómetro'
+    sin_odometro: 'Sin odómetro',
+    sin_horas:    'Sin horas de motor'
   };
 
   function esc(v) {
@@ -239,7 +240,8 @@
       return '<span style="color:' + tinta('tenue') + ';white-space:nowrap">'
         + '<span aria-hidden="true">○</span> Sin uso</span>';
     }
-    var sinService = c.service_estado === 'sin_registro' || c.service_estado === 'sin_odometro';
+    var sinService = c.service_estado === 'sin_registro' || c.service_estado === 'sin_odometro'
+      || c.service_estado === 'sin_horas';
     if (sinService && num(c.docs_total) === 0) {
       return '<span style="color:' + tinta('tenue') + ';white-space:nowrap">'
         + '<span aria-hidden="true">–</span> Sin datos</span>';
@@ -248,20 +250,28 @@
       + '<span aria-hidden="true">' + ICONO.ok + '</span> Al día</span>';
   }
 
+  // El service lo manda lo que llegue primero: km o horas de motor. La línea
+  // grande dice cuánto falta en esa medida; la chica, a cuánto toca en las dos.
   function celdaProximoService(c) {
     var estado = c.service_estado || 'sin_registro';
-    if (estado === 'sin_registro' || estado === 'sin_odometro' || c.proximo_service_km == null) {
+    var porHoras = c.service_manda === 'horas';
+    var proximo = porHoras ? c.proximo_service_horas : c.proximo_service_km;
+    if (estado === 'sin_registro' || estado === 'sin_odometro' || estado === 'sin_horas' || proximo == null) {
       return '<span style="color:' + tinta('tenue') + '">' + esc(SERVICE_LABEL[estado] || '—') + '</span>';
     }
-    var restantes = num(c.km_restantes);
+    var unidad = porHoras ? ' h' : ' km';
+    var restantes = num(porHoras ? c.horas_restantes : c.km_restantes);
     var titulo = restantes < 0
-      ? 'Excedido ' + miles(Math.abs(restantes)) + ' km'
-      : 'Faltan ' + miles(restantes) + ' km';
+      ? 'Excedido ' + miles(Math.abs(restantes)) + unidad
+      : 'Faltan ' + miles(restantes) + unidad;
     var color = estado === 'vencido' ? colorEstado('critico')
       : (estado === 'proximo' ? colorEstado('aviso') : 'inherit');
+    var partes = [];
+    if (c.proximo_service_km != null) partes.push(miles(c.proximo_service_km) + ' km');
+    if (c.proximo_service_horas != null) partes.push(miles(c.proximo_service_horas) + ' h');
     return '<div style="color:' + color + '">' + esc(titulo) + '</div>'
       + '<div style="font-size:10px;color:' + tinta('tenue') + '">'
-      +   'a los ' + miles(c.proximo_service_km) + ' km'
+      +   'a los ' + esc(partes.join(' · '))
       + '</div>';
   }
 
@@ -270,9 +280,11 @@
       return '<span style="color:' + tinta('tenue') + '">Sin registro</span>';
     }
     return '<div>' + fechaCorta(c.ultimo_service_fecha) + '</div>'
-      + (c.ultimo_service_km != null
+      + (c.ultimo_service_km != null || c.ultimo_service_horas != null
           ? '<div style="font-size:10px;color:' + tinta('tenue') + '">'
-            + miles(c.ultimo_service_km) + ' km</div>'
+            + esc([c.ultimo_service_km != null ? miles(c.ultimo_service_km) + ' km' : '',
+                   c.ultimo_service_horas != null ? miles(c.ultimo_service_horas) + ' h' : '']
+                  .filter(Boolean).join(' · ')) + '</div>'
           : '');
   }
 
@@ -341,7 +353,11 @@
         +   (c.estado === 'mantenimiento' ? '<span aria-hidden="true">🔧</span> ' : '')
         +   esc(estadoTxt)
         + '</td>'
-        + '<td style="' + tdNum + '">' + miles(c.km_actual) + '</td>'
+        + '<td style="' + tdNum + '">' + miles(c.km_actual)
+        +   (c.horas_actual != null
+              ? '<div style="font-size:10px;color:' + tinta('tenue') + '">' + miles(c.horas_actual) + ' h motor</div>'
+              : '')
+        + '</td>'
         + '<td style="' + tdNum + '">' + celdaUltimoService(c) + '</td>'
         + '<td style="' + tdNum + '">' + celdaProximoService(c) + '</td>'
         + '<td style="' + tdBase + '">' + celdaDocs(c) + '</td>'

@@ -33,6 +33,7 @@
   }
   function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
   function km(v) { return num(v).toLocaleString('es-AR') + ' km'; }
+  function hs(v) { return num(v).toLocaleString('es-AR') + ' h'; }
   function money(v) { return '$ ' + Math.round(num(v)).toLocaleString('es-AR'); }
   function hoy() {
     var h = F().hoy && F().hoy();
@@ -57,16 +58,35 @@
 
   /* ── Reglas (sin DOM, se prueban) ───────────────────────────────── */
 
+  /* Por km o por horas de motor: manda la medida que vence primero (p.manda). */
   function planEstado(p) {
-    var k = p.km_restantes;
-    if (p.plan_estado === 'vencido' || (k != null && k <= 0)) return { txt: 'Vencido' + (k != null ? ' por ' + km(Math.abs(k)) : ''), tono: 'critico' };
-    if (p.plan_estado === 'proximo' || (k != null && k <= 1000)) return { txt: 'Faltan ' + km(k), tono: 'alerta' };
-    if (k == null) return { txt: p.plan_estado === 'sin_odometro' ? 'Sin odómetro inicial' : 'Sin ejecución registrada', tono: '' };
-    return { txt: 'Faltan ' + km(k), tono: '' };
+    var porHoras = p.manda === 'horas';
+    var k = porHoras ? p.horas_restantes : p.km_restantes;
+    var u = porHoras ? hs : km;
+    if (p.plan_estado === 'vencido' || (k != null && k <= 0)) return { txt: 'Vencido' + (k != null ? ' por ' + u(Math.abs(k)) : ''), tono: 'critico' };
+    if (p.plan_estado === 'proximo' || (!porHoras && k != null && k <= 1000)) return { txt: 'Faltan ' + u(k), tono: 'alerta' };
+    if (k == null) {
+      var txt = p.plan_estado === 'sin_odometro' ? 'Sin odómetro inicial'
+        : p.plan_estado === 'sin_horas' ? 'Sin horas actuales del camión' : 'Sin ejecución registrada';
+      return { txt: txt, tono: '' };
+    }
+    return { txt: 'Faltan ' + u(k), tono: '' };
   }
   function planAvance(p) {
+    if (p.manda === 'horas') {
+      if (!p.interval_hours || p.horas_restantes == null) return null;
+      return Math.min(100, Math.max(0, Math.round((p.interval_hours - p.horas_restantes) / p.interval_hours * 100)));
+    }
     if (!p.interval_km || p.km_restantes == null) return null;
     return Math.min(100, Math.max(0, Math.round((p.interval_km - p.km_restantes) / p.interval_km * 100)));
+  }
+  /* "Cada 13.000 km o 300 h · próximo a los 204.811 km / 6.012 h" */
+  function planCadencia(p) {
+    var cada = [], prox = [];
+    if (p.usa_km !== false && p.interval_km) { cada.push(km(p.interval_km)); if (p.next_due_km) prox.push(km(p.next_due_km)); }
+    if (p.usa_horas && p.interval_hours) { cada.push(hs(p.interval_hours)); if (p.next_due_hours) prox.push(hs(p.next_due_hours)); }
+    return (cada.length ? 'Cada ' + cada.join(' o ') : '') + (prox.length ? ' · próximo a los ' + prox.join(' / ') : '') +
+      (p.usa_horas && p.current_hours == null ? ' · sin horas actuales del camión' : '');
   }
 
   /* Documentos: primero los obligatorios (cargados o no), después el resto. */
@@ -242,25 +262,30 @@
     var porDia = kmPorDia(st.logs, hoy());
     var filas = planes.length
       ? '<ul class="ftd-planes">' + planes.map(function (p) {
-          var e = planEstado(p), av = planAvance(p), est = estimarService(p, porDia, hoy());
-          var hecho = p.interval_km && p.km_restantes != null ? Math.max(0, p.interval_km - p.km_restantes) : null;
-          return '<li><div><b>' + esc(p.name) + '</b><small>' + (p.interval_km ? 'Cada ' + km(p.interval_km) : '') +
-            (p.next_due_km ? ' · próximo a los ' + km(p.next_due_km) : '') + '</small></div>' +
+          var porHoras = p.manda === 'horas';
+          var e = planEstado(p), av = planAvance(p), est = porHoras ? null : estimarService(p, porDia, hoy());
+          var hecho = porHoras
+            ? (p.interval_hours && p.horas_restantes != null ? Math.max(0, p.interval_hours - p.horas_restantes) : null)
+            : (p.interval_km && p.km_restantes != null ? Math.max(0, p.interval_km - p.km_restantes) : null);
+          return '<li><div><b>' + esc(p.name) + '</b><small>' + esc(planCadencia(p)) + '</small></div>' +
             '<span class="ftd-li-acc">' + val(e.txt, e.tono) + (admin() && p.plan_id != null ? '<button type="button" class="ftd-link ftd-quitar" data-ftd="quitar-plan" data-id="' + esc(p.plan_id) + '" title="Quitar este plan del móvil">Quitar</button>' : '') + '</span>' +
             (av != null ? '<span class="ftd-bar' + (e.tono ? ' ftd-bar-' + e.tono : '') + '"><span style="width:' + av + '%"></span></span>' +
-              '<span class="ftd-bar-leyenda"><span>' + (hecho != null ? num(hecho).toLocaleString('es-AR') + ' de ' + km(p.interval_km) : '') + '</span>' +
+              '<span class="ftd-bar-leyenda"><span>' + (hecho != null ? num(hecho).toLocaleString('es-AR') + ' de ' + (porHoras ? hs(p.interval_hours) : km(p.interval_km)) : '') + '</span>' +
               (est ? '<span>' + esc(est.txt) + '</span>' : '') + '</span>' : '') + '</li>';
         }).join('') + '</ul>'
       : '<p class="ftd-vacio">Sin planes de service.' + (admin() ? ' Asigná uno con "+ Plan".' : '') + '</p>';
     if (planes.length) filas += '<p class="ftd-nota">' + (porDia ? 'Fechas estimadas con el promedio de los últimos 30 días: ' + Math.round(porDia).toLocaleString('es-AR') + ' km por día.' : 'Sin jornadas en los últimos 30 días: no se pueden estimar fechas.') + '</p>';
     var hist = (st.services || []).slice(0, 5);
+    var conHoras = hist.some(function (s) { return s.hours_at_service != null; });
     var gasto = gastoMantenimiento(st.services, hoy());
     var tabla = hist.length
       ? '<h4>Últimos services' + (gasto ? '<span>Gastado en 12 meses: ' + money(gasto) + '</span>' : '') + '</h4>' +
-        '<table class="ftd-table"><thead><tr><th>Fecha</th><th>Service</th><th>Km</th><th>Taller</th><th class="ftd-r">Costo</th></tr></thead><tbody>' +
+        '<table class="ftd-table"><thead><tr><th>Fecha</th><th>Service</th><th>Km</th>' + (conHoras ? '<th>Horas</th>' : '') + '<th>Taller</th><th class="ftd-r">Costo</th></tr></thead><tbody>' +
         hist.map(function (s) {
           return '<tr><td>' + fecha(s.performed_at) + '</td><td>' + esc((s.master_service_plans && s.master_service_plans.name) || '—') + '</td>' +
-            '<td class="ftd-n">' + (s.km_at_service != null ? km(s.km_at_service) : '—') + '</td><td>' + esc(s.workshop_name || '—') + '</td>' +
+            '<td class="ftd-n">' + (s.km_at_service != null ? km(s.km_at_service) : '—') + '</td>' +
+            (conHoras ? '<td class="ftd-n">' + (s.hours_at_service != null ? hs(s.hours_at_service) : '—') + '</td>' : '') +
+            '<td>' + esc(s.workshop_name || '—') + '</td>' +
             '<td class="ftd-r ftd-n">' + (s.cost ? money(s.cost) : '—') + '</td></tr>';
         }).join('') + '</tbody></table>'
       : '<p class="ftd-vacio">Todavía no hay services registrados.</p>';
@@ -347,6 +372,9 @@
     var jornada = (st.logs || []).find(function (l) { return t.log_id && Number(l.log_id) === Number(t.log_id); });
     var chofer = t.driver_name ? t.driver_name + (jornada && jornada.hora_inicio ? ' · desde las ' + String(jornada.hora_inicio).slice(0, 5) : '') : 'Sin jornada abierta';
     var mes = kmMes(st.logs, hoy());
+    // Horas de motor actuales: las trae el cálculo de los planes (sólo camiones con horómetro).
+    var hsActual = (Array.isArray(st.planes) ? st.planes : []).map(function (p) { return p.current_hours; })
+      .filter(function (v) { return v != null; })[0];
     var dato = function (dt, dd, cls) { return '<div><dt>' + dt + '</dt><dd' + (cls ? ' class="' + cls + '"' : '') + '>' + dd + '</dd></div>'; };
     return '<div class="ftd-head">' +
         '<button type="button" class="ftd-back" data-ftd="volver">' + ico('arrow-left') + 'Flota</button>' +
@@ -354,7 +382,7 @@
         '<dl class="ftd-meta">' +
           dato('Estado', '<span class="fcv-estado fcv-e-' + esc(e.tono || '') + '">' + esc(estadoTxt || '—') + '</span>') +
           dato('Chofer', esc(chofer)) +
-          dato('Km actuales', t.current_km != null ? km(t.current_km) : '—', 'ftd-n') +
+          dato('Km actuales', (t.current_km != null ? km(t.current_km) : '—') + (hsActual != null ? '<small>' + hs(hsActual) + ' de motor</small>' : ''), 'ftd-n') +
           dato('Km este mes', st.cargando ? '…' : km(mes.km) + '<small>' + mes.jornadas + (mes.jornadas === 1 ? ' jornada' : ' jornadas') + '</small>', 'ftd-n') +
         '</dl>' +
       '</div>';
@@ -542,7 +570,7 @@
     abierto: function () { return st.id; },
     _test: {
       set: function (s) { st = Object.assign(st, s); },
-      planEstado: planEstado, planAvance: planAvance, docsLista: docsLista, neumaticosEstado: neumaticosEstado,
+      planEstado: planEstado, planAvance: planAvance, planCadencia: planCadencia, docsLista: docsLista, neumaticosEstado: neumaticosEstado,
       resumenService: resumenService, resumenDocs: resumenDocs, resumenNeumaticos: resumenNeumaticos, resumenCombustible: resumenCombustible,
       kmMes: kmMes, kmPorDia: kmPorDia, estimarService: estimarService, rendimientos: rendimientos, consumoAlto: consumoAlto, historial: historial,
       combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento

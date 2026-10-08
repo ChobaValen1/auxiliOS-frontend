@@ -80,6 +80,9 @@
 #screen-jornadas-admin.screen .km-origen { padding: 1px 6px; border-radius: var(--ax-radius-sm); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); letter-spacing: .04em; }
 #screen-jornadas-admin.screen .km-origen.manual { background: var(--ax-warn-soft); color: var(--ax-warn); }
 #screen-jornadas-admin.screen .km-origen.offline { background: transparent; box-shadow: inset 0 0 0 1px var(--ax-border-strong); color: var(--ax-text-2); }
+/* Horas de motor debajo de los km (sólo camiones con horómetro). */
+#screen-jornadas-admin.screen .jadmin-motor { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-jornadas-admin.screen .jadmin-motor.is-manual { color: var(--ax-warn); }
 #screen-jornadas-admin.screen .money-cell { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
 #screen-jornadas-admin.screen .money-cell.faltante, #screen-jornadas-admin.screen .inc-cell.some { color: var(--ax-danger); }
 #screen-jornadas-admin.screen .inc-cell { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
@@ -281,3 +284,6 @@
 #modal-nuevo-vehiculo .nv-horas-switch > span:first-child { display: grid; gap: 3px; }
 #modal-nuevo-vehiculo .nv-horas-switch b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
 #modal-nuevo-vehiculo .nv-horas-switch small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.4; }
+
+/* Historial del chofer: horas de motor en la columna de km. */
+:is(#mobile-jornadas-list, #jhist-lista) .journey-motor { color: var(--ax-text-3); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }

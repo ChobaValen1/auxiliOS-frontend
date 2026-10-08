@@ -973,6 +973,8 @@ async function cargarJornadas() {
       kmFinal:  j.km_final?.toLocaleString('es-AR')  || '—',
       kmRec:    j.km_final != null && j.km_inicio != null ? Math.max(0,Number(j.km_final)-Number(j.km_inicio)).toLocaleString('es-AR') : '—',
       horas:    calcularHoras(j.hora_inicio, j.hora_fin),
+      horasMotorInicio: j.horas_inicio ?? null,
+      horasMotorFinal:  j.horas_final ?? null,
       taller:   j.in_workshop,
       estado:   j.status === 'open' ? 'abierta' : j.status === 'void' ? 'anulada' : 'cerrada',
     }));
@@ -2059,18 +2061,106 @@ async function suscribirCamionAPlan(truckId, masterPlanId) {
   }
 }
 
-/**
- * 4. OPERACIÓN: Carga los planes de un camión específico y calcula su estado actual.
- * (Altamente optimizado: 0 over-fetching)
- */
-async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null) {
-  // A. Traemos el KM actual del camión (o usamos el override para evitar race condition post-cierre)
-  let currentKm;
-  if (currentKmOverride !== null) {
-    currentKm = currentKmOverride;
+/* Estado de un plan de service por km, por horas de motor o por los dos.
+   · trigger_type 'km': sólo km; 'hours': sólo horas; 'both': lo que venza primero.
+   · Sin horas actuales del camión (0 o sin dato) la parte de horas no se cuenta:
+     el plan sigue por km hasta que el camión empiece a registrar horas.
+   · El aviso por horas es el 10% del intervalo (mínimo 10 h): el plan no tiene
+     un "avisar antes" propio para horas.
+   Devuelve el estado general (el peor de los que se pueden calcular), cuál de
+   las dos medidas manda (la que está más cerca, en proporción al intervalo) y
+   la urgencia para ordenar (restante / intervalo; negativo = vencido). */
+function avisoHorasService(intervalo) {
+  const n = Number(intervalo) || 0;
+  return Math.max(10, Math.round(n * 0.1));
+}
+function estadoServicePlan(plan, log, currentKm, currentHours) {
+  const tipo = plan?.trigger_type || 'km';
+  const intKm = Number(plan?.interval_km) || 0, intHs = Number(plan?.interval_hours) || 0;
+  const usaKm = tipo !== 'hours' && intKm > 0;
+  const usaHs = tipo !== 'km' && intHs > 0;
+  const hsActual = Number(currentHours) > 0 ? Number(currentHours) : null;
+  const kmActual = currentKm == null ? null : Number(currentKm);
+  const nextKm = log?.next_due_km ?? null, nextHs = log?.next_due_hours ?? null;
+  const medir = (usa, actual, next, intervalo, aviso) => {
+    if (!usa) return null;
+    if (actual == null) return { estado: 'sin_dato', restante: null, ratio: null };
+    if (next == null) return { estado: 'sin_registro', restante: null, ratio: null };
+    const r = next - actual;
+    return { estado: r <= 0 ? 'vencido' : r <= aviso ? 'proximo' : 'al_dia', restante: r, ratio: r / intervalo };
+  };
+  const k = medir(usaKm, kmActual, nextKm, intKm, plan?.alert_before_km || 500);
+  const h = medir(usaHs, hsActual, nextHs, intHs, avisoHorasService(intHs));
+  const PESO = { vencido: 0, proximo: 1, al_dia: 2 };
+  const calculadas = [['km', k], ['horas', h]].filter(x => x[1] && x[1].ratio != null);
+  let plan_estado, manda = null, urgencia = null;
+  if (calculadas.length) {
+    calculadas.sort((x, y) => (PESO[x[1].estado] - PESO[y[1].estado]) || (x[1].ratio - y[1].ratio));
+    plan_estado = calculadas[0][1].estado;
+    manda = calculadas[0][0];
+    urgencia = Math.min(...calculadas.map(x => x[1].ratio));
+  } else if ((k && k.estado === 'sin_registro') || (h && h.estado === 'sin_registro')) {
+    plan_estado = (k && k.estado === 'sin_dato') ? 'sin_odometro' : 'sin_registro';
+  } else if (k && k.estado === 'sin_dato') {
+    plan_estado = 'sin_odometro';
+  } else if (h && h.estado === 'sin_dato') {
+    plan_estado = 'sin_horas';
   } else {
-    const truckRes = await _db.from('trucks').select('current_km').eq('truck_id', truckId).single();
-    currentKm = truckRes.data?.current_km ?? null; // null si aún no hay odómetro registrado
+    plan_estado = 'sin_registro';
+  }
+  return {
+    plan_estado, manda, urgencia,
+    usa_km: usaKm, usa_horas: usaHs,
+    estado_km: k ? k.estado : null,
+    estado_horas: h ? h.estado : null,
+    km_restantes: k ? k.restante : null,
+    horas_restantes: h ? h.restante : null,
+    alert_before_hours: usaHs ? avisoHorasService(intHs) : null,
+    current_km: kmActual,
+    current_hours: hsActual,
+  };
+}
+/* Textos comunes de un plan con su estado: "Faltan 1.200 km · 35 h" y
+   "a los 120.000 km · 6.012 h". */
+function textoRestanteService(p) {
+  const items = [];
+  if (p.usa_km !== false && p.km_restantes != null) items.push([p.km_restantes, 'km']);
+  if (p.usa_horas && p.horas_restantes != null) items.push([p.horas_restantes, 'h']);
+  if (!items.length) return '';
+  const n = v => Math.abs(v).toLocaleString('es-AR');
+  if (items.every(x => x[0] > 0)) return 'Faltan ' + items.map(x => n(x[0]) + ' ' + x[1]).join(' · ');
+  if (items.every(x => x[0] <= 0)) return 'Excedido ' + items.map(x => n(x[0]) + ' ' + x[1]).join(' · ');
+  const t = items.map(x => (x[0] > 0 ? 'faltan ' : 'excedido ') + n(x[0]) + ' ' + x[1]).join(' · ');
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function textoProximoService(p) {
+  const partes = [];
+  if (p.usa_km !== false && p.next_due_km != null) partes.push(Number(p.next_due_km).toLocaleString('es-AR') + ' km');
+  if (p.usa_horas && p.next_due_hours != null) partes.push(Number(p.next_due_hours).toLocaleString('es-AR') + ' h');
+  return partes.join(' · ');
+}
+/* Avance del plan (0–100) en la medida que manda. */
+function avanceService(p) {
+  if (p.manda === 'horas' && p.interval_hours && p.horas_restantes != null) {
+    return Math.min(100, Math.max(0, Math.round((p.interval_hours - p.horas_restantes) / p.interval_hours * 100)));
+  }
+  if (p.interval_km && p.km_restantes != null) {
+    return Math.min(100, Math.max(0, Math.round((p.interval_km - p.km_restantes) / p.interval_km * 100)));
+  }
+  return 0;
+}
+
+/**
+ * 4. OPERACIÓN: Carga los planes de un camión específico y calcula su estado actual
+ * por km y por horas de motor (ver estadoServicePlan).
+ */
+async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null, currentHoursOverride = null) {
+  // A. KM y horas actuales del camión (o los que vienen, para evitar la carrera post-cierre)
+  let currentKm = currentKmOverride, currentHours = currentHoursOverride;
+  if (currentKm === null || currentHours === null) {
+    const truckRes = await _db.from('trucks').select('current_km, current_hours').eq('truck_id', truckId).single();
+    if (currentKm === null) currentKm = truckRes.data?.current_km ?? null; // null si aún no hay odómetro registrado
+    if (currentHours === null) currentHours = truckRes.data?.current_hours ?? null;
   }
 
   // B. Traemos solo las suscripciones activas usando JOIN (Inner Join implícito en Supabase)
@@ -2088,64 +2178,33 @@ async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null)
     return { _error: true, message: suscripciones.error?.message || 'Sin datos' };
   }
 
-  const planesAsignados = suscripciones.data.map(sub => sub.master_service_plans);
+  const planesAsignados = suscripciones.data.map(sub => sub.master_service_plans).filter(Boolean);
 
   // C. Consultamos estrictamente el ÚLTIMO log para cada plan asignado
   const planesConEstado = await Promise.all(planesAsignados.map(async (plan) => {
       const logRes = await _db.from('maintenance_logs')
-          .select('next_due_km, next_due_hours, km_at_service, performed_at')
+          .select('next_due_km, next_due_hours, km_at_service, hours_at_service, performed_at')
           .eq('truck_id', truckId)
-          .eq('master_plan_id', plan.id) // Nota: Tu tabla maintenance_logs debe usar master_plan_id ahora
+          .eq('master_plan_id', plan.id)
           .order('performed_at', { ascending: false })
           .limit(1) // <-- La clave del rendimiento
           .maybeSingle();
 
       const log = logRes.data;
-
-      // Si no hay odómetro aún, no se puede calcular estado real
-      if (currentKm === null) {
-        return {
-          plan_id: plan.id,
-          name: plan.name,
-          trigger_type: plan.trigger_type,
-          interval_km: plan.interval_km,
-          interval_hours: plan.interval_hours,
-          alert_before_km: plan.alert_before_km,
-          current_km: null,
-          next_due_km: log?.next_due_km || null,
-          next_due_hours: log?.next_due_hours || null,
-          ultimo_km: log?.km_at_service || null,
-          ultima_fecha: log?.performed_at || null,
-          km_restantes: null,
-          plan_estado: 'sin_odometro'
-        };
-      }
-
-      const nextDueKm = log?.next_due_km || null;
-      const kmRestantes = nextDueKm != null ? nextDueKm - currentKm : null;
-
-      let plan_estado = 'sin_registro';
-      if (nextDueKm != null) {
-        if (currentKm >= nextDueKm) plan_estado = 'vencido';
-        else if (kmRestantes <= (plan.alert_before_km || 500)) plan_estado = 'proximo';
-        else plan_estado = 'al_dia';
-      }
-
       return {
-          // Mapeamos para mantener compatibilidad con tu renderPlanes en UI
+          // Mapeamos para mantener compatibilidad con los renderers de planes
           plan_id: plan.id,
           name: plan.name,
           trigger_type: plan.trigger_type,
           interval_km: plan.interval_km,
           interval_hours: plan.interval_hours,
           alert_before_km: plan.alert_before_km,
-          current_km: currentKm,
-          next_due_km: nextDueKm,
-          next_due_hours: log?.next_due_hours || null,
-          ultimo_km: log?.km_at_service || null,
+          next_due_km: log?.next_due_km ?? null,
+          next_due_hours: log?.next_due_hours ?? null,
+          ultimo_km: log?.km_at_service ?? null,
+          ultimo_horas: log?.hours_at_service ?? null,
           ultima_fecha: log?.performed_at || null,
-          km_restantes: kmRestantes,
-          plan_estado
+          ...estadoServicePlan(plan, log, currentKm, currentHours),
       };
   }));
 
@@ -2158,7 +2217,7 @@ async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null)
 async function cargarHistorialServices(truckId) {
   const { data, error } = await _db
     .from('maintenance_logs')
-    .select('maintenance_id, performed_at, km_at_service, next_due_km, cost, workshop_name, master_service_plans(name)')
+    .select('maintenance_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, master_service_plans(name)')
     .eq('truck_id', truckId)
     .order('performed_at', { ascending: false })
     .limit(30);
@@ -2173,7 +2232,7 @@ async function cargarHistorialServices(truckId) {
 async function cargarMantenimientoFlota() {
   const { data: trucks, error } = await _db
     .from('trucks')
-    .select('truck_id, plate, numero_interno, current_km, status')
+    .select('truck_id, plate, numero_interno, current_km, current_hours, status')
     .eq('status', 'active')
     .order('numero_interno', { ascending: true });
   if (error) { console.error('[Mantenimiento Flota] error:', error.message); return []; }
@@ -2181,7 +2240,7 @@ async function cargarMantenimientoFlota() {
   const items = [];
   await Promise.all((trucks || []).map(async (t) => {
     try {
-      const planes = await cargarPlanesDetalleOptimizados(t.truck_id, t.current_km);
+      const planes = await cargarPlanesDetalleOptimizados(t.truck_id, t.current_km, t.current_hours ?? 0);
       if (!Array.isArray(planes)) return;
       planes.forEach(p => {
         if (p.plan_estado === 'vencido' || p.plan_estado === 'proximo') {
@@ -2190,9 +2249,16 @@ async function cargarMantenimientoFlota() {
             plate: t.plate,
             numero_interno: t.numero_interno,
             current_km: t.current_km,
+            current_hours: p.current_hours,
             plan_name: p.name,
             next_due_km: p.next_due_km,
+            next_due_hours: p.next_due_hours,
             km_restantes: p.km_restantes,
+            horas_restantes: p.horas_restantes,
+            usa_km: p.usa_km,
+            usa_horas: p.usa_horas,
+            manda: p.manda,
+            urgencia: p.urgencia,
             ultimo_km: p.ultimo_km,
             ultima_fecha: p.ultima_fecha,
             estado: p.plan_estado,
@@ -2206,7 +2272,7 @@ async function cargarMantenimientoFlota() {
 
   items.sort((a, b) => {
     if (a.estado !== b.estado) return a.estado === 'vencido' ? -1 : 1;
-    return (a.km_restantes || 0) - (b.km_restantes || 0);
+    return (a.urgencia ?? 0) - (b.urgencia ?? 0);
   });
   return items;
 }
@@ -2221,7 +2287,7 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
   const truckPromise = _db.from('trucks').select('*').eq('truck_id', truckId).single();
 
   let jQ = _db.from('daily_logs')
-     .select('log_id, log_date, km_inicio, km_final, status, driver_id, users(full_name)')
+     .select('log_id, log_date, km_inicio, km_final, horas_inicio, horas_final, status, driver_id, users(full_name)')
      .eq('truck_id', truckId)
      .order('log_date', { ascending: false })
      .limit(limit);
@@ -2231,7 +2297,7 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
      .order('fuel_date', { ascending: false })
      .limit(limit);
   let mQ = _db.from('maintenance_logs')
-     .select('maintenance_id, performed_at, km_at_service, next_due_km, cost, workshop_name, master_service_plans(name)')
+     .select('maintenance_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, master_service_plans(name)')
      .eq('truck_id', truckId)
      .order('performed_at', { ascending: false })
      .limit(limit);
@@ -2256,7 +2322,8 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
       tipo: 'jornada',
       fecha: j.log_date,
       titulo: `Jornada ${j.status === 'open' ? '(abierta)' : ''}`.trim(),
-      detalle: `${j.users?.full_name || 'Chofer'} · ${(j.km_inicio||0).toLocaleString('es-AR')} → ${(j.km_final||0).toLocaleString('es-AR')} km`,
+      detalle: `${j.users?.full_name || 'Chofer'} · ${(j.km_inicio||0).toLocaleString('es-AR')} → ${(j.km_final||0).toLocaleString('es-AR')} km`
+        + (j.horas_inicio != null && j.horas_final != null ? ` · +${(Math.round((j.horas_final - j.horas_inicio) * 10) / 10).toLocaleString('es-AR')} h motor` : ''),
       valor: km > 0 ? `+${km.toLocaleString('es-AR')} km` : (j.status === 'open' ? 'en curso' : ''),
       valorColor: null,
       raw: j,
@@ -2278,7 +2345,7 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
       tipo: 'service',
       fecha: s.performed_at,
       titulo: s.master_service_plans?.name || 'Service',
-      detalle: `${s.workshop_name || 's/ taller'} · ${(s.km_at_service||0).toLocaleString('es-AR')} km${s.next_due_km ? ' · próx ' + s.next_due_km.toLocaleString('es-AR') : ''}`,
+      detalle: `${s.workshop_name || 's/ taller'} · ${(s.km_at_service||0).toLocaleString('es-AR')} km${s.hours_at_service != null ? ' · ' + s.hours_at_service.toLocaleString('es-AR') + ' h' : ''}${s.next_due_km ? ' · próx ' + s.next_due_km.toLocaleString('es-AR') : ''}${s.next_due_hours ? (s.next_due_km ? ' km / ' : ' · próx ') + s.next_due_hours.toLocaleString('es-AR') + ' h' : ''}`,
       valor: s.cost ? '-$' + Math.round(s.cost).toLocaleString('es-AR') : '',
       valorColor: '#ef4444',
       raw: s,
@@ -3902,6 +3969,7 @@ async function cargarJornadasAdmin(filtros = {}) {
       log_id, driver_id, truck_id, log_date,
       km_inicio, km_final, km_recorridos,
       km_inicio_origen, km_final_origen,
+      horas_inicio, horas_final, horas_inicio_origen, horas_final_origen,
       hora_inicio, hora_fin,
       in_workshop, workshop_detail,
       foto_km_inicio, foto_km_final,
@@ -4038,6 +4106,11 @@ async function cargarJornadasAdmin(filtros = {}) {
       km_recorridos: l.km_recorridos,
       km_inicio_origen: l.km_inicio_origen,
       km_final_origen:  l.km_final_origen,
+      // Horas de motor: sólo los camiones con horómetro las cargan.
+      horas_motor_inicio: l.horas_inicio ?? null,
+      horas_motor_final:  l.horas_final ?? null,
+      horas_motor_inicio_origen: l.horas_inicio_origen ?? null,
+      horas_motor_final_origen:  l.horas_final_origen ?? null,
       hora_inicio:  l.hora_inicio,
       hora_fin:     l.hora_fin,
       horas:        _horasEntre(l.hora_inicio, l.hora_fin),
@@ -4132,6 +4205,7 @@ async function cargarDetalleJornadaAdmin(logId) {
       log_id, driver_id, truck_id, log_date,
       km_inicio, km_final, km_recorridos, km_excepcion,
       km_inicio_ia, km_inicio_origen, km_final_ia, km_final_origen,
+      horas_inicio, horas_final, horas_inicio_ia, horas_final_ia, horas_inicio_origen, horas_final_origen,
       hora_inicio, hora_fin,
       in_workshop, workshop_detail,
       foto_km_inicio, foto_km_final,

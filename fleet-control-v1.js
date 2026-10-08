@@ -73,14 +73,21 @@
     if (planes === undefined) return { txt: '…', tono: '' };
     return servicioDe(planes);
   }
+  function urg(x) {
+    if (x.urgencia != null) return x.urgencia;
+    return x.km_restantes != null && x.interval_km ? x.km_restantes / x.interval_km : (x.km_restantes != null ? x.km_restantes : Infinity);
+  }
   function servicioDe(planes) {
-    var p = (planes || []).filter(function (x) { return x.plan_estado && x.plan_estado !== '_error' && x.km_restantes != null; })
-      .sort(function (a, b) { return a.km_restantes - b.km_restantes; })[0];
+    // El más urgente por km o por horas de motor (urgencia = restante / intervalo)
+    var p = (planes || []).filter(function (x) { return x.plan_estado && x.plan_estado !== '_error' && (x.km_restantes != null || x.horas_restantes != null); })
+      .sort(function (a, b) { return urg(a) - urg(b); })[0];
     if (!p) return { txt: 'Sin service informado', tono: '' };
-    var k = p.km_restantes;
-    if (p.plan_estado === 'vencido' || k <= 0) return { txt: p.name + ' · vencido por ' + Math.abs(k).toLocaleString('es-AR') + ' km', tono: 'critico', alerta: true };
-    if (p.plan_estado === 'proximo' || k <= 1000) return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + ' km', tono: 'alerta', alerta: true };
-    return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + ' km', tono: '' };
+    var porHoras = p.manda === 'horas' || p.km_restantes == null;
+    var k = porHoras ? p.horas_restantes : p.km_restantes;
+    var u = porHoras ? ' h' : ' km';
+    if (p.plan_estado === 'vencido' || k <= 0) return { txt: p.name + ' · vencido por ' + Math.abs(k).toLocaleString('es-AR') + u, tono: 'critico', alerta: true };
+    if (p.plan_estado === 'proximo' || (!porHoras && k <= 1000)) return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + u, tono: 'alerta', alerta: true };
+    return { txt: p.name + ' · en ' + num(k).toLocaleString('es-AR') + u, tono: '' };
   }
 
   /* Documentos obligatorios (misma lista que marca is_obligatorio al subirlos). */

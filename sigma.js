@@ -3881,12 +3881,14 @@ function _renderCamionCards() {
   const combColor = _camionCombustible.length ? '#4ade80' : 'var(--muted)';
 
   // ── Estado Mantenimiento: el plan más urgente ──
+  // El más urgente por km o por horas de motor (urgencia = restante / intervalo)
   const planUrgente = (_camionPlanes || [])
     .filter(p => p.plan_estado && p.plan_estado !== '_error')
-    .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
-  const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro' };
-  const mantCritico = planUrgente && (planUrgente.plan_estado === 'vencido' || (planUrgente.km_restantes != null && planUrgente.km_restantes <= 0));
-  const mantAlerta  = planUrgente && !mantCritico && planUrgente.km_restantes != null && planUrgente.km_restantes <= 1000;
+    .sort((a, b) => (a.urgencia ?? Infinity) - (b.urgencia ?? Infinity))[0];
+  const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro', sin_horas: '— Sin horas actuales' };
+  const mantCritico = planUrgente && planUrgente.plan_estado === 'vencido';
+  const mantAlerta  = planUrgente && !mantCritico && (planUrgente.plan_estado === 'proximo'
+    || (planUrgente.manda === 'km' && planUrgente.km_restantes != null && planUrgente.km_restantes <= 1000));
   const mantStatus  = planUrgente
     ? `${estadoLabel[planUrgente.plan_estado] || ''} · ${planUrgente.name}`
     : (_camionPlanes.length ? 'Al día' : 'Sin planes');
@@ -4108,27 +4110,29 @@ function _renderSubMantenimiento() {
 
   const estadoColor = {
     al_dia: 'var(--green)', proximo: 'var(--amber)', vencido: 'var(--red)',
-    sin_registro: 'var(--muted)', sin_odometro: 'var(--muted)',
+    sin_registro: 'var(--muted)', sin_odometro: 'var(--muted)', sin_horas: 'var(--muted)',
   };
   const estadoLabel = {
     al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido',
-    sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro',
+    sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro', sin_horas: '— Sin horas actuales',
   };
 
   const planesHtml = _camionPlanes.map(p => {
     const estado   = p.plan_estado || 'sin_registro';
     const color    = estadoColor[estado];
     const label    = estadoLabel[estado];
-    const kmInfo   = p.interval_km
-      ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${p.interval_km.toLocaleString('es-AR')} km</b>`
+    // Por km, por horas de motor o por los dos (manda lo que vence primero)
+    const cadencia = [
+      p.usa_km !== false && p.interval_km ? `${p.interval_km.toLocaleString('es-AR')} km` : '',
+      p.usa_horas && p.interval_hours ? `${p.interval_hours.toLocaleString('es-AR')} h de motor` : '',
+    ].filter(Boolean);
+    const kmInfo   = cadencia.length
+      ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${cadencia.join(' o ')}</b>${cadencia.length > 1 ? ' · lo que llegue primero' : ''}`
       : '';
-    const nextDue  = p.next_due_km ? p.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const restante = p.km_restantes != null
-      ? `${p.km_restantes > 0 ? 'Faltan' : 'Excedidos'} <b>${Math.abs(p.km_restantes).toLocaleString('es-AR')} km</b>`
-      : '';
-    const progreso = (p.next_due_km && p.interval_km && p.km_restantes != null)
-      ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
-      : 0;
+    const nextDue  = textoProximoService(p) || '—';
+    const restante = _escHtml(textoRestanteService(p))
+      + (p.usa_horas && p.current_hours == null ? ' · sin horas actuales del camión' : '');
+    const progreso = avanceService(p);
     return `
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
         padding:14px 16px;margin-bottom:10px">
@@ -5205,6 +5209,9 @@ async function openServiceModal() {
   // KM por defecto = odómetro actual del camión (asume que el service se hace ahora)
   const kmInput = document.getElementById('sl-km');
   if (kmInput && _truckActual.current_km != null) kmInput.value = _truckActual.current_km;
+  // Horas por defecto = horas de motor actuales (las actualiza cada cierre de jornada)
+  const hsInput = document.getElementById('sl-horas');
+  if (hsInput && Number(_truckActual.current_hours) > 0) hsInput.value = _truckActual.current_hours;
   // Estado inicial: KM visible (la mayoría de planes son por km), horas oculto
   const kmGroup = document.getElementById('sl-km-group');
   const horasGroup = document.getElementById('sl-horas-group');
@@ -5257,6 +5264,7 @@ function onServicePlanChange() {
   if (kmGroup) kmGroup.style.display = needsKm ? '' : 'none';
   if (horasGroup) horasGroup.style.display = needsHrs ? '' : 'none';
   if (!needsHrs) { const h = document.getElementById('sl-horas'); if (h) h.value = ''; }
+  else { const h = document.getElementById('sl-horas'); if (h && !h.value && Number(_truckActual?.current_hours) > 0) h.value = _truckActual.current_hours; }
   if (!needsKm)  { const k = document.getElementById('sl-km');    if (k) k.value = ''; }
   calcNextService();
   validateServiceForm();
@@ -6085,12 +6093,12 @@ function _abrirDetalleMovil(titulo, htmlContent) {
   openModal('modal-mobile-detalle');
 }
 
-function _journeyColumns(fecha, movil, km, servicios, pill) {
+function _journeyColumns(fecha, movil, km, servicios, pill, motor = '') {
   const esc=value=>String(value??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const shortDate=String(fecha).replace(/^(\d{2})-(\d{2})-\d{2}(\d{2})$/, '$1/$2/$3');
   return '<div class="journey-col"><span class="journey-col-label">Fecha</span><strong>'+esc(shortDate)+'</strong></div>'
     +'<div class="journey-col"><span class="journey-col-label">Móvil</span><strong>'+esc(movil)+'</strong></div>'
-    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span></div>'
+    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span>'+(motor?'<span class="journey-motor">'+esc(motor)+'</span>':'')+'</div>'
     +'<div class="journey-col journey-status"><span class="journey-col-label">Estado</span>'+pill+'</div>';
 }
 
@@ -6111,14 +6119,20 @@ function renderHistorialJornadas(data) {
       ? `<span class="pill pill-amber">Abierta</span>`
       : j.estado === 'anulada' ? `<span class="pill pill-red">Anulada</span>` : `<span class="pill pill-green">Cerrada</span>`;
 
-    // ── Desktop: fila de tabla (sin cambios) ──
+    // Horas de motor: sólo los camiones con horómetro.
+    const motorTxt = _horasMotorTexto(j.horasMotorInicio, j.horasMotorFinal);
+    const motorRango = j.horasMotorInicio != null
+      ? `${_fmtHoras(j.horasMotorInicio)} → ${j.horasMotorFinal != null ? _fmtHoras(j.horasMotorFinal) : '—'} h`
+      : '';
+
+    // ── Desktop: fila de tabla ──
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><b>${j.fecha}</b></td>
       <td style="font-family:'DM Mono';font-weight:600">${j.camion}</td>
       <td style="font-family:'DM Mono'">${j.kmInicio}</td>
       <td style="font-family:'DM Mono'">${j.kmFinal}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${j.kmRec} km</span></td>
+      <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${j.kmRec} km</span>${motorTxt ? `<div style="font-size:10px;color:var(--muted)" title="Horas de motor: ${_escHtml(motorRango)}">${_escHtml(motorTxt)}</div>` : ''}</td>
       <td>${j.horas} hs</td>
       <td>${tallerPill}</td>
       <td>${estadoPill}</td>`;
@@ -6147,6 +6161,11 @@ function renderHistorialJornadas(data) {
           <div style="color:var(--text);font-size:12px">${j.horas} hs</div>
         </div>
       </div>
+      ${motorRango ? `
+      <div style="border-top:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Horas de motor</span>
+        <span style="color:var(--text);font-size:12px;font-family:'DM Mono'">${_escHtml(motorRango)}</span>
+      </div>` : ''}
       <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:8px">
         <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Recorrido</span>
         <span style="color:#4ade80;font-size:16px;font-weight:700;font-family:'DM Mono'">${j.kmRec} km</span>
@@ -6155,7 +6174,7 @@ function renderHistorialJornadas(data) {
     const row = document.createElement('div');
     row.className = `journey-columns${j.estado === 'abierta' ? ' is-open' : ''}`;
     row.style.borderLeftColor = color;
-    row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill);
+    row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill,motorTxt);
     row.onclick = () => _abrirDetalleMovil(titulo, detalle);
     mList.appendChild(row);
   });
@@ -6245,7 +6264,7 @@ async function _jhistCargarPagina(reset) {
   }
 
   const { data, error } = await _db.from('daily_logs')
-    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate), remitos!remitos_log_id_fkey(status)')
+    .select('log_id, log_date, truck_id, km_inicio, km_final, horas_inicio, horas_final, hora_inicio, hora_fin, status, trucks(plate), remitos!remitos_log_id_fkey(status)')
     .eq('driver_id', _jhistDriverId)
     .order('log_date', { ascending: false })
     .range(_jhistOffset, _jhistOffset + _JHIST_PAGINA - 1);
@@ -6281,7 +6300,7 @@ async function _jhistCargarPagina(reset) {
     const row = document.createElement('div');
     row.className = 'journey-columns';
     row.style.borderLeftColor = abierta ? 'var(--amber)' : j.status==='void' ? 'var(--red)' : 'var(--green)';
-    row.innerHTML = _journeyColumns(_jhistFecha(j.log_date),movil,kmRec.replace(/ km$/, ''),servicios,pill);
+    row.innerHTML = _journeyColumns(_jhistFecha(j.log_date),movil,kmRec.replace(/ km$/, ''),servicios,pill,_horasMotorTexto(j.horas_inicio, j.horas_final));
     lista.appendChild(row);
   });
 
@@ -6995,6 +7014,18 @@ function _parseHoras(v) {
 }
 function _fmtHoras(n) {
   return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+}
+/* Horas de motor que usó una jornada; null mientras falte alguna de las dos. */
+function _horasMotorUsadas(ini, fin) {
+  if (ini == null || fin == null || !isFinite(Number(ini)) || !isFinite(Number(fin))) return null;
+  return Math.max(0, Math.round((Number(fin) - Number(ini)) * 10) / 10);
+}
+/* Texto corto para las listas: "+4,5 h motor" con la jornada cerrada y
+   "6.000 h motor" (las de arranque) mientras sigue abierta. */
+function _horasMotorTexto(ini, fin) {
+  if (ini == null) return '';
+  const usadas = _horasMotorUsadas(ini, fin);
+  return usadas != null ? `+${_fmtHoras(usadas)} h motor` : `${_fmtHoras(ini)} h motor`;
 }
 /* De dónde salieron las horas confirmadas: igual que con los km. */
 function _horasResolverOrigen(ia, valor, origen) {
@@ -8005,6 +8036,7 @@ async function confirmarCerrarJornada() {
     // actualizar KM en memoria y refrescar las barras de service
     if (_truckActual?.truck_id === jornadaParaCerrar.truck_id) {
       _truckActual.current_km = kmFinal;
+      if (horasFin.horas != null) _truckActual.current_hours = Math.floor(horasFin.horas);
       await _refrescarPlanesCamion(kmFinal);
     }
 
@@ -8246,7 +8278,7 @@ async function actualizarPantallaJornadas() {
           <div class="reg-open-info">
             <div class="reg-open-plate">${info?.plate || '—'}</div>
             <div class="reg-open-meta">${info?.brand || ''} ${info?.model || ''} · N° ${info?.numero_interno || '—'}</div>
-            <div class="reg-open-meta">Inicio <b>${j.hora_inicio || '—'}</b> · KM <b>${(j.km_inicio||0).toLocaleString('es-AR')}</b></div>
+            <div class="reg-open-meta">Inicio <b>${j.hora_inicio || '—'}</b> · KM <b>${(j.km_inicio||0).toLocaleString('es-AR')}</b>${j.horas_inicio != null ? ` · Horas <b>${_fmtHoras(j.horas_inicio)}</b>` : ''}</div>
           </div>
           <button class="btn btn-primary reg-open-close"
             onclick="iniciarCierreJornada(${JSON.stringify(j).replace(/"/g,'&quot;')})">
@@ -9286,15 +9318,21 @@ function _renderMantenimientoTab() {
   }
 
   body.innerHTML = `<table class="cfg-rend-table">
-    <thead><tr><th>Unidad</th><th>Plan</th><th>KM actual</th><th>Restante</th><th>Estado</th><th></th></tr></thead>
+    <thead><tr><th>Unidad</th><th>Plan</th><th>Actual</th><th>Restante</th><th>Estado</th><th></th></tr></thead>
     <tbody>${list.map(x => {
       const cls = x.estado === 'vencido' ? 'err' : 'warn';
-      const restTxt = x.km_restantes == null ? '—' : (x.km_restantes < 0 ? '−' + Math.abs(x.km_restantes).toLocaleString('es-AR') : x.km_restantes.toLocaleString('es-AR'));
-      const restColor = x.km_restantes == null ? 'var(--muted)' : x.km_restantes < 0 ? '#ef4444' : x.km_restantes < 500 ? 'var(--amber)' : 'var(--text)';
+      const porHoras = x.manda === 'horas';
+      const rest = porHoras ? x.horas_restantes : x.km_restantes;
+      const unidad = porHoras ? ' h' : ' km';
+      const restTxt = rest == null ? '—' : (rest < 0 ? '−' + Math.abs(rest).toLocaleString('es-AR') : rest.toLocaleString('es-AR')) + unidad;
+      const restColor = rest == null ? 'var(--muted)' : rest < 0 ? '#ef4444' : x.estado === 'proximo' ? 'var(--amber)' : 'var(--text)';
+      const actual = porHoras
+        ? (x.current_hours != null ? x.current_hours.toLocaleString('es-AR') + ' h' : '—')
+        : (x.current_km != null ? x.current_km.toLocaleString('es-AR') + ' km' : '—');
       return `<tr>
         <td>${_escHtml(x.plate)}${x.numero_interno ? ' <span style="color:var(--muted)">· ' + _escHtml(String(x.numero_interno)) + '</span>' : ''}</td>
         <td>${_escHtml(x.plan_name)}</td>
-        <td style="font-family:'DM Mono'">${x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—'}</td>
+        <td style="font-family:'DM Mono'">${actual}</td>
         <td style="font-family:'DM Mono';color:${restColor}">${restTxt}</td>
         <td><span class="pill ${cls}">${x.estado === 'vencido' ? 'Vencido' : 'Próximo'}</span></td>
         <td><button class="cfg-rend-btn-mini" onclick="verTimelineCamion('${x.truck_id}')">Ver camión</button></td>
@@ -14685,6 +14723,14 @@ function _jadminRenderFila(r) {
     origenBadge = '<span class="km-origen offline" title="Cargado sin conexión">OFFLINE</span>';
   }
 
+  // Horas de motor: sólo en los camiones con horómetro, debajo de los km.
+  let motorHtml = '';
+  if (r.horas_motor_inicio != null) {
+    const aMano = [r.horas_motor_inicio_origen, r.horas_motor_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado');
+    const motorTitle = `Horas de motor: ${_fmtHoras(r.horas_motor_inicio)} → ${r.horas_motor_final != null ? _fmtHoras(r.horas_motor_final) : 'sin cerrar'}${aMano ? ' · cargadas a mano' : ''}`;
+    motorHtml = `<div class="jadmin-motor${aMano ? ' is-manual' : ''}" title="${_escHtml(motorTitle)}">${_escHtml(_horasMotorTexto(r.horas_motor_inicio, r.horas_motor_final))}</div>`;
+  }
+
   return `
     <tr data-log-id="${_escHtml(r.log_id)}" style="cursor:pointer">
       <td data-label="Fecha">
@@ -14707,7 +14753,7 @@ function _jadminRenderFila(r) {
           <span class="mov">${movil}</span>
         </div>
       </td>
-      <td class="right" data-label="Km"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
+      <td class="right" data-label="Km"><span class="${kmCls}">${kmTxt}</span>${origenBadge}${motorHtml}</td>
       <td class="right ${horasCls}" data-label="Horas">${horasTxt}</td>
       <td class="right ${srvCls}" data-label="Servicios">${srv ? `<button type="button" class="jadmin-srv" title="Ver los servicios de esta jornada">${srv}</button>` : srv}</td>
       <td class="right" data-label="Km/l"><span class="${kmlCls}" title="${_escHtml(kmlTitle)}">${kmlTxt}</span></td>
@@ -14805,6 +14851,7 @@ function _jadminRenderDetalle(det) {
         ${dato('KM inicio', kmIni.toLocaleString('es-AR'))}
         ${dato('KM final', kmFin.toLocaleString('es-AR'))}
         ${dato('KM recorridos', kmRec.toLocaleString('es-AR'))}
+        ${log.horas_inicio != null ? dato('Horas de motor', `${_escHtml(_fmtHoras(log.horas_inicio))} → ${log.horas_final != null ? _escHtml(_fmtHoras(log.horas_final)) : '—'} h${_horasMotorUsadas(log.horas_inicio, log.horas_final) != null ? `<br>${apagado(_escHtml('+' + _fmtHoras(_horasMotorUsadas(log.horas_inicio, log.horas_final)) + ' h usadas'))}` : ''}`) : ''}
         ${dato('Notas', _escHtml(log.notas || '—'), 'jd-v-plain')}
       </div>
     </section>
@@ -14816,27 +14863,34 @@ function _jadminRenderDetalle(det) {
   const fotoIni = foto(log.foto_km_inicio, 'KM inicio');
   const fotoFin = foto(log.foto_km_final, 'KM final');
 
-  const _kmCmpBloque = (extremo, origen, kmIa, kmChofer) => {
+  // Mismo cuadro para los km y para las horas de motor (salen de la misma foto).
+  const _kmCmpBloque = (extremo, origen, kmIa, kmChofer, unidad = 'km') => {
     if (!origen || origen === 'ia') return '';
-    const lbl = extremo === 'inicio' ? 'KM inicio' : 'KM final';
+    const enHoras = unidad === 'h';
+    const lbl = enHoras
+      ? (extremo === 'inicio' ? 'Horas de motor al inicio' : 'Horas de motor al final')
+      : (extremo === 'inicio' ? 'KM inicio' : 'KM final');
+    const fmt = (n) => enHoras ? _fmtHoras(n) + ' h' : Number(n).toLocaleString('es-AR') + ' km';
     const esOffline = origen === 'manual_offline';
     const iaTxt = kmIa != null
-      ? Number(kmIa).toLocaleString('es-AR') + ' km'
+      ? fmt(kmIa)
       : (esOffline ? '— sin conexión al momento de la carga' : '— no pudo leer la foto');
-    const diff = (kmIa != null && kmChofer != null) ? kmChofer - kmIa : null;
+    const diff = (kmIa != null && kmChofer != null) ? Math.round((kmChofer - kmIa) * 10) / 10 : null;
     const titulo = esOffline
-      ? `${ic('wifi-off')} ${lbl} cargado a mano por falta de señal`
-      : `${ic('triangle-alert')} ${lbl} modificado manualmente`;
+      ? `${ic('wifi-off')} ${lbl} ${enHoras ? 'cargadas' : 'cargado'} a mano por falta de señal`
+      : `${ic('triangle-alert')} ${lbl} ${enHoras ? 'modificadas' : 'modificado'} manualmente`;
     return `
       <div class="jd-note${esOffline ? ' is-offline' : ''}">
         <div class="jd-note-title">${titulo}</div>
         <div class="jd-line"><span>Resultado generado por IA</span><b>${iaTxt}</b></div>
-        <div class="jd-line"><span>Resultado generado por chofer</span><b>${kmChofer != null ? Number(kmChofer).toLocaleString('es-AR') + ' km' : '—'}</b></div>
-        ${diff != null ? `<div class="jd-line"><span>Diferencia</span><b class="${esOffline ? '' : 'is-warn'}">${diff > 0 ? '+' : ''}${diff.toLocaleString('es-AR')} km</b></div>` : ''}
+        <div class="jd-line"><span>Resultado generado por chofer</span><b>${kmChofer != null ? fmt(kmChofer) : '—'}</b></div>
+        ${diff != null ? `<div class="jd-line"><span>Diferencia</span><b class="${esOffline ? '' : 'is-warn'}">${diff > 0 ? '+' : ''}${fmt(diff)}</b></div>` : ''}
       </div>`;
   };
   const kmCmpHtml = _kmCmpBloque('inicio', log.km_inicio_origen, log.km_inicio_ia, log.km_inicio)
-                  + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final);
+                  + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final)
+                  + _kmCmpBloque('inicio', log.horas_inicio_origen, log.horas_inicio_ia, log.horas_inicio, 'h')
+                  + _kmCmpBloque('final',  log.horas_final_origen,  log.horas_final_ia,  log.horas_final, 'h');
 
   const odomCard = `
     <section class="jd-card">
@@ -15106,6 +15160,8 @@ async function _jadminExportarExcel() {
     const dia = iso => ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][new Date(`${iso}T12:00:00`).getDay()];
     const hora = h => (h ? String(h).slice(0, 5) : '');
     const si = v => (v ? 'Sí' : 'No');
+    // Las columnas de horas de motor sólo aparecen si algún camión del listado las carga.
+    const conHorasMotor = rows.some(r => r.horas_motor_inicio != null);
     const columnas = [
       { header: 'Fecha', width: 12, value: r => _jadminFmtFecha(r.log_date) },
       { header: 'Día', width: 11, value: r => dia(r.log_date) },
@@ -15120,6 +15176,11 @@ async function _jadminExportarExcel() {
       { header: 'KM final', width: 11, type: 'number', value: r => r.km_final },
       { header: 'KM recorridos', width: 14, type: 'number', value: r => r.km_recorridos },
       { header: 'Origen del KM', width: 14, value: r => ([r.km_inicio_origen, r.km_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado') ? 'A mano' : [r.km_inicio_origen, r.km_final_origen].includes('manual_offline') ? 'Sin conexión' : 'IA') },
+      ...(conHorasMotor ? [
+        { header: 'Horas de motor inicio', width: 20, type: 'number', value: r => r.horas_motor_inicio },
+        { header: 'Horas de motor final', width: 19, type: 'number', value: r => r.horas_motor_final },
+        { header: 'Horas de motor usadas', width: 20, type: 'number', value: r => _horasMotorUsadas(r.horas_motor_inicio, r.horas_motor_final) },
+      ] : []),
       { header: 'Servicios del día', width: 16, type: 'number', value: r => r.servicios },
       { header: 'Cargas de combustible', width: 20, type: 'number', value: r => r.combustible },
       { header: 'Litros', width: 9, type: 'number', value: r => (r.litros ? Math.round(r.litros * 10) / 10 : 0) },
@@ -15149,6 +15210,7 @@ async function _jadminExportarExcel() {
       { label: 'Filtros', value: filtros },
       { label: 'Jornadas', value: rows.length },
       { label: 'KM recorridos', value: suma(r => r.km_recorridos) },
+      ...(conHorasMotor ? [{ label: 'Horas de motor usadas', value: Math.round(suma(r => _horasMotorUsadas(r.horas_motor_inicio, r.horas_motor_final)) * 10) / 10 }] : []),
       { label: 'Servicios', value: suma(r => r.servicios) },
       { label: 'Litros cargados', value: Math.round(suma(r => r.litros) * 10) / 10 },
     ];
@@ -16540,9 +16602,12 @@ async function _alxFetchMantenimiento() {
     const movil = x.numero_interno ? `móvil ${x.numero_interno}` : (x.plate || '');
     const kmAct  = x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—';
     const kmDue  = x.next_due_km != null ? x.next_due_km.toLocaleString('es-AR') : '—';
+    // En km o en horas de motor, según lo que vence primero
+    const porHoras = x.manda === 'horas';
+    const cuanto = `${Math.abs((porHoras ? x.horas_restantes : x.km_restantes) || 0).toLocaleString('es-AR')} ${porHoras ? 'h de motor' : 'km'}`;
     const texto = x.estado === 'vencido'
-      ? `El <strong>${_escHtml(movil)}</strong> pasó el service <strong>${_escHtml(x.plan_name)}</strong> hace <strong>${Math.abs(x.km_restantes || 0).toLocaleString('es-AR')} km</strong>.`
-      : `El <strong>${_escHtml(movil)}</strong> está a <strong>${(x.km_restantes || 0).toLocaleString('es-AR')} km</strong> del próximo service (<strong>${_escHtml(x.plan_name)}</strong>).`;
+      ? `El <strong>${_escHtml(movil)}</strong> pasó el service <strong>${_escHtml(x.plan_name)}</strong> hace <strong>${cuanto}</strong>.`
+      : `El <strong>${_escHtml(movil)}</strong> está a <strong>${cuanto}</strong> del próximo service (<strong>${_escHtml(x.plan_name)}</strong>).`;
     return {
       id: `mantenimiento|${x.truck_id}|${x.plan_name}|${x.next_due_km}`,
       cat: 'mantenimiento',
