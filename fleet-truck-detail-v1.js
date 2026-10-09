@@ -325,7 +325,6 @@
     var filtros = '<div class="ftd-fuel-filter" role="group" aria-label="Estado de las cargas">' +
       '<button type="button" class="ftd-btn" data-ftd="fuel-active" aria-pressed="' + !anuladas + '">Activas (' + st.fuel.length + ')</button>' +
       '<button type="button" class="ftd-btn" data-ftd="fuel-voided" aria-pressed="' + anuladas + '">Anuladas (' + (st.fuelAll.length - st.fuel.length) + ')</button></div>';
-    function totalFila(label, value) { return '<tr><th scope="row" colspan="' + (cols - 1) + '">' + label + '</th><td class="ftd-r ftd-n">' + value + '</td></tr>'; }
     var tabla = '<div class="ftd-fuel-scroll"><table class="ftd-table ftd-fuel-table"><thead><tr><th>Fecha / estación</th><th class="ftd-r">Litros</th><th class="ftd-r">Precio por litro</th><th class="ftd-r">Importe</th><th class="ftd-r">Km</th><th class="ftd-r">Rinde</th><th>Pago</th>' + (admin() ? '<th>Acciones</th>' : '') + '</tr></thead><tbody>' +
       (lista.length ? lista.map(function (f) {
         var v = anuladas ? null : rend.porCarga[f.fuel_id];
@@ -337,9 +336,11 @@
           '<td>' + esc(f.payment_app || PAGO[f.payment_method] || f.payment_method || '—') + '</td>' +
           (admin() ? '<td><div class="ftd-service-actions">' + (anuladas ? boton('restaurar-carga', 'Restaurar', ' data-id="' + esc(f.fuel_id) + '"') : boton('editar-carga', 'Editar', ' data-id="' + esc(f.fuel_id) + '"') + boton('anular-carga', 'Anular', ' data-id="' + esc(f.fuel_id) + '"')) + '</div></td>' : '') + '</tr>';
       }).join('') : '<tr><td colspan="' + cols + '" class="ftd-vacio">No hay cargas ' + (anuladas ? 'anuladas' : 'activas') + '.</td></tr>') + '</tbody><tfoot>' +
-      '<tr><th colspan="' + cols + '">Totales del historial activo</th></tr>' + totalFila('Cantidad de cargas', tot.cargas) +
-      totalFila('Litros totales', tot.litros.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' L') + totalFila('Importe total', money(tot.total)) +
-      totalFila('Rendimiento promedio', kml(rend.promedio)) + totalFila('Precio promedio por litro', tot.precioPromedio == null ? '—' : precioLitro(tot.precioPromedio) + ' / L') + '</tfoot></table></div>';
+      '<tr class="ftd-fuel-totals"><th scope="row">Total<small>Historial activo · ' + tot.cargas + ' cargas</small></th>' +
+      '<td class="ftd-r ftd-n">' + tot.litros.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' L</td>' +
+      '<td class="ftd-r ftd-n">' + (tot.precioPromedio == null ? '—' : precioLitro(tot.precioPromedio)) + '<small>Precio promedio por litro</small></td>' +
+      '<td class="ftd-r ftd-n">' + money(tot.total) + '</td><td></td>' +
+      '<td class="ftd-r ftd-n">' + kml(rend.promedio) + '<small>Rendimiento promedio</small></td><td></td>' + (admin() ? '<td></td>' : '') + '</tr></tfoot></table></div>';
     var pager = '<nav class="ftd-fuel-pages" aria-label="Páginas de combustible"><button class="ftd-btn" type="button" data-ftd="fuel-prev"' + (st.fuelPage <= 1 ? ' disabled' : '') + '>Anterior</button><span>Página ' + st.fuelPage + ' de ' + paginas + ' · ' + rows.length + ' cargas</span><button class="ftd-btn" type="button" data-ftd="fuel-next"' + (st.fuelPage >= paginas ? ' disabled' : '') + '>Siguiente</button></nav>';
     return seccion('combustible', 'Combustible', [boton('carga', ico('plus') + 'Registrar carga')], filtros + tabla + pager + '<p class="ftd-nota">Totales de todas las cargas activas del móvil. Precio promedio ponderado: importe total ÷ litros totales. Rinde: km desde la carga anterior ÷ litros cargados.</p>');
   }
