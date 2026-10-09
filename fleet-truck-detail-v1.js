@@ -14,7 +14,7 @@
 (function (global) {
   'use strict';
 
-  var st = { id: null, t: null, planes: [], services: [], fuel: [], tires: [], docs: [], logs: [], tab: 'mantenimiento', cargando: false, error: '', cerradoAt: 0 };
+  var st = { id: null, t: null, planes: [], services: [], fuel: [], fuelAll: [], fuelView: 'active', fuelPage: 1, tires: [], docs: [], logs: [], tab: 'mantenimiento', cargando: false, error: '', cerradoAt: 0 };
   var TABS = [['mantenimiento', 'Mantenimiento'], ['documentacion', 'Documentación'], ['neumaticos', 'Neumáticos y frenos'], ['combustible', 'Combustible'], ['historial', 'Historial']];
   var TIPO = { plancha: 'Plancha', asistencia: 'Asistencia', pesado: 'Pesado' };
   var MODALES = ['modal-combustible', 'modal-neumaticos', 'modal-service-log', 'modal-asignar-plan', 'modal-upload-truck-doc', 'fuel-edit-admin'];
@@ -34,6 +34,7 @@
   function num(v) { var n = Number(v); return isFinite(n) ? n : 0; }
   function km(v) { return num(v).toLocaleString('es-AR') + ' km'; }
   function hs(v) { return num(v).toLocaleString('es-AR') + ' h'; }
+  function precioLitro(v) { return '$ ' + num(v).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function money(v) { return '$ ' + Math.round(num(v)).toLocaleString('es-AR'); }
   function hoy() {
     var h = F().hoy && F().hoy();
@@ -287,7 +288,7 @@
             '<td class="ftd-r ftd-n">' + (s.cost != null ? money(s.cost) : '—') + '</td>' + (admin() ? '<td><div class="ftd-service-actions">' + boton('editar-service', 'Editar', ' data-id="' + esc(s.maintenance_id) + '"') + boton('eliminar-service', 'Eliminar', ' data-id="' + esc(s.maintenance_id) + '"') + '</div></td>' : '') + '</tr>';
         }).join('') + '</tbody></table></div>'
       : '<p class="ftd-vacio">Todavía no hay services registrados.</p>';
-    return seccion('mantenimiento', 'Mantenimiento', [boton('service', ico('plus') + 'Registrar service'), boton('plan', ico('plus') + 'Plan')], filas + tabla);
+    return '<div class="ftd-maintenance-grid">' + seccion('planes', 'Planes de service', [boton('plan', ico('plus') + 'Asignar plan')], '<h3>Planes de service</h3>' + filas) + seccion('mantenimiento', 'Services realizados', [boton('service', ico('plus') + 'Registrar service')], tabla) + '</div>';
   }
 
   function documentacion() {
@@ -304,28 +305,43 @@
       }).join('') + '</ul>');
   }
 
+  function fuelAnulado(f) { return !!f.voided_at || f.status === 'voided' || f.status === 'anulado'; }
+  function fuelTotales(rows) {
+    return rows.filter(function (f) { return !fuelAnulado(f); }).reduce(function (r, f) {
+      r.cargas++; r.litros += num(f.liters); r.total += num(f.total_cost);
+      r.precioPromedio = r.litros > 0 ? r.total / r.litros : null;
+      return r;
+    }, { cargas: 0, litros: 0, total: 0, precioPromedio: null });
+  }
   function combustible() {
-    var mes = combustibleMes(st.fuel, hoy());
-    var rend = rendimientos(st.fuel);
-    var lista = (st.fuel || []).slice(0, 10);
-    var kml = function (v) { return v == null ? '—' : v.toLocaleString('es-AR') + ' km/l'; };
-    var resumen = '<div class="ftd-resumen"><div><span>Cargas del mes</span><b>' + mes.cargas + '</b></div>' +
-      '<div><span>Litros</span><b>' + Math.round(mes.litros).toLocaleString('es-AR') + ' L</b></div>' +
-      '<div><span>Gastado</span><b>' + money(mes.total) + '</b></div>' +
-      '<div><span>Rendimiento promedio</span><b>' + kml(rend.promedio) + '</b></div></div>';
-    var tabla = lista.length
-      ? '<table class="ftd-table"><thead><tr><th>Fecha</th><th class="ftd-r">Litros</th><th class="ftd-r">Total</th><th class="ftd-r">Km</th><th class="ftd-r">Rinde</th><th>Pago</th>' + (admin() ? '<th></th>' : '') + '</tr></thead><tbody>' +
-        lista.map(function (f) {
-          var v = rend.porCarga[f.fuel_id];
-          return '<tr data-ftd-carga="' + esc(f.fuel_id) + '"><td>' + fecha(f.fuel_date) + '</td><td class="ftd-r ftd-n">' + num(f.liters).toLocaleString('es-AR') + ' L</td>' +
-            '<td class="ftd-r ftd-n">' + money(f.total_cost) + '</td><td class="ftd-r ftd-n">' + (f.km_at_load != null ? num(f.km_at_load).toLocaleString('es-AR') : '—') + '</td>' +
-            '<td class="ftd-r ftd-n">' + (consumoAlto(v, rend.promedio) ? val(kml(v), 'alerta') : kml(v)) + '</td>' +
-            '<td>' + esc(f.payment_app || PAGO[f.payment_method] || f.payment_method || '—') + '</td>' +
-            (admin() ? '<td class="ftd-r"><button type="button" class="ftd-link" data-ftd="editar-carga" data-id="' + esc(f.fuel_id) + '">Editar</button></td>' : '') + '</tr>';
-        }).join('') + '</tbody></table>'
-      : '<p class="ftd-vacio">Sin cargas registradas.</p>';
-    if (lista.length) tabla += '<p class="ftd-nota">Rinde: km desde la carga anterior sobre los litros cargados. En ámbar, las cargas que rinden menos del 75 % del promedio.</p>';
-    return seccion('combustible', 'Combustible', [boton('carga', ico('plus') + 'Carga')], resumen + tabla);
+    var tot = fuelTotales(st.fuel), rend = rendimientos(st.fuel);
+    var anuladas = st.fuelView === 'voided';
+    var rows = (st.fuelAll || []).filter(function (f) { return fuelAnulado(f) === anuladas; });
+    var paginas = Math.max(1, Math.ceil(rows.length / 25));
+    st.fuelPage = Math.min(Math.max(1, st.fuelPage), paginas);
+    var lista = rows.slice((st.fuelPage - 1) * 25, st.fuelPage * 25);
+    var kml = function (v) { return v == null ? '—' : v.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' km/l'; };
+    var cols = admin() ? 8 : 7;
+    var filtros = '<div class="ftd-fuel-filter" role="group" aria-label="Estado de las cargas">' +
+      '<button type="button" class="ftd-btn" data-ftd="fuel-active" aria-pressed="' + !anuladas + '">Activas (' + st.fuel.length + ')</button>' +
+      '<button type="button" class="ftd-btn" data-ftd="fuel-voided" aria-pressed="' + anuladas + '">Anuladas (' + (st.fuelAll.length - st.fuel.length) + ')</button></div>';
+    function totalFila(label, value) { return '<tr><th scope="row" colspan="' + (cols - 1) + '">' + label + '</th><td class="ftd-r ftd-n">' + value + '</td></tr>'; }
+    var tabla = '<div class="ftd-fuel-scroll"><table class="ftd-table ftd-fuel-table"><thead><tr><th>Fecha / estación</th><th class="ftd-r">Litros</th><th class="ftd-r">Precio por litro</th><th class="ftd-r">Importe</th><th class="ftd-r">Km</th><th class="ftd-r">Rinde</th><th>Pago</th>' + (admin() ? '<th>Acciones</th>' : '') + '</tr></thead><tbody>' +
+      (lista.length ? lista.map(function (f) {
+        var v = anuladas ? null : rend.porCarga[f.fuel_id];
+        return '<tr data-ftd-carga="' + esc(f.fuel_id) + '"><td>' + fecha(f.fuel_date) + (f.gas_station ? '<small>' + esc(f.gas_station) + '</small>' : '') +
+          (anuladas ? '<small class="ftd-void-reason">Anulada: ' + esc(f.void_reason || 'Sin motivo informado') + '</small>' : '') + '</td>' +
+          '<td class="ftd-r ftd-n">' + num(f.liters).toLocaleString('es-AR') + ' L</td><td class="ftd-r ftd-n">' + (f.price_per_liter != null ? precioLitro(f.price_per_liter) : '—') + '</td>' +
+          '<td class="ftd-r ftd-n">' + money(f.total_cost) + '</td><td class="ftd-r ftd-n">' + (f.km_at_load != null ? num(f.km_at_load).toLocaleString('es-AR') : '—') + '</td>' +
+          '<td class="ftd-r ftd-n">' + (consumoAlto(v, rend.promedio) ? val(kml(v), 'alerta') : kml(v)) + '</td>' +
+          '<td>' + esc(f.payment_app || PAGO[f.payment_method] || f.payment_method || '—') + '</td>' +
+          (admin() ? '<td><div class="ftd-service-actions">' + (anuladas ? boton('restaurar-carga', 'Restaurar', ' data-id="' + esc(f.fuel_id) + '"') : boton('editar-carga', 'Editar', ' data-id="' + esc(f.fuel_id) + '"') + boton('anular-carga', 'Anular', ' data-id="' + esc(f.fuel_id) + '"')) + '</div></td>' : '') + '</tr>';
+      }).join('') : '<tr><td colspan="' + cols + '" class="ftd-vacio">No hay cargas ' + (anuladas ? 'anuladas' : 'activas') + '.</td></tr>') + '</tbody><tfoot>' +
+      '<tr><th colspan="' + cols + '">Totales del historial activo</th></tr>' + totalFila('Cantidad de cargas', tot.cargas) +
+      totalFila('Litros totales', tot.litros.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' L') + totalFila('Importe total', money(tot.total)) +
+      totalFila('Rendimiento promedio', kml(rend.promedio)) + totalFila('Precio promedio por litro', tot.precioPromedio == null ? '—' : precioLitro(tot.precioPromedio) + ' / L') + '</tfoot></table></div>';
+    var pager = '<nav class="ftd-fuel-pages" aria-label="Páginas de combustible"><button class="ftd-btn" type="button" data-ftd="fuel-prev"' + (st.fuelPage <= 1 ? ' disabled' : '') + '>Anterior</button><span>Página ' + st.fuelPage + ' de ' + paginas + ' · ' + rows.length + ' cargas</span><button class="ftd-btn" type="button" data-ftd="fuel-next"' + (st.fuelPage >= paginas ? ' disabled' : '') + '>Siguiente</button></nav>';
+    return seccion('combustible', 'Combustible', [boton('carga', ico('plus') + 'Registrar carga')], filtros + tabla + pager + '<p class="ftd-nota">Totales de todas las cargas activas del móvil. Precio promedio ponderado: importe total ÷ litros totales. Rinde: km desde la carga anterior ÷ litros cargados.</p>');
   }
 
   function neumaticos() {
@@ -427,13 +443,13 @@
     var r = await Promise.all([
       typeof cargarPlanesDetalleOptimizados === 'function' ? cargarPlanesDetalleOptimizados(id) : [],
       typeof cargarHistorialServices === 'function' ? cargarHistorialServices(id) : [],
-      typeof cargarCombustible === 'function' ? cargarCombustible(id) : [],
+      typeof cargarCombustible === 'function' ? cargarCombustible(id, { completo: true }) : [],
       tires ? tires.then(function (x) { if (x.error) throw x.error; return x.data || []; }) : [],
       typeof cargarTruckDocs === 'function' ? cargarTruckDocs(id) : [],
       // Los km del mes son un dato más: si falla, el detalle se muestra igual.
       logs ? logs.then(function (x) { return x.error ? [] : (x.data || []); }, function () { return []; }) : []
     ]);
-    return { planes: Array.isArray(r[0]) ? r[0] : [], services: r[1] || [], fuel: (r[2] || []).filter(function (f) { return !f.voided_at && f.status !== 'anulado'; }), tires: r[3] || [], docs: r[4] || [], logs: r[5] || [] };
+    return { planes: Array.isArray(r[0]) ? r[0] : [], services: r[1] || [], fuelAll: r[2] || [], fuel: (r[2] || []).filter(function (f) { return !fuelAnulado(f); }), tires: r[3] || [], docs: r[4] || [], logs: r[5] || [] };
   }
 
   function buscar(id) {
@@ -447,7 +463,7 @@
     // Desde otra pantalla (p. ej. Jornadas) la flota puede no estar cargada todavía.
     if (!t && F().cargar) { st.id = Number(id); st.t = null; await F().cargar(); t = buscar(id); }
     if (!t) { st.id = null; return; }
-    if (st.id !== Number(id)) Object.assign(st, { planes: [], services: [], fuel: [], tires: [], docs: [], logs: [], tab: 'mantenimiento' });
+    if (st.id !== Number(id)) Object.assign(st, { planes: [], services: [], fuel: [], fuelAll: [], fuelView: 'active', fuelPage: 1, tires: [], docs: [], logs: [], tab: 'mantenimiento' });
     if (opts.seccion && TABS.some(function (x) { return x[0] === opts.seccion; })) st.tab = opts.seccion;
     st = Object.assign(st, { id: Number(id), t: t, cargando: true, error: '' });
     // Los formularios de siempre (combustible, service, plan, neumáticos) usan estos globales.
@@ -515,7 +531,10 @@
     var a = b.getAttribute('data-ftd');
     if (a === 'volver') return volver();
     if (a === 'ver-doc') return verDoc(b.getAttribute('data-path'));
+    if (a === 'fuel-active' || a === 'fuel-voided') { st.fuelView = a === 'fuel-active' ? 'active' : 'voided'; st.fuelPage = 1; return pintar(); }
+    if (a === 'fuel-prev' || a === 'fuel-next') { st.fuelPage += a === 'fuel-prev' ? -1 : 1; return pintar(); }
     if (!admin()) return;
+    if (a === 'anular-carga' || a === 'restaurar-carga') return global.cambiarEstadoCargaCombustibleAdmin(Number(b.getAttribute('data-id')), a === 'restaurar-carga', st.id);
     if (a === 'service' && typeof openServiceModal === 'function') return openServiceModal();
     if (a === 'editar-service' || a === 'eliminar-service') {
       var registro = st.services.find(function (s) { return String(s.maintenance_id) === b.getAttribute('data-id'); });
@@ -586,7 +605,7 @@
       planEstado: planEstado, planAvance: planAvance, planCadencia: planCadencia, docsLista: docsLista, neumaticosEstado: neumaticosEstado,
       resumenService: resumenService, resumenDocs: resumenDocs, resumenNeumaticos: resumenNeumaticos, resumenCombustible: resumenCombustible,
       kmMes: kmMes, kmPorDia: kmPorDia, estimarService: estimarService, rendimientos: rendimientos, consumoAlto: consumoAlto, historial: historial,
-      combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento
+      combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento, fuelTotales: fuelTotales, fuelAnulado: fuelAnulado, combustible: combustible, mantenimiento: mantenimiento
     }
   };
 })(window);

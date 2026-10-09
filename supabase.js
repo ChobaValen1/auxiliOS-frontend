@@ -1974,15 +1974,23 @@ async function cerrarJornada(logId, datos) {
 
 // ── COMBUSTIBLE ───────────────────────────────
 
-async function cargarCombustible(truckId) {
-  const { data, error } = await _db
-    .from('fuel_records')
-    .select('*')
-    .eq('truck_id', truckId)
-    .order('fuel_date', { ascending: false })
-    .limit(30);
-  if (error) { console.error('[Combustible] Error al cargar:', error.message); return []; }
-  return data || [];
+async function cargarCombustible(truckId, opciones = {}) {
+  const completo = opciones.completo === true;
+  const batch = 500;
+  const records = [];
+  for (let offset = 0; ; offset += batch) {
+    let query = _db.from('fuel_records').select('*').eq('truck_id', truckId)
+      .order('fuel_date', { ascending: false }).order('fuel_id', { ascending: false });
+    query = completo ? query.range(offset, offset + batch - 1) : query.limit(30);
+    const { data, error } = await query;
+    if (error) {
+      if (completo) throw error; // Nunca presentar totales parciales como completos.
+      console.error('[Combustible] Error al cargar:', error.message);
+      return [];
+    }
+    records.push(...(data || []));
+    if (!completo || (data || []).length < batch) return records;
+  }
 }
 
 async function registrarCombustible(datos) {
