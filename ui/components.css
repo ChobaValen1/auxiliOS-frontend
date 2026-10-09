@@ -350,15 +350,3 @@ button.ax-chip { background: transparent; font: inherit; font-size: var(--ax-fs-
 .ax-select-menu [aria-selected="true"] { font-weight: var(--ax-fw-semibold); }
 .ax-select-menu .ax-select-check { color: var(--ax-accent) !important; }
 
-
-/* Acciones de registro compartidas por todas las pantallas. */
-body .aux-record-action { position:relative; display:inline-flex !important; align-items:center; justify-content:center; width:32px !important; min-width:32px !important; height:32px !important; padding:0 !important; gap:0; border:1px solid var(--border,var(--ax-border)) !important; border-radius:8px; background:transparent; color:var(--text,var(--ax-text)); text-decoration:none; flex:0 0 auto; vertical-align:middle; }
-body .aux-record-action > .ax-icon { width:16px; height:16px; flex-shrink:0; pointer-events:none; }
-body .aux-record-action > .aux-record-label { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
-body .aux-record-menu-action { display:flex; align-items:center; gap:8px; }
-body .aux-record-menu-action > .aux-record-label > svg { display:none; }
-body .aux-record-danger { color:var(--red,var(--ax-danger)) !important; }
-body .aux-record-action:hover:not(:disabled) { background:var(--amber-lo,rgba(245,166,35,.08)); border-color:var(--amber) !important; }
-body .aux-record-action:focus-visible, body .aux-record-menu-action:focus-visible { outline:2px solid var(--amber); outline-offset:3px; }
-body .aux-record-action:disabled { opacity:.45; cursor:not-allowed; }
-@media (pointer:coarse) { body .aux-record-action { width:40px !important; min-width:40px !important; height:40px !important; } }

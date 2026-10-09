@@ -17,10 +17,10 @@ window.closeModal=id=>document.getElementById(id).classList.remove('open');windo
 window.fuel=Array.from({length:61},(_,i)=>({fuel_id:i+1,truck_id:1,fuel_date:'2026-10-09',liters:10,price_per_liter:1234.56,total_cost:12345.6,km_at_load:200000-i*70,payment_method:'efectivo',gas_station:'Estación de prueba',status:'active'}));
 window.fuel.push({fuel_id:90,truck_id:1,fuel_date:'2026-10-08',liters:25,total_cost:99999,price_per_liter:3999.96,status:'voided',void_reason:'Registro duplicado'});
 window._db={from(){let id;return {select(){return this},eq(key,v){if(key==='fuel_id')id=v;return this},single:async()=>({data:window.fuel.find(f=>f.fuel_id===id)})}},rpc:async(name,args)=>{window.calls.push({name,args});if(window.rpcFail)return {error:{message:'Error de prueba'}};let r=window.fuel.find(f=>f.fuel_id===args.p_fuel_id);if(name==='void_fuel_record'){r.status='voided';r.void_reason=args.p_reason;}if(name==='restore_fuel_record'){r.status='active';r.voided_at=null;}if(name==='update_fuel_record')Object.assign(r,args.p_payload,{total_cost:args.p_payload.liters*args.p_payload.price_per_liter});return {data:{}};}};
-</script><script src="/fleet-truck-detail-v1.js"></script><script src="/fuel-admin-editor.js"></script><script src="/ui/record-actions.js"></script>
+</script><script src="/fleet-truck-detail-v1.js"></script><script src="/fuel-admin-editor.js"></script>
 <script>
 window.D=AuxiliosDetalleCamion._test;
-window.draw=function(tab='mantenimiento'){D.set({id:1,t:{truck_id:1,plate:'QA 001',brand:'Iveco',current_km:200000},tab,fuelAll:window.fuel,fuel:window.fuel.filter(f=>!D.fuelAnulado(f)),planes:[{plan_id:1,name:'Motor y filtros',interval_km:20000,next_due_km:215000,km_restantes:15000,plan_estado:'al_dia'},{plan_id:2,name:'Equipo hidráulico',interval_hours:500,next_due_hours:3000,horas_restantes:100,manda:'horas',plan_estado:'proximo'}],services:[{maintenance_id:1,performed_at:'2026-10-05',km_at_service:195000,cost:125000,workshop_name:'Taller central',notes:'Cambio de filtros y aceite',master_service_plans:{name:'Motor y filtros'}},{maintenance_id:2,performed_at:'2026-09-25',hours_at_service:2500,cost:150000,workshop_name:'Taller hidráulico',master_service_plans:{name:'Equipo hidráulico'}}]});document.getElementById('camion-cards-container').innerHTML=tab==='mantenimiento'?D.mantenimiento():D.combustible();AuxiliosRecordActions.scan(document.body);};
+window.draw=function(tab='mantenimiento'){D.set({id:1,t:{truck_id:1,plate:'QA 001',brand:'Iveco',current_km:200000},tab,fuelAll:window.fuel,fuel:window.fuel.filter(f=>!D.fuelAnulado(f)),planes:[{plan_id:1,name:'Motor y filtros',interval_km:20000,next_due_km:215000,km_restantes:15000,plan_estado:'al_dia'},{plan_id:2,name:'Equipo hidráulico',interval_hours:500,next_due_hours:3000,horas_restantes:100,manda:'horas',plan_estado:'proximo'}],services:[{maintenance_id:1,performed_at:'2026-10-05',km_at_service:195000,cost:125000,workshop_name:'Taller central',notes:'Cambio de filtros y aceite',master_service_plans:{name:'Motor y filtros'}},{maintenance_id:2,performed_at:'2026-09-25',hours_at_service:2500,cost:150000,workshop_name:'Taller hidráulico',master_service_plans:{name:'Equipo hidráulico'}}]});document.getElementById('camion-cards-container').innerHTML=tab==='mantenimiento'?D.mantenimiento():D.combustible();};
 AuxiliosDetalleCamion.recargar=async()=>{window.refreshes++;draw('combustible');};draw();
 </script></html>`;
 const server = http.createServer((req,res)=>{
@@ -38,8 +38,8 @@ const server = http.createServer((req,res)=>{
     await page.goto(`http://127.0.0.1:${server.address().port}/__qa`);
     const columns=await page.locator('.ftd-maintenance-grid > section').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().width));
     assert.ok(Math.abs(columns[0]/columns[1]-2/3)<.02,'40/60 layout');
-    assert.equal(await page.locator('[data-ftd="editar-service"].aux-record-action').count(),2);
-    assert.equal(await page.locator('.empv2-actions-menu .aux-record-menu-action').count(),2);
+    assert.equal(await page.locator('[data-ftd="editar-service"]').first().innerText(),'Editar');
+    assert.equal(await page.locator('.empv2-actions-menu button').first().innerText(),'Modificar');
     assert.equal(await page.locator('.cfg-card button:has-text("Crear").aux-record-action').count(),0);
     await page.locator('.empv2-card-actions button').first().click();assert.equal(await page.evaluate(()=>iconClicks),1);
     await page.screenshot({path:path.join(out,'maintenance-desktop.png'),fullPage:true});
@@ -71,6 +71,6 @@ const server = http.createServer((req,res)=>{
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     await page.evaluate(()=>{PERFIL_USUARIO.roles.name='supervision';draw('combustible');});assert.equal(await page.locator('[data-ftd="editar-carga"], [data-ftd="anular-carga"]').count(),0);
     const before=await page.evaluate(()=>calls.length);await page.evaluate(()=>cambiarEstadoCargaCombustibleAdmin(2,false,1));assert.equal(await page.evaluate(()=>calls.length),before);
-    assert.deepEqual(errors,[]);console.log('Browser QA OK: layout, responsive, icons, menus, pagination, totals, editing, void/restore, errors and permissions. Screenshots: '+out);
+    assert.deepEqual(errors,[]);console.log('Browser QA OK: layout, responsive, original actions, menus, pagination, totals, editing, void/restore, errors and permissions. Screenshots: '+out);
   } finally {await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});
