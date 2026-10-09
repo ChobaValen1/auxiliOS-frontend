@@ -5,7 +5,7 @@ const center=fs.readFileSync('configuration-center.js','utf8');
 
 test('Configuración reconoce Servicios y Tarifas como módulos hijos',()=>{
   assert.match(center,/CONFIG_CHILD_ROUTES = new Set\(\[[^\]]*'config-services'[^\]]*'config-tariff-matrix'/s);
-  assert.match(center,/'config-services': \{ title: 'CONFIGURACIÓN · SERVICIOS'/);
+  assert.match(center,/'config-services': \{ title: 'Configuración · Servicios'/);
 });
 
 test('Configuración abre las áreas sin superponer el flyout',()=>{

@@ -12,7 +12,7 @@ const headerSource = data.slice(data.indexOf('async function apiAuthHeaders('), 
 
 function formHarness(response, token = 'session-token') {
   const fields = Object.fromEntries(Object.entries({
-    'nu-nombre': 'Persona de prueba', 'nu-legajo': 'test-01', 'nu-email': 'test@example.com',
+    'nu-nombre': 'Persona de prueba', 'nu-email': 'test@example.com',
     'nu-telefono': '', 'nu-dni': '12345678', 'nu-rol': 'chofer',
   }).map(([id, value]) => [id, { value }]));
   fields['btn-guardar-usuario'] = { style: {} };
@@ -27,6 +27,7 @@ function formHarness(response, token = 'session-token') {
     toast: message => notices.push(message),
     closeModal: id => closed.push(id),
     cargarTablaAdminUsuarios: () => {},
+    _siguienteLegajo: async rol => rol === 'chofer' ? 'CHO-011' : 'X-001',
   });
   vm.runInContext(envSource + headerSource + '\n' + createSource, context);
   return { context, fields, calls, notices, closed };
@@ -38,7 +39,7 @@ test('individual creation uses the active admin function with session JWT and pu
   assert.equal(h.calls[0].url, 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin/api/create-user');
   assert.equal(h.calls[0].options.headers.Authorization, 'Bearer session-token');
   assert.equal(h.calls[0].options.headers.apikey, 'public-test-key');
-  assert.equal(JSON.parse(h.calls[0].options.body).legajo, 'TEST-01');
+  assert.equal(JSON.parse(h.calls[0].options.body).legajo, 'CHO-011');
   assert.equal(h.closed.length, 1);
 });
 
@@ -68,4 +69,20 @@ test('bulk creation and password recovery share the supported admin endpoint', (
   assert.equal((sigma.match(/ENV\.ADMIN_API_BASE_URL\}\/api\/create-user/g) || []).length, 2);
   assert.match(sigma, /ENV\.ADMIN_API_BASE_URL\}\/api\/send-password-reset/);
   assert.doesNotMatch(sigma, /ENV\.API_BASE_URL\}\/api\/(?:create-user|send-password-reset)/);
+});
+
+test('legajo is assigned automatically from the role prefix and the highest number in use', async () => {
+  const src = sigma.slice(sigma.indexOf('const _LEGAJO_PREFIJO'), sigma.indexOf('function _elegirRolUsuario'));
+  const ctx = vm.createContext({ _db: { from: () => ({ select: async () => ({ data: [{ legajo: 'CHO-002' }, { legajo: 'CHO-09' }, { legajo: 'CHO.010' }, { legajo: 'QA-CHO-001' }, { legajo: 'ADM-001' }], error: null }) }) } });
+  vm.runInContext(src + ';this.next=_siguienteLegajo;', ctx);
+  assert.equal(await ctx.next('chofer'), 'CHO-011');
+  assert.equal(await ctx.next('operador'), 'OPE-001');
+  assert.equal(await ctx.next('administracion'), 'ADM-002');
+});
+
+test('the personnel form has no legajo or license inputs', () => {
+  const html = fs.readFileSync('Index.html', 'utf8');
+  const form = html.slice(html.indexOf('id="modal-nuevo-usuario"'), html.indexOf('id="modal-import-csv"'));
+  assert.doesNotMatch(form, /id="nu-legajo"/);
+  assert.doesNotMatch(form, /id="nu-licencia"/);
 });

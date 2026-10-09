@@ -140,11 +140,11 @@
     if (!canUseCenter()) return;
     ensureNavNode('nav-empresas', 'empresas', '▦', 'Prestadoras / Empresas');
     ensureScreen('screen-empresas');
-    ensureNavNode('nav-config-service-types', 'config-service-types', '🛠️', 'Tipos de servicio');
+    ensureNavNode('nav-config-service-types', 'config-service-types', '🛠', 'Tipos de servicio');
     ensureScreen('screen-config-service-types');
     ensureNavNode('nav-config-tariff-types', 'config-tariff-types', '💰', 'Tipos de tarifa');
     ensureScreen('screen-config-tariff-types');
-    ensureNavNode('nav-peajes', 'peajes', '🛣️', 'Peajes y Adicionales');
+    ensureNavNode('nav-peajes', 'peajes', '🛣', 'Peajes y Adicionales');
     ensureScreen('screen-peajes');
     ensureNavNode('nav-config-tariff-matrix', 'config-tariff-matrix', '💳', 'Tarifas');
     ensureScreen('screen-config-tariff-matrix');
@@ -196,16 +196,16 @@
   function ensureScreenMetadata() {
     if (typeof SCREENS === 'undefined') return;
     Object.assign(SCREENS, {
-      configuracion: { title: 'CENTRO DE CONFIGURACIÓN', sub: 'Altas, catálogos y definiciones estructurales' },
-      'historial-sistema': { title: 'HISTORIAL', sub: 'Auditoría administrativa' },
-      empresas: { title: 'PRESTADORAS / EMPRESAS', sub: 'Configuración contractual de clientes corporativos' },
-      'bases-geograficas': { title: 'BASES GEOGRÁFICAS', sub: 'Catálogo maestro de ubicaciones' },
-      'bases-tarifarias': { title: 'BASES GEOGRÁFICAS', sub: 'Catálogo maestro de ubicaciones' },
-      'config-service-types': { title: 'TIPOS DE SERVICIO', sub: 'Catálogo maestro global' },
-      'config-tariff-types': { title: 'TIPOS DE TARIFA', sub: 'Formas de cálculo disponibles' },
-      peajes: { title: 'PEAJES Y ADICIONALES', sub: 'Catálogo de conceptos complementarios' },
-      'config-services': { title: 'CONFIGURACIÓN · SERVICIOS', sub: 'Panel, formulario y flujo operativo' },
-      'config-tariff-matrix': { title: 'TARIFAS', sub: 'Valores versionados por prestadora' },
+      configuracion: { title: 'Centro de configuración', sub: 'Altas, catálogos y definiciones estructurales' },
+      'historial-sistema': { title: 'Historial', sub: 'Auditoría administrativa' },
+      empresas: { title: 'Prestadoras y empresas', sub: 'Configuración contractual de clientes corporativos' },
+      'bases-geograficas': { title: 'Bases geográficas', sub: 'Catálogo maestro de ubicaciones' },
+      'bases-tarifarias': { title: 'Bases geográficas', sub: 'Catálogo maestro de ubicaciones' },
+      'config-service-types': { title: 'Tipos de servicio', sub: 'Catálogo maestro global' },
+      'config-tariff-types': { title: 'Tipos de tarifa', sub: 'Formas de cálculo disponibles' },
+      peajes: { title: 'Peajes y adicionales', sub: 'Catálogo de conceptos complementarios' },
+      'config-services': { title: 'Configuración · Servicios', sub: 'Panel, formulario y flujo operativo' },
+      'config-tariff-matrix': { title: 'Tarifas', sub: 'Valores versionados por prestadora' },
     });
   }
 
@@ -235,8 +235,7 @@
     if (!canUseManagementTools()) return notify('Sin permiso para administrar esta configuración', 'error');
     if (typeof openSettingsHub !== 'function' || typeof switchConfigTab !== 'function') return notify('La herramienta administrativa todavía no está disponible', 'error');
     closeFlyout();
-    await openSettingsHub();
-    switchConfigTab(tabId);
+    await openSettingsHub(tabId);
   }
 
   function populateFlyout() {
@@ -380,7 +379,7 @@
       <div class="aux-center-tools-head"><div><h3>Administración interna</h3><p>Herramientas periódicas que no forman parte del seguimiento diario principal.</p></div></div>
       <div class="aux-center-tool-grid">
         <button class="aux-center-tool" onclick="irModuloConfiguracion('documentos')"><span>📄</span><b>Documentación</b><small>Legajos y vencimientos.</small></button>
-        <button class="aux-center-tool" onclick="irModuloConfiguracion('grilla')"><span>🗓️</span><b>Grilla</b><small>Asignaciones y francos.</small></button>
+        <button class="aux-center-tool" onclick="irModuloConfiguracion('grilla')"><span>🗓</span><b>Grilla</b><small>Asignaciones y francos.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-mi-cuenta')"><span>👤</span><b>Mi cuenta</b><small>Datos de la cuenta actual.</small></button>
       </div>
     </section>`;

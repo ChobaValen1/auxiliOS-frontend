@@ -40,14 +40,15 @@ test('payroll settings hydrate assigned global rules and persist assignments sep
 
 test('scheme UI creates rules globally and selects them individually or in bulk', () => {
   assert.match(html, /Comisiones por conceptos/);
-  assert.match(html, /🎯 Comisiones y Bonos/);
+  assert.match(html, /data-sub="objetivos"[^>]*>Comisiones<\/div>/);
   assert.match(html, /id="cfg-commission-body"/);
   assert.match(ui, /function _renderCommissionCatalog/);
   assert.match(ui, /_abrirComisionGeneral/);
   assert.match(ui, /_guardarComisionGeneral/);
   assert.match(ui, /data-bulk-commission/);
   assert.match(html, /id="modal-comision-payroll"/);
-  assert.match(html, /id="esqm-commission-mode"/);
+  assert.match(html, /id="esqm-commission-list"/);
+  assert.match(ui, /commission_changes/);
   assert.match(matrix, /data-commission-id/);
   assert.doesNotMatch(matrix, /\+ Comisión/);
 });

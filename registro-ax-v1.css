@@ -1,0 +1,68 @@
+/* AuxiliOS · Registro diario del chofer con el sistema visual (v1)
+   Iniciar/finalizar jornada, jornadas abiertas, historial y resumen del mes. */
+
+#screen-registro { font-family: var(--ax-font); color: var(--ax-text); }
+#screen-registro > .sec-header .sec-title { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-registro > .sec-header .sec-sub { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-registro #warning-jornada-abierta .alert-strip { border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-warn); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-registro #warning-jornada-abierta .alert-strip b { color: var(--ax-text); }
+
+/* ── Iniciar / finalizar ── */
+#screen-registro .reg-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-sp-3); margin-bottom: var(--ax-sp-5); }
+#screen-registro .reg-action { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 96px; padding: 16px 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text); font-family: var(--ax-font); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-registro .reg-action .ax-icon { width: 22px; height: 22px; }
+#screen-registro .reg-action b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-registro .reg-action small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-registro .reg-action:hover:not(:disabled) { background: var(--ax-surface-3); }
+#screen-registro .reg-action:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-registro .reg-action-start { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-registro .reg-action-start small { color: var(--ax-accent-fg); opacity: .75; }
+#screen-registro .reg-action-start:hover:not(:disabled) { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-registro .reg-action-stop .ax-icon { color: var(--ax-danger); }
+
+/* ── Jornadas abiertas ── */
+#screen-registro #section-jornadas-abiertas { margin-bottom: var(--ax-sp-5); }
+#screen-registro .reg-section-label { display: flex; align-items: center; gap: 8px; margin-bottom: var(--ax-sp-2); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-registro .reg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ax-warn); }
+#screen-registro .reg-open-list { display: flex; flex-direction: column; gap: var(--ax-sp-2); }
+#screen-registro .reg-open-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--ax-border); border-left: 3px solid var(--ax-warn); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-registro .reg-open-icon { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface-3); color: var(--ax-text-2); }
+#screen-registro .reg-open-info { flex: 1; min-width: 0; }
+#screen-registro .reg-open-plate { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font-mono); }
+#screen-registro .reg-open-meta { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-registro .reg-open-meta b { color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); }
+#screen-registro .reg-open-close { flex: none; }
+
+/* ── Tarjetas, historial y resumen ── */
+#screen-registro .card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-registro .card-label { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-registro .reg-card-head { margin-bottom: var(--ax-sp-3); }
+#screen-registro .reg-card-title { margin-top: 2px; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; }
+#screen-registro .data-table th { height: 38px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-registro .data-table td { border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-registro .data-table tr:hover td { background: var(--ax-surface-3); }
+#screen-registro .data-table .pill { display: inline-flex; text-transform: none; letter-spacing: 0; align-items: center; gap: 6px; padding: 0; border-radius: 0; background: none; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-registro .data-table .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-text-3); }
+#screen-registro .data-table .pill-green::before { background: var(--ax-ok); }
+#screen-registro .data-table .pill-amber::before { background: var(--ax-warn); }
+#screen-registro .data-table .pill-red::before { background: var(--ax-danger); }
+#screen-registro .jhist-open-btn { display: inline-flex; align-items: center; justify-content: center; height: var(--ax-h); margin-bottom: var(--ax-sp-5); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-registro .jhist-open-btn:hover { background: var(--ax-surface-3); }
+#screen-registro .reg-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ax-sp-3); }
+#screen-registro .reg-kpi { padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-registro .reg-kpi-value { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); font-variant-numeric: tabular-nums; }
+#screen-registro .reg-kpi-label { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-registro .reg-kpi-note { margin-top: 2px; min-height: 14px; color: var(--ax-danger); font-size: var(--ax-fs-xs); }
+#screen-registro .reg-kpi[hidden] { display: none; }
+/* Con horas de motor, el resumen del mes pasa a cuatro números (dos por fila en el celular). */
+#screen-registro .reg-kpis:has(> #kpi-horas-mes-box:not([hidden])) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#screen-registro .journey-columns { border: 1px solid var(--ax-border); border-left-width: 3px; border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+
+@media (max-width: 600px) {
+  #screen-registro .reg-open-card { flex-wrap: wrap; }
+  #screen-registro .reg-open-close { width: 100%; }
+  #screen-registro .reg-kpis { gap: var(--ax-sp-2); }
+  #screen-registro .reg-kpi { padding: 10px; }
+  #screen-registro .reg-kpi-value { font-size: var(--ax-fs-xl); }
+  #screen-registro .reg-kpis:has(> #kpi-horas-mes-box:not([hidden])) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

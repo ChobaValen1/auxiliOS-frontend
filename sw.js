@@ -1,26 +1,29 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v377';
+const CACHE_NAME='auxilios-billing-phase2-v435-fuel-column-totals';
 const PRECACHE_ASSETS=[
-  '/sigma.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/payroll-matrix.js', '/payroll-view.js',
+  '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/payroll-matrix.js', '/payroll-view.js',
   '/empresas-v2.js','/empresas-v2.css',
   '/billing-bases.js',
   '/service-types-catalog-v2.js','/tariff-types-catalog-v1.js',
   '/company-services-configuration-v4.js','/company-billing-parameters-v4.js','/company-tariffs-v4.js',
   '/configuration-center.css','/configuration-center.js',
   '/service-module-configuration.js','/service-module-configuration.css',
-  '/fleet-operational-status-v1.js',
+  
   '/jornadas-admin-tools-v1.css','/jornadas-admin-tools-v1.js',
-  '/operator-services.css','/operator-services.js',
-  '/auxilios-filters-v1.css','/auxilios-filters-v1.js','/auxilios-date-inputs-v1.css','/auxilios-date-inputs-v1.js','/remitos-admin-panel-v1.css','/remitos-admin-panel-v1.js','/remitos-filtros-sheet-v1.css','/remitos-filtros-sheet-v1.js','/remito-pdf-v2.js','/remitos-calidad-v1.css','/remitos-calidad-v1.js','/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js',
-  '/operator-invoices.css','/operator-invoices.js',
+  '/operator-services.css','/operator-services.js','/private-service-v1.css','/private-service-v1.js','/private-payments-v1.css','/private-payments-v1.js','/private-view-v1.css','/private-view-v1.js','/fleet-control-v1.css','/fleet-control-v1.js','/fleet-truck-detail-v1.css','/fleet-truck-detail-v1.js','/fleet-type-plans-v1.js','/truck-doc-reader-v1.js',
+  '/auxilios-filters-v1.css','/auxilios-filters-v1.js','/auxilios-date-inputs-v1.css','/auxilios-date-inputs-v1.js','/remitos-admin-panel-v1.css','/remitos-admin-panel-v1.js','/remitos-filtros-sheet-v1.css','/remitos-filtros-sheet-v1.js','/remito-pdf-v2.js','/remitos-calidad-v1.css','/remitos-calidad-v1.js','/operator-billing.css','/operator-billing.js','/operator-billing-export.js','/excel-export.js','/fuel-efficiency-v1.js',
+  '/operator-invoices.css','/operator-invoices.js','/billing-breakdown-v1.js','/table-columns-v1.js',
   '/operator-service-workspace-reactive-v1.css','/operator-service-workspace-reactive-v1.js',
   '/operator-service-commercial-addons-v1.css','/operator-service-commercial-addons-v1.js',
+  '/toll-route-detection-v1.js',
+  '/finish-time-v1.js',
   '/operator-service-bridge.css','/operator-service-bridge.js',
+  '/ui/tokens.css','/ui/components.css','/ui/ax.js','/ui/icons.svg','/ui/app-v1.css','/ui/app-v1.js','/operaciones-ax-v1.css','/jornadas-ax-v1.css','/shell-ax-v1.css','/facturacion-ax-v1.css','/facturas-ax-v1.css','/camion-ax-v1.css','/remitos-ax-v1.css','/empresas-ax-v1.css','/configuracion-ax-v1.css','/dashboard-ax-v1.css','/sueldos-ax-v1.css','/grilla-ax-v1.css','/documentos-ax-v1.css','/registro-ax-v1.css','/camion-modales-ax-v1.css','/chofer-servicios-ax-v1.css','/servicio-form-ax-v1.css','/estado-servicio-ax-v1.css','/remito-chofer-ax-v1.css','/remito-chofer-ax-v1.js',
   '/operator-service-lifecycle.css','/operator-service-lifecycle.js',
   '/toll-management.css','/toll-management.js',
   '/rendition-journey-source-v1.js',
-  '/remito-addons-v2.css','/remito-addons-v2.js',
+  '/remito-addons-v2.css','/remito-addons-v2.js','/private-collection-v1.css','/private-collection-v1.js',
   '/remito-mobile-flow-v3.css','/remito-mobile-flow-v3.js',
   '/operator-remito-review-v2.css','/operator-remito-review-v2.js',
   '/supabase.js','/offline.js','/manifest.json',

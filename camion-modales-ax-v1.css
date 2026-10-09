@@ -1,0 +1,50 @@
+/* AuxiliOS · Formularios de Control del camión con el sistema visual (v1)
+   Combustible, Neumáticos y frenos, Registrar service, Asignar plan y Subir documento.
+   Cuelgan de sus ids: .modal-box, .form-* y .btn son clases de toda la app y no se tocan. */
+
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) { background: rgba(0, 0, 0, .6); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-box { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-head-title { display: inline-flex; align-items: center; gap: 10px; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; color: var(--ax-text); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-head-title svg { width: 20px; height: 20px; color: var(--ax-text-2); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-body { padding: 18px 20px; }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-error { border-left: 3px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+
+/* Etiquetas en minúsculas y campos con los tokens */
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan, #modal-upload-truck-doc) .form-label { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; margin-bottom: 6px; }
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan, #modal-upload-truck-doc) .form-label span[style*="--red"] { color: var(--ax-danger) !important; }
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan, #modal-upload-truck-doc) :is(.form-input, .form-select, .form-textarea) { height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan, #modal-upload-truck-doc) .form-textarea { height: auto; padding: 8px 12px; }
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan, #modal-upload-truck-doc) :is(.form-input, .form-select, .form-textarea):focus { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan) .form-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-style: normal; }
+
+/* El móvil elegido: dato, no alerta (antes caja ámbar con tipografía de logo) */
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-body > div[style*="amber-lo"], :is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-body > div[style*="--amber-lo"] { border: 1px solid var(--ax-border) !important; border-radius: var(--ax-radius-lg) !important; background: var(--ax-surface) !important; }
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-body div[style*="Bebas"] { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font) !important; letter-spacing: 0 !important; color: var(--ax-text) !important; }
+:is(#modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-body div[style*="font-size:11px"][style*="--muted"] { color: var(--ax-text-3) !important; }
+#modal-combustible .fuel-context { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#modal-combustible .fuel-context strong { color: var(--ax-text); }
+#modal-combustible .fuel-context small { color: var(--ax-text-3); }
+#modal-combustible .fuel-total { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#modal-combustible .fuel-total strong { color: var(--ax-text); font-family: var(--ax-font-mono); }
+#modal-combustible .fuel-section { color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+
+/* Botones */
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-footer .btn, #modal-upload-truck-doc .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border-radius: var(--ax-radius); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-footer .btn-ghost, #modal-upload-truck-doc .btn-ghost { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-footer .btn-ghost:hover, #modal-upload-truck-doc .btn-ghost:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-footer .btn-primary, #modal-upload-truck-doc .btn-primary { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-footer .btn-primary:hover, #modal-upload-truck-doc .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); opacity: 1; }
+:is(#modal-combustible, #modal-neumaticos, #modal-service-log, #modal-asignar-plan) .modal-footer .btn:disabled { opacity: .5; }
+#modal-combustible .fuel-footer .btn-primary { width: 100%; height: var(--ax-h-lg); }
+
+/* Subir documento (usa la capa y la tarjeta antiguas) */
+#modal-upload-truck-doc { background-color: rgba(0, 0, 0, .6); backdrop-filter: none; font-family: var(--ax-font); }
+#modal-upload-truck-doc .modal-content { max-width: 440px; padding: 20px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
+#modal-upload-truck-doc .modal-content > h3, #modal-upload-truck-doc .modal-content > h2 { margin: 0 0 var(--ax-sp-4); font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); color: var(--ax-text); }
+#modal-upload-truck-doc .tdr-status { border-color: var(--ax-border); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#modal-upload-truck-doc .tdr-aviso { border-color: var(--ax-warn); }
+#modal-upload-truck-doc .tdr-aviso b { color: var(--ax-warn); }

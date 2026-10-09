@@ -1,0 +1,13 @@
+/* AuxiliOS · Ficha de un servicio particular */
+.pvw-dialog { width: min(100%, 1040px); }
+.pvw-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.pvw-dato { display: grid; gap: 2px; min-width: 0; }
+.pvw-dato span { color: var(--muted2); font-size: 11px; font-weight: 700; }
+.pvw-dato b { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.pvw-notas { margin: 10px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--bg); color: var(--muted2); font-size: 12px; }
+.pvw-estado { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--bg); color: var(--muted2); font-size: 11px; font-weight: 700; vertical-align: middle; }
+.pvw-estado.pvw-assigned, .pvw-estado.pvw-at_origin { color: var(--amber); }
+.pvw-estado.pvw-completed { color: #27c47a; }
+.pvw-estado.pvw-cancelled { color: var(--red); }
+.pvw-remito { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+@media (max-width: 560px) { .pvw-grid { grid-template-columns: 1fr; } }

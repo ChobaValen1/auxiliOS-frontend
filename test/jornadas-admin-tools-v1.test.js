@@ -70,7 +70,8 @@ test('Jornada abre el remito con la vista administrativa canónica', () => {
 });
 
 test('Jornada usa vistas canónicas y no viewers duplicados para otros registros vinculados', () => {
-  assert.match(js, /FleetAdminDetailV2\.openTab/);
+  assert.match(js, /AuxiliosDetalleCamion\.abrir\(truckId,\{seccion:tab,carga:recordId\}\)/);
+  assert.doesNotMatch(js, /FleetAdminDetailV2|FleetFuelCRUD/);
   assert.match(js, /openFleetCanonical\('combustible'/);
   assert.match(js, /openFleetCanonical\('neumaticos'/);
   assert.match(js, /openRenditionCanonical/);

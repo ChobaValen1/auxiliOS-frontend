@@ -46,17 +46,9 @@ function showModalError(errorDivId, msg) {
 function _validarPatente(val, targetId) {
   const el = document.getElementById(targetId || 'warn-patente');
   if (!el) return;
-  const n = val.replace(/\s/g, '').length;
-  if (n === 0 || n >= 6) {
-    el.textContent = '';
-    el.className = 'rem-warn-patente';
-  } else if (n <= 3) {
-    el.textContent = '⚠️ La patente parece muy corta. Verificá que esté completa.';
-    el.className = 'rem-warn-patente warn-strong';
-  } else {
-    el.textContent = 'La patente tiene menos de 6 caracteres. Formato: ABC123 o AB123CD';
-    el.className = 'rem-warn-patente warn-soft';
-  }
+  // Las prestadoras pueden enviar patentes parciales.
+  el.textContent = '';
+  el.className = 'rem-warn-patente';
 }
 
 // ── REPARACIÓN DE ESTRUCTURA DOM ──────────────────────────────
@@ -238,17 +230,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // ── SCREENS ──────────────────────────────────
 const SCREENS = {
-  dashboard:  { title:'PANEL PRINCIPAL',    sub:() => {
+  dashboard:  { title:'Panel principal',    sub:() => {
     const fmt = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     return 'Resumen · ' + fmt.charAt(0).toUpperCase() + fmt.slice(1);
   } },
-  registro:   { title:'REGISTRO DIARIO',    sub:'Módulo 1 · Carga de kilómetros' },
-  camion:     { title:'CONTROL DEL CAMIÓN', sub:'Módulo 2 · Revisión y Carga' },
-  documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
-  remitos:    { title:'REMITOS VIRTUALES',  sub:'Módulo 4 · Firma digital y archivo' },
-  sueldos:    { title:'LIQUIDACIÓN DE SUELDOS', sub:'Objetivos, esquema salarial y recibos' },
-  'jornadas-admin': { title:'JORNADAS', sub:'Historial de jornadas de la flota' },
-  grilla:     { title:'GRILLA MENSUAL',     sub:'Asignaciones de móviles y francos' },
+  registro:   { title:'Registro diario',    sub:'Módulo 1 · Carga de kilómetros' },
+  camion:     { title:'Control del camión', sub:'Estado de la flota y de cada móvil' },
+  documentos: { title:'Documentación',      sub:'Módulo 3 · Vencimientos y archivos' },
+  remitos:    { title:'Remitos virtuales',  sub:'Remitos firmados, pendientes y cobros' },
+  sueldos:    { title:'Liquidación de sueldos', sub:'Liquidaciones, comisiones y esquemas de pago' },
+  'jornadas-admin': { title:'Jornadas', sub:'Historial de jornadas de la flota' },
+  grilla:     { title:'Grilla mensual',     sub:'Asignaciones de móviles y francos' },
 };
 
 function goTo(name) {
@@ -340,7 +332,7 @@ async function openPlanModal() {
   // 5. Poblamos la lista
   if (select) {
     if (catalogo.length === 0) {
-      select.innerHTML = '<option value="">⚠️ No hay planes globales creados</option>';
+      select.innerHTML = '<option value="">⚠ No hay planes globales creados</option>';
       return;
     }
 
@@ -358,7 +350,7 @@ async function openPlanModal() {
 }
 function closeModal(id) {
   const m = document.getElementById(id);
-  if (!m) { console.warn('⚠️ Modal no encontrado:', id); return; }
+  if (!m) { console.warn('⚠ Modal no encontrado:', id); return; }
   m.classList.remove('open');
   m.style.display = m.classList.contains('modal-overlay') ? 'none' : '';
   document.body.style.overflow = '';
@@ -422,7 +414,7 @@ function abrirEditarPlan(planId) {
   if (alertaEl) alertaEl.value = plan.alert_before_km || 500;
 
   const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
-  if (titulo) titulo.textContent = '✏️ Editar Plan Maestro';
+  if (titulo) titulo.textContent = '✏ Editar Plan Maestro';
   const btn = document.getElementById('btn-guardar-global');
   if (btn) btn.textContent = '💾 Actualizar Plan';
 
@@ -620,7 +612,7 @@ function remWizardReset() {
   if (toggleChofer) toggleChofer.classList.remove('on');
   const labelFirma = document.getElementById('label-firma-canvas');
   if (labelFirma) {
-      labelFirma.textContent = '✍️ Firma digital del socio';
+      labelFirma.textContent = '✍ Firma digital del socio';
       labelFirma.style.color = 'var(--text)';
   }
 
@@ -860,10 +852,10 @@ function toggleFirmaChofer(elemento) {
     const labelFirma = document.getElementById('label-firma-canvas'); // Asegurate de ponerle este ID al <label> de tu firma
     
     if (btn.classList.contains('on')) {
-        labelFirma.textContent = '✍️ Firma del Chofer (En representación)';
+        labelFirma.textContent = '✍ Firma del Chofer (En representación)';
         labelFirma.style.color = 'var(--green)';
     } else {
-        labelFirma.textContent = '✍️ Firma digital del socio';
+        labelFirma.textContent = '✍ Firma digital del socio';
         labelFirma.style.color = 'var(--text)';
     }
 }
@@ -944,7 +936,7 @@ function validarPaso5Final() {
     if (!todasConfirmadas) {
         const titulo = document.getElementById('modal-validacion-titulo');
         const msgEl  = document.getElementById('modal-validacion-msg');
-        if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+        if (titulo) titulo.textContent = '⚠ Faltan confirmaciones';
         if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
         openModal('modal-validacion');
         return false;
@@ -1309,22 +1301,10 @@ function drawDemoSignature() {
 let arrastreRequerido = false;
 let _finalizacionRemitoEnCurso = false;
 
+// Mismo aviso que al crear un servicio: tilde verde, sin botones.
 function _mostrarConfirmacionRemitoCreado() {
-  let modal = document.getElementById('remito-created-confirmation');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'remito-created-confirmation';
-    modal.className = 'remito-created-confirmation';
-    modal.setAttribute('role', 'status');
-    modal.setAttribute('aria-live', 'assertive');
-    modal.innerHTML = '<div><span>✓</span><strong>Remito finalizado correctamente</strong><small>El servicio quedó guardado.</small></div>';
-    document.body.appendChild(modal);
-  }
-  modal.classList.add('is-visible');
-  return new Promise(resolve => setTimeout(() => {
-    modal.classList.remove('is-visible');
-    resolve();
-  }, 1700));
+  operationFeedback('Remito finalizado correctamente', 'Se creó y quedó guardado.', 'success', 2400);
+  return new Promise(resolve => setTimeout(resolve, 1700));
 }
 
 async function finalizarRemito() {
@@ -1387,9 +1367,9 @@ async function _finalizarRemitoInner() {
     openModal('modal-validacion');
   };
 
-  if (!patente) { mostrarValidacion('⚠️ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
-  if (!origen)  { mostrarValidacion('⚠️ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
-  if (!destino) { mostrarValidacion('⚠️ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  if (!patente) { window.AuxiliosRemitoMobileV3?.syncPlateField?.(); mostrarValidacion('⚠ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  if (!origen)  { mostrarValidacion('⚠ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
+  if (!destino) { mostrarValidacion('⚠ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
   [
     ['rem-patente',patente],
     ['rem-origen',origen],
@@ -1399,31 +1379,31 @@ async function _finalizarRemitoInner() {
     if(el&&!el.value&&value)el.value=value;
   });
   if (cuit && !/^\d{7,11}$/.test(cuit)) {
-    mostrarValidacion('⚠️ DNI/CUIT inválido', `El DNI/CUIT debe contener únicamente entre 7 y 11 dígitos. Corregilo en el paso ${_remWizardPasoCliente()}.`);
+    mostrarValidacion('⚠ DNI/CUIT inválido', `El DNI/CUIT debe contener únicamente entre 7 y 11 dígitos. Corregilo en el paso ${_remWizardPasoCliente()}.`);
     remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
     return;
   }
   if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) {
-    mostrarValidacion('⚠️ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
+    mostrarValidacion('⚠ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
     remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     return;
   }
   const requiredConfirmations=[...document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`)]
     .filter(row=>row.id!=='row-arrastre'&&row.offsetParent!==null);
-  if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠️ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
-  if(!hasSig){mostrarValidacion('⚠️ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
+  if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
+  if(!hasSig){mostrarValidacion('⚠ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
   const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
   if (addonValidation && !addonValidation.ok) {
-    mostrarValidacion('⚠️ Revisá peajes y excedentes', addonValidation.errors[0] || `Hay datos incompletos en el paso ${_remWizardPasoCargos()}.`);
+    mostrarValidacion('⚠ Revisá peajes y excedentes', addonValidation.errors[0] || `Hay datos incompletos en el paso ${_remWizardPasoCargos()}.`);
     remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';
   const totalVal = parseFloat(totalStr.replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
   if (!window.AuxiliosRemitoAddonsV2 && totalVal > 0 && (!pago || pago === '—')) {
-    mostrarValidacion('⚠️ Falta medio de pago', `Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso ${_remWizardPasoCargos()}.`);
+    mostrarValidacion('⚠ Falta medio de pago', `Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso ${_remWizardPasoCargos()}.`);
     remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
@@ -1440,7 +1420,7 @@ async function _finalizarRemitoInner() {
   const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
   const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
   if (_remWizardEsAdHoc() && !mapLocations) {
-    mostrarValidacion('⚠️ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
+    mostrarValidacion('⚠ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
     remWizardIr(1 - _remPasoActual);
     window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
     return false;
@@ -1486,8 +1466,8 @@ async function _finalizarRemitoInner() {
   const ok = await guardarRemitoCompleto({
     nro,
     firmaDataURL,
-    driver_id: USUARIO_ACTUAL.id, // 🛠️ INYECCIÓN DE SEGURIDAD
-    log_id:  _logIdRemito, // 🛠️ REGISTRO SILENCIOSO
+    driver_id: USUARIO_ACTUAL.id, // 🛠 INYECCIÓN DE SEGURIDAD
+    log_id:  _logIdRemito, // 🛠 REGISTRO SILENCIOSO
     nroSrv,
     patente,
     marca:   document.getElementById('rem-marca-modelo')?.value || '',
@@ -1857,7 +1837,7 @@ function guardarDocForm() {
   const pillClass = dias < 30 ? 'pill-red' : dias < 60 ? 'pill-amber' : 'pill-green';
   const color     = dias < 30 ? 'var(--red)' : dias < 60 ? 'var(--amber)' : 'var(--green)';
   const estado    = dias < 30 ? 'Urgente' : dias < 60 ? 'Próximo' : 'Vigente';
-  const icons     = { VTV:'🔍', Seguro:'🛡️', 'Habilitación de ruta':'📋', 'Libreta de porte':'⚖️', Matafuegos:'🧯', Otro:'📄' };
+  const icons     = { VTV:'🔍', Seguro:'🛡', 'Habilitación de ruta':'📋', 'Libreta de porte':'⚖', Matafuegos:'🧯', Otro:'📄' };
   const icon      = icons[tipo] || '📄';
   const grid = document.getElementById('doc-grid');
   const addCard = document.getElementById('doc-add-card');
@@ -1931,7 +1911,7 @@ function verRemitoModal(elemento) {
       if (el) {
         el.textContent = val ?? '—';
       } else {
-        console.warn(`${TAG} ⚠️ El HTML no tiene el ID: '${id}'. El dato [${val}] no se mostrará.`);
+        console.warn(`${TAG} ⚠ El HTML no tiene el ID: '${id}'. El dato [${val}] no se mostrará.`);
       }
     };
 
@@ -2040,7 +2020,7 @@ function verRemitoModal(elemento) {
       setTimeout(() => {
         const c = document.getElementById('vr-sig-display');
         if (!c) {
-          console.warn(`${TAG} ⚠️ No se encontró el canvas 'vr-sig-display' para la firma.`);
+          console.warn(`${TAG} ⚠ No se encontró el canvas 'vr-sig-display' para la firma.`);
           return;
         }
         
@@ -2065,7 +2045,7 @@ function verRemitoModal(elemento) {
           };
           img.src = savedSig;
         } else {
-          console.log(`${TAG} ℹ️ No hay firma real, dibujando demo/vacío.`);
+          console.log(`${TAG} ℹ No hay firma real, dibujando demo/vacío.`);
           if (typeof dibujarFirmaDemo === 'function') dibujarFirmaDemo(ctx, c.width, c.height);
         }
       }, 100);
@@ -2205,7 +2185,7 @@ async function confirmarFirma() {
   if (!todasConf) {
     const titulo = document.getElementById('modal-validacion-titulo');
     const msgEl  = document.getElementById('modal-validacion-msg');
-    if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+    if (titulo) titulo.textContent = '⚠ Faltan confirmaciones';
     if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
     openModal('modal-validacion');
     return;
@@ -2474,7 +2454,7 @@ async function _subirFirmaStorage(blob, nro, operationToken = null) {
     .from('firmas')
     .upload(nombre, blob, { contentType: 'image/png', upsert: true });
   if (fe) {
-    console.warn('⚠️ No se pudo subir la firma:', fe.message);
+    console.warn('⚠ No se pudo subir la firma:', fe.message);
     return null;
   }
   const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
@@ -2894,10 +2874,25 @@ function _cargarViewAnalitica() {
   AuxDash.init();
 }
 
+const _DASHX_TITULOS = {
+  facturacion: ['Resumen', 'Operación, facturación y cobertura de la flota'],
+  operaciones: ['Operaciones', 'Kilómetros, combustible y rendimiento por camión y chofer'],
+  tendencia: ['Tendencia', 'Evolución del período y comparación con el anterior'],
+  flota: ['Salud de la flota', 'Vencimientos, services y estado de cada camión hoy']
+};
+function dashxIrATendencia() {
+  dashxSeccion('tendencia', document.querySelector('#dashx-tabs .ftab[data-sec="tendencia"]'));
+  document.getElementById('dashx-titulo')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
 function dashxSeccion(seccion, el) {
   if (el) {
     el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
+  }
+  const t = _DASHX_TITULOS[seccion];
+  if (t) {
+    const h = document.getElementById('dashx-titulo'); if (h) h.textContent = t[0];
+    const p = document.getElementById('dashx-subtitulo'); if (p) p.textContent = t[1];
   }
   if (typeof AuxDash !== 'undefined') AuxDash.mostrarSeccion(seccion);
 }
@@ -3121,7 +3116,7 @@ async function _cargarViewRendimientoDatos() {
       _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
         `${trCount} cobros${_deltaBadge(factTr, factTrAnt)}`, null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
-      _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
+      _KPI('⚠', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
         (pendiente>0?'sin rendir':'al día ✓') + _deltaBadge(pendiente, pendienteAnt, {invert:true}), null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalPendienteRendir()">📋 Ver detalle</span>`);
   }
@@ -3249,7 +3244,7 @@ async function _cargarViewRendimientoDatos() {
       </div>`;
     }).join('');
 
-    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición', km_manual: '✏️ KM cargado a mano' };
+    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠ Sin rendición', km_manual: '✏ KM cargado a mano' };
     const opHTML = (alertas || []).map(a =>
       `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--red-lo);border:1px solid rgba(231,76,60,0.3);border-radius:7px;margin-bottom:6px">
         <div><div style="font-size:12px;font-weight:600">${TIPO[a.tipo]||a.tipo}</div>
@@ -3558,7 +3553,7 @@ function guardarCerrarJornada() {
   const strip = document.querySelector('.alert-strip.ok');
   if (strip) {
     strip.className = 'alert-strip warn mb16';
-    strip.innerHTML = `<span>ℹ️</span><span>No hay jornada activa hoy. <b>Iniciá una nueva jornada</b> para comenzar.</span>`;
+    strip.innerHTML = `<span>ℹ</span><span>No hay jornada activa hoy. <b>Iniciá una nueva jornada</b> para comenzar.</span>`;
   }
   toast('Jornada cerrada y guardada correctamente', 'success');
 }
@@ -3806,8 +3801,6 @@ function _renderCamionChoferDatos(d) {
   _camionHistorial   = d.services || [];
 
   _renderCamionCards();
-  renderPlanes(_camionPlanes);
-  renderHistorialServices(_camionHistorial);
   _volverCamionMain();
 }
 
@@ -3848,266 +3841,15 @@ function _renderCamionSinJornada() {
   _volverCamionMain();
 }
 
-// ── Vista flota para admin/supervisor (sin jornada) ──
-let _flotaFiltro = 'todos';   // 'todos' | 'enRuta' | 'enBase' | 'alertas' | 'sinDatos'
-let _flotaQuery  = '';
-let _flotaEstado = {};        // truck_id -> { conductor, severidad, planUrgente }
-
+// ── Control del camión · Administración y Supervisión ──
+// La flota (tabla) está en fleet-control-v1.js y el detalle de cada móvil en
+// fleet-truck-detail-v1.js. Estas dos funciones quedan como punto de entrada.
 async function _renderCamionFlotaAdmin() {
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('camion-sec-sub', 'Flota completa');
-  ['camion-nombre','camion-detalle'].forEach(id => set(id, ''));
-  const hero = document.getElementById('camion-hero-card');
-  if (hero) hero.style.display = 'none';
-  const cont = document.getElementById('camion-cards-container');
-  if (!cont) return;
-  cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando flota...</div>';
-
-  try {
-    const [camiones, jornadasResp] = await Promise.all([
-      cargarCamiones(),
-      _db.from('daily_logs').select('truck_id, driver_id, users(full_name)').eq('status', 'open'),
-    ]);
-    _flotaAdmin = camiones || [];
-    const enUso = {};
-    (jornadasResp?.data || []).forEach(j => {
-      if (j.truck_id) enUso[j.truck_id] = j.users?.full_name || 'En uso';
-    });
-
-    // Calcular plan urgente por camión (para borde de color)
-    const planesPorCamion = await Promise.all(
-      _flotaAdmin.map(t => cargarPlanesDetalleOptimizados(t.truck_id).catch(() => []))
-    );
-    _flotaEstado = {};
-    _flotaAdmin.forEach((t, i) => {
-      const planes = planesPorCamion[i] || [];
-      const urgente = planes
-        .filter(p => p.plan_estado && p.plan_estado !== '_error')
-        .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
-      let severidad = 'al_dia';
-      if (urgente) {
-        const est = urgente.plan_estado;
-        const kmR = urgente.km_restantes;
-        if (est === 'vencido' || (kmR != null && kmR <= 0)) severidad = 'critico';
-        else if (est === 'proximo' || (kmR != null && kmR <= 1000)) severidad = 'alerta';
-        else if (est === 'sin_registro' || est === 'sin_odometro') severidad = 'sin_datos';
-      }
-      _flotaEstado[t.truck_id] = { conductor: enUso[t.truck_id] || null, severidad, planUrgente: urgente || null };
-    });
-  } catch (e) {
-    console.error('Error cargando flota:', e);
-    cont.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">Error al cargar la flota</div>';
-    return;
-  }
-
-  _pintarFlotaAdmin();
-  _volverCamionMain();
+  if (window.AuxiliosControlFlota) return window.AuxiliosControlFlota.renderFlota();
 }
-
-function _pintarFlotaAdmin() {
-  const cont = document.getElementById('camion-cards-container');
-  if (!cont) return;
-
-  if (!_flotaAdmin.length) {
-    cont.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:30px">No hay camiones registrados</div>';
-    return;
-  }
-
-  const counts = { todos: 0, enRuta: 0, enBase: 0, alertas: 0, sinDatos: 0 };
-  _flotaAdmin.forEach(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    counts.todos++;
-    if (st.conductor) counts.enRuta++;
-    else counts.enBase++;
-    if (st.severidad === 'critico' || st.severidad === 'alerta') counts.alertas++;
-    if (st.severidad === 'sin_datos') counts.sinDatos++;
-  });
-
-  const q = _flotaQuery.trim().toLowerCase();
-  const filtrados = _flotaAdmin.filter(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    if (_flotaFiltro === 'enRuta' && !st.conductor) return false;
-    if (_flotaFiltro === 'enBase' && st.conductor) return false;
-    if (_flotaFiltro === 'alertas' && st.severidad !== 'critico' && st.severidad !== 'alerta') return false;
-    if (_flotaFiltro === 'sinDatos' && st.severidad !== 'sin_datos') return false;
-    if (q) {
-      const hay = `${t.plate || ''} ${t.numero_interno || ''} ${t.brand || ''} ${t.model || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  const mkPill = (key, label, n) => `
-    <button class="flota-pill ${_flotaFiltro === key ? 'active' : ''}"
-      onclick="_setFlotaFiltro('${key}')">${label} <span class="flota-pill-count">${n}</span></button>`;
-
-  const cards = filtrados.map(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    // Borde: prioriza severidad de mantenimiento; sin_datos es neutro (gris).
-    const borderColor = st.severidad === 'critico' ? '#ef4444'
-      : st.severidad === 'alerta'  ? '#f59e0b'
-      : st.conductor               ? '#3b82f6'
-      : st.severidad === 'sin_datos' ? '#6b7280'
-      : '#22c55e';
-    // Regla de negocio: un camion con service vencido NO figura como Disponible.
-    // sin_datos = estado neutro: no afirma "Disponible" pero tampoco alarma con amarillo.
-    const labelOperativo = st.conductor
-      ? `<span style="color:#3b82f6">🔵 En ruta</span>`
-      : (st.severidad === 'critico'
-          ? `<span style="color:#ef4444">⛔ No apto</span>`
-          : st.severidad === 'alerta'
-            ? `<span style="color:#f59e0b">🟡 Apto con alerta</span>`
-            : st.severidad === 'sin_datos'
-              ? `<span style="color:#9ca3af">⚪ Sin historial</span>`
-              : `<span style="color:#22c55e">🟢 Disponible</span>`);
-    // Etiqueta de mantenimiento (si aplica). sin_datos no genera badge (ya se refleja en labelOperativo)
-    const labelMant = st.severidad === 'critico'
-      ? `<span style="color:#ef4444">🔴 Service vencido</span>`
-      : st.severidad === 'alerta'
-        ? `<span style="color:#f59e0b">🟡 Service próximo</span>`
-        : '';
-    // No duplicar la info: si labelOperativo ya dice "No apto"/"Apto con alerta", no repetir el detalle de mant
-    const estadoLabel = (labelMant && st.conductor)
-      ? `${labelOperativo} · ${labelMant}`
-      : labelOperativo;
-    // Titulo: si numero_interno ya contiene "MOVIL"/"MOBIL", no duplicar el prefijo
-    let titulo;
-    if (t.numero_interno != null) {
-      const ni = String(t.numero_interno).trim();
-      titulo = /^m[oó]vil/i.test(ni) ? ni.toUpperCase() : `MÓVIL ${ni}`;
-    } else {
-      titulo = t.plate || `ID ${t.truck_id}`;
-    }
-    const subtitulo = `${t.plate || '—'}${t.brand || t.model ? ' · ' + `${t.brand || ''} ${t.model || ''}`.trim() : ''}`;
-    const km = t.current_km != null ? Number(t.current_km).toLocaleString('es-AR') + ' km' : '— km';
-    // KM: gris por defecto, ambar/rojo solo si entra en ventana de service
-    const kmColor = st.severidad === 'critico' ? 'var(--red)'
-      : st.severidad === 'alerta' ? 'var(--amber)'
-      : 'var(--muted2)';
-    const conductorLine = st.conductor
-      ? `<div class="camion-flota-meta">👤 ${st.conductor}</div>`
-      : `<div class="camion-flota-meta" style="color:var(--muted)">👤 Sin asignar</div>`;
-    // Texto del plan urgente: respeta el estado real, no inventa "vencido" si km_restantes es null
-    let planLine = '';
-    if (st.planUrgente) {
-      const p = st.planUrgente;
-      const kmR = p.km_restantes;
-      const color = st.severidad === 'critico' ? 'var(--red)'
-        : st.severidad === 'alerta' ? 'var(--amber)'
-        : st.severidad === 'sin_datos' ? 'var(--muted2)'
-        : 'var(--green)';
-      let detalle;
-      if (kmR == null) {
-        detalle = p.plan_estado === 'sin_registro' ? 'sin ejecución registrada'
-          : p.plan_estado === 'sin_odometro' ? 'sin odómetro inicial'
-          : (p.plan_estado || '—');
-      } else if (kmR <= 0) {
-        detalle = `vencido por ${Math.abs(kmR).toLocaleString('es-AR')} km`;
-      } else {
-        detalle = `en ${kmR.toLocaleString('es-AR')} km`;
-      }
-      planLine = `<div class="camion-flota-meta" style="color:${color}">⚙ ${p.name} · ${detalle}</div>`;
-    }
-    return `
-      <div class="camion-flota-card" style="border-left-color:${borderColor}" onclick="_abrirCamionDetalleAdmin(${t.truck_id})">
-        <div class="camion-flota-icon">🚛</div>
-        <div class="camion-flota-info">
-          <div class="camion-flota-name">${titulo}</div>
-          <div class="camion-flota-sub">${subtitulo}</div>
-          <div class="camion-flota-km" style="color:${kmColor}">${km}</div>
-          ${conductorLine}
-          ${planLine}
-          <div class="camion-flota-status">${estadoLabel}</div>
-        </div>
-        <div class="camion-flota-arrow">›</div>
-      </div>`;
-  }).join('');
-
-  const empty = filtrados.length === 0
-    ? `<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:30px;font-size:13px">Sin coincidencias</div>`
-    : '';
-
-  cont.innerHTML = `
-    <div class="flota-toolbar">
-      <input id="flota-search" class="flota-search" type="search"
-        placeholder="Buscar por patente, móvil o marca…"
-        value="${_flotaQuery.replace(/"/g,'&quot;')}"
-        oninput="_setFlotaQuery(this.value)">
-      <div class="flota-pills">
-        ${mkPill('todos','Todos', counts.todos)}
-        ${mkPill('enRuta','En ruta', counts.enRuta)}
-        ${mkPill('enBase','Disponibles', counts.enBase)}
-        ${mkPill('alertas','Alertas', counts.alertas)}
-        ${mkPill('sinDatos','Sin datos', counts.sinDatos)}
-      </div>
-    </div>
-    <div class="camion-flota-grid">${cards}${empty}</div>`;
-
-  // Reenfocar input si el usuario estaba escribiendo
-  const inp = document.getElementById('flota-search');
-  if (inp && _flotaQuery) {
-    inp.focus();
-    const v = inp.value;
-    inp.setSelectionRange(v.length, v.length);
-  }
-}
-
-function _setFlotaFiltro(key) { _flotaFiltro = key; _pintarFlotaAdmin(); }
-function _setFlotaQuery(q)    { _flotaQuery = q || ''; _pintarFlotaAdmin(); }
 
 async function _abrirCamionDetalleAdmin(truckId) {
-  const truck = (_flotaAdmin || []).find(t => t.truck_id === truckId);
-  if (!truck) return;
-
-  _camionVistaAdmin = 'detalle';
-  _camionLogDate = null; // sin filtro por jornada — vista global
-  _truckActual = truck;
-
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  const nombre  = `${truck.brand || ''} ${truck.model || ''}`.trim() || '—';
-  const patente = truck.plate || '—';
-  const km = truck.current_km != null ? Number(truck.current_km).toLocaleString('es-AR') : null;
-  const hero = document.getElementById('camion-hero-card');
-  if (hero) hero.style.display = '';
-  set('camion-nombre',  nombre.toUpperCase());
-  set('camion-detalle', `Patente: ${patente}`);
-  set('camion-km-pill', km != null ? `${km} km actuales` : '— km actuales');
-  set('camion-sec-sub', `${nombre} · ${patente}`);
-  const statusPill = document.getElementById('camion-status-pill');
-  if (statusPill) {
-    statusPill.textContent = '● Vista global';
-    statusPill.className = 'pill pill-blue';
-  }
-
-  const cont = document.getElementById('camion-cards-container');
-  if (cont) cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando datos del camión...</div>';
-
-  const [combustible, ultimoControl, services, planes] = await Promise.all([
-    cargarCombustible(truckId),
-    cargarUltimoControlNeumaticos(truckId),
-    cargarHistorialServices(truckId),
-    cargarPlanesDetalleOptimizados(truckId),
-  ]);
-
-  _camionCombustible = combustible || [];
-  _camionNeumaticos  = ultimoControl || null;
-  _camionPlanes      = planes || [];
-  _camionHistorial   = services || [];
-
-  _renderCamionCards();
-  renderPlanes(_camionPlanes);
-  renderHistorialServices(_camionHistorial);
-  _volverCamionMain();
-
-  // Inyectar boton "volver a flota" al inicio del contenedor
-  if (cont) {
-    const back = document.createElement('button');
-    back.className = 'btn-camion-back';
-    back.style.cssText = 'margin-bottom:12px';
-    back.textContent = '← Volver a flota';
-    back.onclick = () => { _camionVistaAdmin = 'flota'; _renderCamionFlotaAdmin(); };
-    cont.insertBefore(back, cont.firstChild);
-  }
+  if (window.AuxiliosDetalleCamion) return window.AuxiliosDetalleCamion.abrir(truckId);
 }
 
 function _renderCamionCards() {
@@ -4138,26 +3880,19 @@ function _renderCamionCards() {
     : 'Sin cargas esta jornada';
   const combColor = _camionCombustible.length ? '#4ade80' : 'var(--muted)';
 
-  // ── Estado Mantenimiento / Planes ──
+  // ── Estado Mantenimiento: el plan más urgente ──
+  // El más urgente por km o por horas de motor (urgencia = restante / intervalo)
   const planUrgente = (_camionPlanes || [])
     .filter(p => p.plan_estado && p.plan_estado !== '_error')
-    .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
-  const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro' };
-  // Severidad real basada en km_restantes: <=0 rojo (vencido), <=1000 ámbar, resto verde
-  const _planSeveridad = (p) => {
-    if (!p) return 'al_dia';
-    if (p.plan_estado === 'al_dia') return 'al_dia';
-    if (p.plan_estado === 'vencido' || (p.km_restantes != null && p.km_restantes <= 0)) return 'critico';
-    if (p.km_restantes != null && p.km_restantes <= 1000) return 'alerta';
-    return 'al_dia';
-  };
-  const mantSeveridad = _planSeveridad(planUrgente);
+    .sort((a, b) => (a.urgencia ?? Infinity) - (b.urgencia ?? Infinity))[0];
+  const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro', sin_horas: '— Sin horas actuales' };
+  const mantCritico = planUrgente && planUrgente.plan_estado === 'vencido';
+  const mantAlerta  = planUrgente && !mantCritico && (planUrgente.plan_estado === 'proximo'
+    || (planUrgente.manda === 'km' && planUrgente.km_restantes != null && planUrgente.km_restantes <= 1000));
   const mantStatus  = planUrgente
     ? `${estadoLabel[planUrgente.plan_estado] || ''} · ${planUrgente.name}`
     : (_camionPlanes.length ? 'Al día' : 'Sin planes');
-  const mantColor   = mantSeveridad === 'critico' ? '#ef4444'
-    : mantSeveridad === 'alerta' ? '#f59e0b'
-    : '#4ade80';
+  const mantColor   = mantCritico ? '#ef4444' : mantAlerta ? '#f59e0b' : '#4ade80';
 
   const mkCard = (icon, title, status, statusColor, borderColor, actionLabel, actionBg, actionFg, actionFn, subId) => `
     <div class="camion-module-card" style="border-left-color:${borderColor}">
@@ -4174,53 +3909,21 @@ function _renderCamionCards() {
       </div>
     </div>`;
 
+  // Sólo el chofer ve estas tarjetas: Administración y Supervisión usan el detalle nuevo.
   let html = '';
-  if (esChofer) {
-    html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
-      '+ Registrar','#ef4444','#fff','openNeumaticosModal()','camion-sub-neumaticos');
-    html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
-      '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
-    html += mkCard('🔩','Mantenimiento', mantStatus, mantColor,'#4ade80',
-      '+ Registrar','#4ade80','#000','openServiceModal()','camion-sub-mantenimiento');
-  } else {
-    html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
-      '+ Registrar','#f59e0b','#000','openNeumaticosModal()','camion-sub-neumaticos');
-    html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
-      '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
-    html += mkCard('📋','Planes de Service',
-      `${(_camionPlanes || []).filter(p => !p._error).length} planes activos`,
-      '#a78bfa','#a78bfa',
-      '+ Plan','#a78bfa','#000','openPlanModal()','camion-sub-planes');
-    html += mkCard('🔩','Historial Ejecuciones',
-      _camionHistorial.length ? 'Últimos services del camión' : 'Sin services registrados',
-      'var(--muted)','#4ade80',
-      '+ Service','#4ade80','#000','openServiceModal()','camion-sub-historial');
-  }
+  html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
+    '+ Registrar','#ef4444','#fff','openNeumaticosModal()','camion-sub-neumaticos');
+  html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
+    '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
+  html += mkCard('🔩','Mantenimiento', mantStatus, mantColor,'#4ade80',
+    '+ Registrar','#4ade80','#000','openServiceModal()','camion-sub-mantenimiento');
   cont.innerHTML = html;
-
-  // Próximo service pill en hero (admin/supervisor)
-  if (!esChofer && planUrgente) {
-    const pill = document.getElementById('camion-next-service-pill');
-    if (pill) {
-      const kmR = planUrgente.km_restantes;
-      const vencido = kmR != null && kmR <= 0;
-      const txt = vencido
-        ? `⚠ ${planUrgente.name} VENCIDO por ${Math.abs(kmR).toLocaleString('es-AR')} km`
-        : `⚙ ${planUrgente.name} en ${Math.abs(kmR || 0).toLocaleString('es-AR')} km`;
-      pill.textContent = txt;
-      pill.className = 'pill ' + (mantSeveridad === 'critico' ? 'pill-red'
-        : mantSeveridad === 'alerta' ? 'pill-amber' : 'pill-green');
-      pill.style.display = '';
-    }
-  }
 }
 
 const _CAMION_SUBS = [
   'camion-sub-combustible',
   'camion-sub-neumaticos',
   'camion-sub-mantenimiento',
-  'camion-sub-planes',
-  'camion-sub-historial',
 ];
 
 function _volverCamionMain() {
@@ -4245,7 +3948,28 @@ function _abrirSubCamion(subId) {
   if (subId === 'camion-sub-combustible')   _renderSubCombustible();
   if (subId === 'camion-sub-neumaticos')    _renderSubNeumaticos();
   if (subId === 'camion-sub-mantenimiento') _renderSubMantenimiento();
-  // 'camion-sub-planes' and 'camion-sub-historial' are pre-rendered by renderPlanes/renderHistorialServices
+}
+
+/* Después de asignar o quitar un plan, registrar un service o cerrar la jornada:
+   Administración y Supervisión recargan el detalle del móvil si está abierto; el
+   chofer, sus tarjetas y la sub-pantalla de mantenimiento. */
+async function _refrescarPlanesCamion(kmOverride = null) {
+  if (!_truckActual?.truck_id) return;
+  const rol = PERFIL_USUARIO?.roles?.name;
+  if (rol === 'administracion' || rol === 'supervision') {
+    if (window.AuxiliosDetalleCamion?.abierto?.() === _truckActual.truck_id) await window.AuxiliosDetalleCamion.recargar();
+    return;
+  }
+  const [planes, services] = await Promise.all([
+    cargarPlanesDetalleOptimizados(_truckActual.truck_id, kmOverride),
+    cargarHistorialServices(_truckActual.truck_id),
+  ]);
+  _camionPlanes    = Array.isArray(planes) ? planes : [];
+  _camionHistorial = services || [];
+  if (document.getElementById('screen-camion')?.classList.contains('active')) {
+    _renderCamionCards();
+    if (document.getElementById('camion-sub-mantenimiento')?.style.display !== 'none') _renderSubMantenimiento();
+  }
 }
 
 function _renderSubCombustible() {
@@ -4386,27 +4110,29 @@ function _renderSubMantenimiento() {
 
   const estadoColor = {
     al_dia: 'var(--green)', proximo: 'var(--amber)', vencido: 'var(--red)',
-    sin_registro: 'var(--muted)', sin_odometro: 'var(--muted)',
+    sin_registro: 'var(--muted)', sin_odometro: 'var(--muted)', sin_horas: 'var(--muted)',
   };
   const estadoLabel = {
     al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido',
-    sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro',
+    sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro', sin_horas: '— Sin horas actuales',
   };
 
   const planesHtml = _camionPlanes.map(p => {
     const estado   = p.plan_estado || 'sin_registro';
     const color    = estadoColor[estado];
     const label    = estadoLabel[estado];
-    const kmInfo   = p.interval_km
-      ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${p.interval_km.toLocaleString('es-AR')} km</b>`
+    // Por km, por horas de motor o por los dos (manda lo que vence primero)
+    const cadencia = [
+      p.usa_km !== false && p.interval_km ? `${p.interval_km.toLocaleString('es-AR')} km` : '',
+      p.usa_horas && p.interval_hours ? `${p.interval_hours.toLocaleString('es-AR')} h de motor` : '',
+    ].filter(Boolean);
+    const kmInfo   = cadencia.length
+      ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${cadencia.join(' o ')}</b>${cadencia.length > 1 ? ' · lo que llegue primero' : ''}`
       : '';
-    const nextDue  = p.next_due_km ? p.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const restante = p.km_restantes != null
-      ? `${p.km_restantes > 0 ? 'Faltan' : 'Excedidos'} <b>${Math.abs(p.km_restantes).toLocaleString('es-AR')} km</b>`
-      : '';
-    const progreso = (p.next_due_km && p.interval_km && p.km_restantes != null)
-      ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
-      : 0;
+    const nextDue  = textoProximoService(p) || '—';
+    const restante = _escHtml(textoRestanteService(p))
+      + (p.usa_horas && p.current_hours == null ? ' · sin horas actuales del camión' : '');
+    const progreso = avanceService(p);
     return `
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
         padding:14px 16px;margin-bottom:10px">
@@ -4895,11 +4621,11 @@ const _OB_ETIQUETAS = {
   jornada_abrir:    () => '🚚 Inicio de jornada',
   jornada_cerrar:   () => '🏁 Cierre de jornada',
   remito_pendiente: p  => `🧾 Remito N° ${p?.nro_remito || '—'}`,
-  remito_firmar:    p  => `✍️ Firma remito N° ${p?.nro_remito || '—'}`,
+  remito_firmar:    p  => `✍ Firma remito N° ${p?.nro_remito || '—'}`,
   fuel:             () => '⛽ Carga de combustible',
   rendicion:        () => '💵 Rendición',
   tire_check:       () => '🛞 Control de gomas',
-  incidente:        () => '⚠️ Incidente'
+  incidente:        () => '⚠ Incidente'
 };
 
 async function abrirColaOffline() {
@@ -5403,7 +5129,7 @@ async function openAsignarPlanModal() {
   // 3. Pobramos el select
   if (select) {
     if (catalogo.length === 0) {
-      select.innerHTML = '<option value="">⚠️ No hay planes globales creados</option>';
+      select.innerHTML = '<option value="">⚠ No hay planes globales creados</option>';
       return;
     }
 
@@ -5438,103 +5164,20 @@ async function asignarPlanAlCamion() {
     toast('Plan asignado exitosamente', 'success');
     closeModal('modal-asignar-plan');
     
-    // Refrescamos la UI del camión
-    const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-    renderPlanes(planesActualizados);
+    await _refrescarPlanesCamion();
   } else {
     toast(`Error: ${resultado.errorMsg}`, 'error');
   }
 }
 
-function renderPlanes(data) {
-  const lista = document.getElementById('planes-lista');
-  if (!lista) return;
 
-  if (data?._error) {
-    lista.innerHTML = '<div style="text-align:center;color:var(--red);padding:20px;font-size:13px">⚠ Error al cargar planes de service. Revisá la conexión.</div>';
-    return;
-  }
-
-  const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
-                  PERFIL_USUARIO?.roles?.name === 'supervision';
-
-  if (!data?.length) {
-    lista.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin planes de service</div>';
-    return;
-  }
-
-  const estadoColor = { al_dia:'var(--green)', proximo:'var(--amber)', vencido:'var(--red)', sin_registro:'var(--muted)', sin_odometro:'var(--muted)' };
-  const estadoLabel = { al_dia:'✓ Al día', proximo:'⚠ Próximo', vencido:'✕ Vencido', sin_registro:'— Sin ejecución', sin_odometro:'— Sin odómetro' };
-
-  lista.innerHTML = data.map(p => {
-    const estado   = p.plan_estado || 'sin_registro';
-    const color    = estadoColor[estado];
-    const label    = estadoLabel[estado];
-    const kmInfo   = p.interval_km    ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${p.interval_km.toLocaleString('es-AR')} km</b>` : '';
-    const hsInfo   = p.interval_hours ? `${p.interval_km ? ' / ' : 'Cada '}<b style="color:var(--blue);font-family:'DM Mono'">${p.interval_hours.toLocaleString('es-AR')} hs</b>` : '';
-    const nextDue  = p.next_due_km    ? p.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const restante = p.km_restantes  != null ? `${p.km_restantes > 0 ? 'Faltan' : 'Excedidos'} <b>${Math.abs(p.km_restantes).toLocaleString('es-AR')} km</b>` : '';
-    const progreso = (p.next_due_km && p.interval_km && p.km_restantes != null)
-      ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
-      : 0;
-
-    const kebab = esAdmin ? `
-      <div class="kebab-wrap">
-        <button class="kebab-btn" onclick="event.stopPropagation();togglePlanMenu(${p.plan_id})" aria-label="Acciones del plan">⋮</button>
-        <div class="kebab-menu" id="plan-menu-${p.plan_id}">
-          <button class="kebab-item" onclick="event.stopPropagation();editarParametrosPlan(${p.plan_id})">✏️ Editar parámetros</button>
-          <button class="kebab-item danger" onclick="event.stopPropagation();desvincularPlanUI(${p.plan_id})">🔌 Desvincular plan</button>
-        </div>
-      </div>` : '';
-
-    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:flex-start;gap:12px">
-        <div style="width:40px;height:40px;border-radius:8px;background:var(--amber-lo);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔧</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:600;flex:1;min-width:0">${p.name}</span>
-            <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${label}</span>
-          </div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${kmInfo}${hsInfo}</div>
-          <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px">
-            <div style="width:${progreso}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s"></div>
-          </div>
-          <div>
-            <div style="font-size:9px;color:var(--muted)">PRÓXIMO VENCIMIENTO</div>
-            <div style="font-family:'DM Mono';font-size:14px;font-weight:700;color:${color}">${nextDue}</div>
-            ${restante ? `<div style="font-size:10px;color:var(--muted)">${restante}</div>` : ''}
-          </div>
-        </div>
-        ${kebab}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function togglePlanMenu(planId) {
-  const menu = document.getElementById(`plan-menu-${planId}`);
-  if (!menu) return;
-  const wasOpen = menu.classList.contains('open');
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  if (!wasOpen) menu.classList.add('open');
-}
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('.kebab-wrap')) return;
   document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
 });
 
-async function desvincularPlanUI(masterPlanId) {
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  return desactivarPlanUI(masterPlanId);
-}
 
-function editarParametrosPlan(masterPlanId) {
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  const plan = (_camionPlanes || []).find(p => p.plan_id === masterPlanId);
-  if (!plan) { toast('No se encontró el plan', 'error'); return; }
-  toast('Edición de parámetros por camión: próximamente (requiere overrides en truck_subscriptions)', 'info');
-}
 
 async function desactivarPlanUI(masterPlanId) {
   if (!_truckActual?.truck_id) { toast('Error: no hay camión activo', 'error'); return; }
@@ -5549,15 +5192,19 @@ async function desactivarPlanUI(masterPlanId) {
   }
 
   toast('Plan desvinculado del camión', 'success');
-  const planes = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-  renderPlanes(planes);
+  await _refrescarPlanesCamion();
 }
 
 
 // ── HISTORIAL DE SERVICES ─────────────────────
 let _planesCache = [];
+let _serviceEditId = null;
+let _serviceSaving = false;
 
-async function openServiceModal() {
+async function openServiceModal(registro = null) {
+  _serviceEditId = registro?.maintenance_id || null;
+  const title = document.querySelector("#modal-service-log .modal-head-title");
+  if (title) title.textContent = registro ? "Editar service realizado" : "Registrar service";
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('sl-camion-info');
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
@@ -5567,6 +5214,9 @@ async function openServiceModal() {
   // KM por defecto = odómetro actual del camión (asume que el service se hace ahora)
   const kmInput = document.getElementById('sl-km');
   if (kmInput && _truckActual.current_km != null) kmInput.value = _truckActual.current_km;
+  // Horas por defecto = horas de motor actuales (las actualiza cada cierre de jornada)
+  const hsInput = document.getElementById('sl-horas');
+  if (hsInput && Number(_truckActual.current_hours) > 0) hsInput.value = _truckActual.current_hours;
   // Estado inicial: KM visible (la mayoría de planes son por km), horas oculto
   const kmGroup = document.getElementById('sl-km-group');
   const horasGroup = document.getElementById('sl-horas-group');
@@ -5596,6 +5246,23 @@ async function openServiceModal() {
       select.appendChild(opt);
     });
   }
+  if (registro && select) {
+    if (![...select.options].some(o => String(o.value) === String(registro.master_plan_id))) {
+      const opt = document.createElement('option');
+      opt.value = registro.master_plan_id;
+      opt.textContent = registro.master_service_plans?.name || 'Plan del registro';
+      opt.dataset.intervalKm = registro.master_service_plans?.interval_km || 0;
+      opt.dataset.intervalHours = registro.master_service_plans?.interval_hours || 0;
+      select.appendChild(opt);
+    }
+    select.value = registro.master_plan_id;
+    onServicePlanChange();
+    const valores = { 'sl-fecha': String(registro.performed_at).slice(0,10), 'sl-km': registro.km_at_service, 'sl-horas': registro.hours_at_service, 'sl-costo': registro.cost, 'sl-taller': registro.workshop_name, 'sl-notas': registro.notes };
+    Object.entries(valores).forEach(([id, value]) => { document.getElementById(id).value = value ?? ''; });
+    calcNextService();
+  }
+  const save = document.getElementById('btn-guardar-service');
+  if (save) save.textContent = registro ? 'Guardar cambios' : 'Guardar service';
   validateServiceForm();
   openModal('modal-service-log');
 }
@@ -5619,6 +5286,7 @@ function onServicePlanChange() {
   if (kmGroup) kmGroup.style.display = needsKm ? '' : 'none';
   if (horasGroup) horasGroup.style.display = needsHrs ? '' : 'none';
   if (!needsHrs) { const h = document.getElementById('sl-horas'); if (h) h.value = ''; }
+  else { const h = document.getElementById('sl-horas'); if (h && !h.value && Number(_truckActual?.current_hours) > 0) h.value = _truckActual.current_hours; }
   if (!needsKm)  { const k = document.getElementById('sl-km');    if (k) k.value = ''; }
   calcNextService();
   validateServiceForm();
@@ -5659,94 +5327,26 @@ function validateServiceForm() {
   btn.disabled = !ok;
 }
 
-function renderHistorialServices(data) {
-  const tbody = document.getElementById('tbody-services');
-  const mList = document.getElementById('mobile-services-list');
-  if (!tbody) return;
-
-  if (!data?.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Sin services registrados</td></tr>';
-    if (mList) mList.innerHTML = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin services registrados</div>`;
-    return;
-  }
-
-  tbody.innerHTML = data.map(s => {
-    const fecha   = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
-    const km      = (s.km_at_service || 0).toLocaleString('es-AR');
-    const nextKm  = s.next_due_km ? s.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const costo   = s.cost ? Number(s.cost).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }) : '—';
-    const taller  = s.workshop_name || '—';
-    const plan    = s.master_service_plans?.name || '—';
-    return `<tr>
-      <td>${fecha}</td>
-      <td style="font-weight:600">${plan}</td>
-      <td style="font-family:'DM Mono'">${km} km</td>
-      <td style="font-size:11px;color:var(--muted)">${taller}</td>
-      <td style="font-family:'DM Mono';color:var(--amber)">${costo}</td>
-      <td style="font-family:'DM Mono';font-size:11px;color:var(--amber)">${nextKm}</td>
-    </tr>`;
-  }).join('');
-
-  // ── Mobile: lista compacta ──
-  if (!mList) return;
-  mList.innerHTML = '';
-  data.forEach(s => {
-    const fecha  = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
-    const km     = (s.km_at_service || 0).toLocaleString('es-AR');
-    const nextKm = s.next_due_km ? s.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const costo  = s.cost ? Number(s.cost).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }) : '—';
-    const taller = s.workshop_name || '—';
-    const plan   = s.master_service_plans?.name || '—';
-    const titulo = `${plan} — ${fecha}`;
-    const detalle = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">KM al service</div>
-          <div style="color:var(--text);font-size:12px;font-family:'DM Mono';font-weight:600">${km} km</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Taller</div>
-          <div style="color:var(--text);font-size:12px">${taller}</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Costo</div>
-          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${costo}</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Próximo</div>
-          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${nextKm}</div>
-        </div>
-      </div>`;
-
-    const row = document.createElement('div');
-    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid #4ade80;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
-    row.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${plan}</div>
-        <div style="color:var(--muted);font-size:10px">${fecha} · ${km} km</div>
-      </div>
-      <span style="color:var(--muted2);font-size:16px;flex-shrink:0">›</span>`;
-    row.onclick = () => _abrirDetalleMovil(titulo, detalle);
-    mList.appendChild(row);
-  });
-}
 
 async function guardarServiceLog() {
+  if (_serviceSaving) return;
   const planId  = document.getElementById('sl-plan')?.value;
   const { needsKm, needsHrs } = _slNeeds();
   const km      = parseInt(document.getElementById('sl-km')?.value);
   const hrs     = parseInt(document.getElementById('sl-horas')?.value);
   const fecha   = document.getElementById('sl-fecha')?.value;
   const taller  = document.getElementById('sl-taller')?.value || null;
-  const costo   = parseFloat(document.getElementById('sl-costo')?.value) || null;
+  const costoTexto = document.getElementById('sl-costo')?.value?.trim();
+  const costo = costoTexto ? Number(costoTexto) : null;
   const notas   = document.getElementById('sl-notas')?.value || null;
 
+  if (!fecha) { _modalError('sl-error', 'Ingresá la fecha del service'); return; }
   if (!planId)           { _modalError('sl-error', 'Seleccioná el plan de service'); return; }
   if (needsKm && (!km || isNaN(km))) { _modalError('sl-error', 'Ingresá los KM al realizar el service'); return; }
   if (needsKm && km <= 0)            { _modalError('sl-error', 'Los KM deben ser un valor positivo mayor a cero'); return; }
   if (needsHrs && (!hrs || isNaN(hrs))) { _modalError('sl-error', 'Ingresá las horas de motor al realizar el service'); return; }
   if (needsHrs && hrs <= 0)             { _modalError('sl-error', 'Las horas deben ser un valor positivo mayor a cero'); return; }
-  if (costo !== null && costo < 0) { _modalError('sl-error', 'El costo no puede ser negativo'); return; }
+  if (costo !== null && (!Number.isFinite(costo) || costo < 0)) { _modalError('sl-error', 'El costo debe ser un número igual o mayor a cero'); return; }
   _modalError('sl-error', '');
 
   if (needsKm && _truckActual?.current_km) {
@@ -5767,7 +5367,9 @@ async function guardarServiceLog() {
   if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; btn.style.pointerEvents = 'none'; }
 
   // NUEVO: Enviamos master_plan_id y recibimos la respuesta estandarizada
-  const resultado = await registrarServiceOptimizado({
+  _serviceSaving = true;
+  const guardar = _serviceEditId ? datos => modificarServiceRealizado(_serviceEditId, _truckActual.truck_id, datos) : registrarServiceOptimizado;
+  const resultado = await guardar({
     truck_id:         _truckActual.truck_id,
     master_plan_id:   parseInt(planId),
     performed_at:     fecha || new Date().toLocaleDateString('sv-SE'),
@@ -5780,17 +5382,14 @@ async function guardarServiceLog() {
     notes:            notas,
   });
 
-  if (btn) { btn.textContent = '🔧 Guardar service'; btn.style.pointerEvents = 'auto'; validateServiceForm(); }
+  _serviceSaving = false;
+  if (btn) { btn.textContent = _serviceEditId ? 'Guardar cambios' : 'Guardar service'; btn.style.pointerEvents = 'auto'; validateServiceForm(); }
 
   if (resultado.ok) {
-    toast('Service registrado correctamente', 'success');
+    toast(_serviceEditId ? 'Service actualizado correctamente' : 'Service registrado correctamente', 'success');
     closeModal('modal-service-log');
     
-    // Refrescamos ambas tablas (el log y las barras de progreso de planes)
-    const services = await cargarHistorialServices(_truckActual.truck_id);
-    renderHistorialServices(services);
-    const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-    renderPlanes(planesActualizados);
+    await _refrescarPlanesCamion();
   } else {
     // Si falla por internet o validación, mostramos el motivo real
     toast(`Error al guardar: ${resultado.errorMsg}`, 'error');
@@ -5884,7 +5483,7 @@ function procesarArchivoReal(input, statusId, iconId) {
   const file = input.files[0];
   const statusEl = document.getElementById(statusId);
   const iconEl = document.getElementById(iconId);
-  const boxEl = input.closest('.photo-upload');
+  const boxEl = input.closest('.photo-upload, .foto-slot');   // el flujo móvil del remito usa .foto-slot
 
   console.log("Procesando archivo:", file.name, "| Tipo:", file.type, "| Tamaño:", (file.size / 1024 / 1024).toFixed(2), "MB");
 
@@ -5914,8 +5513,10 @@ function procesarArchivoReal(input, statusId, iconId) {
   
   reader.onload = function(e) {
     try {
-      boxEl.style.borderColor = 'var(--green)';
-      boxEl.style.background = 'var(--bg)';
+      if (boxEl) {
+        boxEl.style.borderColor = 'var(--green)';
+        boxEl.style.background = 'var(--bg)';
+      }
 
       if (iconEl) iconEl.textContent = '✅';
       if (statusEl) {
@@ -5928,13 +5529,13 @@ function procesarArchivoReal(input, statusId, iconId) {
       }
 
       // ── INYECCIÓN 2: UX Cambio de subtítulo ──
-      let subEl = boxEl.querySelector('.pu-sub');
+      let subEl = boxEl && boxEl.querySelector('.pu-sub');
       if (subEl) {
         subEl.textContent = '🔄 Toca para volver a tomar foto';
         subEl.style.color = 'var(--text)'; 
       }
 
-      if (file.type.startsWith('image/')) {
+      if (boxEl && file.type.startsWith('image/')) {
         let preview = boxEl.querySelector('.img-preview');
         if (!preview) {
           preview = document.createElement('img');
@@ -6342,7 +5943,7 @@ let firmaPago1 = '';
 let firmaPago2 = '';
 let firmaPagoMixtoActivo = false;
 
-// 🛠️ HELPER: Centraliza la lectura de inputs para evitar errores y código repetido
+// 🛠 HELPER: Centraliza la lectura de inputs para evitar errores y código repetido
 function obtenerValorNumericoFirma(id) {
   const valor = parseFloat(document.getElementById(id)?.value);
   return isNaN(valor) ? 0 : valor;
@@ -6520,12 +6121,12 @@ function _abrirDetalleMovil(titulo, htmlContent) {
   openModal('modal-mobile-detalle');
 }
 
-function _journeyColumns(fecha, movil, km, servicios, pill) {
+function _journeyColumns(fecha, movil, km, servicios, pill, motor = '') {
   const esc=value=>String(value??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const shortDate=String(fecha).replace(/^(\d{2})-(\d{2})-\d{2}(\d{2})$/, '$1/$2/$3');
   return '<div class="journey-col"><span class="journey-col-label">Fecha</span><strong>'+esc(shortDate)+'</strong></div>'
     +'<div class="journey-col"><span class="journey-col-label">Móvil</span><strong>'+esc(movil)+'</strong></div>'
-    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span></div>'
+    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span>'+(motor?'<span class="journey-motor">'+esc(motor)+'</span>':'')+'</div>'
     +'<div class="journey-col journey-status"><span class="journey-col-label">Estado</span>'+pill+'</div>';
 }
 
@@ -6546,14 +6147,20 @@ function renderHistorialJornadas(data) {
       ? `<span class="pill pill-amber">Abierta</span>`
       : j.estado === 'anulada' ? `<span class="pill pill-red">Anulada</span>` : `<span class="pill pill-green">Cerrada</span>`;
 
-    // ── Desktop: fila de tabla (sin cambios) ──
+    // Horas de motor: sólo los camiones con horómetro.
+    const motorTxt = _horasMotorTexto(j.horasMotorInicio, j.horasMotorFinal);
+    const motorRango = j.horasMotorInicio != null
+      ? `${_fmtHoras(j.horasMotorInicio)} → ${j.horasMotorFinal != null ? _fmtHoras(j.horasMotorFinal) : '—'} h`
+      : '';
+
+    // ── Desktop: fila de tabla ──
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><b>${j.fecha}</b></td>
       <td style="font-family:'DM Mono';font-weight:600">${j.camion}</td>
       <td style="font-family:'DM Mono'">${j.kmInicio}</td>
       <td style="font-family:'DM Mono'">${j.kmFinal}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${j.kmRec} km</span></td>
+      <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${j.kmRec} km</span>${motorTxt ? `<div style="font-size:10px;color:var(--muted)" title="Horas de motor: ${_escHtml(motorRango)}">${_escHtml(motorTxt)}</div>` : ''}</td>
       <td>${j.horas} hs</td>
       <td>${tallerPill}</td>
       <td>${estadoPill}</td>`;
@@ -6582,6 +6189,11 @@ function renderHistorialJornadas(data) {
           <div style="color:var(--text);font-size:12px">${j.horas} hs</div>
         </div>
       </div>
+      ${motorRango ? `
+      <div style="border-top:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Horas de motor</span>
+        <span style="color:var(--text);font-size:12px;font-family:'DM Mono'">${_escHtml(motorRango)}</span>
+      </div>` : ''}
       <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:8px">
         <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Recorrido</span>
         <span style="color:#4ade80;font-size:16px;font-weight:700;font-family:'DM Mono'">${j.kmRec} km</span>
@@ -6590,7 +6202,7 @@ function renderHistorialJornadas(data) {
     const row = document.createElement('div');
     row.className = `journey-columns${j.estado === 'abierta' ? ' is-open' : ''}`;
     row.style.borderLeftColor = color;
-    row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill);
+    row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill,motorTxt);
     row.onclick = () => _abrirDetalleMovil(titulo, detalle);
     mList.appendChild(row);
   });
@@ -6680,7 +6292,7 @@ async function _jhistCargarPagina(reset) {
   }
 
   const { data, error } = await _db.from('daily_logs')
-    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate), remitos!remitos_log_id_fkey(status)')
+    .select('log_id, log_date, truck_id, km_inicio, km_final, horas_inicio, horas_final, hora_inicio, hora_fin, status, trucks(plate), remitos!remitos_log_id_fkey(status)')
     .eq('driver_id', _jhistDriverId)
     .order('log_date', { ascending: false })
     .range(_jhistOffset, _jhistOffset + _JHIST_PAGINA - 1);
@@ -6716,7 +6328,7 @@ async function _jhistCargarPagina(reset) {
     const row = document.createElement('div');
     row.className = 'journey-columns';
     row.style.borderLeftColor = abierta ? 'var(--amber)' : j.status==='void' ? 'var(--red)' : 'var(--green)';
-    row.innerHTML = _journeyColumns(_jhistFecha(j.log_date),movil,kmRec.replace(/ km$/, ''),servicios,pill);
+    row.innerHTML = _journeyColumns(_jhistFecha(j.log_date),movil,kmRec.replace(/ km$/, ''),servicios,pill,_horasMotorTexto(j.horas_inicio, j.horas_final));
     lista.appendChild(row);
   });
 
@@ -7141,6 +6753,13 @@ async function linkPublicoRemito(remitoId) {
   } catch (e) { console.warn('linkPublicoRemito:', e?.message || e); return ''; }
 }
 
+function linkGoogleMapsRemito(d) {
+  const origen = String(d?.origen || '').trim();
+  const destino = String(d?.destino || '').trim();
+  if (!origen || !destino || origen === destino) return '';
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}&travelmode=driving`;
+}
+
 function textoWhatsAppRemito(d, empresa = '', link = '') {
   const srv = d.srvOrden || d.nroSrv;
   const extras = (parseFloat(d.peaje) || 0) + (parseFloat(d.excedente) || 0) + (parseFloat(d.otros) || 0);
@@ -7150,6 +6769,7 @@ function textoWhatsAppRemito(d, empresa = '', link = '') {
     `Fecha: ${d.fecha || '—'}`,
     `Vehículo: ${[d.patente, d.marca].filter(Boolean).join(' · ') || '—'}`,
     d.origen ? (d.destino && d.destino !== d.origen ? `Recorrido: ${d.origen} → ${d.destino}` : `Dirección: ${d.origen}`) : '',
+    linkGoogleMapsRemito(d) ? `Ver recorrido en Google Maps:\n${linkGoogleMapsRemito(d)}` : '',
     extras > 0 ? `Cargos cobrados: $ ${extras.toLocaleString('es-AR')}${d.pago && d.pago !== '—' ? ` (${d.pago})` : ''}` : '',
     d.estado === 'firmado' ? 'Remito firmado digitalmente.' : '',
     link ? `\nDescargá tu remito y contanos cómo te atendimos:\n${link}` : '',
@@ -7406,6 +7026,122 @@ let kmIaInicio     = null;  // lectura IA al abrir (null = no leyó)
 let kmIaFinal      = null;  // lectura IA al cerrar
 let kmOrigenInicio = null;  // 'ia' | 'manual_ia_fallo' | 'manual_editado' | 'manual_offline'
 let kmOrigenFinal  = null;
+// Horas de motor (sólo camiones con horómetro): lectura IA y de dónde salió el dato
+let horasIaInicio     = null;
+let horasIaFinal      = null;
+let horasOrigenInicio = null;  // 'ia' | 'manual_ia_fallo' | 'manual_offline' (se resuelve al confirmar)
+let horasOrigenFinal  = null;
+
+/* "1.234,5", "1234,5" o "1234.5" → 1234.5 (un decimal). NaN si no es un número. */
+function _parseHoras(v) {
+  let t = String(v == null ? '' : v).trim().replace(/\s/g, '');
+  if (!t) return NaN;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  const n = Number(t);
+  return isFinite(n) && n >= 0 ? Math.round(n * 10) / 10 : NaN;
+}
+function _fmtHoras(n) {
+  return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+}
+/* Horas de motor que usó una jornada; null mientras falte alguna de las dos. */
+function _horasMotorUsadas(ini, fin) {
+  if (ini == null || fin == null || !isFinite(Number(ini)) || !isFinite(Number(fin))) return null;
+  return Math.max(0, Math.round((Number(fin) - Number(ini)) * 10) / 10);
+}
+/* Texto corto para las listas: "+4,5 h motor" con la jornada cerrada y
+   "6.000 h motor" (las de arranque) mientras sigue abierta. */
+function _horasMotorTexto(ini, fin) {
+  if (ini == null) return '';
+  const usadas = _horasMotorUsadas(ini, fin);
+  return usadas != null ? `+${_fmtHoras(usadas)} h motor` : `${_fmtHoras(ini)} h motor`;
+}
+/* De dónde salieron las horas confirmadas: igual que con los km. */
+function _horasResolverOrigen(ia, valor, origen) {
+  if (ia != null && valor === ia) return 'ia';
+  if (ia != null) return 'manual_editado';
+  return origen || 'manual';
+}
+/* Muestra u oculta el bloque de horas de un modal ('nj' abrir, 'cj' cerrar). */
+function _horasPreparar(pre, necesita) {
+  const area = document.getElementById(pre + '-horas-area');
+  const input = document.getElementById(pre + '-horas');
+  const fuente = document.getElementById(pre + '-horas-fuente');
+  const calc = document.getElementById(pre + '-horas-calc');
+  if (area) area.hidden = !necesita;
+  if (input) { input.value = ''; input.removeAttribute('aria-invalid'); }
+  if (fuente) { fuente.textContent = 'La IA las lee de la misma foto. Si no las encuentra, escribilas.'; fuente.className = 'jh-fuente'; }
+  if (calc) { calc.textContent = ''; calc.className = 'jh-calc'; }
+}
+function _horasNecesitaInicio() { return !!jornadaSeleccionada?.registra_horas; }
+function _horasNecesitaCierre() { return jornadaParaCerrar?.horas_inicio != null; }
+function _horasReferencia(pre) {
+  const v = pre === 'nj' ? jornadaSeleccionada?.current_hours : jornadaParaCerrar?.horas_inicio;
+  const n = Number(v);
+  return v != null && isFinite(n) && n > 0 ? n : null;
+}
+/* Diferencia contra la referencia: último cierre (abrir) o inicio de la jornada (cerrar). */
+function onHorasInput(pre) {
+  const input = document.getElementById(pre + '-horas');
+  const calc = document.getElementById(pre + '-horas-calc');
+  if (!input || !calc) return;
+  input.removeAttribute('aria-invalid');
+  const v = _parseHoras(input.value), ref = _horasReferencia(pre);
+  calc.className = 'jh-calc';
+  if (isNaN(v)) { calc.textContent = input.value.trim() ? 'Escribí un número, por ejemplo 1234,5' : ''; if (input.value.trim()) calc.className = 'jh-calc is-error'; return; }
+  if (ref == null) { calc.textContent = ''; return; }
+  const d = Math.round((v - ref) * 10) / 10;
+  if (d < 0) {
+    calc.textContent = `⚠ ${_fmtHoras(-d)} h menos que ${pre === 'nj' ? 'el último cierre' : 'al iniciar'} (${_fmtHoras(ref)} h)`;
+    calc.className = 'jh-calc is-error';
+  } else if (pre === 'cj' && d > 24) {
+    calc.textContent = `+${_fmtHoras(d)} h de motor en la jornada: revisá el horómetro`;
+    calc.className = 'jh-calc is-aviso';
+  } else {
+    calc.textContent = pre === 'nj' ? `+${_fmtHoras(d)} h desde el último cierre` : `+${_fmtHoras(d)} h de motor en la jornada`;
+    calc.className = 'jh-calc is-ok';
+  }
+}
+/* Lo que devolvió la IA para las horas (o que no las vio). */
+function _horasDesdeIA(pre, horas) {
+  const input = document.getElementById(pre + '-horas');
+  const fuente = document.getElementById(pre + '-horas-fuente');
+  const leidas = horas != null && isFinite(Number(horas));
+  if (pre === 'nj') { horasIaInicio = leidas ? Number(horas) : null; horasOrigenInicio = leidas ? 'ia' : 'manual_ia_fallo'; }
+  else { horasIaFinal = leidas ? Number(horas) : null; horasOrigenFinal = leidas ? 'ia' : 'manual_ia_fallo'; }
+  if (input) input.value = leidas ? _fmtHoras(horas) : '';
+  if (fuente) {
+    fuente.textContent = leidas ? '✓ Leídas por la IA · revisá que coincidan con el tablero' : 'La IA no encontró las horas en la foto: escribilas a mano';
+    fuente.className = 'jh-fuente ' + (leidas ? 'is-ia' : 'is-manual');
+  }
+  onHorasInput(pre);
+  if (!leidas) input?.focus();
+}
+/* Valida las horas antes de confirmar. Devuelve {ok, horas, ia, origen} o {ok:false}. */
+function _horasValidar(pre, errorId) {
+  const necesita = pre === 'nj' ? _horasNecesitaInicio() : _horasNecesitaCierre();
+  if (!necesita) return { ok: true, horas: null, ia: null, origen: null };
+  const input = document.getElementById(pre + '-horas');
+  const v = _parseHoras(input?.value);
+  const ref = _horasReferencia(pre);
+  if (isNaN(v)) {
+    input?.setAttribute('aria-invalid', 'true'); input?.focus();
+    _modalError(errorId, 'Este camión registra horas de motor: cargá las horas ' + (pre === 'nj' ? 'iniciales' : 'finales') + '.');
+    return { ok: false };
+  }
+  if (ref != null && v < ref) {
+    input?.setAttribute('aria-invalid', 'true'); input?.focus();
+    _modalError(errorId, `Las horas (${_fmtHoras(v)} h) son menores a ${pre === 'nj' ? 'las del último cierre' : 'las del inicio de la jornada'} (${_fmtHoras(ref)} h). Revisá el horómetro.`);
+    return { ok: false };
+  }
+  if (pre === 'cj' && ref != null && v - ref > 24 &&
+      !confirm(`La jornada suma ${_fmtHoras(v - ref)} h de motor. ¿Es correcto?`)) {
+    input?.focus();
+    return { ok: false };
+  }
+  const ia = pre === 'nj' ? horasIaInicio : horasIaFinal;
+  const origen = pre === 'nj' ? horasOrigenInicio : horasOrigenFinal;
+  return { ok: true, horas: v, ia, origen: _horasResolverOrigen(ia, v, origen) };
+}
 let _jornadasAbiertasCache    = [];
 let _jornadaPendienteCerrar   = null;
 
@@ -7415,6 +7151,8 @@ async function abrirModalNuevaJornada() {
     jornadaSeleccionada = null;
     fotoKmInicio = null;
     kmIaInicio = null; kmOrigenInicio = null;
+    horasIaInicio = null; horasOrigenInicio = null;
+    _horasPreparar('nj', false);
     _modalError('nj-error', '');
 
     const kmInput = document.getElementById('nj-km-inicio');
@@ -7476,6 +7214,7 @@ async function abrirModalNuevaJornada() {
       jornadaSeleccionada = _camionActual;
       const kmInput2 = document.getElementById('nj-km-inicio');
       if (kmInput2 && _camionActual.current_km) kmInput2.value = _camionActual.current_km;
+      _horasPreparar('nj', _horasNecesitaInicio());
       if (preview)    preview.style.display = 'block';
       if (previewTxt) previewTxt.textContent = `${_camionActual.plate}${_camionActual.numero_interno ? ' · N° ' + _camionActual.numero_interno : ''}`;
       if (btnSelector) btnSelector.style.display = 'none';
@@ -7521,7 +7260,7 @@ async function abrirModalNuevaJornada() {
       <div style="font-size:9px;color:var(--amber);margin:2px 0">🛣 ${c.current_km ? c.current_km.toLocaleString('es-AR') + ' km' : 'Sin km'}</div>
       ${[c.brand, c.model].filter(Boolean).length ? `<div style="font-size:9px;color:var(--muted)">${[c.brand,c.model].filter(Boolean).join(' ')}</div>` : ''}
       <div style="font-size:9px;margin-top:4px;padding:1px 5px;border-radius:4px;display:inline-block;background:${ocupado ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'};color:${ocupado ? 'var(--red)' : '#10b981'}">
-        ${ocupado ? '🔴 En uso' : '🟢 Libre'}
+        ${ocupado ? '● En uso' : '● Libre'}
       </div>
       <div class="camion-check-icon" style="text-align:right;font-size:14px;margin-top:2px"></div>
   </div>`;
@@ -7551,6 +7290,7 @@ function reabrirSelectorCamion() {
     const searchInput = document.getElementById('camion-search-input');
     if (searchInput) { searchInput.value = ''; filtrarCamionesPorBusqueda(''); }
     jornadaSeleccionada = null;
+    _horasPreparar('nj', false);
     const preview = document.getElementById('camion-seleccionado-preview');
     const btnSelector = document.getElementById('btn-abrir-selector-camion');
     const panel = document.getElementById('panel-selector-camion');
@@ -7587,6 +7327,8 @@ function seleccionarCamion(camion, el) {
   // Pre-llenar KM inicial
   const kmInput = document.getElementById('nj-km-inicio');
   if (kmInput && camion.current_km) kmInput.value = camion.current_km;
+  horasIaInicio = null; horasOrigenInicio = null;
+  _horasPreparar('nj', !!camion.registra_horas);
 }
 
 function procesarFotoJornada(input, statusId, iconId) {
@@ -7651,9 +7393,13 @@ async function confirmarNuevaJornada() {
       box.style.transition  = 'all 0.3s';
       setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
     }
-    if (status) { status.textContent = '⚠️ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
+    if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
   }
+
+  // Horas de motor: obligatorias en los camiones con horómetro
+  const horasIni = _horasValidar('nj', 'nj-error');
+  if (!horasIni.ok) return;
 
   const btn = document.querySelector('#modal-nueva-jornada .btn-primary');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
@@ -7680,6 +7426,9 @@ async function confirmarNuevaJornada() {
         kmInicio:     kmInicio,
         kmInicioIa:     kmIaInicio,
         kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
+        horasInicio:       horasIni.horas,
+        horasInicioIa:     horasIni.ia,
+        horasInicioOrigen: horasIni.origen,
         grillaMotivo: _grillaMotivoPendiente,
         marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
         // Fecha/hora del momento REAL de la apertura (no del sync).
@@ -7704,6 +7453,7 @@ async function confirmarNuevaJornada() {
         patente:      jornadaSeleccionada.plate,
         marca_modelo: payloadOffline.marcaModelo,
         km_inicio:    kmInicio,
+        horas_inicio: horasIni.horas,
         log_date:     payloadOffline.logDate,
         hora_inicio:  payloadOffline.horaInicio,
       };
@@ -7736,6 +7486,9 @@ async function confirmarNuevaJornada() {
     kmInicio:     kmInicio,
     kmInicioIa:     kmIaInicio,
     kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
+    horasInicio:       horasIni.horas,
+    horasInicioIa:     horasIni.ia,
+    horasInicioOrigen: horasIni.origen,
     fotoKmInicio: fotoKmInicio,
     grillaMotivo: _grillaMotivoPendiente,
     marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
@@ -7859,6 +7612,9 @@ function abrirModalCerrarJornada(jornada) {
   fotoKmFinal = null;
   kmExcepcion = false;
   kmIaFinal = null; kmOrigenFinal = null;
+  horasIaFinal = null; horasOrigenFinal = null;
+  _horasPreparar('cj', _horasNecesitaCierre());
+  _cargarHorasInicioCierre(jornada);
 
   // Limpiar inputs viejos
   ['cj-km-final', 'cj-workshop-detail'].forEach(id => {
@@ -7923,6 +7679,31 @@ function abrirModalCerrarJornada(jornada) {
 
   // Y finalmente... ¡Tu función nativa hace la magia!
   openModal('modal-cerrar-jornada');
+}
+
+/* Las listas de jornadas abiertas no traen las horas de inicio: se piden
+   aparte (o salen de la jornada guardada en el teléfono si no hay señal). Si
+   la jornada abrió con horas, el cierre las pide. */
+async function _cargarHorasInicioCierre(jornada) {
+  if (!jornada) return;
+  if (jornada.horas_inicio === undefined && _jornadaActivaLocal && String(_jornadaActivaLocal.log_id) === String(jornada.log_id)) {
+    jornada.horas_inicio = _jornadaActivaLocal.horas_inicio ?? null;
+  }
+  const real = jornada.log_id != null && !_logIdEsTemporal(jornada.log_id);
+  if (real && navigator.onLine && typeof _db !== 'undefined') {
+    try {
+      const { data } = await _db.from('daily_logs').select('horas_inicio').eq('log_id', jornada.log_id).maybeSingle();
+      if (data) jornada.horas_inicio = data.horas_inicio;
+    } catch (e) { /* sin dato: queda lo que había */ }
+  }
+  if (jornadaParaCerrar !== jornada) return;
+  const area = document.getElementById('cj-horas-area');
+  const necesita = _horasNecesitaCierre();
+  if (area && area.hidden === necesita) _horasPreparar('cj', necesita);
+  if (necesita) {
+    const fuente = document.getElementById('cj-horas-fuente');
+    if (fuente && !document.getElementById('cj-horas')?.value) fuente.textContent = `Al iniciar: ${_fmtHoras(jornada.horas_inicio)} h. La IA las lee de la misma foto.`;
+  }
 }
 
 const _TALLER_EJ = {
@@ -8111,10 +7892,10 @@ function validarKmInicioJornada() {
   }
 
   if (kmIngresado < kmRegistrado) {
-    display.textContent = `⚠️ El KM ingresado (${kmIngresado.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
+    display.textContent = `⚠ El KM ingresado (${kmIngresado.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
     display.style.color = 'var(--red)';
   } else if (kmRegistrado > 0 && (kmIngresado - kmRegistrado) > 5000) {
-    display.textContent = `⚠️ Salto de +${(kmIngresado - kmRegistrado).toLocaleString('es-AR')} km respecto al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
+    display.textContent = `⚠ Salto de +${(kmIngresado - kmRegistrado).toLocaleString('es-AR')} km respecto al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
     display.style.color = 'var(--red)';
   }
 }
@@ -8136,7 +7917,7 @@ function calcularKmRecorridos() {
   const diff = kmFinal - kmInicio;
 
   diffDisplay.textContent = diff < 0
-    ? '⚠️ KM menor al inicio'
+    ? '⚠ KM menor al inicio'
     : `+${diff.toLocaleString('es-AR')} km recorridos`;
 
   diffDisplay.style.color = diff < 0 ? 'var(--red)' : 'var(--green)';
@@ -8171,7 +7952,7 @@ async function confirmarCerrarJornada() {
       box.style.transition  = 'all 0.3s';
       setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
     }
-    if (status) { status.textContent = '⚠️ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
+    if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
   }
   if (enTaller && !tallerTipo) {
@@ -8180,6 +7961,8 @@ async function confirmarCerrarJornada() {
   if (enTaller && !workshopDetail) {
     _modalError('cj-error', 'Ingresá el detalle del trabajo realizado en taller'); return;
   }
+  const horasFin = _horasValidar('cj', 'cj-error');
+  if (!horasFin.ok) return;
   _modalError('cj-error', '');
 
   // Bloquear botón mientras Supabase procesa (evita doble envío en redes lentas)
@@ -8204,6 +7987,9 @@ async function confirmarCerrarJornada() {
         kmFinal:        kmFinal,
         kmFinalIa:     kmIaFinal,
         kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
+        horasFinal:       horasFin.horas,
+        horasFinalIa:     horasFin.ia,
+        horasFinalOrigen: horasFin.origen,
         inWorkshop:     enTaller,
         workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
         kmExcepcion:    kmExcepcion,
@@ -8254,6 +8040,9 @@ async function confirmarCerrarJornada() {
     kmFinal:        kmFinal,
     kmFinalIa:     kmIaFinal,
     kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
+    horasFinal:       horasFin.horas,
+    horasFinalIa:     horasFin.ia,
+    horasFinalOrigen: horasFin.origen,
     fotoKmFinal:    fotoKmFinal,
     inWorkshop:     enTaller,
     workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
@@ -8275,8 +8064,8 @@ async function confirmarCerrarJornada() {
     // actualizar KM en memoria y refrescar las barras de service
     if (_truckActual?.truck_id === jornadaParaCerrar.truck_id) {
       _truckActual.current_km = kmFinal;
-      const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id, kmFinal);
-      renderPlanes(planesActualizados);
+      if (horasFin.horas != null) _truckActual.current_hours = Math.floor(horasFin.horas);
+      await _refrescarPlanesCamion(kmFinal);
     }
 
     // Abrir rendición de efectivo
@@ -8511,20 +8300,17 @@ async function actualizarPantallaJornadas() {
       jornadas.forEach(j => {
         const info = j.trucks;
         const div  = document.createElement('div');
-        div.style.cssText = 'display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border:1px solid rgba(245,166,35,0.3);border-radius:10px';
+        div.className = 'reg-open-card';
         div.innerHTML = `
-          <div style="width:44px;height:44px;background:var(--amber-lo);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🚛</div>
-          <div style="flex:1">
-            <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--amber)">${info?.plate || '—'}</div>
-            <div style="font-size:11px;color:var(--muted)">${info?.brand || ''} ${info?.model || ''} · N° ${info?.numero_interno || '—'}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">
-              Inicio: <span style="font-family:'DM Mono';color:var(--text)">${j.hora_inicio || '—'}</span> ·
-              KM: <span style="font-family:'DM Mono';color:var(--amber)">${(j.km_inicio||0).toLocaleString('es-AR')}</span>
-            </div>
+          <div class="reg-open-icon"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#truck"/></svg></div>
+          <div class="reg-open-info">
+            <div class="reg-open-plate">${info?.plate || '—'}</div>
+            <div class="reg-open-meta">${info?.brand || ''} ${info?.model || ''} · N° ${info?.numero_interno || '—'}</div>
+            <div class="reg-open-meta">Inicio <b>${j.hora_inicio || '—'}</b> · KM <b>${(j.km_inicio||0).toLocaleString('es-AR')}</b>${j.horas_inicio != null ? ` · Horas <b>${_fmtHoras(j.horas_inicio)}</b>` : ''}</div>
           </div>
-          <button class="btn btn-primary" style="font-size:11px;padding:8px 14px;flex-shrink:0"
+          <button class="btn btn-primary reg-open-close"
             onclick="iniciarCierreJornada(${JSON.stringify(j).replace(/"/g,'&quot;')})">
-            🏁 Cerrar
+            Cerrar jornada
           </button>`;
         lista.appendChild(div);
       });
@@ -8626,6 +8412,11 @@ async function cargarResumenMesPantalla() {
   if (elJor) elJor.textContent = data.total_jornadas;
   if (elSrv) elSrv.textContent = data.total_servicios;
   if (elAnu) elAnu.textContent = data.total_anulados > 0 ? `${data.total_anulados} anulado${data.total_anulados > 1 ? 's' : ''}` : '';
+  // Horas de motor: sólo aparece si en el mes hubo jornadas con horómetro.
+  const boxHs = document.getElementById('kpi-horas-mes-box');
+  const elHs  = document.getElementById('kpi-horas-mes');
+  if (boxHs) boxHs.hidden = !(Number(data.total_horas_motor) > 0);
+  if (elHs)  elHs.textContent = _fmtHoras(Number(data.total_horas_motor) || 0);
 }
 
 // ── NAV AVATAR POPUP ────────────────────────────────────────────
@@ -8651,7 +8442,7 @@ function toggleNavAvatarMenu() {
 
 // ── CONTROLADOR DEL HUB DE CONFIGURACIÓN ───────────────────────
 
-async function openSettingsHub() {
+async function openSettingsHub(tabId = 'tab-flota') {
   const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
 
   if (esChofer) {
@@ -8664,8 +8455,10 @@ async function openSettingsHub() {
     document.body.appendChild(modal);
   }
   _renderPerfilAdminTab();
+  // Cada herramienta se abre sola (sin el menú lateral de la versión inicial).
+  modal?.classList.add('cfg-single');
   openModal('modal-settings');
-  switchConfigTab('tab-flota');
+  switchConfigTab(_cfgTabMeta[tabId] ? tabId : 'tab-flota');
 }
 
 function _renderPerfilAdminTab() {
@@ -8819,12 +8612,12 @@ function _confirmarCerrarSesion() {
   if (confirm('¿Seguro que querés cerrar sesión?')) logoutUsuario();
 }
 const _cfgTabMeta = {
-  'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal', importTipo: 'flota' },
-  'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal', importTipo: 'usuarios' },
-  'tab-planes':      { title: 'Catálogo de Planes',       action: 'openAdminPlanModal' },
-  'tab-mantenimiento':{ title: 'Mantenimiento',             action: null },
-  'tab-emergencias': { title: 'Contactos de Emergencia',  action: null },
-  'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
+  'tab-flota':       { title: 'Camiones', sub: 'Alta y administración de los vehículos de la flota.', action: 'openNuevoVehiculoModal()', importTipo: 'flota' },
+  'tab-usuarios':    { title: 'Personal', sub: 'Alta y gestión de choferes, operadores y administración.', action: 'openNuevoUsuarioModal()', importTipo: 'usuarios' },
+  'tab-planes':      { title: 'Planes de mantenimiento', sub: 'Catálogo de planes globales.', action: 'openAdminPlanModal()' },
+  'tab-mantenimiento':{ title: 'Mantenimiento', sub: 'Services vencidos y próximos de cada móvil.', action: null },
+  'tab-emergencias': { title: 'Contactos de emergencia', sub: 'Teléfonos, talleres y protocolo de siniestro para los choferes.', action: null },
+  'tab-mi-cuenta':   { title: 'Mi cuenta', sub: 'Datos de la cuenta actual.', action: null },
 };
 
 function switchConfigTab(tabId) {
@@ -8840,11 +8633,13 @@ function switchConfigTab(tabId) {
   if (meta) {
     const titleEl = document.getElementById('cfg-tab-title');
     if (titleEl) titleEl.textContent = meta.title;
+    const subEl = document.getElementById('cfg-tab-sub');
+    if (subEl) subEl.textContent = meta.sub || '';
     const btnNew = document.getElementById('cfg-btn-new');
     if (btnNew) {
       if (meta.action && !esSupervisor) {
         btnNew.style.display = '';
-        btnNew.onclick = window[meta.action];
+        btnNew.setAttribute('onclick', meta.action);
       } else {
         btnNew.style.display = 'none';
       }
@@ -8980,14 +8775,6 @@ async function cargarTablaAdminPlanes() {
 // ── Rendiciones (admin) ─────────────────────────
 let _rendicionesCache = [];
 
-async function cargarRendicionesTab() {
-  const body=document.getElementById('cfg-rend-body'),month=document.getElementById('cfg-rend-month'),driver=document.getElementById('cfg-rend-driver'),button=document.getElementById('cfg-rend-open');
-  if(!month)return;
-  if(!month.value)month.value=_mesActualInputVal();body.textContent='Cargando choferes…';button.disabled=true;
-  try{const r=await _db.from('users').select('user_id,full_name').eq('role_id',3).order('full_name');if(r.error)throw r.error;driver.innerHTML=(r.data||[]).map(u=>'<option value="'+_escHtml(u.user_id)+'">'+_escHtml(u.full_name)+'</option>').join('');body.textContent='';button.disabled=!driver.value;
-  button.onclick=async()=>{try{if(!month.value||!driver.value)throw new Error('Seleccioná mes y chofer');button.disabled=true;body.textContent='Cargando rendición…';await PayrollView.openCash(driver.value,_mesInputToYyyymm(month.value),driver.selectedOptions[0].textContent);body.textContent='';}catch(e){body.textContent=e.message;}finally{button.disabled=false;}};
-  }catch(e){body.textContent=e.message;}
-}
 
 function _renderRendicionesTabla() {
   const bodyEl  = document.getElementById('cfg-rend-body');
@@ -9559,20 +9346,26 @@ function _renderMantenimientoTab() {
   if (busq) list = list.filter(x => (x.plate || '').toLowerCase().includes(busq) || (x.plan_name || '').toLowerCase().includes(busq));
 
   if (!list.length) {
-    body.innerHTML = '<div class="cfg-rend-empty">Sin services pendientes 🎉</div>';
+    body.innerHTML = '<div class="cfg-rend-empty">Sin services pendientes</div>';
     return;
   }
 
   body.innerHTML = `<table class="cfg-rend-table">
-    <thead><tr><th>Unidad</th><th>Plan</th><th>KM actual</th><th>Restante</th><th>Estado</th><th></th></tr></thead>
+    <thead><tr><th>Unidad</th><th>Plan</th><th>Actual</th><th>Restante</th><th>Estado</th><th></th></tr></thead>
     <tbody>${list.map(x => {
       const cls = x.estado === 'vencido' ? 'err' : 'warn';
-      const restTxt = x.km_restantes == null ? '—' : (x.km_restantes < 0 ? '−' + Math.abs(x.km_restantes).toLocaleString('es-AR') : x.km_restantes.toLocaleString('es-AR'));
-      const restColor = x.km_restantes == null ? 'var(--muted)' : x.km_restantes < 0 ? '#ef4444' : x.km_restantes < 500 ? 'var(--amber)' : 'var(--text)';
+      const porHoras = x.manda === 'horas';
+      const rest = porHoras ? x.horas_restantes : x.km_restantes;
+      const unidad = porHoras ? ' h' : ' km';
+      const restTxt = rest == null ? '—' : (rest < 0 ? '−' + Math.abs(rest).toLocaleString('es-AR') : rest.toLocaleString('es-AR')) + unidad;
+      const restColor = rest == null ? 'var(--muted)' : rest < 0 ? '#ef4444' : x.estado === 'proximo' ? 'var(--amber)' : 'var(--text)';
+      const actual = porHoras
+        ? (x.current_hours != null ? x.current_hours.toLocaleString('es-AR') + ' h' : '—')
+        : (x.current_km != null ? x.current_km.toLocaleString('es-AR') + ' km' : '—');
       return `<tr>
         <td>${_escHtml(x.plate)}${x.numero_interno ? ' <span style="color:var(--muted)">· ' + _escHtml(String(x.numero_interno)) + '</span>' : ''}</td>
         <td>${_escHtml(x.plan_name)}</td>
-        <td style="font-family:'DM Mono'">${x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—'}</td>
+        <td style="font-family:'DM Mono'">${actual}</td>
         <td style="font-family:'DM Mono';color:${restColor}">${restTxt}</td>
         <td><span class="pill ${cls}">${x.estado === 'vencido' ? 'Vencido' : 'Próximo'}</span></td>
         <td><button class="cfg-rend-btn-mini" onclick="verTimelineCamion('${x.truck_id}')">Ver camión</button></td>
@@ -9662,6 +9455,7 @@ function openNuevoVehiculoModal() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const regHorasNv = document.getElementById('nv-registra-horas'); if (regHorasNv) regHorasNv.checked = false;
   const warnEl = document.getElementById('warn-patente-nv');
   if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
   const errEl = document.getElementById('nv-modal-error');
@@ -9686,6 +9480,7 @@ async function guardarNuevoVehiculo() {
   const modelo = document.getElementById('nv-modelo').value.trim();
   const km = parseInt(document.getElementById('nv-km').value);
   const horas = parseInt(document.getElementById('nv-horas').value) || 0;
+  const registraHoras = !!document.getElementById('nv-registra-horas')?.checked;
   const anio = parseInt(document.getElementById('nv-anio').value) || null;
   const interno = document.getElementById('nv-interno').value.trim();
 
@@ -9700,7 +9495,7 @@ async function guardarNuevoVehiculo() {
   const payload = {
     plate: patente, brand: marca, model: modelo,
     year: anio, numero_interno: interno, current_km: km,
-    current_hours: horas, tipo_equipo: tipo
+    current_hours: horas, tipo_equipo: tipo, registra_horas: registraHoras
   };
 
   let error_res;
@@ -9823,11 +9618,12 @@ async function abrirEditarVehiculo(truckId) {
     document.getElementById('nv-interno').value = data.numero_interno || '';
     document.getElementById('nv-km').value = data.current_km || '';
     document.getElementById('nv-horas').value = data.current_hours || '';
+    const regHoras = document.getElementById('nv-registra-horas'); if (regHoras) regHoras.checked = !!data.registra_horas;
     if (data.tipo_equipo) document.getElementById('nv-tipo').value = data.tipo_equipo;
     const warnEl = document.getElementById('warn-patente-nv');
     if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
 
-    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏️ Editar Flota';
+    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏ Editar Flota';
     document.getElementById('btn-guardar-vehiculo').innerHTML = '💾 Actualizar Flota';
     
     // 4. Abrimos el modal con fuerza bruta (z-index)
@@ -9840,31 +9636,40 @@ async function abrirEditarVehiculo(truckId) {
 // ── GESTIÓN DE PERSONAL ───────────────────────
 
 // ── 2. APERTURA DE ALTA PERSONAL ───────────────────────
+// Prefijo del legajo según el rol; el número sigue al último usado con ese prefijo.
+const _LEGAJO_PREFIJO = { chofer: 'CHO', operador: 'OPE', supervision: 'SUP', administracion: 'ADM' };
+async function _siguienteLegajo(rol) {
+  const pref = _LEGAJO_PREFIJO[rol] || 'USR';
+  const { data, error } = await _db.from('users').select('legajo');
+  if (error) throw error;
+  const re = new RegExp('^' + pref + '[-.]?(\\d+)$', 'i');
+  const max = (data || []).reduce((m, r) => { const k = re.exec(String(r.legajo || '').trim()); return k ? Math.max(m, Number(k[1])) : m; }, 0);
+  return `${pref}-${String(max + 1).padStart(3, '0')}`;
+}
+
+function _elegirRolUsuario(rol) {
+  const inp = document.getElementById('nu-rol');
+  if (inp) inp.value = rol;
+  document.querySelectorAll('#modal-nuevo-usuario [data-rol]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rol === rol)));
+}
+
+function _prepararModalUsuario(titulo, boton, info) {
+  const modal = document.getElementById('modal-nuevo-usuario');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  const t = document.querySelector('#modal-nuevo-usuario .modal-head-title'); if (t) t.textContent = titulo;
+  const btn = document.getElementById('btn-guardar-usuario'); if (btn) btn.textContent = boton;
+  const i = document.getElementById('nu-legajo-info'); if (i) i.textContent = info;
+  const err = document.getElementById('nu-modal-error'); if (err) err.style.display = 'none';
+  // El email se puede cambiar también al editar (lo actualiza el backend administrativo).
+  const emailEl = document.getElementById('nu-email'); if (emailEl) emailEl.disabled = false;
+}
+
 function openNuevoUsuarioModal() {
   usuarioEditandoId = null;
-  const emailEl = document.getElementById('nu-email');
-  const legajoEl = document.getElementById('nu-legajo');
-  if (emailEl) emailEl.disabled = false;
-  if (legajoEl) legajoEl.disabled = false;
-  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
-  if (tituloModal) tituloModal.textContent = '👤 Alta de Personal';
-  const btnGuardar = document.getElementById('btn-guardar-usuario');
-  if (btnGuardar) btnGuardar.textContent = '💾 Crear Usuario';
-  ['nu-nombre', 'nu-legajo', 'nu-email', 'nu-telefono', 'nu-dni', 'nu-licencia', 'nu-vencimiento'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const nuErrEl = document.getElementById('nu-modal-error');
-  if (nuErrEl) nuErrEl.style.display = 'none';
-  const rol = document.getElementById('nu-rol');
-  if(rol) rol.value = 'chofer';
-
-  // EL TRUCO Z-INDEX: Lo ponemos por encima del Hub
-  const modal = document.getElementById('modal-nuevo-usuario');
-  if (modal) {
-    document.body.appendChild(modal);
-    modal.style.zIndex = '10000000'; 
-  }
+  ['nu-nombre', 'nu-email', 'nu-telefono', 'nu-dni'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _elegirRolUsuario('chofer');
+  const hint = document.getElementById('nu-invite-hint'); if (hint) hint.hidden = false;
+  _prepararModalUsuario('Alta de personal', 'Crear usuario', 'El legajo se asigna automáticamente al crear.');
   openModal('modal-nuevo-usuario');
 }
 
@@ -9872,35 +9677,15 @@ function openNuevoUsuarioModal() {
 function abrirEditarUsuario(userId) {
   const u = (window._usuariosCache || []).find(x => String(x.user_id) === String(userId));
   if (!u) { toast('No se encontró el usuario', 'error'); return; }
-
   usuarioEditandoId = userId;
-
-  // Pre-llenar campos
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  set('nu-nombre',      u.full_name);
-  set('nu-telefono',    u.phone);
-  set('nu-dni',         u.dni);
-  set('nu-licencia',    u.license_number);
-  set('nu-vencimiento', u.license_expiry ? u.license_expiry.substring(0, 10) : '');
-
-  const rolEl = document.getElementById('nu-rol');
-  if (rolEl) rolEl.value = u.role || 'chofer';
-
-  // Deshabilitar campos no editables
-  const emailEl = document.getElementById('nu-email');
-  const legajoEl = document.getElementById('nu-legajo');
-  if (emailEl) { emailEl.value = u.email || ''; emailEl.disabled = true; }
-  if (legajoEl) { legajoEl.value = u.legajo || ''; legajoEl.disabled = true; }
-
-  // Cambiar título y botón
-  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
-  if (tituloModal) tituloModal.textContent = '✏️ Editar Personal';
-  const btnGuardar = document.getElementById('btn-guardar-usuario');
-  if (btnGuardar) btnGuardar.innerHTML = '💾 Actualizar Usuario';
-
-  // Mover al body para z-index correcto
-  const modal = document.getElementById('modal-nuevo-usuario');
-  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  set('nu-nombre', u.full_name);
+  set('nu-telefono', u.phone);
+  set('nu-dni', u.dni);
+  set('nu-email', u.email);
+  _elegirRolUsuario(u.roles?.name || u.role || 'chofer');
+  const hint = document.getElementById('nu-invite-hint'); if (hint) hint.hidden = true;
+  _prepararModalUsuario('Editar personal', 'Guardar cambios', u.legajo ? `Legajo ${u.legajo}` : 'Sin legajo');
   openModal('modal-nuevo-usuario');
 }
 
@@ -9927,43 +9712,52 @@ async function toggleEstadoUsuario(userId, isActive) {
 
 async function guardarNuevoUsuario() {
   const nombre  = document.getElementById('nu-nombre').value.trim();
-  const legajo  = document.getElementById('nu-legajo').value.trim().toUpperCase();
   const email   = document.getElementById('nu-email').value.trim();
   const tel     = document.getElementById('nu-telefono').value.trim();
   const dni     = document.getElementById('nu-dni').value.trim();
   const rol     = document.getElementById('nu-rol').value;
 
   if (!nombre)  { showModalError('nu-modal-error', 'Para guardar completá Nombre Completo'); return; }
-  if (!legajo)  { showModalError('nu-modal-error', 'Para guardar completá Legajo'); return; }
   if (!email)   { showModalError('nu-modal-error', 'Para guardar completá Email'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showModalError('nu-modal-error', 'El email no tiene formato válido — revisá que tenga @ y dominio'); return; }
   if (!dni)     { showModalError('nu-modal-error', 'Para guardar completá DNI'); return; }
+  if (!/^\d{7,8}$/.test(dni)) { showModalError('nu-modal-error', 'El DNI debe tener 7 u 8 números'); return; }
+  const telDigitos = tel.replace(/\D/g, '');
+  if (tel && (telDigitos.length < 8 || telDigitos.length > 15)) { showModalError('nu-modal-error', 'El teléfono debe tener entre 8 y 15 números'); return; }
 
   const btn = document.getElementById('btn-guardar-usuario');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
   if (usuarioEditandoId) {
-    const licencia    = document.getElementById('nu-licencia')?.value.trim() || null;
-    const vencimiento = document.getElementById('nu-vencimiento')?.value || null;
-    const { data: rolRow } = await _db.from('roles').select('role_id').eq('name', rol).single();
-    const { error } = await _db.from('users').update({
-      full_name: nombre, phone: tel || null, role_id: rolRow?.role_id, dni: dni || null,
-      license_number: licencia, license_expiry: vencimiento
-    }).eq('user_id', usuarioEditandoId);
-    if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
-    const emailEl2 = document.getElementById('nu-email');
-    const legajoEl2 = document.getElementById('nu-legajo');
-    if (emailEl2) emailEl2.disabled = false;
-    if (legajoEl2) legajoEl2.disabled = false;
+    // La licencia no se edita acá (la carga el chofer en Documentos): se conserva la que tenga.
+    const actual      = (window._usuariosCache || []).find(x => String(x.user_id) === String(usuarioEditandoId)) || {};
+    const licencia    = actual.license_number || null;
+    const vencimiento = actual.license_expiry ? String(actual.license_expiry).substring(0, 10) : null;
+    let resp, data;
+    try {
+      resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/update-user`, {
+        method: 'POST',
+        headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ user_id: usuarioEditandoId, full_name: nombre, email, role_name: rol, phone: tel || null, dni: dni || null, license_number: licencia, license_expiry: vencimiento })
+      });
+      data = await resp.json().catch(() => ({ error: 'El servicio de usuarios devolvió una respuesta inválida.' }));
+    } catch (e) { data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios.' }; }
+    if (btn) { btn.textContent = 'Guardar cambios'; btn.style.pointerEvents = 'auto'; }
+    if (!resp?.ok || data?.error) { showModalError('nu-modal-error', data?.error || 'No se pudo actualizar el usuario'); return; }
     usuarioEditandoId = null;
-    if (error) { toast(`Error: ${error.message}`, 'error'); return; }
     toast('Usuario actualizado', 'success');
     closeModal('modal-nuevo-usuario');
     cargarTablaAdminUsuarios();
     return;
   }
 
-  let resp, data;
+  let resp, data, legajo;
+  try {
+    legajo = await _siguienteLegajo(rol);
+  } catch (e) {
+    if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
+    showModalError('nu-modal-error', 'No se pudo asignar el legajo. Probá de nuevo.'); return;
+  }
   try {
     resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/create-user`, {
       method: 'POST',
@@ -9975,12 +9769,12 @@ async function guardarNuevoUsuario() {
     data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios. Tus datos siguen en el formulario.' };
   }
 
-  if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
 
   if (!resp?.ok || data?.error) {
     showModalError('nu-modal-error', data?.error || 'Error desconocido al crear el usuario');
   } else {
-    toast('Usuario invitado — recibirá un correo para definir su contraseña', 'success');
+    toast(`Usuario creado con legajo ${legajo}. Recibirá un correo para definir su contraseña.`, 'success');
     closeModal('modal-nuevo-usuario');
     cargarTablaAdminUsuarios();
   }
@@ -10003,47 +9797,50 @@ async function cargarTablaAdminUsuarios() {
     return;
   }
 
-  const roleBadgeClass = (rol) => {
-    if (rol === 'administracion') return 'cfg-badge-admin';
-    if (rol === 'operador')       return 'cfg-badge-operador';
-    if (rol === 'supervision')    return 'cfg-badge-supervision';
-    if (rol === 'chofer')         return 'cfg-badge-chofer';
-    return 'cfg-badge-role';
-  };
-  const roleLabel = (rol) => {
-    if (rol === 'administracion') return 'Admin';
-    if (rol === 'operador')       return 'Operador';
-    if (rol === 'supervision')    return 'Supervision';
-    if (rol === 'chofer')         return 'Chofer';
-    return rol || 'Sin rol';
-  };
+  // Último acceso (auth): solo informativo; si falla, la lista se muestra igual.
+  let lastAccess = {};
+  try {
+    const la = await _db.rpc('get_users_last_access_v1');
+    if (!la.error) (la.data || []).forEach(r => { lastAccess[r.user_id] = r.last_sign_in_at; });
+  } catch (e) { /* sin último acceso */ }
 
-  contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => {
+  const roleLabel = (rol) => ({ administracion: 'Admin', operador: 'Operador', supervision: 'Supervisor', chofer: 'Chofer' }[rol] || rol || 'Sin rol');
+  const hace = (iso) => {
+    if (!iso) return 'Nunca';
+    const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 5) return 'ahora';
+    if (min < 60) return `hace ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `hace ${h} h`;
+    return `hace ${Math.round(h / 24)} d`;
+  };
+  const iniciales = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+  const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
+  const yo = (typeof USUARIO_ACTUAL !== 'undefined' && USUARIO_ACTUAL?.id) || PERFIL_USUARIO?.user_id || null;
+
+  const filas = usuarios.map(u => {
     const rol = u.roles?.name || u.role || '';
     const activo = u.is_active !== false;
-    const userIdSeguro = _escHtml(u.user_id || '');
-    const nombreSeguro = _escHtml(u.full_name || '');
-    const licenciaSegura = _escHtml(u.license_number || '');
-    const vencimientoSeguro = _escHtml(u.license_expiry ? u.license_expiry.substring(0,10) : '');
-    return `
-    <div class="cfg-item${!activo ? ' inactive' : ''}">
-      <div class="cfg-item-main">
-        <div class="cfg-item-name">${nombreSeguro}</div>
-        <div class="cfg-item-sub">${u.license_number ? `Lic. ${licenciaSegura}${u.license_expiry ? ` · Vence ${vencimientoSeguro}` : ''}` : 'Sin licencia registrada'}</div>
-      </div>
-      <div class="cfg-item-side">
-        <span class="cfg-badge ${roleBadgeClass(rol)}">${roleLabel(rol)}</span>
-        <span class="cfg-status ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Inactivo'}</span>
-      </div>
-      <div class="cfg-item-actions">
-        <button class="cfg-btn-a ghost" onclick="abrirEditarUsuario('${userIdSeguro}')">Editar</button>
-        ${activo ? `<button class="cfg-btn-a ghost" data-user-name="${nombreSeguro}" onclick="abrirResetPassword('${userIdSeguro}',this.dataset.userName)">Recuperar acceso</button>` : ''}
-        <button class="cfg-btn-a ${activo ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${userIdSeguro}',${activo})">
-          ${activo ? 'Dar de baja' : 'Reactivar'}
-        </button>
-      </div>
-    </div>`;
-  }).join('')}</div>`;
+    const id = _escHtml(u.user_id || '');
+    const nombre = _escHtml(u.full_name || '');
+    const esYo = yo && String(u.user_id) === String(yo);
+    const acciones = esYo
+      ? '<span class="usr-noedit">No editable</span>'
+      : `<button class="usr-ic" title="Editar" aria-label="Editar ${nombre}" onclick="abrirEditarUsuario('${id}')">${ic('pencil')}</button>` +
+        (activo ? `<button class="usr-ic" title="Recuperar acceso" aria-label="Recuperar acceso de ${nombre}" data-user-name="${nombre}" onclick="abrirResetPassword('${id}',this.dataset.userName)">${ic('key')}</button>` : '') +
+        `<button class="usr-ic${activo ? ' danger' : ''}" title="${activo ? 'Suspender' : 'Reactivar'}" aria-label="${activo ? 'Suspender' : 'Reactivar'} a ${nombre}" onclick="toggleEstadoUsuario('${id}',${activo})">${ic(activo ? 'ban' : 'rotate-ccw')}</button>`;
+    return `<tr class="${esYo ? 'is-me' : ''}${activo ? '' : ' is-off'}">
+      <td class="usr-who" data-label="Usuario"><span class="usr-avatar">${_escHtml(iniciales(u.full_name))}</span><span class="usr-id"><b>${nombre}${esYo ? ' <em class="usr-tu">Tú</em>' : ''}</b><small>${_escHtml(u.email || '—')}</small></span></td>
+      <td data-label="Rol"><span class="usr-role usr-role-${_escHtml(rol)}">${_escHtml(roleLabel(rol))}</span></td>
+      <td class="usr-mono" data-label="Legajo">${_escHtml(u.legajo || '—')}</td>
+      <td data-label="Último acceso">${hace(lastAccess[u.user_id])}</td>
+      <td data-label="Estado"><span class="usr-state ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Suspendido'}</span></td>
+      <td class="usr-actions">${acciones}</td>
+    </tr>`;
+  }).join('');
+  contenedor.innerHTML = `<div class="usr-table-wrap"><table class="usr-table">
+    <thead><tr><th>Usuario</th><th>Rol</th><th>Legajo</th><th>Último acceso</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${filas}</tbody></table></div>`;
 }
 
 function abrirResetPassword(userId, nombre) {
@@ -10251,8 +10048,10 @@ async function procesarFotoConIA(event, contexto) {
     // guardada en el teléfono (se sube al sincronizar) y los KM van a mano.
     if (!navigator.onLine) {
         if (isInicio) { fotoKmInicio = archivo; } else { fotoKmFinal = archivo; }
-        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_offline'; }
-        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_offline'; }
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_offline'; horasIaInicio = null; horasOrigenInicio = 'manual_offline'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_offline'; horasIaFinal = null; horasOrigenFinal = 'manual_offline'; }
+        const fuenteOff = document.getElementById(prefix + '-horas-fuente');
+        if (fuenteOff) { fuenteOff.textContent = 'Sin conexión: escribí las horas de motor a mano'; fuenteOff.className = 'jh-fuente is-manual'; }
         const manualArea = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualArea) manualArea.style.display = 'block';
         if (msgStatus) msgStatus.innerHTML = '<span style="color: var(--amber);">📴 Sin conexión: la foto quedó guardada en el teléfono. Ingresá los KM a mano.</span>';
@@ -10287,11 +10086,13 @@ async function procesarFotoConIA(event, contexto) {
 
     try {
 
-      msgStatus.innerHTML = '<span style="color: var(--amber);">⬆️ Subiendo evidencia a la nube...</span>';
+      msgStatus.innerHTML = '<span style="color: var(--amber);">⬆ Subiendo evidencia a la nube...</span>';
         const urlPublica = await subirFotoOdometro(archivo, contexto);
         if(isInicio) fotoKmInicio=urlPublica; else fotoKmFinal=urlPublica;
         // 3. LLAMAMOS A LA IA REAL (Edge Function)
-        const resultadoIA = await llamarIA_Real(urlPublica, contexto, kmBaseReferencia);
+        const leerHoras = isInicio ? _horasNecesitaInicio() : _horasNecesitaCierre();
+        const resultadoIA = await llamarIA_Real(urlPublica, contexto, kmBaseReferencia, leerHoras ? { horasReferencia: _horasReferencia(prefix) } : null);
+        if (leerHoras && resultadoIA.success) _horasDesdeIA(prefix, resultadoIA.horas_extraidas);
 
         if (!resultadoIA.success) throw new Error('La IA no encontró números claros.');
 
@@ -10382,8 +10183,9 @@ async function procesarFotoConIA(event, contexto) {
 
     } catch (error) {
         // 5. ERROR: Manejo visual
-        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_ia_fallo'; }
-        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; }
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_ia_fallo'; horasIaInicio = null; horasOrigenInicio = 'manual_ia_fallo'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; horasIaFinal = null; horasOrigenFinal = 'manual_ia_fallo'; }
+        if (isInicio ? _horasNecesitaInicio() : _horasNecesitaCierre()) _horasDesdeIA(prefix, null);
         const manualAreaErr = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualAreaErr) manualAreaErr.style.display = 'block';
         msgStatus.textContent = isInicio ? 'Ingresá el kilometraje manualmente. La foto se guardará para auditoría.' : '';
@@ -10393,7 +10195,7 @@ async function procesarFotoConIA(event, contexto) {
         const hint=document.getElementById(prefix+'-foto-hint');
         if(hint) hint.textContent='Ingresá el kilometraje manualmente. La foto se guardará para auditoría.';
         fotoBox.style.borderColor = 'var(--amber)';
-        fotoIcon.textContent = '⚠️';
+        fotoIcon.textContent = '⚠';
         fotoStatusTxt.textContent = 'No se pudo analizar la foto';
         fotoStatusTxt.style.color = 'var(--amber)';
         if (btnConfirmar) btnConfirmar.disabled = false;
@@ -10404,7 +10206,7 @@ async function procesarFotoConIA(event, contexto) {
 /**
  * Llama a la Edge Function de Supabase para leer el odómetro con IA real
  */
-async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
+async function llamarIA_Real(urlPublica, contexto, kmReferencia, horas = null) {
     const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/procesar-odometro`;
     const accessToken = await obtenerAccessToken();
 
@@ -10423,6 +10225,8 @@ async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
                 url_foto: urlPublica,
                 contexto: contexto,
                 km_referencia: kmReferencia,
+                // Camiones con horómetro: la misma foto trae las horas de motor
+                ...(horas ? { leer_horas: true, horas_referencia: horas.horasReferencia } : {}),
             }),
             signal: controller.signal,
         });
@@ -10510,112 +10314,106 @@ function abrirDocumentoChofer(pathOrUrl) {
   }
 }
 
-function crearDocCard(doc, meta) {
-  const esAdmin = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
-  const statusConfig = {
-    vigente:         { border: 'var(--green)',  pill: 'pill-green',  pillTxt: 'Vigente'     },
-    proximo:         { border: 'var(--amber)',  pill: 'pill-amber',  pillTxt: 'Próximo'     },
-    vencido:         { border: 'var(--red)',    pill: 'pill-red',    pillTxt: 'Vencido'     },
-    falta_archivo:   { border: '#f97316',       pill: 'pill-orange', pillTxt: 'Sin archivo' },
-    sin_vencimiento: { border: 'var(--border)', pill: 'pill-muted',  pillTxt: 'Sin venc.'   },
-  };
+// Ícono del sprite por tipo de documento (los emojis de DOC_*_META quedan para los selects)
+const DOC_ICONOS = {
+  VTV: 'clipboard-check', SEGURO_POLIZA: 'shield-check', PAGO_SEGURO: 'receipt', HABILITACION_RUTA: 'route',
+  PERMISO_ESPECIAL: 'flag', CEDULA_VERDE: 'credit-card', CEDULA_AZUL: 'credit-card', MATAFUEGOS: 'circle-alert',
+  LIBRETA_PORTE: 'file-text', licencia_particular: 'credit-card', licencia_linti: 'credit-card',
+  psicofisico: 'clipboard-check', art_credencial: 'shield-check', art_cnr: 'shield-check', curso_cargas: 'file-check', otro: 'file',
+};
+const _docIcon = name => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
+const _docFecha = iso => iso ? `${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(2,4)}` : '';
 
-  // Usar UTC para ambos extremos — evita error de ±1 día en cambio de horario
-  const dias = doc.expiry_date
+// Días hasta el vencimiento (UTC en ambos extremos: evita ±1 día por cambio de horario)
+function _docDias(doc) {
+  return doc.expiry_date
     ? Math.round((new Date(doc.expiry_date + 'T00:00:00Z') - new Date(new Date().toISOString().slice(0,10) + 'T00:00:00Z')) / 86400000)
     : null;
+}
+// Estado que se muestra: siempre por vigencia (el "sin archivo" va aparte)
+function _docEstado(doc) {
+  const dias = _docDias(doc);
+  if (dias === null) return 'sin_vencimiento';
+  if (dias < 0) return 'vencido';
+  if (dias <= 30) return 'proximo';
+  return 'vigente';
+}
 
-  // El pill principal SIEMPRE refleja vigencia (no archivo).
-  // El "sin archivo" se comunica abajo en la fila de archivo.
-  let statusEfectivo;
-  if (dias === null) {
-    statusEfectivo = doc.status === 'sin_vencimiento' ? 'sin_vencimiento' : 'sin_vencimiento';
-  } else if (dias < 0) {
-    statusEfectivo = 'vencido';
-  } else if (dias <= 30) {
-    statusEfectivo = 'proximo';
-  } else {
-    statusEfectivo = 'vigente';
-  }
-  const sc = statusConfig[statusEfectivo] || statusConfig.sin_vencimiento;
+function crearDocCard(doc, meta) {
+  const esAdmin = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
+  const dias = _docDias(doc);
+  const estado = _docEstado(doc);
   const sinArchivo = !doc.file_url;
+  const pill = {
+    vigente: 'Vigente',
+    proximo: dias === 0 ? 'Vence hoy' : `Vence en ${dias} ${dias === 1 ? 'día' : 'días'}`,
+    vencido: 'Vencido',
+    sin_vencimiento: 'Sin vencimiento',
+  }[estado];
 
-let fileSectionHtml = '';
-  if (doc.file_url) {
-    // 1. Traducimos la ruta local al link de internet real ACÁ MISMO
-    let linkReal = doc.file_url;
-    if (!linkReal.startsWith('http')) {
-      // Usamos tu variable _db para pedirle el link a Supabase
-      linkReal = _db.storage.from('docs').getPublicUrl(doc.file_url).data.publicUrl;
-    }
-
-    const safePath  = _escHtml(linkReal);
-    const safeTitle = _escHtml(meta.name || doc.doc_type || '');
-    const onclickUpd = meta.isChofer
-      ? `abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')`
-      : `abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')`;
-      
-    // 2. Cambiamos el <button> de abrir por un <a> (enlace nativo)
-    const puedeActualizar = meta.isChofer || esAdmin;
-    fileSectionHtml = `
-      <div style="display: flex; gap: 4px;">
-        ${puedeActualizar ? `<button class="btn-actualizar" onclick="${onclickUpd}" title="Reemplazar archivo">🔄</button>` : ''}
-        <a href="${safePath}" target="_blank" rel="noopener noreferrer" class="btn-compartir" style="color:var(--amber); border: 1px solid var(--amber); text-decoration: none; display: flex; align-items: center; justify-content: center;">
-          👁 Abrir
-        </a>
-        <button class="btn-compartir" onclick="compartirDoc('${safePath}', '${safeTitle}', event)">⤴ Compartir</button>
-      </div>`;
-
-  } else if (doc.is_obligatorio && (meta.isChofer || esAdmin)) {
-    const onclick = meta.isChofer
-      ? `onclick="abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')"`
-      : `onclick="abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')"`;
-    fileSectionHtml = `<button class="btn-subir-ahora" ${onclick}>⚠ Subir ahora</button>`;
+  // Bloque central: días que faltan (o hace cuánto venció) y la fecha
+  let cuerpo;
+  if (dias === null) {
+    const periodo = doc.periodo ? `${doc.periodo.slice(5,7)}/${doc.periodo.slice(0,4)}` : '';
+    cuerpo = `<div class="dcv-days none"><b>—</b><span>${periodo ? `Período ${periodo}` : 'No vence'}</span></div>`;
   } else {
-    fileSectionHtml = `<span style="font-size:10px;color:var(--muted)">Sin archivo</span>`;
+    const abs = Math.abs(dias);
+    const txt = dias < 0 ? `${abs === 1 ? 'día' : 'días'} vencido` : dias === 0 ? 'vence hoy' : `${abs === 1 ? 'día' : 'días'} restantes`;
+    cuerpo = `<div class="dcv-days"><b>${abs}</b><span>${txt}</span></div><div class="dcv-date"><small>${dias < 0 ? 'Venció el' : 'Vence el'}</small><b>${_docFecha(doc.expiry_date)}</b></div>`;
   }
+  // Barra: cuánto queda del último año de vigencia
+  const barra = dias === null ? '' : `<div class="dcv-bar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round((dias / 365) * 100)))}%"></i></div>`;
 
-
+  const onclickUpd = meta.isChofer
+    ? `abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')`
+    : `abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')`;
+  const puedeActualizar = meta.isChofer || esAdmin;
   const docIdField = meta.isChofer ? doc.driver_doc_id : doc.doc_id;
-  const deleteBtn = esAdmin
-    ? `<button class="btn-eliminar-doc" onclick="eliminarDoc(${docIdField}, ${meta.isChofer ? 'true' : 'false'}, event)" title="Eliminar">🗑</button>`
+  const btnEliminar = esAdmin
+    ? `<button class="btn-eliminar-doc dcv-icon danger" onclick="eliminarDoc(${docIdField}, ${meta.isChofer ? 'true' : 'false'}, event)" title="Eliminar documento" aria-label="Eliminar documento">${_docIcon('trash-2')}</button>`
     : '';
 
+  let acciones;
+  if (doc.file_url) {
+    let linkReal = doc.file_url;
+    if (!linkReal.startsWith('http')) linkReal = _db.storage.from('docs').getPublicUrl(doc.file_url).data.publicUrl;
+    const safePath  = _escHtml(linkReal);
+    const safeTitle = _escHtml(meta.name || doc.doc_type || '');
+    acciones = `<a href="${safePath}" target="_blank" rel="noopener noreferrer" class="dcv-btn primary">${_docIcon('eye')}Abrir</a>
+      <button class="dcv-btn btn-compartir" onclick="compartirDoc('${safePath}', '${safeTitle}', event)">${_docIcon('share-2')}Compartir</button>
+      <span class="dcv-gap"></span>
+      ${puedeActualizar ? `<button class="btn-actualizar dcv-icon" onclick="${onclickUpd}" title="Reemplazar archivo" aria-label="Reemplazar archivo">${_docIcon('refresh-cw')}</button>` : ''}${btnEliminar}`;
+  } else if (doc.is_obligatorio && puedeActualizar) {
+    acciones = `<span class="dcv-missing">${_docIcon('file-warning')}Falta el archivo</span><span class="dcv-gap"></span>
+      <button class="btn-subir-ahora dcv-btn warn" onclick="${onclickUpd}">${_docIcon('upload')}Subir ahora</button>${btnEliminar}`;
+  } else {
+    acciones = `<span class="dcv-missing muted">${_docIcon('file-x')}Sin archivo</span><span class="dcv-gap"></span>${btnEliminar}`;
+  }
+
   const safeDocName = _escHtml(meta.name || doc.doc_type || '');
-  const safeDocNum  = doc.doc_number ? _escHtml('Nº ' + doc.doc_number) : '—';
+  const safeDocNum  = doc.doc_number ? _escHtml('Nº ' + doc.doc_number) : 'Sin número';
+  const icono = DOC_ICONOS[meta.isChofer ? doc.doc_type : doc.internal_code] || 'file-text';
 
   return `
-    <div class="doc-card-v" style="border-left:3px solid ${sc.border}">
-      <div class="doc-card-header">
-        <div class="doc-icon">${meta.icon}</div>
-        <div class="doc-card-title">
-          <div class="doc-name">${safeDocName}</div>
-          <div class="doc-meta">${safeDocNum}</div>
-        </div>
-        ${deleteBtn}
+    <article class="doc-card-v dcv dcv-${estado}${sinArchivo ? ' dcv-nofile' : ''}">
+      <div class="dcv-head">
+        <span class="dcv-ic">${_docIcon(icono)}</span>
+        <div class="dcv-title"><div class="doc-name">${safeDocName}</div><div class="doc-meta">${safeDocNum}</div></div>
+        <span class="dcv-pill">${pill}</span>
       </div>
-      <div class="doc-expiry-row">
-        <div>
-          <div class="doc-days" style="color:${sc.border}">${dias !== null ? Math.abs(dias) : '—'}</div>
-          <div class="doc-days-label">${
-            dias === null ? 'sin vencimiento'
-            : dias < 0 ? `vencido hace ${Math.abs(dias) === 1 ? '1 día' : Math.abs(dias) + ' días'}`
-            : dias === 0 ? 'vence hoy'
-            : `${dias === 1 ? '1 día' : dias + ' días'} restantes`
-          }</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-          <span class="pill ${sc.pill}">${sc.pillTxt}</span>
-          ${sinArchivo ? `<span class="pill pill-orange" style="font-size:9px;padding:2px 6px">Sin archivo</span>` : ''}
-        </div>
-      </div>
-      <div class="doc-file-row">${fileSectionHtml}</div>
-    </div>`;
+      <div class="dcv-body">${cuerpo}</div>
+      ${barra}
+      <div class="doc-file-row dcv-foot">${acciones}</div>
+    </article>`;
 }
 
 async function eliminarDoc(docId, isChofer, event) {
   if (event) event.stopPropagation();
-  if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+  const _conf = window.AuxiliosBillingParametersV4?.confirm;
+  const ok = typeof _conf === 'function'
+    ? await _conf({ title: 'Eliminar documento', html: '<p class="bp4-confirm-text">Se borra el documento y su archivo. <b>Esta acción no se puede deshacer.</b></p>', confirmLabel: 'Sí, eliminar', danger: true })
+    : confirm('¿Eliminar este documento? Esta acción no se puede deshacer.');
+  if (!ok) return;
   try {
     if (isChofer) {
       await eliminarDriverDoc(docId);
@@ -10644,15 +10442,44 @@ async function eliminarDoc(docId, isChofer, event) {
 
 const DOC_CAMION_META = {
   VTV:               { icon: '🔍', name: 'VTV', fields: ['vencimiento'] },
-  SEGURO_POLIZA:     { icon: '🛡️', name: 'Póliza de Seguro', fields: ['vencimiento'] },
+  SEGURO_POLIZA:     { icon: '🛡', name: 'Póliza de Seguro', fields: ['vencimiento'] },
  PAGO_SEGURO:       { icon: '📄', name: 'Comprobante de pago', fields: ['periodo'] },
   HABILITACION_RUTA: { icon: '📋', name: 'Habilitación RUTA', fields: ['vencimiento'] },
   PERMISO_ESPECIAL:  { icon: '🚧', name: 'Permiso Especial', fields: ['vencimiento', 'observaciones'] },
   CEDULA_VERDE:      { icon: '🪪', name: 'Cédula Verde' },
   CEDULA_AZUL:       { icon: '🪪', name: 'Cédula Azul' },
   MATAFUEGOS:        { icon: '🧯', name: 'Matafuegos' },
-  LIBRETA_PORTE:     { icon: '⚖️', name: 'Libreta de Porte' },
+  LIBRETA_PORTE:     { icon: '⚖', name: 'Libreta de Porte' },
 };
+
+// Conteos de un legajo: total, vencidos (o sin archivo obligatorio), por vencer y al día
+function _docConteos(docs) {
+  const venc = docs.filter(d => d.status === 'vencido' || d.status === 'falta_archivo').length;
+  const prox = docs.filter(d => d.status === 'proximo').length;
+  const sinArchivo = docs.filter(d => !d.file_url).length;
+  return { total: docs.length, venc, prox, sinArchivo, ok: Math.max(docs.length - venc - prox, 0) };
+}
+function _docTono(c) { return !c.total ? 'none' : c.venc ? 'bad' : c.prox ? 'warn' : 'ok'; }
+function _docSelectorCard({ onclick, icon, avatar, titulo, sub, extra, docs }) {
+  const c = _docConteos(docs), tono = _docTono(c);
+  const pill = { none: 'Sin documentos', bad: `${c.venc} vencido${c.venc > 1 ? 's' : ''}`, warn: `${c.prox} por vencer`, ok: 'Al día' }[tono];
+  const pct = c.total ? Math.round((c.ok / c.total) * 100) : 0;
+  const lead = avatar ? `<span class="dsc-av">${avatar}</span>` : `<span class="dsc-ic">${_docIcon(icon)}</span>`;
+  return `<div class="truck-select-card dsc dsc-${tono}" role="button" tabindex="0" onclick="${onclick}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${onclick}}">
+    <div class="dsc-top">${lead}<div class="dsc-id"><b>${titulo}</b>${sub ? `<small>${sub}</small>` : ''}</div><span class="dsc-pill">${pill}</span></div>
+    ${extra ? `<div class="dsc-extra">${extra}</div>` : ''}
+    <div class="dsc-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    <div class="dsc-foot"><div class="dsc-counts"><span>${c.total} documento${c.total === 1 ? '' : 's'}</span>${c.venc ? `<span class="bad">${c.venc} vencido${c.venc > 1 ? 's' : ''}</span>` : ''}${c.prox ? `<span class="warn">${c.prox} por vencer</span>` : ''}${c.sinArchivo ? `<span>${c.sinArchivo} sin archivo</span>` : ''}</div><span class="dsc-go">${_docIcon('chevron-right')}</span></div>
+  </div>`;
+}
+function _docResumenSelector(contId, grupos) {
+  const cont = document.getElementById(contId);
+  if (!cont) return;
+  const t = { ok: 0, warn: 0, bad: 0, none: 0 };
+  grupos.forEach(docs => { t[_docTono(_docConteos(docs))]++; });
+  const item = (n, txt, cls) => n ? `<span class="doc-sum-item ${cls}"><b>${n}</b> ${txt}</span>` : '';
+  cont.innerHTML = item(t.ok, 'al día', 'ok') + item(t.warn, 'por vencer', 'warn') + item(t.bad, 'con vencidos', 'bad') + item(t.none, 'sin documentos', '');
+}
 
 function _badgeDocsCamion(docs) {
   if (!docs.length) return { cls: 'badge-muted', txt: 'Sin docs' };
@@ -10679,16 +10506,14 @@ function _renderSelectorCamiones() {
 
   grid.innerHTML = _listaCamiones.map(truck => {
     const docsTruck = _allTruckDocs.filter(d => d.truck_id === truck.truck_id);
-    const badge = _badgeDocsCamion(docsTruck);
     const num   = String(truck.numero_interno || '?').padStart(2, '0');
-    return `<div class="truck-select-card" onclick="seleccionarCamionAdmin(${truck.truck_id})">
-      <div class="tscard-icon">🚛</div>
-      <div class="tscard-num">#${_escHtml(num)}</div>
-      <div class="tscard-plate">${_escHtml(truck.plate || '')}</div>
-      <div class="tscard-brand">${_escHtml((truck.brand || '') + ' ' + (truck.model || ''))}</div>
-      <span class="truck-badge ${badge.cls}">${badge.txt}</span>
-    </div>`;
+    return _docSelectorCard({
+      onclick: `seleccionarCamionAdmin(${truck.truck_id})`, icon: 'truck',
+      titulo: `Móvil ${_escHtml(num)}`, sub: _escHtml(truck.plate || ''),
+      extra: _escHtml(`${truck.brand || ''} ${truck.model || ''}`.trim()), docs: docsTruck,
+    });
   }).join('');
+  _docResumenSelector('doc-sum-trucks', _listaCamiones.map(t => _allTruckDocs.filter(d => d.truck_id === t.truck_id)));
 
   const fab = document.getElementById('doc-fab');
   if (fab) fab.style.display = 'none';
@@ -10710,8 +10535,8 @@ function seleccionarCamionAdmin(truckId) {
   const titulo = document.getElementById('doc-camion-docs-titulo');
   if (titulo) {
     const num = String(truck.numero_interno || '?').padStart(2, '0');
-    titulo.innerHTML = `<div class="dv-num">Móvil #${_escHtml(num)}</div>
-      <div class="dv-plate">${_escHtml(truck.plate || '')} — ${_escHtml(truck.brand || '')}</div>`;
+    titulo.innerHTML = `<span class="dv-ic">${_docIcon('truck')}</span><div><div class="dv-num">Móvil ${_escHtml(num)}</div>
+      <div class="dv-plate">${_escHtml(truck.plate || '')} · ${_escHtml(`${truck.brand || ''} ${truck.model || ''}`.trim())}</div></div>`;
   }
 
   renderDocsCamion(_docsCamion);
@@ -10744,13 +10569,13 @@ function _renderSelectorChoferes() {
 
   grid.innerHTML = _listaChoferes.map(chofer => {
     const docsChofer = _allDriverDocs.filter(d => d.driver_id === chofer.user_id);
-    const badge = _badgeDocsCamion(docsChofer);
-    return `<div class="truck-select-card" onclick="seleccionarChoferAdmin('${chofer.user_id}')">
-      <div class="tscard-icon">👤</div>
-      <div class="tscard-num" style="font-size:14px;letter-spacing:0">${_escHtml(chofer.full_name || '')}</div>
-      <span class="truck-badge ${badge.cls}">${badge.txt}</span>
-    </div>`;
+    const ini = String(chofer.full_name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    return _docSelectorCard({
+      onclick: `seleccionarChoferAdmin('${chofer.user_id}')`, avatar: _escHtml(ini || '?'),
+      titulo: _escHtml(chofer.full_name || ''), sub: 'Chofer', docs: docsChofer,
+    });
   }).join('');
+  _docResumenSelector('doc-sum-choferes', _listaChoferes.map(c => _allDriverDocs.filter(d => d.driver_id === c.user_id)));
 }
 
 function seleccionarChoferAdmin(driverId) {
@@ -10768,7 +10593,8 @@ function seleccionarChoferAdmin(driverId) {
 
   const titulo = document.getElementById('doc-chofer-docs-titulo');
   if (titulo) {
-    titulo.innerHTML = `<div class="dv-num">${_escHtml(chofer.full_name || '')}</div>`;
+    const ini = String(chofer.full_name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    titulo.innerHTML = `<span class="dv-av">${_escHtml(ini)}</span><div><div class="dv-num">${_escHtml(chofer.full_name || '')}</div><div class="dv-plate">Legajo del chofer</div></div>`;
   }
 
   renderDocsChofer(_docsChofer);
@@ -10824,9 +10650,26 @@ function _aplicarFiltroDocs(docs, filtro) {
   return docs;
 }
 
+// Chips de resumen arriba del legajo y conteos en los filtros
+function _docResumenLegajo(contId, filtroId, docs) {
+  const c = _docConteos(docs);
+  const cont = document.getElementById(contId);
+  if (cont) {
+    const item = (n, txt, cls = '') => `<span class="doc-sum-item ${cls}"><b>${n}</b> ${txt}</span>`;
+    cont.innerHTML = docs.length
+      ? item(c.total, c.total === 1 ? 'documento' : 'documentos') + item(c.ok, 'al día', 'ok')
+        + (c.prox ? item(c.prox, 'por vencer', 'warn') : '') + (c.venc ? item(c.venc, c.venc === 1 ? 'vencido' : 'vencidos', 'bad') : '')
+        + (c.sinArchivo ? item(c.sinArchivo, 'sin archivo', 'warn') : '')
+      : '';
+  }
+  const labels = [['Todos', c.total], ['Por vencer', c.prox], ['Vencidos', c.venc]];
+  document.querySelectorAll(`#${filtroId} .doc-ftab`).forEach((b, i) => { if (labels[i]) b.innerHTML = `${labels[i][0]} <b>${labels[i][1]}</b>`; });
+}
+
 function renderDocsCamion(docs) {
   const grid = document.getElementById('doc-grid-camion');
   if (!grid) return;
+  _docResumenLegajo('doc-resumen-camion', 'doc-filter-camion', docs);
 
   const filtrados = _aplicarFiltroDocs(docs, _docFiltro.camion);
 
@@ -10853,8 +10696,8 @@ function renderDocsCamion(docs) {
   if (bannerPago) {
     if (!pagoDoc || !pagoDoc.periodo || pagoDoc.periodo < mesActual) {
       const mesNombre = new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' });
-      bannerPago.textContent = `⚠ Falta el comprobante de pago de ${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}`;
-      bannerPago.style.display = 'block';
+      bannerPago.innerHTML = `${_docIcon('triangle-alert')}<span>Falta el comprobante de pago de <b>${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}</b></span>`;
+      bannerPago.style.display = 'flex';
     } else {
       bannerPago.style.display = 'none';
     }
@@ -10874,6 +10717,7 @@ const DOC_CHOFER_META = {
 function renderDocsChofer(docs) {
   const grid = document.getElementById('doc-grid-chofer');
   if (!grid) return;
+  _docResumenLegajo('doc-resumen-chofer', 'doc-filter-chofer', docs);
 
   const filtrados = _aplicarFiltroDocs(docs, _docFiltro.chofer);
 
@@ -10909,35 +10753,33 @@ function renderEmergencias(items) {
   telSection.innerHTML = `
     <div class="emerg-section-head">
       <div class="section-label">Teléfonos de emergencia</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('telefono')" title="Agregar teléfono">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('telefono')" title="Agregar teléfono" aria-label="Agregar teléfono">${_docIcon('plus')}Agregar teléfono</button>` : ''}
     </div>
-    ${telefonos.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin teléfonos cargados.</div>` : ''}
-    ${telefonos.map(t => {
+    ${telefonos.length === 0 ? `<div class="emerg-empty">Sin teléfonos cargados.</div>` : ''}
+    <div class="emerg-phone-grid">${telefonos.map(t => {
       const phone     = t.metadata?.phone || '';
       const safeTitle = _escHtml(t.title || '');
       const safeValue = _escHtml(t.value || '');
       return `
         <div class="emerg-phone-card">
-          <div style="font-size:22px">📞</div>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700">${safeTitle}</div>
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${safeValue}</div>
+          <span class="emerg-ic">${_docIcon('phone')}</span>
+          <div class="emerg-txt">
+            <div class="emerg-title">${safeTitle}</div>
+            <div class="emerg-value">${safeValue}</div>
           </div>
-          ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn btn-primary" style="font-size:11px;padding:7px 12px;text-decoration:none">📞 Llamar</a>` : ''}
+          ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn btn-primary emerg-call">${_docIcon('phone')}Llamar</a>` : ''}
         </div>`;
-    }).join('')}`;
+    }).join('')}</div>`;
 
   // ── Protocolo ───────────────────────────────────────────
   protSection.innerHTML = `
     <div class="emerg-section-head" style="margin-top:20px">
       <div class="section-label">Protocolo de siniestro</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('protocolo')" title="Agregar paso">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('protocolo')" title="Agregar paso" aria-label="Agregar paso">${_docIcon('plus')}Agregar paso</button>` : ''}
     </div>
-    ${protocolo.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin pasos cargados.</div>` : `
+    ${protocolo.length === 0 ? `<div class="emerg-empty">Sin pasos cargados.</div>` : `
     <div class="emerg-protocol-card">
-      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
-        🚨 Qué hacer en caso de accidente
-      </div>
+      <div class="emerg-protocol-title">${_docIcon('triangle-alert')}Qué hacer en caso de accidente</div>
       ${protocolo.map((p, idx) => {
         const isCritical = p.metadata?.critical;
         const safeTitle  = _escHtml(p.title || '');
@@ -10945,9 +10787,7 @@ function renderEmergencias(items) {
         return `
           <div class="emerg-step">
             <div class="emerg-step-num">${idx + 1}</div>
-            <div class="emerg-step-text" style="${isCritical ? 'color:var(--red);font-weight:700' : ''}">
-              ${safeTitle}: ${safeValue}
-            </div>
+            <div class="emerg-step-text ${isCritical ? 'critical' : ''}"><b>${safeTitle}</b><span>${safeValue}</span>${isCritical ? '<em>Prioridad</em>' : ''}</div>
           </div>`;
       }).join('')}
     </div>`}`;
@@ -10956,10 +10796,10 @@ function renderEmergencias(items) {
   talSection.innerHTML = `
     <div class="emerg-section-head" style="margin-top:8px">
       <div class="section-label">Talleres y gomerías de confianza</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('taller')" title="Agregar taller">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('taller')" title="Agregar taller" aria-label="Agregar taller">${_docIcon('plus')}Agregar taller</button>` : ''}
     </div>
-    ${talleres.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin talleres cargados.</div>` : ''}
-    ${talleres.map(t => {
+    ${talleres.length === 0 ? `<div class="emerg-empty">Sin talleres cargados.</div>` : ''}
+    <div class="emerg-taller-grid">${talleres.map(t => {
       const phone      = t.metadata?.phone   || '';
       const badge      = _escHtml(t.metadata?.badge    || '');
       const address    = _escHtml(t.metadata?.address  || '');
@@ -10972,19 +10812,19 @@ function renderEmergencias(items) {
       return `
         <div class="emerg-taller-card">
           <div class="emerg-taller-top">
-            <div style="font-size:20px">🔧</div>
-            <div style="flex:1">
-              <div style="font-size:12px;font-weight:700">${safeTitle}${badge ? ` <span style="font-size:9px;color:var(--muted);font-weight:400">· ${badge}</span>` : ''}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">${safeValue}</div>
-              ${address ? `<div class="emerg-taller-addr">📍 ${address}</div>` : ''}
+            <span class="emerg-ic">${_docIcon('wrench')}</span>
+            <div class="emerg-txt">
+              <div class="emerg-title">${safeTitle}${badge ? ` <span class="emerg-badge">${badge}</span>` : ''}</div>
+              <div class="emerg-sub">${safeValue}</div>
+              ${address ? `<div class="emerg-taller-addr">${_docIcon('map-pin')}${address}</div>` : ''}
             </div>
           </div>
           <div class="emerg-taller-actions">
-            ${mapsUrl ? `<a href="${_escHtml(mapsUrl)}" target="_blank" rel="noopener" class="btn-maps">🗺 Ver en Maps</a>` : ''}
-            ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn-taller-call">📞 Llamar</a>` : ''}
+            ${mapsUrl ? `<a href="${_escHtml(mapsUrl)}" target="_blank" rel="noopener" class="btn-maps">${_docIcon('map')}Ver en Maps</a>` : ''}
+            ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn-taller-call">${_docIcon('phone')}Llamar</a>` : ''}
           </div>
         </div>`;
-    }).join('')}`;
+    }).join('')}</div>`;
 }
 
 async function cargarDocumentos() {
@@ -11185,7 +11025,7 @@ function mostrarSkeletonDocs() {
 
 function mostrarErrorDocs() {
   const html = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted)">
-    <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+    <div style="font-size:28px;margin-bottom:8px">⚠</div>
     <div style="font-size:13px;margin-bottom:12px">No se pudieron cargar los documentos</div>
     <button class="btn btn-ghost" onclick="cargarDocumentos()" style="font-size:11px">Reintentar</button>
   </div>`;
@@ -11200,8 +11040,8 @@ function actualizarBannerAlertasDocs(camion, chofer) {
   if (!banner) return;
   const criticos = [...camion, ...chofer].filter(d => d.status === 'vencido' || d.status === 'falta_archivo');
   if (criticos.length > 0) {
-    banner.innerHTML = `⚠️ <strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong>`;
-    banner.style.display = 'block';
+    banner.innerHTML = `${_docIcon('triangle-alert')}<span><strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong> · vencidos o sin el archivo obligatorio</span>`;
+    banner.style.display = 'flex';
   } else {
     banner.style.display = 'none';
   }
@@ -11803,7 +11643,7 @@ function abrirModalPendienteRendir() {
   const pendiente = Math.max(0, totalCobrado - totalRendido);
 
   const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `⚠️ Pendiente de rendir · $${_AR(pendiente)}`;
+  if (tituloEl) tituloEl.textContent = `⚠ Pendiente de rendir · $${_AR(pendiente)}`;
 
   const body = document.getElementById('modal-desglose-body');
   if (!body) return;
@@ -12140,7 +11980,7 @@ function abrirModalIncidente(opts = {}) {
   const btn = document.getElementById('inc-btn-enviar');
   if (btn) { btn.textContent = 'Enviar reporte'; btn.disabled = false; btn.style.opacity = '1'; }
   const titulo = document.querySelector('#modal-incidente h3');
-  if (titulo) titulo.textContent = '⚠️ Reportar incidente';
+  if (titulo) titulo.textContent = '⚠ Reportar incidente';
 
   const sub = document.getElementById('inc-sub');
   const ctx = document.getElementById('inc-ctx');
@@ -12158,7 +11998,7 @@ function abrirModalIncidente(opts = {}) {
     if (ubic) ubic.value = incidente.location || '';
     if (_incTipoSel) document.querySelector(`#inc-tipos .inc-tipo[data-tipo="${_incTipoSel}"]`)?.classList.add('sel');
     if (_incSevSel)  document.querySelector(`#inc-sev .inc-sev-op[data-sev="${_incSevSel}"]`)?.classList.add('sel');
-    if (titulo) titulo.textContent = '✏️ Editar incidente';
+    if (titulo) titulo.textContent = '✏ Editar incidente';
     if (btn) btn.textContent = 'Guardar cambios';
     if (sub) sub.textContent = contexto || _jadminIncCtx?.contexto || 'Incidente registrado';
     if (ctx) ctx.innerHTML = `Estás <strong>editando</strong> un incidente ya registrado. Los cambios se guardan al confirmar.`;
@@ -12788,7 +12628,7 @@ async function _csvImportarConfirm() {
   const body = document.getElementById('csv-result-body');
   body.innerHTML = `
     <div style="padding:18px;text-align:center">
-      <div style="font-size:32px;margin-bottom:8px">${results.fail ? '⚠️' : '✅'}</div>
+      <div style="font-size:32px;margin-bottom:8px">${results.fail ? '⚠' : '✅'}</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:10px">Importación finalizada</div>
       <div style="color:#22c55e">✓ ${results.ok} ${tipo === 'flota' ? 'vehículos creados' : 'usuarios creados'}</div>
       ${results.fail ? `<div style="color:#f87171;margin-top:6px">✗ ${results.fail} fallaron</div>` : ''}
@@ -12834,45 +12674,40 @@ async function cargarSueldosTab() {
 
 // ── Objetivos ──
 async function _cargarObjetivosTab() {
-  const el = document.getElementById('cfg-obj-body');
+  // Pestaña "Comisiones": los bonos por objetivos se reemplazaron por las comisiones por concepto.
   const commissionEl = document.getElementById('cfg-commission-body');
-  if (!el) return;
-  el.innerHTML = '<div class="cfg-rend-empty">Cargando objetivos...</div>';
-  if (commissionEl) commissionEl.innerHTML = '<p class="pm-help">Cargando comisiones...</p>';
+  if (!commissionEl) return;
+  commissionEl.innerHTML = '<p class="pm-help">Cargando comisiones...</p>';
   try {
-    // cargarObjetivos filtra activos; para el admin, listamos todos:
-    const [objectiveResult, commissionData] = await Promise.all([
-      _db.from('payroll_objetivos')
-        .select('objetivo_id, nombre, tipo, valor, descripcion, activo, created_at')
-        .order('nombre', { ascending: true }),
-      cargarPayrollCommissionData()
-    ]);
-    const { data, error } = objectiveResult;
-    if (error) throw error;
-    _objetivosCache = data || [];
+    const commissionData = await cargarPayrollCommissionData();
     _commissionCatalog = commissionData.rules || [];
     PayrollMatrix.setCommissionCatalog(_commissionCatalog);
     _renderCommissionCatalog();
-    _renderObjetivosTabla();
   } catch (err) {
     console.error('_cargarObjetivosTab:', err);
-    el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar objetivos</div>';
+    commissionEl.innerHTML = '<p class="pm-help" style="color:var(--red)">Error al cargar comisiones</p>';
   }
 }
 
 function _renderCommissionCatalog() {
   const el = document.getElementById('cfg-commission-body');
   if (!el) return;
-  el.innerHTML = _commissionCatalog.map(c => {
-    const formula = c.mode === 'percent' ? `${_AR(c.value)}% del importe` : `$${_AR(c.value)} por unidad`;
-    const source = c.source === 'invoices' ? 'Servicio principal' : 'Venta / adicional';
+  if (!_commissionCatalog.length) { el.innerHTML = '<p class="pm-help">Todavía no hay comisiones. Usá + Nueva comisión.</p>'; return; }
+  const rows = _commissionCatalog.map(c => {
     const assigned = c.assigned_driver_ids?.length || 0;
-    return `<div class="payroll-commission-card${c.active ? '' : ' is-inactive'}">
-      <div><strong>${_escHtml(c.name)}</strong><small>${source} · ${formula}</small></div>
-      <span>${assigned} chofer${assigned===1?'':'es'}</span>
-      <button class="cfg-rend-btn-mini" onclick="_abrirComisionGeneral('${c.commission_id}')">Editar</button>
-    </div>`;
-  }).join('') || '<p class="pm-help">Todavía no hay comisiones generales.</p>';
+    return `<tr class="${c.active ? '' : 'is-inactive'}">
+      <td data-label="Comisión"><b>${_escHtml(c.name)}</b></td>
+      <td data-label="Origen">${_escHtml(PayrollMatrix.commissionSourceLabel(c.source))}</td>
+      <td data-label="Cálculo">${_escHtml(PayrollMatrix.commissionFormula(c))}</td>
+      <td data-label="Choferes">${assigned} chofer${assigned===1?'':'es'}</td>
+      <td data-label="Estado"><span class="pill ${c.active ? 'ok' : 'warn'}">${c.active ? 'Activa' : 'Inactiva'}</span></td>
+      <td class="esq-actions"><button class="cfg-rend-btn-mini" onclick="_abrirComisionGeneral('${c.commission_id}')">Editar</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div class="esq-table-wrap"><table class="cfg-rend-table payroll-commission-table">
+    <thead><tr><th>Comisión</th><th>Origen</th><th>Cálculo</th><th>Choferes</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
 function _renderObjetivosTabla() {
@@ -12998,38 +12833,69 @@ function _renderEsquemaTabla() {
     return;
   }
   const missing = _esquemaCache.filter(u => !u.settings);
+  _pintarAvisoEsquemas(missing.length);
+  const money = n => '$' + _AR(Number(n) || 0);
+  const off = '<span class="esq-off">No paga</span>';
   const rows = _esquemaCache.map(u => {
     const hasSet = !!u.settings;
-    const basico = hasSet ? '$' + _AR(u.sueldo_basico || 0) : '—';
-    const vkm    = hasSet ? '$' + _AR(u.valor_km || 0) + (u.settings?.compensation_matrix?.km_basis === 'billed' ? ' / facturado' : ' / real')      : '—';
-    const vserv  = hasSet ? '$' + _AR(u.valor_servicio || 0): '—';
-    const bono   = hasSet ? '$' + _AR(u.bono_presentismo || 0) : '—';
-    const commissionCount = u.settings?.compensation_matrix?.commissions?.length || 0;
-    const pillCls = hasSet ? 'ok' : 'warn';
-    const pillTxt = hasSet ? 'Configurado' : 'Sin esquema';
+    const m = u.settings?.compensation_matrix || {};
+    const type = hasSet ? PayrollMatrix.payType(m, u.sueldo_basico) : null;
+    const paySrv = hasSet && type !== 'fixed' && m.pay_services !== false;
+    const payKm = hasSet && type !== 'fixed' && m.pay_km !== false;
+    const commissionCount = m.commissions?.length || 0;
+    const bonusCount = m.bonuses?.length || 0;
+    const extras = [
+      hasSet && m.pay_presentismo !== false ? 'Presentismo' : '',
+      bonusCount ? `${bonusCount} bono${bonusCount===1?'':'s'}` : '',
+      commissionCount ? `${commissionCount} comisi${commissionCount===1?'ón':'ones'}` : '',
+    ].filter(Boolean).join(' · ') || '—';
     const selected = _esquemaSelected.has(u.user_id);
+    const name = _escHtml(u.full_name || 'chofer');
     return `<tr class="${selected ? 'is-selected' : ''}">
-      <td><input type="checkbox" aria-label="Seleccionar ${_escHtml(u.full_name || 'chofer')}" ${selected ? 'checked' : ''} onchange="_toggleEsquemaDriver('${u.user_id}',this.checked)"></td>
-      <td>${_escHtml(u.full_name || '')}${u.legajo ? ` <span style="color:var(--muted);font-size:11px">#${_escHtml(u.legajo)}</span>` : ''}</td>
-      <td style="font-family:'DM Mono',monospace">${basico}</td>
-      <td style="font-family:'DM Mono',monospace">${vkm}</td>
-      <td style="font-family:'DM Mono',monospace">${vserv}</td>
-      <td style="font-family:'DM Mono',monospace">${bono}</td>
-      <td>${commissionCount} ${commissionCount===1?'comisión':'comisiones'}</td>
-      <td><span class="pill ${pillCls}">${pillTxt}</span></td>
-      <td style="text-align:right;white-space:nowrap">
-        <button class="cfg-rend-btn-mini primary" onclick="_abrirEsquemaModal('${u.user_id}')">Editar</button>
-      </td>
+      <td class="esq-check"><input type="checkbox" aria-label="Seleccionar ${name}" ${selected ? 'checked' : ''} onchange="_toggleEsquemaDriver('${u.user_id}',this.checked)"></td>
+      <td class="esq-name" data-label="Chofer"><b>${name}</b>${u.legajo ? `<small>#${_escHtml(u.legajo)}</small>` : ''}</td>
+      <td data-label="Tipo">${hasSet ? `<span class="esq-type esq-type-${type}">${PayrollMatrix.PAY_TYPE_LABELS[type]}</span>` : '<span class="pill warn">Sin esquema</span>'}</td>
+      <td class="esq-num" data-label="Sueldo fijo">${hasSet ? (type === 'variable' ? off : money(u.sueldo_basico)) : '—'}</td>
+      <td class="esq-num" data-label="Por servicio">${hasSet ? (paySrv ? money(u.valor_servicio) : off) : '—'}</td>
+      <td class="esq-num" data-label="Por km">${hasSet ? (payKm ? `${money(u.valor_km)}<small>${m.km_basis === 'billed' ? 'facturados' : 'reales'}</small>` : off) : '—'}</td>
+      <td class="esq-extras" data-label="Bonos y comisiones">${extras}</td>
+      <td class="esq-actions"><button class="cfg-rend-btn-mini primary" onclick="_abrirEsquemaModal('${u.user_id}')">Editar</button></td>
     </tr>`;
   }).join('');
   el.innerHTML = `
     ${missing.length ? `<div class="payroll-scheme-alert"><strong>${missing.length} chofer${missing.length===1?'':'es'} sin esquema.</strong> No se incluirán al generar liquidaciones hasta configurarlos.</div>` : ''}
-    <table class="cfg-rend-table">
-      <thead><tr><th><input type="checkbox" aria-label="Seleccionar todos" ${_esquemaSelected.size===_esquemaCache.length?'checked':''} onchange="_toggleTodosEsquema(this.checked)"></th><th>Chofer</th><th>Sueldo básico</th><th>Valor por km</th><th>Valor por servicio</th><th>Presentismo</th><th>Comisiones</th><th>Estado</th><th></th></tr></thead>
+    <div class="esq-table-wrap"><table class="cfg-rend-table esq-table">
+      <thead><tr><th class="esq-check"><input type="checkbox" aria-label="Seleccionar todos" ${_esquemaSelected.size===_esquemaCache.length?'checked':''} onchange="_toggleTodosEsquema(this.checked)"></th><th>Chofer</th><th>Tipo</th><th class="esq-num">Sueldo fijo</th><th class="esq-num">Por servicio</th><th class="esq-num">Por km</th><th>Bonos y comisiones</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>`;
+    </table></div>`;
   _actualizarSeleccionEsquema();
 }
+
+// Aviso de choferes sin esquema de pago: en la pestaña Esquemas y en "Sueldos" del menú.
+function _pintarAvisoEsquemas(missing) {
+  const n = Number(missing) || 0;
+  const label = n ? `${n} chofer${n===1?'':'es'} sin esquema de pago` : '';
+  const tab = document.getElementById('esq-tab-alert');
+  if (tab) { tab.hidden = !n; tab.textContent = n ? String(n) : ''; tab.title = label; }
+  const nav = document.getElementById('nav-sueldos');
+  if (nav) {
+    let badge = nav.querySelector('.ax-nav-alert');
+    if (!badge && n) { badge = document.createElement('span'); badge.className = 'ax-nav-alert'; nav.appendChild(badge); }
+    if (badge) { badge.hidden = !n; badge.textContent = n ? String(n) : ''; badge.title = label; badge.setAttribute('aria-label', label); }
+  }
+}
+async function actualizarAvisoEsquemas() {
+  try {
+    const [users, settings] = await Promise.all([
+      _db.from('users').select('user_id').eq('role_id', 3).eq('is_active', true),
+      _db.from('payroll_settings').select('user_id'),
+    ]);
+    if (users.error || settings.error) return;
+    const configured = new Set((settings.data || []).map(r => r.user_id));
+    _pintarAvisoEsquemas((users.data || []).filter(u => !configured.has(u.user_id)).length);
+  } catch (err) { console.warn('actualizarAvisoEsquemas:', err); }
+}
+window.actualizarAvisoEsquemas = actualizarAvisoEsquemas;
 
 function _toggleEsquemaDriver(driverId, checked) {
   if (checked) _esquemaSelected.add(driverId); else _esquemaSelected.delete(driverId);
@@ -13055,13 +12921,12 @@ function _abrirEsquemaModal(driverId) {
   if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
   _esquemaEditDriverId = driverId;
   document.getElementById('esq-chofer').textContent = u.full_name + (u.legajo ? ' · #' + u.legajo : '');
-  document.getElementById('esq-basico').value     = u.sueldo_basico    ?? '';
-  document.getElementById('esq-valor-km').value   = u.valor_km         ?? '';
-  document.getElementById('esq-valor-serv').value = u.valor_servicio   ?? '';
-  document.getElementById('esq-bono-pres').value  = u.bono_presentismo ?? '';
   openModal('modal-esquema-edit');
   PayrollMatrix.setCommissionCatalog(_commissionCatalog);
-  PayrollMatrix.open(u.settings?.compensation_matrix).catch(error=>toast(error.message,'error'));
+  PayrollMatrix.open(u.settings?.compensation_matrix, {
+    sueldo_basico: u.sueldo_basico, valor_km: u.valor_km,
+    valor_servicio: u.valor_servicio, bono_presentismo: u.bono_presentismo,
+  }).catch(error=>toast(error.message,'error'));
 }
 
 async function _abrirComisionGeneral(commissionId = null) {
@@ -13078,6 +12943,8 @@ async function _abrirComisionGeneral(commissionId = null) {
   document.getElementById('pc-active').checked = current.active !== false;
   const concept = document.getElementById('pc-concept');
   concept.innerHTML = '<option value="">Cargando conceptos...</option>';
+  _syncComisionOrigen();
+  document.getElementById('pc-source').onchange = _syncComisionOrigen;
   openModal('modal-comision-payroll');
   const { data, error } = await _db.rpc('list_service_types_config', { p_include_inactive: true });
   if (error) { toast('No se pudieron cargar los conceptos', 'error'); return; }
@@ -13087,12 +12954,26 @@ async function _abrirComisionGeneral(commissionId = null) {
   concept.value = current.concept_id || '';
 }
 
+// Captación: el chofer consiguió un servicio particular. No depende de un
+// concepto; se paga fijo por servicio o un % de lo cobrado al cliente.
+function _syncComisionOrigen() {
+  const captacion = document.getElementById('pc-source')?.value === 'captacion';
+  const group = document.getElementById('pc-concept')?.closest('.form-group');
+  if (group) group.hidden = captacion;
+  const mode = document.getElementById('pc-mode');
+  if (mode) {
+    mode.options[0].textContent = captacion ? 'Porcentaje de lo cobrado' : 'Porcentaje del importe';
+    mode.options[1].textContent = captacion ? 'Importe fijo por servicio' : 'Importe fijo por unidad';
+  }
+}
+
 async function _guardarComisionGeneral() {
-  const conceptId = document.getElementById('pc-concept').value;
+  const captacion = document.getElementById('pc-source').value === 'captacion';
+  const conceptId = captacion ? null : document.getElementById('pc-concept').value;
   const selectedConcept = _commissionConcepts.find(c => c.concept_id === conceptId);
   const payload = {
     commission_id: _commissionEditId,
-    name: document.getElementById('pc-name').value.trim() || selectedConcept?.name || '',
+    name: document.getElementById('pc-name').value.trim() || selectedConcept?.name || (captacion ? 'Captación de particular' : ''),
     concept_id: conceptId,
     source: document.getElementById('pc-source').value,
     mode: document.getElementById('pc-mode').value,
@@ -13111,35 +12992,41 @@ function _abrirEsquemaMasivoModal() {
   const modal = document.getElementById('modal-esquema-masivo');
   if (!modal) { toast('Modal no encontrado', 'error'); return; }
   if (modal.parentElement !== document.body) document.body.appendChild(modal);
-  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres'].forEach(id => {
+  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-pay-type','esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo'].forEach(id => {
     const inp = document.getElementById(id); if (inp) inp.value = '';
   });
-  ['esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('esqm-commission-mode').value = '';
+  const tri = id => `<div class="ax-seg pm-seg" role="group" data-bulk-commission="${id}"><button type="button" data-v="" aria-pressed="true">No cambiar</button><button type="button" data-v="add" aria-pressed="false">Asignar</button><button type="button" data-v="remove" aria-pressed="false">Quitar</button></div>`;
   document.getElementById('esqm-commission-list').innerHTML = _commissionCatalog.filter(c => c.active).map(c =>
-    `<label class="pm-commission-choice"><input type="checkbox" data-bulk-commission="${c.commission_id}" disabled><span><b>${_escHtml(c.name)}</b><small>${c.mode==='percent'?_AR(c.value)+'%':'$'+_AR(c.value)+' por unidad'}</small></span></label>`).join('') || '<p class="pm-help">No hay comisiones generales activas.</p>';
-  document.getElementById('esqm-commission-mode').onchange = function() {
-    document.querySelectorAll('[data-bulk-commission]').forEach(input => { input.disabled = this.value !== 'replace'; });
-    _actualizarPreviewEsquemaMasivo();
-  };
+    `<div class="pm-bulk-row"><span class="pm-switch-text"><b>${_escHtml(c.name)}</b><small>${_escHtml(PayrollMatrix.commissionFormula(c))}</small></span>${tri(c.commission_id)}</div>`).join('') || '<p class="pm-help">No hay comisiones activas.</p>';
+  modal.querySelectorAll('.pm-seg').forEach(seg => seg.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === 0))));
+  modal.querySelectorAll('[data-bulk-type]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.bulkType === '')));
+  if (!modal.dataset.bulkWired) {
+    modal.dataset.bulkWired = '1';
+    modal.addEventListener('click', e => {
+      const typeBtn = e.target.closest('[data-bulk-type]');
+      if (typeBtn) {
+        document.getElementById('esqm-pay-type').value = typeBtn.dataset.bulkType;
+        modal.querySelectorAll('[data-bulk-type]').forEach(b => b.setAttribute('aria-checked', String(b === typeBtn)));
+        _actualizarPreviewEsquemaMasivo(); return;
+      }
+      const btn = e.target.closest('.pm-seg button');
+      if (!btn) return;
+      const seg = btn.parentElement;
+      seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+      if (seg.dataset.bulkTarget) document.getElementById(seg.dataset.bulkTarget).value = btn.dataset.v;
+      else seg.dataset.value = btn.dataset.v;
+      _actualizarPreviewEsquemaMasivo();
+    });
+    modal.addEventListener('input', _actualizarPreviewEsquemaMasivo);
+  }
+  modal.querySelectorAll('[data-bulk-commission]').forEach(seg => { seg.dataset.value = ''; });
   const selected = _esquemaCache.filter(c => _esquemaSelected.has(c.user_id));
   document.getElementById('esqm-selected-list').innerHTML = `<strong>${selected.length} chofer${selected.length===1?'':'es'}:</strong> ${selected.map(c=>_escHtml(c.full_name)).join(', ')}`;
   _actualizarPreviewEsquemaMasivo();
-  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo','esqm-commission-mode'].forEach(id => {
-    const inp = document.getElementById(id); if (inp) inp.oninput = inp.onchange = _actualizarPreviewEsquemaMasivo;
-  });
   openModal('modal-esquema-masivo');
 }
 
-function _actualizarPreviewEsquemaMasivo() {
-  const target = _esquemaSelected.size;
-  const previewEl = document.getElementById('esqm-preview');
-  if (previewEl) {
-    previewEl.innerHTML = `Se aplicará a <strong style="color:var(--fg)">${target}</strong> chofer${target===1?'':'es'} seleccionado${target===1?'':'s'}.`;
-  }
-}
-
-async function _guardarEsquemaMasivo() {
+function _leerEsquemaMasivo() {
   const parseOptional = id => {
     const v = document.getElementById(id)?.value;
     return v === '' || v == null ? null : Number(v);
@@ -13151,45 +13038,83 @@ async function _guardarEsquemaMasivo() {
     bono_presentismo: parseOptional('esqm-bono-pres'),
   };
   const matrix = {};
-  const boolValue = id => { const v=document.getElementById(id)?.value; return v===''?null:v==='true'; };
+  const boolValue = id => { const v=document.getElementById(id)?.value; return v===''||v==null?null:v==='true'; };
+  const payType = document.getElementById('esqm-pay-type')?.value;
   const payServices=boolValue('esqm-pay-services'), payKm=boolValue('esqm-pay-km'), payPresentismo=boolValue('esqm-pay-presentismo');
   const kmBasis=document.getElementById('esqm-km-basis')?.value;
+  if(payType) matrix.pay_type=payType;
   if(payServices!==null) matrix.pay_services=payServices;
   if(payKm!==null) matrix.pay_km=payKm;
   if(payPresentismo!==null) matrix.pay_presentismo=payPresentismo;
   if(kmBasis) matrix.km_basis=kmBasis;
   if(Object.keys(matrix).length) patch.compensation_matrix=matrix;
-  if (document.getElementById('esqm-commission-mode')?.value === 'replace') {
-    patch.commission_ids = [...document.querySelectorAll('[data-bulk-commission]:checked')].map(el => el.dataset.bulkCommission);
-  }
+  const segs = [...document.querySelectorAll('#esqm-commission-list [data-bulk-commission]')];
+  const add = segs.filter(s => s.dataset.value === 'add').map(s => s.dataset.bulkCommission);
+  const remove = segs.filter(s => s.dataset.value === 'remove').map(s => s.dataset.bulkCommission);
+  if (add.length || remove.length) patch.commission_changes = { add, remove };
+  return patch;
+}
+
+function _actualizarPreviewEsquemaMasivo() {
+  const target = _esquemaSelected.size;
+  const previewEl = document.getElementById('esqm-preview');
+  if (!previewEl) return;
+  const p = _leerEsquemaMasivo();
+  const m = p.compensation_matrix || {};
+  const yes = v => v ? 'sí' : 'no';
+  const items = [
+    m.pay_type && `Tipo: ${PayrollMatrix.PAY_TYPE_LABELS[m.pay_type]}`,
+    p.sueldo_basico != null && `Sueldo fijo $${_AR(p.sueldo_basico)}`,
+    m.pay_services != null && `Pago por servicio: ${yes(m.pay_services)}`,
+    p.valor_servicio != null && `Valor por servicio $${_AR(p.valor_servicio)}`,
+    m.pay_km != null && `Pago por km: ${yes(m.pay_km)}`,
+    p.valor_km != null && `Valor por km $${_AR(p.valor_km)}`,
+    m.km_basis && `KM ${m.km_basis === 'billed' ? 'facturados' : 'reales'}`,
+    m.pay_presentismo != null && `Presentismo: ${yes(m.pay_presentismo)}`,
+    p.bono_presentismo != null && `Presentismo $${_AR(p.bono_presentismo)}`,
+    p.commission_changes?.add.length && `Asignar ${p.commission_changes.add.length} comisi${p.commission_changes.add.length===1?'ón':'ones'}`,
+    p.commission_changes?.remove.length && `Quitar ${p.commission_changes.remove.length} comisi${p.commission_changes.remove.length===1?'ón':'ones'}`,
+  ].filter(Boolean);
+  previewEl.innerHTML = items.length
+    ? `<b>Se aplicará a ${target} chofer${target===1?'':'es'}:</b> ${items.map(_escHtml).join(' · ')}`
+    : 'Todavía no cambiaste nada.';
+}
+
+async function _guardarEsquemaMasivo() {
+  const patch = _leerEsquemaMasivo();
   const algo = Object.values(patch).some(v => v != null);
-  if (!algo) { toast('Completá al menos un campo', 'error'); return; }
-  if (Object.values(patch).some(v => v != null && v < 0)) { toast('Los valores no pueden ser negativos', 'error'); return; }
+  if (!algo) { toast('Cambiá al menos un dato', 'error'); return; }
+  if (['sueldo_basico','valor_km','valor_servicio','bono_presentismo'].some(k => patch[k] != null && !(patch[k] >= 0))) { toast('Los valores no pueden ser negativos', 'error'); return; }
   const driverIds = [..._esquemaSelected];
   const totalTarget = driverIds.length;
   if (totalTarget === 0) { toast('No hay choferes destino', 'error'); return; }
-  if (!confirm(`¿Aplicar estos valores a ${totalTarget} chofer${totalTarget===1?'':'es'}?`)) return;
+  if (!confirm(`¿Aplicar estos cambios a ${totalTarget} chofer${totalTarget===1?'':'es'}?`)) return;
 
   const res = await guardarPayrollSettingsMasivo(patch, { driverIds });
-  if (!res.ok) { toast('Error al aplicar masivo', 'error'); return; }
+  if (!res.ok) { toast(res.error?.message || 'Error al aplicar cambios', 'error'); return; }
   closeModal('modal-esquema-masivo');
-  toast(`Esquema aplicado a ${res.total} choferes ✓`, 'success');
+  toast(`Cambios aplicados a ${res.total} chofer${res.total===1?'':'es'} ✓`, 'success');
   _cargarEsquemaTab();
 }
 
 async function _guardarEsquema() {
   const driverId = _esquemaEditDriverId;
   if (!driverId) { toast('Falta chofer', 'error'); return; }
+  let matrix;
+  try { matrix = PayrollMatrix.read(); } catch(error) { toast(error.message,'error'); return; }
   const payload = {
     sueldo_basico:    Number(document.getElementById('esq-basico').value)     || 0,
     valor_km:         Number(document.getElementById('esq-valor-km').value)   || 0,
     valor_servicio:   Number(document.getElementById('esq-valor-serv').value) || 0,
     bono_presentismo: Number(document.getElementById('esq-bono-pres').value)  || 0,
+    compensation_matrix: matrix,
   };
   if ([payload.sueldo_basico, payload.valor_km, payload.valor_servicio, payload.bono_presentismo].some(n => n < 0)) {
     toast('Los valores no pueden ser negativos', 'error'); return;
   }
-  try { payload.compensation_matrix = PayrollMatrix.read(); } catch(error) { toast(error.message,'error'); return; }
+  // "Por servicios y km" no lleva sueldo fijo.
+  if (matrix.pay_type === 'variable') payload.sueldo_basico = 0;
+  if (matrix.pay_type !== 'variable' && !(payload.sueldo_basico > 0)) { toast('Ingresá el sueldo fijo mensual', 'error'); return; }
   const res = await guardarPayrollSettings(driverId, payload);
   if (!res.ok) {
     const msg = res.error?.message || res.error?.hint || res.error?.details || 'desconocido';
@@ -13248,9 +13173,6 @@ _sueldosSwitchSub = function(sub, btnEl) {
     _cargarLiquidacionesMes();
   } else if (sub === 'historial') {
     _initHistorialFiltros();
-  } else if (sub === 'rendiciones') {
-    // Hub admin de rendiciones (aprobación / observación) dentro de Sueldos.
-    cargarRendicionesTab();
   }
 };
 
@@ -13440,7 +13362,7 @@ function _renderReciboResumen() {
     ${row('Bonos mensuales', '$' + _AR(liq.bonus_monthly || 0))}
     ${row('Comisiones por concepto', '$' + _AR(liq.commission_total || 0))}
     ${PayrollMatrix.receiptHtml(liq)}
-    ${row('Bonos por objetivos',                '$' + _AR(liq.bonos_objetivos))}
+    ${Number(liq.bonos_objetivos) ? row('Bonos por objetivos (histórico)', '$' + _AR(liq.bonos_objetivos)) : ''}
     ${row('Subtotal bruto',                     '$' + _AR(bruto), { color:'var(--muted)' })}
     ${row(ajusteLabel,                          ajusteVal, { color: ajusteRend > 0 ? 'var(--red)' : 'var(--muted)' })}
     ${row('TOTAL',                              '$' + _AR(liq.total), { strong:true, color:'var(--amber)' })}
@@ -13551,7 +13473,7 @@ function _renderReciboEfectivos() {
     return;
   }
   const rows = _reciboEfectivosCache.map(e => {
-    const semaforo = e.estado === 'ok' ? '🟢' : e.estado === 'warn' ? '🟡' : '🔴';
+    const semaforo = e.estado === 'ok' ? '<span style="color:#22c55e">●</span>' : e.estado === 'warn' ? '<span style="color:#f59e0b">●</span>' : '<span style="color:var(--red)">●</span>';
     const declaradoTxt = e.declarado === null ? '<span style="color:var(--red)">— (sin rendir)</span>' : ('$' + _AR(e.declarado));
     const deltaColor = Math.abs(e.delta) < 50 ? 'var(--muted)' : e.delta < 0 ? '#ef4444' : '#4ade80';
     const deltaTxt = e.delta === 0 ? '$0' : (e.delta > 0 ? '+$' : '−$') + _AR(Math.abs(e.delta));
@@ -13832,7 +13754,7 @@ function _exportarReciboPDF(liquidacion = null) {
             <tr><td>Adicional por km<div class="muted">${kmFormula}</div></td><td class="right">$${_AR(liq.adic_km)}</td></tr>
             <tr><td>Adicional por servicios<div class="muted">${servFormula}</div></td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
             <tr><td>Presentismo ${liq.presentismo_paga ? '✓' : '✗'}<div class="muted">${presDetalle}</div></td><td class="right">$${_AR(presMostrado)}</td></tr>
-            <tr><td>Bonos mensuales</td><td class="right">$${_AR(liq.bonus_monthly || 0)}</td></tr><tr><td>Comisiones por concepto</td><td class="right">$${_AR(liq.commission_total || 0)}</td></tr><tr><td colspan="2">${PayrollMatrix.receiptHtml(liq)}</td></tr><tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
+            <tr><td>Bonos mensuales</td><td class="right">$${_AR(liq.bonus_monthly || 0)}</td></tr><tr><td>Comisiones por concepto</td><td class="right">$${_AR(liq.commission_total || 0)}</td></tr><tr><td colspan="2">${PayrollMatrix.receiptHtml(liq)}</td></tr>${Number(liq.bonos_objetivos)?`<tr><td>Bonos por objetivos (histórico)</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>`:''}
             <tr class="subtotal-row"><td>Subtotal bruto</td><td class="right">$${_AR(bruto)}</td></tr>
             <tr class="desc-row"><td>Descuentos por rendición<div class="muted">${ajusteDetalle}</div></td><td class="right">${ajusteRend > 0 ? '- $' + _AR(ajusteRend) : '$0'}</td></tr>
             <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>
@@ -13960,7 +13882,7 @@ async function _renderReciboRendiciones() {
     }
 
     const rows = rendiciones.map(r => {
-      const sem = r._faltante > 0 ? '🔴' : r._sobrante > 0 ? '🟡' : '🟢';
+      const sem = r._faltante > 0 ? '<span style="color:var(--red)">●</span>' : r._sobrante > 0 ? '<span style="color:#f59e0b">●</span>' : '<span style="color:#22c55e">●</span>';
       const diffTxt = r._faltante > 0
         ? `<span style="color:var(--red);font-weight:600">-$${_AR(r._faltante)}</span>`
         : r._sobrante > 0
@@ -14029,7 +13951,29 @@ let _jadminState = {
   ready: false,         // handlers wired
   loading: false,
   searchTimer: null,
+  modoTodo: false,      // true: se trajo todo el período (hasta el tope) y se filtra, ordena y pagina acá
+  totalVisible: 0,      // jornadas que cumplen los filtros (en modoTodo, las de todo el período)
+  verServicios: false,  // abrir el detalle ya parado en los servicios de la jornada
+  multiChofer: null,
+  multiCamion: null,
 };
+
+// Filtros que dependen de datos calculados acá (alertas, texto) y órdenes que el servidor no sabe hacer:
+// en esos casos se trae todo el período (hasta el tope) y se filtra, ordena y pagina en pantalla,
+// para que valga sobre todas las jornadas y no sólo sobre la página que se estaba viendo.
+const _JADMIN_TOPE_TODO = 500;
+const _JADMIN_TOPE_EXPORT = 5000;
+const _JADMIN_HORAS_ABIERTA_LARGA = 12;
+const _JADMIN_ALERTAS = ['taller', 'incidentes', 'rendicion', 'abierta_larga', 'sin_control', 'consumo_alto'];
+const _JADMIN_ORDENES = [
+  { key: 'log_date',      label: 'Fecha',                  asc: 'más vieja primero',    desc: 'más nueva primero' },
+  { key: 'km_recorridos', label: 'Km recorridos',          asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'horas',         label: 'Horas',                  asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'servicios',     label: 'Servicios',              asc: 'menos primero',        desc: 'más primero' },
+  { key: 'kml',           label: 'Km/l',                   asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'rendicion',     label: 'Diferencia de rendición', asc: 'faltantes primero',   desc: 'sobrantes primero' },
+];
+const _JADMIN_ORDEN_DE_COLUMNA = { km: 'km_recorridos', horas: 'horas', servicios: 'servicios', kml: 'kml' };
 
 // Si llega un cambio de filtro mientras ya hay un pedido en vuelo, la
 // recarga anterior se descarta silenciosamente (ver guard de abajo) y el
@@ -14150,6 +14094,7 @@ async function initJornadasAdmin() {
     _jadminState.ready = true;
   }
 
+  _jadminPopularOrden();
   _jadminSyncPicker('chofer');
   _jadminSyncPicker('camion');
   _jadminSyncPeriodLabel();
@@ -14160,30 +14105,28 @@ async function initJornadasAdmin() {
 }
 
 function _jadminPopularDropdowns() {
-  const drivers = document.getElementById('jadmin-f-chofer-options');
-  const trucks = document.getElementById('jadmin-f-camion-options');
-  if (drivers) drivers.innerHTML = _jadminState.choferes.map(c => {
-    const lbl = c.legajo ? `${_escHtml(c.full_name)} (Leg. ${_escHtml(c.legajo)})` : _escHtml(c.full_name);
-    return `<label class="jadmin-option"><input type="checkbox" value="${_escHtml(c.user_id)}"> <span>${lbl}</span></label>`;
-  }).join('') || '<span class="jadmin-option">Sin choferes disponibles</span>';
-  if (trucks) trucks.innerHTML = _jadminState.camiones.map(t => {
-    const mov = t.numero_interno ? ` · #${_escHtml(t.numero_interno)}` : '';
-    return `<label class="jadmin-option"><input type="checkbox" value="${_escHtml(t.truck_id)}"> <span>${_escHtml(t.plate)}${mov}</span></label>`;
-  }).join('') || '<span class="jadmin-option">Sin móviles disponibles</span>';
+  const crear = (id, opciones, clave, placeholder, nombre) => {
+    const caja = document.getElementById(id);
+    if (!caja || !window.AxUI?.multi) return null;
+    const m = window.AxUI.multi(caja, {
+      options: opciones, value: _jadminState[clave], placeholder,
+      onChange: valores => { _jadminState[clave] = valores; _jadminState.offset = 0; _jadminReload(); }
+    });
+    caja.querySelector('.ax-multi-btn')?.setAttribute('aria-label', nombre);
+    return m;
+  };
+  _jadminState.multiChofer = crear('jadmin-f-chofer',
+    _jadminState.choferes.map(c => ({ value: String(c.user_id), label: c.full_name || 'Sin nombre' })),
+    'driverIds', 'Todos los choferes', 'Choferes');
+  _jadminState.multiCamion = crear('jadmin-f-camion',
+    _jadminState.camiones.map(t => ({ value: String(t.truck_id), label: `${t.plate}${t.numero_interno ? ` · #${t.numero_interno}` : ''}` })),
+    'truckIds', 'Todos los móviles', 'Móviles');
 }
 
 function _jadminSyncPicker(kind) {
   const isDriver = kind === 'chofer';
-  const values = isDriver ? _jadminState.driverIds : _jadminState.truckIds;
-  const options = document.getElementById(`jadmin-f-${kind}-options`);
-  if (options) options.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = values.includes(input.value); });
-  const label = document.getElementById(`jadmin-f-${kind}-label`);
-  if (!label) return;
-  if (!values.length) label.textContent = isDriver ? 'Todos los choferes' : 'Todos los móviles';
-  else if (values.length === 1) {
-    const item = isDriver ? _jadminState.choferes.find(x => String(x.user_id) === values[0]) : _jadminState.camiones.find(x => String(x.truck_id) === values[0]);
-    label.textContent = isDriver ? (item?.full_name || '1 chofer') : (item?.plate || '1 móvil');
-  } else label.textContent = `${values.length} ${isDriver ? 'choferes' : 'móviles'}`;
+  const m = isDriver ? _jadminState.multiChofer : _jadminState.multiCamion;
+  if (m) m.set(isDriver ? _jadminState.driverIds : _jadminState.truckIds);
 }
 
 /* Período y Estado con los filtros compartidos (auxilios-filters-v1): mismo
@@ -14196,18 +14139,29 @@ function _jadminRenderAuxFilters() {
   if (!F || !per || !est) return false;
   const d = _jadminState.desde, h = _jadminState.hasta;
   const mes = d && /-01$/.test(d) && h && h.slice(0, 7) === d.slice(0, 7) && (h === F.rangoDeMes(d.slice(0, 7))?.hasta || h === _jadminHoy()) ? d.slice(0, 7) : null;
-  const value = mes ? { mode: 'mes', mes } : (d || h ? { mode: 'rango', desde: d, hasta: h } : { mode: 'all' });
-  per.innerHTML = F.period({ id: 'jadmin-periodo', value, allowAll: false });
-  est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.estado || '', options: [{ value: 'open', label: 'Abierta' }, { value: 'closed', label: 'Cerrada' }], allLabel: 'Todos' });
-  const root = document.querySelector('#screen-jornadas-admin .filtros');
+  const value = _jadminState.quick ? { mode: 'rango', desde: d, hasta: h, quick: _jadminState.quick }
+    : mes ? { mode: 'mes', mes } : (d || h ? { mode: 'rango', desde: d, hasta: h } : { mode: 'all' });
+  // Un solo Período (rápidos, meses y personalizado) y un solo Estado (estados y alertas).
+  per.innerHTML = F.period({ id: 'jadmin-periodo', value, allowAll: false, quick: true });
+  est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.clientFilter || _jadminState.estado || '', allLabel: 'Todas',
+    options: [{ value: 'open', label: 'Abiertas' }, { value: 'closed', label: 'Cerradas' }, { group: 'Alertas' },
+      { value: 'abierta_larga', label: `Abierta hace más de ${_JADMIN_HORAS_ABIERTA_LARGA} h` }, { value: 'sin_control', label: 'Sin control de neumáticos' },
+      { value: 'consumo_alto', label: 'Consumo alto de combustible' },
+      { value: 'taller', label: 'En taller' }, { value: 'incidentes', label: 'Con incidentes' }, { value: 'rendicion', label: 'Faltantes de rendición' }] });
+  const root = document.querySelector('#screen-jornadas-admin .jadmin-bar');
   F.bind(root, (id, v) => {
     if (id === 'jadmin-periodo') {
       const b = F.periodBounds(v);
       _jadminState.desde = b.start; _jadminState.hasta = v.mode === 'mes' && b.end > _jadminHoy() ? _jadminHoy() : b.end;
+      _jadminState.quick = v.quick || null;
       _jadminState.chip = null;
       document.querySelectorAll('#screen-jornadas-admin .chip-group:first-child .chip').forEach(c => c.classList.remove('active'));
     }
-    if (id === 'jadmin-estado') _jadminState.estado = v || '';
+    if (id === 'jadmin-estado') {
+      const alerta = _JADMIN_ALERTAS.includes(v);
+      _jadminState.estado = alerta ? '' : (v || '');
+      _jadminState.clientFilter = alerta ? v : null;
+    }
     _jadminState.offset = 0;
     _jadminSyncPeriodLabel();
     _jadminSyncEstadoChip();
@@ -14249,28 +14203,10 @@ function _jadminWireHandlers() {
       _jadminState.searchTimer = setTimeout(() => {
         _jadminState.q = inpQ.value.trim();
         _jadminState.offset = 0;
-        _jadminRenderTabla();
+        _jadminRefrescar();
       }, 300);
     });
   }
-
-  // Chofer
-  const selCh = $('jadmin-f-chofer-options');
-  if (selCh) selCh.addEventListener('change', () => {
-    _jadminState.driverIds = [...selCh.querySelectorAll('input:checked')].map(x => x.value);
-    _jadminSyncPicker('chofer');
-    _jadminState.offset = 0;
-    _jadminReload();
-  });
-
-  // Camión
-  const selCa = $('jadmin-f-camion-options');
-  if (selCa) selCa.addEventListener('change', () => {
-    _jadminState.truckIds = [...selCa.querySelectorAll('input:checked')].map(x => x.value);
-    _jadminSyncPicker('camion');
-    _jadminState.offset = 0;
-    _jadminReload();
-  });
 
   // Estado
   const selEst = $('jadmin-f-estado');
@@ -14306,32 +14242,39 @@ function _jadminWireHandlers() {
     chip.addEventListener('click', () => _jadminAplicarChip(chip.getAttribute('data-chip')));
   });
 
-  // Sortable headers
+  // Orden: encabezados de la tabla y selector "Ordenar por" (el único en el celular)
   document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
-      const rawKey = th.getAttribute('data-sort');
-      // Map header key → backend column
-      const key = rawKey === 'km' ? 'km_recorridos'
-                : rawKey === 'horas' ? 'horas'
-                : 'log_date';
+      const key = _JADMIN_ORDEN_DE_COLUMNA[th.getAttribute('data-sort')] || 'log_date';
       if (_jadminState.orderBy === key) {
         _jadminState.orderAsc = !_jadminState.orderAsc;
       } else {
         _jadminState.orderBy = key;
-        _jadminState.orderAsc = false;
+        _jadminState.orderAsc = key === 'kml';   // en km/l lo que importa es lo que menos rinde
       }
       _jadminState.offset = 0;
       _jadminActualizarClasesSort();
-      _jadminReload();
+      _jadminRefrescar();
     });
   });
+  const selOrden = $('jadmin-sort');
+  if (selOrden) selOrden.addEventListener('change', () => {
+    const [key, dir] = selOrden.value.split(':');
+    _jadminState.orderBy = key;
+    _jadminState.orderAsc = dir === 'asc';
+    _jadminState.offset = 0;
+    _jadminActualizarClasesSort();
+    _jadminRefrescar();
+  });
+  const btnExp = $('jadmin-export');
+  if (btnExp) btnExp.addEventListener('click', () => _jadminExportarExcel());
 
   // Per-page
   const selPP = $('jadmin-per-page');
   if (selPP) selPP.addEventListener('change', () => {
     _jadminState.limit = parseInt(selPP.value, 10) || 20;
     _jadminState.offset = 0;
-    _jadminReload();
+    _jadminIrAPagina();
   });
 
   // Pager
@@ -14339,14 +14282,14 @@ function _jadminWireHandlers() {
   if (btnPrev) btnPrev.addEventListener('click', () => {
     if (_jadminState.offset <= 0) return;
     _jadminState.offset = Math.max(0, _jadminState.offset - _jadminState.limit);
-    _jadminReload();
+    _jadminIrAPagina();
   });
   const btnNext = $('jadmin-next');
   if (btnNext) btnNext.addEventListener('click', () => {
     const next = _jadminState.offset + _jadminState.limit;
-    if (next >= _jadminState.lastTotal) return;
+    if (next >= _jadminState.totalVisible) return;
     _jadminState.offset = next;
-    _jadminReload();
+    _jadminIrAPagina();
   });
 
   // La tabla puede pasar de entrar a no entrar al cambiar el ancho de ventana.
@@ -14363,6 +14306,8 @@ function _jadminWireHandlers() {
     const tr = ev.target.closest('tr[data-log-id]');
     if (!tr) return;
     const id = tr.getAttribute('data-log-id');
+    // El número de Servicios abre el detalle ya parado en los servicios de esa jornada.
+    _jadminState.verServicios = !!ev.target.closest('.jadmin-srv');
     if (id) abrirDetalleJornadaAdmin(id);
   });
 }
@@ -14370,14 +14315,34 @@ function _jadminWireHandlers() {
 function _jadminActualizarClasesSort() {
   document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
     th.classList.remove('sort-asc', 'sort-desc');
-    const rawKey = th.getAttribute('data-sort');
-    const key = rawKey === 'km' ? 'km_recorridos'
-              : rawKey === 'horas' ? 'horas'
-              : 'log_date';
+    const key = _JADMIN_ORDEN_DE_COLUMNA[th.getAttribute('data-sort')] || 'log_date';
     if (key === _jadminState.orderBy) {
       th.classList.add(_jadminState.orderAsc ? 'sort-asc' : 'sort-desc');
     }
   });
+  const sel = document.getElementById('jadmin-sort');
+  if (sel) sel.value = `${_jadminState.orderBy}:${_jadminState.orderAsc ? 'asc' : 'desc'}`;
+}
+
+// Opciones de "Ordenar por": cada orden en sus dos sentidos.
+function _jadminPopularOrden() {
+  const sel = document.getElementById('jadmin-sort');
+  if (!sel || sel.options.length) return;
+  sel.innerHTML = _JADMIN_ORDENES.flatMap(o => [
+    `<option value="${o.key}:${o.key === 'kml' || o.key === 'rendicion' ? 'asc' : 'desc'}">${o.label} · ${o.key === 'kml' || o.key === 'rendicion' ? o.asc : o.desc}</option>`,
+    `<option value="${o.key}:${o.key === 'kml' || o.key === 'rendicion' ? 'desc' : 'asc'}">${o.label} · ${o.key === 'kml' || o.key === 'rendicion' ? o.desc : o.asc}</option>`,
+  ]).join('');
+  _jadminActualizarClasesSort();
+}
+
+// Si ya se trajo todo el período, filtrar u ordenar es sólo repintar; si no, hay que pedirlo al servidor.
+function _jadminRefrescar() {
+  if (_jadminNecesitaTodo() && _jadminState.modoTodo) _jadminRenderTabla();
+  else _jadminReload();
+}
+function _jadminIrAPagina() {
+  if (_jadminState.modoTodo) _jadminRenderTabla();
+  else _jadminReload();
 }
 
 function _jadminResetFiltros() {
@@ -14392,6 +14357,7 @@ function _jadminResetFiltros() {
   _jadminState.orderAsc = false;
   _jadminState.chip = 'todas';
   _jadminState.clientFilter = null;
+  _jadminState.quick = null;
 
   const $ = (id) => document.getElementById(id);
   if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde;
@@ -14505,13 +14471,14 @@ async function _jadminReload() {
     };
 
     // Tabla
+    const todo = _jadminNecesitaTodo();
     const listaFiltros = {
       ...kpiFiltros,
       estado: _jadminState.estado || null,
-      offset: _jadminState.offset,
-      limit: _jadminState.limit,
-      orderBy: (_jadminState.orderBy === 'horas' ? 'hora_inicio' : _jadminState.orderBy),
-      orderAsc: _jadminState.orderAsc,
+      offset: todo ? 0 : _jadminState.offset,
+      limit: todo ? _JADMIN_TOPE_TODO : _jadminState.limit,
+      orderBy: todo ? 'log_date' : _jadminState.orderBy,
+      orderAsc: todo ? false : _jadminState.orderAsc,
     };
 
     const [kpis, resp] = await Promise.all([
@@ -14521,6 +14488,7 @@ async function _jadminReload() {
 
     _jadminState.lastPage = resp?.data || [];
     _jadminState.lastTotal = resp?.total || 0;
+    _jadminState.modoTodo = todo;
 
     _jadminRenderKpis(kpis);
     _jadminActualizarClasesSort();
@@ -14557,7 +14525,9 @@ function _jadminRenderKpis(k) {
   if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
   if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
-  if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
+  // Con camiones con horómetro, las horas de motor del período van en un renglón propio debajo de los km.
+  if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').innerHTML         = _escHtml(`prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`)
+    + (Number(k.horasMotorPeriodo) > 0 ? `<br>${_escHtml(`${_fmtHoras(k.horasMotorPeriodo)} h de motor`)}` : '');
   // El título de la card ya dice "Horas prom. / jornada": el subtexto aporta el total.
   if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${_jadminFmtHoras(k.promHorasJornada ?? 0)} h`;
   if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `${_jadminFmtHoras(k.horasTotalPeriodo ?? 0)} h en el período`;
@@ -14579,7 +14549,44 @@ function _jadminRenderChipCounts(k) {
   chip.textContent = Number.isFinite(abiertas) ? String(abiertas) : '';
 }
 
-function _jadminAplicarFiltrosClientSide(rows) {
+// Horas que lleva abierta una jornada (null si no está abierta). La hora de inicio es la local de la jornada.
+function _jadminHorasAbierta(r) {
+  if (r.status !== 'open') return null;
+  const ini = new Date(`${r.log_date}T${r.hora_inicio || '00:00:00'}`);
+  const h = (Date.now() - ini.getTime()) / 36e5;
+  return Number.isFinite(h) && h >= 0 ? h : null;
+}
+// Sin control de neumáticos y frenos: sólo cuenta cuando la jornada ya cerró o es de un día anterior.
+function _jadminSinControl(r) {
+  return !r.revision && (r.status === 'closed' || String(r.log_date) < _jadminHoy());
+}
+
+function _jadminNecesitaTodo() {
+  const o = _jadminState.orderBy;
+  return !!(_jadminState.q || _jadminState.clientFilter || ['horas', 'servicios', 'kml', 'rendicion'].includes(o));
+}
+
+function _jadminOrdenarClientSide(rows) {
+  const valor = {
+    log_date:      r => `${r.log_date || ''} ${r.hora_inicio || ''}`,
+    km_recorridos: r => (r.km_recorridos == null ? null : Number(r.km_recorridos)),
+    horas:         r => (r.hora_fin ? Number(r.horas) || 0 : null),
+    servicios:     r => Number(r.servicios) || 0,
+    kml:           r => (r.rendimiento?.estado === 'ok' ? r.rendimiento.kml : null),
+    rendicion:     r => (r.rendicion ? Number(r.rendicion.diff) || 0 : null),
+  }[_jadminState.orderBy] || (r => `${r.log_date || ''} ${r.hora_inicio || ''}`);
+  const dir = _jadminState.orderAsc ? 1 : -1;
+  // Sin dato va siempre al final, en el sentido que sea.
+  return [...rows].sort((a, b) => {
+    const va = valor(a), vb = valor(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+  });
+}
+
+function _jadminAplicarFiltrosClientSide(rows, { ordenar = _jadminState.modoTodo } = {}) {
   let out = rows;
 
   // Filtro por texto libre (q) sobre chofer/patente
@@ -14592,22 +14599,25 @@ function _jadminAplicarFiltrosClientSide(rows) {
     );
   }
 
-  // Filtros de chip client-side
-  if (_jadminState.clientFilter === 'taller') {
-    out = out.filter(r => r.in_workshop);
-  } else if (_jadminState.clientFilter === 'incidentes') {
-    out = out.filter(r => (r.incidentes || 0) > 0);
-  } else if (_jadminState.clientFilter === 'rendicion') {
-    out = out.filter(r => r.rendicion && r.rendicion.estado === 'faltante');
+  // Alertas (se calculan acá con los datos de cada jornada)
+  switch (_jadminState.clientFilter) {
+    case 'taller':        out = out.filter(r => r.in_workshop); break;
+    case 'incidentes':    out = out.filter(r => (r.incidentes || 0) > 0); break;
+    case 'rendicion':     out = out.filter(r => r.rendicion && r.rendicion.estado === 'faltante'); break;
+    case 'abierta_larga': out = out.filter(r => (_jadminHorasAbierta(r) || 0) > _JADMIN_HORAS_ABIERTA_LARGA); break;
+    case 'sin_control':   out = out.filter(_jadminSinControl); break;
+    case 'consumo_alto':  out = out.filter(r => r.rendimiento?.bajo); break;
   }
 
-  // Sort client-side por horas (no soportado backend directamente)
-  if (_jadminState.orderBy === 'horas') {
-    const dir = _jadminState.orderAsc ? 1 : -1;
-    out = [...out].sort((a, b) => ((a.horas || 0) - (b.horas || 0)) * dir);
-  }
+  return ordenar ? _jadminOrdenarClientSide(out) : out;
+}
 
-  return out;
+// Lo que se ve en la página actual y cuántas jornadas cumplen los filtros.
+function _jadminFilasVisibles() {
+  const todas = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
+  if (!_jadminState.modoTodo) return { rows: todas, total: _jadminState.lastTotal };
+  const desde = _jadminState.offset;
+  return { rows: todas.slice(desde, desde + _jadminState.limit), total: todas.length };
 }
 
 // La columna Estado queda anclada a la derecha. La sombra que la despega del
@@ -14623,7 +14633,8 @@ function _jadminRenderTabla() {
   const tbody = document.getElementById('jadmin-tbody');
   if (!tbody) return;
 
-  const rows = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
+  const { rows, total } = _jadminFilasVisibles();
+  _jadminState.totalVisible = total;
 
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
@@ -14633,7 +14644,6 @@ function _jadminRenderTabla() {
 
   // Contadores
   const shown = rows.length;
-  const total = _jadminState.lastTotal;
   const elS = document.getElementById('jadmin-count-shown');
   const elT = document.getElementById('jadmin-count-total');
   if (elS) elS.textContent = shown;
@@ -14649,6 +14659,14 @@ function _jadminRenderTabla() {
   const next = document.getElementById('jadmin-next');
   if (prev) prev.disabled = _jadminState.offset <= 0;
   if (next) next.disabled = (_jadminState.offset + perPage) >= total;
+
+  // Si el período tiene más jornadas que el tope, se avisa que el resto no está en esta lista.
+  const nota = document.getElementById('jadmin-cap-note');
+  if (nota) {
+    const corto = _jadminState.modoTodo && _jadminState.lastTotal > (_jadminState.lastPage || []).length;
+    nota.hidden = !corto;
+    nota.textContent = corto ? ` · se muestran las primeras ${(_jadminState.lastPage || []).length} jornadas del período; acotá el período para ver el resto` : '';
+  }
 
   _jadminMarcarScrollX();
 }
@@ -14678,13 +14696,16 @@ function _jadminRenderFila(r) {
   const srv = Number(r.servicios) || 0;
   const srvCls = srv ? 'mono' : 'mono cell-empty';
 
-  // Combustible: litros cargados en la jornada. Los litros contra los KM son
-  // el consumo, que no se puede leer de ninguna otra columna.
-  const litros = Number(r.litros) || 0;
-  const litrosTxt = litros
-    ? `${litros.toLocaleString('es-AR', { maximumFractionDigits: 1 })} L`
-    : '0';
-  const litrosCls = litros ? 'money-cell' : 'money-cell zero';
+  // Km/l: lo que rindió la jornada (km desde la carga anterior sobre los litros). Sin dato confiable, "—" con el motivo.
+  const efi = r.rendimiento;
+  let kmlTxt = '—', kmlCls = 'kml-cell cell-empty', kmlTitle = efi?.mensaje || 'Sin dato';
+  if (efi?.estado === 'ok') {
+    kmlTxt = efi.kml.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    kmlCls = efi.bajo ? 'kml-cell is-low' : 'kml-cell';
+    kmlTitle = `${efi.km.toLocaleString('es-AR')} km con ${efi.litros.toLocaleString('es-AR', { maximumFractionDigits: 1 })} L`
+      + (efi.parcial ? ` · ${efi.validas} de ${efi.cargas} cargas con dato` : (efi.cargas > 1 ? ` · ${efi.cargas} cargas` : ''))
+      + (efi.bajo ? ` · consumo alto: el promedio del móvil es ${efi.promedio.toLocaleString('es-AR', { minimumFractionDigits: 1 })} km/l` : '');
+  }
 
   // Caja: lo que debería entregar y lo que gastó. El veredicto de la rendición
   // (entregó vs. debería) vive en el detalle; acá solo queda el aviso en rojo
@@ -14714,7 +14735,9 @@ function _jadminRenderFila(r) {
   // reservado para las jornadas que siguen abiertas.
   let estadoHtml;
   if (r.status === 'open') {
-    estadoHtml = `<span class="pill pill-amber"><span class="dot a"></span>Abierta</span>`;
+    const hAb = _jadminHorasAbierta(r);
+    const larga = hAb != null && hAb > _JADMIN_HORAS_ABIERTA_LARGA;
+    estadoHtml = `<span class="pill pill-amber"${larga ? ` title="Abierta hace ${Math.floor(hAb)} horas"` : ''}><span class="dot a"></span>Abierta${larga ? ` · ${Math.floor(hAb)} h` : ''}</span>`;
   } else if (r.status === 'closed') {
     estadoHtml = `<span class="pill pill-muted"><span class="dot n"></span>Cerrada</span>`;
   } else {
@@ -14735,15 +14758,23 @@ function _jadminRenderFila(r) {
     origenBadge = '<span class="km-origen offline" title="Cargado sin conexión">OFFLINE</span>';
   }
 
+  // Horas de motor: sólo en los camiones con horómetro, debajo de los km.
+  let motorHtml = '';
+  if (r.horas_motor_inicio != null) {
+    const aMano = [r.horas_motor_inicio_origen, r.horas_motor_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado');
+    const motorTitle = `Horas de motor: ${_fmtHoras(r.horas_motor_inicio)} → ${r.horas_motor_final != null ? _fmtHoras(r.horas_motor_final) : 'sin cerrar'}${aMano ? ' · cargadas a mano' : ''}`;
+    motorHtml = `<div class="jadmin-motor${aMano ? ' is-manual' : ''}" title="${_escHtml(motorTitle)}">${_escHtml(_horasMotorTexto(r.horas_motor_inicio, r.horas_motor_final))}</div>`;
+  }
+
   return `
     <tr data-log-id="${_escHtml(r.log_id)}" style="cursor:pointer">
-      <td>
+      <td data-label="Fecha">
         <div class="fecha-cell">
           <b>${_escHtml(fecha)}</b>
           <div class="dia">${_escHtml(dia)}</div>
         </div>
       </td>
-      <td>
+      <td data-label="Chofer">
         <div class="chofer-cell"${legajoTitle}>
           <div class="avatar ${avClass}">${_escHtml(iniciales)}</div>
           <div class="name">
@@ -14751,20 +14782,20 @@ function _jadminRenderFila(r) {
           </div>
         </div>
       </td>
-      <td>
+      <td data-label="Móvil">
         <div class="camion-cell">
           <span class="pat">${_escHtml(r.truck_plate || '—')}</span>
           <span class="mov">${movil}</span>
         </div>
       </td>
-      <td class="right"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
-      <td class="right ${horasCls}">${horasTxt}</td>
-      <td class="right ${srvCls}">${srv}</td>
-      <td class="right"><span class="${litrosCls}">${litrosTxt}</span></td>
-      <td class="right"><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
-      <td class="right"><span class="${gastosCls}">${gastosTxt}</span></td>
-      <td class="center"><span class="${incCls}">${incTxt}</span></td>
-      <td class="center"><span class="estado-cell">${estadoHtml}</span></td>
+      <td class="right" data-label="Km"><span class="${kmCls}">${kmTxt}</span>${origenBadge}${motorHtml}</td>
+      <td class="right ${horasCls}" data-label="Horas">${horasTxt}</td>
+      <td class="right ${srvCls}" data-label="Servicios">${srv ? `<button type="button" class="jadmin-srv" title="Ver los servicios de esta jornada">${srv}</button>` : srv}</td>
+      <td class="right" data-label="Km/l"><span class="${kmlCls}" title="${_escHtml(kmlTitle)}">${kmlTxt}</span></td>
+      <td class="right" data-label="Efectivo esp."><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
+      <td class="right" data-label="Gastos"><span class="${gastosCls}">${gastosTxt}</span></td>
+      <td class="center" data-label="Incidentes"><span class="${incCls}">${incTxt}</span></td>
+      <td class="center" data-label="Estado"><span class="estado-cell">${estadoHtml}</span></td>
     </tr>
   `;
 }
@@ -14776,10 +14807,10 @@ function _jadminRenderFila(r) {
 async function abrirDetalleJornadaAdmin(logId) {
   if (!logId) return;
   const $ = (id) => document.getElementById(id);
-  if ($('jd-title')) $('jd-title').textContent = 'JORNADA · —';
+  if ($('jd-title')) $('jd-title').textContent = 'Jornada · —';
   if ($('jd-sub'))   $('jd-sub').textContent   = '—';
   if ($('jd-traza')) $('jd-traza').textContent = 'Cargando…';
-  if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted2)">Cargando detalle…</div>`;
+  if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center">Cargando detalle…</div>`;
 
   openModal('modal-jornada-detalle');
 
@@ -14788,14 +14819,14 @@ async function abrirDetalleJornadaAdmin(logId) {
       ? await cargarDetalleJornadaAdmin(logId)
       : null;
     if (!det) {
-      if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">No se pudo cargar el detalle.</div>`;
+      if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center is-bad">No se pudo cargar el detalle.</div>`;
       if ($('jd-traza')) $('jd-traza').textContent = '—';
       return;
     }
     _jadminRenderDetalle(det);
   } catch (e) {
     console.error('[jadmin] abrirDetalleJornadaAdmin:', e);
-    if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">Error al cargar el detalle.</div>`;
+    if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center is-bad">Error al cargar el detalle.</div>`;
     if ($('jd-traza')) $('jd-traza').textContent = '—';
   }
 }
@@ -14819,7 +14850,7 @@ function _jadminRenderDetalle(det) {
     contexto: `${truckPlate}${truckMovil ? ' #' + truckMovil : ''} · ${fecha} · ${chNombre}`,
   };
 
-  if ($('jd-title')) $('jd-title').textContent = `JORNADA · ${fecha}`;
+  if ($('jd-title')) $('jd-title').textContent = `Jornada · ${fecha}`;
   if ($('jd-sub')) {
     const sub = `${chNombre}${chLegajo ? ' (Leg. ' + chLegajo + ')' : ''} · ${truckPlate}${truckMovil ? ' #' + truckMovil : ''}`;
     $('jd-sub').textContent = sub;
@@ -14839,130 +14870,75 @@ function _jadminRenderDetalle(det) {
   const kmFin = Number(log.km_final) || 0;
   const kmRec = Number(log.km_recorridos) || 0;
 
-  // Estilo scoped
-  const styles = `
-    <style>
-      #jd-content .jd-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
-      @media (max-width: 900px) { #jd-content .jd-grid { grid-template-columns: 1fr; } }
-      #jd-content .jd-card {
-        background: var(--card, #131826);
-        border: 1px solid var(--border, #1f2937);
-        border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
-      }
-      #jd-content .jd-card h4 {
-        margin: 0 0 10px 0; font-size: 12px; letter-spacing: .8px;
-        color: var(--muted2, #93a2b8); text-transform: uppercase; font-weight: 600;
-      }
-      #jd-content .jd-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12.5px; }
-      #jd-content .jd-info .k { color: var(--muted2, #93a2b8); font-size: 11px; letter-spacing:.4px; text-transform: uppercase; }
-      #jd-content .jd-info .v { color: var(--text, #e5e7eb); font-weight: 600; margin-top: 2px; }
-      #jd-content .jd-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      #jd-content .jd-foto { display: block; border: 1px solid var(--border, #1f2937); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.02); text-align: center; color: var(--muted2); font-size: 11px; padding: 8px; }
-      #jd-content .jd-foto img { display: block; width: 100%; height: 130px; object-fit: cover; border-radius: 6px; }
-      #jd-content .jd-foto small { display:block; margin-top: 4px; }
-      #jd-content .jd-list { display: flex; flex-direction: column; gap: 8px; }
-      #jd-content .jd-item {
-        display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        padding: 8px 10px; background: rgba(255,255,255,0.02);
-        border: 1px solid var(--border, #1f2937); border-radius: 8px; font-size: 12px;
-      }
-      #jd-content .jd-item .lft { display:flex; flex-direction:column; gap:2px; min-width:0; }
-      #jd-content .jd-service-seq {
-        width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px;
-        display: inline-flex; align-items: center; justify-content: center;
-        background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.38);
-        color: var(--blue, #3b82f6); font-family: 'DM Mono', monospace; font-weight: 800;
-      }
-      #jd-content .jd-item .rgt { font-family: 'DM Mono', monospace; font-weight: 600; white-space: nowrap; }
-      #jd-content .jd-empty { color: var(--muted2); font-size: 12px; padding: 6px 2px; }
-      #jd-content .jd-badge {
-        display: inline-block; padding: 2px 6px; border-radius: 4px;
-        font-size: 10px; text-transform: uppercase; letter-spacing:.3px; font-weight: 600;
-      }
-      #jd-content .b-grave { background: rgba(226,80,74,0.15); color: var(--red, #e2504a); }
-      #jd-content .b-medio { background: rgba(245,166,35,0.15); color: var(--amber, #f5a623); }
-      #jd-content .b-leve  { background: rgba(59,130,246,0.15); color: var(--blue, #3b82f6); }
-      #jd-content .jd-rend-linea { display:flex; justify-content:space-between; font-size:12px; margin: 4px 0; }
-      #jd-content .jd-rend-linea .v { font-family: 'DM Mono', monospace; font-weight: 600; }
-      #jd-content .jd-rend-diff.ok   { color: var(--green, #27c47a); }
-      #jd-content .jd-rend-diff.bad  { color: var(--red, #e2504a); }
-      #jd-content .jd-rend-diff.warn { color: var(--amber, #f5a623); }
-      #jd-content .inc-menu-thumbs { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-      #jd-content .inc-menu-thumb { display: block; width: 48px; height: 48px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border, #1f2937); flex-shrink: 0; }
-      #jd-content .inc-menu-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
-    </style>
-  `;
+  const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
+  const dato = (k, v, cls = '') => `<div><div class="k">${k}</div><div class="v${cls ? ' ' + cls : ''}">${v}</div></div>`;
+  const apagado = (t) => `<span class="jd-dim">${t}</span>`;
 
   // ── Columna IZQ ────────────────────────
   const resumenCard = `
-    <div class="jd-card">
+    <section class="jd-card">
       <h4>Resumen</h4>
       <div class="jd-info">
-        <div><div class="k">Fecha</div><div class="v">${_escHtml(fecha)}</div></div>
-        <div><div class="k">Chofer</div><div class="v">${_escHtml(chNombre)}${chLegajo ? ' <span style="color:var(--muted2);font-weight:400">(Leg. ' + _escHtml(chLegajo) + ')</span>' : ''}</div></div>
-        <div><div class="k">Camión</div><div class="v">${_escHtml(truckPlate)}${truckMovil ? ' <span style="color:var(--muted2);font-weight:400">#' + _escHtml(truckMovil) + '</span>' : ''}${truckMarca ? '<br><span style="color:var(--muted2);font-weight:400;font-size:11px">' + _escHtml(truckMarca) + '</span>' : ''}</div></div>
-        <div><div class="k">Horas</div><div class="v">${_escHtml(_jadminFmtHora(log.hora_inicio))} → ${_escHtml(_jadminFmtHora(log.hora_fin))}<br><span style="color:var(--muted2);font-weight:400;font-size:11px">${_escHtml(horasTxt)}</span></div></div>
-        <div><div class="k">KM inicio</div><div class="v">${kmIni.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">KM final</div><div class="v">${kmFin.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">KM recorridos</div><div class="v" style="color:var(--amber)">${kmRec.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">Notas</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(log.notas || '—')}</div></div>
+        ${dato('Fecha', _escHtml(fecha))}
+        ${dato('Chofer', `${_escHtml(chNombre)}${chLegajo ? ' ' + apagado('Leg. ' + _escHtml(chLegajo)) : ''}`)}
+        ${dato('Camión', `${_escHtml(truckPlate)}${truckMovil ? ' ' + apagado('#' + _escHtml(truckMovil)) : ''}${truckMarca ? `<br>${apagado(_escHtml(truckMarca))}` : ''}`)}
+        ${dato('Horas', `${_escHtml(_jadminFmtHora(log.hora_inicio))} → ${_escHtml(_jadminFmtHora(log.hora_fin))}<br>${apagado(_escHtml(horasTxt))}`)}
+        ${dato('KM inicio', kmIni.toLocaleString('es-AR'))}
+        ${dato('KM final', kmFin.toLocaleString('es-AR'))}
+        ${dato('KM recorridos', kmRec.toLocaleString('es-AR'))}
+        ${log.horas_inicio != null ? dato('Horas de motor', `${_escHtml(_fmtHoras(log.horas_inicio))} → ${log.horas_final != null ? _escHtml(_fmtHoras(log.horas_final)) : '—'} h${_horasMotorUsadas(log.horas_inicio, log.horas_final) != null ? `<br>${apagado(_escHtml('+' + _fmtHoras(_horasMotorUsadas(log.horas_inicio, log.horas_final)) + ' h usadas'))}` : ''}`) : ''}
+        ${dato('Notas', _escHtml(log.notas || '—'), 'jd-v-plain')}
       </div>
-    </div>
+    </section>
   `;
 
-  const fotoIni = log.foto_km_inicio
-    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_inicio)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_inicio)}" alt="KM inicio"><small>KM inicio</small></a>`
-    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM inicio</small></div>`;
-  const fotoFin = log.foto_km_final
-    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_final)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_final)}" alt="KM final"><small>KM final</small></a>`
-    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM final</small></div>`;
+  const foto = (url, etiqueta) => url
+    ? `<a class="jd-foto" href="${_escHtml(url)}" target="_blank" rel="noopener"><img src="${_escHtml(url)}" alt="${etiqueta}"><small>${etiqueta}</small></a>`
+    : `<div class="jd-foto is-empty"><div class="jd-foto-ph">${ic('camera')}<span>Sin foto</span></div><small>${etiqueta}</small></div>`;
+  const fotoIni = foto(log.foto_km_inicio, 'KM inicio');
+  const fotoFin = foto(log.foto_km_final, 'KM final');
 
-  const _kmCmpBloque = (extremo, origen, kmIa, kmChofer) => {
+  // Mismo cuadro para los km y para las horas de motor (salen de la misma foto).
+  const _kmCmpBloque = (extremo, origen, kmIa, kmChofer, unidad = 'km') => {
     if (!origen || origen === 'ia') return '';
-    const lbl = extremo === 'inicio' ? 'KM inicio' : 'KM final';
+    const enHoras = unidad === 'h';
+    const lbl = enHoras
+      ? (extremo === 'inicio' ? 'Horas de motor al inicio' : 'Horas de motor al final')
+      : (extremo === 'inicio' ? 'KM inicio' : 'KM final');
+    const fmt = (n) => enHoras ? _fmtHoras(n) + ' h' : Number(n).toLocaleString('es-AR') + ' km';
     const esOffline = origen === 'manual_offline';
     const iaTxt = kmIa != null
-      ? Number(kmIa).toLocaleString('es-AR') + ' km'
+      ? fmt(kmIa)
       : (esOffline ? '— sin conexión al momento de la carga' : '— no pudo leer la foto');
-    const diff = (kmIa != null && kmChofer != null) ? kmChofer - kmIa : null;
-    const borde = esOffline ? 'var(--border2)' : 'rgba(245,166,35,0.45)';
-    const fondo = esOffline ? 'rgba(255,255,255,0.02)' : 'rgba(245,166,35,0.12)';
+    const diff = (kmIa != null && kmChofer != null) ? Math.round((kmChofer - kmIa) * 10) / 10 : null;
     const titulo = esOffline
-      ? `📴 ${lbl} cargado a mano por falta de señal`
-      : `⚠ ${lbl} modificado manualmente`;
-    const tituloColor = esOffline ? 'var(--muted2)' : 'var(--amber)';
+      ? `${ic('wifi-off')} ${lbl} ${enHoras ? 'cargadas' : 'cargado'} a mano por falta de señal`
+      : `${ic('triangle-alert')} ${lbl} ${enHoras ? 'modificadas' : 'modificado'} manualmente`;
     return `
-      <div style="border:1px solid ${borde};background:${fondo};border-radius:8px;padding:10px 12px;margin-top:10px">
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${tituloColor};margin-bottom:8px">${titulo}</div>
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Resultado generado por IA</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600">${iaTxt}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Resultado generado por chofer</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600">${kmChofer != null ? Number(kmChofer).toLocaleString('es-AR') + ' km' : '—'}</span>
-        </div>
-        ${diff != null ? `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Diferencia</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--amber)">${diff > 0 ? '+' : ''}${diff.toLocaleString('es-AR')} km</span>
-        </div>` : ''}
+      <div class="jd-note${esOffline ? ' is-offline' : ''}">
+        <div class="jd-note-title">${titulo}</div>
+        <div class="jd-line"><span>Resultado generado por IA</span><b>${iaTxt}</b></div>
+        <div class="jd-line"><span>Resultado generado por chofer</span><b>${kmChofer != null ? fmt(kmChofer) : '—'}</b></div>
+        ${diff != null ? `<div class="jd-line"><span>Diferencia</span><b class="${esOffline ? '' : 'is-warn'}">${diff > 0 ? '+' : ''}${fmt(diff)}</b></div>` : ''}
       </div>`;
   };
   const kmCmpHtml = _kmCmpBloque('inicio', log.km_inicio_origen, log.km_inicio_ia, log.km_inicio)
-                  + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final);
+                  + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final)
+                  + _kmCmpBloque('inicio', log.horas_inicio_origen, log.horas_inicio_ia, log.horas_inicio, 'h')
+                  + _kmCmpBloque('final',  log.horas_final_origen,  log.horas_final_ia,  log.horas_final, 'h');
 
   const odomCard = `
-    <div class="jd-card">
+    <section class="jd-card">
       <h4>Odómetro</h4>
       <div class="jd-fotos">${fotoIni}${fotoFin}</div>${kmCmpHtml}
-    </div>
+    </section>
   `;
 
-  const _payLbl  = (m) => m === 'efectivo' ? '💵 Ef' : m === 'transferencia' ? '📲 Tr' : m === 'tarjeta' ? '💳 Tj' : m === 'app' ? '📱 App' : '—';
+  const _payLbl  = (m) => m === 'efectivo' ? 'Efectivo' : m === 'transferencia' ? 'Transf.' : m === 'tarjeta' ? 'Tarjeta' : m === 'app' ? 'App' : '—';
 
   const serviciosCard = `
-    <div class="jd-card">
-      <h4>Servicios <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${trips.length})</span></h4>
+    <section class="jd-card" data-card="servicios">
+      <h4>Servicios ${apagado(`(${trips.length})`)}</h4>
       ${trips.length ? `<div class="jd-list">${trips.map((t, index) => {
         const nro     = t.nro_servicio ? `#${_escHtml(t.nro_servicio)}` : (t.nro_remito ? `#${_escHtml(t.nro_remito)}` : '');
         const origen  = _escHtml(t.origin || '—');
@@ -14975,26 +14951,26 @@ function _jadminRenderDetalle(det) {
         const p2metodo = t.pago_2_metodo ? _payLbl(t.pago_2_metodo) : '';
         const metodos  = [p1metodo, p2metodo].filter(Boolean).join(' / ') || '—';
 
-        const stCls = t.status === 'firmado' ? 'b-leve' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
-        const stLbl = t.status === 'firmado' ? '✓ Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
+        const stCls = t.status === 'firmado' ? 'b-ok' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
+        const stLbl = t.status === 'firmado' ? 'Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
 
         return `
-          <div class="jd-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px">
+          <div class="jd-item jd-service">
             <span class="jd-service-seq" aria-label="Servicio ${index + 1}">${index + 1}</span>
-            <div style="min-width:0;flex:1">
-              <div style="font-weight:600">${nro}${patente ? ` <span style="color:var(--muted2);font-weight:400;font-size:11px">· ${patente}</span>` : ''}</div>
-              <div style="color:var(--muted2);font-size:11.5px">${origen} → ${destino}</div>
+            <div class="jd-service-main">
+              <div class="jd-service-nro"><b>${nro}</b>${patente ? ` ${apagado('· ' + patente)}` : ''}</div>
+              <div class="jd-dim">${origen} → ${destino}</div>
             </div>
-            <div style="text-align:right;flex-shrink:0;font-size:10.5px;color:var(--muted2);min-width:110px">
+            <div class="jd-service-side">
               ${(peaje>0||excede>0) ? `<div>Peaje $${_AR(peaje)} · Exc. $${_AR(excede)}</div>` : `<div>Sin extras</div>`}
-              <div style="color:var(--text)">${metodos}</div>
-              <div style="color:var(--amber)">${km.toLocaleString('es-AR')} km</div>
+              <div>${metodos}</div>
+              <div class="jd-service-km">${km.toLocaleString('es-AR')} km</div>
             </div>
-            <div style="flex-shrink:0"><span class="jd-badge ${stCls}">${stLbl}</span></div>
+            <div class="jd-service-st"><span class="jd-badge ${stCls}">${stLbl}</span></div>
           </div>
         `;
       }).join('')}</div>` : `<div class="jd-empty">Sin servicios registrados.</div>`}
-    </div>
+    </section>
   `;
 
   // Card de taller (solo si ingresó al taller)
@@ -15005,13 +14981,13 @@ function _jadminRenderDetalle(det) {
     const m = detalle.match(/^([^:]+):\s*(.*)$/);
     if (m) { tipo = m[1].trim(); desc = m[2].trim(); }
     tallerCard = `
-      <div class="jd-card">
-        <h4>🔧 Ingreso al taller</h4>
+      <section class="jd-card">
+        <h4>${ic('wrench')} Ingreso al taller</h4>
         <div class="jd-info">
-          ${tipo ? `<div><div class="k">Tipo de trabajo</div><div class="v">${_escHtml(tipo)}</div></div>` : ''}
-          <div><div class="k">Detalle</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(desc || '—')}</div></div>
+          ${tipo ? dato('Tipo de trabajo', _escHtml(tipo)) : ''}
+          ${dato('Detalle', _escHtml(desc || '—'), 'jd-v-plain')}
         </div>
-      </div>
+      </section>
     `;
   }
 
@@ -15020,11 +14996,10 @@ function _jadminRenderDetalle(det) {
   _jadminIncCache = incidents || [];
 
   const incidentesCard = `
-    <div class="jd-card">
-      <h4 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span>Incidentes <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${incidents.length})</span></span>
-        <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px;text-transform:none;letter-spacing:0"
-          onclick="abrirIncidenteDesdeJornadaAdmin()">+ Cargar incidente</button>
+    <section class="jd-card">
+      <h4 class="jd-h-row">
+        <span>Incidentes ${apagado(`(${incidents.length})`)}</span>
+        <button type="button" class="ax-btn ax-btn-sm" onclick="abrirIncidenteDesdeJornadaAdmin()">${ic('plus')} Cargar incidente</button>
       </h4>
       ${incidents.length ? `<div class="jd-list">${incidents.map(i => {
         const sev = String(i.severity || '').toLowerCase();
@@ -15037,70 +15012,63 @@ function _jadminRenderDetalle(det) {
             </a>`).join('')}
           </div>` : '';
         const kebabHtml = esAdminIncidentes ? `
-          <div class="kebab-wrap" style="align-self:flex-start">
-            <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">⋮</button>
+          <div class="kebab-wrap">
+            <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">${ic('ellipsis')}</button>
             <div class="kebab-menu" id="inc-menu-${_escHtml(i.incident_id)}">
-              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">✏️ Editar</button>
-              <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">🗑 Eliminar</button>
+              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">${ic('pencil')} Editar</button>
+              <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">${ic('trash-2')} Eliminar</button>
             </div>
           </div>` : '';
         return `
           <div class="jd-item">
             <div class="lft">
               <div><b>${_escHtml(i.type || 'Incidente')}</b> <span class="jd-badge ${badgeCls}">${_escHtml(i.severity || '—')}</span></div>
-              <div style="color:var(--muted2);font-size:11px">${_escHtml(i.description || '—')}</div>
-              ${i.location ? `<div style="color:var(--muted2);font-size:10.5px">📍 ${_escHtml(i.location)}</div>` : ''}
+              <div class="jd-dim">${_escHtml(i.description || '—')}</div>
+              ${i.location ? `<div class="jd-dim jd-loc">${ic('map-pin')} ${_escHtml(i.location)}</div>` : ''}
               ${thumbsHtml}
             </div>
             ${kebabHtml}
           </div>
         `;
       }).join('')}</div>` : `<div class="jd-empty">Sin incidentes.</div>`}
-    </div>
+    </section>
   `;
 
   // ── Columna DER ────────────────────────
-  let tireCard;
+  let tireCard = '';
   if (tire_check) {
-    // Semáforo por condición: bueno=verde, regular=ámbar, malo=rojo
+    // Por condición: bueno = verde, regular = ámbar, malo = rojo
     const _condPill = (v) => {
       const map = {
-        bueno:   ['✓ Bueno',   'var(--green)', 'rgba(74,222,128,0.12)',  'rgba(74,222,128,0.3)'],
-        regular: ['⚠ Regular', 'var(--amber)', 'rgba(245,166,35,0.12)',  'rgba(245,166,35,0.35)'],
-        malo:    ['✗ Malo',    'var(--red)',   'rgba(226,80,74,0.12)',   'rgba(226,80,74,0.35)'],
+        bueno:   ['Bueno',   'is-ok',   'circle-check'],
+        regular: ['Regular', 'is-warn', 'triangle-alert'],
+        malo:    ['Malo',    'is-bad',  'circle-x'],
       };
-      const [label, color, bg, borde] = map[v] || ['— sin dato', 'var(--muted)', 'transparent', 'var(--border)'];
-      return `<span style="display:inline-block;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:700;color:${color};background:${bg};border:1px solid ${borde}">${label}</span>`;
+      const [label, cls, icono] = map[v] || ['Sin dato', '', 'info'];
+      return `<span class="jd-cond ${cls}">${ic(icono)} ${label}</span>`;
     };
     const peor = [tire_check.tire_condition, tire_check.brake_condition].includes('malo') ? 'malo'
                : [tire_check.tire_condition, tire_check.brake_condition].includes('regular') ? 'regular' : 'bueno';
-    const bordeCard = peor === 'malo' ? 'var(--red)' : peor === 'regular' ? 'var(--amber)' : 'var(--green)';
     tireCard = `
-      <div class="jd-card" style="border-left:3px solid ${bordeCard}">
-        <h4>🛞 Neumáticos y Frenos</h4>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">
-          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
-            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛞 Neumáticos</div>
-            ${_condPill(tire_check.tire_condition)}
-          </div>
-          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
-            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛑 Frenos</div>
-            ${_condPill(tire_check.brake_condition)}
-          </div>
+      <section class="jd-card jd-card--${peor}">
+        <h4>${ic('disc')} Neumáticos y frenos</h4>
+        <div class="jd-conds">
+          <div class="jd-cond-box"><div class="k">Neumáticos</div>${_condPill(tire_check.tire_condition)}</div>
+          <div class="jd-cond-box"><div class="k">Frenos</div>${_condPill(tire_check.brake_condition)}</div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
-          <span>Presión: <b style="color:var(--text)">${tire_check.pressure_psi != null ? _escHtml(tire_check.pressure_psi) + ' PSI' : '—'}</b></span>
+        <div class="jd-line">
+          <span>Presión: <b>${tire_check.pressure_psi != null ? _escHtml(tire_check.pressure_psi) + ' PSI' : '—'}</b></span>
           <span>${_escHtml(_jadminFmtDT(tire_check.check_date))}</span>
         </div>
-        ${tire_check.notes ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.02);border-radius:6px;font-size:11.5px;color:var(--muted2)">📝 ${_escHtml(tire_check.notes)}</div>` : ''}
-      </div>
+        ${tire_check.notes ? `<div class="jd-note-text">${_escHtml(tire_check.notes)}</div>` : ''}
+      </section>
     `;
   } else {
     tireCard = `
-      <div class="jd-card">
-        <h4>🛞 Neumáticos y Frenos</h4>
-        <div class="jd-empty" style="color:var(--red)">El chofer no cargó el control este día.</div>
-      </div>
+      <section class="jd-card jd-card--malo">
+        <h4>${ic('disc')} Neumáticos y frenos</h4>
+        <div class="jd-empty is-bad">El chofer no cargó el control este día.</div>
+      </section>
     `;
   }
 
@@ -15113,38 +15081,38 @@ function _jadminRenderDetalle(det) {
       .reduce((s, f) => s + (Number(f.total_cost) || 0), 0);
     const costoCredito = totalCosto - costoEfectivo;
     fuelCard = `
-      <div class="jd-card">
-        <h4>Combustible <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${fuel_records.length} carga${fuel_records.length===1?'':'s'})</span></h4>
+      <section class="jd-card">
+        <h4>${ic('fuel')} Combustible ${apagado(`(${fuel_records.length} carga${fuel_records.length===1?'':'s'})`)}</h4>
         <div class="jd-info">
-          <div><div class="k">Litros totales</div><div class="v">${totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1})} L</div></div>
-          <div><div class="k">Costo total</div><div class="v">${_jadminMoney(totalCosto)}</div></div>
-          ${costoEfectivo > 0 ? `<div><div class="k">💵 Efectivo</div><div class="v" style="color:var(--amber)">${_jadminMoney(costoEfectivo)}</div></div>` : ''}
-          ${costoCredito > 0 ? `<div><div class="k">📱 A crédito (15d)</div><div class="v" style="color:var(--muted2)">${_jadminMoney(costoCredito)}</div></div>` : ''}
+          ${dato('Litros totales', totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1}) + ' L')}
+          ${dato('Costo total', _jadminMoney(totalCosto))}
+          ${costoEfectivo > 0 ? dato('Efectivo', _jadminMoney(costoEfectivo)) : ''}
+          ${costoCredito > 0 ? dato('A crédito (15 días)', _jadminMoney(costoCredito)) : ''}
         </div>
-        <div class="jd-list" style="margin-top:10px">
+        <div class="jd-list">
           ${fuel_records.map(f => {
             const esCredito = f.payment_method !== 'efectivo';
             const badge = esCredito
-              ? `<span class="jd-badge b-medio" style="font-size:9px">Crédito</span>`
-              : `<span class="jd-badge b-leve" style="font-size:9px">Efectivo</span>`;
+              ? `<span class="jd-badge b-medio">Crédito</span>`
+              : `<span class="jd-badge b-leve">Efectivo</span>`;
             return `
             <div class="jd-item">
               <div class="lft">
-                <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> <span style="color:var(--muted2);font-size:11px">${_escHtml(f.gas_station || '')}</span> ${badge}</div>
-                <div style="color:var(--muted2);font-size:11px">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
+                <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> ${apagado(_escHtml(f.gas_station || ''))} ${badge}</div>
+                <div class="jd-dim">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
               </div>
-              <div class="rgt">${_jadminMoney(f.total_cost)}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button class="btn btn-ghost" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">Editar</button>` : ''}</div>
+              <div class="rgt">${_jadminMoney(f.total_cost)}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">${ic('pencil')} Editar</button>` : ''}</div>
             </div>
           `}).join('')}
         </div>
-      </div>
+      </section>
     `;
   } else {
     fuelCard = `
-      <div class="jd-card">
-        <h4>Combustible</h4>
+      <section class="jd-card">
+        <h4>${ic('fuel')} Combustible</h4>
         <div class="jd-empty">Sin cargas.</div>
-      </div>
+      </section>
     `;
   }
 
@@ -15158,29 +15126,27 @@ function _jadminRenderDetalle(det) {
     const cls = estado === 'ok' ? 'ok' : estado === 'faltante' ? 'bad' : 'warn';
     const lbl = estado === 'ok' ? 'OK' : estado === 'faltante' ? 'Faltante' : 'Sobrante';
     rendCard = `
-      <div class="jd-card">
-        <h4>Rendición</h4>
+      <section class="jd-card">
+        <h4>${ic('wallet')} Rendición</h4>
         <div class="jd-rend-linea"><span>Entregó</span><span class="v">${_jadminMoney(declarado)}</span></div>
         <div class="jd-rend-linea"><span>Debería entregar</span><span class="v">${_jadminMoney(esperado)}</span></div>
         <div class="jd-rend-linea"><span>Gastos</span><span class="v">${_jadminMoney(gastos)}</span></div>
-        <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
-        <div class="jd-rend-linea" style="font-size:13px">
-          <span>Diferencia <span class="jd-badge ${cls === 'ok' ? 'b-leve' : cls === 'bad' ? 'b-grave' : 'b-medio'}">${lbl}</span></span>
+        <div class="jd-rend-linea jd-rend-total">
+          <span>Diferencia <span class="jd-badge ${cls === 'ok' ? 'b-ok' : cls === 'bad' ? 'b-grave' : 'b-medio'}">${lbl}</span></span>
           <span class="v jd-rend-diff ${cls}">${_jadminMoneySigned(diff)}</span>
         </div>
-      </div>
+      </section>
     `;
   } else {
     rendCard = `
-      <div class="jd-card">
-        <h4>Rendición</h4>
+      <section class="jd-card">
+        <h4>${ic('wallet')} Rendición</h4>
         <div class="jd-empty">Sin rendición registrada para esta fecha.</div>
-      </div>
+      </section>
     `;
   }
 
   const html = `
-    ${styles}
     <div class="jd-grid">
       <div class="jd-col-l">
         ${resumenCard}
@@ -15198,6 +15164,107 @@ function _jadminRenderDetalle(det) {
   `;
 
   if ($('jd-content')) $('jd-content').innerHTML = html;
+
+  // Venía del número de Servicios de la lista: se baja a esa tarjeta y se la marca un momento.
+  if (_jadminState.verServicios) {
+    _jadminState.verServicios = false;
+    const tarjeta = document.querySelector('#jd-content [data-card="servicios"]');
+    if (tarjeta) {
+      tarjeta.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      window.AxUI?.flash?.(tarjeta);
+    }
+  }
+}
+
+// ── Exportar la lista de Jornadas a Excel ─────────────────────────────────
+async function _jadminExportarExcel() {
+  const btn = document.getElementById('jadmin-export');
+  if (!window.AuxiliosExcelExport) { toast('El exportador Excel todavía no está disponible. Recargá la página.', 'error'); return; }
+  if (btn) btn.disabled = true;
+  try {
+    // Con los mismos filtros de la pantalla, pero todo el período (no sólo la página que se ve).
+    const resp = await cargarJornadasAdmin({
+      desde: _jadminState.desde, hasta: _jadminState.hasta,
+      driverIds: _jadminState.driverIds, truckIds: _jadminState.truckIds,
+      estado: _jadminState.estado || null,
+      offset: 0, limit: _JADMIN_TOPE_EXPORT, orderBy: 'log_date', orderAsc: false,
+    });
+    const rows = _jadminAplicarFiltrosClientSide(resp?.data || [], { ordenar: true });
+    if (!rows.length) { toast('No hay jornadas para exportar con estos filtros', 'warn'); return; }
+
+    const dia = iso => ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][new Date(`${iso}T12:00:00`).getDay()];
+    const hora = h => (h ? String(h).slice(0, 5) : '');
+    const si = v => (v ? 'Sí' : 'No');
+    // Las columnas de horas de motor sólo aparecen si algún camión del listado las carga.
+    const conHorasMotor = rows.some(r => r.horas_motor_inicio != null);
+    const columnas = [
+      { header: 'Fecha', width: 12, value: r => _jadminFmtFecha(r.log_date) },
+      { header: 'Día', width: 11, value: r => dia(r.log_date) },
+      { header: 'Chofer', width: 24, value: r => r.chofer_nombre },
+      { header: 'Legajo', width: 10, value: r => r.chofer_legajo || '' },
+      { header: 'Patente', width: 12, value: r => r.truck_plate },
+      { header: 'N° móvil', width: 10, value: r => r.truck_movil || '' },
+      { header: 'Hora inicio', width: 11, value: r => hora(r.hora_inicio) },
+      { header: 'Hora fin', width: 10, value: r => hora(r.hora_fin) },
+      { header: 'Horas', width: 8, type: 'number', value: r => (r.hora_fin ? Math.round((Number(r.horas) || 0) * 10) / 10 : null) },
+      { header: 'KM inicio', width: 11, type: 'number', value: r => r.km_inicio },
+      { header: 'KM final', width: 11, type: 'number', value: r => r.km_final },
+      { header: 'KM recorridos', width: 14, type: 'number', value: r => r.km_recorridos },
+      { header: 'Origen del KM', width: 14, value: r => ([r.km_inicio_origen, r.km_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado') ? 'A mano' : [r.km_inicio_origen, r.km_final_origen].includes('manual_offline') ? 'Sin conexión' : 'IA') },
+      ...(conHorasMotor ? [
+        { header: 'Horas de motor inicio', width: 20, type: 'number', value: r => r.horas_motor_inicio },
+        { header: 'Horas de motor final', width: 19, type: 'number', value: r => r.horas_motor_final },
+        { header: 'Horas de motor usadas', width: 20, type: 'number', value: r => _horasMotorUsadas(r.horas_motor_inicio, r.horas_motor_final) },
+      ] : []),
+      { header: 'Servicios del día', width: 16, type: 'number', value: r => r.servicios },
+      { header: 'Cargas de combustible', width: 20, type: 'number', value: r => r.combustible },
+      { header: 'Litros', width: 9, type: 'number', value: r => (r.litros ? Math.round(r.litros * 10) / 10 : 0) },
+      { header: 'Km/l', width: 8, type: 'number', value: r => (r.rendimiento?.estado === 'ok' ? r.rendimiento.kml : null) },
+      { header: 'Km/l: observación', width: 40, value: r => (r.rendimiento?.estado === 'ok' ? [r.rendimiento.parcial ? `${r.rendimiento.validas} de ${r.rendimiento.cargas} cargas con dato` : '', r.rendimiento.bajo ? 'Consumo alto (menos del 75 % del promedio del móvil)' : ''].filter(Boolean).join(' · ') : (r.rendimiento?.mensaje || '')) },
+      { header: 'Gasto en combustible', width: 20, type: 'number', value: r => r.gasto_fuel },
+      { header: 'Efectivo esperado', width: 17, type: 'number', value: r => r.rendicion?.esperado },
+      { header: 'Entregó', width: 11, type: 'number', value: r => r.rendicion?.declarado },
+      { header: 'Gastos', width: 10, type: 'number', value: r => r.rendicion?.gastos },
+      { header: 'Diferencia de rendición', width: 22, type: 'number', value: r => r.rendicion?.diff },
+      { header: 'Rendición', width: 11, value: r => (r.rendicion ? ({ ok: 'OK', faltante: 'Faltante', sobrante: 'Sobrante' }[r.rendicion.estado] || '') : 'Sin rendición') },
+      { header: 'Incidentes', width: 11, type: 'number', value: r => r.incidentes },
+      { header: 'En taller', width: 10, value: r => si(r.in_workshop) },
+      { header: 'Control de neumáticos', width: 21, value: r => si(r.revision) },
+      { header: 'Estado', width: 10, value: r => (r.status === 'open' ? 'Abierta' : r.status === 'closed' ? 'Cerrada' : (r.status || '')) },
+    ];
+    const suma = campo => rows.reduce((t, r) => t + (Number(campo(r)) || 0), 0);
+    const filtros = [
+      _jadminState.driverIds.length ? `${_jadminState.driverIds.length} chofer${_jadminState.driverIds.length === 1 ? '' : 'es'}` : 'Todos los choferes',
+      _jadminState.truckIds.length ? `${_jadminState.truckIds.length} móvil${_jadminState.truckIds.length === 1 ? '' : 'es'}` : 'Todos los móviles',
+      _jadminState.estado === 'open' ? 'Abiertas' : _jadminState.estado === 'closed' ? 'Cerradas' : '',
+      { taller: 'En taller', incidentes: 'Con incidentes', rendicion: 'Faltantes de rendición', abierta_larga: `Abiertas hace más de ${_JADMIN_HORAS_ABIERTA_LARGA} h`, sin_control: 'Sin control de neumáticos', consumo_alto: 'Consumo alto' }[_jadminState.clientFilter] || '',
+      _jadminState.q ? `Búsqueda: ${_jadminState.q}` : '',
+    ].filter(Boolean).join(' · ');
+    const resumen = [
+      { label: 'Período', value: `${_jadminFmtFecha(_jadminState.desde)} al ${_jadminFmtFecha(_jadminState.hasta)}` },
+      { label: 'Filtros', value: filtros },
+      { label: 'Jornadas', value: rows.length },
+      { label: 'KM recorridos', value: suma(r => r.km_recorridos) },
+      ...(conHorasMotor ? [{ label: 'Horas de motor usadas', value: Math.round(suma(r => _horasMotorUsadas(r.horas_motor_inicio, r.horas_motor_final)) * 10) / 10 }] : []),
+      { label: 'Servicios', value: suma(r => r.servicios) },
+      { label: 'Litros cargados', value: Math.round(suma(r => r.litros) * 10) / 10 },
+    ];
+    const desdeTxt = String(_jadminState.desde || '').replace(/-/g, ''), hastaTxt = String(_jadminState.hasta || '').replace(/-/g, '');
+    AuxiliosExcelExport.download({
+      filename: `Jornadas_${desdeTxt}_${hastaTxt}`,
+      summaryRows: resumen,
+      sheets: [{ name: 'Jornadas', columns: columnas, rows }],
+      detalle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`,
+    });
+    if ((resp?.total || 0) > (resp?.data || []).length) {
+      toast(`Se exportaron las primeras ${resp.data.length} de ${resp.total} jornadas. Acotá el período para el resto.`, 'warn');
+    }
+  } catch (e) {
+    console.error('[jadmin] exportar Excel:', e);
+    toast(`No se pudo exportar: ${e?.message || e}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 
@@ -15293,6 +15360,49 @@ async function initGrilla() {
   _grillaAutoSemana = true;
   _grillaDiaIdx = null;
   await cargarGrilla();
+}
+
+// Flechas ‹ › del mes: se mueven dentro de las opciones del selector (3 meses atrás a 3 adelante).
+function moverMesGrilla(delta) {
+  const sel = document.getElementById('grilla-mes-select');
+  if (!sel) return;
+  const opts = [...sel.options].map(o => o.value);
+  const idx = opts.indexOf(_grillaMesKey) + delta;
+  if (idx < 0 || idx >= opts.length) return;
+  sel.value = opts[idx];
+  cambiarMesGrilla(opts[idx]);
+}
+function _grillaSyncMesNav() {
+  const sel = document.getElementById('grilla-mes-select');
+  if (!sel) return;
+  const opts = [...sel.options].map(o => o.value);
+  const idx = opts.indexOf(_grillaMesKey);
+  const prev = document.getElementById('grilla-mes-prev'), next = document.getElementById('grilla-mes-next');
+  if (prev) prev.disabled = idx <= 0;
+  if (next) next.disabled = idx < 0 || idx >= opts.length - 1;
+  const hoyIso = _gHoyIso();
+  const semana = _grillaSemanas[_grillaSemanaIdx] || [];
+  const btnHoy = document.getElementById('grilla-btn-hoy');
+  if (btnHoy) btnHoy.disabled = semana.includes(hoyIso);
+}
+async function irHoyGrilla() {
+  const hoy = new Date();
+  const key = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const sel = document.getElementById('grilla-mes-select');
+  if (sel) sel.value = key;
+  if (key !== _grillaMesKey) { await cambiarMesGrilla(key); return; }
+  const idx = _grillaSemanas.findIndex(sem => sem.includes(_gHoyIso()));
+  if (idx >= 0) setSemanaGrilla(idx);
+}
+
+// Color estable por chofer (solo para reconocerlo de un vistazo en la grilla)
+function _grillaHue(id) {
+  let h = 0;
+  for (const ch of String(id || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (h * 137) % 360;
+}
+function _grillaIniciales(nombre) {
+  return String(nombre || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 }
 
 async function cambiarMesGrilla(mesKey) {
@@ -15406,7 +15516,8 @@ function renderGrillaTabs() {
     const rango = ini.slice(5,7) === fin.slice(5,7)
       ? `${ini.slice(8,10)} – ${_gDDbarraMM(fin)}`
       : `${_gDDbarraMM(ini)} – ${_gDDbarraMM(fin)}`;
-    return `<div class="grilla-semana-tab ${i === _grillaSemanaIdx ? 'active' : ''}" onclick="setSemanaGrilla(${i})">Semana ${i+1} · ${rango}</div>`;
+    const tieneHoy = sem.includes(_gHoyIso());
+    return `<div class="grilla-semana-tab ${i === _grillaSemanaIdx ? 'active' : ''} ${tieneHoy ? 'tiene-hoy' : ''}" role="tab" tabindex="0" aria-selected="${i === _grillaSemanaIdx}" onclick="setSemanaGrilla(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setSemanaGrilla(${i})}"><b>Semana ${i+1}</b><small>${rango}</small></div>`;
   }).join('');
 }
 
@@ -15466,9 +15577,9 @@ function _grillaChipHtml(iso, t, clickCelda) {
 
   let chip = '';
   if (!a) {
-    chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda}>${esAdmin ? '+' : '—'}</span>`;
+    chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda} ${esAdmin ? 'title="Asignar"' : ''}>${esAdmin ? '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#plus"/></svg>' : '—'}</span>`;
   } else if (a.estado === 'taller') {
-    chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}>🔧 Taller</span>`;
+    chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#wrench"/></svg>Taller</span>`;
   } else if (a.estado === 'franco') {
     chip = `<span class="grilla-chip grilla-chip-franco" ${clickCelda}>Franco</span>`;
   } else {
@@ -15479,7 +15590,7 @@ function _grillaChipHtml(iso, t, clickCelda) {
     if (_grillaFiltroChofer) {
       extra += a.driver_id === _grillaFiltroChofer ? ' grilla-chip-resaltada' : ' grilla-chip-atenuada';
     }
-    chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} title="${nombreCompleto.replace(/"/g, '&quot;')}">${nombre}</span>`;
+    chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} style="--gc-h:${_grillaHue(a.driver_id)}" title="${nombreCompleto.replace(/"/g, '&quot;')}"><i class="gc-av" aria-hidden="true">${_grillaIniciales(nombreCompleto)}</i><span class="gc-nm">${nombre}</span></span>`;
   }
 
   // Atenuar también francos/taller/vacías cuando hay filtro por chofer
@@ -15514,7 +15625,8 @@ function renderGrillaTabla() {
     const clases    = [esHoy ? 'grilla-hoy' : '', feriado ? 'grilla-feriado' : ''].filter(Boolean).join(' ');
     const click     = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')" style="cursor:pointer"` : '';
     const tooltip   = feriado ? `title="${feriado.replace(/"/g, '&quot;')}"` : (esAdmin ? 'title="Clic para marcar/desmarcar feriado"' : '');
-    ths += `<th class="${clases}" ${click} ${tooltip}>${diasNom[i]}<span class="grilla-th-fecha">${_gDDMM(iso)}</span>${feriado ? `<span class="grilla-th-feriado">${feriado}</span>` : ''}</th>`;
+    const finde = i >= 5 ? ' grilla-finde' : '';
+    ths += `<th class="${clases}${finde}" ${click} ${tooltip}><span class="grilla-th-dn">${diasNom[i]}${esHoy ? ' · Hoy' : ''}</span><span class="grilla-th-fecha">${parseInt(iso.slice(8,10), 10)}<small>/${iso.slice(5,7)}</small></span>${feriado ? `<span class="grilla-th-feriado">${feriado}</span>` : ''}</th>`;
   });
   ths += '</tr>';
   thead.innerHTML = ths;
@@ -15525,13 +15637,14 @@ function renderGrillaTabla() {
   let filas = '';
 
   trucks.forEach(t => {
-    let tds = `<td class="grilla-movil">${t.numero_interno || t.plate || '—'}</td>`;
+    let tds = `<td class="grilla-movil"><b>${t.numero_interno || t.plate || '—'}</b>${t.numero_interno && t.plate ? `<small>${t.plate}</small>` : ''}</td>`;
 
-    semana.forEach(iso => {
+    semana.forEach((iso, i) => {
       const esHoy = iso === hoyIso;
       const clickCelda = esAdmin ? `onclick="abrirGrillaCelda('${iso}', ${t.truck_id})"` : '';
       const { chip } = _grillaChipHtml(iso, t, clickCelda);
-      tds += `<td class="${esHoy ? 'grilla-hoy-celda' : ''}">${chip}</td>`;
+      const clases = [esHoy ? 'grilla-hoy-celda' : '', i >= 5 ? 'grilla-finde' : '', _grillaFeriados[iso] ? 'grilla-feriado-celda' : ''].filter(Boolean).join(' ');
+      tds += `<td class="${clases}">${chip}</td>`;
     });
 
     filas += `<tr>${tds}</tr>`;
@@ -15544,9 +15657,35 @@ function renderGrillaTabla() {
   }
   tbody.innerHTML = filas;
   tbody.classList.toggle('grilla-admin', esAdmin);
+  _grillaRenderResumen(semana, trucks);
+  _grillaSyncMesNav();
 
   // Vista día (mobile) desde el mismo estado
   renderGrillaDia();
+}
+
+// Resumen de la semana visible: cuántos turnos asignados, francos, taller y sin asignar
+function _grillaRenderResumen(semana, trucks) {
+  const cont = document.getElementById('grilla-resumen');
+  if (!cont) return;
+  if (_grillaEsChofer() || !trucks.length) { cont.innerHTML = ''; return; }
+  let asig = 0, franco = 0, taller = 0, vacias = 0, alertas = 0;
+  const hoyIso = _gHoyIso();
+  trucks.forEach(t => semana.forEach(iso => {
+    const a = _grillaAsig[`${iso}|${t.truck_id}`];
+    if (!a) vacias++;
+    else if (a.estado === 'franco') franco++;
+    else if (a.estado === 'taller') taller++;
+    else asig++;
+    if (iso <= hoyIso && _grillaConflictos[`${iso}|${t.truck_id}`]) alertas++;
+  }));
+  const item = (n, txt, cls = '') => `<span class="grilla-res-item ${cls}"><b>${n}</b> ${txt}</span>`;
+  cont.innerHTML = item(trucks.length, trucks.length === 1 ? 'móvil' : 'móviles')
+    + item(asig, asig === 1 ? 'turno asignado' : 'turnos asignados', 'ok')
+    + item(franco, franco === 1 ? 'franco' : 'francos')
+    + (taller ? item(taller, taller === 1 ? 'día en taller' : 'días en taller', 'warn') : '')
+    + (vacias ? item(vacias, vacias === 1 ? 'sin asignar' : 'sin asignar', 'pend') : '')
+    + (alertas ? item(alertas, alertas === 1 ? 'diferencia con la jornada' : 'diferencias con la jornada', 'bad') : '');
 }
 
 // ── Vista día (mobile ≤767px) ───────────────────────────────────
@@ -15690,7 +15829,7 @@ function _grillaHtmlDiaAdmin(semana) {
     const { chip, conflicto } = _grillaChipHtml(iso, t, '');
     cards += `
       <div class="grilla-dia-card ${esAdmin ? 'grilla-admin' : ''}" ${clickCard}>
-        <div class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}<small>MÓVIL</small></div>
+        <div class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}<small>${t.numero_interno && t.plate ? t.plate : 'MÓVIL'}</small></div>
         <div class="grilla-dia-der">
           ${chip}
           ${conflicto ? `<div class="grilla-dia-conf">⚠ ${conflicto}</div>` : ''}
@@ -15742,10 +15881,11 @@ function _grillaRenderOpciones() {
   let html = _grillaChoferes.map(c => {
     const val = `chofer:${c.user_id}`;
     const sel = _grillaSeleccion === val;
-    return `<div class="grilla-opt ${sel ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('${val}')">👤 ${c.full_name} <span>${sel ? '✓' : ''}</span></div>`;
+    return `<div class="grilla-opt ${sel ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('${val}')"><i class="gc-av" style="--gc-h:${_grillaHue(c.user_id)}" aria-hidden="true">${_grillaIniciales(c.full_name)}</i><b class="grilla-opt-nm">${c.full_name}</b><span>${sel ? '✓' : ''}</span></div>`;
   }).join('');
-  html += `<div class="grilla-opt ${_grillaSeleccion === 'franco' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('franco')">😴 Franco (sin asignación) <span>${_grillaSeleccion === 'franco' ? '✓' : ''}</span></div>`;
-  html += `<div class="grilla-opt ${_grillaSeleccion === 'taller' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('taller')">🔧 Taller (mantenimiento) <span>${_grillaSeleccion === 'taller' ? '✓' : ''}</span></div>`;
+  html += `<div class="grilla-opt-sep">Sin chofer</div>`;
+  html += `<div class="grilla-opt ${_grillaSeleccion === 'franco' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('franco')"><i class="gc-av gc-av-franco" aria-hidden="true">F</i><b class="grilla-opt-nm">Franco <small>descanso, sin asignación</small></b><span>${_grillaSeleccion === 'franco' ? '✓' : ''}</span></div>`;
+  html += `<div class="grilla-opt ${_grillaSeleccion === 'taller' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('taller')"><i class="gc-av gc-av-taller" aria-hidden="true"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#wrench"/></svg></i><b class="grilla-opt-nm">Taller <small>el móvil está en mantenimiento</small></b><span>${_grillaSeleccion === 'taller' ? '✓' : ''}</span></div>`;
   cont.innerHTML = html;
 }
 
@@ -16166,9 +16306,9 @@ async function corregirGrillaDesdeAlerta(fecha, truckId) {
 
 const ALX_CATS = [
   { key: 'efectivo',      lbl: '💵 Efectivo',        titulo: '💵 Efectivo faltante' },
-  { key: 'incidentes',    lbl: '⚠️ Incidentes',      titulo: '⚠️ Incidentes' },
-  { key: 'grilla',        lbl: '🗓️ Jornadas/Grilla', titulo: '🗓️ Jornadas / Grilla' },
-  { key: 'km_manual',     lbl: '✏️ KM a mano',       titulo: '✏️ KM cargados a mano' },
+  { key: 'incidentes',    lbl: '⚠ Incidentes',      titulo: '⚠ Incidentes' },
+  { key: 'grilla',        lbl: '🗓 Jornadas/Grilla', titulo: '🗓 Jornadas / Grilla' },
+  { key: 'km_manual',     lbl: '✏ KM a mano',       titulo: '✏ KM cargados a mano' },
   { key: 'documentos',    lbl: '📄 Documentos',      titulo: '📄 Documentos' },
   { key: 'mantenimiento', lbl: '🔧 Mantenimiento',   titulo: '🔧 Mantenimiento' },
 ];
@@ -16214,13 +16354,13 @@ function _alxGuardarVisto(id) {
 
 // ── Navegación desde las alertas ───────────────────────────────
 function alxIrRendiciones() {
-  _sueldosSubActual = 'rendiciones';
+  // La rendición mensual se registra en el detalle de cada chofer (Liquidaciones del mes).
+  _sueldosSubActual = 'mes';
   goTo('sueldos');
 }
 
 function alxIrMantenimiento() {
-  openSettingsHub();
-  switchConfigTab('tab-mantenimiento'); // dispara cargarMantenimientoTab()
+  openSettingsHub('tab-mantenimiento'); // dispara cargarMantenimientoTab()
 }
 
 function alxBellClick() {
@@ -16373,7 +16513,7 @@ function _alxItemsGrilla() {
     texto: a.texto,
     sub: a.sub,
     motivo: a.motivo || null,
-    acciones: [{ lbl: '✏️ Corregir grilla', fn: `corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})` }],
+    acciones: [{ lbl: '✏ Corregir grilla', fn: `corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})` }],
     vistoFn: `marcarAlertaGrillaVista('${a.id}')`,
   }));
 }
@@ -16397,7 +16537,7 @@ async function _alxFetchKmManual() {
     id: `km_manual|${a.alerta_id}`,
     cat: 'km_manual',
     sev: 'ambar',
-    ico: '✏️',
+    ico: '✏',
     html: _alxCardKmManual(a), // tarjeta propia (no usa el layout genérico ni el "Visto")
   }));
 }
@@ -16412,7 +16552,7 @@ function _alxCardKmManual(a) {
   return `
     <div style="background:var(--panel);border:1px solid rgba(245,166,35,0.4);border-left:4px solid var(--amber);border-radius:10px;padding:12px 14px;margin-bottom:10px" id="alx-km-${a.alerta_id}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:700;color:var(--amber)">✏️ KM cargado a mano</span>
+        <span style="font-size:12px;font-weight:700;color:var(--amber)">✏ KM cargado a mano</span>
         <span style="font-size:11px;color:var(--muted2)">${_alxFecha(a.fecha)}</span>
       </div>
       <div style="font-size:12.5px;line-height:1.5;margin:6px 0 10px">
@@ -16497,9 +16637,12 @@ async function _alxFetchMantenimiento() {
     const movil = x.numero_interno ? `móvil ${x.numero_interno}` : (x.plate || '');
     const kmAct  = x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—';
     const kmDue  = x.next_due_km != null ? x.next_due_km.toLocaleString('es-AR') : '—';
+    // En km o en horas de motor, según lo que vence primero
+    const porHoras = x.manda === 'horas';
+    const cuanto = `${Math.abs((porHoras ? x.horas_restantes : x.km_restantes) || 0).toLocaleString('es-AR')} ${porHoras ? 'h de motor' : 'km'}`;
     const texto = x.estado === 'vencido'
-      ? `El <strong>${_escHtml(movil)}</strong> pasó el service <strong>${_escHtml(x.plan_name)}</strong> hace <strong>${Math.abs(x.km_restantes || 0).toLocaleString('es-AR')} km</strong>.`
-      : `El <strong>${_escHtml(movil)}</strong> está a <strong>${(x.km_restantes || 0).toLocaleString('es-AR')} km</strong> del próximo service (<strong>${_escHtml(x.plan_name)}</strong>).`;
+      ? `El <strong>${_escHtml(movil)}</strong> pasó el service <strong>${_escHtml(x.plan_name)}</strong> hace <strong>${cuanto}</strong>.`
+      : `El <strong>${_escHtml(movil)}</strong> está a <strong>${cuanto}</strong> del próximo service (<strong>${_escHtml(x.plan_name)}</strong>).`;
     return {
       id: `mantenimiento|${x.truck_id}|${x.plan_name}|${x.next_due_km}`,
       cat: 'mantenimiento',

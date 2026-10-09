@@ -47,9 +47,9 @@ test('Tipos de Servicio es el único catálogo creador y Prestadora mantiene una
 
 test('Parámetros de facturación posee Bases y reglas contractuales, no Tarifas',()=>{
   assert.match(billing,/get_company_billing_configuration/);
-  assert.match(billing,/Bases habilitadas para esta prestadora/);
-  assert.match(billing,/Radio cubierto \(km\)/);
-  assert.match(billing,/Cobrar movida hasta \(km\)/);
+  assert.match(billing,/Bases habilitadas/);
+  assert.match(billing,/Radio cubierto/);
+  assert.match(billing,/Cobrar movida hasta un tope/);
   assert.match(billing,/covered_radius_km/);
   assert.match(billing,/movement_charge_until_km/);
   assert.match(billing,/Sugerencia editable/);
@@ -83,6 +83,23 @@ test('Tarifas separa Movida, KM Asfalto y KM Ripio en lectura y edición',()=>{
   assert.match(tariffs,/payload\.gravel_km_price = gravel/);
   assert.match(tariffs,/id="ct4-asphalt"/);
   assert.match(tariffs,/id="ct4-gravel"/);
+});
+
+test('Tarifas se ve como tabla: un grupo por forma de cobro, filtros, menú por fila y confirmaciones',()=>{
+  assert.match(tariffs,/title: 'Con kilómetros'/);
+  assert.match(tariffs,/title: 'Precio por unidad'/);
+  assert.match(tariffs,/<th class="num">Movida<\/th><th class="num">KM asfalto<\/th><th class="num">KM ripio<\/th>/);
+  assert.match(tariffs,/data-ct4-filter=/);
+  assert.match(tariffs,/data-ct4-search/);
+  assert.match(tariffs,/data-ct4-menu=/);
+  assert.match(tariffs,/data-ct4-toggle-bases=/);
+  assert.match(tariffs,/data-ct4-edit-base=/);
+  assert.match(tariffs,/async function askConfirm/);
+  assert.match(tariffs,/Sí, descartar/);
+  assert.match(tariffs,/Sí, actualizar/);
+  assert.match(tariffs,/Quitar el precio de la base/);
+  assert.match(tariffs,/Cancelar el cambio programado/);
+  assert.match(tariffs,/<th>Antes<\/th><th>Después<\/th>/);
 });
 
 test('Prestadoras embebe la misma implementación de precios y no contiene Sucursales',()=>{

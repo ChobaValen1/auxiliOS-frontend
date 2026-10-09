@@ -181,7 +181,7 @@ test('Servicios abre la revisión desde cada servicio y no duplica una bandeja d
   assert.match(services,/remito_toll_total/);
   assert.doesNotMatch(review,/Confirmar revisión y finalizar servicio|Confirmar revisión y habilitar Facturación/);
   assert.match(review,/reportedExcessPayment/);
-  assert.match(review,/resolve_operator_service_document_v6/);
+  assert.match(review,/AuxiliosFinishTime\.finalize/);
   assert.match(review,/Elegí Rechazar, Modificar o Aprobar/);
   const menu=services.split('function openRowMenu')[1].split('function closeRowMenu')[0];
   assert.match(menu,/Ver servicio/);
@@ -199,7 +199,7 @@ test('la aprobación simplificada usa dos resúmenes y una única decisión glob
   assert.match(review,/os-review-report-line/);
   assert.match(review,/toggleLineCancel/);
   assert.match(review,/addLine/);
-  assert.match(review,/resolve_operator_service_document_v6/);
+  assert.match(review,/AuxiliosFinishTime\.finalize/);
   assert.doesNotMatch(review,/reviewActions|comparisonSection|applySection|data-review-action=/);
   assert.doesNotMatch(review,/<table|os-review-table|os-review-comparison-group|os-review-group-header/);
   assert.doesNotMatch(review,/Responsable comercial|Cobrador<select|Decisión<select/);

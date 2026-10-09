@@ -40,6 +40,7 @@
   const notify = (message, type = 'info') => typeof window.toast === 'function'
     ? window.toast(message, type)
     : console[type === 'error' ? 'error' : 'log'](message);
+  const ico = name => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
   const money = (value, currency = 'ARS') => new Intl.NumberFormat('es-AR', {
     style: 'currency', currency: currency || 'ARS', maximumFractionDigits: 2
   }).format(num(value));
@@ -140,7 +141,7 @@
   function setTopbar() {
     const title = document.getElementById('topbar-title');
     const sub = document.getElementById('topbar-sub');
-    if (title) title.textContent = 'FACTURAS';
+    if (title) title.textContent = 'Facturas';
     if (sub) sub.textContent = 'Comprobantes · servicios · peajes · archivos · notas de crédito';
   }
 
@@ -223,46 +224,97 @@
     trigger.setAttribute('aria-expanded', 'true');
   }
 
+  const DOC_TYPES = { FA: 'Factura A', FB: 'Factura B', FC: 'Factura C' };
+  const COLUMN_DEFS = [
+    { key: 'number', label: 'Factura', locked: true, td: row => `<b>${esc(row.invoice_number || '—')}</b>${row.credit_note_id ? `<small>${esc(`${creditTypeLabel(row.credit_note_type)} ${row.credit_note_point_of_sale}-${row.credit_note_number}`)}</small>` : ''}` },
+    { key: 'date', label: 'Fecha', td: row => esc(invoiceDate(row.issued_on, row.created_at)) },
+    { key: 'company', label: 'Prestadora', td: row => `<b>${esc(row.company_name || '—')}</b>` },
+    { key: 'services', label: 'Servicios', td: row => esc(row.service_count || 0) },
+    { key: 'tolls', label: 'Peajes', td: row => esc(row.toll_count || 0) },
+    { key: 'total', label: 'Total', td: row => `<b class="oi-money">${esc(money(row.total_amount, row.currency))}</b>` },
+    { key: 'status', label: 'Estado', td: row => `<span class="oi-status ${statusClass(row.status)}">${esc(statusLabel(row.status))}</span>` },
+    { key: 'pdf', label: 'PDF', td: row => row.pdf_path ? '<span class="oi-file">PDF adjunto</span>' : '<span class="oi-muted">Sin PDF</span>' },
+    { key: 'doctype', label: 'Tipo de comprobante', optional: true, td: row => esc(DOC_TYPES[row.document_type] || row.document_type || '—') },
+    { key: 'creditAmount', label: 'Importe de la Nota de Crédito', optional: true, td: row => row.credit_note_id ? `<b class="oi-money">${esc(money(row.credit_note_amount, row.currency))}</b>` : '<span class="oi-muted">—</span>' },
+    { key: 'createdBy', label: 'Creada por', optional: true, td: row => esc(row.created_by_name || '—') },
+    { key: 'createdAt', label: 'Fecha de creación', optional: true, td: row => esc(date(row.created_at)) },
+    { key: 'notes', label: 'Observaciones', optional: true, td: row => row.notes ? esc(row.notes) : '<span class="oi-muted">—</span>' }
+  ];
+  let columnSet = null;
+  function cols() {
+    const T = window.AuxiliosTableColumns;
+    if (!columnSet && T) columnSet = T.create({ id: 'facturas', columns: COLUMN_DEFS.map(({ key, label, locked, optional }) => ({ key, label, locked, optional })) });
+    return columnSet || { list: () => COLUMN_DEFS.filter(c => !c.optional).map(c => c.key), isCustom: () => false, open: () => {} };
+  }
+  const visibleDefs = () => cols().list().map(key => COLUMN_DEFS.find(c => c.key === key)).filter(Boolean);
+
   function tableMarkup() {
     if (!S.rows.length) return '<div class="oi-empty">Todavía no hay facturas con estos filtros.</div>';
-    const rows = S.rows.map(row => {
-      const credit = row.credit_note_id
-        ? `<small>${esc(`${creditTypeLabel(row.credit_note_type)} ${row.credit_note_point_of_sale}-${row.credit_note_number}`)}</small>`
-        : '';
-      const pdf = row.pdf_path ? '<span class="oi-file">PDF adjunto</span>' : '<span class="oi-muted">Sin PDF</span>';
-      return `<tr>
-        <td><b>${esc(row.invoice_number || '—')}</b>${credit}</td>
-        <td>${esc(invoiceDate(row.issued_on, row.created_at))}</td><td><b>${esc(row.company_name || '—')}</b></td>
-        <td>${esc(row.service_count || 0)}</td><td>${esc(row.toll_count || 0)}</td>
-        <td><b class="oi-money">${esc(money(row.total_amount, row.currency))}</b></td>
-        <td><span class="oi-status ${statusClass(row.status)}">${esc(statusLabel(row.status))}</span></td><td>${pdf}</td>
-        <td class="oi-actions"><button class="oi-button" type="button" data-oi-detail="${esc(row.invoice_id)}">Ver</button><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(row.invoice_id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones">⋯</button></td>
-      </tr>`;
-    }).join('');
-    return `<div class="oi-table-wrap"><table class="oi-table"><thead><tr><th>Factura</th><th>Fecha</th><th>Prestadora</th><th>Servicios</th><th>Peajes</th><th>Total</th><th>Estado</th><th>PDF</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    const defs = visibleDefs();
+    const rows = S.rows.map(row => `<tr>${defs.map((c, i) => `<td data-label="${esc(c.label)}"${i === 0 ? ' class="oi-c-main"' : ''}>${c.td(row)}</td>`).join('')}
+        <td class="oi-actions"><button class="oi-button" type="button" data-oi-detail="${esc(row.invoice_id)}">Ver</button><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(row.invoice_id)}" aria-haspopup="menu" aria-expanded="false" title="Acciones" aria-label="Acciones">${ico('ellipsis')}</button></td>
+      </tr>`).join('');
+    return `<div class="oi-table-wrap"><table class="oi-table"><thead><tr>${defs.map(c => `<th>${esc(c.label)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
+
+  const BD = () => window.AuxiliosBillingBreakdown || null;
+  const released = line => Boolean(line.released_at);
+  const releaseChip = line => released(line)
+    ? `<span class="oi-release">${ico('circle-alert')}Liberado por anulación${line.release_reason ? ` · ${esc(line.release_reason)}` : ''}</span>` : '';
 
   function lineMarkup(line) {
     const service = line.service_snapshot || {};
     const quote = line.quote_snapshot || {};
-    const released = Boolean(line.released_at);
-    return `<article class="oi-line ${released ? 'released' : ''}">
-      <div class="oi-line-main"><b>${esc(service.service_order_number || service.service_number || 'Servicio')}</b><small>${esc(date(service.scheduled_for))} · ${esc(service.customer_name || 'Sin cliente')}</small><small>${esc([service.vehicle_make_model, service.vehicle_plate].filter(Boolean).join(' · ') || 'Sin vehículo')}</small>${released ? '<small class="oi-release">Liberado por anulación</small>' : ''}</div>
-      <div class="oi-line-route"><small>Origen</small><b>${esc(service.origin || '—')}</b><small>Destino</small><b>${esc(service.destination || '—')}</b></div>
-      <div class="oi-line-price"><small>Importe congelado</small><b>${esc(money(line.company_amount, line.currency))}</b><small>${quote.rate_card_name ? `${esc(quote.rate_card_name)} · v${esc(quote.rate_card_version || '—')}` : 'Tarifa congelada'}</small></div>
-    </article>`;
+    const bd = BD();
+    const cur = line.currency || quote.currency;
+    const km = bd ? bd.kilometros(quote, service) : null;
+    const kmText = km && (km.asfalto || km.ripio)
+      ? [km.asfalto ? `Asfalto ${num(km.asfalto).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km` : '', km.ripio ? `Ripio ${num(km.ripio).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km` : '',
+          km.facturable != null ? `Facturable ${num(km.facturable).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km` : ''].filter(Boolean).join(' · ') : '';
+    const table = bd
+      ? bd.tabla(quote, { currency: cur, total: line.company_amount, totalLabel: 'Importe congelado' })
+      : '';
+    return `<details class="oi-line-card ${released(line) ? 'released' : ''}">
+      <summary class="oi-line">
+        <div class="oi-line-main"><b>${esc(service.service_order_number || service.service_number || 'Servicio')}</b><small>${esc(date(service.scheduled_for))} · ${esc(service.customer_name || 'Sin cliente')}</small><small>${esc([service.vehicle_make_model, service.vehicle_plate].filter(Boolean).join(' · ') || 'Sin vehículo')}</small>${releaseChip(line)}</div>
+        <div class="oi-line-route"><small>Origen</small><b>${esc(service.origin || '—')}</b><small>Destino</small><b>${esc(service.destination || '—')}</b></div>
+        <div class="oi-line-price"><small>Importe congelado</small><b>${esc(money(line.company_amount, line.currency))}</b><small>${quote.rate_card_name ? `${esc(quote.rate_card_name)} · v${esc(quote.rate_card_version || '—')}` : 'Tarifa congelada'}</small></div>
+        <span class="oi-chev" aria-hidden="true">${ico('chevron-down')}</span>
+      </summary>
+      <div class="oi-line-body">${kmText ? `<p class="oi-line-km">${esc(kmText)}</p>` : ''}${table || '<div class="oi-empty">No hay desglose guardado para esta línea.</div>'}</div>
+    </details>`;
   }
 
   function tollLineMarkup(line) {
     const toll = line.toll_snapshot || {};
     const service = line.service_snapshot || {};
-    const released = Boolean(line.released_at);
     const route = [toll.road, toll.direction].filter(Boolean).join(' · ') || `${service.origin || '—'} → ${service.destination || '—'}`;
-    return `<article class="oi-line oi-toll-line ${released ? 'released' : ''}">
-      <div class="oi-line-main"><b>${esc(toll.toll_name || 'Peaje')}</b><small>${esc(service.service_order_number || service.service_number || 'Servicio')} · ${esc(service.vehicle_plate || 'Sin patente')}</small><small>${esc(date(toll.crossed_at || service.scheduled_for))}</small>${released ? '<small class="oi-release">Liberado por anulación</small>' : ''}</div>
+    return `<article class="oi-line oi-toll-line ${released(line) ? 'released' : ''}">
+      <div class="oi-line-main"><b>${esc(toll.toll_name || 'Peaje')}</b><small>${esc(service.service_order_number || service.service_number || 'Servicio')} · ${esc(service.vehicle_plate || 'Sin patente')}</small><small>${esc(date(toll.crossed_at || service.scheduled_for))}</small>${releaseChip(line)}</div>
       <div class="oi-line-route"><small>Ruta / sentido</small><b>${esc(route)}</b><small>Cantidad</small><b>${esc(toll.quantity || 1)}</b></div>
       <div class="oi-line-price"><small>Importe congelado</small><b>${esc(money(line.amount, line.currency))}</b><small>Peaje separado</small></div>
     </article>`;
+  }
+
+  /* Cuánto aporta cada tipo de servicio a la factura (sin contar lo liberado por anulación). */
+  function groupsMarkup(lines, tollLines, invoice) {
+    const cur = invoice.currency;
+    const groups = new Map();
+    for (const line of lines.filter(l => !released(l))) {
+      const name = line.service_snapshot?.service_name || line.quote_snapshot?.primary_service_name || 'Servicios';
+      const g = groups.get(name) || { count: 0, amount: 0 };
+      g.count += 1; g.amount += num(line.company_amount);
+      groups.set(name, g);
+    }
+    const tolls = tollLines.filter(l => !released(l));
+    const tollAmount = tolls.reduce((t, l) => t + num(l.amount), 0);
+    const rows = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0], 'es'))
+      .map(([name, g]) => `<tr><td>${esc(name)}</td><td>${g.count}</td><td class="oi-money">${esc(money(g.amount, cur))}</td></tr>`);
+    if (tolls.length) rows.push(`<tr><td>Peajes</td><td>${tolls.length}</td><td class="oi-money">${esc(money(tollAmount, cur))}</td></tr>`);
+    if (!rows.length) return '';
+    const active = [...groups.values()].reduce((t, g) => t + g.amount, 0) + tollAmount;
+    const releasedCount = lines.filter(released).length + tollLines.filter(released).length;
+    return `<section class="oi-section oi-groups"><h4>Qué incluye</h4><table class="oi-groups-table"><thead><tr><th>Tipo</th><th>Cant.</th><th>Importe</th></tr></thead><tbody>${rows.join('')}</tbody><tfoot><tr><td colspan="2">${releasedCount ? 'Vigente' : 'Total'}</td><td class="oi-money">${esc(money(releasedCount ? active : invoice.total_amount, cur))}</td></tr></tfoot></table>${releasedCount ? `<p class="oi-groups-note">${releasedCount} ${releasedCount === 1 ? 'línea liberada' : 'líneas liberadas'} por anulación no se cuentan.</p>` : ''}</section>`;
   }
 
   function detailMarkup() {
@@ -276,11 +328,12 @@
       : '';
 
     return `<aside class="oi-detail">
-      <div class="oi-detail-head"><div><small>Factura · ${esc(statusLabel(invoice.status))}</small><h3>${esc(invoice.invoice_number || 'Factura')}</h3></div><div class="oi-detail-head-actions"><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(invoice.invoice_id)}" aria-haspopup="menu" aria-expanded="false">Acciones ⋯</button><button class="oi-button" type="button" data-oi="close-detail">× Cerrar</button></div></div>
+      <div class="oi-detail-head"><div><small>Factura · ${esc(statusLabel(invoice.status))}</small><h3>${esc(invoice.invoice_number || 'Factura')}</h3></div><div class="oi-detail-head-actions"><button class="oi-menu-trigger" type="button" data-oi-menu="${esc(invoice.invoice_id)}" aria-haspopup="menu" aria-expanded="false">Acciones ${ico('ellipsis')}</button><button class="oi-button" type="button" data-oi="close-detail">${ico('x')}Cerrar</button></div></div>
       <div class="oi-detail-body">
         <div class="oi-summary"><article><small>Prestadora</small><b>${esc(invoice.company_name || '—')}</b></article><article><small>Servicios</small><b>${esc(invoice.service_count || 0)}</b></article><article><small>Peajes</small><b>${esc(invoice.toll_count || 0)}</b></article><article><small>Total</small><b>${esc(money(invoice.total_amount, invoice.currency))}</b></article></div>
         <section class="oi-section"><h4>Datos de factura</h4><div class="oi-grid"><div><small>Fecha de emisión</small><b>${esc(invoiceDate(invoice.issued_on, invoice.created_at))}</b></div><div><small>Creada por</small><b>${esc(invoice.created_by_name || 'Usuario')}</b></div><div><small>Estado</small><b>${esc(statusLabel(invoice.status))}</b></div><div><small>Moneda</small><b>${esc(invoice.currency || 'ARS')}</b></div><div><small>PDF</small><b>${invoice.pdf_path ? esc(invoice.pdf_name || 'Adjunto') : 'Sin PDF'}</b></div>${invoice.notes ? `<div><small>Observaciones</small><b>${esc(invoice.notes)}</b></div>` : ''}${invoice.cancellation_reason ? `<div class="oi-wide"><small>Motivo de anulación</small><b>${esc(invoice.cancellation_reason)}</b></div>` : ''}</div></section>
         ${creditSection}
+        ${groupsMarkup(lines, tollLines, invoice)}
         ${lines.length ? `<section class="oi-section"><h4>Servicios facturados</h4><div class="oi-lines">${lines.map(lineMarkup).join('')}</div></section>` : ''}
         ${tollLines.length ? `<section class="oi-section"><h4>Peajes facturados</h4><div class="oi-lines">${tollLines.map(tollLineMarkup).join('')}</div></section>` : ''}
         ${!lines.length && !tollLines.length ? '<section class="oi-section"><div class="oi-empty">La factura no tiene líneas.</div></section>' : ''}
@@ -299,14 +352,14 @@
     const busy = S.actionBusy;
 
     if (action.type === 'annul') {
-      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>Factura</small><h3>Anular ${esc(row.invoice_number || 'factura')}</h3></div><button class="oi-button" data-oi="close-action" ${busy ? 'disabled' : ''}>×</button></header>
+      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>Factura</small><h3>Anular ${esc(row.invoice_number || 'factura')}</h3></div><button class="oi-button" data-oi="close-action" aria-label="Cerrar" ${busy ? 'disabled' : ''}>${ico('x')}</button></header>
         <div class="oi-modal-body"><div class="oi-warning"><b>Se devolverán ${esc(conceptCountText(row))} a Facturación.</b><span>La factura y sus líneas permanecen en el historial. Esta acción no anula fiscalmente el comprobante ante ARCA.</span></div><label><span>Motivo de anulación</span><input data-oi-action-field="reason" maxlength="300" placeholder="Motivo obligatorio" value="${esc(action.form.reason || '')}"></label></div>
         <footer><button class="oi-button" data-oi="close-action" ${busy ? 'disabled' : ''}>Cancelar</button><button class="oi-button danger" data-oi="confirm-annul" ${busy ? 'disabled' : ''}>${busy ? 'Anulando…' : 'Anular y liberar conceptos'}</button></footer></section>`;
     }
 
     if (action.type === 'credit-note') {
       const type = creditType(row.document_type);
-      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>${esc(row.invoice_number || 'Factura')}</small><h3>Emitir Nota de Crédito</h3></div><button class="oi-button" data-oi="close-action" ${busy ? 'disabled' : ''}>×</button></header>
+      return `<section class="oi-modal" role="dialog" aria-modal="true"><header><div><small>${esc(row.invoice_number || 'Factura')}</small><h3>Emitir Nota de Crédito</h3></div><button class="oi-button" data-oi="close-action" aria-label="Cerrar" ${busy ? 'disabled' : ''}>${ico('x')}</button></header>
         <div class="oi-modal-body"><div class="oi-credit-total"><small>Nota de Crédito total</small><b>${esc(money(row.total_amount, row.currency))}</b><span>Los conceptos facturados permanecen vinculados a la factura original.</span></div>
         <div class="oi-modal-grid"><label><span>Comprobante</span><input value="${esc(creditTypeLabel(type))}" disabled></label><label><span>Punto de venta</span><input data-oi-action-field="point_of_sale" inputmode="numeric" maxlength="10" placeholder="0004" value="${esc(action.form.point_of_sale || '')}"></label><label><span>Número</span><input data-oi-action-field="document_number" inputmode="numeric" maxlength="20" placeholder="00000125" value="${esc(action.form.document_number || '')}"></label><label><span>Fecha</span><input type="date" data-oi-action-field="issued_on" value="${esc(action.form.issued_on || todayLocalDate())}"></label></div>
         <label><span>Observaciones <small>opcional</small></span><input data-oi-action-field="notes" maxlength="300" placeholder="Referencia breve" value="${esc(action.form.notes || '')}"></label></div>
@@ -326,17 +379,17 @@
       ? '<aside class="oi-detail"><div class="oi-empty">Cargando factura…</div></aside>'
       : S.detail ? detailMarkup() : '';
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
-    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button" type="button" data-oi="refresh">↻ Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
+    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button oi-columns${cols().isCustom() ? ' is-custom' : ''}" type="button" data-oi="columns" title="Columnas" aria-label="Columnas">${ico('sliders-horizontal')}Columnas</button><button class="oi-button" type="button" data-oi="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
   }
 
   function filtersMarkup(opts) {
     const F = window.AuxFilters;
-    const searchInput = `<label class="auxf-search"><span aria-hidden="true">⌕</span><input class="oi-search" id="oi-search" type="search" autocomplete="off" placeholder="Buscar factura, prestadora, servicio o peaje…" value="${esc(S.search)}"></label>`;
+    const searchInput = `<label class="auxf-search"><span aria-hidden="true">${ico('search')}</span><input class="oi-search" id="oi-search" type="search" autocomplete="off" placeholder="Buscar factura, prestadora, servicio o peaje…" value="${esc(S.search)}"></label>`;
     if (!F) return `${searchInput}<select class="oi-filter" id="oi-company-filter">${opts.companies}</select><select class="oi-filter" id="oi-period-filter">${opts.periods}</select>`;
     const count = [S.search.trim(), S.company, S.periodSel.mode !== 'all'].filter(Boolean).length;
     return searchInput
       + F.period({ id: 'period', value: S.periodSel, allLabel: 'Todos los períodos', months: S.filters.periods })
-      + F.select({ id: 'company', label: 'Prestadora', icon: '🏢', value: S.company, options: S.filters.companies.map(item => ({ value: String(item.company_id), label: item.company_name })), allLabel: 'Todas' })
+      + F.select({ id: 'company', label: 'Prestadora', icon: ico('building-2'), value: S.company, options: S.filters.companies.map(item => ({ value: String(item.company_id), label: item.company_name })), allLabel: 'Todas' })
       + F.clear({ count });
   }
 
@@ -674,6 +727,7 @@
     if (detail) return openDetail(detail.dataset.oiDetail);
     const action = event.target.closest('[data-oi]')?.dataset.oi;
     if (action === 'refresh') return load();
+    if (action === 'columns') return cols().open(() => render());
     if (action === 'close-detail') return closeDetail();
     if (action === 'close-action') return closeAction();
     if (action === 'confirm-annul') return confirmAnnul();

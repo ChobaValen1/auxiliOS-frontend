@@ -1,0 +1,67 @@
+/* AuxiliOS · Control del camión: flota en una tabla y menos ruido visual. */
+
+/* Un solo título: el de la barra superior. */
+#screen-camion #camion-main-view > .sec-header .sec-title { display: none; }
+#screen-camion #camion-main-view > .sec-header .sec-sub { margin: 0; color: var(--muted2); font-size: 12px; }
+
+/* Resumen */
+.fcv-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.fcv-kpi { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.fcv-kpi b { font-size: 20px; font-weight: 800; line-height: 1.1; }
+.fcv-kpi span { color: var(--muted2); font-size: 11px; font-weight: 600; }
+.fcv-kpi:hover { border-color: var(--border2); }
+.fcv-kpi.on { border-color: var(--amber); }
+.fcv-kpi-alerta b { color: var(--amber); }
+
+.fcv-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+.fcv-search { flex: 1; max-width: 360px; height: 36px; padding: 0 12px; border: 1px solid var(--border2); border-radius: 9px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+.fcv-search:focus { outline: none; border-color: var(--amber); }
+.fcv-refresh { height: 36px; padding: 0 14px; border: 1px solid var(--border2); border-radius: 9px; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+/* Tabla */
+.fcv-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.fcv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fcv-table th { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--muted2); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+.fcv-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.fcv-table tbody tr { cursor: pointer; }
+.fcv-table tbody tr:hover, .fcv-table tbody tr:focus-visible { background: color-mix(in srgb, var(--text) 4%, transparent); outline: none; }
+.fcv-table tbody tr:last-child td { border-bottom: 0; }
+.fcv-table td b { display: block; font-weight: 700; }
+.fcv-table td small { display: block; margin-top: 2px; color: var(--muted2); font-size: 11px; }
+.fcv-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fcv-go { width: 20px; color: var(--muted2); font-size: 18px; }
+
+/* Color sólo para lo que requiere atención. */
+.fcv-val { display: inline-flex; align-items: center; gap: 6px; }
+.fcv-val i { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; }
+.fcv-alerta { color: var(--amber); }
+.fcv-alerta i { background: var(--amber); }
+.fcv-critico { color: var(--red); }
+.fcv-critico i { background: var(--red); }
+.fcv-estado { font-weight: 700; }
+.fcv-e-muted { color: var(--muted2); }
+.fcv-e-alerta { color: var(--amber); }
+.fcv-empty { padding: 28px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted2); font-size: 13px; text-align: center; }
+.fcv-error { color: var(--red); }
+
+/* Detalle de un móvil: sin colores por módulo. */
+#camion-hero-card { border-color: var(--border) !important; background: var(--card) !important; }
+#camion-hero-card #camion-nombre { color: var(--text) !important; }
+#camion-hero-card > div > div:first-child { font-size: 28px !important; color: var(--muted2); }
+.camion-module-card { border-left-color: var(--border) !important; }
+.camion-module-card .btn-camion-action { background: transparent !important; color: var(--text) !important; border: 1px solid var(--border2) !important; }
+.camion-card-icon { color: var(--muted2); }
+
+@media (max-width: 900px) {
+  .fcv-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .fcv-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fcv-table thead { display: none; }
+  .fcv-table, .fcv-table tbody, .fcv-table tr, .fcv-table td { display: block; }
+  .fcv-table tr { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .fcv-table td { display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 3px 0; border: 0; }
+  .fcv-table td::before { content: attr(data-label); color: var(--muted2); font-size: 11px; }
+  .fcv-table td[data-label="Móvil"] { display: block; margin-bottom: 4px; }
+  .fcv-table td[data-label="Móvil"]::before, .fcv-go { display: none; }
+}

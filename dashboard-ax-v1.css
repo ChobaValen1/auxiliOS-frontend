@@ -1,0 +1,152 @@
+/* AuxiliOS · Panel (administración) con el sistema visual (v1)
+   El tablero ya tenía su estructura; acá se alinean los tokens, las etiquetas en texto normal,
+   las pestañas y el estado seleccionado en neutro (el ámbar queda para lo que pide atención).
+   Los colores de los gráficos y del mapa son la paleta de datos y no se tocan. */
+
+#screen-dashboard { font-family: var(--ax-font); }
+
+/* ── Encabezado y pestañas ── */
+#screen-dashboard .dashx-titulo { font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; }
+#screen-dashboard .dashx-subtitulo { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs { gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs .ftab { padding: 0 14px; height: calc(var(--ax-h) - 8px); display: inline-flex; align-items: center; border-radius: 6px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; transition: color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs .ftab:hover { color: var(--ax-text); }
+#screen-dashboard .dashx-barra-secciones .dashx-tabs .ftab.active { background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+
+/* ── Selector de período ── */
+#screen-dashboard .dashx-per-btn { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard .dashx-per-btn:hover, #screen-dashboard .dashx-per-btn[aria-expanded="true"] { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-dashboard .dashx-per-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .dashx-per-aplicar { border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-accent-fg); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-dashboard .dashx-per-error { color: var(--ax-danger); }
+
+/* ── Cifras (KPI) ── */
+#screen-dashboard .dashx-kpi { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard .dashx-kpi:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-dashboard .dashx-metric.is-hero { border-color: var(--ax-border-strong); background: var(--ax-surface-3); box-shadow: none; }
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-label { color: var(--ax-text-2); }
+#screen-dashboard .dashx-metric.is-hero .dashx-metric-value { color: var(--ax-text); }
+#screen-dashboard .dashx-kpi-label, #screen-dashboard .dashx-metric-label, #screen-dashboard .dashx-chart-total-label { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-dashboard .dashx-kpi-value, #screen-dashboard .dashx-metric-value, #screen-dashboard .dashx-chart-total-value { font-family: var(--ax-font); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#screen-dashboard .dashx-kpi-value.is-amber, #screen-dashboard .dashx-chart-total-value.is-amber { color: var(--ax-text); }
+#screen-dashboard .dashx-kpi-delta { font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-dashboard .dashx-metric-hint, #screen-dashboard .dashx-card-sub, #screen-dashboard .dashx-metrics-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* ── Tarjetas ── */
+#screen-dashboard .dashx-card, #screen-dashboard .dashx-metric, #screen-dashboard .dashx-mapa, #screen-dashboard .dashx-alert { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-dashboard .dashx-card-title { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-dashboard .dashx-sec-head, #screen-dashboard .dashx-grid-compacta .dashx-sec-head { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-dashboard .dashx-grid-compacta .dashx-card-title { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-dashboard .dashx-loading-inner { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+
+/* Alertas de la flota: borde de color a la izquierda, texto neutro */
+#screen-dashboard .dashx-alert.is-aviso { border-left: 3px solid var(--ax-warn); }
+#screen-dashboard .dashx-alert.is-critico { border-left: 3px solid var(--ax-danger); }
+#screen-dashboard .dashx-alert.is-ok { border-left: 3px solid var(--ax-ok); }
+#screen-dashboard .dashx-alert-value, #screen-dashboard .dashx-alert.is-aviso .dashx-alert-value, #screen-dashboard .dashx-alert.is-critico .dashx-alert-value { color: var(--ax-text); }
+
+/* ── Tablas ── */
+#screen-dashboard .auxtb th { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; border-bottom: 1px solid var(--ax-border); }
+#screen-dashboard .auxtb td { border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-dashboard .auxtb tbody tr:hover td { background: var(--ax-surface-3); }
+#screen-dashboard .auxtb-vacio { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-dashboard .auxtb .auxtb-val, #screen-dashboard .auxtb .auxtb-num { font-variant-numeric: tabular-nums; }
+
+/* ── Enlaces y controles de los bloques ── */
+#screen-dashboard .dashx-card a, #screen-dashboard .dashx-card .dashx-ver, #screen-dashboard [data-dashx-ir] { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-decoration: underline; text-underline-offset: 2px; }
+#screen-dashboard .dashx-card a:hover, #screen-dashboard .dashx-card .dashx-ver:hover, #screen-dashboard [data-dashx-ir]:hover { color: var(--ax-text); }
+#screen-dashboard .dashx-toolbar :is(select, .form-input) { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-surface-2); color: var(--ax-text); color-scheme: dark; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-dashboard .dashx-toolbar :is(select, .form-input):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+
+/* ── Zoom de los gráficos de evolución (dashboard-zoom-v1.js) ──
+   Barra de rangos y zoom arriba del gráfico, navegador con toda la historia abajo. */
+#screen-dashboard .axz-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 10px; }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button { display: inline-grid; place-items: center; min-width: 36px; height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button:hover:not(:disabled) { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-dashboard .axz-rangos button[aria-pressed="true"] { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button:disabled { opacity: .35; cursor: default; }
+#screen-dashboard :is(.axz-rangos, .axz-zoom) button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .axz-zoom button { width: 30px; min-width: 30px; padding: 0; }
+#screen-dashboard .axz-zoom button b { font-size: 17px; font-weight: var(--ax-fw-semibold); line-height: 1; }
+#screen-dashboard .axz-zoom .ax-icon { width: 14px; height: 14px; }
+#screen-dashboard .axz-der { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+#screen-dashboard .axz-lbl { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-dashboard .axz-lienzo { touch-action: pan-y; border-radius: var(--ax-radius); }
+#screen-dashboard .axz-lienzo canvas { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+#screen-dashboard .axz-lienzo:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .axz-nav { position: relative; height: 42px; margin-top: 12px; overflow: hidden; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-accent); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+#screen-dashboard .axz-nav canvas { position: absolute; inset: 0; pointer-events: none; }
+#screen-dashboard .axz-dim { position: absolute; top: 0; bottom: 0; background: hsl(222 30% 6% / .62); pointer-events: none; }
+#screen-dashboard .axz-dim.is-izq { left: 0; }
+#screen-dashboard .axz-dim.is-der { right: 0; }
+#screen-dashboard .axz-sel { position: absolute; top: 0; bottom: 0; min-width: 6px; border: 1px solid var(--ax-accent); border-radius: 5px; background: var(--ax-accent-soft); cursor: grab; }
+#screen-dashboard .axz-sel:active { cursor: grabbing; }
+#screen-dashboard .axz-h { position: absolute; top: 50%; width: 8px; height: 24px; margin-top: -12px; border-radius: 3px; background: var(--ax-accent); cursor: ew-resize; }
+#screen-dashboard .axz-h.is-izq { left: -4px; }
+#screen-dashboard .axz-h.is-der { right: -4px; }
+#screen-dashboard .axz-tip { margin: 8px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-dashboard .axz-tip-tactil { display: none; }
+@media (hover: none) {
+  #screen-dashboard .axz-tip-pc { display: none; }
+  #screen-dashboard .axz-tip-tactil { display: inline; }
+}
+@media (max-width: 640px) {
+  #screen-dashboard .axz-der { width: 100%; margin-left: 0; justify-content: space-between; }
+  #screen-dashboard .axz-rangos { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  #screen-dashboard .axz-rangos button { min-width: 34px; padding: 0 7px; }
+}
+
+/* ── Operaciones con el lenguaje de Resumen (dashboard-operaciones-v1.js) ──
+   Reusa las tarjetas, cifras, listas y tablas rsm-*; acá sólo lo propio. */
+#screen-dashboard .opx-sub { margin: -4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-dashboard .opx-sub:empty { display: none; }
+#screen-dashboard .opx-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px 12px; }
+#screen-dashboard .opx-graf { position: relative; height: 250px; }
+#screen-dashboard .opx-dona .auxch-wrap { position: absolute; inset: 0; height: auto; }
+#screen-dashboard .opx-fila-par { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#screen-dashboard .rsm-ef-grid.opx-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0; padding-top: 0; border-top: 0; }
+#screen-dashboard .opx-dato b { font-variant-numeric: tabular-nums; }
+#screen-dashboard .opx-dato em { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-height: 18px; }
+#screen-dashboard .opx-dato em i { color: var(--ax-text-3); font-style: normal; }
+#screen-dashboard .opx-notas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ax-border); }
+#screen-dashboard .opx-nota { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 2px 10px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-dashboard .opx-nota::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+#screen-dashboard .opx-nota.is-aviso { background: var(--ax-warn-soft); color: var(--ax-warn); }
+#screen-dashboard .opx-nota.is-ok { background: var(--ax-ok-soft); color: var(--ax-ok); }
+#screen-dashboard .opx-tabla th.opx-th { padding: 0; }
+#screen-dashboard .opx-th button { display: inline-flex; align-items: center; gap: 4px; width: 100%; padding: 10px 18px; border: 0; background: none; color: inherit; font: inherit; text-align: inherit; white-space: nowrap; cursor: pointer; }
+#screen-dashboard .opx-th.rsm-num button { justify-content: flex-end; }
+#screen-dashboard .opx-th button:hover, #screen-dashboard .opx-th.is-orden button { color: var(--ax-text); }
+#screen-dashboard .opx-th button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-dashboard .opx-th i { width: 8px; font-size: 8px; font-style: normal; }
+#screen-dashboard .opx-chofer { display: flex; align-items: center; gap: 9px; }
+#screen-dashboard .opx-chofer i { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) 10px var(--ax-font); font-style: normal; }
+@media (max-width: 900px) {
+  #screen-dashboard .opx-fila-par { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  #screen-dashboard .rsm-ef-grid.opx-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #screen-dashboard .opx-graf { height: 210px; }
+}
+#screen-dashboard .opx-dato .rsm-delta { font-size: 10px; letter-spacing: 0; text-transform: none; }
+#screen-dashboard .rsm-ef-grid.opx-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 901px) {
+  #screen-dashboard .opx-graf { height: 300px; }
+}
+/* En el celular cada fila de Móviles y Choferes es una tarjeta: nombre y
+   participación arriba, las cifras de a dos con su rótulo. */
+@media (max-width: 600px) {
+  #screen-dashboard .rsm-tabla.opx-tabla { min-width: 0; }
+  #screen-dashboard .opx-tabla thead { display: none; }
+  #screen-dashboard .opx-tabla, #screen-dashboard .opx-tabla tbody, #screen-dashboard .opx-tabla tfoot { display: block; }
+  #screen-dashboard .opx-tabla tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; padding: 12px 16px; border-bottom: 1px solid var(--ax-border); }
+  #screen-dashboard .opx-tabla td { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; padding: 0; border: 0; font-size: var(--ax-fs-xs); white-space: normal; }
+  #screen-dashboard .opx-tabla td[data-label]::before { content: attr(data-label); color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+  #screen-dashboard .opx-tabla td.opx-td-nombre, #screen-dashboard .opx-tabla td.opx-td-part { grid-column: 1 / -1; }
+  #screen-dashboard .opx-tabla td.opx-td-nombre { font-size: var(--ax-fs-sm); }
+  #screen-dashboard .opx-tabla .rsm-part { width: 100%; }
+  #screen-dashboard .opx-tabla .rsm-part-track { flex: 1; width: auto; }
+  #screen-dashboard .opx-tabla tfoot tr { background: var(--ax-surface-3); }
+  #screen-dashboard .opx-tabla tfoot td { padding: 0; }
+}

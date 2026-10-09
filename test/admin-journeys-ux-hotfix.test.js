@@ -41,10 +41,13 @@ test('journey filters support multiple drivers and trucks inside one filter pane
   const ui = read('sigma.js');
   const data = read('supabase.js');
 
-  assert.match(html, /id="jadmin-f-chofer-options"/);
-  assert.match(html, /id="jadmin-f-camion-options"/);
+  assert.match(html, /id="jadmin-f-chofer"/);
+  assert.match(html, /id="jadmin-f-camion"/);
   assert.match(html, /id="jadmin-f-periodo-host"/);
-  assert.match(html, /class="chips"[\s\S]*data-chip="todas"/);
+  // Período y Estado unificados: sin chips duplicados.
+  assert.doesNotMatch(html, /data-chip="todas"/);
+  assert.match(ui, /F\.period\(\{ id: 'jadmin-periodo', value, allowAll: false, quick: true \}\)/);
+  assert.match(ui, /\{ group: 'Alertas' \}/);
   assert.match(ui, /driverIds:\s*\[\]/);
   assert.match(ui, /truckIds:\s*\[\]/);
   assert.match(data, /query = query\.in\('driver_id', selectedDrivers\)/);
@@ -98,14 +101,16 @@ test('la grilla cambia Rendición por caja, y Taller por una marca en Estado', (
   assert.doesNotMatch(html, /<th class="center">Taller<\/th>/);
   assert.match(ui, /if \(r\.in_workshop\) \{[\s\S]*?taller-mark/);
   // El filtro por taller sigue existiendo y sigue leyendo el mismo campo.
-  assert.match(html, /data-chip="taller"/);
-  assert.match(ui, /clientFilter === 'taller'[\s\S]*?r\.in_workshop/);
+  assert.match(read('sigma.js'), /{ value: 'taller', label: 'En taller' }/);
+  assert.match(ui, /case 'taller':\s+out = out\.filter\(r => r\.in_workshop\)/);
 
-  // Combustible: la query ya traía liters y total_cost; solo se exponen.
-  assert.match(data, /\.select\('log_id, truck_id, fuel_date, total_cost, liters'\)/);
+  // Combustible: los litros y el gasto siguen en los datos (detalle y Excel); la tabla muestra el rendimiento (Km/l).
+  assert.match(data, /\.select\('fuel_id, log_id, truck_id, fuel_date, total_cost, liters, km_at_load'\)/);
+  assert.match(data, /\.is\('voided_at', null\)/);
   assert.match(data, /litros:\s+c\.litros \|\| 0/);
   assert.match(data, /gasto_fuel:\s+c\.gastoFuel \|\| 0/);
-  assert.match(html, /<th class="right">Comb\.<\/th>/);
+  assert.match(html, /<th class="right" data-sort="kml"[^>]*>Km\/l<\/th>/);
+  assert.doesNotMatch(html, /<th class="right">Comb\.<\/th>/);
 
   // 11 columnas: los estados vacíos tienen que cubrir la fila entera.
   const adminScreen = html.match(/<div class="screen" id="screen-jornadas-admin">([\s\S]*?)<\/div><!-- \/screen-jornadas-admin -->/)[1];

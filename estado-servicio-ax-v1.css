@@ -1,0 +1,105 @@
+/* AuxiliOS · Cambio de estado de un servicio con el sistema visual
+   Va encima de operator-service-lifecycle.css (que era de fondo blanco): el menú
+   rápido de estado (#osl-quick-status-menu) y los modales de Asignar, Arribado,
+   Activado, Finalizar, Anular y volver atrás (#os-lifecycle-modal). Sólo tokens. */
+
+/* ── Menú rápido de estado (al tocar el estado de la fila) ─────────── */
+#osl-quick-status-menu.osl-quick-status-menu { min-width: 208px; padding: var(--ax-sp-1); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); font-family: var(--ax-font); transform-origin: top left; animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#osl-quick-status-menu.osl-quick-status-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 34px; height: 34px; padding: 0 10px; border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); text-align: left; cursor: pointer; }
+#osl-quick-status-menu.osl-quick-status-menu button::before { display: none; }
+#osl-quick-status-menu.osl-quick-status-menu button .ax-icon { color: var(--ax-text-2); }
+#osl-quick-status-menu.osl-quick-status-menu button:hover, #osl-quick-status-menu.osl-quick-status-menu button:focus-visible { outline: none; background: var(--ax-surface-3); }
+#osl-quick-status-menu.osl-quick-status-menu button[data-osl-quick-action="annul"] { color: var(--ax-danger); }
+#osl-quick-status-menu.osl-quick-status-menu button[data-osl-quick-action="annul"] .ax-icon { color: currentColor; }
+#osl-quick-status-menu.osl-quick-status-menu hr { margin: 4px 2px; border: 0; border-top: 1px solid var(--ax-border); }
+#osl-quick-status-menu.osl-quick-status-menu .osl-quick-head { padding: 6px 10px 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+
+/* ── Modales de cambio de estado ───────────────────────────────────── */
+#os-lifecycle-modal.osl-modal-backdrop { background: rgba(0, 0, 0, .6); backdrop-filter: none; animation: ax-fade-in var(--ax-dur-slow) var(--ax-ease-out) both; }
+#os-lifecycle-modal .osl-modal { width: min(560px, 100%); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#os-lifecycle-modal .osl-modal > header { padding: var(--ax-sp-5) var(--ax-sp-5) var(--ax-sp-4); border-color: var(--ax-border); }
+#os-lifecycle-modal .osl-modal h3 { color: var(--ax-text); font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#os-lifecycle-modal .osl-modal header p { margin-top: 4px; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#os-lifecycle-modal .osl-modal header button { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--ax-h); height: var(--ax-h); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); }
+#os-lifecycle-modal .osl-modal header button:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#os-lifecycle-modal .osl-body { padding: var(--ax-sp-4) var(--ax-sp-5); color: var(--ax-text); }
+#os-lifecycle-modal .osl-modal footer { gap: var(--ax-sp-2); padding: var(--ax-sp-4) var(--ax-sp-5); border-color: var(--ax-border); }
+#os-lifecycle-modal .osl-modal footer button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 0; height: var(--ax-h); padding: 0 16px; border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease), opacity var(--ax-dur-fast) var(--ax-ease); }
+#os-lifecycle-modal .osl-modal footer button:hover:not(:disabled) { color: var(--ax-text); }
+#os-lifecycle-modal .osl-modal footer button:active:not(:disabled) { transform: scale(.98); }
+#os-lifecycle-modal .osl-modal footer button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#os-lifecycle-modal .osl-modal footer button.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#os-lifecycle-modal .osl-modal footer button.primary:hover:not(:disabled) { background: var(--ax-accent-hover); color: var(--ax-accent-fg); }
+#os-lifecycle-modal .osl-modal footer button.danger { border-color: var(--ax-danger-strong); background: var(--ax-danger-strong); color: #fff; }
+#os-lifecycle-modal .osl-modal footer button.danger:hover:not(:disabled) { background: var(--ax-danger); color: #fff; }
+#os-lifecycle-modal .osl-modal footer button:disabled { opacity: .45; cursor: not-allowed; }
+#os-lifecycle-modal .osl-modal footer button[aria-busy="true"] { cursor: wait; }
+
+/* Datos del servicio: ficha sobria. */
+#os-lifecycle-modal .osl-reference, #os-lifecycle-modal .osl-resumen { margin-bottom: var(--ax-sp-4); padding: var(--ax-sp-3) var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#os-lifecycle-modal .osl-reference span, #os-lifecycle-modal .osl-resumen span { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#os-lifecycle-modal .osl-reference b, #os-lifecycle-modal .osl-resumen b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-lifecycle-modal .osl-confirm-copy { border-color: var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#os-lifecycle-modal .osl-confirm-copy b { color: var(--ax-text); font-size: var(--ax-fs-md); }
+#os-lifecycle-modal .osl-confirm-copy span { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+
+/* Avisos: ámbar = atención, rojo = no se puede deshacer. */
+#os-lifecycle-modal .osl-warning { gap: 4px; margin-top: var(--ax-sp-4); padding: var(--ax-sp-3) var(--ax-sp-4); border: 1px solid rgba(245, 166, 35, .45); border-radius: var(--ax-radius); background: var(--ax-warn-soft); color: var(--ax-text); }
+#os-lifecycle-modal .osl-warning.danger { border-color: rgba(226, 80, 74, .5); background: var(--ax-danger-soft); }
+#os-lifecycle-modal .osl-warning b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-lifecycle-modal .osl-warning span { color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: var(--ax-lh); }
+
+/* Opciones (motivo del activado, destino del cierre): tarjetas con radio ámbar. */
+#os-lifecycle-modal .osl-choice-list { gap: var(--ax-sp-2); }
+#os-lifecycle-modal .osl-choice-list label { gap: 10px; min-height: var(--ax-h-lg); padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#os-lifecycle-modal .osl-choice-list label:hover { border-color: var(--ax-text-3); }
+#os-lifecycle-modal .osl-choice-list label:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); box-shadow: none; }
+#os-lifecycle-modal .osl-choice-list input { width: 18px; height: 18px; accent-color: var(--ax-accent); }
+#os-lifecycle-modal .osl-choice-list span { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+#os-lifecycle-modal .osl-choice-list span small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+
+/* Campos */
+#os-lifecycle-modal .osl-other > span, #os-lifecycle-modal .osl-assignment-fields label > span, #os-lifecycle-modal label > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#os-lifecycle-modal textarea, #os-lifecycle-modal select, #os-lifecycle-modal input:not([type=checkbox]):not([type=radio]) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#os-lifecycle-modal select, #os-lifecycle-modal input:not([type=checkbox]):not([type=radio]) { height: var(--ax-h); }
+#os-lifecycle-modal textarea::placeholder { color: var(--ax-text-3); }
+#os-lifecycle-modal textarea:focus, #os-lifecycle-modal select:focus, #os-lifecycle-modal input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#os-lifecycle-modal .osl-annul-confirm { gap: 10px; min-height: var(--ax-h-lg); padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#os-lifecycle-modal .osl-annul-confirm:has(input:checked) { border-color: var(--ax-danger-strong); background: var(--ax-danger-soft); }
+#os-lifecycle-modal .osl-annul-confirm input { width: 18px; height: 18px; accent-color: var(--ax-danger-strong); }
+
+/* Asignar / reasignar: antes → después y la marca de disponible en cada uno. */
+#os-lifecycle-modal .osl-assignment-compare > section { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); color: var(--ax-text); }
+#os-lifecycle-modal .osl-assignment-compare > section.new { border-color: rgba(245, 166, 35, .5); background: var(--ax-accent-soft); }
+#os-lifecycle-modal .osl-assignment-compare small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#os-lifecycle-modal .osl-assignment-compare b { color: var(--ax-text); font-size: var(--ax-fs-md); }
+#os-lifecycle-modal .osl-assignment-compare span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#os-lifecycle-modal .osl-assignment-compare > i { color: var(--ax-text-3); font-style: normal; }
+#os-lifecycle-modal .os-resource-hint { display: flex; align-items: center; gap: 6px; min-height: 18px; margin-top: 6px; color: var(--ax-text); font-size: var(--ax-fs-sm); }
+#os-lifecycle-modal .os-resource-hint.is-blocked, #os-lifecycle-modal .os-resource-hint[data-status="error"] { color: var(--ax-danger); }
+#os-lifecycle-modal .os-resource-hint[data-status="warn"] { color: var(--ax-text-2); }
+#os-lifecycle-modal .os-resource-hint[data-status="warn"] .ax-icon { color: var(--ax-warn); }
+#os-lifecycle-modal .os-resource-hint > .ax-mark { width: 16px; height: 16px; }
+
+/* Historial dentro del modal */
+#os-lifecycle-modal .osl-timeline b { color: var(--ax-text); }
+#os-lifecycle-modal .osl-timeline small, #os-lifecycle-modal .osl-empty { color: var(--ax-text-2); }
+
+@media (max-width: 640px) {
+  #os-lifecycle-modal .osl-modal { animation-name: ax-sheet-in; }
+}
+
+/* Hora de fin: campo dentro del modal de Estado y cuadro chico al cerrar desde la revisión del remito. */
+#os-lifecycle-modal .osl-finish-time small { display: block; margin-top: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#ax-finish-ask { position: fixed; inset: 0; z-index: 20003; display: grid; place-items: center; padding: var(--ax-sp-5); background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#ax-finish-ask > form { display: grid; gap: var(--ax-sp-3); width: min(380px, 94vw); padding: var(--ax-sp-5); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); }
+#ax-finish-ask b { font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-bold); }
+#ax-finish-ask p { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#ax-finish-ask label { display: grid; gap: 4px; }
+#ax-finish-ask label > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#ax-finish-ask input { height: var(--ax-h); padding: 0 var(--ax-sp-3); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; }
+#ax-finish-ask input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#ax-finish-ask small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#ax-finish-ask form > div { display: flex; justify-content: flex-end; gap: var(--ax-sp-2); }
+#ax-finish-ask button { height: var(--ax-h); padding: 0 var(--ax-sp-4); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-weight: var(--ax-fw-semibold); cursor: pointer; }
+#ax-finish-ask button.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-bg); font-weight: var(--ax-fw-bold); }

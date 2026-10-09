@@ -121,7 +121,7 @@ async function open(remitoId,{editar=false,anular=false,tab='detalle'}={}){
   const r=typeof obtenerRemitoCompleto==='function'?await obtenerRemitoCompleto(remitoId):null;
   if(!r){$('rmp-body').innerHTML='<div class="rmp-loading is-error">No se pudo cargar el remito.</div>';return}
   P.remito=r;
-  [P.servicio,P.encuesta]=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id)]);
+  [P.servicio,P.encuesta,P.cobro]=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id),cargarCobro(r.remito_id)]);P.rechazandoCobro=false;
   if(editar&&isAdmin()&&r.status!=='anulado')P.editing=true;
   if(anular&&puedeAnular())P.annulling=true;
   render();
@@ -189,19 +189,33 @@ function render(){
   renderFoot();
 }
 
+/* Resumen arriba del detalle: lo cobrado en el lugar, cómo se pagó y lo que hay que mirar. */
+function resumen(r,pagos){
+  const cobrado=[r.pago_1_monto,r.pago_2_monto].reduce((t,v)=>t+(Number(v)||0),0);
+  const medios=[r.pago_1_metodo,r.pago_2_metodo].filter(Boolean).map(m=>esc(String(m).charAt(0).toUpperCase()+String(m).slice(1))).join(' + ');
+  const marcas=[];
+  if(r.status==='anulado')marcas.push(['void','Remito anulado']);
+  else if(r.firmado_at||['firmado','cerrado_admin'].includes(r.status))marcas.push(['ok','Firmado por el cliente']);
+  else marcas.push(['warn','Sin firmar todavía']);
+  const enNo=CONFORMIDADES.filter(([col])=>col!=='conformidad_arrastre'&&r[col]===false).length;
+  if(enNo)marcas.push(['warn',`${enNo} ${enNo===1?'conformidad':'conformidades'} en "No"`]);
+  if(r.conformidad_arrastre===true)marcas.push(['warn','Arrastre activado']);
+  if(porRevisar(r))marcas.push(['danger','Cargos por revisar']);
+  return`<section class="rmp-summary"><div class="rmp-summary-main"><small>Cobrado en el lugar</small><b>${cobrado?money(cobrado):'—'}</b><span>${medios||(pagos?'':'Sin pago informado')}</span></div><div class="rmp-summary-marks">${marcas.map(([c,t])=>`<span class="rmp-mark is-${c}"><i></i>${t}</span>`).join('')}</div></section>`;
+}
+
 function renderDetalle(r,s){
   const campo=col=>CORREGIBLES.find(c=>c.col===col);
   const aviso=porRevisar(r)?`<div class="rmp-alert is-review"><div><b>Cargos por revisar</b><span>El chofer informó cargos que Administración todavía no aprobó.</span></div>${r.operator_service_id&&isAdmin()?`<button class="rmp-btn" type="button" onclick="RemitoPanel.revisar()">Revisar cargos</button>`:''}</div>`:'';
   const anulado=r.status==='anulado'?`<div class="rmp-alert"><div><b>Remito anulado</b><span>No cuenta para rendiciones ni facturación.</span></div></div>`:'';
   const editando=P.editing?`<div class="rmp-alert is-edit"><div><b>Corrigiendo datos</b><span>Solo datos administrativos. Lo que firmó el cliente queda como está.</span></div></div>`:'';
-  const cliente=seccion('Cliente',['razon_social','cuit','telefono','email_cliente'].map(c=>fila(campo(c).label,valorCampo(campo(c),r))).join(''));
-  const vehiculo=seccion('Vehículo',['patente','marca_modelo'].map(c=>fila(campo(c).label,valorCampo(campo(c),r))).join(''));
+  const clienteVehiculo=seccion('Cliente y vehículo',['razon_social','cuit','telefono','email_cliente','patente','marca_modelo'].map(c=>fila(campo(c).label,valorCampo(campo(c),r))).join(''));
   const irServicio=r.operator_service_id&&isAdmin()?`<button class="rmp-link" type="button" onclick="RemitoPanel.irAlServicio()">Editar en el servicio ↗</button>`:'';
   const tipo=s?.tipo||'';
-  const servicio=seccion('Servicio',
+  const servicio=seccion('Servicio y recorrido',
     fila('N° de servicio',valorCampo(campo('nro_servicio'),r))+
     fila('Tipo',tipo?esc(tipo):'<span class="rmp-empty">Sin clasificar</span>')+
-    fila('Recorrido',`${esc(r.origen||'—')} → ${esc(r.destino||'—')}`)+
+    fila('Desde',esc(r.origen||'—'))+fila('Hasta',esc(r.destino||'—'))+
     fila('Km',r.km_reales!=null?`${Number(r.km_reales).toLocaleString('es-AR')} km`:'<span class="rmp-empty">Sin cargar</span>'),irServicio);
   const aprobado=r.accepted_imp_total_extras!=null&&Number(r.accepted_imp_total_extras)!==Number(r.imp_total_extras||0);
   const pagos=[[r.pago_1_metodo,r.pago_1_monto],[r.pago_2_metodo,r.pago_2_monto]].filter(([m])=>m).map(([m,v])=>`${esc(String(m).charAt(0).toUpperCase()+String(m).slice(1))} ${v!=null?money(v):''}`).join(' + ');
@@ -219,7 +233,46 @@ function renderDetalle(r,s){
   const fotos=Array.isArray(r.foto_urls)?r.foto_urls:[];
   const media=seccion(`Fotos y firma`,`<div class="rmp-media">${fotos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto del servicio" loading="lazy"></a>`).join('')||'<span class="rmp-empty">Sin fotos</span>'}</div>
     <div class="rmp-sign">${r.firma_imagen_url?`<img src="${esc(r.firma_imagen_url)}" alt="Firma del cliente"><span>Firmado el ${esc(fecha(r.firmado_at))}</span>`:'<span class="rmp-empty">Sin firma</span>'}</div>`);
-  return aviso+anulado+editando+`<div class="rmp-grid">${cliente}${vehiculo}</div>`+servicio+cargos+conf+obs+media+(P.annulling?renderAnular():'');
+  return aviso+avisoCobro()+anulado+editando+`<div class="rmp-cards">${resumen(r,pagos)}${clienteVehiculo}${servicio}${renderCobro()}${cargos}${conf}${obs}${media}</div>`+(P.annulling?renderAnular():'');
+}
+
+/* ── Cobro del servicio particular (lo que informó el chofer) ─────────────── */
+const MEDIOS_COBRO={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'};
+const puedeRevisarCobro=()=>['administracion','operador'].includes(role());
+async function cargarCobro(remitoId){
+  if(typeof _db==='undefined')return null;
+  try{const {data,error}=await _db.rpc('get_service_collection_v1',{p_remito_id:Number(remitoId)});return error?null:data||null}catch(e){return null}
+}
+function avisoCobro(){
+  const c=P.cobro;if(!c||c.status!=='pending')return'';
+  return`<div class="rmp-alert is-review"><div><b>Cobro del servicio por aprobar</b><span>El chofer informó ${c.not_collected?'que no cobró el saldo':'el cobro del saldo'}. Al aprobarlo se registra como pago del servicio.</span></div></div>`;
+}
+function renderCobro(){
+  const c=P.cobro;if(!c)return'';
+  const estado={pending:'<span class="rmp-warn">Por aprobar</span>',approved:'Aprobado',rejected:'<span class="rmp-warn">Rechazado</span>'}[c.status]||esc(c.status);
+  const lineas=(c.lines||[]).map(l=>fila(esc(MEDIOS_COBRO[l.method]||l.method),money(l.amount))).join('');
+  const cuerpo=(c.not_collected?fila('Saldo','<span class="rmp-warn">No cobrado</span>')+fila('Motivo',esc(c.reason||'—')):lineas+fila('<b>Cobrado</b>',`<b>${money(c.collected_total)}</b>`))+
+    fila('Presupuesto',money(c.quoted_total))+fila('Pagado del servicio',money(c.paid))+fila('Saldo pendiente',Number(c.balance)>0?`<span class="rmp-warn">${money(c.balance)}</span>`:money(0))+
+    fila('Estado',estado)+(c.review_note?fila('Nota',esc(c.review_note)):'');
+  const acciones=c.status==='pending'&&puedeRevisarCobro()?(P.rechazandoCobro
+    ?`<label class="rmp-field"><span>Motivo del rechazo</span><textarea id="rmp-cobro-nota" rows="2" maxlength="500" placeholder="Ej.: el cliente dice que pagó otro monto"></textarea></label><div class="rmp-actions"><span></span><button class="rmp-btn ghost" type="button" onclick="RemitoPanel.cobro('cancelar')">Cancelar</button><button class="rmp-btn danger" type="button" onclick="RemitoPanel.cobro('rechazar')">Rechazar cobro</button></div>`
+    :`<div class="rmp-actions"><span></span><button class="rmp-btn" type="button" onclick="RemitoPanel.cobro('pedir-rechazo')">Rechazar</button><button class="rmp-btn primary" type="button" onclick="RemitoPanel.cobro('aprobar')"${P.busy?' disabled':''}>${c.not_collected?'Aprobar (queda pendiente)':'Aprobar cobro'}</button></div>`):'';
+  return seccion('Cobro del servicio · particular',cuerpo+acciones);
+}
+async function revisarCobro(accion){
+  const c=P.cobro;if(!c)return;
+  if(accion==='pedir-rechazo'){P.rechazandoCobro=true;return render()}
+  if(accion==='cancelar'){P.rechazandoCobro=false;return render()}
+  const nota=accion==='rechazar'?String($('rmp-cobro-nota')?.value||'').trim():null;
+  if(accion==='rechazar'&&!nota){window.toast?.('Indicá el motivo del rechazo','error');return}
+  P.busy=true;render();
+  try{
+    const {error}=await _db.rpc('review_service_collection_v1',{p_report_id:c.report_id,p_decision:accion==='aprobar'?'approved':'rejected',p_note:nota});
+    if(error)throw error;
+    P.cobro=await cargarCobro(P.remito.remito_id);P.rechazandoCobro=false;
+    window.operationFeedback?.(accion==='aprobar'?'Cobro aprobado':'Cobro rechazado',accion==='aprobar'?'Quedó registrado como pago del servicio.':'El saldo sigue pendiente.','success',2400);
+  }catch(e){window.toast?.(e.message||'No se pudo revisar el cobro','error')}
+  finally{P.busy=false;render()}
 }
 
 function renderAnular(){
@@ -332,5 +385,5 @@ document.addEventListener('click',e=>{
   if(card&&fn){e.preventDefault();fn(card)}
 });
 
-window.RemitoPanel={open,close,tab,corregir,cancelar,guardar,anular,confirmarAnular,revisar,irAlServicio,pdf,whatsapp,_state:P};
+window.RemitoPanel={open,close,tab,corregir,cancelar,guardar,anular,confirmarAnular,revisar,irAlServicio,pdf,whatsapp,cobro:revisarCobro,_state:P};
 })();

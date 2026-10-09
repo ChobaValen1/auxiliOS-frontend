@@ -13,13 +13,38 @@
 <link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
 <link rel="icon" href="/assets/icons/icon-192.png">
 
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="sigma.css?v=encuesta-desglose-v160-20260926">
-<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=encuesta-desglose-v160-20260926">
-<link rel="stylesheet" href="dashboard-v1.css?v=encuesta-desglose-v160-20260926">
-<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=encuesta-desglose-v160-20260926">
-<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=encuesta-desglose-v160-20260926">
-<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=encuesta-desglose-v160-20260926">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="auxilios-emoji-mono-v1.css?v=maintenance-v435-20261009">
+<link rel="stylesheet" href="sigma.css?v=maintenance-v435-20261009">
+<link rel="stylesheet" href="auxilios-date-inputs-v1.css?v=maintenance-v435-20261009">
+<link rel="stylesheet" href="dashboard-v1.css?v=maintenance-v435-20261009">
+<link rel="stylesheet" href="dashboard-resumen-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-remito-mobile-flow-v3-css" rel="stylesheet" href="/remito-mobile-flow-v3.css?v=maintenance-v435-20261009">
+<link id="auxilios-remito-addons-v2-css" rel="stylesheet" href="/remito-addons-v2.css?v=maintenance-v435-20261009">
+<link id="auxilios-phase3-service-bridge-css" rel="stylesheet" href="/operator-service-bridge.css?v=maintenance-v435-20261009">
+<!-- Sistema visual (ui/): tokens y componentes base, y su aplicación a Servicios y a la lista del chofer -->
+<link id="auxilios-ui-tokens-css" rel="stylesheet" href="/ui/tokens.css?v=maintenance-v435-20261009">
+<link id="auxilios-ui-components-css" rel="stylesheet" href="/ui/components.css?v=maintenance-v435-20261009">
+<link id="auxilios-ui-app-v1-css" rel="stylesheet" href="/ui/app-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-operaciones-ax-v1-css" rel="stylesheet" href="/operaciones-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-dashboard-ax-v1-css" rel="stylesheet" href="/dashboard-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-sueldos-ax-v1-css" rel="stylesheet" href="/sueldos-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-grilla-ax-v1-css" rel="stylesheet" href="/grilla-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-documentos-ax-v1-css" rel="stylesheet" href="/documentos-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-registro-ax-v1-css" rel="stylesheet" href="/registro-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-configuracion-ax-v1-css" rel="stylesheet" href="/configuracion-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-empresas-ax-v1-css" rel="stylesheet" href="/empresas-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-remitos-ax-v1-css" rel="stylesheet" href="/remitos-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-camion-modales-ax-v1-css" rel="stylesheet" href="/camion-modales-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-camion-ax-v1-css" rel="stylesheet" href="/camion-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-facturas-ax-v1-css" rel="stylesheet" href="/facturas-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-facturacion-ax-v1-css" rel="stylesheet" href="/facturacion-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-shell-ax-v1-css" rel="stylesheet" href="/shell-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-jornadas-ax-v1-css" rel="stylesheet" href="/jornadas-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-chofer-servicios-ax-v1-css" rel="stylesheet" href="/chofer-servicios-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-servicio-form-ax-v1-css" rel="stylesheet" href="/servicio-form-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-estado-servicio-ax-v1-css" rel="stylesheet" href="/estado-servicio-ax-v1.css?v=maintenance-v435-20261009">
+<link id="auxilios-remito-chofer-ax-v1-css" rel="stylesheet" href="/remito-chofer-ax-v1.css?v=maintenance-v435-20261009">
 
 <!-- Service Worker -->
 <script>
@@ -39,20 +64,24 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="config.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="auxilios-date-inputs-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="supabase.js?v=encuesta-desglose-v160-20260926" defer></script>
+<script src="config.js?v=maintenance-v435-20261009" defer></script>
+<script src="auxilios-date-inputs-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="supabase.js?v=maintenance-v435-20261009" defer></script>
 <script src="offline.js" defer></script>
-<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="sigma.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-charts-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-shell-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-facturacion-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-operaciones-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-flota-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
-<script src="dashboard-mapa-v1.js?v=encuesta-desglose-v160-20260926" defer></script>
+<script id="auxilios-remito-mobile-flow-v3" src="/remito-mobile-flow-v3.js?v=maintenance-v435-20261009" defer></script>
+<script id="auxilios-phase3-service-bridge" src="/operator-service-bridge.js?v=maintenance-v435-20261009" defer></script>
+<script id="auxilios-remito-addons-v2" src="/remito-addons-v2.js?v=maintenance-v435-20261009" defer></script>
+<script src="sigma.js?v=maintenance-v435-20261009" defer></script>
+<script id="auxilios-ui-ax" src="/ui/ax.js?v=maintenance-v435-20261009" defer></script>
+<script id="auxilios-ui-app-v1" src="/ui/app-v1.js?v=maintenance-v435-20261009" defer></script>
+<script id="auxilios-remito-chofer-ax-v1" src="/remito-chofer-ax-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="dashboard-charts-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="dashboard-shell-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="dashboard-zoom-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="dashboard-resumen-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="dashboard-tendencia-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="dashboard-operaciones-v1.js?v=maintenance-v435-20261009" defer></script>
+<script src="dashboard-flota-v1.js?v=maintenance-v435-20261009" defer></script>
 </head>
 <body>
 
@@ -278,13 +307,13 @@
     Administración
   </span>
   <button class="nav-btn" onclick="openAdminPlanModal()" style="width: 100%; text-align: left; padding: 10px; background: transparent; border: none; color: var(--text); cursor: pointer;">
-    ⚙️ Catálogo de Services
+    ⚙ Catálogo de Services
   </button>
 </div> 
 <div class="modal-backdrop" id="modal-asignar-plan">
   <div class="modal-box" style="max-width: 450px;">
     <div class="modal-head">
-      <span class="modal-head-title">⚙️ Asignar Plan de Service</span>
+      <span class="modal-head-title">⚙ Asignar Plan de Service</span>
       <button class="modal-close" onclick="closeModal('modal-asignar-plan')">×</button>
     </div>
     
@@ -381,6 +410,14 @@
             </div>
           </label>
         </div>
+        <!-- Horas de motor (sólo camiones con horómetro) -->
+        <div id="cj-horas-area" class="jh-horas" hidden>
+          <label for="cj-horas" class="jh-label">⏱ Horas de motor al cerrar <span style="color:var(--red)">*</span></label>
+          <input class="form-input jh-input" type="text" inputmode="decimal" autocomplete="off" id="cj-horas" placeholder="Ej: 1234,5" oninput="onHorasInput('cj')">
+          <div id="cj-horas-fuente" class="jh-fuente">La IA las lee de la misma foto. Si no las encuentra, escribilas.</div>
+          <div id="cj-horas-calc" class="jh-calc"></div>
+        </div>
+
       </div>
 
       <!-- Toggle taller -->
@@ -523,6 +560,14 @@
 
         <!-- Validación oculta (referenciada por procesarFotoConIA durante el estado "pensando") -->
         <div id="nj-km-validacion" style="display:none"></div>
+        <!-- Horas de motor (sólo camiones con horómetro) -->
+        <div id="nj-horas-area" class="jh-horas" hidden>
+          <label for="nj-horas" class="jh-label">⏱ Horas de motor al iniciar <span style="color:var(--red)">*</span></label>
+          <input class="form-input jh-input" type="text" inputmode="decimal" autocomplete="off" id="nj-horas" placeholder="Ej: 1234,5" oninput="onHorasInput('nj')">
+          <div id="nj-horas-fuente" class="jh-fuente">La IA las lee de la misma foto. Si no las encuentra, escribilas.</div>
+          <div id="nj-horas-calc" class="jh-calc"></div>
+        </div>
+
       </div>
 
     </div>
@@ -573,22 +618,20 @@
 
 <!-- Detalle de jornada (admin/supervisor) -->
 <div class="modal-backdrop" id="modal-jornada-detalle">
-  <div class="modal-box" style="max-width:1000px;width:95vw">
+  <div class="modal-box jd-modal" role="dialog" aria-modal="true" aria-labelledby="jd-title">
     <div class="modal-head">
       <div>
-        <span class="modal-head-title" id="jd-title">JORNADA</span>
-        <div class="modal-head-sub" id="jd-sub" style="font-size:11px;color:var(--muted2);margin-top:4px;letter-spacing:.5px">—</div>
+        <h2 class="modal-head-title" id="jd-title">Jornada</h2>
+        <div class="modal-head-sub" id="jd-sub">—</div>
       </div>
-      <button class="modal-close" onclick="closeModal('modal-jornada-detalle')">×</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-jornada-detalle')" aria-label="Cerrar"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#x"/></svg></button>
     </div>
-    <div class="modal-body" style="padding:0">
-      <div id="jd-content" style="padding:16px"><!-- populated by JS in Task 51 --></div>
+    <div class="modal-body">
+      <div id="jd-content"><!-- lo arma _jadminRenderDetalle (sigma.js) --></div>
     </div>
-    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <div id="jd-traza" style="font-size:11px;color:var(--muted)">—</div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" onclick="closeModal('modal-jornada-detalle')">Cerrar</button>
-      </div>
+    <div class="modal-footer">
+      <div id="jd-traza">—</div>
+      <button type="button" class="ax-btn" onclick="closeModal('modal-jornada-detalle')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -596,7 +639,7 @@
 <nav class="sidenav">
   <div class="nav-logo">FL</div>
   <button class="nav-collapse" type="button" onclick="toggleSidenav()" aria-label="Contraer menú" aria-expanded="true" title="Contraer menú">
-    <span aria-hidden="true">‹</span>
+    <svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#chevron-left"/></svg>
   </button>
 
   <div class="nav-item active" onclick="goTo('dashboard')" id="nav-dashboard">
@@ -659,16 +702,14 @@
 
   <div class="topbar" id="topbar">
     <div>
-      <div class="topbar-title" id="topbar-title">PANEL PRINCIPAL</div>
+      <div class="topbar-title" id="topbar-title">Panel principal</div>
       <div class="topbar-sub" id="topbar-sub">Resumen</div>
     </div>
    <div class="topbar-right">
-  <span class="role-badge" style="background:var(--amber-lo);color:var(--amber);border:1px solid rgba(245,166,35,0.3)">👑 Admin</span>
-  <div class="tb-btn" id="tb-bell" style="position:relative" onclick="alxBellClick()">🔔<span class="alx-bubble" id="alx-bell-badge" style="display:none"></span></div>
+  <span class="role-badge"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#shield-check"/></svg><span class="role-badge-text">Admin</span></span>
+  <div class="tb-btn" id="tb-bell" style="position:relative" onclick="alxBellClick()" role="button" tabindex="0" aria-label="Alertas"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#bell"/></svg><span class="alx-bubble" id="alx-bell-badge" style="display:none"></span></div>
   
-  <div id="btn-admin-settings" class="tb-btn" onclick="openSettingsHub()" style="display: none; cursor: pointer;">
-    ⚙️
-  </div>
+  <div id="btn-admin-settings" class="tb-btn" onclick="openSettingsHub()" role="button" tabindex="0" aria-label="Configuración" title="Configuración" style="display: none;"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#settings"/></svg></div>
 </div>
 
    </div>
@@ -741,7 +782,7 @@
 
         <!-- Alertas personales -->
         <div class="card" id="dash-alertas-pers-card" style="display:none">
-          <div class="card-label" style="margin-bottom:12px">⚠️ Alertas personales</div>
+          <div class="card-label" style="margin-bottom:12px">⚠ Alertas personales</div>
           <div id="dash-alertas-pers"></div>
         </div>
 
@@ -749,123 +790,216 @@
 
       <div id="dash-view-analitica" style="display:none">
 
-        <!-- Las tres secciones, y nada más. Alertas abre un panel lateral
-             desde la campanita de la barra de arriba, que está fija y a la vista
-             en todas las pantallas: un segundo botón acá era el mismo acceso
-             dos veces. -->
+        <!-- Encabezado del Panel: título de la pestaña a la izquierda, período y
+             filtros a la derecha; debajo, las tres pestañas. Alertas se abre
+             desde la campanita de la barra de arriba. -->
+        <div class="dashx-head">
+          <div class="dashx-head-txt">
+            <h1 class="dashx-titulo" id="dashx-titulo">Resumen</h1>
+            <p class="dashx-subtitulo" id="dashx-subtitulo">Operación, facturación y cobertura de la flota</p>
+          </div>
+          <div class="dashx-toolbar" id="dashx-toolbar">
+            <!-- Lo pinta dashboard-shell-v1.js: los meses del desplegable
+                 dependen de la fecha de hoy, así que no pueden ser markup fijo. -->
+            <div class="dashx-periodos" id="dashx-periodos"></div>
+            <!-- Lo llena la sección que lo declara; el shell lo muestra y lo
+                 esconde junto con ella. -->
+            <div class="dashx-toolbar-filtros" id="dashx-fact-filtros" hidden></div>
+            <div class="dashx-toolbar-filtros" id="dashx-ops-filtros" hidden></div>
+          </div>
+        </div>
         <div class="dashx-barra-secciones">
           <div class="filter-tabs dashx-tabs" id="dashx-tabs">
-            <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">FACTURACIÓN</div>
-            <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">OPERACIONES</div>
-            <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">SALUD DE LA FLOTA</div>
+            <div class="ftab active" data-sec="facturacion" onclick="dashxSeccion('facturacion',this)">Resumen</div>
+            <div class="ftab" data-sec="tendencia" onclick="dashxSeccion('tendencia',this)">Tendencia</div>
+            <div class="ftab" data-sec="operaciones" onclick="dashxSeccion('operaciones',this)">Operaciones</div>
+            <div class="ftab" data-sec="flota" onclick="dashxSeccion('flota',this)">Salud de la flota</div>
           </div>
         </div>
 
-        <div class="dashx-toolbar" id="dashx-toolbar">
-          <!-- Lo pinta dashboard-shell-v1.js: los meses del desplegable
-               dependen de la fecha de hoy, así que no pueden ser markup fijo. -->
-          <div class="dashx-periodos" id="dashx-periodos"></div>
-          <!-- Lo llena la sección que lo declara; el shell lo muestra y lo
-               esconde junto con ella. -->
-          <div class="dashx-toolbar-filtros" id="dashx-fact-filtros" hidden></div>
-          <div class="dashx-toolbar-filtros" id="dashx-ops-filtros" hidden></div>
-        </div>
-
-        <!-- SECCIÓN 1 · FACTURACIÓN -->
+        <!-- SECCIÓN 1 · RESUMEN (dashboard-resumen-v1.js) -->
         <div class="dashx-body" id="dashx-sec-facturacion">
           <div class="dashx-loading" id="dashx-loading-facturacion"><div class="dashx-loading-inner">Cargando métricas…</div></div>
-          <div class="dashx-grid">
-            <div class="dashx-sec-head">
-              <span class="dashx-sec-sub" id="dashx-fact-sub"></span>
+          <div class="rsm">
+            <div class="rsm-kpis" id="dashx-fact-kpis"></div>
+
+            <div class="rsm-fila rsm-fila-mapa">
+              <section class="rsm-card rsm-mapa-card">
+                <header class="rsm-card-head">
+                  <h3>Zonas de participación</h3>
+                  <p id="rsm-mapa-sub"></p>
+                </header>
+                <div class="rsm-mapa-lienzo">
+                  <div class="rsm-mapa" id="dashx-fact-mapa"></div>
+                  <div class="rsm-mapa-stats" id="rsm-mapa-stats"></div>
+                  <div class="rsm-mapa-leyenda" id="rsm-mapa-leyenda" hidden></div>
+                </div>
+                <footer class="rsm-mapa-foot">
+                  <label class="rsm-radio"><span>Radio</span>
+                    <input type="range" id="rsm-radio" min="5" max="100" step="5" value="20" aria-label="Radio de cobertura en km">
+                    <b id="rsm-radio-valor">20 km</b></label>
+                  <button type="button" class="rsm-switch" id="rsm-circulos" role="switch" aria-checked="true"><i></i>Círculos</button>
+                  <button type="button" class="rsm-switch" id="rsm-lineas" role="switch" aria-checked="false"><i></i>Líneas a la base</button>
+                </footer>
+              </section>
+
+              <section class="rsm-card rsm-tipos-card">
+                <header class="rsm-card-head">
+                  <h3>Composición por tipo</h3>
+                  <p>Reparto de la facturación según capacidad del vehículo</p>
+                </header>
+                <div class="rsm-tipos-dona">
+                  <canvas id="rsm-tipos-canvas" role="img" aria-label="Facturación por tipo de vehículo"></canvas>
+                  <div class="rsm-tipos-centro" id="rsm-tipos-centro"></div>
+                </div>
+                <div class="rsm-tipos-lista" id="rsm-tipos-lista"></div>
+              </section>
             </div>
 
-            <div class="dashx-card dashx-kpis" id="dashx-fact-kpis"></div>
-
-            <div class="dashx-card dashx-mapa">
-              <div class="dashx-card-title">Zonas de participación</div>
-              <!-- Mapa a la izquierda, lectura a la derecha. El mapa va más alto
-                   que ancho porque el área de trabajo se estira de norte a sur:
-                   un mapa apaisado gasta el ancho en océano y aprieta la ruta.
-                   El mapa dice dónde; la lectura dice qué hacer con eso. -->
-              <div class="dashx-mapa-cuerpo">
-                <div class="auxch-wrap dashx-mapa-lienzo" id="dashx-fact-mapa"></div>
-                <div class="dashx-mapa-lectura" id="dashx-fact-mapa-lectura"></div>
-              </div>
+            <div class="rsm-fila rsm-fila-evol">
+              <section class="rsm-card rsm-evol-card" id="rsm-evol-card">
+                <header class="rsm-card-head rsm-card-head-link">
+                  <div>
+                    <h3>Evolución de facturado</h3>
+                    <p id="rsm-evol-sub">Línea punteada: período anterior</p>
+                  </div>
+                  <button type="button" class="rsm-link" onclick="dashxIrATendencia()">Ver tendencia →</button>
+                </header>
+                <div class="rsm-evol"><canvas id="rsm-evol-canvas" role="img" aria-label="Facturado por día, período actual y anterior"></canvas></div>
+              </section>
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Eficiencia operativa</h3>
+                  <p>Km facturados vs. km reales recorridos</p>
+                </header>
+                <div id="rsm-eficiencia"></div>
+              </section>
             </div>
 
-            <!-- El treemap dice cuál es el servicio más común; la tabla de abajo,
-                 con el mismo orden y el mismo color, dice cuántos son y cuántos
-                 km facturan. Son el mismo corte leído de dos maneras. -->
-            <div class="dashx-card dashx-cajas">
-              <div class="dashx-card-title">Composición de servicios</div>
-              <div class="auxch-wrap" style="height:170px"><canvas id="dashx-fact-cajas"></canvas></div>
-              <div class="dashx-tabla-pegada" id="dashx-fact-conceptos"></div>
-            </div>
-
-            <!-- Se abre cada prestadora y aparecen sus bases. Una base atiende a
-                 más de una prestadora, así que el desglose de abajo (por base,
-                 sumando todas las empresas) es otro corte, no el mismo. -->
-            <div class="dashx-card dashx-full dashx-card-tabla">
-              <div class="dashx-card-title">Prestadoras y sus bases</div>
-              <!-- Torta y tabla van pegadas y en el mismo orden: el cuadradito
-                   de cada fila es su porción, así que la tabla hace de leyenda
-                   y la torta no lleva una propia. -->
-              <div class="dashx-torta-tabla">
-                <div class="auxch-wrap dashx-torta" style="height:160px"><canvas id="dashx-fact-torta"></canvas></div>
-                <div class="dashx-tabla-pegada" id="dashx-fact-empresas"></div>
-              </div>
-            </div>
-
+            <section class="rsm-card rsm-card-tabla">
+              <header class="rsm-card-head">
+                <h3>Prestadoras y sus bases</h3>
+                <p>Ordenado por facturación · participación sobre el total del período</p>
+              </header>
+              <div id="dashx-fact-empresas"></div>
+            </section>
           </div>
         </div>
 
-        <!-- SECCIÓN 2 · OPERACIONES -->
+        <!-- SECCIÓN 1b · TENDENCIA (dashboard-tendencia-v1.js) -->
+        <div class="dashx-body" id="dashx-sec-tendencia" hidden>
+          <div class="dashx-loading" id="dashx-loading-tendencia"><div class="dashx-loading-inner">Cargando métricas…</div></div>
+          <div class="rsm tnd">
+            <section class="rsm-card">
+              <header class="rsm-card-head tnd-head">
+                <div>
+                  <h3 id="tnd-titulo">Evolución temporal</h3>
+                  <p id="tnd-sub">Línea punteada: período anterior · Facturado</p>
+                </div>
+                <div class="tnd-segs">
+                  <div class="tnd-seg" role="group" aria-label="Métrica">
+                    <button type="button" data-tnd-metrica="facturado" aria-pressed="true">Facturado</button>
+                    <button type="button" data-tnd-metrica="servicios" aria-pressed="false">Servicios</button>
+                    <button type="button" data-tnd-metrica="km_reales" aria-pressed="false">Km reales</button>
+                  </div>
+                  <div class="tnd-seg" role="group" aria-label="Agrupar por">
+                    <button type="button" data-tnd-escala="dia" aria-pressed="true">Día</button>
+                    <button type="button" data-tnd-escala="semana" aria-pressed="false">Semana</button>
+                    <button type="button" data-tnd-escala="mes" aria-pressed="false">Mes</button>
+                  </div>
+                </div>
+              </header>
+              <div class="tnd-linea"><canvas id="tnd-linea" role="img" aria-label="Evolución del período actual y del anterior"></canvas></div>
+            </section>
+
+            <div class="rsm-fila rsm-fila-evol">
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3 id="tnd-barras-titulo">Facturación por prestadora</h3>
+                  <p id="tnd-barras-sub">Composición apilada de cada día</p>
+                </header>
+                <div class="tnd-barras"><canvas id="tnd-barras" role="img" aria-label="Composición por prestadora"></canvas>
+                  <div class="rsm-vacio tnd-barras-vacio" id="tnd-barras-vacio" hidden>Sin datos en el período.</div></div>
+                <div class="tnd-leyenda" id="tnd-barras-leyenda"></div>
+              </section>
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Comparación de períodos</h3>
+                  <p id="tnd-comp-sub">Período actual vs. período anterior</p>
+                </header>
+                <div class="tnd-comp" id="tnd-comparacion"></div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2 · OPERACIONES (dashboard-operaciones-v1.js) · mismo lenguaje que Resumen -->
         <div class="dashx-body" id="dashx-sec-operaciones">
           <div class="dashx-loading" id="dashx-loading-operaciones"><div class="dashx-loading-inner">Cargando métricas…</div></div>
-          <div class="dashx-grid dashx-grid-compacta">
-            <div class="dashx-sec-head">
-              <span class="dashx-sec-sub" id="dashx-ops-sub"></span>
+          <div class="rsm opx">
+            <p class="opx-sub" id="dashx-ops-sub"></p>
+            <div class="rsm-kpis" id="dashx-ops-kpis"></div>
+
+            <div class="rsm-fila rsm-fila-evol">
+              <section class="rsm-card">
+                <header class="rsm-card-head opx-head">
+                  <div>
+                    <h3>Actividad en el tiempo</h3>
+                    <p id="dashx-ops-act-sub">Km por día · línea punteada: promedio</p>
+                  </div>
+                  <div class="tnd-seg" role="group" aria-label="Qué mostrar">
+                    <button type="button" data-opx-metrica="km" aria-pressed="true">Km</button>
+                    <button type="button" data-opx-metrica="servicios" aria-pressed="false">Servicios</button>
+                    <button type="button" data-opx-metrica="jornadas" aria-pressed="false">Jornadas</button>
+                  </div>
+                </header>
+                <div class="auxch-wrap opx-graf"><canvas id="dashx-ops-tendencia" role="img" aria-label="Actividad del período"></canvas></div>
+              </section>
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Combustible</h3>
+                  <p id="dashx-ops-comb-sub">Gasto por medio de pago</p>
+                </header>
+                <div class="rsm-tipos-dona opx-dona">
+                  <div class="auxch-wrap"><canvas id="dashx-ops-combustible" role="img" aria-label="Gasto de combustible por medio de pago"></canvas></div>
+                  <div class="rsm-tipos-centro" id="dashx-ops-comb-total"></div>
+                </div>
+                <div class="rsm-tipos-lista" id="dashx-ops-comb-lista"></div>
+              </section>
             </div>
 
-            <div class="dashx-full dashx-metrics" id="dashx-ops-ratios"></div>
-
-            <div class="dashx-card dashx-dostercios">
-              <div class="dashx-card-title">Kilómetros por período</div>
-              <div class="auxch-wrap" style="height:172px"><canvas id="dashx-ops-tendencia"></canvas></div>
+            <div class="rsm-fila opx-fila-par">
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Rendimiento del combustible</h3>
+                  <p>Promedios del período contra el período anterior</p>
+                </header>
+                <div id="dashx-ops-comb-metrics"></div>
+              </section>
+              <section class="rsm-card">
+                <header class="rsm-card-head">
+                  <h3>Uso de la jornada</h3>
+                  <p>Cuánto rinde cada jornada de trabajo</p>
+                </header>
+                <div id="dashx-ops-ratios"></div>
+              </section>
             </div>
 
-            <div class="dashx-card dashx-tercio">
-              <div class="dashx-card-title">Participación en los km</div>
-              <div class="dashx-chart-total">
-                <div class="dashx-chart-total-value" id="dashx-ops-anillo-total">—</div>
-                <div class="dashx-chart-total-label" id="dashx-ops-anillo-pie"></div>
-              </div>
-              <div class="auxch-wrap" style="height:150px"><canvas id="dashx-ops-anillo"></canvas></div>
-            </div>
-
-            <div class="dashx-card dashx-tercio">
-              <div class="dashx-card-title">Combustible por medio de pago</div>
-              <div class="dashx-chart-total">
-                <div class="dashx-chart-total-value" id="dashx-ops-comb-total">—</div>
-                <div class="dashx-chart-total-label" id="dashx-ops-comb-total-pie"></div>
-              </div>
-              <div class="auxch-wrap" style="height:150px"><canvas id="dashx-ops-combustible"></canvas></div>
-            </div>
-
-            <div class="dashx-card dashx-dostercios">
-              <div class="dashx-card-title">Rendimiento del combustible<span class="dashx-card-sub" id="dashx-ops-comb-sub"></span></div>
-              <div class="dashx-metrics dashx-metrics-hint" id="dashx-ops-comb-metrics"></div>
-            </div>
-
-            <div class="dashx-card dashx-med dashx-card-tabla">
-              <div class="dashx-card-title">Por camión</div>
+            <section class="rsm-card rsm-card-tabla">
+              <header class="rsm-card-head">
+                <h3>Móviles</h3>
+                <p>Ordenado por km · participación sobre los km del período</p>
+              </header>
               <div id="dashx-ops-tabla-camiones"></div>
-            </div>
+            </section>
 
-            <div class="dashx-card dashx-med dashx-card-tabla">
-              <div class="dashx-card-title">Por chofer</div>
+            <section class="rsm-card rsm-card-tabla">
+              <header class="rsm-card-head">
+                <h3>Choferes</h3>
+                <p>Ordenado por km · participación sobre los km del período</p>
+              </header>
               <div id="dashx-ops-tabla-choferes"></div>
-            </div>
+            </section>
           </div>
         </div>
         <!-- SECCIÓN 3 · SALUD DE LA FLOTA -->
@@ -900,48 +1034,42 @@
   <!-- WARNING jornada abierta -->
   <div id="warning-jornada-abierta" style="display:none;margin-bottom:20px">
     <div class="alert-strip warn" style="cursor:pointer" onclick="scrollToJornadasAbiertas()">
-      ⚠️ <b>Tenés jornadas abiertas sin cerrar.</b> Tocá acá para verlas.
+      <b>Tenés jornadas abiertas sin cerrar.</b> Tocá acá para verlas.
     </div>
   </div>
 
   <div class="sec-header mb24">
     <div>
-      <div class="sec-title">REGISTRO DIARIO</div>
+      <div class="sec-title">Registro diario</div>
       <div class="sec-sub">Jornadas y kilometraje</div>
     </div>
   </div>
 
   <!-- Botones de acción jornada -->
-  <div style="display:flex;gap:12px;margin-bottom:20px">
-    <button id="btn-iniciar-jornada"
-      onclick="abrirModalNuevaJornada()"
-      style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 10px;min-height:100px;background:#14532d;border:1px solid rgba(34,197,94,0.27);border-radius:10px;color:#22c55e;cursor:pointer;font-family:inherit">
-      <span style="font-size:26px">▶</span>
-      <span style="font-size:12px;font-weight:800;letter-spacing:.5px;text-align:center;line-height:1.3">INICIAR<br>JORNADA</span>
-      <span style="font-size:10px;opacity:.7">Nueva jornada</span>
+  <div class="reg-actions">
+    <button id="btn-iniciar-jornada" class="reg-action reg-action-start" onclick="abrirModalNuevaJornada()">
+      <svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#play"/></svg>
+      <b>Iniciar jornada</b>
+      <small>Nueva jornada</small>
     </button>
-    <button id="btn-finalizar-jornada"
-      onclick="mostrarDialogoTaller()"
-      style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 10px;min-height:100px;background:#450a0a;border:1px solid rgba(239,68,68,0.27);border-radius:10px;color:#ef4444;cursor:pointer;font-family:inherit;opacity:0.4;pointer-events:none">
-      <span style="font-size:26px">■</span>
-      <span style="font-size:12px;font-weight:800;letter-spacing:.5px;text-align:center;line-height:1.3">FINALIZAR<br>JORNADA</span>
-      <span style="font-size:10px;opacity:.7">Cerrar activa</span>
+    <button id="btn-finalizar-jornada" class="reg-action reg-action-stop" onclick="mostrarDialogoTaller()">
+      <svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#square"/></svg>
+      <b>Finalizar jornada</b>
+      <small>Cerrar activa</small>
     </button>
   </div>
 
   <!-- Jornadas abiertas -->
-  <div id="section-jornadas-abiertas" style="display:none;margin-bottom:24px">
-    <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">🟡 Jornadas abiertas</div>
-    <div id="lista-jornadas-abiertas" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div id="section-jornadas-abiertas" style="display:none">
+    <div class="reg-section-label"><span class="reg-dot"></span>Jornadas abiertas</div>
+    <div id="lista-jornadas-abiertas" class="reg-open-list"></div>
   </div>
 
   <!-- Historial de jornadas -->
   <div class="card mb24 desktop-only">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div>
-        <div class="card-label">Historial de jornadas</div>
-        <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px" id="jornadas-counter">—</div>
-      </div>
+    <div class="reg-card-head">
+      <div class="card-label">Historial de jornadas</div>
+      <div class="reg-card-title" id="jornadas-counter">—</div>
     </div>
     <table class="data-table">
       <thead>
@@ -961,29 +1089,20 @@
   </div>
   <div id="mobile-jornadas-list" class="mobile-only"></div>
 
-  <button class="jhist-open-btn" onclick="abrirHistorialJornadas()">📖 Ver historial completo</button>
+  <button class="jhist-open-btn" onclick="abrirHistorialJornadas()">Ver historial completo</button>
 
 
   <!-- Resumen del mes -->
   <div id="section-resumen-mes" class="card mb24">
-    <div style="margin-bottom:14px">
+    <div class="reg-card-head">
       <div class="card-label">Resumen del mes</div>
-      <div style="font-family:'Bebas Neue';font-size:18px;letter-spacing:1px" id="resumen-mes-titulo">—</div>
+      <div class="reg-card-title" id="resumen-mes-titulo">—</div>
     </div>
-    <div style="display:flex;gap:10px">
-      <div style="flex:1;background:var(--bg);border-radius:8px;padding:12px;border-left:3px solid var(--amber);text-align:center">
-        <div style="font-family:'Bebas Neue';font-size:26px;color:var(--amber)" id="kpi-km-mes">—</div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">KM totales</div>
-      </div>
-      <div style="flex:1;background:var(--bg);border-radius:8px;padding:12px;border-left:3px solid #3b82f6;text-align:center">
-        <div style="font-family:'Bebas Neue';font-size:26px;color:#3b82f6" id="kpi-jornadas-mes">—</div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Jornadas</div>
-      </div>
-      <div style="flex:1;background:var(--bg);border-radius:8px;padding:12px;border-left:3px solid var(--green);text-align:center">
-        <div style="font-family:'Bebas Neue';font-size:26px;color:var(--green)" id="kpi-servicios-mes">—</div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Servicios</div>
-        <div style="font-size:10px;color:var(--red);margin-top:3px;min-height:14px" id="kpi-anulados-mes"></div>
-      </div>
+    <div class="reg-kpis">
+      <div class="reg-kpi"><div class="reg-kpi-value" id="kpi-km-mes">—</div><div class="reg-kpi-label">KM totales</div></div>
+      <div class="reg-kpi"><div class="reg-kpi-value" id="kpi-jornadas-mes">—</div><div class="reg-kpi-label">Jornadas</div></div>
+      <div class="reg-kpi"><div class="reg-kpi-value" id="kpi-servicios-mes">—</div><div class="reg-kpi-label">Servicios</div><div class="reg-kpi-note" id="kpi-anulados-mes"></div></div>
+      <div class="reg-kpi" id="kpi-horas-mes-box" hidden><div class="reg-kpi-value" id="kpi-horas-mes">—</div><div class="reg-kpi-label">Horas de motor</div></div>
     </div>
   </div>
 
@@ -1019,7 +1138,7 @@
 
     <!-- Reportar incidente (solo chofer) -->
     <div id="camion-incidente-quick" style="display:none;margin-bottom:16px">
-      <button class="btn-incidente" onclick="abrirModalIncidente()">⚠️ Reportar incidente</button>
+      <button class="btn-incidente" onclick="abrirModalIncidente()">⚠ Reportar incidente</button>
 
     </div>
 
@@ -1060,45 +1179,15 @@
     <div id="camion-sub-mantenimiento-body"></div>
   </div>
 
-  <!-- ── SUB-PANTALLA: PLANES DE SERVICE (admin/sup) ──── -->
-  <div id="camion-sub-planes" style="display:none">
-    <div class="camion-sub-header">
-      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
-      <div class="camion-sub-title">📋 Planes asignados a este vehículo</div>
-      <button id="btn-nuevo-plan" class="btn btn-primary"
-        style="font-size:11px;padding:6px 12px" onclick="openPlanModal()">+ Plan</button>
-    </div>
-    <div id="planes-lista"></div>
-  </div>
-
-  <!-- ── SUB-PANTALLA: HISTORIAL EJECUCIONES (admin/sup) ─ -->
-  <div id="camion-sub-historial" style="display:none">
-    <div class="camion-sub-header">
-      <button class="btn-camion-back" onclick="_volverCamionMain()">← Volver</button>
-      <div class="camion-sub-title">🔧 Historial Ejecuciones</div>
-      <button class="btn btn-primary" style="font-size:11px;padding:6px 12px"
-        onclick="openServiceModal()">+ Service</button>
-    </div>
-    <div class="card desktop-only">
-      <table class="data-table">
-        <thead>
-          <tr><th>Fecha</th><th>Service</th><th>KM</th><th>Taller</th><th>Costo</th><th>Próximo</th></tr>
-        </thead>
-        <tbody id="tbody-services"></tbody>
-      </table>
-    </div>
-    <div id="mobile-services-list" class="mobile-only"></div>
-  </div>
-
 </div>
 
 <div class="screen" id="screen-documentos">
       <div class="sec-header mb24">
         <div>
-          <div class="sec-title">DOCUMENTACIÓN</div>
+          <div class="sec-title">Documentación</div>
           <div class="sec-sub">Legajo digital del camión y el chofer</div>
         </div>
-        <button class="btn btn-primary" id="btn-doc-header-cargar" style="display:none" onclick="abrirUploadTruckDoc('')">+ Subir Doc Camión</button>
+        <button class="btn btn-primary" id="btn-doc-header-cargar" style="display:none" onclick="abrirUploadTruckDoc('')"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#upload"/></svg>Subir documento del camión</button>
       </div>
 
       <div id="doc-banner-offline" class="banner banner-error" style="display:none"></div>
@@ -1106,9 +1195,9 @@
 
       <!-- Tabs -->
       <div class="doc-tab-bar">
-        <div class="doc-tab active" id="doc-tab-camion"      onclick="docSwitchTab('camion')">🚛 Camión</div>
-        <div class="doc-tab"        id="doc-tab-chofer"      onclick="docSwitchTab('chofer')">👤 Chofer</div>
-        <div class="doc-tab"        id="doc-tab-emergencias" onclick="docSwitchTab('emergencias')">🆘 Emergencias</div>
+        <div class="doc-tab active" id="doc-tab-camion"      onclick="docSwitchTab('camion')">Camión</div>
+        <div class="doc-tab"        id="doc-tab-chofer"      onclick="docSwitchTab('chofer')">Chofer</div>
+        <div class="doc-tab"        id="doc-tab-emergencias" onclick="docSwitchTab('emergencias')">Emergencias</div>
       </div>
 
       <!-- Tab Camión -->
@@ -1116,17 +1205,18 @@
 
         <!-- Admin: grilla selector de camiones -->
         <div id="doc-camion-selector" style="display:none">
-          <div class="doc-select-label">Seleccioná un móvil para ver su documentación</div>
+          <div class="doc-select-head"><div class="doc-select-label">Seleccioná un móvil para ver su documentación</div><div class="doc-sel-sum" id="doc-sum-trucks"></div></div>
           <div id="doc-grid-trucks" class="truck-select-grid"></div>
         </div>
 
         <!-- Docs del camión (admin tras seleccionar / chofer directo) -->
         <div id="doc-camion-docs" style="display:none">
           <div class="doc-view-header">
-            <button id="doc-camion-back-btn" class="btn btn-ghost" onclick="volverSelectorCamiones()" style="display:none;font-size:12px">← Volver</button>
+            <button id="doc-camion-back-btn" class="btn btn-ghost doc-back" onclick="volverSelectorCamiones()" style="display:none"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#arrow-left"/></svg>Volver</button>
             <div class="doc-view-header-title" id="doc-camion-docs-titulo"></div>
-            <button id="doc-camion-upload-btn" class="btn btn-primary" onclick="abrirUploadTruckDoc('')" style="font-size:11px">+ Subir</button>
+            <button id="doc-camion-upload-btn" class="btn btn-primary" onclick="abrirUploadTruckDoc('')"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#upload"/></svg>Subir documento</button>
           </div>
+          <div class="doc-resumen" id="doc-resumen-camion"></div>
           <div id="doc-banner-pago" style="display:none" class="doc-warn-banner"></div>
           <div id="doc-filter-camion" class="doc-filter-bar">
             <button class="doc-ftab active" onclick="filtrarDocsCamion('todos',this)">Todos</button>
@@ -1143,17 +1233,18 @@
 
         <!-- Admin: grilla selector de choferes -->
         <div id="doc-chofer-selector" style="display:none">
-          <div class="doc-select-label">Seleccioná un chofer para ver su documentación</div>
+          <div class="doc-select-head"><div class="doc-select-label">Seleccioná un chofer para ver su documentación</div><div class="doc-sel-sum" id="doc-sum-choferes"></div></div>
           <div id="doc-grid-choferes" class="truck-select-grid"></div>
         </div>
 
         <!-- Docs del chofer (admin tras seleccionar / chofer directo) -->
         <div id="doc-chofer-docs" style="display:none">
           <div class="doc-view-header">
-            <button id="doc-chofer-back-btn" class="btn btn-ghost" onclick="volverSelectorChoferes()" style="display:none;font-size:12px">← Volver</button>
+            <button id="doc-chofer-back-btn" class="btn btn-ghost doc-back" onclick="volverSelectorChoferes()" style="display:none"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#arrow-left"/></svg>Volver</button>
             <div class="doc-view-header-title" id="doc-chofer-docs-titulo"></div>
-            <button class="btn btn-primary" onclick="abrirSubirDocChofer()" style="font-size:11px">+ Subir</button>
+            <button class="btn btn-primary" onclick="abrirSubirDocChofer()"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#upload"/></svg>Subir documento</button>
           </div>
+          <div class="doc-resumen" id="doc-resumen-chofer"></div>
           <div id="doc-filter-chofer" class="doc-filter-bar">
             <button class="doc-ftab active" onclick="filtrarDocsChofer('todos',this)">Todos</button>
             <button class="doc-ftab" onclick="filtrarDocsChofer('proximos',this)">Próx. a vencer</button>
@@ -1172,7 +1263,7 @@
       </div>
 
       <!-- FAB -->
-      <button id="doc-fab" class="doc-fab" onclick="abrirFab()" style="display:none">＋</button>
+      <button id="doc-fab" class="doc-fab" onclick="abrirFab()" style="display:none" aria-label="Subir documento"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#plus"/></svg></button>
     </div>
 
 <!-- Screen Remitos -->
@@ -1189,8 +1280,8 @@
       <div class="rmx-calidad" id="rmx-calidad"></div>
       <div class="rmx-toolbar" id="filtros-remitos">
         <div class="rmx-filters auxf-bar" id="rmx-filters">
-          <label class="auxf-search rmx-search"><span aria-hidden="true">⌕</span><input id="input-buscar-remitos" type="search" autocomplete="off" placeholder="Nº remito, cliente, patente..." oninput="filtrarBusqueda(this.value)"></label>
-          <button class="rmx-sheet-btn" id="rmx-sheet-btn" type="button" onclick="RemitosFiltros.open()" aria-label="Filtros"><span aria-hidden="true">⚙</span> Filtros <b id="rmx-sheet-count" hidden></b></button>
+          <label class="auxf-search rmx-search"><span aria-hidden="true"><svg class="ax-icon"><use href="/ui/icons.svg#search"/></svg></span><input id="input-buscar-remitos" type="search" autocomplete="off" placeholder="Nº remito, cliente, patente..." oninput="filtrarBusqueda(this.value)"></label>
+          <button class="rmx-sheet-btn" id="rmx-sheet-btn" type="button" onclick="RemitosFiltros.open()" aria-label="Filtros"><span aria-hidden="true"><svg class="ax-icon"><use href="/ui/icons.svg#sliders-horizontal"/></svg></span> Filtros <b id="rmx-sheet-count" hidden></b></button>
           <div id="rmx-estado-host" class="rmx-host"></div>
           <div id="filtros-admin" class="rmx-admin" style="display:none">
             <div id="rmx-periodo-host" class="rmx-host"></div>
@@ -1234,7 +1325,7 @@
   <div id="rmx-bulk" class="rmx-bulk" hidden>
     <span class="rmx-bulk-info"><span id="rmx-bulk-count">0 remitos seleccionados</span><button class="rmx-bulk-link" id="rmx-bulk-all" type="button" hidden onclick="_rmxSeleccionarTodoElFiltro()"></button></span>
     <div class="rmx-bulk-actions">
-      <button class="rmx-btn primary" type="button" onclick="exportarRemitosSeleccionados()">⇩ Exportar</button>
+      <button class="rmx-btn primary" type="button" onclick="exportarRemitosSeleccionados()"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#download"/></svg>Exportar</button>
       <button class="rmx-btn" id="rmx-bulk-pdf" type="button" onclick="descargarPdfsSeleccionados()">Descargar PDF</button>
       <button class="rmx-btn ghost" type="button" onclick="_rmxLimpiarSeleccion()">Quitar selección</button>
     </div>
@@ -1318,8 +1409,8 @@
       <div class="form-group">
         <label class="form-label">Patente del vehículo <span style="color:var(--red)">*</span></label>
         <input type="text" id="rem-patente" class="form-input"
-               oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); _validarPatente(this.value)"
-               maxlength="7" placeholder="Ej: AB123CD">
+               oninput="this.value = this.value.toUpperCase(); _validarPatente(this.value)"
+               placeholder="Patente completa o parcial">
         <div class="rem-warn-patente" id="warn-patente"></div>
         <div class="rem-error-msg" id="err-patente">Ingresá la patente</div>
       </div>
@@ -1487,7 +1578,7 @@
       <canvas id="sig-canvas" style="width:100%;height:220px;background:var(--bg);border:2px dashed var(--amber);border-radius:8px;display:block;cursor:crosshair;touch-action:none"></canvas>
 
       <div id="sig-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;gap:6px">
-        <span style="font-size:24px;opacity:0.3">✍️</span>
+        <span style="font-size:24px;opacity:0.3">✍</span>
         <span style="font-size:10px;color:var(--muted)">Dibujá con el dedo</span>
       </div>
 
@@ -1638,7 +1729,7 @@
 
           <!-- Datos del servicio -->
 <div class="card">
-  <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">✏️ Completar datos</div>
+  <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">✏ Completar datos</div>
   <div class="form-row">
     <div class="form-group">
       <label class="form-label">Patente</label>
@@ -1730,7 +1821,7 @@
 </div>
           <!-- Confirmaciones del socio -->
           <div class="card">
-            <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">☑️ Confirmaciones del socio</div>
+            <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:12px">☑ Confirmaciones del socio</div>
 
             <div class="toggle-row" onclick="toggleAcept(this)" style="margin-bottom:8px" data-conf="Conformidad con el servicio">
               <div class="toggle-info">
@@ -1791,13 +1882,13 @@
   <div id="aviso-cliente-ausente" style="display:none;margin-top:12px;padding:10px 14px;
     background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.3);
     border-radius:7px;font-size:12px;color:var(--amber)">
-    ⚠️ El chofer firmará como testigo de que el servicio fue realizado. Esto quedará registrado en el sistema.
+    ⚠ El chofer firmará como testigo de que el servicio fue realizado. Esto quedará registrado en el sistema.
   </div>
 </div>
 
           <!-- Firma canvas -->
           <div class="card">
-           <div class="card-label" style="margin-bottom:10px" id="firma-canvas-label">✍️ Firma del cliente</div>
+           <div class="card-label" style="margin-bottom:10px" id="firma-canvas-label">✍ Firma del cliente</div>
             <canvas id="sig-canvas-firma"
               style="width:100%;height:160px;background:var(--bg);border:2px dashed var(--border2);border-radius:8px;display:block;cursor:crosshair;touch-action:none">
             </canvas>
@@ -1826,10 +1917,9 @@
   <!-- Sub-tab nav -->
   <div class="filter-tabs" style="margin-bottom:16px">
     <div class="ftab active" data-sub="mes"          onclick="_sueldosSwitchSub('mes', this)">Liquidaciones del mes</div>
-    <div class="ftab"        data-sub="rendiciones"  onclick="_sueldosSwitchSub('rendiciones', this)">💵 Rendiciones</div>
-    <div class="ftab"        data-sub="objetivos"    onclick="_sueldosSwitchSub('objetivos', this)">🎯 Comisiones y Bonos</div>
-    <div class="ftab"        data-sub="esquema"      onclick="_sueldosSwitchSub('esquema', this)">Esquemas de pago</div>
-    <div class="ftab"        data-sub="historial"    onclick="_sueldosSwitchSub('historial', this)">📜 Historial</div>
+    <div class="ftab"        data-sub="objetivos"    onclick="_sueldosSwitchSub('objetivos', this)">Comisiones</div>
+    <div class="ftab"        data-sub="esquema"      onclick="_sueldosSwitchSub('esquema', this)">Esquemas de pago<span class="ax-tab-alert" id="esq-tab-alert" hidden></span></div>
+    <div class="ftab"        data-sub="historial"    onclick="_sueldosSwitchSub('historial', this)">Historial</div>
   </div>
 
   <!-- SUB: mes actual -->
@@ -1849,29 +1939,14 @@
     </div>
   </div>
 
-  <!-- SUB: monthly administration cash handover -->
-  <div id="sueldos-sub-rendiciones" class="sueldos-sub" style="display:none"><div class="card">
-    <h3>Rendición mensual por chofer</h3><p>Fecha · Esperado · Gastos en efectivo. Administración registra un único total presentado.</p>
-    <label for="cfg-rend-month">Mes</label><input class="form-input" type="month" id="cfg-rend-month">
-    <label for="cfg-rend-driver">Chofer</label><select class="form-input" id="cfg-rend-driver"></select>
-    <button class="btn btn-primary" id="cfg-rend-open">Abrir rendición mensual</button><p id="cfg-rend-body" role="status"></p>
-  </div></div>
-
   <!-- SUB: objetivos -->
   <div id="sueldos-sub-objetivos" class="sueldos-sub" style="display:none">
-    <div class="card payroll-scheme-card" style="margin-bottom:14px">
+    <div class="card payroll-scheme-card">
       <div class="payroll-commission-head">
         <div><strong>Comisiones por conceptos</strong><p>Crealas una sola vez y luego asigná qué choferes cobran cada una.</p></div>
         <button class="btn btn-primary" onclick="_abrirComisionGeneral()">+ Nueva comisión</button>
       </div>
-      <div id="cfg-commission-body" class="payroll-commission-grid"><p class="pm-help">Cargando comisiones...</p></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
-        <div><strong>Bonos por objetivos</strong><p style="color:var(--muted);font-size:12px;margin:4px 0 0">Bonos configurables por concepto. Los cambios afectan solo liquidaciones futuras.</p></div>
-        <button class="btn btn-primary" onclick="_abrirObjetivoModal()" style="font-size:12px;padding:8px 14px">+ Nuevo objetivo</button>
-      </div>
-      <div id="cfg-obj-body" style="color:var(--muted);font-size:13px">Cargando objetivos...</div>
+      <div id="cfg-commission-body"><p class="pm-help">Cargando comisiones...</p></div>
     </div>
   </div>
 
@@ -1976,9 +2051,10 @@
     padding: 10px 12px;
     margin-bottom: 10px;
     display: grid;
+    /* Buscar más angosto; Jornadas anuladas y Limpiar al final de la misma fila. */
     grid-template-columns:
-      minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr)
-      minmax(0, 1.1fr) minmax(0, 1.5fr) auto;
+      minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 1.4fr)
+      minmax(0, 1.1fr) minmax(0, 1.5fr) auto auto;
     gap: 10px;
     /* Todos los controles apoyan sobre la misma línea de base. */
     align-items: end;
@@ -2117,6 +2193,14 @@
   }
   /* jornadas-admin-tools-v1.js inyecta este botón: se le da el mismo cuerpo
      que a los demás chips sin tocar su id ni su handler. */
+  #screen-jornadas-admin .jadmin-voided-host { display: flex; align-items: end; min-width: 0; }
+  #screen-jornadas-admin .jadmin-voided-host:empty { display: none; }
+  #screen-jornadas-admin .jadmin-voided-host #jat-open-voided {
+    height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 700;
+    white-space: nowrap; cursor: pointer;
+  }
+  #screen-jornadas-admin .jadmin-voided-host #jat-open-voided:hover { border-color: var(--primary, #4F8EF7); }
   #screen-jornadas-admin .chips #jat-open-voided {
     font-family: inherit;
     line-height: 1.2;
@@ -2520,59 +2604,24 @@
   </div>
 
   <!-- FILTROS -->
-  <div class="filtros">
-    <div>
-      <label>Buscar</label>
-      <input type="search" id="jadmin-f-q" placeholder="Buscar por chofer o patente…">
-    </div>
-    <div>
-      <label>Choferes</label>
-      <details class="jadmin-picker" id="jadmin-f-chofer">
-        <summary><span id="jadmin-f-chofer-label">Todos los choferes</span><span>⌄</span></summary>
-        <div class="jadmin-picker-panel" id="jadmin-f-chofer-options"></div>
-      </details>
-    </div>
-    <div>
-      <label>Móviles</label>
-      <details class="jadmin-picker" id="jadmin-f-camion">
-        <summary><span id="jadmin-f-camion-label">Todos los móviles</span><span>⌄</span></summary>
-        <div class="jadmin-picker-panel" id="jadmin-f-camion-options"></div>
-      </details>
-    </div>
-    <div>
-      <label>Estado</label>
-      <div id="jadmin-f-estado-host" class="jadmin-auxf-host"></div>
-    </div>
-    <div>
-      <label>Período</label>
-      <div id="jadmin-f-periodo-host" class="jadmin-auxf-host"></div>
-    </div>
-    <button class="clear" id="jadmin-f-clear">Limpiar</button>
-    <!-- ACCESOS RÁPIDOS -->
-    <div class="chips">
-      <div class="chip-group">
-        <span class="chip-group-lbl">Período</span>
-        <span class="chip active" data-chip="todas">Todas <span class="cnt"></span></span>
-        <span class="chip" data-chip="hoy">Hoy <span class="cnt"></span></span>
-        <span class="chip" data-chip="semana">Esta semana <span class="cnt"></span></span>
-        <span class="chip" data-chip="mes">Este mes <span class="cnt"></span></span>
-      </div>
-      <div class="chip-group" id="jadmin-chips-estado">
-        <span class="chip-group-lbl">Estado y alertas</span>
-        <span class="chip" data-chip="abiertas">Abiertas ahora <span class="cnt"></span></span>
-        <span class="chip" data-chip="taller">En taller <span class="cnt"></span></span>
-        <span class="chip" data-chip="incidentes">Con incidentes <span class="cnt"></span></span>
-        <span class="chip" data-chip="rendicion">Faltantes rendición <span class="cnt"></span></span>
-        <!-- jornadas-admin-tools-v1.js inyecta acá #jat-open-voided -->
-      </div>
-    </div>
+  <!-- Barra suelta, igual que Servicios: buscador, selectores múltiples (AxUI.multi) y filtros compartidos. -->
+  <div class="jadmin-bar" id="jadmin-bar">
+    <label class="auxf-search"><span aria-hidden="true"><svg class="ax-icon"><use href="/ui/icons.svg#search"/></svg></span><input type="search" id="jadmin-f-q" placeholder="Chofer o patente" autocomplete="off" aria-label="Buscar chofer o patente"></label>
+    <div class="jadmin-multi" id="jadmin-f-chofer" data-label="Choferes"></div>
+    <div class="jadmin-multi" id="jadmin-f-camion" data-label="Móviles"></div>
+    <div id="jadmin-f-estado-host" class="jadmin-auxf-host"></div>
+    <div id="jadmin-f-periodo-host" class="jadmin-auxf-host"></div>
+    <!-- Jornadas anuladas va en la misma fila de los filtros (lo inyecta jornadas-admin-tools-v1.js). -->
+    <div class="jadmin-voided-host" id="jadmin-chips-estado"></div>
+    <button type="button" class="jadmin-clear" id="jadmin-f-clear">Limpiar</button>
+    <button type="button" class="ax-btn jadmin-export" id="jadmin-export"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#download"/></svg> Exportar Excel</button>
   </div>
 
   <!-- TABLA -->
   <div class="table-wrap">
     <div class="table-hdr">
-      <div class="titulo">Historial de jornadas</div>
-      <div class="count">Mostrando <b id="jadmin-count-shown">0</b> de <b id="jadmin-count-total">0</b></div>
+      <div class="count">Mostrando <b id="jadmin-count-shown">0</b> de <b id="jadmin-count-total">0</b><span class="jadmin-cap-note" id="jadmin-cap-note" hidden></span></div>
+      <label class="jadmin-sort">Ordenar por <select id="jadmin-sort" aria-label="Ordenar jornadas"></select></label>
     </div>
 
     <div class="table-scroll-wrap">
@@ -2585,8 +2634,8 @@
           <th>Camión</th>
           <th class="right" data-sort="km">KM Rec.</th>
           <th class="right" data-sort="horas">Horas</th>
-          <th class="right">Srv.</th>
-          <th class="right">Comb.</th>
+          <th class="right" data-sort="servicios">Srv.</th>
+          <th class="right" data-sort="kml" title="Km por litro: km desde la carga anterior sobre los litros cargados">Km/l</th>
           <th class="right">Efvo. esp.</th>
           <th class="right">Gastos</th>
           <th class="center">Inc.</th>
@@ -2623,32 +2672,38 @@
 
   <!-- Header: mes + acciones -->
   <div class="grilla-topbar">
+    <div class="grilla-mes-nav">
+      <button type="button" class="grilla-nav-btn" id="grilla-mes-prev" onclick="moverMesGrilla(-1)" aria-label="Mes anterior" title="Mes anterior"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#chevron-left"/></svg></button>
+      <select id="grilla-mes-select" onchange="cambiarMesGrilla(this.value)" aria-label="Mes"></select>
+      <button type="button" class="grilla-nav-btn" id="grilla-mes-next" onclick="moverMesGrilla(1)" aria-label="Mes siguiente" title="Mes siguiente"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#chevron-right"/></svg></button>
+      <button type="button" class="btn grilla-btn-hoy" id="grilla-btn-hoy" onclick="irHoyGrilla()">Hoy</button>
+    </div>
     <div class="grilla-controls">
-      <select id="grilla-mes-select" onchange="cambiarMesGrilla(this.value)"></select>
-      <button class="btn btn-primary" id="grilla-btn-copiar" style="display:none" onclick="copiarSemanaGrilla()">+ Copiar semana →</button>
-      <button class="btn" id="grilla-btn-copiar-mes" style="display:none" onclick="copiarMesGrilla()">📅 Generar mes siguiente</button>
-      <button class="btn" id="grilla-btn-carga-rapida" style="display:none" onclick="abrirModalCargaRapida()">⚡ Carga rápida</button>
+      <button class="btn" id="grilla-btn-carga-rapida" style="display:none" onclick="abrirModalCargaRapida()"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#list-checks"/></svg>Carga rápida</button>
+      <button class="btn" id="grilla-btn-copiar-mes" style="display:none" onclick="copiarMesGrilla()"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#calendar"/></svg>Generar mes siguiente</button>
+      <button class="btn btn-primary" id="grilla-btn-copiar" style="display:none" onclick="copiarSemanaGrilla()"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#copy"/></svg>Copiar semana</button>
     </div>
   </div>
 
   <!-- Tabs de semanas -->
-  <div class="grilla-semana-tabs" id="grilla-semana-tabs"></div>
+  <div class="grilla-semana-tabs" id="grilla-semana-tabs" role="tablist" aria-label="Semanas del mes"></div>
 
-  <!-- Filtros (solo admin/supervisión — el chofer ve únicamente sus móviles) -->
-  <div class="grilla-filtros" id="grilla-filtros" style="display:none">
-    <div>
-      <label>Chofer</label>
-      <select id="grilla-f-chofer" onchange="setFiltroChoferGrilla(this.value)">
-        <option value="">Todos los choferes</option>
-      </select>
+  <!-- Filtros (solo admin/supervisión — el chofer ve únicamente sus móviles) + resumen de la semana -->
+  <div class="grilla-subbar">
+    <div class="grilla-filtros" id="grilla-filtros" style="display:none">
+      <label class="grilla-f-field"><span>Chofer</span>
+        <select id="grilla-f-chofer" onchange="setFiltroChoferGrilla(this.value)">
+          <option value="">Todos los choferes</option>
+        </select>
+      </label>
+      <label class="grilla-f-field"><span>Móvil</span>
+        <select id="grilla-f-movil" onchange="setFiltroMovilGrilla(this.value)">
+          <option value="">Todos los móviles</option>
+        </select>
+      </label>
+      <button class="grilla-f-clear" type="button" onclick="limpiarFiltrosGrilla()">Limpiar</button>
     </div>
-    <div>
-      <label>Móvil</label>
-      <select id="grilla-f-movil" onchange="setFiltroMovilGrilla(this.value)">
-        <option value="">Todos los móviles</option>
-      </select>
-    </div>
-    <button class="grilla-f-clear" onclick="limpiarFiltrosGrilla()">Limpiar</button>
+    <div class="grilla-resumen" id="grilla-resumen" aria-live="polite"></div>
   </div>
 
   <!-- Vista día (solo mobile ≤767px) -->
@@ -2664,11 +2719,11 @@
 
   <!-- Leyenda -->
   <div class="grilla-leyenda">
-    <span><span class="grilla-dot" style="background:var(--green)"></span> Chofer asignado</span>
-    <span><span class="grilla-dot" style="background:var(--muted2)"></span> Franco (descanso)</span>
-    <span><span class="grilla-dot" style="background:var(--amber)"></span> Móvil en taller</span>
-    <span><span class="grilla-dot" style="background:var(--amber);border-radius:2px"></span> Columna = hoy</span>
-    <span><span class="grilla-dot" style="background:var(--red)"></span> Feriado</span>
+    <span><span class="grilla-chip grilla-chip-chofer grilla-chip-demo" style="--gc-h:205"><i class="gc-av">JP</i><span class="gc-nm">Chofer</span></span> asignado (el color identifica a cada chofer)</span>
+    <span><span class="grilla-chip grilla-chip-franco grilla-chip-demo">Franco</span> descanso</span>
+    <span><span class="grilla-chip grilla-chip-taller grilla-chip-demo"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#wrench"/></svg>Taller</span> móvil en taller</span>
+    <span><span class="grilla-leg-swatch hoy"></span> hoy</span>
+    <span><span class="grilla-leg-swatch feriado"></span> feriado</span>
   </div>
 
 </div><!-- /screen-grilla -->
@@ -2761,10 +2816,11 @@
     <!-- CONTENT -->
     <div class="cfg-content">
       <div class="cfg-content-header">
-        <span class="cfg-content-title" id="cfg-tab-title">Flota</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" id="cfg-btn-import" onclick="openImportCSVModal('flota')" style="font-size:11px;padding:7px 13px">📥 Importar CSV</button>
-          <button class="btn btn-primary" id="cfg-btn-new" onclick="openNuevoVehiculoModal()" style="font-size:11px;padding:7px 13px">+ Nuevo</button>
+        <div class="cfg-content-titles"><span class="cfg-content-title" id="cfg-tab-title">Camiones</span><small class="cfg-content-sub" id="cfg-tab-sub"></small></div>
+        <div class="cfg-content-actions">
+          <button class="btn btn-ghost" id="cfg-btn-import" onclick="openImportCSVModal('flota')">Importar CSV</button>
+          <button class="btn btn-primary" id="cfg-btn-new" onclick="openNuevoVehiculoModal()">+ Nuevo</button>
+          <button class="cfg-close" type="button" aria-label="Cerrar" onclick="closeModal('modal-settings')">×</button>
         </div>
       </div>
       <div class="cfg-content-body" id="config-content-area">
@@ -2789,7 +2845,7 @@
               <option value="vencido">Solo vencidos</option>
               <option value="proximo">Solo próximos</option>
             </select>
-            <button class="btn btn-ghost" onclick="cargarMantenimientoTab()" style="font-size:11px;padding:7px 13px">🔄 Refrescar</button>
+            <button class="btn btn-ghost" onclick="cargarMantenimientoTab()">Actualizar</button>
           </div>
           <div id="cfg-mant-stats" class="cfg-rend-stats"></div>
           <div id="cfg-mant-body" style="color:var(--muted);font-size:13px">Cargando mantenimiento...</div>
@@ -2800,7 +2856,7 @@
         <div id="tab-emergencias" class="config-section" style="display:none">
           <div class="cfg-emerg-section">
             <div class="cfg-emerg-section-header">
-              <span class="cfg-emerg-section-label">Telefonos de emergencia</span>
+              <span class="cfg-emerg-section-label">Teléfonos de emergencia</span>
               <button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="agregarEmergenciaItem('telefono')">+ Agregar</button>
             </div>
             <div id="cfg-emerg-telefonos" style="color:var(--muted);font-size:13px">Cargando...</div>
@@ -2884,6 +2940,10 @@
                  oninput="this.value = this.value.replace(/\D/g, '')">
         </div>
       </div>
+      <label class="nv-horas-switch" for="nv-registra-horas">
+        <span><b>Registra horas de motor</b><small>El chofer carga las horas al abrir y cerrar la jornada. La IA las lee de la misma foto del tablero.</small></span>
+        <span class="ax-switch"><input type="checkbox" id="nv-registra-horas" aria-label="Registra horas de motor"></span>
+      </label>
     </div>
     <div id="nv-modal-error" style="display:none;margin:0 16px 10px;padding:10px 14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:6px;color:#f87171;font-size:13px"></div>
     <div class="modal-footer">
@@ -2894,69 +2954,40 @@
 </div>
 
 <div class="modal-backdrop" id="modal-nuevo-usuario">
-  <div class="modal-box" style="max-width: 450px;">
+  <div class="modal-box usr-modal">
     <div class="modal-head">
-      <span class="modal-head-title">👤 Alta de Personal / Chofer</span>
+      <div class="usr-modal-title"><span class="modal-head-title">Alta de personal</span><small id="nu-legajo-info">El legajo se asigna automáticamente al crear.</small></div>
       <button class="modal-close" onclick="closeModal('modal-nuevo-usuario')">×</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Nombre Completo <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="text" id="nu-nombre" placeholder="Ej: Juan Pérez"
-               oninput="this.value = this.value.replace(/[^a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s]/gi, '')">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group">
-          <label class="form-label">Legajo <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="text" id="nu-legajo" placeholder="Ej: CHO-002">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Teléfono</label>
-          <input class="form-input" type="tel" id="nu-telefono" placeholder="Ej: +54 11 1234-5678"
-                 oninput="this.value = this.value.replace(/[^+\d\s\-]/g, '')">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email <span style="color:var(--red)">*</span></label>
-        <input class="form-input" type="email" id="nu-email" placeholder="Ej: juan@empresa.com">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group">
-          <label class="form-label">DNI <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="text" id="nu-dni" placeholder="Ej: 30123456"
-                 oninput="this.value = this.value.replace(/\D/g, '')">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Rol <span style="color:var(--red)">*</span></label>
-          <select class="form-input" id="nu-rol" onchange="toggleLicenciaSection()">
-            <option value="chofer">🚛 Chofer</option>
-            <option value="operador">🧭 Operador</option>
-            <option value="supervision">👁 Supervisor</option>
-            <option value="administracion">👑 Administración</option>
-          </select>
-        </div>
-      </div>
-      <div style="padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.3);border-radius:6px;font-size:11px;color:var(--amber)">
-        Se enviará una invitación al email para que la persona defina su propia contraseña.
-      </div>
-      <div id="nu-licencia-section" style="padding:15px;background:var(--bg-darker);border-radius:8px;margin-top:10px;border:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--amber);font-weight:bold;margin-bottom:10px;text-transform:uppercase">Datos de Licencia</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">N° Registro</label>
-            <input class="form-input" type="text" id="nu-licencia" placeholder="Nro de carnet">
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">Vencimiento</label>
-            <input class="form-input" type="date" id="nu-vencimiento">
+      <div class="usr-form">
+        <label class="form-group usr-span-2"><span class="form-label">Nombre completo *</span>
+          <input class="form-input" type="text" id="nu-nombre" placeholder="Ej: Juan Pérez" autocomplete="off"
+                 oninput="this.value = this.value.replace(/[^a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s]/gi, '')"></label>
+        <label class="form-group usr-span-2"><span class="form-label">Email *</span>
+          <input class="form-input" type="email" id="nu-email" placeholder="Ej: juan@empresa.com" autocomplete="off"></label>
+        <label class="form-group"><span class="form-label">DNI *</span>
+          <input class="form-input" type="text" id="nu-dni" placeholder="Ej: 30123456" inputmode="numeric" maxlength="8" autocomplete="off"
+                 oninput="this.value = this.value.replace(/\D/g, '')"></label>
+        <label class="form-group"><span class="form-label">Teléfono</span>
+          <input class="form-input" type="tel" id="nu-telefono" placeholder="Ej: 11 1234-5678" maxlength="18" autocomplete="off"
+                 oninput="this.value = this.value.replace(/[^+\d\s\-]/g, '')"></label>
+        <div class="form-group usr-span-2"><span class="form-label">Rol *</span>
+          <input type="hidden" id="nu-rol" value="chofer">
+          <div class="ax-seg usr-roles" role="group" aria-label="Rol">
+            <button type="button" data-rol="chofer" aria-pressed="true" onclick="_elegirRolUsuario('chofer')">Chofer</button>
+            <button type="button" data-rol="operador" aria-pressed="false" onclick="_elegirRolUsuario('operador')">Operador</button>
+            <button type="button" data-rol="supervision" aria-pressed="false" onclick="_elegirRolUsuario('supervision')">Supervisor</button>
+            <button type="button" data-rol="administracion" aria-pressed="false" onclick="_elegirRolUsuario('administracion')">Admin</button>
           </div>
         </div>
       </div>
+      <p class="usr-hint" id="nu-invite-hint">Se enviará una invitación al email para que la persona defina su contraseña.</p>
     </div>
-    <div id="nu-modal-error" style="display:none;margin:0 16px 10px;padding:10px 14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:6px;color:#f87171;font-size:13px"></div>
+    <div id="nu-modal-error" class="usr-error" style="display:none"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-nuevo-usuario')">Cancelar</button>
-      <button class="btn btn-primary" id="btn-guardar-usuario" onclick="guardarNuevoUsuario()">💾 Crear Usuario</button>
+      <button class="btn btn-primary" id="btn-guardar-usuario" onclick="guardarNuevoUsuario()">Crear usuario</button>
     </div>
   </div>
 </div>
@@ -3049,7 +3080,7 @@
 <!-- ── MODAL: REPORTAR INCIDENTE (chofer y admin) ─────────────────── -->
 <div id="modal-incidente" class="modal-overlay">
   <div class="modal-content" style="max-width:420px">
-    <h3 style="margin-bottom:2px">⚠️ Reportar incidente</h3>
+    <h3 style="margin-bottom:2px">⚠ Reportar incidente</h3>
     <div id="inc-sub" style="color:var(--muted2);font-size:11px;margin-bottom:14px">—</div>
 
     <label>¿Qué pasó?</label>
@@ -3173,7 +3204,7 @@
           </div>
         </div>
         <div style="margin-bottom:18px">
-          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">☑️ Confirmaciones del socio</div>
+          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:700">☑ Confirmaciones del socio</div>
           <div style="display:flex;flex-direction:column;gap:6px" id="vr-confirmaciones"></div>
         </div>
         <div id="vr-anulado-section" style="display:none;margin-bottom:18px">
@@ -3212,7 +3243,7 @@
 <div class="modal-backdrop" id="modal-validacion" style="z-index:10001">
   <div class="modal-box" style="max-width:380px">
     <div class="modal-head">
-      <span class="modal-head-title" id="modal-validacion-titulo" style="color:var(--amber)">⚠️ Datos incompletos</span>
+      <span class="modal-head-title" id="modal-validacion-titulo" style="color:var(--amber)">⚠ Datos incompletos</span>
       <button class="modal-close" onclick="closeModal('modal-validacion')">✕</button>
     </div>
     <div class="modal-body">
@@ -3229,7 +3260,7 @@
 <div class="modal-backdrop" id="modal-sin-jornada" style="z-index:10001">
   <div class="modal-box" style="max-width:420px">
     <div class="modal-head">
-      <span class="modal-head-title" style="color:var(--amber)">⚠️ Sin jornada activa</span>
+      <span class="modal-head-title" style="color:var(--amber)">⚠ Sin jornada activa</span>
       <button class="modal-close" onclick="closeModal('modal-sin-jornada')">✕</button>
     </div>
     <div class="modal-body" style="font-size:13px;line-height:1.55;color:#fde68a">
@@ -3247,7 +3278,7 @@
 <div class="modal-backdrop" id="modal-formatos" style="z-index:10001">
   <div class="modal-box" style="max-width:480px">
     <div class="modal-head">
-      <span class="modal-head-title" style="color:var(--amber)">ℹ️ Formatos válidos de campos</span>
+      <span class="modal-head-title" style="color:var(--amber)">ℹ Formatos válidos de campos</span>
       <button class="modal-close" onclick="closeModal('modal-formatos')">✕</button>
     </div>
     <div class="modal-body" style="font-size:13px;line-height:1.55">
@@ -3355,37 +3386,17 @@
 </div>
 
 <div class="modal-backdrop" id="modal-esquema-edit">
-  <div class="modal-box payroll-scheme-modal">
+  <div class="modal-box payroll-scheme-modal pm-modal">
     <div class="modal-head">
-      <span class="modal-head-title">Esquema salarial</span>
+      <div class="pm-modal-title"><span class="modal-head-title">Esquema de pago</span><small id="esq-chofer">—</small></div>
       <button class="modal-close" onclick="closeModal('modal-esquema-edit')">×</button>
     </div>
     <div class="modal-body">
-      <div style="background:var(--bg-elev);padding:10px 12px;border-radius:8px;margin-bottom:14px">
-        <div style="color:var(--muted);font-size:11px">Chofer</div>
-        <div id="esq-chofer" style="font-weight:600;font-size:14px">—</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Sueldo básico mensual</label>
-        <input class="form-input" id="esq-basico" type="number" step="0.01" min="0" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Valor por servicio ($/servicio)</label>
-        <input class="form-input" id="esq-valor-serv" type="number" step="0.01" min="0" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Valor por kilómetro ($/km)</label>
-        <input class="form-input" id="esq-valor-km" type="number" step="0.01" min="0" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Importe de presentismo mensual</label>
-        <input class="form-input" id="esq-bono-pres" type="number" step="0.01" min="0" placeholder="0">
-        <div style="color:var(--muted);font-size:11px;margin-top:4px">Si el concepto está activo, se paga completo cuando el chofer tuvo jornadas y no registró incidentes en el mes.</div>
-      </div>
+      <div id="payroll-matrix-fields" class="pm-grid"></div>
     </div>
     <div class="modal-foot payroll-scheme-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-esquema-edit')">Cancelar</button>
-      <button class="btn btn-primary" onclick="_guardarEsquema()">Aplicar</button>
+      <button class="btn btn-primary" onclick="_guardarEsquema()">Guardar esquema</button>
     </div>
   </div>
 </div>
@@ -3411,6 +3422,7 @@
           <select class="form-input" id="pc-source">
             <option value="extras">Venta / adicional del remito</option>
             <option value="invoices">Servicio principal facturado</option>
+            <option value="captacion">Captación de particular (lo consiguió el chofer)</option>
           </select>
         </div>
         <div class="form-group">
@@ -3435,49 +3447,35 @@
 </div>
 
 <div class="modal-backdrop" id="modal-esquema-masivo">
-  <div class="modal-box payroll-scheme-modal">
+  <div class="modal-box payroll-scheme-modal pm-modal">
     <div class="modal-head">
-      <span class="modal-head-title">Aplicar esquema a choferes seleccionados</span>
+      <div class="pm-modal-title"><span class="modal-head-title">Aplicar cambios</span><small>Solo se cambia lo que toques. Lo que quede en "No cambiar" se conserva.</small></div>
       <button class="modal-close" onclick="closeModal('modal-esquema-masivo')">×</button>
     </div>
     <div class="modal-body">
-      <div style="padding:10px 12px;background:rgba(245,158,11,0.1);border-left:3px solid #f59e0b;color:#f59e0b;font-size:12px;border-radius:4px;margin-bottom:14px">
-        Los campos completados se aplicarán únicamente a los choferes seleccionados. Dejá vacío lo que quieras conservar.
-      </div>
       <div id="esqm-selected-list" class="payroll-selected-list"></div>
-      <div class="form-group">
-        <label class="form-label">Sueldo básico mensual</label>
-        <input class="form-input" id="esqm-basico" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
+      <div class="pm-grid pm-grid-bulk">
+        <section class="pm-col"><h3><span></span>Tipo de remuneración</h3>
+          <input type="hidden" id="esqm-pay-type" value="">
+          <div class="pm-types pm-types-bulk" role="radiogroup" aria-label="Tipo de remuneración">
+            <button type="button" role="radio" data-bulk-type="" aria-checked="true"><b>No cambiar</b><small>Cada chofer conserva su tipo.</small></button>
+            <button type="button" role="radio" data-bulk-type="fixed" aria-checked="false"><b>Fija</b><small>Solo sueldo fijo mensual.</small></button>
+            <button type="button" role="radio" data-bulk-type="fixed_plus" aria-checked="false"><b>Fija + servicios</b><small>Sueldo fijo más servicio y/o km.</small></button>
+            <button type="button" role="radio" data-bulk-type="variable" aria-checked="false"><b>Por servicios y km</b><small>Sin fijo: se paga por servicio y/o km.</small></button>
+          </div>
+          <div class="pm-basico"><label class="pm-field"><span>Sueldo fijo mensual</span><span class="pm-money"><i>$</i><input class="form-input" id="esqm-basico" type="number" step="0.01" min="0" placeholder="No cambiar"></span></label></div>
+        </section>
+        <section class="pm-col pm-col-matrix"><h3><span></span>Matriz de remuneración</h3>
+          <div class="pm-block"><div class="pm-bulk-row"><span class="pm-switch-text"><b>Pago por servicio</b><small>Importe por cada remito firmado.</small></span><input type="hidden" id="esqm-pay-services" value=""><div class="ax-seg pm-seg" role="group" data-bulk-target="esqm-pay-services"><button type="button" data-v="" aria-pressed="true">No cambiar</button><button type="button" data-v="true" aria-pressed="false">Sí</button><button type="button" data-v="false" aria-pressed="false">No</button></div></div><label class="pm-field"><span>Valor por servicio</span><span class="pm-money"><i>$</i><input class="form-input" id="esqm-valor-serv" type="number" step="0.01" min="0" placeholder="No cambiar"></span></label></div>
+          <div class="pm-block"><div class="pm-bulk-row"><span class="pm-switch-text"><b>Pago por kilómetro</b><small>Valor y qué kilómetros se liquidan.</small></span><input type="hidden" id="esqm-pay-km" value=""><div class="ax-seg pm-seg" role="group" data-bulk-target="esqm-pay-km"><button type="button" data-v="" aria-pressed="true">No cambiar</button><button type="button" data-v="true" aria-pressed="false">Sí</button><button type="button" data-v="false" aria-pressed="false">No</button></div></div><label class="pm-field"><span>Valor por km</span><span class="pm-money"><i>$</i><input class="form-input" id="esqm-valor-km" type="number" step="0.01" min="0" placeholder="No cambiar"></span></label>
+            <div class="pm-bulk-row"><span class="pm-switch-text"><b>Kilómetros</b></span><input type="hidden" id="esqm-km-basis" value=""><div class="ax-seg pm-seg" role="group" data-bulk-target="esqm-km-basis"><button type="button" data-v="" aria-pressed="true">No cambiar</button><button type="button" data-v="real" aria-pressed="false">Reales</button><button type="button" data-v="billed" aria-pressed="false">Facturados</button></div></div></div>
+        </section>
+        <section class="pm-col"><h3><span></span>Bonos y comisiones</h3>
+          <div class="pm-block"><div class="pm-bulk-row"><span class="pm-switch-text"><b>Presentismo</b><small>Si tuvo jornadas y no registró incidentes.</small></span><input type="hidden" id="esqm-pay-presentismo" value=""><div class="ax-seg pm-seg" role="group" data-bulk-target="esqm-pay-presentismo"><button type="button" data-v="" aria-pressed="true">No cambiar</button><button type="button" data-v="true" aria-pressed="false">Sí</button><button type="button" data-v="false" aria-pressed="false">No</button></div></div><label class="pm-field"><span>Importe mensual</span><span class="pm-money"><i>$</i><input class="form-input" id="esqm-bono-pres" type="number" step="0.01" min="0" placeholder="No cambiar"></span></label></div>
+          <div class="pm-block"><div class="pm-block-head"><b>Comisiones</b></div><div id="esqm-commission-list" class="pm-switch-list"></div></div>
+        </section>
       </div>
-      <div class="form-group">
-        <label class="form-label">Valor por servicio ($/servicio)</label>
-        <input class="form-input" id="esqm-valor-serv" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Valor por kilómetro ($/km)</label>
-        <input class="form-input" id="esqm-valor-km" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Importe de presentismo mensual</label>
-        <input class="form-input" id="esqm-bono-pres" type="number" step="0.01" min="0" placeholder="Dejar vacío para no cambiar">
-        <div style="color:var(--muted);font-size:11px;margin-top:4px">Se paga completo si está activo, hubo jornadas y no se registraron incidentes.</div>
-      </div>
-      <div class="payroll-bulk-rules">
-        <div class="form-group"><label class="form-label">Pago por servicio</label><select class="form-input" id="esqm-pay-services"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
-        <div class="form-group"><label class="form-label">Pago por kilómetros</label><select class="form-input" id="esqm-pay-km"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
-        <div class="form-group"><label class="form-label">Base de kilómetros</label><select class="form-input" id="esqm-km-basis"><option value="">No modificar</option><option value="real">KM reales por odómetro</option><option value="billed">KM facturados en servicios</option></select></div>
-        <div class="form-group"><label class="form-label">Presentismo</label><select class="form-input" id="esqm-pay-presentismo"><option value="">No modificar</option><option value="true">Aplicar</option><option value="false">No aplicar</option></select></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="esqm-commission-mode">Comisiones por conceptos</label>
-        <select class="form-input" id="esqm-commission-mode">
-          <option value="">No modificar</option>
-          <option value="replace">Reemplazar por la selección</option>
-        </select>
-        <div style="color:var(--muted);font-size:11px;margin-top:4px">Al reemplazar, las comisiones marcadas quedarán asignadas a todos los choferes seleccionados.</div>
-      </div>
-      <div id="esqm-commission-list" class="pm-commission-choices"></div>
-      <div id="esqm-preview" style="margin-top:10px;color:var(--muted);font-size:12px"></div>
+      <div id="esqm-preview" class="pm-bulk-preview"></div>
     </div>
     <div class="modal-foot payroll-scheme-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-esquema-masivo')">Cancelar</button>
@@ -3516,7 +3514,6 @@
       <div class="filter-tabs" style="margin-bottom:14px">
         <div class="ftab active" data-recsub="resumen"   onclick="_reciboSwitch('resumen')">📊 Resumen</div>
         <div class="ftab"        data-recsub="jornadas"  onclick="_reciboSwitch('jornadas')">📅 Jornadas</div>
-        <div class="ftab"        data-recsub="objetivos" onclick="_reciboSwitch('objetivos')">🎯 Objetivos</div>
         <div class="ftab"        data-recsub="efectivos" onclick="_reciboSwitch('efectivos')">💵 Efectivos</div>
         <div class="ftab"        data-recsub="rendiciones" onclick="_reciboSwitch('rendiciones')">📋 Rendiciones</div>
       </div>
@@ -3714,7 +3711,7 @@
 <div class="modal-backdrop" id="modal-firma-falta" style="z-index:9999">
   <div class="modal-box" style="max-width:560px;width:92vw;padding:0;background:linear-gradient(135deg,#1f1610 0%,#2a1d10 100%);border:2px solid var(--amber);box-shadow:0 0 60px rgba(245,166,35,0.4)">
     <div style="padding:48px 32px 24px;text-align:center">
-      <div style="font-size:80px;line-height:1;margin-bottom:16px">✍️</div>
+      <div style="font-size:80px;line-height:1;margin-bottom:16px">✍</div>
       <div style="font-size:24px;font-weight:800;color:var(--amber);margin-bottom:12px;letter-spacing:0.5px">FALTA COMPLETAR LA FIRMA</div>
       <div style="font-size:15px;line-height:1.6;color:#fde68a;max-width:420px;margin:0 auto;padding:0 8px">
         Para finalizar el servicio es <strong>obligatoria la firma del socio</strong>, o del chofer en caso de ausencia.
@@ -3734,7 +3731,7 @@
     </div>
     <div class="modal-body">
       <div style="background:rgba(226,80,74,0.08);border:1px solid rgba(226,80,74,0.3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:var(--red)">
-        ⚠️ Esta acción no se puede deshacer. El remito quedará marcado como anulado en la base de datos.
+        ⚠ Esta acción no se puede deshacer. El remito quedará marcado como anulado en la base de datos.
       </div>
       <div class="form-group">
         <label class="form-label">Motivo de anulación <span style="color:var(--red)">*</span></label>
@@ -3855,6 +3852,7 @@
 <script src="/fuel-admin-editor.js"></script>
 <script src="/payroll-matrix.js"></script>
 <script src="/excel-export.js"></script>
+<script src="/fuel-efficiency-v1.js"></script>
 <script src="/payroll-view.js"></script>
 </body>
 </html>
