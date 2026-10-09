@@ -2217,10 +2217,9 @@ async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null,
 async function cargarHistorialServices(truckId) {
   const { data, error } = await _db
     .from('maintenance_logs')
-    .select('maintenance_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, master_service_plans(name)')
+    .select('maintenance_id, master_plan_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, notes, master_service_plans(name, interval_km, interval_hours)')
     .eq('truck_id', truckId)
-    .order('performed_at', { ascending: false })
-    .limit(30);
+    .order('performed_at', { ascending: false });
   if (error) { console.error('[Historial Services] Error:', error.message); return []; }
   return data || [];
 }
@@ -2297,7 +2296,7 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
      .order('fuel_date', { ascending: false })
      .limit(limit);
   let mQ = _db.from('maintenance_logs')
-     .select('maintenance_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, master_service_plans(name)')
+     .select('maintenance_id, master_plan_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, notes, master_service_plans(name, interval_km, interval_hours)')
      .eq('truck_id', truckId)
      .order('performed_at', { ascending: false })
      .limit(limit);
@@ -4350,4 +4349,16 @@ async function cargarChoferesFlotaAdmin() {
     .order('full_name', { ascending: true });
   if (error) { console.error('cargarChoferesFlotaAdmin:', error); return []; }
   return data || [];
+}
+
+// Confirmar una fila afectada evita informar éxito si RLS rechaza la operación.
+async function modificarServiceRealizado(id, truckId, datos = null) {
+  try {
+    if (!id || !truckId) throw new Error('Service o móvil inválido');
+    const query = datos ? _db.from('maintenance_logs').update(datos) : _db.from('maintenance_logs').delete();
+    const { data, error } = await query.eq('maintenance_id', id).eq('truck_id', truckId).select('maintenance_id').single();
+    if (error) throw error;
+    if (!data) throw new Error('No se pudo modificar el service. Revisá tus permisos.');
+    return { ok: true };
+  } catch (error) { return { ok: false, errorMsg: error.message }; }
 }

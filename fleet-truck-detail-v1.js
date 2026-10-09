@@ -275,21 +275,19 @@
         }).join('') + '</ul>'
       : '<p class="ftd-vacio">Sin planes de service.' + (admin() ? ' Asigná uno con "+ Plan".' : '') + '</p>';
     if (planes.length) filas += '<p class="ftd-nota">' + (porDia ? 'Fechas estimadas con el promedio de los últimos 30 días: ' + Math.round(porDia).toLocaleString('es-AR') + ' km por día.' : 'Sin jornadas en los últimos 30 días: no se pueden estimar fechas.') + '</p>';
-    var hist = (st.services || []).slice(0, 5);
-    var conHoras = hist.some(function (s) { return s.hours_at_service != null; });
+    var hist = st.services || [];
+    var conHoras = planes.some(function (p) { return p.interval_hours > 0; }) || hist.some(function (s) { return s.hours_at_service != null; });
     var gasto = gastoMantenimiento(st.services, hoy());
     var tabla = hist.length
-      ? '<h4>Últimos services' + (gasto ? '<span>Gastado en 12 meses: ' + money(gasto) + '</span>' : '') + '</h4>' +
-        '<table class="ftd-table"><thead><tr><th>Fecha</th><th>Service</th><th>Km</th>' + (conHoras ? '<th>Horas</th>' : '') + '<th>Taller</th><th class="ftd-r">Costo</th></tr></thead><tbody>' +
+      ? '<h4>Services realizados' + (gasto ? '<span>Gastado en 12 meses: ' + money(gasto) + '</span>' : '') + '</h4>' +
+        '<div class="ftd-services-scroll"><table class="ftd-table ftd-services"><thead><tr><th>Fecha</th><th>Service / detalle</th><th>Kilometraje</th>' + (conHoras ? '<th>Horas de motor</th>' : '') + '<th>Taller</th><th class="ftd-r">Costo</th>' + (admin() ? '<th>Acciones</th>' : '') + '</tr></thead><tbody>' +
         hist.map(function (s) {
-          return '<tr><td>' + fecha(s.performed_at) + '</td><td>' + esc((s.master_service_plans && s.master_service_plans.name) || '—') + '</td>' +
-            '<td class="ftd-n">' + (s.km_at_service != null ? km(s.km_at_service) : '—') + '</td>' +
-            (conHoras ? '<td class="ftd-n">' + (s.hours_at_service != null ? hs(s.hours_at_service) : '—') + '</td>' : '') +
-            '<td>' + esc(s.workshop_name || '—') + '</td>' +
-            '<td class="ftd-r ftd-n">' + (s.cost ? money(s.cost) : '—') + '</td></tr>';
-        }).join('') + '</tbody></table>'
+          return '<tr><td>' + fecha(s.performed_at) + '</td><td>' + '<b>' + esc((s.master_service_plans && s.master_service_plans.name) || '—') + '</b>' + (s.notes ? '<small>' + esc(s.notes) + '</small>' : '') + '</td>' +
+            '<td class="ftd-n">' + (s.km_at_service != null ? km(s.km_at_service) : '—') + '</td>' + (conHoras ? '<td class="ftd-n">' + (s.hours_at_service != null ? num(s.hours_at_service).toLocaleString('es-AR') + ' hs' : '—') + '</td>' : '') + '<td>' + esc(s.workshop_name || '—') + '</td>' +
+            '<td class="ftd-r ftd-n">' + (s.cost != null ? money(s.cost) : '—') + '</td>' + (admin() ? '<td><div class="ftd-service-actions">' + boton('editar-service', 'Editar', ' data-id="' + esc(s.maintenance_id) + '"') + boton('eliminar-service', 'Eliminar', ' data-id="' + esc(s.maintenance_id) + '"') + '</div></td>' : '') + '</tr>';
+        }).join('') + '</tbody></table></div>'
       : '<p class="ftd-vacio">Todavía no hay services registrados.</p>';
-    return seccion('mantenimiento', 'Mantenimiento', [boton('service', ico('plus') + 'Service'), boton('plan', ico('plus') + 'Plan')], filas + tabla);
+    return seccion('mantenimiento', 'Mantenimiento', [boton('service', ico('plus') + 'Registrar service'), boton('plan', ico('plus') + 'Plan')], filas + tabla);
   }
 
   function documentacion() {
@@ -509,7 +507,7 @@
     if (sel) sel.value = String(st.id);
   }
 
-  document.addEventListener('click', function (ev) {
+  document.addEventListener('click', async function (ev) {
     var tab = ev.target.closest && ev.target.closest('[data-ftd-tab]');
     if (tab && st.id) { st.tab = tab.getAttribute('data-ftd-tab'); return pintar(); }
     var b = ev.target.closest && ev.target.closest('[data-ftd]');
@@ -519,6 +517,21 @@
     if (a === 'ver-doc') return verDoc(b.getAttribute('data-path'));
     if (!admin()) return;
     if (a === 'service' && typeof openServiceModal === 'function') return openServiceModal();
+    if (a === 'editar-service' || a === 'eliminar-service') {
+      var registro = st.services.find(function (s) { return String(s.maintenance_id) === b.getAttribute('data-id'); });
+      if (!registro || b.disabled) return;
+      if (a === 'editar-service') return openServiceModal(registro);
+      if (!global.confirm('¿Eliminar el service del ' + fecha(registro.performed_at) + '? Esta acción no se puede deshacer.')) return;
+      b.disabled = true;
+      try {
+        var result = await modificarServiceRealizado(registro.maintenance_id, st.id);
+        if (!result.ok) throw new Error(result.errorMsg);
+        toast('Service eliminado', 'success');
+        await _refrescarPlanesCamion();
+      } catch (error) { toast('No se pudo eliminar: ' + error.message, 'error'); }
+      finally { b.disabled = false; }
+      return;
+    }
     if (a === 'plan' && typeof openPlanModal === 'function') return openPlanModal();
     if (a === 'carga' && typeof openFuelModal === 'function') return openFuelModal();
     if (a === 'neumaticos' && typeof openNeumaticosModal === 'function') return openNeumaticosModal();

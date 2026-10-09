@@ -118,3 +118,14 @@
 .ftp-cob { flex: 0 0 auto; color: var(--muted2); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 .ftp-falta { color: var(--amber); }
 .ftd-quitar { color: var(--muted2); font-weight: 600; }
+
+/* Historial de mantenimiento: lecturas y acciones separadas. */
+.ftd-services-scroll { overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+.ftd-services { min-width:720px; margin:0; }
+.ftd-services th { background:var(--bg); white-space:nowrap; padding:12px; }
+.ftd-services td { padding:14px 12px; vertical-align:middle; }
+.ftd-services tbody tr:nth-child(even) { background:rgba(128,128,128,.035); }
+.ftd-services td small { display:block; color:var(--muted2); max-width:280px; white-space:normal; margin-top:5px; }
+.ftd-service-actions { display:flex; gap:8px; }
+.ftd-service-actions [data-ftd="eliminar-service"] { color:var(--red); }
+.ftd-service-actions button:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }

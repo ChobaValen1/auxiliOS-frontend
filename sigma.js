@@ -5198,8 +5198,13 @@ async function desactivarPlanUI(masterPlanId) {
 
 // ── HISTORIAL DE SERVICES ─────────────────────
 let _planesCache = [];
+let _serviceEditId = null;
+let _serviceSaving = false;
 
-async function openServiceModal() {
+async function openServiceModal(registro = null) {
+  _serviceEditId = registro?.maintenance_id || null;
+  const title = document.querySelector("#modal-service-log .modal-head-title");
+  if (title) title.textContent = registro ? "Editar service realizado" : "Registrar service";
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('sl-camion-info');
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
@@ -5241,6 +5246,23 @@ async function openServiceModal() {
       select.appendChild(opt);
     });
   }
+  if (registro && select) {
+    if (![...select.options].some(o => String(o.value) === String(registro.master_plan_id))) {
+      const opt = document.createElement('option');
+      opt.value = registro.master_plan_id;
+      opt.textContent = registro.master_service_plans?.name || 'Plan del registro';
+      opt.dataset.intervalKm = registro.master_service_plans?.interval_km || 0;
+      opt.dataset.intervalHours = registro.master_service_plans?.interval_hours || 0;
+      select.appendChild(opt);
+    }
+    select.value = registro.master_plan_id;
+    onServicePlanChange();
+    const valores = { 'sl-fecha': String(registro.performed_at).slice(0,10), 'sl-km': registro.km_at_service, 'sl-horas': registro.hours_at_service, 'sl-costo': registro.cost, 'sl-taller': registro.workshop_name, 'sl-notas': registro.notes };
+    Object.entries(valores).forEach(([id, value]) => { document.getElementById(id).value = value ?? ''; });
+    calcNextService();
+  }
+  const save = document.getElementById('btn-guardar-service');
+  if (save) save.textContent = registro ? 'Guardar cambios' : 'Guardar service';
   validateServiceForm();
   openModal('modal-service-log');
 }
@@ -5307,21 +5329,24 @@ function validateServiceForm() {
 
 
 async function guardarServiceLog() {
+  if (_serviceSaving) return;
   const planId  = document.getElementById('sl-plan')?.value;
   const { needsKm, needsHrs } = _slNeeds();
   const km      = parseInt(document.getElementById('sl-km')?.value);
   const hrs     = parseInt(document.getElementById('sl-horas')?.value);
   const fecha   = document.getElementById('sl-fecha')?.value;
   const taller  = document.getElementById('sl-taller')?.value || null;
-  const costo   = parseFloat(document.getElementById('sl-costo')?.value) || null;
+  const costoTexto = document.getElementById('sl-costo')?.value?.trim();
+  const costo = costoTexto ? Number(costoTexto) : null;
   const notas   = document.getElementById('sl-notas')?.value || null;
 
+  if (!fecha) { _modalError('sl-error', 'Ingresá la fecha del service'); return; }
   if (!planId)           { _modalError('sl-error', 'Seleccioná el plan de service'); return; }
   if (needsKm && (!km || isNaN(km))) { _modalError('sl-error', 'Ingresá los KM al realizar el service'); return; }
   if (needsKm && km <= 0)            { _modalError('sl-error', 'Los KM deben ser un valor positivo mayor a cero'); return; }
   if (needsHrs && (!hrs || isNaN(hrs))) { _modalError('sl-error', 'Ingresá las horas de motor al realizar el service'); return; }
   if (needsHrs && hrs <= 0)             { _modalError('sl-error', 'Las horas deben ser un valor positivo mayor a cero'); return; }
-  if (costo !== null && costo < 0) { _modalError('sl-error', 'El costo no puede ser negativo'); return; }
+  if (costo !== null && (!Number.isFinite(costo) || costo < 0)) { _modalError('sl-error', 'El costo debe ser un número igual o mayor a cero'); return; }
   _modalError('sl-error', '');
 
   if (needsKm && _truckActual?.current_km) {
@@ -5342,7 +5367,9 @@ async function guardarServiceLog() {
   if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; btn.style.pointerEvents = 'none'; }
 
   // NUEVO: Enviamos master_plan_id y recibimos la respuesta estandarizada
-  const resultado = await registrarServiceOptimizado({
+  _serviceSaving = true;
+  const guardar = _serviceEditId ? datos => modificarServiceRealizado(_serviceEditId, _truckActual.truck_id, datos) : registrarServiceOptimizado;
+  const resultado = await guardar({
     truck_id:         _truckActual.truck_id,
     master_plan_id:   parseInt(planId),
     performed_at:     fecha || new Date().toLocaleDateString('sv-SE'),
@@ -5355,10 +5382,11 @@ async function guardarServiceLog() {
     notes:            notas,
   });
 
-  if (btn) { btn.textContent = '🔧 Guardar service'; btn.style.pointerEvents = 'auto'; validateServiceForm(); }
+  _serviceSaving = false;
+  if (btn) { btn.textContent = _serviceEditId ? 'Guardar cambios' : 'Guardar service'; btn.style.pointerEvents = 'auto'; validateServiceForm(); }
 
   if (resultado.ok) {
-    toast('Service registrado correctamente', 'success');
+    toast(_serviceEditId ? 'Service actualizado correctamente' : 'Service registrado correctamente', 'success');
     closeModal('modal-service-log');
     
     await _refrescarPlanesCamion();
