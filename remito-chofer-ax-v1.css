@@ -28,6 +28,15 @@
 #remitos-nuevo .p3-remito-context { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #remitos-nuevo .p3-remito-context b { color: var(--ax-text); font-family: var(--ax-font-mono); font-weight: var(--ax-fw-medium); }
 
+/* Un solo scroll: el de la pantalla del remito (que es fija y ocupa todo el
+   alto). El paso no se recorta con un alto propio —antes uno calculado a ojo
+   se pasaba de la pantalla y el último campo, los km del remito sin
+   asignación, quedaba tapado por la botonera y no se llegaba a ver— y deja
+   lugar al final para la botonera fija. La cabecera queda arriba a la vista. */
+#remitos-nuevo.rmv-flow { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+#remitos-nuevo.rmv-flow .rem-wizard-header { position: sticky; top: 0; z-index: 25; background: var(--ax-bg); }
+#remitos-nuevo .rem-step-panel.active { max-height: none !important; overflow: visible !important; padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+
 /* El paso que entra: desde el lado hacia el que se avanza. */
 #remitos-nuevo .rem-step-panel.rmx-enter-next { animation: rmx-enter-next var(--ax-dur-slow) var(--ax-ease-out) both; }
 #remitos-nuevo .rem-step-panel.rmx-enter-prev { animation: rmx-enter-prev var(--ax-dur-slow) var(--ax-ease-out) both; }
@@ -59,6 +68,11 @@
 #remitos-nuevo .rmv-fields label.rmv-no-phone input { width: 20px; height: 20px; accent-color: var(--ax-accent); }
 #remitos-nuevo .rmv-map-suggestions { padding: var(--ax-sp-1); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
 #remitos-nuevo .rmv-map-status { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+/* Los km del remito sin asignación se calculan solos: es un dato para leer, no
+   un campo apagado. Número grande y la confirmación en verde. */
+#remitos-nuevo.rmv-ad-hoc-flow #rem-km[readonly] { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); font: var(--ax-fw-semibold) 22px var(--ax-font-mono); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+#remitos-nuevo .rmv-map-status.ok { color: var(--ax-ok); font-weight: var(--ax-fw-semibold); }
+#remitos-nuevo .rmv-map-status.error { color: var(--ax-danger); }
 
 /* ── Peajes y excedentes ───────────────────────────────────────────── */
 #remitos-nuevo .rem-addons-v2 { gap: var(--ax-sp-3); }
@@ -66,6 +80,23 @@
 #remitos-nuevo .rem-toll-coverage-line { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
 #remitos-nuevo .rem-toll-coverage-line span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
 #remitos-nuevo .rem-toll-coverage-line strong { color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+/* Cabecera de cada tarjeta: título y, en peajes, el formato de cobro como una etiqueta corta. */
+#remitos-nuevo .rem-sr-only, #rem-addon-picker .rem-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#remitos-nuevo .rem-addons-card .rem-addons-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-1); }
+#remitos-nuevo .rem-toll-coverage-pill { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: var(--ax-surface); white-space: nowrap; }
+#remitos-nuevo .rem-toll-coverage-pill strong { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#remitos-nuevo .rem-addons-card > .rem-addons-help { margin: 0 0 var(--ax-sp-3); color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#remitos-nuevo .rem-addons-card .rem-addon-summary-lines:empty { display: none; }
+#remitos-nuevo .rem-addons-card .rem-addon-total { margin: 0 0 var(--ax-sp-2); }
+#remitos-nuevo .rem-addons-card .rem-addon-select { margin: var(--ax-sp-2) 0 0; }
+#remitos-nuevo .rem-addons-card .rem-addon-total[hidden] { display: none; }
+#remitos-nuevo .rem-addon-select.is-edit::before { content: none; }
+#remitos-nuevo .rem-addon-summary-line > span { display: grid; gap: 1px; min-width: 0; }
+#remitos-nuevo .rem-addon-summary-line .rem-addon-line-name { overflow: hidden; color: var(--ax-text); font-weight: var(--ax-fw-medium); text-overflow: ellipsis; white-space: nowrap; }
+#remitos-nuevo .rem-addon-summary-line .rem-addon-line-name i { font-style: normal; }
+#remitos-nuevo .rem-addon-summary-line small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#remitos-nuevo .rem-addon-summary-line > strong { flex: 0 0 auto; }
+#remitos-nuevo .rem-qty-badge, #rem-addon-picker .rem-qty-badge { color: var(--ax-accent); font-weight: var(--ax-fw-bold); font-variant-numeric: tabular-nums; }
 /* "Seleccionar peajes / excedentes": botón secundario grande (no un bloque ámbar). */
 #remitos-nuevo .rem-addon-select { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--ax-h-lg); margin-bottom: var(--ax-sp-2); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-family: var(--ax-font); font-size: 15px; font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
 #remitos-nuevo .rem-addon-select::before { content: '+'; margin: 0; color: var(--ax-accent); font-size: 20px; font-weight: var(--ax-fw-regular); line-height: 1; }
@@ -91,9 +122,22 @@
 #rem-addon-picker .rem-picker-option b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
 #rem-addon-picker .rem-picker-option small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #rem-addon-picker .rem-picker-option > strong { color: var(--ax-text); font-size: var(--ax-fs-md); font-variant-numeric: tabular-nums; }
+/* Fila de selección: [casilla] Nombre / Precio sugerido debajo · a la derecha, las pasadas − 1 +. */
+#rem-addon-picker .rem-picker-option { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-2); cursor: default; }
+#rem-addon-picker .rem-picker-pick { display: flex; flex: 1 1 auto; align-items: center; gap: 12px; min-width: 0; cursor: pointer; }
+#rem-addon-picker .rem-picker-pick input { flex: 0 0 auto; width: 22px; height: 22px; margin: 0; }
+#rem-addon-picker .rem-picker-pick > span { display: grid; gap: 2px; min-width: 0; }
+#rem-addon-picker .rem-picker-option.is-disabled { opacity: .55; }
+#rem-addon-picker .rem-qty { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: var(--ax-surface); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#rem-addon-picker .rem-qty[hidden] { display: none; }
+#rem-addon-picker .rem-qty button { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 999px; background: var(--ax-surface-3); color: var(--ax-text); font: var(--ax-fw-semibold) 20px var(--ax-font); line-height: 1; cursor: pointer; }
+#rem-addon-picker .rem-qty button:disabled { opacity: .35; cursor: default; }
+#rem-addon-picker .rem-qty button:not(:disabled):active { transform: scale(.94); }
+#rem-addon-picker .rem-qty output { min-width: 22px; color: var(--ax-text); font: var(--ax-fw-bold) var(--ax-fs-md) var(--ax-font); text-align: center; font-variant-numeric: tabular-nums; }
 #rem-addon-picker .rem-picker-detail { padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
 #rem-addon-picker .rem-picker-detail-head b { font-size: var(--ax-fs-md); }
 #rem-addon-picker .rem-picker-detail-head small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#rem-addon-picker .rem-picker-detail-head { display: grid; justify-content: start; gap: 2px; }
 #rem-addon-picker .rem-picker-fields label span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); letter-spacing: 0; text-transform: none; }
 #rem-addon-picker .rem-picker-fields input, #rem-addon-picker .rem-picker-fields select { min-height: 48px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: 16px; }
 #rem-addon-picker .rem-picker-fields input:focus, #rem-addon-picker .rem-picker-fields select:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
