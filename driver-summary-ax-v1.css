@@ -1,0 +1,108 @@
+/* Resumen del chofer (driver-summary-v1.js). Una columna en el celular; en la
+   computadora, plata y actividad lado a lado. Todo bajo #dash-view-rendimiento. */
+
+/* Lo viejo se oculta cuando el resumen nuevo está activo. */
+#dash-view-rendimiento.drs-on > .dash-section,
+#dash-view-rendimiento.drs-on #dash-rend-fin,
+#dash-view-rendimiento.drs-on #dash-rend-op-wrap,
+#dash-view-rendimiento.drs-on #dash-alertas-pers-card,
+#dash-view-rendimiento.drs-on #dash-rend-comparado,
+#dash-view-rendimiento.drs-on #metrics-loading,
+#dash-view-rendimiento.drs-on #dash-emergencias-quick,
+#dash-view-rendimiento.drs-on > .card:has(#dash-evolucion-chart) { display: none !important; }
+
+/* Mes: una sola línea, compacta, con SOS a la derecha. */
+#dash-view-rendimiento.drs-on .dash-month-navigation { justify-content: flex-start; gap: var(--ax-sp-2); margin: var(--ax-sp-1) 0 var(--ax-sp-3); }
+#dash-view-rendimiento.drs-on .dash-month-navigation button:not(.drs-sos) { width: 40px; height: 40px; }
+#dash-view-rendimiento.drs-on .dash-month-current { flex-direction: row; align-items: baseline; justify-content: center; gap: 6px; min-width: 0; text-transform: capitalize; }
+#dash-view-rendimiento.drs-on .dash-month-current span:first-child { font: var(--ax-fw-bold) var(--ax-fs-xl) var(--ax-font); color: var(--ax-text); }
+#dash-view-rendimiento.drs-on .dash-month-current span:last-child { font-size: var(--ax-fs-md); color: var(--ax-text-3); }
+#dash-view-rendimiento .drs-sos { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: 52px; height: 36px; padding: 0 12px; border: 1px solid var(--ax-danger); border-radius: var(--ax-radius-pill); background: var(--ax-danger-soft); color: var(--ax-danger); font: var(--ax-fw-bold) var(--ax-fs-sm) var(--ax-font); letter-spacing: .06em; cursor: pointer; }
+#dash-view-rendimiento .drs-sos:focus-visible { outline: 2px solid var(--ax-focus); outline-offset: 2px; }
+
+#drs-root { display: grid; gap: var(--ax-sp-3); padding-bottom: var(--ax-sp-6); }
+#drs-root .ax-icon { width: 16px; height: 16px; flex: 0 0 auto; }
+#drs-root .drs-card { min-width: 0; padding: var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#drs-root .drs-card > header { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); }
+#drs-root h3 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#drs-root h3 .ax-icon { color: var(--ax-text-3); }
+#drs-root small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* Avisos (los mismos de siempre, más compactos). */
+#drs-root .drs-avisos { display: grid; gap: var(--ax-sp-2); border-color: var(--ax-warn); background: var(--ax-warn-soft); }
+#drs-root .drs-avisos h3 .ax-icon { color: var(--ax-warn); }
+#drs-root .drs-aviso { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); width: 100%; min-height: 48px; padding: 8px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text); text-align: left; font: inherit; cursor: pointer; }
+#drs-root .drs-aviso span { display: grid; gap: 2px; min-width: 0; }
+#drs-root .drs-aviso b { font-size: var(--ax-fs-md); }
+#drs-root .drs-aviso small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#drs-root .drs-aviso em { display: inline-flex; align-items: center; gap: 2px; color: var(--ax-warn); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
+#drs-root .drs-aviso.is-danger em { color: var(--ax-danger); }
+
+/* Mi plata del mes */
+#drs-root .drs-total { display: grid; gap: 2px; margin-bottom: var(--ax-sp-3); }
+#drs-root .drs-total b { color: var(--ax-text); font: var(--ax-fw-bold) var(--ax-fs-2xl) var(--ax-font-mono); letter-spacing: -.01em; }
+#drs-root .drs-medios { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); }
+#drs-root .drs-medios div { display: grid; gap: 2px; min-width: 0; padding: 8px 10px; border-radius: var(--ax-radius); background: var(--ax-surface-2); }
+#drs-root .drs-medios b { overflow: hidden; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font-mono); text-overflow: ellipsis; white-space: nowrap; }
+#drs-root .drs-rendir { padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); }
+#drs-root .drs-rendir.is-pending { border-color: var(--ax-warn); background: var(--ax-warn-soft); }
+#drs-root .drs-rendir-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ax-sp-2); }
+#drs-root .drs-rendir-head b { color: var(--ax-text); font-size: var(--ax-fs-md); }
+#drs-root .drs-rendir-head strong { font: var(--ax-fw-bold) var(--ax-fs-xl) var(--ax-font-mono); color: var(--ax-ok); }
+#drs-root .drs-rendir.is-pending .drs-rendir-head strong { color: var(--ax-warn); }
+#drs-root .drs-bar { height: 6px; margin: var(--ax-sp-2) 0; border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); overflow: hidden; }
+#drs-root .drs-bar i { display: block; height: 100%; border-radius: inherit; background: var(--ax-ok); }
+#drs-root dl { display: grid; gap: 6px; margin: 0; }
+#drs-root dl div { display: flex; justify-content: space-between; gap: var(--ax-sp-2); }
+#drs-root dt { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#drs-root dd { margin: 0; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); white-space: nowrap; }
+
+/* Mi mes: 2 × 2 (si son 3, el tercero ocupa toda la fila). */
+#drs-root .drs-mes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
+#drs-root .drs-mes[data-n="3"] .drs-tile:last-child { grid-column: 1 / -1; }
+#drs-root .drs-tile { display: grid; gap: 4px; min-width: 0; padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#drs-root .drs-tile > small { display: flex; align-items: center; gap: 6px; }
+#drs-root .drs-tile .ax-icon { width: 14px; height: 14px; }
+#drs-root .drs-tile b { overflow: hidden; color: var(--ax-text); font: var(--ax-fw-bold) var(--ax-fs-xl) var(--ax-font-mono); text-overflow: ellipsis; white-space: nowrap; }
+#drs-root .drs-delta { font-size: var(--ax-fs-xs); }
+#drs-root .drs-delta.up { color: var(--ax-ok); }
+#drs-root .drs-delta.down { color: var(--ax-danger); }
+
+/* Actividad por día: barras propias (sin librería, anda sin conexión). */
+#drs-root .drs-seg { display: inline-flex; padding: 2px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-pill); background: var(--ax-surface-2); }
+#drs-root .drs-seg button { min-height: 32px; padding: 0 12px; border: 0; border-radius: var(--ax-radius-pill); background: none; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#drs-root .drs-seg button[aria-pressed="true"] { background: var(--ax-surface-3); color: var(--ax-text); }
+#drs-root .drs-barras { display: grid; grid-template-columns: repeat(var(--drs-dias), minmax(0, 1fr)); gap: 2px; align-items: end; height: 132px; }
+#drs-root .drs-dia { display: grid; grid-template-rows: 1fr 16px; align-items: end; height: 100%; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+#drs-root .drs-dia i { display: block; width: 100%; min-height: 2px; border-radius: 3px 3px 1px 1px; background: var(--ax-text-3); opacity: .55; }
+#drs-root .drs-dia.is-libre i { height: 2px !important; background: var(--ax-border); }
+#drs-root .drs-dia.is-hoy i { background: var(--ax-accent); opacity: 1; }
+#drs-root .drs-dia.is-sel i { background: var(--ax-text); opacity: 1; }
+#drs-root .drs-dia span { color: var(--ax-text-3); font: var(--ax-fs-xs) var(--ax-font-mono); text-align: center; }
+#drs-root .drs-dia:focus-visible { outline: 2px solid var(--ax-focus); outline-offset: 1px; border-radius: 3px; }
+#drs-root .drs-dia-detalle { margin: var(--ax-sp-2) 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); text-align: center; }
+
+/* Mi camión (cerrado por defecto). */
+#drs-root .drs-camion { padding: 0; }
+#drs-root .drs-camion summary { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 var(--ax-sp-4); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; list-style: none; }
+#drs-root .drs-camion summary::-webkit-details-marker { display: none; }
+#drs-root .drs-camion summary small { margin-left: auto; font-weight: var(--ax-fw-regular); }
+#drs-root .drs-camion summary .ax-icon:last-child { transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#drs-root .drs-camion[open] summary .ax-icon:last-child { transform: rotate(180deg); }
+#drs-root .drs-camion dl { padding: 0 var(--ax-sp-4) var(--ax-sp-4); }
+
+#drs-root .drs-error { color: var(--ax-text-2); text-align: center; }
+#drs-root .drs-skel { height: 180px; border-radius: var(--ax-radius-lg); background: linear-gradient(90deg, var(--ax-surface) 0%, var(--ax-surface-2) 50%, var(--ax-surface) 100%); background-size: 200% 100%; animation: drs-skel 1.2s linear infinite; }
+#drs-root .drs-skel.short { height: 110px; }
+@keyframes drs-skel { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { #drs-root .drs-skel { animation: none; } }
+
+/* Computadora: plata y actividad lado a lado. */
+@media (min-width: 900px) {
+  #drs-root { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  #drs-root .drs-avisos, #drs-root .drs-mes { grid-column: 1 / -1; }
+  #drs-root .drs-avisos { order: -2; }
+  #drs-root .drs-mes { order: -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #drs-root .drs-mes[data-n="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #drs-root .drs-mes[data-n="3"] .drs-tile:last-child { grid-column: auto; }
+}

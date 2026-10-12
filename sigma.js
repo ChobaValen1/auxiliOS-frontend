@@ -2969,6 +2969,12 @@ async function _cargarViewRendimientoDatos() {
   const cmpLbl = document.getElementById('dash-rend-comparado');
   if (cmpLbl) cmpLbl.textContent = `vs. ${periodoAnt.label}`;
 
+  // Resumen nuevo del chofer (driver-summary-v1.js): una sola consulta con la
+  // cuenta de efectivo de Sueldos. Lo de abajo queda sólo si el módulo no cargó.
+  if (window.AuxiliosDriverSummary?.render) {
+    return window.AuxiliosDriverSummary.render({ driverId: targetUserId, mes: _rendMes, esChofer, isCurrent: () => request === _rendRequest });
+  }
+
   // Fetch separado del render para cachearlo (Fase 3 offline — solo chofer)
   const fnOnlineRend = async () => {
     const [datos, jornadas, alertasPers, datosAnt] = await Promise.all([
