@@ -138,6 +138,8 @@
       if (info && info.driver_activated) return abrirPrestadora(intake);
       // Si el chofer ya lo marcó como Particular, se abre directo ese formulario.
       if (info && info.client_kind === 'particular') return abrirParticular(id);
+      // Si lo marcó como Prestadora, también: no se vuelve a preguntar.
+      if (info && info.client_kind === 'prestadora') { ocultarCuentaEnPrestadoras(); return abrirPrestadora(intake); }
       return elegirTipo(id);
     }
     elegirTipo();

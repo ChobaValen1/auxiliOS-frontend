@@ -1606,7 +1606,7 @@ function mostrarPantallaLogin() {
             <label for="login-pass">Contraseña</label>
             <div style="position:relative">
               <input id="login-pass" class="form-input" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding-right:42px" onkeydown="if(event.key==='Enter')ejecutarLogin()">
-              <button type="button" onclick="toggleLoginPassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1" id="login-pass-toggle">👁</button>
+              <button type="button" onclick="toggleLoginPassword()" class="login-pass-toggle" id="login-pass-toggle" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#eye"/></svg></button>
             </div>
           </div>
           <button id="login-btn" class="btn btn-primary" onclick="ejecutarLogin()" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:8px">Ingresar →</button>
@@ -1624,8 +1624,14 @@ function toggleLoginPassword() {
   const input = document.getElementById('login-pass');
   const btn   = document.getElementById('login-pass-toggle');
   if (!input) return;
-  if (input.type === 'password') { input.type = 'text'; if (btn) btn.textContent = '🙈'; }
-  else                           { input.type = 'password'; if (btn) btn.textContent = '👁'; }
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  if (!btn) return;
+  const label = show ? 'Ocultar contraseña' : 'Mostrar contraseña';
+  btn.setAttribute('aria-pressed', String(show));
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+  btn.querySelector('use')?.setAttribute('href', '/ui/icons.svg#' + (show ? 'eye-off' : 'eye'));
 }
 
 // ── RATE LIMITING LOGIN ───────────────────────────────────────

@@ -3568,6 +3568,16 @@ body {
   margin: 0 auto 12px;
 }
 #pantalla-login .login-field { margin-bottom: 14px; }
+#pantalla-login .login-pass-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px;
+  background: none; color: var(--muted); cursor: pointer;
+}
+#pantalla-login .login-pass-toggle .ax-icon { width: 18px; height: 18px; }
+#pantalla-login .login-pass-toggle:hover,
+#pantalla-login .login-pass-toggle[aria-pressed="true"] { color: var(--text); }
+#pantalla-login .login-pass-toggle:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
 #pantalla-login .login-password-field { margin-bottom: 22px; }
 #pantalla-login .login-field > label {
   display: block;

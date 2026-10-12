@@ -65,6 +65,43 @@
 #screen-operaciones .os-intakes > summary b, #screen-operaciones .os-intakes > summary small { white-space: normal; }
 #screen-operaciones .os-intakes > summary strong { flex: 0 0 auto; color: var(--ax-warn); font: var(--ax-fw-bold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
 
+/* Lista: una fila por ingreso que entra completa en 1366 px; en el celular, tarjetas. */
+#screen-operaciones .os-intake-list { overflow: visible; max-height: none; background: var(--ax-surface-2); border-radius: 0 0 var(--ax-radius-lg) var(--ax-radius-lg); }
+#screen-operaciones .osi-head, #screen-operaciones .osi-row { display: grid; grid-template-columns: 128px minmax(0, 2fr) minmax(0, 1.2fr) 112px 104px 160px 142px; gap: var(--ax-sp-3); align-items: center; padding: 10px 14px; }
+#screen-operaciones .osi-head { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-operaciones .osi-row { border-bottom: 1px solid var(--ax-border); }
+#screen-operaciones .osi-row:last-child { border-bottom: 0; }
+#screen-operaciones .osi-row:hover { background: var(--ax-surface-3); }
+#screen-operaciones .osi-cell { display: grid; gap: 3px; min-width: 0; }
+#screen-operaciones .osi-cell b, #screen-operaciones .osi-cell small, #screen-operaciones .osi-place { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#screen-operaciones .osi-cell b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-operaciones .osi-cell small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-operaciones .osi-id b { font-family: var(--ax-font-mono); }
+#screen-operaciones .osi-id small:last-child { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-operaciones .osi-place { position: relative; padding-left: 16px; color: var(--ax-text); font-size: var(--ax-fs-md); }
+#screen-operaciones .osi-place i { position: absolute; left: 2px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; border: 2px solid var(--ax-text-2); }
+#screen-operaciones .osi-place i.to { border-radius: 2px; background: var(--ax-text-2); }
+#screen-operaciones .osi-charges b { font-family: var(--ax-font-mono); }
+#screen-operaciones .osi-state { justify-items: start; }
+#screen-operaciones .osi-kind { color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-operaciones .osi-status { display: inline-flex; align-items: center; gap: 6px; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
+#screen-operaciones .osi-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-text-3); }
+#screen-operaciones .osi-status.ready { color: var(--ax-warn); }
+#screen-operaciones .osi-status.ready::before { background: var(--ax-warn); }
+#screen-operaciones .osi-action { justify-items: end; }
+#screen-operaciones .osi-action .btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+#screen-operaciones .osi-action .ax-icon { width: 15px; height: 15px; }
+#screen-operaciones .osi-wait { color: var(--ax-text-3) !important; text-align: right; white-space: normal !important; }
+@media (max-width: 1100px) {
+  #screen-operaciones .osi-head { display: none; }
+  #screen-operaciones .osi-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "id state" "route route" "client driver" "charges action"; gap: 10px var(--ax-sp-3); padding: 12px 14px; }
+  #screen-operaciones .osi-id { grid-area: id; } #screen-operaciones .osi-route { grid-area: route; } #screen-operaciones .osi-client { grid-area: client; }
+  #screen-operaciones .osi-driver { grid-area: driver; } #screen-operaciones .osi-charges { grid-area: charges; } #screen-operaciones .osi-state { grid-area: state; justify-items: end; } #screen-operaciones .osi-action { grid-area: action; align-self: end; }
+  #screen-operaciones .osi-place { white-space: normal; }
+}
+#os-intake-link .os-intake-hint { margin: 0 12px; color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: 1.45; }
+#os-intake-link .os-intake-summary small + small { color: var(--ax-text-3); }
+
 /* ── Tabla ─────────────────────────────────────────────────────────── */
 #screen-operaciones .os-table-wrap { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
 /* Anchos fijos por columna: con letra legible no entra todo en 1366 px, así que la

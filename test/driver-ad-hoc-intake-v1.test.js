@@ -78,7 +78,8 @@ test('la mesa de ingresos expone por RPC el resumen operativo y de facturación'
   }
   assert.match(intakeWorkspace,/coalesce\(r\.km_reales,tr\.km_traveled,0\)/);
   assert.match(intakeWorkspace,/revoke all on function public\.list_driver_service_intakes_v2\(integer\) from public,anon/);
-  assert.match(services,/Código<\/span><span>Fecha<\/span><span>Origen<\/span><span>Destino<\/span><span>Km<\/span><span>Cliente<\/span><span>Chofer/);
+  assert.match(services,/<span>Servicio<\/span><span>Recorrido<\/span><span>Cliente y vehículo<\/span><span>Chofer<\/span><span>Cargos<\/span>/);
+  for(const key of ['service_code','km_traveled','customer_name','driver_name','truck_label','toll_total','excess_total'])assert.match(services,new RegExp(`i\\.${key}`));
 });
 
 test('el mismo contrato viaja por pendiente firma completa y outbox',()=>{
