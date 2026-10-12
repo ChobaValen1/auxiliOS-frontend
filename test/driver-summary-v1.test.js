@@ -66,3 +66,52 @@ test('la base cuenta el efectivo igual que Sueldos y cada chofer ve sólo lo suy
   assert.match(sql, /revoke all on function app_private\.driver_month_ops_v1\(uuid, date\) from public, anon, authenticated;/);
   assert.doesNotMatch(sql, /\b(insert|update|delete)\s+(into\s+)?public\./i);
 });
+
+test('Hoy: jornada abierta con Finalizar, o Iniciar jornada; y los servicios asignados', () => {
+  const ctx = { window: { AuxiliosPhase3: { queue: [{ status: 'assigned', service_order_number: 'QA-1', company_name: 'QA', origin: 'A', destination: 'B' }, { status: 'completed' }] } }, document: { getElementById: () => null, querySelector: () => null }, Intl, console };
+  vm.runInNewContext(src, ctx);
+  const t = ctx.window.AuxiliosDriverSummary._test;
+  t.S.esChofer = true;
+  const mes = new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit' }).format(new Date()).slice(0, 7);
+  const sin = t.hoyHTML(DATA, mes);
+  assert.match(sin, /Sin jornada abierta/);
+  assert.match(sin, /onclick="abrirModalNuevaJornada\(\)"/);
+  assert.match(sin, /1 servicio asignado/);
+  assert.match(sin, /QA-1 · QA/);
+  // Otro mes, o quien no es chofer: no hay "Hoy".
+  assert.equal(t.hoyHTML(DATA, '2020-01'), '');
+  t.S.esChofer = false;
+  assert.equal(t.hoyHTML(DATA, mes), '');
+  assert.match(src, /onclick="mostrarDialogoTaller\(\)">\$\{ico\('square'\)\}Finalizar/);
+});
+
+test('Tenés pendiente suma el efectivo por rendir y abre el detalle por jornada', () => {
+  const t = load();
+  const d = { ...DATA, efectivo: { ...DATA.efectivo, dias: [{ fecha: '2026-10-08', cobrado: 95600, gastos: 0, rendido: 0, pendiente: 95600 }, { fecha: '2026-10-03', pendiente: 0 }] } };
+  const html = t.pendienteHTML([{ title: 'Licencia por vencer', detail: 'x', cta: 'Ver', target: 'documentos' }], d);
+  assert.match(html, /Tenés pendiente/);
+  assert.match(html, /Efectivo por rendir · \$95\.600/);
+  assert.match(html, /1 jornada con efectivo sin rendir/);
+  assert.match(html, /data-drs-accion="rendir"/);
+  assert.match(html, /Licencia por vencer/);
+  assert.equal(t.pendienteHTML([], { efectivo: { pendiente: 0 } }), '');
+  assert.match(src, /openModal\('modal-desglose-pago'\)/);
+});
+
+test('Últimos servicios: estado del remito y acceso a todos', () => {
+  const t = load();
+  const html = t.ultimosHTML({ ultimos: [{ patente: 'AF234LO', origen: 'A', destino: 'B', status: 'firmado', creado: '2026-10-12T17:09:22Z', km: 86 }, { patente: 'AB1', status: 'pendiente' }] });
+  assert.match(html, /<b>AF234LO<\/b><small>A → B<\/small>/);
+  assert.match(html, /drs-pill ok">Firmado/);
+  assert.match(html, /drs-pill warn">Sin firmar/);
+  assert.match(html, /Ver todos los remitos/);
+  assert.match(t.ultimosHTML({ ultimos: [] }), /Todavía no hay servicios este mes/);
+});
+
+test('una cuenta suspendida no entra, ni con sesión guardada ni con contraseña', () => {
+  const supa = read('supabase.js');
+  assert.match(supa, /const _MSG_CUENTA_SUSPENDIDA = 'Esta cuenta está suspendida\. Consultá con Administración\.';/);
+  assert.match(supa, /function _cuentaSuspendida\(\) \{ return !!PERFIL_USUARIO && PERFIL_USUARIO\.is_active === false; \}/);
+  assert.equal((supa.match(/if \(_cuentaSuspendida\(\)\) \{/g) || []).length, 3);
+  assert.match(supa, /throw Object\.assign\(new Error\(_MSG_CUENTA_SUSPENDIDA\), \{ loginMessage: true \}\);/);
+});

@@ -39,12 +39,77 @@
     return `<small class="drs-delta ${tono}">${esc(texto)}</small>`;
   }
 
-  function avisosHTML(alertas) {
-    if (!alertas || !alertas.length) return '';
-    return `<section class="drs-card drs-avisos" aria-label="Avisos"><h3>${ico('triangle-alert')}Avisos</h3>${alertas.map(a => {
+  /* Tenés pendiente: los avisos de siempre más el efectivo por rendir. Cada
+     renglón lleva a donde se resuelve. */
+  function pendienteHTML(alertas, d) {
+    const items = [];
+    const pend = n0(d?.efectivo?.pendiente);
+    if (pend > 0) {
+      const dias = (d.efectivo.dias || []).filter(x => n0(x.pendiente) > 0).length;
+      items.push(`<button type="button" class="drs-aviso" data-drs-accion="rendir"><span><b>Efectivo por rendir · ${money(pend)}</b><small>${dias ? `${dias} jornada${dias === 1 ? '' : 's'} con efectivo sin rendir` : 'Revisá tus rendiciones'}</small></span><em>Ver días${ico('chevron-right')}</em></button>`);
+    }
+    (alertas || []).forEach(a => {
       const params = esc(JSON.stringify({ target: a.target, tab: a.tab || null, filtro: a.filtro || null }));
-      return `<button type="button" class="drs-aviso ${a.sev === 'critico' ? 'is-danger' : ''}" onclick="_dashAlertaGo(${params})"><span><b>${esc(a.title)}</b><small>${esc(a.detail)}</small></span><em>${esc(a.cta || 'Ver')}${ico('chevron-right')}</em></button>`;
-    }).join('')}</section>`;
+      items.push(`<button type="button" class="drs-aviso ${a.sev === 'critico' ? 'is-danger' : ''}" onclick="_dashAlertaGo(${params})"><span><b>${esc(a.title)}</b><small>${esc(a.detail)}</small></span><em>${esc(a.cta || 'Ver')}${ico('chevron-right')}</em></button>`);
+    });
+    if (!items.length) return '';
+    return `<section class="drs-card drs-avisos" aria-label="Tenés pendiente"><h3>${ico('triangle-alert')}Tenés pendiente</h3>${items.join('')}</section>`;
+  }
+
+  /* Hoy: la jornada abierta (o el botón para iniciarla) y los servicios
+     asignados. Sólo para el chofer y en el mes actual. */
+  function hoyHTML(d, mes) {
+    if (!S.esChofer || mes !== hoyLocal().slice(0, 7)) return '';
+    const j = typeof _jornadaActivaLocal !== 'undefined' ? _jornadaActivaLocal : null;
+    const P3 = window.AuxiliosPhase3 || {};
+    const asignados = (P3.queue || []).filter(x => ['assigned', 'at_origin'].includes(x.status));
+    const borradores = (P3.adHocDrafts || []).length;
+    let jornada;
+    if (j && j.log_id) {
+      const dia = (d.mes?.por_dia || []).find(x => String(x.fecha).slice(0, 10) === String(j.log_date || '').slice(0, 10));
+      const hora = String(j.hora_inicio || '').slice(0, 5);
+      const datos = [hora && `desde las ${hora}`, j.patente && `móvil ${j.patente}`, j.km_inicio != null && `${entero(j.km_inicio)} km al iniciar`].filter(Boolean).join(' · ');
+      jornada = `<div class="drs-hoy-jornada is-open"><span class="drs-dot" aria-hidden="true"></span><div><b>Jornada abierta</b><small>${esc(datos)}</small>${dia ? `<small>${entero(dia.servicios)} servicio${n0(dia.servicios) === 1 ? '' : 's'} en esta jornada</small>` : ''}</div>
+        <button type="button" class="btn btn-ghost" onclick="mostrarDialogoTaller()">${ico('square')}Finalizar</button></div>`;
+    } else {
+      jornada = `<div class="drs-hoy-jornada"><span class="drs-dot" aria-hidden="true"></span><div><b>Sin jornada abierta</b><small>Iniciala para cargar servicios y km</small></div>
+        <button type="button" class="btn btn-primary" onclick="abrirModalNuevaJornada()">${ico('play')}Iniciar jornada</button></div>`;
+    }
+    let servicios = '';
+    if (asignados.length || borradores) {
+      const s0 = asignados[0];
+      const ruta = s0 ? [s0.origin, s0.destination].filter(Boolean).join(' → ') : '';
+      const titulo = asignados.length
+        ? `${asignados.length} servicio${asignados.length === 1 ? '' : 's'} asignado${asignados.length === 1 ? '' : 's'}`
+        : `${borradores} remito${borradores === 1 ? '' : 's'} sin terminar`;
+      servicios = `<button type="button" class="drs-hoy-servicio" onclick="goTo('remitos')"><span>${ico('navigation')}</span><div><b>${esc(titulo)}</b>${s0 ? `<small>${esc([s0.service_order_number, s0.company_name].filter(Boolean).join(' · '))}</small>${ruta ? `<small>${esc(ruta)}</small>` : ''}` : '<small>Tocá para completarlos</small>'}</div>${ico('chevron-right')}</button>`;
+    }
+    return `<section class="drs-card drs-hoy" aria-labelledby="drs-hoy-t"><header><h3 id="drs-hoy-t">${ico('calendar-clock')}Hoy</h3></header>${jornada}${servicios}</section>`;
+  }
+
+  function ultimosHTML(d) {
+    const rows = d.ultimos || [];
+    const fecha = v => v ? new Date(v).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    return `<section class="drs-card drs-ultimos" aria-labelledby="drs-ult-t"><header><h3 id="drs-ult-t">${ico('file-text')}Últimos servicios</h3></header>
+      ${rows.length ? `<ul>${rows.map(r => `<li><div><b>${esc(r.patente || r.nro_servicio || r.nro_remito || 'Servicio')}</b><small>${esc([r.origen, r.destino].filter(Boolean).join(' → ') || 'Sin recorrido')}</small></div>
+        <div class="drs-ult-meta"><span class="drs-pill ${r.status === 'firmado' ? 'ok' : 'warn'}">${r.status === 'firmado' ? 'Firmado' : 'Sin firmar'}</span><small>${esc(fecha(r.creado))}${r.km != null ? ` · ${entero(r.km)} km` : ''}</small></div></li>`).join('')}</ul>`
+        : '<p class="drs-vacio">Todavía no hay servicios este mes.</p>'}
+      <button type="button" class="drs-link" onclick="goTo('remitos')">Ver todos los remitos${ico('chevron-right')}</button></section>`;
+  }
+
+  /* Detalle del efectivo por jornada (lo que falta rendir día por día). */
+  function abrirDiasRendir() {
+    const d = S.ultimo?.data;
+    const body = document.getElementById('modal-desglose-body');
+    const titulo = document.getElementById('modal-desglose-titulo');
+    if (!d || !body) return;
+    const dias = (d.efectivo?.dias || []).slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+    if (titulo) titulo.textContent = `Efectivo por rendir · ${money(d.efectivo?.pendiente)}`;
+    const dia = f => { const [y, m, dd] = String(f).slice(0, 10).split('-'); return `${Number(dd)}/${Number(m)}`; };
+    body.innerHTML = `<div class="drs-dias">${dias.length ? `<div class="drs-dias-head" aria-hidden="true"><span>Jornada</span><span>Cobrado</span><span>Gastos</span><span>Rendido</span><span>Falta</span></div>${dias.map(x =>
+      `<div class="drs-dias-row${n0(x.pendiente) > 0 ? ' is-pending' : ''}"><b>${esc(dia(x.fecha))}</b><span data-label="Cobrado">${money(x.cobrado)}</span><span data-label="Gastos">${money(x.gastos)}</span><span data-label="Rendido">${money(x.rendido)}</span><strong data-label="Falta">${money(x.pendiente)}</strong></div>`).join('')}`
+      : '<p>No hay efectivo en este mes.</p>'}<p class="drs-dias-nota">El efectivo se rinde al cerrar cada jornada. Si falta algo, hablalo con Administración.</p></div>`;
+    if (typeof openModal === 'function') openModal('modal-desglose-pago');
   }
 
   function plataHTML(d) {
@@ -66,6 +131,7 @@
           <div><dt>Tenés que rendir</dt><dd>${money(aRendir)}</dd></div>
           <div><dt>Ya rendido</dt><dd>${money(rendido)}</dd></div>
         </dl>
+        ${pendiente > 0 ? `<button type="button" class="drs-link" data-drs-accion="rendir">Ver de qué jornadas${ico('chevron-right')}</button>` : ''}
       </div>
     </section>`;
   }
@@ -126,7 +192,7 @@
     if (!root || !S.ultimo) return;
     const { data, mes, alertas } = S.ultimo;
     S.etiquetaAnterior = mesAnterior(mes);
-    root.innerHTML = avisosHTML(alertas) + plataHTML(data) + mesHTML(data) + actividadHTML(data, mes) + camionHTML(data);
+    root.innerHTML = hoyHTML(data, mes) + pendienteHTML(alertas, data) + plataHTML(data) + mesHTML(data) + actividadHTML(data, mes) + ultimosHTML(data) + camionHTML(data);
   }
 
   function raiz() {
@@ -136,6 +202,7 @@
       root = document.createElement('div');
       root.id = 'drs-root';
       root.addEventListener('click', ev => {
+        if (ev.target.closest('[data-drs-accion="rendir"]')) return abrirDiasRendir();
         const modo = ev.target.closest('[data-drs-modo]');
         if (modo) { S.modo = modo.dataset.drsModo; return pintar(); }
         const dia = ev.target.closest('[data-drs-dia]');
@@ -165,6 +232,7 @@
 
   /* o = { driverId, mes:'YYYY-MM', esChofer, isCurrent() } */
   async function render(o) {
+    S.esChofer = !!o.esChofer;
     const root = raiz();
     if (!root) return;
     sos(o.esChofer);
@@ -190,5 +258,8 @@
     pintar();
   }
 
-  window.AuxiliosDriverSummary = { render, _test: { delta, plataHTML, mesHTML, actividadHTML, camionHTML, S } };
+  // La cola de servicios del chofer carga aparte: al cambiar, se vuelve a pintar "Hoy".
+  window.addEventListener?.('auxilios:driver-queue-updated', () => { if (S.ultimo && document.getElementById('drs-root')) pintar(); });
+
+  window.AuxiliosDriverSummary = { render, _test: { delta, plataHTML, mesHTML, actividadHTML, camionHTML, hoyHTML, pendienteHTML, ultimosHTML, S } };
 })();

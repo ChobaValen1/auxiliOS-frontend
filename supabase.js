@@ -96,11 +96,28 @@ let USUARIO_ACTUAL = null;
 let PERFIL_USUARIO = null;
 // ── AUTENTICACIÓN ─────────────────────────────────────────────
 
+// Cuenta suspendida (Usuarios › Suspender): no entra a la app aunque tenga la
+// sesión guardada o la contraseña correcta. La base igual le niega los datos.
+const _MSG_CUENTA_SUSPENDIDA = 'Esta cuenta está suspendida. Consultá con Administración.';
+function _cuentaSuspendida() { return !!PERFIL_USUARIO && PERFIL_USUARIO.is_active === false; }
+async function _cerrarCuentaSuspendida() {
+  try { await _db.auth.signOut(); } catch (e) { /* igual se corta */ }
+  USUARIO_ACTUAL = null;
+  PERFIL_USUARIO = null;
+}
+
 async function verificarSesion() {
   const { data: { session } } = await _db.auth.getSession();
   if (session) {
     USUARIO_ACTUAL = session.user;
     await cargarPerfilUsuario();
+    if (_cuentaSuspendida()) {
+      await _cerrarCuentaSuspendida();
+      mostrarPantallaLogin();
+      const e = document.getElementById('login-error');
+      if (e) { e.textContent = _MSG_CUENTA_SUSPENDIDA; e.style.display = 'block'; }
+      return;
+    }
     await inicializarApp();
   } else {
     mostrarPantallaLogin();
@@ -125,6 +142,10 @@ async function loginUsuario(email, password) {
   }
   USUARIO_ACTUAL = data.user;
   await cargarPerfilUsuario();
+  if (_cuentaSuspendida()) {
+    await _cerrarCuentaSuspendida();
+    throw Object.assign(new Error(_MSG_CUENTA_SUSPENDIDA), { loginMessage: true });
+  }
   await inicializarApp();
   return true;
 }
@@ -149,6 +170,10 @@ async function loginUsuarioPorDni(dni, password) {
 
   USUARIO_ACTUAL = data.session.user;
   await cargarPerfilUsuario();
+  if (_cuentaSuspendida()) {
+    await _cerrarCuentaSuspendida();
+    throw Object.assign(new Error(_MSG_CUENTA_SUSPENDIDA), { loginMessage: true });
+  }
   await inicializarApp();
   return true;
 }

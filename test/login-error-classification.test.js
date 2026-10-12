@@ -13,7 +13,7 @@ for(const [name,error,expected] of [
  ['éxito',null,true]
 ])test('acceso: '+name,async()=>{
  let initialized=false;
- const context=vm.createContext({_db:{auth:{signInWithPassword:async()=>({error,data:{user:{id:'test'}}})}},console:{warn(){}},cargarPerfilUsuario:async()=>{},inicializarApp:async()=>{initialized=true;}});
+ const context=vm.createContext({_db:{auth:{signInWithPassword:async()=>({error,data:{user:{id:'test'}}})}},console:{warn(){}},cargarPerfilUsuario:async()=>{},_cuentaSuspendida:()=>false,inicializarApp:async()=>{initialized=true;}});
  vm.runInContext(code,context);
  if(expected instanceof RegExp)await assert.rejects(context.loginUsuario('test@example.com','unused'),e=>e.loginMessage&&expected.test(e.message));
  else assert.equal(await context.loginUsuario('test@example.com','unused'),expected);

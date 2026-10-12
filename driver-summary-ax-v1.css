@@ -38,6 +38,19 @@
 #drs-root .drs-aviso em { display: inline-flex; align-items: center; gap: 2px; color: var(--ax-warn); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; }
 #drs-root .drs-aviso.is-danger em { color: var(--ax-danger); }
 
+/* Hoy */
+#drs-root .drs-hoy { display: grid; gap: var(--ax-sp-2); }
+#drs-root .drs-hoy > header { margin-bottom: 0; }
+#drs-root .drs-hoy-jornada { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--ax-sp-3); }
+#drs-root .drs-hoy-jornada > div, #drs-root .drs-hoy-servicio > div { display: grid; gap: 2px; min-width: 0; }
+#drs-root .drs-hoy-jornada b, #drs-root .drs-hoy-servicio b { color: var(--ax-text); font-size: var(--ax-fs-md); }
+#drs-root .drs-hoy-jornada .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; white-space: nowrap; }
+#drs-root .drs-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ax-text-3); }
+#drs-root .drs-hoy-jornada.is-open .drs-dot { background: var(--ax-ok); box-shadow: 0 0 0 4px var(--ax-ok-soft); }
+#drs-root .drs-hoy-servicio { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--ax-sp-3); width: 100%; min-height: 52px; padding: 10px 12px; border: 1px solid var(--ax-warn); border-radius: var(--ax-radius); background: var(--ax-warn-soft); color: var(--ax-text); font: inherit; text-align: left; cursor: pointer; }
+#drs-root .drs-hoy-servicio > span { color: var(--ax-warn); }
+#drs-root .drs-hoy-servicio small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Mi plata del mes */
 #drs-root .drs-total { display: grid; gap: 2px; margin-bottom: var(--ax-sp-3); }
 #drs-root .drs-total b { color: var(--ax-text); font: var(--ax-fw-bold) var(--ax-fs-2xl) var(--ax-font-mono); letter-spacing: -.01em; }
@@ -82,6 +95,39 @@
 #drs-root .drs-dia:focus-visible { outline: 2px solid var(--ax-focus); outline-offset: 1px; border-radius: 3px; }
 #drs-root .drs-dia-detalle { margin: var(--ax-sp-2) 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); text-align: center; }
 
+/* Últimos servicios */
+#drs-root .drs-ultimos ul { display: grid; margin: 0; padding: 0; list-style: none; }
+#drs-root .drs-ultimos li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ax-sp-3); align-items: center; padding: 10px 0; border-bottom: 1px solid var(--ax-border); }
+#drs-root .drs-ultimos li:last-child { border-bottom: 0; }
+#drs-root .drs-ultimos li > div { display: grid; gap: 2px; min-width: 0; }
+#drs-root .drs-ultimos li b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font-mono); }
+#drs-root .drs-ultimos li small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#drs-root .drs-ult-meta { justify-items: end; text-align: right; }
+#drs-root .drs-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); }
+#drs-root .drs-pill.ok { background: var(--ax-ok-soft); color: var(--ax-ok); }
+#drs-root .drs-pill.warn { background: var(--ax-warn-soft); color: var(--ax-warn); }
+#drs-root .drs-vacio { margin: 0 0 var(--ax-sp-2); color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#drs-root .drs-link { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; margin-top: var(--ax-sp-2); padding: 0; border: 0; background: none; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#drs-root .drs-link:hover { color: var(--ax-text); }
+
+/* Efectivo por jornada (se abre en el modal de desglose). */
+#modal-desglose-pago .drs-dias { display: grid; gap: 4px; font-size: var(--ax-fs-sm); }
+#modal-desglose-pago .drs-dias-head, #modal-desglose-pago .drs-dias-row { display: grid; grid-template-columns: 56px repeat(4, minmax(0, 1fr)); gap: 6px; align-items: center; }
+#modal-desglose-pago .drs-dias-head { padding: 0 8px 6px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); text-transform: uppercase; letter-spacing: .04em; }
+#modal-desglose-pago .drs-dias-head span:not(:first-child), #modal-desglose-pago .drs-dias-row > :not(:first-child) { text-align: right; }
+#modal-desglose-pago .drs-dias-row { padding: 8px; border-radius: var(--ax-radius); font-family: var(--ax-font-mono); color: var(--ax-text-2); }
+#modal-desglose-pago .drs-dias-row b { color: var(--ax-text); font-family: var(--ax-font); }
+#modal-desglose-pago .drs-dias-row.is-pending { background: var(--ax-warn-soft); }
+#modal-desglose-pago .drs-dias-row.is-pending strong { color: var(--ax-warn); }
+#modal-desglose-pago .drs-dias-nota { margin: var(--ax-sp-3) 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.45; }
+@media (max-width: 420px) {
+  #modal-desglose-pago .drs-dias-head { display: none; }
+  #modal-desglose-pago .drs-dias-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #modal-desglose-pago .drs-dias-row b { grid-column: 1 / -1; }
+  #modal-desglose-pago .drs-dias-row > [data-label]::before { content: attr(data-label) " "; color: var(--ax-text-3); font-family: var(--ax-font); }
+  #modal-desglose-pago .drs-dias-row > :not(:first-child) { text-align: left; }
+}
+
 /* Mi camión (cerrado por defecto). */
 #drs-root .drs-camion { padding: 0; }
 #drs-root .drs-camion summary { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 var(--ax-sp-4); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; list-style: none; }
@@ -101,8 +147,15 @@
 @media (min-width: 900px) {
   #drs-root { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   #drs-root .drs-avisos, #drs-root .drs-mes { grid-column: 1 / -1; }
+  #drs-root .drs-hoy { order: -3; grid-column: 1 / -1; }
   #drs-root .drs-avisos { order: -2; }
   #drs-root .drs-mes { order: -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   #drs-root .drs-mes[data-n="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   #drs-root .drs-mes[data-n="3"] .drs-tile:last-child { grid-column: auto; }
+}
+
+/* Celular: el botón de la jornada va abajo, a todo el ancho. */
+@media (max-width: 520px) {
+  #drs-root .drs-hoy-jornada { grid-template-columns: auto minmax(0, 1fr); }
+  #drs-root .drs-hoy-jornada .btn { grid-column: 1 / -1; justify-content: center; width: 100%; }
 }
