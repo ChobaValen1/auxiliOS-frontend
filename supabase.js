@@ -241,10 +241,42 @@ async function cargarPerfilUsuario() {
 
 
 
+// ── ACTIVIDAD (en línea / última actividad) ───────────────────
+// Mientras la app está a la vista avisa cada 2 minutos; Administración lo ve en
+// Configuración › Usuarios. Sin conexión o con la pestaña oculta no avisa.
+const _PRESENCIA_MS = 2 * 60 * 1000;
+let _presenciaTimer = null, _presenciaUltimo = 0;
+function _presenciaPantalla() {
+  const s = document.querySelector('.screen.active');
+  return s ? s.id.replace(/^screen-/, '') : null;
+}
+async function _avisarPresencia(forzar) {
+  if (document.visibilityState === 'hidden' || navigator.onLine === false || typeof _db === 'undefined' || !USUARIO_ACTUAL?.id) return;
+  const ahora = Date.now();
+  if (ahora - _presenciaUltimo < (forzar ? 30000 : _PRESENCIA_MS - 5000)) return;
+  _presenciaUltimo = ahora;
+  try {
+    await _db.rpc('touch_user_presence_v1', {
+      p_screen: _presenciaPantalla(),
+      p_app_build: window.AUXILIOS_BUILD_ID || null,
+      p_device: window.matchMedia && matchMedia('(pointer: coarse)').matches ? 'movil' : 'escritorio',
+    });
+  } catch (e) { /* informativo: si falla, la app sigue igual */ }
+}
+function iniciarPresencia() {
+  if (_presenciaTimer) return;
+  _presenciaUltimo = 0;
+  _avisarPresencia(true);
+  _presenciaTimer = setInterval(() => _avisarPresencia(false), _PRESENCIA_MS);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _avisarPresencia(true); });
+  window.addEventListener('online', () => _avisarPresencia(true));
+}
+
 // ── INICIALIZACIÓN ────────────────────────────────────────────
 
 async function inicializarApp() {
   ocultarPantallaLogin();
+  iniciarPresencia();
   const rol = PERFIL_USUARIO?.roles?.name;
   if (rol === 'chofer') {
     await _hidratarSesionChofer();

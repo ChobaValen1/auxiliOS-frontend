@@ -9798,10 +9798,14 @@ async function cargarTablaAdminUsuarios() {
   }
 
   // Último acceso (auth): solo informativo; si falla, la lista se muestra igual.
+  // Última actividad = uso real de la app (no sólo el ingreso con contraseña).
   let lastAccess = {};
   try {
-    const la = await _db.rpc('get_users_last_access_v1');
-    if (!la.error) (la.data || []).forEach(r => { lastAccess[r.user_id] = r.last_sign_in_at; });
+    let la = await _db.rpc('get_users_last_access_v2');
+    if (la.error) {
+      la = await _db.rpc('get_users_last_access_v1');
+      if (!la.error) (la.data || []).forEach(r => { lastAccess[r.user_id] = { last_seen_at: r.last_sign_in_at, last_sign_in_at: r.last_sign_in_at }; });
+    } else (la.data || []).forEach(r => { lastAccess[r.user_id] = r; });
   } catch (e) { /* sin último acceso */ }
 
   const roleLabel = (rol) => ({ administracion: 'Admin', operador: 'Operador', supervision: 'Supervisor', chofer: 'Chofer' }[rol] || rol || 'Sin rol');
@@ -9813,6 +9817,15 @@ async function cargarTablaAdminUsuarios() {
     const h = Math.round(min / 60);
     if (h < 24) return `hace ${h} h`;
     return `hace ${Math.round(h / 24)} d`;
+  };
+  const PANTALLAS = { dashboard: 'Panel', registro: 'Km', camion: 'Camión', documentos: 'Docs', remitos: 'Remitos', operaciones: 'Servicios', sueldos: 'Sueldos', 'jornadas-admin': 'Jornadas', grilla: 'Grilla', facturacion: 'Facturación' };
+  const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'nunca';
+  const actividad = (a) => {
+    if (!a) return '<span class="usr-seen">Nunca</span>';
+    const donde = [a.device === 'movil' ? 'Celular' : a.device === 'escritorio' ? 'Computadora' : '', PANTALLAS[a.screen] || ''].filter(Boolean).join(' · ');
+    const tip = _escHtml(`Último ingreso con contraseña: ${fechaHora(a.last_sign_in_at)}`);
+    if (a.online) return `<span class="usr-seen on" title="${tip}"><i aria-hidden="true"></i>En línea${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
+    return `<span class="usr-seen" title="${tip}">${_escHtml(hace(a.last_seen_at))}${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
   };
   const iniciales = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
   const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
@@ -9833,13 +9846,14 @@ async function cargarTablaAdminUsuarios() {
       <td class="usr-who" data-label="Usuario"><span class="usr-avatar">${_escHtml(iniciales(u.full_name))}</span><span class="usr-id"><b>${nombre}${esYo ? ' <em class="usr-tu">Tú</em>' : ''}</b><small>${_escHtml(u.email || '—')}</small></span></td>
       <td data-label="Rol"><span class="usr-role usr-role-${_escHtml(rol)}">${_escHtml(roleLabel(rol))}</span></td>
       <td class="usr-mono" data-label="Legajo">${_escHtml(u.legajo || '—')}</td>
-      <td data-label="Último acceso">${hace(lastAccess[u.user_id])}</td>
+      <td data-label="Última actividad">${actividad(lastAccess[u.user_id])}</td>
       <td data-label="Estado"><span class="usr-state ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Suspendido'}</span></td>
       <td class="usr-actions">${acciones}</td>
     </tr>`;
   }).join('');
-  contenedor.innerHTML = `<div class="usr-table-wrap"><table class="usr-table">
-    <thead><tr><th>Usuario</th><th>Rol</th><th>Legajo</th><th>Último acceso</th><th>Estado</th><th></th></tr></thead>
+  const enLinea = Object.values(lastAccess).filter(a => a && a.online).length;
+  contenedor.innerHTML = `<p class="usr-online-count"><i aria-hidden="true"></i>${enLinea ? `${enLinea} en línea ahora` : 'Nadie en línea ahora'}</p><div class="usr-table-wrap"><table class="usr-table">
+    <thead><tr><th>Usuario</th><th>Rol</th><th>Legajo</th><th>Última actividad</th><th>Estado</th><th></th></tr></thead>
     <tbody>${filas}</tbody></table></div>`;
 }
 

@@ -231,6 +231,13 @@
 #modal-settings .usr-state { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); }
 #modal-settings .usr-state.on { background: var(--ax-ok-soft, var(--ax-surface-3)); color: var(--ax-ok); }
 #modal-settings .usr-state.off { background: var(--ax-danger-soft); color: var(--ax-danger); }
+/* Última actividad: punto verde si tiene la app abierta ahora. */
+#modal-settings .usr-seen { display: inline-grid; grid-template-columns: auto; gap: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-settings .usr-seen small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-settings .usr-seen.on { grid-template-columns: auto 1fr; column-gap: 6px; align-items: center; color: var(--ax-ok); font-weight: var(--ax-fw-semibold); }
+#modal-settings .usr-seen.on small { grid-column: 2; font-weight: var(--ax-fw-regular, 400); }
+#modal-settings .usr-seen.on i, #modal-settings .usr-online-count i { width: 8px; height: 8px; border-radius: 50%; background: var(--ax-ok); box-shadow: 0 0 0 3px var(--ax-ok-soft, transparent); }
+#modal-settings .usr-online-count { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--ax-sp-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #modal-settings .usr-actions { width: 1%; text-align: right; }
 #modal-settings .usr-actions .usr-ic { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-left: 2px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
 #modal-settings .usr-actions .usr-ic .ax-icon { width: 18px; height: 18px; }
