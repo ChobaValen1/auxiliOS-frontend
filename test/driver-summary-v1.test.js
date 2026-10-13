@@ -115,3 +115,47 @@ test('una cuenta suspendida no entra, ni con sesión guardada ni con contraseña
   assert.equal((supa.match(/if \(_cuentaSuspendida\(\)\) \{/g) || []).length, 3);
   assert.match(supa, /throw Object\.assign\(new Error\(_MSG_CUENTA_SUSPENDIDA\), \{ loginMessage: true \}\);/);
 });
+
+function loadWithPayroll() {
+  const ctx = { window: {}, document: { getElementById: () => null, querySelector: () => null }, Intl, console };
+  vm.runInNewContext(read('payroll-matrix.js'), ctx);
+  vm.runInNewContext(src, ctx);
+  return ctx.window.AuxiliosDriverSummary._test;
+}
+
+test('Lo que llevo ganado: misma cuenta que Sueldos (caso real de septiembre: $725.384,76)', () => {
+  const t = loadWithPayroll();
+  const km = [[1281,1427],[2163,2331],[2331,3293],[734450,734561],[3349,3419],[5001,5498],[3419,3649],[3649,3807],[3807,4032],[4032,4311],[4650,4997],[5498,5762],[5762,6005],[736916,737122],[6005,6220],[737136,737608],[6231,6428]];
+  const e = { settings: { valor_km: 86, sueldo_basico: 0, valor_servicio: 3700, bono_presentismo: 280000, compensation_matrix: { pay_km: true, bonuses: [], km_basis: 'real', pay_services: true, pay_presentismo: true } }, commissions: [], sources: { extras: [], invoices: [], captacion: [] }, jornadas: km.map(([a, b]) => ({ status: 'closed', km_inicio: a, km_final: b })), servicios: 75, incidentes: 0, descuento_rendicion: 244055.24 };
+  assert.equal(t.estimar(e).total, 725384.76);
+  // Sueldo fijo: sólo el fijo, menos el descuento por rendición ($2.330.000 en Sueldos).
+  const fijo = { settings: { valor_km: 95, sueldo_basico: 2500000, valor_servicio: 4070, bono_presentismo: 0, compensation_matrix: { pay_type: 'fixed', pay_km: false, pay_services: false, pay_presentismo: false, bonuses: [], km_basis: 'real' } }, commissions: [], sources: { extras: [], invoices: [], captacion: [] }, jornadas: [], servicios: 123, incidentes: 0, descuento_rendicion: 170000 };
+  assert.equal(t.estimar(fijo).total, 2330000);
+});
+
+test('Lo que llevo ganado: comisiones, presentismo con incidentes y casos sin esquema', () => {
+  const t = loadWithPayroll();
+  const base = { settings: { valor_km: 0, sueldo_basico: 0, valor_servicio: 0, bono_presentismo: 1000, compensation_matrix: { pay_km: false, pay_services: false, pay_presentismo: true, bonuses: [{ name: 'Desempeño', amount: 500 }] } },
+    commissions: [{ commission_id: 'p', name: 'Pinacars', concept_id: 'pin', source: 'extras', mode: 'fixed', value: 15000 }],
+    sources: { invoices: [], captacion: [], extras: [{ id: 'a', concept_id: 'pin', quantity: 1, amount: 0, currency: 'ARS' }, { id: 'b', concept_id: 'pin', quantity: 1, amount: 0, currency: 'ARS' }] },
+    jornadas: [{ status: 'closed', km_inicio: 1, km_final: 2 }], servicios: 1, incidentes: 1, descuento_rendicion: 0 };
+  const x = t.estimar(base);
+  assert.equal(x.total, 30500);
+  assert.ok(x.lineas.some(l => l[0] === 'Presentismo' && l[2] === 0 && /incidentes/.test(l[1])));
+  assert.equal(t.estimar({ ...base, settings: null }).sinEsquema, true);
+  assert.deepEqual({ ...t.estimar({ liquidacion: { estado: 'pagada', total: 900 } }) }, { liquidada: true, estado: 'pagada', total: 900 });
+  const html = t.ganadoHTML(base, { efectivo: { pendiente: 5000 } });
+  assert.match(html, /Estimado a hoy<\/small><b>\$30\.500<\/b>/);
+  assert.match(html, /el monto final lo confirma Administración al liquidar|El monto final lo confirma Administración al liquidar/);
+  assert.match(html, /Si queda efectivo sin rendir \(\$5\.000\), se descuenta\./);
+});
+
+test('la base: Sueldos y el chofer usan las mismas fuentes; el chofer sólo ve lo suyo', () => {
+  const est = read('migrations/20261013020000_driver_payroll_estimate_v1.sql');
+  assert.match(est, /return app_private\.payroll_matrix_sources_core\(p_driver, p_from, p_until\);/);
+  assert.match(est, /'sources', app_private\.payroll_matrix_sources_core\(v_driver, v_from, v_until\),/);
+  assert.match(est, /if coalesce\(app_private\.current_auxilios_role\(\),''\) not in \('administracion','supervision'\) then raise exception 'No autorizado';/);
+  assert.match(est, /if v_driver <> auth\.uid\(\) and v_role not in \('administracion','supervision'\) then raise exception 'Sin permiso';/);
+  assert.match(est, /revoke all on function app_private\.payroll_matrix_sources_core\(uuid, date, date\) from public, anon, authenticated;/);
+  assert.match(src, /_db\.rpc\('get_driver_payroll_estimate_v1', \{ p_period: period, p_driver: driverId \}\)/);
+});

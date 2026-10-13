@@ -70,6 +70,19 @@
 #drs-root dt { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
 #drs-root dd { margin: 0; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); white-space: nowrap; }
 
+/* Lo que llevo ganado */
+#drs-root .drs-ganado .drs-total b { color: var(--ax-ok); }
+#drs-root .drs-nota { margin: 0 0 var(--ax-sp-2); color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.45; }
+#drs-root .drs-ganado-det summary { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); cursor: pointer; list-style: none; }
+#drs-root .drs-ganado-det summary::-webkit-details-marker { display: none; }
+#drs-root .drs-ganado-det[open] summary .ax-icon { transform: rotate(180deg); }
+#drs-root .drs-ganado-det dl { margin-top: var(--ax-sp-2); }
+#drs-root .drs-ganado-det dt { display: grid; gap: 1px; }
+#drs-root .drs-ganado-det dt small { font-size: var(--ax-fs-xs); }
+#drs-root .drs-ganado-det .is-neg dd { color: var(--ax-danger); }
+#drs-root .drs-ganado-det .is-total { padding-top: 6px; border-top: 1px solid var(--ax-border); }
+#drs-root .drs-ganado-det .is-total dt, #drs-root .drs-ganado-det .is-total dd { color: var(--ax-text); font-weight: var(--ax-fw-bold); }
+
 /* Mi mes: 2 × 2 (si son 3, el tercero ocupa toda la fila). */
 #drs-root .drs-mes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
 #drs-root .drs-mes[data-n="3"] .drs-tile:last-child { grid-column: 1 / -1; }

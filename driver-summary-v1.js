@@ -48,7 +48,7 @@
       const dias = (d.efectivo.dias || []).filter(x => n0(x.pendiente) > 0).length;
       items.push(`<button type="button" class="drs-aviso" data-drs-accion="rendir"><span><b>Efectivo por rendir · ${money(pend)}</b><small>${dias ? `${dias} jornada${dias === 1 ? '' : 's'} con efectivo sin rendir` : 'Revisá tus rendiciones'}</small></span><em>Ver días${ico('chevron-right')}</em></button>`);
     }
-    (alertas || []).forEach(a => {
+    (Array.isArray(alertas) ? alertas : []).forEach(a => {
       const params = esc(JSON.stringify({ target: a.target, tab: a.tab || null, filtro: a.filtro || null }));
       items.push(`<button type="button" class="drs-aviso ${a.sev === 'critico' ? 'is-danger' : ''}" onclick="_dashAlertaGo(${params})"><span><b>${esc(a.title)}</b><small>${esc(a.detail)}</small></span><em>${esc(a.cta || 'Ver')}${ico('chevron-right')}</em></button>`);
     });
@@ -136,6 +136,58 @@
     </section>`;
   }
 
+  /* Lo que llevo ganado: la misma cuenta que Sueldos al generar la liquidación
+     (supabase.js › generarLiquidacionesMes), con los datos del chofer. */
+  function estimar(e) {
+    if (!e) return null;
+    if (e.liquidacion) return { liquidada: true, estado: e.liquidacion.estado, total: n0(e.liquidacion.total) };
+    if (!e.settings) return { sinEsquema: true };
+    const PM = window.PayrollMatrix;
+    if (!PM) return { error: true };
+    try {
+      const s = e.settings;
+      const matrix = PM.normalize({ ...(s.compensation_matrix || {}), commissions: e.commissions || [] });
+      const jornadas = e.jornadas || [];
+      const r = PM.calculate(matrix, e.sources || { invoices: [], extras: [] }, jornadas.reduce((a, j) => a + (PM.journeyKm(j) || 0), 0));
+      const snap = r.snapshot, lineas = [];
+      const basico = n0(s.sueldo_basico), vkm = n0(s.valor_km), vserv = n0(s.valor_servicio), bp = n0(s.bono_presentismo);
+      const servicios = n0(e.servicios), incidentes = n0(e.incidentes);
+      if (basico > 0) lineas.push(['Sueldo fijo', '', basico]);
+      if (snap.pay_services) lineas.push(['Por servicios', `${entero(servicios)} × ${money(vserv)}`, servicios * vserv]);
+      if (snap.pay_km) lineas.push([matrix.km_basis === 'billed' ? 'Por km facturados' : 'Por km', `${decimal(r.km)} km × ${money(vkm)}`, r.km * vkm]);
+      if (snap.pay_presentismo && bp > 0) {
+        const paga = incidentes === 0 && jornadas.length > 0;
+        lineas.push(['Presentismo', paga ? '' : (incidentes ? 'no corresponde: hubo incidentes' : 'sin jornadas cerradas'), paga ? bp : 0]);
+      }
+      (matrix.bonuses || []).forEach(b => lineas.push([b.name, 'bono mensual', n0(b.amount)]));
+      (snap.commission_details || []).forEach(c => { if (n0(c.total) > 0) lineas.push([c.name || 'Comisión', c.mode === 'percent' ? `${c.value}% de ${money(c.base)}` : `${entero(c.base)} × ${money(c.value)}`, n0(c.total)]); });
+      const bruto = lineas.reduce((a, l) => a + l[2], 0);
+      const descuento = n0(e.descuento_rendicion);
+      return { total: Math.max(0, bruto - descuento), bruto, descuento, lineas };
+    } catch (err) {
+      console.warn('[Resumen chofer] estimado', err);
+      return { error: true };
+    }
+  }
+
+  function ganadoHTML(e, d) {
+    const x = estimar(e);
+    if (!x) return '';
+    const head = `<header><h3 id="drs-gan-t">${ico('banknote')}Lo que llevo ganado</h3></header>`;
+    if (x.liquidada) return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}<div class="drs-total"><small>Liquidación ${x.estado === 'pagada' ? 'pagada' : 'aprobada'}</small><b>${money(x.total)}</b></div><p class="drs-nota">Este mes ya está liquidado: el número es el de Sueldos.</p></section>`;
+    if (x.sinEsquema) return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}<p class="drs-nota">Tu esquema de pago todavía no está cargado. Consultá con Administración.</p></section>`;
+    if (x.error) return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}<p class="drs-nota">No se pudo calcular el estimado. Consultá con Administración.</p></section>`;
+    const pend = n0(d?.efectivo?.pendiente);
+    return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}
+      <div class="drs-total"><small>Estimado a hoy</small><b>${money(x.total)}</b></div>
+      <p class="drs-nota">Es un estimado con lo cargado hasta ahora. El monto final lo confirma Administración al liquidar.${pend > 0 ? ` Si queda efectivo sin rendir (${money(pend)}), se descuenta.` : ''}</p>
+      <details class="drs-ganado-det"><summary>Ver cómo se calcula${ico('chevron-down')}</summary>
+        <dl>${x.lineas.map(([t, sub, v]) => `<div><dt>${esc(t)}${sub ? `<small>${esc(sub)}</small>` : ''}</dt><dd>${money(v)}</dd></div>`).join('')}
+        ${x.descuento > 0 ? `<div class="is-neg"><dt>Descuento por rendición</dt><dd>− ${money(x.descuento)}</dd></div>` : ''}
+        <div class="is-total"><dt>Total estimado</dt><dd>${money(x.total)}</dd></div></dl>
+      </details></section>`;
+  }
+
   function mesHTML(d) {
     const m = d.mes || {}, a = d.anterior || {}, et = S.etiquetaAnterior;
     const tiles = [
@@ -192,7 +244,7 @@
     if (!root || !S.ultimo) return;
     const { data, mes, alertas } = S.ultimo;
     S.etiquetaAnterior = mesAnterior(mes);
-    root.innerHTML = hoyHTML(data, mes) + pendienteHTML(alertas, data) + plataHTML(data) + mesHTML(data) + actividadHTML(data, mes) + ultimosHTML(data) + camionHTML(data);
+    root.innerHTML = hoyHTML(data, mes) + pendienteHTML(alertas, data) + plataHTML(data) + ganadoHTML(S.ultimo.estimado, data) + mesHTML(data) + actividadHTML(data, mes) + ultimosHTML(data) + camionHTML(data);
   }
 
   function raiz() {
@@ -230,6 +282,19 @@
     try { return { data: await online(), deCache: false }; } catch (e) { console.error('[Resumen chofer]', e); return { data: null, deCache: false, error: e }; }
   }
 
+  /* El estimado es aparte: si falla, el resto del resumen se ve igual. */
+  async function leerEstimado(driverId, period, esChofer) {
+    const online = async () => {
+      const { data, error } = await _db.rpc('get_driver_payroll_estimate_v1', { p_period: period, p_driver: driverId });
+      if (error) throw error;
+      return data;
+    };
+    try {
+      if (esChofer && typeof obLecturaConCache === 'function') return (await obLecturaConCache(`drs_est_${driverId}_${period}_v1`, online)).data || null;
+      return await online();
+    } catch (e) { console.warn('[Resumen chofer] estimado', e); return null; }
+  }
+
   /* o = { driverId, mes:'YYYY-MM', esChofer, isCurrent() } */
   async function render(o) {
     S.esChofer = !!o.esChofer;
@@ -241,8 +306,9 @@
       root.innerHTML = '<div class="drs-skel" aria-hidden="true"></div><div class="drs-skel short" aria-hidden="true"></div><div class="drs-skel" aria-hidden="true"></div>';
     }
     const period = Number(o.mes.replace('-', ''));
-    const [res, alertas] = await Promise.all([
+    const [res, est, alertas] = await Promise.all([
       leer(o.driverId, period, o.esChofer),
+      leerEstimado(o.driverId, period, o.esChofer),
       o.esChofer && typeof cargarAlertasPersonales === 'function' ? cargarAlertasPersonales().catch(() => []) : Promise.resolve([]),
     ]);
     if (o.isCurrent && !o.isCurrent()) return;
@@ -254,12 +320,12 @@
     }
     if (res.deCache && typeof mostrarBannerOffline === 'function') mostrarBannerOffline('dash-view-rendimiento', res.guardadoAt);
     else if (typeof quitarBannerOffline === 'function') quitarBannerOffline('dash-view-rendimiento');
-    S.ultimo = { data: res.data, mes: o.mes, driverId: o.driverId, alertas };
+    S.ultimo = { data: res.data, mes: o.mes, driverId: o.driverId, alertas, estimado: est };
     pintar();
   }
 
   // La cola de servicios del chofer carga aparte: al cambiar, se vuelve a pintar "Hoy".
   window.addEventListener?.('auxilios:driver-queue-updated', () => { if (S.ultimo && document.getElementById('drs-root')) pintar(); });
 
-  window.AuxiliosDriverSummary = { render, _test: { delta, plataHTML, mesHTML, actividadHTML, camionHTML, hoyHTML, pendienteHTML, ultimosHTML, S } };
+  window.AuxiliosDriverSummary = { render, _test: { delta, estimar, ganadoHTML, plataHTML, mesHTML, actividadHTML, camionHTML, hoyHTML, pendienteHTML, ultimosHTML, S } };
 })();
