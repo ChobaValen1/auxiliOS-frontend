@@ -269,6 +269,7 @@
 #screen-dashboard .rsm-ef-track i.is-fact { background: var(--amber); }
 #screen-dashboard .rsm-ef-track i.is-real { background: #14b8a6; }
 #screen-dashboard .rsm-ef-track i.is-flota { background: #8b9cf7; }
+#screen-dashboard .rsm-ef-grid > .rsm-ef-dato:last-child:nth-child(odd) { grid-column: 1 / -1; }
 #screen-dashboard .rsm-ef-pie { margin: -4px 0 0; color: var(--muted2); font-size: 10px; }
 #screen-dashboard .rsm-ef-grid {
   display: grid;

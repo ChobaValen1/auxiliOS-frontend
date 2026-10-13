@@ -50,6 +50,7 @@ test('Eficiencia operativa: km de la flota según el odómetro', () => {
   assert.match(js, /barra\('Km flota \(odómetro\)', kmFlota, 'is-flota'\)/);
   assert.match(js, /dato\('Con cliente arriba'/);
   assert.match(js, /dato\('Km muertos'/);
+  assert.match(js, /dato\('Km no facturados', cobrado != null \? miles\(Math\.max\(kmFlota - t\.km, 0\)\)/);
   assert.match(mig, /l\.status = 'closed'\s+and not coalesce\(t\.is_test, false\)/);
   assert.match(mig, /not in \('administracion', 'facturacion', 'supervision'\)/);
 });

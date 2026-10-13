@@ -802,6 +802,8 @@
        muertos (ida y vuelta a la base, combustible, taller, traslados). */
     var aprov = fl && !fl.filtrado && kmFlota > 0 && t.kmReal > 0 ? t.kmReal * 100 / kmFlota : null;
     var aprovAnt = fl && !fl.filtrado && fl.kmAnt > 0 && a.kmReal > 0 ? a.kmReal * 100 / fl.kmAnt : null;
+    /* Km no facturados = odómetro − facturados: lo que el camión recorrió y nadie paga. */
+    var cobrado = fl && !fl.filtrado && kmFlota > 0 && t.km > 0 ? t.km * 100 / kmFlota : null;
     var pieFlota = !fl ? 'sin datos de las jornadas'
       : fl.filtrado ? 'de toda la flota: no se separa por prestadora'
       : miles(fl.jornadas) + (fl.jornadas === 1 ? ' jornada' : ' jornadas') + ' · ' + miles(fl.moviles) + (fl.moviles === 1 ? ' móvil' : ' móviles') +
@@ -822,6 +824,8 @@
             : 'de los km del odómetro' + (aprovAnt != null ? ' · antes ' + pct(aprovAnt) : '')) +
         dato('Km muertos', aprov != null ? miles(Math.max(kmFlota - t.kmReal, 0)) + ' km' : GUION,
           'sin vehículo arriba · incluye ida y vuelta a la base') +
+        dato('Km no facturados', cobrado != null ? miles(Math.max(kmFlota - t.km, 0)) + ' km' : GUION,
+          cobrado != null ? 'nadie los paga · se cobró el ' + pct(Math.min(cobrado, 100)) + ' de lo recorrido' : 'odómetro menos km facturados') +
       '</div>';
   }
 
