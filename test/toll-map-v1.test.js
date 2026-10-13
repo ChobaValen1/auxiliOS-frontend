@@ -51,3 +51,16 @@ test('lista: Activo en verde, Archivado distinto, filtro por estado y "Archivar"
   assert.match(css, /#screen-peajes \.tm-badge\.is-active \{ background: var\(--ax-ok-soft\); color: var\(--ax-ok\); \}/);
   assert.match(css, /#tm-section-map \.tmm-pin\.is-archived \{[^}]*border: 2px dashed/);
 });
+
+test('peajes: al editar, la ubicación guardada no se vuelve a pedir', () => {
+  assert.match(tm, /const hasCoords=row\.latitude!=null&&row\.longitude!=null;/);
+  assert.match(tm, /STATE\.addressVerified=Boolean\(row\.address_verified\|\|hasCoords\);/);
+  assert.match(tm, /✓ Ubicación guardada\. Elegí otra dirección solo si querés cambiarla\./);
+});
+
+test('peajes: el importe nuevo rige desde la fecha de Argentina, no la del servidor', () => {
+  const sql = read('migrations/20261013030000_toll_rates_fecha_argentina_v1.sql');
+  assert.match(sql, /v_hoy date := \(now\(\) at time zone 'America\/Argentina\/Buenos_Aires'\)::date;/);
+  assert.doesNotMatch(sql.slice(sql.indexOf('as $function$')), /current_date/);
+  assert.match(tm, /const today=\(\)=>new Date\(\)\.toLocaleDateString\('en-CA',\{timeZone:'America\/Argentina\/Buenos_Aires'\}\);/);
+});
