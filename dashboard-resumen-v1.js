@@ -798,11 +798,10 @@
     function dato(label, valor, pie) {
       return '<div class="rsm-ef-dato"><span>' + label + '</span><b>' + valor + '</b><em>' + pie + '</em></div>';
     }
-    /* Aprovechamiento = km con servicio sobre km del odómetro: el resto son
-       km sin servicio (ir a la base, cargar combustible, taller, traslados). */
+    /* Con cliente arriba = km reales sobre km del odómetro. El resto son km
+       muertos (ida y vuelta a la base, combustible, taller, traslados). */
     var aprov = fl && !fl.filtrado && kmFlota > 0 && t.kmReal > 0 ? t.kmReal * 100 / kmFlota : null;
     var aprovAnt = fl && !fl.filtrado && fl.kmAnt > 0 && a.kmReal > 0 ? a.kmReal * 100 / fl.kmAnt : null;
-    var cobertura = fl && !fl.filtrado && kmFlota > 0 && t.km > 0 ? t.km * 100 / kmFlota : null;
     var pieFlota = !fl ? 'sin datos de las jornadas'
       : fl.filtrado ? 'de toda la flota: no se separa por prestadora'
       : miles(fl.jornadas) + (fl.jornadas === 1 ? ' jornada' : ' jornadas') + ' · ' + miles(fl.moviles) + (fl.moviles === 1 ? ' móvil' : ' móviles') +
@@ -818,11 +817,11 @@
         dato('Tarifa media', tarifa != null ? pesos(tarifa) : GUION, 'por km facturado') +
         dato('Peajes', pesos(t.peajes), t.facturado > 0 ? pct(t.peajes * 100 / t.facturado, 1) + ' de la facturación' : 'sobre la facturación') +
         dato('Km por servicio', kmServ != null ? miles(kmServ) : GUION, 'promedio real') +
-        dato('Aprovechamiento flota', aprov != null ? pct(aprov) : GUION,
-          aprov == null ? (fl && fl.filtrado ? 'quitá los filtros para verlo' : 'km reales sobre km del odómetro')
-            : (aprovAnt != null ? 'período anterior ' + pct(aprovAnt) : 'km reales sobre km del odómetro')) +
-        dato('Km sin servicio', aprov != null ? miles(Math.max(kmFlota - t.kmReal, 0)) + ' km' : GUION,
-          cobertura != null ? 'se facturó el ' + pct(cobertura) + ' de lo recorrido' : 'odómetro menos km reales') +
+        dato('Con cliente arriba', aprov != null ? pct(aprov) : GUION,
+          aprov == null ? (fl && fl.filtrado ? 'quitá los filtros para verlo' : 'de los km del odómetro')
+            : 'de los km del odómetro' + (aprovAnt != null ? ' · antes ' + pct(aprovAnt) : '')) +
+        dato('Km muertos', aprov != null ? miles(Math.max(kmFlota - t.kmReal, 0)) + ' km' : GUION,
+          'sin vehículo arriba · incluye ida y vuelta a la base') +
       '</div>';
   }
 
