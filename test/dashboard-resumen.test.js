@@ -51,8 +51,8 @@ test('la cobertura depende del radio elegido y la hace el navegador', () => {
 
 test('rendimiento y ratio no dividen por cero', () => {
   const { api } = cargarModulo();
-  assert.equal(api.rendimiento({ km: 0, kmReal: 10 }), null);
-  assert.equal(api.rendimiento({ km: 200, kmReal: 100 }), 50);
+  assert.equal(api.realesSobreFacturados({ kmComp: 0, kmReal: 10 }), null);
+  assert.equal(api.realesSobreFacturados({ kmComp: 200, kmReal: 100 }), 50);
   assert.equal(api.ratio({ kmReal: 0, kmComp: 10 }), null);
   assert.equal(api.ratio({ kmReal: 100, kmComp: 120 }), 120);
 });
@@ -112,4 +112,16 @@ test('el CSS del resumen está scopeado al dashboard', () => {
 test('la variación se lee sin depender del color', () => {
   assert.match(js, /\(sube \? '\+' : '−'\)/);
   assert.match(js, /sin comparación/);
+});
+
+test('rendimiento de la flota: sólo cuando casi todo el trabajo está cargado como servicio', () => {
+  const { api } = cargarModulo();
+  const t = { km: 30000 };
+  const completo = api.normalizarFlota({ actual: { km: 40000 }, remitos: { firmados: 100, con_servicio: 95 } }, false);
+  const parcial = api.normalizarFlota({ actual: { km: 40000 }, remitos: { firmados: 281, con_servicio: 8 } }, false);
+  const filtrado = api.normalizarFlota({ actual: { km: 40000 }, remitos: { firmados: 100, con_servicio: 100 } }, true);
+  assert.equal(api.rendimientoFlota(t, completo), 75);
+  assert.equal(api.rendimientoFlota(t, parcial), null);
+  assert.equal(api.rendimientoFlota(t, filtrado), null);
+  assert.equal(api.rendimientoFlota(t, null), null);
 });

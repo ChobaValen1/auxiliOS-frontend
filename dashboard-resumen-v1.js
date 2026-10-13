@@ -9,7 +9,7 @@
      tipo de vehículo y los servicios ubicados con su base más cercana.
 
    El frontend no suma filas de la base: sólo arma cocientes entre totales que
-   ya vienen hechos (ticket, rendimiento, tarifa media) y la cobertura del mapa,
+   ya vienen hechos (ticket, km reales sobre facturados, tarifa media) y la cobertura del mapa,
    que depende del radio que elige quien mira. */
 (function (global) {
   'use strict';
@@ -17,6 +17,7 @@
   var RPC_FACT = 'dashboard_facturacion_v1';
   var RPC_RES  = 'dashboard_resumen_v1';
   var RPC_FLOTA = 'dashboard_flota_km_v1';
+  var COBERTURA_MIN = 0.9;   // remitos del período cargados como servicio para comparar con el odómetro
 
   var ID_KPIS  = 'dashx-fact-kpis';
   var ID_FILT  = 'dashx-fact-filtros';
@@ -135,7 +136,8 @@
       tot: {
         facturado: num(t.facturado), peajes: num(t.peajes),
         km: num(t.km), servicios: num(t.servicios), kmReal: num(x.km_reales),
-        conDato: num(x.servicios_con_dato)
+        conDato: num(x.servicios_con_dato),
+        kmComp: empresas.reduce(function (s, e) { return s + e.kmComp; }, 0)
       },
       ant: {
         facturado: num(a.facturado), peajes: num(a.peajes),
@@ -260,10 +262,13 @@
       '</div>';
   }
 
-  /* Rendimiento km = km reales / km facturados. Los facturados incluyen los
-     tramos de ida y vuelta a la base que la fórmula de cobro suma, así que
-     menos de 100% es lo esperable: mide cuánto de lo que se cobra se recorre. */
-  function rendimiento(t) { return t.km > 0 && t.kmReal > 0 ? t.kmReal * 100 / t.km : null; }
+  /* Km reales sobre km facturados, sólo en los servicios que tienen km real
+     (kmComp = facturados de esos mismos servicios). Mide qué parte de lo que
+     se cobra se anduvo con el vehículo arriba; no es el rendimiento de la flota. */
+  function realesSobreFacturados(t) {
+    var comp = t.kmComp > 0 ? t.kmComp : (t.servicios > 0 && t.conDato >= t.servicios ? t.km : 0);
+    return comp > 0 && t.kmReal > 0 ? t.kmReal * 100 / comp : null;
+  }
 
   function pintarKpis(d) {
     var n = el(ID_KPIS);
@@ -276,12 +281,12 @@
         tile('Km reales', GUION, '', 'Sin servicios en el período') +
         tile('$ por servicio', GUION, '', 'Ticket promedio') +
         tile('Peajes', GUION, '', 'Sobre la facturación') +
-        tile('Rendimiento km', GUION, '', 'Km reales sobre km facturados');
+        tile('Rendimiento flota', GUION, '', 'Km cobrados de lo recorrido');
       return;
     }
-    var rend = rendimiento(t), rendAnt = rendimiento(a);
+    var rendFlota = rendimientoFlota(t, d.flota);
     var ticket = div(t.facturado, t.servicios), ticketAnt = div(a.facturado, a.servicios);
-    var pieReales = miles(t.km) + ' km facturados' + (rend != null ? ' · rend. ' + pct(rend) : '');
+    var pieReales = miles(t.km) + ' km facturados';
     if (t.conDato && t.conDato < t.servicios) pieReales += ' · ' + t.conDato + ' de ' + t.servicios + ' con dato';
     n.innerHTML =
       tile('Total facturado', pesos(t.facturado), delta(t.facturado, a.facturado, r), 'Facturación del período', true) +
@@ -291,8 +296,8 @@
       tile('$ por servicio', ticket != null ? pesos(ticket) : GUION, delta(ticket, ticketAnt, r), 'Ticket promedio') +
       tile('Peajes', pesos(t.peajes), delta(t.peajes, a.peajes, r),
         t.facturado > 0 ? pct(t.peajes * 100 / t.facturado, 1) + ' de la facturación' : 'Sobre la facturación') +
-      tile('Rendimiento km', rend != null ? pct(rend) : GUION,
-        rend != null && rendAnt != null ? delta(rend, rendAnt, r, true) : '', 'Km reales sobre km facturados');
+      tile('Rendimiento flota', rendFlota != null ? pct(Math.min(rendFlota, 100)) : GUION, '',
+        rendFlota != null ? 'Km cobrados de lo recorrido (odómetro)' : 'Km cobrados de lo recorrido · ' + motivoSinFlota(d.flota));
   }
 
   /* ── mapa ─────────────────────────────────────────────────────────────── */
@@ -776,19 +781,38 @@
      cerradas). Es de toda la flota: no se puede separar por prestadora. */
   function normalizarFlota(x, filtrado) {
     if (!x || typeof x !== 'object') return null;
-    var a = x.actual || {}, p = x.anterior || {};
+    var a = x.actual || {}, r = x.remitos || {};
+    var firmados = num(r.firmados), conServicio = num(r.con_servicio);
     return { km: num(a.km), jornadas: num(a.jornadas), sinDato: num(a.sin_dato), moviles: num(a.moviles),
-             kmAnt: num(p.km), filtrado: filtrado };
+             firmados: firmados, conServicio: conServicio, filtrado: filtrado,
+             /* El odómetro cuenta todo el trabajo; los servicios, sólo lo cargado en Servicios.
+                Se comparan recién cuando casi todos los remitos del período son servicios. */
+             completo: firmados === 0 || conServicio >= firmados * COBERTURA_MIN };
   }
+
+  /* Comparaciones contra el odómetro: null si hoy no serían reales. */
+  function flotaComparable(fl) { return !!(fl && !fl.filtrado && fl.completo && fl.km > 0); }
+
+  function motivoSinFlota(fl) {
+    if (!fl) return 'sin datos de las jornadas';
+    if (fl.filtrado) return 'quitá los filtros: el odómetro es de toda la flota';
+    if (!fl.completo) return 'falta cargar trabajo: ' + miles(fl.conServicio) + ' de ' + miles(fl.firmados) + ' remitos son servicios';
+    return 'sin km en el odómetro';
+  }
+
+  /* Rendimiento de la flota = km facturados sobre km del odómetro: de cada 100 km
+     que anduvo el camión, cuántos se cobraron. */
+  function rendimientoFlota(t, fl) { return flotaComparable(fl) && t.km > 0 ? t.km * 100 / fl.km : null; }
 
   function pintarEficiencia(d) {
     var n = el('rsm-eficiencia');
     if (!n) return;
-    var t = d.tot, a = d.ant;
-    var rend = rendimiento(t), rendAnt = rendimiento(a);
+    var t = d.tot;
+    var rs = realesSobreFacturados(t);
     var tarifa = div(t.facturado, t.km);
     var kmServ = div(t.kmReal, t.servicios);
-    var fl = d.flota, kmFlota = fl ? fl.km : 0;
+    var fl = d.flota, kmFlota = fl ? fl.km : 0, ok = flotaComparable(fl);
+    var motivo = fl && !fl.filtrado && !fl.completo ? 'falta cargar trabajo en Servicios' : motivoSinFlota(fl);
     var maxKm = Math.max(t.km, t.kmReal, kmFlota, 1);
     function barra(label, valor, clase) {
       return '<div class="rsm-ef-bar"><div class="rsm-ef-bar-head"><span>' + label + '</span><b>' +
@@ -796,36 +820,37 @@
         '<div class="rsm-ef-track"><i class="' + clase + '" style="width:' + (valor * 100 / maxKm).toFixed(1) + '%"></i></div></div>';
     }
     function dato(label, valor, pie) {
-      return '<div class="rsm-ef-dato"><span>' + label + '</span><b>' + valor + '</b><em>' + pie + '</em></div>';
+      return '<div class="rsm-ef-dato"><span>' + label + '</span><b>' + valor + '</b><em>' + esc(pie) + '</em></div>';
     }
-    /* Con cliente arriba = km reales sobre km del odómetro. El resto son km
-       muertos (ida y vuelta a la base, combustible, taller, traslados). */
-    var aprov = fl && !fl.filtrado && kmFlota > 0 && t.kmReal > 0 ? t.kmReal * 100 / kmFlota : null;
-    var aprovAnt = fl && !fl.filtrado && fl.kmAnt > 0 && a.kmReal > 0 ? a.kmReal * 100 / fl.kmAnt : null;
-    /* Km no facturados = odómetro − facturados: lo que el camión recorrió y nadie paga. */
-    var cobrado = fl && !fl.filtrado && kmFlota > 0 && t.km > 0 ? t.km * 100 / kmFlota : null;
+    /* Con cliente arriba = km reales sobre km del odómetro. El resto son km muertos
+       (ida y vuelta a la base, combustible, taller, traslados). Km no facturados =
+       odómetro − facturados: lo que el camión recorrió y nadie paga. */
+    var aprov = ok && t.kmReal > 0 ? t.kmReal * 100 / kmFlota : null;
+    var cobrado = rendimientoFlota(t, fl);
+    var pesoKm = ok ? div(t.facturado, kmFlota) : null;
     var pieFlota = !fl ? 'sin datos de las jornadas'
-      : fl.filtrado ? 'de toda la flota: no se separa por prestadora'
       : miles(fl.jornadas) + (fl.jornadas === 1 ? ' jornada' : ' jornadas') + ' · ' + miles(fl.moviles) + (fl.moviles === 1 ? ' móvil' : ' móviles') +
-        (fl.sinDato ? ' · ' + fl.sinDato + ' sin km' : '');
+        (fl.sinDato ? ' · ' + fl.sinDato + ' sin km' : '') + (fl.filtrado ? ' · toda la flota' : '');
     n.innerHTML =
       barra('Km facturados', t.km, 'is-fact') +
       barra('Km reales (servicios)', t.kmReal, 'is-real') +
       barra('Km flota (odómetro)', kmFlota, 'is-flota') +
       '<p class="rsm-ef-pie">' + esc(pieFlota) + '</p>' +
+      (fl && !fl.filtrado && !fl.completo
+        ? '<p class="rsm-ef-aviso">Todavía no se puede comparar con el odómetro: de ' + miles(fl.firmados) + ' remitos firmados, sólo ' +
+          miles(fl.conServicio) + ' están cargados como servicio. Cuando todo el trabajo pase por Servicios, estos datos aparecen solos.</p>'
+        : '') +
       '<div class="rsm-ef-grid">' +
-        dato('Rendimiento', rend != null ? pct(rend) : GUION,
-          rendAnt != null ? 'período anterior ' + pct(rendAnt) : 'sin período anterior') +
+        dato('Km reales s/ facturados', rs != null ? pct(rs) : GUION, 'en los servicios con km real') +
         dato('Tarifa media', tarifa != null ? pesos(tarifa) : GUION, 'por km facturado') +
         dato('Peajes', pesos(t.peajes), t.facturado > 0 ? pct(t.peajes * 100 / t.facturado, 1) + ' de la facturación' : 'sobre la facturación') +
         dato('Km por servicio', kmServ != null ? miles(kmServ) : GUION, 'promedio real') +
-        dato('Con cliente arriba', aprov != null ? pct(aprov) : GUION,
-          aprov == null ? (fl && fl.filtrado ? 'quitá los filtros para verlo' : 'de los km del odómetro')
-            : 'de los km del odómetro' + (aprovAnt != null ? ' · antes ' + pct(aprovAnt) : '')) +
+        dato('Con cliente arriba', aprov != null ? pct(aprov) : GUION, aprov != null ? 'de los km del odómetro' : motivo) +
         dato('Km muertos', aprov != null ? miles(Math.max(kmFlota - t.kmReal, 0)) + ' km' : GUION,
-          'sin vehículo arriba · incluye ida y vuelta a la base') +
+          aprov != null ? 'sin vehículo arriba · incluye ida y vuelta a la base' : motivo) +
         dato('Km no facturados', cobrado != null ? miles(Math.max(kmFlota - t.km, 0)) + ' km' : GUION,
-          cobrado != null ? 'nadie los paga · se cobró el ' + pct(Math.min(cobrado, 100)) + ' de lo recorrido' : 'odómetro menos km facturados') +
+          cobrado != null ? 'nadie los paga · se cobró el ' + pct(Math.min(cobrado, 100)) + ' de lo recorrido' : motivo) +
+        dato('$ por km recorrido', pesoKm != null ? pesos(pesoKm) : GUION, pesoKm != null ? 'facturado sobre km del odómetro' : motivo) +
       '</div>';
   }
 
@@ -1026,6 +1051,8 @@
       return c;
     },
     ratio: ratio,
-    rendimiento: rendimiento
+    realesSobreFacturados: realesSobreFacturados,
+    rendimientoFlota: rendimientoFlota,
+    normalizarFlota: normalizarFlota
   };
 })(window);
