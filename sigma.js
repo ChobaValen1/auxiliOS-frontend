@@ -248,7 +248,7 @@ function goTo(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('nav-' + name).classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
   document.getElementById('topbar-title').textContent = SCREENS[name].title;
   const sub = SCREENS[name].sub;
   document.getElementById('topbar-sub').textContent   = typeof sub === 'function' ? sub() : sub;
@@ -381,9 +381,9 @@ function openAdminPlanModal() {
   const tipoEl = document.getElementById('mg-tipo'); if (tipoEl) tipoEl.value = '';
   const alertaEl = document.getElementById('mg-alerta'); if (alertaEl) alertaEl.value = '500';
   const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
-  if (titulo) titulo.textContent = '📐 Nuevo Plan Maestro';
+  if (titulo) titulo.textContent = 'Nuevo plan de mantenimiento';
   const btnG = document.getElementById('btn-guardar-global');
-  if (btnG) btnG.textContent = '💾 Guardar en Catálogo';
+  if (btnG) btnG.textContent = 'Guardar plan';
 
   if (typeof toggleAdminPlanFields === 'function') toggleAdminPlanFields();
 
@@ -414,9 +414,9 @@ function abrirEditarPlan(planId) {
   if (alertaEl) alertaEl.value = plan.alert_before_km || 500;
 
   const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
-  if (titulo) titulo.textContent = '✏ Editar Plan Maestro';
+  if (titulo) titulo.textContent = 'Editar plan de mantenimiento';
   const btn = document.getElementById('btn-guardar-global');
-  if (btn) btn.textContent = '💾 Actualizar Plan';
+  if (btn) btn.textContent = 'Guardar cambios';
 
   const modal = document.getElementById('modal-crear-plan-global');
   if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
@@ -464,7 +464,7 @@ async function guardarPlanGlobal() {
       .from('master_service_plans')
       .update({ name: nombre, trigger_type: tipo, interval_km: km, interval_hours: hs, alert_before_km: alerta })
       .eq('id', planEditandoId);
-    if (btn) { btn.textContent = '💾 Guardar en Catálogo'; btn.style.pointerEvents = 'auto'; }
+    if (btn) { btn.textContent = 'Guardar plan'; btn.style.pointerEvents = 'auto'; }
     planEditandoId = null;
     if (error) { toast(`Error: ${error.message}`, 'error'); return; }
     toast('Plan actualizado', 'success');
@@ -485,7 +485,7 @@ async function guardarPlanGlobal() {
   // Llamamos a Supabase (La función que creamos en el paso anterior)
   const resultado = await crearPlanGlobal(datos);
 
-  if (btn) { btn.textContent = '💾 Guardar en Catálogo'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = 'Guardar plan'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado.ok) {
     toast('Plan maestro agregado al catálogo exitosamente', 'success');
@@ -8622,7 +8622,7 @@ const _cfgTabMeta = {
   'tab-usuarios':    { title: 'Personal', sub: 'Alta y gestión de choferes, operadores y administración.', action: 'openNuevoUsuarioModal()', importTipo: 'usuarios' },
   'tab-planes':      { title: 'Planes de mantenimiento', sub: 'Catálogo de planes globales.', action: 'openAdminPlanModal()' },
   'tab-mantenimiento':{ title: 'Mantenimiento', sub: 'Services vencidos y próximos de cada móvil.', action: null },
-  'tab-emergencias': { title: 'Contactos de emergencia', sub: 'Teléfonos, talleres y protocolo de siniestro para los choferes.', action: null },
+  'tab-emergencias': { title: 'SOS del chofer', sub: 'Lo que ve el chofer al tocar SOS: teléfonos, talleres de confianza y qué hacer ante un siniestro.', action: null },
   'tab-mi-cuenta':   { title: 'Mi cuenta', sub: 'Datos de la cuenta actual.', action: null },
 };
 
@@ -8741,7 +8741,9 @@ async function eliminarEmergenciaItemConfig(configId) {
 
 // Ejemplo de cómo renderizar el catálogo de planes (la pestaña 3)
 async function cargarTablaAdminPlanes() {
+  window.AuxiliosPlanesBase?.recargar?.();   // Camión › Planes de mantenimiento, si está abierto
   const contenedor = document.getElementById('lista-admin-planes');
+  if (!contenedor) return;
   contenedor.innerHTML = '⏳ Cargando catálogo...';
 
   const { data: planes, error } = await _db
@@ -9464,18 +9466,29 @@ function openNuevoVehiculoModal() {
   const regHorasNv = document.getElementById('nv-registra-horas'); if (regHorasNv) regHorasNv.checked = false;
   const warnEl = document.getElementById('warn-patente-nv');
   if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
-  const errEl = document.getElementById('nv-modal-error');
-  if (errEl) errEl.style.display = 'none';
-  const tipo = document.getElementById('nv-tipo'); if (tipo) tipo.value = 'plancha';
+  _nvPrepararModal({
+    titulo: 'Nuevo camión', sub: 'Cargá los datos del móvil para sumarlo a la flota.', boton: 'Registrar camión',
+    km: 'Kilometraje inicial *', horas: 'Horas de motor iniciales', ayudaKm: false, tipo: 'plancha'
+  });
+  openModal('modal-nuevo-vehiculo');
+}
 
-  const titulo = document.querySelector('#modal-nuevo-vehiculo .modal-head-title');
-  if (titulo) titulo.textContent = '🚨 Alta de Flota';
-  const btnGuardar = document.getElementById('btn-guardar-vehiculo');
-  if (btnGuardar) btnGuardar.innerHTML = '💾 Registrar en Flota';
+// Tipo de equipo: tarjetas que escriben en el input oculto #nv-tipo.
+function _nvElegirTipo(tipo) {
+  const inp = document.getElementById('nv-tipo');
+  if (inp) inp.value = tipo;
+  document.querySelectorAll('#modal-nuevo-vehiculo [data-nv-tipo]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.nvTipo === tipo)));
+}
 
+function _nvPrepararModal({ titulo, sub, boton, km, horas, ayudaKm, tipo }) {
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('nv-title', titulo); set('nv-subtitle', sub); set('btn-guardar-vehiculo', boton);
+  set('nv-km-label', km); set('nv-horas-label', horas);
+  const ayuda = document.getElementById('nv-km-help'); if (ayuda) ayuda.hidden = !ayudaKm;
+  const errEl = document.getElementById('nv-modal-error'); if (errEl) errEl.style.display = 'none';
+  _nvElegirTipo(tipo || 'plancha');
   const modal = document.getElementById('modal-nuevo-vehiculo');
   if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
-  openModal('modal-nuevo-vehiculo');
 }
 
 // ── 4. ACTUALIZACIÓN: GUARDADO INTELIGENTE ────────────────
@@ -9492,9 +9505,9 @@ async function guardarNuevoVehiculo() {
 
   const btn = document.getElementById('btn-guardar-vehiculo');
 
-  if (!patente)      { showModalError('nv-modal-error', 'Para guardar completá Patente / Dominio'); return; }
-  if (patente.replace(/\s/g,'').length < 6) { showModalError('nv-modal-error', 'La patente parece incompleta — revisá que tenga al menos 6 caracteres'); return; }
-  if (isNaN(km) || document.getElementById('nv-km').value === '') { showModalError('nv-modal-error', 'Para guardar completá KM Inicial'); return; }
+  if (!patente)      { showModalError('nv-modal-error', 'Completá la patente del camión'); return; }
+  if (patente.replace(/\s/g,'').length < 6) { showModalError('nv-modal-error', 'La patente parece incompleta: tiene que tener al menos 6 caracteres'); return; }
+  if (isNaN(km) || document.getElementById('nv-km').value === '') { showModalError('nv-modal-error', 'Completá el kilometraje'); return; }
 
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
@@ -9521,13 +9534,13 @@ async function guardarNuevoVehiculo() {
     error_res = error;
   }
 
-  if (btn) { btn.textContent = vehiculoEditandoId ? '💾 Actualizar Flota' : '💾 Registrar en Flota'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = vehiculoEditandoId ? 'Guardar cambios' : 'Registrar camión'; btn.style.pointerEvents = 'auto'; }
 
   if (error_res) {
-    if (error_res.code === '23505') toast('🚨 Patente o N° Interno duplicado.', 'error');
+    if (error_res.code === '23505') toast('Ya hay un camión con esa patente o ese N° interno.', 'error');
     else toast(`Error: ${error_res.message}`, 'error');
   } else {
-    toast(vehiculoEditandoId ? '✅ Flota actualizada' : '✅ Vehículo registrado en flota', 'success');
+    toast(vehiculoEditandoId ? 'Camión actualizado' : 'Camión registrado en la flota', 'success');
     closeModal('modal-nuevo-vehiculo');
     cargarTablaAdminFlota(); 
   }
@@ -9562,27 +9575,32 @@ async function cargarTablaAdminFlota() {
       if (t === 'plancha')    return 'Plancha';
       if (t === 'percha')     return 'Percha';
       if (t === 'asistencia') return 'Asistencia';
-      if (t === 'pesado')     return 'Grua Pesada';
+      if (t === 'pesado')     return 'Grúa pesada';
       return t || 'Vehiculo';
     };
-    contenedor.innerHTML = `<div class="cfg-item-list">${vehiculos.slice().sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1)).map(v => `
-      <div class="cfg-item${v.status !== 'active' ? ' inactive' : ''}">
-        <div class="cfg-item-main">
-          <div class="cfg-item-name">${v.plate}${v.numero_interno ? ` · Interno ${v.numero_interno}` : ''}</div>
-          <div class="cfg-item-sub">${[v.brand, v.model, v.year ? `${v.year}` : null, v.current_km ? `${v.current_km.toLocaleString('es-AR')} km` : null].filter(Boolean).join(' · ')}</div>
-        </div>
-        <div class="cfg-item-side">
-          <span class="cfg-badge ${tipoBadgeClass(v.tipo_equipo)}">${tipoLabel(v.tipo_equipo)}</span>
-          <span class="cfg-status ${v.status === 'active' ? 'on' : 'off'}">${v.status === 'active' ? 'Operativo' : 'Inactivo'}</span>
-        </div>
-        <div class="cfg-item-actions">
-          <button class="cfg-btn-a ghost" onclick="verTimelineCamion('${v.truck_id}')">Timeline</button>
-          <button class="cfg-btn-a ghost" onclick="abrirEditarVehiculo('${v.truck_id}')">Editar</button>
-          <button class="cfg-btn-a ${v.status === 'active' ? 'danger' : 'go'}" onclick="toggleEstadoVehiculo('${v.truck_id}','${v.status}')">
-            ${v.status === 'active' ? 'Dar de baja' : 'Reactivar'}
-          </button>
-        </div>
-      </div>`).join('')}</div>`;
+    window._flotaCache = vehiculos;
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const activos = vehiculos.filter(v => v.status === 'active').length;
+    const filas = vehiculos.slice().sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1)).map(v => {
+      const on = v.status === 'active';
+      const medidor = (v.current_km != null ? `${Number(v.current_km).toLocaleString('es-AR')} km` : '')
+        + (v.registra_horas && v.current_hours != null ? `<small>${Number(v.current_hours).toLocaleString('es-AR')} h de motor</small>` : '');
+      return `<tr class="${on ? '' : 'is-off'}">
+        <td data-label="Móvil"><b class="flt-movil">${esc(v.numero_interno || '—')}</b><small class="flt-plate">${esc(v.plate)}</small></td>
+        <td data-label="Equipo"><span class="cfg-badge ${tipoBadgeClass(v.tipo_equipo)}">${esc(tipoLabel(v.tipo_equipo))}</span></td>
+        <td data-label="Vehículo">${esc([v.brand, v.model].filter(Boolean).join(' ') || '—')}${v.year ? `<small>${v.year}</small>` : ''}</td>
+        <td data-label="Medidores" class="flt-num">${medidor || '—'}</td>
+        <td data-label="Estado"><span class="flt-state ${on ? 'on' : 'off'}">${on ? 'Operativo' : 'Dado de baja'}</span></td>
+        <td data-label=""><div class="flt-actions">
+          <button type="button" class="cfg-btn-a ghost" onclick="abrirEditarVehiculo('${v.truck_id}')">Editar</button>
+          <button type="button" class="cfg-btn-a ${on ? 'danger' : 'go'}" onclick="toggleEstadoVehiculo('${v.truck_id}','${esc(v.status)}')">${on ? 'Dar de baja' : 'Reactivar'}</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+    contenedor.innerHTML = `<div class="flt-summary"><span><b>${activos}</b> operativos</span>${vehiculos.length - activos ? `<span><b>${vehiculos.length - activos}</b> dados de baja</span>` : ''}</div>
+      <div class="ax-table-wrap"><table class="ax-table ax-table-stack flt-table">
+        <thead><tr><th>Móvil</th><th>Equipo</th><th>Vehículo</th><th>Medidores</th><th>Estado</th><th aria-label="Acciones"></th></tr></thead>
+        <tbody>${filas}</tbody></table></div>`;
 }
 
 // Variable global para saber si estamos editando o creando
@@ -9590,20 +9608,65 @@ let vehiculoEditandoId = null;
 let usuarioEditandoId = null;
 let planEditandoId = null;
 
-// ── 1. FUNCIÓN SUSPENDER / ACTIVAR ────────────────────────
+// ── 1. DAR DE BAJA / REACTIVAR (con modal) ─────────────────
+let _bajaVehiculo = null;
 async function toggleEstadoVehiculo(truckId, estadoActual) {
-  if (estadoActual === 'active') {
-    const { data } = await _db.from('daily_logs').select('log_id').eq('truck_id', truckId).eq('status', 'open').maybeSingle();
-    if (data) {
-      alert('Este camión tiene una jornada abierta. Cerrá la jornada antes de darlo de baja.');
-      return;
-    }
-    if (!confirm('¿Dar de baja esta unidad? Quedará inactiva pero sus datos se conservan.')) return;
+  const v = (window._flotaCache || []).find(x => String(x.truck_id) === String(truckId)) || { truck_id: truckId, status: estadoActual };
+  const baja = estadoActual === 'active';
+  const nombre = [v.numero_interno ? `Interno ${v.numero_interno}` : null, v.plate].filter(Boolean).join(' · ');
+  const body = document.getElementById('nvb-body');
+  const btn = document.getElementById('nvb-confirm');
+  document.getElementById('nvb-title').textContent = baja ? 'Dar de baja el camión' : 'Reactivar el camión';
+  document.getElementById('nvb-subtitle').textContent = nombre;
+  btn.textContent = baja ? 'Dar de baja' : 'Reactivar';
+  btn.className = baja ? 'btn btn-danger' : 'btn btn-primary';
+  btn.disabled = true;
+  body.innerHTML = '<p class="nvb-loading">Revisando el camión…</p>';
+  _bajaVehiculo = { truckId, nuevoEstado: baja ? 'inactive' : 'active' };
+  const modal = document.getElementById('modal-baja-vehiculo');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  openModal('modal-baja-vehiculo');
+
+  if (!baja) {
+    body.innerHTML = `<ul class="nvb-list">
+      <li><b>Vuelve a estar disponible</b><span>Los choferes lo pueden elegir al iniciar la jornada y aparece en la grilla.</span></li>
+      <li><b>Conserva todo</b><span>Historial, documentación y planes de service quedan como estaban.</span></li></ul>`;
+    btn.disabled = false;
+    return;
   }
-  const nuevoEstado = estadoActual === 'active' ? 'inactive' : 'active';
+
+  const hoy = typeof _gHoyIso === 'function' ? _gHoyIso() : new Date().toISOString().slice(0, 10);
+  const [rLog, rGrilla] = await Promise.all([
+    _db.from('daily_logs').select('log_id, users(full_name)').eq('truck_id', truckId).eq('status', 'open').maybeSingle(),
+    _db.from('asignaciones_grilla').select('asignacion_id', { count: 'exact', head: true }).eq('truck_id', truckId).gte('fecha', hoy),
+  ]);
+  if (!_bajaVehiculo || _bajaVehiculo.truckId !== truckId) return;
+  if (rLog?.data) {
+    const chofer = rLog.data.users?.full_name;
+    body.innerHTML = `<div class="nvb-alert"><b>Tiene una jornada abierta</b><span>${chofer ? `${chofer} está trabajando con este camión. ` : ''}Cerrá la jornada antes de darlo de baja.</span></div>`;
+    btn.disabled = true;
+    return;
+  }
+  const turnos = Number(rGrilla?.count) || 0;
+  body.innerHTML = `<ul class="nvb-list">
+      <li><b>Deja de estar disponible</b><span>No aparece para iniciar jornadas ni en la grilla.</span></li>
+      <li><b>No se borra nada</b><span>Historial, documentación y planes de service se conservan.</span></li>
+      <li><b>Se puede deshacer</b><span>Lo reactivás cuando quieras desde esta misma lista.</span></li></ul>
+    ${turnos ? `<div class="nvb-alert warn"><b>Tiene ${turnos} ${turnos === 1 ? 'turno asignado' : 'turnos asignados'} en la grilla desde hoy</b><span>Reasignalos a otro móvil para que no queden choferes sin camión.</span></div>` : ''}`;
+  btn.disabled = false;
+}
+
+async function confirmarEstadoVehiculo() {
+  if (!_bajaVehiculo) return;
+  const { truckId, nuevoEstado } = _bajaVehiculo;
+  const btn = document.getElementById('nvb-confirm');
+  btn.disabled = true;
   const { error } = await _db.from('trucks').update({ status: nuevoEstado }).eq('truck_id', truckId);
+  btn.disabled = false;
   if (error) { toast(`Error: ${error.message}`, 'error'); return; }
-  toast(nuevoEstado === 'active' ? 'Unidad reactivada' : 'Unidad dada de baja', 'success');
+  _bajaVehiculo = null;
+  closeModal('modal-baja-vehiculo');
+  toast(nuevoEstado === 'active' ? 'Camión reactivado' : 'Camión dado de baja', 'success');
   cargarTablaAdminFlota();
 }
 
@@ -9625,16 +9688,12 @@ async function abrirEditarVehiculo(truckId) {
     document.getElementById('nv-km').value = data.current_km || '';
     document.getElementById('nv-horas').value = data.current_hours || '';
     const regHoras = document.getElementById('nv-registra-horas'); if (regHoras) regHoras.checked = !!data.registra_horas;
-    if (data.tipo_equipo) document.getElementById('nv-tipo').value = data.tipo_equipo;
     const warnEl = document.getElementById('warn-patente-nv');
     if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
-
-    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏ Editar Flota';
-    document.getElementById('btn-guardar-vehiculo').innerHTML = '💾 Actualizar Flota';
-    
-    // 4. Abrimos el modal con fuerza bruta (z-index)
-    const modal = document.getElementById('modal-nuevo-vehiculo');
-    if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+    _nvPrepararModal({
+      titulo: 'Editar camión', sub: [data.numero_interno ? `Interno ${data.numero_interno}` : null, data.plate].filter(Boolean).join(' · '),
+      boton: 'Guardar cambios', km: 'Kilometraje actual *', horas: 'Horas de motor actuales', ayudaKm: true, tipo: data.tipo_equipo
+    });
     openModal('modal-nuevo-vehiculo');
 }
 

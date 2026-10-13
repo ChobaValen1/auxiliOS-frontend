@@ -41,14 +41,14 @@ test('configuration restores existing personnel vehicle and maintenance tools wi
   const center = read('configuration-center.js');
   const sigma = read('sigma.js');
 
-  for (const tab of ['tab-usuarios', 'tab-flota', 'tab-planes', 'tab-mantenimiento', 'tab-emergencias', 'tab-mi-cuenta']) {
+  for (const tab of ['tab-usuarios', 'tab-flota', 'tab-mantenimiento', 'tab-emergencias', 'tab-mi-cuenta']) {
     assert.ok(center.includes(tab), `${tab} must remain reachable from Configuration`);
   }
   assert.match(center, /openSettingsHub/);
   assert.match(center, /switchConfigTab/);
   assert.match(center, /Personal \/ Choferes/);
   assert.match(center, /Camiones/);
-  assert.match(center, /Planes de mantenimiento/);
+  assert.doesNotMatch(center, /tab-planes/);   // el catálogo de planes se maneja desde Camión › Planes
   assert.match(center, /moveTo\(administration, document\.getElementById\('nav-documentos'\)\)/);
   assert.match(center, /moveTo\(administration, document\.getElementById\('nav-grilla'\)\)/);
   assert.doesNotMatch(center, /moveTo\(administration, document\.getElementById\('nav-sueldos'\)\)/);

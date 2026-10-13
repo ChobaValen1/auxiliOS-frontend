@@ -267,6 +267,77 @@
 #modal-nuevo-usuario .modal-footer .btn { height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
 #modal-nuevo-usuario .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
 
+/* Camiones: lista */
+#modal-settings .flt-summary { display: flex; gap: var(--ax-sp-4); margin: 0 0 var(--ax-sp-3); color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-settings .flt-summary b { color: var(--ax-text); font-variant-numeric: tabular-nums; }
+#modal-settings .flt-table td { vertical-align: middle; color: var(--ax-text); }
+#modal-settings .flt-table td small { color: var(--ax-text-3); }
+#modal-settings .flt-movil { font-family: var(--ax-font-mono); font-size: var(--ax-fs-lg); }
+#modal-settings .flt-plate { font-family: var(--ax-font-mono); letter-spacing: .04em; }
+#modal-settings .flt-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+#modal-settings .flt-state { display: inline-flex; align-items: center; gap: 6px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); white-space: nowrap; }
+#modal-settings .flt-state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+#modal-settings .flt-state.on { color: var(--ax-ok); }
+#modal-settings .flt-state.off { color: var(--ax-text-3); }
+#modal-settings .flt-table tr.is-off td { color: var(--ax-text-3); }
+#modal-settings .flt-table tr.is-off .cfg-badge { opacity: .6; }
+#modal-settings .flt-actions { display: flex; justify-content: flex-end; gap: var(--ax-sp-2); }
+
+/* Camiones: alta / edición y baja */
+#modal-nuevo-vehiculo, #modal-baja-vehiculo { background: rgba(0, 0, 0, .6); }
+#modal-nuevo-vehiculo .modal-box.nv-modal, #modal-baja-vehiculo .modal-box.nvb-modal { width: min(620px, 96vw); max-width: none; max-height: calc(100dvh - 32px); display: flex; flex-direction: column; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); }
+#modal-baja-vehiculo .modal-box.nvb-modal { width: min(480px, 96vw); }
+#modal-nuevo-vehiculo .modal-head, #modal-baja-vehiculo .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+#modal-nuevo-vehiculo .nv-modal-title, #modal-baja-vehiculo .nv-modal-title { display: flex; flex-direction: column; gap: 2px; }
+#modal-nuevo-vehiculo .modal-head-title, #modal-baja-vehiculo .modal-head-title { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#modal-nuevo-vehiculo .nv-modal-title small, #modal-baja-vehiculo .nv-modal-title small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+#modal-nuevo-vehiculo .modal-close, #modal-baja-vehiculo .modal-close { width: var(--ax-h); height: var(--ax-h); border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#modal-nuevo-vehiculo .modal-body { display: grid; gap: 18px; padding: 18px 20px; overflow: auto; }
+#modal-baja-vehiculo .modal-body { padding: 18px 20px; }
+#modal-nuevo-vehiculo .nv-section { display: grid; gap: 10px; }
+#modal-nuevo-vehiculo .nv-section h4 { margin: 0; color: var(--ax-text-3); font: var(--ax-fw-bold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .07em; text-transform: uppercase; }
+#modal-nuevo-vehiculo .nv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#modal-nuevo-vehiculo .nv-grid-3 { grid-template-columns: 1fr 1fr 110px; }
+#modal-nuevo-vehiculo .form-group { display: flex; flex-direction: column; gap: 6px; margin: 0; min-width: 0; }
+#modal-nuevo-vehiculo .form-label { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#modal-nuevo-vehiculo .form-input { width: 100%; height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#modal-nuevo-vehiculo .form-input.nv-mono { font-family: var(--ax-font-mono); letter-spacing: .03em; }
+#modal-nuevo-vehiculo #nv-patente { text-transform: uppercase; }
+#modal-nuevo-vehiculo .form-input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#modal-nuevo-vehiculo .rem-warn-patente:empty { display: none; }
+#modal-nuevo-vehiculo .nv-tipos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+#modal-nuevo-vehiculo .nv-tipos button { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); text-align: left; cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#modal-nuevo-vehiculo .nv-tipos button:hover { border-color: var(--ax-text-3); }
+#modal-nuevo-vehiculo .nv-tipos button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#modal-nuevo-vehiculo .nv-tipos b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-nuevo-vehiculo .nv-tipos small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-nuevo-vehiculo .nv-tipos button[aria-pressed="true"] { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-nuevo-vehiculo .nv-tipos button[aria-pressed="true"] b { color: var(--ax-accent); }
+#modal-nuevo-vehiculo .nv-help { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-nuevo-vehiculo .nv-horas-switch { margin-top: 0; background: var(--ax-bg); }
+#modal-nuevo-vehiculo .nv-error { margin: 0 20px 12px; padding: 10px 12px; border: 1px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-danger); font-size: var(--ax-fs-sm); }
+#modal-nuevo-vehiculo .modal-footer, #modal-baja-vehiculo .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+#modal-nuevo-vehiculo .modal-footer .btn, #modal-baja-vehiculo .modal-footer .btn { height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#modal-nuevo-vehiculo .modal-footer .btn-primary, #modal-baja-vehiculo .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#modal-baja-vehiculo .modal-footer .btn-danger { border-color: var(--ax-danger-strong); background: var(--ax-danger-strong); color: #fff; font-weight: var(--ax-fw-semibold); }
+#modal-baja-vehiculo .modal-footer .btn:disabled { opacity: .45; cursor: not-allowed; }
+#modal-baja-vehiculo .nvb-loading { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-baja-vehiculo .nvb-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+#modal-baja-vehiculo .nvb-list li { display: grid; gap: 2px; padding-left: 16px; border-left: 2px solid var(--ax-border-strong); }
+#modal-baja-vehiculo .nvb-list b, #modal-baja-vehiculo .nvb-alert b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-baja-vehiculo .nvb-list span, #modal-baja-vehiculo .nvb-alert span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-baja-vehiculo .nvb-alert { display: grid; gap: 3px; margin-top: 14px; padding: 10px 12px; border: 1px solid rgba(226, 80, 74, .5); border-radius: var(--ax-radius); background: var(--ax-danger-soft); }
+#modal-baja-vehiculo .nvb-alert:first-child { margin-top: 0; }
+#modal-baja-vehiculo .nvb-alert.warn { border-color: rgba(245, 166, 35, .45); background: var(--ax-warn-soft); }
+@media (max-width: 760px) {
+  #modal-nuevo-vehiculo .nv-tipos { grid-template-columns: 1fr 1fr; }
+  #modal-nuevo-vehiculo .nv-grid-3 { grid-template-columns: 1fr 1fr; }
+  #modal-nuevo-vehiculo .nv-grid-3 > :last-child { grid-column: 1 / -1; }
+  #modal-settings .flt-actions { justify-content: flex-start; }
+  #modal-settings .flt-table .cfg-badge, #modal-settings .flt-table .flt-state { justify-self: start; }
+  #modal-settings .flt-table td small { margin-top: 0; }
+}
+
 @media (max-width: 760px) {
   #modal-settings .modal-box.cfg-modal-box { width: 100vw; height: 100dvh; border-radius: 0; }
   #modal-settings .cfg-content-header { position: relative; flex-wrap: wrap; padding: 12px 56px 12px 16px; }

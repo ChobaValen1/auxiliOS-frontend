@@ -220,7 +220,7 @@ test('Historial: "Remito aprobado · Ver" abre el remito (detalle, PDF, WhatsApp
 
 test('Teléfono del cliente: obligatorio sólo para el chofer', () => {
   const flow = read('remito-mobile-flow-v3.js'), wiz = read('operator-service-wizard.js'), cfg = read('service-module-configuration.js'), part = read('private-service-v1.js');
-  assert.match(flow, /if\(key==='customer_phone'\)return 'required'/);                    // chofer: siempre, salvo "El cliente no informa teléfono"
+  assert.match(flow, /if\(key==='customer_phone'\)return mode==='optional'\?'optional':'required'/);   // chofer: obligatorio salvo que se configure opcional
   assert.doesNotMatch(wiz, /req\('customer_phone'\)/);                                    // Operaciones: nunca
   assert.match(cfg, /fieldModes\.customer_phone==='required'\)fieldModes\.customer_phone='optional'/);
   assert.match(part, /campo\('customer_phone', 'Teléfono',/);

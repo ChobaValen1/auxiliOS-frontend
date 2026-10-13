@@ -150,7 +150,7 @@
           kpi('sin_jornada', 'Sin jornada') + kpi('taller', 'En taller') + kpi('alertas', 'Con alertas') + '</div>' +
         '<div class="fcv-toolbar"><label class="fcv-searchbox"><span aria-hidden="true">' + ico('search') + '</span><input type="search" class="fcv-search" data-fcv-q placeholder="Buscar móvil, patente o chofer…" value="' + esc(st.q) + '"></label>' +
           '<button type="button" class="fcv-refresh" data-fcv="refresh">' + ico('refresh-cw') + 'Actualizar</button>' +
-          (esAdmin() ? '<button type="button" class="fcv-refresh" data-fcv="planes-base">' + ico('wrench') + 'Planes base</button>' : '') + '</div>' +
+          (esAdmin() ? '<button type="button" class="fcv-refresh" data-fcv="planes-base">' + ico('wrench') + 'Planes</button>' : '') + '</div>' +
         (filas.length
           ? '<div class="fcv-table-wrap"><table class="fcv-table"><thead><tr>' +
               '<th>Móvil</th><th>Estado</th><th>Km</th><th>Neumáticos y frenos</th><th>Service</th><th>Documentación</th><th></th>' +

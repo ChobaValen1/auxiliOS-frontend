@@ -20,5 +20,5 @@ test('la pantalla central muestra accesos directos a Servicios y Tarifas',()=>{
 });
 
 test('Configuración conserva en un único centro los módulos estructurales disponibles',()=>{
-  for(const label of ['Prestadoras','Bases geográficas','Tipos de servicio','Tipos de tarifa','Peajes','Servicios','Tarifas','Personal / Choferes','Camiones','Planes de mantenimiento','Mantenimiento','Contactos de emergencia','Documentación','Grilla','Sueldos','Mi cuenta'])assert.match(center,new RegExp(label));
+  for(const label of ['Prestadoras','Bases geográficas','Tipos de servicio','Tipos de tarifa','Peajes','Servicios','Tarifas','Personal / Choferes','Camiones','Mantenimiento','SOS del chofer','Documentación','Grilla','Sueldos','Mi cuenta'])assert.match(center,new RegExp(label));
 });

@@ -244,7 +244,13 @@
     const catalogs = document.getElementById('aux-config-catalogs');
     const management = document.getElementById('aux-config-management');
     const administration = document.getElementById('aux-config-administration');
-    [company, catalogs, management, administration].forEach(group => group?.replaceChildren());
+    // Los accesos de pantallas (nav-grilla, nav-documentos…) se rescatan antes de vaciar los grupos:
+    // si se borraban, goTo() fallaba al no encontrar su nav y la pantalla quedaba en blanco.
+    const sidenav = document.querySelector('.sidenav');
+    [company, catalogs, management, administration].forEach(group => {
+      group?.querySelectorAll('.nav-item[id]').forEach(node => { node.style.display = 'none'; sidenav?.appendChild(node); });
+      group?.replaceChildren();
+    });
 
     moveTo(company, document.getElementById('nav-empresas'));
     moveTo(company, document.getElementById('nav-bases-geograficas') || document.getElementById('nav-bases-tarifarias'));
@@ -260,9 +266,8 @@
     if (canUseManagementTools()) {
       addAction(management, '👤', 'Personal / Choferes', 'Alta y gestión del personal', () => openLegacySettingsTab('tab-usuarios'));
       addAction(management, '🚛', 'Camiones', 'Alta y administración de vehículos', () => openLegacySettingsTab('tab-flota'));
-      addAction(management, '🧰', 'Planes de mantenimiento', 'Crear y administrar planes globales', () => openLegacySettingsTab('tab-planes'));
       addAction(management, '🔧', 'Mantenimiento', 'Seguimiento y asignación de mantenimiento', () => openLegacySettingsTab('tab-mantenimiento'));
-      addAction(management, '🆘', 'Contactos de emergencia', 'Teléfonos y referencias operativas', () => openLegacySettingsTab('tab-emergencias'));
+      addAction(management, '🆘', 'SOS del chofer', 'Teléfonos, talleres y pasos ante un siniestro', () => openLegacySettingsTab('tab-emergencias'));
       moveTo(administration, document.getElementById('nav-documentos'));
       moveTo(administration, document.getElementById('nav-grilla'));
 
@@ -370,9 +375,8 @@
       <div class="aux-center-tool-grid"><button class="aux-center-tool" onclick="CompanyDocuments.open()"><span>▤</span><b>Empresa y documentos</b><small>Datos fiscales y firma institucional.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-usuarios')"><span>👤</span><b>Personal / Choferes</b><small>Alta y gestión del personal.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-flota')"><span>🚛</span><b>Camiones</b><small>Alta y administración de vehículos.</small></button>
-        <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-planes')"><span>🧰</span><b>Planes de mantenimiento</b><small>Catálogo de planes globales.</small></button>
         <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-mantenimiento')"><span>🔧</span><b>Mantenimiento</b><small>Seguimiento y asignaciones.</small></button>
-        <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-emergencias')"><span>🆘</span><b>Contactos de emergencia</b><small>Referencias operativas.</small></button>
+        <button class="aux-center-tool" onclick="abrirHerramientaConfiguracion('tab-emergencias')"><span>🆘</span><b>SOS del chofer</b><small>Teléfonos, talleres y pasos ante un siniestro.</small></button>
       </div>
     </section>
     <section class="aux-center-tools">
@@ -398,7 +402,7 @@
         'Camiones':'M2 6h12v11H2Z M14 10h5l3 4v3h-8 M7 18a2 2 0 1 1-4 0a2 2 0 1 1 4 0 M21 18a2 2 0 1 1-4 0a2 2 0 1 1 4 0',
         'Planes de mantenimiento':'M6 4h12v17H6Z M9 2h6v4H9Z M9 10h6 M9 14h6',
         'Mantenimiento':'M14 3a6 6 0 0 0-6 8L2 17l5 5 6-6a6 6 0 0 0 8-7l-4 4-4-4 4-4Z',
-        'Contactos de emergencia':'M8 3H4v4c0 7 6 13 13 13h4v-4l-5-2-2 2-6-6 2-2Z',
+        'SOS del chofer':'M8 3H4v4c0 7 6 13 13 13h4v-4l-5-2-2 2-6-6 2-2Z',
         'Grilla':'M3 5h18v16H3Z M7 2v6 M17 2v6 M3 10h18 M9 10v11 M15 10v11',
         'Tipos de servicio':'M3 3h7v7H3Z M14 3h7v7h-7Z M3 14h7v7H3Z M14 14h7v7h-7Z',
         'Tipos de tarifa':'M3 4h12l6 8-6 8H3Z M7 9h3 M7 14h6',
@@ -421,7 +425,7 @@
           + (manage ? route('Documentación','Legajos y vencimientos.','documentos') : ''))
       + area('Operación','Formularios, flujo y recursos de trabajo.','⚙',
           route('Servicios','Columnas, formulario y flujo operativo.','config-services')
-          + (manage ? legacy('Camiones','Alta y administración de vehículos.','tab-flota')+legacy('Planes de mantenimiento','Catálogo de planes globales.','tab-planes')+legacy('Mantenimiento','Seguimiento y asignaciones.','tab-mantenimiento')+legacy('Contactos de emergencia','Referencias operativas.','tab-emergencias')+route('Grilla','Asignaciones y francos.','grilla') : ''))
+          + (manage ? legacy('Camiones','Alta, edición y baja de vehículos. Los planes de service están en Camión › Planes.','tab-flota')+legacy('Mantenimiento','Seguimiento y asignaciones.','tab-mantenimiento')+legacy('SOS del chofer','Teléfonos, talleres y pasos ante un siniestro que el chofer ve en el botón SOS.','tab-emergencias')+route('Grilla','Asignaciones y francos.','grilla') : ''))
       + area('Catálogos','Conceptos compartidos por toda la operación.','▦',
           route('Tipos de servicio','Alta y definición de servicios.','config-service-types')+route('Tipos de tarifa','Modalidades de cálculo.','config-tariff-types')+route('Peajes','Catálogo e importes vigentes.','peajes')+route('Bases geográficas','Ubicaciones operativas.','bases-geograficas'))
       + area('Prestadoras y tarifas','Servicios habilitados, precios y vigencias.','▥',
