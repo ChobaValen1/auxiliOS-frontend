@@ -54,3 +54,14 @@ test('Eficiencia operativa: km de la flota según el odómetro', () => {
   assert.match(mig, /l\.status = 'closed'\s+and not coalesce\(t\.is_test, false\)/);
   assert.match(mig, /not in \('administracion', 'facturacion', 'supervision'\)/);
 });
+
+test('Alta de prestadora: parámetros de facturación piden servicios y tarifas primero', () => {
+  const bp = read('company-billing-parameters-v4.js'), mig = read('migrations/20261013060000_company_surcharges_alta_v1.sql');
+  assert.match(bp, /function readiness\(\)/);
+  assert.match(bp, /if\(!ready\.listo\)\{body\.innerHTML=altaHtml\(ready\)/);
+  assert.match(bp, /AuxiliosCompanyTariffsV4\.openForCompany\(id\)/);
+  assert.match(bp, /AuxiliosCompanyServicesV4\.open\(id\)/);
+  assert.match(mig, /current_price_card_for_company\(p_company_id,false\)/);
+  assert.doesNotMatch(mig, /current_price_card_for_company\(p_company_id,true\)/);   // ya no crea tarifarios vacíos
+  assert.match(mig, /Primero cargá las tarifas de esta prestadora/);
+});
