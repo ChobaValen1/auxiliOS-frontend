@@ -9817,6 +9817,17 @@ async function guardarNuevoUsuario() {
     return;
   }
 
+  // El email ya pertenece a otro usuario (también si está suspendido): se avisa quién es antes de invitar.
+  const mismoEmail = (globalThis._usuariosCache || []).find(x => String(x.email || '').trim().toLowerCase() === email.toLowerCase());
+  if (mismoEmail) {
+    if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
+    const quien = mismoEmail.full_name || 'otro usuario';
+    showModalError('nu-modal-error', mismoEmail.is_active === false
+      ? `Ese email ya es de ${quien}, que está suspendido. Si es la misma persona, reactivalo desde la lista; si no, usá otro email.`
+      : `Ese email ya es de ${quien}. Usá otro email o editá ese usuario.`);
+    return;
+  }
+
   let resp, data, legajo;
   try {
     legajo = await _siguienteLegajo(rol);
@@ -9838,7 +9849,10 @@ async function guardarNuevoUsuario() {
   if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
 
   if (!resp?.ok || data?.error) {
-    showModalError('nu-modal-error', data?.error || 'Error desconocido al crear el usuario');
+    const msg = data?.error === 'No se pudo invitar al usuario'
+      ? 'No se pudo enviar la invitación: ese email ya está registrado en el sistema. Usá otro email o pedí que lo revisemos.'
+      : (data?.error || 'Error desconocido al crear el usuario');
+    showModalError('nu-modal-error', msg);
   } else {
     toast(`Usuario creado con legajo ${legajo}. Recibirá un correo para definir su contraseña.`, 'success');
     closeModal('modal-nuevo-usuario');

@@ -86,3 +86,12 @@ test('the personnel form has no legajo or license inputs', () => {
   assert.doesNotMatch(form, /id="nu-legajo"/);
   assert.doesNotMatch(form, /id="nu-licencia"/);
 });
+
+test('alta de usuario avisa de quién es un email ya registrado antes de invitar', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'sigma.js'), 'utf8');
+  const body = src.slice(src.indexOf('async function guardarNuevoUsuario'), src.indexOf('async function cargarTablaAdminUsuarios'));
+  assert.match(body, /const mismoEmail = \(globalThis\._usuariosCache \|\| \[\]\)\.find/);
+  assert.ok(body.indexOf('mismoEmail') < body.indexOf('/api/create-user'));
+  assert.match(body, /que está suspendido/);
+  assert.match(body, /ese email ya está registrado en el sistema/);
+});
