@@ -42,3 +42,13 @@ test('Planes de mantenimiento: el catálogo vive en Camión › Planes', () => {
   assert.doesNotMatch(center, /tab-planes/);
   assert.match(center, /SOS del chofer/);
 });
+
+test('Eficiencia operativa: km de la flota según el odómetro', () => {
+  const js = read('dashboard-resumen-v1.js'), mig = read('migrations/20261013050000_dashboard_flota_km_v1.sql');
+  assert.match(js, /var RPC_FLOTA = 'dashboard_flota_km_v1'/);
+  assert.match(js, /rpc\(RPC_FLOTA, \{ p_desde: base\.p_desde, p_hasta: base\.p_hasta \}\)\.catch\(/);   // si falla, el resumen sigue
+  assert.match(js, /barra\('Km flota \(odómetro\)', kmFlota, 'is-flota'\)/);
+  assert.match(js, /Aprovechamiento flota/);
+  assert.match(mig, /l\.status = 'closed'\s+and not coalesce\(t\.is_test, false\)/);
+  assert.match(mig, /not in \('administracion', 'facturacion', 'supervision'\)/);
+});

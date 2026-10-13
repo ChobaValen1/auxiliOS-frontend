@@ -16,6 +16,7 @@
 
   var RPC_FACT = 'dashboard_facturacion_v1';
   var RPC_RES  = 'dashboard_resumen_v1';
+  var RPC_FLOTA = 'dashboard_flota_km_v1';
 
   var ID_KPIS  = 'dashx-fact-kpis';
   var ID_FILT  = 'dashx-fact-filtros';
@@ -771,6 +772,15 @@
 
   /* ── eficiencia operativa ─────────────────────────────────────────────── */
 
+  /* Km de la flota según el odómetro (km final − inicial de las jornadas
+     cerradas). Es de toda la flota: no se puede separar por prestadora. */
+  function normalizarFlota(x, filtrado) {
+    if (!x || typeof x !== 'object') return null;
+    var a = x.actual || {}, p = x.anterior || {};
+    return { km: num(a.km), jornadas: num(a.jornadas), sinDato: num(a.sin_dato), moviles: num(a.moviles),
+             kmAnt: num(p.km), filtrado: filtrado };
+  }
+
   function pintarEficiencia(d) {
     var n = el('rsm-eficiencia');
     if (!n) return;
@@ -778,7 +788,8 @@
     var rend = rendimiento(t), rendAnt = rendimiento(a);
     var tarifa = div(t.facturado, t.km);
     var kmServ = div(t.kmReal, t.servicios);
-    var maxKm = Math.max(t.km, t.kmReal, 1);
+    var fl = d.flota, kmFlota = fl ? fl.km : 0;
+    var maxKm = Math.max(t.km, t.kmReal, kmFlota, 1);
     function barra(label, valor, clase) {
       return '<div class="rsm-ef-bar"><div class="rsm-ef-bar-head"><span>' + label + '</span><b>' +
         (valor > 0 ? miles(valor) + ' km' : GUION) + '</b></div>' +
@@ -787,15 +798,31 @@
     function dato(label, valor, pie) {
       return '<div class="rsm-ef-dato"><span>' + label + '</span><b>' + valor + '</b><em>' + pie + '</em></div>';
     }
+    /* Aprovechamiento = km con servicio sobre km del odómetro: el resto son
+       km sin servicio (ir a la base, cargar combustible, taller, traslados). */
+    var aprov = fl && !fl.filtrado && kmFlota > 0 && t.kmReal > 0 ? t.kmReal * 100 / kmFlota : null;
+    var aprovAnt = fl && !fl.filtrado && fl.kmAnt > 0 && a.kmReal > 0 ? a.kmReal * 100 / fl.kmAnt : null;
+    var cobertura = fl && !fl.filtrado && kmFlota > 0 && t.km > 0 ? t.km * 100 / kmFlota : null;
+    var pieFlota = !fl ? 'sin datos de las jornadas'
+      : fl.filtrado ? 'de toda la flota: no se separa por prestadora'
+      : miles(fl.jornadas) + (fl.jornadas === 1 ? ' jornada' : ' jornadas') + ' · ' + miles(fl.moviles) + (fl.moviles === 1 ? ' móvil' : ' móviles') +
+        (fl.sinDato ? ' · ' + fl.sinDato + ' sin km' : '');
     n.innerHTML =
       barra('Km facturados', t.km, 'is-fact') +
-      barra('Km reales', t.kmReal, 'is-real') +
+      barra('Km reales (servicios)', t.kmReal, 'is-real') +
+      barra('Km flota (odómetro)', kmFlota, 'is-flota') +
+      '<p class="rsm-ef-pie">' + esc(pieFlota) + '</p>' +
       '<div class="rsm-ef-grid">' +
         dato('Rendimiento', rend != null ? pct(rend) : GUION,
           rendAnt != null ? 'período anterior ' + pct(rendAnt) : 'sin período anterior') +
         dato('Tarifa media', tarifa != null ? pesos(tarifa) : GUION, 'por km facturado') +
         dato('Peajes', pesos(t.peajes), t.facturado > 0 ? pct(t.peajes * 100 / t.facturado, 1) + ' de la facturación' : 'sobre la facturación') +
         dato('Km por servicio', kmServ != null ? miles(kmServ) : GUION, 'promedio real') +
+        dato('Aprovechamiento flota', aprov != null ? pct(aprov) : GUION,
+          aprov == null ? (fl && fl.filtrado ? 'quitá los filtros para verlo' : 'km reales sobre km del odómetro')
+            : (aprovAnt != null ? 'período anterior ' + pct(aprovAnt) : 'km reales sobre km del odómetro')) +
+        dato('Km sin servicio', aprov != null ? miles(Math.max(kmFlota - t.kmReal, 0)) + ' km' : GUION,
+          cobertura != null ? 'se facturó el ' + pct(cobertura) + ' de lo recorrido' : 'odómetro menos km reales') +
       '</div>';
   }
 
@@ -940,9 +967,12 @@
     var r = await Promise.all([
       rpc(RPC_FACT, Object.assign({ p_conceptos: paramArray(f.conceptos) }, base)),
       rpc(RPC_RES, base),
-      Z ? Z.historia(f) : null
+      Z ? Z.historia(f) : null,
+      /* Km del odómetro: si falla, el resto del resumen se muestra igual. */
+      rpc(RPC_FLOTA, { p_desde: base.p_desde, p_hasta: base.p_hasta }).catch(function () { return null; })
     ]);
     var d = normalizar(r[0], r[1]);
+    d.flota = normalizarFlota(r[3], !!(base.p_empresas || base.p_bases || paramArray(f.conceptos)));
     evol.hist = Z && d.desde ? (r[2] || Z.historiaDePeriodo(d.desde, { facturado: d.porDia.anterior }, { facturado: d.porDia.actual })) : null;
     evol.per = evol.hist ? [Z.diasEntre(evol.hist.desde, d.desde), Z.diasEntre(evol.hist.desde, d.hasta || d.desde)] : null;
     estado.res = d;
