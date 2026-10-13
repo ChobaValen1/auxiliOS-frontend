@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'maintenance-v442-20261013';
+window.AUXILIOS_BUILD_ID = 'maintenance-v443-20261013';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -171,6 +171,7 @@ async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-remitos-filtros-sheet-v1-css', '/remitos-filtros-sheet-v1.css');
   await loadAuxiliosModule('auxilios-remitos-filtros-sheet-v1', '/remitos-filtros-sheet-v1.js');
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
+  loadAuxiliosStyle('auxilios-toll-map-v1-css', '/toll-map-v1.css');
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
     loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),
@@ -178,6 +179,7 @@ async function loadCriticalAuxiliosModules() {
     loadAuxiliosModule('auxilios-billing-breakdown', '/billing-breakdown-v1.js'),
     loadAuxiliosModule('auxilios-operator-billing', '/operator-billing.js'),
     loadAuxiliosModule('auxilios-toll-management', '/toll-management.js'),
+    loadAuxiliosModule('auxilios-toll-map-v1', '/toll-map-v1.js'),
     loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),
     loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js')
   ]);
