@@ -60,7 +60,7 @@
     const grid = document.getElementById('tt1-grid');
     if (!grid) return;
     if (!canRead()) { grid.innerHTML = '<div class="tt1-error">Sin permiso para consultar Tipos de Tarifa.</div>'; return; }
-    grid.innerHTML = S.types.length ? S.types.map(type => {
+    grid.innerHTML = S.types.length ? S.types.slice().sort((a, b) => (a.is_active === false ? 1 : 0) - (b.is_active === false ? 1 : 0)).map(type => { // inactivos al final
       const selected = serviceIds(type);
       const services = S.services.filter(service => selected.has(String(service.concept_id)));
       const usage = Number(type.service_count ?? type.usage_count ?? services.length ?? 0);

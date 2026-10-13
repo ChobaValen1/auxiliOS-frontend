@@ -8760,7 +8760,7 @@ async function cargarTablaAdminPlanes() {
 
   window._planesCache = planes;
 
-  contenedor.innerHTML = `<div class="cfg-item-list">${planes.map(p => `
+  contenedor.innerHTML = `<div class="cfg-item-list">${planes.slice().sort((a, b) => (a.activo ? 0 : 1) - (b.activo ? 0 : 1)).map(p => `
     <div class="cfg-item${!p.activo ? ' inactive' : ''}">
       <div class="cfg-item-main">
         <div class="cfg-item-name">${p.name}</div>
@@ -9565,7 +9565,7 @@ async function cargarTablaAdminFlota() {
       if (t === 'pesado')     return 'Grua Pesada';
       return t || 'Vehiculo';
     };
-    contenedor.innerHTML = `<div class="cfg-item-list">${vehiculos.map(v => `
+    contenedor.innerHTML = `<div class="cfg-item-list">${vehiculos.slice().sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1)).map(v => `
       <div class="cfg-item${v.status !== 'active' ? ' inactive' : ''}">
         <div class="cfg-item-main">
           <div class="cfg-item-name">${v.plate}${v.numero_interno ? ` · Interno ${v.numero_interno}` : ''}</div>
@@ -9837,7 +9837,8 @@ async function cargarTablaAdminUsuarios() {
   const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
   const yo = (typeof USUARIO_ACTUAL !== 'undefined' && USUARIO_ACTUAL?.id) || PERFIL_USUARIO?.user_id || null;
 
-  const filas = usuarios.map(u => {
+  // Suspendidos al final; dentro de cada grupo, por nombre (como viene de la base).
+  const filas = usuarios.slice().sort((a, b) => (a.is_active === false ? 1 : 0) - (b.is_active === false ? 1 : 0)).map(u => {
     const rol = u.roles?.name || u.role || '';
     const activo = u.is_active !== false;
     const id = _escHtml(u.user_id || '');
@@ -12713,7 +12714,7 @@ function _renderCommissionCatalog() {
   const el = document.getElementById('cfg-commission-body');
   if (!el) return;
   if (!_commissionCatalog.length) { el.innerHTML = '<p class="pm-help">Todavía no hay comisiones. Usá + Nueva comisión.</p>'; return; }
-  const rows = _commissionCatalog.map(c => {
+  const rows = _commissionCatalog.slice().sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1)).map(c => { // inactivas al final
     const assigned = c.assigned_driver_ids?.length || 0;
     return `<tr class="${c.active ? '' : 'is-inactive'}">
       <td data-label="Comisión"><b>${_escHtml(c.name)}</b></td>

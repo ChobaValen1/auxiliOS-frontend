@@ -119,7 +119,7 @@
       if (!query) return true;
       return `${base.name || ''} ${base.base_code || ''} ${base.address || ''} ${base.city || ''} ${base.province || ''}`
         .toLowerCase().includes(query);
-    });
+    }).sort((a, b) => (a.is_active ? 0 : 1) - (b.is_active ? 0 : 1)); // inactivas al final
   }
 
   function render() {

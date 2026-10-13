@@ -137,7 +137,7 @@
       if (['servicio', 'jornada', 'sin_jornada', 'taller'].indexOf(st.filtro) >= 0 && e !== st.filtro) return false;
       if (q && (titulo(t) + ' ' + (t.plate || '') + ' ' + (t.brand || '') + ' ' + (t.model || '') + ' ' + (t.driver_name || '')).toLowerCase().indexOf(q) < 0) return false;
       return true;
-    });
+    }).sort(function (a, b) { return (estado(a).key === 'inactivo' ? 1 : 0) - (estado(b).key === 'inactivo' ? 1 : 0); }); // inactivos al final
 
     var kpi = function (k, label) {
       return '<button type="button" class="fcv-kpi' + (st.filtro === k ? ' on' : '') + (k === 'alertas' && cuenta.alertas ? ' fcv-kpi-alerta' : '') + '" data-fcv-filtro="' + k + '">' +
