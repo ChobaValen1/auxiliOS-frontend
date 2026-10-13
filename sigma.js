@@ -4275,6 +4275,7 @@ if (typeof obRegistrarHandler === 'function') {
         .from('rendicion_cierre')
         .select('log_id')
         .eq('log_id', payload.log_id)
+        .neq('estado', 'rechazado')
         .limit(1);
       if (previas && previas.length) return {};
     }

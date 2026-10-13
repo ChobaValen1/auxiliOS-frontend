@@ -4346,14 +4346,17 @@ async function cargarDetalleJornadaAdmin(logId) {
        .limit(1),
     _db.from('rendicion_cierre')
        .select('*')
-       .eq('driver_id', log.driver_id)
-       .eq('fecha', log.log_date)
-       .maybeSingle(),
+       .eq('log_id', logId)
+       .order('created_at', { ascending: false })
+       .limit(5),
   ]);
 
+  // Si la jornada se reabrió, la rendición del primer cierre queda rechazada: se muestra la vigente.
+  const rendiciones = Array.isArray(rendRes.data) ? rendRes.data : [];
+  const rendVigente = rendiciones.find(r => r.estado !== 'rechazado') || null;
   let rendicionInfo = null;
-  if (rendRes.data) {
-    const r = rendRes.data;
+  if (rendVigente) {
+    const r = rendVigente;
     const declarado = Number(r.efectivo_declarado) || 0;
     const esperado  = Number(r.efectivo_esperado)  || 0;
     const gastos    = Number(r.gastos_extra)       || 0;
@@ -4361,7 +4364,7 @@ async function cargarDetalleJornadaAdmin(logId) {
     let estadoR = 'ok';
     if (diff < -_JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'faltante';
     else if (diff > _JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'sobrante';
-    rendicionInfo = { ...r, diff, estado: estadoR };
+    rendicionInfo = { ...r, diff, estado: estadoR, estado_revision: r.estado };
   }
 
   // Mapear remitos → forma esperada por el renderer del modal (origin/destination/km_traveled)

@@ -269,6 +269,22 @@
     form.addEventListener('submit',async e=>{e.preventDefault();if(save.disabled)return;const reason=String(form.elements.reason.value||'').trim();save.disabled=true;save.textContent='Anulando…';try{const {error}=await db().rpc('void_daily_log_admin',{p_log_id:log.log_id,p_reason:reason});if(error)throw error;closeToolModal();if(typeof closeModal==='function')closeModal('modal-jornada-detalle');notify('Jornada anulada. La trazabilidad fue preservada.');if(typeof window._jadminReload==='function')await window._jadminReload();setTimeout(surfacePayrollReviews,0);}catch(error){showError(root,'#jat-void-error',errorText(error));save.disabled=false;save.textContent='Anular jornada';}});
   }
 
+  /* Reabrir: el chofer cerró por error y vuelve a usar el móvil el mismo día. */
+  function reopenModal(){
+    if(!isAdmin())return; const det=state.current,log=det?.log;if(!log||log.status!=='closed')return;
+    const rend=det.rendicion;const revisada=!!rend&&(rend.estado_revision==='aprobado'||!!rend.revisado_por||(!!rend.admin_status&&rend.admin_status!=='pendiente'));
+    const root=mountModal({title:'Reabrir jornada',subtitle:who(det),isStatic:true,
+      body:`${alertBox('info','rotate-ccw','<b>La jornada vuelve a quedar abierta.</b> Se borran el KM final, la hora de fin y las horas de motor finales. El chofer la va a ver abierta en su app y la cierra de nuevo al terminar.')}
+        ${revisada?alertBox('danger','triangle-alert','<b>La rendición de esta jornada ya fue revisada.</b> No se puede reabrir.'):(rend?alertBox('','wallet','La rendición que se hizo al cerrar queda <b>rechazada</b> (no se borra). El chofer rinde de nuevo cuando cierre.'):'')}
+        <form id="jat-reopen-form" novalidate><section class="jat-section"><h3>Motivo *</h3><textarea class="ax-textarea" name="reason" aria-label="Motivo de la reapertura" placeholder="Ej.: el chofer cerró pensando que no volvía a salir"></textarea>
+          ${quickReasons(['El chofer cerró por error','Vuelve a salir con el mismo móvil hoy','Cierre con datos equivocados'])}</section>${errorBox('jat-reopen-error')}</form>`,
+      footer:`<button class="ax-btn" type="button" data-jat-close>Cancelar</button><button class="ax-btn ax-btn-primary" type="submit" form="jat-reopen-form" id="jat-reopen-save" disabled>${ic('rotate-ccw')} Reabrir jornada</button>`});
+    const form=root.querySelector('#jat-reopen-form'), save=root.querySelector('#jat-reopen-save');
+    const refresh=()=>{save.disabled=!!revisada||String(form.elements.reason.value||'').trim().length<5;};
+    form.addEventListener('input',refresh); bindQuickReasons(root,refresh);
+    form.addEventListener('submit',async e=>{e.preventDefault();if(save.disabled)return;const reason=String(form.elements.reason.value||'').trim();save.disabled=true;save.textContent='Reabriendo…';try{const {error}=await db().rpc('reopen_daily_log_admin',{p_log_id:log.log_id,p_reason:reason});if(error)throw error;closeToolModal();notify('Jornada reabierta. El chofer ya puede seguir usándola.');await refreshCurrent(log.log_id);setTimeout(surfacePayrollReviews,0);}catch(error){showError(root,'#jat-reopen-error',errorText(error).replace(/^[A-Z_]+:\s*/,''));save.disabled=false;save.innerHTML=`${ic('rotate-ccw')} Reabrir jornada`;}});
+  }
+
   /* Historial de cambios: línea de tiempo con quién, cuándo y valor anterior → nuevo. */
   const HISTORY_LABELS={km_inicio:'KM inicial',km_final:'KM final',hora_inicio:'Hora inicio',hora_fin:'Hora fin',horas_inicio:'Horas de motor al inicio',horas_final:'Horas de motor al final',status:'Estado',in_workshop:'Taller',workshop_detail:'Detalle del taller',notas:'Notas'};
   function historyValue(key,value){
@@ -388,8 +404,9 @@
   function installFooterActions(){
     const footer=$('modal-jornada-detalle')?.querySelector('.modal-footer');if(!footer)return;footer.querySelector('#jat-jornada-actions')?.remove();const actions=document.createElement('div');actions.id='jat-jornada-actions';actions.className='jat-actions';
     const canClose=isAdmin()&&currentLog()?.status==='open';
-    actions.innerHTML=`${isAdmin()?'<button class="ax-btn" type="button" data-jat-edit><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#pencil"/></svg> Editar jornada</button>':''}${canClose?'<button class="ax-btn ax-btn-primary" type="button" data-jat-close-journey><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#lock"/></svg> Cerrar jornada</button>':''}<button class="ax-btn" type="button" data-jat-history>Historial</button>${isAdmin()?'<button class="ax-btn jat-btn-danger" type="button" data-jat-void>Anular jornada</button>':''}`;
-    actions.querySelector('[data-jat-edit]')?.addEventListener('click',editModal);actions.querySelector('[data-jat-close-journey]')?.addEventListener('click',closeJourneyModal);actions.querySelector('[data-jat-history]')?.addEventListener('click',historyModal);actions.querySelector('[data-jat-void]')?.addEventListener('click',voidModal);footer.prepend(actions);
+    const canReopen=isAdmin()&&currentLog()?.status==='closed';
+    actions.innerHTML=`${isAdmin()?'<button class="ax-btn" type="button" data-jat-edit><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#pencil"/></svg> Editar jornada</button>':''}${canClose?'<button class="ax-btn ax-btn-primary" type="button" data-jat-close-journey><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#lock"/></svg> Cerrar jornada</button>':''}${canReopen?'<button class="ax-btn" type="button" data-jat-reopen><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#rotate-ccw"/></svg> Reabrir jornada</button>':''}<button class="ax-btn" type="button" data-jat-history>Historial</button>${isAdmin()?'<button class="ax-btn jat-btn-danger" type="button" data-jat-void>Anular jornada</button>':''}`;
+    actions.querySelector('[data-jat-edit]')?.addEventListener('click',editModal);actions.querySelector('[data-jat-close-journey]')?.addEventListener('click',closeJourneyModal);actions.querySelector('[data-jat-reopen]')?.addEventListener('click',reopenModal);actions.querySelector('[data-jat-history]')?.addEventListener('click',historyModal);actions.querySelector('[data-jat-void]')?.addEventListener('click',voidModal);footer.prepend(actions);
   }
   function enhanceDetail(det){
     state.current=det;installFooterActions();
@@ -402,5 +419,5 @@
     if(!allowed())return;installVoidedButton();installPayrollImpactSurface();if(state.installed)return;if(typeof window._jadminRenderDetalle!=='function')return;state.originalRender=window._jadminRenderDetalle;if(state.originalRender.__jatWrapped){state.installed=true;return;}const wrapped=function(det,...args){const result=state.originalRender.call(this,det,...args);try{enhanceDetail(det);}catch(error){console.error('[JornadasAdminTools] enhanceDetail',error);}return result;};wrapped.__jatWrapped=true;window._jadminRenderDetalle=wrapped;state.installed=true;
   }
   let attempts=0;const timer=setInterval(()=>{attempts++;install();if((state.installed&&state.payrollWrapped&&$('jat-open-voided'))||attempts>160)clearInterval(timer);},75);window.addEventListener('auxilios:features-ready',install);
-  window.JornadasAdminToolsV1={edit:editModal,closeJourney:closeJourneyModal,voidJourney:voidModal,history:historyModal,voided:voidedListModal,enhance:enhanceDetail,surfacePayrollReviews};
+  window.JornadasAdminToolsV1={edit:editModal,closeJourney:closeJourneyModal,reopenJourney:reopenModal,voidJourney:voidModal,history:historyModal,voided:voidedListModal,enhance:enhanceDetail,surfacePayrollReviews};
 })();
