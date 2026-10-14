@@ -8,7 +8,7 @@ Lista de mejoras para ir viendo con el tiempo. Se agregan abajo a medida que apa
 | 2 | Tema de pantalla: Blanco / Negro / Sistema | 14/10/2026 | Pendiente |
 | 3 | Editar servicios finalizados (operadores) | 14/10/2026 | Pendiente |
 | 4 | Tarifas que dependen del servicio principal | 14/10/2026 | Pendiente · **importante** |
-| 5 | Chofer con más de un servicio en curso a la vez | 14/10/2026 | Definido · listo para hacer (va junto con la 1) |
+| 5 | Chofer con más de un servicio en curso a la vez | 14/10/2026 | Hecho · encendido para todos |
 
 ## 1) Servicios programados para los choferes
 Poder dejar servicios programados para un chofer, como una fila o cola de servicios que el chofer va viendo y tomando en orden. Se piensa junto con la 5.
@@ -71,4 +71,4 @@ Ejemplo:
 - Etapa 3 (chofer) hecha el 14/10/2026: "Mis servicios" numerados en orden (En curso / Siguiente / En cola), aviso "Tenés N en curso y M en cola", botón "Empezar este servicio" solo en el siguiente, los de más abajo se habilitan en orden, y "+ Servicio en el camino" funciona con otro en curso. Solo para choferes con el interruptor.
 - Etapa 4 hecha el 14/10/2026: al cerrar la jornada, si quedan servicios sin terminar, no la deja cerrar y muestra la lista ("No podés cerrar la jornada"). Sin señal usa la última lista guardada en el teléfono. Facturación ya cobra cada servicio con sus propios km y Sueldos con "KM reales" sigue usando los km de la jornada: no hizo falta cambiarlos. Solo para choferes con el interruptor.
 - La traba de viajes que se pisan ya se cambió (etapa 1): no aplica a los choferes con el interruptor.
-- Falta: etapa 5, prueba completa con el chofer de prueba y encenderlo para los choferes reales cuando se apruebe.
+- Etapa 5 hecha el 14/10/2026: probado con el Chofer de Prueba y encendido para todos los choferes. Es la regla por defecto, también para los choferes nuevos. Para apagárselo a uno se guarda `enabled=false` en `user_feature_flags` (`multi_service_v1`).

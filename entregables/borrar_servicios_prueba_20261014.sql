@@ -1,72 +1,32 @@
--- YA APLICADO el 14/10/2026. Queda como registro: NO volver a correr.
--- Borra los 55 servicios de prueba, sus 5 facturas, cobros, revisiones, los 38 remitos unidos y sus precargas.
--- Antes guarda una copia en app_private.bkp_20261014_*. Si algún conteo no coincide, no se aplica nada.
--- Cómo usarlo: Supabase > SQL Editor > New query > pegar todo > Run.
+-- Borrar los 4 servicios de prueba · 14/10/2026
+-- SERVICIO PRUEBA, SERVICIO PRUEBA 2, Servicio de Prueba 01 y Servicio de Prueba 2.
+-- Son todos del Chofer de Prueba: se borran también su remito de prueba (4294)
+-- y sus 2 viajes (724 y 725). La jornada del Chofer de Prueba no se toca.
+-- Correr UNA sola vez, entero, en el SQL Editor de Supabase.
+-- Si algo falla no se borra nada.
 begin;
-create temp table _s on commit drop as select service_id from public.operator_services;
-create temp table _r on commit drop as
-  select remito_id from public.remitos where operator_service_id in (select service_id from _s)
-  union select remito_id from public.operator_services where remito_id is not null;
-create temp table _i on commit drop as
-  select distinct invoice_id from public.operator_invoice_services where service_id in (select service_id from _s)
-  union select distinct it.invoice_id from public.operator_invoice_tolls it join public.operator_service_tolls t on t.service_toll_id=it.service_toll_id where t.service_id in (select service_id from _s);
-create temp table _k on commit drop as
-  select intake_id from public.driver_service_intakes
-  where linked_service_id in (select service_id from _s) or remito_id in (select remito_id from _r)
-     or intake_id in (select driver_intake_id from public.remitos where remito_id in (select remito_id from _r) and driver_intake_id is not null);
--- precargas que también usa un remito que se conserva: se desvinculan en vez de borrarse
-create temp table _k_keep on commit drop as
-  select distinct driver_intake_id intake_id from public.remitos where driver_intake_id in (select intake_id from _k) and remito_id not in (select remito_id from _r);
+select set_config('app.phase3_bridge','1',true);
 
--- Copia de respaldo
-create table app_private.bkp_20261014_operator_services as select * from public.operator_services where service_id in (select service_id from _s);
-create table app_private.bkp_20261014_operator_service_items as select * from public.operator_service_items where service_id in (select service_id from _s);
-create table app_private.bkp_20261014_operator_service_tolls as select * from public.operator_service_tolls where service_id in (select service_id from _s);
-create table app_private.bkp_20261014_operator_service_excess_charges as select * from public.operator_service_excess_charges where service_id in (select service_id from _s);
-create table app_private.bkp_20261014_operator_service_billing_revisions as select * from public.operator_service_billing_revisions where service_id in (select service_id from _s);
-create table app_private.bkp_20261014_service_payments as select * from public.service_payments where service_id in (select service_id from _s);
-create table app_private.bkp_20261014_operator_invoices as select * from public.operator_invoices where invoice_id in (select invoice_id from _i);
-create table app_private.bkp_20261014_operator_invoice_services as select * from public.operator_invoice_services where invoice_id in (select invoice_id from _i);
-create table app_private.bkp_20261014_operator_invoice_tolls as select * from public.operator_invoice_tolls where invoice_id in (select invoice_id from _i);
-create table app_private.bkp_20261014_remitos as select * from public.remitos where remito_id in (select remito_id from _r);
-create table app_private.bkp_20261014_driver_service_intakes as select * from public.driver_service_intakes where intake_id in (select intake_id from _k);
-revoke all on app_private.bkp_20261014_operator_services, app_private.bkp_20261014_operator_service_items, app_private.bkp_20261014_operator_service_tolls,
-  app_private.bkp_20261014_operator_service_excess_charges, app_private.bkp_20261014_operator_service_billing_revisions, app_private.bkp_20261014_service_payments,
-  app_private.bkp_20261014_operator_invoices, app_private.bkp_20261014_operator_invoice_services, app_private.bkp_20261014_operator_invoice_tolls,
-  app_private.bkp_20261014_remitos, app_private.bkp_20261014_driver_service_intakes from public, anon, authenticated;
+create temp table _srv_prueba(id uuid) on commit drop;
+insert into _srv_prueba values
+  ('08432508-f8f2-460f-8036-69245f92822f'),('872ec165-bf21-4b31-9e03-46569a4aba7f'),
+  ('e88b7686-4252-49fb-a974-6fa99e9a0992'),('3ca7ebb7-bfc1-44f4-92b7-b0beff52b8e7');
 
--- Facturas
-delete from public.operator_invoice_credit_notes where invoice_id in (select invoice_id from _i);
-delete from public.operator_invoice_tolls where invoice_id in (select invoice_id from _i);
-delete from public.operator_invoice_services where invoice_id in (select invoice_id from _i);
-delete from public.operator_invoices where invoice_id in (select invoice_id from _i);
-
--- Dependencias que no se borran solas
-delete from public.operator_service_document_addon_reviews where service_id in (select service_id from _s) or remito_id in (select remito_id from _r);
-delete from public.operator_service_item_adjustments where service_id in (select service_id from _s);
-delete from public.operator_service_billing_revisions where service_id in (select service_id from _s);
-update public.driver_service_intakes set linked_service_id=null, remito_id=null where intake_id in (select intake_id from _k_keep);
--- Peajes y excedentes del servicio apuntan a los del remito: van primero.
-delete from public.operator_service_excess_charges where service_id in (select service_id from _s);
-delete from public.operator_service_tolls where service_id in (select service_id from _s);
--- Servicios, remitos y precargas se apuntan entre sí: se borran juntos en una sola instrucción
--- (sin modificar remitos firmados). Borra en cascada ítems, eventos, cobros, evidencias, etc.
-with d_intakes as (
-  delete from public.driver_service_intakes
-  where intake_id in (select intake_id from _k) and intake_id not in (select intake_id from _k_keep)
-  returning 1
-), d_remitos as (
-  delete from public.remitos where remito_id in (select remito_id from _r) returning 1
-)
-delete from public.operator_services where service_id in (select service_id from _s);
-
-do $t$ declare v_srv int; v_rem int; v_bkp_srv int; v_bkp_rem int; begin
-  select count(*) into v_srv from public.operator_services;
-  select count(*) into v_rem from public.remitos;
-  select count(*) into v_bkp_srv from app_private.bkp_20261014_operator_services;
-  select count(*) into v_bkp_rem from app_private.bkp_20261014_remitos;
-  if v_srv<>0 or v_bkp_srv<>55 or v_bkp_rem<>38 or v_rem<>1600 then
-    raise exception 'CHEQUEO_FALLIDO servicios=% remitos=% bkp_srv=% bkp_rem=%', v_srv, v_rem, v_bkp_srv, v_bkp_rem;
+-- Seguro: solo servicios marcados como prueba
+do $$ begin
+  if (select count(*) from public.operator_services where service_id in (select id from _srv_prueba) and is_test) <> 4 then
+    raise exception 'No son los 4 servicios de prueba: no se borra nada';
   end if;
-end $t$;
+end $$;
+
+update public.operator_services set remito_id=null, trip_id=null where service_id in (select id from _srv_prueba);
+delete from public.operator_service_billing_revisions where service_id in (select id from _srv_prueba);
+delete from public.remitos where remito_id=4294 and driver_id='dd48a407-2923-4be4-a202-85ed9f67a735';
+delete from public.operator_services where service_id in (select id from _srv_prueba);
+delete from public.incidents where trip_id in (724,725);
+delete from public.trips where trip_id in (724,725) and driver_id='dd48a407-2923-4be4-a202-85ed9f67a735';
+
+-- Control: tiene que dar 0 y 0
+select (select count(*) from public.operator_services where service_id in (select id from _srv_prueba)) servicios,
+       (select count(*) from public.trips where trip_id in (724,725)) viajes;
 commit;
