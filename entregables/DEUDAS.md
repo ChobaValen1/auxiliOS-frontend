@@ -54,3 +54,13 @@ Ejemplo:
 - **Sumar en camino:** con un servicio en curso, el chofer puede empezar el siguiente de la cola, o uno nuevo sin asignar, sin cerrar el anterior. Cada uno tiene su remito y su firma.
 - **Km:** cada servicio guarda sus propios km para facturar. Los km del camión y de la jornada salen del odómetro de la jornada, así no se cuentan dos veces.
 - **Base:** se quita la traba que impide dos viajes del mismo chofer con horarios que se pisan.
+
+**Plan por etapas (14/10/2026):**
+0. Preparación: crear un chofer y un móvil de prueba (se borraron los anteriores).
+1. Base de datos: asignar a un chofer ocupado deja el servicio en su cola; cada servicio guarda su lugar en la cola; se quitan las trabas "chofer ocupado", "viaje en curso" y la de viajes que se pisan.
+2. Operador: en Servicios se ve "En cola · 3º" y se puede subir o bajar el orden.
+3. Chofer: "Mis servicios" en orden; solo empieza el siguiente; con uno en curso puede empezar el siguiente o agregar uno en el camino.
+4. Km, Facturación, Sueldos y cierre de jornada: cada servicio con sus km; "KM reales" siguen saliendo de la jornada; al cerrar la jornada avisa qué servicios faltan.
+5. Prueba completa con el chofer de prueba y pase a producción cuando se apruebe.
+
+**Para confirmar:** ¿cerrar la jornada con un servicio sin terminar se bloquea (propuesta) o se permite y el servicio pasa a la jornada siguiente?
