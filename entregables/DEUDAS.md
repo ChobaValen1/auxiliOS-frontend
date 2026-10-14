@@ -41,8 +41,18 @@ Ejemplo:
 
 **Lo que pasa en la calle:** a veces, con un servicio en curso, el chofer hace otro.
 
+**Ya definido (14/10/2026):**
+- Ejemplos: lleva un auto y en el camino levanta otro, o hace una UML mientras tiene otro servicio en curso.
+- Puede tener **varios** servicios en curso a la vez, sin un máximo fijo.
+- Cada servicio se factura con **sus propios km**, aunque compartan parte del camino.
+- Los servicios en cola los toma **en orden**.
+
+**Propuesta (a confirmar):**
+- **Cola del chofer:** el operador asigna varios servicios a un chofer y los ordena. El chofer los ve como "Mis servicios", en ese orden.
+- **Sumar en camino:** con un servicio en curso, el chofer puede empezar el siguiente de la cola, o uno nuevo sin asignar, sin cerrar el anterior. Cada uno tiene su remito y su firma.
+- **Km:** cada servicio guarda sus propios km para facturar. Los km del camión y de la jornada salen del odómetro de la jornada, así no se cuentan dos veces.
+- **Base:** se quita la traba que impide dos viajes del mismo chofer con horarios que se pisan.
+
 **Falta decidir:**
-- ¿Cuántos servicios puede tener en curso a la vez? ¿Dos, o los que sean?
-- ¿Cómo se cuentan los km de cada uno cuando se pisan?
-- ¿Quién lo habilita: el chofer solo, o el operador al asignarle el segundo?
-- Ejemplos reales de cuándo pasa.
+- ¿Quién habilita el servicio en camino: el chofer solo, o el operador tiene que asignárselo antes?
+- Sueldos con "KM reales": ¿se pagan los km de la jornada (lo que anduvo el camión) o la suma de los km de cada servicio, que puede contar dos veces el tramo compartido?
