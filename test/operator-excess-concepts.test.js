@@ -55,3 +55,9 @@ test('formulario de nuevo servicio compacto en escritorio', () => {
   assert.match(css, /@media \(min-width: 1101px\) \{\n  #modal-operador-wizard \.osv4-reactive \{ --ax-h: 32px;/);
   assert.match(css, /\.client-row \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/);
 });
+
+test('revisión administrativa acepta la lista fija de excedentes y el nombre de Otro', () => {
+  const m = read('migrations/20261014120000_admin_review_excess_fixed_concepts_v1.sql');
+  assert.match(m, /validate_administrative_commercial_v1/);
+  assert.match(m, /when c\.code='excess_other' then left\(nullif\(btrim\(coalesce\(x->>'concept_name',''\)\),''\),80\)/);
+});
