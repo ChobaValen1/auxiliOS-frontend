@@ -7991,6 +7991,15 @@ async function confirmarCerrarJornada() {
 
   // Bloquear botón mientras Supabase procesa (evita doble envío en redes lentas)
   const btn = document.querySelector('#modal-cerrar-jornada .btn-primary');
+
+  // Chofer con cola de servicios: no deja cerrar si quedan servicios sin terminar
+  if (btn) { btn.textContent = 'Revisando servicios...'; btn.style.pointerEvents = 'none'; }
+  const pendientes = await _serviciosPendientesCierreJornada();
+  if (pendientes.length) {
+    if (btn) { btn.textContent = '🏁 Cerrar jornada'; btn.style.pointerEvents = 'auto'; }
+    _mostrarServiciosPendientesCierre(pendientes);
+    return;
+  }
   if (btn) {
     btn.textContent = 'Guardando...';
     btn.style.pointerEvents = 'none';
@@ -8097,6 +8106,41 @@ async function confirmarCerrarJornada() {
   } else {
     toast('Error: No se pudo cerrar la jornada.', 'error');
   }
+}
+
+// ── Servicios sin terminar al cerrar la jornada ──
+// Solo para choferes con la cola de servicios (interruptor multi_service_v1).
+// La cola del chofer ya trae únicamente los servicios cuyo remito no está firmado.
+// Sin señal se usa la última cola cargada en el teléfono.
+async function _serviciosPendientesCierreJornada() {
+  if (PERFIL_USUARIO?.roles?.name !== 'chofer') return [];
+  let cola = Array.isArray(window.AuxiliosPhase3?.queue) ? window.AuxiliosPhase3.queue : [];
+  if (navigator.onLine && typeof _db !== 'undefined') {
+    try {
+      const { data, error } = await _db.rpc('get_driver_operator_queue_v4');
+      if (!error && Array.isArray(data)) cola = data;
+    } catch (_) { /* sin red: queda la cola cargada */ }
+  }
+  return cola.filter(s => s && s.multi_service && ['assigned', 'at_origin'].includes(s.status));
+}
+
+function _mostrarServiciosPendientesCierre(pendientes) {
+  const tEl = document.getElementById('modal-validacion-titulo');
+  const mEl = document.getElementById('modal-validacion-msg');
+  if (tEl) tEl.textContent = '⚠ No podés cerrar la jornada';
+  if (mEl) {
+    const items = pendientes.map(s => {
+      const nro = s.service_order_number || s.service_number || 'Servicio';
+      const lugar = s.driver_queue_position ? `Nº ${s.driver_queue_position} · ` : '';
+      const estado = (s.trip_started || s.trip_id || s.status === 'at_origin') ? 'En curso' : 'Sin empezar';
+      return `<li><b>${_escHtml(lugar + nro)}</b> · ${_escHtml(estado)}</li>`;
+    }).join('');
+    const n = pendientes.length;
+    mEl.innerHTML = `<div>Te ${n === 1 ? 'falta terminar 1 servicio' : `faltan terminar ${n} servicios`}:</div>`
+      + `<ul class="cj-pendientes-lista" style="margin:8px 0;padding-left:18px">${items}</ul>`
+      + '<div>Completá los remitos o pedile al operador que los reasigne.</div>';
+  }
+  openModal('modal-validacion');
 }
 
 // ── Rendición de efectivo ─────────────────────
