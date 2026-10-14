@@ -1,3 +1,4 @@
+-- YA APLICADO el 14/10/2026. Queda como registro: NO volver a correr.
 -- Borra los 55 servicios de prueba, sus 5 facturas, cobros, revisiones, los 38 remitos unidos y sus precargas.
 -- Antes guarda una copia en app_private.bkp_20261014_*. Si algún conteo no coincide, no se aplica nada.
 -- Cómo usarlo: Supabase > SQL Editor > New query > pegar todo > Run.
