@@ -167,3 +167,7 @@
 .os-charge-saved.is-saved{color:#38ad77}
 .os-charge-empty{display:block;padding:4px 2px;color:var(--muted2,#8590ab);font-size:10px}
 .os-charge-legend{display:block;margin-top:6px;color:var(--muted2,#8590ab);font-size:9px}
+
+/* Excedente "Otro": el nombre se escribe debajo del selector. */
+.osca-concept-cell{display:grid;gap:6px;align-content:start}
+.osca-other-name{width:100%}

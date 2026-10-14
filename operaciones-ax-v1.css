@@ -120,6 +120,47 @@
 #screen-operaciones .os-table th.col-status { width: 156px; }
 #screen-operaciones .os-table th.col-amount_due { width: 108px; }
 #screen-operaciones .os-table th.actions { width: 52px; }
+/* Columnas que se adaptan al contenido: crecen con lo que tienen y se achican
+   cuando hay poco. Nada se corta con "…": los textos largos (origen, destino,
+   cliente…) pasan a dos líneas. Si no entra en pantalla, la tabla se desplaza
+   de costado con el código fijo a la izquierda. */
+@media (min-width: 721px) {
+  #screen-operaciones .os-table { table-layout: auto; width: max-content; min-width: 100%; }
+  #screen-operaciones .os-table th[class] { width: auto; overflow: visible; text-overflow: clip; }
+  #screen-operaciones .os-table td { overflow: visible; }
+  #screen-operaciones .os-table td b, #screen-operaciones .os-table td small { overflow: visible; text-overflow: clip; }
+  #screen-operaciones .os-table td.col-origin b, #screen-operaciones .os-table td.col-origin small,
+  #screen-operaciones .os-table td.col-destination b, #screen-operaciones .os-table td.col-destination small,
+  #screen-operaciones .os-table td.col-client b, #screen-operaciones .os-table td.col-client small,
+  #screen-operaciones .os-table td.col-provider b, #screen-operaciones .os-table td.col-provider small,
+  #screen-operaciones .os-table td.col-type b, #screen-operaciones .os-table td.col-type small,
+  #screen-operaciones .os-table td.col-base b, #screen-operaciones .os-table td.col-base small,
+  #screen-operaciones .os-table td.col-driver b, #screen-operaciones .os-table td.col-driver small {
+    white-space: normal; overflow-wrap: anywhere; min-width: 90px; max-width: 240px;
+  }
+  #screen-operaciones .os-table .os-status { width: max-content; min-width: 100%; overflow: visible; text-overflow: clip; }
+  #screen-operaciones .os-table .os-document-state { width: auto; max-width: 190px; white-space: normal; overflow: visible; text-align: left; }
+  #screen-operaciones .os-table td.col-status small { white-space: normal; max-width: 190px; }
+}
+/* En pantallas de notebook se compacta: menos aire entre columnas y los textos
+   largos usan más líneas, para ver el servicio entero sin desplazarse. */
+@media (min-width: 721px) and (max-width: 1600px) {
+  #screen-operaciones .os-table th { padding: 4px 6px; white-space: normal; line-height: 1.2; letter-spacing: .03em; }
+  #screen-operaciones .os-table th.actions { font-size: 0; }
+  #screen-operaciones .os-table td.col-status { min-width: 0; }
+  #screen-operaciones .os-table td { padding: 8px 6px; }
+  #screen-operaciones .os-table td.col-origin b, #screen-operaciones .os-table td.col-origin small,
+  #screen-operaciones .os-table td.col-destination b, #screen-operaciones .os-table td.col-destination small,
+  #screen-operaciones .os-table td.col-client b, #screen-operaciones .os-table td.col-client small,
+  #screen-operaciones .os-table td.col-provider b, #screen-operaciones .os-table td.col-provider small,
+  #screen-operaciones .os-table td.col-type b, #screen-operaciones .os-table td.col-type small,
+  #screen-operaciones .os-table td.col-base b, #screen-operaciones .os-table td.col-base small,
+  #screen-operaciones .os-table td.col-driver b, #screen-operaciones .os-table td.col-driver small { min-width: 64px; max-width: 104px; }
+  #screen-operaciones .os-table .os-document-state, #screen-operaciones .os-table td.col-status small { max-width: 140px; }
+  #screen-operaciones .os-table td.col-status, #screen-operaciones .os-table td.col-status * { white-space: normal; }
+  #screen-operaciones .os-table td.col-status { max-width: 170px; }
+  #screen-operaciones .os-table td.col-status button { height: auto; min-height: 24px; line-height: 1.25; padding-top: 3px; padding-bottom: 3px; text-align: left; }
+}
 #screen-operaciones .os-table tr > :first-child { position: sticky; left: 0; z-index: 2; background: inherit; }
 #screen-operaciones .os-table thead tr > :first-child { z-index: 5; background: var(--ax-surface); }
 #screen-operaciones .os-table-wrap.is-scrolled tr > :first-child { box-shadow: 1px 0 0 var(--ax-border), 6px 0 8px -6px rgba(0, 0, 0, .5); }
