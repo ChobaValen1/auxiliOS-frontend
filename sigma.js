@@ -1344,6 +1344,8 @@ async function _finalizarRemitoInner() {
   const _fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const _rand  = Math.floor(Math.random() * 9000) + 1000;
   const nro       = document.getElementById('rem-nro')?.value || `REM-${_fecha}-${_rand}`;
+  const nroInput = document.getElementById('rem-nro');
+  if (nroInput) nroInput.value = nro; // Reintentos usan el mismo remito.
   const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
     ? window.obtenerServicioAsignadoRemito()
     : null;

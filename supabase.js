@@ -1373,6 +1373,26 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
   };
 }
 
+// Cada paso del guardado tiene un tiempo máximo: si la señal se cae a mitad de
+// camino el chofer ve un error y puede reintentar con el mismo remito.
+async function _esperarPasoRemito(operation, label, timeoutMs = 45000) {
+  const controller = new AbortController();
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => operation(controller.signal)),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          const error = new Error(label + ': se agotó el tiempo de espera. Tus datos siguen en pantalla; reintentá con el mismo remito.');
+          error.code = 'REMITO_TIMEOUT';
+          reject(error);
+          controller.abort();
+        }, timeoutMs);
+      }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 async function guardarRemitoCompleto(datosRemito) {
   const evidenciaSubida = [];
   let contextoEvidencia = null;
@@ -1456,9 +1476,25 @@ async function guardarRemitoCompleto(datosRemito) {
       return true;
     }
 
+    // El vínculo de un remito con su jornada es inmutable en Postgres. Al
+    // completar un borrador existente se conserva la jornada ya guardada para
+    // que el guardado no intente moverla (REMITO_LOG_IMMUTABLE). Se lee antes
+    // de subir evidencia: si falla, no queda nada a medio guardar.
+    const { data: remitoExistente, error: remitoExistenteError } = await _esperarPasoRemito(
+      signal => _db.from('remitos')
+        .select('log_id')
+        .eq('driver_id', USUARIO_ACTUAL.id)
+        .eq('nro_remito', nroFinal)
+        .maybeSingle()
+        .abortSignal(signal),
+      'Lectura del remito pendiente'
+    );
+    if (remitoExistenteError) throw new Error('No se pudo recuperar el remito pendiente: ' + remitoExistenteError.message);
+    const logIdPersistido = remitoExistente?.log_id ?? datosRemito.log_id ?? null;
+
     let uploadedAddonPayload = addonBundle?.payload || null;
     if (addonBundle) {
-      uploadedAddonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, storageOperationToken);
+      uploadedAddonPayload = await _esperarPasoRemito(() => window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, storageOperationToken), 'Subida de evidencia');
       (uploadedAddonPayload.evidence || []).forEach(item => evidenciaSubida.push({
         bucket: 'remito-evidence-v2', path: item.storage_path, url: null,
       }));
@@ -1469,7 +1505,7 @@ async function guardarRemitoCompleto(datosRemito) {
     for (const [index, file] of archivosFotos.entries()) {
       const extension = String(file.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
       const nombre = `${nroFinal}_${storageOperationToken}_foto_${index}.${extension}`;
-      const { error: ue } = await _db.storage.from('remitos').upload(nombre, file, { upsert: true });
+      const { error: ue } = await _esperarPasoRemito(() => _db.storage.from('remitos').upload(nombre, file, { upsert: true }), 'Subida de foto');
       if (!ue) {
         const { data: ud } = _db.storage.from('remitos').getPublicUrl(nombre);
         fotoUrls.push(ud.publicUrl);
@@ -1483,7 +1519,7 @@ async function guardarRemitoCompleto(datosRemito) {
       try {
         const blob = await (await fetch(firmaDataURL)).blob();
         const nombre = `firma_${nroFinal}_${storageOperationToken}.png`;
-        const { error: fe } = await _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true });
+        const { error: fe } = await _esperarPasoRemito(() => _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true }), 'Subida de firma');
         if (!fe) {
           const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
           firmaUrl = fd.publicUrl;
@@ -1516,25 +1552,26 @@ async function guardarRemitoCompleto(datosRemito) {
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
     const remitoDB = _remitoDbDesdeDatos({
       ...datosRemito,
+      log_id: logIdPersistido,
       remitoAddons: uploadedAddonPayload ? { payload: uploadedAddonPayload, files: [] } : null,
     }, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl);
     let error = null;
     if (remitoDB.operator_service_id) {
       try {
-        await guardarRemitoVinculado(remitoDB, remitoDB.operator_service_id);
+        await _esperarPasoRemito(() => guardarRemitoVinculado(remitoDB, remitoDB.operator_service_id), 'Guardado del remito');
       } catch (linkedError) {
         error = linkedError;
       }
     } else if (remitoDB.document_source === 'driver_ad_hoc') {
       try {
-        await guardarRemitoAdHoc(remitoDB);
+        await _esperarPasoRemito(() => guardarRemitoAdHoc(remitoDB), 'Guardado del remito');
         sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
       } catch (adHocError) {
         error = adHocError;
       }
     } else {
       const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remitoDB;
-      ({ error } = await _db.from('remitos').upsert(legacyRemito, { onConflict: 'nro_remito' }));
+      ({ error } = await _esperarPasoRemito(signal => _db.from('remitos').upsert(legacyRemito, { onConflict: 'nro_remito' }).abortSignal(signal), 'Guardado del remito'));
     }
 
     if (error) { 
@@ -1548,7 +1585,8 @@ async function guardarRemitoCompleto(datosRemito) {
     // Desde este punto las rutas privadas forman parte del remito firmado. Si
     // falla solamente la recarga visual, no deben eliminarse como huérfanas.
     remitoPersistido = true;
-    await cargarRemitos();
+    // La recarga es secundaria: el servidor ya confirmó el remito firmado.
+    Promise.resolve().then(() => cargarRemitos()).catch(err => console.warn('No se pudo actualizar el listado de remitos:', err));
     _toast(`Remito ${nroFinal} guardado ✓`, 'success');
     showRemitosView('lista');
     return true;
