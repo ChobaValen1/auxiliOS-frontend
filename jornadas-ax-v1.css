@@ -1,0 +1,289 @@
+/* AuxiliOS · Jornadas con el sistema visual (ui/tokens.css + ui/components.css)
+   Va encima del bloque <style> de #screen-jornadas-admin (Index.html): ese bloque sigue
+   mandando el layout (alto de la pantalla, scroll de la tabla, columna Estado fija); acá
+   sólo cambia el aspecto, con tokens. `.screen` en el selector gana al bloque en línea
+   sin depender del orden de carga.
+   Neutro por defecto: ámbar = jornada abierta o cargada a mano, rojo = faltante o incidente. */
+
+#screen-jornadas-admin.screen { font-family: var(--ax-font); font-size: var(--ax-fs-md); color: var(--ax-text); }
+
+/* ── Métricas ──────────────────────────────────────────────────────── */
+#screen-jornadas-admin.screen .jadmin-kpis { gap: var(--ax-sp-3); margin-bottom: var(--ax-sp-4); }
+#screen-jornadas-admin.screen .kpi,
+#screen-jornadas-admin.screen .kpi.abiertas, #screen-jornadas-admin.screen .kpi.jornadas, #screen-jornadas-admin.screen .kpi.km,
+#screen-jornadas-admin.screen .kpi.horas, #screen-jornadas-admin.screen .kpi.servicios { padding: var(--ax-sp-3) var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-jornadas-admin.screen .kpi-lbl { margin: 0 0 var(--ax-sp-1); color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm)/1.3 var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-jornadas-admin.screen .kpi-val { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-2xl)/1.15 var(--ax-font); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+#screen-jornadas-admin.screen .kpi-sub { margin-top: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.3; }
+
+/* ── Barra de filtros: suelta, sin caja, como en Servicios ─────────── */
+#screen-jornadas-admin.screen .jadmin-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--ax-sp-2); margin: 0 0 var(--ax-sp-3); padding: 0; }
+#screen-jornadas-admin.screen .jadmin-bar > * { min-width: 0; }
+#screen-jornadas-admin.screen .jadmin-bar .auxf-search { flex: 1 1 200px; max-width: 280px; }
+#screen-jornadas-admin.screen .jadmin-multi { position: relative; flex: 0 1 230px; min-width: 170px; }
+#screen-jornadas-admin.screen .jadmin-multi .ax-multi-btn { background: var(--ax-bg); }
+#screen-jornadas-admin.screen .jadmin-auxf-host { flex: 0 0 auto; }
+#screen-jornadas-admin.screen .jadmin-auxf-host .auxf, #screen-jornadas-admin.screen .jadmin-auxf-host .auxf-btn { width: auto; max-width: 340px; }
+#screen-jornadas-admin.screen .jadmin-voided-host:empty { display: none; }
+#screen-jornadas-admin.screen .jadmin-voided-host #jat-open-voided { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); min-height: 0; width: auto; padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-jornadas-admin.screen .jadmin-voided-host #jat-open-voided:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-jornadas-admin.screen .jadmin-voided-host #jat-open-voided:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-jornadas-admin.screen .jadmin-clear { height: var(--ax-h); padding: 0 12px; border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; cursor: pointer; transition: color var(--ax-dur-fast) var(--ax-ease), text-decoration-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-jornadas-admin.screen .jadmin-clear:hover { color: var(--ax-text); text-decoration-color: currentColor; }
+#screen-jornadas-admin.screen .jadmin-clear:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+/* ── Tabla ─────────────────────────────────────────────────────────── */
+#screen-jornadas-admin.screen .table-wrap { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-jornadas-admin.screen .table-hdr { padding: var(--ax-sp-3) var(--ax-sp-4); border-bottom: 1px solid var(--ax-border); }
+#screen-jornadas-admin.screen .table-hdr .titulo { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; }
+#screen-jornadas-admin.screen .table-hdr .count { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#screen-jornadas-admin.screen .table-hdr .count b { color: var(--ax-text-2); font-weight: var(--ax-fw-semibold); }
+#screen-jornadas-admin.screen table { font-size: var(--ax-fs-md); }
+#screen-jornadas-admin.screen thead th { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .06em; text-transform: uppercase; }
+#screen-jornadas-admin.screen thead th:last-child { background: var(--ax-surface); }
+#screen-jornadas-admin.screen thead th[data-sort]:hover { color: var(--ax-text); }
+#screen-jornadas-admin.screen thead th.sort-desc::after, #screen-jornadas-admin.screen thead th.sort-asc::after { color: var(--ax-text); }
+#screen-jornadas-admin.screen tbody tr { border-bottom: 1px solid var(--ax-border); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-jornadas-admin.screen tbody tr:hover { background: var(--ax-surface-3); }
+#screen-jornadas-admin.screen tbody tr:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ax-accent); }
+#screen-jornadas-admin.screen tbody td { padding: 9px 12px; }
+#screen-jornadas-admin.screen tbody td:last-child { background: var(--ax-surface-2); }
+#screen-jornadas-admin.screen tbody tr:hover td:last-child { background: var(--ax-surface-3); }
+#screen-jornadas-admin.screen .table-scroll.has-x thead th:last-child,
+#screen-jornadas-admin.screen .table-scroll.has-x tbody td:last-child { box-shadow: -10px 0 12px -10px rgba(0, 0, 0, .6); }
+/* Cifras con el tipo de la app y alineadas; el mono queda sólo para la patente. */
+#screen-jornadas-admin.screen td.right, #screen-jornadas-admin.screen td.mono, #screen-jornadas-admin.screen .money-cell, #screen-jornadas-admin.screen .inc-cell { font-family: var(--ax-font); font-variant-numeric: tabular-nums; }
+#screen-jornadas-admin.screen .fecha-cell b { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#screen-jornadas-admin.screen .fecha-cell .dia { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-jornadas-admin.screen .chofer-cell .name b { font-weight: var(--ax-fw-semibold); }
+/* Iniciales en un círculo neutro: ningún color identifica a un chofer. */
+#screen-jornadas-admin.screen .avatar, #screen-jornadas-admin.screen .avatar.c2, #screen-jornadas-admin.screen .avatar.c3,
+#screen-jornadas-admin.screen .avatar.c4, #screen-jornadas-admin.screen .avatar.c5 { border: 1px solid var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); }
+#screen-jornadas-admin.screen .camion-cell .pat { font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); color: var(--ax-text); }
+#screen-jornadas-admin.screen .camion-cell .mov { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* Estado: ámbar sólo si la jornada sigue abierta; cerrada es lo normal y va apagada. */
+#screen-jornadas-admin.screen .pill { padding: 2px 10px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .02em; }
+#screen-jornadas-admin.screen .pill-amber { background: var(--ax-warn-soft); color: var(--ax-warn); }
+#screen-jornadas-admin.screen .pill-muted { background: transparent; box-shadow: inset 0 0 0 1px var(--ax-border-strong); color: var(--ax-text-2); }
+#screen-jornadas-admin.screen .pill-green { background: var(--ax-ok-soft); color: var(--ax-ok); }
+#screen-jornadas-admin.screen .pill-red { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#screen-jornadas-admin.screen .pill-blue { background: var(--ax-info-soft); color: var(--ax-info); }
+#screen-jornadas-admin.screen .dot.a { background: var(--ax-warn); box-shadow: none; }
+#screen-jornadas-admin.screen .dot.n { background: var(--ax-text-3); }
+#screen-jornadas-admin.screen .dot.g { background: var(--ax-ok); }
+#screen-jornadas-admin.screen .dot.r { background: var(--ax-danger); }
+#screen-jornadas-admin.screen .taller-mark { margin-left: 6px; color: var(--ax-text-2); }
+
+#screen-jornadas-admin.screen .km-cell { color: var(--ax-text); font-weight: var(--ax-fw-medium); }
+#screen-jornadas-admin.screen .km-cell.zero, #screen-jornadas-admin.screen .cell-empty, #screen-jornadas-admin.screen .money-cell.zero, #screen-jornadas-admin.screen .inc-cell.zero { color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+#screen-jornadas-admin.screen .km-origen { padding: 1px 6px; border-radius: var(--ax-radius-sm); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); letter-spacing: .04em; }
+#screen-jornadas-admin.screen .km-origen.manual { background: var(--ax-warn-soft); color: var(--ax-warn); }
+#screen-jornadas-admin.screen .km-origen.offline { background: transparent; box-shadow: inset 0 0 0 1px var(--ax-border-strong); color: var(--ax-text-2); }
+/* Horas de motor debajo de los km (sólo camiones con horómetro). */
+#screen-jornadas-admin.screen .jadmin-motor { margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#screen-jornadas-admin.screen .jadmin-motor.is-manual { color: var(--ax-warn); }
+#screen-jornadas-admin.screen .money-cell { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+#screen-jornadas-admin.screen .money-cell.faltante, #screen-jornadas-admin.screen .inc-cell.some { color: var(--ax-danger); }
+#screen-jornadas-admin.screen .inc-cell { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+
+/* ── Pie: paginador ────────────────────────────────────────────────── */
+#screen-jornadas-admin.screen .table-foot { padding: var(--ax-sp-2) var(--ax-sp-4); border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-jornadas-admin.screen .per-page-lbl { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-jornadas-admin.screen .per-page { height: var(--ax-h-sm); padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: var(--ax-fs-sm); }
+#screen-jornadas-admin.screen .per-page:focus-visible { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-jornadas-admin.screen .pager button { display: inline-grid; place-items: center; min-width: var(--ax-h-sm); height: var(--ax-h-sm); padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-md); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-jornadas-admin.screen .pager button:hover:not(:disabled) { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-jornadas-admin.screen .pager button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-jornadas-admin.screen .pager button:disabled { opacity: .35; }
+#screen-jornadas-admin.screen .pager .info { margin: 0 var(--ax-sp-3); color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#screen-jornadas-admin.screen .jadmin-loading-overlay { background: rgba(12, 14, 18, .55); }
+#screen-jornadas-admin.screen .jadmin-spinner { border-color: var(--ax-border-strong); border-top-color: var(--ax-accent); }
+
+/* ── Celular: filtros en dos columnas y cada jornada como tarjeta ──── */
+@media (max-width: 767px) {
+  #screen-jornadas-admin.screen .jadmin-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); }
+  #screen-jornadas-admin.screen .kpi { padding: var(--ax-sp-3); }
+  #screen-jornadas-admin.screen .kpi-val { font-size: var(--ax-fs-xl); }
+  
+  #screen-jornadas-admin.screen .jadmin-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #screen-jornadas-admin.screen .jadmin-bar .auxf-search { grid-column: 1 / -1; max-width: none; }
+  #screen-jornadas-admin.screen .jadmin-multi { flex: none; min-width: 0; }
+  #screen-jornadas-admin.screen .jadmin-auxf-host .auxf, #screen-jornadas-admin.screen .jadmin-auxf-host .auxf-btn { width: 100%; max-width: none; }
+  #screen-jornadas-admin.screen .jadmin-voided-host #jat-open-voided { width: 100%; justify-content: center; }
+  #screen-jornadas-admin.screen .jadmin-clear { justify-self: start; }
+
+  #screen-jornadas-admin.screen table { min-width: 0; }
+  #screen-jornadas-admin.screen thead { display: none; }
+  #screen-jornadas-admin.screen tbody { display: block; }
+  #screen-jornadas-admin.screen tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ax-sp-2) var(--ax-sp-3); padding: var(--ax-sp-3) var(--ax-sp-4); }
+  #screen-jornadas-admin.screen tbody td, #screen-jornadas-admin.screen tbody td:last-child { display: block; position: static; padding: 0; background: transparent; box-shadow: none; text-align: left; white-space: normal; }
+  #screen-jornadas-admin.screen tbody tr:hover td:last-child { background: transparent; }
+  #screen-jornadas-admin.screen tbody td:nth-child(2) { grid-column: 1 / span 2; grid-row: 1; }
+  #screen-jornadas-admin.screen tbody td:nth-child(11) { grid-column: 3; grid-row: 1; justify-self: end; }
+  #screen-jornadas-admin.screen tbody td:nth-child(1) { grid-column: 1; grid-row: 2; }
+  #screen-jornadas-admin.screen tbody td:nth-child(3) { grid-column: 2 / span 2; grid-row: 2; }
+  #screen-jornadas-admin.screen tbody td:nth-child(1) .fecha-cell { display: flex; flex-wrap: wrap; gap: 0 var(--ax-sp-2); align-items: baseline; }
+  #screen-jornadas-admin.screen tbody td:nth-child(1) .fecha-cell b { display: inline; font-size: var(--ax-fs-sm); }
+  #screen-jornadas-admin.screen tbody td:nth-child(3) .camion-cell { flex-direction: row; gap: var(--ax-sp-2); align-items: baseline; }
+  #screen-jornadas-admin.screen tbody td:nth-child(n+4):nth-child(-n+10)::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+  #screen-jornadas-admin.screen tbody td:nth-child(n+4):nth-child(-n+10) { padding-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); }
+}
+
+/* ══ Detalle de la jornada (#modal-jornada-detalle) ═══════════════════════
+   El contenido lo arma _jadminRenderDetalle (sigma.js) con estas clases. */
+#modal-jornada-detalle .jd-modal { display: flex; flex-direction: column; width: min(1000px, 96vw); max-width: none; max-height: calc(100vh - 32px); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); overflow: hidden; }
+#modal-jornada-detalle .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ax-sp-3); padding: var(--ax-sp-5) var(--ax-sp-5) var(--ax-sp-4); border-bottom: 1px solid var(--ax-border); background: transparent; }
+#modal-jornada-detalle .modal-head-title { margin: 0; color: var(--ax-text); font: var(--ax-fw-bold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#modal-jornada-detalle .modal-head-sub { margin: 4px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); letter-spacing: 0; }
+#modal-jornada-detalle .modal-close { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--ax-h); height: var(--ax-h); padding: 0; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font-size: 0; cursor: pointer; }
+#modal-jornada-detalle .modal-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-jornada-detalle .modal-close:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#modal-jornada-detalle .modal-body { flex: 1 1 auto; min-height: 0; padding: 0; overflow: auto; overscroll-behavior: contain; }
+#modal-jornada-detalle #jd-content { padding: var(--ax-sp-5); }
+#modal-jornada-detalle .modal-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); padding: var(--ax-sp-3) var(--ax-sp-5); border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+#modal-jornada-detalle #jd-traza { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+#jd-content .jd-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--ax-sp-4); align-items: start; }
+#jd-content .jd-col-l, #jd-content .jd-col-r { display: grid; gap: var(--ax-sp-4); min-width: 0; }
+@media (max-width: 900px) { #jd-content .jd-grid { grid-template-columns: 1fr; } }
+#jd-content .jd-card { padding: var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#jd-content .jd-card--regular { border-color: rgba(245, 166, 35, .45); }
+#jd-content .jd-card--malo { border-color: rgba(226, 80, 74, .55); }
+#jd-content .jd-card h4 { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--ax-sp-3); color: var(--ax-text-3); font: var(--ax-fw-bold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .06em; text-transform: uppercase; }
+#jd-content .jd-card h4 .ax-icon { width: 14px; height: 14px; }
+#jd-content .jd-card h4.jd-h-row { justify-content: space-between; text-transform: none; letter-spacing: 0; }
+#jd-content .jd-card h4.jd-h-row > span:first-child { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#jd-content .jd-dim { color: var(--ax-text-3); font-weight: var(--ax-fw-regular); font-size: var(--ax-fs-sm); }
+#jd-content .jd-card h4 .jd-dim { font-size: var(--ax-fs-xs); letter-spacing: 0; text-transform: none; font-weight: var(--ax-fw-regular); }
+
+#jd-content .jd-info { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-sp-3) var(--ax-sp-4); }
+#jd-content .jd-info .k { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+#jd-content .jd-info .v { margin-top: 2px; color: var(--ax-text); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+#jd-content .jd-info .v.jd-v-plain { font-weight: var(--ax-fw-regular); }
+#jd-content .jd-card + .jd-card { margin-top: 0; }
+#jd-content .jd-list { display: grid; gap: var(--ax-sp-2); }
+#jd-content .jd-info + .jd-list { margin-top: var(--ax-sp-3); }
+#jd-content .jd-item { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); }
+#jd-content .jd-item .lft { display: grid; gap: 2px; min-width: 0; }
+#jd-content .jd-item .rgt { display: flex; align-items: center; gap: var(--ax-sp-2); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#jd-content .jd-empty { padding: var(--ax-sp-1) 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#jd-content .jd-empty.is-bad { color: var(--ax-danger); }
+#jd-content .jd-empty.is-center { padding: var(--ax-sp-8); text-align: center; font-size: var(--ax-fs-md); }
+#jd-content .jd-loc { display: flex; align-items: center; gap: 4px; }
+#jd-content .jd-loc .ax-icon { width: 12px; height: 12px; }
+
+/* Servicios de la jornada */
+#jd-content .jd-service { align-items: flex-start; }
+#jd-content .jd-service-seq { display: inline-grid; place-items: center; flex: 0 0 26px; width: 26px; height: 26px; border: 1px solid var(--ax-border-strong); border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; }
+#jd-content .jd-service-main { flex: 1; min-width: 0; }
+#jd-content .jd-service-side { flex: 0 0 auto; min-width: 110px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); text-align: right; }
+#jd-content .jd-service-km { color: var(--ax-text-2); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#jd-content .jd-service-st { flex: 0 0 auto; }
+@media (max-width: 640px) { #jd-content .jd-service { flex-wrap: wrap; } #jd-content .jd-service-side { text-align: left; order: 3; flex: 1 0 100%; } }
+
+/* Etiquetas: ámbar = medio o pendiente, rojo = grave o anulado, verde = firmado, neutro = leve */
+#jd-content .jd-badge { display: inline-block; padding: 2px 8px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .02em; text-transform: none; }
+#jd-content .b-grave { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#jd-content .b-medio { background: var(--ax-warn-soft); color: var(--ax-warn); }
+#jd-content .b-leve { background: var(--ax-surface-3); color: var(--ax-text-2); }
+#jd-content .b-ok { background: var(--ax-ok-soft); color: var(--ax-ok); }
+
+/* Odómetro */
+#jd-content .jd-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-sp-3); }
+#jd-content .jd-foto { display: block; overflow: hidden; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-3); text-align: center; text-decoration: none; }
+#jd-content .jd-foto img { display: block; width: 100%; height: 130px; object-fit: cover; }
+#jd-content .jd-foto small { display: block; padding: 6px 0; font-size: var(--ax-fs-xs); }
+#jd-content .jd-foto-ph { display: grid; place-items: center; gap: 4px; height: 130px; align-content: center; font-size: var(--ax-fs-sm); }
+#jd-content .jd-foto-ph .ax-icon { width: 20px; height: 20px; }
+#jd-content .jd-note { margin-top: var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid rgba(245, 166, 35, .45); border-radius: var(--ax-radius); background: var(--ax-warn-soft); }
+#jd-content .jd-note.is-offline { border-color: var(--ax-border-strong); background: var(--ax-surface-2); }
+#jd-content .jd-note-title { display: flex; align-items: center; gap: 6px; margin-bottom: var(--ax-sp-2); color: var(--ax-warn); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#jd-content .jd-note.is-offline .jd-note-title { color: var(--ax-text-2); }
+#jd-content .jd-note-title .ax-icon { width: 14px; height: 14px; }
+#jd-content .jd-line { display: flex; justify-content: space-between; gap: var(--ax-sp-3); padding: 3px 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#jd-content .jd-line b { color: var(--ax-text); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#jd-content .jd-line b.is-warn { color: var(--ax-warn); }
+
+/* Neumáticos y frenos */
+#jd-content .jd-conds { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); }
+#jd-content .jd-cond-box { padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); text-align: center; }
+#jd-content .jd-cond-box .k { margin-bottom: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#jd-content .jd-cond { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#jd-content .jd-cond .ax-icon { width: 14px; height: 14px; }
+#jd-content .jd-cond.is-ok { background: var(--ax-ok-soft); color: var(--ax-ok); }
+#jd-content .jd-cond.is-warn { background: var(--ax-warn-soft); color: var(--ax-warn); }
+#jd-content .jd-cond.is-bad { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#jd-content .jd-line b { color: var(--ax-text); }
+#jd-content .jd-note-text { margin-top: var(--ax-sp-3); padding: var(--ax-sp-2) var(--ax-sp-3); border-radius: var(--ax-radius-sm); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+
+/* Rendición */
+#jd-content .jd-rend-linea { display: flex; justify-content: space-between; gap: var(--ax-sp-3); margin: 0; padding: 4px 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#jd-content .jd-rend-linea .v { color: var(--ax-text); font-family: var(--ax-font); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#jd-content .jd-rend-total { margin-top: var(--ax-sp-2); padding-top: var(--ax-sp-3); border-top: 1px solid var(--ax-border); }
+#jd-content .jd-rend-diff.ok { color: var(--ax-ok); }
+#jd-content .jd-rend-diff.bad { color: var(--ax-danger); }
+#jd-content .jd-rend-diff.warn { color: var(--ax-warn); }
+
+/* Incidentes: fotos y menú ⋯ */
+#jd-content .inc-menu-thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+#jd-content .inc-menu-thumb { display: block; flex: 0 0 auto; width: 48px; height: 48px; overflow: hidden; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-sm); }
+#jd-content .inc-menu-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+#jd-content .kebab-wrap { position: relative; align-self: flex-start; }
+#jd-content .kebab-btn { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); padding: 0; border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#jd-content .kebab-btn:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#jd-content .kebab-menu { min-width: 150px; padding: var(--ax-sp-1); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+#jd-content .kebab-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text); font: inherit; font-size: var(--ax-fs-md); text-align: left; cursor: pointer; }
+#jd-content .kebab-item:hover { background: var(--ax-surface-3); }
+#jd-content .kebab-item.danger { color: var(--ax-danger); }
+#jd-content .kebab-item .ax-icon { width: 15px; height: 15px; }
+
+@media (max-width: 767px) {
+  #modal-jornada-detalle .jd-modal { width: 100vw; max-height: 100vh; border-radius: 0; }
+  #modal-jornada-detalle #jd-content { padding: var(--ax-sp-4); }
+  #modal-jornada-detalle .modal-footer { flex-wrap: wrap; padding: var(--ax-sp-3) var(--ax-sp-4); }
+  #modal-jornada-detalle #jd-traza { order: -1; flex: 1 0 100%; }
+  #jd-content .jd-info { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Km/l, Servicios clickeable, orden y exportar ──────────────────── */
+#screen-jornadas-admin.screen .kml-cell { color: var(--ax-text); font-weight: var(--ax-fw-medium); font-variant-numeric: tabular-nums; cursor: help; }
+#screen-jornadas-admin.screen .kml-cell.cell-empty { color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+#screen-jornadas-admin.screen .kml-cell.is-low { color: var(--ax-warn); font-weight: var(--ax-fw-semibold); }
+#screen-jornadas-admin.screen .jadmin-srv { min-width: 28px; height: 24px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text); font: inherit; font-variant-numeric: tabular-nums; cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-jornadas-admin.screen .jadmin-srv:hover { background: var(--ax-surface); border-color: var(--ax-text-3); }
+#screen-jornadas-admin.screen .jadmin-srv:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-jornadas-admin.screen .table-hdr { gap: var(--ax-sp-3); flex-wrap: wrap; }
+#screen-jornadas-admin.screen .jadmin-cap-note { color: var(--ax-warn); }
+#screen-jornadas-admin.screen .jadmin-sort { display: inline-flex; align-items: center; gap: var(--ax-sp-2); color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-jornadas-admin.screen .jadmin-sort select { height: var(--ax-h-sm); max-width: 260px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: var(--ax-fs-sm); }
+#screen-jornadas-admin.screen .jadmin-sort select:focus-visible { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-jornadas-admin.screen .jadmin-export { margin-left: auto; }
+@media (max-width: 767px) {
+  #screen-jornadas-admin.screen .jadmin-export { grid-column: 1 / -1; margin-left: 0; justify-content: center; }
+  #screen-jornadas-admin.screen .jadmin-sort { display: grid; grid-template-columns: auto minmax(0, 1fr); width: 100%; }
+  #screen-jornadas-admin.screen .jadmin-sort select { min-width: 0; max-width: none; }
+}
+
+/* ── Horas de motor al abrir y cerrar la jornada (camiones con horómetro) ── */
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-horas { display: grid; gap: 6px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--ax-border); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-horas[hidden] { display: none; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-label { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-input { font: var(--ax-fw-semibold) 22px var(--ax-font-mono); text-align: center; font-variant-numeric: tabular-nums; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-input[aria-invalid="true"] { border-color: var(--ax-danger); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-fuente { color: var(--ax-text-3); font-size: var(--ax-fs-xs); text-align: center; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-fuente.is-ia { color: var(--ax-ok); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-fuente.is-manual { color: var(--ax-warn); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc { min-height: 16px; color: var(--ax-text-2); font-size: var(--ax-fs-xs); text-align: center; }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc.is-ok { color: var(--ax-ok); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc.is-aviso { color: var(--ax-warn); }
+:is(#modal-nueva-jornada, #modal-cerrar-jornada) .jh-calc.is-error { color: var(--ax-danger); }
+
+/* Interruptor "Registra horas de motor" en el alta y edición de un móvil */
+#modal-nuevo-vehiculo .nv-horas-switch { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 6px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); cursor: pointer; }
+#modal-nuevo-vehiculo .nv-horas-switch > span:first-child { display: grid; gap: 3px; }
+#modal-nuevo-vehiculo .nv-horas-switch b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#modal-nuevo-vehiculo .nv-horas-switch small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.4; }
+
+/* Historial del chofer: horas de motor en la columna de km. */
+:is(#mobile-jornadas-list, #jhist-lista) .journey-motor { color: var(--ax-text-3); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }

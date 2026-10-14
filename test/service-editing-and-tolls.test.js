@@ -17,7 +17,7 @@ const config=read('config.js'),sw=read('sw.js'),pkg=read('package.json');
 test('edición sigue auditada y usa un solo workspace',()=>{
  assert.match(legacy,/operator_service_changes/i);
  assert.match(canonical,/create or replace function public\.update_operator_service/i);
- assert.match(wizard,/get_operator_service_edit_context/);
+ assert.match(wizard,/get_operator_service_handoff_context_v2/);
  assert.match(wizard,/update_operator_service/);
  assert.match(workspace,/data-mode="\$\{w\.mode\}"/);
  assert.doesNotMatch(config,/operator-service-edit\.js|operator-service-edit\.css/);
@@ -26,23 +26,20 @@ test('edición sigue auditada y usa un solo workspace',()=>{
 test('la tercera columna tiene un único renderer comercial',()=>{
  assert.match(workspace,/data-workspace="three-columns"/);
  assert.match(workspaceCss,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important/);
- assert.match(workspace,/class="osv2-column actions-column"><\/section>/);
+ assert.match(workspace,/id="osv4-review-slot" class="osv4-review-slot"/);
  assert.match(workspace,/OperatorServiceCommercialAddonsV1\?\.render/);
  assert.doesNotMatch(workspace,/tollCard|extrasCard|renderTolls|renderRows|data-toll-field|data-row-concept/);
- assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación/);
+ assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio/);
 });
 
-test('formato de cobro se retrae tras elegir y permite Cambiar en la misma fila',()=>{
+test('formato de cobro: botonera compacta siempre visible, sin banner ni Cambiar',()=>{
  for(const label of ['A cargo del cliente','A cargo de la Prestadora','Uno y Uno'])assert.match(commercial,new RegExp(label));
  assert.match(commercial,/Elegí el formato de cobro/);
  assert.match(commercial,/Quién paga/);
  assert.match(commercial,/Método de Pago/);
  assert.match(commercial,/function coverageControl/);
- assert.match(commercial,/osca-format-selected/);
- assert.match(commercial,/data-ca="change-coverage"/);
- assert.match(commercial,/state\.coverageEditing=false/);
- assert.match(commercial,/action==='change-coverage'/);
- assert.match(commercialCss,/\.osca-format-selected\{/);
+ assert.match(commercial,/Formato de cobro de peajes \*/);
+ assert.doesNotMatch(commercial,/data-ca="change-coverage"/);      // se cambia tocando otra opción
  assert.match(wizard,/PAYERS=new Set\(\['provider','customer'\]\)/);
  assert.match(wizard,/fixedPayer=mode=>mode==='provider_roundtrip'\?'provider':mode==='customer_roundtrip'\?'customer':''/);
  assert.match(wizard,/Seleccioná primero el formato de cobro de peajes/);

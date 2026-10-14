@@ -12,6 +12,7 @@ function dataContext({ reload = async () => {}, uploadError = null, upload = nul
   const calls = { uploads: [], writes: [], lookups: [], views: [], messages: [], outbox: [] };
   const context = vm.createContext({
     console: { log() {}, warn() {}, error() {} }, setTimeout, clearTimeout, AbortController,
+    window: {}, sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     USUARIO_ACTUAL: { id: 'driver-test' }, navigator: { onLine: online },
     document: { getElementById: () => null, querySelectorAll: () => [] },
     fetch: async () => ({ blob: async () => ({}) }),
@@ -31,7 +32,7 @@ function dataContext({ reload = async () => {}, uploadError = null, upload = nul
       }),
     },
   });
-  vm.runInContext(data.slice(data.indexOf('function _remitoDbDesdeDatos'), data.indexOf('// Nota: esta función maneja')), context);
+  vm.runInContext(data.slice(data.indexOf('function _operatorServiceIdActivo'), data.indexOf('// Nota: esta función maneja')), context);
   const payload = { nro: 'REM-TEST', firmaDataURL: 'data:image/png;base64,AA==', confirmaciones: [], peaje: '1234.50', pago: 'efectivo + transferencia', pago1Monto: '200.50', pago2Monto: '1034.00' };
   return { context, calls, payload };
 }
@@ -118,6 +119,10 @@ function formContext(save) {
     _jornadasAbiertasCache: [], _jornadaActivaLocal: null, _resolverLogIdLocal: async id => id,
     _logIdEsTemporal: () => false, navigator: { onLine: true },
     _saveSig() {}, toast() {}, console, guardarRemitoCompleto: save,
+    // Asistente de remito por pasos (flujo nuevo): paso final y sin modo sin asignación.
+    window: {}, _remPasoActual: 4, _remWizardTotalPasos: () => 4, _remWizardEsAdHoc: () => false,
+    _remWizardPasoCliente: () => 2, _remWizardPasoFirma: () => 4, _remWizardPasoCargos: () => 3,
+    remWizardIr() {}, _remWizardActualizar() {}, openModal() {}, operationFeedback() {}, setTimeout: (fn) => { fn(); return 0; },
     resetPagoForm: () => { resets++; elements['pago1-monto'].value = ''; elements['pago2-monto'].value = ''; },
   });
   vm.runInContext(sigma.slice(sigma.indexOf('let _finalizacionRemitoEnCurso'), sigma.indexOf('// ── CÁLCULO DE TOTAL')), context);

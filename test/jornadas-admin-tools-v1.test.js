@@ -70,7 +70,8 @@ test('Jornada abre el remito con la vista administrativa canónica', () => {
 });
 
 test('Jornada usa vistas canónicas y no viewers duplicados para otros registros vinculados', () => {
-  assert.match(js, /FleetAdminDetailV2\.openTab/);
+  assert.match(js, /AuxiliosDetalleCamion\.abrir\(truckId,\{seccion:tab,carga:recordId\}\)/);
+  assert.doesNotMatch(js, /FleetAdminDetailV2|FleetFuelCRUD/);
   assert.match(js, /openFleetCanonical\('combustible'/);
   assert.match(js, /openFleetCanonical\('neumaticos'/);
   assert.match(js, /openRenditionCanonical/);
@@ -138,4 +139,25 @@ test('el módulo se carga, se precachea y entra en CI', () => {
   assert.ok(version && Number(version[1]) >= 146);
   assert.match(css, /\.jat-history-item/);
   assert.match(css, /\.jat-voided-row/);
+});
+
+test('Administración reabre una jornada cerrada por error con motivo', () => {
+  const reopen = read('migrations/20261013070000_reopen_daily_log_admin_v1.sql');
+  assert.match(js, /canReopen=isAdmin\(\)&&currentLog\(\)\?\.status==='closed'/);
+  assert.match(js, /data-jat-reopen/);
+  assert.match(js, /reopen_daily_log_admin/);
+  assert.match(js, /Reabrir jornada/);
+  assert.match(reopen, /solo Administración puede reabrir jornadas/);
+  assert.match(reopen, /JORNADA_CHOFER_OCUPADO/);
+  assert.match(reopen, /JORNADA_MOVIL_OCUPADO/);
+  assert.match(reopen, /JORNADA_RENDICION_REVISADA/);
+  assert.match(reopen, /estado='rechazado'/);
+  assert.doesNotMatch(reopen, /delete from/i);
+  assert.match(reopen, /reopen_daily_log_admin\(integer, text\) from public, anon/);
+});
+
+test('el detalle de la jornada muestra la rendición vigente de esa jornada', () => {
+  const sb = read('supabase.js');
+  assert.match(sb, /rendiciones\.find\(r => r\.estado !== 'rechazado'\)/);
+  assert.match(sb, /estado_revision: r\.estado/);
 });

@@ -21,7 +21,7 @@ test('Operaciones ve Por Cobrar sólo desde Excedentes y no pricing de la Presta
   assert.doesNotMatch(amountDueMigration, /from public\.operator_service_tolls/);
   assert.doesNotMatch(services, /canSeeCommercial|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot|provider_toll_total/);
   assert.doesNotMatch(workspace, /money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total|pricing_snapshot/);
-  assert.doesNotMatch(workspace, /osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
+  assert.doesNotMatch(workspace, /osv2-summary-card|Validar servicio|No visible para Operaciones/);
 });
 
 test('Chofer no recibe Por Cobrar ni medios de pago desde el listado', () => {

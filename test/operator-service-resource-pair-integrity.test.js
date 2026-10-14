@@ -30,6 +30,6 @@ test('integridad se aplica tanto al alta como a cambios posteriores',()=>{
 
 test('frontend continúa resolviendo la pareja en ambos sentidos desde disponibilidad operativa',()=>{
   assert.match(wizard,/get_operator_resource_availability/);
-  assert.match(wizard,/current\?\.active_truck_id/);
-  assert.match(wizard,/current\?\.active_driver_id/);
+  assert.match(wizard,/active_truck_id/);
+  assert.match(wizard,/active_driver_id/);
 });

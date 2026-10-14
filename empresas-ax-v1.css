@@ -1,0 +1,641 @@
+/* AuxiliOS · Empresas (prestadoras) con el sistema visual (v1)
+   Lista, ficha con pestañas (resumen, datos y contactos, parámetros de facturación, servicios,
+   tarifas, historial) y sus formularios. Cuelga de #screen-empresas.emp-v2 y de los ids de cada
+   modal para ganarle a empresas-v2.css y a los estilos que inyectan los módulos company-*. */
+
+#screen-empresas.emp-v2 { font-family: var(--ax-font); color: var(--ax-text); }
+
+/* ── Lista: encabezado, buscador, filtro y botón ── */
+#screen-empresas.emp-v2 .empv2-page-head { margin-bottom: var(--ax-sp-4); }
+#screen-empresas.emp-v2 .empv2-eyebrow { display: none; }
+#screen-empresas.emp-v2 .empv2-page-head h2 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-empresas.emp-v2 .empv2-page-head p { margin: 4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-readonly { padding: 10px 14px; border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-warn); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-list-controls { gap: var(--ax-sp-2); margin: var(--ax-sp-3) 0; }
+#screen-empresas.emp-v2 .empv2-search input, #screen-empresas.emp-v2 .empv2-filter, #screen-empresas.emp-v2 .empv2-list-controls select { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-search input:focus, #screen-empresas.emp-v2 .empv2-filter:focus, #screen-empresas.emp-v2 .empv2-list-controls select:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-empresas.emp-v2 .empv2-list-controls select { color-scheme: dark; }
+
+/* ── Botones ── */
+#screen-empresas.emp-v2 .btn, #screen-empresas.emp-v2 .empv2-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-empresas.emp-v2 .btn:hover, #screen-empresas.emp-v2 .empv2-action:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); opacity: 1; }
+#screen-empresas.emp-v2 .btn:focus-visible, #screen-empresas.emp-v2 .empv2-action:focus-visible, #screen-empresas.emp-v2 .empv2-tabs button:focus-visible, #screen-empresas.emp-v2 .empv2-menu-trigger:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-empresas.emp-v2 .btn-primary, #screen-empresas.emp-v2 .empv2-action.primary, #screen-empresas.emp-v2 .empv2-new { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-empresas.emp-v2 .btn-primary:hover, #screen-empresas.emp-v2 .empv2-action.primary:hover, #screen-empresas.emp-v2 .empv2-new:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); color: var(--ax-accent-fg); }
+#screen-empresas.emp-v2 .btn.sm, #screen-empresas.emp-v2 .empv2-card-actions .empv2-action, #screen-empresas.emp-v2 .empv2-contact .empv2-action { height: var(--ax-h-sm); padding: 0 12px; }
+
+/* ── Tabla de prestadoras ── */
+#screen-empresas.emp-v2 .empv2-list-table-wrap { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-empresas.emp-v2 .empv2-list-table th { height: 38px; padding: 0 14px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-empresas.emp-v2 .empv2-list-table td { padding: 10px 14px; border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-list-table tbody tr { background: var(--ax-surface-2); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-empresas.emp-v2 .empv2-list-table tbody tr:hover { background: var(--ax-surface-3); }
+#screen-empresas.emp-v2 .empv2-list-table tbody tr:last-child td { border-bottom: 0; }
+#screen-empresas.emp-v2 .empv2-company-cell b { font-weight: var(--ax-fw-semibold); font-size: var(--ax-fs-md); }
+#screen-empresas.emp-v2 .empv2-company-cell small, #screen-empresas.emp-v2 .empv2-list-contact small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-empresas.emp-v2 .empv2-table-foot { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-avatar, #screen-empresas.emp-v2 .empv2-hero-avatar { border: 1px solid var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-status { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; }
+#screen-empresas.emp-v2 .empv2-status i { background: var(--ax-ok); }
+#screen-empresas.emp-v2 .empv2-status.inactive { color: var(--ax-text-3); }
+#screen-empresas.emp-v2 .empv2-status.inactive i { background: var(--ax-text-3); }
+#screen-empresas.emp-v2 .empv2-menu-trigger { width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); }
+#screen-empresas.emp-v2 .empv2-menu-trigger:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-empresas.emp-v2 .empv2-actions-menu { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+#screen-empresas.emp-v2 .empv2-actions-menu button { height: var(--ax-h-sm); border-radius: var(--ax-radius); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-actions-menu button:hover { background: var(--ax-surface-3); }
+#screen-empresas.emp-v2 .empv2-actions-menu button.danger { color: var(--ax-danger); }
+#screen-empresas.emp-v2 .empv2-actions-menu button.enable { color: var(--ax-text); }
+
+/* ── Ficha ── */
+#screen-empresas.emp-v2 .empv2-breadcrumb { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-breadcrumb button, #screen-empresas.emp-v2 .empv2-back { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-breadcrumb button:hover, #screen-empresas.emp-v2 .empv2-back:hover { color: var(--ax-text); }
+#screen-empresas.emp-v2 :is(.empv2-company-hero, .empv2-section-card, .empv2-feature-card, .empv2-alert-strip) { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-empresas.emp-v2 .empv2-company-hero { padding: 16px 18px; }
+#screen-empresas.emp-v2 .empv2-company-hero h2, #screen-empresas.emp-v2 .empv2-title-line h2 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; }
+#screen-empresas.emp-v2 .empv2-contact-line, #screen-empresas.emp-v2 .empv2-hero-main small, #screen-empresas.emp-v2 .empv2-hero-main span { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-hero-stat { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-empresas.emp-v2 .empv2-hero-stat small { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-hero-stat b { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); font-variant-numeric: tabular-nums; }
+
+#screen-empresas.emp-v2 .empv2-tabs { gap: 2px; border-bottom: 1px solid var(--ax-border); overflow-x: auto; scrollbar-width: none; }
+#screen-empresas.emp-v2 .empv2-tabs::-webkit-scrollbar { display: none; }
+#screen-empresas.emp-v2 .empv2-tabs button { padding: 10px 14px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; white-space: nowrap; transition: color var(--ax-dur-fast) var(--ax-ease); }
+#screen-empresas.emp-v2 .empv2-tabs button:hover { color: var(--ax-text); }
+#screen-empresas.emp-v2 .empv2-tabs button.active { border-bottom-color: var(--ax-accent); color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+
+#screen-empresas.emp-v2 .empv2-section-card { padding: 16px 18px; }
+#screen-empresas.emp-v2 .empv2-section-head h3, #screen-empresas.emp-v2 .empv2-feature-card h3, #screen-empresas.emp-v2 .empv2-alert-strip h3 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-empresas.emp-v2 .empv2-section-head p, #screen-empresas.emp-v2 .empv2-feature-card p { margin: 2px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-feature-card { padding: 16px; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-empresas.emp-v2 .empv2-feature-card:hover { background: var(--ax-surface-3); }
+#screen-empresas.emp-v2 .empv2-feature-card .empv2-icon, #screen-empresas.emp-v2 .empv2-feature-top > span:first-child { border: 1px solid var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text-2); }
+#screen-empresas.emp-v2 .empv2-feature-foot b, #screen-empresas.emp-v2 .empv2-feature-foot span { font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-feature-foot .ok, #screen-empresas.emp-v2 .empv2-feature-foot .done { color: var(--ax-ok); }
+#screen-empresas.emp-v2 .empv2-feature-foot .pending { color: var(--ax-warn); }
+#screen-empresas.emp-v2 .empv2-alert-item { padding: 10px 12px; border: 1px solid var(--ax-border); border-left: 3px solid var(--ax-warn); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-empresas.emp-v2 .empv2-alert-item b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-empresas.emp-v2 .empv2-alert-item small { color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+#screen-empresas.emp-v2 .empv2-alert-item > span { color: var(--ax-warn); }
+
+/* Datos: filas de dato y contactos */
+#screen-empresas.emp-v2 :is(.empv2-simple-stat, .empv2-plain-card, .empv2-config-row, .empv2-contact, .empv2-contact-channel, .empv2-equal-base) { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-empresas.emp-v2 .empv2-simple-stat small, #screen-empresas.emp-v2 .empv2-contact-channel small { color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); letter-spacing: 0; text-transform: none; }
+#screen-empresas.emp-v2 .empv2-simple-stat b, #screen-empresas.emp-v2 .empv2-contact-channel b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-contact-channel .empv2-icon, #screen-empresas.emp-v2 .empv2-contact-channel svg { color: var(--ax-text-2); stroke: currentColor; }
+#screen-empresas.emp-v2 .empv2-contact-channel.whatsapp .empv2-icon, #screen-empresas.emp-v2 .empv2-contact-channel.phone .empv2-icon, #screen-empresas.emp-v2 .empv2-contact-channel.mail .empv2-icon { color: var(--ax-text-2); }
+#screen-empresas.emp-v2 .empv2-contact.empv2-contact-off { opacity: .6; }
+#screen-empresas.emp-v2 .empv2-chip, #screen-empresas.emp-v2 .empv2-equal-base { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-chip.ok { border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text-2); }
+#screen-empresas.emp-v2 .empv2-chip.warn, #screen-empresas.emp-v2 .empv2-chip.pending, #screen-empresas.emp-v2 .empv2-chip.danger { border-color: var(--ax-border-strong); background: transparent; }
+#screen-empresas.emp-v2 .empv2-chip.warn, #screen-empresas.emp-v2 .empv2-chip.pending { color: var(--ax-warn); }
+#screen-empresas.emp-v2 .empv2-chip.danger { color: var(--ax-danger); }
+
+/* Historial */
+#screen-empresas.emp-v2 .empv2-history-entry { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-empresas.emp-v2 .empv2-history-op { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#screen-empresas.emp-v2 .empv2-history-meta, #screen-empresas.emp-v2 .empv2-history-arrow { color: var(--ax-text-3); }
+#screen-empresas.emp-v2 .empv2-empty, #screen-empresas.emp-v2 .empv2-loading { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Tarifas (módulo company-tariffs) ── */
+#screen-empresas.emp-v2 .ct4-chip { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-empresas.emp-v2 .ct4-chip b { color: var(--ax-text); }
+#screen-empresas.emp-v2 .ct4-chip.pending, #screen-empresas.emp-v2 .ct4-chip.warn { color: var(--ax-warn); }
+#screen-empresas.emp-v2 .ct4-panel { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-empresas.emp-v2 .ct4-panel-head { border-bottom: 1px solid var(--ax-border); }
+#screen-empresas.emp-v2 .ct4-table th { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; border-bottom: 1px solid var(--ax-border); }
+#screen-empresas.emp-v2 .ct4-table td { border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .ct4-action { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-empresas.emp-v2 .ct4-action:hover { background: var(--ax-surface-3); }
+#screen-empresas.emp-v2 .ct4-action.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-empresas.emp-v2 .ct4-empty, #screen-empresas.emp-v2 .cs4-empty { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .ct4-price-main { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-empresas.emp-v2 .cs4-chip { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#screen-empresas.emp-v2 .cs4-chip.pending, #screen-empresas.emp-v2 .cs4-chip.danger { color: var(--ax-danger); }
+
+/* ── Formularios (modales) ── */
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) { background: rgba(0, 0, 0, .6); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-box { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-head-title { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; color: var(--ax-text); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-head small, :is(#modal-company-billing-v4, #modal-ct4-rate) .bp4-subtitle { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-body { padding: 18px 20px; }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-error { border-left: 3px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.form-label, .bp4-label, .ct4-field > span, .bp4-field > span) { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.form-input, .form-select, .form-textarea, input:not([type=checkbox]):not([type=radio]), select, textarea) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.form-input, .form-select, .form-textarea, input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.bp4-help, .bp4-info, .ct4-note) { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#modal-company-billing-v4, #modal-company-enabled-services-v4) .bp4-section { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+:is(#modal-company-billing-v4, #modal-company-enabled-services-v4) .bp4-section-head h4 { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn, :is(#modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate) .ct4-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn:hover { background: var(--ax-surface-3); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-list-controls { grid-template-columns: 1fr; }
+}
+
+/* Ajustes: el filtro por estado es un select con id propio; las cifras de la ficha son compactas. */
+#screen-empresas.emp-v2 #empv2-filter { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); color: var(--ax-text); color-scheme: dark; font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 #empv2-filter:focus-visible { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-empresas.emp-v2 .empv2-hero-stat small { font-size: var(--ax-fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#screen-empresas.emp-v2 .empv2-hero-stat b { font-size: var(--ax-fs-lg); }
+#screen-empresas.emp-v2 .empv2-company-hero { grid-template-columns: minmax(0, 1fr) minmax(420px, .8fr); }
+#screen-empresas.emp-v2 .empv2-section-head { margin-bottom: var(--ax-sp-3); }
+#screen-empresas.emp-v2 .empv2-alert-strip h3 { margin-bottom: var(--ax-sp-2); }
+#screen-empresas.emp-v2 .empv2-feature-foot .empv2-chip, #screen-empresas.emp-v2 .empv2-feature-foot span { font-size: var(--ax-fs-sm); }
+@media (max-width: 1100px) { #screen-empresas.emp-v2 .empv2-company-hero { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-hero-stats { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Pulido de la lista: sin título repetido, buscador y filtro con el tema, tabla a su altura ── */
+#screen-empresas.emp-v2 .empv2-page-head { display: none; }
+#screen-empresas.emp-v2 .empv2-list-controls { margin-top: 0; }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search { height: var(--ax-h); padding: 0 12px; gap: 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search span { color: var(--ax-text-3); font-size: 16px; }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search input { height: calc(var(--ax-h) - 2px); border: 0; background: transparent; box-shadow: none; color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search input:focus { box-shadow: none; }
+#screen-empresas.emp-v2 .empv2-list-controls .empv2-search input::placeholder { color: var(--ax-text-3); }
+#screen-empresas.emp-v2 .empv2-list-controls #empv2-filter { height: var(--ax-h); padding: 0 34px 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); outline: 0; background-color: var(--ax-bg); background-image: linear-gradient(45deg, transparent 50%, var(--ax-text-2) 50%), linear-gradient(135deg, var(--ax-text-2) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px, 5px 5px; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); box-shadow: none; transform: none; color-scheme: dark; }
+#screen-empresas.emp-v2 .empv2-list-controls #empv2-filter:hover { border-color: var(--ax-text-3); transform: none; box-shadow: none; }
+#screen-empresas.emp-v2 .empv2-list-controls #empv2-filter:focus-visible { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-empresas.emp-v2 .empv2-list-controls .btn { height: var(--ax-h); min-height: 0; }
+#screen-empresas.emp-v2 .empv2-list-table-wrap { flex: 0 1 auto; min-height: 0; border-color: var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-empresas.emp-v2 .empv2-list-table th { font-size: var(--ax-fs-xs); }
+#screen-empresas.emp-v2 .empv2-list-contact { font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-page > .empv2-list-table-wrap { flex: 0 1 auto; min-height: 0; }
+/* Celular: cada prestadora es una tarjeta (sin desplazar la tabla de costado). */
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-page > .empv2-list-table-wrap { max-height: none; overflow: visible !important; border: 0; background: transparent; }
+  #screen-empresas.emp-v2 .empv2-list-table { display: block; min-width: 0; }
+  #screen-empresas.emp-v2 .empv2-list-table colgroup, #screen-empresas.emp-v2 .empv2-list-table thead { display: none; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody { display: flex; flex-direction: column; gap: var(--ax-sp-2); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody tr { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td { display: block; min-width: 0; padding: 0; border: 0; background: transparent; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(1) { grid-column: 1 / -1; padding-right: 44px; padding-bottom: 10px; border-bottom: 1px solid var(--ax-border); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3) { grid-column: 1 / -1; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(5) { position: absolute; top: 12px; right: 12px; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(2)::before, #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3)::before, #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(4)::before { display: block; margin-bottom: 2px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(2)::before { content: "CUIT"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3)::before { content: "Contacto"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(4)::before { content: "Estado"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td[colspan] { grid-column: 1 / -1; padding: 0; border: 0; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td[colspan]::before { content: none; }
+}
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-list-table { width: 100%; table-layout: auto; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody tr { width: 100%; height: auto; min-height: 0; box-sizing: border-box; grid-template-areas: "nombre nombre" "cuit estado" "contacto contacto"; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td { height: auto; min-height: 0; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(1) { grid-area: nombre; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(2) { grid-area: cuit; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(3) { grid-area: contacto; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(4) { grid-area: estado; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td:nth-child(5) { z-index: 1; width: auto; }
+  #screen-empresas.emp-v2 .empv2-list-table tbody td[colspan] { grid-area: auto; }
+}
+@media (max-width: 760px) {
+  #screen-empresas.emp-v2 .empv2-page .empv2-list-table { min-width: 0; width: 100%; }
+}
+
+/* ── Formularios de prestadora y contacto: secciones con título, campos en columnas ── */
+:is(#modal-empresa, #modal-emp-contact) .modal-box.emf-modal { width: min(680px, 96vw); max-width: none; max-height: 92vh; display: flex; flex-direction: column; }
+:is(#modal-empresa, #modal-emp-contact) .modal-box.emf-modal-sm { width: min(520px, 96vw); }
+:is(#modal-empresa, #modal-emp-contact) .modal-body { display: grid; gap: 22px; overflow-y: auto; }
+:is(#modal-empresa, #modal-emp-contact) .emf-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-title small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec { display: grid; gap: 12px; margin: 0; padding: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec + .emf-sec { padding-top: 18px; border-top: 1px solid var(--ax-border); }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-empresa, #modal-emp-contact) .emf-sec-title .ax-icon { width: 18px; height: 18px; color: var(--ax-accent); }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid .form-group { display: flex; flex-direction: column; gap: 6px; margin: 0; min-width: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-span-2 { grid-column: 1 / -1; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid textarea.form-input { height: auto; min-height: 84px; padding: 10px 12px; resize: vertical; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid select.form-input { color-scheme: dark; }
+:is(#modal-empresa, #modal-emp-contact) .emf-hint { margin: -4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-empresa .emf-days { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+#modal-empresa .emf-days-input { position: relative; width: 120px; }
+#modal-empresa .emf-days-input input { padding-right: 46px; }
+#modal-empresa .emf-days-input span { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--ax-text-3); font-size: var(--ax-fs-sm); pointer-events: none; }
+#modal-empresa .emf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+#modal-empresa .emf-chip { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#modal-empresa .emf-chip:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-empresa .emf-chip.is-on { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-accent); }
+#modal-emp-contact .emf-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); cursor: pointer; }
+#modal-emp-contact .emf-switch-text { display: flex; flex-direction: column; gap: 2px; }
+#modal-emp-contact .emf-switch-text b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-emp-contact .emf-switch-text small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+@media (max-width: 600px) {
+  :is(#modal-empresa, #modal-emp-contact) .emf-grid { grid-template-columns: 1fr; }
+  :is(#modal-empresa, #modal-emp-contact) .modal-box.emf-modal { width: 100vw; max-height: 100dvh; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; }
+}
+:is(#modal-empresa, #modal-emp-contact) .emf-grid .form-label { margin: 0; line-height: 1.3; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid .form-input { margin: 0; }
+:is(#modal-empresa, #modal-emp-contact) .emf-grid select.form-input { height: var(--ax-h); }
+:is(#modal-empresa, #modal-emp-contact) .modal-body { min-height: 0; }
+
+/* ── Tarifas: tabla legible, acciones en una sola fila (en la ficha y en la pantalla Tarifas) ── */
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table-wrap { max-height: none; overflow-x: auto; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table { min-width: 980px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table th { height: 38px; padding: 0 14px; background: var(--ax-surface); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table td { padding: 14px; vertical-align: middle; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table strong { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table small, :is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-price-km { color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.4; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table tbody tr:hover td { background: var(--ax-surface-3); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-price-main { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font-mono); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-chip { height: 24px; padding: 0 10px; font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-chip.pending { border-color: var(--ax-warn); background: transparent; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel-head { padding: 14px 16px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel-head h3 { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel-head p { font-size: var(--ax-fs-sm); color: var(--ax-text-3); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions { flex-wrap: nowrap; gap: 6px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-action { height: var(--ax-h-sm); padding: 0 10px; font-size: var(--ax-fs-sm); white-space: nowrap; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions .ct4-action:not(.primary) { border-color: transparent; color: var(--ax-text-2); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions .ct4-action:not(.primary):hover { border-color: var(--ax-border-strong); color: var(--ax-text); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-name { font-size: var(--ax-fs-sm); color: var(--ax-text-2); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-price .ct4-price-main { font-size: var(--ax-fs-sm); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-price .ct4-price-km { font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-icon-action { color: var(--ax-danger); font-size: var(--ax-fs-md); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-next-row { border-color: var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-next-row > b { color: var(--ax-info); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-stat { height: 26px; padding: 0 10px; border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-stat b { font-size: var(--ax-fs-sm); color: var(--ax-text); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-stat.pending { color: var(--ax-warn); border-color: var(--ax-warn); }
+/* Edición en lote */
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field span { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field input { height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font-mono); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field input:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field input.dirty { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar { padding: 12px 16px; border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar b { font-size: var(--ax-fs-md); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar small { font-size: var(--ax-fs-sm); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-savebar .btn { height: var(--ax-h); font-size: var(--ax-fs-sm); padding: 0 16px; }
+
+/* ── Servicios habilitados: interruptor en vez de casilla ── */
+#modal-company-enabled-services-v4 .modal-body { display: grid; gap: 14px; }
+#modal-company-enabled-services-v4 .cs4-note { margin: 0; padding: 12px 14px; border: 1px solid var(--ax-border); border-left: 3px solid var(--ax-info); border-radius: var(--ax-radius-lg); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-company-enabled-services-v4 .cs4-note b { color: var(--ax-text); }
+#modal-company-enabled-services-v4 .cs4-list { display: grid; gap: 8px; }
+#modal-company-enabled-services-v4 .cs4-row { grid-template-columns: auto minmax(0, 1fr) minmax(150px, 190px); gap: 14px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#modal-company-enabled-services-v4 .cs4-row:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-company-enabled-services-v4 .cs4-row .cs4-sw input { width: 36px; height: 20px; accent-color: initial; }
+#modal-company-enabled-services-v4 .cs4-name { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-enabled-services-v4 .cs4-chip { height: 22px; padding: 0 9px; border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+#modal-company-enabled-services-v4 .cs4-row select { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-size: var(--ax-fs-sm); color-scheme: dark; }
+@media (max-width: 600px) {
+  #modal-company-enabled-services-v4 .cs4-row { grid-template-columns: auto minmax(0, 1fr); }
+  #modal-company-enabled-services-v4 .cs4-row select { grid-column: 1 / -1; }
+}
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-panel { min-width: 0; max-width: 100%; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table { min-width: 0; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table th { vertical-align: middle; position: static; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table td:first-child { min-width: 150px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exceptions { min-width: 210px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception { grid-template-columns: minmax(70px, auto) minmax(110px, 1fr) auto; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-exception-price .ct4-price-km { white-space: nowrap; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-actions .ct4-action { padding: 0 8px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-chip { max-width: 100%; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4 { grid-template-columns: minmax(0, 1fr); }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4 > * { min-width: 0; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-table td:last-child .ct4-actions { flex-wrap: wrap; justify-content: flex-end; width: 240px; margin-left: auto; row-gap: 4px; }
+
+/* ── Parámetros de facturación: secciones más limpias, avisos como notas ── */
+#modal-company-billing-v4 .modal-box.bp4-dialog { width: min(860px, 96vw); max-width: none; }
+#modal-company-billing-v4 .bp4-shell { gap: 16px; }
+#modal-company-billing-v4 .bp4-section { overflow: visible; }
+#modal-company-billing-v4 .bp4-section-head { padding: 14px 18px; border-bottom: 1px solid var(--ax-border); background: transparent; }
+#modal-company-billing-v4 .bp4-section-head p { margin: 2px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-company-billing-v4 .bp4-section-body { padding: 16px 18px; }
+#modal-company-billing-v4 .bp4-grid { gap: 14px 16px; align-items: start; }
+#modal-company-billing-v4 .bp4-field > span, #modal-company-billing-v4 .bp4-label { text-transform: none; letter-spacing: 0; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); color: var(--ax-text-2); }
+#modal-company-billing-v4 .bp4-help { padding: 10px 14px; border: 0; border-left: 3px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.5; }
+#modal-company-billing-v4 .bp4-help b { color: var(--ax-text); }
+#modal-company-billing-v4 .bp4-help.route { border-left-color: var(--ax-info); }
+#modal-company-billing-v4 .bp4-help.manual { border-left-color: var(--ax-warn); }
+#modal-company-billing-v4 .bp4-help:empty { display: none; }
+#modal-company-billing-v4 .bp4-info { border-color: var(--ax-border-strong); color: var(--ax-info); }
+#modal-company-billing-v4 .bp4-optional { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-company-billing-v4 .bp4-rule { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-company-billing-v4 .bp4-rule.active { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-company-billing-v4 .bp4-rule h5 { margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-billing-v4 .bp4-rule p { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-company-billing-v4 .bp4-subtitle { color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); text-transform: none; letter-spacing: 0; }
+#modal-company-billing-v4 .bp4-base { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text); }
+#modal-company-billing-v4 .bp4-base:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-company-billing-v4 .bp4-active-sw { min-height: var(--ax-h); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#modal-company-billing-v4 .bp4-active-sw input { width: 36px; height: 20px; padding: 0; border: 0; }
+@media (max-width: 600px) { #modal-company-billing-v4 .bp4-grid, #modal-company-billing-v4 .bp4-grid.three, #modal-company-billing-v4 .bp4-base-list, #modal-company-billing-v4 .bp4-rule-grid { grid-template-columns: 1fr; } }
+#modal-company-billing-v4 .bp4-help.full { grid-column: 1 / -1; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-grid { gap: 8px; align-items: end; min-width: 330px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field { gap: 6px; }
+:is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field span { white-space: nowrap; }
+:is(#modal-ct4-rate, #modal-ct4-history) .modal-head small { font-size: var(--ax-fs-sm); }
+:is(#modal-ct4-rate, #modal-ct4-history) .ct4-note { padding: 10px 14px; border: 0; border-left: 3px solid var(--ax-info); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#modal-ct4-rate, #modal-ct4-history) .ct4-grid { gap: 14px 16px; }
+
+/* ── Parámetros de facturación en columnas: bases | parámetros ── */
+#modal-company-billing-v4 .modal-box.bp4-dialog { width: min(1120px, 96vw); }
+#modal-company-billing-v4 .bp4-cols { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 16px; align-items: start; }
+#modal-company-billing-v4 .bp4-col-bases .bp4-base-list { grid-template-columns: 1fr; }
+#modal-company-billing-v4 .bp4-params { display: grid; gap: 22px; }
+#modal-company-billing-v4 .bp4-block { display: grid; gap: 12px; min-width: 0; }
+#modal-company-billing-v4 .bp4-block + .bp4-block { padding-top: 20px; border-top: 1px solid var(--ax-border); }
+#modal-company-billing-v4 .bp4-block-title { margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-billing-v4 .bp4-block-sub { margin: -6px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.5; }
+#modal-company-billing-v4 .bp4-hidden { display: none; }
+#modal-company-billing-v4 .bp4-route-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#modal-company-billing-v4 .bp4-route-card { display: grid; gap: 12px; align-content: start; padding: 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text); font-family: var(--ax-font); text-align: left; cursor: pointer; }
+#modal-company-billing-v4 .bp4-route-card:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#modal-company-billing-v4 .bp4-route-card.active { border-color: var(--ax-accent); background: var(--ax-accent-soft); box-shadow: 0 0 0 1px var(--ax-accent) inset; }
+#modal-company-billing-v4 .bp4-route-title { font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#modal-company-billing-v4 .bp4-viz { display: flex; align-items: flex-start; min-height: 46px; }
+#modal-company-billing-v4 .bp4-node { position: relative; flex: none; width: 48px; padding-top: 16px; color: var(--ax-text-2); font: var(--ax-fw-medium) 10px var(--ax-font); font-style: normal; text-align: center; }
+#modal-company-billing-v4 .bp4-node::before { content: ''; position: absolute; top: 0; left: 50%; width: 12px; height: 12px; margin-left: -6px; border: 2px solid var(--ax-border-strong); border-radius: 50%; background: var(--ax-surface-2); }
+#modal-company-billing-v4 .bp4-leg { flex: 1; min-width: 0; margin: 5px -6px 0; padding-top: 6px; border-top: 3px dashed var(--ax-border-strong); color: var(--ax-text-3); font: var(--ax-fw-medium) 10px var(--ax-font-mono); text-align: center; position: relative; z-index: 1; }
+#modal-company-billing-v4 .bp4-leg.on { border-top: 3px solid var(--ax-accent); color: var(--ax-accent); }
+#modal-company-billing-v4 .bp4-route-card.active .bp4-node::before { border-color: var(--ax-accent); }
+#modal-company-billing-v4 .bp4-viz-manual { display: grid; place-items: center; min-height: 46px; padding: 8px; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text-3); font-size: var(--ax-fs-xs); text-align: center; }
+#modal-company-billing-v4 .bp4-route-total { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-company-billing-v4 .bp4-route-total b { color: var(--ax-text); font-family: var(--ax-font-mono); }
+#modal-company-billing-v4 .bp4-yn { display: grid; gap: 10px; }
+#modal-company-billing-v4 .bp4-yn-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-company-billing-v4 .bp4-yn-row:has(input[type=checkbox]:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-company-billing-v4 .bp4-yn-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; }
+#modal-company-billing-v4 .bp4-yn-label b { display: block; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-billing-v4 .bp4-yn-label small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.45; }
+#modal-company-billing-v4 .bp4-yn-label .ax-switch input { width: 36px; height: 20px; padding: 0; border: 0; }
+#modal-company-billing-v4 .bp4-yn-input { display: flex; align-items: center; gap: 8px; }
+#modal-company-billing-v4 .bp4-yn-input[hidden] { display: none; }
+#modal-company-billing-v4 .bp4-yn-input input { width: 110px; }
+#modal-company-billing-v4 .bp4-yn-input em { color: var(--ax-text-3); font-style: normal; font-size: var(--ax-fs-sm); }
+@media (max-width: 900px) { #modal-company-billing-v4 .bp4-cols { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { #modal-company-billing-v4 .bp4-route-cards { grid-template-columns: 1fr; } #modal-company-billing-v4 .bp4-yn-row { grid-template-columns: 1fr; } }
+
+/* ── Ficha: pestaña Parámetros de facturación ── */
+#screen-empresas.emp-v2 .empv2-bp { display: grid; gap: 16px; }
+#screen-empresas.emp-v2 .empv2-bp-head { display: grid; gap: 14px; }
+#screen-empresas.emp-v2 .empv2-bp-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+#screen-empresas.emp-v2 .empv2-bp-title h3 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-bp-title p { margin: 2px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-bp-quick { display: flex; flex-wrap: wrap; gap: 8px; }
+#screen-empresas.emp-v2 .empv2-bp-quick .btn.danger { border-color: var(--ax-danger); color: var(--ax-danger); }
+#screen-empresas.emp-v2 .empv2-bp-quick .btn.danger:hover { background: var(--ax-danger-soft); }
+#screen-empresas.emp-v2 .empv2-bp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+#screen-empresas.emp-v2 .empv2-bp-grid > .empv2-bp-bases { grid-column: span 2; }
+#screen-empresas.emp-v2 .empv2-bp-body { display: grid; gap: 12px; padding: 4px 0 0; }
+#screen-empresas.emp-v2 .empv2-bp-big { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-bp-item { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-empresas.emp-v2 .empv2-bp-item small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-empresas.emp-v2 .empv2-bp-item b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-muted { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-bp-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: var(--ax-radius-pill); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+#screen-empresas.emp-v2 .empv2-bp-pill.on { background: var(--ax-ok-soft, var(--ax-surface-3)); color: var(--ax-ok); }
+#screen-empresas.emp-v2 .empv2-bp-pill.off { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#screen-empresas.emp-v2 .empv2-bp-rule { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-empresas.emp-v2 .empv2-bp-rule.on { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#screen-empresas.emp-v2 .empv2-bp-rule-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#screen-empresas.emp-v2 .empv2-bp-rule-head > div { display: grid; gap: 2px; min-width: 0; }
+#screen-empresas.emp-v2 .empv2-bp-rule-head b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-empresas.emp-v2 .empv2-bp-rule-head small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-empresas.emp-v2 .empv2-bp-rule-head .ax-switch input { width: 36px; height: 20px; }
+#screen-empresas.emp-v2 .empv2-bp-empty { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+#screen-empresas.emp-v2 .empv2-route { display: flex; align-items: flex-start; }
+#screen-empresas.emp-v2 .empv2-route-node { position: relative; flex: none; width: 46px; padding-top: 16px; color: var(--ax-text-2); font: var(--ax-fw-medium) 10px var(--ax-font); font-style: normal; text-align: center; }
+#screen-empresas.emp-v2 .empv2-route-node::before { content: ''; position: absolute; top: 0; left: 50%; width: 12px; height: 12px; margin-left: -6px; border: 2px solid var(--ax-accent); border-radius: 50%; background: var(--ax-surface-2); }
+#screen-empresas.emp-v2 .empv2-route-leg { flex: 1; min-width: 12px; margin: 5px -6px 0; border-top: 3px dashed var(--ax-border-strong); }
+#screen-empresas.emp-v2 .empv2-route-leg.on { border-top: 3px solid var(--ax-accent); }
+@media (max-width: 1100px) { #screen-empresas.emp-v2 .empv2-bp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } #screen-empresas.emp-v2 .empv2-bp-grid > .empv2-bp-bases { grid-column: 1 / -1; } }
+@media (max-width: 700px) { #screen-empresas.emp-v2 .empv2-bp-grid { grid-template-columns: 1fr; } #screen-empresas.emp-v2 .empv2-bp-quick .btn { flex: 1 1 auto; } }
+
+/* ── Asistente por pasos ── */
+#modal-company-billing-v4 .bp4-stepper { display: flex; gap: 8px; margin-bottom: 4px; }
+#modal-company-billing-v4 .bp4-step-pill { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-align: left; cursor: pointer; }
+#modal-company-billing-v4 .bp4-step-pill i { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); font-style: normal; }
+#modal-company-billing-v4 .bp4-step-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-company-billing-v4 .bp4-step-pill.done i { background: var(--ax-ok-soft, var(--ax-surface-3)); color: var(--ax-ok); }
+#modal-company-billing-v4 .bp4-step-pill.active { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); }
+#modal-company-billing-v4 .bp4-step-pill.active i { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#modal-company-billing-v4 .bp4-step[hidden] { display: none; }
+#modal-company-billing-v4 .bp4-step { display: grid; gap: 16px; }
+#modal-company-billing-v4 .bp4-cols-vig { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#modal-company-billing-v4 .bp4-params-all .bp4-params { grid-template-columns: 1fr 1fr; align-items: start; gap: 22px; }
+#modal-company-billing-v4 .bp4-params-all .bp4-block:first-child { grid-column: 1 / -1; }
+#modal-company-billing-v4 .bp4-params-all .bp4-block + .bp4-block { padding-top: 0; border-top: 0; }
+#modal-company-billing-v4 .bp4-params-all .bp4-block:nth-child(2) { padding-top: 20px; border-top: 1px solid var(--ax-border); }
+#modal-company-billing-v4 .bp4-params-all .bp4-block:nth-child(3) { padding-top: 20px; border-top: 1px solid var(--ax-border); }
+#modal-company-billing-v4 .modal-footer { display: flex; align-items: center; gap: 8px; }
+#modal-company-billing-v4 .bp4-footer-gap { flex: 1; }
+#modal-company-billing-v4 .modal-footer [hidden] { display: none; }
+#modal-company-billing-v4 .bp4-sum-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+#modal-company-billing-v4 .bp4-sum-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#modal-company-billing-v4 .bp4-sum-body { display: grid; gap: 10px; }
+#modal-company-billing-v4 .bp4-sum-item { display: grid; gap: 2px; }
+#modal-company-billing-v4 .bp4-sum-item small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-company-billing-v4 .bp4-sum-item b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); overflow-wrap: anywhere; }
+#modal-company-billing-v4 .bp4-sum-changes { border-color: var(--ax-accent); }
+#modal-company-billing-v4 .bp4-diff, #modal-bp4-confirm .bp4-diff { display: grid; gap: 6px; }
+:is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 1.4fr) auto minmax(0, 1.4fr); gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); font-size: var(--ax-fs-sm); }
+:is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row.risky { border-left: 3px solid var(--ax-warn); }
+:is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row b { color: var(--ax-text); }
+:is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row .was { color: var(--ax-text-3); text-decoration: line-through; }
+:is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row .now { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+:is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row i { color: var(--ax-text-3); font-style: normal; }
+#modal-bp4-confirm { background: rgba(0, 0, 0, .6); z-index: 1300; }
+#modal-bp4-confirm .modal-box.bp4-confirm { width: min(620px, 96vw); max-width: none; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); color: var(--ax-text); font-family: var(--ax-font); box-shadow: var(--ax-shadow-modal); }
+#modal-bp4-confirm .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); }
+#modal-bp4-confirm .modal-head-title { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; text-transform: none; color: var(--ax-text); }
+#modal-bp4-confirm .modal-body { display: grid; gap: 12px; padding: 18px 20px; max-height: 60vh; overflow-y: auto; }
+#modal-bp4-confirm .bp4-confirm-text { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: 1.5; }
+#modal-bp4-confirm .bp4-confirm-text b { color: var(--ax-text); }
+#modal-bp4-confirm .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ax-border); }
+#modal-bp4-confirm .modal-footer .btn { height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#modal-bp4-confirm .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#modal-bp4-confirm .modal-footer .btn-primary.danger { border-color: var(--ax-danger); background: var(--ax-danger); color: #fff; }
+@media (max-width: 900px) { #modal-company-billing-v4 .bp4-cols-vig, #modal-company-billing-v4 .bp4-sum-grid, #modal-company-billing-v4 .bp4-params-all .bp4-params { grid-template-columns: 1fr; } #modal-company-billing-v4 .bp4-step-pill span { display: none; } #modal-company-billing-v4 .bp4-step-pill.active span { display: inline; } }
+@media (max-width: 600px) { :is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row { grid-template-columns: 1fr; } :is(#modal-company-billing-v4, #modal-bp4-confirm) .bp4-diff-row i { display: none; } #modal-company-billing-v4 .bp4-cols-vig .bp4-base-list { grid-template-columns: 1fr; } }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-grid.three { grid-template-columns: 1fr 1fr; }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-grid.three > .bp4-field:nth-child(3) { grid-column: 1 / -1; align-content: start !important; }
+#modal-company-billing-v4 #bp4-summary { display: grid; gap: 16px; }
+@media (max-width: 900px) { #modal-company-billing-v4 .bp4-step-pill { flex: 0 0 48px; justify-content: center; padding: 10px 8px; } #modal-company-billing-v4 .bp4-step-pill.active { flex: 1; justify-content: flex-start; padding: 10px 12px; } }
+/* Bases habilitadas en cascada (una debajo de la otra) */
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base-list { display: flex; flex-direction: column; gap: 8px; }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--ax-accent); }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base span { display: grid; gap: 2px; min-width: 0; }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-company-billing-v4 .bp4-cols-vig .bp4-base small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); overflow-wrap: anywhere; }
+
+/* ── Tarifas (v2): tabla limpia y legible, en la ficha de la prestadora y en la pantalla Tarifas ──
+   Dos grupos (con kilómetros / precio por unidad), una columna por importe, filtros por estado,
+   buscador, menú «⋯» por fila, excepciones por base desplegables y edición en lote en las mismas celdas. */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 { gap: 14px; font-family: var(--ax-font); color: var(--ax-text); }
+#screen-config-tariff-matrix .ct4-head h2 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-2xl) var(--ax-font); letter-spacing: 0; }
+#screen-config-tariff-matrix .ct4-head p { margin: 4px 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; padding: 0; border: 0; background: transparent; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-company-field { display: grid; gap: 6px; width: min(300px, 100%); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-company-field > span { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-company-field select { height: var(--ax-h); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); color-scheme: dark; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-embedded .ct4-company-field, :is(#screen-empresas, #screen-config-tariff-matrix) .ct4.ct4-embedded .ct4-company-field { display: none; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search { position: relative; display: flex; align-items: center; flex: 0 1 300px; min-width: 200px; margin: 0; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search .ax-icon { position: absolute; left: 12px; width: 16px; height: 16px; color: var(--ax-text-3); pointer-events: none; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search input { width: 100%; height: var(--ax-h); padding: 0 12px 0 36px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 :is(.ct4-search input, .ct4-company-field select, .ct4-cell-input):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat b { color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat.pending b { color: var(--ax-warn); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat.on { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); }
+
+/* Panel y grupos */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel { overflow: visible; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--ax-border); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head-main { display: grid; gap: 2px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head h3 { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head p { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head .ct4-btn { height: var(--ax-h); padding: 0 14px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group + .ct4-group { border-top: 1px solid var(--ax-border); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 16px 18px 10px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-count { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head p { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* Tabla */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-table-wrap { max-height: none; overflow-x: auto; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable { width: 100%; min-width: 860px; border-collapse: collapse; table-layout: fixed; font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-num { width: 132px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-unit { width: 150px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-news { width: 264px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable col.c-act { width: 150px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable th { position: static; height: 38px; padding: 0 14px; border-top: 1px solid var(--ax-border); border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap; vertical-align: middle; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td { height: 58px; padding: 10px 14px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text); font-size: var(--ax-fs-sm); vertical-align: middle; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tbody tr:last-child td { border-bottom: 0; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(th, td).num { text-align: right; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td.num { font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row:hover > td { background: var(--ax-surface-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-open > td { border-bottom-color: transparent; background: var(--ax-surface-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-pending > td:first-child { box-shadow: inset 3px 0 0 var(--ax-warn); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-name { display: grid; gap: 2px; min-width: 0; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-name b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); overflow-wrap: anywhere; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-name small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-c-unit { color: var(--ax-text-2); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .is-km td.ct4-c-none { text-align: center; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .is-unit td.ct4-c-none { text-align: right; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-none { display: inline-flex; align-items: center; gap: 6px; color: var(--ax-warn); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-none .ax-icon { width: 16px; height: 16px; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-muted { color: var(--ax-text-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Novedades: cambio programado y precio por base */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 28px; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 button.ct4-tag { cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 button.ct4-tag:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag > span { overflow: hidden; text-overflow: ellipsis; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag .ax-icon { flex: none; width: 14px; height: 14px; transition: transform var(--ax-dur-fast) var(--ax-ease); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag em { color: inherit; font-style: normal; opacity: .75; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag.info { border-color: var(--ax-info); background: var(--ax-info-soft); color: var(--ax-info); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag.on { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-tag.on .ax-icon:last-child { transform: rotate(180deg); }
+
+/* Botones de la fila */
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn:hover { background: var(--ax-surface-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn .ax-icon { width: 16px; height: 16px; }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.danger { color: var(--ax-danger); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger-soft); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) .ct4-btn:disabled { opacity: .5; cursor: not-allowed; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon { display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon .ax-icon { width: 18px; height: 18px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon:is(:hover, [aria-expanded="true"]) { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-icon.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
+:is(#screen-empresas, #screen-config-tariff-matrix, #modal-ct4-history) :is(.ct4-btn, .ct4-icon, .ct4-tag, .ct4-stat, .ct4-link):focus-visible { outline: none; box-shadow: var(--ax-focus); }
+
+/* Excepciones por base (filas desplegadas) */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead td { height: auto; padding: 8px 14px 6px 32px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td { height: 50px; background: var(--ax-surface); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td:first-child { padding-left: 32px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td.num { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-diff { color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-base-name { display: flex; align-items: center; gap: 8px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-base-name .ax-icon { flex: none; width: 16px; height: 16px; color: var(--ax-text-3); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-base-name b { font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+
+/* Edición en lote dentro de la tabla */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-bulk-hint { padding: 10px 18px; border-bottom: 1px solid var(--ax-border); background: var(--ax-accent-soft); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-cell-input { display: block; width: 100%; max-width: 116px; height: 36px; margin-left: auto; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-cell-input.dirty { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel.is-bulk .ct4-bulk-savebar { position: sticky; bottom: 0; z-index: 2; border-radius: 0 0 var(--ax-radius-lg) var(--ax-radius-lg); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-empty { padding: 28px 18px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); text-align: center; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-link { padding: 0; border: 0; background: none; color: var(--ax-accent); font: inherit; font-weight: var(--ax-fw-semibold); text-decoration: underline; cursor: pointer; }
+
+/* Menú «⋯» de cada fila (se dibuja en el body) */
+#ct4-row-menu { position: fixed; z-index: var(--ax-z-menu, 1400); display: grid; gap: 2px; min-width: 270px; max-width: min(320px, calc(100vw - 16px)); padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop, var(--ax-shadow-modal)); font-family: var(--ax-font); }
+#ct4-row-menu button { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); text-align: left; cursor: pointer; }
+#ct4-row-menu button:is(:hover, :focus-visible) { outline: none; background: var(--ax-surface-3); }
+#ct4-row-menu .ax-icon { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--ax-text-2); }
+#ct4-row-menu b { display: block; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#ct4-row-menu small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* Cambios programados e historial: tablas dentro del modal */
+#modal-ct4-history .modal-box.ct4-dialog.wide { width: min(920px, 96vw); max-width: none; }
+#modal-ct4-history .ct4-modal-lead { margin: 0 0 12px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-ct4-history .ct4-mtable-wrap { overflow-x: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+#modal-ct4-history .ct4-mtable { width: 100%; border-collapse: collapse; font-size: var(--ax-fs-sm); }
+#modal-ct4-history .ct4-mtable th { height: 36px; padding: 0 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+#modal-ct4-history .ct4-mtable td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text); vertical-align: top; }
+#modal-ct4-history .ct4-mtable tbody tr:last-child td { border-bottom: 0; }
+#modal-ct4-history .ct4-mtable td.act { vertical-align: middle; white-space: nowrap; }
+#modal-ct4-history .ct4-stack { display: grid; gap: 2px; min-width: 150px; }
+#modal-ct4-history .ct4-stack span { display: flex; justify-content: space-between; gap: 12px; }
+#modal-ct4-history .ct4-stack small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-ct4-history .ct4-stack b { font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#modal-ct4-history .ct4-op { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--ax-radius-pill); background: var(--ax-surface-3); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+#modal-ct4-history .ct4-op.add { background: var(--ax-ok-soft); color: var(--ax-ok); }
+#modal-ct4-history .ct4-op.upd { background: var(--ax-info-soft); color: var(--ax-info); }
+#modal-ct4-history .ct4-op.del { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-ct4-history .ct4-empty { padding: 24px; color: var(--ax-text-3); text-align: center; }
+
+/* Celular: cada fila es una tarjeta con sus importes rotulados */
+@media (max-width: 700px) {
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-search { flex: 1 1 100%; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stats { margin-left: 0; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-panel-head { flex-wrap: wrap; padding: 14px; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-group-head { padding: 14px 14px 8px; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable { min-width: 0; table-layout: auto; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(colgroup, thead) { display: none; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(tbody, td) { display: block; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; padding: 14px; border-top: 1px solid var(--ax-border); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable.is-unit tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td, :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subrow td:first-child { height: auto; padding: 0; border: 0; background: none !important; box-shadow: none !important; text-align: left !important; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(td.ct4-c-name, td.ct4-c-none, td.ct4-c-news, td.ct4-c-act) { grid-column: 1 / -1; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable :is(td.ct4-c-none, td.ct4-c-news)::before { display: none !important; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td.ct4-c-news:has(.ct4-muted), :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable td:empty { display: none; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-pending { box-shadow: inset 3px 0 0 var(--ax-warn); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-row.is-open { background: var(--ax-surface-3); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr:is(.ct4-subrow, .ct4-subhead) { padding-left: 28px; background: var(--ax-surface); }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead { display: block; padding-top: 10px; padding-bottom: 4px; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead td { padding: 0 !important; border: 0; background: none; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-ptable tr.ct4-subhead + tr.ct4-subrow { border-top: 0; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-row-actions { justify-content: flex-start; }
+  :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-cell-input { max-width: none; margin-left: 0; text-align: left; }
+  #modal-ct4-history .ct4-mtable thead { display: none; }
+  #modal-ct4-history .ct4-mtable :is(tbody, tr, td) { display: block; }
+  #modal-ct4-history .ct4-mtable tr { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); }
+  #modal-ct4-history .ct4-mtable td { padding: 4px 0; border: 0; }
+  #modal-ct4-history .ct4-mtable td[data-label]::before { content: attr(data-label); display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+}
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat.pending:not(.on) { border-color: var(--ax-border-strong); color: var(--ax-text-2); }
+#modal-ct4-history .ct4-stack { max-width: 230px; }

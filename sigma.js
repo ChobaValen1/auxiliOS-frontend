@@ -9,6 +9,7 @@ let _jornadaActivaLocal = null;
 function _antiAutofillPatch(root = document) {
   const inputs = root.querySelectorAll('input:not([data-af-patched]), textarea:not([data-af-patched])');
   inputs.forEach(inp => {
+    if (inp.closest('.osv4-reactive')) return;
     inp.setAttribute('autocomplete', 'new-password');
     inp.setAttribute('autocorrect', 'off');
     inp.setAttribute('autocapitalize', 'off');
@@ -34,27 +35,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function showModalError(errorDivId, msg) {
   const el = document.getElementById(errorDivId);
-  if (!el) { toast(msg, 'error'); return; }
+  if (!el) { operationFeedback('Revisá los datos', msg, 'error', 2800); return; }
   el.textContent = '⚠ ' + msg;
   el.style.display = 'block';
+  operationFeedback('Revisá los datos', msg, 'error', 2800);
   clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.style.display = 'none'; }, 5000);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 3000);
 }
 
 function _validarPatente(val, targetId) {
   const el = document.getElementById(targetId || 'warn-patente');
   if (!el) return;
-  const n = val.replace(/\s/g, '').length;
-  if (n === 0 || n >= 6) {
-    el.textContent = '';
-    el.className = 'rem-warn-patente';
-  } else if (n <= 3) {
-    el.textContent = '⚠️ La patente parece muy corta. Verificá que esté completa.';
-    el.className = 'rem-warn-patente warn-strong';
-  } else {
-    el.textContent = 'La patente tiene menos de 6 caracteres. Formato: ABC123 o AB123CD';
-    el.className = 'rem-warn-patente warn-soft';
-  }
+  // Las prestadoras pueden enviar patentes parciales.
+  el.textContent = '';
+  el.className = 'rem-warn-patente';
 }
 
 // ── REPARACIÓN DE ESTRUCTURA DOM ──────────────────────────────
@@ -146,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (screenSueldos && contentEl && screenSueldos.parentElement !== contentEl) {
     contentEl.appendChild(screenSueldos);
   }
-  ['modal-objetivo-edit', 'modal-esquema-edit', 'modal-esquema-masivo', 'modal-recibo-payroll', 'modal-cumplimiento-nuevo'].forEach(id => {
+  ['modal-objetivo-edit', 'modal-esquema-edit', 'modal-comision-payroll', 'modal-esquema-masivo', 'modal-recibo-payroll', 'modal-cumplimiento-nuevo'].forEach(id => {
     const modal = document.getElementById(id);
     if (modal && modal.parentElement !== document.body) {
       document.body.appendChild(modal);
@@ -236,17 +230,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // ── SCREENS ──────────────────────────────────
 const SCREENS = {
-  dashboard:  { title:'PANEL PRINCIPAL',    sub:() => {
+  dashboard:  { title:'Panel principal',    sub:() => {
     const fmt = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     return 'Resumen · ' + fmt.charAt(0).toUpperCase() + fmt.slice(1);
   } },
-  registro:   { title:'REGISTRO DIARIO',    sub:'Módulo 1 · Carga de kilómetros' },
-  camion:     { title:'CONTROL DEL CAMIÓN', sub:'Módulo 2 · Revisión y Carga' },
-  documentos: { title:'DOCUMENTACIÓN',      sub:'Módulo 3 · Vencimientos y archivos' },
-  remitos:    { title:'REMITOS VIRTUALES',  sub:'Módulo 4 · Firma digital y archivo' },
-  sueldos:    { title:'LIQUIDACIÓN DE SUELDOS', sub:'Objetivos, esquema salarial y recibos' },
-  'jornadas-admin': { title:'JORNADAS · ADMIN', sub:'Historial de jornadas de la flota' },
-  grilla:     { title:'GRILLA MENSUAL',     sub:'Asignaciones de móviles y francos' },
+  registro:   { title:'Registro diario',    sub:'Módulo 1 · Carga de kilómetros' },
+  camion:     { title:'Control del camión', sub:'Estado de la flota y de cada móvil' },
+  documentos: { title:'Documentación',      sub:'Módulo 3 · Vencimientos y archivos' },
+  remitos:    { title:'Remitos virtuales',  sub:'Remitos firmados, pendientes y cobros' },
+  sueldos:    { title:'Liquidación de sueldos', sub:'Liquidaciones, comisiones y esquemas de pago' },
+  'jornadas-admin': { title:'Jornadas', sub:'Historial de jornadas de la flota' },
+  grilla:     { title:'Grilla mensual',     sub:'Asignaciones de móviles y francos' },
 };
 
 function goTo(name) {
@@ -254,7 +248,7 @@ function goTo(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('nav-' + name).classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
   document.getElementById('topbar-title').textContent = SCREENS[name].title;
   const sub = SCREENS[name].sub;
   document.getElementById('topbar-sub').textContent   = typeof sub === 'function' ? sub() : sub;
@@ -293,6 +287,10 @@ document.querySelectorAll('.filter-tabs').forEach(group => {
 // ── MODALS ───────────────────────────────────
 
 function openFuelModal() {
+  if (_fuelBusy) return;
+  selectPayBtn('cb', '');
+  document.querySelectorAll('.app-btn2').forEach(el => { el.setAttribute('aria-pressed','false'); el.style.borderColor='var(--border)'; el.style.background='var(--bg)'; });
+  _actualizarEstadoConexion();
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('cb-camion-info');
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
@@ -334,7 +332,7 @@ async function openPlanModal() {
   // 5. Poblamos la lista
   if (select) {
     if (catalogo.length === 0) {
-      select.innerHTML = '<option value="">⚠️ No hay planes globales creados</option>';
+      select.innerHTML = '<option value="">⚠ No hay planes globales creados</option>';
       return;
     }
 
@@ -352,7 +350,7 @@ async function openPlanModal() {
 }
 function closeModal(id) {
   const m = document.getElementById(id);
-  if (!m) { console.warn('⚠️ Modal no encontrado:', id); return; }
+  if (!m) { console.warn('⚠ Modal no encontrado:', id); return; }
   m.classList.remove('open');
   m.style.display = m.classList.contains('modal-overlay') ? 'none' : '';
   document.body.style.overflow = '';
@@ -383,9 +381,9 @@ function openAdminPlanModal() {
   const tipoEl = document.getElementById('mg-tipo'); if (tipoEl) tipoEl.value = '';
   const alertaEl = document.getElementById('mg-alerta'); if (alertaEl) alertaEl.value = '500';
   const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
-  if (titulo) titulo.textContent = '📐 Nuevo Plan Maestro';
+  if (titulo) titulo.textContent = 'Nuevo plan de mantenimiento';
   const btnG = document.getElementById('btn-guardar-global');
-  if (btnG) btnG.textContent = '💾 Guardar en Catálogo';
+  if (btnG) btnG.textContent = 'Guardar plan';
 
   if (typeof toggleAdminPlanFields === 'function') toggleAdminPlanFields();
 
@@ -416,9 +414,9 @@ function abrirEditarPlan(planId) {
   if (alertaEl) alertaEl.value = plan.alert_before_km || 500;
 
   const titulo = document.querySelector('#modal-crear-plan-global .modal-head-title');
-  if (titulo) titulo.textContent = '✏️ Editar Plan Maestro';
+  if (titulo) titulo.textContent = 'Editar plan de mantenimiento';
   const btn = document.getElementById('btn-guardar-global');
-  if (btn) btn.textContent = '💾 Actualizar Plan';
+  if (btn) btn.textContent = 'Guardar cambios';
 
   const modal = document.getElementById('modal-crear-plan-global');
   if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
@@ -466,7 +464,7 @@ async function guardarPlanGlobal() {
       .from('master_service_plans')
       .update({ name: nombre, trigger_type: tipo, interval_km: km, interval_hours: hs, alert_before_km: alerta })
       .eq('id', planEditandoId);
-    if (btn) { btn.textContent = '💾 Guardar en Catálogo'; btn.style.pointerEvents = 'auto'; }
+    if (btn) { btn.textContent = 'Guardar plan'; btn.style.pointerEvents = 'auto'; }
     planEditandoId = null;
     if (error) { toast(`Error: ${error.message}`, 'error'); return; }
     toast('Plan actualizado', 'success');
@@ -487,7 +485,7 @@ async function guardarPlanGlobal() {
   // Llamamos a Supabase (La función que creamos en el paso anterior)
   const resultado = await crearPlanGlobal(datos);
 
-  if (btn) { btn.textContent = '💾 Guardar en Catálogo'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = 'Guardar plan'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado.ok) {
     toast('Plan maestro agregado al catálogo exitosamente', 'success');
@@ -539,10 +537,16 @@ function selectTrigger(type) {
 
 // ── REMITO WIZARD ──────────────────────────────────────────
 let _remPasoActual = 1;
-const REM_TOTAL_PASOS = 5;
+const REM_TOTAL_PASOS = 4;
+const REM_TOTAL_PASOS_SIN_ASIGNACION = 5;
+const _remWizardEsAdHoc = () => !!window.AuxiliosRemitoMobileV3?.isAdHocMode?.();
+const _remWizardTotalPasos = () => _remWizardEsAdHoc() ? REM_TOTAL_PASOS_SIN_ASIGNACION : REM_TOTAL_PASOS;
+const _remWizardPasoCliente = () => _remWizardEsAdHoc() ? 2 : 1;
+const _remWizardPasoCargos = () => _remWizardEsAdHoc() ? 3 : 2;
+const _remWizardPasoFirma = () => _remWizardTotalPasos();
 
 function remWizardReset() {
-  _remPasoActual = 1;
+  _remPasoActual = window.AuxiliosRemitoMobileV3?.isSignedEditMode?.() ? 2 : 1;
   _remWizardActualizar();
   
   const ahora = new Date();
@@ -556,6 +560,8 @@ function remWizardReset() {
   if (nro) nro.value = `REM-${f}-${r}`;
   
   if (typeof resetPagoForm === 'function') resetPagoForm();
+  window.AuxiliosRemitoAddonsV2?.reset?.();
+  window.AuxiliosRemitoMobileV3?.resetMapLocations?.();
   if (typeof limpiarFirma === 'function') limpiarFirma();
   
   fotosCount = 0;
@@ -576,15 +582,20 @@ function remWizardReset() {
       const el = document.getElementById(id); 
       if (el) { el.value = ''; el.readOnly = false; el.style.opacity = ''; } 
   });
+  const kmRemito = document.getElementById('rem-km');
+  if (kmRemito && _remWizardEsAdHoc()) {
+    kmRemito.readOnly = true;
+    kmRemito.setAttribute('aria-readonly', 'true');
+  }
 
-  const tipo = document.getElementById('rem-tipo-servicio'); 
-  if (tipo) tipo.value = 'Servicio de grúa'; 
+  const tipo = document.getElementById('rem-tipo-servicio');
+  if (tipo) tipo.value = '';
 
   const total = document.getElementById('imp-total'); 
   if (total) total.textContent = '$0';
 
   // Reseteo de Toggles del Paso 5 (Arrastre apagado, el resto encendido)
-  document.querySelectorAll('#rem-step-5 .acept-toggle').forEach(row => {
+  document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`).forEach(row => {
     const t = row.querySelector('.toggle');
     const titulo = row.querySelector('.toggle-title')?.textContent.trim();
     if (t) {
@@ -597,11 +608,11 @@ function remWizardReset() {
   });
 
   // Apagar Toggle de Firma de Chofer y resetear título
-  const toggleChofer = document.querySelector('#rem-step-5 .toggle-row[onclick*="toggleFirmaChofer"] .toggle');
+  const toggleChofer = document.querySelector(`#rem-step-${_remWizardPasoFirma()} .toggle-row[onclick*="toggleFirmaChofer"] .toggle`);
   if (toggleChofer) toggleChofer.classList.remove('on');
   const labelFirma = document.getElementById('label-firma-canvas');
   if (labelFirma) {
-      labelFirma.textContent = '✍️ Firma digital del socio';
+      labelFirma.textContent = '✍ Firma digital del socio';
       labelFirma.style.color = 'var(--text)';
   }
 
@@ -616,26 +627,30 @@ function remWizardReset() {
 }
 
 function _remWizardActualizar() {
-  for (let i = 1; i <= REM_TOTAL_PASOS; i++) {
-    const panel = document.getElementById(`rem-step-${i}`);
-    if (panel) panel.classList.toggle('active', i === _remPasoActual);
-  }
+  const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
+  const totalPasos = _remWizardTotalPasos();
+  document.querySelectorAll('#remitos-nuevo .rem-step-panel').forEach(panel => panel.classList.toggle('active', panel.id === `rem-step-${_remPasoActual}`));
   
   const fill = document.getElementById('rem-progress-fill');
-  if (fill) fill.style.width = `${(_remPasoActual / REM_TOTAL_PASOS) * 100}%`;
+  if (fill) fill.style.width = signedEdit ? `${((_remPasoActual - 1) / 2) * 100}%` : `${(_remPasoActual / totalPasos) * 100}%`;
   
   const num = document.getElementById('rem-step-num');
-  if (num) num.textContent = _remPasoActual;
+  if (num) num.textContent = signedEdit ? (_remPasoActual - 1) : _remPasoActual;
+  const counter = document.querySelector('.rem-wizard-counter');
+  if (counter && signedEdit) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual - 1}</span> de 2`;
+  else if (counter) counter.innerHTML = `<span id="rem-step-num">${_remPasoActual}</span> de ${totalPasos}`;
   
   document.querySelectorAll('.rem-step-dot').forEach((d, i) => {
     d.classList.remove('active', 'done');
-    if (i + 1 < _remPasoActual) d.classList.add('done');
-    else if (i + 1 === _remPasoActual) d.classList.add('active');
+    d.style.display = i >= (signedEdit ? 2 : totalPasos) ? 'none' : '';
+    const visibleStep = signedEdit ? _remPasoActual - 1 : _remPasoActual;
+    if (i + 1 < visibleStep) d.classList.add('done');
+    else if (i + 1 === visibleStep) d.classList.add('active');
   });
   
   const btnBack = document.getElementById('rem-btn-back');
   const btnNext = document.getElementById('rem-btn-next');
-  if (btnBack) btnBack.style.display = _remPasoActual === 1 ? 'none' : '';
+  if (btnBack) btnBack.style.display = signedEdit ? (_remPasoActual === 2 ? 'none' : '') : (_remPasoActual === 1 ? 'none' : '');
   
   // ── INYECCIÓN DEL BOTÓN PENDIENTE EN EL FOOTER ──
   const footer = document.querySelector('.rem-wizard-footer');
@@ -657,8 +672,13 @@ function _remWizardActualizar() {
   }
   
   if (btnNext) {
-    if (_remPasoActual === REM_TOTAL_PASOS) {
-      // ESTAMOS EN EL PASO 5 (FIRMA)
+    if (signedEdit) {
+      if (btnPendiente) btnPendiente.style.display = 'none';
+      btnNext.textContent = _remPasoActual === 3 ? 'Guardar cambios' : 'Siguiente →';
+      btnNext.onclick = _remPasoActual === 3 ? () => window.guardarEdicionRemitoFirmado?.() : () => remWizardIr(1);
+    } else
+    if (_remPasoActual === totalPasos) {
+      // ESTAMOS EN EL PASO FINAL (FIRMA)
       btnNext.textContent = '✅ Finalizar';
       if (btnPendiente) btnPendiente.style.display = 'none';
       btnNext.onclick = () => {
@@ -682,11 +702,15 @@ function _remWizardActualizar() {
   document.querySelector('.content')?.scrollTo(0, 0);
 }
 
+window.remWizardActualizarFlujo = _remWizardActualizar;
+
 function remWizardIr(delta) {
   if (delta > 0 && !_remWizardValidar(_remPasoActual)) return;
-  _remPasoActual = Math.max(1, Math.min(REM_TOTAL_PASOS, _remPasoActual + delta));
+  const signedEdit = !!window.AuxiliosRemitoMobileV3?.isSignedEditMode?.();
+  const totalPasos = _remWizardTotalPasos();
+  _remPasoActual = signedEdit ? Math.max(2, Math.min(3, _remPasoActual + delta)) : Math.max(1, Math.min(totalPasos, _remPasoActual + delta));
   _remWizardActualizar();
-  if (_remPasoActual === 5 && typeof initCanvas === 'function') {
+  if (_remPasoActual === totalPasos && typeof initCanvas === 'function') {
     setTimeout(() => initCanvas('sig-canvas'), 80);
   }
 }
@@ -702,17 +726,20 @@ function _remWizardValidar(paso) {
     if (vacio) ok = false;
   };
   
-  if (paso === 1) {
-    marcar('rem-tipo-servicio', 'err-tipo');
+  if (_remWizardEsAdHoc() && paso === 1) {
     marcar('rem-patente', 'err-patente');
     marcar('rem-origen', 'err-origen');
     marcar('rem-destino', 'err-destino');
+    if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateMapLocations()) ok=false;
   }
-  if (paso === 2) {
+  if (paso === _remWizardPasoCliente()) {
     marcar('rem-cliente', 'err-cliente');
-    marcar('rem-cuit', 'err-dni');
+    if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) ok=false;
   }
-  if (paso === 3) {
+  if (paso === _remWizardPasoCargos()) {
+    if (window.AuxiliosRemitoAddonsV2) {
+      return window.AuxiliosRemitoAddonsV2.validate().ok;
+    }
     const errorEl = document.getElementById('rem-pago-error');
 
     // ── NOTA 1: HELPER PARA ERRORES ──
@@ -825,17 +852,17 @@ function toggleFirmaChofer(elemento) {
     const labelFirma = document.getElementById('label-firma-canvas'); // Asegurate de ponerle este ID al <label> de tu firma
     
     if (btn.classList.contains('on')) {
-        labelFirma.textContent = '✍️ Firma del Chofer (En representación)';
+        labelFirma.textContent = '✍ Firma del Chofer (En representación)';
         labelFirma.style.color = 'var(--green)';
     } else {
-        labelFirma.textContent = '✍️ Firma digital del socio';
+        labelFirma.textContent = '✍ Firma digital del socio';
         labelFirma.style.color = 'var(--text)';
     }
 }
 
 // ── 2. MATEMÁTICA ESTRICTA DE LA BARRA DE PROGRESO ──
 function actualizarProgresoFirmas() {
-    const panel = document.getElementById('rem-step-5');
+    const panel = document.getElementById(`rem-step-${_remWizardPasoFirma()}`);
     if (!panel) return;
 
     let esperados = 0;
@@ -900,7 +927,7 @@ function cerrarModalFirmaFalta() {
 // Esta función se ejecuta cuando el chofer toca "Finalizar y Guardar"
 function validarPaso5Final() {
     // 1. Verificamos las confirmaciones obligatorias (excluye Arrastre por ser opcional)
-    const obligatorios = document.querySelectorAll('#rem-step-5 .acept-toggle:not(#row-arrastre) .toggle');
+    const obligatorios = document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle:not(#row-arrastre) .toggle`);
     let todasConfirmadas = true;
     obligatorios.forEach(t => {
         if (!t.classList.contains('on')) todasConfirmadas = false;
@@ -909,7 +936,7 @@ function validarPaso5Final() {
     if (!todasConfirmadas) {
         const titulo = document.getElementById('modal-validacion-titulo');
         const msgEl  = document.getElementById('modal-validacion-msg');
-        if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+        if (titulo) titulo.textContent = '⚠ Faltan confirmaciones';
         if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
         openModal('modal-validacion');
         return false;
@@ -1040,6 +1067,13 @@ if (view === 'nuevo') {
     }
 
     if (d) {
+      if (d.operatorServiceId) {
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+        sessionStorage.setItem('auxilios_phase3_service_id', d.operatorServiceId);
+      } else if (d.driverIntakeId || d.documentSource === 'driver_ad_hoc') {
+        sessionStorage.removeItem('auxilios_phase3_service_id');
+        sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
+      }
       const setT = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val || '—'; };
       const setV = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
 
@@ -1124,15 +1158,47 @@ function initCanvas(canvasId) {
   hasSig = false;
   updateSigStatus(canvasId, false);
 
-  // 4. Asignar eventos de dibujo
-  canvas.onmousedown  = e => startDraw(e, canvas);
-  canvas.onmousemove  = e => draw(e, canvas);
-  canvas.onmouseup    = ()  => stopDraw(canvasId);
-  canvas.onmouseleave = ()  => stopDraw(canvasId);
-  
-  canvas.ontouchstart = e => { e.preventDefault(); startDraw(e.touches[0], canvas); };
-  canvas.ontouchmove  = e => { e.preventDefault(); draw(e.touches[0], canvas); };
-  canvas.ontouchend   = ()  => stopDraw(canvasId);
+  // 4. Pointer Events + captura mantienen el trazo aunque el dedo se mueva
+  // momentáneamente fuera del canvas. Cada handler conserva su propio contexto.
+  if (typeof canvas.__auxiliosSignatureCleanup === 'function') canvas.__auxiliosSignatureCleanup();
+  const ctx = activeCtx;
+  const listeners = [];
+  const on = (type, handler, options) => {
+    canvas.addEventListener(type, handler, options);
+    listeners.push([type, handler, options]);
+  };
+  const begin = e => {
+    if (e.cancelable) e.preventDefault();
+    if (e.pointerId != null && canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
+    startDraw(e, canvas, ctx);
+  };
+  const move = e => {
+    if (e.cancelable) e.preventDefault();
+    draw(e, canvas, ctx);
+  };
+  const end = e => {
+    if (e?.cancelable) e.preventDefault();
+    if (e?.pointerId != null && canvas.hasPointerCapture?.(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+    stopDraw(canvasId);
+  };
+  if (window.PointerEvent) {
+    on('pointerdown', begin);
+    on('pointermove', move);
+    on('pointerup', end);
+    on('pointercancel', end);
+  } else {
+    on('mousedown', begin);
+    on('mousemove', move);
+    on('mouseup', end);
+    on('mouseleave', end);
+    on('touchstart', e => begin(e.touches[0]), { passive: false });
+    on('touchmove', e => move(e.touches[0]), { passive: false });
+    on('touchend', end, { passive: false });
+    on('touchcancel', end, { passive: false });
+  }
+  canvas.__auxiliosSignatureCleanup = () => {
+    listeners.forEach(([type, handler, options]) => canvas.removeEventListener(type, handler, options));
+  };
 }
 
 function getPos(e, canvas) {
@@ -1145,11 +1211,11 @@ function getPos(e, canvas) {
   };
 }
 
-function startDraw(e, canvas) {
+function startDraw(e, canvas, ctx = canvas.getContext('2d')) {
   drawing = true;
   const p = getPos(e, canvas);
-  activeCtx.beginPath();
-  activeCtx.moveTo(p.x, p.y);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
   // hide placeholder
   const ph = document.getElementById('sig-placeholder');
   if (ph) ph.style.display = 'none';
@@ -1157,11 +1223,11 @@ function startDraw(e, canvas) {
   canvas.style.background = 'rgba(245,166,35,0.04)';
 }
 
-function draw(e, canvas) {
+function draw(e, canvas, ctx = canvas.getContext('2d')) {
   if (!drawing) return;
   const p = getPos(e, canvas);
-  activeCtx.lineTo(p.x, p.y);
-  activeCtx.stroke();
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
 }
 
 function stopDraw(canvasId) {
@@ -1233,16 +1299,26 @@ function drawDemoSignature() {
 
 // ── FINALIZAR BTN LOGIC ───────────────────────
 let arrastreRequerido = false;
-
-
-
 let _finalizacionRemitoEnCurso = false;
+
+// Mismo aviso que al crear un servicio: tilde verde, sin botones.
+function _mostrarConfirmacionRemitoCreado() {
+  operationFeedback('Remito finalizado correctamente', 'Se creó y quedó guardado.', 'success', 2400);
+  return new Promise(resolve => setTimeout(resolve, 1700));
+}
+
 async function finalizarRemito() {
-  if (_finalizacionRemitoEnCurso) return false;
+  if (_finalizacionRemitoEnCurso) {
+    toast('El remito ya se está guardando. Esperá un momento.', 'info');
+    return false;
+  }
   const btn = document.getElementById('rem-btn-next');
-  const label = btn?.textContent;
+  const originalText = btn?.textContent || '✅ Finalizar';
   _finalizacionRemitoEnCurso = true;
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando…'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Guardando…';
+  }
   try {
     return await _finalizarRemitoInner();
   } catch (e) {
@@ -1251,32 +1327,36 @@ async function finalizarRemito() {
     return false;
   } finally {
     _finalizacionRemitoEnCurso = false;
-    if (btn) { btn.disabled = false; btn.textContent = label; }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = _remPasoActual === _remWizardTotalPasos() ? '✅ Finalizar' : originalText;
+    }
   }
 }
 
-async function _finalizarRemitoInner() {
-  if (!hasSig) {
-    toast('Se requiere firma para finalizar', 'error'); return;
-  }
+function remWizardAbrirEdicionFirmada() {
+  _remPasoActual = 2;
+  _remWizardActualizar();
+}
 
+async function _finalizarRemitoInner() {
   // ── Leer datos del formulario ─────────────────────────
   const _fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const _rand  = Math.floor(Math.random() * 9000) + 1000;
   const nro       = document.getElementById('rem-nro')?.value || `REM-${_fecha}-${_rand}`;
   const nroInput = document.getElementById('rem-nro');
   if (nroInput) nroInput.value = nro; // Reintentos usan el mismo remito.
-  const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
-  const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
+  const servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
+    ? window.obtenerServicioAsignadoRemito()
+    : null;
+  const tipo      = String(servicioAsignado?.concept_name || '').trim() || (_remWizardEsAdHoc() ? 'A definir por Operaciones' : 'Servicio');
+  let patente     = document.getElementById('rem-patente')?.value?.trim() || servicioAsignado?.vehicle_plate || '';
   const km        = document.getElementById('rem-km')?.value || '0';
-  const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
-  const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
+  let origen      = document.getElementById('rem-origen')?.value?.trim() || servicioAsignado?.origin || '';
+  let destino     = document.getElementById('rem-destino')?.value?.trim() || servicioAsignado?.destination || '';
   const cliente   = document.getElementById('rem-cliente')?.value?.trim() || '';
-  const cuit      = document.getElementById('rem-cuit')?.value || '';
-  const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
-  const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
-  const otros     = parseFloat(document.getElementById('imp-otros')?.value)     || 0;
-  const hora      = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+  const cuit      = document.getElementById('rem-cuit')?.value?.trim() || '';
+  const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const pago      = document.getElementById('rem-pago-selected')?.value || remPago1 || '—';
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || '';
 
@@ -1289,28 +1369,49 @@ async function _finalizarRemitoInner() {
     openModal('modal-validacion');
   };
 
-  if (!patente) { mostrarValidacion('⚠️ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
-  if (!origen)  { mostrarValidacion('⚠️ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
-  if (!destino) { mostrarValidacion('⚠️ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
-  if (cuit && !/^\d{7,11}$/.test(cuit) && !/^\d{2}-\d{7,8}-\d{1}$/.test(cuit)) {
-    mostrarValidacion('⚠️ DNI/CUIT inválido', 'El DNI/CUIT debe tener entre 7 y 11 dígitos, o formato XX-XXXXXXXX-X. Corregilo en el paso 2.');
-    remWizardIr(2 - _remPasoActual);
+  if (!patente) { window.AuxiliosRemitoMobileV3?.syncPlateField?.(); mostrarValidacion('⚠ Falta la patente', 'Ingresá la patente del vehículo en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  if (!origen)  { mostrarValidacion('⚠ Falta el origen', 'Ingresá el origen del servicio en el paso 1 antes de finalizar.');  remWizardIr(1 - _remPasoActual); return; }
+  if (!destino) { mostrarValidacion('⚠ Falta el destino', 'Ingresá el destino del servicio en el paso 1 antes de finalizar.'); remWizardIr(1 - _remPasoActual); return; }
+  [
+    ['rem-patente',patente],
+    ['rem-origen',origen],
+    ['rem-destino',destino],
+  ].forEach(([id,value])=>{
+    const el=document.getElementById(id);
+    if(el&&!el.value&&value)el.value=value;
+  });
+  if (cuit && !/^\d{7,11}$/.test(cuit)) {
+    mostrarValidacion('⚠ DNI/CUIT inválido', `El DNI/CUIT debe contener únicamente entre 7 y 11 dígitos. Corregilo en el paso ${_remWizardPasoCliente()}.`);
+    remWizardIr(_remWizardPasoCliente() - _remPasoActual);
     const cuitInp = document.getElementById('rem-cuit');
     if (cuitInp) cuitInp.classList.add('rem-field-error');
     return;
   }
+  if (window.AuxiliosRemitoMobileV3&&!window.AuxiliosRemitoMobileV3.validateCustomerFields()) {
+    mostrarValidacion('⚠ Faltan datos del cliente', 'Completá los campos obligatorios configurados para la empresa.');
+    remWizardIr(_remWizardPasoCliente() - _remPasoActual);
+    return;
+  }
+  const requiredConfirmations=[...document.querySelectorAll(`#rem-step-${_remWizardPasoFirma()} .acept-toggle`)]
+    .filter(row=>row.id!=='row-arrastre'&&row.offsetParent!==null);
+  if(requiredConfirmations.some(row=>!row.querySelector('.toggle')?.classList.contains('on'))){mostrarValidacion('⚠ Faltan conformidades','Marcá las conformidades obligatorias antes de finalizar.');return false}
+  if(!hasSig){mostrarValidacion('⚠ Falta la firma','Solicitá la firma del socio o activá “Socio Ausente” y firmá como chofer.');document.getElementById('sig-canvas')?.classList.add('rem-field-error');return false}
+  const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
+  if (addonValidation && !addonValidation.ok) {
+    mostrarValidacion('⚠ Revisá peajes y excedentes', addonValidation.errors[0] || `Hay datos incompletos en el paso ${_remWizardPasoCargos()}.`);
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
+    return;
+  }
   const totalStr = document.getElementById('imp-total')?.textContent || '$0';
   const totalVal = parseFloat(totalStr.replace(/[^0-9.,]/g,'').replace(',','.')) || 0;
-  if (totalVal > 0 && (!pago || pago === '—')) {
-    mostrarValidacion('⚠️ Falta medio de pago', 'Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso 3.');
-    remWizardIr(3 - _remPasoActual);
+  if (!window.AuxiliosRemitoAddonsV2 && totalVal > 0 && (!pago || pago === '—')) {
+    mostrarValidacion('⚠ Falta medio de pago', `Hay un importe total mayor a cero pero no seleccionaste un medio de pago. Elegilo en el paso ${_remWizardPasoCargos()}.`);
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
     return;
   }
 
-  // La interfaz se actualiza sólo después de confirmar el guardado.
-  // ⑤ → Save signature (capturamos el dataURL ANTES de cambiar de vista, para evitar
-  // que se pierda al ocultarse el canvas. Lo guardamos en localStorage Y lo pasamos
-  // explícitamente a guardarRemitoCompleto para que no haya ambigüedad sobre qué canvas usar)
+  // Capturamos la firma antes de persistir para no perder el canvas. Se pasa
+  // explícitamente al guardado para no depender del estado visual del paso.
   const sigCanvas = document.getElementById('sig-canvas');
   let firmaDataURL = null;
   if (sigCanvas && hasSig) {
@@ -1318,8 +1419,16 @@ async function _finalizarRemitoInner() {
     _saveSig(nro, firmaDataURL);
   }
 
+  const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
+  const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
+  if (_remWizardEsAdHoc() && !mapLocations) {
+    mostrarValidacion('⚠ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
+    remWizardIr(1 - _remPasoActual);
+    window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
+    return false;
+  }
 
-  // ⑥ → Recolectar confirmaciones
+  // Recolectar confirmaciones
   const confirmaciones = [];
   document.querySelectorAll('#remitos-nuevo .acept-toggle .toggle.on').forEach(el => {
     const row = el.closest('.toggle-row');
@@ -1328,7 +1437,8 @@ async function _finalizarRemitoInner() {
     }
   });
 
-  // ⑦ → Guardar en Supabase
+  // Guardar en Supabase antes de modificar la interfaz local. La vista se
+  // refresca desde la fuente canónica solamente cuando el RPC confirma el guardado.
   // 1. Mini-función para arreglar el bug de los miles (ej: "9.100" -> 9100)
   const parsearImporte = (val) => {
     if (!val) return 0;
@@ -1358,14 +1468,14 @@ async function _finalizarRemitoInner() {
   const ok = await guardarRemitoCompleto({
     nro,
     firmaDataURL,
-    driver_id: USUARIO_ACTUAL.id, // 🛠️ INYECCIÓN DE SEGURIDAD
-    log_id:  _logIdRemito, // 🛠️ REGISTRO SILENCIOSO
+    driver_id: USUARIO_ACTUAL.id, // 🛠 INYECCIÓN DE SEGURIDAD
+    log_id:  _logIdRemito, // 🛠 REGISTRO SILENCIOSO
     nroSrv,
     patente,
     marca:   document.getElementById('rem-marca-modelo')?.value || '',
     cliente,
     cuit,
-    telefono: document.getElementById('rem-telefono')?.value?.trim() || null,
+    telefono: telefono || null,
     tipo,
     origen,
     destino,
@@ -1384,9 +1494,12 @@ async function _finalizarRemitoInner() {
     pago2Monto: parsearImporte(document.getElementById('pago2-monto')?.value) || null,
     observaciones: document.getElementById('rem-observaciones')?.value?.trim() || null,
     confirmaciones,
+    remitoAddons,
+    ...(mapLocations||{}),
   });
 
   if (!ok) return false;
+  await _mostrarConfirmacionRemitoCreado();
   resetPagoForm();
   return true;
 }
@@ -1446,7 +1559,7 @@ function limpiarFiltrosAdmin() {
   filtroBuscar  = '';
   filtroPeriodo = 'todos';
   filtroEstado  = 'todos';
-  ['filtro-chofer-input','filtro-patente',
+  ['filtro-chofer-input',
    'input-buscar-remitos','filtro-dia-especifico','filtro-desde','filtro-hasta']
     .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const tipoSel = document.getElementById('filtro-tipo-servicio');
@@ -1469,7 +1582,6 @@ function limpiarFiltrosAdmin() {
 function _leerFiltrosRemitosUI() {
   return {
     driverId:     document.getElementById('filtro-chofer-input')?.value || '',
-    patente:      (document.getElementById('filtro-patente')?.value || '').trim(),
     tipoServicio: document.getElementById('filtro-tipo-servicio')?.value || '',
     pagoMetodo:   document.getElementById('filtro-pago')?.value || '',
     estado:       filtroEstado,
@@ -1481,10 +1593,72 @@ function _leerFiltrosRemitosUI() {
   };
 }
 
+/* Barra de filtros de Remitos con los filtros compartidos (auxilios-filters-v1).
+   Los <select>/<input> ocultos de #filtros-remitos siguen siendo la fuente de
+   valores que lee _leerFiltrosRemitosUI; acá solo se dibujan los botones. */
+function _rmxRenderFilters() {
+  const F = window.AuxFilters;
+  const $ = id => document.getElementById(id);
+  if (!F || !$('rmx-estado-host')) return;
+  let rol = '';
+  try { rol = PERFIL_USUARIO?.roles?.name || ''; } catch (_) { /* perfil todavía no cargado */ }
+  const opts = id => [...($(id)?.options || [])].filter(o => o.value).map(o => ({ value: o.value, label: o.textContent.trim() }));
+  const estados = [['firmado','Firmados'],['pendiente','Pendientes'],['revisar','Por revisar'],['sin_enviar','Por enviar al cliente'],['anulado','Anulados']];
+  if (rol === 'administracion' || rol === 'supervision') estados.push(['cerrado_admin','Cerrados admin']);
+  $('rmx-estado-host').innerHTML = F.select({ id: 'estado', label: 'Estado', value: filtroEstado === 'todos' ? '' : filtroEstado, options: estados.map(([value, label]) => ({ value, label })), allLabel: 'Todos' });
+  const admin = $('filtros-admin') && $('filtros-admin').style.display !== 'none';
+  if (admin && !window._rmxTiposCargados && typeof _rmxCargarConceptos === 'function') {
+    window._rmxTiposCargados = true;
+    _rmxCargarConceptos().then(conceptos => {
+      const tipoSel = $('filtro-tipo-servicio');
+      if (!tipoSel) return;
+      const actual = tipoSel.value;
+      tipoSel.innerHTML = '<option value="">Todos</option>' + conceptos.filter(c => c.is_active !== false).map(c => `<option value="${_rmxEsc(c.concept_id)}">${_rmxEsc(c.name)}</option>`).join('') + '<option value="__sin__">Sin clasificar</option>';
+      tipoSel.value = [...tipoSel.options].some(o => o.value === actual) ? actual : '';
+      _rmxRenderFilters();
+    });
+  }
+  let count = [filtroEstado !== 'todos', (filtroBuscar || '').trim()].filter(Boolean).length;
+  if (admin) {
+    const desde = $('filtro-desde')?.value, hasta = $('filtro-hasta')?.value, dia = $('filtro-dia-especifico')?.value;
+    const hoy = new Date(), mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    const periodo = filtroPeriodo === 'mes' ? { mode: 'mes', mes: mesActual }
+      : filtroPeriodo === 'dia' && dia ? { mode: 'rango', desde: dia, hasta: dia }
+      : filtroPeriodo === 'rango' && desde && hasta ? (/-01$/.test(desde) && F.rangoDeMes(desde.slice(0, 7))?.hasta === hasta ? { mode: 'mes', mes: desde.slice(0, 7) } : { mode: 'rango', desde, hasta })
+      : { mode: 'all' };
+    $('rmx-periodo-host').innerHTML = F.period({ id: 'periodo', value: periodo, allLabel: 'Todas las fechas' });
+    $('rmx-chofer-host').innerHTML = F.select({ id: 'chofer', label: 'Chofer', icon: '👤', value: $('filtro-chofer-input')?.value || '', options: opts('filtro-chofer-input'), allLabel: 'Todos' });
+    $('rmx-tipo-host').innerHTML = F.select({ id: 'tipo', label: 'Servicio', value: $('filtro-tipo-servicio')?.value || '', options: opts('filtro-tipo-servicio'), allLabel: 'Todos' });
+    $('rmx-pago-host').innerHTML = F.select({ id: 'pago', label: 'Pago', value: $('filtro-pago')?.value || '', options: opts('filtro-pago'), allLabel: 'Todos' });
+    count += [periodo.mode !== 'all', $('filtro-chofer-input')?.value, $('filtro-tipo-servicio')?.value, $('filtro-pago')?.value].filter(Boolean).length;
+  }
+  $('rmx-clear-host').innerHTML = F.clear({ count });
+  window.RemitosFiltros?.sync();
+  F.bind($('rmx-filters'), (id, v) => {
+    if (id === 'estado') filtroEstado = v || 'todos';
+    if (id === 'periodo') {
+      const b = F.periodBounds(v);
+      if (v.mode === 'all') filtroPeriodo = 'todos';
+      else { filtroPeriodo = 'rango'; if ($('filtro-desde')) $('filtro-desde').value = b.start || ''; if ($('filtro-hasta')) $('filtro-hasta').value = b.end || ''; }
+    }
+    const sel = { chofer: 'filtro-chofer-input', tipo: 'filtro-tipo-servicio', pago: 'filtro-pago' }[id];
+    if (sel && $(sel)) $(sel).value = v || '';
+    aplicarFiltrosRemitos();
+  }, () => limpiarFiltrosAdmin());
+  if (!window._rmxChoferObserver && $('filtro-chofer-input') && typeof MutationObserver === 'function') {
+    window._rmxChoferObserver = new MutationObserver(() => _rmxRenderFilters());
+    window._rmxChoferObserver.observe($('filtro-chofer-input'), { childList: true });
+  }
+}
+window._rmxRenderFilters = _rmxRenderFilters;
+document.addEventListener('DOMContentLoaded', () => _rmxRenderFilters());
+
 function aplicarFiltrosRemitos() {
   const filtros = _leerFiltrosRemitosUI();
+  _rmxRenderFilters();
   window._remitosFiltros = filtros;
   window._remitosPagina = 1;
+  _rmxLimpiarSeleccion();
   if (typeof cargarRemitos === 'function') cargarRemitos({ filtros, page: 1 });
   actualizarKpisRemitos();
 }
@@ -1526,7 +1700,7 @@ function renderRemitosPagination() {
 function actualizarInfoFiltroRemitos() {
   const total = window._remitosTotal || 0;
   const countEl = document.getElementById('filtro-count');
-  if (countEl) countEl.textContent = `— ${total} remito${total !== 1 ? 's' : ''}`;
+  if (countEl) countEl.textContent = `${total} remito${total !== 1 ? 's' : ''}`;
 
   const labelEl = document.getElementById('filtro-label');
   if (labelEl) {
@@ -1552,7 +1726,7 @@ function actualizarInfoFiltroRemitos() {
     if (!emptyRow) {
       emptyRow = document.createElement('tr');
       emptyRow.id = 'remitos-empty-row';
-      emptyRow.innerHTML = `<td colspan="9" style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No se encontraron remitos</td>`;
+      emptyRow.innerHTML = `<td colspan="${document.querySelectorAll('#tabla-remitos thead th').length || 1}" style="text-align:center;padding:24px;color:var(--muted);font-size:12px">No se encontraron remitos</td>`;
       tbody.appendChild(emptyRow);
     }
     emptyRow.style.display = '';
@@ -1665,7 +1839,7 @@ function guardarDocForm() {
   const pillClass = dias < 30 ? 'pill-red' : dias < 60 ? 'pill-amber' : 'pill-green';
   const color     = dias < 30 ? 'var(--red)' : dias < 60 ? 'var(--amber)' : 'var(--green)';
   const estado    = dias < 30 ? 'Urgente' : dias < 60 ? 'Próximo' : 'Vigente';
-  const icons     = { VTV:'🔍', Seguro:'🛡️', 'Habilitación de ruta':'📋', 'Libreta de porte':'⚖️', Matafuegos:'🧯', Otro:'📄' };
+  const icons     = { VTV:'🔍', Seguro:'🛡', 'Habilitación de ruta':'📋', 'Libreta de porte':'⚖', Matafuegos:'🧯', Otro:'📄' };
   const icon      = icons[tipo] || '📄';
   const grid = document.getElementById('doc-grid');
   const addCard = document.getElementById('doc-add-card');
@@ -1739,7 +1913,7 @@ function verRemitoModal(elemento) {
       if (el) {
         el.textContent = val ?? '—';
       } else {
-        console.warn(`${TAG} ⚠️ El HTML no tiene el ID: '${id}'. El dato [${val}] no se mostrará.`);
+        console.warn(`${TAG} ⚠ El HTML no tiene el ID: '${id}'. El dato [${val}] no se mostrará.`);
       }
     };
 
@@ -1755,6 +1929,11 @@ function verRemitoModal(elemento) {
     set('vr-km',        (d.km || '—') + ' km');
     set('vr-peaje',     '$' + parseInt(d.peaje     || 0).toLocaleString('es-AR'));
     set('vr-excedente', '$' + (parseInt(d.excedente || 0) + parseInt(d.otros || 0)).toLocaleString('es-AR'));
+    const structuredHost = document.getElementById('vr-addons-structured');
+    if (structuredHost) {
+      structuredHost.style.display = d.addonsVersion === 2 ? 'block' : 'none';
+      if (d.addonsVersion === 2) void window.AuxiliosRemitoAddonsV2?.renderHistory?.(d.id, structuredHost);
+    }
 
     // ── Forma de pago ─────────────────────────────────────────────
     const pagoEl = document.getElementById('vr-pago');
@@ -1843,7 +2022,7 @@ function verRemitoModal(elemento) {
       setTimeout(() => {
         const c = document.getElementById('vr-sig-display');
         if (!c) {
-          console.warn(`${TAG} ⚠️ No se encontró el canvas 'vr-sig-display' para la firma.`);
+          console.warn(`${TAG} ⚠ No se encontró el canvas 'vr-sig-display' para la firma.`);
           return;
         }
         
@@ -1868,7 +2047,7 @@ function verRemitoModal(elemento) {
           };
           img.src = savedSig;
         } else {
-          console.log(`${TAG} ℹ️ No hay firma real, dibujando demo/vacío.`);
+          console.log(`${TAG} ℹ No hay firma real, dibujando demo/vacío.`);
           if (typeof dibujarFirmaDemo === 'function') dibujarFirmaDemo(ctx, c.width, c.height);
         }
       }, 100);
@@ -1880,400 +2059,12 @@ function verRemitoModal(elemento) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// DETALLE COMPLETO DE REMITO (admin/supervisión) + edición por grupos
-// ═══════════════════════════════════════════════════════════════
-
-let _raRemito = null;        // fila completa de la DB del remito abierto
-let _raGrupoEditando = null; // id del grupo en modo edición (uno a la vez)
-
-const _RA_PAGOS = ['', 'efectivo', 'transferencia', 'tarjeta', 'app'];
-
-const _RA_GRUPOS = [
-  { id: 'servicio', titulo: '🚗 Servicio', editable: true, campos: [
-    { col: 'nro_servicio',   label: 'Nro de servicio', tipo: 'text' },
-    { col: 'tipo_servicio',  label: 'Tipo de servicio', tipo: 'text' },
-    { col: 'patente',        label: 'Patente', tipo: 'text' },
-    { col: 'marca_modelo',   label: 'Marca / modelo', tipo: 'text' },
-    { col: 'cliente_presente', label: 'Cliente presente', tipo: 'bool' },
-  ]},
-  { id: 'cliente', titulo: '👤 Cliente', editable: true, campos: [
-    { col: 'razon_social',  label: 'Razón social', tipo: 'text' },
-    { col: 'cuit',          label: 'CUIT', tipo: 'text' },
-    { col: 'telefono',      label: 'Teléfono', tipo: 'text' },
-  ]},
-  { id: 'recorrido', titulo: '📍 Recorrido', editable: true, full: true, campos: [
-    { col: 'origen',    label: 'Origen', tipo: 'text' },
-    { col: 'destino',   label: 'Destino', tipo: 'text' },
-    { col: 'km_reales', label: 'KM reales del servicio', tipo: 'number' },
-  ]},
-  { id: 'importes', titulo: '💳 Importes y pago', editable: true, campos: [
-    { col: 'imp_peaje',     label: 'Peaje', tipo: 'number' },
-    { col: 'imp_excedente', label: 'Excedente (particulares, baterías, km, hs de espera)', tipo: 'number' },
-    { col: 'imp_total_extras', label: 'Total extras', tipo: 'number', soloLectura: true },
-    { col: 'pago_1_metodo', label: 'Pago 1 — método', tipo: 'pago' },
-    { col: 'pago_1_monto',  label: 'Pago 1 — monto', tipo: 'number' },
-    { col: 'pago_2_metodo', label: 'Pago 2 — método', tipo: 'pago' },
-    { col: 'pago_2_monto',  label: 'Pago 2 — monto', tipo: 'number' },
-  ]},
-  { id: 'conformidades', titulo: '☑️ Conformidades', editable: true, campos: [
-    { col: 'conformidad_servicio', label: 'Conformidad del servicio', tipo: 'bool' },
-    { col: 'conformidad_cargos',   label: 'Conformidad de cargos', tipo: 'bool' },
-    { col: 'sin_danos',            label: 'Sin daños', tipo: 'bool' },
-    { col: 'conformidad_arrastre', label: 'Conformidad de arrastre', tipo: 'bool' },
-  ]},
-  { id: 'observaciones', titulo: '📝 Observaciones', editable: true, full: true, campos: [
-    { col: 'observaciones', label: 'Observaciones', tipo: 'textarea' },
-  ]},
-];
-
-function _raEsAdmin() { return PERFIL_USUARIO?.roles?.name === 'administracion'; }
-
-function _raEscape(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// Valor legible de un campo (solo lectura). Vacío → "— sin cargar" en rojo.
-function _raValorHTML(campo, r) {
-  const v = r[campo.col];
-  const vacioHTML = '<span style="color:var(--red);font-style:italic;font-weight:400">— sin cargar</span>';
-  // Arrastre: NO es un dato faltante — solo avisa cuando está activada
-  if (campo.col === 'conformidad_arrastre') {
-    return v === true
-      ? '<span style="color:var(--amber);font-weight:700">⚠ Activada</span>'
-      : '<span style="color:var(--muted)">No</span>';
-  }
-  if (campo.tipo === 'bool') {
-    if (v === true)  return '<span style="color:var(--green);font-weight:600">✓ Sí</span>';
-    if (v === false) return '<span style="color:var(--red);font-weight:600">✗ No</span>';
-    return vacioHTML;
-  }
-  if (v === null || v === undefined || v === '') return vacioHTML;
-  if (campo.tipo === 'number') {
-    const n = Number(v);
-    return campo.col.startsWith('imp_') || campo.col.endsWith('_monto')
-      ? '$ ' + n.toLocaleString('es-AR')
-      : n.toLocaleString('es-AR') + (campo.col === 'km_reales' ? ' km' : '');
-  }
-  if (campo.tipo === 'pago') return _raEscape(String(v).charAt(0).toUpperCase() + String(v).slice(1));
-  return _raEscape(v);
-}
-
-// Input de edición para un campo
-function _raInputHTML(campo, r) {
-  const v = r[campo.col];
-  const idInput = `ra-in-${campo.col}`;
-  const base = 'width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;font-size:12px;font-family:inherit';
-  if (campo.tipo === 'bool') {
-    return `<select id="${idInput}" style="${base}">
-      <option value="" ${v === null || v === undefined ? 'selected' : ''}>—</option>
-      <option value="true" ${v === true ? 'selected' : ''}>Sí</option>
-      <option value="false" ${v === false ? 'selected' : ''}>No</option>
-    </select>`;
-  }
-  if (campo.tipo === 'pago') {
-    return `<select id="${idInput}" style="${base}">` +
-      _RA_PAGOS.map(p => `<option value="${p}" ${String(v || '') === p ? 'selected' : ''}>${p ? p.charAt(0).toUpperCase() + p.slice(1) : '— sin pago'}</option>`).join('') +
-      `</select>`;
-  }
-  if (campo.tipo === 'textarea') {
-    return `<textarea id="${idInput}" rows="3" style="${base};resize:vertical">${_raEscape(v)}</textarea>`;
-  }
-  if (campo.tipo === 'number') {
-    return `<input id="${idInput}" type="number" value="${v ?? ''}" style="${base}">`;
-  }
-  return `<input id="${idInput}" type="text" value="${_raEscape(v)}" style="${base}">`;
-}
-
-function _raGrupoHTML(g, r) {
-  const editando = _raGrupoEditando === g.id;
-  const btnEditar = g.editable && _raEsAdmin() && !editando
-    ? `<button class="btn btn-ghost" style="padding:2px 10px;font-size:10px" onclick="_raEditar('${g.id}')">✏️ Editar</button>` : '';
-  const botonesEdicion = editando
-    ? `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-         <button class="btn btn-ghost" style="font-size:11px" onclick="_raCancelar()">Cancelar</button>
-         <button class="btn btn-primary" style="font-size:11px" onclick="_raGuardar('${g.id}')">Guardar</button>
-       </div>` : '';
-
-  const filas = g.campos.map(c => {
-    const esEditable = editando && !c.soloLectura;
-    return `<span style="color:var(--muted);font-size:11px;align-self:center">${c.label}</span>
-            <span style="font-weight:600;text-align:${esEditable ? 'left' : 'right'}">${esEditable ? _raInputHTML(c, r) : _raValorHTML(c, r)}</span>`;
-  }).join('');
-
-  const fullStyle = g.full || editando ? 'grid-column:1 / -1;' : '';
-  return `
-    <div style="${fullStyle}background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px" id="ra-grupo-${g.id}">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:11px;font-weight:700">${g.titulo}</span>
-        ${btnEditar}
-      </div>
-      <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12px">${filas}</div>
-      ${botonesEdicion}
-    </div>`;
-}
-
-function _raFotosHTML(r) {
-  const fotos = Array.isArray(r.foto_urls) ? r.foto_urls : [];
-  const cuerpo = fotos.length
-    ? `<div style="display:flex;gap:8px;flex-wrap:wrap">` + fotos.map(u =>
-        `<img src="${_raEscape(u)}" onclick="window.open('${_raEscape(u)}','_blank')"
-           style="width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--border2);cursor:pointer">`).join('') + `</div>`
-    : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin fotos cargadas</span>';
-  return `
-    <div style="grid-column:1 / -1;background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;margin-bottom:10px">📷 Fotos del servicio (${fotos.length})</div>
-      ${cuerpo}
-    </div>`;
-}
-
-function _raFirmaHTML(r) {
-  const cuerpo = r.firma_imagen_url
-    ? `<img src="${_raEscape(r.firma_imagen_url)}" style="max-width:240px;background:#fff;border-radius:8px;padding:6px">
-       <div style="font-size:11px;color:var(--muted);margin-top:6px">Firmado el ${r.firmado_at ? formatearFecha(r.firmado_at) : '—'}</div>`
-    : '<span style="color:var(--red);font-style:italic;font-size:12px">— sin firma</span>';
-  return `
-    <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;margin-bottom:10px">✍️ Firma del cliente</div>
-      ${cuerpo}
-    </div>`;
-}
-
-function _raTrazabilidadHTML(r) {
-  const hist = Array.isArray(r.historial_ediciones) ? r.historial_ediciones : [];
-  const ediciones = hist.length
-    ? hist.map(h => {
-        // Entrada de creación (remito nacido desde administración)
-        if ((h.cambios || [])[0]?.campo === '_creacion') {
-          return `🏷 ${h.fecha ? formatearFecha(h.fecha) : '—'} — Creado por <b>${_raEscape(h.user_nombre || '¿?')}</b> (${_raEscape(h.cambios[0].despues || '')})`;
-        }
-        const cambios = (h.cambios || []).map(c =>
-          `<b>${_raEscape(c.campo)}</b>: ${_raEscape(c.antes ?? '—')} → ${_raEscape(c.despues ?? '—')}`).join(' · ');
-        return `✏️ ${h.fecha ? formatearFecha(h.fecha) : '—'} — <b>${_raEscape(h.user_nombre || '¿?')}</b>: ${cambios}`;
-      }).join('<br>')
-    : 'Sin ediciones registradas';
-  return `
-    <div style="background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-      <div style="font-size:11px;font-weight:700;margin-bottom:10px">🕓 Trazabilidad</div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.9">
-        📱 Creado en el dispositivo: <b style="color:var(--text)">${r.created_at_device ? formatearFecha(r.created_at_device) : '—'}</b><br>
-        ☁️ Recibido en el servidor: <b style="color:var(--text)">${r.received_at ? formatearFecha(r.received_at) : (r.created_at ? formatearFecha(r.created_at) : '—')}</b>${r.sync_status ? ` (${_raEscape(r.sync_status)})` : ''}<br>
-        ${ediciones}
-      </div>
-    </div>`;
-}
-
-function _raRender() {
-  const r = _raRemito;
-  if (!r) return;
-
-  document.getElementById('ra-titulo').textContent = `📄 ${r.nro_remito || '—'}`;
-  const movil = r.daily_logs?.trucks ? ` · Móvil ${r.daily_logs.trucks.numero_interno || r.daily_logs.trucks.plate}` : '';
-  const jornada = r.daily_logs?.log_date ? ` · Jornada del ${r.daily_logs.log_date.split('-').reverse().join('/')}` : '';
-  document.getElementById('ra-sub').textContent =
-    `Cargado por ${r.users?.full_name || '—'}${jornada}${movil}`;
-
-  const pill = document.getElementById('ra-estado-pill');
-  const est = r.status === 'firmado' ? ['pill-green', '✓ Firmado']
-    : r.status === 'anulado' ? ['pill-red', '🚫 Anulado']
-    : r.status === 'cerrado_admin' ? ['', '🏢 Cerrado por administración']
-    : ['pill-amber', '⏳ Pendiente'];
-  pill.className = `pill ${est[0]}`;
-  pill.style.cssText = r.status === 'cerrado_admin' ? 'background:rgba(88,166,255,0.12);color:var(--blue)' : '';
-  pill.textContent = est[1];
-
-  // Hero: números clave del remito
-  const km = r.km_reales != null ? `${Number(r.km_reales).toLocaleString('es-AR')} km` : '—';
-  const extras = '$ ' + Number(r.imp_total_extras || 0).toLocaleString('es-AR');
-  const cobrado = '$ ' + ((Number(r.pago_1_monto) || 0) + (Number(r.pago_2_monto) || 0)).toLocaleString('es-AR');
-  const statHTML = (v, l, color) => `
-    <div style="flex:1;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center">
-      <div style="font-family:'DM Mono',monospace;font-size:17px;font-weight:800;${color ? `color:${color}` : ''}">${v}</div>
-      <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px">${l}</div>
-    </div>`;
-  const avisoArrastre = r.conformidad_arrastre === true
-    ? `<div style="margin-top:10px;padding:8px 12px;background:var(--amber-lo);border:1px solid rgba(245,166,35,0.4);border-radius:8px;font-size:12px;color:var(--amber);font-weight:600">⚠ Este remito tiene la conformidad de ARRASTRE activada</div>`
-    : '';
-  const heroHTML = `
-    <div style="background:linear-gradient(135deg,#13161d,rgba(245,166,35,0.10));padding:16px 22px;border-bottom:1px solid var(--border)">
-      <div style="display:flex;gap:10px">
-        ${statHTML(km, 'Recorrido')}
-        ${statHTML(extras, 'Extras')}
-        ${statHTML(cobrado, 'Cobrado', 'var(--green)')}
-      </div>
-      ${avisoArrastre}
-    </div>`;
-
-  document.getElementById('ra-body').innerHTML =
-    heroHTML +
-    `<div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px" class="ra-grid">` +
-    _RA_GRUPOS.map(g => _raGrupoHTML(g, r)).join('') +
-    _raFotosHTML(r) +
-    _raFirmaHTML(r) +
-    _raTrazabilidadHTML(r) +
-    `</div>`;
-}
-
-async function abrirDetalleRemitoAdmin(remitoId) {
-  const r = await obtenerRemitoCompleto(remitoId);
-  if (!r) { toast('No se pudo cargar el remito', 'error'); return; }
-  _raRemito = r;
-  _raGrupoEditando = null;
-  _raRender();
-  const btnDel = document.getElementById('ra-btn-eliminar');
-  if (btnDel) btnDel.style.display = _raEsAdmin() ? '' : 'none';
-  openModal('modal-remito-admin');
-}
-
-async function eliminarRemitoActual() {
-  if (!_raEsAdmin() || !_raRemito) return;
-  const nro = _raRemito.nro_remito || '';
-  if (!confirm(`⚠ Vas a ELIMINAR definitivamente el remito ${nro}.\n\nNo es lo mismo que anular: desaparece de todos los listados, KPIs y rendiciones, y NO se puede recuperar.\n\n¿Eliminar igual?`)) return;
-
-  const res = await eliminarRemitoAdmin(_raRemito.remito_id);
-  if (!res.ok) { toast('No se pudo eliminar: ' + res.msg, 'error'); return; }
-
-  toast(`Remito ${nro} eliminado`);
-  _raRemito = null;
-  closeModal('modal-remito-admin');
-  if (typeof cargarRemitos === 'function') cargarRemitos();
-  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
-}
-
-function _raEditar(grupoId) {
-  if (!_raEsAdmin()) return;
-  _raGrupoEditando = grupoId;
-  _raRender();
-}
-
-function _raCancelar() {
-  _raGrupoEditando = null;
-  _raRender();
-}
-
-// Lee el valor tipado de un input de edición
-function _raLeerInput(campo) {
-  const el = document.getElementById(`ra-in-${campo.col}`);
-  if (!el) return undefined;
-  const raw = el.value;
-  if (campo.tipo === 'bool')   return raw === '' ? null : raw === 'true';
-  if (campo.tipo === 'number') return raw === '' ? null : Number(raw);
-  if (campo.tipo === 'pago')   return raw === '' ? null : raw;
-  return raw.trim() === '' ? null : raw.trim();
-}
-
-async function _raGuardar(grupoId) {
-  if (!_raEsAdmin() || !_raRemito) return;
-  const grupo = _RA_GRUPOS.find(g => g.id === grupoId);
-  if (!grupo) return;
-
-  // Diff: solo campos que cambiaron
-  const updates = {};
-  const cambios = [];
-  grupo.campos.filter(c => !c.soloLectura).forEach(c => {
-    const nuevo = _raLeerInput(c);
-    if (nuevo === undefined) return;
-    const actual = _raRemito[c.col] ?? null;
-    const iguales = (c.tipo === 'number')
-      ? Number(actual ?? NaN) === Number(nuevo ?? NaN) || (actual === null && nuevo === null)
-      : actual === nuevo;
-    if (!iguales) {
-      updates[c.col] = nuevo;
-      cambios.push({ campo: c.col, antes: actual, despues: nuevo });
-    }
-  });
-
-  if (!cambios.length) { _raCancelar(); return; }
-
-  const entrada = {
-    fecha: new Date().toISOString(),
-    user_id: USUARIO_ACTUAL?.id || null,
-    user_nombre: PERFIL_USUARIO?.full_name || '—',
-    cambios,
-  };
-
-  const res = await actualizarRemitoAdmin(_raRemito.remito_id, updates, entrada, _raRemito.historial_ediciones);
-  if (!res.ok) { toast('No se pudo guardar: ' + res.msg, 'error'); return; }
-
-  toast('Cambios guardados ✓');
-  _raGrupoEditando = null;
-  // Recargar el remito completo (imp_total_extras es columna generada: se recalcula en la DB)
-  const r = await obtenerRemitoCompleto(_raRemito.remito_id);
-  if (r) _raRemito = r;
-  _raRender();
-  // Refrescar lista y KPIs de fondo
-  if (typeof cargarRemitos === 'function') cargarRemitos();
-  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
-}
-
-// ── CREAR REMITO DESDE ADMINISTRACIÓN ───────────────────────────
-async function abrirModalRemitoAdmin() {
-  if (PERFIL_USUARIO?.roles?.name !== 'administracion') return;
-
-  ['rna-nro-srv','rna-tipo','rna-patente','rna-marca','rna-cliente','rna-cuit','rna-telefono',
-   'rna-origen','rna-destino','rna-km','rna-peaje','rna-excedente','rna-pago-monto','rna-obs']
-    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const met = document.getElementById('rna-pago-metodo'); if (met) met.value = '';
-  const err = document.getElementById('rna-error'); if (err) err.textContent = '';
-
-  const sel = document.getElementById('rna-chofer');
-  if (sel) {
-    const { data } = await _db.from('users').select('user_id, full_name').eq('role_id', 3).eq('is_active', true).order('full_name');
-    sel.innerHTML = '<option value="">Elegí un chofer…</option>' +
-      (data || []).map(c => `<option value="${c.user_id}">${c.full_name}</option>`).join('');
-  }
-  openModal('modal-remito-nuevo-admin');
-}
-
-async function _rnaGuardar(modo) {
-  if (PERFIL_USUARIO?.roles?.name !== 'administracion') return;
-  const v = id => document.getElementById(id)?.value.trim() || null;
-  const n = id => { const x = parseFloat(document.getElementById(id)?.value); return isNaN(x) ? null : x; };
-  const err = document.getElementById('rna-error');
-
-  const patente = v('rna-patente');
-  const cliente = v('rna-cliente');
-  const choferId = document.getElementById('rna-chofer')?.value || null;
-
-  if (!patente && !cliente) { if (err) err.textContent = 'Cargá al menos la patente o el cliente.'; return; }
-  if (modo === 'precarga' && !choferId) { if (err) err.textContent = 'Para asignar la pre-carga elegí un chofer.'; return; }
-  if (err) err.textContent = '';
-
-  const metodo = document.getElementById('rna-pago-metodo')?.value || null;
-  const campos = {
-    nro_servicio:  v('rna-nro-srv'),
-    tipo_servicio: v('rna-tipo'),
-    patente:       patente ? patente.toUpperCase() : null,
-    marca_modelo:  v('rna-marca'),
-    razon_social:  cliente,
-    cuit:          v('rna-cuit'),
-    telefono:      v('rna-telefono'),
-    origen:        v('rna-origen'),
-    destino:       v('rna-destino'),
-    km_reales:     n('rna-km'),
-    imp_peaje:     n('rna-peaje'),
-    imp_excedente: n('rna-excedente'),
-    pago_1_metodo: metodo,
-    pago_1_monto:  metodo ? (n('rna-pago-monto') || 0) : null,
-    observaciones: v('rna-obs'),
-  };
-
-  const btns = ['rna-btn-asignar', 'rna-btn-cerrar'].map(id => document.getElementById(id));
-  btns.forEach(b => { if (b) b.disabled = true; });
-
-  const res = await crearRemitoAdmin(campos, modo, choferId);
-
-  btns.forEach(b => { if (b) b.disabled = false; });
-
-  if (!res.ok) { if (err) err.textContent = 'No se pudo crear: ' + res.msg; return; }
-
-  const choferNombre = document.getElementById('rna-chofer')?.selectedOptions?.[0]?.textContent;
-  toast(modo === 'cerrado_admin'
-    ? `Remito ${res.nro} cerrado por administración ✓`
-    : `Remito ${res.nro} asignado a ${choferNombre} ✓`);
-  closeModal('modal-remito-nuevo-admin');
-  if (typeof cargarRemitos === 'function') cargarRemitos();
-  if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
+// ── DETALLE DE REMITO (admin/supervisión) ─────────────────────
+// Panel lateral en remitos-admin-panel-v1.js (corrección de datos, anular,
+// revisar cargos). Se usa también desde Jornadas y Liquidaciones.
+function abrirDetalleRemitoAdmin(remitoId, opts) {
+  if (window.RemitoPanel?.open) return window.RemitoPanel.open(remitoId, opts);
+  toast('El detalle de remitos todavía se está cargando', 'warn');
 }
 
 // ── FORMA DE PAGO — soporta pago mixto ────────
@@ -2396,7 +2187,7 @@ async function confirmarFirma() {
   if (!todasConf) {
     const titulo = document.getElementById('modal-validacion-titulo');
     const msgEl  = document.getElementById('modal-validacion-msg');
-    if (titulo) titulo.textContent = '⚠️ Faltan confirmaciones';
+    if (titulo) titulo.textContent = '⚠ Faltan confirmaciones';
     if (msgEl)  msgEl.textContent  = 'Marcá todas las confirmaciones obligatorias antes de finalizar el servicio.';
     openModal('modal-validacion');
     return;
@@ -2469,6 +2260,16 @@ async function confirmarFirma() {
     // ── OFFLINE: encolar la firma en el outbox ────────────
     // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
     // el flujo online haría un update con un id inválido.
+    const operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
+      ? obtenerServicioActivoRemito()
+      : sessionStorage.getItem('auxilios_phase3_service_id');
+    const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
+      ? esRemitoAdHocActivo()
+      : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+    const clientOperationId = (operatorServiceId || adHocMode) && typeof obtenerOperacionRemito === 'function'
+      ? obtenerOperacionRemito(operatorServiceId || 'driver-ad-hoc', nro2)
+      : null;
+
     if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
       const payloadFirma = {
         nro_remito:           nro2,
@@ -2494,6 +2295,14 @@ async function confirmarFirma() {
         cliente_presente:     clientePresente,
         status:               'firmado',
         edicion:              edicion, // el handler la agrega al historial al sincronizar
+        ...(operatorServiceId ? {
+          operator_service_id: operatorServiceId,
+          client_operation_id: clientOperationId,
+          document_source: 'auxilios_driver',
+        } : adHocMode ? {
+          client_operation_id: clientOperationId,
+          document_source: 'driver_ad_hoc',
+        } : {}),
       };
       // Si el remito pendiente del mismo nro está en la cola, la firma depende de él.
       // _obRemitoTemp vive solo en memoria: si la app se recargó, buscamos la op
@@ -2523,7 +2332,7 @@ async function confirmarFirma() {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones, cliente_presente')
+      .select('historial_ediciones,cliente_presente,operator_service_id,driver_intake_id,client_operation_id,document_source')
       .eq('nro_remito', nro2)
       .single();
 
@@ -2543,8 +2352,8 @@ async function confirmarFirma() {
     // ── Actualizar remito en Supabase ─────────────────────
     toast('Guardando en base de datos...', 'info');
 
-    const { error } = await _db.from('remitos')
-      .update({
+    const firmaDB = {
+        nro_remito:           nro2,
         ...(_logId ? { log_id: _logId } : {}),
         patente:              datosActualizados.patente,
         marca_modelo:         datosActualizados.marca,
@@ -2568,8 +2377,37 @@ async function confirmarFirma() {
         cliente_presente:     clientePresente,
         historial_ediciones:  historialActual,
         status:               'firmado',
-      })
-      .eq('nro_remito', nro2);
+        ...((operatorServiceId || remitoActual?.operator_service_id) ? {
+          operator_service_id: operatorServiceId || remitoActual.operator_service_id,
+          client_operation_id: clientOperationId || remitoActual?.client_operation_id || null,
+          document_source: 'auxilios_driver',
+        } : (adHocMode || remitoActual?.driver_intake_id || remitoActual?.document_source === 'driver_ad_hoc') ? {
+          driver_intake_id: remitoActual?.driver_intake_id || null,
+          client_operation_id: clientOperationId || remitoActual?.client_operation_id || null,
+          document_source: 'driver_ad_hoc',
+        } : {}),
+      };
+
+    let error = null;
+    const linkedServiceId = operatorServiceId || remitoActual?.operator_service_id || null;
+    if (linkedServiceId && typeof guardarRemitoVinculado === 'function') {
+      try {
+        await guardarRemitoVinculado(firmaDB, linkedServiceId);
+      } catch (linkedError) {
+        error = linkedError;
+      }
+    } else if ((adHocMode || remitoActual?.driver_intake_id || remitoActual?.document_source === 'driver_ad_hoc') && typeof guardarRemitoAdHoc === 'function') {
+      try {
+        await guardarRemitoAdHoc(firmaDB);
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+      } catch (adHocError) {
+        error = adHocError;
+      }
+    } else {
+      ({ error } = await _db.from('remitos')
+        .update(firmaDB)
+        .eq('nro_remito', nro2));
+    }
 
     if (error) {
       toast('Error al guardar: ' + error.message, 'error');
@@ -2578,8 +2416,18 @@ async function confirmarFirma() {
 
     console.log('✅ Remito actualizado en Supabase:', nro2);
     await cargarRemitos();
+    // La cola de servicios asignados también cambió: el que se acaba de firmar
+    // ya no está para completar. Sin esto el chofer sigue viendo el botón de un
+    // servicio que ya cerró, y el segundo intento falla contra la base.
+    if (typeof window.actualizarServiciosAsignados === 'function') {
+      try { await window.actualizarServiciosAsignados(); }
+      catch (e) { console.error('No se pudo refrescar la cola de servicios:', e); }
+    }
     showRemitosView('lista');
-    toast(`Remito ${nro2} firmado y guardado ✓`, 'success');
+    // Mismo cuadro que al iniciar jornada: cerrar un servicio es una acción con
+    // consecuencias y un toast chico en una esquina se pierde en la calle.
+    operationFeedback('Servicio finalizado',
+      `El remito ${nro2} quedó firmado y enviado.`, 'success', 2400);
 
   } catch (err) {
     console.error('Error inesperado en confirmarFirma:', err);
@@ -2594,13 +2442,21 @@ async function confirmarFirma() {
 // Sube la firma (Blob PNG) al bucket 'firmas' con el naming del flujo online.
 // Devuelve la URL pública o null si falló. Compartida por confirmarFirma y
 // el handler offline 'remito_firmar'.
-async function _subirFirmaStorage(blob, nro) {
-  const nombre = `firma_${nro}_${Date.now()}.png`;
+function _remitoEvidenceToken(value) {
+  return String(value || Date.now()).replace(/[^a-zA-Z0-9-]/g, '');
+}
+
+function _nombreFirmaStorage(nro, operationToken = null) {
+  return `firma_${nro}_${_remitoEvidenceToken(operationToken)}.png`;
+}
+
+async function _subirFirmaStorage(blob, nro, operationToken = null) {
+  const nombre = _nombreFirmaStorage(nro, operationToken);
   const { error: fe } = await _db.storage
     .from('firmas')
     .upload(nombre, blob, { contentType: 'image/png', upsert: true });
   if (fe) {
-    console.warn('⚠️ No se pudo subir la firma:', fe.message);
+    console.warn('⚠ No se pudo subir la firma:', fe.message);
     return null;
   }
   const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
@@ -2714,29 +2570,18 @@ function limpiarRangoKM() {
 // ── PANEL PRINCIPAL: Dual-Contexto ────────────
 
 let _dashVistaActual = 'rendimiento';
-let _rendPeriodo     = 'hoy';
-let _negocioData     = null;
-let _negocioRaw      = null;   // datos sin filtrar
-let _negocioRawAnt   = null;   // datos período anterior (comparativo)
-let _negocioAntLbl   = '';     // label del período anterior ("6 meses previos", etc.)
-let _negocioFiltered = null;   // snapshot filtrado para export
+let _rendPeriodo     = 'mes';
+let _rendMes = _rendFechaLocal(new Date()).slice(0,7);
+let _rendRequest = 0;
 let _fltTrucks       = null;   // Set de truck_id seleccionados (null = todos)
 let _fltDrivers      = null;   // Set de driver_id seleccionados (null = todos)
 let _fltPeriodo      = '6m';   // período activo
-let _chartNegocio   = null;   // instancia Chart.js del gráfico de tendencia negocio
 let _chartEvolucion = null;   // instancia Chart.js del gráfico evolución 7 días
-let _remitosEfectivoActuales = [];  // remitos con pago en efectivo del render actual
 let _rendRemitosActuales    = [];   // remitos del período activo en vista rendimiento
 let _rendFuelActuales       = [];   // combustible del período activo
 let _rendRendicionActuales  = [];   // rendiciones del período activo (con gastos_extra)
 let _rendTruckIdsActuales   = new Set(); // truck_ids de las jornadas del período
 let _rendLogsActuales       = [];   // daily_logs del período activo
-let _negocioUsuariosActuales  = [];
-let _negocioLogTruckMapActual = {};
-let _negocioJornadasActuales  = [];
-let _negocioRemitosActuales   = [];
-let _negocioFuelActuales      = [];
-let _negocioJornadasFilt      = [];
 
 // ── helpers ──────────────────────────────────
 const _AR = n => Math.round(n).toLocaleString('es-AR');
@@ -2818,26 +2663,13 @@ function _buildChartBuckets(tipo, logs, remitos) {
     const hoyKey = now.toISOString().slice(0,10);
     return dias.map(d => ({ ...d, actual: d.key === hoyKey }));
   }
-  // mes = últimos 12 meses
-  const meses = [];
-  const labelsMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    meses.push({ key, label: labelsMes[d.getMonth()], km: 0, srvs: 0 });
-  }
-  logs.forEach(j => {
-    const k = (j.log_date||'').slice(0,7);
-    const m = meses.find(m => m.key === k);
-    if (m) m.km += Math.max(0, (j.km_final||0) - (j.km_inicio||0));
-  });
-  remitos.forEach(r => {
-    const k = (r.created_at_device||'').slice(0,7);
-    const m = meses.find(m => m.key === k);
-    if (m) m.srvs++;
-  });
-  const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return meses.map(m => ({ ...m, actual: m.key === mesActual }));
+  const {desde, hasta} = _rendRangoMes();
+  const dias = Array.from({length:Number(hasta.slice(8,10))}, (_,i) => ({
+    key: desde.slice(0,8)+String(i+1).padStart(2,'0'), label:String(i+1), km:0, srvs:0
+  }));
+  logs.forEach(j => { const d=dias.find(d=>d.key===j.log_date); if(d) d.km+=Math.max(0,(j.km_final||0)-(j.km_inicio||0)); });
+  remitos.forEach(r => { const d=dias.find(d=>d.key===_rendFechaLocal(r.created_at_device)); if(d) d.srvs++; });
+  return dias.map(d=>({...d,actual:d.key===_rendFechaLocal(now)}));
 }
 
 function _desde(tipo) {
@@ -2849,11 +2681,7 @@ function _desde(tipo) {
     d.setDate(d.getDate() - (day - 1));
     return d.toISOString().slice(0,10);
   }
-  // mes = últimos 12 meses (primer día del mes hace 11 meses)
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - 11);
-  d.setDate(1);
-  return d.toISOString().slice(0,10);
+  return _rendRangoMes().desde;
 }
 
 // Rango del período equivalente inmediatamente anterior (Vista Chofer)
@@ -2875,19 +2703,12 @@ function _periodoAnterior(tipo) {
       label: 'semana anterior',
     };
   }
-  // mes = últimos 12 meses → comparar contra 12 meses previos
-  const d = new Date(now);
-  d.setMonth(d.getMonth() - 23); d.setDate(1);
-  const desde = d.toISOString().slice(0, 10);
-  const h = new Date(now.getFullYear(), now.getMonth() - 11, 0); // último día del mes previo al rango actual
-  return {
-    desde,
-    hasta: h.toISOString().slice(0, 10),
-    label: '12 meses previos',
-  };
+  const [year,month] = _rendMes.split('-').map(Number);
+  const anterior = _rendRangoMes(_rendFechaLocal(new Date(Date.UTC(year,month-2,1,12))).slice(0,7));
+  return {...anterior,label:'mes anterior'};
 }
 
-// Rango del período equivalente anterior (Vista Negocio: 1m/3m/6m/12m/año)
+// Rango del período equivalente anterior (1m/3m/6m/12m/año)
 function _periodoAnteriorNeg(p) {
   const now = new Date();
   const mesesTable = { '1m': 1, '3m': 3, '6m': 6, '12m': 12 };
@@ -2980,51 +2801,147 @@ async function cargarDashboard() {
   if (!USUARIO_ACTUAL?.id) return;
   const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
                   PERFIL_USUARIO?.roles?.name === 'supervision';
-  const ctxBar = document.getElementById('dash-ctx-bar');
-  if (ctxBar) ctxBar.style.display = esAdmin ? '' : 'none';
+  /* El botón de Alertas vive en la barra de secciones, que ya es sólo del
+     admin: el chofer nunca ve esa barra. */
   const emergQuick = document.getElementById('dash-emergencias-quick');
   if (emergQuick) emergQuick.style.display = esAdmin ? 'none' : '';
-  const incQuick = document.getElementById('dash-incidente-quick');
-  if (incQuick) incQuick.style.display = esAdmin ? 'none' : '';
   await _inicializarFiltrosRendAdmin();
-  _alxActualizarBadges(); // badges de alertas (campanita + pestaña) en segundo plano
-  if (esAdmin && _dashVistaActual === 'negocio') await _cargarViewNegocio();
-  else if (esAdmin && _dashVistaActual === 'alertas') dashCambiarVista('alertas');
-  else { _dashVistaActual = 'rendimiento'; await _cargarViewRendimiento(); }
+  _alxActualizarBadges(); // badges de alertas (campanita + botón) en segundo plano
+  /* El admin entra directo a Análisis. El chofer no tiene barra de pestañas y su
+     dashboard sigue siendo Mi Rendimiento: esa vista no se borró, dejó de ser
+     alcanzable para el admin. */
+  if (!esAdmin) { _dashVistaActual = 'rendimiento'; await _cargarViewRendimiento(); return; }
+  _dashVistaActual = 'analitica';
+  dashCambiarVista('analitica');
 }
 
+/* Quedan dos vistas y no las elige nadie: el rol decide. 'rendimiento' es el
+   dashboard del chofer y 'analitica' el del admin. El parámetro `el` sobrevive
+   porque el chofer todavía tiene pestañas propias dentro de su vista. */
 function dashCambiarVista(vista, el) {
-  const bar = document.getElementById('dash-ctx-bar');
-  if (!el && bar) el = bar.querySelector(`.ftab[data-vista="${vista}"]`);
   if (el) {
     el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
     el.classList.add('active');
   }
   _dashVistaActual = vista;
-  document.getElementById('dash-view-rendimiento').style.display = vista === 'rendimiento' ? '' : 'none';
-  document.getElementById('dash-view-negocio').style.display     = vista === 'negocio'     ? '' : 'none';
-  const va = document.getElementById('dash-view-alertas');
-  if (va) va.style.display = vista === 'alertas' ? '' : 'none';
-  if (vista === 'negocio')     _cargarViewNegocio();
+  const vr = document.getElementById('dash-view-rendimiento');
+  if (vr) vr.style.display = vista === 'rendimiento' ? '' : 'none';
+  const vx = document.getElementById('dash-view-analitica');
+  if (vx) vx.style.display = vista === 'analitica' ? '' : 'none';
   if (vista === 'rendimiento') _cargarViewRendimiento();
-  if (vista === 'alertas')     cargarCentroAlertas();
+  if (vista === 'analitica')   _cargarViewAnalitica();
 }
 
-function dashRendPeriod(tipo, el) {
-  el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  _rendPeriodo = tipo;
-  const lbl = document.getElementById('dash-rend-periodo-lbl');
-  if (lbl) lbl.textContent = { hoy:'Hoy', semana:'Semana actual (Lun–Dom)', mes:'Últimos 12 meses' }[tipo];
+/* Las alertas dejaron de ser una vista del panel y son un panel lateral: no
+   tienen período ni filtros, no se comparan con las otras secciones, y abrirlas
+   ya no obliga a perder de vista el tablero que estabas mirando. */
+function alxAbrirPanel() {
+  const p = document.getElementById('alx-panel');
+  if (!p) return;
+  p.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  cargarCentroAlertas();
+  const cerrar = p.querySelector('.modal-close');
+  if (cerrar) cerrar.focus();
+}
+
+function alxCerrarPanel() {
+  const p = document.getElementById('alx-panel');
+  if (!p) return;
+  p.classList.remove('open');
+  document.body.style.overflow = '';
+  // La campanita de la barra de arriba es el único acceso al panel.
+  const btn = document.getElementById('tb-bell');
+  if (btn) btn.focus();
+}
+
+function alxPanelAbierto() {
+  const p = document.getElementById('alx-panel');
+  return !!p && p.classList.contains('open');
+}
+
+// Escape cierra, como cualquier modal.
+document.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Escape' && alxPanelAbierto()) alxCerrarPanel();
+});
+
+let _dashxIniciado = false;
+
+// El dashboard nuevo se arma recién al abrir la pestaña: montar los gráficos de
+// tres secciones en un canvas oculto los deja con tamaño cero.
+function _cargarViewAnalitica() {
+  if (typeof AuxDash === 'undefined') return;
+  if (_dashxIniciado) { AuxDash.recargar(); return; }
+  _dashxIniciado = true;
+  AuxDash.init();
+}
+
+const _DASHX_TITULOS = {
+  facturacion: ['Resumen', 'Operación, facturación y cobertura de la flota'],
+  operaciones: ['Operaciones', 'Kilómetros, combustible y rendimiento por camión y chofer'],
+  tendencia: ['Tendencia', 'Evolución del período y comparación con el anterior'],
+  flota: ['Salud de la flota', 'Vencimientos, services y estado de cada camión hoy']
+};
+function dashxIrATendencia() {
+  dashxSeccion('tendencia', document.querySelector('#dashx-tabs .ftab[data-sec="tendencia"]'));
+  document.getElementById('dashx-titulo')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function dashxSeccion(seccion, el) {
+  if (el) {
+    el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+  const t = _DASHX_TITULOS[seccion];
+  if (t) {
+    const h = document.getElementById('dashx-titulo'); if (h) h.textContent = t[0];
+    const p = document.getElementById('dashx-subtitulo'); if (p) p.textContent = t[1];
+  }
+  if (typeof AuxDash !== 'undefined') AuxDash.mostrarSeccion(seccion);
+}
+
+function _rendFechaLocal(value) {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+}
+function _rendRangoMes(mes = _rendMes) {
+  const [year,month] = mes.split('-').map(Number);
+  return {desde:mes+'-01',hasta:mes+'-'+new Date(year,month,0).getDate()};
+}
+function dashRendMes(value) {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return;
+  _rendMes=value;
   _cargarViewRendimiento();
+}
+function dashRendMoverMes(delta) {
+  const [year,month]=_rendMes.split('-').map(Number);
+  const date=new Date(Date.UTC(year,month-1+delta,15,12));
+  dashRendMes(date.toISOString().slice(0,7));
+}
+function _rendSyncPeriodo() {
+  const date=new Date(_rendMes+'-15T12:00:00');
+  const label=date.toLocaleDateString('es-AR',{month:'long'});
+  const lbl=document.getElementById('dash-rend-periodo-lbl'); if(lbl) lbl.textContent=label;
+  const year=document.getElementById('dash-rend-year'); if(year) year.textContent=String(date.getFullYear());
+  const title=document.getElementById('dash-evolucion-title'); if(title) title.textContent='Evolución — '+label+' '+date.getFullYear();
 }
 
 // ── Vista Chofer ──────────────────────────────
+let _metricsLoadingCount = 0;
 async function _cargarViewRendimiento() {
-  document.getElementById('dash-view-rendimiento').style.display = '';
-  document.getElementById('dash-view-negocio').style.display     = 'none';
-  const _vAlx = document.getElementById('dash-view-alertas');
-  if (_vAlx) _vAlx.style.display = 'none';
+  const status = document.getElementById('metrics-loading');
+  _metricsLoadingCount++;
+  if (status) status.hidden = false;
+  try { return await _cargarViewRendimientoDatos(); }
+  finally { if (--_metricsLoadingCount === 0 && status) status.hidden = true; }
+}
+async function _cargarViewRendimientoDatos() {
+  const request=++_rendRequest;
+  _rendSyncPeriodo();
+  const _vRend = document.getElementById('dash-view-rendimiento');
+  if (_vRend) _vRend.style.display = '';
 
   const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Cargando...</div>';
   ['dash-rend-fin','dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
@@ -3054,10 +2971,16 @@ async function _cargarViewRendimiento() {
   const cmpLbl = document.getElementById('dash-rend-comparado');
   if (cmpLbl) cmpLbl.textContent = `vs. ${periodoAnt.label}`;
 
+  // Resumen nuevo del chofer (driver-summary-v1.js): una sola consulta con la
+  // cuenta de efectivo de Sueldos. Lo de abajo queda sólo si el módulo no cargó.
+  if (window.AuxiliosDriverSummary?.render) {
+    return window.AuxiliosDriverSummary.render({ driverId: targetUserId, mes: _rendMes, esChofer, isCurrent: () => request === _rendRequest });
+  }
+
   // Fetch separado del render para cachearlo (Fase 3 offline — solo chofer)
   const fnOnlineRend = async () => {
     const [datos, jornadas, alertasPers, datosAnt] = await Promise.all([
-      cargarDatosChofer(targetUserId, desde, targetTruck),
+      cargarDatosChofer(targetUserId, desde, targetTruck, _rendPeriodo==='mes' ? _rendRangoMes().hasta : undefined),
       cargarJornadasAbiertas(),
       esChofer ? cargarAlertasPersonales() : Promise.resolve([]),
       cargarComparativoChofer(targetUserId, periodoAnt.desde, periodoAnt.hasta, targetTruck),
@@ -3068,7 +2991,7 @@ async function _cargarViewRendimiento() {
   let paqueteRend = null, rendDeCache = false, rendGuardadoAt = null;
   try {
     if (esChofer && typeof obLecturaConCache === 'function') {
-      const lectura = await obLecturaConCache(`dash_rend_${targetUserId}_${_rendPeriodo}`, fnOnlineRend);
+      const lectura = await obLecturaConCache(`dash_rend_${targetUserId}_${_rendPeriodo}_${_rendMes}_v2`, fnOnlineRend);
       paqueteRend    = lectura.data;
       rendDeCache    = lectura.deCache;
       rendGuardadoAt = lectura.guardadoAt;
@@ -3080,6 +3003,7 @@ async function _cargarViewRendimiento() {
     rendDeCache = true;
   }
 
+  if(request!==_rendRequest) return;
   if (!paqueteRend) {
     // Offline sin caché: vacío elegante, jamás pantalla rota
     ['dash-rend-op-top','dash-rend-op-bot'].forEach(id => {
@@ -3200,7 +3124,7 @@ async function _cargarViewRendimiento() {
       _KPI('📲', 'Transferencias',    '$'+_AR(factTr),   'var(--blue)',
         `${trCount} cobros${_deltaBadge(factTr, factTrAnt)}`, null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalDesglosePago('transferencia')">📋 Ver detalle</span>`) +
-      _KPI('⚠️', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
+      _KPI('⚠', 'Pendiente de rendir','$'+_AR(pendiente), pendiente>0?'var(--red)':'var(--muted)',
         (pendiente>0?'sin rendir':'al día ✓') + _deltaBadge(pendiente, pendienteAnt, {invert:true}), null,
         `<span class="kpi-dash-cta-btn" onclick="abrirModalPendienteRendir()">📋 Ver detalle</span>`);
   }
@@ -3273,7 +3197,7 @@ async function _cargarViewRendimiento() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             display: true,
@@ -3290,7 +3214,7 @@ async function _cargarViewRendimiento() {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: '#6b7280', font: { size: 10 } },
+            ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 8, maxRotation: 0 },
           },
           y: {
             position: 'left',
@@ -3328,7 +3252,7 @@ async function _cargarViewRendimiento() {
       </div>`;
     }).join('');
 
-    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠️ Sin rendición', km_manual: '✏️ KM cargado a mano' };
+    const TIPO = { diferencia_efectivo:'💰 Diferencia de efectivo', gasto_no_registrado:'🧾 Gasto no registrado', sin_rendicion:'⚠ Sin rendición', km_manual: '✏ KM cargado a mano' };
     const opHTML = (alertas || []).map(a =>
       `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--red-lo);border:1px solid rgba(231,76,60,0.3);border-radius:7px;margin-bottom:6px">
         <div><div style="font-size:12px;font-weight:600">${TIPO[a.tipo]||a.tipo}</div>
@@ -3356,7 +3280,6 @@ function _dashAlertaGo(opts) {
   goTo(opts.target);
 }
 
-// ── Vista Negocio ─────────────────────────────
 function _periodoLabel(p) {
   if (p === '1m')  return '1 mes';
   if (p === '3m')  return '3 meses';
@@ -3376,763 +3299,6 @@ function _periodoDesde(p) {
   return d.toISOString().slice(0, 10);
 }
 
-async function _cargarViewNegocio() {
-  document.getElementById('dash-view-rendimiento').style.display = 'none';
-  document.getElementById('dash-view-negocio').style.display     = '';
-  const _vAlx = document.getElementById('dash-view-alertas');
-  if (_vAlx) _vAlx.style.display = 'none';
-
-  const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando...</div>';
-  ['dash-neg-kpis-main','dash-neg-kpis-sec','dash-panel-fact','dash-panel-gastos','dash-ranking-body','dash-alertas-neg'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.innerHTML = LOAD;
-  });
-
-  const periodoAntNeg = _periodoAnteriorNeg(_fltPeriodo);
-  const [raw, rawAnt] = await Promise.all([
-    cargarDatosNegocio(_periodoDesde(_fltPeriodo)),
-    cargarComparativoNegocio(periodoAntNeg.desde, periodoAntNeg.hasta),
-  ]);
-  _negocioRaw    = raw;
-  _negocioRawAnt = rawAnt;
-  _negocioAntLbl = periodoAntNeg.label;
-  _fltTrucks  = null;
-  _fltDrivers = null;
-  _dashFiltroInicializarUI(raw.usuarios, raw.jornadas);
-  _renderNegocioFiltrado();
-}
-
-async function dashFiltroPeriodo(p) {
-  if (p === _fltPeriodo) return;
-  _fltPeriodo = p;
-  // Actualizar botones activos
-  document.querySelectorAll('.dash-period-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.p === p);
-  });
-  // Re-fetch con nuevo período
-  const LOAD = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando...</div>';
-  ['dash-neg-kpis-main','dash-neg-kpis-sec','dash-panel-fact','dash-panel-gastos','dash-ranking-body','dash-alertas-neg'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.innerHTML = LOAD;
-  });
-  const periodoAntNeg = _periodoAnteriorNeg(p);
-  const [raw, rawAnt] = await Promise.all([
-    cargarDatosNegocio(_periodoDesde(p)),
-    cargarComparativoNegocio(periodoAntNeg.desde, periodoAntNeg.hasta),
-  ]);
-  _negocioRaw    = raw;
-  _negocioRawAnt = rawAnt;
-  _negocioAntLbl = periodoAntNeg.label;
-  _fltTrucks  = null;
-  _fltDrivers = null;
-  _dashFiltroInicializarUI(raw.usuarios, raw.jornadas);
-  _renderNegocioFiltrado();
-}
-
-function _renderNegocioFiltrado() {
-  if (!_negocioRaw) return;
-  const { remitos: rAll, fuel: fAll, jornadas: jAll, usuarios, alertas: aAll } = _negocioRaw;
-
-  // Mapa log_id → truck_id para filtrar remitos por camión
-  const logTruckMap = {};
-  jAll.forEach(j => { if (j.log_id) logTruckMap[j.log_id] = j.truck_id; });
-
-  // Aplicar filtros
-  const remitos  = rAll.filter(r =>
-    (!_fltDrivers || _fltDrivers.has(r.driver_id)) &&
-    (!_fltTrucks  || _fltTrucks.has(logTruckMap[r.log_id]))
-  );
-  const jornadas = jAll.filter(j => (!_fltDrivers || _fltDrivers.has(j.driver_id)) && (!_fltTrucks || _fltTrucks.has(j.truck_id)));
-  const fuel     = fAll.filter(f => (!_fltTrucks  || _fltTrucks.has(f.truck_id)));
-  const alertas  = aAll.filter(a => (!_fltDrivers || _fltDrivers.has(a.driver_id)));
-
-  // Persistir snapshot para modal de desglose caja en calle
-  _remitosEfectivoActuales = remitos.filter(r =>
-    r.pago_1_metodo === 'efectivo' || r.pago_2_metodo === 'efectivo'
-  );
-  _negocioUsuariosActuales  = usuarios;
-  _negocioLogTruckMapActual = logTruckMap;
-  _negocioJornadasActuales  = jAll;
-  _negocioRemitosActuales   = remitos;
-  _negocioFuelActuales      = fuel;
-  _negocioJornadasFilt      = jornadas;
-
-  // Status bar
-  const totTrucks  = new Set(jAll.map(j=>j.truck_id).filter(Boolean)).size;
-  const totDrivers = usuarios.length;
-  const selTrucks  = _fltTrucks  ? _fltTrucks.size  : totTrucks;
-  const selDrivers = _fltDrivers ? _fltDrivers.size : totDrivers;
-  const stEl = document.getElementById('dash-filter-status');
-  if (stEl) {
-    const filtered = _fltTrucks || _fltDrivers;
-    const antTxt = _negocioAntLbl ? ` <span style="opacity:0.7">· vs. ${_negocioAntLbl}</span>` : '';
-    stEl.innerHTML = filtered
-      ? `<div class="dash-filter-status-dot"></div>Mostrando ${selTrucks} de ${totTrucks} camiones · ${selDrivers} de ${totDrivers} choferes${antTxt}`
-      : `<div class="dash-filter-status-dot"></div>Toda la flota · ${totTrucks} camiones · ${totDrivers} choferes · ${_periodoLabel(_fltPeriodo)}${antTxt}`;
-  }
-
-  // ── Comparativo período anterior (mismos filtros) ──
-  let factTotalAntN = 0, factEfAntN = 0, kmTotalAntN = 0, gastosFuelAntN = 0, litrosAntN = 0;
-  let srvsAntN = 0, jornadasAntN = 0;
-  if (_negocioRawAnt) {
-    const rA = _negocioRawAnt.remitos || [];
-    const jA = _negocioRawAnt.jornadas || [];
-    const fA = _negocioRawAnt.fuel || [];
-    const logTruckMapAnt = {};
-    jA.forEach(j => { if (j.log_id) logTruckMapAnt[j.log_id] = j.truck_id; });
-    const rAntF = rA.filter(r =>
-      (!_fltDrivers || _fltDrivers.has(r.driver_id)) &&
-      (!_fltTrucks  || _fltTrucks.has(logTruckMapAnt[r.log_id]))
-    );
-    const jAntF = jA.filter(j => (!_fltDrivers || _fltDrivers.has(j.driver_id)) && (!_fltTrucks || _fltTrucks.has(j.truck_id)));
-    const fAntF = fA.filter(f => (!_fltTrucks || _fltTrucks.has(f.truck_id)));
-    rAntF.forEach(r => {
-      const p1 = r.pago_1_monto||0, p2 = r.pago_2_monto||0;
-      factTotalAntN += p1 + p2;
-      if (r.pago_1_metodo==='efectivo') factEfAntN += p1;
-      if (r.pago_2_metodo==='efectivo') factEfAntN += p2;
-    });
-    kmTotalAntN = jAntF.reduce((s,j) => s + Math.max(0,(j.km_final||0)-(j.km_inicio||0)), 0);
-    gastosFuelAntN = fAntF.reduce((s,f) => s + (f.total_cost||0), 0);
-    litrosAntN = fAntF.reduce((s,f) => s + (f.liters||0), 0);
-    srvsAntN = rAntF.length;
-    jornadasAntN = jAntF.length;
-  }
-  const resultadoAntN = factTotalAntN - gastosFuelAntN;
-  const ticketPromAntN = srvsAntN > 0 ? (factTotalAntN / srvsAntN) : null;
-  const porKmGAntN = kmTotalAntN > 0 ? (factTotalAntN / kmTotalAntN) : null;
-  const costoKmAntN = (kmTotalAntN > 0 && litrosAntN > 0) ? (gastosFuelAntN / kmTotalAntN) : null;
-
-  // ── Facturación ──
-  let factTotal = 0, factEf = 0, factTr = 0, factOtros = 0, firmados = 0;
-  remitos.forEach(r => {
-    const p1 = r.pago_1_monto||0, p2 = r.pago_2_monto||0;
-    factTotal += p1 + p2;
-    const acum = (m, v) => { if (m==='efectivo') factEf+=v; else if (m==='transferencia') factTr+=v; else if (m) factOtros+=v; };
-    acum(r.pago_1_metodo,p1); acum(r.pago_2_metodo,p2);
-    if (r.status==='firmado') firmados++;
-  });
-
-  // ── Gastos ──
-  const gastosFuel = fuel.reduce((s,f) => s+(f.total_cost||0), 0);
-  const litrosTot  = fuel.reduce((s,f) => s+(f.liters||0), 0);
-
-  // ── Km y métricas globales ──
-  const kmTotal   = jornadas.reduce((s,j) => s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)), 0);
-  const resultado = factTotal - gastosFuel;
-  const cajaEnCalle = factEf; // efectivo total en período = en manos de choferes
-  const ticketProm  = remitos.length > 0 ? Math.round(factTotal / remitos.length) : 0;
-  const porKmG      = kmTotal > 0 ? (factTotal / kmTotal).toFixed(1) : '—';
-  const costoKm     = kmTotal > 0 && litrosTot > 0 ? (gastosFuel / kmTotal).toFixed(1) : '—';
-  const deudaTotal  = alertas.reduce((s,a) => s+Math.abs(a.diferencia_monto||0), 0);
-
-  // ── Detalles para KPIs principales ──
-  const margenPct  = factTotal > 0 ? Math.round(resultado / factTotal * 100) : 0;
-  const detFact    = _mrow('Efectivo', '$'+_AR(factEf)) +
-                     _mrow('Transferencia', '$'+_AR(factTr)) +
-                     (factOtros>0 ? _mrow('Otros', '$'+_AR(factOtros)) : '') +
-                     _mrow('Firmados', firmados + ' de ' + remitos.length);
-  const detResult  = _mrow('Facturación', '$'+_AR(factTotal)) +
-                     _mrow('Combustible', '−$'+_AR(gastosFuel)) +
-                     _mrow('Margen bruto', margenPct+'%');
-  const numConDeuda = new Set(alertas.map(a => a.driver_id)).size;
-  const detCaja    = _mrow('Efectivo en choferes', '$'+_AR(cajaEnCalle)) +
-                     _mrow('Alertas pendientes', _AR(alertas.length)) +
-                     (deudaTotal>0 ? _mrow('Deuda total', '$'+_AR(deudaTotal)) : '') +
-                     (numConDeuda>0 ? _mrow('Choferes con deuda', numConDeuda) : '');
-
-  // ── Detalles para KPIs secundarios ──
-  const jornadasTot = jornadas.length;
-  const kmPorJorn   = jornadasTot > 0 ? Math.round(kmTotal / jornadasTot) : 0;
-  const detKmG      = _mrow('Km totales', kmTotal.toLocaleString('es-AR')+'km') +
-                      _mrow('Jornadas cerradas', jornadasTot) +
-                      _mrow('Km / jornada prom.', kmPorJorn+'km');
-  const montosList  = remitos.map(r=>(r.pago_1_monto||0)+(r.pago_2_monto||0)).filter(v=>v>0);
-  const minTk       = montosList.length > 0 ? Math.min(...montosList) : 0;
-  const maxTk       = montosList.length > 0 ? Math.max(...montosList) : 0;
-  const detTicket   = _mrow('Ticket promedio', ticketProm>0?'$'+_AR(ticketProm):'—') +
-                      _mrow('Ticket mínimo', minTk>0?'$'+_AR(minTk):'—') +
-                      _mrow('Ticket máximo', maxTk>0?'$'+_AR(maxTk):'—') +
-                      _mrow('Total servicios', remitos.length);
-  const detPorKm    = _mrow('$/km (ingresos)', porKmG!=='—'?'$'+porKmG:'—') +
-                      _mrow('Km totales', kmTotal.toLocaleString('es-AR')+'km') +
-                      _mrow('Facturación total', '$'+_AR(factTotal));
-  const detCostoKm  = _mrow('Precio unitario prom. ($/km)', costoKm!=='—'?'$'+costoKm:'—') +
-                      _mrow('Total combustible', '$'+_AR(gastosFuel)) +
-                      _mrow('Litros cargados', _AR(litrosTot)+'L') +
-                      (deudaTotal>0 ? _mrow('⚠️ Deuda en alertas', '$'+_AR(deudaTotal)) : '');
-
-  const _NEG_EMPTY = '<span style="font-size:14px;color:var(--muted);font-weight:400">Sin datos</span>';
-
-  // ── KPIs principales ──
-  const mainEl = document.getElementById('dash-neg-kpis-main');
-  if (mainEl) mainEl.innerHTML =
-    _KPI('💵', 'Facturación',
-      factTotal>0 ? '$'+_AR(factTotal) : _NEG_EMPTY,
-      'var(--amber)',
-      (factTotal>0 ? `${remitos.length} servicios` : 'No hay servicios registrados') + _deltaBadge(factTotal, factTotalAntN),
-      null,
-      factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioFacturacion()">📋 Ver detalle</span>` : null) +
-    _KPI('📈', 'Resultado op.',
-      factTotal>0 ? (resultado>=0?'$':'−$') + _AR(Math.abs(resultado)) : _NEG_EMPTY,
-      factTotal>0 ? (resultado>=0?'var(--green)':'var(--red)') : 'var(--muted)',
-      (factTotal>0 ? `${margenPct}% margen` : 'No hay facturación en el período') + _deltaBadge(resultado, resultadoAntN),
-      null,
-      factTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioResultado()">📋 Ver detalle</span>` : null) +
-    _KPI('💰', 'Caja en calle',
-      cajaEnCalle>0 ? '$'+_AR(cajaEnCalle) : _NEG_EMPTY,
-      'var(--blue)',
-      (cajaEnCalle>0 ? 'efectivo en manos de choferes' : 'No hay efectivo cobrado') + _deltaBadge(cajaEnCalle, factEfAntN),
-      null,
-      cajaEnCalle>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalCajaCalle()">📋 Ver detalle</span>` : null);
-
-  // ── KPIs secundarios ──
-  const secEl = document.getElementById('dash-neg-kpis-sec');
-  if (secEl) secEl.innerHTML =
-    _KPI('🚛', 'Km totales',
-      kmTotal>0 ? kmTotal.toLocaleString('es-AR')+' km' : _NEG_EMPTY,
-      'var(--amber)',
-      (kmTotal>0 ? jornadasTot+' jornadas' : 'No hay jornadas cerradas') + _deltaBadge(kmTotal, kmTotalAntN),
-      null,
-      kmTotal>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioKmTotales()">📋 Ver detalle</span>` : null) +
-    _KPI('🎫', 'Ticket prom.',
-      ticketProm>0 ? '$'+_AR(ticketProm) : _NEG_EMPTY,
-      'var(--green)',
-      (ticketProm>0 ? remitos.length+' servicios' : 'No hay servicios registrados') + _deltaBadge(ticketProm, ticketPromAntN),
-      null,
-      ticketProm>0 ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioTicket()">📋 Ver detalle</span>` : null) +
-    _KPI('💸', '$ / Km',
-      porKmG!=='—' ? '$'+porKmG : _NEG_EMPTY,
-      'var(--blue)',
-      (porKmG!=='—' ? 'ingreso por km' : 'No hay km recorridos') + _deltaBadge(parseFloat(porKmG), porKmGAntN),
-      null,
-      porKmG!=='—' ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioPorKm()">📋 Ver detalle</span>` : null) +
-    _KPI('⛽', 'Costo / Km',
-      costoKm!=='—' ? '$'+costoKm : _NEG_EMPTY,
-      deudaTotal>0 ? 'var(--red)' : 'var(--muted)',
-      (costoKm!=='—' ? (deudaTotal>0 ? '⚠️ $'+_AR(deudaTotal)+' en alertas' : 'combustible/km') : 'No hay cargas de combustible') + _deltaBadge(parseFloat(costoKm), costoKmAntN, {invert:true}),
-      null,
-      costoKm!=='—' ? `<span class="kpi-dash-cta-btn" onclick="abrirModalNegocioCostoKm()">📋 Ver detalle</span>` : null);
-
-  // ── Panel Frecuencia (reemplaza Facturación) ──
-  const factEl = document.getElementById('dash-panel-fact');
-  if (factEl) factEl.innerHTML = _renderHeatmap(remitos);
-
-  // ── Panel Gastos ──
-  const gastosEl = document.getElementById('dash-panel-gastos');
-  if (gastosEl) gastosEl.innerHTML = `
-    <div class="card-label" style="margin-bottom:14px">⛽ Gastos — ${_periodoLabel(_fltPeriodo)}</div>
-    <div style="font-family:'Bebas Neue';font-size:32px;color:var(--red)">${'$'+_AR(gastosFuel)}</div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:14px">${fuel.length} cargas · ${_AR(litrosTot)} L</div>
-    <div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
-      <div style="font-size:10px;color:var(--muted)">MARGEN BRUTO</div>
-      <div style="font-family:'Bebas Neue';font-size:22px;color:var(--green)">${'$'+_AR(resultado)}</div>
-      <div style="font-size:10px;color:var(--muted)">${factTotal>0?Math.round(resultado/factTotal*100):0}% sobre facturación</div>
-    </div>`;
-
-  // ── Datos mensuales ──
-  const meses = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-    meses.push({ key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`, label:['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][d.getMonth()], km:0, srvs:0, fact:0 });
-  }
-  jornadas.forEach(j => { const m=meses.find(m=>m.key===(j.log_date||'').slice(0,7)); if(m) m.km+=Math.max(0,(j.km_final||0)-(j.km_inicio||0)); });
-  remitos.forEach(r  => { const m=meses.find(m=>m.key===(r.created_at_device||'').slice(0,7)); if(m){m.srvs++;m.fact+=(r.pago_1_monto||0)+(r.pago_2_monto||0);} });
-
-  // ── Ranking por chofer ──
-  const perChofer = {};
-  usuarios.forEach(u => { perChofer[u.user_id] = { nombre:u.full_name, km:0, srvs:0, ingresos:0, deuda:0 }; });
-  jornadas.forEach(j => { if(perChofer[j.driver_id]) perChofer[j.driver_id].km += Math.max(0,(j.km_final||0)-(j.km_inicio||0)); });
-  remitos.forEach(r  => { if(perChofer[r.driver_id]){ perChofer[r.driver_id].srvs++; perChofer[r.driver_id].ingresos+=(r.pago_1_monto||0)+(r.pago_2_monto||0); } });
-  alertas.forEach(a  => { if(perChofer[a.driver_id]) perChofer[a.driver_id].deuda += Math.abs(a.diferencia_monto||0); });
-
-  _negocioData     = { meses, perChofer };
-  _negocioFiltered = { remitos, jornadas, fuel, alertas, meses, perChofer, usuarios,
-                       factTotal, factEf, factTr, factOtros, gastosFuel, kmTotal, resultado };
-  _renderNegocioChart('fact');
-  _renderNegocioRanking('ingresos');
-
-  // La card "Alertas de negocio" se mudó al Centro de Alertas del Panel;
-  // los datos de `alertas` siguen alimentando los KPIs de esta vista.
-}
-
-// ── Heatmap de frecuencia ─────────────────────
-function _renderHeatmap(remitos) {
-  const DIAS  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const HORAS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
-
-  const grid = Array.from({length: 7}, () => new Array(HORAS.length).fill(0));
-  remitos.forEach(r => {
-    if (!r.created_at_device) return;
-    const d    = new Date(r.created_at_device);
-    const dow  = d.getDay();
-    const hIdx = HORAS.indexOf(d.getHours());
-    if (hIdx >= 0) grid[dow][hIdx]++;
-  });
-
-  const max = Math.max(1, ...grid.flat());
-
-  // Peak day/hour
-  let peakDow = 1, peakHour = HORAS[0], peakVal = 0;
-  for (let d = 0; d < 7; d++) for (let hi = 0; hi < HORAS.length; hi++) {
-    if (grid[d][hi] > peakVal) { peakVal = grid[d][hi]; peakDow = d; peakHour = HORAS[hi]; }
-  }
-
-  // Avg services per active day
-  const byDay = {};
-  remitos.forEach(r => { if (r.created_at_device) { const k = r.created_at_device.slice(0,10); byDay[k]=(byDay[k]||0)+1; } });
-  const activeDays = Object.keys(byDay).length;
-  const avgPerDay  = activeDays > 0 ? (remitos.length / activeDays).toFixed(1) : '—';
-
-  // Most active day name
-  const dowTotals = Array(7).fill(0);
-  grid.forEach((row, d) => { dowTotals[d] = row.reduce((s,v)=>s+v,0); });
-  const topDow  = dowTotals.indexOf(Math.max(...dowTotals));
-
-  const cell = (count) => {
-    const op = count === 0 ? 0.06 : (0.15 + 0.75 * (count / max)).toFixed(2);
-    return `<div title="${count} servicios" style="border-radius:2px;background:rgba(245,166,35,${op})"></div>`;
-  };
-
-  const cols = HORAS.length + 1;
-  const headerCells = `<div></div>${HORAS.map(h=>`<div style="font-size:7px;color:var(--muted2);text-align:center;line-height:1">${h}h</div>`).join('')}`;
-  const rowCells    = DIAS.map((dia, d) =>
-    `<div style="font-size:9px;color:var(--muted2);display:flex;align-items:center;line-height:1">${dia}</div>` +
-    HORAS.map((_,hi) => cell(grid[d][hi])).join('')
-  ).join('');
-
-  return `
-    <div class="card-label" style="margin-bottom:12px">🕐 Frecuencia de servicios — ${_periodoLabel(_fltPeriodo)}</div>
-    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="flex:1;min-width:80px;padding:8px 10px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
-        <div style="font-size:9px;color:var(--muted2);margin-bottom:2px">SERVICIOS/DÍA</div>
-        <div style="font-family:'Bebas Neue';font-size:22px;color:var(--amber)">${avgPerDay}</div>
-        <div style="font-size:9px;color:var(--muted)">${activeDays} días activos</div>
-      </div>
-      <div style="flex:1;min-width:80px;padding:8px 10px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
-        <div style="font-size:9px;color:var(--muted2);margin-bottom:2px">DÍA MÁS ACTIVO</div>
-        <div style="font-family:'Bebas Neue';font-size:22px;color:var(--amber)">${DIAS[topDow]}</div>
-        <div style="font-size:9px;color:var(--muted)">${dowTotals[topDow]} servicios</div>
-      </div>
-      <div style="flex:1;min-width:80px;padding:8px 10px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
-        <div style="font-size:9px;color:var(--muted2);margin-bottom:2px">HORA PICO</div>
-        <div style="font-family:'Bebas Neue';font-size:22px;color:var(--amber)">${peakHour}h</div>
-        <div style="font-size:9px;color:var(--muted)">${peakVal} servicios</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:28px repeat(${HORAS.length},1fr);gap:3px;">
-      ${headerCells}
-      ${rowCells}
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:flex-end">
-      <span style="font-size:9px;color:var(--muted2)">Menos</span>
-      ${[0.06,0.25,0.45,0.65,0.85].map(op=>`<div style="width:10px;height:10px;border-radius:2px;background:rgba(245,166,35,${op})"></div>`).join('')}
-      <span style="font-size:9px;color:var(--muted2)">Más</span>
-    </div>`;
-}
-
-// ── Filtros negocio ───────────────────────────
-function _dashFiltroInicializarUI(usuarios, jornadas) {
-  // Construir listas únicas
-  const trucks = [];
-  const seenT  = new Set();
-  jornadas.forEach(j => {
-    if (j.truck_id && !seenT.has(j.truck_id)) {
-      seenT.add(j.truck_id);
-      trucks.push({ id: j.truck_id, plate: j.trucks?.plate || j.truck_id });
-    }
-  });
-
-  const tList = document.getElementById('flt-trucks-list');
-  const dList = document.getElementById('flt-drivers-list');
-  if (tList) tList.innerHTML = trucks.map(t =>
-    `<div class="dash-filter-item checked" data-id="${t.id}" onclick="dashFiltroItem('trucks','${t.id}',this)">
-       <div class="dash-filter-cb"></div>
-       <div><div>${t.plate}</div></div>
-     </div>`).join('');
-  if (dList) dList.innerHTML = usuarios.map(u =>
-    `<div class="dash-filter-item checked" data-id="${u.user_id}" onclick="dashFiltroItem('drivers','${u.user_id}',this)">
-       <div class="dash-filter-cb"></div>
-       <div><div>${u.full_name||u.email||u.user_id}</div></div>
-     </div>`).join('');
-}
-
-function dashFiltroToggle(tipo) {
-  const dd  = document.getElementById(`flt-${tipo}-dd`);
-  const btn = document.getElementById(`flt-${tipo}-btn`);
-  const isOpen = dd.classList.contains('open');
-  document.querySelectorAll('.dash-filter-dd').forEach(d => d.classList.remove('open'));
-  document.querySelectorAll('.dash-filter-btn').forEach(b => b.classList.remove('open'));
-  if (!isOpen) { dd.classList.add('open'); btn.classList.add('open'); }
-}
-
-function dashFiltroItem(tipo, id, el) {
-  el.classList.toggle('checked');
-  const all    = [...document.querySelectorAll(`#flt-${tipo}-list .dash-filter-item`)];
-  const checked = all.filter(i => i.classList.contains('checked'));
-  const isAll  = checked.length === all.length;
-  if (tipo === 'trucks')  _fltTrucks  = isAll ? null : new Set(checked.map(i => parseInt(i.dataset.id)));
-  if (tipo === 'drivers') _fltDrivers = isAll ? null : new Set(checked.map(i => i.dataset.id));
-  _dashFiltroActualizarBtn(tipo, checked.length, all.length);
-  _dashFiltroActualizarPills();
-  _renderNegocioFiltrado();
-}
-
-function dashFiltroTodos(tipo) {
-  document.querySelectorAll(`#flt-${tipo}-list .dash-filter-item`).forEach(i => i.classList.add('checked'));
-  if (tipo === 'trucks')  _fltTrucks  = null;
-  if (tipo === 'drivers') _fltDrivers = null;
-  const all = document.querySelectorAll(`#flt-${tipo}-list .dash-filter-item`).length;
-  _dashFiltroActualizarBtn(tipo, all, all);
-  _dashFiltroActualizarPills();
-  _renderNegocioFiltrado();
-}
-
-function dashFiltroNinguno(tipo) {
-  document.querySelectorAll(`#flt-${tipo}-list .dash-filter-item`).forEach(i => i.classList.remove('checked'));
-  if (tipo === 'trucks')  _fltTrucks  = new Set();
-  if (tipo === 'drivers') _fltDrivers = new Set();
-  _dashFiltroActualizarBtn(tipo, 0, document.querySelectorAll(`#flt-${tipo}-list .dash-filter-item`).length);
-  _dashFiltroActualizarPills();
-  _renderNegocioFiltrado();
-}
-
-function dashFiltroReset() {
-  ['trucks','drivers'].forEach(t => dashFiltroTodos(t));
-}
-
-function dashFiltroSearch(tipo, q) {
-  const norm = q.toLowerCase();
-  document.querySelectorAll(`#flt-${tipo}-list .dash-filter-item`).forEach(i => {
-    i.style.display = i.textContent.toLowerCase().includes(norm) ? '' : 'none';
-  });
-}
-
-function _dashFiltroActualizarBtn(tipo, sel, total) {
-  const btn = document.getElementById(`flt-${tipo}-btn`);
-  const lbl = document.getElementById(`flt-${tipo}-lbl`);
-  if (!btn || !lbl) return;
-  const isAll = sel === total;
-  btn.classList.toggle('active', !isAll);
-  lbl.innerHTML = isAll
-    ? (tipo === 'trucks' ? 'Todos los camiones' : 'Todos los choferes')
-    : `${tipo === 'trucks' ? 'Camiones' : 'Choferes'} <span class="dash-filter-count">${sel}</span>`;
-}
-
-function _dashFiltroActualizarPills() {
-  const pillsEl  = document.getElementById('flt-pills');
-  const resetBtn = document.getElementById('flt-reset-btn');
-  const pills = [];
-
-  if (_fltTrucks) {
-    document.querySelectorAll('#flt-trucks-list .dash-filter-item.checked').forEach(i => {
-      pills.push(`<span class="dash-filter-pill">🚛 ${i.querySelector('div > div').textContent} <span class="dash-filter-pill-x" onclick="dashFiltroItem('trucks','${i.dataset.id}',document.querySelector('[data-id=\\'${i.dataset.id}\\']'))">×</span></span>`);
-    });
-  }
-  if (_fltDrivers) {
-    document.querySelectorAll('#flt-drivers-list .dash-filter-item.checked').forEach(i => {
-      pills.push(`<span class="dash-filter-pill blue">👤 ${i.querySelector('div > div').textContent} <span class="dash-filter-pill-x" onclick="dashFiltroItem('drivers','${i.dataset.id}',document.querySelector('[data-id=\\'${i.dataset.id}\\']'))">×</span></span>`);
-    });
-  }
-
-  const hasFilter = pills.length > 0;
-  if (pillsEl)  { pillsEl.innerHTML = pills.join(''); pillsEl.style.display = hasFilter ? '' : 'none'; }
-  if (resetBtn) resetBtn.style.display = hasFilter ? '' : 'none';
-}
-
-// Cerrar dropdowns al click fuera
-document.addEventListener('click', e => {
-  if (!e.target.closest('.dash-filter-group')) {
-    document.querySelectorAll('.dash-filter-dd').forEach(d => d.classList.remove('open'));
-    document.querySelectorAll('.dash-filter-btn').forEach(b => b.classList.remove('open'));
-  }
-});
-
-// ── Exportar Excel ────────────────────────────
-function exportarNegocioExcel() {
-  if (!_negocioFiltered || typeof XLSX === 'undefined') {
-    alert('Los datos aún no están listos. Esperá un momento.');
-    return;
-  }
-
-  const { remitos, jornadas, fuel, alertas, meses, perChofer, usuarios,
-          factTotal, factEf, factTr, factOtros, gastosFuel, kmTotal, resultado } = _negocioFiltered;
-
-  const nameMap = {};
-  usuarios.forEach(u => { nameMap[u.user_id] = u.full_name || u.user_id; });
-
-  // Mapas de patentes y nombres para resumen
-  const truckPlates  = [...new Set(jornadas.map(j => j.trucks?.plate).filter(Boolean))].sort();
-  const driverNames  = _fltDrivers
-    ? usuarios.filter(u => _fltDrivers.has(u.user_id)).map(u => u.full_name)
-    : usuarios.map(u => u.full_name);
-
-  const wb = XLSX.utils.book_new();
-
-  // ── Hoja 1: Resumen ──
-  const wsResumen = XLSX.utils.aoa_to_sheet([
-    ['SIGMA — Reporte de Negocio'],
-    ['Período', _periodoLabel(_fltPeriodo)],
-    ['Exportado', new Date().toLocaleString('es-AR')],
-    [],
-    ['FILTROS APLICADOS', ''],
-    ['Camiones', truckPlates.length > 0 ? truckPlates.join(', ') : 'Todos'],
-    ['Choferes', driverNames.length > 0 ? driverNames.join(', ') : 'Todos'],
-    [],
-    ['MÉTRICAS', ''],
-    ['Facturación total', factTotal],
-    ['  Efectivo', factEf],
-    ['  Transferencia', factTr],
-    ['  Otros', factOtros],
-    ['Combustible', gastosFuel],
-    ['Resultado operativo', resultado],
-    ['Km totales', kmTotal],
-    ['Servicios (remitos)', remitos.length],
-    ['Cargas de combustible', fuel.length],
-    ['Jornadas cerradas', jornadas.length],
-    ['Alertas pendientes', alertas.length],
-  ]);
-  wsResumen['!cols'] = [{ wch: 28 }, { wch: 60 }];
-  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
-
-  // ── Hoja 2: Servicios ──
-  const wsServ = XLSX.utils.aoa_to_sheet([
-    [
-      'Fecha', 'Nro Remito', 'Nro Servicio', 'Chofer',
-      'Patente Veh.', 'Marca/Modelo',
-      'Tipo Servicio', 'Origen', 'Destino', 'Km Reales',
-      'Cliente (Razón Social)', 'CUIT', 'Teléfono', 'Email',
-      'Peaje', 'Excedente', 'Otros Extras', 'Total Extras',
-      'Método Pago 1', 'Monto 1', 'Método Pago 2', 'Monto 2', 'Total Cobrado',
-      'Conformidad Servicio', 'Conformidad Cargos', 'Sin Daños', 'Cliente Presente',
-      'Observaciones', 'Estado',
-    ],
-    ...remitos.map(r => [
-      (r.created_at_device || '').slice(0, 10),
-      r.nro_remito        || '',
-      r.nro_servicio      || '',
-      nameMap[r.driver_id] || r.driver_id,
-      r.patente           || '',
-      r.marca_modelo      || '',
-      r.tipo_servicio     || '',
-      r.origen            || '',
-      r.destino           || '',
-      r.km_reales         || '',
-      r.razon_social      || '',
-      r.cuit              || '',
-      r.telefono          || '',
-      r.email_cliente     || '',
-      r.imp_peaje         || 0,
-      r.imp_excedente     || 0,
-      r.imp_otros         || 0,
-      r.imp_total_extras  || 0,
-      r.pago_1_metodo     || '',
-      r.pago_1_monto      || 0,
-      r.pago_2_metodo     || '',
-      r.pago_2_monto      || 0,
-      (r.pago_1_monto || 0) + (r.pago_2_monto || 0),
-      r.conformidad_servicio ? 'Sí' : 'No',
-      r.conformidad_cargos   ? 'Sí' : 'No',
-      r.sin_danos            ? 'Sí' : 'No',
-      r.cliente_presente === false ? 'No' : 'Sí',
-      r.observaciones     || '',
-      r.status            || '',
-    ])
-  ]);
-  wsServ['!cols'] = [
-    {wch:12},{wch:14},{wch:14},{wch:22},{wch:12},{wch:20},
-    {wch:18},{wch:22},{wch:22},{wch:10},
-    {wch:28},{wch:14},{wch:14},{wch:24},
-    {wch:10},{wch:12},{wch:12},{wch:12},
-    {wch:16},{wch:12},{wch:16},{wch:12},{wch:14},
-    {wch:20},{wch:20},{wch:12},{wch:16},
-    {wch:30},{wch:10},
-  ];
-  XLSX.utils.book_append_sheet(wb, wsServ, 'Servicios');
-
-  // ── Hoja 3: Combustible ──
-  const wsFuel = XLSX.utils.aoa_to_sheet([
-    ['Fecha', 'Dominio (Patente)', 'Litros', '$/L', 'Total', 'Km al cargar', 'Cómo pagó', 'App/Tarjeta', 'Estación'],
-    ...fuel.map(f => {
-      const truckInfo = _negocioRaw?.jornadas?.find(j => j.truck_id === f.truck_id)?.trucks?.plate || f.truck_id || '';
-      return [
-        f.fuel_date        || '',
-        truckInfo,
-        f.liters           || 0,
-        f.price_per_liter  || 0,
-        f.total_cost       || 0,
-        f.km_at_load       || '',
-        f.payment_method   || '',
-        f.payment_app      || '',
-        f.gas_station      || '',
-      ];
-    })
-  ]);
-  wsFuel['!cols'] = [{wch:12},{wch:16},{wch:10},{wch:10},{wch:12},{wch:14},{wch:16},{wch:16},{wch:24}];
-  XLSX.utils.book_append_sheet(wb, wsFuel, 'Combustible');
-
-  // ── Hoja 4: Jornadas ──
-  const wsJorn = XLSX.utils.aoa_to_sheet([
-    ['Fecha', 'Chofer', 'Dominio', 'Marca/Modelo', 'Km inicio', 'Km final', 'Km recorridos', 'Hora inicio', 'Hora fin', 'Ingresó al taller', 'Detalle taller/Observaciones'],
-    ...jornadas.map(j => [
-      j.log_date            || '',
-      nameMap[j.driver_id]  || j.driver_id,
-      j.trucks?.plate       || '',
-      j.trucks ? `${j.trucks.brand || ''} ${j.trucks.model || ''}`.trim() : '',
-      j.km_inicio           || 0,
-      j.km_final            || 0,
-      Math.max(0, (j.km_final || 0) - (j.km_inicio || 0)),
-      j.hora_inicio         || '',
-      j.hora_fin            || '',
-      j.in_workshop         ? 'Sí' : 'No',
-      j.workshop_detail     || '',
-    ])
-  ]);
-  wsJorn['!cols'] = [{wch:12},{wch:22},{wch:12},{wch:22},{wch:10},{wch:10},{wch:14},{wch:12},{wch:10},{wch:18},{wch:40}];
-  XLSX.utils.book_append_sheet(wb, wsJorn, 'Jornadas');
-
-  // ── Hoja 5: Ranking por chofer ──
-  const rankRows = Object.values(perChofer).sort((a, b) => b.ingresos - a.ingresos);
-  const wsRank = XLSX.utils.aoa_to_sheet([
-    ['Chofer', 'Servicios', 'Ingresos', 'Km recorridos', 'Deuda pendiente'],
-    ...rankRows.map(c => [c.nombre, c.srvs, c.ingresos, c.km, c.deuda])
-  ]);
-  wsRank['!cols'] = [{wch:22},{wch:10},{wch:14},{wch:14},{wch:16}];
-  XLSX.utils.book_append_sheet(wb, wsRank, 'Ranking Choferes');
-
-  // ── Hoja 6: Mensual ──
-  const wsMes = XLSX.utils.aoa_to_sheet([
-    ['Mes', 'Facturación', 'Servicios', 'Km'],
-    ...meses.map(m => [m.label, m.fact, m.srvs, m.km])
-  ]);
-  wsMes['!cols'] = [{wch:8},{wch:14},{wch:10},{wch:12}];
-  XLSX.utils.book_append_sheet(wb, wsMes, 'Mensual');
-
-  const fecha = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `sigma_negocio_${fecha}.xlsx`);
-}
-
-// ── Gráfico ───────────────────────────────────
-function _renderNegocioChart(tipo) {
-  if (!_negocioData) return;
-  const { meses } = _negocioData;
-  const vals   = meses.map(m => m[tipo]);
-  const labels = meses.map(m => m.label);
-  const cur    = new Date().toISOString().slice(0, 7);
-  const fmt    = tipo === 'fact' ? v => '$' + _AR(v) : v => v.toLocaleString('es-AR');
-
-  const canvas = document.getElementById('dash-chart-canvas');
-  if (!canvas) return;
-
-  if (_chartNegocio) { _chartNegocio.destroy(); _chartNegocio = null; }
-
-  _chartNegocio = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        data: vals,
-        borderColor: '#f59e0b',
-        backgroundColor: 'rgba(245,158,11,0.08)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.35,
-        pointBackgroundColor: meses.map(m => m.key === cur ? '#f59e0b' : 'rgba(245,158,11,0.4)'),
-        pointRadius: meses.map(m => m.key === cur ? 5 : 3),
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => fmt(ctx.parsed.y),
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: { color: 'rgba(255,255,255,0.05)' },
-          ticks: { color: '#6b7280', font: { size: 10 } },
-        },
-        y: {
-          grid: { color: 'rgba(255,255,255,0.05)' },
-          ticks: { color: '#6b7280', font: { size: 10 }, callback: v => fmt(v) },
-          beginAtZero: true,
-        },
-      },
-    },
-  });
-}
-
-// ── Ranking ───────────────────────────────────
-function _renderNegocioRanking(tipo) {
-  if (!_negocioData) return;
-  const lista = Object.values(_negocioData.perChofer);
-  const el    = document.getElementById('dash-ranking-body');
-  if (!el) return;
-  if (lista.length === 0) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Sin datos</div>'; return; }
-
-  let sorted, metrica, sub;
-  if (tipo === 'ingresos') {
-    sorted  = [...lista].sort((a,b)=>b.ingresos-a.ingresos);
-    metrica = c => '$'+_AR(c.ingresos);
-    sub     = c => c.srvs+' servicios';
-  } else if (tipo === 'km') {
-    sorted  = [...lista].sort((a,b)=>b.km-a.km);
-    metrica = c => c.km.toLocaleString('es-AR')+' km';
-    sub     = c => c.srvs+' servicios';
-  } else if (tipo === 'eficiencia') {
-    sorted  = [...lista].sort((a,b)=>(b.srvs?b.km/b.srvs:0)-(a.srvs?a.km/a.srvs:0));
-    metrica = c => c.srvs ? Math.round(c.km/c.srvs).toLocaleString('es-AR')+' km/srv' : '—';
-    sub     = c => c.srvs+' srvs · '+c.km.toLocaleString('es-AR')+' km';
-  } else {
-    sorted  = [...lista].sort((a,b)=>b.deuda-a.deuda);
-    metrica = c => '$'+_AR(c.deuda);
-    sub     = c => c.deuda>0?'diferencia pendiente':'sin alertas ✓';
-  }
-
-  const MEDALS = ['🥇','🥈','🥉'];
-  const isDeuda = tipo === 'deuda';
-  const rawOf   = c => tipo==='ingresos'?c.ingresos : tipo==='km'?c.km : tipo==='eficiencia'?(c.srvs?c.km/c.srvs:0) : c.deuda;
-  const maxVal  = Math.max(...sorted.map(rawOf), 1);
-
-  el.innerHTML = sorted.map((c,i) => {
-    const pct      = Math.max(4, Math.round(rawOf(c)/maxVal*100));
-    const barColor = isDeuda && c.deuda>0 ? 'var(--red)' : 'var(--amber)';
-    const valColor = isDeuda && c.deuda>0 ? 'var(--red)' : 'var(--amber)';
-    return `<div style="padding:10px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border);margin-bottom:6px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:18px">${MEDALS[i]||'#'+(i+1)}</span>
-          <div><div style="font-size:13px;font-weight:700">${c.nombre}</div>
-          <div style="font-size:10px;color:var(--muted)">${sub(c)}</div></div>
-        </div>
-        <div style="font-family:'Bebas Neue';font-size:18px;color:${valColor}">${metrica(c)}</div>
-      </div>
-      <div style="height:4px;background:var(--border);border-radius:2px">
-        <div style="width:${pct}%;height:100%;background:${barColor};border-radius:2px;transition:width 0.4s"></div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function dashChartSwitch(tipo, el) {
-  el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  _renderNegocioChart(tipo);
-}
-
-function dashRankSwitch(tipo, el) {
-  el.closest('.filter-tabs').querySelectorAll('.ftab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  _renderNegocioRanking(tipo);
-}
-
-// ══════════════════════════════════════════════
-//  MODAL ENGINE
-// ══════════════════════════════════════════════
 function openModal(id) {
   const m = document.getElementById(id);
  if (!m) {
@@ -4197,8 +3363,43 @@ function sanitizeInt(input) {
 function _modalError(id, msg) {
   const el = document.getElementById(id);
   if (!el) return;
+  clearTimeout(el._autoClearTimer);
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
+  if (msg) {
+    if (typeof operationFeedback === 'function') operationFeedback('Revisá los datos', msg, 'error', 2800);
+    el._autoClearTimer = setTimeout(() => {
+      el.textContent = '';
+      el.style.display = 'none';
+    }, 3000);
+  }
+}
+
+function operationFeedback(title, message, type='success', duration=2200) {
+  let modal = document.getElementById('operation-feedback');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'operation-feedback';
+    modal.className = 'operation-feedback';
+    modal.setAttribute('role','status');
+    modal.setAttribute('aria-live','assertive');
+    document.body.appendChild(modal);
+  }
+  clearTimeout(modal._closeTimer);
+  modal.className = `operation-feedback ${type} is-visible`;
+  modal.innerHTML = `<div><span>${type==='success'?'✓':'!'}</span><strong>${title}</strong><small>${message}</small></div>`;
+  modal._closeTimer = setTimeout(() => modal.classList.remove('is-visible'), Math.min(3000, Math.max(800, duration)));
+}
+
+// Confirmación de archivo — misma tilde que usan jornadas y servicios. Bajar un
+// Excel o subir un adjunto no puede quedar mudo: el navegador no avisa nada y
+// el usuario se queda sin saber si el archivo salió.
+function confirmarDescarga(nombreArchivo, detalle = '') {
+  operationFeedback('Descarga lista', detalle ? `${nombreArchivo} · ${detalle}` : nombreArchivo, 'success', 2400);
+}
+
+function confirmarSubida(nombreArchivo, detalle = '') {
+  operationFeedback('Archivo subido', detalle ? `${nombreArchivo} · ${detalle}` : nombreArchivo, 'success', 2400);
 }
 
 // ── TOAST ─────────────────────────────────────
@@ -4360,7 +3561,7 @@ function guardarCerrarJornada() {
   const strip = document.querySelector('.alert-strip.ok');
   if (strip) {
     strip.className = 'alert-strip warn mb16';
-    strip.innerHTML = `<span>ℹ️</span><span>No hay jornada activa hoy. <b>Iniciá una nueva jornada</b> para comenzar.</span>`;
+    strip.innerHTML = `<span>ℹ</span><span>No hay jornada activa hoy. <b>Iniciá una nueva jornada</b> para comenzar.</span>`;
   }
   toast('Jornada cerrada y guardada correctamente', 'success');
 }
@@ -4608,8 +3809,6 @@ function _renderCamionChoferDatos(d) {
   _camionHistorial   = d.services || [];
 
   _renderCamionCards();
-  renderPlanes(_camionPlanes);
-  renderHistorialServices(_camionHistorial);
   _volverCamionMain();
 }
 
@@ -4650,266 +3849,15 @@ function _renderCamionSinJornada() {
   _volverCamionMain();
 }
 
-// ── Vista flota para admin/supervisor (sin jornada) ──
-let _flotaFiltro = 'todos';   // 'todos' | 'enRuta' | 'enBase' | 'alertas' | 'sinDatos'
-let _flotaQuery  = '';
-let _flotaEstado = {};        // truck_id -> { conductor, severidad, planUrgente }
-
+// ── Control del camión · Administración y Supervisión ──
+// La flota (tabla) está en fleet-control-v1.js y el detalle de cada móvil en
+// fleet-truck-detail-v1.js. Estas dos funciones quedan como punto de entrada.
 async function _renderCamionFlotaAdmin() {
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('camion-sec-sub', 'Flota completa');
-  ['camion-nombre','camion-detalle'].forEach(id => set(id, ''));
-  const hero = document.getElementById('camion-hero-card');
-  if (hero) hero.style.display = 'none';
-  const cont = document.getElementById('camion-cards-container');
-  if (!cont) return;
-  cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando flota...</div>';
-
-  try {
-    const [camiones, jornadasResp] = await Promise.all([
-      cargarCamiones(),
-      _db.from('daily_logs').select('truck_id, driver_id, users(full_name)').eq('status', 'open'),
-    ]);
-    _flotaAdmin = camiones || [];
-    const enUso = {};
-    (jornadasResp?.data || []).forEach(j => {
-      if (j.truck_id) enUso[j.truck_id] = j.users?.full_name || 'En uso';
-    });
-
-    // Calcular plan urgente por camión (para borde de color)
-    const planesPorCamion = await Promise.all(
-      _flotaAdmin.map(t => cargarPlanesDetalleOptimizados(t.truck_id).catch(() => []))
-    );
-    _flotaEstado = {};
-    _flotaAdmin.forEach((t, i) => {
-      const planes = planesPorCamion[i] || [];
-      const urgente = planes
-        .filter(p => p.plan_estado && p.plan_estado !== '_error')
-        .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
-      let severidad = 'al_dia';
-      if (urgente) {
-        const est = urgente.plan_estado;
-        const kmR = urgente.km_restantes;
-        if (est === 'vencido' || (kmR != null && kmR <= 0)) severidad = 'critico';
-        else if (est === 'proximo' || (kmR != null && kmR <= 1000)) severidad = 'alerta';
-        else if (est === 'sin_registro' || est === 'sin_odometro') severidad = 'sin_datos';
-      }
-      _flotaEstado[t.truck_id] = { conductor: enUso[t.truck_id] || null, severidad, planUrgente: urgente || null };
-    });
-  } catch (e) {
-    console.error('Error cargando flota:', e);
-    cont.innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:20px">Error al cargar la flota</div>';
-    return;
-  }
-
-  _pintarFlotaAdmin();
-  _volverCamionMain();
+  if (window.AuxiliosControlFlota) return window.AuxiliosControlFlota.renderFlota();
 }
-
-function _pintarFlotaAdmin() {
-  const cont = document.getElementById('camion-cards-container');
-  if (!cont) return;
-
-  if (!_flotaAdmin.length) {
-    cont.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:30px">No hay camiones registrados</div>';
-    return;
-  }
-
-  const counts = { todos: 0, enRuta: 0, enBase: 0, alertas: 0, sinDatos: 0 };
-  _flotaAdmin.forEach(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    counts.todos++;
-    if (st.conductor) counts.enRuta++;
-    else counts.enBase++;
-    if (st.severidad === 'critico' || st.severidad === 'alerta') counts.alertas++;
-    if (st.severidad === 'sin_datos') counts.sinDatos++;
-  });
-
-  const q = _flotaQuery.trim().toLowerCase();
-  const filtrados = _flotaAdmin.filter(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    if (_flotaFiltro === 'enRuta' && !st.conductor) return false;
-    if (_flotaFiltro === 'enBase' && st.conductor) return false;
-    if (_flotaFiltro === 'alertas' && st.severidad !== 'critico' && st.severidad !== 'alerta') return false;
-    if (_flotaFiltro === 'sinDatos' && st.severidad !== 'sin_datos') return false;
-    if (q) {
-      const hay = `${t.plate || ''} ${t.numero_interno || ''} ${t.brand || ''} ${t.model || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  const mkPill = (key, label, n) => `
-    <button class="flota-pill ${_flotaFiltro === key ? 'active' : ''}"
-      onclick="_setFlotaFiltro('${key}')">${label} <span class="flota-pill-count">${n}</span></button>`;
-
-  const cards = filtrados.map(t => {
-    const st = _flotaEstado[t.truck_id] || {};
-    // Borde: prioriza severidad de mantenimiento; sin_datos es neutro (gris).
-    const borderColor = st.severidad === 'critico' ? '#ef4444'
-      : st.severidad === 'alerta'  ? '#f59e0b'
-      : st.conductor               ? '#3b82f6'
-      : st.severidad === 'sin_datos' ? '#6b7280'
-      : '#22c55e';
-    // Regla de negocio: un camion con service vencido NO figura como Disponible.
-    // sin_datos = estado neutro: no afirma "Disponible" pero tampoco alarma con amarillo.
-    const labelOperativo = st.conductor
-      ? `<span style="color:#3b82f6">🔵 En ruta</span>`
-      : (st.severidad === 'critico'
-          ? `<span style="color:#ef4444">⛔ No apto</span>`
-          : st.severidad === 'alerta'
-            ? `<span style="color:#f59e0b">🟡 Apto con alerta</span>`
-            : st.severidad === 'sin_datos'
-              ? `<span style="color:#9ca3af">⚪ Sin historial</span>`
-              : `<span style="color:#22c55e">🟢 Disponible</span>`);
-    // Etiqueta de mantenimiento (si aplica). sin_datos no genera badge (ya se refleja en labelOperativo)
-    const labelMant = st.severidad === 'critico'
-      ? `<span style="color:#ef4444">🔴 Service vencido</span>`
-      : st.severidad === 'alerta'
-        ? `<span style="color:#f59e0b">🟡 Service próximo</span>`
-        : '';
-    // No duplicar la info: si labelOperativo ya dice "No apto"/"Apto con alerta", no repetir el detalle de mant
-    const estadoLabel = (labelMant && st.conductor)
-      ? `${labelOperativo} · ${labelMant}`
-      : labelOperativo;
-    // Titulo: si numero_interno ya contiene "MOVIL"/"MOBIL", no duplicar el prefijo
-    let titulo;
-    if (t.numero_interno != null) {
-      const ni = String(t.numero_interno).trim();
-      titulo = /^m[oó]vil/i.test(ni) ? ni.toUpperCase() : `MÓVIL ${ni}`;
-    } else {
-      titulo = t.plate || `ID ${t.truck_id}`;
-    }
-    const subtitulo = `${t.plate || '—'}${t.brand || t.model ? ' · ' + `${t.brand || ''} ${t.model || ''}`.trim() : ''}`;
-    const km = t.current_km != null ? Number(t.current_km).toLocaleString('es-AR') + ' km' : '— km';
-    // KM: gris por defecto, ambar/rojo solo si entra en ventana de service
-    const kmColor = st.severidad === 'critico' ? 'var(--red)'
-      : st.severidad === 'alerta' ? 'var(--amber)'
-      : 'var(--muted2)';
-    const conductorLine = st.conductor
-      ? `<div class="camion-flota-meta">👤 ${st.conductor}</div>`
-      : `<div class="camion-flota-meta" style="color:var(--muted)">👤 Sin asignar</div>`;
-    // Texto del plan urgente: respeta el estado real, no inventa "vencido" si km_restantes es null
-    let planLine = '';
-    if (st.planUrgente) {
-      const p = st.planUrgente;
-      const kmR = p.km_restantes;
-      const color = st.severidad === 'critico' ? 'var(--red)'
-        : st.severidad === 'alerta' ? 'var(--amber)'
-        : st.severidad === 'sin_datos' ? 'var(--muted2)'
-        : 'var(--green)';
-      let detalle;
-      if (kmR == null) {
-        detalle = p.plan_estado === 'sin_registro' ? 'sin ejecución registrada'
-          : p.plan_estado === 'sin_odometro' ? 'sin odómetro inicial'
-          : (p.plan_estado || '—');
-      } else if (kmR <= 0) {
-        detalle = `vencido por ${Math.abs(kmR).toLocaleString('es-AR')} km`;
-      } else {
-        detalle = `en ${kmR.toLocaleString('es-AR')} km`;
-      }
-      planLine = `<div class="camion-flota-meta" style="color:${color}">⚙ ${p.name} · ${detalle}</div>`;
-    }
-    return `
-      <div class="camion-flota-card" style="border-left-color:${borderColor}" onclick="_abrirCamionDetalleAdmin(${t.truck_id})">
-        <div class="camion-flota-icon">🚛</div>
-        <div class="camion-flota-info">
-          <div class="camion-flota-name">${titulo}</div>
-          <div class="camion-flota-sub">${subtitulo}</div>
-          <div class="camion-flota-km" style="color:${kmColor}">${km}</div>
-          ${conductorLine}
-          ${planLine}
-          <div class="camion-flota-status">${estadoLabel}</div>
-        </div>
-        <div class="camion-flota-arrow">›</div>
-      </div>`;
-  }).join('');
-
-  const empty = filtrados.length === 0
-    ? `<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:30px;font-size:13px">Sin coincidencias</div>`
-    : '';
-
-  cont.innerHTML = `
-    <div class="flota-toolbar">
-      <input id="flota-search" class="flota-search" type="search"
-        placeholder="Buscar por patente, móvil o marca…"
-        value="${_flotaQuery.replace(/"/g,'&quot;')}"
-        oninput="_setFlotaQuery(this.value)">
-      <div class="flota-pills">
-        ${mkPill('todos','Todos', counts.todos)}
-        ${mkPill('enRuta','En ruta', counts.enRuta)}
-        ${mkPill('enBase','Disponibles', counts.enBase)}
-        ${mkPill('alertas','Alertas', counts.alertas)}
-        ${mkPill('sinDatos','Sin datos', counts.sinDatos)}
-      </div>
-    </div>
-    <div class="camion-flota-grid">${cards}${empty}</div>`;
-
-  // Reenfocar input si el usuario estaba escribiendo
-  const inp = document.getElementById('flota-search');
-  if (inp && _flotaQuery) {
-    inp.focus();
-    const v = inp.value;
-    inp.setSelectionRange(v.length, v.length);
-  }
-}
-
-function _setFlotaFiltro(key) { _flotaFiltro = key; _pintarFlotaAdmin(); }
-function _setFlotaQuery(q)    { _flotaQuery = q || ''; _pintarFlotaAdmin(); }
 
 async function _abrirCamionDetalleAdmin(truckId) {
-  const truck = (_flotaAdmin || []).find(t => t.truck_id === truckId);
-  if (!truck) return;
-
-  _camionVistaAdmin = 'detalle';
-  _camionLogDate = null; // sin filtro por jornada — vista global
-  _truckActual = truck;
-
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  const nombre  = `${truck.brand || ''} ${truck.model || ''}`.trim() || '—';
-  const patente = truck.plate || '—';
-  const km = truck.current_km != null ? Number(truck.current_km).toLocaleString('es-AR') : null;
-  const hero = document.getElementById('camion-hero-card');
-  if (hero) hero.style.display = '';
-  set('camion-nombre',  nombre.toUpperCase());
-  set('camion-detalle', `Patente: ${patente}`);
-  set('camion-km-pill', km != null ? `${km} km actuales` : '— km actuales');
-  set('camion-sec-sub', `${nombre} · ${patente}`);
-  const statusPill = document.getElementById('camion-status-pill');
-  if (statusPill) {
-    statusPill.textContent = '● Vista global';
-    statusPill.className = 'pill pill-blue';
-  }
-
-  const cont = document.getElementById('camion-cards-container');
-  if (cont) cont.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Cargando datos del camión...</div>';
-
-  const [combustible, ultimoControl, services, planes] = await Promise.all([
-    cargarCombustible(truckId),
-    cargarUltimoControlNeumaticos(truckId),
-    cargarHistorialServices(truckId),
-    cargarPlanesDetalleOptimizados(truckId),
-  ]);
-
-  _camionCombustible = combustible || [];
-  _camionNeumaticos  = ultimoControl || null;
-  _camionPlanes      = planes || [];
-  _camionHistorial   = services || [];
-
-  _renderCamionCards();
-  renderPlanes(_camionPlanes);
-  renderHistorialServices(_camionHistorial);
-  _volverCamionMain();
-
-  // Inyectar boton "volver a flota" al inicio del contenedor
-  if (cont) {
-    const back = document.createElement('button');
-    back.className = 'btn-camion-back';
-    back.style.cssText = 'margin-bottom:12px';
-    back.textContent = '← Volver a flota';
-    back.onclick = () => { _camionVistaAdmin = 'flota'; _renderCamionFlotaAdmin(); };
-    cont.insertBefore(back, cont.firstChild);
-  }
+  if (window.AuxiliosDetalleCamion) return window.AuxiliosDetalleCamion.abrir(truckId);
 }
 
 function _renderCamionCards() {
@@ -4940,26 +3888,19 @@ function _renderCamionCards() {
     : 'Sin cargas esta jornada';
   const combColor = _camionCombustible.length ? '#4ade80' : 'var(--muted)';
 
-  // ── Estado Mantenimiento / Planes ──
+  // ── Estado Mantenimiento: el plan más urgente ──
+  // El más urgente por km o por horas de motor (urgencia = restante / intervalo)
   const planUrgente = (_camionPlanes || [])
     .filter(p => p.plan_estado && p.plan_estado !== '_error')
-    .sort((a, b) => (a.km_restantes ?? Infinity) - (b.km_restantes ?? Infinity))[0];
-  const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro' };
-  // Severidad real basada en km_restantes: <=0 rojo (vencido), <=1000 ámbar, resto verde
-  const _planSeveridad = (p) => {
-    if (!p) return 'al_dia';
-    if (p.plan_estado === 'al_dia') return 'al_dia';
-    if (p.plan_estado === 'vencido' || (p.km_restantes != null && p.km_restantes <= 0)) return 'critico';
-    if (p.km_restantes != null && p.km_restantes <= 1000) return 'alerta';
-    return 'al_dia';
-  };
-  const mantSeveridad = _planSeveridad(planUrgente);
+    .sort((a, b) => (a.urgencia ?? Infinity) - (b.urgencia ?? Infinity))[0];
+  const estadoLabel = { al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido', sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro', sin_horas: '— Sin horas actuales' };
+  const mantCritico = planUrgente && planUrgente.plan_estado === 'vencido';
+  const mantAlerta  = planUrgente && !mantCritico && (planUrgente.plan_estado === 'proximo'
+    || (planUrgente.manda === 'km' && planUrgente.km_restantes != null && planUrgente.km_restantes <= 1000));
   const mantStatus  = planUrgente
     ? `${estadoLabel[planUrgente.plan_estado] || ''} · ${planUrgente.name}`
     : (_camionPlanes.length ? 'Al día' : 'Sin planes');
-  const mantColor   = mantSeveridad === 'critico' ? '#ef4444'
-    : mantSeveridad === 'alerta' ? '#f59e0b'
-    : '#4ade80';
+  const mantColor   = mantCritico ? '#ef4444' : mantAlerta ? '#f59e0b' : '#4ade80';
 
   const mkCard = (icon, title, status, statusColor, borderColor, actionLabel, actionBg, actionFg, actionFn, subId) => `
     <div class="camion-module-card" style="border-left-color:${borderColor}">
@@ -4976,53 +3917,21 @@ function _renderCamionCards() {
       </div>
     </div>`;
 
+  // Sólo el chofer ve estas tarjetas: Administración y Supervisión usan el detalle nuevo.
   let html = '';
-  if (esChofer) {
-    html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
-      '+ Registrar','#ef4444','#fff','openNeumaticosModal()','camion-sub-neumaticos');
-    html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
-      '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
-    html += mkCard('🔩','Mantenimiento', mantStatus, mantColor,'#4ade80',
-      '+ Registrar','#4ade80','#000','openServiceModal()','camion-sub-mantenimiento');
-  } else {
-    html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
-      '+ Registrar','#f59e0b','#000','openNeumaticosModal()','camion-sub-neumaticos');
-    html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
-      '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
-    html += mkCard('📋','Planes de Service',
-      `${(_camionPlanes || []).filter(p => !p._error).length} planes activos`,
-      '#a78bfa','#a78bfa',
-      '+ Plan','#a78bfa','#000','openPlanModal()','camion-sub-planes');
-    html += mkCard('🔩','Historial Ejecuciones',
-      _camionHistorial.length ? 'Últimos services del camión' : 'Sin services registrados',
-      'var(--muted)','#4ade80',
-      '+ Service','#4ade80','#000','openServiceModal()','camion-sub-historial');
-  }
+  html += mkCard('🔧','Neumáticos & Frenos', neuStatus, neuColor, neuBorder,
+    '+ Registrar','#ef4444','#fff','openNeumaticosModal()','camion-sub-neumaticos');
+  html += mkCard('⛽','Combustible', combStatus, combColor,'#3b82f6',
+    '+ Cargar','#3b82f6','#fff','openFuelModal()','camion-sub-combustible');
+  html += mkCard('🔩','Mantenimiento', mantStatus, mantColor,'#4ade80',
+    '+ Registrar','#4ade80','#000','openServiceModal()','camion-sub-mantenimiento');
   cont.innerHTML = html;
-
-  // Próximo service pill en hero (admin/supervisor)
-  if (!esChofer && planUrgente) {
-    const pill = document.getElementById('camion-next-service-pill');
-    if (pill) {
-      const kmR = planUrgente.km_restantes;
-      const vencido = kmR != null && kmR <= 0;
-      const txt = vencido
-        ? `⚠ ${planUrgente.name} VENCIDO por ${Math.abs(kmR).toLocaleString('es-AR')} km`
-        : `⚙ ${planUrgente.name} en ${Math.abs(kmR || 0).toLocaleString('es-AR')} km`;
-      pill.textContent = txt;
-      pill.className = 'pill ' + (mantSeveridad === 'critico' ? 'pill-red'
-        : mantSeveridad === 'alerta' ? 'pill-amber' : 'pill-green');
-      pill.style.display = '';
-    }
-  }
 }
 
 const _CAMION_SUBS = [
   'camion-sub-combustible',
   'camion-sub-neumaticos',
   'camion-sub-mantenimiento',
-  'camion-sub-planes',
-  'camion-sub-historial',
 ];
 
 function _volverCamionMain() {
@@ -5047,7 +3956,28 @@ function _abrirSubCamion(subId) {
   if (subId === 'camion-sub-combustible')   _renderSubCombustible();
   if (subId === 'camion-sub-neumaticos')    _renderSubNeumaticos();
   if (subId === 'camion-sub-mantenimiento') _renderSubMantenimiento();
-  // 'camion-sub-planes' and 'camion-sub-historial' are pre-rendered by renderPlanes/renderHistorialServices
+}
+
+/* Después de asignar o quitar un plan, registrar un service o cerrar la jornada:
+   Administración y Supervisión recargan el detalle del móvil si está abierto; el
+   chofer, sus tarjetas y la sub-pantalla de mantenimiento. */
+async function _refrescarPlanesCamion(kmOverride = null) {
+  if (!_truckActual?.truck_id) return;
+  const rol = PERFIL_USUARIO?.roles?.name;
+  if (rol === 'administracion' || rol === 'supervision') {
+    if (window.AuxiliosDetalleCamion?.abierto?.() === _truckActual.truck_id) await window.AuxiliosDetalleCamion.recargar();
+    return;
+  }
+  const [planes, services] = await Promise.all([
+    cargarPlanesDetalleOptimizados(_truckActual.truck_id, kmOverride),
+    cargarHistorialServices(_truckActual.truck_id),
+  ]);
+  _camionPlanes    = Array.isArray(planes) ? planes : [];
+  _camionHistorial = services || [];
+  if (document.getElementById('screen-camion')?.classList.contains('active')) {
+    _renderCamionCards();
+    if (document.getElementById('camion-sub-mantenimiento')?.style.display !== 'none') _renderSubMantenimiento();
+  }
 }
 
 function _renderSubCombustible() {
@@ -5086,6 +4016,7 @@ function _renderSubCombustible() {
 }
 
 function _renderCombustibleList(data, esChofer) {
+  const canEditFuel = PERFIL_USUARIO?.roles?.name === 'administracion';
   const payIcons = { efectivo: '💵', transferencia: '🏦', app: '📱', tarjeta: '💳' };
   if (!data.length) return `
     <div style="text-align:center;color:var(--muted);padding:20px">
@@ -5098,6 +4029,7 @@ function _renderCombustibleList(data, esChofer) {
         <th>Litros</th>
         ${esChofer ? '' : '<th>Total</th>'}
         <th>Pago</th>
+        ${canEditFuel ? '<th>Acciones</th>' : ''}
       </tr>
     </thead>
     <tbody>
@@ -5111,6 +4043,7 @@ function _renderCombustibleList(data, esChofer) {
           <td style="font-family:'DM Mono'">${_L(r.liters)} L</td>
           ${esChofer ? '' : `<td style="font-family:'DM Mono';color:var(--amber)">${total}</td>`}
           <td style="font-size:11px;color:var(--muted)">${r.payment_app || r.payment_method || '—'}</td>
+        ${canEditFuel ? `<td><button class="btn btn-ghost" onclick="editarCargaCombustibleAdmin(${Number(r.fuel_id)})">Editar</button></td>` : ''}
         </tr>`;
       }).join('')}
     </tbody>
@@ -5185,27 +4118,29 @@ function _renderSubMantenimiento() {
 
   const estadoColor = {
     al_dia: 'var(--green)', proximo: 'var(--amber)', vencido: 'var(--red)',
-    sin_registro: 'var(--muted)', sin_odometro: 'var(--muted)',
+    sin_registro: 'var(--muted)', sin_odometro: 'var(--muted)', sin_horas: 'var(--muted)',
   };
   const estadoLabel = {
     al_dia: '✓ Al día', proximo: '⚠ Próximo', vencido: '✕ Vencido',
-    sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro',
+    sin_registro: '— Sin ejecución', sin_odometro: '— Sin odómetro', sin_horas: '— Sin horas actuales',
   };
 
   const planesHtml = _camionPlanes.map(p => {
     const estado   = p.plan_estado || 'sin_registro';
     const color    = estadoColor[estado];
     const label    = estadoLabel[estado];
-    const kmInfo   = p.interval_km
-      ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${p.interval_km.toLocaleString('es-AR')} km</b>`
+    // Por km, por horas de motor o por los dos (manda lo que vence primero)
+    const cadencia = [
+      p.usa_km !== false && p.interval_km ? `${p.interval_km.toLocaleString('es-AR')} km` : '',
+      p.usa_horas && p.interval_hours ? `${p.interval_hours.toLocaleString('es-AR')} h de motor` : '',
+    ].filter(Boolean);
+    const kmInfo   = cadencia.length
+      ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${cadencia.join(' o ')}</b>${cadencia.length > 1 ? ' · lo que llegue primero' : ''}`
       : '';
-    const nextDue  = p.next_due_km ? p.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const restante = p.km_restantes != null
-      ? `${p.km_restantes > 0 ? 'Faltan' : 'Excedidos'} <b>${Math.abs(p.km_restantes).toLocaleString('es-AR')} km</b>`
-      : '';
-    const progreso = (p.next_due_km && p.interval_km && p.km_restantes != null)
-      ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
-      : 0;
+    const nextDue  = textoProximoService(p) || '—';
+    const restante = _escHtml(textoRestanteService(p))
+      + (p.usa_horas && p.current_hours == null ? ' · sin horas actuales del camión' : '');
+    const progreso = avanceService(p);
     return `
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
         padding:14px 16px;margin-bottom:10px">
@@ -5342,6 +4277,7 @@ if (typeof obRegistrarHandler === 'function') {
         .from('rendicion_cierre')
         .select('log_id')
         .eq('log_id', payload.log_id)
+        .neq('estado', 'rechazado')
         .limit(1);
       if (previas && previas.length) return {};
     }
@@ -5354,35 +4290,109 @@ if (typeof obRegistrarHandler === 'function') {
 
   // Remito pendiente: mismo upsert idempotente que el flujo online
   // (el nro_remito viene del talonario físico → replayable sin duplicar).
-  obRegistrarHandler('remito_pendiente', async (payload) => {
-    const { error } = await _db.from('remitos').upsert(payload, { onConflict: 'nro_remito' });
+  obRegistrarHandler('remito_pendiente', async (payload, blobs) => {
+    const remito = { ...payload };
+    const addonFileMap = Array.isArray(remito.remito_addon_file_map) ? remito.remito_addon_file_map : [];
+    delete remito.remito_addon_file_map;
+    if (remito.addons_version === 2 && addonFileMap.length && window.AuxiliosRemitoAddonsV2) {
+      const addonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence({
+        payload: {
+          addons_version: 2,
+          tolls: remito.tolls || [],
+          excesses: remito.excesses || [],
+          evidence: remito.evidence || [],
+          customer_collections: remito.customer_collections || null,
+        },
+        files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
+      }, _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito));
+      remito.evidence = addonPayload.evidence;
+    }
+    if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
+      return { realId: linked?.remito_id || null };
+    }
+    if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc(remito);
+      return { realId: intake?.remito_id || null };
+    }
+    const { data, error } = await _db.from('remitos')
+      .upsert(remito, { onConflict: 'nro_remito' })
+      .select('remito_id')
+      .single();
     if (error) throw new Error(error.message);
-    return {};
+    return { realId: data?.remito_id || null };
   });
 
   // Remito completo (wizard con firma y fotos hecho offline): sube los blobs
   // y hace el mismo upsert idempotente por nro_remito que el flujo online.
   obRegistrarHandler('remito_completo', async (payload, blobs) => {
     const remito = { ...payload };
-    if (blobs) {
-      const fotoUrls = [];
-      for (const [campo, blob] of Object.entries(blobs)) {
-        if (campo === 'firma') continue;
-        const nombre = `${remito.nro_remito}_${Date.now()}_${campo}.jpg`;
-        const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
-        if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
-        fotoUrls.push(_db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl);
+    const uploads = [];
+    const operationToken = _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito);
+    try {
+      const addonFileMap = Array.isArray(remito.remito_addon_file_map) ? remito.remito_addon_file_map : [];
+      delete remito.remito_addon_file_map;
+      if (remito.addons_version === 2 && window.AuxiliosRemitoAddonsV2) {
+        const addonPayload = await window.AuxiliosRemitoAddonsV2.uploadEvidence({
+          payload: {
+            addons_version: 2,
+            tolls: remito.tolls || [],
+            excesses: remito.excesses || [],
+            evidence: remito.evidence || [],
+            customer_collections: remito.customer_collections || null,
+          },
+          files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
+        }, operationToken);
+        remito.evidence = addonPayload.evidence;
+        (addonPayload.evidence || []).forEach(item => uploads.push({
+          bucket: 'remito-evidence-v2', path: item.storage_path, url: null,
+        }));
       }
-      if (fotoUrls.length) remito.foto_urls = fotoUrls;
-      if (blobs.firma) {
-        const url = await _subirFirmaStorage(blobs.firma, remito.nro_remito);
-        if (!url) throw new Error('No se pudo subir la firma al almacenamiento');
-        remito.firma_imagen_url = url;
+      if (blobs) {
+        const fotoUrls = [];
+        for (const [campo, blob] of Object.entries(blobs)) {
+          if (campo === 'firma' || campo.startsWith('addon_')) continue;
+          const nombre = `${remito.nro_remito}_${operationToken}_${campo}.jpg`;
+          const { error: ue } = await _db.storage.from('remitos').upload(nombre, blob, { upsert: true });
+          if (ue) throw new Error('No se pudo subir una foto: ' + ue.message);
+          const url = _db.storage.from('remitos').getPublicUrl(nombre).data.publicUrl;
+          fotoUrls.push(url);
+          uploads.push({ bucket: 'remitos', path: nombre, url });
+        }
+        if (fotoUrls.length) remito.foto_urls = fotoUrls;
+        if (blobs.firma) {
+          const path = _nombreFirmaStorage(remito.nro_remito, operationToken);
+          const url = await _subirFirmaStorage(blobs.firma, remito.nro_remito, operationToken);
+          if (!url) throw new Error('No se pudo subir la firma al almacenamiento');
+          remito.firma_imagen_url = url;
+          uploads.push({ bucket: 'firmas', path, url });
+        }
       }
+      if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
+        const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
+        return { realId: linked?.remito_id || null };
+      }
+      if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
+        const intake = await guardarRemitoAdHoc(remito);
+        return { realId: intake?.remito_id || null };
+      }
+      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remito;
+      const { data, error } = await _db.from('remitos')
+        .upsert(legacyRemito, { onConflict: 'nro_remito' })
+        .select('remito_id')
+        .single();
+      if (error) throw new Error(error.message);
+      return { realId: data?.remito_id || null };
+    } catch (error) {
+      if (uploads.length && typeof limpiarEvidenciaRemitoFallido === 'function') {
+        await limpiarEvidenciaRemitoFallido({
+          nroRemito: remito.nro_remito,
+          clientOperationId: remito.client_operation_id || null,
+          uploads,
+        });
+      }
+      throw error;
     }
-    const { error } = await _db.from('remitos').upsert(remito, { onConflict: 'nro_remito' });
-    if (error) throw new Error(error.message);
-    return {};
   });
 
   // Firma de remito: sube el blob de la firma al bucket 'firmas' con el mismo
@@ -5390,7 +4400,7 @@ if (typeof obRegistrarHandler === 'function') {
   // viaja en el payload y se agrega al historial recién al sincronizar (el
   // historial existente no se puede leer offline).
   obRegistrarHandler('remito_firmar', async (payload, blobs) => {
-    const { nro_remito, edicion, ...campos } = payload;
+    const { nro_remito, edicion, operator_service_id, driver_intake_id, client_operation_id, document_source, ...campos } = payload;
 
     let firmaUrl = null;
     if (blobs && blobs.firma) {
@@ -5400,13 +4410,41 @@ if (typeof obRegistrarHandler === 'function') {
 
     const { data: remitoActual } = await _db
       .from('remitos')
-      .select('historial_ediciones')
+      .select('historial_ediciones,operator_service_id,driver_intake_id,client_operation_id,document_source')
       .eq('nro_remito', nro_remito)
       .single();
     const historial = Array.isArray(remitoActual?.historial_ediciones)
       ? remitoActual.historial_ediciones
       : [];
     if (edicion) historial.push(edicion);
+
+    const serviceId = operator_service_id || remitoActual?.operator_service_id || null;
+    if (serviceId && typeof guardarRemitoVinculado === 'function') {
+      const linked = await guardarRemitoVinculado({
+        nro_remito,
+        ...campos,
+        firma_imagen_url: firmaUrl,
+        operator_service_id: serviceId,
+        client_operation_id: client_operation_id || remitoActual?.client_operation_id || null,
+      }, serviceId);
+      return { realId: linked?.remito_id || null };
+    }
+
+    const adHoc = document_source === 'driver_ad_hoc'
+      || !!driver_intake_id
+      || remitoActual?.document_source === 'driver_ad_hoc'
+      || !!remitoActual?.driver_intake_id;
+    if (adHoc && typeof guardarRemitoAdHoc === 'function') {
+      const intake = await guardarRemitoAdHoc({
+        nro_remito,
+        ...campos,
+        firma_imagen_url: firmaUrl,
+        driver_intake_id: driver_intake_id || remitoActual?.driver_intake_id || null,
+        client_operation_id: client_operation_id || remitoActual?.client_operation_id || null,
+        document_source: 'driver_ad_hoc',
+      });
+      return { realId: intake?.remito_id || null };
+    }
 
     const { data: actualizados, error } = await _db.from('remitos')
       .update({ ...campos, firma_imagen_url: firmaUrl, historial_ediciones: historial })
@@ -5531,13 +4569,14 @@ window.addEventListener('offline', _actualizarEstadoConexion);
 window.addEventListener('online',  _actualizarEstadoConexion);
 
 function _actualizarEstadoConexion() {
+  if (typeof _fuelBusy !== 'undefined' && _fuelBusy) return;
   const btn   = document.getElementById('cb-scan-btn');
   const label = document.getElementById('cb-scan-label');
   if (!btn || !label) return;
   if (navigator.onLine) {
     btn.disabled      = false;
     btn.style.opacity = '1';
-    label.textContent = 'Escanear ticket con IA';
+    label.textContent = 'Escanear ticket';
   } else {
     btn.disabled      = true;
     btn.style.opacity = '0.4';
@@ -5591,11 +4630,11 @@ const _OB_ETIQUETAS = {
   jornada_abrir:    () => '🚚 Inicio de jornada',
   jornada_cerrar:   () => '🏁 Cierre de jornada',
   remito_pendiente: p  => `🧾 Remito N° ${p?.nro_remito || '—'}`,
-  remito_firmar:    p  => `✍️ Firma remito N° ${p?.nro_remito || '—'}`,
+  remito_firmar:    p  => `✍ Firma remito N° ${p?.nro_remito || '—'}`,
   fuel:             () => '⛽ Carga de combustible',
   rendicion:        () => '💵 Rendición',
   tire_check:       () => '🛞 Control de gomas',
-  incidente:        () => '⚠️ Incidente'
+  incidente:        () => '⚠ Incidente'
 };
 
 async function abrirColaOffline() {
@@ -5697,7 +4736,9 @@ async function _renderIndicadorOffline() {
 // ── LECTOR DE TICKET OCR ──────────────────────
 async function leerTicketCombustible(input) {
   const file = input.files[0];
-  if (!file) return;
+  if (!file || _fuelBusy) return;
+  _setFuelBusy('scan');
+  try {
 
   const status = document.getElementById('cb-scan-status');
   const mostrar = (msg, color, bg) => {
@@ -5705,10 +4746,10 @@ async function leerTicketCombustible(input) {
     status.style.color = color;
     status.style.background = bg;
     status.style.border = `1px solid ${color}44`;
-    status.innerHTML = msg;
+    status.textContent = msg;
   };
 
-  mostrar('⏳ Analizando ticket con IA...', 'var(--amber)', 'var(--amber-lo)');
+  mostrar('Leyendo ticket… Esperá un momento.', 'var(--amber)', 'var(--amber-lo)');
 
   // Comprimir imagen si es muy grande
   const base64 = await new Promise((resolve, reject) => {
@@ -5744,13 +4785,13 @@ try {
 
     if (!res.ok) { 
       const errData = await res.json().catch(() => ({}));
-      mostrar(`❌ Error: ${errData.error || res.statusText}`, 'var(--red)', 'rgba(255,59,48,0.1)'); 
+      mostrar('No se pudo leer el ticket. Completá los datos manualmente o volvé a sacar la foto.', 'var(--amber)', 'var(--amber-lo)');
       return; 
     }
     
     const d = await res.json();
     if (d.error || !d.success) { 
-      mostrar(`❌ ${d.error || 'No se pudo leer el ticket'}`, 'var(--red)', 'rgba(255,59,48,0.1)'); 
+      mostrar('No se pudo leer el ticket. Completá los datos manualmente o volvé a sacar la foto.', 'var(--amber)', 'var(--amber-lo)');
       return; 
     }
 
@@ -5801,35 +4842,38 @@ try {
     ].filter(Boolean);
 
     mostrar(
-      `✅ Detectado: ${campos.length ? campos.join(' · ') : 'Verificá los campos'}<br><span style="font-size:10px;opacity:0.7">Revisá que los datos sean correctos antes de guardar</span>`,
+      'Datos leídos. Revisá y corregí los campos antes de guardar.',
       'var(--green)', 'rgba(52,199,89,0.1)'
     );
   } catch (err) {
-    mostrar('❌ No se pudo conectar con el servidor local', 'var(--red)', 'rgba(255,59,48,0.1)');
+    mostrar('No se pudo leer el ticket. Completá los datos manualmente o reintentá.', 'var(--red)', 'rgba(255,59,48,0.1)');
     console.error('[OCR]', err);
   }
 
   // Limpiar el input para permitir re-escanear la misma imagen
-  input.value = '';
+  } catch (error) {
+    const status = document.getElementById('cb-scan-status');
+    if (status) { status.style.display = 'block'; status.textContent = 'No se pudo abrir la foto. Elegí otra imagen o completá los datos manualmente.'; }
+  } finally { input.value = ''; _setFuelBusy(''); }
 }
 
 // ── GUARDAR — COMBUSTIBLE ─────────────────────
 let selectedPayMethod = '';
 function selectPayBtn(prefix, method) {
-  document.querySelectorAll('[id^="'+prefix+'-"]').forEach(el => {
-    el.style.borderColor = 'var(--border)'; el.style.background = 'var(--bg)';
+  ['efectivo','transferencia','app'].forEach(name => {
+    const el=document.getElementById(prefix+'-'+name);
+    if(el) { el.setAttribute('aria-pressed',String(name===method)); el.style.borderColor=name===method?'var(--amber)':'var(--border)'; el.style.background=name===method?'var(--amber-lo)':'var(--bg)'; }
   });
-  const sel = document.getElementById(prefix + '-' + method);
-  if (sel) { sel.style.borderColor = 'var(--amber)'; sel.style.background = 'var(--amber-lo)'; }
-  selectedPayMethod = method;
-  const appSel = document.getElementById('cb-app-select');
-  if (appSel) appSel.style.display = method === 'app' ? 'block' : 'none';
+  selectedPayMethod=method;
+  const appSel=document.getElementById('cb-app-select');
+  if(appSel) appSel.style.display=method==='app'?'block':'none';
 }
 
 let selectedApp = '';
 function selectAppBtn(el, name) {
   document.querySelectorAll('.app-btn2').forEach(o => { o.style.borderColor='var(--border)'; o.style.background='var(--bg)'; });
   el.style.borderColor = 'var(--cyan)'; el.style.background = 'rgba(46,196,214,0.1)';
+  document.querySelectorAll('.app-btn2').forEach(o => o.setAttribute('aria-pressed',String(o===el)));
   selectedApp = name;
 }
 
@@ -5840,7 +4884,20 @@ function calcCombTotal() {
   if (el) el.textContent = '$' + (l * p).toLocaleString('es-AR');
 }
 
+let _fuelBusy = '';
+function _setFuelBusy(state) {
+  _fuelBusy = state;
+  document.querySelectorAll('#modal-combustible button, #modal-combustible input').forEach(el => { el.disabled = !!state; });
+  const btn=document.getElementById('btn-guardar-combustible');
+  if(btn) { btn.textContent=state==='save'?'Guardando carga…':'Guardar carga'; btn.style.pointerEvents=''; }
+  const status=document.getElementById('cb-save-status');
+  if(status) status.textContent=state==='save'?'Registrando la carga. Esperá un momento.':'';
+  const box=document.querySelector('#modal-combustible .modal-body');
+  if(box) box.setAttribute('aria-busy',String(!!state));
+  if(!state) _actualizarEstadoConexion();
+}
 async function guardarCombustible() {
+  if (_fuelBusy) return;
   const litros = parseFloat(document.getElementById('cb-litros')?.value);
   const precio = parseFloat(document.getElementById('cb-precio')?.value);
   const fecha  = document.getElementById('cb-fecha')?.value;
@@ -5874,6 +4931,8 @@ async function guardarCombustible() {
     gas_station:     estacion,
     created_at_device: new Date().toISOString(),
   };
+  _setFuelBusy('save');
+  try {
   datos.log_id = await _resolverLogIdLocal(datos.log_id);
 
   // Sin señal, o jornada abierta offline aún sin sincronizar (log_id TMP-*):
@@ -5885,7 +4944,7 @@ async function guardarCombustible() {
       payload: datos,
       dependeDe: _logIdEsTemporal(datos.log_id) ? datos.log_id : null
     });
-    toast('Sin señal — carga guardada localmente. Se sincronizará al recuperar conexión.', 'warning');
+    operationFeedback('Carga guardada', 'Se sincronizará automáticamente al recuperar conexión.', 'success', 2400);
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
     return;
@@ -5899,24 +4958,33 @@ async function guardarCombustible() {
   if (btn) { btn.textContent = '⛽ Guardar carga'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado.ok) {
-    toast(`${litros}L registrados correctamente`, 'success');
+    operationFeedback('Carga registrada', `${litros} litros guardados correctamente.`, 'success', 2200);
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
     cargarScreenCamion();
   } else {
-    toast(`Error al guardar: ${resultado.errorMsg || 'Error desconocido'}`, 'error');
+    operationFeedback('Carga inválida', resultado.errorMsg || 'No se pudo registrar la carga de combustible.', 'error', 2800);
   }
+  } catch (error) {
+    console.error('[Combustible]',error);
+    _modalError('cb-error','No se pudo guardar la carga. Revisá la conexión y reintentá.');
+  } finally { _setFuelBusy(''); }
 }
 
 // ── NEUMÁTICOS & FRENOS ───────────────────────
+function seleccionarCondicion(id, value) {
+  if (!['neu-cond','neu-frenos'].includes(id) || !['','bueno','regular','malo'].includes(value)) return;
+  document.getElementById(id).value = value;
+  document.querySelectorAll('[data-condition="'+id+'"]').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.value === value)));
+}
 function openNeumaticosModal() {
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('neu-camion-info');
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
   const fecha = document.getElementById('neu-fecha');
   if (fecha) fecha.value = new Date().toISOString().slice(0, 10);
-  ['neu-cond','neu-frenos'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  ['neu-psi','neu-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['neu-cond','neu-frenos'].forEach(id => seleccionarCondicion(id, ''));
+  ['neu-notas'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   _modalError('neu-error', '');
   openModal('modal-neumaticos');
 }
@@ -5950,17 +5018,27 @@ function renderUltimoControlNeumaticos(data) {
   }
 }
 
+let _guardandoNeumaticos = false;
 async function guardarNeumaticos() {
+  if (_guardandoNeumaticos) return;
+  _guardandoNeumaticos = true;
+  const button = document.getElementById('btn-guardar-neumaticos');
+  if (button) { button.disabled = true; button.setAttribute('aria-busy','true'); }
+  try { await _guardarNeumaticos(); }
+  catch (error) { console.error('Control neumáticos:', error); _modalError('neu-error','No se pudo guardar el control. Reintentá.'); }
+  finally {
+    _guardandoNeumaticos = false;
+    if (button) { button.disabled = false; button.removeAttribute('aria-busy'); button.textContent = '🔩 Guardar control'; button.style.pointerEvents = 'auto'; }
+  }
+}
+async function _guardarNeumaticos() {
   const cond   = document.getElementById('neu-cond')?.value;
   const frenos = document.getElementById('neu-frenos')?.value;
   const fecha  = document.getElementById('neu-fecha')?.value;
-  const psi    = parseFloat(document.getElementById('neu-psi')?.value) || null;
   const notas  = document.getElementById('neu-notas')?.value || null;
 
   if (!cond)                        { _modalError('neu-error', 'Seleccioná el estado de los neumáticos'); return; }
   if (!frenos)                      { _modalError('neu-error', 'Seleccioná el estado de los frenos'); return; }
-  if (psi !== null && psi <= 0)     { _modalError('neu-error', 'La presión PSI debe ser mayor a 0'); return; }
-  if (psi !== null && psi > 250)    { _modalError('neu-error', 'La presión PSI parece incorrecta (máx. 250)'); return; }
   _modalError('neu-error', '');
 
   const btn = document.getElementById('btn-guardar-neumaticos');
@@ -5995,7 +5073,6 @@ async function guardarNeumaticos() {
     check_date:      fechaCheck,
     tire_condition:  cond,
     brake_condition: frenos,
-    pressure_psi:    psi,
     notes:           notas,
   };
 
@@ -6061,7 +5138,7 @@ async function openAsignarPlanModal() {
   // 3. Pobramos el select
   if (select) {
     if (catalogo.length === 0) {
-      select.innerHTML = '<option value="">⚠️ No hay planes globales creados</option>';
+      select.innerHTML = '<option value="">⚠ No hay planes globales creados</option>';
       return;
     }
 
@@ -6096,103 +5173,20 @@ async function asignarPlanAlCamion() {
     toast('Plan asignado exitosamente', 'success');
     closeModal('modal-asignar-plan');
     
-    // Refrescamos la UI del camión
-    const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-    renderPlanes(planesActualizados);
+    await _refrescarPlanesCamion();
   } else {
     toast(`Error: ${resultado.errorMsg}`, 'error');
   }
 }
 
-function renderPlanes(data) {
-  const lista = document.getElementById('planes-lista');
-  if (!lista) return;
 
-  if (data?._error) {
-    lista.innerHTML = '<div style="text-align:center;color:var(--red);padding:20px;font-size:13px">⚠ Error al cargar planes de service. Revisá la conexión.</div>';
-    return;
-  }
-
-  const esAdmin = PERFIL_USUARIO?.roles?.name === 'administracion' ||
-                  PERFIL_USUARIO?.roles?.name === 'supervision';
-
-  if (!data?.length) {
-    lista.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin planes de service</div>';
-    return;
-  }
-
-  const estadoColor = { al_dia:'var(--green)', proximo:'var(--amber)', vencido:'var(--red)', sin_registro:'var(--muted)', sin_odometro:'var(--muted)' };
-  const estadoLabel = { al_dia:'✓ Al día', proximo:'⚠ Próximo', vencido:'✕ Vencido', sin_registro:'— Sin ejecución', sin_odometro:'— Sin odómetro' };
-
-  lista.innerHTML = data.map(p => {
-    const estado   = p.plan_estado || 'sin_registro';
-    const color    = estadoColor[estado];
-    const label    = estadoLabel[estado];
-    const kmInfo   = p.interval_km    ? `Cada <b style="color:var(--amber);font-family:'DM Mono'">${p.interval_km.toLocaleString('es-AR')} km</b>` : '';
-    const hsInfo   = p.interval_hours ? `${p.interval_km ? ' / ' : 'Cada '}<b style="color:var(--blue);font-family:'DM Mono'">${p.interval_hours.toLocaleString('es-AR')} hs</b>` : '';
-    const nextDue  = p.next_due_km    ? p.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const restante = p.km_restantes  != null ? `${p.km_restantes > 0 ? 'Faltan' : 'Excedidos'} <b>${Math.abs(p.km_restantes).toLocaleString('es-AR')} km</b>` : '';
-    const progreso = (p.next_due_km && p.interval_km && p.km_restantes != null)
-      ? Math.min(100, Math.max(0, Math.round(((p.interval_km - p.km_restantes) / p.interval_km) * 100)))
-      : 0;
-
-    const kebab = esAdmin ? `
-      <div class="kebab-wrap">
-        <button class="kebab-btn" onclick="event.stopPropagation();togglePlanMenu(${p.plan_id})" aria-label="Acciones del plan">⋮</button>
-        <div class="kebab-menu" id="plan-menu-${p.plan_id}">
-          <button class="kebab-item" onclick="event.stopPropagation();editarParametrosPlan(${p.plan_id})">✏️ Editar parámetros</button>
-          <button class="kebab-item danger" onclick="event.stopPropagation();desvincularPlanUI(${p.plan_id})">🔌 Desvincular plan</button>
-        </div>
-      </div>` : '';
-
-    return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:flex-start;gap:12px">
-        <div style="width:40px;height:40px;border-radius:8px;background:var(--amber-lo);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔧</div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:600;flex:1;min-width:0">${p.name}</span>
-            <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${color}22;color:${color};font-weight:600">${label}</span>
-          </div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">${kmInfo}${hsInfo}</div>
-          <div style="background:var(--border);border-radius:3px;height:4px;overflow:hidden;margin-bottom:8px">
-            <div style="width:${progreso}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s"></div>
-          </div>
-          <div>
-            <div style="font-size:9px;color:var(--muted)">PRÓXIMO VENCIMIENTO</div>
-            <div style="font-family:'DM Mono';font-size:14px;font-weight:700;color:${color}">${nextDue}</div>
-            ${restante ? `<div style="font-size:10px;color:var(--muted)">${restante}</div>` : ''}
-          </div>
-        </div>
-        ${kebab}
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function togglePlanMenu(planId) {
-  const menu = document.getElementById(`plan-menu-${planId}`);
-  if (!menu) return;
-  const wasOpen = menu.classList.contains('open');
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  if (!wasOpen) menu.classList.add('open');
-}
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('.kebab-wrap')) return;
   document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
 });
 
-async function desvincularPlanUI(masterPlanId) {
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  return desactivarPlanUI(masterPlanId);
-}
 
-function editarParametrosPlan(masterPlanId) {
-  document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
-  const plan = (_camionPlanes || []).find(p => p.plan_id === masterPlanId);
-  if (!plan) { toast('No se encontró el plan', 'error'); return; }
-  toast('Edición de parámetros por camión: próximamente (requiere overrides en truck_subscriptions)', 'info');
-}
 
 async function desactivarPlanUI(masterPlanId) {
   if (!_truckActual?.truck_id) { toast('Error: no hay camión activo', 'error'); return; }
@@ -6207,15 +5201,19 @@ async function desactivarPlanUI(masterPlanId) {
   }
 
   toast('Plan desvinculado del camión', 'success');
-  const planes = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-  renderPlanes(planes);
+  await _refrescarPlanesCamion();
 }
 
 
 // ── HISTORIAL DE SERVICES ─────────────────────
 let _planesCache = [];
+let _serviceEditId = null;
+let _serviceSaving = false;
 
-async function openServiceModal() {
+async function openServiceModal(registro = null) {
+  _serviceEditId = registro?.maintenance_id || null;
+  const title = document.querySelector("#modal-service-log .modal-head-title");
+  if (title) title.textContent = registro ? "Editar service realizado" : "Registrar service";
   if (!_truckActual?.truck_id) { toast('No hay un camión activo para esta jornada', 'error'); return; }
   const info = document.getElementById('sl-camion-info');
   if (info) info.textContent = `${_truckActual.plate || '—'} · ${_truckActual.brand || ''} ${_truckActual.model || ''}`;
@@ -6225,6 +5223,9 @@ async function openServiceModal() {
   // KM por defecto = odómetro actual del camión (asume que el service se hace ahora)
   const kmInput = document.getElementById('sl-km');
   if (kmInput && _truckActual.current_km != null) kmInput.value = _truckActual.current_km;
+  // Horas por defecto = horas de motor actuales (las actualiza cada cierre de jornada)
+  const hsInput = document.getElementById('sl-horas');
+  if (hsInput && Number(_truckActual.current_hours) > 0) hsInput.value = _truckActual.current_hours;
   // Estado inicial: KM visible (la mayoría de planes son por km), horas oculto
   const kmGroup = document.getElementById('sl-km-group');
   const horasGroup = document.getElementById('sl-horas-group');
@@ -6254,6 +5255,23 @@ async function openServiceModal() {
       select.appendChild(opt);
     });
   }
+  if (registro && select) {
+    if (![...select.options].some(o => String(o.value) === String(registro.master_plan_id))) {
+      const opt = document.createElement('option');
+      opt.value = registro.master_plan_id;
+      opt.textContent = registro.master_service_plans?.name || 'Plan del registro';
+      opt.dataset.intervalKm = registro.master_service_plans?.interval_km || 0;
+      opt.dataset.intervalHours = registro.master_service_plans?.interval_hours || 0;
+      select.appendChild(opt);
+    }
+    select.value = registro.master_plan_id;
+    onServicePlanChange();
+    const valores = { 'sl-fecha': String(registro.performed_at).slice(0,10), 'sl-km': registro.km_at_service, 'sl-horas': registro.hours_at_service, 'sl-costo': registro.cost, 'sl-taller': registro.workshop_name, 'sl-notas': registro.notes };
+    Object.entries(valores).forEach(([id, value]) => { document.getElementById(id).value = value ?? ''; });
+    calcNextService();
+  }
+  const save = document.getElementById('btn-guardar-service');
+  if (save) save.textContent = registro ? 'Guardar cambios' : 'Guardar service';
   validateServiceForm();
   openModal('modal-service-log');
 }
@@ -6277,6 +5295,7 @@ function onServicePlanChange() {
   if (kmGroup) kmGroup.style.display = needsKm ? '' : 'none';
   if (horasGroup) horasGroup.style.display = needsHrs ? '' : 'none';
   if (!needsHrs) { const h = document.getElementById('sl-horas'); if (h) h.value = ''; }
+  else { const h = document.getElementById('sl-horas'); if (h && !h.value && Number(_truckActual?.current_hours) > 0) h.value = _truckActual.current_hours; }
   if (!needsKm)  { const k = document.getElementById('sl-km');    if (k) k.value = ''; }
   calcNextService();
   validateServiceForm();
@@ -6317,94 +5336,26 @@ function validateServiceForm() {
   btn.disabled = !ok;
 }
 
-function renderHistorialServices(data) {
-  const tbody = document.getElementById('tbody-services');
-  const mList = document.getElementById('mobile-services-list');
-  if (!tbody) return;
-
-  if (!data?.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Sin services registrados</td></tr>';
-    if (mList) mList.innerHTML = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Sin services registrados</div>`;
-    return;
-  }
-
-  tbody.innerHTML = data.map(s => {
-    const fecha   = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
-    const km      = (s.km_at_service || 0).toLocaleString('es-AR');
-    const nextKm  = s.next_due_km ? s.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const costo   = s.cost ? Number(s.cost).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }) : '—';
-    const taller  = s.workshop_name || '—';
-    const plan    = s.master_service_plans?.name || '—';
-    return `<tr>
-      <td>${fecha}</td>
-      <td style="font-weight:600">${plan}</td>
-      <td style="font-family:'DM Mono'">${km} km</td>
-      <td style="font-size:11px;color:var(--muted)">${taller}</td>
-      <td style="font-family:'DM Mono';color:var(--amber)">${costo}</td>
-      <td style="font-family:'DM Mono';font-size:11px;color:var(--amber)">${nextKm}</td>
-    </tr>`;
-  }).join('');
-
-  // ── Mobile: lista compacta ──
-  if (!mList) return;
-  mList.innerHTML = '';
-  data.forEach(s => {
-    const fecha  = new Date(s.performed_at + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
-    const km     = (s.km_at_service || 0).toLocaleString('es-AR');
-    const nextKm = s.next_due_km ? s.next_due_km.toLocaleString('es-AR') + ' km' : '—';
-    const costo  = s.cost ? Number(s.cost).toLocaleString('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 }) : '—';
-    const taller = s.workshop_name || '—';
-    const plan   = s.master_service_plans?.name || '—';
-    const titulo = `${plan} — ${fecha}`;
-    const detalle = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">KM al service</div>
-          <div style="color:var(--text);font-size:12px;font-family:'DM Mono';font-weight:600">${km} km</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Taller</div>
-          <div style="color:var(--text);font-size:12px">${taller}</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Costo</div>
-          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${costo}</div>
-        </div>
-        <div>
-          <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Próximo</div>
-          <div style="color:var(--amber);font-size:12px;font-family:'DM Mono'">${nextKm}</div>
-        </div>
-      </div>`;
-
-    const row = document.createElement('div');
-    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid #4ade80;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
-    row.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${plan}</div>
-        <div style="color:var(--muted);font-size:10px">${fecha} · ${km} km</div>
-      </div>
-      <span style="color:var(--muted2);font-size:16px;flex-shrink:0">›</span>`;
-    row.onclick = () => _abrirDetalleMovil(titulo, detalle);
-    mList.appendChild(row);
-  });
-}
 
 async function guardarServiceLog() {
+  if (_serviceSaving) return;
   const planId  = document.getElementById('sl-plan')?.value;
   const { needsKm, needsHrs } = _slNeeds();
   const km      = parseInt(document.getElementById('sl-km')?.value);
   const hrs     = parseInt(document.getElementById('sl-horas')?.value);
   const fecha   = document.getElementById('sl-fecha')?.value;
   const taller  = document.getElementById('sl-taller')?.value || null;
-  const costo   = parseFloat(document.getElementById('sl-costo')?.value) || null;
+  const costoTexto = document.getElementById('sl-costo')?.value?.trim();
+  const costo = costoTexto ? Number(costoTexto) : null;
   const notas   = document.getElementById('sl-notas')?.value || null;
 
+  if (!fecha) { _modalError('sl-error', 'Ingresá la fecha del service'); return; }
   if (!planId)           { _modalError('sl-error', 'Seleccioná el plan de service'); return; }
   if (needsKm && (!km || isNaN(km))) { _modalError('sl-error', 'Ingresá los KM al realizar el service'); return; }
   if (needsKm && km <= 0)            { _modalError('sl-error', 'Los KM deben ser un valor positivo mayor a cero'); return; }
   if (needsHrs && (!hrs || isNaN(hrs))) { _modalError('sl-error', 'Ingresá las horas de motor al realizar el service'); return; }
   if (needsHrs && hrs <= 0)             { _modalError('sl-error', 'Las horas deben ser un valor positivo mayor a cero'); return; }
-  if (costo !== null && costo < 0) { _modalError('sl-error', 'El costo no puede ser negativo'); return; }
+  if (costo !== null && (!Number.isFinite(costo) || costo < 0)) { _modalError('sl-error', 'El costo debe ser un número igual o mayor a cero'); return; }
   _modalError('sl-error', '');
 
   if (needsKm && _truckActual?.current_km) {
@@ -6425,7 +5376,9 @@ async function guardarServiceLog() {
   if (btn) { btn.textContent = 'Guardando...'; btn.disabled = true; btn.style.pointerEvents = 'none'; }
 
   // NUEVO: Enviamos master_plan_id y recibimos la respuesta estandarizada
-  const resultado = await registrarServiceOptimizado({
+  _serviceSaving = true;
+  const guardar = _serviceEditId ? datos => modificarServiceRealizado(_serviceEditId, _truckActual.truck_id, datos) : registrarServiceOptimizado;
+  const resultado = await guardar({
     truck_id:         _truckActual.truck_id,
     master_plan_id:   parseInt(planId),
     performed_at:     fecha || new Date().toLocaleDateString('sv-SE'),
@@ -6438,17 +5391,14 @@ async function guardarServiceLog() {
     notes:            notas,
   });
 
-  if (btn) { btn.textContent = '🔧 Guardar service'; btn.style.pointerEvents = 'auto'; validateServiceForm(); }
+  _serviceSaving = false;
+  if (btn) { btn.textContent = _serviceEditId ? 'Guardar cambios' : 'Guardar service'; btn.style.pointerEvents = 'auto'; validateServiceForm(); }
 
   if (resultado.ok) {
-    toast('Service registrado correctamente', 'success');
+    toast(_serviceEditId ? 'Service actualizado correctamente' : 'Service registrado correctamente', 'success');
     closeModal('modal-service-log');
     
-    // Refrescamos ambas tablas (el log y las barras de progreso de planes)
-    const services = await cargarHistorialServices(_truckActual.truck_id);
-    renderHistorialServices(services);
-    const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id);
-    renderPlanes(planesActualizados);
+    await _refrescarPlanesCamion();
   } else {
     // Si falla por internet o validación, mostramos el motivo real
     toast(`Error al guardar: ${resultado.errorMsg}`, 'error');
@@ -6542,7 +5492,7 @@ function procesarArchivoReal(input, statusId, iconId) {
   const file = input.files[0];
   const statusEl = document.getElementById(statusId);
   const iconEl = document.getElementById(iconId);
-  const boxEl = input.closest('.photo-upload');
+  const boxEl = input.closest('.photo-upload, .foto-slot');   // el flujo móvil del remito usa .foto-slot
 
   console.log("Procesando archivo:", file.name, "| Tipo:", file.type, "| Tamaño:", (file.size / 1024 / 1024).toFixed(2), "MB");
 
@@ -6572,8 +5522,10 @@ function procesarArchivoReal(input, statusId, iconId) {
   
   reader.onload = function(e) {
     try {
-      boxEl.style.borderColor = 'var(--green)';
-      boxEl.style.background = 'var(--bg)';
+      if (boxEl) {
+        boxEl.style.borderColor = 'var(--green)';
+        boxEl.style.background = 'var(--bg)';
+      }
 
       if (iconEl) iconEl.textContent = '✅';
       if (statusEl) {
@@ -6586,13 +5538,13 @@ function procesarArchivoReal(input, statusId, iconId) {
       }
 
       // ── INYECCIÓN 2: UX Cambio de subtítulo ──
-      let subEl = boxEl.querySelector('.pu-sub');
+      let subEl = boxEl && boxEl.querySelector('.pu-sub');
       if (subEl) {
         subEl.textContent = '🔄 Toca para volver a tomar foto';
         subEl.style.color = 'var(--text)'; 
       }
 
-      if (file.type.startsWith('image/')) {
+      if (boxEl && file.type.startsWith('image/')) {
         let preview = boxEl.querySelector('.img-preview');
         if (!preview) {
           preview = document.createElement('img');
@@ -6656,7 +5608,12 @@ function actualizarContadorFotosRemito() {
 // ═══════════════════════════════════════════
 // 2. FUNCIONES DE RENDERIZADO Y LÓGICA
 // ═══════════════════════════════════════════
-function generarHtmlPill(estado) {
+function generarHtmlPill(estado, remito = null) {
+  if (estado === 'firmado' && remito?.addonsVersion === 2) {
+    if (remito.addonsReviewStatus === 'approved') return `<span class="pill pill-green">✓ Aprobado</span>`;
+    if (remito.addonsReviewStatus === 'adjusted') return `<span class="pill pill-blue">Ajustado por Administración</span>`;
+    return `<span class="pill pill-amber">En revisión</span>`;
+  }
   if (estado === 'firmado') return `<span class="pill pill-green">✓ Firmado</span>`;
   if (estado === 'anulado') return `<span class="pill pill-red">🚫 Anulado</span>`;
   if (estado === 'cerrado_admin') return `<span class="pill" style="background:rgba(88,166,255,0.12);color:var(--blue)">🏢 Cerrado por admin</span>`;
@@ -6672,30 +5629,155 @@ function _remitoIncompleto(r) {
   return !r.telefono || r.km === '—' || !r.fotosCount || sinFirma;
 }
 
+// Chips de la barra de Remitos (admin/supervisión): solo lo que pide una acción.
+// Respetan los filtros activos salvo el de estado, y al tocarlos filtran la lista.
 async function actualizarKpisRemitos() {
   const rol = PERFIL_USUARIO?.roles?.name;
-  const cont = document.getElementById('remitos-kpis');
-  if (!cont) return;
-  const btnNuevo = document.getElementById('btn-remito-nuevo-admin');
-  if (btnNuevo) btnNuevo.style.display = rol === 'administracion' ? '' : 'none';
+  // Los remitos nacen del chofer o de un Servicio: Administración y Supervisión solo los consultan.
+  document.getElementById('btn-nuevo-remito-fab')?.classList.toggle('is-role-hidden', !rol || rol === 'administracion' || rol === 'supervision');
   const ftabCerrado = document.getElementById('ftab-cerrado-admin');
   if (ftabCerrado) ftabCerrado.style.display = (rol === 'administracion' || rol === 'supervision') ? '' : 'none';
-  if (rol !== 'administracion' && rol !== 'supervision') { cont.style.display = 'none'; return; }
-  cont.style.display = 'flex';
+  window.RemitosCalidad?.syncRole();
+  window.RemitosCalidad?.refrescarBadge();
+  const host = document.getElementById('rmx-chips');
+  if (!host) return;
+  if ((rol !== 'administracion' && rol !== 'supervision') || typeof contarRemitosFiltrados !== 'function') { host.innerHTML = ''; return; }
+  const base = { ...(window._remitosFiltros || _leerFiltrosRemitosUI()) };
+  const turno = (window._rmxChipsTurno || 0) + 1; window._rmxChipsTurno = turno;
+  const [pend, rev, env] = await Promise.all([
+    contarRemitosFiltrados({ ...base, estado: 'pendiente' }),
+    contarRemitosFiltrados({ ...base, estado: 'revisar' }),
+    contarRemitosFiltrados({ ...base, estado: 'sin_enviar' }),
+  ]);
+  if (turno !== window._rmxChipsTurno) return;
+  const chip = (estado, n, txt, cls) => n ? `<button type="button" class="rmx-chip ${cls}${filtroEstado === estado ? ' is-active' : ''}" onclick="_rmxChip('${estado}')" title="${filtroEstado === estado ? 'Quitar filtro' : 'Ver solo estos'}"><b>${n}</b> ${txt}</button>` : '';
+  host.innerHTML = chip('pendiente', pend, pend === 1 ? 'pendiente' : 'pendientes', 'is-amber') + chip('revisar', rev, 'por revisar', 'is-red') + chip('sin_enviar', env, 'por enviar', 'is-amber');
+}
 
-  const filas = await fetchRemitosFiltrados({ filtros: window._remitosFiltros || {} });
-  const activos = filas.filter(r => r.estado !== 'anulado');
+// Estado en la tabla de Remitos: color solo si pide acción.
+// Naranja = pendiente, rojo = por revisar; el resto (firmado, aprobado, ajustado…) va neutro.
+function _rmxEstadoHTML(r, asignadoAdmin = false) {
+  const tag = (cls, txt) => `<span class="rmx-state ${cls}">${txt}</span>`;
+  if (r.estado === 'anulado') return tag('is-void', 'Anulado');
+  if (r.estado === 'cerrado_admin') return tag('is-ok', 'Cerrado por admin');
+  if (r.estado === 'firmado') {
+    if (r.addonsVersion === 2 && r.addonsReviewStatus === 'approved') return tag('is-ok', 'Aprobado');
+    if (r.addonsVersion === 2 && r.addonsReviewStatus === 'adjusted') return tag('is-ok', 'Ajustado');
+    if (r.addonsVersion === 2) return tag('is-review', 'Por revisar');
+    return tag('is-ok', 'Firmado');
+  }
+  return tag('is-pending', asignadoAdmin ? 'Pendiente · asignado' : 'Pendiente');
+}
 
-  const facturado = activos.reduce((s, r) =>
-    s + (parseInt(r.peaje) || 0) + (parseInt(r.excedente) || 0) + (parseInt(r.otros) || 0), 0);
-  const km = activos.reduce((s, r) => s + (parseInt(r.km) || 0), 0);
-  const incompletos = activos.filter(_remitoIncompleto).length;
+function _rmxChip(estado) {
+  filtroEstado = filtroEstado === estado ? 'todos' : estado;
+  aplicarFiltrosRemitos();
+}
 
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('rkpi-cantidad',    activos.length);
-  set('rkpi-facturado',   '$ ' + facturado.toLocaleString('es-AR'));
-  set('rkpi-km',          km.toLocaleString('es-AR') + ' km');
-  set('rkpi-incompletos', incompletos);
+// ── Remitos · selección múltiple ────────────────────────────────
+// La selección se mantiene al cambiar de página y se limpia al cambiar filtros.
+function _rmxEsc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function _rmxSeleccion() { return window._rmxSel || (window._rmxSel = new Map()); }
+function _rmxLimpiarSeleccion() { _rmxSeleccion().clear(); window._rmxSelTodos = false; _rmxSyncSeleccionUI(); }
+// Con la página completa marcada se puede pasar a "todos los remitos del filtro"
+// (para exportar sin recorrer páginas). Destildar cualquier fila vuelve a la selección manual.
+function _rmxSeleccionarTodoElFiltro() { window._rmxSelTodos = true; _rmxSyncSeleccionUI(); }
+function _rmxSyncSeleccionUI() {
+  const sel = _rmxSeleccion();
+  const rows = [...document.querySelectorAll('#tbody-remitos tr.rmx-row')];
+  rows.forEach(tr => {
+    const on = sel.has(String(tr.dataset.remitoId));
+    tr.classList.toggle('is-selected', on);
+    const cb = tr.querySelector('.rmx-check'); if (cb) cb.checked = on;
+  });
+  const all = document.getElementById('rmx-sel-all');
+  if (all) {
+    const marcadas = rows.filter(tr => sel.has(String(tr.dataset.remitoId))).length;
+    all.checked = rows.length > 0 && marcadas === rows.length;
+    all.indeterminate = marcadas > 0 && marcadas < rows.length;
+  }
+  // Exportar y descargar son de Administración: sin ese rol no hay columna de selección.
+  document.getElementById('tabla-remitos')?.classList.toggle('rmx-no-select', PERFIL_USUARIO?.roles?.name !== 'administracion');
+  const bar = document.getElementById('rmx-bulk');
+  if (!bar) return;
+  if (!sel.size) window._rmxSelTodos = false;
+  bar.hidden = sel.size === 0;
+  const total = window._remitosTotal || 0;
+  const todos = !!window._rmxSelTodos;
+  const n = document.getElementById('rmx-bulk-count');
+  if (n) n.textContent = todos
+    ? `Los ${total.toLocaleString('es-AR')} remitos del filtro seleccionados`
+    : `${sel.size} ${sel.size === 1 ? 'remito seleccionado' : 'remitos seleccionados'}`;
+  const link = document.getElementById('rmx-bulk-all');
+  if (link) {
+    const paginaCompleta = rows.length > 0 && rows.every(tr => sel.has(String(tr.dataset.remitoId)));
+    link.hidden = todos || !paginaCompleta || total <= sel.size;
+    link.textContent = `Seleccionar los ${total.toLocaleString('es-AR')} remitos del filtro`;
+  }
+}
+document.addEventListener('change', e => {
+  const cb = e.target.closest?.('#tbody-remitos .rmx-check, #rmx-sel-all');
+  if (!cb) return;
+  const sel = _rmxSeleccion();
+  const filas = cb.id === 'rmx-sel-all' ? [...document.querySelectorAll('#tbody-remitos tr.rmx-row')] : [cb.closest('tr')];
+  filas.forEach(tr => {
+    const id = String(tr?.dataset.remitoId || ''); if (!id) return;
+    if (cb.checked) { try { sel.set(id, JSON.parse(tr.getAttribute('data-rem'))); } catch (_) {} }
+    else { sel.delete(id); window._rmxSelTodos = false; }
+  });
+  _rmxSyncSeleccionUI();
+});
+// Fila de la tabla: el clic abre el detalle (salvo casilla, botones, menú ⋯ o links).
+document.addEventListener('click', e => {
+  const tr = e.target.closest?.('#tbody-remitos tr.rmx-row');
+  if (!tr || e.target.closest('button, a, input, label, details, .rmx-col-check')) return;
+  if (window.getSelection && String(window.getSelection()).length) return;
+  verRemitoModal(tr);
+});
+// Tarjeta del celular: tocarla abre el detalle (salvo que se toque un botón).
+document.addEventListener('click', e => {
+  const card = e.target.closest?.('#mobile-remitos-list .rmx-mcard');
+  if (!card || e.target.closest('button, a')) return;
+  verRemitoModal(card);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const card = e.target.closest?.('#mobile-remitos-list .rmx-mcard');
+  if (!card || e.target !== card) return;
+  e.preventDefault();
+  verRemitoModal(card);
+});
+// Cerrar el menú ⋯ al elegir una opción o al tocar afuera.
+document.addEventListener('click', e => {
+  document.querySelectorAll('#tbody-remitos details.rmx-more[open]').forEach(d => {
+    if (!d.contains(e.target) || e.target.closest('.rmx-more-menu button')) d.removeAttribute('open');
+  });
+});
+
+async function exportarRemitosSeleccionados() {
+  if (window._rmxSelTodos) { exportarRemitosExcel(); return; }
+  const filas = [..._rmxSeleccion().values()];
+  if (!filas.length) return;
+  _rmxExportarFilas(filas, 'remitos_seleccion');
+}
+
+async function descargarPdfsSeleccionados() {
+  let filas = [..._rmxSeleccion().values()];
+  if (window._rmxSelTodos) {
+    const total = window._remitosTotal || 0;
+    if (total > 20 && !confirm(`Vas a descargar ${total} PDF, uno por remito. ¿Seguir?`)) return;
+    filas = await fetchRemitosFiltrados({ filtros: window._remitosFiltros ?? _leerFiltrosRemitosUI(), max: 5000 });
+  }
+  if (!filas.length) return;
+  if (filas.length > 1) toast(`Descargando ${filas.length} PDF…`);
+  for (const d of filas) {
+    const holder = document.createElement('div');
+    holder.setAttribute('data-rem', JSON.stringify(d));
+    try { await descargarRemitoPDF(holder); } catch (e) { console.error('PDF', d.nro, e); toast(`No se pudo generar el PDF de ${d.srvOrden || d.nro}`, 'error'); }
+    await new Promise(r => setTimeout(r, 350));
+  }
 }
 
 function renderTablaRemitos(data) {
@@ -6710,163 +5792,95 @@ function renderTablaRemitos(data) {
   const esAdmin = typeof PERFIL_USUARIO !== 'undefined' &&
                   PERFIL_USUARIO?.roles?.name === 'administracion';
 
-  // Protegemos las variables globales por si no cargan a tiempo
-  const iconosPago = typeof PAY_ICONS !== 'undefined' ? PAY_ICONS : {};
-  const coloresPago = typeof PAY_COLORS !== 'undefined' ? PAY_COLORS : {};
 
-  data.forEach((r, index) => {
+  const puedeEditar = esAdmin;
+  const esPendiente = r => r.estado === 'pendiente';
+  const esGestion = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
+  const sel = _rmxSeleccion();
+  data.forEach(r => {
     try {
-      const peaje     = parseInt(r.peaje)     || 0;
-      const excedente = parseInt(r.excedente) || 0;
-      const otros     = parseInt(r.otros)     || 0;
-
-      const extrasHTML = `
-        <div style="display:flex;flex-direction:column;gap:2px">
-          <div style="font-size:11px;color:${peaje > 0 ? 'var(--muted)' : 'var(--border2)'}">
-            Peaje: $${peaje.toLocaleString('es-AR')}
-          </div>
-          <div style="font-size:11px;color:${excedente > 0 ? 'var(--amber)' : 'var(--border2)'}">
-            Excedente: $${excedente.toLocaleString('es-AR')}
-          </div>
-          ${otros > 0 ? `<div style="font-size:11px;color:var(--muted)">Otros: $${otros.toLocaleString('es-AR')}</div>` : ''}
-        </div>`;
-
-      const esAnulado     = r.estado === 'anulado';
-      const esFirmado     = r.estado === 'firmado';
+      const esAnulado = r.estado === 'anulado';
+      const esFirmado = r.estado === 'firmado';
       const esCerradoAdmin = r.estado === 'cerrado_admin';
       const esAsignadoAdmin = r.estado === 'pendiente' && r.creadoPor && r.creadoPor !== USUARIO_ACTUAL?.id;
+      const estadoPill = _rmxEstadoHTML(r, esAsignadoAdmin);
 
-      const estadoPill = esFirmado
-        ? `<span class="pill pill-green">✓ Firmado</span>`
-        : esAnulado
-        ? `<span class="pill pill-red">🚫 Anulado</span>`
-        : esCerradoAdmin
-        ? `<span class="pill" style="background:rgba(88,166,255,0.12);color:var(--blue)">🏢 Cerrado por admin</span>`
-        : esAsignadoAdmin
-        ? `<span class="pill pill-amber">📥 Asignado por admin</span>`
-        : `<span class="pill pill-amber">⏳ Pendiente</span>`;
+      const peaje = parseFloat(r.peaje) || 0, excedente = parseFloat(r.excedente) || 0, otros = parseFloat(r.otros) || 0;
+      const cobrado = peaje + excedente + otros;
+      const detalle = [peaje && `Peaje $${peaje.toLocaleString('es-AR')}`, excedente && `Excedente $${excedente.toLocaleString('es-AR')}`, otros && `Otros $${otros.toLocaleString('es-AR')}`].filter(Boolean).join(' · ');
+      const pagos = (r.pago || '—').split('+').map(p => p.trim()).filter(p => p && p !== '—');
+      const pagoHTML = pagos.length
+        ? pagos.map(p => `<span class="rmx-pay">${_rmxEsc(p)}</span>`).join('<span class="rmx-pay-sep">+</span>')
+        : '<span class="rmx-muted">—</span>';
+      const [fecha, hora] = String(r.fecha || '—').split(' ');
 
-      const pagoParts  = (r.pago || '—').split('+').map(p => p.trim());
-      const pagoHTML = pagoParts.map(p => {
-        const icon  = iconosPago[p]  || '💳';
-        const color = coloresPago[p] || 'var(--text)';
-        return `<span style="color:${color};font-size:11px;font-weight:600">${icon} ${p}</span>`;
-      }).join('<span style="color:var(--muted);font-size:10px;margin:0 2px">+</span>');
-
-      const _extras = (parseFloat(r.peaje)||0)+(parseFloat(r.excedente)||0)+(parseFloat(r.otros)||0);
-      const whatsappMsg = encodeURIComponent(
-        `*Remito Sigma Remolques*\n` +
-        `N°: ${r.nro}\nFecha: ${r.fecha}\n` +
-        `Vehículo: ${r.patente}${r.marca ? ' · '+r.marca : ''}\n` +
-        `Cliente: ${r.cliente || '—'}\n` +
-        `Servicio: ${r.origen} → ${r.destino}\n` +
-        `KM: ${r.km || '—'}` +
-        (_extras > 0 ? `\nExtras: $${_extras.toLocaleString('es-AR')}` : '') +
-        (r.pago && r.pago !== '—' ? `\nPago: ${r.pago}` : '') +
-        `\nEstado: ✓ Firmado digitalmente`
-      );
-
-      const btnWA  = `<a href="https://wa.me/?text=${whatsappMsg}" target="_blank"
-        class="btn btn-ghost" style="padding:4px 10px;font-size:10px;text-decoration:none">📲</a>`;
-      const btnPDF = esAdmin
-        ? `<button class="btn btn-ghost btn-pdf-remito" style="padding:4px 10px;font-size:10px">PDF</button>`
-        : '';
-
-      const acciones = (esFirmado || esCerradoAdmin)
-        ? `<div style="display:flex;gap:5px;align-items:center">
-             <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
-             ${btnPDF}
-             ${esFirmado ? btnWA : ''}
-           </div>`
-        : esAnulado
-          ? `<div style="display:flex;gap:5px">
-               <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px;opacity:0.5">Ver</button>
-             </div>`
-          : `<div style="display:flex;gap:5px;align-items:center">
-               <button class="btn btn-primary btn-firmar-remito" style="padding:4px 10px;font-size:10px">Completar</button>
-               <button class="btn btn-ghost btn-ver-remito" style="padding:4px 10px;font-size:10px">Ver</button>
-             </div>`;
+      // Una acción visible según el caso; el resto en ⋯ (ver remitos-admin-panel-v1.js).
+      const vinculado = !!r.operatorServiceId;
+      const revisar = esAdmin && vinculado && esFirmado && r.addonsVersion === 2 && !['approved', 'adjusted'].includes(r.addonsReviewStatus);
+      const firmadoMs = Date.parse(r.firmadoAt || '') || 0;
+      const porEnviar = esAdmin && esFirmado && !r.envio && r.envio !== undefined && Date.now() - firmadoMs < 60 * 864e5;
+      const menu = [
+        esAdmin && !esPendiente(r) ? `<button type="button" class="btn-pdf-remito">Descargar PDF</button>` : '',
+        esAdmin && esFirmado ? `<button type="button" data-rmx-action="enviar">${r.envio ? 'Reenviar al cliente' : 'Enviar al cliente'}</button>` : '',
+        esAdmin && vinculado ? `<button type="button" data-rmx-action="servicio">Ir al servicio</button>` : '',
+        puedeEditar && !esAnulado ? `<button type="button" data-rmx-action="corregir">Corregir datos</button>` : '',
+        esAdmin && !vinculado && !esAnulado ? `<button type="button" class="is-danger" data-rmx-action="anular">Anular remito</button>` : '',
+      ].filter(Boolean).join('');
+      const acciones = `<div class="rmx-row-actions">
+          ${!esFirmado && !esAnulado && !esCerradoAdmin && !esGestion ? `<button class="rmx-act primary btn-firmar-remito" type="button">Completar</button>` : ''}
+          ${revisar ? `<button class="rmx-act is-review" type="button" data-rmx-action="revisar">Revisar</button>` : porEnviar ? `<button class="rmx-act is-send" type="button" data-rmx-action="enviar" title="Todavía no se envió al cliente">Enviar</button>` : `<button class="rmx-act btn-ver-remito" type="button">Ver</button>`}
+          ${menu ? `<details class="rmx-more"><summary aria-label="Más acciones" title="Más acciones">⋯</summary><div class="rmx-more-menu">${menu}</div></details>` : ''}
+        </div>`;
 
       const tr = document.createElement('tr');
-      if (esAnulado) tr.style.opacity = '0.5';
-      else if (!esFirmado) tr.style.background = 'rgba(245,166,35,0.03)';
-      
       tr.setAttribute('data-rem', JSON.stringify(r));
-      // Agregamos una clase de estado por si el CSS los está ocultando
-      tr.className = `fila-remito estado-${r.estado}`; 
-
+      tr.className = `fila-remito rmx-row estado-${r.estado}${esAnulado ? ' is-anulado' : ''}${sel.has(String(r.id)) ? ' is-selected' : ''}`;
+      tr.dataset.remitoId = r.id;
       tr.innerHTML = `
-        <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${r.nro}</span></td>
-        <td style="font-family:'DM Mono';font-size:11px">${r.fecha || '—'}</td>
-        <td style="font-size:11px;color:var(--muted2)">${r.chofer || '—'}</td>
-        <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${r.patente}</div></td>
-        <td>
-          <div style="font-size:12px">${r.tipo || '—'}</div>
-          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono'">${r.nroSrv || '—'}</div>
-        </td>
-        <td>${extrasHTML}</td>
-        <td>${pagoHTML}</td>
+        <td class="rmx-col-check"><input type="checkbox" class="rmx-check" aria-label="Seleccionar remito ${_rmxEsc(r.nro)}" ${sel.has(String(r.id)) ? 'checked' : ''}></td>
+        <td title="Remito ${_rmxEsc(r.nro)}"><span class="rmx-srv">${_rmxEsc(r.srvOrden || '—')}</span>${r.srvNumero ? `<span class="rmx-sub">${_rmxEsc(r.srvNumero)}</span>` : ''}</td>
+        <td class="rmx-date"><span>${_rmxEsc(fecha)}</span><span class="rmx-sub">${_rmxEsc(hora || '')}</span></td>
+        <td class="rmx-client"><span>${_rmxEsc(r.cliente || '—')}</span></td>
+        <td class="rmx-vehicle"><span class="rmx-plate">${_rmxEsc(r.patente || '—')}</span>${r.marca ? `<span class="rmx-sub">${_rmxEsc(r.marca)}</span>` : ''}</td>
+        <td>${r.tipoReal ? `<span class="rmx-type">${_rmxEsc(r.tipoReal)}</span>` : '<span class="rmx-type is-empty">Sin clasificar</span>'}</td>
+        <td class="rmx-money"${detalle ? ` title="${_rmxEsc(detalle)}"` : ''}>${cobrado ? `$ ${cobrado.toLocaleString('es-AR')}` : '<span class="rmx-muted">—</span>'}</td>
+        <td><div class="rmx-pays">${pagoHTML}</div></td>
         <td>${estadoPill}</td>
         <td>${acciones}</td>`;
-      
       tbody.appendChild(tr);
-
     } catch (err) {
       console.error(`❌ Error dibujando remito ${r?.nro}:`, err);
     }
   });
+  _rmxSyncSeleccionUI();
 
   // Mobile card list — pendientes primero, máximo 3 visible inicialmente
   if (mobileList) {
     mobileList.innerHTML = '';
 
+    // Tarjetas compactas (misma paleta que la tabla): una línea de identificación,
+    // una de cliente + monto y una de datos. Tocar la tarjeta abre el detalle.
+    const esGestionM = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
     const mobileSorted = [...data].sort((a, b) =>
       (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1)
     );
-
-    mobileSorted.forEach((r, mIdx) => {
-      const esFirmado = r.estado === 'firmado' || r.estado === 'cerrado_admin';
-      const esAnulado = r.estado === 'anulado';
+    mobileSorted.forEach(r => {
+      const pendiente = r.estado === 'pendiente';
+      const cobrado = (parseFloat(r.peaje) || 0) + (parseFloat(r.excedente) || 0) + (parseFloat(r.otros) || 0);
+      const tipo = r.tipoReal || (esGestionM || !r.tipo || r.tipo === '—' ? 'Sin clasificar' : r.tipo);
+      const meta = [r.patente, tipo, r.fecha].filter(Boolean).map(_rmxEsc).join(' · ');
       const mcard = document.createElement('div');
-      mcard.className = `mobile-card-remito estado-${r.estado}`;
+      mcard.className = `mobile-card-remito rmx-mcard estado-${r.estado}${r.estado === 'anulado' ? ' is-anulado' : ''}`;
       mcard.setAttribute('data-rem', JSON.stringify(r));
-      if (mIdx >= 3) mcard.style.display = 'none';
+      mcard.setAttribute('role', 'button');
+      mcard.tabIndex = 0;
       mcard.innerHTML = `
-        <div class="card-header-main">
-          <div>
-            <span class="text-codigo">${r.nroSrv || 'S/SERVICIO'}</span>
-            <span class="text-patente">${r.patente || '—'}</span>
-          </div>
-          ${generarHtmlPill(r.estado)}
-        </div>
-        <div style="font-size:13px;font-weight:600">${r.tipo || '—'}</div>
-        <div style="font-size:12px;color:var(--muted)">${r.origen || '—'} → ${r.destino || '—'}</div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)">
-          <span>N° ${r.nro}</span><span>${r.fecha || '—'}</span>
-        </div>
-        <div style="margin-top:12px">
-          ${!esFirmado && !esAnulado
-            ? `<button class="btn btn-primary btn-firmar-remito" style="width:100%;padding:14px;font-weight:800">✍️ COMPLETAR REMITO</button>`
-            : esAnulado
-            ? `<button class="btn btn-ghost btn-ver-remito" style="width:100%;padding:12px;opacity:0.5">Ver detalles</button>`
-            : `<button class="btn-ver-full btn-ver-remito">🔍 VER DETALLES</button>`
-          }
-        </div>`;
+        <div class="rmx-mc-top"><span class="rmx-mc-srv">${_rmxEsc(r.srvOrden || r.nroSrv || 'Sin N° de servicio')}</span>${_rmxEstadoHTML(r)}</div>
+        <div class="rmx-mc-main"><span class="rmx-mc-client">${_rmxEsc(r.cliente || '—')}</span>${cobrado ? `<span class="rmx-mc-money">$ ${cobrado.toLocaleString('es-AR')}</span>` : ''}</div>
+        <div class="rmx-mc-meta">${meta}</div>
+        ${pendiente && !esGestionM ? `<button class="rmx-mc-cta btn-firmar-remito" type="button">Completar remito</button>` : ''}`;
       mobileList.appendChild(mcard);
     });
-
-    if (mobileSorted.length > 3) {
-      const verTodosBtn = document.createElement('button');
-      verTodosBtn.id = 'mobile-ver-todos-btn';
-      verTodosBtn.className = 'btn btn-ghost';
-      verTodosBtn.style.cssText = 'width:100%;margin-top:4px;font-size:12px;padding:12px';
-      verTodosBtn.textContent = `Ver todos los remitos (${mobileSorted.length})`;
-      verTodosBtn.onclick = () => {
-        mobileList.querySelectorAll('.mobile-card-remito').forEach(c => c.style.display = '');
-        verTodosBtn.remove();
-      };
-      mobileList.appendChild(verTodosBtn);
-    }
   }
 
 }
@@ -6903,11 +5917,12 @@ async function _renderRemitosOutboxPendientes() {
       tr.className = 'remito-outbox-pendiente';
       tr.style.cssText = 'background:rgba(245,166,35,0.06);pointer-events:none';
       tr.innerHTML = `
-        <td><span style="font-family:'DM Mono';color:var(--amber);font-size:11px">${nro}</span></td>
+        <td class="rmx-col-check"></td>
+        <td><span class="rmx-srv">${p.nro_servicio || '—'}</span><span class="rmx-sub">${nro}</span></td>
         <td style="font-size:11px;color:var(--muted)">—</td>
-        <td style="font-size:11px;color:var(--muted2)">${cliente}</td>
-        <td><div style="font-family:'DM Mono';font-weight:700;font-size:13px">${patente}</div></td>
-        <td><div style="font-size:12px">${tipo}</div></td>
+        <td class="rmx-client"><span>${cliente}</span></td>
+        <td class="rmx-vehicle"><span class="rmx-plate">${patente}</span></td>
+        <td><span class="rmx-type">${tipo}</span></td>
         <td style="font-size:11px;color:var(--muted)">—</td>
         <td style="font-size:11px;color:var(--muted)">—</td>
         <td>${badge}</td>
@@ -6937,7 +5952,7 @@ let firmaPago1 = '';
 let firmaPago2 = '';
 let firmaPagoMixtoActivo = false;
 
-// 🛠️ HELPER: Centraliza la lectura de inputs para evitar errores y código repetido
+// 🛠 HELPER: Centraliza la lectura de inputs para evitar errores y código repetido
 function obtenerValorNumericoFirma(id) {
   const valor = parseFloat(document.getElementById(id)?.value);
   return isNaN(valor) ? 0 : valor;
@@ -7115,6 +6130,15 @@ function _abrirDetalleMovil(titulo, htmlContent) {
   openModal('modal-mobile-detalle');
 }
 
+function _journeyColumns(fecha, movil, km, servicios, pill, motor = '') {
+  const esc=value=>String(value??'—').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const shortDate=String(fecha).replace(/^(\d{2})-(\d{2})-\d{2}(\d{2})$/, '$1/$2/$3');
+  return '<div class="journey-col"><span class="journey-col-label">Fecha</span><strong>'+esc(shortDate)+'</strong></div>'
+    +'<div class="journey-col"><span class="journey-col-label">Móvil</span><strong>'+esc(movil)+'</strong></div>'
+    +'<div class="journey-col"><span class="journey-col-label">Km y servicios</span><strong>'+esc(km)+' km</strong><span>'+servicios+' '+(servicios===1?'servicio':'servicios')+'</span>'+(motor?'<span class="journey-motor">'+esc(motor)+'</span>':'')+'</div>'
+    +'<div class="journey-col journey-status"><span class="journey-col-label">Estado</span>'+pill+'</div>';
+}
+
 function renderHistorialJornadas(data) {
   const tbody    = document.getElementById('tbody-historial-jornadas');
   const mList    = document.getElementById('mobile-jornadas-list');
@@ -7130,16 +6154,22 @@ function renderHistorialJornadas(data) {
       : `<span class="pill pill-muted">No</span>`;
     const estadoPill = j.estado === 'abierta'
       ? `<span class="pill pill-amber">Abierta</span>`
-      : `<span class="pill pill-green">Cerrada</span>`;
+      : j.estado === 'anulada' ? `<span class="pill pill-red">Anulada</span>` : `<span class="pill pill-green">Cerrada</span>`;
 
-    // ── Desktop: fila de tabla (sin cambios) ──
+    // Horas de motor: sólo los camiones con horómetro.
+    const motorTxt = _horasMotorTexto(j.horasMotorInicio, j.horasMotorFinal);
+    const motorRango = j.horasMotorInicio != null
+      ? `${_fmtHoras(j.horasMotorInicio)} → ${j.horasMotorFinal != null ? _fmtHoras(j.horasMotorFinal) : '—'} h`
+      : '';
+
+    // ── Desktop: fila de tabla ──
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><b>${j.fecha}</b></td>
       <td style="font-family:'DM Mono';font-weight:600">${j.camion}</td>
       <td style="font-family:'DM Mono'">${j.kmInicio}</td>
       <td style="font-family:'DM Mono'">${j.kmFinal}</td>
-      <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${j.kmRec} km</span></td>
+      <td><span style="font-family:'DM Mono';color:var(--amber);font-weight:600">${j.kmRec} km</span>${motorTxt ? `<div style="font-size:10px;color:var(--muted)" title="Horas de motor: ${_escHtml(motorRango)}">${_escHtml(motorTxt)}</div>` : ''}</td>
       <td>${j.horas} hs</td>
       <td>${tallerPill}</td>
       <td>${estadoPill}</td>`;
@@ -7168,22 +6198,20 @@ function renderHistorialJornadas(data) {
           <div style="color:var(--text);font-size:12px">${j.horas} hs</div>
         </div>
       </div>
+      ${motorRango ? `
+      <div style="border-top:1px solid var(--border);padding:10px 0;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Horas de motor</span>
+        <span style="color:var(--text);font-size:12px;font-family:'DM Mono'">${_escHtml(motorRango)}</span>
+      </div>` : ''}
       <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:8px">
         <span style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.4px">Recorrido</span>
         <span style="color:#4ade80;font-size:16px;font-weight:700;font-family:'DM Mono'">${j.kmRec} km</span>
       </div>`;
 
     const row = document.createElement('div');
-    row.style.cssText = `background:var(--card);border:1px solid var(--border);border-left:3px solid ${color};border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:pointer`;
-    row.innerHTML = `
-      <div style="flex:1;min-width:0">
-        <div style="color:var(--text);font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${titulo}</div>
-        <div style="color:var(--muted);font-size:10px">${j.kmRec} km recorridos</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-        ${estadoPill}
-        <span style="color:var(--muted2);font-size:16px">›</span>
-      </div>`;
+    row.className = `journey-columns${j.estado === 'abierta' ? ' is-open' : ''}`;
+    row.style.borderLeftColor = color;
+    row.innerHTML = _journeyColumns(j.fecha,j.camion,j.kmRec,j.servicios??0,estadoPill,motorTxt);
     row.onclick = () => _abrirDetalleMovil(titulo, detalle);
     mList.appendChild(row);
   });
@@ -7191,7 +6219,9 @@ function renderHistorialJornadas(data) {
   // Solo las últimas jornadas a la vista; el resto vive en el modal "Mis Jornadas"
   // que abre el botón "Ver historial completo" que ya está debajo del listado.
   // (Antes un "Ver más" desplegaba todo acá y colapsaba el módulo.)
-  if (mList) Array.from(mList.children).slice(4).forEach(el => { el.remove(); });
+  if (mList) Array.from(mList.children).forEach(el => {
+    if (!el.classList.contains('is-open')) el.remove();
+  });
   Array.from(tbody.children).slice(10).forEach(el => { el.remove(); });
 }
 
@@ -7200,7 +6230,9 @@ function _resetJornadasMobile() {
   if (!mList) return;
   const existingBtn = mList.querySelector('button');
   if (existingBtn) existingBtn.remove();
-  Array.from(mList.children).slice(4).forEach(el => { el.remove(); });
+  Array.from(mList.children).forEach(el => {
+    if (!el.classList.contains('is-open')) el.remove();
+  });
 }
 
 // ── MODAL "MIS JORNADAS" (historial completo paginado) ────────
@@ -7241,10 +6273,10 @@ function _jhistCambiarChofer() {
 }
 
 function _jhistFecha(iso) {
-  // 'AAAA-MM-DD' → 'DD-MM-AAAA'
+  // 'AAAA-MM-DD' → 'DD/MM/AA'
   if (!iso) return '—';
   const p = String(iso).slice(0, 10).split('-');
-  return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : '—';
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0].slice(2)}` : '—';
 }
 
 function _jhistHora(h) {
@@ -7269,7 +6301,7 @@ async function _jhistCargarPagina(reset) {
   }
 
   const { data, error } = await _db.from('daily_logs')
-    .select('log_id, log_date, truck_id, km_inicio, km_final, hora_inicio, hora_fin, status, trucks(plate, numero_interno)')
+    .select('log_id, log_date, truck_id, km_inicio, km_final, horas_inicio, horas_final, hora_inicio, hora_fin, status, trucks(plate), remitos!remitos_log_id_fkey(status)')
     .eq('driver_id', _jhistDriverId)
     .order('log_date', { ascending: false })
     .range(_jhistOffset, _jhistOffset + _JHIST_PAGINA - 1);
@@ -7293,23 +6325,19 @@ async function _jhistCargarPagina(reset) {
 
   rows.forEach(j => {
     const abierta = j.status === 'open';
-    const movil   = j.trucks?.numero_interno ? `N° ${j.trucks.numero_interno}` : (j.trucks?.plate || '—');
+    const movil   = j.trucks?.plate || '—';
     const kmRec   = (j.km_final != null && j.km_inicio != null)
       ? Math.max(0, Number(j.km_final) - Number(j.km_inicio)).toLocaleString('es-AR') + ' km'
       : '—';
-    const horas   = `${_jhistHora(j.hora_inicio)} → ${_jhistHora(j.hora_fin)}`;
+    const servicios = (j.remitos || []).filter(r=>r.status!=='anulado').length;
     const pill    = abierta
       ? '<span class="pill pill-amber">Abierta</span>'
-      : '<span class="pill pill-green">Cerrada</span>';
+      : j.status === 'void' ? '<span class="pill pill-red">Anulada</span>' : '<span class="pill pill-green">Cerrada</span>';
 
     const row = document.createElement('div');
-    row.className = 'jhist-row' + (abierta ? ' jhist-row--abierta' : '');
-    row.innerHTML = `
-      <div class="jhist-row-main">
-        <div class="jhist-row-titulo">${_jhistFecha(j.log_date)} · ${movil}</div>
-        <div class="jhist-row-sub">${kmRec} · ${horas}</div>
-      </div>
-      ${pill}`;
+    row.className = 'journey-columns';
+    row.style.borderLeftColor = abierta ? 'var(--amber)' : j.status==='void' ? 'var(--red)' : 'var(--green)';
+    row.innerHTML = _journeyColumns(_jhistFecha(j.log_date),movil,kmRec.replace(/ km$/, ''),servicios,pill,_horasMotorTexto(j.horas_inicio, j.horas_final));
     lista.appendChild(row);
   });
 
@@ -7413,15 +6441,50 @@ document.addEventListener('keydown', e => {
 
 
 
+let _guardandoRemitoPendiente = false;
+function _mostrarBorradorEnServiciosActivos() {
+  showRemitosView('lista');
+  window.cambiarVistaServiciosChofer?.('active');
+}
+
+const SIDENAV_COLLAPSED_KEY = 'auxilios.sidenav.collapsed';
+function setSidenavCollapsed(collapsed) {
+  const value = !!collapsed;
+  document.body.classList.toggle('nav-collapsed', value);
+  const button = document.querySelector('.nav-collapse');
+  if (button) {
+    button.setAttribute('aria-expanded', String(!value));
+    button.setAttribute('aria-label', value ? 'Expandir menú' : 'Contraer menú');
+    button.title = value ? 'Expandir menú' : 'Contraer menú';
+  }
+  try { localStorage.setItem(SIDENAV_COLLAPSED_KEY, value ? '1' : '0'); } catch (_) {}
+}
+function toggleSidenav() { setSidenavCollapsed(!document.body.classList.contains('nav-collapsed')); }
+try { setSidenavCollapsed(localStorage.getItem(SIDENAV_COLLAPSED_KEY) === '1'); } catch (_) { setSidenavCollapsed(false); }
+function _actualizarEstadoGuardadoRemito(btn, texto) {
+  if (btn) btn.textContent = texto;
+}
 async function guardarRemitoPendiente() {
+  if (_guardandoRemitoPendiente) {
+    toast('El remito ya se está guardando. Esperá un momento.', 'info');
+    return false;
+  }
+  const btnPendiente = document.getElementById('btn-pendiente-footer');
+  const textoPendiente = btnPendiente?.textContent || '💾 Guardar y seguir después';
+  _guardandoRemitoPendiente = true;
+  if (btnPendiente) {
+    btnPendiente.disabled = true;
+    btnPendiente.textContent = '⏳ Guardando…';
+  }
+  try {
   const nro       = document.getElementById('rem-nro')?.value;
-  const tipo      = document.getElementById('rem-tipo-servicio')?.value || 'Remolque';
   const patente   = document.getElementById('rem-patente')?.value?.trim() || '';
   const km        = document.getElementById('rem-km')?.value || '0';
   const origen    = document.getElementById('rem-origen')?.value?.trim() || '';
   const destino   = document.getElementById('rem-destino')?.value?.trim() || '';
   const cliente   = document.getElementById('rem-cliente')?.value || '';
-  const cuit      = document.getElementById('rem-cuit')?.value || '';
+  const cuit      = document.getElementById('rem-cuit')?.value?.trim() || '';
+  const telefono  = document.getElementById('rem-telefono')?.value?.trim() || '';
   const peaje     = parseFloat(document.getElementById('imp-peaje')?.value)     || 0;
   const excedente = parseFloat(document.getElementById('imp-excedente')?.value) || 0;
   const otros     = parseFloat(document.getElementById('imp-otros')?.value)     || 0;
@@ -7429,15 +6492,44 @@ async function guardarRemitoPendiente() {
   const nroSrv    = document.getElementById('rem-nro-prestadora')?.value || null;
 
   // ── Validaciones ──────────────────────────────────────
-  if (!patente) { toast('Ingresá la patente del vehículo', 'error'); return; }
-  if (!origen)  { toast('Ingresá el origen del servicio', 'error'); return; }
-  if (!destino) { toast('Ingresá el destino del servicio', 'error'); return; }
+  if (!patente) { toast('Ingresá la patente del vehículo', 'error'); return false; }
+  if (!origen)  { toast('Ingresá el origen del servicio', 'error'); return false; }
+  if (!destino) { toast('Ingresá el destino del servicio', 'error'); return false; }
 
   // ── Registro Silencioso (Asignación a la jornada) ─────
   let _logId = _jornadasAbiertasCache?.[0]?.log_id || _jornadaActivaLocal?.log_id || null;
   _logId = await _resolverLogIdLocal(_logId);
 
   // ── Empaquetado de Datos ──────────────────────────────
+  let operatorServiceId = typeof obtenerServicioActivoRemito === 'function'
+    ? obtenerServicioActivoRemito()
+    : sessionStorage.getItem('auxilios_phase3_service_id');
+  let servicioAsignado = typeof window.obtenerServicioAsignadoRemito === 'function'
+    ? window.obtenerServicioAsignadoRemito()
+    : null;
+  if (!operatorServiceId && (typeof esRemitoAdHocActivo === 'function' ? esRemitoAdHocActivo() : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1')
+      && navigator.onLine && typeof window.resolverServicioAsignadoParaRemito === 'function') {
+    const detected = await window.resolverServicioAsignadoParaRemito();
+    if (detected?.service_id) {
+      operatorServiceId = detected.service_id;
+      servicioAsignado = detected;
+      toast(`El borrador se vinculará al servicio ${detected.service_order_number || detected.service_number || 'asignado'}`, 'info');
+    }
+  }
+  const adHocMode = !operatorServiceId && (typeof esRemitoAdHocActivo === 'function'
+    ? esRemitoAdHocActivo()
+    : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
+  const tipo = String(servicioAsignado?.concept_name || '').trim() || (adHocMode ? 'A definir por Operaciones' : 'Servicio');
+  const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
+  if (adHocMode && !mapLocations) {
+    toast('Seleccioná origen y destino desde Google Maps', 'error');
+    remWizardIr(1 - _remPasoActual);
+    window.AuxiliosRemitoMobileV3?.validateMapLocations?.();
+    return false;
+  }
+  const clientOperationId = (operatorServiceId || adHocMode) && typeof obtenerOperacionRemito === 'function'
+    ? obtenerOperacionRemito(operatorServiceId || 'driver-ad-hoc', nro)
+    : null;
   const remitoDB = {
     nro_remito:        nro,
     driver_id:         USUARIO_ACTUAL.id,
@@ -7447,6 +6539,7 @@ async function guardarRemitoPendiente() {
     marca_modelo:      document.getElementById('rem-marca-modelo')?.value || null,
     razon_social:      cliente || null,
     cuit:              cuit    || null,
+    telefono:          telefono || null,
     tipo_servicio:     tipo,
     origen:            origen,
     destino:           destino,
@@ -7457,54 +6550,134 @@ async function guardarRemitoPendiente() {
     observaciones:     observaciones,
     status:            'pendiente',
     created_at_device: new Date().toISOString(),
+    ...(operatorServiceId ? {
+      operator_service_id: operatorServiceId,
+      client_operation_id: clientOperationId,
+      document_source: 'auxilios_driver',
+    } : adHocMode ? {
+      client_operation_id: clientOperationId,
+      document_source: 'driver_ad_hoc',
+      ...(mapLocations||{}),
+    } : {}),
   };
+
+  const addonValidation = window.AuxiliosRemitoAddonsV2?.validate?.();
+  if (addonValidation && !addonValidation.ok) {
+    toast(addonValidation.errors[0] || 'Revisá los peajes y excedentes', 'error');
+    remWizardIr(_remWizardPasoCargos() - _remPasoActual);
+    return false;
+  }
+  const addonBundle = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
 
   // ── OFFLINE: encolar en el outbox y seguir el flujo normal ──
   // También si el log_id sigue siendo TMP-* (jornada offline sin sincronizar):
   // el upsert online fallaría con un id inválido.
   if ((!navigator.onLine || _logIdEsTemporal(_logId)) && typeof obAdd === 'function') {
+    const blobs = {};
+    if (addonBundle?.payload) {
+      Object.assign(remitoDB, addonBundle.payload);
+      if (addonBundle.files?.length) {
+        remitoDB.remito_addon_file_map = addonBundle.files.map(({ file, ...item }) => item);
+        addonBundle.files.forEach(item => { blobs[item.blob_field] = item.file; });
+      }
+    }
     const tempId = obTempId();
     _obRemitoTemp[nro] = tempId; // para que la firma del mismo nro dependa de esta op
     const dependeDe = _logIdEsTemporal(_logId) ? _logId : null;
-    await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, dependeDe, tempId });
-    try { await cargarRemitos(); } catch (e) { /* lecturas offline: Fase 3 */ }
-    showRemitosView('lista');
+    await obAdd({ tipo: 'remito_pendiente', payload: remitoDB, blobs: Object.keys(blobs).length ? blobs : null, dependeDe, tempId });
+    _mostrarBorradorEnServiciosActivos();
     toast(`Remito ${nro} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
-    return;
+    return true;
   }
 
   // 🚨 DIAGNÓSTICO DE SEGURIDAD (Mirar Consola F12) 🚨
   console.log("ID del chofer enviado a Supabase:", USUARIO_ACTUAL.id);
 
-  const { data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' });
+  let data = null, error = null;
+  if (operatorServiceId && typeof guardarRemitoVinculado === 'function') {
+    try {
+      if (addonBundle?.payload) {
+        if (addonBundle.files?.length) _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Subiendo evidencia…');
+        const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
+        Object.assign(remitoDB, uploaded);
+      }
+      _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
+      data = await guardarRemitoVinculado(remitoDB, operatorServiceId);
+    } catch (linkedError) {
+      error = linkedError;
+    }
+  } else if (adHocMode && typeof guardarRemitoAdHoc === 'function') {
+    try {
+      if (addonBundle?.payload) {
+        if (addonBundle.files?.length) _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Subiendo evidencia…');
+        const uploaded = await window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, clientOperationId);
+        Object.assign(remitoDB, uploaded);
+      }
+      _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
+      data = await guardarRemitoAdHoc(remitoDB);
+    } catch (adHocError) {
+      error = adHocError;
+    }
+  } else {
+    _actualizarEstadoGuardadoRemito(btnPendiente, '⏳ Confirmando…');
+    ({ data, error } = await _db.from('remitos').upsert(remitoDB, { onConflict: 'nro_remito' }));
+  }
 
   // 🚨 CAPTURA DE ERRORES DE SUPABASE (RLS/Foreign Keys) 🚨
   if (error) {
     console.error("❌ ERROR REAL DE SUPABASE:", error.message, "\nDetalles:", error.details, "\nPista:", error.hint);
     toast('Error al guardar: ' + error.message, 'error');
-    return;
+    return false;
   }
 
   console.log("✅ Remito guardado en BD exitosamente:", data);
 
-  await cargarRemitos();
-  showRemitosView('lista');
+  _mostrarBorradorEnServiciosActivos();
   toast(`Remito ${nro} guardado como pendiente ✓`, 'success');
+  return true;
+  } catch (e) {
+    console.error('Error en guardarRemitoPendiente:', e);
+    toast('Error al guardar: ' + (e?.message || e), 'error');
+    return false;
+  } finally {
+    _guardandoRemitoPendiente = false;
+    if (btnPendiente) {
+      btnPendiente.disabled = false;
+      btnPendiente.textContent = textoPendiente;
+    }
+  }
 }
 
 function completarRemitoPendiente(r) {
+  let adHocMode = false;
+  if (r?.operatorServiceId) {
+    sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+    sessionStorage.setItem('auxilios_phase3_service_id', r.operatorServiceId);
+  } else if (r?.driverIntakeId || r?.documentSource === 'driver_ad_hoc') {
+    adHocMode = true;
+    sessionStorage.removeItem('auxilios_phase3_service_id');
+    sessionStorage.setItem('auxilios_driver_ad_hoc_mode', '1');
+  }
+  window.AuxiliosRemitoMobileV3?.setAdHocMode?.(adHocMode);
   showRemitosView('nuevo'); // calls remWizardReset() internally — clears all fields
-  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el || val == null) return;
+    el.value = val;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
   set('rem-nro',            r.nro);
   set('rem-patente',        r.patente);
-  set('rem-tipo-servicio',  r.tipo);
   set('rem-origen',         r.origen);
   set('rem-destino',        r.destino);
+  window.AuxiliosRemitoMobileV3?.restoreMapLocations?.(r);
   set('rem-km',             r.km !== '—' ? r.km : '');
   set('rem-nro-prestadora', r.nroSrv);
   set('rem-marca-modelo',   r.marca);
   set('rem-cliente',        r.cliente);
   set('rem-cuit',           r.cuit);
+  set('rem-telefono',       r.telefono);
   set('imp-peaje',          r.peaje && r.peaje !== '0' ? r.peaje : '');
   const _excMasOtros = (parseInt(r.excedente) || 0) + (parseInt(r.otros) || 0);
   set('imp-excedente',      _excMasOtros ? String(_excMasOtros) : '');
@@ -7552,356 +6725,159 @@ window.addEventListener('load', () => {
    }
 });
 
-async function compartirRemitoPorWhatsApp(tr) {
-  const raw = tr?.getAttribute('data-rem');
-  const d = raw ? JSON.parse(raw) : null;
+// ── WhatsApp del remito ────────────────────────────────────────
+// Teléfono argentino → número internacional para wa.me (549 + área + número).
+// Acepta 10 dígitos (11 5555 1234), con 0 inicial, con 15 después del área
+// de Buenos Aires, o ya con 54/549. Devuelve '' si no se puede armar.
+function telefonoWhatsApp(tel) {
+  let n = String(tel || '').replace(/\D/g, '');
+  if (!n) return '';
+  if (n.startsWith('00')) n = n.slice(2);
+  if (n.startsWith('549') && n.length === 13) return n;
+  if (n.startsWith('54') && n.length === 12) return '549' + n.slice(2);
+  if (n.startsWith('0')) n = n.slice(1);
+  if (/^1115\d{8}$/.test(n)) n = '11' + n.slice(4);
+  return n.length === 10 ? '549' + n : '';
+}
+
+// Cómo se entregó el remito al cliente (whatsapp | compartido | sin_whatsapp):
+// mide la cobertura del control de cobro en Calidad y cobros.
+async function registrarEntregaRemito(remitoId, canal) {
+  if (!remitoId) return false;
+  try {
+    const { error } = await _db.rpc('register_remito_delivery_v1', { p_remito_id: Number(remitoId), p_canal: canal });
+    if (error) throw error;
+    return true;
+  } catch (e) { console.warn('registrarEntregaRemito:', e?.message || e); return false; }
+}
+
+// Link público del remito (/r/<token>): resumen, PDF y encuesta de calidad
+// para el cliente, sin login. Si no se puede crear, el mensaje sale sin link.
+async function linkPublicoRemito(remitoId) {
+  if (!remitoId) return '';
+  try {
+    const { data, error } = await _db.rpc('create_remito_public_link_v1', { p_remito_id: Number(remitoId) });
+    if (error) throw error;
+    return data ? `${location.origin}/r/${data}` : '';
+  } catch (e) { console.warn('linkPublicoRemito:', e?.message || e); return ''; }
+}
+
+function linkGoogleMapsRemito(d) {
+  const origen = String(d?.origen || '').trim();
+  const destino = String(d?.destino || '').trim();
+  if (!origen || !destino || origen === destino) return '';
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origen)}&destination=${encodeURIComponent(destino)}&travelmode=driving`;
+}
+
+function textoWhatsAppRemito(d, empresa = '', link = '') {
+  const srv = d.srvOrden || d.nroSrv;
+  const extras = (parseFloat(d.peaje) || 0) + (parseFloat(d.excedente) || 0) + (parseFloat(d.otros) || 0);
+  const lineas = [
+    `*${empresa || 'Remito digital'}*`,
+    srv ? `Servicio N° ${srv}` : `Remito N° ${d.nro}`,
+    `Fecha: ${d.fecha || '—'}`,
+    `Vehículo: ${[d.patente, d.marca].filter(Boolean).join(' · ') || '—'}`,
+    d.origen ? (d.destino && d.destino !== d.origen ? `Recorrido: ${d.origen} → ${d.destino}` : `Dirección: ${d.origen}`) : '',
+    linkGoogleMapsRemito(d) ? `Ver recorrido en Google Maps:\n${linkGoogleMapsRemito(d)}` : '',
+    extras > 0 ? `Cargos cobrados: $ ${extras.toLocaleString('es-AR')}${d.pago && d.pago !== '—' ? ` (${d.pago})` : ''}` : '',
+    d.estado === 'firmado' ? 'Remito firmado digitalmente.' : '',
+    link ? `\nDescargá tu remito y contanos cómo te atendimos:\n${link}` : '',
+    'Gracias por confiar en nosotros.',
+  ];
+  return lineas.filter(Boolean).join('\n');
+}
+
+// Enviar el remito al cliente (Operaciones / Administración): WhatsApp al
+// número del cliente, compartir el PDF o registrar que no tiene WhatsApp.
+// Queda registrado el canal (Calidad y cobros mide la cobertura).
+async function abrirEnvioRemitoCliente(d) {
+  if (!d?.id) return;
+  document.getElementById('rwa-sheet')?.remove();
+  const box = document.createElement('div');
+  box.id = 'rwa-sheet';
+  box.className = 'rwa-sheet';
+  const tel = String(d.telefono || '').replace(/\D/g, '');
+  box.innerHTML = `<button class="rwa-backdrop" type="button" aria-label="Cerrar" data-rwa-close></button>
+    <section role="dialog" aria-modal="true" aria-labelledby="rwa-title">
+      <h3 id="rwa-title">Enviar el remito al cliente</h3>
+      <p>${_rmxEsc(d.cliente || 'Cliente')} · ${_rmxEsc(d.srvOrden ? 'Servicio ' + d.srvOrden : 'Remito ' + d.nro)}${d.envio ? ` · ya enviado (${_rmxEsc(_rmxCanal(d.envio.canal))})` : ''}</p>
+      <label><span>WhatsApp del cliente</span><input id="rwa-tel" type="tel" inputmode="numeric" maxlength="13" placeholder="Ej: 1123456789" value="${_rmxEsc(tel)}"></label>
+      <small id="rwa-err" hidden>Revisá el número: 10 dígitos, código de área sin 0 y número sin 15.</small>
+      <button class="rwa-send" type="button" id="rwa-send">Enviar por WhatsApp</button>
+      ${navigator.canShare ? '<button class="rwa-alt" type="button" id="rwa-share">Compartir el PDF</button>' : ''}
+      <button class="rwa-skip" type="button" id="rwa-none">El cliente no tiene WhatsApp</button>
+      <div class="rwa-confirm" id="rwa-confirm" hidden>
+        <p>¿Confirmás que el cliente no tiene WhatsApp? Queda registrado y no recibe la encuesta ni el control de cobro.</p>
+        <div><button class="rwa-skip" type="button" id="rwa-none-back">Volver</button><button class="rwa-alt" type="button" id="rwa-none-ok">Sí, no tiene</button></div>
+      </div>
+      <button class="rwa-skip" type="button" data-rwa-close>Cancelar</button>
+    </section>`;
+  document.body.appendChild(box);
+  const listo = () => {
+    box.remove();
+    if (typeof cargarRemitos === 'function') cargarRemitos();
+    if (typeof actualizarKpisRemitos === 'function') actualizarKpisRemitos();
+  };
+  box.querySelectorAll('[data-rwa-close]').forEach(b => b.addEventListener('click', () => box.remove()));
+  box.querySelector('#rwa-none').addEventListener('click', () => { box.querySelector('#rwa-confirm').hidden = false; box.querySelector('#rwa-none').hidden = true; });
+  box.querySelector('#rwa-none-back').addEventListener('click', () => { box.querySelector('#rwa-confirm').hidden = true; box.querySelector('#rwa-none').hidden = false; });
+  box.querySelector('#rwa-none-ok').addEventListener('click', async e => {
+    e.target.disabled = true;
+    if (await registrarEntregaRemito(d.id, 'sin_whatsapp')) listo(); else { e.target.disabled = false; toast('No se pudo registrar', 'error'); }
+  });
+  box.querySelector('#rwa-send').addEventListener('click', async () => {
+    const valor = box.querySelector('#rwa-tel').value;
+    if (!telefonoWhatsApp(valor)) { box.querySelector('#rwa-err').hidden = false; box.querySelector('#rwa-tel').focus(); return; }
+    await compartirRemitoPorWhatsApp(d, { telefono: valor });
+    listo();
+  });
+  box.querySelector('#rwa-share')?.addEventListener('click', async () => {
+    if (await compartirRemitoPorWhatsApp(d, { telefono: '' })) listo();
+  });
+}
+const _rmxCanal = c => ({ whatsapp: 'WhatsApp', compartido: 'PDF compartido', sin_whatsapp: 'sin WhatsApp' }[c] || 'link');
+
+// Con teléfono: abre el chat de ese número con el resumen (WhatsApp no deja
+// adjuntar archivos por link). Sin teléfono, en el celular comparte el PDF del
+// remito (el usuario elige el contacto); en la PC abre WhatsApp con el texto.
+async function compartirRemitoPorWhatsApp(tr, opts = {}) {
+  const raw = tr?.getAttribute?.('data-rem');
+  const d = raw ? JSON.parse(raw) : (tr && typeof tr === 'object' && !tr.getAttribute ? tr : null);
   if (!d) return;
+  let empresa = '';
+  try { empresa = (await window.CompanyDocuments?.load?.())?.legal_name || ''; } catch (_) {}
+  const link = d.estado === 'anulado' ? '' : await linkPublicoRemito(d.id);
+  const texto = textoWhatsAppRemito(d, empresa, link);
+  const numero = telefonoWhatsApp(opts.telefono ?? d.telefono);
 
-  // 1. Preparamos el texto profesional (Tu lógica mejorada)
-  const totalExtras = (parseFloat(d.peaje) || 0) + (parseFloat(d.excedente) || 0) + (parseFloat(d.otros) || 0);
-  const extrasLinea = totalExtras > 0 
-    ? `\n*Extras:* $${totalExtras.toLocaleString('es-AR')} (Peaje: $${parseFloat(d.peaje) || 0} / Exc: $${parseFloat(d.excedente) || 0})` 
-    : '';
-  
-  const mapsUrl = d.destino
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.destino)}`
-    : null;
-
-  const texto = `*SIGMA REMOLQUES - REMITO DIGITAL*\n` +
-    `-----------------------------------\n` +
-    `📄 *N°:* ${d.nro}\n` +
-    `📅 *Fecha:* ${d.fecha}\n` +
-    `🚗 *Vehículo:* ${d.patente}${d.marca ? ' · ' + d.marca : ''}\n` +
-    `👤 *Cliente:* ${d.cliente || '—'}\n` +
-    `📍 *Ruta:* ${d.origen} → ${d.destino}\n` +
-    (mapsUrl ? `🗺️ *Ver destino:* ${mapsUrl}\n` : '') +
-    `🛣️ *KM:* ${d.km || '—'}` +
-    extrasLinea + `\n` +
-    `✅ *Estado:* Firmado digitalmente`;
-
-  // 2. Intentamos compartir como ARCHIVO (Funciona en Celulares/Tablets)
-  if (navigator.share && navigator.canShare) {
+  if (!numero && !opts.soloTexto && navigator.canShare && window.RemitoPdf) {
     try {
-      toast('Generando archivo para WhatsApp...', 'info');
-      
-      // Creamos el HTML temporal para el PDF (Usamos la función de PDF que ya tenés)
-      const elemento = document.createElement('div');
-      // NOTA: Aquí asumo que tu función de PDF se puede llamar o que el contenido es el mismo
-      elemento.innerHTML = `<div>${texto.replace(/\n/g, '<br>')}</div>`; 
-      
-      // Generamos el Blob del PDF
-      const pdfBlob = await html2pdf().set({
-        margin: 10,
-        filename: `Remito_${d.nro}.pdf`,
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).from(elemento).output('blob');
-
-      const file = new File([pdfBlob], `Remito_${d.nro}_${d.patente}.pdf`, { type: 'application/pdf' });
-
-      // Verificamos si el sistema permite compartir este archivo específico
+      const file = new File([await window.RemitoPdf.blob(d)], window.RemitoPdf.fileName(d), { type: 'application/pdf' });
       if (navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Remito Sigma ${d.nro}`,
-          text: texto // El texto va como "caption" del archivo
-        });
-        return; // Éxito: terminamos la función aquí
+        await navigator.share({ files: [file], title: file.name, text: texto });
+        registrarEntregaRemito(d.id, 'compartido');
+        return true;
       }
     } catch (err) {
-      console.error("Error al compartir archivo:", err);
-      // Si falla la generación del archivo, el código seguirá al fallback de abajo
+      if (err?.name === 'AbortError') return false;
+      console.warn('Compartir PDF:', err);
     }
   }
-
-  // 3. FALLBACK: Si es PC o el navegador no permite compartir archivos, enviamos LINK/TEXTO
-  // Limpiamos el teléfono del cliente (si existe) para enviarlo directo
-  const telLimpio = d.telefono ? d.telefono.replace(/\D/g, '') : '';
-  const url = `https://wa.me/${telLimpio}?text=${encodeURIComponent(texto)}`;
-  
-  window.open(url, '_blank');
-}
-
-/**
- * Genera y descarga el remito en formato PDF profesional.
- * Versión: 0.2.0 - Sigma Remolques
- */
-// Datos de contacto/pie del PDF de remito (ajustar cuando SIGMA confirme los definitivos)
-const _REMITO_EMPRESA = {
-  nombre:    'SIGMA REMOLQUES',
-  direccion: 'Av. Ejemplo 1234 · CABA',
-  telefono:  '+54 11 5555-5555',
-  email:     'contacto@sigmaremolques.com',
-  web:       'sigmaremolques.com'
-};
-
-async function _remitoHash(d) {
-  try {
-    const payload = [d.nro, d.patente, d.createdAt || '', d.firmadoAt || '', d.km || '', String(d.peaje||0), String(d.excedente||0), String(d.otros||0)].join('|');
-    const buf = new TextEncoder().encode(payload);
-    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
-    const hex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
-    return hex.slice(0, 16).toUpperCase();
-  } catch(_) { return ''; }
-}
-
-function _qrDataURL(text) {
-  try {
-    if (typeof qrcode !== 'function') return '';
-    const qr = qrcode(0, 'M');
-    qr.addData(text);
-    qr.make();
-    return qr.createDataURL(4, 2);
-  } catch(_) { return ''; }
+  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+  registrarEntregaRemito(d.id, 'whatsapp');
+  return true;
 }
 
 async function descargarRemitoPDF(tr) {
   const raw = tr?.getAttribute('data-rem');
   const d = raw ? JSON.parse(raw) : null;
   if (!d) { toast('No hay datos para el PDF', 'error'); return; }
-
-  const totalExtras = (parseFloat(d.peaje || 0) + parseFloat(d.excedente || 0) + parseFloat(d.otros || 0));
-
-  // Código de verificación (hash) + QR
-  const hash = await _remitoHash(d);
-  const codVerif = hash ? `${hash.slice(0,4)}-${hash.slice(4,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}` : '';
-  const qrPayload = `SIGMA-REMITO|${d.nro}|${d.patente}|${d.firmadoAt || ''}|${hash}`;
-  const qrDataUrl = _qrDataURL(qrPayload);
-
-  // --- LÓGICA: PROCESAMIENTO DE FOTOS ---
-  const fotosArray = d.foto_urls || d.fotos || [];
-  let seccionFotos = '';
-  if (fotosArray.length > 0) {
-    seccionFotos = `
-      <div style="margin-bottom:10px;">
-        <div style="font-size:10px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:3px;">
-          📷 Registro Fotográfico de la Unidad
-        </div>
-        <div style="display:grid; grid-template-columns: repeat(${Math.min(fotosArray.length, 4)}, 1fr); gap:6px;">
-          ${fotosArray.slice(0, 4).map(url => `
-            <div style="border:1px solid #eee; border-radius:4px; overflow:hidden; height:105px; background:#fdfdfd;">
-              <img src="${(typeof ENV !== 'undefined' && ENV.API_BASE_URL && !url.startsWith('http')) ? ENV.API_BASE_URL + url : url}" style="width:100%; height:100%; object-fit:cover;" crossorigin="anonymous">
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  // --- LÓGICA: CONFORMIDAD DE ARRASTRE (NUEVO) ---
-  // Buscamos si "Conformidad de Arrastre" está dentro del array de confirmaciones
-  const requiereArrastre = d.confirmaciones && d.confirmaciones.includes('Conformidad de Arrastre');
-  
-  const bloqueLegalArrastre = requiereArrastre ? `
-    <div style="background:#fff3cd; border:1px solid #ffeeba; border-radius:4px; padding:6px 8px; margin-bottom:8px;">
-      <div style="font-size:9px; color:#856404; font-weight:bold; margin-bottom:2px;">
-        ⚠️ DECLARACIÓN DE CONFORMIDAD DE ARRASTRE
-      </div>
-      <div style="font-size:8px; color:#856404; line-height:1.3; text-align:justify;">
-        El cliente autoriza expresamente a Sigma Remolques a realizar maniobras de arrastre sobre el vehículo, asumiendo total responsabilidad por posibles daños mecánicos o estéticos derivados de la condición actual de la unidad. El operador queda eximido de reclamos posteriores por dichos conceptos.
-      </div>
-    </div>
-  ` : '';
-
-  // --- ARMADO DEL HTML ---
-  const _firmaUrl = (() => { const u = d.firma_imagen_url || d.firmaUrl || ''; return (typeof ENV !== 'undefined' && ENV.API_BASE_URL && u && !u.startsWith('http')) ? ENV.API_BASE_URL + u : u; })();
-
-  // Formateo fecha+hora inicio (creación) y fin (firma)
-  const _fmtDT = iso => {
-    if (!iso) return '—';
-    try {
-      const dt = new Date(iso);
-      const dd = String(dt.getDate()).padStart(2,'0');
-      const mm = String(dt.getMonth()+1).padStart(2,'0');
-      const yy = String(dt.getFullYear()).slice(-2);
-      const hh = String(dt.getHours()).padStart(2,'0');
-      const mi = String(dt.getMinutes()).padStart(2,'0');
-      return `${dd}/${mm}/${yy} ${hh}:${mi}`;
-    } catch(_) { return '—'; }
-  };
-  const _fechaInicio = _fmtDT(d.createdAt);
-  const _fechaFin    = _fmtDT(d.firmadoAt);
-
-  const contenido = `
-    <div style="font-family:'Helvetica Neue', Arial, sans-serif; padding:24px 26px; color:#333; background:#fff; width:794px; box-sizing:border-box;">
-
-      <table style="width:100%; border-bottom:2px solid #333; padding-bottom:6px; margin-bottom:8px;">
-        <tr>
-          <td>
-            <div style="font-size:18px; font-weight:bold; color:#f5a623; line-height:1.1;">SIGMA REMOLQUES</div>
-            <div style="font-size:9px; color:#777;">Auxilio y Traslados de Vehículos</div>
-          </td>
-          <td style="text-align:right;">
-            <div style="font-size:14px; font-weight:bold;">REMITO N° ${d.nro}</div>
-            <div style="font-size:10px; color:#888;">${d.fecha}</div>
-          </td>
-        </tr>
-      </table>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:6px; font-size:10px;">
-        <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px;">
-          <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Datos de la Unidad</b>
-          <div style="margin-top:2px;"><b>Patente:</b> ${d.patente} &nbsp;·&nbsp; <b>Marca/Mod:</b> ${d.marca || '—'}</div>
-        </div>
-        <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px;">
-          <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Cliente / Servicio</b>
-          <div style="margin-top:2px;"><b>Titular:</b> ${d.cliente || '—'} &nbsp;·&nbsp; <b>Tipo:</b> ${d.tipo}</div>
-        </div>
-      </div>
-
-      <div style="background:#f9f9f9; padding:6px 8px; border-radius:4px; margin-bottom:8px; font-size:10px;">
-        <b style="color:#f5a623; font-size:9px; text-transform:uppercase;">Detalle del Servicio</b>
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:2px 12px; margin-top:2px;">
-          <div><b>Origen:</b> ${d.origen || '—'}</div>
-          <div><b>Destino:</b> ${d.destino || '—'}</div>
-          <div><b>KM:</b> ${d.km || '—'}</div>
-          <div><b>N° Srv:</b> ${d.nroSrv || '—'}</div>
-          <div><b>Chofer:</b> ${d.chofer || '—'}</div>
-          <div><b>Nº Remito:</b> ${d.nro}</div>
-          <div><b>Inicio:</b> ${_fechaInicio}</div>
-          <div><b>Fin firma:</b> ${_fechaFin}</div>
-        </div>
-      </div>
-
-      <table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:10px;">
-        <tr style="background:#f5a623; color:#fff; font-weight:bold;">
-          <td style="padding:4px 8px;">Concepto de Extras</td>
-          <td style="padding:4px 8px; text-align:right;">Monto</td>
-        </tr>
-        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Peajes y Gastos de Ruta</td>
-            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.peaje||0).toLocaleString('es-AR')}</td></tr>
-        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Excedente a cargo del socio <span style="color:#888;font-size:9px">(km, carritos u hs. de trabajo fuera de plan)</span></td>
-            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.excedente||0).toLocaleString('es-AR')}</td></tr>
-        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee;">Otros cargos adicionales</td>
-            <td style="padding:4px 8px; text-align:right; border-bottom:1px solid #eee;">$${parseFloat(d.otros||0).toLocaleString('es-AR')}</td></tr>
-        <tr style="font-weight:bold; font-size:11px; background:#fafafa;">
-          <td style="padding:6px 8px; text-align:right;">TOTAL A ABONAR POR EL SOCIO:</td>
-          <td style="padding:6px 8px; text-align:right; color:#f5a623;">$${totalExtras.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})} ARS</td>
-        </tr>
-        <tr style="font-size:10px;">
-          <td style="padding:4px 8px; text-align:right; color:#666;">Forma de pago:</td>
-          <td style="padding:4px 8px; text-align:right; color:#333; font-weight:600;">${(d.pago && d.pago !== '—') ? d.pago : '— No informado —'}</td>
-        </tr>
-      </table>
-
-      ${seccionFotos}
-
-      ${(() => {
-        const confs = Array.isArray(d.confirmaciones) ? d.confirmaciones : [];
-        if (!confs.length) return '';
-        return `
-        <div style="margin-bottom:8px;">
-          <div style="font-size:9px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:2px;">
-            ✓ Confirmaciones firmadas por el cliente
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 16px; font-size:10px; color:#333;">
-            ${confs.map(c => `<div><span style="color:#2ea043;font-weight:bold">✓</span> ${c}</div>`).join('')}
-          </div>
-        </div>`;
-      })()}
-
-      ${bloqueLegalArrastre}
-
-      <div style="margin-top:8px; border-top:1px solid #eee; padding-top:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px;">
-          <div style="flex:1;">
-            <div style="border:1px solid #ddd; background:#fff; border-radius:4px; padding:6px; height:200px; display:flex; align-items:center; justify-content:center;">
-              ${_firmaUrl
-                ? `<img src="${_firmaUrl}" style="max-width:100%; max-height:188px; width:auto; height:auto; object-fit:contain;" crossorigin="anonymous">`
-                : '<div style="color:#bbb; font-size:10px;">Firma pendiente</div>'}
-            </div>
-            <div style="text-align:center; font-size:9px; color:#999; margin-top:3px;">Firma de Conformidad del Cliente</div>
-            <table style="width:100%; margin-top:4px; font-size:9px; color:#444; border-collapse:collapse;">
-              <tr><td style="padding:1px 0; width:80px; color:#888;">Aclaración:</td>
-                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${d.cliente || ''}</td></tr>
-              <tr><td style="padding:1px 0; color:#888;">DNI / CUIT:</td>
-                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${d.cuit || ''}</td></tr>
-              <tr><td style="padding:1px 0; color:#888;">Fecha y hora:</td>
-                  <td style="padding:1px 0; border-bottom:1px solid #ccc;">${_fechaFin}</td></tr>
-            </table>
-          </div>
-          <div style="width:200px;">
-            <div style="font-size:8px; color:#999; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; font-weight:bold;">Verificación digital</div>
-            <div style="font-size:9px; color:#555; line-height:1.3;">
-              Código:<br>
-              <span style="font-family:'Courier New',monospace; font-size:10px; color:#111; font-weight:bold; letter-spacing:0.5px;">${codVerif || 'N/D'}</span>
-            </div>
-            ${qrDataUrl ? `<div style="text-align:center; margin-top:4px;">
-              <img src="${qrDataUrl}" style="width:90px; height:90px; display:block; margin:0 auto; border:1px solid #eee;" alt="QR verificación">
-              <div style="font-size:7px; color:#999; margin-top:2px;">Escaneá para verificar</div>
-            </div>` : ''}
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:8px; border-top:2px solid #f5a623; padding-top:4px; text-align:center; font-size:8px; color:#666; line-height:1.4;">
-        <b style="color:#f5a623;">${_REMITO_EMPRESA.nombre}</b> · ${_REMITO_EMPRESA.direccion}
-        &nbsp;·&nbsp; 📞 ${_REMITO_EMPRESA.telefono} &nbsp;·&nbsp; ✉ ${_REMITO_EMPRESA.email} &nbsp;·&nbsp; 🌐 ${_REMITO_EMPRESA.web}
-      </div>
-
-    </div>
-  `;
-
-  if (typeof toast === 'function') toast('Generando PDF...', 'info');
-
-  const elemento = document.createElement('div');
-  elemento.style.position = 'fixed';
-  elemento.style.left = '-10000px';
-  elemento.style.top = '0';
-  elemento.style.width = '794px';
-  elemento.style.background = '#fff';
-  elemento.innerHTML = contenido;
-  document.body.appendChild(elemento);
-
   try {
-    if (typeof html2canvas !== 'function') {
-      throw new Error('html2canvas no cargó — refrescá la página');
-    }
-    const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
-    if (typeof jsPDFCtor !== 'function') {
-      throw new Error('jsPDF no cargó — refrescá la página');
-    }
-
-    // Esperar a que las imágenes (firma, fotos, QR) carguen antes de capturar
-    const imgs = Array.from(elemento.querySelectorAll('img'));
-    await Promise.all(imgs.map(img => img.complete
-      ? Promise.resolve()
-      : new Promise(res => { img.onload = img.onerror = () => res(); })
-    ));
-
-    const canvas = await html2canvas(elemento, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      letterRendering: true,
-      windowWidth: 794
-    });
-
-    const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const pageW = pdf.internal.pageSize.getWidth();   // 210
-    const pageH = pdf.internal.pageSize.getHeight();  // 297
-    const margin = 6;
-    const availW = pageW - margin * 2;
-    const availH = pageH - margin * 2;
-
-    // Shrink-to-fit: escalar la imagen entera para que entre en 1 hoja A4
-    const ratioCanvas = canvas.width / canvas.height;
-    let drawW = availW;
-    let drawH = drawW / ratioCanvas;
-    if (drawH > availH) {
-      drawH = availH;
-      drawW = drawH * ratioCanvas;
-    }
-    const x = (pageW - drawW) / 2;
-    const y = margin;
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    pdf.addImage(imgData, 'JPEG', x, y, drawW, drawH);
-    pdf.save(`REMITO_${d.nro}_${d.patente}.pdf`);
+    if (!window.RemitoPdf) throw new Error('El generador de PDF todavía se está cargando');
+    await window.RemitoPdf.download(d);
   } catch (err) {
     console.error('descargarRemitoPDF:', err);
-    if (typeof toast === 'function') toast('Error al generar el PDF: ' + (err?.message || err), 'error');
-  } finally {
-    if (elemento.parentNode) document.body.removeChild(elemento);
+    toast('Error al generar el PDF: ' + (err?.message || err), 'error');
   }
 }
 
@@ -8059,6 +7035,122 @@ let kmIaInicio     = null;  // lectura IA al abrir (null = no leyó)
 let kmIaFinal      = null;  // lectura IA al cerrar
 let kmOrigenInicio = null;  // 'ia' | 'manual_ia_fallo' | 'manual_editado' | 'manual_offline'
 let kmOrigenFinal  = null;
+// Horas de motor (sólo camiones con horómetro): lectura IA y de dónde salió el dato
+let horasIaInicio     = null;
+let horasIaFinal      = null;
+let horasOrigenInicio = null;  // 'ia' | 'manual_ia_fallo' | 'manual_offline' (se resuelve al confirmar)
+let horasOrigenFinal  = null;
+
+/* "1.234,5", "1234,5" o "1234.5" → 1234.5 (un decimal). NaN si no es un número. */
+function _parseHoras(v) {
+  let t = String(v == null ? '' : v).trim().replace(/\s/g, '');
+  if (!t) return NaN;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  const n = Number(t);
+  return isFinite(n) && n >= 0 ? Math.round(n * 10) / 10 : NaN;
+}
+function _fmtHoras(n) {
+  return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+}
+/* Horas de motor que usó una jornada; null mientras falte alguna de las dos. */
+function _horasMotorUsadas(ini, fin) {
+  if (ini == null || fin == null || !isFinite(Number(ini)) || !isFinite(Number(fin))) return null;
+  return Math.max(0, Math.round((Number(fin) - Number(ini)) * 10) / 10);
+}
+/* Texto corto para las listas: "+4,5 h motor" con la jornada cerrada y
+   "6.000 h motor" (las de arranque) mientras sigue abierta. */
+function _horasMotorTexto(ini, fin) {
+  if (ini == null) return '';
+  const usadas = _horasMotorUsadas(ini, fin);
+  return usadas != null ? `+${_fmtHoras(usadas)} h motor` : `${_fmtHoras(ini)} h motor`;
+}
+/* De dónde salieron las horas confirmadas: igual que con los km. */
+function _horasResolverOrigen(ia, valor, origen) {
+  if (ia != null && valor === ia) return 'ia';
+  if (ia != null) return 'manual_editado';
+  return origen || 'manual';
+}
+/* Muestra u oculta el bloque de horas de un modal ('nj' abrir, 'cj' cerrar). */
+function _horasPreparar(pre, necesita) {
+  const area = document.getElementById(pre + '-horas-area');
+  const input = document.getElementById(pre + '-horas');
+  const fuente = document.getElementById(pre + '-horas-fuente');
+  const calc = document.getElementById(pre + '-horas-calc');
+  if (area) area.hidden = !necesita;
+  if (input) { input.value = ''; input.removeAttribute('aria-invalid'); }
+  if (fuente) { fuente.textContent = 'La IA las lee de la misma foto. Si no las encuentra, escribilas.'; fuente.className = 'jh-fuente'; }
+  if (calc) { calc.textContent = ''; calc.className = 'jh-calc'; }
+}
+function _horasNecesitaInicio() { return !!jornadaSeleccionada?.registra_horas; }
+function _horasNecesitaCierre() { return jornadaParaCerrar?.horas_inicio != null; }
+function _horasReferencia(pre) {
+  const v = pre === 'nj' ? jornadaSeleccionada?.current_hours : jornadaParaCerrar?.horas_inicio;
+  const n = Number(v);
+  return v != null && isFinite(n) && n > 0 ? n : null;
+}
+/* Diferencia contra la referencia: último cierre (abrir) o inicio de la jornada (cerrar). */
+function onHorasInput(pre) {
+  const input = document.getElementById(pre + '-horas');
+  const calc = document.getElementById(pre + '-horas-calc');
+  if (!input || !calc) return;
+  input.removeAttribute('aria-invalid');
+  const v = _parseHoras(input.value), ref = _horasReferencia(pre);
+  calc.className = 'jh-calc';
+  if (isNaN(v)) { calc.textContent = input.value.trim() ? 'Escribí un número, por ejemplo 1234,5' : ''; if (input.value.trim()) calc.className = 'jh-calc is-error'; return; }
+  if (ref == null) { calc.textContent = ''; return; }
+  const d = Math.round((v - ref) * 10) / 10;
+  if (d < 0) {
+    calc.textContent = `⚠ ${_fmtHoras(-d)} h menos que ${pre === 'nj' ? 'el último cierre' : 'al iniciar'} (${_fmtHoras(ref)} h)`;
+    calc.className = 'jh-calc is-error';
+  } else if (pre === 'cj' && d > 24) {
+    calc.textContent = `+${_fmtHoras(d)} h de motor en la jornada: revisá el horómetro`;
+    calc.className = 'jh-calc is-aviso';
+  } else {
+    calc.textContent = pre === 'nj' ? `+${_fmtHoras(d)} h desde el último cierre` : `+${_fmtHoras(d)} h de motor en la jornada`;
+    calc.className = 'jh-calc is-ok';
+  }
+}
+/* Lo que devolvió la IA para las horas (o que no las vio). */
+function _horasDesdeIA(pre, horas) {
+  const input = document.getElementById(pre + '-horas');
+  const fuente = document.getElementById(pre + '-horas-fuente');
+  const leidas = horas != null && isFinite(Number(horas));
+  if (pre === 'nj') { horasIaInicio = leidas ? Number(horas) : null; horasOrigenInicio = leidas ? 'ia' : 'manual_ia_fallo'; }
+  else { horasIaFinal = leidas ? Number(horas) : null; horasOrigenFinal = leidas ? 'ia' : 'manual_ia_fallo'; }
+  if (input) input.value = leidas ? _fmtHoras(horas) : '';
+  if (fuente) {
+    fuente.textContent = leidas ? '✓ Leídas por la IA · revisá que coincidan con el tablero' : 'La IA no encontró las horas en la foto: escribilas a mano';
+    fuente.className = 'jh-fuente ' + (leidas ? 'is-ia' : 'is-manual');
+  }
+  onHorasInput(pre);
+  if (!leidas) input?.focus();
+}
+/* Valida las horas antes de confirmar. Devuelve {ok, horas, ia, origen} o {ok:false}. */
+function _horasValidar(pre, errorId) {
+  const necesita = pre === 'nj' ? _horasNecesitaInicio() : _horasNecesitaCierre();
+  if (!necesita) return { ok: true, horas: null, ia: null, origen: null };
+  const input = document.getElementById(pre + '-horas');
+  const v = _parseHoras(input?.value);
+  const ref = _horasReferencia(pre);
+  if (isNaN(v)) {
+    input?.setAttribute('aria-invalid', 'true'); input?.focus();
+    _modalError(errorId, 'Este camión registra horas de motor: cargá las horas ' + (pre === 'nj' ? 'iniciales' : 'finales') + '.');
+    return { ok: false };
+  }
+  if (ref != null && v < ref) {
+    input?.setAttribute('aria-invalid', 'true'); input?.focus();
+    _modalError(errorId, `Las horas (${_fmtHoras(v)} h) son menores a ${pre === 'nj' ? 'las del último cierre' : 'las del inicio de la jornada'} (${_fmtHoras(ref)} h). Revisá el horómetro.`);
+    return { ok: false };
+  }
+  if (pre === 'cj' && ref != null && v - ref > 24 &&
+      !confirm(`La jornada suma ${_fmtHoras(v - ref)} h de motor. ¿Es correcto?`)) {
+    input?.focus();
+    return { ok: false };
+  }
+  const ia = pre === 'nj' ? horasIaInicio : horasIaFinal;
+  const origen = pre === 'nj' ? horasOrigenInicio : horasOrigenFinal;
+  return { ok: true, horas: v, ia, origen: _horasResolverOrigen(ia, v, origen) };
+}
 let _jornadasAbiertasCache    = [];
 let _jornadaPendienteCerrar   = null;
 
@@ -8068,6 +7160,8 @@ async function abrirModalNuevaJornada() {
     jornadaSeleccionada = null;
     fotoKmInicio = null;
     kmIaInicio = null; kmOrigenInicio = null;
+    horasIaInicio = null; horasOrigenInicio = null;
+    _horasPreparar('nj', false);
     _modalError('nj-error', '');
 
     const kmInput = document.getElementById('nj-km-inicio');
@@ -8116,12 +7210,10 @@ async function abrirModalNuevaJornada() {
     const camionActualDisponible = camiones.find(c => Number(c.truck_id) === Number(_camionActual?.truck_id));
     if (_camionActual && camionActualDisponible?.has_open_journey) {
       closeModal('modal-nueva-jornada');
-      toast(
-        camionActualDisponible.is_own_open_journey
-          ? 'Ya tenés una jornada abierta. Cerrala antes de iniciar otra.'
-          : 'Este camión ya tiene una jornada abierta y no puede seleccionarse.',
-        'warning'
-      );
+      const mensajeJornadaAbierta = camionActualDisponible.is_own_open_journey
+        ? 'Ya tenés una jornada abierta. Cerrala antes de iniciar otra.'
+        : 'Este camión ya tiene una jornada abierta y no puede seleccionarse.';
+      operationFeedback('Jornada en curso', mensajeJornadaAbierta, 'error', 2800);
       if (camionActualDisponible.is_own_open_journey) goTo('registro');
       return;
     }
@@ -8131,6 +7223,7 @@ async function abrirModalNuevaJornada() {
       jornadaSeleccionada = _camionActual;
       const kmInput2 = document.getElementById('nj-km-inicio');
       if (kmInput2 && _camionActual.current_km) kmInput2.value = _camionActual.current_km;
+      _horasPreparar('nj', _horasNecesitaInicio());
       if (preview)    preview.style.display = 'block';
       if (previewTxt) previewTxt.textContent = `${_camionActual.plate}${_camionActual.numero_interno ? ' · N° ' + _camionActual.numero_interno : ''}`;
       if (btnSelector) btnSelector.style.display = 'none';
@@ -8176,7 +7269,7 @@ async function abrirModalNuevaJornada() {
       <div style="font-size:9px;color:var(--amber);margin:2px 0">🛣 ${c.current_km ? c.current_km.toLocaleString('es-AR') + ' km' : 'Sin km'}</div>
       ${[c.brand, c.model].filter(Boolean).length ? `<div style="font-size:9px;color:var(--muted)">${[c.brand,c.model].filter(Boolean).join(' ')}</div>` : ''}
       <div style="font-size:9px;margin-top:4px;padding:1px 5px;border-radius:4px;display:inline-block;background:${ocupado ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'};color:${ocupado ? 'var(--red)' : '#10b981'}">
-        ${ocupado ? '🔴 En uso' : '🟢 Libre'}
+        ${ocupado ? '● En uso' : '● Libre'}
       </div>
       <div class="camion-check-icon" style="text-align:right;font-size:14px;margin-top:2px"></div>
   </div>`;
@@ -8206,6 +7299,7 @@ function reabrirSelectorCamion() {
     const searchInput = document.getElementById('camion-search-input');
     if (searchInput) { searchInput.value = ''; filtrarCamionesPorBusqueda(''); }
     jornadaSeleccionada = null;
+    _horasPreparar('nj', false);
     const preview = document.getElementById('camion-seleccionado-preview');
     const btnSelector = document.getElementById('btn-abrir-selector-camion');
     const panel = document.getElementById('panel-selector-camion');
@@ -8242,6 +7336,8 @@ function seleccionarCamion(camion, el) {
   // Pre-llenar KM inicial
   const kmInput = document.getElementById('nj-km-inicio');
   if (kmInput && camion.current_km) kmInput.value = camion.current_km;
+  horasIaInicio = null; horasOrigenInicio = null;
+  _horasPreparar('nj', !!camion.registra_horas);
 }
 
 function procesarFotoJornada(input, statusId, iconId) {
@@ -8261,6 +7357,14 @@ function procesarFotoJornada(input, statusId, iconId) {
 
 async function confirmarNuevaJornada() {
   console.log("📍 PASO 1: Botón clickeado. Iniciando validaciones...");
+
+  const jornadaEnCurso = (_jornadasAbiertasCache || []).find(j => j?.log_id) || (_jornadaActivaLocal?.log_id ? _jornadaActivaLocal : null);
+  if (jornadaEnCurso) {
+    const msg = 'Ya existe una jornada en curso. Cerrala antes de iniciar otra.';
+    _modalError('nj-error', msg);
+    operationFeedback('Jornada en curso', msg, 'error', 2800);
+    return;
+  }
 
   // Guard Clauses
   if (!jornadaSeleccionada) {
@@ -8298,9 +7402,13 @@ async function confirmarNuevaJornada() {
       box.style.transition  = 'all 0.3s';
       setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
     }
-    if (status) { status.textContent = '⚠️ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
+    if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
   }
+
+  // Horas de motor: obligatorias en los camiones con horómetro
+  const horasIni = _horasValidar('nj', 'nj-error');
+  if (!horasIni.ok) return;
 
   const btn = document.querySelector('#modal-nueva-jornada .btn-primary');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
@@ -8327,6 +7435,9 @@ async function confirmarNuevaJornada() {
         kmInicio:     kmInicio,
         kmInicioIa:     kmIaInicio,
         kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
+        horasInicio:       horasIni.horas,
+        horasInicioIa:     horasIni.ia,
+        horasInicioOrigen: horasIni.origen,
         grillaMotivo: _grillaMotivoPendiente,
         marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
         // Fecha/hora del momento REAL de la apertura (no del sync).
@@ -8351,6 +7462,7 @@ async function confirmarNuevaJornada() {
         patente:      jornadaSeleccionada.plate,
         marca_modelo: payloadOffline.marcaModelo,
         km_inicio:    kmInicio,
+        horas_inicio: horasIni.horas,
         log_date:     payloadOffline.logDate,
         hora_inicio:  payloadOffline.horaInicio,
       };
@@ -8359,7 +7471,7 @@ async function confirmarNuevaJornada() {
       _grillaDesvioConfirmado = false;
       _grillaMotivoPendiente  = null;
       if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
-      toast('Jornada iniciada — se sincroniza cuando haya señal 📴', 'success');
+      operationFeedback('Jornada iniciada', 'Quedó guardada en el teléfono y se sincronizará al recuperar conexión.', 'success', 2400);
       closeModal('modal-nueva-jornada');
       actualizarBotonFinalizar(true);
       try { actualizarEstadoBtnNuevoRemito(); } catch (_) {}
@@ -8383,6 +7495,9 @@ async function confirmarNuevaJornada() {
     kmInicio:     kmInicio,
     kmInicioIa:     kmIaInicio,
     kmInicioOrigen: _kmResolverOrigen(kmIaInicio, kmInicio, kmOrigenInicio),
+    horasInicio:       horasIni.horas,
+    horasInicioIa:     horasIni.ia,
+    horasInicioOrigen: horasIni.origen,
     fotoKmInicio: fotoKmInicio,
     grillaMotivo: _grillaMotivoPendiente,
     marcaModelo:  [jornadaSeleccionada.brand, jornadaSeleccionada.model].filter(Boolean).join(' ') || null,
@@ -8396,7 +7511,7 @@ async function confirmarNuevaJornada() {
   if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado && resultado.success) {
-    toast('Jornada iniciada ✓', 'success');
+    operationFeedback('Jornada iniciada', 'La jornada quedó abierta correctamente.', 'success', 2200);
     closeModal('modal-nueva-jornada');
     if (typeof actualizarPantallaJornadas === 'function') await actualizarPantallaJornadas();
   } else {
@@ -8506,9 +7621,12 @@ function abrirModalCerrarJornada(jornada) {
   fotoKmFinal = null;
   kmExcepcion = false;
   kmIaFinal = null; kmOrigenFinal = null;
+  horasIaFinal = null; horasOrigenFinal = null;
+  _horasPreparar('cj', _horasNecesitaCierre());
+  _cargarHorasInicioCierre(jornada);
 
   // Limpiar inputs viejos
-  ['cj-km-final', 'cj-workshop-detail', 'cj-notas'].forEach(id => {
+  ['cj-km-final', 'cj-workshop-detail'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -8522,7 +7640,9 @@ function abrirModalCerrarJornada(jornada) {
   const fotoBox = document.getElementById('cj-foto-box');
   const inputFoto = document.getElementById('cj-foto-km');
   
-  if (fotoStatus) fotoStatus.textContent = 'Tocar para sacar foto';
+  if (fotoStatus) { fotoStatus.textContent = 'Tocar para sacar foto'; fotoStatus.style.color = ''; }
+  const fotoHint=document.getElementById('cj-foto-hint');
+  if(fotoHint) fotoHint.textContent='La IA extraerá el kilometraje automáticamente';
   if (fotoIcon) fotoIcon.textContent = '📷';
   if (fotoBox) {
     fotoBox.style.borderColor = '';
@@ -8561,12 +7681,38 @@ function abrirModalCerrarJornada(jornada) {
   if (tallerToggle)   { tallerToggle.style.background = 'var(--border)'; }
   if (tallerKnob)     { tallerKnob.style.left = '3px'; }
   const tallerTipo = document.getElementById('cj-taller-tipo'); if (tallerTipo) tallerTipo.value = '';
+  actualizarBotonesTaller();
   const tallerDet  = document.getElementById('cj-workshop-detail'); if (tallerDet) { tallerDet.value = ''; tallerDet.placeholder = 'Detalle del trabajo realizado...'; }
   _modalError('cj-error', '');
   if (tallerRow)      { tallerRow.style.borderColor = 'var(--border)'; tallerRow.style.background = 'var(--bg-darker)'; }
 
   // Y finalmente... ¡Tu función nativa hace la magia!
   openModal('modal-cerrar-jornada');
+}
+
+/* Las listas de jornadas abiertas no traen las horas de inicio: se piden
+   aparte (o salen de la jornada guardada en el teléfono si no hay señal). Si
+   la jornada abrió con horas, el cierre las pide. */
+async function _cargarHorasInicioCierre(jornada) {
+  if (!jornada) return;
+  if (jornada.horas_inicio === undefined && _jornadaActivaLocal && String(_jornadaActivaLocal.log_id) === String(jornada.log_id)) {
+    jornada.horas_inicio = _jornadaActivaLocal.horas_inicio ?? null;
+  }
+  const real = jornada.log_id != null && !_logIdEsTemporal(jornada.log_id);
+  if (real && navigator.onLine && typeof _db !== 'undefined') {
+    try {
+      const { data } = await _db.from('daily_logs').select('horas_inicio').eq('log_id', jornada.log_id).maybeSingle();
+      if (data) jornada.horas_inicio = data.horas_inicio;
+    } catch (e) { /* sin dato: queda lo que había */ }
+  }
+  if (jornadaParaCerrar !== jornada) return;
+  const area = document.getElementById('cj-horas-area');
+  const necesita = _horasNecesitaCierre();
+  if (area && area.hidden === necesita) _horasPreparar('cj', necesita);
+  if (necesita) {
+    const fuente = document.getElementById('cj-horas-fuente');
+    if (fuente && !document.getElementById('cj-horas')?.value) fuente.textContent = `Al iniciar: ${_fmtHoras(jornada.horas_inicio)} h. La IA las lee de la misma foto.`;
+  }
 }
 
 const _TALLER_EJ = {
@@ -8577,6 +7723,23 @@ const _TALLER_EJ = {
   'Eléctrico':     'Ej: Alternador, Arranque, Luces',
   'Otro':          'Ej: Limpieza, Pintura, Carrocería',
 };
+function seleccionarTipoTaller(tipo) {
+  if (!['Mantenimiento','Preventivo','Repuestos'].includes(tipo)) return;
+  const input=document.getElementById('cj-taller-tipo');
+  if(!input) return;
+  input.value=input.value===tipo?'':tipo;
+  actualizarBotonesTaller();
+  onTallerTipoChange();
+}
+function actualizarBotonesTaller() {
+  const selected=document.getElementById('cj-taller-tipo')?.value || '';
+  document.querySelectorAll('#cj-taller-opciones button').forEach(button=>{
+    const active=button.dataset.workshopType===selected;
+    button.hidden=!!selected&&!active;
+    button.setAttribute('aria-pressed',String(active));
+    button.title=active?'Tocá para cambiar el tipo de trabajo':'';
+  });
+}
 function onTallerTipoChange() {
   const tipo = document.getElementById('cj-taller-tipo')?.value;
   const det  = document.getElementById('cj-workshop-detail');
@@ -8617,6 +7780,7 @@ function editarKmManual() {
   if (manualArea) manualArea.style.display = 'block';
   if (input) {
     const currentVal = input.value || document.getElementById('cj-km-number')?.textContent?.replace(/\./g,'') || '';
+    input.placeholder = 'KM de inicio';
     input.value = currentVal;
     input.focus();
   }
@@ -8737,10 +7901,10 @@ function validarKmInicioJornada() {
   }
 
   if (kmIngresado < kmRegistrado) {
-    display.textContent = `⚠️ El KM ingresado (${kmIngresado.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
+    display.textContent = `⚠ El KM ingresado (${kmIngresado.toLocaleString('es-AR')}) es menor al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
     display.style.color = 'var(--red)';
   } else if (kmRegistrado > 0 && (kmIngresado - kmRegistrado) > 5000) {
-    display.textContent = `⚠️ Salto de +${(kmIngresado - kmRegistrado).toLocaleString('es-AR')} km respecto al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
+    display.textContent = `⚠ Salto de +${(kmIngresado - kmRegistrado).toLocaleString('es-AR')} km respecto al último registrado (${kmRegistrado.toLocaleString('es-AR')}). Verificá el odómetro.`;
     display.style.color = 'var(--red)';
   }
 }
@@ -8762,7 +7926,7 @@ function calcularKmRecorridos() {
   const diff = kmFinal - kmInicio;
 
   diffDisplay.textContent = diff < 0
-    ? '⚠️ KM menor al inicio'
+    ? '⚠ KM menor al inicio'
     : `+${diff.toLocaleString('es-AR')} km recorridos`;
 
   diffDisplay.style.color = diff < 0 ? 'var(--red)' : 'var(--green)';
@@ -8771,7 +7935,6 @@ function calcularKmRecorridos() {
 async function confirmarCerrarJornada() {
   const kmFinal        = parseInt(document.getElementById('cj-km-final')?.value);
   const workshopDetail = document.getElementById('cj-workshop-detail')?.value || null;
-  const notas          = document.getElementById('cj-notas')?.value || null;
 
   const tallerTipo = document.getElementById('cj-taller-tipo')?.value || null;
 
@@ -8798,7 +7961,7 @@ async function confirmarCerrarJornada() {
       box.style.transition  = 'all 0.3s';
       setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
     }
-    if (status) { status.textContent = '⚠️ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
+    if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
   }
   if (enTaller && !tallerTipo) {
@@ -8807,6 +7970,8 @@ async function confirmarCerrarJornada() {
   if (enTaller && !workshopDetail) {
     _modalError('cj-error', 'Ingresá el detalle del trabajo realizado en taller'); return;
   }
+  const horasFin = _horasValidar('cj', 'cj-error');
+  if (!horasFin.ok) return;
   _modalError('cj-error', '');
 
   // Bloquear botón mientras Supabase procesa (evita doble envío en redes lentas)
@@ -8831,9 +7996,11 @@ async function confirmarCerrarJornada() {
         kmFinal:        kmFinal,
         kmFinalIa:     kmIaFinal,
         kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
+        horasFinal:       horasFin.horas,
+        horasFinalIa:     horasFin.ia,
+        horasFinalOrigen: horasFin.origen,
         inWorkshop:     enTaller,
         workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
-        notas:          notas,
         kmExcepcion:    kmExcepcion,
         // Hora real del cierre — al sincronizar se guarda esta, no la del sync
         horaFin:        new Date().toTimeString().slice(0, 5),
@@ -8882,10 +8049,12 @@ async function confirmarCerrarJornada() {
     kmFinal:        kmFinal,
     kmFinalIa:     kmIaFinal,
     kmFinalOrigen: _kmResolverOrigen(kmIaFinal, kmFinal, kmOrigenFinal),
+    horasFinal:       horasFin.horas,
+    horasFinalIa:     horasFin.ia,
+    horasFinalOrigen: horasFin.origen,
     fotoKmFinal:    fotoKmFinal,
     inWorkshop:     enTaller,
     workshopDetail: tallerTipo && workshopDetail ? `${tallerTipo}: ${workshopDetail}` : (workshopDetail || null),
-    notas:          notas,
     kmExcepcion:    kmExcepcion,
   });
 
@@ -8904,8 +8073,8 @@ async function confirmarCerrarJornada() {
     // actualizar KM en memoria y refrescar las barras de service
     if (_truckActual?.truck_id === jornadaParaCerrar.truck_id) {
       _truckActual.current_km = kmFinal;
-      const planesActualizados = await cargarPlanesDetalleOptimizados(_truckActual.truck_id, kmFinal);
-      renderPlanes(planesActualizados);
+      if (horasFin.horas != null) _truckActual.current_hours = Math.floor(horasFin.horas);
+      await _refrescarPlanesCamion(kmFinal);
     }
 
     // Abrir rendición de efectivo
@@ -8928,18 +8097,18 @@ async function abrirRendicion(logId, driverId, truckId, fecha) {
   _rendicionEfEsperado    = 0;
   _rendicionGastosSistema = 0;
 
-  ['rend-efectivo-declarado', 'rend-gastos-extra', 'rend-motivo-extra', 'rend-notas'].forEach(id => {
+  ['rend-gastos-extra', 'rend-motivo-extra'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   const preview   = document.getElementById('rend-diferencia-preview');
   const motivoRow = document.getElementById('rend-motivo-row');
   if (preview)   preview.style.display   = 'none';
-  if (motivoRow) motivoRow.style.display = 'none';
+  if (motivoRow) motivoRow.classList.remove('has-expense');
   _modalError('rend-error', '');
 
   const lista = document.getElementById('rend-remitos-lista');
-  if (lista) lista.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px">Cargando servicios...</div>';
+  if (lista) { lista.hidden = true; lista.innerHTML = '<div class="rend-services-empty">Cargando servicios...</div>'; }
 
   openModal('modal-rendicion-cierre');
 
@@ -8952,31 +8121,34 @@ async function abrirRendicion(logId, driverId, truckId, fecha) {
       lista.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px">Sin servicios registrados hoy</div>';
     } else {
       lista.innerHTML = remitos.map(r => {
-        const total = (r.pago_1_monto || 0) + (r.pago_2_monto || 0);
-        const esEf  = r.pago_1_metodo === 'efectivo' || r.pago_2_metodo === 'efectivo';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--muted)">#${r.nro_remito} ${r.tipo_servicio || ''}</span>
-          <span style="${esEf ? 'color:var(--amber);font-weight:600' : 'color:var(--muted)'}">
-            ${esEf ? '💵 ' : ''}$${total.toLocaleString('es-AR')}
-          </span>
+        const esEfectivo = metodo => String(metodo || '').trim().toLowerCase() === 'efectivo';
+        const efectivo = (esEfectivo(r.pago_1_metodo) ? Number(r.pago_1_monto) || 0 : 0)
+          + (esEfectivo(r.pago_2_metodo) ? Number(r.pago_2_monto) || 0 : 0);
+        const servicio = _escHtml(r.nro_servicio || r.nro_remito || 'Sin número');
+        const patente = _escHtml(r.patente || 'Sin patente');
+        return `<div class="rend-service-row">
+          <span class="rend-service-identification"><strong>N° ${servicio}</strong><span>${patente}</span></span>
+          <span class="rend-service-cash">$${efectivo.toLocaleString('es-AR')}</span>
         </div>`;
       }).join('');
     }
   }
+  const servicesToggle = document.getElementById('rend-services-toggle');
+  if (servicesToggle) servicesToggle.textContent = `Ver ${remitos.length} ${remitos.length === 1 ? 'servicio' : 'servicios'}`;
 
   const espEl = document.getElementById('rend-efectivo-esperado');
   if (espEl) espEl.textContent = '$' + efectivoEsperado.toLocaleString('es-AR');
 
-  const gastosRow = document.getElementById('rend-gastos-sistema-row');
   const gastosVal = document.getElementById('rend-gastos-sistema-val');
-  if (gastosRow && gastosVal) {
-    if (gastosSistema > 0) {
-      gastosRow.style.display = 'flex';
-      gastosVal.textContent   = '-$' + gastosSistema.toLocaleString('es-AR');
-    } else {
-      gastosRow.style.display = 'none';
-    }
-  }
+  if (gastosVal) gastosVal.textContent = '$' + gastosSistema.toLocaleString('es-AR');
+}
+
+function rendToggleServicios() {
+  const list = document.getElementById('rend-remitos-lista');
+  const button = document.getElementById('rend-services-toggle');
+  if (!list || !button) return;
+  list.hidden = !list.hidden;
+  button.classList.toggle('open', !list.hidden);
 }
 
 function rendActualizarDiferencia() {
@@ -8990,7 +8162,7 @@ function rendActualizarDiferencia() {
   const declarado   = parseFloat(declaradoEl?.value) || 0;
   const gastosExtra = parseFloat(gastosExtraEl?.value) || 0;
 
-  if (motivoRow) motivoRow.style.display = gastosExtra > 0 ? '' : 'none';
+  if (motivoRow) motivoRow.classList.toggle('has-expense', gastosExtra > 0);
 
   if (!declaradoEl?.value) {
     if (previewEl) previewEl.style.display = 'none';
@@ -9020,10 +8192,7 @@ function rendActualizarDiferencia() {
 }
 
 async function confirmarRendicion() {
-  const declaradoEl = document.getElementById('rend-efectivo-declarado');
-  if (!declaradoEl?.value) {
-    _modalError('rend-error', 'Ingresá el efectivo que tenés en mano'); return;
-  }
+  // Cash handover is recorded monthly by Administration.
   const gastosExtra = parseFloat(document.getElementById('rend-gastos-extra')?.value) || 0;
   const motivoExtra = document.getElementById('rend-motivo-extra')?.value?.trim() || null;
   if (gastosExtra > 0 && !motivoExtra) {
@@ -9039,7 +8208,7 @@ async function confirmarRendicion() {
       log_id:             await _resolverLogIdLocal(_rendicionLogId),
       driver_id:          USUARIO_ACTUAL.id,
       fecha:              _rendicionFecha,
-      efectivo_declarado: parseFloat(declaradoEl.value),
+      cash_expenses_only: true,
       gastos_extra:       gastosExtra || null,
       motivo_extra:       motivoExtra,
       notas:              document.getElementById('rend-notas')?.value?.trim() || null,
@@ -9070,13 +8239,17 @@ async function confirmarRendicion() {
     console.error('confirmarRendicion:', err);
     _modalError('rend-error', err.message || 'Error al enviar la rendición');
   } finally {
-    if (btn) { btn.textContent = '✅ Confirmar rendición'; btn.style.pointerEvents = 'auto'; }
+    if (btn) { btn.textContent = 'Guardar gastos'; btn.style.pointerEvents = 'auto'; }
   }
 }
 
 // POST a la edge function de rendición — compartido entre el flujo online
 // y el handler del outbox (sync offline). Lanza Error si el server rechaza.
 async function _postRendicion(payload) {
+  if(payload.cash_expenses_only){
+    const result=await _db.rpc('save_journey_cash_expenses',{p_log:payload.log_id,p_amount:payload.gastos_extra||0,p_reason:payload.motivo_extra,p_notes:payload.notas});
+    if(result.error)throw result.error;return {success:true};
+  }
   const accessToken = await obtenerAccessToken();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/check-integridad`, {
     method:  'POST',
@@ -9136,20 +8309,17 @@ async function actualizarPantallaJornadas() {
       jornadas.forEach(j => {
         const info = j.trucks;
         const div  = document.createElement('div');
-        div.style.cssText = 'display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border:1px solid rgba(245,166,35,0.3);border-radius:10px';
+        div.className = 'reg-open-card';
         div.innerHTML = `
-          <div style="width:44px;height:44px;background:var(--amber-lo);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🚛</div>
-          <div style="flex:1">
-            <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:1px;color:var(--amber)">${info?.plate || '—'}</div>
-            <div style="font-size:11px;color:var(--muted)">${info?.brand || ''} ${info?.model || ''} · N° ${info?.numero_interno || '—'}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">
-              Inicio: <span style="font-family:'DM Mono';color:var(--text)">${j.hora_inicio || '—'}</span> ·
-              KM: <span style="font-family:'DM Mono';color:var(--amber)">${(j.km_inicio||0).toLocaleString('es-AR')}</span>
-            </div>
+          <div class="reg-open-icon"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#truck"/></svg></div>
+          <div class="reg-open-info">
+            <div class="reg-open-plate">${info?.plate || '—'}</div>
+            <div class="reg-open-meta">${info?.brand || ''} ${info?.model || ''} · N° ${info?.numero_interno || '—'}</div>
+            <div class="reg-open-meta">Inicio <b>${j.hora_inicio || '—'}</b> · KM <b>${(j.km_inicio||0).toLocaleString('es-AR')}</b>${j.horas_inicio != null ? ` · Horas <b>${_fmtHoras(j.horas_inicio)}</b>` : ''}</div>
           </div>
-          <button class="btn btn-primary" style="font-size:11px;padding:8px 14px;flex-shrink:0"
+          <button class="btn btn-primary reg-open-close"
             onclick="iniciarCierreJornada(${JSON.stringify(j).replace(/"/g,'&quot;')})">
-            🏁 Cerrar
+            Cerrar jornada
           </button>`;
         lista.appendChild(div);
       });
@@ -9251,6 +8421,11 @@ async function cargarResumenMesPantalla() {
   if (elJor) elJor.textContent = data.total_jornadas;
   if (elSrv) elSrv.textContent = data.total_servicios;
   if (elAnu) elAnu.textContent = data.total_anulados > 0 ? `${data.total_anulados} anulado${data.total_anulados > 1 ? 's' : ''}` : '';
+  // Horas de motor: sólo aparece si en el mes hubo jornadas con horómetro.
+  const boxHs = document.getElementById('kpi-horas-mes-box');
+  const elHs  = document.getElementById('kpi-horas-mes');
+  if (boxHs) boxHs.hidden = !(Number(data.total_horas_motor) > 0);
+  if (elHs)  elHs.textContent = _fmtHoras(Number(data.total_horas_motor) || 0);
 }
 
 // ── NAV AVATAR POPUP ────────────────────────────────────────────
@@ -9276,7 +8451,7 @@ function toggleNavAvatarMenu() {
 
 // ── CONTROLADOR DEL HUB DE CONFIGURACIÓN ───────────────────────
 
-async function openSettingsHub() {
+async function openSettingsHub(tabId = 'tab-flota') {
   const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
 
   if (esChofer) {
@@ -9289,8 +8464,10 @@ async function openSettingsHub() {
     document.body.appendChild(modal);
   }
   _renderPerfilAdminTab();
+  // Cada herramienta se abre sola (sin el menú lateral de la versión inicial).
+  modal?.classList.add('cfg-single');
   openModal('modal-settings');
-  switchConfigTab('tab-flota');
+  switchConfigTab(_cfgTabMeta[tabId] ? tabId : 'tab-flota');
 }
 
 function _renderPerfilAdminTab() {
@@ -9392,7 +8569,7 @@ function _abrirPanelChofer() {
         <div class="cfg-ch-card cfg-ch-card--action ${tieneJornada ? 'cfg-ch-card--disabled' : ''}"
              onclick="${tieneJornada ? '' : '_cambiarSesionChofer()'}">
           <div>
-            <div>🔄 Cambiar sesión</div>
+            <div>🔄 Cambiar de unidad/vehículo</div>
             ${tieneJornada ? '<div class="cfg-ch-hint">Cerrá tu jornada activa primero</div>' : ''}
           </div>
           <span class="cfg-ch-arrow">›</span>
@@ -9444,12 +8621,12 @@ function _confirmarCerrarSesion() {
   if (confirm('¿Seguro que querés cerrar sesión?')) logoutUsuario();
 }
 const _cfgTabMeta = {
-  'tab-flota':       { title: 'Flota',       action: 'openNuevoVehiculoModal', importTipo: 'flota' },
-  'tab-usuarios':    { title: 'Personal',     action: 'openNuevoUsuarioModal', importTipo: 'usuarios' },
-  'tab-planes':      { title: 'Catálogo de Planes',       action: 'openAdminPlanModal' },
-  'tab-mantenimiento':{ title: 'Mantenimiento',             action: null },
-  'tab-emergencias': { title: 'Contactos de Emergencia',  action: null },
-  'tab-mi-cuenta':   { title: 'Mi cuenta',    action: null },
+  'tab-flota':       { title: 'Camiones', sub: 'Alta y administración de los vehículos de la flota.', action: 'openNuevoVehiculoModal()', importTipo: 'flota' },
+  'tab-usuarios':    { title: 'Personal', sub: 'Alta y gestión de choferes, operadores y administración.', action: 'openNuevoUsuarioModal()', importTipo: 'usuarios' },
+  'tab-planes':      { title: 'Planes de mantenimiento', sub: 'Catálogo de planes globales.', action: 'openAdminPlanModal()' },
+  'tab-mantenimiento':{ title: 'Mantenimiento', sub: 'Services vencidos y próximos de cada móvil.', action: null },
+  'tab-emergencias': { title: 'SOS del chofer', sub: 'Lo que ve el chofer al tocar SOS: teléfonos, talleres de confianza y qué hacer ante un siniestro.', action: null },
+  'tab-mi-cuenta':   { title: 'Mi cuenta', sub: 'Datos de la cuenta actual.', action: null },
 };
 
 function switchConfigTab(tabId) {
@@ -9465,11 +8642,13 @@ function switchConfigTab(tabId) {
   if (meta) {
     const titleEl = document.getElementById('cfg-tab-title');
     if (titleEl) titleEl.textContent = meta.title;
+    const subEl = document.getElementById('cfg-tab-sub');
+    if (subEl) subEl.textContent = meta.sub || '';
     const btnNew = document.getElementById('cfg-btn-new');
     if (btnNew) {
       if (meta.action && !esSupervisor) {
         btnNew.style.display = '';
-        btnNew.onclick = window[meta.action];
+        btnNew.setAttribute('onclick', meta.action);
       } else {
         btnNew.style.display = 'none';
       }
@@ -9565,7 +8744,9 @@ async function eliminarEmergenciaItemConfig(configId) {
 
 // Ejemplo de cómo renderizar el catálogo de planes (la pestaña 3)
 async function cargarTablaAdminPlanes() {
+  window.AuxiliosPlanesBase?.recargar?.();   // Camión › Planes de mantenimiento, si está abierto
   const contenedor = document.getElementById('lista-admin-planes');
+  if (!contenedor) return;
   contenedor.innerHTML = '⏳ Cargando catálogo...';
 
   const { data: planes, error } = await _db
@@ -9584,7 +8765,7 @@ async function cargarTablaAdminPlanes() {
 
   window._planesCache = planes;
 
-  contenedor.innerHTML = `<div class="cfg-item-list">${planes.map(p => `
+  contenedor.innerHTML = `<div class="cfg-item-list">${planes.slice().sort((a, b) => (a.activo ? 0 : 1) - (b.activo ? 0 : 1)).map(p => `
     <div class="cfg-item${!p.activo ? ' inactive' : ''}">
       <div class="cfg-item-main">
         <div class="cfg-item-name">${p.name}</div>
@@ -9605,29 +8786,6 @@ async function cargarTablaAdminPlanes() {
 // ── Rendiciones (admin) ─────────────────────────
 let _rendicionesCache = [];
 
-async function cargarRendicionesTab() {
-  const bodyEl  = document.getElementById('cfg-rend-body');
-  const statsEl = document.getElementById('cfg-rend-stats');
-  if (bodyEl)  bodyEl.innerHTML  = '<div class="cfg-rend-empty">Cargando rendiciones...</div>';
-  if (statsEl) statsEl.innerHTML = '';
-
-  const rango = document.getElementById('cfg-rend-rango')?.value || '30';
-  let desde = null;
-  if (rango !== 'all') {
-    const d = new Date();
-    d.setDate(d.getDate() - parseInt(rango, 10));
-    desde = d.toISOString().slice(0, 10);
-  }
-
-  try {
-    const { rendiciones } = await cargarRendicionesAdmin({ desde });
-    _rendicionesCache = rendiciones;
-    _renderRendicionesTabla();
-  } catch (err) {
-    console.error('cargarRendicionesTab:', err);
-    if (bodyEl) bodyEl.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar rendiciones</div>';
-  }
-}
 
 function _renderRendicionesTabla() {
   const bodyEl  = document.getElementById('cfg-rend-body');
@@ -9828,8 +8986,8 @@ function _abrirRendicionMensualPDF({ chofer, servicios, gastos, totales, arqueo,
   const rangoStr  = `01-${mm}-${anio} — ${String(new Date(anio, mes, 0).getDate()).padStart(2,'0')}-${mm}-${anio}`;
   const _p2 = (n) => String(n).padStart(2, '0');
   const ahora = new Date();
-  const emitido = `${_p2(ahora.getDate())}-${_p2(ahora.getMonth()+1)}-${ahora.getFullYear()} ${_p2(ahora.getHours())}:${_p2(ahora.getMinutes())}`;
-  const _dmy = (iso) => (iso || '').split('-').reverse().join('-');
+  const emitido = `${_p2(ahora.getDate())}/${_p2(ahora.getMonth()+1)}/${String(ahora.getFullYear()).slice(2)} ${_p2(ahora.getHours())}:${_p2(ahora.getMinutes())}`;
+  const _dmy = (iso) => { const [y, m, d] = String(iso || '').slice(0, 10).split('-'); return y && m && d ? `${d}/${m}/${y.slice(2)}` : (iso || ''); };
   const _chip = {
     'Servicio': 'chip-servicio', 'Peaje': 'chip-peaje', 'Excedente': 'chip-excedente',
     'Otro': 'chip-otro', 'Combustible': 'chip-combustible', 'Gasto extra': 'chip-extra',
@@ -10199,20 +9357,26 @@ function _renderMantenimientoTab() {
   if (busq) list = list.filter(x => (x.plate || '').toLowerCase().includes(busq) || (x.plan_name || '').toLowerCase().includes(busq));
 
   if (!list.length) {
-    body.innerHTML = '<div class="cfg-rend-empty">Sin services pendientes 🎉</div>';
+    body.innerHTML = '<div class="cfg-rend-empty">Sin services pendientes</div>';
     return;
   }
 
   body.innerHTML = `<table class="cfg-rend-table">
-    <thead><tr><th>Unidad</th><th>Plan</th><th>KM actual</th><th>Restante</th><th>Estado</th><th></th></tr></thead>
+    <thead><tr><th>Unidad</th><th>Plan</th><th>Actual</th><th>Restante</th><th>Estado</th><th></th></tr></thead>
     <tbody>${list.map(x => {
       const cls = x.estado === 'vencido' ? 'err' : 'warn';
-      const restTxt = x.km_restantes == null ? '—' : (x.km_restantes < 0 ? '−' + Math.abs(x.km_restantes).toLocaleString('es-AR') : x.km_restantes.toLocaleString('es-AR'));
-      const restColor = x.km_restantes == null ? 'var(--muted)' : x.km_restantes < 0 ? '#ef4444' : x.km_restantes < 500 ? 'var(--amber)' : 'var(--text)';
+      const porHoras = x.manda === 'horas';
+      const rest = porHoras ? x.horas_restantes : x.km_restantes;
+      const unidad = porHoras ? ' h' : ' km';
+      const restTxt = rest == null ? '—' : (rest < 0 ? '−' + Math.abs(rest).toLocaleString('es-AR') : rest.toLocaleString('es-AR')) + unidad;
+      const restColor = rest == null ? 'var(--muted)' : rest < 0 ? '#ef4444' : x.estado === 'proximo' ? 'var(--amber)' : 'var(--text)';
+      const actual = porHoras
+        ? (x.current_hours != null ? x.current_hours.toLocaleString('es-AR') + ' h' : '—')
+        : (x.current_km != null ? x.current_km.toLocaleString('es-AR') + ' km' : '—');
       return `<tr>
         <td>${_escHtml(x.plate)}${x.numero_interno ? ' <span style="color:var(--muted)">· ' + _escHtml(String(x.numero_interno)) + '</span>' : ''}</td>
         <td>${_escHtml(x.plan_name)}</td>
-        <td style="font-family:'DM Mono'">${x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—'}</td>
+        <td style="font-family:'DM Mono'">${actual}</td>
         <td style="font-family:'DM Mono';color:${restColor}">${restTxt}</td>
         <td><span class="pill ${cls}">${x.estado === 'vencido' ? 'Vencido' : 'Próximo'}</span></td>
         <td><button class="cfg-rend-btn-mini" onclick="verTimelineCamion('${x.truck_id}')">Ver camión</button></td>
@@ -10302,20 +9466,32 @@ function openNuevoVehiculoModal() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const regHorasNv = document.getElementById('nv-registra-horas'); if (regHorasNv) regHorasNv.checked = false;
   const warnEl = document.getElementById('warn-patente-nv');
   if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
-  const errEl = document.getElementById('nv-modal-error');
-  if (errEl) errEl.style.display = 'none';
-  const tipo = document.getElementById('nv-tipo'); if (tipo) tipo.value = 'plancha';
+  _nvPrepararModal({
+    titulo: 'Nuevo camión', sub: 'Cargá los datos del móvil para sumarlo a la flota.', boton: 'Registrar camión',
+    km: 'Kilometraje inicial *', horas: 'Horas de motor iniciales', ayudaKm: false, tipo: 'plancha'
+  });
+  openModal('modal-nuevo-vehiculo');
+}
 
-  const titulo = document.querySelector('#modal-nuevo-vehiculo .modal-head-title');
-  if (titulo) titulo.textContent = '🚨 Alta de Flota';
-  const btnGuardar = document.getElementById('btn-guardar-vehiculo');
-  if (btnGuardar) btnGuardar.innerHTML = '💾 Registrar en Flota';
+// Tipo de equipo: tarjetas que escriben en el input oculto #nv-tipo.
+function _nvElegirTipo(tipo) {
+  const inp = document.getElementById('nv-tipo');
+  if (inp) inp.value = tipo;
+  document.querySelectorAll('#modal-nuevo-vehiculo [data-nv-tipo]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.nvTipo === tipo)));
+}
 
+function _nvPrepararModal({ titulo, sub, boton, km, horas, ayudaKm, tipo }) {
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  set('nv-title', titulo); set('nv-subtitle', sub); set('btn-guardar-vehiculo', boton);
+  set('nv-km-label', km); set('nv-horas-label', horas);
+  const ayuda = document.getElementById('nv-km-help'); if (ayuda) ayuda.hidden = !ayudaKm;
+  const errEl = document.getElementById('nv-modal-error'); if (errEl) errEl.style.display = 'none';
+  _nvElegirTipo(tipo || 'plancha');
   const modal = document.getElementById('modal-nuevo-vehiculo');
   if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
-  openModal('modal-nuevo-vehiculo');
 }
 
 // ── 4. ACTUALIZACIÓN: GUARDADO INTELIGENTE ────────────────
@@ -10326,21 +9502,22 @@ async function guardarNuevoVehiculo() {
   const modelo = document.getElementById('nv-modelo').value.trim();
   const km = parseInt(document.getElementById('nv-km').value);
   const horas = parseInt(document.getElementById('nv-horas').value) || 0;
+  const registraHoras = !!document.getElementById('nv-registra-horas')?.checked;
   const anio = parseInt(document.getElementById('nv-anio').value) || null;
   const interno = document.getElementById('nv-interno').value.trim();
 
   const btn = document.getElementById('btn-guardar-vehiculo');
 
-  if (!patente)      { showModalError('nv-modal-error', 'Para guardar completá Patente / Dominio'); return; }
-  if (patente.replace(/\s/g,'').length < 6) { showModalError('nv-modal-error', 'La patente parece incompleta — revisá que tenga al menos 6 caracteres'); return; }
-  if (isNaN(km) || document.getElementById('nv-km').value === '') { showModalError('nv-modal-error', 'Para guardar completá KM Inicial'); return; }
+  if (!patente)      { showModalError('nv-modal-error', 'Completá la patente del camión'); return; }
+  if (patente.replace(/\s/g,'').length < 6) { showModalError('nv-modal-error', 'La patente parece incompleta: tiene que tener al menos 6 caracteres'); return; }
+  if (isNaN(km) || document.getElementById('nv-km').value === '') { showModalError('nv-modal-error', 'Completá el kilometraje'); return; }
 
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
   const payload = {
     plate: patente, brand: marca, model: modelo,
     year: anio, numero_interno: interno, current_km: km,
-    current_hours: horas, tipo_equipo: tipo
+    current_hours: horas, tipo_equipo: tipo, registra_horas: registraHoras
   };
 
   let error_res;
@@ -10360,13 +9537,13 @@ async function guardarNuevoVehiculo() {
     error_res = error;
   }
 
-  if (btn) { btn.textContent = vehiculoEditandoId ? '💾 Actualizar Flota' : '💾 Registrar en Flota'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = vehiculoEditandoId ? 'Guardar cambios' : 'Registrar camión'; btn.style.pointerEvents = 'auto'; }
 
   if (error_res) {
-    if (error_res.code === '23505') toast('🚨 Patente o N° Interno duplicado.', 'error');
+    if (error_res.code === '23505') toast('Ya hay un camión con esa patente o ese N° interno.', 'error');
     else toast(`Error: ${error_res.message}`, 'error');
   } else {
-    toast(vehiculoEditandoId ? '✅ Flota actualizada' : '✅ Vehículo registrado en flota', 'success');
+    toast(vehiculoEditandoId ? 'Camión actualizado' : 'Camión registrado en la flota', 'success');
     closeModal('modal-nuevo-vehiculo');
     cargarTablaAdminFlota(); 
   }
@@ -10401,27 +9578,32 @@ async function cargarTablaAdminFlota() {
       if (t === 'plancha')    return 'Plancha';
       if (t === 'percha')     return 'Percha';
       if (t === 'asistencia') return 'Asistencia';
-      if (t === 'pesado')     return 'Grua Pesada';
+      if (t === 'pesado')     return 'Grúa pesada';
       return t || 'Vehiculo';
     };
-    contenedor.innerHTML = `<div class="cfg-item-list">${vehiculos.map(v => `
-      <div class="cfg-item${v.status !== 'active' ? ' inactive' : ''}">
-        <div class="cfg-item-main">
-          <div class="cfg-item-name">${v.plate}${v.numero_interno ? ` · Interno ${v.numero_interno}` : ''}</div>
-          <div class="cfg-item-sub">${[v.brand, v.model, v.year ? `${v.year}` : null, v.current_km ? `${v.current_km.toLocaleString('es-AR')} km` : null].filter(Boolean).join(' · ')}</div>
-        </div>
-        <div class="cfg-item-side">
-          <span class="cfg-badge ${tipoBadgeClass(v.tipo_equipo)}">${tipoLabel(v.tipo_equipo)}</span>
-          <span class="cfg-status ${v.status === 'active' ? 'on' : 'off'}">${v.status === 'active' ? 'Operativo' : 'Inactivo'}</span>
-        </div>
-        <div class="cfg-item-actions">
-          <button class="cfg-btn-a ghost" onclick="verTimelineCamion('${v.truck_id}')">Timeline</button>
-          <button class="cfg-btn-a ghost" onclick="abrirEditarVehiculo('${v.truck_id}')">Editar</button>
-          <button class="cfg-btn-a ${v.status === 'active' ? 'danger' : 'go'}" onclick="toggleEstadoVehiculo('${v.truck_id}','${v.status}')">
-            ${v.status === 'active' ? 'Dar de baja' : 'Reactivar'}
-          </button>
-        </div>
-      </div>`).join('')}</div>`;
+    window._flotaCache = vehiculos;
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const activos = vehiculos.filter(v => v.status === 'active').length;
+    const filas = vehiculos.slice().sort((a, b) => (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1)).map(v => {
+      const on = v.status === 'active';
+      const medidor = (v.current_km != null ? `${Number(v.current_km).toLocaleString('es-AR')} km` : '')
+        + (v.registra_horas && v.current_hours != null ? `<small>${Number(v.current_hours).toLocaleString('es-AR')} h de motor</small>` : '');
+      return `<tr class="${on ? '' : 'is-off'}">
+        <td data-label="Móvil"><b class="flt-movil">${esc(v.numero_interno || '—')}</b><small class="flt-plate">${esc(v.plate)}</small></td>
+        <td data-label="Equipo"><span class="cfg-badge ${tipoBadgeClass(v.tipo_equipo)}">${esc(tipoLabel(v.tipo_equipo))}</span></td>
+        <td data-label="Vehículo">${esc([v.brand, v.model].filter(Boolean).join(' ') || '—')}${v.year ? `<small>${v.year}</small>` : ''}</td>
+        <td data-label="Medidores" class="flt-num">${medidor || '—'}</td>
+        <td data-label="Estado"><span class="flt-state ${on ? 'on' : 'off'}">${on ? 'Operativo' : 'Dado de baja'}</span></td>
+        <td data-label=""><div class="flt-actions">
+          <button type="button" class="cfg-btn-a ghost" onclick="abrirEditarVehiculo('${v.truck_id}')">Editar</button>
+          <button type="button" class="cfg-btn-a ${on ? 'danger' : 'go'}" onclick="toggleEstadoVehiculo('${v.truck_id}','${esc(v.status)}')">${on ? 'Dar de baja' : 'Reactivar'}</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+    contenedor.innerHTML = `<div class="flt-summary"><span><b>${activos}</b> operativos</span>${vehiculos.length - activos ? `<span><b>${vehiculos.length - activos}</b> dados de baja</span>` : ''}</div>
+      <div class="ax-table-wrap"><table class="ax-table ax-table-stack flt-table">
+        <thead><tr><th>Móvil</th><th>Equipo</th><th>Vehículo</th><th>Medidores</th><th>Estado</th><th aria-label="Acciones"></th></tr></thead>
+        <tbody>${filas}</tbody></table></div>`;
 }
 
 // Variable global para saber si estamos editando o creando
@@ -10429,20 +9611,65 @@ let vehiculoEditandoId = null;
 let usuarioEditandoId = null;
 let planEditandoId = null;
 
-// ── 1. FUNCIÓN SUSPENDER / ACTIVAR ────────────────────────
+// ── 1. DAR DE BAJA / REACTIVAR (con modal) ─────────────────
+let _bajaVehiculo = null;
 async function toggleEstadoVehiculo(truckId, estadoActual) {
-  if (estadoActual === 'active') {
-    const { data } = await _db.from('daily_logs').select('log_id').eq('truck_id', truckId).eq('status', 'open').maybeSingle();
-    if (data) {
-      alert('Este camión tiene una jornada abierta. Cerrá la jornada antes de darlo de baja.');
-      return;
-    }
-    if (!confirm('¿Dar de baja esta unidad? Quedará inactiva pero sus datos se conservan.')) return;
+  const v = (window._flotaCache || []).find(x => String(x.truck_id) === String(truckId)) || { truck_id: truckId, status: estadoActual };
+  const baja = estadoActual === 'active';
+  const nombre = [v.numero_interno ? `Interno ${v.numero_interno}` : null, v.plate].filter(Boolean).join(' · ');
+  const body = document.getElementById('nvb-body');
+  const btn = document.getElementById('nvb-confirm');
+  document.getElementById('nvb-title').textContent = baja ? 'Dar de baja el camión' : 'Reactivar el camión';
+  document.getElementById('nvb-subtitle').textContent = nombre;
+  btn.textContent = baja ? 'Dar de baja' : 'Reactivar';
+  btn.className = baja ? 'btn btn-danger' : 'btn btn-primary';
+  btn.disabled = true;
+  body.innerHTML = '<p class="nvb-loading">Revisando el camión…</p>';
+  _bajaVehiculo = { truckId, nuevoEstado: baja ? 'inactive' : 'active' };
+  const modal = document.getElementById('modal-baja-vehiculo');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  openModal('modal-baja-vehiculo');
+
+  if (!baja) {
+    body.innerHTML = `<ul class="nvb-list">
+      <li><b>Vuelve a estar disponible</b><span>Los choferes lo pueden elegir al iniciar la jornada y aparece en la grilla.</span></li>
+      <li><b>Conserva todo</b><span>Historial, documentación y planes de service quedan como estaban.</span></li></ul>`;
+    btn.disabled = false;
+    return;
   }
-  const nuevoEstado = estadoActual === 'active' ? 'inactive' : 'active';
+
+  const hoy = typeof _gHoyIso === 'function' ? _gHoyIso() : new Date().toISOString().slice(0, 10);
+  const [rLog, rGrilla] = await Promise.all([
+    _db.from('daily_logs').select('log_id, users(full_name)').eq('truck_id', truckId).eq('status', 'open').maybeSingle(),
+    _db.from('asignaciones_grilla').select('asignacion_id', { count: 'exact', head: true }).eq('truck_id', truckId).gte('fecha', hoy),
+  ]);
+  if (!_bajaVehiculo || _bajaVehiculo.truckId !== truckId) return;
+  if (rLog?.data) {
+    const chofer = rLog.data.users?.full_name;
+    body.innerHTML = `<div class="nvb-alert"><b>Tiene una jornada abierta</b><span>${chofer ? `${chofer} está trabajando con este camión. ` : ''}Cerrá la jornada antes de darlo de baja.</span></div>`;
+    btn.disabled = true;
+    return;
+  }
+  const turnos = Number(rGrilla?.count) || 0;
+  body.innerHTML = `<ul class="nvb-list">
+      <li><b>Deja de estar disponible</b><span>No aparece para iniciar jornadas ni en la grilla.</span></li>
+      <li><b>No se borra nada</b><span>Historial, documentación y planes de service se conservan.</span></li>
+      <li><b>Se puede deshacer</b><span>Lo reactivás cuando quieras desde esta misma lista.</span></li></ul>
+    ${turnos ? `<div class="nvb-alert warn"><b>Tiene ${turnos} ${turnos === 1 ? 'turno asignado' : 'turnos asignados'} en la grilla desde hoy</b><span>Reasignalos a otro móvil para que no queden choferes sin camión.</span></div>` : ''}`;
+  btn.disabled = false;
+}
+
+async function confirmarEstadoVehiculo() {
+  if (!_bajaVehiculo) return;
+  const { truckId, nuevoEstado } = _bajaVehiculo;
+  const btn = document.getElementById('nvb-confirm');
+  btn.disabled = true;
   const { error } = await _db.from('trucks').update({ status: nuevoEstado }).eq('truck_id', truckId);
+  btn.disabled = false;
   if (error) { toast(`Error: ${error.message}`, 'error'); return; }
-  toast(nuevoEstado === 'active' ? 'Unidad reactivada' : 'Unidad dada de baja', 'success');
+  _bajaVehiculo = null;
+  closeModal('modal-baja-vehiculo');
+  toast(nuevoEstado === 'active' ? 'Camión reactivado' : 'Camión dado de baja', 'success');
   cargarTablaAdminFlota();
 }
 
@@ -10463,16 +9690,13 @@ async function abrirEditarVehiculo(truckId) {
     document.getElementById('nv-interno').value = data.numero_interno || '';
     document.getElementById('nv-km').value = data.current_km || '';
     document.getElementById('nv-horas').value = data.current_hours || '';
-    if (data.tipo_equipo) document.getElementById('nv-tipo').value = data.tipo_equipo;
+    const regHoras = document.getElementById('nv-registra-horas'); if (regHoras) regHoras.checked = !!data.registra_horas;
     const warnEl = document.getElementById('warn-patente-nv');
     if (warnEl) { warnEl.textContent = ''; warnEl.className = 'rem-warn-patente'; }
-
-    document.querySelector('#modal-nuevo-vehiculo .modal-head-title').textContent = '✏️ Editar Flota';
-    document.getElementById('btn-guardar-vehiculo').innerHTML = '💾 Actualizar Flota';
-    
-    // 4. Abrimos el modal con fuerza bruta (z-index)
-    const modal = document.getElementById('modal-nuevo-vehiculo');
-    if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+    _nvPrepararModal({
+      titulo: 'Editar camión', sub: [data.numero_interno ? `Interno ${data.numero_interno}` : null, data.plate].filter(Boolean).join(' · '),
+      boton: 'Guardar cambios', km: 'Kilometraje actual *', horas: 'Horas de motor actuales', ayudaKm: true, tipo: data.tipo_equipo
+    });
     openModal('modal-nuevo-vehiculo');
 }
 
@@ -10480,31 +9704,40 @@ async function abrirEditarVehiculo(truckId) {
 // ── GESTIÓN DE PERSONAL ───────────────────────
 
 // ── 2. APERTURA DE ALTA PERSONAL ───────────────────────
+// Prefijo del legajo según el rol; el número sigue al último usado con ese prefijo.
+const _LEGAJO_PREFIJO = { chofer: 'CHO', operador: 'OPE', supervision: 'SUP', administracion: 'ADM' };
+async function _siguienteLegajo(rol) {
+  const pref = _LEGAJO_PREFIJO[rol] || 'USR';
+  const { data, error } = await _db.from('users').select('legajo');
+  if (error) throw error;
+  const re = new RegExp('^' + pref + '[-.]?(\\d+)$', 'i');
+  const max = (data || []).reduce((m, r) => { const k = re.exec(String(r.legajo || '').trim()); return k ? Math.max(m, Number(k[1])) : m; }, 0);
+  return `${pref}-${String(max + 1).padStart(3, '0')}`;
+}
+
+function _elegirRolUsuario(rol) {
+  const inp = document.getElementById('nu-rol');
+  if (inp) inp.value = rol;
+  document.querySelectorAll('#modal-nuevo-usuario [data-rol]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rol === rol)));
+}
+
+function _prepararModalUsuario(titulo, boton, info) {
+  const modal = document.getElementById('modal-nuevo-usuario');
+  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  const t = document.querySelector('#modal-nuevo-usuario .modal-head-title'); if (t) t.textContent = titulo;
+  const btn = document.getElementById('btn-guardar-usuario'); if (btn) btn.textContent = boton;
+  const i = document.getElementById('nu-legajo-info'); if (i) i.textContent = info;
+  const err = document.getElementById('nu-modal-error'); if (err) err.style.display = 'none';
+  // El email se puede cambiar también al editar (lo actualiza el backend administrativo).
+  const emailEl = document.getElementById('nu-email'); if (emailEl) emailEl.disabled = false;
+}
+
 function openNuevoUsuarioModal() {
   usuarioEditandoId = null;
-  const emailEl = document.getElementById('nu-email');
-  const legajoEl = document.getElementById('nu-legajo');
-  if (emailEl) emailEl.disabled = false;
-  if (legajoEl) legajoEl.disabled = false;
-  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
-  if (tituloModal) tituloModal.textContent = '👤 Alta de Personal';
-  const btnGuardar = document.getElementById('btn-guardar-usuario');
-  if (btnGuardar) btnGuardar.textContent = '💾 Crear Usuario';
-  ['nu-nombre', 'nu-legajo', 'nu-email', 'nu-telefono', 'nu-dni', 'nu-licencia', 'nu-vencimiento'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const nuErrEl = document.getElementById('nu-modal-error');
-  if (nuErrEl) nuErrEl.style.display = 'none';
-  const rol = document.getElementById('nu-rol');
-  if(rol) rol.value = 'chofer';
-
-  // EL TRUCO Z-INDEX: Lo ponemos por encima del Hub
-  const modal = document.getElementById('modal-nuevo-usuario');
-  if (modal) {
-    document.body.appendChild(modal);
-    modal.style.zIndex = '10000000'; 
-  }
+  ['nu-nombre', 'nu-email', 'nu-telefono', 'nu-dni'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _elegirRolUsuario('chofer');
+  const hint = document.getElementById('nu-invite-hint'); if (hint) hint.hidden = false;
+  _prepararModalUsuario('Alta de personal', 'Crear usuario', 'El legajo se asigna automáticamente al crear.');
   openModal('modal-nuevo-usuario');
 }
 
@@ -10512,35 +9745,15 @@ function openNuevoUsuarioModal() {
 function abrirEditarUsuario(userId) {
   const u = (window._usuariosCache || []).find(x => String(x.user_id) === String(userId));
   if (!u) { toast('No se encontró el usuario', 'error'); return; }
-
   usuarioEditandoId = userId;
-
-  // Pre-llenar campos
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  set('nu-nombre',      u.full_name);
-  set('nu-telefono',    u.phone);
-  set('nu-dni',         u.dni);
-  set('nu-licencia',    u.license_number);
-  set('nu-vencimiento', u.license_expiry ? u.license_expiry.substring(0, 10) : '');
-
-  const rolEl = document.getElementById('nu-rol');
-  if (rolEl) rolEl.value = u.role || 'chofer';
-
-  // Deshabilitar campos no editables
-  const emailEl = document.getElementById('nu-email');
-  const legajoEl = document.getElementById('nu-legajo');
-  if (emailEl) { emailEl.value = u.email || ''; emailEl.disabled = true; }
-  if (legajoEl) { legajoEl.value = u.legajo || ''; legajoEl.disabled = true; }
-
-  // Cambiar título y botón
-  const tituloModal = document.querySelector('#modal-nuevo-usuario .modal-head-title');
-  if (tituloModal) tituloModal.textContent = '✏️ Editar Personal';
-  const btnGuardar = document.getElementById('btn-guardar-usuario');
-  if (btnGuardar) btnGuardar.innerHTML = '💾 Actualizar Usuario';
-
-  // Mover al body para z-index correcto
-  const modal = document.getElementById('modal-nuevo-usuario');
-  if (modal) { document.body.appendChild(modal); modal.style.zIndex = '10000000'; }
+  set('nu-nombre', u.full_name);
+  set('nu-telefono', u.phone);
+  set('nu-dni', u.dni);
+  set('nu-email', u.email);
+  _elegirRolUsuario(u.roles?.name || u.role || 'chofer');
+  const hint = document.getElementById('nu-invite-hint'); if (hint) hint.hidden = true;
+  _prepararModalUsuario('Editar personal', 'Guardar cambios', u.legajo ? `Legajo ${u.legajo}` : 'Sin legajo');
   openModal('modal-nuevo-usuario');
 }
 
@@ -10567,60 +9780,83 @@ async function toggleEstadoUsuario(userId, isActive) {
 
 async function guardarNuevoUsuario() {
   const nombre  = document.getElementById('nu-nombre').value.trim();
-  const legajo  = document.getElementById('nu-legajo').value.trim().toUpperCase();
   const email   = document.getElementById('nu-email').value.trim();
   const tel     = document.getElementById('nu-telefono').value.trim();
   const dni     = document.getElementById('nu-dni').value.trim();
   const rol     = document.getElementById('nu-rol').value;
 
   if (!nombre)  { showModalError('nu-modal-error', 'Para guardar completá Nombre Completo'); return; }
-  if (!legajo)  { showModalError('nu-modal-error', 'Para guardar completá Legajo'); return; }
   if (!email)   { showModalError('nu-modal-error', 'Para guardar completá Email'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showModalError('nu-modal-error', 'El email no tiene formato válido — revisá que tenga @ y dominio'); return; }
   if (!dni)     { showModalError('nu-modal-error', 'Para guardar completá DNI'); return; }
+  if (!/^\d{7,8}$/.test(dni)) { showModalError('nu-modal-error', 'El DNI debe tener 7 u 8 números'); return; }
+  const telDigitos = tel.replace(/\D/g, '');
+  if (tel && (telDigitos.length < 8 || telDigitos.length > 15)) { showModalError('nu-modal-error', 'El teléfono debe tener entre 8 y 15 números'); return; }
 
   const btn = document.getElementById('btn-guardar-usuario');
   if (btn) { btn.textContent = 'Guardando...'; btn.style.pointerEvents = 'none'; }
 
   if (usuarioEditandoId) {
-    const licencia    = document.getElementById('nu-licencia')?.value.trim() || null;
-    const vencimiento = document.getElementById('nu-vencimiento')?.value || null;
-    const { data: rolRow } = await _db.from('roles').select('role_id').eq('name', rol).single();
-    const { error } = await _db.from('users').update({
-      full_name: nombre, phone: tel || null, role_id: rolRow?.role_id, dni: dni || null,
-      license_number: licencia, license_expiry: vencimiento
-    }).eq('user_id', usuarioEditandoId);
-    if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
-    const emailEl2 = document.getElementById('nu-email');
-    const legajoEl2 = document.getElementById('nu-legajo');
-    if (emailEl2) emailEl2.disabled = false;
-    if (legajoEl2) legajoEl2.disabled = false;
+    // La licencia no se edita acá (la carga el chofer en Documentos): se conserva la que tenga.
+    const actual      = (window._usuariosCache || []).find(x => String(x.user_id) === String(usuarioEditandoId)) || {};
+    const licencia    = actual.license_number || null;
+    const vencimiento = actual.license_expiry ? String(actual.license_expiry).substring(0, 10) : null;
+    let resp, data;
+    try {
+      resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/update-user`, {
+        method: 'POST',
+        headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ user_id: usuarioEditandoId, full_name: nombre, email, role_name: rol, phone: tel || null, dni: dni || null, license_number: licencia, license_expiry: vencimiento })
+      });
+      data = await resp.json().catch(() => ({ error: 'El servicio de usuarios devolvió una respuesta inválida.' }));
+    } catch (e) { data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios.' }; }
+    if (btn) { btn.textContent = 'Guardar cambios'; btn.style.pointerEvents = 'auto'; }
+    if (!resp?.ok || data?.error) { showModalError('nu-modal-error', data?.error || 'No se pudo actualizar el usuario'); return; }
     usuarioEditandoId = null;
-    if (error) { toast(`Error: ${error.message}`, 'error'); return; }
     toast('Usuario actualizado', 'success');
     closeModal('modal-nuevo-usuario');
     cargarTablaAdminUsuarios();
     return;
   }
 
-  let resp, data;
+  // El email ya pertenece a otro usuario (también si está suspendido): se avisa quién es antes de invitar.
+  const mismoEmail = (globalThis._usuariosCache || []).find(x => String(x.email || '').trim().toLowerCase() === email.toLowerCase());
+  if (mismoEmail) {
+    if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
+    const quien = mismoEmail.full_name || 'otro usuario';
+    showModalError('nu-modal-error', mismoEmail.is_active === false
+      ? `Ese email ya es de ${quien}, que está suspendido. Si es la misma persona, reactivalo desde la lista; si no, usá otro email.`
+      : `Ese email ya es de ${quien}. Usá otro email o editá ese usuario.`);
+    return;
+  }
+
+  let resp, data, legajo;
   try {
-    resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
+    legajo = await _siguienteLegajo(rol);
+  } catch (e) {
+    if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
+    showModalError('nu-modal-error', 'No se pudo asignar el legajo. Probá de nuevo.'); return;
+  }
+  try {
+    resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/create-user`, {
       method: 'POST',
       headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ full_name: nombre, email, legajo, role_name: rol, phone: tel || null, dni: dni || null }),
     });
-    data = await resp.json();
+    data = await resp.json().catch(() => ({ error: 'El servicio de usuarios devolvió una respuesta inválida. Intentá nuevamente.' }));
   } catch (e) {
-    data = { error: 'No se pudo conectar con el servidor' };
+    data = { error: e.message?.includes('Sesión expirada') ? e.message : 'No se pudo conectar con el servicio de usuarios. Tus datos siguen en el formulario.' };
   }
 
-  if (btn) { btn.textContent = '💾 Crear Usuario'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = 'Crear usuario'; btn.style.pointerEvents = 'auto'; }
 
   if (!resp?.ok || data?.error) {
-    showModalError('nu-modal-error', data?.error || 'Error desconocido al crear el usuario');
+    const msg = data?.error === 'No se pudo invitar al usuario'
+      ? 'No se pudo enviar la invitación: ese email ya está registrado en el sistema. Usá otro email o pedí que lo revisemos.'
+      : (data?.error || 'Error desconocido al crear el usuario');
+    showModalError('nu-modal-error', msg);
   } else {
-    toast('Usuario invitado — recibirá un correo para definir su contraseña', 'success');
+    toast(`Usuario creado con legajo ${legajo}. Recibirá un correo para definir su contraseña.`, 'success');
     closeModal('modal-nuevo-usuario');
     cargarTablaAdminUsuarios();
   }
@@ -10643,45 +9879,65 @@ async function cargarTablaAdminUsuarios() {
     return;
   }
 
-  const roleBadgeClass = (rol) => {
-    if (rol === 'administracion') return 'cfg-badge-admin';
-    if (rol === 'supervision')    return 'cfg-badge-supervision';
-    if (rol === 'chofer')         return 'cfg-badge-chofer';
-    return 'cfg-badge-role';
-  };
-  const roleLabel = (rol) => {
-    if (rol === 'administracion') return 'Admin';
-    if (rol === 'supervision')    return 'Supervision';
-    if (rol === 'chofer')         return 'Chofer';
-    return rol || 'Sin rol';
-  };
+  // Último acceso (auth): solo informativo; si falla, la lista se muestra igual.
+  // Última actividad = uso real de la app (no sólo el ingreso con contraseña).
+  let lastAccess = {};
+  try {
+    let la = await _db.rpc('get_users_last_access_v2');
+    if (la.error) {
+      la = await _db.rpc('get_users_last_access_v1');
+      if (!la.error) (la.data || []).forEach(r => { lastAccess[r.user_id] = { last_seen_at: r.last_sign_in_at, last_sign_in_at: r.last_sign_in_at }; });
+    } else (la.data || []).forEach(r => { lastAccess[r.user_id] = r; });
+  } catch (e) { /* sin último acceso */ }
 
-  contenedor.innerHTML = `<div class="cfg-item-list">${usuarios.map(u => {
+  const roleLabel = (rol) => ({ administracion: 'Admin', operador: 'Operador', supervision: 'Supervisor', chofer: 'Chofer' }[rol] || rol || 'Sin rol');
+  const hace = (iso) => {
+    if (!iso) return 'Nunca';
+    const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 5) return 'ahora';
+    if (min < 60) return `hace ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `hace ${h} h`;
+    return `hace ${Math.round(h / 24)} d`;
+  };
+  const PANTALLAS = { dashboard: 'Panel', registro: 'Km', camion: 'Camión', documentos: 'Docs', remitos: 'Remitos', operaciones: 'Servicios', sueldos: 'Sueldos', 'jornadas-admin': 'Jornadas', grilla: 'Grilla', facturacion: 'Facturación' };
+  const fechaHora = (iso) => iso ? new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'nunca';
+  const actividad = (a) => {
+    if (!a) return '<span class="usr-seen">Nunca</span>';
+    const donde = [a.device === 'movil' ? 'Celular' : a.device === 'escritorio' ? 'Computadora' : '', PANTALLAS[a.screen] || ''].filter(Boolean).join(' · ');
+    const tip = _escHtml(`Último ingreso con contraseña: ${fechaHora(a.last_sign_in_at)}`);
+    if (a.online) return `<span class="usr-seen on" title="${tip}"><i aria-hidden="true"></i>En línea${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
+    return `<span class="usr-seen" title="${tip}">${_escHtml(hace(a.last_seen_at))}${donde ? `<small>${_escHtml(donde)}</small>` : ''}</span>`;
+  };
+  const iniciales = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
+  const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
+  const yo = (typeof USUARIO_ACTUAL !== 'undefined' && USUARIO_ACTUAL?.id) || PERFIL_USUARIO?.user_id || null;
+
+  // Suspendidos al final; dentro de cada grupo, por nombre (como viene de la base).
+  const filas = usuarios.slice().sort((a, b) => (a.is_active === false ? 1 : 0) - (b.is_active === false ? 1 : 0)).map(u => {
     const rol = u.roles?.name || u.role || '';
     const activo = u.is_active !== false;
-    const userIdSeguro = _escHtml(u.user_id || '');
-    const nombreSeguro = _escHtml(u.full_name || '');
-    const licenciaSegura = _escHtml(u.license_number || '');
-    const vencimientoSeguro = _escHtml(u.license_expiry ? u.license_expiry.substring(0,10) : '');
-    return `
-    <div class="cfg-item${!activo ? ' inactive' : ''}">
-      <div class="cfg-item-main">
-        <div class="cfg-item-name">${nombreSeguro}</div>
-        <div class="cfg-item-sub">${u.license_number ? `Lic. ${licenciaSegura}${u.license_expiry ? ` · Vence ${vencimientoSeguro}` : ''}` : 'Sin licencia registrada'}</div>
-      </div>
-      <div class="cfg-item-side">
-        <span class="cfg-badge ${roleBadgeClass(rol)}">${roleLabel(rol)}</span>
-        <span class="cfg-status ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Inactivo'}</span>
-      </div>
-      <div class="cfg-item-actions">
-        <button class="cfg-btn-a ghost" onclick="abrirEditarUsuario('${userIdSeguro}')">Editar</button>
-        ${activo ? `<button class="cfg-btn-a ghost" data-user-name="${nombreSeguro}" onclick="abrirResetPassword('${userIdSeguro}',this.dataset.userName)">Recuperar acceso</button>` : ''}
-        <button class="cfg-btn-a ${activo ? 'danger' : 'go'}" onclick="toggleEstadoUsuario('${userIdSeguro}',${activo})">
-          ${activo ? 'Dar de baja' : 'Reactivar'}
-        </button>
-      </div>
-    </div>`;
-  }).join('')}</div>`;
+    const id = _escHtml(u.user_id || '');
+    const nombre = _escHtml(u.full_name || '');
+    const esYo = yo && String(u.user_id) === String(yo);
+    const acciones = esYo
+      ? '<span class="usr-noedit">No editable</span>'
+      : `<button class="usr-ic" title="Editar" aria-label="Editar ${nombre}" onclick="abrirEditarUsuario('${id}')">${ic('pencil')}</button>` +
+        (activo ? `<button class="usr-ic" title="Recuperar acceso" aria-label="Recuperar acceso de ${nombre}" data-user-name="${nombre}" onclick="abrirResetPassword('${id}',this.dataset.userName)">${ic('key')}</button>` : '') +
+        `<button class="usr-ic${activo ? ' danger' : ''}" title="${activo ? 'Suspender' : 'Reactivar'}" aria-label="${activo ? 'Suspender' : 'Reactivar'} a ${nombre}" onclick="toggleEstadoUsuario('${id}',${activo})">${ic(activo ? 'ban' : 'rotate-ccw')}</button>`;
+    return `<tr class="${esYo ? 'is-me' : ''}${activo ? '' : ' is-off'}">
+      <td class="usr-who" data-label="Usuario"><span class="usr-avatar">${_escHtml(iniciales(u.full_name))}</span><span class="usr-id"><b>${nombre}${esYo ? ' <em class="usr-tu">Tú</em>' : ''}</b><small>${_escHtml(u.email || '—')}</small></span></td>
+      <td data-label="Rol"><span class="usr-role usr-role-${_escHtml(rol)}">${_escHtml(roleLabel(rol))}</span></td>
+      <td class="usr-mono" data-label="Legajo">${_escHtml(u.legajo || '—')}</td>
+      <td data-label="Última actividad">${actividad(lastAccess[u.user_id])}</td>
+      <td data-label="Estado"><span class="usr-state ${activo ? 'on' : 'off'}">${activo ? 'Activo' : 'Suspendido'}</span></td>
+      <td class="usr-actions">${acciones}</td>
+    </tr>`;
+  }).join('');
+  const enLinea = Object.values(lastAccess).filter(a => a && a.online).length;
+  contenedor.innerHTML = `<p class="usr-online-count"><i aria-hidden="true"></i>${enLinea ? `${enLinea} en línea ahora` : 'Nadie en línea ahora'}</p><div class="usr-table-wrap"><table class="usr-table">
+    <thead><tr><th>Usuario</th><th>Rol</th><th>Legajo</th><th>Última actividad</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${filas}</tbody></table></div>`;
 }
 
 function abrirResetPassword(userId, nombre) {
@@ -10700,14 +9956,14 @@ function abrirResetPassword(userId, nombre) {
       </div>
       <div class="modal-body">
         <p style="font-size:13px;line-height:1.5;color:var(--muted);margin:0">
-          Se enviará un enlace seguro al correo registrado para que la persona defina
-          una nueva contraseña. Administración no podrá verla ni elegirla.
+          Se generará un enlace temporal para que la persona defina una nueva contraseña.
+          Administración podrá copiarlo, pero no verá ni elegirá la contraseña.
         </p>
         <div id="rp-error" style="display:none;margin-top:10px;color:var(--red);font-size:12px"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="document.getElementById('modal-reset-pass').remove()">Cancelar</button>
-        <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Enviar enlace</button>
+        <button class="btn btn-primary" id="rp-btn-confirmar" onclick="confirmarResetPassword('${userId}')">Generar enlace</button>
       </div>
     </div>`;
   modal.style.zIndex = '10000001';
@@ -10723,18 +9979,55 @@ async function confirmarResetPassword(userId) {
   if (btn) { btn.textContent = 'Enviando...'; btn.disabled = true; }
 
   try {
-    const res = await fetch(`${ENV.API_BASE_URL}/api/send-password-reset`, {
+    const res = await adminApiFetch(`${ENV.ADMIN_API_BASE_URL}/api/send-password-reset`, {
       method: 'POST',
-      headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Error desconocido');
-    document.getElementById('modal-reset-pass').remove();
-    toast('Enlace de recuperación enviado ✓', 'success');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.message || 'No se pudo enviar el enlace. Intentá nuevamente.');
+    if (!data.action_link) throw new Error('El servidor no devolvió un enlace válido.');
+    const body = document.querySelector('#modal-reset-pass .modal-body');
+    const footer = document.querySelector('#modal-reset-pass .modal-footer');
+    if (body) {
+      body.innerHTML = `
+        <p style="font-size:13px;line-height:1.5;color:var(--muted);margin:0 0 12px">
+          Compartí este enlace únicamente con la persona indicada. Es temporal y permite definir una contraseña nueva.
+        </p>
+        <label class="form-label" for="rp-action-link">Enlace de recuperación</label>
+        <input class="form-input" id="rp-action-link" type="text" readonly>
+        <div id="rp-copy-status" style="min-height:18px;margin-top:8px;color:var(--green);font-size:12px"></div>`;
+      const linkInput = document.getElementById('rp-action-link');
+      if (linkInput) linkInput.value = data.action_link;
+    }
+    if (footer) {
+      footer.innerHTML = `
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-reset-pass').remove()">Cerrar</button>
+        <button class="btn btn-primary" onclick="copiarLinkRecuperacion()">Copiar enlace</button>`;
+    }
+    toast('Enlace de recuperación generado ✓', 'success');
   } catch (err) {
-    if (errorEl) { errorEl.textContent = err.message; errorEl.style.display = 'block'; }
-    if (btn) { btn.textContent = 'Enviar enlace'; btn.disabled = false; }
+    if (errorEl) {
+      errorEl.textContent = err instanceof TypeError
+        ? 'No se pudo confirmar el envío. Revisá la conexión y el correo antes de intentarlo nuevamente.'
+        : err.message;
+      errorEl.style.display = 'block';
+    }
+    if (btn) { btn.textContent = 'Generar enlace'; btn.disabled = false; }
+  }
+}
+
+async function copiarLinkRecuperacion() {
+  const input = document.getElementById('rp-action-link');
+  const status = document.getElementById('rp-copy-status');
+  if (!input?.value) return;
+  try {
+    await navigator.clipboard.writeText(input.value);
+    if (status) status.textContent = 'Enlace copiado al portapapeles.';
+  } catch (_) {
+    input.focus();
+    input.select();
+    if (status) status.textContent = 'Seleccionado. Presioná Ctrl+C para copiar.';
   }
 }
 
@@ -10773,7 +10066,7 @@ function esVencida(fecha) {
  * @param {string} mensaje - El texto a mostrar
  * @param {string} tipo - 'success' (verde) o 'error' (rojo)
  */
-function toast(mensaje, tipo = 'success') {
+function toast(mensaje, tipo = 'success', duration = 3000) {
     // 1. Buscamos si ya existe el contenedor de notificaciones, si no, lo creamos
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -10813,7 +10106,7 @@ function toast(mensaje, tipo = 'success') {
     setTimeout(() => {
         el.style.opacity = '0';
         setTimeout(() => el.remove(), 300);
-    }, 3500);
+    }, Math.min(3000, Math.max(800, Number(duration) || 3000)));
 }
 //Nota: El código anterior es un ejemplo de cómo implementar un sistema de notificaciones tipo "toast" en tu aplicación. Puedes personalizar los estilos, la posición y la duración según tus necesidades. La función `toast` se puede llamar desde cualquier parte de tu código para mostrar mensajes de éxito o error al usuario.
 
@@ -10846,12 +10139,16 @@ async function procesarFotoConIA(event, contexto) {
         return;
     }
 
+    if (isInicio) fotoKmInicio=archivo; else fotoKmFinal=archivo;
+
     // Sin conexión: no se puede subir la foto ni usar la IA. La foto queda
     // guardada en el teléfono (se sube al sincronizar) y los KM van a mano.
     if (!navigator.onLine) {
         if (isInicio) { fotoKmInicio = archivo; } else { fotoKmFinal = archivo; }
-        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_offline'; }
-        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_offline'; }
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_offline'; horasIaInicio = null; horasOrigenInicio = 'manual_offline'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_offline'; horasIaFinal = null; horasOrigenFinal = 'manual_offline'; }
+        const fuenteOff = document.getElementById(prefix + '-horas-fuente');
+        if (fuenteOff) { fuenteOff.textContent = 'Sin conexión: escribí las horas de motor a mano'; fuenteOff.className = 'jh-fuente is-manual'; }
         const manualArea = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualArea) manualArea.style.display = 'block';
         if (msgStatus) msgStatus.innerHTML = '<span style="color: var(--amber);">📴 Sin conexión: la foto quedó guardada en el teléfono. Ingresá los KM a mano.</span>';
@@ -10874,20 +10171,25 @@ async function procesarFotoConIA(event, contexto) {
     // 2. EFECTO VISUAL: "La IA está pensando..."
     inputKmReal.value = '';
     inputKmReal.style.color = 'var(--text)';
-    inputKmReal.placeholder = 'Analizando imagen...';
+    inputKmReal.placeholder = isInicio ? 'KM de inicio' : 'KM final';
     msgStatus.innerHTML = '<span style="color: var(--amber);">⏳ Extrayendo datos con IA...</span>';
     fotoBox.style.borderColor = 'var(--amber)';
     fotoIcon.textContent = '🔄';
     fotoStatusTxt.textContent = 'Procesando...';
+    fotoStatusTxt.style.color = '';
+    const fotoHint=document.getElementById(prefix+'-foto-hint');
+    if(fotoHint) fotoHint.textContent='La IA extraerá el kilometraje automáticamente';
     if(btnConfirmar) btnConfirmar.disabled = true;
 
     try {
 
-      msgStatus.innerHTML = '<span style="color: var(--amber);">⬆️ Subiendo evidencia a la nube...</span>';
+      msgStatus.innerHTML = '<span style="color: var(--amber);">⬆ Subiendo evidencia a la nube...</span>';
         const urlPublica = await subirFotoOdometro(archivo, contexto);
-        console.log("Foto disponible en:", urlPublica);
+        if(isInicio) fotoKmInicio=urlPublica; else fotoKmFinal=urlPublica;
         // 3. LLAMAMOS A LA IA REAL (Edge Function)
-        const resultadoIA = await llamarIA_Real(urlPublica, contexto, kmBaseReferencia);
+        const leerHoras = isInicio ? _horasNecesitaInicio() : _horasNecesitaCierre();
+        const resultadoIA = await llamarIA_Real(urlPublica, contexto, kmBaseReferencia, leerHoras ? { horasReferencia: _horasReferencia(prefix) } : null);
+        if (leerHoras && resultadoIA.success) _horasDesdeIA(prefix, resultadoIA.horas_extraidas);
 
         if (!resultadoIA.success) throw new Error('La IA no encontró números claros.');
 
@@ -10978,25 +10280,30 @@ async function procesarFotoConIA(event, contexto) {
 
     } catch (error) {
         // 5. ERROR: Manejo visual
-        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_ia_fallo'; }
-        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; }
+        if (isInicio) { kmIaInicio = null; kmOrigenInicio = 'manual_ia_fallo'; horasIaInicio = null; horasOrigenInicio = 'manual_ia_fallo'; }
+        else          { kmIaFinal  = null; kmOrigenFinal  = 'manual_ia_fallo'; horasIaFinal = null; horasOrigenFinal = 'manual_ia_fallo'; }
+        if (isInicio ? _horasNecesitaInicio() : _horasNecesitaCierre()) _horasDesdeIA(prefix, null);
         const manualAreaErr = document.getElementById(isInicio ? 'nj-km-manual-area' : 'cj-km-manual-area');
         if (manualAreaErr) manualAreaErr.style.display = 'block';
-        msgStatus.innerHTML = `<span style="color: var(--red);">❌ ${error.message} Podés reintentar la foto o cargar los KM a mano.</span>`;
-        inputKmReal.placeholder = 'Reintentar foto';
-        fotoBox.style.borderColor = 'var(--red)';
-        fotoIcon.textContent = '⚠️';
-        fotoStatusTxt.textContent = 'Rechazado - Reintentar';
-        fotoStatusTxt.style.color = 'var(--red)';
+        msgStatus.textContent = isInicio ? 'Ingresá el kilometraje manualmente. La foto se guardará para auditoría.' : '';
+        inputKmReal.placeholder = 'Ingresá el kilometraje';
+        const result=document.getElementById(prefix+'-km-result'); if(result) result.style.display='none';
+        const photoArea=document.getElementById(prefix+'-foto-area'); if(photoArea) photoArea.style.display='block';
+        const hint=document.getElementById(prefix+'-foto-hint');
+        if(hint) hint.textContent='Ingresá el kilometraje manualmente. La foto se guardará para auditoría.';
+        fotoBox.style.borderColor = 'var(--amber)';
+        fotoIcon.textContent = '⚠';
+        fotoStatusTxt.textContent = 'No se pudo analizar la foto';
+        fotoStatusTxt.style.color = 'var(--amber)';
         if (btnConfirmar) btnConfirmar.disabled = false;
-        toast('Falló la validación', 'error');
+        toast('No se pudo analizar la foto. Ingresá los kilómetros manualmente.', 'info');
     }
 }
 
 /**
  * Llama a la Edge Function de Supabase para leer el odómetro con IA real
  */
-async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
+async function llamarIA_Real(urlPublica, contexto, kmReferencia, horas = null) {
     const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/procesar-odometro`;
     const accessToken = await obtenerAccessToken();
 
@@ -11015,6 +10322,8 @@ async function llamarIA_Real(urlPublica, contexto, kmReferencia) {
                 url_foto: urlPublica,
                 contexto: contexto,
                 km_referencia: kmReferencia,
+                // Camiones con horómetro: la misma foto trae las horas de motor
+                ...(horas ? { leer_horas: true, horas_referencia: horas.horasReferencia } : {}),
             }),
             signal: controller.signal,
         });
@@ -11102,112 +10411,106 @@ function abrirDocumentoChofer(pathOrUrl) {
   }
 }
 
-function crearDocCard(doc, meta) {
-  const esAdmin = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
-  const statusConfig = {
-    vigente:         { border: 'var(--green)',  pill: 'pill-green',  pillTxt: 'Vigente'     },
-    proximo:         { border: 'var(--amber)',  pill: 'pill-amber',  pillTxt: 'Próximo'     },
-    vencido:         { border: 'var(--red)',    pill: 'pill-red',    pillTxt: 'Vencido'     },
-    falta_archivo:   { border: '#f97316',       pill: 'pill-orange', pillTxt: 'Sin archivo' },
-    sin_vencimiento: { border: 'var(--border)', pill: 'pill-muted',  pillTxt: 'Sin venc.'   },
-  };
+// Ícono del sprite por tipo de documento (los emojis de DOC_*_META quedan para los selects)
+const DOC_ICONOS = {
+  VTV: 'clipboard-check', SEGURO_POLIZA: 'shield-check', PAGO_SEGURO: 'receipt', HABILITACION_RUTA: 'route',
+  PERMISO_ESPECIAL: 'flag', CEDULA_VERDE: 'credit-card', CEDULA_AZUL: 'credit-card', MATAFUEGOS: 'circle-alert',
+  LIBRETA_PORTE: 'file-text', licencia_particular: 'credit-card', licencia_linti: 'credit-card',
+  psicofisico: 'clipboard-check', art_credencial: 'shield-check', art_cnr: 'shield-check', curso_cargas: 'file-check', otro: 'file',
+};
+const _docIcon = name => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
+const _docFecha = iso => iso ? `${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(2,4)}` : '';
 
-  // Usar UTC para ambos extremos — evita error de ±1 día en cambio de horario
-  const dias = doc.expiry_date
+// Días hasta el vencimiento (UTC en ambos extremos: evita ±1 día por cambio de horario)
+function _docDias(doc) {
+  return doc.expiry_date
     ? Math.round((new Date(doc.expiry_date + 'T00:00:00Z') - new Date(new Date().toISOString().slice(0,10) + 'T00:00:00Z')) / 86400000)
     : null;
+}
+// Estado que se muestra: siempre por vigencia (el "sin archivo" va aparte)
+function _docEstado(doc) {
+  const dias = _docDias(doc);
+  if (dias === null) return 'sin_vencimiento';
+  if (dias < 0) return 'vencido';
+  if (dias <= 30) return 'proximo';
+  return 'vigente';
+}
 
-  // El pill principal SIEMPRE refleja vigencia (no archivo).
-  // El "sin archivo" se comunica abajo en la fila de archivo.
-  let statusEfectivo;
-  if (dias === null) {
-    statusEfectivo = doc.status === 'sin_vencimiento' ? 'sin_vencimiento' : 'sin_vencimiento';
-  } else if (dias < 0) {
-    statusEfectivo = 'vencido';
-  } else if (dias <= 30) {
-    statusEfectivo = 'proximo';
-  } else {
-    statusEfectivo = 'vigente';
-  }
-  const sc = statusConfig[statusEfectivo] || statusConfig.sin_vencimiento;
+function crearDocCard(doc, meta) {
+  const esAdmin = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
+  const dias = _docDias(doc);
+  const estado = _docEstado(doc);
   const sinArchivo = !doc.file_url;
+  const pill = {
+    vigente: 'Vigente',
+    proximo: dias === 0 ? 'Vence hoy' : `Vence en ${dias} ${dias === 1 ? 'día' : 'días'}`,
+    vencido: 'Vencido',
+    sin_vencimiento: 'Sin vencimiento',
+  }[estado];
 
-let fileSectionHtml = '';
-  if (doc.file_url) {
-    // 1. Traducimos la ruta local al link de internet real ACÁ MISMO
-    let linkReal = doc.file_url;
-    if (!linkReal.startsWith('http')) {
-      // Usamos tu variable _db para pedirle el link a Supabase
-      linkReal = _db.storage.from('docs').getPublicUrl(doc.file_url).data.publicUrl;
-    }
-
-    const safePath  = _escHtml(linkReal);
-    const safeTitle = _escHtml(meta.name || doc.doc_type || '');
-    const onclickUpd = meta.isChofer
-      ? `abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')`
-      : `abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')`;
-      
-    // 2. Cambiamos el <button> de abrir por un <a> (enlace nativo)
-    const puedeActualizar = meta.isChofer || esAdmin;
-    fileSectionHtml = `
-      <div style="display: flex; gap: 4px;">
-        ${puedeActualizar ? `<button class="btn-actualizar" onclick="${onclickUpd}" title="Reemplazar archivo">🔄</button>` : ''}
-        <a href="${safePath}" target="_blank" rel="noopener noreferrer" class="btn-compartir" style="color:var(--amber); border: 1px solid var(--amber); text-decoration: none; display: flex; align-items: center; justify-content: center;">
-          👁 Abrir
-        </a>
-        <button class="btn-compartir" onclick="compartirDoc('${safePath}', '${safeTitle}', event)">⤴ Compartir</button>
-      </div>`;
-
-  } else if (doc.is_obligatorio && (meta.isChofer || esAdmin)) {
-    const onclick = meta.isChofer
-      ? `onclick="abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')"`
-      : `onclick="abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')"`;
-    fileSectionHtml = `<button class="btn-subir-ahora" ${onclick}>⚠ Subir ahora</button>`;
+  // Bloque central: días que faltan (o hace cuánto venció) y la fecha
+  let cuerpo;
+  if (dias === null) {
+    const periodo = doc.periodo ? `${doc.periodo.slice(5,7)}/${doc.periodo.slice(0,4)}` : '';
+    cuerpo = `<div class="dcv-days none"><b>—</b><span>${periodo ? `Período ${periodo}` : 'No vence'}</span></div>`;
   } else {
-    fileSectionHtml = `<span style="font-size:10px;color:var(--muted)">Sin archivo</span>`;
+    const abs = Math.abs(dias);
+    const txt = dias < 0 ? `${abs === 1 ? 'día' : 'días'} vencido` : dias === 0 ? 'vence hoy' : `${abs === 1 ? 'día' : 'días'} restantes`;
+    cuerpo = `<div class="dcv-days"><b>${abs}</b><span>${txt}</span></div><div class="dcv-date"><small>${dias < 0 ? 'Venció el' : 'Vence el'}</small><b>${_docFecha(doc.expiry_date)}</b></div>`;
   }
+  // Barra: cuánto queda del último año de vigencia
+  const barra = dias === null ? '' : `<div class="dcv-bar" aria-hidden="true"><i style="width:${Math.max(0, Math.min(100, Math.round((dias / 365) * 100)))}%"></i></div>`;
 
-
+  const onclickUpd = meta.isChofer
+    ? `abrirUpdateDriverDoc('${_escHtml(doc.doc_type || '')}')`
+    : `abrirUploadTruckDoc('${_escHtml(doc.internal_code || '')}')`;
+  const puedeActualizar = meta.isChofer || esAdmin;
   const docIdField = meta.isChofer ? doc.driver_doc_id : doc.doc_id;
-  const deleteBtn = esAdmin
-    ? `<button class="btn-eliminar-doc" onclick="eliminarDoc(${docIdField}, ${meta.isChofer ? 'true' : 'false'}, event)" title="Eliminar">🗑</button>`
+  const btnEliminar = esAdmin
+    ? `<button class="btn-eliminar-doc dcv-icon danger" onclick="eliminarDoc(${docIdField}, ${meta.isChofer ? 'true' : 'false'}, event)" title="Eliminar documento" aria-label="Eliminar documento">${_docIcon('trash-2')}</button>`
     : '';
 
+  let acciones;
+  if (doc.file_url) {
+    let linkReal = doc.file_url;
+    if (!linkReal.startsWith('http')) linkReal = _db.storage.from('docs').getPublicUrl(doc.file_url).data.publicUrl;
+    const safePath  = _escHtml(linkReal);
+    const safeTitle = _escHtml(meta.name || doc.doc_type || '');
+    acciones = `<a href="${safePath}" target="_blank" rel="noopener noreferrer" class="dcv-btn primary">${_docIcon('eye')}Abrir</a>
+      <button class="dcv-btn btn-compartir" onclick="compartirDoc('${safePath}', '${safeTitle}', event)">${_docIcon('share-2')}Compartir</button>
+      <span class="dcv-gap"></span>
+      ${puedeActualizar ? `<button class="btn-actualizar dcv-icon" onclick="${onclickUpd}" title="Reemplazar archivo" aria-label="Reemplazar archivo">${_docIcon('refresh-cw')}</button>` : ''}${btnEliminar}`;
+  } else if (doc.is_obligatorio && puedeActualizar) {
+    acciones = `<span class="dcv-missing">${_docIcon('file-warning')}Falta el archivo</span><span class="dcv-gap"></span>
+      <button class="btn-subir-ahora dcv-btn warn" onclick="${onclickUpd}">${_docIcon('upload')}Subir ahora</button>${btnEliminar}`;
+  } else {
+    acciones = `<span class="dcv-missing muted">${_docIcon('file-x')}Sin archivo</span><span class="dcv-gap"></span>${btnEliminar}`;
+  }
+
   const safeDocName = _escHtml(meta.name || doc.doc_type || '');
-  const safeDocNum  = doc.doc_number ? _escHtml('Nº ' + doc.doc_number) : '—';
+  const safeDocNum  = doc.doc_number ? _escHtml('Nº ' + doc.doc_number) : 'Sin número';
+  const icono = DOC_ICONOS[meta.isChofer ? doc.doc_type : doc.internal_code] || 'file-text';
 
   return `
-    <div class="doc-card-v" style="border-left:3px solid ${sc.border}">
-      <div class="doc-card-header">
-        <div class="doc-icon">${meta.icon}</div>
-        <div class="doc-card-title">
-          <div class="doc-name">${safeDocName}</div>
-          <div class="doc-meta">${safeDocNum}</div>
-        </div>
-        ${deleteBtn}
+    <article class="doc-card-v dcv dcv-${estado}${sinArchivo ? ' dcv-nofile' : ''}">
+      <div class="dcv-head">
+        <span class="dcv-ic">${_docIcon(icono)}</span>
+        <div class="dcv-title"><div class="doc-name">${safeDocName}</div><div class="doc-meta">${safeDocNum}</div></div>
+        <span class="dcv-pill">${pill}</span>
       </div>
-      <div class="doc-expiry-row">
-        <div>
-          <div class="doc-days" style="color:${sc.border}">${dias !== null ? Math.abs(dias) : '—'}</div>
-          <div class="doc-days-label">${
-            dias === null ? 'sin vencimiento'
-            : dias < 0 ? `vencido hace ${Math.abs(dias) === 1 ? '1 día' : Math.abs(dias) + ' días'}`
-            : dias === 0 ? 'vence hoy'
-            : `${dias === 1 ? '1 día' : dias + ' días'} restantes`
-          }</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-          <span class="pill ${sc.pill}">${sc.pillTxt}</span>
-          ${sinArchivo ? `<span class="pill pill-orange" style="font-size:9px;padding:2px 6px">Sin archivo</span>` : ''}
-        </div>
-      </div>
-      <div class="doc-file-row">${fileSectionHtml}</div>
-    </div>`;
+      <div class="dcv-body">${cuerpo}</div>
+      ${barra}
+      <div class="doc-file-row dcv-foot">${acciones}</div>
+    </article>`;
 }
 
 async function eliminarDoc(docId, isChofer, event) {
   if (event) event.stopPropagation();
-  if (!confirm('¿Eliminar este documento? Esta acción no se puede deshacer.')) return;
+  const _conf = window.AuxiliosBillingParametersV4?.confirm;
+  const ok = typeof _conf === 'function'
+    ? await _conf({ title: 'Eliminar documento', html: '<p class="bp4-confirm-text">Se borra el documento y su archivo. <b>Esta acción no se puede deshacer.</b></p>', confirmLabel: 'Sí, eliminar', danger: true })
+    : confirm('¿Eliminar este documento? Esta acción no se puede deshacer.');
+  if (!ok) return;
   try {
     if (isChofer) {
       await eliminarDriverDoc(docId);
@@ -11236,15 +10539,44 @@ async function eliminarDoc(docId, isChofer, event) {
 
 const DOC_CAMION_META = {
   VTV:               { icon: '🔍', name: 'VTV', fields: ['vencimiento'] },
-  SEGURO_POLIZA:     { icon: '🛡️', name: 'Póliza de Seguro', fields: ['vencimiento'] },
+  SEGURO_POLIZA:     { icon: '🛡', name: 'Póliza de Seguro', fields: ['vencimiento'] },
  PAGO_SEGURO:       { icon: '📄', name: 'Comprobante de pago', fields: ['periodo'] },
   HABILITACION_RUTA: { icon: '📋', name: 'Habilitación RUTA', fields: ['vencimiento'] },
   PERMISO_ESPECIAL:  { icon: '🚧', name: 'Permiso Especial', fields: ['vencimiento', 'observaciones'] },
   CEDULA_VERDE:      { icon: '🪪', name: 'Cédula Verde' },
   CEDULA_AZUL:       { icon: '🪪', name: 'Cédula Azul' },
   MATAFUEGOS:        { icon: '🧯', name: 'Matafuegos' },
-  LIBRETA_PORTE:     { icon: '⚖️', name: 'Libreta de Porte' },
+  LIBRETA_PORTE:     { icon: '⚖', name: 'Libreta de Porte' },
 };
+
+// Conteos de un legajo: total, vencidos (o sin archivo obligatorio), por vencer y al día
+function _docConteos(docs) {
+  const venc = docs.filter(d => d.status === 'vencido' || d.status === 'falta_archivo').length;
+  const prox = docs.filter(d => d.status === 'proximo').length;
+  const sinArchivo = docs.filter(d => !d.file_url).length;
+  return { total: docs.length, venc, prox, sinArchivo, ok: Math.max(docs.length - venc - prox, 0) };
+}
+function _docTono(c) { return !c.total ? 'none' : c.venc ? 'bad' : c.prox ? 'warn' : 'ok'; }
+function _docSelectorCard({ onclick, icon, avatar, titulo, sub, extra, docs }) {
+  const c = _docConteos(docs), tono = _docTono(c);
+  const pill = { none: 'Sin documentos', bad: `${c.venc} vencido${c.venc > 1 ? 's' : ''}`, warn: `${c.prox} por vencer`, ok: 'Al día' }[tono];
+  const pct = c.total ? Math.round((c.ok / c.total) * 100) : 0;
+  const lead = avatar ? `<span class="dsc-av">${avatar}</span>` : `<span class="dsc-ic">${_docIcon(icon)}</span>`;
+  return `<div class="truck-select-card dsc dsc-${tono}" role="button" tabindex="0" onclick="${onclick}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${onclick}}">
+    <div class="dsc-top">${lead}<div class="dsc-id"><b>${titulo}</b>${sub ? `<small>${sub}</small>` : ''}</div><span class="dsc-pill">${pill}</span></div>
+    ${extra ? `<div class="dsc-extra">${extra}</div>` : ''}
+    <div class="dsc-bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    <div class="dsc-foot"><div class="dsc-counts"><span>${c.total} documento${c.total === 1 ? '' : 's'}</span>${c.venc ? `<span class="bad">${c.venc} vencido${c.venc > 1 ? 's' : ''}</span>` : ''}${c.prox ? `<span class="warn">${c.prox} por vencer</span>` : ''}${c.sinArchivo ? `<span>${c.sinArchivo} sin archivo</span>` : ''}</div><span class="dsc-go">${_docIcon('chevron-right')}</span></div>
+  </div>`;
+}
+function _docResumenSelector(contId, grupos) {
+  const cont = document.getElementById(contId);
+  if (!cont) return;
+  const t = { ok: 0, warn: 0, bad: 0, none: 0 };
+  grupos.forEach(docs => { t[_docTono(_docConteos(docs))]++; });
+  const item = (n, txt, cls) => n ? `<span class="doc-sum-item ${cls}"><b>${n}</b> ${txt}</span>` : '';
+  cont.innerHTML = item(t.ok, 'al día', 'ok') + item(t.warn, 'por vencer', 'warn') + item(t.bad, 'con vencidos', 'bad') + item(t.none, 'sin documentos', '');
+}
 
 function _badgeDocsCamion(docs) {
   if (!docs.length) return { cls: 'badge-muted', txt: 'Sin docs' };
@@ -11271,16 +10603,14 @@ function _renderSelectorCamiones() {
 
   grid.innerHTML = _listaCamiones.map(truck => {
     const docsTruck = _allTruckDocs.filter(d => d.truck_id === truck.truck_id);
-    const badge = _badgeDocsCamion(docsTruck);
     const num   = String(truck.numero_interno || '?').padStart(2, '0');
-    return `<div class="truck-select-card" onclick="seleccionarCamionAdmin(${truck.truck_id})">
-      <div class="tscard-icon">🚛</div>
-      <div class="tscard-num">#${_escHtml(num)}</div>
-      <div class="tscard-plate">${_escHtml(truck.plate || '')}</div>
-      <div class="tscard-brand">${_escHtml((truck.brand || '') + ' ' + (truck.model || ''))}</div>
-      <span class="truck-badge ${badge.cls}">${badge.txt}</span>
-    </div>`;
+    return _docSelectorCard({
+      onclick: `seleccionarCamionAdmin(${truck.truck_id})`, icon: 'truck',
+      titulo: `Móvil ${_escHtml(num)}`, sub: _escHtml(truck.plate || ''),
+      extra: _escHtml(`${truck.brand || ''} ${truck.model || ''}`.trim()), docs: docsTruck,
+    });
   }).join('');
+  _docResumenSelector('doc-sum-trucks', _listaCamiones.map(t => _allTruckDocs.filter(d => d.truck_id === t.truck_id)));
 
   const fab = document.getElementById('doc-fab');
   if (fab) fab.style.display = 'none';
@@ -11302,8 +10632,8 @@ function seleccionarCamionAdmin(truckId) {
   const titulo = document.getElementById('doc-camion-docs-titulo');
   if (titulo) {
     const num = String(truck.numero_interno || '?').padStart(2, '0');
-    titulo.innerHTML = `<div class="dv-num">Móvil #${_escHtml(num)}</div>
-      <div class="dv-plate">${_escHtml(truck.plate || '')} — ${_escHtml(truck.brand || '')}</div>`;
+    titulo.innerHTML = `<span class="dv-ic">${_docIcon('truck')}</span><div><div class="dv-num">Móvil ${_escHtml(num)}</div>
+      <div class="dv-plate">${_escHtml(truck.plate || '')} · ${_escHtml(`${truck.brand || ''} ${truck.model || ''}`.trim())}</div></div>`;
   }
 
   renderDocsCamion(_docsCamion);
@@ -11336,13 +10666,13 @@ function _renderSelectorChoferes() {
 
   grid.innerHTML = _listaChoferes.map(chofer => {
     const docsChofer = _allDriverDocs.filter(d => d.driver_id === chofer.user_id);
-    const badge = _badgeDocsCamion(docsChofer);
-    return `<div class="truck-select-card" onclick="seleccionarChoferAdmin('${chofer.user_id}')">
-      <div class="tscard-icon">👤</div>
-      <div class="tscard-num" style="font-size:14px;letter-spacing:0">${_escHtml(chofer.full_name || '')}</div>
-      <span class="truck-badge ${badge.cls}">${badge.txt}</span>
-    </div>`;
+    const ini = String(chofer.full_name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    return _docSelectorCard({
+      onclick: `seleccionarChoferAdmin('${chofer.user_id}')`, avatar: _escHtml(ini || '?'),
+      titulo: _escHtml(chofer.full_name || ''), sub: 'Chofer', docs: docsChofer,
+    });
   }).join('');
+  _docResumenSelector('doc-sum-choferes', _listaChoferes.map(c => _allDriverDocs.filter(d => d.driver_id === c.user_id)));
 }
 
 function seleccionarChoferAdmin(driverId) {
@@ -11360,7 +10690,8 @@ function seleccionarChoferAdmin(driverId) {
 
   const titulo = document.getElementById('doc-chofer-docs-titulo');
   if (titulo) {
-    titulo.innerHTML = `<div class="dv-num">${_escHtml(chofer.full_name || '')}</div>`;
+    const ini = String(chofer.full_name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+    titulo.innerHTML = `<span class="dv-av">${_escHtml(ini)}</span><div><div class="dv-num">${_escHtml(chofer.full_name || '')}</div><div class="dv-plate">Legajo del chofer</div></div>`;
   }
 
   renderDocsChofer(_docsChofer);
@@ -11416,9 +10747,26 @@ function _aplicarFiltroDocs(docs, filtro) {
   return docs;
 }
 
+// Chips de resumen arriba del legajo y conteos en los filtros
+function _docResumenLegajo(contId, filtroId, docs) {
+  const c = _docConteos(docs);
+  const cont = document.getElementById(contId);
+  if (cont) {
+    const item = (n, txt, cls = '') => `<span class="doc-sum-item ${cls}"><b>${n}</b> ${txt}</span>`;
+    cont.innerHTML = docs.length
+      ? item(c.total, c.total === 1 ? 'documento' : 'documentos') + item(c.ok, 'al día', 'ok')
+        + (c.prox ? item(c.prox, 'por vencer', 'warn') : '') + (c.venc ? item(c.venc, c.venc === 1 ? 'vencido' : 'vencidos', 'bad') : '')
+        + (c.sinArchivo ? item(c.sinArchivo, 'sin archivo', 'warn') : '')
+      : '';
+  }
+  const labels = [['Todos', c.total], ['Por vencer', c.prox], ['Vencidos', c.venc]];
+  document.querySelectorAll(`#${filtroId} .doc-ftab`).forEach((b, i) => { if (labels[i]) b.innerHTML = `${labels[i][0]} <b>${labels[i][1]}</b>`; });
+}
+
 function renderDocsCamion(docs) {
   const grid = document.getElementById('doc-grid-camion');
   if (!grid) return;
+  _docResumenLegajo('doc-resumen-camion', 'doc-filter-camion', docs);
 
   const filtrados = _aplicarFiltroDocs(docs, _docFiltro.camion);
 
@@ -11445,8 +10793,8 @@ function renderDocsCamion(docs) {
   if (bannerPago) {
     if (!pagoDoc || !pagoDoc.periodo || pagoDoc.periodo < mesActual) {
       const mesNombre = new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' });
-      bannerPago.textContent = `⚠ Falta el comprobante de pago de ${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}`;
-      bannerPago.style.display = 'block';
+      bannerPago.innerHTML = `${_docIcon('triangle-alert')}<span>Falta el comprobante de pago de <b>${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)}</b></span>`;
+      bannerPago.style.display = 'flex';
     } else {
       bannerPago.style.display = 'none';
     }
@@ -11466,6 +10814,7 @@ const DOC_CHOFER_META = {
 function renderDocsChofer(docs) {
   const grid = document.getElementById('doc-grid-chofer');
   if (!grid) return;
+  _docResumenLegajo('doc-resumen-chofer', 'doc-filter-chofer', docs);
 
   const filtrados = _aplicarFiltroDocs(docs, _docFiltro.chofer);
 
@@ -11501,35 +10850,33 @@ function renderEmergencias(items) {
   telSection.innerHTML = `
     <div class="emerg-section-head">
       <div class="section-label">Teléfonos de emergencia</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('telefono')" title="Agregar teléfono">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('telefono')" title="Agregar teléfono" aria-label="Agregar teléfono">${_docIcon('plus')}Agregar teléfono</button>` : ''}
     </div>
-    ${telefonos.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin teléfonos cargados.</div>` : ''}
-    ${telefonos.map(t => {
+    ${telefonos.length === 0 ? `<div class="emerg-empty">Sin teléfonos cargados.</div>` : ''}
+    <div class="emerg-phone-grid">${telefonos.map(t => {
       const phone     = t.metadata?.phone || '';
       const safeTitle = _escHtml(t.title || '');
       const safeValue = _escHtml(t.value || '');
       return `
         <div class="emerg-phone-card">
-          <div style="font-size:22px">📞</div>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:700">${safeTitle}</div>
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">${safeValue}</div>
+          <span class="emerg-ic">${_docIcon('phone')}</span>
+          <div class="emerg-txt">
+            <div class="emerg-title">${safeTitle}</div>
+            <div class="emerg-value">${safeValue}</div>
           </div>
-          ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn btn-primary" style="font-size:11px;padding:7px 12px;text-decoration:none">📞 Llamar</a>` : ''}
+          ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn btn-primary emerg-call">${_docIcon('phone')}Llamar</a>` : ''}
         </div>`;
-    }).join('')}`;
+    }).join('')}</div>`;
 
   // ── Protocolo ───────────────────────────────────────────
   protSection.innerHTML = `
     <div class="emerg-section-head" style="margin-top:20px">
       <div class="section-label">Protocolo de siniestro</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('protocolo')" title="Agregar paso">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('protocolo')" title="Agregar paso" aria-label="Agregar paso">${_docIcon('plus')}Agregar paso</button>` : ''}
     </div>
-    ${protocolo.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin pasos cargados.</div>` : `
+    ${protocolo.length === 0 ? `<div class="emerg-empty">Sin pasos cargados.</div>` : `
     <div class="emerg-protocol-card">
-      <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">
-        🚨 Qué hacer en caso de accidente
-      </div>
+      <div class="emerg-protocol-title">${_docIcon('triangle-alert')}Qué hacer en caso de accidente</div>
       ${protocolo.map((p, idx) => {
         const isCritical = p.metadata?.critical;
         const safeTitle  = _escHtml(p.title || '');
@@ -11537,9 +10884,7 @@ function renderEmergencias(items) {
         return `
           <div class="emerg-step">
             <div class="emerg-step-num">${idx + 1}</div>
-            <div class="emerg-step-text" style="${isCritical ? 'color:var(--red);font-weight:700' : ''}">
-              ${safeTitle}: ${safeValue}
-            </div>
+            <div class="emerg-step-text ${isCritical ? 'critical' : ''}"><b>${safeTitle}</b><span>${safeValue}</span>${isCritical ? '<em>Prioridad</em>' : ''}</div>
           </div>`;
       }).join('')}
     </div>`}`;
@@ -11548,10 +10893,10 @@ function renderEmergencias(items) {
   talSection.innerHTML = `
     <div class="emerg-section-head" style="margin-top:8px">
       <div class="section-label">Talleres y gomerías de confianza</div>
-      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('taller')" title="Agregar taller">+</button>` : ''}
+      ${esAdmin ? `<button class="btn-emerg-plus" onclick="agregarEmergenciaItem('taller')" title="Agregar taller" aria-label="Agregar taller">${_docIcon('plus')}Agregar taller</button>` : ''}
     </div>
-    ${talleres.length === 0 ? `<div style="font-size:12px;color:var(--muted);padding:8px 0">Sin talleres cargados.</div>` : ''}
-    ${talleres.map(t => {
+    ${talleres.length === 0 ? `<div class="emerg-empty">Sin talleres cargados.</div>` : ''}
+    <div class="emerg-taller-grid">${talleres.map(t => {
       const phone      = t.metadata?.phone   || '';
       const badge      = _escHtml(t.metadata?.badge    || '');
       const address    = _escHtml(t.metadata?.address  || '');
@@ -11564,19 +10909,19 @@ function renderEmergencias(items) {
       return `
         <div class="emerg-taller-card">
           <div class="emerg-taller-top">
-            <div style="font-size:20px">🔧</div>
-            <div style="flex:1">
-              <div style="font-size:12px;font-weight:700">${safeTitle}${badge ? ` <span style="font-size:9px;color:var(--muted);font-weight:400">· ${badge}</span>` : ''}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">${safeValue}</div>
-              ${address ? `<div class="emerg-taller-addr">📍 ${address}</div>` : ''}
+            <span class="emerg-ic">${_docIcon('wrench')}</span>
+            <div class="emerg-txt">
+              <div class="emerg-title">${safeTitle}${badge ? ` <span class="emerg-badge">${badge}</span>` : ''}</div>
+              <div class="emerg-sub">${safeValue}</div>
+              ${address ? `<div class="emerg-taller-addr">${_docIcon('map-pin')}${address}</div>` : ''}
             </div>
           </div>
           <div class="emerg-taller-actions">
-            ${mapsUrl ? `<a href="${_escHtml(mapsUrl)}" target="_blank" rel="noopener" class="btn-maps">🗺 Ver en Maps</a>` : ''}
-            ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn-taller-call">📞 Llamar</a>` : ''}
+            ${mapsUrl ? `<a href="${_escHtml(mapsUrl)}" target="_blank" rel="noopener" class="btn-maps">${_docIcon('map')}Ver en Maps</a>` : ''}
+            ${phone ? `<a href="tel:${encodeURIComponent(phone)}" class="btn-taller-call">${_docIcon('phone')}Llamar</a>` : ''}
           </div>
         </div>`;
-    }).join('')}`;
+    }).join('')}</div>`;
 }
 
 async function cargarDocumentos() {
@@ -11777,7 +11122,7 @@ function mostrarSkeletonDocs() {
 
 function mostrarErrorDocs() {
   const html = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted)">
-    <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+    <div style="font-size:28px;margin-bottom:8px">⚠</div>
     <div style="font-size:13px;margin-bottom:12px">No se pudieron cargar los documentos</div>
     <button class="btn btn-ghost" onclick="cargarDocumentos()" style="font-size:11px">Reintentar</button>
   </div>`;
@@ -11792,8 +11137,8 @@ function actualizarBannerAlertasDocs(camion, chofer) {
   if (!banner) return;
   const criticos = [...camion, ...chofer].filter(d => d.status === 'vencido' || d.status === 'falta_archivo');
   if (criticos.length > 0) {
-    banner.innerHTML = `⚠️ <strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong>`;
-    banner.style.display = 'block';
+    banner.innerHTML = `${_docIcon('triangle-alert')}<span><strong>${criticos.length} documento${criticos.length > 1 ? 's' : ''} requiere${criticos.length === 1 ? '' : 'n'} atención</strong> · vencidos o sin el archivo obligatorio</span>`;
+    banner.style.display = 'flex';
   } else {
     banner.style.display = 'none';
   }
@@ -11964,7 +11309,7 @@ async function subirDocCamion() {
     });
 
     closeModal('modal-upload-truck-doc');
-    toast('Documento guardado', 'success');
+    confirmarSubida(file.name, 'Documento guardado');
 
     _allTruckDocs = await cargarAllTruckDocs();
     if (_adminTruckSeleccionado?.truck_id === truckId) {
@@ -12020,7 +11365,7 @@ async function subirDocChofer() {
     });
 
     closeModal('modal-upload-driver-doc');
-    toast('Documento guardado', 'success');
+    confirmarSubida(file.name, 'Documento guardado');
 
     _allDriverDocs = await cargarAllDriverDocs();
     if (esAdmin && _adminChoferSeleccionado?.user_id === driverId) {
@@ -12308,8 +11653,7 @@ function _kmRenderModal() {
   });
 
   const totalKm = logs.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
-  const jornadasCerradas = logs.filter(j=>j.km_final!=null).length;
-  const promKm = jornadasCerradas>0 ? Math.round(totalKm/jornadasCerradas) : 0;
+  const totalServicios = remitos.filter(r => r.status !== 'anulado').length;
 
   const tituloEl = document.getElementById('modal-desglose-titulo');
   if (tituloEl) tituloEl.textContent = `🚛 Km recorridos · ${totalKm.toLocaleString('es-AR')} km`;
@@ -12359,16 +11703,16 @@ function _kmRenderModal() {
   body.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Total km</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">${totalKm.toLocaleString('es-AR')}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
         <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Jornadas</div>
-        <div style="color:var(--text);font-weight:700;font-size:14px">${logs.length}</div>
+        <div style="color:var(--amber);font-weight:700;font-size:14px">${logs.length}</div>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Promedio</div>
-        <div style="color:var(--green);font-weight:700;font-size:14px">${promKm.toLocaleString('es-AR')} km</div>
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Kilómetros</div>
+        <div style="color:var(--text);font-weight:700;font-size:14px">${totalKm.toLocaleString('es-AR')}</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
+        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Servicios</div>
+        <div style="color:var(--green);font-weight:700;font-size:14px">${totalServicios.toLocaleString('es-AR')}</div>
       </div>
     </div>
     <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">${_kmHistExpandido ? `Historial completo (${logs.length})` : 'Últimas jornadas'}</div>
@@ -12396,7 +11740,7 @@ function abrirModalPendienteRendir() {
   const pendiente = Math.max(0, totalCobrado - totalRendido);
 
   const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `⚠️ Pendiente de rendir · $${_AR(pendiente)}`;
+  if (tituloEl) tituloEl.textContent = `⚠ Pendiente de rendir · $${_AR(pendiente)}`;
 
   const body = document.getElementById('modal-desglose-body');
   if (!body) return;
@@ -12454,6 +11798,40 @@ function abrirModalPendienteRendir() {
   openModal('modal-desglose-pago');
 }
 
+function _cashCollectionLines(r, addons) {
+  const cash=[1,2].reduce((sum,n)=>sum+(r['pago_'+n+'_metodo']==='efectivo'?Number(r['pago_'+n+'_monto'])||0:0),0);
+  const lines=[];
+  for(const [key,label] of [['tolls','Peaje'],['excesses','Excedente']]) {
+    for(const item of addons?.[key] || []) if(['cash','efectivo'].includes(item.customer_payment_method) && Number(item.total_amount)>0) lines.push({type:label,amount:Number(item.total_amount)});
+  }
+  if(!lines.length && addons && !(addons.tolls?.length || addons.excesses?.length)) {
+    const otherPayment=[1,2].some(n=>r['pago_'+n+'_metodo'] && r['pago_'+n+'_metodo']!=='efectivo' && Number(r['pago_'+n+'_monto'])>0);
+    if(!otherPayment) for(const [key,type] of [['imp_peaje','Peaje'],['imp_excedente','Excedente']]) if(Number(r[key])>0) lines.push({type,amount:Number(r[key])});
+  }
+  const allocated=lines.reduce((sum,line)=>sum+line.amount,0);
+  // Nunca atribuir arbitrariamente un pago mixto histórico a un concepto.
+  if(allocated>cash+0.01) return [{type:'Sin desglose histórico',amount:cash}];
+  if(cash>allocated+0.01) lines.push({type:addons?'Sin desglose histórico':'Detalle no disponible',amount:cash-allocated});
+  return lines;
+}
+let _cashDetailRequest=0;
+async function _loadCashCollectionRows(remitos) {
+  const request=++_cashDetailRequest;
+  const results=[];
+  for(let offset=0;offset<remitos.length;offset+=6) {
+    results.push(...await Promise.all(remitos.slice(offset,offset+6).map(async r=>{
+      try { const {data,error}=await _db.rpc('get_driver_remito_addons_v2',{p_remito_id:Number(r.remito_id)}); return {r,addons:error?null:data}; }
+      catch { return {r,addons:null}; }
+    })));
+  }
+  if(request!==_cashDetailRequest) return;
+  const host=document.getElementById('cash-collection-rows'); if(!host) return;
+  const esc=value=>String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  host.innerHTML=results.flatMap(({r,addons})=>_cashCollectionLines(r,addons).map(line=>
+    '<div class="cash-collection-row"><span>'+esc(_jhistFecha(_rendFechaLocal(r.created_at_device)))+'</span><span>'+esc(r.daily_logs?.trucks?.plate||'—')+'</span><span>'+esc(line.type)+'</span><strong>+$'+_AR(line.amount)+'</strong></div>'
+  )).join('') || '<div class="cash-collection-row">Sin cobros en efectivo</div>';
+}
+
 function abrirModalDesgloseEfectivo() {
   const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const remitos   = _rendRemitosActuales || [];
@@ -12482,16 +11860,7 @@ function abrirModalDesgloseEfectivo() {
   const body = document.getElementById('modal-desglose-body');
   if (!body) return;
 
-  const rowsCobrado = cobradosEf.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cobros en efectivo</div>'
-    : cobradosEf.map(r => {
-        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
-        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
-          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
-          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
-          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">+$' + _AR(getEf(r)) + '</span>'
-          + '</div>';
-      }).join('');
+  const rowsCobrado = '<div id="cash-collection-rows" aria-live="polite"><div class="cash-collection-row">Cargando cobros…</div></div>';
 
   const rowsFuel = cargasFuel.length === 0
     ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">Sin cargas de combustible</div>'
@@ -12547,6 +11916,7 @@ function abrirModalDesgloseEfectivo() {
   `;
 
   openModal('modal-desglose-pago');
+  _loadCashCollectionRows([...cobradosEf].sort((a,b)=>(b.created_at_device||'').localeCompare(a.created_at_device||'')));
 }
 
 function abrirModalDesglosePago(tipo) {
@@ -12619,422 +11989,23 @@ function abrirModalDesglosePago(tipo) {
   openModal('modal-desglose-pago');
 }
 
-function _negocioMetodoStats() {
-  const remitos = _negocioRemitosActuales || [];
-  const acc = { efectivo:0, transferencia:0, tarjeta:0, app:0 };
-  const cnt = { efectivo:0, transferencia:0, tarjeta:0, app:0 };
-  remitos.forEach(r => {
-    ['1','2'].forEach(i => {
-      const m = r['pago_'+i+'_metodo'];
-      const v = r['pago_'+i+'_monto'] || 0;
-      if (m && acc.hasOwnProperty(m)) { acc[m] += v; if (v>0) cnt[m]++; }
-    });
-  });
-  return { acc, cnt };
-}
 
-function _negocioBarPct(label, monto, count, total, color) {
-  const pct = total>0 ? Math.round(monto/total*100) : 0;
-  return `<div style="margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
-      <span style="color:var(--text)">${label} <span style="color:var(--muted);font-size:10px">(${count})</span></span>
-      <span style="font-family:'DM Mono';color:${color};font-weight:600">$${_AR(monto)} <span style="color:var(--muted);font-weight:400">(${pct}%)</span></span>
-    </div>
-    <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-      <div style="width:${pct}%;height:100%;background:${color}"></div>
-    </div>
-  </div>`;
-}
 
-function abrirModalNegocioFacturacion() {
-  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const remitos = _negocioRemitosActuales || [];
-  const montoR = r => (r.pago_1_monto||0) + (r.pago_2_monto||0);
-  const total = remitos.reduce((s,r)=>s+montoR(r),0);
-  const firmados = remitos.filter(r=>r.status==='firmado').length;
-  const pendientes = remitos.filter(r=>r.status==='pendiente').length;
-  const anulados = remitos.filter(r=>r.status==='anulado').length;
-  const { acc, cnt } = _negocioMetodoStats();
 
-  const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `💵 Facturación · $${_AR(total)}`;
-  const body = document.getElementById('modal-desglose-body');
-  if (!body) return;
 
-  const sorted = [...remitos].sort((a,b)=>montoR(b)-montoR(a));
-  const rows = sorted.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay servicios registrados</div>'
-    : sorted.map(r => {
-        const fecha = (r.created_at_device||'').slice(5,10).replace('-','/');
-        const badge = r.status==='firmado'?'✓':r.status==='anulado'?'✕':'⋯';
-        const badgeCol = r.status==='firmado'?'var(--green)':r.status==='anulado'?'var(--red)':'var(--muted)';
-        return '<div class="modal-desglose-row" style="grid-template-columns:60px 20px 1fr 90px">'
-          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
-          + '<span style="color:'+badgeCol+';font-size:12px;text-align:center">' + badge + '</span>'
-          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(r.nro_remito||'—') + '</span>'
-          + '<span style="color:var(--green);font-weight:600;font-size:11px;text-align:right">$' + _AR(montoR(r)) + '</span>'
-          + '</div>';
-      }).join('');
 
-  body.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--amber);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
-      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Facturación total</div>
-      <div style="color:var(--amber);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${_AR(total)}</div>
-      <div style="color:var(--muted);font-size:10px;margin-top:2px">${remitos.length} servicios</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Firmados</div>
-        <div style="color:var(--green);font-weight:700;font-size:14px">${firmados}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Pendientes</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">${pendientes}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Anulados</div>
-        <div style="color:var(--red);font-weight:700;font-size:14px">${anulados}</div>
-      </div>
-    </div>
-    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Desglose por método</div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:12px;margin-bottom:14px">
-      ${_negocioBarPct('💵 Efectivo',      acc.efectivo,      cnt.efectivo,      total, 'var(--green)')}
-      ${_negocioBarPct('📲 Transferencia', acc.transferencia, cnt.transferencia, total, 'var(--blue)')}
-      ${_negocioBarPct('💳 Tarjeta',       acc.tarjeta,       cnt.tarjeta,       total, 'var(--purple)')}
-      ${_negocioBarPct('📱 App',           acc.app,           cnt.app,           total, 'var(--amber)')}
-    </div>
-    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Servicios ordenados por monto (${remitos.length})</div>
-    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rows}</div>
-  `;
-  openModal('modal-desglose-pago');
-}
 
-function abrirModalNegocioResultado() {
-  const remitos = _negocioRemitosActuales || [];
-  const fuel = _negocioFuelActuales || [];
-  const factTotal = remitos.reduce((s,r)=>s+(r.pago_1_monto||0)+(r.pago_2_monto||0),0);
-  const gastosFuel = fuel.reduce((s,f)=>s+(f.total_cost||0),0);
-  const litros = fuel.reduce((s,f)=>s+(f.liters||0),0);
-  const resultado = factTotal - gastosFuel;
-  const margen = factTotal>0 ? Math.round(resultado/factTotal*100) : 0;
 
-  const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `📈 Resultado operativo · ${resultado>=0?'':'−'}$${_AR(Math.abs(resultado))}`;
-  const body = document.getElementById('modal-desglose-body');
-  if (!body) return;
 
-  const rowsFuel = fuel.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">No hay cargas de combustible</div>'
-    : [...fuel].sort((a,b)=>(b.fuel_date||'').localeCompare(a.fuel_date||'')).slice(0,50).map(f => {
-        const fecha = (f.fuel_date||'').slice(5,10).replace('-','/');
-        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
-          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
-          + '<span style="color:var(--text);font-size:11px">⛽ ' + _AR(f.liters||0) + ' L</span>'
-          + '<span style="color:var(--red);font-weight:600;font-size:11px;text-align:right">−$' + _AR(f.total_cost||0) + '</span>'
-          + '</div>';
-      }).join('');
 
-  body.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Facturación</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(factTotal)}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Combustible</div>
-        <div style="color:var(--red);font-weight:700;font-size:14px">−$${_AR(gastosFuel)}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Margen</div>
-        <div style="color:${margen>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:14px">${margen}%</div>
-      </div>
-    </div>
-    <div style="background:var(--card);border:1px solid ${resultado>=0?'var(--green)':'var(--red)'};border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
-      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">= Resultado operativo</div>
-      <div style="color:${resultado>=0?'var(--green)':'var(--red)'};font-weight:700;font-size:22px;font-family:'Bebas Neue'">${resultado>=0?'':'−'}$${_AR(Math.abs(resultado))}</div>
-      <div style="color:var(--muted);font-size:10px;margin-top:2px">${litros>0?_AR(litros)+' L de combustible':''}</div>
-    </div>
-    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">− Cargas de combustible (${fuel.length}${fuel.length>50?' — mostrando 50':''})</div>
-    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rowsFuel}</div>
-  `;
-  openModal('modal-desglose-pago');
-}
 
-function abrirModalNegocioKmTotales() {
-  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const jornadas = _negocioJornadasFilt || [];
-  const totalKm = jornadas.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
-  const cerradas = jornadas.filter(j=>j.km_final!=null).length;
-  const promKm = cerradas>0 ? Math.round(totalKm/cerradas) : 0;
 
-  const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `🚛 Km totales · ${totalKm.toLocaleString('es-AR')} km`;
-  const body = document.getElementById('modal-desglose-body');
-  if (!body) return;
 
-  const sorted = [...jornadas].sort((a,b)=>(b.log_date||'').localeCompare(a.log_date||''));
-  const rows = sorted.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">No hay jornadas registradas</div>'
-    : sorted.slice(0,100).map(j => {
-        const km = Math.max(0, (j.km_final||0) - (j.km_inicio||0));
-        const abierta = j.km_final == null;
-        const fecha = j.log_date || '—';
-        const plate = j.trucks?.plate || (j.truck_id ? '#'+j.truck_id : '—');
-        return '<div class="modal-desglose-row" style="grid-template-columns:80px 1fr 110px">'
-          + '<span style="color:var(--muted);font-size:11px">' + _esc(fecha) + '</span>'
-          + '<span style="color:var(--amber);font-weight:600;font-size:11px">' + _esc(plate) + (abierta?' <span style="color:var(--amber);font-size:9px">(abierta)</span>':'') + '</span>'
-          + '<span style="color:var(--text);font-weight:600;font-size:11px;text-align:right">' + (abierta?'—':km.toLocaleString('es-AR')+' km') + '</span>'
-          + '</div>';
-      }).join('');
 
-  body.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Total km</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">${totalKm.toLocaleString('es-AR')}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Jornadas</div>
-        <div style="color:var(--text);font-weight:700;font-size:14px">${jornadas.length}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Promedio</div>
-        <div style="color:var(--green);font-weight:700;font-size:14px">${promKm.toLocaleString('es-AR')} km</div>
-      </div>
-    </div>
-    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600">Jornadas ordenadas por fecha (${jornadas.length}${jornadas.length>100?' — mostrando 100':''})</div>
-    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rows}</div>
-  `;
-  openModal('modal-desglose-pago');
-}
 
-function abrirModalNegocioTicket() {
-  const _esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const remitos = _negocioRemitosActuales || [];
-  const montoR = r => (r.pago_1_monto||0) + (r.pago_2_monto||0);
-  const montos = remitos.map(montoR).filter(v=>v>0).sort((a,b)=>a-b);
-  const total = montos.reduce((s,v)=>s+v,0);
-  const prom = montos.length>0 ? Math.round(total/montos.length) : 0;
-  const min = montos.length>0 ? montos[0] : 0;
-  const max = montos.length>0 ? montos[montos.length-1] : 0;
-  const mediana = montos.length>0 ? montos[Math.floor(montos.length/2)] : 0;
 
-  const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `🎫 Ticket promedio · $${_AR(prom)}`;
-  const body = document.getElementById('modal-desglose-body');
-  if (!body) return;
 
-  const rangos = [
-    { label: 'Hasta $10.000', min: 0, max: 10000, color: 'var(--muted)' },
-    { label: '$10.000 - $30.000', min: 10000, max: 30000, color: 'var(--blue)' },
-    { label: '$30.000 - $60.000', min: 30000, max: 60000, color: 'var(--green)' },
-    { label: '$60.000 - $100.000', min: 60000, max: 100000, color: 'var(--amber)' },
-    { label: 'Más de $100.000', min: 100000, max: Infinity, color: 'var(--purple)' },
-  ];
-  const distTotal = montos.length;
-  const dist = rangos.map(r => {
-    const count = montos.filter(v => v>=r.min && v<r.max).length;
-    const pct = distTotal>0 ? Math.round(count/distTotal*100) : 0;
-    return `<div style="margin-bottom:8px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
-        <span style="color:var(--text)">${r.label}</span>
-        <span style="color:${r.color};font-weight:600">${count} <span style="color:var(--muted);font-weight:400">(${pct}%)</span></span>
-      </div>
-      <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:${r.color}"></div>
-      </div>
-    </div>`;
-  }).join('');
 
-  body.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--green);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
-      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Ticket promedio</div>
-      <div style="color:var(--green);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${_AR(prom)}</div>
-      <div style="color:var(--muted);font-size:10px;margin-top:2px">${montos.length} servicios con monto</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Mínimo</div>
-        <div style="color:var(--text);font-weight:700;font-size:14px">$${_AR(min)}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Mediana</div>
-        <div style="color:var(--blue);font-weight:700;font-size:14px">$${_AR(mediana)}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Máximo</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(max)}</div>
-      </div>
-    </div>
-    <div style="margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Distribución de tickets</div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:12px">${dist}</div>
-  `;
-  openModal('modal-desglose-pago');
-}
-
-function abrirModalNegocioPorKm() {
-  const remitos = _negocioRemitosActuales || [];
-  const jornadas = _negocioJornadasFilt || [];
-  const factTotal = remitos.reduce((s,r)=>s+(r.pago_1_monto||0)+(r.pago_2_monto||0),0);
-  const kmTotal = jornadas.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
-  const porKm = kmTotal>0 ? (factTotal/kmTotal) : 0;
-
-  const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `💸 Ingreso por km · $${porKm.toFixed(1)}`;
-  const body = document.getElementById('modal-desglose-body');
-  if (!body) return;
-
-  body.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--blue);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
-      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Ingreso por km</div>
-      <div style="color:var(--blue);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${porKm.toFixed(1)}</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Facturación total</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(factTotal)}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Km totales</div>
-        <div style="color:var(--text);font-weight:700;font-size:14px">${kmTotal.toLocaleString('es-AR')} km</div>
-      </div>
-    </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:12px;font-size:11px;color:var(--muted);line-height:1.6">
-      Este indicador muestra cuánto se factura por cada km recorrido. Se calcula dividiendo la facturación total por los km recorridos en el período. Sirve para comparar rentabilidad entre períodos o entre camiones/choferes usando los filtros de arriba.
-    </div>
-  `;
-  openModal('modal-desglose-pago');
-}
-
-function abrirModalNegocioCostoKm() {
-  const jornadas = _negocioJornadasFilt || [];
-  const fuel = _negocioFuelActuales || [];
-  const gastosFuel = fuel.reduce((s,f)=>s+(f.total_cost||0),0);
-  const litros = fuel.reduce((s,f)=>s+(f.liters||0),0);
-  const kmTotal = jornadas.reduce((s,j)=>s+Math.max(0,(j.km_final||0)-(j.km_inicio||0)),0);
-  const costoKm = kmTotal>0 ? (gastosFuel/kmTotal) : 0;
-  const kmL = litros>0 ? (kmTotal/litros).toFixed(1) : '—';
-  const precioL = litros>0 ? (gastosFuel/litros).toFixed(0) : 0;
-
-  const tituloEl = document.getElementById('modal-desglose-titulo');
-  if (tituloEl) tituloEl.textContent = `⛽ Costo por km · $${costoKm.toFixed(1)}`;
-  const body = document.getElementById('modal-desglose-body');
-  if (!body) return;
-
-  const rowsFuel = fuel.length === 0
-    ? '<div style="color:var(--muted);text-align:center;padding:12px;font-size:11px">No hay cargas de combustible</div>'
-    : [...fuel].sort((a,b)=>(b.fuel_date||'').localeCompare(a.fuel_date||'')).slice(0,50).map(f => {
-        const fecha = (f.fuel_date||'').slice(5,10).replace('-','/');
-        return '<div class="modal-desglose-row" style="grid-template-columns:60px 1fr 90px">'
-          + '<span style="color:var(--muted);font-size:11px">' + fecha + '</span>'
-          + '<span style="color:var(--text);font-size:11px">⛽ ' + _AR(f.liters||0) + ' L</span>'
-          + '<span style="color:var(--red);font-weight:600;font-size:11px;text-align:right">−$' + _AR(f.total_cost||0) + '</span>'
-          + '</div>';
-      }).join('');
-
-  body.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--red);border-radius:8px;padding:12px;margin-bottom:14px;text-align:center">
-      <div style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Costo de combustible por km</div>
-      <div style="color:var(--red);font-weight:700;font-size:22px;font-family:'Bebas Neue'">$${costoKm.toFixed(1)}</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Km / litro</div>
-        <div style="color:var(--purple);font-weight:700;font-size:14px">${kmL}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Precio prom./L</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">$${_AR(precioL)}</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Gasto total</div>
-        <div style="color:var(--red);font-weight:700;font-size:14px">$${_AR(gastosFuel)}</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Litros</div>
-        <div style="color:var(--text);font-weight:700;font-size:14px">${_AR(litros)} L</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center">
-        <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Km totales</div>
-        <div style="color:var(--amber);font-weight:700;font-size:14px">${kmTotal.toLocaleString('es-AR')}</div>
-      </div>
-    </div>
-    <div style="margin-bottom:6px;font-size:11px;color:var(--red);font-weight:600">Cargas de combustible (${fuel.length}${fuel.length>50?' — mostrando 50':''})</div>
-    <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden">${rowsFuel}</div>
-  `;
-  openModal('modal-desglose-pago');
-}
-
-function abrirModalCajaCalle() {
-  const modal = document.getElementById('modal-caja-calle');
-  if (!modal) return;
-
-  const remitos  = _remitosEfectivoActuales;
-  const usuarios = _negocioUsuariosActuales;
-  const jornadas = _negocioJornadasActuales;
-
-  // Mapa user_id → nombre
-  const nombreMap = {};
-  usuarios.forEach(u => { nombreMap[u.user_id] = u.full_name; });
-
-  // Mapa log_id → trucks.plate
-  const truckMap = {};
-  jornadas.forEach(j => { if (j.log_id && j.trucks) truckMap[j.log_id] = j.trucks.plate; });
-
-  // Drivers con alerta pendiente
-  const conDeuda = new Set(
-    (_negocioRaw?.alertas || []).map(a => a.driver_id)
-  );
-
-  let totalEf = 0;
-  const filas = remitos.map(r => {
-    const ef = (r.pago_1_metodo === 'efectivo' ? (r.pago_1_monto||0) : 0)
-             + (r.pago_2_metodo === 'efectivo' ? (r.pago_2_monto||0) : 0);
-    totalEf += ef;
-    const fecha  = r.created_at_device ? r.created_at_device.slice(0,10) : '—';
-    const chofer = nombreMap[r.driver_id] || '—';
-    const camion = truckMap[r.log_id] || r.patente || '—';
-    const estado = conDeuda.has(r.driver_id)
-      ? '<span style="color:var(--amber)">⚠️ Pendiente</span>'
-      : '<span style="color:var(--green)">✓ Rendido</span>';
-    return `<tr style="border-bottom:1px solid var(--border);font-size:12px">
-      <td style="padding:8px 6px">${r.nro_remito || '—'}</td>
-      <td style="padding:8px 6px">${chofer}</td>
-      <td style="padding:8px 6px">${camion}</td>
-      <td style="padding:8px 6px">${fecha}</td>
-      <td style="padding:8px 6px;font-family:'DM Mono';font-weight:700;color:var(--amber)">$${_AR(ef)}</td>
-      <td style="padding:8px 6px">${estado}</td>
-    </tr>`;
-  }).join('');
-
-  const tabla = remitos.length === 0
-    ? '<div style="text-align:center;color:var(--muted);padding:20px">Sin cobros en efectivo para el período y filtros seleccionados.</div>'
-    : `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.5px">
-            <th style="padding:8px 6px;text-align:left">N° Remito</th>
-            <th style="padding:8px 6px;text-align:left">Chofer</th>
-            <th style="padding:8px 6px;text-align:left">Camión</th>
-            <th style="padding:8px 6px;text-align:left">Fecha</th>
-            <th style="padding:8px 6px;text-align:left">Efectivo</th>
-            <th style="padding:8px 6px;text-align:left">Estado</th>
-          </tr>
-        </thead>
-        <tbody>${filas}</tbody>
-        <tfoot>
-          <tr style="border-top:2px solid var(--border)">
-            <td colspan="4" style="padding:10px 6px;font-size:11px;color:var(--muted)">Total — ${remitos.length} servicios</td>
-            <td style="padding:10px 6px;font-family:'Bebas Neue';font-size:18px;color:var(--amber)">$${_AR(totalEf)}</td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table></div>`;
-
-  document.getElementById('caja-calle-body').innerHTML = tabla;
-  openModal('modal-caja-calle');
-}
 
 // --- PWA OFFLINE BANNER ---
 function _pwaBanner(msg, tipo) {
@@ -13106,7 +12077,7 @@ function abrirModalIncidente(opts = {}) {
   const btn = document.getElementById('inc-btn-enviar');
   if (btn) { btn.textContent = 'Enviar reporte'; btn.disabled = false; btn.style.opacity = '1'; }
   const titulo = document.querySelector('#modal-incidente h3');
-  if (titulo) titulo.textContent = '⚠️ Reportar incidente';
+  if (titulo) titulo.textContent = '⚠ Reportar incidente';
 
   const sub = document.getElementById('inc-sub');
   const ctx = document.getElementById('inc-ctx');
@@ -13124,7 +12095,7 @@ function abrirModalIncidente(opts = {}) {
     if (ubic) ubic.value = incidente.location || '';
     if (_incTipoSel) document.querySelector(`#inc-tipos .inc-tipo[data-tipo="${_incTipoSel}"]`)?.classList.add('sel');
     if (_incSevSel)  document.querySelector(`#inc-sev .inc-sev-op[data-sev="${_incSevSel}"]`)?.classList.add('sel');
-    if (titulo) titulo.textContent = '✏️ Editar incidente';
+    if (titulo) titulo.textContent = '✏ Editar incidente';
     if (btn) btn.textContent = 'Guardar cambios';
     if (sub) sub.textContent = contexto || _jadminIncCtx?.contexto || 'Incidente registrado';
     if (ctx) ctx.innerHTML = `Estás <strong>editando</strong> un incidente ya registrado. Los cambios se guardan al confirmar.`;
@@ -13406,7 +12377,7 @@ function _incFmtFecha(iso) {
   if (esHoy) return `hoy ${hm}`;
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}-${mm}-${d.getFullYear()} ${hm}`;
+  return `${dd}/${mm}/${String(d.getFullYear()).slice(2)} ${hm}`;
 }
 
 // ── Exportar remitos filtrados a Excel ─────────────
@@ -13423,41 +12394,44 @@ async function exportarRemitosExcel() {
     const all = await fetchRemitosFiltrados({ filtros, max: 5000 });
 
     if (!all.length) { toast('No hay remitos que exportar con los filtros actuales', 'warn'); return; }
-
-    const headers = [
-      'Nº Remito','Fecha','Nº Servicio','Chofer','Patente','Marca/Modelo',
-      'Cliente','CUIT','Teléfono','Origen','Destino','KM','Tipo Servicio',
-      'Peaje','Excedente','Otros','Extras Total','Pago','Estado','Observaciones'
-    ];
-
-    const rowsAoA = [headers, ...all.map(d => {
-      const peaje = parseInt(d.peaje) || 0;
-      const excedente = parseInt(d.excedente) || 0;
-      const otros = parseInt(d.otros) || 0;
-      return [
-        d.nro, d.fecha, d.nroSrv || '', d.chofer || '', d.patente || '', d.marca || '',
-        d.cliente || '', d.cuit || '', d.telefono || '', d.origen || '', d.destino || '',
-        d.km || '', d.tipo || '',
-        peaje, excedente, otros, peaje + excedente + otros,
-        d.pago || '', d.estado || '', d.observaciones || ''
-      ];
-    })];
-
-    const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
-    ws['!cols'] = headers.map((h, i) => ({ wch: [12,11,12,22,10,16,24,13,15,22,22,7,18,10,11,10,12,14,11,30][i] || 14 }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Remitos');
-
-    const stamp = new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb, `remitos_${stamp}.xlsx`);
-    const capMsg = all.length >= 5000 ? ' (límite 5000 aplicado)' : '';
-    toast(`✓ ${all.length} remito${all.length !== 1 ? 's' : ''} exportado${all.length !== 1 ? 's' : ''}${capMsg}`, 'success');
+    _rmxExportarFilas(all, 'remitos', all.length >= 5000 ? ' (límite 5000 aplicado)' : '');
   } catch (e) {
     console.error('exportarRemitosExcel:', e);
     toast('Error al exportar', 'error');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = originalTxt || '📊 Exportar a Excel'; }
+    if (btn) { btn.disabled = false; btn.textContent = originalTxt || '⇩ Exportar'; }
   }
+}
+
+function _rmxExportarFilas(all, prefijo, nota = '') {
+  if (typeof XLSX === 'undefined') { toast('Librería XLSX no cargó — refrescá la página', 'error'); return; }
+  const headers = [
+    'Nº Servicio','Nº Remito','Fecha','Chofer','Patente','Marca/Modelo',
+    'Cliente','CUIT','Teléfono','Origen','Destino','KM','Tipo Servicio',
+    'Peaje','Excedente','Otros','Extras Total','Pago','Estado','Observaciones'
+  ];
+
+  const rowsAoA = [headers, ...all.map(d => {
+    const peaje = parseInt(d.peaje) || 0;
+    const excedente = parseInt(d.excedente) || 0;
+    const otros = parseInt(d.otros) || 0;
+    return [
+      d.srvOrden || d.nroSrv || '', d.nro, d.fecha, d.chofer || '', d.patente || '', d.marca || '',
+      d.cliente || '', d.cuit || '', d.telefono || '', d.origen || '', d.destino || '',
+      d.km || '', d.tipoReal || 'Sin clasificar',
+      peaje, excedente, otros, peaje + excedente + otros,
+      d.pago || '', d.estado || '', d.observaciones || ''
+    ];
+  })];
+
+  const ws = XLSX.utils.aoa_to_sheet(rowsAoA);
+  ws['!cols'] = headers.map((h, i) => ({ wch: [12,11,12,22,10,16,24,13,15,22,22,7,18,10,11,10,12,14,11,30][i] || 14 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Remitos');
+
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `${prefijo}_${stamp}.xlsx`);
+  confirmarDescarga(`${prefijo}_${stamp}.xlsx`, `${all.length} remito${all.length !== 1 ? 's' : ''} exportado${all.length !== 1 ? 's' : ''}${nota}`);
 }
 
 // ── REMITO PDF desde modal ─────────────────────
@@ -13484,7 +12458,7 @@ const _CSV_SCHEMA = {
   },
   usuarios: {
     title: '📥 Importar Personal desde CSV',
-    help: 'Subí un .csv o .xlsx con: <b>legajo</b>, <b>email</b>, <b>full_name</b>, dni, phone, <b>rol</b> (chofer / supervision / administracion).',
+    help: 'Subí un .csv o .xlsx con: <b>legajo</b>, <b>email</b>, <b>full_name</b>, dni, phone, <b>rol</b> (chofer / operador / supervision / administracion).',
     required: ['legajo','email','full_name','rol'],
     columns: ['legajo','email','full_name','dni','phone','rol'],
     template: [
@@ -13630,7 +12604,7 @@ function _csvRenderPreview(rows) {
       }
       if (!obj.full_name) errors.push('full_name vacío');
       const rolN = (obj.rol || '').toLowerCase();
-      if (!['chofer','supervision','administracion'].includes(rolN)) errors.push('rol inválido (chofer/supervision/administracion)');
+      if (!['chofer','operador','supervision','administracion'].includes(rolN)) errors.push('rol inválido (chofer/operador/supervision/administracion)');
       else obj.rol = rolN;
     }
 
@@ -13688,6 +12662,7 @@ function _csvDescargarPlantilla() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, tipo === 'flota' ? 'Flota' : 'Personal');
   XLSX.writeFile(wb, `plantilla_${tipo}.xlsx`);
+  confirmarDescarga(`plantilla_${tipo}.xlsx`, 'Completala y volvé a subirla acá.');
 }
 
 async function _csvImportarConfirm() {
@@ -13727,7 +12702,7 @@ async function _csvImportarConfirm() {
       const o = valid[i];
       btn.textContent = `Importando… ${i + 1}/${valid.length}`;
       try {
-        const resp = await fetch(`${ENV.API_BASE_URL}/api/create-user`, {
+        const resp = await fetch(`${ENV.ADMIN_API_BASE_URL}/api/create-user`, {
           method: 'POST',
           headers: await apiAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
@@ -13750,7 +12725,7 @@ async function _csvImportarConfirm() {
   const body = document.getElementById('csv-result-body');
   body.innerHTML = `
     <div style="padding:18px;text-align:center">
-      <div style="font-size:32px;margin-bottom:8px">${results.fail ? '⚠️' : '✅'}</div>
+      <div style="font-size:32px;margin-bottom:8px">${results.fail ? '⚠' : '✅'}</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:10px">Importación finalizada</div>
       <div style="color:#22c55e">✓ ${results.ok} ${tipo === 'flota' ? 'vehículos creados' : 'usuarios creados'}</div>
       ${results.fail ? `<div style="color:#f87171;margin-top:6px">✗ ${results.fail} fallaron</div>` : ''}
@@ -13767,6 +12742,10 @@ async function _csvImportarConfirm() {
 
 let _objetivosCache = [];
 let _esquemaCache   = [];
+let _esquemaSelected = new Set();
+let _commissionCatalog = [];
+let _commissionConcepts = [];
+let _commissionEditId = null;
 let _objetivoEditId = null;
 let _esquemaEditDriverId = null;
 let _sueldosSubActual = 'mes';
@@ -13792,21 +12771,40 @@ async function cargarSueldosTab() {
 
 // ── Objetivos ──
 async function _cargarObjetivosTab() {
-  const el = document.getElementById('cfg-obj-body');
-  if (!el) return;
-  el.innerHTML = '<div class="cfg-rend-empty">Cargando objetivos...</div>';
+  // Pestaña "Comisiones": los bonos por objetivos se reemplazaron por las comisiones por concepto.
+  const commissionEl = document.getElementById('cfg-commission-body');
+  if (!commissionEl) return;
+  commissionEl.innerHTML = '<p class="pm-help">Cargando comisiones...</p>';
   try {
-    // cargarObjetivos filtra activos; para el admin, listamos todos:
-    const { data, error } = await _db.from('payroll_objetivos')
-      .select('objetivo_id, nombre, tipo, valor, descripcion, activo, created_at')
-      .order('nombre', { ascending: true });
-    if (error) throw error;
-    _objetivosCache = data || [];
-    _renderObjetivosTabla();
+    const commissionData = await cargarPayrollCommissionData();
+    _commissionCatalog = commissionData.rules || [];
+    PayrollMatrix.setCommissionCatalog(_commissionCatalog);
+    _renderCommissionCatalog();
   } catch (err) {
     console.error('_cargarObjetivosTab:', err);
-    el.innerHTML = '<div class="cfg-rend-empty" style="color:var(--red)">Error al cargar objetivos</div>';
+    commissionEl.innerHTML = '<p class="pm-help" style="color:var(--red)">Error al cargar comisiones</p>';
   }
+}
+
+function _renderCommissionCatalog() {
+  const el = document.getElementById('cfg-commission-body');
+  if (!el) return;
+  if (!_commissionCatalog.length) { el.innerHTML = '<p class="pm-help">Todavía no hay comisiones. Usá + Nueva comisión.</p>'; return; }
+  const rows = _commissionCatalog.slice().sort((a, b) => (a.active ? 0 : 1) - (b.active ? 0 : 1)).map(c => { // inactivas al final
+    const assigned = c.assigned_driver_ids?.length || 0;
+    return `<tr class="${c.active ? '' : 'is-inactive'}">
+      <td data-label="Comisión"><b>${_escHtml(c.name)}</b></td>
+      <td data-label="Origen">${_escHtml(PayrollMatrix.commissionSourceLabel(c.source))}</td>
+      <td data-label="Cálculo">${_escHtml(PayrollMatrix.commissionFormula(c))}</td>
+      <td data-label="Choferes">${assigned} chofer${assigned===1?'':'es'}</td>
+      <td data-label="Estado"><span class="pill ${c.active ? 'ok' : 'warn'}">${c.active ? 'Activa' : 'Inactiva'}</span></td>
+      <td class="esq-actions"><button class="cfg-rend-btn-mini" onclick="_abrirComisionGeneral('${c.commission_id}')">Editar</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div class="esq-table-wrap"><table class="cfg-rend-table payroll-commission-table">
+    <thead><tr><th>Comisión</th><th>Origen</th><th>Cálculo</th><th>Choferes</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
 function _renderObjetivosTabla() {
@@ -13911,7 +12909,12 @@ async function _cargarEsquemaTab() {
   if (!el) return;
   el.innerHTML = '<div class="cfg-rend-empty">Cargando esquema salarial...</div>';
   try {
-    _esquemaCache = await cargarPayrollSettingsFlota();
+    const commissionData = await cargarPayrollCommissionData();
+    _commissionCatalog = commissionData.rules || [];
+    PayrollMatrix.setCommissionCatalog(_commissionCatalog);
+    _esquemaCache = await cargarPayrollSettingsFlota(commissionData);
+    const validIds = new Set(_esquemaCache.map(u => u.user_id));
+    _esquemaSelected = new Set([..._esquemaSelected].filter(id => validIds.has(id)));
     _renderEsquemaTabla();
   } catch (err) {
     console.error('_cargarEsquemaTab:', err);
@@ -13926,31 +12929,84 @@ function _renderEsquemaTabla() {
     el.innerHTML = '<div class="cfg-rend-empty">No hay choferes activos.</div>';
     return;
   }
+  const missing = _esquemaCache.filter(u => !u.settings);
+  _pintarAvisoEsquemas(missing.length);
+  const money = n => '$' + _AR(Number(n) || 0);
+  const off = '<span class="esq-off">No paga</span>';
   const rows = _esquemaCache.map(u => {
     const hasSet = !!u.settings;
-    const basico = hasSet ? '$' + _AR(u.sueldo_basico || 0) : '—';
-    const vkm    = hasSet ? '$' + _AR(u.valor_km || 0)      : '—';
-    const vserv  = hasSet ? '$' + _AR(u.valor_servicio || 0): '—';
-    const bono   = hasSet ? '$' + _AR(u.bono_presentismo || 0) : '—';
-    const pillCls = hasSet ? 'ok' : 'warn';
-    const pillTxt = hasSet ? 'Configurado' : 'Sin esquema';
-    return `<tr>
-      <td>${_escHtml(u.full_name || '')}${u.legajo ? ` <span style="color:var(--muted);font-size:11px">#${_escHtml(u.legajo)}</span>` : ''}</td>
-      <td style="font-family:'DM Mono',monospace">${basico}</td>
-      <td style="font-family:'DM Mono',monospace">${vkm}</td>
-      <td style="font-family:'DM Mono',monospace">${vserv}</td>
-      <td style="font-family:'DM Mono',monospace">${bono}</td>
-      <td><span class="pill ${pillCls}">${pillTxt}</span></td>
-      <td style="text-align:right;white-space:nowrap">
-        <button class="cfg-rend-btn-mini primary" onclick="_abrirEsquemaModal('${u.user_id}')">Editar</button>
-      </td>
+    const m = u.settings?.compensation_matrix || {};
+    const type = hasSet ? PayrollMatrix.payType(m, u.sueldo_basico) : null;
+    const paySrv = hasSet && type !== 'fixed' && m.pay_services !== false;
+    const payKm = hasSet && type !== 'fixed' && m.pay_km !== false;
+    const commissionCount = m.commissions?.length || 0;
+    const bonusCount = m.bonuses?.length || 0;
+    const extras = [
+      hasSet && m.pay_presentismo !== false ? 'Presentismo' : '',
+      bonusCount ? `${bonusCount} bono${bonusCount===1?'':'s'}` : '',
+      commissionCount ? `${commissionCount} comisi${commissionCount===1?'ón':'ones'}` : '',
+    ].filter(Boolean).join(' · ') || '—';
+    const selected = _esquemaSelected.has(u.user_id);
+    const name = _escHtml(u.full_name || 'chofer');
+    return `<tr class="${selected ? 'is-selected' : ''}">
+      <td class="esq-check"><input type="checkbox" aria-label="Seleccionar ${name}" ${selected ? 'checked' : ''} onchange="_toggleEsquemaDriver('${u.user_id}',this.checked)"></td>
+      <td class="esq-name" data-label="Chofer"><b>${name}</b>${u.legajo ? `<small>#${_escHtml(u.legajo)}</small>` : ''}</td>
+      <td data-label="Tipo">${hasSet ? `<span class="esq-type esq-type-${type}">${PayrollMatrix.PAY_TYPE_LABELS[type]}</span>` : '<span class="pill warn">Sin esquema</span>'}</td>
+      <td class="esq-num" data-label="Sueldo fijo">${hasSet ? (type === 'variable' ? off : money(u.sueldo_basico)) : '—'}</td>
+      <td class="esq-num" data-label="Por servicio">${hasSet ? (paySrv ? money(u.valor_servicio) : off) : '—'}</td>
+      <td class="esq-num" data-label="Por km">${hasSet ? (payKm ? `${money(u.valor_km)}<small>${m.km_basis === 'billed' ? 'facturados' : 'reales'}</small>` : off) : '—'}</td>
+      <td class="esq-extras" data-label="Bonos y comisiones">${extras}</td>
+      <td class="esq-actions"><button class="cfg-rend-btn-mini primary" onclick="_abrirEsquemaModal('${u.user_id}')">Editar</button></td>
     </tr>`;
   }).join('');
   el.innerHTML = `
-    <table class="cfg-rend-table">
-      <thead><tr><th>Chofer</th><th>Sueldo básico</th><th>$/km</th><th>$/servicio</th><th>Presentismo</th><th>Estado</th><th></th></tr></thead>
+    ${missing.length ? `<div class="payroll-scheme-alert"><strong>${missing.length} chofer${missing.length===1?'':'es'} sin esquema.</strong> No se incluirán al generar liquidaciones hasta configurarlos.</div>` : ''}
+    <div class="esq-table-wrap"><table class="cfg-rend-table esq-table">
+      <thead><tr><th class="esq-check"><input type="checkbox" aria-label="Seleccionar todos" ${_esquemaSelected.size===_esquemaCache.length?'checked':''} onchange="_toggleTodosEsquema(this.checked)"></th><th>Chofer</th><th>Tipo</th><th class="esq-num">Sueldo fijo</th><th class="esq-num">Por servicio</th><th class="esq-num">Por km</th><th>Bonos y comisiones</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>`;
+    </table></div>`;
+  _actualizarSeleccionEsquema();
+}
+
+// Aviso de choferes sin esquema de pago: en la pestaña Esquemas y en "Sueldos" del menú.
+function _pintarAvisoEsquemas(missing) {
+  const n = Number(missing) || 0;
+  const label = n ? `${n} chofer${n===1?'':'es'} sin esquema de pago` : '';
+  const tab = document.getElementById('esq-tab-alert');
+  if (tab) { tab.hidden = !n; tab.textContent = n ? String(n) : ''; tab.title = label; }
+  const nav = document.getElementById('nav-sueldos');
+  if (nav) {
+    let badge = nav.querySelector('.ax-nav-alert');
+    if (!badge && n) { badge = document.createElement('span'); badge.className = 'ax-nav-alert'; nav.appendChild(badge); }
+    if (badge) { badge.hidden = !n; badge.textContent = n ? String(n) : ''; badge.title = label; badge.setAttribute('aria-label', label); }
+  }
+}
+async function actualizarAvisoEsquemas() {
+  try {
+    const [users, settings] = await Promise.all([
+      _db.from('users').select('user_id').eq('role_id', 3).eq('is_active', true),
+      _db.from('payroll_settings').select('user_id'),
+    ]);
+    if (users.error || settings.error) return;
+    const configured = new Set((settings.data || []).map(r => r.user_id));
+    _pintarAvisoEsquemas((users.data || []).filter(u => !configured.has(u.user_id)).length);
+  } catch (err) { console.warn('actualizarAvisoEsquemas:', err); }
+}
+window.actualizarAvisoEsquemas = actualizarAvisoEsquemas;
+
+function _toggleEsquemaDriver(driverId, checked) {
+  if (checked) _esquemaSelected.add(driverId); else _esquemaSelected.delete(driverId);
+  _renderEsquemaTabla();
+}
+function _toggleTodosEsquema(checked) {
+  _esquemaSelected = checked ? new Set(_esquemaCache.map(u => u.user_id)) : new Set();
+  _renderEsquemaTabla();
+}
+function _actualizarSeleccionEsquema() {
+  const btn = document.getElementById('btn-esquema-masivo');
+  if (!btn) return;
+  btn.disabled = _esquemaSelected.size === 0;
+  btn.textContent = `Aplicar cambios · ${_esquemaSelected.size} seleccionado${_esquemaSelected.size===1?'':'s'}`;
 }
 
 function _abrirEsquemaModal(driverId) {
@@ -13962,41 +13018,112 @@ function _abrirEsquemaModal(driverId) {
   if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
   _esquemaEditDriverId = driverId;
   document.getElementById('esq-chofer').textContent = u.full_name + (u.legajo ? ' · #' + u.legajo : '');
-  document.getElementById('esq-basico').value     = u.sueldo_basico    ?? '';
-  document.getElementById('esq-valor-km').value   = u.valor_km         ?? '';
-  document.getElementById('esq-valor-serv').value = u.valor_servicio   ?? '';
-  document.getElementById('esq-bono-pres').value  = u.bono_presentismo ?? '';
   openModal('modal-esquema-edit');
+  PayrollMatrix.setCommissionCatalog(_commissionCatalog);
+  PayrollMatrix.open(u.settings?.compensation_matrix, {
+    sueldo_basico: u.sueldo_basico, valor_km: u.valor_km,
+    valor_servicio: u.valor_servicio, bono_presentismo: u.bono_presentismo,
+  }).catch(error=>toast(error.message,'error'));
 }
 
-function _abrirEsquemaMasivoModal() {
-  const modal = document.getElementById('modal-esquema-masivo');
-  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+async function _abrirComisionGeneral(commissionId = null) {
+  _commissionEditId = commissionId;
+  const current = _commissionCatalog.find(c => c.commission_id === commissionId) || {};
+  const modal = document.getElementById('modal-comision-payroll');
+  if (!modal) return;
   if (modal.parentElement !== document.body) document.body.appendChild(modal);
-  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres'].forEach(id => {
-    const inp = document.getElementById(id); if (inp) inp.value = '';
-  });
-  const chk = document.getElementById('esqm-solo-sin-esquema');
-  if (chk) chk.checked = false;
-  _actualizarPreviewEsquemaMasivo();
-  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-solo-sin-esquema'].forEach(id => {
-    const inp = document.getElementById(id); if (inp) inp.oninput = inp.onchange = _actualizarPreviewEsquemaMasivo;
-  });
-  openModal('modal-esquema-masivo');
+  document.getElementById('pc-title').textContent = commissionId ? 'Editar comisión general' : 'Nueva comisión general';
+  document.getElementById('pc-name').value = current.name || '';
+  document.getElementById('pc-source').value = current.source || 'extras';
+  document.getElementById('pc-mode').value = current.mode || 'percent';
+  document.getElementById('pc-value').value = current.value ?? '';
+  document.getElementById('pc-active').checked = current.active !== false;
+  const concept = document.getElementById('pc-concept');
+  concept.innerHTML = '<option value="">Cargando conceptos...</option>';
+  _syncComisionOrigen();
+  document.getElementById('pc-source').onchange = _syncComisionOrigen;
+  openModal('modal-comision-payroll');
+  const { data, error } = await _db.rpc('list_service_types_config', { p_include_inactive: true });
+  if (error) { toast('No se pudieron cargar los conceptos', 'error'); return; }
+  _commissionConcepts = data || [];
+  concept.innerHTML = '<option value="">Seleccionar concepto...</option>' + _commissionConcepts.map(item =>
+    `<option value="${_escHtml(item.concept_id)}">${_escHtml(item.name)}</option>`).join('');
+  concept.value = current.concept_id || '';
 }
 
-function _actualizarPreviewEsquemaMasivo() {
-  const solo = document.getElementById('esqm-solo-sin-esquema')?.checked;
-  const total = _esquemaCache.length;
-  const sin = _esquemaCache.filter(c => !c.settings).length;
-  const target = solo ? sin : total;
-  const previewEl = document.getElementById('esqm-preview');
-  if (previewEl) {
-    previewEl.innerHTML = `Se aplicará a <strong style="color:var(--fg)">${target}</strong> chofer${target===1?'':'es'} ${solo ? '(sin esquema)' : '(todos activos)'}.`;
+// Captación: el chofer consiguió un servicio particular. No depende de un
+// concepto; se paga fijo por servicio o un % de lo cobrado al cliente.
+function _syncComisionOrigen() {
+  const captacion = document.getElementById('pc-source')?.value === 'captacion';
+  const group = document.getElementById('pc-concept')?.closest('.form-group');
+  if (group) group.hidden = captacion;
+  const mode = document.getElementById('pc-mode');
+  if (mode) {
+    mode.options[0].textContent = captacion ? 'Porcentaje de lo cobrado' : 'Porcentaje del importe';
+    mode.options[1].textContent = captacion ? 'Importe fijo por servicio' : 'Importe fijo por unidad';
   }
 }
 
-async function _guardarEsquemaMasivo() {
+async function _guardarComisionGeneral() {
+  const captacion = document.getElementById('pc-source').value === 'captacion';
+  const conceptId = captacion ? null : document.getElementById('pc-concept').value;
+  const selectedConcept = _commissionConcepts.find(c => c.concept_id === conceptId);
+  const payload = {
+    commission_id: _commissionEditId,
+    name: document.getElementById('pc-name').value.trim() || selectedConcept?.name || (captacion ? 'Captación de particular' : ''),
+    concept_id: conceptId,
+    source: document.getElementById('pc-source').value,
+    mode: document.getElementById('pc-mode').value,
+    value: document.getElementById('pc-value').value,
+    active: document.getElementById('pc-active').checked,
+  };
+  const res = await guardarPayrollCommissionRule(payload);
+  if (!res.ok) { toast(res.error?.message || 'No se pudo guardar la comisión', 'error'); return; }
+  closeModal('modal-comision-payroll');
+  toast(_commissionEditId ? 'Comisión actualizada ✓' : 'Comisión creada ✓', 'success');
+  _cargarObjetivosTab();
+}
+
+function _abrirEsquemaMasivoModal() {
+  if (!_esquemaSelected.size) { toast('Seleccioná al menos un chofer', 'warning'); return; }
+  const modal = document.getElementById('modal-esquema-masivo');
+  if (!modal) { toast('Modal no encontrado', 'error'); return; }
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  ['esqm-basico','esqm-valor-km','esqm-valor-serv','esqm-bono-pres','esqm-pay-type','esqm-pay-services','esqm-pay-km','esqm-km-basis','esqm-pay-presentismo'].forEach(id => {
+    const inp = document.getElementById(id); if (inp) inp.value = '';
+  });
+  const tri = id => `<div class="ax-seg pm-seg" role="group" data-bulk-commission="${id}"><button type="button" data-v="" aria-pressed="true">No cambiar</button><button type="button" data-v="add" aria-pressed="false">Asignar</button><button type="button" data-v="remove" aria-pressed="false">Quitar</button></div>`;
+  document.getElementById('esqm-commission-list').innerHTML = _commissionCatalog.filter(c => c.active).map(c =>
+    `<div class="pm-bulk-row"><span class="pm-switch-text"><b>${_escHtml(c.name)}</b><small>${_escHtml(PayrollMatrix.commissionFormula(c))}</small></span>${tri(c.commission_id)}</div>`).join('') || '<p class="pm-help">No hay comisiones activas.</p>';
+  modal.querySelectorAll('.pm-seg').forEach(seg => seg.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === 0))));
+  modal.querySelectorAll('[data-bulk-type]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.bulkType === '')));
+  if (!modal.dataset.bulkWired) {
+    modal.dataset.bulkWired = '1';
+    modal.addEventListener('click', e => {
+      const typeBtn = e.target.closest('[data-bulk-type]');
+      if (typeBtn) {
+        document.getElementById('esqm-pay-type').value = typeBtn.dataset.bulkType;
+        modal.querySelectorAll('[data-bulk-type]').forEach(b => b.setAttribute('aria-checked', String(b === typeBtn)));
+        _actualizarPreviewEsquemaMasivo(); return;
+      }
+      const btn = e.target.closest('.pm-seg button');
+      if (!btn) return;
+      const seg = btn.parentElement;
+      seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+      if (seg.dataset.bulkTarget) document.getElementById(seg.dataset.bulkTarget).value = btn.dataset.v;
+      else seg.dataset.value = btn.dataset.v;
+      _actualizarPreviewEsquemaMasivo();
+    });
+    modal.addEventListener('input', _actualizarPreviewEsquemaMasivo);
+  }
+  modal.querySelectorAll('[data-bulk-commission]').forEach(seg => { seg.dataset.value = ''; });
+  const selected = _esquemaCache.filter(c => _esquemaSelected.has(c.user_id));
+  document.getElementById('esqm-selected-list').innerHTML = `<strong>${selected.length} chofer${selected.length===1?'':'es'}:</strong> ${selected.map(c=>_escHtml(c.full_name)).join(', ')}`;
+  _actualizarPreviewEsquemaMasivo();
+  openModal('modal-esquema-masivo');
+}
+
+function _leerEsquemaMasivo() {
   const parseOptional = id => {
     const v = document.getElementById(id)?.value;
     return v === '' || v == null ? null : Number(v);
@@ -14007,35 +13134,84 @@ async function _guardarEsquemaMasivo() {
     valor_servicio:   parseOptional('esqm-valor-serv'),
     bono_presentismo: parseOptional('esqm-bono-pres'),
   };
-  const algo = Object.values(patch).some(v => v != null);
-  if (!algo) { toast('Completá al menos un campo', 'error'); return; }
-  if (Object.values(patch).some(v => v != null && v < 0)) { toast('Los valores no pueden ser negativos', 'error'); return; }
-  const onlySinEsquema = !!document.getElementById('esqm-solo-sin-esquema')?.checked;
-  const totalTarget = onlySinEsquema
-    ? _esquemaCache.filter(c => !c.settings).length
-    : _esquemaCache.length;
-  if (totalTarget === 0) { toast('No hay choferes destino', 'error'); return; }
-  if (!confirm(`¿Aplicar estos valores a ${totalTarget} chofer${totalTarget===1?'':'es'}?`)) return;
+  const matrix = {};
+  const boolValue = id => { const v=document.getElementById(id)?.value; return v===''||v==null?null:v==='true'; };
+  const payType = document.getElementById('esqm-pay-type')?.value;
+  const payServices=boolValue('esqm-pay-services'), payKm=boolValue('esqm-pay-km'), payPresentismo=boolValue('esqm-pay-presentismo');
+  const kmBasis=document.getElementById('esqm-km-basis')?.value;
+  if(payType) matrix.pay_type=payType;
+  if(payServices!==null) matrix.pay_services=payServices;
+  if(payKm!==null) matrix.pay_km=payKm;
+  if(payPresentismo!==null) matrix.pay_presentismo=payPresentismo;
+  if(kmBasis) matrix.km_basis=kmBasis;
+  if(Object.keys(matrix).length) patch.compensation_matrix=matrix;
+  const segs = [...document.querySelectorAll('#esqm-commission-list [data-bulk-commission]')];
+  const add = segs.filter(s => s.dataset.value === 'add').map(s => s.dataset.bulkCommission);
+  const remove = segs.filter(s => s.dataset.value === 'remove').map(s => s.dataset.bulkCommission);
+  if (add.length || remove.length) patch.commission_changes = { add, remove };
+  return patch;
+}
 
-  const res = await guardarPayrollSettingsMasivo(patch, { onlySinEsquema });
-  if (!res.ok) { toast('Error al aplicar masivo', 'error'); return; }
+function _actualizarPreviewEsquemaMasivo() {
+  const target = _esquemaSelected.size;
+  const previewEl = document.getElementById('esqm-preview');
+  if (!previewEl) return;
+  const p = _leerEsquemaMasivo();
+  const m = p.compensation_matrix || {};
+  const yes = v => v ? 'sí' : 'no';
+  const items = [
+    m.pay_type && `Tipo: ${PayrollMatrix.PAY_TYPE_LABELS[m.pay_type]}`,
+    p.sueldo_basico != null && `Sueldo fijo $${_AR(p.sueldo_basico)}`,
+    m.pay_services != null && `Pago por servicio: ${yes(m.pay_services)}`,
+    p.valor_servicio != null && `Valor por servicio $${_AR(p.valor_servicio)}`,
+    m.pay_km != null && `Pago por km: ${yes(m.pay_km)}`,
+    p.valor_km != null && `Valor por km $${_AR(p.valor_km)}`,
+    m.km_basis && `KM ${m.km_basis === 'billed' ? 'facturados' : 'reales'}`,
+    m.pay_presentismo != null && `Presentismo: ${yes(m.pay_presentismo)}`,
+    p.bono_presentismo != null && `Presentismo $${_AR(p.bono_presentismo)}`,
+    p.commission_changes?.add.length && `Asignar ${p.commission_changes.add.length} comisi${p.commission_changes.add.length===1?'ón':'ones'}`,
+    p.commission_changes?.remove.length && `Quitar ${p.commission_changes.remove.length} comisi${p.commission_changes.remove.length===1?'ón':'ones'}`,
+  ].filter(Boolean);
+  previewEl.innerHTML = items.length
+    ? `<b>Se aplicará a ${target} chofer${target===1?'':'es'}:</b> ${items.map(_escHtml).join(' · ')}`
+    : 'Todavía no cambiaste nada.';
+}
+
+async function _guardarEsquemaMasivo() {
+  const patch = _leerEsquemaMasivo();
+  const algo = Object.values(patch).some(v => v != null);
+  if (!algo) { toast('Cambiá al menos un dato', 'error'); return; }
+  if (['sueldo_basico','valor_km','valor_servicio','bono_presentismo'].some(k => patch[k] != null && !(patch[k] >= 0))) { toast('Los valores no pueden ser negativos', 'error'); return; }
+  const driverIds = [..._esquemaSelected];
+  const totalTarget = driverIds.length;
+  if (totalTarget === 0) { toast('No hay choferes destino', 'error'); return; }
+  if (!confirm(`¿Aplicar estos cambios a ${totalTarget} chofer${totalTarget===1?'':'es'}?`)) return;
+
+  const res = await guardarPayrollSettingsMasivo(patch, { driverIds });
+  if (!res.ok) { toast(res.error?.message || 'Error al aplicar cambios', 'error'); return; }
   closeModal('modal-esquema-masivo');
-  toast(`Esquema aplicado a ${res.total} choferes ✓`, 'success');
+  toast(`Cambios aplicados a ${res.total} chofer${res.total===1?'':'es'} ✓`, 'success');
   _cargarEsquemaTab();
 }
 
 async function _guardarEsquema() {
   const driverId = _esquemaEditDriverId;
   if (!driverId) { toast('Falta chofer', 'error'); return; }
+  let matrix;
+  try { matrix = PayrollMatrix.read(); } catch(error) { toast(error.message,'error'); return; }
   const payload = {
     sueldo_basico:    Number(document.getElementById('esq-basico').value)     || 0,
     valor_km:         Number(document.getElementById('esq-valor-km').value)   || 0,
     valor_servicio:   Number(document.getElementById('esq-valor-serv').value) || 0,
     bono_presentismo: Number(document.getElementById('esq-bono-pres').value)  || 0,
+    compensation_matrix: matrix,
   };
   if ([payload.sueldo_basico, payload.valor_km, payload.valor_servicio, payload.bono_presentismo].some(n => n < 0)) {
     toast('Los valores no pueden ser negativos', 'error'); return;
   }
+  // "Por servicios y km" no lleva sueldo fijo.
+  if (matrix.pay_type === 'variable') payload.sueldo_basico = 0;
+  if (matrix.pay_type !== 'variable' && !(payload.sueldo_basico > 0)) { toast('Ingresá el sueldo fijo mensual', 'error'); return; }
   const res = await guardarPayrollSettings(driverId, payload);
   if (!res.ok) {
     const msg = res.error?.message || res.error?.hint || res.error?.details || 'desconocido';
@@ -14094,9 +13270,6 @@ _sueldosSwitchSub = function(sub, btnEl) {
     _cargarLiquidacionesMes();
   } else if (sub === 'historial') {
     _initHistorialFiltros();
-  } else if (sub === 'rendiciones') {
-    // Hub admin de rendiciones (aprobación / observación) dentro de Sueldos.
-    cargarRendicionesTab();
   }
 };
 
@@ -14120,86 +13293,27 @@ async function _cargarLiquidacionesMes() {
   }
 }
 
-function _renderLiquidacionesMes() {
-  const bodyEl  = document.getElementById('pl-mes-body');
-  const statsEl = document.getElementById('pl-mes-stats');
-  if (!bodyEl) return;
-
-  // Stats
-  if (statsEl) {
-    const tot   = _liquidacionesMesCache.length;
-    const pend  = _liquidacionesMesCache.filter(l => l.estado === 'pendiente').length;
-    const apr   = _liquidacionesMesCache.filter(l => l.estado === 'aprobada').length;
-    const pag   = _liquidacionesMesCache.filter(l => l.estado === 'pagada').length;
-    const sumBy = est => _liquidacionesMesCache
-      .filter(l => l.estado === est)
-      .reduce((s,l) => s + (Number(l.total)||0), 0);
-    const sumaPend = sumBy('pendiente');
-    const sumaApr  = sumBy('aprobada');
-    const sumaPag  = sumBy('pagada');
-    const sumaComprometido = sumaPend + sumaApr;
-    statsEl.innerHTML = `
-      <div class="cfg-rend-stat"><div class="cfg-rend-stat-lbl">Total</div><div class="cfg-rend-stat-val">${tot}</div></div>
-      <div class="cfg-rend-stat" title="Pendientes: $${_AR(sumaPend)}"><div class="cfg-rend-stat-lbl">Pendientes</div><div class="cfg-rend-stat-val" style="color:var(--amber)">${pend}</div></div>
-      <div class="cfg-rend-stat" title="Aprobadas: $${_AR(sumaApr)}"><div class="cfg-rend-stat-lbl">Aprobadas</div><div class="cfg-rend-stat-val">${apr}</div></div>
-      <div class="cfg-rend-stat" title="Pagadas: $${_AR(sumaPag)}"><div class="cfg-rend-stat-lbl">Pagadas</div><div class="cfg-rend-stat-val" style="color:#4ade80">${pag}</div></div>
-      <div class="cfg-rend-stat" title="Pendiente + aprobada (aún no pagado)"><div class="cfg-rend-stat-lbl">Comprometido</div><div class="cfg-rend-stat-val" style="color:var(--amber);font-family:'DM Mono',monospace">$${_AR(sumaComprometido)}</div></div>
-      <div class="cfg-rend-stat" title="Ya pagado en el período"><div class="cfg-rend-stat-lbl">Pagado</div><div class="cfg-rend-stat-val" style="color:#4ade80;font-family:'DM Mono',monospace">$${_AR(sumaPag)}</div></div>
-    `;
-  }
-
-  if (!_liquidacionesMesCache.length) {
-    bodyEl.innerHTML = '<div class="cfg-rend-empty">No hay liquidaciones para este período. Presioná Generar.</div>';
-    return;
-  }
-
-  const rows = _liquidacionesMesCache.map(l => {
-    const acciones = [];
-    acciones.push(`<button class="cfg-rend-btn-mini primary" onclick="event.stopPropagation();_abrirReciboPayroll('${l.liquidacion_id}')">Recibo</button>`);
-    if (l.estado === 'pendiente') acciones.push(`<button class="cfg-rend-btn-mini" onclick="event.stopPropagation();_cambiarEstadoLiq('${l.liquidacion_id}','aprobada')">Aprobar</button>`);
-    if (l.estado === 'aprobada')  acciones.push(`<button class="cfg-rend-btn-mini" onclick="event.stopPropagation();_marcarPagada('${l.liquidacion_id}')">Pagar</button>`);
-
-    return `<tr onclick="_abrirReciboPayroll('${l.liquidacion_id}')" style="cursor:pointer">
-      <td>${_escHtml(l.chofer_nombre)}${l.chofer_legajo ? ` <span style="color:var(--muted);font-size:11px">#${_escHtml(l.chofer_legajo)}</span>` : ''}</td>
-      <td style="text-align:right">${l.jornadas}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">${_AR(l.km_total)}</td>
-      <td style="text-align:right">${l.servicios}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.sueldo_basico)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_km)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.adic_serv)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR((l.presentismo_paga ? l.bono_presentismo : 0))}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace">$${_AR(l.bonos_objetivos)}</td>
-      <td style="text-align:right;font-family:'DM Mono',monospace;font-weight:700">$${_AR(l.total)}</td>
-      <td>${_pillEstadoLiq(l.estado)}</td>
-      <td onclick="event.stopPropagation()" style="text-align:right;white-space:nowrap">${acciones.join('')}</td>
-    </tr>`;
-  }).join('');
-
-  bodyEl.innerHTML = `
-    <div style="overflow-x:auto">
-    <table class="cfg-rend-table">
-      <thead>
-        <tr>
-          <th>Chofer</th><th>Jornadas</th><th>KM</th><th>Servicios</th>
-          <th>Sueldo</th><th>Adic. KM</th><th>Adic. Serv</th><th>Presentismo</th><th>Bonos</th><th>TOTAL</th>
-          <th>Estado</th><th></th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    </div>`;
-}
+function _renderLiquidacionesMes() { PayrollView.render(_liquidacionesMesCache); }
 
 async function _generarLiquidacionesMes() {
   const inp = document.getElementById('pl-mes-periodo');
   const yyyymm = _mesInputToYyyymm(inp?.value);
   if (!yyyymm) { toast('Elegí un período', 'error'); return; }
-  if (!confirm('Se generarán/actualizarán las liquidaciones de todos los choferes con esquema salarial cargado. Las liquidaciones marcadas como PAGADAS no se pisan. ¿Continuar?')) return;
+  let drivers;
+  try { drivers = await cargarPayrollSettingsFlota(); } catch (_) { toast('No se pudieron validar los esquemas salariales', 'error'); return; }
+  const configured = drivers.filter(d => d.settings);
+  const missing = drivers.filter(d => !d.settings);
+  if (!configured.length) { toast('No hay choferes con esquema salarial. Configuralos antes de generar.', 'error', 7000); return; }
+  const omitted = missing.length ? `\n\nSe omitirán ${missing.length} sin esquema: ${missing.map(d=>d.full_name).join(', ')}.` : '';
+  if (missing.length) toast(`${missing.length} chofer${missing.length===1?'':'es'} sin esquema serán omitidos`, 'warning', 7000);
+  if (!confirm(`Se generarán/actualizarán ${configured.length} liquidaciones. Las aprobadas o pagadas no se modifican.${omitted}\n\n¿Continuar?`)) return;
   toast('Generando liquidaciones...', 'warning');
   const res = await generarLiquidacionesMes(yyyymm);
   if (!res.ok) { toast('Error al generar', 'error'); return; }
   const msg = `Creadas: ${res.creadas} · Actualizadas: ${res.actualizadas} · Saltadas: ${res.saltadas}`;
-  toast(msg, 'success', 5000);
+  const errores = (res.detalle || []).filter(d=>d.error);
+  toast(msg + (errores.length ? ' · Errores: '+errores.length : ''), errores.length ? 'warning' : 'success', 5000);
+  if(errores.length) toast(errores.map(d=>d.motivo || 'No se pudo calcular un chofer').join(' · '), 'error', 10000);
   if (res.nota) toast(res.nota, 'warning', 5000);
   await _cargarLiquidacionesMes();
 }
@@ -14308,7 +13422,7 @@ function _renderReciboResumen() {
   const meta = _reciboMeta(liq);
   const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo)||0 : 0;
   const ajusteRend   = Number(liq.ajuste_rendiciones) || 0;
-  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0);
+  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0) + (Number(liq.bonus_monthly)||0) + (Number(liq.commission_total)||0);
   const snapLock = (liq.estado === 'aprobada' || liq.estado === 'pagada') ? ' 🔒' : '';
 
   // Fórmulas legibles para km / servicios.
@@ -14342,7 +13456,10 @@ function _renderReciboResumen() {
     ${row('Adicional por km' + kmDetalle,       '$' + _AR(liq.adic_km))}
     ${row('Adicional por servicios' + servDetalle, '$' + _AR(liq.adic_serv))}
     ${row(presLabel,                            '$' + _AR(presMostrado), { color: liq.presentismo_paga?'#4ade80':'var(--muted)' })}
-    ${row('Bonos por objetivos',                '$' + _AR(liq.bonos_objetivos))}
+    ${row('Bonos mensuales', '$' + _AR(liq.bonus_monthly || 0))}
+    ${row('Comisiones por concepto', '$' + _AR(liq.commission_total || 0))}
+    ${PayrollMatrix.receiptHtml(liq)}
+    ${Number(liq.bonos_objetivos) ? row('Bonos por objetivos (histórico)', '$' + _AR(liq.bonos_objetivos)) : ''}
     ${row('Subtotal bruto',                     '$' + _AR(bruto), { color:'var(--muted)' })}
     ${row(ajusteLabel,                          ajusteVal, { color: ajusteRend > 0 ? 'var(--red)' : 'var(--muted)' })}
     ${row('TOTAL',                              '$' + _AR(liq.total), { strong:true, color:'var(--amber)' })}
@@ -14453,7 +13570,7 @@ function _renderReciboEfectivos() {
     return;
   }
   const rows = _reciboEfectivosCache.map(e => {
-    const semaforo = e.estado === 'ok' ? '🟢' : e.estado === 'warn' ? '🟡' : '🔴';
+    const semaforo = e.estado === 'ok' ? '<span style="color:#22c55e">●</span>' : e.estado === 'warn' ? '<span style="color:#f59e0b">●</span>' : '<span style="color:var(--red)">●</span>';
     const declaradoTxt = e.declarado === null ? '<span style="color:var(--red)">— (sin rendir)</span>' : ('$' + _AR(e.declarado));
     const deltaColor = Math.abs(e.delta) < 50 ? 'var(--muted)' : e.delta < 0 ? '#ef4444' : '#4ade80';
     const deltaTxt = e.delta === 0 ? '$0' : (e.delta > 0 ? '+$' : '−$') + _AR(Math.abs(e.delta));
@@ -14619,13 +13736,13 @@ function _qrDataUrl(payload) {
   }
 }
 
-function _exportarReciboPDF() {
-  const liq = _reciboActual;
+function _exportarReciboPDF(liquidacion = null) {
+  const liq = liquidacion || _reciboActual;
   if (!liq) return;
   const meta = _reciboMeta(liq);
   const presMostrado = liq.presentismo_paga ? Number(liq.bono_presentismo) || 0 : 0;
   const ajusteRend   = Number(liq.ajuste_rendiciones) || 0;
-  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0);
+  const bruto = (Number(liq.sueldo_basico)||0) + (Number(liq.adic_km)||0) + (Number(liq.adic_serv)||0) + presMostrado + (Number(liq.bonos_objetivos)||0) + (Number(liq.bonus_monthly)||0) + (Number(liq.commission_total)||0);
   const emitidoStr  = liq.generada_at ? new Date(liq.generada_at).toLocaleString('es-AR') : new Date().toLocaleString('es-AR');
   const aprobadoStr = liq.aprobada_at ? `${new Date(liq.aprobada_at).toLocaleString('es-AR')}${liq.aprobador_nombre ? ' · ' + _escHtml(liq.aprobador_nombre) : ''}` : null;
   const pagadoStr   = liq.pagada_at   ? (liq.pagada_metodo ? _escHtml(liq.pagada_metodo) : '—') : null;
@@ -14637,9 +13754,9 @@ function _exportarReciboPDF() {
     ? `Bono $${_AR(meta.bonoPresConf)} · Criterio: sin incidentes en el período`
     : `Bono configurado $${_AR(meta.bonoPresConf)} · No se paga: hubo incidente(s) o sin jornadas`;
 
-  const ajusteDetalle = ajusteRend > 0
-    ? `Faltante neto de rendiciones del mes ≥ $500 (sobrantes compensan)`
-    : `Sin faltante neto por sobre la tolerancia de $500`;
+  const ajusteDetalle = liq.cash_snapshot
+    ? (liq.cash_snapshot.presented===null?'Pendiente de rendición mensual · sin descuento':'Esperado menos gastos en efectivo, comparado con el total presentado por Administración')
+    : 'Importe histórico guardado en el recibo';
 
   const qrPayload = `liq:${liq.liquidacion_id}`;
   const qrImg = _qrDataUrl(qrPayload);
@@ -14734,7 +13851,7 @@ function _exportarReciboPDF() {
             <tr><td>Adicional por km<div class="muted">${kmFormula}</div></td><td class="right">$${_AR(liq.adic_km)}</td></tr>
             <tr><td>Adicional por servicios<div class="muted">${servFormula}</div></td><td class="right">$${_AR(liq.adic_serv)}</td></tr>
             <tr><td>Presentismo ${liq.presentismo_paga ? '✓' : '✗'}<div class="muted">${presDetalle}</div></td><td class="right">$${_AR(presMostrado)}</td></tr>
-            <tr><td>Bonos por objetivos</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>
+            <tr><td>Bonos mensuales</td><td class="right">$${_AR(liq.bonus_monthly || 0)}</td></tr><tr><td>Comisiones por concepto</td><td class="right">$${_AR(liq.commission_total || 0)}</td></tr><tr><td colspan="2">${PayrollMatrix.receiptHtml(liq)}</td></tr>${Number(liq.bonos_objetivos)?`<tr><td>Bonos por objetivos (histórico)</td><td class="right">$${_AR(liq.bonos_objetivos)}</td></tr>`:''}
             <tr class="subtotal-row"><td>Subtotal bruto</td><td class="right">$${_AR(bruto)}</td></tr>
             <tr class="desc-row"><td>Descuentos por rendición<div class="muted">${ajusteDetalle}</div></td><td class="right">${ajusteRend > 0 ? '- $' + _AR(ajusteRend) : '$0'}</td></tr>
             <tr class="total-row"><td>TOTAL A COBRAR</td><td class="right">$${_AR(liq.total)}</td></tr>
@@ -14862,7 +13979,7 @@ async function _renderReciboRendiciones() {
     }
 
     const rows = rendiciones.map(r => {
-      const sem = r._faltante > 0 ? '🔴' : r._sobrante > 0 ? '🟡' : '🟢';
+      const sem = r._faltante > 0 ? '<span style="color:var(--red)">●</span>' : r._sobrante > 0 ? '<span style="color:#f59e0b">●</span>' : '<span style="color:#22c55e">●</span>';
       const diffTxt = r._faltante > 0
         ? `<span style="color:var(--red);font-weight:600">-$${_AR(r._faltante)}</span>`
         : r._sobrante > 0
@@ -14912,8 +14029,8 @@ let _jadminState = {
   // Filtros / paginación
   desde: null,          // 'YYYY-MM-DD'
   hasta: null,          // 'YYYY-MM-DD'
-  driverId: null,
-  truckId: null,
+  driverIds: [],
+  truckIds: [],
   estado: '',           // '' | 'open' | 'closed'
   q: '',                // búsqueda libre client-side
   offset: 0,
@@ -14931,7 +14048,37 @@ let _jadminState = {
   ready: false,         // handlers wired
   loading: false,
   searchTimer: null,
+  modoTodo: false,      // true: se trajo todo el período (hasta el tope) y se filtra, ordena y pagina acá
+  totalVisible: 0,      // jornadas que cumplen los filtros (en modoTodo, las de todo el período)
+  verServicios: false,  // abrir el detalle ya parado en los servicios de la jornada
+  multiChofer: null,
+  multiCamion: null,
 };
+
+// Filtros que dependen de datos calculados acá (alertas, texto) y órdenes que el servidor no sabe hacer:
+// en esos casos se trae todo el período (hasta el tope) y se filtra, ordena y pagina en pantalla,
+// para que valga sobre todas las jornadas y no sólo sobre la página que se estaba viendo.
+const _JADMIN_TOPE_TODO = 500;
+const _JADMIN_TOPE_EXPORT = 5000;
+const _JADMIN_HORAS_ABIERTA_LARGA = 12;
+const _JADMIN_ALERTAS = ['taller', 'incidentes', 'rendicion', 'abierta_larga', 'sin_control', 'consumo_alto'];
+const _JADMIN_ORDENES = [
+  { key: 'log_date',      label: 'Fecha',                  asc: 'más vieja primero',    desc: 'más nueva primero' },
+  { key: 'km_recorridos', label: 'Km recorridos',          asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'horas',         label: 'Horas',                  asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'servicios',     label: 'Servicios',              asc: 'menos primero',        desc: 'más primero' },
+  { key: 'kml',           label: 'Km/l',                   asc: 'menor primero',        desc: 'mayor primero' },
+  { key: 'rendicion',     label: 'Diferencia de rendición', asc: 'faltantes primero',   desc: 'sobrantes primero' },
+];
+const _JADMIN_ORDEN_DE_COLUMNA = { km: 'km_recorridos', horas: 'horas', servicios: 'servicios', kml: 'kml' };
+
+// Si llega un cambio de filtro mientras ya hay un pedido en vuelo, la
+// recarga anterior se descarta silenciosamente (ver guard de abajo) y el
+// filtro nuevo queda seleccionado en pantalla pero sin datos que lo
+// reflejen. Esta bandera encola un único pedido más para cuando el que
+// está en curso termine, así el último estado de los filtros siempre
+// termina reflejado sin disparar una carrera de pedidos superpuestos.
+let _jadminReloadPending = false;
 
 // ─── Utilidades locales ───────────────────────────────────────────
 function _jadminFmtFecha(iso) {
@@ -14940,7 +14087,7 @@ function _jadminFmtFecha(iso) {
   if (isNaN(d)) return _escHtml(iso);
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yy = d.getFullYear();
+  const yy = String(d.getFullYear()).slice(2);
   return `${dd}/${mm}/${yy}`;
 }
 function _jadminDiaSemana(iso) {
@@ -14980,6 +14127,12 @@ function _jadminLunesSemana() {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${dd}`;
+}
+// Formato argentino para horas: coma decimal, un decimal fijo ("11,9").
+function _jadminFmtHoras(n) {
+  const v = Number(n);
+  if (!isFinite(v)) return '0';
+  return v.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 function _jadminMoney(n) {
   const v = Number(n) || 0;
@@ -15038,33 +14191,102 @@ async function initJornadasAdmin() {
     _jadminState.ready = true;
   }
 
-  // Refrescar dropdown values según state
-  if ($('jadmin-f-chofer')) $('jadmin-f-chofer').value = _jadminState.driverId || '';
-  if ($('jadmin-f-camion')) $('jadmin-f-camion').value = _jadminState.truckId || '';
+  _jadminPopularOrden();
+  _jadminSyncPicker('chofer');
+  _jadminSyncPicker('camion');
+  _jadminSyncPeriodLabel();
+  _jadminSyncEstadoChip();
 
   // Cargar datos
   await _jadminReload();
 }
 
 function _jadminPopularDropdowns() {
-  const selCh = document.getElementById('jadmin-f-chofer');
-  const selCa = document.getElementById('jadmin-f-camion');
-  if (selCh) {
-    const opts = ['<option value="">Todos los choferes</option>']
-      .concat(_jadminState.choferes.map(c => {
-        const lbl = c.legajo ? `${_escHtml(c.full_name)} (Leg. ${_escHtml(c.legajo)})` : _escHtml(c.full_name);
-        return `<option value="${_escHtml(c.user_id)}">${lbl}</option>`;
-      }));
-    selCh.innerHTML = opts.join('');
-  }
-  if (selCa) {
-    const opts = ['<option value="">Todos los camiones</option>']
-      .concat(_jadminState.camiones.map(t => {
-        const mov = t.numero_interno ? ` · #${_escHtml(t.numero_interno)}` : '';
-        return `<option value="${_escHtml(t.truck_id)}">${_escHtml(t.plate)}${mov}</option>`;
-      }));
-    selCa.innerHTML = opts.join('');
-  }
+  const crear = (id, opciones, clave, placeholder, nombre) => {
+    const caja = document.getElementById(id);
+    if (!caja || !window.AxUI?.multi) return null;
+    const m = window.AxUI.multi(caja, {
+      options: opciones, value: _jadminState[clave], placeholder,
+      onChange: valores => { _jadminState[clave] = valores; _jadminState.offset = 0; _jadminReload(); }
+    });
+    caja.querySelector('.ax-multi-btn')?.setAttribute('aria-label', nombre);
+    return m;
+  };
+  _jadminState.multiChofer = crear('jadmin-f-chofer',
+    _jadminState.choferes.map(c => ({ value: String(c.user_id), label: c.full_name || 'Sin nombre' })),
+    'driverIds', 'Todos los choferes', 'Choferes');
+  _jadminState.multiCamion = crear('jadmin-f-camion',
+    _jadminState.camiones.map(t => ({ value: String(t.truck_id), label: `${t.plate}${t.numero_interno ? ` · #${t.numero_interno}` : ''}` })),
+    'truckIds', 'Todos los móviles', 'Móviles');
+}
+
+function _jadminSyncPicker(kind) {
+  const isDriver = kind === 'chofer';
+  const m = isDriver ? _jadminState.multiChofer : _jadminState.multiCamion;
+  if (m) m.set(isDriver ? _jadminState.driverIds : _jadminState.truckIds);
+}
+
+/* Período y Estado con los filtros compartidos (auxilios-filters-v1): mismo
+   aspecto que el Panel, fechas DD/MM/AA. Si el módulo no cargó, queda el
+   rótulo de texto de antes. */
+function _jadminRenderAuxFilters() {
+  const F = window.AuxFilters;
+  const per = document.getElementById('jadmin-f-periodo-host');
+  const est = document.getElementById('jadmin-f-estado-host');
+  if (!F || !per || !est) return false;
+  const d = _jadminState.desde, h = _jadminState.hasta;
+  const mes = d && /-01$/.test(d) && h && h.slice(0, 7) === d.slice(0, 7) && (h === F.rangoDeMes(d.slice(0, 7))?.hasta || h === _jadminHoy()) ? d.slice(0, 7) : null;
+  const value = _jadminState.quick ? { mode: 'rango', desde: d, hasta: h, quick: _jadminState.quick }
+    : mes ? { mode: 'mes', mes } : (d || h ? { mode: 'rango', desde: d, hasta: h } : { mode: 'all' });
+  // Un solo Período (rápidos, meses y personalizado) y un solo Estado (estados y alertas).
+  per.innerHTML = F.period({ id: 'jadmin-periodo', value, allowAll: false, quick: true });
+  est.innerHTML = F.select({ id: 'jadmin-estado', label: 'Estado', value: _jadminState.clientFilter || _jadminState.estado || '', allLabel: 'Todas',
+    options: [{ value: 'open', label: 'Abiertas' }, { value: 'closed', label: 'Cerradas' }, { group: 'Alertas' },
+      { value: 'abierta_larga', label: `Abierta hace más de ${_JADMIN_HORAS_ABIERTA_LARGA} h` }, { value: 'sin_control', label: 'Sin control de neumáticos' },
+      { value: 'consumo_alto', label: 'Consumo alto de combustible' },
+      { value: 'taller', label: 'En taller' }, { value: 'incidentes', label: 'Con incidentes' }, { value: 'rendicion', label: 'Faltantes de rendición' }] });
+  const root = document.querySelector('#screen-jornadas-admin .jadmin-bar');
+  F.bind(root, (id, v) => {
+    if (id === 'jadmin-periodo') {
+      const b = F.periodBounds(v);
+      _jadminState.desde = b.start; _jadminState.hasta = v.mode === 'mes' && b.end > _jadminHoy() ? _jadminHoy() : b.end;
+      _jadminState.quick = v.quick || null;
+      _jadminState.chip = null;
+      document.querySelectorAll('#screen-jornadas-admin .chip-group:first-child .chip').forEach(c => c.classList.remove('active'));
+    }
+    if (id === 'jadmin-estado') {
+      const alerta = _JADMIN_ALERTAS.includes(v);
+      _jadminState.estado = alerta ? '' : (v || '');
+      _jadminState.clientFilter = alerta ? v : null;
+    }
+    _jadminState.offset = 0;
+    _jadminSyncPeriodLabel();
+    _jadminSyncEstadoChip();
+    _jadminReload();
+  }, () => _jadminResetFiltros());
+  return true;
+}
+
+function _jadminSyncPeriodLabel() {
+  if (_jadminRenderAuxFilters()) return;
+  const label = document.getElementById('jadmin-f-periodo-label');
+  if (!label) return;
+  const parts = value => (value ? String(value).split('-') : null); // [yyyy, mm, dd]
+  const full  = p => (p ? `${p[2]}/${p[1]}/${p[0].slice(2)}` : '—');
+  const short = p => (p ? `${p[2]}/${p[1]}` : '—');
+  const d = parts(_jadminState.desde);
+  const h = parts(_jadminState.hasta);
+  // "01/09 – 17/09/2026" entra en una línea; si el rango cruza de año, se
+  // muestran las dos fechas completas.
+  const desdeTxt = (d && h && d[0] === h[0]) ? short(d) : full(d);
+  label.textContent = `${desdeTxt} – ${full(h)}`;
+}
+
+// "Abiertas ahora" y Estado = Abierta aplican exactamente el mismo filtro,
+// así que se marcan y se desmarcan juntos. Ninguno de los dos desaparece.
+function _jadminSyncEstadoChip() {
+  const chip = document.querySelector('#screen-jornadas-admin .chip[data-chip="abiertas"]');
+  if (chip) chip.classList.toggle('active', _jadminState.estado === 'open');
 }
 
 function _jadminWireHandlers() {
@@ -15078,32 +14300,17 @@ function _jadminWireHandlers() {
       _jadminState.searchTimer = setTimeout(() => {
         _jadminState.q = inpQ.value.trim();
         _jadminState.offset = 0;
-        _jadminRenderTabla();
+        _jadminRefrescar();
       }, 300);
     });
   }
-
-  // Chofer
-  const selCh = $('jadmin-f-chofer');
-  if (selCh) selCh.addEventListener('change', () => {
-    _jadminState.driverId = selCh.value || null;
-    _jadminState.offset = 0;
-    _jadminReload();
-  });
-
-  // Camión
-  const selCa = $('jadmin-f-camion');
-  if (selCa) selCa.addEventListener('change', () => {
-    _jadminState.truckId = selCa.value || null;
-    _jadminState.offset = 0;
-    _jadminReload();
-  });
 
   // Estado
   const selEst = $('jadmin-f-estado');
   if (selEst) selEst.addEventListener('change', () => {
     _jadminState.estado = selEst.value || '';
     _jadminState.offset = 0;
+    _jadminSyncEstadoChip();
     _jadminReload();
   });
 
@@ -15111,12 +14318,14 @@ function _jadminWireHandlers() {
   const inpD = $('jadmin-f-desde');
   if (inpD) inpD.addEventListener('change', () => {
     _jadminState.desde = inpD.value || null;
+    _jadminSyncPeriodLabel();
     _jadminState.offset = 0;
     _jadminReload();
   });
   const inpH = $('jadmin-f-hasta');
   if (inpH) inpH.addEventListener('change', () => {
     _jadminState.hasta = inpH.value || null;
+    _jadminSyncPeriodLabel();
     _jadminState.offset = 0;
     _jadminReload();
   });
@@ -15130,32 +14339,39 @@ function _jadminWireHandlers() {
     chip.addEventListener('click', () => _jadminAplicarChip(chip.getAttribute('data-chip')));
   });
 
-  // Sortable headers
+  // Orden: encabezados de la tabla y selector "Ordenar por" (el único en el celular)
   document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
-      const rawKey = th.getAttribute('data-sort');
-      // Map header key → backend column
-      const key = rawKey === 'km' ? 'km_recorridos'
-                : rawKey === 'horas' ? 'horas'
-                : 'log_date';
+      const key = _JADMIN_ORDEN_DE_COLUMNA[th.getAttribute('data-sort')] || 'log_date';
       if (_jadminState.orderBy === key) {
         _jadminState.orderAsc = !_jadminState.orderAsc;
       } else {
         _jadminState.orderBy = key;
-        _jadminState.orderAsc = false;
+        _jadminState.orderAsc = key === 'kml';   // en km/l lo que importa es lo que menos rinde
       }
       _jadminState.offset = 0;
       _jadminActualizarClasesSort();
-      _jadminReload();
+      _jadminRefrescar();
     });
   });
+  const selOrden = $('jadmin-sort');
+  if (selOrden) selOrden.addEventListener('change', () => {
+    const [key, dir] = selOrden.value.split(':');
+    _jadminState.orderBy = key;
+    _jadminState.orderAsc = dir === 'asc';
+    _jadminState.offset = 0;
+    _jadminActualizarClasesSort();
+    _jadminRefrescar();
+  });
+  const btnExp = $('jadmin-export');
+  if (btnExp) btnExp.addEventListener('click', () => _jadminExportarExcel());
 
   // Per-page
   const selPP = $('jadmin-per-page');
   if (selPP) selPP.addEventListener('change', () => {
     _jadminState.limit = parseInt(selPP.value, 10) || 20;
     _jadminState.offset = 0;
-    _jadminReload();
+    _jadminIrAPagina();
   });
 
   // Pager
@@ -15163,15 +14379,23 @@ function _jadminWireHandlers() {
   if (btnPrev) btnPrev.addEventListener('click', () => {
     if (_jadminState.offset <= 0) return;
     _jadminState.offset = Math.max(0, _jadminState.offset - _jadminState.limit);
-    _jadminReload();
+    _jadminIrAPagina();
   });
   const btnNext = $('jadmin-next');
   if (btnNext) btnNext.addEventListener('click', () => {
     const next = _jadminState.offset + _jadminState.limit;
-    if (next >= _jadminState.lastTotal) return;
+    if (next >= _jadminState.totalVisible) return;
     _jadminState.offset = next;
-    _jadminReload();
+    _jadminIrAPagina();
   });
+
+  // La tabla puede pasar de entrar a no entrar al cambiar el ancho de ventana.
+  if (typeof ResizeObserver === 'function') {
+    const sc = document.querySelector('#screen-jornadas-admin .table-scroll');
+    if (sc) new ResizeObserver(_jadminMarcarScrollX).observe(sc);
+  } else {
+    window.addEventListener('resize', _jadminMarcarScrollX);
+  }
 
   // Row click (event delegation)
   const tbody = $('jadmin-tbody');
@@ -15179,6 +14403,8 @@ function _jadminWireHandlers() {
     const tr = ev.target.closest('tr[data-log-id]');
     if (!tr) return;
     const id = tr.getAttribute('data-log-id');
+    // El número de Servicios abre el detalle ya parado en los servicios de esa jornada.
+    _jadminState.verServicios = !!ev.target.closest('.jadmin-srv');
     if (id) abrirDetalleJornadaAdmin(id);
   });
 }
@@ -15186,21 +14412,41 @@ function _jadminWireHandlers() {
 function _jadminActualizarClasesSort() {
   document.querySelectorAll('#screen-jornadas-admin thead th[data-sort]').forEach(th => {
     th.classList.remove('sort-asc', 'sort-desc');
-    const rawKey = th.getAttribute('data-sort');
-    const key = rawKey === 'km' ? 'km_recorridos'
-              : rawKey === 'horas' ? 'horas'
-              : 'log_date';
+    const key = _JADMIN_ORDEN_DE_COLUMNA[th.getAttribute('data-sort')] || 'log_date';
     if (key === _jadminState.orderBy) {
       th.classList.add(_jadminState.orderAsc ? 'sort-asc' : 'sort-desc');
     }
   });
+  const sel = document.getElementById('jadmin-sort');
+  if (sel) sel.value = `${_jadminState.orderBy}:${_jadminState.orderAsc ? 'asc' : 'desc'}`;
+}
+
+// Opciones de "Ordenar por": cada orden en sus dos sentidos.
+function _jadminPopularOrden() {
+  const sel = document.getElementById('jadmin-sort');
+  if (!sel || sel.options.length) return;
+  sel.innerHTML = _JADMIN_ORDENES.flatMap(o => [
+    `<option value="${o.key}:${o.key === 'kml' || o.key === 'rendicion' ? 'asc' : 'desc'}">${o.label} · ${o.key === 'kml' || o.key === 'rendicion' ? o.asc : o.desc}</option>`,
+    `<option value="${o.key}:${o.key === 'kml' || o.key === 'rendicion' ? 'desc' : 'asc'}">${o.label} · ${o.key === 'kml' || o.key === 'rendicion' ? o.desc : o.asc}</option>`,
+  ]).join('');
+  _jadminActualizarClasesSort();
+}
+
+// Si ya se trajo todo el período, filtrar u ordenar es sólo repintar; si no, hay que pedirlo al servidor.
+function _jadminRefrescar() {
+  if (_jadminNecesitaTodo() && _jadminState.modoTodo) _jadminRenderTabla();
+  else _jadminReload();
+}
+function _jadminIrAPagina() {
+  if (_jadminState.modoTodo) _jadminRenderTabla();
+  else _jadminReload();
 }
 
 function _jadminResetFiltros() {
   _jadminState.desde = _jadminPrimerDiaMes();
   _jadminState.hasta = _jadminHoy();
-  _jadminState.driverId = null;
-  _jadminState.truckId = null;
+  _jadminState.driverIds = [];
+  _jadminState.truckIds = [];
   _jadminState.estado = '';
   _jadminState.q = '';
   _jadminState.offset = 0;
@@ -15208,18 +14454,21 @@ function _jadminResetFiltros() {
   _jadminState.orderAsc = false;
   _jadminState.chip = 'todas';
   _jadminState.clientFilter = null;
+  _jadminState.quick = null;
 
   const $ = (id) => document.getElementById(id);
   if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde;
   if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta;
-  if ($('jadmin-f-chofer')) $('jadmin-f-chofer').value = '';
-  if ($('jadmin-f-camion')) $('jadmin-f-camion').value = '';
+  _jadminSyncPicker('chofer');
+  _jadminSyncPicker('camion');
+  _jadminSyncPeriodLabel();
   if ($('jadmin-f-estado')) $('jadmin-f-estado').value = '';
   if ($('jadmin-f-q')) $('jadmin-f-q').value = '';
 
   document.querySelectorAll('#screen-jornadas-admin .chip').forEach(c => c.classList.remove('active'));
   const chipTodas = document.querySelector('#screen-jornadas-admin .chip[data-chip="todas"]');
   if (chipTodas) chipTodas.classList.add('active');
+  _jadminSyncEstadoChip();
   _jadminActualizarClasesSort();
   _jadminReload();
 }
@@ -15277,36 +14526,56 @@ function _jadminAplicarChip(nombre) {
   if ($('jadmin-f-desde')) $('jadmin-f-desde').value = _jadminState.desde || '';
   if ($('jadmin-f-hasta')) $('jadmin-f-hasta').value = _jadminState.hasta || '';
   if ($('jadmin-f-estado')) $('jadmin-f-estado').value = _jadminState.estado || '';
+  _jadminSyncPeriodLabel();
+  _jadminSyncEstadoChip();
 
   _jadminReload();
 }
 
+// Muestra/oculta el círculo de carga, acotado al espacio de los datos
+// (tarjetas de KPI y filas de la tabla). Los filtros y los chips nunca se
+// cubren: siguen respondiendo al toque mientras se espera la respuesta.
+function _jadminSetCargando(on) {
+  const kpiOverlay = document.getElementById('jadmin-kpis-loading');
+  const tablaOverlay = document.getElementById('jadmin-table-loading');
+  if (kpiOverlay) kpiOverlay.classList.toggle('show', on);
+  if (tablaOverlay) tablaOverlay.classList.toggle('show', on);
+}
+
 // ─── Data loading ─────────────────────────────────────────────────
 async function _jadminReload() {
-  if (_jadminState.loading) return;
+  if (_jadminState.loading) {
+    // Ya hay un pedido en curso: no se dispara uno en paralelo, pero se
+    // deja marcado que hace falta uno más apenas termine, para no perder
+    // el filtro que se acaba de tocar.
+    _jadminReloadPending = true;
+    return;
+  }
   _jadminState.loading = true;
+  _jadminSetCargando(true);
   try {
     const tbody = document.getElementById('jadmin-tbody');
     if (tbody && !tbody.innerHTML) {
-      tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted2)">Cargando…</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--muted2)">Cargando…</td></tr>`;
     }
 
     // KPIs (rango + filtros de chofer/camión, no depende de estado/q)
     const kpiFiltros = {
       desde: _jadminState.desde,
       hasta: _jadminState.hasta,
-      driverId: _jadminState.driverId,
-      truckId: _jadminState.truckId,
+      driverIds: _jadminState.driverIds,
+      truckIds: _jadminState.truckIds,
     };
 
     // Tabla
+    const todo = _jadminNecesitaTodo();
     const listaFiltros = {
       ...kpiFiltros,
       estado: _jadminState.estado || null,
-      offset: _jadminState.offset,
-      limit: _jadminState.limit,
-      orderBy: (_jadminState.orderBy === 'horas' ? 'hora_inicio' : _jadminState.orderBy),
-      orderAsc: _jadminState.orderAsc,
+      offset: todo ? 0 : _jadminState.offset,
+      limit: todo ? _JADMIN_TOPE_TODO : _jadminState.limit,
+      orderBy: todo ? 'log_date' : _jadminState.orderBy,
+      orderAsc: todo ? false : _jadminState.orderAsc,
     };
 
     const [kpis, resp] = await Promise.all([
@@ -15316,6 +14585,7 @@ async function _jadminReload() {
 
     _jadminState.lastPage = resp?.data || [];
     _jadminState.lastTotal = resp?.total || 0;
+    _jadminState.modoTodo = todo;
 
     _jadminRenderKpis(kpis);
     _jadminActualizarClasesSort();
@@ -15323,28 +14593,97 @@ async function _jadminReload() {
   } catch (e) {
     console.error('[jadmin] error al cargar:', e);
     const tbody = document.getElementById('jadmin-tbody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="11" style="padding:24px;text-align:center;color:var(--red)">Error al cargar datos</td></tr>`;
   } finally {
     _jadminState.loading = false;
+    if (_jadminReloadPending) {
+      // Se pidió otra recarga mientras esta corría: se encadena de una,
+      // sin apagar el spinner en el medio, para no mostrar un parpadeo con
+      // datos que ya quedaron viejos antes de mostrar los correctos.
+      _jadminReloadPending = false;
+      _jadminReload();
+    } else {
+      _jadminSetCargando(false);
+    }
   }
 }
 
 function _jadminRenderKpis(k) {
   const $ = (id) => document.getElementById(id);
   if (!k) return;
-  if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = k.abiertasAhora ?? 0;
-  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = k.abiertasContexto || `${k.choferesActivos ?? 0} choferes activos`;
+  const abiertas = Number(k.abiertasAhora) || 0;
+  const choferes = Number(k.choferesActivos) || 0;
+
+  if ($('jadmin-kpi-abiertas'))     $('jadmin-kpi-abiertas').textContent     = abiertas;
+  // El subtexto conecta los dos números en vez de repetir un total suelto.
+  if ($('jadmin-kpi-abiertas-sub')) $('jadmin-kpi-abiertas-sub').textContent = choferes
+    ? `${abiertas} de ${choferes} choferes en ruta`
+    : (k.abiertasContexto || 'Sin choferes activos');
   if ($('jadmin-kpi-jornadas'))     $('jadmin-kpi-jornadas').textContent     = (k.jornadasPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-jornadas-sub')) $('jadmin-kpi-jornadas-sub').textContent = 'en el período';
   if ($('jadmin-kpi-km'))           $('jadmin-kpi-km').textContent           = (k.kmTotalPeriodo ?? 0).toLocaleString('es-AR');
-  if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').textContent       = `prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`;
-  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${k.promHorasJornada ?? 0}h`;
-  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = 'promedio por jornada';
+  // Con camiones con horómetro, las horas de motor del período van en un renglón propio debajo de los km.
+  if ($('jadmin-kpi-km-sub'))       $('jadmin-kpi-km-sub').innerHTML         = _escHtml(`prom. ${(k.promKmJornada ?? 0).toLocaleString('es-AR')} km/jornada`)
+    + (Number(k.horasMotorPeriodo) > 0 ? `<br>${_escHtml(`${_fmtHoras(k.horasMotorPeriodo)} h de motor`)}` : '');
+  // El título de la card ya dice "Horas prom. / jornada": el subtexto aporta el total.
+  if ($('jadmin-kpi-horas'))        $('jadmin-kpi-horas').textContent        = `${_jadminFmtHoras(k.promHorasJornada ?? 0)} h`;
+  if ($('jadmin-kpi-horas-sub'))    $('jadmin-kpi-horas-sub').textContent    = `${_jadminFmtHoras(k.horasTotalPeriodo ?? 0)} h en el período`;
   if ($('jadmin-kpi-servicios'))     $('jadmin-kpi-servicios').textContent    = (k.serviciosPeriodo ?? 0).toLocaleString('es-AR');
   if ($('jadmin-kpi-servicios-sub')) $('jadmin-kpi-servicios-sub').textContent = 'en el período';
+
+  _jadminRenderChipCounts(k);
 }
 
-function _jadminAplicarFiltrosClientSide(rows) {
+// Contadores de los chips de vista rápida. Solo se muestra el que se puede
+// afirmar con datos ya cargados: "Abiertas ahora" viene del mismo KPI, que
+// cuenta todas las jornadas abiertas y no solo la página en pantalla. Los
+// demás dependerían de consultas que esta pantalla no hace, así que su
+// contador queda oculto en vez de mostrar un guion o un número de la página.
+function _jadminRenderChipCounts(k) {
+  const chip = document.querySelector('#screen-jornadas-admin .chip[data-chip="abiertas"] .cnt');
+  if (!chip) return;
+  const abiertas = Number(k?.abiertasAhora);
+  chip.textContent = Number.isFinite(abiertas) ? String(abiertas) : '';
+}
+
+// Horas que lleva abierta una jornada (null si no está abierta). La hora de inicio es la local de la jornada.
+function _jadminHorasAbierta(r) {
+  if (r.status !== 'open') return null;
+  const ini = new Date(`${r.log_date}T${r.hora_inicio || '00:00:00'}`);
+  const h = (Date.now() - ini.getTime()) / 36e5;
+  return Number.isFinite(h) && h >= 0 ? h : null;
+}
+// Sin control de neumáticos y frenos: sólo cuenta cuando la jornada ya cerró o es de un día anterior.
+function _jadminSinControl(r) {
+  return !r.revision && (r.status === 'closed' || String(r.log_date) < _jadminHoy());
+}
+
+function _jadminNecesitaTodo() {
+  const o = _jadminState.orderBy;
+  return !!(_jadminState.q || _jadminState.clientFilter || ['horas', 'servicios', 'kml', 'rendicion'].includes(o));
+}
+
+function _jadminOrdenarClientSide(rows) {
+  const valor = {
+    log_date:      r => `${r.log_date || ''} ${r.hora_inicio || ''}`,
+    km_recorridos: r => (r.km_recorridos == null ? null : Number(r.km_recorridos)),
+    horas:         r => (r.hora_fin ? Number(r.horas) || 0 : null),
+    servicios:     r => Number(r.servicios) || 0,
+    kml:           r => (r.rendimiento?.estado === 'ok' ? r.rendimiento.kml : null),
+    rendicion:     r => (r.rendicion ? Number(r.rendicion.diff) || 0 : null),
+  }[_jadminState.orderBy] || (r => `${r.log_date || ''} ${r.hora_inicio || ''}`);
+  const dir = _jadminState.orderAsc ? 1 : -1;
+  // Sin dato va siempre al final, en el sentido que sea.
+  return [...rows].sort((a, b) => {
+    const va = valor(a), vb = valor(b);
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
+  });
+}
+
+function _jadminAplicarFiltrosClientSide(rows, { ordenar = _jadminState.modoTodo } = {}) {
   let out = rows;
 
   // Filtro por texto libre (q) sobre chofer/patente
@@ -15357,39 +14696,51 @@ function _jadminAplicarFiltrosClientSide(rows) {
     );
   }
 
-  // Filtros de chip client-side
-  if (_jadminState.clientFilter === 'taller') {
-    out = out.filter(r => r.in_workshop);
-  } else if (_jadminState.clientFilter === 'incidentes') {
-    out = out.filter(r => (r.incidentes || 0) > 0);
-  } else if (_jadminState.clientFilter === 'rendicion') {
-    out = out.filter(r => r.rendicion && r.rendicion.estado === 'faltante');
+  // Alertas (se calculan acá con los datos de cada jornada)
+  switch (_jadminState.clientFilter) {
+    case 'taller':        out = out.filter(r => r.in_workshop); break;
+    case 'incidentes':    out = out.filter(r => (r.incidentes || 0) > 0); break;
+    case 'rendicion':     out = out.filter(r => r.rendicion && r.rendicion.estado === 'faltante'); break;
+    case 'abierta_larga': out = out.filter(r => (_jadminHorasAbierta(r) || 0) > _JADMIN_HORAS_ABIERTA_LARGA); break;
+    case 'sin_control':   out = out.filter(_jadminSinControl); break;
+    case 'consumo_alto':  out = out.filter(r => r.rendimiento?.bajo); break;
   }
 
-  // Sort client-side por horas (no soportado backend directamente)
-  if (_jadminState.orderBy === 'horas') {
-    const dir = _jadminState.orderAsc ? 1 : -1;
-    out = [...out].sort((a, b) => ((a.horas || 0) - (b.horas || 0)) * dir);
-  }
+  return ordenar ? _jadminOrdenarClientSide(out) : out;
+}
 
-  return out;
+// Lo que se ve en la página actual y cuántas jornadas cumplen los filtros.
+function _jadminFilasVisibles() {
+  const todas = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
+  if (!_jadminState.modoTodo) return { rows: todas, total: _jadminState.lastTotal };
+  const desde = _jadminState.offset;
+  return { rows: todas.slice(desde, desde + _jadminState.limit), total: todas.length };
+}
+
+// La columna Estado queda anclada a la derecha. La sombra que la despega del
+// resto solo tiene sentido cuando hay algo escondido, así que se marca el
+// contenedor cuando la tabla efectivamente no entra.
+function _jadminMarcarScrollX() {
+  const sc = document.querySelector('#screen-jornadas-admin .table-scroll');
+  if (!sc) return;
+  sc.classList.toggle('has-x', sc.scrollWidth > sc.clientWidth + 1);
 }
 
 function _jadminRenderTabla() {
   const tbody = document.getElementById('jadmin-tbody');
   if (!tbody) return;
 
-  const rows = _jadminAplicarFiltrosClientSide(_jadminState.lastPage || []);
+  const { rows, total } = _jadminFilasVisibles();
+  _jadminState.totalVisible = total;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="10" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="padding:32px;text-align:center;color:var(--muted2)">No hay jornadas para los filtros seleccionados.</td></tr>`;
   } else {
     tbody.innerHTML = rows.map(r => _jadminRenderFila(r)).join('');
   }
 
   // Contadores
   const shown = rows.length;
-  const total = _jadminState.lastTotal;
   const elS = document.getElementById('jadmin-count-shown');
   const elT = document.getElementById('jadmin-count-total');
   if (elS) elS.textContent = shown;
@@ -15405,6 +14756,16 @@ function _jadminRenderTabla() {
   const next = document.getElementById('jadmin-next');
   if (prev) prev.disabled = _jadminState.offset <= 0;
   if (next) next.disabled = (_jadminState.offset + perPage) >= total;
+
+  // Si el período tiene más jornadas que el tope, se avisa que el resto no está en esta lista.
+  const nota = document.getElementById('jadmin-cap-note');
+  if (nota) {
+    const corto = _jadminState.modoTodo && _jadminState.lastTotal > (_jadminState.lastPage || []).length;
+    nota.hidden = !corto;
+    nota.textContent = corto ? ` · se muestran las primeras ${(_jadminState.lastPage || []).length} jornadas del período; acotá el período para ver el resto` : '';
+  }
+
+  _jadminMarcarScrollX();
 }
 
 function _jadminRenderFila(r) {
@@ -15412,58 +14773,75 @@ function _jadminRenderFila(r) {
   const dia = _jadminDiaSemana(r.log_date);
   const avClass = _jadminAvatarClass(r.chofer_nombre, r.chofer_legajo);
   const iniciales = _jadminIniciales(r.chofer_nombre);
-  const legajoTxt = r.chofer_legajo ? `Legajo ${_escHtml(r.chofer_legajo)}` : '—';
+  // El legajo salió de la celda: no aportaba ancho ni alto y competía con el
+  // nombre. Sigue siendo buscable y ahora se lee al pasar el mouse.
+  const legajoTitle = r.chofer_legajo
+    ? ` title="${_escHtml(r.chofer_nombre || '')} · Legajo ${_escHtml(r.chofer_legajo)}"`
+    : '';
 
-  // KM
+  // KM — "—" cuando todavía no hay dato (jornada abierta), "0" cuando es cero.
+  const kmSinDato = r.km_recorridos === null || r.km_recorridos === undefined;
   const km = Number(r.km_recorridos) || 0;
-  const kmCls = km === 0 ? 'km-cell zero' : 'km-cell';
-  const kmTxt = km ? km.toLocaleString('es-AR') : '0';
+  const kmCls = kmSinDato || km === 0 ? 'km-cell zero' : 'km-cell';
+  const kmTxt = kmSinDato ? '—' : km.toLocaleString('es-AR');
 
-  // Horas
-  const horas = Number(r.horas) || 0;
-  const horasTxt = horas ? horas.toFixed(1) : '0';
+  // Horas — sin hora de fin no hay jornada medida todavía.
+  const horasTxt = r.hora_fin ? _jadminFmtHoras(Number(r.horas) || 0) : '—';
+  const horasCls = r.hora_fin ? 'mono' : 'mono cell-empty';
 
   // Servicios
-  const srv = r.servicios || 0;
+  const srv = Number(r.servicios) || 0;
+  const srvCls = srv ? 'mono' : 'mono cell-empty';
 
-  // Rendición
-  let rendCls = 'rend-cell na';
-  let rendTxt = '—';
-  if (r.rendicion) {
-    if (r.rendicion.estado === 'ok') {
-      rendCls = 'rend-cell ok';
-      const d = Number(r.rendicion.diff) || 0;
-      rendTxt = d === 0 ? '$0 · OK' : `${_jadminMoneySigned(d)} OK`;
-    } else if (r.rendicion.estado === 'faltante') {
-      rendCls = 'rend-cell bad';
-      rendTxt = _jadminMoneySigned(r.rendicion.diff);
-    } else if (r.rendicion.estado === 'sobrante') {
-      rendCls = 'rend-cell warn';
-      rendTxt = _jadminMoneySigned(r.rendicion.diff);
-    }
+  // Km/l: lo que rindió la jornada (km desde la carga anterior sobre los litros). Sin dato confiable, "—" con el motivo.
+  const efi = r.rendimiento;
+  let kmlTxt = '—', kmlCls = 'kml-cell cell-empty', kmlTitle = efi?.mensaje || 'Sin dato';
+  if (efi?.estado === 'ok') {
+    kmlTxt = efi.kml.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    kmlCls = efi.bajo ? 'kml-cell is-low' : 'kml-cell';
+    kmlTitle = `${efi.km.toLocaleString('es-AR')} km con ${efi.litros.toLocaleString('es-AR', { maximumFractionDigits: 1 })} L`
+      + (efi.parcial ? ` · ${efi.validas} de ${efi.cargas} cargas con dato` : (efi.cargas > 1 ? ` · ${efi.cargas} cargas` : ''))
+      + (efi.bajo ? ` · consumo alto: el promedio del móvil es ${efi.promedio.toLocaleString('es-AR', { minimumFractionDigits: 1 })} km/l` : '');
   }
 
-  // Incidentes
+  // Caja: lo que debería entregar y lo que gastó. El veredicto de la rendición
+  // (entregó vs. debería) vive en el detalle; acá solo queda el aviso en rojo
+  // cuando esa rendición cerró en faltante, para no perder la señal de la lista.
+  const rend = r.rendicion;
+  const faltante = rend?.estado === 'faltante';
+  const efvoTxt = rend ? _jadminMoney(rend.esperado) : '—';
+  const efvoCls = !rend ? 'money-cell zero' : faltante ? 'money-cell faltante' : 'money-cell';
+  const efvoTitle = faltante
+    ? ` title="La rendición de esta fecha cerró en faltante: ${_escHtml(_jadminMoneySigned(rend.diff))}"`
+    : '';
+  const gastosTxt = rend ? _jadminMoney(rend.gastos) : '—';
+  const gastosCls = rend && Number(rend.gastos) ? 'money-cell' : 'money-cell zero';
+
+  // Incidentes y Taller comparten criterio: "0" es un cero real, "—" es
+  // ausencia de dato, y ambos se ven igual de apagados cuando no hay nada.
+  const incidentes = Number(r.incidentes);
   let incCls = 'inc-cell zero';
-  let incTxt = '0';
-  if ((r.incidentes || 0) > 0) {
+  let incTxt = Number.isFinite(incidentes) ? '0' : '—';
+  if (incidentes > 0) {
     incCls = 'inc-cell some';
-    incTxt = r.inc_grave ? `⚠ ${r.incidentes}` : String(r.incidentes);
+    incTxt = r.inc_grave ? `⚠ ${incidentes}` : String(incidentes);
   }
 
-  // Taller
-  const tallerHtml = r.in_workshop
-    ? `<span class="pill pill-red">🔧</span>`
-    : `<span style="color:var(--muted)">—</span>`;
-
-  // Estado (solo open/closed/anulado — taller es columna independiente)
+  // Estado (open/closed/anulado). Taller ya no es columna: viaja acá.
+  // "Cerrada" es el estado normal y va en gris neutro: el ámbar queda
+  // reservado para las jornadas que siguen abiertas.
   let estadoHtml;
   if (r.status === 'open') {
-    estadoHtml = `<span class="pill pill-amber"><span class="dot a"></span>Abierta</span>`;
+    const hAb = _jadminHorasAbierta(r);
+    const larga = hAb != null && hAb > _JADMIN_HORAS_ABIERTA_LARGA;
+    estadoHtml = `<span class="pill pill-amber"${larga ? ` title="Abierta hace ${Math.floor(hAb)} horas"` : ''}><span class="dot a"></span>Abierta${larga ? ` · ${Math.floor(hAb)} h` : ''}</span>`;
   } else if (r.status === 'closed') {
-    estadoHtml = `<span class="pill pill-green"><span class="dot g"></span>Cerrada</span>`;
+    estadoHtml = `<span class="pill pill-muted"><span class="dot n"></span>Cerrada</span>`;
   } else {
     estadoHtml = `<span class="pill pill-muted">${_escHtml(r.status || '—')}</span>`;
+  }
+  if (r.in_workshop) {
+    estadoHtml += `<span class="taller-mark" title="La unidad ingresó a taller durante esta jornada">🔧</span>`;
   }
 
   const movil = r.truck_movil ? `#${_escHtml(r.truck_movil)}` : '';
@@ -15472,41 +14850,49 @@ function _jadminRenderFila(r) {
   const _orgs = [r.km_inicio_origen, r.km_final_origen];
   let origenBadge = '';
   if (_orgs.includes('manual_ia_fallo') || _orgs.includes('manual_editado')) {
-    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(245,166,35,0.12);color:var(--amber)">✏️ A MANO</span>';
+    origenBadge = '<span class="km-origen manual">A MANO</span>';
   } else if (_orgs.includes('manual_offline')) {
-    origenBadge = '<span style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(133,144,171,0.15);color:var(--muted2)">📴</span>';
+    origenBadge = '<span class="km-origen offline" title="Cargado sin conexión">OFFLINE</span>';
+  }
+
+  // Horas de motor: sólo en los camiones con horómetro, debajo de los km.
+  let motorHtml = '';
+  if (r.horas_motor_inicio != null) {
+    const aMano = [r.horas_motor_inicio_origen, r.horas_motor_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado');
+    const motorTitle = `Horas de motor: ${_fmtHoras(r.horas_motor_inicio)} → ${r.horas_motor_final != null ? _fmtHoras(r.horas_motor_final) : 'sin cerrar'}${aMano ? ' · cargadas a mano' : ''}`;
+    motorHtml = `<div class="jadmin-motor${aMano ? ' is-manual' : ''}" title="${_escHtml(motorTitle)}">${_escHtml(_horasMotorTexto(r.horas_motor_inicio, r.horas_motor_final))}</div>`;
   }
 
   return `
     <tr data-log-id="${_escHtml(r.log_id)}" style="cursor:pointer">
-      <td>
+      <td data-label="Fecha">
         <div class="fecha-cell">
           <b>${_escHtml(fecha)}</b>
           <div class="dia">${_escHtml(dia)}</div>
         </div>
       </td>
-      <td>
-        <div class="chofer-cell">
+      <td data-label="Chofer">
+        <div class="chofer-cell"${legajoTitle}>
           <div class="avatar ${avClass}">${_escHtml(iniciales)}</div>
           <div class="name">
             <b>${_escHtml(r.chofer_nombre || '—')}</b>
-            <div class="lg">${legajoTxt}</div>
           </div>
         </div>
       </td>
-      <td>
+      <td data-label="Móvil">
         <div class="camion-cell">
           <span class="pat">${_escHtml(r.truck_plate || '—')}</span>
           <span class="mov">${movil}</span>
         </div>
       </td>
-      <td class="right"><span class="${kmCls}">${kmTxt}</span>${origenBadge}</td>
-      <td class="right mono">${horasTxt}</td>
-      <td class="right mono">${srv}</td>
-      <td class="right"><span class="${rendCls}">${rendTxt}</span></td>
-      <td class="center"><span class="${incCls}">${incTxt}</span></td>
-      <td class="center">${tallerHtml}</td>
-      <td class="center">${estadoHtml}</td>
+      <td class="right" data-label="Km"><span class="${kmCls}">${kmTxt}</span>${origenBadge}${motorHtml}</td>
+      <td class="right ${horasCls}" data-label="Horas">${horasTxt}</td>
+      <td class="right ${srvCls}" data-label="Servicios">${srv ? `<button type="button" class="jadmin-srv" title="Ver los servicios de esta jornada">${srv}</button>` : srv}</td>
+      <td class="right" data-label="Km/l"><span class="${kmlCls}" title="${_escHtml(kmlTitle)}">${kmlTxt}</span></td>
+      <td class="right" data-label="Efectivo esp."><span class="${efvoCls}"${efvoTitle}>${efvoTxt}</span></td>
+      <td class="right" data-label="Gastos"><span class="${gastosCls}">${gastosTxt}</span></td>
+      <td class="center" data-label="Incidentes"><span class="${incCls}">${incTxt}</span></td>
+      <td class="center" data-label="Estado"><span class="estado-cell">${estadoHtml}</span></td>
     </tr>
   `;
 }
@@ -15518,10 +14904,10 @@ function _jadminRenderFila(r) {
 async function abrirDetalleJornadaAdmin(logId) {
   if (!logId) return;
   const $ = (id) => document.getElementById(id);
-  if ($('jd-title')) $('jd-title').textContent = 'JORNADA · —';
+  if ($('jd-title')) $('jd-title').textContent = 'Jornada · —';
   if ($('jd-sub'))   $('jd-sub').textContent   = '—';
   if ($('jd-traza')) $('jd-traza').textContent = 'Cargando…';
-  if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted2)">Cargando detalle…</div>`;
+  if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center">Cargando detalle…</div>`;
 
   openModal('modal-jornada-detalle');
 
@@ -15530,14 +14916,14 @@ async function abrirDetalleJornadaAdmin(logId) {
       ? await cargarDetalleJornadaAdmin(logId)
       : null;
     if (!det) {
-      if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">No se pudo cargar el detalle.</div>`;
+      if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center is-bad">No se pudo cargar el detalle.</div>`;
       if ($('jd-traza')) $('jd-traza').textContent = '—';
       return;
     }
     _jadminRenderDetalle(det);
   } catch (e) {
     console.error('[jadmin] abrirDetalleJornadaAdmin:', e);
-    if ($('jd-content')) $('jd-content').innerHTML = `<div style="padding:24px;text-align:center;color:var(--red)">Error al cargar el detalle.</div>`;
+    if ($('jd-content')) $('jd-content').innerHTML = `<div class="jd-empty is-center is-bad">Error al cargar el detalle.</div>`;
     if ($('jd-traza')) $('jd-traza').textContent = '—';
   }
 }
@@ -15561,7 +14947,7 @@ function _jadminRenderDetalle(det) {
     contexto: `${truckPlate}${truckMovil ? ' #' + truckMovil : ''} · ${fecha} · ${chNombre}`,
   };
 
-  if ($('jd-title')) $('jd-title').textContent = `JORNADA · ${fecha}`;
+  if ($('jd-title')) $('jd-title').textContent = `Jornada · ${fecha}`;
   if ($('jd-sub')) {
     const sub = `${chNombre}${chLegajo ? ' (Leg. ' + chLegajo + ')' : ''} · ${truckPlate}${truckMovil ? ' #' + truckMovil : ''}`;
     $('jd-sub').textContent = sub;
@@ -15581,130 +14967,75 @@ function _jadminRenderDetalle(det) {
   const kmFin = Number(log.km_final) || 0;
   const kmRec = Number(log.km_recorridos) || 0;
 
-  // Estilo scoped
-  const styles = `
-    <style>
-      #jd-content .jd-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
-      @media (max-width: 900px) { #jd-content .jd-grid { grid-template-columns: 1fr; } }
-      #jd-content .jd-card {
-        background: var(--card, #131826);
-        border: 1px solid var(--border, #1f2937);
-        border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;
-      }
-      #jd-content .jd-card h4 {
-        margin: 0 0 10px 0; font-size: 12px; letter-spacing: .8px;
-        color: var(--muted2, #93a2b8); text-transform: uppercase; font-weight: 600;
-      }
-      #jd-content .jd-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 12.5px; }
-      #jd-content .jd-info .k { color: var(--muted2, #93a2b8); font-size: 11px; letter-spacing:.4px; text-transform: uppercase; }
-      #jd-content .jd-info .v { color: var(--text, #e5e7eb); font-weight: 600; margin-top: 2px; }
-      #jd-content .jd-fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-      #jd-content .jd-foto { display: block; border: 1px solid var(--border, #1f2937); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.02); text-align: center; color: var(--muted2); font-size: 11px; padding: 8px; }
-      #jd-content .jd-foto img { display: block; width: 100%; height: 130px; object-fit: cover; border-radius: 6px; }
-      #jd-content .jd-foto small { display:block; margin-top: 4px; }
-      #jd-content .jd-list { display: flex; flex-direction: column; gap: 8px; }
-      #jd-content .jd-item {
-        display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        padding: 8px 10px; background: rgba(255,255,255,0.02);
-        border: 1px solid var(--border, #1f2937); border-radius: 8px; font-size: 12px;
-      }
-      #jd-content .jd-item .lft { display:flex; flex-direction:column; gap:2px; min-width:0; }
-      #jd-content .jd-service-seq {
-        width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px;
-        display: inline-flex; align-items: center; justify-content: center;
-        background: rgba(59,130,246,.14); border: 1px solid rgba(59,130,246,.38);
-        color: var(--blue, #3b82f6); font-family: 'DM Mono', monospace; font-weight: 800;
-      }
-      #jd-content .jd-item .rgt { font-family: 'DM Mono', monospace; font-weight: 600; white-space: nowrap; }
-      #jd-content .jd-empty { color: var(--muted2); font-size: 12px; padding: 6px 2px; }
-      #jd-content .jd-badge {
-        display: inline-block; padding: 2px 6px; border-radius: 4px;
-        font-size: 10px; text-transform: uppercase; letter-spacing:.3px; font-weight: 600;
-      }
-      #jd-content .b-grave { background: rgba(226,80,74,0.15); color: var(--red, #e2504a); }
-      #jd-content .b-medio { background: rgba(245,166,35,0.15); color: var(--amber, #f5a623); }
-      #jd-content .b-leve  { background: rgba(59,130,246,0.15); color: var(--blue, #3b82f6); }
-      #jd-content .jd-rend-linea { display:flex; justify-content:space-between; font-size:12px; margin: 4px 0; }
-      #jd-content .jd-rend-linea .v { font-family: 'DM Mono', monospace; font-weight: 600; }
-      #jd-content .jd-rend-diff.ok   { color: var(--green, #27c47a); }
-      #jd-content .jd-rend-diff.bad  { color: var(--red, #e2504a); }
-      #jd-content .jd-rend-diff.warn { color: var(--amber, #f5a623); }
-      #jd-content .inc-menu-thumbs { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-      #jd-content .inc-menu-thumb { display: block; width: 48px; height: 48px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border, #1f2937); flex-shrink: 0; }
-      #jd-content .inc-menu-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
-    </style>
-  `;
+  const ic = (n) => `<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${n}"/></svg>`;
+  const dato = (k, v, cls = '') => `<div><div class="k">${k}</div><div class="v${cls ? ' ' + cls : ''}">${v}</div></div>`;
+  const apagado = (t) => `<span class="jd-dim">${t}</span>`;
 
   // ── Columna IZQ ────────────────────────
   const resumenCard = `
-    <div class="jd-card">
+    <section class="jd-card">
       <h4>Resumen</h4>
       <div class="jd-info">
-        <div><div class="k">Fecha</div><div class="v">${_escHtml(fecha)}</div></div>
-        <div><div class="k">Chofer</div><div class="v">${_escHtml(chNombre)}${chLegajo ? ' <span style="color:var(--muted2);font-weight:400">(Leg. ' + _escHtml(chLegajo) + ')</span>' : ''}</div></div>
-        <div><div class="k">Camión</div><div class="v">${_escHtml(truckPlate)}${truckMovil ? ' <span style="color:var(--muted2);font-weight:400">#' + _escHtml(truckMovil) + '</span>' : ''}${truckMarca ? '<br><span style="color:var(--muted2);font-weight:400;font-size:11px">' + _escHtml(truckMarca) + '</span>' : ''}</div></div>
-        <div><div class="k">Horas</div><div class="v">${_escHtml(_jadminFmtHora(log.hora_inicio))} → ${_escHtml(_jadminFmtHora(log.hora_fin))}<br><span style="color:var(--muted2);font-weight:400;font-size:11px">${_escHtml(horasTxt)}</span></div></div>
-        <div><div class="k">KM inicio</div><div class="v">${kmIni.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">KM final</div><div class="v">${kmFin.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">KM recorridos</div><div class="v" style="color:var(--amber)">${kmRec.toLocaleString('es-AR')}</div></div>
-        <div><div class="k">Notas</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(log.notas || '—')}</div></div>
+        ${dato('Fecha', _escHtml(fecha))}
+        ${dato('Chofer', `${_escHtml(chNombre)}${chLegajo ? ' ' + apagado('Leg. ' + _escHtml(chLegajo)) : ''}`)}
+        ${dato('Camión', `${_escHtml(truckPlate)}${truckMovil ? ' ' + apagado('#' + _escHtml(truckMovil)) : ''}${truckMarca ? `<br>${apagado(_escHtml(truckMarca))}` : ''}`)}
+        ${dato('Horas', `${_escHtml(_jadminFmtHora(log.hora_inicio))} → ${_escHtml(_jadminFmtHora(log.hora_fin))}<br>${apagado(_escHtml(horasTxt))}`)}
+        ${dato('KM inicio', kmIni.toLocaleString('es-AR'))}
+        ${dato('KM final', kmFin.toLocaleString('es-AR'))}
+        ${dato('KM recorridos', kmRec.toLocaleString('es-AR'))}
+        ${log.horas_inicio != null ? dato('Horas de motor', `${_escHtml(_fmtHoras(log.horas_inicio))} → ${log.horas_final != null ? _escHtml(_fmtHoras(log.horas_final)) : '—'} h${_horasMotorUsadas(log.horas_inicio, log.horas_final) != null ? `<br>${apagado(_escHtml('+' + _fmtHoras(_horasMotorUsadas(log.horas_inicio, log.horas_final)) + ' h usadas'))}` : ''}`) : ''}
+        ${dato('Notas', _escHtml(log.notas || '—'), 'jd-v-plain')}
       </div>
-    </div>
+    </section>
   `;
 
-  const fotoIni = log.foto_km_inicio
-    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_inicio)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_inicio)}" alt="KM inicio"><small>KM inicio</small></a>`
-    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM inicio</small></div>`;
-  const fotoFin = log.foto_km_final
-    ? `<a class="jd-foto" href="${_escHtml(log.foto_km_final)}" target="_blank" rel="noopener"><img src="${_escHtml(log.foto_km_final)}" alt="KM final"><small>KM final</small></a>`
-    : `<div class="jd-foto"><div style="height:130px;display:flex;align-items:center;justify-content:center">Sin foto</div><small>KM final</small></div>`;
+  const foto = (url, etiqueta) => url
+    ? `<a class="jd-foto" href="${_escHtml(url)}" target="_blank" rel="noopener"><img src="${_escHtml(url)}" alt="${etiqueta}"><small>${etiqueta}</small></a>`
+    : `<div class="jd-foto is-empty"><div class="jd-foto-ph">${ic('camera')}<span>Sin foto</span></div><small>${etiqueta}</small></div>`;
+  const fotoIni = foto(log.foto_km_inicio, 'KM inicio');
+  const fotoFin = foto(log.foto_km_final, 'KM final');
 
-  const _kmCmpBloque = (extremo, origen, kmIa, kmChofer) => {
+  // Mismo cuadro para los km y para las horas de motor (salen de la misma foto).
+  const _kmCmpBloque = (extremo, origen, kmIa, kmChofer, unidad = 'km') => {
     if (!origen || origen === 'ia') return '';
-    const lbl = extremo === 'inicio' ? 'KM inicio' : 'KM final';
+    const enHoras = unidad === 'h';
+    const lbl = enHoras
+      ? (extremo === 'inicio' ? 'Horas de motor al inicio' : 'Horas de motor al final')
+      : (extremo === 'inicio' ? 'KM inicio' : 'KM final');
+    const fmt = (n) => enHoras ? _fmtHoras(n) + ' h' : Number(n).toLocaleString('es-AR') + ' km';
     const esOffline = origen === 'manual_offline';
     const iaTxt = kmIa != null
-      ? Number(kmIa).toLocaleString('es-AR') + ' km'
+      ? fmt(kmIa)
       : (esOffline ? '— sin conexión al momento de la carga' : '— no pudo leer la foto');
-    const diff = (kmIa != null && kmChofer != null) ? kmChofer - kmIa : null;
-    const borde = esOffline ? 'var(--border2)' : 'rgba(245,166,35,0.45)';
-    const fondo = esOffline ? 'rgba(255,255,255,0.02)' : 'rgba(245,166,35,0.12)';
+    const diff = (kmIa != null && kmChofer != null) ? Math.round((kmChofer - kmIa) * 10) / 10 : null;
     const titulo = esOffline
-      ? `📴 ${lbl} cargado a mano por falta de señal`
-      : `⚠ ${lbl} modificado manualmente`;
-    const tituloColor = esOffline ? 'var(--muted2)' : 'var(--amber)';
+      ? `${ic('wifi-off')} ${lbl} ${enHoras ? 'cargadas' : 'cargado'} a mano por falta de señal`
+      : `${ic('triangle-alert')} ${lbl} ${enHoras ? 'modificadas' : 'modificado'} manualmente`;
     return `
-      <div style="border:1px solid ${borde};background:${fondo};border-radius:8px;padding:10px 12px;margin-top:10px">
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:${tituloColor};margin-bottom:8px">${titulo}</div>
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Resultado generado por IA</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600">${iaTxt}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Resultado generado por chofer</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600">${kmChofer != null ? Number(kmChofer).toLocaleString('es-AR') + ' km' : '—'}</span>
-        </div>
-        ${diff != null ? `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
-          <span style="color:var(--muted2)">Diferencia</span>
-          <span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--amber)">${diff > 0 ? '+' : ''}${diff.toLocaleString('es-AR')} km</span>
-        </div>` : ''}
+      <div class="jd-note${esOffline ? ' is-offline' : ''}">
+        <div class="jd-note-title">${titulo}</div>
+        <div class="jd-line"><span>Resultado generado por IA</span><b>${iaTxt}</b></div>
+        <div class="jd-line"><span>Resultado generado por chofer</span><b>${kmChofer != null ? fmt(kmChofer) : '—'}</b></div>
+        ${diff != null ? `<div class="jd-line"><span>Diferencia</span><b class="${esOffline ? '' : 'is-warn'}">${diff > 0 ? '+' : ''}${fmt(diff)}</b></div>` : ''}
       </div>`;
   };
   const kmCmpHtml = _kmCmpBloque('inicio', log.km_inicio_origen, log.km_inicio_ia, log.km_inicio)
-                  + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final);
+                  + _kmCmpBloque('final',  log.km_final_origen,  log.km_final_ia,  log.km_final)
+                  + _kmCmpBloque('inicio', log.horas_inicio_origen, log.horas_inicio_ia, log.horas_inicio, 'h')
+                  + _kmCmpBloque('final',  log.horas_final_origen,  log.horas_final_ia,  log.horas_final, 'h');
 
   const odomCard = `
-    <div class="jd-card">
+    <section class="jd-card">
       <h4>Odómetro</h4>
       <div class="jd-fotos">${fotoIni}${fotoFin}</div>${kmCmpHtml}
-    </div>
+    </section>
   `;
 
-  const _payLbl  = (m) => m === 'efectivo' ? '💵 Ef' : m === 'transferencia' ? '📲 Tr' : m === 'tarjeta' ? '💳 Tj' : m === 'app' ? '📱 App' : '—';
+  const _payLbl  = (m) => m === 'efectivo' ? 'Efectivo' : m === 'transferencia' ? 'Transf.' : m === 'tarjeta' ? 'Tarjeta' : m === 'app' ? 'App' : '—';
 
   const serviciosCard = `
-    <div class="jd-card">
-      <h4>Servicios <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${trips.length})</span></h4>
+    <section class="jd-card" data-card="servicios">
+      <h4>Servicios ${apagado(`(${trips.length})`)}</h4>
       ${trips.length ? `<div class="jd-list">${trips.map((t, index) => {
         const nro     = t.nro_servicio ? `#${_escHtml(t.nro_servicio)}` : (t.nro_remito ? `#${_escHtml(t.nro_remito)}` : '');
         const origen  = _escHtml(t.origin || '—');
@@ -15717,26 +15048,26 @@ function _jadminRenderDetalle(det) {
         const p2metodo = t.pago_2_metodo ? _payLbl(t.pago_2_metodo) : '';
         const metodos  = [p1metodo, p2metodo].filter(Boolean).join(' / ') || '—';
 
-        const stCls = t.status === 'firmado' ? 'b-leve' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
-        const stLbl = t.status === 'firmado' ? '✓ Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
+        const stCls = t.status === 'firmado' ? 'b-ok' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
+        const stLbl = t.status === 'firmado' ? 'Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
 
         return `
-          <div class="jd-item" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px">
+          <div class="jd-item jd-service">
             <span class="jd-service-seq" aria-label="Servicio ${index + 1}">${index + 1}</span>
-            <div style="min-width:0;flex:1">
-              <div style="font-weight:600">${nro}${patente ? ` <span style="color:var(--muted2);font-weight:400;font-size:11px">· ${patente}</span>` : ''}</div>
-              <div style="color:var(--muted2);font-size:11.5px">${origen} → ${destino}</div>
+            <div class="jd-service-main">
+              <div class="jd-service-nro"><b>${nro}</b>${patente ? ` ${apagado('· ' + patente)}` : ''}</div>
+              <div class="jd-dim">${origen} → ${destino}</div>
             </div>
-            <div style="text-align:right;flex-shrink:0;font-size:10.5px;color:var(--muted2);min-width:110px">
+            <div class="jd-service-side">
               ${(peaje>0||excede>0) ? `<div>Peaje $${_AR(peaje)} · Exc. $${_AR(excede)}</div>` : `<div>Sin extras</div>`}
-              <div style="color:var(--text)">${metodos}</div>
-              <div style="color:var(--amber)">${km.toLocaleString('es-AR')} km</div>
+              <div>${metodos}</div>
+              <div class="jd-service-km">${km.toLocaleString('es-AR')} km</div>
             </div>
-            <div style="flex-shrink:0"><span class="jd-badge ${stCls}">${stLbl}</span></div>
+            <div class="jd-service-st"><span class="jd-badge ${stCls}">${stLbl}</span></div>
           </div>
         `;
       }).join('')}</div>` : `<div class="jd-empty">Sin servicios registrados.</div>`}
-    </div>
+    </section>
   `;
 
   // Card de taller (solo si ingresó al taller)
@@ -15747,13 +15078,13 @@ function _jadminRenderDetalle(det) {
     const m = detalle.match(/^([^:]+):\s*(.*)$/);
     if (m) { tipo = m[1].trim(); desc = m[2].trim(); }
     tallerCard = `
-      <div class="jd-card">
-        <h4>🔧 Ingreso al taller</h4>
+      <section class="jd-card">
+        <h4>${ic('wrench')} Ingreso al taller</h4>
         <div class="jd-info">
-          ${tipo ? `<div><div class="k">Tipo de trabajo</div><div class="v">${_escHtml(tipo)}</div></div>` : ''}
-          <div><div class="k">Detalle</div><div class="v" style="font-weight:400;font-size:11.5px">${_escHtml(desc || '—')}</div></div>
+          ${tipo ? dato('Tipo de trabajo', _escHtml(tipo)) : ''}
+          ${dato('Detalle', _escHtml(desc || '—'), 'jd-v-plain')}
         </div>
-      </div>
+      </section>
     `;
   }
 
@@ -15762,11 +15093,10 @@ function _jadminRenderDetalle(det) {
   _jadminIncCache = incidents || [];
 
   const incidentesCard = `
-    <div class="jd-card">
-      <h4 style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span>Incidentes <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${incidents.length})</span></span>
-        <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px;text-transform:none;letter-spacing:0"
-          onclick="abrirIncidenteDesdeJornadaAdmin()">+ Cargar incidente</button>
+    <section class="jd-card">
+      <h4 class="jd-h-row">
+        <span>Incidentes ${apagado(`(${incidents.length})`)}</span>
+        <button type="button" class="ax-btn ax-btn-sm" onclick="abrirIncidenteDesdeJornadaAdmin()">${ic('plus')} Cargar incidente</button>
       </h4>
       ${incidents.length ? `<div class="jd-list">${incidents.map(i => {
         const sev = String(i.severity || '').toLowerCase();
@@ -15779,70 +15109,63 @@ function _jadminRenderDetalle(det) {
             </a>`).join('')}
           </div>` : '';
         const kebabHtml = esAdminIncidentes ? `
-          <div class="kebab-wrap" style="align-self:flex-start">
-            <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">⋮</button>
+          <div class="kebab-wrap">
+            <button class="kebab-btn" onclick="event.stopPropagation();_jadminToggleIncMenu('${_escHtml(i.incident_id)}')" aria-label="Acciones del incidente">${ic('ellipsis')}</button>
             <div class="kebab-menu" id="inc-menu-${_escHtml(i.incident_id)}">
-              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">✏️ Editar</button>
-              <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">🗑 Eliminar</button>
+              <button class="kebab-item" onclick="event.stopPropagation();_jadminEditarIncidente('${_escHtml(i.incident_id)}')">${ic('pencil')} Editar</button>
+              <button class="kebab-item danger" onclick="event.stopPropagation();_jadminEliminarIncidente('${_escHtml(i.incident_id)}')">${ic('trash-2')} Eliminar</button>
             </div>
           </div>` : '';
         return `
           <div class="jd-item">
             <div class="lft">
               <div><b>${_escHtml(i.type || 'Incidente')}</b> <span class="jd-badge ${badgeCls}">${_escHtml(i.severity || '—')}</span></div>
-              <div style="color:var(--muted2);font-size:11px">${_escHtml(i.description || '—')}</div>
-              ${i.location ? `<div style="color:var(--muted2);font-size:10.5px">📍 ${_escHtml(i.location)}</div>` : ''}
+              <div class="jd-dim">${_escHtml(i.description || '—')}</div>
+              ${i.location ? `<div class="jd-dim jd-loc">${ic('map-pin')} ${_escHtml(i.location)}</div>` : ''}
               ${thumbsHtml}
             </div>
             ${kebabHtml}
           </div>
         `;
       }).join('')}</div>` : `<div class="jd-empty">Sin incidentes.</div>`}
-    </div>
+    </section>
   `;
 
   // ── Columna DER ────────────────────────
-  let tireCard;
+  let tireCard = '';
   if (tire_check) {
-    // Semáforo por condición: bueno=verde, regular=ámbar, malo=rojo
+    // Por condición: bueno = verde, regular = ámbar, malo = rojo
     const _condPill = (v) => {
       const map = {
-        bueno:   ['✓ Bueno',   'var(--green)', 'rgba(74,222,128,0.12)',  'rgba(74,222,128,0.3)'],
-        regular: ['⚠ Regular', 'var(--amber)', 'rgba(245,166,35,0.12)',  'rgba(245,166,35,0.35)'],
-        malo:    ['✗ Malo',    'var(--red)',   'rgba(226,80,74,0.12)',   'rgba(226,80,74,0.35)'],
+        bueno:   ['Bueno',   'is-ok',   'circle-check'],
+        regular: ['Regular', 'is-warn', 'triangle-alert'],
+        malo:    ['Malo',    'is-bad',  'circle-x'],
       };
-      const [label, color, bg, borde] = map[v] || ['— sin dato', 'var(--muted)', 'transparent', 'var(--border)'];
-      return `<span style="display:inline-block;padding:5px 12px;border-radius:12px;font-size:12px;font-weight:700;color:${color};background:${bg};border:1px solid ${borde}">${label}</span>`;
+      const [label, cls, icono] = map[v] || ['Sin dato', '', 'info'];
+      return `<span class="jd-cond ${cls}">${ic(icono)} ${label}</span>`;
     };
     const peor = [tire_check.tire_condition, tire_check.brake_condition].includes('malo') ? 'malo'
                : [tire_check.tire_condition, tire_check.brake_condition].includes('regular') ? 'regular' : 'bueno';
-    const bordeCard = peor === 'malo' ? 'var(--red)' : peor === 'regular' ? 'var(--amber)' : 'var(--green)';
     tireCard = `
-      <div class="jd-card" style="border-left:3px solid ${bordeCard}">
-        <h4>🛞 Neumáticos y Frenos</h4>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0">
-          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
-            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛞 Neumáticos</div>
-            ${_condPill(tire_check.tire_condition)}
-          </div>
-          <div style="flex:1;min-width:120px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center">
-            <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">🛑 Frenos</div>
-            ${_condPill(tire_check.brake_condition)}
-          </div>
+      <section class="jd-card jd-card--${peor}">
+        <h4>${ic('disc')} Neumáticos y frenos</h4>
+        <div class="jd-conds">
+          <div class="jd-cond-box"><div class="k">Neumáticos</div>${_condPill(tire_check.tire_condition)}</div>
+          <div class="jd-cond-box"><div class="k">Frenos</div>${_condPill(tire_check.brake_condition)}</div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
-          <span>Presión: <b style="color:var(--text)">${tire_check.pressure_psi != null ? _escHtml(tire_check.pressure_psi) + ' PSI' : '—'}</b></span>
+        <div class="jd-line">
+          <span>Presión: <b>${tire_check.pressure_psi != null ? _escHtml(tire_check.pressure_psi) + ' PSI' : '—'}</b></span>
           <span>${_escHtml(_jadminFmtDT(tire_check.check_date))}</span>
         </div>
-        ${tire_check.notes ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.02);border-radius:6px;font-size:11.5px;color:var(--muted2)">📝 ${_escHtml(tire_check.notes)}</div>` : ''}
-      </div>
+        ${tire_check.notes ? `<div class="jd-note-text">${_escHtml(tire_check.notes)}</div>` : ''}
+      </section>
     `;
   } else {
     tireCard = `
-      <div class="jd-card">
-        <h4>🛞 Neumáticos y Frenos</h4>
-        <div class="jd-empty" style="color:var(--red)">El chofer no cargó el control este día.</div>
-      </div>
+      <section class="jd-card jd-card--malo">
+        <h4>${ic('disc')} Neumáticos y frenos</h4>
+        <div class="jd-empty is-bad">El chofer no cargó el control este día.</div>
+      </section>
     `;
   }
 
@@ -15855,38 +15178,38 @@ function _jadminRenderDetalle(det) {
       .reduce((s, f) => s + (Number(f.total_cost) || 0), 0);
     const costoCredito = totalCosto - costoEfectivo;
     fuelCard = `
-      <div class="jd-card">
-        <h4>Combustible <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0">(${fuel_records.length} carga${fuel_records.length===1?'':'s'})</span></h4>
+      <section class="jd-card">
+        <h4>${ic('fuel')} Combustible ${apagado(`(${fuel_records.length} carga${fuel_records.length===1?'':'s'})`)}</h4>
         <div class="jd-info">
-          <div><div class="k">Litros totales</div><div class="v">${totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1})} L</div></div>
-          <div><div class="k">Costo total</div><div class="v">${_jadminMoney(totalCosto)}</div></div>
-          ${costoEfectivo > 0 ? `<div><div class="k">💵 Efectivo</div><div class="v" style="color:var(--amber)">${_jadminMoney(costoEfectivo)}</div></div>` : ''}
-          ${costoCredito > 0 ? `<div><div class="k">📱 A crédito (15d)</div><div class="v" style="color:var(--muted2)">${_jadminMoney(costoCredito)}</div></div>` : ''}
+          ${dato('Litros totales', totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1}) + ' L')}
+          ${dato('Costo total', _jadminMoney(totalCosto))}
+          ${costoEfectivo > 0 ? dato('Efectivo', _jadminMoney(costoEfectivo)) : ''}
+          ${costoCredito > 0 ? dato('A crédito (15 días)', _jadminMoney(costoCredito)) : ''}
         </div>
-        <div class="jd-list" style="margin-top:10px">
+        <div class="jd-list">
           ${fuel_records.map(f => {
             const esCredito = f.payment_method !== 'efectivo';
             const badge = esCredito
-              ? `<span class="jd-badge b-medio" style="font-size:9px">Crédito</span>`
-              : `<span class="jd-badge b-leve" style="font-size:9px">Efectivo</span>`;
+              ? `<span class="jd-badge b-medio">Crédito</span>`
+              : `<span class="jd-badge b-leve">Efectivo</span>`;
             return `
             <div class="jd-item">
               <div class="lft">
-                <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> <span style="color:var(--muted2);font-size:11px">${_escHtml(f.gas_station || '')}</span> ${badge}</div>
-                <div style="color:var(--muted2);font-size:11px">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
+                <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> ${apagado(_escHtml(f.gas_station || ''))} ${badge}</div>
+                <div class="jd-dim">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
               </div>
-              <div class="rgt">${_jadminMoney(f.total_cost)}</div>
+              <div class="rgt">${_jadminMoney(f.total_cost)}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">${ic('pencil')} Editar</button>` : ''}</div>
             </div>
           `}).join('')}
         </div>
-      </div>
+      </section>
     `;
   } else {
     fuelCard = `
-      <div class="jd-card">
-        <h4>Combustible</h4>
+      <section class="jd-card">
+        <h4>${ic('fuel')} Combustible</h4>
         <div class="jd-empty">Sin cargas.</div>
-      </div>
+      </section>
     `;
   }
 
@@ -15900,29 +15223,27 @@ function _jadminRenderDetalle(det) {
     const cls = estado === 'ok' ? 'ok' : estado === 'faltante' ? 'bad' : 'warn';
     const lbl = estado === 'ok' ? 'OK' : estado === 'faltante' ? 'Faltante' : 'Sobrante';
     rendCard = `
-      <div class="jd-card">
-        <h4>Rendición</h4>
+      <section class="jd-card">
+        <h4>${ic('wallet')} Rendición</h4>
         <div class="jd-rend-linea"><span>Entregó</span><span class="v">${_jadminMoney(declarado)}</span></div>
         <div class="jd-rend-linea"><span>Debería entregar</span><span class="v">${_jadminMoney(esperado)}</span></div>
         <div class="jd-rend-linea"><span>Gastos</span><span class="v">${_jadminMoney(gastos)}</span></div>
-        <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
-        <div class="jd-rend-linea" style="font-size:13px">
-          <span>Diferencia <span class="jd-badge ${cls === 'ok' ? 'b-leve' : cls === 'bad' ? 'b-grave' : 'b-medio'}">${lbl}</span></span>
+        <div class="jd-rend-linea jd-rend-total">
+          <span>Diferencia <span class="jd-badge ${cls === 'ok' ? 'b-ok' : cls === 'bad' ? 'b-grave' : 'b-medio'}">${lbl}</span></span>
           <span class="v jd-rend-diff ${cls}">${_jadminMoneySigned(diff)}</span>
         </div>
-      </div>
+      </section>
     `;
   } else {
     rendCard = `
-      <div class="jd-card">
-        <h4>Rendición</h4>
+      <section class="jd-card">
+        <h4>${ic('wallet')} Rendición</h4>
         <div class="jd-empty">Sin rendición registrada para esta fecha.</div>
-      </div>
+      </section>
     `;
   }
 
   const html = `
-    ${styles}
     <div class="jd-grid">
       <div class="jd-col-l">
         ${resumenCard}
@@ -15940,6 +15261,107 @@ function _jadminRenderDetalle(det) {
   `;
 
   if ($('jd-content')) $('jd-content').innerHTML = html;
+
+  // Venía del número de Servicios de la lista: se baja a esa tarjeta y se la marca un momento.
+  if (_jadminState.verServicios) {
+    _jadminState.verServicios = false;
+    const tarjeta = document.querySelector('#jd-content [data-card="servicios"]');
+    if (tarjeta) {
+      tarjeta.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      window.AxUI?.flash?.(tarjeta);
+    }
+  }
+}
+
+// ── Exportar la lista de Jornadas a Excel ─────────────────────────────────
+async function _jadminExportarExcel() {
+  const btn = document.getElementById('jadmin-export');
+  if (!window.AuxiliosExcelExport) { toast('El exportador Excel todavía no está disponible. Recargá la página.', 'error'); return; }
+  if (btn) btn.disabled = true;
+  try {
+    // Con los mismos filtros de la pantalla, pero todo el período (no sólo la página que se ve).
+    const resp = await cargarJornadasAdmin({
+      desde: _jadminState.desde, hasta: _jadminState.hasta,
+      driverIds: _jadminState.driverIds, truckIds: _jadminState.truckIds,
+      estado: _jadminState.estado || null,
+      offset: 0, limit: _JADMIN_TOPE_EXPORT, orderBy: 'log_date', orderAsc: false,
+    });
+    const rows = _jadminAplicarFiltrosClientSide(resp?.data || [], { ordenar: true });
+    if (!rows.length) { toast('No hay jornadas para exportar con estos filtros', 'warn'); return; }
+
+    const dia = iso => ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][new Date(`${iso}T12:00:00`).getDay()];
+    const hora = h => (h ? String(h).slice(0, 5) : '');
+    const si = v => (v ? 'Sí' : 'No');
+    // Las columnas de horas de motor sólo aparecen si algún camión del listado las carga.
+    const conHorasMotor = rows.some(r => r.horas_motor_inicio != null);
+    const columnas = [
+      { header: 'Fecha', width: 12, value: r => _jadminFmtFecha(r.log_date) },
+      { header: 'Día', width: 11, value: r => dia(r.log_date) },
+      { header: 'Chofer', width: 24, value: r => r.chofer_nombre },
+      { header: 'Legajo', width: 10, value: r => r.chofer_legajo || '' },
+      { header: 'Patente', width: 12, value: r => r.truck_plate },
+      { header: 'N° móvil', width: 10, value: r => r.truck_movil || '' },
+      { header: 'Hora inicio', width: 11, value: r => hora(r.hora_inicio) },
+      { header: 'Hora fin', width: 10, value: r => hora(r.hora_fin) },
+      { header: 'Horas', width: 8, type: 'number', value: r => (r.hora_fin ? Math.round((Number(r.horas) || 0) * 10) / 10 : null) },
+      { header: 'KM inicio', width: 11, type: 'number', value: r => r.km_inicio },
+      { header: 'KM final', width: 11, type: 'number', value: r => r.km_final },
+      { header: 'KM recorridos', width: 14, type: 'number', value: r => r.km_recorridos },
+      { header: 'Origen del KM', width: 14, value: r => ([r.km_inicio_origen, r.km_final_origen].some(o => o === 'manual_ia_fallo' || o === 'manual_editado') ? 'A mano' : [r.km_inicio_origen, r.km_final_origen].includes('manual_offline') ? 'Sin conexión' : 'IA') },
+      ...(conHorasMotor ? [
+        { header: 'Horas de motor inicio', width: 20, type: 'number', value: r => r.horas_motor_inicio },
+        { header: 'Horas de motor final', width: 19, type: 'number', value: r => r.horas_motor_final },
+        { header: 'Horas de motor usadas', width: 20, type: 'number', value: r => _horasMotorUsadas(r.horas_motor_inicio, r.horas_motor_final) },
+      ] : []),
+      { header: 'Servicios del día', width: 16, type: 'number', value: r => r.servicios },
+      { header: 'Cargas de combustible', width: 20, type: 'number', value: r => r.combustible },
+      { header: 'Litros', width: 9, type: 'number', value: r => (r.litros ? Math.round(r.litros * 10) / 10 : 0) },
+      { header: 'Km/l', width: 8, type: 'number', value: r => (r.rendimiento?.estado === 'ok' ? r.rendimiento.kml : null) },
+      { header: 'Km/l: observación', width: 40, value: r => (r.rendimiento?.estado === 'ok' ? [r.rendimiento.parcial ? `${r.rendimiento.validas} de ${r.rendimiento.cargas} cargas con dato` : '', r.rendimiento.bajo ? 'Consumo alto (menos del 75 % del promedio del móvil)' : ''].filter(Boolean).join(' · ') : (r.rendimiento?.mensaje || '')) },
+      { header: 'Gasto en combustible', width: 20, type: 'number', value: r => r.gasto_fuel },
+      { header: 'Efectivo esperado', width: 17, type: 'number', value: r => r.rendicion?.esperado },
+      { header: 'Entregó', width: 11, type: 'number', value: r => r.rendicion?.declarado },
+      { header: 'Gastos', width: 10, type: 'number', value: r => r.rendicion?.gastos },
+      { header: 'Diferencia de rendición', width: 22, type: 'number', value: r => r.rendicion?.diff },
+      { header: 'Rendición', width: 11, value: r => (r.rendicion ? ({ ok: 'OK', faltante: 'Faltante', sobrante: 'Sobrante' }[r.rendicion.estado] || '') : 'Sin rendición') },
+      { header: 'Incidentes', width: 11, type: 'number', value: r => r.incidentes },
+      { header: 'En taller', width: 10, value: r => si(r.in_workshop) },
+      { header: 'Control de neumáticos', width: 21, value: r => si(r.revision) },
+      { header: 'Estado', width: 10, value: r => (r.status === 'open' ? 'Abierta' : r.status === 'closed' ? 'Cerrada' : (r.status || '')) },
+    ];
+    const suma = campo => rows.reduce((t, r) => t + (Number(campo(r)) || 0), 0);
+    const filtros = [
+      _jadminState.driverIds.length ? `${_jadminState.driverIds.length} chofer${_jadminState.driverIds.length === 1 ? '' : 'es'}` : 'Todos los choferes',
+      _jadminState.truckIds.length ? `${_jadminState.truckIds.length} móvil${_jadminState.truckIds.length === 1 ? '' : 'es'}` : 'Todos los móviles',
+      _jadminState.estado === 'open' ? 'Abiertas' : _jadminState.estado === 'closed' ? 'Cerradas' : '',
+      { taller: 'En taller', incidentes: 'Con incidentes', rendicion: 'Faltantes de rendición', abierta_larga: `Abiertas hace más de ${_JADMIN_HORAS_ABIERTA_LARGA} h`, sin_control: 'Sin control de neumáticos', consumo_alto: 'Consumo alto' }[_jadminState.clientFilter] || '',
+      _jadminState.q ? `Búsqueda: ${_jadminState.q}` : '',
+    ].filter(Boolean).join(' · ');
+    const resumen = [
+      { label: 'Período', value: `${_jadminFmtFecha(_jadminState.desde)} al ${_jadminFmtFecha(_jadminState.hasta)}` },
+      { label: 'Filtros', value: filtros },
+      { label: 'Jornadas', value: rows.length },
+      { label: 'KM recorridos', value: suma(r => r.km_recorridos) },
+      ...(conHorasMotor ? [{ label: 'Horas de motor usadas', value: Math.round(suma(r => _horasMotorUsadas(r.horas_motor_inicio, r.horas_motor_final)) * 10) / 10 }] : []),
+      { label: 'Servicios', value: suma(r => r.servicios) },
+      { label: 'Litros cargados', value: Math.round(suma(r => r.litros) * 10) / 10 },
+    ];
+    const desdeTxt = String(_jadminState.desde || '').replace(/-/g, ''), hastaTxt = String(_jadminState.hasta || '').replace(/-/g, '');
+    AuxiliosExcelExport.download({
+      filename: `Jornadas_${desdeTxt}_${hastaTxt}`,
+      summaryRows: resumen,
+      sheets: [{ name: 'Jornadas', columns: columnas, rows }],
+      detalle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`,
+    });
+    if ((resp?.total || 0) > (resp?.data || []).length) {
+      toast(`Se exportaron las primeras ${resp.data.length} de ${resp.total} jornadas. Acotá el período para el resto.`, 'warn');
+    }
+  } catch (e) {
+    console.error('[jadmin] exportar Excel:', e);
+    toast(`No se pudo exportar: ${e?.message || e}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 
@@ -16035,6 +15457,49 @@ async function initGrilla() {
   _grillaAutoSemana = true;
   _grillaDiaIdx = null;
   await cargarGrilla();
+}
+
+// Flechas ‹ › del mes: se mueven dentro de las opciones del selector (3 meses atrás a 3 adelante).
+function moverMesGrilla(delta) {
+  const sel = document.getElementById('grilla-mes-select');
+  if (!sel) return;
+  const opts = [...sel.options].map(o => o.value);
+  const idx = opts.indexOf(_grillaMesKey) + delta;
+  if (idx < 0 || idx >= opts.length) return;
+  sel.value = opts[idx];
+  cambiarMesGrilla(opts[idx]);
+}
+function _grillaSyncMesNav() {
+  const sel = document.getElementById('grilla-mes-select');
+  if (!sel) return;
+  const opts = [...sel.options].map(o => o.value);
+  const idx = opts.indexOf(_grillaMesKey);
+  const prev = document.getElementById('grilla-mes-prev'), next = document.getElementById('grilla-mes-next');
+  if (prev) prev.disabled = idx <= 0;
+  if (next) next.disabled = idx < 0 || idx >= opts.length - 1;
+  const hoyIso = _gHoyIso();
+  const semana = _grillaSemanas[_grillaSemanaIdx] || [];
+  const btnHoy = document.getElementById('grilla-btn-hoy');
+  if (btnHoy) btnHoy.disabled = semana.includes(hoyIso);
+}
+async function irHoyGrilla() {
+  const hoy = new Date();
+  const key = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`;
+  const sel = document.getElementById('grilla-mes-select');
+  if (sel) sel.value = key;
+  if (key !== _grillaMesKey) { await cambiarMesGrilla(key); return; }
+  const idx = _grillaSemanas.findIndex(sem => sem.includes(_gHoyIso()));
+  if (idx >= 0) setSemanaGrilla(idx);
+}
+
+// Color estable por chofer (solo para reconocerlo de un vistazo en la grilla)
+function _grillaHue(id) {
+  let h = 0;
+  for (const ch of String(id || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return (h * 137) % 360;
+}
+function _grillaIniciales(nombre) {
+  return String(nombre || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 }
 
 async function cambiarMesGrilla(mesKey) {
@@ -16148,7 +15613,8 @@ function renderGrillaTabs() {
     const rango = ini.slice(5,7) === fin.slice(5,7)
       ? `${ini.slice(8,10)} – ${_gDDbarraMM(fin)}`
       : `${_gDDbarraMM(ini)} – ${_gDDbarraMM(fin)}`;
-    return `<div class="grilla-semana-tab ${i === _grillaSemanaIdx ? 'active' : ''}" onclick="setSemanaGrilla(${i})">Semana ${i+1} · ${rango}</div>`;
+    const tieneHoy = sem.includes(_gHoyIso());
+    return `<div class="grilla-semana-tab ${i === _grillaSemanaIdx ? 'active' : ''} ${tieneHoy ? 'tiene-hoy' : ''}" role="tab" tabindex="0" aria-selected="${i === _grillaSemanaIdx}" onclick="setSemanaGrilla(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setSemanaGrilla(${i})}"><b>Semana ${i+1}</b><small>${rango}</small></div>`;
   }).join('');
 }
 
@@ -16208,9 +15674,9 @@ function _grillaChipHtml(iso, t, clickCelda) {
 
   let chip = '';
   if (!a) {
-    chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda}>${esAdmin ? '+' : '—'}</span>`;
+    chip = `<span class="grilla-chip grilla-chip-vacia" ${clickCelda} ${esAdmin ? 'title="Asignar"' : ''}>${esAdmin ? '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#plus"/></svg>' : '—'}</span>`;
   } else if (a.estado === 'taller') {
-    chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}>🔧 Taller</span>`;
+    chip = `<span class="grilla-chip grilla-chip-taller" ${clickCelda}><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#wrench"/></svg>Taller</span>`;
   } else if (a.estado === 'franco') {
     chip = `<span class="grilla-chip grilla-chip-franco" ${clickCelda}>Franco</span>`;
   } else {
@@ -16221,7 +15687,7 @@ function _grillaChipHtml(iso, t, clickCelda) {
     if (_grillaFiltroChofer) {
       extra += a.driver_id === _grillaFiltroChofer ? ' grilla-chip-resaltada' : ' grilla-chip-atenuada';
     }
-    chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} title="${nombreCompleto.replace(/"/g, '&quot;')}">${nombre}</span>`;
+    chip = `<span class="grilla-chip grilla-chip-chofer${extra}" ${clickCelda} style="--gc-h:${_grillaHue(a.driver_id)}" title="${nombreCompleto.replace(/"/g, '&quot;')}"><i class="gc-av" aria-hidden="true">${_grillaIniciales(nombreCompleto)}</i><span class="gc-nm">${nombre}</span></span>`;
   }
 
   // Atenuar también francos/taller/vacías cuando hay filtro por chofer
@@ -16256,7 +15722,8 @@ function renderGrillaTabla() {
     const clases    = [esHoy ? 'grilla-hoy' : '', feriado ? 'grilla-feriado' : ''].filter(Boolean).join(' ');
     const click     = esAdmin ? `onclick="toggleFeriadoGrilla('${iso}')" style="cursor:pointer"` : '';
     const tooltip   = feriado ? `title="${feriado.replace(/"/g, '&quot;')}"` : (esAdmin ? 'title="Clic para marcar/desmarcar feriado"' : '');
-    ths += `<th class="${clases}" ${click} ${tooltip}>${diasNom[i]}<span class="grilla-th-fecha">${_gDDMM(iso)}</span>${feriado ? `<span class="grilla-th-feriado">${feriado}</span>` : ''}</th>`;
+    const finde = i >= 5 ? ' grilla-finde' : '';
+    ths += `<th class="${clases}${finde}" ${click} ${tooltip}><span class="grilla-th-dn">${diasNom[i]}${esHoy ? ' · Hoy' : ''}</span><span class="grilla-th-fecha">${parseInt(iso.slice(8,10), 10)}<small>/${iso.slice(5,7)}</small></span>${feriado ? `<span class="grilla-th-feriado">${feriado}</span>` : ''}</th>`;
   });
   ths += '</tr>';
   thead.innerHTML = ths;
@@ -16267,13 +15734,14 @@ function renderGrillaTabla() {
   let filas = '';
 
   trucks.forEach(t => {
-    let tds = `<td class="grilla-movil">${t.numero_interno || t.plate || '—'}</td>`;
+    let tds = `<td class="grilla-movil"><b>${t.numero_interno || t.plate || '—'}</b>${t.numero_interno && t.plate ? `<small>${t.plate}</small>` : ''}</td>`;
 
-    semana.forEach(iso => {
+    semana.forEach((iso, i) => {
       const esHoy = iso === hoyIso;
       const clickCelda = esAdmin ? `onclick="abrirGrillaCelda('${iso}', ${t.truck_id})"` : '';
       const { chip } = _grillaChipHtml(iso, t, clickCelda);
-      tds += `<td class="${esHoy ? 'grilla-hoy-celda' : ''}">${chip}</td>`;
+      const clases = [esHoy ? 'grilla-hoy-celda' : '', i >= 5 ? 'grilla-finde' : '', _grillaFeriados[iso] ? 'grilla-feriado-celda' : ''].filter(Boolean).join(' ');
+      tds += `<td class="${clases}">${chip}</td>`;
     });
 
     filas += `<tr>${tds}</tr>`;
@@ -16286,9 +15754,35 @@ function renderGrillaTabla() {
   }
   tbody.innerHTML = filas;
   tbody.classList.toggle('grilla-admin', esAdmin);
+  _grillaRenderResumen(semana, trucks);
+  _grillaSyncMesNav();
 
   // Vista día (mobile) desde el mismo estado
   renderGrillaDia();
+}
+
+// Resumen de la semana visible: cuántos turnos asignados, francos, taller y sin asignar
+function _grillaRenderResumen(semana, trucks) {
+  const cont = document.getElementById('grilla-resumen');
+  if (!cont) return;
+  if (_grillaEsChofer() || !trucks.length) { cont.innerHTML = ''; return; }
+  let asig = 0, franco = 0, taller = 0, vacias = 0, alertas = 0;
+  const hoyIso = _gHoyIso();
+  trucks.forEach(t => semana.forEach(iso => {
+    const a = _grillaAsig[`${iso}|${t.truck_id}`];
+    if (!a) vacias++;
+    else if (a.estado === 'franco') franco++;
+    else if (a.estado === 'taller') taller++;
+    else asig++;
+    if (iso <= hoyIso && _grillaConflictos[`${iso}|${t.truck_id}`]) alertas++;
+  }));
+  const item = (n, txt, cls = '') => `<span class="grilla-res-item ${cls}"><b>${n}</b> ${txt}</span>`;
+  cont.innerHTML = item(trucks.length, trucks.length === 1 ? 'móvil' : 'móviles')
+    + item(asig, asig === 1 ? 'turno asignado' : 'turnos asignados', 'ok')
+    + item(franco, franco === 1 ? 'franco' : 'francos')
+    + (taller ? item(taller, taller === 1 ? 'día en taller' : 'días en taller', 'warn') : '')
+    + (vacias ? item(vacias, vacias === 1 ? 'sin asignar' : 'sin asignar', 'pend') : '')
+    + (alertas ? item(alertas, alertas === 1 ? 'diferencia con la jornada' : 'diferencias con la jornada', 'bad') : '');
 }
 
 // ── Vista día (mobile ≤767px) ───────────────────────────────────
@@ -16432,7 +15926,7 @@ function _grillaHtmlDiaAdmin(semana) {
     const { chip, conflicto } = _grillaChipHtml(iso, t, '');
     cards += `
       <div class="grilla-dia-card ${esAdmin ? 'grilla-admin' : ''}" ${clickCard}>
-        <div class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}<small>MÓVIL</small></div>
+        <div class="grilla-dia-movil">${t.numero_interno || t.plate || '—'}<small>${t.numero_interno && t.plate ? t.plate : 'MÓVIL'}</small></div>
         <div class="grilla-dia-der">
           ${chip}
           ${conflicto ? `<div class="grilla-dia-conf">⚠ ${conflicto}</div>` : ''}
@@ -16484,10 +15978,11 @@ function _grillaRenderOpciones() {
   let html = _grillaChoferes.map(c => {
     const val = `chofer:${c.user_id}`;
     const sel = _grillaSeleccion === val;
-    return `<div class="grilla-opt ${sel ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('${val}')">👤 ${c.full_name} <span>${sel ? '✓' : ''}</span></div>`;
+    return `<div class="grilla-opt ${sel ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('${val}')"><i class="gc-av" style="--gc-h:${_grillaHue(c.user_id)}" aria-hidden="true">${_grillaIniciales(c.full_name)}</i><b class="grilla-opt-nm">${c.full_name}</b><span>${sel ? '✓' : ''}</span></div>`;
   }).join('');
-  html += `<div class="grilla-opt ${_grillaSeleccion === 'franco' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('franco')">😴 Franco (sin asignación) <span>${_grillaSeleccion === 'franco' ? '✓' : ''}</span></div>`;
-  html += `<div class="grilla-opt ${_grillaSeleccion === 'taller' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('taller')">🔧 Taller (mantenimiento) <span>${_grillaSeleccion === 'taller' ? '✓' : ''}</span></div>`;
+  html += `<div class="grilla-opt-sep">Sin chofer</div>`;
+  html += `<div class="grilla-opt ${_grillaSeleccion === 'franco' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('franco')"><i class="gc-av gc-av-franco" aria-hidden="true">F</i><b class="grilla-opt-nm">Franco <small>descanso, sin asignación</small></b><span>${_grillaSeleccion === 'franco' ? '✓' : ''}</span></div>`;
+  html += `<div class="grilla-opt ${_grillaSeleccion === 'taller' ? 'sel' : ''}" onclick="seleccionarGrillaOpcion('taller')"><i class="gc-av gc-av-taller" aria-hidden="true"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#wrench"/></svg></i><b class="grilla-opt-nm">Taller <small>el móvil está en mantenimiento</small></b><span>${_grillaSeleccion === 'taller' ? '✓' : ''}</span></div>`;
   cont.innerHTML = html;
 }
 
@@ -16908,9 +16403,9 @@ async function corregirGrillaDesdeAlerta(fecha, truckId) {
 
 const ALX_CATS = [
   { key: 'efectivo',      lbl: '💵 Efectivo',        titulo: '💵 Efectivo faltante' },
-  { key: 'incidentes',    lbl: '⚠️ Incidentes',      titulo: '⚠️ Incidentes' },
-  { key: 'grilla',        lbl: '🗓️ Jornadas/Grilla', titulo: '🗓️ Jornadas / Grilla' },
-  { key: 'km_manual',     lbl: '✏️ KM a mano',       titulo: '✏️ KM cargados a mano' },
+  { key: 'incidentes',    lbl: '⚠ Incidentes',      titulo: '⚠ Incidentes' },
+  { key: 'grilla',        lbl: '🗓 Jornadas/Grilla', titulo: '🗓 Jornadas / Grilla' },
+  { key: 'km_manual',     lbl: '✏ KM a mano',       titulo: '✏ KM cargados a mano' },
   { key: 'documentos',    lbl: '📄 Documentos',      titulo: '📄 Documentos' },
   { key: 'mantenimiento', lbl: '🔧 Mantenimiento',   titulo: '🔧 Mantenimiento' },
 ];
@@ -16929,7 +16424,7 @@ function _alxEsAdminOSup() {
 // 'YYYY-MM-DD' → 'DD-MM-AAAA'
 function _alxFecha(iso) {
   if (!iso || iso.length < 10) return iso || '';
-  return `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}`;
 }
 
 // ── Vistos (localStorage 'alertasVistas', purga > 30 días) ─────
@@ -16956,19 +16451,26 @@ function _alxGuardarVisto(id) {
 
 // ── Navegación desde las alertas ───────────────────────────────
 function alxIrRendiciones() {
-  _sueldosSubActual = 'rendiciones';
+  // La rendición mensual se registra en el detalle de cada chofer (Liquidaciones del mes).
+  _sueldosSubActual = 'mes';
   goTo('sueldos');
 }
 
 function alxIrMantenimiento() {
-  openSettingsHub();
-  switchConfigTab('tab-mantenimiento'); // dispara cargarMantenimientoTab()
+  openSettingsHub('tab-mantenimiento'); // dispara cargarMantenimientoTab()
 }
 
 function alxBellClick() {
-  if (!_alxEsAdminOSup()) return; // el chofer no tiene centro de alertas
-  _dashVistaActual = 'alertas';
-  goTo('dashboard'); // cargarDashboard() activa la vista Alertas
+  if (!_alxEsAdminOSup()) {
+    const assigned = (window.AuxiliosPhase3?.queue || []).filter(s => ['assigned','at_origin'].includes(s.status)).length;
+    if (assigned > 0) { goTo('remitos'); return; }
+    toast('No tenés notificaciones pendientes', 'info');
+    return;
+  }
+  /* Antes navegaba al panel para activar la pestaña Alertas. Ahora el panel es
+     lateral y se abre donde estés: la campanita vive en la barra de arriba y te
+     sacaba de la pantalla en la que estabas trabajando. */
+  alxAbrirPanel();
 }
 
 // ── Fuentes de datos (una por categoría) ───────────────────────
@@ -17108,7 +16610,7 @@ function _alxItemsGrilla() {
     texto: a.texto,
     sub: a.sub,
     motivo: a.motivo || null,
-    acciones: [{ lbl: '✏️ Corregir grilla', fn: `corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})` }],
+    acciones: [{ lbl: '✏ Corregir grilla', fn: `corregirGrillaDesdeAlerta('${a.fecha}', ${a.truckId})` }],
     vistoFn: `marcarAlertaGrillaVista('${a.id}')`,
   }));
 }
@@ -17132,7 +16634,7 @@ async function _alxFetchKmManual() {
     id: `km_manual|${a.alerta_id}`,
     cat: 'km_manual',
     sev: 'ambar',
-    ico: '✏️',
+    ico: '✏',
     html: _alxCardKmManual(a), // tarjeta propia (no usa el layout genérico ni el "Visto")
   }));
 }
@@ -17147,7 +16649,7 @@ function _alxCardKmManual(a) {
   return `
     <div style="background:var(--panel);border:1px solid rgba(245,166,35,0.4);border-left:4px solid var(--amber);border-radius:10px;padding:12px 14px;margin-bottom:10px" id="alx-km-${a.alerta_id}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:700;color:var(--amber)">✏️ KM cargado a mano</span>
+        <span style="font-size:12px;font-weight:700;color:var(--amber)">✏ KM cargado a mano</span>
         <span style="font-size:11px;color:var(--muted2)">${_alxFecha(a.fecha)}</span>
       </div>
       <div style="font-size:12.5px;line-height:1.5;margin:6px 0 10px">
@@ -17232,9 +16734,12 @@ async function _alxFetchMantenimiento() {
     const movil = x.numero_interno ? `móvil ${x.numero_interno}` : (x.plate || '');
     const kmAct  = x.current_km != null ? x.current_km.toLocaleString('es-AR') : '—';
     const kmDue  = x.next_due_km != null ? x.next_due_km.toLocaleString('es-AR') : '—';
+    // En km o en horas de motor, según lo que vence primero
+    const porHoras = x.manda === 'horas';
+    const cuanto = `${Math.abs((porHoras ? x.horas_restantes : x.km_restantes) || 0).toLocaleString('es-AR')} ${porHoras ? 'h de motor' : 'km'}`;
     const texto = x.estado === 'vencido'
-      ? `El <strong>${_escHtml(movil)}</strong> pasó el service <strong>${_escHtml(x.plan_name)}</strong> hace <strong>${Math.abs(x.km_restantes || 0).toLocaleString('es-AR')} km</strong>.`
-      : `El <strong>${_escHtml(movil)}</strong> está a <strong>${(x.km_restantes || 0).toLocaleString('es-AR')} km</strong> del próximo service (<strong>${_escHtml(x.plan_name)}</strong>).`;
+      ? `El <strong>${_escHtml(movil)}</strong> pasó el service <strong>${_escHtml(x.plan_name)}</strong> hace <strong>${cuanto}</strong>.`
+      : `El <strong>${_escHtml(movil)}</strong> está a <strong>${cuanto}</strong> del próximo service (<strong>${_escHtml(x.plan_name)}</strong>).`;
     return {
       id: `mantenimiento|${x.truck_id}|${x.plan_name}|${x.next_due_km}`,
       cat: 'mantenimiento',
@@ -17283,7 +16788,7 @@ async function cargarCentroAlertas() {
 async function _alxRefrescar() {
   if (!_alxEsAdminOSup()) return;
   await _alxCargarDatos();
-  if (_dashVistaActual === 'alertas') _alxRender();
+  if (alxPanelAbierto()) _alxRender();
   _alxPintarBadges();
 }
 
@@ -17393,7 +16898,7 @@ function _alxPintarBadges() {
   const esAdmin = _alxEsAdminOSup();
   const n = _alxItems.length; // no cuenta la línea de rendiciones pendientes
   const txt = n > 99 ? '99+' : String(n);
-  ['alx-tab-badge', 'alx-bell-badge'].forEach(id => {
+  ['alx-bell-badge'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = txt;

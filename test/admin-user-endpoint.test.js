@@ -1,0 +1,97 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+
+const config = fs.readFileSync('config.js', 'utf8');
+const sigma = fs.readFileSync('sigma.js', 'utf8');
+const data = fs.readFileSync('supabase.js', 'utf8');
+const envSource = config.slice(0, config.indexOf('// Build visible'));
+const createSource = sigma.slice(sigma.indexOf('async function guardarNuevoUsuario()'), sigma.indexOf('// Esta es la consulta que pedías'));
+const headerSource = data.slice(data.indexOf('async function apiAuthHeaders('), data.indexOf('\n}', data.indexOf('async function apiAuthHeaders(')) + 2);
+
+function formHarness(response, token = 'session-token') {
+  const fields = Object.fromEntries(Object.entries({
+    'nu-nombre': 'Persona de prueba', 'nu-email': 'test@example.com',
+    'nu-telefono': '', 'nu-dni': '12345678', 'nu-rol': 'chofer',
+  }).map(([id, value]) => [id, { value }]));
+  fields['btn-guardar-usuario'] = { style: {} };
+  const calls = [], notices = [], closed = [];
+  const context = vm.createContext({
+    document: { getElementById: id => fields[id] },
+    usuarioEditandoId: null,
+    SUPABASE_KEY: 'public-test-key',
+    obtenerAccessToken: async () => { if (!token) throw new Error('Sesión expirada. Volvé a ingresar.'); return token; },
+    fetch: async (url, options) => { calls.push({ url, options }); if (response instanceof Error) throw response; return response; },
+    showModalError: (id, message) => notices.push(message),
+    toast: message => notices.push(message),
+    closeModal: id => closed.push(id),
+    cargarTablaAdminUsuarios: () => {},
+    _siguienteLegajo: async rol => rol === 'chofer' ? 'CHO-011' : 'X-001',
+  });
+  vm.runInContext(envSource + headerSource + '\n' + createSource, context);
+  return { context, fields, calls, notices, closed };
+}
+
+test('individual creation uses the active admin function with session JWT and public API key', async () => {
+  const h = formHarness({ ok: true, json: async () => ({ ok: true, invitation_sent: true }) });
+  await h.context.guardarNuevoUsuario();
+  assert.equal(h.calls[0].url, 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin/api/create-user');
+  assert.equal(h.calls[0].options.headers.Authorization, 'Bearer session-token');
+  assert.equal(h.calls[0].options.headers.apikey, 'public-test-key');
+  assert.equal(JSON.parse(h.calls[0].options.body).legajo, 'CHO-011');
+  assert.equal(h.closed.length, 1);
+});
+
+test('server and network failures preserve the form and restore the save button', async () => {
+  for (const response of [
+    { ok: false, json: async () => ({ error: 'Datos de usuario inválidos' }) },
+    new TypeError('Failed to fetch'),
+    { ok: false, json: async () => { throw new SyntaxError('not JSON'); } },
+  ]) {
+    const h = formHarness(response);
+    await h.context.guardarNuevoUsuario();
+    assert.equal(h.closed.length, 0);
+    assert.equal(h.fields['nu-nombre'].value, 'Persona de prueba');
+    assert.equal(h.fields['btn-guardar-usuario'].style.pointerEvents, 'auto');
+    assert.equal(h.notices.length, 1);
+  }
+});
+
+test('expired sessions never send the user payload', async () => {
+  const h = formHarness(null, null);
+  await h.context.guardarNuevoUsuario();
+  assert.equal(h.calls.length, 0);
+  assert.match(h.notices[0], /Sesión expirada/);
+});
+
+test('bulk creation and password recovery share the supported admin endpoint', () => {
+  assert.equal((sigma.match(/ENV\.ADMIN_API_BASE_URL\}\/api\/create-user/g) || []).length, 2);
+  assert.match(sigma, /ENV\.ADMIN_API_BASE_URL\}\/api\/send-password-reset/);
+  assert.doesNotMatch(sigma, /ENV\.API_BASE_URL\}\/api\/(?:create-user|send-password-reset)/);
+});
+
+test('legajo is assigned automatically from the role prefix and the highest number in use', async () => {
+  const src = sigma.slice(sigma.indexOf('const _LEGAJO_PREFIJO'), sigma.indexOf('function _elegirRolUsuario'));
+  const ctx = vm.createContext({ _db: { from: () => ({ select: async () => ({ data: [{ legajo: 'CHO-002' }, { legajo: 'CHO-09' }, { legajo: 'CHO.010' }, { legajo: 'QA-CHO-001' }, { legajo: 'ADM-001' }], error: null }) }) } });
+  vm.runInContext(src + ';this.next=_siguienteLegajo;', ctx);
+  assert.equal(await ctx.next('chofer'), 'CHO-011');
+  assert.equal(await ctx.next('operador'), 'OPE-001');
+  assert.equal(await ctx.next('administracion'), 'ADM-002');
+});
+
+test('the personnel form has no legajo or license inputs', () => {
+  const html = fs.readFileSync('Index.html', 'utf8');
+  const form = html.slice(html.indexOf('id="modal-nuevo-usuario"'), html.indexOf('id="modal-import-csv"'));
+  assert.doesNotMatch(form, /id="nu-legajo"/);
+  assert.doesNotMatch(form, /id="nu-licencia"/);
+});
+
+test('alta de usuario avisa de quién es un email ya registrado antes de invitar', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'sigma.js'), 'utf8');
+  const body = src.slice(src.indexOf('async function guardarNuevoUsuario'), src.indexOf('async function cargarTablaAdminUsuarios'));
+  assert.match(body, /const mismoEmail = \(globalThis\._usuariosCache \|\| \[\]\)\.find/);
+  assert.ok(body.indexOf('mismoEmail') < body.indexOf('/api/create-user'));
+  assert.match(body, /que está suspendido/);
+  assert.match(body, /ese email ya está registrado en el sistema/);
+});

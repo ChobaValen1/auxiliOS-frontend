@@ -1,0 +1,102 @@
+/* AuxiliOS · Tokens de diseño (v1)
+
+   Una sola fuente para colores, tipografía, espaciados, bordes y sombras.
+   Reglas:
+   · Neutro por defecto. El color se usa para una acción principal (ámbar) o
+     para un estado que requiere atención (ámbar = próximo o falta algo,
+     rojo = vencido o mal). Verde sólo para confirmar que algo salió bien.
+   · Todo texto cumple contraste AA (4,5:1) sobre --ax-surface-2.
+   · Los nombres viejos de sigma.css (--card, --muted…) se mantienen; al
+     migrar una pantalla se pasa a estos. */
+:root {
+  /* Superficies (de más oscura a más clara) */
+  --ax-bg: #0c0e12;
+  --ax-surface: #13161d;       /* barra lateral, encabezados */
+  --ax-surface-2: #191d27;     /* tarjetas, tablas, modales */
+  --ax-surface-3: #20242f;     /* hover, fila seleccionada */
+  --ax-border: #252a38;
+  --ax-border-strong: #343a4d;
+
+  /* Texto */
+  --ax-text: #e8eaf2;          /* 14:1 */
+  --ax-text-2: #a3acc2;        /* secundario, 7,4:1 */
+  --ax-text-3: #818ba1;        /* etiquetas y ayudas, 4,6:1 (el --muted viejo daba 2,8:1) */
+
+  /* Marca y acción principal */
+  --ax-accent: #f5a623;
+  --ax-accent-hover: #ffb740;
+  --ax-accent-fg: #1a1203;     /* texto sobre ámbar, 9,2:1 */
+  --ax-accent-soft: rgba(245, 166, 35, .12);
+  --ax-focus: 0 0 0 3px rgba(245, 166, 35, .35);
+
+  /* Estados (sólo para lo que requiere atención o confirma algo) */
+  --ax-warn: #f5a623;          /* próximo, falta cargar, sin control hoy */
+  --ax-warn-soft: rgba(245, 166, 35, .12);
+  --ax-danger: #f0716b;        /* vencido, mal, error; 5,8:1 como texto */
+  --ax-danger-strong: #e2504a; /* fondos de botón peligroso */
+  --ax-danger-soft: rgba(226, 80, 74, .14);
+  --ax-ok: #27c47a;            /* guardado, cobrado, completo */
+  --ax-ok-soft: rgba(39, 196, 122, .12);
+  --ax-info: #6aa6ee;          /* en servicio, enlaces; 6,7:1 */
+  --ax-info-soft: rgba(74, 144, 226, .14);
+
+  /* Tipografía: DM Sans para todo; DM Mono sólo para códigos (patentes, N°);
+     Bebas Neue sólo para el logo. Los números usan cifras tabulares. */
+  --ax-font: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ax-font-mono: 'DM Mono', ui-monospace, 'Consolas', monospace;
+  --ax-font-brand: 'Bebas Neue', var(--ax-font);
+  --ax-fs-xs: 11px;   /* etiquetas en mayúscula, ayudas */
+  --ax-fs-sm: 12px;   /* texto secundario, tablas densas */
+  --ax-fs-md: 13px;   /* texto base de la app */
+  --ax-fs-lg: 15px;   /* títulos de tarjeta */
+  --ax-fs-xl: 18px;   /* título de pantalla / modal */
+  --ax-fs-2xl: 24px;  /* números grandes (KPI) */
+  --ax-fw-regular: 400;
+  --ax-fw-medium: 500;
+  --ax-fw-semibold: 600;
+  --ax-fw-bold: 700;
+  --ax-lh: 1.45;
+
+  /* Espaciado: múltiplos de 4 */
+  --ax-sp-1: 4px;
+  --ax-sp-2: 8px;
+  --ax-sp-3: 12px;
+  --ax-sp-4: 16px;
+  --ax-sp-5: 20px;
+  --ax-sp-6: 24px;
+  --ax-sp-8: 32px;
+
+  /* Bordes y alturas */
+  --ax-radius-sm: 6px;   /* chips, checkbox */
+  --ax-radius: 8px;      /* botones, campos */
+  --ax-radius-lg: 10px;  /* tarjetas, tablas */
+  --ax-radius-xl: 14px;  /* modales, paneles */
+  --ax-radius-pill: 999px;
+  --ax-h-sm: 30px;       /* botón chico, filtros */
+  --ax-h: 36px;          /* botón y campo */
+  --ax-h-lg: 44px;       /* botón principal en celular (dedo) */
+
+  /* Sombras: sólo lo que flota (modales, menús, avisos) */
+  --ax-shadow-pop: 0 8px 24px rgba(0, 0, 0, .35);
+  --ax-shadow-modal: 0 20px 60px rgba(0, 0, 0, .5);
+
+  /* Movimiento: corto y funcional; sólo para explicar de dónde viene o a dónde va algo.
+     Con "reducir movimiento" del sistema operativo, todo pasa a ser instantáneo. */
+  --ax-dur-fast: 120ms;   /* hover, press, color, switch */
+  --ax-dur: 180ms;        /* menús, avisos, pestañas, abrir/cerrar bloques */
+  --ax-dur-slow: 260ms;   /* modal, panel lateral, hoja desde abajo en el celular */
+  --ax-ease: cubic-bezier(.2, 0, 0, 1);        /* estándar: cambios en el lugar */
+  --ax-ease-in: cubic-bezier(.3, 0, 1, 1);      /* salida: lo que se va, acelera */
+  --ax-ease-out: cubic-bezier(0, 0, 0, 1);      /* entrada: lo que llega, frena */
+  --ax-ease-spring: cubic-bezier(.34, 1.45, .64, 1); /* con un pequeño rebote: sólo interruptor y tilde de "listo" */
+  --ax-toast-ms: 4000;    /* los avisos de éxito se van solos a los 4 s (los de error no) */
+
+  /* Capas (z-index): siempre de esta lista */
+  --ax-z-sticky: 10;
+  --ax-z-menu: 900;
+  --ax-z-modal: 1000;
+  --ax-z-toast: 1100;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --ax-dur-fast: 0ms; --ax-dur: 0ms; --ax-dur-slow: 0ms; }
+}

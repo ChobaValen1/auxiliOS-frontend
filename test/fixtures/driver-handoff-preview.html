@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QA local · Traspaso del remito</title>
+<link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/operator-services.css">
+<link rel="stylesheet" href="/operator-service-workspace-reactive-v1.css">
+<link rel="stylesheet" href="/operator-service-commercial-addons-v1.css">
+</head><body>
+<div id="modal-operador-wizard" class="modal-backdrop os-modal"><div id="os-wizard-shell"></div></div>
+<script>
+// Isolated visual fixture. No backend credentials or production connections.
+window.toast=console.log;
+window.OperatorServices={S:{companies:[{company_id:'company',trade_name:'Prestadora de prueba'},{company_id:'company2',trade_name:'Otra prestadora'}],
+  drivers:[{user_id:'driver',full_name:'Chofer de prueba'}],trucks:[{truck_id:1,numero_interno:'Móvil QA',plate:'TEST123'}],
+  moduleConfig:{field_modes:{customer_document:'optional',customer_phone:'optional',customer_email:'hidden'}}},
+  num:v=>Number(v)||0,canManage:()=>true,canRead:()=>true,loadServices:async()=>{}};
+window._db={rpc:async(name,args)=>{
+  if(name==='get_driver_service_intake_context_v1')return {data:{intake_id:'intake',intake_number:'ING-QA-001',status:'pending_admin',document_status:'submitted',
+    service:{service_order_number:'SR-14852',customer_name:'Juan Pérez (prueba)',customer_document:'20-12345678-9',customer_phone:'11 5555-1234',
+      vehicle_plate:'TEST123',vehicle_make_model:'Ford Fiesta',origin:'Av. Corrientes 1234, Buenos Aires',destination:'Av. Maipú 2450, Olivos',
+      origin_lat:-34.60,origin_lng:-58.38,destination_lat:-34.51,destination_lng:-58.48,
+      origin_place_id:'qa-o',destination_place_id:'qa-d',origin_formatted_address:'Av. Corrientes 1234, Buenos Aires',destination_formatted_address:'Av. Maipú 2450, Olivos',
+      assigned_driver_id:'driver',assigned_truck_id:1,operator_notes:'Traslado completado. Sin observaciones adicionales.'},
+    remito:{remito_id:999,nro_remito:'R-QA-001',status:'firmado',km_reales:28},
+    addons:{tolls:[{toll_id:'toll1',toll_report_id:'report1',toll_name:'Peaje Acceso Norte',quantity:1,unit_amount:3000,total_amount:3000,customer_payment_method:'cash'},{toll_id:'toll2',toll_report_id:'report2',toll_name:'Peaje Ramal Tigre',quantity:1,unit_amount:2500,total_amount:2500,customer_payment_method:'transfer'}],
+      excesses:[{concept_id:'excess1',excess_report_id:'report3',concept_name:'Espera adicional',quantity:1,unit_amount:10000,total_amount:10000,customer_payment_method:'not_collected'}],evidence:[]}},error:null};
+  if(name==='get_operator_service_context_v1')return {data:{bases:[{base_id:'base',name:'Base central',latitude:-34.6,longitude:-58.4}],services:[{concept_id:'type',name:'Remolque',category:'primary',available:true,has_price:true},{concept_id:'excess1',name:'Espera adicional',category:'secondary',can_be_secondary:true,available:true,has_price:true}],billing:{route_mode:'origin_destination'}},error:null};
+  if(name==='get_operator_resource_availability')return {data:{drivers:[],trucks:[]},error:null};
+  if(name==='list_toll_catalog')return {data:[{toll_id:'toll1',name:'Peaje Acceso Norte',rates:[]},{toll_id:'toll2',name:'Peaje Ramal Tigre',rates:[]}],error:null};
+  if(name==='check_recent_provider_code_v3')return {data:{duplicate:false},error:null};
+  return {data:null,error:{message:'QA: guardado deshabilitado; esta pantalla no se conecta a datos reales.'}};
+},functions:{invoke:async()=>({data:{distanceMeters:28000,durationSeconds:2100,provider:'google_routes'},error:null})}};
+</script>
+<script src="/operator-service-wizard.js"></script>
+<script src="/operator-service-workspace-reactive-v1.js"></script>
+<script src="/operator-service-commercial-addons-v1.js"></script>
+<script>window.OperatorServices.openWizard({intake_id:'intake'});</script>
+</body></html>

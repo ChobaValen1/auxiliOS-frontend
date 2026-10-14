@@ -1,0 +1,24 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {PGlite}=require('@electric-sql/pglite');
+test('cierre manual entra a facturación con guardia documental activa; firmado y activado no eluden revisión',async t=>{
+ const db=new PGlite();t.after(()=>db.close());
+ await db.exec(fs.readFileSync('test/fixtures/driver-handoff-schema.sql','utf8'));
+ await db.exec('alter table operator_services add column driver_activated boolean default false;');
+ await db.exec(fs.readFileSync('test/fixtures/document-billing-guard.sql','utf8'));
+ await db.exec(fs.readFileSync('supabase/migrations/20260925021901_manual_finalize_billing_fix.sql','utf8'));
+ await db.exec("create function app_private.operator_service_missing_required_v2(uuid,jsonb) returns text[] language sql as $$select '{}'::text[]$$;");
+ const id='20000000-0000-4000-8000-000000000009';
+ await db.exec("select set_config('test.uid','10000000-0000-4000-8000-000000000002',false),set_config('test.role','operador',false)");
+ await db.query("insert into operator_services(service_id,status,operator_notes,driver_activated) values($1,'assigned','Cierre confirmado',true)",[id]);
+ const close=()=>db.query("select transition_operator_service_v2($1,'finalize')",[id]);
+ await assert.rejects(close(),/activado/);
+ await db.query("update operator_services set driver_activated=false,document_status='submitted' where service_id=$1",[id]);
+ await assert.rejects(close(),/remito firmado/);
+ await db.query("update operator_services set document_status='not_started' where service_id=$1",[id]);
+ await close();
+ const row=(await db.query('select status,billing_status,document_status from operator_services where service_id=$1',[id])).rows[0];
+ assert.deepEqual(row,{status:'completed',billing_status:'pending',document_status:'exception_approved'});
+ assert.equal((await db.query("select count(*)::int n from operator_service_events where event_type='manual_document_exception'")).rows[0].n,1);
+});

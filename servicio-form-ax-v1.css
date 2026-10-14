@@ -1,0 +1,516 @@
+/* AuxiliOS · Formulario de servicio de Prestadora con el sistema visual
+   Va encima de operator-service-workspace-reactive-v1.css y de
+   operator-service-commercial-addons-v1.css: todo cuelga de #modal-operador-wizard
+   para ganar sin depender del orden de carga. Sólo tokens.
+   · Letra legible (13 px en campos, 12 en ayudas) y campos de 36 px.
+   · Origen y Destino neutros: el estado lo dice la marca (validada / sin validar),
+     no el color de toda la caja.
+   · Lo que falta se marca en el campo con el texto debajo; no hay franja roja arriba. */
+
+#modal-operador-wizard .osv4-reactive {
+  --osv2-bg: var(--ax-bg);
+  --osv2-panel: var(--ax-surface);
+  --osv2-card: var(--ax-surface-2);
+  --osv2-border: var(--ax-border);
+  --osv2-border-strong: var(--ax-border-strong);
+  --osv2-text: var(--ax-text);
+  --osv2-muted: var(--ax-text-3);
+  --osv2-muted2: var(--ax-text-2);
+  --osv2-amber: var(--ax-accent);
+  --osv2-amber-lo: var(--ax-accent-soft);
+  --osv2-blue: var(--ax-info);
+  --osv2-blue-lo: var(--ax-info-soft);
+  --osv2-green: var(--ax-ok);
+  --osv2-green-lo: var(--ax-ok-soft);
+  --osv2-red: var(--ax-danger);
+  --osv2-red-lo: var(--ax-danger-soft);
+  grid-template-rows: 60px minmax(0, 1fr) 64px;
+  font-family: var(--ax-font);
+  font-size: var(--ax-fs-md);
+}
+
+/* ── Encabezado y pie ──────────────────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-header { padding: 0 var(--ax-sp-4) 0 var(--ax-sp-6); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osv2-header span { margin-bottom: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osv2-header h2 { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osv2-header button { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); min-height: 0; padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-header button:hover { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osv2-footer { padding: 0 var(--ax-sp-6); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osv2-footer > span { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv2-footer button.primary { height: var(--ax-h-lg); padding: 0 20px; border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-accent-fg); font-size: 14px; font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-footer button.primary:hover { background: var(--ax-accent-hover); }
+#modal-operador-wizard .osv4-reactive .osv2-footer button.primary:active:not(:disabled) { transform: scale(.98); }
+/* Errores del servidor: un aviso dentro del formulario, no una franja flotando encima. */
+#modal-operador-wizard .osv4-reactive .osv2-global-error { top: 68px; padding: 10px 14px; border: 1px solid rgba(226, 80, 74, .5); border-radius: var(--ax-radius); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); animation: ax-rise var(--ax-dur) var(--ax-ease-out) both; }
+
+/* ── Columnas, tarjetas y campos ───────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-grid { font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osv2-column { padding: var(--ax-sp-4); }
+#modal-operador-wizard .osv4-reactive .admin-column, #modal-operador-wizard .osv4-reactive .actions-column { gap: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .route-column { gap: var(--ax-sp-3) !important; }
+#modal-operador-wizard .osv4-reactive .osv2-inline-grid { gap: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .top-fields { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); }
+#modal-operador-wizard .osv4-reactive .top-fields label > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osv2-card, #modal-operador-wizard .osv4-reactive .osv2-location, #modal-operador-wizard .osv4-reactive .osv2-concepts-section, #modal-operador-wizard .osv4-reactive .osv2-observations { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-operador-wizard .osv4-reactive .admin-card, #modal-operador-wizard .osv4-reactive .vehicle-card, #modal-operador-wizard .osv4-reactive .distance-card, #modal-operador-wizard .osv4-reactive .osv2-observations, #modal-operador-wizard .osv4-reactive .osv2-concepts-section { gap: var(--ax-sp-3) !important; padding: var(--ax-sp-3) var(--ax-sp-4) var(--ax-sp-4) !important; }
+#modal-operador-wizard .osv4-reactive label { gap: 6px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive label > span { min-height: 0; line-height: 1.3; }
+#modal-operador-wizard .osv4-reactive input, #modal-operador-wizard .osv4-reactive select, #modal-operador-wizard .osv4-reactive textarea { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); color: var(--ax-text); font-family: var(--ax-font); font-size: var(--ax-fs-md); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive input, #modal-operador-wizard .osv4-reactive select { height: var(--ax-h); padding: 0 12px; }
+#modal-operador-wizard .osv4-reactive select { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, var(--ax-text-3) 50%), linear-gradient(135deg, var(--ax-text-3) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+#modal-operador-wizard .osv4-reactive textarea { padding: 10px 12px; }
+#modal-operador-wizard .osv4-reactive input:hover:not(:disabled):not(:focus), #modal-operador-wizard .osv4-reactive select:hover:not(:disabled):not(:focus), #modal-operador-wizard .osv4-reactive textarea:hover:not(:disabled):not(:focus) { border-color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive input:focus, #modal-operador-wizard .osv4-reactive select:focus, #modal-operador-wizard .osv4-reactive textarea:focus { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#modal-operador-wizard .osv4-reactive input:disabled, #modal-operador-wizard .osv4-reactive select:disabled { border-color: var(--ax-border); background-color: var(--ax-surface); color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive input::placeholder, #modal-operador-wizard .osv4-reactive textarea::placeholder { color: var(--ax-text-3); }
+/* Lo que falta: borde rojo y el texto debajo del campo. */
+#modal-operador-wizard .osv4-reactive [aria-invalid="true"] { border-color: var(--ax-danger-strong) !important; outline: none !important; }
+#modal-operador-wizard .osv4-reactive .osv4-address-input:has([aria-invalid="true"]) { border-color: var(--ax-danger-strong); }
+#modal-operador-wizard .osv4-reactive .osv4-field-msg { display: block; margin-top: 4px; color: var(--ax-danger); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); line-height: 1.35; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osv3-code-warning { margin-top: 4px; color: var(--ax-warn); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv2-field-error { color: var(--ax-danger); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+
+/* Títulos de las tarjetas: etiqueta chica en mayúscula, sin punto de color. */
+#modal-operador-wizard .osv4-reactive .osv2-section-label, #modal-operador-wizard .osv4-reactive .osv2-location .osv2-section-label { gap: 8px; min-height: 18px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive .osv2-section-label > span { display: none; }
+#modal-operador-wizard .osv4-reactive .osv2-section-label b { color: var(--ax-text-3); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osv2-observations > span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+
+/* Tipo de logística: control segmentado. */
+#modal-operador-wizard .osv4-reactive .osv2-logistics { gap: 6px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics > div { display: inline-flex; align-self: start; gap: 2px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics button { height: calc(var(--ax-h) - 8px); min-height: 0; padding: 0 14px; border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics button:hover { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osv2-logistics button.active { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+
+/* Estado de la prestadora: aviso compacto con ícono. */
+#modal-operador-wizard .osv4-reactive .osv4-context-status { gap: 6px; }
+#modal-operador-wizard .osv4-reactive .osv4-context-line { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text); font-size: var(--ax-fs-sm); line-height: 1.4; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osv4-context-line .ax-icon { margin-top: 1px; }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.ok { border-color: rgba(39, 196, 122, .35); background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.ok .ax-icon { color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.warning { border-color: rgba(245, 166, 35, .45); background: var(--ax-warn-soft); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.warning .ax-icon { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.blocking { border-color: rgba(226, 80, 74, .5); background: var(--ax-danger-soft); }
+#modal-operador-wizard .osv4-reactive .osv4-context-line.blocking .ax-icon { color: var(--ax-danger); }
+
+/* Chofer y móvil: la marca confirma que está libre (o dice por qué no). */
+#modal-operador-wizard .osv4-reactive .os-resource-hint { display: flex; align-items: center; gap: 6px; min-height: 18px; margin-top: 6px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="done"] { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="error"], #modal-operador-wizard .osv4-reactive .os-resource-hint.is-blocked { color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="warn"] { color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .os-resource-hint[data-status="warn"] .ax-icon { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive [data-status] > .ax-mark { width: 16px; height: 16px; }
+#modal-operador-wizard .osv4-reactive [data-status] > span { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+
+/* ── Origen y destino ──────────────────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-location, #modal-operador-wizard .osv4-reactive .osv2-location.origin, #modal-operador-wizard .osv4-reactive .osv2-location.destination { gap: 8px; padding: var(--ax-sp-3) var(--ax-sp-4) var(--ax-sp-4); border-color: var(--ax-border); background: var(--ax-surface-2); transition: border-color var(--ax-dur) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv2-location[data-address-state="ok"] { border-color: rgba(39, 196, 122, .4); }
+#modal-operador-wizard .osv4-reactive .osv4-location-head { grid-template-columns: auto minmax(0, 1fr); gap: 8px !important; min-height: 18px; }
+#modal-operador-wizard .osv4-reactive .osv4-location-head > span:first-child { display: none; }
+#modal-operador-wizard .osv4-reactive .osv4-address-status { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); letter-spacing: 0; text-transform: none; }
+#modal-operador-wizard .osv4-reactive .osv4-address-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osv4-address-status[data-status="done"] { color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .osv4-address-status.warning:not([data-status]) { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input { gap: 8px; padding-left: 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input > span { display: inline-grid; place-items: center; color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osv4-address-input input { height: calc(var(--ax-h) - 2px) !important; padding-left: 0 !important; }
+/* Sugerencias con el aspecto de un menú del sistema. */
+#modal-operador-wizard .osv4-reactive .osv4-suggestions { top: calc(100% + 4px); padding: var(--ax-sp-1); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); transform-origin: top center; animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions button { gap: 2px; padding: 8px 10px; border: 0; border-radius: var(--ax-radius-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions button:hover, #modal-operador-wizard .osv4-reactive .osv4-suggestions button:focus-visible { outline: none; background: var(--ax-surface-3); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestions span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestion-state { padding: 10px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-suggestion-state.error { color: var(--ax-danger); }
+
+/* Recorrido calculado: marca mientras calcula y los km se marcan al llegar. */
+#modal-operador-wizard .osv4-reactive .osv4-note { display: flex; align-items: center; gap: 6px; min-height: 18px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#modal-operador-wizard .osv4-reactive .osv4-note[data-status="done"] { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osv4-note[data-status="error"] { color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .distance-card.ax-flash { animation: ax-flash 1.6s var(--ax-ease) both; }
+
+/* ── Conceptos adicionales ─────────────────────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osv2-concepts-head b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osv2-concepts-head small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv2-add-concept-trigger { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h-sm); min-height: 0 !important; padding: 0 10px !important; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-size: var(--ax-fs-sm) !important; font-weight: var(--ax-fw-semibold); white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osv2-add-concept-trigger:hover:not(:disabled) { background: var(--ax-surface-3); }
+#modal-operador-wizard .osv4-reactive .osv2-empty { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osv4-concept-head { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row { gap: 8px; padding: 8px; border-color: var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row select, #modal-operador-wizard .osv4-reactive .osv4-concept-row input { height: var(--ax-h-sm) !important; }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row > button { width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .osv4-concept-row > button:hover { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .osv4-code-cell, #modal-operador-wizard .osv4-reactive .osv4-qty-cell small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osv4-code-cell span { line-height: calc(var(--ax-h-sm) - 2px); border-color: var(--ax-border); border-radius: var(--ax-radius-sm); background: var(--ax-bg); font-family: var(--ax-font-mono); }
+
+/* ── Peajes, excedentes y formato de cobro ─────────────────────────── */
+#modal-operador-wizard .osv4-reactive .osca-actions { gap: var(--ax-sp-2); padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osca-actions button { min-height: 0; height: calc(var(--ax-h) - 8px); border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osca-actions button:hover { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osca-actions button.active { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#modal-operador-wizard .osv4-reactive .osca-actions em { min-width: 20px; height: 20px; margin-left: 6px; background: var(--ax-accent-soft); color: var(--ax-accent); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osca-panel { gap: var(--ax-sp-3); padding: var(--ax-sp-4); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osca-panel.tolls, #modal-operador-wizard .osv4-reactive .osca-panel.excess { border-top: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .osca-title b { font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-title small { margin-top: 4px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+/* Formato de cobro: tres opciones grandes; la elegida con borde y punto ámbar. */
+#modal-operador-wizard .osv4-reactive .osca-format-list { gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button { grid-template-columns: 18px 1fr; gap: 10px; min-height: var(--ax-h-lg); padding: 8px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button:hover:not(:disabled) { border-color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button.active, #modal-operador-wizard .osv4-reactive .osca-format-list > button[aria-checked="true"] { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .osca-format-list b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-format-list small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-radio { width: 18px; height: 18px; border: 2px solid var(--ax-border-strong); background: transparent; transition: border-width var(--ax-dur) var(--ax-ease-spring), border-color var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive .osca-format-list button.active .osca-radio, #modal-operador-wizard .osv4-reactive .osca-format-list button[aria-checked="true"] .osca-radio { border: 5px solid var(--ax-accent); background: var(--ax-accent-fg); }
+#modal-operador-wizard .osv4-reactive .osca-format-selected { gap: var(--ax-sp-3); min-height: var(--ax-h-lg); padding: 8px 8px 8px 12px; border: 1px solid rgba(245, 166, 35, .55); border-radius: var(--ax-radius); background: var(--ax-accent-soft); animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .osca-format-selected span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osca-format-selected b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-format-selected button { height: var(--ax-h-sm); min-height: 0; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-surface-2); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-format-selected button:hover { border-color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osca-gate { gap: 4px; padding: var(--ax-sp-3); border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; }
+#modal-operador-wizard .osv4-reactive .osca-gate b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-gate span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-head { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row { gap: 6px; padding: 8px; border-color: var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row.excess { border-left: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row input, #modal-operador-wizard .osv4-reactive .osca-matrix-row select { height: var(--ax-h-sm); border-radius: var(--ax-radius-sm); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-total b { font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#modal-operador-wizard .osv4-reactive .osca-remove { width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; background: transparent; color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .osca-remove:hover { background: var(--ax-danger-soft); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .osca-add-row { min-height: var(--ax-h); border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-add-row:hover { border-color: var(--ax-text-3); background: var(--ax-surface-3); }
+#modal-operador-wizard .osv4-reactive .osca-empty-row { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-summary, #modal-operador-wizard .osv4-reactive .osca-actual { font-size: var(--ax-fs-md); font-variant-numeric: tabular-nums; }
+#modal-operador-wizard .osv4-reactive .osca-summary span, #modal-operador-wizard .osv4-reactive .osca-actual span { color: var(--ax-text-2); }
+@media (max-width: 1100px) {
+  #modal-operador-wizard .osv4-reactive .osca-matrix-row > div::before { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+}
+
+/* ── Particular (private-service-v1): mismo lenguaje que el de Prestadora ── */
+#psv-form .psv-dialog, #psv-tipo .psv-dialog { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+#psv-form[data-enter] .psv-dialog, #psv-tipo .psv-dialog { animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#psv-form .psv-dialog h2, #psv-tipo .psv-dialog h2 { font-size: var(--ax-fs-xl); font-weight: var(--ax-fw-bold); }
+#psv-form .psv-dialog header p, #psv-tipo .psv-dialog header p { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#psv-form .psv-x, #psv-tipo .psv-x { display: inline-grid; place-items: center; width: var(--ax-h); height: var(--ax-h); border: 0; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+#psv-form .psv-x:hover, #psv-tipo .psv-x:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#psv-tipo .psv-choice { border-color: var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-bg); transition: border-color var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#psv-tipo .psv-choice:hover, #psv-tipo .psv-choice:focus-visible { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#psv-tipo .psv-choice:active { transform: scale(.98); }
+#psv-form .psv-body h3 { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }
+#psv-form .psv-field > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#psv-form .psv-body input:not([type=checkbox]), #psv-form .psv-body select, #psv-form .psv-body textarea { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background-color: var(--ax-bg); font-family: var(--ax-font); font-size: var(--ax-fs-md); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-body input:not([type=checkbox]):focus, #psv-form .psv-body select:focus, #psv-form .psv-body textarea:focus, #psv-form .psv-money:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#psv-form .psv-money { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#psv-form .psv-body .psv-money input { box-shadow: none !important; }
+/* Lo que falta: borde rojo y el texto debajo (no un recuadro rojo arriba). */
+#psv-form .psv-field.ax-invalid input, #psv-form .psv-field.ax-invalid select, #psv-form .psv-field.ax-invalid .psv-money, #psv-form .psv-field.ax-invalid .psv-addr-input { border-color: var(--ax-danger-strong) !important; }
+#psv-form .psv-field-error { color: var(--ax-danger); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); line-height: 1.35; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+/* Errores del servidor o de configuración: aviso sobrio con ícono. */
+#psv-form .psv-error { display: flex; gap: 8px; margin: 12px 0 0; padding: 10px 12px; border: 1px solid rgba(226, 80, 74, .5); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#psv-form .psv-error::before { content: ''; flex: 0 0 8px; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--ax-danger); }
+/* Controles segmentados neutros (la opción elegida no se pinta de ámbar). */
+#psv-form .psv-seg { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#psv-form .psv-seg button { height: calc(var(--ax-h) - 6px); padding: 0 14px; border-radius: var(--ax-radius-sm); color: var(--ax-text-2); font-size: var(--ax-fs-md); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-seg button:hover { color: var(--ax-text); }
+#psv-form .psv-seg button[aria-pressed="true"] { background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+#psv-form .psv-total { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#psv-form .psv-total span { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#psv-form .psv-total b { color: var(--ax-text); font-size: var(--ax-fs-xl); font-variant-numeric: tabular-nums; }
+#psv-form .psv-hint { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+/* Direcciones: ícono, marca de validada y sugerencias como menú. */
+#psv-form .psv-addr-input { position: relative; display: flex; align-items: center; gap: 8px; padding-left: 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); transition: border-color var(--ax-dur-fast) var(--ax-ease), box-shadow var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-addr-input:focus-within { border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#psv-form .psv-addr-input > .ax-icon { color: var(--ax-text-3); }
+#psv-form .psv-body .psv-addr-input input { padding-left: 0; border: 0; background: transparent; box-shadow: none !important; }
+#psv-form .psv-addr.is-valid .psv-addr-input { border-color: rgba(39, 196, 122, .45); }
+#psv-form .psv-addr-state { top: 0; right: 0; }
+#psv-form .psv-sugs { padding: var(--ax-sp-1); border-color: var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); transform-origin: top center; animation: ax-pop var(--ax-dur) var(--ax-ease-out) both; }
+#psv-form .psv-sugs button { border-radius: var(--ax-radius-sm); }
+#psv-form .psv-sugs button:hover, #psv-form .psv-sugs button:focus-visible { outline: none; background: var(--ax-surface-3); }
+/* Marcas: validada, verificando, recorrido, móvil y chofer libres. */
+#psv-form .psv-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-style: normal; font-weight: var(--ax-fw-medium); }
+#psv-form .psv-status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#psv-form .psv-status > .ax-mark { width: 16px; height: 16px; }
+#psv-form .psv-status[data-status="done"] { color: var(--ax-text); }
+#psv-form .psv-addr-state .psv-status[data-status="done"] { color: var(--ax-ok); }
+#psv-form .psv-status[data-status="error"] { color: var(--ax-danger); }
+#psv-form .psv-status[data-status="warn"] .ax-icon { color: var(--ax-warn); }
+#psv-form .psv-res { display: block; min-height: 18px; }
+#psv-form .psv-route { display: flex; margin-top: 10px; border-radius: var(--ax-radius-sm); }
+#psv-form .psv-dialog > footer .psv-btn { height: var(--ax-h); padding: 0 16px; border-radius: var(--ax-radius); font-family: var(--ax-font); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); transition: background var(--ax-dur-fast) var(--ax-ease), transform var(--ax-dur-fast) var(--ax-ease); }
+#psv-form .psv-dialog > footer .psv-btn:active:not(:disabled) { transform: scale(.98); }
+#psv-form .psv-dialog > footer .psv-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#psv-form .psv-dialog > footer .psv-btn.primary:hover { background: var(--ax-accent-hover); }
+@media (max-width: 640px) {
+  #psv-form[data-enter] .psv-dialog { animation-name: ax-sheet-in; }
+}
+/* Con un error debajo de un campo, los de al lado no se corren: todo arriba. */
+#psv-form .psv-field { align-content: start; }
+#psv-form .psv-res { min-width: 0; overflow: hidden; }
+#psv-form .psv-res .psv-status { max-width: 100%; }
+#psv-form .psv-seg-wide { display: flex; width: 100%; box-sizing: border-box; }
+#psv-form .psv-seg-wide button { flex: 1 1 0; min-width: 0; padding: 0 8px; white-space: nowrap; }
+/* La lista de sugerencias de una dirección tapa lo que está debajo (Destino incluido):
+   la caja que se está escribiendo sube de capa mientras tiene el foco o la lista abierta. */
+#modal-operador-wizard .osv4-reactive .osv2-location:focus-within,
+#modal-operador-wizard .osv4-reactive .osv2-location:has(.osv4-suggestions:not([hidden])) { position: relative; z-index: 40; }
+#modal-operador-wizard .osv4-reactive .osv4-address-wrap:focus-within,
+#modal-operador-wizard .osv4-reactive .osv4-address-wrap:has(.osv4-suggestions:not([hidden])) { z-index: 41; }
+#psv-form .psv-field.psv-addr:focus-within, #psv-form .psv-field.psv-addr:has(.psv-sugs:not([hidden])) { z-index: 10; }
+/* Peajes: duplicar una fila o todas (para la vuelta). */
+/* Peajes y excedentes en la columna angosta: cada fila en dos columnas con su etiqueta
+   (la grilla de seis columnas no entraba y los campos quedaban cortados). */
+#modal-operador-wizard .osv4-reactive .osca-matrix-head { display: none; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row, #modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 10px; padding: 10px 12px 12px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div::before { content: attr(data-label); display: block; margin: 0 0 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total { justify-content: flex-start; min-height: var(--ax-h-sm); padding: 0; flex-direction: column; align-items: flex-start; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total b { font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > .osca-remove { grid-column: 1 / -1; justify-self: end; display: inline-flex; gap: 2px; margin-top: -2px; }
+#modal-operador-wizard .osv4-reactive .osca-add-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
+/* Agregar peaje va solo en su línea; Detectar y Duplicar comparten la siguiente, y si falta uno el otro ocupa toda la línea. */
+#modal-operador-wizard .osv4-reactive .osca-add-actions > :first-child { grid-column: 1 / -1; }
+#modal-operador-wizard .osv4-reactive .osca-add-actions > [data-ca="detect-tolls"]:last-child { grid-column: 1 / -1; }
+#modal-operador-wizard .osv4-reactive .osca-add-row { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-align: center; line-height: 1.25; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row { animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+/* Interruptores del sistema (se pueden arrastrar). */
+#psv-form .psv-check.ax-switch { gap: 10px; min-height: var(--ax-h); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#psv-form .psv-check.ax-switch input { width: 36px; height: 20px; flex: 0 0 auto; accent-color: auto; }
+/* Editar: cómo se pagó cada cobro. */
+#psv-form .psv-pagos { display: grid; gap: var(--ax-sp-2); margin-top: var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#psv-form .psv-pagos-t { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#psv-form .psv-pago { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ax-sp-3); }
+#psv-form .psv-pago > span { display: grid; gap: 2px; min-width: 0; }
+#psv-form .psv-pago b { font-size: var(--ax-fs-md); font-variant-numeric: tabular-nums; }
+#psv-form .psv-pago small { color: var(--ax-warn); font-size: var(--ax-fs-sm); }
+#psv-form .psv-pago .psv-seg button { height: calc(var(--ax-h-sm) - 4px); padding: 0 10px; font-size: var(--ax-fs-sm); }
+#psv-form .psv-pago .psv-seg button:disabled { cursor: not-allowed; opacity: .6; }
+/* Listas: el botón del sistema ocupa el lugar del select. */
+#psv-form .ax-select-btn { height: 38px; }
+#psv-form .ax-invalid .ax-select-btn { border-color: var(--ax-danger-strong); }
+/* Modal de cobro: mismo lenguaje. */
+#ppv-modal .psv-dialog { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); animation: ax-rise var(--ax-dur-slow) var(--ax-ease-out) both; }
+#ppv-modal .psv-seg { border-color: var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#ppv-modal .psv-seg button { height: calc(var(--ax-h) - 6px); color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#ppv-modal .psv-seg button[aria-pressed="true"] { color: var(--ax-text); }
+#ppv-modal .psv-dialog > footer .psv-btn.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+/* "¿Pagó algo…?" y "Medio de pago" a lo ancho: con tres opciones no entraban en media columna. */
+#psv-form .psv-grid > .psv-field:has(> [data-ax-seg="pago"]), #psv-form .psv-grid > .psv-field:has(> [data-ax-seg="sena_medio"]) { grid-column: 1 / -1; }
+#psv-form .ax-select-btn, .ax-select-btn { font-weight: var(--ax-fw-regular); }
+
+/* Historial del servicio: tarjeta en la columna derecha, debajo de la revisión. Línea de tiempo con un ícono por evento. */
+#modal-operador-wizard .osv4-reactive #osv4-history-panel { display: grid; gap: var(--ax-sp-3); color: var(--ax-text); font-family: var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .osca-actions.has-history { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#modal-operador-wizard .osv4-reactive #osv4-history-panel[hidden] { display: none; }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot { padding: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history { padding: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); margin: 0 0 var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head > span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive #osv4-lifecycle-slot .osl-history-head > b { padding: 2px var(--ax-sp-2); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-full, 999px); color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osl-timeline { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+#modal-operador-wizard .osv4-reactive .osl-timeline li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--ax-sp-3); padding: 0 0 var(--ax-sp-4); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li:last-child { padding-bottom: 0; }
+#modal-operador-wizard .osv4-reactive .osl-timeline li:not(:last-child)::before { content: ""; position: absolute; left: 11px; top: 26px; bottom: 2px; width: 1px; background: var(--ax-border-strong); }
+#modal-operador-wizard .osv4-reactive .osl-timeline-dot { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid var(--ax-border-strong); border-radius: 50%; background: var(--ax-surface-2); color: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li:last-child .osl-timeline-dot { border-color: var(--ax-accent); color: var(--ax-accent); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li[data-type="finalized"] .osl-timeline-dot { border-color: var(--ax-ok); color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .osl-timeline li[data-type="annulled"] .osl-timeline-dot { border-color: var(--ax-danger); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .osl-timeline b { display: block; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); line-height: var(--ax-lh); }
+#modal-operador-wizard .osv4-reactive .osl-timeline small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osl-empty { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box { margin-top: var(--ax-sp-4); padding-top: var(--ax-sp-3); border-top: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary { display: flex; align-items: center; gap: var(--ax-sp-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); cursor: pointer; list-style: none; }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary::-webkit-details-marker { display: none; }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary em { font-style: normal; color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box > summary .osl-chevron { margin-left: auto; transition: transform var(--ax-dur) var(--ax-ease-out); }
+#modal-operador-wizard .osv4-reactive .osl-assignments-box:not([open]) > summary .osl-chevron { transform: rotate(-90deg); }
+#modal-operador-wizard .osv4-reactive .osl-assignments { display: grid; gap: var(--ax-sp-2); margin-top: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .osl-assignments > div { padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osl-assignments b { display: flex; align-items: center; gap: var(--ax-sp-2); color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osl-assignments small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* Detectar peajes del recorrido: mapa chico (SVG) con el trazado, los puntos y un número en cada peaje. */
+#modal-operador-wizard .osv4-reactive .tdt-panel { display: grid; gap: var(--ax-sp-3); margin-top: var(--ax-sp-3); padding: var(--ax-sp-4); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+#modal-operador-wizard .osv4-reactive .tdt-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .tdt-head b { display: block; font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-head small { display: block; margin-top: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .tdt-close { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-mapbox { display: grid; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); overflow: hidden; }
+#modal-operador-wizard .osv4-reactive .tdt-map { display: block; width: 100%; height: auto; }
+#modal-operador-wizard .osv4-reactive .tdt-route { fill: none; stroke: var(--ax-text-3); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+#modal-operador-wizard .osv4-reactive .tdt-wp circle { fill: var(--ax-text); stroke: var(--ax-bg); stroke-width: 2; }
+#modal-operador-wizard .osv4-reactive .tdt-wp text { fill: var(--ax-bg); font: var(--ax-fw-bold) 10px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-wp text.tdt-wp-multi { font-size: 7px; }
+#modal-operador-wizard .osv4-reactive .tdt-toll circle { fill: var(--ax-accent); stroke: var(--ax-bg); stroke-width: 2; }
+#modal-operador-wizard .osv4-reactive .tdt-toll text { fill: var(--ax-bg); font: var(--ax-fw-bold) 10px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-list { display: grid; gap: var(--ax-sp-2); margin: 0; padding: 0; list-style: none; }
+#modal-operador-wizard .osv4-reactive .tdt-list label { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: flex-start; text-align: left; gap: var(--ax-sp-3); min-height: var(--ax-h); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-list label:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .tdt-list li.is-loaded label { opacity: .6; cursor: default; }
+#modal-operador-wizard .osv4-reactive .tdt-list input { width: 18px; height: 18px; accent-color: var(--ax-accent); flex: none; }
+#modal-operador-wizard .osv4-reactive .tdt-num { display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--ax-accent); color: var(--ax-bg); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .tdt-name { display: grid; min-width: 0; }
+#modal-operador-wizard .osv4-reactive .tdt-name b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .tdt-name small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .tdt-note { display: flex; align-items: flex-start; gap: var(--ax-sp-2); margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#modal-operador-wizard .osv4-reactive .tdt-note .ax-icon { flex: none; margin-top: 1px; color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .tdt-note b { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-empty { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .tdt-actions { display: flex; justify-content: flex-end; }
+#modal-operador-wizard .osv4-reactive .tdt-apply { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); padding: 0 var(--ax-sp-4); border: 1px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent); color: var(--ax-bg); font-weight: var(--ax-fw-bold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-apply:disabled { border-color: var(--ax-border-strong); background: transparent; color: var(--ax-text-3); cursor: default; }
+#modal-operador-wizard .osv4-reactive .tdt-list input { margin: 0; }
+
+/* Referencias del mapa de peajes: sentido del recorrido, nombres, escala, norte e itinerario con direcciones y km por tramo. */
+#modal-operador-wizard .osv4-reactive .tdt-arrow { fill: none; stroke: var(--ax-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#modal-operador-wizard .osv4-reactive .tdt-scale path { fill: none; stroke: var(--ax-text-2); stroke-width: 1.4; }
+#modal-operador-wizard .osv4-reactive .tdt-scale text { fill: var(--ax-text-2); font: var(--ax-fw-semibold) 9px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-north path { fill: var(--ax-text-2); }
+#modal-operador-wizard .osv4-reactive .tdt-north text { fill: var(--ax-text-2); font: var(--ax-fw-bold) 9px var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .tdt-road { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* Tabla de referencias, abajo a la izquierda del mapa. */
+#modal-operador-wizard .osv4-reactive .tdt-legend { width: min(100%, 290px); margin: 0; padding: var(--ax-sp-2) var(--ax-sp-3) var(--ax-sp-3); border-collapse: collapse; font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .tdt-legend caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+#modal-operador-wizard .osv4-reactive .tdt-legend th { width: 30px; padding: 3px 0; vertical-align: top; text-align: left; font-weight: inherit; }
+#modal-operador-wizard .osv4-reactive .tdt-legend td { padding: 3px 0; vertical-align: top; color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .tdt-legend td b { display: block; color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .tdt-legend td span { display: block; color: var(--ax-text-2); font-size: var(--ax-fs-xs); overflow-wrap: anywhere; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-head td { padding-top: var(--ax-sp-2); border-top: 1px solid var(--ax-border); color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-none { color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .tdt-code { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ax-text); color: var(--ax-bg); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .tdt-legend .tdt-num { width: 20px; height: 20px; }
+#modal-operador-wizard .osv4-reactive .osca-actions em.osca-required { background: var(--ax-warn-soft); color: var(--ax-warn); }
+
+/* Peajes y excedentes compactos: formato de cobro en una línea y cada peaje en dos renglones
+   (peaje · cantidad · total · quitar / quién paga · medio de pago). Los rótulos se leen en cada campo. */
+#modal-operador-wizard .osv4-reactive .osca-panel { gap: var(--ax-sp-2); padding: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .osca-field-label { display: block; margin: 0 0 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+#modal-operador-wizard .osv4-reactive .osca-format-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button { display: grid; place-items: center; grid-template-columns: 1fr; min-height: 34px; padding: 3px 6px; text-align: center; line-height: 1.15; }
+#modal-operador-wizard .osv4-reactive .osca-format-list .osca-radio { display: none; }
+#modal-operador-wizard .osv4-reactive .osca-format-list b { font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-format-list > button.active, #modal-operador-wizard .osv4-reactive .osca-format-list > button[aria-checked="true"] { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .osca-panel .osca-matrix-body { gap: 6px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div::before { content: none; display: none; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cantidad"],
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cant."] { display: flex; align-items: center; gap: 3px; color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cantidad"]::before,
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cant."]::before { content: "×"; display: inline; margin: 0; letter-spacing: 0; text-transform: none; font-size: var(--ax-fs-md); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cantidad"] input,
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > div[data-label="Cant."] input { min-width: 0; padding: 0 6px; text-align: center; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total { min-height: 0; align-items: flex-end; justify-content: center; text-align: right; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row .osca-total b { font-size: var(--ax-fs-sm); white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row > .osca-remove { grid-column: 4; grid-row: 1; margin: 0; justify-self: end; align-self: center; }
+/* Peajes (alta): peaje · × cantidad · total · quitar / quién paga · medio de pago */
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) { grid-template-columns: minmax(0, 1fr) 64px auto 28px; gap: 6px; padding: 8px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Peaje"] { grid-column: 1; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Cantidad"] { grid-column: 2; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Total"] { grid-column: 3; grid-row: 1; min-width: 70px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Quién paga"] { grid-column: 1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osca-matrix-row:not(.osaa-canonical-row) > [data-label="Método de pago"] { grid-column: 2 / -1; grid-row: 2; }
+/* Peajes (revisión): peaje · × cantidad · quitar / quién paga · importe · medio de pago */
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 28px; gap: 6px; padding: 8px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Peaje"] { grid-column: 1 / 3; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Cantidad"] { grid-column: 3; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Quién paga"] { grid-column: 1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Importe"] { grid-column: 2; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > [data-label="Medio de pago"] { grid-column: 3 / -1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls .osaa-canonical-row > .osaa-driver-payment { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+/* Excedentes: concepto · × cantidad · importe · quitar / cobrador · medio de pago */
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row { grid-template-columns: minmax(0, 1.4fr) 64px minmax(0, 1fr) 28px; gap: 6px; padding: 8px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Concepto"] { grid-column: 1; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Cant."],
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Cantidad"] { grid-column: 2; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Importe"] { grid-column: 3; grid-row: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Cobrador"],
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="A cargo de"] { grid-column: 1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Medio Pago"],
+#modal-operador-wizard .osv4-reactive .osca-matrix.excess .osca-matrix-row > [data-label="Medio de pago"] { grid-column: 2 / -1; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-add-actions { gap: 6px; }
+#modal-operador-wizard .osv4-reactive .osca-add-row { min-height: 32px; padding: 0 8px; font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-summary, #modal-operador-wizard .osv4-reactive .osca-actual { padding-top: var(--ax-sp-2); font-size: var(--ax-fs-sm); }
+
+/* Tabla de peajes del mapa con la selección y el botón de agregar dentro. */
+#modal-operador-wizard .osv4-reactive .tdt-panel { gap: var(--ax-sp-2); margin-top: var(--ax-sp-2); padding: var(--ax-sp-3); }
+#modal-operador-wizard .osv4-reactive .tdt-legend { width: 100%; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-head td em { margin-left: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-style: normal; font-weight: 400; letter-spacing: 0; text-transform: none; }
+#modal-operador-wizard .osv4-reactive .tdt-pick { display: inline-flex !important; flex-direction: row !important; flex-wrap: nowrap; align-items: center !important; gap: 6px; margin: 0; cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-pick input { width: 16px; height: 16px; margin: 0; accent-color: var(--ax-accent); flex: none; }
+#modal-operador-wizard .osv4-reactive .tdt-legend th:has(.tdt-pick) { width: 54px; }
+#modal-operador-wizard .osv4-reactive .tdt-legend tr.is-loaded { opacity: .6; }
+#modal-operador-wizard .osv4-reactive .tdt-legend-actions td { padding-top: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .tdt-legend-actions .tdt-apply { width: 100%; justify-content: center; }
+
+/* Revisión de cargos del remito firmado: lista corta "Por revisar" (Aprobar / Rechazar en cada línea),
+   sin botones de cierre adentro (Finalizar y cerrar está en el pie, junto a Guardar). */
+#modal-operador-wizard .osv4-reactive .os-embedded-review { gap: var(--ax-sp-2); padding: var(--ax-sp-3); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); font-family: var(--ax-font); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--ax-sp-2); padding: 0 0 var(--ax-sp-2); border-bottom: 1px solid var(--ax-border); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); letter-spacing: 0; text-transform: none; color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header em { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ax-accent-soft); color: var(--ax-accent); font-size: var(--ax-fs-xs); font-style: normal; font-weight: var(--ax-fw-bold); display: inline-grid; place-items: center; }
+#modal-operador-wizard .osv4-reactive .os-embedded-review > header small { flex-basis: 100%; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .os-embedded-list { gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .os-embedded-difference.is-compact { grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--ax-sp-2); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-left: 3px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .os-embedded-row { grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive .os-embedded-kind { display: none; }
+#modal-operador-wizard .osv4-reactive .os-embedded-row > b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .os-embedded-amount { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); font-variant-numeric: tabular-nums; }
+#modal-operador-wizard .osv4-reactive .os-embedded-row > small { grid-column: 1 / -1; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .os-embedded-difference.is-compact .os-embedded-actions { grid-column: 1 / -1; display: flex; gap: 6px; }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button { flex: 1; height: 30px; min-height: 0; padding: 0 var(--ax-sp-3); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.approve { border-color: var(--ax-ok); color: var(--ax-ok); }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.reject { border-color: var(--ax-danger); color: var(--ax-danger); }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.approve:hover { background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive .os-embedded-actions button.reject:hover { background: var(--ax-danger-soft); }
+#modal-operador-wizard .osv4-reactive .os-embedded-review.is-clear { padding: 0; border: 0; background: transparent; }
+#modal-operador-wizard .osv4-reactive .os-embedded-clear { justify-content: flex-start; padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive .os-embedded-clear b { color: var(--ax-ok); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+/* Cargos del remito firmado (consulta): cerrado por defecto, una línea por cargo. */
+#modal-operador-wizard .osv4-reactive .osaa-original > summary { min-height: 0; padding: var(--ax-sp-2) var(--ax-sp-3); color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .os-charge-report.is-compact h4 { margin: var(--ax-sp-2) 0 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .os-charge-row { padding: 4px var(--ax-sp-2); border-radius: var(--ax-radius-sm); }
+#modal-operador-wizard .osv4-reactive .os-charge-row > b { font-size: var(--ax-fs-sm); }
+/* Pie del formulario: Finalizar y cerrar junto a Guardar. */
+#modal-operador-wizard .osv4-reactive .osv2-footer > div { display: flex; align-items: center; gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive #osv4-finalize { height: var(--ax-h); padding: 0 var(--ax-sp-4); font-size: var(--ax-fs-md); border: 1px solid var(--ax-ok); border-radius: var(--ax-radius); background: transparent; color: var(--ax-ok); font-weight: var(--ax-fw-bold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive #osv4-finalize:hover:not(:disabled) { background: var(--ax-ok-soft); }
+#modal-operador-wizard .osv4-reactive #osv4-finalize:disabled { border-color: var(--ax-border-strong); color: var(--ax-text-3); cursor: not-allowed; }
+#modal-operador-wizard .osv4-reactive #osv4-finalize[hidden] { display: none; }
+
+/* Fondo de calles (OpenStreetMap): atenuado y acorde al tema oscuro para que el trazado siga siendo lo principal. */
+#modal-operador-wizard .osv4-reactive .tdt-tiles { opacity: .55; filter: invert(1) hue-rotate(180deg) brightness(.85) saturate(.6); }
+#modal-operador-wizard .osv4-reactive .tdt-attr { fill: var(--ax-text-2); font: 6px var(--ax-font); paint-order: stroke; stroke: var(--ax-bg); stroke-width: 2px; }
+
+/* Zoom del mapa: rueda, pellizco, arrastre y botones. */
+#modal-operador-wizard .osv4-reactive .tdt-mapwrap { position: relative; }
+#modal-operador-wizard .osv4-reactive .tdt-map { touch-action: pan-y; cursor: grab; user-select: none; }
+#modal-operador-wizard .osv4-reactive .tdt-map.is-zoomed { touch-action: none; }
+#modal-operador-wizard .osv4-reactive .tdt-map:active { cursor: grabbing; }
+#modal-operador-wizard .osv4-reactive .tdt-route { vector-effect: non-scaling-stroke; }
+#modal-operador-wizard .osv4-reactive .tdt-zoom { position: absolute; top: var(--ax-sp-2); left: var(--ax-sp-2); display: grid; gap: 1px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: var(--ax-border-strong); overflow: hidden; }
+#modal-operador-wizard .osv4-reactive .tdt-zoom button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: var(--ax-surface); color: var(--ax-text); font-size: 16px; line-height: 1; cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .tdt-zoom button:hover { background: var(--ax-surface-3); }
+
+/* Conceptos sí/no (p. ej. Pinacars) en la 3ª columna */
+#modal-operador-wizard .osv4-reactive #osv4-toggles { display: grid; gap: var(--ax-sp-2); margin: 0 0 var(--ax-sp-3); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles[hidden] { display: none; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv2-section-label { margin: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-help { margin: 0; color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); text-transform: none; letter-spacing: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggles-list { display: grid; gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles label.osv4-toggle-row { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 0; padding: 0; text-transform: none; letter-spacing: 0; cursor: pointer; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row > span { min-width: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); text-transform: none; letter-spacing: 0; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); text-transform: none; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); text-transform: none; }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox] { flex: none; appearance: none; position: relative; width: 36px; min-width: 36px; height: 20px; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: var(--ax-radius-pill); background: var(--ax-border-strong); box-shadow: none; cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox]::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--ax-radius-pill); background: var(--ax-text); transition: transform var(--ax-dur) var(--ax-ease-spring); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox]:checked { background: var(--ax-accent); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox]:checked::after { transform: translateX(16px); background: var(--ax-accent-fg); }
+#modal-operador-wizard .osv4-reactive #osv4-toggles .osv4-toggle-row input[type=checkbox]:disabled { opacity: .5; cursor: default; }
+
+/* Particular: concepto sí/no (Pinacars), un renglón con interruptor */
+#psv-form .psv-toggles { display: grid; gap: var(--ax-sp-2); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#psv-form .psv-toggle-row.ax-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: var(--ax-h); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#psv-form .psv-toggle-row.ax-switch input { width: 36px; height: 20px; flex: 0 0 auto; }

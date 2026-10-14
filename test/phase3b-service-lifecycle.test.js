@@ -19,19 +19,28 @@ test('mesa operativa expone sólo los cinco estados acordados',()=>{
   assert.match(services,/\['assigned','Asignados'\]/);
   assert.match(services,/\['at_origin','Arribados'\]/);
   assert.doesNotMatch(services,/\['en_route','En camino'\]|\['loaded','Cargados'\]|\['at_destination','En destino'\]/);
-  assert.match(services,/Anular servicio/);
+  assert.match(services,/\['annul','Anular'\]/);
 });
 
-test('ARRIBADO manual tiene exactamente tres motivos y ANULADO cinco',()=>{
+test('ARRIBADO manual tiene exactamente tres motivos; ANULADO conserva sus etiquetas',()=>{
   assert.match(lifecycle,/client_cannot_or_will_not_sign','Cliente\/Socio no pudo o no quiso firmar/);
   assert.match(lifecycle,/signature_technical_issue','Problema técnico con la firma/);
   assert.match(lifecycle,/operator_provider_confirmed','Arribo confirmado por Operador\/Prestadora/);
   assert.match(lifecycle,/delay','Cancelado por demora/);
-  assert.match(lifecycle,/within_authorized_window','Cancelado dentro del tiempo autorizado/);
+  assert.doesNotMatch(lifecycle,/within_authorized_window/);
   assert.match(lifecycle,/cancelled_by_us','Cancelado por nosotros/);
   assert.match(lifecycle,/client_or_provider','Cancelado por el cliente \/ prestadora/);
   assert.match(lifecycle,/\['other','Otro motivo'\]/);
-  assert.match(lifecycle,/reason==='other'.*detail\.required=other/s);
+});
+
+test('Anular no pide motivos: exige confirmar y anula como no facturable',()=>{
+  const annul=lifecycle.split('function openAnnul(')[1].split('\nfunction ')[0];
+  assert.doesNotMatch(annul,/radioCards\('annul_reason'/);
+  assert.match(annul,/id="osl-annul-check"/);
+  assert.match(annul,/submit\.disabled=true/);
+  assert.match(annul,/if\(readOnly\|\|!check\?\.checked\)return/);
+  assert.match(annul,/transition\('annul','other',note\|\|'Anulado desde Operaciones'\)/);
+  assert.match(annul,/no se factura/);
 });
 
 test('lifecycle usa una sola RPC canónica y eliminó cierres por excepción viejos',()=>{
@@ -74,7 +83,7 @@ test('las confirmaciones viven dentro de AuxiliOS y la reasignación del editor 
 test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
   assert.match(lifecycle,/function quickActions\(s\)/);
   assert.match(lifecycle,/status==='pending'.*\['assign','Asignar'/s);
-  assert.match(lifecycle,/status==='assigned'.*\['reassign','Re-asignar'.*\['finalize','Finalizar'/s);
+  assert.match(lifecycle,/status==='assigned'.*\['reassign','Reasignar'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/status==='at_origin'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/\.col-status \.os-status/);
   assert.match(lifecycle,/function openAssignment\(id,readOnly=false\)/);
@@ -84,7 +93,7 @@ test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
   assert.match(lifecycle,/function markReadOnly\(m\)/);
   assert.match(lifecycle,/Modo consulta/);
   assert.match(lifecycle,/const readOnly=!canTransition\(\)/);
-  assert.doesNotMatch(lifecycle,/data-osl-quick-action=.*disabled/s);
+  assert.doesNotMatch(lifecycle,/data-osl-quick-action=[^\n]*disabled/);
   assert.match(lifecycleCss,/\.osl-quick-status-menu/);
   assert.match(lifecycleCss,/\.osl-assignment-compare/);
 });
@@ -108,9 +117,9 @@ test('historial permanece en el workspace pero cambios de estado viven sólo en 
   assert.match(lifecycle,/osv4-lifecycle-slot/);
   assert.doesNotMatch(commercial,/lifecyclePanel|data-ca="lifecycle-arrive"|data-ca="lifecycle-finalize"|data-ca="lifecycle-annul"|Estado del servicio|Guardá los cambios antes de cambiar el estado/);
   assert.doesNotMatch(commercialCss,/osca-lifecycle/);
-  assert.match(services,/accionMenuServicio\('arrive'/);
-  assert.match(services,/accionMenuServicio\('finalize'/);
-  assert.match(services,/accionMenuServicio\('annul'/);
+  assert.match(lifecycle,/\['arrive','Arribado'/);
+  assert.match(services,/\['finalize','Finalizar'\]/);
+  assert.match(services,/\['annul','Anular'\]/);
   assert.match(services,/asignarServicioRapido/);
 });
 
@@ -138,6 +147,10 @@ test('runtime carga lifecycle antes de liberar UI y cache de phase2',()=>{
   const critical=config.split('async function loadCriticalAuxiliosModules()')[1].split('function loadGeographicBasesInBackground')[0];
   assert.match(critical,/operator-service-lifecycle\.js/);
   assert.match(sw,/operator-service-lifecycle\.css/);
-  assert.match(sw,/auxilios-billing-phase2-v209/);
+  // El nombre del cache tiene que renovarse en cada build que toque assets
+  // precacheados, así que se verifica que no retroceda en vez de fijar el
+  // literal, que obligaba a editar este test en cada bump.
+  const cacheVersion = Number(sw.match(/auxilios-billing-phase2-v(\d+)/)?.[1]);
+  assert.ok(cacheVersion >= 312, `el cache de phase2 no puede retroceder de v312 (es v${cacheVersion})`);
   assert.doesNotMatch(config,/phase3-journey-start-guard|phase3b-modal-visibility-guard|operator-service-creation-redesign/);
 });

@@ -39,24 +39,29 @@ test('importe se recalcula por período sin pisar snapshot de FINALIZADO',()=>{
   assert.doesNotMatch(calc,/update public\.operator_services/);
 });
 
-test('mesa acepta búsqueda, Prestadora y período mensual',()=>{
+test('mesa acepta búsqueda, Prestadora, período, Base y Tipo con los filtros compartidos',()=>{
   assert.match(billing,/list_operator_billing_services_v3/);
   assert.match(billing,/id="ob-search"/);
+  assert.match(billing,/F\.period\(\{ id: 'period'/);
+  assert.match(billing,/F\.select\(\{ id: 'company'/);
+  assert.match(billing,/F\.select\(\{ id: 'base'/);
+  assert.match(billing,/F\.select\(\{ id: 'serviceType'/);
+  assert.match(billing,/AuxFilters\.periodBounds\(S\.periodSel\)/);
+  // Sin el módulo compartido cae a los selects de antes.
   assert.match(billing,/id="ob-company-filter"/);
-  assert.match(billing,/id="ob-period-filter"/);
   assert.match(billing,/function periodBounds\(value\)/);
 });
 
 test('grilla general es sintética y deja pricing dentro del detalle',()=>{
-  const table=billing.split('function tableMarkup()')[1].split('function rowMarkup')[0];
+  const table=billing.split('services: [')[1].split('tolls: [')[0];
   for(const label of ['Fecha/Hora','Prestadora','Base','Tipo de Servicio','Origen','Destino','Cliente','KM'])assert.match(table,new RegExp(label));
   for(const forbidden of ['Importe cierre','Importe actual','Diferencia','Tarifa','Estado'])assert.doesNotMatch(table,new RegExp(forbidden));
   const detail=billing.split('function detailMarkup()')[1].split('function render()')[0];
-  assert.match(detail,/Importe actual/);
-  assert.match(detail,/Importe al cierre/);
+  assert.match(detail,/Importe a facturar/);
+  assert.match(detail,/Al cierre/);
   assert.match(detail,/Diferencia/);
-  assert.match(detail,/Tarifa aplicada ahora/);
-  assert.match(detail,/Composición/);
+  assert.match(detail,/Desglose de costos/);
+  assert.match(detail,/Historial de Facturación/);
   assert.match(billing,/function componentMarkup/);
 });
 
@@ -67,7 +72,7 @@ test('selección factura conceptos de una sola Prestadora y una sola moneda',()=
   assert.match(billing,/seleccioná conceptos de una sola prestadora/i);
   assert.match(billing,/selección debe tener una sola moneda/i);
   assert.match(billing,/data-ob="invoice-selection"/);
-  assert.match(billing,/Facturando…'\s*:\s*'FACTURAR'/);
+  assert.match(billing,/Facturando…'\s*:\s*'Facturar'/);
 });
 
 test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
@@ -85,8 +90,8 @@ test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
 });
 
 test('Administración puede corregir o anular un servicio FINALIZADO',()=>{
-  assert.match(billing,/window\.editarServicioOperador/);
-  assert.match(billing,/openDetailAction\(id,\s*'annul'\)/);
+  assert.match(billing,/window\.editarServicioFacturacion/);
+  assert.match(billing,/openRowAction\(id,\s*'annul'\)/);
   assert.match(legacyDesk,/update_operator_billing_service_v2/);
   assert.match(legacyDesk,/Sólo Administración puede modificar un servicio FINALIZADO/);
   assert.match(legacyDesk,/billing_status='pending'/);
@@ -101,18 +106,21 @@ test('revertir Facturación vuelve a Servicios sin reabrir lifecycle ni recursos
   assert.match(revertFn,/set billing_status='not_ready'/);
   assert.match(revertFn,/billing_reverted/);
   assert.doesNotMatch(revertFn,/set\s+status\s*=|assigned_driver_id\s*=|assigned_truck_id\s*=/);
-  assert.match(billing,/window\.cambiarVistaServicios\?\.\('history'\)/);
+  // La acción sale de una fila de Facturación, así que la vista se queda ahí:
+  // el confirmar dice adónde fue el servicio en vez de mudar al usuario.
+  assert.doesNotMatch(billing,/window\.cambiarVistaServicios/);
+  assert.match(billing,/Servicios → Historial/);
 });
 
 test('acciones administrativas de servicio siguen auditadas sin duplicar formularios',()=>{
-  assert.match(billing,/function actionConfirmMarkup/);
-  assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio/);
+  assert.match(billing,/function confirmActionMarkup/);
+  assert.doesNotMatch(billing,/ob-action-reason|Motivo obligatorio|data-ob-reason/);
   assert.match(billing,/p_reason:\s*null/);
   assert.match(adminNoReason,/Acción administrativa/);
   assert.match(adminNoReason,/revert_operator_billing_service_v2/);
   assert.match(adminNoReason,/annul_operator_billing_service_v2/);
   assert.doesNotMatch(billing,/window\.confirm|[^\.]confirm\(/);
-  assert.match(billingCss,/\.ob-action-confirm/);
+  assert.match(billingCss,/\.ob-confirm-modal/);
   assert.match(billingCss,/\.ob-selection/);
 });
 
@@ -130,10 +138,10 @@ test('parámetros separan obtención de peajes de tratamiento de facturación',(
   assert.match(tollSchema,/separate/);
   assert.match(tollConfig,/v_toll_billing_mode/);
   assert.match(tollConfig,/toll_billing_mode=v_toll_billing_mode/);
-  assert.match(companyBilling,/Obtención de peajes/);
+  assert.match(companyBilling,/Carga de peajes del chofer/);
   assert.match(companyBilling,/Facturación de peajes/);
   assert.match(companyBilling,/id="bp4-toll-billing"/);
-  assert.match(companyBilling,/toll_billing_mode:document\.getElementById\('bp4-toll-billing'\)/);
+  assert.match(companyBilling,/toll_billing_mode:f\.tollBilling/);assert.match(companyBilling,/tollBilling:g\('bp4-toll-billing'\)/);
   assert.match(companyBilling,/Junto con el servicio/);
   assert.match(companyBilling,/Por separado/);
 });
@@ -145,9 +153,10 @@ test('peaje separado no integra el importe del servicio',()=>{
   assert.match(tollQuote,/included_toll_amount/);
   assert.match(tollQuote,/service_company_amount/);
   assert.match(tollQuote,/company_amount_with_tolls/);
-  assert.match(billing,/quote\.toll_billing_mode\s*!==\s*'separate'/);
-  assert.match(billing,/Peajes facturados por separado/);
-  assert.match(billing,/no forma parte del total del servicio/i);
+  const breakdown=fs.readFileSync('billing-breakdown-v1.js','utf8');
+  assert.match(breakdown,/toll_billing_mode\s*===\s*'separate'/);
+  assert.match(breakdown,/Se facturan por separado/);
+  assert.match(billing,/peajes que se facturan por separado/i);
 });
 
 test('Facturación incorpora Peajes sin duplicar la carga operativa',()=>{
@@ -244,5 +253,9 @@ test('runtime carga Facturación y Excel canónicos sin assets de revisión para
   assert.match(sw,/operator-billing\.css/);
   assert.match(sw,/excel-export\.js/);
   assert.match(sw,/operator-billing-export\.js/);
-  assert.match(sw,/auxilios-billing-phase2-v209/);
+  // El nombre del cache tiene que renovarse en cada build que toque assets
+  // precacheados, así que se verifica que no retroceda en vez de fijar el
+  // literal, que obligaba a editar este test en cada bump.
+  const cacheVersion = Number(sw.match(/auxilios-billing-phase2-v(\d+)/)?.[1]);
+  assert.ok(cacheVersion >= 312, `el cache de phase2 no puede retroceder de v312 (es v${cacheVersion})`);
 });

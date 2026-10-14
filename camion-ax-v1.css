@@ -1,0 +1,125 @@
+/* AuxiliOS · Control del camión con el sistema visual (v1)
+   Flota, detalle de un móvil y la vista del chofer. Todo cuelga de #screen-camion para ganarle
+   a fleet-control-v1.css, fleet-truck-detail-v1.css y sigma.css sin depender del orden de carga. */
+
+#screen-camion { font-family: var(--ax-font); color: var(--ax-text); }
+#screen-camion #camion-main-view > .sec-header .sec-sub { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Flota: resumen ── */
+#screen-camion .fcv-kpis { gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); }
+#screen-camion .fcv-kpi { gap: 2px; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); font-family: var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-camion .fcv-kpi b { font-size: 24px; font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#screen-camion .fcv-kpi span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-camion .fcv-kpi:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-camion .fcv-kpi:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-camion .fcv-kpi.on { border-color: var(--ax-text-3); background: var(--ax-surface-3); }
+#screen-camion .fcv-kpi-alerta b { color: var(--ax-warn); }
+
+/* ── Flota: buscador y botones ── */
+#screen-camion .fcv-toolbar { align-items: center; flex-wrap: wrap; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-3); }
+#screen-camion .fcv-searchbox { position: relative; display: block; flex: 1 1 260px; max-width: 380px; }
+#screen-camion .fcv-searchbox > span { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--ax-text-3); pointer-events: none; display: inline-flex; }
+#screen-camion .fcv-search { width: 100%; max-width: none; height: var(--ax-h); padding: 0 12px 0 34px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-camion .fcv-search:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-camion .fcv-refresh { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-camion .fcv-refresh:hover { background: var(--ax-surface-3); }
+#screen-camion .fcv-refresh:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-camion .fcv-refresh .ax-icon, #screen-camion .ftd-btn .ax-icon, #screen-camion .ftd-back .ax-icon { width: 15px; height: 15px; vertical-align: 0; }
+
+/* ── Flota: tabla ── */
+#screen-camion .fcv-table-wrap { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-camion .fcv-table th { height: 38px; padding: 0 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-camion .fcv-table td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); vertical-align: middle; }
+#screen-camion .fcv-table tbody tr { transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-camion .fcv-table tbody tr:hover, #screen-camion .fcv-table tbody tr:focus-visible { background: var(--ax-surface-3); }
+#screen-camion .fcv-table tbody tr:focus-visible { box-shadow: inset 0 0 0 2px var(--ax-accent); }
+#screen-camion .fcv-table td b { font-weight: var(--ax-fw-semibold); }
+#screen-camion .fcv-table td small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-camion .fcv-num { font-family: var(--ax-font-mono); }
+#screen-camion .fcv-go { width: 28px; color: var(--ax-text-3); text-align: right; }
+#screen-camion .fcv-go .ax-icon { width: 16px; height: 16px; vertical-align: -3px; }
+#screen-camion .fcv-alerta { color: var(--ax-warn); }
+#screen-camion .fcv-alerta i { background: var(--ax-warn); }
+#screen-camion .fcv-critico { color: var(--ax-danger); }
+#screen-camion .fcv-critico i { background: var(--ax-danger); }
+#screen-camion .fcv-estado { font-weight: var(--ax-fw-semibold); }
+#screen-camion .fcv-e-muted { color: var(--ax-text-3); }
+#screen-camion .fcv-e-alerta { color: var(--ax-warn); }
+#screen-camion .fcv-empty { padding: 32px 16px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-camion .fcv-error { color: var(--ax-danger); }
+
+/* ── Detalle de un móvil ── */
+#screen-camion .ftd { gap: var(--ax-sp-3); }
+#screen-camion .ftd-head { gap: var(--ax-sp-4); padding: 14px 16px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-camion .ftd-back, #screen-camion .ftd-btn { display: inline-flex; align-items: center; gap: 6px; height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-camion .ftd-back:hover, #screen-camion .ftd-btn:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-camion .ftd-back:focus-visible, #screen-camion .ftd-btn:focus-visible, #screen-camion .ftd-card:focus-visible, #screen-camion .ftd-tab:focus-visible, #screen-camion .ftd-link:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-camion .ftd-id h2 { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; }
+#screen-camion .ftd-id p { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-camion .ftd-tipo { margin-left: 8px; padding: 2px 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); vertical-align: 2px; }
+#screen-camion .ftd-meta dt { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-camion .ftd-meta dd { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-camion .ftd-meta dd.ftd-n { font-family: var(--ax-font-mono); }
+#screen-camion .ftd-meta dd small { color: var(--ax-text-3); font-family: var(--ax-font); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
+
+#screen-camion .ftd-cards { gap: var(--ax-sp-2); }
+#screen-camion .ftd-card { padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); font-family: var(--ax-font); font-size: var(--ax-fs-md); transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-camion .ftd-card:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+#screen-camion .ftd-card.on { border-color: var(--ax-text-3); background: var(--ax-surface-3); }
+#screen-camion .ftd-card-t { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-camion .ftd-card small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+#screen-camion .ftd-tabs { border-bottom: 1px solid var(--ax-border); }
+#screen-camion .ftd-tab { padding: 10px 14px; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); transition: color var(--ax-dur-fast) var(--ax-ease); }
+#screen-camion .ftd-tab:hover { color: var(--ax-text); }
+#screen-camion .ftd-tab.on { border-bottom-color: var(--ax-accent); color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#screen-camion .ftd-dot-alerta { background: var(--ax-warn); }
+#screen-camion .ftd-dot-critico { background: var(--ax-danger); }
+
+#screen-camion .ftd-sec { padding: 14px 16px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-camion .ftd-sec > header { margin-bottom: var(--ax-sp-2); }
+#screen-camion .ftd-sec h4 { margin: var(--ax-sp-4) 0 var(--ax-sp-2); color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-camion .ftd-link { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-decoration: none; border-radius: var(--ax-radius-sm); }
+#screen-camion .ftd-link:hover { color: var(--ax-text); text-decoration: underline; }
+#screen-camion .ftd-quitar { color: var(--ax-text-3); }
+#screen-camion .ftd-quitar:hover { color: var(--ax-danger); }
+#screen-camion .ftd-vacio { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-camion .ftd-planes li, #screen-camion .ftd-docs li { border-bottom-color: var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-camion .ftd-planes small, #screen-camion .ftd-docs small, #screen-camion .ftd-nota { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-camion .ftd-bar { height: 4px; border-radius: var(--ax-radius-pill); background: var(--ax-border); }
+#screen-camion .ftd-bar > span { background: var(--ax-text-3); }
+#screen-camion .ftd-bar-alerta > span { background: var(--ax-warn); }
+#screen-camion .ftd-bar-critico > span { background: var(--ax-danger); }
+#screen-camion .ftd-bar-leyenda { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-camion .ftd-resumen div { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-camion .ftd-resumen span { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+#screen-camion .ftd-resumen b { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#screen-camion .ftd-table th { height: 34px; border-bottom-color: var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; }
+#screen-camion .ftd-table td { border-bottom-color: var(--ax-border); font-size: var(--ax-fs-sm); }
+#screen-camion .ftd-n { font-family: var(--ax-font-mono); }
+#screen-camion .ftd-notas { color: var(--ax-text-3); }
+#screen-camion .ftd-hist li { border-bottom-color: var(--ax-border); }
+#screen-camion .ftd-hist-t { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* ── Vista del chofer: ficha del móvil y tarjetas de módulos ── */
+#screen-camion #camion-hero-card { padding: 16px; border: 1px solid var(--ax-border) !important; border-radius: var(--ax-radius-lg); background: var(--ax-surface-2) !important; }
+#screen-camion #camion-hero-card #camion-nombre { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font) !important; letter-spacing: 0 !important; color: var(--ax-text) !important; }
+#screen-camion #camion-hero-card #camion-detalle { color: var(--ax-text-3) !important; font-size: var(--ax-fs-sm) !important; }
+#screen-camion .camion-module-card { gap: var(--ax-sp-3); padding: 14px 16px; border: 1px solid var(--ax-border); border-left: 1px solid var(--ax-border) !important; border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-camion .camion-card-title { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#screen-camion .camion-card-status { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-camion .btn-camion-action, #screen-camion .btn-camion-ver { min-height: var(--ax-h-lg); border-radius: var(--ax-radius); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-camion .btn-camion-ver { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text); }
+#screen-camion .btn-camion-ver:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-camion .camion-sub-header { gap: var(--ax-sp-3); margin-bottom: var(--ax-sp-4); }
+#screen-camion .camion-sub-title { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#screen-camion .btn-camion-back { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-camion .btn-camion-back:hover { background: var(--ax-surface-3); }
+
+@media (max-width: 640px) {
+  #screen-camion .fcv-searchbox { flex: 1 1 100%; max-width: none; }
+  #screen-camion .fcv-table tr { border-bottom-color: var(--ax-border); }
+  #screen-camion .fcv-table td::before { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+  #screen-camion .fcv-table td > small { grid-column: 2; margin-top: 0; }
+  #screen-camion .fcv-table td.fcv-go { display: none; }
+}

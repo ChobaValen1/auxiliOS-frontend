@@ -1,0 +1,103 @@
+/* AuxiliOS · Crear servicio: Particular | Prestadora (v1). Paleta sobria de la app. */
+body.psv-open { overflow: hidden; }
+.psv-backdrop { position: fixed; inset: 0; z-index: 10050; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.55); }
+.psv-backdrop[hidden] { display: none; }
+.psv-dialog { display: flex; flex-direction: column; width: min(100%, 560px); max-height: calc(100vh - 32px); border: 1px solid var(--border2); border-radius: 14px; background: var(--card); color: var(--text); box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+.psv-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 12px; border-bottom: 1px solid var(--border); }
+.psv-dialog h2 { margin: 0; font-size: 17px; font-weight: 800; }
+.psv-dialog header p { margin: 4px 0 0; color: var(--muted2); font-size: 12px; }
+.psv-x { width: 32px; height: 32px; border: 1px solid var(--border2); border-radius: 8px; background: transparent; color: var(--muted2); font-size: 18px; line-height: 1; cursor: pointer; }
+.psv-x:hover { color: var(--text); }
+
+/* Selector */
+.psv-choose { width: min(100%, 520px); }
+.psv-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px 20px 20px; }
+.psv-choice { display: grid; justify-items: start; gap: 8px; padding: 18px 16px; border: 1px solid var(--border2); border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s ease, transform .1s ease; }
+.psv-choice:hover, .psv-choice:focus-visible { border-color: var(--amber); outline: none; }
+.psv-choice:active { transform: translateY(1px); }
+.psv-choice-ico { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: color-mix(in srgb, var(--amber) 14%, transparent); color: var(--amber); }
+.psv-choice-ico svg { width: 22px; height: 22px; }
+.psv-choice b { font-size: 15px; }
+.psv-choice small { color: var(--muted2); font-size: 12px; line-height: 1.45; }
+
+/* Formulario */
+.psv-form { width: min(100%, 1180px); }
+.psv-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0 28px; }
+.psv-col { min-width: 0; }
+.psv-col + .psv-col { padding-left: 28px; border-left: 1px solid var(--border); }
+.psv-body { flex: 1; overflow: auto; padding: 4px 24px 12px; }
+.psv-loading { padding: 50px 20px; text-align: center; color: var(--muted2); font-size: 13px; }
+.psv-error { margin: 12px 0 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); border-radius: 9px; color: var(--red); font-size: 12px; line-height: 1.5; }
+.psv-body section { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.psv-col > section:last-child { border-bottom: 0; }
+.psv-body section:last-child { border-bottom: 0; }
+.psv-body h3 { margin: 0 0 10px; color: var(--muted2); font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.psv-body h3 small { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.psv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; }
+.psv-grid + .psv-grid { margin-top: 10px; }
+.psv-grid-addr { grid-template-columns: 1fr 1fr; margin-top: 10px; }
+.psv-grid-addr.is-single { grid-template-columns: 1fr; }
+.psv-field { position: relative; display: grid; gap: 5px; min-width: 0; }
+.psv-field > span { color: var(--muted2); font-size: 11px; font-weight: 700; }
+.psv-body input:not([type=checkbox]), .psv-body select, .psv-body textarea { width: 100%; box-sizing: border-box; min-height: 38px; padding: 8px 10px; border: 1px solid var(--border2); border-radius: 9px; background: var(--bg); color: var(--text); font: inherit; font-size: 13px; }
+.psv-body textarea { resize: vertical; }
+.psv-body input:focus, .psv-body select:focus, .psv-body textarea:focus { outline: none; border-color: var(--amber); }
+.psv-money { display: flex; align-items: center; border: 1px solid var(--border2); border-radius: 9px; background: var(--bg); }
+.psv-money:focus-within { border-color: var(--amber); }
+.psv-money i { padding: 0 0 0 10px; color: var(--muted2); font-style: normal; font-size: 13px; }
+.psv-body .psv-money input { border: 0; background: transparent; font-weight: 700; }
+.psv-seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border2); border-radius: 9px; background: var(--bg); width: fit-content; }
+.psv-seg button { padding: 6px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--muted2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.psv-seg button[aria-pressed="true"] { background: var(--amber); color: #111; }
+.psv-check { display: flex; align-items: center; gap: 8px; align-self: end; min-height: 38px; font-size: 13px; cursor: pointer; }
+.psv-check input { width: 16px; height: 16px; accent-color: var(--amber); }
+.psv-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 9px; background: var(--bg); }
+.psv-total span { color: var(--muted2); font-size: 12px; }
+.psv-total b { font-size: 18px; font-weight: 800; color: var(--amber); }
+.psv-hint { margin: 8px 0 0; color: var(--muted2); font-size: 11px; }
+.psv-addr-state { position: absolute; top: 0; right: 0; font-size: 10px; font-style: normal; font-weight: 700; color: var(--muted); }
+.psv-addr-state.ok { color: #27c47a; }
+.psv-addr-state.warn { color: var(--amber); }
+.psv-sugs { position: absolute; left: 0; right: 0; top: 100%; z-index: 3; display: grid; margin-top: 4px; padding: 4px; border: 1px solid var(--border2); border-radius: 9px; background: var(--card); box-shadow: 0 10px 28px rgba(0,0,0,.4); }
+.psv-sugs[hidden] { display: none; }
+.psv-sugs button { display: grid; gap: 1px; padding: 8px 10px; border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.psv-sugs button:hover { background: rgba(245,166,35,.1); }
+.psv-sugs b { font-size: 13px; }
+.psv-sugs span { color: var(--muted2); font-size: 11px; }
+.psv-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); }
+.psv-btn { min-height: 38px; padding: 0 16px; border: 1px solid var(--border2); border-radius: 9px; background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.psv-btn.primary { border-color: var(--amber); background: var(--amber); color: #111; }
+.psv-btn:disabled { opacity: .55; cursor: wait; }
+
+@media (max-width: 980px) {
+  .psv-form { width: min(100%, 680px); }
+  .psv-cols { grid-template-columns: 1fr; }
+  .psv-col + .psv-col { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); }
+  .psv-grid-addr { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .psv-backdrop { align-items: flex-end; padding: 0; }
+  .psv-dialog { width: 100%; max-height: 94vh; border-radius: 16px 16px 0 0; }
+  .psv-choices { grid-template-columns: 1fr; }
+  .psv-body input:not([type=checkbox]), .psv-body select, .psv-body textarea { font-size: 16px; }
+}
+
+.psv-sug-state { padding: 8px 10px; color: var(--muted2); font-size: 12px; }
+.psv-seg-wide { display: flex; width: 100%; box-sizing: border-box; }
+.psv-seg-wide button { flex: 1 1 auto; min-width: 0; min-height: 30px; padding: 6px 4px; font-size: 11.5px; }
+.psv-body input[readonly] { color: var(--muted2); }
+.psv-span { grid-column: 1 / -1; }
+.psv-seg-wide button { white-space: nowrap; }
+.psv-seg-wide { min-height: 38px; }
+.psv-captado { margin-top: 10px; align-items: end; }
+.psv-check small { color: var(--muted2); font-size: 11px; }
+.psv-hecho { margin: 0; font-size: 13px; color: var(--muted2); }
+.psv-hecho b { color: var(--text); }
+
+/* Interruptores ON/OFF en lugar de casillas (factura, lo consiguió un chofer). */
+.psv-check input[type=checkbox] { appearance: none; -webkit-appearance: none; position: relative; flex: 0 0 auto; width: 38px; height: 22px; margin: 0; border: 1px solid var(--border2); border-radius: 999px; background: var(--bg); cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+.psv-check input[type=checkbox]::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted2); transition: transform .15s ease, background .15s ease; }
+.psv-check input[type=checkbox]:checked { border-color: var(--amber); background: var(--amber); }
+.psv-check input[type=checkbox]:checked::after { transform: translateX(16px); background: #111; }
+.psv-check input[type=checkbox]:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.psv-body input:disabled, .psv-body select:disabled { opacity: .55; cursor: not-allowed; }

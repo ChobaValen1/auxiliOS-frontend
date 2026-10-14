@@ -96,11 +96,28 @@ let USUARIO_ACTUAL = null;
 let PERFIL_USUARIO = null;
 // ── AUTENTICACIÓN ─────────────────────────────────────────────
 
+// Cuenta suspendida (Usuarios › Suspender): no entra a la app aunque tenga la
+// sesión guardada o la contraseña correcta. La base igual le niega los datos.
+const _MSG_CUENTA_SUSPENDIDA = 'Esta cuenta está suspendida. Consultá con Administración.';
+function _cuentaSuspendida() { return !!PERFIL_USUARIO && PERFIL_USUARIO.is_active === false; }
+async function _cerrarCuentaSuspendida() {
+  try { await _db.auth.signOut(); } catch (e) { /* igual se corta */ }
+  USUARIO_ACTUAL = null;
+  PERFIL_USUARIO = null;
+}
+
 async function verificarSesion() {
   const { data: { session } } = await _db.auth.getSession();
   if (session) {
     USUARIO_ACTUAL = session.user;
     await cargarPerfilUsuario();
+    if (_cuentaSuspendida()) {
+      await _cerrarCuentaSuspendida();
+      mostrarPantallaLogin();
+      const e = document.getElementById('login-error');
+      if (e) { e.textContent = _MSG_CUENTA_SUSPENDIDA; e.style.display = 'block'; }
+      return;
+    }
     await inicializarApp();
   } else {
     mostrarPantallaLogin();
@@ -108,11 +125,27 @@ async function verificarSesion() {
 }
 // Nota: esta función se llama al cargar la página para verificar si el usuario ya tiene una sesión activa. Si la hay, carga su perfil y arranca la app. Si no, muestra la pantalla de login.
 
+function _loginErrorMessage(error) {
+  if (error?.status === 429 || /rate_limit|too_many/i.test(error?.code || '')) return 'El servidor limitó temporalmente los intentos. Esperá unos minutos antes de volver a ingresar.';
+  if (error?.code === 'email_not_confirmed') return 'Falta confirmar el email de esta cuenta.';
+  if (error?.code === 'user_banned') return 'Esta cuenta está suspendida. Consultá con Administración.';
+  if (!error?.status || error.status >= 500) return 'No se pudo conectar con el servicio de acceso. Revisá la conexión y volvé a intentar.';
+  return 'No se pudo iniciar sesión. Código: ' + (error.code || 'HTTP ' + error.status) + '. No se comprobó que la contraseña sea incorrecta.';
+}
+
 async function loginUsuario(email, password) {
   const { data, error } = await _db.auth.signInWithPassword({ email, password });
-  if (error) return false;
+  if (error) {
+    if (error.code === 'invalid_credentials' || /invalid login credentials/i.test(error.message || '')) return false;
+    console.warn('[Acceso]', { code: error.code || 'auth_error', status: error.status || 0 });
+    throw Object.assign(new Error(_loginErrorMessage(error)), { loginMessage: true });
+  }
   USUARIO_ACTUAL = data.user;
   await cargarPerfilUsuario();
+  if (_cuentaSuspendida()) {
+    await _cerrarCuentaSuspendida();
+    throw Object.assign(new Error(_MSG_CUENTA_SUSPENDIDA), { loginMessage: true });
+  }
   await inicializarApp();
   return true;
 }
@@ -137,6 +170,10 @@ async function loginUsuarioPorDni(dni, password) {
 
   USUARIO_ACTUAL = data.session.user;
   await cargarPerfilUsuario();
+  if (_cuentaSuspendida()) {
+    await _cerrarCuentaSuspendida();
+    throw Object.assign(new Error(_MSG_CUENTA_SUSPENDIDA), { loginMessage: true });
+  }
   await inicializarApp();
   return true;
 }
@@ -150,8 +187,34 @@ async function obtenerAccessToken() {
 async function apiAuthHeaders(extra = {}) {
   return {
     ...extra,
+    apikey: SUPABASE_KEY,
     Authorization: `Bearer ${await obtenerAccessToken()}`,
   };
+}
+
+// Un 401 no ejecutó la operación: renovar la sesión y reintentar una sola vez.
+// Nunca reintentar fallos de red/5xx: el servidor podría haber enviado el correo.
+async function adminApiFetch(url, options = {}) {
+  const send = async (token) => fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  let response = await send(await obtenerAccessToken());
+  if (response.status !== 401) return response;
+
+  const { data, error } = await _db.auth.refreshSession();
+  if (error || !data?.session?.access_token) {
+    throw new Error('Sesión expirada. Volvé a ingresar con tu usuario administrador y reenviá el enlace.');
+  }
+  response = await send(data.session.access_token);
+  if (response.status === 401) {
+    throw new Error('No se pudo validar tu sesión de administrador. Volvé a ingresar e intentá nuevamente.');
+  }
+  return response;
 }
 
 async function cerrarSesion() {
@@ -193,18 +256,52 @@ async function cargarPerfilUsuario() {
   }
   const badge = document.querySelector('.role-badge');
   if (badge && data.roles?.name) {
-    const map = { administracion:'🔑 Admin', supervision:'👁 Supervisor', chofer:'🚛 Chofer' };
-    badge.textContent = map[data.roles.name] || data.roles.name;
+    const map = { administracion:['shield-check','Admin'], operador:['navigation','Operador'], supervision:['eye','Supervisor'], chofer:['truck','Chofer'] };
+    const [icono, texto] = map[data.roles.name] || ['user', data.roles.name];
+    badge.innerHTML = '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#' + icono + '"/></svg><span class="role-badge-text"></span>';
+    badge.querySelector('.role-badge-text').textContent = texto;
   }
 }
 // Nota: esta función se llama justo después del login para cargar el perfil completo del usuario, incluyendo su rol. Esto permite mostrar su nombre en el avatar y ajustar la UI según su rol (ej: mostrar filtros admin).
 
 
 
+// ── ACTIVIDAD (en línea / última actividad) ───────────────────
+// Mientras la app está a la vista avisa cada 2 minutos; Administración lo ve en
+// Configuración › Usuarios. Sin conexión o con la pestaña oculta no avisa.
+const _PRESENCIA_MS = 2 * 60 * 1000;
+let _presenciaTimer = null, _presenciaUltimo = 0;
+function _presenciaPantalla() {
+  const s = document.querySelector('.screen.active');
+  return s ? s.id.replace(/^screen-/, '') : null;
+}
+async function _avisarPresencia(forzar) {
+  if (document.visibilityState === 'hidden' || navigator.onLine === false || typeof _db === 'undefined' || !USUARIO_ACTUAL?.id) return;
+  const ahora = Date.now();
+  if (ahora - _presenciaUltimo < (forzar ? 30000 : _PRESENCIA_MS - 5000)) return;
+  _presenciaUltimo = ahora;
+  try {
+    await _db.rpc('touch_user_presence_v1', {
+      p_screen: _presenciaPantalla(),
+      p_app_build: window.AUXILIOS_BUILD_ID || null,
+      p_device: window.matchMedia && matchMedia('(pointer: coarse)').matches ? 'movil' : 'escritorio',
+    });
+  } catch (e) { /* informativo: si falla, la app sigue igual */ }
+}
+function iniciarPresencia() {
+  if (_presenciaTimer) return;
+  _presenciaUltimo = 0;
+  _avisarPresencia(true);
+  _presenciaTimer = setInterval(() => _avisarPresencia(false), _PRESENCIA_MS);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _avisarPresencia(true); });
+  window.addEventListener('online', () => _avisarPresencia(true));
+}
+
 // ── INICIALIZACIÓN ────────────────────────────────────────────
 
 async function inicializarApp() {
   ocultarPantallaLogin();
+  iniciarPresencia();
   const rol = PERFIL_USUARIO?.roles?.name;
   if (rol === 'chofer') {
     await _hidratarSesionChofer();
@@ -264,7 +361,7 @@ async function _hidratarSesionChofer() {
           banner.style.cssText = 'position:sticky;top:0;z-index:9999;background:#f5a623;color:#1a1a1a;padding:7px 16px;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.3px;transition: opacity 0.5s ease;';
           document.querySelector('.main')?.prepend(banner);
         }
-        banner.textContent = `⚠️ Jornada activa · Camión ${patente}${modelo ? ' · ' + modelo : ''} · No podés cambiar de camión hasta cerrar la jornada`;
+        banner.textContent = `⚠ Jornada activa · Camión ${patente}${modelo ? ' · ' + modelo : ''} · No podés cambiar de camión hasta cerrar la jornada`;
 
         // 3. Remover el banner a los 4 segundos
         setTimeout(() => {
@@ -323,7 +420,8 @@ async function _finalizarInicializacion() {
   }
   if (PERFIL_USUARIO?.roles?.name === 'administracion') {
     const panel = document.getElementById('filtros-admin');
-    if (panel) panel.style.display = 'block';
+    if (panel) panel.style.display = 'contents';
+    window._rmxRenderFilters?.();
     await cargarChoferes();
   }
 
@@ -332,6 +430,7 @@ async function _finalizarInicializacion() {
   const navSueldos = document.getElementById('nav-sueldos');
   if (navSueldos) {
     navSueldos.style.display = (rolActual === 'administracion' || rolActual === 'supervision') ? '' : 'none';
+    if (navSueldos.style.display === '') setTimeout(() => window.actualizarAvisoEsquemas?.(), 0);
   }
 
   const navJornadasAdmin = document.getElementById('nav-jornadas-admin');
@@ -372,6 +471,7 @@ async function mostrarPantallaSeleccionCamion() {
           <div class="sel-sub">REMOLQUES</div>
           <div class="sel-welcome">Bienvenido, <strong>${nombre}</strong></div>
           <div class="sel-hint">Seleccioná el camión con el que vas a trabajar hoy</div>
+          <button type="button" class="btn btn-ghost" style="margin-top:12px;min-height:44px" onclick="cerrarSesion()">⏻ Cerrar sesión / Cambiar de usuario</button>
         </div>
         <input id="sel-camion-search" class="form-input" type="text"
           placeholder="🔍 Buscar patente o número interno..."
@@ -418,7 +518,7 @@ async function mostrarPantallaSeleccionCamion() {
     aviso.id = 'sel-aviso-jornada';
     aviso.style.cssText = 'background:rgba(245,166,35,0.12);border:1.5px solid #f5a623;border-radius:10px;padding:18px 16px;margin-bottom:16px;';
     aviso.innerHTML = `
-      <div style="font-size:13px;font-weight:800;color:#f5a623;margin-bottom:6px;">⚠️ Tenés una jornada abierta</div>
+      <div style="font-size:13px;font-weight:800;color:#f5a623;margin-bottom:6px;">⚠ Tenés una jornada abierta</div>
       <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">Camión: ${patente}${interno}</div>
       ${modelo ? `<div style="font-size:12px;color:#aaa;margin-bottom:12px;">${modelo}</div>` : '<div style="margin-bottom:12px;"></div>'}
       <div style="font-size:12px;color:#ccc;margin-bottom:14px;">No podés seleccionar otro camión hasta cerrar la jornada activa.</div>
@@ -484,8 +584,8 @@ async function mostrarPantallaSeleccionCamion() {
       <div class="sel-card-badges">
         <span class="sel-badge sel-badge--km">🛣 ${c.current_km ? c.current_km.toLocaleString('es-AR') + ' km' : 'Sin km registrado'}</span>
         ${ocupado
-          ? `<span class="sel-badge sel-badge--red">🔴 ${enUso[c.truck_id]} está utilizando actualmente este camión</span>`
-          : `<span class="sel-badge sel-badge--green">🟢 Disponible</span>`}
+          ? `<span class="sel-badge sel-badge--red">● ${enUso[c.truck_id]} está utilizando actualmente este camión</span>`
+          : `<span class="sel-badge sel-badge--green">● Disponible</span>`}
       </div>
     </div>`;
   };
@@ -590,6 +690,14 @@ function _mapRemitoRow(r) {
     telefono:      r.telefono        || '',
     origen:        r.origen,
     destino:       r.destino,
+    origin_place_id:r.origin_place_id||null,
+    origin_lat:     r.origin_lat??null,
+    origin_lng:     r.origin_lng??null,
+    origin_formatted_address:r.origin_formatted_address||null,
+    destination_place_id:r.destination_place_id||null,
+    destination_lat:r.destination_lat??null,
+    destination_lng:r.destination_lng??null,
+    destination_formatted_address:r.destination_formatted_address||null,
     km:            String(r.km_reales     || '—'),
     peaje:         String(r.imp_peaje     || 0),
     excedente:     String(r.imp_excedente || 0),
@@ -604,11 +712,20 @@ function _mapRemitoRow(r) {
     estado:        r.status === 'firmado' ? 'firmado' : r.status === 'anulado' ? 'anulado' : r.status === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
     creadoPor:     r.creado_por || null,
     confirmaciones: armarConfirmaciones(r),
+    conformidades: { servicio: r.conformidad_servicio ?? null, cargos: r.conformidad_cargos ?? null, danos: r.sin_danos ?? null, arrastre: r.conformidad_arrastre ?? null },
+    foto_urls:     Array.isArray(r.foto_urls) ? r.foto_urls : [],
+    acceptedTotal: r.accepted_imp_total_extras ?? null,
     observaciones: r.observaciones || null,
     firmaUrl:      r.firma_imagen_url || null,
     chofer:        r.users?.full_name || '—',
     createdAt:     r.created_at_device || null,
     firmadoAt:     r.firmado_at        || null,
+    operatorServiceId: r.operator_service_id || null,
+    driverIntakeId: r.driver_intake_id || null,
+    clientOperationId: r.client_operation_id || null,
+    documentSource: r.document_source || 'legacy_driver',
+    addonsVersion: r.addons_version || 1,
+    addonsReviewStatus: r.addons_review_status || 'legacy',
   };
 }
 
@@ -642,14 +759,28 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   if (filtros.patente) {
     q = q.ilike('patente', `%${_escPostgrest(filtros.patente)}%`);
   }
-  if (filtros.tipoServicio) {
-    q = q.eq('tipo_servicio', filtros.tipoServicio);
+  // Tipo de servicio real = el del Servicio vinculado. '__sin__' = remitos sin
+  // servicio ("Sin clasificar"); un concept_id se resuelve antes a los ids de
+  // servicio (_rmxResolverFiltros). Si no se pudo resolver (p. ej. sin permiso
+  // sobre Servicios) se cae al texto guardado en el remito.
+  if (filtros.tipoServicio === '__sin__') {
+    q = q.is('operator_service_id', null);
+  } else if (Array.isArray(filtros._remitoIdsTipo)) {
+    q = q.in('remito_id', filtros._remitoIdsTipo.length ? filtros._remitoIdsTipo : [-1]);
+  } else if (filtros.tipoServicio) {
+    q = q.eq('tipo_servicio', filtros._tipoNombre || filtros.tipoServicio);
   }
   if (filtros.pagoMetodo) {
     const p = filtros.pagoMetodo.toLowerCase();
     q = q.or(`pago_1_metodo.eq.${p},pago_2_metodo.eq.${p}`);
   }
-  if (filtros.estado && filtros.estado !== 'todos') {
+  if (filtros.estado === 'sin_enviar') {
+    // Firmados de los últimos 60 días que todavía no se enviaron al cliente (ids resueltos en _rmxResolverFiltros).
+    q = q.in('remito_id', Array.isArray(filtros._pendientesEnvio) && filtros._pendientesEnvio.length ? filtros._pendientesEnvio : [-1]);
+  } else if (filtros.estado === 'revisar') {
+    // Firmados con cargos (addons v2) que Administración todavía no aprobó ni ajustó.
+    q = q.eq('status', 'firmado').eq('addons_version', 2).not('addons_review_status', 'in', '(approved,adjusted)');
+  } else if (filtros.estado && filtros.estado !== 'todos') {
     q = q.eq('status', filtros.estado);
   }
 
@@ -679,6 +810,77 @@ function _buildRemitosQuery({ filtros = {}, forCount = false } = {}) {
   return q;
 }
 
+// ── Remitos · datos del Servicio vinculado ─────────────────────────
+// El tipo de servicio real (Liviano, Semipesado, UML…) y el N° de servicio
+// viven en operator_services; el texto del remito puede estar desactualizado
+// ("A definir por Operaciones") o ser genérico en el flujo viejo del chofer.
+let _rmxConceptos = null;
+async function _rmxCargarConceptos() {
+  if (_rmxConceptos) return _rmxConceptos;
+  try {
+    const { data, error } = await _db.from('service_concepts').select('concept_id,name,is_active').order('name');
+    if (error) throw error;
+    _rmxConceptos = data || [];
+  } catch (e) { _rmxConceptos = []; }
+  return _rmxConceptos;
+}
+
+async function _rmxResolverFiltros(filtros = {}) {
+  const f = { ...filtros };
+  delete f._serviceIds; delete f._remitoIdsTipo; delete f._tipoNombre; delete f._pendientesEnvio;
+  if (f.estado === 'sin_enviar') {
+    try {
+      const { data, error } = await _db.rpc('get_remitos_pendientes_envio_v1');
+      if (error) throw error;
+      f._pendientesEnvio = Array.isArray(data) ? data : [];
+    } catch (e) { f._pendientesEnvio = []; }
+  }
+  if (!f.tipoServicio || f.tipoServicio === '__sin__') return f;
+  const conceptos = await _rmxCargarConceptos();
+  const c = conceptos.find(x => x.concept_id === f.tipoServicio);
+  if (!c) return f;
+  f._tipoNombre = c.name;
+  try {
+    // operator_services no se lee directo (sin SELECT para authenticated): la RPC devuelve los remitos de ese tipo.
+    const { data, error } = await _db.rpc('get_remito_ids_by_concept_v1', { p_concept_id: c.concept_id });
+    if (error) throw error;
+    f._remitoIdsTipo = Array.isArray(data) ? data : [];
+  } catch (e) { /* sin permiso (p. ej. chofer): filtra por el texto del remito */ }
+  return f;
+}
+
+async function _rmxEnriquecerServicios(rows) {
+  const ids = [...new Set(rows.filter(r => r.operatorServiceId).map(r => r.id).filter(Boolean))];
+  let servicios = new Map();
+  if (ids.length && ['administracion', 'supervision', 'facturacion'].includes(PERFIL_USUARIO?.roles?.name)) {
+    try {
+      // Por RPC: authenticated no tiene SELECT sobre operator_services.
+      const { data, error } = await _db.rpc('get_remitos_service_info_v1', { p_remito_ids: ids.map(Number) });
+      if (error) throw error;
+      servicios = new Map((data || []).map(s => [s.service_id, { orden: s.service_order_number || '', numero: s.service_number || '', tipo: s.concept_name || '' }]));
+    } catch (e) { /* sin permiso: se usa lo guardado en el remito */ }
+  }
+  // Envío al cliente (link público): solo lo ve Administración/Supervisión.
+  let envios = null;
+  const remitoIds = rows.map(r => r.id).filter(Boolean);
+  if (remitoIds.length && ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name)) {
+    try {
+      const { data, error } = await _db.from('remito_public_links').select('remito_id,canal,canal_at,created_at').in('remito_id', remitoIds);
+      if (error) throw error;
+      envios = new Map((data || []).map(l => [l.remito_id, { canal: l.canal || null, at: l.canal_at || l.created_at }]));
+    } catch (e) { envios = null; }
+  }
+  const GENERICOS = new Set(['', '—', 'A definir por Operaciones', 'Servicio de grúa', 'Otro']);
+  rows.forEach(r => {
+    const s = r.operatorServiceId ? servicios.get(r.operatorServiceId) : null;
+    r.srvOrden  = s?.orden || r.nroSrv || '';
+    r.srvNumero = s?.numero || '';
+    r.tipoReal  = s?.tipo || (r.operatorServiceId && !GENERICOS.has(r.tipo) ? r.tipo : '');
+    if (envios) r.envio = envios.get(r.id) || null;
+  });
+  return rows;
+}
+
 async function cargarRemitos(opts = {}) {
   try {
     const page     = opts.page     ?? window._remitosPagina ?? 1;
@@ -690,13 +892,13 @@ async function cargarRemitos(opts = {}) {
 
     // Fetch puro (separado del render para poder cachearlo — Fase 3 offline)
     const fnOnline = async () => {
-      let query = _buildRemitosQuery({ filtros });
+      let query = _buildRemitosQuery({ filtros: await _rmxResolverFiltros(filtros) });
       const start = (page - 1) * pageSize;
       const end   = start + pageSize - 1;
       query = query.range(start, end);
       const { data, error, count } = await query;
       if (error) throw new Error(error.message || 'Error Supabase remitos');
-      return { remitos: (data || []).map(_mapRemitoRow), total: count ?? 0 };
+      return { remitos: await _rmxEnriquecerServicios((data || []).map(_mapRemitoRow)), total: count ?? 0 };
     };
 
     const esChofer = typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name === 'chofer';
@@ -717,8 +919,16 @@ async function cargarRemitos(opts = {}) {
       }
     }
 
-    window._remitosTotal = resultado?.total ?? 0;
-    if (typeof renderTablaRemitos === 'function') renderTablaRemitos(resultado?.remitos || []);
+    const remitos = resultado?.remitos || [];
+    window._driverRemitosSnapshot = remitos;
+    if (esChofer && typeof window.actualizarRemitosActivosChofer === 'function') {
+      window.actualizarRemitosActivosChofer(remitos);
+    }
+    const remitosHistorial = esChofer
+      ? remitos.filter(r => !(r.estado === 'pendiente' && (r.driverIntakeId || r.documentSource === 'driver_ad_hoc') && !r.operatorServiceId))
+      : remitos;
+    window._remitosTotal = esChofer ? remitosHistorial.length : (resultado?.total ?? 0);
+    if (typeof renderTablaRemitos === 'function') renderTablaRemitos(remitosHistorial);
     if (typeof renderRemitosPagination === 'function') renderRemitosPagination();
     if (typeof actualizarInfoFiltroRemitos === 'function') actualizarInfoFiltroRemitos();
 
@@ -735,7 +945,7 @@ async function cargarRemitos(opts = {}) {
       const mobileList = document.getElementById('mobile-remitos-list');
       if (mobileList) mobileList.innerHTML = msg;
       const tbody = document.getElementById('tbody-remitos');
-      if (tbody) tbody.innerHTML = `<tr><td colspan="9">${msg}</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="10">${msg}</td></tr>`;
     }
 
     // Remitos del outbox sin sincronizar, al tope de la lista (online u offline)
@@ -749,11 +959,18 @@ async function cargarRemitos(opts = {}) {
 
 async function fetchRemitosFiltrados({ filtros, max = 5000 } = {}) {
   const f = filtros ?? window._remitosFiltros ?? {};
-  let query = _buildRemitosQuery({ filtros: f });
+  let query = _buildRemitosQuery({ filtros: await _rmxResolverFiltros(f) });
   query = query.range(0, Math.max(0, max - 1));
   const { data, error } = await query;
   if (error) { console.error('❌ fetchRemitosFiltrados:', error); return []; }
-  return (data || []).map(_mapRemitoRow);
+  return _rmxEnriquecerServicios((data || []).map(_mapRemitoRow));
+}
+
+// Cantidad de remitos con los filtros dados, sin traer filas (chips de la barra).
+async function contarRemitosFiltrados(filtros) {
+  const { error, count } = await _buildRemitosQuery({ filtros: await _rmxResolverFiltros(filtros) }).range(0, 0);
+  if (error) { console.error('❌ contarRemitosFiltrados:', error); return null; }
+  return count ?? 0;
 }
 // Nota: esta función carga los remitos más recientes (hasta 200) y los mapea al formato que necesita la tabla. Incluye lógica para formatear fechas, mostrar métodos de pago combinados, y armar el texto de confirmaciones. Si hay un error o no hay remitos, muestra mensajes en la consola.
 
@@ -766,39 +983,6 @@ async function obtenerRemitoCompleto(remitoId) {
     .single();
   if (error) { console.error('❌ obtenerRemitoCompleto:', error); return null; }
   return data;
-}
-
-// Crea un remito desde administración: pre-carga asignada a un chofer
-// (status 'pendiente') o cierre directo sin firma (status 'cerrado_admin').
-async function crearRemitoAdmin(campos, modo, driverId) {
-  const f = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const nro = `REM-${f}-${Math.floor(Math.random() * 9000) + 1000}`;
-  const fila = {
-    ...campos,
-    nro_remito: nro,
-    status:     modo === 'cerrado_admin' ? 'cerrado_admin' : 'pendiente',
-    // Cierre admin: si se eligió chofer, el remito queda a su cuenta
-    // (lo ve en su lista y cuenta en rendiciones/facturación/KPIs)
-    driver_id:  driverId || null,
-    creado_por: USUARIO_ACTUAL?.id || null,
-    created_at_device: new Date().toISOString(),
-    historial_ediciones: [{
-      fecha: new Date().toISOString(),
-      user_id: USUARIO_ACTUAL?.id || null,
-      user_nombre: PERFIL_USUARIO?.full_name || '—',
-      cambios: [{ campo: '_creacion', antes: null, despues: modo === 'cerrado_admin' ? 'cerrado por administración' : 'pre-carga asignada' }],
-    }],
-  };
-  const { error } = await _db.from('remitos').insert(fila);
-  if (error) { console.error('❌ crearRemitoAdmin:', error); return { ok: false, msg: error.message }; }
-  return { ok: true, nro };
-}
-
-// Elimina definitivamente un remito (solo admin — irreversible)
-async function eliminarRemitoAdmin(remitoId) {
-  const { error } = await _db.from('remitos').delete().eq('remito_id', remitoId);
-  if (error) { console.error('❌ eliminarRemitoAdmin:', error); return { ok: false, msg: error.message }; }
-  return { ok: true };
 }
 
 // Update de campos editados por admin + registro en historial_ediciones.
@@ -820,7 +1004,7 @@ async function cargarJornadas() {
     const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
     
     let q = _db.from('daily_logs')
-               .select('*, trucks(plate, brand, model, current_km)')
+               .select('*, trucks(plate, brand, model, current_km), remitos!remitos_log_id_fkey(status)')
                .order('log_date', { ascending: false })
                .limit(30);
                
@@ -839,14 +1023,17 @@ async function cargarJornadas() {
     }
 
     const mapped = data.map(j => ({
-      fecha:    formatearFechaCorta(j.log_date),
+      fecha:    _jhistFecha(j.log_date),
+      servicios: (j.remitos || []).filter(r=>r.status!=='anulado').length,
       camion:   j.trucks?.plate || '—',
       kmInicio: j.km_inicio?.toLocaleString('es-AR') || '—',
       kmFinal:  j.km_final?.toLocaleString('es-AR')  || '—',
-      kmRec:    j.km_recorridos?.toString()          || '—',
+      kmRec:    j.km_final != null && j.km_inicio != null ? Math.max(0,Number(j.km_final)-Number(j.km_inicio)).toLocaleString('es-AR') : '—',
       horas:    calcularHoras(j.hora_inicio, j.hora_fin),
+      horasMotorInicio: j.horas_inicio ?? null,
+      horasMotorFinal:  j.horas_final ?? null,
       taller:   j.in_workshop,
-      estado:   j.status === 'open' ? 'abierta' : 'cerrada',
+      estado:   j.status === 'open' ? 'abierta' : j.status === 'void' ? 'anulada' : 'cerrada',
     }));
 
     if (typeof renderHistorialJornadas === 'function') {
@@ -861,7 +1048,7 @@ async function cargarJornadas() {
 
 async function cargarServiciosDia() {
   try {
-    // 🛠️ FIX: Forzamos la zona horaria de Argentina para evitar el bug de las 21:00 hs (UTC)
+    // 🛠 FIX: Forzamos la zona horaria de Argentina para evitar el bug de las 21:00 hs (UTC)
     const hoy = new Date().toLocaleDateString('en-CA', { 
       timeZone: 'America/Argentina/Buenos_Aires' 
     });
@@ -925,9 +1112,217 @@ async function cargarServiciosDia() {
 
 // ── GUARDAR REMITO ────────────────────────────────────────────
 
+function _uuidV4Local() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  if (!bytes.some(Boolean)) {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map(v => v.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
+function _operatorServiceIdActivo(explicitId = null) {
+  return explicitId
+    || sessionStorage.getItem('auxilios_phase3_service_id')
+    || null;
+}
+
+function _driverAdHocActivo(explicit = null) {
+  if (explicit != null) return !!explicit;
+  return sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1';
+}
+
+function _operatorRemitoClientOperationId(serviceId, nroRemito, explicitId = null) {
+  if (explicitId) return explicitId;
+  if (!serviceId) return null;
+  const key = `auxilios_remito_operation:${serviceId}:${nroRemito || 'draft'}`;
+  let id = null;
+  try { id = localStorage.getItem(key); } catch (e) { /* almacenamiento no disponible */ }
+  if (!id) {
+    id = _uuidV4Local();
+    try { localStorage.setItem(key, id); } catch (e) { /* el payload conserva el id */ }
+  }
+  return id;
+}
+
+let _remitoBackendCapabilitiesPromise = null;
+
+function _remitoBackendUnavailable(error) {
+  const missing = error?.code === 'PGRST202'
+    || /could not find the function|schema cache/i.test(error?.message || '');
+  const friendly = missing
+    ? 'El módulo de Servicios todavía no está habilitado en el servidor. Actualizá la pantalla y reintentá en unos minutos.'
+    : (error?.message || 'No se pudo validar el módulo de Servicios');
+  const normalized = new Error(friendly);
+  normalized.code = error?.code || (missing ? 'REMITO_BACKEND_UNAVAILABLE' : 'REMITO_BACKEND_CHECK_FAILED');
+  return normalized;
+}
+
+async function verificarBackendRemitoDisponible(mode) {
+  if (!_remitoBackendCapabilitiesPromise) {
+    _remitoBackendCapabilitiesPromise = _db
+      .rpc('get_driver_remito_capabilities_v2')
+      .then(({ data, error }) => {
+        if (error) throw _remitoBackendUnavailable(error);
+        return data || {};
+      })
+      .catch(error => {
+        _remitoBackendCapabilitiesPromise = null;
+        throw error;
+      });
+  }
+  const capabilities = await _remitoBackendCapabilitiesPromise;
+  const enabled = mode === 'assigned' ? capabilities.assigned : capabilities.ad_hoc;
+  if (!enabled) {
+    _remitoBackendCapabilitiesPromise = null;
+    throw _remitoBackendUnavailable({ code: 'PGRST202' });
+  }
+  return capabilities;
+}
+
+async function _limpiarEvidenciaRemitoFallido({ nroRemito, clientOperationId, uploads = [] } = {}) {
+  if (!uploads.length || !_db || !USUARIO_ACTUAL?.id) return { removed: 0, preserved: uploads.length };
+
+  let query = _db
+    .from('remitos')
+    .select('remito_id,firma_imagen_url,foto_urls')
+    .eq('driver_id', USUARIO_ACTUAL.id);
+  query = clientOperationId
+    ? query.eq('client_operation_id', clientOperationId)
+    : query.eq('nro_remito', nroRemito);
+
+  const { data: persisted, error: lookupError } = await query.limit(1);
+  if (lookupError) {
+    console.warn('No se pudo verificar la evidencia huérfana del remito:', lookupError.message);
+    return { removed: 0, preserved: uploads.length };
+  }
+
+  const row = persisted?.[0] || null;
+  const referencedUrls = new Set([
+    row?.firma_imagen_url,
+    ...(Array.isArray(row?.foto_urls) ? row.foto_urls : []),
+  ].filter(Boolean));
+  const removable = uploads.filter(item => !referencedUrls.has(item.url));
+  let removed = 0;
+
+  for (const bucket of [...new Set(removable.map(item => item.bucket))]) {
+    const paths = removable.filter(item => item.bucket === bucket).map(item => item.path);
+    if (!paths.length) continue;
+    const { error } = await _db.storage.from(bucket).remove(paths);
+    if (error) {
+      console.warn(`No se pudo limpiar evidencia huérfana de ${bucket}:`, error.message);
+    } else {
+      removed += paths.length;
+    }
+  }
+  return { removed, preserved: uploads.length - removed };
+}
+
+// Conceptos sí/no del remito (p. ej. Pinacars): se guardan aparte, después del remito.
+async function _guardarTogglesRemito(remitoId, payload) {
+  if (!remitoId || !Array.isArray(payload?.toggle_concept_ids)) return;
+  const { error } = await _db.rpc('set_driver_remito_toggles_v1', {
+    p_remito_id: Number(remitoId),
+    p_concept_ids: payload.toggle_concept_ids,
+  });
+  if (error) {
+    console.warn('[remito] interruptores', error.message);
+    if (typeof toast === 'function') toast('El remito se guardó, pero no se pudo registrar Pinacars: ' + error.message, 'warning');
+  }
+}
+
+async function guardarRemitoVinculado(remito, explicitServiceId = null) {
+  const serviceId = _operatorServiceIdActivo(explicitServiceId || remito?.operator_service_id);
+  if (!serviceId) return null;
+  await verificarBackendRemitoDisponible('assigned');
+  const clientOperationId = _operatorRemitoClientOperationId(
+    serviceId,
+    remito?.nro_remito,
+    remito?.client_operation_id
+  );
+  const payload = {
+    ...remito,
+    operator_service_id: serviceId,
+    client_operation_id: clientOperationId,
+  };
+  // v5 = v4 + el cobro del servicio particular (customer_collections).
+  const rpcName = payload.addons_version === 2
+    ? (payload.customer_collections?.kind === 'private_service'
+        ? 'save_driver_operator_service_remito_v5'
+        : 'save_driver_operator_service_remito_v4')
+    : 'save_driver_operator_service_remito_v3';
+  const { data, error } = await _db.rpc(rpcName, {
+    p_service_id: serviceId,
+    p_payload: payload,
+    p_client_operation_id: clientOperationId,
+  });
+  if (error) throw new Error(error.message || 'No se pudo vincular el remito al servicio');
+  await _guardarTogglesRemito(data?.remito_id, payload);
+  return data;
+}
+
+async function guardarRemitoAdHoc(remito) {
+  await verificarBackendRemitoDisponible('ad_hoc');
+  const clientOperationId = _operatorRemitoClientOperationId(
+    'driver-ad-hoc',
+    remito?.nro_remito,
+    remito?.client_operation_id
+  );
+  const payload = {
+    ...remito,
+    client_operation_id: clientOperationId,
+    document_source: 'driver_ad_hoc',
+  };
+  // El chofer lo marcó como Particular: v4 guarda el monto acordado y lo cobrado.
+  const rpcName = payload.customer_collections?.kind === 'private_ad_hoc'
+    ? 'save_driver_ad_hoc_remito_v4'
+    : payload.maps_version === 1
+    ? 'save_driver_ad_hoc_remito_v3'
+    : payload.addons_version === 2 ? 'save_driver_ad_hoc_remito_v2' : 'save_driver_ad_hoc_remito_v1';
+  const { data, error } = await _db.rpc(rpcName, {
+    p_payload: payload,
+    p_client_operation_id: clientOperationId,
+  });
+  if (error) {
+    const assigned = /SERVICIO_ASIGNADO/i.test(error.message || '');
+    const normalized = new Error(assigned
+      ? 'Recibiste un servicio asignado mientras completabas este remito. Tus datos siguen en pantalla: abrí Servicios y completá el remito asignado.'
+      : (error.message || 'No se pudo registrar el ingreso sin asignación'));
+    normalized.code = assigned ? 'SERVICIO_ASIGNADO' : (error.code || 'REMITO_AD_HOC_ERROR');
+    throw normalized;
+  }
+  await _guardarTogglesRemito(data?.remito_id, payload);
+  return data;
+}
+
+Object.assign(window, {
+  _guardarTogglesRemito,
+  guardarRemitoVinculado,
+  guardarRemitoAdHoc,
+  obtenerServicioActivoRemito: _operatorServiceIdActivo,
+  obtenerOperacionRemito: _operatorRemitoClientOperationId,
+  esRemitoAdHocActivo: _driverAdHocActivo,
+  verificarBackendRemitoDisponible,
+  limpiarEvidenciaRemitoFallido: _limpiarEvidenciaRemitoFallido,
+});
+
 // Arma el registro de la tabla remitos a partir de los datos del wizard.
 // Única fuente para el camino online y el offline (outbox).
 function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl) {
+  const operatorServiceId = _operatorServiceIdActivo(datosRemito.operator_service_id);
+  const driverAdHoc = !operatorServiceId && _driverAdHocActivo(
+    datosRemito.document_source === 'driver_ad_hoc' ? true : null
+  );
+  const clientOperationId = _operatorRemitoClientOperationId(
+    operatorServiceId || (driverAdHoc ? 'driver-ad-hoc' : null),
+    nroFinal,
+    datosRemito.client_operation_id
+  );
+  const addonPayload = datosRemito.remitoAddons?.payload || datosRemito.remitoAddons || null;
   return {
     nro_remito:           nroFinal,
     driver_id:            USUARIO_ACTUAL.id,
@@ -941,6 +1336,7 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
     tipo_servicio:        datosRemito.tipo,
     origen:               datosRemito.origen,
     destino:              datosRemito.destino,
+    ...(['maps_version','origin_place_id','origin_lat','origin_lng','origin_formatted_address','destination_place_id','destination_lat','destination_lng','destination_formatted_address'].reduce((out,key)=>{if(datosRemito[key]!=null&&datosRemito[key]!=='')out[key]=datosRemito[key];return out},{})),
     km_reales:            parseInt(datosRemito.km)   || null,
     imp_peaje:            parsearImporte(datosRemito.peaje),
     imp_excedente:        parsearImporte(datosRemito.excedente),
@@ -959,10 +1355,26 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
     conformidad_arrastre: datosRemito.confirmaciones.includes('Conformidad de Arrastre') || null,
     status:               'firmado',
     created_at_device:    new Date().toISOString(),
+    ...(addonPayload?.addons_version === 2 ? {
+      addons_version: 2,
+      tolls: Array.isArray(addonPayload.tolls) ? addonPayload.tolls : [],
+      excesses: Array.isArray(addonPayload.excesses) ? addonPayload.excesses : [],
+      evidence: Array.isArray(addonPayload.evidence) ? addonPayload.evidence : [],
+      customer_collections: addonPayload.customer_collections || null,
+    } : {}),
+    ...(operatorServiceId ? {
+      operator_service_id: operatorServiceId,
+      client_operation_id: clientOperationId,
+      document_source: 'auxilios_driver',
+    } : driverAdHoc ? {
+      client_operation_id: clientOperationId,
+      document_source: 'driver_ad_hoc',
+    } : {}),
   };
 }
 
-// Cada etapa termina con éxito o error; nunca deja el formulario esperando sin límite.
+// Cada paso del guardado tiene un tiempo máximo: si la señal se cae a mitad de
+// camino el chofer ve un error y puede reintentar con el mismo remito.
 async function _esperarPasoRemito(operation, label, timeoutMs = 45000) {
   const controller = new AbortController();
   let timer;
@@ -982,6 +1394,9 @@ async function _esperarPasoRemito(operation, label, timeoutMs = 45000) {
 }
 
 async function guardarRemitoCompleto(datosRemito) {
+  const evidenciaSubida = [];
+  let contextoEvidencia = null;
+  let remitoPersistido = false;
   try {
     _toast('Guardando remito...', 'info');
 
@@ -999,6 +1414,24 @@ async function guardarRemitoCompleto(datosRemito) {
     const _f = new Date().toISOString().slice(0,10).replace(/-/g,'');
     const _r = Math.floor(Math.random() * 9000) + 1000;
     const nroFinal = datosRemito.nro || `REM-${_f}-${_r}`;
+    const operatorServiceId = _operatorServiceIdActivo(datosRemito.operator_service_id);
+    const driverAdHoc = !operatorServiceId && _driverAdHocActivo(
+      datosRemito.document_source === 'driver_ad_hoc' ? true : null
+    );
+    const clientOperationId = _operatorRemitoClientOperationId(
+      operatorServiceId || (driverAdHoc ? 'driver-ad-hoc' : null),
+      nroFinal,
+      datosRemito.client_operation_id
+    );
+
+    // El backend se valida antes de subir evidencia. Así un preview adelantado
+    // a sus migraciones no deja fotos ni firmas huérfanas en Storage.
+    if (operatorServiceId || driverAdHoc) {
+      await verificarBackendRemitoDisponible(operatorServiceId ? 'assigned' : 'ad_hoc');
+    }
+    const storageOperationToken = String(clientOperationId || Date.now())
+      .replace(/[^a-zA-Z0-9-]/g, '');
+    contextoEvidencia = { nroRemito: nroFinal, clientOperationId, uploads: evidenciaSubida };
 
     // ── 3. Parseo de Pago Mixto ───────────────────────────────
     const metodosValidos = ['efectivo', 'transferencia', 'tarjeta', 'app'];
@@ -1014,9 +1447,12 @@ async function guardarRemitoCompleto(datosRemito) {
         firmaDataURL = canvas.toDataURL('image/png');
       }
     }
+    const addonBundle = datosRemito.remitoAddons?.payload ? datosRemito.remitoAddons : null;
     const archivosFotos = [];
-    for (const input of document.querySelectorAll('#foto-grid input[type="file"]')) {
-      if (input.files?.length) archivosFotos.push(input.files[0]);
+    if (!addonBundle) {
+      for (const input of document.querySelectorAll('#foto-grid input[type="file"]')) {
+        if (input.files?.length) archivosFotos.push(input.files[0]);
+      }
     }
 
     // ── 5. SIN CONEXIÓN → outbox (fotos y firma quedan en el teléfono) ──
@@ -1025,6 +1461,10 @@ async function guardarRemitoCompleto(datosRemito) {
       const blobs = {};
       if (firmaDataURL) blobs.firma = firmaDataURL;
       archivosFotos.forEach((f, i) => { blobs['foto_' + i] = f; });
+      if (addonBundle) {
+        addonBundle.files.forEach(item => { blobs[item.blob_field] = item.file; });
+        remitoOffline.remito_addon_file_map = addonBundle.files.map(({ file, ...item }) => item);
+      }
       await obAdd({
         tipo: 'remito_completo',
         payload: remitoOffline,
@@ -1037,9 +1477,9 @@ async function guardarRemitoCompleto(datosRemito) {
     }
 
     // El vínculo de un remito con su jornada es inmutable en Postgres. Al
-    // completar un borrador existente, el formulario puede estar abierto desde
-    // otra jornada o sin jornada activa; preservar la relación guardada evita
-    // que el upsert intente moverla y reciba REMITO_LOG_IMMUTABLE.
+    // completar un borrador existente se conserva la jornada ya guardada para
+    // que el guardado no intente moverla (REMITO_LOG_IMMUTABLE). Se lee antes
+    // de subir evidencia: si falla, no queda nada a medio guardar.
     const { data: remitoExistente, error: remitoExistenteError } = await _esperarPasoRemito(
       signal => _db.from('remitos')
         .select('log_id')
@@ -1052,17 +1492,24 @@ async function guardarRemitoCompleto(datosRemito) {
     if (remitoExistenteError) throw new Error('No se pudo recuperar el remito pendiente: ' + remitoExistenteError.message);
     const logIdPersistido = remitoExistente?.log_id ?? datosRemito.log_id ?? null;
 
-    if (!firmaDataURL) throw new Error('Falta la firma del remito.');
+    let uploadedAddonPayload = addonBundle?.payload || null;
+    if (addonBundle) {
+      uploadedAddonPayload = await _esperarPasoRemito(() => window.AuxiliosRemitoAddonsV2.uploadEvidence(addonBundle, storageOperationToken), 'Subida de evidencia');
+      (uploadedAddonPayload.evidence || []).forEach(item => evidenciaSubida.push({
+        bucket: 'remito-evidence-v2', path: item.storage_path, url: null,
+      }));
+    }
 
-    // ── 5b. ONLINE: Subida de Fotos ───────────────────────────
+    // ── 5b. ONLINE: Subida de Fotos de compatibilidad ─────────
     const fotoUrls = [];
     for (const [index, file] of archivosFotos.entries()) {
-      const nombre = `${nroFinal}_${Date.now()}_foto_${index}.${file.name.split('.').pop()}`;
+      const extension = String(file.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+      const nombre = `${nroFinal}_${storageOperationToken}_foto_${index}.${extension}`;
       const { error: ue } = await _esperarPasoRemito(() => _db.storage.from('remitos').upload(nombre, file, { upsert: true }), 'Subida de foto');
-      if (ue) throw new Error('No se pudo subir la foto: ' + ue.message);
       if (!ue) {
         const { data: ud } = _db.storage.from('remitos').getPublicUrl(nombre);
         fotoUrls.push(ud.publicUrl);
+        evidenciaSubida.push({ bucket: 'remitos', path: nombre, url: ud.publicUrl });
       }
     }
 
@@ -1071,36 +1518,73 @@ async function guardarRemitoCompleto(datosRemito) {
     if (firmaDataURL) {
       try {
         const blob = await (await fetch(firmaDataURL)).blob();
-        const nombre = `firma_${nroFinal}_${Date.now()}.png`;
+        const nombre = `firma_${nroFinal}_${storageOperationToken}.png`;
         const { error: fe } = await _esperarPasoRemito(() => _db.storage.from('firmas').upload(nombre, blob, { contentType: 'image/png', upsert: true }), 'Subida de firma');
         if (!fe) {
           const { data: fd } = _db.storage.from('firmas').getPublicUrl(nombre);
           firmaUrl = fd.publicUrl;
+          evidenciaSubida.push({ bucket: 'firmas', path: nombre, url: fd.publicUrl });
         } else {
-          console.warn('⚠️ No se pudo subir la firma:', fe.message);
+          console.warn('⚠ No se pudo subir la firma:', fe.message);
           throw new Error('No se pudo subir la firma: ' + fe.message);
         }
       } catch (upErr) {
-        console.warn('⚠️ Error procesando firma:', upErr);
+        console.warn('⚠ Error procesando firma:', upErr);
         throw upErr;
       }
     }
 
     console.log('Enviando DTO a Supabase para:', nroFinal);
 
+    // Si la asignación llegó mientras se completaba un ingreso sin asignación,
+    // vinculamos el mismo formulario a esa prestación antes de persistirlo.
+    if (!_operatorServiceIdActivo(datosRemito.operator_service_id) && _driverAdHocActivo() && navigator.onLine
+        && typeof window.resolverServicioAsignadoParaRemito === 'function') {
+      const assigned = await window.resolverServicioAsignadoParaRemito();
+      if (assigned?.service_id) {
+        datosRemito.operator_service_id = assigned.service_id;
+        datosRemito.document_source = 'auxilios_driver';
+        _toast(`Se vinculó el remito al servicio ${assigned.service_order_number || assigned.service_number || 'asignado'}`, 'info');
+      }
+    }
+
     // ── 6. Upsert Seguro en Supabase ──────────────────────────
     // Usamos UPSERT para actualizar el pendiente si ya existía, o crear uno nuevo.
-    const { error } = await _esperarPasoRemito(signal => _db.from('remitos').upsert(
-      _remitoDbDesdeDatos({ ...datosRemito, log_id: logIdPersistido }, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl),
-      { onConflict: 'nro_remito' }
-    ).abortSignal(signal), 'Guardado del remito');
+    const remitoDB = _remitoDbDesdeDatos({
+      ...datosRemito,
+      log_id: logIdPersistido,
+      remitoAddons: uploadedAddonPayload ? { payload: uploadedAddonPayload, files: [] } : null,
+    }, nroFinal, parsearImporte, pago1, pago2, fotoUrls, firmaUrl);
+    let error = null;
+    if (remitoDB.operator_service_id) {
+      try {
+        await _esperarPasoRemito(() => guardarRemitoVinculado(remitoDB, remitoDB.operator_service_id), 'Guardado del remito');
+      } catch (linkedError) {
+        error = linkedError;
+      }
+    } else if (remitoDB.document_source === 'driver_ad_hoc') {
+      try {
+        await _esperarPasoRemito(() => guardarRemitoAdHoc(remitoDB), 'Guardado del remito');
+        sessionStorage.removeItem('auxilios_driver_ad_hoc_mode');
+      } catch (adHocError) {
+        error = adHocError;
+      }
+    } else {
+      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remitoDB;
+      ({ error } = await _esperarPasoRemito(signal => _db.from('remitos').upsert(legacyRemito, { onConflict: 'nro_remito' }).abortSignal(signal), 'Guardado del remito'));
+    }
 
     if (error) { 
       console.error("❌ Error de inserción Supabase:", error);
-      _toast('Error: ' + error.message, 'error'); 
+      await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
+      // Sin códigos técnicos (VIAJE_EN_CURSO:, JORNADA_REQUERIDA:…): sólo lo que el chofer tiene que hacer.
+      _toast('No se pudo guardar el remito. ' + String(error.message || '').replace(/^[A-Z_]{4,}:\s*/, ''), 'error'); 
       return false; 
     }
 
+    // Desde este punto las rutas privadas forman parte del remito firmado. Si
+    // falla solamente la recarga visual, no deben eliminarse como huérfanas.
+    remitoPersistido = true;
     // La recarga es secundaria: el servidor ya confirmó el remito firmado.
     Promise.resolve().then(() => cargarRemitos()).catch(err => console.warn('No se pudo actualizar el listado de remitos:', err));
     _toast(`Remito ${nroFinal} guardado ✓`, 'success');
@@ -1109,7 +1593,10 @@ async function guardarRemitoCompleto(datosRemito) {
 
   } catch (err) {
     console.error('❌ Error inesperado en guardarRemitoCompleto:', err);
-    _toast('No se pudo guardar el remito: ' + (err?.message || err), 'error');
+    if (contextoEvidencia && !remitoPersistido) {
+      await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
+    }
+    _toast('Error inesperado al guardar: ' + (err?.message || err), 'error');
     return false;
   }
 }
@@ -1214,7 +1701,7 @@ function mostrarPantallaLogin() {
             <label for="login-pass">Contraseña</label>
             <div style="position:relative">
               <input id="login-pass" class="form-input" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;padding-right:42px" onkeydown="if(event.key==='Enter')ejecutarLogin()">
-              <button type="button" onclick="toggleLoginPassword()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1" id="login-pass-toggle">👁</button>
+              <button type="button" onclick="toggleLoginPassword()" class="login-pass-toggle" id="login-pass-toggle" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#eye"/></svg></button>
             </div>
           </div>
           <button id="login-btn" class="btn btn-primary" onclick="ejecutarLogin()" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:8px">Ingresar →</button>
@@ -1232,8 +1719,14 @@ function toggleLoginPassword() {
   const input = document.getElementById('login-pass');
   const btn   = document.getElementById('login-pass-toggle');
   if (!input) return;
-  if (input.type === 'password') { input.type = 'text'; if (btn) btn.textContent = '🙈'; }
-  else                           { input.type = 'password'; if (btn) btn.textContent = '👁'; }
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  if (!btn) return;
+  const label = show ? 'Ocultar contraseña' : 'Mostrar contraseña';
+  btn.setAttribute('aria-pressed', String(show));
+  btn.setAttribute('aria-label', label);
+  btn.title = label;
+  btn.querySelector('use')?.setAttribute('href', '/ui/icons.svg#' + (show ? 'eye-off' : 'eye'));
 }
 
 // ── RATE LIMITING LOGIN ───────────────────────────────────────
@@ -1312,8 +1805,9 @@ async function ejecutarLogin() {
     ok = loginConDni
       ? await loginUsuarioPorDni(identifier, pass)
       : await loginUsuario(identifier, pass);
-  } catch (_) {
-    _handleLoginFail('Error inesperado. Intentá de nuevo.', b, e);
+  } catch (error) {
+    if (b) { b.textContent = 'Ingresar →'; b.style.opacity = '1'; b.disabled = false; }
+    if (e) { e.textContent = error.loginMessage ? error.message : 'No se pudo completar el acceso. Revisá la conexión y volvé a intentar.'; e.style.display = 'block'; }
     return;
   }
   if (ok) {
@@ -1451,6 +1945,10 @@ async function iniciarJornada(datos) {
       km_inicio:         parseInt(datos.kmInicio),
       km_inicio_ia:      datos.kmInicioIa ?? null,
       km_inicio_origen:  datos.kmInicioOrigen || null,
+      // Horas de motor: sólo los camiones con horómetro las mandan
+      horas_inicio:        datos.horasInicio ?? null,
+      horas_inicio_ia:     datos.horasInicioIa ?? null,
+      horas_inicio_origen: datos.horasInicio != null ? (datos.horasInicioOrigen || null) : null,
       hora_inicio:       datos.horaInicio || new Date().toTimeString().slice(0, 5),
       foto_km_inicio:    fotoUrl,
       grilla_motivo:     datos.grillaMotivo || null,
@@ -1469,6 +1967,7 @@ async function iniciarJornada(datos) {
         truck_id:    data.truck_id,
         patente:     datos.patente,
         marca_modelo: datos.marcaModelo || null,
+        horas_inicio: datos.horasInicio ?? null,
       };
       localStorage.setItem('sigma_jornada_activa', JSON.stringify(jornadaLocal));
     } catch (e) { /* localStorage no disponible — no crítico */ }
@@ -1518,6 +2017,9 @@ async function cerrarJornada(logId, datos) {
       km_final:        kmFinal,
       km_final_ia:     datos.kmFinalIa ?? null,
       km_final_origen: datos.kmFinalOrigen || null,
+      horas_final:        datos.horasFinal ?? null,
+      horas_final_ia:     datos.horasFinalIa ?? null,
+      horas_final_origen: datos.horasFinal != null ? (datos.horasFinalOrigen || null) : null,
       foto_km_final:   fotoUrl,
       status:          'closed',
       // horaFin puede venir en datos (sync offline: hora del evento real);
@@ -1573,15 +2075,23 @@ async function cerrarJornada(logId, datos) {
 
 // ── COMBUSTIBLE ───────────────────────────────
 
-async function cargarCombustible(truckId) {
-  const { data, error } = await _db
-    .from('fuel_records')
-    .select('*')
-    .eq('truck_id', truckId)
-    .order('fuel_date', { ascending: false })
-    .limit(30);
-  if (error) { console.error('[Combustible] Error al cargar:', error.message); return []; }
-  return data || [];
+async function cargarCombustible(truckId, opciones = {}) {
+  const completo = opciones.completo === true;
+  const batch = 500;
+  const records = [];
+  for (let offset = 0; ; offset += batch) {
+    let query = _db.from('fuel_records').select('*').eq('truck_id', truckId)
+      .order('fuel_date', { ascending: false }).order('fuel_id', { ascending: false });
+    query = completo ? query.range(offset, offset + batch - 1) : query.limit(30);
+    const { data, error } = await query;
+    if (error) {
+      if (completo) throw error; // Nunca presentar totales parciales como completos.
+      console.error('[Combustible] Error al cargar:', error.message);
+      return [];
+    }
+    records.push(...(data || []));
+    if (!completo || (data || []).length < batch) return records;
+  }
 }
 
 async function registrarCombustible(datos) {
@@ -1660,18 +2170,106 @@ async function suscribirCamionAPlan(truckId, masterPlanId) {
   }
 }
 
-/**
- * 4. OPERACIÓN: Carga los planes de un camión específico y calcula su estado actual.
- * (Altamente optimizado: 0 over-fetching)
- */
-async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null) {
-  // A. Traemos el KM actual del camión (o usamos el override para evitar race condition post-cierre)
-  let currentKm;
-  if (currentKmOverride !== null) {
-    currentKm = currentKmOverride;
+/* Estado de un plan de service por km, por horas de motor o por los dos.
+   · trigger_type 'km': sólo km; 'hours': sólo horas; 'both': lo que venza primero.
+   · Sin horas actuales del camión (0 o sin dato) la parte de horas no se cuenta:
+     el plan sigue por km hasta que el camión empiece a registrar horas.
+   · El aviso por horas es el 10% del intervalo (mínimo 10 h): el plan no tiene
+     un "avisar antes" propio para horas.
+   Devuelve el estado general (el peor de los que se pueden calcular), cuál de
+   las dos medidas manda (la que está más cerca, en proporción al intervalo) y
+   la urgencia para ordenar (restante / intervalo; negativo = vencido). */
+function avisoHorasService(intervalo) {
+  const n = Number(intervalo) || 0;
+  return Math.max(10, Math.round(n * 0.1));
+}
+function estadoServicePlan(plan, log, currentKm, currentHours) {
+  const tipo = plan?.trigger_type || 'km';
+  const intKm = Number(plan?.interval_km) || 0, intHs = Number(plan?.interval_hours) || 0;
+  const usaKm = tipo !== 'hours' && intKm > 0;
+  const usaHs = tipo !== 'km' && intHs > 0;
+  const hsActual = Number(currentHours) > 0 ? Number(currentHours) : null;
+  const kmActual = currentKm == null ? null : Number(currentKm);
+  const nextKm = log?.next_due_km ?? null, nextHs = log?.next_due_hours ?? null;
+  const medir = (usa, actual, next, intervalo, aviso) => {
+    if (!usa) return null;
+    if (actual == null) return { estado: 'sin_dato', restante: null, ratio: null };
+    if (next == null) return { estado: 'sin_registro', restante: null, ratio: null };
+    const r = next - actual;
+    return { estado: r <= 0 ? 'vencido' : r <= aviso ? 'proximo' : 'al_dia', restante: r, ratio: r / intervalo };
+  };
+  const k = medir(usaKm, kmActual, nextKm, intKm, plan?.alert_before_km || 500);
+  const h = medir(usaHs, hsActual, nextHs, intHs, avisoHorasService(intHs));
+  const PESO = { vencido: 0, proximo: 1, al_dia: 2 };
+  const calculadas = [['km', k], ['horas', h]].filter(x => x[1] && x[1].ratio != null);
+  let plan_estado, manda = null, urgencia = null;
+  if (calculadas.length) {
+    calculadas.sort((x, y) => (PESO[x[1].estado] - PESO[y[1].estado]) || (x[1].ratio - y[1].ratio));
+    plan_estado = calculadas[0][1].estado;
+    manda = calculadas[0][0];
+    urgencia = Math.min(...calculadas.map(x => x[1].ratio));
+  } else if ((k && k.estado === 'sin_registro') || (h && h.estado === 'sin_registro')) {
+    plan_estado = (k && k.estado === 'sin_dato') ? 'sin_odometro' : 'sin_registro';
+  } else if (k && k.estado === 'sin_dato') {
+    plan_estado = 'sin_odometro';
+  } else if (h && h.estado === 'sin_dato') {
+    plan_estado = 'sin_horas';
   } else {
-    const truckRes = await _db.from('trucks').select('current_km').eq('truck_id', truckId).single();
-    currentKm = truckRes.data?.current_km ?? null; // null si aún no hay odómetro registrado
+    plan_estado = 'sin_registro';
+  }
+  return {
+    plan_estado, manda, urgencia,
+    usa_km: usaKm, usa_horas: usaHs,
+    estado_km: k ? k.estado : null,
+    estado_horas: h ? h.estado : null,
+    km_restantes: k ? k.restante : null,
+    horas_restantes: h ? h.restante : null,
+    alert_before_hours: usaHs ? avisoHorasService(intHs) : null,
+    current_km: kmActual,
+    current_hours: hsActual,
+  };
+}
+/* Textos comunes de un plan con su estado: "Faltan 1.200 km · 35 h" y
+   "a los 120.000 km · 6.012 h". */
+function textoRestanteService(p) {
+  const items = [];
+  if (p.usa_km !== false && p.km_restantes != null) items.push([p.km_restantes, 'km']);
+  if (p.usa_horas && p.horas_restantes != null) items.push([p.horas_restantes, 'h']);
+  if (!items.length) return '';
+  const n = v => Math.abs(v).toLocaleString('es-AR');
+  if (items.every(x => x[0] > 0)) return 'Faltan ' + items.map(x => n(x[0]) + ' ' + x[1]).join(' · ');
+  if (items.every(x => x[0] <= 0)) return 'Excedido ' + items.map(x => n(x[0]) + ' ' + x[1]).join(' · ');
+  const t = items.map(x => (x[0] > 0 ? 'faltan ' : 'excedido ') + n(x[0]) + ' ' + x[1]).join(' · ');
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function textoProximoService(p) {
+  const partes = [];
+  if (p.usa_km !== false && p.next_due_km != null) partes.push(Number(p.next_due_km).toLocaleString('es-AR') + ' km');
+  if (p.usa_horas && p.next_due_hours != null) partes.push(Number(p.next_due_hours).toLocaleString('es-AR') + ' h');
+  return partes.join(' · ');
+}
+/* Avance del plan (0–100) en la medida que manda. */
+function avanceService(p) {
+  if (p.manda === 'horas' && p.interval_hours && p.horas_restantes != null) {
+    return Math.min(100, Math.max(0, Math.round((p.interval_hours - p.horas_restantes) / p.interval_hours * 100)));
+  }
+  if (p.interval_km && p.km_restantes != null) {
+    return Math.min(100, Math.max(0, Math.round((p.interval_km - p.km_restantes) / p.interval_km * 100)));
+  }
+  return 0;
+}
+
+/**
+ * 4. OPERACIÓN: Carga los planes de un camión específico y calcula su estado actual
+ * por km y por horas de motor (ver estadoServicePlan).
+ */
+async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null, currentHoursOverride = null) {
+  // A. KM y horas actuales del camión (o los que vienen, para evitar la carrera post-cierre)
+  let currentKm = currentKmOverride, currentHours = currentHoursOverride;
+  if (currentKm === null || currentHours === null) {
+    const truckRes = await _db.from('trucks').select('current_km, current_hours').eq('truck_id', truckId).single();
+    if (currentKm === null) currentKm = truckRes.data?.current_km ?? null; // null si aún no hay odómetro registrado
+    if (currentHours === null) currentHours = truckRes.data?.current_hours ?? null;
   }
 
   // B. Traemos solo las suscripciones activas usando JOIN (Inner Join implícito en Supabase)
@@ -1689,64 +2287,33 @@ async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null)
     return { _error: true, message: suscripciones.error?.message || 'Sin datos' };
   }
 
-  const planesAsignados = suscripciones.data.map(sub => sub.master_service_plans);
+  const planesAsignados = suscripciones.data.map(sub => sub.master_service_plans).filter(Boolean);
 
   // C. Consultamos estrictamente el ÚLTIMO log para cada plan asignado
   const planesConEstado = await Promise.all(planesAsignados.map(async (plan) => {
       const logRes = await _db.from('maintenance_logs')
-          .select('next_due_km, next_due_hours, km_at_service, performed_at')
+          .select('next_due_km, next_due_hours, km_at_service, hours_at_service, performed_at')
           .eq('truck_id', truckId)
-          .eq('master_plan_id', plan.id) // Nota: Tu tabla maintenance_logs debe usar master_plan_id ahora
+          .eq('master_plan_id', plan.id)
           .order('performed_at', { ascending: false })
           .limit(1) // <-- La clave del rendimiento
           .maybeSingle();
 
       const log = logRes.data;
-
-      // Si no hay odómetro aún, no se puede calcular estado real
-      if (currentKm === null) {
-        return {
-          plan_id: plan.id,
-          name: plan.name,
-          trigger_type: plan.trigger_type,
-          interval_km: plan.interval_km,
-          interval_hours: plan.interval_hours,
-          alert_before_km: plan.alert_before_km,
-          current_km: null,
-          next_due_km: log?.next_due_km || null,
-          next_due_hours: log?.next_due_hours || null,
-          ultimo_km: log?.km_at_service || null,
-          ultima_fecha: log?.performed_at || null,
-          km_restantes: null,
-          plan_estado: 'sin_odometro'
-        };
-      }
-
-      const nextDueKm = log?.next_due_km || null;
-      const kmRestantes = nextDueKm != null ? nextDueKm - currentKm : null;
-
-      let plan_estado = 'sin_registro';
-      if (nextDueKm != null) {
-        if (currentKm >= nextDueKm) plan_estado = 'vencido';
-        else if (kmRestantes <= (plan.alert_before_km || 500)) plan_estado = 'proximo';
-        else plan_estado = 'al_dia';
-      }
-
       return {
-          // Mapeamos para mantener compatibilidad con tu renderPlanes en UI
+          // Mapeamos para mantener compatibilidad con los renderers de planes
           plan_id: plan.id,
           name: plan.name,
           trigger_type: plan.trigger_type,
           interval_km: plan.interval_km,
           interval_hours: plan.interval_hours,
           alert_before_km: plan.alert_before_km,
-          current_km: currentKm,
-          next_due_km: nextDueKm,
-          next_due_hours: log?.next_due_hours || null,
-          ultimo_km: log?.km_at_service || null,
+          next_due_km: log?.next_due_km ?? null,
+          next_due_hours: log?.next_due_hours ?? null,
+          ultimo_km: log?.km_at_service ?? null,
+          ultimo_horas: log?.hours_at_service ?? null,
           ultima_fecha: log?.performed_at || null,
-          km_restantes: kmRestantes,
-          plan_estado
+          ...estadoServicePlan(plan, log, currentKm, currentHours),
       };
   }));
 
@@ -1759,10 +2326,9 @@ async function cargarPlanesDetalleOptimizados(truckId, currentKmOverride = null)
 async function cargarHistorialServices(truckId) {
   const { data, error } = await _db
     .from('maintenance_logs')
-    .select('maintenance_id, performed_at, km_at_service, next_due_km, cost, workshop_name, master_service_plans(name)')
+    .select('maintenance_id, master_plan_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, notes, master_service_plans(name, interval_km, interval_hours)')
     .eq('truck_id', truckId)
-    .order('performed_at', { ascending: false })
-    .limit(30);
+    .order('performed_at', { ascending: false });
   if (error) { console.error('[Historial Services] Error:', error.message); return []; }
   return data || [];
 }
@@ -1774,7 +2340,7 @@ async function cargarHistorialServices(truckId) {
 async function cargarMantenimientoFlota() {
   const { data: trucks, error } = await _db
     .from('trucks')
-    .select('truck_id, plate, numero_interno, current_km, status')
+    .select('truck_id, plate, numero_interno, current_km, current_hours, status')
     .eq('status', 'active')
     .order('numero_interno', { ascending: true });
   if (error) { console.error('[Mantenimiento Flota] error:', error.message); return []; }
@@ -1782,7 +2348,7 @@ async function cargarMantenimientoFlota() {
   const items = [];
   await Promise.all((trucks || []).map(async (t) => {
     try {
-      const planes = await cargarPlanesDetalleOptimizados(t.truck_id, t.current_km);
+      const planes = await cargarPlanesDetalleOptimizados(t.truck_id, t.current_km, t.current_hours ?? 0);
       if (!Array.isArray(planes)) return;
       planes.forEach(p => {
         if (p.plan_estado === 'vencido' || p.plan_estado === 'proximo') {
@@ -1791,9 +2357,16 @@ async function cargarMantenimientoFlota() {
             plate: t.plate,
             numero_interno: t.numero_interno,
             current_km: t.current_km,
+            current_hours: p.current_hours,
             plan_name: p.name,
             next_due_km: p.next_due_km,
+            next_due_hours: p.next_due_hours,
             km_restantes: p.km_restantes,
+            horas_restantes: p.horas_restantes,
+            usa_km: p.usa_km,
+            usa_horas: p.usa_horas,
+            manda: p.manda,
+            urgencia: p.urgencia,
             ultimo_km: p.ultimo_km,
             ultima_fecha: p.ultima_fecha,
             estado: p.plan_estado,
@@ -1807,7 +2380,7 @@ async function cargarMantenimientoFlota() {
 
   items.sort((a, b) => {
     if (a.estado !== b.estado) return a.estado === 'vencido' ? -1 : 1;
-    return (a.km_restantes || 0) - (b.km_restantes || 0);
+    return (a.urgencia ?? 0) - (b.urgencia ?? 0);
   });
   return items;
 }
@@ -1822,7 +2395,7 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
   const truckPromise = _db.from('trucks').select('*').eq('truck_id', truckId).single();
 
   let jQ = _db.from('daily_logs')
-     .select('log_id, log_date, km_inicio, km_final, status, driver_id, users(full_name)')
+     .select('log_id, log_date, km_inicio, km_final, horas_inicio, horas_final, status, driver_id, users(full_name)')
      .eq('truck_id', truckId)
      .order('log_date', { ascending: false })
      .limit(limit);
@@ -1832,7 +2405,7 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
      .order('fuel_date', { ascending: false })
      .limit(limit);
   let mQ = _db.from('maintenance_logs')
-     .select('maintenance_id, performed_at, km_at_service, next_due_km, cost, workshop_name, master_service_plans(name)')
+     .select('maintenance_id, master_plan_id, performed_at, km_at_service, hours_at_service, next_due_km, next_due_hours, cost, workshop_name, notes, master_service_plans(name, interval_km, interval_hours)')
      .eq('truck_id', truckId)
      .order('performed_at', { ascending: false })
      .limit(limit);
@@ -1857,7 +2430,8 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
       tipo: 'jornada',
       fecha: j.log_date,
       titulo: `Jornada ${j.status === 'open' ? '(abierta)' : ''}`.trim(),
-      detalle: `${j.users?.full_name || 'Chofer'} · ${(j.km_inicio||0).toLocaleString('es-AR')} → ${(j.km_final||0).toLocaleString('es-AR')} km`,
+      detalle: `${j.users?.full_name || 'Chofer'} · ${(j.km_inicio||0).toLocaleString('es-AR')} → ${(j.km_final||0).toLocaleString('es-AR')} km`
+        + (j.horas_inicio != null && j.horas_final != null ? ` · +${(Math.round((j.horas_final - j.horas_inicio) * 10) / 10).toLocaleString('es-AR')} h motor` : ''),
       valor: km > 0 ? `+${km.toLocaleString('es-AR')} km` : (j.status === 'open' ? 'en curso' : ''),
       valorColor: null,
       raw: j,
@@ -1879,7 +2453,7 @@ async function cargarTimelineCamion(truckId, { desde = null, limit = 60 } = {}) 
       tipo: 'service',
       fecha: s.performed_at,
       titulo: s.master_service_plans?.name || 'Service',
-      detalle: `${s.workshop_name || 's/ taller'} · ${(s.km_at_service||0).toLocaleString('es-AR')} km${s.next_due_km ? ' · próx ' + s.next_due_km.toLocaleString('es-AR') : ''}`,
+      detalle: `${s.workshop_name || 's/ taller'} · ${(s.km_at_service||0).toLocaleString('es-AR')} km${s.hours_at_service != null ? ' · ' + s.hours_at_service.toLocaleString('es-AR') + ' h' : ''}${s.next_due_km ? ' · próx ' + s.next_due_km.toLocaleString('es-AR') : ''}${s.next_due_hours ? (s.next_due_km ? ' km / ' : ' · próx ') + s.next_due_hours.toLocaleString('es-AR') + ' h' : ''}`,
       valor: s.cost ? '-$' + Math.round(s.cost).toLocaleString('es-AR') : '',
       valorColor: '#ef4444',
       raw: s,
@@ -1959,33 +2533,34 @@ async function registrarControlNeumaticos(datos) {
   }
 }
 
-async function cargarDatosChofer(userId, desde, truckId = null) {
+async function cargarDatosChofer(userId, desde, truckId = null, hasta = _rendFechaLocal(new Date())) {
   const hoy = new Date().toISOString().slice(0, 10);
 
   let jornadasQ = _db.from('daily_logs')
-    .select('km_inicio, km_final, truck_id, log_date, log_id, status')
+    .select('km_inicio, km_final, truck_id, log_date, log_id, status, trucks(plate)')
     .eq('driver_id', userId)
-    .gte('log_date', desde)
+    .gte('log_date', desde).lte('log_date', hasta)
     .in('status', ['open', 'closed']);
   if (truckId) jornadasQ = jornadasQ.eq('truck_id', truckId);
 
   let fuelQ = _db.from('fuel_records')
     .select('liters, total_cost, fuel_date, truck_id, payment_method')
-    .gte('fuel_date', desde);
+    .gte('fuel_date', desde).lte('fuel_date', hasta);
   if (truckId) fuelQ = fuelQ.eq('truck_id', truckId);
 
   const [remitosRes, jornadasRes, fuelRes, rendicionRes, alertasRes, jornadaHoyRes] = await Promise.all([
     _db.from('remitos')
-      .select('pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status, created_at_device, log_id, nro_remito, patente, origen, destino, imp_peaje, imp_excedente, imp_otros')
+      .select('remito_id, daily_logs!remitos_log_id_fkey(trucks(plate)), pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status, created_at_device, log_id, nro_remito, patente, origen, destino, imp_peaje, imp_excedente, imp_otros')
       .eq('driver_id', userId)
       .gte('created_at_device', desde + 'T00:00:00-03:00')
+      .lt('created_at_device', _nextDay(hasta) + 'T00:00:00-03:00')
       .neq('status', 'anulado'),
     jornadasQ,
     fuelQ,
     _db.from('rendicion_cierre')
       .select('efectivo_declarado, efectivo_esperado, gastos_extra, motivo_extra:motivo_gastos_extra, estado, fecha')
       .eq('driver_id', userId)
-      .gte('fecha', desde)
+      .gte('fecha', desde).lte('fecha', hasta)
       .neq('estado', 'rechazado'),
     _db.from('alertas_operativas')
       .select('tipo, diferencia_monto, fecha')
@@ -1999,6 +2574,7 @@ async function cargarDatosChofer(userId, desde, truckId = null) {
       .maybeSingle(),
   ]);
 
+  for (const result of [remitosRes,jornadasRes,fuelRes,rendicionRes]) { if(result.error) throw result.error; }
   let remitos = remitosRes.data || [];
   if (truckId) {
     const logIds = new Set((jornadasRes.data || []).map(j => j.log_id).filter(Boolean));
@@ -2202,7 +2778,7 @@ async function cargarRefsCumplimiento(driverId, yyyymm) {
 // Devuelve rendiciones + faltante calculado por cada una y agregado por chofer.
 // faltante = max(0, efectivo_esperado - efectivo_declarado - gastos_extra)
 // sobrante = max(0, efectivo_declarado + gastos_extra - efectivo_esperado)
-async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
+async function cargarRendicionesPeriodo(yyyymm, driverId = null, { strict = false } = {}) {
   if (!yyyymm) return { rendiciones: [], porChofer: {} };
   const { desde, hastaExclusive } = _payrollRangoMes(yyyymm);
 
@@ -2218,7 +2794,7 @@ async function cargarRendicionesPeriodo(yyyymm, driverId = null) {
     q,
     _db.from('users').select('user_id, full_name').eq('role_id', 3),
   ]);
-  if (rendRes.error) { console.error('cargarRendicionesPeriodo:', rendRes.error); return { rendiciones: [], porChofer: {} }; }
+  if (rendRes.error) { if(strict) throw rendRes.error; console.error('cargarRendicionesPeriodo:', rendRes.error); return { rendiciones: [], porChofer: {} }; }
   const mapU = {};
   (usuariosRes.data || []).forEach(u => { mapU[u.user_id] = u.full_name; });
 
@@ -2464,12 +3040,15 @@ async function cargarDetalleRendicion(logId) {
       .maybeSingle(),
   ]);
   const jornada = jornadaRes.data;
+  /* Mismo criterio que cargarDetalleJornadaAdmin: manda el log_id, y camión +
+     fecha queda de respaldo para las cargas huérfanas. Filtrando sólo por
+     camión + fecha, la rendición de una jornada que cruza la medianoche perdía
+     las cargas hechas después de las 00:00 — y son plata que el chofer gastó. */
   let fuel = [];
   if (jornada?.truck_id && jornada?.log_date) {
     const fuelRes = await _db.from('fuel_records')
       .select('liters, total_cost, payment_method, gas_station, fuel_date')
-      .eq('truck_id', jornada.truck_id)
-      .eq('fuel_date', jornada.log_date);
+      .or(`log_id.eq.${logId},and(log_id.is.null,truck_id.eq.${jornada.truck_id},fuel_date.eq.${jornada.log_date})`);
     fuel = fuelRes.data || [];
   }
   return {
@@ -2567,7 +3146,7 @@ async function cargarAlertasPersonales() {
     docsRes.value.data.forEach(d => {
       alertas.push({
         sev: d.status === 'vencido' ? 'critico' : 'advertencia',
-        icon: d.status === 'vencido' ? '⛔' : '⚠️',
+        icon: d.status === 'vencido' ? '⛔' : '⚠',
         title: d.status === 'vencido' ? 'Documento vencido' : 'Documento por vencer',
         detail: `${d.doc_type}${d.expiry_date ? ' — ' + d.expiry_date : ''}`,
         cta: 'Ver documentos',
@@ -2649,8 +3228,21 @@ async function cargarResumenMes(userId, anio, mes) {
     .lte('mes', hasta);
   if (userId) q = q.eq('user_id', userId);
 
-  const { data, error } = await q;
+  // Horas de motor del mes: de las jornadas cerradas con horas al inicio y al final.
+  let qh = _db
+    .from('daily_logs')
+    .select('horas_inicio, horas_final')
+    .eq('status', 'closed')
+    .not('horas_final', 'is', null)
+    .gte('log_date', desde)
+    .lte('log_date', hasta);
+  if (userId) qh = qh.eq('driver_id', userId);
+
+  const [{ data, error }, horasRes] = await Promise.all([q, qh]);
   if (error) { console.error('Error resumen mes:', error); return null; }
+  if (horasRes?.error) console.error('Error horas de motor del mes:', horasRes.error);
+  const horasMotor = (horasRes?.data || []).reduce((s, j) => (j.horas_inicio != null && j.horas_final != null)
+    ? s + Math.max(0, Number(j.horas_final) - Number(j.horas_inicio)) : s, 0);
   const rows = data || [];
   const agg = rows.reduce((acc, r) => ({
     total_km:        acc.total_km        + (r.total_km        || 0),
@@ -2658,6 +3250,7 @@ async function cargarResumenMes(userId, anio, mes) {
     total_servicios: acc.total_servicios + (r.total_servicios || 0),
     total_anulados:  acc.total_anulados  + (r.total_anulados  || 0),
   }), { total_km: 0, total_jornadas: 0, total_servicios: 0, total_anulados: 0 });
+  agg.total_horas_motor = Math.round(horasMotor * 10) / 10;
   return agg;
 }
 
@@ -2892,37 +3485,108 @@ async function toggleObjetivoActivo(objetivoId, activo) {
 }
 
 // ── Esquema salarial por chofer ──
+async function cargarPayrollCommissionData() {
+  const [rulesRes, assignmentsRes] = await Promise.all([
+    _db.from('payroll_commission_rules')
+      .select('commission_id, name, concept_id, source, mode, value, active, updated_at')
+      .order('active', { ascending: false })
+      .order('name', { ascending: true }),
+    _db.from('payroll_commission_assignments')
+      .select('commission_id, driver_id'),
+  ]);
+  if (rulesRes.error) throw rulesRes.error;
+  if (assignmentsRes.error) throw assignmentsRes.error;
+  const assignments = assignmentsRes.data || [];
+  const rules = (rulesRes.data || []).map(rule => ({
+    ...rule,
+    assigned_driver_ids: assignments
+      .filter(a => a.commission_id === rule.commission_id)
+      .map(a => a.driver_id),
+  }));
+  return { rules, assignments };
+}
+
+async function guardarPayrollCommissionRule(rule) {
+  const payload = {
+    name: String(rule.name || '').trim(),
+    concept_id: rule.concept_id,
+    source: rule.source,
+    mode: rule.mode,
+    value: Number(rule.value),
+    active: rule.active !== false,
+    updated_at: new Date().toISOString(),
+  };
+  if (payload.source === 'captacion') payload.concept_id = null;
+  if (!payload.name || (!payload.concept_id && payload.source !== 'captacion') || !['extras','invoices','captacion'].includes(payload.source) ||
+      !['fixed','percent'].includes(payload.mode) || !Number.isFinite(payload.value) || payload.value < 0 ||
+      (payload.mode === 'percent' && payload.value > 100)) {
+    return { ok: false, error: { message: 'Completá correctamente la comisión.' } };
+  }
+  if (rule.commission_id) {
+    const { data, error } = await _db.from('payroll_commission_rules')
+      .update(payload).eq('commission_id', rule.commission_id).select().maybeSingle();
+    return error ? { ok: false, error } : { ok: true, data };
+  }
+  payload.created_by = USUARIO_ACTUAL?.id || null;
+  const { data, error } = await _db.from('payroll_commission_rules')
+    .insert(payload).select().maybeSingle();
+  return error ? { ok: false, error } : { ok: true, data };
+}
+
+async function guardarPayrollCommissionAssignments(driverIds, commissionIds) {
+  const { data, error } = await _db.rpc('set_payroll_commission_assignments', {
+    p_drivers: driverIds,
+    p_commission_ids: commissionIds,
+  });
+  return error ? { ok: false, error } : { ok: true, total: Number(data) || 0 };
+}
+
 async function cargarPayrollSettingsChofer(driverId) {
   if (!driverId) return null;
   const { data, error } = await _db
     .from('payroll_settings')
-    .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, updated_at')
+    .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, updated_at')
     .eq('user_id', driverId)
     .maybeSingle();
   if (error) { console.error('[Payroll cargarPayrollSettingsChofer]', error.message); return null; }
   return data || null;
 }
 
-async function cargarPayrollSettingsFlota() {
+async function cargarPayrollSettingsFlota(commissionData = null) {
   // LEFT JOIN manual: choferes activos + (opcional) su esquema.
-  const [usersRes, settingsRes] = await Promise.all([
+  const [usersRes, settingsRes, commissions] = await Promise.all([
     _db.from('users')
       .select('user_id, full_name, legajo, is_active')
       .eq('role_id', 3)
       .eq('is_active', true)
       .order('full_name', { ascending: true }),
     _db.from('payroll_settings')
-      .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, updated_at'),
+      .select('user_id, sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix, updated_at'),
+    commissionData ? Promise.resolve(commissionData) : cargarPayrollCommissionData(),
   ]);
   if (usersRes.error)    { console.error('[Payroll cargarPayrollSettingsFlota] users', usersRes.error.message); return []; }
   if (settingsRes.error) { console.error('[Payroll cargarPayrollSettingsFlota] settings', settingsRes.error.message); /* seguimos con [] */ }
   const mapSet = {};
   (settingsRes.data || []).forEach(s => { mapSet[s.user_id] = s; });
+  const activeRules = new Map((commissions.rules || []).filter(r => r.active !== false).map(r => [r.commission_id, r]));
+  const assignedByDriver = new Map();
+  (commissions.assignments || []).forEach(a => {
+    if (!activeRules.has(a.commission_id)) return;
+    if (!assignedByDriver.has(a.driver_id)) assignedByDriver.set(a.driver_id, []);
+    assignedByDriver.get(a.driver_id).push(activeRules.get(a.commission_id));
+  });
   return (usersRes.data || []).map(u => ({
     user_id:          u.user_id,
     full_name:        u.full_name,
     legajo:           u.legajo,
-    settings:         mapSet[u.user_id] || null,
+    settings:         mapSet[u.user_id] ? {
+      ...mapSet[u.user_id],
+      compensation_matrix: {
+        ...(mapSet[u.user_id].compensation_matrix || {}),
+        commissions: assignedByDriver.get(u.user_id) || [],
+      },
+    } : null,
+    assigned_commission_ids: (assignedByDriver.get(u.user_id) || []).map(r => r.commission_id),
     sueldo_basico:    mapSet[u.user_id]?.sueldo_basico    ?? null,
     valor_km:         mapSet[u.user_id]?.valor_km         ?? null,
     valor_servicio:   mapSet[u.user_id]?.valor_servicio   ?? null,
@@ -2930,19 +3594,29 @@ async function cargarPayrollSettingsFlota() {
   }));
 }
 
-// Aplicar esquema salarial masivo a todos los choferes activos.
+// Aplicar cambios únicamente a los choferes elegidos.
 // Los campos undefined/null NO se pisan (se preservan los del chofer).
-// Si onlySinEsquema=true, solo actualiza choferes sin fila en payroll_settings.
-async function guardarPayrollSettingsMasivo(patch, { onlySinEsquema = false } = {}) {
+async function guardarPayrollSettingsMasivo(patch, { driverIds = [] } = {}) {
   const flota = await cargarPayrollSettingsFlota();
-  const target = onlySinEsquema ? flota.filter(f => !f.settings) : flota;
+  const wanted = new Set(driverIds);
+  const target = flota.filter(f => wanted.has(f.user_id));
   if (!target.length) return { ok: true, actualizados: 0, insertados: 0, total: 0 };
   const nowIso = new Date().toISOString();
+  const pm = patch.compensation_matrix || {};
   const rows = target.map(c => {
     const base = c.settings || {};
+    const merged = {...base.compensation_matrix, ...pm};
+    // Al pasar de "Fija" a un tipo con servicios, se vuelven a activar servicio y km si no se indicó otra cosa.
+    if (pm.pay_type && pm.pay_type !== 'fixed' && PayrollMatrix.payType(base.compensation_matrix, base.sueldo_basico) === 'fixed') {
+      if (pm.pay_services == null) merged.pay_services = true;
+      if (pm.pay_km == null) merged.pay_km = true;
+    }
+    const normalized = PayrollMatrix.normalize(merged);
+    const variable = normalized.pay_type === 'variable';
     return {
       user_id: c.user_id,
-      sueldo_basico:    patch.sueldo_basico    != null ? Number(patch.sueldo_basico)    : (Number(base.sueldo_basico)    || 0),
+      compensation_matrix: {...normalized, commissions: []},
+      sueldo_basico:    variable ? 0 : patch.sueldo_basico != null ? Number(patch.sueldo_basico) : (Number(base.sueldo_basico) || 0),
       valor_km:         patch.valor_km         != null ? Number(patch.valor_km)         : (Number(base.valor_km)         || 0),
       valor_servicio:   patch.valor_servicio   != null ? Number(patch.valor_servicio)   : (Number(base.valor_servicio)   || 0),
       bono_presentismo: patch.bono_presentismo != null ? Number(patch.bono_presentismo) : (Number(base.bono_presentismo) || 0),
@@ -2951,13 +3625,30 @@ async function guardarPayrollSettingsMasivo(patch, { onlySinEsquema = false } = 
   });
   const { error } = await _db.from('payroll_settings').upsert(rows, { onConflict: 'user_id' });
   if (error) { console.error('[Payroll guardarPayrollSettingsMasivo]', error.message); return { ok: false, error }; }
+  if (patch.commission_changes) {
+    // Cada chofer parte de sus comisiones actuales: se suman las asignadas y se sacan las quitadas.
+    const add = patch.commission_changes.add || [], remove = new Set(patch.commission_changes.remove || []);
+    const groups = new Map();
+    target.forEach(c => {
+      const ids = [...new Set([...(c.assigned_commission_ids || []), ...add])].filter(id => !remove.has(id)).sort();
+      const key = ids.join(',');
+      if (!groups.has(key)) groups.set(key, { ids, drivers: [] });
+      groups.get(key).drivers.push(c.user_id);
+    });
+    for (const g of groups.values()) {
+      const assignment = await guardarPayrollCommissionAssignments(g.drivers, g.ids);
+      if (!assignment.ok) return assignment;
+    }
+  }
   const insertados = target.filter(c => !c.settings).length;
   return { ok: true, actualizados: target.length - insertados, insertados, total: target.length };
 }
 
-async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo }) {
+async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor_servicio, bono_presentismo, compensation_matrix }) {
   if (!driverId) return { ok: false, error: 'Falta driverId' };
+  const normalized = PayrollMatrix.normalize(compensation_matrix);
   const payload = {
+    compensation_matrix: {...normalized, commissions: []},
     user_id: driverId,
     sueldo_basico:    Number(sueldo_basico)    || 0,
     valor_km:         Number(valor_km)         || 0,
@@ -2971,6 +3662,11 @@ async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor
     .select()
     .maybeSingle();
   if (error) { console.error('[Payroll guardarPayrollSettings]', error.message); return { ok: false, error }; }
+  const assignment = await guardarPayrollCommissionAssignments(
+    [driverId],
+    normalized.commissions.map(c => c.commission_id).filter(Boolean),
+  );
+  if (!assignment.ok) return assignment;
   return { ok: true, data };
 }
 
@@ -2980,9 +3676,9 @@ async function guardarPayrollSettings(driverId, { sueldo_basico, valor_km, valor
 const _LIQ_SELECT_FIELDS = `
   liquidacion_id, driver_id, periodo_yyyymm,
   jornadas, km_total, servicios,
-  sueldo_basico, adic_km, adic_serv,
+  sueldo_basico, adic_km, adic_serv, bonus_monthly, commission_total, compensation_snapshot,
   presentismo_paga, bono_presentismo, bonos_objetivos,
-  ajuste_rendiciones, total, estado,
+  ajuste_rendiciones, cash_snapshot, total, estado,
   valor_km_snapshot, valor_servicio_snapshot, bono_presentismo_snapshot,
   generada_by, generada_at,
   aprobada_by, aprobada_at,
@@ -3118,7 +3814,9 @@ async function generarLiquidacionesMes(yyyymm) {
     // Query paralela: jornadas cerradas + remitos finalizados + cumplimientos + incidents.
     // Nota: remitos usa status IN ('pendiente','firmado','anulado'). Interpretamos
     // "finalizado" del mockup como los remitos ya firmados (no pendientes, no anulados).
-    const [jornadasRes, remitosRes, cumplRes, incidRes, rendRes] = await Promise.all([
+    // Los bonos por objetivos (payroll_objetivo_cumplimientos) se reemplazaron por las comisiones
+    // por concepto: ya no se leen ni suman. La columna bonos_objetivos queda en 0.
+    const [jornadasRes, remitosRes, incidRes, rendRes] = await Promise.all([
       _db.from('daily_logs')
         .select('log_id, log_date, km_inicio, km_final, status')
         .eq('driver_id', driverId)
@@ -3131,10 +3829,6 @@ async function generarLiquidacionesMes(yyyymm) {
         .eq('status', 'firmado')
         .gte('created_at_device', desdeTs)
         .lt('created_at_device', hastaTsExclusive),
-      _db.from('payroll_objetivo_cumplimientos')
-        .select('bonus_calculado')
-        .eq('driver_id', driverId)
-        .eq('periodo_yyyymm', yyyymm),
       _db.from('incidents')
         .select('incident_id, created_at_device')
         .eq('driver_id', driverId)
@@ -3148,50 +3842,49 @@ async function generarLiquidacionesMes(yyyymm) {
         .lt('fecha', hastaExclusive),
     ]);
 
-    if (jornadasRes.error || remitosRes.error || cumplRes.error || incidRes.error || rendRes.error) {
+    if (jornadasRes.error || remitosRes.error || incidRes.error || rendRes.error) {
       console.error('[Payroll generarLiquidaciones] error chofer', driverId,
-        jornadasRes.error || remitosRes.error || cumplRes.error || incidRes.error || rendRes.error);
+        jornadasRes.error || remitosRes.error || incidRes.error || rendRes.error);
       detalle.push({ driverId, error: true });
       continue;
     }
 
     const jornadas = jornadasRes.data || [];
     const remitos  = remitosRes.data  || [];
-    const cumpl    = cumplRes.data    || [];
     const incid    = incidRes.data    || [];
     const rendiciones = rendRes.data  || [];
 
-    const km_total = jornadas.reduce((sum, j) => {
-      const ki = Number(j.km_inicio) || 0;
-      const kf = Number(j.km_final)  || 0;
-      return sum + Math.max(0, kf - ki);
-    }, 0);
+    let matrixResult;
+    try {
+      const matrix = PayrollMatrix.normalize(s.compensation_matrix);
+      let sources = {invoices:[],extras:[]};
+      if(matrix.km_basis==='billed'||matrix.commissions.length){
+        const response=await _db.rpc('get_payroll_matrix_sources',{p_driver:driverId,p_from:desde,p_until:hastaExclusive});
+        if(response.error)throw response.error;
+        sources=response.data;
+      }
+      matrixResult=PayrollMatrix.calculate(matrix,sources,jornadas.reduce((sum,j)=>sum+(PayrollMatrix.journeyKm(j)||0),0));
+    } catch(error) { detalle.push({driverId,error:true,motivo:error.message});continue; }
+    const km_total=matrixResult.km;
     const servicios = remitos.length;
     const jornadasCount = jornadas.length;
 
     // Presentismo: sin incidents y con al menos una jornada.
-    const presentismo_paga = (incid.length === 0 && jornadasCount > 0);
+    const presentismo_paga = matrixResult.snapshot.pay_presentismo && incid.length === 0 && jornadasCount > 0;
 
     const sueldo_basico    = Number(s.sueldo_basico)    || 0;
     const valor_km         = Number(s.valor_km)         || 0;
     const valor_servicio   = Number(s.valor_servicio)   || 0;
     const bono_presentismo = Number(s.bono_presentismo) || 0;
 
-    const adic_km   = km_total  * valor_km;
-    const adic_serv = servicios * valor_servicio;
-    const bonos_objetivos = cumpl.reduce((sum, c) => sum + (Number(c.bonus_calculado) || 0), 0);
+    const adic_km   = matrixResult.snapshot.pay_km ? km_total * valor_km : 0;
+    const adic_serv = matrixResult.snapshot.pay_services ? servicios * valor_servicio : 0;
+    const bonos_objetivos = 0;
 
-    // Arqueo NETO mensual (alineado con el PDF de rendición mensual):
-    // diff_mes = Σ (declarado + gastos_extra − esperado). Sobrantes compensan faltantes.
-    // Solo descuenta el faltante neto del mes si supera la tolerancia.
-    const diffMes = rendiciones.reduce((sum, r) => {
-      const declarado = Number(r.efectivo_declarado) || 0;
-      const esperado  = Number(r.efectivo_esperado)  || 0;
-      const gastos    = Number(r.gastos_extra)       || 0;
-      return sum + (declarado + gastos - esperado);
-    }, 0);
-    const faltanteNeto = Math.max(0, -diffMes);
-    const ajuste_rendiciones_calc = faltanteNeto >= PAYROLL_TOLERANCIA_RENDICION ? faltanteNeto : 0;
+    // Monthly administration entry is the only declaration used for payroll.
+    const monthlyCash=await _db.rpc('get_payroll_monthly_cash',{p_driver:driverId,p_period:yyyymm});
+    if(monthlyCash.error){detalle.push({driverId,error:true,motivo:monthlyCash.error.message});continue;}
+    const ajuste_rendiciones_calc=Number(monthlyCash.data.discount)||0;
 
     // ¿Existe ya la liquidación? Si está 'pagada', NO pisamos.
     // Si está 'aprobada' → congelamos ajuste_rendiciones (snapshot).
@@ -3213,12 +3906,14 @@ async function generarLiquidacionesMes(yyyymm) {
       continue;
     }
 
+    if (existRes.data?.estado === 'aprobada') { saltadas++; detalle.push({driverId,accion:'saltada',motivo:'aprobada'}); continue; }
     // Snapshot: si ya está aprobada, se preserva el ajuste guardado; si no, se recalcula.
     const ajuste_rendiciones = (existRes.data && existRes.data.estado === 'aprobada')
       ? (Number(existRes.data.ajuste_rendiciones) || 0)
       : ajuste_rendiciones_calc;
 
     const bruto =
+      matrixResult.bonus + matrixResult.commission +
       sueldo_basico +
       adic_km +
       adic_serv +
@@ -3228,6 +3923,11 @@ async function generarLiquidacionesMes(yyyymm) {
     const total = Math.max(0, bruto - ajuste_rendiciones);
 
     const payload = {
+      review_required: false, review_reason: null, review_detected_at: null,
+      proposed_total: null, adjustment_pending: null,
+      bonus_monthly: matrixResult.bonus,
+      commission_total: matrixResult.commission,
+      compensation_snapshot: matrixResult.snapshot,
       driver_id:        driverId,
       periodo_yyyymm:   yyyymm,
       jornadas:         jornadasCount,
@@ -3375,6 +4075,8 @@ async function cargarJornadasAdmin(filtros = {}) {
     hasta       = null,   // 'YYYY-MM-DD' inclusive
     driverId    = null,
     truckId     = null,
+    driverIds   = [],
+    truckIds    = [],
     estado      = null,   // 'open' | 'closed'
     q           = '',
     offset      = 0,
@@ -3389,6 +4091,7 @@ async function cargarJornadasAdmin(filtros = {}) {
       log_id, driver_id, truck_id, log_date,
       km_inicio, km_final, km_recorridos,
       km_inicio_origen, km_final_origen,
+      horas_inicio, horas_final, horas_inicio_origen, horas_final_origen,
       hora_inicio, hora_fin,
       in_workshop, workshop_detail,
       foto_km_inicio, foto_km_final,
@@ -3402,8 +4105,12 @@ async function cargarJornadasAdmin(filtros = {}) {
 
   if (desde)    query = query.gte('log_date', desde);
   if (hasta)    query = query.lte('log_date', hasta);
-  if (driverId) query = query.eq('driver_id', driverId);
-  if (truckId)  query = query.eq('truck_id', truckId);
+  const selectedDrivers = (Array.isArray(driverIds) ? driverIds : []).filter(Boolean);
+  const selectedTrucks = (Array.isArray(truckIds) ? truckIds : []).filter(Boolean);
+  if (selectedDrivers.length) query = query.in('driver_id', selectedDrivers);
+  else if (driverId) query = query.eq('driver_id', driverId);
+  if (selectedTrucks.length) query = query.in('truck_id', selectedTrucks);
+  else if (truckId) query = query.eq('truck_id', truckId);
   if (estado)   query = query.eq('status', estado);
 
   const { data: logs, error, count } = await query;
@@ -3412,8 +4119,8 @@ async function cargarJornadasAdmin(filtros = {}) {
   const logIds = (logs || []).map(l => l.log_id);
   if (!logIds.length) return { data: [], total: count || 0 };
 
-  const driverIds = [...new Set(logs.map(l => l.driver_id))];
-  const truckIds  = [...new Set(logs.map(l => l.truck_id))];
+  const pageDriverIds = [...new Set(logs.map(l => l.driver_id))];
+  const pageTruckIds  = [...new Set(logs.map(l => l.truck_id))];
   const fechaMin  = logs.reduce((m, l) => l.log_date < m ? l.log_date : m, logs[0].log_date);
   const fechaMax  = logs.reduce((m, l) => l.log_date > m ? l.log_date : m, logs[0].log_date);
 
@@ -3422,31 +4129,41 @@ async function cargarJornadasAdmin(filtros = {}) {
   const truckFechaToLogId = {};
   logs.forEach(l => { truckFechaToLogId[`${l.truck_id}|${l.log_date}`] = l.log_id; });
 
-  const [remitosRes, incRes, fuelRes, tireRes, rendRes] = await Promise.all([
+  // Cargas de los 90 días anteriores: la primera carga de la página necesita la anterior para saber cuánto rindió.
+  const _dias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+
+  const [remitosRes, incRes, fuelRes, tireRes, rendRes, fuelPrevRes] = await Promise.all([
     // Servicios = remitos (la tabla trips no se usa)
     _db.from('remitos').select('log_id, status').in('log_id', logIds).neq('status', 'anulado'),
     _db.from('incidents').select('log_id, severity, type').in('log_id', logIds),
     // Fuel: correlacionar por truck_id + fuel_date (log_id suele venir NULL)
     _db.from('fuel_records')
-       .select('log_id, truck_id, fuel_date, total_cost, liters')
-       .in('truck_id', truckIds)
+       .select('fuel_id, log_id, truck_id, fuel_date, total_cost, liters, km_at_load')
+       .is('voided_at', null)
+       .in('truck_id', pageTruckIds)
        .gte('fuel_date', fechaMin)
        .lte('fuel_date', fechaMax),
     // Tire: idem
     _db.from('tire_checks')
        .select('log_id, truck_id, check_date')
-       .in('truck_id', truckIds)
+       .in('truck_id', pageTruckIds)
        .gte('check_date', fechaMin)
        .lte('check_date', fechaMax),
     _db.from('rendicion_cierre')
        .select('driver_id, fecha, efectivo_declarado, efectivo_esperado, gastos_extra, admin_status')
-       .in('driver_id', driverIds)
+       .in('driver_id', pageDriverIds)
        .gte('fecha', fechaMin)
        .lte('fecha', fechaMax),
+    _db.from('fuel_records')
+       .select('fuel_id, truck_id, fuel_date, liters, km_at_load')
+       .is('voided_at', null)
+       .in('truck_id', pageTruckIds)
+       .gte('fuel_date', _dias(fechaMin, 90))
+       .lt('fuel_date', fechaMin),
   ]);
 
   const cnt = {};
-  logIds.forEach(id => cnt[id] = { servicios: 0, incidentes: 0, incGrave: false, combustible: 0, litros: 0, revision: false });
+  logIds.forEach(id => cnt[id] = { servicios: 0, incidentes: 0, incGrave: false, combustible: 0, litros: 0, gastoFuel: 0, revision: false });
 
   const resolverLogId = (r, fechaField) => {
     if (r.log_id && cnt[r.log_id]) return r.log_id;
@@ -3459,11 +4176,23 @@ async function cargarJornadasAdmin(filtros = {}) {
     cnt[r.log_id].incidentes++;
     if (r.severity === 'grave') cnt[r.log_id].incGrave = true;
   });
+  // Rendimiento (km/l) de cada móvil con todas sus cargas conocidas (las anteriores y las de la página).
+  const Efi = (typeof window !== 'undefined') ? window.AuxiliosFuelEfficiency : null;
+  const cargasPorMovil = {}, mapaPorMovil = {}, promedioPorMovil = {};
+  [...(fuelPrevRes.data || []), ...(fuelRes.data || [])].forEach(f => { (cargasPorMovil[f.truck_id] = cargasPorMovil[f.truck_id] || []).push(f); });
+  if (Efi) Object.keys(cargasPorMovil).forEach(t => {
+    mapaPorMovil[t] = Efi.porCarga(cargasPorMovil[t]);
+    promedioPorMovil[t] = Efi.promedio(mapaPorMovil[t]);
+  });
+  logIds.forEach(id => { cnt[id].cargasDelDia = []; });
+
   (fuelRes.data    || []).forEach(r => {
     const lid = resolverLogId(r, 'fuel_date');
     if (!lid || !cnt[lid]) return;
+    cnt[lid].cargasDelDia.push(r);
     cnt[lid].combustible++;
     cnt[lid].litros += Number(r.liters) || 0;
+    cnt[lid].gastoFuel += Number(r.total_cost) || 0;
   });
   (tireRes.data    || []).forEach(r => {
     const lid = resolverLogId(r, 'check_date');
@@ -3499,6 +4228,11 @@ async function cargarJornadasAdmin(filtros = {}) {
       km_recorridos: l.km_recorridos,
       km_inicio_origen: l.km_inicio_origen,
       km_final_origen:  l.km_final_origen,
+      // Horas de motor: sólo los camiones con horómetro las cargan.
+      horas_motor_inicio: l.horas_inicio ?? null,
+      horas_motor_final:  l.horas_final ?? null,
+      horas_motor_inicio_origen: l.horas_inicio_origen ?? null,
+      horas_motor_final_origen:  l.horas_final_origen ?? null,
       hora_inicio:  l.hora_inicio,
       hora_fin:     l.hora_fin,
       horas:        _horasEntre(l.hora_inicio, l.hora_fin),
@@ -3515,6 +4249,9 @@ async function cargarJornadasAdmin(filtros = {}) {
       incidentes:   c.incidentes || 0,
       inc_grave:    c.incGrave || false,
       combustible:  c.combustible || 0,
+      litros:       c.litros || 0,
+      rendimiento:  Efi ? Efi.deJornada(c.cargasDelDia || [], mapaPorMovil[l.truck_id] || {}, promedioPorMovil[l.truck_id] ?? null) : null,
+      gasto_fuel:   c.gastoFuel || 0,
       revision:     c.revision || false,
       rendicion:    rendInfo,
     };
@@ -3524,24 +4261,30 @@ async function cargarJornadasAdmin(filtros = {}) {
 }
 
 async function cargarKpisJornadasAdmin(filtros = {}) {
-  const { desde = null, hasta = null, driverId = null, truckId = null } = filtros;
+  const { desde = null, hasta = null, driverId = null, truckId = null, driverIds = [], truckIds = [] } = filtros;
+  const selectedDrivers = (Array.isArray(driverIds) ? driverIds : []).filter(Boolean);
+  const selectedTrucks = (Array.isArray(truckIds) ? truckIds : []).filter(Boolean);
 
   const withRange = (q) => {
     if (desde)    q = q.gte('log_date', desde);
     if (hasta)    q = q.lte('log_date', hasta);
-    if (driverId) q = q.eq('driver_id', driverId);
-    if (truckId)  q = q.eq('truck_id', truckId);
+    if (selectedDrivers.length) q = q.in('driver_id', selectedDrivers);
+    else if (driverId) q = q.eq('driver_id', driverId);
+    if (selectedTrucks.length) q = q.in('truck_id', selectedTrucks);
+    else if (truckId) q = q.eq('truck_id', truckId);
     return q;
   };
 
   let abiertasQuery = _db.from('daily_logs').select('log_id', { count: 'exact', head: true }).eq('status', 'open');
-  if (driverId) abiertasQuery = abiertasQuery.eq('driver_id', driverId);
-  if (truckId)  abiertasQuery = abiertasQuery.eq('truck_id', truckId);
+  if (selectedDrivers.length) abiertasQuery = abiertasQuery.in('driver_id', selectedDrivers);
+  else if (driverId) abiertasQuery = abiertasQuery.eq('driver_id', driverId);
+  if (selectedTrucks.length) abiertasQuery = abiertasQuery.in('truck_id', selectedTrucks);
+  else if (truckId) abiertasQuery = abiertasQuery.eq('truck_id', truckId);
 
   const [abiertasRes, choferesRes, mesRes] = await Promise.all([
     abiertasQuery,
     _db.from('users').select('user_id, roles!inner(name)', { count: 'exact', head: true }).eq('roles.name', 'chofer'),
-    withRange(_db.from('daily_logs').select('log_id, km_recorridos, hora_inicio, hora_fin, in_workshop')),
+    withRange(_db.from('daily_logs').select('log_id, km_recorridos, hora_inicio, hora_fin, horas_inicio, horas_final, in_workshop')),
   ]);
 
   const jornadas = mesRes.data || [];
@@ -3557,6 +4300,9 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
   }
   const kmTotal    = jornadas.reduce((s, j) => s + (Number(j.km_recorridos) || 0), 0);
   const horasTotal = jornadas.reduce((s, j) => s + _horasEntre(j.hora_inicio, j.hora_fin), 0);
+  // Horas de motor usadas en el período (sólo jornadas con horas al inicio y al final).
+  const horasMotorTotal = jornadas.reduce((s, j) => (j.horas_inicio != null && j.horas_final != null)
+    ? s + Math.max(0, Number(j.horas_final) - Number(j.horas_inicio)) : s, 0);
 
   return {
     abiertasAhora: abiertasRes.count || 0,
@@ -3564,6 +4310,7 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
     jornadasPeriodo: jornadas.length,
     kmTotalPeriodo: kmTotal,
     horasTotalPeriodo: horasTotal,
+    horasMotorPeriodo: Math.round(horasMotorTotal * 10) / 10,
     serviciosPeriodo,
     promKmJornada:   jornadas.length ? Math.round(kmTotal / jornadas.length)   : 0,
     promHorasJornada: jornadas.length ? (horasTotal / jornadas.length).toFixed(1) : '0',
@@ -3584,19 +4331,29 @@ async function cargarDetalleJornadaAdmin(logId) {
       log_id, driver_id, truck_id, log_date,
       km_inicio, km_final, km_recorridos, km_excepcion,
       km_inicio_ia, km_inicio_origen, km_final_ia, km_final_origen,
+      horas_inicio, horas_final, horas_inicio_ia, horas_final_ia, horas_inicio_origen, horas_final_origen,
       hora_inicio, hora_fin,
       in_workshop, workshop_detail,
       foto_km_inicio, foto_km_final,
       status, notas, created_at_device,
       chofer:users!driver_id(user_id, full_name, legajo),
-      truck:trucks!truck_id(truck_id, plate, numero_interno, brand, model)
+      truck:trucks!truck_id(truck_id, plate, numero_interno, brand, model, registra_horas)
     `)
     .eq('log_id', logId)
     .single();
 
   if (logErr || !log) { console.error('cargarDetalleJornadaAdmin:', logErr); return null; }
 
-  // Fuel y tire pueden guardarse con log_id=NULL — filtramos por truck_id + fecha.
+  /* Fuel y tire pueden guardarse con log_id=NULL, y para ésos el único vínculo
+     posible es camión + fecha. Pero filtrar SÓLO por camión + fecha tira todas
+     las cargas que sí tienen log_id y cayeron otro día: la jornada cruza la
+     medianoche, el chofer carga después de las 00:00 y fuel_date queda en el
+     día siguiente que log_date.
+
+     Medido contra la base: de 170 cargas atadas a una jornada, 98 no se veían
+     —el 57,6%, $12.147.614— y 81 de ésas eran exactamente por cruzar la
+     medianoche. Ahora manda el log_id cuando está, y camión + fecha queda de
+     respaldo sólo para las huérfanas. */
   const [remitosRes, incRes, fuelRes, tireRes, rendRes] = await Promise.all([
     _db.from('remitos')
        .select(`
@@ -3617,8 +4374,8 @@ async function cargarDetalleJornadaAdmin(logId) {
        .order('created_at_device', { ascending: true }),
     _db.from('fuel_records')
        .select('fuel_id, log_id, liters, price_per_liter, total_cost, km_at_load, payment_method, payment_app, gas_station, fuel_date, created_at_device')
-       .eq('truck_id', log.truck_id)
-       .eq('fuel_date', log.log_date),
+       .or(`log_id.eq.${logId},and(log_id.is.null,truck_id.eq.${log.truck_id},fuel_date.eq.${log.log_date})`)
+       .order('fuel_date', { ascending: true }),
     _db.from('tire_checks')
        .select('check_id, log_id, tire_condition, brake_condition, pressure_psi, notes, check_date, created_at')
        .eq('truck_id', log.truck_id)
@@ -3627,14 +4384,17 @@ async function cargarDetalleJornadaAdmin(logId) {
        .limit(1),
     _db.from('rendicion_cierre')
        .select('*')
-       .eq('driver_id', log.driver_id)
-       .eq('fecha', log.log_date)
-       .maybeSingle(),
+       .eq('log_id', logId)
+       .order('created_at', { ascending: false })
+       .limit(5),
   ]);
 
+  // Si la jornada se reabrió, la rendición del primer cierre queda rechazada: se muestra la vigente.
+  const rendiciones = Array.isArray(rendRes.data) ? rendRes.data : [];
+  const rendVigente = rendiciones.find(r => r.estado !== 'rechazado') || null;
   let rendicionInfo = null;
-  if (rendRes.data) {
-    const r = rendRes.data;
+  if (rendVigente) {
+    const r = rendVigente;
     const declarado = Number(r.efectivo_declarado) || 0;
     const esperado  = Number(r.efectivo_esperado)  || 0;
     const gastos    = Number(r.gastos_extra)       || 0;
@@ -3642,7 +4402,7 @@ async function cargarDetalleJornadaAdmin(logId) {
     let estadoR = 'ok';
     if (diff < -_JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'faltante';
     else if (diff > _JORNADAS_ADMIN_TOLERANCIA_RENDICION) estadoR = 'sobrante';
-    rendicionInfo = { ...r, diff, estado: estadoR };
+    rendicionInfo = { ...r, diff, estado: estadoR, estado_revision: r.estado };
   }
 
   // Mapear remitos → forma esperada por el renderer del modal (origin/destination/km_traveled)
@@ -3701,4 +4461,16 @@ async function cargarChoferesFlotaAdmin() {
     .order('full_name', { ascending: true });
   if (error) { console.error('cargarChoferesFlotaAdmin:', error); return []; }
   return data || [];
+}
+
+// Confirmar una fila afectada evita informar éxito si RLS rechaza la operación.
+async function modificarServiceRealizado(id, truckId, datos = null) {
+  try {
+    if (!id || !truckId) throw new Error('Service o móvil inválido');
+    const query = datos ? _db.from('maintenance_logs').update(datos) : _db.from('maintenance_logs').delete();
+    const { data, error } = await query.eq('maintenance_id', id).eq('truck_id', truckId).select('maintenance_id').single();
+    if (error) throw error;
+    if (!data) throw new Error('No se pudo modificar el service. Revisá tus permisos.');
+    return { ok: true };
+  } catch (error) { return { ok: false, errorMsg: error.message }; }
 }

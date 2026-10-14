@@ -39,16 +39,21 @@ test('Tipos de Servicio es el único catálogo creador y Prestadora mantiene una
   assert.match(serviceCatalog,/distance_chargeable/);
   assert.match(services,/save_company_service_setting_v2/);
   assert.match(services,/Acá no se crean servicios/);
+  assert.match(services,/Precio definido/);
+  assert.match(services,/Importe variable/);
+  assert.match(services,/driver_amount_mode/);
   assert.doesNotMatch(services,/save_service_type_config/);
 });
 
 test('Parámetros de facturación posee Bases y reglas contractuales, no Tarifas',()=>{
   assert.match(billing,/get_company_billing_configuration/);
-  assert.match(billing,/Bases habilitadas para esta prestadora/);
-  assert.match(billing,/Radio cubierto \(km\)/);
-  assert.match(billing,/Cobrar movida hasta \(km\)/);
+  assert.match(billing,/Bases habilitadas/);
+  assert.match(billing,/Radio cubierto/);
+  assert.match(billing,/Cobrar movida hasta un tope/);
   assert.match(billing,/covered_radius_km/);
   assert.match(billing,/movement_charge_until_km/);
+  assert.match(billing,/Sugerencia editable/);
+  assert.match(billing,/Importe manual sin sugerencia/);
   assert.doesNotMatch(billing,/ensure_company_tariff_draft_v4|publish_company_tariff_draft_v4/);
 });
 
@@ -80,6 +85,23 @@ test('Tarifas separa Movida, KM Asfalto y KM Ripio en lectura y edición',()=>{
   assert.match(tariffs,/id="ct4-gravel"/);
 });
 
+test('Tarifas se ve como tabla: un grupo por forma de cobro, filtros, menú por fila y confirmaciones',()=>{
+  assert.match(tariffs,/title: 'Con kilómetros'/);
+  assert.match(tariffs,/title: 'Precio por unidad'/);
+  assert.match(tariffs,/<th class="num">Movida<\/th><th class="num">KM asfalto<\/th><th class="num">KM ripio<\/th>/);
+  assert.match(tariffs,/data-ct4-filter=/);
+  assert.match(tariffs,/data-ct4-search/);
+  assert.match(tariffs,/data-ct4-menu=/);
+  assert.match(tariffs,/data-ct4-toggle-bases=/);
+  assert.match(tariffs,/data-ct4-edit-base=/);
+  assert.match(tariffs,/async function askConfirm/);
+  assert.match(tariffs,/Sí, descartar/);
+  assert.match(tariffs,/Sí, actualizar/);
+  assert.match(tariffs,/Quitar el precio de la base/);
+  assert.match(tariffs,/Cancelar el cambio programado/);
+  assert.match(tariffs,/<th>Antes<\/th><th>Después<\/th>/);
+});
+
 test('Prestadoras embebe la misma implementación de precios y no contiene Sucursales',()=>{
   assert.match(companies,/get_company_service_prices_v1/);
   assert.match(companies,/mountEmbedded/);
@@ -97,7 +119,7 @@ test('vigencias se resuelven por fecha del servicio y propagan herencia hasta un
 
 test('Nuevo/Ver/Editar Servicio consumen Base real y el mismo workspace',()=>{
   assert.match(wizard,/get_operator_service_context_v1/);
-  assert.match(wizard,/get_operator_service_edit_context/);
+  assert.match(wizard,/get_operator_service_handoff_context_v2/);
   assert.match(wizard,/billing_base_id/);
   assert.match(wizard,/openCreate/);
   assert.match(wizard,/openView/);
@@ -112,7 +134,7 @@ test('Servicios es tabla compacta única y no contiene renderer monetario ni res
   assert.match(operatorServices,/os-table-body/);
   assert.doesNotMatch(operatorServices,/os-kpis|os-board|renderKpis|canSeeCommercial|money\(|company_estimated_total|estimated_total|pricing_snapshot/);
   assert.doesNotMatch(workspace,/money\(|Intl\.NumberFormat|company_estimated_total|estimated_total|base_subtotal|surcharge_total|copay_total/);
-  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|Facturación|No visible para Operaciones/);
+  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio|No visible para Operaciones/);
   assert.equal(fs.existsSync('feature-flags.js'),false,'feature-flags.js legacy debe permanecer eliminado');
   assert.doesNotMatch(config,/feature-flags\.js/);
   assert.doesNotMatch(sw,/feature-flags\.js/);

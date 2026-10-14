@@ -1,9 +1,90 @@
 const ENV = {
-  API_BASE_URL: 'https://auxilios.up.railway.app'
+  API_BASE_URL: 'https://auxilios.up.railway.app',
+  ADMIN_API_BASE_URL: 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin'
 };
 
+/* Formato de fecha único en toda la app: DD/MM/AA (y HH:MM cuando hay hora).
+   Las pantallas formatean fechas de muchas formas (toLocaleDateString,
+   toLocaleString, Intl.DateTimeFormat con 'es-AR'); en vez de tocar cada una,
+   se normaliza acá, que carga antes que el resto. Solo afecta a los locales en
+   español o sin locale: 'en-CA' / 'sv-SE' se usan para armar fechas ISO y no
+   se tocan. Los formatos con mes en texto ("Septiembre 2026", "lun 14 mar")
+   son rótulos de período y quedan como están. */
+(function installAuxiliosDateFormat() {
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  if (root.__auxDateFormat) return;
+  root.__auxDateFormat = true;
+  const isSpanish = locales => {
+    const first = Array.isArray(locales) ? locales[0] : locales;
+    return first == null || /^es\b/i.test(String(first));
+  };
+  const DATE_KEYS = ['day', 'month', 'year'];
+  const TIME_KEYS = ['hour', 'minute', 'second'];
+  function normalize(options, kind) {
+    const o = options ? { ...options } : {};
+    if (o.dateStyle || o.timeStyle) {
+      const withDate = !!o.dateStyle, withTime = !!o.timeStyle;
+      delete o.dateStyle; delete o.timeStyle;
+      if (withDate) Object.assign(o, { day: '2-digit', month: '2-digit', year: '2-digit' });
+      if (withTime) Object.assign(o, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      return o;
+    }
+    const hasDate = DATE_KEYS.some(k => o[k]) || o.weekday || o.era;
+    const hasTime = TIME_KEYS.some(k => o[k]) || o.dayPeriod || o.fractionalSecondDigits;
+    if (!hasDate && !hasTime) {
+      if (kind !== 'time') Object.assign(o, { day: '2-digit', month: '2-digit', year: '2-digit' });
+      if (kind === 'datetime' || kind === 'time') Object.assign(o, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      return o;
+    }
+    if (o.hour && o.hour12 == null && !o.hourCycle) o.hourCycle = 'h23';
+    const textualMonth = o.month && !['numeric', '2-digit'].includes(o.month);
+    if (hasDate && !textualMonth && !o.weekday && o.day && o.month) {
+      o.day = '2-digit'; o.month = '2-digit';
+      if (o.year) o.year = '2-digit';
+    }
+    return o;
+  }
+  const nativeDate = Date.prototype.toLocaleDateString;
+  const nativeString = Date.prototype.toLocaleString;
+  Date.prototype.toLocaleDateString = function (locales, options) {
+    return isSpanish(locales) ? nativeDate.call(this, 'es-AR', normalize(options, 'date')) : nativeDate.call(this, locales, options);
+  };
+  Date.prototype.toLocaleString = function (locales, options) {
+    return isSpanish(locales) ? nativeString.call(this, 'es-AR', normalize(options, 'datetime')) : nativeString.call(this, locales, options);
+  };
+  const NativeDTF = Intl.DateTimeFormat;
+  function AuxDateTimeFormat(locales, options) {
+    if (!isSpanish(locales)) return new NativeDTF(locales, options);
+    return new NativeDTF('es-AR', normalize(options, 'date'));
+  }
+  AuxDateTimeFormat.prototype = NativeDTF.prototype;
+  AuxDateTimeFormat.supportedLocalesOf = NativeDTF.supportedLocalesOf.bind(NativeDTF);
+  Intl.DateTimeFormat = AuxDateTimeFormat;
+  /* Para las pantallas que arman la fecha a mano. Acepta Date, ISO con hora o
+     'AAAA-MM-DD' (sin corrimiento de zona). */
+  root.auxFormatDate = function (value, { time = false } = {}) {
+    if (!value) return '';
+    const raw = String(value);
+    if (!time && /^\d{4}-\d{2}-\d{2}$/.test(raw.slice(0, 10)) && raw.length <= 10) {
+      const [y, m, d] = raw.split('-');
+      return `${d}/${m}/${y.slice(2)}`;
+    }
+    const date = value instanceof Date ? value : new Date(raw);
+    if (Number.isNaN(date.getTime())) return raw;
+    const p = n => String(n).padStart(2, '0');
+    const out = `${p(date.getDate())}/${p(date.getMonth() + 1)}/${String(date.getFullYear()).slice(2)}`;
+    return time ? `${out} ${p(date.getHours())}:${p(date.getMinutes())}` : out;
+  };
+})();
+
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'billing-phase2-clean-preview-20260824';
+window.AUXILIOS_BUILD_ID = 'maintenance-v454-20261014';
+
+const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
+function versionedAuxiliosAsset(path) {
+  if (!path || !path.startsWith('/')) return path;
+  return `${path}${path.includes('?') ? '&' : '?'}v=${AUXILIOS_ASSET_VERSION}`;
+}
 
 window.AuxiliosFeatures = window.AuxiliosFeatures || { flags: {}, userId: null, ready: false };
 window.AuxiliosFeatures.flags = window.AuxiliosFeatures.flags || {};
@@ -13,7 +94,7 @@ function loadAuxiliosStyle(id, href) {
   const link = document.createElement('link');
   link.id = id;
   link.rel = 'stylesheet';
-  link.href = href;
+  link.href = versionedAuxiliosAsset(href);
   document.head.appendChild(link);
 }
 
@@ -21,7 +102,13 @@ function loadAuxiliosModule(id, src) {
   return new Promise((resolve, reject) => {
     const existing = document.getElementById(id);
     if (existing) {
-      if (existing.dataset.loaded === '1') resolve();
+      // Los módulos declarados con defer en Index.html ya se ejecutaron cuando
+      // DOMContentLoaded dispara el arranque. Esperar otro evento load en ese
+      // punto deja la cadena crítica bloqueada para siempre.
+      if (existing.dataset.loaded === '1' || (existing.defer && document.readyState !== 'loading')) {
+        existing.dataset.loaded = '1';
+        resolve();
+      }
       else {
         existing.addEventListener('load', resolve, { once: true });
         existing.addEventListener('error', reject, { once: true });
@@ -30,7 +117,7 @@ function loadAuxiliosModule(id, src) {
     }
     const script = document.createElement('script');
     script.id = id;
-    script.src = src;
+    script.src = versionedAuxiliosAsset(src);
     script.async = false;
     script.addEventListener('load', () => {
       script.dataset.loaded = '1';
@@ -70,13 +157,29 @@ async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-toll-management-css', '/toll-management.css');
   loadAuxiliosStyle('auxilios-operator-invoices-css', '/operator-invoices.css');
   loadAuxiliosStyle('auxilios-configuration-center-css', '/configuration-center.css');
+  loadAuxiliosStyle('auxilios-remito-addons-v2-css', '/remito-addons-v2.css');
+  loadAuxiliosStyle('auxilios-remito-mobile-flow-v3-css', '/remito-mobile-flow-v3.css');
+  loadAuxiliosStyle('auxilios-operator-remito-review-v2-css', '/operator-remito-review-v2.css');
 
+  loadAuxiliosStyle('auxilios-filters-v1-css', '/auxilios-filters-v1.css');
+  await loadAuxiliosModule('auxilios-filters-v1', '/auxilios-filters-v1.js');
+  loadAuxiliosStyle('auxilios-remitos-admin-panel-v1-css', '/remitos-admin-panel-v1.css');
+  await loadAuxiliosModule('auxilios-remitos-admin-panel-v1', '/remitos-admin-panel-v1.js');
+  await loadAuxiliosModule('auxilios-remito-pdf-v2', '/remito-pdf-v2.js');
+  loadAuxiliosStyle('auxilios-remitos-calidad-v1-css', '/remitos-calidad-v1.css');
+  await loadAuxiliosModule('auxilios-remitos-calidad-v1', '/remitos-calidad-v1.js');
+  loadAuxiliosStyle('auxilios-remitos-filtros-sheet-v1-css', '/remitos-filtros-sheet-v1.css');
+  await loadAuxiliosModule('auxilios-remitos-filtros-sheet-v1', '/remitos-filtros-sheet-v1.js');
   await loadAuxiliosModule('auxilios-excel-export', '/excel-export.js');
+  loadAuxiliosStyle('auxilios-toll-map-v1-css', '/toll-map-v1.css');
   await Promise.all([
     loadAuxiliosModule('auxilios-billing-bases', '/billing-bases.js'),
     loadAuxiliosModule('auxilios-operator-services', '/operator-services.js'),
+    loadAuxiliosModule('auxilios-table-columns', '/table-columns-v1.js'),
+    loadAuxiliosModule('auxilios-billing-breakdown', '/billing-breakdown-v1.js'),
     loadAuxiliosModule('auxilios-operator-billing', '/operator-billing.js'),
     loadAuxiliosModule('auxilios-toll-management', '/toll-management.js'),
+    loadAuxiliosModule('auxilios-toll-map-v1', '/toll-map-v1.js'),
     loadAuxiliosModule('auxilios-configuration-center', '/configuration-center.js'),
     loadAuxiliosModule('auxilios-service-module-configuration', '/service-module-configuration.js')
   ]);
@@ -84,14 +187,31 @@ async function loadCriticalAuxiliosModules() {
   // El botón Nuevo servicio no se habilita hasta que el modal definitivo y sus dependencias estén listos.
   await loadAuxiliosModule('auxilios-operator-service-workspace-reactive-v1', '/operator-service-workspace-reactive-v1.js');
   await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
+  await loadAuxiliosModule('auxilios-toll-route-detection-v1', '/toll-route-detection-v1.js');
+  await loadAuxiliosModule('auxilios-finish-time-v1', '/finish-time-v1.js');
   await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
+  await loadAuxiliosModule('auxilios-remito-mobile-flow-v3', '/remito-mobile-flow-v3.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');
+  await loadAuxiliosModule('auxilios-remito-addons-v2', '/remito-addons-v2.js');
+  // Remito de un particular: cobro del saldo en el paso 2 (envuelve los adicionales).
+  loadAuxiliosStyle('auxilios-private-collection-v1-css', '/private-collection-v1.css');
+  await loadAuxiliosModule('auxilios-private-collection-v1', '/private-collection-v1.js');
+  await loadAuxiliosModule('auxilios-operator-remito-review-v2', '/operator-remito-review-v2.js');
 
   await loadAuxiliosModule('auxilios-operator-billing-export', '/operator-billing-export.js');
   await loadAuxiliosModule('auxilios-operator-invoices', '/operator-invoices.js');
 
   // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
   await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
+  // Nuevo servicio: primero Particular | Prestadora (envuelve abrirNuevoServicio).
+  loadAuxiliosStyle('auxilios-private-service-v1-css', '/private-service-v1.css');
+  await loadAuxiliosModule('auxilios-private-service-v1', '/private-service-v1.js');
+  // Registrar cobro de un particular desde el menú ⋯ del servicio.
+  loadAuxiliosStyle('auxilios-private-payments-v1-css', '/private-payments-v1.css');
+  await loadAuxiliosModule('auxilios-private-payments-v1', '/private-payments-v1.js');
+  // Ficha propia de un servicio particular (en lugar del workspace de prestadora).
+  loadAuxiliosStyle('auxilios-private-view-v1-css', '/private-view-v1.css');
+  await loadAuxiliosModule('auxilios-private-view-v1', '/private-view-v1.js');
   window.AuxiliosConfigurationCenter?.configure?.();
 }
 
@@ -104,6 +224,8 @@ function loadGeographicBasesInBackground() {
 async function loadSecondaryAuxiliosModules() {
   loadAuxiliosStyle('auxilios-jornadas-admin-tools-v1-css', '/jornadas-admin-tools-v1.css');
 
+  loadAuxiliosStyle('auxilios-fleet-control-v1-css', '/fleet-control-v1.css');
+  loadAuxiliosStyle('auxilios-fleet-truck-detail-v1-css', '/fleet-truck-detail-v1.css');
   await Promise.all([
     loadAuxiliosModule('auxilios-empresas-v2', '/empresas-v2.js'),
     loadAuxiliosModule('auxilios-service-types-catalog-v2', '/service-types-catalog-v2.js'),
@@ -111,7 +233,11 @@ async function loadSecondaryAuxiliosModules() {
     loadAuxiliosModule('auxilios-company-tariffs-v4', '/company-tariffs-v4.js'),
     loadAuxiliosModule('auxilios-company-services-v4', '/company-services-configuration-v4.js'),
     loadAuxiliosModule('auxilios-company-billing-parameters-v4', '/company-billing-parameters-v4.js'),
-    loadAuxiliosModule('auxilios-fleet-operational-status-v1', '/fleet-operational-status-v1.js'),
+    // Control del camión: flota en una tabla (reemplaza las tarjetas de a una).
+    loadAuxiliosModule('auxilios-fleet-control-v1', '/fleet-control-v1.js'),
+    loadAuxiliosModule('auxilios-fleet-truck-detail-v1', '/fleet-truck-detail-v1.js'),
+    loadAuxiliosModule('auxilios-fleet-type-plans-v1', '/fleet-type-plans-v1.js'),
+    loadAuxiliosModule('auxilios-truck-doc-reader-v1', '/truck-doc-reader-v1.js'),
     loadAuxiliosModule('auxilios-rendition-journey-source-v1', '/rendition-journey-source-v1.js'),
     loadAuxiliosModule('auxilios-jornadas-admin-tools-v1', '/jornadas-admin-tools-v1.js')
   ]);

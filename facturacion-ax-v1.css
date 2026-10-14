@@ -1,0 +1,424 @@
+/* AuxiliOS · Facturación con el sistema visual (v1)
+   Todo cuelga de #screen-facturacion (o de los ids de sus capas) para ganarle a
+   operator-billing.css y a los estilos que inyecta la exportación a Excel. */
+
+#screen-facturacion.ob-screen { min-height: calc(100vh - 100px); color: var(--ax-text); font-family: var(--ax-font); }
+#screen-facturacion .ob-shell { grid-template-columns: minmax(0, 1fr); gap: var(--ax-sp-3); }
+
+/* ── Botones ── */
+#screen-facturacion .ob-button, #screen-facturacion .obx-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); min-height: 0; padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); filter: none; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-button:hover, #screen-facturacion .obx-trigger:hover { background: var(--ax-surface-3); color: var(--ax-text); filter: none; }
+#screen-facturacion .ob-button:focus-visible, #screen-facturacion .obx-trigger:focus-visible, #screen-facturacion .ob-tab:focus-visible, #screen-facturacion .ob-row-menu-trigger:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-facturacion .ob-button:disabled { opacity: .5; cursor: not-allowed; }
+#screen-facturacion .ob-button.primary, #screen-facturacion .ob-button.success { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-button.primary:hover, #screen-facturacion .ob-button.success:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#screen-facturacion .ob-button.danger { border-color: var(--ax-danger-strong); background: var(--ax-danger-strong); color: #fff; }
+#screen-facturacion .ob-button.danger:hover { border-color: var(--ax-danger); background: var(--ax-danger); }
+#screen-facturacion .ob-button .ax-icon, #screen-facturacion .obx-trigger .ax-icon { width: 15px; height: 15px; vertical-align: 0; }
+
+/* ── Pestañas y filtros (sin caja de fondo) ── */
+#screen-facturacion .ob-toolbar { flex-direction: column; align-items: stretch; gap: var(--ax-sp-3); padding: 0; border: 0; border-radius: 0; background: transparent; }
+#screen-facturacion .ob-tabs { gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
+#screen-facturacion .ob-tabs::-webkit-scrollbar { display: none; }
+#screen-facturacion .ob-tab { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; height: var(--ax-h-sm); padding: 0 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-tab:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-facturacion .ob-tab.active { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-facturacion .ob-tab-count { font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); font-variant-numeric: tabular-nums; color: var(--ax-text-3); }
+#screen-facturacion .ob-tab.active .ob-tab-count { color: var(--ax-text-2); }
+#screen-facturacion .ob-filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--ax-sp-2); width: 100%; }
+#screen-facturacion .ob-filters .auxf-search { flex: 1 1 220px; min-width: 180px; max-width: 360px; }
+#screen-facturacion .ob-filters .obx-wrap { margin-left: auto; }
+#screen-facturacion .ob-filters .obx-wrap + .ob-filter-action, #screen-facturacion .ob-filters .ob-filter-action:first-of-type { margin-left: 0; }
+#screen-facturacion .ob-search:focus, #screen-facturacion .ob-filter:focus { border-color: var(--ax-accent); }
+#screen-facturacion .obx-menu { top: calc(100% + 6px); width: 270px; padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); }
+#screen-facturacion .obx-menu button { padding: 10px; border-radius: var(--ax-radius); color: var(--ax-text); font-family: var(--ax-font); }
+#screen-facturacion .obx-menu button:hover:not(:disabled) { background: var(--ax-surface-3); }
+#screen-facturacion .obx-menu b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .obx-menu small { font-size: var(--ax-fs-xs); color: var(--ax-text-3); }
+
+/* En pantallas medianas Actualizar queda sólo con el ícono para que los filtros entren en una fila. */
+@media (max-width: 1500px) and (min-width: 761px) {
+  #screen-facturacion .ob-filters .ob-filter-action { width: var(--ax-h); padding: 0; font-size: 0; gap: 0; }
+}
+
+/* ── Selección ── */
+#screen-facturacion .ob-selection { padding: 10px 14px; border: 1px solid var(--ax-border-strong); border-left: 3px solid var(--ax-accent); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-selection > div:first-child b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-selection > div:first-child small { margin-top: 2px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+
+/* ── Tabla ── */
+#screen-facturacion .ob-table-card { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-table-wrap { max-height: calc(100vh - 260px); }
+#screen-facturacion .ob-table { min-width: 960px; }
+#screen-facturacion .ob-table th { height: 38px; padding: 0 12px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-transform: uppercase; }
+#screen-facturacion .ob-table td { padding: 10px 12px; border-bottom: 1px solid var(--ax-border); font-size: var(--ax-fs-sm); color: var(--ax-text); vertical-align: middle; }
+#screen-facturacion .ob-table tbody tr { background: var(--ax-surface-2); transition: background var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-table tbody tr:hover { background: var(--ax-surface-3); }
+#screen-facturacion .ob-table tbody tr.selected { background: var(--ax-accent-soft); }
+#screen-facturacion .ob-table tbody tr:last-child td { border-bottom: 0; }
+#screen-facturacion .ob-table td b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-table td small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-table td .ob-money, #screen-facturacion .ob-table td.ob-km { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-table td.ob-place { color: var(--ax-text-2); }
+#screen-facturacion .ob-table tfoot td { border-top: 1px solid var(--ax-border-strong); background: var(--ax-surface); }
+#screen-facturacion .ob-table td .ob-state { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-table td .ob-state::before { background: var(--ax-border-strong); }
+#screen-facturacion .ob-table td .ob-state.is-pending { color: var(--ax-warn); }
+#screen-facturacion .ob-table td .ob-state.is-pending::before { background: var(--ax-warn); }
+#screen-facturacion .ob-table td small.ob-error { color: var(--ax-danger); }
+#screen-facturacion .ob-check input { accent-color: var(--ax-accent); width: 16px; height: 16px; }
+#screen-facturacion .ob-table td.ob-actions { white-space: nowrap; text-align: right; }
+#screen-facturacion .ob-private-actions { display: table-cell; }
+#screen-facturacion .ob-private-actions .ob-button { height: var(--ax-h-sm); padding: 0 10px; margin-left: 6px; white-space: nowrap; }
+#screen-facturacion .ob-row-menu-trigger { display: inline-flex; align-items: center; justify-content: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); cursor: pointer; }
+#screen-facturacion .ob-row-menu-trigger:hover, #screen-facturacion .ob-row-menu-trigger[aria-expanded="true"] { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#screen-facturacion .ob-row-menu-trigger .ax-icon { width: 18px; height: 18px; vertical-align: 0; }
+#screen-facturacion .ob-empty { padding: 40px 16px; text-align: center; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Menú de acciones de la fila ── */
+#ob-row-action-menu { min-width: 190px; padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); font-family: var(--ax-font); }
+#ob-row-action-menu button { display: block; width: 100%; height: var(--ax-h-sm); padding: 0 10px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-align: left; cursor: pointer; }
+#ob-row-action-menu button:hover { background: var(--ax-surface-3); }
+#ob-row-action-menu button.danger { color: var(--ax-danger); }
+#ob-row-action-menu button.danger:hover { background: var(--ax-danger-soft); }
+
+/* ── Capas: factura, confirmaciones y detalle ── */
+#screen-facturacion #ob-detail-backdrop { background: rgba(0, 0, 0, .6); backdrop-filter: none; }
+#screen-facturacion .ob-invoice-modal, #screen-facturacion .ob-confirm-modal { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
+#screen-facturacion .ob-invoice-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: transparent; }
+#screen-facturacion .ob-invoice-head small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .04em; }
+#screen-facturacion .ob-invoice-head h3 { margin: 2px 0 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); }
+#screen-facturacion .ob-invoice-head p { margin: 4px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-confirm-modal.danger .ob-invoice-head { border-bottom-color: var(--ax-border); }
+#screen-facturacion .ob-confirm-modal.danger .ob-invoice-head h3 { color: var(--ax-text); }
+#screen-facturacion .ob-confirm-modal.danger .ob-invoice-head h3::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--ax-danger); vertical-align: 2px; }
+#screen-facturacion .ob-invoice-body, #screen-facturacion .ob-confirm-body { padding: 16px 20px; gap: var(--ax-sp-3); }
+#screen-facturacion .ob-invoice-fields label > span, #screen-facturacion .ob-invoice-notes > span, #screen-facturacion .ob-field > small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-invoice-fields input, #screen-facturacion .ob-invoice-fields select, #screen-facturacion .ob-invoice-notes input, #screen-facturacion .ob-field textarea { height: var(--ax-h); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+#screen-facturacion .ob-field textarea { height: auto; padding: 8px 10px; }
+#screen-facturacion .ob-invoice-fields input:focus, #screen-facturacion .ob-invoice-fields select:focus, #screen-facturacion .ob-invoice-notes input:focus, #screen-facturacion .ob-field textarea:focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+#screen-facturacion .ob-invoice-summary article, #screen-facturacion .ob-confirm-service article { padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-summary small, #screen-facturacion .ob-confirm-service small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .03em; text-transform: none; }
+#screen-facturacion .ob-invoice-summary b { margin-top: 2px; font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font-mono); }
+#screen-facturacion .ob-confirm-service b { margin-top: 2px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-invoice-summary article.total, #screen-facturacion .ob-invoice-summary article.tolls { border-color: var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-total { padding: 14px 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-total small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-invoice-total b { font: var(--ax-fw-semibold) 26px var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-total > span { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-invoice-footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: transparent; }
+#screen-facturacion .ob-invoice-footer > small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-footer .ob-button { height: var(--ax-h); min-height: 0; padding: 0 16px; font-size: var(--ax-fs-sm); }
+
+/* Detalle lateral */
+#screen-facturacion .ob-detail { border-left: 1px solid var(--ax-border-strong); background: var(--ax-surface); box-shadow: var(--ax-shadow-modal); }
+#screen-facturacion .ob-detail-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); }
+#screen-facturacion .ob-detail-head small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); letter-spacing: .04em; text-transform: uppercase; }
+#screen-facturacion .ob-detail-head h3 { margin: 2px 0 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font-mono); }
+#screen-facturacion .ob-detail-body { padding: 16px 20px; display: grid; gap: var(--ax-sp-3); align-content: start; }
+#screen-facturacion .ob-summary { gap: var(--ax-sp-2); }
+#screen-facturacion .ob-summary article, #screen-facturacion .ob-section { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-summary small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); text-transform: none; letter-spacing: 0; }
+#screen-facturacion .ob-summary b { font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-section h4 { margin: 0 0 var(--ax-sp-2); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); text-transform: none; letter-spacing: 0; }
+#screen-facturacion .ob-grid .ob-field small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-grid .ob-field b { font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-component { padding: 8px 0; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-component small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-history article { border-left: 2px solid var(--ax-border-strong); padding-left: 10px; }
+#screen-facturacion .ob-history small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* ── Elegir columnas para Excel ── */
+#obx-picker-backdrop { background: rgba(0, 0, 0, .6); font-family: var(--ax-font); }
+#obx-picker-backdrop .obx-picker { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); }
+#obx-picker-backdrop .obx-picker > header { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); }
+#obx-picker-backdrop .obx-picker h3 { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; }
+#obx-picker-backdrop .obx-picker p { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#obx-picker-backdrop .obx-close { display: inline-flex; align-items: center; justify-content: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border-radius: var(--ax-radius); color: var(--ax-text-2); cursor: pointer; }
+#obx-picker-backdrop .obx-close:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#obx-picker-backdrop .obx-close .ax-icon { width: 18px; height: 18px; }
+#obx-picker-backdrop .obx-col-group { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+#obx-picker-backdrop .obx-col-head { background: var(--ax-surface); }
+#obx-picker-backdrop .obx-col-head b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#obx-picker-backdrop .obx-col-head small, #obx-picker-backdrop .obx-picker-count { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#obx-picker-backdrop .obx-col-head button, #obx-picker-backdrop .obx-secondary, #obx-picker-backdrop .obx-primary { height: var(--ax-h-sm); padding: 0 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#obx-picker-backdrop .obx-col-head button:hover, #obx-picker-backdrop .obx-secondary:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+#obx-picker-backdrop .obx-primary { height: var(--ax-h); padding: 0 16px; border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+#obx-picker-backdrop .obx-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+#obx-picker-backdrop .obx-col-grid label { font-size: var(--ax-fs-sm); color: var(--ax-text-2); }
+#obx-picker-backdrop .obx-col-grid label:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+#obx-picker-backdrop .obx-col-grid input { accent-color: var(--ax-accent); }
+#obx-picker-backdrop .obx-picker > footer { border-top: 1px solid var(--ax-border); background: transparent; }
+
+/* ── Celular ── */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
+  #screen-facturacion .ob-filters .auxf { flex: 1 1 calc(50% - 8px); min-width: 0; }
+  #screen-facturacion .ob-filters .auxf-btn { width: 100%; }
+  #screen-facturacion .ob-filters .auxf-search { flex: 1 1 100%; max-width: none; }
+  #screen-facturacion .ob-filters .obx-wrap { margin-left: 0; }
+  #screen-facturacion .ob-filters .ob-filter-action, #screen-facturacion .ob-filters .obx-trigger { width: auto; }
+  #screen-facturacion .ob-selection { align-items: stretch; }
+  #screen-facturacion .ob-selection-actions { justify-content: flex-end; }
+  #screen-facturacion .ob-table-wrap { max-height: none; }
+  #screen-facturacion #ob-detail-backdrop { position: fixed; z-index: var(--ax-z-modal); }
+  #screen-facturacion .ob-detail { width: 100%; }
+  #screen-facturacion .ob-invoice-footer { flex-direction: column; align-items: stretch; }
+  #screen-facturacion .ob-invoice-footer > div { justify-content: flex-end; }
+}
+
+/* ── Desglose de costos (Facturación y Facturas) ── */
+:is(#screen-facturacion, #screen-facturas) .bd-wrap { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); overflow: hidden; }
+:is(#screen-facturacion, #screen-facturas) .bd-table { width: 100%; border-collapse: collapse; font-size: var(--ax-fs-sm); }
+:is(#screen-facturacion, #screen-facturas) .bd-table th { padding: 8px 12px; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; }
+:is(#screen-facturacion, #screen-facturas) .bd-table th:last-child, :is(#screen-facturacion, #screen-facturas) .bd-table td.bd-amount { text-align: right; }
+:is(#screen-facturacion, #screen-facturas) .bd-table td { padding: 9px 12px; border-bottom: 1px solid var(--ax-border); vertical-align: top; }
+:is(#screen-facturacion, #screen-facturas) .bd-table tbody tr:last-child td { border-bottom: 0; }
+:is(#screen-facturacion, #screen-facturas) .bd-what b { display: block; font-weight: var(--ax-fw-semibold); }
+:is(#screen-facturacion, #screen-facturas) .bd-what small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#screen-facturacion, #screen-facturas) .bd-calc { color: var(--ax-text-2); font-family: var(--ax-font-mono); font-size: var(--ax-fs-xs); white-space: nowrap; }
+:is(#screen-facturacion, #screen-facturas) .bd-amount { font-family: var(--ax-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+:is(#screen-facturacion, #screen-facturas) .bd-table tr.bd-copago .bd-amount { color: var(--ax-text-2); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tr.bd-peaje-aparte { color: var(--ax-text-3); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tr.bd-ajuste .bd-what b { color: var(--ax-warn); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tfoot td { padding: 11px 12px; border-top: 1px solid var(--ax-border-strong); background: var(--ax-surface-2); font-weight: var(--ax-fw-semibold); }
+:is(#screen-facturacion, #screen-facturas) .bd-table tfoot .bd-amount { font-size: var(--ax-fs-lg); }
+:is(#screen-facturacion, #screen-facturas) .bd-empty { padding: 16px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
+/* ── Detalle de Facturación ── */
+#screen-facturacion .ob-detail-actions { display: flex; gap: var(--ax-sp-2); flex: 0 0 auto; }
+#screen-facturacion .ob-hero { display: grid; gap: 4px; padding: 16px 18px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-hero.has-change { border-left: 3px solid var(--ax-warn); }
+#screen-facturacion .ob-hero > small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-hero > b { font: var(--ax-fw-semibold) 30px var(--ax-font-mono); font-variant-numeric: tabular-nums; line-height: 1.15; }
+#screen-facturacion .ob-hero .ob-hero-ok { color: var(--ax-text-3); }
+#screen-facturacion .ob-hero-change { display: flex; gap: 8px; align-items: flex-start; margin-top: 4px; padding: 8px 10px; border-radius: var(--ax-radius); background: var(--ax-warn-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-hero-change .ax-icon { flex: 0 0 auto; margin-top: 2px; color: var(--ax-warn); }
+#screen-facturacion .ob-route { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--ax-sp-3); align-items: center; padding: 12px 14px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-route small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-route b { display: block; margin-top: 2px; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); overflow-wrap: anywhere; }
+#screen-facturacion .ob-route-arrow { color: var(--ax-text-3); }
+#screen-facturacion .ob-km-line { margin: var(--ax-sp-2) 0 var(--ax-sp-3); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-km-line b { color: var(--ax-text); }
+#screen-facturacion .ob-note { margin-top: var(--ax-sp-3); padding: 10px 12px; border-left: 2px solid var(--ax-border-strong); background: var(--ax-surface); border-radius: 0 var(--ax-radius) var(--ax-radius) 0; }
+#screen-facturacion .ob-note small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-note p { margin: 2px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); white-space: pre-wrap; }
+#screen-facturacion .ob-tariff { display: flex; gap: 6px; align-items: center; margin: var(--ax-sp-3) 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-sp-2); margin-top: var(--ax-sp-3); }
+#screen-facturacion .ob-compare > div { padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
+#screen-facturacion .ob-compare small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-compare b { font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-compare .is-up b, #screen-facturacion .ob-compare .is-down b { color: var(--ax-warn); }
+#screen-facturacion .ob-timeline { position: relative; display: grid; gap: var(--ax-sp-3); margin: 0; padding: 0; list-style: none; }
+#screen-facturacion .ob-timeline li { position: relative; display: flex; gap: 12px; }
+#screen-facturacion .ob-timeline li:not(:last-child)::after { content: ""; position: absolute; left: 4px; top: 14px; bottom: -12px; width: 1px; background: var(--ax-border-strong); }
+#screen-facturacion .ob-tl-dot { flex: 0 0 9px; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--ax-text-3); }
+#screen-facturacion .ob-timeline b { display: block; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-timeline small { display: block; margin-top: 1px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-timeline p { margin: 4px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+
+/* ── Qué se factura (modal Crear factura) ── */
+#screen-facturacion .ob-invoice-lines { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-lines h4 { margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--ax-border); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); }
+#screen-facturacion .ob-invoice-lines h4 small { margin-left: 6px; color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+#screen-facturacion .ob-invoice-lines ul { max-height: 190px; margin: 0; padding: 0; overflow: auto; list-style: none; }
+#screen-facturacion .ob-invoice-lines li { display: flex; justify-content: space-between; gap: var(--ax-sp-3); padding: 8px 14px; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-lines li:last-child { border-bottom: 0; }
+#screen-facturacion .ob-invoice-lines li b { display: block; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-facturacion .ob-invoice-lines li small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-invoice-lines li .ob-money { flex: 0 0 auto; font-family: var(--ax-font-mono); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  #screen-facturacion .ob-route { grid-template-columns: 1fr; }
+  #screen-facturacion .ob-route-arrow { display: none; }
+  #screen-facturacion .ob-compare { grid-template-columns: 1fr; }
+  #screen-facturacion .ob-detail-head { flex-wrap: wrap; gap: var(--ax-sp-2); }
+  :is(#screen-facturacion, #screen-facturas) .bd-calc { white-space: normal; }
+}
+
+/* ── Columnas personalizables ── */
+#screen-facturacion .ob-filters .ob-columns, #screen-facturas .oi-filters .oi-columns { margin-left: auto; position: relative; }
+#screen-facturacion .ob-filters .obx-wrap { margin-left: 0; }
+#screen-facturacion .ob-columns.is-custom::after, #screen-facturas .oi-columns.is-custom::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--ax-accent); }
+@media (max-width: 1500px) and (min-width: 761px) {
+  #screen-facturacion .ob-filters .ob-columns { width: var(--ax-h); padding: 0; font-size: 0; gap: 0; }
+}
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters .ob-columns { margin-left: 0; }
+}
+#screen-facturacion .ob-table td[data-col="amount"] { text-align: right; }
+#screen-facturacion .ob-table th[data-col="amount"] { text-align: right; }
+
+#tc-modal .tc-modal { width: min(460px, 100%); }
+#tc-modal .tc-body { gap: 0; padding: var(--ax-sp-3) var(--ax-sp-5); }
+#tc-modal .tc-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--ax-sp-3); padding: 6px 0; border-bottom: 1px solid var(--ax-border); }
+#tc-modal .tc-row:last-of-type { border-bottom: 0; }
+#tc-modal .tc-row .ax-switch { min-width: 0; font-size: var(--ax-fs-md); }
+#tc-modal .tc-row .ax-switch input:disabled { opacity: .55; cursor: not-allowed; }
+#tc-modal .tc-lock { display: inline-flex; align-items: center; gap: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); white-space: nowrap; }
+#tc-modal .tc-lock .ax-icon { width: 12px; height: 12px; vertical-align: 0; }
+#tc-modal .tc-row:not(:has(.tc-lock)) .tc-move { grid-column: 3; }
+#tc-modal .tc-move { display: inline-flex; gap: 2px; }
+#tc-modal .tc-move .ax-icon { width: 16px; height: 16px; }
+#tc-modal .tc-up .ax-icon { transform: rotate(180deg); }
+#tc-modal .tc-count { margin: var(--ax-sp-3) 0 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+
+/* Con muchas columnas la tabla se desplaza y las acciones quedan fijas a la derecha. */
+@media (min-width: 761px) {
+  #screen-facturacion .ob-table td.ob-actions, #screen-facturacion .ob-table thead th.ob-actions { position: sticky; right: 0; z-index: 1; background: var(--ax-surface-2); box-shadow: -1px 0 0 var(--ax-border); }
+  #screen-facturacion .ob-table thead th.ob-actions { background: var(--ax-surface); z-index: 3; }
+  #screen-facturacion .ob-table tbody tr:hover td.ob-actions { background: var(--ax-surface-3); }
+  #screen-facturacion .ob-table tbody tr.selected td.ob-actions { background: var(--ax-surface-2); }
+  #screen-facturacion .ob-table td[data-col="base"], #screen-facturacion .ob-table td[data-col="client"], #screen-facturacion .ob-table td[data-col="company"] { white-space: nowrap; }
+}
+
+/* ── Celular: cada fila de la tabla pasa a ser una tarjeta ──
+   Fecha y hora arriba, importe destacado, el resto en dos columnas con su etiqueta
+   (data-label). El tilde queda a la izquierda y el menú de acciones a la derecha. */
+@media (max-width: 760px) {
+  #screen-facturacion .ob-table-card { border: 0; background: transparent; }
+  #screen-facturacion .ob-table-wrap { overflow: visible; border: 0; background: transparent; }
+  #screen-facturacion .ob-table { min-width: 0; display: block; }
+  #screen-facturacion .ob-table thead { display: none; }
+  #screen-facturacion .ob-table tbody, #screen-facturacion .ob-table tfoot { display: flex; flex-direction: column; gap: var(--ax-sp-2); }
+  #screen-facturacion .ob-table tfoot { margin-top: var(--ax-sp-2); }
+  #screen-facturacion .ob-table tbody tr, #screen-facturacion .ob-table tfoot tr { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px var(--ax-sp-3); padding: 12px 12px 12px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+  #screen-facturacion .ob-table tbody tr.selected { border-color: var(--ax-accent); background: var(--ax-accent-soft); box-shadow: inset 3px 0 0 var(--ax-accent); }
+  #screen-facturacion .ob-table tbody tr:hover { background: var(--ax-surface-2); }
+  #screen-facturacion .ob-table tbody tr.selected:hover { background: var(--ax-accent-soft); }
+  #screen-facturacion .ob-table td { display: block; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; overflow-wrap: anywhere; }
+  #screen-facturacion .ob-table td[data-label]:not([data-col="datetime"])::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); }
+  /* Fecha/hora: ocupa el ancho y deja lugar al tilde (izquierda) y al menú (derecha). */
+  #screen-facturacion .ob-table td[data-col="datetime"] { grid-column: 1 / -1; padding: 0 36px 8px 28px; border-bottom: 1px solid var(--ax-border); }
+  #screen-facturacion .ob-table td.ob-check { position: absolute; top: 12px; left: 12px; width: 18px; }
+  #screen-facturacion .ob-table td.ob-actions { position: absolute; top: 4px; right: 4px; width: auto; padding: 0; box-shadow: none; }
+  #screen-facturacion .ob-table tr:not(:has(td.ob-check)) td[data-col="datetime"] { padding-left: 0; }
+  /* Campos largos a todo el ancho. */
+  #screen-facturacion .ob-table td.ob-place, #screen-facturacion .ob-table td[data-col="type"], #screen-facturacion .ob-table td[data-col="toll"], #screen-facturacion .ob-table td[data-col="route"], #screen-facturacion .ob-table td[data-col="concept"], #screen-facturacion .ob-table td[data-col="invoice"], #screen-facturacion .ob-table td[data-col="collect"], #screen-facturacion .ob-table td[data-col="billing"] { grid-column: 1 / -1; }
+  /* Importe: destacado, con el estado/etiqueta a la izquierda. */
+  #screen-facturacion .ob-table td.ob-money-cell, #screen-facturacion .ob-table td[data-col="amount"], #screen-facturacion .ob-table td[data-col="budget"] { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: var(--ax-sp-3); padding-top: 8px; border-top: 1px solid var(--ax-border); text-align: right; }
+  #screen-facturacion .ob-table td[data-col="amount"]::before, #screen-facturacion .ob-table td[data-col="budget"]::before, #screen-facturacion .ob-table td.ob-money-cell::before { margin: 0; }
+  #screen-facturacion .ob-table td[data-col="amount"] .ob-money, #screen-facturacion .ob-table td[data-col="budget"] .ob-money { font-size: var(--ax-fs-lg); }
+  /* Particulares: acciones al pie, de ancho completo. */
+  #screen-facturacion .ob-table td.ob-private-actions { position: static; grid-column: 1 / -1; display: flex; gap: var(--ax-sp-2); padding-top: 8px; border-top: 1px solid var(--ax-border); }
+  #screen-facturacion .ob-private-actions .ob-button { flex: 1; margin-left: 0; }
+  /* Total de adicionales. */
+  #screen-facturacion .ob-table tfoot td { grid-column: 1 / -1; padding: 0; border: 0; background: transparent; }
+  #screen-facturacion .ob-table tfoot td:empty { display: none; }
+  #screen-facturacion .ob-table tfoot tr { display: flex; justify-content: space-between; align-items: baseline; background: var(--ax-surface); }
+}
+
+/* ── Crear factura ──
+   Izquierda (angosta): comprobante y resumen, cada uno en su tarjeta. Derecha: la lista de lo que
+   se factura como tabla (servicio, fecha, recorrido, importe) y el total siempre a la vista. */
+#screen-facturacion .ob-invoice-modal { width: min(1160px, calc(100vw - 48px)); height: min(780px, calc(100vh - 48px)); max-height: calc(100vh - 48px); }
+#screen-facturacion .ob-invoice-head { padding: 18px 24px; }
+#screen-facturacion .ob-invoice-head h3 { font-size: var(--ax-fs-2xl); }
+#screen-facturacion .ob-invoice-head p { margin-top: 4px; font-size: var(--ax-fs-md); }
+#screen-facturacion .ob-invoice-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--ax-sp-5); padding: 20px 24px; overflow: hidden; background: var(--ax-bg); }
+#screen-facturacion .ob-invoice-main { display: flex; flex-direction: column; gap: var(--ax-sp-3); min-width: 0; min-height: 0; overflow-y: auto; }
+#screen-facturacion .ob-invoice-side { display: flex; flex-direction: column; gap: var(--ax-sp-4); min-width: 0; min-height: 0; }
+#screen-facturacion .ob-invoice-card { flex: none; display: flex; flex-direction: column; gap: var(--ax-sp-3); padding: 16px 18px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-invoice-section { margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); letter-spacing: 0; text-transform: none; }
+
+/* Comprobante: tipo, número (punto de venta – número), fecha y observaciones, uno por renglón */
+#screen-facturacion .ob-invoice-fields { display: flex; }
+#screen-facturacion .ob-invoice-fields label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#screen-facturacion .ob-invoice-fields label > span, #screen-facturacion .ob-invoice-notes > span { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+#screen-facturacion .ob-invoice-notes > span small { margin-left: 6px; color: var(--ax-text-3); font-weight: var(--ax-fw-regular); }
+#screen-facturacion .ob-invoice-fields input, #screen-facturacion .ob-invoice-fields select { width: 100%; height: 40px; padding: 0 12px; font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); }
+#screen-facturacion .ob-field-number { display: grid; grid-template-columns: 120px auto minmax(0, 1fr); align-items: end; gap: var(--ax-sp-2); }
+#screen-facturacion .ob-field-number i { padding-bottom: 10px; color: var(--ax-text-3); font-style: normal; }
+#screen-facturacion .ob-field-number input { font-family: var(--ax-font-mono); letter-spacing: .02em; }
+
+/* Qué incluye: una sola tarjeta, con cifras en renglones y los tipos como etiquetas */
+#screen-facturacion .ob-invoice-summary { gap: var(--ax-sp-3); }
+#screen-facturacion .ob-invoice-summary dl { display: flex; flex-direction: column; margin: 0; }
+#screen-facturacion .ob-invoice-summary dl > div { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-summary dl > div:last-child { border-bottom: 0; }
+#screen-facturacion .ob-invoice-summary dt { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
+#screen-facturacion .ob-invoice-summary dd { margin: 0; font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-types { display: flex; flex-wrap: wrap; gap: var(--ax-sp-2); padding-top: var(--ax-sp-3); border-top: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-types span { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-types b { color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font-mono); }
+
+/* Se factura: tabla con encabezado fijo */
+#screen-facturacion .ob-invoice-lines { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); overflow: hidden; }
+#screen-facturacion .ob-invoice-lines h4 { flex: none; display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--ax-border); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); }
+#screen-facturacion .ob-invoice-lines h4 small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
+#screen-facturacion .ob-invoice-table-wrap { flex: 1; min-height: 0; overflow: auto; }
+#screen-facturacion .ob-invoice-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-table th { position: sticky; top: 0; z-index: 1; height: 36px; padding: 0 14px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface); color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); letter-spacing: .04em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+#screen-facturacion .ob-invoice-table th:last-child { text-align: right; }
+#screen-facturacion .ob-invoice-table td { padding: 11px 14px; border-bottom: 1px solid var(--ax-border); vertical-align: top; }
+#screen-facturacion .ob-invoice-table tbody tr:last-child td { border-bottom: 0; }
+#screen-facturacion .ob-invoice-table tbody tr:nth-child(even) td { background: var(--ax-surface); }
+#screen-facturacion .ob-invoice-table td b { display: block; font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#screen-facturacion .ob-invoice-table td small { display: block; margin-top: 2px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#screen-facturacion .ob-invoice-table .ob-it-date { color: var(--ax-text-2); white-space: nowrap; }
+#screen-facturacion .ob-invoice-table .ob-it-route span { display: block; color: var(--ax-text-2); line-height: 1.35; }
+#screen-facturacion .ob-invoice-table .ob-it-route span + span::before { content: "→ "; color: var(--ax-text-3); }
+#screen-facturacion .ob-invoice-table .ob-it-amount { text-align: right; white-space: nowrap; }
+#screen-facturacion .ob-invoice-table .ob-money { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-table tr.is-toll td:first-child b::after { content: "Peaje"; margin-left: 8px; padding: 1px 7px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-xs) var(--ax-font); vertical-align: 1px; }
+
+/* Total */
+#screen-facturacion .ob-invoice-total { flex: none; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: var(--ax-sp-3); padding: 16px 20px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#screen-facturacion .ob-invoice-subtotals { display: flex; gap: var(--ax-sp-6); margin: 0; padding-bottom: var(--ax-sp-3); border-bottom: 1px solid var(--ax-border); }
+#screen-facturacion .ob-invoice-subtotals > div { display: flex; gap: 8px; align-items: baseline; }
+#screen-facturacion .ob-invoice-subtotals dt { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#screen-facturacion .ob-invoice-subtotals dd { margin: 0; font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font-mono); }
+#screen-facturacion .ob-invoice-total-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-4); }
+#screen-facturacion .ob-invoice-total-row small { display: block; color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); }
+#screen-facturacion .ob-invoice-total-row b { display: block; margin-top: 2px; font: var(--ax-fw-semibold) 32px var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+#screen-facturacion .ob-invoice-total-row > span { color: var(--ax-text-3); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+
+#screen-facturacion .ob-invoice-footer { padding: 14px 24px; gap: var(--ax-sp-5); align-items: center; }
+#screen-facturacion .ob-invoice-footer > small { flex: 1; max-width: 560px; font-size: var(--ax-fs-sm); line-height: 1.45; }
+#screen-facturacion .ob-invoice-footer .ob-button { height: 40px; padding: 0 20px; font-size: var(--ax-fs-md); }
+@media (max-width: 960px) {
+  #screen-facturacion .ob-invoice-modal { width: calc(100vw - 24px); height: calc(100vh - 24px); max-height: calc(100vh - 24px); }
+  #screen-facturacion .ob-invoice-body { display: flex; flex-direction: column; gap: var(--ax-sp-4); padding: 16px; overflow-y: auto; }
+  #screen-facturacion .ob-invoice-main, #screen-facturacion .ob-invoice-side { flex: none; overflow: visible; min-height: auto; }
+  #screen-facturacion .ob-invoice-lines { flex: none; }
+  #screen-facturacion .ob-invoice-table-wrap { max-height: 320px; }
+  #screen-facturacion .ob-invoice-head, #screen-facturacion .ob-invoice-footer { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 560px) {
+  #screen-facturacion .ob-invoice-table th:nth-child(3), #screen-facturacion .ob-invoice-table td:nth-child(3) { display: none; }
+  #screen-facturacion .ob-invoice-total-row b { font-size: var(--ax-fs-2xl); }
+  #screen-facturacion .ob-field-number { grid-template-columns: 96px auto minmax(0, 1fr); }
+}
+
+/* ── Pulido: pestañas segmentadas, tabla que entra en pantalla y casillas con el tema ── */
+#screen-facturacion .ob-tabs { display: inline-flex; max-width: 100%; gap: 4px; padding: 3px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); }
+#screen-facturacion .ob-tab { height: calc(var(--ax-h) - 8px); padding: 0 14px; border: 0; border-radius: 6px; }
+#screen-facturacion .ob-tab:hover { background: transparent; color: var(--ax-text); }
+#screen-facturacion .ob-tab.active { background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-semibold); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
+@media (min-width: 761px) {
+  #screen-facturacion .ob-table th, #screen-facturacion .ob-table td { padding-left: 10px; padding-right: 10px; }
+  #screen-facturacion .ob-table td.ob-place { min-width: 120px; max-width: 190px; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+  #screen-facturacion .ob-table td[data-col="company"], #screen-facturacion .ob-table td[data-col="client"] { max-width: 150px; white-space: normal; line-height: 1.3; }
+  #screen-facturacion .ob-table td[data-col="amount"] { white-space: nowrap; }
+}
+#screen-facturacion .ob-check input[type="checkbox"], #screen-facturacion .ob-table input[type="checkbox"] { appearance: none; -webkit-appearance: none; display: inline-grid; place-content: center; width: 18px; height: 18px; margin: 0; border: 1.5px solid var(--ax-border-strong); border-radius: 5px; background: var(--ax-bg); cursor: pointer; transition: background var(--ax-dur-fast) var(--ax-ease), border-color var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-table input[type="checkbox"]:hover:not(:disabled) { border-color: var(--ax-text-3); }
+#screen-facturacion .ob-table input[type="checkbox"]::after { content: ""; width: 9px; height: 5px; margin-top: -2px; border-left: 2px solid var(--ax-accent-fg); border-bottom: 2px solid var(--ax-accent-fg); transform: rotate(-45deg) scale(0); transition: transform var(--ax-dur-fast) var(--ax-ease); }
+#screen-facturacion .ob-table input[type="checkbox"]:checked { border-color: var(--ax-accent); background: var(--ax-accent); }
+#screen-facturacion .ob-table input[type="checkbox"]:checked::after { transform: rotate(-45deg) scale(1); }
+#screen-facturacion .ob-table input[type="checkbox"]:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-facturacion .ob-table input[type="checkbox"]:disabled { opacity: .4; cursor: not-allowed; }
+@media (min-width: 761px) {
+  #screen-facturacion .ob-toolbar { padding: 0; border: 0; background: transparent; }
+  #screen-facturacion .ob-filters .auxf-search { flex: 1 1 150px; min-width: 150px; max-width: none; }
+  #screen-facturacion .ob-filters .auxf-btn { padding-left: 10px; padding-right: 10px; }
+}
+#screen-facturacion .ob-tabs { flex: 0 1 auto; width: fit-content; }
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters .auxf-btn { height: 48px; }
+  #screen-facturacion .ob-filters .auxf-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; line-height: 1.2; }
+  #screen-facturacion .ob-filters .auxf-txt small.auxf-label { font-size: var(--ax-fs-xs); letter-spacing: 0; text-transform: none; font-weight: var(--ax-fw-medium); }
+  #screen-facturacion .ob-filters .auxf-txt b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ax-fs-md); }
+}
+@media (max-width: 760px) {
+  #screen-facturacion .ob-filters [data-auxf-kind="period"] .auxf-btn b { font-size: var(--ax-fs-sm); }
+}

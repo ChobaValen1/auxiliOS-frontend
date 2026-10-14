@@ -5,3 +5,57 @@
 .osl-quick-status-enabled #screen-operaciones .col-status .os-status{cursor:pointer;transition:filter .12s,transform .12s}.osl-quick-status-enabled #screen-operaciones .col-status .os-status:hover{filter:brightness(1.06);transform:translateY(-1px)}.osl-quick-status-enabled #screen-operaciones .col-status .os-status:after{content:"⌄";margin-left:auto;font-size:9px;line-height:1;opacity:.72}.osl-quick-status-menu{position:fixed;z-index:17100;display:grid;min-width:168px;padding:5px;border:1px solid var(--border,#d7dce4);border-radius:9px;background:var(--panel,#fff);box-shadow:0 16px 48px rgba(0,0,0,.28)}.osl-quick-status-menu[hidden]{display:none!important}.osl-quick-status-menu button{min-height:34px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--text,#172033);font:inherit;font-size:9px;font-weight:800;text-align:left;cursor:pointer}.osl-quick-status-menu button:hover{background:var(--bg,#f6f8fb)}
 .osl-assignment-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.osl-assignment-fields label{display:grid;gap:6px}.osl-assignment-fields label>span{color:var(--osl-muted);font-size:.75rem;font-weight:700}.osl-assignment-fields select{width:100%;height:42px;box-sizing:border-box;border:1px solid #aeb8c7;border-radius:9px;background:#fff;color:var(--osl-ink);padding:0 10px;font:inherit;font-size:.85rem}.osl-assignment-fields select:focus{outline:2px solid rgba(37,99,235,.18);border-color:#7aa2ed}.osl-assignment-compare{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;gap:10px;margin-bottom:16px}.osl-assignment-compare>section{display:grid;align-content:start;gap:4px;padding:12px 13px;border:1px solid var(--osl-line);border-radius:11px;background:var(--osl-soft)}.osl-assignment-compare>section.new{border-color:#a9c3f5;background:var(--osl-blue-soft)}.osl-assignment-compare small{color:var(--osl-muted);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.osl-assignment-compare b{font-size:.86rem}.osl-assignment-compare span{color:var(--osl-muted);font-size:.78rem}.osl-assignment-compare>i{align-self:center;color:var(--osl-muted);font-style:normal;font-size:1.05rem}
 @media(max-width:640px){.osl-modal-backdrop{padding:0;place-items:end stretch}.osl-modal{width:100%;max-height:94vh;border-radius:18px 18px 0 0}.osl-modal>header,.osl-body,.osl-modal footer{padding-left:16px;padding-right:16px}.osl-modal footer{flex-wrap:wrap}.osl-modal footer button{flex:1 1 140px}.osv4-reactive .osl-assignment-inline{grid-template-columns:1fr}.osv4-reactive .osl-assignment-inline-actions{justify-content:flex-end}.osl-assignment-fields{grid-template-columns:1fr}.osl-assignment-compare{grid-template-columns:1fr}.osl-assignment-compare>i{transform:rotate(90deg);justify-self:center}}
+
+/* El resumen de cierre tiene doce filas: a dos columnas de pares entra sin
+   scroll en un portátil. Va DESPUÉS de .osl-reference — misma especificidad,
+   gana la última. */
+.osl-resumen{grid-template-columns:auto 1fr;gap:6px 14px}
+@media(min-width:620px){.osl-resumen{grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);column-gap:22px}}
+.osl-resumen b{overflow-wrap:anywhere}
+
+.os-resource-hint{display:block;font-size:10px;line-height:1.3;color:var(--muted);margin-top:3px;font-weight:400}.osv4-reactive [aria-invalid="true"]{outline:1px solid #ef4444;outline-offset:1px}
+.osl-choice-list label span small{display:block;font-size:11px;line-height:1.4;color:var(--muted);margin-top:4px} #osv4-activation-classification{padding:12px 20px;border-top:1px solid rgba(160,170,185,.2)}
+.os-activation-reason{display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;margin-top:3px}
+
+/* Avisos de asignación dentro del modal y de la tarjeta de confirmación */
+.os-resource-hint.is-blocked{color:#d64545;font-weight:700}
+.osl-assignment-inline.is-error{border-color:rgba(214,69,69,.55);box-shadow:inset 3px 0 0 #d64545}
+.osl-assignment-inline-error{color:#e05252!important;font-weight:700}
+
+/* El aviso usa display:flex y le ganaba al atributo hidden: se veía siempre. */
+.osl-warning[hidden]{display:none!important}
+/* Menú de Estado: cada acción con el color del estado al que lleva. */
+.osl-quick-status-menu button{display:flex;align-items:center;gap:8px;border-left:3px solid transparent}
+.osl-quick-status-menu button:before{content:"";flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:var(--osl-act,#8590ab)}
+.osl-quick-status-menu button:hover{background:color-mix(in srgb,var(--osl-act,#8590ab) 14%,transparent)!important;border-left-color:var(--osl-act,#8590ab)}
+.osl-quick-status-menu button[data-osl-quick-action="assign"],.osl-quick-status-menu button[data-osl-quick-action="reassign"],.osl-quick-status-menu button[data-osl-quick-action="unarrive"]{--osl-act:var(--blue,#4a90e2)}
+.osl-quick-status-menu button[data-osl-quick-action="unassign"]{--osl-act:var(--amber,#f5a623)}
+.osl-quick-status-menu button[data-osl-quick-action="arrive"]{--osl-act:#a986ff}
+.osl-quick-status-menu button[data-osl-quick-action="activate"]{--osl-act:var(--cyan,#2ec4d6)}
+.osl-quick-status-menu button[data-osl-quick-action="finalize"]{--osl-act:var(--green,#27c47a)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]{--osl-act:var(--red,#e2504a)}
+.osl-annul-confirm{display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 13px;border:1px solid #f0b7b1;border-radius:10px;font-size:.84rem;font-weight:700;cursor:pointer}.osl-annul-confirm input{width:auto;margin:0}.osl-annul-confirm:has(input:checked){background:var(--osl-red-soft)}
+.osl-warning.ok{border-color:#a7dcbf;background:rgba(39,196,122,.1);color:#1c6b43}
+
+/* Servicios · paleta sobria: el menú de Estado ya no pinta cada destino con su
+   color (azul, violeta, cian, verde). Punto neutro; naranja al pasar el mouse
+   (interacción) y rojo solo para Anular (destructivo). */
+.osl-quick-status-menu button{--osl-act:var(--border2,#3b4458)}
+.osl-quick-status-menu button[data-osl-quick-action]{--osl-act:var(--border2,#3b4458)}
+.osl-quick-status-menu button:hover{background:rgba(245,166,35,.08)!important;border-left-color:var(--amber,#f5a623)}
+.osl-quick-status-menu button:hover:before{background:var(--amber,#f5a623)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]{--osl-act:var(--red,#e2504a);color:var(--red,#e2504a)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]:hover{background:color-mix(in srgb,var(--red,#e2504a) 12%,transparent)!important;border-left-color:var(--red,#e2504a)}
+.osl-quick-status-menu button[data-osl-quick-action="annul"]:hover:before{background:var(--red,#e2504a)}
+/* Modales de estado y asignación: botón principal y selección en naranja, sin azul ni verde. */
+.osl-modal footer button.primary{border-color:var(--amber,#f5a623);background:var(--amber,#f5a623);color:#111}
+.osl-choice-list label:has(input:checked){border-color:var(--amber,#f5a623);background:var(--osl-amber-soft);box-shadow:0 0 0 2px rgba(245,166,35,.12)}
+.osl-choice-list input,.osl-annul-confirm input{accent-color:var(--amber,#f5a623)}
+.osl-assignment-fields select:focus{outline:2px solid rgba(245,166,35,.22);border-color:var(--amber,#f5a623)}
+.osl-assignment-compare>section.new{border-color:#f0d18f;background:var(--osl-amber-soft)}
+.osl-warning.ok{border-color:var(--osl-line);background:var(--osl-soft);color:var(--osl-ink)}
+.osl-history-head>span{background:none;padding:0}
+.osv4-reactive .osl-assignment-inline{border-color:color-mix(in srgb,var(--amber,#f5a623) 45%,transparent);background:rgba(245,166,35,.05);box-shadow:inset 3px 0 0 var(--amber,#f5a623)}
+.osv4-reactive .osl-assignment-inline-actions button.primary{border-color:var(--amber,#f5a623);background:var(--amber,#f5a623);color:#111}
+.osv4-reactive .osl-assignment-inline.is-error{border-color:color-mix(in srgb,var(--red,#e2504a) 55%,transparent);background:transparent;box-shadow:inset 3px 0 0 var(--red,#e2504a)}
+.os-resource-hint.is-blocked,.osl-assignment-inline-error{color:var(--red,#e2504a)!important}

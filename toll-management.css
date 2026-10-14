@@ -98,3 +98,20 @@
  .tm-form-actions{flex-direction:column-reverse}
  .tm-form-actions .btn{width:100%}
 }
+
+/* Peajes · paleta sobria (misma regla que Remitos): importes, historial y estado
+   en neutro; naranja para lo pendiente (dirección sin validar) y la interacción;
+   rojo solo para eliminar. Sin verde ni azul decorativos. */
+#screen-peajes .tm-eyebrow,#screen-peajes .tm-card-head small,#screen-peajes .tm-list-head small,.tm-modal-shell header small{color:var(--muted2,#aab1c0)}
+#screen-peajes .tm-current-amount{color:var(--text,#f5f7fa)}
+#screen-peajes .tm-state{gap:6px;min-height:0;padding:0;border-radius:0;background:none;color:var(--muted2,#aab1c0);font-size:9px;font-weight:700;text-transform:none}
+#screen-peajes .tm-state::before{content:"";flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:var(--border2,#3b4458)}
+#screen-peajes .tm-state.active{background:none;color:var(--muted2,#aab1c0)}
+#screen-peajes .tm-state.inactive{background:none;color:var(--muted,#778094)}
+#screen-peajes .tm-state.inactive::before{background:transparent;border:1px solid var(--muted,#778094)}
+#screen-peajes .tm-link{color:var(--text,#f5f7fa);text-decoration:underline;text-decoration-color:var(--border2,#3b4458);text-underline-offset:3px}
+#screen-peajes .tm-link:hover{color:var(--amber,#f5a623);text-decoration-color:currentColor}
+#screen-peajes .tm-entry-note{border-color:var(--border,#2d3444);background:var(--card,#202632)}
+#screen-peajes .tm-geo-state.ok{color:var(--muted2,#aab1c0)}
+#screen-peajes .tm-map-suggestions button:hover{background:rgba(245,166,35,.08)}
+.tm-history article.current{border-color:var(--border2,#3b4458);background:var(--card,#202632)}

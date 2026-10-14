@@ -25,22 +25,26 @@
       return { remitos: [], efectivoEsperado: 0, gastosSistema: 0 };
     }
 
-    const [remitosRes, efectivoRes, gastosRes] = await Promise.all([
+    const [remitosRes, gastosRes] = await Promise.all([
       _db.from('remitos')
-        .select('nro_remito, tipo_servicio, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status')
+        .select('nro_remito, nro_servicio, patente, pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto, status')
         .eq('log_id', logId)
         .neq('status', 'anulado'),
-      _db.rpc('calcular_efectivo_jornada', { p_log_id: logId }),
       _db.rpc('calcular_gastos_jornada', { p_log_id: logId }),
     ]);
 
     queryError('remitos de jornada', remitosRes);
-    queryError('efectivo de jornada', efectivoRes);
     queryError('gastos de jornada', gastosRes);
 
+    const remitos = remitosRes.data || [];
+    const esEfectivo = metodo => String(metodo || '').trim().toLowerCase() === 'efectivo';
+    const efectivoEsperado = remitos.reduce((total, remito) => total
+      + (esEfectivo(remito.pago_1_metodo) ? Number(remito.pago_1_monto) || 0 : 0)
+      + (esEfectivo(remito.pago_2_metodo) ? Number(remito.pago_2_monto) || 0 : 0), 0);
+
     return {
-      remitos: remitosRes.data || [],
-      efectivoEsperado: Number(efectivoRes.data) || 0,
+      remitos,
+      efectivoEsperado,
       gastosSistema: Number(gastosRes.data) || 0,
     };
   };
