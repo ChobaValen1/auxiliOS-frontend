@@ -114,3 +114,16 @@
 #p3-remito-loading small { color: var(--ax-text-2); font-size: var(--ax-fs-md); }
 @keyframes p3-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { #p3-remito-loading .p3-spin { animation-duration: 3s; } }
+
+/* Cola del chofer (varios servicios a la vez) */
+#phase3-driver-services .p3-queue-banner { padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-info-soft); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#phase3-driver-services .p3-queue-banner b { color: var(--ax-info); }
+#phase3-driver-services .p3-queue-card .p3-card-id { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+#phase3-driver-services .p3-queue-card .p3-card-id .p3-card-company { grid-column: 2; }
+#phase3-driver-services .p3-queue-num { grid-row: span 2; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text); font-weight: var(--ax-fw-bold); font-size: var(--ax-fs-sm); }
+#phase3-driver-services .p3-queue-num.is-current { background: var(--ax-info); color: #fff; }
+#phase3-driver-services .p3-queue-num.is-next { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#phase3-driver-services .p3-status:not(.blue):not(.amber):not(.green):not(.red):not(.violet)::before { background: var(--ax-text-3); }
+#phase3-driver-services .p3-queue-wait { opacity: .62; }
+#phase3-driver-services .p3-card-foot.p3-card-start { background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-bold); }
+#phase3-driver-services .p3-card-foot.p3-card-locked { color: var(--ax-text-3); }
