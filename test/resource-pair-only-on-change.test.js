@@ -12,3 +12,9 @@ test('guardar la revisión no vuelve a controlar Chofer/Móvil si no cambiaron',
   assert.match(sql, /new\.assigned_truck_id is not distinct from old\.assigned_truck_id/);
   assert.match(sql, /if n=d then raise exception/);
 });
+
+test('el código de prestadora se guarda sin espacios ni tabulaciones al final', () => {
+  const sql = fs.readFileSync(path.join(__dirname, '..', 'migrations', '20261014140000_trim_operator_service_order_number_v1.sql'), 'utf8');
+  assert.match(sql, /btrim\(new\.service_order_number, E' \\t\\r\\n\\u00a0'\)/);
+  assert.match(sql, /before insert or update of service_order_number on public\.operator_services/);
+});
