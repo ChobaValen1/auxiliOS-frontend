@@ -18,3 +18,8 @@ test('el código de prestadora se guarda sin espacios ni tabulaciones al final',
   assert.ok(sql.includes("btrim(new.service_order_number, E' \\t\\r\\n\\u00a0')"));
   assert.match(sql, /before insert or update of service_order_number on public\.operator_services/);
 });
+
+test('anular desde Facturación: el motivo billing_admin está permitido', () => {
+  const sql = fs.readFileSync(path.join(__dirname, '..', 'migrations', '20261014180000_cancellation_reason_billing_admin_v1.sql'), 'utf8');
+  assert.match(sql, /'client_or_provider','billing_admin'\]/);
+});
