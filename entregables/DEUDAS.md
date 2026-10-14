@@ -68,4 +68,5 @@ Ejemplo:
 **Avance:**
 - Etapa 1 (base) hecha el 14/10/2026. Todo queda detrás de un interruptor por chofer (`multi_service_v1`), **apagado para todos**: los choferes reales siguen igual que antes. Probado en la base sin guardar datos: 3 servicios a la vez, orden de la cola, traba de orden y mover en la cola.
 - Etapa 2 (operador) hecha el 14/10/2026: en Servicios se ve "En curso · 1º de 4" / "En cola · 3º · siguiente", "N servicios" en Chofer, flechas para subir o bajar, y asignar a un chofer ocupado avisa en qué lugar quedó. Solo aparece para choferes con el interruptor.
-- Falta para encenderlo: etapas 3 y 4 (pantallas) y quitar en la base la traba de viajes que se pisan (`sin_solapamiento_viajes`), que se hace al encender.
+- Etapa 3 (chofer) hecha el 14/10/2026: "Mis servicios" numerados en orden (En curso / Siguiente / En cola), aviso "Tenés N en curso y M en cola", botón "Empezar este servicio" solo en el siguiente, los de más abajo se habilitan en orden, y "+ Servicio en el camino" funciona con otro en curso. Solo para choferes con el interruptor.
+- Falta para encenderlo: etapa 4 (pantallas) y quitar en la base la traba de viajes que se pisan (`sin_solapamiento_viajes`), que se hace al encender.
