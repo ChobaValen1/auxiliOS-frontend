@@ -27,3 +27,8 @@
 .rem-picker-actions{display:flex;align-items:center;gap:8px;padding-top:6px}.rem-picker-actions button{min-height:44px;border-radius:10px;padding:10px 13px;font-size:12px;font-weight:900;cursor:pointer}.rem-picker-secondary{border:1px solid var(--border);background:var(--bg);color:var(--text)}.rem-picker-confirm{flex:1;border:0;background:var(--amber);color:#111}
 body.rem-picker-open{overflow:hidden}
 @media(max-width:480px){.rem-addons-v2{gap:8px}.rem-addons-card{padding:11px}.rem-addons-head{margin-bottom:8px}.rem-picker-fields{grid-template-columns:1fr}.rem-picker-sheet{max-height:90dvh}}
+
+/* Excedente "Otro": el nombre va en su propia fila, a todo el ancho. */
+.rem-picker-priced-list .rem-picker-detail:has(.rem-picker-other){flex-wrap:wrap}
+.rem-picker-priced-list .rem-picker-other{flex:1 1 100%;width:100%;order:3}
+.rem-picker-priced-list .rem-picker-other input{text-align:left;font-weight:600}

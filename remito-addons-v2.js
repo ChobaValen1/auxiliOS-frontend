@@ -22,6 +22,12 @@
   const money=value=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(number(value));
   const currentServiceId=()=>sessionStorage.getItem('auxilios_phase3_service_id')||null;
   const lineKey=kind=>kind==='toll'?'toll_id':'concept_id';
+  /* Excedentes: primero la misma lista fija que usa el operador (importe que escribe el chofer;
+     "Otro" con nombre libre) y después los que ya tenía la prestadora, sin quitar ninguno. */
+  const EXCESS_OTHER_ID='a1e5c0de-0005-4000-8000-000000000005';
+  const FIXED_EXCESS=[['a1e5c0de-0001-4000-8000-000000000001','Kms excedentes'],['5b150179-e3c5-4e4c-b163-e55ba8e8c3b1','Extracción'],['a1e5c0de-0002-4000-8000-000000000002','Hora Trabajo'],['a1e5c0de-0003-4000-8000-000000000003','Hora Espera'],['a1e5c0de-0004-4000-8000-000000000004','Viajero'],[EXCESS_OTHER_ID,'Otro']];
+  const isExcessOther=id=>String(id||'')===EXCESS_OTHER_ID;
+  function withFixedExcess(rows=[]){const byId=new Map(rows.map(row=>[String(row.concept_id),row]));const fixed=FIXED_EXCESS.map(([id,name])=>byId.get(id)||{concept_id:id,name,amount_mode:'manual',reference_amount:0});const ids=new Set(FIXED_EXCESS.map(([id])=>id));return[...fixed,...rows.filter(row=>!ids.has(String(row.concept_id)))];}
   const referenceRows=kind=>kind==='toll'?(state.reference.tolls||[]):(state.reference.excess_concepts||[]);
   const lineName=(kind,row)=>kind==='toll'?row.toll_name:row.concept_name;
   const paymentLabel=value=>PAYMENTS.find(([key])=>key===value)?.[1]||'Sin definir';
@@ -39,7 +45,7 @@
     if(!force&&state.referenceLoaded&&state.serviceId===serviceId)return state.reference;
     const {data,error}=await _db.rpc('get_driver_remito_reference_v2',{p_service_id:serviceId});
     if(error)throw new Error(error.message||'No se pudieron cargar peajes y excedentes');
-    state.reference={...EMPTY_REFERENCE,...(data||{})};state.referenceLoaded=true;state.serviceId=serviceId;renderTollCoverage();await loadToggles(serviceId);return state.reference;
+    state.reference={...EMPTY_REFERENCE,...(data||{})};state.reference.excess_concepts=withFixedExcess(state.reference.excess_concepts||[]);state.referenceLoaded=true;state.serviceId=serviceId;renderTollCoverage();await loadToggles(serviceId);return state.reference;
   }
   /* Conceptos sí/no sin precio (p. ej. Pinacars): no son excedentes ni se cobran al cliente. */
   async function loadToggles(serviceId){
@@ -101,7 +107,7 @@
   function detailsMarkup(){
     const {kind,lines}=state.draft;
     if(!lines.length)return'<div class="rem-addon-empty">La selección quedará vacía.</div>';
-    return(providerTolls()&&kind==='toll'?'<p class="rem-addons-help">Estos peajes quedan a cargo de la prestadora. No se cobra al socio.</p>':`<label class="rem-picker-common-payment"><span>Medio de pago para toda la selección</span><select id="rem-picker-common-payment">${paymentOptions(state.draft.paymentMethod||'')}</select><small>Podés elegir “No cobrado”.</small></label>`)+`<div class="rem-picker-priced-list">${lines.map((line,index)=>{const editable=kind==='toll'||line.amount_mode==='manual',suggested=number(line.suggested_amount),q=kind==='toll'?passes(line):1;const meta=kind==='toll'?[suggested>0?`Sugerido ${money(suggested)}`:'Sin precio sugerido',q>1?`${q} pasadas`:''].filter(Boolean).join(' · '):line.amount_mode==='manual'?'Importe variable':'Precio definido';return`<article class="rem-picker-detail ${editable?'is-editable':''}" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}${q>1?` <span class="rem-qty-badge">×${q}</span>`:''}</b><small>${esc(meta)}</small></div>${editable?`<label class="rem-picker-amount"><span>${kind==='toll'?(q>1?'Importe real por pasada':'Importe real'):'Importe'}</span><input data-draft-field="unit_amount" inputmode="decimal" placeholder="0" value="${esc(line.unit_amount||'')}"></label>`:`<strong class="rem-picker-price">${amountText(line)}</strong>`}</article>`}).join('')}</div>`;
+    return(providerTolls()&&kind==='toll'?'<p class="rem-addons-help">Estos peajes quedan a cargo de la prestadora. No se cobra al socio.</p>':`<label class="rem-picker-common-payment"><span>Medio de pago para toda la selección</span><select id="rem-picker-common-payment">${paymentOptions(state.draft.paymentMethod||'')}</select><small>Podés elegir “No cobrado”.</small></label>`)+`<div class="rem-picker-priced-list">${lines.map((line,index)=>{const editable=kind==='toll'||line.amount_mode==='manual',suggested=number(line.suggested_amount),q=kind==='toll'?passes(line):1;const meta=kind==='toll'?[suggested>0?`Sugerido ${money(suggested)}`:'Sin precio sugerido',q>1?`${q} pasadas`:''].filter(Boolean).join(' · '):line.amount_mode==='manual'?'Importe variable':'Precio definido';return`<article class="rem-picker-detail ${editable?'is-editable':''}" data-draft-index="${index}"><div class="rem-picker-detail-head"><b>${esc(lineName(kind,line))}${q>1?` <span class="rem-qty-badge">×${q}</span>`:''}</b><small>${esc(meta)}</small></div>${editable?`<label class="rem-picker-amount"><span>${kind==='toll'?(q>1?'Importe real por pasada':'Importe real'):'Importe'}</span><input data-draft-field="unit_amount" inputmode="decimal" placeholder="0" value="${esc(line.unit_amount||'')}"></label>`:`<strong class="rem-picker-price">${amountText(line)}</strong>`}${kind==='excess'&&isExcessOther(line.concept_id)?`<label class="rem-picker-amount rem-picker-other"><span>¿Qué es?</span><input data-draft-field="concept_name" maxlength="80" placeholder="Ej.: lavado de cubiertas" value="${esc(line.concept_name&&line.concept_name!=='Otro'?line.concept_name:'')}"></label>`:''}</article>`}).join('')}</div>`;
   }
 
   function renderPicker(){
@@ -132,7 +138,7 @@
   function captureDetails(){
     if(state.draft?.phase!=='details')return;
     state.draft.paymentMethod=$('#rem-picker-common-payment')?.value||'';
-    $$('.rem-picker-detail').forEach(card=>{const line=state.draft.lines[Number(card.dataset.draftIndex)];if(!line)return;const input=$('[data-draft-field="unit_amount"]',card);if(input)line.unit_amount=input.value;line.customer_payment_method=state.draft.kind==='toll'&&providerTolls()?null:state.draft.paymentMethod});
+    $$('.rem-picker-detail').forEach(card=>{const line=state.draft.lines[Number(card.dataset.draftIndex)];if(!line)return;const input=$('[data-draft-field="unit_amount"]',card);if(input)line.unit_amount=input.value;const nameInput=$('[data-draft-field="concept_name"]',card);if(nameInput){const name=nameInput.value.trim().slice(0,80);line.concept_name=name||'Otro';line.reason=line.concept_name;}line.customer_payment_method=state.draft.kind==='toll'&&providerTolls()?null:state.draft.paymentMethod});
   }
   function continuePicker(){
     if(state.draft?.phase!=='select')return;
@@ -187,7 +193,7 @@
   function validate(){
     const errors=[];const {tolls,excesses}=collectLines(),evidence=collectEvidence();
     tolls.forEach((line,index)=>{if(!line.toll_id)errors.push(`Seleccioná el peaje ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del peaje ${index+1}.`);if(line.payer_agent!=='provider'&&!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el peaje ${index+1}.`)});
-    excesses.forEach((line,index)=>{if(!line.concept_id)errors.push(`Seleccioná el excedente ${index+1}.`);if(line.unit_amount<=0)errors.push(`Ingresá el importe del excedente ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el excedente ${index+1}.`)});
+    excesses.forEach((line,index)=>{if(!line.concept_id)errors.push(`Seleccioná el excedente ${index+1}.`);if(isExcessOther(line.concept_id)&&(!String(line.concept_name||'').trim()||line.concept_name==='Otro'))errors.push('Escribí qué es el excedente "Otro".');if(line.unit_amount<=0)errors.push(`Ingresá el importe del excedente ${index+1}.`);if(!line.customer_payment_method)errors.push(`Seleccioná cómo pagó el cliente el excedente ${index+1}.`)});
     evidence.forEach(item=>{if(item.size_bytes>MAX_BYTES)errors.push(`${item.original_name} supera 10 MiB.`);if(!MIME.has(item.mime_type))errors.push(`${item.original_name} tiene un formato no admitido.`)});
     const box=$('#rem-addons-errors');if(box){box.innerHTML=errors.map(esc).join('<br>');box.classList.toggle('visible',!!errors.length)}return{ok:!errors.length,errors};
   }

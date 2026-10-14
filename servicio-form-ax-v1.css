@@ -514,3 +514,47 @@
 #psv-form .psv-toggles { display: grid; gap: var(--ax-sp-2); padding: var(--ax-sp-2) var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
 #psv-form .psv-toggle-row.ax-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: var(--ax-h); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
 #psv-form .psv-toggle-row.ax-switch input { width: 36px; height: 20px; flex: 0 0 auto; }
+
+/* ── Formulario compacto (escritorio) ───────────────────────────────────
+   Mismos campos y tamaño de letra; menos aire: campos de 32 px, cajas y
+   columnas con menos relleno, y Tel. / Cliente / DNI en una sola fila. */
+@media (min-width: 1101px) {
+  #modal-operador-wizard .osv4-reactive { --ax-h: 32px; grid-template-rows: 52px minmax(0, 1fr) 56px; }
+  #modal-operador-wizard .osv4-reactive .osv2-column { padding: var(--ax-sp-3); }
+  #modal-operador-wizard .osv4-reactive .admin-column, #modal-operador-wizard .osv4-reactive .actions-column,
+  #modal-operador-wizard .osv4-reactive .route-column { gap: var(--ax-sp-2) !important; }
+  #modal-operador-wizard .osv4-reactive .osv2-inline-grid { gap: var(--ax-sp-2) var(--ax-sp-3); }
+  #modal-operador-wizard .osv4-reactive .admin-card, #modal-operador-wizard .osv4-reactive .vehicle-card,
+  #modal-operador-wizard .osv4-reactive .distance-card, #modal-operador-wizard .osv4-reactive .osv2-observations,
+  #modal-operador-wizard .osv4-reactive .osv2-concepts-section { gap: var(--ax-sp-2) !important; padding: 10px var(--ax-sp-3) !important; }
+  #modal-operador-wizard .osv4-reactive .osv2-location, #modal-operador-wizard .osv4-reactive .osv2-location.origin,
+  #modal-operador-wizard .osv4-reactive .osv2-location.destination { gap: 6px; padding: 10px var(--ax-sp-3); }
+  #modal-operador-wizard .osv4-reactive label { gap: 4px; }
+  #modal-operador-wizard .osv4-reactive .client-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #modal-operador-wizard .osv4-reactive .client-row .span-two { grid-column: span 2; }
+  #modal-operador-wizard .osv4-reactive .os-resource-hint { min-height: 0; margin-top: 4px; }
+  #modal-operador-wizard .osv4-reactive .osv2-observations textarea { min-height: 52px; }
+  #modal-operador-wizard .osv4-reactive .osv2-logistics button { height: calc(var(--ax-h) - 6px); }
+}
+
+/* ── Formulario compacto (escritorio) ───────────────────────────────────
+   Mismos campos y tamaño de letra; menos aire: campos de 32 px, cajas y
+   columnas con menos relleno, y Tel. / Cliente / DNI en una sola fila. */
+@media (min-width: 1101px) {
+  #modal-operador-wizard .osv4-reactive { --ax-h: 32px; grid-template-rows: 52px minmax(0, 1fr) 56px; }
+  #modal-operador-wizard .osv4-reactive .osv2-column { padding: var(--ax-sp-3); }
+  #modal-operador-wizard .osv4-reactive .admin-column, #modal-operador-wizard .osv4-reactive .actions-column,
+  #modal-operador-wizard .osv4-reactive .route-column { gap: var(--ax-sp-2) !important; }
+  #modal-operador-wizard .osv4-reactive .osv2-inline-grid { gap: var(--ax-sp-2) var(--ax-sp-3); }
+  #modal-operador-wizard .osv4-reactive .admin-card, #modal-operador-wizard .osv4-reactive .vehicle-card,
+  #modal-operador-wizard .osv4-reactive .distance-card, #modal-operador-wizard .osv4-reactive .osv2-observations,
+  #modal-operador-wizard .osv4-reactive .osv2-concepts-section { gap: var(--ax-sp-2) !important; padding: 10px var(--ax-sp-3) !important; }
+  #modal-operador-wizard .osv4-reactive .osv2-location, #modal-operador-wizard .osv4-reactive .osv2-location.origin,
+  #modal-operador-wizard .osv4-reactive .osv2-location.destination { gap: 6px; padding: 10px var(--ax-sp-3); }
+  #modal-operador-wizard .osv4-reactive label { gap: 4px; }
+  #modal-operador-wizard .osv4-reactive .client-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #modal-operador-wizard .osv4-reactive .client-row .span-two { grid-column: span 2; }
+  #modal-operador-wizard .osv4-reactive .os-resource-hint { min-height: 0; margin-top: 4px; }
+  #modal-operador-wizard .osv4-reactive .osv2-observations textarea { min-height: 52px; }
+  #modal-operador-wizard .osv4-reactive .osv2-logistics button { height: calc(var(--ax-h) - 6px); }
+}
