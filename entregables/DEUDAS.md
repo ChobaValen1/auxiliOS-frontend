@@ -63,4 +63,4 @@ Ejemplo:
 4. Km, Facturación, Sueldos y cierre de jornada: cada servicio con sus km; "KM reales" siguen saliendo de la jornada; al cerrar la jornada avisa qué servicios faltan.
 5. Prueba completa con el chofer de prueba y pase a producción cuando se apruebe.
 
-**Para confirmar:** ¿cerrar la jornada con un servicio sin terminar se bloquea (propuesta) o se permite y el servicio pasa a la jornada siguiente?
+- Cierre de jornada (definido 14/10/2026): **no deja cerrarla** si hay servicios sin terminar y muestra cuáles faltan.
