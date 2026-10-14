@@ -26,3 +26,15 @@ test('la base acepta la lista fija sin depender de la prestadora y guarda el nom
   assert.match(migration, /if v_concept_code='excess_other' then/);
   assert.match(migration, /'concept_name',e\.concept_name_snapshot,'quantity'/);
 });
+
+test('Servicios en notebook: menú contraído solo y Base, KM y Por cobrar ocultas si no hay vista propia', () => {
+  const sigma = read('sigma.js');
+  const services = read('operator-services.js');
+  const css = read('operaciones-ax-v1.css');
+  assert.match(sigma, /function _menuAutomaticoServicios\(name\)/);
+  assert.match(sigma, /setSidenavCollapsed\(true, \{ persist: false \}\)/);
+  assert.match(sigma, /function toggleSidenav\(\) \{ _navAutoCollapsed = false;/);
+  assert.match(services, /const NOTEBOOK_HIDDEN_COLUMNS=\['base','km','amount_due'\]/);
+  assert.match(services, /if\(!p&&isNotebookWidth\(\)\)/);
+  assert.match(css, /#screen-operaciones \.os-table \{ table-layout: auto; width: max-content; min-width: 100%; \}/);
+});

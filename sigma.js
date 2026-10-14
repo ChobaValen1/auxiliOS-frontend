@@ -245,6 +245,7 @@ const SCREENS = {
 
 function goTo(name) {
   if (name !== 'chofer') _resetJornadasMobile();
+  if (typeof _menuAutomaticoServicios === 'function') _menuAutomaticoServicios(name);
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -6448,7 +6449,7 @@ function _mostrarBorradorEnServiciosActivos() {
 }
 
 const SIDENAV_COLLAPSED_KEY = 'auxilios.sidenav.collapsed';
-function setSidenavCollapsed(collapsed) {
+function setSidenavCollapsed(collapsed, { persist = true } = {}) {
   const value = !!collapsed;
   document.body.classList.toggle('nav-collapsed', value);
   const button = document.querySelector('.nav-collapse');
@@ -6457,9 +6458,23 @@ function setSidenavCollapsed(collapsed) {
     button.setAttribute('aria-label', value ? 'Expandir menú' : 'Contraer menú');
     button.title = value ? 'Expandir menú' : 'Contraer menú';
   }
-  try { localStorage.setItem(SIDENAV_COLLAPSED_KEY, value ? '1' : '0'); } catch (_) {}
+  if (persist) { try { localStorage.setItem(SIDENAV_COLLAPSED_KEY, value ? '1' : '0'); } catch (_) {} }
 }
-function toggleSidenav() { setSidenavCollapsed(!document.body.classList.contains('nav-collapsed')); }
+function toggleSidenav() { _navAutoCollapsed = false; setSidenavCollapsed(!document.body.classList.contains('nav-collapsed')); }
+/* En Servicios, en pantallas de notebook, el menú se contrae solo para que entre
+   la tabla entera. No se guarda: al salir de Servicios vuelve como estaba. Si la
+   persona lo abre o cierra a mano, manda lo que eligió. */
+let _navAutoCollapsed = false;
+function _menuAutomaticoServicios(name) {
+  const notebook = window.innerWidth > 720 && window.innerWidth <= 1600;
+  if (name === 'operaciones' && notebook && !document.body.classList.contains('nav-collapsed')) {
+    _navAutoCollapsed = true;
+    setSidenavCollapsed(true, { persist: false });
+  } else if (name !== 'operaciones' && _navAutoCollapsed) {
+    _navAutoCollapsed = false;
+    setSidenavCollapsed(false, { persist: false });
+  }
+}
 try { setSidenavCollapsed(localStorage.getItem(SIDENAV_COLLAPSED_KEY) === '1'); } catch (_) { setSidenavCollapsed(false); }
 function _actualizarEstadoGuardadoRemito(btn, texto) {
   if (btn) btn.textContent = texto;

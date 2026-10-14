@@ -157,6 +157,9 @@
   #screen-operaciones .os-table td.col-base b, #screen-operaciones .os-table td.col-base small,
   #screen-operaciones .os-table td.col-driver b, #screen-operaciones .os-table td.col-driver small { min-width: 64px; max-width: 104px; }
   #screen-operaciones .os-table .os-document-state, #screen-operaciones .os-table td.col-status small { max-width: 140px; }
+  #screen-operaciones .os-table td.col-status, #screen-operaciones .os-table td.col-status * { white-space: normal; }
+  #screen-operaciones .os-table td.col-status { max-width: 170px; }
+  #screen-operaciones .os-table td.col-status button { height: auto; min-height: 24px; line-height: 1.25; padding-top: 3px; padding-bottom: 3px; text-align: left; }
 }
 #screen-operaciones .os-table tr > :first-child { position: sticky; left: 0; z-index: 2; background: inherit; }
 #screen-operaciones .os-table thead tr > :first-child { z-index: 5; background: var(--ax-surface); }
