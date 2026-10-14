@@ -64,3 +64,7 @@ Ejemplo:
 5. Prueba completa con el chofer de prueba y pase a producción cuando se apruebe.
 
 - Cierre de jornada (definido 14/10/2026): **no deja cerrarla** si hay servicios sin terminar y muestra cuáles faltan.
+
+**Avance:**
+- Etapa 1 (base) hecha el 14/10/2026. Todo queda detrás de un interruptor por chofer (`multi_service_v1`), **apagado para todos**: los choferes reales siguen igual que antes. Probado en la base sin guardar datos: 3 servicios a la vez, orden de la cola, traba de orden y mover en la cola.
+- Falta para encenderlo: etapas 2 a 4 (pantallas) y quitar en la base la traba de viajes que se pisan (`sin_solapamiento_viajes`), que se hace al encender.
