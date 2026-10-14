@@ -38,3 +38,26 @@ test('Servicios en notebook: menú contraído solo y Base, KM y Por cobrar ocult
   assert.match(services, /if\(!p&&isNotebookWidth\(\)\)/);
   assert.match(css, /#screen-operaciones \.os-table \{ table-layout: auto; width: max-content; min-width: 100%; \}/);
 });
+
+test('remito del chofer: misma lista fija primero, sin quitar los excedentes de la prestadora; Otro con nombre', () => {
+  const addons = read('remito-addons-v2.js');
+  const driverMigration = read('migrations/20261014110000_driver_excess_fixed_concepts_v1.sql');
+  assert.match(addons, /function withFixedExcess\(rows=\[\]\)/);
+  assert.match(addons, /\.\.\.rows\.filter\(row=>!ids\.has\(String\(row\.concept_id\)\)\)/);
+  assert.match(addons, /state\.reference\.excess_concepts=withFixedExcess\(/);
+  assert.match(addons, /data-draft-field="concept_name"/);
+  assert.match(driverMigration, /c\.code in \('excess_km','extraction','excess_work_hour','excess_wait_hour','excess_traveler','excess_other'\)/);
+  assert.match(driverMigration, /if v_concept\.code='excess_other' then/);
+});
+
+test('formulario de nuevo servicio compacto en escritorio', () => {
+  const css = read('servicio-form-ax-v1.css');
+  assert.match(css, /@media \(min-width: 1101px\) \{\n  #modal-operador-wizard \.osv4-reactive \{ --ax-h: 32px;/);
+  assert.match(css, /\.client-row \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/);
+});
+
+test('revisión administrativa acepta la lista fija de excedentes y el nombre de Otro', () => {
+  const m = read('migrations/20261014120000_admin_review_excess_fixed_concepts_v1.sql');
+  assert.match(m, /validate_administrative_commercial_v1/);
+  assert.match(m, /when c\.code='excess_other' then left\(nullif\(btrim\(coalesce\(x->>'concept_name',''\)\),''\),80\)/);
+});
