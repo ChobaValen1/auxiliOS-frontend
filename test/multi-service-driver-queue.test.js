@@ -25,3 +25,10 @@ test('cola del chofer: lugar guardado, en orden y reordenable por el operador', 
   assert.match(sql, /Solo se puede mover un servicio que el chofer todavía no empezó/);
   assert.match(sql, /grant execute on function public\.move_operator_service_queue_v1\(uuid, integer\) to authenticated/);
 });
+
+test('viajes que se pisan: siguen frenados salvo con el interruptor', () => {
+  const t = fs.readFileSync(path.join(__dirname, '..', 'migrations', '20261014170000_trips_overlap_trigger_v1.sql'), 'utf8');
+  assert.match(t, /app_private\.multi_service_enabled_v1\(new\.driver_id\)/);
+  assert.match(t, /errcode = '23P01'/);
+  assert.match(t, /drop constraint sin_solapamiento_viajes/);
+});
