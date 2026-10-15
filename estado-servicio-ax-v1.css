@@ -89,6 +89,65 @@
   #os-lifecycle-modal .osl-modal { animation-name: ax-sheet-in; }
 }
 
+/* ── Activado en un paso: motivo → Origen / Movida → hora de fin ─────── */
+#os-lifecycle-modal .osl-modal.osl-act-modal { width: min(620px, 100%); }
+#os-lifecycle-modal .osl-act-modal .osl-body { display: grid; gap: var(--ax-sp-4); max-height: min(72vh, 760px); overflow: auto; }
+#os-lifecycle-modal .osl-act-modal .osl-reference, #os-lifecycle-modal .osl-act-modal .osl-resumen { margin-bottom: 0; }
+#os-lifecycle-modal .osl-act-step { display: grid; gap: var(--ax-sp-3); }
+#os-lifecycle-modal .osl-act-step h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); }
+#os-lifecycle-modal .osl-act-step h4 em { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-style: normal; font-weight: var(--ax-fw-bold); }
+#os-lifecycle-modal .osl-act-step:has(input:checked) h4 em { background: var(--ax-accent); color: var(--ax-accent-fg); }
+/* Motivos: 4 tarjetas en grilla 2×2, se elige con un toque. */
+#os-lifecycle-modal .osl-act-reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
+#os-lifecycle-modal .osl-act-reason { position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-bg); color: var(--ax-text); cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#os-lifecycle-modal .osl-act-reason input, #os-lifecycle-modal .osl-act-kind input { position: absolute; opacity: 0; pointer-events: none; }
+#os-lifecycle-modal .osl-act-reason .ax-icon { flex: 0 0 auto; color: var(--ax-text-3); }
+#os-lifecycle-modal .osl-act-reason > span { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); line-height: 1.25; }
+#os-lifecycle-modal .osl-act-reason:hover, #os-lifecycle-modal .osl-act-kind:hover { border-color: var(--ax-text-3); }
+#os-lifecycle-modal .osl-act-reason:has(input:checked), #os-lifecycle-modal .osl-act-kind:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#os-lifecycle-modal .osl-act-reason:has(input:checked) .ax-icon, #os-lifecycle-modal .osl-act-kind:has(input:checked) .osl-act-kind-icon { color: var(--ax-accent); }
+#os-lifecycle-modal .osl-act-reason:has(input:focus-visible), #os-lifecycle-modal .osl-act-kind:has(input:focus-visible) { box-shadow: var(--ax-focus); }
+/* Observación con frases rápidas según el motivo. */
+#os-lifecycle-modal .osl-act-note { display: grid; gap: 6px; }
+#os-lifecycle-modal .osl-act-note > label { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#os-lifecycle-modal .osl-act-note small, #os-lifecycle-modal .osl-other > span small { color: var(--ax-text-3); font-weight: var(--ax-fw-medium); }
+#os-lifecycle-modal .osl-act-note textarea, #os-lifecycle-modal .osl-act-revert ~ .osl-other textarea { box-sizing: border-box; width: 100%; min-height: 60px; padding: 8px 12px; resize: vertical; }
+#os-lifecycle-modal .osl-act-suggest { display: flex; flex-wrap: wrap; gap: 6px; }
+#os-lifecycle-modal .osl-act-suggest[hidden] { display: none; }
+#os-lifecycle-modal .osl-act-suggest button { height: 28px; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: var(--ax-surface); color: var(--ax-text-2); font-family: var(--ax-font); font-size: var(--ax-fs-sm); cursor: pointer; }
+#os-lifecycle-modal .osl-act-suggest button:hover { border-color: var(--ax-accent); color: var(--ax-text); }
+/* Origen / Movida: dos tarjetas grandes con el km a la vista. */
+#os-lifecycle-modal .osl-act-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
+#os-lifecycle-modal .osl-act-kind { position: relative; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; row-gap: 8px; padding: 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-bg); cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+#os-lifecycle-modal .osl-act-kind-icon { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: var(--ax-radius); background: var(--ax-surface-3); color: var(--ax-text-2); }
+#os-lifecycle-modal .osl-act-kind-copy { display: grid; align-content: center; gap: 2px; }
+#os-lifecycle-modal .osl-act-kind-copy b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); }
+#os-lifecycle-modal .osl-act-kind-copy small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#os-lifecycle-modal .osl-act-kind > .osl-act-kind-km { grid-column: 1 / -1; justify-self: start; padding: 2px 8px; border-radius: 999px; background: var(--ax-surface-3); color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#os-lifecycle-modal .osl-act-kind:has(input:checked) > .osl-act-kind-km { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#os-lifecycle-modal .osl-act-km { display: grid; gap: 6px; }
+#os-lifecycle-modal .osl-act-km[hidden] { display: none; }
+#os-lifecycle-modal .osl-act-km > label { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#os-lifecycle-modal .osl-act-km-input { position: relative; width: min(220px, 100%); }
+#os-lifecycle-modal .osl-act-km-input input { box-sizing: border-box; width: 100%; -moz-appearance: textfield; padding: 0 44px 0 12px; font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+#os-lifecycle-modal .osl-act-km-input input::-webkit-inner-spin-button, #os-lifecycle-modal .osl-act-km-input input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+#os-lifecycle-modal .osl-act-km-input i { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-style: normal; pointer-events: none; }
+#os-lifecycle-modal .osl-act-km small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#os-lifecycle-modal .osl-act-modal .osl-hint { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+/* Motivo que ya cargó el chofer (Finalizar activado) y resumen de Revertir. */
+#os-lifecycle-modal .osl-act-why, #os-lifecycle-modal .osl-act-revert > div { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#os-lifecycle-modal .osl-act-why .ax-icon, #os-lifecycle-modal .osl-act-revert .ax-icon { flex: 0 0 auto; margin-top: 2px; color: var(--ax-accent); }
+#os-lifecycle-modal .osl-act-why span, #os-lifecycle-modal .osl-act-revert span { display: grid; gap: 2px; }
+#os-lifecycle-modal .osl-act-why b, #os-lifecycle-modal .osl-act-revert b { color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-lifecycle-modal .osl-act-why small, #os-lifecycle-modal .osl-act-revert small { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#os-lifecycle-modal .osl-act-revert { display: grid; gap: var(--ax-sp-2); margin-bottom: var(--ax-sp-4); }
+#osl-quick-status-menu.osl-quick-status-menu button[data-osl-quick-action="revert_activation"] .ax-icon { color: var(--ax-accent); }
+@media (max-width: 520px) {
+  #os-lifecycle-modal .osl-act-reason { min-height: 52px; padding: 8px 10px; }
+  #os-lifecycle-modal .osl-act-reason > span { font-size: var(--ax-fs-sm); }
+  #os-lifecycle-modal .osl-act-modal .osl-body { max-height: none; }
+}
+
 /* Hora de fin: campo dentro del modal de Estado y cuadro chico al cerrar desde la revisión del remito. */
 #os-lifecycle-modal .osl-finish-time small { display: block; margin-top: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
 #ax-finish-ask { position: fixed; inset: 0; z-index: 20003; display: grid; place-items: center; padding: var(--ax-sp-5); background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
