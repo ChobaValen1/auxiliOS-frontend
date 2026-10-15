@@ -90,7 +90,7 @@ function mount(){
    <section id="osv4-edit-reason" class="osv2-card" hidden><label><span>Motivo de la corrección *</span><textarea id="osv4-change-reason" rows="4"></textarea></label></section>
   </section>
  </main>
- <footer class="osv2-footer"><span id="osv4-save-state">Sin cambios pendientes</span><div><button id="osv4-finalize" type="button" class="secondary" data-click="finish" hidden>Finalizar y cerrar</button><button id="osv4-save" type="button" class="primary" data-click="save"></button></div></footer>
+ <footer class="osv2-footer"><span id="osv4-save-state">Sin cambios pendientes</span><div><button id="osv4-finalize" type="button" class="secondary" data-click="finish" hidden>Guardar y finalizar</button><button id="osv4-save" type="button" class="primary" data-click="save"></button></div></footer>
  </div>`;
  bind(shell);ui.mounted=true;sync();
 }

@@ -199,7 +199,7 @@ test('Chofer: activar muestra sólo la pregunta; completar remito muestra carga;
   assert.match(read('migrations/20260930190000_config_servicios_lectura_chofer_v1.sql'), /'chofer'/);
 });
 
-test('Revisión de cargos: lista corta, sin Dejar pendiente y Finalizar y cerrar en el pie', () => {
+test('Revisión de cargos: lista corta, sin Dejar pendiente y Guardar y finalizar en el pie', () => {
   const rev = read('operator-remito-review-v2.js'), ws = read('operator-service-workspace-reactive-v1.js'), css = read('servicio-form-ax-v1.css');
   assert.doesNotMatch(rev, /Nota para dejar pendiente/);
   assert.doesNotMatch(rev, /onclick="AuxiliosRemitoReviewV2\.leavePending\(\)"/);
