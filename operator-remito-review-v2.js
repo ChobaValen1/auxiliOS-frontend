@@ -284,8 +284,8 @@
     btn.hidden=!ready;if(!ready)return;
     const pending=pendingEmbeddedRows().length;
     btn.disabled=!!E.busy||pending>0;
-    btn.textContent=E.busy?'Cerrando…':'Finalizar y cerrar';
-    btn.title=pending>0?`Falta resolver ${pending} diferencia${pending===1?'':'s'} de cargos`:'Aprueba el remito y envía el servicio a Facturación';
+    btn.textContent=E.busy?'Guardando y finalizando…':'Guardar y finalizar';
+    btn.title=pending>0?`Falta resolver ${pending} diferencia${pending===1?'':'s'} de cargos`:'Guarda los cambios, aprueba el remito y envía el servicio a Facturación';
   }
   async function embed(serviceId,hostId='osv4-review-slot'){
     const seq=++E.loadSeq,changed=E.serviceId!==serviceId;

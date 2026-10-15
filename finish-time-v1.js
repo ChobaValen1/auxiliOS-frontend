@@ -43,7 +43,7 @@
       el.setAttribute('aria-modal', 'true');
       el.setAttribute('aria-label', 'Hora de fin');
       el.innerHTML = '<form><b>Hora de fin del servicio</b><p>Se marca la hora actual. Podés cambiarla antes de cerrar.</p>' + field({ id: 'ax-finish-at-' + n }) +
-        '<div><button type="button" data-cancel>Cancelar</button><button type="submit" class="primary">Finalizar y cerrar</button></div></form>';
+        '<div><button type="button" data-cancel>Cancelar</button><button type="submit" class="primary">Guardar y finalizar</button></div></form>';
       doc.body.appendChild(el);
       var form = el.querySelector('form');
       function cerrar(valor) { el.remove(); doc.removeEventListener('keydown', tecla, true); resolve(valor); }

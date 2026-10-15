@@ -52,7 +52,7 @@ test('Servicios y la lista del chofer usan sólo tokens e íconos del sprite', (
   assert.match(os, /data-label="\$\{esc\(COLUMN_LABELS\[k\]\|\|k\)\}"/);   // tarjetas en el celular
   assert.match(os, /\$\{ico\('ellipsis'\)\}/);
   assert.match(os, /aria-label="Más acciones"/);
-  assert.match(os, /MENU_ICON=\{view:'eye',edit:'pencil',finalize:'circle-check',annul:'circle-x'\}/);
+  assert.match(os, /MENU_ICON=\{view:'eye',edit:'pencil','edit-closed':'pencil',finalize:'circle-check',annul:'circle-x'\}/);
   assert.doesNotMatch(os, /icon:'🏢'|icon:'👤'|icon:'🚚'|>⋯<|>⚙<|>↻</);
   assert.doesNotMatch(filters, />🗓<|>▾<|>⌕</);
   assert.doesNotMatch(bridge, /＋ Sin asignación|aria-label="Actualizar">↻/);
