@@ -620,10 +620,10 @@
 #modal-operador-wizard .osv4-reactive .osca-stepper button:disabled { opacity: .35; cursor: default; }
 #modal-operador-wizard .osv4-reactive .osca-stepper span { text-align: center; font-weight: var(--ax-fw-bold); font-variant-numeric: tabular-nums; }
 /* Formato de cobro elegido: una línea entera con "Cambiar". */
-#modal-operador-wizard .osv4-reactive .osca-format.is-chosen { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
-#modal-operador-wizard .osv4-reactive .osca-format.is-chosen .osca-field-label { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
-#modal-operador-wizard .osv4-reactive .osca-format.is-chosen b { flex: 1 1 auto; min-width: 0; color: var(--ax-text); font-size: var(--ax-fs-sm); }
-#modal-operador-wizard .osv4-reactive .osca-format-change { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: transparent; color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .osca-format.is-chosen { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--ax-accent); border-radius: var(--ax-radius-lg); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .osca-format.is-chosen .osca-field-label { margin: 0; color: var(--ax-accent); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osca-format.is-chosen b { flex: 1 1 auto; min-width: 0; color: var(--ax-accent); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osca-format-change { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid var(--ax-accent); border-radius: 999px; background: transparent; color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); cursor: pointer; }
 #modal-operador-wizard .osv4-reactive .osca-format-change:hover { border-color: var(--ax-accent); color: var(--ax-text); }
 /* Lo que falta completar brilla en amarillo al intentar guardar. */
 @keyframes osv4-missing-glow { 0%, 100% { box-shadow: 0 0 0 2px rgba(245, 166, 35, .55), 0 0 10px rgba(245, 166, 35, .35); } 50% { box-shadow: 0 0 0 3px rgba(245, 166, 35, .9), 0 0 16px rgba(245, 166, 35, .55); } }
