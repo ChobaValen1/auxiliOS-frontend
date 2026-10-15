@@ -96,7 +96,7 @@
 #os-lifecycle-modal .osl-act-step { display: grid; gap: var(--ax-sp-3); }
 #os-lifecycle-modal .osl-act-step h4 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); }
 #os-lifecycle-modal .osl-act-step h4 em { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ax-surface-3); color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-style: normal; font-weight: var(--ax-fw-bold); }
-#os-lifecycle-modal .osl-act-step:has(input:checked) h4 em { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#os-lifecycle-modal .osl-act-step:has(input:checked) h4 em, #os-lifecycle-modal .osl-act-step:has(select option:checked:not([value=""])) h4 em { background: var(--ax-accent); color: var(--ax-accent-fg); }
 /* Motivos: 4 tarjetas en grilla 2×2, se elige con un toque. */
 #os-lifecycle-modal .osl-act-reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
 #os-lifecycle-modal .osl-act-reason { position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-bg); color: var(--ax-text); cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
@@ -134,6 +134,12 @@
 #os-lifecycle-modal .osl-act-km-input i { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-style: normal; pointer-events: none; }
 #os-lifecycle-modal .osl-act-km small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
 #os-lifecycle-modal .osl-act-modal .osl-hint { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+/* ¿Quién salió? (servicio Sin asignar) */
+#os-lifecycle-modal .osl-act-step h4 small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+#os-lifecycle-modal .osl-act-who { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ax-sp-2); }
+#os-lifecycle-modal .osl-act-who label { display: grid; gap: 4px; }
+#os-lifecycle-modal .osl-act-who select { box-sizing: border-box; width: 100%; padding: 0 10px; }
+#os-lifecycle-modal .osl-act-who-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
 /* Motivo que ya cargó el chofer (Finalizar activado) y resumen de Revertir. */
 #os-lifecycle-modal .osl-act-why, #os-lifecycle-modal .osl-act-revert > div { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
 #os-lifecycle-modal .osl-act-why .ax-icon, #os-lifecycle-modal .osl-act-revert .ax-icon { flex: 0 0 auto; margin-top: 2px; color: var(--ax-accent); }
