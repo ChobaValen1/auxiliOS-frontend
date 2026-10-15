@@ -7,8 +7,10 @@ Lista de mejoras para ir viendo con el tiempo. Se agregan abajo a medida que apa
 | 1 | Servicios programados para los choferes | 14/10/2026 | Pendiente |
 | 2 | Tema de pantalla: Blanco / Negro / Sistema | 14/10/2026 | Pendiente |
 | 3 | Editar servicios finalizados (operadores) | 14/10/2026 | Pendiente |
-| 4 | Tarifas que dependen del servicio principal | 14/10/2026 | Pendiente · **importante** |
+| 4 | Tarifas que dependen del servicio principal | 14/10/2026 | Hecho · en producción (v463) |
 | 5 | Chofer con más de un servicio en curso a la vez | 14/10/2026 | Hecho · encendido para todos |
+| 6 | Servicios activados: siempre facturables, Activado Origen / Activado Movida | 15/10/2026 | Pendiente |
+| 7 | Peajes pagados por el socio: un medio de pago para todos | 15/10/2026 | Pendiente |
 
 ## 1) Servicios programados para los choferes
 Poder dejar servicios programados para un chofer, como una fila o cola de servicios que el chofer va viendo y tomando en orden. Se piensa junto con la 5.
@@ -72,3 +74,17 @@ Ejemplo:
 - Etapa 4 hecha el 14/10/2026: al cerrar la jornada, si quedan servicios sin terminar, no la deja cerrar y muestra la lista ("No podés cerrar la jornada"). Sin señal usa la última lista guardada en el teléfono. Facturación ya cobra cada servicio con sus propios km y Sueldos con "KM reales" sigue usando los km de la jornada: no hizo falta cambiarlos. Solo para choferes con el interruptor.
 - La traba de viajes que se pisan ya se cambió (etapa 1): no aplica a los choferes con el interruptor.
 - Etapa 5 hecha el 14/10/2026: probado con el Chofer de Prueba y encendido para todos los choferes. Es la regla por defecto, también para los choferes nuevos. Para apagárselo a uno se guarda `enabled=false` en `user_feature_flags` (`multi_service_v1`).
+
+## 4) Avance (15/10/2026)
+Hecho y en producción (v463). En Tarifas, cada adicional puede tomar su precio de la Movida o del Km asfalto del servicio principal. Doble Cabina usa el Km de asfalto. Se dieron de baja "Hora de Espera LIVIANO" y "SEMIPESADO": queda una sola "Hora de Trabajo / Espera".
+
+## 6) Servicios activados
+- Un servicio activado **siempre es facturable**. Si no se factura, no es un activado: es un anulado.
+- Cuando se marca como activado, se elige el tipo:
+  - **Activado Origen:** el móvil llegó al origen. Los km se calculan como **Base → Origen → Base**, y **cambian los km del servicio**.
+  - **Activado Movida:** todavía no llegó al origen, pero estaba en camino. Se cargan **a mano** los km que hizo.
+
+## 7) Peajes pagados por el socio (operador)
+- Cuando los peajes los paga el socio, **no** se pide el medio de pago en cada peaje.
+- Se elige **un medio de pago principal** para todos.
+- Si el cliente paga una parte con otro medio, se habilita cargar ese otro medio para esa parte.
