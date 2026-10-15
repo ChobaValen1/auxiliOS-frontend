@@ -29,6 +29,9 @@
     return window.confirm(fallback || title);
   }
   const KM_FIELDS = [['movement_price', 'Movida'], ['asphalt_km_price', 'KM asfalto'], ['gravel_km_price', 'KM ripio']];
+  const LINKS = { primary_movement: ['= Movida del principal', 'movement_price'], primary_asphalt_km: ['= Km asfalto del principal', 'asphalt_km_price'] };
+  const canLink = service => service?.category === 'secondary' && !service.distance_chargeable;
+  const isLinked = service => canLink(service) && !!LINKS[service.price_link];
   const fieldValue = (price, field) => { if (!price) return null; const value = field === 'asphalt_km_price' ? (price.asphalt_km_price ?? price.km_price) : field === 'gravel_km_price' ? (price.gravel_km_price ?? price.km_price) : price[field]; return value === null || value === undefined ? null : Number(value); };
 
   function injectStyles() {
@@ -101,6 +104,27 @@
     const currency = instance.data?.currency || 'ARS';
     if (service.distance_chargeable) return `<div class="ct4-stack">${KM_FIELDS.map(([field, label]) => `<span><small>${label}</small><b>${amount(fieldValue(price, field), currency)}</b></span>`).join('')}</div>`;
     return `<div class="ct4-stack"><span><small>${esc(unitLabel(price.pricing_unit || service.pricing_unit))}</small><b>${amount(price.unit_price, currency)}</b></span></div>`;
+  }
+
+  /* Adicional que toma el precio del servicio principal.
+     En la columna Precio va una etiqueta corta y el importe (o el rango);
+     el detalle por principal va en Novedades, que es la columna ancha. */
+  function linkedValues(instance, service) {
+    const link = LINKS[service.price_link]; if (!link) return [];
+    return (instance.data?.services || []).filter(s => s.category === 'primary' && s.distance_chargeable && s.general_price)
+      .map(s => ({ name: s.name, value: fieldValue(s.general_price, link[1]) || 0, bases: (s.base_exceptions || []).length }));
+  }
+  function linkedHtml(instance, service) {
+    const link = LINKS[service.price_link]; if (!link) return '';
+    return `<span class="ct4-linked-chip" title="${esc(link[0])}">${icon('link')}${esc(link[0].replace(' del principal', ''))}</span>`;
+  }
+  function linkedDetailHtml(instance, service) {
+    const link = LINKS[service.price_link]; if (!link) return '';
+    const currency = instance.data?.currency || 'ARS', values = linkedValues(instance, service);
+    const what = service.price_link === 'primary_movement' ? 'la Movida' : 'el Km asfalto';
+    const list = values.map(v => `<span><b>${esc(v.name)}</b> ${amount(v.value, currency)}</span>`).join('');
+    const bases = values.some(v => v.bases) ? '<small>En las bases con precio propio toma el de esa base.</small>' : '';
+    return `<div class="ct4-linked-detail"><small>Toma ${what} de cada principal</small><div class="ct4-linked-list">${list}</div>${bases}</div>`;
   }
 
   function samePrice(service, a, b) {
@@ -194,7 +218,7 @@
 
   function actionsHtml(instance, service) {
     const id = esc(service.concept_id);
-    const main = canWrite() ? `<button type="button" class="ct4-btn ${service.general_price ? '' : 'primary'}" data-ct4-edit="${id}">${service.general_price ? 'Editar' : 'Cargar precio'}</button>` : '';
+    const main = !canWrite() ? '' : isLinked(service) ? `<button type="button" class="ct4-btn" data-ct4-link="${id}">Cambiar</button>` : `<button type="button" class="ct4-btn ${service.general_price ? '' : 'primary'}" data-ct4-edit="${id}">${service.general_price ? 'Editar' : 'Cargar precio'}</button>`;
     return `<div class="ct4-row-actions">${main}<button type="button" class="ct4-icon" data-ct4-menu="${id}" aria-haspopup="menu" aria-expanded="false" aria-label="Más opciones: ${esc(service.name)}" title="Más opciones">${icon('ellipsis')}</button></div>`;
   }
 
@@ -212,8 +236,9 @@
     if (km) cells = bulk ? KM_FIELDS.map(([field, label]) => `<td class="num" data-label="${label}">${bulkCell(instance, service, field, label)}</td>`).join('')
       : price ? KM_FIELDS.map(([field, label]) => `<td class="num" data-label="${label}">${amount(fieldValue(price, field), currency)}</td>`).join('')
       : `<td class="ct4-c-none" colspan="3" data-label="Precio"><span class="ct4-none">${icon('circle-alert')}Sin precio cargado</span></td>`;
+    else if (isLinked(service)) cells = `<td class="num" data-label="Precio">${linkedHtml(instance, service)}</td><td class="ct4-c-unit" data-label="Se cobra">${esc(unitLabel(price?.pricing_unit || service.pricing_unit))}</td>`;
     else cells = `${bulk ? `<td class="num" data-label="Precio">${bulkCell(instance, service, 'unit_price', 'Precio')}</td>` : price ? `<td class="num" data-label="Precio">${amount(price.unit_price, currency)}</td>` : `<td class="ct4-c-none" data-label="Precio"><span class="ct4-none">${icon('circle-alert')}Sin precio</span></td>`}<td class="ct4-c-unit" data-label="Se cobra">${esc(unitLabel(price?.pricing_unit || service.pricing_unit))}</td>`;
-    return `<tr class="ct4-row ${price ? '' : 'is-pending'} ${expanded ? 'is-open' : ''}"><td class="ct4-c-name"><div class="ct4-name"><b>${esc(service.name)}</b><small>${esc(categoryLabel(service.category))}</small></div></td>${cells}<td class="ct4-c-news" data-label="Novedades">${newsHtml(instance, service, bases, expanded, bulk)}</td><td class="ct4-c-act">${bulk ? '' : actionsHtml(instance, service)}</td></tr>${expanded ? baseRowsHtml(instance, service, km) : ''}`;
+    return `<tr class="ct4-row ${price || isLinked(service) ? '' : 'is-pending'} ${expanded ? 'is-open' : ''}"><td class="ct4-c-name"><div class="ct4-name"><b>${esc(service.name)}</b><small>${esc(categoryLabel(service.category))}</small></div></td>${cells}<td class="ct4-c-news" data-label="Novedades">${isLinked(service) && !bases.length && !allScheduleChanges(instance, service).length ? linkedDetailHtml(instance, service) : newsHtml(instance, service, bases, expanded, bulk)}</td><td class="ct4-c-act">${bulk ? '' : actionsHtml(instance, service)}</td></tr>${expanded ? baseRowsHtml(instance, service, km) : ''}`;
   }
 
   function groupHtml(instance, group, bulk) {
@@ -267,6 +292,7 @@
     instance.root.querySelectorAll('[data-ct4-schedules]').forEach(b => b.addEventListener('click', () => openSchedules(instance, b.dataset.ct4Schedules)));
     instance.root.querySelectorAll('[data-ct4-delete-base]').forEach(b => b.addEventListener('click', () => deleteBaseException(instance, b.dataset.ct4DeleteBase, b.dataset.base)));
     instance.root.querySelectorAll('[data-ct4-toggle-bases]').forEach(b => b.addEventListener('click', () => { const key = String(b.dataset.ct4ToggleBases); if (instance.expanded.has(key)) instance.expanded.delete(key); else instance.expanded.add(key); renderInstance(instance); }));
+    instance.root.querySelectorAll('[data-ct4-link]').forEach(b => b.addEventListener('click', () => openLinkEditor(instance, b.dataset.ct4Link)));
     instance.root.querySelectorAll('[data-ct4-menu]').forEach(b => b.addEventListener('click', () => openRowMenu(instance, b.dataset.ct4Menu, b)));
     instance.root.querySelectorAll('[data-ct4-filter]').forEach(b => b.addEventListener('click', () => {
       instance.filter = b.dataset.ct4Filter;
@@ -288,6 +314,7 @@
     const service = serviceFor(instance, conceptId); if (!service) return;
     const changes = allScheduleChanges(instance, service), items = [];
     if (canWrite()) items.push(['program', 'calendar-clock', 'Programar cambio de precio', 'Elegís desde qué fecha rige el precio nuevo']);
+    if (canWrite() && canLink(service)) items.push(['link', 'link', 'Tomar precio del principal', 'Movida o Km asfalto del servicio principal']);
     if (canWrite() && (instance.data?.bases || []).length) items.push(['base', 'map-pin', 'Precio para una base', 'Un precio distinto solo para esa base']);
     if (changes.length) items.push(['schedules', 'calendar', `Ver cambios programados (${changes.length})`, '']);
     items.push(['history', 'history', 'Historial de cambios', 'Quién cambió el precio y cuándo']);
@@ -307,6 +334,7 @@
       closeRowMenu();
       if (action === 'program') openPriceEditor(instance, conceptId, { validFrom: nextMonth(), programming: true });
       else if (action === 'base') openPriceEditor(instance, conceptId, { validFrom: today(), selectingBase: true });
+      else if (action === 'link') openLinkEditor(instance, conceptId);
       else if (action === 'schedules') openSchedules(instance, conceptId);
       else if (action === 'history') openHistory(instance, conceptId);
     });
@@ -391,6 +419,29 @@
     resetBulk(instance);
     notify(`${count} tarifa${count === 1 ? '' : 's'} actualizada${count === 1 ? '' : 's'} en una sola operación`, 'success');
     await reloadCompany(instance.companyId);
+  }
+
+  function openLinkEditor(instance, conceptId) {
+    const service = serviceFor(instance, conceptId); if (!service || !canWrite() || !canLink(service)) return;
+    let el = document.getElementById('modal-ct4-link');
+    if (!el) { el = document.createElement('div'); el.className = 'modal-backdrop'; el.id = 'modal-ct4-link'; document.body.appendChild(el); }
+    const current = LINKS[service.price_link] ? service.price_link : '';
+    const opt = (value, title, hint) => `<label class="ct4-link-opt"><input type="radio" name="ct4-link" value="${value}" ${current === value ? 'checked' : ''}><span><b>${title}</b><small>${hint}</small></span></label>`;
+    el.innerHTML = `<div class="modal-box ct4-dialog" role="dialog" aria-modal="true" aria-labelledby="ct4-link-title"><div class="modal-head"><span class="modal-head-title" id="ct4-link-title">Precio de ${esc(service.name)}</span><button class="modal-close" type="button" data-ct4-link-close aria-label="Cerrar">×</button></div><div class="modal-body"><div class="ct4-link-options">${opt('', 'Propio', 'Se cobra el precio que cargues para este adicional.')}${opt('primary_movement', '= Movida del principal', 'Cobra lo mismo que la Movida del servicio principal: Liviano, Semipesado o el que sea.')}${opt('primary_asphalt_km', '= Km asfalto del principal', 'Cobra lo mismo que el Km asfalto del servicio principal.')}</div><p class="ct4-note" style="margin:12px 0 0">Si el principal tiene un precio especial para una base, toma ese. Se aplica a los servicios nuevos y a los que se recalculen al editarlos; los ya calculados no cambian.</p></div><div class="modal-error" id="ct4-link-error" style="display:none;margin:0 18px 12px"></div><div class="modal-footer"><button class="btn btn-ghost" type="button" data-ct4-link-close>Cancelar</button><button class="btn btn-primary" type="button" id="ct4-link-save">Guardar</button></div></div>`;
+    el.querySelectorAll('[data-ct4-link-close]').forEach(b => b.addEventListener('click', () => close('modal-ct4-link')));
+    el.querySelector('#ct4-link-save').addEventListener('click', async event => {
+      const button = event.currentTarget, value = el.querySelector('input[name="ct4-link"]:checked')?.value || '';
+      const error = el.querySelector('#ct4-link-error');
+      if (value === current) { close('modal-ct4-link'); return; }
+      button.disabled = true; error.style.display = 'none';
+      const { error: rpcError } = await _db.rpc('set_company_service_price_link_v1', { p_company_id: instance.companyId, p_concept_id: service.concept_id, p_link: value || null });
+      button.disabled = false;
+      if (rpcError) { error.textContent = rpcError.message || 'No se pudo guardar.'; error.style.display = 'block'; return; }
+      close('modal-ct4-link');
+      notify(value ? `${service.name} ahora toma el precio del principal` : `${service.name} vuelve a usar su precio propio`, 'success');
+      await loadInstance(instance);
+    });
+    open('modal-ct4-link');
   }
 
   async function loadInstance(instance) {
