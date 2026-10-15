@@ -32,26 +32,28 @@ test('la tercera columna tiene un único renderer comercial',()=>{
  assert.doesNotMatch(workspace,/osv2-summary-card|Validar servicio/);
 });
 
-test('formato de cobro: botonera compacta siempre visible, sin banner ni Cambiar',()=>{
+test('formato de cobro: botonera al elegir y una línea con Cambiar una vez elegido',()=>{
  for(const label of ['A cargo del cliente','A cargo de la Prestadora','Uno y Uno'])assert.match(commercial,new RegExp(label));
  assert.match(commercial,/Elegí el formato de cobro/);
  assert.match(commercial,/Quién paga/);
- assert.match(commercial,/Método de Pago/);
+ assert.match(commercial,/<span>Importe<\/span><span>Cantidad<\/span>/);
  assert.match(commercial,/function coverageControl/);
  assert.match(commercial,/Formato de cobro de peajes \*/);
- assert.doesNotMatch(commercial,/data-ca="change-coverage"/);      // se cambia tocando otra opción
+ assert.match(commercial,/class="osca-format-change" data-ca="change-coverage">Cambiar/);
  assert.match(wizard,/PAYERS=new Set\(\['provider','customer'\]\)/);
  assert.match(wizard,/fixedPayer=mode=>mode==='provider_roundtrip'\?'provider':mode==='customer_roundtrip'\?'customer':''/);
  assert.match(wizard,/Seleccioná primero el formato de cobro de peajes/);
  assert.doesNotMatch(wizard,/PAYERS=new Set\(\[[^\]]*both/);
 });
 
-test('peaje toma tarifa vigente, cantidad y total sin importe manual',()=>{
+test('peaje toma tarifa vigente; Manual / Varios lleva importe a mano; cantidad con − +',()=>{
  assert.match(commercial,/Seleccionar peaje…/);
- assert.match(commercial,/total=num\(rate\?\.amount\)\*qty/);
+ assert.match(commercial,/unit=row\.manual\?Math\.max\(0,num\(row\.unit_amount\)\):num\(rate\?\.amount\)/);
+ assert.match(commercial,/Manual \/ Varios · importe a mano/);
+ assert.match(commercial,/data-ca="toll-qty"/);
  assert.match(commercial,/value="N\/A" disabled/);
- assert.doesNotMatch(commercial,/data-ca-field="unit_amount"/);
- assert.match(wizard,/toll_rate_id:r\.toll_rate_id\|\|tollRate\(r\.toll_id\)\?\.toll_rate_id\|\|null/);
+ assert.match(commercial,/data-ca-field="unit_amount"/);
+ assert.match(wizard,/toll_rate_id:r\.manual\?null:\(r\.toll_rate_id\|\|tollRate\(r\.toll_id\)\?\.toll_rate_id\|\|null\)/);
  assert.match(wizard,/commercial_addons:commercialPayload\(d\)/);
 });
 

@@ -312,3 +312,19 @@
 #screen-operaciones .os-hist-place.to > i { border-color: var(--ax-accent); background: var(--ax-accent); }
 #screen-operaciones .os-hist-route > small { padding-left: 14px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
 @media (max-width: 720px) { #screen-operaciones .os-table td.col-route { grid-column: 1 / -1; } }
+
+/* Historial por páginas */
+#screen-operaciones .os-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); margin-top: var(--ax-sp-3); flex-wrap: wrap; }
+#screen-operaciones .os-pager[hidden] { display: none; }
+#screen-operaciones .os-pager-info { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#screen-operaciones .os-pager-pages { display: flex; align-items: center; gap: 4px; }
+#screen-operaciones .os-pager-pages button { display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 8px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; cursor: pointer; }
+#screen-operaciones .os-pager-pages button:hover:not(:disabled) { border-color: var(--ax-text-3); color: var(--ax-text); }
+#screen-operaciones .os-pager-pages button.is-current { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-operaciones .os-pager-pages button:disabled { opacity: .4; cursor: default; }
+#screen-operaciones .os-pager-gap { padding: 0 4px; color: var(--ax-text-3); }
+#os-view-settings .os-density-settings { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); margin-bottom: var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#os-view-settings .os-density-settings > div:first-child { display: grid; gap: 2px; min-width: 0; }
+#os-view-settings .os-density-settings b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-view-settings .os-density-settings small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+@media (max-width: 520px) { #os-view-settings .os-density-settings { flex-direction: column; align-items: stretch; } }

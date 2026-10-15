@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'maintenance-v470-20261015';
+window.AUXILIOS_BUILD_ID = 'maintenance-v471-20261015';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
