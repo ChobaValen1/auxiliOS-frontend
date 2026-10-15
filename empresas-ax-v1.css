@@ -641,10 +641,12 @@
 #modal-ct4-history .ct4-stack { max-width: 230px; }
 
 /* Tarifas · adicional que toma el precio del servicio principal */
-:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked { display: grid; justify-items: end; gap: 2px; }
-:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked b { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; background: var(--ax-accent-soft); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
-:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked b .ax-icon { width: 14px; height: 14px; }
-:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked small { color: var(--ax-text-2); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); text-align: right; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 8px; border: 1px solid var(--ax-border-strong); border-radius: 999px; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked-chip .ax-icon { flex: none; width: 12px; height: 12px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked-detail { display: grid; gap: 3px; min-width: 0; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked-detail small { color: var(--ax-text-3); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked-list { display: flex; flex-wrap: wrap; gap: 2px 14px; color: var(--ax-text-2); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font-mono); font-variant-numeric: tabular-nums; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked-list b { color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
 #modal-ct4-link .ct4-link-options { display: grid; gap: 8px; }
 #modal-ct4-link .ct4-link-opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); cursor: pointer; }
 #modal-ct4-link .ct4-link-opt:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }

@@ -106,13 +106,25 @@
     return `<div class="ct4-stack"><span><small>${esc(unitLabel(price.pricing_unit || service.pricing_unit))}</small><b>${amount(price.unit_price, currency)}</b></span></div>`;
   }
 
-  /* Adicional que toma el precio del servicio principal: muestra de quién lo toma y cuánto da cada principal. */
+  /* Adicional que toma el precio del servicio principal.
+     En la columna Precio va una etiqueta corta y el importe (o el rango);
+     el detalle por principal va en Novedades, que es la columna ancha. */
+  function linkedValues(instance, service) {
+    const link = LINKS[service.price_link]; if (!link) return [];
+    return (instance.data?.services || []).filter(s => s.category === 'primary' && s.distance_chargeable && s.general_price)
+      .map(s => ({ name: s.name, value: fieldValue(s.general_price, link[1]) || 0, bases: (s.base_exceptions || []).length }));
+  }
   function linkedHtml(instance, service) {
     const link = LINKS[service.price_link]; if (!link) return '';
-    const currency = instance.data?.currency || 'ARS';
-    const primaries = (instance.data?.services || []).filter(s => s.category === 'primary' && s.distance_chargeable && s.general_price);
-    const list = primaries.map(s => `${esc(s.name)} ${amount(fieldValue(s.general_price, link[1]), currency)}`).join(' · ');
-    return `<div class="ct4-linked"><b>${icon('link')}${esc(link[0])}</b>${list ? `<small>${list}</small>` : ''}</div>`;
+    return `<span class="ct4-linked-chip" title="${esc(link[0])}">${icon('link')}${esc(link[0].replace(' del principal', ''))}</span>`;
+  }
+  function linkedDetailHtml(instance, service) {
+    const link = LINKS[service.price_link]; if (!link) return '';
+    const currency = instance.data?.currency || 'ARS', values = linkedValues(instance, service);
+    const what = service.price_link === 'primary_movement' ? 'la Movida' : 'el Km asfalto';
+    const list = values.map(v => `<span><b>${esc(v.name)}</b> ${amount(v.value, currency)}</span>`).join('');
+    const bases = values.some(v => v.bases) ? '<small>En las bases con precio propio toma el de esa base.</small>' : '';
+    return `<div class="ct4-linked-detail"><small>Toma ${what} de cada principal</small><div class="ct4-linked-list">${list}</div>${bases}</div>`;
   }
 
   function samePrice(service, a, b) {
@@ -226,7 +238,7 @@
       : `<td class="ct4-c-none" colspan="3" data-label="Precio"><span class="ct4-none">${icon('circle-alert')}Sin precio cargado</span></td>`;
     else if (isLinked(service)) cells = `<td class="num" data-label="Precio">${linkedHtml(instance, service)}</td><td class="ct4-c-unit" data-label="Se cobra">${esc(unitLabel(price?.pricing_unit || service.pricing_unit))}</td>`;
     else cells = `${bulk ? `<td class="num" data-label="Precio">${bulkCell(instance, service, 'unit_price', 'Precio')}</td>` : price ? `<td class="num" data-label="Precio">${amount(price.unit_price, currency)}</td>` : `<td class="ct4-c-none" data-label="Precio"><span class="ct4-none">${icon('circle-alert')}Sin precio</span></td>`}<td class="ct4-c-unit" data-label="Se cobra">${esc(unitLabel(price?.pricing_unit || service.pricing_unit))}</td>`;
-    return `<tr class="ct4-row ${price || isLinked(service) ? '' : 'is-pending'} ${expanded ? 'is-open' : ''}"><td class="ct4-c-name"><div class="ct4-name"><b>${esc(service.name)}</b><small>${esc(categoryLabel(service.category))}</small></div></td>${cells}<td class="ct4-c-news" data-label="Novedades">${newsHtml(instance, service, bases, expanded, bulk)}</td><td class="ct4-c-act">${bulk ? '' : actionsHtml(instance, service)}</td></tr>${expanded ? baseRowsHtml(instance, service, km) : ''}`;
+    return `<tr class="ct4-row ${price || isLinked(service) ? '' : 'is-pending'} ${expanded ? 'is-open' : ''}"><td class="ct4-c-name"><div class="ct4-name"><b>${esc(service.name)}</b><small>${esc(categoryLabel(service.category))}</small></div></td>${cells}<td class="ct4-c-news" data-label="Novedades">${isLinked(service) && !bases.length && !allScheduleChanges(instance, service).length ? linkedDetailHtml(instance, service) : newsHtml(instance, service, bases, expanded, bulk)}</td><td class="ct4-c-act">${bulk ? '' : actionsHtml(instance, service)}</td></tr>${expanded ? baseRowsHtml(instance, service, km) : ''}`;
   }
 
   function groupHtml(instance, group, bulk) {
