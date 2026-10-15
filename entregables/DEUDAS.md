@@ -83,6 +83,7 @@ Hecho y en producción (v463). En Tarifas, cada adicional puede tomar su precio 
 - Cuando se marca como activado, se elige el tipo:
   - **Activado Origen:** el móvil llegó al origen. Los km se calculan como **Base → Origen → Base**, y **cambian los km del servicio**.
   - **Activado Movida:** todavía no llegó al origen, pero estaba en camino. Se cargan **a mano** los km que hizo.
+- **Hecho (v464, 15/10/2026):** se elige Origen o Movida al finalizar el activado (desde Operaciones y desde el ingreso del chofer). Ya no existe "No facturable". Origen calcula los km con el mapa y se pueden corregir; el precio se recalcula con esos km.
 
 ## 7) Peajes pagados por el socio (operador)
 - Cuando los peajes los paga el socio, **no** se pide el medio de pago en cada peaje.
