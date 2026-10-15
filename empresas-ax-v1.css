@@ -115,26 +115,26 @@
 #screen-empresas.emp-v2 .cs4-chip.pending, #screen-empresas.emp-v2 .cs4-chip.danger { color: var(--ax-danger); }
 
 /* ── Formularios (modales) ── */
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) { background: rgba(0, 0, 0, .6); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-box { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-head-title { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; color: var(--ax-text); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-head small, :is(#modal-company-billing-v4, #modal-ct4-rate) .bp4-subtitle { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-body { padding: 18px 20px; }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-error { border-left: 3px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.form-label, .bp4-label, .ct4-field > span, .bp4-field > span) { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.form-input, .form-select, .form-textarea, input:not([type=checkbox]):not([type=radio]), select, textarea) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.form-input, .form-select, .form-textarea, input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) :is(.bp4-help, .bp4-info, .ct4-note) { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) { background: rgba(0, 0, 0, .6); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-box { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-head { padding: 16px 20px; border-bottom: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-head-title { font: var(--ax-fw-semibold) var(--ax-fs-xl) var(--ax-font); letter-spacing: 0; color: var(--ax-text); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-head small, :is(#modal-company-billing-v4, #modal-ct4-rate) .bp4-subtitle { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-close { width: var(--ax-h); height: var(--ax-h); border: 1px solid transparent; border-radius: var(--ax-radius); color: var(--ax-text-2); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-close:hover { border-color: var(--ax-border-strong); background: var(--ax-surface-3); color: var(--ax-text); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-body { padding: 18px 20px; }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-footer { padding: 12px 20px; border-top: 1px solid var(--ax-border); background: var(--ax-surface-2); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-error { border-left: 3px solid var(--ax-danger); border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) :is(.form-label, .bp4-label, .ct4-field > span, .bp4-field > span) { color: var(--ax-text-2); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); letter-spacing: 0; text-transform: none; }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) :is(.form-input, .form-select, .form-textarea, input:not([type=checkbox]):not([type=radio]), select, textarea) { border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: var(--ax-fw-regular) var(--ax-fs-md) var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) :is(.form-input, .form-select, .form-textarea, input, select, textarea):focus { outline: none; border-color: var(--ax-accent); box-shadow: var(--ax-focus); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) :is(.bp4-help, .bp4-info, .ct4-note) { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
 :is(#modal-company-billing-v4, #modal-company-enabled-services-v4) .bp4-section { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
 :is(#modal-company-billing-v4, #modal-company-enabled-services-v4) .bp4-section-head h4 { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); letter-spacing: 0; text-transform: none; }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn, :is(#modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate) .ct4-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn:hover { background: var(--ax-surface-3); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
-:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-history) .modal-footer .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-footer .btn, :is(#modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate) .ct4-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ax-h); padding: 0 16px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-footer .btn:hover { background: var(--ax-surface-3); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-footer .btn-primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-semibold); }
+:is(#modal-empresa, #modal-emp-contact, #modal-company-billing-v4, #modal-company-enabled-services-v4, #modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-footer .btn-primary:hover { border-color: var(--ax-accent-hover); background: var(--ax-accent-hover); }
 
 @media (max-width: 760px) {
   #screen-empresas.emp-v2 .empv2-list-controls { grid-template-columns: 1fr; }
@@ -336,9 +336,9 @@
 :is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-grid { gap: 8px; align-items: end; min-width: 330px; }
 :is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field { gap: 6px; }
 :is(#screen-empresas.emp-v2, #screen-config-tariff-matrix) .ct4-bulk-field span { white-space: nowrap; }
-:is(#modal-ct4-rate, #modal-ct4-history) .modal-head small { font-size: var(--ax-fs-sm); }
-:is(#modal-ct4-rate, #modal-ct4-history) .ct4-note { padding: 10px 14px; border: 0; border-left: 3px solid var(--ax-info); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
-:is(#modal-ct4-rate, #modal-ct4-history) .ct4-grid { gap: 14px 16px; }
+:is(#modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .modal-head small { font-size: var(--ax-fs-sm); }
+:is(#modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .ct4-note { padding: 10px 14px; border: 0; border-left: 3px solid var(--ax-info); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+:is(#modal-ct4-rate, #modal-ct4-link, #modal-ct4-history) .ct4-grid { gap: 14px 16px; }
 
 /* ── Parámetros de facturación en columnas: bases | parámetros ── */
 #modal-company-billing-v4 .modal-box.bp4-dialog { width: min(1120px, 96vw); }
@@ -639,3 +639,15 @@
 }
 :is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-stat.pending:not(.on) { border-color: var(--ax-border-strong); color: var(--ax-text-2); }
 #modal-ct4-history .ct4-stack { max-width: 230px; }
+
+/* Tarifas · adicional que toma el precio del servicio principal */
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked { display: grid; justify-items: end; gap: 2px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked b { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; background: var(--ax-accent-soft); color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-xs) var(--ax-font); white-space: nowrap; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked b .ax-icon { width: 14px; height: 14px; }
+:is(#screen-empresas, #screen-config-tariff-matrix) .ct4 .ct4-linked small { color: var(--ax-text-2); font: var(--ax-fw-regular) var(--ax-fs-xs) var(--ax-font); text-align: right; }
+#modal-ct4-link .ct4-link-options { display: grid; gap: 8px; }
+#modal-ct4-link .ct4-link-opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); cursor: pointer; }
+#modal-ct4-link .ct4-link-opt:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
+#modal-ct4-link .ct4-link-opt input { margin-top: 3px; accent-color: var(--ax-accent); }
+#modal-ct4-link .ct4-link-opt b { display: block; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#modal-ct4-link .ct4-link-opt small { display: block; margin-top: 2px; color: var(--ax-text-2); font: var(--ax-fw-regular) var(--ax-fs-sm) var(--ax-font); }
