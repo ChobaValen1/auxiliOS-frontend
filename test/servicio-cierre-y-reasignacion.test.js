@@ -30,7 +30,7 @@ test('finalizar sin arribo da el campo, no sólo el reto', () => {
   assert.ok(fn.indexOf('update_operator_service_v4') < fn.indexOf("transition('finalize'"));
 });
 
-test('el activado tiene un cierre con decisión explícita y motivo si no se factura',()=>{const fn=lifecycle.split('function openActivatedFinalize')[1].split('function closeQuickMenu')[0];assert.match(fn,/AuxiliosFinishTime\.finalize\(id,finishAt,'activated'/);assert.match(fn,/non_billable/);assert.match(fn,/reason.value.trim/);assert.doesNotMatch(fn,/value="billable" checked/);});
+test('el activado se cierra siempre facturable, eligiendo Origen o Movida con sus km',()=>{const fn=lifecycle.split('function openActivatedFinalize')[1].split('function closeQuickMenu')[0];assert.match(fn,/AuxiliosFinishTime\.finalize\(id,finishAt,'activated',\{billable:true,activation_kind:kind,activation_km/);assert.doesNotMatch(fn,/non_billable/);assert.match(fn,/bindActivationKind\(m,id,'origin'\)/);assert.doesNotMatch(fn,/value="origin" checked/);});
 
 test('el operador puede reasignar el Chofer de un servicio arribado, con aviso', () => {
   assert.match(services, /entries.push\(\['edit','Editar'\]\)/);
