@@ -16,7 +16,14 @@ function render(w){
  list.querySelectorAll('[data-osv4-toggle]').forEach(input=>input.addEventListener('change',()=>{const id=input.dataset.osv4Toggle;if(input.checked)t.selected.add(id);else t.selected.delete(id);t.dirty=true;w.dirty=true;window.OperatorServiceWorkspaceReactiveV1?.sync?.();}));
 }
 function sync(w){if(!w||typeof _db==='undefined')return;if(w.toggles?.key!==String(w.serviceId||'new'))void load(w);else render(w);}
+/* Trazado del recorrido: se guarda en el servicio para sugerirle al chofer los peajes que quedan sobre el camino. */
+async function persistRoute(w,serviceId){
+ const poly=window.AuxiliosRouteGeometry?.polyline;if(!poly||!serviceId||w?.mode==='view'||w._routeSaved===poly)return;
+ const {error}=await _db.rpc('set_operator_service_route_v1',{p_service_id:serviceId,p_polyline:poly});
+ if(error)console.warn('No se pudo guardar el recorrido del servicio',error.message||error);else w._routeSaved=poly;
+}
 async function persist(w,serviceId){
+ if(serviceId&&w&&w.mode!=='view')await persistRoute(w,serviceId).catch(e=>console.warn(e));
  if(!w?.toggles||!serviceId||w.mode==='view')return true;
  if(!w.toggles.dirty&&w.toggles.key===String(serviceId))return true;
  const {error}=await _db.rpc('set_operator_service_toggles_v1',{p_service_id:serviceId,p_concept_ids:[...w.toggles.selected]});
