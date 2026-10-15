@@ -62,7 +62,7 @@ test('el Chofer completa peajes y excedentes dentro de un modal atómico de dos 
   assert.match(driver,/Medio de pago para toda la selección/);
   assert.match(driver,/reference_amount/);
   assert.match(driver,/data-draft-field="unit_amount"/);
-  assert.match(driver,/Importe real/);
+  assert.match(driver,/¿Cuánto pagaste\?/);
   assert.match(driver,/Sugerido/);
   assert.match(driver,/No cobrado/);
   assert.match(driver,/customer_payment_method/);

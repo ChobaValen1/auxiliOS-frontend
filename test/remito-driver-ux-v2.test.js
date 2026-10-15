@@ -45,7 +45,7 @@ test('peajes: la selección muestra el precio sugerido y las pasadas con − / +
   ];
   api.state.draft = { kind: 'toll', phase: 'select', lines: [{ toll_id: 't1', quantity: 2 }], qty: { t1: 2 } };
   const html = api.selectionMarkup();
-  assert.match(html, /Precio sugerido \$\s?4\.300,00/);
+  assert.match(html, /Sugerido \$\s?4\.300,00 · lo podés cambiar/);
   assert.match(html, /Sin precio sugerido/);
   assert.match(html, /data-qty-for="t1" ><button type="button" data-qty-step="-1"/);
   assert.match(html, /<output aria-live="polite">2<\/output>/);
@@ -82,6 +82,10 @@ test('peajes y excedentes: pantalla principal liviana', () => {
   assert.match(addonsSrc, /id="rem-toll-total-row" hidden/);
   assert.match(addonsSrc, /'Editar peajes':'Editar excedentes'/);
   assert.doesNotMatch(addonsSrc, /Cada concepto puede tener precio definido o importe variable/);
-  assert.match(addonsSrc, /Importe real por pasada/);
+  assert.match(addonsSrc, /¿Cuánto pagaste por pasada\?/);
+  // El chofer tiene que ver que el importe del peaje se puede cambiar.
+  assert.match(addonsSrc, /Los importes se pueden cambiar/);
+  assert.match(addonsSrc, /class="rem-amount-field"/);
+  assert.match(addonsSrc, /onfocus="this.select\(\)"/);
   assert.match(css, /#remitos-nuevo \.rem-addons-card \.rem-addon-total\[hidden\] \{ display: none; \}/);
 });

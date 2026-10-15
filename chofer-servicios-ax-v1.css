@@ -127,3 +127,9 @@
 #phase3-driver-services .p3-queue-wait { opacity: .62; }
 #phase3-driver-services .p3-card-foot.p3-card-start { background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-bold); }
 #phase3-driver-services .p3-card-foot.p3-card-locked { color: var(--ax-text-3); }
+
+/* Llegué al origen: el arribo se marca al llegar; el remito se completa después. */
+#p3-service-preview .p3-arrive-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+#p3-service-preview .p3-arrive-btn .ax-icon { width: 18px; height: 18px; }
+#p3-service-preview .p3-arrived-chip { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--ax-ok); border-radius: var(--ax-radius-lg); background: var(--ax-ok-soft); color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#p3-service-preview .p3-arrived-chip .ax-icon { flex: 0 0 auto; color: var(--ax-ok); }

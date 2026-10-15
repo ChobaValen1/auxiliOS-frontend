@@ -25,3 +25,5 @@ test('Peajes: abiertos al crear, formato en una línea con Cambiar, Quién paga 
 test('Demora: incluye 75 min',()=>{assert.match(workspace,/\[30,60,75,90,120,180,240\]/);});
 const migration6=read('migrations/20261015230000_keep_approved_remito_on_edit_v1.sql');
 test('Corregir un finalizado no vuelve su remito aprobado a pendiente de revisión',()=>{assert.match(migration6,/when coalesce\(s\.document_status,''\) in \('approved','exception_approved'\) then s\.document_status/);});
+const bridge=read('operator-service-bridge.js'),migration7=read('migrations/20261015240000_driver_mark_arrived_v1.sql');
+test('Chofer: "Llegué al origen" guarda el arribo y deja completar el remito después',()=>{assert.match(bridge,/marcarLlegadaServicio:markArrived/);assert.match(bridge,/rpc\('driver_mark_arrived_v1',\{p_service_id:id\}\)/);assert.match(bridge,/Llegaste al origen/);assert.match(migration7,/create or replace function public\.driver_mark_arrived_v1/);assert.match(migration7,/driver_arrived_at is not null/);assert.match(migration7,/'can_complete_remito',true,'remito_action','complete'/);});
