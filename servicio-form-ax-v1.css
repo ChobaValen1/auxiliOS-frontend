@@ -558,3 +558,16 @@
   #modal-operador-wizard .osv4-reactive .osv2-observations textarea { min-height: 52px; }
   #modal-operador-wizard .osv4-reactive .osv2-logistics button { height: calc(var(--ax-h) - 6px); }
 }
+
+/* Peajes del cliente: un medio de pago principal para todos; cada fila lo hereda y "Otro medio" lo cambia sólo para esa. */
+#modal-operador-wizard .osv4-reactive .osca-main-payment { display: grid; gap: 4px; margin: 0 0 var(--ax-sp-2); padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osca-main-payment label { display: grid; gap: 4px; }
+#modal-operador-wizard .osv4-reactive .osca-main-payment label > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-main-payment select { width: 100%; }
+#modal-operador-wizard .osv4-reactive .osca-main-payment small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit, #modal-operador-wizard .osv4-reactive .osca-pay-own { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: var(--ax-h-sm, 30px); }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > span { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--ax-text-2); font-size: var(--ax-fs-sm); text-overflow: ellipsis; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > span.is-missing { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .osca-pay-own > select { flex: 1 1 auto; min-width: 0; }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > button, #modal-operador-wizard .osv4-reactive .osca-pay-own > button { flex: 0 0 auto; height: 26px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: transparent; color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-xs); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > button:hover, #modal-operador-wizard .osv4-reactive .osca-pay-own > button:hover { border-color: var(--ax-accent); color: var(--ax-text); }
