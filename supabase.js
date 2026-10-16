@@ -3,8 +3,8 @@
 //  Variable: _db (evita conflicto con window.supabase)
 // ================================================================
 
-const SUPABASE_URL = 'https://bcjcrlrrqfbipleiwkqi.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_daGVg7URncTvLzC7N8NzOA_Z0CWB-1M'; // ← reemplazá con la tuya
+const SUPABASE_URL = 'https://yxmzcjvigaddvjfiwlvz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_d-2I4yeIKzfSPgvALQMZCQ_I4J3G0n_'; // ← reemplazá con la tuya
 
 const { createClient } = window.supabase;
 const _db = createClient(SUPABASE_URL, SUPABASE_KEY);

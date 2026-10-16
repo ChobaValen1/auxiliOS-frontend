@@ -1,6 +1,6 @@
 const ENV = {
-  API_BASE_URL: 'https://auxilios.up.railway.app',
-  ADMIN_API_BASE_URL: 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin'
+  API_BASE_URL: 'https://yxmzcjvigaddvjfiwlvz.supabase.co/functions/v1/auxilios-login',
+  ADMIN_API_BASE_URL: 'https://yxmzcjvigaddvjfiwlvz.supabase.co/functions/v1/auxilios-admin'
 };
 
 /* Formato de fecha único en toda la app: DD/MM/AA (y HH:MM cuando hay hora).

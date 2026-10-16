@@ -13,3 +13,6 @@ supabase/
 docs/
 mockup_docs.html
 server.js
+
+dist/
+*.local.json
