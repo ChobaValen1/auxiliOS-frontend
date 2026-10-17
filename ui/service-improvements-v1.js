@@ -63,7 +63,8 @@
       const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString('es-AR');
     }
     if (key === 'presupuesto') return '$ ' + Number(value).toLocaleString('es-AR');
-    return names[value] || String(value);
+    const enumKeys = ['priority','logistics_type','status','condicion'];
+    return enumKeys.includes(key) && Object.prototype.hasOwnProperty.call(names, value) ? names[value] : String(value);
   }
   let pending = false;
   async function confirmEdit({before, after, resolve, reference = '', notice = '', extraRows = []}) {

@@ -47,4 +47,6 @@ test('el resumen comercial explica duración, importe y cobrador en lenguaje vis
   assert.match(label, /12.000/);
   assert.match(label, /Empresa/);
   assert.match(label, /Efectivo/);
+  assert.equal(ui.display('operator_notes', 'cash'), 'cash');
+  assert.equal(ui.display('customer_name', 'constructor'), 'constructor');
 });

@@ -15,6 +15,8 @@ Destino autorizado: rama `claude/auxilios-3zj57q`, proyecto Vercel `auxilios-fro
 
 No se aplicaron migraciones ni cambios al backend. La publicación de esta entrega se limita al frontend de preview; producción requiere aprobación posterior.
 
+La preview indicada y producción están configuradas contra el mismo proyecto de Supabase (`bcjcrlrrqfbipleiwkqi`). La interfaz es de prueba, pero guardar servicios o registrar cobros allí modifica los datos compartidos. Para revisar estas acciones, utilizar registros de prueba identificados. Las pruebas automáticas de esta entrega usaron RPC simuladas y no escribieron datos reales.
+
 ## Verificación
 
 - Comprobaciones de sintaxis y seguridad: correctas.
