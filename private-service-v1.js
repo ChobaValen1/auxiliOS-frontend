@@ -931,12 +931,20 @@
     }
   }
 
-  function cerrarForm(force) {
+  async function cerrarForm(force) {
+    if (!force && st && (st.busy || st.confirming || st.closing)) return false;
     if (!force && st && (st.d.customer_name || st.d.presupuesto || st.d.origin)) {
-      if (!global.confirm('¿Descartar el servicio particular sin guardar?')) return;
+      var current = st, ask = global.AuxiliosServiceImprovements?.confirmDiscard;
+      if (!ask) { notify('No se pudo abrir la confirmación de AuxiliOS. Recargá la página.', 'error'); return false; }
+      current.closing = true;
+      var accepted;
+      try { accepted = await ask({reference:'Particular ' + (current.edit?.numero || current.d.customer_name || '')}); }
+      finally { current.closing = false; }
+      if (!accepted || st !== current || st.busy || st.confirming) return false;
     }
     st = null;
     cerrar('psv-form');
+    return true;
   }
 
   /* ── Eventos ──────────────────────────────────────────────────────────── */

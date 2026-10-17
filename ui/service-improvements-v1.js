@@ -67,6 +67,42 @@
     return enumKeys.includes(key) && Object.prototype.hasOwnProperty.call(names, value) ? names[value] : String(value);
   }
   let pending = false;
+  async function confirmAction({title = 'Confirmar acción', reference = '', message = '', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = false} = {}) {
+    if (pending) return false;
+    if (!global.AxUI?.openModal || !global.AxUI?.closeModal) {
+      global.toast?.('No se pudo abrir la confirmación de AuxiliOS. Recargá la página e intentá nuevamente.', 'error');
+      return false;
+    }
+    pending = true;
+    try {
+      return await new Promise(done => {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'ax-backdrop ax-edit-confirm ax-action-confirm'; backdrop.hidden = true;
+        backdrop.setAttribute('data-static', '');
+        backdrop.innerHTML = `<section class="ax-modal" role="alertdialog" aria-modal="true" aria-labelledby="ax-action-title" aria-describedby="ax-action-message">
+          <header><div><h2 id="ax-action-title">${esc(title)}</h2>${reference ? `<p>${esc(reference)}</p>` : ''}</div><button type="button" class="ax-btn ax-btn-ghost ax-btn-icon" data-action-cancel aria-label="Cerrar">${global.AxUI.icon('x')}</button></header>
+          <div class="ax-edit-body"><p id="ax-action-message">${esc(message)}</p></div>
+          <footer><button type="button" class="ax-btn" data-action-cancel>${esc(cancelLabel)}</button><button type="button" class="ax-btn ${danger ? 'ax-btn-danger' : 'ax-btn-primary'}" data-action-confirm>${esc(confirmLabel)}</button></footer></section>`;
+        document.body.appendChild(backdrop);
+        let settled = false;
+        const finish = result => {
+          if (settled) return; settled = true;
+          document.removeEventListener('keydown', onKey, true);
+          global.AxUI.closeModal(backdrop);
+          setTimeout(() => backdrop.remove(), 350);
+          done(result);
+        };
+        const onKey = event => { if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); finish(false); } };
+        backdrop.querySelectorAll('[data-action-cancel]').forEach(button => button.addEventListener('click', () => finish(false)));
+        backdrop.querySelector('[data-action-confirm]').addEventListener('click', () => finish(true));
+        document.addEventListener('keydown', onKey, true);
+        global.AxUI.openModal(backdrop, {static: true});
+      });
+    } finally { pending = false; }
+  }
+  function confirmDiscard({reference = '', confirmLabel = 'Salir sin guardar'} = {}) {
+    return confirmAction({title:'Salir sin guardar', reference, message:'Los cambios que hiciste no se van a guardar. Podés seguir editando para conservarlos.', confirmLabel, cancelLabel:'Seguir editando', danger:true});
+  }
   async function confirmEdit({before, after, resolve, reference = '', notice = '', extraRows = []}) {
     if (pending) return false;
     const rows = [...changes(before, after), ...extraRows];
@@ -105,5 +141,5 @@
       (s.document_status === 'draft' || s.remito_status === 'borrador' || !!s.trip_id || s.trip_started === true);
   }
   const remitoNotice = s => remitoPreparing(s) ? '<span class="ax-remito-preparing" role="status">' + global.AxUI.icon('file-text') + '<span>Remito en preparación<small>Preparación iniciada. Pendiente de firma del cliente.</small></span></span>' : '';
-  global.AuxiliosServiceImprovements = {changes, display, confirmEdit, hoursToMinutes, minutesToHours, duration, isHourly, remitoPreparing, remitoNotice};
+  global.AuxiliosServiceImprovements = {changes, display, confirmEdit, confirmAction, confirmDiscard, hoursToMinutes, minutesToHours, duration, isHourly, remitoPreparing, remitoNotice};
 })(window);

@@ -1,6 +1,8 @@
 /* Componentes de la primera etapa; colores y medidas del sistema actual. */
 .ax-edit-confirm { z-index: 20000; font-family: var(--ax-font); }
 .ax-edit-confirm .ax-modal { width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding: 0; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); color: var(--ax-text); box-shadow: var(--ax-shadow-modal); }
+.ax-action-confirm .ax-modal { width:min(520px,calc(100vw - 32px)); }
+.ax-action-confirm .ax-edit-body p { margin:0; line-height:1.6; white-space:pre-line; }
 .ax-edit-confirm header, .ax-edit-confirm footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; flex-shrink: 0; }
 .ax-edit-confirm header { border-bottom: 1px solid var(--ax-border); }
 .ax-edit-confirm h2 { margin: 0; font: 600 var(--ax-fs-xl) var(--ax-font); }

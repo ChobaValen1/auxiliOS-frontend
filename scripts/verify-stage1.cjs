@@ -9,7 +9,7 @@ const out = path.resolve(root, '../output/etapa-1');
 const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/ui/tokens.css"><link rel="stylesheet" href="/ui/components.css"><link rel="stylesheet" href="/ui/service-improvements-v1.css"><link rel="stylesheet" href="/ui/service-price-calculator-v1.css">
 <link rel="stylesheet" href="/operator-services.css"><link rel="stylesheet" href="/operator-service-workspace-reactive-v1.css"><link rel="stylesheet" href="/operator-service-commercial-addons-v1.css">
-<link rel="stylesheet" href="/private-service-v1.css"><link rel="stylesheet" href="/private-payments-v1.css">
+<link rel="stylesheet" href="/private-service-v1.css"><link rel="stylesheet" href="/private-payments-v1.css"><link rel="stylesheet" href="/remitos-admin-panel-v1.css">
 <style>body{display:block;padding:24px}.modal-backdrop[hidden]{display:none}.modal-backdrop.open{display:flex}#modal-operador-wizard{position:fixed;inset:0;z-index:10000;background:var(--ax-bg);overflow:auto}</style>
 <main><h1>AuxiliOS · Prueba de mejoras</h1><div id="notice"></div></main><div id="modal-operador-wizard" hidden><div id="os-wizard-shell"></div></div>
 <script>
@@ -37,9 +37,10 @@ window._db={rpc:async(name,args={})=>{calls.push({name,args});
 }};
 window.OperatorServices={S:{services:[sample,{...sample,service_id:'private-1',company_id:'private',client_kind:'particular'}],drivers:[{user_id:'driver',full_name:'Chofer de prueba'}],trucks:[{truck_id:'truck',numero_interno:'Móvil 01',plate:'AE123BC'}],companies:[{company_id:'provider',trade_name:'Prestadora de prueba'},{company_id:'private',trade_name:'Particulares'}],moduleConfig:{field_modes:{}}},num:v=>Number(v)||0,canManage:()=>true,canRead:()=>true,loadServices:async()=>{},loadBase:async()=>{},role:()=>'administracion',company:id=>({trade_name:id==='private'?'Particulares':'Prestadora de prueba'}),concept:id=>ref.services.find(x=>x.concept_id===id),esc:v=>String(v),driver:()=>({full_name:'Chofer de prueba'}),truck:()=>({numero_interno:'Móvil 01'})};
 window.cargarServiciosOperador=async()=>{};
+window.obtenerRemitoCompleto=async id=>({remito_id:id,nro_remito:'QA-'+id,status:'firmado',razon_social:'Cliente del remito',nro_servicio:'QA-'+id,origen:'Origen de prueba',destino:'Destino de prueba',observaciones:'Observación original',historial_ediciones:[],foto_urls:[]});
 window.OperatorServiceLifecycleV2={settleAssignmentConfirmation:()=>{}};
 </script>
-<script src="/ui/ax.js"></script><script src="/ui/service-improvements-v1.js"></script><script src="/operator-service-workspace-reactive-v1.js"></script><script src="/operator-service-wizard.js"></script><script src="/operator-service-commercial-addons-v1.js"></script><script src="/ui/service-price-calculator-v1.js"></script><script src="/private-service-v1.js"></script><script src="/private-payments-v1.js"></script></html>`;
+<script src="/ui/ax.js"></script><script src="/ui/service-improvements-v1.js"></script><script src="/operator-service-workspace-reactive-v1.js"></script><script src="/operator-service-wizard.js"></script><script src="/operator-service-commercial-addons-v1.js"></script><script src="/ui/service-price-calculator-v1.js"></script><script src="/private-service-v1.js"></script><script src="/private-payments-v1.js"></script><script src="/remitos-admin-panel-v1.js"></script></html>`;
 const server = http.createServer((req,res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   if (pathname === '/__qa') {res.setHeader('Content-Type','text/html; charset=utf-8'); return res.end(html);}
@@ -53,6 +54,7 @@ const server = http.createServer((req,res) => {
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[];
     page.on('pageerror',e=>errors.push(e.message));
+    const nativeDialogs=[];page.on('dialog',async dialog=>{nativeDialogs.push(dialog.type());await dialog.dismiss()});
     await page.goto('http://127.0.0.1:'+server.address().port+'/__qa');
     await page.evaluate(()=>OperatorServices.openEditWizard('qa-1'));
     await page.locator('#osv4-save').waitFor();
@@ -113,6 +115,32 @@ const server = http.createServer((req,res) => {
     assert.equal(adminSaved.args.p_payload.administrative_commercial.excess_charges[0].quantity,1);
     await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
     await page.locator('[data-psv="registrar-cobro"]').waitFor();
+    await page.locator('#psv-customer_name').fill('Cliente sin guardar');
+    await page.locator('[data-psv="cerrar-form"]').first().click();
+    await page.locator('.ax-action-confirm:not([hidden])').waitFor();
+    assert.match(await page.locator('.ax-action-confirm:not([hidden])').innerText(),/Seguir editando/);
+    await page.evaluate(()=>document.querySelector('[data-psv="cerrar-form"]').click());
+    assert.equal(await page.locator('.ax-action-confirm:not([hidden])').count(),1);
+    await page.screenshot({path:path.join(out,'salir-sin-guardar-desktop.png'),fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    const discardRect=await page.locator('.ax-action-confirm:not([hidden]) .ax-modal').boundingBox();
+    assert.ok(discardRect.x>=0&&discardRect.x+discardRect.width<=390);
+    await page.screenshot({path:path.join(out,'salir-sin-guardar-mobile.png'),fullPage:true});
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#psv-customer_name').inputValue(),'Cliente sin guardar');
+    assert.equal(await page.locator('#psv-form').isVisible(),true);
+    await page.locator('[data-psv="cerrar-form"]').first().click();
+    await page.locator('.ax-action-confirm:not([hidden]) footer [data-action-cancel]').click();
+    assert.equal(await page.locator('#psv-customer_name').inputValue(),'Cliente sin guardar');
+    await page.locator('[data-psv="cerrar-form"]').first().click();
+    await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
+    await page.locator('.ax-action-confirm:not([hidden]) [data-action-confirm]').click();
+    assert.equal(await page.locator('#psv-form').isVisible(),true,'una confirmación vieja no cierra otro formulario');
+    await page.locator('[data-psv="cerrar-form"]').first().click();
+    await page.locator('.ax-action-confirm:not([hidden]) [data-action-confirm]').click();
+    assert.equal(await page.locator('#psv-form').isVisible(),false);
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
     const writeCount=await page.evaluate(()=>calls.filter(c=>c.name.startsWith('update_')||c.name.startsWith('create_')).length);
     await page.locator('[data-psv="calculadora"]').click();
     await page.locator('[data-price-key="movement"]').fill('15.000');
@@ -166,6 +194,34 @@ const server = http.createServer((req,res) => {
     await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
     assert.equal(await page.locator('[data-psv="registrar-cobro"]').count(),0);
     assert.equal(await page.locator('[data-psv="calculadora"]').count(),0);
+    await page.evaluate(()=>{document.getElementById('psv-form').hidden=true});
+    await page.evaluate(()=>RemitoPanel.open(1,{editar:true}));
+    await page.locator('[data-rmp-field="razon_social"]').fill('Cambio sin guardar');
+    await page.locator('#rmp-motivo').fill('Motivo que debe conservarse');
+    await page.locator('#rmp-foot button:has-text("Cancelar")').click();
+    await page.locator('.ax-action-confirm:not([hidden])').waitFor();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('[data-rmp-field="razon_social"]').inputValue(),'Cambio sin guardar');
+    assert.equal(await page.locator('#rmp-motivo').inputValue(),'Motivo que debe conservarse');
+    await page.locator('#rmp-panel .rmp-close').click();
+    await page.locator('.ax-action-confirm:not([hidden]) footer [data-action-cancel]').click();
+    assert.equal(await page.locator('#rmp-panel').isVisible(),true);
+    await page.locator('#rmp-foot button:has-text("Cancelar")').click();
+    await page.locator('.ax-action-confirm:not([hidden]) [data-action-confirm]').click();
+    assert.equal(await page.evaluate(()=>RemitoPanel._state.editing),false);
+    assert.equal(await page.locator('#rmp-panel').isVisible(),true);
+    await page.evaluate(()=>RemitoPanel.corregir());
+    await page.locator('[data-rmp-field="observaciones"]').fill('Otro cambio pendiente');
+    await page.locator('#rmp-panel .rmp-close').click();
+    await page.evaluate(()=>RemitoPanel.open(2,{editar:true}));
+    await page.locator('.ax-action-confirm:not([hidden]) [data-action-confirm]').click();
+    assert.equal(await page.evaluate(()=>RemitoPanel._state.remito.remito_id),2);
+    assert.equal(await page.locator('#rmp-panel').isVisible(),true);
+    await page.locator('[data-rmp-field="observaciones"]').fill('Descartar este cambio');
+    await page.locator('#rmp-panel .rmp-close').click();
+    await page.locator('.ax-action-confirm:not([hidden]) [data-action-confirm]').click();
+    await page.locator('#rmp-panel').waitFor({state:'hidden'});
+    assert.deepEqual(nativeDialogs,[],'no aparecen diálogos nativos al guardar/descartar');
     assert.deepEqual(errors,[]);
     console.log('QA OK: confirmación, cancelación, Escape, error y reintento, minutos, importes, cobro con cambios pendientes, servicios cerrados y tamaños desktop/móvil. Capturas: '+out);
   } finally {await browser.close();server.close();}
