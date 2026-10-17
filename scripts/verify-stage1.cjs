@@ -9,7 +9,7 @@ const out = path.resolve(root, '../output/etapa-1');
 const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/ui/tokens.css"><link rel="stylesheet" href="/ui/components.css"><link rel="stylesheet" href="/ui/service-improvements-v1.css"><link rel="stylesheet" href="/ui/service-price-calculator-v1.css">
 <link rel="stylesheet" href="/operator-services.css"><link rel="stylesheet" href="/operator-service-workspace-reactive-v1.css"><link rel="stylesheet" href="/operator-service-commercial-addons-v1.css">
-<link rel="stylesheet" href="/private-service-v1.css"><link rel="stylesheet" href="/private-payments-v1.css"><link rel="stylesheet" href="/remitos-admin-panel-v1.css">
+<link rel="stylesheet" href="/ui/app-v1.css"><link rel="stylesheet" href="/servicio-form-ax-v1.css"><link rel="stylesheet" href="/private-service-v1.css"><link rel="stylesheet" href="/private-payments-v1.css"><link rel="stylesheet" href="/remitos-admin-panel-v1.css">
 <style>body{display:block;padding:24px}.modal-backdrop[hidden]{display:none}.modal-backdrop.open{display:flex}#modal-operador-wizard{position:fixed;inset:0;z-index:10000;background:var(--ax-bg);overflow:auto}</style>
 <main><h1>AuxiliOS · Prueba de mejoras</h1><div id="notice"></div></main><div id="modal-operador-wizard" hidden><div id="os-wizard-shell"></div></div>
 <script>
@@ -56,6 +56,59 @@ const server = http.createServer((req,res) => {
     page.on('pageerror',e=>errors.push(e.message));
     const nativeDialogs=[];page.on('dialog',async dialog=>{nativeDialogs.push(dialog.type());await dialog.dismiss()});
     await page.goto('http://127.0.0.1:'+server.address().port+'/__qa');
+await page.evaluate(()=>AuxiliosParticulares.abrir());
+    await page.locator('#psv-presupuesto').waitFor();
+    assert.deepEqual(await page.locator('.psv-details-column > section[data-psv-section]').evaluateAll(els=>els.map(el=>el.dataset.psvSection)),['client','service','assignment']);
+    assert.equal(await page.locator('.psv-budget-column #psv-assigned_truck_id').count(),0);
+    assert.equal(await page.locator('.psv-budget-column #psv-presupuesto').count(),1);
+    assert.equal(await page.locator('.psv-details-column #psv-assigned_truck_id').count(),1);
+    assert.equal(await page.locator('.psv-details-column #psv-assigned_driver_id').count(),1);
+    assert.equal(await page.locator('.psv-form-tools [data-psv="calculadora"]').count(),1);
+    assert.equal(await page.locator('.psv-budget-column [data-psv="calculadora"]').count(),0);
+    assert.equal(await page.locator('.psv-budget-card > :last-child').getAttribute('class'),'psv-price-total');
+    assert.ok(await page.locator('#psv-presupuesto').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=30));
+    await page.locator('#psv-customer_name').fill('Cliente de prueba');
+    await page.locator('#psv-presupuesto').fill('100000');
+    await page.locator('[data-psv-seg="pago"][data-v="sena"]').click();
+    await page.locator('#psv-sena_monto').fill('20000');
+    assert.match(await page.locator('.psv-total').innerText(),/80.000/);
+    await page.locator('#psv-presupuesto').fill('120000');
+    assert.match(await page.locator('.psv-total').innerText(),/100.000/);
+    await page.locator('[data-psv-seg="pago"][data-v="total"]').click();
+    assert.equal(await page.locator('#psv-pago_total').inputValue(),'120.000');
+    assert.match(await page.locator('.psv-total').innerText(),/\$ 0/);
+    await page.locator('[data-psv-seg="pago"][data-v="no"]').click();
+    assert.match(await page.locator('.psv-total').innerText(),/120.000/);
+    await page.locator('[data-psv-k="factura"]').check();
+    assert.equal(await page.locator('#psv-condicion').isVisible(),true);
+    assert.equal(await page.locator('#psv-presupuesto').inputValue(),'120000');
+    await page.locator('[data-psv-k="factura"]').uncheck();
+    for(const width of [320,560,820]) {
+      await page.setViewportSize({width,height:844});
+      assert.equal(await page.locator('.psv-checkout').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'sin desbordamiento a '+width+'px');
+    }
+    await page.setViewportSize({width:1224,height:692});
+    await page.locator('.psv-body').evaluate(el=>el.scrollTop=0);
+    const priceBox=await page.locator('.psv-price-total').boundingBox(), footerBox=await page.locator('.psv-checkout > footer').boundingBox();
+    await page.screenshot({path:path.join(out,'presupuesto-layout-desktop.png'),fullPage:true});
+    assert.ok(priceBox.y+priceBox.height<=footerBox.y,'precio completo visible en escritorio');
+    await page.setViewportSize({width:390,height:844});
+    await page.locator('#psv-presupuesto').scrollIntoViewIfNeeded();
+    assert.equal(await page.locator('.psv-checkout').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+    await page.screenshot({path:path.join(out,'presupuesto-layout-mobile.png'),fullPage:true});
+    await page.locator('[data-psv="calculadora"]').click();
+    assert.equal(await page.locator('.psv-checkout').getAttribute('inert'),'');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.locator('#psv-calculator-dialog').evaluate(el=>el.contains(document.activeElement)),true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#psv-calculator-dialog').count(),0);
+    assert.equal(await page.locator('#psv-form').isVisible(),true);
+    assert.equal(await page.locator('[data-psv="calculadora"]').evaluate(el=>el===document.activeElement),true);
+    assert.equal(await page.locator('#psv-presupuesto').inputValue(),'120000');
+    assert.equal(await page.evaluate(()=>calls.filter(c=>c.name.startsWith('update_')||c.name.startsWith('create_')).length),0);
+    await page.locator('[data-psv="cerrar-form"]').first().click();
+    await page.locator('.ax-action-confirm:not([hidden]) [data-action-confirm]').click();
+    await page.setViewportSize({width:1440,height:1000});
     await page.evaluate(()=>OperatorServices.openEditWizard('qa-1'));
     await page.locator('#osv4-save').waitFor();
     assert.equal(await page.locator('#osv4-remito-preparing').isVisible(),true);
@@ -275,6 +328,6 @@ const server = http.createServer((req,res) => {
     assert.equal(await page.locator('[data-pvw="editar"]').count(),0);
     assert.deepEqual(nativeDialogs,[],'no aparecen diálogos nativos al guardar/descartar');
     assert.deepEqual(errors,[]);
-    console.log('QA OK: confirmación, cancelación, Escape, error y reintento, minutos, importes, cobro con cambios pendientes, servicios cerrados y tamaños desktop/móvil. Capturas: '+out);
+    console.log('QA OK: dos columnas y orden de datos, precio destacado, medios y saldos, calculadora modal sin escrituras, foco/Escape, confirmaciones de app, edición/cobros e Historial en desktop/móvil. Capturas: '+out);
   } finally {await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});

@@ -56,7 +56,7 @@
   }
   function render(draft) {
     const mode = draft.mode || 'distance';
-    return '<div class="spc" id="psv-calculator" data-price-calculator><div class="spc-heading"><h4>Calcular presupuesto</h4><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" data-psv="calculator-close">Cerrar cálculo</button></div>' +
+    return '<div class="spc" id="psv-calculator" data-price-calculator><div class="spc-heading"><h4 id="psv-calculator-title">Calcular presupuesto</h4><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" data-psv="calculator-close">Cerrar cálculo</button></div>' +
       '<p class="spc-note">Importes editables para este servicio. No agrega IVA, recargos ni kilómetros de regreso automáticamente.</p>' +
       '<label class="ax-field"><span>Modalidad</span><select class="ax-select" data-price-key="mode">' + [['distance','Movida + kilómetros'],['fixed','Monto fijo'],['service','Precio por servicio']].map(([key,label]) => '<option value="' + key + '"' + (mode === key ? ' selected' : '') + '>' + label + '</option>').join('') + '</select></label>' +
       '<div class="spc-grid"' + (mode !== 'distance' ? ' hidden' : '') + '>' + field('movement','Movida · $',draft.movement) + '<span></span>' + field('asphalt_km','KM asfalto a cobrar',draft.asphalt_km) + field('asphalt_rate','Precio por KM asfalto · $',draft.asphalt_rate) + field('gravel_km','KM ripio a cobrar',draft.gravel_km) + field('gravel_rate','Precio por KM ripio · $',draft.gravel_rate) + '</div>' +

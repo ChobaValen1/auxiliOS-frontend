@@ -101,3 +101,75 @@ body.psv-open { overflow: hidden; }
 .psv-check input[type=checkbox]:checked::after { transform: translateX(16px); background: #111; }
 .psv-check input[type=checkbox]:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .psv-body input:disabled, .psv-body select:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Particular: datos operativos a la izquierda, presupuesto independiente. */
+.psv-checkout { max-height:calc(100dvh - 32px); }
+.psv-form-tools { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.psv-function-button { min-height:32px; padding:0 12px; font-size:12px; font-weight:600; }
+.psv-checkout .psv-body { padding:0 24px 24px; min-height:0; }
+.psv-checkout .psv-cols { grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr); gap:32px; align-items:start; }
+.psv-checkout .psv-details-column>section { padding:22px 0; }
+.psv-checkout .psv-details-column h3 { color:var(--ax-text-2); font-size:11px; letter-spacing:.07em; margin-bottom:14px; }
+.psv-checkout .psv-budget-column { padding:24px 0 0; border:0; position:sticky; top:0; }
+.psv-checkout .psv-grid { gap:12px; }
+.psv-subheading { margin:0 0 8px; color:var(--ax-text-2); font-size:12px; font-weight:600; }
+.psv-checkout .psv-service-fields { margin-top:16px; }
+.psv-notes { margin-top:16px; }
+.psv-notes>label { color:var(--ax-text-2); font-size:12px; font-weight:600; }
+.psv-budget-card { display:flex; flex-direction:column; min-width:0; box-sizing:border-box; min-height:460px; padding:20px; line-height:1.4; border:1px solid var(--ax-border-strong); border-radius:14px; background:var(--ax-surface); }
+#psv-form .psv-checkout .psv-budget-heading h3 { margin:0 0 4px; color:var(--ax-text); font:600 20px var(--ax-font); letter-spacing:0; text-transform:none; }
+.psv-budget-card .psv-payment-section { margin-top:16px; padding:0; border:0; }
+.psv-budget-card h4 { margin:0 0 10px; font-size:12px; font-weight:600; color:var(--ax-text-2); }
+.psv-payment-options { display:grid; gap:6px; }
+.psv-payment-options button { display:flex; align-items:center; gap:12px; width:100%; padding:8px 12px; border:1px solid var(--ax-border); border-radius:9px; background:transparent; color:var(--ax-text); font:inherit; text-align:left; cursor:pointer; }
+.psv-payment-options button>i { width:15px; height:15px; border:1px solid var(--ax-text-3); border-radius:50%; flex-shrink:0; }
+.psv-payment-options button[aria-pressed="true"] { border-color:var(--ax-accent); background:var(--ax-accent-soft); }
+.psv-payment-options button[aria-pressed="true"]>i { border:4px solid var(--ax-accent); background:var(--ax-bg); }
+.psv-payment-options b { display:block; font-size:13px; font-weight:600; }
+.psv-payment-options small { display:none; margin-top:3px; font-size:11px; color:var(--ax-text-2); line-height:1.4; }
+.psv-payment-options [aria-pressed="true"] small { display:block; }
+.psv-payment-options button:focus-visible { outline:2px solid var(--ax-accent); outline-offset:2px; }
+.psv-checkout .psv-deposit { grid-template-columns:1fr; margin-top:16px; }
+.psv-budget-card .psv-invoice-section { margin:16px 0; padding:8px 0 0; border:0; border-top:1px solid var(--ax-border); }
+#psv-form .psv-budget-card .psv-invoice-section .psv-check { min-height:32px; }
+.psv-budget-card .psv-invoice-section .psv-grid { margin-top:12px; }
+.psv-budget-card .psv-price-total { margin-top:auto; padding-top:14px; border-top:1px solid var(--ax-border-strong); }
+#psv-form .psv-price-total .psv-field>span { color:var(--ax-text-2); font-size:12px; }
+#psv-form .psv-price-total .psv-money { margin-top:4px; border-color:var(--ax-border-strong); background:var(--ax-surface-2); }
+.psv-price-total .psv-money>i { padding-left:14px; font-size:24px; }
+#psv-form .psv-checkout .psv-price-total .psv-money input { padding:8px 12px; min-height:56px; background:transparent; color:var(--ax-text); font-size:34px; line-height:1.15; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.03em; }
+#psv-form .psv-budget-card .psv-total { padding:10px 0 0; margin:10px 0 0; border:0; border-radius:0; border-top:1px solid var(--ax-border); background:none; }
+#psv-form .psv-budget-card .psv-total b { font-size:16px; font-weight:600; color:var(--ax-text); }
+.psv-checkout>footer { padding:16px 24px; }
+
+/* La calculadora es una herramienta, no parte del panel de presupuesto. */
+.psv-calculator-layer { position:fixed; inset:0; z-index:10070; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.7); }
+.psv-calculator-dialog { width:min(620px,100%); max-height:calc(100dvh - 40px); overflow:auto; overscroll-behavior:contain; border:1px solid var(--ax-border-strong); border-radius:14px; box-shadow:var(--ax-shadow-modal); background:var(--ax-surface); }
+.psv-calculator-dialog .spc { margin:0; padding:24px; border:0; }
+.psv-calculator-dialog .ax-input { box-sizing:border-box; }
+@media(max-width:980px) {
+  .psv-checkout { width:min(100%,1100px); }
+  .psv-checkout .psv-cols { grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr); gap:24px; }
+  .psv-checkout .psv-grid-addr { grid-template-columns:1fr; }
+  .psv-budget-card { padding:20px; }
+}
+@media(max-width:760px) {
+  .psv-checkout .psv-cols { grid-template-columns:1fr; gap:0; }
+  .psv-checkout .psv-budget-column { position:static; padding-top:20px; border-top:1px solid var(--ax-border); }
+  .psv-budget-card { min-height:0; }
+  .psv-budget-card .psv-price-total { margin-top:0; }
+}
+@media(max-width:560px) {
+  .psv-checkout { max-height:96dvh; }
+  .psv-checkout>header { padding:16px; gap:12px; }
+  .psv-checkout h2 { font-size:16px; }
+  .psv-checkout .psv-body { padding:0 16px 20px; }
+  .psv-checkout .psv-details-column>section { padding:18px 0; }
+  .psv-form-tools { gap:8px; }
+  .psv-function-button { padding:0 8px; min-height:38px; font-size:11px; }
+  .psv-checkout>footer { padding:12px 16px; }
+  .psv-calculator-layer { padding:8px; }
+  .psv-calculator-dialog { max-height:calc(100dvh - 16px); }
+  .psv-calculator-dialog .spc { padding:16px; }
+  .psv-calculator-dialog .ax-input,.psv-calculator-dialog .ax-select { min-height:44px; font-size:16px; }
+}

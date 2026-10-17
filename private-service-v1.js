@@ -419,6 +419,21 @@
       '<div class="psv-sugs" id="psv-' + kind + '-sugs" hidden></div></div>';
   }
 
+  function paymentChoices() {
+    var d = st.d, options = st.intake ? COBROS : PAGOS;
+    var descriptions = st.intake
+      ? {no:'El presupuesto queda pendiente.', sena:'Se descuenta del precio del servicio.', total:'El presupuesto queda cobrado.'}
+      : {no:'El cliente paga al realizarse el servicio.', sena:'Un anticipo a cuenta del precio total.', total:'El servicio se paga por adelantado.'};
+    return '<div class="psv-payment-options" role="group" aria-label="' + (st.intake ? 'Cobro informado por el chofer' : 'Pago previo al servicio') + '">' + options.map(function (option) {
+      return '<button type="button" data-psv-seg="pago" data-v="' + option[0] + '" aria-pressed="' + (d.pago === option[0]) + '"><i aria-hidden="true"></i><span><b>' + esc(option[1]) + '</b><small>' + esc(descriptions[option[0]]) + '</small></span></button>';
+    }).join('') + '</div>';
+  }
+
+  function calculatorLayer() {
+    if (!st?.calculatorOpen || !global.AuxiliosPriceCalculator) return '';
+    return '<div class="psv-calculator-layer" data-psv-calculator-layer><section id="psv-calculator-dialog" class="psv-calculator-dialog" role="dialog" aria-modal="true" aria-labelledby="psv-calculator-title">' + global.AuxiliosPriceCalculator.render(st.calculatorDraft || global.AuxiliosPriceCalculator.initial(st.routeData)) + '</section></div>';
+  }
+
   function pintar() {
     var m = modal('psv-form');
     if (!st) { m.hidden = true; return; }
@@ -444,27 +459,27 @@
     var tipos = servicios().map(function (s) { return [s.concept_id, s.name]; });
 
     m.innerHTML =
-      '<div class="psv-dialog psv-form" role="dialog" aria-modal="true" aria-labelledby="psv-form-t">' +
+      '<div class="psv-dialog psv-form psv-checkout" role="dialog" aria-modal="true" aria-labelledby="psv-form-t"' + (st.calculatorOpen ? ' inert aria-hidden="true"' : '') + '>' +
       '<header><div><h2 id="psv-form-t">' + (st.edit ? 'Editar servicio · Particular' : 'Nuevo servicio · Particular') + '</h2><p>' +
         (st.edit ? esc(st.edit.numero || '') + (st.edit.firmado ? ' · Con remito firmado: cliente, vehículo y asignación vienen del remito.' : '') :
          st.intake ? 'Desde el remito ' + esc(st.intake.numero || '') + ' de ' + esc(st.intake.chofer) + '. Al crearlo queda finalizado.' : 'Cliente de una sola vez con precio presupuestado.') + '</p></div>' +
-        '<button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></header>' +
+        '<div class="psv-form-tools">' + (!st.busy && !(st.edit && st.edit.cerrado) && global.AuxiliosPriceCalculator ? '<button type="button" class="psv-btn psv-function-button" data-psv="calculadora" aria-haspopup="dialog" aria-controls="psv-calculator-dialog" aria-expanded="' + !!st.calculatorOpen + '">Calculadora</button>' : '') + '<button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></div></header>' +
       '<div class="psv-body">' +
         (st.error ? '<div class="psv-error" role="alert">' + esc(st.error) + '</div>' : '') +
 
-        '<div class="psv-cols"><div class="psv-col">' +
-        '<section><h3>Cliente</h3><div class="psv-grid">' +
+        '<div class="psv-cols"><div class="psv-col psv-details-column">' +
+        '<section data-psv-section="client"><h3>Datos del cliente</h3><div class="psv-grid">' +
           campo('customer_name', 'Nombre y apellido *', input('customer_name', d.customer_name, 'autocomplete="name"')) +
           campo('customer_phone', 'Teléfono', input('customer_phone', d.customer_phone, 'inputmode="tel" placeholder="11 2345 6789"')) +
           campo('customer_document', 'DNI / CUIT' + (d.factura ? ' *' : ''), input('customer_document', d.customer_document, 'inputmode="numeric" placeholder="8 u 11 dígitos"')) +
         '</div></section>' +
 
-        '<section><h3>Vehículo</h3><div class="psv-grid">' +
+        '<section data-psv-section="service"><h3>Datos del servicio</h3><h4 class="psv-subheading">Vehículo a asistir</h4><div class="psv-grid">' +
           campo('vehicle_plate', 'Patente', input('vehicle_plate', d.vehicle_plate, 'autocapitalize="characters"')) +
           campo('vehicle_make_model', 'Marca y modelo', input('vehicle_make_model', d.vehicle_make_model)) +
-        '</div></section>' +
+        '</div>' +
 
-        '<section><h3>Servicio</h3><div class="psv-grid">' +
+        '<div class="psv-grid psv-service-fields">' +
           campo('primary_concept_id', 'Tipo de servicio *', '<select id="psv-primary_concept_id" data-psv-k="primary_concept_id">' + opciones(tipos, d.primary_concept_id, 'Elegí…') + '</select>') +
           (bases.length > 1 ? campo('billing_base_id', 'Base que lo atiende', '<select id="psv-billing_base_id" data-psv-k="billing_base_id">' + opciones(bases, d.billing_base_id) + '</select>') : '') +
           (st.edit ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : st.intake ? '' :
@@ -476,38 +491,12 @@
         '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + '</div>' +
         (st.calculando ? '<p class="psv-hint psv-route">' + marca('running', 'Calculando el recorrido…') + '</p>' :
           d.route ? '<p class="psv-hint psv-route">' + marca('done', 'Recorrido: ' + d.route) + '</p>' : '') +
-        '</section>' +
-        '<section><h3>Observaciones</h3>' +
+        '<div class="psv-field psv-notes"><label for="psv-operator_notes">Observaciones</label>' +
           '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="2" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
-        '</section>' +
-        '</div><div class="psv-col">' +
-
-        '<section><h3>Precio y cobro</h3>' + (st.edit?.cerrado ? '<p class="psv-hint">Servicio finalizado: podés corregir presupuesto, facturación y captación. Los datos del servicio y los cobros se conservan.</p>' : '') + '<div class="psv-grid">' +
-          campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
-          (st.edit ? '' : grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago))) +
-        '</div>' +
-        (!st.busy && !(st.edit && st.edit.cerrado) && global.AuxiliosPriceCalculator ? '<div class="psv-price-actions"><button type="button" class="psv-btn" data-psv="calculadora" aria-controls="psv-calculator" aria-expanded="' + !!st.calculatorOpen + '">' + (st.calculatorOpen ? 'Ocultar calculadora' : 'Calcular presupuesto') + '</button></div>' + (st.calculatorOpen ? global.AuxiliosPriceCalculator.render(st.calculatorDraft || global.AuxiliosPriceCalculator.initial(st.routeData)) : '') : '') +
-        (st.edit ? '<div class="psv-total"><span>Pagado ' + pesos(st.edit.pagado) + ' · Saldo</span><b>' + pesos(Math.max(num(d.presupuesto) - st.edit.pagado, 0)) + '</b></div>' +
-          comoSePago() +
-          (!st.edit.cerrado && Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 && global.OperatorServices?.canManage?.() ? '<button type="button" class="psv-btn psv-collect" data-psv="registrar-cobro">' + ico('hand-coins') + 'Registrar cobro</button><p class="psv-hint">Si modificaste el servicio, confirmá los cambios antes de abrir el cobro.</p>' : '') : '') +
-        (!st.edit && d.pago !== 'no' ? '<div class="psv-grid">' +
-          (d.pago === 'sena'
-            ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
-            : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
-          grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
-        '</div>' : '') +
-        (st.intake && st.intake.informe ? '<p class="psv-hint psv-informe">' + esc(st.intake.informe) + '</p>' : '') +
-        (st.edit ? '' : '<div class="psv-total"><span>' + (st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>') +
-        '</section>' +
-
-        '<section><h3>Factura</h3>' +
-          '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> El cliente pide factura</label>' +
-          (d.factura ? '<div class="psv-grid">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
-        '</section>' +
-
+        '</div></section>' +
         (st.intake
-          ? '<section><h3>Lo hizo</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
-          : '<section><h3>Asignación <small>(opcional)</small></h3><div class="psv-grid">' +
+          ? '<section data-psv-section="assignment"><h3>Datos de asignación</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
+          : '<section data-psv-section="assignment"><h3>Datos de asignación <small>(opcional)</small></h3><div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id"' + (programado() ? ' disabled' : '') + '>' + opciones(drivers, programado() ? '' : d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
         '</div>') +
@@ -516,13 +505,33 @@
           (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
         '</div></section>' +
         interruptoresHtml() +
+        '</div><div class="psv-col psv-budget-column">' +
 
+        '<aside class="psv-budget-card" aria-labelledby="psv-budget-title"><div class="psv-budget-heading"><h3 id="psv-budget-title">Presupuesto</h3></div>' +
+        (st.edit?.cerrado ? '<p class="psv-hint">Servicio finalizado: podés corregir presupuesto, facturación y captación. Los datos del servicio y los cobros se conservan.</p>' : '') +
+        (!st.edit ? '<section class="psv-payment-section"><h4>' + (st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?') + '</h4>' + paymentChoices() + '</section>' : comoSePago()) +
+        (!st.edit && d.pago !== 'no' ? '<div class="psv-grid psv-deposit">' +
+          (d.pago === 'sena'
+            ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
+            : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
+          grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
+        '</div>' : '') +
+        (st.intake && st.intake.informe ? '<p class="psv-hint psv-informe">' + esc(st.intake.informe) + '</p>' : '') +
+        '<section class="psv-invoice-section">' +
+          '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> El cliente pide factura</label>' +
+          (d.factura ? '<div class="psv-grid">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
+        '</section>' +
+        (st.edit && !st.edit.cerrado && Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 && global.OperatorServices?.canManage?.() ? '<button type="button" class="psv-btn psv-collect" data-psv="registrar-cobro">' + ico('hand-coins') + 'Registrar cobro</button><p class="psv-hint">Si modificaste el servicio, confirmá los cambios antes de abrir el cobro.</p>' : '') +
+        '<div class="psv-price-total">' +
+          campo('presupuesto', 'Precio del servicio *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
+          '<div class="psv-total"><span>' + (st.edit ? 'Pagado ' + pesos(st.edit.pagado) + ' · Saldo' : st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(st.edit ? Math.max(num(d.presupuesto) - st.edit.pagado, 0) : saldo()) + '</b></div>' +
+        '</div></aside>' +
         '</div></div>' +
       '</div>' +
       '<footer><button type="button" class="psv-btn" data-psv="cerrar-form">Cancelar</button>' +
         '<button type="button" class="psv-btn primary" data-psv="guardar"' + (st.busy ? ' disabled' : '') + '>' +
         (st.busy ? 'Guardando…' : st.edit ? 'Guardar cambios' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
-      '</div>';
+      '</div>' + calculatorLayer();
     marcas(m);
     confirmarRecientes(m);
     if (global.AxUI) {
@@ -959,9 +968,12 @@
 
   function paintCalculator(focusSelector) {
     var body = el('psv-form').querySelector('.psv-body'), scroll = body ? body.scrollTop : 0;
+    var calculatorBody = el('psv-calculator-dialog'), calculatorScroll = calculatorBody ? calculatorBody.scrollTop : 0;
     pintar();
     body = el('psv-form').querySelector('.psv-body');
     if (body) body.scrollTop = scroll;
+    calculatorBody = el('psv-calculator-dialog');
+    if (calculatorBody) calculatorBody.scrollTop = calculatorScroll;
     if (focusSelector) el('psv-form').querySelector(focusSelector)?.focus({preventScroll:true});
   }
 
@@ -987,6 +999,7 @@
     else if (!st.calculatorOpen) el('psv-form').querySelector('[data-psv="calculadora"]')?.focus();
     else if (action === 'calculator-toll' || action === 'calculator-extra') el('psv-form').querySelector('[data-price-item="' + (st.calculatorDraft.items.length - 1) + '"] [data-price-item-key="name"]')?.focus();
     else if (action === 'calculator-remove') el('psv-form').querySelector('[data-psv="calculator-extra"]')?.focus({preventScroll:true});
+    else if (st.calculatorOpen) el('psv-calculator-dialog')?.querySelector('select,input')?.focus();
   }
 
   document.addEventListener('click', function (ev) {
@@ -1017,6 +1030,18 @@
   });
   document.addEventListener('input', function (ev) { if (ev.target.closest && ev.target.closest('#psv-form')) onInput(ev); });
   document.addEventListener('change', function (ev) { if (ev.target.closest && ev.target.closest('#psv-form')) onInput(ev); });
+  document.addEventListener('keydown', function (ev) {
+    var dialog = el('psv-calculator-dialog');
+    if (!st?.calculatorOpen || !dialog || document.querySelector('.ax-edit-confirm:not([hidden])')) return;
+    if (ev.key === 'Escape') {
+      ev.preventDefault(); ev.stopImmediatePropagation(); calculatorAction('calculator-close'); return;
+    }
+    if (ev.key !== 'Tab') return;
+    var fields = Array.from(dialog.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled)')).filter(function (field) { return field.offsetParent !== null; });
+    var first = fields[0], last = fields[fields.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last?.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first?.focus(); }
+  }, true);
   document.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Escape') return;
     var t = el('psv-tipo');
