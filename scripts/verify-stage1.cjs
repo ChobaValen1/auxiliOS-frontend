@@ -1,0 +1,133 @@
+/* QA aislado de la primera etapa: módulos reales, RPC simuladas, sin credenciales. */
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const assert = require('node:assert/strict');
+const {chromium} = require('playwright');
+const root = path.resolve(__dirname, '..');
+const out = path.resolve(root, '../output/etapa-1');
+const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/ui/tokens.css"><link rel="stylesheet" href="/ui/components.css"><link rel="stylesheet" href="/ui/service-improvements-v1.css">
+<link rel="stylesheet" href="/operator-services.css"><link rel="stylesheet" href="/operator-service-workspace-reactive-v1.css"><link rel="stylesheet" href="/operator-service-commercial-addons-v1.css">
+<link rel="stylesheet" href="/private-service-v1.css"><link rel="stylesheet" href="/private-payments-v1.css">
+<style>body{display:block;padding:24px}.modal-backdrop[hidden]{display:none}.modal-backdrop.open{display:flex}#modal-operador-wizard{position:fixed;inset:0;z-index:10000;background:var(--ax-bg);overflow:auto}</style>
+<main><h1>AuxiliOS · Prueba de mejoras</h1><div id="notice"></div></main><div id="modal-operador-wizard" hidden><div id="os-wizard-shell"></div></div>
+<script>
+window.calls=[];window.notifications=[];window.abrirMenuServicio=()=>{};window.toast=(m)=>notifications.push(m);window.operationFeedback=()=>{};
+window.openModal=id=>document.getElementById(id).classList.add('open');window.closeModal=id=>document.getElementById(id).classList.remove('open');
+window.PERFIL_USUARIO={roles:{name:'administracion'}};
+window.sample={service_id:'qa-1',status:'assigned',company_id:'provider',billing_base_id:'base',service_order_number:'PRUEBA 001',scheduled_for:'2026-10-17T12:00:00Z',primary_concept_id:'tow',origin:'Av. Corrientes 1200, Buenos Aires',destination:'Av. Santa Fe 2800, Buenos Aires',customer_name:'Cliente de prueba',customer_phone:'',customer_document:'',vehicle_make_model:'Ford Focus',vehicle_plate:'AB123CD',operator_notes:'Llamar antes de llegar',estimated_asphalt_km:20,estimated_gravel_km:0,assigned_driver_id:'driver',assigned_truck_id:'truck',trip_id:7,document_status:'draft'};
+window.ref={company:{name:'Prestadora de prueba'},bases:[{base_id:'base',name:'Base Central'}],billing:{route_mode:'manual'},blocking_issues:[],services:[{concept_id:'tow',name:'Remolque liviano',category:'primary',available:true,has_price:true,pricing_unit:'service'},{concept_id:'wait',name:'Hora de espera',category:'secondary',available:true,has_price:true,pricing_unit:'hour'}]};
+window.commercial={toll_coverage_mode:'provider_roundtrip',tolls:[],excess_charges:[{concept_id:'a1e5c0de-0003-4000-8000-000000000003',concept_name:'Hora Espera',quantity:.5,unit_amount:12000,collector_agent:'company',customer_payment_method:'cash'}]};
+window._db={rpc:async(name,args={})=>{calls.push({name,args});
+ if(window.failSave&&name==='update_operator_service_v4')return{error:{message:'No se pudo guardar la prueba'}};
+ if(name==='get_private_account_v1')return{data:{company_id:'private'}};
+ if(name==='get_private_service_edit_v1')return{data:{...sample,service_id:'private-1',company_id:'private',quoted_total:85000,paid:20000,status:window.closedPrivate?'completed':'assigned'}};
+ if(name==='get_service_payments_v1')return{data:{particular:true,quoted_total:85000,paid:20000,balance:65000,payments:[{payment_id:'payment',amount:20000,method:'cash',kind:'sena'}]}};
+ if(name==='get_service_collection_v1')return{data:null};
+ if(name==='get_operator_service_handoff_context_v2')return{data:{service:sample,locks:{can_edit:true,requires_reason:true,trip_started:true},items:[{concept_id:'wait',quantity:.5,item_role:'secondary'}]}};
+ if(name==='get_operator_service_context_v1')return{data:ref};
+ if(name==='get_operator_service_commercial_addons_v1')return{data:structuredClone(commercial)};
+ if(name==='get_service_toggle_concepts_v1')return{data:{concepts:[],selected:[]}};
+ if(name==='get_operator_resource_availability')return{data:{drivers:[],trucks:[]}};
+ if(name==='list_toll_catalog')return{data:[]};
+ if(name==='calculate_operator_service_quote_v3')return{data:{total:90000}};
+ if(name.startsWith('update_'))return{data:{service_id:args.p_service_id}};
+ return{data:{}};
+}};
+window.OperatorServices={S:{services:[sample,{...sample,service_id:'private-1',company_id:'private',client_kind:'particular'}],drivers:[{user_id:'driver',full_name:'Chofer de prueba'}],trucks:[{truck_id:'truck',numero_interno:'Móvil 01',plate:'AE123BC'}],companies:[{company_id:'provider',trade_name:'Prestadora de prueba'},{company_id:'private',trade_name:'Particulares'}],moduleConfig:{field_modes:{}}},num:v=>Number(v)||0,canManage:()=>true,canRead:()=>true,loadServices:async()=>{},loadBase:async()=>{},role:()=>'administracion',company:id=>({trade_name:id==='private'?'Particulares':'Prestadora de prueba'}),concept:id=>ref.services.find(x=>x.concept_id===id),esc:v=>String(v),driver:()=>({full_name:'Chofer de prueba'}),truck:()=>({numero_interno:'Móvil 01'})};
+window.cargarServiciosOperador=async()=>{};
+window.OperatorServiceLifecycleV2={settleAssignmentConfirmation:()=>{}};
+</script>
+<script src="/ui/ax.js"></script><script src="/ui/service-improvements-v1.js"></script><script src="/operator-service-workspace-reactive-v1.js"></script><script src="/operator-service-wizard.js"></script><script src="/operator-service-commercial-addons-v1.js"></script><script src="/private-service-v1.js"></script><script src="/private-payments-v1.js"></script></html>`;
+const server = http.createServer((req,res) => {
+  const pathname = new URL(req.url, 'http://localhost').pathname;
+  if (pathname === '/__qa') {res.setHeader('Content-Type','text/html; charset=utf-8'); return res.end(html);}
+  const file = path.resolve(root, '.' + decodeURIComponent(pathname));
+  if (!file.startsWith(root + path.sep) || !fs.existsSync(file)) {res.statusCode=404;return res.end();}
+  res.setHeader('Content-Type',file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'application/javascript');res.end(fs.readFileSync(file));
+});
+(async () => {
+  fs.mkdirSync(out,{recursive:true});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+  const browser = await chromium.launch({headless:true,channel:'msedge'});
+  try {
+    const page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'}),errors=[];
+    page.on('pageerror',e=>errors.push(e.message));
+    await page.goto('http://127.0.0.1:'+server.address().port+'/__qa');
+    await page.evaluate(()=>OperatorServices.openEditWizard('qa-1'));
+    await page.locator('#osv4-save').waitFor();
+    assert.equal(await page.locator('#osv4-remito-preparing').isVisible(),true);
+    assert.equal(await page.locator('#osv4-change-reason').count(),0);
+    const qty=page.locator('[data-concept-qty="wait"]');
+    assert.equal(await qty.inputValue(),'30');
+    await qty.fill('15'); await qty.dispatchEvent('input');
+    assert.equal(await page.evaluate(()=>OperatorServices.S.wizard.data.secondary_items.wait),.25);
+    await qty.press('Tab');
+    await page.locator('[data-ca="toggle-excess"]').click();
+    const excessQty=page.locator('[data-ca-excess-field="quantity"]');
+    assert.equal(await excessQty.inputValue(),'30');
+    await excessQty.fill('15'); await excessQty.dispatchEvent('change');
+    await page.locator('[data-ca-excess-field="quantity"]').press('Tab');
+    assert.equal(await page.evaluate(()=>OperatorServices.commercialPayload().excess_charges[0].quantity),.25);
+    assert.equal(await page.evaluate(()=>OperatorServices.commercialCustomerExcessTotal()),3000);
+    await page.locator('#osv4-save').click();
+    await page.locator('.ax-edit-confirm').waitFor({state:'visible'});
+    assert.match(await page.locator('.ax-edit-confirm').innerText(),/15 min/);
+    assert.equal(await page.evaluate(()=>calls.filter(c=>c.name.startsWith('update_')).length),0);
+    await page.screenshot({path:path.join(out,'confirmacion-desktop.png'),fullPage:true,animations:'disabled'});
+    await page.setViewportSize({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.querySelector('.ax-edit-confirm .ax-modal').getBoundingClientRect().right<=innerWidth),true);
+    const modalRect=await page.locator('.ax-edit-confirm .ax-modal').boundingBox();
+    assert.ok(modalRect.y>=0&&modalRect.y+modalRect.height<=845);
+    await page.screenshot({path:path.join(out,'confirmacion-mobile.png'),fullPage:true});
+    await page.locator('[data-edit-cancel]').last().click();
+    assert.equal(await page.evaluate(()=>calls.filter(c=>c.name.startsWith('update_')).length),0);
+    assert.equal(await qty.inputValue(),'15');
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>window.failSave=true);
+    await page.locator('#osv4-save').click();
+    await page.locator('[data-edit-confirm]').last().click();
+    await page.waitForFunction(()=>!!OperatorServices.S.wizard?.error);
+    assert.match(await page.locator('#osv4-global-error').innerText(),/No se pudo guardar/);
+    assert.equal(await qty.inputValue(),'15');
+    await page.evaluate(()=>window.failSave=false);
+    await page.locator('#osv4-save').click();
+    await page.locator('[data-edit-confirm]').last().click();
+    await page.waitForFunction(()=>calls.some(c=>c.name==='update_operator_service_v4'));
+    const saved=await page.evaluate(()=>calls.find(c=>c.name==='update_operator_service_v4'));
+    assert.equal(saved.args.p_payload.items[0].quantity,.25);
+    assert.equal(saved.args.p_payload.commercial_addons.excess_charges[0].quantity,.25);
+    assert.match(saved.args.p_reason,/confirmados/);
+    await page.waitForFunction(()=>!OperatorServices.S.wizard);
+    assert.equal(await page.evaluate(()=>AuxiliosServiceImprovements.remitoNotice({...sample,remito_status:'firmado'})), '');
+    await page.evaluate(async()=>{await OperatorServices.openEditWizard('qa-1');const w=OperatorServices.S.wizard;w.administrativeEdit=true;w.data.commercial_addons.excess_charges[0].payer_agent='customer';w.original=structuredClone(w.data);OperatorServiceWorkspaceV2.render();});
+    await page.locator('[data-ca="toggle-excess"]').click();
+    const adminQty=page.locator('[data-aa-kind="excess_charges"][data-aa-key="quantity"]');
+    assert.equal(await adminQty.inputValue(),'30');
+    await adminQty.fill('60'); await adminQty.press('Tab');
+    assert.equal(await page.evaluate(()=>OperatorServices.S.wizard.data.commercial_addons.excess_charges[0].quantity),1);
+    await page.locator('#osv4-save').click();
+    await page.locator('[data-edit-confirm]').last().click();
+    await page.waitForFunction(()=>!OperatorServices.S.wizard);
+    const adminSaved=await page.evaluate(()=>calls.filter(c=>c.name==='update_operator_service_v4').at(-1));
+    assert.equal(adminSaved.args.p_payload.administrative_commercial.excess_charges[0].quantity,1);
+    await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
+    await page.locator('[data-psv="registrar-cobro"]').waitFor();
+    await page.locator('#psv-customer_name').fill('Cliente modificado');
+    await page.locator('[data-psv="registrar-cobro"]').click();
+    await page.locator('.ax-edit-confirm:not([hidden])').waitFor();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#psv-customer_name').inputValue(),'Cliente modificado');
+    assert.equal(await page.locator('#ppv-modal').count(),0);
+    await page.locator('[data-psv="registrar-cobro"]').click();
+    await page.locator('[data-edit-confirm]').last().click();
+    await page.locator('#ppv-modal').waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>calls.filter(c=>c.name==='update_private_service_v1').length),1);
+    await page.screenshot({path:path.join(out,'cobro-desde-edicion.png'),fullPage:true});
+    await page.evaluate(()=>{document.getElementById('ppv-modal').hidden=true;window.closedPrivate=true;});
+    await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
+    assert.equal(await page.locator('[data-psv="registrar-cobro"]').count(),0);
+    assert.deepEqual(errors,[]);
+    console.log('QA OK: confirmación, cancelación, Escape, error y reintento, minutos, importes, cobro con cambios pendientes, servicios cerrados y tamaños desktop/móvil. Capturas: '+out);
+  } finally {await browser.close();server.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;server.close();});

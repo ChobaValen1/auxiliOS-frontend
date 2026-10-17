@@ -254,13 +254,14 @@
       d.condicion = e.customer_tax_condition || 'consumidor_final';
       d.captado = !!e.referred_by_driver_id;
       d.referred_by_driver_id = e.referred_by_driver_id || '';
-      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: e.status === 'completed', pagos: [] };
+      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: ['completed','cancelled'].includes(e.status), pagos: [] };
       d.medios = {};
       try {
         var pr = await db().rpc('get_service_payments_v1', { p_service_id: id });
         if (!pr.error && pr.data) st.edit.pagos = (pr.data.payments || []).filter(function (p) { return !p.voided_at; });
       } catch (e2) { /* sin cobros: no se muestra "Cómo se pagó" */ }
       await cargarInterruptores(id);
+      st.edit.original = editSnapshot();
     } catch (err) {
       st.error = err.message || 'No se pudo abrir el servicio.';
     }
@@ -487,7 +488,7 @@
         '</div>' +
         (st.edit ? '<div class="psv-total"><span>Pagado ' + pesos(st.edit.pagado) + ' · Saldo</span><b>' + pesos(Math.max(num(d.presupuesto) - st.edit.pagado, 0)) + '</b></div>' +
           comoSePago() +
-          (Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 ? '<p class="psv-hint">El saldo se registra con "Registrar cobro".</p>' : '') : '') +
+          (!st.edit.cerrado && Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 && global.OperatorServices?.canManage?.() ? '<button type="button" class="psv-btn psv-collect" data-psv="registrar-cobro">' + ico('hand-coins') + 'Registrar cobro</button><p class="psv-hint">Si modificaste el servicio, confirmá los cambios antes de abrir el cobro.</p>' : '') : '') +
         (!st.edit && d.pago !== 'no' ? '<div class="psv-grid">' +
           (d.pago === 'sena'
             ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
@@ -807,6 +808,31 @@
     return [{ method: dep.method, amount: dep.amount }];
   }
 
+  function editSnapshot() {
+    var medios = {};
+    (st.edit?.pagos || []).forEach(function (p) { medios[p.payment_id] = st.d.medios[p.payment_id] || p.method; });
+    return Object.assign({}, payload(), {
+      presupuesto: num(st.d.presupuesto), factura: !!st.d.factura,
+      condicion: st.d.factura ? st.d.condicion : '', medios: medios,
+      toggle_ids: Object.keys(st.toggles?.selected || {}).filter(function (k) { return st.toggles.selected[k]; }).sort()
+    });
+  }
+  function editLabel(key, value) {
+    var lists = {primary_concept_id: st.ctx?.services || [], billing_base_id: st.ctx?.bases || [], assigned_driver_id: OS().drivers || [], referred_by_driver_id: OS().drivers || [], assigned_truck_id: OS().trucks || [], toggle_id: st.toggles?.concepts || []};
+    if (!lists[key]) return;
+    var row = lists[key].find(function (x) { return String(x.concept_id || x.base_id || x.user_id || x.truck_id) === String(value); });
+    return row ? row.name || row.full_name || row.numero_interno || row.plate : 'Sin informar';
+  }
+  async function cobrarDesdeEdicion() {
+    if (!st?.edit || st.busy || st.confirming || st.edit.cerrado || !global.OperatorServices?.canManage?.()) return;
+    var current = st, id = st.edit.id, ui = global.AuxiliosServiceImprovements;
+    if (!ui) return notify('Volvé a cargar la página para abrir el cobro.', 'warning');
+    if (ui.changes(st.edit.original, editSnapshot()).length) {
+      await guardar();
+      if (st === current) return; // Canceló la confirmación o falló el guardado.
+    } else cerrarForm(true);
+    await global.AuxiliosCobroOperador?.abrir(id);
+  }
   async function guardar() {
     if (!st || st.busy) return;
     var e = erroresPorCampo();
@@ -821,6 +847,16 @@
       if (primero) primero.focus();
       return;
     }
+    if (st.edit) {
+      var editing = st, ui = global.AuxiliosServiceImprovements;
+      if (st.confirming) return;
+      if (!ui) return notify('Volvé a cargar la página para confirmar los cambios.', 'warning');
+      st.confirming = true;
+      var accepted;
+      try { accepted = await ui.confirmEdit({before: st.edit.original, after: editSnapshot(), resolve: editLabel, reference: 'Particular ' + (st.edit.numero || '')}); }
+      finally { editing.confirming = false; }
+      if (!accepted || st !== editing) return;
+    }
     st.busy = true; st.error = '';
     pintar();
     try {
@@ -830,7 +866,7 @@
         var ru = await db().rpc('update_private_service_v1', {
           p_service_id: eid, p_payload: payload(), p_quoted_total: num(d.presupuesto),
           p_invoice: { invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null, customer_document: digits(d.customer_document) || null },
-          p_reason: null
+          p_reason: 'Cambios revisados y confirmados desde la edición del particular'
         });
         if (ru.error) throw ru.error;
         await guardarInterruptores(eid);
@@ -909,6 +945,7 @@
     if (a === 'particular') { cerrar('psv-tipo'); return abrirParticular(intakeElegido); }
     if (a === 'cerrar-form') return cerrarForm(false);
     if (a === 'guardar') return guardar();
+    if (a === 'registrar-cobro') return cobrarDesdeEdicion();
     if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
     if (b.hasAttribute('data-psv-pmedio')) { st.d.medios[b.getAttribute('data-psv-pmedio')] = b.getAttribute('data-v'); return pintar(); }
     if (b.hasAttribute('data-psv-cuando')) {
