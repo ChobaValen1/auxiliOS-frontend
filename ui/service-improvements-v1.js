@@ -13,7 +13,7 @@
     estimated_arrival_at: 'Arribo estimado', estimated_finish_at: 'Fin estimado',
     granted_delay_minutes: 'Demora otorgada (min)', logistics_type: 'Logística', is_holiday: 'Feriado',
     secondary_items: 'Conceptos adicionales', item_codes: 'Códigos de conceptos',
-    commercial_addons: 'Peajes y excedentes', presupuesto: 'Presupuesto', factura: 'Solicita factura',
+    commercial_addons: 'Peajes y excedentes', presupuesto: 'Presupuesto', no_charge: 'Sin costo (gentileza)', factura: 'Solicita factura',
     condicion: 'Condición frente al IVA', referred_by_driver_id: 'Chofer que lo consiguió',
     medios: 'Medios de cobros registrados', toggle_ids: 'Conceptos sin importe'
   };

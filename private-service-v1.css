@@ -103,42 +103,80 @@ body.psv-open { overflow: hidden; }
 .psv-body input:disabled, .psv-body select:disabled { opacity: .55; cursor: not-allowed; }
 
 /* Particular: datos operativos a la izquierda, presupuesto independiente. */
-.psv-checkout { max-height:calc(100dvh - 32px); }
+.psv-checkout { width:min(100%,1298px); max-height:calc(100dvh - 32px); }
 .psv-form-tools { display:flex; align-items:center; gap:12px; flex-shrink:0; }
-.psv-function-button { min-height:32px; padding:0 12px; font-size:12px; font-weight:600; }
-.psv-checkout .psv-body { padding:0 24px 24px; min-height:0; }
-.psv-checkout .psv-cols { grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr); gap:32px; align-items:start; }
-.psv-checkout .psv-details-column>section { padding:22px 0; }
-.psv-checkout .psv-details-column h3 { color:var(--ax-text-2); font-size:11px; letter-spacing:.07em; margin-bottom:14px; }
-.psv-checkout .psv-budget-column { padding:24px 0 0; border:0; position:sticky; top:0; }
-.psv-checkout .psv-grid { gap:12px; }
-.psv-subheading { margin:0 0 8px; color:var(--ax-text-2); font-size:12px; font-weight:600; }
-.psv-checkout .psv-service-fields { margin-top:16px; }
-.psv-notes { margin-top:16px; }
-.psv-notes>label { color:var(--ax-text-2); font-size:12px; font-weight:600; }
-.psv-budget-card { display:flex; flex-direction:column; min-width:0; box-sizing:border-box; min-height:460px; padding:20px; line-height:1.4; border:1px solid var(--ax-border-strong); border-radius:14px; background:var(--ax-surface); }
-#psv-form .psv-checkout .psv-budget-heading h3 { margin:0 0 4px; color:var(--ax-text); font:600 20px var(--ax-font); letter-spacing:0; text-transform:none; }
-.psv-budget-card .psv-payment-section { margin-top:16px; padding:0; border:0; }
-.psv-budget-card h4 { margin:0 0 10px; font-size:12px; font-weight:600; color:var(--ax-text-2); }
-.psv-payment-options { display:grid; gap:6px; }
-.psv-payment-options button { display:flex; align-items:center; gap:12px; width:100%; padding:8px 12px; border:1px solid var(--ax-border); border-radius:9px; background:transparent; color:var(--ax-text); font:inherit; text-align:left; cursor:pointer; }
+.psv-function-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:32px; padding:0 10px; border-color:var(--ax-accent); background:var(--ax-accent-soft); color:var(--ax-accent); font-size:12px; font-weight:600; }
+.psv-function-button:hover { background:color-mix(in srgb,var(--ax-accent) 20%,transparent); }
+.psv-function-button:focus-visible { outline:2px solid var(--ax-accent); outline-offset:2px; }
+.psv-function-button:disabled { cursor:not-allowed; }
+.psv-function-button .ax-icon { width:16px; height:16px; }
+.psv-checkout .psv-body { padding:0 20px 12px; min-height:0; }
+.psv-checkout .psv-cols { grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr); gap:28px; align-items:start; }
+.psv-checkout .psv-details-column>section { padding:10px 0; }
+#psv-form .psv-checkout .psv-details-column h3 { display:flex; align-items:center; gap:7px; color:var(--ax-text-2); font-size:10px; letter-spacing:.06em; margin-bottom:7px; }
+.psv-details-column h3 .ax-icon { width:15px; height:15px; color:var(--ax-accent); }
+#psv-form .psv-checkout .psv-details-column .psv-field { gap:4px; }
+#psv-form .psv-checkout .psv-details-column input:not([type=checkbox]),#psv-form .psv-checkout .psv-details-column .ax-select-btn,#psv-form .psv-checkout .psv-details-column select { min-height:34px; height:34px; padding-top:5px; padding-bottom:5px; }
+#psv-form .psv-checkout .psv-details-column .psv-seg { min-height:34px; }
+#psv-form .psv-checkout .psv-details-column .psv-seg button { height:26px; }
+.psv-checkout .psv-vehicle-service { grid-template-columns:minmax(100px,.8fr) minmax(0,1.15fr) minmax(0,1.2fr); }
+.psv-checkout .psv-vehicle-service.has-base { grid-template-columns:minmax(80px,.65fr) minmax(0,1fr) minmax(0,1.05fr) minmax(0,1fr); }
+.psv-checkout .psv-grid-addr.has-schedule { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 160px; align-items:start; }
+.psv-checkout .psv-grid-addr.is-single.has-schedule { grid-template-columns:minmax(0,1fr) 170px; }
+.psv-checkout .psv-grid-addr>.psv-schedule-date { grid-column:1 / -1; }
+.psv-route-stop { flex:0 0 19px; display:inline-grid; place-items:center; width:19px; height:19px; border-radius:5px; background:var(--ax-accent-soft); color:var(--ax-accent); font-size:10px; font-weight:700; }
+.psv-route-stop .ax-icon { width:14px; height:14px; }
+#psv-form .psv-checkout .psv-res:empty { display:none; }
+#psv-form .psv-checkout .psv-captado { margin-top:6px; }
+#psv-form .psv-checkout .psv-captado .psv-check { min-height:28px; }
+#psv-form .psv-checkout .psv-toggles { padding:4px 10px; }
+#psv-form .psv-checkout .psv-toggle-row.ax-switch { min-height:30px; }
+.psv-checkout .psv-budget-column { padding:12px 0 0; border:0; position:sticky; top:0; }
+.psv-checkout .psv-grid { gap:8px; }
+.psv-notes { margin-top:8px; }
+.psv-notes>label { color:var(--ax-text-2); font-size:11px; font-weight:600; }
+#psv-form .psv-checkout .psv-notes textarea { min-height:34px; height:34px; padding:7px 10px; }
+.psv-budget-card { display:flex; flex-direction:column; min-width:0; box-sizing:border-box; min-height:410px; padding:16px; line-height:1.4; border:1px solid var(--ax-border-strong); border-radius:14px; background:var(--ax-surface); }
+.psv-budget-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+#psv-form .psv-checkout .psv-budget-heading h3 { margin:0; color:var(--ax-text); font:600 20px var(--ax-font); letter-spacing:0; text-transform:none; }
+.psv-budget-card .psv-payment-section { margin-top:10px; padding:0; border:0; }
+.psv-budget-card h4 { margin:0 0 6px; font-size:12px; font-weight:600; color:var(--ax-text-2); }
+.psv-payment-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.psv-payment-options button { display:flex; align-items:center; gap:6px; justify-content:center; width:100%; min-width:0; padding:7px 6px; border:1px solid var(--ax-border); border-radius:9px; background:transparent; color:var(--ax-text); font:inherit; text-align:left; cursor:pointer; }
 .psv-payment-options button>i { width:15px; height:15px; border:1px solid var(--ax-text-3); border-radius:50%; flex-shrink:0; }
 .psv-payment-options button[aria-pressed="true"] { border-color:var(--ax-accent); background:var(--ax-accent-soft); }
 .psv-payment-options button[aria-pressed="true"]>i { border:4px solid var(--ax-accent); background:var(--ax-bg); }
 .psv-payment-options b { display:block; font-size:13px; font-weight:600; }
-.psv-payment-options small { display:none; margin-top:3px; font-size:11px; color:var(--ax-text-2); line-height:1.4; }
-.psv-payment-options [aria-pressed="true"] small { display:block; }
+.psv-courtesy-toggle { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; padding:6px 10px; border:1px solid var(--ax-border); border-radius:8px; cursor:pointer; }
+.psv-courtesy-toggle:has(input:checked) { border-color:var(--ax-accent); background:var(--ax-accent-soft); }
+.psv-courtesy-toggle>span { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.psv-courtesy-toggle b { font-size:12px; font-weight:600; }
+.psv-courtesy-toggle small { display:block; color:var(--ax-text-2); font-size:10px; }
+.psv-courtesy-note { display:flex; align-items:center; gap:6px; margin-top:8px; color:var(--ax-accent); font-size:11px; }
+.psv-courtesy-note .ax-icon { width:15px; height:15px; }
 .psv-payment-options button:focus-visible { outline:2px solid var(--ax-accent); outline-offset:2px; }
-.psv-checkout .psv-deposit { grid-template-columns:1fr; margin-top:16px; }
-.psv-budget-card .psv-invoice-section { margin:16px 0; padding:8px 0 0; border:0; border-top:1px solid var(--ax-border); }
-#psv-form .psv-budget-card .psv-invoice-section .psv-check { min-height:32px; }
-.psv-budget-card .psv-invoice-section .psv-grid { margin-top:12px; }
+.psv-checkout .psv-deposit { grid-template-columns:1fr; margin-top:10px; }
+.psv-payment-invoice-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:14px; margin:8px 0; }
+.psv-budget-card .psv-invoice-section { min-width:0; }
+.psv-payment-method { display:grid; gap:4px; min-width:0; }
+.psv-payment-method>span { color:var(--ax-text-2); font-size:11px; }
+#psv-form .psv-budget-card .psv-invoice-section .psv-check { min-height:38px; white-space:nowrap; }
+.psv-budget-card .psv-tax-row { margin:0 0 12px; }
+.psv-paid-line { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-top:8px; font-size:12px; color:var(--ax-text-2); }
+.psv-paid-line b { font-weight:600; font-variant-numeric:tabular-nums; }
+.psv-budget-breakdown { margin-bottom:12px; font-size:12px; }
+.psv-budget-breakdown summary { color:var(--ax-accent); cursor:pointer; }
+.psv-budget-breakdown dl { margin-top:8px; }
+.psv-budget-breakdown dl>div { display:flex; justify-content:space-between; gap:12px; padding:5px 0; }
+.psv-budget-breakdown dt small { display:block; margin-top:2px; color:var(--ax-text-2); font-size:10px; }
+.psv-budget-breakdown dd { margin:0; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.psv-budget-breakdown p { color:var(--ax-text-2); margin-top:6px; font-size:10px; }
 .psv-budget-card .psv-price-total { margin-top:auto; padding-top:14px; border-top:1px solid var(--ax-border-strong); }
 #psv-form .psv-price-total .psv-field>span { color:var(--ax-text-2); font-size:12px; }
 #psv-form .psv-price-total .psv-money { margin-top:4px; border-color:var(--ax-border-strong); background:var(--ax-surface-2); }
 .psv-price-total .psv-money>i { padding-left:14px; font-size:24px; }
-#psv-form .psv-checkout .psv-price-total .psv-money input { padding:8px 12px; min-height:56px; background:transparent; color:var(--ax-text); font-size:34px; line-height:1.15; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.03em; }
-#psv-form .psv-budget-card .psv-total { padding:10px 0 0; margin:10px 0 0; border:0; border-radius:0; border-top:1px solid var(--ax-border); background:none; }
+#psv-form .psv-checkout .psv-price-total .psv-money input { padding:5px 12px; min-height:50px; background:transparent; color:var(--ax-text); font-size:34px; line-height:1.15; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.03em; }
+#psv-form .psv-budget-card .psv-total { padding:8px 0 0; margin:8px 0 0; border:0; border-radius:0; border-top:1px solid var(--ax-border); background:none; }
 #psv-form .psv-budget-card .psv-total b { font-size:16px; font-weight:600; color:var(--ax-text); }
 .psv-checkout>footer { padding:16px 24px; }
 
@@ -148,23 +186,34 @@ body.psv-open { overflow: hidden; }
 .psv-calculator-dialog .spc { margin:0; padding:24px; border:0; }
 .psv-calculator-dialog .ax-input { box-sizing:border-box; }
 @media(max-width:980px) {
-  .psv-checkout { width:min(100%,1100px); }
   .psv-checkout .psv-cols { grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr); gap:24px; }
-  .psv-checkout .psv-grid-addr { grid-template-columns:1fr; }
-  .psv-budget-card { padding:20px; }
+  .psv-checkout .psv-grid-addr,.psv-checkout .psv-grid-addr.has-schedule,.psv-checkout .psv-grid-addr.is-single.has-schedule { grid-template-columns:1fr 1fr; }
+  .psv-budget-card { padding:14px; }
+  .psv-checkout .psv-vehicle-service,.psv-checkout .psv-vehicle-service.has-base { grid-template-columns:1fr 1fr; }
+  .psv-vehicle-service:not(.has-base)>.psv-field:last-child { grid-column:1 / -1; }
+  .psv-payment-options button { flex-direction:column; gap:4px; }
+  .psv-payment-options b { font-size:12px; }
+  .psv-payment-invoice-row { grid-template-columns:1fr; gap:6px; }
 }
 @media(max-width:760px) {
   .psv-checkout .psv-cols { grid-template-columns:1fr; gap:0; }
   .psv-checkout .psv-budget-column { position:static; padding-top:20px; border-top:1px solid var(--ax-border); }
   .psv-budget-card { min-height:0; }
   .psv-budget-card .psv-price-total { margin-top:0; }
+  .psv-payment-invoice-row { grid-template-columns:minmax(0,1fr) auto; gap:12px; }
+  .psv-payment-options button { flex-direction:row; }
 }
 @media(max-width:560px) {
   .psv-checkout { max-height:96dvh; }
   .psv-checkout>header { padding:16px; gap:12px; }
   .psv-checkout h2 { font-size:16px; }
   .psv-checkout .psv-body { padding:0 16px 20px; }
-  .psv-checkout .psv-details-column>section { padding:18px 0; }
+  .psv-checkout .psv-details-column>section { padding:12px 0; }
+  #psv-form .psv-checkout .psv-details-column input:not([type=checkbox]),#psv-form .psv-checkout .psv-details-column select,#psv-form .psv-checkout .psv-details-column .ax-select-btn { min-height:40px; height:40px; font-size:16px; }
+  #psv-form .psv-checkout .psv-details-column .psv-seg button { height:32px; }
+  #psv-form .psv-checkout .psv-notes textarea { height:44px; font-size:16px; }
+  .psv-checkout .psv-vehicle-service,.psv-checkout .psv-vehicle-service.has-base,.psv-checkout .psv-grid-addr,.psv-checkout .psv-grid-addr.has-schedule,.psv-checkout .psv-grid-addr.is-single.has-schedule { grid-template-columns:1fr; }
+  .psv-vehicle-service>.psv-field:last-child { grid-column:auto; }
   .psv-form-tools { gap:8px; }
   .psv-function-button { padding:0 8px; min-height:38px; font-size:11px; }
   .psv-checkout>footer { padding:12px 16px; }

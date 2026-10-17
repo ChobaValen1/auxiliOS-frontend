@@ -158,7 +158,7 @@
         origin: '', origin_lat: '', origin_lng: '', origin_place_id: '', origin_formatted_address: '',
         destination: '', destination_lat: '', destination_lng: '', destination_place_id: '', destination_formatted_address: '',
         route: null,
-        presupuesto: '', pago: 'no', sena_monto: '', sena_medio: 'cash',
+        presupuesto: '', sin_costo: false, pago: 'no', sena_monto: '', sena_medio: 'cash',
         factura: false, condicion: 'consumidor_final',
         assigned_truck_id: '', assigned_driver_id: '',
         captado: false, referred_by_driver_id: '',
@@ -250,6 +250,7 @@
       d.cuando = 'programar';
       d.scheduled_for = localDe(e.scheduled_for);
       d.presupuesto = String(Math.round(num(e.quoted_total)));
+      d.sin_costo = e.no_charge === true;
       d.factura = !!e.invoice_requested;
       d.condicion = e.customer_tax_condition || 'consumidor_final';
       d.captado = !!e.referred_by_driver_id;
@@ -318,11 +319,14 @@
   }
   function pagado() {
     var d = st.d;
+    if (st.edit) return num(st.edit.pagado);
+    if (d.sin_costo) return 0;
     if (d.pago === 'total') return num(d.presupuesto);
     return d.pago === 'sena' ? num(d.sena_monto) : 0;
   }
   function deposito() {
     var d = st.d, monto = pagado();
+    if (d.sin_costo) return null;
     return d.pago !== 'no' && monto > 0 ? { amount: monto, method: d.sena_medio } : null;
   }
 
@@ -338,8 +342,11 @@
     if (!d.origin.trim()) e.push('Completá el origen.');
     if (!unaDireccion() && !d.destination.trim()) e.push('Completá el destino.');
     if (d.cuando === 'programar' && !d.scheduled_for) e.push('Elegí fecha y hora.');
-    if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
-    if (st.edit && num(d.presupuesto) > 0 && num(d.presupuesto) < st.edit.pagado) e.push('El presupuesto no puede ser menor a lo ya cobrado (' + pesos(st.edit.pagado) + ').');
+    if (d.sin_costo) {
+      if (num(d.presupuesto) !== 0) e.push('Sin costo debe tener precio total $0.');
+      if ((st.edit && st.edit.pagado > 0) || (st.intake && st.intake.cobrado > 0) || (!st.edit && (d.pago !== 'no' || num(d.sena_monto) > 0))) e.push('No se puede marcar Sin costo si hay cobros registrados.');
+    } else if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
+    if (st.edit && num(d.presupuesto) < st.edit.pagado) e.push('El presupuesto no puede ser menor a lo ya cobrado (' + pesos(st.edit.pagado) + ').');
     if (!st.edit && d.pago === 'sena' && num(d.sena_monto) <= 0) e.push(st.intake ? 'Completá cuánto cobró el chofer.' : 'Completá el monto de la seña.');
     if (!st.edit && d.pago === 'sena' && num(d.sena_monto) >= num(d.presupuesto) && num(d.presupuesto) > 0) e.push(st.intake ? 'Lo cobrado tiene que ser menor al presupuesto. Si cobró todo, elegí Todo.' : 'La seña tiene que ser menor al presupuesto. Si pagó todo, elegí Pago total.');
     var doc = digits(d.customer_document);
@@ -398,9 +405,7 @@
       var lista = MEDIOS.some(function (o) { return o[0] === p.method; }) ? MEDIOS : MEDIOS.concat([[p.method, NOMBRE_OTRO[p.method] || p.method]]);
       return '<div class="psv-pago"><span><b>' + (p.kind === 'sena' ? 'Seña' : 'Pago') + ' · ' + pesos(p.amount) + '</b>' +
         (elegido !== p.method ? '<small>Antes: ' + esc((MEDIOS.concat([[p.method, NOMBRE_OTRO[p.method] || p.method]]).find(function (o) { return o[0] === p.method; }) || [0, p.method])[1]) + '</small>' : '') + '</span>' +
-        '<div class="psv-seg" role="group" aria-label="Medio de pago" data-ax-seg="pago-' + esc(p.payment_id) + '">' + lista.map(function (o) {
-          return '<button type="button" data-psv-pmedio="' + esc(p.payment_id) + '" data-v="' + o[0] + '" aria-pressed="' + (elegido === o[0]) + '"' + (st.edit.cerrado ? ' disabled' : '') + '>' + esc(o[1]) + '</button>';
-        }).join('') + '</div></div>';
+        '<label class="psv-payment-method"><span>Medio de pago</span><select data-psv-pmedio="' + esc(p.payment_id) + '"' + (st.edit.cerrado ? ' disabled' : '') + '>' + opciones(lista, elegido) + '</select></label></div>';
     }).join('') + '</div>';
   }
   var NOMBRE_OTRO = { mercado_pago: 'Mercado Pago', other: 'Otro' };
@@ -413,10 +418,23 @@
     var estado = a.validando ? marca('running', 'Validando…') : ok ? marca(a.recien ? 'running' : 'done', a.recien ? 'Validando…' : 'Validada', a.recien ? 'is-just' : '') :
       d[kind] ? marca('warn', 'Sin validar') : '';
     return '<div class="psv-field psv-addr' + (err ? ' ax-invalid' : '') + (ok ? ' is-valid' : '') + '"><span>' + label + '</span>' +
-      '<div class="psv-addr-input">' + ico('map-pin') + '<input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad"></div>' +
+      '<div class="psv-addr-input"><span class="psv-route-stop" aria-hidden="true">' + (unaDireccion() ? ico('map-pin') : kind === 'origin' ? 'A' : 'B') + '</span><input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad"></div>' +
       '<em class="psv-addr-state ' + (ok ? 'ok' : d[kind] ? 'warn' : '') + '">' + estado + '</em>' +
       (err ? '<small class="psv-field-error" role="alert">' + esc(err) + '</small>' : '') +
       '<div class="psv-sugs" id="psv-' + kind + '-sugs" hidden></div></div>';
+  }
+
+  function calculatorIcon() {
+    return '<svg class="ax-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 10h2M14 10h2M8 14h2M14 14h2M8 18h2M14 18h2"/></svg>';
+  }
+
+  function quoteBreakdown() {
+    var calc = st.appliedCalculation;
+    if (!calc || num(st.d.presupuesto) !== calc.budget) return '';
+    function money(value) { return '$ ' + value.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    return '<details class="psv-budget-breakdown"><summary>Ver desglose del cálculo</summary><dl>' + calc.lines.filter(function (line) { return line.subtotal > 0; }).map(function (line) {
+      return '<div><dt>' + esc(line.label) + '<small>' + esc(line.quantity.toLocaleString('es-AR')) + ' × ' + money(line.unit_price) + '</small></dt><dd>' + money(line.subtotal) + '</dd></div>';
+    }).join('') + (calc.budget !== calc.total ? '<div><dt>Redondeo al peso</dt><dd>' + money(calc.budget - calc.total) + '</dd></div>' : '') + '</dl><p>Detalle de esta sesión; se guarda sólo el precio total.</p></details>';
   }
 
   function paymentChoices() {
@@ -425,7 +443,7 @@
       ? {no:'El presupuesto queda pendiente.', sena:'Se descuenta del precio del servicio.', total:'El presupuesto queda cobrado.'}
       : {no:'El cliente paga al realizarse el servicio.', sena:'Un anticipo a cuenta del precio total.', total:'El servicio se paga por adelantado.'};
     return '<div class="psv-payment-options" role="group" aria-label="' + (st.intake ? 'Cobro informado por el chofer' : 'Pago previo al servicio') + '">' + options.map(function (option) {
-      return '<button type="button" data-psv-seg="pago" data-v="' + option[0] + '" aria-pressed="' + (d.pago === option[0]) + '"><i aria-hidden="true"></i><span><b>' + esc(option[1]) + '</b><small>' + esc(descriptions[option[0]]) + '</small></span></button>';
+      return '<button type="button" data-psv-seg="pago" data-v="' + option[0] + '" aria-pressed="' + (d.pago === option[0]) + '" aria-label="' + esc(option[1] + '. ' + descriptions[option[0]]) + '"><i aria-hidden="true"></i><span><b>' + esc(option[1]) + '</b></span></button>';
     }).join('') + '</div>';
   }
 
@@ -457,46 +475,44 @@
       .map(function (x) { return [x.truck_id, [x.numero_interno, x.plate || x.patente].filter(Boolean).join(' · ') || x.truck_id]; });
     var bases = (ctx.bases || []).map(function (b) { return [b.base_id, b.name]; });
     var tipos = servicios().map(function (s) { return [s.concept_id, s.name]; });
+    var scheduleHtml = (st.edit ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : st.intake ? '' :
+          '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo" data-ax-seg="cuando">' +
+            '<button type="button" data-psv-cuando="ahora" aria-pressed="' + (d.cuando === 'ahora') + '">Ahora</button>' +
+            '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
+          (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"'), 'psv-schedule-date') : ''));
 
     m.innerHTML =
       '<div class="psv-dialog psv-form psv-checkout" role="dialog" aria-modal="true" aria-labelledby="psv-form-t"' + (st.calculatorOpen ? ' inert aria-hidden="true"' : '') + '>' +
       '<header><div><h2 id="psv-form-t">' + (st.edit ? 'Editar servicio · Particular' : 'Nuevo servicio · Particular') + '</h2><p>' +
         (st.edit ? esc(st.edit.numero || '') + (st.edit.firmado ? ' · Con remito firmado: cliente, vehículo y asignación vienen del remito.' : '') :
          st.intake ? 'Desde el remito ' + esc(st.intake.numero || '') + ' de ' + esc(st.intake.chofer) + '. Al crearlo queda finalizado.' : 'Cliente de una sola vez con precio presupuestado.') + '</p></div>' +
-        '<div class="psv-form-tools">' + (!st.busy && !(st.edit && st.edit.cerrado) && global.AuxiliosPriceCalculator ? '<button type="button" class="psv-btn psv-function-button" data-psv="calculadora" aria-haspopup="dialog" aria-controls="psv-calculator-dialog" aria-expanded="' + !!st.calculatorOpen + '">Calculadora</button>' : '') + '<button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></div></header>' +
+        '<div class="psv-form-tools"><button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></div></header>' +
       '<div class="psv-body">' +
         (st.error ? '<div class="psv-error" role="alert">' + esc(st.error) + '</div>' : '') +
 
         '<div class="psv-cols"><div class="psv-col psv-details-column">' +
-        '<section data-psv-section="client"><h3>Datos del cliente</h3><div class="psv-grid">' +
+        '<section data-psv-section="client"><h3>' + ico('user') + 'Datos del cliente</h3><div class="psv-grid">' +
           campo('customer_name', 'Nombre y apellido *', input('customer_name', d.customer_name, 'autocomplete="name"')) +
           campo('customer_phone', 'Teléfono', input('customer_phone', d.customer_phone, 'inputmode="tel" placeholder="11 2345 6789"')) +
           campo('customer_document', 'DNI / CUIT' + (d.factura ? ' *' : ''), input('customer_document', d.customer_document, 'inputmode="numeric" placeholder="8 u 11 dígitos"')) +
         '</div></section>' +
 
-        '<section data-psv-section="service"><h3>Datos del servicio</h3><h4 class="psv-subheading">Vehículo a asistir</h4><div class="psv-grid">' +
+        '<section data-psv-section="service"><h3>' + ico('car') + 'Datos del servicio</h3><div class="psv-grid psv-vehicle-service' + (bases.length > 1 ? ' has-base' : '') + '">' +
           campo('vehicle_plate', 'Patente', input('vehicle_plate', d.vehicle_plate, 'autocapitalize="characters"')) +
           campo('vehicle_make_model', 'Marca y modelo', input('vehicle_make_model', d.vehicle_make_model)) +
-        '</div>' +
-
-        '<div class="psv-grid psv-service-fields">' +
           campo('primary_concept_id', 'Tipo de servicio *', '<select id="psv-primary_concept_id" data-psv-k="primary_concept_id">' + opciones(tipos, d.primary_concept_id, 'Elegí…') + '</select>') +
           (bases.length > 1 ? campo('billing_base_id', 'Base que lo atiende', '<select id="psv-billing_base_id" data-psv-k="billing_base_id">' + opciones(bases, d.billing_base_id) + '</select>') : '') +
-          (st.edit ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : st.intake ? '' :
-          '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo" data-ax-seg="cuando">' +
-            '<button type="button" data-psv-cuando="ahora" aria-pressed="' + (d.cuando === 'ahora') + '">Ahora</button>' +
-            '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
-          (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : '')) +
         '</div>' +
-        '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + '</div>' +
+
+        '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + (scheduleHtml ? ' has-schedule' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + scheduleHtml + '</div>' +
         (st.calculando ? '<p class="psv-hint psv-route">' + marca('running', 'Calculando el recorrido…') + '</p>' :
           d.route ? '<p class="psv-hint psv-route">' + marca('done', 'Recorrido: ' + d.route) + '</p>' : '') +
         '<div class="psv-field psv-notes"><label for="psv-operator_notes">Observaciones</label>' +
-          '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="2" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
+          '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="1" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
         '</div></section>' +
         (st.intake
-          ? '<section data-psv-section="assignment"><h3>Datos de asignación</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
-          : '<section data-psv-section="assignment"><h3>Datos de asignación <small>(opcional)</small></h3><div class="psv-grid">' +
+          ? '<section data-psv-section="assignment"><h3>' + ico('truck') + 'Datos de asignación</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
+          : '<section data-psv-section="assignment"><h3>' + ico('truck') + 'Datos de asignación <small>(opcional)</small></h3><div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id"' + (programado() ? ' disabled' : '') + '>' + opciones(drivers, programado() ? '' : d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
         '</div>') +
@@ -507,24 +523,28 @@
         interruptoresHtml() +
         '</div><div class="psv-col psv-budget-column">' +
 
-        '<aside class="psv-budget-card" aria-labelledby="psv-budget-title"><div class="psv-budget-heading"><h3 id="psv-budget-title">Presupuesto</h3></div>' +
+        '<aside class="psv-budget-card" aria-labelledby="psv-budget-title"><div class="psv-budget-heading"><h3 id="psv-budget-title">Presupuesto</h3>' + (!st.busy && !(st.edit && st.edit.cerrado) && global.AuxiliosPriceCalculator ? '<button type="button" class="psv-btn psv-function-button" data-psv="calculadora" aria-haspopup="dialog" aria-controls="psv-calculator-dialog" aria-expanded="' + !!st.calculatorOpen + '"' + (d.sin_costo ? ' disabled title="Desactivá Sin costo para calcular un importe"' : '') + '>' + calculatorIcon() + '<span>Calculadora</span></button>' : '') + '</div>' +
         (st.edit?.cerrado ? '<p class="psv-hint">Servicio finalizado: podés corregir presupuesto, facturación y captación. Los datos del servicio y los cobros se conservan.</p>' : '') +
-        (!st.edit ? '<section class="psv-payment-section"><h4>' + (st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?') + '</h4>' + paymentChoices() + '</section>' : comoSePago()) +
+        '<label class="psv-courtesy-toggle ax-switch"><span><b>Sin costo</b><small>Gentileza de la empresa</small></span><input type="checkbox" data-psv-k="sin_costo"' + (d.sin_costo ? ' checked' : '') + ((st.edit && st.edit.pagado > 0) || (st.intake && st.intake.cobrado > 0) ? ' disabled title="Hay cobros registrados; deben resolverse antes de ofrecer una gentileza"' : '') + '></label>' +
+        (!st.edit && !d.sin_costo ? '<section class="psv-payment-section"><h4>' + (st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?') + '</h4>' + paymentChoices() + '</section>' : comoSePago()) +
         (!st.edit && d.pago !== 'no' ? '<div class="psv-grid psv-deposit">' +
           (d.pago === 'sena'
             ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
             : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
-          grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
         '</div>' : '') +
         (st.intake && st.intake.informe ? '<p class="psv-hint psv-informe">' + esc(st.intake.informe) + '</p>' : '') +
-        '<section class="psv-invoice-section">' +
-          '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> El cliente pide factura</label>' +
-          (d.factura ? '<div class="psv-grid">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
-        '</section>' +
+        '<div class="psv-payment-invoice-row">' +
+          (!st.edit ? campo('sena_medio', 'Medio de pago', '<select id="psv-sena_medio" data-psv-k="sena_medio"' + (d.pago === 'no' ? ' disabled' : '') + '>' + (d.pago === 'no' ? '<option>' + (d.sin_costo ? 'No corresponde' : 'Sin pago previo') + '</option>' : opciones(MEDIOS, d.sena_medio)) + '</select>') : '') +
+          '<div class="psv-invoice-section"><label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> Pide factura</label></div>' +
+        '</div>' +
+        (d.factura ? '<div class="psv-grid psv-tax-row">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
         (st.edit && !st.edit.cerrado && Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 && global.OperatorServices?.canManage?.() ? '<button type="button" class="psv-btn psv-collect" data-psv="registrar-cobro">' + ico('hand-coins') + 'Registrar cobro</button><p class="psv-hint">Si modificaste el servicio, confirmá los cambios antes de abrir el cobro.</p>' : '') +
         '<div class="psv-price-total">' +
-          campo('presupuesto', 'Precio del servicio *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
-          '<div class="psv-total"><span>' + (st.edit ? 'Pagado ' + pesos(st.edit.pagado) + ' · Saldo' : st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(st.edit ? Math.max(num(d.presupuesto) - st.edit.pagado, 0) : saldo()) + '</b></div>' +
+          quoteBreakdown() +
+          campo('presupuesto', d.sin_costo ? 'Precio total · Sin costo' : 'Precio total *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"' + (d.sin_costo ? ' readonly' : '')) + '</div>') +
+          (d.sin_costo ? '<p class="psv-courtesy-note">' + ico('circle-check') + 'Gentileza: no genera importe a cobrar.</p>' : '') +
+          '<div class="psv-paid-line"><span>' + (st.edit || st.intake ? 'Pagos registrados' : 'Pago anticipado') + '</span><b data-psv-paid>' + pesos(pagado()) + '</b></div>' +
+          '<div class="psv-total"><span>' + (st.edit ? 'Saldo pendiente' : st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>' +
         '</div></aside>' +
         '</div></div>' +
       '</div>' +
@@ -638,6 +658,10 @@
       global.AuxiliosPriceCalculator.update(calculator, st.edit ? st.edit.pagado : 0);
       return;
     }
+    if (t.hasAttribute && t.hasAttribute('data-psv-pmedio')) {
+      if (ev.type === 'change' && st.edit && !st.edit.cerrado) st.d.medios[t.getAttribute('data-psv-pmedio')] = t.value;
+      return;
+    }
     if (t.hasAttribute && t.hasAttribute('data-psv-toggle')) { st.toggles.selected[t.getAttribute('data-psv-toggle')] = !!t.checked; return; }
     var k = t.getAttribute('data-psv-k') || t.getAttribute('data-psv-addr');
     if (k && st.fieldErrors && st.fieldErrors[k]) {
@@ -651,11 +675,29 @@
         var limpio = digits(t.value).slice(0, k === 'customer_document' ? 11 : 13);
         if (limpio !== t.value) t.value = limpio;
       }
+      if (k === 'sin_costo') {
+        if (ev.type !== 'change') return;
+        if ((st.edit && st.edit.pagado > 0) || (st.intake && st.intake.cobrado > 0)) { t.checked = false; return; }
+        if (t.checked) {
+          st.beforeCourtesy = {presupuesto:st.d.presupuesto, pago:st.d.pago, sena_monto:st.d.sena_monto, sena_medio:st.d.sena_medio};
+          st.d.sin_costo = true; st.d.presupuesto = '0'; st.d.pago = 'no'; st.d.sena_monto = '';
+          st.appliedCalculation = null; st.calculatorOpen = false;
+        } else {
+          st.d.sin_costo = false;
+          Object.assign(st.d, st.beforeCourtesy || {presupuesto:'', pago:'no', sena_monto:''});
+          st.beforeCourtesy = null;
+        }
+        if (st.fieldErrors) delete st.fieldErrors.presupuesto;
+        return pintar();
+      }
       st.d[k] = t.type === 'checkbox' ? t.checked : t.value;
       // Por defecto lo consiguió el chofer asignado.
       if (k === 'captado' && st.d.captado && !st.d.referred_by_driver_id) st.d.referred_by_driver_id = st.d.assigned_driver_id || '';
       if (ESTRUCTURALES[k] && ev.type === 'change') return pintar();
       if (k === 'presupuesto' || k === 'sena_monto') {
+        if (k === 'presupuesto') { st.appliedCalculation = null; el('psv-form').querySelector('.psv-budget-breakdown')?.remove(); }
+        var paid = el('psv-form').querySelector('[data-psv-paid]');
+        if (paid) paid.textContent = pesos(pagado());
         var tot = document.querySelector('#psv-form .psv-total b');
         if (tot) tot.textContent = pesos(saldo());
         var pt = el('psv-pago_total');
@@ -808,6 +850,7 @@
       items: [], item_codes: {},
       customer_name: d.customer_name.trim(), customer_phone: digits(d.customer_phone),
       customer_document: digits(d.customer_document) || null,
+      no_charge: !!d.sin_costo,
       invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null,
       vehicle_plate: d.vehicle_plate.trim().toUpperCase(), vehicle_make_model: d.vehicle_make_model.trim(),
       origin: d.origin.trim(), origin_lat: d.origin_lat || null, origin_lng: d.origin_lng || null,
@@ -892,7 +935,7 @@
         var eid = st.edit.id;
         var ru = await db().rpc('update_private_service_v1', {
           p_service_id: eid, p_payload: payload(), p_quoted_total: num(d.presupuesto),
-          p_invoice: { invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null, customer_document: digits(d.customer_document) || null },
+          p_invoice: { no_charge: !!d.sin_costo, invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null, customer_document: digits(d.customer_document) || null },
           p_reason: 'Cambios revisados y confirmados desde la edición del particular'
         });
         if (ru.error) throw ru.error;
@@ -978,7 +1021,7 @@
   }
 
   function calculatorAction(action, button) {
-    if (!st || st.busy || (st.edit && st.edit.cerrado) || !global.AuxiliosPriceCalculator) return;
+    if (!st || st.busy || st.d.sin_costo || (st.edit && st.edit.cerrado) || !global.AuxiliosPriceCalculator) return;
     var api = global.AuxiliosPriceCalculator, root = el('psv-form').querySelector('[data-price-calculator]');
     st.calculatorDraft = root ? api.read(root) : st.calculatorDraft || api.initial(st.routeData);
     if (action === 'calculadora') st.calculatorOpen = !st.calculatorOpen;
@@ -991,6 +1034,7 @@
       var result = api.update(root, st.edit ? st.edit.pagado : 0);
       if (!result || result.budget <= 0 || (st.edit && result.budget < st.edit.pagado)) return;
       st.d.presupuesto = String(result.budget);
+      st.appliedCalculation = result;
       if (st.fieldErrors) delete st.fieldErrors.presupuesto;
       st.calculatorOpen = false;
     }
@@ -1003,7 +1047,7 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg],[data-psv-pmedio]');
+    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg]');
     if (!b) {
       if (ev.target.classList && ev.target.classList.contains('psv-backdrop')) {
         if (ev.target.id === 'psv-tipo') cerrar('psv-tipo');
@@ -1019,7 +1063,6 @@
     if (a === 'guardar') return guardar();
     if (a === 'registrar-cobro') return cobrarDesdeEdicion();
     if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
-    if (b.hasAttribute('data-psv-pmedio')) { st.d.medios[b.getAttribute('data-psv-pmedio')] = b.getAttribute('data-v'); return pintar(); }
     if (b.hasAttribute('data-psv-cuando')) {
       st.d.cuando = b.getAttribute('data-psv-cuando');
       if (programado()) st.d.assigned_driver_id = '';
