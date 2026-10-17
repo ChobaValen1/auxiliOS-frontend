@@ -482,7 +482,7 @@
         '</section>' +
         '</div><div class="psv-col">' +
 
-        '<section><h3>Precio y cobro</h3><div class="psv-grid">' +
+        '<section><h3>Precio y cobro</h3>' + (st.edit?.cerrado ? '<p class="psv-hint">Servicio finalizado: podés corregir presupuesto, facturación y captación. Los datos del servicio y los cobros se conservan.</p>' : '') + '<div class="psv-grid">' +
           campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
           (st.edit ? '' : grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago))) +
         '</div>' +
@@ -537,6 +537,14 @@
       ['customer_name', 'customer_phone', 'vehicle_plate', 'vehicle_make_model', 'assigned_truck_id', 'assigned_driver_id'].forEach(function (k) {
         var f = el('psv-' + k); if (f) { f.disabled = true; f.title = 'Viene del remito firmado'; }
       });
+    }
+    // Un particular finalizado sólo admite presupuesto/factura/captación en
+    // la RPC existente. No ofrecer cambios de servicio que no se guardarían.
+    if (st.edit && st.edit.cerrado) {
+      ['customer_name','customer_phone','vehicle_plate','vehicle_make_model','primary_concept_id','billing_base_id','scheduled_for','origin','destination','assigned_truck_id','assigned_driver_id','operator_notes'].forEach(function (key) {
+        var field = el('psv-' + key); if (field) { field.disabled = true; field.title = 'El servicio está finalizado: estos datos se conservan.'; }
+      });
+      m.querySelectorAll('[data-psv-cuando],[data-psv-toggle]').forEach(function (field) { field.disabled = true; });
     }
   }
 
@@ -879,7 +887,7 @@
           p_reason: 'Cambios revisados y confirmados desde la edición del particular'
         });
         if (ru.error) throw ru.error;
-        await guardarInterruptores(eid);
+        if (!st.edit.cerrado) await guardarInterruptores(eid);
         var cambios = (st.edit.pagos || []).filter(function (p) { return st.d.medios[p.payment_id] && st.d.medios[p.payment_id] !== p.method; });
         for (var ci = 0; ci < cambios.length; ci++) {
           var rm = await db().rpc('update_service_payment_method_v1', { p_payment_id: cambios[ci].payment_id, p_method: st.d.medios[cambios[ci].payment_id] });

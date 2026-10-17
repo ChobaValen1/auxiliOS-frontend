@@ -31,6 +31,11 @@
     return !!(s && (s.quoted_total != null || s.client_kind === 'particular' ||
       (P && P.esCuentaParticular && P.esCuentaParticular({ company_id: s.company_id, trade_name: s.company_name, client_kind: s.client_kind }))));
   }
+  function canEdit(s) {
+    if (!s || !global.OperatorServices?.canManage?.() || typeof global.editarServicioOperador !== 'function') return false;
+    if (s.status === 'completed') return !!global.OperatorServices?.canEditHistoryService?.(s);
+    return s.status !== 'cancelled' && s.billing_status !== 'invoiced';
+  }
   function dato(label, valor) { return '<div class="pvw-dato"><span>' + label + '</span><b>' + (valor || '—') + '</b></div>'; }
 
   function modal() {
@@ -110,7 +115,7 @@
           '</div></div>' +
         '</div>' +
         '<footer><button type="button" class="psv-btn" data-pvw="cerrar">Cerrar</button>' +
-          (!cerrado && typeof global.editarServicioOperador === 'function' ? '<button type="button" class="psv-btn" data-pvw="editar">Editar</button>' : '') +
+          (canEdit(s) ? '<button type="button" class="psv-btn" data-pvw="editar">Editar</button>' : '') +
           (p && saldo > 0 && !cerrado ? '<button type="button" class="psv-btn" data-pvw="cobro">Registrar cobro</button>' : '') +
           (['assigned', 'at_origin'].indexOf(s.status) >= 0 && typeof global.finalizarServicioOperador === 'function' ? '<button type="button" class="psv-btn primary" data-pvw="finalizar">Finalizar</button>' : '') +
         '</footer>' +
@@ -140,6 +145,7 @@
     if (!b) { if (ev.target.id === 'pvw-modal') cerrar(); return; }
     var a = b.getAttribute('data-pvw'), id = st && st.id;
     if (a === 'cerrar' || !id) return cerrar();
+    if (a === 'editar' && !canEdit(st.s)) return;
     cerrar();
     if (a === 'cobro' && global.AuxiliosCobroOperador) return global.AuxiliosCobroOperador.abrir(id);
     if (a === 'finalizar') return global.finalizarServicioOperador(id);
@@ -166,5 +172,5 @@
     var n = 0, t = setInterval(function () { if (enganchar() || ++n > 40) clearInterval(t); }, 250);
   }
 
-  global.AuxiliosVistaParticular = { abrir: abrir, _test: { esParticular: esParticular } };
+  global.AuxiliosVistaParticular = { abrir: abrir, _test: { esParticular: esParticular, canEdit: canEdit } };
 })(window);
