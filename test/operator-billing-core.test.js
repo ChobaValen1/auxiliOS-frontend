@@ -178,7 +178,8 @@ test('exportador usa SheetJS ya cargado y genera XLSX real',()=>{
   assert.match(excelExport,/utils\.book_new/);
   assert.match(excelExport,/writeFile/);
   assert.match(excelExport,/bookType:'xlsx'/);
-  assert.doesNotMatch(excelExport,/text\/csv|\.csv/i);
+  assert.match(excelExport,/function downloadCsv/);
+  assert.match(excelExport,/type:'text\/csv;charset=utf-8;'/);
 });
 
 test('Facturación conserva selección, servicios visibles y todo lo filtrado para Excel',()=>{

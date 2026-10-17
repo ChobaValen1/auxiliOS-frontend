@@ -14,5 +14,27 @@ function workbook({summaryRows=[],sheets=[]}={}){ensureReady();const wb=xlsx().u
 // que el resto de AuxiliOS. Centralizado acá para que valga en toda sección.
 function confirmDownload(name,detalle){if(typeof window.confirmarDescarga==='function')return window.confirmarDescarga(name,detalle);if(typeof window.operationFeedback==='function')window.operationFeedback('Descarga lista',detalle?`${name} · ${detalle}`:name,'success',2400);}
 function download({filename='AuxiliOS.xlsx',summaryRows=[],sheets=[],detalle=''}={}){const wb=workbook({summaryRows,sheets}),safe=cleanFilePart(filename.replace(/\.xlsx$/i,''))||'AuxiliOS';xlsx().writeFile(wb,`${safe}.xlsx`,{bookType:'xlsx',compression:true});confirmDownload(`${safe}.xlsx`,detalle);return{filename:`${safe}.xlsx`,sheetNames:[...wb.SheetNames]};}
-Object.assign(A,{ensureReady,worksheet,summary,workbook,download,cleanFilePart,confirmDownload});
+// CSV real: UTF-8 con BOM, separador local ';' y protección ante fórmulas
+// provenientes de nombres, notas u otros textos ingresados por usuarios.
+function csv(columns,rows){
+  const quoteCell=value=>'"'+text(value).replace(/"/g,'""')+'"';
+  const safeText=value=>/^[\s\u0000-\u001f]*[=+@-]|^[\t\r\n]/.test(text(value))?"'"+text(value):text(value);
+  const cols=Array.isArray(columns)?columns:[];
+  const lines=[cols.map(c=>quoteCell(safeText(c.header))).join(';')];
+  for(const row of Array.isArray(rows)?rows:[])lines.push(cols.map(c=>{
+    const value=typeof c.value==='function'?c.value(row):row?.[c.key];
+    if(c.type==='number')return value==null||value===''||!Number.isFinite(Number(value))?'':String(Number(value)).replace('.',',');
+    return quoteCell(safeText(value));
+  }).join(';'));
+  return '\ufeff'+lines.join('\r\n')+'\r\n';
+}
+function downloadCsv({filename='AuxiliOS',columns=[],rows=[],detalle=''}={}){
+  if(!columns.length)throw new Error('Seleccioná al menos una columna para exportar.');
+  const name=(cleanFilePart(filename.replace(/\.(csv|xlsx)$/i,''))||'AuxiliOS')+'.csv';
+  const url=URL.createObjectURL(new Blob([csv(columns,rows)],{type:'text/csv;charset=utf-8;'}));
+  const link=document.createElement('a');link.href=url;link.download=name;link.hidden=true;
+  try{document.body.appendChild(link);link.click();}finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  confirmDownload(name,detalle);return{filename:name};
+}
+Object.assign(A,{ensureReady,worksheet,summary,workbook,download,csv,downloadCsv,cleanFilePart,confirmDownload});
 })();

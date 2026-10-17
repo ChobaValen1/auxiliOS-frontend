@@ -14,7 +14,7 @@
 (function (global) {
   'use strict';
 
-  var st = { id: null, t: null, planes: [], services: [], fuel: [], fuelAll: [], fuelView: 'active', fuelPage: 1, tires: [], docs: [], logs: [], tab: 'mantenimiento', cargando: false, error: '', cerradoAt: 0 };
+  var st = { id: null, t: null, planes: [], services: [], fuel: [], fuelAll: [], fuelView: 'active', fuelPage: 1, fuelFilters: {}, tires: [], docs: [], logs: [], tab: 'mantenimiento', cargando: false, error: '', cerradoAt: 0 };
   var TABS = [['mantenimiento', 'Mantenimiento'], ['documentacion', 'Documentación'], ['neumaticos', 'Neumáticos y frenos'], ['combustible', 'Combustible'], ['historial', 'Historial']];
   var TIPO = { plancha: 'Plancha', asistencia: 'Asistencia', pesado: 'Pesado' };
   var MODALES = ['modal-combustible', 'modal-neumaticos', 'modal-service-log', 'modal-asignar-plan', 'modal-upload-truck-doc', 'fuel-edit-admin'];
@@ -316,7 +316,8 @@
   function combustible() {
     var tot = fuelTotales(st.fuel), rend = rendimientos(st.fuel);
     var anuladas = st.fuelView === 'voided';
-    var rows = (st.fuelAll || []).filter(function (f) { return fuelAnulado(f) === anuladas; });
+    var rows = fuelFiltradas(st.fuelAll, st.fuelView, st.fuelFilters);
+    var filters = st.fuelFilters || {}, subtotal = rows.reduce(function (sum, f) { sum.litros += num(f.liters); sum.total += num(f.total_cost); return sum; }, { litros: 0, total: 0 });
     var paginas = Math.max(1, Math.ceil(rows.length / 25));
     st.fuelPage = Math.min(Math.max(1, st.fuelPage), paginas);
     var lista = rows.slice((st.fuelPage - 1) * 25, st.fuelPage * 25);
@@ -324,7 +325,13 @@
     var cols = admin() ? 8 : 7;
     var filtros = '<div class="ftd-fuel-filter" role="group" aria-label="Estado de las cargas">' +
       '<button type="button" class="ftd-btn" data-ftd="fuel-active" aria-pressed="' + !anuladas + '">Activas (' + st.fuel.length + ')</button>' +
-      '<button type="button" class="ftd-btn" data-ftd="fuel-voided" aria-pressed="' + anuladas + '">Anuladas (' + (st.fuelAll.length - st.fuel.length) + ')</button></div>';
+      '<button type="button" class="ftd-btn" data-ftd="fuel-voided" aria-pressed="' + anuladas + '">Anuladas (' + (st.fuelAll.length - st.fuel.length) + ')</button></div>' +
+      '<form class="ftd-fuel-tools" data-ftd-fuel-form><label>Desde<input class="form-input" type="date" name="from" value="' + esc(filters.from || '') + '"></label>' +
+      '<label>Hasta<input class="form-input" type="date" name="to" value="' + esc(filters.to || '') + '"></label>' +
+      '<label>Medio de pago<select class="form-input" name="payment"><option value="">Todos</option>' + Object.keys(PAGO).map(function (k) { return '<option value="' + esc(k) + '"' + (filters.payment === k ? ' selected' : '') + '>' + esc(PAGO[k]) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="ftd-fuel-query">Buscar<input class="form-input" type="search" name="query" placeholder="Estación, app o número de carga" value="' + esc(filters.query || '') + '"></label>' +
+      '<div class="ftd-fuel-buttons"><button type="submit" class="ftd-btn">Aplicar filtros</button><button type="button" class="ftd-btn" data-ftd="fuel-reset">Limpiar</button></div><span class="ftd-fuel-error" role="alert"></span></form>' +
+      '<div class="ftd-fuel-results" role="status">' + rows.length + ' cargas ' + (anuladas ? 'anuladas' : 'activas') + ' encontradas · ' + subtotal.litros.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' L · ' + money(subtotal.total) + (anuladas ? ' (fuera de los totales activos)' : '') + '</div>';
     var tabla = '<div class="ftd-fuel-scroll"><table class="ftd-table ftd-fuel-table"><thead><tr><th>Fecha / estación</th><th class="ftd-r">Litros</th><th class="ftd-r">Precio por litro</th><th class="ftd-r">Importe</th><th class="ftd-r">Km</th><th class="ftd-r">Rinde</th><th>Pago</th>' + (admin() ? '<th>Acciones</th>' : '') + '</tr></thead><tbody>' +
       (lista.length ? lista.map(function (f) {
         var v = anuladas ? null : rend.porCarga[f.fuel_id];
@@ -342,7 +349,39 @@
       '<td class="ftd-r ftd-n">' + money(tot.total) + '</td><td></td>' +
       '<td class="ftd-r ftd-n">' + kml(rend.promedio) + '<small>Rendimiento promedio</small></td><td></td>' + (admin() ? '<td></td>' : '') + '</tr></tfoot></table></div>';
     var pager = '<nav class="ftd-fuel-pages" aria-label="Páginas de combustible"><button class="ftd-btn" type="button" data-ftd="fuel-prev"' + (st.fuelPage <= 1 ? ' disabled' : '') + '>Anterior</button><span>Página ' + st.fuelPage + ' de ' + paginas + ' · ' + rows.length + ' cargas</span><button class="ftd-btn" type="button" data-ftd="fuel-next"' + (st.fuelPage >= paginas ? ' disabled' : '') + '>Siguiente</button></nav>';
-    return seccion('combustible', 'Combustible', [boton('carga', ico('plus') + 'Registrar carga')], filtros + tabla + pager + '<p class="ftd-nota">Totales de todas las cargas activas del móvil. Precio promedio ponderado: importe total ÷ litros totales. Rinde: km desde la carga anterior ÷ litros cargados.</p>');
+    var exports = '<button type="button" class="ftd-btn" data-ftd="fuel-excel"' + (!rows.length ? ' disabled' : '') + '>Exportar Excel</button><button type="button" class="ftd-btn" data-ftd="fuel-csv"' + (!rows.length ? ' disabled' : '') + '>Exportar CSV</button>';
+    return seccion('combustible', 'Combustible', [boton('carga', ico('plus') + 'Registrar carga'), exports], filtros + tabla + pager + '<p class="ftd-nota">La búsqueda y la exportación incluyen todas las páginas del resultado. Los totales al pie corresponden a todo el historial activo del móvil, sin filtros. Precio promedio ponderado: importe total ÷ litros totales. El rinde usa la carga anterior del historial, aunque no esté visible.</p>');
+  }
+
+  function fuelFiltradas(rows, view, filters) {
+    filters = filters || {};
+    var normalize = function (v) { return String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); };
+    var query = normalize(filters.query).trim();
+    return (rows || []).filter(function (f) {
+      var day = String(f.fuel_date || '').slice(0, 10);
+      return fuelAnulado(f) === (view === 'voided') && (!filters.from || day >= filters.from) && (!filters.to || day <= filters.to) &&
+        (!filters.payment || f.payment_method === filters.payment) && (!query || normalize([f.fuel_id, f.gas_station, f.payment_app, f.void_reason].join(' ')).includes(query));
+    });
+  }
+
+  function exportFuel(format) {
+    var rows = fuelFiltradas(st.fuelAll, st.fuelView, st.fuelFilters), exporter = global.AuxiliosExcelExport;
+    if (!rows.length) return;
+    try {
+      if (!exporter) throw Error('El exportador todavía no está disponible. Intentá nuevamente.');
+      var columns = [
+        { header: 'Carga', key: 'fuel_id', type: 'number' }, { header: 'Móvil', value: function () { return st.t.plate || st.id; } },
+        { header: 'Fecha', key: 'fuel_date' }, { header: 'Estación', key: 'gas_station', width: 30 }, { header: 'Jornada', key: 'log_id', type: 'number' },
+        { header: 'Litros', key: 'liters', type: 'number' }, { header: 'Precio por litro', key: 'price_per_liter', type: 'number', width: 20 },
+        { header: 'Importe', key: 'total_cost', type: 'number', width: 20 }, { header: 'Kilometraje', key: 'km_at_load', type: 'number' },
+        { header: 'Medio de pago', value: function (f) { return PAGO[f.payment_method] || f.payment_method || ''; }, width: 20 },
+        { header: 'App', key: 'payment_app' }, { header: 'Estado', value: function (f) { return fuelAnulado(f) ? 'Anulada' : 'Activa'; } },
+        { header: 'Motivo de anulación', key: 'void_reason', width: 40 }
+      ];
+      var options = { filename: 'AuxiliOS_Combustible_' + (st.t.plate || st.id) + '_' + st.fuelView + '_' + hoy(), detalle: rows.length + ' cargas · todas las páginas del resultado' };
+      if (format === 'csv') exporter.downloadCsv(Object.assign(options, { columns: columns, rows: rows }));
+      else exporter.download(Object.assign(options, { sheets: [{ name: 'Combustible', columns: columns, rows: rows }] }));
+    } catch (e) { if (typeof toast === 'function') toast(e.message || 'No se pudo exportar combustible', 'error'); }
   }
 
   function neumaticos() {
@@ -464,7 +503,7 @@
     // Desde otra pantalla (p. ej. Jornadas) la flota puede no estar cargada todavía.
     if (!t && F().cargar) { st.id = Number(id); st.t = null; await F().cargar(); t = buscar(id); }
     if (!t) { st.id = null; return; }
-    if (st.id !== Number(id)) Object.assign(st, { planes: [], services: [], fuel: [], fuelAll: [], fuelView: 'active', fuelPage: 1, tires: [], docs: [], logs: [], tab: 'mantenimiento' });
+    if (st.id !== Number(id)) Object.assign(st, { planes: [], services: [], fuel: [], fuelAll: [], fuelView: 'active', fuelPage: 1, fuelFilters: {}, tires: [], docs: [], logs: [], tab: 'mantenimiento' });
     if (opts.seccion && TABS.some(function (x) { return x[0] === opts.seccion; })) st.tab = opts.seccion;
     st = Object.assign(st, { id: Number(id), t: t, cargando: true, error: '' });
     // Los formularios de siempre (combustible, service, plan, neumáticos) usan estos globales.
@@ -524,6 +563,15 @@
     if (sel) sel.value = String(st.id);
   }
 
+  document.addEventListener('submit', function (ev) {
+    var form = ev.target.closest && ev.target.closest('[data-ftd-fuel-form]');
+    if (!form || !st.id) return;
+    ev.preventDefault();
+    var filters = { from: form.elements.from.value, to: form.elements.to.value, payment: form.elements.payment.value, query: form.elements.query.value.trim() };
+    if (filters.from && filters.to && filters.from > filters.to) { form.querySelector('[role=alert]').textContent = 'La fecha desde no puede ser posterior a la fecha hasta.'; return; }
+    st.fuelFilters = filters; st.fuelPage = 1; pintar();
+  });
+
   document.addEventListener('click', async function (ev) {
     var tab = ev.target.closest && ev.target.closest('[data-ftd-tab]');
     if (tab && st.id) { st.tab = tab.getAttribute('data-ftd-tab'); return pintar(); }
@@ -532,6 +580,8 @@
     var a = b.getAttribute('data-ftd');
     if (a === 'volver') return volver();
     if (a === 'ver-doc') return verDoc(b.getAttribute('data-path'));
+    if (a === 'fuel-reset') { st.fuelFilters = {}; st.fuelPage = 1; return pintar(); }
+    if (a === 'fuel-excel' || a === 'fuel-csv') return exportFuel(a === 'fuel-csv' ? 'csv' : 'xlsx');
     if (a === 'fuel-active' || a === 'fuel-voided') { st.fuelView = a === 'fuel-active' ? 'active' : 'voided'; st.fuelPage = 1; return pintar(); }
     if (a === 'fuel-prev' || a === 'fuel-next') { st.fuelPage += a === 'fuel-prev' ? -1 : 1; return pintar(); }
     if (!admin()) return;
@@ -606,7 +656,7 @@
       planEstado: planEstado, planAvance: planAvance, planCadencia: planCadencia, docsLista: docsLista, neumaticosEstado: neumaticosEstado,
       resumenService: resumenService, resumenDocs: resumenDocs, resumenNeumaticos: resumenNeumaticos, resumenCombustible: resumenCombustible,
       kmMes: kmMes, kmPorDia: kmPorDia, estimarService: estimarService, rendimientos: rendimientos, consumoAlto: consumoAlto, historial: historial,
-      combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento, fuelTotales: fuelTotales, fuelAnulado: fuelAnulado, combustible: combustible, mantenimiento: mantenimiento
+      combustibleMes: combustibleMes, gastoMantenimiento: gastoMantenimiento, fuelTotales: fuelTotales, fuelAnulado: fuelAnulado, fuelFiltradas: fuelFiltradas, exportFuel: exportFuel, combustible: combustible, mantenimiento: mantenimiento
     }
   };
 })(window);
