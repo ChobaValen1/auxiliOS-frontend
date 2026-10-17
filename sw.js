@@ -1,7 +1,8 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v476-etapa2-preview';
+const CACHE_NAME='auxilios-billing-phase2-v477-calculadora-preview';
 const PRECACHE_ASSETS=[
+  '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
   '/ui/service-improvements-v1.js','/ui/service-improvements-v1.css',
   '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/payroll-matrix.js', '/payroll-view.js',
   '/empresas-v2.js','/empresas-v2.css',

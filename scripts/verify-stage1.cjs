@@ -7,7 +7,7 @@ const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
 const out = path.resolve(root, '../output/etapa-1');
 const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/ui/tokens.css"><link rel="stylesheet" href="/ui/components.css"><link rel="stylesheet" href="/ui/service-improvements-v1.css">
+<link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/ui/tokens.css"><link rel="stylesheet" href="/ui/components.css"><link rel="stylesheet" href="/ui/service-improvements-v1.css"><link rel="stylesheet" href="/ui/service-price-calculator-v1.css">
 <link rel="stylesheet" href="/operator-services.css"><link rel="stylesheet" href="/operator-service-workspace-reactive-v1.css"><link rel="stylesheet" href="/operator-service-commercial-addons-v1.css">
 <link rel="stylesheet" href="/private-service-v1.css"><link rel="stylesheet" href="/private-payments-v1.css">
 <style>body{display:block;padding:24px}.modal-backdrop[hidden]{display:none}.modal-backdrop.open{display:flex}#modal-operador-wizard{position:fixed;inset:0;z-index:10000;background:var(--ax-bg);overflow:auto}</style>
@@ -39,7 +39,7 @@ window.OperatorServices={S:{services:[sample,{...sample,service_id:'private-1',c
 window.cargarServiciosOperador=async()=>{};
 window.OperatorServiceLifecycleV2={settleAssignmentConfirmation:()=>{}};
 </script>
-<script src="/ui/ax.js"></script><script src="/ui/service-improvements-v1.js"></script><script src="/operator-service-workspace-reactive-v1.js"></script><script src="/operator-service-wizard.js"></script><script src="/operator-service-commercial-addons-v1.js"></script><script src="/private-service-v1.js"></script><script src="/private-payments-v1.js"></script></html>`;
+<script src="/ui/ax.js"></script><script src="/ui/service-improvements-v1.js"></script><script src="/operator-service-workspace-reactive-v1.js"></script><script src="/operator-service-wizard.js"></script><script src="/operator-service-commercial-addons-v1.js"></script><script src="/ui/service-price-calculator-v1.js"></script><script src="/private-service-v1.js"></script><script src="/private-payments-v1.js"></script></html>`;
 const server = http.createServer((req,res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   if (pathname === '/__qa') {res.setHeader('Content-Type','text/html; charset=utf-8'); return res.end(html);}
@@ -113,6 +113,44 @@ const server = http.createServer((req,res) => {
     assert.equal(adminSaved.args.p_payload.administrative_commercial.excess_charges[0].quantity,1);
     await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
     await page.locator('[data-psv="registrar-cobro"]').waitFor();
+    const writeCount=await page.evaluate(()=>calls.filter(c=>c.name.startsWith('update_')||c.name.startsWith('create_')).length);
+    await page.locator('[data-psv="calculadora"]').click();
+    await page.locator('[data-price-key="movement"]').fill('15.000');
+    await page.locator('[data-price-key="asphalt_km"]').fill('20');
+    await page.locator('[data-price-key="asphalt_rate"]').fill('1.000');
+    await page.locator('[data-price-key="gravel_km"]').fill('3');
+    await page.locator('[data-price-key="gravel_rate"]').fill('2.000');
+    await page.locator('[data-psv="calculator-toll"]').click();
+    await page.locator('[data-price-item-key="name"]').fill('Peaje de prueba');
+    await page.locator('[data-price-item-key="quantity"]').fill('2');
+    await page.locator('[data-price-item-key="unit_price"]').fill('1.500');
+    await page.locator('[data-psv="calculator-extra"]').click();
+    await page.locator('[data-price-item="1"] [data-price-item-key="name"]').fill('Maniobra');
+    await page.locator('[data-price-item="1"] [data-price-item-key="unit_price"]').fill('500');
+    assert.match(await page.locator('[data-price-breakdown]').innerText(),/44.500,00/);
+    assert.equal(await page.locator('#psv-presupuesto').inputValue(),'85000');
+    await page.locator('[data-price-calculator]').scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(out,'calculadora-desktop.png'),fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await page.locator('[data-psv="calculator-apply"]').scrollIntoViewIfNeeded();
+    assert.equal(await page.locator('[data-price-key="movement"]').evaluate(el=>getComputedStyle(el).fontSize),'16px');
+    assert.equal(await page.evaluate(()=>document.querySelector('[data-price-calculator]').scrollWidth<=document.querySelector('[data-price-calculator]').clientWidth),true);
+    await page.screenshot({path:path.join(out,'calculadora-mobile.png'),fullPage:true});
+    await page.locator('[data-psv="calculator-apply"]').click();
+    assert.equal(await page.locator('#psv-presupuesto').inputValue(),'44500');
+    assert.match(await page.locator('#psv-form .psv-total').first().innerText(),/24.500/);
+    assert.equal(await page.evaluate(()=>calls.filter(c=>c.name.startsWith('update_')||c.name.startsWith('create_')).length),writeCount);
+    await page.locator('[data-psv="calculadora"]').click();
+    await page.locator('[data-price-key="mode"]').selectOption('fixed');
+    assert.equal(await page.locator('[data-price-key="mode"]').evaluate(el=>el===document.activeElement),true);
+    await page.locator('[data-price-key="fixed_amount"]').fill('15.000');
+    assert.equal(await page.locator('[data-psv="calculator-apply"]').isDisabled(),true);
+    assert.match(await page.locator('[data-price-error]').innerText(),/menor a lo ya cobrado/);
+    await page.locator('[data-psv="calculator-close"]').click();
+    assert.equal(await page.locator('#psv-presupuesto').inputValue(),'44500');
+    await page.setViewportSize({width:1440,height:1000});
+    await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
+    assert.equal(await page.locator('#psv-presupuesto').inputValue(),'85000');
     await page.locator('#psv-customer_name').fill('Cliente modificado');
     await page.locator('[data-psv="registrar-cobro"]').click();
     await page.locator('.ax-edit-confirm:not([hidden])').waitFor();
@@ -127,6 +165,7 @@ const server = http.createServer((req,res) => {
     await page.evaluate(()=>{document.getElementById('ppv-modal').hidden=true;window.closedPrivate=true;});
     await page.evaluate(()=>AuxiliosParticulares.editar('private-1'));
     assert.equal(await page.locator('[data-psv="registrar-cobro"]').count(),0);
+    assert.equal(await page.locator('[data-psv="calculadora"]').count(),0);
     assert.deepEqual(errors,[]);
     console.log('QA OK: confirmación, cancelación, Escape, error y reintento, minutos, importes, cobro con cambios pendientes, servicios cerrados y tamaños desktop/móvil. Capturas: '+out);
   } finally {await browser.close();server.close();}

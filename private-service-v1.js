@@ -486,6 +486,7 @@
           campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
           (st.edit ? '' : grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago))) +
         '</div>' +
+        (!st.busy && !(st.edit && st.edit.cerrado) && global.AuxiliosPriceCalculator ? '<div class="psv-price-actions"><button type="button" class="psv-btn" data-psv="calculadora" aria-controls="psv-calculator" aria-expanded="' + !!st.calculatorOpen + '">' + (st.calculatorOpen ? 'Ocultar calculadora' : 'Calcular presupuesto') + '</button></div>' + (st.calculatorOpen ? global.AuxiliosPriceCalculator.render(st.calculatorDraft || global.AuxiliosPriceCalculator.initial(st.routeData)) : '') : '') +
         (st.edit ? '<div class="psv-total"><span>Pagado ' + pesos(st.edit.pagado) + ' · Saldo</span><b>' + pesos(Math.max(num(d.presupuesto) - st.edit.pagado, 0)) + '</b></div>' +
           comoSePago() +
           (!st.edit.cerrado && Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 && global.OperatorServices?.canManage?.() ? '<button type="button" class="psv-btn psv-collect" data-psv="registrar-cobro">' + ico('hand-coins') + 'Registrar cobro</button><p class="psv-hint">Si modificaste el servicio, confirmá los cambios antes de abrir el cobro.</p>' : '') : '') +
@@ -525,10 +526,12 @@
     marcas(m);
     confirmarRecientes(m);
     if (global.AxUI) {
-      if (global.AxUI.select) m.querySelectorAll('.psv-body select').forEach(function (x) { global.AxUI.select(x); });
+      if (global.AxUI.select) m.querySelectorAll('.psv-body select:not([data-price-key])').forEach(function (x) { global.AxUI.select(x); });
       if (global.AxUI.seg) m.querySelectorAll('.psv-seg').forEach(function (x) { global.AxUI.seg(x); });
     }
     pintarRecursos(false);
+    var calculator = m.querySelector('[data-price-calculator]');
+    if (calculator) global.AuxiliosPriceCalculator.update(calculator, st.edit ? st.edit.pagado : 0);
     // Con remito firmado, cliente, vehículo y asignación vienen del remito.
     if (st.edit && st.edit.firmado) {
       ['customer_name', 'customer_phone', 'vehicle_plate', 'vehicle_make_model', 'assigned_truck_id', 'assigned_driver_id'].forEach(function (k) {
@@ -611,6 +614,13 @@
   function onInput(ev) {
     var t = ev.target;
     if (!st || !t) return;
+    var calculator = t.closest && t.closest('[data-price-calculator]');
+    if (calculator && global.AuxiliosPriceCalculator) {
+      st.calculatorDraft = global.AuxiliosPriceCalculator.read(calculator);
+      if (t.getAttribute('data-price-key') === 'mode') return paintCalculator('[data-price-key="mode"]');
+      global.AuxiliosPriceCalculator.update(calculator, st.edit ? st.edit.pagado : 0);
+      return;
+    }
     if (t.hasAttribute && t.hasAttribute('data-psv-toggle')) { st.toggles.selected[t.getAttribute('data-psv-toggle')] = !!t.checked; return; }
     var k = t.getAttribute('data-psv-k') || t.getAttribute('data-psv-addr');
     if (k && st.fieldErrors && st.fieldErrors[k]) {
@@ -931,6 +941,38 @@
 
   /* ── Eventos ──────────────────────────────────────────────────────────── */
 
+  function paintCalculator(focusSelector) {
+    var body = el('psv-form').querySelector('.psv-body'), scroll = body ? body.scrollTop : 0;
+    pintar();
+    body = el('psv-form').querySelector('.psv-body');
+    if (body) body.scrollTop = scroll;
+    if (focusSelector) el('psv-form').querySelector(focusSelector)?.focus({preventScroll:true});
+  }
+
+  function calculatorAction(action, button) {
+    if (!st || st.busy || (st.edit && st.edit.cerrado) || !global.AuxiliosPriceCalculator) return;
+    var api = global.AuxiliosPriceCalculator, root = el('psv-form').querySelector('[data-price-calculator]');
+    st.calculatorDraft = root ? api.read(root) : st.calculatorDraft || api.initial(st.routeData);
+    if (action === 'calculadora') st.calculatorOpen = !st.calculatorOpen;
+    else if (action === 'calculator-close') st.calculatorOpen = false;
+    else if (action === 'calculator-toll' || action === 'calculator-extra') {
+      st.calculatorDraft.items.push({kind:action === 'calculator-toll' ? 'toll' : 'extra', name:'', quantity:'1', unit_price:''});
+    } else if (action === 'calculator-remove') st.calculatorDraft.items.splice(Number(button.getAttribute('data-index')), 1);
+    else if (action === 'calculator-apply') {
+      if (!root) return;
+      var result = api.update(root, st.edit ? st.edit.pagado : 0);
+      if (!result || result.budget <= 0 || (st.edit && result.budget < st.edit.pagado)) return;
+      st.d.presupuesto = String(result.budget);
+      if (st.fieldErrors) delete st.fieldErrors.presupuesto;
+      st.calculatorOpen = false;
+    }
+    paintCalculator();
+    if (action === 'calculator-apply') el('psv-presupuesto')?.focus();
+    else if (!st.calculatorOpen) el('psv-form').querySelector('[data-psv="calculadora"]')?.focus();
+    else if (action === 'calculator-toll' || action === 'calculator-extra') el('psv-form').querySelector('[data-price-item="' + (st.calculatorDraft.items.length - 1) + '"] [data-price-item-key="name"]')?.focus();
+    else if (action === 'calculator-remove') el('psv-form').querySelector('[data-psv="calculator-extra"]')?.focus({preventScroll:true});
+  }
+
   document.addEventListener('click', function (ev) {
     var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg],[data-psv-pmedio]');
     if (!b) {
@@ -940,6 +982,7 @@
       return;
     }
     var a = b.getAttribute('data-psv');
+    if (a === 'calculadora' || (a && a.startsWith('calculator-'))) return calculatorAction(a, b);
     if (a === 'cerrar-tipo') return cerrar('psv-tipo');
     if (a === 'prestadora') { cerrar('psv-tipo'); ocultarCuentaEnPrestadoras(); return intakeElegido ? abrirPrestadora(intakeElegido) : abrirPrestadora(); }
     if (a === 'particular') { cerrar('psv-tipo'); return abrirParticular(intakeElegido); }

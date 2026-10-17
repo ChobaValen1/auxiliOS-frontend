@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'etapa2-v476-20261017';
+window.AUXILIOS_BUILD_ID = 'etapa2-calculadora-v477-20261017';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -204,6 +204,8 @@ async function loadCriticalAuxiliosModules() {
   // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
   await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
   // Nuevo servicio: primero Particular | Prestadora (envuelve abrirNuevoServicio).
+  loadAuxiliosStyle('auxilios-service-price-calculator-v1-css', '/ui/service-price-calculator-v1.css');
+  await loadAuxiliosModule('auxilios-service-price-calculator-v1', '/ui/service-price-calculator-v1.js');
   loadAuxiliosStyle('auxilios-private-service-v1-css', '/private-service-v1.css');
   await loadAuxiliosModule('auxilios-private-service-v1', '/private-service-v1.js');
   // Registrar cobro de un particular desde el menú ⋯ del servicio.
