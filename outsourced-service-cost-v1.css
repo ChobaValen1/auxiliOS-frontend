@@ -6,7 +6,7 @@
 #osv4-terc .osc-head b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
 #osv4-terc .osc-head small { margin-left: auto; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
 #osv4-terc .osc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--ax-sp-2); }
-#modal-operador-wizard .osv4-reactive #osv4-terc label.osc-field { gap: 4px; margin: 0; }
+#modal-operador-wizard .osv4-reactive :is(#osv4-terc, #osv4-terc-pick) label.osc-field { gap: 4px; margin: 0; }
 #osv4-terc .osc-input { position: relative; display: flex; align-items: center; }
 #osv4-terc .osc-input i { position: absolute; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); font-style: normal; pointer-events: none; }
 #osv4-terc .osc-input i:first-child { left: 11px; }
@@ -20,10 +20,10 @@
 #osv4-terc .is-invalid .osc-err { display: block; }
 #osv4-terc .is-invalid .osc-hint { display: none; }
 #modal-operador-wizard .osv4-reactive #osv4-terc .is-invalid input { border-color: var(--ax-danger); }
-#osv4-terc .osc-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
-#osv4-terc .osc-note .ax-icon { flex: none; margin-top: 2px; }
-#osv4-terc .osc-note.is-warn { border-color: color-mix(in srgb, var(--ax-warn) 40%, transparent); background: var(--ax-warn-soft); color: var(--ax-text); }
-#osv4-terc .osc-note.is-warn .ax-icon { color: var(--ax-warn); }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note .ax-icon { flex: none; margin-top: 2px; }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note.is-warn { border-color: color-mix(in srgb, var(--ax-warn) 40%, transparent); background: var(--ax-warn-soft); color: var(--ax-text); }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note.is-warn .ax-icon { color: var(--ax-warn); }
 
 #osv4-terc .osc-extras { display: grid; gap: 6px; }
 #osv4-terc .osc-label { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
@@ -53,3 +53,8 @@
 @media (max-width: 640px) {
   #osv4-terc .osc-extra { grid-template-columns: minmax(0, 1fr) 112px; }
 }
+
+/* «¿Quién hace el servicio?» en el lugar de Asignar Chofer / Móvil */
+#modal-operador-wizard .osv4-reactive .assignment-grid.osc-replaced { display: none !important; }
+#modal-operador-wizard .osv4-reactive #osv4-terc-pick { display: grid; gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive #osv4-terc-pick[hidden] { display: none; }

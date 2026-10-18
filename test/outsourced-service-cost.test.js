@@ -66,6 +66,11 @@ test('costo tercerizado: conectado al formulario y la base calcula y bloquea lo 
   assert.match(ws, /AuxTercerizadoServicio\?\.sync\?\.\(W\(\)\)/);
   assert.match(ws, /AuxTercerizadoServicio\?\.persist\?\.\(w,serviceId\)/);
   assert.match(wiz, /AuxTercerizadoServicio\?\.validate\?\.\(w\)/);
+  // Con Tercerizada, «¿Quién hace el servicio?» reemplaza a Asignar Chofer / Móvil (y no se exige chofer).
+  assert.match(ws, /data-assignment="truck"><\/select><\/label><\/div><div id="osv4-terc-pick"/);
+  assert.match(ws, /third_party'&&!locked\('assigned_driver_id'\)[^}]*osSetServicio\?\.\('assigned_driver_id',''\)/);
+  assert.match(wiz, /req\('assigned_resources'\)&&d\.logistics_type!=='third_party'/);
+  assert.match(src, /classList\.toggle\('osc-replaced',third\)/);
   assert.match(add, /querySelector\('#osv4-terc'\)/);
   assert.match(src, /quote_outsourced_service_cost_v1/); assert.match(src, /list_outsourced_providers_for_service_v1/);
   assert.match(sql, /settlement_id is not null then raise exception/);

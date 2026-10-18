@@ -60,9 +60,12 @@ function signature(w,t){const p=provider(t);return JSON.stringify([w.mode,isThir
 function field(id,label,value,{suffix='',prefix='',hint='',disabled=false,inputmode='decimal',placeholder='0'}={}){
  return `<label class="osc-field" data-osc-wrap="${esc(id)}"><span>${esc(label)}</span><span class="osc-input">${prefix?`<i>${esc(prefix)}</i>`:''}<input class="ax-input" data-osc="${esc(id)}" inputmode="${inputmode}" autocomplete="off" value="${esc(value)}" placeholder="${esc(placeholder)}" ${disabled?'disabled':''}>${suffix?`<i>${esc(suffix)}</i>`:''}</span><small class="osc-err" data-osc-err="${esc(id)}"></small>${hint?`<small class="osc-hint">${esc(hint)}</small>`:''}</label>`;}
 
-function render(w){const card=document.getElementById('osv4-terc');if(!card||!w)return;
- if(!isThird(w)){card.hidden=true;return;}
- const t=state(w);card.hidden=false;const sig=signature(w,t);if(sig===t.sig&&card.childElementCount){paintValues(w,t);return renderQuote(w);}t.sig=sig;
+/* Con Tercerizada, «¿Quién hace el servicio?» ocupa el lugar de Asignar Chofer / Móvil;
+   lo que se le paga va en la 3ª columna y aparece recién cuando el tercerizado tiene tarifa. */
+function placement(w){const third=isThird(w),grid=document.querySelector('.osv4-reactive .assignment-grid'),pick=document.getElementById('osv4-terc-pick'),card=document.getElementById('osv4-terc');
+ grid?.classList.toggle('osc-replaced',third);if(pick)pick.hidden=!third;if(card&&!third)card.hidden=true;return{pick,card,third};}
+function render(w){if(!w)return;const {pick,card,third}=placement(w);if(!pick||!card||!third)return;
+ const t=state(w);const sig=signature(w,t);if(sig===t.sig&&pick.childElementCount){paintValues(w,t);return renderQuote(w);}t.sig=sig;
  const view=w.mode==='view',locked=!!t.row?.settlement_id,ro=view||locked,f=t.form,p=provider(t),date=t.providersDate||serviceDate(w);
  const loading=!t.providers||!t.rowLoaded;
  const opts=(t.providers||[]).map(x=>`<option value="${esc(x.provider_id)}">${esc(x.display_name)}${x.has_rate?'':' · sin tarifa'}</option>`).join('');
@@ -72,20 +75,21 @@ function render(w){const card=document.getElementById('osv4-terc');if(!card||!w)
  else if(t.providers&&!t.providers.length)warn=`<p class="osc-note">${ico('info','ax-icon-sm')}<span>No hay tercerizados cargados. Se cargan en Configuración › Tercerizados.</span></p>`;
  else if(p&&!p.has_rate)warn=`<p class="osc-note is-warn">${ico('triangle-alert','ax-icon-sm')}<span>${esc(p.display_name)} no tiene tarifa para el ${esc(dmy(date))}. Cargala en Configuración › Tercerizados › Tarifas.</span></p>`;
  else if(p&&w.data.primary_concept_id&&!(p.concepts||[]).map(String).includes(String(w.data.primary_concept_id)))warn=`<p class="osc-note is-warn">${ico('triangle-alert','ax-icon-sm')}<span>La tarifa de ${esc(p.display_name)} no incluye este tipo de servicio.</span></p>`;
- else if(!w.data.primary_concept_id&&p)warn=`<p class="osc-note">${ico('info','ax-icon-sm')}<span>Elegí el tipo de servicio para calcular.</span></p>`;
+ else if(!w.data.primary_concept_id&&p)warn=`<p class="osc-note">${ico('info','ax-icon-sm')}<span>Elegí el tipo de servicio para calcular lo que se le paga.</span></p>`;
+ pick.innerHTML=`<label class="osc-field"><span>¿Quién hace el servicio? *</span><select class="ax-select" data-osc="provider_id" ${ro||loading?'disabled':''}><option value="">${loading?'Cargando…':'Elegí el tercerizado'}</option>${keep}${opts}</select></label>${warn}`;
+ pick.querySelector('[data-osc="provider_id"]').value=f.provider_id||'';
  const tollsIncluded=p&&p.tolls_mode==='included';
  const extras=(p?.extras||[]);
  const noRate=p&&(!p.has_rate||(w.data.primary_concept_id&&!(p.concepts||[]).map(String).includes(String(w.data.primary_concept_id))));
- const body=!f.provider_id||!p||noRate?'':`
+ const show=!!(f.provider_id&&p&&!noRate);card.hidden=!show;
+ if(!show){card.innerHTML='';return;}
+ card.innerHTML=`<div class="osc-head">${ico('truck','ax-icon-sm')}<b>Lo que se le paga</b><small>${esc(p.display_name)}</small></div>
+  ${locked?`<p class="osc-note">${ico('lock','ax-icon-sm')}<span>Ya está en una liquidación: no se puede cambiar.</span></p>`:''}
   <div class="osc-grid">${field('km_asphalt','Km asfalto',f.km_asphalt,{suffix:'km',disabled:ro,hint:f.kmTouched?'':'Del recorrido'})}${field('km_gravel','Km ripio',f.km_gravel,{suffix:'km',disabled:ro})}</div>
   ${tollsIncluded?`<p class="osc-note">${ico('info','ax-icon-sm')}<span>Peajes incluidos en su tarifa: no se pagan aparte.</span></p>`:field('tolls_amount','Peajes que pagó',f.tolls_amount,{prefix:'$',disabled:ro,hint:'Se le devuelven aparte'})}
   ${extras.length?`<div class="osc-extras"><span class="osc-label">Adicionales</span>${extras.map(x=>`<div class="osc-extra"><span><b>${esc(x.name)}</b><small>${esc(money(x.unit_amount))} por ${esc(UNITS[x.unit]||x.unit||'unidad')}</small></span>${field('x:'+x.concept_id,'',f.extras[x.concept_id]||'',{suffix:UNITS[x.unit]||'',disabled:ro})}</div>`).join('')}</div>`:''}
-  ${f.showAdj?`<div class="osc-adj"><div class="osc-grid">${field('adjustment_amount','Ajuste',f.adjustment_amount,{prefix:'$',disabled:ro,hint:'Negativo para descontar',inputmode:'text'})}${field('adjustment_reason','Motivo del ajuste',f.adjustment_reason,{disabled:ro,inputmode:'text',placeholder:'Ej.: espera extra acordada'})}</div>${ro?'':'<button type="button" class="osc-link" data-osc-act="no-adj">Quitar ajuste</button>'}</div>`:(ro?'':'<button type="button" class="osc-link" data-osc-act="adj">+ Agregar ajuste</button>')}`;
- card.innerHTML=`<div class="osc-head">${ico('truck','ax-icon-sm')}<b>Tercerizado</b><small>Lo que se le paga</small></div>
-  ${locked?`<p class="osc-note">${ico('lock','ax-icon-sm')}<span>Ya está en una liquidación: no se puede cambiar.</span></p>`:''}
-  <label class="osc-field"><span>¿Quién hace el servicio? *</span><select class="ax-select" data-osc="provider_id" ${ro||loading?'disabled':''}><option value="">${loading?'Cargando…':'Elegí el tercerizado'}</option>${keep}${opts}</select></label>
-  ${warn}${body}${noRate?'':'<div class="osc-quote" data-osc-quote aria-live="polite"></div>'}`;
- card.querySelector('[data-osc="provider_id"]').value=f.provider_id||'';
+  ${f.showAdj?`<div class="osc-adj"><div class="osc-grid">${field('adjustment_amount','Ajuste',f.adjustment_amount,{prefix:'$',disabled:ro,hint:'Negativo para descontar',inputmode:'text'})}${field('adjustment_reason','Motivo del ajuste',f.adjustment_reason,{disabled:ro,inputmode:'text',placeholder:'Ej.: espera extra acordada'})}</div>${ro?'':'<button type="button" class="osc-link" data-osc-act="no-adj">Quitar ajuste</button>'}</div>`:(ro?'':'<button type="button" class="osc-link" data-osc-act="adj">+ Agregar ajuste</button>')}
+  <div class="osc-quote" data-osc-quote aria-live="polite"></div>`;
  paintValues(w,t);renderQuote(w);}
 
 function paintValues(w,t){const card=document.getElementById('osv4-terc');if(!card)return;const errs=problems(t);
@@ -111,13 +115,14 @@ function onClick(e){const b=e.target.closest?.('[data-osc-act]');if(!b)return;co
  if(b.dataset.oscAct==='adj'){t.form.showAdj=true;render(w);document.querySelector('#osv4-terc [data-osc="adjustment_amount"]')?.focus();}
  else{t.form.showAdj=false;t.form.adjustment_amount='';t.form.adjustment_reason='';t.dirty=true;w.dirty=true;render(w);requestQuote(w,0);}}
 let bound=false;
-function bind(){if(bound)return;bound=true;document.addEventListener('input',e=>{if(e.target.closest?.('#osv4-terc'))onInput(e);});document.addEventListener('change',e=>{if(e.target.closest?.('#osv4-terc')&&e.target.tagName==='SELECT')onInput(e);});document.addEventListener('click',e=>{if(e.target.closest?.('#osv4-terc'))onClick(e);});}
+const inside=el=>el?.closest?.('#osv4-terc,#osv4-terc-pick');
+function bind(){if(bound)return;bound=true;document.addEventListener('input',e=>{if(inside(e.target))onInput(e);});document.addEventListener('change',e=>{if(inside(e.target)&&e.target.tagName==='SELECT')onInput(e);});document.addEventListener('click',e=>{if(e.target.closest?.('#osv4-terc'))onClick(e);});}
 
-function sync(w){if(!w||!db())return;bind();const card=document.getElementById('osv4-terc');if(!card)return;
+function sync(w){if(!w||!db())return;bind();if(!document.getElementById('osv4-terc'))return;
  const t=state(w);
  /* El costo guardado se lee aunque sea Propia: si lo pasan a Propia, al guardar se limpia. */
  if(w.serviceId&&!t.rowLoaded)void loadRow(w,t);
- if(!isThird(w)){card.hidden=true;return;}
+ if(!placement(w).third)return;
  syncKm(w,t);const date=serviceDate(w);
  if(t.providersDate!==date)void loadProviders(w,t,date);
  render(w);requestQuote(w,400);}
