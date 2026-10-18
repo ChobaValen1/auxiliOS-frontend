@@ -1,0 +1,37 @@
+/* AuxiliOS · Selector de columnas para exportar */
+.axx-backdrop { position: fixed; inset: 0; z-index: var(--ax-z-modal); display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .62); }
+.axx-sheet { display: flex; flex-direction: column; width: min(560px, 100%); max-height: min(720px, calc(100vh - 32px)); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface); color: var(--ax-text); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); }
+.axx-sheet > header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ax-sp-3); padding: var(--ax-sp-4) var(--ax-sp-4) var(--ax-sp-3); border-bottom: 1px solid var(--ax-border); }
+.axx-sheet > header small { color: var(--ax-accent); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+.axx-sheet > header h3 { margin: 2px 0 0; font-size: var(--ax-fs-lg); font-weight: var(--ax-fw-semibold); }
+.axx-sheet > header p { margin: 4px 0 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+.axx-x { width: 34px; height: 34px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); font-size: 20px; line-height: 1; cursor: pointer; }
+.axx-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ax-sp-2); padding: var(--ax-sp-3) var(--ax-sp-4); }
+.axx-tools > button { height: 30px; padding: 0 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-sm); background: var(--ax-surface-2); color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+.axx-count { margin-left: auto; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+.axx-format { display: inline-flex; padding: 2px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-bg); }
+.axx-format button { height: 28px; padding: 0 14px; border: 0; border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+.axx-format button[aria-checked="true"] { background: var(--ax-accent-soft); color: var(--ax-accent); }
+.axx-list { flex: 1 1 auto; overflow: auto; margin: 0; padding: 0 var(--ax-sp-4) var(--ax-sp-2); list-style: none; }
+.axx-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-2); min-height: 40px; padding: 4px 8px; border: 1px solid transparent; border-radius: var(--ax-radius-sm); }
+.axx-row + .axx-row { margin-top: 2px; }
+.axx-row.is-on { border-color: var(--ax-border); background: var(--ax-surface-2); }
+.axx-row label { display: flex; flex: 1 1 auto; align-items: center; gap: 10px; min-width: 0; cursor: pointer; font-size: var(--ax-fs-md); }
+.axx-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--ax-accent); }
+.axx-row small { margin-left: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.axx-move { display: inline-flex; gap: 4px; }
+.axx-move button { width: 30px; height: 30px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-sm); background: var(--ax-bg); color: var(--ax-text-2); cursor: pointer; }
+.axx-move button:disabled { opacity: .3; cursor: default; }
+.axx-error { margin: 0 var(--ax-sp-4) var(--ax-sp-2); color: var(--ax-danger); font-size: var(--ax-fs-sm); }
+.axx-sheet > footer { display: flex; justify-content: flex-end; gap: var(--ax-sp-2); padding: var(--ax-sp-3) var(--ax-sp-4); border-top: 1px solid var(--ax-border); }
+.axx-sheet > footer button { min-height: 40px; padding: 0 18px; border-radius: var(--ax-radius); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; }
+.axx-secondary { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text); }
+.axx-primary { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+.axx-sheet button:focus-visible, .axx-row input:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+@media (max-width: 560px) {
+  .axx-backdrop { padding: 0; place-items: end stretch; }
+  .axx-sheet { width: 100%; max-height: 88vh; border-radius: var(--ax-radius-lg) var(--ax-radius-lg) 0 0; }
+  .axx-sheet > footer button { flex: 1; min-height: 44px; }
+  .axx-count { order: 3; width: 100%; margin-left: 0; }
+  .axx-move button { width: 36px; height: 36px; }
+}

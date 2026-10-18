@@ -8543,6 +8543,9 @@ function _renderPerfilAdminTab() {
       <div class="cfg-ch-row"><span class="cfg-ch-key">Rol</span><span class="cfg-ch-val" style="text-transform:capitalize">${rol}</span></div>
     </div>
 
+    <div class="cfg-ch-section-label">TEMA</div>
+    <div class="cfg-ch-card cfg-ch-theme"><div class="cfg-ch-hint" style="margin-bottom:8px">Oscuro, Claro o el que use tu dispositivo (Sistema).</div>${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}</div>
+
     <div class="cfg-ch-section-label">SEGURIDAD</div>
     <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPasswordAdmin()">
       <span>🔑 Cambiar contraseña</span>
@@ -8611,6 +8614,12 @@ function _abrirPanelChofer() {
           <div class="cfg-ch-row"><span class="cfg-ch-key">Legajo</span><span class="cfg-ch-val">${legajo}</span></div>
           <div class="cfg-ch-row"><span class="cfg-ch-key">DNI</span><span class="cfg-ch-val">${dni}</span></div>
         </div>
+
+        <div class="cfg-ch-section-label">CONFIGURACIÓN</div>
+        <details class="aux-area cfg-ch-theme cfg-ch-theme-area">
+          <summary><span class="aux-area-icon" aria-hidden="true">◐</span><h3>Tema</h3><p>Oscuro, Claro o el que use tu dispositivo.</p><span class="aux-area-open">Ver opciones <span aria-hidden="true">↓</span></span></summary>
+          <div class="aux-area-links"><div class="aux-theme-area">${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}<p class="aux-area-note">Se guarda para vos en este dispositivo. Sistema sigue el modo del celular.</p></div></div>
+        </details>
 
         <div class="cfg-ch-section-label">SEGURIDAD</div>
         <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPassword()">
@@ -15406,12 +15415,22 @@ async function _jadminExportarExcel() {
       { label: 'Litros cargados', value: Math.round(suma(r => r.litros) * 10) / 10 },
     ];
     const desdeTxt = String(_jadminState.desde || '').replace(/-/g, ''), hastaTxt = String(_jadminState.hasta || '').replace(/-/g, '');
-    AuxiliosExcelExport.download({
+    const archivo = {
       filename: `Jornadas_${desdeTxt}_${hastaTxt}`,
       summaryRows: resumen,
-      sheets: [{ name: 'Jornadas', columns: columnas, rows }],
+      sheetName: 'Jornadas',
+      rows,
       detalle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`,
-    });
+    };
+    // Elegir qué columnas, en qué orden y si va en Excel o CSV (se recuerda en este navegador).
+    if (window.AuxiliosExportPicker) {
+      columnas.forEach(c => { c.id = c.id || c.header.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_'); });
+      const eleccion = await window.AuxiliosExportPicker.open({ key: 'jornadas', title: 'Jornadas', subtitle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} · ${resumen[0].value}`, columns: columnas });
+      if (!eleccion) return;
+      window.AuxiliosExportPicker.download(eleccion, archivo);
+    } else {
+      AuxiliosExcelExport.download({ filename: archivo.filename, summaryRows: resumen, sheets: [{ name: 'Jornadas', columns: columnas, rows }], detalle: archivo.detalle });
+    }
     if ((resp?.total || 0) > (resp?.data || []).length) {
       toast(`Se exportaron las primeras ${resp.data.length} de ${resp.total} jornadas. Acotá el período para el resto.`, 'warn');
     }

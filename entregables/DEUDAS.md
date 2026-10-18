@@ -5,18 +5,21 @@ Lista de mejoras para ir viendo con el tiempo. Se agregan abajo a medida que apa
 | # | Tema | Anotado | Estado |
 |---|------|---------|--------|
 | 1 | Servicios programados para los choferes | 14/10/2026 | Pendiente |
-| 2 | Tema de pantalla: Blanco / Negro / Sistema | 14/10/2026 | Pendiente |
-| 3 | Editar servicios finalizados (operadores) | 14/10/2026 | Pendiente |
+| 2 | Tema de pantalla: Blanco / Negro / Sistema | 14/10/2026 | Hecho · en prueba (v485) |
+| 3 | Editar servicios finalizados (operadores) | 14/10/2026 | Hecho · en producción (v468) |
 | 4 | Tarifas que dependen del servicio principal | 14/10/2026 | Hecho · en producción (v463) |
 | 5 | Chofer con más de un servicio en curso a la vez | 14/10/2026 | Hecho · encendido para todos |
-| 6 | Servicios activados: siempre facturables, Activado Origen / Activado Movida | 15/10/2026 | Pendiente |
-| 7 | Peajes pagados por el socio: un medio de pago para todos | 15/10/2026 | Pendiente |
+| 6 | Servicios activados: siempre facturables, Activado Origen / Activado Movida | 15/10/2026 | Hecho · en producción (v464) |
+| 7 | Peajes pagados por el socio: un medio de pago para todos | 15/10/2026 | Hecho · en producción (v469) |
 
 ## 1) Servicios programados para los choferes
 Poder dejar servicios programados para un chofer, como una fila o cola de servicios que el chofer va viendo y tomando en orden. Se piensa junto con la 5.
 
 ## 2) Tema de pantalla
 Un operador dijo que el fondo negro le molesta. Cada usuario tiene que poder elegir **Blanco**, **Negro** o **Sistema** (el que use el celular o la computadora).
+
+## 2) Avance (18/10/2026)
+En prueba (v485). Cada usuario elige **Oscuro**, **Claro** o **Sistema** con el botón de ícono (luna, sol o pantalla) al lado del perfil, arriba a la derecha, en la computadora; en el teléfono, en Configuración › Tema (el chofer, en su cuenta). También en Mi cuenta. Se guarda en ese navegador para ese usuario. Sistema sigue el modo del celular o la computadora y cambia solo.
 
 ## 3) Editar servicios finalizados (operadores)
 Los operadores tienen que poder editar un servicio ya finalizado. El cambio se tiene que ver bien en el **Historial** y también en los datos de **Facturación**.

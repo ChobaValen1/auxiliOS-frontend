@@ -1,0 +1,11 @@
+/* AuxiliOS · Arrastrar para ordenar */
+.ax-drag-handle { display: inline-grid; flex: 0 0 auto; place-items: center; width: 24px; height: 32px; margin-right: 2px; border-radius: var(--ax-radius-sm); color: var(--ax-text-3); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ax-drag-handle svg { fill: currentColor; pointer-events: none; }
+.ax-drag-handle:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+.ax-drag-active { user-select: none; -webkit-user-select: none; }
+.ax-drag-active .ax-drag-handle { cursor: grabbing; }
+.ax-dragging { position: relative; z-index: 2; border-color: var(--ax-accent) !important; background: var(--ax-surface-3) !important; box-shadow: var(--ax-shadow-pop); opacity: .96; transition: none !important; }
+@media (pointer: coarse) { .ax-drag-handle { width: 32px; height: 40px; } }
+[data-drag-key] > .ax-drag-handle { display: inline-grid; place-items: center; }
+.ax-drag-shift { transition: transform var(--ax-dur-fast) var(--ax-ease); }
+@media (prefers-reduced-motion: reduce) { .ax-drag-shift { transition: none; } }
