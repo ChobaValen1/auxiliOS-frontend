@@ -9,7 +9,7 @@
   var IVA_LABEL = { responsable_inscripto: 'Responsable Inscripto', monotributo: 'Monotributo', exento: 'Exento' };
   var MODE = [['monthly', 'Una vez por mes'], ['per_service', 'Por cada servicio']];
   var TERMS = [0, 15, 30, 45];
-  var st = { rows: [], filter: 'active', query: '', sel: null, form: null, orig: null, tried: false, saving: false, mobileForm: false };
+  var st = { rows: [], filter: 'active', query: '', sel: null, form: null, orig: null, tried: false, saving: false, mobileForm: false, tab: 'datos', ratesDirty: false };
 
   function db() { return typeof _db !== 'undefined' ? _db : null; }
   function role() { try { return PERFIL_USUARIO && PERFIL_USUARIO.roles && PERFIL_USUARIO.roles.name; } catch (e) { return null; } }
@@ -45,6 +45,7 @@
   function fromRow(r) { var f = blank(); Object.keys(f).forEach(function (k) { if (r[k] != null) f[k] = r[k]; }); f.cuit = fmtCuit(f.cuit); f.cbu = fmtCbu(f.cbu); return f; }
   function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
   function dirty() { return !!st.form && !same(st.form, st.orig); }
+  function anyDirty() { return dirty() || (st.tab === 'tarifas' && st.ratesDirty); }
 
   function problems(f) {
     var p = {};
@@ -91,7 +92,7 @@
     render();
   }
   function close() {
-    if (dirty() && !global.confirm('Tenés cambios sin guardar. ¿Cerrar igual?')) return;
+    if (anyDirty() && !global.confirm('Tenés cambios sin guardar. ¿Cerrar igual?')) return;
     if (typeof global.closeModal === 'function') global.closeModal('outsourced-providers'); else box().classList.remove('open');
   }
   function visible() {
@@ -100,13 +101,16 @@
   }
   function select(id, quiet) {
     st.lastTerm = null;
-    if (!quiet && dirty() && !global.confirm('Tenés cambios sin guardar. ¿Descartarlos?')) return false;
+    if (!quiet && anyDirty() && !global.confirm('Tenés cambios sin guardar. ¿Descartarlos?')) return false;
     var r = st.rows.find(function (x) { return x.provider_id === id; }); if (!r) return false;
+    if (st.sel !== id) st.tab = 'datos';
+    st.ratesDirty = false;
     st.sel = id; st.form = fromRow(r); st.orig = fromRow(r); st.tried = false; st.mobileForm = true;
     return true;
   }
   function startNew(quiet) {
-    if (!quiet && dirty() && !global.confirm('Tenés cambios sin guardar. ¿Descartarlos?')) return false;
+    if (!quiet && anyDirty() && !global.confirm('Tenés cambios sin guardar. ¿Descartarlos?')) return false;
+    st.tab = 'datos'; st.ratesDirty = false;
     st.sel = null; st.form = blank(); st.orig = blank(); st.tried = false; st.mobileForm = true;
     return true;
   }
@@ -133,8 +137,10 @@
     var termCustom = TERMS.indexOf(Number(f.payment_term_days)) < 0;
     return '<section class="osp-form" aria-labelledby="osp-form-title"><form novalidate autocomplete="off">'
       + '<header class="osp-form-head"><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm osp-back" data-osp-back>' + ico('chevron-left') + 'Lista</button><div><h3 id="osp-form-title">' + title + '</h3><p>' + (editing ? 'Los cambios quedan registrados.' : 'Completá los datos para poder asignarle servicios y pagarle.') + '</p></div>'
-      + (editing ? '<label class="ax-switch osp-active"><input type="checkbox" data-k="is_active"' + (f.is_active ? ' checked' : '') + '><span>' + (f.is_active ? 'Activo' : 'Inactivo') + '</span></label>' : '') + '</header>'
-      + '<div class="osp-form-body">'
+      + (editing && st.tab === 'datos' ? '<label class="ax-switch osp-active"><input type="checkbox" data-k="is_active"' + (f.is_active ? ' checked' : '') + '><span>' + (f.is_active ? 'Activo' : 'Inactivo') + '</span></label>' : '') + '</header>'
+      + (editing ? '<div class="ax-seg osp-tabs" role="tablist" aria-label="Ficha"><button type="button" role="tab" data-osp-tab="datos" aria-pressed="' + (st.tab === 'datos') + '">Datos</button><button type="button" role="tab" data-osp-tab="tarifas" aria-pressed="' + (st.tab === 'tarifas') + '">Tarifas</button></div>' : '')
+      + (editing && st.tab === 'tarifas' ? '<div class="osp-form-body osp-rates" data-osp-rates></div></form></section>' : '')
+      + (editing && st.tab === 'tarifas' ? '' : '<div class="osp-form-body">'
       + '<section class="osp-step" data-step="id"><h4><span class="osp-num">1</span>Identificación</h4><div class="osp-grid">'
       + field('display_name', 'Nombre', '<input class="ax-input" data-k="display_name" maxlength="80" placeholder="Cómo lo conocen · ej.: Grúas Sur" value="' + esc(f.display_name) + '">')
       + field('legal_name', 'Razón social', '<input class="ax-input" data-k="legal_name" maxlength="120" placeholder="Como figura en la factura" value="' + esc(f.legal_name) + '">')
@@ -155,7 +161,7 @@
       + '</div></section>'
       + '<div role="alert" class="osp-error"></div></div>'
       + '<footer class="osp-foot"><p class="osp-status" data-osp-status aria-live="polite"></p>' + (dirty() || !editing ? '<button type="button" class="ax-btn ax-btn-ghost" data-osp-discard>' + (editing ? 'Descartar cambios' : 'Cancelar') + '</button>' : '') + '<button type="submit" class="ax-btn ax-btn-primary" data-osp-save>' + (editing ? 'Guardar cambios' : 'Crear tercerizado') + '</button></footer>'
-      + '</form></section>';
+      + '</form></section>');
   }
 
   function render() {
@@ -168,7 +174,7 @@
 
   /* Pinta errores, estados y el pie sin redibujar el formulario (no se pierde el foco). */
   function paint() {
-    var b = box(), f = st.form; if (!f) return;
+    var b = box(), f = st.form; if (!f || st.tab === 'tarifas') return;
     var pr = problems(f), touched = st.touched || {};
     Object.keys(LABEL).forEach(function (k) {
       var fld = b.querySelector('[data-f="' + k + '"]'), msg = b.querySelector('[data-msg="' + k + '"]');
@@ -212,6 +218,20 @@
     var b = box(); bindList();
     b.querySelector('[data-osp-close]').onclick = close;
     if (!st.form) return;
+    b.querySelectorAll('[data-osp-tab]').forEach(function (t) { t.onclick = function () {
+      var to = t.getAttribute('data-osp-tab'); if (to === st.tab) return;
+      if (to === 'tarifas' && dirty() && !global.confirm('Tenés cambios sin guardar en los datos. ¿Descartarlos?')) return;
+      if (to === 'datos' && st.ratesDirty && !global.confirm('Tenés cambios sin guardar en la tarifa. ¿Descartarlos?')) return;
+      if (to === 'tarifas') st.form = JSON.parse(JSON.stringify(st.orig));
+      st.tab = to; st.ratesDirty = false; render();
+    }; });
+    var back0 = b.querySelector('[data-osp-back]'); if (back0) back0.onclick = function () { st.mobileForm = false; b.querySelector('.osp-layout').classList.remove('show-form'); };
+    var rates = b.querySelector('[data-osp-rates]');
+    if (rates) {
+      var prov = st.rows.find(function (x) { return x.provider_id === st.sel; });
+      if (global.AuxTercerizadosTarifas && prov) global.AuxTercerizadosTarifas.mount(rates, prov, { onChange: function (d) { st.ratesDirty = d; } });
+      return;
+    }
     st.touched = st.touched || {};
     var f = st.form, form = b.querySelector('form');
     b.querySelectorAll('[data-k]').forEach(function (inp) {
