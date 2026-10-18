@@ -4,7 +4,7 @@ Lista de mejoras para ir viendo con el tiempo. Se agregan abajo a medida que apa
 
 | # | Tema | Anotado | Estado |
 |---|------|---------|--------|
-| 1 | Servicios programados para los choferes | 14/10/2026 | Pendiente |
+| 1 | Servicios programados para los choferes | 14/10/2026 | Hecho · en prueba (v490) |
 | 2 | Tema de pantalla: Blanco / Negro / Sistema | 14/10/2026 | Hecho · en prueba (v485) |
 | 3 | Editar servicios finalizados (operadores) | 14/10/2026 | Hecho · en producción (v468) |
 | 4 | Tarifas que dependen del servicio principal | 14/10/2026 | Hecho · en producción (v463) |
@@ -14,6 +14,12 @@ Lista de mejoras para ir viendo con el tiempo. Se agregan abajo a medida que apa
 
 ## 1) Servicios programados para los choferes
 Poder dejar servicios programados para un chofer, como una fila o cola de servicios que el chofer va viendo y tomando en orden. Se piensa junto con la 5.
+
+## 1) Avance (18/10/2026)
+En prueba (v490). Elegido por el dueño: **B, sin bloquear**.
+- En «Servicios» del chofer, los servicios para dentro de más de 2 horas van aparte, abajo, en **Programados**, ordenados por fecha, con «Mañana 08:00» y cuánto falta.
+- Se pueden empezar antes: al abrirlo aparece «Empezar ahora» y se pide confirmar («¿Empezás este servicio ahora?»), porque a veces el horario pactado se adelanta.
+- Con la cola de varios servicios, un programado no frena a los de ahora.
 
 ## 2) Tema de pantalla
 Un operador dijo que el fondo negro le molesta. Cada usuario tiene que poder elegir **Blanco**, **Negro** o **Sistema** (el que use el celular o la computadora).
