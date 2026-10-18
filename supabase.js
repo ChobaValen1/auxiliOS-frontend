@@ -4373,7 +4373,7 @@ async function cargarDetalleJornadaAdmin(logId) {
        .eq('log_id', logId)
        .order('created_at_device', { ascending: true }),
     _db.from('fuel_records')
-       .select('fuel_id, log_id, liters, price_per_liter, total_cost, km_at_load, payment_method, payment_app, gas_station, fuel_date, created_at_device')
+       .select('fuel_id, log_id, liters, price_per_liter, total_cost, km_at_load, payment_method, payment_app, gas_station, fuel_date, created_at_device, ticket_path, ticket_mime')
        .or(`log_id.eq.${logId},and(log_id.is.null,truck_id.eq.${log.truck_id},fuel_date.eq.${log.log_date})`)
        .order('fuel_date', { ascending: true }),
     _db.from('tire_checks')
