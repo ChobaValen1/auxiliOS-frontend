@@ -64,7 +64,7 @@
 .os-view-dialog header b{font-size:12px}.os-view-dialog header small{display:block;margin-top:2px;color:var(--muted);font-size:8px}.os-view-dialog header button{border:0;background:transparent;color:var(--muted);font-size:22px}
 .os-view-dialog footer{border-top:1px solid var(--border);border-bottom:0}
 #os-view-settings-body{padding:8px 12px;max-height:64vh;overflow:auto}
-.os-view-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--border)}
+.os-view-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--border)}
 .os-view-row b{display:block;font-size:9px}.os-view-row small{display:block;color:var(--muted);font-size:7px;margin-top:2px}.os-view-row span{display:flex;gap:3px}
 .os-view-row button{width:26px;height:26px;border:1px solid var(--border2);border-radius:5px;background:var(--bg);color:var(--text)}
 .os-location-settings{display:grid;grid-template-columns:1fr repeat(3,auto);gap:8px;align-items:center;margin-bottom:8px;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}

@@ -28,7 +28,8 @@
     var rows = s.order.map(function (id, i) {
       var c = byId(id); if (!c) return '';
       var on = s.selected.indexOf(id) >= 0;
-      return '<li class="axx-row' + (on ? ' is-on' : '') + '"><label><input type="checkbox" data-axx-col="' + esc(id) + '"' + (on ? ' checked' : '') + '><span>' + esc(c.header) + (c.optional ? ' <small>opcional</small>' : '') + '</span></label>'
+      var grip = global.AxDragSort ? global.AxDragSort.grip : '';
+      return '<li class="axx-row' + (on ? ' is-on' : '') + '" data-drag-key="' + esc(id) + '">' + grip + '<label><input type="checkbox" data-axx-col="' + esc(id) + '"' + (on ? ' checked' : '') + '><span>' + esc(c.header) + (c.optional ? ' <small>opcional</small>' : '') + '</span></label>'
         + '<span class="axx-move"><button type="button" data-axx-move="-1" data-axx-key="' + esc(id) + '" aria-label="Subir ' + esc(c.header) + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>'
         + '<button type="button" data-axx-move="1" data-axx-key="' + esc(id) + '" aria-label="Bajar ' + esc(c.header) + '"' + (i === s.order.length - 1 ? ' disabled' : '') + '>↓</button></span></li>';
     }).join('');
@@ -49,6 +50,8 @@
       back = document.createElement('div'); back.id = 'axx-backdrop'; back.className = 'axx-backdrop';
       back.addEventListener('click', onClick); back.addEventListener('change', onChange); back.addEventListener('keydown', onKey);
       document.body.appendChild(back);
+      // Arrastrar la fila para cambiar el orden (las flechas siguen para teclado).
+      if (global.AxDragSort) global.AxDragSort.attach(back, { onMove: function (key, to) { if (!state) return; global.AxDragSort.reorder(state.order, key, to); render('[data-drag-key="' + key + '"] input'); } });
     }
     var scroll = back.querySelector('.axx-list') ? back.querySelector('.axx-list').scrollTop : 0;
     back.innerHTML = markup();

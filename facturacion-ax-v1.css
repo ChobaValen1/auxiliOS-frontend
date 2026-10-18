@@ -250,7 +250,7 @@
 
 #tc-modal .tc-modal { width: min(460px, 100%); }
 #tc-modal .tc-body { gap: 0; padding: var(--ax-sp-3) var(--ax-sp-5); }
-#tc-modal .tc-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--ax-sp-3); padding: 6px 0; border-bottom: 1px solid var(--ax-border); }
+#tc-modal .tc-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--ax-sp-3); padding: 6px 0; border-bottom: 1px solid var(--ax-border); }
 #tc-modal .tc-row:last-of-type { border-bottom: 0; }
 #tc-modal .tc-row .ax-switch { min-width: 0; font-size: var(--ax-fs-md); }
 #tc-modal .tc-row .ax-switch input:disabled { opacity: .55; cursor: not-allowed; }
