@@ -418,7 +418,7 @@
     var estado = a.validando ? marca('running', 'Validando…') : ok ? marca(a.recien ? 'running' : 'done', a.recien ? 'Validando…' : 'Validada', a.recien ? 'is-just' : '') :
       d[kind] ? marca('warn', 'Sin validar') : '';
     return '<div class="psv-field psv-addr' + (err ? ' ax-invalid' : '') + (ok ? ' is-valid' : '') + '"><span>' + label + '</span>' +
-      '<div class="psv-addr-input"><span class="psv-route-stop" aria-hidden="true">' + (unaDireccion() ? ico('map-pin') : kind === 'origin' ? 'A' : 'B') + '</span><input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad"></div>' +
+      '<div class="psv-addr-input"><span class="psv-route-stop" aria-hidden="true">' + (unaDireccion() ? ico('map-pin') : kind === 'origin' ? 'A' : 'B') + '</span><input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad o coordenadas"></div>' +
       '<em class="psv-addr-state ' + (ok ? 'ok' : d[kind] ? 'warn' : '') + '">' + estado + '</em>' +
       (err ? '<small class="psv-field-error" role="alert">' + esc(err) + '</small>' : '') +
       '<div class="psv-sugs" id="psv-' + kind + '-sugs" hidden></div></div>';
