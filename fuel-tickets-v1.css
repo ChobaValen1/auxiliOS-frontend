@@ -84,6 +84,40 @@
 .fuelt-error { color: var(--ax-danger); font-size: var(--ax-fs-sm); }
 .fuelt-error:empty { display: none; }
 
+/* Corregir: lo cambiado se marca en ámbar, con lo que tenía antes y Deshacer */
+.fuelt-was { color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.35; }
+.fuelt-was:empty { display: none; }
+.fuelt-was b { color: var(--ax-text-2); font-weight: var(--ax-fw-semibold); text-decoration: line-through; text-decoration-color: var(--ax-text-3); }
+.fuelt-undo { padding: 0; border: 0; background: none; color: var(--ax-accent); font: inherit; font-weight: var(--ax-fw-semibold); cursor: pointer; }
+.fuelt-undo:hover { text-decoration: underline; }
+.fuelt-field.is-changed > span:first-child, .fuelt-pay-wrap.is-changed .fuelt-was { color: var(--ax-accent); }
+.fuelt-field.is-changed .ax-input:not(:focus) { border-color: var(--ax-accent); }
+.fuelt-field.is-changed > span:first-child::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--ax-accent); vertical-align: middle; }
+.fuelt-pay-wrap { display: grid; gap: 8px; }
+/* En Corregir el ámbar significa «cambiado»: el total sin cambios queda neutro */
+.fuelt-edit .fuelt-total-field:not(.is-changed) .ax-input { border-color: var(--ax-border-strong); background: var(--ax-surface-3); }
+.fuelt-edit .fuelt-total-field:not(.is-changed) > span:first-child { color: var(--ax-text-2); }
+.fuelt-edit .fuelt-total-field:not(.is-changed) .fuelt-affix i { color: var(--ax-text-3); }
+.fuelt-pay-wrap.is-changed .ax-seg { border-color: var(--ax-accent); }
+.fuelt-grid-flat { padding: 0; }
+.fuelt-prev, .fuelt-audit { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.4; }
+.fuelt-prev { padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-info-soft); color: var(--ax-text-2); }
+.fuelt-prev .ax-icon { color: var(--ax-info); }
+.fuelt-prev .ax-icon, .fuelt-audit .ax-icon { flex: none; width: 15px; height: 15px; margin-top: 2px; }
+.fuelt-audit { font-size: var(--ax-fs-xs); }
+.fuelt-ticket-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); }
+.fuelt-ticket-row > .ax-icon { flex: none; width: 16px; height: 16px; color: var(--ax-text-3); }
+.fuelt-ticket-row > span { display: grid; flex: 1; min-width: 0; color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+.fuelt-ticket-row small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
+.fuelt-status { flex-wrap: wrap; }
+.fuelt-diff { color: var(--ax-text-2); }
+.fuelt-diff s { color: var(--ax-text-3); }
+.fuelt-diff b { color: var(--ax-accent); }
+.fuelt-status.is-ready .fuelt-diff { color: var(--ax-text-2); font-weight: var(--ax-fw-regular); }
+.fuelt-miss { color: var(--ax-warn); font-weight: var(--ax-fw-semibold); }
+.fuelt-miss::before { content: '·'; margin-right: 6px; color: var(--ax-text-3); }
+.fuelt-footer .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
 /* Visor del ticket */
 .fuelt-preview { display: grid; place-items: center; min-height: 240px; max-height: 70vh; overflow: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius, 8px); background: var(--ax-surface-3); color: var(--ax-text-3); }
 .fuelt-preview img { display: block; max-width: 100%; height: auto; }

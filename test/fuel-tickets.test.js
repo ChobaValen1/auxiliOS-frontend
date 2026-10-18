@@ -73,6 +73,16 @@ test('combustible: el formulario sigue el orden del ticket y avisa qué falta', 
   assert.match(src, /data-fuelt-seg="pay"/);
 });
 
+test('combustible: corregir muestra lo anterior, marca cambios y manda sólo lo cambiado', () => {
+  const editor = read('fuel-admin-editor.js');
+  assert.match(editor, /global\.AuxFuelTickets\.openEdit\(r, \{ plate, onSaved: \(\) => refresh\(r\) \}\)/);
+  assert.match(src, /'Antes: <b>'/);
+  assert.match(src, /data-undo=/);
+  assert.match(src, /submit\.disabled = !ch\.length;/, 'sin cambios no se puede guardar');
+  assert.match(src, /rpc\('update_fuel_record', \{ p_fuel_id: id, p_payload: payload, p_reason: v\.reason \}\)/);
+  assert.match(src, /changes\(\)\.forEach\(function \(x\) \{/, 'el payload sale de los cambios');
+});
+
 test('combustible: estilos con los tokens del sistema, sin colores fijos', () => {
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i);
   assert.match(css, /var\(--ax-accent\)/);
