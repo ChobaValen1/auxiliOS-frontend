@@ -31,3 +31,12 @@ test('programados: fecha en hora de Argentina y estilos con tokens', () => {
   assert.match(src, /return`Mañana \$\{hm\}`/);
   assert.doesNotMatch(css.slice(css.indexOf('/* Programados')), /#[0-9a-f]{3,8}\b/i);
 });
+
+test('programados: el operador lo ve como Programado y tiene su pestaña', () => {
+  const ops = fs.readFileSync('operator-services.js', 'utf8');
+  assert.match(ops, /const PROGRAMMED_AHEAD_MS=2\*60\*60\*1000;/);
+  assert.match(ops, /\['pending','assigned'\]\.includes\(normalizedStatus\(s\.status\)\)&&!s\.trip_id&&!isDriverActivated\(s\)/);
+  assert.match(ops, /if\(isProgrammedService\(s\)\)return`<span class="os-status programmed"/);
+  assert.match(ops, /\['programmed','Programados'\]/);
+  assert.match(ops, /S\.status==='programmed'\?isProgrammedService\(s\):/);
+});
