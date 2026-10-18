@@ -39,3 +39,11 @@ test('tema claro: tokens y nombres viejos, cargado antes que todo y elegible al 
   assert.match(read('ui/icons.svg'), /<symbol id="sun"[\s\S]*<symbol id="moon"[\s\S]*<symbol id="monitor"/);
   assert.equal((sigma.match(/cfg-ch-theme/g) || []).length, 2);
 });
+
+test('tema en el teléfono: dentro de Configuración › Tema (y en la cuenta del chofer); el botón de arriba se oculta', () => {
+  const center = read('configuration-center.js');
+  assert.match(center, /area\('Tema','Oscuro, Claro o el que use tu dispositivo\.'/);
+  assert.match(center, /window\.AuxTheme\.pickerHtml\(\)/);
+  assert.match(css, /@media \(max-width: 767px\) \{ #tb-theme \{ display: none !important; \} \}/);
+  assert.equal((sigma.match(/cfg-ch-section-label">TEMA</g) || []).length, 2);
+});

@@ -8543,8 +8543,8 @@ function _renderPerfilAdminTab() {
       <div class="cfg-ch-row"><span class="cfg-ch-key">Rol</span><span class="cfg-ch-val" style="text-transform:capitalize">${rol}</span></div>
     </div>
 
-    <div class="cfg-ch-section-label">PANTALLA</div>
-    <div class="cfg-ch-card cfg-ch-theme"><div class="cfg-ch-hint" style="margin-bottom:8px">Tema: Oscuro, Claro o el que use tu dispositivo (Sistema).</div>${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}</div>
+    <div class="cfg-ch-section-label">TEMA</div>
+    <div class="cfg-ch-card cfg-ch-theme"><div class="cfg-ch-hint" style="margin-bottom:8px">Oscuro, Claro o el que use tu dispositivo (Sistema).</div>${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}</div>
 
     <div class="cfg-ch-section-label">SEGURIDAD</div>
     <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPasswordAdmin()">
@@ -8615,8 +8615,8 @@ function _abrirPanelChofer() {
           <div class="cfg-ch-row"><span class="cfg-ch-key">DNI</span><span class="cfg-ch-val">${dni}</span></div>
         </div>
 
-        <div class="cfg-ch-section-label">PANTALLA</div>
-        <div class="cfg-ch-card cfg-ch-theme"><div class="cfg-ch-hint" style="margin-bottom:8px">Tema: Oscuro, Claro o el que use tu celular (Sistema).</div>${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}</div>
+        <div class="cfg-ch-section-label">TEMA</div>
+        <div class="cfg-ch-card cfg-ch-theme"><div class="cfg-ch-hint" style="margin-bottom:8px">Oscuro, Claro o el que use tu celular (Sistema).</div>${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}</div>
 
         <div class="cfg-ch-section-label">SEGURIDAD</div>
         <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPassword()">

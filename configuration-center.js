@@ -414,7 +414,8 @@
         'Prestadoras':'M4 21V3h12v18 M16 10h4v11 M8 7h4 M8 11h4 M8 15h4 M2 21h20',
         'Tarifas':'M4 3h16v18H4Z M8 7h8 M8 11h2 M14 11h2 M8 15h2 M14 15h2',
         'Personal / Choferes':'M8 11a4 4 0 1 0 0-8a4 4 0 1 0 0 8 M1 21v-3a7 7 0 0 1 14 0v3 M17 4a4 4 0 0 1 0 8 M18 15a5 5 0 0 1 5 5',
-        'Mi cuenta':'M12 12a5 5 0 1 0 0-10a5 5 0 1 0 0 10 M3 22v-2a9 9 0 0 1 18 0v2'
+        'Mi cuenta':'M12 12a5 5 0 1 0 0-10a5 5 0 1 0 0 10 M3 22v-2a9 9 0 0 1 18 0v2',
+        'Tema':'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M12 3v18'
       };
       return '<svg class="aux-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+(paths[label]||paths.Servicios)+'"/></svg>';
     };
@@ -435,6 +436,9 @@
           route('Prestadoras','Datos, servicios habilitados y parámetros de facturación.','empresas')+route('Tarifas','Valores y vigencias por prestadora.','config-tariff-matrix'))
       + area('Usuarios y permisos','Personal, roles y administración interna.','♙',
           manage ? legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios')+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
+      /* Tema de pantalla: en el teléfono se elige acá (en la computadora también está el botón al lado del perfil). */
+      + area('Tema','Oscuro, Claro o el que use tu dispositivo.','◐',
+          '<div class="aux-theme-area">'+(window.AuxTheme ? window.AuxTheme.pickerHtml() : '')+'<p class="aux-area-note">Se guarda para vos en este dispositivo. Sistema sigue el modo del celular o la computadora.</p></div>')
       + '</div></div>';
   }
 

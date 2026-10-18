@@ -118,3 +118,7 @@ body .nav-avatar-popup { left: 8px; transform: none; min-width: 240px; }
 .ax-theme-menu button:hover, .ax-theme-menu button:focus-visible { outline: none; background: var(--ax-surface-3); }
 .ax-theme-menu button[aria-checked="true"] { background: var(--ax-accent-soft); }
 @media (pointer: coarse) { .ax-theme-menu button { min-height: 44px; } }
+/* En el teléfono el tema se elige en Configuración › Tema (y en la cuenta del chofer), no arriba. */
+@media (max-width: 767px) { #tb-theme { display: none !important; } }
+.aux-theme-area { display: grid; gap: 8px; padding: 4px 0; }
+.aux-theme-area .ax-theme-seg button { min-height: 40px; }
