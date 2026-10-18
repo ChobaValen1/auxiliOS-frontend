@@ -1010,13 +1010,12 @@
   /* ── Eventos ──────────────────────────────────────────────────────────── */
 
   function paintCalculator(focusSelector) {
-    var body = el('psv-form').querySelector('.psv-body'), scroll = body ? body.scrollTop : 0;
-    var calculatorBody = el('psv-calculator-dialog'), calculatorScroll = calculatorBody ? calculatorBody.scrollTop : 0;
+    var form = el('psv-form');
+    var scrolls = ['.psv-body', '.spc-columns', '.spc-editor', '.spc-breakdown'].map(function (selector) {
+      return {selector:selector, top:form.querySelector(selector)?.scrollTop || 0};
+    });
     pintar();
-    body = el('psv-form').querySelector('.psv-body');
-    if (body) body.scrollTop = scroll;
-    calculatorBody = el('psv-calculator-dialog');
-    if (calculatorBody) calculatorBody.scrollTop = calculatorScroll;
+    scrolls.forEach(function (saved) { var target = form.querySelector(saved.selector); if (target) target.scrollTop = saved.top; });
     if (focusSelector) el('psv-form').querySelector(focusSelector)?.focus({preventScroll:true});
   }
 
@@ -1042,7 +1041,7 @@
     if (action === 'calculator-apply') el('psv-presupuesto')?.focus();
     else if (!st.calculatorOpen) el('psv-form').querySelector('[data-psv="calculadora"]')?.focus();
     else if (action === 'calculator-toll' || action === 'calculator-extra') el('psv-form').querySelector('[data-price-item="' + (st.calculatorDraft.items.length - 1) + '"] [data-price-item-key="name"]')?.focus();
-    else if (action === 'calculator-remove') el('psv-form').querySelector('[data-psv="calculator-extra"]')?.focus({preventScroll:true});
+    else if (action === 'calculator-remove') el('psv-form').querySelector('[data-psv="calculator-extra"]')?.focus();
     else if (st.calculatorOpen) el('psv-calculator-dialog')?.querySelector('select,input')?.focus();
   }
 

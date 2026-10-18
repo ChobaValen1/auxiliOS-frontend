@@ -182,8 +182,8 @@ body.psv-open { overflow: hidden; }
 
 /* La calculadora es una herramienta, no parte del panel de presupuesto. */
 .psv-calculator-layer { position:fixed; inset:0; z-index:10070; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.7); }
-.psv-calculator-dialog { width:min(620px,100%); max-height:calc(100dvh - 40px); overflow:auto; overscroll-behavior:contain; border:1px solid var(--ax-border-strong); border-radius:14px; box-shadow:var(--ax-shadow-modal); background:var(--ax-surface); }
-.psv-calculator-dialog .spc { margin:0; padding:24px; border:0; }
+.psv-calculator-dialog { width:min(860px,100%); max-height:min(560px,calc(100dvh - 64px)); display:flex; overflow:hidden; overscroll-behavior:contain; border:1px solid var(--ax-border-strong); border-radius:14px; box-shadow:var(--ax-shadow-modal); background:var(--ax-surface); }
+.psv-calculator-dialog .spc { width:100%; max-height:inherit; margin:0; padding:0; border:0; }
 .psv-calculator-dialog .ax-input { box-sizing:border-box; }
 @media(max-width:980px) {
   .psv-checkout .psv-cols { grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr); gap:24px; }
@@ -218,7 +218,7 @@ body.psv-open { overflow: hidden; }
   .psv-function-button { padding:0 8px; min-height:38px; font-size:11px; }
   .psv-checkout>footer { padding:12px 16px; }
   .psv-calculator-layer { padding:8px; }
-  .psv-calculator-dialog { max-height:calc(100dvh - 16px); }
-  .psv-calculator-dialog .spc { padding:16px; }
+  .psv-calculator-dialog { max-height:86dvh; }
+  .psv-calculator-dialog .spc { padding:0; }
   .psv-calculator-dialog .ax-input,.psv-calculator-dialog .ax-select { min-height:44px; font-size:16px; }
 }

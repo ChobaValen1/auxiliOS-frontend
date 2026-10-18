@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'etapa2-particular-v481-20261017';
+window.AUXILIOS_BUILD_ID = 'etapa2-calculadora-v482-20261017';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

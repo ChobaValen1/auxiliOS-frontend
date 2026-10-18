@@ -3,6 +3,24 @@ const window={};vm.runInNewContext(fs.readFileSync('ui/service-price-calculator-
 const C=window.AuxiliosPriceCalculator;
 const plain=x=>JSON.parse(JSON.stringify(x));
 
+test('modal separa modalidad y desglose, con total y acción propios',()=>{
+  const html=C.render(C.initial());
+  assert.match(html,/class="spc-columns"/);
+  assert.match(html,/class="spc-editor" aria-labelledby="spc-mode-title"/);
+  assert.match(html,/class="spc-summary" aria-labelledby="spc-breakdown-title"/);
+  assert.match(html,/data-price-total aria-live="polite"/);
+  assert.equal((html.match(/data-psv="calculator-apply"/g)||[]).length,1);
+});
+
+test('total independiente se actualiza y se limpia si el cálculo pasa a ser inválido',()=>{
+  const nodes={};for(const key of ['[data-price-error]','[data-price-breakdown]','[data-price-total]','[data-psv="calculator-apply"]'])nodes[key]={textContent:'',innerHTML:'',disabled:false};
+  const fields=[{dataset:{priceKey:'mode'},value:'fixed'},{dataset:{priceKey:'fixed_amount'},value:'15000'}];
+  const root={querySelector:key=>nodes[key],querySelectorAll:key=>key==='[data-price-key]'?fields:[]};
+  C.update(root);assert.match(nodes['[data-price-total]'].textContent,/15.000,00/);assert.equal(nodes['[data-psv="calculator-apply"]'].disabled,false);
+  fields[1].value='-5';C.update(root);assert.equal(nodes['[data-price-total]'].textContent,'—');assert.equal(nodes['[data-price-breakdown]'].innerHTML,'');assert.equal(nodes['[data-psv="calculator-apply"]'].disabled,true);
+  fields[1].value='1000';C.update(root,2000);assert.match(nodes['[data-price-error]'].textContent,/menor a lo ya cobrado/);assert.equal(nodes['[data-psv="calculator-apply"]'].disabled,true);
+});
+
 test('movida, asfalto, ripio, peajes y adicionales tienen desglose sin impuestos automáticos',()=>{
   const draft={mode:'distance',movement:'15.000',asphalt_km:'20',asphalt_rate:'1.000',gravel_km:'3',gravel_rate:'2.000',items:[
     {kind:'toll',name:'Peaje',quantity:'2',unit_price:'1.500'},

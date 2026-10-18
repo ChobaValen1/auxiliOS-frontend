@@ -57,15 +57,16 @@
   function render(draft) {
     const mode = draft.mode || 'distance';
     return '<div class="spc" id="psv-calculator" data-price-calculator><div class="spc-heading"><h4 id="psv-calculator-title">Calcular presupuesto</h4><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" data-psv="calculator-close">Cerrar cálculo</button></div>' +
-      '<p class="spc-note">Importes editables para este servicio. No agrega IVA, recargos ni kilómetros de regreso automáticamente.</p>' +
-      '<label class="ax-field"><span>Modalidad</span><select class="ax-select" data-price-key="mode">' + [['distance','Movida + kilómetros'],['fixed','Monto fijo'],['service','Precio por servicio']].map(([key,label]) => '<option value="' + key + '"' + (mode === key ? ' selected' : '') + '>' + label + '</option>').join('') + '</select></label>' +
+      '<p class="spc-note">No agrega IVA, recargos ni kilómetros de regreso automáticamente.</p>' +
+      '<div class="spc-columns"><section class="spc-editor" aria-labelledby="spc-mode-title"><h5 id="spc-mode-title">Modalidad</h5><select class="ax-select spc-mode" data-price-key="mode" aria-labelledby="spc-mode-title">' + [['distance','Movida + kilómetros'],['fixed','Monto fijo'],['service','Precio por servicio']].map(([key,label]) => '<option value="' + key + '"' + (mode === key ? ' selected' : '') + '>' + label + '</option>').join('') + '</select>' +
       '<div class="spc-grid"' + (mode !== 'distance' ? ' hidden' : '') + '>' + field('movement','Movida · $',draft.movement) + '<span></span>' + field('asphalt_km','KM asfalto a cobrar',draft.asphalt_km) + field('asphalt_rate','Precio por KM asfalto · $',draft.asphalt_rate) + field('gravel_km','KM ripio a cobrar',draft.gravel_km) + field('gravel_rate','Precio por KM ripio · $',draft.gravel_rate) + '</div>' +
       '<div class="spc-grid"' + (mode !== 'fixed' ? ' hidden' : '') + '>' + field('fixed_amount','Monto fijo · $',draft.fixed_amount) + '<p class="spc-note">Reemplaza movida y kilómetros. Los peajes y adicionales de abajo se suman aparte.</p></div>' +
       '<div class="spc-grid"' + (mode !== 'service' ? ' hidden' : '') + '>' + field('service_quantity','Cantidad de servicios',draft.service_quantity) + field('service_rate','Precio por servicio · $',draft.service_rate) + '</div>' +
-      '<div class="spc-items">' + (draft.items || []).map((item,i) => '<div class="spc-item" data-price-item="' + i + '" data-kind="' + esc(item.kind) + '"><label class="ax-field spc-item-name"><span>' + (item.kind === 'toll' ? 'Peaje' : 'Adicional') + '</span><input class="ax-input" data-price-item-key="name" maxlength="120" value="' + esc(item.name) + '" placeholder="' + (item.kind === 'toll' ? 'Nombre del peaje' : 'Ej.: espera, maniobra') + '"></label><label class="ax-field"><span>Cantidad</span><input class="ax-input" inputmode="decimal" data-price-item-key="quantity" value="' + esc(item.quantity) + '"></label><label class="ax-field"><span>Precio unitario · $</span><input class="ax-input" inputmode="decimal" data-price-item-key="unit_price" value="' + esc(item.unit_price) + '"></label><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" data-psv="calculator-remove" data-index="' + i + '" aria-label="Quitar ' + esc(item.name || 'adicional ' + (i+1)) + '">Quitar</button></div>').join('') + '</div>' +
-      '<div class="spc-actions"><button type="button" class="ax-btn ax-btn-sm" data-psv="calculator-toll">Agregar peaje</button><button type="button" class="ax-btn ax-btn-sm" data-psv="calculator-extra">Agregar adicional</button></div>' +
-      '<div class="spc-breakdown" data-price-breakdown></div><p class="spc-error" data-price-error role="alert"></p><button type="button" class="ax-btn ax-btn-primary" data-psv="calculator-apply">Usar presupuesto</button>' +
-      '<p class="spc-note">Solo completa el presupuesto. Guardá el servicio para registrar ese total; el desglose de este borrador no se guarda en la base.</p></div>';
+      '<div class="spc-extras-heading"><h5>Peajes y adicionales</h5><div class="spc-actions"><button type="button" class="ax-btn ax-btn-sm" data-psv="calculator-toll">+ Peaje</button><button type="button" class="ax-btn ax-btn-sm" data-psv="calculator-extra">+ Adicional</button></div></div><div class="spc-items">' + (draft.items || []).map((item,i) => '<div class="spc-item" data-price-item="' + i + '" data-kind="' + esc(item.kind) + '"><label class="ax-field spc-item-name"><span>' + (item.kind === 'toll' ? 'Peaje' : 'Adicional') + '</span><input class="ax-input" data-price-item-key="name" maxlength="120" value="' + esc(item.name) + '" placeholder="' + (item.kind === 'toll' ? 'Nombre del peaje' : 'Ej.: espera, maniobra') + '"></label><label class="ax-field"><span>Cantidad</span><input class="ax-input" inputmode="decimal" data-price-item-key="quantity" value="' + esc(item.quantity) + '"></label><label class="ax-field"><span>Precio unitario · $</span><input class="ax-input" inputmode="decimal" data-price-item-key="unit_price" value="' + esc(item.unit_price) + '"></label><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" data-psv="calculator-remove" data-index="' + i + '" aria-label="Quitar ' + esc(item.name || 'adicional ' + (i+1)) + '">×</button></div>').join('') + '</div>' +
+      '</section><section class="spc-summary" aria-labelledby="spc-breakdown-title"><h5 id="spc-breakdown-title">Desglose</h5><div class="spc-breakdown" data-price-breakdown></div>' +
+      '<div class="spc-total"><span>Precio total<small>Redondeado al peso</small></span><strong data-price-total aria-live="polite">$ 0,00</strong></div>' +
+      '<p class="spc-error" data-price-error role="alert"></p><button type="button" class="ax-btn ax-btn-primary" data-psv="calculator-apply">Usar presupuesto</button>' +
+      '<p class="spc-note spc-save-note">Después guardá el servicio. Se registra el total; el desglose de este borrador no se guarda en la base.</p></section></div></div>';
   }
   function read(root) {
     const draft = {items:[]};
@@ -78,14 +79,16 @@
     return draft;
   }
   function update(root, minimum = 0) {
-    const error = root.querySelector('[data-price-error]'), summary = root.querySelector('[data-price-breakdown]'), apply = root.querySelector('[data-psv="calculator-apply"]');
+    const error = root.querySelector('[data-price-error]'), summary = root.querySelector('[data-price-breakdown]'), total = root.querySelector('[data-price-total]'), apply = root.querySelector('[data-psv="calculator-apply"]');
     try {
       const result = calculate(read(root));
-      summary.innerHTML = '<dl>' + result.lines.filter(line => line.subtotal > 0).map(line => '<div><dt>' + esc(line.label) + '<small>' + quantity(line.quantity) + ' × ' + money(line.unit_price) + '</small></dt><dd>' + money(line.subtotal) + '</dd></div>').join('') + '<div class="spc-total"><dt>Presupuesto<small>Redondeado al peso, como el formulario actual</small></dt><dd>' + money(result.budget) + '</dd></div></dl>';
+      summary.innerHTML = '<dl>' + result.lines.filter(line => line.subtotal > 0).map(line => '<div><dt>' + esc(line.label) + '<small>' + quantity(line.quantity) + ' × ' + money(line.unit_price) + '</small></dt><dd>' + money(line.subtotal) + '</dd></div>').join('') + '</dl>';
+      if (!result.lines.some(line => line.subtotal > 0)) summary.innerHTML = '<p class="spc-empty">Completá los importes para ver el detalle.</p>';
+      total.textContent = money(result.budget);
       error.textContent = result.budget < minimum ? 'El presupuesto no puede ser menor a lo ya cobrado (' + money(minimum) + ').' : result.budget <= 0 ? 'Completá precios e importes para obtener un presupuesto mayor a cero.' : '';
       apply.disabled = !!error.textContent;
       return result;
-    } catch (e) { error.textContent = e.message; summary.innerHTML = ''; apply.disabled = true; return null; }
+    } catch (e) { error.textContent = e.message; summary.innerHTML = ''; total.textContent = '—'; apply.disabled = true; return null; }
   }
   global.AuxiliosPriceCalculator = {calculate, initial, render, read, update};
 })(window);
