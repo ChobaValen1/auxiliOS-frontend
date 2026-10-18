@@ -1,0 +1,95 @@
+/* AuxiliOS · Tercerizados · Liquidaciones (pestaña de la ficha). Sólo tokens del sistema. */
+.osl { display: grid; gap: 14px; padding-top: 14px; }
+.osl.is-busy { cursor: progress; }
+.osl-loading { margin: 24px 0; color: var(--ax-text-3); text-align: center; }
+.osl-month { display: flex; align-items: center; gap: 6px; }
+.osl-month b { min-width: 150px; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-lg) var(--ax-font); text-align: center; }
+.osl-month .ax-btn:disabled { opacity: .35; }
+.osl-block { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--ax-border); }
+.osl-block h4 { margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+.osl-block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.osl-hint { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+.osl-all { display: inline-flex; align-items: center; gap: 6px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); cursor: pointer; }
+
+.osl-pill { display: inline-flex; align-items: center; padding: 2px 9px; border: 1px solid transparent; border-radius: var(--ax-radius-pill); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); white-space: nowrap; }
+.osl-pill.is-draft { border-color: color-mix(in srgb, var(--ax-accent) 40%, transparent); background: var(--ax-accent-soft); color: var(--ax-accent); }
+.osl-pill.is-approved { background: var(--ax-info-soft); color: var(--ax-info); }
+.osl-pill.is-paid { background: var(--ax-ok-soft); color: var(--ax-ok); }
+.osl-pill.is-cancelled { border-color: var(--ax-border-strong); color: var(--ax-text-3); }
+
+.osl-cards { display: grid; gap: 6px; }
+.osl-card, .osl-hist { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); color: var(--ax-text); font: inherit; text-align: left; cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease); }
+.osl-card:hover, .osl-hist:hover { border-color: var(--ax-border-strong); }
+.osl-card:focus-visible, .osl-hist:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+.osl-card > span { display: inline-flex; align-items: center; gap: 10px; }
+.osl-card b { font-size: var(--ax-fs-sm); }
+.osl-card-amt { color: var(--ax-text); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+.osl-card-amt .ax-icon { width: 15px; height: 15px; color: var(--ax-text-3); }
+.osl-hists { display: grid; gap: 6px; }
+.osl-hist { display: grid; grid-template-columns: minmax(0, 1fr) auto 110px; padding: 8px 12px; }
+.osl-hist span:first-child { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+.osl-hist b { font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; text-align: right; }
+
+.osl-list { display: grid; gap: 0; margin: 0; padding: 0; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); list-style: none; overflow: hidden; }
+.osl-row { display: grid; grid-template-columns: auto 64px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 9px 12px; border-top: 1px solid var(--ax-border); background: var(--ax-surface); }
+.osl-row:first-child { border-top: 0; }
+.osl-row:not(:has(.osl-check)) { grid-template-columns: 64px minmax(0, 1fr) auto; }
+.osl-row.is-on { background: var(--ax-surface-2); }
+.osl-check { display: flex; cursor: pointer; }
+.osl-date { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+.osl-main { display: grid; min-width: 0; }
+.osl-main b { color: var(--ax-text); font-size: var(--ax-fs-sm); }
+.osl-main small { overflow: hidden; color: var(--ax-text-3); font-size: var(--ax-fs-xs); text-overflow: ellipsis; white-space: nowrap; }
+.osl-amt { display: grid; justify-items: end; }
+.osl-amt b { color: var(--ax-text); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+.osl-amt small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-variant-numeric: tabular-nums; }
+.osl-empty, .osl-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+.osl-empty .ax-icon, .osl-note .ax-icon { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--ax-text-3); }
+.osl-note { background: var(--ax-info-soft); }
+.osl-note .ax-icon { color: var(--ax-info); }
+.osl-note b { color: var(--ax-text); }
+.osl-error:empty { display: none; }
+.osl-error { padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-danger-soft); color: var(--ax-danger); font-size: var(--ax-fs-sm); }
+.osl-foot { position: sticky; bottom: 0; margin: 0 -20px; }
+.osl-foot .osp-status b { color: var(--ax-text); font-variant-numeric: tabular-nums; }
+.osl-foot .osl-danger { margin-right: auto; color: var(--ax-danger); }
+
+/* Detalle */
+.osl-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.osl-steps { display: flex; gap: 0; margin: 0; padding: 0; list-style: none; counter-reset: s; }
+.osl-steps li { display: flex; flex: 1; align-items: center; gap: 8px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+.osl-steps li:not(:last-child)::after { content: ''; flex: 1; height: 1px; margin: 0 10px; background: var(--ax-border-strong); }
+.osl-steps li > span { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border: 1px solid var(--ax-border-strong); border-radius: 50%; font-size: var(--ax-fs-xs); }
+.osl-steps li > span .ax-icon { width: 13px; height: 13px; }
+.osl-steps li.is-done { color: var(--ax-text-2); }
+.osl-steps li.is-done > span { border-color: var(--ax-ok); background: var(--ax-ok-soft); color: var(--ax-ok); }
+.osl-steps li.is-done::after { background: var(--ax-ok); }
+.osl-steps li.is-now { color: var(--ax-text); }
+.osl-steps li.is-now > span { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-bg); }
+.osl-total { display: grid; gap: 2px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--ax-accent) 35%, transparent); border-radius: var(--ax-radius-lg); background: var(--ax-accent-soft); }
+.osl-total > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+.osl-total > b { color: var(--ax-accent); font: var(--ax-fw-bold) var(--ax-fs-2xl, 28px) var(--ax-font); font-variant-numeric: tabular-nums; }
+.osl-total > small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.osl-split { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 10px 0 0; padding-top: 10px; border-top: 1px dashed color-mix(in srgb, var(--ax-accent) 30%, transparent); }
+.osl-split div, .osl-facts div { display: grid; gap: 1px; }
+.osl-split dt, .osl-facts dt { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.osl-split dd, .osl-facts dd { margin: 0; color: var(--ax-text); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; }
+.osl-facts { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; }
+.osl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 10px; }
+.osl-field { display: grid; gap: 6px; }
+.osl-field > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+.osl-field > span i { color: var(--ax-text-3); font-style: normal; font-weight: var(--ax-fw-regular); }
+
+@media (max-width: 760px) {
+  .osl-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .osl-row:not(:has(.osl-check)) { grid-template-columns: minmax(0, 1fr) auto; }
+  .osl-date { grid-column: -2; grid-row: 2; justify-self: end; font-size: var(--ax-fs-xs); }
+  .osl-grid { grid-template-columns: 1fr; }
+  .osl-hist { grid-template-columns: minmax(0, 1fr) auto; }
+  .osl-hist b { grid-column: 1 / -1; text-align: left; }
+  .osl-steps li { font-size: var(--ax-fs-xs); }
+  .osl-steps li:not(:last-child)::after { margin: 0 6px; }
+  .osl-foot { margin: 0 -16px; }
+}
+.osl-done { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--ax-ok); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+.osl-done .ax-icon { width: 14px; height: 14px; }

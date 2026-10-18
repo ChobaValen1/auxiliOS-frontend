@@ -138,9 +138,10 @@
     return '<section class="osp-form" aria-labelledby="osp-form-title"><form novalidate autocomplete="off">'
       + '<header class="osp-form-head"><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm osp-back" data-osp-back>' + ico('chevron-left') + 'Lista</button><div><h3 id="osp-form-title">' + title + '</h3><p>' + (editing ? 'Los cambios quedan registrados.' : 'Completá los datos para poder asignarle servicios y pagarle.') + '</p></div>'
       + (editing && st.tab === 'datos' ? '<label class="ax-switch osp-active"><input type="checkbox" data-k="is_active"' + (f.is_active ? ' checked' : '') + '><span>' + (f.is_active ? 'Activo' : 'Inactivo') + '</span></label>' : '') + '</header>'
-      + (editing ? '<div class="ax-seg osp-tabs" role="tablist" aria-label="Ficha"><button type="button" role="tab" data-osp-tab="datos" aria-pressed="' + (st.tab === 'datos') + '">Datos</button><button type="button" role="tab" data-osp-tab="tarifas" aria-pressed="' + (st.tab === 'tarifas') + '">Tarifas</button></div>' : '')
+      + (editing ? '<div class="ax-seg osp-tabs" role="tablist" aria-label="Ficha"><button type="button" role="tab" data-osp-tab="datos" aria-pressed="' + (st.tab === 'datos') + '">Datos</button><button type="button" role="tab" data-osp-tab="tarifas" aria-pressed="' + (st.tab === 'tarifas') + '">Tarifas</button><button type="button" role="tab" data-osp-tab="liquidaciones" aria-pressed="' + (st.tab === 'liquidaciones') + '">Liquidaciones</button></div>' : '')
       + (editing && st.tab === 'tarifas' ? '<div class="osp-form-body osp-rates" data-osp-rates></div></form></section>' : '')
-      + (editing && st.tab === 'tarifas' ? '' : '<div class="osp-form-body">'
+      + (editing && st.tab === 'liquidaciones' ? '<div class="osp-form-body osp-rates" data-osp-liq></div></form></section>' : '')
+      + (editing && st.tab !== 'datos' ? '' : '<div class="osp-form-body">'
       + '<section class="osp-step" data-step="id"><h4><span class="osp-num">1</span>Identificación</h4><div class="osp-grid">'
       + field('display_name', 'Nombre', '<input class="ax-input" data-k="display_name" maxlength="80" placeholder="Cómo lo conocen · ej.: Grúas Sur" value="' + esc(f.display_name) + '">')
       + field('legal_name', 'Razón social', '<input class="ax-input" data-k="legal_name" maxlength="120" placeholder="Como figura en la factura" value="' + esc(f.legal_name) + '">')
@@ -174,7 +175,7 @@
 
   /* Pinta errores, estados y el pie sin redibujar el formulario (no se pierde el foco). */
   function paint() {
-    var b = box(), f = st.form; if (!f || st.tab === 'tarifas') return;
+    var b = box(), f = st.form; if (!f || st.tab !== 'datos') return;
     var pr = problems(f), touched = st.touched || {};
     Object.keys(LABEL).forEach(function (k) {
       var fld = b.querySelector('[data-f="' + k + '"]'), msg = b.querySelector('[data-msg="' + k + '"]');
@@ -220,9 +221,9 @@
     if (!st.form) return;
     b.querySelectorAll('[data-osp-tab]').forEach(function (t) { t.onclick = function () {
       var to = t.getAttribute('data-osp-tab'); if (to === st.tab) return;
-      if (to === 'tarifas' && dirty() && !global.confirm('Tenés cambios sin guardar en los datos. ¿Descartarlos?')) return;
-      if (to === 'datos' && st.ratesDirty && !global.confirm('Tenés cambios sin guardar en la tarifa. ¿Descartarlos?')) return;
-      if (to === 'tarifas') st.form = JSON.parse(JSON.stringify(st.orig));
+      if (st.tab === 'datos' && dirty() && !global.confirm('Tenés cambios sin guardar en los datos. ¿Descartarlos?')) return;
+      if (st.tab === 'tarifas' && st.ratesDirty && !global.confirm('Tenés cambios sin guardar en la tarifa. ¿Descartarlos?')) return;
+      if (to !== 'datos') st.form = JSON.parse(JSON.stringify(st.orig));
       st.tab = to; st.ratesDirty = false; render();
     }; });
     var back0 = b.querySelector('[data-osp-back]'); if (back0) back0.onclick = function () { st.mobileForm = false; b.querySelector('.osp-layout').classList.remove('show-form'); };
@@ -230,6 +231,12 @@
     if (rates) {
       var prov = st.rows.find(function (x) { return x.provider_id === st.sel; });
       if (global.AuxTercerizadosTarifas && prov) global.AuxTercerizadosTarifas.mount(rates, prov, { onChange: function (d) { st.ratesDirty = d; } });
+      return;
+    }
+    var liq = b.querySelector('[data-osp-liq]');
+    if (liq) {
+      var prov2 = st.rows.find(function (x) { return x.provider_id === st.sel; });
+      if (global.AuxTercerizadosLiquidaciones && prov2) global.AuxTercerizadosLiquidaciones.mount(liq, prov2);
       return;
     }
     st.touched = st.touched || {};
