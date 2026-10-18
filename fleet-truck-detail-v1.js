@@ -340,8 +340,8 @@
           '<td class="ftd-r ftd-n">' + num(f.liters).toLocaleString('es-AR') + ' L</td><td class="ftd-r ftd-n">' + (f.price_per_liter != null ? precioLitro(f.price_per_liter) : '—') + '</td>' +
           '<td class="ftd-r ftd-n">' + money(f.total_cost) + '</td><td class="ftd-r ftd-n">' + (f.km_at_load != null ? num(f.km_at_load).toLocaleString('es-AR') : '—') + '</td>' +
           '<td class="ftd-r ftd-n">' + (consumoAlto(v, rend.promedio) ? val(kml(v), 'alerta') : kml(v)) + '</td>' +
-          '<td>' + esc(f.payment_app || PAGO[f.payment_method] || f.payment_method || '—') + '</td>' +
-          (admin() ? '<td><div class="ftd-service-actions">' + (anuladas ? boton('restaurar-carga', 'Restaurar', ' data-id="' + esc(f.fuel_id) + '"') : boton('editar-carga', 'Editar', ' data-id="' + esc(f.fuel_id) + '"') + boton('anular-carga', 'Anular', ' data-id="' + esc(f.fuel_id) + '"')) + '</div></td>' : '') + '</tr>';
+          '<td>' + esc(f.payment_app || PAGO[f.payment_method] || f.payment_method || '—') + (!admin() ? ticket(f) : '') + '</td>' +
+          (admin() ? '<td><div class="ftd-service-actions">' + (anuladas ? '' : ticket(f)) + (anuladas ? boton('restaurar-carga', 'Restaurar', ' data-id="' + esc(f.fuel_id) + '"') : boton('editar-carga', 'Editar', ' data-id="' + esc(f.fuel_id) + '"') + boton('anular-carga', 'Anular', ' data-id="' + esc(f.fuel_id) + '"')) + '</div></td>' : '') + '</tr>';
       }).join('') : '<tr><td colspan="' + cols + '" class="ftd-vacio">No hay cargas ' + (anuladas ? 'anuladas' : 'activas') + '.</td></tr>') + '</tbody><tfoot>' +
       '<tr class="ftd-fuel-totals"><th scope="row">Total<small>Historial activo · ' + tot.cargas + ' cargas</small></th>' +
       '<td class="ftd-r ftd-n">' + tot.litros.toLocaleString('es-AR', { maximumFractionDigits: 2 }) + ' L</td>' +
@@ -352,6 +352,9 @@
     var exports = '<button type="button" class="ftd-btn" data-ftd="fuel-excel"' + (!rows.length ? ' disabled' : '') + '>Exportar Excel</button><button type="button" class="ftd-btn" data-ftd="fuel-csv"' + (!rows.length ? ' disabled' : '') + '>Exportar CSV</button>';
     return seccion('combustible', 'Combustible', [boton('carga', ico('plus') + 'Registrar carga'), exports], filtros + tabla + pager + '<p class="ftd-nota">La búsqueda y la exportación incluyen todas las páginas del resultado. Los totales al pie corresponden a todo el historial activo del móvil, sin filtros. Precio promedio ponderado: importe total ÷ litros totales. El rinde usa la carga anterior del historial, aunque no esté visible.</p>');
   }
+
+  /* Ticket guardado de la carga (fuel-tickets-v1.js): ver, o adjuntar si es Administración. */
+  function ticket(f) { return global.AuxFuelTickets ? global.AuxFuelTickets.buttonHtml(f, { truckId: st.id }) : ''; }
 
   function fuelFiltradas(rows, view, filters) {
     filters = filters || {};
