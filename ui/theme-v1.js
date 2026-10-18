@@ -52,5 +52,50 @@
     if (seg) setTimeout(function () { if (seg.isConnected) seg.outerHTML = pickerHtml(); }, 0);
   }
 
-  global.AuxTheme = { get: read, set: set, apply: apply, resolve: resolve, pickerHtml: pickerHtml, choose: choose };
+  /* Botón con ícono al lado del perfil (arriba a la derecha): muestra el tema elegido y abre un menú chico. */
+  var OPTIONS = [['dark', 'Oscuro', 'moon'], ['light', 'Claro', 'sun'], ['system', 'Sistema', 'monitor']];
+  function iconFor(pref) { return pref === 'light' ? 'sun' : pref === 'system' ? 'monitor' : 'moon'; }
+  function syncButton() {
+    var btn = document.getElementById('tb-theme'); if (!btn) return;
+    var pref = read(), use = btn.querySelector('use'), label = OPTIONS.filter(function (o) { return o[0] === pref; })[0][1];
+    if (use) use.setAttribute('href', '/ui/icons.svg#' + iconFor(pref));
+    btn.setAttribute('title', 'Tema de pantalla: ' + label);
+  }
+  var menu = null;
+  function closeMenu() {
+    if (!menu) return;
+    var m = menu; menu = null; m.remove();
+    document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', onKey, true);
+    var btn = document.getElementById('tb-theme'); if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+  function outside(e) { if (menu && !menu.contains(e.target) && !e.target.closest('#tb-theme')) closeMenu(); }
+  function onKey(e) {
+    if (!menu) return;
+    if (e.key === 'Escape') { e.preventDefault(); var b = document.getElementById('tb-theme'); closeMenu(); if (b) b.focus(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      var items = Array.prototype.slice.call(menu.querySelectorAll('button')), i = items.indexOf(document.activeElement);
+      items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+    }
+  }
+  function toggleMenu(btn) {
+    if (menu) return closeMenu();
+    var cur = read(), r = btn.getBoundingClientRect();
+    menu = document.createElement('div');
+    menu.className = 'ax-theme-menu'; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', 'Tema de pantalla');
+    menu.innerHTML = '<small>Pantalla</small>' + OPTIONS.map(function (o) {
+      return '<button type="button" role="menuitemradio" aria-checked="' + (cur === o[0]) + '" data-theme-pick="' + o[0] + '"><svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#' + o[2] + '"/></svg><span>' + o[1] + '</span>' + (cur === o[0] ? '<b aria-hidden="true">✓</b>' : '') + '</button>';
+    }).join('');
+    menu.style.top = Math.round(r.bottom + 8) + 'px';
+    menu.style.right = Math.max(8, Math.round(global.innerWidth - r.right)) + 'px';
+    menu.addEventListener('click', function (e) { var b = e.target.closest('[data-theme-pick]'); if (!b) return; set(b.getAttribute('data-theme-pick')); closeMenu(); btn.focus(); });
+    document.body.appendChild(menu);
+    btn.setAttribute('aria-expanded', 'true');
+    document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', onKey, true);
+    var checked = menu.querySelector('[aria-checked="true"]'); if (checked) checked.focus();
+  }
+  global.addEventListener('auxilios:theme', syncButton);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncButton); else syncButton();
+
+  global.AuxTheme = { get: read, set: set, apply: apply, resolve: resolve, pickerHtml: pickerHtml, choose: choose, toggleMenu: toggleMenu };
 })(window);

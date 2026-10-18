@@ -8498,8 +8498,6 @@ function toggleNavAvatarMenu() {
     const roleEl = document.getElementById('nav-avatar-popup-role');
     if (nameEl && PERFIL_USUARIO?.full_name) nameEl.textContent = PERFIL_USUARIO.full_name;
     if (roleEl && PERFIL_USUARIO?.roles?.name) roleEl.textContent = PERFIL_USUARIO.roles.name;
-    const themeEl = document.getElementById('nav-avatar-theme');
-    if (themeEl && window.AuxTheme) themeEl.innerHTML = window.AuxTheme.pickerHtml();
     const closeOutside = (e) => {
       if (!popup.contains(e.target) && !e.target.closest('.nav-avatar')) {
         popup.classList.remove('open');

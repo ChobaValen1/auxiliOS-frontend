@@ -6,8 +6,8 @@ const src = read('ui/theme-v1.js'), css = read('ui/theme-light-v1.css'), index =
 function boot({ saved, systemLight = false, user } = {}) {
   const store = new Map(Object.entries(saved || {})), attrs = {};
   const root = { setAttribute: (k, v) => { attrs[k] = v; }, style: {} };
-  const window = { localStorage: { getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v)) }, matchMedia: () => ({ matches: systemLight, addEventListener() {} }), dispatchEvent() {}, PERFIL_USUARIO: user };
-  vm.runInNewContext(src, { window, document: { documentElement: root }, setInterval: () => 0, clearInterval() {}, setTimeout: f => f(), CustomEvent: function () {} });
+  const window = { localStorage: { getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v)) }, matchMedia: () => ({ matches: systemLight, addEventListener() {} }), dispatchEvent() {}, addEventListener() {}, PERFIL_USUARIO: user };
+  vm.runInNewContext(src, { window, document: { documentElement: root, readyState: 'complete', getElementById: () => null, addEventListener() {} }, setInterval: () => 0, clearInterval() {}, setTimeout: f => f(), CustomEvent: function () {} });
   return { T: window.AuxTheme, attrs, store };
 }
 
@@ -29,11 +29,13 @@ test('tema: cada usuario guarda su elección en el navegador', () => {
   assert.equal(b.store.get('auxilios.theme.u1'), 'system');
 });
 
-test('tema claro: tokens y nombres viejos, cargado antes que todo y elegible desde el avatar y Mi cuenta', () => {
+test('tema claro: tokens y nombres viejos, cargado antes que todo y elegible al lado del perfil y en Mi cuenta', () => {
   assert.match(css, /:root\[data-theme="light"\] \{[\s\S]*--ax-bg: #f3f4f7;[\s\S]*--ax-text: #161a23;[\s\S]*--bg-app: #f3f4f7;/);
   assert.ok(index.indexOf('/ui/theme-v1.js') < index.indexOf('rel="stylesheet"'), 'el tema se aplica antes de los estilos');
   assert.match(index, /\/ui\/theme-light-v1\.css\?v=[^"]+">\n<\/head>/);
-  assert.match(index, /id="nav-avatar-theme"/);
-  assert.match(sigma, /themeEl\.innerHTML = window\.AuxTheme\.pickerHtml\(\)/);
+  // Botón con ícono al lado del perfil, arriba a la derecha (computadora, celular y chofer).
+  assert.match(index, /<span class="role-badge-text">Admin<\/span><\/span>\n  <div class="tb-btn tb-theme" id="tb-theme" onclick="AuxTheme\.toggleMenu\(this\)"/);
+  assert.match(src, /\['dark', 'Oscuro', 'moon'\], \['light', 'Claro', 'sun'\], \['system', 'Sistema', 'monitor'\]/);
+  assert.match(read('ui/icons.svg'), /<symbol id="sun"[\s\S]*<symbol id="moon"[\s\S]*<symbol id="monitor"/);
   assert.equal((sigma.match(/cfg-ch-theme/g) || []).length, 2);
 });

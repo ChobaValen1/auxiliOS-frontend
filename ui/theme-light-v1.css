@@ -108,3 +108,13 @@
 body .nav-avatar-popup { left: 8px; transform: none; min-width: 240px; }
 .nav-avatar-popup-theme small { display: block; margin-bottom: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
 .ax-theme-seg { display: flex; }
+
+/* Botón de tema al lado del perfil y su menú */
+.ax-theme-menu { position: fixed; z-index: var(--ax-z-menu); display: flex; flex-direction: column; gap: 2px; min-width: 180px; padding: 6px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); box-shadow: var(--ax-shadow-pop); font-family: var(--ax-font); animation: ax-fade-in var(--ax-dur) var(--ax-ease-out) both; }
+.ax-theme-menu small { padding: 4px 8px 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+.ax-theme-menu button { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 10px; border: 0; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-md) var(--ax-font); text-align: left; cursor: pointer; }
+.ax-theme-menu button span { flex: 1; }
+.ax-theme-menu button b { color: var(--ax-accent); }
+.ax-theme-menu button:hover, .ax-theme-menu button:focus-visible { outline: none; background: var(--ax-surface-3); }
+.ax-theme-menu button[aria-checked="true"] { background: var(--ax-accent-soft); }
+@media (pointer: coarse) { .ax-theme-menu button { min-height: 44px; } }
