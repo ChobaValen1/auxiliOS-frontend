@@ -438,7 +438,7 @@
           manage ? legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios')+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
       /* Tema de pantalla: en el teléfono se elige acá (en la computadora también está el botón al lado del perfil). */
       + area('Tema','Oscuro, Claro o el que use tu dispositivo.','◐',
-          '<div class="aux-theme-area">'+(window.AuxTheme ? window.AuxTheme.pickerHtml() : '')+'<p class="aux-area-note">Se guarda para vos en este dispositivo. Sistema sigue el modo del celular o la computadora.</p></div>')
+          '<div class="aux-theme-area">'+(typeof window !== 'undefined' && window.AuxTheme ? window.AuxTheme.pickerHtml() : '')+'<p class="aux-area-note">Se guarda para vos en este dispositivo. Sistema sigue el modo del celular o la computadora.</p></div>')
       + '</div></div>';
   }
 
