@@ -1,0 +1,110 @@
+/* AuxiliOS · Tema claro
+   Se activa con <html data-theme="light"> (lo pone ui/theme-v1.js según la elección del usuario).
+   Redefine los tokens del sistema y los nombres viejos de sigma.css; el resto de las pantallas
+   los usa, así que cambian solas. Abajo, los pocos lugares que tenían colores fijos. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Tokens del sistema */
+  --ax-bg: #f3f4f7;
+  --ax-surface: #ffffff;
+  --ax-surface-2: #ffffff;
+  --ax-surface-3: #eceef3;
+  --ax-border: #e0e3ea;
+  --ax-border-strong: #c9ced9;
+  --ax-text: #161a23;
+  --ax-text-2: #474f63;
+  --ax-text-3: #646d82;
+  --ax-accent: #c97f00;
+  --ax-accent-hover: #b06f00;
+  --ax-accent-fg: #ffffff;
+  --ax-accent-soft: rgba(229, 145, 0, .14);
+  --ax-focus: 0 0 0 3px rgba(201, 127, 0, .30);
+  --ax-warn: #b36b00;
+  --ax-warn-soft: rgba(229, 145, 0, .14);
+  --ax-danger: #c4352e;
+  --ax-danger-strong: #c4352e;
+  --ax-danger-soft: rgba(196, 53, 46, .10);
+  --ax-ok: #12814c;
+  --ax-ok-soft: rgba(18, 129, 76, .11);
+  --ax-info: #2563b8;
+  --ax-info-soft: rgba(37, 99, 184, .10);
+  --ax-shadow-pop: 0 8px 24px rgba(20, 26, 40, .14);
+  --ax-shadow-modal: 0 20px 60px rgba(20, 26, 40, .22);
+
+  /* Nombres viejos (sigma.css) */
+  --bg: #f3f4f7;
+  --panel: #ffffff;
+  --card: #ffffff;
+  --border: #e0e3ea;
+  --border2: #c9ced9;
+  --amber: #c97f00;
+  --amber-lo: rgba(229, 145, 0, .14);
+  --blue: #2563b8;
+  --blue-lo: rgba(37, 99, 184, .10);
+  --green: #12814c;
+  --green-lo: rgba(18, 129, 76, .11);
+  --red: #c4352e;
+  --red-lo: rgba(196, 53, 46, .10);
+  --cyan: #0b7f8f;
+  --purple: #6a46d1;
+  --orange: #c45a10;
+  --text: #161a23;
+  --muted: #646d82;
+  --muted2: #474f63;
+  --primary: #2563b8;
+  --bg-app: #f3f4f7;
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
+  --text-main: #161a23;
+  --text-muted: #474f63;
+}
+
+/* Fondo de modales: más liviano que en oscuro */
+:root[data-theme="light"] .modal-backdrop,
+:root[data-theme="light"] .axx-backdrop,
+:root[data-theme="light"] .ax-modal-backdrop { background: rgba(22, 26, 35, .38); }
+
+/* Campos: siempre blancos con borde visible */
+:root[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea { color-scheme: light; }
+
+/* Selector de tema */
+.ax-theme-seg { width: 100%; }
+.ax-theme-seg button { flex: 1; }
+
+/* Colores fijos de pantallas viejas, pasados a los tokens en claro */
+:root[data-theme="light"] .os-embedded-note,
+:root[data-theme="light"] .os-embedded-ok,
+:root[data-theme="light"] .osaa-correction p,
+:root[data-theme="light"] .emerg-step-text,
+:root[data-theme="light"] .pv-odometer,
+:root[data-theme="light"] .rend-service-identification span,
+:root[data-theme="light"] .rmv-map-suggestions span { color: var(--ax-text-2); }
+:root[data-theme="light"] .os-embedded-clear b,
+:root[data-theme="light"] .os-activation-summary b,
+:root[data-theme="light"] .os-charge-badge.accepted { color: var(--ax-ok); }
+:root[data-theme="light"] .osaa-correction,
+:root[data-theme="light"] .os-document-state.awaiting-review { color: var(--ax-warn); }
+:root[data-theme="light"] .banner-orange { color: var(--orange); }
+:root[data-theme="light"] .jhist-open-btn { color: var(--ax-accent); }
+:root[data-theme="light"] .rend-service-identification strong { color: var(--ax-text); }
+:root[data-theme="light"] .oi-button.primary { color: var(--ax-info); }
+:root[data-theme="light"] .cfg-sidebar,
+:root[data-theme="light"] #pv-driver-modal { background: var(--ax-surface); }
+:root[data-theme="light"] .pv-driver,
+:root[data-theme="light"] #pv-summary,
+:root[data-theme="light"] .pv-journey summary,
+:root[data-theme="light"] .pv-odometer,
+:root[data-theme="light"] .pv-services tfoot,
+:root[data-theme="light"] #pv-driver-modal .pv-modal-header,
+:root[data-theme="light"] .pv-driver-kpis > div,
+:root[data-theme="light"] .pv-modal-columns .pv-salary { background: var(--ax-surface-2); }
+:root[data-theme="light"] .pv-journey-totals { background: var(--ax-surface-3); }
+:root[data-theme="light"] .rend-admin-note { background: var(--ax-info-soft); }
+:root[data-theme="light"] #screen-dashboard .rsm-mapa-lienzo { background: var(--ax-surface-3); }
+:root[data-theme="light"] .aux-config-flyout { background: var(--ax-surface); }
+body .nav-avatar-popup { left: 8px; transform: none; min-width: 240px; }
+.nav-avatar-popup-theme small { display: block; margin-bottom: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+.ax-theme-seg { display: flex; }
