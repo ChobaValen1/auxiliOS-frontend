@@ -37,7 +37,7 @@ test('tema claro: tokens y nombres viejos, cargado antes que todo y elegible al 
   assert.match(index, /<span class="role-badge-text">Admin<\/span><\/span>\n  <div class="tb-btn tb-theme" id="tb-theme" onclick="AuxTheme\.toggleMenu\(this\)"/);
   assert.match(src, /\['dark', 'Oscuro', 'moon'\], \['light', 'Claro', 'sun'\], \['system', 'Sistema', 'monitor'\]/);
   assert.match(read('ui/icons.svg'), /<symbol id="sun"[\s\S]*<symbol id="moon"[\s\S]*<symbol id="monitor"/);
-  assert.equal((sigma.match(/cfg-ch-theme/g) || []).length, 2);
+  assert.equal((sigma.match(/class="[^"]*cfg-ch-theme[ "]/g) || []).length, 2);
 });
 
 test('tema en el teléfono: dentro de Configuración › Tema (y en la cuenta del chofer); el botón de arriba se oculta', () => {
@@ -45,5 +45,7 @@ test('tema en el teléfono: dentro de Configuración › Tema (y en la cuenta de
   assert.match(center, /area\('Tema','Oscuro, Claro o el que use tu dispositivo\.'/);
   assert.match(center, /window\.AuxTheme\.pickerHtml\(\)/);
   assert.match(css, /@media \(max-width: 767px\) \{ #tb-theme \{ display: none !important; \} \}/);
-  assert.equal((sigma.match(/cfg-ch-section-label">TEMA</g) || []).length, 2);
+  assert.equal((sigma.match(/cfg-ch-section-label">TEMA</g) || []).length, 1);
+  // El chofer ve la misma tarjeta "Tema" que Administración en Configuración.
+  assert.match(sigma, /<details class="aux-area cfg-ch-theme cfg-ch-theme-area">[\s\S]*?<h3>Tema<\/h3><p>Oscuro, Claro o el que use tu dispositivo\.<\/p>/);
 });

@@ -122,3 +122,9 @@ body .nav-avatar-popup { left: 8px; transform: none; min-width: 240px; }
 @media (max-width: 767px) { #tb-theme { display: none !important; } }
 .aux-theme-area { display: grid; gap: 8px; padding: 4px 0; }
 .aux-theme-area .ax-theme-seg button { min-height: 40px; }
+/* Tarjeta Tema en la cuenta del chofer: igual a la de Configuración */
+.cfg-ch-theme-area { margin-bottom: 4px; }
+.cfg-ch-theme-area > summary { min-height: 0 !important; padding: 16px !important; }
+.cfg-ch-theme-area .aux-area-icon { margin-bottom: 8px; color: var(--ax-text); }
+.cfg-ch-theme-area .aux-area-links { padding: 12px; }
+.cfg-ch-theme-area .aux-area-note { margin: 0; padding: 2px 2px 0; }

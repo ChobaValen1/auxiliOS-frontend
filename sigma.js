@@ -8615,8 +8615,11 @@ function _abrirPanelChofer() {
           <div class="cfg-ch-row"><span class="cfg-ch-key">DNI</span><span class="cfg-ch-val">${dni}</span></div>
         </div>
 
-        <div class="cfg-ch-section-label">TEMA</div>
-        <div class="cfg-ch-card cfg-ch-theme"><div class="cfg-ch-hint" style="margin-bottom:8px">Oscuro, Claro o el que use tu celular (Sistema).</div>${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}</div>
+        <div class="cfg-ch-section-label">CONFIGURACIÓN</div>
+        <details class="aux-area cfg-ch-theme cfg-ch-theme-area">
+          <summary><span class="aux-area-icon" aria-hidden="true">◐</span><h3>Tema</h3><p>Oscuro, Claro o el que use tu dispositivo.</p><span class="aux-area-open">Ver opciones <span aria-hidden="true">↓</span></span></summary>
+          <div class="aux-area-links"><div class="aux-theme-area">${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}<p class="aux-area-note">Se guarda para vos en este dispositivo. Sistema sigue el modo del celular.</p></div></div>
+        </details>
 
         <div class="cfg-ch-section-label">SEGURIDAD</div>
         <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPassword()">
