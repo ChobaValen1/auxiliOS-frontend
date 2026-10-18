@@ -1,18 +1,90 @@
 /* AuxiliOS · Combustible: carga desde Administración y tickets guardados */
-.fuelt-box { width: min(560px, calc(100vw - 32px)); }
+.fuelt-box { width: min(600px, calc(100vw - 32px)); }
 .fuelt-viewer { width: min(760px, calc(100vw - 32px)); }
-.fuelt-context { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--ax-sp-3, 12px); color: var(--ax-text-2); font-size: var(--ax-fs-sm, 13px); }
-.fuelt-context .ax-icon { width: 16px; height: 16px; color: var(--ax-accent); }
-.fuelt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.fuelt-grid label { display: grid; gap: 6px; color: var(--ax-text-3); font-size: var(--ax-fs-xs, 12px); font-weight: var(--ax-fw-bold, 700); letter-spacing: .04em; text-transform: uppercase; }
-.fuelt-grid label > .form-input { text-transform: none; letter-spacing: 0; font-weight: var(--ax-fw-regular, 400); }
-.fuelt-grid label[hidden] { display: none; }
+.fuelt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Cabecera: título y de qué jornada se trata, sin competir con el formulario */
+.fuelt-head { display: grid; gap: 4px; min-width: 0; }
+.fuelt-context { display: inline-flex; align-items: center; gap: 6px; min-width: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+.fuelt-context span { min-width: 0; overflow-wrap: anywhere; }
+.fuelt-context .ax-icon { flex: none; width: 14px; height: 14px; color: var(--ax-accent); }
+
+/* Pasos numerados: el paso completo se apaga y el número pasa a tilde, así la vista va a lo que falta */
+.fuelt-body { display: grid; gap: var(--ax-sp-4, 16px); }
+.fuelt-step { display: grid; gap: 10px; }
+.fuelt-step + .fuelt-step { padding-top: var(--ax-sp-4, 16px); border-top: 1px solid var(--ax-border); }
+.fuelt-step-plain { padding-top: 0 !important; border-top: 0 !important; }
+.fuelt-step-title { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+.fuelt-num { display: inline-grid; place-items: center; flex: none; width: 22px; height: 22px; border: 1px solid var(--ax-border-strong); border-radius: 50%; color: var(--ax-text-2); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); transition: background var(--ax-dur) var(--ax-ease), color var(--ax-dur) var(--ax-ease), border-color var(--ax-dur) var(--ax-ease); }
+.fuelt-step.is-done .fuelt-num { border-color: var(--ax-ok); background: var(--ax-ok-soft); color: transparent; position: relative; }
+.fuelt-step.is-done .fuelt-num::after { content: ''; position: absolute; width: 9px; height: 5px; border: solid var(--ax-ok); border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); }
+.fuelt-step.is-done .fuelt-step-title { color: var(--ax-text-2); }
+
+/* Campos */
+.fuelt-field { display: grid; gap: 6px; min-width: 0; }
+.fuelt-field > span:first-child { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+.fuelt-msg { min-height: 0; color: var(--ax-text-3); font-size: var(--ax-fs-xs); line-height: 1.35; }
+.fuelt-msg:empty { display: none; }
+.fuelt-field.is-invalid .ax-input, .fuelt-field.is-invalid .ax-textarea { border-color: var(--ax-danger-strong); }
+.fuelt-field.is-invalid .fuelt-msg, .fuelt-msg.is-bad { color: var(--ax-danger); }
+.fuelt-affix { position: relative; display: block; }
+.fuelt-affix i { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); color: var(--ax-text-3); font-style: normal; font-size: var(--ax-fs-sm); pointer-events: none; }
+.fuelt-affix .ax-input { padding-right: 38px; font-variant-numeric: tabular-nums; }
+.fuelt-affix.is-prefix i { right: auto; left: 12px; }
+.fuelt-affix.is-prefix .ax-input { padding-right: 12px; padding-left: 26px; }
+.fuelt-body .ax-textarea { height: auto; min-height: 64px; padding: 10px 12px; resize: vertical; line-height: 1.4; }
+
+/* Litros × precio = total, en una línea: el total es el dato que se controla contra el ticket */
+.fuelt-amounts { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1.2fr); align-items: start; gap: 8px; }
+.fuelt-op { padding-top: 34px; color: var(--ax-text-3); font-size: var(--ax-fs-md); }
+.fuelt-total-field .ax-input { border-color: var(--ax-accent); background: var(--ax-accent-soft); color: var(--ax-text); font-weight: var(--ax-fw-bold); font-size: var(--ax-fs-lg, 16px); }
+.fuelt-total-field .fuelt-affix i { color: var(--ax-accent); }
+.fuelt-total-field > span:first-child { color: var(--ax-accent); }
+
+/* Medio de pago y chips */
+.fuelt-seg { display: flex; width: 100%; }
+.fuelt-seg button { flex: 1; min-width: 0; }
+.fuelt-apps { display: grid; gap: 8px; }
+.fuelt-body [hidden] { display: none !important; }
+.fuelt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fuelt-chips .ax-chip { height: 30px; padding: 0 12px; background: transparent; font: inherit; font-size: var(--ax-fs-sm); cursor: pointer; }
+.fuelt-chips .ax-chip:hover { border-color: var(--ax-text-3); color: var(--ax-text); }
+.fuelt-chips .ax-chip[aria-pressed="true"] { background: var(--ax-accent-soft); }
+
+/* Ticket: zona grande para tocar o soltar */
+.fuelt-drop { display: block; padding: 12px 14px; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius-lg, 12px); background: var(--ax-surface-3); cursor: pointer; transition: border-color var(--ax-dur-fast) var(--ax-ease), background var(--ax-dur-fast) var(--ax-ease); }
+.fuelt-drop:hover, .fuelt-drop.is-over { border-color: var(--ax-accent); }
+.fuelt-drop:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+.fuelt-drop.has-file { border-style: solid; }
+.fuelt-drop-empty, .fuelt-drop-file { display: flex; align-items: center; gap: 12px; }
+.fuelt-drop [hidden] { display: none !important; }
+.fuelt-drop-empty > .ax-icon { flex: none; width: 20px; height: 20px; color: var(--ax-accent); }
+.fuelt-drop-empty b { display: block; color: var(--ax-text); font-size: var(--ax-fs-md); }
+.fuelt-drop-empty small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+.fuelt-thumb { display: grid; place-items: center; flex: none; width: 44px; height: 44px; overflow: hidden; border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); }
+.fuelt-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.fuelt-file-name { flex: 1; min-width: 0; overflow: hidden; color: var(--ax-text); text-overflow: ellipsis; white-space: nowrap; }
+
+/* Más datos: plegado, con un resumen de lo que tiene */
+.fuelt-more { border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg, 12px); }
+.fuelt-more > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 12px 14px; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; list-style: none; }
+.fuelt-more > summary::-webkit-details-marker { display: none; }
+.fuelt-more > summary::before { content: ''; width: 6px; height: 6px; margin-right: 2px; border: solid var(--ax-text-3); border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(-45deg); transition: transform var(--ax-dur-fast) var(--ax-ease); }
+.fuelt-more[open] > summary::before { transform: translateY(-3px) rotate(45deg); }
+.fuelt-more > summary small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-regular); }
+.fuelt-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 14px 14px; }
 .fuelt-wide { grid-column: 1 / -1; }
-.fuelt-file input[type="file"] { padding: 10px; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius, 8px); background: var(--ax-surface-3); color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-sm, 13px); text-transform: none; letter-spacing: 0; }
-.fuelt-file small { color: var(--ax-text-3); font-weight: var(--ax-fw-regular, 400); text-transform: none; letter-spacing: 0; }
-.fuelt-total { min-height: 1.2em; margin: 12px 0 0; color: var(--ax-accent); font-weight: var(--ax-fw-bold, 700); text-align: right; font-variant-numeric: tabular-nums; }
-.fuelt-error { min-height: 1.2em; margin-top: 6px; color: var(--ax-danger); font-size: var(--ax-fs-sm, 13px); }
+
+/* Pie: qué falta, a la vista del botón */
+.fuelt-footer { align-items: center; }
+.fuelt-status { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0; margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+.fuelt-status b { color: var(--ax-text-2); font-weight: var(--ax-fw-semibold); }
+.fuelt-status.is-ready { color: var(--ax-ok); font-weight: var(--ax-fw-semibold); }
+.fuelt-status .ax-icon { width: 14px; height: 14px; }
+.fuelt-error { color: var(--ax-danger); font-size: var(--ax-fs-sm); }
 .fuelt-error:empty { display: none; }
+
+/* Visor del ticket */
 .fuelt-preview { display: grid; place-items: center; min-height: 240px; max-height: 70vh; overflow: auto; border: 1px solid var(--ax-border); border-radius: var(--ax-radius, 8px); background: var(--ax-surface-3); color: var(--ax-text-3); }
 .fuelt-preview img { display: block; max-width: 100%; height: auto; }
 .fuelt-preview iframe { width: 100%; height: 65vh; border: 0; background: var(--ax-surface); }
@@ -23,4 +95,16 @@
 .fuelt-btn:not(.is-missing) { color: var(--ax-accent); }
 #jd-content .jd-card h4 .jd-fuel-add { margin-left: auto; text-transform: none; letter-spacing: 0; }
 #jd-content .jd-item .rgt { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
-@media (max-width: 560px) { .fuelt-grid { grid-template-columns: 1fr; } }
+
+@media (max-width: 560px) {
+  .fuelt-amounts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .fuelt-op { display: none; }
+  .fuelt-total-field { grid-column: 1 / -1; }
+  .fuelt-seg { display: grid; grid-template-columns: 1fr 1fr; }
+  .fuelt-more-grid { grid-template-columns: 1fr; }
+  .fuelt-chips-scroll { flex-wrap: nowrap; margin: 0 -16px; padding: 0 16px 2px; overflow-x: auto; scrollbar-width: none; }
+  .fuelt-chips-scroll .ax-chip { flex: none; }
+  .fuelt-footer { flex-wrap: wrap; }
+  .fuelt-status { flex-basis: 100%; }
+}
+@media (pointer: coarse) { .fuelt-chips .ax-chip { height: 36px; } }

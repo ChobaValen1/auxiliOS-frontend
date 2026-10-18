@@ -15246,7 +15246,7 @@ function _jadminRenderDetalle(det) {
   let fuelCard;
   // Administración puede agregar una carga dentro de la jornada (fuel-tickets-v1.js)
   const fuelNuevoBtn = PERFIL_USUARIO?.roles?.name === 'administracion' && window.AuxFuelTickets && log.status !== 'voided'
-    ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm jd-fuel-add" onclick="AuxFuelTickets.openNew(${Number(log.log_id)}, { label: ${_escHtml(JSON.stringify(chNombre + ' · ' + fecha))}, date: '${_escHtml(log.log_date || '')}' })">${ic('plus')} Cargar combustible</button>`
+    ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm jd-fuel-add" onclick="AuxFuelTickets.openNew(${Number(log.log_id)}, { label: ${_escHtml(JSON.stringify([chNombre, fecha, truckPlate !== '—' ? truckPlate + (truckMovil ? ' #' + truckMovil : '') : ''].filter(Boolean).join(' · ')))}, date: '${_escHtml(log.log_date || '')}' })">${ic('plus')} Cargar combustible</button>`
     : '';
   if (fuel_records && fuel_records.length) {
     const totalLitros = fuel_records.reduce((s, f) => s + (Number(f.liters) || 0), 0);

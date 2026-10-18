@@ -59,6 +59,20 @@ test('combustible: conectado en la jornada, el camión y el escaneo del chofer',
   assert.match(pkg, /node --check fuel-tickets-v1\.js/);
 });
 
+test('combustible: los importes aceptan el formato argentino', () => {
+  const d = load('administracion', [])._decimal;
+  assert.equal(d('1.500'), 1500); assert.equal(d('1.500,50'), 1500.5); assert.equal(d('$ 61.000'), 61000);
+  assert.equal(d('40.5'), 40.5); assert.equal(d('40,5'), 40.5); assert.ok(Number.isNaN(d('')));
+});
+
+test('combustible: el formulario sigue el orden del ticket y avisa qué falta', () => {
+  const order = ['¿Cuánto se cargó?', '¿Cómo se pagó?', '¿Por qué la carga Administración?', 'Adjuntar ticket', 'Más datos'].map(t => src.indexOf(t));
+  assert.ok(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), 'pasos en orden');
+  assert.match(src, /E\.price_per_liter\.value = numText\(round2\(v\.t \/ v\.l\)\)/, 'el total calcula el precio por litro');
+  assert.match(src, /'Falta: <b>'/);
+  assert.match(src, /data-fuelt-seg="pay"/);
+});
+
 test('combustible: estilos con los tokens del sistema, sin colores fijos', () => {
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b/i);
   assert.match(css, /var\(--ax-accent\)/);

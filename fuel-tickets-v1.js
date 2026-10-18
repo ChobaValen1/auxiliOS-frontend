@@ -12,7 +12,13 @@
   function uid() { try { return (USUARIO_ACTUAL && USUARIO_ACTUAL.id) || (PERFIL_USUARIO && PERFIL_USUARIO.user_id); } catch (e) { return null; } }
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function notify(m, t) { if (typeof global.toast === 'function') global.toast(m, t || 'info'); }
-  function decimal(v) { var s = String(v == null ? '' : v).trim(); return Number(s.indexOf(',') >= 0 ? s.replace(/\./g, '').replace(',', '.') : s); }
+  /* Acepta 1500, 1.500, 1500,50 y 1.500,50 (formato argentino) y 40.5. */
+  function decimal(v) {
+    var s = String(v == null ? '' : v).replace(/[$\s]/g, '');
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+    return s === '' ? NaN : Number(s);
+  }
   function ico(n) { return '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#' + n + '"/></svg>'; }
   function today() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date()); }
 
@@ -51,49 +57,181 @@
   }
 
   /* ── Nueva carga desde Administración ─────────────────────────────── */
+  /* Sigue el orden en que se lee un ticket: cuánto (litros, precio, total), cómo se pagó y por qué.
+     Lo opcional queda plegado; abajo se ve qué falta, y el foco avanza solo al terminar cada paso. */
+  var PAY = [['efectivo', 'Efectivo'], ['tarjeta', 'Tarjeta'], ['transferencia', 'Transferencia'], ['app', 'App']];
+  var APPS = ['Shell Flota', 'YPF Ruta', 'Axion'];
+  var MOTIVOS = ['El chofer no la cargó', 'Corrección de un ticket', 'Carga pagada por la empresa'];
+  function money(v) { return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(v); }
+  function round2(v) { return Math.round(v * 100) / 100; }
+  function numText(v) { return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(v); }
+  function fmtDate(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '/' + m[2] + '/' + m[1].slice(2) : ''; }
+  function segHtml(name, opts) {
+    return '<div class="ax-seg fuelt-seg" role="group" data-fuelt-seg="' + name + '">' + opts.map(function (o) { return '<button type="button" aria-pressed="false" data-v="' + esc(o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>';
+  }
+
   function openNew(logId, info) {
     if (role() !== 'administracion') return notify('Sólo Administración puede cargar combustible en una jornada.', 'warning');
-    var i = info || {}, b = box('fuelt-new');
+    var i = info || {}, b = box('fuelt-new'), jornadaDate = i.date || today();
+    var st = { pay: '', app: '', last: 'price', file: null, preview: '', touched: {}, tried: false };
     b.innerHTML = '<div class="modal-box fuelt-box" role="dialog" aria-modal="true" aria-labelledby="fuelt-new-title">'
-      + '<div class="modal-head"><span class="modal-head-title" id="fuelt-new-title">Cargar combustible</span><button type="button" class="modal-close" data-fuelt-close aria-label="Cerrar">×</button></div>'
-      + '<form novalidate><div class="modal-body">'
-      + '<p class="fuelt-context">' + ico('fuel') + '<span>Jornada' + (i.label ? ' · ' + esc(i.label) : ' #' + Number(logId)) + '</span></p>'
-      + '<div class="fuelt-grid">'
-      + '<label>Fecha<input class="form-input" name="fuel_date" type="date" value="' + esc(i.date || today()) + '"></label>'
-      + '<label>Litros<input class="form-input" name="liters" inputmode="decimal" placeholder="0"></label>'
-      + '<label>Precio por litro<input class="form-input" name="price_per_liter" inputmode="decimal" placeholder="$"></label>'
-      + '<label>Kilometraje<input class="form-input" name="km_at_load" inputmode="numeric" placeholder="Opcional"></label>'
-      + '<label>Medio de pago<select class="form-input" name="payment_method"><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option><option value="app">App</option></select></label>'
-      + '<label data-fuelt-app hidden>App de pago<input class="form-input" name="payment_app" placeholder="Ej.: YPF App"></label>'
-      + '<label class="fuelt-wide">Estación<input class="form-input" name="gas_station" placeholder="Opcional"></label>'
-      + '<label class="fuelt-wide">Motivo<textarea class="form-input" name="reason" rows="2" placeholder="Ej.: el chofer no la pudo cargar desde el celular"></textarea></label>'
-      + '<label class="fuelt-wide fuelt-file">Ticket (foto o PDF)<input name="ticket" type="file" accept="image/*,application/pdf"><small>Opcional. Se guarda privado: lo ven Administración y Supervisión.</small></label>'
-      + '</div><p class="fuelt-total" data-fuelt-total></p><div role="alert" class="fuelt-error"></div></div>'
-      + '<div class="modal-footer"><button type="button" class="btn btn-ghost" data-fuelt-close>Cancelar</button><button type="submit" class="btn btn-primary">Guardar carga</button></div></form></div>';
-    var f = b.querySelector('form'), err = b.querySelector('[role=alert]');
+      + '<div class="modal-head"><div class="fuelt-head"><span class="modal-head-title" id="fuelt-new-title">Cargar combustible</span>'
+      + '<span class="fuelt-context">' + ico('fuel') + '<span>' + (i.label ? esc(i.label) : 'Jornada #' + Number(logId)) + '</span></span></div>'
+      + '<button type="button" class="modal-close" data-fuelt-close aria-label="Cerrar">×</button></div>'
+      + '<form novalidate><div class="modal-body fuelt-body">'
+      // 1 · Cuánto
+      + '<section class="fuelt-step" data-step="amount"><h3 class="fuelt-step-title"><span class="fuelt-num">1</span>¿Cuánto se cargó?</h3>'
+      + '<div class="fuelt-amounts">'
+      + '<label class="fuelt-field" data-f="liters"><span>Litros</span><span class="fuelt-affix"><input class="ax-input" name="liters" inputmode="decimal" autocomplete="off" placeholder="0"><i>L</i></span><small class="fuelt-msg"></small></label>'
+      + '<span class="fuelt-op" aria-hidden="true">×</span>'
+      + '<label class="fuelt-field" data-f="price"><span>Precio por litro</span><span class="fuelt-affix is-prefix"><i>$</i><input class="ax-input" name="price_per_liter" inputmode="decimal" autocomplete="off" placeholder="0"></span><small class="fuelt-msg"></small></label>'
+      + '<span class="fuelt-op" aria-hidden="true">=</span>'
+      + '<label class="fuelt-field fuelt-total-field" data-f="total"><span>Total del ticket</span><span class="fuelt-affix is-prefix"><i>$</i><input class="ax-input" name="total" inputmode="decimal" autocomplete="off" placeholder="0"></span><small class="fuelt-msg">Si cargás el total, calculamos el precio por litro.</small></label>'
+      + '</div></section>'
+      // 2 · Cómo se pagó
+      + '<section class="fuelt-step" data-step="pay"><h3 class="fuelt-step-title"><span class="fuelt-num">2</span>¿Cómo se pagó?</h3>'
+      + segHtml('pay', PAY)
+      + '<div class="fuelt-apps" data-fuelt-apps hidden><div class="fuelt-chips">' + APPS.map(function (a) { return '<button type="button" class="ax-chip" aria-pressed="false" data-app="' + esc(a) + '">' + esc(a) + '</button>'; }).join('')
+      + '<button type="button" class="ax-chip" aria-pressed="false" data-app="">Otra</button></div>'
+      + '<input class="ax-input" name="payment_app" placeholder="¿Qué app?" autocomplete="off" hidden></div>'
+      + '<small class="fuelt-msg" data-f-msg="pay"></small></section>'
+      // 3 · Por qué
+      + '<section class="fuelt-step" data-step="reason"><h3 class="fuelt-step-title"><span class="fuelt-num">3</span>¿Por qué la carga Administración?</h3>'
+      + '<div class="fuelt-chips fuelt-chips-scroll">' + MOTIVOS.map(function (m) { return '<button type="button" class="ax-chip" data-motivo="' + esc(m) + '">' + esc(m) + '</button>'; }).join('') + '</div>'
+      + '<label class="fuelt-field" data-f="reason"><span class="fuelt-sr">Motivo</span><textarea class="ax-textarea" name="reason" rows="2" placeholder="Contá en pocas palabras qué pasó"></textarea><small class="fuelt-msg"></small></label></section>'
+      // Ticket
+      + '<section class="fuelt-step fuelt-step-plain"><label class="fuelt-drop" data-fuelt-drop tabindex="0"><input name="ticket" type="file" accept="image/*,application/pdf" hidden>'
+      + '<span class="fuelt-drop-empty">' + ico('upload') + '<span><b>Adjuntar ticket</b><small>Foto o PDF · opcional · lo ven Administración y Supervisión</small></span></span>'
+      + '<span class="fuelt-drop-file" hidden><span class="fuelt-thumb"></span><span class="fuelt-file-name"></span><button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" data-fuelt-unfile>Quitar</button></span></label></section>'
+      // Opcionales
+      + '<details class="fuelt-more"><summary><span>Más datos</span><small data-fuelt-more-sum>Fecha ' + esc(fmtDate(jornadaDate)) + ' · km y estación opcionales</small></summary>'
+      + '<div class="fuelt-more-grid">'
+      + '<label class="fuelt-field"><span>Fecha de la carga</span><input class="ax-input" name="fuel_date" type="date" value="' + esc(jornadaDate) + '"></label>'
+      + '<label class="fuelt-field" data-f="km"><span>Kilometraje</span><span class="fuelt-affix"><input class="ax-input" name="km_at_load" inputmode="numeric" autocomplete="off" placeholder="Opcional"><i>km</i></span><small class="fuelt-msg"></small></label>'
+      + '<label class="fuelt-field fuelt-wide"><span>Estación</span><input class="ax-input" name="gas_station" autocomplete="off" placeholder="Opcional · ej.: YPF Ruta 2 km 45"></label>'
+      + '</div></details>'
+      + '<div role="alert" class="fuelt-error"></div></div>'
+      + '<div class="modal-footer fuelt-footer"><p class="fuelt-status" data-fuelt-status aria-live="polite"></p><button type="button" class="btn btn-ghost" data-fuelt-close>Cancelar</button><button type="submit" class="btn btn-primary">Guardar carga</button></div></form></div>';
+
+    var f = b.querySelector('form'), err = b.querySelector('[role=alert]'), E = f.elements;
+    var q = function (sel) { return b.querySelector(sel); };
     b.querySelectorAll('[data-fuelt-close]').forEach(function (x) { x.onclick = function () { close('fuelt-new'); }; });
-    var total = function () {
-      var l = decimal(f.elements.liters.value), p = decimal(f.elements.price_per_liter.value), t = b.querySelector('[data-fuelt-total]');
-      t.textContent = l > 0 && p > 0 ? 'Total: ' + new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(l * p) : '';
-    };
-    f.elements.liters.oninput = total; f.elements.price_per_liter.oninput = total;
-    f.elements.payment_method.onchange = function () { b.querySelector('[data-fuelt-app]').hidden = f.elements.payment_method.value !== 'app'; };
-    f.elements.liters.focus();
+
+    function values() {
+      var l = decimal(E.liters.value), p = decimal(E.price_per_liter.value), t = decimal(E.total.value);
+      return { l: l, p: p, t: t, km: String(E.km_at_load.value || '').trim(), reason: String(E.reason.value || '').trim(), app: st.pay === 'app' ? (st.app || String(E.payment_app.value || '').trim()) : '' };
+    }
+    function problems() {
+      var v = values(), out = {};
+      if (!(v.l > 0)) out.liters = 'Indicá los litros.';
+      if (!(v.p > 0)) out.price = 'Indicá el precio por litro o el total.';
+      if (!st.pay) out.pay = 'Elegí cómo se pagó.';
+      else if (st.pay === 'app' && !v.app) out.pay = 'Indicá la app de pago.';
+      if (v.reason.length < 5) out.reason = 'Contá el motivo (al menos 5 letras).';
+      if (v.km && !(/^\d+$/.test(v.km.replace(/\./g, '')))) out.km = 'El kilometraje es un número entero.';
+      return out;
+    }
+    var LABEL = { liters: 'litros', price: 'precio', pay: 'medio de pago', reason: 'motivo', km: 'kilometraje' };
+    function paint() {
+      var pr = problems(), v = values();
+      ['liters', 'price', 'reason', 'km'].forEach(function (k) {
+        var fld = q('[data-f="' + k + '"]'); if (!fld) return;
+        var show = pr[k] && (st.tried || st.touched[k]);
+        fld.classList.toggle('is-invalid', !!show);
+        fld.classList.toggle('is-done', !pr[k] && (k !== 'km' || !!v.km));
+        if (k !== 'km' || show || fld.querySelector('.fuelt-msg').textContent) fld.querySelector('.fuelt-msg').textContent = show ? pr[k] : '';
+      });
+      var pm = q('[data-f-msg="pay"]'); pm.textContent = pr.pay && st.tried ? pr.pay : ''; pm.classList.toggle('is-bad', !!(pr.pay && st.tried));
+      q('[data-step="amount"]').classList.toggle('is-done', !pr.liters && !pr.price);
+      q('[data-step="pay"]').classList.toggle('is-done', !pr.pay);
+      q('[data-step="reason"]').classList.toggle('is-done', !pr.reason);
+      var miss = Object.keys(pr).map(function (k) { return LABEL[k]; }), status = q('[data-fuelt-status]');
+      status.classList.toggle('is-ready', !miss.length);
+      status.innerHTML = miss.length ? 'Falta: <b>' + esc(miss.join(', ')) + '</b>' : ico('check') + ' Listo · ' + esc(money(round2(v.l * v.p)));
+      q('[data-fuelt-more-sum]').textContent = 'Fecha ' + fmtDate(E.fuel_date.value || jornadaDate) + (v.km ? ' · ' + v.km + ' km' : '') + (E.gas_station.value.trim() ? ' · ' + E.gas_station.value.trim() : (v.km ? '' : ' · km y estación opcionales'));
+    }
+    // Litros × precio = total; si se escribe el total, se calcula el precio (lo último que se tocó manda).
+    function recalc(src) {
+      var v = values();
+      if (src === 'total') st.last = 'total'; else if (src === 'price') st.last = 'price';
+      if (st.last === 'total') {
+        if (v.l > 0 && v.t > 0) E.price_per_liter.value = numText(round2(v.t / v.l));
+      } else if (v.l > 0 && v.p > 0) E.total.value = numText(round2(v.l * v.p));
+      else if (src !== 'total') E.total.value = '';
+      q('.fuelt-total-field').classList.toggle('is-calc', st.last !== 'total' && !!E.total.value);
+      q('.fuelt-total-field .fuelt-msg').textContent = st.last === 'total' && v.l > 0 && v.t > 0 ? 'Precio por litro calculado: ' + money(round2(v.t / v.l)) : 'Si cargás el total, calculamos el precio por litro.';
+      paint();
+    }
+    E.liters.oninput = function () { recalc('liters'); };
+    E.price_per_liter.oninput = function () { recalc('price'); };
+    E.total.oninput = function () { recalc('total'); };
+    [['liters', 'liters'], ['price_per_liter', 'price'], ['reason', 'reason'], ['km_at_load', 'km']].forEach(function (x) { E[x[0]].addEventListener('blur', function () { st.touched[x[1]] = true; paint(); }); });
+    E.reason.oninput = paint; E.km_at_load.oninput = paint; E.gas_station.oninput = paint; E.fuel_date.onchange = paint; E.payment_app.oninput = paint;
+    // Enter pasa al siguiente dato en vez de guardar a medias.
+    [[E.liters, E.price_per_liter], [E.price_per_liter, function () { return q('[data-fuelt-seg="pay"] button'); }], [E.total, function () { return q('[data-fuelt-seg="pay"] button'); }]].forEach(function (x) {
+      x[0].addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var n = typeof x[1] === 'function' ? x[1]() : x[1]; if (n) n.focus(); } });
+    });
+
+    var paySeg = q('[data-fuelt-seg="pay"]');
+    paySeg.addEventListener('click', function (e) {
+      var btn = e.target.closest('button'); if (!btn) return;
+      st.pay = btn.getAttribute('data-v');
+      paySeg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === btn)); });
+      q('[data-fuelt-apps]').hidden = st.pay !== 'app';
+      paint();
+      if (st.pay === 'app' && !st.app) { var c = q('[data-app]'); if (c) c.focus(); } else if (!values().reason) E.reason.focus();
+    });
+    q('[data-fuelt-apps]').addEventListener('click', function (e) {
+      var c = e.target.closest('[data-app]'); if (!c) return;
+      st.app = c.getAttribute('data-app');
+      b.querySelectorAll('[data-app]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
+      E.payment_app.hidden = !!st.app;
+      if (!st.app) E.payment_app.focus(); else if (!values().reason) E.reason.focus();
+      paint();
+    });
+    b.querySelectorAll('[data-motivo]').forEach(function (c) {
+      c.onclick = function () { E.reason.value = c.getAttribute('data-motivo'); st.touched.reason = true; paint(); E.reason.focus(); E.reason.setSelectionRange(E.reason.value.length, E.reason.value.length); };
+    });
+
+    // Ticket: zona para tocar o soltar el archivo, con vista previa.
+    var drop = q('[data-fuelt-drop]');
+    function setFile(file) {
+      err.textContent = '';
+      try { checkFile(file); } catch (x) { err.textContent = x.message; return; }
+      if (st.preview) { try { URL.revokeObjectURL(st.preview); } catch (e) { /* nada */ } }
+      st.file = file || null; st.preview = '';
+      q('.fuelt-drop-empty').hidden = !!file; q('.fuelt-drop-file').hidden = !file;
+      drop.classList.toggle('has-file', !!file);
+      if (!file) { E.ticket.value = ''; return; }
+      var th = q('.fuelt-thumb');
+      if (/^image\//.test(file.type) && typeof URL !== 'undefined' && URL.createObjectURL) { st.preview = URL.createObjectURL(file); th.innerHTML = '<img alt="" src="' + esc(st.preview) + '">'; }
+      else th.innerHTML = ico('file-text');
+      q('.fuelt-file-name').textContent = file.name || 'Ticket';
+    }
+    E.ticket.onchange = function () { setFile(E.ticket.files && E.ticket.files[0]); };
+    drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); E.ticket.click(); } });
+    drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('is-over'); });
+    drop.addEventListener('dragleave', function () { drop.classList.remove('is-over'); });
+    drop.addEventListener('drop', function (e) { e.preventDefault(); drop.classList.remove('is-over'); var x = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (x) setFile(x); });
+    q('[data-fuelt-unfile]').onclick = function (e) { e.preventDefault(); e.stopPropagation(); setFile(null); };
+
+    paint();
+    setTimeout(function () { E.liters.focus(); }, 30);
+
     f.onsubmit = async function (e) {
       e.preventDefault();
       var btn = f.querySelector('[type=submit]'); if (btn.disabled) return;
-      err.textContent = '';
-      var v = function (k) { return String(f.elements[k].value || '').trim(); };
-      var payload = { fuel_date: v('fuel_date'), liters: decimal(v('liters')), price_per_liter: decimal(v('price_per_liter')), km_at_load: v('km_at_load') ? decimal(v('km_at_load')) : null, payment_method: v('payment_method'), payment_app: v('payment_method') === 'app' ? v('payment_app') : null, gas_station: v('gas_station') || null, reason: v('reason') };
-      var file = f.elements.ticket.files && f.elements.ticket.files[0];
-      try {
-        if (!(payload.liters > 0)) throw new Error('Indicá los litros.');
-        if (!(payload.price_per_liter > 0)) throw new Error('Indicá el precio por litro.');
-        if (payload.km_at_load !== null && !(Number.isInteger(payload.km_at_load) && payload.km_at_load >= 0)) throw new Error('El kilometraje tiene que ser un número entero.');
-        if (payload.payment_method === 'app' && !payload.payment_app) throw new Error('Indicá la app de pago.');
-        if (payload.reason.length < 5) throw new Error('Indicá el motivo de la carga (al menos 5 caracteres).');
-        checkFile(file);
-      } catch (x) { err.textContent = x.message; return; }
+      err.textContent = ''; st.tried = true; paint();
+      var pr = problems(), first = Object.keys(pr)[0];
+      if (first) {
+        if (first === 'km') q('.fuelt-more').open = true;
+        var target = { liters: E.liters, price: E.price_per_liter, pay: q('[data-fuelt-seg="pay"] button'), reason: E.reason, km: E.km_at_load }[first];
+        if (target) target.focus();
+        return;
+      }
+      var v = values();
+      var payload = { fuel_date: E.fuel_date.value || jornadaDate, liters: v.l, price_per_liter: round2(v.p), km_at_load: v.km ? Number(v.km.replace(/\./g, '')) : null, payment_method: st.pay, payment_app: st.pay === 'app' ? v.app : null, gas_station: String(E.gas_station.value || '').trim() || null, reason: v.reason };
+      var file = st.file;
       btn.disabled = true; btn.textContent = 'Guardando…';
       try {
         var res = await db().rpc('admin_create_fuel_record_v1', { p_log_id: Number(logId), p_payload: payload });
@@ -154,5 +292,5 @@
     try { await attach(fuelId, file); return true; } catch (x) { console.warn('[combustible] ticket del chofer', x); return false; }
   }
 
-  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan };
+  global.AuxFuelTickets = { openNew: openNew, view: view, pick: pick, attach: attach, buttonHtml: buttonHtml, attachDriverScan: attachDriverScan, _decimal: decimal };
 })(window);
