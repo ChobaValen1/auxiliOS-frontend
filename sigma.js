@@ -15406,12 +15406,22 @@ async function _jadminExportarExcel() {
       { label: 'Litros cargados', value: Math.round(suma(r => r.litros) * 10) / 10 },
     ];
     const desdeTxt = String(_jadminState.desde || '').replace(/-/g, ''), hastaTxt = String(_jadminState.hasta || '').replace(/-/g, '');
-    AuxiliosExcelExport.download({
+    const archivo = {
       filename: `Jornadas_${desdeTxt}_${hastaTxt}`,
       summaryRows: resumen,
-      sheets: [{ name: 'Jornadas', columns: columnas, rows }],
+      sheetName: 'Jornadas',
+      rows,
       detalle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`,
-    });
+    };
+    // Elegir qué columnas, en qué orden y si va en Excel o CSV (se recuerda en este navegador).
+    if (window.AuxiliosExportPicker) {
+      columnas.forEach(c => { c.id = c.id || c.header.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_'); });
+      const eleccion = await window.AuxiliosExportPicker.open({ key: 'jornadas', title: 'Jornadas', subtitle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} · ${resumen[0].value}`, columns: columnas });
+      if (!eleccion) return;
+      window.AuxiliosExportPicker.download(eleccion, archivo);
+    } else {
+      AuxiliosExcelExport.download({ filename: archivo.filename, summaryRows: resumen, sheets: [{ name: 'Jornadas', columns: columnas, rows }], detalle: archivo.detalle });
+    }
     if ((resp?.total || 0) > (resp?.data || []).length) {
       toast(`Se exportaron las primeras ${resp.data.length} de ${resp.total} jornadas. Acotá el período para el resto.`, 'warn');
     }
