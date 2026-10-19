@@ -96,7 +96,12 @@ test('costo tercerizado: el operador no ve tarifas ni importes y no manda ajuste
 
 test('tercerizada: se finaliza desde Pendiente (sin Asignar chofer y móvil)', () => {
   const lc = read('operator-service-lifecycle.js'), os = read('operator-services.js');
-  assert.match(lc, /status==='pending'&&s\.logistics_type==='third_party'\)return\[\['finalize','Finalizar'\],\['annul','Anular'\]\]/);
+  assert.match(lc, /if\(status==='pending'\)return\[\['assign_outsourced','Asignar'\],\['finalize','Finalizar'\],\['annul','Anular'\]\]/);
+  assert.match(lc, /if\(status==='assigned'\)return\[\['unassign','Quitar asignación'\],\['finalize','Finalizar'\],\['annul','Anular'\]\]/);
+  assert.match(lc, /rpc\('assign_outsourced_service_v1'/);
+  const ma = read('migrations/20261019030000_outsourced_assign.sql');
+  assert.match(ma, /v_transition='outsourced_assign' and coalesce\(new\.logistics_type,'own'\)='third_party'/);
+  assert.match(ma, /Primero elegí qué tercerizado hace el servicio/);
   assert.match(lc, /const direct=s\.status==='assigned'&&!third;/);
   assert.match(os, /s\.status==='pending'&&s\.logistics_type==='third_party'\)\)entries\.push\(\['finalize','Finalizar'\]\)/);
   const m = read('migrations/20261019020000_outsourced_finalize_from_pending.sql');
