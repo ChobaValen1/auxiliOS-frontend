@@ -15,7 +15,7 @@
 #modal-operador-wizard .osv4-reactive #osv4-terc .osc-input i:first-child + input { padding-left: 24px; }
 #modal-operador-wizard .osv4-reactive #osv4-terc .osc-input input:not(:last-child) { padding-right: 52px; }
 #modal-operador-wizard .osv4-reactive #osv4-terc [data-osc-wrap="adjustment_reason"] input { text-align: left; }
-#osv4-terc .osc-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
+#osv4-terc .osc-hint, #osv4-terc-pick .osc-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
 #osv4-terc .osc-err { display: none; color: var(--ax-danger); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
 #osv4-terc .is-invalid .osc-err { display: block; }
 #osv4-terc .is-invalid .osc-hint { display: none; }

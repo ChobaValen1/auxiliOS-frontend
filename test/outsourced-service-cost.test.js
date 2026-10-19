@@ -98,7 +98,7 @@ test('tercerizada: se finaliza desde Pendiente (sin Asignar chofer y móvil)', (
   const lc = read('operator-service-lifecycle.js'), os = read('operator-services.js');
   assert.match(lc, /if\(status==='pending'\)return\[\['assign_outsourced','Asignar'\],\['finalize','Finalizar'\],\['annul','Anular'\]\]/);
   assert.match(lc, /if\(status==='assigned'\)return\[\['unassign','Quitar asignación'\],\['finalize','Finalizar'\],\['annul','Anular'\]\]/);
-  assert.match(lc, /rpc\('assign_outsourced_service_v1'/);
+  assert.match(lc, /rpc\('assign_outsourced_service_v2'/);
   const ma = read('migrations/20261019030000_outsourced_assign.sql');
   assert.match(ma, /v_transition='outsourced_assign' and coalesce\(new\.logistics_type,'own'\)='third_party'/);
   assert.match(ma, /Primero elegí qué tercerizado hace el servicio/);
@@ -133,4 +133,39 @@ test('servicios: en Chofer y Móvil se ve el tercerizado (sólo el nombre)', () 
   const m = read('migrations/20261019050000_list_services_outsourced_name.sql');
   assert.match(m, /'outsourced_provider_name',\(select op\.display_name/);
   assert.doesNotMatch(m, /total_amount|base_amount/);
+});
+
+test('tercerizada: con el tercerizado elegido, al guardar queda Asignado', () => {
+  const m = read('migrations/20261019060000_outsourced_autoassign_on_save.sql');
+  assert.match(m, /set_outsourced_service_cost_v1/);
+  assert.match(m, /app\.lifecycle_transition', 'outsourced_assign'/);
+  assert.match(m, /set status = 'assigned'/);
+  assert.match(m, /'outsourced_assigned'/);
+  assert.match(m, /set status = 'pending'/);
+  assert.match(m, /raise exception/);
+  assert.match(src, /al guardar el servicio queda Asignado/);
+});
+
+test('estado › asignar: se puede elegir un tercerizado (sin importes)', () => {
+  const lc = read('operator-service-lifecycle.js'), m = read('migrations/20261019070000_outsourced_assign_from_status.sql');
+  assert.match(lc, /data-osl-mode="third"[^`]*>Tercerizado</);
+  assert.match(lc, /rpc\('assign_outsourced_service_v2',\{p_service_id:s\.service_id,p_provider_id:sel\.value,p_locality:/);
+  assert.match(lc, /rpc\('list_outsourced_providers_for_service_v1'/);
+  assert.doesNotMatch(lc.slice(lc.indexOf('function outsourcedFields'), lc.indexOf('async function submitOutsourced')), /amount|money\(/);
+  assert.match(m, /create or replace function public\.assign_outsourced_service_v2/);
+  assert.match(m, /logistics_type = 'third_party', assigned_driver_id = null/);
+  assert.match(m, /perform public\.set_outsourced_service_cost_v1/);
+  assert.match(m, /s\.status <> 'pending'/);
+});
+
+test('particular: Propio | Tercerizado en Datos de asignación (sin importes)', () => {
+  const ps = read('private-service-v1.js');
+  assert.match(ps, /data-psv-seg="logistica" data-v="third" aria-pressed="[^>]*>Tercerizado</);
+  assert.match(ps, /logistics_type: tercero \? 'third_party' : 'own'/);
+  assert.match(ps, /assigned_driver_id: tercero \? null/);
+  assert.match(ps, /rpc\('set_outsourced_service_cost_v1', \{ p_service_id: serviceId, p_payload: body \}\)/);
+  assert.match(ps, /await guardarTercerizado\(res\.service_id\)/);
+  assert.match(ps, /await guardarTercerizado\(eid\)/);
+  const html = ps.slice(ps.indexOf('function tercerizadoHtml'), ps.indexOf('async function guardarTercerizado'));
+  assert.doesNotMatch(html, /amount|pesos\(/);
 });

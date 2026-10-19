@@ -222,3 +222,8 @@ body.psv-open { overflow: hidden; }
   .psv-calculator-dialog .spc { padding:0; }
   .psv-calculator-dialog .ax-input,.psv-calculator-dialog .ax-select { min-height:44px; font-size:16px; }
 }
+
+/* Datos de asignación: Propio | Tercerizado */
+#psv-form .psv-logistica { display: flex; width: 100%; margin: 0 0 10px; }
+#psv-form .psv-logistica > button { flex: 1 1 0; }
+#psv-form .psv-terc-warn { padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--ax-warn) 40%, transparent); border-radius: var(--ax-radius); background: var(--ax-warn-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); }

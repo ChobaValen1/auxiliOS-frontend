@@ -168,3 +168,10 @@
 #ax-finish-ask form > div { display: flex; justify-content: flex-end; gap: var(--ax-sp-2); }
 #ax-finish-ask button { height: var(--ax-h); padding: 0 var(--ax-sp-4); border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font-weight: var(--ax-fw-semibold); cursor: pointer; }
 #ax-finish-ask button.primary { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-bg); font-weight: var(--ax-fw-bold); }
+
+/* Asignar: Chofer y móvil | Tercerizado */
+#os-lifecycle-modal .osl-assign-mode { display: flex; width: 100%; margin: 0 0 var(--ax-sp-3); }
+#os-lifecycle-modal .osl-assign-mode > button { flex: 1 1 0; }
+#os-lifecycle-modal [data-osl-pane][hidden] { display: none; }
+#os-lifecycle-modal .osl-terc-note { margin: var(--ax-sp-2) 0 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--ax-warn) 40%, transparent); border-radius: var(--ax-radius); background: var(--ax-warn-soft); color: var(--ax-text); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#os-lifecycle-modal .osl-terc-note[hidden] { display: none; }
