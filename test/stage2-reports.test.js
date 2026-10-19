@@ -59,12 +59,49 @@ test('CSV es UTF-8, usa coma decimal, escapa saltos, comillas y fórmulas sin al
 test('Excel conserva orden guardado, reconcilia columnas nuevas y omite nombres de peajes por defecto',()=>{
   const prefs={current:{service:['total_price','order'],serviceOrder:['total_price','order','desconocida']}};
   const E=load('operator-billing-export.js',{localStorage:{getItem:()=>JSON.stringify(prefs)}}).OperatorBillingExcel;
-  assert.deepEqual(plain([...E.restoreColumnSelection('current','service')]),['total_price','order']);
+  const sel=E.restoreColumnSelection('current','service');
+  assert.deepEqual(plain([...sel].slice(0,2)),['total_price','order']);
+  assert.ok(!sel.has('driver')&&!sel.has('plate'),'una columna que ya existía y no estaba elegida no se agrega');
   const order=plain(E.restoreColumnOrder('current','service'));
   assert.deepEqual(order.slice(0,2),['total_price','order']);
   assert.ok(!order.includes('desconocida'));
   assert.equal(new Set(order).size,order.length);
   assert.ok(!E.restoreColumnSelection('all','service').has('toll_names'));
+});
+
+test('Excel: una columna nueva (que nunca estuvo en el orden guardado) entra marcada; las que se destildaron siguen destildadas',()=>{
+  const base=load('operator-billing-export.js').OperatorBillingExcel,all=base.serviceColumns.map(c=>c.id);
+  const prefs={current:{service:['total_price','order'],serviceOrder:all.filter(id=>id!=='arrival')}};
+  const E=load('operator-billing-export.js',{localStorage:{getItem:()=>JSON.stringify(prefs)}}).OperatorBillingExcel;
+  assert.deepEqual(plain([...E.restoreColumnSelection('current','service')]),['total_price','order','arrival']);
+});
+
+test('Excel: movida y km que no corresponden por la regla de la prestadora se explican en la columna',()=>{
+  const E=load('operator-billing-export.js').OperatorBillingExcel,col=id=>E.serviceColumns.find(c=>c.id===id);
+  const far={quote:{movement_applied:false,distance_applied:true,movement_charge_until_km:200,covered_radius_km:10,distance_km:215.5,billable_distance_km:205.5,components:[{role:'distance_asphalt',component_type:'distance',terrain:'asphalt',subtotal:1000}]}};
+  const near={quote:{movement_applied:true,distance_applied:false,movement_charge_until_km:200,covered_radius_km:10,distance_km:9.7,billable_distance_km:0,components:[{role:'movement',subtotal:50000}]}};
+  assert.equal(col('movement_amount').value(far),'No corresponde: el recorrido supera 200 km (cobra movida hasta 200 km)');
+  assert.equal(col('km_amount').value(far),1000);
+  assert.equal(col('km_amount').value(near),'No corresponde: dentro del radio cubierto de 10 km');
+  assert.equal(col('movement_amount').value(near),50000);
+  assert.equal(col('billing_rule').value(far),'Sin movida: supera 200 km · Radio cubierto: se descuentan 10 km');
+  assert.equal(col('billing_rule').value(near),'Sin km: dentro del radio de 10 km');
+  const X=load('excel-export.js').AuxiliosExcelExport;
+  assert.ok(X.worksheet);
+});
+
+test('Excel: adicionales en hoja aparte (una fila por concepto) o integrados (cantidad e importe por concepto)',()=>{
+  const E=load('operator-billing-export.js').OperatorBillingExcel;
+  const rows=[{service_id:'a',quote:{components:[{role:'secondary',concept_id:'x',service_name:'Extracción',quantity:1,unit_price:20000,subtotal:20000,pricing_unit:'service'},{role:'secondary',concept_id:'y',service_name:'Uso de Carros',quantity:2,unit_price:5000,subtotal:10000}]}},{service_id:'b',quote:{components:[{role:'movement',subtotal:1}]}}];
+  const sheet=E.extrasSheetRows(rows);
+  assert.equal(sheet.length,2);
+  assert.equal(E.extrasSheetColumns.find(c=>c.id==='concept').value(sheet[1]),'Uso de Carros');
+  assert.equal(E.extrasSheetColumns.find(c=>c.id==='unit').value(sheet[0]),'Servicio');
+  const cols=E.withInlineExtras(E.serviceColumns.filter(c=>['order','extras_total','total_price'].includes(c.id)),rows);
+  assert.deepEqual(plain(cols.map(c=>c.header)),['N° Orden','Adicionales $','Extracción · Cant.','Extracción · $','Uso de Carros · Cant.','Uso de Carros · $','Precio Total (sin peajes)']);
+  assert.equal(cols[5].value(rows[0]),10000);
+  assert.equal(cols[5].value(rows[1]),'');
+  assert.equal(E.serviceColumns.find(c=>c.id==='extras_total').value(rows[0]),30000);
 });
 
 test('nombres de peajes siguen fuente canónica y pagador sin duplicar planeado con real',()=>{
