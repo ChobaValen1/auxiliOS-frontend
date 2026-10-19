@@ -25,7 +25,7 @@ test('ultima seleccion de columnas se persiste por accion de exportacion',()=>{
   assert.match(billingExport,/localStorage\?\.getItem\(COLUMN_PREFS_KEY\)/);
   assert.match(billingExport,/localStorage\?\.setItem\(COLUMN_PREFS_KEY,JSON\.stringify\(value\)\)/);
   assert.match(billingExport,/function restoreColumnSelection\(kind,type\)/);
-  assert.match(billingExport,/readColumnPreferences\(\)\?\.\[kind\]\?\.\[type\]/);
+  assert.match(billingExport,/prefs=readColumnPreferences\(\)\?\.\[kind\],saved=prefs\?\.\[type\]/);
   assert.match(billingExport,/serviceSelected:restoreColumnSelection\(kind,'service'\)/);
   assert.match(billingExport,/tollSelected:restoreColumnSelection\(kind,'toll'\)/);
 });
