@@ -116,3 +116,6 @@
 .os-document-state.awaiting-review{border-color:color-mix(in srgb,var(--red) 60%,transparent);background:transparent;color:var(--red)}
 .os-document-state.awaiting-review:hover,.os-document-state.awaiting-review:focus-visible{border-color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red)}
 .os-table tr.os-remito-awaiting-review>td:first-child{box-shadow:inset 3px 0 var(--red)}
+/* Tercerizada en Chofer / Móvil */
+.os-terc-name{display:block}
+.os-terc-tag{display:inline-block;width:max-content;max-width:100%;margin-top:2px;padding:0 7px;border:1px solid color-mix(in srgb,var(--ax-info,#4a90e2) 40%,transparent);border-radius:999px;background:var(--ax-info-soft,rgba(74,144,226,.12));color:var(--ax-info,#4a90e2);font-size:var(--ax-fs-xs,11px);font-weight:600;line-height:1.6}
