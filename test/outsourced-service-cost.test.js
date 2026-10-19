@@ -157,3 +157,15 @@ test('estado › asignar: se puede elegir un tercerizado (sin importes)', () => 
   assert.match(m, /perform public\.set_outsourced_service_cost_v1/);
   assert.match(m, /s\.status <> 'pending'/);
 });
+
+test('particular: Propio | Tercerizado en Datos de asignación (sin importes)', () => {
+  const ps = read('private-service-v1.js');
+  assert.match(ps, /data-psv-seg="logistica" data-v="third" aria-pressed="[^>]*>Tercerizado</);
+  assert.match(ps, /logistics_type: tercero \? 'third_party' : 'own'/);
+  assert.match(ps, /assigned_driver_id: tercero \? null/);
+  assert.match(ps, /rpc\('set_outsourced_service_cost_v1', \{ p_service_id: serviceId, p_payload: body \}\)/);
+  assert.match(ps, /await guardarTercerizado\(res\.service_id\)/);
+  assert.match(ps, /await guardarTercerizado\(eid\)/);
+  const html = ps.slice(ps.indexOf('function tercerizadoHtml'), ps.indexOf('async function guardarTercerizado'));
+  assert.doesNotMatch(html, /amount|pesos\(/);
+});

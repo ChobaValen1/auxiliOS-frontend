@@ -163,7 +163,7 @@ test('Particular: Ahora empareja móvil y chofer; Programar toma el chofer de la
   const js = read('private-service-v1.js');
   assert.match(js, /function programado\(\) \{ return !!\(st && st\.d && st\.d\.cuando === 'programar' && !st\.edit\); \}/);
   assert.match(js, /O_pares\(\)\(k === 'assigned_driver_id' \? 'driver' : 'truck', t\.value, st\.d\)/);   // mismo emparejamiento que Prestadora
-  assert.match(js, /assigned_driver_id: \(programado\(\) \? '' : d\.assigned_driver_id\) \|\| null/);
+  assert.match(js, /assigned_driver_id: (tercero \? null : )?\(programado\(\) \? '' : d\.assigned_driver_id\) \|\| null/);
   assert.match(js, /data-psv-k="assigned_driver_id"' \+ \(programado\(\) \? ' disabled' : ''\)/);
 });
 

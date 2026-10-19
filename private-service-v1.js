@@ -161,12 +161,14 @@
         presupuesto: '', sin_costo: false, pago: 'no', sena_monto: '', sena_medio: 'cash',
         factura: false, condicion: 'consumidor_final',
         assigned_truck_id: '', assigned_driver_id: '',
+        logistica: 'own', terc_provider_id: '', terc_locality: '',
         captado: false, referred_by_driver_id: '',
         operator_notes: '',
         medios: {}
       },
       addr: { origin: { seq: 0, list: [], token: '' }, destination: { seq: 0, list: [], token: '' } },
-      toggles: { concepts: [], selected: {} }
+      toggles: { concepts: [], selected: {} },
+      terc: { providers: null, date: '', error: '', row: null }
     };
   }
 
@@ -192,6 +194,51 @@
     return '<section class="psv-toggles">' + t.concepts.map(function (c) {
       return '<label class="psv-toggle-row ax-switch"><span>' + esc(c.description || c.name) + '</span><input type="checkbox" data-psv-toggle="' + esc(c.concept_id) + '"' + (t.selected[String(c.concept_id)] ? ' checked' : '') + '></label>';
     }).join('') + '</section>';
+  }
+
+  /* Tercerizado: quién hace el servicio cuando no es un móvil propio. Sólo nombres y localidades: el operador no ve tarifas. */
+  function fechaServicio() {
+    var w = new Date(payload().scheduled_for);
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(w); } catch (e) { return null; }
+  }
+  async function cargarTercerizados() {
+    var date = fechaServicio(), cur = st;
+    if (cur.terc.providers && cur.terc.date === date) return;
+    var r = await db().rpc('list_outsourced_providers_for_service_v1', { p_date: date });
+    if (cur !== st) return;
+    if (r.error) { st.terc.error = r.error.message || 'No se pudieron cargar los tercerizados.'; st.terc.providers = []; return; }
+    st.terc.error = ''; st.terc.providers = r.data || []; st.terc.date = date;
+  }
+  function tercProveedor() { return (st.terc.providers || []).find(function (x) { return String(x.provider_id) === String(st.d.terc_provider_id); }); }
+  function tercSirve(p) { return !!(p && p.has_rate && (p.concepts || []).map(String).indexOf(String(st.d.primary_concept_id || '')) >= 0); }
+  function tercModo(p) { return p && p.modes ? p.modes[String(st.d.primary_concept_id || '')] : null; }
+  function tercerizadoHtml() {
+    var d = st.d, t = st.terc;
+    if (!t.providers) return '<p class="psv-hint">' + marca('running', 'Cargando tercerizados…') + '</p>';
+    if (t.error) return '<p class="psv-hint psv-terc-warn">' + esc(t.error) + '</p>';
+    if (!t.providers.length) return '<p class="psv-hint psv-terc-warn">No hay tercerizados cargados. Se cargan en Configuración › Tercerizados.</p>';
+    var p = tercProveedor(), modo = tercModo(p), locs = modo && modo.calc_mode === 'locality' ? (modo.localities || []) : null;
+    var opts = [['', 'Elegí el tercerizado']].concat(t.providers.map(function (x) { return [x.provider_id, x.display_name + (tercSirve(x) ? '' : x.has_rate ? ' · su tarifa no incluye este servicio' : ' · sin tarifa')]; }));
+    var sel = '<select id="psv-terc_provider_id" data-psv-k="terc_provider_id">' + opts.map(function (o) {
+      var x = t.providers.find(function (y) { return String(y.provider_id) === String(o[0]); });
+      return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(d.terc_provider_id) ? ' selected' : '') + (x && !tercSirve(x) && String(o[0]) !== String(d.terc_provider_id) ? ' disabled' : '') + '>' + esc(o[1]) + '</option>';
+    }).join('') + '</select>';
+    return '<div class="psv-grid">' + campo('terc_provider_id', 'Tercerizado *', sel) +
+      (locs ? campo('terc_locality', 'Localidad *', '<select id="psv-terc_locality" data-psv-k="terc_locality">' + opciones(locs.map(function (l) { return [l.name, l.name]; }), d.terc_locality, 'Elegí la localidad') + '</select>') : '') +
+      '</div>' + (d.primary_concept_id ? '' : '<p class="psv-hint">Elegí el tipo de servicio para ver qué tercerizados tienen tarifa.</p>') +
+      '<p class="psv-hint">Al guardar, el servicio queda Asignado al tercerizado.</p>';
+  }
+  async function guardarTercerizado(serviceId) {
+    if (!serviceId || st.intake || (st.edit && st.edit.cerrado)) return;
+    var d = st.d, row = st.terc.row, body;
+    if (d.logistica === 'third') {
+      body = { provider_id: d.terc_provider_id, locality: d.terc_locality || null,
+        km_asphalt: row ? row.km_asphalt || 0 : 0, km_gravel: row ? row.km_gravel || 0 : 0, tolls_amount: row ? row.tolls_amount || 0 : 0,
+        extras: row && row.extras ? row.extras : [], adjustment_amount: row ? row.adjustment_amount || 0 : 0, adjustment_reason: row ? row.adjustment_reason || null : null };
+    } else if (row && row.provider_id) body = { provider_id: null };
+    else return;
+    var r = await db().rpc('set_outsourced_service_cost_v1', { p_service_id: serviceId, p_payload: body });
+    if (r.error) notify('El servicio se guardó, pero no se pudo ' + (body.provider_id ? 'asignar al tercerizado: ' : 'quitar el tercerizado: ') + (r.error.message || ''), 'warning');
   }
 
   async function abrirParticular(intakeId) {
@@ -262,6 +309,15 @@
         if (!pr.error && pr.data) st.edit.pagos = (pr.data.payments || []).filter(function (p) { return !p.voided_at; });
       } catch (e2) { /* sin cobros: no se muestra "Cómo se pagó" */ }
       await cargarInterruptores(id);
+      try {
+        var tr = await db().rpc('get_outsourced_service_cost_v1', { p_service_id: id });
+        var lrow = (OS().services || []).find(function (x) { return String(x.service_id) === String(id); });
+        st.terc.row = !tr.error && tr.data ? tr.data : null;
+        if ((lrow && lrow.logistics_type === 'third_party') || (st.terc.row && st.terc.row.provider_id)) {
+          d.logistica = 'third'; d.terc_provider_id = st.terc.row && st.terc.row.provider_id ? String(st.terc.row.provider_id) : ''; d.terc_locality = st.terc.row && st.terc.row.locality || '';
+          await cargarTercerizados();
+        }
+      } catch (e3) { /* sin datos del tercerizado: queda como Propio */ }
       st.edit.original = editSnapshot();
     } catch (err) {
       st.error = err.message || 'No se pudo abrir el servicio.';
@@ -352,7 +408,12 @@
     var doc = digits(d.customer_document);
     if (doc && doc.length !== 8 && doc.length !== 11) e.push('El DNI tiene 8 dígitos y el CUIT 11.');
     else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
-    if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
+    if (d.logistica === 'third' && !st.intake) {
+      var tp = tercProveedor(), tm = tercModo(tp);
+      if (!d.terc_provider_id) e.push('Elegí qué tercerizado hace el servicio.');
+      else if (st.terc.providers && d.primary_concept_id && !tercSirve(tp)) e.push('Ese tercerizado no tiene tarifa para este tipo de servicio en esta fecha.');
+      else if (tm && tm.calc_mode === 'locality' && !d.terc_locality) e.push('Elegí la localidad.');
+    } else if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
     if (d.captado && !d.referred_by_driver_id) e.push('Elegí el chofer que consiguió el servicio.');
     // Crear y finalizar: un particular no se finaliza sin el cobro del total.
     if (st.intake && num(d.presupuesto) > 0 && d.pago !== 'total') e.push('Para crear y finalizar, el cobro tiene que cubrir el presupuesto. Marcá Todo si ya se cobró el total.');
@@ -364,7 +425,9 @@
     'Elegí el tipo de servicio.': 'primary_concept_id', 'Completá el origen.': 'origin', 'Completá el destino.': 'destination',
     'Elegí fecha y hora.': 'scheduled_for', 'Completá el presupuesto.': 'presupuesto',
     'El DNI tiene 8 dígitos y el CUIT 11.': 'customer_document', 'Para facturar completá el DNI o CUIT.': 'customer_document',
-    'Si asignás chofer, elegí también el móvil.': 'assigned_truck_id', 'Elegí el chofer que consiguió el servicio.': 'referred_by_driver_id'
+    'Si asignás chofer, elegí también el móvil.': 'assigned_truck_id', 'Elegí el chofer que consiguió el servicio.': 'referred_by_driver_id',
+    'Elegí qué tercerizado hace el servicio.': 'terc_provider_id', 'Ese tercerizado no tiene tarifa para este tipo de servicio en esta fecha.': 'terc_provider_id',
+    'Elegí la localidad.': 'terc_locality'
   };
   function campoDe(m) {
     if (/presupuesto no puede ser menor/.test(m)) return 'presupuesto';
@@ -512,10 +575,12 @@
         '</div></section>' +
         (st.intake
           ? '<section data-psv-section="assignment"><h3>' + ico('truck') + 'Datos de asignación</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
-          : '<section data-psv-section="assignment"><h3>' + ico('truck') + 'Datos de asignación <small>(opcional)</small></h3><div class="psv-grid">' +
+          : '<section data-psv-section="assignment"><h3>' + ico('truck') + 'Datos de asignación <small>(opcional)</small></h3>' +
+          '<div class="ax-seg psv-logistica" role="group" aria-label="Quién hace el servicio"><button type="button" data-psv-seg="logistica" data-v="own" aria-pressed="' + (d.logistica !== 'third') + '">Propio</button><button type="button" data-psv-seg="logistica" data-v="third" aria-pressed="' + (d.logistica === 'third') + '">Tercerizado</button></div>' +
+          (d.logistica === 'third' ? tercerizadoHtml() : '<div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id"' + (programado() ? ' disabled' : '') + '>' + opciones(drivers, programado() ? '' : d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
-        '</div>') +
+        '</div>')) +
         '<div class="psv-grid psv-captado">' +
           '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
           (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
@@ -566,6 +631,7 @@
       ['customer_name', 'customer_phone', 'vehicle_plate', 'vehicle_make_model', 'assigned_truck_id', 'assigned_driver_id'].forEach(function (k) {
         var f = el('psv-' + k); if (f) { f.disabled = true; f.title = 'Viene del remito firmado'; }
       });
+      m.querySelectorAll('[data-psv-seg="logistica"],#psv-terc_provider_id,#psv-terc_locality').forEach(function (f) { f.disabled = true; f.title = 'Viene del remito firmado'; });
     }
     // Un particular finalizado sólo admite presupuesto/factura/captación en
     // la RPC existente. No ofrecer cambios de servicio que no se guardarían.
@@ -573,7 +639,7 @@
       ['customer_name','customer_phone','vehicle_plate','vehicle_make_model','primary_concept_id','billing_base_id','scheduled_for','origin','destination','assigned_truck_id','assigned_driver_id','operator_notes'].forEach(function (key) {
         var field = el('psv-' + key); if (field) { field.disabled = true; field.title = 'El servicio está finalizado: estos datos se conservan.'; }
       });
-      m.querySelectorAll('[data-psv-cuando],[data-psv-toggle]').forEach(function (field) { field.disabled = true; });
+      m.querySelectorAll('[data-psv-cuando],[data-psv-toggle],[data-psv-seg="logistica"],#psv-terc_provider_id,#psv-terc_locality').forEach(function (field) { field.disabled = true; });
     }
   }
 
@@ -644,7 +710,7 @@
 
   /* Repintar pierde el foco del campo que se está escribiendo; sólo se repinta
      cuando cambia la forma del formulario, no en cada tecla. */
-  var ESTRUCTURALES = { primary_concept_id: 1, factura: 1, captado: 1 };
+  var ESTRUCTURALES = { primary_concept_id: 1, factura: 1, captado: 1, terc_provider_id: 1 };
 
   function O_pares() { var O = global.OperatorServices; return O && O.pairedResources; }
 
@@ -691,6 +757,7 @@
         return pintar();
       }
       st.d[k] = t.type === 'checkbox' ? t.checked : t.value;
+      if (k === 'terc_provider_id') st.d.terc_locality = '';
       // Por defecto lo consiguió el chofer asignado.
       if (k === 'captado' && st.d.captado && !st.d.referred_by_driver_id) st.d.referred_by_driver_id = st.d.assigned_driver_id || '';
       if (ESTRUCTURALES[k] && ev.type === 'change') return pintar();
@@ -839,7 +906,7 @@
   /* ── Guardar ──────────────────────────────────────────────────────────── */
 
   function payload() {
-    var d = st.d, single = unaDireccion();
+    var d = st.d, single = unaDireccion(), tercero = d.logistica === 'third' && !st.intake;
     var when = st.edit && d.scheduled_for ? new Date(d.scheduled_for)
       : st.intake && st.intake.scheduled_for ? new Date(st.intake.scheduled_for)
       : d.cuando === 'programar' && d.scheduled_for ? new Date(d.scheduled_for) : new Date();
@@ -860,9 +927,9 @@
       destination_lng: (single ? d.origin_lng : d.destination_lng) || null,
       destination_place_id: (single ? d.origin_place_id : d.destination_place_id) || null,
       destination_formatted_address: (single ? d.origin_formatted_address : d.destination_formatted_address) || null,
-      assigned_truck_id: d.assigned_truck_id || null, assigned_driver_id: (programado() ? '' : d.assigned_driver_id) || null,
+      assigned_truck_id: tercero ? null : d.assigned_truck_id || null, assigned_driver_id: tercero ? null : (programado() ? '' : d.assigned_driver_id) || null,
       referred_by_driver_id: d.captado ? d.referred_by_driver_id || null : null,
-      operator_notes: d.operator_notes.trim(), logistics_type: 'own', is_holiday: false, granted_delay_minutes: 0
+      operator_notes: d.operator_notes.trim(), logistics_type: tercero ? 'third_party' : 'own', is_holiday: false, granted_delay_minutes: 0
     };
     return Object.assign(p, st.routeData || { estimated_asphalt_km: 0, estimated_gravel_km: 0, estimated_distance_km: 0 });
   }
@@ -884,14 +951,15 @@
     return Object.assign({}, payload(), {
       presupuesto: num(st.d.presupuesto), factura: !!st.d.factura,
       condicion: st.d.factura ? st.d.condicion : '', medios: medios,
+      terc_provider_id: st.d.logistica === 'third' ? st.d.terc_provider_id : '', terc_locality: st.d.logistica === 'third' ? st.d.terc_locality : '',
       toggle_ids: Object.keys(st.toggles?.selected || {}).filter(function (k) { return st.toggles.selected[k]; }).sort()
     });
   }
   function editLabel(key, value) {
-    var lists = {primary_concept_id: st.ctx?.services || [], billing_base_id: st.ctx?.bases || [], assigned_driver_id: OS().drivers || [], referred_by_driver_id: OS().drivers || [], assigned_truck_id: OS().trucks || [], toggle_id: st.toggles?.concepts || []};
+    var lists = {primary_concept_id: st.ctx?.services || [], billing_base_id: st.ctx?.bases || [], assigned_driver_id: OS().drivers || [], referred_by_driver_id: OS().drivers || [], assigned_truck_id: OS().trucks || [], toggle_id: st.toggles?.concepts || [], terc_provider_id: st.terc?.providers || []};
     if (!lists[key]) return;
-    var row = lists[key].find(function (x) { return String(x.concept_id || x.base_id || x.user_id || x.truck_id) === String(value); });
-    return row ? row.name || row.full_name || row.numero_interno || row.plate : 'Sin informar';
+    var row = lists[key].find(function (x) { return String(x.concept_id || x.base_id || x.user_id || x.truck_id || x.provider_id) === String(value); });
+    return row ? row.display_name || row.name || row.full_name || row.numero_interno || row.plate : 'Sin informar';
   }
   async function cobrarDesdeEdicion() {
     if (!st?.edit || st.busy || st.confirming || st.edit.cerrado || !global.OperatorServices?.canManage?.()) return;
@@ -905,6 +973,8 @@
   }
   async function guardar() {
     if (!st || st.busy) return;
+    // La tarifa del tercerizado depende de la fecha del servicio.
+    if (st.d.logistica === 'third' && !st.intake) { var antes = st; await cargarTercerizados(); if (antes !== st) return; }
     var e = erroresPorCampo();
     st.fieldErrors = {};
     if (e.length) {
@@ -940,6 +1010,7 @@
         });
         if (ru.error) throw ru.error;
         if (!st.edit.cerrado) await guardarInterruptores(eid);
+        await guardarTercerizado(eid);
         var cambios = (st.edit.pagos || []).filter(function (p) { return st.d.medios[p.payment_id] && st.d.medios[p.payment_id] !== p.method; });
         for (var ci = 0; ci < cambios.length; ci++) {
           var rm = await db().rpc('update_service_payment_method_v1', { p_payment_id: cambios[ci].payment_id, p_method: st.d.medios[cambios[ci].payment_id] });
@@ -966,6 +1037,7 @@
       if (r.error) throw r.error;
       var res = r.data || {};
       await guardarInterruptores(res.service_id);
+      await guardarTercerizado(res.service_id);
       cerrarForm(true);
       if (intake) {
         var nro = res.service_order_number || res.service_number;
@@ -1061,7 +1133,14 @@
     if (a === 'cerrar-form') return cerrarForm(false);
     if (a === 'guardar') return guardar();
     if (a === 'registrar-cobro') return cobrarDesdeEdicion();
-    if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
+    if (b.hasAttribute('data-psv-seg')) {
+      st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v');
+      if (b.getAttribute('data-psv-seg') === 'logistica') {
+        if (st.fieldErrors) { delete st.fieldErrors.terc_provider_id; delete st.fieldErrors.terc_locality; delete st.fieldErrors.assigned_truck_id; }
+        if (st.d.logistica === 'third') { var cur = st; pintar(); return cargarTercerizados().then(function () { if (cur === st) pintar(); }); }
+      }
+      return pintar();
+    }
     if (b.hasAttribute('data-psv-cuando')) {
       st.d.cuando = b.getAttribute('data-psv-cuando');
       if (programado()) st.d.assigned_driver_id = '';
