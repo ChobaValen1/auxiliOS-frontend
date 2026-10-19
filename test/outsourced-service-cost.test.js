@@ -2,7 +2,7 @@
 const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
 const read = f => fs.readFileSync(f, 'utf8');
 const src = read('outsourced-service-cost-v1.js'), sql = read('migrations/20261018230000_outsourced_service_costs_v1.sql');
-function load(extra = {}) { const window = {}; vm.runInNewContext(src, { window, document: { getElementById: () => null, addEventListener() {} }, console, Intl, Date, setTimeout, clearTimeout, ...extra }); return window.AuxTercerizadoServicio; }
+function load(extra = {}) { const window = {}; extra = { PERFIL_USUARIO: { roles: { name: 'administracion' } }, ...extra }; vm.runInNewContext(src, { window, document: { getElementById: () => null, addEventListener() {} }, console, Intl, Date, setTimeout, clearTimeout, ...extra }); return window.AuxTercerizadoServicio; }
 const prov = { provider_id: 'p1', display_name: 'Buby', has_rate: true, tolls_mode: 'separate', concepts: ['L'], extras: [{ concept_id: 'H', name: 'Hora', unit: 'hour', unit_amount: 12000 }] };
 const terc = (form, p = prov) => ({ form: { ...load()._blank(), ...form }, providers: [p] });
 
@@ -78,4 +78,18 @@ test('costo tercerizado: conectado al formulario y la base calcula y bloquea lo 
   assert.match(sql, /logistics_type, 'own'\) <> 'third_party'/);
   for (const f of ['Index.html', 'sw.js']) assert.match(read(f), /outsourced-service-cost-v1\.js/);
   assert.match(read('package.json'), /node --check outsourced-service-cost-v1\.js/);
+});
+
+test('costo tercerizado: el operador no ve tarifas ni importes y no manda ajuste', () => {
+  const t = load({ PERFIL_USUARIO: { roles: { name: 'operador' } } });
+  const p = t._payload({ form: { ...t._blank(), provider_id: 'p1', adjustment_amount: '5000', adjustment_reason: 'intento' }, providers: [prov] });
+  assert.equal('adjustment_amount' in p, false); assert.equal('adjustment_reason' in p, false);
+  assert.match(src, /rpc\('get_outsourced_service_cost_v1'/);
+  assert.doesNotMatch(src, /from\('outsourced_service_costs'\)/);
+  assert.match(src, /Lo que se le paga lo calcula y lo ve Administración/);
+  const m = read('migrations/20261019010000_outsourced_costs_operator_no_amounts.sql');
+  assert.match(m, /alter policy outsourced_service_costs_select_staff[\s\S]*= 'administracion'\)/);
+  assert.match(m, /if v_role <> 'administracion' then q := app_private\.outsourced_hide_amounts\(q\)/);
+  assert.match(m, /case when v_admin then jsonb_build_object\('unit_amount'/);
+  assert.match(m, /p - 'adjustment_amount' - 'adjustment_reason'/);
 });

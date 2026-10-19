@@ -58,3 +58,5 @@
 #modal-operador-wizard .osv4-reactive .assignment-grid.osc-replaced { display: none !important; }
 #modal-operador-wizard .osv4-reactive #osv4-terc-pick { display: grid; gap: var(--ax-sp-2); }
 #modal-operador-wizard .osv4-reactive #osv4-terc-pick[hidden] { display: none; }
+#osv4-terc .osc-note.is-ok { border-color: color-mix(in srgb, var(--ax-ok) 35%, transparent); background: var(--ax-ok-soft); color: var(--ax-text-2); }
+#osv4-terc .osc-note.is-ok .ax-icon { color: var(--ax-ok); }

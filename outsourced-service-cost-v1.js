@@ -15,9 +15,13 @@ function num(v){const s=String(v??'').trim().replace(/\s|\$/g,'');if(!s)return 0
 function serviceDate(w){const v=String(w?.data?.scheduled_for||'');if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)||/^\d{4}-\d{2}-\d{2}$/.test(v))return v.slice(0,10);const d=new Date(v);if(Number.isNaN(d.getTime()))return new Date().toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'});return d.toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'});}
 const dmy=iso=>{const [y,m,d]=String(iso||'').split('-');return d?`${d}/${m}/${y}`:'';};
 const isThird=w=>w?.data?.logistics_type==='third_party';
+/* El operador no ve tarifas ni importes: sólo Administración. La base tampoco se los manda. */
+const isAdmin=()=>{try{return String(PERFIL_USUARIO?.roles?.name||'').toLowerCase()==='administracion';}catch(e){return false;}};
 
 function blank(){return{provider_id:'',km_asphalt:'',km_gravel:'',tolls_amount:'',extras:{},adjustment_amount:'',adjustment_reason:'',kmTouched:false,showAdj:false};}
 function state(w){const key=String(w.serviceId||'new');if(w.terc?.key!==key)w.terc={key,form:blank(),providers:null,providersDate:'',row:null,rowLoaded:!w.serviceId,quote:null,quoteKey:'',seq:0,dirty:false,sig:''};return w.terc;}
+/* Ya está en una liquidación (al operador la base sólo le dice locked). */
+const isLocked=t=>!!(t?.row?.settlement_id||t?.row?.locked);
 const provider=t=>(t.providers||[]).find(p=>String(p.provider_id)===String(t.form.provider_id))||null;
 
 async function loadProviders(w,t,date){if(t.providersDate===date||t.loadingProviders===date)return;t.loadingProviders=date;
@@ -25,7 +29,7 @@ async function loadProviders(w,t,date){if(t.providersDate===date||t.loadingProvi
  catch(e){if(w.terc!==t)return;t.providers=t.providers||[];t.providersDate=date;t.providersError=e?.message||'No se pudieron cargar los tercerizados';}
  t.loadingProviders='';render(w);requestQuote(w);}
 async function loadRow(w,t){if(t.rowLoaded||t.loadingRow)return;t.loadingRow=true;
- try{const {data,error}=await db().from('outsourced_service_costs').select('*').eq('service_id',w.serviceId).maybeSingle();if(error)throw error;if(w.terc!==t)return;t.row=data||null;
+ try{const {data,error}=await db().rpc('get_outsourced_service_cost_v1',{p_service_id:w.serviceId});if(error)throw error;if(w.terc!==t)return;t.row=data||null;
   if(data?.provider_id){const ex={};(data.extras||[]).forEach(x=>{ex[x.concept_id]=String(x.quantity??'');});
    t.form={...blank(),provider_id:data.provider_id,km_asphalt:String(Number(data.km_asphalt)||''),km_gravel:String(Number(data.km_gravel)||''),tolls_amount:String(Number(data.tolls_amount)||''),extras:ex,adjustment_amount:Number(data.adjustment_amount)?String(Number(data.adjustment_amount)):'',adjustment_reason:data.adjustment_reason||'',kmTouched:true,showAdj:!!Number(data.adjustment_amount)};}}
  catch(e){console.warn('[terc] costo guardado',e);}
@@ -43,7 +47,7 @@ function problems(t){const f=t.form,out={};
 function payload(t){const f=t.form,p=provider(t),separate=(p?.tolls_mode||'separate')==='separate';
  return{provider_id:f.provider_id||null,km_asphalt:num(f.km_asphalt)||0,km_gravel:num(f.km_gravel)||0,tolls_amount:separate?(num(f.tolls_amount)||0):0,
   extras:Object.entries(f.extras).map(([concept_id,v])=>({concept_id,quantity:num(v)||0})).filter(x=>x.quantity>0),
-  adjustment_amount:num(f.adjustment_amount)||0,adjustment_reason:String(f.adjustment_reason||'').trim()||null};}
+  ...(isAdmin()?{adjustment_amount:num(f.adjustment_amount)||0,adjustment_reason:String(f.adjustment_reason||'').trim()||null}:{})};}
 
 let timer=null;
 function requestQuote(w,delay=250){const t=w?.terc;if(!t)return;clearTimeout(timer);timer=setTimeout(()=>quote(w,t),delay);}
@@ -55,7 +59,7 @@ async function quote(w,t){if(w.terc!==t)return;const p=payload(t),concept=w.data
  const {data,error}=await db().rpc('quote_outsourced_service_cost_v1',{p_payload:body});if(w.terc!==t||seq!==t.seq)return;t.quoting=false;
  t.quote=error?{error:error.message||'No se pudo calcular'}:data;t.quoteKey=key;renderQuote(w);}
 
-function signature(w,t){const p=provider(t);return JSON.stringify([w.mode,isThird(w),t.providersDate,!!t.providers,t.providersError||'',t.rowLoaded,t.form.provider_id,p?.tolls_mode,(p?.extras||[]).map(x=>x.concept_id),t.form.showAdj,!!t.row?.settlement_id,w.data.primary_concept_id]);}
+function signature(w,t){const p=provider(t);return JSON.stringify([w.mode,isThird(w),t.providersDate,!!t.providers,t.providersError||'',t.rowLoaded,t.form.provider_id,p?.tolls_mode,(p?.extras||[]).map(x=>x.concept_id),t.form.showAdj,isLocked(t),w.data.primary_concept_id]);}
 
 function field(id,label,value,{suffix='',prefix='',hint='',disabled=false,inputmode='decimal',placeholder='0'}={}){
  return `<label class="osc-field" data-osc-wrap="${esc(id)}"><span>${esc(label)}</span><span class="osc-input">${prefix?`<i>${esc(prefix)}</i>`:''}<input class="ax-input" data-osc="${esc(id)}" inputmode="${inputmode}" autocomplete="off" value="${esc(value)}" placeholder="${esc(placeholder)}" ${disabled?'disabled':''}>${suffix?`<i>${esc(suffix)}</i>`:''}</span><small class="osc-err" data-osc-err="${esc(id)}"></small>${hint?`<small class="osc-hint">${esc(hint)}</small>`:''}</label>`;}
@@ -66,7 +70,7 @@ function placement(w){const third=isThird(w),grid=document.querySelector('.osv4-
  grid?.classList.toggle('osc-replaced',third);if(pick)pick.hidden=!third;if(card&&!third)card.hidden=true;return{pick,card,third};}
 function render(w){if(!w)return;const {pick,card,third}=placement(w);if(!pick||!card||!third)return;
  const t=state(w);const sig=signature(w,t);if(sig===t.sig&&pick.childElementCount){paintValues(w,t);return renderQuote(w);}t.sig=sig;
- const view=w.mode==='view',locked=!!t.row?.settlement_id,ro=view||locked,f=t.form,p=provider(t),date=t.providersDate||serviceDate(w);
+ const view=w.mode==='view',locked=isLocked(t),ro=view||locked,f=t.form,p=provider(t),date=t.providersDate||serviceDate(w);
  const loading=!t.providers||!t.rowLoaded;
  const opts=(t.providers||[]).map(x=>`<option value="${esc(x.provider_id)}">${esc(x.display_name)}${x.has_rate?'':' · sin tarifa'}</option>`).join('');
  const keep=f.provider_id&&!p&&t.row?.provider_id===f.provider_id?`<option value="${esc(f.provider_id)}">Tercerizado guardado (inactivo)</option>`:'';
@@ -83,12 +87,12 @@ function render(w){if(!w)return;const {pick,card,third}=placement(w);if(!pick||!
  const noRate=p&&(!p.has_rate||(w.data.primary_concept_id&&!(p.concepts||[]).map(String).includes(String(w.data.primary_concept_id))));
  const show=!!(f.provider_id&&p&&!noRate);card.hidden=!show;
  if(!show){card.innerHTML='';return;}
- card.innerHTML=`<div class="osc-head">${ico('truck','ax-icon-sm')}<b>Lo que se le paga</b><small>${esc(p.display_name)}</small></div>
+ card.innerHTML=`<div class="osc-head">${ico('truck','ax-icon-sm')}<b>${isAdmin()?'Lo que se le paga':'Datos para el tercerizado'}</b><small>${esc(p.display_name)}</small></div>
   ${locked?`<p class="osc-note">${ico('lock','ax-icon-sm')}<span>Ya está en una liquidación: no se puede cambiar.</span></p>`:''}
   <div class="osc-grid">${field('km_asphalt','Km asfalto',f.km_asphalt,{suffix:'km',disabled:ro,hint:f.kmTouched?'':'Del recorrido'})}${field('km_gravel','Km ripio',f.km_gravel,{suffix:'km',disabled:ro})}</div>
   ${tollsIncluded?`<p class="osc-note">${ico('info','ax-icon-sm')}<span>Peajes incluidos en su tarifa: no se pagan aparte.</span></p>`:field('tolls_amount','Peajes que pagó',f.tolls_amount,{prefix:'$',disabled:ro,hint:'Se le devuelven aparte'})}
-  ${extras.length?`<div class="osc-extras"><span class="osc-label">Adicionales</span>${extras.map(x=>`<div class="osc-extra"><span><b>${esc(x.name)}</b><small>${esc(money(x.unit_amount))} por ${esc(UNITS[x.unit]||x.unit||'unidad')}</small></span>${field('x:'+x.concept_id,'',f.extras[x.concept_id]||'',{suffix:UNITS[x.unit]||'',disabled:ro})}</div>`).join('')}</div>`:''}
-  ${f.showAdj?`<div class="osc-adj"><div class="osc-grid">${field('adjustment_amount','Ajuste',f.adjustment_amount,{prefix:'$',disabled:ro,hint:'Negativo para descontar',inputmode:'text'})}${field('adjustment_reason','Motivo del ajuste',f.adjustment_reason,{disabled:ro,inputmode:'text',placeholder:'Ej.: espera extra acordada'})}</div>${ro?'':'<button type="button" class="osc-link" data-osc-act="no-adj">Quitar ajuste</button>'}</div>`:(ro?'':'<button type="button" class="osc-link" data-osc-act="adj">+ Agregar ajuste</button>')}
+  ${extras.length?`<div class="osc-extras"><span class="osc-label">Adicionales</span>${extras.map(x=>`<div class="osc-extra"><span><b>${esc(x.name)}</b>${isAdmin()&&x.unit_amount!=null?`<small>${esc(money(x.unit_amount))} por ${esc(UNITS[x.unit]||x.unit||'unidad')}</small>`:''}</span>${field('x:'+x.concept_id,'',f.extras[x.concept_id]||'',{suffix:UNITS[x.unit]||'',disabled:ro})}</div>`).join('')}</div>`:''}
+  ${!isAdmin()?'':f.showAdj?`<div class="osc-adj"><div class="osc-grid">${field('adjustment_amount','Ajuste',f.adjustment_amount,{prefix:'$',disabled:ro,hint:'Negativo para descontar',inputmode:'text'})}${field('adjustment_reason','Motivo del ajuste',f.adjustment_reason,{disabled:ro,inputmode:'text',placeholder:'Ej.: espera extra acordada'})}</div>${ro?'':'<button type="button" class="osc-link" data-osc-act="no-adj">Quitar ajuste</button>'}</div>`:(ro?'':'<button type="button" class="osc-link" data-osc-act="adj">+ Agregar ajuste</button>')}
   <div class="osc-quote" data-osc-quote aria-live="polite"></div>`;
  paintValues(w,t);renderQuote(w);}
 
@@ -101,6 +105,7 @@ function renderQuote(w){const t=w?.terc,box=document.querySelector('#osv4-terc [
  const q=t.quote;
  if(!q){box.innerHTML=t.quoting?'<p class="osc-quote-wait">Calculando…</p>':'';return;}
  if(q.error){box.innerHTML=`<p class="osc-note is-warn">${ico('triangle-alert','ax-icon-sm')}<span>${esc(q.error)}</span></p>`;return;}
+ if(!isAdmin()||q.amounts_hidden){box.innerHTML=`<p class="osc-note is-ok">${ico('check','ax-icon-sm')}<span>Tiene tarifa para esta fecha. Lo que se le paga lo calcula y lo ve Administración.</span></p>`;return;}
  const rows=(q.breakdown||[]).map(r=>`<li><span>${esc(r.label)}${r.quantity!=null?` <small>${esc(qty(r.quantity))} ${esc(UNITS[r.unit]||r.unit||'')} × ${esc(money(r.unit_amount))}</small>`:''}</span><b class="${Number(r.amount)<0?'is-neg':''}">${esc(money(r.amount))}</b></li>`).join('');
  box.innerHTML=`<ul class="osc-breakdown">${rows}</ul><div class="osc-total${t.quoting?' is-stale':''}"><span>A pagar al tercerizado</span><b>${esc(money(q.total_amount))}</b></div><small class="osc-rate">Tarifa vigente desde el ${esc(dmy(q.valid_from))} · peajes ${q.tolls_mode==='included'?'incluidos':'aparte'}</small>`;}
 
@@ -128,7 +133,7 @@ function sync(w){if(!w||!db())return;bind();if(!document.getElementById('osv4-te
  render(w);requestQuote(w,400);}
 
 /* Antes de guardar: con Tercerizada hay que elegir quién lo hace y que los números estén bien. */
-function validate(w){if(!w||w.mode==='view'||!isThird(w)||!w.terc)return[];const t=w.terc;if(t.row?.settlement_id)return[];
+function validate(w){if(!w||w.mode==='view'||!isThird(w)||!w.terc)return[];const t=w.terc;if(isLocked(t))return[];
  const errs=problems(t);if(!t.form.provider_id)return['Elegí qué tercerizado hace el servicio.'];
  const p=provider(t);if(p&&!p.has_rate)return[`${p.display_name} no tiene tarifa para la fecha del servicio.`];
  if(p&&w.data.primary_concept_id&&!(p.concepts||[]).map(String).includes(String(w.data.primary_concept_id)))return[`La tarifa de ${p.display_name} no incluye este tipo de servicio.`];
@@ -140,7 +145,7 @@ async function persist(w,serviceId){if(!w||!serviceId||w.mode==='view'||!db())re
  /* Con Tercerizada se recalcula siempre: el tipo de servicio o la fecha pueden haber cambiado. */
  if(!isThird(w)&&!t?.row?.provider_id)return true;
  if(isThird(w)&&!t?.form?.provider_id)return true;
- if(t?.row?.settlement_id)return true;
+ if(isLocked(t))return true;
  const body=isThird(w)&&t?payload(t):null;
  const {data,error}=await db().rpc('set_outsourced_service_cost_v1',{p_service_id:serviceId,p_payload:body});
  if(error){const msg='El servicio se guardó, pero no lo que se le paga al tercerizado: '+(error.message||'');if(typeof window.toast==='function')window.toast(msg,'warning');else console.warn(msg);return false;}
