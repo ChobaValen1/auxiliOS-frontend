@@ -86,7 +86,7 @@ test('Estado en la tabla funciona como acción rápida por lifecycle',()=>{
   assert.match(lifecycle,/status==='assigned'.*\['reassign','Reasignar'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/status==='at_origin'.*\['finalize','Finalizar'/s);
   assert.match(lifecycle,/\.col-status \.os-status/);
-  assert.match(lifecycle,/function openAssignment\(id,readOnly=false\)/);
+  assert.match(lifecycle,/function openAssignment\(id,readOnly=false(,startMode='')?\)/);
   assert.match(lifecycle,/Asignación actual/);
   assert.match(lifecycle,/Nueva asignación/);
   assert.match(lifecycle,/set_operator_service_assignment_v2/);
