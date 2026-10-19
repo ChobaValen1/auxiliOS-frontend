@@ -558,3 +558,85 @@
   #modal-operador-wizard .osv4-reactive .osv2-observations textarea { min-height: 52px; }
   #modal-operador-wizard .osv4-reactive .osv2-logistics button { height: calc(var(--ax-h) - 6px); }
 }
+
+/* Peajes del cliente: un medio de pago principal para todos; cada fila lo hereda y "Otro medio" lo cambia sólo para esa. */
+#modal-operador-wizard .osv4-reactive .osca-main-payment { display: grid; gap: 4px; margin: 0 0 var(--ax-sp-2); padding: 10px 12px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#modal-operador-wizard .osv4-reactive .osca-main-payment label { display: grid; gap: 4px; }
+#modal-operador-wizard .osv4-reactive .osca-main-payment label > span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#modal-operador-wizard .osv4-reactive .osca-main-payment select { width: 100%; }
+#modal-operador-wizard .osv4-reactive .osca-main-payment small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit, #modal-operador-wizard .osv4-reactive .osca-pay-own { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: var(--ax-h-sm, 30px); }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > span { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--ax-text-2); font-size: var(--ax-fs-sm); text-overflow: ellipsis; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > span.is-missing { color: var(--ax-warn); }
+#modal-operador-wizard .osv4-reactive .osca-pay-own > select { flex: 1 1 auto; min-width: 0; }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > button, #modal-operador-wizard .osv4-reactive .osca-pay-own > button { flex: 0 0 auto; height: 26px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: transparent; color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-xs); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .osca-pay-inherit > button:hover, #modal-operador-wizard .osv4-reactive .osca-pay-own > button:hover { border-color: var(--ax-accent); color: var(--ax-text); }
+
+/* ── Peajes en tabla: Quién paga | Peaje | Importe | Cantidad (− +) ── */
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-head { display: grid; grid-template-columns: 86px minmax(0, 1fr) 74px 78px 20px; gap: 5px; padding: 0 8px 4px; font-size: 10px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row:not(.osaa-canonical-row) { grid-template-columns: 86px minmax(0, 1fr) 74px 78px 20px; align-items: center; gap: 6px 5px; padding: 8px; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label] { grid-row: 1; min-width: 0; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Quién paga"] { grid-column: 1; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Peaje"] { grid-column: 2; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Importe"] { grid-column: 3; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Cantidad"] { grid-column: 4; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > .osca-remove { grid-column: 5; grid-row: 1; align-self: center; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label]::before { display: none; }
+#modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > .osca-cell-method { grid-column: 2 / 5; grid-row: 2; }
+#modal-operador-wizard .osv4-reactive .osca-cell-method .osca-pay-inherit, #modal-operador-wizard .osv4-reactive .osca-cell-method .osca-pay-own { min-height: 0; }
+#modal-operador-wizard .osv4-reactive .osca-cell-method .osca-pay-inherit > span { flex: 0 1 auto; font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .osca-cell-method .osca-pay-inherit > span::before { content: 'Paga con '; color: var(--ax-text-3); }
+#modal-operador-wizard .osv4-reactive .osca-cell-method .osca-pay-inherit > span.is-missing::before { content: ''; }
+#modal-operador-wizard .osv4-reactive .osca-cell-method .osca-pay-own > select { height: 28px; font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .osca-cell-method button { height: 22px; padding: 0 8px; font-size: 10px; }
+/* Quién paga: dos pastillas de color, fáciles de distinguir de un vistazo. */
+#modal-operador-wizard .osv4-reactive .osca-payer-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; border: 1px solid var(--ax-border-strong); border-radius: 999px; background: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osca-payer { display: inline-flex; align-items: center; justify-content: center; height: 26px; min-width: 0; padding: 0 4px; border: 0; border-radius: 999px; background: transparent; color: var(--ax-text-3); font: inherit; font-size: 10.5px; font-weight: var(--ax-fw-bold); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#modal-operador-wizard .osv4-reactive .osca-payer:hover:not(:disabled) { color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osca-payer.is-customer.active { background: var(--ax-accent); color: var(--ax-accent-fg); }
+#modal-operador-wizard .osv4-reactive .osca-payer.is-provider.active { background: var(--ax-info); color: var(--ax-bg); }
+#modal-operador-wizard .osv4-reactive .osca-payer.is-fixed { width: 100%; cursor: default; }
+#modal-operador-wizard .osv4-reactive .osca-cell-payer { display: grid; gap: 4px; }
+#modal-operador-wizard .osv4-reactive .osca-cell-payer .osca-pay-inherit, #modal-operador-wizard .osv4-reactive .osca-cell-payer .osca-pay-own { min-height: 0; flex-wrap: wrap; gap: 2px 6px; }
+#modal-operador-wizard .osv4-reactive .osca-cell-payer .osca-pay-inherit > span { flex: 0 1 auto; font-size: var(--ax-fs-xs); }
+#modal-operador-wizard .osv4-reactive .osca-cell-payer .osca-pay-inherit > button, #modal-operador-wizard .osv4-reactive .osca-cell-payer .osca-pay-own > button { height: 22px; padding: 0 6px; font-size: 10px; }
+#modal-operador-wizard .osv4-reactive .osca-cell-payer .osca-pay-own > select { width: 100%; height: 28px; font-size: var(--ax-fs-xs); }
+/* Peaje: lista con el aspecto del sistema; la fila manual se marca. */
+#modal-operador-wizard .osv4-reactive .osca-cell-toll .ax-select-box, #modal-operador-wizard .osv4-reactive .osca-cell-toll .ax-select-btn { width: 100%; }
+#modal-operador-wizard .osv4-reactive .osca-cell-toll .ax-select-btn { height: 32px; font-size: var(--ax-fs-sm); }
+#modal-operador-wizard .osv4-reactive .osca-matrix-row.is-manual { border-style: dashed; }
+/* Importe */
+#modal-operador-wizard .osv4-reactive .osca-cell-amount { display: grid; gap: 2px; align-content: center; min-height: 32px; text-align: right; }
+#modal-operador-wizard .osv4-reactive .osca-cell-amount b { font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osca-cell-amount small { color: var(--ax-text-3); font-size: 10px; white-space: nowrap; }
+#modal-operador-wizard .osv4-reactive .osca-money { position: relative; display: block; }
+#modal-operador-wizard .osv4-reactive .osca-money > span { position: absolute; top: 50%; left: 8px; transform: translateY(-50%); color: var(--ax-text-3); font-size: var(--ax-fs-sm); pointer-events: none; }
+#modal-operador-wizard .osv4-reactive .osca-money input { box-sizing: border-box; width: 100%; height: 32px; padding: 0 6px 0 20px; text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+#modal-operador-wizard .osv4-reactive .osca-money input::-webkit-inner-spin-button, #modal-operador-wizard .osv4-reactive .osca-money input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+/* Cantidad: − número + */
+#modal-operador-wizard .osv4-reactive .osca-stepper { display: grid; grid-template-columns: 24px 1fr 24px; align-items: center; height: 32px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); overflow: hidden; }
+#modal-operador-wizard .osv4-reactive .osca-stepper button { height: 100%; border: 0; background: transparent; color: var(--ax-text-2); font: inherit; font-size: 16px; font-weight: var(--ax-fw-bold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .osca-stepper button:hover:not(:disabled) { background: var(--ax-surface-3); color: var(--ax-text); }
+#modal-operador-wizard .osv4-reactive .osca-stepper button:disabled { opacity: .35; cursor: default; }
+#modal-operador-wizard .osv4-reactive .osca-stepper span { text-align: center; font-weight: var(--ax-fw-bold); font-variant-numeric: tabular-nums; }
+/* Formato de cobro elegido: una línea entera con "Cambiar". */
+#modal-operador-wizard .osv4-reactive .osca-format.is-chosen { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1px solid var(--ax-accent); border-radius: var(--ax-radius-lg); background: var(--ax-accent-soft); }
+#modal-operador-wizard .osv4-reactive .osca-format.is-chosen .osca-field-label { margin: 0; color: var(--ax-accent); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osca-format.is-chosen b { flex: 1 1 auto; min-width: 0; color: var(--ax-accent); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); }
+#modal-operador-wizard .osv4-reactive .osca-format-change { flex: 0 0 auto; height: 26px; padding: 0 10px; border: 1px solid var(--ax-accent); border-radius: 999px; background: transparent; color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-semibold); cursor: pointer; }
+#modal-operador-wizard .osv4-reactive .osca-format-change:hover { border-color: var(--ax-accent); color: var(--ax-text); }
+/* Lo que falta completar brilla en amarillo al intentar guardar. */
+@keyframes osv4-missing-glow { 0%, 100% { box-shadow: 0 0 0 2px rgba(245, 166, 35, .55), 0 0 10px rgba(245, 166, 35, .35); } 50% { box-shadow: 0 0 0 3px rgba(245, 166, 35, .9), 0 0 16px rgba(245, 166, 35, .55); } }
+#modal-operador-wizard .osv4-reactive .is-missing, #modal-operador-wizard .osv4-reactive [aria-invalid="true"], #modal-operador-wizard .osv4-reactive .ax-select-box.is-invalid { border-radius: var(--ax-radius); animation: osv4-missing-glow 1.1s ease-in-out 3; box-shadow: 0 0 0 2px rgba(245, 166, 35, .7); }
+#modal-operador-wizard .osv4-reactive .osca-payer-seg.is-missing { border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) { #modal-operador-wizard .osv4-reactive .is-missing, #modal-operador-wizard .osv4-reactive [aria-invalid="true"] { animation: none; } }
+@media (max-width: 720px) {
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-head { display: none; }
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row:not(.osaa-canonical-row) { grid-template-columns: minmax(0, 1fr) 84px 92px 24px; }
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Quién paga"] { grid-column: 1 / -1; grid-row: 2; }
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Peaje"] { grid-column: 1; }
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Importe"] { grid-column: 2; }
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > [data-label="Cantidad"] { grid-column: 3; }
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > .osca-remove { grid-column: 4; }
+  #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > .osca-cell-method { grid-column: 1 / -1; grid-row: 3; }
+}

@@ -21,12 +21,13 @@ test('la jornada activa vuelve a enlazar chofer y móvil antes de asignar',()=>{
 test('chofer y móvil autocompletan la pareja de jornada y permiten la asignación manual',()=>{const {O}=runtime();let pair=O.pairedResources('driver','d1',{});assert.equal(pair.assigned_truck_id,'1');pair=O.pairedResources('truck','2',pair);assert.equal(pair.assigned_driver_id,'d2');pair=O.pairedResources('driver','manual',pair);assert.equal(pair.assigned_truck_id,'');pair=O.pairedResources('truck','3',pair);assert.equal(pair.assigned_driver_id,'manual');assert.equal(pair.assigned_truck_id,'3');assert.equal(O.resourceHint('driver','manual'),'Disponible · Sin jornada abierta');});
 test('crear sin prestadora muestra un aviso y conserva el formulario',async()=>{const {O,window,notices}=runtime();await window.guardarServicioWorkspace();assert.match(notices[0],/Completá prestadora/);assert.ok(O.S.wizard);});
 
-test('guardar confirma cambios de asignación dentro de AuxiliOS',()=>{
+test('guardar resume asignación y demás cambios en una única confirmación dentro de AuxiliOS',()=>{
   assert.match(wizard,/function confirmAssignmentChange/);
-  assert.match(wizard,/El servicio pasará a ASIGNADO/);
-  assert.match(wizard,/El servicio volverá a SIN ASIGNAR/);
-  assert.match(wizard,/¿Confirmar reasignación del servicio\?/);
-  assert.match(wizard,/OperatorServiceLifecycleV2\?\.confirmAssignmentChange/);
+  assert.match(wizard,/ui\.confirmEdit\(\{before,after,resolve/);
+  assert.match(wizard,/before\.status=w\.serviceStatus/);
+  assert.match(wizard,/after\.assigned_driver_id&&after\.assigned_truck_id\?'assigned':'pending'/);
+  assert.match(wizard,/key==='assigned_driver_id'/);
+  assert.match(wizard,/key==='assigned_truck_id'/);
   assert.match(wizard,/if\(wasEdit&&!await confirmAssignmentChange\(w\)\)return/);
   assert.doesNotMatch(wizard,/window\.confirm|[^\.]confirm\('/);
   assert.doesNotMatch(lifecycle,/window\.confirm/);

@@ -49,7 +49,7 @@ test('Servicios y la lista del chofer usan sólo tokens e íconos del sprite', (
     assert.deepEqual(sueltas, [], f);
   }
   const os = read('operator-services.js'), bridge = read('operator-service-bridge.js'), filters = read('auxilios-filters-v1.js');
-  assert.match(os, /data-label="\$\{esc\(COLUMN_LABELS\[k\]\|\|k\)\}"/);   // tarjetas en el celular
+  assert.match(os, /data-label="\$\{esc\(columnLabel\(k\)\)\}"/);   // tarjetas en el celular
   assert.match(os, /\$\{ico\('ellipsis'\)\}/);
   assert.match(os, /aria-label="Más acciones"/);
   assert.match(os, /MENU_ICON=\{view:'eye',edit:'pencil','edit-closed':'pencil',finalize:'circle-check',annul:'circle-x'\}/);

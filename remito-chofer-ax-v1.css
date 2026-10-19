@@ -145,6 +145,30 @@
 #rem-addon-picker .rem-picker-confirm { border: 1px solid var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
 #rem-addon-picker .rem-picker-secondary { border: 1px solid var(--ax-border-strong); background: transparent; color: var(--ax-text); }
 
+/* Peajes sugeridos por el recorrido: etiqueta "Sugerido" arriba a la derecha (amarillo suave, no compite con Continuar),
+   − + a la derecha de la fila y "Ver más peajes" para la lista completa. */
+#rem-addon-picker .rem-toll-option { position: relative; }
+#rem-addon-picker .rem-toll-option.is-suggested { padding-top: 16px; }
+#rem-addon-picker .rem-toll-option .rem-qty { margin-left: auto; }
+#rem-addon-picker .rem-sug-badge { position: absolute; top: -1px; right: 12px; padding: 2px 8px 3px; border: 1px solid var(--ax-accent); border-top: 0; border-radius: 0 0 6px 6px; background: var(--ax-accent-soft); color: var(--ax-accent); font-size: 9px; font-weight: var(--ax-fw-bold); letter-spacing: .06em; line-height: 1.2; text-transform: uppercase; opacity: .9; pointer-events: none; }
+#rem-addon-picker .rem-more-tolls { width: 100%; min-height: 44px; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius); background: transparent; color: var(--ax-text); font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); cursor: pointer; }
+#rem-addon-picker .rem-tolls-sep { margin: 6px 2px 0; color: var(--ax-text-3); font-size: 10px; font-weight: var(--ax-fw-bold); letter-spacing: .06em; text-transform: uppercase; }
+
+/* ¿Cuánto pagaste?: importes editables arriba, total y medio de pago abajo. */
+#rem-addon-picker .rem-amount-hint { margin: 0 2px; padding: 0; border: 0; background: none; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#rem-addon-picker .rem-amount-hint b { color: var(--ax-accent); }
+#rem-addon-picker .rem-toll-detail { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); }
+#rem-addon-picker .rem-toll-detail .rem-picker-detail-head { flex: 1 1 auto; min-width: 0; margin: 0; }
+#rem-addon-picker .rem-toll-amount { position: relative; display: block; flex: 0 0 136px; width: 136px; }
+#rem-addon-picker .rem-toll-amount input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 8px 28px 8px 22px; border: 2px solid var(--ax-accent); border-radius: var(--ax-radius); background: var(--ax-accent-soft); color: var(--ax-text); font: var(--ax-fw-bold) 16px var(--ax-font); text-align: right; font-variant-numeric: tabular-nums; }
+#rem-addon-picker .rem-toll-amount input:focus { outline: none; background: var(--ax-bg); box-shadow: var(--ax-focus); }
+#rem-addon-picker .rem-toll-details-total { display: flex; justify-content: space-between; margin: 2px 4px; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); font-variant-numeric: tabular-nums; }
+#rem-addon-picker .rem-toll-details-total span { color: var(--ax-text-2); font-weight: var(--ax-fw-semibold); }
+#rem-addon-picker .rem-toll-payment { margin-top: 4px; padding: 12px 0 0; border: 0; border-top: 1px solid var(--ax-border); border-radius: 0; background: none; }
+#rem-addon-picker .rem-toll-payment > span { margin-bottom: 6px; color: var(--ax-text); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-bold); }
+#rem-addon-picker .rem-toll-payment select { min-height: 48px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font-size: 16px; }
+#rem-addon-picker .rem-toll-payment small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+
 /* Cobro del particular (lo que cobró el chofer). */
 #remitos-nuevo .pcv-resumen > div { border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); }
 #remitos-nuevo .pcv-resumen span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }

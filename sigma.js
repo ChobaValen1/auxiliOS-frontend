@@ -303,6 +303,8 @@ function openFuelModal() {
   const appSel = document.getElementById('cb-app-select'); if (appSel) appSel.style.display = 'none';
   document.querySelectorAll('[id^="cb-efectivo"],[id^="cb-transferencia"],[id^="cb-app"]').forEach(el => { el.style.borderColor = 'var(--border)'; el.style.background = 'var(--bg)'; });
   selectedPayMethod = ''; selectedApp = '';
+  window._fuelTicketFile = null;
+  const ticketInput = document.getElementById('cb-ticket-input'); if (ticketInput) ticketInput.value = '';
   _modalError('cb-error', '');
   openModal('modal-combustible');
 }
@@ -4738,6 +4740,7 @@ async function _renderIndicadorOffline() {
 async function leerTicketCombustible(input) {
   const file = input.files[0];
   if (!file || _fuelBusy) return;
+  if (typeof window !== 'undefined') window._fuelTicketFile = file; // se guarda con la carga (fuel-tickets-v1.js)
   _setFuelBusy('scan');
   try {
 
@@ -4959,6 +4962,9 @@ async function guardarCombustible() {
   if (btn) { btn.textContent = '⛽ Guardar carga'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado.ok) {
+    // La foto del ticket escaneado queda guardada con la carga; si falla, la carga igual queda registrada.
+    const ticketFile = window._fuelTicketFile; window._fuelTicketFile = null;
+    if (ticketFile && resultado.data?.fuel_id && window.AuxFuelTickets) AuxFuelTickets.attachDriverScan(resultado.data.fuel_id, ticketFile);
     operationFeedback('Carga registrada', `${litros} litros guardados correctamente.`, 'success', 2200);
     closeModal('modal-combustible');
     selectedPayMethod = ''; selectedApp = '';
@@ -8543,6 +8549,9 @@ function _renderPerfilAdminTab() {
       <div class="cfg-ch-row"><span class="cfg-ch-key">Rol</span><span class="cfg-ch-val" style="text-transform:capitalize">${rol}</span></div>
     </div>
 
+    <div class="cfg-ch-section-label">TEMA</div>
+    <div class="cfg-ch-card cfg-ch-theme"><div class="cfg-ch-hint" style="margin-bottom:8px">Oscuro, Claro o el que use tu dispositivo (Sistema).</div>${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}</div>
+
     <div class="cfg-ch-section-label">SEGURIDAD</div>
     <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPasswordAdmin()">
       <span>🔑 Cambiar contraseña</span>
@@ -8611,6 +8620,12 @@ function _abrirPanelChofer() {
           <div class="cfg-ch-row"><span class="cfg-ch-key">Legajo</span><span class="cfg-ch-val">${legajo}</span></div>
           <div class="cfg-ch-row"><span class="cfg-ch-key">DNI</span><span class="cfg-ch-val">${dni}</span></div>
         </div>
+
+        <div class="cfg-ch-section-label">CONFIGURACIÓN</div>
+        <details class="aux-area cfg-ch-theme cfg-ch-theme-area">
+          <summary><span class="aux-area-icon" aria-hidden="true">◐</span><h3>Tema</h3><p>Oscuro, Claro o el que use tu dispositivo.</p><span class="aux-area-open">Ver opciones <span aria-hidden="true">↓</span></span></summary>
+          <div class="aux-area-links"><div class="aux-theme-area">${window.AuxTheme ? window.AuxTheme.pickerHtml() : ''}<p class="aux-area-note">Se guarda para vos en este dispositivo. Sistema sigue el modo del celular.</p></div></div>
+        </details>
 
         <div class="cfg-ch-section-label">SEGURIDAD</div>
         <div class="cfg-ch-card cfg-ch-card--action" onclick="_abrirCambioPassword()">
@@ -15229,6 +15244,10 @@ function _jadminRenderDetalle(det) {
   }
 
   let fuelCard;
+  // Administración puede agregar una carga dentro de la jornada (fuel-tickets-v1.js)
+  const fuelNuevoBtn = PERFIL_USUARIO?.roles?.name === 'administracion' && window.AuxFuelTickets && log.status !== 'voided'
+    ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm jd-fuel-add" onclick="AuxFuelTickets.openNew(${Number(log.log_id)}, { label: ${_escHtml(JSON.stringify([chNombre, fecha, truckPlate !== '—' ? truckPlate + (truckMovil ? ' #' + truckMovil : '') : ''].filter(Boolean).join(' · ')))}, date: '${_escHtml(log.log_date || '')}' })">${ic('plus')} Cargar combustible</button>`
+    : '';
   if (fuel_records && fuel_records.length) {
     const totalLitros = fuel_records.reduce((s, f) => s + (Number(f.liters) || 0), 0);
     const totalCosto  = fuel_records.reduce((s, f) => s + (Number(f.total_cost) || 0), 0);
@@ -15238,7 +15257,7 @@ function _jadminRenderDetalle(det) {
     const costoCredito = totalCosto - costoEfectivo;
     fuelCard = `
       <section class="jd-card">
-        <h4>${ic('fuel')} Combustible ${apagado(`(${fuel_records.length} carga${fuel_records.length===1?'':'s'})`)}</h4>
+        <h4>${ic('fuel')} Combustible ${apagado(`(${fuel_records.length} carga${fuel_records.length===1?'':'s'})`)}${fuelNuevoBtn}</h4>
         <div class="jd-info">
           ${dato('Litros totales', totalLitros.toLocaleString('es-AR', {maximumFractionDigits: 1}) + ' L')}
           ${dato('Costo total', _jadminMoney(totalCosto))}
@@ -15257,7 +15276,7 @@ function _jadminRenderDetalle(det) {
                 <div><b>${(Number(f.liters)||0).toLocaleString('es-AR', {maximumFractionDigits: 1})} L</b> ${apagado(_escHtml(f.gas_station || ''))} ${badge}</div>
                 <div class="jd-dim">${_escHtml(f.payment_method || '')}${f.payment_app ? ' · ' + _escHtml(f.payment_app) : ''}</div>
               </div>
-              <div class="rgt">${_jadminMoney(f.total_cost)}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">${ic('pencil')} Editar</button>` : ''}</div>
+              <div class="rgt">${_jadminMoney(f.total_cost)}${window.AuxFuelTickets ? AuxFuelTickets.buttonHtml(f, { logId: log.log_id, truckId: log.truck_id }) : ''}${PERFIL_USUARIO?.roles?.name === 'administracion' ? `<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm" onclick="editarCargaCombustibleAdmin(${Number(f.fuel_id)})">${ic('pencil')} Editar</button>` : ''}</div>
             </div>
           `}).join('')}
         </div>
@@ -15266,7 +15285,7 @@ function _jadminRenderDetalle(det) {
   } else {
     fuelCard = `
       <section class="jd-card">
-        <h4>${ic('fuel')} Combustible</h4>
+        <h4>${ic('fuel')} Combustible${fuelNuevoBtn}</h4>
         <div class="jd-empty">Sin cargas.</div>
       </section>
     `;
@@ -15406,12 +15425,22 @@ async function _jadminExportarExcel() {
       { label: 'Litros cargados', value: Math.round(suma(r => r.litros) * 10) / 10 },
     ];
     const desdeTxt = String(_jadminState.desde || '').replace(/-/g, ''), hastaTxt = String(_jadminState.hasta || '').replace(/-/g, '');
-    AuxiliosExcelExport.download({
+    const archivo = {
       filename: `Jornadas_${desdeTxt}_${hastaTxt}`,
       summaryRows: resumen,
-      sheets: [{ name: 'Jornadas', columns: columnas, rows }],
+      sheetName: 'Jornadas',
+      rows,
       detalle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`,
-    });
+    };
+    // Elegir qué columnas, en qué orden y si va en Excel o CSV (se recuerda en este navegador).
+    if (window.AuxiliosExportPicker) {
+      columnas.forEach(c => { c.id = c.id || c.header.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_'); });
+      const eleccion = await window.AuxiliosExportPicker.open({ key: 'jornadas', title: 'Jornadas', subtitle: `${rows.length} jornada${rows.length === 1 ? '' : 's'} · ${resumen[0].value}`, columns: columnas });
+      if (!eleccion) return;
+      window.AuxiliosExportPicker.download(eleccion, archivo);
+    } else {
+      AuxiliosExcelExport.download({ filename: archivo.filename, summaryRows: resumen, sheets: [{ name: 'Jornadas', columns: columnas, rows }], detalle: archivo.detalle });
+    }
     if ((resp?.total || 0) > (resp?.data || []).length) {
       toast(`Se exportaron las primeras ${resp.data.length} de ${resp.total} jornadas. Acotá el período para el resto.`, 'warn');
     }

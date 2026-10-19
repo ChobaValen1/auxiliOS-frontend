@@ -12,7 +12,7 @@ const addonsSrc = read('remito-addons-v2.js');
 function loadAddons() {
   const document = { readyState: 'loading', addEventListener() {}, querySelector: () => null, querySelectorAll: () => [] };
   const context = { window: {}, document, sessionStorage: { getItem: () => 'svc-1' }, console, Intl };
-  const source = addonsSrc.replace(/\}\)\(\);\s*$/, 'window.api={state,collectLines,groupPasses,totals,selectionMarkup,detailsMarkup};})();');
+  const source = addonsSrc.replace(/\}\)\(\);\s*$/, 'window.api={state,collectLines,groupPasses,totals,selectionMarkup,detailsMarkup,suggestedTolls};})();');
   vm.runInNewContext(source, context);
   return context.window.api;
 }
@@ -36,7 +36,7 @@ test('"Marcar como activado" entra deslizando, en el servicio asignado y en el b
   assert.match(bridgeCss, /@media \(prefers-reduced-motion:reduce\)\{\.p3-step-next,\.p3-step-prev\{animation:none\}\}/);
 });
 
-test('peajes: la selección muestra el precio sugerido y las pasadas con − / +', () => {
+test('peajes: la selección muestra el precio y las pasadas con − / + a la derecha', () => {
   const api = loadAddons();
   api.state.reference.toll_coverage_mode = 'customer_roundtrip';
   api.state.reference.tolls = [
@@ -45,12 +45,59 @@ test('peajes: la selección muestra el precio sugerido y las pasadas con − / +
   ];
   api.state.draft = { kind: 'toll', phase: 'select', lines: [{ toll_id: 't1', quantity: 2 }], qty: { t1: 2 } };
   const html = api.selectionMarkup();
-  assert.match(html, /Precio sugerido \$\s?4\.300,00/);
+  // Sin recorrido ni peajes de Operaciones: lista completa, sin "Ver más" ni etiquetas.
+  assert.match(html, /<small>\$\s?4\.300<\/small>/);
   assert.match(html, /Sin precio sugerido/);
+  assert.doesNotMatch(html, /data-more-tolls|rem-sug-badge/);
   assert.match(html, /data-qty-for="t1" ><button type="button" data-qty-step="-1"/);
   assert.match(html, /<output aria-live="polite">2<\/output>/);
   // El que no está marcado no muestra el contador.
   assert.match(html, /data-qty-for="t2" hidden>/);
+});
+
+test('peajes sugeridos: los del recorrido y los de Operaciones, sin marcar, con etiqueta y "Ver más peajes"', () => {
+  const api = loadAddons();
+  api.state.reference.toll_coverage_mode = 'customer_roundtrip';
+  api.state.reference.manual_toll = true;
+  api.state.reference.route_polyline = 'abc';
+  api.state.reference.planned_toll_ids = ['t3'];
+  api.state.reference.tolls = [
+    { toll_id: 't1', name: 'Peaje Hudson', reference_amount: 2850 },
+    { toll_id: 't2', name: 'Peaje Dock Sud', reference_amount: 1900 },
+    { toll_id: 't3', name: 'Peaje 25 de Mayo', reference_amount: 4300 },
+  ];
+  // Sin la detección cargada quedan igual los que cargó Operaciones.
+  const suggested = api.suggestedTolls();
+  assert.equal(JSON.stringify([...suggested]), '[["t3",1]]');
+  api.state.draft = { kind: 'toll', phase: 'select', lines: [], qty: {}, suggested: new Map([['t1', 2], ['t3', 1]]), showAll: false };
+  let html = api.selectionMarkup();
+  assert.equal((html.match(/<span class="rem-sug-badge">Sugerido<\/span>/g) || []).length, 2);
+  assert.doesNotMatch(html, /checked/);
+  assert.doesNotMatch(html, /Peaje Dock Sud/);
+  assert.match(html, /<button type="button" class="rem-more-tolls" data-more-tolls>Ver más peajes<\/button>/);
+  api.state.draft.showAll = true;
+  html = api.selectionMarkup();
+  assert.match(html, /Todos los peajes<\/div>.*Peaje Dock Sud.*Manual \/ Varios/s);
+});
+
+test('peajes: ¿Cuánto pagaste? con importes editables arriba y el medio de pago abajo; Manual / Varios viaja sin peaje', () => {
+  const api = loadAddons();
+  api.state.reference.toll_coverage_mode = 'customer_roundtrip';
+  api.state.draft = { kind: 'toll', phase: 'details', paymentMethod: 'cash', lines: [
+    { toll_id: 't1', toll_name: 'Peaje Hudson', quantity: 2, unit_amount: 2850 },
+    { toll_id: '__manual__', manual: true, toll_name: 'Manual / Varios', quantity: 1, unit_amount: 3500 },
+  ] };
+  const html = api.detailsMarkup();
+  assert.match(html, /Tocá el importe si pagaste otro monto/);
+  assert.match(html, /2 pasadas · por pasada/);
+  assert.ok(html.indexOf('data-draft-field="unit_amount"') < html.indexOf('id="rem-picker-common-payment"'));
+  assert.match(html, /<span>Medio de pago<\/span>/);
+  assert.match(html, /id="rem-picker-toll-total">\$\s?9\.200,00/);
+  api.state.lines.toll = [{ client_line_id: 'm', toll_id: '__manual__', manual: true, toll_name: 'Manual / Varios', quantity: 1, unit_amount: 3500, customer_payment_method: 'cash' }];
+  const [line] = api.collectLines().tolls;
+  assert.equal(line.toll_id, null);
+  assert.equal(line.manual, true);
+  assert.equal(line.toll_name, 'Manual / Varios');
 });
 
 test('peajes: cada pasada viaja como una línea con id estable, y al abrir se vuelven a juntar', () => {
@@ -82,6 +129,10 @@ test('peajes y excedentes: pantalla principal liviana', () => {
   assert.match(addonsSrc, /id="rem-toll-total-row" hidden/);
   assert.match(addonsSrc, /'Editar peajes':'Editar excedentes'/);
   assert.doesNotMatch(addonsSrc, /Cada concepto puede tener precio definido o importe variable/);
-  assert.match(addonsSrc, /Importe real por pasada/);
+  // El chofer tiene que ver que el importe del peaje se puede cambiar.
+  assert.match(addonsSrc, /kind==='toll'\?'¿Cuánto pagaste\?'/);
+  assert.match(addonsSrc, /class="rem-amount-field rem-toll-amount"/);
+  assert.match(addonsSrc, /onfocus="this.select\(\)"/);
+  assert.match(css, /#rem-addon-picker \.rem-sug-badge \{ position: absolute; top: -1px; right: 12px;/);
   assert.match(css, /#remitos-nuevo \.rem-addons-card \.rem-addon-total\[hidden\] \{ display: none; \}/);
 });

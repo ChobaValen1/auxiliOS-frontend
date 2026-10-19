@@ -1,0 +1,36 @@
+/* Componentes de la primera etapa; colores y medidas del sistema actual. */
+.ax-edit-confirm { z-index: 20000; font-family: var(--ax-font); }
+.ax-edit-confirm .ax-modal { width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; padding: 0; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-xl); background: var(--ax-surface-2); color: var(--ax-text); box-shadow: var(--ax-shadow-modal); }
+.ax-action-confirm .ax-modal { width:min(520px,calc(100vw - 32px)); }
+.ax-action-confirm .ax-edit-body p { margin:0; line-height:1.6; white-space:pre-line; }
+.ax-edit-confirm header, .ax-edit-confirm footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; flex-shrink: 0; }
+.ax-edit-confirm header { border-bottom: 1px solid var(--ax-border); }
+.ax-edit-confirm h2 { margin: 0; font: 600 var(--ax-fs-xl) var(--ax-font); }
+.ax-edit-confirm header p { margin: 5px 0 0; font-size: var(--ax-fs-sm); color: var(--ax-text-2); }
+.ax-edit-confirm footer { justify-content: flex-end; border-top: 1px solid var(--ax-border); }
+.ax-edit-body { padding: 16px 20px; overflow-y: auto; min-height: 0; font-size: var(--ax-fs-md); }
+.ax-edit-columns, .ax-edit-row { display: grid; grid-template-columns: 1fr 1.5fr 1.5fr; gap: 12px; padding: 12px 0; }
+.ax-edit-columns { color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+.ax-edit-body dl { margin: 0; }
+.ax-edit-row { border-top: 1px solid var(--ax-border); }
+.ax-edit-row dt { font-weight: 600; }
+.ax-edit-row dd { margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
+.ax-edit-row dd[data-label="Antes"] { color: var(--ax-text-2); }
+.ax-edit-notice { margin: 0 0 12px; padding: 12px; border-radius: var(--ax-radius); background: var(--ax-warn-soft); color: var(--ax-warn); }
+.ax-remito-preparing { display: inline-flex; align-items: flex-start; gap: 6px; padding: 6px 8px; margin-top: 6px; border: 1px solid color-mix(in srgb, var(--ax-warn) 35%, transparent); border-radius: var(--ax-radius-sm); color: var(--ax-warn); background: var(--ax-warn-soft); font-size: var(--ax-fs-sm); line-height: 1.4; }
+.ax-remito-preparing small { display: block; color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+.ax-duration-field { display: grid; gap: 4px; min-width: 0; }
+.ax-duration-field small { color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+.ax-duration-field label { display: flex; align-items: center; gap: 4px; }
+.ax-duration-field input { min-width: 0; width: 100%; }
+.ax-duration-field label span { color: var(--ax-text-2); font-size: var(--ax-fs-xs); }
+.psv-dialog .psv-btn.psv-collect { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 600px) {
+  .ax-edit-confirm .ax-modal { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .ax-edit-confirm header, .ax-edit-confirm footer, .ax-edit-body { padding: 16px; }
+  .ax-edit-columns { display: none; }
+  .ax-edit-row { grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+  .ax-edit-row dt { grid-column: 1 / -1; }
+  .ax-edit-row dd::before { content: attr(data-label); display: block; font-size: var(--ax-fs-xs); color: var(--ax-text-2); margin-bottom: 4px; }
+  .ax-edit-confirm footer button { min-height: var(--ax-h-lg); flex: 1; }
+}

@@ -32,3 +32,11 @@ body.rem-picker-open{overflow:hidden}
 .rem-picker-priced-list .rem-picker-detail:has(.rem-picker-other){flex-wrap:wrap}
 .rem-picker-priced-list .rem-picker-other{flex:1 1 100%;width:100%;order:3}
 .rem-picker-priced-list .rem-picker-other input{text-align:left;font-weight:600}
+/* Importe del peaje editable: se nota que se puede cambiar */
+.rem-amount-hint{padding:9px 11px;background:var(--amber-lo);border:1px dashed rgba(245,166,35,.55);border-radius:10px;color:var(--text);font-size:11px;line-height:1.4}.rem-amount-hint b{color:var(--amber)}
+.rem-picker-amount.is-toll{width:140px;flex:0 0 140px}
+.rem-picker-amount span.rem-amount-field{position:relative;display:block;margin:0;text-transform:none}
+.rem-amount-field>i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-style:normal;font-size:12px;font-weight:800;pointer-events:none}
+.rem-amount-field>.rem-amount-pencil{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--amber);font-size:13px;pointer-events:none}
+.rem-picker-amount .rem-amount-field input{padding:8px 28px 8px 22px;border-width:2px;background:var(--amber-lo)}
+.rem-picker-amount .rem-amount-field input:focus{outline:none;border-color:var(--amber);background:var(--card)}

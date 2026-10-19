@@ -7,7 +7,49 @@ const SUPABASE_URL = 'https://yxmzcjvigaddvjfiwlvz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_d-2I4yeIKzfSPgvALQMZCQ_I4J3G0n_'; // ← reemplazá con la tuya
 
 const { createClient } = window.supabase;
-const _db = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Si un pedido sale sin usuario (la sesión se perdió) y la base lo rechaza, se avisa
+// en vez de dejar la pantalla como si nada (p. ej. «permission denied for function…»).
+const _fetchConAviso = async (input, init) => {
+  const res = await fetch(input, init);
+  try {
+    if (res.status === 401 && USUARIO_ACTUAL && !_salidaVoluntaria) {
+      const h = new Headers((init && init.headers) || (input && input.headers) || {});
+      const auth = h.get('Authorization') || '';
+      if (!auth || auth === 'Bearer ' + SUPABASE_KEY) _avisarSesionCerrada();
+    }
+  } catch (e) { /* el aviso nunca corta el pedido */ }
+  return res;
+};
+const _db = createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: _fetchConAviso } });
+
+// Salir a propósito (botón Salir o cuenta suspendida) no muestra el aviso.
+let _salidaVoluntaria = false;
+function _avisarSesionCerrada() {
+  if (_salidaVoluntaria || document.getElementById('modal-sesion-cerrada')) return;
+  const modal = document.createElement('div');
+  modal.id = 'modal-sesion-cerrada';
+  modal.className = 'modal-backdrop open';
+  modal.setAttribute('role', 'alertdialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'sesion-cerrada-titulo');
+  modal.style.cssText = 'display:flex;z-index:10000020';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-head"><span class="modal-head-title" id="sesion-cerrada-titulo">Se cerró tu sesión</span></div>
+      <div class="modal-body">
+        <p style="margin:0;color:var(--ax-text-2, var(--muted));line-height:1.5">
+          Para seguir trabajando, volvé a ingresar. Lo que no guardaste en esta pantalla se pierde.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="sesion-cerrada-ingresar">Ingresar de nuevo</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const btn = modal.querySelector('#sesion-cerrada-ingresar');
+  btn.addEventListener('click', () => { btn.disabled = true; btn.textContent = 'Abriendo…'; location.reload(); });
+  setTimeout(() => btn.focus(), 0);
+}
 
 let _passwordLinkHandled = false;
 
@@ -81,6 +123,8 @@ _db.auth.onAuthStateChange((event) => {
   if (event === 'PASSWORD_RECOVERY' || _urlEsAltaORecuperacion()) {
     setTimeout(mostrarDefinirPassword, 0);
   }
+  // La sesión se cerró sola (no se pudo renovar, o se salió en otra pestaña).
+  if (event === 'SIGNED_OUT' && USUARIO_ACTUAL && !_salidaVoluntaria) setTimeout(_avisarSesionCerrada, 0);
 });
 
 // Wrapper de toast — funciona aunque sigma.js no haya cargado todavía
@@ -101,6 +145,7 @@ let PERFIL_USUARIO = null;
 const _MSG_CUENTA_SUSPENDIDA = 'Esta cuenta está suspendida. Consultá con Administración.';
 function _cuentaSuspendida() { return !!PERFIL_USUARIO && PERFIL_USUARIO.is_active === false; }
 async function _cerrarCuentaSuspendida() {
+  _salidaVoluntaria = true;
   try { await _db.auth.signOut(); } catch (e) { /* igual se corta */ }
   USUARIO_ACTUAL = null;
   PERFIL_USUARIO = null;
@@ -218,6 +263,7 @@ async function adminApiFetch(url, options = {}) {
 }
 
 async function cerrarSesion() {
+  _salidaVoluntaria = true;
   try {
     await _db.auth.signOut();
   } catch (e) {
@@ -233,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 async function logoutUsuario() {
+  _salidaVoluntaria = true;
   await _db.auth.signOut();
   USUARIO_ACTUAL = null;
   PERFIL_USUARIO = null;
@@ -4373,7 +4420,7 @@ async function cargarDetalleJornadaAdmin(logId) {
        .eq('log_id', logId)
        .order('created_at_device', { ascending: true }),
     _db.from('fuel_records')
-       .select('fuel_id, log_id, liters, price_per_liter, total_cost, km_at_load, payment_method, payment_app, gas_station, fuel_date, created_at_device')
+       .select('fuel_id, log_id, liters, price_per_liter, total_cost, km_at_load, payment_method, payment_app, gas_station, fuel_date, created_at_device, ticket_path, ticket_mime')
        .or(`log_id.eq.${logId},and(log_id.is.null,truck_id.eq.${log.truck_id},fuel_date.eq.${log.log_date})`)
        .order('fuel_date', { ascending: true }),
     _db.from('tire_checks')

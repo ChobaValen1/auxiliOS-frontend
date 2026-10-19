@@ -178,7 +178,8 @@ test('exportador usa SheetJS ya cargado y genera XLSX real',()=>{
   assert.match(excelExport,/utils\.book_new/);
   assert.match(excelExport,/writeFile/);
   assert.match(excelExport,/bookType:'xlsx'/);
-  assert.doesNotMatch(excelExport,/text\/csv|\.csv/i);
+  assert.match(excelExport,/function downloadCsv/);
+  assert.match(excelExport,/type:'text\/csv;charset=utf-8;'/);
 });
 
 test('Facturación conserva selección, servicios visibles y todo lo filtrado para Excel',()=>{
@@ -205,8 +206,10 @@ test('catálogo Excel de servicios conserva los datos comerciales y operativos',
     'N° Orden','Fecha','Hora','Prestadora','Chofer','Móvil','Tipo de Servicio',
     'Calle Origen','Localidad Origen','Provincia Origen','Calle Destino','Localidad Destino','Provincia Destino',
     'Marca','Modelo','Patente','KM Asfalto','KM Ripio','KM Total','Precio Base','Tarifa KM Asfalto','Tarifa KM Ripio',
-    'COPAGO','Extra %','Precio Total','Estado','Base','Importe Movida','Importe KM Asfalto','Importe KM Ripio','Importe KM Total',
-    'Observaciones','Peajes','S. Esp. Cantidad','S. Esp. Unitario','S. Esp. Subtotal'
+    'COPAGO','Extra %','Precio Total (sin peajes)','Estado','Base','Importe Movida','Importe KM Asfalto','Importe KM Ripio','Importe KM Total',
+    'Observaciones','Peajes','N° Interno','N° Remito','Arribo','Finalización','Demora otorgada (min)','Cliente / Socio',
+    'Logística','Tercerizado','Activado','Tipo de activado','KM activado','Activado se cobra','KM Facturables','Regla de cobro',
+    'Adicionales $','Recargos $','Feriado','Total con peajes','Conceptos sí/no'
   ];
   for(const label of required)assert.ok(billingExport.includes(`'${label}'`),`falta columna ${label}`);
   for(const removed of ["header:'Moneda'","header:'Última revisión'","header:'Revisado por'","header:'Error tarifario'","header:'Importe al cierre'","header:'Diferencia'"]){

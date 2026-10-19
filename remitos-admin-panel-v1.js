@@ -14,7 +14,7 @@
 (()=>{'use strict';
 if(window.RemitoPanel)return;
 
-const P={remito:null,servicio:null,editing:false,annulling:false,tab:'detalle',busy:false};
+const P={remito:null,servicio:null,editing:false,annulling:false,tab:'detalle',busy:false,openSeq:0};
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const role=()=>{try{return PERFIL_USUARIO?.roles?.name||''}catch(_){return''}};
@@ -113,6 +113,7 @@ function renderEncuesta(){
 
 async function open(remitoId,{editar=false,anular=false,tab='detalle'}={}){
   ensure();
+  ++P.openSeq;
   P.editing=false;P.annulling=false;P.tab=['detalle','encuesta','cambios'].includes(tab)?tab:'detalle';
   $('rmp-title').textContent='Cargando…';$('rmp-sub').textContent='';$('rmp-tabs').innerHTML='';$('rmp-foot').innerHTML='';
   $('rmp-body').innerHTML='<div class="rmp-loading">Cargando remito…</div>';
@@ -128,11 +129,21 @@ async function open(remitoId,{editar=false,anular=false,tab='detalle'}={}){
   if(P.editing)$('rmp-body').querySelector('[data-rmp-field]')?.focus();
 }
 
-function close(){
+async function discardChanges(){
+  if(P.busy)return false;
+  if(!P.editing||!cambios().length)return true;
+  const seq=P.openSeq,remito=P.remito,ask=window.AuxiliosServiceImprovements?.confirmDiscard;
+  if(!ask){notify('No se pudo abrir la confirmación de AuxiliOS. Recargá la página.','error');return false}
+  const accepted=await ask({reference:'Remito '+(remito.nro_remito||remito.remito_id)});
+  return accepted&&seq===P.openSeq&&remito===P.remito&&!P.busy;
+}
+async function close(){
   const panel=$('rmp-panel');if(!panel||panel.hidden)return;
-  if(P.editing&&cambios().length&&!confirm('Tenés cambios sin guardar. ¿Descartarlos?'))return;
+  const seq=P.openSeq;
+  if(!await discardChanges()||seq!==P.openSeq)return;
+  const closingSeq=++P.openSeq;
   panel.classList.remove('is-open');$('rmp-backdrop').hidden=true;
-  setTimeout(()=>{panel.hidden=true},180);
+  setTimeout(()=>{if(closingSeq===P.openSeq)panel.hidden=true},180);
   P.remito=null;P.servicio=null;P.encuesta=null;P.editing=false;P.annulling=false;
 }
 
@@ -327,7 +338,7 @@ function renderFoot(){
 
 function tab(id){if(P.editing&&id!=='detalle')return;P.tab=id;render()}
 function corregir(){if(!isAdmin()||!P.remito||P.remito.status==='anulado')return;P.editing=true;P.annulling=false;P.tab='detalle';$('rmp-foot').innerHTML='';render();$('rmp-body').querySelector('[data-rmp-field]')?.focus()}
-function cancelar(){if(P.editing&&cambios().length&&!confirm('¿Descartar los cambios?'))return;P.editing=false;P.annulling=false;$('rmp-foot').innerHTML='';render()}
+async function cancelar(){const seq=P.openSeq;if(!await discardChanges()||seq!==P.openSeq)return;P.editing=false;P.annulling=false;$('rmp-foot').innerHTML='';render()}
 function anular(){if(!puedeAnular())return;P.annulling=true;P.editing=false;P.tab='detalle';render();$('rmp-annul')?.scrollIntoView({behavior:'smooth',block:'center'});$('rmp-annul-motivo')?.focus()}
 
 function entrada(cs,motivo){

@@ -379,7 +379,7 @@
       ? '<aside class="oi-detail"><div class="oi-empty">Cargando factura…</div></aside>'
       : S.detail ? detailMarkup() : '';
     window.AuxFilters?.bind(screen, onFilterChange, clearFilters);
-    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button oi-columns${cols().isCustom() ? ' is-custom' : ''}" type="button" data-oi="columns" title="Columnas" aria-label="Columnas">${ico('sliders-horizontal')}Columnas</button><button class="oi-button" type="button" data-oi="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
+    screen.innerHTML = `<div class="oi-shell"><div class="oi-toolbar"><div class="oi-filters auxf-bar">${filtersMarkup(opts)}<button class="oi-button oi-columns${cols().isCustom() ? ' is-custom' : ''}" type="button" data-oi="columns" title="Columnas" aria-label="Columnas">${ico('sliders-horizontal')}Columnas</button><button class="oi-button" type="button" data-oi="export" title="Exportar la lista a Excel o CSV" aria-label="Exportar" ${S.loading || !S.rows.length ? 'disabled' : ''}>${ico('download')}Exportar</button><button class="oi-button" type="button" data-oi="refresh" title="Actualizar" aria-label="Actualizar">${ico('refresh-cw')}Actualizar</button></div></div><div class="oi-table-card">${S.loading ? '<div class="oi-empty">Actualizando Facturas…</div>' : tableMarkup()}</div><div class="oi-detail-backdrop" ${detailOpen ? '' : 'hidden'}>${detail}</div><div class="oi-modal-backdrop" ${actionOpen ? '' : 'hidden'}>${actionOpen ? actionModalMarkup() : ''}</div></div>`;
   }
 
   function filtersMarkup(opts) {
@@ -689,6 +689,55 @@
     }
   }
 
+  /* Lista de Facturas con los filtros de la pantalla: el usuario elige columnas, orden y formato. */
+  async function exportList() {
+    const rows = Array.isArray(S.rows) ? [...S.rows] : [];
+    if (!rows.length) return notify('No hay facturas para exportar con estos filtros', 'warning');
+    const picker = window.AuxiliosExportPicker;
+    if (!picker) return notify('El exportador todavía no está disponible. Recargá AuxiliOS.', 'error');
+    const creditNumberOf = row => row.credit_note_id ? `${creditTypeLabel(row.credit_note_type)} ${row.credit_note_point_of_sale}-${row.credit_note_number}` : '';
+    const columns = [
+      { id: 'number', header: 'Factura', width: 18, value: row => row.invoice_number || '' },
+      { id: 'doctype', header: 'Tipo de comprobante', width: 20, value: row => DOC_TYPES[row.document_type] || row.document_type || '' },
+      { id: 'date', header: 'Fecha', width: 12, value: row => invoiceDate(row.issued_on, row.created_at) },
+      { id: 'company', header: 'Prestadora', width: 26, value: row => row.company_name || '' },
+      { id: 'services', header: 'Servicios', width: 10, type: 'number', value: row => num(row.service_count) },
+      { id: 'tolls', header: 'Peajes', width: 10, type: 'number', value: row => num(row.toll_count) },
+      { id: 'total', header: 'Total', width: 16, type: 'number', value: row => num(row.total_amount) },
+      { id: 'currency', header: 'Moneda', width: 8, value: row => row.currency || 'ARS' },
+      { id: 'status', header: 'Estado', width: 14, value: row => statusLabel(row.status) },
+      { id: 'pdf', header: 'PDF', width: 12, value: row => row.pdf_path ? 'Adjunto' : 'Sin PDF' },
+      { id: 'credit', header: 'Nota de Crédito', width: 20, optional: true, value: creditNumberOf },
+      { id: 'creditAmount', header: 'Importe de la Nota de Crédito', width: 18, type: 'number', optional: true, value: row => row.credit_note_id ? num(row.credit_note_amount) : null },
+      { id: 'net', header: 'Total neto de Nota de Crédito', width: 18, type: 'number', optional: true, value: row => num(row.total_amount) - (row.credit_note_id ? num(row.credit_note_amount) : 0) },
+      { id: 'createdBy', header: 'Creada por', width: 22, optional: true, value: row => row.created_by_name || '' },
+      { id: 'createdAt', header: 'Fecha de creación', width: 14, optional: true, value: row => date(row.created_at) },
+      { id: 'notes', header: 'Observaciones', width: 40, optional: true, value: row => row.notes || '' }
+    ];
+    const company = S.company ? (S.filters.companies.find(c => String(c.company_id) === String(S.company))?.company_name || 'Prestadora') : 'Todas';
+    const totalOf = list => list.reduce((sum, row) => sum + num(row.total_amount), 0);
+    const active = rows.filter(row => row.status !== 'cancelled');
+    try {
+      const choice = await picker.open({ key: 'facturas', title: 'Facturas', subtitle: `${rows.length} factura${rows.length === 1 ? '' : 's'} · ${company}`, columns });
+      if (!choice) return;
+      picker.download(choice, {
+        filename: `AuxiliOS_Facturas_${cleanFilePart(company)}_${new Date().toISOString().slice(0, 10)}`,
+        sheetName: 'Facturas',
+        rows,
+        summaryRows: [
+          { label: 'Prestadora', value: company },
+          { label: 'Búsqueda', value: S.search || '—' },
+          { label: 'Facturas', value: rows.length },
+          { label: 'Total (todas)', value: totalOf(rows) },
+          { label: 'Total sin anuladas', value: totalOf(active) }
+        ],
+        detalle: `${rows.length} factura${rows.length === 1 ? '' : 's'} exportada${rows.length === 1 ? '' : 's'}`
+      });
+    } catch (error) {
+      notify(error.message || 'No se pudo exportar', 'error');
+    }
+  }
+
   function handleRowAction(action, id) {
     if (action === 'attach-pdf') return choosePdf(id);
     if (action === 'view-pdf') return viewPdf(id);
@@ -727,6 +776,7 @@
     if (detail) return openDetail(detail.dataset.oiDetail);
     const action = event.target.closest('[data-oi]')?.dataset.oi;
     if (action === 'refresh') return load();
+    if (action === 'export') return exportList();
     if (action === 'columns') return cols().open(() => render());
     if (action === 'close-detail') return closeDetail();
     if (action === 'close-action') return closeAction();

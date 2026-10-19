@@ -93,6 +93,12 @@
         var t = list[i]; list[i] = list[j]; list[j] = t;
         commit(list);
       },
+      moveTo: function (key, index) {
+        var list = items().slice(), i = list.findIndex(function (x) { return x.key === key; });
+        if (i < 0) return;
+        var item = list.splice(i, 1)[0]; list.splice(Math.max(0, Math.min(index, list.length)), 0, item);
+        commit(list);
+      },
       open: function (onChange) { openPanel(api, opts, onChange); }
     };
     return api;
@@ -105,7 +111,7 @@
     var list = api.all();
     var visibles = list.filter(function (i) { return i.visible; }).length;
     return list.map(function (i, n) {
-      return '<div class="tc-row" data-tc-row="' + esc(i.key) + '">'
+      return '<div class="tc-row" data-tc-row="' + esc(i.key) + '" data-drag-key="' + esc(i.key) + '">' + (global.AxDragSort ? global.AxDragSort.grip : '')
         + '<label class="ax-switch"><input type="checkbox" data-tc-toggle="' + esc(i.key) + '"' + (i.visible ? ' checked' : '') + (i.locked ? ' disabled' : '') + '><span>' + esc(i.label) + '</span></label>'
         + (i.locked ? '<small class="tc-lock">' + ico('lock') + 'Siempre visible</small>' : '')
         + '<span class="tc-move"><button type="button" class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm tc-up" data-tc-move="-1" data-tc-key="' + esc(i.key) + '" aria-label="Subir ' + esc(i.label) + '"' + (n === 0 ? ' disabled' : '') + '>' + ico('chevron-down') + '</button>'
@@ -141,6 +147,8 @@
         current.api.set(t.getAttribute('data-tc-toggle'), t.checked);
         paint(); current.onChange && current.onChange();
       });
+      // Arrastrar una fila para cambiar el orden (las flechas siguen para teclado).
+      if (global.AxDragSort) global.AxDragSort.attach(root, { onMove: function (key, to) { if (!current) return; current.api.moveTo(key, to); paint(); current.onChange && current.onChange(); } });
       root.addEventListener('click', function (e) {
         if (!current) return;
         var mv = e.target.closest('[data-tc-move]');

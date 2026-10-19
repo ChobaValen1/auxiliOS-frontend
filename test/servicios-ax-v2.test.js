@@ -163,14 +163,15 @@ test('Particular: Ahora empareja móvil y chofer; Programar toma el chofer de la
   const js = read('private-service-v1.js');
   assert.match(js, /function programado\(\) \{ return !!\(st && st\.d && st\.d\.cuando === 'programar' && !st\.edit\); \}/);
   assert.match(js, /O_pares\(\)\(k === 'assigned_driver_id' \? 'driver' : 'truck', t\.value, st\.d\)/);   // mismo emparejamiento que Prestadora
-  assert.match(js, /assigned_driver_id: \(programado\(\) \? '' : d\.assigned_driver_id\) \|\| null/);
+  assert.match(js, /assigned_driver_id: (tercero \? null : )?\(programado\(\) \? '' : d\.assigned_driver_id\) \|\| null/);
   assert.match(js, /data-psv-k="assigned_driver_id"' \+ \(programado\(\) \? ' disabled' : ''\)/);
 });
 
 test('Historial del servicio: solapa junto a Peajes y Excedentes, con el sistema visual', () => {
   const ws = read('operator-service-workspace-reactive-v1.js'), lc = read('operator-service-lifecycle.js'), addons = read('operator-service-commercial-addons-v1.js'), css = read('servicio-form-ax-v1.css');
   assert.match(ws, /class="osv2-column actions-column">.*<section id="osv4-history-panel"/);       // dentro de la columna, no en una fila aparte
-  assert.match(ws, /if\(meta\)meta\.hidden=!showReason;/);
+  assert.match(ws, /if\(meta\)meta\.hidden=!window\.AuxiliosServiceImprovements\?\.remitoPreparing/);
+  assert.doesNotMatch(ws, /<textarea id="osv4-change-reason"/);
   assert.match(ws, /history\.dataset\.allowed=String\(showHistory\)/);
   assert.match(addons, /data-ca="toggle-history"/);                                            // tercera solapa, sólo si el historial está disponible
   assert.match(addons, /\$\{historyAllowed\(\)\?`<button type="button" data-ca="toggle-history"/);

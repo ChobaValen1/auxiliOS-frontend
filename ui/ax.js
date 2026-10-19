@@ -150,7 +150,8 @@
     boton.setAttribute('aria-expanded', 'true');
     menuAbierto = { boton: boton, menu: el };
     var items = el.querySelectorAll('button:not([disabled])');
-    if (items[0]) items[0].focus();
+    // Sin mover la pantalla: si el foco la hace scrollear, el menú se cerraría solo.
+    if (items[0]) items[0].focus({ preventScroll: true });
   }
   doc.addEventListener('click', function (ev) {
     if (!menuAbierto) return;
@@ -167,7 +168,12 @@
     else if (ev.key === 'ArrowUp') { ev.preventDefault(); (items[i - 1] || items[items.length - 1]).focus(); }
     else if (ev.key === 'Tab') cerrarMenu();
   });
-  global.addEventListener('scroll', function () { cerrarMenu(); }, true);
+  // Si se mueve la pantalla, el menú flotante queda despegado del botón: se cierra.
+  // Pero el scroll DENTRO del propio menú (p. ej. una lista larga de peajes) no lo cierra.
+  global.addEventListener('scroll', function (ev) {
+    if (menuAbierto && ev.target && ev.target.nodeType === 1 && menuAbierto.menu.contains(ev.target)) return;
+    cerrarMenu();
+  }, true);
 
   /* ── Botón que guarda ─────────────────────────────────────────────── */
   /* Evita el doble clic, muestra "Guardando…" y, si sale bien, un tilde un segundo.
@@ -527,7 +533,7 @@
       lista.style.minWidth = btn.offsetWidth + 'px';
       menu(btn, lista);
       var elegido = lista.querySelector('[aria-selected="true"]');
-      if (elegido) { elegido.focus(); elegido.scrollIntoView({ block: 'nearest' }); }
+      if (elegido) { elegido.focus({ preventScroll: true }); lista.scrollTop = Math.max(0, elegido.offsetTop - lista.clientHeight / 2); }
     });
     lista.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-i]');

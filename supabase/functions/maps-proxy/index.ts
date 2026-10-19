@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { COORD_PREFIX, parseCoordinates } from "./coordinates.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,8 +63,66 @@ async function googleFetch(url: string, apiKey: string, init: RequestInit, field
   return payload;
 }
 
+// ── Coordenadas pegadas en lugar de una dirección ──────────────────────
+// Acepta "-34.6037, -58.3816", "-34,6037; -58,3816", 34°36'13"S 58°22'53"W y enlaces de Google Maps.
+const coordLabel = (c: { latitude: number; longitude: number }) => `${c.latitude.toFixed(6)}, ${c.longitude.toFixed(6)}`;
+
+// Dirección más cercana a un punto (Geocoding API). Si Google no responde, se usan las coordenadas tal cual.
+async function reverseGeocode(c: { latitude: number; longitude: number }, apiKey: string) {
+  try {
+    const params = new URLSearchParams({ latlng: `${c.latitude},${c.longitude}`, language: "es-419", region: "ar", key: apiKey });
+    const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${params}`);
+    const payload = await response.json().catch(() => ({}));
+    if (payload?.status !== "OK" || !Array.isArray(payload.results) || !payload.results.length) {
+      console.warn("[maps-proxy:reverse]", { status: payload?.status || response.status, message: payload?.error_message || null });
+      return null;
+    }
+    return payload.results.find((r: any) => !(r.types || []).includes("plus_code")) || payload.results[0];
+  } catch (error) {
+    console.warn("[maps-proxy:reverse]", error);
+    return null;
+  }
+}
+
+async function coordinateSuggestion(c: { latitude: number; longitude: number }, apiKey: string) {
+  const geo = await reverseGeocode(c, apiKey), label = coordLabel(c), address = geo?.formatted_address || "";
+  const [main, ...rest] = address.split(",");
+  return {
+    placeId: COORD_PREFIX + `${c.latitude},${c.longitude}`,
+    text: address || label,
+    mainText: address ? main.trim() : "Ubicación por coordenadas",
+    secondaryText: address ? [rest.join(",").trim(), `Coordenadas ${label}`].filter(Boolean).join(" · ") : label,
+    coordinates: c,
+  };
+}
+
+async function coordinatePlace(c: { latitude: number; longitude: number }, apiKey: string) {
+  const geo = await reverseGeocode(c, apiKey), label = coordLabel(c);
+  // Mismo formato que Places para que todas las pantallas lo usen igual; la ubicación es el punto exacto pegado.
+  const components = (Array.isArray(geo?.address_components) ? geo.address_components : [])
+    .map((x: any) => ({ longText: x.long_name, shortText: x.short_name, types: x.types }));
+  const street = component(components, ["route"]), streetNumber = component(components, ["street_number"]);
+  const locality = component(components, ["locality", "postal_town", "administrative_area_level_2"]);
+  const province = component(components, ["administrative_area_level_1"]), postalCode = component(components, ["postal_code"]), country = component(components, ["country"]);
+  const formatted = geo?.formatted_address || label;
+  return {
+    placeId: geo?.place_id || COORD_PREFIX + `${c.latitude},${c.longitude}`,
+    displayName: "",
+    formattedAddress: formatted,
+    address: [street.long, streetNumber.long].filter(Boolean).join(" ") || formatted,
+    street: street.long, streetNumber: streetNumber.long, city: locality.long, locality: locality.long,
+    province: province.long, postalCode: postalCode.long, country: country.long, countryCode: country.short,
+    location: c,
+    addressComponents: components,
+    provider: geo ? "google_geocoding_reverse" : "coordinates",
+    fromCoordinates: true,
+  };
+}
+
 async function autocomplete(body: Record<string, any>, apiKey: string) {
   const input = String(body.input || "").trim();
+  const coords = parseCoordinates(input);
+  if (coords) return { suggestions: [await coordinateSuggestion(coords, apiKey)] };
   if (input.length < 3) return { suggestions: [] };
   if (input.length > 180) throw new Error("La búsqueda de dirección es demasiado larga");
 
@@ -124,6 +183,11 @@ function component(components: any[], types: string[]) {
 async function placeDetails(body: Record<string, any>, apiKey: string) {
   const placeId = String(body.placeId || "").trim();
   if (!placeId) throw new Error("Falta el Place ID");
+  if (placeId.startsWith(COORD_PREFIX)) {
+    const coords = parseCoordinates(placeId);
+    if (!coords) throw new Error("Coordenadas inválidas");
+    return coordinatePlace(coords, apiKey);
+  }
   const params = new URLSearchParams({ languageCode: "es-419", regionCode: "ar" });
   if (body.sessionToken) params.set("sessionToken", String(body.sessionToken));
 

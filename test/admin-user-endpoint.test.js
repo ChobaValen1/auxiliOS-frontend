@@ -36,7 +36,8 @@ function formHarness(response, token = 'session-token') {
 test('individual creation uses the active admin function with session JWT and public API key', async () => {
   const h = formHarness({ ok: true, json: async () => ({ ok: true, invitation_sent: true }) });
   await h.context.guardarNuevoUsuario();
-  assert.equal(h.calls[0].url, 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin/api/create-user');
+  // Producción o demo (la demo usa su propio proyecto de Supabase).
+  assert.match(h.calls[0].url, /^https:\/\/(bcjcrlrrqfbipleiwkqi|yxmzcjvigaddvjfiwlvz)\.supabase\.co\/functions\/v1\/auxilios-admin\/api\/create-user$/);
   assert.equal(h.calls[0].options.headers.Authorization, 'Bearer session-token');
   assert.equal(h.calls[0].options.headers.apikey, 'public-test-key');
   assert.equal(JSON.parse(h.calls[0].options.body).legajo, 'CHO-011');

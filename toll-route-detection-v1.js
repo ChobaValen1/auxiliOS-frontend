@@ -389,6 +389,8 @@
 
   global.AuxiliosTollDetection = {
     detect: detect, panelHtml: panelHtml,
+    // Para el remito del chofer: peajes sobre el trazado guardado del servicio, con sus pasadas.
+    fromPolyline: function (polyline, peajes) { return detectar(decode(polyline), peajes); },
     _test: { mosaicos: mosaicos, leyenda: leyenda, decode: decode, detectar: detectar, pasadas: pasadas, distanciaASegmento: distanciaASegmento, mapa: mapa, RADIO_M: RADIO_M }
   };
 })(window);

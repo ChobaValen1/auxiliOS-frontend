@@ -127,3 +127,30 @@
 #phase3-driver-services .p3-queue-wait { opacity: .62; }
 #phase3-driver-services .p3-card-foot.p3-card-start { background: var(--ax-accent); color: var(--ax-accent-fg); font-weight: var(--ax-fw-bold); }
 #phase3-driver-services .p3-card-foot.p3-card-locked { color: var(--ax-text-3); }
+
+/* Llegué al origen: el arribo se marca al llegar; el remito se completa después. */
+#p3-service-preview .p3-arrive-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+#p3-service-preview .p3-arrive-btn .ax-icon { width: 18px; height: 18px; }
+#p3-service-preview .p3-arrived-chip { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--ax-ok); border-radius: var(--ax-radius-lg); background: var(--ax-ok-soft); color: var(--ax-text); font-weight: var(--ax-fw-semibold); }
+#p3-service-preview .p3-arrived-chip .ax-icon { flex: 0 0 auto; color: var(--ax-ok); }
+
+/* Programados: aparte y más tranquilos que los de ahora; la fecha y hora es lo que se lee primero. */
+#phase3-driver-services .p3-programmed { display: grid; gap: var(--ax-sp-2); margin-top: var(--ax-sp-4); padding-top: var(--ax-sp-4); border-top: 1px dashed var(--ax-border-strong); }
+#phase3-driver-services .p3-programmed-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ax-text); font: var(--ax-fw-bold) var(--ax-fs-md) var(--ax-font); }
+#phase3-driver-services .p3-programmed-title .ax-icon { width: 16px; height: 16px; color: var(--ax-info); }
+#phase3-driver-services .p3-programmed-title small { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--ax-radius-pill); background: var(--ax-info-soft); color: var(--ax-info); font-size: var(--ax-fs-xs); }
+#phase3-driver-services .p3-programmed-note { margin: 0 0 var(--ax-sp-1); color: var(--ax-text-3); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#phase3-driver-services .p3-programmed-card { background: var(--ax-surface); border-style: dashed; }
+#phase3-driver-services .p3-programmed-route { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 0 14px 12px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+#phase3-driver-services .p3-programmed-route .ax-icon { flex: none; width: 14px; height: 14px; margin-top: 2px; color: var(--ax-text-3); }
+#phase3-driver-services .p3-when { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 4px 10px; border-radius: var(--ax-radius-pill); background: var(--ax-info-soft); color: var(--ax-info); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-bold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#phase3-driver-services .p3-when .ax-icon { width: 14px; height: 14px; }
+#phase3-driver-services .p3-card-foot.p3-card-programmed { color: var(--ax-text-2); font-weight: var(--ax-fw-medium); }
+#phase3-driver-services .p3-empty-now { padding: var(--ax-sp-3); }
+#p3-service-preview .p3-when-banner { display: flex; align-items: center; gap: 8px; margin-bottom: var(--ax-sp-3); padding: 10px 12px; border-radius: var(--ax-radius); background: var(--ax-info-soft); color: var(--ax-text); font-size: var(--ax-fs-md); }
+#p3-service-preview .p3-when-banner .ax-icon { flex: none; color: var(--ax-info); }
+#p3-service-preview .p3-early-confirm { display: grid; justify-items: start; gap: 8px; padding: 14px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-lg); background: var(--ax-info-soft); }
+#p3-service-preview .p3-early-confirm .ax-icon { color: var(--ax-info); }
+#p3-service-preview .p3-early-confirm b { font-size: var(--ax-fs-lg); }
+#p3-service-preview .p3-early-confirm p { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-md); line-height: 1.45; }
+#p3-service-preview .p3-early-confirm strong { color: var(--ax-text); }

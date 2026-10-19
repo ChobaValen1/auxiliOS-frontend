@@ -26,7 +26,10 @@
   async function askConfirm({ title, html, confirmLabel = 'Confirmar', danger = false, fallback = '' }) {
     const dialog = window.AuxiliosBillingParametersV4?.confirm;
     if (typeof dialog === 'function') return dialog({ title, html, confirmLabel, danger });
-    return window.confirm(fallback || title);
+    const appDialog = window.AuxiliosServiceImprovements?.confirmAction;
+    if (appDialog) return appDialog({ title, message:fallback || title, confirmLabel, danger });
+    notify('No se pudo abrir la confirmación de AuxiliOS. Recargá la página.', 'error');
+    return false;
   }
   const KM_FIELDS = [['movement_price', 'Movida'], ['asphalt_km_price', 'KM asfalto'], ['gravel_km_price', 'KM ripio']];
   const LINKS = { primary_movement: ['= Movida del principal', 'movement_price'], primary_asphalt_km: ['= Km asfalto del principal', 'asphalt_km_price'] };

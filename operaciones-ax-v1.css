@@ -192,6 +192,10 @@
 #screen-operaciones .os-status.green::before { background: var(--ax-ok); }
 #screen-operaciones .os-status.red { color: var(--ax-text-3); text-decoration: line-through; }
 #screen-operaciones .os-status.red::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ax-text-3); }
+/* Programado: para más adelante; reloj en vez de punto, en el color de información. */
+#screen-operaciones .os-status.programmed { color: var(--ax-info); }
+#screen-operaciones .os-status.programmed::before { box-sizing: border-box; background: transparent; border: 2px dotted var(--ax-info) !important; border-radius: 50%; }
+#screen-operaciones .os-programmed-when { display: block; font-variant-numeric: tabular-nums; }
 #screen-operaciones .os-document-status, #screen-operaciones .os-activation-reason { color: var(--ax-text-3); font-size: var(--ax-fs-sm) !important; }
 #screen-operaciones .os-document-state { margin-top: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); text-align: left; }
 #screen-operaciones .os-document-state.is-action { width: auto; max-width: 100%; height: 24px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
@@ -300,3 +304,31 @@
 #screen-operaciones .os-queue-move .ax-icon { width: 14px; height: 14px; }
 #screen-operaciones .os-queue-move.is-up .ax-icon { transform: rotate(180deg); }
 #screen-operaciones .os-queue-count { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); margin-top: 2px; }
+
+/* ── Historial: columnas compactas (Fecha · Prestadora · Recorrido · Chofer / Móvil) ── */
+#screen-operaciones .os-table td.col-when b, #screen-operaciones .os-table td.col-company b, #screen-operaciones .os-table td.col-crew b { display: block; }
+#screen-operaciones .os-table td.col-when small, #screen-operaciones .os-table td.col-company small, #screen-operaciones .os-table td.col-crew small { display: block; color: var(--ax-text-3); font-size: var(--ax-fs-xs); white-space: nowrap; }
+#screen-operaciones .os-table td.col-when .os-hist-times { color: var(--ax-text-2); }
+#screen-operaciones .os-table td.col-company b, #screen-operaciones .os-table td.col-crew b { white-space: normal; overflow-wrap: anywhere; max-width: 160px; }
+#screen-operaciones .os-hist-route { display: grid; gap: 2px; min-width: 180px; max-width: 300px; }
+#screen-operaciones .os-hist-place { position: relative; display: block; padding-left: 14px; color: var(--ax-text); font-size: var(--ax-fs-sm); line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
+#screen-operaciones .os-hist-place > i { position: absolute; top: .45em; left: 2px; width: 7px; height: 7px; border-radius: 50%; border: 2px solid var(--ax-text-3); box-sizing: border-box; }
+#screen-operaciones .os-hist-place.to > i { border-color: var(--ax-accent); background: var(--ax-accent); }
+#screen-operaciones .os-hist-route > small { padding-left: 14px; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+@media (max-width: 720px) { #screen-operaciones .os-table td.col-route { grid-column: 1 / -1; } }
+
+/* Historial por páginas */
+#screen-operaciones .os-pager { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); margin-top: var(--ax-sp-3); flex-wrap: wrap; }
+#screen-operaciones .os-pager[hidden] { display: none; }
+#screen-operaciones .os-pager-info { color: var(--ax-text-3); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#screen-operaciones .os-pager-pages { display: flex; align-items: center; gap: 4px; }
+#screen-operaciones .os-pager-pages button { display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 8px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface-2); color: var(--ax-text-2); font: inherit; font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); font-variant-numeric: tabular-nums; cursor: pointer; }
+#screen-operaciones .os-pager-pages button:hover:not(:disabled) { border-color: var(--ax-text-3); color: var(--ax-text); }
+#screen-operaciones .os-pager-pages button.is-current { border-color: var(--ax-accent); background: var(--ax-accent); color: var(--ax-accent-fg); }
+#screen-operaciones .os-pager-pages button:disabled { opacity: .4; cursor: default; }
+#screen-operaciones .os-pager-gap { padding: 0 4px; color: var(--ax-text-3); }
+#os-view-settings .os-density-settings { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-sp-3); margin-bottom: var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+#os-view-settings .os-density-settings > div:first-child { display: grid; gap: 2px; min-width: 0; }
+#os-view-settings .os-density-settings b { font-size: var(--ax-fs-md); font-weight: var(--ax-fw-semibold); }
+#os-view-settings .os-density-settings small { color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+@media (max-width: 520px) { #os-view-settings .os-density-settings { flex-direction: column; align-items: stretch; } }

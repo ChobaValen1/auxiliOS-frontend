@@ -158,15 +158,17 @@
         origin: '', origin_lat: '', origin_lng: '', origin_place_id: '', origin_formatted_address: '',
         destination: '', destination_lat: '', destination_lng: '', destination_place_id: '', destination_formatted_address: '',
         route: null,
-        presupuesto: '', pago: 'no', sena_monto: '', sena_medio: 'cash',
+        presupuesto: '', sin_costo: false, pago: 'no', sena_monto: '', sena_medio: 'cash',
         factura: false, condicion: 'consumidor_final',
         assigned_truck_id: '', assigned_driver_id: '',
+        logistica: 'own', terc_provider_id: '', terc_locality: '',
         captado: false, referred_by_driver_id: '',
         operator_notes: '',
         medios: {}
       },
       addr: { origin: { seq: 0, list: [], token: '' }, destination: { seq: 0, list: [], token: '' } },
-      toggles: { concepts: [], selected: {} }
+      toggles: { concepts: [], selected: {} },
+      terc: { providers: null, date: '', error: '', row: null }
     };
   }
 
@@ -192,6 +194,51 @@
     return '<section class="psv-toggles">' + t.concepts.map(function (c) {
       return '<label class="psv-toggle-row ax-switch"><span>' + esc(c.description || c.name) + '</span><input type="checkbox" data-psv-toggle="' + esc(c.concept_id) + '"' + (t.selected[String(c.concept_id)] ? ' checked' : '') + '></label>';
     }).join('') + '</section>';
+  }
+
+  /* Tercerizado: quién hace el servicio cuando no es un móvil propio. Sólo nombres y localidades: el operador no ve tarifas. */
+  function fechaServicio() {
+    var w = new Date(payload().scheduled_for);
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(w); } catch (e) { return null; }
+  }
+  async function cargarTercerizados() {
+    var date = fechaServicio(), cur = st;
+    if (cur.terc.providers && cur.terc.date === date) return;
+    var r = await db().rpc('list_outsourced_providers_for_service_v1', { p_date: date });
+    if (cur !== st) return;
+    if (r.error) { st.terc.error = r.error.message || 'No se pudieron cargar los tercerizados.'; st.terc.providers = []; return; }
+    st.terc.error = ''; st.terc.providers = r.data || []; st.terc.date = date;
+  }
+  function tercProveedor() { return (st.terc.providers || []).find(function (x) { return String(x.provider_id) === String(st.d.terc_provider_id); }); }
+  function tercSirve(p) { return !!(p && p.has_rate && (p.concepts || []).map(String).indexOf(String(st.d.primary_concept_id || '')) >= 0); }
+  function tercModo(p) { return p && p.modes ? p.modes[String(st.d.primary_concept_id || '')] : null; }
+  function tercerizadoHtml() {
+    var d = st.d, t = st.terc;
+    if (!t.providers) return '<p class="psv-hint">' + marca('running', 'Cargando tercerizados…') + '</p>';
+    if (t.error) return '<p class="psv-hint psv-terc-warn">' + esc(t.error) + '</p>';
+    if (!t.providers.length) return '<p class="psv-hint psv-terc-warn">No hay tercerizados cargados. Se cargan en Configuración › Tercerizados.</p>';
+    var p = tercProveedor(), modo = tercModo(p), locs = modo && modo.calc_mode === 'locality' ? (modo.localities || []) : null;
+    var opts = [['', 'Elegí el tercerizado']].concat(t.providers.map(function (x) { return [x.provider_id, x.display_name + (tercSirve(x) ? '' : x.has_rate ? ' · su tarifa no incluye este servicio' : ' · sin tarifa')]; }));
+    var sel = '<select id="psv-terc_provider_id" data-psv-k="terc_provider_id">' + opts.map(function (o) {
+      var x = t.providers.find(function (y) { return String(y.provider_id) === String(o[0]); });
+      return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(d.terc_provider_id) ? ' selected' : '') + (x && !tercSirve(x) && String(o[0]) !== String(d.terc_provider_id) ? ' disabled' : '') + '>' + esc(o[1]) + '</option>';
+    }).join('') + '</select>';
+    return '<div class="psv-grid">' + campo('terc_provider_id', 'Tercerizado *', sel) +
+      (locs ? campo('terc_locality', 'Localidad *', '<select id="psv-terc_locality" data-psv-k="terc_locality">' + opciones(locs.map(function (l) { return [l.name, l.name]; }), d.terc_locality, 'Elegí la localidad') + '</select>') : '') +
+      '</div>' + (d.primary_concept_id ? '' : '<p class="psv-hint">Elegí el tipo de servicio para ver qué tercerizados tienen tarifa.</p>') +
+      '<p class="psv-hint">Al guardar, el servicio queda Asignado al tercerizado.</p>';
+  }
+  async function guardarTercerizado(serviceId) {
+    if (!serviceId || st.intake || (st.edit && st.edit.cerrado)) return;
+    var d = st.d, row = st.terc.row, body;
+    if (d.logistica === 'third') {
+      body = { provider_id: d.terc_provider_id, locality: d.terc_locality || null,
+        km_asphalt: row ? row.km_asphalt || 0 : 0, km_gravel: row ? row.km_gravel || 0 : 0, tolls_amount: row ? row.tolls_amount || 0 : 0,
+        extras: row && row.extras ? row.extras : [], adjustment_amount: row ? row.adjustment_amount || 0 : 0, adjustment_reason: row ? row.adjustment_reason || null : null };
+    } else if (row && row.provider_id) body = { provider_id: null };
+    else return;
+    var r = await db().rpc('set_outsourced_service_cost_v1', { p_service_id: serviceId, p_payload: body });
+    if (r.error) notify('El servicio se guardó, pero no se pudo ' + (body.provider_id ? 'asignar al tercerizado: ' : 'quitar el tercerizado: ') + (r.error.message || ''), 'warning');
   }
 
   async function abrirParticular(intakeId) {
@@ -250,17 +297,28 @@
       d.cuando = 'programar';
       d.scheduled_for = localDe(e.scheduled_for);
       d.presupuesto = String(Math.round(num(e.quoted_total)));
+      d.sin_costo = e.no_charge === true;
       d.factura = !!e.invoice_requested;
       d.condicion = e.customer_tax_condition || 'consumidor_final';
       d.captado = !!e.referred_by_driver_id;
       d.referred_by_driver_id = e.referred_by_driver_id || '';
-      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: e.status === 'completed', pagos: [] };
+      st.edit = { id: id, numero: e.service_order_number || e.service_number, pagado: num(e.paid), firmado: !!e.remito_signed, cerrado: ['completed','cancelled'].includes(e.status), pagos: [] };
       d.medios = {};
       try {
         var pr = await db().rpc('get_service_payments_v1', { p_service_id: id });
         if (!pr.error && pr.data) st.edit.pagos = (pr.data.payments || []).filter(function (p) { return !p.voided_at; });
       } catch (e2) { /* sin cobros: no se muestra "Cómo se pagó" */ }
       await cargarInterruptores(id);
+      try {
+        var tr = await db().rpc('get_outsourced_service_cost_v1', { p_service_id: id });
+        var lrow = (OS().services || []).find(function (x) { return String(x.service_id) === String(id); });
+        st.terc.row = !tr.error && tr.data ? tr.data : null;
+        if ((lrow && lrow.logistics_type === 'third_party') || (st.terc.row && st.terc.row.provider_id)) {
+          d.logistica = 'third'; d.terc_provider_id = st.terc.row && st.terc.row.provider_id ? String(st.terc.row.provider_id) : ''; d.terc_locality = st.terc.row && st.terc.row.locality || '';
+          await cargarTercerizados();
+        }
+      } catch (e3) { /* sin datos del tercerizado: queda como Propio */ }
+      st.edit.original = editSnapshot();
     } catch (err) {
       st.error = err.message || 'No se pudo abrir el servicio.';
     }
@@ -317,11 +375,14 @@
   }
   function pagado() {
     var d = st.d;
+    if (st.edit) return num(st.edit.pagado);
+    if (d.sin_costo) return 0;
     if (d.pago === 'total') return num(d.presupuesto);
     return d.pago === 'sena' ? num(d.sena_monto) : 0;
   }
   function deposito() {
     var d = st.d, monto = pagado();
+    if (d.sin_costo) return null;
     return d.pago !== 'no' && monto > 0 ? { amount: monto, method: d.sena_medio } : null;
   }
 
@@ -337,14 +398,22 @@
     if (!d.origin.trim()) e.push('Completá el origen.');
     if (!unaDireccion() && !d.destination.trim()) e.push('Completá el destino.');
     if (d.cuando === 'programar' && !d.scheduled_for) e.push('Elegí fecha y hora.');
-    if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
-    if (st.edit && num(d.presupuesto) > 0 && num(d.presupuesto) < st.edit.pagado) e.push('El presupuesto no puede ser menor a lo ya cobrado (' + pesos(st.edit.pagado) + ').');
+    if (d.sin_costo) {
+      if (num(d.presupuesto) !== 0) e.push('Sin costo debe tener precio total $0.');
+      if ((st.edit && st.edit.pagado > 0) || (st.intake && st.intake.cobrado > 0) || (!st.edit && (d.pago !== 'no' || num(d.sena_monto) > 0))) e.push('No se puede marcar Sin costo si hay cobros registrados.');
+    } else if (num(d.presupuesto) <= 0) e.push('Completá el presupuesto.');
+    if (st.edit && num(d.presupuesto) < st.edit.pagado) e.push('El presupuesto no puede ser menor a lo ya cobrado (' + pesos(st.edit.pagado) + ').');
     if (!st.edit && d.pago === 'sena' && num(d.sena_monto) <= 0) e.push(st.intake ? 'Completá cuánto cobró el chofer.' : 'Completá el monto de la seña.');
     if (!st.edit && d.pago === 'sena' && num(d.sena_monto) >= num(d.presupuesto) && num(d.presupuesto) > 0) e.push(st.intake ? 'Lo cobrado tiene que ser menor al presupuesto. Si cobró todo, elegí Todo.' : 'La seña tiene que ser menor al presupuesto. Si pagó todo, elegí Pago total.');
     var doc = digits(d.customer_document);
     if (doc && doc.length !== 8 && doc.length !== 11) e.push('El DNI tiene 8 dígitos y el CUIT 11.');
     else if (d.factura && !doc) e.push('Para facturar completá el DNI o CUIT.');
-    if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
+    if (d.logistica === 'third' && !st.intake) {
+      var tp = tercProveedor(), tm = tercModo(tp);
+      if (!d.terc_provider_id) e.push('Elegí qué tercerizado hace el servicio.');
+      else if (st.terc.providers && d.primary_concept_id && !tercSirve(tp)) e.push('Ese tercerizado no tiene tarifa para este tipo de servicio en esta fecha.');
+      else if (tm && tm.calc_mode === 'locality' && !d.terc_locality) e.push('Elegí la localidad.');
+    } else if (d.assigned_driver_id && !d.assigned_truck_id) e.push('Si asignás chofer, elegí también el móvil.');
     if (d.captado && !d.referred_by_driver_id) e.push('Elegí el chofer que consiguió el servicio.');
     // Crear y finalizar: un particular no se finaliza sin el cobro del total.
     if (st.intake && num(d.presupuesto) > 0 && d.pago !== 'total') e.push('Para crear y finalizar, el cobro tiene que cubrir el presupuesto. Marcá Todo si ya se cobró el total.');
@@ -356,7 +425,9 @@
     'Elegí el tipo de servicio.': 'primary_concept_id', 'Completá el origen.': 'origin', 'Completá el destino.': 'destination',
     'Elegí fecha y hora.': 'scheduled_for', 'Completá el presupuesto.': 'presupuesto',
     'El DNI tiene 8 dígitos y el CUIT 11.': 'customer_document', 'Para facturar completá el DNI o CUIT.': 'customer_document',
-    'Si asignás chofer, elegí también el móvil.': 'assigned_truck_id', 'Elegí el chofer que consiguió el servicio.': 'referred_by_driver_id'
+    'Si asignás chofer, elegí también el móvil.': 'assigned_truck_id', 'Elegí el chofer que consiguió el servicio.': 'referred_by_driver_id',
+    'Elegí qué tercerizado hace el servicio.': 'terc_provider_id', 'Ese tercerizado no tiene tarifa para este tipo de servicio en esta fecha.': 'terc_provider_id',
+    'Elegí la localidad.': 'terc_locality'
   };
   function campoDe(m) {
     if (/presupuesto no puede ser menor/.test(m)) return 'presupuesto';
@@ -397,9 +468,7 @@
       var lista = MEDIOS.some(function (o) { return o[0] === p.method; }) ? MEDIOS : MEDIOS.concat([[p.method, NOMBRE_OTRO[p.method] || p.method]]);
       return '<div class="psv-pago"><span><b>' + (p.kind === 'sena' ? 'Seña' : 'Pago') + ' · ' + pesos(p.amount) + '</b>' +
         (elegido !== p.method ? '<small>Antes: ' + esc((MEDIOS.concat([[p.method, NOMBRE_OTRO[p.method] || p.method]]).find(function (o) { return o[0] === p.method; }) || [0, p.method])[1]) + '</small>' : '') + '</span>' +
-        '<div class="psv-seg" role="group" aria-label="Medio de pago" data-ax-seg="pago-' + esc(p.payment_id) + '">' + lista.map(function (o) {
-          return '<button type="button" data-psv-pmedio="' + esc(p.payment_id) + '" data-v="' + o[0] + '" aria-pressed="' + (elegido === o[0]) + '"' + (st.edit.cerrado ? ' disabled' : '') + '>' + esc(o[1]) + '</button>';
-        }).join('') + '</div></div>';
+        '<label class="psv-payment-method"><span>Medio de pago</span><select data-psv-pmedio="' + esc(p.payment_id) + '"' + (st.edit.cerrado ? ' disabled' : '') + '>' + opciones(lista, elegido) + '</select></label></div>';
     }).join('') + '</div>';
   }
   var NOMBRE_OTRO = { mercado_pago: 'Mercado Pago', other: 'Otro' };
@@ -412,10 +481,38 @@
     var estado = a.validando ? marca('running', 'Validando…') : ok ? marca(a.recien ? 'running' : 'done', a.recien ? 'Validando…' : 'Validada', a.recien ? 'is-just' : '') :
       d[kind] ? marca('warn', 'Sin validar') : '';
     return '<div class="psv-field psv-addr' + (err ? ' ax-invalid' : '') + (ok ? ' is-valid' : '') + '"><span>' + label + '</span>' +
-      '<div class="psv-addr-input">' + ico('map-pin') + '<input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad"></div>' +
+      '<div class="psv-addr-input"><span class="psv-route-stop" aria-hidden="true">' + (unaDireccion() ? ico('map-pin') : kind === 'origin' ? 'A' : 'B') + '</span><input id="psv-' + kind + '" data-psv-addr="' + kind + '" value="' + esc(d[kind]) + '" autocomplete="off" placeholder="Calle y número, localidad o coordenadas"></div>' +
       '<em class="psv-addr-state ' + (ok ? 'ok' : d[kind] ? 'warn' : '') + '">' + estado + '</em>' +
       (err ? '<small class="psv-field-error" role="alert">' + esc(err) + '</small>' : '') +
       '<div class="psv-sugs" id="psv-' + kind + '-sugs" hidden></div></div>';
+  }
+
+  function calculatorIcon() {
+    return '<svg class="ax-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M8 6h8M8 10h2M14 10h2M8 14h2M14 14h2M8 18h2M14 18h2"/></svg>';
+  }
+
+  function quoteBreakdown() {
+    var calc = st.appliedCalculation;
+    if (!calc || num(st.d.presupuesto) !== calc.budget) return '';
+    function money(value) { return '$ ' + value.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    return '<details class="psv-budget-breakdown"><summary>Ver desglose del cálculo</summary><dl>' + calc.lines.filter(function (line) { return line.subtotal > 0; }).map(function (line) {
+      return '<div><dt>' + esc(line.label) + '<small>' + esc(line.quantity.toLocaleString('es-AR')) + ' × ' + money(line.unit_price) + '</small></dt><dd>' + money(line.subtotal) + '</dd></div>';
+    }).join('') + (calc.budget !== calc.total ? '<div><dt>Redondeo al peso</dt><dd>' + money(calc.budget - calc.total) + '</dd></div>' : '') + '</dl><p>Detalle de esta sesión; se guarda sólo el precio total.</p></details>';
+  }
+
+  function paymentChoices() {
+    var d = st.d, options = st.intake ? COBROS : PAGOS;
+    var descriptions = st.intake
+      ? {no:'El presupuesto queda pendiente.', sena:'Se descuenta del precio del servicio.', total:'El presupuesto queda cobrado.'}
+      : {no:'El cliente paga al realizarse el servicio.', sena:'Un anticipo a cuenta del precio total.', total:'El servicio se paga por adelantado.'};
+    return '<div class="psv-payment-options" role="group" aria-label="' + (st.intake ? 'Cobro informado por el chofer' : 'Pago previo al servicio') + '">' + options.map(function (option) {
+      return '<button type="button" data-psv-seg="pago" data-v="' + option[0] + '" aria-pressed="' + (d.pago === option[0]) + '" aria-label="' + esc(option[1] + '. ' + descriptions[option[0]]) + '"><i aria-hidden="true"></i><span><b>' + esc(option[1]) + '</b></span></button>';
+    }).join('') + '</div>';
+  }
+
+  function calculatorLayer() {
+    if (!st?.calculatorOpen || !global.AuxiliosPriceCalculator) return '';
+    return '<div class="psv-calculator-layer" data-psv-calculator-layer><section id="psv-calculator-dialog" class="psv-calculator-dialog" role="dialog" aria-modal="true" aria-labelledby="psv-calculator-title">' + global.AuxiliosPriceCalculator.render(st.calculatorDraft || global.AuxiliosPriceCalculator.initial(st.routeData)) + '</section></div>';
   }
 
   function pintar() {
@@ -441,98 +538,108 @@
       .map(function (x) { return [x.truck_id, [x.numero_interno, x.plate || x.patente].filter(Boolean).join(' · ') || x.truck_id]; });
     var bases = (ctx.bases || []).map(function (b) { return [b.base_id, b.name]; });
     var tipos = servicios().map(function (s) { return [s.concept_id, s.name]; });
+    var scheduleHtml = (st.edit ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : st.intake ? '' :
+          '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo" data-ax-seg="cuando">' +
+            '<button type="button" data-psv-cuando="ahora" aria-pressed="' + (d.cuando === 'ahora') + '">Ahora</button>' +
+            '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
+          (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"'), 'psv-schedule-date') : ''));
 
     m.innerHTML =
-      '<div class="psv-dialog psv-form" role="dialog" aria-modal="true" aria-labelledby="psv-form-t">' +
+      '<div class="psv-dialog psv-form psv-checkout" role="dialog" aria-modal="true" aria-labelledby="psv-form-t"' + (st.calculatorOpen ? ' inert aria-hidden="true"' : '') + '>' +
       '<header><div><h2 id="psv-form-t">' + (st.edit ? 'Editar servicio · Particular' : 'Nuevo servicio · Particular') + '</h2><p>' +
         (st.edit ? esc(st.edit.numero || '') + (st.edit.firmado ? ' · Con remito firmado: cliente, vehículo y asignación vienen del remito.' : '') :
          st.intake ? 'Desde el remito ' + esc(st.intake.numero || '') + ' de ' + esc(st.intake.chofer) + '. Al crearlo queda finalizado.' : 'Cliente de una sola vez con precio presupuestado.') + '</p></div>' +
-        '<button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></header>' +
+        '<div class="psv-form-tools"><button type="button" class="psv-x" data-psv="cerrar-form" aria-label="Cerrar">×</button></div></header>' +
       '<div class="psv-body">' +
         (st.error ? '<div class="psv-error" role="alert">' + esc(st.error) + '</div>' : '') +
 
-        '<div class="psv-cols"><div class="psv-col">' +
-        '<section><h3>Cliente</h3><div class="psv-grid">' +
+        '<div class="psv-cols"><div class="psv-col psv-details-column">' +
+        '<section data-psv-section="client"><h3>' + ico('user') + 'Datos del cliente</h3><div class="psv-grid">' +
           campo('customer_name', 'Nombre y apellido *', input('customer_name', d.customer_name, 'autocomplete="name"')) +
           campo('customer_phone', 'Teléfono', input('customer_phone', d.customer_phone, 'inputmode="tel" placeholder="11 2345 6789"')) +
           campo('customer_document', 'DNI / CUIT' + (d.factura ? ' *' : ''), input('customer_document', d.customer_document, 'inputmode="numeric" placeholder="8 u 11 dígitos"')) +
         '</div></section>' +
 
-        '<section><h3>Vehículo</h3><div class="psv-grid">' +
+        '<section data-psv-section="service"><h3>' + ico('car') + 'Datos del servicio</h3><div class="psv-grid psv-vehicle-service' + (bases.length > 1 ? ' has-base' : '') + '">' +
           campo('vehicle_plate', 'Patente', input('vehicle_plate', d.vehicle_plate, 'autocapitalize="characters"')) +
           campo('vehicle_make_model', 'Marca y modelo', input('vehicle_make_model', d.vehicle_make_model)) +
-        '</div></section>' +
-
-        '<section><h3>Servicio</h3><div class="psv-grid">' +
           campo('primary_concept_id', 'Tipo de servicio *', '<select id="psv-primary_concept_id" data-psv-k="primary_concept_id">' + opciones(tipos, d.primary_concept_id, 'Elegí…') + '</select>') +
           (bases.length > 1 ? campo('billing_base_id', 'Base que lo atiende', '<select id="psv-billing_base_id" data-psv-k="billing_base_id">' + opciones(bases, d.billing_base_id) + '</select>') : '') +
-          (st.edit ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : st.intake ? '' :
-          '<div class="psv-field"><span>Cuándo</span><div class="psv-seg" role="group" aria-label="Cuándo" data-ax-seg="cuando">' +
-            '<button type="button" data-psv-cuando="ahora" aria-pressed="' + (d.cuando === 'ahora') + '">Ahora</button>' +
-            '<button type="button" data-psv-cuando="programar" aria-pressed="' + (d.cuando === 'programar') + '">Programar</button></div></div>' +
-          (d.cuando === 'programar' ? campo('scheduled_for', 'Fecha y hora *', input('scheduled_for', d.scheduled_for, 'type="datetime-local"')) : '')) +
         '</div>' +
-        '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + '</div>' +
+
+        '<div class="psv-grid psv-grid-addr' + (unaDireccion() ? ' is-single' : '') + (scheduleHtml ? ' has-schedule' : '') + '">' + direccion('origin', unaDireccion() ? 'Dirección *' : 'Origen *') + (unaDireccion() ? '' : direccion('destination', 'Destino *')) + scheduleHtml + '</div>' +
         (st.calculando ? '<p class="psv-hint psv-route">' + marca('running', 'Calculando el recorrido…') + '</p>' :
           d.route ? '<p class="psv-hint psv-route">' + marca('done', 'Recorrido: ' + d.route) + '</p>' : '') +
-        '</section>' +
-        '<section><h3>Observaciones</h3>' +
-          '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="2" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
-        '</section>' +
-        '</div><div class="psv-col">' +
-
-        '<section><h3>Precio y cobro</h3><div class="psv-grid">' +
-          campo('presupuesto', 'Presupuesto *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"') + '</div>') +
-          (st.edit ? '' : grupo(st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?', seg('pago', st.intake ? COBROS : PAGOS, d.pago))) +
-        '</div>' +
-        (st.edit ? '<div class="psv-total"><span>Pagado ' + pesos(st.edit.pagado) + ' · Saldo</span><b>' + pesos(Math.max(num(d.presupuesto) - st.edit.pagado, 0)) + '</b></div>' +
-          comoSePago() +
-          (Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 ? '<p class="psv-hint">El saldo se registra con "Registrar cobro".</p>' : '') : '') +
-        (!st.edit && d.pago !== 'no' ? '<div class="psv-grid">' +
-          (d.pago === 'sena'
-            ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
-            : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
-          grupo('Medio de pago', seg('sena_medio', MEDIOS, d.sena_medio)) +
-        '</div>' : '') +
-        (st.intake && st.intake.informe ? '<p class="psv-hint psv-informe">' + esc(st.intake.informe) + '</p>' : '') +
-        (st.edit ? '' : '<div class="psv-total"><span>' + (st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>') +
-        '</section>' +
-
-        '<section><h3>Factura</h3>' +
-          '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> El cliente pide factura</label>' +
-          (d.factura ? '<div class="psv-grid">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
-        '</section>' +
-
+        '<div class="psv-field psv-notes"><label for="psv-operator_notes">Observaciones</label>' +
+          '<textarea id="psv-operator_notes" data-psv-k="operator_notes" rows="1" placeholder="Indicaciones para el chofer">' + esc(d.operator_notes) + '</textarea>' +
+        '</div></section>' +
         (st.intake
-          ? '<section><h3>Lo hizo</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
-          : '<section><h3>Asignación <small>(opcional)</small></h3><div class="psv-grid">' +
+          ? '<section data-psv-section="assignment"><h3>' + ico('truck') + 'Datos de asignación</h3><p class="psv-hecho"><b>' + esc(st.intake.chofer) + '</b>' + (st.intake.movil ? ' · ' + esc(st.intake.movil) : '') + '</p>'
+          : '<section data-psv-section="assignment"><h3>' + ico('truck') + 'Datos de asignación <small>(opcional)</small></h3>' +
+          '<div class="ax-seg psv-logistica" role="group" aria-label="Quién hace el servicio"><button type="button" data-psv-seg="logistica" data-v="own" aria-pressed="' + (d.logistica !== 'third') + '">Propio</button><button type="button" data-psv-seg="logistica" data-v="third" aria-pressed="' + (d.logistica === 'third') + '">Tercerizado</button></div>' +
+          (d.logistica === 'third' ? tercerizadoHtml() : '<div class="psv-grid">' +
           campo('assigned_truck_id', 'Móvil', '<select id="psv-assigned_truck_id" data-psv-k="assigned_truck_id">' + opciones(trucks, d.assigned_truck_id, 'Sin asignar') + '</select>') +
           campo('assigned_driver_id', 'Chofer', '<select id="psv-assigned_driver_id" data-psv-k="assigned_driver_id"' + (programado() ? ' disabled' : '') + '>' + opciones(drivers, programado() ? '' : d.assigned_driver_id, 'El de la jornada del móvil') + '</select>') +
-        '</div>') +
+        '</div>')) +
         '<div class="psv-grid psv-captado">' +
           '<label class="psv-check ax-switch"><input type="checkbox" data-psv-k="captado"' + (d.captado ? ' checked' : '') + '> Lo consiguió un chofer</label>' +
           (d.captado ? campo('referred_by_driver_id', 'Chofer que lo consiguió *', '<select id="psv-referred_by_driver_id" data-psv-k="referred_by_driver_id">' + opciones(drivers, d.referred_by_driver_id, 'Elegí el chofer') + '</select>') : '') +
         '</div></section>' +
         interruptoresHtml() +
+        '</div><div class="psv-col psv-budget-column">' +
 
+        '<aside class="psv-budget-card" aria-labelledby="psv-budget-title"><div class="psv-budget-heading"><h3 id="psv-budget-title">Presupuesto</h3>' + (!st.busy && !(st.edit && st.edit.cerrado) && global.AuxiliosPriceCalculator ? '<button type="button" class="psv-btn psv-function-button" data-psv="calculadora" aria-haspopup="dialog" aria-controls="psv-calculator-dialog" aria-expanded="' + !!st.calculatorOpen + '"' + (d.sin_costo ? ' disabled title="Desactivá Sin costo para calcular un importe"' : '') + '>' + calculatorIcon() + '<span>Calculadora</span></button>' : '') + '</div>' +
+        (st.edit?.cerrado ? '<p class="psv-hint">Servicio finalizado: podés corregir presupuesto, facturación y captación. Los datos del servicio y los cobros se conservan.</p>' : '') +
+        '<label class="psv-courtesy-toggle ax-switch"><span><b>Sin costo</b><small>Gentileza de la empresa</small></span><input type="checkbox" data-psv-k="sin_costo"' + (d.sin_costo ? ' checked' : '') + ((st.edit && st.edit.pagado > 0) || (st.intake && st.intake.cobrado > 0) ? ' disabled title="Hay cobros registrados; deben resolverse antes de ofrecer una gentileza"' : '') + '></label>' +
+        (!st.edit && !d.sin_costo ? '<section class="psv-payment-section"><h4>' + (st.intake ? '¿El chofer cobró en el lugar?' : '¿Pagó algo antes del servicio?') + '</h4>' + paymentChoices() + '</section>' : comoSePago()) +
+        (!st.edit && d.pago !== 'no' ? '<div class="psv-grid psv-deposit">' +
+          (d.pago === 'sena'
+            ? campo('sena_monto', st.intake ? 'Cuánto cobró *' : 'Monto de la seña *', '<div class="psv-money"><i>$</i>' + input('sena_monto', d.sena_monto, 'inputmode="decimal" placeholder="0"') + '</div>')
+            : campo('pago_total', st.intake ? 'Cobró' : 'Pagó', '<div class="psv-money"><i>$</i><input id="psv-pago_total" value="' + esc(Math.round(num(d.presupuesto)).toLocaleString('es-AR')) + '" readonly tabindex="-1"></div>')) +
+        '</div>' : '') +
+        (st.intake && st.intake.informe ? '<p class="psv-hint psv-informe">' + esc(st.intake.informe) + '</p>' : '') +
+        '<div class="psv-payment-invoice-row">' +
+          (!st.edit ? campo('sena_medio', 'Medio de pago', '<select id="psv-sena_medio" data-psv-k="sena_medio"' + (d.pago === 'no' ? ' disabled' : '') + '>' + (d.pago === 'no' ? '<option>' + (d.sin_costo ? 'No corresponde' : 'Sin pago previo') + '</option>' : opciones(MEDIOS, d.sena_medio)) + '</select>') : '') +
+          '<div class="psv-invoice-section"><label class="psv-check ax-switch"><input type="checkbox" data-psv-k="factura"' + (d.factura ? ' checked' : '') + '> Pide factura</label></div>' +
+        '</div>' +
+        (d.factura ? '<div class="psv-grid psv-tax-row">' + campo('condicion', 'Condición frente al IVA *', '<select id="psv-condicion" data-psv-k="condicion">' + opciones(CONDICIONES, d.condicion) + '</select>') + '</div>' : '') +
+        (st.edit && !st.edit.cerrado && Math.max(num(d.presupuesto) - st.edit.pagado, 0) > 0 && global.OperatorServices?.canManage?.() ? '<button type="button" class="psv-btn psv-collect" data-psv="registrar-cobro">' + ico('hand-coins') + 'Registrar cobro</button><p class="psv-hint">Si modificaste el servicio, confirmá los cambios antes de abrir el cobro.</p>' : '') +
+        '<div class="psv-price-total">' +
+          quoteBreakdown() +
+          campo('presupuesto', d.sin_costo ? 'Precio total · Sin costo' : 'Precio total *', '<div class="psv-money"><i>$</i>' + input('presupuesto', d.presupuesto, 'inputmode="decimal" placeholder="0"' + (d.sin_costo ? ' readonly' : '')) + '</div>') +
+          (d.sin_costo ? '<p class="psv-courtesy-note">' + ico('circle-check') + 'Gentileza: no genera importe a cobrar.</p>' : '') +
+          '<div class="psv-paid-line"><span>' + (st.edit || st.intake ? 'Pagos registrados' : 'Pago anticipado') + '</span><b data-psv-paid>' + pesos(pagado()) + '</b></div>' +
+          '<div class="psv-total"><span>' + (st.edit ? 'Saldo pendiente' : st.intake ? 'Queda pendiente de cobro' : 'A cobrar en el lugar') + '</span><b>' + pesos(saldo()) + '</b></div>' +
+        '</div></aside>' +
         '</div></div>' +
       '</div>' +
       '<footer><button type="button" class="psv-btn" data-psv="cerrar-form">Cancelar</button>' +
         '<button type="button" class="psv-btn primary" data-psv="guardar"' + (st.busy ? ' disabled' : '') + '>' +
         (st.busy ? 'Guardando…' : st.edit ? 'Guardar cambios' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
-      '</div>';
+      '</div>' + calculatorLayer();
     marcas(m);
     confirmarRecientes(m);
     if (global.AxUI) {
-      if (global.AxUI.select) m.querySelectorAll('.psv-body select').forEach(function (x) { global.AxUI.select(x); });
+      if (global.AxUI.select) m.querySelectorAll('.psv-body select:not([data-price-key])').forEach(function (x) { global.AxUI.select(x); });
       if (global.AxUI.seg) m.querySelectorAll('.psv-seg').forEach(function (x) { global.AxUI.seg(x); });
     }
     pintarRecursos(false);
+    var calculator = m.querySelector('[data-price-calculator]');
+    if (calculator) global.AuxiliosPriceCalculator.update(calculator, st.edit ? st.edit.pagado : 0);
     // Con remito firmado, cliente, vehículo y asignación vienen del remito.
     if (st.edit && st.edit.firmado) {
       ['customer_name', 'customer_phone', 'vehicle_plate', 'vehicle_make_model', 'assigned_truck_id', 'assigned_driver_id'].forEach(function (k) {
         var f = el('psv-' + k); if (f) { f.disabled = true; f.title = 'Viene del remito firmado'; }
       });
+      m.querySelectorAll('[data-psv-seg="logistica"],#psv-terc_provider_id,#psv-terc_locality').forEach(function (f) { f.disabled = true; f.title = 'Viene del remito firmado'; });
+    }
+    // Un particular finalizado sólo admite presupuesto/factura/captación en
+    // la RPC existente. No ofrecer cambios de servicio que no se guardarían.
+    if (st.edit && st.edit.cerrado) {
+      ['customer_name','customer_phone','vehicle_plate','vehicle_make_model','primary_concept_id','billing_base_id','scheduled_for','origin','destination','assigned_truck_id','assigned_driver_id','operator_notes'].forEach(function (key) {
+        var field = el('psv-' + key); if (field) { field.disabled = true; field.title = 'El servicio está finalizado: estos datos se conservan.'; }
+      });
+      m.querySelectorAll('[data-psv-cuando],[data-psv-toggle],[data-psv-seg="logistica"],#psv-terc_provider_id,#psv-terc_locality').forEach(function (field) { field.disabled = true; });
     }
   }
 
@@ -603,13 +710,24 @@
 
   /* Repintar pierde el foco del campo que se está escribiendo; sólo se repinta
      cuando cambia la forma del formulario, no en cada tecla. */
-  var ESTRUCTURALES = { primary_concept_id: 1, factura: 1, captado: 1 };
+  var ESTRUCTURALES = { primary_concept_id: 1, factura: 1, captado: 1, terc_provider_id: 1 };
 
   function O_pares() { var O = global.OperatorServices; return O && O.pairedResources; }
 
   function onInput(ev) {
     var t = ev.target;
     if (!st || !t) return;
+    var calculator = t.closest && t.closest('[data-price-calculator]');
+    if (calculator && global.AuxiliosPriceCalculator) {
+      st.calculatorDraft = global.AuxiliosPriceCalculator.read(calculator);
+      if (t.getAttribute('data-price-key') === 'mode') return paintCalculator('[data-price-key="mode"]');
+      global.AuxiliosPriceCalculator.update(calculator, st.edit ? st.edit.pagado : 0);
+      return;
+    }
+    if (t.hasAttribute && t.hasAttribute('data-psv-pmedio')) {
+      if (ev.type === 'change' && st.edit && !st.edit.cerrado) st.d.medios[t.getAttribute('data-psv-pmedio')] = t.value;
+      return;
+    }
     if (t.hasAttribute && t.hasAttribute('data-psv-toggle')) { st.toggles.selected[t.getAttribute('data-psv-toggle')] = !!t.checked; return; }
     var k = t.getAttribute('data-psv-k') || t.getAttribute('data-psv-addr');
     if (k && st.fieldErrors && st.fieldErrors[k]) {
@@ -623,11 +741,30 @@
         var limpio = digits(t.value).slice(0, k === 'customer_document' ? 11 : 13);
         if (limpio !== t.value) t.value = limpio;
       }
+      if (k === 'sin_costo') {
+        if (ev.type !== 'change') return;
+        if ((st.edit && st.edit.pagado > 0) || (st.intake && st.intake.cobrado > 0)) { t.checked = false; return; }
+        if (t.checked) {
+          st.beforeCourtesy = {presupuesto:st.d.presupuesto, pago:st.d.pago, sena_monto:st.d.sena_monto, sena_medio:st.d.sena_medio};
+          st.d.sin_costo = true; st.d.presupuesto = '0'; st.d.pago = 'no'; st.d.sena_monto = '';
+          st.appliedCalculation = null; st.calculatorOpen = false;
+        } else {
+          st.d.sin_costo = false;
+          Object.assign(st.d, st.beforeCourtesy || {presupuesto:'', pago:'no', sena_monto:''});
+          st.beforeCourtesy = null;
+        }
+        if (st.fieldErrors) delete st.fieldErrors.presupuesto;
+        return pintar();
+      }
       st.d[k] = t.type === 'checkbox' ? t.checked : t.value;
+      if (k === 'terc_provider_id') st.d.terc_locality = '';
       // Por defecto lo consiguió el chofer asignado.
       if (k === 'captado' && st.d.captado && !st.d.referred_by_driver_id) st.d.referred_by_driver_id = st.d.assigned_driver_id || '';
       if (ESTRUCTURALES[k] && ev.type === 'change') return pintar();
       if (k === 'presupuesto' || k === 'sena_monto') {
+        if (k === 'presupuesto') { st.appliedCalculation = null; el('psv-form').querySelector('.psv-budget-breakdown')?.remove(); }
+        var paid = el('psv-form').querySelector('[data-psv-paid]');
+        if (paid) paid.textContent = pesos(pagado());
         var tot = document.querySelector('#psv-form .psv-total b');
         if (tot) tot.textContent = pesos(saldo());
         var pt = el('psv-pago_total');
@@ -770,7 +907,7 @@
   /* ── Guardar ──────────────────────────────────────────────────────────── */
 
   function payload() {
-    var d = st.d, single = unaDireccion();
+    var d = st.d, single = unaDireccion(), tercero = d.logistica === 'third' && !st.intake;
     var when = st.edit && d.scheduled_for ? new Date(d.scheduled_for)
       : st.intake && st.intake.scheduled_for ? new Date(st.intake.scheduled_for)
       : d.cuando === 'programar' && d.scheduled_for ? new Date(d.scheduled_for) : new Date();
@@ -781,6 +918,7 @@
       items: [], item_codes: {},
       customer_name: d.customer_name.trim(), customer_phone: digits(d.customer_phone),
       customer_document: digits(d.customer_document) || null,
+      no_charge: !!d.sin_costo,
       invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null,
       vehicle_plate: d.vehicle_plate.trim().toUpperCase(), vehicle_make_model: d.vehicle_make_model.trim(),
       origin: d.origin.trim(), origin_lat: d.origin_lat || null, origin_lng: d.origin_lng || null,
@@ -790,9 +928,9 @@
       destination_lng: (single ? d.origin_lng : d.destination_lng) || null,
       destination_place_id: (single ? d.origin_place_id : d.destination_place_id) || null,
       destination_formatted_address: (single ? d.origin_formatted_address : d.destination_formatted_address) || null,
-      assigned_truck_id: d.assigned_truck_id || null, assigned_driver_id: (programado() ? '' : d.assigned_driver_id) || null,
+      assigned_truck_id: tercero ? null : d.assigned_truck_id || null, assigned_driver_id: tercero ? null : (programado() ? '' : d.assigned_driver_id) || null,
       referred_by_driver_id: d.captado ? d.referred_by_driver_id || null : null,
-      operator_notes: d.operator_notes.trim(), logistics_type: 'own', is_holiday: false, granted_delay_minutes: 0
+      operator_notes: d.operator_notes.trim(), logistics_type: tercero ? 'third_party' : 'own', is_holiday: false, granted_delay_minutes: 0
     };
     return Object.assign(p, st.routeData || { estimated_asphalt_km: 0, estimated_gravel_km: 0, estimated_distance_km: 0 });
   }
@@ -808,8 +946,36 @@
     return [{ method: dep.method, amount: dep.amount }];
   }
 
+  function editSnapshot() {
+    var medios = {};
+    (st.edit?.pagos || []).forEach(function (p) { medios[p.payment_id] = st.d.medios[p.payment_id] || p.method; });
+    return Object.assign({}, payload(), {
+      presupuesto: num(st.d.presupuesto), factura: !!st.d.factura,
+      condicion: st.d.factura ? st.d.condicion : '', medios: medios,
+      terc_provider_id: st.d.logistica === 'third' ? st.d.terc_provider_id : '', terc_locality: st.d.logistica === 'third' ? st.d.terc_locality : '',
+      toggle_ids: Object.keys(st.toggles?.selected || {}).filter(function (k) { return st.toggles.selected[k]; }).sort()
+    });
+  }
+  function editLabel(key, value) {
+    var lists = {primary_concept_id: st.ctx?.services || [], billing_base_id: st.ctx?.bases || [], assigned_driver_id: OS().drivers || [], referred_by_driver_id: OS().drivers || [], assigned_truck_id: OS().trucks || [], toggle_id: st.toggles?.concepts || [], terc_provider_id: st.terc?.providers || []};
+    if (!lists[key]) return;
+    var row = lists[key].find(function (x) { return String(x.concept_id || x.base_id || x.user_id || x.truck_id || x.provider_id) === String(value); });
+    return row ? row.display_name || row.name || row.full_name || row.numero_interno || row.plate : 'Sin informar';
+  }
+  async function cobrarDesdeEdicion() {
+    if (!st?.edit || st.busy || st.confirming || st.edit.cerrado || !global.OperatorServices?.canManage?.()) return;
+    var current = st, id = st.edit.id, ui = global.AuxiliosServiceImprovements;
+    if (!ui) return notify('Volvé a cargar la página para abrir el cobro.', 'warning');
+    if (ui.changes(st.edit.original, editSnapshot()).length) {
+      await guardar();
+      if (st === current) return; // Canceló la confirmación o falló el guardado.
+    } else cerrarForm(true);
+    await global.AuxiliosCobroOperador?.abrir(id);
+  }
   async function guardar() {
     if (!st || st.busy) return;
+    // La tarifa del tercerizado depende de la fecha del servicio.
+    if (st.d.logistica === 'third' && !st.intake) { var antes = st; await cargarTercerizados(); if (antes !== st) return; }
     var e = erroresPorCampo();
     st.fieldErrors = {};
     if (e.length) {
@@ -822,6 +988,16 @@
       if (primero) primero.focus();
       return;
     }
+    if (st.edit) {
+      var editing = st, ui = global.AuxiliosServiceImprovements;
+      if (st.confirming) return;
+      if (!ui) return notify('Volvé a cargar la página para confirmar los cambios.', 'warning');
+      st.confirming = true;
+      var accepted;
+      try { accepted = await ui.confirmEdit({before: st.edit.original, after: editSnapshot(), resolve: editLabel, reference: 'Particular ' + (st.edit.numero || '')}); }
+      finally { editing.confirming = false; }
+      if (!accepted || st !== editing) return;
+    }
     st.busy = true; st.error = '';
     pintar();
     try {
@@ -830,11 +1006,12 @@
         var eid = st.edit.id;
         var ru = await db().rpc('update_private_service_v1', {
           p_service_id: eid, p_payload: payload(), p_quoted_total: num(d.presupuesto),
-          p_invoice: { invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null, customer_document: digits(d.customer_document) || null },
-          p_reason: null
+          p_invoice: { no_charge: !!d.sin_costo, invoice_requested: !!d.factura, customer_tax_condition: d.factura ? d.condicion : null, customer_document: digits(d.customer_document) || null },
+          p_reason: 'Cambios revisados y confirmados desde la edición del particular'
         });
         if (ru.error) throw ru.error;
-        await guardarInterruptores(eid);
+        if (!st.edit.cerrado) await guardarInterruptores(eid);
+        await guardarTercerizado(eid);
         var cambios = (st.edit.pagos || []).filter(function (p) { return st.d.medios[p.payment_id] && st.d.medios[p.payment_id] !== p.method; });
         for (var ci = 0; ci < cambios.length; ci++) {
           var rm = await db().rpc('update_service_payment_method_v1', { p_payment_id: cambios[ci].payment_id, p_method: st.d.medios[cambios[ci].payment_id] });
@@ -861,6 +1038,7 @@
       if (r.error) throw r.error;
       var res = r.data || {};
       await guardarInterruptores(res.service_id);
+      await guardarTercerizado(res.service_id);
       cerrarForm(true);
       if (intake) {
         var nro = res.service_order_number || res.service_number;
@@ -886,18 +1064,62 @@
     }
   }
 
-  function cerrarForm(force) {
+  async function cerrarForm(force) {
+    if (!force && st && (st.busy || st.confirming || st.closing)) return false;
     if (!force && st && (st.d.customer_name || st.d.presupuesto || st.d.origin)) {
-      if (!global.confirm('¿Descartar el servicio particular sin guardar?')) return;
+      var current = st, ask = global.AuxiliosServiceImprovements?.confirmDiscard;
+      if (!ask) { notify('No se pudo abrir la confirmación de AuxiliOS. Recargá la página.', 'error'); return false; }
+      current.closing = true;
+      var accepted;
+      try { accepted = await ask({reference:'Particular ' + (current.edit?.numero || current.d.customer_name || '')}); }
+      finally { current.closing = false; }
+      if (!accepted || st !== current || st.busy || st.confirming) return false;
     }
     st = null;
     cerrar('psv-form');
+    return true;
   }
 
   /* ── Eventos ──────────────────────────────────────────────────────────── */
 
+  function paintCalculator(focusSelector) {
+    var form = el('psv-form');
+    var scrolls = ['.psv-body', '.spc-columns', '.spc-editor', '.spc-breakdown'].map(function (selector) {
+      return {selector:selector, top:form.querySelector(selector)?.scrollTop || 0};
+    });
+    pintar();
+    scrolls.forEach(function (saved) { var target = form.querySelector(saved.selector); if (target) target.scrollTop = saved.top; });
+    if (focusSelector) el('psv-form').querySelector(focusSelector)?.focus({preventScroll:true});
+  }
+
+  function calculatorAction(action, button) {
+    if (!st || st.busy || st.d.sin_costo || (st.edit && st.edit.cerrado) || !global.AuxiliosPriceCalculator) return;
+    var api = global.AuxiliosPriceCalculator, root = el('psv-form').querySelector('[data-price-calculator]');
+    st.calculatorDraft = root ? api.read(root) : st.calculatorDraft || api.initial(st.routeData);
+    if (action === 'calculadora') st.calculatorOpen = !st.calculatorOpen;
+    else if (action === 'calculator-close') st.calculatorOpen = false;
+    else if (action === 'calculator-toll' || action === 'calculator-extra') {
+      st.calculatorDraft.items.push({kind:action === 'calculator-toll' ? 'toll' : 'extra', name:'', quantity:'1', unit_price:''});
+    } else if (action === 'calculator-remove') st.calculatorDraft.items.splice(Number(button.getAttribute('data-index')), 1);
+    else if (action === 'calculator-apply') {
+      if (!root) return;
+      var result = api.update(root, st.edit ? st.edit.pagado : 0);
+      if (!result || result.budget <= 0 || (st.edit && result.budget < st.edit.pagado)) return;
+      st.d.presupuesto = String(result.budget);
+      st.appliedCalculation = result;
+      if (st.fieldErrors) delete st.fieldErrors.presupuesto;
+      st.calculatorOpen = false;
+    }
+    paintCalculator();
+    if (action === 'calculator-apply') el('psv-presupuesto')?.focus();
+    else if (!st.calculatorOpen) el('psv-form').querySelector('[data-psv="calculadora"]')?.focus();
+    else if (action === 'calculator-toll' || action === 'calculator-extra') el('psv-form').querySelector('[data-price-item="' + (st.calculatorDraft.items.length - 1) + '"] [data-price-item-key="name"]')?.focus();
+    else if (action === 'calculator-remove') el('psv-form').querySelector('[data-psv="calculator-extra"]')?.focus();
+    else if (st.calculatorOpen) el('psv-calculator-dialog')?.querySelector('select,input')?.focus();
+  }
+
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg],[data-psv-pmedio]');
+    var b = ev.target.closest('[data-psv],[data-psv-cuando],[data-psv-pick],[data-psv-seg]');
     if (!b) {
       if (ev.target.classList && ev.target.classList.contains('psv-backdrop')) {
         if (ev.target.id === 'psv-tipo') cerrar('psv-tipo');
@@ -905,13 +1127,21 @@
       return;
     }
     var a = b.getAttribute('data-psv');
+    if (a === 'calculadora' || (a && a.startsWith('calculator-'))) return calculatorAction(a, b);
     if (a === 'cerrar-tipo') return cerrar('psv-tipo');
     if (a === 'prestadora') { cerrar('psv-tipo'); ocultarCuentaEnPrestadoras(); return intakeElegido ? abrirPrestadora(intakeElegido) : abrirPrestadora(); }
     if (a === 'particular') { cerrar('psv-tipo'); return abrirParticular(intakeElegido); }
     if (a === 'cerrar-form') return cerrarForm(false);
     if (a === 'guardar') return guardar();
-    if (b.hasAttribute('data-psv-seg')) { st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v'); return pintar(); }
-    if (b.hasAttribute('data-psv-pmedio')) { st.d.medios[b.getAttribute('data-psv-pmedio')] = b.getAttribute('data-v'); return pintar(); }
+    if (a === 'registrar-cobro') return cobrarDesdeEdicion();
+    if (b.hasAttribute('data-psv-seg')) {
+      st.d[b.getAttribute('data-psv-seg')] = b.getAttribute('data-v');
+      if (b.getAttribute('data-psv-seg') === 'logistica') {
+        if (st.fieldErrors) { delete st.fieldErrors.terc_provider_id; delete st.fieldErrors.terc_locality; delete st.fieldErrors.assigned_truck_id; }
+        if (st.d.logistica === 'third') { var cur = st; pintar(); return cargarTercerizados().then(function () { if (cur === st) pintar(); }); }
+      }
+      return pintar();
+    }
     if (b.hasAttribute('data-psv-cuando')) {
       st.d.cuando = b.getAttribute('data-psv-cuando');
       if (programado()) st.d.assigned_driver_id = '';
@@ -922,6 +1152,18 @@
   });
   document.addEventListener('input', function (ev) { if (ev.target.closest && ev.target.closest('#psv-form')) onInput(ev); });
   document.addEventListener('change', function (ev) { if (ev.target.closest && ev.target.closest('#psv-form')) onInput(ev); });
+  document.addEventListener('keydown', function (ev) {
+    var dialog = el('psv-calculator-dialog');
+    if (!st?.calculatorOpen || !dialog || document.querySelector('.ax-edit-confirm:not([hidden])')) return;
+    if (ev.key === 'Escape') {
+      ev.preventDefault(); ev.stopImmediatePropagation(); calculatorAction('calculator-close'); return;
+    }
+    if (ev.key !== 'Tab') return;
+    var fields = Array.from(dialog.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled)')).filter(function (field) { return field.offsetParent !== null; });
+    var first = fields[0], last = fields[fields.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last?.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first?.focus(); }
+  }, true);
   document.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Escape') return;
     var t = el('psv-tipo');
