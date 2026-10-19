@@ -75,9 +75,13 @@ function resumenCierre(s){
 async function openFinalize(id,readOnly=false){
   const s=service(id);if(!s)return notify('No se encontró el servicio','error');
   if(s.driver_activated)return openActivatedFinalize(id,readOnly);if(s.remito_id&&['submitted','approved'].includes(s.document_status))return openSignedFinalize(s,readOnly);
-  if(!['assigned','at_origin'].includes(s.status))return notify('Solo un servicio ASIGNADO o ARRIBADO puede finalizarse','error');
-  const direct=s.status==='assigned';
-  const aviso='<div class="osl-warning"><b>Cierre sin remito firmado</b><span>Al confirmar, registrás la excepción documental y enviás el servicio a Facturación.</span></div>';
+  const third=s.logistics_type==='third_party';
+  if(!(['assigned','at_origin'].includes(s.status)||(third&&s.status==='pending')))return notify('Solo un servicio ASIGNADO o ARRIBADO puede finalizarse','error');
+  /* Tercerizada: no hay arribo del chofer propio, así que no se piden las Observaciones de «finalizar sin arribo». */
+  const direct=s.status==='assigned'&&!third;
+  const aviso=third
+    ?'<div class="osl-warning ok"><b>Servicio tercerizado</b><span>Lo hizo una grúa de afuera. Al confirmar, el servicio pasa a Facturación y lo que se le paga queda para su liquidación.</span></div>'
+    :'<div class="osl-warning"><b>Cierre sin remito firmado</b><span>Al confirmar, registrás la excepción documental y enviás el servicio a Facturación.</span></div>';
   /* El campo va acá. El backend exige operator_notes para cerrar sin arribo, y
      el modal se limitaba a avisarlo sin dar dónde escribirlo: el usuario
      apretaba Finalizar, le rebotaba "completá Observaciones" y no tenía a mano
@@ -146,7 +150,7 @@ function isPrivateService(s){return !!s&&(s.quoted_total!=null||s.client_kind===
 function quickActions(s){const list=serviceQuickActions(s);return isPrivateService(s)?list.filter(([k])=>k!=='activate'):list}
 /* Un activado que todavía no se facturó puede volver a como estaba (Revertir activado). */
 const revertibleActivation=s=>!!s?.driver_activated&&(s.status==='at_origin'||(s.status==='completed'&&['pending','not_ready','excluded'].includes(s.billing_status||'pending')));
-function serviceQuickActions(s){if(revertibleActivation(s)&&s.status==='completed')return[['revert_activation','Revertir activado']];if(!s||LEGACY_STATUS.has(s.status)||['completed','cancelled'].includes(s.status))return[];if(s.driver_activated)return[['finalize','Finalizar'],['revert_activation','Revertir activado']];const status=normalizedStatus(s),signed=!!s.remito_id&&['submitted','approved'].includes(s.document_status);if(status==='pending')return[['assign','Asignar'],['activate','Activado'],['annul','Anular']];if(status==='assigned')return signed?[['finalize','Finalizar']]:[['reassign','Reasignar'],['unassign','Quitar asignación'],['arrive','Arribado'],['activate','Activado'],['finalize','Finalizar'],['annul','Anular']];if(status==='at_origin')return signed?[['finalize','Finalizar']]:[['unarrive','Desarribar'],['activate','Activado'],['finalize','Finalizar'],['annul','Anular']];return[]}
+function serviceQuickActions(s){if(revertibleActivation(s)&&s.status==='completed')return[['revert_activation','Revertir activado']];if(!s||LEGACY_STATUS.has(s.status)||['completed','cancelled'].includes(s.status))return[];if(s.driver_activated)return[['finalize','Finalizar'],['revert_activation','Revertir activado']];const status=normalizedStatus(s),signed=!!s.remito_id&&['submitted','approved'].includes(s.document_status);/* Tercerizada: no hay chofer ni móvil propios, así que no pasa por Asignado: se finaliza directo. */if(status==='pending'&&s.logistics_type==='third_party')return[['finalize','Finalizar'],['annul','Anular']];if(status==='pending')return[['assign','Asignar'],['activate','Activado'],['annul','Anular']];if(status==='assigned')return signed?[['finalize','Finalizar']]:[['reassign','Reasignar'],['unassign','Quitar asignación'],['arrive','Arribado'],['activate','Activado'],['finalize','Finalizar'],['annul','Anular']];if(status==='at_origin')return signed?[['finalize','Finalizar']]:[['unarrive','Desarribar'],['activate','Activado'],['finalize','Finalizar'],['annul','Anular']];return[]}
 function openRevert(action,id,readOnly=false){const s=service(id);if(!s)return;const title=action==='unarrive'?'Desarribar servicio':'Quitar asignación';const m=openModal(shell(title,action==='unarrive'?'Vuelve a Asignado con el mismo chofer y móvil.':'Vuelve a Sin asignar y libera chofer y móvil.',ref(s),'Confirmar'),id);if(readOnly)markReadOnly(m);m.querySelector('form').addEventListener('submit',e=>{e.preventDefault();if(!readOnly)transition(action);});}
 /* Activado en un solo modal: motivo + observación → Origen o Movida (con sus km) → hora de fin.
    Un clic en el motivo y otro en "Activar": el tipo viene elegido según el estado (Arribado → Origen; Asignado → Movida)

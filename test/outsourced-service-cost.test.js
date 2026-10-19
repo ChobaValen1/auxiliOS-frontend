@@ -93,3 +93,13 @@ test('costo tercerizado: el operador no ve tarifas ni importes y no manda ajuste
   assert.match(m, /case when v_admin then jsonb_build_object\('unit_amount'/);
   assert.match(m, /p - 'adjustment_amount' - 'adjustment_reason'/);
 });
+
+test('tercerizada: se finaliza desde Pendiente (sin Asignar chofer y móvil)', () => {
+  const lc = read('operator-service-lifecycle.js'), os = read('operator-services.js');
+  assert.match(lc, /status==='pending'&&s\.logistics_type==='third_party'\)return\[\['finalize','Finalizar'\],\['annul','Anular'\]\]/);
+  assert.match(lc, /const direct=s\.status==='assigned'&&!third;/);
+  assert.match(os, /s\.status==='pending'&&s\.logistics_type==='third_party'\)\)entries\.push\(\['finalize','Finalizar'\]\)/);
+  const m = read('migrations/20261019020000_outsourced_finalize_from_pending.sql');
+  assert.match(m, /old\.status='pending' and new\.status='completed' and v_transition='finalize' and coalesce\(new\.logistics_type,'own'\)='third_party'/);
+  assert.match(m, /elegí qué tercerizado lo hizo/);
+});
