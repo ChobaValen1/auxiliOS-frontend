@@ -796,7 +796,6 @@
     var seq = a.seq;
     clearTimeout(a.timer);
     var q = value.trim();
-    if (window.AUXILIOS_DEMO) return mostrarSugerencias(kind, null, 'Demo: dirección manual, sin consulta de mapas.');
     if (q.length < 3) return mostrarSugerencias(kind, null, '');
     a.timer = setTimeout(async function () {
       try {

@@ -17,7 +17,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     const badge = document.createElement('div');
     badge.textContent = 'DEMO · Datos ficticios';
-    badge.title = 'Entorno independiente para demostraciones. Mapas e IA requieren configuración propia.';
+    badge.title = 'Entorno independiente para demostraciones, con datos ficticios.';
     badge.style.cssText = 'position:fixed;bottom:6px;left:50%;transform:translateX(-50%);z-index:99999;background:#b45309;color:white;padding:5px 12px;border-radius:20px;font:600 11px system-ui;pointer-events:none;box-shadow:0 2px 8px #0003';
     document.body.appendChild(badge);
   });
