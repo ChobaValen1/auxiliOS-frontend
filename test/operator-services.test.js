@@ -48,14 +48,15 @@ test('Cliente representa patente marca y modelo, no el nombre del socio',()=>{
   assert.doesNotMatch(customer,/customer_name/);
 });
 
-test('Operaciones prioriza los datos recibidos del remito del Chofer',()=>{
-  assert.match(services,/remito_vehicle_plate\|\|s\.vehicle_plate/);
-  assert.match(services,/remito_vehicle_make_model\|\|s\.vehicle_make_model/);
-  assert.match(services,/remito_customer_document/);
-  assert.match(services,/remito_customer_phone\|\|s\.customer_phone/);
+test('Operaciones muestra lo editado en el servicio; lo del remito del Chofer completa lo que falte',()=>{
+  // Al firmar, el trigger ya copia al servicio lo que cargó el chofer; después manda lo que edita Operaciones.
+  assert.match(services,/svcFirst\(s\.vehicle_plate,s\.remito_vehicle_plate\)/);
+  assert.match(services,/svcFirst\(s\.vehicle_make_model,s\.remito_vehicle_make_model\)/);
+  assert.match(services,/svcFirst\(s\.customer_document,s\.remito_customer_document\)/);
+  assert.match(services,/svcFirst\(s\.customer_phone,s\.remito_customer_phone\)/);
   assert.match(services,/remito_origin/);
   assert.match(services,/remito_destination/);
-  assert.match(services,/remito_km_reales\|\|s\.estimated_distance_km/);
+  assert.match(services,/svcFirst\(num\(s\.estimated_distance_km\)\|\|null,s\.remito_km_reales\)/);
   assert.match(driverVisibilityMigration,/create trigger remitos_driver_admin_visibility_v1/);
   assert.match(driverVisibilityMigration,/customer_phone = coalesce\(nullif\(btrim\(new\.telefono\),''\), s\.customer_phone\)/);
   assert.match(driverVisibilityMigration,/'remito_customer_document', r\.cuit/);
