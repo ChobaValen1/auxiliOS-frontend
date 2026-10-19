@@ -134,3 +134,14 @@ test('servicios: en Chofer y Móvil se ve el tercerizado (sólo el nombre)', () 
   assert.match(m, /'outsourced_provider_name',\(select op\.display_name/);
   assert.doesNotMatch(m, /total_amount|base_amount/);
 });
+
+test('tercerizada: con el tercerizado elegido, al guardar queda Asignado', () => {
+  const m = read('migrations/20261019060000_outsourced_autoassign_on_save.sql');
+  assert.match(m, /set_outsourced_service_cost_v1/);
+  assert.match(m, /app\.lifecycle_transition', 'outsourced_assign'/);
+  assert.match(m, /set status = 'assigned'/);
+  assert.match(m, /'outsourced_assigned'/);
+  assert.match(m, /set status = 'pending'/);
+  assert.match(m, /raise exception/);
+  assert.match(src, /al guardar el servicio queda Asignado/);
+});

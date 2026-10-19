@@ -85,7 +85,7 @@ function render(w){if(!w)return;const {pick,card,third}=placement(w);if(!pick||!
  else if(p&&!p.has_rate)warn=`<p class="osc-note is-warn">${ico('triangle-alert','ax-icon-sm')}<span>${esc(p.display_name)} no tiene tarifa para el ${esc(dmy(date))}. Cargala en Configuración › Tercerizados › Tarifas.</span></p>`;
  else if(p&&w.data.primary_concept_id&&!(p.concepts||[]).map(String).includes(String(w.data.primary_concept_id)))warn=`<p class="osc-note is-warn">${ico('triangle-alert','ax-icon-sm')}<span>La tarifa de ${esc(p.display_name)} no incluye este tipo de servicio.</span></p>`;
  else if(!w.data.primary_concept_id&&p)warn=`<p class="osc-note">${ico('info','ax-icon-sm')}<span>Elegí el tipo de servicio para calcular lo que se le paga.</span></p>`;
- pick.innerHTML=`<label class="osc-field"><span>¿Quién hace el servicio? *</span><select class="ax-select" data-osc="provider_id" ${ro||loading?'disabled':''}><option value="">${loading?'Cargando…':'Elegí el tercerizado'}</option>${keep}${opts}</select></label>${warn}`;
+ pick.innerHTML=`<label class="osc-field"><span>¿Quién hace el servicio? *</span><select class="ax-select" data-osc="provider_id" ${ro||loading?'disabled':''}><option value="">${loading?'Cargando…':'Elegí el tercerizado'}</option>${keep}${opts}</select>${view?'':'<small class="osc-hint">Con el tercerizado elegido, al guardar el servicio queda Asignado.</small>'}</label>${warn}`;
  pick.querySelector('[data-osc="provider_id"]').value=f.provider_id||'';
  const tollsIncluded=p&&p.tolls_mode==='included';const byLoc=modeOf(w,t)?.calc_mode==='locality';
  const extras=(p?.extras||[]);
