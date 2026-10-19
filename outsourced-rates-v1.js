@@ -39,7 +39,7 @@
     var d = { valid_from: v ? v.valid_from : nextMonthFirst(), tolls_mode: v ? v.tolls_mode : 'separate', rows: {} };
     primaries().forEach(function (c) {
       var l = lines[c.concept_id];
-      d.rows[c.concept_id] = { on: !!l, mode: l ? l.calc_mode : 'movida_km', movida: l && l.movida_amount != null ? txt(l.movida_amount) : '', kma: l && l.km_asphalt_amount != null ? txt(l.km_asphalt_amount) : '', kmg: l && l.km_gravel_amount != null ? txt(l.km_gravel_amount) : '', fixed: l && l.fixed_amount != null ? txt(l.fixed_amount) : '' };
+      d.rows[c.concept_id] = { on: !!l, mode: l ? l.calc_mode : 'movida_km', movida: l && l.movida_amount != null ? txt(l.movida_amount) : '', kma: l && l.km_asphalt_amount != null ? txt(l.km_asphalt_amount) : '', kmg: l && l.km_gravel_amount != null ? txt(l.km_gravel_amount) : '', fixed: l && l.fixed_amount != null ? txt(l.fixed_amount) : '', locs: l && Array.isArray(l.localities) ? l.localities.map(function (x) { return { name: x.name || '', amount: txt(x.amount) }; }) : [] };
     });
     extras().forEach(function (c) { var l = lines[c.concept_id]; d.rows[c.concept_id] = { on: !!l, unit: l ? txt(l.unit_amount) : '' }; });
     return d;
@@ -65,15 +65,21 @@
     primaries().forEach(function (c) {
       var r = d.rows[c.concept_id]; if (!r || !r.on) return; any = true;
       if (r.mode === 'fixed') { var f = num(r.fixed); if (!(f > 0)) p[c.concept_id] = Number.isNaN(f) ? 'Revisá el monto.' : 'Cargá el monto fijo.'; }
+      else if (r.mode === 'locality') { var ls = locsOf(r), seen = {};
+        if (!ls.length) p[c.concept_id] = 'Cargá al menos una localidad con su precio.';
+        else if (ls.some(function (x) { return !x.name || !(num(x.amount) > 0); })) p[c.concept_id] = 'Completá el nombre y el precio de cada localidad.';
+        else if (ls.some(function (x) { var k = x.name.toLowerCase(); if (seen[k]) return true; seen[k] = 1; return false; })) p[c.concept_id] = 'Hay una localidad repetida.'; }
       else { var a = [num(r.movida), num(r.kma), num(r.kmg)]; if (a.some(function (x) { return Number.isNaN(x) || x < 0; })) p[c.concept_id] = 'Revisá los importes.'; else if (!a.some(function (x) { return x > 0; })) p[c.concept_id] = 'Cargá la movida o el precio por km.'; }
     });
     if (!any) p.none = 'Elegí al menos un tipo de servicio que haga.';
     extras().forEach(function (c) { var r = d.rows[c.concept_id]; if (r && r.on && !(num(r.unit) > 0)) p[c.concept_id] = 'Cargá el importe o apagalo.'; });
     return p;
   }
+  /* Localidades cargadas (sin renglones vacíos del todo). */
+  function locsOf(r) { return (r.locs || []).map(function (x) { return { name: String(x.name || '').replace(/\s+/g, ' ').trim(), amount: x.amount }; }).filter(function (x) { return x.name || String(x.amount || '').trim(); }); }
   function payload(d) {
     var lines = [];
-    primaries().forEach(function (c) { var r = d.rows[c.concept_id]; if (!r || !r.on) return; lines.push(r.mode === 'fixed' ? { concept_id: c.concept_id, calc_mode: 'fixed', fixed_amount: num(r.fixed) } : { concept_id: c.concept_id, calc_mode: 'movida_km', movida_amount: num(r.movida) || 0, km_asphalt_amount: num(r.kma) || 0, km_gravel_amount: num(r.kmg) || 0 }); });
+    primaries().forEach(function (c) { var r = d.rows[c.concept_id]; if (!r || !r.on) return; lines.push(r.mode === 'locality' ? { concept_id: c.concept_id, calc_mode: 'locality', localities: locsOf(r).map(function (x) { return { name: x.name, amount: num(x.amount) }; }) } : r.mode === 'fixed' ? { concept_id: c.concept_id, calc_mode: 'fixed', fixed_amount: num(r.fixed) } : { concept_id: c.concept_id, calc_mode: 'movida_km', movida_amount: num(r.movida) || 0, km_asphalt_amount: num(r.kma) || 0, km_gravel_amount: num(r.kmg) || 0 }); });
     extras().forEach(function (c) { var r = d.rows[c.concept_id]; if (r && r.on) lines.push({ concept_id: c.concept_id, calc_mode: 'per_unit', unit_amount: num(r.unit) }); });
     return { valid_from: d.valid_from, tolls_mode: d.tolls_mode, lines: lines };
   }
@@ -107,11 +113,21 @@
   function moneyInput(cid, field, val, label) {
     return '<label class="osr-money"><span>' + label + '</span><span class="osr-affix"><i>$</i><input class="ax-input" inputmode="decimal" autocomplete="off" data-osr-row="' + esc(cid) + '" data-osr-field="' + field + '" value="' + esc(val) + '" placeholder="0"></span>' + wasHtml(cid, field) + '</label>';
   }
+  /* Precio fijo por localidad: un renglón por localidad (nombre + precio). Es todo lo que se paga. */
+  function localitiesHtml(cid, r) {
+    var rows = (r.locs || []).map(function (x, i) {
+      return '<div class="osr-loc"><input class="ax-input" data-osr-loc="' + esc(cid) + '" data-i="' + i + '" data-f="name" maxlength="60" autocomplete="off" placeholder="Localidad · ej.: Villa Gesell" value="' + esc(x.name) + '" aria-label="Localidad">'
+        + '<span class="osr-affix"><i>$</i><input class="ax-input" data-osr-loc="' + esc(cid) + '" data-i="' + i + '" data-f="amount" inputmode="decimal" autocomplete="off" placeholder="0" value="' + esc(x.amount) + '" aria-label="Precio de ' + esc(x.name || 'la localidad') + '"></span>'
+        + '<button type="button" class="ax-btn ax-btn-ghost ax-btn-sm osr-loc-del" data-osr-loc-del="' + esc(cid) + '" data-i="' + i + '" aria-label="Quitar localidad">' + ico('x') + '</button></div>';
+    }).join('');
+    return '<div class="osr-locs">' + rows + '<button type="button" class="ax-btn ax-btn-sm osr-loc-add" data-osr-loc-add="' + esc(cid) + '">' + ico('plus') + 'Localidad</button>'
+      + '<small class="osr-hint osr-loc-hint">Precio fijo por localidad: es todo lo que se paga (no se suman km, adicionales ni peajes). En el servicio se elige la localidad.</small></div>';
+  }
   function primaryRow(c, pr) {
     var r = st.draft.rows[c.concept_id];
     var body = !r.on ? '<p class="osr-off">No lo hace</p>' + wasHtml(c.concept_id, 'on')
-      : '<div class="ax-seg osr-mode" role="group" data-osr-mode="' + esc(c.concept_id) + '"><button type="button" data-v="movida_km" aria-pressed="' + (r.mode !== 'fixed') + '">Movida + km</button><button type="button" data-v="fixed" aria-pressed="' + (r.mode === 'fixed') + '">Monto fijo</button></div>'
-        + (r.mode === 'fixed' ? '<div class="osr-amounts">' + moneyInput(c.concept_id, 'fixed', r.fixed, 'Monto fijo') + '</div>'
+      : '<div class="ax-seg osr-mode" role="group" data-osr-mode="' + esc(c.concept_id) + '"><button type="button" data-v="movida_km" aria-pressed="' + (r.mode !== 'fixed') + '">Movida + km</button><button type="button" data-v="fixed" aria-pressed="' + (r.mode === 'fixed') + '">Monto fijo</button><button type="button" data-v="locality" aria-pressed="' + (r.mode === 'locality') + '">Por localidad</button></div>'
+        + (r.mode === 'locality' ? localitiesHtml(c.concept_id, r) : r.mode === 'fixed' ? '<div class="osr-amounts">' + moneyInput(c.concept_id, 'fixed', r.fixed, 'Monto fijo') + '</div>'
           : '<div class="osr-amounts">' + moneyInput(c.concept_id, 'movida', r.movida, 'Movida') + moneyInput(c.concept_id, 'kma', r.kma, 'Km asfalto') + moneyInput(c.concept_id, 'kmg', r.kmg, 'Km ripio') + '</div>')
         + '<small class="osr-msg">' + esc(pr[c.concept_id] && (st.tried || st.touched[c.concept_id]) ? pr[c.concept_id] : '') + '</small>';
     return '<div class="osr-row' + (r.on ? '' : ' is-off') + (pr[c.concept_id] && (st.tried || st.touched[c.concept_id]) ? ' is-invalid' : '') + '" data-osr-concept="' + esc(c.concept_id) + '"><label class="ax-switch osr-on"><input type="checkbox" data-osr-on="' + esc(c.concept_id) + '"' + (r.on ? ' checked' : '') + '><span><b>' + esc(c.name) + '</b></span></label><div class="osr-row-body">' + body + '</div></div>';
@@ -166,13 +182,21 @@
     var from = el.querySelector('[data-osr-from]'); if (from) { from.onchange = function () { d.valid_from = from.value; st.touched.valid_from = true; rerenderKeep('[data-osr-from]'); }; }
     var tolls = el.querySelector('[data-osr-tolls]'); if (tolls) tolls.onclick = function (e) { var b = e.target.closest('button'); if (!b) return; d.tolls_mode = b.getAttribute('data-v'); rerenderKeep('[data-osr-tolls] [aria-pressed="true"]'); };
     el.querySelectorAll('[data-osr-on]').forEach(function (i) { i.onchange = function () { var cid = i.getAttribute('data-osr-on'); d.rows[cid].on = i.checked; rerenderKeep(i.checked ? '[data-osr-concept="' + cid + '"] input.ax-input' : '[data-osr-on="' + cid + '"]'); }; });
-    el.querySelectorAll('[data-osr-mode]').forEach(function (g) { g.onclick = function (e) { var b = e.target.closest('button'); if (!b) return; var cid = g.getAttribute('data-osr-mode'); d.rows[cid].mode = b.getAttribute('data-v'); rerenderKeep('[data-osr-concept="' + cid + '"] input.ax-input'); }; });
+    el.querySelectorAll('[data-osr-mode]').forEach(function (g) { g.onclick = function (e) { var b = e.target.closest('button'); if (!b) return; var cid = g.getAttribute('data-osr-mode'); d.rows[cid].mode = b.getAttribute('data-v'); if (d.rows[cid].mode === 'locality' && !(d.rows[cid].locs || []).length) d.rows[cid].locs = [{ name: '', amount: '' }]; rerenderKeep('[data-osr-concept="' + cid + '"] input.ax-input'); }; });
     el.querySelectorAll('[data-osr-row]').forEach(function (i) {
       var cid = i.getAttribute('data-osr-row'), f = i.getAttribute('data-osr-field');
       i.oninput = function () { d.rows[cid][f] = i.value; paintFoot(); };
       i.onblur = function () { var n = num(i.value); if (n != null && !Number.isNaN(n)) { i.value = txt(n); d.rows[cid][f] = i.value; } st.touched[cid] = true; setTimeout(function () { if (!st.el.contains(document.activeElement) || !document.activeElement.getAttribute('data-osr-row')) rerenderKeep(); else { var row = st.el.querySelector('[data-osr-concept="' + cid + '"]'), pr = problems(d); if (row) { row.classList.toggle('is-invalid', !!pr[cid]); var m = row.querySelector('.osr-msg'); if (m) m.textContent = pr[cid] || ''; } paintFoot(); } }, 0); };
       i.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); var all = [].slice.call(st.el.querySelectorAll('[data-osr-row]')), k = all.indexOf(i); if (all[k + 1]) all[k + 1].focus(); } };
     });
+    el.querySelectorAll('[data-osr-loc]').forEach(function (i) {
+      var cid = i.getAttribute('data-osr-loc'), k = Number(i.getAttribute('data-i')), f = i.getAttribute('data-f');
+      i.oninput = function () { d.rows[cid].locs[k][f] = i.value; paintFoot(); };
+      i.onblur = function () { if (f === 'amount') { var n = num(i.value); if (n != null && !Number.isNaN(n)) { i.value = txt(n); d.rows[cid].locs[k][f] = i.value; } } st.touched[cid] = true; setTimeout(function () { if (!st.el.contains(document.activeElement) || !document.activeElement.getAttribute('data-osr-loc')) rerenderKeep(); }, 0); };
+      i.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); if (f === 'amount' && k === d.rows[cid].locs.length - 1) { d.rows[cid].locs.push({ name: '', amount: '' }); render(); var n = st.el.querySelector('[data-osr-loc="' + cid + '"][data-i="' + (k + 1) + '"][data-f="name"]'); if (n) n.focus(); } else { var nx = st.el.querySelector('[data-osr-loc="' + cid + '"][data-i="' + (f === 'name' ? k : k + 1) + '"][data-f="' + (f === 'name' ? 'amount' : 'name') + '"]'); if (nx) nx.focus(); } } };
+    });
+    el.querySelectorAll('[data-osr-loc-add]').forEach(function (b) { b.onclick = function () { var cid = b.getAttribute('data-osr-loc-add'); d.rows[cid].locs = d.rows[cid].locs || []; d.rows[cid].locs.push({ name: '', amount: '' }); render(); var all = st.el.querySelectorAll('[data-osr-loc="' + cid + '"][data-f="name"]'); if (all.length) all[all.length - 1].focus(); }; });
+    el.querySelectorAll('[data-osr-loc-del]').forEach(function (b) { b.onclick = function () { var cid = b.getAttribute('data-osr-loc-del'); d.rows[cid].locs.splice(Number(b.getAttribute('data-i')), 1); st.touched[cid] = true; render(); }; });
     var dis = el.querySelector('[data-osr-discard]'); if (dis) dis.onclick = function () { if (st.sel) { st.draft = clone(st.orig); st.tried = false; st.touched = {}; render(); } else { var c = current(); if (c) pick(c.version_id, true); else { st.draft = null; render(); } } };
     el.querySelector('[data-osr-save]').onclick = save;
   }

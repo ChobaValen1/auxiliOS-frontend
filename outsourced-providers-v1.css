@@ -171,3 +171,14 @@
   .osr-extras { grid-template-columns: 1fr; }
   .osr-foot { margin: 0 -16px; }
 }
+
+/* Tarifas · precio por localidad */
+.osr-locs { display: grid; gap: 6px; }
+.osr-loc { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; align-items: center; gap: 8px; }
+.osr-loc-del { color: var(--ax-text-3); }
+.osr-loc-del:hover { color: var(--ax-danger); }
+.osr-loc-add { justify-self: start; }
+.osr-loc-hint { margin: 2px 0 0; }
+@media (max-width: 760px) {
+  .osr-loc { grid-template-columns: minmax(0, 1fr) 120px auto; }
+}

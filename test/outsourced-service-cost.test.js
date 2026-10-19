@@ -108,3 +108,20 @@ test('tercerizada: se finaliza desde Pendiente (sin Asignar chofer y móvil)', (
   assert.match(m, /old\.status='pending' and new\.status='completed' and v_transition='finalize' and coalesce\(new\.logistics_type,'own'\)='third_party'/);
   assert.match(m, /elegí qué tercerizado lo hizo/);
 });
+
+test('tercerizados: precio fijo por localidad (tarifa, servicio y base)', () => {
+  const t = load();
+  const lp = { ...prov, modes: { L: { calc_mode: 'locality', localities: [{ name: 'Mar Azul' }] } } };
+  const w = { mode: 'create', data: { logistics_type: 'third_party', primary_concept_id: 'L' }, terc: terc({ provider_id: 'p1' }, lp) };
+  assert.match(t.validate(w).join(), /Elegí la localidad/);
+  w.terc.form.locality = 'Mar Azul';
+  assert.equal(t.validate(w).length, 0);
+  assert.equal(t._payload(w.terc).locality, 'Mar Azul');
+  const rates = read('outsourced-rates-v1.js');
+  assert.match(rates, /data-v="locality"[^>]*>Por localidad<\/button>/);
+  assert.match(rates, /calc_mode: 'locality', localities: locsOf\(r\)/);
+  const m = read('migrations/20261019040000_outsourced_locality_rates.sql');
+  assert.match(m, /if v_line->>'calc_mode' = 'locality' then/);
+  assert.match(m, /if not v_is_loc then/); // sin adicionales ni peajes
+  assert.match(m, /case when v_admin then jsonb_build_object\('amount'/); // el operador no ve precios
+});
