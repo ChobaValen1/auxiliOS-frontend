@@ -125,3 +125,12 @@ test('tercerizados: precio fijo por localidad (tarifa, servicio y base)', () => 
   assert.match(m, /if not v_is_loc then/); // sin adicionales ni peajes
   assert.match(m, /case when v_admin then jsonb_build_object\('amount'/); // el operador no ve precios
 });
+
+test('servicios: en Chofer y Móvil se ve el tercerizado (sólo el nombre)', () => {
+  const os = read('operator-services.js');
+  assert.match(os, /\(key==='driver'\|\|key==='mobile'\)&&s\.logistics_type==='third_party'\)return outsourcedCrewCell\(s\)/);
+  assert.match(os, /s\.outsourced_provider_name/);
+  const m = read('migrations/20261019050000_list_services_outsourced_name.sql');
+  assert.match(m, /'outsourced_provider_name',\(select op\.display_name/);
+  assert.doesNotMatch(m, /total_amount|base_amount/);
+});
