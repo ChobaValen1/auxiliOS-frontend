@@ -24,7 +24,7 @@ test('driver remito shows toggles and saves them after the remito', () => {
 
 test('operator workspace shows toggles in the third column and persists them on save', () => {
   const ws = read('operator-service-workspace-reactive-v1.js'), wiz = read('operator-service-wizard.js');
-  assert.match(ws, /actions-column"><section id="osv4-toggles"/);
+  assert.match(ws, /actions-column">(<section id="osv4-terc"[^>]*><\/section>)?<section id="osv4-toggles"/);
   assert.match(ws, /set_operator_service_toggles_v1/);
   assert.match(wiz, /OperatorServiceTogglesV1\?\.persist\?\.\(w,data\?\.service_id\|\|w\.serviceId\)/);
 });

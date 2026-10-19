@@ -1,0 +1,62 @@
+/* AuxiliOS · Servicio · tarjeta Tercerizado (3ª columna). Sólo tokens del sistema. */
+#modal-operador-wizard .osv4-reactive #osv4-terc { display: grid; gap: var(--ax-sp-3); margin: 0 0 var(--ax-sp-3); padding: var(--ax-sp-3); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface-2); }
+#modal-operador-wizard .osv4-reactive #osv4-terc[hidden] { display: none; }
+#osv4-terc .osc-head { display: flex; align-items: center; gap: 8px; color: var(--ax-text); }
+#osv4-terc .osc-head .ax-icon { color: var(--ax-accent); }
+#osv4-terc .osc-head b { font: var(--ax-fw-semibold) var(--ax-fs-md) var(--ax-font); }
+#osv4-terc .osc-head small { margin-left: auto; color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+#osv4-terc .osc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive :is(#osv4-terc, #osv4-terc-pick) label.osc-field { gap: 4px; margin: 0; }
+#osv4-terc .osc-input { position: relative; display: flex; align-items: center; }
+#osv4-terc .osc-input i { position: absolute; color: var(--ax-text-3); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); font-style: normal; pointer-events: none; }
+#osv4-terc .osc-input i:first-child { left: 11px; }
+#osv4-terc .osc-input i:last-child { right: 11px; }
+#modal-operador-wizard .osv4-reactive #osv4-terc .osc-input input { width: 100%; font-variant-numeric: tabular-nums; text-align: right; }
+#modal-operador-wizard .osv4-reactive #osv4-terc .osc-input i:first-child + input { padding-left: 24px; }
+#modal-operador-wizard .osv4-reactive #osv4-terc .osc-input input:not(:last-child) { padding-right: 52px; }
+#modal-operador-wizard .osv4-reactive #osv4-terc [data-osc-wrap="adjustment_reason"] input { text-align: left; }
+#osv4-terc .osc-hint { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-regular); }
+#osv4-terc .osc-err { display: none; color: var(--ax-danger); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-medium); }
+#osv4-terc .is-invalid .osc-err { display: block; }
+#osv4-terc .is-invalid .osc-hint { display: none; }
+#modal-operador-wizard .osv4-reactive #osv4-terc .is-invalid input { border-color: var(--ax-danger); }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--ax-border); border-radius: var(--ax-radius); background: var(--ax-surface); color: var(--ax-text-2); font-size: var(--ax-fs-sm); line-height: 1.4; }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note .ax-icon { flex: none; margin-top: 2px; }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note.is-warn { border-color: color-mix(in srgb, var(--ax-warn) 40%, transparent); background: var(--ax-warn-soft); color: var(--ax-text); }
+:is(#osv4-terc, #osv4-terc-pick) .osc-note.is-warn .ax-icon { color: var(--ax-warn); }
+
+#osv4-terc .osc-extras { display: grid; gap: 6px; }
+#osv4-terc .osc-label { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#osv4-terc .osc-extra { display: grid; grid-template-columns: minmax(0, 1fr) 128px; align-items: center; gap: var(--ax-sp-2); }
+#osv4-terc .osc-extra > span { display: grid; min-width: 0; }
+#osv4-terc .osc-extra b { overflow: hidden; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-sm) var(--ax-font); text-overflow: ellipsis; white-space: nowrap; }
+#osv4-terc .osc-extra small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-variant-numeric: tabular-nums; }
+#osv4-terc .osc-extra label > span:first-child:empty { display: none; }
+#osv4-terc .osc-adj { display: grid; gap: 6px; }
+#modal-operador-wizard .osv4-reactive #osv4-terc .osc-link { justify-self: start; height: auto; min-height: 0; padding: 2px 0; border: 0; background: none; color: var(--ax-accent); font: var(--ax-fw-semibold) var(--ax-fs-sm) var(--ax-font); cursor: pointer; }
+#osv4-terc .osc-link:hover { text-decoration: underline; }
+#osv4-terc .osc-link:focus-visible { outline: none; box-shadow: var(--ax-focus); border-radius: 4px; }
+
+#osv4-terc .osc-quote:empty { display: none; }
+#osv4-terc .osc-quote { display: grid; gap: 6px; padding-top: var(--ax-sp-2); border-top: 1px dashed var(--ax-border); }
+#osv4-terc .osc-quote-wait { margin: 0; color: var(--ax-text-3); font-size: var(--ax-fs-sm); }
+#osv4-terc .osc-breakdown { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+#osv4-terc .osc-breakdown li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--ax-text-2); font-size: var(--ax-fs-sm); }
+#osv4-terc .osc-breakdown li small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-variant-numeric: tabular-nums; }
+#osv4-terc .osc-breakdown li b { flex: none; color: var(--ax-text); font-weight: var(--ax-fw-medium); font-variant-numeric: tabular-nums; }
+#osv4-terc .osc-breakdown li b.is-neg { color: var(--ax-danger); }
+#osv4-terc .osc-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 2px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--ax-accent) 35%, transparent); border-radius: var(--ax-radius); background: var(--ax-accent-soft); transition: opacity var(--ax-dur-fast) var(--ax-ease); }
+#osv4-terc .osc-total span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#osv4-terc .osc-total b { color: var(--ax-accent); font: var(--ax-fw-bold) var(--ax-fs-xl) var(--ax-font); font-variant-numeric: tabular-nums; }
+#osv4-terc .osc-total.is-stale { opacity: .55; }
+#osv4-terc .osc-rate { color: var(--ax-text-3); font-size: var(--ax-fs-xs); }
+@media (max-width: 640px) {
+  #osv4-terc .osc-extra { grid-template-columns: minmax(0, 1fr) 112px; }
+}
+
+/* «¿Quién hace el servicio?» en el lugar de Asignar Chofer / Móvil */
+#modal-operador-wizard .osv4-reactive .assignment-grid.osc-replaced { display: none !important; }
+#modal-operador-wizard .osv4-reactive #osv4-terc-pick { display: grid; gap: var(--ax-sp-2); }
+#modal-operador-wizard .osv4-reactive #osv4-terc-pick[hidden] { display: none; }
+#osv4-terc .osc-note.is-ok { border-color: color-mix(in srgb, var(--ax-ok) 35%, transparent); background: var(--ax-ok-soft); color: var(--ax-text-2); }
+#osv4-terc .osc-note.is-ok .ax-icon { color: var(--ax-ok); }
