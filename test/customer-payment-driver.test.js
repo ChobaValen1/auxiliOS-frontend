@@ -152,3 +152,9 @@ test('Aprobar un peaje del chofer: actualiza la fila del mismo peaje (importe, c
   ctx.approve(w, rows, reported[1], 'r2', 'rejected');
   assert.equal(JSON.stringify([rows[0].quantity, rows[0].toll_report_id, rows[0].extra_report_ids]), '[1,"r1",[]]');
 });
+
+test('lista de peajes: sólo el nombre, sin el importe (ya está en su columna)', () => {
+  const c = read('operator-service-commercial-addons-v1.js');
+  assert.match(c, /const label=rate\?location\.name:`\$\{location\.name\} · Sin tarifa vigente`;/);
+  assert.doesNotMatch(c, /\$\{location\.name\} · \$\{money\(rate\.amount/);
+});
