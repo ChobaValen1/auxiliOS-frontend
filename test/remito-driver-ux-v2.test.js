@@ -91,10 +91,12 @@ test('peajes: ¿Cuánto pagaste? con importes editables arriba y el medio de pag
   const html = api.detailsMarkup();
   assert.match(html, /Tocá el importe si pagaste otro monto/);
   assert.match(html, /2 pasadas · por pasada/);
-  assert.ok(html.indexOf('data-draft-field="unit_amount"') < html.indexOf('id="rem-picker-common-payment"'));
-  assert.match(html, /<span>Medio de pago<\/span>/);
+  // El medio de pago ya no va en la selección: se elige una vez en «Cobro al cliente».
+  assert.doesNotMatch(html, /id="rem-picker-common-payment"/);
+  assert.match(html, /Cobro al cliente/);
   assert.match(html, /id="rem-picker-toll-total">\$\s?9\.200,00/);
   api.state.lines.toll = [{ client_line_id: 'm', toll_id: '__manual__', manual: true, toll_name: 'Manual / Varios', quantity: 1, unit_amount: 3500, customer_payment_method: 'cash' }];
+  api.state.cp = { primary: 'cash', secondary: '', secondary_amount: '' };
   const [line] = api.collectLines().tolls;
   assert.equal(line.toll_id, null);
   assert.equal(line.manual, true);
@@ -105,6 +107,7 @@ test('peajes: cada pasada viaja como una línea con id estable, y al abrir se vu
   const api = loadAddons();
   api.state.reference.toll_coverage_mode = 'customer_roundtrip';
   api.state.lines.toll = [{ client_line_id: 'a', toll_id: 't1', toll_name: 'Peaje 25 de Mayo', quantity: 3, unit_amount: 4300, customer_payment_method: 'cash' }];
+  api.state.cp = { primary: 'cash', secondary: '', secondary_amount: '' };
   const first = api.collectLines().tolls;
   assert.equal(first.length, 3);
   assert.ok(first.every(line => line.quantity === 1 && line.unit_amount === 4300 && line.customer_payment_method === 'cash'));

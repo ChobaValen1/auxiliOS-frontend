@@ -48,7 +48,7 @@ test('formato de cobro: botonera al elegir y una línea con Cambiar una vez eleg
 
 test('peaje toma tarifa vigente; Manual / Varios lleva importe a mano; cantidad con − +',()=>{
  assert.match(commercial,/Seleccionar peaje…/);
- assert.match(commercial,/unit=row\.manual\?Math\.max\(0,num\(row\.unit_amount\)\):num\(rate\?\.amount\)/);
+ assert.match(commercial,/own=row\.manual\|\|!!W\(\)\?\.administrativeEdit,unit=own\?Math\.max\(0,num\(row\.unit_amount\)\):num\(rate\?\.amount\)/);
  assert.match(commercial,/Manual \/ Varios · importe a mano/);
  assert.match(commercial,/data-ca="toll-qty"/);
  assert.match(commercial,/value="N\/A" disabled/);
@@ -63,7 +63,8 @@ test('excedentes usan Concepto Cant Importe Cobrador Medio Pago y Prestadora imp
  assert.match(commercial,/function excessPaymentControl/);
  assert.match(commercial,/row\.collector_agent==='provider'/);
  assert.match(wizard,/COLLECTORS=new Set\(\['company','provider'\]\)/);
- assert.match(wizard,/customer_payment_method:r\.collector_agent==='provider'\?null/);
+ // Cobro único: el excedente que cobra la Empresa lleva el medio principal del Cobro al cliente.
+ assert.match(wizard,/customer_payment_method:r\.collector_agent==='company'\?\(c\.customer_payment\.primary\|\|null\):null/);
  assert.match(wizard,/if\(key==='collector_agent'\)/);
  assert.match(wizard,/if\(value==='provider'\)r\.customer_payment_method=''/);
  assert.match(schema,/coalesce\(customer_payment_method,'n\/a'\)/i);

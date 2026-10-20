@@ -8,7 +8,7 @@
   const num=value=>Number(String(value??'').replace(',','.'))||0;
   const money=value=>new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:2}).format(num(value));
   const TOLL_COVERAGE_LABELS={mixed_manual:'Uno y Uno',provider_roundtrip:'A cargo de la prestadora',customer_roundtrip:'A cargo del cliente'};
-  const PAYMENT_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado',electronic:'Electrónico',telepass:'TelePASE',manual:'Manual'};
+  const PAYMENT_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado',to_define:'A definir',electronic:'Electrónico',telepass:'TelePASE',manual:'Manual'};
   const EMPTY_LABELS={toll:{planned:'Sin peajes planificados',reported:'Sin peajes informados'},excess:{planned:'Sin excedentes planificados',reported:'Sin excedentes informados'}};
   const tollCoverageLabel=(mode,assigned=true)=>TOLL_COVERAGE_LABELS[String(mode||'')]||(assigned?'Sin formato configurado':'A definir por Operaciones');
   const paymentLabel=value=>PAYMENT_LABELS[String(value||'')]||String(value||'Sin medio informado');
@@ -40,10 +40,18 @@
     return [identity,kind==='toll'?(row.payer_agent||'customer'):'',num(row.quantity||1).toFixed(2),amountOf(row).toFixed(2),String(method)].join('|');
   }
 
+  /* Lo planificado y lo informado se comparan por pasada: Operaciones carga «Peaje ×2» y el chofer manda una línea por pasada.
+     El medio de pago no se compara por línea: el cobro al cliente es uno solo para el total (y Operaciones puede dejarlo «A definir»). */
+  function comparisonUnits(kind,row){
+    const identity=kind==='toll'?(row.toll_id||compareText(row.toll_name)):(row.concept_id||compareText(row.concept_name));
+    if(kind!=='toll')return{key:[identity,num(row.quantity||1).toFixed(2),amountOf(row).toFixed(2)].join('|'),count:1};
+    const count=Math.max(1,Math.round(num(row.quantity||1)));
+    return{key:[identity,row.payer_agent||'customer',(amountOf(row)/count).toFixed(2)].join('|'),count};
+  }
+  function unitCounts(kind,rows){const counts=new Map();for(const row of rows||[]){const {key,count}=comparisonUnits(kind,row);counts.set(key,(counts.get(key)||0)+count)}return counts}
   function hasDifference(kind,plannedRows,reportedRows){
-    const planned=(plannedRows||[]).map(row=>comparisonKey(kind,row)).sort();
-    const reported=(reportedRows||[]).map(row=>comparisonKey(kind,row)).sort();
-    return planned.length!==reported.length||planned.some((value,index)=>value!==reported[index]);
+    const planned=unitCounts(kind,plannedRows),reported=unitCounts(kind,reportedRows);
+    return planned.size!==reported.size||[...planned].some(([key,count])=>reported.get(key)!==count);
   }
 
   function rowsFor(kind,data,side){const source=side==='planned'?data.planned:data.reported;return source?.[kind==='toll'?'tolls':'excesses']||[]}
@@ -226,11 +234,11 @@
     const output=[];
     for(const kind of ['toll','excess']){
       const planned=rowsFor(kind,detail,'planned'),reported=rowsFor(kind,detail,'reported');
-      const plannedKeys=new Map();for(const row of planned){const key=comparisonKey(kind,row);plannedKeys.set(key,(plannedKeys.get(key)||0)+1)}
+      const plannedKeys=unitCounts(kind,planned);
       reported.forEach((row,index)=>{
         if(row.administratively_excluded||!(kind==='toll'?row.toll_report_id:row.excess_report_id))return;
-        const w=window.OperatorServices?.S?.wizard,reportKey=kind==='toll'?'toll_report_id':'excess_report_id',current=w?.dirty?w.data?.commercial_addons?.[kind==='toll'?'tolls':'excess_charges']?.find(r=>r[reportKey]===row[reportKey]):null;const key=comparisonKey(kind,current&&!E.decisions.has(kind+':'+row[reportKey])?current:row),matches=plannedKeys.get(key)||0;
-        if(matches){plannedKeys.set(key,matches-1);return}
+        const w=window.OperatorServices?.S?.wizard,reportKey=kind==='toll'?'toll_report_id':'excess_report_id',current=w?.dirty?w.data?.commercial_addons?.[kind==='toll'?'tolls':'excess_charges']?.find(r=>r[reportKey]===row[reportKey]):null;const {key,count}=comparisonUnits(kind,current&&!E.decisions.has(kind+':'+row[reportKey])?current:row),matches=plannedKeys.get(key)||0;
+        if(matches>=count){plannedKeys.set(key,matches-count);return}
         {
           const id=String((kind==='toll'?row.toll_report_id:row.excess_report_id)||row.review_line_client_id||`${kind}-${index}`);
           const identity=kind==='toll'?(row.toll_id||compareText(row.toll_name)):(row.concept_id||compareText(row.concept_name));
@@ -254,11 +262,14 @@
     const groups=[['toll','Peajes','tolls','toll_report_id','toll_name'],['excess','Excedentes','excesses','excess_report_id','concept_name']];
     return '<div class="os-charge-report is-compact">'+groups.map(([kind,label,group,idKey,nameKey])=>{
       const rows=E.detail.original_reported?.[group]||E.detail.reported?.[group]||[];
-      return '<section><h4>'+label+'</h4>'+rows.filter(row=>row[idKey]).map(row=>{
+      /* Una línea por pasada en la base; acá se juntan las pasadas iguales sin decisión propia («Peaje ×2»). */
+      const items=[],byKey=new Map();
+      for(const row of rows.filter(r=>r[idKey])){const key=kind+':'+row[idKey],own=E.decisions.has(key)||differences.has(key)||row.administratively_excluded,k=own?key:[row[nameKey],num(row.unit_amount),row.payer_agent,kind==='toll'?row.customer_payment_method:reportedExcessPayment(row)].join('|'),hit=byKey.get(k);if(hit&&!own&&kind==='toll'){hit.passes+=Math.max(1,Math.round(num(row.quantity||1)));hit.amount+=amountOf(row);continue;}const item={row,passes:Math.max(1,Math.round(num(row.quantity||1))),amount:amountOf(row)};byKey.set(k,item);items.push(item);}
+      return '<section><h4>'+label+'</h4>'+items.map(({row,passes,amount})=>{
         const key=kind+':'+row[idKey],decision=E.decisions.get(key),resolved=isResolved(kind,row[idKey]),status=resolved?(decision.value==='rejected'?'Rechazado':decision.value==='adjusted'?'Aprobado con cambios':'Aprobado'):differences.has(key)?'Pendiente de revisión':row.administratively_excluded?'Excluido del servicio':'Sin diferencias';
         const tone=resolved?(decision.value==='rejected'?'rejected':'accepted'):'neutral';
         const saved=resolved?(decision.saved?'<i class="os-charge-saved is-saved" title="Decisión guardada">●</i>':'<i class="os-charge-saved" title="Sin guardar · Se conserva al guardar o finalizar">○</i>'):'';
-        return '<article class="os-charge-row '+tone+'"><b title="'+esc(row[nameKey]||label)+'">'+esc(row[nameKey]||label)+'</b><span class="os-charge-amount">'+money(amountOf(row))+'</span>'+(saved||'<i></i>')+'<span class="os-charge-meta"><span class="os-charge-badge '+tone+'">'+status+'</span><span>'+esc(kind==='toll'&&row.payer_agent==='provider'?'A cargo de la prestadora':paymentLabel(kind==='toll'?row.customer_payment_method:reportedExcessPayment(row)))+'</span>'+(decision?.reason?'<em>Motivo: '+esc(decision.reason)+'</em>':'')+'</span></article>';
+        return '<article class="os-charge-row '+tone+'"><b title="'+esc(row[nameKey]||label)+'">'+esc(row[nameKey]||label)+(kind==='toll'&&passes>1?' <small class="os-charge-passes">×'+passes+'</small>':'')+'</b><span class="os-charge-amount">'+money(amount)+'</span>'+(saved||'<i></i>')+'<span class="os-charge-meta"><span class="os-charge-badge '+tone+'">'+status+'</span><span>'+esc(kind==='toll'&&row.payer_agent==='provider'?'A cargo de la prestadora':paymentLabel(kind==='toll'?row.customer_payment_method:reportedExcessPayment(row)))+'</span>'+(decision?.reason?'<em>Motivo: '+esc(decision.reason)+'</em>':'')+'</span></article>';
       }).join('')+(rows.length?'':'<small class="os-charge-empty">Sin cargos informados.</small>')+'</section>';
     }).join('')+(unsavedCount()?'<small class="os-charge-legend">○ Sin guardar · se conserva al guardar o finalizar</small>':'')+'</div>';
   }
@@ -308,7 +319,26 @@
     renderEmbedded();syncReviewReport();
   }
 
-  function decideEmbedded(kind,id,value,confirmed=false){if(E.busy||embeddedReadOnly()||!canResolve())return;const w=window.OperatorServices?.S?.wizard;if(w?.mode==='view')return;const key=kind+':'+id;if(value==='rejected'&&!confirmed){E.rejections.set(key,E.rejections.get(key)||'');renderEmbedded();return;}const reason=value==='rejected'?(E.rejections.get(key)||'').trim():'';if(value==='rejected'&&!reason)return window.toast?.('Indicá el motivo del rechazo','error');E.decisions.set(key,{value,reason,saved:false});E.rejections.delete(key);const field=kind==='toll'?'tolls':'excess_charges',reportKey=kind==='toll'?'toll_report_id':'excess_report_id',rows=w?.data?.commercial_addons?.[field],source=(E.detail?.original_reported?.[kind==='toll'?'tolls':'excesses']||E.detail?.reported?.[kind==='toll'?'tolls':'excesses']||[]).find(r=>String(r[reportKey])===String(id));if(rows&&source){let index=rows.findIndex(r=>String(r[reportKey])===String(id));if(index<0&&value==='accepted'){const identity=kind==='toll'?'toll_id':'concept_id';index=rows.findIndex(r=>!r[reportKey]&&source[identity]&&r[identity]===source[identity]&&(kind!=='toll'||(r.payer_agent||'provider')===(source.payer_agent||'customer')));}if(value==='accepted'){const quantity=num(source.quantity)||1,approved={...(index>=0?rows[index]:{}),...source,payer_agent:kind==='toll'?(source.payer_agent||'customer'):'customer',collector_agent:source.collector_agent||'company',quantity,unit_amount:amountOf(source)/quantity,customer_payment_method:(kind==='toll'?source.customer_payment_method:reportedExcessPayment(source))||'not_collected',[reportKey]:id};if(index>=0)rows[index]=approved;else rows.push(approved);}else if(index>=0)rows.splice(index,1);preservePlannedRows();w.dirty=true;w.quote=null;window.OperatorServiceCommercialAddonsV1?.show?.(kind);window.OperatorServiceWorkspaceV2?.sync?.();}renderEmbedded();syncReviewReport();}
+  /* Aprobar un peaje del chofer: actualiza la fila del mismo peaje y quién paga (no suma otra). Toma el importe que pagó el chofer,
+     la cantidad de pasadas que informó (iguales: mismo peaje, quién paga e importe) y su medio de pago en «Cobro al cliente».
+     Las pasadas iguales se aprueban juntas. Rechazar una pasada le resta una a la fila. */
+  function approveTollPasses(w,rows,source,id,value){
+    const payer=source.payer_agent||'customer',unit=amountOf(source)/(num(source.quantity)||1),same=r=>String(r.toll_id||compareText(r.toll_name))===String(source.toll_id||compareText(source.toll_name))&&(r.payer_agent||'customer')===payer;
+    const reports=(E.detail?.original_reported?.tolls||E.detail?.reported?.tolls||[]).filter(r=>r.toll_report_id&&same(r)&&Math.abs(amountOf(r)/(num(r.quantity)||1)-unit)<0.005);
+    const holds=r=>String(r.toll_report_id)===String(id)||(r.extra_report_ids||[]).map(String).includes(String(id));
+    let index=rows.findIndex(holds);
+    if(value!=='accepted'){if(index<0)return;const row=rows[index],ids=[row.toll_report_id,...(row.extra_report_ids||[])].filter(x=>String(x)!==String(id));if(!ids.length||num(row.quantity)<=1){rows.splice(index,1);return;}rows[index]={...row,toll_report_id:ids[0],extra_report_ids:ids.slice(1),quantity:Math.max(1,Math.round(num(row.quantity))-1)};return;}
+    if(index<0)index=rows.findIndex(r=>same(r)&&!r.toll_report_id);
+    if(index<0)index=rows.findIndex(same);
+    const ids=reports.map(r=>String(r.toll_report_id)),passes=reports.reduce((n,r)=>n+Math.max(1,Math.round(num(r.quantity)||1)),0)||Math.max(1,Math.round(num(source.quantity)||1));
+    const approved={...(index>=0?rows[index]:{}),toll_id:source.toll_id||null,toll_name:source.toll_name,manual:!source.toll_id,payer_agent:payer,unit_amount:Math.round(unit*100)/100,quantity:passes,toll_report_id:ids[0]||id,extra_report_ids:ids.slice(1),customer_payment_method:payer==='customer'?(source.customer_payment_method||''):''};
+    if(index>=0)rows[index]=approved;else rows.push(approved);
+    for(const other of ids)if(other!==String(id))E.decisions.set('toll:'+other,{value:'accepted',reason:'',saved:false});
+    if(payer==='customer')applyDriverPayment(w,source.customer_payment_method);
+  }
+  /* Al aprobar, el medio que eligió el chofer queda en «Cobro al cliente» (su cobro único si lo informó). */
+  function applyDriverPayment(w,method){const c=w?.data?.commercial_addons;if(!c)return;const rc=w.reportedAddons?.customer_payment;if(rc?.primary)c.customer_payment={primary:rc.primary,secondary:rc.secondary||'',secondary_amount:rc.secondary?num(rc.secondary_amount):''};else if(method)c.customer_payment={primary:method,secondary:'',secondary_amount:''};}
+  function decideEmbedded(kind,id,value,confirmed=false){if(E.busy||embeddedReadOnly()||!canResolve())return;const w=window.OperatorServices?.S?.wizard;if(w?.mode==='view')return;const key=kind+':'+id;if(value==='rejected'&&!confirmed){E.rejections.set(key,E.rejections.get(key)||'');renderEmbedded();return;}const reason=value==='rejected'?(E.rejections.get(key)||'').trim():'';if(value==='rejected'&&!reason)return window.toast?.('Indicá el motivo del rechazo','error');E.decisions.set(key,{value,reason,saved:false});E.rejections.delete(key);const field=kind==='toll'?'tolls':'excess_charges',reportKey=kind==='toll'?'toll_report_id':'excess_report_id',rows=w?.data?.commercial_addons?.[field],source=(E.detail?.original_reported?.[kind==='toll'?'tolls':'excesses']||E.detail?.reported?.[kind==='toll'?'tolls':'excesses']||[]).find(r=>String(r[reportKey])===String(id));if(rows&&source&&kind==='toll'){approveTollPasses(w,rows,source,id,value);preservePlannedRows();w.dirty=true;w.quote=null;window.OperatorServiceCommercialAddonsV1?.show?.(kind);window.OperatorServiceWorkspaceV2?.sync?.();}else if(rows&&source){let index=rows.findIndex(r=>String(r[reportKey])===String(id));if(index<0&&value==='accepted'){const identity=kind==='toll'?'toll_id':'concept_id';index=rows.findIndex(r=>!r[reportKey]&&source[identity]&&r[identity]===source[identity]&&(kind!=='toll'||(r.payer_agent||'provider')===(source.payer_agent||'customer')));}if(value==='accepted'){const quantity=num(source.quantity)||1,approved={...(index>=0?rows[index]:{}),...source,payer_agent:kind==='toll'?(source.payer_agent||'customer'):'customer',collector_agent:source.collector_agent||'company',quantity,unit_amount:amountOf(source)/quantity,customer_payment_method:(kind==='toll'?source.customer_payment_method:reportedExcessPayment(source))||'not_collected',[reportKey]:id};if(index>=0)rows[index]=approved;else rows.push(approved);applyDriverPayment(w,approved.customer_payment_method);}else if(index>=0)rows.splice(index,1);preservePlannedRows();w.dirty=true;w.quote=null;window.OperatorServiceCommercialAddonsV1?.show?.(kind);window.OperatorServiceWorkspaceV2?.sync?.();}renderEmbedded();syncReviewReport();}
   function preservePlannedRows(){const w=window.OperatorServices?.S?.wizard,c=w?.data?.commercial_addons;if(!c||!w.administrativeEdit||w.serviceId!==E.serviceId||w.reviewPlannedInitialized||E.detail?.administrative_corrections)return;w.reviewPlannedInitialized=true;for(const kind of ['toll','excess']){const field=kind==='toll'?'tolls':'excess_charges',group=kind==='toll'?'tolls':'excesses',identity=r=>String(kind==='toll'?(r.toll_id||compareText(r.toll_name))+'|'+(r.payer_agent||'provider'):(r.concept_id||compareText(r.concept_name)));const reports=E.detail?.original_reported?.[group]||E.detail?.reported?.[group]||[];for(const planned of E.detail?.planned?.[group]||[]){if(reports.some(r=>identity(r)===identity(planned))||c[field].some(r=>identity(r)===identity(planned)))continue;w.dirty=true;c[field].push({...planned,review_line_client_id:rowKey(),payer_agent:planned.payer_agent||(kind==='toll'?'provider':'customer'),quantity:num(planned.quantity)||1,unit_amount:num(planned.unit_amount)||amountOf(planned)/(num(planned.quantity)||1)});}}}
   function getSaveState(serviceId){if(serviceId!==E.serviceId||!E.detail)return null;return{decisions:Object.fromEntries([...E.decisions].map(([key,d])=>[key,{value:d.value,reason:d.reason||''}])),note:E.note};}
   function unresolvedEmbedded(){return pendingEmbeddedRows().length>0||E.rejections.size>0||[...E.decisions.values()].some(d=>d.value==='rejected'&&!d.reason?.trim());}

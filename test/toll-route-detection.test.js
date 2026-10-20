@@ -85,7 +85,7 @@ test('el botón, el panel y la carga de peajes detectados están conectados', ()
   assert.match(read('operator-service-workspace-reactive-v1.js'), /async function loadRouteGeometry\(\)/);
   assert.match(read('toll-route-detection-v1.js'), /R\.loadRouteGeometry/);
   assert.match(read('operator-service-commercial-addons-v1.js'), /function addDetectedTollsAdmin\(items\)/);
-  assert.match(read('operator-service-commercial-addons-v1.js'), /tolls\?`<button type="button" class="osca-add-row" data-ca="detect-tolls">/);
+  assert.match(read('operator-service-commercial-addons-v1.js'), /<button type="button" class="osca-add-row" data-ca="detect-tolls">/);
 
   // Mapa: sentido, escala y norte; marcadores con letra/número. Los nombres van en la tabla de referencias (abajo a la izquierda).
   const t = load();

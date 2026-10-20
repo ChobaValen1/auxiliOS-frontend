@@ -4305,6 +4305,7 @@ if (typeof obRegistrarHandler === 'function') {
           excesses: remito.excesses || [],
           evidence: remito.evidence || [],
           customer_collections: remito.customer_collections || null,
+          customer_payment: remito.customer_payment || null,
         },
         files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
       }, _remitoEvidenceToken(remito.client_operation_id || remito.nro_remito));
@@ -4343,6 +4344,7 @@ if (typeof obRegistrarHandler === 'function') {
             excesses: remito.excesses || [],
             evidence: remito.evidence || [],
             customer_collections: remito.customer_collections || null,
+          customer_payment: remito.customer_payment || null,
           },
           files: addonFileMap.map(item => ({ ...item, file: blobs?.[item.blob_field] })).filter(item => item.file),
         }, operationToken);
@@ -4379,7 +4381,7 @@ if (typeof obRegistrarHandler === 'function') {
         const intake = await guardarRemitoAdHoc(remito);
         return { realId: intake?.remito_id || null };
       }
-      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remito;
+      const { tolls, excesses, evidence, customer_collections, customer_payment, addons_version, ...legacyRemito } = remito;
       const { data, error } = await _db.from('remitos')
         .upsert(legacyRemito, { onConflict: 'nro_remito' })
         .select('remito_id')

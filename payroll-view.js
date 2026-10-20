@@ -104,8 +104,12 @@
   function serviceData(r,addons,l,saleIds=new Set(),collection=null){
     const a=addons||{},extras=a.excesses||[],tolls=a.tolls||[];
     const isCash=x=>x.customer_payment_method==='cash';
-    const tollCash=tolls.filter(isCash).reduce((n,x)=>n+num(x.total_amount),0);
-    const extraCash=extras.filter(isCash).reduce((n,x)=>n+num(x.total_amount),0);
+    /* Cobro al cliente con dos medios: el efectivo es la parte en efectivo del total (principal o segundo medio). */
+    const cp=a.customer_payment&&a.customer_payment.primary?a.customer_payment:null;
+    const splitCash=total=>{const second=num(cp.secondary_amount);return(cp.primary==='cash'?Math.max(0,total-(cp.secondary?second:0)):0)+(cp.secondary==='cash'?second:0);};
+    const chargedTolls=tolls.filter(x=>x.customer_payment_method).reduce((n,x)=>n+num(x.total_amount),0),chargedExtras=extras.filter(x=>x.customer_payment_method).reduce((n,x)=>n+num(x.total_amount),0);
+    const tollCash=cp?splitCash(chargedTolls+chargedExtras):tolls.filter(isCash).reduce((n,x)=>n+num(x.total_amount),0);
+    const extraCash=cp?0:extras.filter(isCash).reduce((n,x)=>n+num(x.total_amount),0);
     const legacyCash=[1,2].reduce((n,i)=>n+(['cash','efectivo'].includes(r['pago_'+i+'_metodo'])?num(r['pago_'+i+'_monto']):0),0);
     const structured=tolls.length+extras.length>0;
     const privateCash=(collection?.lines||[]).filter(isPrivateCash).reduce((n,x)=>n+num(x.amount),0);

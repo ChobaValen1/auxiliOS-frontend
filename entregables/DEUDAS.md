@@ -18,9 +18,9 @@ La planilla tiene 20 tareas: 12 marcadas como hechas y 8 abiertas. Estas son las
 
 | # | Tarea | Urgencia | Plazo | Estado |
 |---|-------|----------|-------|--------|
-| P1 | Reglas para remitos sin ingreso: hoy solo deja crear el servicio, pero a veces ya estaba creado | ALTA | Corto | Hecho · en prueba (v508): se puede vincular también a un servicio Sin asignar, y Operaciones puede anular el ingreso |
-| P2 | Que el chofer pueda anular un servicio sin ingreso | ALTA | Corto | Hecho · en prueba (v508): «Anular este ingreso» con motivo, mientras Operaciones no lo vinculó |
-| P3 | Formato de cobro «A definir»: se marca el peaje y el chofer completa el medio de pago | ALTA | Corto | Pendiente |
+| P1 | Reglas para remitos sin ingreso: hoy solo deja crear el servicio, pero a veces ya estaba creado | ALTA | Corto | Hecho · en producción (v508): se puede vincular también a un servicio Sin asignar, y Operaciones puede anular el ingreso |
+| P2 | Que el chofer pueda anular un servicio sin ingreso | ALTA | Corto | Hecho · en producción (v508): «Anular este ingreso» con motivo, mientras Operaciones no lo vinculó |
+| P3 | Formato de cobro «A definir»: se marca el peaje y el chofer completa el medio de pago | ALTA | Corto | En prueba (v510): Cobro al cliente único (medio principal + segundo medio) en el operador («A definir») y en el remito del chofer, en el mismo paso de Peajes y excedentes. La rendición de efectivo usa ese cobro. Falta pasarlo a producción |
 | P4 | Panel: quitar datos innecesarios o repetidos y dejar los importantes (km, etc.) | ALTA | Corto/Mediano | Parcial · Panel rediseñado; falta revisar qué datos sobran |
 | P5 | Mejorar la UI del Panel | MEDIANA | Corto | Hecho · Panel nuevo con zoom y Operaciones rediseñado (falta tildarlo en la planilla) |
 | P6 | Mapa para operadores: todos los servicios, dónde empiezan y terminan, y qué móvil tienen | MEDIANA | Mediano | Pendiente |
@@ -113,3 +113,9 @@ Hecho y en producción (v463). En Tarifas, cada adicional puede tomar su precio 
 - Cuando los peajes los paga el socio, **no** se pide el medio de pago en cada peaje.
 - Se elige **un medio de pago principal** para todos.
 - Si el cliente paga una parte con otro medio, se habilita cargar ese otro medio para esa parte.
+
+## Otras deudas anotadas
+| # | Tema | Anotado | Estado |
+|---|------|---------|--------|
+| 9 | Animación del botón «Continuar» → puntos de carga → tilde (shot «cred-button-loading-to-tick-animation» de 60fps, con su timing, easing y springs sin cambios). Referencia de navegación: Floating Pill Nav de Framer | 20/10/2026 | Pendiente · requiere conectar el MCP de 60fps (https://60fps.design/mcp) |
+| 10 | Mapa con varias ubicaciones (referencia: componente Framer «MultiLocationMap», https://framer.com/m/MultiLocationMap-yASI.js@AUuYrFO2fInwLOl2DOxV). Se puede usar para el mapa de operadores (P6) | 20/10/2026 | Pendiente |

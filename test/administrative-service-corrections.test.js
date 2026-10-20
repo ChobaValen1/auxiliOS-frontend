@@ -51,8 +51,11 @@ test('administrative corrections reuse the canonical Nuevo servicio commercial U
  assert.match(commercialUi,/osca-panel tolls/);
  assert.match(commercialUi,/osca-matrix-row/);
  assert.doesNotMatch(commercialUi,/osca-title/);                  // sin títulos grandes: la solapa ya dice qué es
- assert.match(commercialUi,/data-aa-key="customer_payment_method"/);
- assert.match(commercialUi,/Medio Pago/);
+ // Misma tabla que Nuevo servicio: sin columna de medio por fila; un solo «Cobro al cliente» y los cargos del remito abajo.
+ assert.doesNotMatch(commercialUi,/data-aa-key=/);
+ assert.doesNotMatch(commercialUi,/function administrativeRows/);
+ assert.match(commercialUi,/function administrativeReport\(\)/);
+ assert.match(commercialUi,/\$\{administrativeReport\(\)\}/);
  assert.doesNotMatch(commercialUi,/class="osaa-line"/);
  assert.match(commercialCss,/Administrative corrections reuse the same commercial matrix as Nuevo servicio/);
 });

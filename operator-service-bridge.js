@@ -16,7 +16,7 @@ const ACTIVATION_REASONS=[
  ['us','Lo dimos de baja nosotros'],
  ['other','Otro']
 ];
-const PAYMENT_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado'};
+const PAYMENT_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado',to_define:'A definir'};
 const TOLL_COVERAGE_LABELS={mixed_manual:'Uno y Uno',provider_roundtrip:'A cargo de la prestadora',customer_roundtrip:'A cargo del cliente'};
 const EXTRA_FIELDS={
  'Email del cliente':{key:'customer_email',id:'phase3-service-email',label:'Email del cliente',type:'email'},

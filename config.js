@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'etapa4-tabla-v508-20261020';
+window.AUXILIOS_BUILD_ID = 'etapa4-tabla-v515-20261020';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -153,6 +153,7 @@ async function loadCriticalAuxiliosModules() {
   loadAuxiliosStyle('auxilios-operator-services-css', '/operator-services.css');
   loadAuxiliosStyle('auxilios-operator-service-workspace-reactive-v1-css', '/operator-service-workspace-reactive-v1.css');
   loadAuxiliosStyle('auxilios-operator-service-commercial-addons-v1-css', '/operator-service-commercial-addons-v1.css');
+  loadAuxiliosStyle('auxilios-customer-payment-v1-css', '/ui/customer-payment-v1.css');
   loadAuxiliosStyle('auxilios-operator-billing-css', '/operator-billing.css');
   loadAuxiliosStyle('auxilios-toll-management-css', '/toll-management.css');
   loadAuxiliosStyle('auxilios-operator-invoices-css', '/operator-invoices.css');
@@ -189,6 +190,9 @@ async function loadCriticalAuxiliosModules() {
   await loadAuxiliosModule('auxilios-operator-wizard', '/operator-service-wizard.js');
   await loadAuxiliosModule('auxilios-toll-route-detection-v1', '/toll-route-detection-v1.js');
   await loadAuxiliosModule('auxilios-finish-time-v1', '/finish-time-v1.js');
+  // Cobro al cliente (React, se carga sólo cuando se usa).
+  await loadAuxiliosModule('auxilios-react-lazy-v1', '/ui/react-lazy-v1.js');
+  await loadAuxiliosModule('auxilios-customer-payment-v1', '/ui/customer-payment-v1.js');
   await loadAuxiliosModule('auxilios-operator-service-commercial-addons-v1', '/operator-service-commercial-addons-v1.js');
   await loadAuxiliosModule('auxilios-remito-mobile-flow-v3', '/remito-mobile-flow-v3.js');
   await loadAuxiliosModule('auxilios-phase3-service-bridge', '/operator-service-bridge.js');

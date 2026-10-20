@@ -69,7 +69,9 @@ test('driver UI assigns provider tolls without requesting customer payment; mixe
  assert.doesNotMatch(api.detailsMarkup(),/id="rem-picker-common-payment"/);assert.equal(api.hasCustomerCollection(),false);
  api.state.reference.toll_coverage_mode='mixed_manual';api.state.lines.toll[0].customer_payment_method='';
  assert.equal(api.collectLines().tolls[0].payer_agent,'customer');assert.equal(api.validate().ok,false);
- assert.match(api.detailsMarkup(),/id="rem-picker-common-payment"/);
+ // Uno y Uno: el cliente paga sus peajes y se elige cómo en «Cobro al cliente» (no en la selección).
+ assert.doesNotMatch(api.detailsMarkup(),/id="rem-picker-common-payment"/);assert.match(api.detailsMarkup(),/Cobro al cliente/);
+ api.state.cp={primary:'cash',secondary:'',secondary_amount:''};assert.equal(api.collectLines().tolls[0].customer_payment_method,'cash');
 });
 test('finish dialog uses current time if unchanged and sends selected time in one RPC',async()=>{
  let request;const window={toast(){}};const context={window,_db:{rpc:async(name,args)=>{request={name,args};return {data:{status:'completed'},error:null}}},Date,setTimeout};

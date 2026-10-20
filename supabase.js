@@ -1408,6 +1408,7 @@ function _remitoDbDesdeDatos(datosRemito, nroFinal, parsearImporte, pago1, pago2
       excesses: Array.isArray(addonPayload.excesses) ? addonPayload.excesses : [],
       evidence: Array.isArray(addonPayload.evidence) ? addonPayload.evidence : [],
       customer_collections: addonPayload.customer_collections || null,
+      customer_payment: addonPayload.customer_payment || null,
     } : {}),
     ...(operatorServiceId ? {
       operator_service_id: operatorServiceId,
@@ -1617,7 +1618,7 @@ async function guardarRemitoCompleto(datosRemito) {
         error = adHocError;
       }
     } else {
-      const { tolls, excesses, evidence, customer_collections, addons_version, ...legacyRemito } = remitoDB;
+      const { tolls, excesses, evidence, customer_collections, customer_payment, addons_version, ...legacyRemito } = remitoDB;
       ({ error } = await _esperarPasoRemito(signal => _db.from('remitos').upsert(legacyRemito, { onConflict: 'nro_remito' }).abortSignal(signal), 'Guardado del remito'));
     }
 
