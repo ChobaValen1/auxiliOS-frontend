@@ -1778,7 +1778,7 @@ function toggleLoginPassword() {
 
 // ── RATE LIMITING LOGIN ───────────────────────────────────────
 const _LOGIN_MAX  = 5;
-const _LOGIN_LOCK = 15 * 60 * 1000; // 15 minutos
+const _LOGIN_LOCK = 5 * 60 * 1000; // 5 minutos
 
 function _loginAttempts()   { return parseInt(localStorage.getItem('sigma_login_attempts')    || '0'); }
 function _loginLockedUntil(){ return parseInt(localStorage.getItem('sigma_login_locked_until')|| '0'); }
