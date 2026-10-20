@@ -40,10 +40,18 @@
     return [identity,kind==='toll'?(row.payer_agent||'customer'):'',num(row.quantity||1).toFixed(2),amountOf(row).toFixed(2),String(method)].join('|');
   }
 
+  /* Lo planificado y lo informado se comparan por pasada: Operaciones carga «Peaje ×2» y el chofer manda una línea por pasada.
+     El medio de pago no se compara por línea: el cobro al cliente es uno solo para el total (y Operaciones puede dejarlo «A definir»). */
+  function comparisonUnits(kind,row){
+    const identity=kind==='toll'?(row.toll_id||compareText(row.toll_name)):(row.concept_id||compareText(row.concept_name));
+    if(kind!=='toll')return{key:[identity,num(row.quantity||1).toFixed(2),amountOf(row).toFixed(2)].join('|'),count:1};
+    const count=Math.max(1,Math.round(num(row.quantity||1)));
+    return{key:[identity,row.payer_agent||'customer',(amountOf(row)/count).toFixed(2)].join('|'),count};
+  }
+  function unitCounts(kind,rows){const counts=new Map();for(const row of rows||[]){const {key,count}=comparisonUnits(kind,row);counts.set(key,(counts.get(key)||0)+count)}return counts}
   function hasDifference(kind,plannedRows,reportedRows){
-    const planned=(plannedRows||[]).map(row=>comparisonKey(kind,row)).sort();
-    const reported=(reportedRows||[]).map(row=>comparisonKey(kind,row)).sort();
-    return planned.length!==reported.length||planned.some((value,index)=>value!==reported[index]);
+    const planned=unitCounts(kind,plannedRows),reported=unitCounts(kind,reportedRows);
+    return planned.size!==reported.size||[...planned].some(([key,count])=>reported.get(key)!==count);
   }
 
   function rowsFor(kind,data,side){const source=side==='planned'?data.planned:data.reported;return source?.[kind==='toll'?'tolls':'excesses']||[]}
@@ -226,11 +234,11 @@
     const output=[];
     for(const kind of ['toll','excess']){
       const planned=rowsFor(kind,detail,'planned'),reported=rowsFor(kind,detail,'reported');
-      const plannedKeys=new Map();for(const row of planned){const key=comparisonKey(kind,row);plannedKeys.set(key,(plannedKeys.get(key)||0)+1)}
+      const plannedKeys=unitCounts(kind,planned);
       reported.forEach((row,index)=>{
         if(row.administratively_excluded||!(kind==='toll'?row.toll_report_id:row.excess_report_id))return;
-        const w=window.OperatorServices?.S?.wizard,reportKey=kind==='toll'?'toll_report_id':'excess_report_id',current=w?.dirty?w.data?.commercial_addons?.[kind==='toll'?'tolls':'excess_charges']?.find(r=>r[reportKey]===row[reportKey]):null;const key=comparisonKey(kind,current&&!E.decisions.has(kind+':'+row[reportKey])?current:row),matches=plannedKeys.get(key)||0;
-        if(matches){plannedKeys.set(key,matches-1);return}
+        const w=window.OperatorServices?.S?.wizard,reportKey=kind==='toll'?'toll_report_id':'excess_report_id',current=w?.dirty?w.data?.commercial_addons?.[kind==='toll'?'tolls':'excess_charges']?.find(r=>r[reportKey]===row[reportKey]):null;const {key,count}=comparisonUnits(kind,current&&!E.decisions.has(kind+':'+row[reportKey])?current:row),matches=plannedKeys.get(key)||0;
+        if(matches>=count){plannedKeys.set(key,matches-count);return}
         {
           const id=String((kind==='toll'?row.toll_report_id:row.excess_report_id)||row.review_line_client_id||`${kind}-${index}`);
           const identity=kind==='toll'?(row.toll_id||compareText(row.toll_name)):(row.concept_id||compareText(row.concept_name));
@@ -254,11 +262,14 @@
     const groups=[['toll','Peajes','tolls','toll_report_id','toll_name'],['excess','Excedentes','excesses','excess_report_id','concept_name']];
     return '<div class="os-charge-report is-compact">'+groups.map(([kind,label,group,idKey,nameKey])=>{
       const rows=E.detail.original_reported?.[group]||E.detail.reported?.[group]||[];
-      return '<section><h4>'+label+'</h4>'+rows.filter(row=>row[idKey]).map(row=>{
+      /* Una línea por pasada en la base; acá se juntan las pasadas iguales sin decisión propia («Peaje ×2»). */
+      const items=[],byKey=new Map();
+      for(const row of rows.filter(r=>r[idKey])){const key=kind+':'+row[idKey],own=E.decisions.has(key)||differences.has(key)||row.administratively_excluded,k=own?key:[row[nameKey],num(row.unit_amount),row.payer_agent,kind==='toll'?row.customer_payment_method:reportedExcessPayment(row)].join('|'),hit=byKey.get(k);if(hit&&!own&&kind==='toll'){hit.passes+=Math.max(1,Math.round(num(row.quantity||1)));hit.amount+=amountOf(row);continue;}const item={row,passes:Math.max(1,Math.round(num(row.quantity||1))),amount:amountOf(row)};byKey.set(k,item);items.push(item);}
+      return '<section><h4>'+label+'</h4>'+items.map(({row,passes,amount})=>{
         const key=kind+':'+row[idKey],decision=E.decisions.get(key),resolved=isResolved(kind,row[idKey]),status=resolved?(decision.value==='rejected'?'Rechazado':decision.value==='adjusted'?'Aprobado con cambios':'Aprobado'):differences.has(key)?'Pendiente de revisión':row.administratively_excluded?'Excluido del servicio':'Sin diferencias';
         const tone=resolved?(decision.value==='rejected'?'rejected':'accepted'):'neutral';
         const saved=resolved?(decision.saved?'<i class="os-charge-saved is-saved" title="Decisión guardada">●</i>':'<i class="os-charge-saved" title="Sin guardar · Se conserva al guardar o finalizar">○</i>'):'';
-        return '<article class="os-charge-row '+tone+'"><b title="'+esc(row[nameKey]||label)+'">'+esc(row[nameKey]||label)+'</b><span class="os-charge-amount">'+money(amountOf(row))+'</span>'+(saved||'<i></i>')+'<span class="os-charge-meta"><span class="os-charge-badge '+tone+'">'+status+'</span><span>'+esc(kind==='toll'&&row.payer_agent==='provider'?'A cargo de la prestadora':paymentLabel(kind==='toll'?row.customer_payment_method:reportedExcessPayment(row)))+'</span>'+(decision?.reason?'<em>Motivo: '+esc(decision.reason)+'</em>':'')+'</span></article>';
+        return '<article class="os-charge-row '+tone+'"><b title="'+esc(row[nameKey]||label)+'">'+esc(row[nameKey]||label)+(kind==='toll'&&passes>1?' <small class="os-charge-passes">×'+passes+'</small>':'')+'</b><span class="os-charge-amount">'+money(amount)+'</span>'+(saved||'<i></i>')+'<span class="os-charge-meta"><span class="os-charge-badge '+tone+'">'+status+'</span><span>'+esc(kind==='toll'&&row.payer_agent==='provider'?'A cargo de la prestadora':paymentLabel(kind==='toll'?row.customer_payment_method:reportedExcessPayment(row)))+'</span>'+(decision?.reason?'<em>Motivo: '+esc(decision.reason)+'</em>':'')+'</span></article>';
       }).join('')+(rows.length?'':'<small class="os-charge-empty">Sin cargos informados.</small>')+'</section>';
     }).join('')+(unsavedCount()?'<small class="os-charge-legend">○ Sin guardar · se conserva al guardar o finalizar</small>':'')+'</div>';
   }

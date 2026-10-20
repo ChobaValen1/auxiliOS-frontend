@@ -70,3 +70,21 @@ test('operador: ve el cobro que informó el chofer y queda precargado en la revi
 test('sueldos: el efectivo del remito sale del cobro único cuando existe', () => {
   assert.match(payroll, /const cp=a\.customer_payment&&a\.customer_payment\.primary\?a\.customer_payment:null;/);
 });
+
+test('revisión: «Peaje ×2 · A definir» del operador coincide con dos pasadas en efectivo del chofer', () => {
+  const review = read('operator-remito-review-v2.js');
+  const pick = name => review.match(new RegExp(`  function ${name}\\([^]*?\\n  \\}`))[0];
+  const src = [
+    'const num=v=>Number(v)||0;',
+    review.match(/  const amountOf=[^\n]*/)[0], review.match(/  const compareText=[^\n]*/)[0],
+    pick('comparisonUnits'), review.match(/  function unitCounts[^\n]*/)[0], pick('hasDifference'),
+    'this.hasDifference=hasDifference;',
+  ].join('\n');
+  const ctx = {}; vm.runInNewContext(src, ctx);
+  const planned = [['t1', 19600], ['t2', 9100], ['t3', 4800], ['t4', 5000]].map(([toll_id, unit_amount]) => ({ toll_id, quantity: 2, unit_amount, total_amount: unit_amount * 2, payer_agent: 'customer', customer_payment_method: 'to_define' }));
+  const reported = planned.flatMap(p => [1, 2].map(() => ({ toll_id: p.toll_id, quantity: 1, unit_amount: p.unit_amount, total_amount: p.unit_amount, payer_agent: 'customer', customer_payment_method: 'cash' })));
+  assert.equal(ctx.hasDifference('toll', planned, reported), false);
+  // Una pasada de menos o con otro importe sí es diferencia.
+  assert.equal(ctx.hasDifference('toll', planned, reported.slice(1)), true);
+  assert.equal(ctx.hasDifference('toll', planned, reported.map((r, i) => i ? r : { ...r, unit_amount: 20000, total_amount: 20000 })), true);
+});
