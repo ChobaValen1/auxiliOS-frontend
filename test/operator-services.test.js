@@ -112,7 +112,7 @@ test('acciones de asignación desde la mesa usan el modal rápido y no abren el 
 test('Por Cobrar contabiliza sólo excedentes y muestra el medio de pago elegido',()=>{
   assert.match(services,/customer_amount_due/);
   assert.match(services,/customer_payment_methods/);
-  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado'\}/);
+  assert.match(services,/PAYMENT_METHOD_LABELS=\{cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado',to_define:'A definir'\}/);
   assert.match(services,/remito_excess_total/);
   assert.match(services,/remito_toll_total/);
   assert.match(services,/Informado por chofer/);

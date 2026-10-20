@@ -171,3 +171,7 @@
 /* Excedente "Otro": el nombre se escribe debajo del selector. */
 .osca-concept-cell{display:grid;gap:6px;align-content:start}
 .osca-other-name{width:100%}
+
+/* Cobro al cliente: el medio ya no va por fila; la fila sólo indica que entra en el cobro único. */
+.osv4-reactive .osca-customer-payment{margin-top:var(--ax-sp-3,12px)}
+.osv4-reactive .osca-pay-inherit-tag{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border:1px dashed var(--ax-border-strong,#343a4d);border-radius:999px;color:var(--ax-text-3,#818ba1);font-size:var(--ax-fs-sm,12px);white-space:nowrap}

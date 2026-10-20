@@ -248,7 +248,7 @@ function renderDetalle(r,s){
 }
 
 /* ── Cobro del servicio particular (lo que informó el chofer) ─────────────── */
-const MEDIOS_COBRO={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'};
+const MEDIOS_COBRO={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',to_define:'A definir'};
 const puedeRevisarCobro=()=>['administracion','operador'].includes(role());
 async function cargarCobro(remitoId){
   if(typeof _db==='undefined')return null;

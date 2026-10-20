@@ -63,7 +63,8 @@ test('excedentes usan Concepto Cant Importe Cobrador Medio Pago y Prestadora imp
  assert.match(commercial,/function excessPaymentControl/);
  assert.match(commercial,/row\.collector_agent==='provider'/);
  assert.match(wizard,/COLLECTORS=new Set\(\['company','provider'\]\)/);
- assert.match(wizard,/customer_payment_method:r\.collector_agent==='provider'\?null/);
+ // Cobro único: el excedente que cobra la Empresa lleva el medio principal del Cobro al cliente.
+ assert.match(wizard,/customer_payment_method:r\.collector_agent==='company'\?\(c\.customer_payment\.primary\|\|null\):null/);
  assert.match(wizard,/if\(key==='collector_agent'\)/);
  assert.match(wizard,/if\(value==='provider'\)r\.customer_payment_method=''/);
  assert.match(schema,/coalesce\(customer_payment_method,'n\/a'\)/i);

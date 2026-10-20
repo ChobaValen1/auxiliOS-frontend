@@ -1,8 +1,9 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v507-tabla-preview';
+const CACHE_NAME='auxilios-billing-phase2-v509-cobro-cliente';
 const PRECACHE_ASSETS=[
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
+  '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',
   '/ui/service-improvements-v1.js','/ui/service-improvements-v1.css','/ui/export-picker-v1.js','/ui/export-picker-v1.css','/ui/drag-sort-v1.js','/ui/drag-sort-v1.css','/ui/theme-v1.js','/ui/theme-light-v1.css',
   '/sigma.css','/auxilios-emoji-mono-v1.css','/sigma.js','/company-documents.js','/fuel-admin-editor.js','/fuel-tickets-v1.js','/fuel-tickets-v1.css','/outsourced-providers-v1.js','/outsourced-providers-v1.css','/outsourced-rates-v1.js','/outsourced-service-cost-v1.js','/outsourced-service-cost-v1.css','/outsourced-settlements-v1.js','/outsourced-settlements-v1.css','/payroll-matrix.js', '/payroll-view.js',
   '/empresas-v2.js','/empresas-v2.css',
