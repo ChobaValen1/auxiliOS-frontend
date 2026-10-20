@@ -158,3 +158,9 @@ test('lista de peajes: sólo el nombre, sin el importe (ya está en su columna)'
   assert.match(c, /const label=rate\?location\.name:`\$\{location\.name\} · Sin tarifa vigente`;/);
   assert.doesNotMatch(c, /\$\{location\.name\} · \$\{money\(rate\.amount/);
 });
+
+test('corrección administrativa: el peaje «Manual / Varios» del chofer se guarda con su nombre', () => {
+  const m = read('migrations/20261020200000_administrative_commercial_manual_toll.sql');
+  assert.match(m, /if id is null then label:=left\(coalesce\(nullif\(btrim\(coalesce\(x->>'toll_name',''\)\),''\),'Manual \/ Varios'\),80\);/);
+  assert.match(read('operator-service-wizard.js'), /toll_name:r\.toll_id\?null:\(String\(r\.toll_name\|\|''\)\.trim\(\)\|\|'Manual \/ Varios'\)/);
+});
