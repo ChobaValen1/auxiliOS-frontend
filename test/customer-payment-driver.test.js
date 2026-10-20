@@ -97,3 +97,35 @@ test('guardar: el cobro del chofer no se pierde al armar el remito (con y sin se
   assert.match(supa, /const \{ tolls, excesses, evidence, customer_collections, customer_payment, addons_version, \.\.\.legacyRemito \}/);
   assert.match(sigma, /const \{ tolls, excesses, evidence, customer_collections, customer_payment, addons_version, \.\.\.legacyRemito \}/);
 });
+
+test('corrección administrativa: 8 pasadas del chofer quedan en 4 filas ×2 y se guardan con un solo cobro', () => {
+  const wiz = read('operator-service-wizard.js');
+  const fn = name => { const i = wiz.indexOf(`function ${name}(`); let depth = 0, j = wiz.indexOf('{', i); for (; j < wiz.length; j++) { if (wiz[j] === '{') depth++; else if (wiz[j] === '}' && --depth === 0) break; } return wiz.slice(i, j + 1); };
+  const src = ['let n=0;const uid=()=>"id"+(++n);const num=v=>Number(v)||0;let STATE;const commercialState=()=>STATE;',
+    wiz.match(/const compareName=[^\n]*/)[0], fn('loadedCustomerPayment'), fn('administrativeState'), fn('administrativeCommercialPayload'),
+    'this.administrativeState=administrativeState;this.payload=()=>administrativeCommercialPayload();this.set=s=>{STATE=s};'].join('\n');
+  const ctx = {}; vm.runInNewContext(src, ctx);
+  const tolls = [['t1', 19600], ['t2', 9100], ['t3', 4800], ['t4', 5000]].flatMap(([toll_id, unit_amount]) => [1, 2].map(i => ({ toll_id, unit_amount, quantity: 1, payer_agent: 'customer', customer_payment_method: 'cash', toll_report_id: `${toll_id}-${i}` })));
+  const state = ctx.administrativeState({ toll_coverage_mode: 'customer_roundtrip', tolls, excess_charges: [] }, { customer_payment: { primary: 'cash', secondary: 'transfer', secondary_amount: 10000 } });
+  assert.equal(state.tolls.length, 4);
+  assert.equal(JSON.stringify(state.tolls.map(r => [r.quantity, r.toll_report_id, r.extra_report_ids])), '[[2,"t1-1",["t1-2"]],[2,"t2-1",["t2-2"]],[2,"t3-1",["t3-2"]],[2,"t4-1",["t4-2"]]]');
+  assert.equal(JSON.stringify(state.customer_payment), '{"primary":"cash","secondary":"transfer","secondary_amount":10000}');
+  // Bajar la cantidad a 1 deja afuera la pasada agrupada; el medio de cada cargo es el principal.
+  state.tolls[0].quantity = 1;
+  ctx.set(state);
+  const p = ctx.payload();
+  assert.equal(JSON.stringify(p.tolls[0].extra_report_ids), '[]');
+  assert.equal(JSON.stringify(p.tolls[1].extra_report_ids), '["t2-2"]');
+  assert.ok(p.tolls.every(r => r.customer_payment_method === 'cash'));
+  assert.equal(JSON.stringify(p.customer_payment), '{"primary":"cash","secondary":"transfer","secondary_amount":10000}');
+  // Sin cobro del chofer en remitos anteriores: se toma el medio que más usó.
+  assert.equal(ctx.administrativeState({ tolls, excess_charges: [] }, null).customer_payment.primary, 'cash');
+});
+
+test('base: la corrección administrativa acepta pasadas agrupadas y un solo cobro', () => {
+  const m = read('migrations/20261020180000_administrative_commercial_passes_and_payment.sql');
+  assert.match(m, /Hay más pasadas agrupadas que la cantidad del peaje/);
+  assert.match(m, /if payer='customer' and v_cp_primary is not null then customer_method:=v_cp_primary; end if;/);
+  assert.match(m, /coalesce\(a->'extra_report_ids','\[\]'::jsonb\) \? \(x->>'toll_report_id'\)/);
+  assert.doesNotMatch(m, /\bdelete\b/i);
+});

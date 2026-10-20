@@ -120,13 +120,14 @@ test('Prestadora: sugerencias por encima de Destino y duplicar peajes', () => {
   assert.doesNotMatch(addons, /data-ca="duplicate-toll"/);
   assert.doesNotMatch(addons, /data-aa-dup="/);
   assert.match(addons, /data-ca="duplicate-tolls"/);
-  assert.match(addons, /data-aa-dup-all="\$\{kind\}"/);
+  // La tabla vieja de la corrección administrativa ya no existe: usa la misma de Nuevo servicio.
+  assert.doesNotMatch(addons, /data-aa-dup-all=/);
   assert.doesNotMatch(wiz, /function duplicateCommercialToll\(index\)/);
   assert.match(wiz, /function duplicateCommercialTolls\(\)/);
   // La copia lleva el peaje y la cantidad; quién paga (si el formato no lo fija) y el medio van vacíos.
   assert.match(wiz, /payer_agent:payer,customer_payment_method:''\};const k=tollKey\(copy\)/);
-  assert.match(addons, /payer_agent:payer,customer_payment_method:''\};copy\.total_amount/);
-  assert.match(addons, /vueltas\.has\(row\)&&sumarSiRepetido\(commercial\(\)\.tolls,row\)/);
+  // En la corrección administrativa también se usa esta: la copia lleva el importe que pagó el chofer.
+  assert.match(wiz, /\.\.\.\(row\.manual\|\|S\.wizard\?\.administrativeEdit\?\{unit_amount:row\.unit_amount\}:\{\}\)/);
 });
 
 test('Remito del chofer: sistema visual en todos los pasos sin tocar la lógica de sigma.js', () => {

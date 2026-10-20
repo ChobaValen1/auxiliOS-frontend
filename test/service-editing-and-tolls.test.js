@@ -48,7 +48,7 @@ test('formato de cobro: botonera al elegir y una línea con Cambiar una vez eleg
 
 test('peaje toma tarifa vigente; Manual / Varios lleva importe a mano; cantidad con − +',()=>{
  assert.match(commercial,/Seleccionar peaje…/);
- assert.match(commercial,/unit=row\.manual\?Math\.max\(0,num\(row\.unit_amount\)\):num\(rate\?\.amount\)/);
+ assert.match(commercial,/own=row\.manual\|\|!!W\(\)\?\.administrativeEdit,unit=own\?Math\.max\(0,num\(row\.unit_amount\)\):num\(rate\?\.amount\)/);
  assert.match(commercial,/Manual \/ Varios · importe a mano/);
  assert.match(commercial,/data-ca="toll-qty"/);
  assert.match(commercial,/value="N\/A" disabled/);

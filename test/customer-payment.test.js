@@ -60,7 +60,8 @@ test('Operador: un solo cobro para peajes del cliente y excedentes de la Empresa
   assert.doesNotMatch(wizard,/Cuando paga el cliente, el medio de pago es obligatorio\./);
   assert.doesNotMatch(commercial,/mainPaymentBar|tollMainPayment|_ownMethod/);
   assert.match(commercial,/AuxiliosCustomerPayment\.render\(slot,customerPaymentProps\(\)\)/);
-  assert.match(commercial,/allowToDefine:true/);
+  // «A definir» sólo antes de la firma; en la corrección administrativa, «No cobrado».
+  assert.match(commercial,/allowToDefine:!W\(\)\?\.administrativeEdit,allowNotCollected:!!W\(\)\?\.administrativeEdit/);
   assert.match(commercial,/Cobro al cliente<\/span>/);
 });
 
