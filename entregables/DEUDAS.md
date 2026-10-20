@@ -20,7 +20,7 @@ La planilla tiene 20 tareas: 12 marcadas como hechas y 8 abiertas. Estas son las
 |---|-------|----------|-------|--------|
 | P1 | Reglas para remitos sin ingreso: hoy solo deja crear el servicio, pero a veces ya estaba creado | ALTA | Corto | Hecho · en producción (v508): se puede vincular también a un servicio Sin asignar, y Operaciones puede anular el ingreso |
 | P2 | Que el chofer pueda anular un servicio sin ingreso | ALTA | Corto | Hecho · en producción (v508): «Anular este ingreso» con motivo, mientras Operaciones no lo vinculó |
-| P3 | Formato de cobro «A definir»: se marca el peaje y el chofer completa el medio de pago | ALTA | Corto | En curso · entrega 1 en prueba (v509): Cobro al cliente único (medio principal + segundo medio) y «A definir» en el operador. Falta entrega 2: chofer y rendición |
+| P3 | Formato de cobro «A definir»: se marca el peaje y el chofer completa el medio de pago | ALTA | Corto | En prueba (v510): Cobro al cliente único (medio principal + segundo medio) en el operador («A definir») y en el remito del chofer, en el mismo paso de Peajes y excedentes. La rendición de efectivo usa ese cobro. Falta pasarlo a producción |
 | P4 | Panel: quitar datos innecesarios o repetidos y dejar los importantes (km, etc.) | ALTA | Corto/Mediano | Parcial · Panel rediseñado; falta revisar qué datos sobran |
 | P5 | Mejorar la UI del Panel | MEDIANA | Corto | Hecho · Panel nuevo con zoom y Operaciones rediseñado (falta tildarlo en la planilla) |
 | P6 | Mapa para operadores: todos los servicios, dónde empiezan y terminan, y qué móvil tienen | MEDIANA | Mediano | Pendiente |

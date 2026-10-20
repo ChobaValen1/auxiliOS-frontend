@@ -175,3 +175,6 @@
 /* Cobro al cliente: el medio ya no va por fila; la fila sólo indica que entra en el cobro único. */
 .osv4-reactive .osca-customer-payment{margin-top:var(--ax-sp-3,12px)}
 .osv4-reactive .osca-pay-inherit-tag{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border:1px dashed var(--ax-border-strong,#343a4d);border-radius:999px;color:var(--ax-text-3,#818ba1);font-size:var(--ax-fs-sm,12px);white-space:nowrap}
+
+/* Cobro al cliente informado por el chofer */
+.osca-reported-payment{display:grid;gap:4px;padding:8px 10px;border:1px solid var(--osv2-border);border-radius:8px;background:color-mix(in srgb,var(--ax-accent,#f59e0b) 6%,transparent)}.osca-reported-payment>span{color:var(--osv2-muted2);font-size:10px;letter-spacing:.06em;text-transform:uppercase}.osca-reported-payment>p{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}.osca-reported-payment b{font-variant-numeric:tabular-nums}.osca-reported-payment i{font-style:normal;color:var(--osv2-muted2)}

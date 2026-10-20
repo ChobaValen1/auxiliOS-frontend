@@ -58,8 +58,10 @@ test('el Chofer completa peajes y excedentes dentro de un modal atómico de dos 
   assert.match(driver,/state\.lines\[state\.draft\.kind\]=clone\(state\.draft\.lines\)/);
   assert.match(driver,/Continuar/);
   assert.match(driver,/Confirmar/);
-  assert.match(driver,/Medio de pago/);
-  assert.match(driver,/Medio de pago para toda la selección/);
+  // 20/10/2026: el medio de pago ya no va por selección; es un único «Cobro al cliente» en el mismo paso.
+  assert.match(driver,/Cobro al cliente/);
+  assert.doesNotMatch(driver,/Medio de pago para toda la selección/);
+  assert.match(driver,/customer_payment:customerPaymentPayload\(\)/);
   assert.match(driver,/reference_amount/);
   assert.match(driver,/data-draft-field="unit_amount"/);
   assert.match(driver,/¿Cuánto pagaste\?/);

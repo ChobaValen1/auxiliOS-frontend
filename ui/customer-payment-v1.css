@@ -64,3 +64,16 @@
 @keyframes axcp-tick{from{opacity:.35;transform:translateY(-3px)}}
 @media (max-width:640px){.axcp-chip{min-height:var(--ax-h-lg,44px);padding:0 14px}.axcp-money{max-width:none;height:var(--ax-h-lg,44px)}.axcp-total{font-size:24px}}
 @media (prefers-reduced-motion:reduce){.axcp,.axcp-amount,.axcp-error{animation:none}.axcp-collapse,.axcp-bar span,.axcp-switch-thumb,.axcp-switch-track{transition:none}}
+/* Variante compacta (remito del chofer): entra en el mismo paso, con botones grandes y sin texto de ayuda. */
+.axcp.is-compact{gap:var(--ax-sp-3,12px);padding:var(--ax-sp-3,12px) var(--ax-sp-3,12px) var(--ax-sp-4,16px)}
+.axcp.is-compact .axcp-head{align-items:center}
+.axcp.is-compact .axcp-head>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;width:100%}
+.axcp.is-compact .axcp-total{font-size:20px}
+.axcp.is-compact .axcp-breakdown{display:flex;flex-wrap:wrap;gap:2px 12px;width:100%}
+.axcp.is-compact .axcp-breakdown li{gap:6px}
+.axcp.is-compact .axcp-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.axcp.is-compact .axcp-chip{min-height:var(--ax-h-lg,44px);padding:0 6px;border-radius:var(--ax-radius,8px);font-size:var(--ax-fs-sm,12px);text-align:center;line-height:1.15}
+.axcp.is-compact .axcp-collapse[data-open="false"]{margin-top:calc(-1 * var(--ax-sp-3,12px))}
+.axcp.is-compact .axcp-collapse-inner{gap:var(--ax-sp-3,12px)}
+.axcp.is-compact .axcp-money{max-width:none;height:var(--ax-h-lg,44px)}
+.axcp.is-compact .axcp-split{padding:10px}
