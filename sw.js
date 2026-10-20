@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-billing-phase2-v513-correccion-tabla-nueva';
+const CACHE_NAME='auxilios-billing-phase2-v514-aprobar-peaje';
 const PRECACHE_ASSETS=[
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
   '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',

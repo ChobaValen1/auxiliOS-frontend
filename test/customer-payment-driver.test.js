@@ -129,3 +129,26 @@ test('base: la corrección administrativa acepta pasadas agrupadas y un solo cob
   assert.match(m, /coalesce\(a->'extra_report_ids','\[\]'::jsonb\) \? \(x->>'toll_report_id'\)/);
   assert.doesNotMatch(m, /\bdelete\b/i);
 });
+
+test('Aprobar un peaje del chofer: actualiza la fila del mismo peaje (importe, cantidad y medio del chofer), sin sumar otra', () => {
+  const review = read('operator-remito-review-v2.js');
+  const fn = name => { const i = review.indexOf(`function ${name}(`); let depth = 0, j = review.indexOf('{', i); for (; j < review.length; j++) { if (review[j] === '{') depth++; else if (review[j] === '}' && --depth === 0) break; } return review.slice(i, j + 1); };
+  const src = ['const num=v=>Number(v)||0;', review.match(/  const amountOf=[^\n]*/)[0], review.match(/  const compareText=[^\n]*/)[0],
+    'const E={decisions:new Map(),detail:null};', fn('approveTollPasses'), fn('applyDriverPayment'),
+    'this.E=E;this.approve=approveTollPasses;'].join('\n');
+  const ctx = {}; vm.runInNewContext(src, ctx);
+  // El chofer informó Peaje Illia ×2 a $2.900 en efectivo; Operaciones lo tenía ×1 a $4.800 «A definir».
+  const reported = [1, 2].map(i => ({ toll_report_id: `r${i}`, toll_id: 't3', toll_name: 'Peaje Illia', quantity: 1, unit_amount: 2900, total_amount: 2900, payer_agent: 'customer', customer_payment_method: 'cash' }));
+  ctx.E.detail = { reported: { tolls: reported } };
+  const rows = [{ toll_id: 't3', toll_name: 'Peaje Illia', quantity: 1, unit_amount: 4800, payer_agent: 'customer', customer_payment_method: 'to_define' }];
+  const w = { data: { commercial_addons: { tolls: rows, customer_payment: { primary: 'to_define', secondary: '', secondary_amount: '' } } }, reportedAddons: { customer_payment: null } };
+  ctx.approve(w, rows, reported[0], 'r1', 'accepted');
+  assert.equal(rows.length, 1);
+  assert.equal(JSON.stringify([rows[0].unit_amount, rows[0].quantity, rows[0].toll_report_id, rows[0].extra_report_ids, rows[0].customer_payment_method]), '[2900,2,"r1",["r2"],"cash"]');
+  assert.equal(w.data.commercial_addons.customer_payment.primary, 'cash');
+  // La otra pasada igual queda aprobada sola.
+  assert.equal(ctx.E.decisions.get('toll:r2').value, 'accepted');
+  // Rechazar una pasada le resta una a la fila.
+  ctx.approve(w, rows, reported[1], 'r2', 'rejected');
+  assert.equal(JSON.stringify([rows[0].quantity, rows[0].toll_report_id, rows[0].extra_report_ids]), '[1,"r1",[]]');
+});
