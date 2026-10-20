@@ -118,4 +118,4 @@ Hecho y en producción (v463). En Tarifas, cada adicional puede tomar su precio 
 | # | Tema | Anotado | Estado |
 |---|------|---------|--------|
 | 9 | Animación del botón «Continuar» → puntos de carga → tilde (shot «cred-button-loading-to-tick-animation» de 60fps, con su timing, easing y springs sin cambios). Referencia de navegación: Floating Pill Nav de Framer | 20/10/2026 | Pendiente · requiere conectar el MCP de 60fps (https://60fps.design/mcp) |
-
+| 10 | Mapa con varias ubicaciones (referencia: componente Framer «MultiLocationMap», https://framer.com/m/MultiLocationMap-yASI.js@AUuYrFO2fInwLOl2DOxV). Se puede usar para el mapa de operadores (P6) | 20/10/2026 | Pendiente |
