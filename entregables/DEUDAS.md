@@ -18,8 +18,8 @@ La planilla tiene 20 tareas: 12 marcadas como hechas y 8 abiertas. Estas son las
 
 | # | Tarea | Urgencia | Plazo | Estado |
 |---|-------|----------|-------|--------|
-| P1 | Reglas para remitos sin ingreso: hoy solo deja crear el servicio, pero a veces ya estaba creado | ALTA | Corto | Pendiente |
-| P2 | Que el chofer pueda anular un servicio sin ingreso | ALTA | Corto | Pendiente |
+| P1 | Reglas para remitos sin ingreso: hoy solo deja crear el servicio, pero a veces ya estaba creado | ALTA | Corto | Hecho · en prueba (v508): se puede vincular también a un servicio Sin asignar, y Operaciones puede anular el ingreso |
+| P2 | Que el chofer pueda anular un servicio sin ingreso | ALTA | Corto | Hecho · en prueba (v508): «Anular este ingreso» con motivo, mientras Operaciones no lo vinculó |
 | P3 | Formato de cobro «A definir»: se marca el peaje y el chofer completa el medio de pago | ALTA | Corto | Pendiente |
 | P4 | Panel: quitar datos innecesarios o repetidos y dejar los importantes (km, etc.) | ALTA | Corto/Mediano | Parcial · Panel rediseñado; falta revisar qué datos sobran |
 | P5 | Mejorar la UI del Panel | MEDIANA | Corto | Hecho · Panel nuevo con zoom y Operaciones rediseñado (falta tildarlo en la planilla) |

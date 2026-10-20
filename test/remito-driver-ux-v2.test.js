@@ -28,7 +28,8 @@ test('remito del chofer: un solo scroll y lugar para la botonera (los km no qued
 
 test('"Marcar como activado" entra deslizando, en el servicio asignado y en el borrador', () => {
   assert.match(bridge, /function slidePreview\(dir\)/);
-  assert.equal((bridge.match(/P3\.previewStep='activation';slidePreview\('next'\)/g) || []).length, 2);
+  // Servicio asignado, borrador y "Anular este ingreso" (usa el mismo paso para que "Volver" deslice igual).
+  assert.equal((bridge.match(/P3\.previewStep='activation';slidePreview\('next'\)/g) || []).length, 3);
   // "Volver" trae la ficha desde el otro lado, y sólo si venía de la pregunta.
   assert.equal((bridge.match(/if\(back\)slidePreview\('prev'\)/g) || []).length, 2);
   assert.match(bridge, /kicker\.textContent='Marcar como activado'/);

@@ -102,8 +102,21 @@
 #p3-service-preview .p3-activation-reason:has(input:checked) { border-color: var(--ax-accent); background: var(--ax-accent-soft); }
 #p3-service-preview .p3-activation-reason input { width: 18px; height: 18px; accent-color: var(--ax-accent); }
 
+/* Anular ingreso: acción de bajo peso (link) y detalle "Otro motivo" que se despliega sin saltos. */
+#p3-service-preview footer .p3-preview-link { min-height: var(--ax-h-lg); border: 0; background: transparent; color: var(--ax-text-3); font-size: var(--ax-fs-md); font-weight: var(--ax-fw-medium); text-decoration: underline; text-underline-offset: 3px; transition: color var(--ax-dur-fast) var(--ax-ease); }
+#p3-service-preview footer .p3-preview-link.danger:hover { color: var(--ax-danger); }
+#p3-service-preview footer button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+#p3-service-preview .p3-annul-detail { display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0; transition: grid-template-rows var(--ax-dur) var(--ax-ease-out), opacity var(--ax-dur) var(--ax-ease-out), margin-top var(--ax-dur) var(--ax-ease-out); }
+#p3-service-preview .p3-annul-detail-inner { display: grid; gap: 6px; min-height: 0; margin: -3px; padding: 3px; overflow: hidden; }
+#p3-service-preview .p3-annul-detail[data-open="true"] { grid-template-rows: 1fr; margin-top: 10px; opacity: 1; }
+#p3-service-preview .p3-annul-detail[data-open="false"] .p3-annul-detail-inner { visibility: hidden; }
+#p3-service-preview .p3-annul-detail span { color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-medium); }
+#p3-service-preview .p3-annul-detail textarea { box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius); background: var(--ax-bg); color: var(--ax-text); font: inherit; font-size: 16px; resize: none; transition: border-color var(--ax-dur-fast) var(--ax-ease); }
+#p3-service-preview .p3-annul-detail textarea:focus { border-color: var(--ax-accent); outline: none; box-shadow: var(--ax-focus); }
+
 @media (prefers-reduced-motion: reduce) {
   #p3-service-preview > section, #p3-service-preview .p3-preview-backdrop { animation: none; }
+  #p3-service-preview .p3-annul-detail { transition: none; }
 }
 
 /* Completar remito: estado de carga para que la pantalla no parezca congelada. */
