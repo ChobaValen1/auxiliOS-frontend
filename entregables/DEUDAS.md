@@ -4,13 +4,28 @@ Lista de mejoras para ir viendo con el tiempo. Se agregan abajo a medida que apa
 
 | # | Tema | Anotado | Estado |
 |---|------|---------|--------|
-| 1 | Servicios programados para los choferes | 14/10/2026 | Hecho · en prueba (v490) |
-| 2 | Tema de pantalla: Blanco / Negro / Sistema | 14/10/2026 | Hecho · en prueba (v485) |
+| 1 | Servicios programados para los choferes | 14/10/2026 | Hecho · en producción (v490) |
+| 2 | Tema de pantalla: Blanco / Negro / Sistema | 14/10/2026 | Hecho · en producción (v485) |
 | 3 | Editar servicios finalizados (operadores) | 14/10/2026 | Hecho · en producción (v468) |
 | 4 | Tarifas que dependen del servicio principal | 14/10/2026 | Hecho · en producción (v463) |
 | 5 | Chofer con más de un servicio en curso a la vez | 14/10/2026 | Hecho · encendido para todos |
 | 6 | Servicios activados: siempre facturables, Activado Origen / Activado Movida | 15/10/2026 | Hecho · en producción (v464) |
 | 7 | Peajes pagados por el socio: un medio de pago para todos | 15/10/2026 | Hecho · en producción (v469) |
+| 8 | Paleta sobria (como en Remitos) en Servicios y Facturación | — | Hecho · en producción |
+
+## Pendientes de la planilla «Lista de tareas AuxiliOS» (Google Sheets, revisada el 20/10/2026)
+La planilla tiene 20 tareas: 12 marcadas como hechas y 8 abiertas. Estas son las abiertas:
+
+| # | Tarea | Urgencia | Plazo | Estado |
+|---|-------|----------|-------|--------|
+| P1 | Reglas para remitos sin ingreso: hoy solo deja crear el servicio, pero a veces ya estaba creado | ALTA | Corto | Pendiente |
+| P2 | Que el chofer pueda anular un servicio sin ingreso | ALTA | Corto | Pendiente |
+| P3 | Formato de cobro «A definir»: se marca el peaje y el chofer completa el medio de pago | ALTA | Corto | Pendiente |
+| P4 | Panel: quitar datos innecesarios o repetidos y dejar los importantes (km, etc.) | ALTA | Corto/Mediano | Parcial · Panel rediseñado; falta revisar qué datos sobran |
+| P5 | Mejorar la UI del Panel | MEDIANA | Corto | Hecho · Panel nuevo con zoom y Operaciones rediseñado (falta tildarlo en la planilla) |
+| P6 | Mapa para operadores: todos los servicios, dónde empiezan y terminan, y qué móvil tienen | MEDIANA | Mediano | Pendiente |
+| P7 | La edición de peajes con el mismo formato que el alta | BAJA | Corto | A confirmar · los peajes del servicio ya usan una sola tabla (Quién paga, Peaje, Importe, Cantidad) |
+| P8 | Chat interno y grupos por rol (notas sobre servicios, turnos, información) | BAJA | Mediano | Pendiente |
 
 ## 1) Servicios programados para los choferes
 Poder dejar servicios programados para un chofer, como una fila o cola de servicios que el chofer va viendo y tomando en orden. Se piensa junto con la 5.
