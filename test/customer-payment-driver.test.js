@@ -88,3 +88,12 @@ test('revisión: «Peaje ×2 · A definir» del operador coincide con dos pasada
   assert.equal(ctx.hasDifference('toll', planned, reported.slice(1)), true);
   assert.equal(ctx.hasDifference('toll', planned, reported.map((r, i) => i ? r : { ...r, unit_amount: 20000, total_amount: 20000 })), true);
 });
+
+test('guardar: el cobro del chofer no se pierde al armar el remito (con y sin señal)', () => {
+  const supa = read('supabase.js'), sigma = read('sigma.js');
+  assert.match(supa, /customer_payment: addonPayload\.customer_payment \|\| null,/);
+  assert.equal((sigma.match(/customer_payment: remito\.customer_payment \|\| null,/g) || []).length, 2);
+  // El upsert directo a la tabla no manda el objeto (no es una columna).
+  assert.match(supa, /const \{ tolls, excesses, evidence, customer_collections, customer_payment, addons_version, \.\.\.legacyRemito \}/);
+  assert.match(sigma, /const \{ tolls, excesses, evidence, customer_collections, customer_payment, addons_version, \.\.\.legacyRemito \}/);
+});
