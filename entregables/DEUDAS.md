@@ -119,3 +119,21 @@ Hecho y en producción (v463). En Tarifas, cada adicional puede tomar su precio 
 |---|------|---------|--------|
 | 9 | Animación del botón «Continuar» → puntos de carga → tilde (shot «cred-button-loading-to-tick-animation» de 60fps, con su timing, easing y springs sin cambios). Referencia de navegación: Floating Pill Nav de Framer | 20/10/2026 | Pendiente · requiere conectar el MCP de 60fps (https://60fps.design/mcp) |
 | 10 | Mapa con varias ubicaciones (referencia: componente Framer «MultiLocationMap», https://framer.com/m/MultiLocationMap-yASI.js@AUuYrFO2fInwLOl2DOxV). Se puede usar para el mapa de operadores (P6) | 20/10/2026 | Pendiente |
+
+## Referencias de UI para aplicar (21/10/2026)
+Se hacen a mano (sin librerías nuevas), con la estética oscura y ámbar y respetando «menos movimiento». Una por vez, en prueba y con OK antes de producción.
+
+| # | Referencia | Dónde en AuxiliOS | Estado |
+|---|-----------|-------------------|--------|
+| U1 | hover.dev · Stacked notifications (https://www.hover.dev/components/notifications#stacked-notifications) | Todos los avisos (guardado, errores, «Servicio finalizado»): apilados, con resorte, se cierran deslizando | Pendiente |
+| U2 | hover.dev · Spring modal (https://www.hover.dev/components/modals#spring-modal) | Confirmaciones: anular ingreso, guardar y finalizar, dar de baja, rechazar con motivo | Pendiente |
+| U3 | hover.dev · Morph stepped progress (https://www.hover.dev/components/progress#morph-stepped-progress) | Pasos del remito del chofer y asistentes por pasos | Pendiente |
+| U4 | hover.dev · Shuffle sort table (https://www.hover.dev/components/tables#shuffle-sort-table) | Ordenar columnas en Servicios, Facturación y Sueldos: las filas se reacomodan animadas | Pendiente |
+| U5 | hover.dev · Fancy dark mode toggle (https://www.hover.dev/components/toggles#fancy-dark-mode-toggle) | Botón de tema (Oscuro / Claro / Sistema) | Pendiente |
+| U6 | Framer · Floating Pill Navigation (https://framer.com/m/FloatingPillNavigation-s92k8M.js@qwsogf78G8HhJg4I53jE) | Navegación del celular (barra inferior flotante); va con la #9 | Pendiente |
+| U7 | Framer · Dynamic Island Nav (https://framer.com/m/DynamicIslandNav-hskTZL.js@alczdDjobHIsFEUpStTB) | Chofer: píldora arriba con el servicio en curso y el estado de sincronización, que se expande al tocarla | Pendiente |
+| U8 | Framer · Scroll Reveal Button (https://framer.com/m/Scroll-Reveal-Button-snz7.js@JmhMNWep29NgFxT5j7B0) | Botón flotante «Nuevo servicio» / «Nuevo remito» que se achica al bajar y se agranda al subir | Pendiente |
+| U9 | Framer · WhatsApp Chat (https://framer.com/m/WhatsAppChat-fyWs.js@q1lP6khd8m6Fr35C9HJU) | Chat interno y grupos por rol (P8) | Pendiente |
+| U10 | Framer · Comparison Table (https://framer.com/m/Comparison-Table-TFFKi3.js@ovtvDlm0fw6HBKwxAywM) | Revisión del remito: planificado vs. informado por el chofer, lado a lado | Pendiente |
+| U11 | Framer · Loader Counter (https://framer.com/m/LoaderCounter-yRE5.js@1KnRwfjCWO0zsTVvk5Tx) | Pantalla de carga al abrir la app y números del Panel que cuentan al aparecer | Pendiente |
+| U12 | Captura «Workspace» (dashboard con tarjetas + mini gráficos, puntos guía y «Take the tour») | Panel: tarjetas con mini gráfico y variación vs. mes anterior; recorrido guiado con puntos para usuarios nuevos | Pendiente |
