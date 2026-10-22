@@ -8,6 +8,8 @@ export function enhanceServiceToolbar(toolbar: HTMLElement) {
   field.classList.add('ax-search-field');
   if (!search.hasAttribute('aria-label')) search.setAttribute('aria-label', 'Buscar servicios por código, patente, dirección o prestadora');
   search.setAttribute('aria-keyshortcuts', '/');
+  search.placeholder = 'Código, patente, cliente, chofer o dirección';
+  search.setAttribute('aria-label', 'Buscar servicios por código, patente, cliente, chofer, móvil o dirección');
   const hint = document.createElement('kbd');
   hint.className = 'ax-search-shortcut'; hint.textContent = '/'; hint.setAttribute('aria-hidden', 'true');
   const clear = document.createElement('button');
@@ -23,6 +25,7 @@ export function enhanceServiceToolbar(toolbar: HTMLElement) {
   clear.addEventListener('click', resetSearch);
   search.addEventListener('input', syncSearch);
   search.addEventListener('search', syncSearch);
+  toolbar.closest('.screen')?.addEventListener('auxilios:services-rendered', syncSearch);
   search.addEventListener('keydown', event => {
     if (event.key === 'Escape' && search.value && !event.isComposing) {
       event.preventDefault(); event.stopPropagation(); resetSearch();

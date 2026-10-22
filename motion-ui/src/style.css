@@ -43,7 +43,15 @@ body.ax-motion .ax-search-field input { padding-right: 44px; }
 .ax-search-clear:hover { background: var(--ax-surface-3); color: var(--ax-text); }
 .ax-search-clear:focus-visible { outline: 2px solid var(--ax-accent); outline-offset: 1px; }
 .ax-search-shortcut[hidden], .ax-search-clear[hidden] { display: none; }
-body.ax-motion #screen-operaciones .os-commandbar { position: relative; }
+/* Reset the old sticky offsets: relative positioning made top:-18px overlap the header. */
+body.ax-motion #screen-operaciones { margin-top: 0; }
+body.ax-motion #screen-operaciones .os-commandbar { position: relative; top: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; grid-template-areas: 'view count columns refresh create' 'filters filters filters filters filters'; gap: 14px 8px; align-items: center; padding: 0; margin: 0 0 20px; }
+body.ax-motion #screen-operaciones .os-view-switch { grid-area: view; }
+body.ax-motion #screen-operaciones .os-count { grid-area: count; margin: 0; }
+body.ax-motion #screen-operaciones .os-icon-btn:not(#os-refresh) { grid-area: columns; }
+body.ax-motion #screen-operaciones #os-refresh { grid-area: refresh; }
+body.ax-motion #screen-operaciones .os-commandbar .os-manage { grid-area: create; margin: 0; justify-self: end; }
+body.ax-motion #screen-operaciones .os-commandbar .os-filters { grid-area: filters; order: 0; min-width: 0; width: 100%; }
 .ax-service-loading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .ax-service-progress { position: absolute; left: 0; right: 0; bottom: -5px; height: 2px; border-radius: 2px; overflow: hidden; opacity: 0; pointer-events: none; transition: opacity .15s; }
 .ax-service-progress::before { content: ''; display: block; width: 35%; height: 100%; background: var(--ax-accent); border-radius: inherit; }
@@ -100,6 +108,13 @@ body.ax-motion .ax-motion-stack .ax-toast small { display: block; margin-top: 4p
   body.ax-motion.nav-collapsed .ax-nav-peek .ax-nav-alert { position: static; margin-left: auto; }
 }
 @media (max-width: 767px) {
+  body.ax-motion #screen-operaciones .os-commandbar { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: 'view view count' 'filters filters filters' 'columns refresh create'; }
+  body.ax-motion #screen-operaciones .os-count { display: block; justify-self: end; white-space: normal; text-align: right; }
+  body.ax-motion #screen-operaciones .os-commandbar .os-manage { width: 100%; min-width: 0; min-height: 40px; height: auto; padding: 10px 12px; white-space: normal; }
+  body.ax-motion #screen-operaciones .os-view-switch button { padding: 0 10px; }
+  body.ax-motion #screen-operaciones .os-icon-btn { width: 40px; height: 40px; }
+  body.ax-motion #screen-operaciones .os-filters { display: flex; flex-wrap: wrap; }
+  body.ax-motion #screen-operaciones .os-filters .auxf-search { flex: 1 1 100%; min-width: 0; max-width: none; }
   body.ax-motion .sidenav { width: auto; left: 8px; right: 8px; bottom: 8px; border: 1px solid var(--ax-border-strong); border-radius: 20px; box-shadow: var(--ax-shadow-pop); padding: 0 4px env(safe-area-inset-bottom, 0px); }
   body.ax-motion .sidenav .nav-item { border-radius: 15px; min-width: 70px; flex-basis: 70px; }
   body.ax-motion .main { margin-left: 0; padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }

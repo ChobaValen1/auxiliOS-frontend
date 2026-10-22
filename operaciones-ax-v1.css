@@ -7,6 +7,9 @@
 #screen-operaciones { min-width: 0; max-width: 100%; font-family: var(--ax-font); font-size: var(--ax-fs-md); color: var(--ax-text); }
 /* Nada de la pantalla puede ensanchar la página (en el celular se iba de costado). */
 #screen-operaciones > * { min-width: 0; max-width: 100%; }
+#screen-operaciones #os-history-heading { margin: 0 0 16px; }
+#screen-operaciones #os-history-heading[hidden] { display: none; }
+#screen-operaciones #os-history-heading h2 { margin: 0; font: 600 var(--ax-fs-xl)/1.4 var(--ax-font); }
 /* Las filas que se desplazan de costado no aportan su ancho a la página. */
 #screen-operaciones .os-status-tabs, #screen-operaciones .os-table-wrap, #screen-operaciones .os-intake-list { contain: inline-size; }
 
@@ -57,6 +60,24 @@
 #screen-operaciones .os-status-tabs button.warning.active[data-os-tab="remito_review"] { border-color: var(--ax-danger); background: var(--ax-danger-soft); }
 
 /* ── Ingresos del chofer sin servicio ──────────────────────────────── */
+/* Resultados reales y recuperación de búsquedas sin coincidencias. */
+#screen-operaciones .os-results-summary { margin: 0 0 12px; min-width: 0; }
+#screen-operaciones .os-results-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 32px; }
+#screen-operaciones .os-results-count { margin: 0; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-variant-numeric: tabular-nums; }
+#screen-operaciones .os-reset-view { border: 0; padding: 6px 0; background: transparent; color: var(--ax-text-2); font: 500 var(--ax-fs-sm) var(--ax-font); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+#screen-operaciones .os-reset-view:hover { color: var(--ax-text); }
+#screen-operaciones .os-filter-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+#screen-operaciones .os-filter-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; min-height: 32px; padding: 5px 9px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-pill); background: var(--ax-surface-2); color: var(--ax-text-2); font: 500 var(--ax-fs-sm)/1.4 var(--ax-font); text-align: left; cursor: pointer; }
+#screen-operaciones .os-filter-chip span { min-width: 0; overflow-wrap: anywhere; }
+#screen-operaciones .os-filter-chip .ax-icon { width: 14px; height: 14px; flex-shrink: 0; }
+#screen-operaciones .os-filter-chip:hover { color: var(--ax-text); background: var(--ax-surface-3); }
+#screen-operaciones :is(.os-filter-chip, .os-reset-view):focus-visible { outline: 2px solid var(--ax-accent); outline-offset: 3px; }
+#screen-operaciones .os-filter-chips[hidden], #screen-operaciones .os-reset-view[hidden] { display: none; }
+#screen-operaciones .os-empty-help { display: grid; justify-items: center; gap: 10px; padding: 24px 12px; text-align: center; }
+#screen-operaciones .os-empty-help > .ax-icon { width: 28px; height: 28px; color: var(--ax-text-3); }
+#screen-operaciones .os-empty-help h3 { margin: 0; font: 600 var(--ax-fs-md)/1.5 var(--ax-font); color: var(--ax-text); }
+#screen-operaciones .os-empty-help p { margin: 0; max-width: 420px; color: var(--ax-text-2); line-height: 1.6; font-size: var(--ax-fs-sm); }
+#screen-operaciones .os-empty-help button { margin-top: 4px; min-height: 40px; }
 #screen-operaciones .os-intakes { margin-bottom: var(--ax-sp-2); border: 1px solid rgba(245, 166, 35, .45); border-radius: var(--ax-radius-lg); background: var(--ax-warn-soft); }
 #screen-operaciones .os-intakes > summary { min-height: 44px; padding: 6px 12px; }
 #screen-operaciones .os-intakes > summary b { font-size: var(--ax-fs-md); }
