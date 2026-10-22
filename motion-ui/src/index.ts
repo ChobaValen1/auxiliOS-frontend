@@ -31,12 +31,12 @@ reduced.addEventListener('change', () => {
 function navigation() {
   const nav = document.querySelector<HTMLElement>('.sidenav');
   if (!nav) return;
-  const brand = nav.querySelector<HTMLElement>('.nav-logo');
+  const account = nav.querySelector<HTMLElement>('.nav-bottom');
   const identity = document.createElement('span');
   identity.className = 'ax-nav-user'; identity.hidden = true;
   const userName = document.createElement('span'); userName.className = 'ax-nav-user-name';
   const userRole = document.createElement('span'); userRole.className = 'ax-nav-user-role';
-  identity.append(userName, userRole); brand?.append(identity);
+  identity.append(userName, userRole); account?.append(identity);
   let identityKey = '';
   function syncIdentity() {
     let profile: typeof PERFIL_USUARIO = null;
@@ -50,7 +50,7 @@ function navigation() {
     identityKey = next;
     userName.textContent = name; userRole.textContent = label;
     userRole.hidden = !label; identity.hidden = !name;
-    brand?.classList.toggle('ax-nav-account', !!name);
+    account?.classList.toggle('ax-nav-account', !!name);
   }
   syncIdentity();
   const pill = document.createElement('i');

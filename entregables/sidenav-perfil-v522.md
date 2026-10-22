@@ -1,10 +1,10 @@
 # Sidenav: ritmo e identidad del usuario
 
-Preview `sidenav-perfil-v522-20261022`.
+Preview `sidenav-perfil-v523-20261022`.
 
 - Apertura y cierre de 650 ms, sin demora adicional antes de empezar. Salir con el mouse sigue cerrando el menú aunque se haya elegido un módulo.
-- El encabezado expandido usa el ícono actual de AuxiliOS, nombre completo a su derecha y rol debajo. Lee `PERFIL_USUARIO.full_name` y el rol de la sesión; no contiene un usuario fijo.
-- El nombre completo puede ocupar varias líneas. Contraído queda sólo el ícono. El encabezado permanece oculto en la barra móvil.
+- El perfil aparece al pie del sidenav, junto al avatar existente, con nombre completo a su derecha y rol debajo. La marca AuxiliOS se mantiene arriba. Lee `PERFIL_USUARIO.full_name` y el rol de la sesión; no contiene un usuario fijo.
+- El nombre completo puede ocupar varias líneas. Contraído queda sólo el avatar. El bloque permanece oculto en la barra móvil. El menú de cuenta conserva su control original y no se recorta con el texto.
 - Se actualiza cuando llega el perfil después del login; no agrega consultas ni modifica la autenticación. Antes de tener un nombre conserva la marca existente.
 - La preferencia de movimiento reducido elimina las transiciones. Colores e íconos del sistema conservados.
 

@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v522-sidenav-perfil';
+const CACHE_NAME='auxilios-v523-sidenav-perfil';
 const PRECACHE_ASSETS=[
   '/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',

@@ -15,15 +15,14 @@ body.ax-motion .nav-logo { height: 65px; padding: 0; margin-bottom: 4px; display
 body.ax-motion.nav-collapsed .nav-logo { justify-content: center; }
 body.ax-motion.nav-collapsed .ax-brand-full { display: none; }
 body.ax-motion.nav-collapsed .ax-brand-icon { display: block; }
-/* Same brand icon in both states; the signed-in identity appears beside it on expansion. */
-body.ax-motion .nav-logo.ax-nav-account { position: relative; display: block; width: 100%; min-width: 0; height: auto; min-height: 72px; padding: 0; flex-shrink: 0; }
-body.ax-motion .nav-logo.ax-nav-account .ax-brand-full { display: none; }
-body.ax-motion .nav-logo.ax-nav-account .ax-brand-icon { position: absolute; display: block; top: 50%; left: 7px; width: 38px; height: 38px; transform: translateY(-50%); }
-.ax-nav-user { display: grid; align-content: center; gap: 3px; width: 146px; min-height: 72px; box-sizing: border-box; margin-left: 55px; padding: 10px 0; letter-spacing: 0; text-align: left; text-transform: none; font-family: var(--ax-font); opacity: 1; visibility: visible; transform: translateX(0); transition: opacity .35s ease .1s, transform .5s ease .1s, visibility 0s; }
+/* Account identity belongs beside the existing avatar at the bottom left. */
+body.ax-motion .nav-bottom.ax-nav-account { display: grid; grid-template-columns: 45px minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; width: 100%; min-height: 58px; padding: 8px 0; flex-shrink: 0; }
+body.ax-motion .nav-bottom.ax-nav-account > .nav-avatar { grid-area: 1 / 1; margin-left: 7px; flex-shrink: 0; }
+.ax-nav-user { grid-area: 1 / 2; display: grid; align-content: center; gap: 3px; width: 146px; min-width: 0; box-sizing: border-box; letter-spacing: 0; text-align: left; text-transform: none; font-family: var(--ax-font); opacity: 1; visibility: visible; clip-path: inset(0); transform: translateX(0); transition: opacity .35s ease .1s, transform .5s ease .1s, clip-path .65s cubic-bezier(.4,0,.2,1), visibility 0s; }
 .ax-nav-user[hidden] { display: none; }
 .ax-nav-user-name { display: block; color: var(--ax-text); font-size: 13px; font-weight: 600; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; }
 .ax-nav-user-role { color: var(--ax-text-3); font-size: 11px; font-weight: 400; line-height: 1.4; }
-body.ax-motion.nav-collapsed .sidenav:not(.ax-nav-peek) .ax-nav-user { opacity: 0; visibility: hidden; transform: translateX(-8px); transition-delay: 0s, 0s, .35s; }
+body.ax-motion.nav-collapsed .sidenav:not(.ax-nav-peek) .ax-nav-user { opacity: 0; visibility: hidden; clip-path: inset(0 100% 0 0); transform: translateX(-8px); transition-delay: 0s, 0s, 0s, .35s; }
 body.ax-motion .topbar { min-height: 64px; }
 body.ax-motion .topbar-title { font-weight: 600; letter-spacing: -.35px; }
 body.ax-motion .tb-btn { border-radius: 12px; }
@@ -113,8 +112,6 @@ body.ax-motion .ax-motion-stack .ax-toast small { display: block; margin-top: 4p
   body.ax-motion.nav-collapsed .ax-nav-peek .nav-logo { justify-content: flex-start; }
   body.ax-motion.nav-collapsed .ax-nav-peek .ax-brand-full { display: block; }
   body.ax-motion.nav-collapsed .ax-nav-peek .ax-brand-icon { display: none; }
-  body.ax-motion.nav-collapsed .ax-nav-peek .nav-logo.ax-nav-account .ax-brand-full { display: none; }
-  body.ax-motion.nav-collapsed .ax-nav-peek .nav-logo.ax-nav-account .ax-brand-icon { display: block; }
   body.ax-motion.nav-collapsed .ax-nav-peek .nav-collapse { align-self: flex-end; }
   body.ax-motion.nav-collapsed .ax-nav-peek .ax-nav-alert { position: static; margin-left: auto; }
 }

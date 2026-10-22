@@ -48,7 +48,7 @@ if (process.argv.includes('--serve')) {
 } else (async()=>{
   const app=server(); await new Promise(r=>app.listen(0,'127.0.0.1',r));
   let browser;
-  const out=path.resolve(root,'../output/sidenav-perfil-v522'); fs.mkdirSync(out,{recursive:true});
+  const out=path.resolve(root,'../output/sidenav-perfil-v523'); fs.mkdirSync(out,{recursive:true});
   try {
     browser=await chromium.launch({channel:'msedge',headless:true});
     const page=await browser.newPage({viewport:{width:1440,height:900}}), errors=[], external=[];
@@ -61,8 +61,12 @@ if (process.argv.includes('--serve')) {
     assert.equal(await page.locator('.nav-logo img').first().evaluate(el=>el.complete&&el.naturalWidth===1077),true);
     assert.equal(await page.locator('.ax-nav-user-name').innerText(),'Andrea Freire');
     assert.equal(await page.locator('.ax-nav-user-role').innerText(),'Operador');
-    assert.equal(await page.locator('.nav-logo .ax-brand-icon').isVisible(),true,'brand icon beside identity');
-    assert.equal(await page.locator('.nav-logo .ax-brand-full').isVisible(),false,'wide brand does not overlap the user name');
+    assert.equal(await page.locator('.nav-bottom .ax-nav-user').count(),1,'identity belongs beside the bottom-left avatar');
+    assert.equal(await page.locator('.nav-logo .ax-nav-user').count(),0,'brand header stays separate');
+    assert.equal(await page.locator('.nav-logo .ax-brand-full').isVisible(),true,'original brand is preserved at the top');
+    const avatarBox=await page.locator('.nav-avatar').boundingBox(),nameBox=await page.locator('.ax-nav-user-name').boundingBox(),roleBox=await page.locator('.ax-nav-user-role').boundingBox();
+    assert.ok(nameBox.x>=avatarBox.x+avatarBox.width+5 && roleBox.y>=nameBox.y+nameBox.height,'name beside avatar, role beneath name');
+    assert.ok(avatarBox.y>800 && roleBox.y+roleBox.height<900,'profile anchored at the bottom of the sidebar');
     assert.equal(await page.locator('.sidenav').evaluate(el=>parseFloat(getComputedStyle(el).transitionDuration)),.65);
     await page.evaluate(()=>{window.PERFIL_USUARIO=null;document.querySelector('.nav-avatar').textContent='';});
     await page.waitForFunction(()=>document.querySelector('.ax-nav-user').hidden);
