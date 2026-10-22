@@ -213,15 +213,36 @@
 #screen-operaciones .os-status.green::before { background: var(--ax-ok); }
 #screen-operaciones .os-status.red { color: var(--ax-text-3); text-decoration: line-through; }
 #screen-operaciones .os-status.red::before { background: transparent; box-shadow: inset 0 0 0 1px var(--ax-text-3); }
+/* El valor es un desplegable sólo si existen opciones para ese servicio y rol. */
+#screen-operaciones .col-status .os-status[role="button"] {
+  align-items: center; min-width: 0; min-height: 32px; max-width: 100%; padding: 5px 9px;
+  border: 1px solid transparent; border-radius: 9px; cursor: pointer; user-select: none;
+  filter: none; transform: none;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+#screen-operaciones .col-status .os-status[role="button"]::after {
+  content: ""; flex: 0 0 6px; width: 6px; height: 6px; margin: -3px 1px 0 7px;
+  border: solid currentColor; border-width: 0 1.5px 1.5px 0; opacity: .8;
+  transform: rotate(45deg); transition: transform 160ms ease;
+}
+#screen-operaciones .col-status .os-status:not([role="button"]) { cursor: default; transform: none; filter: none; }
+#screen-operaciones .col-status .os-status:not([role="button"])::after { content: none; }
+#screen-operaciones .col-status .os-status[role="button"]:is(:hover,:focus-visible,[aria-expanded="true"]) {
+  background: var(--ax-surface-3) !important; border-color: var(--ax-border-strong); filter: none; transform: none;
+}
+#screen-operaciones .col-status .os-status[role="button"]:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+#screen-operaciones .col-status .os-status[role="button"][aria-expanded="true"]::after { transform: translateY(3px) rotate(225deg); }
+@media (pointer: coarse) { #screen-operaciones .col-status .os-status[role="button"] { min-height: 40px; } }
+@media (prefers-reduced-motion: reduce) { #screen-operaciones .col-status .os-status[role="button"], #screen-operaciones .col-status .os-status[role="button"]::after { transition: none; } }
 /* Programado: para más adelante; reloj en vez de punto, en el color de información. */
 #screen-operaciones .os-status.programmed { color: var(--ax-info); }
 #screen-operaciones .os-status.programmed::before { box-sizing: border-box; background: transparent; border: 2px dotted var(--ax-info) !important; border-radius: 50%; }
 #screen-operaciones .os-programmed-when { display: block; font-variant-numeric: tabular-nums; }
 #screen-operaciones .os-document-status, #screen-operaciones .os-activation-reason { color: var(--ax-text-3); font-size: var(--ax-fs-sm) !important; }
 #screen-operaciones .os-document-state { margin-top: 4px; color: var(--ax-text-3); font-size: var(--ax-fs-sm); text-align: left; }
-#screen-operaciones .os-document-state.is-action { width: auto; max-width: 100%; height: 24px; padding: 0 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); }
+#screen-operaciones .os-document-state.is-action { width: auto; max-width: 100%; min-height: 26px; height: auto; padding: 4px 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm); background: transparent; color: var(--ax-text-2); font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); line-height: 1.4; white-space: normal; }
 #screen-operaciones .os-document-state.is-action:hover, #screen-operaciones .os-document-state.is-action:focus-visible { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); box-shadow: none; }
-#screen-operaciones .os-document-state.awaiting-review { border-color: rgba(226, 80, 74, .6); background: var(--ax-danger-soft); color: var(--ax-danger); white-space: nowrap; }
+#screen-operaciones .os-document-state.awaiting-review { border-color: rgba(226, 80, 74, .6); background: var(--ax-danger-soft); color: var(--ax-danger); }
 #screen-operaciones .os-document-state.awaiting-review:hover, #screen-operaciones .os-document-state.awaiting-review:focus-visible { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
 
 /* Botón ⋯ de la fila */

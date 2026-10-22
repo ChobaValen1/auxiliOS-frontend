@@ -25,7 +25,7 @@ test('Servicios usa la bandeja segura y permite abrir el remito sin depender del
   assert.match(services,/loadAuxiliosModule\('auxilios-operator-remito-review-v2'/);
   assert.match(services,/abrirRemitoFirmadoOperador/);
   assert.match(services,/Abrir el remito firmado/);
-  assert.match(services,/Remito recibido[\s\S]*Ver/);
+  assert.match(services,/submitted:'Remito en revisión'/);
   assert.match(commercial,/Documento del chofer/);
   assert.match(commercial,/data-ca="open-remito"/);
   assert.match(commercial,/abrirRemitoFirmadoOperador/);

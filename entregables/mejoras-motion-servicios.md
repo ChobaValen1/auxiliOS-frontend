@@ -10,9 +10,18 @@ Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negoc
 - Hacer visible el estado y la próxima acción disponible, según el flujo y los permisos existentes.
 - No resaltar automáticamente acciones ni estados (última corrección del usuario). Mantener sólo el foco accesible habitual.
 - Conservar búsqueda, filtros y posición de la lista al abrir un servicio y volver.
-- **Estado del remito:** anotar para modificar. Revisar su presentación y el flujo de cambio de estado; los estados, transiciones y permisos concretos quedan por definir con el usuario antes de modificar la lógica. No confundirlo con el estado del servicio.
+- **Estado del remito:** textos acordados en v529 (ver abajo). No confundirlo con el estado del servicio. No se cambian transiciones ni permisos.
 
 Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
+
+## Selector de estado y textos del remito — `estado-remito-v529-20261022`
+
+- El valor de Estado tiene flecha visible, superficie de hover redondeada (9 px), borde sutil y foco de teclado. Al abrir, la flecha gira; al cerrar vuelve. Sin movimiento del texto ni resaltado de la siguiente acción. Usa los colores y tokens actuales.
+- Sólo se presenta como desplegable si existen opciones para ese servicio y rol; servicios sin opciones no llevan flecha ni cursor de botón. Conserva Enter/Espacio, navegación de menú y Escape con devolución del foco.
+- Textos: not_started → «Remito pendiente»; draft/borrador → «Remito incompleto»; submitted → «Remito en revisión»; approved → «Remito aprobado»; observed → «Remito requiere correcciones». El remito firmado conserva su botón para abrir revisión, ahora sin sufijos repetidos «Ver/Revisar». Las excepciones siguen explícitas, no se presentan como aprobaciones documentales.
+- Un viaje iniciado no prueba que exista un remito incompleto: se elimina esa inferencia del aviso de borrador.
+- **Pendiente: «Creando remito…» mientras el chofer tiene abierto el formulario.** Inspección de sólo lectura confirmó que operator_services no registra apertura/cierre ni latido del formulario. user_presence sólo informa pantalla genérica y su lectura administrativa excluye operador. No se reutiliza ese acceso, no se amplían permisos y no se simula presencia con un borrador. Requiere implementar una señal protegida por servicio con cierre/caducidad y probarla entre chofer y operador antes de activarla. Preview y producción comparten base; esta entrega no modifica esa base.
+- Verificación: pruebas de etiquetas, remitos firmados, excepciones, borrador sin falsa presencia y estilos condicionados a acciones; regresiones de rutas, filtros, historial, acciones y teclado. QA aislado con RPC simuladas y bloqueo de escrituras. Evidencias en `output/servicios-v529`. No se cambiaron importes, kilómetros, facturación, estados persistidos ni permisos.
 
 ## Recorrido según facturación — `recorrido-facturacion-v528-20261022`
 

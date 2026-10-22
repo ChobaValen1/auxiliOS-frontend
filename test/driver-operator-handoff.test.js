@@ -20,7 +20,7 @@ test('el firmado pendiente permanece en Activos incluso si un cierre previo lo m
   api.S.services=[pending,assigned,approved];
   assert.deepEqual(Array.from(api.activeServices(),s=>s.service_id),['pending','assigned']);
   assert.deepEqual(Array.from(api.historyServices(),s=>s.service_id),['approved']);
-  assert.match(api.statusCell(pending),/Remito firmado · Revisar/);
+  assert.match(api.statusCell(pending),/Remito en revisión/);
   pending.document_status='approved';
   assert.equal(api.activeServices().length,1);
 });

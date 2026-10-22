@@ -33,12 +33,21 @@ test('el resumen ignora identificadores locales y el orden de propiedades, conse
 test('el aviso termina al firmar, recibir, aprobar, anular o finalizar el remito', () => {
   const ui = load(), s = {status: 'assigned', document_status: 'draft'};
   assert.equal(ui.remitoPreparing(s), true);
-  assert.equal(ui.remitoPreparing({status:'assigned',trip_id:8}), true);
-  assert.equal(ui.remitoPreparing({status:'assigned',trip_started:true}), true);
+  assert.equal(ui.remitoPreparing({status:'assigned',trip_id:8}), false);
+  assert.equal(ui.remitoPreparing({status:'assigned',trip_started:true}), false);
+  assert.equal(ui.remitoPreparing({status:'assigned',remito_status:'borrador'}), true);
   assert.equal(ui.remitoPreparing({status:'assigned'}), false);
   for (const patch of [{status:'completed'}, {status:'cancelled'}, {driver_activated:true}, {remito_status:'firmado'}, {document_status:'submitted'}, {document_status:'approved'}, {remito_signed_at:'2026-10-17T12:00:00Z'}]) {
     assert.equal(ui.remitoPreparing({...s,...patch}), false, JSON.stringify(patch));
   }
+});
+
+test('un borrador se muestra incompleto sin afirmar presencia activa del chofer', () => {
+  const ui=load();
+  assert.match(ui.remitoNotice({status:'assigned',document_status:'draft'}), /Remito incompleto/);
+  assert.doesNotMatch(ui.remitoNotice({status:'assigned',document_status:'draft'}), /Creando|en preparación/);
+  assert.equal(ui.remitoNotice({status:'assigned',trip_id:8}), '');
+  assert.equal(ui.remitoNotice({status:'assigned',document_status:'submitted'}), '');
 });
 test('el resumen comercial explica duración, importe y cobrador en lenguaje visible', () => {
   const ui = load();

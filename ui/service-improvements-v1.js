@@ -138,8 +138,11 @@
   function remitoPreparing(s) {
     return !!s && ['assigned','at_origin'].includes(s.status) && !s.driver_activated &&
       !s.remito_signed_at && s.remito_status !== 'firmado' && !['submitted','approved','exception_approved'].includes(s.document_status) &&
-      (s.document_status === 'draft' || s.remito_status === 'borrador' || !!s.trip_id || s.trip_started === true);
+      (!s.document_status || ['not_started','draft'].includes(s.document_status)) &&
+      (s.document_status === 'draft' || s.remito_status === 'borrador');
   }
-  const remitoNotice = s => remitoPreparing(s) ? '<span class="ax-remito-preparing" role="status">' + global.AxUI.icon('file-text') + '<span>Remito en preparación<small>Preparación iniciada. Pendiente de firma del cliente.</small></span></span>' : '';
+  // Un borrador prueba que hay una carga incompleta, no que el formulario siga abierto.
+  // «Creando remito…» requiere una señal de presencia por servicio, aún no disponible.
+  const remitoNotice = s => remitoPreparing(s) ? '<span class="ax-remito-preparing" role="status">' + global.AxUI.icon('file-text') + '<span>Remito incompleto<small>Carga iniciada, todavía sin enviar.</small></span></span>' : '';
   global.AuxiliosServiceImprovements = {changes, display, confirmEdit, confirmAction, confirmDiscard, hoursToMinutes, minutesToHours, duration, isHourly, remitoPreparing, remitoNotice};
 })(window);

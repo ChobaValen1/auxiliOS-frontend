@@ -1,7 +1,7 @@
 /* Real Servicios module + real styles. RPC reads are simulated; all other RPCs fail. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v528');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v529');
 const index=fs.readFileSync(path.join(root,'Index.html'),'utf8');
 const links=[...index.slice(0,index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(s=>!s.includes('https://')).join('\n');
 const shell=index.slice(index.indexOf('<nav class="sidenav">'),index.indexOf('<div class="content">'));
@@ -11,7 +11,7 @@ const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta nam
 <script>window.PERFIL_USUARIO={roles:{name:'administracion'}};window.SCREENS={};window.calls=[];window.rows=${JSON.stringify(rows)};window.routeModes={a:'base_origin_destination_base',b:'origin_destination'};window.failRouteContext=false;
 window.goTo=name=>{document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('active',e.id==='screen-'+name));document.querySelector('.topbar-title').textContent='Servicios';};window.toggleSidenav=()=>{};window.qaViewed=null;window.qaNotices=[];window.toast=m=>qaNotices.push(m);window.verServicioWorkspace=id=>{qaViewed=id};
 window._db={rpc:async(name,args)=>{calls.push(name);if(name==='get_operator_service_context_v1'){await new Promise(r=>setTimeout(r,20));if(failRouteContext)return{error:{message:'offline'}};return{data:{billing:{route_mode:routeModes[args.p_company_id]},bases:[{base_id:'base1',latitude:-34,longitude:-58},{base_id:'base2',latitude:-35,longitude:-57}],services:[]}};}if(name==='get_operator_service_reference_data')return{data:{companies:[{company_id:'a',trade_name:'Cardinal'},{company_id:'b',trade_name:'SOS'}],drivers:[{user_id:'d1',full_name:'José Pérez'},{user_id:'d2',full_name:'Lucía Gómez'}],trucks:[{truck_id:'t1',numero_interno:'Móvil 122',plate:'TR122AA'},{truck_id:'t2',numero_interno:'Móvil 116',plate:'TR116AA'}],concepts:[]}};if(name==='list_operator_services')return{data:rows};if(['list_operator_service_document_connections_v2','list_driver_service_intakes_v2','list_driver_activated_services_v1'].includes(name))return{data:[]};throw new Error('RPC fuera del alcance de lectura: '+name);}};
-</script><script src="/ui/theme-v1.js"></script><script src="/ui/ax.js"></script><script src="/auxilios-filters-v1.js"></script><script src="/operator-services.js"></script><script src="/operator-service-lifecycle.js"></script><script>OperatorServices.loadResourceAvailability=async()=>true;</script><script src="/ui/motion/motion-v1.js"></script></body></html>`;
+</script><script src="/ui/theme-v1.js"></script><script src="/ui/ax.js"></script><script src="/ui/service-improvements-v1.js"></script><script src="/auxilios-filters-v1.js"></script><script src="/operator-services.js"></script><script src="/operator-service-lifecycle.js"></script><script>OperatorServices.loadResourceAvailability=async()=>true;</script><script src="/ui/motion/motion-v1.js"></script></body></html>`;
 const app=http.createServer((req,res)=>{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   if(pathname==='/'){res.setHeader('Content-Type','text/html; charset=utf-8');return res.end(html);}
@@ -66,7 +66,16 @@ else (async()=>{
     assert.match(secondRoute.searchParams.get('origin'),/Bonifacio/);assert.match(secondRoute.searchParams.get('destination'),/La Plata/);assert.equal(secondRoute.searchParams.has('waypoints'),false);
     assert.equal(await first.locator('.os-map-link').first().getAttribute('target'),'_blank');
     assert.match(await first.locator('.os-map-link').first().getAttribute('rel'),/noopener/);
-    await first.locator('.os-status').click();
+    const selector=first.locator('.os-status');
+    assert.equal(await selector.getAttribute('aria-haspopup'),'menu');
+    assert.equal(await selector.getAttribute('aria-controls'),'osl-quick-status-menu');
+    const idleSelector=await selector.evaluate(el=>{const s=getComputedStyle(el),a=getComputedStyle(el,'::after');return{background:s.backgroundColor,radius:s.borderRadius,arrow:a.content,arrowWidth:a.width};});
+    assert.equal(idleSelector.radius,'9px');assert.equal(idleSelector.arrow,'""');assert.equal(idleSelector.arrowWidth,'6px');
+    await selector.hover();
+    assert.notEqual(await selector.evaluate(el=>getComputedStyle(el).backgroundColor),idleSelector.background,'rounded hover is visible without moving or recoloring state');
+    await page.screenshot({path:path.join(out,'estado-hover-1440.png'),fullPage:true});
+    await selector.click();
+    assert.equal(await selector.getAttribute('aria-expanded'),'true');
     const statusMenu=page.locator('#osl-quick-status-menu');
     assert.equal(await statusMenu.locator('[data-osl-suggested],.is-next').count(),0,'no automatic status highlight');
     await statusMenu.locator('[data-osl-quick-action="arrive"]').click();
@@ -106,6 +115,20 @@ else (async()=>{
       assert.equal(await pending.locator('.os-more').evaluate(e=>e===document.activeElement),true,'Escape restores menu opener focus');
     }
     await page.evaluate(()=>{PERFIL_USUARIO.roles.name='administracion';OperatorServices.renderServices();});
+    // Persisted remito states are labels, not evidence that a driver has a form open.
+    for(const [fields,label] of [
+      [{document_status:'not_started'},'Remito pendiente'],
+      [{document_status:'draft'},'Remito incompleto'],
+      [{document_status:'submitted',remito_status:'firmado',remito_id:12},'Remito en revisión'],
+      [{document_status:'approved',remito_status:'firmado',remito_id:12},'Remito aprobado'],
+      [{document_status:'observed',remito_status:'firmado',remito_id:12},'Remito requiere correcciones']
+    ]){
+      await page.evaluate(fields=>{OperatorServices.S.services=structuredClone(rows);Object.assign(OperatorServices.S.services[0],fields);OperatorServices.renderServices();},fields);
+      assert.match(await first.locator('.col-status').innerText(),new RegExp(label));
+      assert.doesNotMatch(await first.locator('.col-status').innerText(),/Creando remito|Remito firmado · Revisar|Remito recibido|Remito en preparación/);
+      if(fields.remito_id)assert.equal(await first.locator('button.os-document-state').innerText(),label,'signed document action is still available');
+    }
+    await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
     const actionCases=[
       [{status:'pending'},'assign'],[{status:'pending',logistics_type:'third_party'},'assign'],
       [{status:'assigned'},'arrive'],[{status:'at_origin'},'finalize'],[{status:'en_route'},null],
@@ -114,7 +137,7 @@ else (async()=>{
     ];
     for(const [fields,expected] of actionCases){
       await page.evaluate(fields=>{OperatorServices.S.services=structuredClone(rows);Object.assign(OperatorServices.S.services[0],fields);OperatorServices.renderServices();},fields);
-      if(expected===null){assert.equal(await first.locator('.os-status').getAttribute('role'),null);continue;}
+      if(expected===null){assert.equal(await first.locator('.os-status').getAttribute('role'),null);assert.equal(await first.locator('.os-status').evaluate(el=>getComputedStyle(el,'::after').content),'none','no dropdown arrow without actions');continue;}
       await first.locator('.os-status').click();
       assert.equal(await statusMenu.locator('[data-osl-suggested],.is-next').count(),0,'no highlighted action for '+JSON.stringify(fields));
       assert.equal(await statusMenu.locator('[data-osl-quick-action="annul"].is-next').count(),0,'destructive action is never primary');
@@ -200,6 +223,6 @@ else (async()=>{
       }
     }
     assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-    console.log('PASS: no state highlight; one compact billing-route map; independent wide column beside Actions; Ver recorrido above Anular; company/date context reads, chosen base round trip vs origin-destination, RPC failure/retry, keyboard menus, existing dialogs/roles, history/page/scroll/search/filters, 6 widths and both themes. No external requests or data writes.');
+    console.log('PASS: rounded state hover, visible dropdown arrow and expanded state, no false affordance without actions; no suggested state highlight; billing routes/columns/menu order, keyboard/dialogs/roles, history/page/scroll/search/filters, 6 widths and both themes. No external requests or data writes.');
   }finally{if(browser)await browser.close();app.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
