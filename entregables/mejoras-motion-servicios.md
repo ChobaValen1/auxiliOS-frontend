@@ -8,13 +8,25 @@ Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negoc
 - Mostrar origen y destino en dos líneas, con acceso a las direcciones completas sin abrir el servicio.
 - Agrupar chofer y móvil; indicar explícitamente «Sin chofer» o «Sin móvil» cuando corresponda.
 - Hacer visible el estado y la próxima acción disponible, según el flujo y los permisos existentes.
-- Dejar una acción principal visible y agrupar las acciones secundarias permitidas en un menú.
+- Resaltar la próxima acción dentro del menú de estado, sin botón principal adicional en la fila (corrección del usuario).
 - Conservar búsqueda, filtros y posición de la lista al abrir un servicio y volver.
 - **Estado del remito:** anotar para modificar. Revisar su presentación y el flujo de cambio de estado; los estados, transiciones y permisos concretos quedan por definir con el usuario antes de modificar la lógica. No confundirlo con el estado del servicio.
 
 Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
 
-## Entrega de listado — `servicios-mesa-v526-20261022`
+## Corrección de recorrido y menú de estado — `servicios-maps-estado-v527-20261022`
+
+- Se retiran «Ver direcciones», el desplegable con direcciones repetidas y los botones principales de las filas.
+- Se conserva origen/destino como ya se mostraban, sin repetir sus etiquetas. Se agrega un ícono de mapa junto a cada dirección: abre esa ubicación en Google Maps en otra pestaña. En Acciones (⋯), «Ver recorrido en Google Maps» abre Origen → Destino; si sólo hay una ubicación, abre esa ubicación. No llama a APIs, no usa ubicación del dispositivo como origen implícito y no navega hasta que el usuario elige el enlace.
+- En el menú desplegable del estado, una sola acción disponible se resalta con el amarillo/ámbar existente: Sin asignar → Asignar; Asignado → Arribar; Arribado → Finalizar. Para logística tercerizada o remito firmado se resalta Finalizar si ya es la siguiente acción permitida. No se inventan transiciones ni se resalta Anular o una reversión. Perfiles de consulta no tienen acción de cambio destacada.
+- Los diálogos de asignación, arribo y cierre siguen siendo los existentes, con sus validaciones y confirmaciones. Se revalida la elegibilidad si el servicio cambia con el menú abierto. Menús utilizables con teclado y Escape devuelve el foco.
+- Se conservan mejoras de chofer/móvil, preferencias, filtros, historial, página y posición. El estado del remito continúa pendiente de definición. Publicación sólo en preview.
+
+Verificación: enlaces HTTPS de host fijo, direcciones completas codificadas, falta/ocultación de ubicación, matriz de roles y estados, diálogos sin guardar, estado obsoleto, navegación por teclado, ausencia de botones redundantes y seis tamaños de pantalla en ambos temas. RPC de lectura simuladas, sin solicitudes externas ni escrituras de registros. Capturas: `output/servicios-v527`.
+
+Formato de enlace: [documentación oficial de Maps URLs](https://developers.google.com/maps/documentation/urls/get-started).
+
+## Entrega inicial de listado, reemplazada según devolución — `servicios-mesa-v526-20261022`
 
 - Recorrido compacto con Origen/Destino identificados y direcciones desplegables dentro de la fila. Funciona con clic y teclado sin abrir el servicio; respeta las columnas y los detalles de ubicación ocultos por configuración.
 - Chofer y móvil agrupados, con «Sin chofer» y «Sin móvil» explícitos. Conserva tercerizados y usa los responsables históricos cuando la asignación activa ya fue liberada. Un recurso con ID válido pero referencia no disponible no se presenta como sin asignar.

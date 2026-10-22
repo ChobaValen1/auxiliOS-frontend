@@ -133,6 +133,27 @@ function crewCell(s){
   const d=crewValue(s,'driver'),m=crewValue(s,'mobile');
   return `${groupShows('driver')?`<b class="${d.missing?'os-unassigned':''}">${esc(d.label)}</b>${driverQueueCount(s)}`:''}${groupShows('mobile')?`<small class="os-crew-mobile${m.missing?' os-unassigned':''}">${esc(m.missing||/^m[oó]vil\b/i.test(m.label)?m.label:'Móvil '+m.label)}</small>`:''}`;
 }
+function mapsPlace(s,kind){
+  if(!groupShows(kind)||!effectiveColumns().location_detail.address)return '';
+  const p=locationParts(s,kind),value=String(p.raw||p.address||'').trim();
+  return value&&value!=='—'?value:'';
+}
+function mapsHref(s,kind){
+  const origin=mapsPlace(s,'origin'),destination=mapsPlace(s,'destination');
+  const point=kind==='origin'?origin:kind==='destination'?destination:'';
+  const route=!kind&&origin&&destination;
+  if(!route&&!point&&!origin&&!destination)return '';
+  const url=new URL(route?'https://www.google.com/maps/dir/':'https://www.google.com/maps/search/');
+  url.searchParams.set('api','1');
+  if(route){url.searchParams.set('origin',origin);url.searchParams.set('destination',destination);url.searchParams.set('travelmode','driving');}
+  else {if(kind&&!point)return '';url.searchParams.set('query',point||origin||destination);}
+  return url.href.length<=2048?url.href:'';
+}
+function locationMapLink(s,kind){
+  const href=mapsHref(s,kind);if(!href)return '';
+  const label=`Ver ${kind==='origin'?'origen':'destino'} en Google Maps`;
+  return `<a class="os-map-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${label}" aria-label="${label}" onclick="event.stopPropagation()">${ico('map')}</a>`;
+}
 function routeCell(s){
   const detail=effectiveColumns().location_detail;
   const places=['origin','destination'].filter(groupShows).map(kind=>{
@@ -141,25 +162,12 @@ function routeCell(s){
     const text=[...new Set(parts)].join(' · ')||'Sin detalle visible';
     return {kind,label,text,full:detail.address?(p.raw||p.address):text};
   });
-  const lines=places.map(p=>`<span class="os-hist-place ${p.kind==='origin'?'from':'to'}" title="${esc(p.full)}"><i aria-hidden="true"></i><span class="os-route-label">${p.label}</span><span class="os-route-text">${esc(p.text)}</span></span>`).join('');
-  const details=detail.address&&places.length?`<details class="os-route-details" onclick="event.stopPropagation()"><summary>Ver direcciones</summary><dl>${places.map(p=>`<div><dt>${p.label}</dt><dd>${esc(p.full)}</dd></div>`).join('')}</dl></details>`:'';
-  return `<div class="os-hist-route">${lines}${groupShows('km')?`<small>${num(svcFirst(num(s.estimated_distance_km)||null,s.remito_km_reales)).toLocaleString('es-AR')} km</small>`:''}${details}</div>`;
-}
-function primaryServiceAction(s){
-  const actions=canTransitionState()?window.OperatorServiceLifecycleV2?.quickActions?.(s)||[]:[];
-  // Reuse the lifecycle's eligibility; these callbacks open its existing confirmation dialogs.
-  if(actions.some(([key])=>['assign','assign_outsourced'].includes(key))&&typeof window.asignarServicioRapido==='function')return {key:'assign',label:'Asignar',icon:'user'};
-  if(actions.some(([key])=>key==='arrive')&&typeof window.marcarArribadoManual==='function')return {key:'arrive',label:'Arribo manual',icon:'map-pin'};
-  return {key:'view',label:'Ver servicio',icon:'eye'};
+  const lines=places.map(p=>`<div class="os-route-line"><span class="os-hist-place ${p.kind==='origin'?'from':'to'}" title="${esc(p.full)}"><i aria-hidden="true"></i><span class="os-route-text">${esc(p.text)}</span></span>${locationMapLink(s,p.kind)}</div>`).join('');
+  return `<div class="os-hist-route">${lines}${groupShows('km')?`<small>${num(svcFirst(num(s.estimated_distance_km)||null,s.remito_km_reales)).toLocaleString('es-AR')} km</small>`:''}</div>`;
 }
 function serviceActionsCell(s){
-  const a=primaryServiceAction(s),reference=s.service_order_number||s.service_number||'';
-  return `<div class="os-row-actions"><button type="button" class="os-primary-action${a.key==='view'?' is-neutral':''}" data-os-primary="${a.key}" aria-label="${esc(a.label+' '+reference)}" onclick="event.stopPropagation();accionPrincipalServicio('${s.service_id}','${a.key}')">${ico(a.icon)}<span>${a.label}</span></button><button type="button" class="os-more" data-os-menu="${s.service_id}" aria-label="Más acciones ${esc(reference)}" aria-haspopup="menu" aria-expanded="false" onclick="abrirMenuServicio(event,'${s.service_id}')">${ico('ellipsis')}</button></div>`;
-}
-function primaryServiceActionClick(id,action){
-  const s=service(id);if(!s||!canRead())return;
-  if(primaryServiceAction(s).key!==action){renderServices();return notify('El servicio cambió. Revisá la acción disponible.','warning');}
-  return menuAction(action,id);
+  const reference=s.service_order_number||s.service_number||'';
+  return `<button type="button" class="os-more" data-os-menu="${s.service_id}" aria-label="Más acciones ${esc(reference)}" aria-haspopup="menu" aria-expanded="false" onclick="abrirMenuServicio(event,'${s.service_id}')">${ico('ellipsis')}</button>`;
 }
 function cell(key,s){if(key==='code')return`<b class="os-service-code">${esc(s.service_order_number||s.service_number||'—')}</b>`;if(key==='datetime')return`<b>${fmtDay(s.scheduled_for)}</b><small class="os-scheduled-time">${fmtTime(s.scheduled_for)}</small>`;if(key==='arrival')return`<b>${fmtTime(s.arrived_at||s.estimated_arrival_at)}</b>`;if(key==='finish')return`<b>${fmtTime(s.completed_at||s.estimated_finish_at)}</b>`;if(key==='provider')return`<b>${esc(s.company_name||company(s.company_id)?.trade_name||company(s.company_id)?.legal_name||'—')}</b>`;if(key==='base')return`<b>${esc(s.billing_base_name||'—')}</b>`;if(key==='type')return`<b>${esc(s.concept_name||concept(s.primary_concept_id)?.name||'—')}</b>`;if(key==='origin')return locationCell(s,'origin');if(key==='destination')return locationCell(s,'destination');if(key==='client')return customerCell(s);if(key==='km')return`<b>${num(svcFirst(num(s.estimated_distance_km)||null,s.remito_km_reales)).toLocaleString('es-AR')} km</b>`;if((key==='driver'||key==='mobile')&&s.logistics_type==='third_party')return outsourcedCrewCell(s);if(key==='driver')return`<b class="${s.driver_name||s.assigned_driver_id?'':'os-unassigned'}">${esc(s.driver_name||driver(s.assigned_driver_id)?.full_name||'Sin asignar')}</b>`+driverQueueCount(s);if(key==='delay')return`<b>${num(s.granted_delay_minutes)>0?`${num(s.granted_delay_minutes)} min`:'—'}</b>`;if(key==='mobile')return`<b class="${s.truck_label||s.assigned_truck_id?'':'os-unassigned'}">${esc(s.truck_label||truck(s.assigned_truck_id)?.numero_interno||truck(s.assigned_truck_id)?.plate||'Sin asignar')}</b>`;if(key==='status')return statusCell(s)+queueMarkup(s);if(key==='amount_due')return amountDueCell(s);if(key==='actions')return`<button type="button" class="os-more" data-os-menu="${s.service_id}" aria-label="Más acciones" aria-haspopup="menu" aria-expanded="false" onclick="abrirMenuServicio(event,'${s.service_id}')">${ico('ellipsis')}</button>`;return'';}
 /* Historial: columnas compactas. Cada grupo junta columnas que se leen juntas (Fecha + Arribo + Fin, Prestadora + Base,
@@ -184,6 +192,7 @@ function historyCell(g,s){
 const columnLabel=k=>HISTORY_LABELS[k]||COLUMN_LABELS[k]||k;
 const columnCell=(k,s)=>{
   if(k==='actions')return serviceActionsCell(s);
+  if(['origin','destination'].includes(k))return `<div class="os-route-line">${cell(k,s)}${locationMapLink(s,k)}</div>`;
   if(['driver','mobile'].includes(k)&&s.logistics_type!=='third_party'){const v=crewValue(s,k);return `<b class="${v.missing?'os-unassigned':''}">${esc(v.label)}</b>`+(k==='driver'?driverQueueCount(s):'');}
   return HISTORY_GROUPS[k]?historyCell(k,s):cell(k,s);
 };
@@ -246,12 +255,10 @@ function renderPager(total){const wrap=document.querySelector('#screen-operacion
 function renderServices(){
   if(!canRead())return;
   const table=document.querySelector('#screen-operaciones .os-table-wrap'),position=table?{top:table.scrollTop,left:table.scrollLeft}:null;
-  const expanded=new Set([...document.querySelectorAll('#os-table-body tr:has(.os-route-details[open])')].map(el=>el.dataset.serviceId));
   renderFilterBar();renderIntakes();renderTabs();renderTableHeader();
   const all=filtered(),body=document.getElementById('os-table-body'),empty=document.getElementById('os-empty');if(!body||!empty)return;
   let rows=all;if(S.view==='history'){const key=historyPageKey();if(S.historyPageKey!==key){S.historyPageKey=key;S.historyPage=1;}const pages=Math.max(1,Math.ceil(all.length/HISTORY_PAGE_SIZE));S.historyPage=Math.min(Math.max(1,S.historyPage||1),pages);rows=all.slice((S.historyPage-1)*HISTORY_PAGE_SIZE,S.historyPage*HISTORY_PAGE_SIZE);}
   renderPager(all.length);closeRowMenu();body.innerHTML=rows.map(row).join('');empty.hidden=all.length>0;renderServiceResults(all.length,rows.length);
-  for(const el of body.querySelectorAll('tr'))if(expanded.has(el.dataset.serviceId))el.querySelector('.os-route-details')?.setAttribute('open','');
   if(table&&position){table.scrollTop=position.top;table.scrollLeft=position.left;}
   body.dispatchEvent(new CustomEvent('auxilios:services-rendered',{bubbles:true}));
 }
@@ -281,7 +288,9 @@ function openRowMenu(event,id){
   S.menuServiceId=id;const entries=[['view','Ver servicio']];if(canManage()&&!closed)entries.push(['edit','Editar']);else if(canEditHistoryService(s))entries.push(['edit-closed','Editar']);
   if(canTransitionState()&&!closed&&!legacy){if(['assigned','at_origin'].includes(s.status)||(s.status==='pending'&&s.logistics_type==='third_party'))entries.push(['finalize','Finalizar']);entries.push(['annul','Anular']);}
   const MENU_ICON={view:'eye',edit:'pencil','edit-closed':'pencil',finalize:'circle-check',annul:'circle-x'};
-  menu.setAttribute('role','menu');menu.innerHTML=entries.map(([action,label])=>`${action==='annul'?'<hr>':''}<button type="button" role="menuitem" ${action==='annul'?'class="danger"':''} onclick="accionMenuServicio('${action}','${id}')">${ico(MENU_ICON[action]||'chevron-right')}${label}</button>`).join('');
+  const maps=mapsHref(s),mapLabel=mapsPlace(s,'origin')&&mapsPlace(s,'destination')?'Ver recorrido en Google Maps':mapsPlace(s,'origin')?'Ver origen en Google Maps':'Ver destino en Google Maps';
+  menu.setAttribute('role','menu');menu.innerHTML=entries.map(([action,label])=>`${action==='annul'?'<hr>':''}<button type="button" role="menuitem" ${action==='annul'?'class="danger"':''} onclick="accionMenuServicio('${action}','${id}')">${ico(MENU_ICON[action]||'chevron-right')}${label}</button>`).join('')+(maps?`<hr><a role="menuitem" href="${esc(maps)}" target="_blank" rel="noopener noreferrer" onclick="cerrarMenuServicio()">${ico('map')}${mapLabel}</a>`:'');
+  menu.onkeydown=event=>{if(!['ArrowUp','ArrowDown','Home','End','Escape'].includes(event.key))return;event.preventDefault();event.stopPropagation();const items=[...menu.querySelectorAll('[role="menuitem"]')],index=items.indexOf(document.activeElement);if(event.key==='Escape'){closeRowMenu();button.focus();return;}const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowUp'?-1:1)+items.length)%items.length;items[next]?.focus();};
   document.querySelectorAll('#screen-operaciones .os-more[aria-expanded="true"]').forEach(b=>b.setAttribute('aria-expanded','false'));button.setAttribute?.('aria-expanded','true');menu.hidden=false;
   const width=menu.offsetWidth,height=menu.offsetHeight;
   menu.style.left=Math.max(8,Math.min(window.innerWidth-width-8,rect.right-width))+'px';
@@ -317,9 +326,6 @@ function hookNavigation(){
   window.__osNavHook=true;return true;
 }
 function init(){inject();applyRole();let attempts=0;const boot=setInterval(()=>{applyRole();hookNavigation();if(canRead()&&typeof _db!=='undefined'){clearInterval(boot);loadServices();}else if(++attempts>120)clearInterval(boot);},100);S.timer=setInterval(()=>{if(canRead()&&document.visibilityState==='visible'&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices();},30000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&canRead()&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices()});}
-// Critical modules load in sequence; refresh the fallback action when lifecycle becomes available.
-document.addEventListener('load',event=>{if(event.target?.tagName==='SCRIPT'&&/\/operator-service-lifecycle\.js(?:\?|$)/.test(event.target.src)&&canRead())renderServices();},true);
-window.accionPrincipalServicio=primaryServiceActionClick;
 Object.assign(O,{isProgrammedService,role,canRead,canManage,canEditHistoryService,canTransitionState,canReviewDocuments,hasSignedRemito,openSignedRemito,esc,num,statusMeta,normalizedStatus,activeServices,historyServices,filtered,company,driver,truck,concept,service,loadBase,loadReferences,loadServices,loadModuleConfig,loadPersonalPreference,renderServices,viewService});
 Object.assign(window,{moverColaServicio:moveQueue,abrirHistorialServicios:()=>{if(!canRead())return;goTo('operaciones');setView('history');},cargarServiciosOperador:loadServices,renderServiciosOperador:renderServices,filtrarEstadoServicios:filterStatus,cambiarVistaServicios:setView,abrirMenuServicio:openRowMenu,cambiarDensidadPersonalServicio:personalDensity,cerrarMenuServicio:closeRowMenu,accionMenuServicio:menuAction,verServicioOperador:viewService,abrirRemitoFirmadoOperador:openSignedRemito,abrirVinculoIngresoChofer:openIntakeLink,cerrarVinculoIngresoChofer:closeIntakeLink,confirmarVinculoIngresoChofer:confirmIntakeLink,crearServicioDesdeIngresoChofer:createServiceFromIntake,abrirAnularIngreso:openIntakeAnnul,cerrarAnularIngreso:closeIntakeAnnul,confirmarAnularIngreso:confirmIntakeAnnul,personalizarVistaServicios:openPersonalizer,cerrarPersonalizacionServicios:closePersonalizer,cambiarColumnaPersonalServicio:personalVisibility,cambiarDetalleUbicacionPersonalServicio:personalLocationDetail,moverColumnaPersonalServicio:movePersonal,guardarVistaServicios:savePersonal,restaurarVistaServicios:resetPersonal});
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();

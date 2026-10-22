@@ -1,7 +1,7 @@
 /* Real Servicios module + real styles. RPC reads are simulated; all other RPCs fail. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v526');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v527');
 const index=fs.readFileSync(path.join(root,'Index.html'),'utf8');
 const links=[...index.slice(0,index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(s=>!s.includes('https://')).join('\n');
 const shell=index.slice(index.indexOf('<nav class="sidenav">'),index.indexOf('<div class="content">'));
@@ -55,60 +55,82 @@ else (async()=>{
     assert.match(await page.locator('.os-filter-chips').innerText(),/Estado: Arribado/);
     await page.locator('[data-os-remove-filter="status"]').click();assert.equal(await page.locator('#os-table-body > tr').count(),3);
     const first=page.locator('#os-table-body > tr[data-service-id="1"]');
-    assert.equal(await first.locator('[data-os-primary]').getAttribute('data-os-primary'),'arrive');
-    await first.locator('.os-route-details summary').click();
-    assert.equal(await first.locator('.os-route-details').getAttribute('open'),'');
-    assert.match(await first.locator('.os-route-details dd').first().innerText(),/Mar del Plata, Buenos Aires, Argentina/);
-    assert.equal(await page.evaluate(()=>qaViewed),null,'route disclosure does not open the service');
-    await first.locator('.os-route-details summary').press('Enter');
-    assert.equal(await first.locator('.os-route-details').getAttribute('open'),null,'keyboard toggles route');
-    await first.locator('[data-os-primary="arrive"]').click();
+    assert.equal(await first.locator('[data-os-primary],.os-route-details,.os-route-label').count(),0,'no redundant disclosure or row primary action');
+    const originUrl=new URL(await first.getByRole('link',{name:'Ver origen en Google Maps',exact:true}).getAttribute('href'));
+    assert.equal(originUrl.origin,'https://www.google.com');assert.equal(originUrl.pathname,'/maps/search/');assert.equal(originUrl.searchParams.get('api'),'1');
+    assert.match(originUrl.searchParams.get('query'),/Mar del Plata, Buenos Aires, Argentina/);
+    assert.match(new URL(await first.getByRole('link',{name:'Ver destino en Google Maps',exact:true}).getAttribute('href')).searchParams.get('query'),/La Plata/);
+    assert.equal(await first.locator('.os-map-link').first().getAttribute('target'),'_blank');
+    assert.match(await first.locator('.os-map-link').first().getAttribute('rel'),/noopener/);
+    await first.locator('.os-status').click();
+    const statusMenu=page.locator('#osl-quick-status-menu');
+    assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').getAttribute('data-osl-quick-action'),'arrive');
+    await statusMenu.locator('[data-osl-quick-action="arrive"]').click();
     assert.equal(await page.getByRole('heading',{name:'Marcar servicio como ARRIBADO',exact:true}).isVisible(),true);
     assert.equal(await page.locator('#os-lifecycle-modal input[name="arrival_reason"]').count(),3);
     await page.locator('#os-lifecycle-modal').getByRole('button',{name:'Cancelar',exact:true}).click();
-    assert.equal(await page.evaluate(()=>qaViewed),null,'primary action does not bubble to the row');
+    assert.equal(await page.evaluate(()=>qaViewed),null,'status action does not bubble to the row');
     await page.evaluate(()=>{const s=OperatorServices.S.services.find(s=>s.service_id==='3');Object.assign(s,{status:'pending',assigned_driver_id:null,assigned_truck_id:null});OperatorServices.renderServices();});
     const pending=page.locator('#os-table-body > tr[data-service-id="3"]');
     assert.match(await pending.locator('.col-crew').innerText(),/Sin chofer\s+Sin móvil/);
-    await pending.locator('[data-os-primary="assign"]').click();
+    await pending.locator('.os-status').press('Enter');
+    assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').getAttribute('data-osl-quick-action'),'assign');
+    await statusMenu.locator('[data-osl-quick-action="assign"]').click();
     assert.equal(await page.getByRole('heading',{name:'Asignar servicio',exact:true}).isVisible(),true);
     assert.equal(await page.locator('#osl-quick-driver').isVisible(),true);
     await page.locator('#os-lifecycle-modal').getByRole('button',{name:'Cancelar',exact:true}).click();
     // Never expose a state transition to read-only roles. Existing secondary permissions stay intact.
     for(const role of ['operador','supervision','facturacion']){
       await page.evaluate(role=>{PERFIL_USUARIO.roles.name=role;OperatorServices.renderServices();},role);
-      assert.equal(await pending.locator('[data-os-primary]').getAttribute('data-os-primary'),role==='operador'?'assign':'view');
+      await pending.locator('.os-status').click();
+      assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').count(),role==='operador'?1:0);
+      await page.keyboard.press('Escape');
+      assert.equal(await pending.locator('.os-status').evaluate(e=>e===document.activeElement),true,'status menu Escape returns focus');
       await pending.locator('.os-more').click();
       assert.equal(await page.locator('#os-row-menu button').first().evaluate(e=>e===document.activeElement),true,'menu receives keyboard focus');
       if(role!=='operador')assert.equal(await page.locator('#os-row-menu button').count(),1);
+      const maps=page.locator('#os-row-menu a');
+      assert.equal(await maps.count(),1);
+      const route=new URL(await maps.getAttribute('href'));
+      assert.equal(route.pathname,'/maps/dir/');assert.match(route.searchParams.get('origin'),/Bonifacio/);assert.match(route.searchParams.get('destination'),/La Plata/);
+      await page.keyboard.press('End');
+      assert.equal(await maps.evaluate(e=>e===document.activeElement),true,'map action participates in menu keyboard navigation');
       await page.keyboard.press('Escape');
       assert.equal(await pending.locator('.os-more').evaluate(e=>e===document.activeElement),true,'Escape restores menu opener focus');
     }
     await page.evaluate(()=>{PERFIL_USUARIO.roles.name='administracion';OperatorServices.renderServices();});
     const actionCases=[
       [{status:'pending'},'assign'],[{status:'pending',logistics_type:'third_party'},'assign'],
-      [{status:'assigned'},'arrive'],[{status:'at_origin'},'view'],[{status:'en_route'},'view'],
-      [{status:'assigned',remito_id:12,document_status:'submitted',remito_status:'firmado'},'view'],
-      [{status:'assigned',driver_activated:true},'view'],[{status:'assigned',logistics_type:'third_party'},'view']
+      [{status:'assigned'},'arrive'],[{status:'at_origin'},'finalize'],[{status:'en_route'},null],
+      [{status:'assigned',remito_id:12,document_status:'submitted',remito_status:'firmado'},'finalize'],
+      [{status:'assigned',driver_activated:true},'finalize'],[{status:'assigned',logistics_type:'third_party'},'finalize']
     ];
     for(const [fields,expected] of actionCases){
       await page.evaluate(fields=>{OperatorServices.S.services=structuredClone(rows);Object.assign(OperatorServices.S.services[0],fields);OperatorServices.renderServices();},fields);
-      assert.equal(await first.locator('[data-os-primary]').getAttribute('data-os-primary'),expected,'canonical action for '+JSON.stringify(fields));
+      if(expected===null){assert.equal(await first.locator('.os-status').getAttribute('role'),null);continue;}
+      await first.locator('.os-status').click();
+      assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').getAttribute('data-osl-quick-action'),fields.logistics_type==='third_party'&&expected==='assign'?'assign_outsourced':expected,'suggested action for '+JSON.stringify(fields));
+      const nextColors=await statusMenu.locator('[data-osl-suggested="true"]').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,text:s.color,border:s.borderLeftColor,amber:s.getPropertyValue('--amber')};});
+      assert.match(nextColors.background,/^rgb\(245, (158|166), (11|35)\)$/,'next action uses the existing amber token: '+JSON.stringify(nextColors));
+      assert.equal(nextColors.text,'rgb(17, 17, 17)','dark text stays legible on the yellow highlight');
+      assert.equal(await statusMenu.locator('[data-osl-quick-action="annul"].is-next').count(),0,'destructive action is never primary');
+      await page.keyboard.press('Escape');
     }
     await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
     await page.evaluate(()=>{OperatorServices.S.services[0].truck_label='MOVIL 110';OperatorServices.renderServices();});
     assert.equal(await first.locator('.os-crew-mobile').innerText(),'MOVIL 110','existing mobile prefix is not duplicated');
     await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
     // A stale visible action is revalidated against the refreshed row before opening a dialog.
+    await first.locator('.os-status').click();
     await page.evaluate(()=>{OperatorServices.S.services.find(s=>s.service_id==='1').status='cancelled';});
-    await first.locator('[data-os-primary="arrive"]').click();
+    await statusMenu.locator('[data-osl-quick-action="arrive"]').click();
     assert.equal(await page.locator('#os-lifecycle-modal').isVisible(),false);
     assert.match(await page.evaluate(()=>qaNotices.at(-1)),/El servicio cambió/);
     await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
     // Respect individually hidden data inside compact groups and address preferences.
     await page.evaluate(()=>{OperatorServices.S.moduleConfig.column_visibility.mobile=false;OperatorServices.S.moduleConfig.location_detail.address=false;OperatorServices.renderServices();});
     assert.equal(await first.locator('.os-crew-mobile').count(),0);
-    assert.equal(await first.locator('.os-route-details').count(),0);
+    assert.equal(await first.locator('.os-map-link').count(),0);
     assert.doesNotMatch(await first.locator('.col-route').innerText(),/Bonifacio/);
     await page.evaluate(()=>{OperatorServices.S.moduleConfig.column_visibility.mobile=true;OperatorServices.S.moduleConfig.location_detail.address=true;OperatorServices.renderServices();});
     await page.locator('#os-view-history').click();
@@ -117,7 +139,7 @@ else (async()=>{
     await page.locator('#os-history-pager').getByRole('button',{name:'Página siguiente',exact:true}).click();
     assert.match(await page.locator('.os-results-count').innerText(),/^26–50 de 52 resultados/);
     const wrap=page.locator('#screen-operaciones .os-table-wrap');
-    await page.locator('#os-table-body tr').nth(2).locator('[data-os-primary="view"]').click();
+    await page.locator('#os-table-body tr').nth(2).locator('.os-service-code').click();
     assert.match(await page.evaluate(()=>qaViewed),/^H/);
     // Measure after clicking: browser focus/scroll-into-view can legitimately move a row.
     await wrap.evaluate(el=>{el.scrollTop=160;el.scrollLeft=100;});
@@ -145,8 +167,9 @@ else (async()=>{
         assert.ok(geometry.filters.y>=geometry.view.bottom+8,'filters below view controls at '+width);
         assert.ok(geometry.overflow<=1,'page overflow at '+width);
         const firstRow=page.locator('#os-table-body > tr').first();
-        assert.equal(await firstRow.locator('.os-primary-action').isVisible(),true,'primary action visible at '+width);
-        const overlap=await firstRow.evaluate(row=>{const a=row.querySelector('.actions').getBoundingClientRect(),b=row.querySelector('.col-code').getBoundingClientRect();return Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1;});
+        assert.equal(await firstRow.locator('.os-primary-action').count(),0,'no primary button in row at '+width);
+        assert.equal(await firstRow.locator('.os-map-link').first().isVisible(),true,'map shortcut visible at '+width);
+        const overlap=await firstRow.evaluate(row=>{const a=row.querySelector('.actions').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(row.querySelector('.col-code b'));const b=range.getBoundingClientRect();return Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1;});
         assert.equal(overlap,false,'actions do not overlap service code at '+width);
         assert.equal(await page.locator('.os-table th.actions').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>0),true,'actions heading is not suppressed at '+width);
         for(let i=0;i<geometry.controls.length;i++)for(let j=i+1;j<geometry.controls.length;j++){
@@ -154,9 +177,14 @@ else (async()=>{
           assert.equal(intersects,false,'overlapping controls at '+width+': '+a.selector+' / '+b.selector);
         }
         if([1440,1060,390,320].includes(width))await page.screenshot({path:path.join(out,theme+'-'+width+'.png'),fullPage:true});
+        if([1440,390].includes(width)){
+          await firstRow.locator('.os-status').click();
+          await page.screenshot({path:path.join(out,theme+'-estado-'+width+'.png'),fullPage:true});
+          await page.keyboard.press('Escape');
+        }
       }
     }
     assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-    console.log('PASS: real Servicios + lifecycle dialogs; route disclosure mouse/keyboard, explicit missing crew, canonical primary actions, stale-state protection, read-only roles, secondary menu/Escape, hidden fields, history/page/scroll retained, search/filters/pagination, 6 widths in both themes. RPC reads mocked; no external requests or data writes.');
+    console.log('PASS: Maps point/directions URLs, no redundant disclosure or row primary button; next action yellow INSIDE state menu, real assignment/arrival dialogs, role/state/logistics matrix, stale-state guard, keyboard menus, preferences, retained history/page/scroll, search/filters, 6 widths and both themes. No external requests or data writes.');
   }finally{if(browser)await browser.close();app.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
