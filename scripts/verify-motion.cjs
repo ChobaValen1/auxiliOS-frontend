@@ -24,7 +24,7 @@ const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta n
 <article class="rsm-card"><h2>Servicios · muestra local</h2><div class="os-status-tabs"><button class="active">Todos</button><button>En curso</button><button>Finalizados</button></div><table class="qa-table"><tbody><tr><td>AX-001</td><td>En curso</td><td>Palermo</td></tr><tr><td>AX-002</td><td>Finalizado</td><td>Belgrano</td></tr></tbody></table></article></section>
 ${['registro','camion','documentos','remitos','operaciones'].map(id=>`<section class="screen" id="screen-${id}"><h1>${id}</h1>${id==='operaciones'?serviceToolbar+'<div class="os-table-wrap"><p>Lista de prueba</p></div>':'<p>Se conserva la navegación del sistema.</p>'}</section>`).join('')}</div></div>
 <div class="ax-backdrop" id="qa-modal" hidden><section class="ax-modal" role="dialog" aria-modal="true" aria-labelledby="qa-title"><header><h2 id="qa-title">Revisar cambios</h2></header><div class="ax-modal-body"><label>Referencia<input class="ax-input" value="Sólo prueba"></label><p>No se guardarán datos reales.</p></div><footer><button class="ax-btn" id="qa-cancel">Cancelar</button><button class="ax-btn ax-btn-primary" id="qa-confirm">Confirmar</button></footer></section></div>
-<script>window.PERFIL_USUARIO={roles:{name:'administracion'}};window.qaCalls=0;
+<script>window.PERFIL_USUARIO={full_name:'Andrea Freire',roles:{name:'operador'}};window.qaCalls=0;
 window.cargarServiciosOperador=()=>{window.qaRefreshCalls=(window.qaRefreshCalls||0)+1;const button=document.getElementById('os-refresh');button.dataset.state='loading';setTimeout(()=>button.removeAttribute('data-state'),700);};
 document.getElementById('os-q').addEventListener('input',event=>window.qaQuery=event.target.value);
 window.SCREENS=Object.fromEntries(['dashboard','registro','camion','documentos','remitos','operaciones'].map(id=>[id,{title:id,sub:'QA aislada'}]));
@@ -48,7 +48,7 @@ if (process.argv.includes('--serve')) {
 } else (async()=>{
   const app=server(); await new Promise(r=>app.listen(0,'127.0.0.1',r));
   let browser;
-  const out=path.resolve(root,'../output/motion-servicios-v519'); fs.mkdirSync(out,{recursive:true});
+  const out=path.resolve(root,'../output/sidenav-perfil-v522'); fs.mkdirSync(out,{recursive:true});
   try {
     browser=await chromium.launch({channel:'msedge',headless:true});
     const page=await browser.newPage({viewport:{width:1440,height:900}}), errors=[], external=[];
@@ -59,53 +59,66 @@ if (process.argv.includes('--serve')) {
     assert.deepEqual(errors,[],'fixture starts with the real navigation functions');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--ax-accent').trim()),'#f5a623');
     assert.equal(await page.locator('.nav-logo img').first().evaluate(el=>el.complete&&el.naturalWidth===1077),true);
+    assert.equal(await page.locator('.ax-nav-user-name').innerText(),'Andrea Freire');
+    assert.equal(await page.locator('.ax-nav-user-role').innerText(),'Operador');
+    assert.equal(await page.locator('.nav-logo .ax-brand-icon').isVisible(),true,'brand icon beside identity');
+    assert.equal(await page.locator('.nav-logo .ax-brand-full').isVisible(),false,'wide brand does not overlap the user name');
+    assert.equal(await page.locator('.sidenav').evaluate(el=>parseFloat(getComputedStyle(el).transitionDuration)),.65);
+    await page.evaluate(()=>{window.PERFIL_USUARIO=null;document.querySelector('.nav-avatar').textContent='';});
+    await page.waitForFunction(()=>document.querySelector('.ax-nav-user').hidden);
+    await page.evaluate(()=>{window.PERFIL_USUARIO={full_name:'María de los Ángeles Fernández Montenegro',roles:{name:'supervision'}};document.querySelector('.nav-avatar').textContent='MF';});
+    await page.waitForFunction(()=>document.querySelector('.ax-nav-user-role').textContent==='Supervisión');
+    assert.equal(await page.locator('.ax-nav-user-name').innerText(),'María de los Ángeles Fernández Montenegro');
+    assert.equal(await page.locator('.ax-nav-user-name').evaluate(el=>el.scrollWidth<=el.clientWidth),true,'long full name wraps without overflowing');
+    await page.evaluate(()=>{window.PERFIL_USUARIO={full_name:'Andrea Freire',roles:{name:'operador'}};document.querySelector('.nav-avatar').textContent='AF';});
+    await page.waitForFunction(()=>document.querySelector('.ax-nav-user-name').textContent==='Andrea Freire');
     await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});
     await page.locator('#nav-registro').click(); await page.waitForTimeout(600);
     assert.equal(await page.locator('#nav-registro').getAttribute('aria-current'),'page');
     const active=await page.locator('#nav-registro').boundingBox(),pill=await page.locator('.ax-motion-nav-pill').boundingBox();
     assert.ok(Math.abs(active.y-pill.y)<2);
-    await page.locator('.nav-collapse').click(); await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.locator('.nav-collapse').click(); await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width<80);
-    await page.locator('#nav-camion').hover(); await page.waitForTimeout(400);
+    await page.locator('#nav-camion').hover(); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210);
     assert.equal(await page.evaluate(()=>localStorage.getItem('auxilios.sidenav.collapsed')),'1');
     // Hover opens until the pointer leaves, with or without a module selection.
-    await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width<80,'leaving without clicking retracts');
-    await page.locator('#nav-registro').hover(); await page.waitForTimeout(400);
+    await page.locator('#nav-registro').hover(); await page.waitForTimeout(750);
     await page.locator('#nav-registro').click({position:{x:20,y:20}});
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210,'module click keeps open while the pointer remains inside');
     assert.equal(await page.locator('.sidenav').evaluate(el=>el.matches(':hover')),true);
-    await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width<80,'leaving after selection retracts despite retained link focus');
-    await page.mouse.move(800,400); await page.locator('#nav-camion').hover(); await page.waitForTimeout(400);
+    await page.mouse.move(800,400); await page.locator('#nav-camion').hover(); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210,'leaving and reentering opens again');
-    await page.locator('#nav-registro').click({position:{x:20,y:20}}); await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.locator('#nav-registro').click({position:{x:20,y:20}}); await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.equal(await page.locator('#nav-registro').evaluate(el=>el===document.activeElement),true,'click keeps the accessible focus');
     assert.ok((await page.locator('.sidenav').boundingBox()).width<80,'mouse click must not pin hover expansion');
-    await page.keyboard.press('Shift+Tab'); await page.waitForTimeout(400);
+    await page.keyboard.press('Shift+Tab'); await page.waitForTimeout(750);
     assert.equal(await page.locator('#nav-dashboard').evaluate(el=>el===document.activeElement),true);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210,'keyboard peek');
-    await page.keyboard.press('Enter'); await page.waitForTimeout(400);
+    await page.keyboard.press('Enter'); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210,'keyboard activation keeps focused navigation visible');
-    await page.keyboard.press('Tab'); await page.waitForTimeout(400);
+    await page.keyboard.press('Tab'); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210,'Tab reopens for the next keyboard navigation');
-    await page.locator('#nav-dashboard').click(); await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.locator('#nav-dashboard').click(); await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width<80,'switching from keyboard to mouse releases peek');
     await page.locator('#qa-open').focus();
-    await page.locator('.nav-collapse').click(); await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.locator('.nav-collapse').click(); await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210,'explicit expand remains pinned');
-    await page.locator('.nav-collapse').click(); await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.locator('.nav-collapse').click(); await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width<80,'explicit collapse still works');
     assert.equal(await page.evaluate(()=>localStorage.getItem('auxilios.sidenav.collapsed')),'1');
     // Real legacy flow: Services auto-collapses, then goTo(other) used to re-expand it.
     await page.evaluate(()=>{setSidenavCollapsed(false,{persist:false});goTo('operaciones');});
-    await page.locator('#nav-registro').hover(); await page.waitForTimeout(400);
-    await page.locator('#nav-registro').click({position:{x:20,y:20}}); await page.waitForTimeout(400);
+    await page.locator('#nav-registro').hover(); await page.waitForTimeout(750);
+    await page.locator('#nav-registro').click({position:{x:20,y:20}}); await page.waitForTimeout(750);
     assert.equal(await page.locator('#screen-registro').isVisible(),true);
     assert.ok((await page.locator('.sidenav').boundingBox()).width>210,'leaving Services keeps hover open until pointer exit');
-    await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.mouse.move(800,400); await page.waitForTimeout(750);
     assert.ok((await page.locator('.sidenav').boundingBox()).width<80,'real goTo leaving Services cannot restore expanded width after a module click: '+JSON.stringify(await page.evaluate(()=>({body:document.body.className,nav:document.querySelector('.sidenav').className,width:document.querySelector('.sidenav').getBoundingClientRect().width,api:typeof window.setSidenavCollapsed,focus:document.activeElement.id}))));
     await page.mouse.move(800,400); await page.locator('#nav-dashboard').click({position:{x:20,y:20}}); await page.mouse.move(800,400);
     if (process.argv.includes('--navigation-only')) {

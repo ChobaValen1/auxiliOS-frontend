@@ -3,6 +3,9 @@ import { spring } from 'motion';
 import './style.css';
 import { enhanceServiceToolbar } from './service-toolbar';
 
+// Existing application profile: read the shared binding, including its async login update.
+declare const PERFIL_USUARIO: { full_name?: string; roles?: { name?: string }; role?: string } | null;
+
 // Progressive enhancement: DOM, permissions, business callbacks and data remain owned by the app.
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const mobile = matchMedia('(max-width: 767px)');
@@ -28,6 +31,28 @@ reduced.addEventListener('change', () => {
 function navigation() {
   const nav = document.querySelector<HTMLElement>('.sidenav');
   if (!nav) return;
+  const brand = nav.querySelector<HTMLElement>('.nav-logo');
+  const identity = document.createElement('span');
+  identity.className = 'ax-nav-user'; identity.hidden = true;
+  const userName = document.createElement('span'); userName.className = 'ax-nav-user-name';
+  const userRole = document.createElement('span'); userRole.className = 'ax-nav-user-role';
+  identity.append(userName, userRole); brand?.append(identity);
+  let identityKey = '';
+  function syncIdentity() {
+    let profile: typeof PERFIL_USUARIO = null;
+    try { if (typeof PERFIL_USUARIO !== 'undefined') profile = PERFIL_USUARIO; } catch { /* profile not initialized yet */ }
+    const name = String(profile?.full_name || '').trim().replace(/\s+/g, ' ');
+    const role = String(profile?.roles?.name || profile?.role || '').trim().toLowerCase();
+    const labels: Record<string, string> = { administracion: 'Administración', operador: 'Operador', supervision: 'Supervisión', chofer: 'Chofer', facturacion: 'Facturación' };
+    const label = labels[role] || (role ? role.charAt(0).toUpperCase() + role.slice(1) : '');
+    const next = JSON.stringify([name, label]);
+    if (next === identityKey) return;
+    identityKey = next;
+    userName.textContent = name; userRole.textContent = label;
+    userRole.hidden = !label; identity.hidden = !name;
+    brand?.classList.toggle('ax-nav-account', !!name);
+  }
+  syncIdentity();
   const pill = document.createElement('i');
   pill.className = 'ax-motion-nav-pill'; pill.setAttribute('aria-hidden', 'true');
   nav.prepend(pill);
@@ -51,9 +76,11 @@ function navigation() {
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(position); }
   function peek() {
+    syncIdentity();
     const focus = keyboardFocus && nav!.contains(document.activeElement) && !document.activeElement?.closest('.nav-collapse');
     const open = !mobile.matches && document.body.classList.contains('nav-collapsed') && (hovering || focus);
     nav!.classList.toggle('ax-nav-peek', open);
+    identity.setAttribute('aria-hidden', String(mobile.matches || (document.body.classList.contains('nav-collapsed') && !open)));
     schedule();
   }
   nav.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') { hovering = true; keyboardFocus = false; peek(); } });
@@ -88,13 +115,15 @@ function navigation() {
   nav.addEventListener('scroll', schedule, { passive: true });
   new ResizeObserver(schedule).observe(nav);
   new MutationObserver(records => {
-    if (records.some(r => r.target !== pill && !(r.target instanceof Element && r.target.closest('.ax-motion-nav-pill')))) schedule();
+    if (records.some(r => r.target !== pill && !(r.target instanceof Element && r.target.closest('.ax-motion-nav-pill')))) { syncIdentity(); schedule(); }
   }).observe(nav, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
   new MutationObserver(peek).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   mobile.addEventListener('change', peek);
   reduced.addEventListener('change', () => { pillMotion?.stop(); key = ''; schedule(); });
   window.addEventListener('resize', schedule, { passive: true });
   document.fonts.ready.then(schedule);
+  window.addEventListener('auxilios:profile-ready', peek);
+  peek();
   position();
 }
 
