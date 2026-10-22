@@ -10,6 +10,7 @@ const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="v
 <link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/ui/tokens.css"><link rel="stylesheet" href="/ui/components.css"><link rel="stylesheet" href="/ui/service-improvements-v1.css"><link rel="stylesheet" href="/ui/service-price-calculator-v1.css">
 <link rel="stylesheet" href="/operator-services.css"><link rel="stylesheet" href="/operator-service-workspace-reactive-v1.css"><link rel="stylesheet" href="/operator-service-commercial-addons-v1.css">
 <link rel="stylesheet" href="/ui/app-v1.css"><link rel="stylesheet" href="/servicio-form-ax-v1.css"><link rel="stylesheet" href="/private-service-v1.css"><link rel="stylesheet" href="/private-payments-v1.css"><link rel="stylesheet" href="/remitos-admin-panel-v1.css">
+${process.env.MOTION_QA_BASELINE ? '' : '<link rel="stylesheet" href="/ui/motion/motion-v1.css"><script src="/ui/motion/motion-v1.js" defer></script>'}
 <style>body{display:block;padding:24px}.modal-backdrop[hidden]{display:none}.modal-backdrop.open{display:flex}#modal-operador-wizard{position:fixed;inset:0;z-index:10000;background:var(--ax-bg);overflow:auto}</style>
 <main><h1>AuxiliOS · Prueba de mejoras</h1><div id="notice"></div></main><div id="modal-operador-wizard" hidden><div id="os-wizard-shell"></div></div>
 <script>
@@ -104,7 +105,13 @@ const server = http.createServer((req,res) => {
     await page.locator('.psv-body').evaluate(el=>el.scrollTop=0);
     const allDetails=await page.locator('.psv-details-column').boundingBox(),wideFooter=await page.locator('.psv-checkout > footer').boundingBox();
     await page.screenshot({path:path.join(out,'presupuesto-compacto-desktop.png'),fullPage:true});
-    assert.ok(allDetails.y+allDetails.height<=wideFooter.y,'toda la primera columna visible a 1544×692');
+    // La versión actual agrega tercerizados/captación: el formulario desplaza su cuerpo,
+    // no el footer. Esta condición también se verifica con MOTION_QA_BASELINE=1.
+    assert.ok(wideFooter.y+wideFooter.height<=692,'acciones siempre visibles a 1544×692');
+    await page.locator('.psv-body').evaluate(el=>el.scrollTop=el.scrollHeight);
+    const detailsAfterScroll=await page.locator('.psv-details-column').boundingBox();
+    assert.ok(detailsAfterScroll.y+detailsAfterScroll.height<=wideFooter.y+1,'todos los campos accesibles desplazando el cuerpo');
+    await page.locator('.psv-body').evaluate(el=>el.scrollTop=0);
     await page.locator('[data-psv-k="sin_costo"]').check();
     assert.equal(await page.locator('#psv-presupuesto').inputValue(),'0');
     assert.equal(await page.locator('#psv-presupuesto').getAttribute('readonly'),'');
@@ -182,6 +189,11 @@ const server = http.createServer((req,res) => {
     assert.match(saved.args.p_reason,/confirmados/);
     await page.waitForFunction(()=>!OperatorServices.S.wizard);
     assert.equal(await page.evaluate(()=>AuxiliosServiceImprovements.remitoNotice({...sample,remito_status:'firmado'})), '');
+    if (process.argv.includes('--motion-scope')) {
+      assert.deepEqual(nativeDialogs,[]); assert.deepEqual(errors,[]);
+      console.log('QA Motion OK: formulario real, calculadora, mobile 320/390/560/820, foco/Escape, confirmación/cancelación, error/reintento y guardado del servicio con RPC simulada.');
+      return;
+    }
     await page.evaluate(async()=>{await OperatorServices.openEditWizard('qa-1');const w=OperatorServices.S.wizard;w.administrativeEdit=true;w.data.commercial_addons.excess_charges[0].payer_agent='customer';w.original=structuredClone(w.data);OperatorServiceWorkspaceV2.render();});
     await page.locator('[data-ca="toggle-excess"]').click();
     const adminQty=page.locator('[data-aa-kind="excess_charges"][data-aa-key="quantity"]');

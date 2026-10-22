@@ -34,45 +34,68 @@
   /* Espera a que termine la animación de salida (o nada, si no hay movimiento). */
   function afterAnim(el, done) {
     if (reduce()) return done();
-    var t = setTimeout(done, ms('--ax-dur', 180) + 60);
-    el.addEventListener('animationend', function fin() { clearTimeout(t); el.removeEventListener('animationend', fin); done(); });
+    var finished = false;
+    function fin(event) {
+      if (event && event.target !== el || finished) return;
+      finished = true; clearTimeout(t); el.removeEventListener('animationend', fin); done();
+    }
+    var t = setTimeout(fin, ms('--ax-dur', 180) + 60);
+    el.addEventListener('animationend', fin);
   }
 
   /* ── Avisos flotantes ─────────────────────────────────────────────── */
   var TONE = { ok: 'circle-check', danger: 'circle-x', info: 'info', warn: 'triangle-alert' };
+  var toastQueue = [];
   function toast(o) {
     o = o || {};
     var tone = o.tone || 'ok';
     var box = doc.querySelector('.ax-toasts');
     if (!box) { box = doc.createElement('div'); box.className = 'ax-toasts'; doc.body.appendChild(box); }
-    // De a 3 como máximo: el más viejo se va.
-    while (box.children.length >= 3) box.removeChild(box.firstElementChild);
+    box.setAttribute('role', 'region');
+    box.setAttribute('aria-label', 'Notificaciones');
     var el = doc.createElement('div');
     el.className = 'ax-toast ax-toast-' + tone;
     // Errores: anuncio inmediato y quedan hasta que se cierran. Éxito: se van solos.
     el.setAttribute('role', tone === 'danger' ? 'alert' : 'status');
+    el.setAttribute('aria-atomic', 'true');
     var auto = o.timeout != null ? o.timeout : (tone === 'danger' ? 0 : ms('--ax-toast-ms', 4000));
     el.innerHTML = icon(TONE[tone] || 'info', 'ax-icon-lg') +
       '<span><b>' + esc(o.title) + '</b>' + (o.text ? '<small>' + esc(o.text) + '</small>' : '') + '</span>' +
       (o.action ? '<button type="button" class="ax-btn ax-btn-sm" data-ax-toast-action>' + esc(o.action.label) + '</button>' : '') +
       '<button type="button" class="ax-btn ax-btn-ghost ax-btn-icon ax-btn-sm ax-toast-close" aria-label="Cerrar aviso">' + icon('x') + '</button>' +
       (auto ? '<i class="ax-toast-bar" style="animation-duration:' + auto + 'ms"></i>' : '');
-    box.appendChild(el);
-    var timer = null, restante = auto, desde = Date.now();
-    function cerrar() {
-      if (el.hasAttribute('data-closing')) return;
-      clearTimeout(timer);
-      el.setAttribute('data-closing', '');
-      afterAnim(el, function () { if (el.parentNode) el.parentNode.removeChild(el); });
+    var timer = null, restante = auto, desde = 0, closed = false, shown = false, hovered = false, focused = false, stackPaused = false;
+    function next() {
+      while (box.children.length < 3 && toastQueue.length) toastQueue.shift()();
     }
-    function correr() { if (restante > 0) { desde = Date.now(); timer = setTimeout(cerrar, restante); } }
-    // Con el mouse encima, el tiempo se frena (para poder leerlo).
-    el.addEventListener('mouseenter', function () { clearTimeout(timer); restante -= Date.now() - desde; });
-    el.addEventListener('mouseleave', correr);
+    function cerrar() {
+      if (closed) return;
+      closed = true;
+      clearTimeout(timer);
+      if (!shown) return;
+      el.setAttribute('data-closing', '');
+      afterAnim(el, function () { if (el.parentNode) el.parentNode.removeChild(el); next(); });
+    }
+    function correr() {
+      if (!shown || closed || hovered || focused || stackPaused || !auto || timer !== null) return;
+      desde = Date.now(); timer = setTimeout(cerrar, Math.max(0, restante));
+    }
+    function pause() {
+      if (timer !== null) { clearTimeout(timer); timer = null; restante = Math.max(0, restante - (Date.now() - desde)); }
+      el.setAttribute('data-paused', '');
+    }
+    function resume() { if (!hovered && !focused && !stackPaused) { el.removeAttribute('data-paused'); correr(); } }
+    el.addEventListener('ax:toast-pause', function (event) { stackPaused = !!event.detail; if (stackPaused) pause(); else resume(); });
+    el.addEventListener('mouseenter', function () { hovered = true; pause(); });
+    el.addEventListener('mouseleave', function () { hovered = false; resume(); });
+    el.addEventListener('focusin', function () { focused = true; pause(); });
+    el.addEventListener('focusout', function (event) { focused = el.contains(event.relatedTarget); resume(); });
     el.querySelector('.ax-toast-close').addEventListener('click', cerrar);
     var act = el.querySelector('[data-ax-toast-action]');
     if (act) act.addEventListener('click', function () { cerrar(); o.action.onClick && o.action.onClick(); });
-    correr();
+    // Conserva los errores y el aviso que se está leyendo; el resto espera su turno.
+    toastQueue.push(function () { if (closed) return; shown = true; box.appendChild(el); correr(); });
+    next();
     return { close: cerrar };
   }
 
@@ -176,29 +199,56 @@
   }, true);
 
   /* ── Botón que guarda ─────────────────────────────────────────────── */
-  /* Evita el doble clic, muestra "Guardando…" y, si sale bien, un tilde un segundo.
-     Si sale mal, el botón vuelve a como estaba (el error lo muestra quien llama). */
+  /* Pasar una función permite bloquear la operación antes de iniciarla:
+     AxUI.busy(btn, () => guardar()). Las promesas existentes siguen admitidas. */
+  var busyButtons = new WeakMap();
   function busy(btn, promesa, textos) {
     textos = textos || {};
-    if (!btn || btn.getAttribute('data-state') === 'loading') return promesa;
-    var antes = btn.innerHTML, ancho = btn.offsetWidth;
+    if (!btn) return Promise.resolve().then(function () { return typeof promesa === 'function' ? promesa() : promesa; });
+    var previous = busyButtons.get(btn);
+    if (previous && previous.active) return previous.promise;
+    if (previous) previous.restore();
+    var ancho = btn.offsetWidth, nodes = doc.createDocumentFragment();
+    var saved = { minWidth: btn.style.minWidth, disabled: btn.disabled, busy: btn.getAttribute('aria-busy'), state: btn.getAttribute('data-state'), styled: btn.classList.contains('ax-stateful') };
+    while (btn.firstChild) nodes.appendChild(btn.firstChild);
+    var record = { active: true, timer: null, restore: volver, promise: null };
+    busyButtons.set(btn, record);
+    btn.classList.add('ax-stateful');
     btn.style.minWidth = ancho + 'px';
     btn.setAttribute('data-state', 'loading');
     btn.setAttribute('aria-busy', 'true');
     btn.disabled = true;
-    btn.innerHTML = icon('loader-circle') + esc(textos.loading || 'Guardando…');
+    function paint(state, name, label) {
+      btn.setAttribute('data-state', state);
+      btn.innerHTML = icon(name) + '<span class="ax-state-label" role="status" aria-live="polite">' + esc(label) + '</span>';
+    }
+    paint('loading', 'loader-circle', textos.loading || 'Guardando…');
     var inicio = Date.now();
-    function volver() { btn.innerHTML = antes; btn.removeAttribute('data-state'); btn.removeAttribute('aria-busy'); btn.disabled = false; btn.style.minWidth = ''; }
-    return Promise.resolve(promesa).then(function (r) {
+    function volver() {
+      if (busyButtons.get(btn) !== record) return;
+      clearTimeout(record.timer);
+      btn.replaceChildren(nodes);
+      ['data-state', 'aria-busy'].forEach(function (name, i) { var value = i ? saved.busy : saved.state; if (value == null) btn.removeAttribute(name); else btn.setAttribute(name, value); });
+      btn.disabled = saved.disabled; btn.style.minWidth = saved.minWidth;
+      if (!saved.styled) btn.classList.remove('ax-stateful');
+      busyButtons.delete(btn);
+    }
+    record.promise = Promise.resolve().then(function () { return typeof promesa === 'function' ? promesa() : promesa; }).then(function (r) {
       // Al menos 400 ms de "Guardando…" para que no parpadee.
       var espera = Math.max(0, 400 - (Date.now() - inicio));
       return new Promise(function (ok) { setTimeout(ok, espera); }).then(function () {
-        btn.setAttribute('data-state', 'done');
-        btn.innerHTML = icon('check') + esc(textos.done || 'Listo');
-        setTimeout(volver, 1000);
+        btn.setAttribute('aria-busy', 'false');
+        paint('done', 'check', textos.done || 'Listo');
+        record.timer = setTimeout(volver, 1000);
         return r;
       });
-    }, function (e) { volver(); throw e; });
+    }, function (e) {
+      record.active = false; btn.disabled = saved.disabled; btn.setAttribute('aria-busy', 'false');
+      paint('error', 'circle-x', textos.error || 'Reintentar');
+      record.timer = setTimeout(volver, 2400);
+      throw e;
+    });
+    return record.promise;
   }
 
   /* ── Carga ────────────────────────────────────────────────────────── */

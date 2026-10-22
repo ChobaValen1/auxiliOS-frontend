@@ -614,8 +614,8 @@
         '</div></div>' +
       '</div>' +
       '<footer><button type="button" class="psv-btn" data-psv="cerrar-form">Cancelar</button>' +
-        '<button type="button" class="psv-btn primary" data-psv="guardar"' + (st.busy ? ' disabled' : '') + '>' +
-        (st.busy ? 'Guardando…' : st.edit ? 'Guardar cambios' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
+        '<button type="button" class="psv-btn primary ax-stateful" data-psv="guardar"' + (st.busy ? ' disabled data-state="loading" aria-busy="true"' : st.error ? ' data-state="error"' : '') + '>' +
+        (st.busy ? ico('loader-circle') + '<span class="ax-state-label" role="status">Guardando…</span>' : st.error ? ico('circle-x') + 'Reintentar guardado' : st.edit ? 'Guardar cambios' : st.intake ? 'Crear y finalizar' : 'Crear servicio') + '</button></footer>' +
       '</div>' + calculatorLayer();
     marcas(m);
     confirmarRecientes(m);
