@@ -1,5 +1,34 @@
 # Servicios: búsqueda y ayudas de la barra
 
+## Próxima etapa acordada — 22/10/2026
+
+Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negocio. Validar primero en la versión de prueba; no promover a producción sin aprobación.
+
+- Dar mayor jerarquía al código y la patente; cliente y prestadora como información secundaria.
+- Mostrar origen y destino en dos líneas, con acceso a las direcciones completas sin abrir el servicio.
+- Agrupar chofer y móvil; indicar explícitamente «Sin chofer» o «Sin móvil» cuando corresponda.
+- Hacer visible el estado y la próxima acción disponible, según el flujo y los permisos existentes.
+- Dejar una acción principal visible y agrupar las acciones secundarias permitidas en un menú.
+- Conservar búsqueda, filtros y posición de la lista al abrir un servicio y volver.
+- **Estado del remito:** anotar para modificar. Revisar su presentación y el flujo de cambio de estado; los estados, transiciones y permisos concretos quedan por definir con el usuario antes de modificar la lógica. No confundirlo con el estado del servicio.
+
+Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
+
+## Entrega de listado — `servicios-mesa-v525-20261022`
+
+- Recorrido compacto con Origen/Destino identificados y direcciones desplegables dentro de la fila. Funciona con clic y teclado sin abrir el servicio; respeta las columnas y los detalles de ubicación ocultos por configuración.
+- Chofer y móvil agrupados, con «Sin chofer» y «Sin móvil» explícitos. Conserva tercerizados y usa los responsables históricos cuando la asignación activa ya fue liberada. Un recurso con ID válido pero referencia no disponible no se presenta como sin asignar.
+- Acción principal visible según la elegibilidad del lifecycle existente: Asignar, Arribo manual o Ver servicio. Asignar/Arribo abren sus diálogos canónicos, no confirman automáticamente ni agregan RPC. Se vuelve a validar el estado antes de ejecutar la acción; Supervisión y Facturación sólo reciben Ver servicio.
+- Acciones secundarias y controles de negocio existentes conservados. Menú con foco de teclado, Escape devuelve el foco al disparador, posición calculada según su altura real. En escritorio las acciones permanecen accesibles al desplazar la tabla; en móvil ocupan el pie de cada tarjeta y no tapan el código.
+- Conserva Activos/Historial, filtros, página y desplazamiento al salir del módulo y volver. Los recorridos abiertos se conservan en el refresco del listado. Mayor jerarquía de código y patente sin cambiar paleta.
+- Sin modificaciones a los estados/transiciones del remito. Ese punto sigue pendiente de definición con el usuario. Sin cambios de backend, consultas, permisos o registros reales.
+
+Verificación: `scripts/verify-service-list.cjs` usa los módulos reales de Servicios y lifecycle, RPC de lectura simuladas y bloquea cualquier otra RPC o solicitud externa. Comprueba direcciones con mouse/teclado, diálogos sin confirmar, matriz de estados y logística, roles, acción obsoleta, preferencias, navegación y paginación; diseño en 1440/1060/768/720/390/320 px y ambos temas. Evidencias: `output/servicios-v525`.
+
+Las pruebas heredadas `phase3b-service-lifecycle` y `service-times-visibility` aún esperan el prefijo de caché `auxilios-billing-phase2-v…`, que ya no existe en el HEAD previo v524. Fallos preexistentes de esas aserciones, no del comportamiento de Servicios. No se alteraron para esta entrega.
+
+## Entrega anterior
+
 Versión de prueba: `servicios-operativos-v521-20261022`.
 
 ## Corrección y mejoras operativas
