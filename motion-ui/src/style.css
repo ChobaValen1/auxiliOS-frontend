@@ -34,6 +34,29 @@ body.ax-motion :is(.ax-btn, .os-manage, .btn-primary) { transition: background .
 body.ax-motion :is(.ax-btn-primary, .os-manage):not(:disabled):hover { box-shadow: 0 3px 14px var(--ax-accent-soft); }
 body.ax-motion :is(.ax-btn, .os-manage, .btn-primary):not(:disabled):active { transform: translateY(1px); }
 
+/* Service tools keep the existing palette, search handler and request lifecycle. */
+body.ax-motion .ax-search-field input { padding-right: 44px; }
+.ax-search-field input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.ax-search-shortcut, .ax-search-clear { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; box-sizing: border-box; width: 26px; height: 26px; border: 1px solid var(--ax-border); border-radius: 6px; background: var(--ax-surface-2); color: var(--ax-text-3); }
+.ax-search-shortcut { font: 500 12px var(--ax-font); pointer-events: none; }
+.ax-search-clear { padding: 0; border-color: transparent; background: transparent; color: var(--ax-text-2); font: 22px/1 var(--ax-font); cursor: pointer; transition: background .15s, color .15s; }
+.ax-search-clear:hover { background: var(--ax-surface-3); color: var(--ax-text); }
+.ax-search-clear:focus-visible { outline: 2px solid var(--ax-accent); outline-offset: 1px; }
+.ax-search-shortcut[hidden], .ax-search-clear[hidden] { display: none; }
+body.ax-motion #screen-operaciones .os-commandbar { position: relative; }
+.ax-service-loading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ax-service-progress { position: absolute; left: 0; right: 0; bottom: -5px; height: 2px; border-radius: 2px; overflow: hidden; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.ax-service-progress::before { content: ''; display: block; width: 35%; height: 100%; background: var(--ax-accent); border-radius: inherit; }
+.ax-service-busy .ax-service-progress { opacity: 1; }
+.ax-service-busy .ax-service-progress::before { animation: ax-service-sweep 1.3s ease-in-out infinite; }
+body.ax-motion #os-refresh[aria-busy="true"] { color: var(--ax-accent); border-color: var(--ax-accent); background: var(--ax-accent-soft); cursor: wait; }
+.ax-control-hint { position: fixed; z-index: 20001; max-width: min(260px, calc(100vw - 16px)); box-sizing: border-box; padding: 8px 11px; border: 1px solid var(--ax-border-strong); border-radius: 9px; background: var(--ax-surface-3); box-shadow: var(--ax-shadow-pop); color: var(--ax-text); font: 500 var(--ax-fs-sm)/1.4 var(--ax-font); overflow-wrap: anywhere; animation: ax-hint-enter .15s ease-out; }
+.ax-control-hint[hidden] { display: none; }
+body.ax-motion .ax-has-hint[data-ax-tip]::after { display: none; }
+@keyframes ax-service-sweep { from { transform: translateX(-105%); } to { transform: translateX(390%); } }
+@keyframes ax-hint-enter { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@media (hover: none) { .ax-search-shortcut { display: none; } .ax-search-clear { width: 32px; height: 32px; right: 3px; } }
+
 /* Selected filter follows its real button; warning colors and counts remain untouched. */
 .ax-motion-tabs { position: relative; isolation: isolate; }
 .ax-motion-tab-ink { position: absolute; z-index: 0; pointer-events: none; border-radius: 999px; background: var(--ax-surface-3); border: 1px solid var(--ax-border-strong); }
@@ -86,6 +109,9 @@ body.ax-motion .ax-motion-stack .ax-toast small { display: block; margin-top: 4p
   body.ax-motion .ax-motion-stack > .ax-toast { max-height: calc((100dvh - 176px - env(safe-area-inset-bottom, 0px)) / 3); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .ax-control-hint, .ax-service-progress, .ax-service-progress::before,
+  body.ax-motion #os-refresh[data-state="loading"] .ax-icon { animation: none !important; transition: none !important; }
+  .ax-service-busy .ax-service-progress::before { width: 100%; }
   body.ax-motion .sidenav, body.ax-motion .main, body.ax-motion .nav-item,
   body.ax-motion .ax-stateful, body.ax-motion .ax-stateful > .ax-icon { animation: none !important; transition: none !important; }
 }

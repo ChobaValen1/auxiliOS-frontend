@@ -7,20 +7,26 @@ const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
 const index = fs.readFileSync(path.join(root, 'Index.html'), 'utf8');
 const sigma = fs.readFileSync(path.join(root, 'sigma.js'), 'utf8');
+const servicesSource = fs.readFileSync(path.join(root, 'operator-services.js'), 'utf8');
+const serviceToolbar = servicesSource.slice(servicesSource.indexOf('<section class="os-commandbar"'), servicesSource.indexOf('</section>', servicesSource.indexOf('<section class="os-commandbar"')) + 10)
+  .replace(/\$\{ico\('[^']+'\)\}/g, '<svg class="ax-icon" width="16" height="16" aria-hidden="true"><path d="M4 8h8" stroke="currentColor"/></svg>');
+assert.ok(serviceToolbar.includes('id="os-q"') && !serviceToolbar.includes('${'));
 const realGoTo = sigma.slice(sigma.indexOf('function goTo(name) {'), sigma.indexOf('function toggleWorkshop(row) {'));
 const realSidebar = sigma.slice(sigma.indexOf("const SIDENAV_COLLAPSED_KEY ="), sigma.indexOf('function _actualizarEstadoGuardadoRemito('));
 assert.ok(realGoTo.includes('_menuAutomaticoServicios(name)') && realSidebar.includes('function toggleSidenav()'));
 const links = [...index.slice(0, index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(x=>!x.includes('https://')).join('\n');
 const shell = index.slice(index.indexOf('<nav class="sidenav">'), index.indexOf('<div class="content">'));
 assert.ok(shell.includes('tb-theme') && shell.includes('ax-brand-full'));
-const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${links}
+const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/operator-services.css"><link rel="stylesheet" href="/auxilios-filters-v1.css">${links}
 <script src="/ui/theme-v1.js"></script><style>.qa-actions{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0}.qa-label{color:var(--ax-text-3);margin:16px 0}.rsm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}.rsm-kpi{background:var(--ax-surface-2);border:1px solid var(--ax-border);padding:20px}.rsm-kpi-value{font-size:32px;font-weight:600;margin-top:10px}.qa-table{width:100%;border-collapse:collapse}.qa-table td{padding:18px;border-bottom:1px solid var(--ax-border)}.rsm-card{padding:20px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}.os-status-tabs{display:flex;gap:8px;margin:20px 0}.os-status-tabs button{padding:8px 14px;color:var(--ax-text);background:transparent;border:1px solid var(--ax-border);border-radius:999px;font:inherit;cursor:pointer}</style></head><body>${shell}
 <div class="content"><section class="screen active" id="screen-dashboard"><p class="qa-label">Verificación local · datos simulados · sin conexión a la base</p><div class="rsm-kpis">${[['Servicios','28'],['En curso','9'],['Finalizados','19'],['Flota disponible','6']].map(([label,value])=>`<article class="rsm-kpi"><div>${label}</div><div class="rsm-kpi-value">${value}</div></article>`).join('')}</div>
 <div class="qa-actions"><button id="qa-save" class="ax-btn ax-btn-primary">Guardar prueba</button><button id="qa-open" class="ax-btn">Revisar cambios</button><button id="qa-notices" class="ax-btn">Mostrar avisos</button></div>
 <article class="rsm-card"><h2>Servicios · muestra local</h2><div class="os-status-tabs"><button class="active">Todos</button><button>En curso</button><button>Finalizados</button></div><table class="qa-table"><tbody><tr><td>AX-001</td><td>En curso</td><td>Palermo</td></tr><tr><td>AX-002</td><td>Finalizado</td><td>Belgrano</td></tr></tbody></table></article></section>
-${['registro','camion','documentos','remitos','operaciones'].map(id=>`<section class="screen" id="screen-${id}"><h1>${id}</h1><p>Se conserva la navegación del sistema.</p></section>`).join('')}</div></div>
+${['registro','camion','documentos','remitos','operaciones'].map(id=>`<section class="screen" id="screen-${id}"><h1>${id}</h1>${id==='operaciones'?serviceToolbar+'<div class="os-table-wrap"><p>Lista de prueba</p></div>':'<p>Se conserva la navegación del sistema.</p>'}</section>`).join('')}</div></div>
 <div class="ax-backdrop" id="qa-modal" hidden><section class="ax-modal" role="dialog" aria-modal="true" aria-labelledby="qa-title"><header><h2 id="qa-title">Revisar cambios</h2></header><div class="ax-modal-body"><label>Referencia<input class="ax-input" value="Sólo prueba"></label><p>No se guardarán datos reales.</p></div><footer><button class="ax-btn" id="qa-cancel">Cancelar</button><button class="ax-btn ax-btn-primary" id="qa-confirm">Confirmar</button></footer></section></div>
 <script>window.PERFIL_USUARIO={roles:{name:'administracion'}};window.qaCalls=0;
+window.cargarServiciosOperador=()=>{window.qaRefreshCalls=(window.qaRefreshCalls||0)+1;const button=document.getElementById('os-refresh');button.dataset.state='loading';setTimeout(()=>button.removeAttribute('data-state'),700);};
+document.getElementById('os-q').addEventListener('input',event=>window.qaQuery=event.target.value);
 window.SCREENS=Object.fromEntries(['dashboard','registro','camion','documentos','remitos','operaciones'].map(id=>[id,{title:id,sub:'QA aislada'}]));
 ['_resetJornadasMobile','cargarDashboard','actualizarPantallaJornadas','cargarScreenCamion','cargarDocumentos','showRemitosView','cargarRemitos','actualizarKpisRemitos'].forEach(name=>window[name]=()=>{});
 const qaServicesNav=document.createElement('div');qaServicesNav.className='nav-item';qaServicesNav.id='nav-operaciones';qaServicesNav.innerHTML='<span class="nav-label">Servicios</span>';qaServicesNav.onclick=()=>goTo('operaciones');document.querySelector('.nav-bottom').before(qaServicesNav);
@@ -42,7 +48,7 @@ if (process.argv.includes('--serve')) {
 } else (async()=>{
   const app=server(); await new Promise(r=>app.listen(0,'127.0.0.1',r));
   let browser;
-  const out=path.resolve(root,'../output/motion-preview-v517'); fs.mkdirSync(out,{recursive:true});
+  const out=path.resolve(root,'../output/motion-servicios-v519'); fs.mkdirSync(out,{recursive:true});
   try {
     browser=await chromium.launch({channel:'msedge',headless:true});
     const page=await browser.newPage({viewport:{width:1440,height:900}}), errors=[], external=[];
@@ -105,6 +111,39 @@ if (process.argv.includes('--serve')) {
     if (process.argv.includes('--navigation-only')) {
       assert.deepEqual(errors,[]); assert.deepEqual(external,[]);
       console.log('PASS: mouse hover/click/leave, keyboard Tab/Enter, keyboard-to-mouse switch, explicit pin/collapse, original focus and preference preserved.');
+      return;
+    }
+    // The shipped Servicios toolbar: shortcut, native filter events, loading and keyboard help.
+    await page.locator('#nav-operaciones').click(); await page.mouse.move(800,400); await page.waitForTimeout(400);
+    await page.locator('#nav-operaciones').focus(); await page.keyboard.press('/');
+    assert.equal(await page.locator('#os-q').evaluate(el=>el===document.activeElement),true,'slash focuses search');
+    await page.locator('#os-q').fill('AX-001');
+    assert.equal(await page.evaluate(()=>qaQuery),'AX-001');
+    await page.keyboard.press('/'); assert.equal(await page.locator('#os-q').inputValue(),'AX-001/','slash remains text inside an input');
+    await page.keyboard.press('Escape'); assert.equal(await page.evaluate(()=>qaQuery),'','Escape uses the original input event');
+    await page.locator('#os-q').fill('palermo'); await page.getByRole('button',{name:'Limpiar búsqueda',exact:true}).click();
+    assert.equal(await page.evaluate(()=>qaQuery),''); assert.equal(await page.locator('#os-q').evaluate(el=>el===document.activeElement),true);
+    await page.locator('#os-refresh').click(); await page.waitForTimeout(80);
+    assert.equal(await page.locator('#os-refresh').getAttribute('aria-busy'),'true'); assert.equal(await page.locator('#os-refresh').isDisabled(),true);
+    assert.equal(await page.locator('#screen-operaciones .os-table-wrap').getAttribute('aria-busy'),'true');
+    await page.waitForTimeout(750); assert.equal(await page.locator('#os-refresh').isEnabled(),true); assert.equal(await page.locator('#os-refresh').getAttribute('aria-busy'),null);
+    assert.equal(await page.evaluate(()=>qaRefreshCalls),1);
+    await page.locator('#os-refresh').blur(); await page.locator('#os-refresh').focus(); await page.waitForTimeout(100);
+    const hint=page.getByRole('tooltip'); assert.equal(await hint.innerText(),'Actualizar');
+    const hintBox=await hint.boundingBox(); assert.ok(hintBox.x>=0 && hintBox.x+hintBox.width<=1441 && hintBox.y>=0,'hint is within viewport');
+    await page.keyboard.press('Escape'); assert.equal(await hint.isVisible(),false);
+    await page.evaluate(()=>AxUI.openModal(document.querySelector('#qa-modal'))); await page.locator('#qa-confirm').focus(); await page.keyboard.press('/');
+    assert.equal(await page.locator('#os-q').evaluate(el=>el===document.activeElement),false,'shortcut cannot steal modal focus');
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({width:390,height:844}); await page.waitForTimeout(200);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'toolbar does not overflow on mobile');
+    await page.screenshot({path:path.join(out,'servicios-mobile.png'),fullPage:true});
+    await page.setViewportSize({width:1440,height:900}); await page.waitForTimeout(200);
+    await page.screenshot({path:path.join(out,'servicios-toolbar.png'),fullPage:true});
+    await page.locator('#nav-dashboard').click(); await page.mouse.move(800,400);
+    if (process.argv.includes('--toolbar-only')) {
+      assert.deepEqual(errors,[]); assert.deepEqual(external,[]);
+      console.log('PASS: real Servicios toolbar markup, search input events, clear/Escape, slash shortcut and modal guard, loading lifecycle/dedup, tooltip keyboard/Escape/viewport, mobile layout. No external requests.');
       return;
     }
     // Dynamic role visibility stays under application control.

@@ -1,6 +1,7 @@
 import { animate } from 'motion/mini';
 import { spring } from 'motion';
 import './style.css';
+import { enhanceServiceToolbar } from './service-toolbar';
 
 // Progressive enhancement: DOM, permissions, business callbacks and data remain owned by the app.
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -237,10 +238,14 @@ function install() {
   const initialized = new WeakSet<HTMLElement>();
   const shown = new WeakMap<HTMLElement, boolean>();
   const states = new WeakMap<HTMLElement, string>();
-  const selector = '.screen, .ax-backdrop, .modal-backdrop, .psv-backdrop, .ax-stateful, .ax-toasts, .ax-theme-menu, .os-status-tabs, .rsm-kpi, .rsm-card, #dash-view-analitica, .dashx-body';
+  const selector = '.screen, .ax-backdrop, .modal-backdrop, .psv-backdrop, .ax-stateful, .ax-toasts, .ax-theme-menu, .os-status-tabs, .os-commandbar, .rsm-kpi, .rsm-card, #dash-view-analitica, .dashx-body';
   const pending = new Set<HTMLElement>(); let frame = 0;
   function inspect(el: HTMLElement) {
     if (!el.isConnected) return;
+    if (el.matches('.os-commandbar')) {
+      if (!initialized.has(el) && el.querySelector('#os-q')) { initialized.add(el); enhanceServiceToolbar(el); }
+      return;
+    }
     if (el.matches('.ax-toasts, .os-status-tabs')) {
       if (!initialized.has(el)) { initialized.add(el); if (el.matches('.ax-toasts')) notifications(el); else tabs(el); }
       return;
