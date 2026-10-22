@@ -1,7 +1,7 @@
 /* Real Servicios module + real styles. RPC reads are simulated; all other RPCs fail. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v525');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v526');
 const index=fs.readFileSync(path.join(root,'Index.html'),'utf8');
 const links=[...index.slice(0,index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(s=>!s.includes('https://')).join('\n');
 const shell=index.slice(index.indexOf('<nav class="sidenav">'),index.indexOf('<div class="content">'));
@@ -95,6 +95,9 @@ else (async()=>{
       await page.evaluate(fields=>{OperatorServices.S.services=structuredClone(rows);Object.assign(OperatorServices.S.services[0],fields);OperatorServices.renderServices();},fields);
       assert.equal(await first.locator('[data-os-primary]').getAttribute('data-os-primary'),expected,'canonical action for '+JSON.stringify(fields));
     }
+    await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
+    await page.evaluate(()=>{OperatorServices.S.services[0].truck_label='MOVIL 110';OperatorServices.renderServices();});
+    assert.equal(await first.locator('.os-crew-mobile').innerText(),'MOVIL 110','existing mobile prefix is not duplicated');
     await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
     // A stale visible action is revalidated against the refreshed row before opening a dialog.
     await page.evaluate(()=>{OperatorServices.S.services.find(s=>s.service_id==='1').status='cancelled';});

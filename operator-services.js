@@ -131,7 +131,7 @@ function crewValue(s,kind){
 function crewCell(s){
   if(s.logistics_type==='third_party')return outsourcedCrewCell(s);
   const d=crewValue(s,'driver'),m=crewValue(s,'mobile');
-  return `${groupShows('driver')?`<b class="${d.missing?'os-unassigned':''}">${esc(d.label)}</b>${driverQueueCount(s)}`:''}${groupShows('mobile')?`<small class="os-crew-mobile${m.missing?' os-unassigned':''}">${esc(m.missing||/^móvil\b/i.test(m.label)?m.label:'Móvil '+m.label)}</small>`:''}`;
+  return `${groupShows('driver')?`<b class="${d.missing?'os-unassigned':''}">${esc(d.label)}</b>${driverQueueCount(s)}`:''}${groupShows('mobile')?`<small class="os-crew-mobile${m.missing?' os-unassigned':''}">${esc(m.missing||/^m[oó]vil\b/i.test(m.label)?m.label:'Móvil '+m.label)}</small>`:''}`;
 }
 function routeCell(s){
   const detail=effectiveColumns().location_detail;

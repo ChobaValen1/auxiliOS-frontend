@@ -14,7 +14,7 @@ Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negoc
 
 Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
 
-## Entrega de listado — `servicios-mesa-v525-20261022`
+## Entrega de listado — `servicios-mesa-v526-20261022`
 
 - Recorrido compacto con Origen/Destino identificados y direcciones desplegables dentro de la fila. Funciona con clic y teclado sin abrir el servicio; respeta las columnas y los detalles de ubicación ocultos por configuración.
 - Chofer y móvil agrupados, con «Sin chofer» y «Sin móvil» explícitos. Conserva tercerizados y usa los responsables históricos cuando la asignación activa ya fue liberada. Un recurso con ID válido pero referencia no disponible no se presenta como sin asignar.
@@ -23,7 +23,7 @@ Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. E
 - Conserva Activos/Historial, filtros, página y desplazamiento al salir del módulo y volver. Los recorridos abiertos se conservan en el refresco del listado. Mayor jerarquía de código y patente sin cambiar paleta.
 - Sin modificaciones a los estados/transiciones del remito. Ese punto sigue pendiente de definición con el usuario. Sin cambios de backend, consultas, permisos o registros reales.
 
-Verificación: `scripts/verify-service-list.cjs` usa los módulos reales de Servicios y lifecycle, RPC de lectura simuladas y bloquea cualquier otra RPC o solicitud externa. Comprueba direcciones con mouse/teclado, diálogos sin confirmar, matriz de estados y logística, roles, acción obsoleta, preferencias, navegación y paginación; diseño en 1440/1060/768/720/390/320 px y ambos temas. Evidencias: `output/servicios-v525`.
+Verificación: `scripts/verify-service-list.cjs` usa los módulos reales de Servicios y lifecycle, RPC de lectura simuladas y bloquea cualquier otra RPC o solicitud externa. Comprueba direcciones con mouse/teclado, diálogos sin confirmar, matriz de estados y logística, roles, acción obsoleta, preferencias, navegación y paginación; diseño en 1440/1060/768/720/390/320 px y ambos temas. Evidencias: `output/servicios-v526`.
 
 Las pruebas heredadas `phase3b-service-lifecycle` y `service-times-visibility` aún esperan el prefijo de caché `auxilios-billing-phase2-v…`, que ya no existe en el HEAD previo v524. Fallos preexistentes de esas aserciones, no del comportamiento de Servicios. No se alteraron para esta entrega.
 
