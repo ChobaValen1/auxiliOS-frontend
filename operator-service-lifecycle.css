@@ -59,8 +59,4 @@
 .osv4-reactive .osl-assignment-inline-actions button.primary{border-color:var(--amber,#f5a623);background:var(--amber,#f5a623);color:#111}
 .osv4-reactive .osl-assignment-inline.is-error{border-color:color-mix(in srgb,var(--red,#e2504a) 55%,transparent);background:transparent;box-shadow:inset 3px 0 0 var(--red,#e2504a)}
 .os-resource-hint.is-blocked,.osl-assignment-inline-error{color:var(--red,#e2504a)!important}
-/* Only the available next step is highlighted; destructive/reversal actions stay separate. */
-#osl-quick-status-menu.osl-quick-status-menu button[data-osl-suggested="true"],#osl-quick-status-menu.osl-quick-status-menu button[data-osl-suggested="true"]:hover{--osl-act:var(--amber,#f5a623);background:var(--amber,#f5a623)!important;border-left-color:var(--amber,#f5a623);color:#111;font-weight:600}
-#osl-quick-status-menu.osl-quick-status-menu button[data-osl-suggested="true"] .ax-icon{color:currentColor}
-.osl-quick-status-menu button[data-osl-suggested="true"]:before,.osl-quick-status-menu button[data-osl-suggested="true"]:hover:before{background:#111}
 #osl-quick-status-menu.osl-quick-status-menu button[data-osl-quick-action]:focus-visible{outline:2px solid var(--amber,#f5a623);outline-offset:1px}

@@ -133,26 +133,57 @@ function crewCell(s){
   const d=crewValue(s,'driver'),m=crewValue(s,'mobile');
   return `${groupShows('driver')?`<b class="${d.missing?'os-unassigned':''}">${esc(d.label)}</b>${driverQueueCount(s)}`:''}${groupShows('mobile')?`<small class="os-crew-mobile${m.missing?' os-unassigned':''}">${esc(m.missing||/^m[oó]vil\b/i.test(m.label)?m.label:'Móvil '+m.label)}</small>`:''}`;
 }
-function mapsPlace(s,kind){
-  if(!groupShows(kind)||!effectiveColumns().location_detail.address)return '';
-  const p=locationParts(s,kind),value=String(p.raw||p.address||'').trim();
-  return value&&value!=='—'?value:'';
+const routeContexts=new Map(),routeJobs=[];let routeReaders=0;
+function routeContextKey(s){
+  const date=new Date(s.scheduled_for),valid=Number.isFinite(date.getTime());
+  if(!s.company_id||!s.scheduled_for||!valid)return '';
+  return JSON.stringify([currentUserId()||role(),s.company_id,new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}).format(date)]);
 }
-function mapsHref(s,kind){
-  const origin=mapsPlace(s,'origin'),destination=mapsPlace(s,'destination');
-  const point=kind==='origin'?origin:kind==='destination'?destination:'';
-  const route=!kind&&origin&&destination;
-  if(!route&&!point&&!origin&&!destination)return '';
-  const url=new URL(route?'https://www.google.com/maps/dir/':'https://www.google.com/maps/search/');
-  url.searchParams.set('api','1');
-  if(route){url.searchParams.set('origin',origin);url.searchParams.set('destination',destination);url.searchParams.set('travelmode','driving');}
-  else {if(kind&&!point)return '';url.searchParams.set('query',point||origin||destination);}
-  return url.href.length<=2048?url.href:'';
+function prepareRouteContext(s){
+  const key=routeContextKey(s);if(!key)return {state:'error',message:'Falta la prestadora o la fecha del servicio.'};
+  const existing=routeContexts.get(key);if(existing&&(existing.state==='pending'||Date.now()-existing.at<60000))return existing;
+  if(typeof _db==='undefined')return {state:'error',message:'No se pudo consultar el recorrido.'};
+  const entry={state:'pending',at:Date.now()};routeContexts.set(key,entry);
+  routeJobs.push({key,entry,companyId:s.company_id,scheduledFor:new Date(s.scheduled_for).toISOString()});drainRouteJobs();
+  return entry;
 }
-function locationMapLink(s,kind){
-  const href=mapsHref(s,kind);if(!href)return '';
-  const label=`Ver ${kind==='origin'?'origen':'destino'} en Google Maps`;
-  return `<a class="os-map-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${label}" aria-label="${label}" onclick="event.stopPropagation()">${ico('map')}</a>`;
+function drainRouteJobs(){
+  while(routeReaders<3&&routeJobs.length){
+    const job=routeJobs.shift();routeReaders++;
+    Promise.resolve().then(()=>_db.rpc('get_operator_service_context_v1',{p_company_id:job.companyId,p_scheduled_for:job.scheduledFor})).then(({data,error})=>{
+      if(error)throw error;
+      // Retain routing fields only, not prices, customer data or the editor state.
+      Object.assign(job.entry,{state:'ready',data:{billing:{route_mode:data?.billing?.route_mode},bases:(data?.bases||[]).map(b=>({base_id:b.base_id,address:b.address,latitude:b.latitude,longitude:b.longitude})),services:(data?.services||[]).map(c=>({concept_id:c.concept_id,single_address:c.single_address}))}});
+    }).catch(()=>Object.assign(job.entry,{state:'error',message:'No se pudo consultar el método de facturación. Actualizá la lista para reintentar.'})).finally(()=>{
+      job.entry.at=Date.now();routeReaders--;refreshRouteControls();drainRouteJobs();
+      if(routeContexts.size>300)for(const [key,value] of routeContexts){if(value.state!=='pending'){routeContexts.delete(key);break;}}
+    });
+  }
+}
+function routeCoordinate(lat,lng){
+  const present=x=>x!==null&&x!==undefined&&String(x).trim()!=='';
+  return present(lat)&&present(lng)&&Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))&&Math.abs(Number(lat))<=90&&Math.abs(Number(lng))<=180?`${Number(lat)},${Number(lng)}`:'';
+}
+function billingRoute(s,context){
+  const mode=context?.billing?.route_mode,labels={base_origin_destination_base:'Base → Origen → Destino → Base',base_origin:'Base → Origen',origin_destination:'Origen → Destino'};
+  if(!labels[mode])return {message:mode==='manual'?'Kilometraje manual: no hay un recorrido automático de facturación.':'La prestadora no tiene un método de recorrido configurado.'};
+  const point=kind=>{const p=locationParts(s,kind),value=routeCoordinate(s[`${kind}_lat`],s[`${kind}_lng`])||String(p.raw||p.address||'').trim();return value==='—'?'':value;};
+  const origin=point('origin'),single=context.services?.find(c=>String(c.concept_id)===String(s.primary_concept_id||s.category_id))?.single_address===true,destination=single?origin:point('destination');
+  const b=context.bases?.find(b=>String(b.base_id)===String(s.billing_base_id||s.branch_id)),base=b?(routeCoordinate(b.latitude,b.longitude)||String(b.address||'').trim()):'';
+  let points=mode==='base_origin'?[base,origin]:mode==='origin_destination'?[origin,destination]:[base,origin,destination,base];
+  if(points.some(p=>!p))return {message:'Falta una ubicación necesaria para el recorrido de facturación. Revisá la base, el origen y el destino.'};
+  const url=new URL('https://www.google.com/maps/dir/');url.searchParams.set('api','1');url.searchParams.set('origin',points[0]);url.searchParams.set('destination',points.at(-1));url.searchParams.set('travelmode','driving');
+  if(points.length>2)url.searchParams.set('waypoints',points.slice(1,-1).join('|'));
+  return url.href.length<=2048?{href:url.href,label:labels[mode]}:{message:'Las direcciones son demasiado largas para abrir el recorrido.'};
+}
+function routeControl(s,menu=false){
+  const context=prepareRouteContext(s),route=context.state==='ready'?billingRoute(s,context.data):{message:context.state==='pending'?'Consultando el recorrido de facturación…':context.message};
+  const common=`data-os-route-service="${esc(s.service_id)}" data-os-route-menu="${menu?'1':'0'}"`,label='Ver recorrido';
+  if(route.href)return `<a ${common} ${menu?'role="menuitem"':'class="os-map-link"'} href="${esc(route.href)}" target="_blank" rel="noopener noreferrer" title="${esc(label+' · '+route.label)}" aria-label="${label}" onclick="event.stopPropagation();${menu?'cerrarMenuServicio()':''}">${ico('map')}${menu?label:''}</a>`;
+  return menu?`<button ${common} type="button" role="menuitem" disabled title="${esc(route.message)}">${ico('map')}${label}</button>`:`<span ${common} class="os-map-link is-unavailable" role="img" aria-label="${esc(route.message)}" title="${esc(route.message)}">${ico('map')}</span>`;
+}
+function refreshRouteControls(){
+  for(const el of document.querySelectorAll('[data-os-route-service]')){const s=service(el.dataset.osRouteService);if(s){const html=routeControl(s,el.dataset.osRouteMenu==='1');if(el.outerHTML!==html)el.outerHTML=html;}}
 }
 function routeCell(s){
   const detail=effectiveColumns().location_detail;
@@ -162,8 +193,8 @@ function routeCell(s){
     const text=[...new Set(parts)].join(' · ')||'Sin detalle visible';
     return {kind,label,text,full:detail.address?(p.raw||p.address):text};
   });
-  const lines=places.map(p=>`<div class="os-route-line"><span class="os-hist-place ${p.kind==='origin'?'from':'to'}" title="${esc(p.full)}"><i aria-hidden="true"></i><span class="os-route-text">${esc(p.text)}</span></span>${locationMapLink(s,p.kind)}</div>`).join('');
-  return `<div class="os-hist-route">${lines}${groupShows('km')?`<small>${num(svcFirst(num(s.estimated_distance_km)||null,s.remito_km_reales)).toLocaleString('es-AR')} km</small>`:''}</div>`;
+  const lines=places.map(p=>`<div class="os-route-line"><span class="os-hist-place ${p.kind==='origin'?'from':'to'}" title="${esc(p.full)}"><i aria-hidden="true"></i><span class="os-route-text">${esc(p.text)}</span></span></div>`).join('');
+  return `<div class="os-compact-route"><div class="os-hist-route">${lines}${groupShows('km')?`<small>${num(svcFirst(num(s.estimated_distance_km)||null,s.remito_km_reales)).toLocaleString('es-AR')} km</small>`:''}</div>${routeControl(s)}</div>`;
 }
 function serviceActionsCell(s){
   const reference=s.service_order_number||s.service_number||'';
@@ -178,7 +209,14 @@ const HISTORY_GROUP_OF=Object.fromEntries(Object.entries(HISTORY_GROUPS).flatMap
 const HISTORY_LABELS={when:'Fecha',company:'Prestadora',route:'Recorrido',crew:'Chofer / Móvil'};
 function baseColumns(){const c=effectiveColumns();return c.column_order.filter(k=>c.column_visibility[k]);}
 /* Vista Compacta (por defecto): agrupa columnas. Vista Amplia: una columna por dato. Se elige en Personalizar columnas. */
-function columns(){const base=baseColumns();if(effectiveColumns().density==='wide')return base;const out=[];for(const k of base){const g=HISTORY_GROUP_OF[k];if(!g){out.push(k);continue;}if(!out.includes(g))out.push(g);}return out;}
+function columns(){
+  const base=baseColumns();
+  // Derived display column: keep persisted company/user column schemas unchanged.
+  if(effectiveColumns().density==='wide'){const index=base.indexOf('actions');base.splice(index<0?base.length:index,0,'maps');return base;}
+  const out=[];for(const k of base){const g=HISTORY_GROUP_OF[k];if(!g){out.push(k);continue;}if(!out.includes(g))out.push(g);}
+  if(!out.includes('route')){const index=out.indexOf('actions');out.splice(index<0?out.length:index,0,'maps');}
+  return out;
+}
 function groupShows(k){return baseColumns().includes(k);}
 /* Grouping does not make an individually hidden column visible again. */
 function historyCell(g,s){
@@ -189,10 +227,10 @@ function historyCell(g,s){
   if(g==='crew')return crewCell(s);
   return '';
 }
-const columnLabel=k=>HISTORY_LABELS[k]||COLUMN_LABELS[k]||k;
+const columnLabel=k=>k==='maps'?'Recorrido':HISTORY_LABELS[k]||COLUMN_LABELS[k]||k;
 const columnCell=(k,s)=>{
   if(k==='actions')return serviceActionsCell(s);
-  if(['origin','destination'].includes(k))return `<div class="os-route-line">${cell(k,s)}${locationMapLink(s,k)}</div>`;
+  if(k==='maps')return routeControl(s);
   if(['driver','mobile'].includes(k)&&s.logistics_type!=='third_party'){const v=crewValue(s,k);return `<b class="${v.missing?'os-unassigned':''}">${esc(v.label)}</b>`+(k==='driver'?driverQueueCount(s):'');}
   return HISTORY_GROUPS[k]?historyCell(k,s):cell(k,s);
 };
@@ -288,9 +326,9 @@ function openRowMenu(event,id){
   S.menuServiceId=id;const entries=[['view','Ver servicio']];if(canManage()&&!closed)entries.push(['edit','Editar']);else if(canEditHistoryService(s))entries.push(['edit-closed','Editar']);
   if(canTransitionState()&&!closed&&!legacy){if(['assigned','at_origin'].includes(s.status)||(s.status==='pending'&&s.logistics_type==='third_party'))entries.push(['finalize','Finalizar']);entries.push(['annul','Anular']);}
   const MENU_ICON={view:'eye',edit:'pencil','edit-closed':'pencil',finalize:'circle-check',annul:'circle-x'};
-  const maps=mapsHref(s),mapLabel=mapsPlace(s,'origin')&&mapsPlace(s,'destination')?'Ver recorrido en Google Maps':mapsPlace(s,'origin')?'Ver origen en Google Maps':'Ver destino en Google Maps';
-  menu.setAttribute('role','menu');menu.innerHTML=entries.map(([action,label])=>`${action==='annul'?'<hr>':''}<button type="button" role="menuitem" ${action==='annul'?'class="danger"':''} onclick="accionMenuServicio('${action}','${id}')">${ico(MENU_ICON[action]||'chevron-right')}${label}</button>`).join('')+(maps?`<hr><a role="menuitem" href="${esc(maps)}" target="_blank" rel="noopener noreferrer" onclick="cerrarMenuServicio()">${ico('map')}${mapLabel}</a>`:'');
-  menu.onkeydown=event=>{if(!['ArrowUp','ArrowDown','Home','End','Escape'].includes(event.key))return;event.preventDefault();event.stopPropagation();const items=[...menu.querySelectorAll('[role="menuitem"]')],index=items.indexOf(document.activeElement);if(event.key==='Escape'){closeRowMenu();button.focus();return;}const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowUp'?-1:1)+items.length)%items.length;items[next]?.focus();};
+  const annulIndex=entries.findIndex(([key])=>key==='annul');entries.splice(annulIndex<0?entries.length:annulIndex,0,['route','Ver recorrido']);
+  menu.setAttribute('role','menu');menu.innerHTML=entries.map(([action,label])=>action==='route'?routeControl(s,true):`${action==='annul'?'<hr>':''}<button type="button" role="menuitem" ${action==='annul'?'class="danger"':''} onclick="accionMenuServicio('${action}','${id}')">${ico(MENU_ICON[action]||'chevron-right')}${label}</button>`).join('');
+  menu.onkeydown=event=>{if(!['ArrowUp','ArrowDown','Home','End','Escape'].includes(event.key))return;event.preventDefault();event.stopPropagation();const items=[...menu.querySelectorAll('[role="menuitem"]:not(:disabled)')],index=items.indexOf(document.activeElement);if(event.key==='Escape'){closeRowMenu();button.focus();return;}const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowUp'?-1:1)+items.length)%items.length;items[next]?.focus();};
   document.querySelectorAll('#screen-operaciones .os-more[aria-expanded="true"]').forEach(b=>b.setAttribute('aria-expanded','false'));button.setAttribute?.('aria-expanded','true');menu.hidden=false;
   const width=menu.offsetWidth,height=menu.offsetHeight;
   menu.style.left=Math.max(8,Math.min(window.innerWidth-width-8,rect.right-width))+'px';
@@ -327,6 +365,7 @@ function hookNavigation(){
 }
 function init(){inject();applyRole();let attempts=0;const boot=setInterval(()=>{applyRole();hookNavigation();if(canRead()&&typeof _db!=='undefined'){clearInterval(boot);loadServices();}else if(++attempts>120)clearInterval(boot);},100);S.timer=setInterval(()=>{if(canRead()&&document.visibilityState==='visible'&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices();},30000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&canRead()&&document.getElementById('screen-operaciones')?.classList.contains('active'))loadServices()});}
 Object.assign(O,{isProgrammedService,role,canRead,canManage,canEditHistoryService,canTransitionState,canReviewDocuments,hasSignedRemito,openSignedRemito,esc,num,statusMeta,normalizedStatus,activeServices,historyServices,filtered,company,driver,truck,concept,service,loadBase,loadReferences,loadServices,loadModuleConfig,loadPersonalPreference,renderServices,viewService});
+document.addEventListener('click',event=>{if(event.target.closest?.('#os-refresh'))routeContexts.clear();},true);
 Object.assign(window,{moverColaServicio:moveQueue,abrirHistorialServicios:()=>{if(!canRead())return;goTo('operaciones');setView('history');},cargarServiciosOperador:loadServices,renderServiciosOperador:renderServices,filtrarEstadoServicios:filterStatus,cambiarVistaServicios:setView,abrirMenuServicio:openRowMenu,cambiarDensidadPersonalServicio:personalDensity,cerrarMenuServicio:closeRowMenu,accionMenuServicio:menuAction,verServicioOperador:viewService,abrirRemitoFirmadoOperador:openSignedRemito,abrirVinculoIngresoChofer:openIntakeLink,cerrarVinculoIngresoChofer:closeIntakeLink,confirmarVinculoIngresoChofer:confirmIntakeLink,crearServicioDesdeIngresoChofer:createServiceFromIntake,abrirAnularIngreso:openIntakeAnnul,cerrarAnularIngreso:closeIntakeAnnul,confirmarAnularIngreso:confirmIntakeAnnul,personalizarVistaServicios:openPersonalizer,cerrarPersonalizacionServicios:closePersonalizer,cambiarColumnaPersonalServicio:personalVisibility,cambiarDetalleUbicacionPersonalServicio:personalLocationDetail,moverColumnaPersonalServicio:movePersonal,guardarVistaServicios:savePersonal,restaurarVistaServicios:resetPersonal});
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();

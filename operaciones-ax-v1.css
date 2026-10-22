@@ -340,6 +340,11 @@
 
 /* Maps adds an external shortcut without duplicating the existing route text. */
 #screen-operaciones .os-hist-route { gap: 7px; min-width: 200px; max-width: 320px; }
+#screen-operaciones .os-compact-route { display: flex; align-items: center; gap: 8px; }
+#screen-operaciones .os-compact-route > .os-hist-route { flex: 1; min-width: 0; }
+#screen-operaciones .os-table .col-maps { min-width: 72px; text-align: center; }
+#screen-operaciones .os-map-link.is-unavailable { opacity: .45; cursor: help; }
+#os-row-menu button:disabled { opacity: .5; cursor: help; }
 #screen-operaciones .os-route-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 #screen-operaciones .os-route-line > .os-hist-place, #screen-operaciones .os-route-line > .os-location-cell { flex: 1; min-width: 0; }
 #screen-operaciones .os-route-text { white-space: normal; overflow-wrap: anywhere; }

@@ -1,16 +1,16 @@
 /* Real Servicios module + real styles. RPC reads are simulated; all other RPCs fail. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v527');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v528');
 const index=fs.readFileSync(path.join(root,'Index.html'),'utf8');
 const links=[...index.slice(0,index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(s=>!s.includes('https://')).join('\n');
 const shell=index.slice(index.indexOf('<nav class="sidenav">'),index.indexOf('<div class="content">'));
-const sample=(id,overrides={})=>({service_id:id,service_order_number:'QA-'+id,service_number:'AX-'+id,status:'assigned',company_id:'a',company_name:'Cardinal',customer_name:'María López',vehicle_plate:'AA123BB',vehicle_make_model:'Ford Focus',origin:'Av. José Bonifacio 100, Mar del Plata, Buenos Aires, Argentina',destination:'Av. 7 y calle 50, La Plata, Buenos Aires, Argentina',scheduled_for:new Date().toISOString(),assigned_driver_id:'d1',assigned_truck_id:'t1',document_status:'not_started',...overrides});
+const sample=(id,overrides={})=>({service_id:id,service_order_number:'QA-'+id,service_number:'AX-'+id,status:'assigned',company_id:'a',company_name:'Cardinal',billing_base_id:'base2',customer_name:'María López',vehicle_plate:'AA123BB',vehicle_make_model:'Ford Focus',origin:'Av. José Bonifacio 100, Mar del Plata, Buenos Aires, Argentina',destination:'Av. 7 y calle 50, La Plata, Buenos Aires, Argentina',scheduled_for:new Date().toISOString(),assigned_driver_id:'d1',assigned_truck_id:'t1',document_status:'not_started',...overrides});
 const rows=[sample('1'),sample('2',{company_id:'b',company_name:'SOS',customer_name:'Pedro García',vehicle_plate:'CC456DD',assigned_driver_id:'d2',assigned_truck_id:'t2',status:'at_origin'}),sample('3',{customer_name:'Ana Sánchez',vehicle_plate:'EE789FF',assigned_driver_id:'d2',assigned_truck_id:'t2'}),...Array.from({length:52},(_,i)=>sample('H'+i,{status:'completed'}))];
 const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/auxilios-filters-v1.css">${links}</head><body class="nav-collapsed">${shell}<div class="content"><div class="screen active" id="screen-dashboard"></div></div></div>
-<script>window.PERFIL_USUARIO={roles:{name:'administracion'}};window.SCREENS={};window.calls=[];window.rows=${JSON.stringify(rows)};
+<script>window.PERFIL_USUARIO={roles:{name:'administracion'}};window.SCREENS={};window.calls=[];window.rows=${JSON.stringify(rows)};window.routeModes={a:'base_origin_destination_base',b:'origin_destination'};window.failRouteContext=false;
 window.goTo=name=>{document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('active',e.id==='screen-'+name));document.querySelector('.topbar-title').textContent='Servicios';};window.toggleSidenav=()=>{};window.qaViewed=null;window.qaNotices=[];window.toast=m=>qaNotices.push(m);window.verServicioWorkspace=id=>{qaViewed=id};
-window._db={rpc:async name=>{calls.push(name);if(name==='get_operator_service_reference_data')return{data:{companies:[{company_id:'a',trade_name:'Cardinal'},{company_id:'b',trade_name:'SOS'}],drivers:[{user_id:'d1',full_name:'José Pérez'},{user_id:'d2',full_name:'Lucía Gómez'}],trucks:[{truck_id:'t1',numero_interno:'Móvil 122',plate:'TR122AA'},{truck_id:'t2',numero_interno:'Móvil 116',plate:'TR116AA'}],concepts:[]}};if(name==='list_operator_services')return{data:rows};if(['list_operator_service_document_connections_v2','list_driver_service_intakes_v2','list_driver_activated_services_v1'].includes(name))return{data:[]};throw new Error('RPC fuera del alcance de lectura: '+name);}};
+window._db={rpc:async(name,args)=>{calls.push(name);if(name==='get_operator_service_context_v1'){await new Promise(r=>setTimeout(r,20));if(failRouteContext)return{error:{message:'offline'}};return{data:{billing:{route_mode:routeModes[args.p_company_id]},bases:[{base_id:'base1',latitude:-34,longitude:-58},{base_id:'base2',latitude:-35,longitude:-57}],services:[]}};}if(name==='get_operator_service_reference_data')return{data:{companies:[{company_id:'a',trade_name:'Cardinal'},{company_id:'b',trade_name:'SOS'}],drivers:[{user_id:'d1',full_name:'José Pérez'},{user_id:'d2',full_name:'Lucía Gómez'}],trucks:[{truck_id:'t1',numero_interno:'Móvil 122',plate:'TR122AA'},{truck_id:'t2',numero_interno:'Móvil 116',plate:'TR116AA'}],concepts:[]}};if(name==='list_operator_services')return{data:rows};if(['list_operator_service_document_connections_v2','list_driver_service_intakes_v2','list_driver_activated_services_v1'].includes(name))return{data:[]};throw new Error('RPC fuera del alcance de lectura: '+name);}};
 </script><script src="/ui/theme-v1.js"></script><script src="/ui/ax.js"></script><script src="/auxilios-filters-v1.js"></script><script src="/operator-services.js"></script><script src="/operator-service-lifecycle.js"></script><script>OperatorServices.loadResourceAvailability=async()=>true;</script><script src="/ui/motion/motion-v1.js"></script></body></html>`;
 const app=http.createServer((req,res)=>{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
@@ -56,15 +56,19 @@ else (async()=>{
     await page.locator('[data-os-remove-filter="status"]').click();assert.equal(await page.locator('#os-table-body > tr').count(),3);
     const first=page.locator('#os-table-body > tr[data-service-id="1"]');
     assert.equal(await first.locator('[data-os-primary],.os-route-details,.os-route-label').count(),0,'no redundant disclosure or row primary action');
-    const originUrl=new URL(await first.getByRole('link',{name:'Ver origen en Google Maps',exact:true}).getAttribute('href'));
-    assert.equal(originUrl.origin,'https://www.google.com');assert.equal(originUrl.pathname,'/maps/search/');assert.equal(originUrl.searchParams.get('api'),'1');
-    assert.match(originUrl.searchParams.get('query'),/Mar del Plata, Buenos Aires, Argentina/);
-    assert.match(new URL(await first.getByRole('link',{name:'Ver destino en Google Maps',exact:true}).getAttribute('href')).searchParams.get('query'),/La Plata/);
+    await first.getByRole('link',{name:'Ver recorrido',exact:true}).waitFor({state:'visible'});
+    const originUrl=new URL(await first.getByRole('link',{name:'Ver recorrido',exact:true}).getAttribute('href'));
+    assert.equal(originUrl.origin,'https://www.google.com');assert.equal(originUrl.pathname,'/maps/dir/');assert.equal(originUrl.searchParams.get('api'),'1');
+    assert.equal(originUrl.searchParams.get('origin'),'-35,-57');assert.equal(originUrl.searchParams.get('destination'),'-35,-57');
+    assert.match(originUrl.searchParams.get('waypoints'),/Bonifacio.*\|.*La Plata/);
+    assert.equal(await first.locator('.os-map-link').count(),1,'compact has one complete-route map');
+    const secondRoute=new URL(await page.locator('tr[data-service-id="2"] a.os-map-link').getAttribute('href'));
+    assert.match(secondRoute.searchParams.get('origin'),/Bonifacio/);assert.match(secondRoute.searchParams.get('destination'),/La Plata/);assert.equal(secondRoute.searchParams.has('waypoints'),false);
     assert.equal(await first.locator('.os-map-link').first().getAttribute('target'),'_blank');
     assert.match(await first.locator('.os-map-link').first().getAttribute('rel'),/noopener/);
     await first.locator('.os-status').click();
     const statusMenu=page.locator('#osl-quick-status-menu');
-    assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').getAttribute('data-osl-quick-action'),'arrive');
+    assert.equal(await statusMenu.locator('[data-osl-suggested],.is-next').count(),0,'no automatic status highlight');
     await statusMenu.locator('[data-osl-quick-action="arrive"]').click();
     assert.equal(await page.getByRole('heading',{name:'Marcar servicio como ARRIBADO',exact:true}).isVisible(),true);
     assert.equal(await page.locator('#os-lifecycle-modal input[name="arrival_reason"]').count(),3);
@@ -74,7 +78,7 @@ else (async()=>{
     const pending=page.locator('#os-table-body > tr[data-service-id="3"]');
     assert.match(await pending.locator('.col-crew').innerText(),/Sin chofer\s+Sin móvil/);
     await pending.locator('.os-status').press('Enter');
-    assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').getAttribute('data-osl-quick-action'),'assign');
+    assert.equal(await statusMenu.locator('[data-osl-suggested],.is-next').count(),0);
     await statusMenu.locator('[data-osl-quick-action="assign"]').click();
     assert.equal(await page.getByRole('heading',{name:'Asignar servicio',exact:true}).isVisible(),true);
     assert.equal(await page.locator('#osl-quick-driver').isVisible(),true);
@@ -83,17 +87,20 @@ else (async()=>{
     for(const role of ['operador','supervision','facturacion']){
       await page.evaluate(role=>{PERFIL_USUARIO.roles.name=role;OperatorServices.renderServices();},role);
       await pending.locator('.os-status').click();
-      assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').count(),role==='operador'?1:0);
+      assert.equal(await statusMenu.locator('[data-osl-suggested]').count(),0);
       await page.keyboard.press('Escape');
       assert.equal(await pending.locator('.os-status').evaluate(e=>e===document.activeElement),true,'status menu Escape returns focus');
       await pending.locator('.os-more').click();
       assert.equal(await page.locator('#os-row-menu button').first().evaluate(e=>e===document.activeElement),true,'menu receives keyboard focus');
       if(role!=='operador')assert.equal(await page.locator('#os-row-menu button').count(),1);
-      const maps=page.locator('#os-row-menu a');
+      const maps=page.locator('#os-row-menu a');await maps.waitFor({state:'visible'});
       assert.equal(await maps.count(),1);
       const route=new URL(await maps.getAttribute('href'));
-      assert.equal(route.pathname,'/maps/dir/');assert.match(route.searchParams.get('origin'),/Bonifacio/);assert.match(route.searchParams.get('destination'),/La Plata/);
+      assert.equal(route.pathname,'/maps/dir/');assert.equal(route.searchParams.get('origin'),'-35,-57');assert.equal(route.searchParams.get('destination'),'-35,-57');
+      assert.equal(await maps.innerText(),'Ver recorrido');
+      if(role==='operador')assert.equal(await page.locator('#os-row-menu').evaluate(menu=>{const items=[...menu.querySelectorAll('[role="menuitem"]')];return items.findIndex(el=>el.textContent.trim()==='Ver recorrido')+1===items.findIndex(el=>el.textContent.trim()==='Anular');}),true,'route is immediately above Anular');
       await page.keyboard.press('End');
+      if(role==='operador')await page.keyboard.press('ArrowUp');
       assert.equal(await maps.evaluate(e=>e===document.activeElement),true,'map action participates in menu keyboard navigation');
       await page.keyboard.press('Escape');
       assert.equal(await pending.locator('.os-more').evaluate(e=>e===document.activeElement),true,'Escape restores menu opener focus');
@@ -109,10 +116,7 @@ else (async()=>{
       await page.evaluate(fields=>{OperatorServices.S.services=structuredClone(rows);Object.assign(OperatorServices.S.services[0],fields);OperatorServices.renderServices();},fields);
       if(expected===null){assert.equal(await first.locator('.os-status').getAttribute('role'),null);continue;}
       await first.locator('.os-status').click();
-      assert.equal(await statusMenu.locator('[data-osl-suggested="true"]').getAttribute('data-osl-quick-action'),fields.logistics_type==='third_party'&&expected==='assign'?'assign_outsourced':expected,'suggested action for '+JSON.stringify(fields));
-      const nextColors=await statusMenu.locator('[data-osl-suggested="true"]').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,text:s.color,border:s.borderLeftColor,amber:s.getPropertyValue('--amber')};});
-      assert.match(nextColors.background,/^rgb\(245, (158|166), (11|35)\)$/,'next action uses the existing amber token: '+JSON.stringify(nextColors));
-      assert.equal(nextColors.text,'rgb(17, 17, 17)','dark text stays legible on the yellow highlight');
+      assert.equal(await statusMenu.locator('[data-osl-suggested],.is-next').count(),0,'no highlighted action for '+JSON.stringify(fields));
       assert.equal(await statusMenu.locator('[data-osl-quick-action="annul"].is-next').count(),0,'destructive action is never primary');
       await page.keyboard.press('Escape');
     }
@@ -130,9 +134,20 @@ else (async()=>{
     // Respect individually hidden data inside compact groups and address preferences.
     await page.evaluate(()=>{OperatorServices.S.moduleConfig.column_visibility.mobile=false;OperatorServices.S.moduleConfig.location_detail.address=false;OperatorServices.renderServices();});
     assert.equal(await first.locator('.os-crew-mobile').count(),0);
-    assert.equal(await first.locator('.os-map-link').count(),0);
+    assert.equal(await first.locator('.os-map-link').count(),1,'map is an independent billing-route control, not a hidden address preview');
     assert.doesNotMatch(await first.locator('.col-route').innerText(),/Bonifacio/);
     await page.evaluate(()=>{OperatorServices.S.moduleConfig.column_visibility.mobile=true;OperatorServices.S.moduleConfig.location_detail.address=true;OperatorServices.renderServices();});
+    await page.evaluate(()=>{const s=OperatorServices.S;s.personalPreference={column_order:s.moduleConfig.column_order.slice(),column_visibility:{...s.moduleConfig.column_visibility},location_detail:{...s.moduleConfig.location_detail},density:'wide'};OperatorServices.renderServices();});
+    assert.equal(await first.locator('.col-maps .os-map-link').count(),1,'wide has a separate route-map column');
+    assert.equal(await first.locator('.col-origin .os-map-link,.col-destination .os-map-link').count(),0,'no individual place maps in wide view');
+    assert.equal(await page.locator('#os-table-head').evaluate(row=>{const keys=[...row.children].map(el=>el.className);return keys.findIndex(k=>k.includes('col-maps'))+1===keys.findIndex(k=>k.includes('col-actions'));}),true,'route-map column sits beside Actions');
+    await page.locator('#screen-operaciones .os-table-wrap').evaluate(el=>{el.scrollLeft=el.scrollWidth;});
+    await page.screenshot({path:path.join(out,'wide-1440.png'),fullPage:true});
+    await page.evaluate(()=>{OperatorServices.S.personalPreference=null;OperatorServices.renderServices();});
+    await page.evaluate(()=>{failRouteContext=true;});await page.locator('#os-refresh').click();
+    await page.waitForFunction(()=>document.querySelectorAll('#os-table-body a.os-map-link').length===0&&document.querySelector('#os-table-body .os-map-link')?.title.includes('No se pudo'));
+    await page.evaluate(()=>{failRouteContext=false;});await page.locator('#os-refresh').click();
+    await first.locator('a.os-map-link').waitFor({state:'visible'});
     await page.locator('#os-view-history').click();
     assert.equal(await page.locator('#os-table-body > tr').count(),25);
     assert.match(await page.locator('.os-results-count').innerText(),/^1–25 de 52 resultados/);
@@ -185,6 +200,6 @@ else (async()=>{
       }
     }
     assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-    console.log('PASS: Maps point/directions URLs, no redundant disclosure or row primary button; next action yellow INSIDE state menu, real assignment/arrival dialogs, role/state/logistics matrix, stale-state guard, keyboard menus, preferences, retained history/page/scroll, search/filters, 6 widths and both themes. No external requests or data writes.');
+    console.log('PASS: no state highlight; one compact billing-route map; independent wide column beside Actions; Ver recorrido above Anular; company/date context reads, chosen base round trip vs origin-destination, RPC failure/retry, keyboard menus, existing dialogs/roles, history/page/scroll/search/filters, 6 widths and both themes. No external requests or data writes.');
   }finally{if(browser)await browser.close();app.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -8,13 +8,26 @@ Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negoc
 - Mostrar origen y destino en dos líneas, con acceso a las direcciones completas sin abrir el servicio.
 - Agrupar chofer y móvil; indicar explícitamente «Sin chofer» o «Sin móvil» cuando corresponda.
 - Hacer visible el estado y la próxima acción disponible, según el flujo y los permisos existentes.
-- Resaltar la próxima acción dentro del menú de estado, sin botón principal adicional en la fila (corrección del usuario).
+- No resaltar automáticamente acciones ni estados (última corrección del usuario). Mantener sólo el foco accesible habitual.
 - Conservar búsqueda, filtros y posición de la lista al abrir un servicio y volver.
 - **Estado del remito:** anotar para modificar. Revisar su presentación y el flujo de cambio de estado; los estados, transiciones y permisos concretos quedan por definir con el usuario antes de modificar la lógica. No confundirlo con el estado del servicio.
 
 Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
 
-## Corrección de recorrido y menú de estado — `servicios-maps-estado-v527-20261022`
+## Recorrido según facturación — `recorrido-facturacion-v528-20261022`
+
+- Eliminado por completo el resaltado automático del menú de estado. Se mantienen acciones, validaciones, confirmaciones y navegación por teclado existentes.
+- La opción de Acciones se llama exactamente «Ver recorrido» y está inmediatamente encima de «Anular» cuando esta última está disponible.
+- Vista compacta: un solo ícono de mapa para el recorrido completo. Vista amplia: columna independiente «Recorrido» inmediatamente antes de Acciones. Es una columna derivada de presentación: no agrega claves a las configuraciones persistidas de empresa/usuario ni cambia sus validadores.
+- El enlace se obtiene de la misma lectura canónica del editor, `get_operator_service_context_v1`, para la prestadora y fecha programada del servicio. Selecciona la base por `billing_base_id`/`branch_id`, no por proximidad ni por la primera base devuelta.
+- `base_origin_destination_base`: origen y destino de Maps son la base del servicio; paradas intermedias Origen y Destino, en ese orden. `base_origin`: Base → Origen. `origin_destination`: Origen → Destino, sin añadir base. Los conceptos de dirección única siguen el comportamiento del editor. Se usan coordenadas válidas o la dirección completa, nunca sólo el nombre de la base.
+- Si el método es manual, no está configurado, falta una ubicación/base necesaria o falla la lectura, no se inventa un circuito ni se usa la posición del dispositivo. El ícono queda inactivo con una explicación. Actualizar lista permite reintentar.
+- Lecturas compartidas por usuario/prestadora/día operativo (Buenos Aires), hasta tres simultáneas y caché de un minuto. Sólo se conservan en memoria datos de recorrido; no precios ni datos del cliente. Completar la lectura actualiza los íconos sin abrir el editor, cambiar filtros ni modificar registros. Actualizar lista invalida la caché.
+- No hay migraciones, cambios de permisos ni escrituras de parámetros/servicios. No se modifica el cálculo de kilómetros o importes: Maps muestra el circuito según el método configurado. El estado del remito sigue pendiente.
+
+Verificación: pruebas unitarias de los tres métodos, base elegida entre varias, ausencia de base/destino, método manual/desconocido, dirección única, coordenada cero y codificación/longitud de URL. Navegador con RPC simuladas: un mapa en compacta, columna en amplia, etiqueta/orden del menú, ausencia de resaltado, error/reintento, roles, teclado, historial/filtros/posición y seis anchos en ambos temas. Consulta real de sólo lectura confirmó el método y disponibilidad de coordenadas de la base seleccionada en los servicios activos. Evidencias: `output/servicios-v528`.
+
+## Entrega anterior, reemplazada según devolución — `servicios-maps-estado-v527-20261022`
 
 - Se retiran «Ver direcciones», el desplegable con direcciones repetidas y los botones principales de las filas.
 - Se conserva origen/destino como ya se mostraban, sin repetir sus etiquetas. Se agrega un ícono de mapa junto a cada dirección: abre esa ubicación en Google Maps en otra pestaña. En Acciones (⋯), «Ver recorrido en Google Maps» abre Origen → Destino; si sólo hay una ubicación, abre esa ubicación. No llama a APIs, no usa ubicación del dispositivo como origen implícito y no navega hasta que el usuario elige el enlace.
