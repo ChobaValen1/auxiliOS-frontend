@@ -30,7 +30,7 @@ function navigation() {
   const pill = document.createElement('i');
   pill.className = 'ax-motion-nav-pill'; pill.setAttribute('aria-hidden', 'true');
   nav.prepend(pill);
-  let key = '', frame = 0, hovering = false;
+  let key = '', frame = 0, hovering = false, keyboardFocus = false;
   let pillMotion: ReturnType<typeof animate> | undefined;
   function position() {
     frame = 0;
@@ -50,13 +50,38 @@ function navigation() {
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(position); }
   function peek() {
-    const focus = nav!.contains(document.activeElement) && !document.activeElement?.closest('.nav-collapse');
+    const focus = keyboardFocus && nav!.contains(document.activeElement) && !document.activeElement?.closest('.nav-collapse');
     const open = !mobile.matches && document.body.classList.contains('nav-collapsed') && (hovering || focus);
     nav!.classList.toggle('ax-nav-peek', open);
     schedule();
   }
-  nav.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') { hovering = true; peek(); } });
-  nav.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { hovering = false; peek(); } });
+  nav.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') { hovering = true; keyboardFocus = false; peek(); } });
+  nav.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { hovering = false; keyboardFocus = false; peek(); } });
+  nav.addEventListener('click', e => {
+    if (mobile.matches || !(e.target instanceof Element) || !e.target.closest('.nav-item')) return;
+    const wasCollapsed = document.body.classList.contains('nav-collapsed');
+    // Module selection does not change the hover state. Leaving the sidebar closes it.
+    // A microtask can run between native capture and the inline goTo handler.
+    // The next animation frame runs after the entire click dispatch, before painting.
+    requestAnimationFrame(() => {
+      // goTo() restores the old width when leaving Services' automatic collapsed mode.
+      // Preserve the collapsed menu the user just selected from, without changing their saved preference.
+      if (wasCollapsed && !mobile.matches && !document.body.classList.contains('nav-collapsed')) {
+        const app = window as Window & { setSidenavCollapsed?: (value: boolean, options: {persist: boolean}) => void };
+        app.setSidenavCollapsed?.(true, {persist: false});
+      }
+      peek();
+    });
+  }, true);
+  // A pointer click legitimately leaves focus on a link; it must not pin the hover menu.
+  // Track input intent instead of blurring the link (which would break keyboard continuity).
+  document.addEventListener('pointerdown', () => { keyboardFocus = false; peek(); }, true);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Tab' || (e.target instanceof Node && nav.contains(e.target))) {
+      keyboardFocus = true;
+      requestAnimationFrame(peek);
+    }
+  }, true);
   nav.addEventListener('focusin', peek);
   nav.addEventListener('focusout', () => requestAnimationFrame(peek));
   nav.addEventListener('scroll', schedule, { passive: true });
