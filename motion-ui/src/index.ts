@@ -31,6 +31,27 @@ reduced.addEventListener('change', () => {
 function navigation() {
   const nav = document.querySelector<HTMLElement>('.sidenav');
   if (!nav) return;
+  const brand = nav.querySelector<HTMLElement>('.nav-logo');
+  const organization = document.createElement('span');
+  organization.className = 'ax-nav-organization'; organization.hidden = true;
+  brand?.append(organization);
+  let organizationLoaded = false, organizationPending = false, organizationRetry = 0;
+  function showOrganization(data: {legal_name?: string}) {
+    const name = String(data.legal_name || '').trim();
+    organizationLoaded = true;
+    organization.textContent = name; organization.title = name; organization.hidden = !name;
+    brand?.classList.toggle('ax-organization-ready', !!name);
+  }
+  async function loadOrganization() {
+    if (organizationLoaded || organizationPending || Date.now() < organizationRetry) return;
+    const app = window as Window & { CompanyDocuments?: { loadIdentity?: () => Promise<{legal_name?: string}> } };
+    if (!app.CompanyDocuments?.loadIdentity) return;
+    organizationPending = true;
+    try { showOrganization(await app.CompanyDocuments.loadIdentity()); }
+    catch { organizationRetry = Date.now() + 30000; } // Keep the brand when offline or unavailable.
+    finally { organizationPending = false; }
+  }
+  window.addEventListener('auxilios:organization-changed', event => showOrganization((event as CustomEvent<{legal_name?: string}>).detail || {}));
   const account = nav.querySelector<HTMLElement>('.nav-bottom');
   const identity = document.createElement('span');
   identity.className = 'ax-nav-user'; identity.hidden = true;
@@ -41,6 +62,7 @@ function navigation() {
   function syncIdentity() {
     let profile: typeof PERFIL_USUARIO = null;
     try { if (typeof PERFIL_USUARIO !== 'undefined') profile = PERFIL_USUARIO; } catch { /* profile not initialized yet */ }
+    if (profile) void loadOrganization();
     const name = String(profile?.full_name || '').trim().replace(/\s+/g, ' ');
     const role = String(profile?.roles?.name || profile?.role || '').trim().toLowerCase();
     const labels: Record<string, string> = { administracion: 'Administración', operador: 'Operador', supervision: 'Supervisión', chofer: 'Chofer', facturacion: 'Facturación' };
@@ -81,6 +103,7 @@ function navigation() {
     const open = !mobile.matches && document.body.classList.contains('nav-collapsed') && (hovering || focus);
     nav!.classList.toggle('ax-nav-peek', open);
     identity.setAttribute('aria-hidden', String(mobile.matches || (document.body.classList.contains('nav-collapsed') && !open)));
+    organization.setAttribute('aria-hidden', String(mobile.matches || (document.body.classList.contains('nav-collapsed') && !open)));
     schedule();
   }
   nav.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') { hovering = true; keyboardFocus = false; peek(); } });

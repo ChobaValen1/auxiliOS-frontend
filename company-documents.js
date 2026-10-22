@@ -9,7 +9,27 @@ const S={data:{},signature:'',origin:'saved',mode:'draw',pad:null,dirty:false,bu
 const icon=name=>`<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#${name}"/></svg>`;
 const notify=(message,type='info')=>typeof toast==='function'?toast(message,type):console.log(message);
 
-async function load(){const {data,error}=await _db.from('company_document_settings').select('*').eq('id',true).maybeSingle();if(error)throw error;return data||{};}
+let organizationIdentity=null,identityRequest=null,identityRevision=0;
+function publishOrganization(data){
+  const next={legal_name:String(data?.legal_name||'').trim()};
+  const changed=organizationIdentity?.legal_name!==next.legal_name;
+  organizationIdentity=next;identityRevision++;
+  if(changed)window.dispatchEvent(new CustomEvent('auxilios:organization-changed',{detail:{...next}}));
+  return {...next};
+}
+function loadIdentity(){
+  if(organizationIdentity)return Promise.resolve({...organizationIdentity});
+  if(identityRequest)return identityRequest;
+  const revision=identityRevision;
+  identityRequest=(async()=>{
+    // Sidebar needs the organization name only, never fiscal data or signature images.
+    const {data,error}=await _db.from('company_document_settings').select('legal_name').eq('id',true).maybeSingle();
+    if(error)throw error;
+    return identityRevision!==revision&&organizationIdentity?{...organizationIdentity}:publishOrganization(data);
+  })().finally(()=>{identityRequest=null;});
+  return identityRequest;
+}
+async function load(){const {data,error}=await _db.from('company_document_settings').select('*').eq('id',true).maybeSingle();if(error)throw error;publishOrganization(data);return data||{};}
 
 async function ask({title,html,confirmLabel='Confirmar',danger=false,fallback=''}){
   const dialog=window.AuxiliosBillingParametersV4?.confirm;
@@ -173,6 +193,7 @@ async function save(form){
     S.busy=true;if(button){button.disabled=true;button.textContent='Guardando…';}
     const {error}=await _db.from('company_document_settings').upsert({id:true,...values,signature_image:signature,signature_in_pdf:Boolean(S.inPdf&&signature),updated_at:new Date().toISOString(),updated_by:USUARIO_ACTUAL.id});
     if(error)throw error;
+    publishOrganization(values);
     const file=S.origin==='uploaded'?S.file:null,drawn=S.origin==='drawn';
     S.busy=false;close();
     if(file&&typeof window.confirmarSubida==='function')window.confirmarSubida(file.name,'Firma institucional guardada');
@@ -204,5 +225,5 @@ async function open(){
     renderSign();refreshPreview();setError('');
   }catch(error){box.innerHTML='<div class="modal-box cd-box"><div class="cd-stripe" aria-hidden="true"></div><div class="modal-body">'+esc(error.message)+'</div><div class="modal-footer"><button class="btn" type="button" onclick="closeModal(\'company-document-modal\')">Cerrar</button></div></div>';}
 }
-window.CompanyDocuments={load,open,esc};
+window.CompanyDocuments={load,loadIdentity,open,esc};
 })();

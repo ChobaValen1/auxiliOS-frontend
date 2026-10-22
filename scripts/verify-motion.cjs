@@ -25,6 +25,7 @@ const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta n
 ${['registro','camion','documentos','remitos','operaciones'].map(id=>`<section class="screen" id="screen-${id}"><h1>${id}</h1>${id==='operaciones'?serviceToolbar+'<div class="os-table-wrap"><p>Lista de prueba</p></div>':'<p>Se conserva la navegación del sistema.</p>'}</section>`).join('')}</div></div>
 <div class="ax-backdrop" id="qa-modal" hidden><section class="ax-modal" role="dialog" aria-modal="true" aria-labelledby="qa-title"><header><h2 id="qa-title">Revisar cambios</h2></header><div class="ax-modal-body"><label>Referencia<input class="ax-input" value="Sólo prueba"></label><p>No se guardarán datos reales.</p></div><footer><button class="ax-btn" id="qa-cancel">Cancelar</button><button class="ax-btn ax-btn-primary" id="qa-confirm">Confirmar</button></footer></section></div>
 <script>window.PERFIL_USUARIO={full_name:'Andrea Freire',roles:{name:'operador'}};window.qaCalls=0;
+window._db={from:table=>({select:columns=>({eq:(key,value)=>({maybeSingle:async()=>{if(table!=='company_document_settings'||columns!=='legal_name'||key!=='id'||value!==true)throw new Error('Unexpected sidebar query');return{data:{legal_name:'Remolques de prueba'}};}})})})};
 window.cargarServiciosOperador=()=>{window.qaRefreshCalls=(window.qaRefreshCalls||0)+1;const button=document.getElementById('os-refresh');button.dataset.state='loading';setTimeout(()=>button.removeAttribute('data-state'),700);};
 document.getElementById('os-q').addEventListener('input',event=>window.qaQuery=event.target.value);
 window.SCREENS=Object.fromEntries(['dashboard','registro','camion','documentos','remitos','operaciones'].map(id=>[id,{title:id,sub:'QA aislada'}]));
@@ -33,7 +34,7 @@ const qaServicesNav=document.createElement('div');qaServicesNav.className='nav-i
 ${realSidebar}
 ${realGoTo}
 </script>
-<script src="/ui/ax.js"></script><script src="/ui/app-v1.js"></script><script src="/ui/motion/motion-v1.js"></script>
+<script src="/ui/ax.js"></script><script src="/ui/app-v1.js"></script><script src="/company-documents.js"></script><script src="/ui/motion/motion-v1.js"></script>
 <script>document.querySelector('#qa-save').onclick=e=>AxUI.busy(e.currentTarget,async()=>{qaCalls++;await new Promise(r=>setTimeout(r,500));return 17;}).then(()=>AxUI.toast({title:'Prueba guardada',text:'Sin escritura en la base de datos'}));document.querySelector('#qa-open').onclick=()=>AxUI.openModal(document.querySelector('#qa-modal'));['qa-cancel','qa-confirm'].forEach(id=>document.getElementById(id).onclick=()=>AxUI.closeModal(document.querySelector('#qa-modal')));document.querySelector('#qa-notices').onclick=()=>{for(let i=1;i<=3;i++)AxUI.toast({title:'Aviso '+i,text:'Datos de prueba. La operación real conserva su resultado.',timeout:0});};document.querySelectorAll('.os-status-tabs button').forEach(btn=>btn.onclick=()=>{btn.parentNode.querySelectorAll('button').forEach(e=>e.classList.toggle('active',e===btn));});</script></body></html>`;
 const mime = {'.html':'text/html','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'};
 function server() { return http.createServer((req,res)=>{
@@ -48,7 +49,7 @@ if (process.argv.includes('--serve')) {
 } else (async()=>{
   const app=server(); await new Promise(r=>app.listen(0,'127.0.0.1',r));
   let browser;
-  const out=path.resolve(root,'../output/sidenav-perfil-v523'); fs.mkdirSync(out,{recursive:true});
+  const out=path.resolve(root,'../output/sidenav-identidad-v524'); fs.mkdirSync(out,{recursive:true});
   try {
     browser=await chromium.launch({channel:'msedge',headless:true});
     const page=await browser.newPage({viewport:{width:1440,height:900}}), errors=[], external=[];
@@ -63,7 +64,9 @@ if (process.argv.includes('--serve')) {
     assert.equal(await page.locator('.ax-nav-user-role').innerText(),'Operador');
     assert.equal(await page.locator('.nav-bottom .ax-nav-user').count(),1,'identity belongs beside the bottom-left avatar');
     assert.equal(await page.locator('.nav-logo .ax-nav-user').count(),0,'brand header stays separate');
-    assert.equal(await page.locator('.nav-logo .ax-brand-full').isVisible(),true,'original brand is preserved at the top');
+    assert.equal(await page.locator('.nav-logo .ax-nav-organization').innerText(),'Remolques de prueba','organization is shown at the top');
+    assert.equal(await page.locator('.nav-logo .ax-brand-icon').isVisible(),true,'brand icon is beside organization name');
+    assert.equal(await page.locator('.nav-logo .ax-brand-full').isVisible(),false,'wide brand is replaced by the organization identity');
     const avatarBox=await page.locator('.nav-avatar').boundingBox(),nameBox=await page.locator('.ax-nav-user-name').boundingBox(),roleBox=await page.locator('.ax-nav-user-role').boundingBox();
     assert.ok(nameBox.x>=avatarBox.x+avatarBox.width+5 && roleBox.y>=nameBox.y+nameBox.height,'name beside avatar, role beneath name');
     assert.ok(avatarBox.y>800 && roleBox.y+roleBox.height<900,'profile anchored at the bottom of the sidebar');
