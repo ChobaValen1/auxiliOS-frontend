@@ -1,6 +1,6 @@
 # Servicios: búsqueda y ayudas de la barra
 
-Versión de prueba: `servicios-operativos-v520-20261022`.
+Versión de prueba: `servicios-operativos-v521-20261022`.
 
 ## Corrección y mejoras operativas
 

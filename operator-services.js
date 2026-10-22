@@ -180,7 +180,7 @@ function renderServiceResults(total,shown){
   const filters=serviceListFilters(),available=sourceRows().length;
   const first=total?((S.view==='history'?(S.historyPage||1)-1:0)*HISTORY_PAGE_SIZE)+1:0;
   const label=shown<total?`${first}–${first+shown-1} de ${total} resultados`:`${total} ${total===1?'servicio':'servicios'}`;
-  const count=summary.querySelector('.os-results-count'),text=filters.length?`${label} · de ${available} cargados`:`${label} en ${S.view==='history'?'Historial':'Activos'}`;
+  const count=summary.querySelector('.os-results-count'),text=filters.length?`${label} · de ${available} cargado${available===1?'':'s'}`:`${label} en ${S.view==='history'?'Historial':'Activos'}`;
   if(count.textContent!==text)count.textContent=text;
   summary.querySelector('.os-reset-view').hidden=!filters.length;
   const chips=summary.querySelector('.os-filter-chips'),html=filters.map(f=>`<button type="button" class="os-filter-chip" data-os-remove-filter="${f.key}" aria-label="${esc('Quitar filtro '+f.label)}"><span>${esc(f.label)}</span>${ico('x')}</button>`).join('');
