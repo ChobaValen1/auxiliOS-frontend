@@ -12,8 +12,10 @@ const server=http.createServer((req,res)=>{const u=new URL(req.url,'http://local
   await box.evaluate(async e=>{await Promise.all(e.getAnimations().map(a=>a.finished.catch(()=>{})));});
   assert.match(await box.innerText(),/AB 123 CD/);assert.match(await box.innerText(),/Iveco · Daily · Unidad 12/);assert.match(await box.innerText(),/152.340 km/);
   assert.ok(await box.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'modal has no horizontal overflow');const footer=await box.locator('.modal-footer').evaluate(e=>{const b=e.getBoundingClientRect();return{top:b.top,bottom:b.bottom,height:innerHeight,body:e.closest('.modal-box').getBoundingClientRect().height};});assert.ok(footer.top>=0&&footer.bottom<=footer.height+1,JSON.stringify({theme,width,height,pre,footer}));
-  assert.equal(await box.locator('input[type=file]').count(),1);assert.equal(await box.locator('.jh-horas').getAttribute('hidden'),'');assert.equal(await box.getByText('IA Activada',{exact:true}).count(),0);assert.equal(await box.getByText('Foto del odómetro',{exact:true}).count(),1);assert.equal(await box.locator('input[type=file]').getAttribute('capture'),null);assert.equal(await box.getByText('Tomar o subir foto',{exact:true}).count(),1);
+  assert.equal(await box.locator('input[type=file]').count(),1);assert.equal(await box.locator('.jh-horas').getAttribute('hidden'),'');assert.equal(await box.getByRole('button',{name:'IA activada',exact:false}).count(),1);assert.equal(await box.getByText('Foto del odómetro',{exact:true}).count(),1);assert.equal(await box.locator('input[type=file]').getAttribute('capture'),null);assert.equal(await box.getByText('Tomar o subir foto',{exact:true}).count(),1);
   assert.equal(await box.locator('.btn-primary').getAttribute('onclick'),pre==='nj'?'confirmarNuevaJornada()':'confirmarCerrarJornada()');
+  await box.locator('.dkm-ai-badge').focus();await box.locator('[role=tooltip]').waitFor({state:'visible'});
+  assert.ok(await box.locator('[role=tooltip]').evaluate(e=>{const b=e.getBoundingClientRect();return b.left>=0&&b.right<=innerWidth+1;}),'AI hint stays within viewport');
  }
  await page.evaluate(()=>{openQA('nj','ZZ 456 ZZ','Mercedes','Accelo',0);});assert.equal(await page.locator('#nj-reference-km').innerText(),'0 km');assert.match(await page.locator('#nj-camion-modelo').innerText(),/Mercedes/);
  for(const pre of ['nj','cj']){
@@ -32,6 +34,8 @@ const server=http.createServer((req,res)=>{const u=new URL(req.url,'http://local
  await page.evaluate(()=>actualizarReferenciaCamionJornada('nj',null));assert.equal(await page.locator('#nj-camion-modelo').innerText(),'');assert.equal(await page.locator('#nj-reference-km').innerText(),'Sin registro');
  const out=path.resolve(root,'../output/driver-km-v557');fs.mkdirSync(out,{recursive:true});await page.setViewportSize({width:390,height:844});
  for(const pre of ['nj','cj']){await page.evaluate(p=>{document.documentElement.dataset.theme='dark';openQA(p,'AB 123 CD','Iveco','Daily',152340);},pre);await page.screenshot({path:path.join(out,pre+'-modal.png'),animations:'disabled'});}
- await page.getByRole('button',{name:'Cerrar formulario de finalización'}).click();assert.equal(await page.locator('#modal-cerrar-jornada').evaluate(e=>e.classList.contains('open')),false);assert.deepEqual(errors,[]);
+ await page.evaluate(()=>openQA('nj','AB 123 CD','Iveco','Daily',152340));await page.locator('#modal-nueva-jornada .dkm-ai-badge').hover();await page.locator('#nj-ai-help').waitFor({state:'visible'});await page.screenshot({path:path.join(out,'nj-ai-hover.png'),animations:'disabled'});
+ await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('#modal-nueva-jornada .dkm-ai-badge').evaluate(e=>getComputedStyle(e,':before').animationName),'none');
+ await page.getByRole('button',{name:'Cerrar formulario de inicio'}).click();assert.equal(await page.locator('#modal-nueva-jornada').evaluate(e=>e.classList.contains('open')),false);assert.deepEqual(errors,[]);
  console.log('PASS journey modals: actual markup, selected truck changes, zero/missing odometer, existing file/hour/save controls, visible footer, no overflow at 5 sizes/two themes. No real saves.');
  }finally{await browser.close();server.close();}})().catch(e=>{console.error(e);process.exitCode=1;server.close();});

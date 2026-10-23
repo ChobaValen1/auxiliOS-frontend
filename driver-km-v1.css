@@ -42,7 +42,17 @@
 .dkm-scan-state[data-scan-phase=processing]{color:var(--amber)}
 .dkm-scan-state[data-scan-phase=result] .dkm-scan-dot{background:var(--green)}
 .dkm-scan-react:empty{display:none}
-.dkm-photo-required{font-size:10px;font-weight:400;color:var(--muted2,var(--muted))}
+.dkm-ai-feature{position:relative;display:inline-flex;flex:none;font-weight:500}
+.dkm-ai-badge{position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:5px 9px;border:1px solid color-mix(in srgb,var(--amber) 45%,var(--border));border-radius:9px;background:color-mix(in srgb,var(--amber) 8%,var(--card));color:var(--amber);font:inherit;font-size:10px;font-weight:700;white-space:nowrap;cursor:help;transition:border-color .2s,box-shadow .2s,background .2s}
+.dkm-ai-star{font-size:15px;line-height:1;transition:transform .25s}
+.dkm-ai-badge:before{content:'';position:absolute;inset:-30% -60%;z-index:-1;background:linear-gradient(105deg,transparent 35%,color-mix(in srgb,var(--amber) 32%,transparent) 50%,transparent 65%);transform:translateX(-75%);pointer-events:none}
+.dkm-ai-feature:focus-within .dkm-ai-badge{outline:2px solid var(--amber);outline-offset:3px;box-shadow:0 0 18px color-mix(in srgb,var(--amber) 20%,transparent)}
+.dkm-ai-feature:focus-within .dkm-ai-badge:before{animation:dkm-ai-sweep .7s ease-out both}
+.dkm-ai-hint{position:absolute;right:0;top:calc(100% + 9px);width:min(235px,calc(100vw - 80px));padding:10px 12px;border:1px solid var(--border2,var(--border));border-radius:10px;background:var(--panel,var(--card));color:var(--text);font-size:11px;font-weight:400;line-height:1.5;box-shadow:0 8px 24px #0003;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility .15s;z-index:3;pointer-events:none;text-align:left}
+.dkm-ai-feature:focus-within .dkm-ai-hint{opacity:1;visibility:visible;transform:none}
+@media(hover:hover){.dkm-ai-feature:hover .dkm-ai-badge{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,var(--card));box-shadow:0 0 20px color-mix(in srgb,var(--amber) 23%,transparent)}.dkm-ai-feature:hover .dkm-ai-star{transform:rotate(25deg) scale(1.12)}.dkm-ai-feature:hover .dkm-ai-badge:before{animation:dkm-ai-sweep .7s ease-out both}.dkm-ai-feature:hover .dkm-ai-hint{opacity:1;visibility:visible;transform:none}}
+@keyframes dkm-ai-sweep{from{transform:translateX(-75%)}to{transform:translateX(75%)}}
+@media(prefers-reduced-motion:reduce){.dkm-ai-badge,.dkm-ai-star,.dkm-ai-hint{transition:none!important}.dkm-ai-badge:before{animation:none!important}.dkm-ai-star{transform:none!important}}
 .dkm-photo-label{position:relative;display:block;cursor:pointer}
 .dkm-photo-input{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;opacity:0}
 .dkm-journey-modal .dkm-photo-action{display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:14px!important;border:1px solid var(--border2,var(--border));background:var(--bg);border-radius:10px;font-size:14px;font-weight:650;color:var(--text);text-align:center}
