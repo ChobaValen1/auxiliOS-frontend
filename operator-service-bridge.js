@@ -150,7 +150,7 @@ function driverQuickLinks(s){
   const call=/^\+?\d{6,15}$/.test(dial)?`<a href="tel:${esc(dial)}" aria-label="Llamar al cliente">${ico('phone')}Llamar</a>`:'';
   return map||call?`<div class="p3-quick-links">${map}${call}</div>`:'';
 }
-function driverCardLabel(s){if(s.remito_action==='edit'||s.can_edit_remito)return'Ver remito firmado';if(s.remito_action==='complete'||s.can_complete_remito)return s.status==='at_origin'?'Completar remito':'Llegué al origen';return'Ver servicio';}
+function driverCardLabel(s){if(s.remito_action==='edit'||s.can_edit_remito)return'Ver servicio';if(s.remito_action==='complete'||s.can_complete_remito)return s.status==='at_origin'?'Completar remito':'Llegué al origen';return'Ver servicio';}
 function driverCardAction(id,button){const s=findService(id);if(!s||!isDriver())return;const q=queueState(s);if(q&&!q.started||isProgrammed(s)||s.remito_action==='edit'||s.can_edit_remito)return openPreview(id);if(s.remito_action==='complete'||s.can_complete_remito){if(s.status==='at_origin')return window.abrirRemitoServicio(id);return markArrived(id,button);}return openPreview(id);}
 window.accionTarjetaServicioChofer=driverCardAction;
 function activeCard(s){
@@ -158,14 +158,14 @@ function activeCard(s){
   const order=s.service_order_number||'Sin N° prestación';
   const q=queueState(s);
   const pill=q?(q.started?['blue','En curso']:q.next?['amber','Siguiente']:['','En cola']):[meta.tone,meta.label];
-  const foot=q&&!q.started?(q.next?['p3-card-start','Empezar este servicio']:['p3-card-locked',`Se habilita después del ${q.blockerPos}º`]):['',driverCardLabel(s)];
+  const foot=q&&!q.started?['','Ver servicio']:['',driverCardLabel(s)];
   return`<article class="p3-service-card p3-driver-task${q?' p3-queue-card':''}${q?.waiting?' p3-queue-wait':''}" data-service-id="${esc(s.service_id)}" aria-label="Servicio ${esc(order)}">
     <header class="p3-card-head">
       <div class="p3-card-id">${q?`<span class="p3-queue-num${q.started?' is-current':q.next?' is-next':''}">${q.pos}</span>`:''}<strong class="p3-order-value">${esc(order)}</strong><span class="p3-card-company">${esc(s.company_name||'Empresa sin informar')}</span></div>
       <span class="p3-status ${pill[0]}">${esc(pill[1])}</span>
     </header>
     <div class="p3-task-main"><div class="p3-task-vehicle"><strong>${esc(s.vehicle_plate||'Sin patente')}</strong><span>${esc(s.vehicle_make_model||'Vehículo sin informar')}</span></div><div class="p3-task-route"><div><i aria-hidden="true"></i><span><small>${s.single_address?'Dirección':'Origen'}</small><b>${esc(s.origin||'Origen sin informar')}</b></span></div>${!s.single_address?`<div><i aria-hidden="true"></i><span><small>Destino</small><b>${esc(s.destination||'Destino sin informar')}</b></span></div>`:''}</div>${driverQuickLinks(s)}${draftState(s)}<details class="p3-task-details"><summary>Cliente y datos del servicio${ico('chevron-down')}</summary><div>${serviceFacts(s,{compact:true})}</div></details></div>
-    <footer class="p3-task-actions"><button type="button" class="p3-task-primary ${foot[0]}" data-id="${esc(s.service_id)}" onclick="accionTarjetaServicioChofer(this.dataset.id,this)">${esc(foot[1])}${ico('chevron-right')}</button>${foot[1]!=='Ver servicio'?`<button type="button" class="p3-task-secondary" data-id="${esc(s.service_id)}" onclick="abrirPreviewServicio(this.dataset.id)">Ver servicio</button>`:''}</footer>
+    <footer class="p3-task-actions">${q?.waiting?`<small>Se habilita después del ${q.blockerPos}º</small>`:''}<button type="button" class="p3-task-primary ${foot[0]}" data-id="${esc(s.service_id)}" onclick="accionTarjetaServicioChofer(this.dataset.id,this)">${esc(foot[1])}${ico('chevron-right')}</button>${foot[1]!=='Ver servicio'?`<button type="button" class="p3-task-secondary" data-id="${esc(s.service_id)}" onclick="abrirPreviewServicio(this.dataset.id)">Ver servicio</button>`:''}</footer>
   </article>`;
 }
 function activeAdHocCard(r){

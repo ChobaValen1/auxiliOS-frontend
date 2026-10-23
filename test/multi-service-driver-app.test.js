@@ -9,7 +9,7 @@ const js = fs.readFileSync(path.join(__dirname, '..', 'operator-service-bridge.j
 
 test('Mis servicios: cola en orden solo para choferes con el interruptor', () => {
   assert.match(js, /function queueMode\(\)\{return P3\.queue\.some\(x=>x\.multi_service\)\}/);
-  assert.match(js, /'Empezar este servicio'/);
+  assert.match(js, /const foot=q&&!q.started\?\['','Ver servicio'\]/);
   assert.match(js, /Se habilita después del \$\{q\.blockerPos\}º/);
   assert.match(js, /list\.innerHTML=queueBanner\(\)\+current\.map\(activeCard\)/);
   assert.match(js, /queueMode\(\)\?'Servicio en el camino':'Sin asignación'/);
