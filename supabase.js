@@ -1447,7 +1447,6 @@ async function guardarRemitoCompleto(datosRemito) {
   const evidenciaSubida = [];
   let contextoEvidencia = null;
   let remitoPersistido = false;
-  const reportOutcome = (status, number = datosRemito.nro) => { try { datosRemito.onSaveOutcome?.({ status, number }); } catch (e) { console.warn('No se pudo mostrar el resultado del remito', e); } };
   try {
     _toast('Guardando remito...', 'info');
 
@@ -1522,8 +1521,7 @@ async function guardarRemitoCompleto(datosRemito) {
         blobs: Object.keys(blobs).length ? blobs : null,
         dependeDe: (typeof remitoOffline.log_id === 'string' && remitoOffline.log_id.startsWith('TMP-')) ? remitoOffline.log_id : null,
       });
-      reportOutcome('queued', nroFinal);
-      if (!datosRemito.onSaveOutcome) _toast(`Remito ${nroFinal} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
+      _toast(`Remito ${nroFinal} guardado en el teléfono — se sincroniza cuando haya señal 📴`, 'success');
       try { showRemitosView('lista'); } catch (e) { /* vista puede no estar disponible offline */ }
       return true;
     }
@@ -1631,7 +1629,6 @@ async function guardarRemitoCompleto(datosRemito) {
       await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
       // Sin códigos técnicos (VIAJE_EN_CURSO:, JORNADA_REQUERIDA:…): sólo lo que el chofer tiene que hacer.
       _toast('No se pudo guardar el remito. ' + String(error.message || '').replace(/^[A-Z_]{4,}:\s*/, ''), 'error'); 
-      reportOutcome('failed', nroFinal);
       return false; 
     }
 
@@ -1640,8 +1637,7 @@ async function guardarRemitoCompleto(datosRemito) {
     remitoPersistido = true;
     // La recarga es secundaria: el servidor ya confirmó el remito firmado.
     Promise.resolve().then(() => cargarRemitos()).catch(err => console.warn('No se pudo actualizar el listado de remitos:', err));
-    reportOutcome('sent', nroFinal);
-    if (!datosRemito.onSaveOutcome) _toast(`Remito ${nroFinal} guardado ✓`, 'success');
+    _toast(`Remito ${nroFinal} guardado ✓`, 'success');
     try { showRemitosView('lista'); } catch (e) { console.warn('El remito se envió; no se pudo actualizar la vista', e); }
     return true;
 
@@ -1651,7 +1647,6 @@ async function guardarRemitoCompleto(datosRemito) {
       await _limpiarEvidenciaRemitoFallido(contextoEvidencia);
     }
     _toast('Error inesperado al guardar: ' + (err?.message || err), 'error');
-    reportOutcome('failed');
     return false;
   }
 }
