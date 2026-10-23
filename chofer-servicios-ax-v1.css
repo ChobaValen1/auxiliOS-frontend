@@ -32,6 +32,11 @@
 
 #phase3-driver-services .p3-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ax-sp-3); padding: 14px 14px 0; }
 #phase3-driver-services .p3-card-id { display: grid; gap: 2px; min-width: 0; }
+#phase3-driver-services .p3-ad-hoc-draft{border-radius:16px}
+#phase3-driver-services .p3-ad-hoc-draft .p3-card-head{align-items:center}
+#phase3-driver-services .p3-ad-hoc-draft .p3-card-id{flex:1}
+#phase3-driver-services .p3-ad-hoc-draft .p3-card-head>.p3-draft-state{flex:0 1 auto;max-width:54%;align-self:center;justify-content:flex-end;text-align:right;font-size:12px;line-height:1.35}
+#phase3-driver-services .p3-ad-hoc-draft .p3-draft-state .ax-icon{flex-shrink:0}
 #phase3-driver-services .p3-order-value { overflow: hidden; color: var(--ax-text); font: var(--ax-fw-medium) var(--ax-fs-lg) var(--ax-font-mono); letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
 #phase3-driver-services .p3-card-company { overflow: hidden; color: var(--ax-text-2); font-size: var(--ax-fs-md); text-overflow: ellipsis; white-space: nowrap; }
 

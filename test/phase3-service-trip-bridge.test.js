@@ -149,7 +149,7 @@ test('guardar pendiente vuelve a Activos sin esperar recargas duplicadas',()=>{
 test('el remito sin asignación pendiente de firma permanece en Activos y no en Historial',()=>{
   const bridge=read('operator-service-bridge.js'),supabase=read('supabase.js');
   assert.match(bridge,/adHocDrafts/);
-  assert.match(bridge,/Pendiente de firma/);
+  assert.match(bridge,/Borrador guardado/);
   assert.match(bridge,/function activeAdHocCard/);
   assert.match(bridge,/abrirRemitoSinAsignacionPendiente/);
   assert.match(bridge,/window\.completarRemitoPendiente\(draft\)/);
@@ -171,7 +171,8 @@ test('el borrador sin asignación muestra el código y ofrece completar o marcar
   assert.match(card,/Sin asignación · \$\{esc\(r\.fecha\|\|currentDate\(\)\)\}/);
   assert.match(card,/r\.nroSrv\|\|r\.nro/);
   assert.match(card,/abrirPreviewRemitoSinAsignacion/);
-  assert.ok(card.indexOf('p3-facts')<card.lastIndexOf('p3-draft-state'));
+  assert.ok(card.indexOf('p3-draft-state')<card.indexOf('p3-facts'));
+  assert.doesNotMatch(card,/Seguir con el remito|p3-card-foot/);
   assert.match(bridge,/Completar remito/);
   assert.match(bridge,/Marcar como activado/);
   assert.match(bridge,/mark_driver_ad_hoc_draft_activated_v1/);
