@@ -33,7 +33,7 @@ test('journey KPIs are filter-aware and show averages and services', () => {
   assert.match(ui, /k\.serviciosPeriodo/);
   assert.match(data, /if \(driverId\) abiertasQuery = abiertasQuery\.eq\('driver_id', driverId\)/);
   assert.match(data, /if \(truckId\)\s+abiertasQuery = abiertasQuery\.eq\('truck_id', truckId\)/);
-  assert.match(data, /\.from\('remitos'\)[\s\S]*?serviciosPeriodo = serviciosRes\.count \|\| 0/);
+  assert.match(data, /serviciosPeriodo=window\.CompletedJourneyServices\.merge\(serviciosRes\.data\|\|\[\],await window\.CompletedJourneyServices\.list\(_db,logIds\)\)\.length/);
 });
 
 test('journey filters support multiple drivers and trucks inside one filter panel', () => {

@@ -98,6 +98,8 @@
     // Cobros de servicios particulares (saldo pagado al chofer en el lugar).
     const collections=new Map();
     for(let i=0;i<services.length;i+=500){const response=await _db.rpc('get_private_collections_by_remitos_v1',{p_remito_ids:services.slice(i,i+500).map(r=>r.remito_id)});if(response.error)throw response.error;for(const c of response.data||[])if(c.status!=='rejected')collections.set(c.remito_id,c);}
+    const completed=await window.CompletedJourneyServices.list(_db,logs,{driver:l.driver_id,period:l.periodo_yyyymm});
+    services=window.CompletedJourneyServices.merge(services,completed);
     return {logs,services,addons,saleIds,collections};
   }
   const isPrivateCash=x=>x.method==='cash';
@@ -116,14 +118,21 @@
     const details=l.compensation_snapshot?.commission_details||[];
     const sales=extras.filter(x=>saleIds.has(x.concept_id)||details.some(d=>d.concept_id===x.concept_id));
     for(const d of details.filter(d=>d.source==='invoices'||d.source==='captacion')){for(const x of d.record_details||[]){if(x.service_id&&x.service_id===r.operator_service_id)sales.push({concept_name:d.name,total_amount:x.amount,evidence:[]});}}
-    const records=details.flatMap(d=>(d.record_details||[]).filter(x=>String(x.remito_id)===String(r.remito_id)||(x.service_id&&x.service_id===r.operator_service_id)).map(x=>num(x.total)));
+    const records=details.flatMap(d=>(d.record_details||[]).filter(x=>(r.remito_id!=null&&String(x.remito_id)===String(r.remito_id))||(x.service_id&&x.service_id===r.operator_service_id)).map(x=>num(x.total)));
     const time=r.created_at_device?new Date(r.created_at_device).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}):'—';
-    return {r,time,sales,commission:records.reduce((n,v)=>n+v,0),cash:(structured?tollCash+extraCash:legacyCash)+privateCash,tollCash,extraCash,privateCash,structured,extras};
+    return {r,time,sales,commission:records.reduce((n,v)=>n+v,0),cash:r.no_remito?num(r.cash_expected):(structured?tollCash+extraCash:legacyCash)+privateCash,tollCash,extraCash,privateCash,structured,extras};
   }
   function serviceRow(s){
     const {r}=s;
     const commission=s.commission?cash(s.commission):s.sales.length?'<span class="pv-no-commission">—<small>Venta sin comisión configurada</small></span>':'—';
-    return `<tr><td data-label="Hora">${esc(s.time)}</td><td data-label="N° Servicio"><button class="pv-link" data-remito="${r.remito_id}">${esc(r.nro_servicio||r.nro_remito||r.remito_id)}</button><small>${esc(r.status)}</small></td><td data-label="Patente">${esc(r.patente||'—')}</td><td data-label="Origen">${esc(r.origen||'—')}</td><td data-label="Destino">${esc(r.destino||'—')}</td><td data-label="Km informativos">${r.km_reales==null?'—':fmt(r.km_reales)}<small>Reales · informativos</small></td><td data-label="Venta / concepto">${s.sales.map(x=>`${esc(x.concept_name)} · ${cash(x.total_amount)}<br><button class="pv-link" data-remito="${r.remito_id}">${x.evidence?.length?'Ver comprobantes':'Ver remito'}</button>`).join('<br>')||'—'}</td><td data-label="Comisión">${commission}</td><td data-label="Efectivo esperado"><b>${cash(s.cash)}</b><small>${s.structured?`Peajes ${cash(s.tollCash)}<br>Excedentes ${cash(s.extraCash)}`:'Cobro histórico sin desglose'}</small><small>Cobrado para rendir</small></td></tr>`;
+    const target=r.no_remito?`data-service="${esc(r.operator_service_id)}"`:`data-remito="${Number(r.remito_id)}"`;
+    const state=r.no_remito?(r.document_status==='exception_approved'?'Finalizado · excepción aprobada':'Finalizado · sin remito'):r.status;
+    return `<tr><td data-label="Hora">${esc(s.time)}</td><td data-label="N° Servicio"><button class="pv-link" ${target}>${esc(r.nro_servicio||r.nro_remito||r.remito_id)}</button><small>${esc(state)}</small></td><td data-label="Patente">${esc(r.patente||'—')}</td><td data-label="Origen">${esc(r.origen||'—')}</td><td data-label="Destino">${esc(r.destino||'—')}</td><td data-label="Km informativos">${r.km_reales==null?'—':fmt(r.km_reales)}<small>${r.no_remito?'Recorrido':'Reales'} · informativos</small></td><td data-label="Venta / concepto">${s.sales.map(x=>`${esc(x.concept_name)} · ${cash(x.total_amount)}<br><button class="pv-link" ${target}>${r.no_remito?'Ver servicio':x.evidence?.length?'Ver comprobantes':'Ver remito'}</button>`).join('<br>')||'—'}</td><td data-label="Comisión">${commission}</td><td data-label="Efectivo esperado"><b>${cash(s.cash)}</b><small>${r.no_remito?'Cobros operativos confirmados':s.structured?`Peajes ${cash(s.tollCash)}<br>Excedentes ${cash(s.extraCash)}`:'Cobro histórico sin desglose'}</small><small>Cobrado para rendir</small></td></tr>`;
+  }
+  function unlinkedServices(logs,services){
+    const ids=new Set(logs.map(j=>j.log_id)),unlinked=services.filter(s=>!ids.has(s.r.log_id));
+    if(!unlinked.length)return'';
+    return '<section class="pv-journey"><h4>Servicios sin jornada en este período ('+unlinked.length+')</h4><p class="pv-note">Cuentan por su finalización. No se asignó una jornada por fecha.</p><div class="pv-scroll"><table class="pv-services"><tbody>'+unlinked.map(serviceRow).join('')+'</tbody></table></div></section>';
   }
   function journey(j,services){
     let km=null;try{km=PayrollMatrix.journeyKm(j);}catch{}
@@ -173,8 +182,9 @@
     try{const data=await load(l);if(token!==request)return;const services=data.services.map(r=>serviceData(r,data.addons.get(r.remito_id),l,data.saleIds,data.collections.get(r.remito_id)));
       detailData={...data,services,l};
       document.getElementById('pv-export-xlsx').disabled=false;document.getElementById('pv-audit-button').disabled=false;
-      root.innerHTML=`<div class="pv-detail-title"><div><h3>Jornadas de ${esc(l.chofer_nombre)}</h3><p>KM a liquidar = odómetro final − inicial. Los KM de los servicios son informativos.</p></div></div><div class="pv-journey-head"><span>Fecha</span><span>Móvil</span><span>Km jornada</span><span>Servicios</span><span>Ventas / comisiones</span><span>Efectivo esperado</span></div><div class="pv-journey-list">${data.logs.map(j=>journey(j,services.filter(s=>s.r.log_id===j.log_id))).join('')||'<p>No hay jornadas en este mes.</p>'}</div>${renderTotals(data.logs,services,l)}<p class="pv-note">Datos operativos actuales. Los importes aprobados se conservan en el recibo. Efectivo esperado para rendir: ${cash(services.reduce((n,s)=>n+s.cash,0))}; consultá Rendiciones para conocer lo ya presentado.</p>${num(l.commission_total)&&!l.compensation_snapshot?.commission_details?.some(d=>d.record_details)?'<p class="pv-note">Esta liquidación anterior no tiene distribución de comisiones por servicio. El total guardado se consulta en el recibo.</p>':''}`;
+      root.innerHTML=`<div class="pv-detail-title"><div><h3>Jornadas de ${esc(l.chofer_nombre)}</h3><p>KM a liquidar = odómetro final − inicial. Los KM de los servicios son informativos.</p></div></div><div class="pv-journey-head"><span>Fecha</span><span>Móvil</span><span>Km jornada</span><span>Servicios</span><span>Ventas / comisiones</span><span>Efectivo esperado</span></div><div class="pv-journey-list">${data.logs.map(j=>journey(j,services.filter(s=>s.r.log_id===j.log_id))).join('')||'<p>No hay jornadas en este mes.</p>'}${unlinkedServices(data.logs,services)}</div>${renderTotals(data.logs,services,l)}<p class="pv-note">Datos operativos actuales. Los importes aprobados se conservan en el recibo. Efectivo esperado para rendir: ${cash(services.reduce((n,s)=>n+s.cash,0))}; consultá Rendiciones para conocer lo ya presentado.</p>${num(l.commission_total)&&!l.compensation_snapshot?.commission_details?.some(d=>d.record_details)?'<p class="pv-note">Esta liquidación anterior no tiene distribución de comisiones por servicio. El total guardado se consulta en el recibo.</p>':''}`;
       root.querySelectorAll('[data-remito]').forEach(b=>b.onclick=()=>{closeDetail();abrirDetalleRemitoAdmin(Number(b.dataset.remito));});
+      root.querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{closeDetail();window.verServicioOperador(b.dataset.service);});
     }catch(error){if(token!==request)return;root.innerHTML=`<p role="alert">No se pudo cargar el detalle: ${esc(error.message)}</p><button class="btn btn-ghost" id="pv-retry">Reintentar</button>`;document.getElementById('pv-retry').onclick=()=>open(id);}
   }
   const exportColumns=[['chofer_nombre','Chofer'],['chofer_legajo','Legajo'],['periodo_yyyymm','Período'],['jornadas','Jornadas','number'],['km_total','Km liquidados','number'],['servicios','Servicios','number'],['sueldo_basico','Básico','number'],['adic_km','Pago por km','number'],['adic_serv','Pago por servicios','number'],['bonus_monthly','Bonos mensuales','number'],['commission_total','Comisiones','number'],['bono_presentismo','Presentismo','number'],['ajuste_rendiciones','Descuento rendición','number'],['total','Total sueldo','number'],['estado','Estado']].map(([key,header,type])=>({key,header,type}));
@@ -202,5 +212,5 @@
     }catch(e){toast(e.message,'error');}
   }
   function moveMonth(delta){const input=document.getElementById('pl-mes-periodo');if(!input.value)return;const [y,m]=input.value.split('-').map(Number),d=new Date(Date.UTC(y,m-1+delta,1));input.value=d.toISOString().slice(0,7);_cargarLiquidacionesMes();}
-  window.PayrollView={openCash,monthlyAmount,compareCash,formula,csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow};
+  window.PayrollView={openCash,monthlyAmount,compareCash,formula,csv,exportMonth,exportDetail,totals,render,open,moveMonth,serviceData,journey,serviceRow,unlinkedServices};
 })();

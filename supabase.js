@@ -1053,7 +1053,7 @@ async function cargarJornadas() {
     const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
     
     let q = _db.from('daily_logs')
-               .select('*, trucks(plate, brand, model, current_km), remitos!remitos_log_id_fkey(status)')
+               .select('*, trucks(plate, brand, model, current_km), remitos!remitos_log_id_fkey(status,operator_service_id)')
                .order('log_date', { ascending: false })
                .limit(30);
                
@@ -1071,9 +1071,10 @@ async function cargarJornadas() {
       return;
     }
 
+    const completed=await window.CompletedJourneyServices.list(_db,data);
     const mapped = data.map(j => ({
       fecha:    _jhistFecha(j.log_date),
-      servicios: (j.remitos || []).filter(r=>r.status!=='anulado').length,
+      servicios: window.CompletedJourneyServices.merge((j.remitos||[]).filter(r=>r.status!=='anulado'),completed.filter(r=>r.log_id===j.log_id)).length,
       camion:   j.trucks?.plate || '—',
       kmInicio: j.km_inicio?.toLocaleString('es-AR') || '—',
       kmFinal:  j.km_final?.toLocaleString('es-AR')  || '—',
@@ -4181,8 +4182,8 @@ async function cargarJornadasAdmin(filtros = {}) {
   const _dias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
 
   const [remitosRes, incRes, fuelRes, tireRes, rendRes, fuelPrevRes] = await Promise.all([
-    // Servicios = remitos (la tabla trips no se usa)
-    _db.from('remitos').select('log_id, status').in('log_id', logIds).neq('status', 'anulado'),
+    // Legacy documents plus completed operational services, counted once below.
+    _db.from('remitos').select('log_id, status, operator_service_id').in('log_id', logIds).neq('status', 'anulado'),
     _db.from('incidents').select('log_id, severity, type').in('log_id', logIds),
     // Fuel: correlacionar por truck_id + fuel_date (log_id suele venir NULL)
     _db.from('fuel_records')
@@ -4218,7 +4219,9 @@ async function cargarJornadasAdmin(filtros = {}) {
     return truckFechaToLogId[`${r.truck_id}|${r[fechaField]}`] || null;
   };
 
-  (remitosRes.data || []).forEach(r => { if (cnt[r.log_id]) cnt[r.log_id].servicios++; });
+  if(remitosRes.error)throw remitosRes.error;
+  const completed=await window.CompletedJourneyServices.list(_db,logIds);
+  window.CompletedJourneyServices.merge(remitosRes.data||[],completed).forEach(r=>{if(cnt[r.log_id])cnt[r.log_id].servicios++;});
   (incRes.data     || []).forEach(r => {
     if (!cnt[r.log_id]) return;
     cnt[r.log_id].incidentes++;
@@ -4341,10 +4344,11 @@ async function cargarKpisJornadasAdmin(filtros = {}) {
   if (logIds.length) {
     const serviciosRes = await _db
       .from('remitos')
-      .select('remito_id', { count: 'exact', head: true })
+      .select('remito_id,log_id,operator_service_id')
       .in('log_id', logIds)
       .neq('status', 'anulado');
-    serviciosPeriodo = serviciosRes.count || 0;
+    if(serviciosRes.error)throw serviciosRes.error;
+    serviciosPeriodo=window.CompletedJourneyServices.merge(serviciosRes.data||[],await window.CompletedJourneyServices.list(_db,logIds)).length;
   }
   const kmTotal    = jornadas.reduce((s, j) => s + (Number(j.km_recorridos) || 0), 0);
   const horasTotal = jornadas.reduce((s, j) => s + _horasEntre(j.hora_inicio, j.hora_fin), 0);
@@ -4405,7 +4409,7 @@ async function cargarDetalleJornadaAdmin(logId) {
   const [remitosRes, incRes, fuelRes, tireRes, rendRes] = await Promise.all([
     _db.from('remitos')
        .select(`
-         remito_id, nro_remito, nro_servicio, tipo_servicio, patente, marca_modelo,
+         remito_id, operator_service_id, nro_remito, nro_servicio, tipo_servicio, patente, marca_modelo,
          razon_social, origen, destino, km_reales,
          imp_peaje, imp_excedente, imp_otros, imp_total_extras,
          pago_1_metodo, pago_1_monto, pago_2_metodo, pago_2_monto,
@@ -4453,13 +4457,16 @@ async function cargarDetalleJornadaAdmin(logId) {
     rendicionInfo = { ...r, diff, estado: estadoR, estado_revision: r.estado };
   }
 
-  // Mapear remitos → forma esperada por el renderer del modal (origin/destination/km_traveled)
+  if(remitosRes.error)throw remitosRes.error;
+  const completed=await window.CompletedJourneyServices.list(_db,[logId]);
+  // Real remitos keep their document identity; completion rows never get a fake remito ID.
   const trips = (remitosRes.data || []).map(r => {
     const p1 = Number(r.pago_1_monto) || 0;
     const p2 = Number(r.pago_2_monto) || 0;
     const extras = Number(r.imp_total_extras) || 0;
     return {
       trip_id:              r.remito_id,
+      service_id:           r.operator_service_id,
       nro_remito:           r.nro_remito,
       nro_servicio:         r.nro_servicio || r.nro_remito,
       tipo_servicio:        r.tipo_servicio,
@@ -4493,7 +4500,7 @@ async function cargarDetalleJornadaAdmin(logId) {
 
   return {
     log,
-    trips,
+    trips:window.CompletedJourneyServices.merge(trips.map(t=>({...t,operator_service_id:t.service_id})),completed.map(window.CompletedJourneyServices.trip)),
     incidents:    incRes.data   || [],
     fuel_records: fuelRes.data  || [],
     tire_check:   tireRes.data?.[0] || null,

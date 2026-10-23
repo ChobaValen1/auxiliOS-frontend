@@ -318,6 +318,7 @@
   }
 
   async function openRemitoCanonical(trip){
+    if(trip?.no_remito){if(typeof window.verServicioOperador!=='function')return notify('La vista de Servicios no está disponible','error');closeModal('modal-jornada-detalle');return window.verServicioOperador(trip.service_id);}
     try{const id=trip?.trip_id;if(!id)throw new Error('Remito sin identificador');if(typeof window.abrirDetalleRemitoAdmin!=='function')throw new Error('La vista administrativa de Remitos no está disponible');if(typeof closeModal==='function')closeModal('modal-jornada-detalle');if(typeof goTo==='function')goTo('remitos');if(typeof cargarRemitos==='function')await cargarRemitos();await window.abrirDetalleRemitoAdmin(id);}catch(error){notify(errorText(error),'error');}
   }
   async function openFleetCanonical(tab,truckId,recordId=null){
@@ -410,7 +411,7 @@
   }
   function enhanceDetail(det){
     state.current=det;installFooterActions();
-    const serviceItems=[...(cardByTitle('servicios')?.querySelectorAll('.jd-item')||[])];serviceItems.forEach((el,i)=>{if(det.trips?.[i])makeClickable(el,()=>openRemitoCanonical(det.trips[i]),'Abrir Remito admin →');});
+    const serviceItems=[...(cardByTitle('servicios')?.querySelectorAll('.jd-item')||[])];serviceItems.forEach((el,i)=>{if(det.trips?.[i])makeClickable(el,()=>openRemitoCanonical(det.trips[i]),det.trips[i].no_remito?'Abrir servicio →':'Abrir Remito admin →');});
     const fuelItems=[...(cardByTitle('combustible')?.querySelectorAll('.jd-item')||[])];fuelItems.forEach((el,i)=>{if(det.fuel_records?.[i])makeClickable(el,()=>openFleetCanonical('combustible',det.log?.truck_id,det.fuel_records[i].fuel_id),'Abrir →');});
     const tireCard=cardByTitle('neumáticos');if(det.tire_check&&tireCard)makeClickable(tireCard,()=>openFleetCanonical('neumaticos',det.log?.truck_id),'Abrir Checklist →');
     const rendCard=cardByTitle('rendición');if(det.rendicion&&rendCard)makeClickable(rendCard,()=>openRenditionCanonical(det.rendicion),'Abrir Rendición →');

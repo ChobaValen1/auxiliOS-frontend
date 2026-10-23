@@ -11,15 +11,18 @@ function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argen
 function shift(date,n){return new Date(Date.parse(date+'T12:00:00Z')+n*DAY).toISOString().slice(0,10);}
 function dateLabel(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')?new Intl.DateTimeFormat('es-AR',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(date+'T12:00:00Z')):'Sin fecha';}
 function distance(j){const a=num(j.km_inicio),b=num(j.km_final);return j.status==='closed'&&a!==null&&b!==null&&b>=a?b-a:null;}
-function services(j,uid){return j.status==='void'?0:(j.remitos||[]).filter(r=>r.status==='firmado'&&r.driver_id===uid).length;}
+function services(j,uid){if(j.status==='void')return 0;const docs=(j.remitos||[]).filter(r=>r.status==='firmado'&&r.driver_id===uid);return window.CompletedJourneyServices?window.CompletedJourneyServices.merge(docs,j.completed_services||[]).length:docs.length;}
 function summarize(rows,uid){const closed=rows.filter(j=>j.status==='closed'),valid=closed.map(distance).filter(v=>v!==null);return{km:valid.length?valid.reduce((a,b)=>a+b,0):closed.length?null:0,closed:closed.length,services:rows.reduce((a,j)=>a+services(j,uid),0),average:valid.length?valid.reduce((a,b)=>a+b,0)/valid.length:null,missing:closed.length-valid.length};}
-const columns='log_id,driver_id,log_date,truck_id,km_inicio,km_final,horas_inicio,horas_final,hora_inicio,hora_fin,status,trucks(plate,brand,model),remitos!remitos_log_id_fkey(status,driver_id)';
+const columns='log_id,driver_id,log_date,truck_id,km_inicio,km_final,horas_inicio,horas_final,hora_inicio,hora_fin,status,trucks(plate,brand,model),remitos!remitos_log_id_fkey(status,driver_id,operator_service_id)';
 async function readPage(uid,from,to,offset,size,status='all'){
  let q=_db.from('daily_logs').select(columns).eq('driver_id',uid).lte('log_date',to);
  if(from)q=q.gte('log_date',from);
  if(status!=='all')q=q.eq('status',status);
  const {data,error}=await q.order('log_date',{ascending:false}).order('log_id',{ascending:false}).range(offset,offset+size-1);
- if(error)throw error;return data||[];
+ if(error)throw error;const rows=data||[];
+ const completed=await window.CompletedJourneyServices.list(_db,rows);
+ for(const row of rows)row.completed_services=completed.filter(s=>s.log_id===row.log_id);
+ return rows;
 }
 async function load(force=false){
  const uid=identity();if(!uid)return;

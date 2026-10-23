@@ -15172,8 +15172,8 @@ function _jadminRenderDetalle(det) {
         const p2metodo = t.pago_2_metodo ? _payLbl(t.pago_2_metodo) : '';
         const metodos  = [p1metodo, p2metodo].filter(Boolean).join(' / ') || '—';
 
-        const stCls = t.status === 'firmado' ? 'b-ok' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
-        const stLbl = t.status === 'firmado' ? 'Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
+        const stCls = t.no_remito || t.status === 'firmado' ? 'b-ok' : t.status === 'anulado' ? 'b-grave' : 'b-medio';
+        const stLbl = t.no_remito ? (t.document_status==='exception_approved'?'Finalizado · excepción aprobada':'Finalizado · sin remito') : t.status === 'firmado' ? 'Firmado' : t.status === 'anulado' ? 'Anulado' : 'Pendiente';
 
         return `
           <div class="jd-item jd-service">
