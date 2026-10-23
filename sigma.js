@@ -6260,6 +6260,7 @@ let _jhistDriverId = null;
 
 async function abrirHistorialJornadas() {
   const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
+  if (esChofer && window.AuxiliosDriverKm?.openHistory()) return;
   const filtro   = document.getElementById('jhist-admin-filtro');
   const sel      = document.getElementById('jhist-select-chofer');
 
@@ -8416,6 +8417,7 @@ async function actualizarPantallaJornadas() {
   }
 
   // Recargar historial
+  window.AuxiliosDriverKm?.updateOpen(jornadas);
   await cargarJornadas();
   await cargarResumenMesPantalla();
 }
@@ -8488,6 +8490,7 @@ function confirmarDialogoTaller(enTallerValue) {
 }
 async function cargarResumenMesPantalla() {
   if (!USUARIO_ACTUAL?.id) return;
+  if (PERFIL_USUARIO?.roles?.name === 'chofer' && window.AuxiliosDriverKm) return;
   const hoy  = new Date();
   const rol  = PERFIL_USUARIO?.roles?.name;
   const scopeUserId = (rol === 'administracion' || rol === 'supervision') ? null : USUARIO_ACTUAL.id;

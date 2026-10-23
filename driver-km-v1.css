@@ -1,0 +1,82 @@
+.driver-km-screen{width:100%;min-width:0;max-width:760px;margin-inline:auto}
+.driver-km-screen>:not(#dkm-root){display:none!important}
+#dkm-root{--dkm-radius:18px;color:var(--text);padding-bottom:20px;min-width:0;width:100%}
+#dkm-root button,#dkm-history-root button{font:inherit;cursor:pointer}
+.dkm-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}
+.dkm-header h2{font-size:30px;line-height:1.1;margin:0 0 7px;letter-spacing:-1px}
+.dkm-header p,.dkm-history-intro p{color:var(--muted2,var(--muted));margin:0;font-size:13px}
+.dkm-refresh{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--border);border-radius:12px;color:var(--text);background:var(--card)}
+.dkm-refresh:disabled{opacity:.5}
+.dkm-truck{border:1px solid var(--border2,var(--border));border-radius:var(--dkm-radius);background:var(--card);overflow:hidden}
+.dkm-truck-toggle{width:100%;display:block;text-align:left;padding:20px;border:0;background:transparent;color:var(--text)}
+.dkm-eyebrow{display:block;color:var(--muted2,var(--muted));font-size:10px;letter-spacing:1.3px;margin-bottom:16px;font-weight:700}
+.dkm-truck-heading{display:flex;align-items:center;gap:14px}
+.dkm-truck-heading>span:nth-child(2){flex:1;min-width:0}
+.dkm-truck-heading strong{display:block;font-size:27px;letter-spacing:.5px;overflow-wrap:anywhere;line-height:1.2}
+.dkm-truck-heading small{display:block;color:var(--muted2,var(--muted));font-size:12px;margin-top:6px;line-height:1.5}
+.dkm-truck-heading>.ax-icon{color:var(--muted2,var(--muted));flex:none}
+.dkm-truck-toggle[aria-expanded=true] .dkm-truck-heading>.ax-icon,.dkm-disclosure[aria-expanded=true]>.ax-icon{transform:rotate(180deg)}
+.dkm-truck-icon{display:grid;place-items:center;width:48px;height:48px;color:var(--amber);background:color-mix(in srgb,var(--amber) 9%,transparent);border-radius:14px;flex:none}
+.dkm-truck-icon .ax-icon{width:28px;height:28px}
+.dkm-badge{display:inline-block;font-size:10px;line-height:1.5;color:var(--amber);border:1px solid color-mix(in srgb,var(--amber) 45%,transparent);padding:3px 9px;border-radius:20px;margin-top:10px}
+.dkm-current{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 20px 18px;padding-top:17px;border-top:1px solid var(--border)}
+.dkm-current div+div{border-left:1px solid var(--border);padding-left:16px}
+.dkm-current dt,.dkm-totals dt,.dkm-record-detail dt{font-size:11px;color:var(--muted2,var(--muted));line-height:1.5}
+.dkm-current dd{margin:5px 0 0;font-size:20px;font-weight:750;font-variant-numeric:tabular-nums}
+.dkm-current small,.dkm-totals small{font-size:12px;font-weight:500}
+.dkm-disclosure{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:48px;border:0;border-top:1px solid var(--border);padding:12px 20px;color:var(--text);background:color-mix(in srgb,var(--text) 3%,transparent);text-align:left;font-size:12px!important}
+#dkm-stats{border-top:1px solid var(--border);padding:18px 20px}
+#dkm-stats[hidden]{display:none}
+.dkm-stat-head,.dkm-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.dkm-stat-head h3,.dkm-recent h3,.dkm-history-intro h3{font-size:16px;margin:0}
+.dkm-chart-head h4{font-size:12px;margin:0}
+.dkm-segment{display:flex;gap:3px;padding:3px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.dkm-segment button{min-height:44px;padding:5px 10px;border:0;border-radius:7px;color:var(--muted2,var(--muted));background:transparent;font-size:11px!important}
+.dkm-segment button[aria-pressed=true]{background:var(--amber);color:#101522;font-weight:750}
+.dkm-note{font-size:10px;line-height:1.6;color:var(--muted2,var(--muted));margin:10px 0}
+.dkm-totals{display:grid;grid-template-columns:1fr 1fr;gap:20px 14px;margin:20px 0}
+.dkm-totals dd{font-size:25px;font-weight:750;margin:5px 0 0;font-variant-numeric:tabular-nums;letter-spacing:-.6px}
+.dkm-totals div:first-child dd{color:var(--amber)}
+.dkm-chart{display:grid;grid-template-columns:repeat(var(--dkm-count),minmax(0,1fr));gap:3px;margin-top:14px;padding-bottom:4px;overflow-x:auto}
+.dkm-day{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:3px 1px 6px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--muted2,var(--muted));min-width:0}
+.dkm-day:focus-visible,.dkm-day[aria-pressed=true]{border-color:var(--amber);outline:none}
+.dkm-day small{font-size:9px}
+.dkm-bar-track{display:flex;height:80px;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--border)}
+.dkm-bar-track i{display:block;width:75%;max-width:42px;background:var(--amber);border-radius:4px 4px 0 0;min-height:0}
+.dkm-chart:has(>:nth-child(8)){grid-template-columns:repeat(var(--dkm-count),minmax(16px,1fr))}
+.dkm-chart-value{font-size:11px;min-height:18px;margin:8px 0;color:var(--text)}
+.dkm-actions{margin:14px 0 28px;display:grid;gap:8px}
+.dkm-primary,.dkm-secondary{width:100%;min-height:48px;border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:750!important}
+.dkm-primary{border:1px solid var(--amber);background:var(--amber);color:#101522}
+.dkm-secondary{border:1px solid var(--border);background:var(--card);color:var(--text)}
+.dkm-recent>header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
+.dkm-recent>header button{display:flex;align-items:center;gap:2px;padding:6px 0;min-height:44px;border:0;background:transparent;color:var(--amber);font-size:12px!important}
+.dkm-record{border:1px solid var(--border);border-radius:13px;background:var(--card);margin-bottom:9px;overflow:hidden}
+.dkm-record summary{list-style:none;display:flex;align-items:center;gap:10px;padding:15px 12px;cursor:pointer;min-height:72px;box-sizing:border-box}
+.dkm-record summary::-webkit-details-marker{display:none}
+.dkm-record-icon{color:var(--muted2,var(--muted))}
+.dkm-record-name{flex:1;min-width:0}
+.dkm-record b{display:block;font-size:11px;overflow-wrap:anywhere}
+.dkm-record small{display:block;color:var(--muted2,var(--muted));font-size:10px;line-height:1.5;margin-top:5px}
+.dkm-record-end{text-align:right;flex-shrink:0}
+.dkm-record-end strong{font-size:15px;font-variant-numeric:tabular-nums}
+.dkm-record summary>.ax-icon{width:12px;height:12px;flex:none;color:var(--muted)}
+.dkm-record-detail{display:grid;grid-template-columns:1fr 1fr;gap:14px;border-top:1px solid var(--border);margin:0 12px;padding:14px 0}
+.dkm-record-detail dd{margin:4px 0 0;font-size:12px}
+.dkm-record>.dkm-note{padding:0 12px}
+.dkm-empty{font-size:12px;line-height:1.6;color:var(--muted2,var(--muted));padding:20px 0}
+.dkm-error,.dkm-attention{font-size:12px;line-height:1.6;padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:16px}
+.dkm-attention{border-color:var(--amber)}
+.dkm-error button,.dkm-attention button{min-height:40px;background:transparent;color:var(--amber);border:0;display:block;font-weight:700}
+.dkm-history .modal-body>:not(#dkm-history-root){display:none!important}
+.dkm-history .modal-head-title{font-size:0}
+.dkm-history .modal-head-title:after{content:'Historial de Km';font-size:16px}
+.dkm-history-intro{margin-bottom:18px}
+.dkm-history-intro p{margin-top:7px;font-size:12px}
+.dkm-history-filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.dkm-history-filters label{display:grid;gap:7px;font-size:11px;color:var(--muted2,var(--muted))}
+.dkm-history-filters select{width:100%;min-width:0;min-height:44px;padding:8px;border:1px solid var(--border);border-radius:9px;background:var(--card);color:var(--text);font:inherit}
+#dkm-history-summary .dkm-totals{padding-bottom:18px;border-bottom:1px solid var(--border)}
+#dkm-history-root button[hidden]{display:none}
+#dkm-root button:focus-visible,#dkm-history-root button:focus-visible,.dkm-record summary:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+@media(max-width:359px){.dkm-truck-heading strong{font-size:23px}.dkm-truck-toggle{padding:16px}.dkm-truck-icon{width:36px;height:40px}.dkm-current{margin-inline:16px}.dkm-current dd{font-size:17px}#dkm-stats{padding:16px}.dkm-record-icon{display:none}.dkm-record summary{gap:6px;padding-inline:10px}.dkm-record-end small{font-size:9px}}

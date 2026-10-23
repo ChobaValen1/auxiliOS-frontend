@@ -14,6 +14,11 @@ const running = new Map<HTMLElement, ReturnType<typeof animate>>();
 const ease = { type: spring, duration: .48, bounce: .16 };
 const visible = (el: HTMLElement) => !el.hidden && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
 
+window.addEventListener('auxilios:km-expanded', event => {
+  const panel = (event as CustomEvent<HTMLElement>).detail;
+  if (panel instanceof HTMLElement) enter(panel, 'translateY(-8px)');
+});
+
 function enter(el: HTMLElement, from = 'translateY(14px) scale(.98)', delay = 0) {
   running.get(el)?.cancel();
   if (reduced.matches || !visible(el)) return;
