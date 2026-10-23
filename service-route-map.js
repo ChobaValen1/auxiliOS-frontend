@@ -43,7 +43,7 @@ function tollsFor(commercial,reported,catalog){
   // The remito is authoritative for reported rows. Its copied actual rows are not added again.
   const actual=Array.isArray(reported?.tolls)&&reported.tolls.length?reported.tolls:(commercial?.actual_tolls||[]);
   const normalize=(r,kind,index)=>{const c=find(r.toll_id),q=number(r.quantity)??1,total=number(r.total_amount),unit=number(r.unit_amount);return{
-    id:`${kind}-${index}`,code:`${kind==='planned'?'P':'I'}${index+1}`,kind,name:text(r.toll_name||r.toll_name_snapshot||c?.name)||'Peaje sin identificar',
+    id:`${kind}-${index}`,tollId:r.toll_id,code:`${kind==='planned'?'P':'I'}${index+1}`,kind,name:text(r.toll_name||r.toll_name_snapshot||c?.name)||'Peaje sin identificar',
     amount:total!==null?total:unit!==null?unit*q:null,currency:text(r.currency)||'ARS',quantity:q,
     payer:({provider:'Prestadora',customer:'Cliente',company:'Empresa'})[r.payer_agent]||'Pagador sin informar',direction:text(r.direction||r.direction_snapshot||c?.direction),
     point:coordinate(c?.latitude,c?.longitude),excluded:!!r.administratively_excluded||['rejected','excluded'].includes(r.review_status),
@@ -51,6 +51,24 @@ function tollsFor(commercial,reported,catalog){
   return[...planned.map((r,i)=>normalize(r,'planned',i)),...actual.map((r,i)=>normalize(r,'reported',i))];
 }
 function canEdit(s,locks){return!!O()?.canManage?.()&&locks?.can_edit===true&&!['completed','cancelled'].includes(s.status);}
+// Catalog proximity is a candidate, not proof of passage or a billable charge.
+function routeTolls(path,catalog,registered){
+  if(path.length<2)return[];
+  const seen=new Set(registered.map(r=>String(r.tollId||'')).filter(Boolean)),found=[];
+  for(const c of catalog||[]){
+    if(!c.toll_id||seen.has(String(c.toll_id))||c.is_active===false)continue;
+    const p=coordinate(c.latitude,c.longitude);if(!p)continue;
+    const scale=Math.cos(p.lat*Math.PI/180);let nearest=Infinity,order=0;
+    for(let i=1;i<path.length;i++){
+      const a={x:(path[i-1].lng-p.lng)*scale*111195,y:(path[i-1].lat-p.lat)*111195},b={x:(path[i].lng-p.lng)*scale*111195,y:(path[i].lat-p.lat)*111195};
+      const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,-(a.x*dx+a.y*dy)/(dx*dx+dy*dy||1))),d=Math.hypot(a.x+t*dx,a.y+t*dy);
+      if(d<nearest){nearest=d;order=i-1+t;}
+    }
+    if(nearest<=60){seen.add(String(c.toll_id));found.push({id:'route-'+c.toll_id,tollId:c.toll_id,kind:'route',name:text(c.name)||'Peaje',direction:text(c.direction),point:p,amount:null,currency:'ARS',payer:'No cargado en el servicio',quantity:1,order});}
+  }
+  return found.sort((a,b)=>a.order-b.order).map((r,i)=>({...r,code:'R'+(i+1)}));
+}
+const tollLabel=r=>r.kind==='route'?'Posible peaje del recorrido':r.kind==='planned'?'Previsto':'Informado por chofer';
 let sdkJob=null,serial=0,current=null,modal=null;
 const reduced=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const dark=()=>document.documentElement.dataset.theme!=='light';
@@ -80,7 +98,7 @@ function ensure(){
   modal=document.createElement('div');modal.id='service-route-modal';modal.className='srm-backdrop';modal.hidden=true;
   modal.innerHTML=`<section class="srm-dialog" role="dialog" aria-modal="true" aria-labelledby="srm-title" aria-describedby="srm-reference" tabindex="-1">
     <header class="srm-header"><span class="srm-header-icon">${icon('map')}</span><div><h2 id="srm-title">Ver recorrido</h2><p id="srm-reference"></p></div><button type="button" data-srm-close aria-label="Cerrar recorrido">${icon('x')}</button></header>
-    <div class="srm-content"><aside class="srm-side"><h3>RECORRIDO SEGÚN FACTURACIÓN</h3><p id="srm-method" class="srm-method"></p><ol id="srm-stops" class="srm-stops"></ol><div id="srm-distance" class="srm-distance"></div><section class="srm-tolls"><h3>PEAJES DEL SERVICIO <span id="srm-toll-count"></span></h3><p class="srm-caption">Previstos e informados se muestran por separado; no se suman.</p><div id="srm-tolls"></div></section></aside>
+    <div class="srm-content"><aside class="srm-side"><h3>RECORRIDO SEGÚN FACTURACIÓN</h3><p id="srm-method" class="srm-method"></p><ol id="srm-stops" class="srm-stops"></ol><div id="srm-distance" class="srm-distance"></div><section class="srm-tolls"><h3>PEAJES DEL SERVICIO <span id="srm-toll-count"></span></h3><p class="srm-caption">Del recorrido, previstos e informados: separados y sin cargos automáticos.</p><div id="srm-tolls"></div></section></aside>
     <div class="srm-stage"><div id="srm-map" role="region" aria-label="Mapa del recorrido"></div><div id="srm-map-status" class="srm-map-status" role="status"></div><div class="srm-map-controls"><button type="button" data-srm-fit title="Ver recorrido completo" aria-label="Ver recorrido completo">${icon('map')}</button></div><div id="srm-legend" class="srm-legend" hidden><span><i></i>Ida</span><span><i class="is-return"></i>Regreso a base</span></div><div id="srm-toll-detail" class="srm-toll-detail" hidden></div></div></div>
     <div id="srm-notice" class="srm-notice" role="status"></div>
     <footer class="srm-footer"><small>${icon('info')}Vista de consulta. No modifica kilómetros ni importes.</small><div><button type="button" id="srm-edit" hidden>${icon('pencil')}Editar servicio</button><a id="srm-external" target="_blank" rel="noopener noreferrer">${icon('external-link')}Abrir en Google Maps</a><button type="button" data-srm-close>Cerrar</button></div></footer>
@@ -122,7 +140,7 @@ function renderDetails(view){
   const external=modal.querySelector('#srm-external');external.hidden=!plan.href;if(plan.href)external.href=plan.href;
   modal.querySelector('#srm-edit').hidden=!canEdit(s,view.locks);
   modal.querySelector('#srm-toll-count').textContent=String(tolls.length);
-  modal.querySelector('#srm-tolls').innerHTML=tolls.length?tolls.map(r=>`<button type="button" class="srm-toll" data-srm-toll="${esc(r.id)}" aria-pressed="false"><span class="srm-toll-symbol">${r.code}</span><span><b>${esc(r.name)}</b><em>${r.kind==='planned'?'Previsto':'Informado por chofer'}${r.excluded?' · Excluido':''}</em><small>${esc([r.direction,r.payer].filter(Boolean).join(' · '))}</small><small>${r.point?'Ubicación del catálogo':'Sin ubicación exacta · solo en la lista'}${r.quantity>1?' · '+esc(r.quantity)+' pasadas':''}</small></span><strong>${esc(money(r))}<small>${r.kind==='planned'?'Estimado registrado':'Importe informado'}</small></strong></button>`).join(''):'<p class="srm-empty">No hay peajes registrados en este servicio.</p>';
+  modal.querySelector('#srm-tolls').innerHTML=tolls.length?tolls.map(r=>`<button type="button" class="srm-toll" data-srm-toll="${esc(r.id)}" aria-pressed="false"><span class="srm-toll-symbol">${r.code}</span><span><b>${esc(r.name)}</b><em>${tollLabel(r)}${r.excluded?' · Excluido':''}</em><small>${esc([r.direction,r.payer].filter(Boolean).join(' · '))}</small><small>${r.point?'Ubicación del catálogo':'Sin ubicación exacta · solo en la lista'}${r.quantity>1?' · '+esc(r.quantity)+' pasadas':''}</small></span><strong>${esc(r.kind==='route'?'Sin cargo agregado':money(r))}<small>${r.kind==='route'?'Referencia del catálogo':r.kind==='planned'?'Estimado registrado':'Importe informado'}</small></strong></button>`).join(''):'<p class="srm-empty">No hay peajes registrados ni candidatos del catálogo sobre el trazado.</p>';
   if(view.catalogError)modal.querySelector('#srm-notice').textContent='No se pudo consultar la ubicación de los peajes. Se mantienen los cargos registrados, sin inventar marcadores.';
 }
 async function open(id,opener){
@@ -136,7 +154,7 @@ async function open(id,opener){
     view.service=ctx.service;view.locks=ctx.locks||{};
     const config=await rpc('get_operator_service_context_v1',{p_company_id:ctx.service.company_id,p_scheduled_for:new Date(ctx.service.scheduled_for).toISOString()});if(current!==view)return;
     view.plan=planFor(view.service,config);view.tolls=tollsFor(ctx.commercial_addons,ctx.reported_addons,[]);renderDetails(view);
-    if(view.tolls.length){try{const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}).format(new Date(ctx.service.scheduled_for));const catalog=await rpc('list_toll_catalog',{p_as_of:date,p_include_inactive:true});if(current!==view)return;view.tolls=tollsFor(ctx.commercial_addons,ctx.reported_addons,Array.isArray(catalog)?catalog:[]);}catch{view.catalogError=true;}if(current!==view)return;renderDetails(view);}
+    try{const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}).format(new Date(ctx.service.scheduled_for));const catalog=await rpc('list_toll_catalog',{p_as_of:date,p_include_inactive:false});if(current!==view)return;view.catalog=Array.isArray(catalog)?catalog:[];view.tolls=tollsFor(ctx.commercial_addons,ctx.reported_addons,view.catalog);}catch{view.catalogError=true;}if(current!==view)return;renderDetails(view);
     if(!view.plan.ready){mapStatus(view.plan.message||'No hay trazado automático para este servicio.');return;}
     // Admin list may carry stored geometry. Operators get fresh coordinates from the
     // protected handoff; the viewer never widens that RPC's projection or saves data.
@@ -148,7 +166,7 @@ async function open(id,opener){
       if(current!==view)return;if(result.error||result.data?.error)throw Error('No se pudo consultar el trazado. Los kilómetros guardados no se modificaron.');path=decode(result.data?.polyline);segments=splitPath(path,view.plan.stops);
     }
     if(current!==view)return;if(!segments.length)throw Error('El trazado no coincide con las paradas del servicio. No se dibujará una ruta aproximada.');
-    view.path=path;view.segments=segments;mapStatus('Cargando mapa…');const maps=await loadSdk();if(current!==view)return;drawMap(view,maps);mapStatus('');
+    view.path=path;view.segments=segments;view.tolls.push(...routeTolls(path,view.catalog,view.tolls));renderDetails(view);mapStatus('Cargando mapa…');const maps=await loadSdk();if(current!==view)return;drawMap(view,maps);mapStatus('');
     modal.querySelector('#srm-notice').textContent=[view.geometrySource+'. Kilómetros e importes guardados sin cambios.',view.catalogError?'No se pudo consultar la ubicación de los peajes.':''].filter(Boolean).join(' ');
   }catch(error){if(current!==view)return;mapStatus(error.message||'No se pudo abrir el recorrido.',true);}
 }
@@ -184,8 +202,8 @@ function animate(view){
 function selectToll(view,id){
   if(!view||current!==view)return;const r=view.tolls.find(t=>t.id===id);if(!r)return;
   modal.querySelectorAll('[data-srm-toll]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.srmToll===id)));
-  const detail=modal.querySelector('#srm-toll-detail');detail.hidden=false;detail.innerHTML=`<button type="button" data-srm-detail-close aria-label="Cerrar detalle de peaje">${icon('x')}</button><b>${esc(r.code+' · '+r.name)}</b><em>${r.kind==='planned'?'Previsto':'Informado por chofer'}${r.excluded?' · Excluido':''}</em><small>${esc([r.direction,r.payer].filter(Boolean).join(' · '))}</small><strong>${esc(money(r))}</strong><small>${r.point?'Ubicación registrada en el catálogo. No confirma una pasada.':'Sin ubicación exacta: no se coloca un marcador.'}</small>`;
+  const detail=modal.querySelector('#srm-toll-detail');detail.hidden=false;detail.innerHTML=`<button type="button" data-srm-detail-close aria-label="Cerrar detalle de peaje">${icon('x')}</button><b>${esc(r.code+' · '+r.name)}</b><em>${tollLabel(r)}${r.excluded?' · Excluido':''}</em><small>${esc([r.direction,r.payer].filter(Boolean).join(' · '))}</small><strong>${esc(r.kind==='route'?'Sin cargo agregado':money(r))}</strong><small>${r.point?'Ubicación del catálogo. Cercanía a la ruta no confirma pasada ni sentido de cobro.':'Sin ubicación exacta: no se coloca un marcador.'}</small>`;
   // No auto-pan: selecting a toll never hides the rest of the billing circuit.
 }
-window.ServiceRouteMap={open,close,_test:{coordinate,planFor,decode,splitPath,tollsFor,canEdit}};
+window.ServiceRouteMap={open,close,_test:{coordinate,planFor,decode,splitPath,tollsFor,routeTolls,canEdit}};
 })();
