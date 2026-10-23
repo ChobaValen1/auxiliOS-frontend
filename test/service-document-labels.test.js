@@ -6,17 +6,19 @@ function load(){
 }
 test('labels distinguish remito lifecycle without changing service state or inventing exceptions',()=>{
   const {statusCell,DOCUMENT_LABELS:labels}=load();
-  const expected={not_started:'Remito pendiente',draft:'',submitted:'Remito en revisión',approved:'Remito aprobado',observed:'Remito requiere correcciones'};
+  const expected={not_started:'Remito pendiente',draft:'Remito pendiente',submitted:'Remito en revisión',approved:'Remito aprobado',observed:'Remito requiere correcciones'};
   for(const [document_status,label] of Object.entries(expected)){
     const service={service_id:'qa',status:'assigned',document_status};
     assert.equal(labels[document_status],label);assert.match(statusCell(service),new RegExp(label));assert.equal(service.status,'assigned');
   }
   for(const key of ['exception_requested','exception_approved','exception_rejected'])assert.match(labels[key],/Excepción/);
 });
-test('draft has no replacement badge or incomplete notice and the record is unchanged',()=>{
+test('draft displays the standard pending badge without restoring the removed notice or changing the record',()=>{
   const {statusCell}=load(),s={service_id:'qa',status:'assigned',document_status:'draft',remito_status:'borrador'};
   const before=JSON.stringify(s),html=statusCell(s);
-  assert.doesNotMatch(html,/Remito incompleto|Carga iniciada|os-document-state|ax-remito-preparing|Remito pend/);
+  assert.doesNotMatch(html,/Remito incompleto|Carga iniciada|ax-remito-preparing/);
+  assert.match(html,/class="os-document-state" title="Remito pendiente" aria-label="Remito pendiente">Remito pend…<\/small>/);
+  assert.match(statusCell({service_id:'qa',status:'assigned',remito_id:1,remito_status:'borrador'}),/Remito pend…/);
   assert.equal(JSON.stringify(s),before);
 });
 test('signed remito keeps its document button with the requested label, not a duplicated Ver/Revisar suffix',()=>{

@@ -14,7 +14,13 @@ Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negoc
 
 Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
 
-## Retiro del aviso de borrador — `estado-remito-v532-20261022`
+## Estado pendiente uniforme — `estado-remito-v533-20261022`
+
+- Los remitos sin enviar (not_started, draft o borrador documental sin otro estado conocido) muestran «Remito pendiente» en la misma etiqueta compacta de los demás estados: 120 × 26 px, una línea, texto corto «Remito pend…», tooltip completo y color neutro.
+- No vuelve el cartel «Remito incompleto / Carga iniciada, todavía sin enviar». No se cambia ningún registro, transición ni permiso. Sólo presentación del estado documental en el listado, no un estado operativo nuevo.
+- Pruebas de renderizado del borrador, ausencia del aviso retirado, tamaño uniforme y regresión de Servicios. Sólo preview.
+
+## Retiro anterior del aviso de borrador — `estado-remito-v532-20261022` (presentación de draft reemplazada en v533)
 
 - Se elimina por completo «Remito incompleto / Carga iniciada, todavía sin enviar» del listado y del detalle. No se reemplaza por otra tarjeta ni por «Remito pendiente».
 - La etiqueta documental de draft se oculta; el borrador persistido, sus datos y las acciones existentes no cambian. Los demás estados conservan sus etiquetas compactas.

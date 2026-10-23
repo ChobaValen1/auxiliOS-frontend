@@ -6,7 +6,7 @@ const DEFAULT_CONFIG={column_order:COLUMN_KEYS.slice(),column_visibility:{code:t
 const COLUMN_LABELS={code:'Código',datetime:'Fecha/Hora',arrival:'Arribo',finish:'Fin',provider:'Prestadora',base:'Base',type:'Tipo',origin:'Origen',destination:'Destino',client:'Cliente',km:'Km',driver:'Chofer',delay:'Demora',mobile:'Móvil',status:'Estado',amount_due:'Por Cobrar',actions:'Acciones'};
 const LOCATION_LABELS={address:'Dirección',locality:'Localidad',province:'Provincia'};
 const PAYMENT_METHOD_LABELS={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro',not_collected:'No cobrado',to_define:'A definir'};
-const DOCUMENT_LABELS={not_started:'Remito pendiente',draft:'',submitted:'Remito en revisión',observed:'Remito requiere correcciones',approved:'Remito aprobado',exception_requested:'Excepción solicitada',exception_approved:'Excepción aprobada',exception_rejected:'Excepción rechazada'};
+const DOCUMENT_LABELS={not_started:'Remito pendiente',draft:'Remito pendiente',submitted:'Remito en revisión',observed:'Remito requiere correcciones',approved:'Remito aprobado',exception_requested:'Excepción solicitada',exception_approved:'Excepción aprobada',exception_rejected:'Excepción rechazada'};
 const PERSONAL_VIEW_KEY='operator_services_table_v2';
 const S=O.S={services:[],intakes:[],companies:[],drivers:[],trucks:[],concepts:[],selected:null,selectedIntakeId:null,loading:false,referencesLoaded:false,settingsLoaded:false,moduleConfig:JSON.parse(JSON.stringify(DEFAULT_CONFIG)),timer:null,wizard:null,query:'',status:'all',company:'all',driverFilter:'',truckFilter:'',periodSel:{mode:'all'},view:'active',menuServiceId:null,personalDraft:null,personalPreference:null,personalPreferenceLoaded:false};
 /* en_route/loaded/at_destination se leen sólo durante la ventana de compatibilidad con Producción vieja. */
@@ -115,7 +115,7 @@ function statusCell(s){
   const meta=statusMeta[normalizedStatus(s.status)]||statusMeta.pending;
   // Operador no recibe document_status en list_operator_services. La bandeja documental
   // completa y exitosa sí permite distinguir ausencia de remito de datos aún no cargados.
-  const documentLabel=DOCUMENT_LABELS[s.document_status]||(!s.document_status&&!s.remito_id&&s._documentConnectionLoaded?DOCUMENT_LABELS.not_started:'');
+  const documentLabel=DOCUMENT_LABELS[s.document_status]||(!s.document_status&&s.remito_status==='borrador'?DOCUMENT_LABELS.draft:'')||(!s.document_status&&!s.remito_id&&s._documentConnectionLoaded?DOCUMENT_LABELS.not_started:'');
   const signed=hasSignedRemito(s),pending=pendingRemitoReview(s),preparing=window.AuxiliosServiceImprovements?.remitoNotice(s)||'';
   if(isProgrammedService(s))return`<span class="os-status programmed" title="Para más adelante: el chofer lo ve en Programados">Programado</span><small class="os-document-status os-programmed-when">${meta.label} · ${esc(programmedWhen(s))}</small>`;
   const signedLabel=s.document_status==='observed'?DOCUMENT_LABELS.observed:pending?DOCUMENT_LABELS.submitted:(documentLabel||'Remito firmado');
