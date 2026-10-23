@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v553-mapa-nativo';
+const CACHE_NAME='auxilios-v554-mapa-nativo';
 const PRECACHE_ASSETS=[
   '/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
@@ -28,7 +28,7 @@ const PRECACHE_ASSETS=[
   '/toll-management.css','/toll-management.js','/toll-map-v1.css','/toll-map-v1.js',
   '/rendition-journey-source-v1.js',
   '/remito-addons-v2.css','/remito-addons-v2.js','/private-collection-v1.css','/private-collection-v1.js',
-  '/remito-mobile-flow-v3.css','/remito-mobile-flow-v3.js',
+  '/remito-mobile-flow-v3.css','/remito-mobile-flow-v3.js','/remito-delivery-feedback.js','/remito-delivery-feedback.css',
   '/operator-remito-review-v2.css','/operator-remito-review-v2.js',
   '/supabase.js','/offline.js','/manifest.json',
   '/assets/icons/icon-192.png','/assets/icons/icon-512.png'

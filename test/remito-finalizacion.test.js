@@ -107,6 +107,20 @@ test('sin conexión se conserva firma y pago mixto en el outbox', async () => {
   assert.equal(calls.outbox[0].payload.pago_1_monto, 200.5);
 });
 
+test('el resultado diferencia servidor confirmado, cola local y error sin inferirlo de la conexión',async()=>{
+  for(const [options,expected]of [[{},'sent'],[{online:false},'queued'],[{saveError:{message:'Error simulado'}},'failed']]){
+    const {context,payload}=dataContext(options),outcomes=[];context._limpiarEvidenciaRemitoFallido=async()=>{};payload.onSaveOutcome=o=>outcomes.push(o.status);
+    await context.guardarRemitoCompleto(payload);assert.deepEqual(outcomes,[expected]);
+  }
+});
+test('si falla guardar en el teléfono no se anuncia que quedó en cola',async()=>{
+  const {context,payload}=dataContext({online:false}),outcomes=[];context.obAdd=async()=>{throw Error('Sin espacio');};payload.onSaveOutcome=o=>outcomes.push(o.status);
+  assert.equal(await context.guardarRemitoCompleto(payload),false);assert.deepEqual(outcomes,['failed']);
+});
+test('fallar la vista o el aviso después del guardado confirmado no invita a reenviar',async()=>{
+  const {context,payload}=dataContext();context.showRemitosView=()=>{throw Error('Vista');};payload.onSaveOutcome=()=>{throw Error('Aviso');};assert.equal(await context.guardarRemitoCompleto(payload),true);
+});
+
 function formContext(save) {
   const values = { 'rem-nro': '', 'rem-patente': 'TEST123', 'rem-origen': 'Origen', 'rem-destino': 'Destino', 'imp-peaje': '1.234,50', 'imp-total': '$1.234,50', 'pago1-monto': '200.50', 'pago2-monto': '1034.00', 'rem-pago-selected': 'efectivo + transferencia' };
   const elements = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, { value, textContent: value }]));

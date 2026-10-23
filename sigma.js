@@ -549,6 +549,7 @@ const _remWizardPasoCargos = () => _remWizardEsAdHoc() ? 3 : 2;
 const _remWizardPasoFirma = () => _remWizardTotalPasos();
 
 function remWizardReset() {
+  window.AuxiliosRemitoDelivery?.begin();
   _remPasoActual = window.AuxiliosRemitoMobileV3?.isSignedEditMode?.() ? 2 : 1;
   _remWizardActualizar();
   
@@ -1307,9 +1308,10 @@ let arrastreRequerido = false;
 let _finalizacionRemitoEnCurso = false;
 
 // Mismo aviso que al crear un servicio: tilde verde, sin botones.
-function _mostrarConfirmacionRemitoCreado() {
-  operationFeedback('Remito finalizado correctamente', 'Se creó y quedó guardado.', 'success', 2400);
-  return new Promise(resolve => setTimeout(resolve, 1700));
+function _mostrarConfirmacionRemitoCreado(outcome) {
+  if (outcome && window.AuxiliosRemitoDelivery) window.AuxiliosRemitoDelivery.complete(outcome);
+  else operationFeedback('Guardado finalizado', 'Consultá Servicios para ver el estado de envío.', 'success', 2400);
+  return Promise.resolve();
 }
 
 async function finalizarRemito() {
@@ -1320,6 +1322,7 @@ async function finalizarRemito() {
   const btn = document.getElementById('rem-btn-next');
   const originalText = btn?.textContent || '✅ Finalizar';
   _finalizacionRemitoEnCurso = true;
+  window.AuxiliosRemitoDelivery?.begin();
   if (btn) {
     btn.disabled = true;
     btn.textContent = '⏳ Guardando…';
@@ -1329,6 +1332,7 @@ async function finalizarRemito() {
   } catch (e) {
     console.error('Error en finalizarRemito:', e);
     toast('Error al finalizar: ' + (e?.message || e), 'error');
+    window.AuxiliosRemitoDelivery?.failed();
     return false;
   } finally {
     _finalizacionRemitoEnCurso = false;
@@ -1474,7 +1478,9 @@ async function _finalizarRemitoInner() {
     _logIdRemito = null;
   }
 
+  let deliveryOutcome = null;
   const ok = await guardarRemitoCompleto({
+    onSaveOutcome: outcome => { deliveryOutcome = outcome; },
     nro,
     firmaDataURL,
     driver_id: USUARIO_ACTUAL.id, // 🛠 INYECCIÓN DE SEGURIDAD
@@ -1507,8 +1513,8 @@ async function _finalizarRemitoInner() {
     ...(mapLocations||{}),
   });
 
-  if (!ok) return false;
-  await _mostrarConfirmacionRemitoCreado();
+  if (!ok) { window.AuxiliosRemitoDelivery?.failed(); return false; }
+  await _mostrarConfirmacionRemitoCreado(deliveryOutcome);
   resetPagoForm();
   return true;
 }
@@ -4381,10 +4387,12 @@ if (typeof obRegistrarHandler === 'function') {
       }
       if (remito.operator_service_id && typeof guardarRemitoVinculado === 'function') {
         const linked = await guardarRemitoVinculado(remito, remito.operator_service_id);
+        try { window.AuxiliosRemitoDelivery?.synced(remito.nro_remito); } catch (e) { console.warn('No se pudo actualizar el aviso de envío', e); }
         return { realId: linked?.remito_id || null };
       }
       if (remito.document_source === 'driver_ad_hoc' && typeof guardarRemitoAdHoc === 'function') {
         const intake = await guardarRemitoAdHoc(remito);
+        try { window.AuxiliosRemitoDelivery?.synced(remito.nro_remito); } catch (e) { console.warn('No se pudo actualizar el aviso de envío', e); }
         return { realId: intake?.remito_id || null };
       }
       const { tolls, excesses, evidence, customer_collections, customer_payment, addons_version, ...legacyRemito } = remito;
@@ -4393,6 +4401,7 @@ if (typeof obRegistrarHandler === 'function') {
         .select('remito_id')
         .single();
       if (error) throw new Error(error.message);
+      try { window.AuxiliosRemitoDelivery?.synced(remito.nro_remito); } catch (e) { console.warn('No se pudo actualizar el aviso de envío', e); }
       return { realId: data?.remito_id || null };
     } catch (error) {
       if (uploads.length && typeof limpiarEvidenciaRemitoFallido === 'function') {
