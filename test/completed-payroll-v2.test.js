@@ -6,7 +6,7 @@ const {PGlite}=require('@electric-sql/pglite');
 const migration=fs.readFileSync('migrations/20261023180907_driver_history_completed_payroll_v2.sql','utf8');
 const driver='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
 let db;
-before(async()=>{db=new PGlite();await db.exec(fs.readFileSync('test/fixtures/completed-payroll-v2.sql','utf8'));await db.exec(migration);await db.exec(fs.readFileSync('migrations/20261023182440_driver_cash_receiver_scope_v2.sql','utf8'));});
+before(async()=>{db=new PGlite();await db.exec(fs.readFileSync('test/fixtures/completed-payroll-v2.sql','utf8'));await db.exec(migration);await db.exec(fs.readFileSync('migrations/20261023182440_driver_cash_receiver_scope_v2.sql','utf8'));await db.exec(fs.readFileSync('migrations/20261023183304_all_service_history_tolls_v1.sql','utf8'));});
 after(async()=>db?.close());
 beforeEach(async()=>{
   await db.exec("truncate operator_services,operator_service_assignments,remitos,operator_service_tolls,operator_service_excess_charges,service_payments,service_collection_reports,daily_logs,remito_toll_reports,remito_excess_reports,journey_cash_expenses,rendicion_cierre,payroll_cash_months,payroll_liquidaciones,companies,service_concepts,service_toggle_marks;");
@@ -83,6 +83,23 @@ test('Historial usa sólo peajes reales aprobados, no suma también los planific
   for(const source of ['actual','planned'])await db.query("insert into operator_service_tolls(service_id,source,toll_name_snapshot,unit_amount,total_amount,payer_agent) values($1,$2,'Alberti',11200,11200,'provider'),($1,$2,'Dellepiane Norte',11000,11000,'provider')",[id,source]);
   const d=await value('select public.get_driver_remito_history_v3(1) v');
   assert.equal(d.approved_tolls.length,2);assert.equal(d.approved_tolls.reduce((n,t)=>n+t.total_amount,0),22200);assert.equal(d.tolls.length,0);
+  assert.equal(d.history_tolls.length,2);assert.equal(d.history_tolls.reduce((n,t)=>n+t.total_amount,0),22200);
+});
+test('todos los servicios: previstos sin remito y remitos antiguos/pending también tienen peajes',async()=>{
+  for(const state of [{document_status:'exception_approved'},{document_status:'submitted',status:'at_origin'},{document_status:'approved'}]){
+    const id=await service(state);await db.query("insert into operator_service_tolls(service_id,source,toll_name_snapshot,total_amount,payer_agent) values($1,'planned','Otro peaje',5000,'provider')",[id]);
+    const rows=await value('select app_private.service_history_tolls_v1($1) v',[id]);assert.equal(rows.length,1);
+    if(state.document_status!=='exception_approved'){
+      const n=state.status?1:2;await remito(n,id,{addons_version:1,addons_review_status:'pending'});
+      const d=await value('select public.get_driver_remito_history_v3($1) v',[n]);assert.equal(d.history_tolls.length,1);assert.equal(d.history_tolls[0].display_status,'planned');assert.equal(d.service_tolls_approved,false);
+    }
+  }
+});
+test('confirma sólo su propia copia prevista; conserva otros peajes y todas las pasadas informadas',async()=>{
+  const op=[{toll_name:'Peaje A',payer_agent:'provider',source:'planned'},{toll_name:'Peaje A',payer_agent:'provider',source:'actual',total_amount:1000},{toll_name:'Peaje B',payer_agent:'customer',source:'planned',total_amount:2000}];
+  const reports=[{toll_name:'Peaje C',payer_agent:'customer',total_amount:300},{toll_name:'Peaje C',payer_agent:'customer',total_amount:300}];
+  const rows=await value('select app_private.merge_history_tolls_v1($1,$2,true) v',[JSON.stringify(op),JSON.stringify(reports)]);
+  assert.equal(rows.length,4);assert.equal(rows.filter(t=>t.toll_name==='Peaje A').length,1);assert.equal(rows.find(t=>t.toll_name==='Peaje B').display_status,'planned');assert.equal(rows.filter(t=>t.toll_name==='Peaje C').length,2);
 });
 test('endpoints v2 exigen sesión y respetan propiedad/roles; privados y anon sin EXECUTE',async()=>{
   await remito(1,null,{driver_id:other});
@@ -122,6 +139,13 @@ test('Historial de Administración muestra peajes aprobados aparte del cobro fir
   vm.runInNewContext(source,context);
   const html=context.window.qaPeajes({operator_service_id:'s'},{service_tolls_approved:true,approved_tolls:[{toll_name:'Alberti',total_amount:11200,payer_agent:'provider'},{toll_name:'Dellepiane Norte',total_amount:11000,payer_agent:'provider'}]});
   assert.match(html,/22.200/);assert.match(html,/Alberti/);assert.match(html,/prestadora/);assert.match(html,/No equivale al efectivo cobrado/);
+  const pending=context.window.qaPeajes({operator_service_id:'s'},{service_tolls_approved:false,history_tolls:[{toll_name:'Otro peaje previsto',total_amount:5000,payer_agent:'provider',display_status:'planned'}]});
+  assert.match(pending,/Otro peaje previsto/);assert.match(pending,/Previsto/);assert.doesNotMatch(pending,/Total aprobado/);
+});
+test('Historial sin remito abre el servicio con sus peajes, no un visor de remito inexistente',async()=>{
+  const calls=[],context={service:()=>({status:'completed',remito_id:null}),viewService:id=>calls.push(id),window:{}};
+  const source=fs.readFileSync('operator-services.js','utf8').match(/async function openSignedRemito\(id\)\{[\s\S]*?\n\}/)[0];vm.runInNewContext(source,context);
+  await context.openSignedRemito('service-without-remito');assert.deepEqual(calls,['service-without-remito']);
 });
 
 async function generatePayroll(state=null,race=false){

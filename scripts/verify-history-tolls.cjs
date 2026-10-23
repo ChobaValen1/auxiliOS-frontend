@@ -1,7 +1,7 @@
 /* Real history renderers; read-only API fixtures. Never creates payments or services. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/history-tolls-v561');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/history-tolls-v562');
 const html=`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/sigma.css"><link rel="stylesheet" href="/remitos-admin-panel-v1.css"><link rel="stylesheet" href="/remito-addons-v2.css"><link rel="stylesheet" href="/ui/theme-light-v1.css">
 <style>body{display:block;padding:16px;margin:0}#driver-detail{max-width:560px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:12px}</style>
@@ -31,5 +31,19 @@ try{
     assert.ok(await driver.evaluate(e=>e.scrollWidth<=e.clientWidth+1),'driver has no horizontal overflow');
     if(width===390)await page.screenshot({path:path.join(out,'driver-'+theme+'.png'),fullPage:true});
   }
+  // Pending and legacy remitos no longer need approved actual rows to show tolls.
+  await page.setViewportSize({width:390,height:900});
+  await page.evaluate(()=>{
+    historyData.service_tolls_approved=false;historyData.review_status='pending';
+    historyData.history_tolls=[{toll_name:'Peaje previsto de otro servicio',total_amount:5000,quantity:2,payer_agent:'provider',display_status:'planned'},{toll_name:'Peaje informado por el chofer',total_amount:2000,quantity:1,payer_agent:'customer',display_status:'reported'}];
+    const original=obtenerRemitoCompleto;window.obtenerRemitoCompleto=async()=>({...await original(),addons_version:1,addons_review_status:'pending'});
+    document.getElementById('driver-detail').hidden=true;
+  });
+  await page.locator('#open-admin').click();await page.locator('#rmp-panel').getByText('Peaje previsto de otro servicio ×2',{exact:true}).waitFor();
+  assert.match(await page.locator('#rmp-panel').innerText(),/Previsto/);assert.match(await page.locator('#rmp-panel').innerText(),/Informado/);
+  assert.equal(await page.locator('#rmp-panel').getByText('Total aprobado',{exact:true}).count(),0);
+  await page.locator('#rmp-panel').getByRole('button',{name:'Cerrar',exact:true}).click();
+  await page.evaluate(async()=>{const host=document.getElementById('driver-detail');host.hidden=false;await AuxiliosRemitoAddonsV2.renderHistory(1,host);});
+  assert.match(await page.locator('#driver-detail').innerText(),/Peaje previsto de otro servicio/);assert.match(await page.locator('#driver-detail').innerText(),/Informado/);
   assert.deepEqual(errors,[]);console.log(JSON.stringify({ok:true,viewports:3,themes:2,views:['admin','driver'],consoleErrors:errors,output:out}));
 }finally{await browser?.close();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -42,6 +42,7 @@ const concept=id=>S.concepts.find(x=>String(x.concept_id)===String(id));
 const service=id=>S.services.find(x=>String(x.service_id)===String(id));
 async function openSignedRemito(id){
   const svc=service(id);
+  if(svc?.status==='completed'&&!svc.remito_id)return viewService(id);
   if(canManage()&&!['completed','cancelled'].includes(svc?.status)&&typeof window.editarServicioOperador==='function')return window.editarServicioOperador(id);
   /* Remito ya aprobado (servicio finalizado, Historial): se abre el remito de verdad (detalle, encuesta, cambios, PDF y WhatsApp) y no la pantalla de "Revisión y cierre", que es para decidir. */
   if(svc?.status==='completed'&&svc.remito_id&&window.RemitoPanel?.open)return window.RemitoPanel.open(Number(svc.remito_id));

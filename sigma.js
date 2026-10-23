@@ -1943,8 +1943,9 @@ function verRemitoModal(elemento) {
     set('vr-excedente', '$' + (parseInt(d.excedente || 0) + parseInt(d.otros || 0)).toLocaleString('es-AR'));
     const structuredHost = document.getElementById('vr-addons-structured');
     if (structuredHost) {
-      structuredHost.style.display = d.addonsVersion === 2 ? 'block' : 'none';
-      if (d.addonsVersion === 2) void window.AuxiliosRemitoAddonsV2?.renderHistory?.(d.id, structuredHost);
+      const showTolls=d.addonsVersion===2||!!d.operatorServiceId||d.acceptedTotal!=null;
+      structuredHost.style.display = showTolls ? 'block' : 'none';
+      if (showTolls) void window.AuxiliosRemitoAddonsV2?.renderHistory?.(d.id, structuredHost);
     }
 
     // ── Forma de pago ─────────────────────────────────────────────

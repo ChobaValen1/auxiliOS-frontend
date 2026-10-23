@@ -308,5 +308,5 @@ test('históricos no facturados se convierten a Total legado y los facturados qu
   assert.match(legacyScopeFix,/r\.operator_service_id is null/);
   assert.match(legacyScopeFix,/t\.notes='legacy_scalar_v1'/);
   assert.match(driver,/Ajustado por Administración/);
-  assert.match(driver,/Peajes aprobados por Operaciones/);
+  assert.match(driver,/Todos los peajes vinculados al servicio/);
 });

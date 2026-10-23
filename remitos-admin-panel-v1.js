@@ -251,19 +251,21 @@ function renderDetalle(r,s){
 }
 
 async function cargarPeajes(r){
-  if(!r.operator_service_id)return null;
   try{const {data,error}=await _db.rpc('get_driver_remito_history_v3',{p_remito_id:Number(r.remito_id)});if(error)throw error;return data;}
   catch(e){return{load_error:true};}
 }
 function renderPeajesServicio(r,d){
-  if(!r.operator_service_id)return '';
+  if(!r.operator_service_id&&!d?.service_id&&!d?.history_tolls?.length)return '';
   if(d?.load_error)return seccion('Peajes del servicio','<p class="rmp-empty">No se pudo cargar el detalle de peajes. Volvé a abrir el remito para reintentar.</p>');
-  if(!d?.service_tolls_approved)return '';
-  const lines=d.approved_tolls||[],total=lines.length?lines.reduce((n,t)=>n+(Number(t.total_amount)||0),0):Number(d.accepted_toll_total)||0;
+  if(!d)return '';
+  const lines=d.history_tolls??d.approved_tolls??[],approved=lines.filter(t=>t.display_status==='approved'||(!t.display_status&&d.service_tolls_approved));
+  const total=approved.length?approved.reduce((n,t)=>n+(Number(t.total_amount)||0),0):d.service_tolls_approved?Number(d.accepted_toll_total)||0:0;
+  const states={planned:'Previsto',reported:'Informado',approved:'Aprobado',rejected:'Rechazado'};
   const rows=lines.map(t=>fila(`${esc(t.toll_name||'Peaje')}${Number(t.quantity)>1?' ×'+Number(t.quantity):''}`,
-    `<span class="rmp-toll-amount"><b>${money(t.total_amount)}</b><small>${t.payer_agent==='provider'?'A cargo de la prestadora':'A cargo del cliente'}</small></span>`)).join('');
-  return seccion('Peajes del servicio',rows+fila('<b>Total aprobado</b>',`<b>${money(total)}</b>`)+
-    '<p class="rmp-toll-note">Aprobado por Operaciones. No equivale al efectivo cobrado por el chofer.</p>');
+    `<span class="rmp-toll-amount"><b>${money(t.total_amount)}</b><small>${t.payer_agent==='provider'?'A cargo de la prestadora':'A cargo del cliente'}${states[t.display_status]?' · '+states[t.display_status]:''}</small></span>`)).join('');
+  return seccion('Peajes del servicio',(rows||'<p class="rmp-empty">Sin peajes registrados.</p>')+
+    (d.service_tolls_approved?fila('<b>Total aprobado</b>',`<b>${money(total)}</b>`):'')+
+    '<p class="rmp-toll-note">Incluye previstos e informados. No equivale al efectivo cobrado por el chofer.</p>');
 }
 
 /* ── Cobro del servicio particular (lo que informó el chofer) ─────────────── */
