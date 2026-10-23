@@ -99,7 +99,7 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   const card=js.split('function activeCard(s)')[1].split('function findService')[0];
   // Sistema visual: N° y empresa arriba, estado a la derecha, datos y un pie con lo que
   // pasa al tocarla. La fecha no va: en la lista de activos siempre es hoy.
-  for(const expected of ['p3-order-value','p3-card-company','p3-status','serviceFacts','p3-card-foot','cardAction'])assert.match(card,new RegExp(expected));
+  for(const expected of ['p3-order-value','p3-card-company','p3-status','serviceFacts','p3-task-actions','driverCardLabel','driverQuickLinks','p3-task-details'])assert.match(card,new RegExp(expected));
   assert.doesNotMatch(card.split('function activeAdHocCard')[0],/currentDate\(\)/);
   for(const expected of ['Socio','Vehículo','Origen','Destino','KM','Excedentes','Peajes','Borrador guardado'])assert.match(js,new RegExp(expected));
   for(const expected of ['service_order_number','company_name','customer_name','customer_phone','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters'])assert.match(js,new RegExp(expected));
@@ -118,10 +118,10 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   assert.match(js,/A cargo del socio/);
   assert.match(js,/A cargo de la prestadora/);
   assert.match(js,/mixed:'Mixto'/);
-  assert.match(card,/role="button" tabindex="0"/);
-  assert.match(card,/event\.key==='Enter'\|\|event\.key===' '/);
-  assert.match(card,/abrirPreviewServicio\(this\.dataset\.serviceId\)/);
-  assert.match(card,/\$\{ico\('chevron-right'\)\}<\/footer>/);
+  assert.match(card,/<button type="button" class="p3-task-primary/);
+  assert.match(card,/accionTarjetaServicioChofer\(this\.dataset\.id,this\)/);
+  assert.match(card,/abrirPreviewServicio\(this\.dataset\.id\)/);
+  assert.match(card,/<details class="p3-task-details">/);
   assert.match(js,/Completar remito/);
   assert.match(js,/Marcar como activado/);
   assert.match(js,/mark_driver_operator_service_activated_v3/);
