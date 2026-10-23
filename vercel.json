@@ -1,4 +1,6 @@
 {
+  "buildCommand": "node scripts/build-browser-map-config.cjs",
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/r/:token", "destination": "/remito.html" },
     { "source": "/(.*)", "destination": "/Index.html" }

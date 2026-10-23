@@ -14,6 +14,23 @@ Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negoc
 
 Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
 
+## Visor nativo de recorrido — `mapa-nativo-v534-20261022`
+
+Implementa el concepto aprobado: modal amplio con mapa de calles de Google, itinerario Base/Origen/Destino según facturación, kilómetros guardados y peajes del servicio. En móvil el mapa aparece primero; detalle desplazable debajo y acciones siempre accesibles. Colores/tokens originales, sin nueva identidad visual.
+
+- Entrada: mapa de la fila compacta, columna Recorrido amplia y «Ver recorrido» arriba de Anular. Clic normal abre el visor; Ctrl/Cmd mantiene el enlace externo. Carga diferida de JS, CSS y SDK; una sola instancia visible y sin carga de Google en el listado.
+- Lecturas autenticadas existentes: handoff v2 para ubicaciones/locks/cargos; contexto de prestadora por fecha y base exacta; catálogo de peajes sólo si hay cargos registrados. No se cambia SQL, permisos ni políticas. No se llama a guardados ni cotizaciones.
+- Geometría: aprovecha polyline guardada cuando la proyección ya la entrega y coincide con las paradas. Si no está disponible, consulta el trazado en maps-proxy sin persistirlo; avisa «Trazado consultado ahora». No modifica km/importe guardados y no usa datos del wizard abierto. Si no hay coordenadas/método/trazado válido, no dibuja rectas como si fueran calles.
+- SDK: Google Maps JavaScript, Mercator y polyline de Google sobre mapa Google con atribución propia visible. No se mezcla Routes con OpenStreetMap. Cámara ajustada una vez al circuito; zoom y gestos cooperativos provistos por Google. Botón para encuadrar de nuevo; seleccionar peajes no mueve la cámara.
+- Peajes previstos vs informados separados, sin total conjunto. El remito es la fuente de los informados; las copias actual no se vuelven a sumar. Importes originales, no tarifas actuales del catálogo. Sin coordenadas exactas se muestran sólo en la lista. Coordenadas de catálogo no implican pasada confirmada ni inventan un tramo. Peajes compartiendo ubicación comparten pin; todos siguen seleccionables en la lista.
+- Animación de 1,8 s, una sola vez y en orden de paradas; regreso discontinuo. Reducir movimiento muestra el trazado completo y ocultar pestaña termina la animación. Marcadores visibles desde el comienzo; no representa seguimiento en vivo.
+- «Editar servicio» junto a Google Maps sólo con permiso actual y lock de edición válido en un servicio abierto. Abre el editor existente, que vuelve a validar en servidor. El visor no cambia por sí mismo el servicio.
+- Cierre con Escape, devolución del foco, fondo inerte, bloqueo/restauración de scroll y trap de Tab. Lecturas tardías tras cerrar o cambiar servicio se descartan. Fallas de SDK/configuración/red tienen mensaje, reintento y datos/direcciones conservados.
+- Clave: Vercel genera browser-map-config.json en build leyendo únicamente GOOGLE_MAPS_BROWSER_API_KEY. No se descifra por herramientas ni se commitea; nunca usa GOOGLE_MAPS_API_KEY. La clave de navegador es intencionalmente pública y debe mantenerse restringida por dominio/API. Se confirmó que está sólo en Preview. Service worker no cachea configuración ni contenido externo de Google.
+- Pruebas: modelos puros de los tres circuitos, base elegida, dirección única, activados/manual, ausencia de coordenadas, decodificación inválida, cortes ordenados, importes/duplicados, permisos y configuración sin clave de servidor. QA de módulo real con RPC/SDK simulados: apertura desde listado, teclado/cierre, editor, peajes, errores/manual/sin coordenadas, respuesta tardía, animación/reduced motion, seis anchos en ambos temas y móvil horizontal. No hay escrituras reales en QA. Capturas en output/route-map-v534; las de QA se identifican como mapa simulado.
+
+Fuentes técnicas: [Maps JavaScript](https://developers.google.com/maps/documentation/javascript/load-maps-js-api), [OverlayView](https://developers.google.com/maps/documentation/javascript/customoverlays), [políticas Routes](https://developers.google.com/maps/documentation/routes/policies), [RPC Supabase](https://supabase.com/docs/reference/javascript/rpc). La clave pública fue configurada por el usuario; sólo se leyó su nombre/alcance, nunca el valor.
+
 ## Estado pendiente uniforme — `estado-remito-v533-20261022`
 
 - Los remitos sin enviar (not_started, draft o borrador documental sin otro estado conocido) muestran «Remito pendiente» en la misma etiqueta compacta de los demás estados: 120 × 26 px, una línea, texto corto «Remito pend…», tooltip completo y color neutro.

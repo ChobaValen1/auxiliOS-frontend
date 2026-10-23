@@ -1,4 +1,5 @@
 node_modules/
+browser-map-config.json
 .env
 uploads/
 .claude/

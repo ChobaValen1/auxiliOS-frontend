@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v533-estado-remito';
+const CACHE_NAME='auxilios-v534-mapa-nativo';
 const PRECACHE_ASSETS=[
   '/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
@@ -50,6 +50,8 @@ self.addEventListener('fetch',event=>{
   const url=new URL(event.request.url);
 
   if(
+    url.origin!==self.location.origin||
+    url.pathname==='/browser-map-config.json'||
     url.hostname.includes('supabase.co')||
     url.hostname.includes('railway.app')||
     url.pathname.startsWith('/api/')||

@@ -231,7 +231,7 @@ function openQuickStatusMenu(id,anchor){
   const width=menu.offsetWidth,height=menu.offsetHeight;
   menu.style.left=`${Math.max(8,Math.min(window.innerWidth-width-8,rect.left))}px`;
   menu.style.top=`${Math.max(8,Math.min(window.innerHeight-height-8,rect.bottom+5))}px`;
-  requestAnimationFrame(()=>menu.querySelector('button')?.focus());
+  requestAnimationFrame(()=>{if(!menu.hidden&&state.quickMenuServiceId===id)menu.querySelector('button')?.focus({preventScroll:true});});
 }
 function runQuickAction(action,id){const readOnly=!canTransition(),s=service(id);closeQuickMenu();if(!quickActions(s).some(([key])=>key===action))return notify('El servicio cambió. Volvé a abrir el menú de estado.','warning');if(action==='assign_outsourced')return openOutsourcedAssign(id,readOnly);if(action==='assign'||action==='reassign')return openAssignment(id,readOnly);if(action==='finalize')return openFinalize(id,readOnly);if(action==='arrive')return openArrival(id,readOnly);if(action==='activate')return openActivation(id,readOnly);if(action==='revert_activation')return openRevertActivation(id,readOnly);if(action==='unarrive'||action==='unassign')return openRevert(action,id,readOnly);if(action==='annul')return openAnnul(id,readOnly);}
 function onDocumentClickCapture(e){const nav=e.target.closest?.('.nav-item');if(nav&&state.modal&&!state.modal.hidden){close(false);return}const actionButton=e.target.closest?.('.osl-quick-status-menu [data-osl-quick-action]');if(actionButton){e.preventDefault();e.stopPropagation();const id=state.quickMenuServiceId,action=actionButton.dataset.oslQuickAction;if(id)runQuickAction(action,id);return}const status=e.target.closest?.('#screen-operaciones .col-status .os-status');if(status){const row=status.closest('tr[data-service-id]'),id=row?.dataset?.serviceId,s=id?service(id):null;if(quickActions(s).length){e.preventDefault();e.stopPropagation();if(state.quickMenuServiceId===id&&!state.quickMenu?.hidden)closeQuickMenu();else openQuickStatusMenu(id,status);return}}if(!e.target.closest?.('.osl-quick-status-menu'))closeQuickMenu()}
@@ -257,6 +257,8 @@ function syncQuickStatusAvailability(){
   }
 }
 document.addEventListener('auxilios:services-rendered',syncQuickStatusAvailability);
+// Escape also works before the next frame has moved focus into the popup.
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&state.quickMenu&&!state.quickMenu.hidden){event.preventDefault();event.stopImmediatePropagation();const anchor=state.quickMenuAnchor;closeQuickMenu();anchor?.focus({preventScroll:true});}},true);
 document.addEventListener('keydown',event=>{const status=event.target.closest?.('#screen-operaciones .col-status .os-status[role="button"]');if(status&&['Enter',' '].includes(event.key)){event.preventDefault();status.click();}});
 function init(){injectCss();ensureModal();ensureQuickMenu();syncQuickStatusAvailability();window.addEventListener('auxilios:service-workspace-opened',onWorkspaceOpened);window.addEventListener('popstate',()=>close(false));window.addEventListener('hashchange',()=>close(false));window.addEventListener('resize',closeQuickMenu);window.addEventListener('scroll',closeQuickMenu,true);document.addEventListener('click',onDocumentClickCapture,true);const w=O()?.S?.wizard;if(w?.serviceId)renderHistory(w.serviceId)}
 const api={quickActions,openActivation,openActivatedFinalize,openRevertActivation,ARRIVAL_REASONS,ANNUL_REASONS,STATUS,openArrival,openFinalize,openAnnul,openAssignment,renderHistory,confirmAction,confirmAssignmentChange,settleAssignmentConfirmation,close};

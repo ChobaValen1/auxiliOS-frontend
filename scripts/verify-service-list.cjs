@@ -19,7 +19,8 @@ const app=http.createServer((req,res)=>{
   if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.statusCode=404;return res.end();}
   res.setHeader('Content-Type',({'.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png'})[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));
 });
-if(process.argv.includes('--serve'))app.listen(4876,'127.0.0.1',()=>console.log('Servicios aislados: http://127.0.0.1:4876/'));
+module.exports={html};
+if(require.main!==module){}else if(process.argv.includes('--serve'))app.listen(4876,'127.0.0.1',()=>console.log('Servicios aislados: http://127.0.0.1:4876/'));
 else (async()=>{
   fs.mkdirSync(out,{recursive:true});await new Promise(r=>app.listen(0,'127.0.0.1',r));let browser;
   try{

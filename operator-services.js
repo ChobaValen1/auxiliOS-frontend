@@ -189,12 +189,26 @@ function billingRoute(s,context){
 function routeControl(s,menu=false){
   const context=prepareRouteContext(s),route=context.state==='ready'?billingRoute(s,context.data):{message:context.state==='pending'?'Consultando el recorrido de facturación…':context.message};
   const common=`data-os-route-service="${esc(s.service_id)}" data-os-route-menu="${menu?'1':'0'}"`,label='Ver recorrido';
-  if(route.href)return `<a ${common} ${menu?'role="menuitem"':'class="os-map-link"'} href="${esc(route.href)}" target="_blank" rel="noopener noreferrer" title="${esc(label+' · '+route.label)}" aria-label="${label}" onclick="event.stopPropagation();${menu?'cerrarMenuServicio()':''}">${ico('map')}${menu?label:''}</a>`;
+  if(route.href)return `<a ${common} ${menu?'role="menuitem"':'class="os-map-link"'} href="${esc(route.href)}" target="_blank" rel="noopener noreferrer" title="${esc(label+' · '+route.label)}" aria-label="${label}" onclick="event.stopPropagation();if(!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();abrirRecorridoServicio(this.dataset.osRouteService,this);}">${ico('map')}${menu?label:''}</a>`;
   return menu?`<button ${common} type="button" role="menuitem" disabled title="${esc(route.message)}">${ico('map')}${label}</button>`:`<span ${common} class="os-map-link is-unavailable" role="img" aria-label="${esc(route.message)}" title="${esc(route.message)}">${ico('map')}</span>`;
 }
 function refreshRouteControls(){
   for(const el of document.querySelectorAll('[data-os-route-service]')){const s=service(el.dataset.osRouteService);if(s){const html=routeControl(s,el.dataset.osRouteMenu==='1');if(el.outerHTML!==html)el.outerHTML=html;}}
 }
+let nativeRouteModuleJob=null;
+async function openNativeRoute(id,opener){
+  if(!canRead())return;closeRowMenu();
+  try{
+    if(!nativeRouteModuleJob){
+      const version=src=>typeof versionedAuxiliosAsset==='function'?versionedAuxiliosAsset(src):src;
+      const styleJob=new Promise((resolve,reject)=>{let link=document.getElementById('service-route-map-css');if(link?.sheet)return resolve();if(!link){link=document.createElement('link');link.id='service-route-map-css';link.rel='stylesheet';link.href=version('/service-route-map.css');document.head.appendChild(link);}link.onload=resolve;link.onerror=()=>{link.remove();reject(Error('No se pudo cargar el visor de recorrido.'));};});
+      const scriptJob=window.ServiceRouteMap?Promise.resolve():loadAuxiliosModule('service-route-map-js','/service-route-map.js');
+      nativeRouteModuleJob=Promise.all([styleJob,scriptJob]).catch(error=>{nativeRouteModuleJob=null;throw error;});
+    }
+    await nativeRouteModuleJob;await window.ServiceRouteMap.open(id,opener);
+  }catch{notify('No se pudo cargar el visor. Reintentá; también podés abrir el enlace en otra pestaña.','error');}
+}
+window.abrirRecorridoServicio=openNativeRoute;
 function routeCell(s){
   const detail=effectiveColumns().location_detail;
   const places=['origin','destination'].filter(groupShows).map(kind=>{
