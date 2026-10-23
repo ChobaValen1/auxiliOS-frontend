@@ -1,0 +1,11 @@
+.driver-navigation #nav-documentos,.driver-navigation #nav-grilla{display:none!important}
+#nav-yo[hidden]{display:none!important}
+.driver-navigation #nav-dashboard{order:1}.driver-navigation #nav-registro{order:2}.driver-navigation #nav-camion{order:3}.driver-navigation #nav-remitos{order:4}.driver-navigation #nav-yo{order:5}.driver-navigation .sidenav .nav-bottom{order:10}
+.driver-navigation .nav-item:active .nav-icon{transform:scale(.9)}.driver-navigation .nav-icon{transition:transform 180ms ease,color 180ms ease}
+.driver-yo{max-width:760px;margin:12px auto;padding:24px 8px;animation:driver-yo-enter 260ms ease-out both}
+.driver-yo-eyebrow{color:var(--amber,#f5a623);font-size:11px;letter-spacing:.12em;font-weight:700}.driver-yo h2{margin:8px 0;font-size:26px}.driver-yo>p:not(.driver-yo-eyebrow){color:var(--text2,#a3acc2);line-height:1.5}
+.driver-yo-links{display:grid;gap:14px;margin-top:28px}.driver-yo-links button{display:flex;align-items:center;gap:16px;width:100%;padding:22px;border:1px solid var(--border,#343a4d);border-radius:14px;background:var(--surface,#191d27);color:var(--text,#e8eaf2);text-align:left;font:inherit;cursor:pointer;transition:transform 180ms ease,border-color 180ms ease}
+.driver-yo-links button:hover{border-color:var(--amber,#f5a623);transform:translateY(-2px)}.driver-yo-links button:focus-visible{outline:2px solid var(--amber,#f5a623);outline-offset:3px}.driver-yo-links button>svg:first-child{width:24px;height:24px;color:var(--amber,#f5a623)}.driver-yo-links button>svg:last-child{margin-left:auto}.driver-yo-links span{display:grid;gap:6px}.driver-yo-links b{font-size:17px}.driver-yo-links small{color:var(--text2,#a3acc2);font-size:13px;line-height:1.4}
+@keyframes driver-yo-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:767px){.driver-navigation .sidenav .nav-item{flex:1 1 0;min-width:0;padding-left:2px;padding-right:2px}.driver-navigation .sidenav{justify-content:space-around}.driver-yo{padding:12px 0}.driver-yo-links button{padding:20px 16px}}
+@media(prefers-reduced-motion:reduce){.driver-yo{animation:none}.driver-navigation .nav-icon,.driver-yo-links button{transition:none}.driver-yo-links button:hover{transform:none}}
