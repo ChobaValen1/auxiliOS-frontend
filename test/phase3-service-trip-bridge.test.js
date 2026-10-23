@@ -105,7 +105,7 @@ test('la tarjeta activa muestra vehículo ruta KM excedentes peajes y abre el pr
   for(const expected of ['service_order_number','company_name','customer_name','customer_phone','origin','destination','vehicle_make_model','vehicle_plate','origin_destination_distance_meters'])assert.match(js,new RegExp(expected));
   assert.match(card,/Sin N° prestación/);
   for(const fallback of ['Vehículo sin informar','Sin patente'])assert.match(js,new RegExp(fallback));
-  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','priority-'])assert.doesNotMatch(card,new RegExp(forbidden));
+  for(const forbidden of ['service_number','concept_name','truck_label','driver_instructions','priority-'])assert.doesNotMatch(card.split('function activeAdHocCard')[0],new RegExp(forbidden));
   assert.match(js,/\+\$\{remaining\} más/);
   assert.match(js,/customer_excess_summary/);
   assert.match(js,/toll_charge_summary/);

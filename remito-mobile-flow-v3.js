@@ -81,6 +81,13 @@ function signatureStep(step,source){
   step.append(confirmZone,signZone);
   step.classList.add('rmv-signature-step');
   step.dataset.remitoSignatureStep='1';
+  // Layout-only resizing: never reinitialize the canvas or erase a captured signature.
+  let frame=0;
+  const fit=()=>{frame=0;if(!step.classList.contains('active')||!step.getClientRects().length)return;const root=step.closest('#remitos-nuevo'),footer=root?.querySelector('.rem-wizard-footer');if(!root||!footer)return;const bottom=Math.min(window.visualViewport?.height||innerHeight,footer.getBoundingClientRect().top),top=signZone.getBoundingClientRect().top+root.scrollTop,height=Math.max(260,Math.floor(bottom-top-12));const value=height+'px';if(step.style.getPropertyValue('--rmv-signature-height')!==value)step.style.setProperty('--rmv-signature-height',value);};
+  const schedule=()=>{if(!frame)frame=requestAnimationFrame(fit);};
+  new MutationObserver(schedule).observe(step,{attributes:true,attributeFilter:['class']});
+  if(window.ResizeObserver){const observer=new ResizeObserver(schedule);observer.observe(confirmZone);const footer=document.querySelector('#remitos-nuevo .rem-wizard-footer');if(footer)observer.observe(footer);}
+  window.addEventListener('resize',schedule);window.visualViewport?.addEventListener('resize',schedule);schedule();
 }
 
 function reindexPanels(panels,start){
