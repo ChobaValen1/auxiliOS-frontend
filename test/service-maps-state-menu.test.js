@@ -37,10 +37,11 @@ test('status menu has no suggested highlight, only normal accessible focus',()=>
 });
 test('wide route map is derived adjacent to Actions without changing the persisted configuration schema',()=>{
   const source=services.slice(services.indexOf('function columns('),services.indexOf('function groupShows('));
-  const fn=new Function('baseColumns','effectiveColumns','HISTORY_GROUP_OF',source+';return columns;');
+  const fn=new Function('baseColumns','effectiveColumns','HISTORY_GROUP_OF','S',source+';return columns;');
   const order=['code','origin','destination','driver','actions'];
-  assert.deepEqual(fn(()=>order.slice(),()=>({density:'wide'}),{})(),['code','origin','destination','driver','maps','actions']);
-  assert.deepEqual(fn(()=>order.slice(),()=>({density:'compact'}),{origin:'route',destination:'route'})(),['code','route','driver','actions']);
+  assert.deepEqual(fn(()=>order.slice(),()=>({density:'wide'}),{},{view:'active'})(),['code','origin','destination','driver','maps','actions']);
+  assert.deepEqual(fn(()=>order.slice(),()=>({density:'compact'}),{origin:'route',destination:'route'},{view:'active'})(),['code','route','driver','actions']);
+  assert.deepEqual(fn(()=>order.slice(),()=>({density:'wide'}),{},{view:'history'})(),['code','history_tolls','origin','destination','driver','maps','actions']);
 });
 test('routing context cache is scoped to user, company and Buenos Aires operating date',()=>{
   const source=services.slice(services.indexOf('function routeContextKey('),services.indexOf('function prepareRouteContext('));

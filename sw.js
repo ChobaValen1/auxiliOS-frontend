@@ -1,7 +1,8 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v562-mapa-nativo';
+const CACHE_NAME='auxilios-v563-mapa-nativo';
 const PRECACHE_ASSETS=[
+  '/ui/history-tolls-list-v1.js','/ui/history-tolls-list-v1.css',
   '/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
   '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',

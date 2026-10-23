@@ -5862,6 +5862,7 @@ function renderTablaRemitos(data) {
         <td class="rmx-client"><span>${_rmxEsc(r.cliente || '—')}</span></td>
         <td class="rmx-vehicle"><span class="rmx-plate">${_rmxEsc(r.patente || '—')}</span>${r.marca ? `<span class="rmx-sub">${_rmxEsc(r.marca)}</span>` : ''}</td>
         <td>${r.tipoReal ? `<span class="rmx-type">${_rmxEsc(r.tipoReal)}</span>` : '<span class="rmx-type is-empty">Sin clasificar</span>'}</td>
+        <td class="rmx-col-tolls">${window.AuxiliosHistoryTolls?.render(r.historyTolls)||'<span class="rmx-muted">Peajes no disponibles</span>'}</td>
         <td class="rmx-money"${detalle ? ` title="${_rmxEsc(detalle)}"` : ''}>${cobrado ? `$ ${cobrado.toLocaleString('es-AR')}` : '<span class="rmx-muted">—</span>'}</td>
         <td><div class="rmx-pays">${pagoHTML}</div></td>
         <td>${estadoPill}</td>
@@ -5897,6 +5898,7 @@ function renderTablaRemitos(data) {
         <div class="rmx-mc-top"><span class="rmx-mc-srv">${_rmxEsc(r.srvOrden || r.nroSrv || 'Sin N° de servicio')}</span>${_rmxEstadoHTML(r)}</div>
         <div class="rmx-mc-main"><span class="rmx-mc-client">${_rmxEsc(r.cliente || '—')}</span>${cobrado ? `<span class="rmx-mc-money">$ ${cobrado.toLocaleString('es-AR')}</span>` : ''}</div>
         <div class="rmx-mc-meta">${meta}</div>
+        ${window.AuxiliosHistoryTolls?.render(r.historyTolls,{heading:true})||''}
         ${pendiente && !esGestionM ? `<button class="rmx-mc-cta btn-firmar-remito" type="button">Completar remito</button>` : ''}`;
       mobileList.appendChild(mcard);
     });
@@ -5942,6 +5944,7 @@ async function _renderRemitosOutboxPendientes() {
         <td class="rmx-client"><span>${cliente}</span></td>
         <td class="rmx-vehicle"><span class="rmx-plate">${patente}</span></td>
         <td><span class="rmx-type">${tipo}</span></td>
+        <td class="rmx-col-tolls"><span class="rmx-muted">Pendiente de sincronizar</span></td>
         <td style="font-size:11px;color:var(--muted)">—</td>
         <td style="font-size:11px;color:var(--muted)">—</td>
         <td>${badge}</td>

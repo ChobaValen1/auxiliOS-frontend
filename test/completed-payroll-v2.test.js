@@ -6,7 +6,7 @@ const {PGlite}=require('@electric-sql/pglite');
 const migration=fs.readFileSync('migrations/20261023180907_driver_history_completed_payroll_v2.sql','utf8');
 const driver='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
 let db;
-before(async()=>{db=new PGlite();await db.exec(fs.readFileSync('test/fixtures/completed-payroll-v2.sql','utf8'));await db.exec(migration);await db.exec(fs.readFileSync('migrations/20261023182440_driver_cash_receiver_scope_v2.sql','utf8'));await db.exec(fs.readFileSync('migrations/20261023183304_all_service_history_tolls_v1.sql','utf8'));});
+before(async()=>{db=new PGlite();await db.exec(fs.readFileSync('test/fixtures/completed-payroll-v2.sql','utf8'));await db.exec(migration);await db.exec(fs.readFileSync('migrations/20261023182440_driver_cash_receiver_scope_v2.sql','utf8'));await db.exec(fs.readFileSync('migrations/20261023183304_all_service_history_tolls_v1.sql','utf8'));await db.exec(fs.readFileSync('migrations/20261023195803_history_list_tolls_v1.sql','utf8'));});
 after(async()=>db?.close());
 beforeEach(async()=>{
   await db.exec("truncate operator_services,operator_service_assignments,remitos,operator_service_tolls,operator_service_excess_charges,service_payments,service_collection_reports,daily_logs,remito_toll_reports,remito_excess_reports,journey_cash_expenses,rendicion_cierre,payroll_cash_months,payroll_liquidaciones,companies,service_concepts,service_toggle_marks;");
@@ -94,6 +94,20 @@ test('todos los servicios: previstos sin remito y remitos antiguos/pending tambi
       const d=await value('select public.get_driver_remito_history_v3($1) v',[n]);assert.equal(d.history_tolls.length,1);assert.equal(d.history_tolls[0].display_status,'planned');assert.equal(d.service_tolls_approved,false);
     }
   }
+});
+test('la lista recibe peajes por lote, también de servicios sin remito',async()=>{
+  const id=await service({document_status:'exception_approved'});await db.query("insert into operator_service_tolls(service_id,source,toll_name_snapshot,total_amount,payer_agent) values($1,'planned','Peaje del servicio sin remito',4500,'provider')",[id]);
+  const list=await value('select public.get_history_list_tolls_v1($1,array[]::integer[]) v',[[id]]);assert.equal(list.services.length,1);assert.equal(list.services[0].history_tolls[0].total_amount,4500);
+  await remito(1,id);const remitos=await value('select public.get_history_list_tolls_v1(array[]::uuid[],$1) v',[[1]]);assert.equal(remitos.remitos[0].history_tolls.length,1);
+});
+test('lote: chofer sólo puede leer sus remitos y no pedir servicios o más de cien registros',async()=>{
+  await remito(1,null);await remito(2,null,{driver_id:other});
+  await db.query("select set_config('test.role','chofer',false)");
+  const own=await value('select public.get_history_list_tolls_v1(array[]::uuid[],$1) v',[[1]]);assert.equal(own.remitos.length,1);
+  await assert.rejects(value('select public.get_history_list_tolls_v1(array[]::uuid[],$1) v',[[2]]),/Sin permiso/);
+  await assert.rejects(value('select public.get_history_list_tolls_v1($1,array[]::integer[]) v',[[crypto.randomUUID()]]),/Sin permiso/);
+  await assert.rejects(value('select public.get_history_list_tolls_v1(array[]::uuid[],$1) v',[Array.from({length:101},(_,i)=>i+1)]),/100 registros/);
+  assert.equal(await value("select has_function_privilege('anon','public.get_history_list_tolls_v1(uuid[],integer[])','EXECUTE') v"),false);
 });
 test('confirma sólo su propia copia prevista; conserva otros peajes y todas las pasadas informadas',async()=>{
   const op=[{toll_name:'Peaje A',payer_agent:'provider',source:'planned'},{toll_name:'Peaje A',payer_agent:'provider',source:'actual',total_amount:1000},{toll_name:'Peaje B',payer_agent:'customer',source:'planned',total_amount:2000}];

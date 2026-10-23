@@ -945,7 +945,9 @@ async function cargarRemitos(opts = {}) {
       query = query.range(start, end);
       const { data, error, count } = await query;
       if (error) throw new Error(error.message || 'Error Supabase remitos');
-      return { remitos: await _rmxEnriquecerServicios((data || []).map(_mapRemitoRow)), total: count ?? 0 };
+      const remitos=await _rmxEnriquecerServicios((data||[]).map(_mapRemitoRow));
+      await window.AuxiliosHistoryTolls?.enrichRemitos?.(remitos,_db);
+      return {remitos,total:count??0};
     };
 
     const esChofer = typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name === 'chofer';

@@ -1,0 +1,13 @@
+.hlt{min-width:190px;max-width:300px;font-size:11px;line-height:1.45;color:var(--text)}
+.hlt-heading{display:block;color:var(--muted);font-size:10px;font-weight:600;margin-bottom:3px}
+.hlt-total{display:block;font-variant-numeric:tabular-nums;margin-bottom:5px}
+.hlt-note,.hlt-list small{display:block;color:var(--muted);font-size:10px;font-weight:400}
+.hlt-list{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.hlt-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px}
+.hlt-list .hlt-name{white-space:normal;overflow-wrap:anywhere;min-width:0;font-weight:400}
+.hlt-list .hlt-amount{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+.hlt-list small{grid-column:1/-1}
+.hlt-error,.hlt-empty{color:var(--muted);font-size:10px}
+.rmx-mcard .hlt{min-width:0;max-width:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.rmx-col-tolls{min-width:200px}
+@media(max-width:600px){.os-table .col-history_tolls .hlt{min-width:0;max-width:none}}
