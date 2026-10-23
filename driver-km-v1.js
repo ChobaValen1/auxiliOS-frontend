@@ -54,6 +54,7 @@ function journeyHTML(j,prefix){
 function getOpen(){try{if(_jornadaActivaLocal?.log_id&&String(_jornadaActivaLocal.log_id).startsWith('TMP-'))return[{..._jornadaActivaLocal,status:'open',trucks:{plate:_jornadaActivaLocal.patente,brand:_jornadaActivaLocal.marca_modelo}}];}catch{}if(Array.isArray(S.open))return S.open;try{if(Array.isArray(_jornadasAbiertasCache)&&_jornadasAbiertasCache.length)return _jornadasAbiertasCache;}catch{}return(S.rows||[]).filter(j=>j.status==='open');}
 function render(){
  const root=document.getElementById('dkm-root');if(!root||identity()!==S.uid)return;
+ const previousPanel=root.querySelector('#dkm-stats');
  const open=getOpen(),j=open[0],truck=j?.trucks,older=open.filter(x=>x.log_date&&x.log_date<today()),recent=(S.rows||[]).filter(x=>x.status!=='open').slice(0,3),focus=document.activeElement,focusKey=focus?.dataset?.days?['days',focus.dataset.days]:focus?.dataset?.metric?['metric',focus.dataset.metric]:null;
  root.innerHTML='<header class="dkm-header"><div><h2>Km</h2><p>Tu jornada, en un vistazo</p></div><button type="button" class="dkm-refresh" data-refresh aria-label="Actualizar actividad" '+(S.loading?'disabled':'')+'>'+icon('refresh-cw')+'</button></header>'+
  (older.length?'<div class="dkm-attention"><b>'+older.length+' jornada(s) anterior(es) sin cerrar</b><button type="button" data-open-history>Revisar jornadas</button></div>':'')+
@@ -63,11 +64,13 @@ function render(){
  '<div class="dkm-actions"><button type="button" class="dkm-primary" data-journey>'+(j?'Finalizar jornada':'Iniciar jornada')+icon(j?'square':'play')+'</button>'+(open.length>1?'<button type="button" class="dkm-secondary" data-open-history>Ver las '+open.length+' jornadas abiertas</button>':'')+'</div>'+
  (S.error?'<div class="dkm-error" role="status">'+(S.rows?'No se pudo actualizar. Mostrando la última consulta.':'No pudimos cargar tus registros.')+' <button type="button" data-refresh>Reintentar</button></div>':'')+
  '<section class="dkm-recent"><header><h3>Últimos registros</h3><button type="button" data-open-history>Ver historial '+icon('chevron-right')+'</button></header>'+(recent.length?recent.map(j=>journeyHTML(j,'recent')).join(''):'<p class="dkm-empty">'+(S.loading?'Cargando registros…':S.error?'Tus registros no están disponibles en este momento.':'Todavía no hay jornadas cerradas en los últimos 30 días.')+'</p>')+'</section>';
- if(focusKey)root.querySelector('[data-'+focusKey[0]+'="'+focusKey[1]+'"]')?.focus({preventScroll:true});
+ const placeholder=root.querySelector('#dkm-stats');if(previousPanel&&window.AuxiliosKmMotion)placeholder.replaceWith(previousPanel);
+ const panel=root.querySelector('#dkm-stats');
+ if(window.AuxiliosKmMotion){const from=shift(today(),1-S.days),rows=(S.rows||[]).filter(j=>j.log_date>=from&&j.log_date<=today()),totals=summarize(rows,S.uid);totals.services=S.services.filter(r=>r.date>=from&&r.date<=today()).length;window.AuxiliosKmMotion.present(panel,{uid:S.uid,days:S.days,metric:S.metric,range:dateLabel(from)+' al '+dateLabel(today()),totals,points:Array.from({length:S.days},(_,i)=>{const date=shift(today(),i+1-S.days),t=summarize(rows.filter(j=>j.log_date===date),S.uid);return{date,label:dateLabel(date),value:S.metric==='km'?t.km:S.services.filter(r=>r.date===date).length};}),message:S.rows?null:S.error?'No pudimos cargar tu actividad.':'Cargando tu actividad…'},S.expanded);}
+ if(focusKey)requestAnimationFrame(()=>root.querySelector('[data-'+focusKey[0]+'="'+focusKey[1]+'"]')?.focus({preventScroll:true}));
 }
 function reveal(){
  S.expanded=!S.expanded;render();const button=document.querySelector('#dkm-root .dkm-truck-toggle');button?.focus({preventScroll:true});
- const panel=document.getElementById('dkm-stats');if(S.expanded&&panel)window.dispatchEvent(new CustomEvent('auxilios:km-expanded',{detail:panel}));
 }
 function historyShell(){
  const modal=document.getElementById('modal-historial-jornadas'),body=modal?.querySelector('.modal-body');if(!body)return null;
@@ -111,6 +114,6 @@ function init(){
  new MutationObserver(sync).observe(screen,{attributes:true,attributeFilter:['class']});
  window.addEventListener('auxilios:profile-ready',sync);window.addEventListener('online',()=>{if(identity()&&screen.classList.contains('active'))void load(true);});sync();
 }
-window.AuxiliosDriverKm={openHistory,refresh:()=>load(true),updateOpen(rows){const uid=identity();if(!uid)return;if(S.uid!==uid){S.token++;S.uid=uid;S.rows=null;S.loaded=0;S.loading=false;}S.open=rows;render();void load(true);},distance,summarize,shift};
+window.AuxiliosDriverKm={openHistory,renderVisual:render,refresh:()=>load(true),updateOpen(rows){const uid=identity();if(!uid)return;if(S.uid!==uid){S.token++;S.uid=uid;S.rows=null;S.loaded=0;S.loading=false;}S.open=rows;render();void load(true);},distance,summarize,shift};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

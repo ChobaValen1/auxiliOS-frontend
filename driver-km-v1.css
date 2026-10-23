@@ -29,6 +29,18 @@
 .dkm-current small,.dkm-totals small{font-size:12px;font-weight:500}
 #dkm-stats{border-top:1px solid var(--border);padding:18px 20px}
 #dkm-stats[hidden]{display:none}
+#dkm-stats.dkm-react-panel{padding:0;border:0}
+.dkm-react-shell{overflow:hidden}
+.dkm-react-content{padding:18px 20px;border-top:1px solid var(--border)}
+.dkm-react-segment{position:relative;isolation:isolate}
+.dkm-react-segment button{position:relative;isolation:isolate;background:transparent!important}
+.dkm-motion-ink{position:absolute;inset:0;border-radius:7px;background:var(--amber);z-index:-1}
+.dkm-motion-label{position:relative}
+.dkm-scan-state{min-height:30px;margin-bottom:10px;font-size:11px;line-height:1.5;color:var(--muted2,var(--muted))}
+.dkm-scan-state>span{display:flex;align-items:center;gap:8px}
+.dkm-scan-dot{height:6px;width:6px;display:block;flex:none;border-radius:50%;background:var(--amber)}
+.dkm-scan-state[data-scan-phase=processing]{color:var(--amber)}
+.dkm-scan-state[data-scan-phase=result] .dkm-scan-dot{background:var(--green)}
 .dkm-stat-head,.dkm-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .dkm-stat-head h3,.dkm-recent h3,.dkm-history-intro h3{font-size:16px;margin:0}
 .dkm-chart-head h4{font-size:12px;margin:0}

@@ -3,6 +3,7 @@ import { spring } from 'motion';
 import './style.css';
 import { enhanceServiceToolbar } from './service-toolbar';
 import { enhanceRemitoForm } from './remito-form';
+import { enhanceDriverKm } from './driver-km';
 
 // Existing application profile: read the shared binding, including its async login update.
 declare const PERFIL_USUARIO: { full_name?: string; roles?: { name?: string }; role?: string } | null;
@@ -13,11 +14,6 @@ const mobile = matchMedia('(max-width: 767px)');
 const running = new Map<HTMLElement, ReturnType<typeof animate>>();
 const ease = { type: spring, duration: .48, bounce: .16 };
 const visible = (el: HTMLElement) => !el.hidden && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
-
-window.addEventListener('auxilios:km-expanded', event => {
-  const panel = (event as CustomEvent<HTMLElement>).detail;
-  if (panel instanceof HTMLElement) enter(panel, 'translateY(-8px)');
-});
 
 function enter(el: HTMLElement, from = 'translateY(14px) scale(.98)', delay = 0) {
   running.get(el)?.cancel();
@@ -352,6 +348,6 @@ function install() {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); }
   });
 }
-const start = () => { install(); enhanceRemitoForm(); };
+const start = () => { install(); enhanceRemitoForm(); enhanceDriverKm(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
 else start();
