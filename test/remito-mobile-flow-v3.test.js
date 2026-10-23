@@ -85,7 +85,7 @@ test('origen y destino sin asignación se validan con Google Maps y persisten su
   assert.match(flow,/km\.readOnly=true/);
   assert.match(sigma,/kmRemito\.readOnly = true/);
   assert.match(flow,/sessionToken/);
-  assert.match(flow,/Seleccioná una sugerencia de Google Maps/);
+  assert.match(flow,/Elegí una sugerencia de Maps/);
   assert.match(flow,/function validateMapLocations/);
   assert.match(flow,/origin_place_id/);
   assert.match(flow,/destination_place_id/);
