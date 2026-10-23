@@ -7198,9 +7198,18 @@ let _jornadasAbiertasCache    = [];
 let _jornadaPendienteCerrar   = null;
 
 // ── Abrir modal nueva jornada ─────────────────
+function actualizarReferenciaCamionJornada(pre, camion) {
+  const modelo = document.getElementById(pre + '-camion-modelo');
+  if (modelo) modelo.textContent = [camion?.brand, camion?.model, camion?.numero_interno ? 'Unidad ' + camion.numero_interno : null].filter(Boolean).join(' · ');
+  if (pre === 'nj') {
+    const km = document.getElementById('nj-reference-km');
+    if (km) km.textContent = camion?.current_km != null ? Number(camion.current_km).toLocaleString('es-AR') + ' km' : 'Sin registro';
+  }
+}
 async function abrirModalNuevaJornada() {
     // Resetear estado
     jornadaSeleccionada = null;
+    actualizarReferenciaCamionJornada('nj', null);
     fotoKmInicio = null;
     kmIaInicio = null; kmOrigenInicio = null;
     horasIaInicio = null; horasOrigenInicio = null;
@@ -7268,7 +7277,8 @@ async function abrirModalNuevaJornada() {
       if (kmInput2 && _camionActual.current_km) kmInput2.value = _camionActual.current_km;
       _horasPreparar('nj', _horasNecesitaInicio());
       if (preview)    preview.style.display = 'block';
-      if (previewTxt) previewTxt.textContent = `${_camionActual.plate}${_camionActual.numero_interno ? ' · N° ' + _camionActual.numero_interno : ''}`;
+      if (previewTxt) previewTxt.textContent = _camionActual.plate || 'Camión seleccionado';
+      actualizarReferenciaCamionJornada('nj', _camionActual);
       if (btnSelector) btnSelector.style.display = 'none';
       if (panel)      panel.style.display = 'none';
       return; // No hace falta cargar la lista de camiones
@@ -7369,7 +7379,8 @@ function seleccionarCamion(camion, el) {
   const previewTxt = document.getElementById('camion-preview-texto');
   const btnSelector = document.getElementById('btn-abrir-selector-camion');
   const panel = document.getElementById('panel-selector-camion');
-  if (previewTxt) previewTxt.textContent = `${camion.plate}${camion.numero_interno ? ' · N° ' + camion.numero_interno : ''}`;
+  if (previewTxt) previewTxt.textContent = camion.plate || 'Camión seleccionado';
+  actualizarReferenciaCamionJornada('nj', camion);
   if (preview) preview.style.display = 'block';
   if (btnSelector) btnSelector.style.display = 'none';
   if (panel) panel.style.display = 'none';
@@ -7462,7 +7473,7 @@ async function confirmarNuevaJornada() {
   if (!_grillaDesvioConfirmado && navigator.onLine) {
     const desvio = await _detectarDesvioGrillaChofer(jornadaSeleccionada.truck_id);
     if (desvio) {
-      if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
+      if (btn) { btn.textContent = 'Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
       _abrirModalMotivoGrilla(desvio);
       return;
     }
@@ -7513,7 +7524,7 @@ async function confirmarNuevaJornada() {
 
       _grillaDesvioConfirmado = false;
       _grillaMotivoPendiente  = null;
-      if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
+      if (btn) { btn.textContent = 'Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
       operationFeedback('Jornada iniciada', 'Quedó guardada en el teléfono y se sincronizará al recuperar conexión.', 'success', 2400);
       closeModal('modal-nueva-jornada');
       actualizarBotonFinalizar(true);
@@ -7521,7 +7532,7 @@ async function confirmarNuevaJornada() {
       return;
     } catch (err) {
       console.error('[offline] No se pudo encolar la apertura de jornada:', err);
-      if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
+      if (btn) { btn.textContent = 'Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
       _modalError('nj-error', 'No se pudo guardar la jornada en el teléfono. Reintentá.');
       return;
     }
@@ -7551,7 +7562,7 @@ async function confirmarNuevaJornada() {
 
   console.log("📍 PASO 4: Supabase contestó:", resultado);
 
-  if (btn) { btn.textContent = '✅ Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
+  if (btn) { btn.textContent = 'Iniciar jornada'; btn.style.pointerEvents = 'auto'; }
 
   if (resultado && resultado.success) {
     operationFeedback('Jornada iniciada', 'La jornada quedó abierta correctamente.', 'success', 2200);
@@ -7710,7 +7721,8 @@ function abrirModalCerrarJornada(jornada) {
   // Llenar datos de la grúa
   const info = jornada.trucks;
   const camInfo = document.getElementById('cj-camion-info');
-  if (camInfo) camInfo.textContent = `${info?.plate || '—'} · ${info?.brand || ''} ${info?.model || ''}`;
+  if (camInfo) camInfo.textContent = info?.plate || 'Camión sin informar';
+  actualizarReferenciaCamionJornada('cj', info);
 
   const kmDisp = document.getElementById('cj-km-inicio-display');
   if (kmDisp) kmDisp.textContent = (jornada.km_inicio || 0).toLocaleString('es-AR') + ' km';
@@ -8024,7 +8036,7 @@ async function confirmarCerrarJornada() {
   if (btn) { btn.textContent = 'Revisando servicios...'; btn.style.pointerEvents = 'none'; }
   const pendientes = await _serviciosPendientesCierreJornada();
   if (pendientes.length) {
-    if (btn) { btn.textContent = '🏁 Cerrar jornada'; btn.style.pointerEvents = 'auto'; }
+    if (btn) { btn.textContent = 'Finalizar jornada'; btn.style.pointerEvents = 'auto'; }
     _mostrarServiciosPendientesCierre(pendientes);
     return;
   }
@@ -8078,7 +8090,7 @@ async function confirmarCerrarJornada() {
       try { localStorage.removeItem('sigma_jornada_activa'); } catch (e) { /* no crítico */ }
       _jornadasAbiertasCache = [];
 
-      if (btn) { btn.textContent = '🏁 Cerrar jornada'; btn.style.pointerEvents = 'auto'; }
+      if (btn) { btn.textContent = 'Finalizar jornada'; btn.style.pointerEvents = 'auto'; }
       toast('Jornada cerrada — se sincroniza cuando haya señal 📴', 'success');
       closeModal('modal-cerrar-jornada');
       actualizarBotonFinalizar(false);
@@ -8089,7 +8101,7 @@ async function confirmarCerrarJornada() {
       return;
     } catch (err) {
       console.error('[offline] No se pudo encolar el cierre de jornada:', err);
-      if (btn) { btn.textContent = '🏁 Cerrar jornada'; btn.style.pointerEvents = 'auto'; }
+      if (btn) { btn.textContent = 'Finalizar jornada'; btn.style.pointerEvents = 'auto'; }
       _modalError('cj-error', 'No se pudo guardar el cierre en el teléfono. Reintentá.');
       return;
     }
@@ -8112,7 +8124,7 @@ async function confirmarCerrarJornada() {
 
   // Restaurar el botón
   if (btn) {
-    btn.textContent = '🏁 Cerrar jornada';
+    btn.textContent = 'Finalizar jornada';
     btn.style.pointerEvents = 'auto';
   }
 
