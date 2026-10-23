@@ -146,21 +146,20 @@
         '<div><span>Saldo</span><b>' + money(pendiente) + '</b>' + (num(i.paid) > 0 ? '<small>Pagó ' + money(i.paid) + '</small>' : '') + '</div>' +
         '<div class="pcv-saldo"><span>A cobrar</span><b>' + money(pendiente + extra) + '</b>' + (extra > 0 ? '<small>+ ' + money(extra) + ' adicionales</small>' : '') + '</div>' +
       '</div>' +
+      (pendiente > 0 ? '<div class="pcv-payment-modes" role="group" aria-label="Cómo se cobró el saldo">' +
+        '<button type="button" data-pcv="un-medio" aria-pressed="' + (st.modo === 'cobrado' && !st.dividir) + '">Un medio</button>' +
+        '<button type="button" data-pcv="dividir" aria-pressed="' + (st.modo === 'cobrado' && st.dividir) + '">Dos medios</button>' +
+        '<button type="button" data-pcv-modo="no_cobrado" aria-pressed="' + (st.modo === 'no_cobrado') + '">No cobré</button></div>' : '') +
       (pendiente <= 0 ? '<p class="pcv-ok">El presupuesto ya está pago.</p>' :
         st.modo === 'no_cobrado'
           ? '<label class="pcv-motivo"><span>¿Por qué no cobraste el saldo?</span><textarea data-pcv-motivo rows="2" placeholder="Ej.: paga por transferencia mañana">' + esc(st.motivo) + '</textarea></label>' +
-            '<p class="pcv-help">Podés cerrar el servicio igual. El saldo queda pendiente para Administración.</p>' +
-            '<div class="pcv-links"><button type="button" class="pcv-link" data-pcv-modo="cobrado">Sí, cobré el saldo</button></div>'
+            '<p class="pcv-help">El saldo queda pendiente para Administración.</p>'
           : (st.dividir
               ? '<div class="pcv-linea"><span>Medio 1</span>' + chips(st.l1.method, 'l1') +
-                  '<label class="pcv-monto">$<input data-pcv-monto="l1" inputmode="decimal" value="' + esc(st.l1.amount) + '" placeholder="0"></label></div>' +
+                  '<label class="pcv-monto">$<input data-pcv-monto="l1" aria-label="Importe del primer medio" inputmode="decimal" value="' + esc(st.l1.amount) + '" placeholder="0"></label></div>' +
                 '<div class="pcv-linea"><span>Medio 2</span>' + chips(st.l2.method, 'l2') +
-                  '<label class="pcv-monto">$<input data-pcv-monto="l2" inputmode="decimal" value="' + esc(st.l2.amount) + '" placeholder="0"></label></div>' +
-                '<div class="pcv-links"><button type="button" class="pcv-link" data-pcv="un-medio">Pagó con un solo medio</button>' +
-                  '<button type="button" class="pcv-link" data-pcv-modo="no_cobrado">No cobré</button></div>'
-              : '<div class="pcv-linea"><span>Medio de pago del saldo</span>' + chips(st.l1.method, 'l1') + '</div>' +
-                '<div class="pcv-links"><button type="button" class="pcv-link" data-pcv="dividir">Pagó con dos medios</button>' +
-                  '<button type="button" class="pcv-link" data-pcv-modo="no_cobrado">No cobré</button></div>')) +
+                  '<label class="pcv-monto">$<input data-pcv-monto="l2" aria-label="Importe del segundo medio" inputmode="decimal" value="' + esc(st.l2.amount) + '" placeholder="0"></label></div>'
+              : '<div class="pcv-linea"><span>Medio de pago del saldo</span>' + chips(st.l1.method, 'l1') + '</div>')) +
       '<div class="pcv-extra"><span>¿Tuvo que pagar algo más?</span>' +
         '<button type="button" class="pcv-extra-btn" data-pcv="adicional">+ Agregar adicional</button></div>';
   }
@@ -239,11 +238,14 @@
     if (!b || !b.closest('#pcv-card')) return;
     if (b.hasAttribute('data-pcv-modo')) st.modo = b.getAttribute('data-pcv-modo');
     else if (b.hasAttribute('data-pcv-medio')) st[b.getAttribute('data-pcv-medio')].method = b.getAttribute('data-v');
-    else if (b.getAttribute('data-pcv') === 'dividir') { st.dividir = true; st.l1.amount = st.l1.amount || String(Math.round(saldo())); }
-    else if (b.getAttribute('data-pcv') === 'un-medio') { st.dividir = false; }
+    else if (b.getAttribute('data-pcv') === 'dividir') { st.modo = 'cobrado'; st.dividir = true; st.l1.amount = st.l1.amount || String(Math.round(saldo())); }
+    else if (b.getAttribute('data-pcv') === 'un-medio') { st.modo = 'cobrado'; st.dividir = false; }
     else if (b.getAttribute('data-pcv') === 'adicional') { var add = $('#rem-add-excess'); if (add) add.click(); return; }
     pintar();
+    var selector = b.hasAttribute('data-pcv-modo') ? '[data-pcv-modo="' + b.getAttribute('data-pcv-modo') + '"]' : b.hasAttribute('data-pcv-medio') ? '[data-pcv-medio="' + b.getAttribute('data-pcv-medio') + '"][data-v="' + b.getAttribute('data-v') + '"]' : '[data-pcv="' + b.getAttribute('data-pcv') + '"]';
+    var replacement = cardFocus(selector); if (replacement) replacement.focus({ preventScroll: true });
   });
+  function cardFocus(selector) { var card = document.getElementById('pcv-card'); return card && card.querySelector(selector); }
   document.addEventListener('input', function (ev) {
     var t = ev.target;
     if (t.hasAttribute && t.hasAttribute('data-pcv-acordado')) { adhoc.monto = t.value; return; }
@@ -277,7 +279,11 @@
     }
     var order = card.querySelector('[data-ad-hoc="order"]');
     var orderLabel = order && order.closest('label');
-    if (orderLabel) orderLabel.hidden = adhoc.particular;
+    var reference = order && order.closest('fieldset');
+    if (reference) reference.hidden = true;
+    if (orderLabel) { orderLabel.hidden = adhoc.particular; var title = orderLabel.querySelector('span'); if (title) title.textContent = 'N.º de servicio *'; var hint = orderLabel.querySelector('.rmv-hint'); if (hint) hint.textContent = 'Número informado por la prestadora.'; }
+    var orderInput = document.getElementById('rem-nro-prestadora');
+    if (orderInput) { orderInput.required = !adhoc.particular; orderInput.setAttribute('aria-required', String(!adhoc.particular)); if (adhoc.particular) { orderInput.classList.remove('rem-field-error'); orderInput.removeAttribute('aria-invalid'); } }
     box.innerHTML =
       '<span>¿Para quién es el servicio?</span>' +
       '<div class="pcv-modo" role="group" aria-label="Tipo de cliente">' +
@@ -287,6 +293,18 @@
         ? '<label class="pcv-acordado"><span>Monto acordado con el cliente *</span><span class="pcv-monto">$<input data-pcv-acordado inputmode="decimal" value="' + esc(adhoc.monto) + '" placeholder="0"></span>' +
           '<small class="pcv-help">Lo cobrás en el paso de cobro. Operaciones lo confirma.</small></label>'
         : '');
+    if (orderLabel) box.appendChild(orderLabel);
+    if (!adhoc.particular && orderLabel && !document.getElementById('pcv-order-error')) orderLabel.insertAdjacentHTML('beforeend','<small id="pcv-order-error" class="rem-error-msg" role="alert">Ingresá el N.º de servicio de la prestadora.</small>');
+  }
+
+  function validateIntake() {
+    if (!enAdHoc()) return true;
+    var input = adhoc.particular ? document.querySelector('[data-pcv-acordado]') : document.getElementById('rem-nro-prestadora');
+    var valid = adhoc.particular ? num(adhoc.monto) > 0 : !!(input && input.value.trim());
+    if (input) { input.classList.toggle('rem-field-error', !valid); input.setAttribute('aria-invalid', String(!valid)); }
+    var error = document.getElementById('pcv-order-error'); if (error) error.classList.toggle('visible', !valid && !adhoc.particular);
+    if (!valid && input) input.focus();
+    return valid;
   }
 
   function observar() {
@@ -319,6 +337,7 @@
 
   global.AuxiliosCobroParticular = {
     sync: sync,
+    validateIntake: validateIntake,
     _test: {
       setAdHoc: function (a) { adhoc = Object.assign({ particular: false, monto: '' }, a); },
       set: function (s) { st = Object.assign({ serviceId: 'x', modo: 'cobrado', dividir: false, l1: { method: '', amount: '' }, l2: { method: '', amount: '' }, motivo: '' }, s); },

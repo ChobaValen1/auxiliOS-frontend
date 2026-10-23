@@ -730,6 +730,7 @@ function _remWizardValidar(paso) {
   };
   
   if (_remWizardEsAdHoc() && paso === 1) {
+    if (window.AuxiliosCobroParticular?.validateIntake?.() === false) ok = false;
     marcar('rem-patente', 'err-patente');
     marcar('rem-origen', 'err-origen');
     marcar('rem-destino', 'err-destino');
@@ -1423,6 +1424,10 @@ async function _finalizarRemitoInner() {
   }
 
   const remitoAddons = window.AuxiliosRemitoAddonsV2?.collect?.() || null;
+  if (_remWizardEsAdHoc() && window.AuxiliosCobroParticular?.validateIntake?.() === false) {
+    remWizardIr(1 - _remPasoActual);
+    return false;
+  }
   const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
   if (_remWizardEsAdHoc() && !mapLocations) {
     mostrarValidacion('⚠ Revisá origen y destino', 'Seleccioná ambas direcciones desde las sugerencias de Google Maps.');
@@ -6543,6 +6548,10 @@ async function guardarRemitoPendiente() {
     ? esRemitoAdHocActivo()
     : sessionStorage.getItem('auxilios_driver_ad_hoc_mode') === '1');
   const tipo = String(servicioAsignado?.concept_name || '').trim() || (adHocMode ? 'A definir por Operaciones' : 'Servicio');
+  if (adHocMode && window.AuxiliosCobroParticular?.validateIntake?.() === false) {
+    remWizardIr(1 - _remPasoActual);
+    return false;
+  }
   const mapLocations = window.AuxiliosRemitoMobileV3?.getMapLocations?.() || null;
   if (adHocMode && !mapLocations) {
     toast('Seleccioná origen y destino desde Google Maps', 'error');

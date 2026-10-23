@@ -1,4 +1,12 @@
 /* AuxiliOS · Cobro del servicio particular en el remito del chofer (v1) */
+.pcv-payment-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;margin:0 0 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
+.pcv-payment-modes button{min-height:44px;min-width:0;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted2);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.pcv-payment-modes button[aria-pressed="true"]{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,var(--card));color:var(--amber)}
+#pcv-card :is(button,textarea,input):focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+#pcv-card .rem-addons-head{margin-bottom:8px}#pcv-card .pcv-resumen{margin:8px 0 12px;gap:8px}#pcv-card .pcv-resumen>div{padding:4px 0;background:transparent;border-radius:0}#pcv-card .pcv-resumen>div+div{border-left:1px solid var(--border);padding-left:10px}
+#pcv-card .pcv-linea{grid-template-columns:minmax(0,1fr) minmax(90px,.65fr);align-items:center;gap:6px 10px;margin-bottom:10px}#pcv-card .pcv-linea>.pcv-chips{grid-column:1 / -1;grid-row:2}#pcv-card .pcv-linea>.pcv-monto{grid-column:2;grid-row:1;padding:0 8px}#pcv-card .pcv-monto input{width:100%;min-width:0}
+#pcv-card .pcv-extra{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;margin-top:10px;padding-top:10px}#pcv-card .pcv-extra>span{font-size:12px;color:var(--muted2);font-weight:500}#pcv-card .pcv-extra-btn{padding:8px 10px;width:auto;font-size:12px}
+@media(max-width:359px){#pcv-card .pcv-resumen b{font-size:12px}#pcv-card .pcv-resumen .pcv-saldo b{font-size:14px}#pcv-card .pcv-resumen>div+div{padding-left:6px}}
 .pcv-card { border-color: color-mix(in srgb, var(--amber) 40%, var(--border)); }
 .pcv-resumen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; }
 .pcv-resumen > div { display: grid; gap: 2px; padding: 10px; border-radius: 10px; background: var(--bg); }
@@ -34,3 +42,4 @@
 .pcv-tipo .pcv-modo { margin-bottom: 0; }
 .pcv-acordado { display: grid; gap: 6px; }
 .pcv-acordado > span:first-child { color: var(--muted2); font-size: 12px; font-weight: 700; }
+.pcv-tipo>label{display:grid;gap:6px}.pcv-tipo>label>span:first-child{font-size:12px;font-weight:700}.pcv-tipo>label>div>input{width:100%;box-sizing:border-box}.pcv-tipo>[hidden]{display:none!important}
