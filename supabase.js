@@ -296,6 +296,7 @@ async function cargarPerfilUsuario() {
     .single();
   if (error) { console.error('Error perfil:', error); return; }
   PERFIL_USUARIO = data;
+  if(typeof actualizarSaludoDashboard==='function')actualizarSaludoDashboard();
   const avatar = document.querySelector('.nav-avatar');
   if (avatar && data.full_name) {
     const p = data.full_name.split(' ');

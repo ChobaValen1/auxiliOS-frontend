@@ -180,6 +180,7 @@ body.nav-collapsed .nav-bottom { align-items:center; }
   color: var(--text);
 }
 
+.topbar-sub:empty { display:none; }
 .topbar-sub {
   /* #8590ab sobre --panel supera 4.5:1; 11px quedaba por debajo del minimo legible. */
   font-size: 12px; color: var(--muted2);

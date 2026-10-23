@@ -229,11 +229,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 // ── SCREENS ──────────────────────────────────
+function saludoDashboard(profile,now=new Date()) {
+  const hour=Number(new Intl.DateTimeFormat('es-AR',{timeZone:'America/Argentina/Buenos_Aires',hour:'numeric',hourCycle:'h23'}).format(now));
+  const greeting=hour>=6&&hour<12?'Buen día':hour>=12&&hour<20?'Buenas tardes':'Buenas noches';
+  const name=String(profile?.full_name||'').trim().split(/\s+/)[0];
+  return name?`${greeting}, ${name}`:greeting;
+}
+function actualizarSaludoDashboard() {
+  if(!document.getElementById('screen-dashboard')?.classList.contains('active'))return;
+  const title=document.getElementById('topbar-title'),sub=document.getElementById('topbar-sub');
+  if(title)title.textContent=saludoDashboard(typeof PERFIL_USUARIO==='undefined'?null:PERFIL_USUARIO);
+  if(sub)sub.textContent='';
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)actualizarSaludoDashboard();});
+setInterval(actualizarSaludoDashboard,60000);
 const SCREENS = {
-  dashboard:  { title:'Panel principal',    sub:() => {
-    const fmt = new Date().toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-    return 'Resumen · ' + fmt.charAt(0).toUpperCase() + fmt.slice(1);
-  } },
+  dashboard:  { title:() => saludoDashboard(typeof PERFIL_USUARIO==='undefined'?null:PERFIL_USUARIO),sub:'' },
   registro:   { title:'Registro diario',    sub:'Módulo 1 · Carga de kilómetros' },
   camion:     { title:'Control del camión', sub:'Estado de la flota y de cada móvil' },
   documentos: { title:'Documentación',      sub:'Módulo 3 · Vencimientos y archivos' },
@@ -250,7 +261,8 @@ function goTo(name) {
   document.getElementById('screen-' + name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('nav-' + name)?.classList.add('active');
-  document.getElementById('topbar-title').textContent = SCREENS[name].title;
+  const title=SCREENS[name].title;
+  document.getElementById('topbar-title').textContent = typeof title==='function'?title():title;
   const sub = SCREENS[name].sub;
   document.getElementById('topbar-sub').textContent   = typeof sub === 'function' ? sub() : sub;
   if (name === 'dashboard') cargarDashboard();
