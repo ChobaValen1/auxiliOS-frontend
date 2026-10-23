@@ -50,10 +50,10 @@ test('el ingreso sin asignación usa cinco pasos independientes y validaciones p
   assert.match(flow,/function reindexPanels/);
   assert.match(flow,/reindexPanels\(panels,2\)/);
   assert.match(flow,/reindexPanels\(panels,1\)/);
-  assert.match(flow,/Operaciones vinculará y clasificará este ingreso/);
+  assert.doesNotMatch(flow,/No necesitás una asignación previa|Operaciones vinculará y clasificará este ingreso/);
   for(const group of ['Vehículo','Recorrido','Referencia'])assert.match(flow,new RegExp(`<legend>${group}</legend>`));
   assert.match(flow,/podés continuar sin completarlo/);
-  for(const slot of ['order','plate','vehicle','origin','destination','km'])assert.match(flow,new RegExp(`data-ad-hoc="${slot}"`));
+  for(const slot of ['order','plate','vehicle','origin','destination'])assert.match(flow,new RegExp(`data-ad-hoc="${slot}"`));
   assert.doesNotMatch(flow,/data-ad-hoc="type"/);
   assert.match(flow,/setHeader\(customer,adHocMode\?2:1,'Datos del socio'\)/);
   assert.match(flow,/setHeader\(evidence,adHocMode\?4:3,'Evidencia y observaciones'\)/);
@@ -77,11 +77,11 @@ test('origen y destino sin asignación se validan con Google Maps y persisten su
   assert.match(flow,/functions\.invoke\('maps-proxy'/);
   assert.match(flow,/action:'autocomplete'/);
   assert.match(flow,/action:'place'/);
-  assert.match(flow,/action:'route'/);
-  assert.match(flow,/routeMode:'origin_destination'/);
+  const draftRoute=read('driver-draft-route.js');
+  assert.match(draftRoute,/action:'route'/);
+  assert.match(draftRoute,/routeMode:'origin_destination'/);
   assert.match(flow,/\.slice\(0,3\)/);
-  assert.match(flow,/Math\.round\(meters\/1000\)/);
-  assert.match(flow,/Kilómetros origen → destino/);
+  assert.doesNotMatch(flow,/computeRouteDistance|class="rmv-intake-distance"/);
   assert.match(flow,/km\.readOnly=true/);
   assert.match(sigma,/kmRemito\.readOnly = true/);
   assert.match(flow,/sessionToken/);

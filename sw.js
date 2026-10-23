@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v547-mapa-nativo';
+const CACHE_NAME='auxilios-v548-mapa-nativo';
 const PRECACHE_ASSETS=[
   '/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
@@ -22,7 +22,7 @@ const PRECACHE_ASSETS=[
   '/operator-service-commercial-addons-v1.css','/operator-service-commercial-addons-v1.js',
   '/toll-route-detection-v1.js',
   '/finish-time-v1.js',
-  '/operator-service-bridge.css','/operator-service-bridge.js',
+  '/driver-draft-route.js','/operator-service-bridge.css','/operator-service-bridge.js',
   '/ui/tokens.css','/ui/components.css','/ui/ax.js','/ui/icons.svg','/ui/app-v1.css','/ui/app-v1.js','/operaciones-ax-v1.css','/jornadas-ax-v1.css','/shell-ax-v1.css','/facturacion-ax-v1.css','/facturas-ax-v1.css','/camion-ax-v1.css','/remitos-ax-v1.css','/empresas-ax-v1.css','/configuracion-ax-v1.css','/dashboard-ax-v1.css','/driver-summary-ax-v1.css','/driver-summary-v1.js','/sueldos-ax-v1.css','/grilla-ax-v1.css','/documentos-ax-v1.css','/registro-ax-v1.css','/camion-modales-ax-v1.css','/chofer-servicios-ax-v1.css','/servicio-form-ax-v1.css','/estado-servicio-ax-v1.css','/remito-chofer-ax-v1.css','/remito-chofer-ax-v1.js',
   '/operator-service-lifecycle.css','/operator-service-lifecycle.js',
   '/toll-management.css','/toll-management.js','/toll-map-v1.css','/toll-map-v1.js',

@@ -281,7 +281,7 @@
     var orderLabel = order && order.closest('label');
     var reference = order && order.closest('fieldset');
     if (reference) reference.hidden = true;
-    if (orderLabel) { orderLabel.hidden = adhoc.particular; var title = orderLabel.querySelector('span'); if (title) title.textContent = 'N.º de servicio *'; var hint = orderLabel.querySelector('.rmv-hint'); if (hint) hint.textContent = 'Número informado por la prestadora.'; }
+    if (orderLabel) { orderLabel.hidden = adhoc.particular; var title = orderLabel.querySelector('span'); if (title) title.textContent = 'N.º de servicio *'; var hint = orderLabel.querySelector('.rmv-hint'); if (hint) hint.remove(); }
     var orderInput = document.getElementById('rem-nro-prestadora');
     if (orderInput) { orderInput.required = !adhoc.particular; orderInput.setAttribute('aria-required', String(!adhoc.particular)); if (adhoc.particular) { orderInput.classList.remove('rem-field-error'); orderInput.removeAttribute('aria-invalid'); } }
     box.innerHTML =
