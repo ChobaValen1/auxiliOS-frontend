@@ -1,7 +1,7 @@
 /* Real Servicios module + real styles. RPC reads are simulated; all other RPCs fail. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v531');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v532');
 const index=fs.readFileSync(path.join(root,'Index.html'),'utf8');
 const links=[...index.slice(0,index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(s=>!s.includes('https://')).join('\n');
 const shell=index.slice(index.indexOf('<nav class="sidenav">'),index.indexOf('<div class="content">'));
@@ -122,14 +122,18 @@ else (async()=>{
     // Persisted remito states are labels, not evidence that a driver has a form open.
     for(const [fields,label] of [
       [{document_status:'not_started'},'Remito pend…'],
-      [{document_status:'draft'},'Remito incompleto'],
+      [{document_status:'draft',remito_status:'borrador'},''],
       [{document_status:'submitted',remito_status:'firmado',remito_id:12},'Remito en revisión'],
       [{document_status:'approved',remito_status:'firmado',remito_id:12},'Remito aprobado'],
       [{document_status:'observed',remito_status:'firmado',remito_id:12},'Remito requiere correcciones']
     ]){
       await page.evaluate(fields=>{OperatorServices.S.services=structuredClone(rows);Object.assign(OperatorServices.S.services[0],fields);OperatorServices.renderServices();},fields);
       assert.match(await first.locator('.col-status').innerText(),new RegExp(label));
-      assert.doesNotMatch(await first.locator('.col-status').innerText(),/Creando remito|Remito firmado · Revisar|Remito recibido|Remito en preparación/);
+      if(fields.document_status==='draft'){
+        assert.equal(await first.locator('.os-document-state,.ax-remito-preparing').count(),0,'draft notice is removed, not relabeled');
+        assert.equal(await page.evaluate(()=>AuxiliosServiceImprovements.remitoNotice(OperatorServices.S.services[0])), '','detail uses the same empty notice');
+      }
+      assert.doesNotMatch(await first.locator('.col-status').innerText(),/Creando remito|Remito firmado · Revisar|Remito recibido|Remito en preparación|Remito incompleto|Carga iniciada/);
       if(fields.remito_id)assert.equal(await first.locator('button.os-document-state').innerText(),label,'signed document action is still available');
     }
     await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});

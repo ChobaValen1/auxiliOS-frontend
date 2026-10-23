@@ -42,10 +42,10 @@ test('el aviso termina al firmar, recibir, aprobar, anular o finalizar el remito
   }
 });
 
-test('un borrador se muestra incompleto sin afirmar presencia activa del chofer', () => {
+test('el aviso de borrador retirado no se renderiza en listado ni detalle', () => {
   const ui=load();
-  assert.match(ui.remitoNotice({status:'assigned',document_status:'draft'}), /Remito incompleto/);
-  assert.doesNotMatch(ui.remitoNotice({status:'assigned',document_status:'draft'}), /Creando|en preparación/);
+  assert.equal(ui.remitoNotice({status:'assigned',document_status:'draft'}), '');
+  assert.equal(ui.remitoNotice({status:'at_origin',remito_status:'borrador'}), '');
   assert.equal(ui.remitoNotice({status:'assigned',trip_id:8}), '');
   assert.equal(ui.remitoNotice({status:'assigned',document_status:'submitted'}), '');
 });

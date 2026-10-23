@@ -141,8 +141,8 @@
       (!s.document_status || ['not_started','draft'].includes(s.document_status)) &&
       (s.document_status === 'draft' || s.remito_status === 'borrador');
   }
-  // Un borrador prueba que hay una carga incompleta, no que el formulario siga abierto.
-  // «Creando remito…» requiere una señal de presencia por servicio, aún no disponible.
-  const remitoNotice = s => remitoPreparing(s) ? '<span class="ax-remito-preparing" role="status">' + global.AxUI.icon('file-text') + '<span>Remito incompleto<small>Carga iniciada, todavía sin enviar.</small></span></span>' : '';
+  // Aviso retirado por pedido del usuario. Mantener la API para los consumidores
+  // del listado y del detalle, sin generar tarjetas ni cambiar el borrador real.
+  const remitoNotice = () => '';
   global.AuxiliosServiceImprovements = {changes, display, confirmEdit, confirmAction, confirmDiscard, hoursToMinutes, minutesToHours, duration, isHourly, remitoPreparing, remitoNotice};
 })(window);
