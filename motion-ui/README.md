@@ -8,7 +8,9 @@ No sustituye la aplicación por la demo React ni incorpora datos ilustrativos a 
 La app existente es HTML/JS con algunas islas React 18 cargadas a demanda. No utiliza
 Tailwind v4, TypeScript ni shadcn globalmente. Se conserva esa arquitectura: esta capa
 se escribe en TypeScript y compila Motion 12.43.0 a un IIFE estático independiente.
-No se instala una segunda versión de React ni un reset de Tailwind sobre los formularios.
+No se instala un reset de Tailwind sobre los formularios. Desde v566, Eficiencia operativa
+es una isla React 19 + Motion aislada y cargada a demanda: no modifica el React 18 global
+de los formularios existentes. Detalles y contrato de datos en `EFFICIENCY.md`.
 
 El mismo motor de animación de la demo aprobada se aplica al DOM real:
 

@@ -807,51 +807,8 @@
   function pintarEficiencia(d) {
     var n = el('rsm-eficiencia');
     if (!n) return;
-    var t = d.tot;
-    var rs = realesSobreFacturados(t);
-    var tarifa = div(t.facturado, t.km);
-    var kmServ = div(t.kmReal, t.servicios);
-    var fl = d.flota, kmFlota = fl ? fl.km : 0, ok = flotaComparable(fl);
-    var motivo = fl && !fl.filtrado && !fl.completo ? 'falta cargar trabajo en Servicios' : motivoSinFlota(fl);
-    var maxKm = Math.max(t.km, t.kmReal, kmFlota, 1);
-    function barra(label, valor, clase) {
-      return '<div class="rsm-ef-bar"><div class="rsm-ef-bar-head"><span>' + label + '</span><b>' +
-        (valor > 0 ? miles(valor) + ' km' : GUION) + '</b></div>' +
-        '<div class="rsm-ef-track"><i class="' + clase + '" style="width:' + (valor * 100 / maxKm).toFixed(1) + '%"></i></div></div>';
-    }
-    function dato(label, valor, pie) {
-      return '<div class="rsm-ef-dato"><span>' + label + '</span><b>' + valor + '</b><em>' + esc(pie) + '</em></div>';
-    }
-    /* Con cliente arriba = km reales sobre km del odómetro. El resto son km muertos
-       (ida y vuelta a la base, combustible, taller, traslados). Km no facturados =
-       odómetro − facturados: lo que el camión recorrió y nadie paga. */
-    var aprov = ok && t.kmReal > 0 ? t.kmReal * 100 / kmFlota : null;
-    var cobrado = rendimientoFlota(t, fl);
-    var pesoKm = ok ? div(t.facturado, kmFlota) : null;
-    var pieFlota = !fl ? 'sin datos de las jornadas'
-      : miles(fl.jornadas) + (fl.jornadas === 1 ? ' jornada' : ' jornadas') + ' · ' + miles(fl.moviles) + (fl.moviles === 1 ? ' móvil' : ' móviles') +
-        (fl.sinDato ? ' · ' + fl.sinDato + ' sin km' : '') + (fl.filtrado ? ' · toda la flota' : '');
-    n.innerHTML =
-      barra('Km facturados', t.km, 'is-fact') +
-      barra('Km reales (servicios)', t.kmReal, 'is-real') +
-      barra('Km flota (odómetro)', kmFlota, 'is-flota') +
-      '<p class="rsm-ef-pie">' + esc(pieFlota) + '</p>' +
-      (fl && !fl.filtrado && !fl.completo
-        ? '<p class="rsm-ef-aviso">Todavía no se puede comparar con el odómetro: de ' + miles(fl.firmados) + ' remitos firmados, sólo ' +
-          miles(fl.conServicio) + ' están cargados como servicio. Cuando todo el trabajo pase por Servicios, estos datos aparecen solos.</p>'
-        : '') +
-      '<div class="rsm-ef-grid">' +
-        dato('Km reales s/ facturados', rs != null ? pct(rs) : GUION, 'en los servicios con km real') +
-        dato('Tarifa media', tarifa != null ? pesos(tarifa) : GUION, 'por km facturado') +
-        dato('Peajes', pesos(t.peajes), t.facturado > 0 ? pct(t.peajes * 100 / t.facturado, 1) + ' de la facturación' : 'sobre la facturación') +
-        dato('Km por servicio', kmServ != null ? miles(kmServ) : GUION, 'promedio real') +
-        dato('Con cliente arriba', aprov != null ? pct(aprov) : GUION, aprov != null ? 'de los km del odómetro' : motivo) +
-        dato('Km muertos', aprov != null ? miles(Math.max(kmFlota - t.kmReal, 0)) + ' km' : GUION,
-          aprov != null ? 'sin vehículo arriba · incluye ida y vuelta a la base' : motivo) +
-        dato('Km no facturados', cobrado != null ? miles(Math.max(kmFlota - t.km, 0)) + ' km' : GUION,
-          cobrado != null ? 'nadie los paga · se cobró el ' + pct(Math.min(cobrado, 100)) + ' de lo recorrido' : motivo) +
-        dato('$ por km recorrido', pesoKm != null ? pesos(pesoKm) : GUION, pesoKm != null ? 'facturado sobre km del odómetro' : motivo) +
-      '</div>';
+    if (global.AuxEfficiencyLoader) global.AuxEfficiencyLoader.render(n, d.eficiencia || null,
+      d.eficiencia ? undefined : 'No se pudieron consultar los kilometrajes. Actualizá el Resumen para reintentar.');
   }
 
   /* ── prestadoras y sus bases ──────────────────────────────────────────── */
@@ -983,9 +940,12 @@
     pintarTabla(d);
   }
 
+  var eficienciaRequest = 0;
   async function cargar(filtros) {
+    var request = ++eficienciaRequest;
     var f = filtros || {};
     estado.filtros = f;
+    if (global.AuxEfficiencyLoader) global.AuxEfficiencyLoader.render(el('rsm-eficiencia'), null);
     pintarRango(f);
     var base = {
       p_desde: f.desde || null, p_hasta: f.hasta || null,
@@ -997,10 +957,13 @@
       rpc(RPC_RES, base),
       Z ? Z.historia(f) : null,
       /* Km del odómetro: si falla, el resto del resumen se muestra igual. */
-      rpc(RPC_FLOTA, { p_desde: base.p_desde, p_hasta: base.p_hasta }).catch(function () { return null; })
+      rpc(RPC_FLOTA, { p_desde: base.p_desde, p_hasta: base.p_hasta }).catch(function () { return null; }),
+      rpc('dashboard_efficiency_v1', Object.assign({ p_conceptos: paramArray(f.conceptos) }, base)).catch(function () { return null; })
     ]);
+    if (request !== eficienciaRequest) return;
     var d = normalizar(r[0], r[1]);
     d.flota = normalizarFlota(r[3], !!(base.p_empresas || base.p_bases || paramArray(f.conceptos)));
+    d.eficiencia = r[4];
     evol.hist = Z && d.desde ? (r[2] || Z.historiaDePeriodo(d.desde, { facturado: d.porDia.anterior }, { facturado: d.porDia.actual })) : null;
     evol.per = evol.hist ? [Z.diasEntre(evol.hist.desde, d.desde), Z.diasEntre(evol.hist.desde, d.hasta || d.desde)] : null;
     estado.res = d;
@@ -1010,6 +973,7 @@
 
   function alError(_c, e) {
     var msg = mensajeError(e);
+    if (global.AuxEfficiencyLoader) global.AuxEfficiencyLoader.render(el('rsm-eficiencia'), null, msg);
     var k = el(ID_KPIS);
     if (k) {
       pintarKpis(normalizar(null, null));
