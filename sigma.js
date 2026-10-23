@@ -561,6 +561,7 @@ function remWizardReset() {
   const r = Math.floor(Math.random() * 9000) + 1000;
   const nro = document.getElementById('rem-nro');
   if (nro) nro.value = `REM-${f}-${r}`;
+  if (nro) { delete nro.dataset.operationId; delete nro.dataset.operationContext; }
   
   if (typeof resetPagoForm === 'function') resetPagoForm();
   window.AuxiliosRemitoAddonsV2?.reset?.();
@@ -6700,6 +6701,12 @@ function completarRemitoPendiente(r) {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   };
   set('rem-nro',            r.nro);
+  // Keep the saved draft's idempotency key, including after storage was cleared.
+  const numberInput = document.getElementById('rem-nro');
+  if (numberInput && r.clientOperationId) {
+    numberInput.dataset.operationId = r.clientOperationId;
+    numberInput.dataset.operationContext = adHocMode ? 'driver-ad-hoc' : String(r.operatorServiceId || '');
+  }
   set('rem-patente',        r.patente);
   set('rem-origen',         r.origen);
   set('rem-destino',        r.destino);

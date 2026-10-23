@@ -1186,6 +1186,8 @@ function _driverAdHocActivo(explicit = null) {
 function _operatorRemitoClientOperationId(serviceId, nroRemito, explicitId = null) {
   if (explicitId) return explicitId;
   if (!serviceId) return null;
+  const input = typeof document !== 'undefined' ? document.getElementById('rem-nro') : null;
+  if (input?.value === nroRemito && input.dataset?.operationContext === String(serviceId) && input.dataset.operationId) return input.dataset.operationId;
   const key = `auxilios_remito_operation:${serviceId}:${nroRemito || 'draft'}`;
   let id = null;
   try { id = localStorage.getItem(key); } catch (e) { /* almacenamiento no disponible */ }
