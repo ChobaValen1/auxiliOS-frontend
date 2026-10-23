@@ -171,7 +171,9 @@ test('el borrador sin asignación muestra el código y ofrece completar o marcar
   assert.match(card,/Sin asignación · \$\{esc\(r\.fecha\|\|currentDate\(\)\)\}/);
   assert.match(card,/r\.nroSrv\|\|r\.nro/);
   assert.match(card,/abrirPreviewRemitoSinAsignacion/);
-  assert.ok(card.indexOf('p3-draft-state')<card.indexOf('p3-facts'));
+  assert.ok(card.indexOf('p3-draft-state')<card.indexOf('p3-task-main'));
+  for(const section of ['p3-task-vehicle','p3-task-route','p3-task-actions','driverQuickLinks'])assert.ok(card.includes(section));
+  assert.doesNotMatch(card,/p3-fact-row|role="button"/);
   assert.doesNotMatch(card,/Seguir con el remito|p3-card-foot/);
   assert.match(bridge,/Completar remito/);
   assert.match(bridge,/Marcar como activado/);
