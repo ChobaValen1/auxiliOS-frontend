@@ -244,6 +244,14 @@
 #screen-operaciones .os-document-state.is-action:hover, #screen-operaciones .os-document-state.is-action:focus-visible { border-color: var(--ax-text-3); background: var(--ax-surface-3); color: var(--ax-text); box-shadow: none; }
 #screen-operaciones .os-document-state.awaiting-review { border-color: rgba(226, 80, 74, .6); background: var(--ax-danger-soft); color: var(--ax-danger); }
 #screen-operaciones .os-document-state.awaiting-review:hover, #screen-operaciones .os-document-state.awaiting-review:focus-visible { border-color: var(--ax-danger); background: var(--ax-danger-soft); color: var(--ax-danger); }
+/* Todos los avisos documentales ocupan un solo renglón y el mismo espacio. */
+#screen-operaciones .os-table td.col-status .os-document-state {
+  display: block; box-sizing: border-box; width: 120px; max-width: 100%; height: 26px; min-height: 26px;
+  margin-top: 4px; padding: 4px 8px; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-sm);
+  font-size: var(--ax-fs-sm); font-weight: var(--ax-fw-semibold); line-height: 16px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#screen-operaciones .os-table td.col-status .os-document-state.awaiting-review { border-color: rgba(226, 80, 74, .6); }
 
 /* Botón ⋯ de la fila */
 #screen-operaciones .os-more { display: inline-grid; place-items: center; width: var(--ax-h-sm); height: var(--ax-h-sm); border: 1px solid transparent; border-radius: var(--ax-radius); background: transparent; color: var(--ax-text-2); transition: background var(--ax-dur-fast) var(--ax-ease), color var(--ax-dur-fast) var(--ax-ease); }

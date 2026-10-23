@@ -1,7 +1,7 @@
 /* Real Servicios module + real styles. RPC reads are simulated; all other RPCs fail. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v530');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v531');
 const index=fs.readFileSync(path.join(root,'Index.html'),'utf8');
 const links=[...index.slice(0,index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(s=>!s.includes('https://')).join('\n');
 const shell=index.slice(index.indexOf('<nav class="sidenav">'),index.indexOf('<div class="content">'));
@@ -56,7 +56,8 @@ else (async()=>{
     await page.locator('[data-os-remove-filter="status"]').click();assert.equal(await page.locator('#os-table-body > tr').count(),3);
     const first=page.locator('#os-table-body > tr[data-service-id="1"]');
     await page.evaluate(()=>{delete OperatorServices.S.services[0].document_status;OperatorServices.renderServices();});
-    assert.match(await first.locator('.col-status').innerText(),/Remito pendiente/,'operator projection without document_status uses the completed document-inbox read');
+    assert.match(await first.locator('.col-status').innerText(),/Remito pend…/,'operator projection without document_status uses the completed document-inbox read');
+    assert.equal(await first.locator('.os-document-state').getAttribute('title'),'Remito pendiente');
     await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
     assert.equal(await first.locator('[data-os-primary],.os-route-details,.os-route-label').count(),0,'no redundant disclosure or row primary action');
     await first.getByRole('link',{name:'Ver recorrido',exact:true}).waitFor({state:'visible'});
@@ -120,7 +121,7 @@ else (async()=>{
     await page.evaluate(()=>{PERFIL_USUARIO.roles.name='administracion';OperatorServices.renderServices();});
     // Persisted remito states are labels, not evidence that a driver has a form open.
     for(const [fields,label] of [
-      [{document_status:'not_started'},'Remito pendiente'],
+      [{document_status:'not_started'},'Remito pend…'],
       [{document_status:'draft'},'Remito incompleto'],
       [{document_status:'submitted',remito_status:'firmado',remito_id:12},'Remito en revisión'],
       [{document_status:'approved',remito_status:'firmado',remito_id:12},'Remito aprobado'],
@@ -212,8 +213,8 @@ else (async()=>{
         assert.equal(await firstRow.locator('.os-primary-action').count(),0,'no primary button in row at '+width);
         assert.equal(await firstRow.locator('.os-map-link').first().isVisible(),true,'map shortcut visible at '+width);
         assert.equal(await firstRow.locator('.os-document-state').innerText(),'Remito en revisión');
-        const documentGeometry=await page.locator('#os-table-body .os-document-state.is-action').evaluateAll(els=>els.map(el=>({width:el.clientWidth,scroll:el.scrollWidth,height:el.clientHeight,content:el.scrollHeight})));
-        for(const rect of documentGeometry){assert.ok(rect.scroll<=rect.width+1,'document label fits horizontally at '+width);assert.ok(rect.content<=rect.height+1,'document label fits vertically at '+width);}
+        const documentGeometry=await page.locator('#os-table-body .os-document-state.is-action').evaluateAll(els=>els.map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,whiteSpace:getComputedStyle(el).whiteSpace,overflow:getComputedStyle(el).overflow,textOverflow:getComputedStyle(el).textOverflow,title:el.title})));
+        for(const rect of documentGeometry){assert.equal(rect.width,documentGeometry[0].width,'same badge width at '+width);assert.equal(rect.height,26,'one fixed row at '+width);assert.equal(rect.whiteSpace,'nowrap');assert.equal(rect.overflow,'hidden');assert.equal(rect.textOverflow,'ellipsis');assert.ok(rect.title.includes('Remito'));}
         const overlap=await firstRow.evaluate(row=>{const a=row.querySelector('.actions').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(row.querySelector('.col-code b'));const b=range.getBoundingClientRect();return Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1;});
         assert.equal(overlap,false,'actions do not overlap service code at '+width);
         // Mobile uses cards and intentionally hides the entire table header.

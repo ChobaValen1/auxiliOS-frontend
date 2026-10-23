@@ -14,6 +14,13 @@ Alcance acordado. Mantener colores, identidad visual, permisos y reglas de negoc
 
 Prioridad inicial: recorrido, asignación y acciones del listado de Servicios. Esta anotación no modifica la aplicación ni los registros.
 
+## Etiquetas compactas del remito — `estado-remito-v531-20261022`
+
+- «Remito pendiente» se ve como «Remito pend…» y conserva el texto completo en tooltip y nombre accesible.
+- Etiquetas documentales del listado con el mismo ancho (120 px, limitado por el contenedor), alto (26 px) y una sola línea. Si un texto supera el espacio disponible, se recorta con elipsis, sin aumentar la fila. Los remitos firmados conservan su acción y tooltip completo.
+- No cambia el estado del remito ni del servicio, colores, reglas o permisos. Sólo preview.
+- Pruebas de texto, tooltip, estilo y regresión del listado en seis anchos y ambos temas. Evidencias: `output/servicios-v531`.
+
 ## Selector de estado y textos del remito — `estado-remito-v530-20261022`
 
 - El valor de Estado tiene flecha visible, superficie de hover redondeada (9 px), borde sutil y foco de teclado. Al abrir, la flecha gira; al cerrar vuelve. Sin movimiento del texto ni resaltado de la siguiente acción. Usa los colores y tokens actuales.

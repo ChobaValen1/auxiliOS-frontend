@@ -37,3 +37,10 @@ test('state selector styling is tied to actual menu semantics, not all badges',(
   assert.match(css,/aria-expanded="true"/);assert.match(css,/prefers-reduced-motion: reduce/);
   assert.doesNotMatch(fs.readFileSync('operator-service-lifecycle.css','utf8'),/\.os-status:after/);
 });
+test('pending label is abbreviated without losing full tooltip or changing state',()=>{
+  const {statusCell}=load();
+  const html=statusCell({service_id:'qa',status:'assigned',document_status:'not_started'});
+  assert.match(html,/title="Remito pendiente" aria-label="Remito pendiente">Remito pend…<\/small>/);
+  const css=fs.readFileSync('operaciones-ax-v1.css','utf8');
+  assert.match(css,/td\.col-status \.os-document-state \{[\s\S]*?width: 120px;[\s\S]*?height: 26px;[\s\S]*?white-space: nowrap; overflow: hidden; text-overflow: ellipsis/);
+});
