@@ -59,7 +59,7 @@
     const stamp=v=>v?new Date(v).toLocaleString('es-AR'):'—';
     const meta='<h3>Datos del recibo</h3><dl class="pv-metadata">'+[['N.º',String(l.liquidacion_id).slice(-8).toUpperCase()],['Emisión',stamp(l.generada_at)],['Generado por',l.generador_nombre],['Aprobación',stamp(l.aprobada_at)],['Aprobado por',l.aprobador_nombre],['Pago',stamp(l.pagada_at)],['Método de pago',l.pagada_metodo],['Notas',l.notas]].map(([k,v])=>'<dt>'+k+'</dt><dd>'+esc(v||'—')+'</dd>').join('')+'</dl>';
     try{
-      const response=await _db.rpc('get_payroll_monthly_cash',{p_driver:l.driver_id,p_period:l.periodo_yyyymm});
+      const response=await _db.rpc('get_payroll_monthly_cash_v2',{p_driver:l.driver_id,p_period:l.periodo_yyyymm});
       if(response.error)throw response.error;
       if(token!==request)return;
       const m=response.data;
@@ -68,7 +68,7 @@
       const preview=()=>{try{const value=monthlyAmount(input.value);result.textContent=value===null?'Pendiente de rendición · sin descuento':value<m.due?'Faltante: '+cash(m.due-value):value>m.due?'Sobrante: '+cash(value-m.due):'Rendición saldada';error.textContent='';return value;}catch(e){error.textContent=e.message;result.textContent='';throw e;}};
       input.oninput=()=>{try{preview();}catch{}};preview();
       if(m.can_edit===false){input.disabled=true;save.hidden=true;error.textContent="Solo Administración puede registrar el total presentado.";}
-      save.onclick=async()=>{try{const value=preview();save.disabled=true;save.textContent='Guardando…';const r=await _db.rpc('save_payroll_monthly_cash',{p_driver:l.driver_id,p_period:l.periodo_yyyymm,p_presented:value,p_updated_at:m.updated_at});if(r.error)throw r.error;if(token!==request)return;m.updated_at=r.data.updated_at;m.presented=r.data.presented;if(l.liquidacion_id&&l.estado==='pendiente'){const fresh=await _db.from('payroll_liquidaciones').select('total,ajuste_rendiciones,cash_snapshot').eq('liquidacion_id',l.liquidacion_id).single();if(fresh.error)throw fresh.error;Object.assign(l,fresh.data);summary(l);document.getElementById('pv-audit-button').disabled=false;cards();}const backHidden=document.getElementById('pv-back')?.hidden;await audit(l);if(backHidden)document.getElementById('pv-back').hidden=true;document.getElementById('pv-cash-error').textContent='Guardado correctamente';}catch(e){if(token===request)error.textContent=e.message;}finally{if(token===request){save.disabled=false;save.textContent='Guardar total presentado';}}};
+      save.onclick=async()=>{try{const value=preview();save.disabled=true;save.textContent='Guardando…';const r=await _db.rpc('save_payroll_monthly_cash_v2',{p_driver:l.driver_id,p_period:l.periodo_yyyymm,p_presented:value,p_updated_at:m.updated_at});if(r.error)throw r.error;if(token!==request)return;m.updated_at=r.data.updated_at;m.presented=r.data.presented;if(l.liquidacion_id&&l.estado==='pendiente'){const fresh=await _db.from('payroll_liquidaciones').select('total,ajuste_rendiciones,cash_snapshot').eq('liquidacion_id',l.liquidacion_id).single();if(fresh.error)throw fresh.error;Object.assign(l,fresh.data);summary(l);document.getElementById('pv-audit-button').disabled=false;cards();}const backHidden=document.getElementById('pv-back')?.hidden;await audit(l);if(backHidden)document.getElementById('pv-back').hidden=true;document.getElementById('pv-cash-error').textContent='Guardado correctamente';}catch(e){if(token===request)error.textContent=e.message;}finally{if(token===request){save.disabled=false;save.textContent='Guardar total presentado';}}};
     }catch(e){if(token===request)body.innerHTML='<p role="alert">No se pudieron cargar las rendiciones: '+esc(e.message)+'</p>'+meta;}
   }
   async function checkCommissions(l,token){
@@ -77,7 +77,7 @@
     const box=document.getElementById('pv-commission-check');
     try{
       const period=String(l.periodo_yyyymm),year=Number(period.slice(0,4)),month=Number(period.slice(4));
-      const r=await _db.rpc('get_payroll_matrix_sources',{p_driver:l.driver_id,p_from:year+'-'+String(month).padStart(2,'0')+'-01',p_until:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10)});if(r.error)throw r.error;
+      const r=await _db.rpc('get_payroll_matrix_sources_v2',{p_driver:l.driver_id,p_from:year+'-'+String(month).padStart(2,'0')+'-01',p_until:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10)});if(r.error)throw r.error;
       const result=PayrollMatrix.calculate(matrix,r.data,num(l.km_total));
       const ids=details=>details.flatMap(d=>(d.records||[]).map(id=>d.source+':'+id)).sort().join('|');
       if(token!==request)return;

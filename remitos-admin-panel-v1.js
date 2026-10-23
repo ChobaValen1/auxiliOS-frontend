@@ -113,16 +113,19 @@ function renderEncuesta(){
 
 async function open(remitoId,{editar=false,anular=false,tab='detalle'}={}){
   ensure();
-  ++P.openSeq;
+  const seq=++P.openSeq;
   P.editing=false;P.annulling=false;P.tab=['detalle','encuesta','cambios'].includes(tab)?tab:'detalle';
   $('rmp-title').textContent='Cargando…';$('rmp-sub').textContent='';$('rmp-tabs').innerHTML='';$('rmp-foot').innerHTML='';
   $('rmp-body').innerHTML='<div class="rmp-loading">Cargando remito…</div>';
   $('rmp-backdrop').hidden=false;$('rmp-panel').hidden=false;
   requestAnimationFrame(()=>$('rmp-panel').classList.add('is-open'));
   const r=typeof obtenerRemitoCompleto==='function'?await obtenerRemitoCompleto(remitoId):null;
+  if(seq!==P.openSeq)return;
   if(!r){$('rmp-body').innerHTML='<div class="rmp-loading is-error">No se pudo cargar el remito.</div>';return}
   P.remito=r;
-  [P.servicio,P.encuesta,P.cobro]=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id),cargarCobro(r.remito_id)]);P.rechazandoCobro=false;
+  const loaded=await Promise.all([cargarServicio(r.remito_id,r.operator_service_id),cargarEncuesta(r.remito_id),cargarCobro(r.remito_id),cargarPeajes(r)]);
+  if(seq!==P.openSeq)return;
+  [P.servicio,P.encuesta,P.cobro,P.peajes]=loaded;P.rechazandoCobro=false;
   if(editar&&isAdmin()&&r.status!=='anulado')P.editing=true;
   if(anular&&puedeAnular())P.annulling=true;
   render();
@@ -231,7 +234,7 @@ function renderDetalle(r,s){
   const aprobado=r.accepted_imp_total_extras!=null&&Number(r.accepted_imp_total_extras)!==Number(r.imp_total_extras||0);
   const pagos=[[r.pago_1_metodo,r.pago_1_monto],[r.pago_2_metodo,r.pago_2_monto]].filter(([m])=>m).map(([m,v])=>`${esc(String(m).charAt(0).toUpperCase()+String(m).slice(1))} ${v!=null?money(v):''}`).join(' + ');
   const cargos=seccion('Cargos y pago',
-    fila('Peaje',money(r.imp_peaje))+fila('Excedente',money(r.imp_excedente))+(Number(r.imp_otros)?fila('Otros',money(r.imp_otros)):'')+
+    fila('Peajes cobrados al cliente',money(r.imp_peaje))+fila('Excedente',money(r.imp_excedente))+(Number(r.imp_otros)?fila('Otros',money(r.imp_otros)):'')+
     fila('<b>Total firmado</b>',`<b>${money(r.imp_total_extras)}</b>`)+
     (aprobado?fila('Aprobado por Administración',`<b>${money(r.accepted_imp_total_extras)}</b>`):'')+
     fila('Pago',pagos||'<span class="rmp-empty">Sin pago informado</span>'),locked('Firmado por el cliente'));
@@ -244,7 +247,23 @@ function renderDetalle(r,s){
   const fotos=Array.isArray(r.foto_urls)?r.foto_urls:[];
   const media=seccion(`Fotos y firma`,`<div class="rmp-media">${fotos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Foto del servicio" loading="lazy"></a>`).join('')||'<span class="rmp-empty">Sin fotos</span>'}</div>
     <div class="rmp-sign">${r.firma_imagen_url?`<img src="${esc(r.firma_imagen_url)}" alt="Firma del cliente"><span>Firmado el ${esc(fecha(r.firmado_at))}</span>`:'<span class="rmp-empty">Sin firma</span>'}</div>`);
-  return aviso+avisoCobro()+anulado+editando+`<div class="rmp-cards">${resumen(r,pagos)}${clienteVehiculo}${servicio}${renderCobro()}${cargos}${conf}${obs}${media}</div>`+(P.annulling?renderAnular():'');
+  return aviso+avisoCobro()+anulado+editando+`<div class="rmp-cards">${resumen(r,pagos)}${clienteVehiculo}${servicio}${renderPeajesServicio(r,P.peajes)}${renderCobro()}${cargos}${conf}${obs}${media}</div>`+(P.annulling?renderAnular():'');
+}
+
+async function cargarPeajes(r){
+  if(!r.operator_service_id)return null;
+  try{const {data,error}=await _db.rpc('get_driver_remito_history_v3',{p_remito_id:Number(r.remito_id)});if(error)throw error;return data;}
+  catch(e){return{load_error:true};}
+}
+function renderPeajesServicio(r,d){
+  if(!r.operator_service_id)return '';
+  if(d?.load_error)return seccion('Peajes del servicio','<p class="rmp-empty">No se pudo cargar el detalle de peajes. Volvé a abrir el remito para reintentar.</p>');
+  if(!d?.service_tolls_approved)return '';
+  const lines=d.approved_tolls||[],total=lines.length?lines.reduce((n,t)=>n+(Number(t.total_amount)||0),0):Number(d.accepted_toll_total)||0;
+  const rows=lines.map(t=>fila(`${esc(t.toll_name||'Peaje')}${Number(t.quantity)>1?' ×'+Number(t.quantity):''}`,
+    `<span class="rmp-toll-amount"><b>${money(t.total_amount)}</b><small>${t.payer_agent==='provider'?'A cargo de la prestadora':'A cargo del cliente'}</small></span>`)).join('');
+  return seccion('Peajes del servicio',rows+fila('<b>Total aprobado</b>',`<b>${money(total)}</b>`)+
+    '<p class="rmp-toll-note">Aprobado por Operaciones. No equivale al efectivo cobrado por el chofer.</p>');
 }
 
 /* ── Cobro del servicio particular (lo que informó el chofer) ─────────────── */

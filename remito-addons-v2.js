@@ -281,9 +281,22 @@
   }
   function reviewMeta(status){if(status==='approved')return{label:'Aprobado',css:'approved'};if(status==='adjusted')return{label:'Ajustado por Administración',css:'adjusted'};return{label:'En revisión',css:'pending'}}
   async function renderHistory(remitoId,host){
-    if(!host||!remitoId)return;host.innerHTML='<div class="rem-addon-empty">Cargando detalle informado…</div>';const {data,error}=await _db.rpc('get_driver_remito_addons_v2',{p_remito_id:Number(remitoId)});if(error){host.innerHTML=`<div class="rem-addon-empty">${esc(error.message||'No se pudo cargar el detalle')}</div>`;return}
-    const meta=reviewMeta(data.review_status),tolls=(data.tolls||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected',method=line.customer_payment_method||line.payment_method;return`<div class="rem-addon-summary-line"><span>${esc(line.toll_name)} · ${esc(tollPaymentLabel(line))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`}),excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
-    host.innerHTML=`<div class="rem-addons-head"><div><div class="rem-addons-kicker">Peajes y excedentes informados</div><div class="rem-addons-help">Última información registrada para este remito.</div></div><span class="rem-addon-status ${meta.css}">${meta.label}</span></div><div class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(data.toll_coverage_mode,!!data.service_id))}</strong></div>${data.customer_payment?.primary?`<div class="rem-toll-coverage-line"><span>Cobro al cliente</span><strong>${esc(paymentLabel(data.customer_payment.primary))}${data.customer_payment.secondary?` · ${esc(paymentLabel(data.customer_payment.secondary))} ${money(data.customer_payment.secondary_amount)}`:''}</strong></div>`:''}<div class="rem-addon-summary-lines">${[...tolls,...excesses].join('')||'<div class="rem-addon-empty">El chofer confirmó que no hubo peajes ni excedentes.</div>'}</div>`;
+    if(!host||!remitoId)return;
+    host.classList?.add('rem-addons-history');
+    host.innerHTML='<div class="rem-addon-empty">Cargando peajes y excedentes…</div>';
+    const {data,error}=await _db.rpc('get_driver_remito_history_v3',{p_remito_id:Number(remitoId)});
+    if(error){host.innerHTML=`<div class="rem-addon-empty">${esc(error.message||'No se pudo cargar el detalle')}</div>`;return}
+    const meta=reviewMeta(data.review_status),approved=data.service_tolls_approved===true;
+    const tolls=(approved?data.approved_tolls||[]:data.tolls||[]).map(line=>{
+      const accepted=line.review?.accepted||null,rejected=!approved&&line.review?.decision==='rejected';
+      const current=approved?line:{...line,...accepted};
+      const payer=current.payer_agent==='provider'?'A cargo de la prestadora':tollPaymentLabel(current);
+      const qty=number(current.quantity)>1?` ×${number(current.quantity)}`:'';
+      return`<div class="rem-addon-summary-line"><span>${esc(current.toll_name||line.toll_name||'Peaje')}${qty} · ${esc(payer)}</span><strong>${rejected?'Rechazado':money(current.total_amount)}</strong></div>`;
+    });
+    if(approved&&!tolls.length&&number(data.accepted_toll_total)>0)tolls.push(`<div class="rem-addon-summary-line"><span>Peajes aprobados</span><strong>${money(data.accepted_toll_total)}</strong></div>`);
+    const excesses=(data.excesses||[]).map(line=>{const accepted=line.review?.accepted||null,rejected=line.review?.decision==='rejected';return`<div class="rem-addon-summary-line"><span>${esc(line.concept_name)} · ${esc(paymentLabel(line.customer_payment_method))}</span><strong>${rejected?'Rechazado':money(accepted?.total_amount??line.total_amount)}</strong></div>`});
+    host.innerHTML=`<div class="rem-addons-head"><div><div class="rem-addons-kicker">Peajes y excedentes</div><div class="rem-addons-help">${approved?'Peajes aprobados por Operaciones.':'Detalle informado en el remito.'}</div></div><span class="rem-addon-status ${meta.css}">${meta.label}</span></div><div class="rem-toll-coverage-line"><span>Formato de cobro de peajes</span><strong>${esc(tollCoverageLabel(data.toll_coverage_mode,!!data.service_id))}</strong></div>${data.customer_payment?.primary?`<div class="rem-toll-coverage-line"><span>Cobro al cliente</span><strong>${esc(paymentLabel(data.customer_payment.primary))}${data.customer_payment.secondary?` · ${esc(paymentLabel(data.customer_payment.secondary))} ${money(data.customer_payment.secondary_amount)}`:''}</strong></div>`:''}<div class="rem-addon-summary-lines">${[...tolls,...excesses].join('')||'<div class="rem-addon-empty">Sin peajes ni excedentes registrados en este detalle.</div>'}</div>`;
   }
   async function restore(report){
     if(!report){reset();return}

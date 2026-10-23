@@ -1,5 +1,8 @@
 /* AuxiliOS · Remitos · panel lateral de Administración v1
    Misma regla de color que la tabla: neutro salvo lo que pide acción. */
+.rmp-toll-amount{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.rmp-toll-amount small,.rmp-toll-note{font-size:11px;line-height:1.45;color:var(--muted)}
+.rmp-toll-note{margin:12px 0 0}
 .rmp-backdrop{position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.45)}
 .rmp-backdrop[hidden],.rmp-panel[hidden]{display:none!important}
 .rmp-panel{position:fixed;top:0;right:0;bottom:0;z-index:9991;display:flex;flex-direction:column;width:min(560px,100vw);background:var(--bg,#0d1117);border-left:1px solid var(--border2,#30363d);box-shadow:-18px 0 40px rgba(0,0,0,.35);transform:translateX(24px);opacity:0;transition:transform .18s ease,opacity .18s ease;color:var(--text)}

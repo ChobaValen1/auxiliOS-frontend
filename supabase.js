@@ -3861,24 +3861,17 @@ async function generarLiquidacionesMes(yyyymm) {
     const driverId = chofer.user_id;
     const s = chofer.settings;
 
-    // Query paralela: jornadas cerradas + remitos finalizados + cumplimientos + incidents.
-    // Nota: remitos usa status IN ('pendiente','firmado','anulado'). Interpretamos
-    // "finalizado" del mockup como los remitos ya firmados (no pendientes, no anulados).
+    // La fuente canónica cuenta servicios finalizados con o sin remito una sola vez.
     // Los bonos por objetivos (payroll_objetivo_cumplimientos) se reemplazaron por las comisiones
     // por concepto: ya no se leen ni suman. La columna bonos_objetivos queda en 0.
-    const [jornadasRes, remitosRes, incidRes, rendRes] = await Promise.all([
+    const [jornadasRes, serviciosRes, incidRes, rendRes] = await Promise.all([
       _db.from('daily_logs')
         .select('log_id, log_date, km_inicio, km_final, status')
         .eq('driver_id', driverId)
         .eq('status', 'closed')
         .gte('log_date', desde)
         .lt('log_date', hastaExclusive),
-      _db.from('remitos')
-        .select('remito_id, created_at_device, status')
-        .eq('driver_id', driverId)
-        .eq('status', 'firmado')
-        .gte('created_at_device', desdeTs)
-        .lt('created_at_device', hastaTsExclusive),
+      _db.rpc('get_payroll_service_count_v2',{p_driver:driverId,p_period:yyyymm}),
       _db.from('incidents')
         .select('incident_id, created_at_device')
         .eq('driver_id', driverId)
@@ -3892,15 +3885,14 @@ async function generarLiquidacionesMes(yyyymm) {
         .lt('fecha', hastaExclusive),
     ]);
 
-    if (jornadasRes.error || remitosRes.error || incidRes.error || rendRes.error) {
+    if (jornadasRes.error || serviciosRes.error || incidRes.error || rendRes.error) {
       console.error('[Payroll generarLiquidaciones] error chofer', driverId,
-        jornadasRes.error || remitosRes.error || incidRes.error || rendRes.error);
+        jornadasRes.error || serviciosRes.error || incidRes.error || rendRes.error);
       detalle.push({ driverId, error: true });
       continue;
     }
 
     const jornadas = jornadasRes.data || [];
-    const remitos  = remitosRes.data  || [];
     const incid    = incidRes.data    || [];
     const rendiciones = rendRes.data  || [];
 
@@ -3909,14 +3901,15 @@ async function generarLiquidacionesMes(yyyymm) {
       const matrix = PayrollMatrix.normalize(s.compensation_matrix);
       let sources = {invoices:[],extras:[]};
       if(matrix.km_basis==='billed'||matrix.commissions.length){
-        const response=await _db.rpc('get_payroll_matrix_sources',{p_driver:driverId,p_from:desde,p_until:hastaExclusive});
+        const response=await _db.rpc('get_payroll_matrix_sources_v2',{p_driver:driverId,p_from:desde,p_until:hastaExclusive});
         if(response.error)throw response.error;
         sources=response.data;
       }
       matrixResult=PayrollMatrix.calculate(matrix,sources,jornadas.reduce((sum,j)=>sum+(PayrollMatrix.journeyKm(j)||0),0));
     } catch(error) { detalle.push({driverId,error:true,motivo:error.message});continue; }
     const km_total=matrixResult.km;
-    const servicios = remitos.length;
+    const servicios = Number(serviciosRes.data);
+    if(serviciosRes.data==null||!Number.isSafeInteger(servicios)||servicios<0){detalle.push({driverId,error:true,motivo:'Conteo de servicios inválido'});continue;}
     const jornadasCount = jornadas.length;
 
     // Presentismo: sin incidents y con al menos una jornada.
@@ -3932,7 +3925,7 @@ async function generarLiquidacionesMes(yyyymm) {
     const bonos_objetivos = 0;
 
     // Monthly administration entry is the only declaration used for payroll.
-    const monthlyCash=await _db.rpc('get_payroll_monthly_cash',{p_driver:driverId,p_period:yyyymm});
+    const monthlyCash=await _db.rpc('get_payroll_monthly_cash_v2',{p_driver:driverId,p_period:yyyymm});
     if(monthlyCash.error){detalle.push({driverId,error:true,motivo:monthlyCash.error.message});continue;}
     const ajuste_rendiciones_calc=Number(monthlyCash.data.discount)||0;
 
@@ -3977,7 +3970,7 @@ async function generarLiquidacionesMes(yyyymm) {
       proposed_total: null, adjustment_pending: null,
       bonus_monthly: matrixResult.bonus,
       commission_total: matrixResult.commission,
-      compensation_snapshot: matrixResult.snapshot,
+      compensation_snapshot: {...matrixResult.snapshot,completed_services_v2:true},
       driver_id:        driverId,
       periodo_yyyymm:   yyyymm,
       jornadas:         jornadasCount,
@@ -4003,14 +3996,17 @@ async function generarLiquidacionesMes(yyyymm) {
 
     if (existRes.data) {
       // update
-      const { error: updErr } = await _db.from('payroll_liquidaciones')
+      const { data: updatedLiq, error: updErr } = await _db.from('payroll_liquidaciones')
         .update(payload)
-        .eq('liquidacion_id', existRes.data.liquidacion_id);
+        .eq('liquidacion_id', existRes.data.liquidacion_id)
+        .eq('estado', 'pendiente')
+        .select('liquidacion_id').maybeSingle();
       if (updErr) {
         console.error('[Payroll generarLiquidaciones] update', updErr.message);
         detalle.push({ driverId, error: true });
         continue;
       }
+      if(!updatedLiq){saltadas++;detalle.push({driverId,accion:'saltada',motivo:'El estado cambió durante el cálculo'});continue;}
       actualizadas++;
       detalle.push({ driverId, accion: 'actualizada', total });
     } else {

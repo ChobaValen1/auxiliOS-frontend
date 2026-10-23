@@ -285,12 +285,12 @@
   /* El estimado es aparte: si falla, el resto del resumen se ve igual. */
   async function leerEstimado(driverId, period, esChofer) {
     const online = async () => {
-      const { data, error } = await _db.rpc('get_driver_payroll_estimate_v1', { p_period: period, p_driver: driverId });
+      const { data, error } = await _db.rpc('get_driver_payroll_estimate_v2', { p_period: period, p_driver: driverId });
       if (error) throw error;
       return data;
     };
     try {
-      if (esChofer && typeof obLecturaConCache === 'function') return (await obLecturaConCache(`drs_est_${driverId}_${period}_v1`, online)).data || null;
+      if (esChofer && typeof obLecturaConCache === 'function') return (await obLecturaConCache(`drs_est_${driverId}_${period}_v2`, online)).data || null;
       return await online();
     } catch (e) { console.warn('[Resumen chofer] estimado', e); return null; }
   }

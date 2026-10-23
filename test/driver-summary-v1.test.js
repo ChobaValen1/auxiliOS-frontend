@@ -157,5 +157,5 @@ test('la base: Sueldos y el chofer usan las mismas fuentes; el chofer sólo ve l
   assert.match(est, /if coalesce\(app_private\.current_auxilios_role\(\),''\) not in \('administracion','supervision'\) then raise exception 'No autorizado';/);
   assert.match(est, /if v_driver <> auth\.uid\(\) and v_role not in \('administracion','supervision'\) then raise exception 'Sin permiso';/);
   assert.match(est, /revoke all on function app_private\.payroll_matrix_sources_core\(uuid, date, date\) from public, anon, authenticated;/);
-  assert.match(src, /_db\.rpc\('get_driver_payroll_estimate_v1', \{ p_period: period, p_driver: driverId \}\)/);
+  assert.match(src, /_db\.rpc\('get_driver_payroll_estimate_v2', \{ p_period: period, p_driver: driverId \}\)/);
 });
