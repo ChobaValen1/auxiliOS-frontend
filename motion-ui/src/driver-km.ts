@@ -49,6 +49,7 @@ function Activity({ model, expanded }: { model: Model; expanded: boolean }) {
 
 function ScanStatus({ phase }: { phase: string }) {
   const reduced = useReducedMotion();
+  if (phase === 'photo') return null;
   const labels: Record<string, string> = { photo: 'Foto del odómetro', processing: 'Leyendo el tablero…', result: 'Lectura disponible · revisá los datos', manual: 'Revisá el odómetro manualmente', offline: 'Sin conexión · completá el odómetro a mano' };
   return h(MotionConfig, { reducedMotion: 'user' }, h('div', { className: 'dkm-scan-state', role: 'status', 'data-scan-phase': phase },
     h(AnimatePresence, { mode: 'wait', initial: false }, h(motion.span, { key: phase, initial: { opacity: 0, y: reduced ? 0 : 5 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: reduced ? 0 : -5 }, transition: { duration: reduced ? 0 : .16 } },

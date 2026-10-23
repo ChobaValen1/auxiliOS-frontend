@@ -7198,6 +7198,14 @@ let _jornadasAbiertasCache    = [];
 let _jornadaPendienteCerrar   = null;
 
 // ── Abrir modal nueva jornada ─────────────────
+function restablecerFotoOdometro(pre) {
+  const status = document.getElementById(pre + '-foto-status');
+  const hint = document.getElementById(pre + '-foto-hint');
+  const icon = document.getElementById(pre + '-foto-icon');
+  if (status) status.textContent = 'Tomar o subir foto';
+  if (hint) hint.textContent = 'Que se vea el kilometraje completo.';
+  if (icon) icon.innerHTML = '<svg class="ax-icon" aria-hidden="true"><use href="/ui/icons.svg#upload"/></svg>';
+}
 function actualizarReferenciaCamionJornada(pre, camion) {
   const modelo = document.getElementById(pre + '-camion-modelo');
   if (modelo) modelo.textContent = [camion?.brand, camion?.model, camion?.numero_interno ? 'Unidad ' + camion.numero_interno : null].filter(Boolean).join(' · ');
@@ -7225,8 +7233,9 @@ async function abrirModalNuevaJornada() {
     const fotoInput  = document.getElementById('nj-foto-km');
     if (fotoBox)    { fotoBox.style.borderColor = 'var(--amber)'; fotoBox.style.background = 'var(--amber-lo)'; }
     if (fotoIcon)   { fotoIcon.textContent = '📷'; fotoIcon.style.color = ''; }
-    if (fotoStatus) { fotoStatus.textContent = 'Tocar para escanear odómetro'; fotoStatus.style.color = ''; }
+    if (fotoStatus) { fotoStatus.textContent = 'Tomar o subir foto'; fotoStatus.style.color = ''; }
     if (fotoInput)  fotoInput.value = '';
+    restablecerFotoOdometro('nj');
 
     // Reset nuevos elementos del display gigante
     const njFotoArea = document.getElementById('nj-foto-area');
@@ -7454,7 +7463,7 @@ async function confirmarNuevaJornada() {
       box.style.borderColor = 'var(--red)';
       box.style.background  = 'var(--red-lo)';
       box.style.transition  = 'all 0.3s';
-      setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
+      setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tomar o subir foto'; }, 2500);
     }
     if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
@@ -7694,15 +7703,16 @@ function abrirModalCerrarJornada(jornada) {
   const fotoBox = document.getElementById('cj-foto-box');
   const inputFoto = document.getElementById('cj-foto-km');
   
-  if (fotoStatus) { fotoStatus.textContent = 'Tocar para sacar foto'; fotoStatus.style.color = ''; }
+  if (fotoStatus) { fotoStatus.textContent = 'Tomar o subir foto'; fotoStatus.style.color = ''; }
   const fotoHint=document.getElementById('cj-foto-hint');
-  if(fotoHint) fotoHint.textContent='La IA extraerá el kilometraje automáticamente';
+  if(fotoHint) fotoHint.textContent='Que se vea el kilometraje completo.';
   if (fotoIcon) fotoIcon.textContent = '📷';
   if (fotoBox) {
     fotoBox.style.borderColor = '';
     fotoBox.style.background = '';
   }
   if (inputFoto) inputFoto.value = '';
+  restablecerFotoOdometro('cj');
 
   const kmResult   = document.getElementById('cj-km-result');
   const fotoArea   = document.getElementById('cj-foto-area');
@@ -8014,7 +8024,7 @@ async function confirmarCerrarJornada() {
       box.style.borderColor = 'var(--red)';
       box.style.background  = 'var(--red-lo)';
       box.style.transition  = 'all 0.3s';
-      setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tocar para sacar foto'; }, 2500);
+      setTimeout(() => { box.style.borderColor = ''; box.style.background = ''; if (status) status.textContent = 'Tomar o subir foto'; }, 2500);
     }
     if (status) { status.textContent = '⚠ Asegurate de cargar la foto del odómetro.'; status.style.color = 'var(--red)'; }
     return;
@@ -10288,7 +10298,7 @@ async function procesarFotoConIA(event, contexto) {
     fotoStatusTxt.textContent = 'Procesando...';
     fotoStatusTxt.style.color = '';
     const fotoHint=document.getElementById(prefix+'-foto-hint');
-    if(fotoHint) fotoHint.textContent='La IA extraerá el kilometraje automáticamente';
+    if(fotoHint) fotoHint.textContent='Que se vea el kilometraje completo.';
     if(btnConfirmar) btnConfirmar.disabled = true;
 
     try {

@@ -41,6 +41,15 @@
 .dkm-scan-dot{height:6px;width:6px;display:block;flex:none;border-radius:50%;background:var(--amber)}
 .dkm-scan-state[data-scan-phase=processing]{color:var(--amber)}
 .dkm-scan-state[data-scan-phase=result] .dkm-scan-dot{background:var(--green)}
+.dkm-scan-react:empty{display:none}
+.dkm-photo-required{font-size:10px;font-weight:400;color:var(--muted2,var(--muted))}
+.dkm-photo-label{position:relative;display:block;cursor:pointer}
+.dkm-photo-input{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;opacity:0}
+.dkm-journey-modal .dkm-photo-action{display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:14px!important;border:1px solid var(--border2,var(--border));background:var(--bg);border-radius:10px;font-size:14px;font-weight:650;color:var(--text);text-align:center}
+.dkm-photo-icon{display:flex;align-items:center;justify-content:center;color:var(--amber);font-size:19px;flex:none}
+.dkm-photo-icon .ax-icon{width:20px;height:20px}
+.dkm-photo-label:focus-within .photo-upload{outline:2px solid var(--amber);outline-offset:3px}
+.dkm-photo-hint{margin:9px 0 0;font-size:11px;line-height:1.5;color:var(--muted2,var(--muted))}
 .dkm-stat-head,.dkm-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .dkm-stat-head h3,.dkm-recent h3,.dkm-history-intro h3{font-size:16px;margin:0}
 .dkm-chart-head h4{font-size:12px;margin:0}
