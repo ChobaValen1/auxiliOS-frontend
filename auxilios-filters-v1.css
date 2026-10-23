@@ -62,4 +62,11 @@
 .auxf-quick{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 .auxf-quick .auxf-mes{padding:0 6px}
 .auxf-group{margin:8px 4px 2px;color:var(--ax-text-3,#818ba1);font-size:var(--ax-fs-xs,11px);font-weight:var(--ax-fw-bold,700);letter-spacing:.06em;text-transform:uppercase}
+.auxf-opt:focus-visible,.auxf-mes:focus-visible,.auxf-all:focus-visible,.auxf-clear:focus-visible{outline:2px solid var(--ax-accent,#f5a623);outline-offset:-2px;background:var(--ax-surface-3,#20242f)}
+.auxf-pop{box-sizing:border-box;max-width:calc(100vw - 24px);max-height:min(560px,calc(100dvh - 100px));overflow:auto;overscroll-behavior:contain}
+#screen-operaciones #os-filter-slots{gap:8px}
+#screen-operaciones .auxf-btn{height:44px;min-width:130px}
+#screen-operaciones .auxf-txt{flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2}
+#screen-operaciones .auxf-label{font-size:10px;letter-spacing:.05em}
+@media(max-width:720px){#screen-operaciones #os-filter-slots{grid-column:1/-1;width:100%;grid-template-columns:repeat(2,minmax(0,1fr))}#screen-operaciones .auxf-btn{min-width:0} .auxf-opt{min-height:44px}}
 @media (prefers-reduced-motion: reduce){.auxf-pop{animation:none}}

@@ -33,6 +33,30 @@ else (async()=>{
     await page.waitForFunction(()=>document.querySelectorAll('#os-table-body > tr').length===3);
     const query=page.locator('#os-q');
     assert.equal(await page.locator('.os-results-count').innerText(),'3 servicios en Activos');
+    // Contextual state counts, full reset and keyboard focus are part of filtering.
+    await page.locator('[data-auxf="company"] [data-auxf-open]').click();
+    await page.getByRole('option',{name:'SOS',exact:true}).click();
+    assert.equal(await page.locator('[data-auxf="company"] [data-auxf-open]').evaluate(e=>e===document.activeElement),true);
+    assert.equal(await page.locator('[data-os-tab="assigned"] b').innerText(),'0');
+    assert.equal(await page.locator('[data-os-tab="at_origin"] b').innerText(),'1');
+    await page.locator('[data-os-tab="at_origin"]').click();
+    await page.locator('[data-auxf-clear]').click();
+    assert.equal(await page.locator('[data-os-tab="all"]').evaluate(e=>e.classList.contains('active')),true);
+    assert.equal(await page.locator('#os-table-body > tr').count(),3);
+    await page.locator('[data-auxf="driver"] [data-auxf-open]').focus();
+    await page.keyboard.press('ArrowDown');await page.keyboard.press('End');
+    assert.equal(await page.evaluate(()=>document.activeElement.textContent.includes('Lucía Gómez')),true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('[data-auxf="driver"] [data-auxf-open]').evaluate(e=>e===document.activeElement),true);
+    // Shared searchable selector: accent-insensitive matching and clean reopen.
+    await page.evaluate(()=>{const host=document.createElement('div');host.id='qa-filter';document.body.appendChild(host);host.innerHTML=AuxFilters.select({id:'qa',label:'Chofer',options:Array.from({length:10},(_,i)=>({value:String(i),label:i===0?'José Pérez':'Chofer '+i}))});AuxFilters.bind(host,()=>{});});
+    await page.locator('#qa-filter [data-auxf-open]').click();
+    await page.locator('#qa-filter [data-auxf-find]').fill('JOSE PEREZ');
+    assert.equal(await page.locator('#qa-filter [data-auxf-value]:visible').count(),1);
+    await page.keyboard.press('Escape');await page.locator('#qa-filter [data-auxf-open]').click();
+    assert.equal(await page.locator('#qa-filter [data-auxf-find]').inputValue(),'');
+    assert.equal(await page.locator('#qa-filter [data-auxf-value]:visible').count(),11);
+    await page.keyboard.press('Escape');await page.evaluate(()=>document.getElementById('qa-filter').remove());
     for(const [text,count] of [['maria lopez',1],['JOSE PEREZ',1],['movil 116',2],['lucia cardinal',1],['AA123BB',1],['jose bonifacio',3]]){
       await query.fill(text);assert.equal(await page.locator('#os-table-body > tr').count(),count,'search: '+text);
       assert.match(await page.locator('.os-results-count').innerText(),new RegExp('^'+count+' servicio'));
