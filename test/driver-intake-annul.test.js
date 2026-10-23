@@ -2,10 +2,10 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const migration=fs.readFileSync('migrations/20261020120000_driver_intake_annul_and_link_pending.sql','utf8');
-const bridge=fs.readFileSync('operator-service-bridge.js','utf8');
+const bridge=fs.readFileSync('operator-service-bridge.js','utf8').replace(/\r\n/g,'\n');
 const services=fs.readFileSync('operator-services.js','utf8');
 const driverCss=fs.readFileSync('chofer-servicios-ax-v1.css','utf8');
-const opsCss=fs.readFileSync('operaciones-ax-v1.css','utf8');
+const opsCss=fs.readFileSync('operaciones-ax-v1.css','utf8').replace(/\r\n/g,'\n');
 
 test('Base: anular ingreso con motivo, sólo el chofer dueño o Administración/Operador, y sin borrar nada',()=>{
   assert.match(migration,/create or replace function public\.annul_driver_service_intake_v1\(/);
