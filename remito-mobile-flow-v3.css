@@ -1,5 +1,11 @@
 /* AuxiliOS · Remito móvil canónico v3 */
 /* Unified driver form: same palette, clearer hierarchy and touch targets. */
+.rmv-intake-note{display:grid;gap:5px;padding:12px 14px;margin-bottom:24px;border-left:3px solid var(--amber);border-radius:0 10px 10px 0;background:rgba(245,166,35,.06);font-size:12px;line-height:1.5}.rmv-intake-note span{color:var(--muted2)}
+.rmv-intake-group{min-width:0;margin:0;padding:0;border:0}.rmv-intake-group+.rmv-intake-group{margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}.rmv-intake-group legend{float:left;width:100%;margin-bottom:14px;padding:0;font-size:15px;font-weight:700}.rmv-intake-group legend+*{clear:both}.rmv-intake-help{margin:0 0 16px;font-size:12px;line-height:1.6;color:var(--muted2)}
+.rmv-intake-place>label{margin-bottom:7px;font-size:12px;font-weight:800}.rmv-intake-distance{padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}
+#remitos-nuevo .rmv-intake-route .rmv-map-suggestions{top:calc(100% + 5px)}#remitos-nuevo .rmv-intake-route .rmv-map-suggestions button{min-height:48px;padding:12px;gap:5px}#remitos-nuevo .rmv-intake-route .rmv-map-suggestions b{font-size:13px}#remitos-nuevo .rmv-intake-route .rmv-map-suggestions span{font-size:11px;color:var(--muted2)}#remitos-nuevo .rmv-map-suggestions button:focus-visible{outline:2px solid var(--amber);outline-offset:-3px;background:rgba(245,166,35,.08)}
+#remitos-nuevo .rmv-intake-route .rmv-map-status{font-size:11px;line-height:1.5}#remitos-nuevo .rmv-intake-distance input[readonly]{border:0;background:transparent;padding:0;min-height:36px;font-size:22px;font-weight:700}
+@media(min-width:540px){.rmv-intake-vehicle{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}}
 #remitos-nuevo .rmv-progress-replaced{display:none!important}
 .rmv-motion-steps{display:flex;list-style:none;margin:0;padding:18px 16px 22px;gap:0}
 .rmv-motion-steps li{position:relative;display:flex;flex:1;min-width:0;flex-direction:column;align-items:center;gap:8px;color:var(--muted)}

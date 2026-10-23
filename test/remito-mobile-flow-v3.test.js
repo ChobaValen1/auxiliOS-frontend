@@ -50,7 +50,9 @@ test('el ingreso sin asignación usa cinco pasos independientes y validaciones p
   assert.match(flow,/function reindexPanels/);
   assert.match(flow,/reindexPanels\(panels,2\)/);
   assert.match(flow,/reindexPanels\(panels,1\)/);
-  assert.match(flow,/Este ingreso quedará pendiente de vinculación y clasificación por Operaciones/);
+  assert.match(flow,/Operaciones vinculará y clasificará este ingreso/);
+  for(const group of ['Vehículo','Recorrido','Referencia'])assert.match(flow,new RegExp(`<legend>${group}</legend>`));
+  assert.match(flow,/podés continuar sin completarlo/);
   for(const slot of ['order','plate','vehicle','origin','destination','km'])assert.match(flow,new RegExp(`data-ad-hoc="${slot}"`));
   assert.doesNotMatch(flow,/data-ad-hoc="type"/);
   assert.match(flow,/setHeader\(customer,adHocMode\?2:1,'Datos del socio'\)/);
