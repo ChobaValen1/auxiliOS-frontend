@@ -7,13 +7,14 @@ before(async()=>{
  db=new PGlite();
  await db.exec(`create schema app_private;create schema auth;create role anon;create role authenticated;
  create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
- create function public.current_auxilios_role() returns text language sql as $$select current_setting('test.role',true)$$;
+ create function app_private.current_auxilios_role() returns text language sql as $$select current_setting('test.role',true)$$;
  create table trucks(truck_id int primary key,is_test boolean);
  create table daily_logs(log_date date,truck_id int,status text,km_inicio int,km_final int,driver_id uuid);
  create table operator_services(service_id uuid,status text,is_test boolean,logistics_type text,scheduled_for timestamptz,
  estimated_asphalt_km numeric,estimated_gravel_km numeric,estimated_distance_km numeric,company_id uuid,billing_base_id uuid,primary_concept_id uuid,remito_id int);
  create table remitos(remito_id int,status text,created_at_device timestamptz,driver_id uuid);`);
  await db.exec(fs.readFileSync('migrations/20261023232645_dashboard_efficiency_v1.sql','utf8'));
+ await db.exec(fs.readFileSync('migrations/20261023233958_dashboard_efficiency_role_schema_fix.sql','utf8'));
 });
 after(()=>db?.close());
 beforeEach(async()=>{
@@ -50,6 +51,7 @@ test('zero is valid numerator; zero denominator is unavailable; scales include b
  const p={filas:[{}],facturados:0,odometro:100,cierres_faltantes:0,servicios_sin_km:0,remitos_sin_servicio:0};const d={filtrado:false};assert.equal(model.ratio(d,p),0);assert.equal(model.ratio(d,{...p,odometro:0}),null);assert.ok(model.scaleTop([{facturados:150,odometro:900}])>=900);
 });
 test('public API requires login and permitted role; bounded ranges; no write statements',async()=>{
+ assert.equal((await db.query("select to_regprocedure('public.current_auxilios_role()') absent")).rows[0].absent,null);
  await assert.rejects(db.query('select public.dashboard_efficiency_v1()'),/No autorizado/);
  await db.exec("select set_config('test.uid','11111111-1111-4111-8111-111111111111',false),set_config('test.role','chofer',false)");await assert.rejects(db.query('select public.dashboard_efficiency_v1()'),/No autorizado/);
  await db.exec("select set_config('test.role','administracion',false)");assert.ok((await db.query("select public.dashboard_efficiency_v1('2026-10-22','2026-10-22') v")).rows[0].v);
