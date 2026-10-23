@@ -2,6 +2,7 @@ import { animate } from 'motion/mini';
 import { spring } from 'motion';
 import './style.css';
 import { enhanceServiceToolbar } from './service-toolbar';
+import { enhanceRemitoForm } from './remito-form';
 
 // Existing application profile: read the shared binding, including its async login update.
 declare const PERFIL_USUARIO: { full_name?: string; roles?: { name?: string }; role?: string } | null;
@@ -346,5 +347,6 @@ function install() {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); }
   });
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
-else install();
+const start = () => { install(); enhanceRemitoForm(); };
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+else start();
