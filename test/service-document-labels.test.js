@@ -22,6 +22,13 @@ test('signed remito keeps its document button with the requested label, not a du
     assert.doesNotMatch(html,/Remito recibido|Remito firmado · Revisar| · Ver|Creando remito/);
   }
 });
+test('operator can see pendiente only after the complete document inbox has loaded successfully',()=>{
+  const {statusCell}=load(),s={service_id:'qa',status:'assigned'};
+  assert.doesNotMatch(statusCell(s),/Remito pendiente/,'unknown data is not no-remito');
+  assert.match(statusCell({...s,_documentConnectionLoaded:true}),/Remito pendiente/);
+  assert.doesNotMatch(statusCell({...s,_documentConnectionLoaded:true,remito_id:1}),/Remito pendiente/);
+  assert.doesNotMatch(statusCell({...s,_documentConnectionLoaded:true,document_status:'unknown'}),/Remito pendiente/);
+});
 test('state selector styling is tied to actual menu semantics, not all badges',()=>{
   const css=fs.readFileSync('operaciones-ax-v1.css','utf8');
   assert.match(css,/\.os-status\[role="button"\][\s\S]*border-radius: 9px/);

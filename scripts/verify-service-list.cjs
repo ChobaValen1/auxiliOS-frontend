@@ -1,7 +1,7 @@
 /* Real Servicios module + real styles. RPC reads are simulated; all other RPCs fail. */
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v529');
+const root=path.resolve(__dirname,'..'),out=path.resolve(root,'../output/servicios-v530');
 const index=fs.readFileSync(path.join(root,'Index.html'),'utf8');
 const links=[...index.slice(0,index.indexOf('</head>')).matchAll(/<link[^>]+rel="stylesheet"[^>]*>/g)].map(m=>m[0]).filter(s=>!s.includes('https://')).join('\n');
 const shell=index.slice(index.indexOf('<nav class="sidenav">'),index.indexOf('<div class="content">'));
@@ -55,6 +55,9 @@ else (async()=>{
     assert.match(await page.locator('.os-filter-chips').innerText(),/Estado: Arribado/);
     await page.locator('[data-os-remove-filter="status"]').click();assert.equal(await page.locator('#os-table-body > tr').count(),3);
     const first=page.locator('#os-table-body > tr[data-service-id="1"]');
+    await page.evaluate(()=>{delete OperatorServices.S.services[0].document_status;OperatorServices.renderServices();});
+    assert.match(await first.locator('.col-status').innerText(),/Remito pendiente/,'operator projection without document_status uses the completed document-inbox read');
+    await page.evaluate(()=>{OperatorServices.S.services=structuredClone(rows);OperatorServices.renderServices();});
     assert.equal(await first.locator('[data-os-primary],.os-route-details,.os-route-label').count(),0,'no redundant disclosure or row primary action');
     await first.getByRole('link',{name:'Ver recorrido',exact:true}).waitFor({state:'visible'});
     const originUrl=new URL(await first.getByRole('link',{name:'Ver recorrido',exact:true}).getAttribute('href'));
@@ -190,6 +193,7 @@ else (async()=>{
     await page.locator('[data-os-remove-filter="query"]').click();
     assert.match(await page.locator('.os-results-count').innerText(),/^1–25 de 52 resultados/);
     await page.locator('#os-view-active').click();
+    await page.evaluate(()=>{for(const [index,document_status] of ['submitted','approved','observed'].entries())Object.assign(OperatorServices.S.services[index],{document_status,remito_id:12+index,remito_status:'firmado'});OperatorServices.renderServices();});
     // CSS cascade, text geometry, overflow and themes at the widths that previously overlapped.
     for(const width of [1440,1060,768,720,390,320]){
       await page.setViewportSize({width,height:1000});
@@ -207,9 +211,13 @@ else (async()=>{
         const firstRow=page.locator('#os-table-body > tr').first();
         assert.equal(await firstRow.locator('.os-primary-action').count(),0,'no primary button in row at '+width);
         assert.equal(await firstRow.locator('.os-map-link').first().isVisible(),true,'map shortcut visible at '+width);
+        assert.equal(await firstRow.locator('.os-document-state').innerText(),'Remito en revisión');
+        const documentGeometry=await page.locator('#os-table-body .os-document-state.is-action').evaluateAll(els=>els.map(el=>({width:el.clientWidth,scroll:el.scrollWidth,height:el.clientHeight,content:el.scrollHeight})));
+        for(const rect of documentGeometry){assert.ok(rect.scroll<=rect.width+1,'document label fits horizontally at '+width);assert.ok(rect.content<=rect.height+1,'document label fits vertically at '+width);}
         const overlap=await firstRow.evaluate(row=>{const a=row.querySelector('.actions').getBoundingClientRect(),range=document.createRange();range.selectNodeContents(row.querySelector('.col-code b'));const b=range.getBoundingClientRect();return Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1;});
         assert.equal(overlap,false,'actions do not overlap service code at '+width);
-        assert.equal(await page.locator('.os-table th.actions').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>0),true,'actions heading is not suppressed at '+width);
+        // Mobile uses cards and intentionally hides the entire table header.
+        if(width>=721)assert.equal(await page.locator('.os-table th.actions').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>0),true,'desktop actions heading is not suppressed at '+width);
         for(let i=0;i<geometry.controls.length;i++)for(let j=i+1;j<geometry.controls.length;j++){
           const a=geometry.controls[i],b=geometry.controls[j],intersects=Math.min(a.right,b.right)-Math.max(a.x,b.x)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1;
           assert.equal(intersects,false,'overlapping controls at '+width+': '+a.selector+' / '+b.selector);
