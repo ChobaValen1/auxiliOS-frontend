@@ -3839,6 +3839,7 @@ function _renderCamionChoferDatos(d) {
 
 // Offline sin caché: mensaje amable en lugar de pantalla rota
 function _renderCamionOfflineSinDatos() {
+  window.AuxiliosTruckUI?.clear();
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   ['camion-nombre','camion-detalle','camion-sec-sub'].forEach(id => set(id, '—'));
   set('camion-km-pill', '— km');
@@ -3855,6 +3856,7 @@ function _renderCamionOfflineSinDatos() {
 }
 
 function _renderCamionSinJornada() {
+  window.AuxiliosTruckUI?.clear();
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   ['camion-nombre','camion-detalle','camion-sec-sub'].forEach(id => set(id, '—'));
   set('camion-km-pill', '— km');
@@ -3878,6 +3880,7 @@ function _renderCamionSinJornada() {
 // La flota (tabla) está en fleet-control-v1.js y el detalle de cada móvil en
 // fleet-truck-detail-v1.js. Estas dos funciones quedan como punto de entrada.
 async function _renderCamionFlotaAdmin() {
+  window.AuxiliosTruckUI?.clear();
   if (window.AuxiliosControlFlota) return window.AuxiliosControlFlota.renderFlota();
 }
 
@@ -3888,6 +3891,31 @@ async function _abrirCamionDetalleAdmin(truckId) {
 function _renderCamionCards() {
   const cont = document.getElementById('camion-cards-container');
   if (!cont) return;
+
+  if (PERFIL_USUARIO?.roles?.name === 'chofer' && _truckActual?.truck_id && window.AuxiliosTruckUI) {
+    const journey = _jornadasAbiertasCache?.[0];
+    const logId = journey?.truck_id === _truckActual.truck_id ? journey.log_id : null;
+    const driverId = typeof USUARIO_ACTUAL !== 'undefined' ? USUARIO_ACTUAL?.id : null;
+    window.AuxiliosTruckUI.render(cont, {
+      identity: String(driverId || '') + ':' + String(logId || '') + ':' + String(_truckActual.truck_id),
+      truck: {..._truckActual, current_km: _truckActual.current_km ?? journey?.km_inicio ?? null},
+      logDate: _camionLogDate,
+      control: _camionNeumaticos,
+      fuel: _camionCombustible,
+      plans: _camionPlanes,
+      loadReports: async () => {
+        // Reports belong to this driver's current journey, not the entire fleet.
+        if (!logId || !driverId || String(logId).startsWith('TMP-')) return [];
+        const {data,error} = await _db.from('incidents')
+          .select('incident_id,type,severity,description,location,created_at_device,received_at,created_at')
+          .eq('driver_id',driverId).eq('log_id',logId)
+          .order('created_at_device',{ascending:false}).limit(50);
+        if (error) throw error;
+        return data || [];
+      }
+    });
+    return;
+  }
 
   const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
 
@@ -12437,6 +12465,7 @@ async function guardarIncidente() {
     await _insertarIncidente(payload, _incFotos);
     toast('Incidente reportado', 'success');
     closeModal('modal-incidente');
+    window.dispatchEvent(new Event('auxilios:truck-report-saved'));
     // Si el admin lo cargó desde el detalle de una jornada, refrescar ese detalle
     if (_incDesdeAdmin && payload.log_id && typeof abrirDetalleJornadaAdmin === 'function') {
       abrirDetalleJornadaAdmin(payload.log_id);

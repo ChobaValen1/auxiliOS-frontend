@@ -4,6 +4,7 @@ import './style.css';
 import { enhanceServiceToolbar } from './service-toolbar';
 import { enhanceRemitoForm } from './remito-form';
 import { enhanceDriverKm } from './driver-km';
+import { enhanceDriverTruck } from './driver-truck';
 
 // Existing application profile: read the shared binding, including its async login update.
 declare const PERFIL_USUARIO: { full_name?: string; roles?: { name?: string }; role?: string } | null;
@@ -348,6 +349,6 @@ function install() {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); }
   });
 }
-const start = () => { install(); enhanceRemitoForm(); enhanceDriverKm(); };
+const start = () => { install(); enhanceRemitoForm(); enhanceDriverKm(); enhanceDriverTruck(); };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
 else start();

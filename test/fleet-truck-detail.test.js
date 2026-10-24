@@ -8,7 +8,7 @@ const control = fs.readFileSync('fleet-control-v1.js', 'utf8');
 const sql = fs.readFileSync('migrations/20260928250000_control_camion_docs_obligatorios_v2.sql', 'utf8');
 const config = fs.readFileSync('config.js', 'utf8');
 const sw = fs.readFileSync('sw.js', 'utf8');
-const sigma = fs.readFileSync('sigma.js', 'utf8');
+const sigma = fs.readFileSync('sigma.js', 'utf8').replace(/\r\n/g, '\n');
 const html = fs.readFileSync('Index.html', 'utf8');
 
 function load() {
@@ -104,7 +104,7 @@ test('sin versiones anteriores del módulo: ni grilla de tarjetas, ni sub-pantal
   assert.doesNotMatch(sigma, /function _pintarFlotaAdmin|_flotaFiltro|camion-flota-card|function renderPlanes|function renderHistorialServices/);
   assert.doesNotMatch(html, /camion-sub-planes|camion-sub-historial|planes-lista|tbody-services/);
   assert.doesNotMatch(fs.readFileSync('sigma.css', 'utf8'), /\.camion-flota-|\.flota-pill/);
-  assert.match(sigma, /async function _renderCamionFlotaAdmin\(\) \{\n  if \(window\.AuxiliosControlFlota\) return window\.AuxiliosControlFlota\.renderFlota\(\);/);
+  assert.match(sigma, /async function _renderCamionFlotaAdmin\(\) \{\n  window\.AuxiliosTruckUI\?\.clear\(\);\n  if \(window\.AuxiliosControlFlota\) return window\.AuxiliosControlFlota\.renderFlota\(\);/);
   assert.match(sigma, /async function _refrescarPlanesCamion\(kmOverride = null\)/);
   assert.doesNotMatch(control, /global\._renderCamionFlotaAdmin = /);
 });
