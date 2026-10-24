@@ -97,6 +97,14 @@
 #phase3-driver-services .p3-empty small { max-width: 280px; color: var(--ax-text-2); font-size: var(--ax-fs-md); }
 
 /* ── Hoja del servicio (sube desde abajo) ──────────────────────────── */
+#phase3-driver-services .p3-driver-task{cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease}
+#phase3-driver-services .p3-driver-task:focus-visible{outline:2px solid var(--ax-accent);outline-offset:3px}
+@media(hover:hover){#phase3-driver-services .p3-driver-task:hover{border-color:var(--ax-accent);box-shadow:0 4px 18px rgba(0,0,0,.12)}}
+#p3-service-preview .p3-preview-grip{display:flex;justify-content:center;align-items:center;height:22px;margin:-8px 0 8px;cursor:grab;touch-action:none}
+#p3-service-preview .p3-preview-grip span{width:38px;height:4px;border-radius:999px;background:var(--ax-text-3)}
+#p3-service-preview > section{overscroll-behavior-y:contain}
+#p3-service-preview > section.p3-sheet-dragging{user-select:none;cursor:grabbing;will-change:transform}
+@media(prefers-reduced-motion:reduce){#phase3-driver-services .p3-driver-task{transition:none}}
 #p3-service-preview .p3-preview-backdrop { background: rgba(0, 0, 0, .6); animation: ax-fade-in var(--ax-dur-slow) var(--ax-ease-out) both; }
 #p3-service-preview > section { padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border: 1px solid var(--ax-border-strong); border-bottom: 0; border-radius: var(--ax-radius-xl) var(--ax-radius-xl) 0 0; background: var(--ax-surface-2); box-shadow: var(--ax-shadow-modal); font-family: var(--ax-font); animation: ax-sheet-in var(--ax-dur-slow) var(--ax-ease-out) both; }
 #p3-service-preview > section > header small { color: var(--ax-text-3); font-size: var(--ax-fs-xs); font-weight: var(--ax-fw-bold); letter-spacing: .06em; }

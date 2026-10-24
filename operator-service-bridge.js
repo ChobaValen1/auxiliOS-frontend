@@ -76,7 +76,7 @@ function injectAssets(){if(document.getElementById('phase3-service-bridge-css'))
 function applyDriverModuleLabels(){if(!isDriver())return;const nav=document.getElementById('nav-remitos'),screen=document.getElementById('screen-remitos');const label=nav?.querySelector('.nav-label'),icon=nav?.querySelector('.nav-icon');if(label)label.textContent='Servicios';if(icon)icon.innerHTML='<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="6.2" cy="13.8" r="1.6" fill="currentColor"/><path d="M6.2 10.4a3.4 3.4 0 0 1 3.4 3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.2 7a6.8 6.8 0 0 1 6.8 6.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6.2 3.6a10.2 10.2 0 0 1 10.2 10.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';if(screen?.classList.contains('active')){const title=document.getElementById('topbar-title'),sub=document.getElementById('topbar-sub');if(title)title.textContent='Servicios';if(sub)sub.textContent='Asignados e historial'}}
 function updateAssignedBadge(){if(!isDriver())return;try{window.dispatchEvent(new CustomEvent('auxilios:driver-queue-updated'));}catch(_){}const count=P3.queue.filter(s=>['assigned','at_origin'].includes(s.status)).length;const nav=document.getElementById('nav-remitos');if(nav){let badge=nav.querySelector('.p3-nav-badge');if(!badge){badge=document.createElement('span');badge.className='p3-nav-badge';nav.appendChild(badge)}badge.textContent=String(count);badge.hidden=count===0}const bell=document.getElementById('tb-bell'),bellBadge=document.getElementById('alx-bell-badge');if(bell)bell.title=count?`${count} servicio${count===1?'':'s'} asignado${count===1?'':'s'}`:'Sin servicios asignados';if(bellBadge){bellBadge.textContent=String(count);bellBadge.style.display=count?'flex':'none'}}
 function hookNavigation(){if(window.__p3DriverNavHook||typeof window.goTo!=='function')return false;const base=window.goTo;window.goTo=(name,...args)=>{const result=base(name,...args);if(name==='remitos')applyDriverModuleLabels();return result};window.__p3DriverNavHook=true;return true}
-function ensurePreviewModal(){if(document.getElementById('p3-service-preview'))return;document.body.insertAdjacentHTML('beforeend',`<div id="p3-service-preview" class="p3-preview" hidden><button type="button" class="p3-preview-backdrop" onclick="cerrarPreviewServicio()" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="p3-preview-title"><header><div><small id="p3-preview-kicker">Servicio asignado</small><h2 id="p3-preview-title">Servicio</h2></div><button type="button" onclick="cerrarPreviewServicio()" aria-label="Cerrar">×</button></header><div id="p3-preview-body"></div><footer id="p3-preview-actions"></footer></section></div>`)}
+function ensurePreviewModal(){if(document.getElementById('p3-service-preview'))return;document.body.insertAdjacentHTML('beforeend',`<div id="p3-service-preview" class="p3-preview" hidden><button type="button" class="p3-preview-backdrop" onclick="cerrarPreviewServicio()" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="p3-preview-title"><div class="p3-preview-grip" aria-hidden="true"><span></span></div><header><div><small id="p3-preview-kicker">Servicio asignado</small><h2 id="p3-preview-title">Servicio</h2></div><button type="button" onclick="cerrarPreviewServicio()" aria-label="Cerrar">×</button></header><div id="p3-preview-body"></div><footer id="p3-preview-actions"></footer></section></div>`);bindPreviewGesture(document.getElementById('p3-service-preview'))}
 function injectPanel(){if(!isDriver()||document.getElementById('phase3-driver-services'))return;const remitos=document.getElementById('screen-remitos');if(!remitos)return;remitos.classList.add('p3-driver-remitos');const header=remitos.querySelector('.sec-header'),anchor=header||remitos;anchor.insertAdjacentHTML(header?'afterend':'afterbegin',`<section id="phase3-driver-services" class="p3-driver-panel p3-remitos-assigned" data-location="remitos" aria-live="polite"><div class="p3-panel-head"><div class="p3-head-actions"><div class="p3-view-switch" role="group" aria-label="Ver"><button id="p3-view-active" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('active')">Activos</button><button id="p3-view-history" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('history')">Historial</button></div><button type="button" class="p3-refresh p3-new-ad-hoc" onclick="abrirRemitoSinAsignacion()">${ico('plus')}Sin asignación</button><button type="button" class="p3-refresh p3-refresh-icon" onclick="recargarServiciosChofer()" aria-label="Actualizar">${ico('refresh-cw')}</button></div></div><div id="phase3-driver-services-list" class="p3-service-list"><div class="p3-empty">Buscando servicios…</div></div></section>`);ensurePreviewModal();applyDriverModuleLabels()}
 function setRefreshBusy(busy){
   const panel=document.getElementById('phase3-driver-services');
@@ -215,7 +215,86 @@ function activeAdHocCard(r){
   const id=String(r.id),order=r.nroSrv||r.nro||'Sin N° prestación';
   return`<article class="p3-service-card p3-driver-task p3-ad-hoc-draft" data-remito-id="${esc(id)}" aria-label="Servicio ${esc(order)}"><header class="p3-card-head"><div class="p3-card-id"><strong class="p3-order-value">${esc(order)}</strong><span class="p3-card-company">Sin asignación · ${esc(r.fecha||currentDate())}</span></div><span class="p3-draft-state">${ico('check','ax-icon-sm')}Borrador guardado</span></header><div class="p3-task-main"><div class="p3-task-vehicle"><strong>${esc(r.patente||'Sin patente')}</strong><span>${esc(r.marca||'Vehículo sin informar')}</span></div><div class="p3-task-route"><div><i aria-hidden="true"></i><span><small>Origen</small><b>${esc(r.origen||'Origen sin informar')}</b></span></div><div><i aria-hidden="true"></i><span><small>Destino</small><b>${esc(r.destino||'Destino sin informar')}</b></span></div></div>${driverQuickLinks({origin:r.origen,customer_phone:r.telefono})}</div><footer class="p3-task-actions"><button type="button" class="p3-task-primary" data-id="${esc(id)}" onclick="abrirPreviewRemitoSinAsignacion(this.dataset.id)">Ver servicio${ico('chevron-right')}</button></footer></article>`;
 }
-function closePreview(){const modal=document.getElementById('p3-service-preview');if(modal)modal.hidden=true;P3.previewStep='facts';document.body.classList.remove('p3-preview-open');if(P3.previewOpener?.isConnected)P3.previewOpener.focus({preventScroll:true});}
+function closePreview(){const modal=document.getElementById('p3-service-preview');P3.resetPreviewGesture?.();if(modal)modal.hidden=true;P3.previewStep='facts';document.body.classList.remove('p3-preview-open');if(P3.previewOpener?.isConnected)P3.previewOpener.focus({preventScroll:true});}
+// The full card is tappable; nested links and buttons keep their own actions.
+document.addEventListener('click',event=>{
+  const card=event.target.closest?.('#phase3-driver-services .p3-driver-task');
+  if(!card||event.defaultPrevented||event.target.closest('button,a,input,select,textarea,summary,label,[contenteditable="true"]'))return;
+  if(String(window.getSelection?.()||'').trim())return;
+  card.setAttribute('tabindex','-1');card.focus({preventScroll:true});
+  if(card.dataset.remitoId)openAdHocPreview(card.dataset.remitoId);
+  else if(card.dataset.serviceId)openPreview(card.dataset.serviceId);
+});
+function bindPreviewGesture(modal){
+  if(!modal||modal.dataset.gestureReady)return;
+  modal.dataset.gestureReady='true';
+  const sheet=modal.querySelector(':scope > section'),backdrop=modal.querySelector('.p3-preview-backdrop');
+  if(!sheet)return;
+  let drag=null,animation=null;
+  const reduced=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const interactive=target=>target.closest('button,a,input,select,textarea,summary,label,[contenteditable="true"]');
+  const reset=()=>{
+    if(animation){animation.onfinish=null;animation.cancel();animation=null;}
+    drag=null;sheet.style.removeProperty('transform');sheet.style.removeProperty('animation');
+    sheet.classList.remove('p3-sheet-dragging');backdrop?.style.removeProperty('opacity');
+  };
+  P3.resetPreviewGesture=reset;
+  function begin(x,y,target,pointerId){
+    if(modal.hidden||animation||interactive(target)||sheet.scrollTop>1)return false;
+    drag={x,y,dy:0,start:performance.now(),pointerId,active:false};return true;
+  }
+  function move(x,y,event){
+    if(!drag)return;
+    const dy=y-drag.y,dx=x-drag.x;
+    if(!drag.active){
+      if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)){drag=null;return;}
+      if(dy<-8){drag=null;return;}
+      if(dy<8||Math.abs(dx)>dy)return;
+      drag.active=true;sheet.style.animation='none';sheet.classList.add('p3-sheet-dragging');
+    }
+    if(event.cancelable)event.preventDefault();
+    drag.dy=Math.max(0,Math.min(dy,sheet.clientHeight));
+    if(!reduced()){
+      sheet.style.transform='translateY('+drag.dy+'px)';
+      if(backdrop)backdrop.style.opacity=String(Math.max(.3,1-drag.dy/Math.max(1,sheet.clientHeight)));
+    }
+  }
+  function finish(cancelled=false){
+    if(!drag)return;
+    const current=drag;drag=null;
+    sheet.classList.remove('p3-sheet-dragging');
+    const speed=current.dy/Math.max(1,performance.now()-current.start);
+    const dismiss=!cancelled&&current.active&&(current.dy>=90||(current.dy>=45&&speed>.55));
+    if(!current.active){backdrop?.style.removeProperty('opacity');return;}
+    if(reduced()||typeof sheet.animate!=='function'){if(dismiss)closePreview();else reset();return;}
+    const to=dismiss?Math.max(sheet.clientHeight,window.innerHeight):0;
+    animation=sheet.animate([{transform:'translateY('+current.dy+'px)'},{transform:'translateY('+to+'px)'}],{duration:dismiss?220:180,easing:'cubic-bezier(.22,1,.36,1)',fill:'forwards'});
+    animation.onfinish=()=>{
+      const done=animation;animation=null;
+      if(done){done.onfinish=null;done.cancel();}
+      if(dismiss)closePreview();
+      else{sheet.style.removeProperty('transform');backdrop?.style.removeProperty('opacity');}
+    };
+  }
+  sheet.addEventListener('touchstart',event=>{
+    if(event.touches.length!==1){finish(true);return;}
+    const touch=event.touches[0];begin(touch.clientX,touch.clientY,event.target,null);
+  },{passive:true});
+  sheet.addEventListener('touchmove',event=>{
+    if(event.touches.length!==1){finish(true);return;}
+    const touch=event.touches[0];move(touch.clientX,touch.clientY,event);
+  },{passive:false});
+  sheet.addEventListener('touchend',()=>finish());
+  sheet.addEventListener('touchcancel',()=>finish(true));
+  sheet.addEventListener('pointerdown',event=>{
+    if(event.pointerType!=='mouse'||event.button!==0||!event.target.closest('.p3-preview-grip,section > header'))return;
+    if(begin(event.clientX,event.clientY,event.target,event.pointerId))sheet.setPointerCapture?.(event.pointerId);
+  });
+  sheet.addEventListener('pointermove',event=>{if(drag?.pointerId===event.pointerId)move(event.clientX,event.clientY,event)});
+  sheet.addEventListener('pointerup',event=>{if(drag?.pointerId===event.pointerId)finish()});
+  sheet.addEventListener('pointercancel',event=>{if(drag?.pointerId===event.pointerId)finish(true)});
+  sheet.addEventListener('lostpointercapture',()=>{if(drag?.pointerId!=null)finish(true)});
+}
 document.addEventListener('keydown',event=>{const modal=document.getElementById('p3-service-preview');if(!modal||modal.hidden)return;if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();closePreview();return;}if(event.key==='Tab'){const items=[...modal.querySelectorAll('section button:not(:disabled),section a[href],section input,section textarea,section summary')].filter(el=>el.getClientRects().length);const first=items[0],last=items.at(-1);if(event.shiftKey&&(document.activeElement===first||!modal.contains(document.activeElement))){event.preventDefault();last?.focus();}else if(!event.shiftKey&&(document.activeElement===last||!modal.contains(document.activeElement))){event.preventDefault();first?.focus();}}},true);
 function previewTripMetrics(s){
  const seconds=Number(s.origin_destination_duration_seconds),minutes=Number.isFinite(seconds)&&seconds>0?Math.max(1,Math.ceil(seconds/60)):null;
