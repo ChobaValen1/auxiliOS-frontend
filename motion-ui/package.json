@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit && vite build && vite build --config vite.efficiency.config.js"
+    "build": "tsc --noEmit && vite build && vite build --config vite.efficiency.config.js && vite build --config vite.trends.config.js"
   },
   "dependencies": {
     "motion": "12.43.0",

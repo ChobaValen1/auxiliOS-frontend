@@ -101,6 +101,11 @@
       actual: { facturado: serie(t.actual, 'facturado'), servicios: serie(t.actual, 'servicios'), km_reales: serie(t.actual, 'km_reales') },
       anterior: { facturado: serie(t.anterior, 'facturado'), servicios: serie(t.anterior, 'servicios'), km_reales: serie(t.anterior, 'km_reales') },
       empresas: empresas,
+      // Keep every stable company identity for the race; never rank an aggregate "Otras".
+      ranking: lista(t.por_empresa).map(function(e,i) {
+        return {id:String(e.id || 'sin-prestadora-'+i),nombre:String(e.nombre || 'Sin prestadora'),
+          facturado:serie(e,'facturado'),servicios:serie(e,'servicios')};
+      }),
       comparacion: {
         facturado: [num(tot.facturado), num(ant.facturado)],
         servicios: [num(tot.servicios), num(ant.servicios)],
@@ -416,6 +421,11 @@
     pintarComparacion(d);
   }
 
+  function pintarInteractivos(d,error) {
+    if(global.AuxTrendsLoader)global.AuxTrendsLoader.render(el('tnd-interactive-charts'),
+      d?{desde:d.desde,hasta:d.hasta,actual:d.actual,empresas:d.ranking}:null,error);
+  }
+
   function pintarSegmentos() {
     document.querySelectorAll('#dashx-sec-tendencia [data-tnd-metrica]').forEach(function (b) {
       b.setAttribute('aria-pressed', b.getAttribute('data-tnd-metrica') === estado.metrica ? 'true' : 'false');
@@ -437,24 +447,34 @@
     return res ? res.data : null;
   }
 
+  var cargaActual = 0;
   async function cargar(filtros) {
+    var carga = ++cargaActual;
+    pintarInteractivos(null);
     var f = filtros || {};
     var rango = el('dashx-fact-sub');
     if (rango) rango.textContent = f.desde && f.hasta ? 'del ' + fecha(f.desde) + ' al ' + fecha(f.hasta) : '';
     var base = { p_desde: f.desde || null, p_hasta: f.hasta || null,
                  p_empresas: paramArray(f.empresas), p_bases: paramArray(f.bases) };
     var Z = global.AuxZoom;
-    var r = await Promise.all([
+    var r;
+    try { r = await Promise.all([
       rpc(RPC_TEND, base),
       rpc(RPC_FACT, Object.assign({ p_conceptos: null }, base)),
       Z ? Z.historia(f) : null
-    ]);
+    ]); } catch(error) {
+      if(carga!==cargaActual)return;
+      pintarInteractivos(null,mensajeError(error));
+      throw error;
+    }
+    if(carga!==cargaActual)return;
     var d = normalizar(r[0], r[1]);
     estado.datos = d;
     estado.hist = Z && d.desde ? (r[2] || Z.historiaDePeriodo(d.desde, d.anterior, d.actual)) : null;
     estado.per = estado.hist ? [Z.diasEntre(estado.hist.desde, d.desde), Z.diasEntre(estado.hist.desde, d.hasta || d.desde)] : null;
     estado.vista = null;
     pintar();
+    pintarInteractivos(d);
   }
 
   function mensajeError(e) {
