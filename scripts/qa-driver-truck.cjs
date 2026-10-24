@@ -9,12 +9,13 @@ const app=http.createServer((req,res)=>{if(req.url==='/'){res.setHeader('content
 (async()=>{await new Promise(r=>app.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'msedge',headless:true});
 try{for(const width of [1440,768,390,320]){
  const page=await browser.newPage({viewport:{width,height:1100},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:'+app.address().port);
- await page.waitForFunction(()=>!!window.AuxiliosTruckUI);await page.evaluate(()=>AuxiliosTruckUI.render(document.getElementById('camion-cards-container'),fixture));await page.locator('.dtr').waitFor();
+ await page.waitForFunction(()=>!!window.AuxiliosTruckUI);await page.evaluate(()=>{const nav=document.createElement('nav');nav.className='sidenav';nav.style.cssText='position:fixed;bottom:8px;left:8px;right:8px;height:64px';document.body.append(nav);AuxiliosTruckUI.render(document.getElementById('camion-cards-container'),fixture)});await page.locator('.dtr').waitFor();
  assert.equal(await page.locator('.dtr-card').count(),3);assert.match(await page.locator('.dtr-odometer').innerText(),/184.250/);
  assert.equal(await page.locator('#camion-hero-card').isVisible(),false);
- await page.getByRole('button',{name:'Registrar chequeo',exact:true}).click();await page.getByRole('button',{name:'Registrar mantenimiento',exact:true}).click();
- await page.getByRole('button',{name:'Cargar combustible',exact:true}).first().click();
- assert.deepEqual(await page.evaluate(()=>calls.slice(0,3).map(c=>c[0])),['openNeumaticosModal','openServiceModal','openFuelModal']);
+ assert.equal(await page.locator('.dtr-card-actions').count(),0);
+ assert.equal(await page.locator('.dtr-fab').count(),1);
+ await page.setViewportSize({width,height:740});
+ await page.waitForFunction(()=>document.querySelector('.dtr-fab').getBoundingClientRect().bottom<=document.querySelector('.sidenav').getBoundingClientRect().top-8);
  if(width<800)assert.ok(await page.locator('.dtr-hero').evaluate(el=>el.getBoundingClientRect().height)<150,'truck identity is compact');
  assert.equal(await page.locator('.dtr-status-warning').count(),2);assert.equal(await page.locator('.dtr-status-success').count(),0);
  for(const [label,action] of [['Registrar chequeo','openNeumaticosModal'],['Cargar combustible','openFuelModal'],['Registrar mantenimiento','openServiceModal']]){
@@ -26,6 +27,13 @@ try{for(const width of [1440,768,390,320]){
  await page.getByRole('button',{name:'Acciones rápidas',exact:true}).click();await page.keyboard.press('Escape');assert.equal(await page.locator('dialog').count(),0);
  assert.equal(await page.getByRole('button',{name:'Acciones rápidas',exact:true}).evaluate(el=>el===document.activeElement),true);
  await page.getByRole('button',{name:'Ver historial de Mantenimiento',exact:true}).click();assert.deepEqual(await page.evaluate(()=>calls.at(-1)),['_abrirSubCamion','camion-sub-mantenimiento']);
+ await page.evaluate(()=>document.getElementById('camion-main-view').style.display='none');await page.waitForFunction(()=>!document.querySelector('.dtr-fab'));
+ await page.evaluate(()=>document.getElementById('camion-main-view').style.display='');await page.locator('.dtr-fab').waitFor();
+ await page.evaluate(()=>document.getElementById('screen-camion').classList.remove('active'));await page.waitForFunction(()=>!document.querySelector('.dtr-fab'));
+ await page.evaluate(()=>document.getElementById('screen-camion').classList.add('active'));await page.locator('.dtr-fab').waitFor();
+ await page.evaluate(()=>{const extra=document.createElement('div');extra.id='scroll-test';extra.style.height='1200px';document.getElementById('camion-main-view').append(extra);window.scrollTo(0,800)});
+ assert.ok(await page.evaluate(()=>scrollY>0),'scroll remains available');
+ await page.evaluate(()=>{document.getElementById('scroll-test').remove();window.scrollTo(0,0)});
  await page.getByRole('button',{name:/Novedades de la jornada/}).click();await page.getByRole('dialog').waitFor();await page.getByText('Luz trasera derecha',{exact:true}).waitFor();
  assert.equal(await page.getByText('Reporte registrado',{exact:true}).count(),1);
  await page.keyboard.press('Escape');assert.equal(await page.locator('dialog').count(),0);

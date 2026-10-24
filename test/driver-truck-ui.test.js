@@ -2,6 +2,14 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const ts=require('../motion-ui/node_modules/typescript');
 const source=fs.readFileSync('motion-ui/src/driver-truck-model.ts','utf8');
 const ctx={exports:{}};vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,ctx);const api=ctx.exports;
+test('overview has a single floating register action; submodules keep their canonical buttons',()=>{
+ const ui=fs.readFileSync('motion-ui/src/driver-truck.tsx','utf8'),html=fs.readFileSync('Index.html','utf8');
+ assert.equal((ui.match(/className="dtr-fab"/g)||[]).length,1);assert.doesNotMatch(ui,/className="dtr-card-actions"/);
+ for(const [module,action] of [['combustible','openFuelModal'],['neumaticos','openNeumaticosModal'],['mantenimiento','openServiceModal']]){
+  const section=html.slice(html.indexOf('id="camion-sub-'+module+'"'));assert.ok(section.indexOf('onclick="'+action+'()"')>=0);
+ }
+ assert.match(ui,/createPortal/);assert.match(ui,/observer.disconnect/);assert.match(ui,/classList.contains\("active"\)/);
+});
 test('odometer and maintenance never invent zeroes for unknown readings',()=>{
  assert.equal(api.number(null),'—');assert.equal(api.number(undefined),'—');assert.equal(api.number(''),'—');assert.equal(api.number(-1),'—');assert.equal(api.number(0),'0');
  const p=api.maintenance([{name:'Aceite',plan_estado:'sin_odometro',interval_km:10000,km_restantes:null}]);assert.equal(p.progress,null);assert.equal(p.detail,'Falta odómetro');

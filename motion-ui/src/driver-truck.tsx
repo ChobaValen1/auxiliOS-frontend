@@ -1,5 +1,6 @@
 import * as React from "react";
 import {createRoot,type Root} from "react-dom/client";
+import {createPortal} from "react-dom";
 import {motion,MotionConfig,useReducedMotion,useDragControls} from "motion/react";
 import {maintenance,controlSummary,latestFuel,number,type TruckModel,type Report} from "./driver-truck-model";
 import "./driver-truck.css";
@@ -7,7 +8,7 @@ type App=Window&{AuxiliosTruckUI?:{render:(node:HTMLElement,data:TruckModel)=>vo
 const app=window as App;
 function Icon({name}:{name:string}){return <svg className="ax-icon" aria-hidden="true"><use href={"/ui/icons.svg#"+name}/></svg>}
 const date=(v?:string)=>{if(!v)return "Sin fecha";const d=new Date(v.length===10?v+"T12:00:00":v);return Number.isFinite(d.getTime())?d.toLocaleDateString("es-AR",{day:"numeric",month:"short"}):"Sin fecha"};
-function Card({icon,title,detail,meta,tone="neutral",status,action,onAction,onOpen,progress}:{icon:string;title:string;detail:string;meta?:string;tone?:string;status:string;action:string;onAction:()=>void;onOpen:()=>void;progress?:number|null}){
+function Card({icon,title,detail,meta,tone="neutral",status,onOpen,progress}:{icon:string;title:string;detail:string;meta?:string;tone?:string;status:string;onOpen:()=>void;progress?:number|null}){
  const reduce=useReducedMotion();
  return <motion.article className={"dtr-card dtr-"+tone} initial={{opacity:0,y:reduce?0:12}} animate={{opacity:1,y:0}} transition={{duration:reduce?0:.28}} whileTap={reduce?undefined:{scale:.99}}>
    <button type="button" className="dtr-card-open" onClick={onOpen} aria-label={"Ver historial de "+title}>
@@ -15,8 +16,29 @@ function Card({icon,title,detail,meta,tone="neutral",status,action,onAction,onOp
        {progress!=null&&<span className="dtr-progress" role="progressbar" aria-label="Intervalo de mantenimiento transcurrido" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><motion.i initial={false} animate={{width:progress+"%"}} transition={{duration:reduce?0:.4}}/></span>}
      </span><Icon name="chevron-right"/>
    </button>
-   <div className="dtr-card-actions"><button type="button" onClick={onAction}><Icon name="plus"/>{action}</button></div>
  </motion.article>
+}
+// Portal avoids fixed-position clipping while the app animates its page containers.
+// Only the truck overview owns this global action, never a submodule or another tab.
+function RegisterAction({expanded,onOpen}:{expanded:boolean;onOpen:()=>void}){
+ const [position,setPosition]=React.useState({visible:false,bottom:24}),reduce=useReducedMotion();
+ React.useEffect(()=>{
+   const screen=document.getElementById("screen-camion"),main=document.getElementById("camion-main-view"),nav=document.querySelector<HTMLElement>(".sidenav");
+   let frame=0;
+   const update=()=>{frame=0;const visible=!!screen?.classList.contains("active")&&!!main?.getClientRects().length;
+     const box=nav?.getClientRects().length?nav.getBoundingClientRect():null;
+     const bottom=box&&box.top>window.innerHeight/2?Math.max(24,window.innerHeight-box.top+12):window.innerWidth<768?88:24;
+     setPosition(previous=>previous.visible===visible&&previous.bottom===bottom?previous:{visible,bottom});
+   };
+   const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};
+   const observer=new MutationObserver(schedule);
+   for(const node of [screen,main,nav])if(node)observer.observe(node,{attributes:true,attributeFilter:["class","style","hidden"]});
+   const resize=new ResizeObserver(schedule);if(nav)resize.observe(nav);
+   window.addEventListener("resize",schedule);window.visualViewport?.addEventListener("resize",schedule);
+   update();
+   return()=>{observer.disconnect();resize.disconnect();cancelAnimationFrame(frame);window.removeEventListener("resize",schedule);window.visualViewport?.removeEventListener("resize",schedule)};
+ },[]);
+ return position.visible?createPortal(<motion.button type="button" className="dtr-fab" style={{bottom:position.bottom}} aria-label="Acciones rápidas" aria-haspopup="dialog" aria-expanded={expanded} onClick={onOpen} whileTap={reduce?undefined:{scale:.96}}><Icon name="plus"/>Registrar</motion.button>,document.body):null;
 }
 function QuickActions({onClose}:{onClose:()=>void}){
  const ref=React.useRef<HTMLDialogElement>(null),reduce=useReducedMotion();
@@ -54,7 +76,7 @@ function Truck({data}:{data:TruckModel}){
  const open=(id:string)=>app._abrirSubCamion?.("camion-sub-"+id);
  async function reload(){if(refreshing)return;refresh(true);setError(false);try{await app.cargarScreenCamion?.()}catch{setError(true)}finally{refresh(false)}}
  return <MotionConfig reducedMotion="user"><div className="dtr" data-truck={truck.truck_id}>
-   <header className="dtr-heading"><div><h2>Camión</h2></div><div className="dtr-heading-actions"><button type="button" className="dtr-reload" aria-label={refreshing?"Actualizando camión…":"Actualizar camión"} aria-busy={refreshing} disabled={refreshing} onClick={reload}><motion.span animate={{rotate:refreshing&&!reduce?360:0}} transition={refreshing&&!reduce?{repeat:Infinity,duration:.9,ease:"linear"}:{duration:0}}><Icon name="refresh-cw"/></motion.span></button><motion.button type="button" className="dtr-add" aria-label="Acciones rápidas" aria-haspopup="dialog" aria-expanded={quick} onClick={()=>showQuick(true)} whileTap={reduce?undefined:{scale:.96}}><Icon name="plus"/>Registrar</motion.button></div></header>
+   <header className="dtr-heading"><div><h2>Camión</h2></div><div className="dtr-heading-actions"><button type="button" className="dtr-reload" aria-label={refreshing?"Actualizando camión…":"Actualizar camión"} aria-busy={refreshing} disabled={refreshing} onClick={reload}><motion.span animate={{rotate:refreshing&&!reduce?360:0}} transition={refreshing&&!reduce?{repeat:Infinity,duration:.9,ease:"linear"}:{duration:0}}><Icon name="refresh-cw"/></motion.span></button></div></header>
    {error&&<p role="alert">No se pudo actualizar. Volvé a intentar.</p>}
    <motion.section className="dtr-hero" initial={false} layout={!reduce}>
      <div className="dtr-hero-top"><small>{truck.numero_interno?"MÓVIL "+truck.numero_interno:"TU UNIDAD"}</small><span className="dtr-active">Jornada activa</span></div><span className="dtr-truck-icon"><Icon name="truck"/></span><div className="dtr-identity"><h3>{[truck.brand,truck.model].filter(Boolean).join(" ")||"Camión activo"}</h3><span className="dtr-plate">{truck.plate||"Sin patente"}</span></div>
@@ -62,12 +84,13 @@ function Truck({data}:{data:TruckModel}){
    </motion.section>
    <div className="dtr-section-title"><h3>Estado de la unidad</h3><small>Jornada · {date(data.logDate)}</small></div>
    <div className="dtr-cards">
-     <Card icon="disc" title="Neumáticos y frenos" detail={control.detail} status={control.status} tone={control.tone} action="Registrar chequeo" onAction={()=>app.openNeumaticosModal?.()} onOpen={()=>open("neumaticos")}/>
-     <Card icon="wrench" title="Mantenimiento" detail={mant.title} meta={mant.detail} status={mant.status} tone={mant.tone} progress={mant.progress} action="Registrar mantenimiento" onAction={()=>{void app.openServiceModal?.()}} onOpen={()=>open("mantenimiento")}/>
-     <Card icon="fuel" title="Combustible" detail={fuel?number(fuel.liters)+" L · "+date(fuel.fuel_date):"Sin cargas en esta jornada"} status={fuel?"Con registro":"Sin cargas"} action="Cargar combustible" onAction={()=>app.openFuelModal?.()} onOpen={()=>open("combustible")}/>
+     <Card icon="disc" title="Neumáticos y frenos" detail={control.detail} status={control.status} tone={control.tone} onOpen={()=>open("neumaticos")}/>
+     <Card icon="wrench" title="Mantenimiento" detail={mant.title} meta={mant.detail} status={mant.status} tone={mant.tone} progress={mant.progress} onOpen={()=>open("mantenimiento")}/>
+     <Card icon="fuel" title="Combustible" detail={fuel?number(fuel.liters)+" L · "+date(fuel.fuel_date):"Sin cargas en esta jornada"} status={fuel?"Con registro":"Sin cargas"} onOpen={()=>open("combustible")}/>
    </div>
    <button type="button" className="dtr-reports-link" onClick={()=>showReports(true)}><span className="dtr-icon"><Icon name="file-text"/></span><span><strong>Novedades de la jornada</strong><small>Ver tus reportes registrados</small></span><Icon name="chevron-right"/></button>
    <button type="button" className="dtr-report-action" onClick={()=>app.abrirModalIncidente?.()}><Icon name="triangle-alert"/>Reportar novedad</button>
+   <RegisterAction expanded={quick} onOpen={()=>showQuick(true)}/>
    {quick&&<QuickActions onClose={()=>showQuick(false)}/>}
    {reports&&<Reports key={data.identity+":"+reportsVersion} data={data} onClose={()=>showReports(false)}/>}
  </div></MotionConfig>
