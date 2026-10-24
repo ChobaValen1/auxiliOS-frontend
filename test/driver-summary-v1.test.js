@@ -25,10 +25,15 @@ test('focused driver panel shows only three metrics and the latest three service
  const t=load(),rows=Array.from({length:5},(_,i)=>({patente:'AUTO'+i,creado:'2026-10-'+(10+i)+'T12:00:00Z',origen:'<script>',destino:'Lanús',km:80}));
  const html=t.panelHTML({...DATA,ultimos:rows},'2026-10');
  assert.equal((html.match(/class="drp-metric"/g)||[]).length,3);assert.equal((html.match(/<li>/g)||[]).length,3);
- assert.ok(html.indexOf('AUTO4')<html.indexOf('AUTO3'));assert.doesNotMatch(html,/AUTO0|AUTO1|Mi plata|Actividad por día|Lo que llevo ganado|<script>/);
- assert.match(html,/&lt;script&gt;/);assert.match(html,/data-drs-accion="historial"/);assert.match(html,/Sin jornada activa/);
- assert.match(t.panelHTML({mes:{},ultimos:[]},'2026-09'),/Sin servicios este mes/);
+ assert.ok(html.indexOf('AUTO4')<html.indexOf('AUTO3'));assert.doesNotMatch(html,/AUTO0|AUTO1|Lo que llevo ganado|<script>/);
+ assert.match(html,/Mi plata del mes/);assert.match(html,/Actividad por día/);assert.match(html,/data-drs-accion="historial"/);assert.match(html,/Sin jornada activa/);
+ assert.match(t.panelHTML({mes:{},ultimos:[]},'2026-09'),/Todavía no hay servicios este mes/);
  assert.match(t.panelHTML({mes:{},ultimos:[]},'2026-09'),/>—</);
+});
+test('last services display localities only and never invent one from coordinates or street-only text',()=>{
+ const t=load();assert.equal(t.localidad('Av. Hipólito Yrigoyen 3422, B1824ABN Lanús, Provincia de Buenos Aires, Argentina'),'Lanús');
+ assert.equal(t.localidad('Sarachaga 5762, Isidro Casanova'),'Isidro Casanova');assert.equal(t.localidad('-37.66, -57.43'),'Localidad no informada');
+ assert.equal(t.localidad('Av. Rivadavia 100'),'Localidad no informada');assert.equal(t.localidad('', 'Villa Gesell'),'Villa Gesell');
 });
 
 test('Mi plata: cobrado por medio de pago y lo que falta rendir', () => {

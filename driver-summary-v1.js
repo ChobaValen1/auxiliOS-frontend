@@ -87,14 +87,23 @@
     return `<section class="drs-card drs-hoy" aria-labelledby="drs-hoy-t"><header><h3 id="drs-hoy-t">${ico('calendar-clock')}Hoy</h3></header>${jornada}${servicios}</section>`;
   }
 
-  function ultimosHTML(d) {
+  function localidad(raw, explicit) {
+    if (explicit && String(explicit).trim()) return String(explicit).trim();
+    const parts = String(raw || '').split(',').map(s => s.trim()).filter(Boolean).filter(s => !/^argentina$/i.test(s));
+    if(parts.length < 2) return 'Localidad no informada';
+    const candidate = parts.length >= 3 ? parts[parts.length-2] : parts[1];
+    const clean = candidate.replace(/^(?:[A-Z]\d{4}[A-Z]{0,3}|\d{4})\s*/i,'').trim();
+    return clean && !/^[\d.\s-]+$/.test(clean) ? clean : 'Localidad no informada';
+  }
+
+  function ultimosHTML(d, compact = false) {
     const rows = d.ultimos || [];
     const fecha = v => v ? new Date(v).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
     return `<section class="drs-card drs-ultimos" aria-labelledby="drs-ult-t"><header><h3 id="drs-ult-t">${ico('file-text')}Últimos servicios</h3></header>
       ${rows.length ? `<ul>${rows.map(r => `<li><div><b>${esc(r.patente || r.nro_servicio || r.nro_remito || 'Servicio')}</b><small>${esc([r.origen, r.destino].filter(Boolean).join(' → ') || 'Sin recorrido')}</small></div>
         <div class="drs-ult-meta"><span class="drs-pill ${r.status === 'firmado' ? 'ok' : 'warn'}">${r.status === 'firmado' ? 'Firmado' : 'Sin firmar'}</span><small>${esc(fecha(r.creado))}${r.km != null ? ` · ${entero(r.km)} km` : ''}</small></div></li>`).join('')}</ul>`
         : '<p class="drs-vacio">Todavía no hay servicios este mes.</p>'}
-      <button type="button" class="drs-link" onclick="goTo('remitos')">Ver todos los remitos${ico('chevron-right')}</button></section>`;
+      <button type="button" class="drs-link" ${compact ? 'data-drs-accion="historial"' : 'onclick="goTo(\'remitos\')"'}>${compact ? 'Ver historial' : 'Ver todos los remitos'}${ico('chevron-right')}</button></section>`;
   }
 
   /* Detalle del efectivo por jornada (lo que falta rendir día por día). */
@@ -249,7 +258,9 @@
     const when = v => {const t = new Date(v);return v && Number.isFinite(t.getTime()) ? t.toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'Sin fecha'};
     return `<section class="drp-journey" aria-label="Estado actual de la jornada"><span class="drp-dot${active ? ' is-active' : ''}" aria-hidden="true"></span><b>${active ? 'Jornada activa' : 'Sin jornada activa'}</b><small>${esc(active ? [j.patente, j.hora_inicio && 'Desde las '+String(j.hora_inicio).slice(0,5)].filter(Boolean).join(' · ') : 'Estado actual')}</small></section>
       <section class="drp-summary" aria-labelledby="drp-summary-title"><header><h2 id="drp-summary-title">Mi resumen del mes</h2><small>${esc(MESES[Number(mes.slice(5,7))-1])} ${esc(mes.slice(0,4))}</small></header><div class="drp-metrics">${metrics.map(([icon,label,n,unit])=>`<article class="drp-metric"><span>${ico(icon)}</span><strong>${value(n)}${n != null && Number.isFinite(Number(n)) ? `<small>${unit}</small>` : ''}</strong><h3>${label}</h3></article>`).join('')}</div></section>
-      <section class="drp-history" aria-labelledby="drp-history-title"><header><h2 id="drp-history-title">Últimos servicios</h2><span>Hasta 3 del mes</span></header>${rows.length ? `<ol>${rows.map(r=>`<li><span class="drp-service-icon">${ico('file-text')}</span><div><strong>${esc(r.patente || r.nro_servicio || r.nro_remito || 'Servicio')}</strong><p>${esc([r.origen,r.destino].filter(Boolean).join(' → ') || 'Sin recorrido informado')}</p><small>${esc(when(r.creado))}${r.nro_servicio && r.patente ? ' · #'+esc(r.nro_servicio) : ''}</small></div><span class="drp-service-km">${r.km != null && Number.isFinite(Number(r.km)) ? value(r.km)+' km' : '—'}</span></li>`).join('')}</ol>` : '<div class="drp-empty">'+ico('file-text')+'<strong>Sin servicios este mes</strong><p>Cuando registres actividad, aparecerá acá.</p></div>'}<button type="button" class="drp-history-button" data-drs-accion="historial">Ver historial${ico('arrow-right')}</button></section>`;
+      ${actividadHTML(d, mes)}
+      ${plataHTML(d)}
+      ${ultimosHTML({...d, ultimos:rows.map(r=>({...r,origen:localidad(r.origen,r.origin_locality || r.origen_localidad),destino:localidad(r.destino,r.destination_locality || r.destino_localidad)}))}, true)}`;
   }
 
   function pintar() {
@@ -343,5 +354,5 @@
   // La cola de servicios del chofer carga aparte: al cambiar, se vuelve a pintar "Hoy".
   window.addEventListener?.('auxilios:driver-queue-updated', () => { if (S.ultimo && document.getElementById('drs-root')) pintar(); });
 
-  window.AuxiliosDriverSummary = { render, _test: { panelHTML, delta, estimar, ganadoHTML, plataHTML, mesHTML, actividadHTML, camionHTML, hoyHTML, pendienteHTML, ultimosHTML, S } };
+  window.AuxiliosDriverSummary = { render, _test: { localidad, panelHTML, delta, estimar, ganadoHTML, plataHTML, mesHTML, actividadHTML, camionHTML, hoyHTML, pendienteHTML, ultimosHTML, S } };
 })();

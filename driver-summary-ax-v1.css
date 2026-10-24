@@ -1,4 +1,16 @@
 /* Focused mobile-first driver panel; administrator summaries keep their existing presentation. */
+#drs-root.drp-panel .drs-card{border-radius:16px}
+#drs-root.drp-panel .drs-actividad header{flex-wrap:wrap;gap:10px}
+#drs-root.drp-panel .drs-actividad{overflow:hidden}
+#drs-root.drp-panel .drs-seg button{min-height:40px}
+#drs-root.drp-panel .drs-dia{border-radius:4px;transition:background .18s}
+#drs-root.drp-panel .drs-dia:hover,#drs-root.drp-panel .drs-dia:focus-visible{background:var(--ax-surface-3)}
+#drs-root.drp-panel .drs-barras{height:140px;padding-top:12px;border-top:1px solid var(--ax-border)}
+#drs-root.drp-panel .drs-dia i{background:var(--ax-accent);opacity:.7}
+#drs-root.drp-panel .drs-dia.is-sel i{opacity:1;background:var(--ax-text)}
+#drs-root.drp-panel .drs-ultimos li{grid-template-columns:minmax(0,1fr) auto}
+#drs-root.drp-panel .drs-ultimos li small{font-size:11px;line-height:1.5}
+#drs-root.drp-panel .drs-ultimos .drs-link{display:flex;justify-content:center;width:100%;min-height:44px;border-top:1px solid var(--ax-border);padding-top:8px}
 #drs-root.drp-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;max-width:920px;margin-inline:auto;padding:4px 0 32px}
 .drp-panel *{box-sizing:border-box}
 .drp-panel .drp-journey{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 14px;border:1px solid var(--ax-border);border-radius:12px;background:var(--ax-surface)}
