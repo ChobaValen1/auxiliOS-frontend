@@ -7,6 +7,12 @@ uploads, offline queues or business writes.
 
 - Truck identity, plate, last recorded odometer, active journey.
 - Independent direct-entry buttons and accessible history buttons.
+- Compact identity card and header "+ Registrar" opens a native quick-action
+  sheet: Registrar chequeo / Cargar combustible / Registrar mantenimiento.
+  X, Escape and backdrop close it; focus returns before opening canonical forms.
+- Explicit text/icon/color status chips. Green requires a complete good check or
+  known healthy maintenance. Unknown/missing plans are not green; overdue plans
+  dominate, and missing data cannot be masked by a different healthy plan.
 - Most urgent maintenance plan uses canonical km/hour remaining and intervals.
   Missing readings are unavailable, never invented zero or a guessed percentage.
 - Scoped responsive cards, press feedback, reduced-motion support.

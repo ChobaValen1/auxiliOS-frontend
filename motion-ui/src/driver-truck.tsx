@@ -7,16 +7,31 @@ type App=Window&{AuxiliosTruckUI?:{render:(node:HTMLElement,data:TruckModel)=>vo
 const app=window as App;
 function Icon({name}:{name:string}){return <svg className="ax-icon" aria-hidden="true"><use href={"/ui/icons.svg#"+name}/></svg>}
 const date=(v?:string)=>{if(!v)return "Sin fecha";const d=new Date(v.length===10?v+"T12:00:00":v);return Number.isFinite(d.getTime())?d.toLocaleDateString("es-AR",{day:"numeric",month:"short"}):"Sin fecha"};
-function Card({icon,title,detail,meta,tone="neutral",action,onAction,onOpen,progress}:{icon:string;title:string;detail:string;meta?:string;tone?:string;action:string;onAction:()=>void;onOpen:()=>void;progress?:number|null}){
+function Card({icon,title,detail,meta,tone="neutral",status,action,onAction,onOpen,progress}:{icon:string;title:string;detail:string;meta?:string;tone?:string;status:string;action:string;onAction:()=>void;onOpen:()=>void;progress?:number|null}){
  const reduce=useReducedMotion();
  return <motion.article className={"dtr-card dtr-"+tone} initial={{opacity:0,y:reduce?0:12}} animate={{opacity:1,y:0}} transition={{duration:reduce?0:.28}} whileTap={reduce?undefined:{scale:.99}}>
    <button type="button" className="dtr-card-open" onClick={onOpen} aria-label={"Ver historial de "+title}>
-     <span className="dtr-icon"><Icon name={icon}/></span><span className="dtr-card-copy"><strong>{title}</strong><span>{detail}</span>{meta&&<small>{meta}</small>}
+     <span className="dtr-icon"><Icon name={icon}/></span><span className="dtr-card-copy"><span className="dtr-card-heading"><strong>{title}</strong><span className={"dtr-status dtr-status-"+tone}><Icon name={tone==="success"?"circle-check":tone==="danger"?"circle-alert":tone==="warning"?"triangle-alert":"info"}/>{status}</span></span><span>{detail}</span>{meta&&<small>{meta}</small>}
        {progress!=null&&<span className="dtr-progress" role="progressbar" aria-label="Intervalo de mantenimiento transcurrido" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}><motion.i initial={false} animate={{width:progress+"%"}} transition={{duration:reduce?0:.4}}/></span>}
      </span><Icon name="chevron-right"/>
    </button>
-   <div className="dtr-card-actions"><button type="button" onClick={onAction}><Icon name="plus"/>{action}</button><button type="button" className="dtr-history" onClick={onOpen}>Ver historial</button></div>
+   <div className="dtr-card-actions"><button type="button" onClick={onAction}><Icon name="plus"/>{action}</button></div>
  </motion.article>
+}
+function QuickActions({onClose}:{onClose:()=>void}){
+ const ref=React.useRef<HTMLDialogElement>(null),reduce=useReducedMotion();
+ React.useEffect(()=>{const dialog=ref.current,opener=document.activeElement as HTMLElement|null;dialog?.showModal();return()=>{dialog?.close();if(opener?.isConnected)opener.focus({preventScroll:true})}},[]);
+ function choose(action:()=>void){ref.current?.close();onClose();requestAnimationFrame(action)}
+ return <dialog ref={ref} className="dtr-dialog dtr-quick-dialog" aria-labelledby="dtr-quick-title" onCancel={e=>{e.preventDefault();onClose()}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
+   <motion.div className="dtr-sheet" initial={{y:reduce?0:30,opacity:0}} animate={{y:0,opacity:1}} transition={{type:"spring",duration:reduce?0:.32,bounce:.08}}>
+     <header><h3 id="dtr-quick-title">Acciones rápidas</h3><button type="button" aria-label="Cerrar acciones rápidas" onClick={onClose}><Icon name="x"/></button></header>
+     <div className="dtr-quick-options">
+       <button type="button" onClick={()=>choose(()=>app.openNeumaticosModal?.())}><span className="dtr-icon"><Icon name="clipboard-check"/></span><strong>Registrar chequeo</strong><Icon name="chevron-right"/></button>
+       <button type="button" onClick={()=>choose(()=>app.openFuelModal?.())}><span className="dtr-icon"><Icon name="fuel"/></span><strong>Cargar combustible</strong><Icon name="chevron-right"/></button>
+       <button type="button" onClick={()=>choose(()=>{void app.openServiceModal?.()})}><span className="dtr-icon"><Icon name="wrench"/></span><strong>Registrar mantenimiento</strong><Icon name="chevron-right"/></button>
+     </div>
+   </motion.div>
+ </dialog>
 }
 function Reports({data,onClose}:{data:TruckModel;onClose:()=>void}){
  const ref=React.useRef<HTMLDialogElement>(null),[rows,setRows]=React.useState<Report[]>([]),[state,setState]=React.useState("loading"),[retry,setRetry]=React.useState(0),reduce=useReducedMotion(),drag=useDragControls();
@@ -32,27 +47,28 @@ function Reports({data,onClose}:{data:TruckModel;onClose:()=>void}){
  </dialog>
 }
 function Truck({data}:{data:TruckModel}){
- const [reports,showReports]=React.useState(false),[refreshing,refresh]=React.useState(false),[error,setError]=React.useState(false),[reportsVersion,bumpReports]=React.useState(0);
+ const [reports,showReports]=React.useState(false),[quick,showQuick]=React.useState(false),[refreshing,refresh]=React.useState(false),[error,setError]=React.useState(false),[reportsVersion,bumpReports]=React.useState(0);
  const reduce=useReducedMotion(),truck=data.truck,mant=maintenance(data.plans),control=controlSummary(data.control),fuel=latestFuel(data.fuel);
- React.useEffect(()=>{showReports(false)},[data.identity]);
+ React.useEffect(()=>{showReports(false);showQuick(false)},[data.identity]);
  React.useEffect(()=>{const update=()=>bumpReports(n=>n+1);window.addEventListener("auxilios:truck-report-saved",update);return()=>window.removeEventListener("auxilios:truck-report-saved",update)},[]);
  const open=(id:string)=>app._abrirSubCamion?.("camion-sub-"+id);
  async function reload(){if(refreshing)return;refresh(true);setError(false);try{await app.cargarScreenCamion?.()}catch{setError(true)}finally{refresh(false)}}
  return <MotionConfig reducedMotion="user"><div className="dtr" data-truck={truck.truck_id}>
-   <header className="dtr-heading"><div><h2>Camión</h2><p>Tu unidad, bajo control</p></div><button type="button" aria-label={refreshing?"Actualizando camión…":"Actualizar camión"} aria-busy={refreshing} disabled={refreshing} onClick={reload}><motion.span animate={{rotate:refreshing&&!reduce?360:0}} transition={refreshing&&!reduce?{repeat:Infinity,duration:.9,ease:"linear"}:{duration:0}}><Icon name="refresh-cw"/></motion.span></button></header>
+   <header className="dtr-heading"><div><h2>Camión</h2></div><div className="dtr-heading-actions"><button type="button" className="dtr-reload" aria-label={refreshing?"Actualizando camión…":"Actualizar camión"} aria-busy={refreshing} disabled={refreshing} onClick={reload}><motion.span animate={{rotate:refreshing&&!reduce?360:0}} transition={refreshing&&!reduce?{repeat:Infinity,duration:.9,ease:"linear"}:{duration:0}}><Icon name="refresh-cw"/></motion.span></button><motion.button type="button" className="dtr-add" aria-label="Acciones rápidas" aria-haspopup="dialog" aria-expanded={quick} onClick={()=>showQuick(true)} whileTap={reduce?undefined:{scale:.96}}><Icon name="plus"/>Registrar</motion.button></div></header>
    {error&&<p role="alert">No se pudo actualizar. Volvé a intentar.</p>}
    <motion.section className="dtr-hero" initial={false} layout={!reduce}>
-     <span className="dtr-truck-icon"><Icon name="truck"/></span><div className="dtr-identity"><small>{truck.numero_interno?"MÓVIL "+truck.numero_interno:"TU UNIDAD"}</small><h3>{[truck.brand,truck.model].filter(Boolean).join(" ")||"Camión activo"}</h3><span className="dtr-plate">{truck.plate||"Sin patente"}</span></div><span className="dtr-active">Jornada activa</span>
+     <div className="dtr-hero-top"><small>{truck.numero_interno?"MÓVIL "+truck.numero_interno:"TU UNIDAD"}</small><span className="dtr-active">Jornada activa</span></div><span className="dtr-truck-icon"><Icon name="truck"/></span><div className="dtr-identity"><h3>{[truck.brand,truck.model].filter(Boolean).join(" ")||"Camión activo"}</h3><span className="dtr-plate">{truck.plate||"Sin patente"}</span></div>
      <div className="dtr-odometer"><span>Último odómetro registrado</span><strong>{number(truck.current_km)}<small> km</small></strong></div>
    </motion.section>
-<div className="dtr-quick"><motion.button whileTap={reduce?undefined:{scale:.97}} type="button" className="dtr-primary" onClick={()=>app.openFuelModal?.()}><Icon name="fuel"/>Cargar combustible</motion.button><motion.button whileTap={reduce?undefined:{scale:.97}} type="button" onClick={()=>app.abrirModalIncidente?.()}><Icon name="triangle-alert"/>Reportar novedad</motion.button></div>
    <div className="dtr-section-title"><h3>Estado de la unidad</h3><small>Jornada · {date(data.logDate)}</small></div>
    <div className="dtr-cards">
-     <Card icon="circle-check" title="Neumáticos y frenos" detail={control.label} meta={control.detail} tone={control.tone} action="Registrar control" onAction={()=>app.openNeumaticosModal?.()} onOpen={()=>open("neumaticos")}/>
-     <Card icon="wrench" title="Mantenimiento" detail={mant.title} meta={mant.detail} tone={mant.tone} progress={mant.progress} action="Registrar mantenimiento" onAction={()=>{void app.openServiceModal?.()}} onOpen={()=>open("mantenimiento")}/>
-     <Card icon="fuel" title="Combustible" detail={fuel?number(fuel.liters)+" L · "+date(fuel.fuel_date):"Sin cargas en esta jornada"} meta={fuel?"Última carga registrada":undefined} action="Cargar combustible" onAction={()=>app.openFuelModal?.()} onOpen={()=>open("combustible")}/>
+     <Card icon="disc" title="Neumáticos y frenos" detail={control.detail} status={control.status} tone={control.tone} action="Registrar chequeo" onAction={()=>app.openNeumaticosModal?.()} onOpen={()=>open("neumaticos")}/>
+     <Card icon="wrench" title="Mantenimiento" detail={mant.title} meta={mant.detail} status={mant.status} tone={mant.tone} progress={mant.progress} action="Registrar mantenimiento" onAction={()=>{void app.openServiceModal?.()}} onOpen={()=>open("mantenimiento")}/>
+     <Card icon="fuel" title="Combustible" detail={fuel?number(fuel.liters)+" L · "+date(fuel.fuel_date):"Sin cargas en esta jornada"} status={fuel?"Con registro":"Sin cargas"} action="Cargar combustible" onAction={()=>app.openFuelModal?.()} onOpen={()=>open("combustible")}/>
    </div>
    <button type="button" className="dtr-reports-link" onClick={()=>showReports(true)}><span className="dtr-icon"><Icon name="file-text"/></span><span><strong>Novedades de la jornada</strong><small>Ver tus reportes registrados</small></span><Icon name="chevron-right"/></button>
+   <button type="button" className="dtr-report-action" onClick={()=>app.abrirModalIncidente?.()}><Icon name="triangle-alert"/>Reportar novedad</button>
+   {quick&&<QuickActions onClose={()=>showQuick(false)}/>}
    {reports&&<Reports key={data.identity+":"+reportsVersion} data={data} onClose={()=>showReports(false)}/>}
  </div></MotionConfig>
 }

@@ -12,9 +12,19 @@ try{for(const width of [1440,768,390,320]){
  await page.waitForFunction(()=>!!window.AuxiliosTruckUI);await page.evaluate(()=>AuxiliosTruckUI.render(document.getElementById('camion-cards-container'),fixture));await page.locator('.dtr').waitFor();
  assert.equal(await page.locator('.dtr-card').count(),3);assert.match(await page.locator('.dtr-odometer').innerText(),/184.250/);
  assert.equal(await page.locator('#camion-hero-card').isVisible(),false);
- await page.getByRole('button',{name:'Registrar control',exact:true}).click();await page.getByRole('button',{name:'Registrar mantenimiento',exact:true}).click();
+ await page.getByRole('button',{name:'Registrar chequeo',exact:true}).click();await page.getByRole('button',{name:'Registrar mantenimiento',exact:true}).click();
  await page.getByRole('button',{name:'Cargar combustible',exact:true}).first().click();
  assert.deepEqual(await page.evaluate(()=>calls.slice(0,3).map(c=>c[0])),['openNeumaticosModal','openServiceModal','openFuelModal']);
+ if(width<800)assert.ok(await page.locator('.dtr-hero').evaluate(el=>el.getBoundingClientRect().height)<150,'truck identity is compact');
+ assert.equal(await page.locator('.dtr-status-warning').count(),2);assert.equal(await page.locator('.dtr-status-success').count(),0);
+ for(const [label,action] of [['Registrar chequeo','openNeumaticosModal'],['Cargar combustible','openFuelModal'],['Registrar mantenimiento','openServiceModal']]){
+   await page.getByRole('button',{name:'Acciones rápidas',exact:true}).click();
+   const quick=page.getByRole('dialog',{name:'Acciones rápidas',exact:true});await quick.waitFor();
+   await quick.getByRole('button',{name:label,exact:true}).click();await page.waitForFunction(fn=>calls.at(-1)?.[0]===fn,action);
+   assert.equal(await page.locator('dialog').count(),0);
+ }
+ await page.getByRole('button',{name:'Acciones rápidas',exact:true}).click();await page.keyboard.press('Escape');assert.equal(await page.locator('dialog').count(),0);
+ assert.equal(await page.getByRole('button',{name:'Acciones rápidas',exact:true}).evaluate(el=>el===document.activeElement),true);
  await page.getByRole('button',{name:'Ver historial de Mantenimiento',exact:true}).click();assert.deepEqual(await page.evaluate(()=>calls.at(-1)),['_abrirSubCamion','camion-sub-mantenimiento']);
  await page.getByRole('button',{name:/Novedades de la jornada/}).click();await page.getByRole('dialog').waitFor();await page.getByText('Luz trasera derecha',{exact:true}).waitFor();
  assert.equal(await page.getByText('Reporte registrado',{exact:true}).count(),1);
@@ -22,6 +32,8 @@ try{for(const width of [1440,768,390,320]){
  assert.equal(await page.getByRole('button',{name:/Novedades de la jornada/}).evaluate(el=>el===document.activeElement),true);
  await page.getByRole('button',{name:'Actualizar camión',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Actualizando camión…',exact:true}).isDisabled(),true);await page.getByRole('button',{name:'Actualizar camión',exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(out,'truck-'+width+'.png'),fullPage:true});
+ await page.evaluate(()=>AuxiliosTruckUI.render(document.getElementById('camion-cards-container'),{...fixture,control:{tire_condition:'bueno',brake_condition:'bueno'},plans:[{name:'Aceite',plan_estado:'al_dia',interval_km:10000,km_restantes:8000}]}));await page.waitForFunction(()=>document.querySelectorAll('.dtr-status-success').length===2);
+ await page.evaluate(()=>AuxiliosTruckUI.render(document.getElementById('camion-cards-container'),{...fixture,control:{tire_condition:'bueno',brake_condition:'malo'},plans:[{name:'Aceite',plan_estado:'vencido',interval_km:10000,km_restantes:-50}]}));await page.waitForFunction(()=>document.querySelectorAll('.dtr-status-danger').length===2);
  await page.evaluate(()=>{fixture.loadReports=async()=>{throw Error('offline')};AuxiliosTruckUI.render(document.getElementById('camion-cards-container'),{...fixture})});
  await page.getByRole('button',{name:/Novedades de la jornada/}).click();await page.getByRole('alert').waitFor();await page.getByRole('button',{name:'Cerrar novedades'}).click();
  await page.evaluate(()=>{AuxiliosTruckUI.clear();document.getElementById('camion-cards-container').innerHTML='<p>Sin jornada</p>'});assert.equal(await page.locator('.dtr').count(),0);assert.equal(await page.locator('#camion-hero-card').isVisible(),true);assert.deepEqual(errors,[]);await page.close();

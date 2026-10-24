@@ -18,6 +18,16 @@ test('missing controls are pending rather than bad; both tyres and brakes affect
 test('fuel ordering is immutable; empty fuel remains empty',()=>{
  const rows=[{fuel_date:'2026-10-20',liters:10},{fuel_date:'2026-10-24',liters:65}];assert.equal(api.latestFuel(rows).liters,65);assert.equal(rows[0].liters,10);assert.equal(api.latestFuel([]),null);
 });
+test('green requires confirmed healthy data and an unknown plan cannot hide behind a healthy one',()=>{
+ assert.equal(api.controlSummary({tire_condition:'bueno',brake_condition:'bueno'}).status,'En orden');
+ assert.equal(api.controlSummary({tire_condition:'bueno'}).tone,'warning');
+ assert.equal(api.controlSummary({tire_condition:'bueno',brake_condition:'malo'}).status,'Requiere atención');
+ const healthy={name:'Aceite',plan_estado:'al_dia',urgencia:.8,km_restantes:8000,interval_km:10000};
+ assert.equal(api.maintenance([healthy]).status,'En orden');
+ const missing=api.maintenance([healthy,{name:'Frenos',plan_estado:'sin_odometro'}]);assert.equal(missing.status,'Sin datos');assert.notEqual(missing.tone,'success');
+ assert.equal(api.maintenance([]).status,'Sin planes');assert.notEqual(api.maintenance([]).tone,'success');
+ const overdue=api.maintenance([healthy,{name:'Frenos',plan_estado:'vencido',km_restantes:-5}]);assert.equal(overdue.tone,'danger');assert.equal(overdue.status,'Vencido');
+});
 test('canonical UI is driver-only, existing forms and admin fallback are preserved',()=>{
  const s=fs.readFileSync('sigma.js','utf8'),ui=fs.readFileSync('motion-ui/src/driver-truck.tsx','utf8');
  assert.match(s,/PERFIL_USUARIO\?\.roles\?\.name === 'chofer' && _truckActual\?\.truck_id && window.AuxiliosTruckUI/);
