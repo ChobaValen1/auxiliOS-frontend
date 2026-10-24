@@ -17,6 +17,19 @@
 #phase3-driver-services .p3-view-switch .p3-refresh { flex: 1 1 0; height: calc(var(--ax-h-lg) - 8px); border: 0; border-radius: var(--ax-radius-sm); color: var(--ax-text-2); }
 #phase3-driver-services .p3-view-switch .p3-refresh.active { border: 0; background: var(--ax-surface-3); color: var(--ax-text); box-shadow: inset 0 0 0 1px var(--ax-border-strong); }
 #phase3-driver-services .p3-refresh-icon { width: var(--ax-h-lg); padding: 0; color: var(--ax-text-2); }
+#phase3-driver-services .p3-refresh-icon[aria-busy="true"]{color:var(--ax-accent);background:var(--ax-accent-soft,rgba(245,166,35,.12));cursor:wait;opacity:1}
+#phase3-driver-services .p3-refresh-icon[aria-busy="true"] .ax-icon{animation:p3-refresh-turn .85s linear infinite}
+#phase3-driver-services .p3-refresh-feedback{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .22s ease,opacity .22s ease}
+#phase3-driver-services .p3-refresh-feedback>div{overflow:hidden;min-height:0;display:flex;align-items:center;gap:8px}
+#phase3-driver-services .p3-refresh-feedback b{font-size:11px;font-weight:500;color:var(--ax-text-2);padding:5px 0 12px}
+#phase3-driver-services .p3-refresh-feedback span{width:7px;height:7px;flex:none;border-radius:50%;background:var(--ax-accent,#f5a623);box-shadow:0 0 0 4px rgba(245,166,35,.12);animation:p3-refresh-pulse 1s ease-in-out infinite;animation-play-state:paused}
+#phase3-driver-services.p3-is-refreshing .p3-refresh-feedback{grid-template-rows:1fr;opacity:1}
+#phase3-driver-services.p3-is-refreshing .p3-refresh-feedback span{animation-play-state:running}
+#phase3-driver-services .p3-service-list{transition:opacity .22s ease}
+#phase3-driver-services.p3-is-refreshing .p3-service-list{opacity:.65}
+@keyframes p3-refresh-turn{to{transform:rotate(360deg)}}
+@keyframes p3-refresh-pulse{50%{opacity:.4}}
+@media(prefers-reduced-motion:reduce){#phase3-driver-services .p3-refresh-feedback,#phase3-driver-services .p3-service-list{transition:none}#phase3-driver-services .p3-refresh-icon[aria-busy="true"] .ax-icon,#phase3-driver-services .p3-refresh-feedback span{animation:none}}
 @media (min-width: 721px) {
   #phase3-driver-services .p3-head-actions { grid-template-columns: minmax(240px, 360px) auto auto; justify-content: start; }
   #phase3-driver-services .p3-view-switch { grid-column: auto; }

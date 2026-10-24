@@ -77,7 +77,42 @@ function applyDriverModuleLabels(){if(!isDriver())return;const nav=document.getE
 function updateAssignedBadge(){if(!isDriver())return;try{window.dispatchEvent(new CustomEvent('auxilios:driver-queue-updated'));}catch(_){}const count=P3.queue.filter(s=>['assigned','at_origin'].includes(s.status)).length;const nav=document.getElementById('nav-remitos');if(nav){let badge=nav.querySelector('.p3-nav-badge');if(!badge){badge=document.createElement('span');badge.className='p3-nav-badge';nav.appendChild(badge)}badge.textContent=String(count);badge.hidden=count===0}const bell=document.getElementById('tb-bell'),bellBadge=document.getElementById('alx-bell-badge');if(bell)bell.title=count?`${count} servicio${count===1?'':'s'} asignado${count===1?'':'s'}`:'Sin servicios asignados';if(bellBadge){bellBadge.textContent=String(count);bellBadge.style.display=count?'flex':'none'}}
 function hookNavigation(){if(window.__p3DriverNavHook||typeof window.goTo!=='function')return false;const base=window.goTo;window.goTo=(name,...args)=>{const result=base(name,...args);if(name==='remitos')applyDriverModuleLabels();return result};window.__p3DriverNavHook=true;return true}
 function ensurePreviewModal(){if(document.getElementById('p3-service-preview'))return;document.body.insertAdjacentHTML('beforeend',`<div id="p3-service-preview" class="p3-preview" hidden><button type="button" class="p3-preview-backdrop" onclick="cerrarPreviewServicio()" aria-label="Cerrar"></button><section role="dialog" aria-modal="true" aria-labelledby="p3-preview-title"><header><div><small id="p3-preview-kicker">Servicio asignado</small><h2 id="p3-preview-title">Servicio</h2></div><button type="button" onclick="cerrarPreviewServicio()" aria-label="Cerrar">×</button></header><div id="p3-preview-body"></div><footer id="p3-preview-actions"></footer></section></div>`)}
-function injectPanel(){if(!isDriver()||document.getElementById('phase3-driver-services'))return;const remitos=document.getElementById('screen-remitos');if(!remitos)return;remitos.classList.add('p3-driver-remitos');const header=remitos.querySelector('.sec-header'),anchor=header||remitos;anchor.insertAdjacentHTML(header?'afterend':'afterbegin',`<section id="phase3-driver-services" class="p3-driver-panel p3-remitos-assigned" data-location="remitos" aria-live="polite"><div class="p3-panel-head"><div class="p3-head-actions"><div class="p3-view-switch" role="group" aria-label="Ver"><button id="p3-view-active" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('active')">Activos</button><button id="p3-view-history" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('history')">Historial</button></div><button type="button" class="p3-refresh p3-new-ad-hoc" onclick="abrirRemitoSinAsignacion()">${ico('plus')}Sin asignación</button><button type="button" class="p3-refresh p3-refresh-icon" onclick="actualizarServiciosAsignados()" aria-label="Actualizar">${ico('refresh-cw')}</button></div></div><div id="phase3-driver-services-list" class="p3-service-list"><div class="p3-empty">Buscando servicios…</div></div></section>`);ensurePreviewModal();applyDriverModuleLabels()}
+function injectPanel(){if(!isDriver()||document.getElementById('phase3-driver-services'))return;const remitos=document.getElementById('screen-remitos');if(!remitos)return;remitos.classList.add('p3-driver-remitos');const header=remitos.querySelector('.sec-header'),anchor=header||remitos;anchor.insertAdjacentHTML(header?'afterend':'afterbegin',`<section id="phase3-driver-services" class="p3-driver-panel p3-remitos-assigned" data-location="remitos" aria-live="polite"><div class="p3-panel-head"><div class="p3-head-actions"><div class="p3-view-switch" role="group" aria-label="Ver"><button id="p3-view-active" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('active')">Activos</button><button id="p3-view-history" type="button" class="p3-refresh" onclick="cambiarVistaServiciosChofer('history')">Historial</button></div><button type="button" class="p3-refresh p3-new-ad-hoc" onclick="abrirRemitoSinAsignacion()">${ico('plus')}Sin asignación</button><button type="button" class="p3-refresh p3-refresh-icon" onclick="recargarServiciosChofer()" aria-label="Actualizar">${ico('refresh-cw')}</button></div></div><div id="phase3-driver-services-list" class="p3-service-list"><div class="p3-empty">Buscando servicios…</div></div></section>`);ensurePreviewModal();applyDriverModuleLabels()}
+function setRefreshBusy(busy){
+  const panel=document.getElementById('phase3-driver-services');
+  if(!panel)return;
+  panel.classList.toggle('p3-is-refreshing',busy);
+  const button=panel.querySelector('.p3-refresh-icon');
+  if(button){button.disabled=busy;button.setAttribute('aria-busy',String(busy));button.setAttribute('aria-label',busy?'Actualizando servicios…':'Actualizar');}
+  const list=document.getElementById('phase3-driver-services-list');
+  if(list)list.setAttribute('aria-busy',String(busy));
+  let feedback=panel.querySelector('.p3-refresh-feedback');
+  if(!feedback){feedback=document.createElement('div');feedback.className='p3-refresh-feedback';feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');feedback.innerHTML='<div><span aria-hidden="true"></span><b></b></div>';panel.querySelector('.p3-panel-head')?.after(feedback);}
+  feedback.querySelector('b').textContent=busy?'Actualizando servicios…':'';
+}
+function refreshDriverServices(){
+  if(P3.manualRefreshPromise)return P3.manualRefreshPromise;
+  if(!isDriver()||!db())return Promise.resolve(false);
+  setRefreshBusy(true);
+  P3.manualRefreshPromise=(async()=>{
+    try{
+      // Wait for every started read, even when another one fails.
+      const reads=[Promise.resolve().then(()=>loadQueue({force:true}))];
+      if(typeof window.cargarRemitos==='function')reads.push(Promise.resolve().then(()=>window.cargarRemitos()));
+      // Keep very fast responses perceptible without delaying the network reads.
+      reads.push(new Promise(resolve=>setTimeout(resolve,350)));
+      const results=await Promise.allSettled(reads);
+      const failed=results.find(result=>result.status==='rejected');
+      if(failed)notify('No se pudo actualizar. Volvé a intentar.','error');
+      return !failed&&results[0].value!==false;
+    }finally{
+      setRefreshBusy(false);
+      P3.manualRefreshPromise=null;
+    }
+  })();
+  return P3.manualRefreshPromise;
+}
+window.recargarServiciosChofer=refreshDriverServices;
 async function loadQueue({silent=false,force=false}={}){
   if(!isDriver()||!db())return false;
   if(P3.view==='history'){render();return true}
