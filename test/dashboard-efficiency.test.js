@@ -72,6 +72,22 @@ test('percentage follows day/cumulative selection and returns to full-period rat
  assert.equal(model.selectionRatio(data,1,false),150);
  data.actual.filas[1]=row(150,100,{remitos_sin_servicio:1});assert.equal(model.selectionRatio(data,1,false),null);
 });
+test('operational ratio uses matched closed days and labels unlinked remitos as partial',()=>{
+ const day=(f,o,extra={})=>({dia:'2026-10-01',facturados:f,odometro:o,jornadas:1,cierres_faltantes:0,servicios_sin_km:0,remitos_sin_servicio:0,...extra});
+ const d={filtrado:false,actual:{filas:[day(100,200,{remitos_sin_servicio:5}),day(9000,null,{cierres_faltantes:1})],facturados:9100,odometro:null,remitos_sin_servicio:5}};
+ const s=model.efficiencySummary(d,null,false);
+ assert.equal(s.facturados,100);assert.equal(s.odometro,200);assert.equal(s.porcentaje,50);assert.equal(s.excluded,1);assert.equal(s.partial,true);
+ assert.equal(model.efficiencySummary(d,0,false).porcentaje,50);
+ assert.equal(model.efficiencySummary(d,1,false).porcentaje,null);
+ assert.equal(model.efficiencySummary(d,1,true).porcentaje,50);
+ assert.equal(model.efficiencySummary({...d,filtrado:true},null,false).porcentaje,null);
+ d.actual.filas.push(day(200,100));const series=model.comparableSeries(d.actual.filas,true);
+ assert.deepEqual(Array.from(series,r=>r.facturados),[100,null,300]);assert.deepEqual(Array.from(series,r=>r.odometro),[200,null,300]);
+ assert.equal(model.efficiencySummary(d,2,true).porcentaje,100);
+ d.actual.filas=[day(0,200)];assert.equal(model.efficiencySummary(d,null,false).porcentaje,0);
+ d.actual.filas=[day(100,0)];assert.equal(model.efficiencySummary(d,null,false).porcentaje,null);
+ d.actual.filas=[day(100,null)];assert.equal(model.efficiencySummary(d,null,false).odometro,null);
+});
 test('public API requires login and permitted role; bounded ranges; no write statements',async()=>{
  assert.equal((await db.query("select to_regprocedure('public.current_auxilios_role()') absent")).rows[0].absent,null);
  await assert.rejects(db.query('select public.dashboard_efficiency_v1()'),/No autorizado/);

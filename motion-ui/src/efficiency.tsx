@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { motion, useMotionValue, useSpring, useTransform, useReducedMotion, type MotionValue } from 'motion/react';
-import { type Day, type EfficiencyData, reason, ratio, selectionRatio, series, scaleTop, curvePath, curveValue } from './efficiency-model';
+import { type Day, type EfficiencyData, reason, ratio, efficiencySummary, comparableSeries, series, scaleTop, curvePath, curveValue } from './efficiency-model';
 import './efficiency.css';
-export { reason, ratio, selectionRatio, series, path, scaleTop, curveValue, curvePath } from './efficiency-model';
+export { reason, ratio, selectionRatio, efficiencySummary, comparableSeries, series, path, scaleTop, curveValue, curvePath } from './efficiency-model';
 
 const number=(v:number|null)=>v==null?'—':new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(v);
 const date=(s:string)=>new Date(s+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});
@@ -30,13 +30,18 @@ function Efficiency({data,error}:{data:EfficiencyData|null;error?:string}) {
   const target=useMotionValue(0),spring=useSpring(target,{stiffness:420,damping:38,mass:.5}),position=reduced?target:spring;
   useEffect(()=>{const n=host.current;if(!n)return;const o=new ResizeObserver(([e])=>setWidth(Math.max(200,Math.round(e.contentRect.width))));o.observe(n);return()=>o.disconnect();},[]);
   useEffect(()=>{setActive(null);dragging.current=null;startTouch.current=null;setDetails(false);},[data,cumulative]);
-  const rows=series(data?.actual?.filas||[],cumulative),selected=active==null?null:rows[active];
+  const rows=data?.filtrado?series(data?.actual?.filas||[],cumulative):comparableSeries(data?.actual?.filas||[],cumulative),selected=active==null?null:rows[active];
   const left=8,right=16,height=width<600?180:196,bottom=height-30,top=scaleTop(rows),plotW=Math.max(1,width-left-right);
   const x=(i:number)=>left+(rows.length<2?plotW/2:i*plotW/(rows.length-1)),y=(v:number)=>bottom-v/top*(bottom-24);
   const cursorX=useTransform(position,p=>x(Math.max(0,Math.min(rows.length-1,p))));
-  const value=data?ratio(data,data.actual):null,previous=data?ratio(data,data.anterior):null,warning=data?reason(data,data.actual):'';
-  const displayedRatio=data?selectionRatio(data,active,cumulative):null;
-  const billed=selected?selected.facturados:data?.actual?.facturados??null,odometer=selected?selected.odometro:data?.actual?.odometro??null;
+  const value=data?ratio(data,data.actual):null,previous=data?ratio(data,data.anterior):null;
+  const rawWarning=data?reason(data,data.actual):'';
+  const warning=rawWarning&&!data?.filtrado?'La relación usa únicamente los días con cierre y kilometrajes válidos en ambas fuentes. Es parcial mientras haya fechas pendientes o remitos históricos sin vincular.':rawWarning;
+  const summary=data?efficiencySummary(data,active,cumulative):null;
+  const displayedRatio=summary?.porcentaje??null;
+  const billed=summary?.facturados??null,odometer=summary?.odometro??null;
+  const coverage=summary&&summary.excluded?`${summary.days}/${summary.totalDays} días cerrados`:summary?.partial?'Servicios registrados':active==null?'Del período':cumulative?'Hasta esta fecha':'Del día';
+  const coverageNote=data?.filtrado?'No comparable':`${summary?.partial?'Parcial · ':''}${coverage}${displayedRatio==null?' · sin relación calculable':''}`;
   const indices=Array.from(new Set([0,Math.round((rows.length-1)/2),rows.length-1])).filter(i=>i>=0);
   function inspect(index:number){const i=Math.max(0,Math.min(rows.length-1,index));if(active==null){target.set(i);spring.jump(i);}else target.set(i);setActive(i);}
   function select(clientX:number,rect:DOMRect){inspect(Math.round((clientX-rect.left-left)/plotW*(rows.length-1)));}
@@ -48,9 +53,9 @@ function Efficiency({data,error}:{data:EfficiencyData|null;error?:string}) {
       <div className={'ax-eff-summary'+(selected?' is-scrubbing':'')} aria-live="polite" aria-atomic="true">
         <div className={'ax-eff-total is-billed'+(number(billed).length>7?' is-long':'')}><span><i/>Km facturados</span><strong data-metric="facturados">{number(billed)}<em>km</em></strong></div>
         <div className={'ax-eff-total is-odo'+(number(odometer).length>7?' is-long':'')}><span><i/>Km recorridos <small>· odómetro</small></span><strong data-metric="odometro">{number(odometer)}<em>km</em></strong></div>
-        <div className="ax-eff-percent"><span>Facturados / recorridos</span><strong data-metric="porcentaje">{number(displayedRatio)}<em>%</em></strong><small>{active==null?'Del período':cumulative?'Hasta esta fecha':'Del día'}{displayedRatio==null?' · sin datos comparables':''}</small></div>
+        <div className="ax-eff-percent"><span>Facturados / recorridos</span><strong data-metric="porcentaje">{number(displayedRatio)}<em>%</em></strong><small>{coverageNote}</small></div>
       </div>
-      <div className="ax-eff-context ax-eff-inspect"><span>{selected?`${date(selected.dia)} · ${cumulative?'acumulado hasta este día':'valores del día'}`:`${date(data.desde)} — ${date(data.hasta)} · totales del período`}</span>{active==null&&value!=null&&previous!=null&&<span className="ax-eff-ratio">{value-previous>=0?'+':''}{number(value-previous)} p.p. vs. anterior</span>}</div>
+      <div className="ax-eff-context ax-eff-inspect"><span>{selected?`${date(selected.dia)} · ${cumulative?'acumulado de días cerrados':'valores del día'}`:`${date(data.desde)} — ${date(data.hasta)} · ${summary?.excluded?'totales de días cerrados':'totales registrados'}`}</span>{active==null&&value!=null&&previous!=null&&<span className="ax-eff-ratio">{value-previous>=0?'+':''}{number(value-previous)} p.p. vs. anterior</span>}</div>
       {rows.length?<svg className={'ax-eff-plot'+(active!=null?' is-active':'')} width="100%" height={height} viewBox={`0 0 ${width} ${height}`} role="group" tabIndex={0} aria-label="Km facturados y recorridos en la misma escala. Mové el cursor, deslizá horizontalmente o usá las flechas para consultar un día."
         onFocus={()=>{if(dragging.current==null)inspect(rows.length-1);}} onBlur={reset}
         onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End','Escape'].includes(e.key)){e.preventDefault();if(e.key==='Escape')reset();else inspect(e.key==='Home'?0:e.key==='End'?rows.length-1:Math.max(0,Math.min(rows.length-1,(active??rows.length-1)+(e.key==='ArrowLeft'?-1:1))));}}}
@@ -71,7 +76,7 @@ function Efficiency({data,error}:{data:EfficiencyData|null;error?:string}) {
         {indices.map(i=><text key={i} x={x(i)} y={height-8} textAnchor={i===0?'start':i===rows.length-1?'end':'middle'}>{date(rows[i].dia)}</text>)}
       </svg>:<p className="ax-eff-notice">Sin días transcurridos en el período seleccionado.</p>}
       <div className="ax-eff-controls"><span className="ax-eff-hint">Deslizá para explorar <span aria-hidden="true">↔</span></span><div className="ax-eff-switch" aria-label="Modo del gráfico">{[false,true].map(c=><button type="button" key={String(c)} aria-pressed={cumulative===c} onClick={()=>setCumulative(c)}>{c?'Acumulado':'Diario'}{cumulative===c&&<motion.span layoutId={id+'mode'} transition={reduced?{duration:0}:{type:'spring',stiffness:420,damping:38}}/>}</button>)}</div></div>
-      <footer className="ax-eff-foot"><span>Km calculados para facturación · odómetro de jornadas registradas.</span>{warning?<div><button type="button" className="ax-eff-quality" aria-expanded={details} aria-controls={id+'quality'} onClick={()=>setDetails(!details)}>Datos incompletos <span aria-hidden="true">{details?'−':'+'}</span></button>{details&&<p id={id+'quality'} className="ax-eff-quality-detail">{warning}{data.actual?.cierres_faltantes?` ${data.actual.cierres_faltantes} jornadas sin cierre válido.`:''} Los cortes indican datos faltantes; no se interpolan.</p>}</div>:<span className="ax-eff-quality-ok">Datos disponibles</span>}</footer>
+      <footer className="ax-eff-foot"><span>Ambos kilometrajes usan los mismos días cerrados.</span>{warning?<div><button type="button" className="ax-eff-quality" aria-expanded={details} aria-controls={id+'quality'} onClick={()=>setDetails(!details)}>Datos incompletos <span aria-hidden="true">{details?'−':'+'}</span></button>{details&&<p id={id+'quality'} className="ax-eff-quality-detail">{data.filtrado?'El odómetro es de toda la flota: quitá los filtros para calcular la relación.':`Relación parcial sobre servicios registrados. Se excluyen de ambos kilometrajes los días sin cierre o con km inválidos.${data.actual?.remitos_sin_servicio?` Hay ${data.actual.remitos_sin_servicio} remitos sin vincular; no se presenta como un total definitivo.`:''}${data.actual?.cierres_faltantes?` ${data.actual.cierres_faltantes} jornadas pendientes de cierre.`:''}`} Los cortes no se interpolan.</p>}</div>:<span className="ax-eff-quality-ok">Datos disponibles</span>}</footer>
       <dialog ref={dialog} className="ax-eff-dialog" aria-labelledby={id+'detail'} onCancel={close} onClick={e=>{if(e.target===e.currentTarget)close();}} onClose={()=>trigger.current?.focus()}><header><h3 id={id+'detail'}>Desglose diario · flota propia</h3><button type="button" onClick={close} aria-label="Cerrar desglose">✕</button></header><p>Valores diarios, no acumulados. — indica un dato incompleto. Servicios por fecha programada; jornadas por fecha de inicio. No mide rentabilidad.</p>{warning&&<p>{warning}</p>}<div className="ax-eff-table"><table><caption>{date(data.desde)} — {date(data.hasta)}</caption><thead><tr><th scope="col">Fecha</th><th scope="col">Facturados (km)</th><th scope="col">Odómetro (km)</th><th scope="col">Jornadas</th></tr></thead><tbody>{data.actual?.filas.map(r=><tr key={r.dia}><th scope="row">{date(r.dia)}</th><td>{number(r.facturados)}</td><td>{number(r.odometro)}</td><td>{r.jornadas}{r.cierres_faltantes?` · ${r.cierres_faltantes} incompletas`:''}</td></tr>)}</tbody></table></div></dialog>
     </>}
   </div>;

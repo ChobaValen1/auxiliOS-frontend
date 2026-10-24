@@ -23,6 +23,36 @@ export function selectionRatio(data: EfficiencyData, index: number | null, cumul
   const billed=chosen.reduce((s,r)=>s+r.facturados!,0),odo=chosen.reduce((s,r)=>s+r.odometro!,0);
   return odo>0&&billed>=0?billed/odo*100:null;
 }
+// Operational preview: use the SAME closed/valid dates for numerator and denominator.
+// Historical unlinked remitos flag the observed ratio as partial, not unavailable.
+function comparableDay(r: Day): boolean {
+  return r.facturados!=null&&Number.isFinite(r.facturados)&&r.facturados>=0&&
+    r.odometro!=null&&Number.isFinite(r.odometro)&&r.odometro>=0&&
+    !(r.cierres_faltantes>0)&&!(r.servicios_sin_km>0)&&
+    (r.jornadas>0||r.facturados===0);
+}
+export function efficiencySummary(data: EfficiencyData, index: number|null, cumulative: boolean) {
+  const all=data.actual?.filas||[];
+  const chosen=index==null?all:index>=0&&index<all.length?(cumulative?all.slice(0,index+1):[all[index]]):[];
+  const valid=chosen.filter(comparableDay),excluded=chosen.length-valid.length;
+  const partial=excluded>0||chosen.some(r=>(r.remitos_sin_servicio||0)>0)||(index==null&&(data.actual?.remitos_sin_servicio||0)>0);
+  const facturados=valid.length?valid.reduce((sum,r)=>sum+r.facturados!,0):null;
+  const odometro=valid.length?valid.reduce((sum,r)=>sum+r.odometro!,0):null;
+  if(data.filtrado){
+    return {facturados,odometro,
+      porcentaje:null,partial:true,excluded,days:valid.length,totalDays:chosen.length,from:valid[0]?.dia,through:valid.at(-1)?.dia};
+  }
+  return {facturados,odometro,porcentaje:odometro!=null&&odometro>0&&facturados!=null?facturados/odometro*100:null,
+    partial,excluded,days:valid.length,totalDays:chosen.length,from:valid[0]?.dia,through:valid.at(-1)?.dia};
+}
+export function comparableSeries(rows: Day[], cumulative: boolean): Day[] {
+  let billed=0,odo=0;
+  return rows.map(r=>{
+    if(!comparableDay(r))return {...r,facturados:null,odometro:null};
+    billed+=r.facturados!;odo+=r.odometro!;
+    return {...r,facturados:cumulative?billed:r.facturados,odometro:cumulative?odo:r.odometro};
+  });
+}
 export function series(rows: Day[], cumulative: boolean): Day[] {
   let f = 0, o = 0, gapF = false, gapO = false;
   return rows.map(row => {

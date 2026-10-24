@@ -1,4 +1,23 @@
-# Eficiencia operativa · v568
+# Eficiencia operativa · v569
+
+## Operational percentage hotfix (supersedes strict all-or-nothing display)
+
+Observed October data: 3 open journeys caused the RPC period odometer to be null,
+and historical unlinked remitos separately blocked every whole-period ratio.
+UI now derives BOTH displayed km totals and percentage from the same dates having
+closed valid odometer and valid billing km. Excluded dates contribute to NEITHER
+total. Unlinked remitos are not invented or counted as billed: their presence labels
+the observed relationship "Parcial · Servicios registrados", with visible detail.
+Closed-date coverage is shown as n/N when dates were excluded. No open/invalid
+journey is assumed zero, no empty denominator is divided, no company-filtered km
+is divided by whole-fleet odometer. If no comparable date exists, percentage stays —.
+Daily/cumulative scrub and summary use identical date masks. Cumulative means sum
+of known closed dates, explicitly labeled; missing dates remain gaps, later valid
+dates can resume the partial sum. Strict legacy ratio remains for verified prior-
+period comparisons only. No DB writes, schema, payroll or service changes.
+Independent live SQL aggregate: Oct 1–23 observed billing km 19,970.4 / odometer
+35,032 = 57.0%, partial because historical remitos are not linked. This is validation
+evidence, NOT hardcoded UI data. Builds and tests use the existing response contract.
 
 Compact revision: side-by-side with revenue evolution above 900px, stacked below;
 196px plot on wide containers / 180px on narrow. Third summary metric now explicitly
