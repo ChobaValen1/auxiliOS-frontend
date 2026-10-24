@@ -31,3 +31,18 @@ export function scaleTop(rows: Day[]): number {
   const magnitude = 10 ** Math.floor(Math.log10(max));
   return Math.ceil(max/magnitude*2)/2*magnitude;
 }
+// Bounded smoothstep geometry; no extra measurements and no bridges across gaps.
+export function curveValue(rows: Day[], key: 'facturados' | 'odometro', position: number): number | null {
+  if (!rows.length) return null;
+  const p=Math.max(0,Math.min(rows.length-1,position)),i=Math.floor(p),t=p-i,a=rows[i][key],b=rows[Math.min(i+1,rows.length-1)][key];
+  if(t<.00001)return a;
+  return a==null||b==null?null:a+(b-a)*t*t*(3-2*t);
+}
+export function curvePath(rows: Day[], key: 'facturados' | 'odometro', x:(i:number)=>number,y:(v:number)=>number):string {
+  let gap=true;
+  return rows.map((r,i)=>{const v=r[key];if(v==null){gap=true;return '';}
+    const px=x(i),py=y(v);if(gap){gap=false;return `M${px.toFixed(2)},${py.toFixed(2)}`;}
+    const prev=x(i-1),step=(px-prev)/3;
+    return `C${(prev+step).toFixed(2)},${y(rows[i-1][key]!).toFixed(2)} ${(px-step).toFixed(2)},${py.toFixed(2)} ${px.toFixed(2)},${py.toFixed(2)}`;
+  }).join(' ');
+}

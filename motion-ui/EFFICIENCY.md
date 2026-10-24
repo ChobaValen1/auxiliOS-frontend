@@ -1,4 +1,26 @@
-# Eficiencia operativa · v566
+# Eficiencia operativa · v567
+
+## Image-led interaction revision
+
+Approved by user: videoframe_8181.png, then explicit authorization to make an original
+implementation based on the image, without 60fps access or source. This revision is NOT
+the 60fps snippet and does not claim its exact springs/timing. Two prominent km values,
+shared cursor, two local glows on the curves; minimal axes and bottom mode switch.
+Default is now DAILY (supersedes cumulative default below). Idle/release/cancel restores
+full-period totals. Hover, horizontal touch drag or keyboard selects a common observed
+date; both values above update to that day or cumulative-to-day, labeled explicitly.
+The secondary ratio always labels its full-period scope. Curve geometry uses bounded
+smoothstep segments (no overshoot, no gaps bridged). Glow and cursor share one spring
+index, stiffness 420, damping 38, mass .5, and the exact curve-coordinate evaluator.
+Reveal is .8s, cubic-bezier(.22,1,.36,1), not a perpetual animation. Reduced motion
+uses immediate positioning/reveal. No new packages, database or authorization changes.
+Quality details collapse into a visible "Datos incompletos" affordance; full detail is
+also present in the accessible daily table. Selection and mode are ephemeral, filters
+remain owned by the dashboard. QA covers 320/390/1440, real touch events and pointer
+capture, restoration on release, keyboard, dialog, missing values, error, themes,
+reduced motion, ordinary spring cursor/glow alignment, and bounded geometry unit tests.
+
+## Original data integration (unchanged)
 
 Scope: approved two-series mockup, Panel → Resumen only. No production promotion.
 One lazy-loaded React 19 island, isolated from the existing global React 18 widgets.

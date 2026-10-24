@@ -50,7 +50,8 @@ test('Eficiencia operativa: km de la flota según el odómetro', () => {
   assert.match(js, /rpc\('dashboard_efficiency_v1'/);
   assert.match(js, /AuxEfficiencyLoader\.render/);
   const chart = read('motion-ui/src/efficiency.tsx');
-  assert.match(chart, /Km recorridos · odómetro/);
+  assert.match(chart, /Km recorridos/);
+  assert.match(chart, /· odómetro/);
   assert.match(chart, /Acumulado/);
   assert.doesNotMatch(js, /dato\('(?:Con cliente arriba|Km muertos|Km no facturados)'/);
   assert.match(mig, /l\.status = 'closed'\s+and not coalesce\(t\.is_test, false\)/);

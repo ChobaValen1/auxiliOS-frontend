@@ -6,7 +6,7 @@
     if(loading)return loading;
     loading=new Promise(function(resolve,reject){
       var s=document.createElement('script');
-      s.src='/ui/motion/efficiency-v1.js?v='+encodeURIComponent(global.AUXILIOS_BUILD_ID||'v566');
+      s.src='/ui/motion/efficiency-v1.js?v='+encodeURIComponent(global.AUXILIOS_BUILD_ID||'v567');
       s.onload=function(){if(global.AuxEfficiency)resolve(global.AuxEfficiency);else reject(new Error('Gráfico no disponible'));};
       s.onerror=function(){s.remove();loading=null;reject(new Error('Gráfico no disponible'));};
       document.head.appendChild(s);
