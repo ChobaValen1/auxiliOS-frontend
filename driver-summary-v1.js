@@ -239,12 +239,27 @@
       </dl></details>`;
   }
 
+  function panelHTML(d, mes) {
+    const j = typeof _jornadaActivaLocal !== 'undefined' ? _jornadaActivaLocal : null;
+    const active = !!j?.log_id;
+    const m = d.mes || {};
+    const metrics = [['package', 'Servicios', m.servicios, ''], ['calendar', 'Jornadas', m.jornadas, ''], ['route', 'Km recorridos', m.km, ' km']];
+    const value = v => v == null || !Number.isFinite(Number(v)) ? '—' : entero(v);
+    const rows = (Array.isArray(d.ultimos) ? d.ultimos : []).slice().sort((a,b) => String(b.creado || '').localeCompare(String(a.creado || ''))).slice(0,3);
+    const when = v => {const t = new Date(v);return v && Number.isFinite(t.getTime()) ? t.toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'Sin fecha'};
+    return `<section class="drp-journey" aria-label="Estado actual de la jornada"><span class="drp-dot${active ? ' is-active' : ''}" aria-hidden="true"></span><b>${active ? 'Jornada activa' : 'Sin jornada activa'}</b><small>${esc(active ? [j.patente, j.hora_inicio && 'Desde las '+String(j.hora_inicio).slice(0,5)].filter(Boolean).join(' · ') : 'Estado actual')}</small></section>
+      <section class="drp-summary" aria-labelledby="drp-summary-title"><header><h2 id="drp-summary-title">Mi resumen del mes</h2><small>${esc(MESES[Number(mes.slice(5,7))-1])} ${esc(mes.slice(0,4))}</small></header><div class="drp-metrics">${metrics.map(([icon,label,n,unit])=>`<article class="drp-metric"><span>${ico(icon)}</span><strong>${value(n)}${n != null && Number.isFinite(Number(n)) ? `<small>${unit}</small>` : ''}</strong><h3>${label}</h3></article>`).join('')}</div></section>
+      <section class="drp-history" aria-labelledby="drp-history-title"><header><h2 id="drp-history-title">Últimos servicios</h2><span>Hasta 3 del mes</span></header>${rows.length ? `<ol>${rows.map(r=>`<li><span class="drp-service-icon">${ico('file-text')}</span><div><strong>${esc(r.patente || r.nro_servicio || r.nro_remito || 'Servicio')}</strong><p>${esc([r.origen,r.destino].filter(Boolean).join(' → ') || 'Sin recorrido informado')}</p><small>${esc(when(r.creado))}${r.nro_servicio && r.patente ? ' · #'+esc(r.nro_servicio) : ''}</small></div><span class="drp-service-km">${r.km != null && Number.isFinite(Number(r.km)) ? value(r.km)+' km' : '—'}</span></li>`).join('')}</ol>` : '<div class="drp-empty">'+ico('file-text')+'<strong>Sin servicios este mes</strong><p>Cuando registres actividad, aparecerá acá.</p></div>'}<button type="button" class="drp-history-button" data-drs-accion="historial">Ver historial${ico('arrow-right')}</button></section>`;
+  }
+
   function pintar() {
     const root = document.getElementById('drs-root');
     if (!root || !S.ultimo) return;
     const { data, mes, alertas } = S.ultimo;
     S.etiquetaAnterior = mesAnterior(mes);
-    root.innerHTML = hoyHTML(data, mes) + pendienteHTML(alertas, data) + plataHTML(data) + ganadoHTML(S.ultimo.estimado, data) + mesHTML(data) + actividadHTML(data, mes) + ultimosHTML(data) + camionHTML(data);
+    root.classList.toggle('drp-panel', S.esChofer);
+    root.innerHTML = S.esChofer ? panelHTML(data, mes) : hoyHTML(data, mes) + pendienteHTML(alertas, data) + plataHTML(data) + ganadoHTML(S.ultimo.estimado, data) + mesHTML(data) + actividadHTML(data, mes) + ultimosHTML(data) + camionHTML(data);
+    if(S.esChofer && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) Array.from(root.children).forEach((el,i)=>el.animate?.([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:220,delay:i*35,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'}));
   }
 
   function raiz() {
@@ -254,6 +269,7 @@
       root = document.createElement('div');
       root.id = 'drs-root';
       root.addEventListener('click', ev => {
+        if (ev.target.closest('[data-drs-accion="historial"]')) { if(typeof goTo === 'function')goTo('remitos');window.cambiarVistaServiciosChofer?.('history');return; }
         if (ev.target.closest('[data-drs-accion="rendir"]')) return abrirDiasRendir();
         const modo = ev.target.closest('[data-drs-modo]');
         if (modo) { S.modo = modo.dataset.drsModo; return pintar(); }
@@ -327,5 +343,5 @@
   // La cola de servicios del chofer carga aparte: al cambiar, se vuelve a pintar "Hoy".
   window.addEventListener?.('auxilios:driver-queue-updated', () => { if (S.ultimo && document.getElementById('drs-root')) pintar(); });
 
-  window.AuxiliosDriverSummary = { render, _test: { delta, estimar, ganadoHTML, plataHTML, mesHTML, actividadHTML, camionHTML, hoyHTML, pendienteHTML, ultimosHTML, S } };
+  window.AuxiliosDriverSummary = { render, _test: { panelHTML, delta, estimar, ganadoHTML, plataHTML, mesHTML, actividadHTML, camionHTML, hoyHTML, pendienteHTML, ultimosHTML, S } };
 })();

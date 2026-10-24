@@ -1,3 +1,21 @@
+/* Focused mobile-first driver panel; administrator summaries keep their existing presentation. */
+#drs-root.drp-panel{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;max-width:920px;margin-inline:auto;padding:4px 0 32px}
+.drp-panel *{box-sizing:border-box}
+.drp-panel .drp-journey{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 14px;border:1px solid var(--ax-border);border-radius:12px;background:var(--ax-surface)}
+.drp-panel .drp-journey b{font-size:12px;font-weight:600}.drp-panel .drp-journey small{margin-left:auto;text-align:right;font-size:11px!important}
+.drp-dot{width:7px;height:7px;border-radius:50%;background:var(--ax-text-3);flex:none}.drp-dot.is-active{background:var(--ax-ok);box-shadow:0 0 0 3px var(--ax-ok-soft)}
+.drp-panel header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}.drp-panel h2{margin:0;font-size:17px;letter-spacing:-.35px;font-weight:650;color:var(--ax-text)}
+.drp-panel header>small,.drp-panel header>span{font-size:11px;color:var(--ax-text-3);text-transform:capitalize;text-align:right}
+.drp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.drp-metric{min-width:0;padding:16px 12px;background:var(--ax-surface);border:1px solid var(--ax-border);border-radius:15px;display:grid;gap:12px;align-content:start}
+.drp-metric>span{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--ax-accent-soft);color:var(--ax-accent)}
+.drp-metric strong{font-size:clamp(20px,5.6vw,32px);font-weight:650;line-height:1.15;letter-spacing:-.8px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.drp-metric strong small{font-size:11px!important;font-weight:400;letter-spacing:0}
+.drp-metric h3{font-size:11px;font-weight:500;margin:0;color:var(--ax-text-2);line-height:1.4}
+.drp-history{min-width:0}.drp-history ol{list-style:none;margin:0;padding:0;border:1px solid var(--ax-border);border-radius:15px;background:var(--ax-surface);overflow:hidden}
+.drp-history li{display:flex;align-items:center;gap:10px;padding:16px 14px;min-width:0}.drp-history li+li{border-top:1px solid var(--ax-border)}.drp-service-icon{flex:none;color:var(--ax-text-3)}.drp-history li>div{min-width:0;flex:1}.drp-history li strong{font-size:14px;font-weight:600}.drp-history li p{margin:5px 0;font-size:11px;color:var(--ax-text-2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.drp-history li small{font-size:10px!important}.drp-service-km{font-size:12px;color:var(--ax-text-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.drp-history-button{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;margin-top:10px;border:1px solid var(--ax-border-strong);border-radius:12px;background:var(--ax-surface-2);color:var(--ax-text);font:600 12px var(--ax-font,sans-serif);cursor:pointer;transition:background .18s,transform .18s}.drp-history-button:active{transform:scale(.985)}.drp-history-button:hover{background:var(--ax-surface-3)}.drp-history-button:focus-visible{outline:2px solid var(--ax-accent);outline-offset:3px}
+.drp-empty{display:grid;justify-items:center;gap:10px;padding:30px 16px;border:1px dashed var(--ax-border-strong);border-radius:15px;text-align:center;color:var(--ax-text-3)}.drp-empty strong{font-size:13px;color:var(--ax-text-2)}.drp-empty p{margin:0;font-size:12px}
+@media(min-width:700px){.drp-metric{padding:22px;gap:14px}.drp-metric h3{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.drp-history-button{transition:none}}
 /* Resumen del chofer (driver-summary-v1.js). Una columna en el celular; en la
    computadora, plata y actividad lado a lado. Todo bajo #dash-view-rendimiento. */
 

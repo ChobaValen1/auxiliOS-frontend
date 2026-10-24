@@ -21,6 +21,15 @@ const DATA = {
   anterior: { servicios: 28, jornadas: 11, km: 1540, horas_motor: 0, cobros: { total: 612000 } },
   efectivo: { cobrado: 347600, gastos: 72000, a_rendir: 275600, rendido: 180000, pendiente: 95600 },
 };
+test('focused driver panel shows only three metrics and the latest three services, escaping data',()=>{
+ const t=load(),rows=Array.from({length:5},(_,i)=>({patente:'AUTO'+i,creado:'2026-10-'+(10+i)+'T12:00:00Z',origen:'<script>',destino:'Lanús',km:80}));
+ const html=t.panelHTML({...DATA,ultimos:rows},'2026-10');
+ assert.equal((html.match(/class="drp-metric"/g)||[]).length,3);assert.equal((html.match(/<li>/g)||[]).length,3);
+ assert.ok(html.indexOf('AUTO4')<html.indexOf('AUTO3'));assert.doesNotMatch(html,/AUTO0|AUTO1|Mi plata|Actividad por día|Lo que llevo ganado|<script>/);
+ assert.match(html,/&lt;script&gt;/);assert.match(html,/data-drs-accion="historial"/);assert.match(html,/Sin jornada activa/);
+ assert.match(t.panelHTML({mes:{},ultimos:[]},'2026-09'),/Sin servicios este mes/);
+ assert.match(t.panelHTML({mes:{},ultimos:[]},'2026-09'),/>—</);
+});
 
 test('Mi plata: cobrado por medio de pago y lo que falta rendir', () => {
   const t = load(); t.S.etiquetaAnterior = 'septiembre';
