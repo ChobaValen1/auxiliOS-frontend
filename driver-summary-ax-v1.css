@@ -1,3 +1,11 @@
+/* One money card, with distinct salary and customer-cash sections (never summed). */
+#drs-root .drs-plata .drs-sueldo{padding:0 0 18px;margin:0 0 18px;border-bottom:1px solid var(--ax-border)}
+#drs-root .drs-plata .drs-sueldo h3{font-size:13px;color:var(--ax-text-2)}
+#drs-root .drs-plata .drs-sueldo .drs-total b{color:var(--ax-ok);font-size:28px}
+#drs-root .drs-plata .drs-sueldo .drs-ganado-det summary{display:flex;justify-content:space-between;width:100%;min-height:44px;border:1px solid var(--ax-border);border-radius:10px;padding:8px 12px;background:var(--ax-surface-2)}
+#drs-root .drs-plata .drs-sueldo .drs-ganado-det summary:focus-visible{outline:2px solid var(--ax-accent);outline-offset:3px}
+#drs-root .drs-plata .drs-sueldo .drs-ganado-det dl{gap:10px;padding:12px 0}
+#drs-root .drs-plata .drs-customer-money>.drs-total b{font-size:22px}
 /* Focused mobile-first driver panel; administrator summaries keep their existing presentation. */
 #drs-root.drp-panel .drs-card{border-radius:16px}
 #drs-root.drp-panel .drs-actividad header{flex-wrap:wrap;gap:10px}

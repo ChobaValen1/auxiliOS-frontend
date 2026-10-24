@@ -121,7 +121,7 @@
     if (typeof openModal === 'function') openModal('modal-desglose-pago');
   }
 
-  function plataHTML(d) {
+  function plataHTML(d, sueldo) {
     const c = d.mes?.cobros || {}, e = d.efectivo || {};
     const medios = [['Efectivo', c.cash], ['Transferencia', c.transfer], ['Tarjeta', c.card], ['Otro', c.other]]
       .filter(([nombre, v], i) => i < 3 || n0(v) > 0);
@@ -129,7 +129,8 @@
     const avance = aRendir > 0 ? Math.min(100, Math.round(rendido / aRendir * 100)) : (rendido > 0 ? 100 : 0);
     return `<section class="drs-card drs-plata" aria-labelledby="drs-plata-t">
       <header><h3 id="drs-plata-t">${ico('wallet')}Mi plata del mes</h3></header>
-      <div class="drs-total"><small>Cobrado a clientes</small><b>${money(c.total)}</b>${delta(c.total, d.anterior?.cobros?.total, S.etiquetaAnterior)}</div>
+      ${sueldo !== undefined ? ganadoHTML(sueldo, d, true) : ''}
+      <div class="drs-customer-money"><div class="drs-total"><small>Cobrado a clientes</small><b>${money(c.total)}</b>${delta(c.total, d.anterior?.cobros?.total, S.etiquetaAnterior)}</div>
       <div class="drs-medios">${medios.map(([nombre, v]) => `<div><small>${esc(nombre)}</small><b>${money(v)}</b></div>`).join('')}</div>
       <div class="drs-rendir ${pendiente > 0 ? 'is-pending' : 'is-ok'}">
         <div class="drs-rendir-head"><b>${pendiente > 0 ? 'Por rendir' : 'Efectivo al día'}</b><strong>${money(pendiente)}</strong></div>
@@ -141,7 +142,7 @@
           <div><dt>Ya rendido</dt><dd>${money(rendido)}</dd></div>
         </dl>
         ${pendiente > 0 ? `<button type="button" class="drs-link" data-drs-accion="rendir">Ver de qué jornadas${ico('chevron-right')}</button>` : ''}
-      </div>
+      </div></div>
     </section>`;
   }
 
@@ -179,18 +180,19 @@
     }
   }
 
-  function ganadoHTML(e, d) {
+  function ganadoHTML(e, d, embedded = false) {
     const x = estimar(e);
-    if (!x) return '';
-    const head = `<header><h3 id="drs-gan-t">${ico('banknote')}Lo que llevo ganado</h3></header>`;
-    if (x.liquidada) return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}<div class="drs-total"><small>Liquidación ${x.estado === 'pagada' ? 'pagada' : 'aprobada'}</small><b>${money(x.total)}</b></div><p class="drs-nota">Este mes ya está liquidado: el número es el de Sueldos.</p></section>`;
-    if (x.sinEsquema) return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}<p class="drs-nota">Tu esquema de pago todavía no está cargado. Consultá con Administración.</p></section>`;
-    if (x.error) return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}<p class="drs-nota">No se pudo calcular el estimado. Consultá con Administración.</p></section>`;
+    const card = embedded ? 'drs-sueldo drs-ganado' : 'drs-card drs-ganado';
+    if (!x) return embedded ? '<p class="drs-nota drs-sueldo">No se pudo consultar tu sueldo para este mes. Los cobros y las rendiciones se muestran por separado.</p>' : '';
+    const head = `<header><h3 id="drs-gan-t">${ico('banknote')}${embedded ? 'Mi sueldo' : 'Lo que llevo ganado'}</h3></header>`;
+    if (x.liquidada) return `<section class="${card}" aria-labelledby="drs-gan-t">${head}<div class="drs-total"><small>Liquidación ${esc(x.estado || 'confirmada')}</small><b>${money(x.total)}</b></div><p class="drs-nota">Este mes ya está liquidado: el número es el de Sueldos.</p></section>`;
+    if (x.sinEsquema) return `<section class="${card}" aria-labelledby="drs-gan-t">${head}<p class="drs-nota">Tu esquema de pago todavía no está cargado. Consultá con Administración.</p></section>`;
+    if (x.error) return `<section class="${card}" aria-labelledby="drs-gan-t">${head}<p class="drs-nota">No se pudo calcular el estimado. Consultá con Administración.</p></section>`;
     const pend = n0(d?.efectivo?.pendiente);
-    return `<section class="drs-card drs-ganado" aria-labelledby="drs-gan-t">${head}
+    return `<section class="${card}" aria-labelledby="drs-gan-t">${head}
       <div class="drs-total"><small>Estimado a hoy</small><b>${money(x.total)}</b></div>
       <p class="drs-nota">Es un estimado con lo cargado hasta ahora. El monto final lo confirma Administración al liquidar.${pend > 0 ? ` Si queda efectivo sin rendir (${money(pend)}), se descuenta.` : ''}</p>
-      <details class="drs-ganado-det"><summary>Ver cómo se calcula${ico('chevron-down')}</summary>
+      <details class="drs-ganado-det"><summary>${embedded ? 'Ver composición del sueldo' : 'Ver cómo se calcula'}${ico('chevron-down')}</summary>
         <dl>${x.lineas.map(([t, sub, v]) => `<div><dt>${esc(t)}${sub ? `<small>${esc(sub)}</small>` : ''}</dt><dd>${money(v)}</dd></div>`).join('')}
         ${x.descuento > 0 ? `<div class="is-neg"><dt>Descuento por rendición</dt><dd>− ${money(x.descuento)}</dd></div>` : ''}
         <div class="is-total"><dt>Total estimado</dt><dd>${money(x.total)}</dd></div></dl>
@@ -248,7 +250,7 @@
       </dl></details>`;
   }
 
-  function panelHTML(d, mes) {
+  function panelHTML(d, mes, sueldo = null) {
     const j = typeof _jornadaActivaLocal !== 'undefined' ? _jornadaActivaLocal : null;
     const active = !!j?.log_id;
     const m = d.mes || {};
@@ -259,7 +261,7 @@
     return `<section class="drp-journey" aria-label="Estado actual de la jornada"><span class="drp-dot${active ? ' is-active' : ''}" aria-hidden="true"></span><b>${active ? 'Jornada activa' : 'Sin jornada activa'}</b><small>${esc(active ? [j.patente, j.hora_inicio && 'Desde las '+String(j.hora_inicio).slice(0,5)].filter(Boolean).join(' · ') : 'Estado actual')}</small></section>
       <section class="drp-summary" aria-labelledby="drp-summary-title"><header><h2 id="drp-summary-title">Mi resumen del mes</h2><small>${esc(MESES[Number(mes.slice(5,7))-1])} ${esc(mes.slice(0,4))}</small></header><div class="drp-metrics">${metrics.map(([icon,label,n,unit])=>`<article class="drp-metric"><span>${ico(icon)}</span><strong>${value(n)}${n != null && Number.isFinite(Number(n)) ? `<small>${unit}</small>` : ''}</strong><h3>${label}</h3></article>`).join('')}</div></section>
       ${actividadHTML(d, mes)}
-      ${plataHTML(d)}
+      ${plataHTML(d, sueldo)}
       ${ultimosHTML({...d, ultimos:rows.map(r=>({...r,origen:localidad(r.origen,r.origin_locality || r.origen_localidad),destino:localidad(r.destino,r.destination_locality || r.destino_localidad)}))}, true)}`;
   }
 
@@ -269,7 +271,7 @@
     const { data, mes, alertas } = S.ultimo;
     S.etiquetaAnterior = mesAnterior(mes);
     root.classList.toggle('drp-panel', S.esChofer);
-    root.innerHTML = S.esChofer ? panelHTML(data, mes) : hoyHTML(data, mes) + pendienteHTML(alertas, data) + plataHTML(data) + ganadoHTML(S.ultimo.estimado, data) + mesHTML(data) + actividadHTML(data, mes) + ultimosHTML(data) + camionHTML(data);
+    root.innerHTML = S.esChofer ? panelHTML(data, mes, S.ultimo.estimado) : hoyHTML(data, mes) + pendienteHTML(alertas, data) + plataHTML(data) + ganadoHTML(S.ultimo.estimado, data) + mesHTML(data) + actividadHTML(data, mes) + ultimosHTML(data) + camionHTML(data);
     if(S.esChofer && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) Array.from(root.children).forEach((el,i)=>el.animate?.([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:220,delay:i*35,easing:'cubic-bezier(.22,1,.36,1)',fill:'backwards'}));
   }
 

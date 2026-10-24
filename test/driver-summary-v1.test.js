@@ -136,6 +136,15 @@ function loadWithPayroll() {
   vm.runInNewContext(src, ctx);
   return ctx.window.AuxiliosDriverSummary._test;
 }
+test('one money card combines salary composition with customer collections without adding them together',()=>{
+ const t=loadWithPayroll(),salary={settings:{sueldo_basico:100000,compensation_matrix:{pay_type:'fixed',pay_services:false,pay_km:false,pay_presentismo:false}},descuento_rendicion:10000};
+ const html=t.panelHTML(DATA,'2026-10',salary);
+ assert.equal((html.match(/class="drs-card drs-plata"/g)||[]).length,1);
+ assert.doesNotMatch(html,/class="drs-card drs-ganado"/);assert.match(html,/Mi sueldo/);assert.match(html,/Ver composición del sueldo/);assert.match(html,/Sueldo fijo/);assert.match(html,/Descuento por rendición/);assert.match(html,/\$90\.000/);assert.match(html,/Cobrado a clientes/);
+ assert.match(t.plataHTML(DATA,null),/No se pudo consultar tu sueldo/);
+ assert.match(t.plataHTML(DATA,{settings:null}),/esquema de pago todavía no está cargado/);
+ const confirmed=t.plataHTML(DATA,{liquidacion:{estado:'pagada',total:85000}});assert.match(confirmed,/Liquidación pagada/);assert.match(confirmed,/\$85\.000/);assert.doesNotMatch(confirmed,/Estimado a hoy/);
+});
 
 test('Lo que llevo ganado: misma cuenta que Sueldos (caso real de septiembre: $725.384,76)', () => {
   const t = loadWithPayroll();
