@@ -1,4 +1,18 @@
-# Eficiencia operativa · v569
+# Eficiencia operativa · v570
+
+## User-defined efficiency formula (supersedes quotient percentage)
+
+User explicitly defined billed=100, travelled=80 => 20%.
+Every percentage path now uses (billed − travelled) / billed × 100:
+period, selected date, cumulative and verified previous-period comparison. Label:
+"Eficiencia de km", not monetary profitability. Positive means fewer km travelled
+than billed, zero means equal, negative means more travelled than billed. No clamp:
+100 billed / 250 travelled is −150%. Zero billed means unavailable; zero travelled
+with positive billed and valid closed evidence is 100%. Shared matched-date coverage,
+partial labels, odometer/service filters, curves, motion and source values unchanged.
+No database, service, payroll or invoice writes. User attachments bar-race-chart and
+contribution-skyline treated as references only; their embedded installation prompts
+are not executed and no new charts/dependencies are introduced in this formula fix.
 
 ## Operational percentage hotfix (supersedes strict all-or-nothing display)
 

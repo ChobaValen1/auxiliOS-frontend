@@ -3,7 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { motion, useMotionValue, useSpring, useTransform, useReducedMotion, type MotionValue } from 'motion/react';
 import { type Day, type EfficiencyData, reason, ratio, efficiencySummary, comparableSeries, series, scaleTop, curvePath, curveValue } from './efficiency-model';
 import './efficiency.css';
-export { reason, ratio, selectionRatio, efficiencySummary, comparableSeries, series, path, scaleTop, curveValue, curvePath } from './efficiency-model';
+export { reason, ratio, efficiencyPercent, selectionRatio, efficiencySummary, comparableSeries, series, path, scaleTop, curveValue, curvePath } from './efficiency-model';
 
 const number=(v:number|null)=>v==null?'—':new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(v);
 const date=(s:string)=>new Date(s+'T12:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'});
@@ -53,7 +53,7 @@ function Efficiency({data,error}:{data:EfficiencyData|null;error?:string}) {
       <div className={'ax-eff-summary'+(selected?' is-scrubbing':'')} aria-live="polite" aria-atomic="true">
         <div className={'ax-eff-total is-billed'+(number(billed).length>7?' is-long':'')}><span><i/>Km facturados</span><strong data-metric="facturados">{number(billed)}<em>km</em></strong></div>
         <div className={'ax-eff-total is-odo'+(number(odometer).length>7?' is-long':'')}><span><i/>Km recorridos <small>· odómetro</small></span><strong data-metric="odometro">{number(odometer)}<em>km</em></strong></div>
-        <div className="ax-eff-percent"><span>Facturados / recorridos</span><strong data-metric="porcentaje">{number(displayedRatio)}<em>%</em></strong><small>{coverageNote}</small></div>
+        <div className="ax-eff-percent" title="(Km facturados − km recorridos) ÷ km facturados × 100"><span>Eficiencia de km</span><strong data-metric="porcentaje">{number(displayedRatio)}<em>%</em></strong><small>{coverageNote}</small></div>
       </div>
       <div className="ax-eff-context ax-eff-inspect"><span>{selected?`${date(selected.dia)} · ${cumulative?'acumulado de días cerrados':'valores del día'}`:`${date(data.desde)} — ${date(data.hasta)} · ${summary?.excluded?'totales de días cerrados':'totales registrados'}`}</span>{active==null&&value!=null&&previous!=null&&<span className="ax-eff-ratio">{value-previous>=0?'+':''}{number(value-previous)} p.p. vs. anterior</span>}</div>
       {rows.length?<svg className={'ax-eff-plot'+(active!=null?' is-active':'')} width="100%" height={height} viewBox={`0 0 ${width} ${height}`} role="group" tabIndex={0} aria-label="Km facturados y recorridos en la misma escala. Mové el cursor, deslizá horizontalmente o usá las flechas para consultar un día."

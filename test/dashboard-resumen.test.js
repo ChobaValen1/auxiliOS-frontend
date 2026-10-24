@@ -120,7 +120,9 @@ test('rendimiento de la flota: sólo cuando casi todo el trabajo está cargado c
   const completo = api.normalizarFlota({ actual: { km: 40000 }, remitos: { firmados: 100, con_servicio: 95 } }, false);
   const parcial = api.normalizarFlota({ actual: { km: 40000 }, remitos: { firmados: 281, con_servicio: 8 } }, false);
   const filtrado = api.normalizarFlota({ actual: { km: 40000 }, remitos: { firmados: 100, con_servicio: 100 } }, true);
-  assert.equal(api.rendimientoFlota(t, completo), 75);
+  assert.ok(Math.abs(api.rendimientoFlota(t, completo) + 100/3) < 1e-10);
+  assert.equal(api.rendimientoFlota({ km: 100 }, { ...completo, km: 80 }), 20);
+  assert.equal(api.rendimientoFlota({ km: 100 }, { ...completo, km: 120 }), -20);
   assert.equal(api.rendimientoFlota(t, parcial), null);
   assert.equal(api.rendimientoFlota(t, filtrado), null);
   assert.equal(api.rendimientoFlota(t, null), null);

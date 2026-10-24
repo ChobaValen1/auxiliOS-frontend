@@ -28,8 +28,8 @@ beforeEach(async()=>{
 async function data(extra='null,null,null',end='2026-10-22'){
  return (await db.query(`select app_private.dashboard_efficiency_core_v1('2026-10-22','${end}',${extra},'2026-10-22') v`)).rows[0].v;
 }
-test('own fleet only; no cap at 100; equal-length previous period; no future zeroes',async()=>{
- const d=await data(undefined,'2026-10-31');assert.equal(d.actual.facturados,150);assert.equal(d.actual.odometro,100);assert.equal(d.actual.filas.length,1);assert.equal(d.anterior.facturados,100);assert.equal(model.ratio(d,d.actual),150);assert.equal(model.ratio(d,d.anterior),100);
+test('own fleet only; margin against billed km; equal-length previous period; no future zeroes',async()=>{
+ const d=await data(undefined,'2026-10-31');assert.equal(d.actual.facturados,150);assert.equal(d.actual.odometro,100);assert.equal(d.actual.filas.length,1);assert.equal(d.anterior.facturados,100);assert.ok(Math.abs(model.ratio(d,d.actual)-100/3)<1e-10);assert.equal(model.ratio(d,d.anterior),0);
 });
 test('open/invalid closures are null not zero; cumulative never bridges missing data',async()=>{
  await db.exec("insert into daily_logs values('2026-10-22',1,'open',200,null,null)");
@@ -47,8 +47,8 @@ test('missing billing km and unlinked signed remitos invalidate comparison',asyn
  let d=await data();assert.equal(d.actual.facturados,null);assert.equal(model.ratio(d,d.actual),null);
  await db.exec("insert into remitos values(1,'firmado','2026-10-21 15:00Z',null)");d=await data();assert.equal(d.anterior.remitos_sin_servicio,1);assert.equal(model.ratio(d,d.anterior),null);
 });
-test('zero is valid numerator; zero denominator is unavailable; scales include both series',()=>{
- const p={filas:[{}],facturados:0,odometro:100,cierres_faltantes:0,servicios_sin_km:0,remitos_sin_servicio:0};const d={filtrado:false};assert.equal(model.ratio(d,p),0);assert.equal(model.ratio(d,{...p,odometro:0}),null);assert.ok(model.scaleTop([{facturados:150,odometro:900}])>=900);
+test('zero billed denominator is unavailable; measured zero travelled gives 100%; shared scale unchanged',()=>{
+ const p={filas:[{}],facturados:0,odometro:100,cierres_faltantes:0,servicios_sin_km:0,remitos_sin_servicio:0};const d={filtrado:false};assert.equal(model.ratio(d,p),null);assert.equal(model.ratio(d,{...p,facturados:100,odometro:0}),100);assert.ok(model.scaleTop([{facturados:150,odometro:900}])>=900);
 });
 test('smooth curves and cursor share bounded geometry and never bridge missing values',()=>{
  const rows=[{facturados:10},{facturados:90},{facturados:null},{facturados:20}];
@@ -61,32 +61,41 @@ test('smooth curves and cursor share bounded geometry and never bridge missing v
 test('percentage follows day/cumulative selection and returns to full-period ratio',()=>{
  const row=(f,o,extra={})=>({facturados:f,odometro:o,cierres_faltantes:0,servicios_sin_km:0,jornadas:1,...extra});
  const data={filtrado:false,actual:{filas:[row(50,100),row(150,100)],facturados:200,odometro:200,cierres_faltantes:0,servicios_sin_km:0,remitos_sin_servicio:0}};
- assert.equal(model.selectionRatio(data,null,false),100);
- assert.equal(model.selectionRatio(data,0,false),50);
- assert.equal(model.selectionRatio(data,1,false),150);
- assert.equal(model.selectionRatio(data,1,true),100);
+ assert.equal(model.selectionRatio(data,null,false),0);
+ assert.equal(model.selectionRatio(data,0,false),-100);
+ assert.ok(Math.abs(model.selectionRatio(data,1,false)-100/3)<1e-10);
+ assert.equal(model.selectionRatio(data,1,true),0);
  assert.equal(model.selectionRatio({...data,filtrado:true},1,false),null);
  data.actual.filas[0]=row(50,null,{cierres_faltantes:1});
  assert.equal(model.selectionRatio(data,0,false),null);
  assert.equal(model.selectionRatio(data,1,true),null);
- assert.equal(model.selectionRatio(data,1,false),150);
+ assert.ok(Math.abs(model.selectionRatio(data,1,false)-100/3)<1e-10);
  data.actual.filas[1]=row(150,100,{remitos_sin_servicio:1});assert.equal(model.selectionRatio(data,1,false),null);
 });
 test('operational ratio uses matched closed days and labels unlinked remitos as partial',()=>{
  const day=(f,o,extra={})=>({dia:'2026-10-01',facturados:f,odometro:o,jornadas:1,cierres_faltantes:0,servicios_sin_km:0,remitos_sin_servicio:0,...extra});
  const d={filtrado:false,actual:{filas:[day(100,200,{remitos_sin_servicio:5}),day(9000,null,{cierres_faltantes:1})],facturados:9100,odometro:null,remitos_sin_servicio:5}};
  const s=model.efficiencySummary(d,null,false);
- assert.equal(s.facturados,100);assert.equal(s.odometro,200);assert.equal(s.porcentaje,50);assert.equal(s.excluded,1);assert.equal(s.partial,true);
- assert.equal(model.efficiencySummary(d,0,false).porcentaje,50);
+ assert.equal(s.facturados,100);assert.equal(s.odometro,200);assert.equal(s.porcentaje,-100);assert.equal(s.excluded,1);assert.equal(s.partial,true);
+ assert.equal(model.efficiencySummary(d,0,false).porcentaje,-100);
  assert.equal(model.efficiencySummary(d,1,false).porcentaje,null);
- assert.equal(model.efficiencySummary(d,1,true).porcentaje,50);
+ assert.equal(model.efficiencySummary(d,1,true).porcentaje,-100);
  assert.equal(model.efficiencySummary({...d,filtrado:true},null,false).porcentaje,null);
  d.actual.filas.push(day(200,100));const series=model.comparableSeries(d.actual.filas,true);
  assert.deepEqual(Array.from(series,r=>r.facturados),[100,null,300]);assert.deepEqual(Array.from(series,r=>r.odometro),[200,null,300]);
- assert.equal(model.efficiencySummary(d,2,true).porcentaje,100);
- d.actual.filas=[day(0,200)];assert.equal(model.efficiencySummary(d,null,false).porcentaje,0);
- d.actual.filas=[day(100,0)];assert.equal(model.efficiencySummary(d,null,false).porcentaje,null);
+ assert.equal(model.efficiencySummary(d,2,true).porcentaje,0);
+ d.actual.filas=[day(0,200)];assert.equal(model.efficiencySummary(d,null,false).porcentaje,null);
+ d.actual.filas=[day(100,0)];assert.equal(model.efficiencySummary(d,null,false).porcentaje,100);
  d.actual.filas=[day(100,null)];assert.equal(model.efficiencySummary(d,null,false).odometro,null);
+});
+test('requested formula: billed 100, travelled 80 is 20%, not 125%',()=>{
+ assert.equal(model.efficiencyPercent(100,80),20);
+ assert.equal(model.efficiencyPercent(100,100),0);
+ assert.equal(model.efficiencyPercent(100,120),-20);
+ assert.equal(model.efficiencyPercent(100,250),-150);
+ assert.equal(model.efficiencyPercent(0,80),null);
+ assert.equal(model.efficiencyPercent(null,80),null);
+ assert.equal(model.efficiencyPercent(100,NaN),null);
 });
 test('public API requires login and permitted role; bounded ranges; no write statements',async()=>{
  assert.equal((await db.query("select to_regprocedure('public.current_auxilios_role()') absent")).rows[0].absent,null);

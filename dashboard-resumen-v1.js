@@ -281,7 +281,7 @@
         tile('Km reales', GUION, '', 'Sin servicios en el período') +
         tile('$ por servicio', GUION, '', 'Ticket promedio') +
         tile('Peajes', GUION, '', 'Sobre la facturación') +
-        tile('Rendimiento flota', GUION, '', 'Km cobrados de lo recorrido');
+        tile('Eficiencia de km', GUION, '', 'Diferencia sobre los km facturados');
       return;
     }
     var rendFlota = rendimientoFlota(t, d.flota);
@@ -296,8 +296,8 @@
       tile('$ por servicio', ticket != null ? pesos(ticket) : GUION, delta(ticket, ticketAnt, r), 'Ticket promedio') +
       tile('Peajes', pesos(t.peajes), delta(t.peajes, a.peajes, r),
         t.facturado > 0 ? pct(t.peajes * 100 / t.facturado, 1) + ' de la facturación' : 'Sobre la facturación') +
-      tile('Rendimiento flota', rendFlota != null ? pct(Math.min(rendFlota, 100)) : GUION, '',
-        rendFlota != null ? 'Km cobrados de lo recorrido (odómetro)' : 'Km cobrados de lo recorrido · ' + motivoSinFlota(d.flota));
+      tile('Eficiencia de km', rendFlota != null ? pct(rendFlota) : GUION, '',
+        rendFlota != null ? 'Diferencia sobre los km facturados' : 'Diferencia sobre los km facturados · ' + motivoSinFlota(d.flota));
   }
 
   /* ── mapa ─────────────────────────────────────────────────────────────── */
@@ -800,9 +800,9 @@
     return 'sin km en el odómetro';
   }
 
-  /* Rendimiento de la flota = km facturados sobre km del odómetro: de cada 100 km
-     que anduvo el camión, cuántos se cobraron. */
-  function rendimientoFlota(t, fl) { return flotaComparable(fl) && t.km > 0 ? t.km * 100 / fl.km : null; }
+  /* Eficiencia de km: diferencia sobre los km facturados. 100 facturados y
+     80 recorridos = 20%. No es rentabilidad monetaria. */
+  function rendimientoFlota(t, fl) { return flotaComparable(fl) && t.km > 0 ? (t.km - fl.km) * 100 / t.km : null; }
 
   function pintarEficiencia(d) {
     var n = el('rsm-eficiencia');

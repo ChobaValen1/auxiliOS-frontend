@@ -7,12 +7,16 @@ export function reason(data: EfficiencyData, p: Period | null): string {
   if (p.remitos_sin_servicio) return `${p.remitos_sin_servicio} remitos todavía no están vinculados a Servicios. La relación no es comparable.`;
   if (p.cierres_faltantes) return `${p.cierres_faltantes} jornadas sin cierre o sin odómetro válido. Los días incompletos aparecen como cortes en la línea.`;
   if (p.servicios_sin_km) return `${p.servicios_sin_km} servicios sin km de facturación válidos.`;
-  if (p.odometro == null || p.odometro <= 0) return 'Sin km registrados por odómetro para calcular la relación.';
-  if (p.facturados == null) return 'Faltan km de facturación.';
+  if (p.odometro == null || p.odometro < 0) return 'Sin km registrados por odómetro para calcular la eficiencia.';
+  if (p.facturados == null || p.facturados <= 0) return 'Sin km facturados para calcular la eficiencia.';
   return '';
 }
+export function efficiencyPercent(billed: number|null, travelled: number|null): number|null {
+  if(billed==null||travelled==null||!Number.isFinite(billed)||!Number.isFinite(travelled)||billed<=0||travelled<0)return null;
+  return (billed-travelled)/billed*100;
+}
 export function ratio(data: EfficiencyData, p: Period | null): number | null {
-  return reason(data,p) ? null : p!.facturados! / p!.odometro! * 100;
+  return reason(data,p) ? null : efficiencyPercent(p!.facturados,p!.odometro);
 }
 export function selectionRatio(data: EfficiencyData, index: number | null, cumulative: boolean): number | null {
   if(index==null)return ratio(data,data.actual);
@@ -21,7 +25,7 @@ export function selectionRatio(data: EfficiencyData, index: number | null, cumul
   const chosen=cumulative?rows.slice(0,index+1):[rows[index]];
   if(chosen.some(r=>r.facturados==null||r.odometro==null||r.cierres_faltantes>0||r.servicios_sin_km>0||(r.remitos_sin_servicio||0)>0))return null;
   const billed=chosen.reduce((s,r)=>s+r.facturados!,0),odo=chosen.reduce((s,r)=>s+r.odometro!,0);
-  return odo>0&&billed>=0?billed/odo*100:null;
+  return efficiencyPercent(billed,odo);
 }
 // Operational preview: use the SAME closed/valid dates for numerator and denominator.
 // Historical unlinked remitos flag the observed ratio as partial, not unavailable.
@@ -42,7 +46,7 @@ export function efficiencySummary(data: EfficiencyData, index: number|null, cumu
     return {facturados,odometro,
       porcentaje:null,partial:true,excluded,days:valid.length,totalDays:chosen.length,from:valid[0]?.dia,through:valid.at(-1)?.dia};
   }
-  return {facturados,odometro,porcentaje:odometro!=null&&odometro>0&&facturados!=null?facturados/odometro*100:null,
+  return {facturados,odometro,porcentaje:efficiencyPercent(facturados,odometro),
     partial,excluded,days:valid.length,totalDays:chosen.length,from:valid[0]?.dia,through:valid.at(-1)?.dia};
 }
 export function comparableSeries(rows: Day[], cumulative: boolean): Day[] {

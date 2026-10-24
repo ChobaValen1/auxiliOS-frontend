@@ -30,7 +30,7 @@ const server=http.createServer((req,res)=>{
   await page.mouse.move(box.x+box.width-16,box.y+100,{steps:12});
   assert.match(await page.locator('.ax-eff-inspect').innerText(),/22 oct/);
   assert.equal(await page.locator('[data-metric=facturados]').innerText(),rows[21].facturados+'km');
-  assert.equal(await page.locator('[data-metric=porcentaje]').innerText(),new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(rows[21].facturados/rows[21].odometro*100)+'%');
+  assert.equal(await page.locator('[data-metric=porcentaje]').innerText(),new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format((rows[21].facturados-rows[21].odometro)/rows[21].facturados*100)+'%');
   assert.equal(await page.locator('.ax-eff-glow').count(),2);
   await page.mouse.move(box.x+box.width*.54,box.y+100,{steps:6});
   await page.screenshot({path:path.join(out,`scrub-${width}.png`),fullPage:true});
@@ -55,7 +55,8 @@ const server=http.createServer((req,res)=>{
   await page.evaluate(()=>{fixture.actual.cierres_faltantes=1;fixture.actual.odometro=null;fixture.actual.filas[6].odometro=null;AuxEfficiency.render(document.getElementById('chart'),{...fixture});});
   await page.getByRole('button',{name:/Datos incompletos/}).click();await page.locator('.ax-eff-quality-detail').waitFor();
   assert.match(await page.locator('.ax-eff-percent small').innerText(),/Parcial/);
-  assert.equal(await page.locator('[data-metric=porcentaje]').innerText(),new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format((period.facturados-rows[6].facturados)/(period.odometro-rows[6].odometro)*100)+'%');
+  const billedClosed=period.facturados-rows[6].facturados,travelledClosed=period.odometro-rows[6].odometro;
+  assert.equal(await page.locator('[data-metric=porcentaje]').innerText(),new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format((billedClosed-travelledClosed)/billedClosed*100)+'%');
   await page.evaluate(()=>AuxEfficiency.render(document.getElementById('chart'),{...fixture,actual:{...fixture.actual,filas:fixture.actual.filas.map(r=>({...r,odometro:null,cierres_faltantes:1}))}}));
   await page.waitForFunction(()=>document.querySelector('[data-metric=porcentaje]').textContent==='—%');
   await page.evaluate(()=>AuxEfficiency.render(document.getElementById('chart'),null,'Error de conexión. Reintentá desde Resumen.'));await page.getByRole('alert').waitFor();
@@ -66,12 +67,15 @@ const server=http.createServer((req,res)=>{
  const motionBox=await motionPage.locator('.ax-eff-plot').boundingBox();
  await motionPage.mouse.move(motionBox.x+20,motionBox.y+80);await motionPage.mouse.move(motionBox.x+motionBox.width-16,motionBox.y+80,{steps:6});
  await motionPage.waitForFunction(()=>{const dots=[...document.querySelectorAll('.ax-eff-dot')],line=document.querySelector('.ax-eff-cursor');return dots.length===2&&line&&dots.every(d=>Math.abs(Number(d.getAttribute('cx'))-Number(line.getAttribute('x1')))<.1)&&Math.abs(Number(line.getAttribute('x1'))-(document.querySelector('.ax-eff-plot').getBoundingClientRect().width-16))<.2;});
+ await motionPage.evaluate(()=>AuxEfficiency.render(document.getElementById('chart'),{...fixture,actual:{...fixture.actual,facturados:100,odometro:80,filas:[{...fixture.actual.filas[0],facturados:100,odometro:80}]}}));
+ await motionPage.waitForFunction(()=>document.querySelector('[data-metric=porcentaje]').textContent==='20%');
+ assert.match(await motionPage.locator('.ax-eff-percent').innerText(),/Eficiencia de km/);
  await motionPage.close();
  if(live){
   const actual=await browser.newPage({viewport:{width:700,height:750},reducedMotion:'reduce'});
   await actual.goto('http://127.0.0.1:'+server.address().port+'/live');await actual.locator('[data-metric=porcentaje]').waitFor();
   const valid=live.actual.filas.filter(r=>r.facturados!=null&&r.odometro!=null&&r.cierres_faltantes===0&&r.servicios_sin_km===0&&(r.jornadas>0||r.facturados===0));
-  const facturados=valid.reduce((s,r)=>s+r.facturados,0),odometro=valid.reduce((s,r)=>s+r.odometro,0),expected=new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(facturados/odometro*100)+'%';
+  const facturados=valid.reduce((s,r)=>s+r.facturados,0),odometro=valid.reduce((s,r)=>s+r.odometro,0),expected=new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format((facturados-odometro)/facturados*100)+'%';
   assert.equal(await actual.locator('[data-metric=porcentaje]').innerText(),expected);assert.match(await actual.locator('.ax-eff-percent small').innerText(),/Parcial/);
   await actual.screenshot({path:path.join(out,'live-rpc.png'),fullPage:true});
   console.log(JSON.stringify({liveRpcRendered:true,facturados,odometro,percentage:expected,closedDays:valid.length,screenshot:path.join(out,'live-rpc.png')}));await actual.close();
