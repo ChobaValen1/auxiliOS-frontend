@@ -58,6 +58,20 @@ test('smooth curves and cursor share bounded geometry and never bridge missing v
  const p=model.curvePath(rows,'facturados',i=>i*30,v=>v);
  assert.match(p,/C/);assert.equal((p.match(/M/g)||[]).length,2);
 });
+test('percentage follows day/cumulative selection and returns to full-period ratio',()=>{
+ const row=(f,o,extra={})=>({facturados:f,odometro:o,cierres_faltantes:0,servicios_sin_km:0,jornadas:1,...extra});
+ const data={filtrado:false,actual:{filas:[row(50,100),row(150,100)],facturados:200,odometro:200,cierres_faltantes:0,servicios_sin_km:0,remitos_sin_servicio:0}};
+ assert.equal(model.selectionRatio(data,null,false),100);
+ assert.equal(model.selectionRatio(data,0,false),50);
+ assert.equal(model.selectionRatio(data,1,false),150);
+ assert.equal(model.selectionRatio(data,1,true),100);
+ assert.equal(model.selectionRatio({...data,filtrado:true},1,false),null);
+ data.actual.filas[0]=row(50,null,{cierres_faltantes:1});
+ assert.equal(model.selectionRatio(data,0,false),null);
+ assert.equal(model.selectionRatio(data,1,true),null);
+ assert.equal(model.selectionRatio(data,1,false),150);
+ data.actual.filas[1]=row(150,100,{remitos_sin_servicio:1});assert.equal(model.selectionRatio(data,1,false),null);
+});
 test('public API requires login and permitted role; bounded ranges; no write statements',async()=>{
  assert.equal((await db.query("select to_regprocedure('public.current_auxilios_role()') absent")).rows[0].absent,null);
  await assert.rejects(db.query('select public.dashboard_efficiency_v1()'),/No autorizado/);

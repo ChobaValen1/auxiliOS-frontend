@@ -1,4 +1,13 @@
-# Eficiencia operativa · v567
+# Eficiencia operativa · v568
+
+Compact revision: side-by-side with revenue evolution above 900px, stacked below;
+196px plot on wide containers / 180px on narrow. Third summary metric now explicitly
+shows facturados / recorridos as a percentage (not capped at 100%). Idle = full-period
+ratio; scrubbing = same selected day or cumulative-to-date as the two km values.
+Missing/filtered/unlinked evidence still suppresses the calculation, rendering —%
+and a visible non-comparable-data explanation rather than a fabricated 0%.
+No database changes. React continues owning a single lazy island and SVG; spring,
+touch, keyboard, reduced-motion and data-gap geometry remain unchanged.
 
 ## Image-led interaction revision
 

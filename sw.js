@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v567-mapa-nativo';
+const CACHE_NAME='auxilios-v568-mapa-nativo';
 const PRECACHE_ASSETS=[
   '/ui/completed-journey-services-v1.js',
   '/ui/efficiency-loader-v1.js','/ui/motion/efficiency-v1.js','/ui/motion/efficiency-v1.css',

@@ -14,11 +14,13 @@ const server=http.createServer((req,res)=>{
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({channel:'msedge',headless:true});
  try{
- for(const width of [1440,390,320]){
+ for(const width of [1440,768,390,320]){
   const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:'reduce',hasTouch:width<600});const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('.ax-eff-plot').waitFor();
   assert.equal(await page.locator('.ax-eff-switch [aria-pressed=true]').innerText(),'Diario');
   assert.ok(await page.locator('.ax-eff-billed').count());assert.ok(await page.locator('.ax-eff-odo').count());
+  assert.match(await page.locator('[data-metric=porcentaje]').innerText(),/%/);
+  assert.ok(await page.locator('.ax-eff-plot').evaluate(e=>e.getBoundingClientRect().height)<=196);
   await page.getByRole('button',{name:'Diario',exact:true}).click();assert.equal(await page.locator('.ax-eff-switch [aria-pressed=true]').innerText(),'Diario');
   await page.locator('.ax-eff-plot').focus();await page.keyboard.press('Home');assert.match(await page.locator('.ax-eff-inspect').innerText(),/1 oct/);await page.keyboard.press('ArrowRight');assert.match(await page.locator('.ax-eff-inspect').innerText(),/2 oct/);
   const box=await page.locator('.ax-eff-plot').boundingBox();
@@ -27,6 +29,7 @@ const server=http.createServer((req,res)=>{
   await page.mouse.move(box.x+box.width-16,box.y+100,{steps:12});
   assert.match(await page.locator('.ax-eff-inspect').innerText(),/22 oct/);
   assert.equal(await page.locator('[data-metric=facturados]').innerText(),rows[21].facturados+'km');
+  assert.equal(await page.locator('[data-metric=porcentaje]').innerText(),new Intl.NumberFormat('es-AR',{maximumFractionDigits:1}).format(rows[21].facturados/rows[21].odometro*100)+'%');
   assert.equal(await page.locator('.ax-eff-glow').count(),2);
   await page.mouse.move(box.x+box.width*.54,box.y+100,{steps:6});
   await page.screenshot({path:path.join(out,`scrub-${width}.png`),fullPage:true});
@@ -45,8 +48,11 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(out,`desktop-${width}.png`),fullPage:true});
   await page.evaluate(()=>document.documentElement.dataset.theme='light');await page.screenshot({path:path.join(out,`light-${width}.png`),fullPage:true});
+  await page.evaluate(()=>AuxEfficiency.render(document.getElementById('chart'),{...fixture,actual:{...fixture.actual,facturados:192293.4,odometro:337522.8}}));
+  await page.waitForFunction(()=>document.querySelector('[data-metric=facturados]').textContent.includes('192.293'));
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.evaluate(()=>{fixture.actual.cierres_faltantes=1;fixture.actual.odometro=null;fixture.actual.filas[6].odometro=null;AuxEfficiency.render(document.getElementById('chart'),{...fixture});});
-  await page.getByRole('button',{name:/Datos incompletos/}).click();await page.locator('.ax-eff-quality-detail').waitFor();assert.equal(await page.locator('[data-metric=odometro]').innerText(),'—km');
+  await page.getByRole('button',{name:/Datos incompletos/}).click();await page.locator('.ax-eff-quality-detail').waitFor();assert.equal(await page.locator('[data-metric=odometro]').innerText(),'—km');assert.equal(await page.locator('[data-metric=porcentaje]').innerText(),'—%');
   await page.evaluate(()=>AuxEfficiency.render(document.getElementById('chart'),null,'Error de conexión. Reintentá desde Resumen.'));await page.getByRole('alert').waitFor();
   assert.deepEqual(errors,[]);await page.close();
  }
@@ -56,6 +62,6 @@ const server=http.createServer((req,res)=>{
  await motionPage.mouse.move(motionBox.x+20,motionBox.y+80);await motionPage.mouse.move(motionBox.x+motionBox.width-16,motionBox.y+80,{steps:6});
  await motionPage.waitForFunction(()=>{const dots=[...document.querySelectorAll('.ax-eff-dot')],line=document.querySelector('.ax-eff-cursor');return dots.length===2&&line&&dots.every(d=>Math.abs(Number(d.getAttribute('cx'))-Number(line.getAttribute('x1')))<.1)&&Math.abs(Number(line.getAttribute('x1'))-(document.querySelector('.ax-eff-plot').getBoundingClientRect().width-16))<.2;});
  await motionPage.close();
- console.log(JSON.stringify({passed:true,widths:[1440,390,320],modes:true,keyboard:true,touch:true,dialog:true,error:true,reducedMotion:true,springCursorAlignment:true,screenshots:out}));
+ console.log(JSON.stringify({passed:true,widths:[1440,768,390,320],modes:true,percentage:true,compact:true,keyboard:true,touch:true,dialog:true,error:true,reducedMotion:true,springCursorAlignment:true,screenshots:out}));
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

@@ -131,8 +131,8 @@
 /* Filas de dos tarjetas */
 #screen-dashboard .rsm-fila { display: grid; gap: 14px; }
 #screen-dashboard .rsm-fila-mapa { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
-#screen-dashboard .rsm-fila-evol { grid-template-columns: minmax(0, 1fr); }
-#screen-dashboard .rsm-efficiency-card { margin-bottom: 20px; }
+#screen-dashboard .rsm-fila-evol { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+#screen-dashboard .rsm-efficiency-card { margin-bottom: 0; padding: 14px 16px; }
 #screen-dashboard #rsm-eficiencia[data-loading="true"] { opacity: .6; pointer-events: none; }
 #screen-dashboard #rsm-eficiencia[data-loading="true"]::before { content: 'Actualizando kilometrajes…'; display: block; margin-bottom: 12px; font-size: 12px; }
 

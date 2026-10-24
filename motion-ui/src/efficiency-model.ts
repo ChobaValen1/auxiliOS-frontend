@@ -1,4 +1,4 @@
-export type Day = { dia: string; facturados: number | null; odometro: number | null; cierres_faltantes: number; servicios_sin_km: number; jornadas: number };
+export type Day = { dia: string; facturados: number | null; odometro: number | null; cierres_faltantes: number; servicios_sin_km: number; jornadas: number; remitos_sin_servicio?: number };
 export type Period = { filas: Day[]; facturados: number | null; odometro: number | null; cierres_faltantes: number; servicios_sin_km: number; jornadas: number; remitos_sin_servicio: number };
 export type EfficiencyData = { desde: string; hasta: string; hasta_solicitado: string; anterior_desde: string; anterior_hasta: string; actualizado: string; filtrado: boolean; cobertura_incompleta?: boolean; actual: Period | null; anterior: Period | null };
 export function reason(data: EfficiencyData, p: Period | null): string {
@@ -13,6 +13,15 @@ export function reason(data: EfficiencyData, p: Period | null): string {
 }
 export function ratio(data: EfficiencyData, p: Period | null): number | null {
   return reason(data,p) ? null : p!.facturados! / p!.odometro! * 100;
+}
+export function selectionRatio(data: EfficiencyData, index: number | null, cumulative: boolean): number | null {
+  if(index==null)return ratio(data,data.actual);
+  const rows=data.actual?.filas||[];
+  if(data.filtrado||index<0||index>=rows.length)return null;
+  const chosen=cumulative?rows.slice(0,index+1):[rows[index]];
+  if(chosen.some(r=>r.facturados==null||r.odometro==null||r.cierres_faltantes>0||r.servicios_sin_km>0||(r.remitos_sin_servicio||0)>0))return null;
+  const billed=chosen.reduce((s,r)=>s+r.facturados!,0),odo=chosen.reduce((s,r)=>s+r.odometro!,0);
+  return odo>0&&billed>=0?billed/odo*100:null;
 }
 export function series(rows: Day[], cumulative: boolean): Day[] {
   let f = 0, o = 0, gapF = false, gapO = false;

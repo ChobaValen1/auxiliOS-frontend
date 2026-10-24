@@ -8,3 +8,15 @@
 html[data-theme=light] .ax-eff{--ef-ink:#182338;--ef-muted:#53647a;--ef-amber:#a86200;--ef-blue:#526e92;--ef-line:rgba(28,47,73,.15)}
 @media(prefers-reduced-motion:reduce){.ax-eff-curve{transition:none}}
 .ax-eff-plot text{font-family:inherit;font-size:10px}
+/* Compact layout: two kilometre totals and an explicit percentage, same data scope. */
+.ax-eff-total{min-width:0}.ax-eff-total.is-long strong{font-size:22px}
+.ax-eff-summary{grid-template-columns:1fr 1fr .9fr;gap:12px;margin:16px 0 8px;align-items:start}
+.ax-eff-total strong,.ax-eff-percent strong{font-size:28px;letter-spacing:-1px;line-height:1.3;margin-top:7px}
+.ax-eff-percent>span{display:block;color:var(--ef-muted);font-size:11px;line-height:1.7}
+.ax-eff-percent strong{display:block;color:var(--ef-amber);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ax-eff-percent em{font-size:14px;font-style:normal;letter-spacing:0;margin-left:3px}
+.ax-eff-percent small{display:block;color:var(--ef-muted);font-size:9px;line-height:1.5;margin-top:3px}
+.ax-eff-context{min-height:24px;font-size:10px}.ax-eff-controls{margin-top:8px}.ax-eff-foot{margin-top:10px;padding-top:8px;font-size:9px}.ax-eff h3{font-size:15px}.ax-eff-eyebrow{margin-top:3px;font-size:10px}.ax-eff-plot{outline:none}
+@media(max-width:600px){.ax-eff-summary{gap:8px;margin:12px 0 8px}.ax-eff-total strong,.ax-eff-percent strong{font-size:23px}.ax-eff-total>span,.ax-eff-percent>span{font-size:9px}.ax-eff-percent>span{min-height:29px;line-height:1.5}.ax-eff-percent em{font-size:12px}.ax-eff-total strong em{font-size:9px;margin-left:3px}.ax-eff-context{min-height:24px;flex-direction:row}.ax-eff-percent small{font-size:8px}.ax-eff-total small{font-size:8px}.ax-eff-foot{gap:4px}}
+@media(max-width:600px){.ax-eff-total.is-long strong{font-size:16px}}
+@media(max-width:360px){.ax-eff-total.is-long strong{font-size:14px}.ax-eff-total strong{font-size:21px}}
