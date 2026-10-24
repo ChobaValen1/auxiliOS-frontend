@@ -28,6 +28,8 @@ function RegisterAction({expanded,onOpen}:{expanded:boolean;onOpen:()=>void}){
    const update=()=>{frame=0;const visible=!!screen?.classList.contains("active")&&!!main?.getClientRects().length;
      const box=nav?.getClientRects().length?nav.getBoundingClientRect():null;
      const bottom=box&&box.top>window.innerHeight/2?Math.max(24,window.innerHeight-box.top+12):window.innerWidth<768?88:24;
+     const overview=main?.querySelector<HTMLElement>(".dtr");
+     if(visible&&overview){const limit=box&&box.top>window.innerHeight/2?box.top:window.innerHeight;overview.style.setProperty("--dtr-available-height",Math.max(0,limit-Math.max(0,overview.getBoundingClientRect().top)-12)+"px")}
      setPosition(previous=>previous.visible===visible&&previous.bottom===bottom?previous:{visible,bottom});
    };
    const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};

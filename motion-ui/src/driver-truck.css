@@ -38,4 +38,16 @@
 @media(hover:hover){.dtr-card:hover,.dtr-reports-link:hover{border-color:var(--ax-border-strong)}.dtr-card-actions button:hover,.dtr-quick>button:not(.dtr-primary):hover{background:var(--ax-surface-3)}}
 @media(min-width:850px){.dtr{max-width:1000px;grid-template-columns:1fr 1fr;align-items:start}.dtr-heading,.dtr-section-title,.dtr-cards,.dtr-reports-link,.dtr-report-action{grid-column:1/-1}.dtr-hero{grid-column:1/-1;grid-template-columns:34px minmax(0,1fr) minmax(200px,1fr);align-items:center}.dtr-hero-top{grid-column:1/-1}.dtr-odometer{grid-column:auto;border:0;border-left:1px solid var(--ax-border);padding:4px 6px 4px 20px;flex-direction:column;align-items:flex-end;gap:4px}.dtr-cards{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}.dtr-card{display:flex;flex-direction:column}.dtr-card-open{flex:1}.dtr-card-heading{align-items:flex-start}.dtr-card-actions{margin-top:auto}}
 @media(max-width:360px){.dtr-card-open{gap:8px;padding:10px 10px 6px}.dtr-card-copy strong{font-size:12px}.dtr-heading-actions{gap:6px}.dtr-heading-actions .dtr-add{padding:0 10px}}
+/* Grow the unit status, not the identity card or the gaps. Content can still overflow vertically. */
+@media(max-width:849px){
+ .dtr{min-height:var(--dtr-available-height,0px);box-sizing:border-box;grid-template-rows:auto auto auto minmax(min-content,1fr) auto auto;align-content:stretch}
+ .dtr-cards{grid-auto-rows:1fr;align-items:stretch}
+ .dtr-card{display:flex}
+ .dtr-card-open{flex:1;min-height:76px;padding:14px}
+ .dtr-card-copy{gap:6px}
+ .dtr-card-copy strong{font-size:14px}
+ .dtr-card-copy>span:not(.dtr-progress){font-size:12px}
+ .dtr-card-copy small{font-size:11px}
+ .dtr-status{font-size:10px}
+}
 @media(prefers-reduced-motion:reduce){.dtr *,.dtr-dialog *{transition:none!important}}
