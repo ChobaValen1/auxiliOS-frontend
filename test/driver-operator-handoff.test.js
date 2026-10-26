@@ -61,7 +61,7 @@ test('nuevo remito limpia confirmaciones Maps, distancia y resultados tardíos d
 });
 
 function wizardContext(rpc=async()=>({data:{},error:null})){
-  return moduleContext('operator-service-wizard.js','fresh,fillFromIntake,fillFromContext,loadCommercial,createPayload,editPayload,selectCompany,selectPrimary,changeBase,requiredErrors,locked,setVal',{
+  return moduleContext('operator-service-wizard.js','fresh,fillFromIntake,fillFromContext,loadCommercial,createPayload,editPayload,selectCompany,selectPrimary,changeBase,requiredErrors,locked,setVal,administrativeCommercialPayload',{
     _db:{rpc},window:{addEventListener(){},OperatorServices:{S:{moduleConfig:{field_modes:{}},drivers:[],trucks:[]},num:v=>Number(v)||0,canManage:()=>true,canRead:()=>true,loadServices:async()=>{}}}
   });
 }
@@ -88,6 +88,35 @@ test('intake preloads all signed fields and keeps reported charges apart through
   for(const key of ['service_order_number','origin','destination','origin_place_id'])assert.equal(api.locked(key),false,key);
   api.setVal('customer_document','20333444555');assert.equal(w.data.customer_document,'20333444555');
   assert.equal(api.locked('company_id'),false);assert.equal(api.locked('billing_base_id'),false);
+});
+
+test('el ingreso sin asignar permite crear, modificar y quitar cargos conservando el informe firmado',()=>{
+  const {api,window}=wizardContext(),o=window.OperatorServices;
+  const w=o.S.wizard=api.fresh();
+  api.fillFromIntake(w,{intake_id:'intake',remito:{status:'firmado'},service:{},addons:{
+    toll_coverage_mode:'customer_roundtrip',
+    tolls:[{toll_report_id:'original',toll_name:'Manual',quantity:1,unit_amount:500,payer_agent:'customer'}],
+    excesses:[{excess_report_id:'original-excess',concept_id:'wait',quantity:1,unit_amount:200,payer_agent:'customer'}]
+  }});
+  const original=JSON.stringify(w.reportedAddons);
+  assert.equal(w.data.commercial_addons.tolls[0].manual,true);
+  assert.equal(w.data.commercial_addons.excess_charges[0].collector_agent,'company');
+  o.updateCommercialToll(0,'unit_amount',750);
+  o.addCommercialToll(); // También debe permitir un peaje manual sin catálogo.
+  o.updateCommercialToll(1,'toll_id','__manual__');
+  o.updateCommercialToll(1,'unit_amount',300);
+  o.removeCommercialToll(0);
+  o.removeCommercialExcess(0);
+  o.addCommercialExcess();
+  o.updateCommercialExcess(0,'unit_amount',400);
+  o.updateCommercialExcess(0,'collector_agent','provider');
+  const payload=api.administrativeCommercialPayload();
+  assert.equal(payload.tolls.length,1);
+  assert.equal(payload.tolls[0].unit_amount,300);
+  assert.equal(payload.excess_charges.length,1);
+  assert.equal(payload.excess_charges[0].unit_amount,400);
+  assert.equal(payload.excess_charges[0].payer_agent,'provider');
+  assert.equal(JSON.stringify(w.reportedAddons),original);
 });
 
 test('service details read current remito and charges without consulting a stale desk row',async()=>{
