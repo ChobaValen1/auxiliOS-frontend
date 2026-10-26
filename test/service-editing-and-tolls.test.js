@@ -58,7 +58,7 @@ test('peaje toma tarifa vigente; Manual / Varios lleva importe a mano; cantidad 
 });
 
 test('excedentes usan Concepto Cant Importe Cobrador Medio Pago y Prestadora implica N/A',()=>{
- for(const label of ['Concepto','Cant.','Importe','Cobrador','Medio Pago'])assert.match(commercial,new RegExp(label.replace('.','\\.')));
+ for(const label of ['Concepto','Cantidad','Importe','Quién cobra','Cobro al cliente'])assert.match(commercial,new RegExp(label.replace('.','\\.')));
  assert.match(commercial,/Empresa \(Nosotros\)/);
  assert.match(commercial,/function excessPaymentControl/);
  assert.match(commercial,/row\.collector_agent==='provider'/);

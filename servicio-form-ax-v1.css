@@ -640,3 +640,14 @@
   #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > .osca-remove { grid-column: 4; }
   #modal-operador-wizard .osv4-reactive .osca-matrix.tolls.v2 .osca-matrix-row > .osca-cell-method { grid-column: 1 / -1; grid-row: 3; }
 }
+
+/* Formulario de adicionales: etiquetas legibles, sin columnas heredadas. */
+#modal-operador-wizard .osv4-reactive .osv4-concept-row>.osv4-qty-cell{grid-template-columns:minmax(0,1fr);align-items:start}
+#modal-operador-wizard .osv4-reactive .osv4-concept-row :is(input,select){height:36px!important}
+#modal-operador-wizard .osv4-reactive .osv4-code-cell label>span{padding:0;border:0;background:transparent;font-family:var(--ax-font);line-height:1.4;overflow:visible}
+#modal-operador-wizard .osv4-reactive .osv4-concept-row>button,#modal-operador-wizard .osv4-reactive .osca-excess-card .osca-remove{width:32px;height:36px}
+#modal-operador-wizard .osv4-reactive .osv4-concept-row .osv4-qty-cell small{white-space:normal}
+@media(max-width:600px){
+ #modal-operador-wizard .osv4-reactive .osv4-concept-row :is(input,select),#modal-operador-wizard .osv4-reactive .osca-excess-card :is(input,select){height:44px!important}
+ #modal-operador-wizard .osv4-reactive .osv4-concept-row>button,#modal-operador-wizard .osv4-reactive .osca-excess-card .osca-remove{width:32px;height:44px}
+}

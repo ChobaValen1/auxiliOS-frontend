@@ -10,9 +10,9 @@ const migration = read('migrations/20261014100000_operator_excess_fixed_concepts
 test('excedentes del operador: lista fija en este orden, con Otro de nombre libre', () => {
   const names = [...wizard.match(/const EXCESS_CONCEPTS=\[(.*?)\];/)[1].matchAll(/'([^']+)'\]/g)].map(m => m[1]);
   assert.deepEqual(names, ['Kms excedentes', 'Extracción', 'Hora Trabajo', 'Hora Espera', 'Viajero', 'Otro…']);
-  assert.match(addons, /function conceptOptions\(value,name=''\)\{const list=excessList\(\)/);
+  assert.match(addons, /O\(\)\?\.excessConcepts\?\.\(\)/);
   assert.match(addons, /placeholder="¿Qué es\?"/);
-  assert.match(wizard, /Escribí qué es el excedente "Otro"/);
+  assert.match(wizard, /Describí el excedente/);
   assert.match(wizard, /concept_name:String\(r\.concept_name\|\|''\)\.trim\(\)\|\|null/);
 });
 

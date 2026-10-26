@@ -67,7 +67,7 @@ function wizardContext(rpc=async()=>({data:{},error:null})){
 }
 
 test('intake preloads all signed fields and keeps reported charges apart through provider/base/type changes',async()=>{
-  const {api,window}=wizardContext(async name=>({data:name==='get_operator_service_context_v1'?{bases:[{base_id:'base'}],services:[{concept_id:'type',name:'Remolque',category:'primary',available:true,has_price:true}]}:[],error:null}));
+  const {api,window}=wizardContext(async name=>({data:name==='get_operator_service_form_context_v2'?{bases:[{base_id:'base'}],services:[{concept_id:'type',name:'Remolque',category:'primary',available:true,has_price:true}]}:[],error:null}));
   const w=window.OperatorServices.S.wizard=api.fresh();
   api.fillFromIntake(w,{intake_id:'intake',status:'pending_admin',document_status:'submitted',
     service:{service_order_number:'EXT-008',customer_name:'Socio',customer_document:'20111222333',customer_phone:'1155554444',

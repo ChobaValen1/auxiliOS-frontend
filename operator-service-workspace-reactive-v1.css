@@ -286,3 +286,19 @@
 .osv4-reactive .osv2-location.destination[hidden]{display:none!important}
 .osv4-single-address-note{display:block;margin-top:5px;padding:5px 8px;border-radius:6px;background:rgba(74,144,226,.1);color:#9cc3f5;font-size:8px;line-height:1.35}
 .osv4-single-address-note[hidden]{display:none}
+
+/* Servicios adicionales: el código propio queda junto al concepto que lo exige. */
+.osv4-reactive .osv2-concepts-head{align-items:flex-start;gap:12px;flex-wrap:wrap}
+.osv4-reactive .osv2-concepts-head small{font-size:11px;line-height:1.45}
+.osv4-reactive .osv2-add-concept-trigger{min-height:36px!important;font-size:11px!important;padding:0 10px!important}
+.osv4-reactive .osv4-concept-table{gap:10px;margin-top:10px}
+.osv4-reactive .osv4-concept-row{position:relative;grid-template-columns:minmax(0,1fr) 100px 32px;gap:10px;padding:12px;align-items:start}
+.osv4-reactive .osv4-concept-row>label,.osv4-reactive .osv4-code-cell label{display:grid;gap:6px;min-width:0}
+.osv4-reactive .osv4-concept-row label>span{font-size:11px;color:var(--ax-text-2,var(--osv2-muted2));font-weight:600}
+.osv4-reactive .osv4-concept-row :is(input,select){height:36px!important;font-size:12px!important}
+.osv4-reactive .osv4-concept-row>button{grid-column:3;grid-row:1;width:32px;height:36px}
+.osv4-reactive .osv4-code-cell{grid-column:1/-1;white-space:normal;overflow:visible}
+.osv4-reactive .osv4-code-cell small,.osv4-reactive .osv4-qty-cell small{display:block;margin-top:4px;font-size:11px;line-height:1.4;color:var(--ax-text-3,var(--osv2-muted2))}
+.osv4-reactive .osv4-code-cell .is-error{color:var(--ax-danger,#ed8883)}
+.osv4-reactive .osv4-code-cell input[aria-invalid=true]{border-color:var(--ax-danger,#ed8883)!important}
+@media(max-width:600px){.osv4-reactive .osv4-concept-row{grid-template-columns:minmax(0,1fr) 84px 32px}.osv4-reactive .osv4-concept-row :is(input,select),.osv4-reactive .osv4-concept-row>button{height:44px!important}.osv4-reactive .osv2-add-concept-trigger{min-height:44px!important}}
