@@ -212,3 +212,24 @@
 .osca-excess-card .ax-select-box{min-width:0;width:100%}
 .osca-excess-card .ax-select-btn{font-size:11px!important;min-width:0;overflow:hidden}
 .osca-excess-card .osca-excess-help{font-size:10px;line-height:1.35}
+
+/* Compact excess rows, matching the toll controls. Payment stays in Cobro al cliente. */
+.osca-excess-editor,.osca-excess-list{gap:5px}
+.osca-excess-card{grid-template-columns:minmax(0,1fr) 22px;gap:4px;padding:6px;border-radius:7px}
+.osca-excess-card .osca-excess-grid{grid-column:1;grid-row:1;gap:5px 8px}
+.osca-excess-card .osca-excess-field{gap:2px}
+.osca-excess-card .osca-excess-field>span{font-size:9px}
+.osca-excess-card :is(input,select),.osca-excess-card .ax-select-btn{height:28px!important;min-height:28px!important;padding-top:2px;padding-bottom:2px;font-size:10px!important}
+.osca-excess-card>.osca-remove{grid-column:2;grid-row:1;align-self:start;margin-top:14px;width:22px;height:28px;min-height:28px!important}
+.osca-excess-card>.osca-excess-field{grid-column:1/-1}
+.osca-excess-card>footer{grid-column:1/-1;gap:6px;justify-content:flex-end;padding:0;border:0;min-height:18px}
+.osca-excess-card>footer small{font-size:9px}.osca-excess-card>footer b{font-size:11px}
+.osca-excess-stepper{display:grid;grid-template-columns:24px minmax(0,1fr) 24px;min-width:0;height:28px}
+.osca-excess-stepper input{text-align:center;width:100%;padding:0!important;border:0!important;background:transparent!important;appearance:textfield;-moz-appearance:textfield}
+.osca-excess-stepper input::-webkit-inner-spin-button,.osca-excess-stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.osca-excess-stepper button{width:24px!important;height:26px!important;min-height:26px!important;padding:0!important}
+.osca-excess-commission{margin-right:auto;font-size:9px;color:var(--osv2-muted2)}.osca-excess-commission summary{cursor:pointer}.osca-excess-commission .osca-commission-note{padding:4px 0;font-size:10px!important;border:0}
+@media(max-width:600px){.osca-excess-card :is(input,select),.osca-excess-card .ax-select-btn{height:32px!important;min-height:32px!important}.osca-excess-stepper{height:32px}.osca-excess-stepper button{height:30px!important;min-height:30px!important}}
+.osca-excess-card>.osca-remove{min-width:0!important;padding:0!important;box-sizing:border-box}
+.osca-excess-stepper{align-items:center}.osca-excess-stepper button{display:grid;place-items:center;line-height:1;min-width:0!important}
+#modal-operador-wizard .osca-excess-card>.osca-remove{position:static!important;width:22px!important;min-width:0!important;max-width:22px!important;margin:14px 0 0!important;transform:none!important}
