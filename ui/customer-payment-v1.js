@@ -30,7 +30,7 @@ function component({React,html}){
     </div>`;
   }
   function CustomerPayment(props){
-    const {total=0,breakdown=[],value={},onChange,allowToDefine=false,allowNotCollected=false,compact=false,title='Cobro al cliente',question='',disabled=false,showErrors=false,hint=''}=props;
+    const {total=0,breakdown=[],value={},onChange,allowToDefine=false,allowNotCollected=false,compact=false,pendingTotal=false,title='Cobro al cliente',question='',disabled=false,showErrors=false,hint=''}=props;
     const v={primary:value.primary||'',secondary:value.secondary||'',secondary_amount:value.secondary_amount??''};
     const two=!!v.secondary;
     const [text,setText]=useState(v.secondary_amount===''||v.secondary_amount==null?'':String(v.secondary_amount).replace('.',','));
@@ -49,7 +49,7 @@ function component({React,html}){
     function toggleTwo(){if(!canSplit||disabled)return;if(two){setText('');emit({secondary:'',secondary_amount:''});return;}const first=secondaryOptions[0]?.[0]||'';emit({secondary:first,secondary_amount:''});requestAnimationFrame(()=>document.getElementById(uid+'-amount')?.focus({preventScroll:true}));}
     function onAmount(e){const t=e.target.value;setText(t);const n=parseAmount(t);emit({secondary_amount:Number.isFinite(n)?n:''});}
     const pct=total>0?Math.min(100,Math.max(0,secondaryAmount/total*100)):0;
-    if(!(total>0))return html`<section className=${'axcp is-empty'+(compact?' is-compact':'')} aria-label=${title}><header className="axcp-head"><div><span className="axcp-kicker">${title}</span><b className="axcp-amount">${money(0)}</b></div></header><p className="axcp-empty">No hay peajes ni excedentes a cargo del cliente.</p></section>`;
+    if(!(total>0)&&!pendingTotal)return html`<section className=${'axcp is-empty'+(compact?' is-compact':'')} aria-label=${title}><header className="axcp-head"><div><span className="axcp-kicker">${title}</span><b className="axcp-amount">${money(0)}</b></div></header><p className="axcp-empty">No hay peajes ni excedentes a cargo del cliente.</p></section>`;
     return html`<section className=${'axcp'+(compact?' is-compact':'')+(disabled?' is-disabled':'')} aria-labelledby=${uid+'-title'}>
       <header className="axcp-head">
         <div><span className="axcp-kicker" id=${uid+'-title'}>${title}</span><${Amount} value=${total} className="axcp-total"/></div>
