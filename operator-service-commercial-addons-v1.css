@@ -201,3 +201,8 @@
 .osca-excess-editor>.osca-add-row{width:100%;min-height:38px;font-size:12px}
 @media(max-width:600px){.osca-excess-card{padding:12px}.osca-excess-card :is(input,select),.osca-excess-card .osca-remove{min-height:44px!important}.osca-excess-editor>.osca-add-row{min-height:44px}}
 .osca-commission-note{display:block;font-size:11px!important;line-height:1.5;color:var(--ax-text-2,var(--osv2-muted2));padding:8px 0;border-top:1px solid var(--ax-border,var(--osv2-border))}
+.osca-excess-card>header>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
+.osca-excess-card>header small{font-size:10px;color:var(--ax-text-3,var(--osv2-muted2))}
+.osca-catalog-help{padding:10px 12px;border:1px solid var(--ax-border,var(--osv2-border));border-radius:8px;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.osca-catalog-help summary{cursor:pointer;font-weight:600;color:var(--ax-text-2,var(--osv2-text))}
+.osca-catalog-help p{margin:8px 0 0}

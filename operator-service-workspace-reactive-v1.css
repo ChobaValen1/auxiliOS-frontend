@@ -302,3 +302,7 @@
 .osv4-reactive .osv4-code-cell .is-error{color:var(--ax-danger,#ed8883)}
 .osv4-reactive .osv4-code-cell input[aria-invalid=true]{border-color:var(--ax-danger,#ed8883)!important}
 @media(max-width:600px){.osv4-reactive .osv4-concept-row{grid-template-columns:minmax(0,1fr) 84px 32px}.osv4-reactive .osv4-concept-row :is(input,select),.osv4-reactive .osv4-concept-row>button{height:44px!important}.osv4-reactive .osv2-add-concept-trigger{min-height:44px!important}}
+/* Catalog availability and provider-code guidance, using the existing form tokens. */
+.osv4-concept-guidance{padding:10px 12px;margin:0 0 10px;border:1px solid var(--osv2-border);border-radius:8px;background:var(--osv2-card);color:var(--osv2-muted2);font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.osv4-concept-guidance p{margin:0 0 6px}.osv4-concept-guidance p:last-child{margin-bottom:0}.osv4-concept-guidance summary{cursor:pointer;color:var(--osv2-text);font-weight:600}.osv4-concept-guidance details[open] summary{margin-bottom:8px}.osv4-concept-guidance ul{margin:8px 0 0;padding-left:18px}
+.osv4-concept-guidance[hidden]{display:none}
