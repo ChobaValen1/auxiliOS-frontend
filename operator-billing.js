@@ -726,9 +726,9 @@
     const bounds = window.AuxFilters ? window.AuxFilters.periodBounds(S.periodSel) : periodBounds(S.period);
     try {
       const [services, tolls, privs, extras] = await Promise.all([
-        db().rpc('list_operator_billing_services_v3', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
+        db().rpc('list_operator_billing_services_v3_km_v1', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
         db().rpc('list_operator_billing_tolls_v2', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end }),
-        db().rpc('list_operator_billing_private_v1', { p_search: S.search || null, p_period_start: bounds.start, p_period_end: bounds.end }),
+        db().rpc('list_operator_billing_private_v1_km_v1', { p_search: S.search || null, p_period_start: bounds.start, p_period_end: bounds.end }),
         db().rpc('list_operator_billing_extras_v1', { p_search: S.search || null, p_company_id: S.company || null, p_period_start: bounds.start, p_period_end: bounds.end })
       ]);
       if (services.error) throw services.error;
@@ -766,7 +766,7 @@
     S.rowAction = null;
     render();
     try {
-      const { data, error } = await db().rpc('get_operator_billing_service_detail_v4', { p_service_id: id });
+      const { data, error } = await db().rpc('get_operator_billing_service_detail_v4_km_v1', { p_service_id: id });
       if (error) throw error;
       S.detail = data;
     } catch (error) {
@@ -874,7 +874,7 @@
     S.invoiceBusy = true;
     render();
     try {
-      const { data, error } = await db().rpc('create_operator_invoice_v4', {
+      const { data, error } = await db().rpc('create_operator_invoice_v4_km_v1', {
         p_service_ids: serviceIds,
         p_service_toll_ids: tollIds,
         p_document_type: form.document_type,

@@ -32,7 +32,7 @@ test('ingreso activado permite editar, agregar cargos y enviarlos completos al c
  O.setCommercialCoverage('customer_roundtrip');O.addCommercialToll();O.updateCommercialToll(0,'toll_id','t1');O.updateCommercialToll(0,'customer_payment_method','cash');
  O.addCommercialExcess();for(const [k,v] of Object.entries({concept_id:'extra',quantity:1,unit_amount:2500,collector_agent:'company',customer_payment_method:'transfer'}))O.updateCommercialExcess(0,k,v);
  O.setCustomerPayment({primary:'cash'});w.activationKind='movement';w.data.estimated_asphalt_km=12;w.data.estimated_gravel_km=0;w.quote={};await window.guardarServicioWorkspace();
- const saved=calls.find(x=>x.name==='create_finalize_activated_intake_v1');assert.ok(saved,'Se invoca el cierre con los cargos');
+ const saved=calls.find(x=>x.name==='create_finalize_activated_intake_v1_km_v1');assert.ok(saved,'Se invoca el cierre con los cargos');
  assert.equal(saved.args.p_payload.commercial_addons.tolls.length,1);assert.equal(saved.args.p_payload.commercial_addons.excess_charges[0].unit_amount,2500);assert.equal(saved.args.p_payload.administrative_commercial,undefined);
  assert.equal(JSON.stringify(saved.args.p_payload.commercial_addons.customer_payment),JSON.stringify({primary:'cash',secondary:null,secondary_amount:null}));assert.equal(saved.args.p_payload.commercial_addons.excess_charges[0].customer_payment_method,'cash');
  assert.equal(saved.args.p_billable,true);assert.equal(saved.args.p_payload.activation_kind,'movement');

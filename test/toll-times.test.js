@@ -79,7 +79,7 @@ test('finish dialog uses current time if unchanged and sends selected time in on
  const api=window.AuxiliosFinishTime,old='2020-01-01T12:00:00';
  assert.ok(Math.abs(api.read({querySelector:()=>({value:old,dataset:{defaultValue:old}})}).getTime()-Date.now())<1000);
  const selected=new Date(Date.now()-600000);await api.finalize(sid,selected,'transition',{});
- assert.equal(request.name,'finalize_operator_service_at_v1');assert.equal(request.args.p_finished_at,selected.toISOString());
+ assert.equal(request.name,'finalize_operator_service_at_v1_km_v1');assert.equal(request.args.p_finished_at,selected.toISOString());
 });
 test('a failure saving finish time rolls back the service close',async t=>{
  const db=await setup(t);

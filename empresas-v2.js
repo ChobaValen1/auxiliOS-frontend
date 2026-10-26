@@ -118,7 +118,7 @@
   async function fetchSummary(companyId){
     const [configResult,billingResult,priceResult,surchargeResult]=await Promise.all([
       _db.rpc('get_company_configuration_v2',{p_company_id:companyId}),
-      _db.rpc('get_company_billing_configuration',{p_company_id:companyId,p_scheduled_for:new Date().toISOString()}),
+      _db.rpc('get_company_billing_configuration_km_v1',{p_company_id:companyId,p_scheduled_for:new Date().toISOString()}),
       _db.rpc('get_company_service_prices_v1',{p_company_id:companyId}),
       _db.rpc('get_company_billing_surcharges_v1',{p_company_id:companyId}),
     ]);

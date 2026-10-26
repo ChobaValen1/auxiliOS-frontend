@@ -60,7 +60,7 @@
     if (!date || isNaN(date.getTime())) throw new Error('Indicá la hora de fin');
     var client = typeof _db !== 'undefined' ? _db : null;
     if (!client) throw new Error('La sesión no está disponible');
-    return client.rpc('finalize_operator_service_at_v1', {
+    return client.rpc('finalize_operator_service_at_v1_km_v1', {
       p_service_id: serviceId, p_finished_at: date.toISOString(),
       p_mode: mode, p_payload: payload || {}
     });

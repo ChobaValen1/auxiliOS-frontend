@@ -75,12 +75,13 @@
   function tabla(quote, opts) {
     var o = opts || {}, cur = o.currency || (quote && quote.currency) || 'ARS', d = filas(quote, o);
     if (!d.filas.length) return '<div class="bd-empty">Sin conceptos para desglosar.</div>';
+    var rounding = quote && quote.km_rounding_mode === 'nearest_integer' ? '<p class="bd-rounding-note">Kilómetros enteros · ' + esc(quote.billable_distance_km_before_rounding) + ' km facturables → ' + esc(quote.billable_distance_km) + ' km (' + (quote.km_rounding_scope === 'total' ? 'redondeo del total' : 'redondeo por tipo de kilómetro') + '). La distancia real se conserva.</p>' : '';
     var cuerpo = d.filas.map(function (f) {
       var cuenta = f.cantidad == null ? '' : cantidad(f.cantidad) + ' × ' + money(f.unitario, cur);
       return '<tr class="bd-' + f.tipo + '"><td class="bd-what"><b>' + esc(f.etiqueta) + '</b>' + (f.detalle ? '<small>' + esc(f.detalle) + '</small>' : '') + '</td>'
         + '<td class="bd-calc">' + esc(cuenta) + '</td><td class="bd-amount">' + (f.tipo === 'peaje-aparte' ? '<s>' : '') + esc(money(f.importe, cur)) + (f.tipo === 'peaje-aparte' ? '</s>' : '') + '</td></tr>';
     }).join('');
-    return '<div class="bd-wrap"><table class="bd-table"><thead><tr><th>Concepto</th><th>Cálculo</th><th>Importe</th></tr></thead><tbody>' + cuerpo + '</tbody>'
+    return rounding + '<div class="bd-wrap"><table class="bd-table"><thead><tr><th>Concepto</th><th>Cálculo</th><th>Importe</th></tr></thead><tbody>' + cuerpo + '</tbody>'
       + '<tfoot><tr><td colspan="2">' + esc(o.totalLabel || 'Total a facturar') + '</td><td class="bd-amount">' + esc(money(d.total, cur)) + '</td></tr></tfoot></table></div>';
   }
 
