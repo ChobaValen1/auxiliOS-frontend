@@ -59,7 +59,7 @@ test('la selección puede combinar servicios y peajes de una sola prestadora y m
 
 test('Crear factura usa V3 con servicios y peajes y no duplica el flujo V2 en la UI', () => {
   const create = functionBody(billing, 'createInvoice', 'confirmAdminAction');
-  assert.match(create, /create_operator_invoice_v3/);
+  assert.match(create, /create_operator_invoice_v4/);
   assert.match(create, /p_service_ids: serviceIds/);
   assert.match(create, /p_service_toll_ids: tollIds/);
   assert.match(create, /p_document_type: form\.document_type/);

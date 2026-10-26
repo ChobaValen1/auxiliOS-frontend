@@ -49,3 +49,7 @@ test('kilometros usa la cotización y, si falta, lo estimado del servicio', () =
   assert.equal(k.asfalto, 5);
   assert.equal(k.radio, null);
 });
+
+test('desglose muestra las prestaciones con sus códigos completos sin modificar montos',()=>{const q={current_company_amount:35000,components:[{role:'movement',service_name:'Liviano',instance_code:'20261026301223',subtotal:30000},{role:'secondary',service_name:'Extracción',instance_code:'20261026301224',subtotal:5000}]};const html=BD.tabla(q);assert.match(html,/20261026301223/);assert.match(html,/20261026301224/);assert.equal(BD.filas(q).total,35000);});
+
+test('Excel distingue número de asistencia y prestación en cada adicional',()=>{const fs=require('node:fs'),vm=require('node:vm'),ctx={window:{},document:{readyState:'loading',addEventListener(){}},Intl,console};vm.runInNewContext(fs.readFileSync('operator-billing-export.js','utf8'),ctx);const e=ctx.window.OperatorBillingExcel,row={service_order_number:'20261026301223',quote:{components:[{role:'secondary',concept_id:'extraction',service_name:'Extracción',instance_code:'20261026301224',quantity:1,subtotal:5000}]}};const lines=e.extrasSheetRows([row]);assert.equal(lines.length,1);assert.equal(e.extrasSheetColumns.find(c=>c.id==='order').value(lines[0]),'20261026301223');assert.equal(e.extrasSheetColumns.find(c=>c.id==='prestation').value(lines[0]),'20261026301224');assert.equal(e.inlineExtraColumns([row]).find(c=>c.id==='x_code_extraction').value(row),'20261026301224');});

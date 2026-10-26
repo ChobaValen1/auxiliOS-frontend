@@ -30,3 +30,15 @@
 ## Estado de publicación
 
 El usuario autorizó expresamente agregar las funciones nuevas de consulta en la base compartida. La migración se aplicó sin modificar las funciones v2 ni los datos guardados. La interfaz usa el contexto anterior como respaldo durante la actualización del catálogo de funciones. El cálculo v3 se activa únicamente en esta rama de pruebas; producción sigue usando las RPC v2.
+
+## Prestaciones con número independiente
+
+La asistencia tiene una prestación principal (por ejemplo Liviano, 20261026301223). Un servicio adicional como Extracción puede tener el número independiente 20261026301224. El número lo entrega la Prestadora: no se genera ni se deriva del principal.
+
+Configuración → Prestadoras → Servicios habilitados → Configurar servicios permite elegir «Tiene prestación propia». Al cargarlo desde «Agregar servicio adicional», se pide el número completo. Se valida que no esté vacío, que sea diferente del principal y que no se repita entre las prestaciones de la asistencia.
+
+La identidad se conserva en `operator_service_items.instance_code`: cada prestación tiene su concepto, cantidad, tarifa y código, vinculada a la misma asistencia. No se duplica el viaje, el móvil ni la asignación de chofer. Los excedentes cobrados al cliente conservan su circuito comercial.
+
+Las nuevas versiones de Facturación y Excel incorporan esos números al desglose. La nueva función de emisión copia los códigos en la cotización congelada de las líneas que acaba de crear, dentro de la misma transacción. No recalcula importes ni modifica facturas anteriores. Las funciones previas de producción permanecen intactas.
+
+Validación: `test/prestation-codes.test.js` cubre el ejemplo de dos códigos SOS, validaciones, exportación, emisión y congelación, permisos y compatibilidad de las funciones anteriores. `test/operator-addons-form-v3.test.js` verifica la carga y persistencia sin sufijos; `test/billing-breakdown.test.js` verifica el desglose y las columnas de Excel.

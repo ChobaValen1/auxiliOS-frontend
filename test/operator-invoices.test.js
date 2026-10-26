@@ -16,7 +16,7 @@ test('Facturación expone una sola cola y una única acción directa FACTURAR',(
   assert.doesNotMatch(billing,/approve-selection|openApproval|approveSelection|review_operator_billing_services_bulk_v2/);
   assert.match(billing,/data-ob="invoice-selection"/);
   assert.match(billing,/Facturando…'\s*:\s*'Facturar'/);
-  assert.match(billing,/create_operator_invoice_v3/);
+  assert.match(billing,/create_operator_invoice_v4/);
   assert.match(billing,/p_service_ids:\s*serviceIds/);
   assert.match(billing,/p_service_toll_ids:\s*tollIds/);
   assert.doesNotMatch(billing,/create_operator_invoice_v1|create_operator_invoice_v2/);

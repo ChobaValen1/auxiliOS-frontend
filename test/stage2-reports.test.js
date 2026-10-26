@@ -98,9 +98,9 @@ test('Excel: adicionales en hoja aparte (una fila por concepto) o integrados (ca
   assert.equal(E.extrasSheetColumns.find(c=>c.id==='concept').value(sheet[1]),'Uso de Carros');
   assert.equal(E.extrasSheetColumns.find(c=>c.id==='unit').value(sheet[0]),'Servicio');
   const cols=E.withInlineExtras(E.serviceColumns.filter(c=>['order','extras_total','total_price'].includes(c.id)),rows);
-  assert.deepEqual(plain(cols.map(c=>c.header)),['N° Orden','Adicionales $','Extracción · Cant.','Extracción · $','Uso de Carros · Cant.','Uso de Carros · $','Precio Total (sin peajes)']);
-  assert.equal(cols[5].value(rows[0]),10000);
-  assert.equal(cols[5].value(rows[1]),'');
+  assert.deepEqual(plain(cols.map(c=>c.header)),['N° Orden','Adicionales $','Extracción · Prestación','Extracción · Cant.','Extracción · $','Uso de Carros · Prestación','Uso de Carros · Cant.','Uso de Carros · $','Precio Total (sin peajes)']);
+  assert.equal(cols.find(c=>c.id==='x_a_y').value(rows[0]),10000);
+  assert.equal(cols.find(c=>c.id==='x_a_y').value(rows[1]),'');
   assert.equal(E.serviceColumns.find(c=>c.id==='extras_total').value(rows[0]),30000);
 });
 

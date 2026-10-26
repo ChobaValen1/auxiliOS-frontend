@@ -34,7 +34,8 @@
       var u = UNIDADES[String(c.pricing_unit || '').toLowerCase()] || c.pricing_unit || '';
       out.push({
         tipo: 'concepto', etiqueta: c.service_name || c.role || 'Concepto',
-        detalle: [u, c.price_source].filter(Boolean).join(' · '),
+        codigo: c.instance_code || '',
+        detalle: [c.instance_code ? 'Prestación ' + c.instance_code : '', u, c.price_source].filter(Boolean).join(' · '),
         cantidad: c.quantity == null ? 1 : num(c.quantity), unitario: num(c.unit_price), importe: num(c.subtotal)
       });
     });

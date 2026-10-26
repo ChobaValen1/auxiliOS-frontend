@@ -766,7 +766,7 @@
     S.rowAction = null;
     render();
     try {
-      const { data, error } = await db().rpc('get_operator_billing_service_detail_v3', { p_service_id: id });
+      const { data, error } = await db().rpc('get_operator_billing_service_detail_v4', { p_service_id: id });
       if (error) throw error;
       S.detail = data;
     } catch (error) {
@@ -874,7 +874,7 @@
     S.invoiceBusy = true;
     render();
     try {
-      const { data, error } = await db().rpc('create_operator_invoice_v3', {
+      const { data, error } = await db().rpc('create_operator_invoice_v4', {
         p_service_ids: serviceIds,
         p_service_toll_ids: tollIds,
         p_document_type: form.document_type,

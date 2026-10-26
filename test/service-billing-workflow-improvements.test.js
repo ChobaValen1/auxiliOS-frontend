@@ -74,7 +74,7 @@ test('servicios pending y reviewed legados mantienen el guard canónico antes de
   assert.match(validateSelection, /\['pending', 'reviewed'\]\.includes\(row\.billing_status\)/);
   assert.match(openInvoice, /const error = validateSelection\(\)/);
   assert.match(createInvoice, /const selectionError = validateSelection\(\)/);
-  assert.match(createInvoice, /create_operator_invoice_v3/);
+  assert.match(createInvoice, /create_operator_invoice_v4/);
   assert.match(createInvoice, /p_service_ids: serviceIds/);
   assert.match(createInvoice, /p_service_toll_ids: tollIds/);
   assert.doesNotMatch(createInvoice, /create_operator_invoice_v1|create_operator_invoice_v2/);

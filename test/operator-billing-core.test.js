@@ -80,7 +80,7 @@ test('Facturar abre modal y crea directamente con V3 sin revisión masiva',()=>{
   assert.match(billing,/function openInvoice\(\)/);
   assert.match(billing,/function createInvoice\(\)/);
   assert.match(billing,/\['pending', 'reviewed'\]\.includes\(row\.billing_status\)/);
-  assert.match(billing,/create_operator_invoice_v3/);
+  assert.match(billing,/create_operator_invoice_v4/);
   assert.match(billing,/p_service_ids: serviceIds/);
   assert.match(billing,/p_service_toll_ids: tollIds/);
   assert.doesNotMatch(billing,/create_operator_invoice_v1|create_operator_invoice_v2/);
@@ -228,7 +228,7 @@ test('exportación usa dataset canónico para tarifas, asignación final, KM y c
   assert.match(exportMigration,/km_unit_price/);
   assert.match(exportMigration,/estimated_asphalt_km/);
   assert.match(exportMigration,/estimated_gravel_km/);
-  assert.match(billingExport,/get_operator_billing_export_rows_v1/);
+  assert.match(billingExport,/get_operator_billing_export_rows_v2/);
 });
 
 test('importe de KM por terreno conserva el subtotal canónico de distancia',()=>{

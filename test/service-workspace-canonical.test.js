@@ -74,7 +74,7 @@ test('configuración empresarial controla campos operativos y cualquier Oculto d
 
 test('Conceptos adicionales vuelve a columna 1 y se habilita después de Prestadora',()=>{
   const admin=workspace.split('<section class="osv2-column admin-column">')[1].split('<section class="osv2-column route-column">')[0];
-  assert.match(admin,/Conceptos adicionales/);
+  assert.match(admin,/Prestaciones adicionales/);
   assert.match(admin,/data-click="add-concept"/);
   assert.match(workspace,/add\.disabled=!w\.data\.company_id\|\|lockedState/);
   assert.match(workspace,/Elegí la Prestadora para ver sus servicios adicionales/);
