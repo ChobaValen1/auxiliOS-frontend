@@ -3905,7 +3905,7 @@ async function generarLiquidacionesMes(yyyymm) {
       const matrix = PayrollMatrix.normalize(s.compensation_matrix);
       let sources = {invoices:[],extras:[]};
       if(matrix.km_basis==='billed'||matrix.commissions.length){
-        const response=await _db.rpc('get_payroll_matrix_sources_v2',{p_driver:driverId,p_from:desde,p_until:hastaExclusive});
+        const response=await _db.rpc('get_payroll_matrix_sources_v3',{p_driver:driverId,p_from:desde,p_until:hastaExclusive});
         if(response.error)throw response.error;
         sources=response.data;
       }
@@ -3974,7 +3974,7 @@ async function generarLiquidacionesMes(yyyymm) {
       proposed_total: null, adjustment_pending: null,
       bonus_monthly: matrixResult.bonus,
       commission_total: matrixResult.commission,
-      compensation_snapshot: {...matrixResult.snapshot,completed_services_v2:true},
+      compensation_snapshot: {...matrixResult.snapshot,completed_services_v2:true,operator_sales_v3:true},
       driver_id:        driverId,
       periodo_yyyymm:   yyyymm,
       jornadas:         jornadasCount,

@@ -285,7 +285,7 @@
   /* El estimado es aparte: si falla, el resto del resumen se ve igual. */
   async function leerEstimado(driverId, period, esChofer) {
     const online = async () => {
-      const { data, error } = await _db.rpc('get_driver_payroll_estimate_v2', { p_period: period, p_driver: driverId });
+      const { data, error } = await _db.rpc('get_driver_payroll_estimate_v3', { p_period: period, p_driver: driverId });
       if (error) throw error;
       return data;
     };

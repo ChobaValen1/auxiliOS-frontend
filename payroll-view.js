@@ -77,11 +77,11 @@
     const box=document.getElementById('pv-commission-check');
     try{
       const period=String(l.periodo_yyyymm),year=Number(period.slice(0,4)),month=Number(period.slice(4));
-      const r=await _db.rpc('get_payroll_matrix_sources_v2',{p_driver:l.driver_id,p_from:year+'-'+String(month).padStart(2,'0')+'-01',p_until:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10)});if(r.error)throw r.error;
+      const r=await _db.rpc('get_payroll_matrix_sources_v3',{p_driver:l.driver_id,p_from:year+'-'+String(month).padStart(2,'0')+'-01',p_until:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10)});if(r.error)throw r.error;
       const result=PayrollMatrix.calculate(matrix,r.data,num(l.km_total));
       const ids=details=>details.flatMap(d=>(d.records||[]).map(id=>d.source+':'+id)).sort().join('|');
       if(token!==request)return;
-      if(Math.abs(result.commission-num(l.commission_total))>.01||ids(result.snapshot.commission_details)!==ids(matrix.commission_details||[]))box.innerHTML='<p class="pv-review-warning">Ventas modificadas: revisar comisiones. Guardado '+cash(l.commission_total)+' · cálculo actual '+cash(result.commission)+'.</p>';
+      if(Math.abs(result.commission-num(l.commission_total))>.01||(matrix.operator_sales_v3&&ids(result.snapshot.commission_details)!==ids(matrix.commission_details||[])))box.innerHTML='<p class="pv-review-warning">Ventas modificadas: revisar comisiones. Guardado '+cash(l.commission_total)+' · cálculo actual '+cash(result.commission)+'.</p>';
     }catch(e){if(token===request)box.innerHTML='<p class="pv-review-warning">No se pudo verificar si cambiaron las ventas. '+esc(e.message)+'</p>';}
   }
   async function paged(build){let out=[];for(let offset=0;;offset+=500){const r=await build().range(offset,offset+499);if(r.error)throw r.error;out.push(...(r.data||[]));if((r.data||[]).length<500)return out;}}
