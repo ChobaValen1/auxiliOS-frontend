@@ -203,6 +203,12 @@
 .osca-commission-note{display:block;font-size:11px!important;line-height:1.5;color:var(--ax-text-2,var(--osv2-muted2));padding:8px 0;border-top:1px solid var(--ax-border,var(--osv2-border))}
 .osca-excess-card>header>div{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere}
 .osca-excess-card>header small{font-size:10px;color:var(--ax-text-3,var(--osv2-muted2))}
-.osca-catalog-help{padding:10px 12px;border:1px solid var(--ax-border,var(--osv2-border));border-radius:8px;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
-.osca-catalog-help summary{cursor:pointer;font-weight:600;color:var(--ax-text-2,var(--osv2-text))}
-.osca-catalog-help p{margin:8px 0 0}
+
+
+.osca-excess-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.osca-excess-card{gap:10px;padding:10px}
+.osca-excess-card .osca-excess-field>span,.osca-excess-card>header b{font-size:10px}
+.osca-excess-card :is(input,select){font-size:11px!important}
+.osca-excess-card .ax-select-box{min-width:0;width:100%}
+.osca-excess-card .ax-select-btn{font-size:11px!important;min-width:0;overflow:hidden}
+.osca-excess-card .osca-excess-help{font-size:10px;line-height:1.35}
