@@ -2208,15 +2208,21 @@ async function cargarCatalogoPlanes() {
  */
 async function suscribirCamionAPlan(truckId, masterPlanId) {
   try {
-    const { error } = await _db.from('truck_subscriptions').insert({
+    // Quitar un plan lo deja inactivo. Reutilizar su asignación conserva el historial
+    // y evita que la restricción única bloquee volver a agregarlo.
+    const { error } = await _db.from('truck_subscriptions').upsert({
       truck_id: truckId,
       master_plan_id: masterPlanId,
       is_active: true
-    });
+    }, { onConflict: 'truck_id,master_plan_id' });
     if (error) {
       console.error('[Suscripción] Error:', error.message);
-      // Supabase lanzará error si viola la regla UNIQUE (ya está suscrito)
-      return { ok: false, isValidation: true, errorMsg: "El camión ya tiene asignado este plan o hubo un error de validación." };
+      const errorMsg = error.code === '42501'
+        ? 'No tenés permisos para asignar planes de service.'
+        : error.code === '23503'
+          ? 'El camión o el plan ya no está disponible. Actualizá la lista.'
+          : error.message || 'No se pudo asignar el plan de service.';
+      return { ok: false, isValidation: true, errorMsg };
     }
     return { ok: true };
   } catch (err) {
