@@ -38,5 +38,15 @@ await page.locator('[data-ca="remove-excess"]').nth(1).click();assert.equal(awai
 await page.locator('[data-ca-excess-field="concept_id"]').selectOption('a1e5c0de-0005-4000-8000-000000000005');await page.evaluate(()=>window.OperatorServiceCommercialAddonsV1.markMissing());assert.equal(await page.locator('[data-ca-excess-field="concept_name"]').getAttribute('aria-invalid'),'true');await page.locator('[data-ca-excess-field="concept_name"]').fill('Venta de prueba');
 assert.equal(await page.evaluate(()=>window.OperatorServices.commercialPayload().excess_charges[0].concept_name),'Venta de prueba');
 await page.evaluate(()=>{window.OperatorServices.S.wizard.mode='view';window.OperatorServiceWorkspaceV2.render();});assert.equal(await page.locator('[data-ca="new-excess"]').count(),0);assert.equal(await page.locator('[data-ca="remove-excess"]').count(),0);
-assert.deepEqual(errors,[]);console.log('Browser QA passed: concept switching, own codes, hourly quantities, sales, inline errors, removal, view mode, desktop/mobile overflow.');
+await page.evaluate(()=>{
+ document.getElementById('modal-operador-wizard').classList.remove('open');window.PERFIL_USUARIO={role:'administracion'};window.configSaves=[];window.companySettings={concept_id:'battery',is_enabled:true,code_mode:'fixed',driver_amount_mode:'manual',external_code:'CAT-1250'};
+ window._db.rpc=async(name,args)=>{if(name==='get_company_configuration_v2')return{data:{services:[window.companySettings]}};if(name==='list_service_types_config')return{data:[{concept_id:'battery',name:'Venta batería 1250',category:'secondary',pricing_unit:'unit',is_active:true}]};if(name==='save_company_service_setting_v2'){window.configSaves.push(args.p_payload);window.companySettings={...args.p_payload};return{data:args.p_payload};}return{data:{}};};
+});
+await page.addScriptTag({path:path.join(root,'company-services-configuration-v4.js')});await page.evaluate(()=>window.AuxiliosCompanyServicesV4.open('company'));
+await page.locator('#cs4-search').fill('bateria');assert.equal(await page.locator('.cs4-row:not([hidden])').count(),1);
+await page.locator('[data-cs4-code-mode]').selectOption('manual');await page.locator('#cs4-save').click();
+assert.equal(await page.evaluate(()=>window.configSaves[0].code_mode),'manual');assert.equal(await page.evaluate(()=>window.configSaves[0].driver_amount_mode),'manual');assert.equal(await page.evaluate(()=>window.configSaves[0].external_code),'CAT-1250');
+await page.evaluate(()=>window.AuxiliosCompanyServicesV4.open('company'));assert.equal(await page.locator('[data-cs4-code-mode]').inputValue(),'manual');
+await page.locator('[data-cs4-enabled]').uncheck();assert.ok(await page.locator('[data-cs4-code-mode]').isDisabled());assert.ok(await page.locator('[data-cs4-amount-mode]').isDisabled());
+assert.deepEqual(errors,[]);console.log('Browser QA passed: concept switching, own codes, hourly quantities, sales, inline errors, removal, view mode, desktop/mobile overflow, configuration search and own-code persistence.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

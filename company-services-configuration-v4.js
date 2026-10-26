@@ -16,17 +16,19 @@
     if (!document.getElementById('company-services-configuration-v4-css')) {
       document.head.insertAdjacentHTML('beforeend', `<style id="company-services-configuration-v4-css">
         .cs4-note{padding:10px 12px;border:1px solid rgba(74,144,226,.28);background:rgba(74,144,226,.08);border-radius:9px;font-size:11px;line-height:1.5;color:var(--muted2);margin-bottom:12px}.cs4-note b{color:var(--text)}
-        .cs4-list{display:grid;gap:8px}.cs4-row{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(145px,180px);gap:10px;align-items:center;padding:11px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg)}.cs4-row input{width:17px;height:17px;accent-color:var(--amber)}.cs4-row select{min-height:36px;border:1px solid var(--border2);border-radius:8px;background:var(--panel);color:var(--text);padding:7px;font-size:10px}.cs4-row select:disabled{opacity:.45}.cs4-row .cs4-state{display:none}@media(max-width:620px){.cs4-row{grid-template-columns:28px minmax(0,1fr)}.cs4-row select{grid-column:2}}
+        .cs4-list{display:grid;gap:8px}.cs4-row{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(220px,280px);gap:10px;align-items:center;padding:11px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg)}.cs4-row input{width:17px;height:17px;accent-color:var(--amber)}.cs4-row select{min-height:36px;border:1px solid var(--border2);border-radius:8px;background:var(--panel);color:var(--text);padding:7px;font-size:10px}.cs4-row select:disabled{opacity:.45}.cs4-row .cs4-state{display:none}@media(max-width:620px){.cs4-row{grid-template-columns:28px minmax(0,1fr)}.cs4-row select{grid-column:2}}
+        .cs4-controls{display:grid;gap:10px}.cs4-control{display:grid;gap:5px;min-width:0}.cs4-control>span{font-size:11px;font-weight:600;color:var(--text)}.cs4-control small{font-size:10px;line-height:1.4;color:var(--muted2)}.cs4-control select{width:100%}.cs4-search{width:100%;margin-bottom:12px}.cs4-row[hidden]{display:none}@media(max-width:620px){.cs4-controls{grid-column:2}.cs4-row .cs4-controls select{grid-column:auto}}
         .cs4-name{font-size:12px;font-weight:700;color:var(--text)}.cs4-meta{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}.cs4-chip{display:inline-flex;align-items:center;padding:3px 7px;border:1px solid var(--border2);border-radius:999px;font-size:9px;color:var(--muted2)}.cs4-chip.km{color:var(--cyan);border-color:rgba(46,196,214,.35)}.cs4-state{font-size:9px;color:var(--muted2)}.cs4-state.on{color:var(--green)}.cs4-empty{padding:20px;text-align:center;border:1px dashed var(--border2);border-radius:9px;color:var(--muted2);font-size:11px}
       </style>`);
     }
     document.getElementById('modal-company-enabled-services-v2')?.remove();
     document.getElementById('modal-company-enabled-services-v3')?.remove();
     if (document.getElementById('modal-company-enabled-services-v4')) return;
-    document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="modal-company-enabled-services-v4"><div class="modal-box" style="width:min(760px,calc(100vw - 24px));max-width:760px"><div class="modal-head"><div><span class="modal-head-title">Servicios habilitados</span><div style="font-size:10px;color:var(--muted2);margin-top:3px">Selección por prestadora</div></div><button class="modal-close" data-cs4-close type="button">×</button></div><div class="modal-body" style="max-height:min(70vh,680px);overflow:auto"><div class="cs4-note"><b>Acá no se crean servicios.</b> El catálogo maestro se administra en <strong>Configuración → Tipos de servicio</strong>. Acá únicamente definís cuáles puede utilizar esta prestadora.</div><div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-ghost" id="cs4-go-types" type="button">Abrir Tipos de servicio</button></div><div id="cs4-list" class="cs4-list"><div class="cs4-empty">Cargando servicios…</div></div><div class="modal-error" id="cs4-error" style="display:none"></div></div><div class="modal-footer"><button class="btn btn-ghost" data-cs4-close type="button">Cancelar</button><button class="btn btn-primary" id="cs4-save" type="button">Guardar servicios habilitados</button></div></div></div>`);
+    document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="modal-company-enabled-services-v4"><div class="modal-box" style="width:min(760px,calc(100vw - 24px));max-width:760px"><div class="modal-head"><div><span class="modal-head-title">Servicios habilitados</span><div style="font-size:10px;color:var(--muted2);margin-top:3px">Selección por prestadora</div></div><button class="modal-close" data-cs4-close type="button">×</button></div><div class="modal-body" style="max-height:min(70vh,680px);overflow:auto"><div class="cs4-note"><b>Acá no se crean servicios.</b> El catálogo maestro se administra en <strong>Configuración → Tipos de servicio</strong>. Acá definís cuáles puede utilizar esta prestadora y cuáles requieren código propio. Las ventas habilitadas también aparecen en Excedentes.</div><div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-ghost" id="cs4-go-types" type="button">Abrir Tipos de servicio</button></div><label class="cs4-control cs4-search"><span>Buscar servicio o venta</span><input class="form-input" id="cs4-search" type="search" placeholder="Batería, espera, extracción…"></label><div id="cs4-list" class="cs4-list"><div class="cs4-empty">Cargando servicios…</div></div><div class="modal-error" id="cs4-error" style="display:none"></div></div><div class="modal-footer"><button class="btn btn-ghost" data-cs4-close type="button">Cancelar</button><button class="btn btn-primary" id="cs4-save" type="button">Guardar servicios habilitados</button></div></div></div>`);
     document.querySelectorAll('[data-cs4-close]').forEach(button => button.addEventListener('click', close));
     document.getElementById('cs4-go-types')?.addEventListener('click', () => { close(); if (typeof goTo === 'function') goTo('config-service-types'); });
     document.getElementById('cs4-save')?.addEventListener('click', save);
+    document.getElementById('cs4-search')?.addEventListener('input', filterRows);
   }
 
   const resolveCompanyId = explicit => explicit || S.companyId || window.__auxCompanySelected || null;
@@ -48,6 +50,8 @@
 
   const settingsMap = () => new Map((S.companyConfig?.services || []).map(row => [String(row.concept_id), row]));
 
+  function filterRows(){const q=norm(document.getElementById('cs4-search')?.value);document.querySelectorAll('#cs4-list .cs4-row').forEach(row=>{row.hidden=!!q&&!norm(row.dataset.search).includes(q);});}
+
   function render() {
     const box = document.getElementById('cs4-list');
     if (!box) return;
@@ -58,15 +62,16 @@
       const enabled = current.is_enabled === true;
       const tariffTypes = (service.tariff_types || []).map(type => type.name).filter(Boolean).join(' · ');
       const configurable=['secondary','mixed'].includes(service.category);
-      return `<div class="cs4-row"><label class="ax-switch cs4-sw"><input type="checkbox" aria-label="Habilitar ${esc(service.name)}" data-cs4-enabled="${esc(service.concept_id)}" ${enabled ? 'checked' : ''}></label><span><span class="cs4-name">${esc(service.name)}</span><span class="cs4-meta"><span class="cs4-chip">${esc(categoryLabel(service.category))}</span>${tariffTypes ? `<span class="cs4-chip">${esc(tariffTypes)}</span>` : ''}<span class="cs4-chip">${esc(unitLabel(service.pricing_unit))}</span><span class="cs4-chip ${service.distance_chargeable ? 'km' : ''}">${service.distance_chargeable ? 'Suma KM' : 'No suma KM'}</span></span><span class="cs4-state ${enabled ? 'on' : ''}">${enabled ? 'Habilitado' : 'No habilitado'}</span></span>${configurable?`<select aria-label="Importe del chofer para ${esc(service.name)}" data-cs4-amount-mode="${esc(service.concept_id)}" ${enabled?'':'disabled'}><option value="fixed" ${(current.driver_amount_mode||'fixed')==='fixed'?'selected':''}>Precio definido</option><option value="manual" ${current.driver_amount_mode==='manual'?'selected':''}>Importe variable</option></select>`:'<span></span>'}</div>`;
+      return `<div class="cs4-row" data-search="${esc(service.name)}"><label class="ax-switch cs4-sw"><input type="checkbox" aria-label="Habilitar ${esc(service.name)}" data-cs4-enabled="${esc(service.concept_id)}" ${enabled ? 'checked' : ''}></label><span><span class="cs4-name">${esc(service.name)}</span><span class="cs4-meta"><span class="cs4-chip">${esc(categoryLabel(service.category))}</span>${tariffTypes ? `<span class="cs4-chip">${esc(tariffTypes)}</span>` : ''}<span class="cs4-chip">${esc(unitLabel(service.pricing_unit))}</span><span class="cs4-chip ${service.distance_chargeable ? 'km' : ''}">${service.distance_chargeable ? 'Suma KM' : 'No suma KM'}</span></span><span class="cs4-state ${enabled ? 'on' : ''}">${enabled ? 'Habilitado' : 'No habilitado'}</span></span>${configurable?`<div class="cs4-controls"><label class="cs4-control"><span>Código de Prestadora</span><select aria-label="Código de Prestadora para ${esc(service.name)}" data-cs4-code-mode="${esc(service.concept_id)}" ${enabled?'':'disabled'}><option value="fixed" ${current.code_mode!=='manual'?'selected':''}>Usar código principal</option><option value="manual" ${current.code_mode==='manual'?'selected':''}>Pedir código propio</option></select><small>El código propio se completa al agregar este servicio adicional.</small></label><label class="cs4-control"><span>Importe que carga el chofer</span><select aria-label="Importe del chofer para ${esc(service.name)}" data-cs4-amount-mode="${esc(service.concept_id)}" ${enabled?'':'disabled'}><option value="fixed" ${(current.driver_amount_mode||'fixed')==='fixed'?'selected':''}>Precio definido</option><option value="manual" ${current.driver_amount_mode==='manual'?'selected':''}>Importe variable</option></select></label></div>`:'<span></span>'}</div>`;
     }).join('') : '<div class="cs4-empty">No existen Tipos de Servicio activos.</div>';
     box.querySelectorAll('[data-cs4-enabled]').forEach(input => input.addEventListener('change', () => {
       const state = input.closest('.cs4-row')?.querySelector('.cs4-state');
       if (!state) return;
       state.textContent = input.checked ? 'Habilitado' : 'No habilitado';
       state.classList.toggle('on', input.checked);
-      const amountMode=input.closest('.cs4-row')?.querySelector('[data-cs4-amount-mode]');if(amountMode)amountMode.disabled=!input.checked;
+      input.closest('.cs4-row')?.querySelectorAll('select').forEach(select=>{select.disabled=!input.checked;});
     }));
+    filterRows();
   }
 
   function setError(message = '') {
@@ -82,6 +87,7 @@
     const id = resolveCompanyId(companyId);
     if (!id) return notify('Seleccioná una prestadora', 'warning');
     S.companyId = id;
+    const search=document.getElementById('cs4-search');if(search)search.value='';
     const box = document.getElementById('cs4-list');
     if (box) box.innerHTML = '<div class="cs4-empty">Cargando servicios…</div>';
     setError('');
@@ -110,7 +116,7 @@
           concept_id: service.concept_id,
           is_enabled: enabled,
           external_code: current.external_code || null,
-          code_mode: current.code_mode || 'fixed',
+          code_mode: document.querySelector(`[data-cs4-code-mode="${CSS.escape(String(service.concept_id))}"]`)?.value || current.code_mode || 'fixed',
           driver_amount_mode: document.querySelector(`[data-cs4-amount-mode="${CSS.escape(String(service.concept_id))}"]`)?.value || current.driver_amount_mode || 'fixed',
           notes: current.notes || null,
         }});
