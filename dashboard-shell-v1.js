@@ -9,7 +9,7 @@
   var montadas = false;
   // Qué pestaña se está viendo. Sólo se carga y se pinta esa: montar un
   // gráfico en un contenedor oculto lo deja con tamaño cero.
-  var activa = 'facturacion';
+  var activa = 'inicio';
 
   var estado = {
     cargando: false,
@@ -365,6 +365,7 @@
   function seccionActiva() { return activa; }
 
   function init() {
+    if (activa === 'inicio' && !secciones.some(function (s) { return s.id === 'inicio'; })) activa = 'facturacion';
     montarTodas();
     pintarPeriodo();
     // Después de montar: una sección que crea sus filtros en montar() no tiene

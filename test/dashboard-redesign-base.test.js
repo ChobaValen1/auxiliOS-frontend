@@ -284,7 +284,7 @@ test('las barras de la tabla no empujan una columna fuera del recuadro', () => {
 
 /* ── una sola fila de pestañas ──────────────────────────────────────────── */
 
-test('las secciones van en una sola fila, y son cuatro', () => {
+test('las secciones conservan los análisis y agregan Inicio', () => {
   /* Había dos filas: Análisis/Alertas arriba y las secciones abajo. La de
      arriba tenía una sola opción real, porque Alertas no es una sección del
      panel: no tiene período ni filtros y no se compara con las otras. */
@@ -292,9 +292,9 @@ test('las secciones van en una sola fila, y son cuatro', () => {
   assert.doesNotMatch(index, /dashCambiarVista\('alertas'/);
   assert.match(index, /<div class="dashx-barra-secciones">/);
   const barra = index.match(/<div class="dashx-barra-secciones">([\s\S]*?)<!-- SECCIÓN 1/)[1];
-  ['facturacion', 'tendencia', 'operaciones', 'flota'].forEach(sec =>
+  ['inicio', 'facturacion', 'tendencia', 'operaciones', 'flota'].forEach(sec =>
     assert.ok(barra.includes(`data-sec="${sec}"`), `falta la sección ${sec}`));
-  assert.equal((barra.match(/data-sec=/g) || []).length, 4, 'tienen que ser cuatro secciones');
+  assert.equal((barra.match(/data-sec=/g) || []).length, 5, 'Inicio más las cuatro secciones de análisis');
   /* Y nada más: Alertas se saca de acá. La campanita de la barra de arriba
      está fija y a la vista en todas las pantallas, así que un botón propio en
      el panel era el mismo acceso dos veces. */

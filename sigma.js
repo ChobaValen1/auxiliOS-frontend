@@ -2898,10 +2898,14 @@ function _cargarViewAnalitica() {
   if (typeof AuxDash === 'undefined') return;
   if (_dashxIniciado) { AuxDash.recargar(); return; }
   _dashxIniciado = true;
-  AuxDash.init();
+  Promise.resolve(AuxDash.init()).then(() => {
+    const active = AuxDash.seccionActiva();
+    dashxSeccion(active, document.querySelector('#dashx-tabs .ftab[data-sec="' + active + '"]'));
+  });
 }
 
 const _DASHX_TITULOS = {
+  inicio: ['Inicio', 'Resumen del día y pendientes para resolver'],
   facturacion: ['Resumen', 'Operación, facturación y cobertura de la flota'],
   operaciones: ['Operaciones', 'Kilómetros, combustible y rendimiento por camión y chofer'],
   tendencia: ['Tendencia', 'Evolución del período y comparación con el anterior'],

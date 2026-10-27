@@ -1,0 +1,14 @@
+create role anon;create role authenticated;create schema auth;create schema app_private;
+create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+create function app_private.current_auxilios_role() returns text language sql as $$select current_setting('test.role',true)$$;
+create table users(user_id uuid primary key,full_name text,is_test boolean default false);
+create table trucks(truck_id integer primary key,numero_interno text,plate text,status text,is_test boolean default false);
+create table operator_services(service_id uuid primary key,created_at timestamptz,updated_at timestamptz,status text,completed_at timestamptz,driver_activated boolean default false,logistics_type text default 'own',is_test boolean default false,assigned_driver_id uuid,assigned_truck_id integer,trip_id integer,remito_id integer,quoted_total numeric,document_status text,administrative_review_status text,billing_status text,company_estimated_total numeric,currency text default 'ARS');
+create table operator_service_events(event_id bigint generated always as identity,service_id uuid,created_at timestamptz,event_type text,from_status text,to_status text);
+create table operator_invoices(invoice_id uuid primary key,status text default 'created',currency text default 'ARS',created_at timestamptz,total_amount numeric,cancelled_at timestamptz,credited_at timestamptz);
+create table operator_invoice_services(invoice_service_id uuid,invoice_id uuid,service_id uuid,quote_snapshot jsonb,released_at timestamptz);
+create table operator_invoice_credit_notes(invoice_id uuid,created_at timestamptz,amount numeric);
+create table remitos(remito_id integer,driver_id uuid,status text);
+create table trips(trip_id integer,log_id integer);
+create table driver_service_intakes(remito_id integer,driver_id uuid,status text,linked_service_id uuid);
+create table daily_logs(log_id integer,truck_id integer,driver_id uuid,status text,log_date date,hora_inicio time,created_at_device timestamptz,created_at timestamptz);

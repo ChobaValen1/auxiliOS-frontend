@@ -1,7 +1,8 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v582-remito-replacement';
+const CACHE_NAME='auxilios-v583-admin-home';
 const PRECACHE_ASSETS=[
+  '/dashboard-inicio-v1.js','/dashboard-inicio-v1.css',
   '/ui/completed-journey-services-v1.js',
   '/ui/efficiency-loader-v1.js','/ui/motion/efficiency-v1.js','/ui/motion/efficiency-v1.css',
   '/ui/history-tolls-list-v1.js','/ui/history-tolls-list-v1.css',
