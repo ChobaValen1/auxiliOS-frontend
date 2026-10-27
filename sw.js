@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v584-admin-home';
+const CACHE_NAME='auxilios-v585-driver-live';
 const PRECACHE_ASSETS=[
   '/dashboard-inicio-v1.js','/dashboard-inicio-v1.css',
   '/ui/completed-journey-services-v1.js',
