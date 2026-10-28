@@ -86,7 +86,7 @@ function loadSdk(){
       const script=document.createElement('script');let done=false;const callback='auxiliosGoogleMapReady';
       const timer=setTimeout(()=>finish(Error('Google Maps no respondió. Revisá la conexión y reintentá.')),18000);
       const finish=error=>{if(done)return;done=true;clearTimeout(timer);delete window[callback];if(error){window.gm_authFailure=priorAuth;script.remove();reject(error);}else resolve(window.google.maps);};
-      const priorAuth=window.gm_authFailure;window.gm_authFailure=()=>{const error=Error('Google Maps rechazó la clave o el dominio. Revisá las restricciones de la clave de navegador.');if(!done)finish(error);else if(current){dispose(current);mapStatus(error.message,true);}};
+      const priorAuth=window.gm_authFailure;window.gm_authFailure=()=>{const error=Error('Google Maps rechazó la clave o el dominio. Revisá las restricciones de la clave de navegador.');window.dispatchEvent(new CustomEvent('auxilios:map-auth-failure',{detail:error.message}));if(!done)finish(error);else if(current){dispose(current);mapStatus(error.message,true);}};
       window[callback]=()=>window.google?.maps?.Map?finish():finish(Error('No se pudo iniciar Google Maps.'));
       const u=new URL('https://maps.googleapis.com/maps/api/js');for(const[k,v]of Object.entries({key:config.browserKey,callback,loading:'async',v:'quarterly',language:'es',region:'AR'}))u.searchParams.set(k,v);
       script.async=true;script.src=u.href;script.onerror=()=>finish(Error('No se pudo cargar Google Maps. Podés seguir usando el enlace externo.'));document.head.appendChild(script);
@@ -206,5 +206,5 @@ function selectToll(view,id){
   const detail=modal.querySelector('#srm-toll-detail');detail.hidden=false;detail.innerHTML=`<button type="button" data-srm-detail-close aria-label="Cerrar detalle de peaje">${icon('x')}</button><b>${esc(r.code+' · '+r.name)}</b><em>${tollLabel(r)}${r.excluded?' · Excluido':''}</em><small>${esc([r.direction,r.payer].filter(Boolean).join(' · '))}</small><strong>${esc(r.kind==='route'?'Sin cargo agregado':money(r))}</strong><small>${r.point?'Ubicación del catálogo. Cercanía a la ruta no confirma pasada ni sentido de cobro.':'Sin ubicación exacta: no se coloca un marcador.'}</small>`;
   // No auto-pan: selecting a toll never hides the rest of the billing circuit.
 }
-window.ServiceRouteMap={open,close,_test:{coordinate,planFor,decode,splitPath,tollsFor,routeTolls,canEdit}};
+window.ServiceRouteMap={open,close,loadSdk,mapStyle,coordinate,decode,_test:{coordinate,planFor,decode,splitPath,tollsFor,routeTolls,canEdit}};
 })();

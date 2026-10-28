@@ -23,7 +23,7 @@ La planilla tiene 20 tareas: 12 marcadas como hechas y 8 abiertas. Estas son las
 | P3 | Formato de cobro «A definir»: se marca el peaje y el chofer completa el medio de pago | ALTA | Corto | Hecho · en producción (v515): Cobro al cliente único (medio principal + segundo medio) en el operador («A definir»), en el remito del chofer y en la corrección después de la firma; «Aprobar» toma importe, cantidad y medio del chofer |
 | P4 | Panel: quitar datos innecesarios o repetidos y dejar los importantes (km, etc.) | ALTA | Corto/Mediano | Parcial · Panel rediseñado; falta revisar qué datos sobran |
 | P5 | Mejorar la UI del Panel | MEDIANA | Corto | Hecho · Panel nuevo con zoom y Operaciones rediseñado (falta tildarlo en la planilla) |
-| P6 | Mapa para operadores: todos los servicios, dónde empiezan y terminan, y qué móvil tienen | MEDIANA | Mediano | Pendiente |
+| P6 | Mapa para operadores: todos los servicios, dónde empiezan y terminan, y qué móvil tienen | MEDIANA | Mediano | V1 implementada en v586 (28/10/2026) · [alcance y validación](mapa-servicios-v1-implementacion.md) · GPS/ETA siguen en #11 |
 | P7 | La edición de peajes con el mismo formato que el alta | BAJA | Corto | A confirmar · los peajes del servicio ya usan una sola tabla (Quién paga, Peaje, Importe, Cantidad) |
 | P8 | Chat interno y grupos por rol (notas sobre servicios, turnos, información) | BAJA | Mediano | Pendiente |
 
@@ -119,6 +119,7 @@ Hecho y en producción (v463). En Tarifas, cada adicional puede tomar su precio 
 |---|------|---------|--------|
 | 9 | Animación del botón «Continuar» → puntos de carga → tilde (shot «cred-button-loading-to-tick-animation» de 60fps, con su timing, easing y springs sin cambios). Referencia de navegación: Floating Pill Nav de Framer | 20/10/2026 | Pendiente · requiere conectar el MCP de 60fps (https://60fps.design/mcp) |
 | 10 | Mapa con varias ubicaciones (referencia: componente Framer «MultiLocationMap», https://framer.com/m/MultiLocationMap-yASI.js@AUuYrFO2fInwLOl2DOxV). Se puede usar para el mapa de operadores (P6) | 20/10/2026 | Pendiente |
+| 11 | Seguimiento de teléfonos durante la jornada: mapa en vivo de choferes y unidades, cadena de servicios, recomendación de asignación y distancia/ETA por ruta. Amplía P6 y #10; ver [plan por etapas](ubicacion-flota-plan.md) | 28/10/2026 | Pendiente · análisis registrado; sin implementar |
 
 ## Referencias de UI para aplicar (21/10/2026)
 Se hacen a mano (sin librerías nuevas), con la estética oscura y ámbar y respetando «menos movimiento». Una por vez, en prueba y con OK antes de producción.

@@ -4,6 +4,8 @@ Lista de cambios que faltan hacer. Se tachan (o se borran) a medida que se hacen
 
 ## Para hacer
 
+- [x] Mapa de Servicios V1 (P6): implementado en v586. [Alcance, validación y despliegue](entregables/mapa-servicios-v1-implementacion.md). Independiente del seguimiento GPS.
+- [ ] Ubicación en vivo de choferes y unidades, mapa operativo, recomendaciones de asignación y ETA: deuda #11 en `entregables/DEUDAS.md`. [Plan por etapas](entregables/ubicacion-flota-plan.md). Primero validar captura con pantalla bloqueada; pendiente de implementación.
 - [ ] Control del camión · vista del chofer: checklist simple del día (neumáticos, frenos, combustible). Falta confirmar.
 - [ ] Mantenimiento: pasar el móvil a taller desde un service vencido y bloquear asignaciones. Falta decidir: puede frenar a choferes en producción.
 

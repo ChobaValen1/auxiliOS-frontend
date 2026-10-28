@@ -78,7 +78,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'driver-live-v585-20261027';
+window.AUXILIOS_BUILD_ID = 'services-map-v586-20261028';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
@@ -207,6 +207,8 @@ async function loadCriticalAuxiliosModules() {
 
   // Estado es una interacción primaria de la mesa: debe existir antes de liberar la UI.
   await loadAuxiliosModule('auxilios-phase3b-service-lifecycle', '/operator-service-lifecycle.js');
+  loadAuxiliosStyle('auxilios-service-map-v1-css', '/operator-services-map-v1.css');
+  await loadAuxiliosModule('auxilios-service-map-v1', '/operator-services-map-v1.js');
   // Nuevo servicio: primero Particular | Prestadora (envuelve abrirNuevoServicio).
   loadAuxiliosStyle('auxilios-service-price-calculator-v1-css', '/ui/service-price-calculator-v1.css');
   await loadAuxiliosModule('auxilios-service-price-calculator-v1', '/ui/service-price-calculator-v1.js');
