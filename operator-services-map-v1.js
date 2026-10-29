@@ -39,7 +39,7 @@ function primaryAction(s){
   const actions=L()?.quickActions?.(s)||[],want=s.driver_activated?'finalize':O().hasSignedRemito(s)?'finalize':({pending:s.logistics_type==='third_party'?'assign_outsourced':'assign',assigned:s.logistics_type==='third_party'?'finalize':'arrive',at_origin:'finalize'})[O().normalizedStatus(s.status)];
   return actions.find(([key])=>key===want)||null;
 }
-const V={presentation:'list',selected:'',rows:[],scope:'',map:null,maps:null,pins:[],lines:[],cache:new Map(),failures:new Map(),pending:new Map(),colors:new Map(),generation:0,session:0,fitNext:true,panel:'summary',owner:'',notice:null,returnView:null,routeMessage:''};
+const V={presentation:'list',selected:'',rows:[],scope:'',map:null,maps:null,pins:[],lines:[],cache:new Map(),failures:new Map(),pending:new Map(),colors:new Map(),generation:0,session:0,fitNext:true,camera:'all',panel:'summary',owner:'',notice:null,returnView:null,routeMessage:''};
 let host,screen,themeObserver,screenObserver,sizeObserver,authSubscription,sizeFrame=0;
 const el=id=>document.getElementById(id);
 const usable=()=>V.presentation==='map'&&O()?.S.view==='active'&&screen?.classList.contains('active')&&O()?.canRead?.();
@@ -75,7 +75,7 @@ function renderDetails(){
   V.routeMessage=routeCaption(s);
   const c=crew(s),p=pointsFor(s),primary=primaryAction(s),actions=O().canTransitionState()?(L()?.quickActions(s)||[]):[],q=O().driverQueue?.(O().serviceDriverId?.(s))||[];
   const queue=s.logistics_type!=='third_party'&&s.driver_multi_service&&q.length?`<section class="osm-queue"><h4>Cadena del chofer <span>${q.length}</span></h4><ol>${q.map((item,i)=>`<li><button type="button" data-osm-queue="${esc(idOf(item))}" data-osm-focus="queue-${esc(idOf(item))}" ${idOf(item)===V.selected?'aria-current="true"':''}><span>${i+1}</span><b>${esc(code(item))}</b><small>${esc(status(item).label)}</small></button></li>`).join('')}</ol></section>`:'';
-  const html=`<div class="osm-detail-heading"><div><small>SERVICIO</small><h3 id="osm-detail-title" tabindex="-1">${esc(code(s))}</h3></div>${badge(s)}</div><div class="osm-assignment">${icon(s.logistics_type==='third_party'?'building-2':'truck')}<div><b>${esc(c.title)}</b><span>${esc(c.sub)}</span></div></div><p class="osm-scheduled">${icon('clock')}<span>Fecha y hora del servicio<b>${esc(stamp(s.scheduled_for))}</b></span></p><button type="button" class="osm-expand" data-osm="expand" aria-expanded="${V.panel==='expanded'}" aria-controls="osm-detail-extra">${V.panel==='expanded'?'Resumir detalle':'Ver recorrido y seguimiento'}${icon('chevron-down')}</button><div id="osm-detail-extra" class="osm-detail-extra"><ol class="osm-stops"><li><i>A</i><div><small>ORIGEN</small><p>${esc(s.origin_formatted_address||s.origin||'Sin dirección')}</p></div></li>${p.single?'':`<li><i>B</i><div><small>DESTINO</small><p>${esc(s.destination_formatted_address||s.destination||'Sin dirección')}</p></div></li>`}</ol><p class="osm-route-caption" id="osm-route-caption">${esc(V.routeMessage||(!p.any?'Sin coordenadas verificadas.':!p.route?'Servicio con un punto disponible.':'Recorrido de referencia origen → destino.'))}</p><dl class="osm-facts"><div><dt>Prestadora</dt><dd>${esc(s.company_name||'Sin informar')}</dd></div><div><dt>Patente</dt><dd>${esc(s.vehicle_plate||'Sin informar')}</dd></div><div><dt>Arribo registrado</dt><dd>${esc(stamp(s.arrived_at))}</dd></div>${!s.arrived_at&&s.estimated_arrival_at?`<div><dt>Arribo estimado cargado</dt><dd>${esc(stamp(s.estimated_arrival_at))}</dd></div>`:''}<div><dt>Finalización registrada</dt><dd>${esc(stamp(s.completed_at))}</dd></div><div><dt>Remito</dt><dd>${esc(documentLabel(s))}</dd></div></dl>${s.status==='completed'&&O().activeServices().some(x=>idOf(x)===idOf(s))?'<p class="osm-review-note">Finalizado; sigue en Activos por la revisión pendiente del remito.</p>':''}${queue}</div>`;
+  const html=`<div class="osm-detail-heading"><div><small>SERVICIO</small><h3 id="osm-detail-title" tabindex="-1">${esc(code(s))}</h3></div>${badge(s)}</div><div class="osm-overview"><div class="osm-assignment">${icon(s.logistics_type==='third_party'?'building-2':'truck')}<div><b>${esc(c.title)}</b><span>${esc(c.sub)}</span></div></div><p class="osm-scheduled">${icon('clock')}<span>Fecha y hora del servicio<b>${esc(stamp(s.scheduled_for))}</b></span></p></div><button type="button" class="osm-expand" data-osm="expand" aria-expanded="${V.panel==='expanded'}" aria-controls="osm-detail-extra">${V.panel==='expanded'?'Resumir detalle':'Ver recorrido y seguimiento'}${icon('chevron-down')}</button><div id="osm-detail-extra" class="osm-detail-extra"><ol class="osm-stops"><li><i>A</i><div><small>ORIGEN</small><p>${esc(s.origin_formatted_address||s.origin||'Sin dirección')}</p></div></li>${p.single?'':`<li><i>B</i><div><small>DESTINO</small><p>${esc(s.destination_formatted_address||s.destination||'Sin dirección')}</p></div></li>`}</ol><p class="osm-route-caption" id="osm-route-caption">${esc(V.routeMessage||(!p.any?'Sin coordenadas verificadas.':!p.route?'Servicio con un punto disponible.':'Recorrido de referencia origen → destino.'))}</p><dl class="osm-facts"><div><dt>Prestadora</dt><dd>${esc(s.company_name||'Sin informar')}</dd></div><div><dt>Patente</dt><dd>${esc(s.vehicle_plate||'Sin informar')}</dd></div><div><dt>Arribo registrado</dt><dd>${esc(stamp(s.arrived_at))}</dd></div>${!s.arrived_at&&s.estimated_arrival_at?`<div><dt>Arribo estimado cargado</dt><dd>${esc(stamp(s.estimated_arrival_at))}</dd></div>`:''}<div><dt>Finalización registrada</dt><dd>${esc(stamp(s.completed_at))}</dd></div><div><dt>Remito</dt><dd>${esc(documentLabel(s))}</dd></div></dl>${s.status==='completed'&&O().activeServices().some(x=>idOf(x)===idOf(s))?'<p class="osm-review-note">Finalizado; sigue en Activos por la revisión pendiente del remito.</p>':''}${queue}</div>`;
   replace(el('osm-detail-body'),html);
   replace(el('osm-actions'),`${primary?`<button type="button" class="osm-primary" data-osm-action="${esc(primary[0])}" data-osm-focus="primary">${esc(primary[0]==='arrive'?'Registrar arribo':primary[0]==='finalize'&&O().hasSignedRemito(s)?'Revisar y finalizar':primary[1])}${icon('arrow-right')}</button>`:''}<button type="button" data-osm="open" data-osm-focus="open">Abrir servicio${icon('external-link')}</button>${actions.filter(([key])=>key!==primary?.[0]).length?`<details class="osm-more"><summary>Más acciones</summary><div>${actions.filter(([key])=>key!==primary?.[0]).map(([key,label])=>`<button type="button" data-osm-action="${esc(key)}" data-osm-focus="action-${esc(key)}"${key==='annul'?' class="osm-danger"':''}>${esc(label)}</button>`).join('')}</div></details>`:''}`);
 }
@@ -97,17 +97,35 @@ function sync(){
   const nextScope=scopeKey(),rows=O().S.visibleRows||O().filtered(),old=V.rows.find(s=>idOf(s)===V.selected);
   if(V.selected&&!rows.some(s=>idOf(s)===V.selected)){
     if(old&&nextScope===V.scope){const current=O().service(V.selected),history=O().historyServices().some(s=>idOf(s)===V.selected);V.notice={id:V.selected,history,message:history?`${code(old)} pasó a Historial.`:current?`${code(old)} cambió y ya no coincide con los filtros actuales.`:`${code(old)} ya no está entre los servicios cargados.`};}
-    V.selected='';V.routeMessage='';
+    V.selected='';V.routeMessage='';V.camera='all';V.fitNext=true;V.autoFit=true;
   }
-  if(nextScope!==V.scope){V.fitNext=true;V.autoFit=true;}
+  if(nextScope!==V.scope){V.camera='all';V.fitNext=true;V.autoFit=true;}
   V.rows=rows;V.scope=nextScope;renderList();renderDetails();notice();
   if(usable()){if(!V.map)void start();else{draw();pumpRoutes();}}
 }
 function switchView(value){V.presentation=value==='map'&&O()?.S.view==='active'?'map':'list';if(V.presentation==='list')dispose(false);sync();}
-function select(id,focus=true){if(!usable()||!V.rows.some(s=>idOf(s)===String(id)))return;V.selected=String(id);V.routeMessage='';V.panel='summary';renderList();renderDetails();draw();pumpRoutes();sizeViewport();if(focus)el('osm-detail-title')?.focus({preventScroll:true});}
+function select(id,focus=true){
+  const s=V.rows.find(s=>idOf(s)===String(id));if(!usable()||!s)return;
+  V.selected=String(id);V.routeMessage='';V.panel='summary';V.camera='selection';V.fitNext=true;
+  const key=geometryKey(s);V.autoFit=pointsFor(s).route&&!V.cache.has(key)&&!V.failures.has(key);
+  renderList();renderDetails();draw();pumpRoutes();sizeViewport();if(focus)el('osm-detail-title')?.focus({preventScroll:true});
+}
 function clearOverlays(){for(const p of [...V.pins,...V.lines]){V.maps?.event?.clearInstanceListeners(p);p.setMap(null);}V.pins=[];V.lines=[];}
 function dispose(clear){V.session++;V.starting=false;clearOverlays();if(V.map)V.maps?.event?.clearInstanceListeners(V.map);V.map=null;V.maps=null;V.drawSignature='';V.fitNext=true;if(clear){V.generation++;V.cache.clear();V.failures.clear();V.colors.clear();}el('osm-canvas')?.replaceChildren();}
-function fit(){if(!V.map)return;const bounds=new V.maps.LatLngBounds(),rows=V.rows;let count=0;for(const row of rows){const p=pointsFor(row);for(const point of [p.origin,p.destination])if(point){bounds.extend(point);count++;}const route=V.cache.get(geometryKey(row));for(const pt of route?.path||[])bounds.extend(pt);}if(count){V.map.fitBounds(bounds,{top:65,right:55,bottom:65,left:55});if(count===1)V.map.addListener('idle',function capped(){if(V.map?.getZoom?.()>16)V.map.setZoom(16);V.maps?.event?.clearListeners?.(V.map,'idle');});}}
+function cameraRows(){return V.camera==='selection'?V.rows.filter(s=>idOf(s)===V.selected):V.rows;}
+function fit(){
+  if(!V.map)return;
+  const bounds=new V.maps.LatLngBounds(),points=[];
+  for(const row of cameraRows()){
+    const p=pointsFor(row);for(const point of [p.origin,p.destination])if(point)points.push(point);
+    points.push(...(V.cache.get(geometryKey(row))?.path||[]));
+  }
+  if(!points.length)return;
+  if(points.every(p=>same(p,points[0]))){V.map.panTo(points[0]);V.map.setZoom(16);return;}
+  for(const point of points)bounds.extend(point);
+  const canvas=el('osm-canvas'),horizontal=Math.min(55,Math.round(canvas.clientWidth*.12)),vertical=Math.min(65,Math.round(canvas.clientHeight*.22));
+  V.map.fitBounds(bounds,{top:vertical,right:horizontal,bottom:vertical,left:horizontal});
+}
 function renderLegend(){
   const groups=new Map();for(const s of V.rows){if(!pointsFor(s).any)continue;const g=mobileGroup(s);if(!groups.has(g.key))groups.set(g.key,{...g,count:0});groups.get(g.key).count++;}
   replace(el('osm-legend-items'),[...groups.values()].map(g=>`<span class="osm-legend-item" data-mobile="${esc(g.key)}"><i style="--osm-route-color:${groupColor(g.key)}" class="${g.kind==='unassigned'?'is-unassigned':''}"></i><span>${esc(g.label)}</span><small>${g.count}</small></span>`).join('')||'<small>Sin puntos para mostrar</small>');
@@ -181,7 +199,7 @@ async function loadRoute(s,key,job){
   finally{
     if(V.pending.get(key)===job)V.pending.delete(key);
     if(usable()&&V.map){
-      if(V.autoFit&&V.rows.every(row=>!pointsFor(row).route||V.cache.has(geometryKey(row))||V.failures.has(geometryKey(row)))){V.fitNext=true;V.autoFit=false;}
+      if(V.autoFit&&cameraRows().every(row=>!pointsFor(row).route||V.cache.has(geometryKey(row))||V.failures.has(geometryKey(row)))){V.fitNext=true;V.autoFit=false;}
       renderDetails();draw();pumpRoutes();
     }
   }
@@ -197,12 +215,12 @@ function handle(event){
   const action=event.target.closest('[data-osm-action]');if(action){if(!O().canTransitionState()||!V.selected)return;L()?.runQuickAction(action.dataset.osmAction,V.selected);return;}
   const task=event.target.closest('[data-osm]')?.dataset.osm;
   if(task==='open'&&V.selected)window.verServicioOperador?.(V.selected);
-  if(task==='fit'){V.fitNext=true;V.autoFit=true;draw();}
+  if(task==='fit'){V.camera='all';V.fitNext=true;V.autoFit=true;draw();}
   if(task==='retry'){dispose(false);void start();}
   if(task==='retry-route'){const s=V.rows.find(s=>idOf(s)===V.selected);if(s)V.failures.delete(geometryKey(s));renderDetails();pumpRoutes();}
   if(task==='retry-routes'){for(const s of V.rows)V.failures.delete(geometryKey(s));renderLegend();pumpRoutes();}
   if(task==='expand'){V.panel=V.panel==='expanded'?'summary':'expanded';renderDetails();el('osm-detail-body')?.querySelector('[data-osm="expand"]')?.focus({preventScroll:true});}
-  if(task==='back'){const id=V.selected;V.selected='';V.routeMessage='';renderList();renderDetails();draw();[...host.querySelectorAll('[data-osm-select]')].find(b=>b.dataset.osmSelect===id)?.focus({preventScroll:true});}
+  if(task==='back'){const id=V.selected;V.selected='';V.routeMessage='';V.camera='all';V.fitNext=true;V.autoFit=true;renderList();renderDetails();draw();[...host.querySelectorAll('[data-osm-select]')].find(b=>b.dataset.osmSelect===id)?.focus({preventScroll:true});}
   if(task==='dismiss'){V.notice=null;notice();}
   if(task==='history')jumpHistory();
   if(task==='return'&&V.returnView){const saved=V.returnView;V.returnView=null;V.selected='';Object.assign(O().S,saved);el('os-q').value=saved.query;window.cambiarVistaServicios(saved.view);O().S.status=saved.status;O().renderServices();switchView('map');}
@@ -210,7 +228,7 @@ function handle(event){
 function init(){
   screen=el('screen-operaciones');if(!screen||el('os-presentation'))return;
   const toggle=document.createElement('div');toggle.id='os-presentation';toggle.className='osm-view-switch';toggle.setAttribute('role','group');toggle.setAttribute('aria-label','Presentación de servicios');toggle.innerHTML=`<button type="button" data-osm-view="list" aria-pressed="true">${icon('list')}Lista</button><button type="button" data-osm-view="map" aria-pressed="false">${icon('map')}Mapa</button>`;screen.querySelector('.os-filters')?.append(toggle);toggle.addEventListener('click',e=>{const b=e.target.closest('[data-osm-view]');if(b)switchView(b.dataset.osmView);});
-  host=document.createElement('section');host.id='osm-workspace';host.hidden=true;host.setAttribute('aria-label','Mapa de servicios');host.innerHTML=`<div id="osm-notice" class="osm-notice" role="status" hidden></div><div class="osm-toolbar"><div><b>Mapa de servicios</b><span id="osm-coverage"></span><span id="osm-route-progress" role="status"></span></div><button type="button" data-osm="fit">${icon('scan')}Encuadrar</button></div><div class="osm-layout"><aside class="osm-sidebar"><header><h3 id="osm-list-title">Servicios activos</h3><span>Según tus filtros</span></header><div id="osm-list" class="osm-list"></div></aside><div class="osm-stage"><div id="osm-canvas" role="region" aria-label="Direcciones y recorridos de los servicios"></div><div id="osm-map-message" class="osm-map-message" role="status" hidden></div><section class="osm-legend" aria-label="Colores por móvil"><b>Recorridos por móvil</b><div id="osm-legend-items"></div><small>A origen · B destino</small></section></div><aside class="osm-detail" aria-label="Detalle del servicio"><header><button type="button" data-osm="back">${icon('arrow-left')}Servicios</button><small>DETALLE OPERATIVO</small></header><div id="osm-detail-body" class="osm-detail-body"></div><footer id="osm-actions" class="osm-actions"></footer></aside></div>`;
+  host=document.createElement('section');host.id='osm-workspace';host.hidden=true;host.setAttribute('aria-label','Mapa de servicios');host.innerHTML=`<div id="osm-notice" class="osm-notice" role="status" hidden></div><div class="osm-toolbar"><div><b>Mapa de servicios</b><span id="osm-coverage"></span><span id="osm-route-progress" role="status"></span></div><button type="button" data-osm="fit">${icon('scan')}Ver todos</button></div><div class="osm-layout"><aside class="osm-sidebar"><header><h3 id="osm-list-title">Servicios activos</h3><span>Según tus filtros</span></header><div id="osm-list" class="osm-list"></div></aside><div class="osm-stage"><div id="osm-canvas" role="region" aria-label="Direcciones y recorridos de los servicios"></div><div id="osm-map-message" class="osm-map-message" role="status" hidden></div><section class="osm-legend" aria-label="Colores por móvil"><b>Recorridos por móvil</b><div id="osm-legend-items"></div><small>A origen · B destino</small></section></div><aside class="osm-detail" aria-label="Detalle del servicio"><header><button type="button" data-osm="back">${icon('arrow-left')}Servicios</button><small>DETALLE OPERATIVO</small></header><div id="osm-detail-body" class="osm-detail-body"></div><footer id="osm-actions" class="osm-actions"></footer></aside></div>`;
   const back=document.createElement('button');back.id='osm-history-return';back.type='button';back.hidden=true;back.className='osm-history-return';back.dataset.osm='return';back.textContent='Volver al mapa de Activos';back.addEventListener('click',handle);screen.querySelector('.os-commandbar').after(back);
   screen.querySelector('.os-table-wrap').after(host);host.addEventListener('click',handle);host.addEventListener('keydown',e=>{if(e.key==='Escape'&&V.selected&&!e.target.closest('details[open]')){e.preventDefault();host.querySelector('[data-osm="back"]').click();}});
   document.addEventListener('auxilios:services-rendered',sync);
