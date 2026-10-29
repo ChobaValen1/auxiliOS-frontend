@@ -18,7 +18,7 @@ before(async()=>{
  create function public.get_driver_remito_history_v3(integer) returns jsonb language plpgsql as $$begin if not exists(select from public.remitos where remito_id=$1 and driver_id=auth.uid()) then raise exception 'Sin permiso';end if;return '{"history_tolls":[]}'::jsonb;end$$;
  create function app_private.service_history_tolls_v1(uuid) returns jsonb language sql as $$select '[]'::jsonb$$;
  create function app_private.merge_history_tolls_v1(jsonb,jsonb,boolean) returns jsonb language sql as $$select $1$$;`);
- await db.exec(fs.readFileSync('migrations/20261029123606_driver_service_history_v1.sql','utf8'));
+ await db.exec(fs.readFileSync('migrations/20261029124346_driver_service_history_v1.sql','utf8'));
 });
 after(()=>db.close());
 beforeEach(async()=>{
