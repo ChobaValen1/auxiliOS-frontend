@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v586-services-map';
+const CACHE_NAME='auxilios-v587-services-map';
 const PRECACHE_ASSETS=[
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
   '/dashboard-inicio-v1.js','/dashboard-inicio-v1.css',

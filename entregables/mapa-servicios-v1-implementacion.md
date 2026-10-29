@@ -1,5 +1,7 @@
 # Mapa de Servicios V1 · v586
 
+**Actualización:** [v587 — todos los recorridos, color por móvil, Activos y pantalla fija](mapa-servicios-v587.md). Ese ajuste reemplaza la consulta sólo por selección y la disponibilidad del mapa en Historial descritas más abajo.
+
 28/10/2026. Implementación de la revisión aprobada, lista para publicación en el proyecto productivo `auxilios-frontend`.
 
 ## Uso
