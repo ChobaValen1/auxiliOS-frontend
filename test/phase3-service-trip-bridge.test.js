@@ -156,10 +156,13 @@ test('el remito sin asignación pendiente de firma permanece en Activos y no en 
   assert.match(bridge,/get_driver_remito_addons_v2/);
   assert.match(bridge,/AuxiliosRemitoAddonsV2\?\.restore\?\.\(data\|\|null\)/);
   assert.match(bridge,/r\.estado==='pendiente'.*r\.documentSource==='driver_ad_hoc'.*!r\.operatorServiceId/);
-  assert.match(supabase,/window\._driverRemitosSnapshot = remitos/);
-  assert.match(supabase,/actualizarRemitosActivosChofer\(remitos\)/);
-  assert.match(supabase,/const remitosHistorial = esChofer/);
-  assert.match(supabase,/r\.estado === 'pendiente'.*r\.documentSource === 'driver_ad_hoc'.*!r\.operatorServiceId/);
+  assert.match(supabase,/window\._driverRemitosSnapshot = esChofer \? resultado\?\.drafts \|\| \[\] : remitos;/);   // el chofer recibe sus borradores aparte del historial (e369371)
+  assert.match(supabase,/actualizarRemitosActivosChofer\(window\._driverRemitosSnapshot\)/);
+  // Desde e369371 el historial del chofer sale de list_driver_service_history_v1: la base deja afuera
+  // los borradores sin servicio y los devuelve aparte (drafts), que es lo que se muestra en Activos.
+  const history=read('migrations/20261029124346_driver_service_history_v1.sql');
+  assert.match(history,/and not \(r\.status='pendiente' and \(r\.driver_intake_id is not null or r\.document_source='driver_ad_hoc'\) and r\.operator_service_id is null\)/);
+  assert.match(history,/'drafts',coalesce\(\(select jsonb_agg/);
   assert.match(read('sigma.js'),/function _mostrarBorradorEnServiciosActivos\(\).*cambiarVistaServiciosChofer\?\.\('active'\)/s);
 });
 

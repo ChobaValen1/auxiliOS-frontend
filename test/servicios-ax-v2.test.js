@@ -54,7 +54,7 @@ test('Formulario de particular: errores debajo de cada campo y confirmación de 
 
 test('Cambio de estado: menú con íconos, modales oscuros y la fila que cambió se marca', () => {
   const js = read('operator-service-lifecycle.js'), css = read('estado-servicio-ax-v1.css');
-  assert.match(js, /const QUICK_ICON=\{assign:'user'/);
+  assert.match(js, /const QUICK_ICON=\{replace_remito:'refresh-cw',assign:'user'/);
   assert.match(js, /<div class="osl-quick-head">Cambiar estado<\/div>/);
   assert.match(js, /data-osl-close aria-label="Cerrar">\$\{ico\('x'\)\}/);
   assert.match(js, /window\.AuxiliosUI\?\.resaltarServicio\?\.\(id\)/);

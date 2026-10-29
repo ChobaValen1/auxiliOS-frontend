@@ -76,8 +76,9 @@ test('Conceptos adicionales vuelve a columna 1 y se habilita después de Prestad
   const admin=workspace.split('<section class="osv2-column admin-column">')[1].split('<section class="osv2-column route-column">')[0];
   assert.match(admin,/Prestaciones adicionales/);
   assert.match(admin,/data-click="add-concept"/);
-  assert.match(workspace,/add\.disabled=!w\.data\.company_id\|\|lockedState/);
-  assert.match(workspace,/Elegí la Prestadora para ver sus servicios adicionales/);
+  assert.match(workspace,/const reason=!w\.data\.company_id\?'Elegí primero la Prestadora\.':lockedState\?/);
+  assert.match(workspace,/add\.disabled=!!reason;add\.title=reason;/);
+  
   assert.match(workspace,/data-concept-row/);
   assert.match(workspace,/data-concept-qty/);
   assert.match(workspace,/data-concept-code/);
