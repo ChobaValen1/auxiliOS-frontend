@@ -24,7 +24,7 @@ test('se registra como sección propia y comparte la barra de filtros de Resumen
 test('la pestaña va después de Resumen y la evolución de Resumen lleva a Tendencia', () => {
   const tabs = index.match(/<div class="filter-tabs dashx-tabs" id="dashx-tabs">([\s\S]*?)<\/div>\s*<\/div>/)[1];
   const orden = [...tabs.matchAll(/data-sec="([a-z]+)"/g)].map(m => m[1]);
-  assert.equal(orden.join(','), 'facturacion,tendencia,operaciones,flota');
+  assert.equal(orden.join(','), 'inicio,facturacion,tendencia,operaciones,flota');   // Inicio de administración primero (2bb685d)
   assert.match(index, /id="rsm-evol-card">[\s\S]*?<button type="button" class="rsm-link" onclick="dashxIrATendencia\(\)">/);
   assert.match(sigma, /function dashxIrATendencia\(\)/);
   assert.match(sigma, /tendencia: \['Tendencia',/);

@@ -19,6 +19,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Algunas pruebas compilan los modelos TypeScript de motion-ui (dashboard, camión del chofer).
+      - run: npm --prefix motion-ui ci
       - name: Syntax and security checks
         run: npm run check
       - name: Frontend tests

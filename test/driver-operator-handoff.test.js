@@ -52,8 +52,8 @@ test('nuevo remito limpia confirmaciones Maps, distancia y resultados tardíos d
   resolvePlace({data:{placeId:'late',formattedAddress:'Respuesta anterior',location:{latitude:1,longitude:2}},error:null});
   await selecting;
   assert.equal(api.getMapLocations(),null);
-  assert.equal(document.getElementById('rmv-origin-status').textContent,'Seleccioná una sugerencia de Google Maps');
-  assert.equal(document.getElementById('rmv-destination-status').textContent,'Seleccioná una sugerencia de Google Maps');
+  assert.equal(document.getElementById('rmv-origin-status').textContent,'Elegí una sugerencia de Maps');
+  assert.equal(document.getElementById('rmv-destination-status').textContent,'Elegí una sugerencia de Maps');
   assert.equal(document.getElementById('rem-km').value,'');
   assert.equal(document.getElementById('rmv-route-status').textContent,'Se calcula al elegir origen y destino');
   assert.equal(document.getElementById('rmv-origin-suggestions').hidden,true);

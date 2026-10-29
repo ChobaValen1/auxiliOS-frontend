@@ -259,6 +259,6 @@ test('runtime carga Facturación y Excel canónicos sin assets de revisión para
   // El nombre del cache tiene que renovarse en cada build que toque assets
   // precacheados, así que se verifica que no retroceda en vez de fijar el
   // literal, que obligaba a editar este test en cada bump.
-  const cacheVersion = Number(sw.match(/auxilios-billing-phase2-v(\d+)/)?.[1]);
+  const cacheVersion = Number(sw.match(/CACHE_NAME='auxilios-(?:billing-phase2-)?v(\d+)/)?.[1]);   // desde v518 el prefijo es auxilios-vNNN
   assert.ok(cacheVersion >= 312, `el cache de phase2 no puede retroceder de v312 (es v${cacheVersion})`);
 });

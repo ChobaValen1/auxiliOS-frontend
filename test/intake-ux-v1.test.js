@@ -38,5 +38,7 @@ test('crear servicio desde ingreso: sin un servicio compatible va directo al alt
 test('crear servicio desde ingreso: llegan los km y quién pagó cada peaje', () => {
   assert.match(wizard, /if\(reportedKm>0&&!\(Number\(w\.data\.estimated_asphalt_km\)>0\)&&!\(Number\(w\.data\.estimated_gravel_km\)>0\)\)\{[^}]*w\.data\.estimated_asphalt_km=reportedKm;/);
   assert.match(workspace, /ya cargados como KM Asfalto, separá el ripio si corresponde/);
-  assert.match(wizard, /payer_agent:\['customer','provider'\]\.includes\(r\.payer_agent\)\?r\.payer_agent:''/);
+  // Desde 6b74406 el ingreso usa la misma tabla que la corrección administrativa: cada peaje conserva quién pagó según el chofer.
+  assert.match(wizard, /w\.data\.commercial_addons=administrativeState\(\{toll_coverage_mode:ctx\.addons\?\.toll_coverage_mode\|\|'',tolls:ctx\.addons\?\.tolls\|\|\[\],excess_charges:ctx\.addons\?\.excesses\|\|\[\]\},ctx\.addons\)/);
+  assert.match(wizard, /const row=\{\.\.\.r,_id:uid\(\),quantity:qty/);
 });

@@ -7,7 +7,7 @@ const sql = fs.readFileSync('migrations/20260929120000_particulares_sin_patente_
 
 test('un particular no ofrece Activado en el menú ⋯', () => {
   assert.match(lifecycle, /function isPrivateService\(s\)\{return !!s&&\(s\.quoted_total!=null\|\|s\.client_kind==='particular'\)\}/);
-  assert.match(lifecycle, /function quickActions\(s\)\{const list=serviceQuickActions\(s\);return isPrivateService\(s\)\?list\.filter\(\(\[k\]\)=>k!=='activate'\):list\}/);
+  assert.match(lifecycle, /function quickActions\(s\)\{const list=serviceQuickActions\(s\);if\(canReplaceRemito\(s\)\)list\.push\(\['replace_remito','Reemplazar remito'\]\);return isPrivateService\(s\)\?list\.filter\(\(\[k\]\)=>k!=='activate'\):list\}/);
 });
 
 test('la base: sin patente obligatoria para arribar o finalizar un particular, y sin Activado', () => {
