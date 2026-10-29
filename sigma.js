@@ -1627,7 +1627,7 @@ function _rmxRenderFilters() {
   let rol = '';
   try { rol = PERFIL_USUARIO?.roles?.name || ''; } catch (_) { /* perfil todavía no cargado */ }
   const opts = id => [...($(id)?.options || [])].filter(o => o.value).map(o => ({ value: o.value, label: o.textContent.trim() }));
-  const estados = [['firmado','Firmados'],['pendiente','Pendientes'],['revisar','Por revisar'],['sin_enviar','Por enviar al cliente'],['anulado','Anulados']];
+  const estados = rol === 'chofer' ? [['finalizado','Finalizados'],['activado','Activados'],['anulado','Anulados'],['firmado','Firmados'],['pendiente','Pendientes']] : [['firmado','Firmados'],['pendiente','Pendientes'],['revisar','Por revisar'],['sin_enviar','Por enviar al cliente'],['anulado','Anulados']];
   if (rol === 'administracion' || rol === 'supervision') estados.push(['cerrado_admin','Cerrados admin']);
   $('rmx-estado-host').innerHTML = F.select({ id: 'estado', label: 'Estado', value: filtroEstado === 'todos' ? '' : filtroEstado, options: estados.map(([value, label]) => ({ value, label })), allLabel: 'Todos' });
   const admin = $('filtros-admin') && $('filtros-admin').style.display !== 'none';
@@ -1715,7 +1715,7 @@ function renderRemitosPagination() {
   const next   = document.getElementById('btn-remitos-next');
   const start  = total === 0 ? 0 : (pag - 1) * size + 1;
   const end    = Math.min(total, pag * size);
-  if (info)   info.textContent   = `${start}–${end} de ${total} remitos`;
+  if (info)   info.textContent   = `${start}–${end} de ${total} ${PERFIL_USUARIO?.roles?.name === 'chofer' ? 'servicios' : 'remitos'}`;
   if (pageEl) pageEl.textContent = `Página ${pag} de ${totalPages}`;
   if (prev)   prev.disabled = pag <= 1;
   if (next)   next.disabled = pag >= totalPages;
@@ -1724,7 +1724,7 @@ function renderRemitosPagination() {
 function actualizarInfoFiltroRemitos() {
   const total = window._remitosTotal || 0;
   const countEl = document.getElementById('filtro-count');
-  if (countEl) countEl.textContent = `${total} remito${total !== 1 ? 's' : ''}`;
+  if (countEl) countEl.textContent = `${total} ${PERFIL_USUARIO?.roles?.name === 'chofer' ? 'servicio' : 'remito'}${total !== 1 ? 's' : ''}`;
 
   const labelEl = document.getElementById('filtro-label');
   if (labelEl) {
@@ -1911,6 +1911,8 @@ function verRemitoModal(elemento) {
       if (typeof toast === 'function') toast('No hay datos para mostrar', 'error');
       return;
     }
+
+    if (d.historyEntry && PERFIL_USUARIO?.roles?.name === 'chofer') return window.DriverServiceHistory.open(d);
 
     // Admin/supervisión ven el detalle completo en su propio modal
     const _rol = PERFIL_USUARIO?.roles?.name;
@@ -5720,6 +5722,7 @@ async function actualizarKpisRemitos() {
 // Estado en la tabla de Remitos: color solo si pide acción.
 // Naranja = pendiente, rojo = por revisar; el resto (firmado, aprobado, ajustado…) va neutro.
 function _rmxEstadoHTML(r, asignadoAdmin = false) {
+  if (r.historyEntry) return window.DriverServiceHistory.stateHTML(r);
   const tag = (cls, txt) => `<span class="rmx-state ${cls}">${txt}</span>`;
   if (r.estado === 'anulado') return tag('is-void', 'Anulado');
   if (r.estado === 'cerrado_admin') return tag('is-ok', 'Cerrado por admin');
@@ -5890,7 +5893,7 @@ function renderTablaRemitos(data) {
         esAdmin && !vinculado && !esAnulado ? `<button type="button" class="is-danger" data-rmx-action="anular">Anular remito</button>` : '',
       ].filter(Boolean).join('');
       const acciones = `<div class="rmx-row-actions">
-          ${!esFirmado && !esAnulado && !esCerradoAdmin && !esGestion ? `<button class="rmx-act primary btn-firmar-remito" type="button">Completar</button>` : ''}
+          ${!esFirmado && !esAnulado && !esCerradoAdmin && !esGestion && (!r.historyEntry || r.historyState === 'pendiente') ? `<button class="rmx-act primary btn-firmar-remito" type="button">Completar</button>` : ''}
           ${revisar ? `<button class="rmx-act is-review" type="button" data-rmx-action="revisar">Revisar</button>` : porEnviar ? `<button class="rmx-act is-send" type="button" data-rmx-action="enviar" title="Todavía no se envió al cliente">Enviar</button>` : `<button class="rmx-act btn-ver-remito" type="button">Ver</button>`}
           ${menu ? `<details class="rmx-more"><summary aria-label="Más acciones" title="Más acciones">⋯</summary><div class="rmx-more-menu">${menu}</div></details>` : ''}
         </div>`;
@@ -5926,10 +5929,10 @@ function renderTablaRemitos(data) {
     // una de cliente + monto y una de datos. Tocar la tarjeta abre el detalle.
     const esGestionM = ['administracion', 'supervision'].includes(PERFIL_USUARIO?.roles?.name);
     const mobileSorted = [...data].sort((a, b) =>
-      (a.estado === 'pendiente' ? 0 : 1) - (b.estado === 'pendiente' ? 0 : 1)
+      (a.estado === 'pendiente' && !a.historyEntry ? 0 : 1) - (b.estado === 'pendiente' && !b.historyEntry ? 0 : 1)
     );
     mobileSorted.forEach(r => {
-      const pendiente = r.estado === 'pendiente';
+      const pendiente = r.estado === 'pendiente' && (!r.historyEntry || r.historyState === 'pendiente');
       const cobrado = (parseFloat(r.peaje) || 0) + (parseFloat(r.excedente) || 0) + (parseFloat(r.otros) || 0);
       const tipo = r.tipoReal || (esGestionM || !r.tipo || r.tipo === '—' ? 'Sin clasificar' : r.tipo);
       const meta = [r.patente, tipo, r.fecha].filter(Boolean).map(_rmxEsc).join(' · ');

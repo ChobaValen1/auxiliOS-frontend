@@ -1,7 +1,8 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v587-services-map';
+const CACHE_NAME='auxilios-v588-driver-history';
 const PRECACHE_ASSETS=[
+  '/driver-service-history-v1.js','/driver-service-history-v1.css',
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
   '/dashboard-inicio-v1.js','/dashboard-inicio-v1.css',
   '/ui/completed-journey-services-v1.js',

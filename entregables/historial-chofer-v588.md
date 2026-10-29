@@ -1,0 +1,15 @@
+# Historial completo del chofer · v588
+
+29/10/2026. El historial consultaba únicamente `remitos`. Un servicio activado, finalizado o anulado sin remito desaparecía al liberarse la asignación. Además, el frontend reemplazaba el total del servidor por la longitud de una página, ocultando la navegación a registros anteriores.
+
+Se incorpora `list_driver_service_history_v1`, una lectura paginada que combina servicios propios cerrados/activados con remitos históricos. La identidad se obtiene de la sesión, sin aceptar un ID de chofer del cliente. Se resuelve el responsable por el chofer del activado, remito, asignación actual o última asignación anterior al cierre. Se conservan los cierres hechos por Chofer y Operador, Activado Origen y Activado Movida; esta consulta no aplica reglas de liquidación ni cambia importes, estados o documentos. Los servicios sin responsable conocido no se atribuyen a otro chofer.
+
+Cada servicio aparece una vez aunque tenga remito. Los documentos anteriores sin servicio se conservan, y los ingresos sin asignación todavía pendientes se devuelven aparte para Activos, independientemente de los filtros o página del historial. Los filtros y el total se calculan antes de paginar, con orden estable y fechas de Argentina.
+
+La interfaz distingue Finalizado, Activado y Anulado. Un cierre sin remito abre una ficha de consulta con fecha, móvil, cliente, vehículo, direcciones y motivo disponible. Si existe un documento propio se puede abrir su visor habitual. No se ofrecen acciones de completar sobre servicios ya cerrados. Los peajes mantienen su fuente existente; un fallo en ese detalle no oculta el servicio. La caché se separa por chofer, página y filtros, y las respuestas atrasadas no reemplazan una consulta más nueva.
+
+Validación: PGlite con datos sintéticos (propiedad, reasignación, cierres sin documento, documentos duplicados, activados de ambos tipos, anulados, borradores, filtros, fechas y 53 registros paginados); pruebas de regresión de chofer/remitos; sintaxis y seguridad; Chromium con el cargador y componentes reales (54 registros, filtros, detalle sin remito, teclado, paginación, escritorio y celular). Se verifica también la función desplegada con sesiones de prueba de lectura sobre datos existentes. No se modifican servicios productivos durante el QA.
+
+Despliegue: primero aplicar `migrations/20261029123606_driver_service_history_v1.sql`, luego frontend `driver-history-v588-20261029` y caché `auxilios-v588-driver-history` (SW 295). Reversión: volver al frontend v587; la función nueva puede quedar sin uso o eliminarse después, sin revertir datos.
+
+Verificación productiva: la RPC se ejecutó con rol `authenticated` y contexto de chofer en transacciones de lectura, restituidas con `ROLLBACK`. Se recuperaron los tres estados, activados sin remito y una segunda página; el rol `anon` no tiene permiso. Los avisos de seguridad previos permanecen iguales salvo el inventario de una nueva RPC `SECURITY DEFINER` autenticada: es intencional, exige rol Chofer y resuelve la propiedad dentro de la consulta. [Criterio del auditor](https://supabase.com/docs/guides/database/database-linter).

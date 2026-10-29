@@ -1,0 +1,11 @@
+.rmx-state.is-activated{color:var(--amber,#f5a623);background:rgba(245,166,35,.1)}
+.dsh-dialog{width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--ax-border,#343943);border-radius:16px;background:var(--ax-surface,#171a22);color:var(--ax-text,#eef0f5);font-family:var(--ax-font,inherit);box-shadow:0 24px 80px #0006}
+.dsh-dialog::backdrop{background:#0009}
+.dsh-dialog[open]{display:flex;flex-direction:column}
+.dsh-dialog header{display:flex;align-items:flex-start;justify-content:space-between;padding:20px;border-bottom:1px solid var(--ax-border,#343943)}
+.dsh-dialog h2{font-size:22px;margin:5px 0 10px;overflow-wrap:anywhere}
+.dsh-dialog small,.dsh-dialog dt,.dsh-document{color:var(--ax-text-2,#aeb6c8);font-size:12px}
+.dsh-body{padding:20px;overflow:auto;min-height:0}
+.dsh-dialog dl{display:grid;gap:16px;margin:0 0 20px}.dsh-dialog dd{margin:4px 0 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.dsh-dialog footer{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--ax-border,#343943)}
+.dsh-dialog button{min-height:44px;min-width:44px;padding:8px 14px;border-radius:9px;border:1px solid var(--ax-border,#343943);background:var(--ax-bg,#101218);color:inherit;font:inherit;cursor:pointer}.dsh-dialog button:focus-visible{outline:2px solid var(--amber,#f5a623);outline-offset:2px}

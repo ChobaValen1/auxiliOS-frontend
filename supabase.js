@@ -931,6 +931,9 @@ async function _rmxEnriquecerServicios(rows) {
 
 async function cargarRemitos(opts = {}) {
   try {
+    const esChofer = PERFIL_USUARIO?.roles?.name === 'chofer';
+    const driverId = esChofer ? USUARIO_ACTUAL?.id : null;
+    const request = esChofer ? (window._driverHistoryRequest = (window._driverHistoryRequest || 0) + 1) : null;
     const page     = opts.page     ?? window._remitosPagina ?? 1;
     const pageSize = opts.pageSize ?? window._REMITOS_PAGE_SIZE;
     const filtros  = opts.filtros  ?? window._remitosFiltros ?? {};
@@ -940,6 +943,7 @@ async function cargarRemitos(opts = {}) {
 
     // Fetch puro (separado del render para poder cachearlo — Fase 3 offline)
     const fnOnline = async () => {
+      if (esChofer) return window.DriverServiceHistory.load(_db, {page,pageSize,filtros}, _mapRemitoRow, formatearFecha);
       let query = _buildRemitosQuery({ filtros: await _rmxResolverFiltros(filtros) });
       const start = (page - 1) * pageSize;
       const end   = start + pageSize - 1;
@@ -951,11 +955,10 @@ async function cargarRemitos(opts = {}) {
       return {remitos,total:count??0};
     };
 
-    const esChofer = typeof PERFIL_USUARIO !== 'undefined' && PERFIL_USUARIO?.roles?.name === 'chofer';
     let resultado = null, deCache = false, guardadoAt = null;
 
     if (esChofer && typeof obLecturaConCache === 'function') {
-      const lectura = await obLecturaConCache('remitos_lista', fnOnline);
+      const lectura = await obLecturaConCache('driver_history_v1:' + driverId + ':' + page + ':' + pageSize + ':' + JSON.stringify(filtros), fnOnline);
       resultado  = lectura.data;
       deCache    = lectura.deCache;
       guardadoAt = lectura.guardadoAt;
@@ -969,15 +972,15 @@ async function cargarRemitos(opts = {}) {
       }
     }
 
+    if (esChofer && (request !== window._driverHistoryRequest || USUARIO_ACTUAL?.id !== driverId || PERFIL_USUARIO?.roles?.name !== 'chofer')) return;
     const remitos = resultado?.remitos || [];
-    window._driverRemitosSnapshot = remitos;
+    if (esChofer && resultado?.page) window._remitosPagina = resultado.page;
+    window._driverRemitosSnapshot = esChofer ? resultado?.drafts || [] : remitos;
     if (esChofer && typeof window.actualizarRemitosActivosChofer === 'function') {
-      window.actualizarRemitosActivosChofer(remitos);
+      window.actualizarRemitosActivosChofer(window._driverRemitosSnapshot);
     }
-    const remitosHistorial = esChofer
-      ? remitos.filter(r => !(r.estado === 'pendiente' && (r.driverIntakeId || r.documentSource === 'driver_ad_hoc') && !r.operatorServiceId))
-      : remitos;
-    window._remitosTotal = esChofer ? remitosHistorial.length : (resultado?.total ?? 0);
+    const remitosHistorial = remitos;
+    window._remitosTotal = resultado?.total ?? 0;
     if (typeof renderTablaRemitos === 'function') renderTablaRemitos(remitosHistorial);
     if (typeof renderRemitosPagination === 'function') renderRemitosPagination();
     if (typeof actualizarInfoFiltroRemitos === 'function') actualizarInfoFiltroRemitos();
