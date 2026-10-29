@@ -126,19 +126,20 @@ Se hacen a mano (sin librerías nuevas), con la estética oscura y ámbar y resp
 
 | # | Referencia | Dónde en AuxiliOS | Estado |
 |---|-----------|-------------------|--------|
-| U1 | hover.dev · Stacked notifications (https://www.hover.dev/components/notifications#stacked-notifications) | Todos los avisos (guardado, errores, «Servicio finalizado»): apilados, con resorte, se cierran deslizando | Pendiente |
-| U2 | hover.dev · Spring modal (https://www.hover.dev/components/modals#spring-modal) | Confirmaciones: anular ingreso, guardar y finalizar, dar de baja, rechazar con motivo | Pendiente |
-| U3 | hover.dev · Morph stepped progress (https://www.hover.dev/components/progress#morph-stepped-progress) | Pasos del remito del chofer y asistentes por pasos | Pendiente |
+| U1 | hover.dev · Stacked notifications (https://www.hover.dev/components/notifications#stacked-notifications) | Todos los avisos (guardado, errores, «Servicio finalizado»): apilados, con resorte, se cierran deslizando | Hecho por el equipo · capa Motion (avisos apilados, cola de 3, errores fijos) |
+| U2 | hover.dev · Spring modal (https://www.hover.dev/components/modals#spring-modal) | Confirmaciones: anular ingreso, guardar y finalizar, dar de baja, rechazar con motivo | Hecho por el equipo · capa Motion (modales con resorte) |
+| U3 | hover.dev · Morph stepped progress (https://www.hover.dev/components/progress#morph-stepped-progress) | Pasos del remito del chofer y asistentes por pasos | Hecho por el equipo · capa Motion en el remito del chofer (pasos con tilde y barra) |
 | U4 | hover.dev · Shuffle sort table (https://www.hover.dev/components/tables#shuffle-sort-table) | Ordenar columnas en Servicios, Facturación y Sueldos: las filas se reacomodan animadas | Pendiente |
-| U5 | hover.dev · Fancy dark mode toggle (https://www.hover.dev/components/toggles#fancy-dark-mode-toggle) | Botón de tema (Oscuro / Claro / Sistema) | Pendiente |
-| U6 | Framer · Floating Pill Navigation (https://framer.com/m/FloatingPillNavigation-s92k8M.js@qwsogf78G8HhJg4I53jE) | Navegación del celular (barra inferior flotante); va con la #9 | Pendiente |
+| U5 | hover.dev · Fancy dark mode toggle (https://www.hover.dev/components/toggles#fancy-dark-mode-toggle) | Botón de tema (Oscuro / Claro / Sistema) | Hecho por el equipo · capa Motion (revelado circular al cambiar el tema) |
+| U6 | Framer · Floating Pill Navigation (https://framer.com/m/FloatingPillNavigation-s92k8M.js@qwsogf78G8HhJg4I53jE) | Navegación del celular (barra inferior flotante); va con la #9 | Hecho por el equipo · capa Motion (navegación flotante del celular) |
 | U7 | Framer · Dynamic Island Nav (https://framer.com/m/DynamicIslandNav-hskTZL.js@alczdDjobHIsFEUpStTB) | Chofer: píldora arriba con el servicio en curso y el estado de sincronización, que se expande al tocarla | Pendiente |
 | U8 | Framer · Scroll Reveal Button (https://framer.com/m/Scroll-Reveal-Button-snz7.js@JmhMNWep29NgFxT5j7B0) | Botón flotante «Nuevo servicio» / «Nuevo remito» que se achica al bajar y se agranda al subir | Pendiente |
 | U9 | Framer · WhatsApp Chat (https://framer.com/m/WhatsAppChat-fyWs.js@q1lP6khd8m6Fr35C9HJU) | Chat interno y grupos por rol (P8) | Pendiente |
 | U10 | Framer · Comparison Table (https://framer.com/m/Comparison-Table-TFFKi3.js@ovtvDlm0fw6HBKwxAywM) | Revisión del remito: planificado vs. informado por el chofer, lado a lado | Pendiente |
 | U11 | Framer · Loader Counter (https://framer.com/m/LoaderCounter-yRE5.js@1KnRwfjCWO0zsTVvk5Tx) | Pantalla de carga al abrir la app y números del Panel que cuentan al aparecer | Pendiente |
-| U12 | Captura «Workspace» (dashboard con tarjetas + mini gráficos, puntos guía y «Take the tour») | Panel: tarjetas con mini gráfico y variación vs. mes anterior; recorrido guiado con puntos para usuarios nuevos | Pendiente |
+| U12 | Captura «Workspace» (dashboard con tarjetas + mini gráficos, puntos guía y «Take the tour») | Panel: tarjetas con mini gráfico y variación vs. mes anterior; recorrido guiado con puntos para usuarios nuevos | Parcial · el equipo hizo el inicio de administración con comparaciones del día y rankings; falta el recorrido guiado |
 | U13 | Framer · Bordered Tooltip (https://framer.com/m/Bordered-Tooltip-zvyCPD.js@CU8d8e1RdeSolPazgavR) | Ayudas al pasar el mouse en toda la app: botones con ícono, gráficos del Panel, «Formato de cobro» | Pendiente |
 | U14 | Framer · Project Hours Chart (https://framer.com/m/ProjectHoursChart-stiK.js@0fVxESrZLHegcD1x5LPf) | Jornadas y Sueldos: horas trabajadas por chofer y por día (y horas de motor por camión) | Pendiente |
 | U15 | Framer · Interactive Insight Donut (https://framer.com/m/InteractiveInsightDonut-1-Q6YAFK.js@UBw7HqJtwj4jgJTvTZEI) | Panel: servicios por prestadora y cobros por medio (efectivo, transferencia…), tocando cada parte para ver el detalle | Pendiente |
 | U16 | Framer · Price Target Fan (https://framer.com/m/PriceTargetFan-XsmEf0.js@QYG26zl5t7pkS3XfufPH) | Panel / Facturación: proyección de lo facturado en el mes (rango esperado según lo que va del mes) | Pendiente |
+| U17 | Framer Marketplace · CSV Data Pro (https://www.framer.com/marketplace/components/csv-data-pro/) | Importar planillas (tarifas, peajes, servicios que mandan las prestadoras) con vista previa en tabla —buscar, ordenar, marcar errores— antes de guardar | Pendiente |
