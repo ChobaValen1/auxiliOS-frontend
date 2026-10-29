@@ -306,3 +306,26 @@
 .osv4-concept-guidance{padding:10px 12px;margin:0 0 10px;border:1px solid var(--osv2-border);border-radius:8px;background:var(--osv2-card);color:var(--osv2-muted2);font-size:11px;line-height:1.5;overflow-wrap:anywhere}
 .osv4-concept-guidance p{margin:0 0 6px}.osv4-concept-guidance p:last-child{margin-bottom:0}.osv4-concept-guidance summary{cursor:pointer;color:var(--osv2-text);font-weight:600}.osv4-concept-guidance details[open] summary{margin-bottom:8px}.osv4-concept-guidance ul{margin:8px 0 0;padding-left:18px}
 .osv4-concept-guidance[hidden]{display:none}
+
+/* U10 · Revisión del remito: servicio contra lo informado por el chofer, lado a lado */
+.os-embedded-difference.os-cmp{display:grid;gap:8px;padding:10px 12px;animation:os-cmp-in var(--ax-dur,.22s) var(--ax-ease-out,ease-out) both}
+.os-cmp-head{display:flex;align-items:center;gap:8px;min-width:0}
+.os-cmp-head>b{flex:1;color:var(--osv2-text);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.os-cmp-tag{flex:none;padding:2px 8px;border-radius:var(--ax-radius-pill,999px);font-style:normal;font-size:11px;font-variant-numeric:tabular-nums;color:var(--osv2-muted);background:var(--osv2-panel)}
+.os-cmp-tag.is-up{color:var(--ax-accent);background:var(--ax-accent-soft)}
+.os-cmp-tag.is-down{color:var(--osv2-blue);background:var(--osv2-blue-lo)}
+.os-cmp-tag.is-new{color:var(--ax-accent);background:var(--ax-accent-soft)}
+.os-cmp-grid{display:grid;gap:2px;border:1px solid var(--osv2-border);border-radius:var(--ax-radius,8px);overflow:hidden}
+.os-cmp-row{display:grid;grid-template-columns:minmax(72px,.8fr) 1fr 1fr;gap:8px;align-items:center;padding:5px 10px;font-size:12px}
+.os-cmp-row>span{color:var(--osv2-muted2)}
+.os-cmp-row>b{font-weight:500;font-variant-numeric:tabular-nums;color:var(--osv2-muted)}
+.os-cmp-row>b:last-child{color:var(--osv2-text)}
+.os-cmp-row>b i{font-style:normal;color:var(--osv2-muted2)}
+.os-cmp-cols{background:var(--osv2-panel);font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+.os-cmp-cols>span{color:var(--osv2-muted2)}
+.os-cmp-row.is-changed{background:var(--ax-accent-soft)}
+.os-cmp-row.is-changed>b:last-child{color:var(--ax-accent);font-weight:600}
+.os-cmp .os-embedded-actions{justify-content:flex-end}
+@keyframes os-cmp-in{from{opacity:0;transform:translateY(6px)}}
+@media (prefers-reduced-motion:reduce){.os-embedded-difference.os-cmp{animation:none}}
+@media (max-width:520px){.os-cmp-row{grid-template-columns:64px 1fr 1fr;padding:5px 8px}}

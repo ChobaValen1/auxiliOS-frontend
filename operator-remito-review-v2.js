@@ -252,9 +252,28 @@
 
   function isResolved(kind,id){const d=E.decisions.get(kind+':'+id);return d?.value==='accepted'||d?.value==='adjusted'||d?.value==='rejected'&&!!d.reason?.trim();}
   function pendingEmbeddedRows(){return embeddedRows(E.detail).filter(({kind,id})=>!isResolved(kind,id));}
-  function embeddedLine({kind,row,id,plannedAmount}){
-    const key=kind+':'+id,rejecting=E.rejections.has(key),reason=E.rejections.get(key)||'',title=kind==='toll'?'Peaje':'Excedente',name=kind==='toll'?(row.toll_name||'Peaje informado'):(row.concept_name||'Concepto informado'),method=kind==='toll'?row.customer_payment_method:reportedExcessPayment(row);
-    return `<article class="os-embedded-difference is-compact" data-embedded-key="${esc(key)}"><div class="os-embedded-row"><span class="os-embedded-kind">${title}</span><b title="${esc(name)}">${esc(name)}</b><span class="os-embedded-amount">${money(amountOf(row))}</span><small>${esc(kind==='toll'&&row.payer_agent==='provider'?'A cargo de la prestadora':paymentLabel(method))}${plannedAmount?` · en el servicio ${money(plannedAmount)}`:''}</small></div><div class="os-embedded-actions"><button type="button" class="reject" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','rejected')">Rechazar</button><button type="button" class="approve" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','accepted')">Aprobar</button></div>${rejecting?`<label class="os-embedded-reason"><span>Motivo del rechazo *</span><input value="${esc(reason)}" oninput="AuxiliosRemitoReviewV2.reasonEmbedded('${kind}','${esc(id)}',this.value)" placeholder="Explicá por qué se excluye el cargo"></label><button type="button" class="os-review-confirm-reject" onclick="AuxiliosRemitoReviewV2.confirmRejection('${kind}','${esc(id)}')">Confirmar rechazo</button>`:''}</article>`;
+  /* U10 · Comparación lado a lado: lo que cargó Operaciones y lo que informó el chofer, con las diferencias marcadas.
+     Las pasadas iguales (mismo peaje, quién paga e importe) van en una sola tarjeta; Aprobar las toma juntas. */
+  function comparisonFor(kind,row){
+    const identity=r=>kind==='toll'?String(r.toll_id||compareText(r.toll_name))+'|'+(r.payer_agent||'customer'):String(r.concept_id||compareText(r.concept_name));
+    const unit=r=>amountOf(r)/(num(r.quantity)||1),same=r=>identity(r)===identity(row);
+    const planned=rowsFor(kind,E.detail,'planned').filter(same),reported=(E.detail?.original_reported?.[kind==='toll'?'tolls':'excesses']||E.detail?.reported?.[kind==='toll'?'tolls':'excesses']||[]).filter(r=>same(r)&&Math.abs(unit(r)-unit(row))<0.005);
+    const qty=rows=>rows.reduce((n,r)=>n+(kind==='toll'?Math.max(1,Math.round(num(r.quantity)||1)):num(r.quantity||1)),0);
+    const plannedQty=qty(planned),plannedTotal=planned.reduce((n,r)=>n+amountOf(r),0),reportedQty=qty(reported)||num(row.quantity||1),reportedTotal=reported.reduce((n,r)=>n+amountOf(r),0)||amountOf(row);
+    return{planned:planned.length?{qty:plannedQty,unit:plannedQty?plannedTotal/plannedQty:0,total:plannedTotal,payer:planned[0].payer_agent}:null,reported:{qty:reportedQty,unit:reportedQty?reportedTotal/reportedQty:0,total:reportedTotal,payer:row.payer_agent},ids:reported.map(r=>String(r[kind==='toll'?'toll_report_id':'excess_report_id']))};
+  }
+  function groupedEmbeddedRows(rows){const seen=new Set(),out=[];for(const item of rows){if(seen.has(item.kind+':'+item.id))continue;const cmp=comparisonFor(item.kind,item.row);for(const other of cmp.ids)seen.add(item.kind+':'+other);out.push({...item,cmp});}return out;}
+  function embeddedLine({kind,row,id,cmp}){
+    cmp=cmp||comparisonFor(kind,row);
+    const key=kind+':'+id,rejecting=E.rejections.has(key),reason=E.rejections.get(key)||'',title=kind==='toll'?'Peaje':'Excedente',name=kind==='toll'?(row.toll_name||'Peaje informado'):(row.concept_name||'Concepto informado'),p=cmp.planned,r=cmp.reported;
+    const payer=v=>kind!=='toll'?'Cliente':v==='provider'?'Prestadora':'Cliente',qtyText=v=>kind==='toll'?'×'+Math.round(v):String(Math.round(v*100)/100);
+    const cell=(label,planned,reported,changed)=>`<div class="os-cmp-row${changed?' is-changed':''}"><span>${label}</span><b>${planned}</b><b>${reported}</b></div>`;
+    const delta=r.total-(p?p.total:0),tag=!p?'<em class="os-cmp-tag is-new">Nuevo</em>':Math.abs(delta)<0.005?'<em class="os-cmp-tag">Mismo total</em>':`<em class="os-cmp-tag ${delta>0?'is-up':'is-down'}">${delta>0?'+':'−'}${money(Math.abs(delta))}</em>`;
+    const dash='<i aria-label="Sin cargar">—</i>';
+    return `<article class="os-embedded-difference os-cmp" data-embedded-key="${esc(key)}"><header class="os-cmp-head"><span class="os-embedded-kind">${title}</span><b title="${esc(name)}">${esc(name)}</b>${tag}</header>
+<div class="os-cmp-grid" role="table" aria-label="${esc(title)} ${esc(name)}: servicio contra remito"><div class="os-cmp-row os-cmp-cols" role="row"><span></span><span>En el servicio</span><span>Informó el chofer</span></div>
+${cell('Cantidad',p?qtyText(p.qty):dash,qtyText(r.qty),!p||Math.abs(p.qty-r.qty)>0.005)}${cell('Importe',p?money(p.unit):dash,money(r.unit),!p||Math.abs(p.unit-r.unit)>0.005)}${kind==='toll'?cell('Quién paga',p?payer(p.payer):dash,payer(r.payer),!!p&&(p.payer||'customer')!==(r.payer||'customer')):''}${cell('Total',p?money(p.total):dash,money(r.total),!p||Math.abs(delta)>0.005)}</div>
+<div class="os-embedded-actions"><button type="button" class="reject" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','rejected')">Rechazar</button><button type="button" class="approve" onclick="AuxiliosRemitoReviewV2.decideEmbedded('${kind}','${esc(id)}','accepted')">Aprobar${kind==='toll'&&cmp.ids.length>1?' ×'+cmp.ids.length:''}</button></div>${rejecting?`<label class="os-embedded-reason"><span>Motivo del rechazo *</span><input value="${esc(reason)}" oninput="AuxiliosRemitoReviewV2.reasonEmbedded('${kind}','${esc(id)}',this.value)" placeholder="Explicá por qué se excluye el cargo"></label><button type="button" class="os-review-confirm-reject" onclick="AuxiliosRemitoReviewV2.confirmRejection('${kind}','${esc(id)}')">Confirmar rechazo</button>`:''}</article>`;
   }
   function reviewReport(){
     if(!E.detail||E.serviceId!==window.OperatorServices?.S?.wizard?.serviceId)return '';
@@ -285,7 +304,7 @@
     if(embeddedReadOnly()||!canResolve()){host.innerHTML='';syncFinishButton();return;}
     const rows=pendingEmbeddedRows();
     if(!rows.length){host.innerHTML='<section class="os-embedded-review is-clear"><div class="os-embedded-clear"><b>✓ Sin diferencias con lo informado por el chofer</b></div></section>';syncFinishButton();return;}
-    host.innerHTML=`<section class="os-embedded-review"><header><b>Por revisar</b><em>${rows.length}</em><small>Aprobar suma el cargo al servicio. Rechazar lo deja afuera y pide un motivo.</small></header><div class="os-embedded-list">${rows.map(embeddedLine).join('')}</div></section>`;
+    host.innerHTML=`<section class="os-embedded-review"><header><b>Por revisar</b><em>${groupedEmbeddedRows(rows).length}</em><small>Aprobar suma el cargo al servicio. Rechazar lo deja afuera y pide un motivo.</small></header><div class="os-embedded-list">${groupedEmbeddedRows(rows).map(embeddedLine).join('')}</div></section>`;
     syncFinishButton();
   }
   /* Finalizar y cerrar vive en el pie del formulario; se habilita cuando no quedan diferencias. */

@@ -65,7 +65,9 @@ test('las decisiones pendientes se recuperan y exigen motivo al rechazar',async(
 test('la diferencia muestra el importe realmente planificado',async()=>{
   const planned={...detail,planned:{tolls:[{toll_name:'Peaje',quantity:1,unit_amount:15000}],excesses:[]}};
   const app=setup(undefined,planned);await app.review.embed(serviceId);
-  assert.match(app.host.innerHTML,/en el servicio \$&nbsp;15\.000|en el servicio \$\s*15\.000/);
+  // U10: tarjeta lado a lado (servicio | informó el chofer); el total planificado va en la columna del servicio.
+  assert.match(app.host.innerHTML,/<span>En el servicio<\/span><span>Informó el chofer<\/span>/);
+  assert.match(app.host.innerHTML,/<div class="os-cmp-row[^"]*"><span>Total<\/span><b>\$(&nbsp;|\s)*15\.000/);
 });
 
 test('dejar pendiente guarda la nota y las decisiones individuales',async()=>{
@@ -123,4 +125,18 @@ test('el estado de rechazo guardado no depende de que el cargo siga en la matriz
  const original=detail.reported.tolls[0],data={...detail,original_reported:detail.reported,reported:{tolls:[{...original,administratively_excluded:true}],excesses:[]}};
  const app=setup({decisions:{['toll:'+reportId]:{value:'rejected',reason:'Duplicado',saved:true}}},data);await app.review.embed(serviceId);
  assert.doesNotMatch(app.host.innerHTML,/class="os-embedded-difference"/);assert.match(app.review.reviewReport(),/Rechazado/);assert.match(app.review.reviewReport(),/Duplicado/);
+});
+
+test('U10: una tarjeta por peaje con las pasadas iguales juntas y las diferencias marcadas',async()=>{
+  const pass=i=>({toll_report_id:`33333333-3333-4333-8333-33333333333${i}`,toll_id:'illia',toll_name:'Peaje Illia',quantity:1,unit_amount:2900,total_amount:2900,payer_agent:'customer',customer_payment_method:'cash'});
+  const data={...detail,planned:{tolls:[{toll_id:'illia',toll_name:'Peaje Illia',quantity:1,unit_amount:4800,total_amount:4800,payer_agent:'customer'}],excesses:[]},reported:{tolls:[pass(1),pass(2)],excesses:[]}};
+  const app=setup(undefined,data);await app.review.embed(serviceId);
+  const html=app.host.innerHTML;
+  assert.equal((html.match(/class="os-embedded-difference os-cmp"/g)||[]).length,1);
+  assert.match(html,/<header><b>Por revisar<\/b><em>1<\/em>/);
+  assert.match(html,/<div class="os-cmp-row is-changed"><span>Cantidad<\/span><b>×1<\/b><b>×2<\/b><\/div>/);
+  assert.match(html,/<div class="os-cmp-row is-changed"><span>Importe<\/span>/);
+  assert.match(html,/<div class="os-cmp-row"><span>Quién paga<\/span><b>Cliente<\/b><b>Cliente<\/b><\/div>/);
+  assert.match(html,/class="os-cmp-tag is-up">\+\$(&nbsp;|\s)*1\.000/);   // 2 × 2.900 − 4.800
+  assert.match(html,/>Aprobar ×2<\/button>/);
 });
