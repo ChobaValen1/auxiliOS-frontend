@@ -39,7 +39,76 @@ function primaryAction(s){
   const actions=L()?.quickActions?.(s)||[],want=s.driver_activated?'finalize':O().hasSignedRemito(s)?'finalize':({pending:s.logistics_type==='third_party'?'assign_outsourced':'assign',assigned:s.logistics_type==='third_party'?'finalize':'arrive',at_origin:'finalize'})[O().normalizedStatus(s.status)];
   return actions.find(([key])=>key===want)||null;
 }
-const V={presentation:'list',selected:'',rows:[],scope:'',map:null,maps:null,pins:[],lines:[],cache:new Map(),failures:new Map(),pending:new Map(),colors:new Map(),generation:0,session:0,fitNext:true,camera:'all',panel:'summary',listOpen:false,listPage:0,queuePage:0,legendPage:0,owner:'',notice:null,returnView:null,routeMessage:''};
+// Geographic suggestions use complete operational chains, never the current map filters.
+function canRecommend(s){return !!s&&s.status==='pending'&&!s.driver_activated&&s.logistics_type!=='third_party'&&!s.assigned_driver_id&&!s.assigned_truck_id;}
+function recommendationCandidates(target){
+ const candidates=[],excluded=[];
+ const av=O().S.resourceAvailability;if(!av)return{candidates,excluded:['Disponibilidad sin consultar']};
+ const open=O().S.services.filter(s=>['assigned','en_route','at_origin','loaded','at_destination'].includes(s.status)&&!O().driverDone(s)&&s.logistics_type!=='third_party');
+ for(const truck of av.trucks||[]){
+  const tid=String(truck.truck_id),chain=open.filter(s=>String(s.assigned_truck_id)===tid);
+  const reject=reason=>excluded.push('Móvil '+(truck.numero_interno||truck.plate||tid)+': '+reason);
+  if(!chain.length){reject('sin punto final verificable');continue;}
+  const drivers=new Set(chain.map(s=>String(s.assigned_driver_id||'')));if(drivers.size!==1||drivers.has('')){reject('asignaciones inconsistentes');continue;}
+  const did=[...drivers][0],driver=av.drivers.find(d=>String(d.user_id)===did);
+  if(!driver||!O().isSelectableResource(driver)||!O().isSelectableResource(truck)||O().resourceBlocker('driver',did,target.service_number)||O().resourceBlocker('truck',tid,target.service_number)){reject('no disponible para asignar');continue;}
+  if((driver.active_truck_id&&String(driver.active_truck_id)!==tid)||(truck.active_driver_id&&String(truck.active_driver_id)!==did)||open.some(s=>String(s.assigned_driver_id)===did&&String(s.assigned_truck_id)!==tid)){reject('la pareja cambia en su cadena');continue;}
+  if(!driver.multi_service||chain.some(s=>!s.driver_multi_service)){reject('no admite sumar servicios a su cadena');continue;}
+  if(chain.some(s=>!(Number(s.driver_queue_position)>0))||new Set(chain.map(s=>Number(s.driver_queue_position))).size!==chain.length){reject('orden de cadena sin confirmar');continue;}
+  chain.sort((a,b)=>Number(a.driver_queue_position)-Number(b.driver_queue_position));const last=chain.at(-1),p=pointsFor(last),end=p.single?p.origin:p.destination;
+  if(!end){reject('último destino sin coordenadas');continue;}
+  candidates.push({tid,did,chain,end,last,label:'Móvil '+(truck.numero_interno||truck.plate||tid),driver:driver.full_name||driver.name||'Chofer',address:p.single?(last.origin_formatted_address||last.origin):(last.destination_formatted_address||last.destination)});
+ }
+ return{candidates,excluded};
+}
+function recommendationKey(s){return JSON.stringify([s&&[idOf(s),s.status,s.assigned_driver_id,s.assigned_truck_id,geometryKey(s)],recommendationCandidates(s||{}).candidates.map(c=>[c.tid,c.did,c.chain.map(x=>[idOf(x),x.status,x.driver_queue_position,geometryKey(x)])])]);}
+function comparison(){return V.recommend?.chosen&&!V.recommend.stale?V.recommend.items.find(c=>c.tid===V.recommend.chosen):null;}
+function mapRows(){const c=comparison();return c?[...new Map([...V.rows,...c.chain].map(s=>[idOf(s),s])).values()]:V.rows;}
+async function recommend(){
+ const s=O().service(V.selected);if(!canRecommend(s)||!O().canTransitionState())return;
+ const r=V.recommend={id:idOf(s),who:owner(),loading:true,items:[],excluded:[],page:0,chosen:'',chainPage:0};V.panel='recommend';renderDetails();
+ const valid=()=>V.recommend===r&&usable()&&owner()===r.who&&V.selected===r.id;
+ try{
+  if(!await O().loadResourceAvailability())throw Error('No se pudo consultar la disponibilidad.');if(!valid())return;
+  await O().loadServices();if(!valid())return;const current=O().service(r.id);
+  if(!canRecommend(current))throw Error('El servicio ya no está sin asignar.');
+  const origin=pointsFor(current).origin;if(!origin)throw Error('El origen necesita coordenadas verificadas.');
+  if(!window.ServiceRouteMap)await loadAuxiliosModule('service-route-map-js','/service-route-map.js');
+  const batch=recommendationCandidates(current);r.excluded=batch.excluded;r.key=recommendationKey(current);
+  let cursor=0;const worker=async()=>{while(valid()&&cursor<batch.candidates.length){const c=batch.candidates[cursor++];try{
+   let path,meters;
+   if(same(c.end,origin)){path=[c.end,origin];meters=0;}else{
+    const point=x=>({latitude:x.lat,longitude:x.lng});const result=await timeout(_db.functions.invoke('maps-proxy',{body:{action:'route',routeMode:'origin_destination',base:point(c.end),origin:point(c.end),destination:point(origin)}}));
+    if(result.error||result.data?.error)throw Error();path=operationalPath(window.ServiceRouteMap.decode(result.data?.polyline),{route:true,origin:c.end,destination:origin});meters=number(result.data?.distanceMeters);if(!path.length||meters===null||meters<0)throw Error();
+   }
+   if(valid())r.items.push({...c,path,meters});
+  }catch(_){if(valid())r.excluded.push(c.label+': recorrido no disponible');}}};
+  await Promise.all([worker(),worker()]);if(!valid())return;
+  r.items.sort((a,b)=>a.meters-b.meters||a.label.localeCompare(b.label));r.stale=r.key!==recommendationKey(O().service(r.id));
+ }catch(e){if(valid())r.error=e.message||'No se pudo recomendar.';}finally{if(valid()){r.loading=false;renderDetails();}}
+}
+function renderRecommendation(s){
+ const r=V.recommend;if(!r)return;const chosen=comparison(),recSize=Math.max(1,Math.min(3,Math.floor((el('osm-detail-body').clientHeight-150)/85))),pages=Math.max(1,Math.ceil(r.items.length/recSize));r.page=Math.min(r.page,pages-1);
+ const pager=(prefix,page,total)=>total>1?`<div class="osm-pager"><button type="button" data-osm="${prefix}-prev" ${page===0?'disabled':''} aria-label="Página anterior">←</button><span>${page+1} / ${total}</span><button type="button" data-osm="${prefix}-next" ${page===total-1?'disabled':''} aria-label="Página siguiente">→</button></div>`:'';
+ const cards=r.items.slice(r.page*recSize,r.page*recSize+recSize).map((c,i)=>`<button type="button" class="osm-suggestion" data-osm-candidate="${esc(c.tid)}"><b>${r.page===0&&i===0?'★ Menor distancia · ':''}${esc(c.label)} · ${esc(c.driver)}</b><span>${(c.meters/1000).toLocaleString('es-AR',{maximumFractionDigits:1})} km por calles · ${c.chain.length} servicios pendientes</span><small>Termina en ${esc(c.address||'destino registrado')}</small><em>Ver cadena y elegir →</em></button>`).join('');
+ const chain=chosen?`<div class="osm-choice"><b>${esc(chosen.label)} · ${esc(chosen.driver)}</b><span>${(chosen.meters/1000).toLocaleString('es-AR',{maximumFractionDigits:1})} km desde el final hasta el nuevo origen</span><small>Enlace discontinuo en el mapa · no es posición GPS</small></div><ol class="osm-choice-chain">${chosen.chain.slice(r.chainPage*2,r.chainPage*2+2).map(x=>`<li><b>${esc(code(x))}</b><span>${esc(x.destination_formatted_address||x.destination||x.origin||'Sin dirección')}</span></li>`).join('')}</ol>${pager('rec-chain',r.chainPage,Math.ceil(chosen.chain.length/2))}<label class="osm-capacity"><input id="osm-capacity" type="checkbox"> Confirmé capacidad del móvil y horario con el chofer.</label>`:cards+pager('rec',r.page,pages);
+ replace(el('osm-detail-body'),`<div class="osm-detail-heading"><h3 id="osm-detail-title" tabindex="-1">${esc(code(s))}</h3>${badge(s)}</div><p class="osm-rec-origin" title="${esc(s.origin||'')}">● ${esc(s.origin_formatted_address||s.origin||'Sin dirección')}</p><h4 class="osm-rec-heading">${chosen?'Confirmar móvil':'Móviles por cercanía'}</h4><p class="osm-rec-note">Kilómetros desde el final de su cadena. Disponibilidad horaria y capacidad sin confirmar; no es una ETA.</p>${r.loading?'<p role="status">Consultando recorridos…</p>':r.stale?'<p role="alert">La cadena o el servicio cambió. Recalculá antes de elegir.</p>':r.error?`<p role="alert">${esc(r.error)}</p>`:chain||'<p>No hay móviles con una cadena y recorrido verificables.</p>'}${!chosen&&!r.loading?`<small class="osm-rec-excluded" title="${esc(r.excluded.join('\n'))}">${r.excluded.length} móviles fuera del ranking: sin ubicación final, restricciones o recorrido no disponible.</small>`:''}`);
+ replace(el('osm-actions'),`<button type="button" data-osm="${chosen?'rec-back':'summary'}">Volver</button>${chosen?`<button type="button" class="osm-primary" data-osm="rec-confirm" ${r.busy?'disabled':''}>${r.busy?'Asignando…':'Confirmar asignación'}</button>`:`<button type="button" data-osm="recommend" ${r.loading?'disabled':''}>Recalcular</button>`}<span id="osm-rec-error" role="alert">${esc(r.saveError||'')}${chosen?' · Se agregará al final de su cadena.':''}</span>`);
+}
+async function confirmRecommendation(){
+ const r=V.recommend,c=comparison();if(!r||!c||r.busy||!O().canTransitionState())return;
+ if(!el('osm-capacity')?.checked){el('osm-rec-error').textContent='Confirmá capacidad y horario antes de asignar.';return;}
+ r.busy=true;r.saveError='';renderDetails();
+ try{
+  if(!await O().loadResourceAvailability())throw Error('No se pudo actualizar la disponibilidad.');await O().loadServices();
+  if(V.recommend!==r||!usable()||owner()!==r.who||!O().canTransitionState())return;
+  const s=O().service(r.id);if(!canRecommend(s)||r.key!==recommendationKey(s)){r.stale=true;throw Error('El servicio o la cadena cambió. Recalculá la recomendación.');}
+  const {error}=await _db.rpc('assign_recommended_operator_service_v1',{p_service_id:r.id,p_driver_id:c.did,p_truck_id:Number(c.tid),p_expected_chain:c.chain.map(idOf)});if(error)throw error;
+  V.recommend=null;V.panel='summary';V.drawSignature='';await O().loadServices();renderDetails();draw();
+ }catch(e){if(V.recommend===r)r.saveError=e.message||'No se pudo asignar.';}finally{if(V.recommend===r){r.busy=false;renderDetails();}}
+}
+
+const V={presentation:'list',selected:'',rows:[],scope:'',map:null,maps:null,pins:[],lines:[],cache:new Map(),failures:new Map(),pending:new Map(),colors:new Map(),generation:0,session:0,fitNext:true,camera:'all',panel:'summary',listOpen:true,listPage:0,listSize:3,recommend:null,queuePage:0,legendPage:0,owner:'',notice:null,returnView:null,routeMessage:''};
 let host,screen,themeObserver,screenObserver,sizeObserver,authSubscription,sizeFrame=0;
 const el=id=>document.getElementById(id);
 const usable=()=>V.presentation==='map'&&O()?.S.view==='active'&&screen?.classList.contains('active')&&O()?.canRead?.();
@@ -54,6 +123,8 @@ function sizeViewport(){
     if(screen.style.getPropertyValue('--osm-screen-height')!==height+'px')screen.style.setProperty('--osm-screen-height',height+'px');
     const detail=host?.querySelector('.osm-detail');
     if(detail?.clientHeight)host.style.setProperty('--osm-menu-height',Math.max(44,detail.clientHeight-el('osm-actions').offsetHeight-16)+'px');
+    const size=Math.max(1,Math.min(4,Math.floor((host.querySelector('.osm-layout').clientHeight-100)/155)));if(size!==V.listSize){V.listSize=size;V.listPage=0;renderList();}
+    if(V.panel==='recommend'&&V.recommend)renderDetails();
     if(V.map)V.maps?.event?.trigger?.(V.map,'resize');
   });
 }
@@ -61,12 +132,12 @@ function owner(){return typeof PERFIL_USUARIO==='undefined'?O()?.role?.()||'':St
 function replace(node,html){if(!node||node.__osmMarkup===html)return;const focus=node.contains(document.activeElement)?document.activeElement?.dataset?.osmFocus:null,scroll=node.scrollTop;node.__osmMarkup=html;node.innerHTML=html;node.scrollTop=scroll;if(focus){[...node.querySelectorAll('[data-osm-focus]')].find(b=>b.dataset.osmFocus===focus)?.focus({preventScroll:true});}}
 function setMessage(message,retry=false){if(!host)return;const node=el('osm-map-message');node.hidden=!message;replace(node,message?`<span>${esc(message)}</span>${retry?'<button type="button" data-osm="retry">Reintentar</button>':''}`:'');}
 function notice(){const n=V.notice;replace(el('osm-notice'),n?`<span>${esc(n.message)}</span>${n.history?'<button type="button" data-osm="history">Ver en Historial</button>':''}<button type="button" data-osm="dismiss" aria-label="Cerrar aviso">${icon('x')}</button>`:'');el('osm-notice').hidden=!n;}
-function listHTML(s,i){const p=pointsFor(s),c=crew(s);return`<button type="button" class="osm-card" data-osm-select="${esc(idOf(s))}" data-osm-focus="select-${esc(idOf(s))}" aria-pressed="${idOf(s)===V.selected}"><span class="osm-card-top"><b>${esc(code(s))}</b>${badge(s)}</span><span class="osm-crew">${icon('truck')}<b>${esc(c.title)}</b></span><span class="osm-card-sub">${esc(c.sub)} · ${esc(stamp(s.scheduled_for))}</span><span class="osm-card-route"><span><i aria-label="Origen">●</i>${esc(s.origin_formatted_address||s.origin||'Origen sin dirección')}</span>${p.single?'':`<span><i aria-label="Destino">⚑</i>${esc(s.destination_formatted_address||s.destination||'Destino sin dirección')}</span>`}</span>${!p.any?'<span class="osm-coverage-missing">Sin coordenadas · disponible en la lista</span>':!p.route?'<span class="osm-point-only">Punto de servicio</span>':''}</button>`;}
+function listHTML(s,i){const p=pointsFor(s),c=crew(s);return`<button type="button" class="osm-card" data-osm-select="${esc(idOf(s))}" data-osm-focus="select-${esc(idOf(s))}" aria-pressed="${idOf(s)===V.selected}"><span class="osm-card-top"><b>${esc(code(s))}</b>${badge(s)}</span><span class="osm-crew">${icon('truck')}<b>${esc(c.title)}</b></span><span class="osm-card-sub">${esc(c.sub)} · ${esc(stamp(s.scheduled_for))}</span><span class="osm-card-route"><span title="${esc(s.origin_formatted_address||s.origin||'')}"><i aria-label="Origen">●</i>${esc(s.origin_formatted_address||s.origin||'Origen sin dirección')}</span>${p.single?'':`<span title="${esc(s.destination_formatted_address||s.destination||'')}"><i aria-label="Destino">⚑</i>${esc(s.destination_formatted_address||s.destination||'Destino sin dirección')}</span>`}</span>${!p.any?'<span class="osm-coverage-missing">Sin coordenadas · disponible en la lista</span>':!p.route?'<span class="osm-point-only">Punto de servicio</span>':''}</button>`;}
 function renderList(){
-  const pageSize=1,total=Math.max(1,Math.ceil(V.rows.length/pageSize));V.listPage=Math.min(V.listPage,total-1);
+  const pageSize=V.listSize,total=Math.max(1,Math.ceil(V.rows.length/pageSize));V.listPage=Math.min(V.listPage,total-1);
   host.dataset.listOpen=String(V.listOpen);
   replace(el('osm-list'),V.rows.slice(V.listPage*pageSize,(V.listPage+1)*pageSize).map(listHTML).join('')||'<div class="osm-empty"><b>No hay servicios en esta vista</b><p>Revisá la búsqueda y los filtros.</p></div>');
-  replace(el('osm-list-pages'),`<button type="button" data-osm="list-prev" ${V.listPage===0?'disabled':''} aria-label="Servicio anterior">←</button><span>${V.rows.length?V.listPage+1:0} / ${V.rows.length}</span><button type="button" data-osm="list-next" ${V.listPage===total-1?'disabled':''} aria-label="Servicio siguiente">→</button>`);
+  replace(el('osm-list-pages'),`<button type="button" data-osm="list-prev" ${V.listPage===0?'disabled':''} aria-label="Servicio anterior">←</button><span>${V.rows.length?V.listPage+1:0} / ${total} · ${V.rows.length} servicios</span><button type="button" data-osm="list-next" ${V.listPage===total-1?'disabled':''} aria-label="Servicio siguiente">→</button>`);
   el('osm-list-toggle').textContent=`Servicios · ${V.rows.length}`;el('osm-list-toggle').setAttribute('aria-expanded',String(V.listOpen));
   const tabs=[...screen.querySelectorAll('[data-os-tab]')];replace(el('osm-status'),tabs.map(b=>`<option value="${esc(b.dataset.osTab)}">${esc(b.textContent.replace(/(\D)(\d+)$/,'$1 · $2'))}</option>`).join(''));el('osm-status').value=O().S.status;
   const located=V.rows.filter(s=>pointsFor(s).any).length,missing=V.rows.length-located;
@@ -78,12 +149,13 @@ function renderDetails(){
   const s=V.rows.find(s=>idOf(s)===V.selected);host.dataset.selected=String(!!s);host.dataset.panel=V.panel;
   if(!s){replace(el('osm-detail-body'),'<div class="osm-empty">'+icon('mouse-pointer-2')+'<h3>Elegí un servicio</h3><p>Consultá su recorrido, responsables y próximas acciones.</p></div>');replace(el('osm-actions'),'');return;}
   V.routeMessage=routeCaption(s);
+  if(V.panel==='recommend'&&V.recommend){renderRecommendation(s);return;}
   const c=crew(s),p=pointsFor(s),primary=primaryAction(s),actions=O().canTransitionState()?(L()?.quickActions(s)||[]):[],q=O().driverQueue?.(O().serviceDriverId?.(s))||[];
   V.queuePage=Math.min(V.queuePage,Math.max(0,Math.ceil(q.length/2)-1));
   const queue=s.logistics_type!=='third_party'&&s.driver_multi_service&&q.length?`<section class="osm-queue"><h4>Cadena del chofer <span>${q.length}</span></h4><ol>${q.slice(V.queuePage*2,V.queuePage*2+2).map((item,i)=>`<li><button type="button" data-osm-queue="${esc(idOf(item))}" data-osm-focus="queue-${esc(idOf(item))}" ${idOf(item)===V.selected?'aria-current="true"':''}><span>${V.queuePage*2+i+1}</span><b>${esc(code(item))}</b><small>${esc(status(item).label)}</small></button></li>`).join('')}</ol>${q.length>2?`<div class="osm-pager"><button type="button" data-osm="queue-prev" ${V.queuePage===0?'disabled':''}>←</button><span>${V.queuePage+1} / ${Math.ceil(q.length/2)}</span><button type="button" data-osm="queue-next" ${(V.queuePage+1)*2>=q.length?'disabled':''}>→</button></div>`:''}</section>`:'';
   const html=`<div class="osm-detail-heading"><div><small>SERVICIO</small><h3 id="osm-detail-title" tabindex="-1">${esc(code(s))}</h3></div>${badge(s)}</div><div class="osm-overview"><div class="osm-assignment">${icon(s.logistics_type==='third_party'?'building-2':'truck')}<div><b>${esc(c.title)}</b><span>${esc(c.sub)}</span></div></div><p class="osm-scheduled">${icon('clock')}<span>Fecha y hora del servicio<b>${esc(stamp(s.scheduled_for))}</b></span></p></div><div class="osm-detail-tabs" role="group" aria-label="Información del servicio"><button type="button" data-osm="summary" aria-pressed="${V.panel==='summary'}">Resumen</button><button type="button" data-osm="tracking" aria-pressed="${V.panel==='tracking'}">Seguimiento</button><button type="button" data-osm="queue" aria-pressed="${V.panel==='queue'}">Cadena · ${q.length}</button></div><div id="osm-detail-extra" class="osm-detail-extra"><ol class="osm-stops"><li><i aria-label="Origen">●</i><div><small>ORIGEN</small><p>${esc(s.origin_formatted_address||s.origin||'Sin dirección')}</p></div></li>${p.single?'':`<li><i aria-label="Destino">⚑</i><div><small>DESTINO</small><p>${esc(s.destination_formatted_address||s.destination||'Sin dirección')}</p></div></li>`}</ol><p class="osm-route-caption" id="osm-route-caption">${esc(V.routeMessage||(!p.any?'Sin coordenadas verificadas.':!p.route?'Servicio con un punto disponible.':'Recorrido de referencia origen → destino.'))}</p><dl class="osm-facts"><div><dt>Prestadora</dt><dd>${esc(s.company_name||'Sin informar')}</dd></div><div><dt>Patente</dt><dd>${esc(s.vehicle_plate||'Sin informar')}</dd></div><div><dt>Arribo registrado</dt><dd>${esc(stamp(s.arrived_at))}</dd></div>${!s.arrived_at&&s.estimated_arrival_at?`<div><dt>Arribo estimado cargado</dt><dd>${esc(stamp(s.estimated_arrival_at))}</dd></div>`:''}<div><dt>Finalización registrada</dt><dd>${esc(stamp(s.completed_at))}</dd></div><div><dt>Remito</dt><dd>${esc(documentLabel(s))}</dd></div></dl>${s.status==='completed'&&O().activeServices().some(x=>idOf(x)===idOf(s))?'<p class="osm-review-note">Finalizado; sigue en Activos por la revisión pendiente del remito.</p>':''}${queue}</div>`;
   replace(el('osm-detail-body'),html);
-  replace(el('osm-actions'),`${primary?`<button type="button" class="osm-primary" data-osm-action="${esc(primary[0])}" data-osm-focus="primary">${esc(primary[0]==='arrive'?'Registrar arribo':primary[0]==='finalize'&&O().hasSignedRemito(s)?'Revisar y finalizar':primary[1])}${icon('arrow-right')}</button>`:''}<button type="button" data-osm="open" data-osm-focus="open">Abrir servicio${icon('external-link')}</button>${actions.filter(([key])=>key!==primary?.[0]).length?`<details class="osm-more"><summary>Más acciones</summary><div>${actions.filter(([key])=>key!==primary?.[0]).map(([key,label])=>`<button type="button" data-osm-action="${esc(key)}" data-osm-focus="action-${esc(key)}"${key==='annul'?' class="osm-danger"':''}>${esc(label)}</button>`).join('')}</div></details>`:''}`);
+  replace(el('osm-actions'),`${canRecommend(s)&&O().canTransitionState()?'<button type="button" class="osm-primary" data-osm="recommend">Buscar móvil recomendado</button>':''}${primary?`<button type="button" class="osm-primary" data-osm-action="${esc(primary[0])}" data-osm-focus="primary">${esc(primary[0]==='arrive'?'Registrar arribo':primary[0]==='finalize'&&O().hasSignedRemito(s)?'Revisar y finalizar':primary[1])}${icon('arrow-right')}</button>`:''}<button type="button" data-osm="open" data-osm-focus="open">Abrir servicio${icon('external-link')}</button>${actions.filter(([key])=>key!==primary?.[0]).length?`<details class="osm-more"><summary>Más acciones</summary><div>${actions.filter(([key])=>key!==primary?.[0]).map(([key,label])=>`<button type="button" data-osm-action="${esc(key)}" data-osm-focus="action-${esc(key)}"${key==='annul'?' class="osm-danger"':''}>${esc(label)}</button>`).join('')}</div></details>`:''}`);
 }
 function sync(){
   if(!host)return;
@@ -106,19 +178,19 @@ function sync(){
     V.selected='';V.routeMessage='';V.camera='all';V.fitNext=true;V.autoFit=true;
   }
   if(nextScope!==V.scope){V.listPage=0;V.legendPage=0;V.camera='all';V.fitNext=true;V.autoFit=true;}
-  V.rows=rows;V.scope=nextScope;renderList();renderDetails();notice();
+  V.rows=rows;V.scope=nextScope;if(V.recommend?.key&&V.recommend.key!==recommendationKey(O().service(V.recommend.id)))V.recommend.stale=true;renderList();renderDetails();notice();
   if(usable()){if(!V.map)void start();else{draw();pumpRoutes();}}
 }
 function switchView(value){V.presentation=value==='map'&&O()?.S.view==='active'?'map':'list';if(V.presentation==='list')dispose(false);sync();}
 function select(id,focus=true){
   const s=V.rows.find(s=>idOf(s)===String(id));if(!usable()||!s)return;
-  V.selected=String(id);V.routeMessage='';V.panel='summary';V.listOpen=false;V.queuePage=0;V.camera='selection';V.fitNext=true;
+  V.recommend=null;V.selected=String(id);V.routeMessage='';V.panel='summary';V.listOpen=false;V.queuePage=0;V.camera='selection';V.fitNext=true;
   const key=geometryKey(s);V.autoFit=pointsFor(s).route&&!V.cache.has(key)&&!V.failures.has(key);
   renderList();renderDetails();draw();pumpRoutes();sizeViewport();if(focus)el('osm-detail-title')?.focus({preventScroll:true});
 }
 function clearOverlays(){for(const p of [...V.pins,...V.lines]){V.maps?.event?.clearInstanceListeners(p);p.setMap(null);}V.pins=[];V.lines=[];}
-function dispose(clear){V.session++;V.starting=false;clearOverlays();if(V.map)V.maps?.event?.clearInstanceListeners(V.map);V.map=null;V.maps=null;V.drawSignature='';V.fitNext=true;if(clear){V.generation++;V.cache.clear();V.failures.clear();V.colors.clear();}el('osm-canvas')?.replaceChildren();}
-function cameraRows(){return V.camera==='selection'?V.rows.filter(s=>idOf(s)===V.selected):V.rows;}
+function dispose(clear){V.recommend=null;V.panel='summary';V.session++;V.starting=false;clearOverlays();if(V.map)V.maps?.event?.clearInstanceListeners(V.map);V.map=null;V.maps=null;V.drawSignature='';V.fitNext=true;if(clear){V.generation++;V.cache.clear();V.failures.clear();V.colors.clear();}el('osm-canvas')?.replaceChildren();}
+function cameraRows(){if(comparison())return [O().service(V.selected),...comparison().chain].filter(Boolean);return V.camera==='selection'?V.rows.filter(s=>idOf(s)===V.selected):V.rows;}
 function fit(){
   if(!V.map)return;
   const bounds=new V.maps.LatLngBounds(),points=[];
@@ -126,6 +198,7 @@ function fit(){
     const p=pointsFor(row);for(const point of [p.origin,p.destination])if(point)points.push(point);
     points.push(...(V.cache.get(geometryKey(row))?.path||[]));
   }
+  if(comparison())points.push(...comparison().path);
   if(!points.length)return;
   if(points.every(p=>same(p,points[0]))){V.map.panTo(points[0]);V.map.setZoom(16);return;}
   for(const point of points)bounds.extend(point);
@@ -133,7 +206,7 @@ function fit(){
   V.map.fitBounds(bounds,{top:vertical,right:horizontal,bottom:vertical,left:horizontal});
 }
 function renderLegend(){
-  const groups=new Map();for(const s of V.rows){if(!pointsFor(s).any)continue;const g=mobileGroup(s);if(!groups.has(g.key))groups.set(g.key,{...g,count:0});groups.get(g.key).count++;}
+  const groups=new Map();for(const s of mapRows()){if(!pointsFor(s).any)continue;const g=mobileGroup(s);if(!groups.has(g.key))groups.set(g.key,{...g,count:0});groups.get(g.key).count++;}
   const groupRows=[...groups.values()],pages=Math.max(1,Math.ceil(groupRows.length/3));V.legendPage=Math.min(V.legendPage,pages-1);
   replace(el('osm-legend-pages'),pages>1?`<button type="button" data-osm="legend-prev" ${V.legendPage===0?'disabled':''}>←</button><span>${V.legendPage+1}/${pages}</span><button type="button" data-osm="legend-next" ${V.legendPage===pages-1?'disabled':''}>→</button>`:'');
   replace(el('osm-legend-items'),groupRows.slice(V.legendPage*3,V.legendPage*3+3).map(g=>`<span class="osm-legend-item" data-mobile="${esc(g.key)}"><i style="--osm-route-color:${groupColor(g.key)}" class="${g.kind==='unassigned'?'is-unassigned':''}"></i><span>${esc(g.label)}</span><small>${g.count}</small></span>`).join('')||'<small>Sin puntos para mostrar</small>');
@@ -143,7 +216,7 @@ function renderLegend(){
 function routeCaption(s){const p=pointsFor(s),key=geometryKey(s);return!p.any?'Sin coordenadas verificadas.':!p.route?'Servicio con un punto disponible.':V.cache.get(key)?.message||V.failures.get(key)||'Consultando recorrido origen → destino…';}
 function draw(){
   if(!V.map)return;
-  const signature=JSON.stringify([V.selected,V.rows.map(s=>[geometryKey(s),code(s),mobileGroup(s),V.cache.has(geometryKey(s))])]);
+  const signature=JSON.stringify([V.selected,V.recommend?.chosen,V.recommend?.stale,mapRows().map(s=>[geometryKey(s),code(s),mobileGroup(s),V.cache.has(geometryKey(s))])]);
   if(signature===V.drawSignature&&!V.fitNext)return;
   const focused=document.activeElement?.dataset?.osmPin;
   V.drawSignature=signature;clearOverlays();
@@ -162,15 +235,16 @@ function draw(){
     draw(){const p=this.getProjection()?.fromLatLngToDivPixel(new maps.LatLng(this.point.lat,this.point.lng));if(p){this.button.style.left=p.x+'px';this.button.style.top=p.y+'px';}}
     onRemove(){this.button.remove();}
   }
-  const ordered=[...V.rows.filter(s=>idOf(s)!==V.selected),...V.rows.filter(s=>idOf(s)===V.selected)];
+  const ordered=[...mapRows().filter(s=>idOf(s)!==V.selected),...mapRows().filter(s=>idOf(s)===V.selected)];
   for(const s of ordered){
     const cached=V.cache.get(geometryKey(s));if(!cached?.path?.length)continue;
-    const selected=idOf(s)===V.selected,g=mobileGroup(s),color=groupColor(g.key);
+    const selected=idOf(s)===V.selected||!!comparison()?.chain.some(x=>idOf(x)===idOf(s)),g=mobileGroup(s),color=groupColor(g.key);
     const line=new maps.Polyline({map:V.map,path:cached.path,strokeColor:color,strokeWeight:selected?6:4,strokeOpacity:g.kind==='unassigned'?0:.9,clickable:true,zIndex:selected?4:2,...(g.kind==='unassigned'?{icons:[{icon:{path:'M 0,-1 0,1',strokeOpacity:1,strokeColor:color,scale:2},offset:'0',repeat:'12px'}]}:{})});
     line.setPath(cached.path);line.addListener?.('click',()=>select(idOf(s)));V.lines.push(line);
   }
+  const cmp=comparison();if(cmp){const line=new maps.Polyline({map:V.map,path:cmp.path,strokeOpacity:0,clickable:false,zIndex:5,icons:[{icon:{path:'M 0,-1 0,1',strokeOpacity:1,strokeColor:groupColor('truck:'+cmp.tid),scale:2},offset:'0',repeat:'12px'}]});line.setPath(cmp.path);V.lines.push(line);}
   // Coincident endpoints keep their exact anchor and expose every service by cycling.
-  const stops=new Map();for(const [i,s] of V.rows.entries()){const p=pointsFor(s);for(const [letter,point] of [['A',p.origin],['B',p.destination]]){if(!point||(letter==='B'&&same(p.origin,point)))continue;const key=point.lat.toFixed(6)+','+point.lng.toFixed(6);if(!stops.has(key))stops.set(key,[]);stops.get(key).push({s,point,letter,index:i+1});}}
+  const stops=new Map();for(const [i,s] of mapRows().entries()){const p=pointsFor(s);for(const [letter,point] of [['A',p.origin],['B',p.destination]]){if(!point||(letter==='B'&&same(p.origin,point)))continue;const key=point.lat.toFixed(6)+','+point.lng.toFixed(6);if(!stops.has(key))stops.set(key,[]);stops.get(key).push({s,point,letter,index:i+1});}}
   for(const [key,items] of stops)V.pins.push(new Pin(key,items));
   if(focused)V.pins.find(p=>p.button.dataset.osmPin===focused)?.button.focus({preventScroll:true});
   setMessage(V.rows.length&&!V.rows.some(s=>pointsFor(s).any)?'Estos servicios no tienen coordenadas verificadas. Podés operarlos desde las fichas.':V.rows.length?'':'No hay servicios que coincidan con esta vista.');
@@ -189,12 +263,12 @@ function timeout(promise){let timer;return Promise.race([promise,new Promise((_,
 function pumpRoutes(){
   if(!usable()||!V.map)return;
   // At most three requests, no repeats on polling, and no queued work after leaving Activos.
-  const candidates=[...V.rows].sort((a,b)=>Number(idOf(b)===V.selected)-Number(idOf(a)===V.selected));
+  const candidates=[...mapRows()].sort((a,b)=>Number(idOf(b)===V.selected)-Number(idOf(a)===V.selected));
   for(const s of candidates){if(V.pending.size>=3)break;const key=geometryKey(s);if(!pointsFor(s).route||V.cache.has(key)||V.failures.has(key)||V.pending.has(key))continue;const job={generation:V.generation,owner:owner()};V.pending.set(key,job);void loadRoute(s,key,job);}
   renderLegend();
 }
 async function loadRoute(s,key,job){
-  const valid=()=>job.generation===V.generation&&job.owner===owner()&&usable()&&V.rows.some(row=>geometryKey(row)===key);
+  const valid=()=>job.generation===V.generation&&job.owner===owner()&&usable()&&mapRows().some(row=>geometryKey(row)===key);
   try{
     const p=pointsFor(s),point=x=>({latitude:x.lat,longitude:x.lng});
     const r=await timeout(_db.functions.invoke('maps-proxy',{body:{action:'route',routeMode:'origin_destination',base:point(p.origin),origin:point(p.origin),destination:point(p.destination)}}));
@@ -218,14 +292,23 @@ function jumpHistory(){
   Object.assign(O().S,{query:String(code(s)),status:'all',company:'all',driverFilter:'',truckFilter:'',periodSel:{mode:'all'},historyPage:1});el('os-q').value=O().S.query;V.notice=null;window.cambiarVistaServicios('history');window.AuxiliosUI?.resaltarServicio?.(id);el('osm-history-return').hidden=false;
 }
 function handle(event){
+  const candidate=event.target.closest('[data-osm-candidate]');if(candidate&&V.recommend&&!V.recommend.stale&&!V.recommend.loading){V.recommend.chosen=candidate.dataset.osmCandidate;V.recommend.chainPage=0;V.fitNext=true;renderDetails();draw();pumpRoutes();return;}
+
   const selected=event.target.closest('[data-osm-select]');if(selected)return select(selected.dataset.osmSelect);
   const queue=event.target.closest('[data-osm-queue]');if(queue){const id=queue.dataset.osmQueue;if(V.rows.some(s=>idOf(s)===id))select(id);else window.verServicioOperador?.(id);return;}
   const action=event.target.closest('[data-osm-action]');if(action){if(!O().canTransitionState()||!V.selected)return;L()?.runQuickAction(action.dataset.osmAction,V.selected);return;}
   const task=event.target.closest('[data-osm]')?.dataset.osm;
+  if(task==='recommend')void recommend();
+  if(task==='rec-confirm')void confirmRecommendation();
+  if(task==='rec-back'&&V.recommend){V.recommend.chosen='';V.fitNext=true;renderDetails();draw();}
+  if((task==='rec-prev'||task==='rec-next')&&V.recommend){V.recommend.page=Math.max(0,V.recommend.page+(task==='rec-next'?1:-1));renderDetails();}
+  if((task==='rec-chain-prev'||task==='rec-chain-next')&&V.recommend){V.recommend.chainPage=Math.max(0,V.recommend.chainPage+(task==='rec-chain-next'?1:-1));renderDetails();}
+  if(task==='all-services')window.filtrarEstadoServicios('all');
+  if(task==='unassigned-services')window.filtrarEstadoServicios('pending');
   if(task==='open'&&V.selected)window.verServicioOperador?.(V.selected);
   if(task==='list'){V.listOpen=!V.listOpen;if(V.listOpen){V.selected='';renderDetails();draw();}renderList();sizeViewport();}
   if(task==='list-prev'||task==='list-next'){V.listPage=Math.max(0,V.listPage+(task==='list-next'?1:-1));renderList();}
-  if(['summary','tracking','queue'].includes(task)){V.panel=task;renderDetails();}
+  if(['summary','tracking','queue'].includes(task)){V.panel=task;V.recommend=null;renderDetails();draw();}
   if(task==='queue-prev'||task==='queue-next'){V.queuePage=Math.max(0,V.queuePage+(task==='queue-next'?1:-1));renderDetails();}
   if(task==='legend-prev'||task==='legend-next'){V.legendPage=Math.max(0,V.legendPage+(task==='legend-next'?1:-1));renderLegend();}
   if(task==='fit'){V.camera='all';V.fitNext=true;V.autoFit=true;draw();}
@@ -233,7 +316,7 @@ function handle(event){
   if(task==='retry-route'){const s=V.rows.find(s=>idOf(s)===V.selected);if(s)V.failures.delete(geometryKey(s));renderDetails();pumpRoutes();}
   if(task==='retry-routes'){for(const s of V.rows)V.failures.delete(geometryKey(s));renderLegend();pumpRoutes();}
   if(task==='expand'){V.panel=V.panel==='expanded'?'summary':'expanded';renderDetails();el('osm-detail-body')?.querySelector('[data-osm="expand"]')?.focus({preventScroll:true});}
-  if(task==='back'){const id=V.selected;V.listOpen=false;V.selected='';V.routeMessage='';V.camera='all';V.fitNext=true;V.autoFit=true;renderList();renderDetails();draw();el('osm-list-toggle')?.focus({preventScroll:true});}
+  if(task==='back'){const id=V.selected;V.listOpen=true;V.recommend=null;V.selected='';V.routeMessage='';V.camera='all';V.fitNext=true;V.autoFit=true;renderList();renderDetails();draw();el('osm-list-toggle')?.focus({preventScroll:true});}
   if(task==='dismiss'){V.notice=null;notice();}
   if(task==='history')jumpHistory();
   if(task==='return'&&V.returnView){const saved=V.returnView;V.returnView=null;V.selected='';Object.assign(O().S,saved);el('os-q').value=saved.query;window.cambiarVistaServicios(saved.view);O().S.status=saved.status;O().renderServices();switchView('map');}
@@ -242,7 +325,7 @@ function init(){
   screen=el('screen-operaciones');if(!screen||el('os-presentation'))return;
   const toggle=document.createElement('div');toggle.id='os-presentation';toggle.className='osm-view-switch';toggle.setAttribute('role','group');toggle.setAttribute('aria-label','Presentación de servicios');toggle.innerHTML=`<button type="button" data-osm-view="list" aria-pressed="true">${icon('list')}Lista</button><button type="button" data-osm-view="map" aria-pressed="false">${icon('map')}Mapa</button>`;screen.querySelector('.os-filters')?.append(toggle);toggle.addEventListener('click',e=>{const b=e.target.closest('[data-osm-view]');if(b)switchView(b.dataset.osmView);});
   const statusSelect=document.createElement('label');statusSelect.className='osm-status-filter';statusSelect.innerHTML='<span>Estado</span><select id="osm-status" aria-label="Estado de servicios"></select>';toggle.before(statusSelect);statusSelect.addEventListener('change',e=>window.filtrarEstadoServicios(e.target.value));
-  host=document.createElement('section');host.id='osm-workspace';host.hidden=true;host.setAttribute('aria-label','Mapa de servicios');host.innerHTML=`<div id="osm-notice" class="osm-notice" role="status" hidden></div><div class="osm-toolbar"><div><button type="button" id="osm-list-toggle" data-osm="list" aria-expanded="false" aria-controls="osm-list">Servicios</button><span id="osm-coverage"></span><span id="osm-route-progress" role="status"></span></div><button type="button" data-osm="fit">${icon('scan')}Ver todos</button></div><div class="osm-layout"><aside class="osm-sidebar"><header><h3 id="osm-list-title">Servicios activos</h3><span>Según tus filtros</span></header><div id="osm-list" class="osm-list"></div><footer id="osm-list-pages" class="osm-pager"></footer></aside><div class="osm-stage"><div id="osm-canvas" role="region" aria-label="Direcciones y recorridos de los servicios"></div><div id="osm-map-message" class="osm-map-message" role="status" hidden></div><section class="osm-legend" aria-label="Colores por móvil"><b>Recorridos por móvil</b><div id="osm-legend-items"></div><div id="osm-legend-pages" class="osm-pager"></div><small>● Origen · ⚑ Destino</small></section></div><aside class="osm-detail" aria-label="Detalle del servicio"><header><button type="button" data-osm="back">${icon('x')}Cerrar</button><small>DETALLE OPERATIVO</small></header><div id="osm-detail-body" class="osm-detail-body"></div><footer id="osm-actions" class="osm-actions"></footer></aside></div>`;
+  host=document.createElement('section');host.id='osm-workspace';host.hidden=true;host.setAttribute('aria-label','Mapa de servicios');host.innerHTML=`<div id="osm-notice" class="osm-notice" role="status" hidden></div><div class="osm-toolbar"><div><button type="button" id="osm-list-toggle" data-osm="list" aria-expanded="false" aria-controls="osm-list">Servicios</button><span id="osm-coverage"></span><span id="osm-route-progress" role="status"></span></div><button type="button" data-osm="fit">${icon('scan')}Ver todos</button></div><div class="osm-layout"><aside class="osm-sidebar"><header><h3 id="osm-list-title">Servicios activos</h3><div><button type="button" data-osm="all-services">Todos</button><button type="button" data-osm="unassigned-services">Sin asignar</button></div></header><div id="osm-list" class="osm-list"></div><footer id="osm-list-pages" class="osm-pager"></footer></aside><div class="osm-stage"><div id="osm-canvas" role="region" aria-label="Direcciones y recorridos de los servicios"></div><div id="osm-map-message" class="osm-map-message" role="status" hidden></div><section class="osm-legend" aria-label="Colores por móvil"><b>Recorridos por móvil</b><div id="osm-legend-items"></div><div id="osm-legend-pages" class="osm-pager"></div><small>● Origen · ⚑ Destino</small></section></div><aside class="osm-detail" aria-label="Detalle del servicio"><header><button type="button" data-osm="back">${icon('arrow-left')}Todos los servicios</button><small>DETALLE OPERATIVO</small></header><div id="osm-detail-body" class="osm-detail-body"></div><footer id="osm-actions" class="osm-actions"></footer></aside></div>`;
   const back=document.createElement('button');back.id='osm-history-return';back.type='button';back.hidden=true;back.className='osm-history-return';back.dataset.osm='return';back.textContent='Volver al mapa de Activos';back.addEventListener('click',handle);screen.querySelector('.os-commandbar').after(back);
   screen.querySelector('.os-table-wrap').after(host);host.addEventListener('click',handle);host.addEventListener('keydown',e=>{if(e.key==='Escape'&&V.listOpen){V.listOpen=false;renderList();el('osm-list-toggle').focus({preventScroll:true});}else if(e.key==='Escape'&&V.selected&&!e.target.closest('details[open]')){e.preventDefault();host.querySelector('[data-osm="back"]').click();}});
   document.addEventListener('auxilios:services-rendered',sync);
@@ -255,6 +338,6 @@ function init(){
   window.addEventListener('pagehide',event=>{dispose(true);if(!event.persisted){authSubscription?.unsubscribe();themeObserver?.disconnect();screenObserver?.disconnect();sizeObserver?.disconnect();}});
   window.addEventListener('pageshow',event=>{if(event.persisted)sync();});sync();
 }
-window.OperatorServicesMap={sync,switchView,_test:{coordinate,pointsFor,operationalPath,geometryKey,primaryAction,documentLabel,mobileGroup,groupColor}};
+window.OperatorServicesMap={sync,switchView,_test:{coordinate,pointsFor,operationalPath,geometryKey,primaryAction,documentLabel,mobileGroup,groupColor,canRecommend,recommendationCandidates,recommendationKey}};
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init,{once:true}):init();
 })();
