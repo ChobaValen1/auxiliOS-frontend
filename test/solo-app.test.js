@@ -82,7 +82,9 @@ test('Solo: Gastos con total del mes, en qué se va la plata, movimientos por d�
 test('Solo: con prestadora se factura a la empresa y el socio paga solo los adicionales',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');
   assert.doesNotMatch(ops,/Anular servicio/,'el remito ya no tiene «Anular»');
-  assert.match(ops,/const owed=t=>particular\?t\.total:t\.extras/);assert.match(ops,/Se factura a \$\{esc\(cl\?\.name/);assert.match(ops,/Cobrar al socio/);
+  assert.match(ops,/const owed=t=>particular\?t\.total:t\.extras/);assert.match(ops,/Paga el socio/);
+  const pt=ops.slice(ops.indexOf('function paintTotal'),ops.indexOf('function payUI'));assert.doesNotMatch(pt,/factura/i,'en Adicionales solo se ve lo que paga el socio');
+  assert.doesNotMatch(ops,/rm-context|paintContext/,'Socio sin el resumen de arriba');
   assert.match(ops,/payment_1_amount:m1\?\(mixed\?num\(\$\('r-p1a'\)\.value\):o\):null/,'con un medio se cobra lo que corresponde, sin escribir el monto');
   assert.match(ops,/Los dos medios suman/);assert.match(ops,/Montos por medio aparecen solo con dos medios|Los montos por medio aparecen solo con dos medios/);
   assert.match(fx,/billOf=\(client,s\)=>client\.kind==='particular'\?Number\(s\.total\|\|0\):Math\.max\(0,Number\(s\.total\|\|0\)-paidHere\(s\)\)/);
@@ -92,4 +94,10 @@ test('Solo: «Ver remito» ordenado: servicio (N.º, patente, vehículo, recorri
   const order=['N.º de servicio','plate big','rv-vname','rv-route','Cliente','rv-name','rv-contact'].map(k=>v.indexOf(k));
   assert.ok(order.every(i=>i>0),'están todas las partes');assert.deepEqual([...order].sort((a,b)=>a-b),order,'en ese orden');
   assert.match(v,/href="tel:/);assert.match(v,/href="mailto:/);
+});
+test('Solo: «Remito creado» con patente, N.º de servicio y cliente, y el desglose ordenado',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');const d=ops.slice(ops.indexOf('function doneView'),ops.indexOf('/* ── Remito firmado'));
+  const order=['class="plate"','done-chip">N.º','Particular','Precio acordado','${kmEx}','Peajes','Total del servicio','Pagó el socio','A facturar a'].map(k=>d.indexOf(k));
+  assert.ok(order.every(i=>i>0),'están todas las partes');assert.deepEqual([...order].sort((a,b)=>a-b),order,'en ese orden');
+  assert.match(ops,/function rateForAt/);
 });

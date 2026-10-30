@@ -265,10 +265,6 @@ p{margin:0}
 /* ── Remito: cada paso ocupa la pantalla y el espacio crece con el alto del teléfono ── */
 .rm>#rm-panels{display:flex;flex-direction:column}
 .rm-panel{--ih:clamp(44px,6.4vh,56px);display:flex;flex-direction:column;gap:clamp(10px,2.1vh,20px);flex:1 0 auto;min-width:0;overflow-x:clip}
-/* Paso 1: sin «Anular», los campos ganan alto para ocupar bien la pantalla. */
-.rm-panel[data-step="1"]{--ih:clamp(46px,9.4vh,80px);gap:clamp(12px,2.4vh,22px)}
-.rm-panel[data-step="1"] .rm-group{gap:clamp(6px,1.6vh,14px)}
-.rm-panel[data-step="1"] .field input{font-size:17px}
 .rm-panel[data-step="3"]{gap:clamp(8px,1.5vh,16px)}
 .rm-panel .field input,.rm-panel .field select{min-height:var(--ih)}
 .rm-group{display:grid;gap:clamp(6px,1.2vh,12px)}
@@ -482,3 +478,17 @@ p{margin:0}
 .done-card .row>.hint{flex:none}
 .rv-photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
 .rv-sig{width:100%;height:84px;object-fit:contain;background:#fff;border-radius:10px}
+
+/* Remito creado: patente, N.º de servicio y cliente; abajo, el desglose ordenado */
+.done{gap:10px}
+.done-id{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px}
+.done-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:var(--ax-surface-2);border:1px solid var(--ax-border-strong);font-size:13px;font-weight:600}
+.done-chip .ico{width:14px;height:14px;color:var(--ax-accent)}
+.done-card{gap:0;padding:6px 14px}
+.dl-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;font-size:14px;border-bottom:1px solid var(--ax-border)}
+.dl-row:last-child{border-bottom:0}
+.dl-row>span{color:var(--ax-text-2);min-width:0}
+.dl-row b{font-weight:500;white-space:nowrap}
+.dl-total>span{color:var(--ax-text);font-weight:700}.dl-total b{font-size:18px;color:var(--ax-accent)}
+.dl-paid b{color:var(--ax-ok)}
+.dl-bill>span{color:var(--ax-text)}.dl-bill b{font-weight:700}

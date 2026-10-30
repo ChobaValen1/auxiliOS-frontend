@@ -144,7 +144,6 @@ function wizard(box,s,cl,tp,tk,rates,step){
           ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div></div>
       </section>
       <section class="rm-panel card" data-step="2" aria-label="Paso 2: Socio" hidden>
-        <div class="rm-context" id="r-ctx" aria-label="Servicio que se está cargando"></div>
         <div class="rm-group"><span class="rm-glabel">${icon('user')} Quién recibe el servicio</span>
           <div class="field"><label for="r-cname">Nombre y apellido</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
           <div class="field"><label for="r-cdoc">DNI / CUIT</label><input id="r-cdoc" inputmode="numeric" placeholder="Ej.: 28.456.112" value="${esc(s.customer_doc||'')}"></div></div>
@@ -199,15 +198,13 @@ function wizard(box,s,cl,tp,tk,rates,step){
   // Con prestadora: base + km se le facturan a la empresa (plazo de pago y tarifa); los adicionales los paga el socio acá.
   // Con particular: paga todo en el lugar.
   const owed=t=>particular?t.total:t.extras;
-  function paintTotal(){const t=totals(),bill=t.base+t.kmAmount;
-    const kmTxt=t.kmAmount?Math.max(0,t.km-Number(t.r.included_km))+' km × '+money(t.r.per_km):'';
-    $('r-total').innerHTML=(!particular&&!t.r?'<p class="err">Esta prestadora no tiene tarifa para este servicio. <button class="link" type="button" id="r-rate">Cargar tarifa</button></p>':'')+
-      (particular?`<div class="total-main"><span>Total a cobrar</span><b class="num total-pop">${money(t.total)}</b></div>
-        <div class="total-parts"><span>Acordado <b class="num">${money(t.base)}</b></span>${t.extras?`<i>+</i><span>Adicionales <b class="num">${money(t.extras)}</b></span>`:''}</div>`
-      :`<div class="total-line"><span>${icon('building-2')}<span class="ell">Se factura a ${esc(cl?.name||'la prestadora')} · ${Number(cl?.payment_days)||0} días</span></span><b class="num">${money(bill)}</b></div>
-        <div class="total-parts sub"><span>Base <b class="num">${money(t.base)}</b></span>${kmTxt?`<i>+</i><span>${esc(kmTxt)} <b class="num">${money(t.kmAmount)}</b></span>`:''}</div>
-        <div class="total-main"><span>${icon('user')} Cobrar al socio</span><b class="num total-pop">${money(t.extras)}</b></div>`);
-    $('r-rate')?.addEventListener('click',()=>go('cliente-'+s.client_id));
+  function paintTotal(){const t=totals();
+    const parts=[['Peajes',t.tolls],['Excedente km',t.exc],['Espera',t.wait],['Otros',t.other]].filter(x=>x[1]);
+    $('r-total').innerHTML=particular
+      ?`<div class="total-main"><span>Total a cobrar</span><b class="num total-pop">${money(t.total)}</b></div>
+        <div class="total-parts"><span>Acordado <b class="num">${money(t.base)}</b></span>${parts.map(([l,v])=>`<i>+</i><span>${l} <b class="num">${money(v)}</b></span>`).join('')}</div>`
+      :`<div class="total-main"><span>${icon('user')} Paga el socio</span><b class="num total-pop">${money(t.extras)}</b></div>
+        <div class="total-parts">${parts.length?parts.map(([l,v])=>`<span>${l} <b class="num">${money(v)}</b></span>`).join('<i>+</i>'):'<span>Sin adicionales: el socio no paga nada en el lugar.</span>'}</div>`;
     const o=owed(t);$('r-pay').hidden=o<=0;
     $('r-pay-title').textContent=particular?'Cómo pagó el cliente':'Cómo pagó el socio';$('r-pay-hint').textContent=o>0?money(o):'';
     if(o<=0){$('r-p1m').value='';$('r-mixed').checked=false;$('r-p2m').value='';}
@@ -253,9 +250,6 @@ function wizard(box,s,cl,tp,tk,rates,step){
   async function save(n){const patch=patchFor(n);if(!Object.keys(patch).length)return true;const {error}=await C.db.from('solo_services').update(patch).eq('id',s.id);
     if(error){toast(errText(error));return false;}Object.assign(s,patch);return true;}
 
-  // Paso 2: arriba, de qué servicio se trata (lo cargado en el paso 1).
-  function paintContext(){const plate=$('r-plate').value.trim(),mm=$('r-mm').value.trim(),o=$('r-orig').value.trim(),d=$('r-dest').value.trim();
-    $('r-ctx').innerHTML=`${plate?`<span class="plate">${esc(plate)}</span>`:''}<span class="ell">${esc(mm||tp?.name||'Servicio')}</span>${o||d?`<span class="rm-ctx-route ell">${esc(o)} ${icon('chevron-right')} ${esc(d)}</span>`:''}`;}
   // ── Navegación entre pasos con progreso animado ──
   let current=0;
   function show(n,dir){const prev=current;current=n;sessionStorageSet('rm-step-'+s.id,String(n));
@@ -264,7 +258,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
       li.querySelector('.rm-num').textContent=i<n?'✓':i;});
     box.querySelector('.rm-counter').textContent='Paso '+n+' de 5 · '+STEPS[n-1];
     $('r-back').hidden=n===1;$('r-later').hidden=n!==1;$('r-next').innerHTML=n===5?icon('check')+' Finalizar':'Siguiente '+icon('chevron-right');
-    if(n===2)paintContext();if(n===3)paintTotal();if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();sigState();}
+    if(n===3)paintTotal();if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();sigState();}
     if(prev)$('rm-panels').scrollTop=0;}
   $('r-back').onclick=()=>{if(current>1)show(current-1,-1);};
   // Cerrar guarda lo que haya en el paso actual (sin exigir que esté completo) y vuelve a Servicios.
@@ -323,15 +317,22 @@ function wizard(box,s,cl,tp,tk,rates,step){
 }
 /* ── Remito terminado: confirmación y, abajo, la opción de enviarlo ── */
 function doneView(box,s,cl,tp,tk){
-  const here=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);
-  const paid=cl?.kind==='particular'?(s.paid_at?'Cobrado en el lugar':'Falta cobrar'):'Se factura a '+(cl?.name||'la prestadora')+' '+money(Math.max(0,Number(s.total)-here))+(here?' · socio pagó '+money(here):'');
+  const particular=cl?.kind==='particular',here=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);
+  const ex=n=>extraOf(s,n),pays=s.payment_1_method?PAY[s.payment_1_method]+(s.payment_2_method?' + '+PAY[s.payment_2_method]:''):'';
+  const line=(l,v,cls='')=>`<div class="dl-row ${cls}"><span>${l}</span><b class="num">${v}</b></div>`;
+  const kmEx=Number(s.km_amount)?line('Km excedentes'+(s.km?' ('+esc(s.km)+' km)':''),money(s.km_amount)):'';
   box.innerHTML=`<div class="done" role="status">
       <div class="done-mark" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
       <h1>Remito creado exitosamente</h1>
-      <p class="sub">N.º ${s.remito_number} · ${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')}</p>
-      <div class="card tight done-card"><div class="row"><span class="hint">Total</span><b class="num" style="color:var(--ax-accent);font-size:22px">${money(s.total)}</b></div>
-        <div class="row"><span class="hint">Firmó</span><span class="ell">${esc(s.signer_name||'')}${s.customer_present===false?' (chofer)':''}</span></div>
-        <div class="row"><span class="hint">Cobro</span><span>${esc(paid)}</span></div></div>
+      <div class="done-id">${s.plate?`<span class="plate">${esc(s.plate)}</span>`:''}${!particular&&s.provider_order?`<span class="done-chip">N.º ${esc(s.provider_order)}</span>`:''}<span class="done-chip">${icon(particular?'user':'building-2')} ${esc(particular?'Particular':cl?.name||'Prestadora')}</span></div>
+      <p class="hint">Remito N.º ${s.remito_number} · ${esc(tp?.name||'Servicio')}</p>
+      <div class="card tight done-card" aria-label="Desglose del servicio">
+        ${line(particular?'Precio acordado':'Base',money(s.base_amount))}${kmEx}
+        ${ex('Peajes')?line('Peajes',money(ex('Peajes'))):''}${ex('Excedente')?line('Excedente km',money(ex('Excedente'))):''}${ex('Espera')?line('Espera / maniobras',money(ex('Espera'))):''}${Number(s.other_amount)?line('Otros',money(s.other_amount)):''}
+        ${line('Total del servicio',money(s.total),'dl-total')}
+        ${here?line((particular?'Pagó el cliente':'Pagó el socio')+(pays?' · '+esc(pays):''),money(here),'dl-paid'):''}
+        ${particular?'':line('A facturar a '+esc(cl?.name||'la prestadora'),money(Math.max(0,Number(s.total)-here)),'dl-bill')}
+      </div>
     </div>
     <div class="done-actions"><button class="btn pri block" type="button" id="share">${icon('share-2')} Enviar remito (PDF)</button>
       <div class="split"><button class="btn" type="button" id="see">${icon('file-text')} Ver remito</button><button class="btn" type="button" id="fin">${icon('check')} Listo</button></div></div>`;
