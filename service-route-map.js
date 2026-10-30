@@ -171,7 +171,7 @@ async function open(id,opener){
     modal.querySelector('#srm-notice').textContent=[view.geometrySource+'. Kilómetros e importes guardados sin cambios.',view.catalogError?'No se pudo consultar la ubicación de los peajes.':''].filter(Boolean).join(' ');
   }catch(error){if(current!==view)return;mapStatus(error.message||'No se pudo abrir el recorrido.',true);}
 }
-function mapStyle(){return dark()?[
+function mapStyle(forceDark=false){return (forceDark||dark())?[
   {elementType:'geometry',stylers:[{color:'#19222e'}]},{elementType:'labels.text.fill',stylers:[{color:'#91a2b7'}]},{elementType:'labels.text.stroke',stylers:[{color:'#15202b'}]},
   {featureType:'water',elementType:'geometry',stylers:[{color:'#102d44'}]},{featureType:'road',elementType:'geometry',stylers:[{color:'#344355'}]},{featureType:'road.highway',elementType:'geometry',stylers:[{color:'#526179'}]},
   {featureType:'poi',elementType:'labels',stylers:[{visibility:'off'}]},{featureType:'transit',stylers:[{visibility:'off'}]},
