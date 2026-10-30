@@ -660,3 +660,38 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .gx-amount>small{grid-column:1/-1;text-align:center}
 .gx-ctx b{font:500 13px/1.2 var(--ax-font-mono)!important;color:var(--ax-text);letter-spacing:0}
 .gx-ctx small{font:400 11px/1.2 var(--ax-font)!important;color:var(--ax-text-3)}
+
+/* ── Mis números (etapa 3) ─────────────────────────────── */
+.mini b.neg,.nx-month b.neg{color:var(--ax-danger)}
+.nx-be{display:grid;gap:8px;padding:12px 14px;border-radius:16px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+.nx-be .sk{height:72px}
+.nx-be-txt{font-size:14px;color:var(--ax-text-2)}
+.nx-be-txt b{color:var(--ax-text);font-size:16px}
+.nx-month{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:14px;border:1px solid var(--ax-border);background:var(--ax-surface-2);text-align:left;cursor:pointer;transition:border-color 140ms ease,transform 120ms ease}
+.nx-month:active{transform:scale(.985)}
+.nx-month:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.nx-month.on{border-color:var(--ax-accent);background:var(--ax-accent-soft)}
+.nx-mname{display:grid;font-weight:700;font-size:15px;line-height:1.1}
+.nx-mname small{font-weight:400;font-size:11px;color:var(--ax-text-3)}
+.nx-mbar{display:grid;gap:5px;min-width:0}
+.nx-mbar small{font-size:11px;color:var(--ax-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nx-track{display:block;height:8px;border-radius:99px;background:var(--ax-surface-3);overflow:hidden}
+.nx-track i{display:block;height:100%;width:var(--w);border-radius:99px;background:var(--ax-accent);animation:grow 700ms var(--ease-out) both 100ms}
+.nx-track i.neg{background:var(--ax-danger)}
+.nx-month>b{font:500 15px/1 var(--ax-font-mono);white-space:nowrap}
+.nx-due{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1px solid var(--ax-border);background:var(--ax-surface-2)}
+.nx-due-t,.nx-due-d{display:grid;min-width:0}
+.nx-due-t small,.nx-due-d small{font-size:12px;color:var(--ax-text-3)}
+.nx-due-d{text-align:right}
+.nx-due-d b{font-size:14px}
+.nx-due.bad{border-color:color-mix(in srgb,var(--ax-danger) 40%,transparent)}.nx-due.bad .ex-ico,.nx-due.bad .nx-due-d b{color:var(--ax-danger)}
+.nx-due.wait .ex-ico,.nx-due.wait .nx-due-d b{color:var(--ax-warn)}
+.nx-due.ok .nx-due-d b{color:var(--ax-text-2)}
+.kpi.left.kpi-link:hover{border-color:var(--ax-accent-hover)}
+@media (max-height:700px){.nx-be .hint{display:none}.nx-month{padding:8px 10px}}
+@media (prefers-reduced-motion:reduce){.nx-track i{animation:none}}
+#nx{gap:6px}
+.nx-month{padding:7px 12px;gap:10px}
+.nowrap{white-space:nowrap}
+@media (max-height:760px){.nx-mname small{display:none}.nx-month{padding:6px 12px}}
+@media (max-height:700px){.nx-mbar small{display:none}.nx-month{min-height:40px}}

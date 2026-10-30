@@ -131,3 +131,10 @@ test('Solo: nuevo gasto usa toda la pantalla (teclado abajo, monto con el contex
   assert.match(css,/\.gx-amount\{flex:1 1 auto;max-height:none/);assert.match(css,/\.gx-pad\{margin-top:auto\}/);
   assert.match(ops,/id="gx-ctx"/);assert.match(ops,/Gastos del día en /);
 });
+test('Solo etapa 3: Mis números (ganancia por servicio y km, punto de equilibrio, 6 meses, vencimientos)',()=>{
+  const nx=fs.readFileSync('solo/solo-numeros.js','utf8');
+  assert.match(html,/\/solo\/solo-numeros\.js/);assert.match(js,/\['k-left','numeros'\]/);assert.match(js,/data-go="numeros"/);
+  assert.match(nx,/views\.numeros=/);assert.match(nx,/left\/n/);assert.match(nx,/left\/km/);
+  assert.match(nx,/perSvc=n\?\(billed-variable\)\/n:0/);assert.match(nx,/Math\.ceil\(fixedM\/perSvc\)/,'punto de equilibrio con lo que deja cada servicio');
+  assert.match(nx,/\[\.\.\.Array\(6\)\]/);assert.match(nx,/solo_month_summary_v1/);assert.match(nx,/Vencimientos/);
+});

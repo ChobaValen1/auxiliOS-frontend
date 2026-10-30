@@ -249,12 +249,12 @@ async function renderInicio(){
   const pct=Number(s.billed)>0?Math.max(0,Math.min(100,Math.round(Number(s.collected)/Number(s.billed)*100))):0;
   box.innerHTML=`<div class="split"><div class="kpi in kpi-link" role="button" tabindex="0" id="k-billed" aria-label="Facturé: ver por prestadora"><span>Facturé ${icon('chevron-right','kpi-go')}</span><b data-count="${Number(s.billed)||0}">$ 0</b></div>
     <div class="kpi out"><span>Gasté</span><b data-count="${Number(s.spent)||0}">$ 0</b></div></div>
-    <div class="kpi left ${left<0?'neg':''}"><span>Me queda</span><b data-count="${left}">$ 0</b></div>
+    <div class="kpi left kpi-link ${left<0?'neg':''}" role="button" tabindex="0" id="k-left" aria-label="Me queda: ver mis números"><span>Me queda ${icon('chevron-right','kpi-go')}</span><b data-count="${left}">$ 0</b></div>
     <div class="card tight"><div class="row"><span class="hint">Cobrado</span><b class="num" data-count="${Number(s.collected)||0}">$ 0</b></div>
       <div class="bar" role="img" aria-label="Cobraste el ${pct}% de lo facturado"><i style="--w:${pct}%"></i></div>
       <div class="row"><span class="hint">Por cobrar</span><b class="num" style="color:var(--ax-warn)" data-count="${Number(s.pending)||0}">$ 0</b></div></div>
     <p class="hint">${Number(s.services)?Number(s.services)+' servicios':'Sin servicios todavía'} · fijos ${money(s.fixed_expenses)} · variables ${money(s.variable_expenses)}</p>`;
-  const k=document.getElementById('k-billed');k.onclick=()=>go('facturacion');k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go('facturacion');}};
+  [['k-billed','facturacion'],['k-left','numeros']].forEach(([id,to])=>{const k=document.getElementById(id);k.onclick=()=>go(to);k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go(to);}};});
   renderAlerts();
 }
 // Avisos de cobro: lo vencido primero; se ven hasta dos y el resto queda en Facturación.
@@ -327,6 +327,7 @@ async function renderCliente(id){
 async function renderMas(){
   const canInstall=window.SoloPWA&&!window.SoloPWA.installed;
   shell(`<h1>Más</h1>
+    <button class="item item-row" type="button" data-go="numeros">${icon('chart-column','lead')}<span><b>Mis números</b><span class="hint">Ganancia por servicio, punto de equilibrio y meses</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Resumen del mes, facturado y cobrado</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-to="clientes">${icon('building-2','lead')}<span><b>Prestadoras y tarifas</b><span class="hint">Empresas, días de pago y precios</span></span>${icon('chevron-right','trail')}</button>
     ${canInstall?`<button class="item item-row" type="button" id="inst">${icon('download','lead')}<span><b>Instalar la app</b><span class="hint">Tenela en la pantalla de inicio del celular</span></span>${icon('chevron-right','trail')}</button>`:''}
