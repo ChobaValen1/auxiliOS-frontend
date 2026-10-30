@@ -1,6 +1,6 @@
 // AuxiliOS Solo · service worker propio, con alcance /solo (no toca el de Flota en /sw.js).
 // La app siempre intenta red primero; la caché sirve para abrirla sin señal y para poder instalarla.
-const CACHE_NAME='auxilios-solo-v602';
+const CACHE_NAME='auxilios-solo-v603';
 const PRECACHE=[
   '/solo.html','/solo/solo.css','/solo/solo-ui.js','/solo/solo.js','/solo/solo-ops.js','/solo/solo-pwa.js','/solo/solo-facturacion.js',
   '/ui/tokens.css','/ui/icons.svg','/runtime-config.js','/solo-manifest.json',

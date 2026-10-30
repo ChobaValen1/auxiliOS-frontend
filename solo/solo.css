@@ -265,8 +265,10 @@ p{margin:0}
 /* ── Remito: cada paso ocupa la pantalla y el espacio crece con el alto del teléfono ── */
 .rm>#rm-panels{display:flex;flex-direction:column}
 .rm-panel{--ih:clamp(44px,6.4vh,56px);display:flex;flex-direction:column;gap:clamp(10px,2.1vh,20px);flex:1 0 auto;min-width:0;overflow-x:clip}
-/* Pasos con pocos campos: los grupos se reparten en todo el alto. */
-.rm-panel[data-step="1"],.rm-panel[data-step="2"]{justify-content:space-between}
+/* Paso 1: sin «Anular», los campos ganan alto para ocupar bien la pantalla. */
+.rm-panel[data-step="1"]{--ih:clamp(46px,9.4vh,80px);gap:clamp(12px,2.4vh,22px)}
+.rm-panel[data-step="1"] .rm-group{gap:clamp(6px,1.6vh,14px)}
+.rm-panel[data-step="1"] .field input{font-size:17px}
 .rm-panel[data-step="3"]{gap:clamp(8px,1.5vh,16px)}
 .rm-panel .field input,.rm-panel .field select{min-height:var(--ih)}
 .rm-group{display:grid;gap:clamp(6px,1.2vh,12px)}
@@ -295,7 +297,7 @@ p{margin:0}
 .add-in i{font-style:normal;color:var(--ax-text-3);font-family:var(--ax-font-mono)}
 .add-in input{flex:1;width:0;min-width:0;border:0;background:none;padding:0;font:500 19px/1.25 var(--ax-font-mono);color:var(--ax-text);outline:none}
 .add-in .field-err{flex-basis:100%}
-.total-card{display:grid;gap:6px;padding:12px 14px;border-radius:14px;background:var(--ax-accent-soft);border:1px solid color-mix(in srgb,var(--ax-accent) 45%,transparent)}
+.total-card{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;min-width:0;padding:12px 14px;border-radius:14px;background:var(--ax-accent-soft);border:1px solid color-mix(in srgb,var(--ax-accent) 45%,transparent)}
 .total-main{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .total-main span{font-weight:600}
 .total-main b{font:500 26px/1 var(--ax-font-mono);color:var(--ax-accent)}
@@ -433,3 +435,50 @@ p{margin:0}
 /* Los avisos salen arriba: así nunca tapan los botones de abajo. */
 .solo-toast{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;animation-name:toast-down}
 @keyframes toast-down{from{opacity:0;transform:translate(-50%,-12px) scale(.96)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* Paso 2: arriba, de qué servicio se trata; los campos quedan juntos. */
+.rm-context{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border-radius:12px;background:var(--ax-surface);border:1px solid var(--ax-border);font-size:13px;color:var(--ax-text-2)}
+.rm-context:empty{display:none}
+.rm-ctx-route{display:inline-flex;align-items:center;gap:2px;margin-left:auto;color:var(--ax-text-3)}
+.rm-ctx-route .ico{width:12px;height:12px}
+.plate{flex:none;display:inline-block;padding:3px 8px;border-radius:6px;border:2px solid var(--ax-text);font:600 13px/1 var(--ax-font-mono);letter-spacing:.06em;color:var(--ax-text);background:var(--ax-surface-2)}
+.plate.big{font-size:18px;padding:6px 12px;border-radius:8px}
+.rm-panel[data-step="2"]{gap:clamp(12px,2.6vh,22px)}
+/* Paso 3: qué se factura a la empresa y qué paga el socio */
+.total-line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14px}
+.total-line>span{flex:1;display:inline-flex;align-items:center;gap:6px;color:var(--ax-text-2);min-width:0;overflow:hidden}
+.total-line b{white-space:nowrap}
+.total-line .ico,.total-main .ico{width:16px;height:16px}
+.total-line b{font:500 17px/1 var(--ax-font-mono)}
+.total-parts.sub{padding-bottom:6px;border-bottom:1px dashed color-mix(in srgb,var(--ax-accent) 35%,transparent)}
+.total-main span{display:inline-flex;align-items:center;gap:6px}
+.pay-chip.pay-two{border-style:dashed;color:var(--ax-text-3)}
+/* Ver remito: servicio → cliente → importes */
+.rv{gap:10px}
+.rv-card{display:grid;gap:10px;padding:14px;border-radius:16px;background:var(--ax-surface-2);border:1px solid var(--ax-border)}
+.rv-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px}
+.rv-row>span{color:var(--ax-text-2)}
+.rv-row>b{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+.rv-row.rv-lead b{font-size:18px}
+.rv-vehicle{display:flex;align-items:center;gap:12px;min-width:0}
+.rv-vname{font-size:16px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rv-route{position:relative;display:grid;gap:8px;padding:10px 12px 10px 30px;border-radius:12px;background:var(--ax-surface);font-size:14px}
+.rv-route>div{position:relative}
+.rv-route i{position:absolute;left:-20px;top:4px;width:10px;height:10px;border-radius:50%;border:2px solid var(--ax-accent);box-sizing:border-box}
+.rv-route i.b{background:var(--ax-accent)}
+.rv-route::before{content:"";position:absolute;left:16px;top:24px;bottom:24px;border-left:2px dashed var(--ax-border-strong)}
+.rv-route em{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-style:normal;font-size:13px;color:var(--ax-text-2)}
+.rv-name{display:grid;gap:2px;font-size:18px;font-weight:700}
+.rv-name small{font-size:13px;font-weight:400;color:var(--ax-text-2)}
+.rv-contact{display:flex;flex-wrap:wrap;gap:8px}
+.rv-contact .btn{min-height:40px;font-size:14px;max-width:100%;color:var(--ax-text)}
+.rv-contact .btn .ico{color:var(--ax-accent)}
+.rv-total{padding-top:8px;border-top:1px solid var(--ax-border)}
+.rv-total b{font:500 22px/1 var(--ax-font-mono);color:var(--ax-accent)}
+.rv-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.rv-evidence{grid-template-columns:1fr 1.4fr;align-items:start}
+.rv-sigbox{display:grid;gap:6px;min-width:0}
+.rv-pay{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.done-card .row>.hint{flex:none}
+.rv-photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
+.rv-sig{width:100%;height:84px;object-fit:contain;background:#fff;border-radius:10px}

@@ -142,31 +142,32 @@ function wizard(box,s,cl,tp,tk,rates,step){
         <div class="rm-group"><span class="rm-glabel">${icon('calendar')} Servicio</span>
           <div class="grid2"><div class="field ${particular?'span2':''}"><label for="r-date">Fecha y hora</label><input id="r-date" type="datetime-local" value="${localDT(new Date(s.service_date))}"></div>
           ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div></div>
-        <button class="link danger" type="button" id="cancel">Anular servicio</button>
       </section>
       <section class="rm-panel card" data-step="2" aria-label="Paso 2: Socio" hidden>
+        <div class="rm-context" id="r-ctx" aria-label="Servicio que se está cargando"></div>
         <div class="rm-group"><span class="rm-glabel">${icon('user')} Quién recibe el servicio</span>
-          <div class="field"><label for="r-cname">Nombre del socio / cliente</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
+          <div class="field"><label for="r-cname">Nombre y apellido</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
           <div class="field"><label for="r-cdoc">DNI / CUIT</label><input id="r-cdoc" inputmode="numeric" placeholder="Ej.: 28.456.112" value="${esc(s.customer_doc||'')}"></div></div>
-        <div class="rm-group"><span class="rm-glabel">${icon('phone')} Contacto</span>
-          <div class="field"><label for="r-cphone">Teléfono</label><input id="r-cphone" type="tel" inputmode="tel" placeholder="Ej.: 11 2345 6789" value="${esc(s.customer_phone||'')}"><span class="help">Con característica, sin 0 ni 15.</span></div>
-          <div class="field"><label for="r-cemail">Email (opcional)</label><input id="r-cemail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Para mandarle el remito" value="${esc(s.customer_email||'')}"></div></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('phone')} Contacto <small>teléfono y/o email</small></span>
+          <div class="field"><label for="r-cphone">Teléfono</label><input id="r-cphone" type="tel" inputmode="tel" placeholder="11 2345 6789 · sin 0 ni 15" value="${esc(s.customer_phone||'')}"></div>
+          <div class="field"><label for="r-cemail">Email</label><input id="r-cemail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Para mandarle el remito" value="${esc(s.customer_email||'')}"></div></div>
       </section>
       <section class="rm-panel card" data-step="3" aria-label="Paso 3: Adicionales" hidden>
-        <div class="rm-group"><span class="rm-glabel">${icon('plus')} Adicionales</span>
+        <div class="rm-group"><span class="rm-glabel">${icon('plus')} Adicionales <small>${particular?'se suman al precio':'los paga el socio en el lugar'}</small></span>
           <div class="add-grid">${[['r-tolls','Peajes','route',extraOf(s,'Peajes')],['r-exc','Excedente km','gauge',extraOf(s,'Excedente')],['r-wait','Espera / maniobras','clock',extraOf(s,'Espera')],['r-other','Otros','ellipsis',Number(s.other_amount)]]
             .map(([id,l,ic,v])=>`<label class="add-tile" for="${id}"><span class="add-name">${icon(ic)}${l}</span><span class="add-in"><i>$</i><input id="${id}" inputmode="decimal" placeholder="0" value="${v||''}"></span></label>`).join('')}</div></div>
         <div id="r-total" class="total-card"></div>
-        <div class="rm-group"><span class="rm-glabel">${icon('wallet')} Cobro en el lugar <small id="r-pay-hint"></small></span>
+        <div class="rm-group" id="r-pay"><span class="rm-glabel">${icon('wallet')} <span id="r-pay-title">Cobro</span> <small id="r-pay-hint"></small></span>
           <input type="hidden" id="r-p1m" value="${esc(s.payment_1_method||'')}">
-          <div class="pay-chips" id="r-p1chips" role="radiogroup" aria-label="Medio de pago">${particular?'':`<button type="button" class="pay-chip" data-m="" role="radio">${icon('ban')}<span>No pagó</span></button>`}${Object.entries(PAY).map(([k,l])=>`<button type="button" class="pay-chip" data-m="${k}" role="radio">${icon(PAY_ICON[k])}<span>${l}</span></button>`).join('')}</div>
+          <div class="pay-chips" id="r-p1chips" role="radiogroup" aria-label="Medio de pago">${Object.entries(PAY).map(([k,l])=>`<button type="button" class="pay-chip" data-m="${k}" role="radio">${icon(PAY_ICON[k])}<span>${l}</span></button>`).join('')}
+            <button type="button" class="pay-chip pay-two" id="r-mixed-add">${icon('plus')}<span>Dos medios</span></button></div>
           <input type="checkbox" id="r-mixed" hidden ${s.payment_2_method?'checked':''}>
           <div id="r-p2" class="pay-second" ${s.payment_2_method?'':'hidden'}><input type="hidden" id="r-p2m" value="${esc(s.payment_2_method||'')}">
-            <div class="row"><span class="hint">Segundo medio · pago mixto</span><button class="link" type="button" id="r-mixed-del">Quitar</button></div>
-            <div class="pay-chips small" id="r-p2chips" role="radiogroup" aria-label="Segundo medio de pago">${Object.entries(PAY).map(([k,l])=>`<button type="button" class="pay-chip" data-m="${k}" role="radio">${icon(PAY_ICON[k])}<span>${l}</span></button>`).join('')}</div></div>
-          <div class="pay-row" id="r-p1box" hidden><div class="field"><label for="r-p1a">En <span id="r-p1lbl"></span> $</label><input id="r-p1a" value="${s.payment_1_amount??''}"></div>
-            <button class="btn ghost" type="button" id="r-mixed-add">${icon('plus')} Otro medio</button>
-            <div class="field" id="r-p2abox"><label for="r-p2a">En <span id="r-p2lbl"></span> $</label><input id="r-p2a" value="${s.payment_2_amount??''}"></div></div>
+            <div class="row"><span class="hint">Segundo medio</span><button class="link" type="button" id="r-mixed-del">Quitar</button></div>
+            <div class="pay-chips small" id="r-p2chips" role="radiogroup" aria-label="Segundo medio de pago">${Object.entries(PAY).map(([k,l])=>`<button type="button" class="pay-chip" data-m="${k}" role="radio">${icon(PAY_ICON[k])}<span>${l}</span></button>`).join('')}</div>
+            <!-- Los montos por medio aparecen solo con dos medios; con uno, se cobra el total. -->
+            <div class="pay-row"><div class="field"><label for="r-p1a">En <span id="r-p1lbl"></span> $</label><input id="r-p1a" value="${s.payment_2_method?(s.payment_1_amount??''):''}"></div>
+              <div class="field"><label for="r-p2a">En <span id="r-p2lbl"></span> $</label><input id="r-p2a" value="${s.payment_2_amount??''}"></div></div></div>
           <p id="r-pay-err" class="err" hidden></p></div>
       </section>
       <section class="rm-panel card" data-step="4" aria-label="Paso 4: Evidencia" hidden>
@@ -195,37 +196,46 @@ function wizard(box,s,cl,tp,tk,rates,step){
   function totals(){const km=num($('r-km').value),r=rate(),p=particular?{base:Number(s.base_amount)||0,kmAmount:0}:priceOf(r,km);
     const tolls=num($('r-tolls').value),exc=num($('r-exc').value),wait=num($('r-wait').value),other=num($('r-other').value);
     return {km,r,base:p.base,kmAmount:p.kmAmount,tolls,exc,wait,other,extras:tolls+exc+wait+other,total:p.base+p.kmAmount+tolls+exc+wait+other};}
-  function paintTotal(){const t=totals();
-    const parts=[[particular?'Acordado':'Base',t.base],t.kmAmount?[Math.max(0,t.km-Number(t.r.included_km))+' km × '+money(t.r.per_km),t.kmAmount]:null,t.extras?['Adicionales',t.extras]:null].filter(Boolean);
+  // Con prestadora: base + km se le facturan a la empresa (plazo de pago y tarifa); los adicionales los paga el socio acá.
+  // Con particular: paga todo en el lugar.
+  const owed=t=>particular?t.total:t.extras;
+  function paintTotal(){const t=totals(),bill=t.base+t.kmAmount;
+    const kmTxt=t.kmAmount?Math.max(0,t.km-Number(t.r.included_km))+' km × '+money(t.r.per_km):'';
     $('r-total').innerHTML=(!particular&&!t.r?'<p class="err">Esta prestadora no tiene tarifa para este servicio. <button class="link" type="button" id="r-rate">Cargar tarifa</button></p>':'')+
-      `<div class="total-main"><span>Total del servicio</span><b class="num total-pop">${money(t.total)}</b></div><div class="total-parts">${parts.map(([l,v])=>`<span>${esc(l)} <b class="num">${money(v)}</b></span>`).join('<i>+</i>')}</div>`;
+      (particular?`<div class="total-main"><span>Total a cobrar</span><b class="num total-pop">${money(t.total)}</b></div>
+        <div class="total-parts"><span>Acordado <b class="num">${money(t.base)}</b></span>${t.extras?`<i>+</i><span>Adicionales <b class="num">${money(t.extras)}</b></span>`:''}</div>`
+      :`<div class="total-line"><span>${icon('building-2')}<span class="ell">Se factura a ${esc(cl?.name||'la prestadora')} · ${Number(cl?.payment_days)||0} días</span></span><b class="num">${money(bill)}</b></div>
+        <div class="total-parts sub"><span>Base <b class="num">${money(t.base)}</b></span>${kmTxt?`<i>+</i><span>${esc(kmTxt)} <b class="num">${money(t.kmAmount)}</b></span>`:''}</div>
+        <div class="total-main"><span>${icon('user')} Cobrar al socio</span><b class="num total-pop">${money(t.extras)}</b></div>`);
     $('r-rate')?.addEventListener('click',()=>go('cliente-'+s.client_id));
-    $('r-pay-hint').textContent=particular?'· paga el total':'· solo lo que pagó el socio';
-    if(particular&&$('r-p1m').value&&!$('r-p1a').value&&t.total)$('r-p1a').value=UI().moneyFmt?UI().moneyFmt(String(t.total)):t.total;}
+    const o=owed(t);$('r-pay').hidden=o<=0;
+    $('r-pay-title').textContent=particular?'Cómo pagó el cliente':'Cómo pagó el socio';$('r-pay-hint').textContent=o>0?money(o):'';
+    if(o<=0){$('r-p1m').value='';$('r-mixed').checked=false;$('r-p2m').value='';}
+    payUI();}
   ['r-km','r-tolls','r-exc','r-wait','r-other','r-date'].forEach(x=>$(x).addEventListener('input',paintTotal));
   // ── Medio de pago con botones (el valor queda en r-p1m / r-p2m) ──
   function payUI(){const m1=$('r-p1m').value,mixed=$('r-mixed').checked&&!!m1,m2=$('r-p2m').value;
-    $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>{const on=b.dataset.m===m1&&(m1||!particular);b.setAttribute('aria-checked',String(on));});
-    $('r-p1box').hidden=!m1;$('r-p1lbl').textContent=(PAY[m1]||'').toLowerCase();
-    $('r-mixed').checked=mixed;$('r-p2').hidden=!mixed;$('r-mixed-add').hidden=mixed;$('r-p2abox').hidden=!mixed;$('r-p2lbl').textContent=(PAY[m2]||'el segundo medio').toLowerCase();
+    $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-checked',String(!!m1&&b.dataset.m===m1)));
+    $('r-mixed').checked=mixed;$('r-p2').hidden=!mixed;$('r-p1chips').classList.toggle('small',mixed);$('r-mixed-add').hidden=mixed;$('r-mixed-add').disabled=!m1;
+    $('r-p1lbl').textContent=(PAY[m1]||'').toLowerCase();$('r-p2lbl').textContent=(PAY[m2]||'el segundo medio').toLowerCase();
     $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>{b.disabled=b.dataset.m===m1;b.setAttribute('aria-checked',String(b.dataset.m===m2&&m2!==m1));});}
   $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p1m').value=b.dataset.m;UI().haptic(6);
-    if(b.dataset.m===$('r-p2m').value)$('r-p2m').value='';payUI();paintTotal();if(b.dataset.m)setTimeout(()=>$('r-p1a').focus({preventScroll:true}),40);$('r-pay-err').hidden=true;});
-  $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p2m').value=b.dataset.m;UI().haptic(6);payUI();$('r-pay-err').hidden=true;});
-  $('r-mixed-add').onclick=()=>{$('r-mixed').checked=true;payUI();};
-  $('r-mixed-del').onclick=()=>{$('r-mixed').checked=false;$('r-p2m').value='';$('r-p2a').value='';payUI();};
+    if(b.dataset.m===$('r-p2m').value)$('r-p2m').value='';payUI();$('r-pay-err').hidden=true;});
+  $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p2m').value=b.dataset.m;UI().haptic(6);payUI();$('r-pay-err').hidden=true;setTimeout(()=>$('r-p1a').focus({preventScroll:true}),40);});
+  $('r-mixed-add').onclick=()=>{if(!$('r-p1m').value)return;$('r-mixed').checked=true;payUI();};
+  $('r-mixed-del').onclick=()=>{$('r-mixed').checked=false;$('r-p2m').value='';$('r-p1a').value='';$('r-p2a').value='';payUI();};
 
   // ── Validación de cada paso (misma lógica que Flota) ──
   function validate(n){const panel=box.querySelector(`.rm-panel[data-step="${n}"]`);
     if(!UI().validateForm(panel))return false;
-    if(n===3){const er=$('r-pay-err');er.hidden=true;const t=totals();const m1=$('r-p1m').value,a1=num($('r-p1a').value),mixed=$('r-mixed').checked,a2=mixed?num($('r-p2a').value):0;
+    if(n===3){const er=$('r-pay-err');er.hidden=true;const t=totals(),o=owed(t);const m1=$('r-p1m').value,mixed=$('r-mixed').checked;
       const fail=msg=>{er.textContent=msg;er.hidden=false;UI().haptic([20,40,20]);return false;};
       if(t.total<=0)return fail('El total del servicio no puede ser cero.');
-      if(particular&&!m1)return fail('Elegí cómo pagó el particular.');
-      if(m1&&a1<=0)return fail('Poné el monto que pagó con '+PAY[m1].toLowerCase()+'.');
-      if(mixed&&(!$('r-p2m').value||!a2||$('r-p2m').value===m1))return fail('En pago mixto, elegí el segundo medio (distinto del primero) y su monto.');
-      if(particular&&Math.round(a1+a2)!==Math.round(t.total))return fail('Los pagos suman '+money(a1+a2)+' y el total es '+money(t.total)+'.');
-      if(!particular&&a1+a2>t.total)return fail('Lo cobrado no puede superar el total del servicio.');}
+      if(o>0&&!m1)return fail(particular?'Elegí cómo pagó el cliente.':'Elegí cómo pagó el socio los adicionales.');
+      if(mixed){const a1=num($('r-p1a').value),a2=num($('r-p2a').value);
+        if(!$('r-p2m').value||$('r-p2m').value===m1)return fail('Elegí el segundo medio de pago (distinto del primero).');
+        if(a1<=0||a2<=0)return fail('Poné cuánto pagó con cada medio.');
+        if(Math.round(a1+a2)!==Math.round(o))return fail('Los dos medios suman '+money(a1+a2)+' y hay que cobrar '+money(o)+'.');}}
     if(n===5){const er=$('r-sig-err');er.hidden=true;const absent=$('r-absent').checked;
       const missing=CONF.filter(c=>c[3]&&!$('r-'+c[0]).checked);
       // Mismos avisos que en Flota: primero las conformidades, después la firma.
@@ -235,14 +245,17 @@ function wizard(box,s,cl,tp,tk,rates,step){
   function patchFor(n){const t=totals();
     if(n===1)return {service_date:new Date($('r-date').value||s.service_date).toISOString(),provider_order:$('r-order')?($('r-order').value.trim()||null):null,plate:$('r-plate').value.trim().toUpperCase()||null,make_model:$('r-mm').value.trim()||null,origin:$('r-orig').value.trim()||null,destination:$('r-dest').value.trim()||null,km:t.km||null,base_amount:t.base,km_amount:t.kmAmount,total:t.total};
     if(n===2)return {customer_name:$('r-cname').value.trim()||null,customer_doc:$('r-cdoc').value.trim()||null,customer_phone:$('r-cphone').value.trim()||null,customer_email:$('r-cemail').value.trim()||null};
-    if(n===3){const m1=$('r-p1m').value||null,mixed=$('r-mixed').checked;return {extras:[['Peajes',t.tolls],['Excedente',t.exc],['Espera',t.wait]].filter(x=>x[1]).map(([name,amount])=>({name,amount})),tolls:t.tolls?[{name:'Peajes',amount:t.tolls}]:[],
-      other_amount:t.other,extras_amount:t.extras,base_amount:t.base,km_amount:t.kmAmount,total:t.total,payment_1_method:m1,payment_1_amount:m1?num($('r-p1a').value):null,
+    if(n===3){const o=owed(t),m1=o>0?($('r-p1m').value||null):null,mixed=!!m1&&$('r-mixed').checked;return {extras:[['Peajes',t.tolls],['Excedente',t.exc],['Espera',t.wait]].filter(x=>x[1]).map(([name,amount])=>({name,amount})),tolls:t.tolls?[{name:'Peajes',amount:t.tolls}]:[],
+      other_amount:t.other,extras_amount:t.extras,base_amount:t.base,km_amount:t.kmAmount,total:t.total,payment_1_method:m1,payment_1_amount:m1?(mixed?num($('r-p1a').value):o):null,
       payment_2_method:mixed?$('r-p2m').value:null,payment_2_amount:mixed?num($('r-p2a').value):null};}
     if(n===4)return {notes:$('r-obs').value.trim()||null};
     return {};}
   async function save(n){const patch=patchFor(n);if(!Object.keys(patch).length)return true;const {error}=await C.db.from('solo_services').update(patch).eq('id',s.id);
     if(error){toast(errText(error));return false;}Object.assign(s,patch);return true;}
 
+  // Paso 2: arriba, de qué servicio se trata (lo cargado en el paso 1).
+  function paintContext(){const plate=$('r-plate').value.trim(),mm=$('r-mm').value.trim(),o=$('r-orig').value.trim(),d=$('r-dest').value.trim();
+    $('r-ctx').innerHTML=`${plate?`<span class="plate">${esc(plate)}</span>`:''}<span class="ell">${esc(mm||tp?.name||'Servicio')}</span>${o||d?`<span class="rm-ctx-route ell">${esc(o)} ${icon('chevron-right')} ${esc(d)}</span>`:''}`;}
   // ── Navegación entre pasos con progreso animado ──
   let current=0;
   function show(n,dir){const prev=current;current=n;sessionStorageSet('rm-step-'+s.id,String(n));
@@ -251,7 +264,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
       li.querySelector('.rm-num').textContent=i<n?'✓':i;});
     box.querySelector('.rm-counter').textContent='Paso '+n+' de 5 · '+STEPS[n-1];
     $('r-back').hidden=n===1;$('r-later').hidden=n!==1;$('r-next').innerHTML=n===5?icon('check')+' Finalizar':'Siguiente '+icon('chevron-right');
-    if(n===3){payUI();paintTotal();}if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();sigState();}
+    if(n===2)paintContext();if(n===3)paintTotal();if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();sigState();}
     if(prev)$('rm-panels').scrollTop=0;}
   $('r-back').onclick=()=>{if(current>1)show(current-1,-1);};
   // Cerrar guarda lo que haya en el paso actual (sin exigir que esté completo) y vuelve a Servicios.
@@ -259,8 +272,6 @@ function wizard(box,s,cl,tp,tk,rates,step){
   $('r-later').onclick=async()=>{if(!UI().validateForm(box.querySelector('.rm-panel[data-step="1"]')))return;if(await save(1)){toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');}};
   $('r-next').onclick=async()=>{const b=$('r-next');if(b.disabled)return;if(!validate(current))return;b.disabled=true;
     try{if(!(await save(current)))return;if(current<5){show(current+1,1);UI().haptic(8);}else await finish();}finally{b.disabled=false;}};
-  $('cancel').onclick=async()=>{const b=$('cancel');if(b.dataset.sure!=='1'){b.dataset.sure='1';b.textContent='Tocá de nuevo para anular';b.style.color='var(--ax-danger)';return;}
-    const {error}=await C.db.from('solo_services').update({status:'cancelled'}).eq('id',s.id);toast(error?errText(error):'Servicio anulado');if(!error)go('servicios');};
 
   // ── Paso 4: fotos por posición ──
   async function paintSlots(){const paths=s.photos||[];const urls={};
@@ -312,7 +323,8 @@ function wizard(box,s,cl,tp,tk,rates,step){
 }
 /* ── Remito terminado: confirmación y, abajo, la opción de enviarlo ── */
 function doneView(box,s,cl,tp,tk){
-  const paid=s.paid_at?'Cobrado en el lugar':cl?.kind==='particular'?'Falta cobrar':'Queda para facturar a '+(cl?.name||'la prestadora');
+  const here=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);
+  const paid=cl?.kind==='particular'?(s.paid_at?'Cobrado en el lugar':'Falta cobrar'):'Se factura a '+(cl?.name||'la prestadora')+' '+money(Math.max(0,Number(s.total)-here))+(here?' · socio pagó '+money(here):'');
   box.innerHTML=`<div class="done" role="status">
       <div class="done-mark" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
       <h1>Remito creado exitosamente</h1>
@@ -331,22 +343,43 @@ function rateForAt(rates,clientId,typeId,when){return rateFor(rates,clientId,typ
 
 /* ── Remito firmado: resumen, cobro y envío ── */
 function signedView(box,s,cl,tp,tk,id){
-  const line=(l,v)=>v?`<div class="row"><span class="hint">${l}</span><span>${esc(v)}</span></div>`:'';
-  const cancelled=s.status==='cancelled';
+  const cancelled=s.status==='cancelled',particular=cl?.kind==='particular';
+  const paidHere=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0),bill=Math.max(0,Number(s.total)-(particular?0:paidHere));
+  const pays=s.payment_1_method?PAY[s.payment_1_method]+(s.payment_2_method?` ${money(s.payment_1_amount)} + ${PAY[s.payment_2_method]} ${money(s.payment_2_amount)}`:''):'';
+  const tel=String(s.customer_phone||'').replace(/\D/g,'');
+  const row=(l,v,cls='')=>v?`<div class="rv-row ${cls}"><span>${l}</span><b>${v}</b></div>`:'';
   box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Volver a Servicios">${icon('arrow-left')}</button>
       <div class="grow"><h1>Remito N.º ${s.remito_number}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')} · ${esc(fmtDate(s.service_date))}</p></div>${cancelled?'<span class="pill muted">Anulado</span>':'<span class="pill ok">Firmado</span>'}</div>
-    <div class="fill stack"><div class="card">${line('Patente',s.plate)}${line('Vehículo',s.make_model)}${line('Origen',s.origin)}${line('Destino',s.destination)}${line('N.º prestadora',s.provider_order)}${line('Socio',s.customer_name)}${line('Km',s.km)}${line('Llegada',fmtDate(s.arrived_at))}
-      <div class="row"><b>Total</b><b class="num" style="color:var(--ax-accent)">${money(s.total)}</b></div></div>
-    <div class="card"><h2>Fotos</h2><div id="ph" class="grid2"></div></div>
-    <div class="card"><h2>Firma</h2><img id="sig-img" alt="Firma" style="width:100%;background:#fff;border-radius:10px;min-height:80px">
-      <p class="hint">${esc(s.signer_name||'')}${s.signer_doc?' · '+esc(s.signer_doc):''}${s.customer_present===false?' · firmó el chofer (socio ausente)':''} · ${esc(fmtDate(s.signed_at))}</p></div>
-    ${cancelled?'':`<div class="card"><h2>Cobro</h2><div class="row"><span>${s.paid_at?'Cobrado el '+esc(fmtDate(s.paid_at)):'Todavía no cobrado'}</span><button class="btn" type="button" id="paid">${s.paid_at?'Marcar no cobrado':'Marcar cobrado'}</button></div>
-      ${s.payment_1_method?`<p class="hint">${PAY[s.payment_1_method]} ${money(s.payment_1_amount)}${s.payment_2_method?' + '+PAY[s.payment_2_method]+' '+money(s.payment_2_amount):''}</p>`:''}</div>`}</div>
+    <div class="fill stack rv">
+      <section class="rv-card" aria-label="Servicio">
+        <span class="rm-glabel">${icon('truck')} Servicio</span>
+        ${particular?'':row('N.º de servicio',s.provider_order?`<span class="num">${esc(s.provider_order)}</span>`:'<span class="hint">Sin número</span>','rv-lead')}
+        <div class="rv-vehicle">${s.plate?`<span class="plate big">${esc(s.plate)}</span>`:''}<span class="rv-vname">${esc(s.make_model||'Vehículo sin datos')}</span></div>
+        <div class="rv-route"><div><i class="a"></i><span>${esc(s.origin||'—')}</span></div><div><i class="b"></i><span>${esc(s.destination||'—')}</span></div>${s.km?`<em class="num">${esc(s.km)} km</em>`:''}</div>
+      </section>
+      <section class="rv-card" aria-label="Cliente">
+        <span class="rm-glabel">${icon('user')} Cliente</span>
+        <div class="rv-name">${esc(s.customer_name||'Sin nombre')}${s.customer_doc?`<small>DNI / CUIT ${esc(s.customer_doc)}</small>`:''}</div>
+        ${tel||s.customer_email?`<div class="rv-contact">${tel?`<a class="btn" href="tel:${esc(tel)}">${icon('phone')} ${esc(s.customer_phone)}</a>`:''}${s.customer_email?`<a class="btn ell" href="mailto:${esc(s.customer_email)}">${icon('link')} ${esc(s.customer_email)}</a>`:''}</div>`:'<p class="hint">Sin contacto cargado.</p>'}
+      </section>
+      <section class="rv-card" aria-label="Importes">
+        <span class="rm-glabel">${icon('receipt')} Importes</span>
+        ${row(particular?'Precio acordado':'Base',`<span class="num">${money(s.base_amount)}</span>`)}${Number(s.km_amount)?row('Km excedentes',`<span class="num">${money(s.km_amount)}</span>`):''}${Number(s.extras_amount)?row('Adicionales',`<span class="num">${money(s.extras_amount)}</span>`):''}
+        <div class="rv-row rv-total"><span>Total</span><b class="num">${money(s.total)}</b></div>
+        ${particular?row('Pagó',esc(pays||'—')):`${row('Se factura a '+esc(cl?.name||'la prestadora'),`<span class="num">${money(bill)}</span>`)}${paidHere?row('El socio pagó los adicionales',esc(pays)+(s.payment_2_method?'':' '+money(paidHere))):''}`}
+        ${cancelled?'':`<div class="rv-pay"><span class="pill ${s.paid_at?'ok':'wait'}">${s.paid_at?'Cobrado '+esc(fmtDate(s.paid_at).split(' ')[0]):particular?'Sin cobrar':'Pago pendiente'}</span><button class="link" type="button" id="paid">${s.paid_at?'Marcar no cobrado':'Marcar cobrado'}</button></div>`}
+      </section>
+      <section class="rv-card rv-evidence" aria-label="Firma y fotos">
+        <div class="rv-sigbox"><span class="rm-glabel">${icon('signature')} Firma</span><img id="sig-img" alt="Firma" class="rv-sig">
+          <small class="hint ell">${esc(s.signer_name||'')}${s.customer_present===false?' (chofer)':''}</small></div>
+        <div><span class="rm-glabel">${icon('camera')} Fotos</span><div id="ph" class="rv-photos"></div></div>
+      </section>
+    </div>
     ${cancelled?'':`<button class="btn pri block" type="button" id="share">${icon('share-2')} Enviar remito (PDF)</button>`}`;
   const $=x=>document.getElementById(x);
   $('rm-x').onclick=()=>go('servicios');
   (async()=>{const paths=s.photos||[];if(!paths.length){$('ph').innerHTML='<p class="hint">Sin fotos.</p>';return;}const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,3600);
-    if($('ph'))$('ph').innerHTML=(data||[]).map(u=>`<img src="${esc(u.signedUrl)}" alt="Foto del vehículo" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px">`).join('');})();
+    if($('ph'))$('ph').innerHTML=(data||[]).map(u=>`<img src="${esc(u.signedUrl)}" alt="Foto del vehículo">`).join('');})();
   if(s.signature_path)C.db.storage.from('solo_files').createSignedUrl(s.signature_path,3600).then(({data})=>{if(data&&$('sig-img'))$('sig-img').src=data.signedUrl;});
   if(cancelled)return;
   $('paid').onclick=async()=>{const {error}=await C.db.from('solo_services').update({paid_at:s.paid_at?null:new Date().toISOString()}).eq('id',s.id);toast(error?errText(error):s.paid_at?'Marcado como no cobrado':'Marcado como cobrado');if(!error){UI().success();views.servicio(id);}};
@@ -365,7 +398,9 @@ async function sharePdf(s,cl,tp,tk){
   rows.forEach(([k,v])=>{t(k,15,10,true);t(v,60,10);y+=6.5;});y+=3;
   [['Base',s.base_amount],['Km',s.km_amount],['Adicionales',s.extras_amount]].filter(r=>Number(r[1])).forEach(([k,v])=>{t(k,15,10);t(money(v),160,10);y+=6;});
   t('Total',15,12,true);t(money(s.total),160,12,true);y+=9;
-  if(s.payment_1_method){t('Pagó: '+PAY[s.payment_1_method]+' '+money(s.payment_1_amount),15,10);y+=7;}
+  if(s.payment_1_method){const pp=PAY[s.payment_1_method]+' '+money(s.payment_1_amount)+(s.payment_2_method?' + '+PAY[s.payment_2_method]+' '+money(s.payment_2_amount):'');
+    t((cl?.kind==='particular'?'Pagó: ':'Adicionales pagados por el socio: ')+pp,15,10);y+=7;}
+  if(cl?.kind!=='particular'){const here=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);t('Se factura a '+(cl?.name||'la prestadora')+': '+money(Math.max(0,Number(s.total)-here)),15,10,true);y+=7;}
   const conf=[['conf_service','servicio'],['conf_charges','cargos'],['conf_tow','arrastre']].filter(([k])=>s[k]).map(([,l])=>l);
   if(conf.length){t('Conforme con: '+conf.join(', ')+(s.no_damage?' · sin daños nuevos':''),15,10);y+=7;}
   if(s.notes){t('Observaciones: '+s.notes,15,10);y+=7;}

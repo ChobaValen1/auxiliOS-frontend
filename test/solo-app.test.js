@@ -30,7 +30,7 @@ test('Solo: el remito es por pasos, igual que el del chofer en Flota',()=>{
   assert.match(ops,/const STEPS=\['Servicio','Socio','Adicionales','Evidencia','Firma'\]/);
   for(const l of ['Frente del vehículo','Lateral','Daños o estado adicional','Odómetro'])assert.ok(ops.includes(l),l);
   for(const l of ['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados','Conformidad de arrastre','Socio ausente (firma el chofer)'])assert.ok(ops.includes(l),l);
-  assert.match(ops,/Guardar y seguir después/);assert.match(ops,/pago mixto/i);assert.match(ops,/Los pagos suman/);assert.match(ops,/Faltan confirmaciones/);
+  assert.match(ops,/Guardar y seguir después/);assert.match(ops,/Dos medios/);assert.match(ops,/Los pagos suman/);assert.match(ops,/Faltan confirmaciones/);
   assert.match(ops,/function validate\(n\)/);assert.match(ops,/UI\(\)\.validateForm\(panel\)/);
 });
 test('Solo: app instalable en el celular, sin zoom y sin desplazar la página',()=>{
@@ -67,7 +67,7 @@ test('Solo: facturación agrupada por prestadora (facturado → cobrado) con res
 test('Solo: remito sin «Llegada», medios de pago con botones y firma con estados como en Flota',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');
   assert.doesNotMatch(ops,/Llegué|<label>Llegada<\/label>/);
-  assert.match(ops,/class="pay-chip" data-m="\$\{k\}"/);assert.match(ops,/PAY_ICON=\{cash:'banknote'/);assert.match(ops,/No pagó/);
+  assert.match(ops,/class="pay-chip" data-m="\$\{k\}"/);assert.match(ops,/PAY_ICON=\{cash:'banknote'/);
   for(const t of ['Faltan conformidades','Falta la firma del socio','Falta la aclaración','Listo para finalizar','Sin firma','Firma registrada'])assert.ok(ops.includes(t),t);
   assert.match(css,/\.conf-area\{flex:4 1 0/);assert.match(css,/\.pad-wrap\{flex:6 1 0/,'60% firma / 40% conformidades');
   assert.match(ops,/pad\.width=Math\.round\(r0\.width\*dpr\)/,'el trazo no se deforma');
@@ -78,4 +78,18 @@ test('Solo: Gastos con total del mes, en qué se va la plata, movimientos por d�
   assert.match(ops,/Gastaste en/);assert.match(ops,/\['categorias','En qué'\],\['movimientos','Movimientos'\],\['fijo','Fijos'\]/);
   assert.match(ops,/sort\(\(p,q\)=>q\.t-p\.t\)/,'categorías de mayor a menor');assert.match(ops,/from\('solo_expenses'\)\.delete\(\)/);
   assert.match(ops,/CAT_ICON=\{Combustible:'fuel'/);assert.match(ops,/notes:\$\('e-note'\)/);assert.match(ops,/Suma <b class="num">/);
+});
+test('Solo: con prestadora se factura a la empresa y el socio paga solo los adicionales',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');
+  assert.doesNotMatch(ops,/Anular servicio/,'el remito ya no tiene «Anular»');
+  assert.match(ops,/const owed=t=>particular\?t\.total:t\.extras/);assert.match(ops,/Se factura a \$\{esc\(cl\?\.name/);assert.match(ops,/Cobrar al socio/);
+  assert.match(ops,/payment_1_amount:m1\?\(mixed\?num\(\$\('r-p1a'\)\.value\):o\):null/,'con un medio se cobra lo que corresponde, sin escribir el monto');
+  assert.match(ops,/Los dos medios suman/);assert.match(ops,/Montos por medio aparecen solo con dos medios|Los montos por medio aparecen solo con dos medios/);
+  assert.match(fx,/billOf=\(client,s\)=>client\.kind==='particular'\?Number\(s\.total\|\|0\):Math\.max\(0,Number\(s\.total\|\|0\)-paidHere\(s\)\)/);
+});
+test('Solo: «Ver remito» ordenado: servicio (N.º, patente, vehículo, recorrido) y cliente (nombre y contacto)',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');const v=ops.slice(ops.indexOf('function signedView'));
+  const order=['N.º de servicio','plate big','rv-vname','rv-route','Cliente','rv-name','rv-contact'].map(k=>v.indexOf(k));
+  assert.ok(order.every(i=>i>0),'están todas las partes');assert.deepEqual([...order].sort((a,b)=>a-b),order,'en ese orden');
+  assert.match(v,/href="tel:/);assert.match(v,/href="mailto:/);
 });
