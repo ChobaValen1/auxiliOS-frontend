@@ -236,6 +236,7 @@ async function renderInicio(){
     <div class="month"><button class="btn ghost icon-btn" type="button" id="m-prev" aria-label="Mes anterior">${icon('chevron-left')}</button><h1 id="m-name">${esc(monthName(month))}</h1><button class="btn ghost icon-btn" type="button" id="m-next" aria-label="Mes siguiente">${icon('chevron-right')}</button></div>
     <div id="sum" class="stack" aria-busy="true"><i class="sk kpi-sk"></i><i class="sk kpi-sk tall"></i><i class="sk kpi-sk"></i></div>
     <div class="split"><div class="btn pri" role="button" tabindex="0" id="new-svc">${icon('plus')} Servicio</div><div class="btn" role="button" tabindex="0" id="new-exp">${icon('plus')} Gasto</div></div>
+    <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Cuánto le facturás a cada una y qué falta cobrar</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-go="clientes">${icon('building-2','lead')}<span><b>Prestadoras y tarifas</b><span class="hint">A quién le facturás y cuánto le cobrás</span></span>${icon('chevron-right','trail')}</button>`,'inicio');
   document.getElementById('m-prev').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);renderInicio();};
   document.getElementById('m-next').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);renderInicio();};
@@ -245,13 +246,14 @@ async function renderInicio(){
   if(error){box.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
   const left=Number(s.left)||0;
   const pct=Number(s.billed)>0?Math.max(0,Math.min(100,Math.round(Number(s.collected)/Number(s.billed)*100))):0;
-  box.innerHTML=`<div class="split"><div class="kpi in"><span>Facturé</span><b data-count="${Number(s.billed)||0}">$ 0</b></div>
+  box.innerHTML=`<div class="split"><div class="kpi in kpi-link" role="button" tabindex="0" id="k-billed" aria-label="Facturé: ver por prestadora"><span>Facturé ${icon('chevron-right','kpi-go')}</span><b data-count="${Number(s.billed)||0}">$ 0</b></div>
     <div class="kpi out"><span>Gasté</span><b data-count="${Number(s.spent)||0}">$ 0</b></div></div>
     <div class="kpi left ${left<0?'neg':''}"><span>Me queda</span><b data-count="${left}">$ 0</b></div>
     <div class="card tight"><div class="row"><span class="hint">Cobrado</span><b class="num" data-count="${Number(s.collected)||0}">$ 0</b></div>
       <div class="bar" role="img" aria-label="Cobraste el ${pct}% de lo facturado"><i style="--w:${pct}%"></i></div>
       <div class="row"><span class="hint">Por cobrar</span><b class="num" style="color:var(--ax-warn)" data-count="${Number(s.pending)||0}">$ 0</b></div></div>
     <p class="hint">${Number(s.services)?Number(s.services)+' servicios':'Sin servicios todavía'} · fijos ${money(s.fixed_expenses)} · variables ${money(s.variable_expenses)}</p>`;
+  const k=document.getElementById('k-billed');k.onclick=()=>go('facturacion');k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go('facturacion');}};
 }
 
 async function renderClientes(){
@@ -316,6 +318,7 @@ async function renderCliente(id){
 async function renderMas(){
   const canInstall=window.SoloPWA&&!window.SoloPWA.installed;
   shell(`<h1>Más</h1>
+    <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Resumen del mes, facturado y cobrado</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-to="clientes">${icon('building-2','lead')}<span><b>Prestadoras y tarifas</b><span class="hint">Empresas, días de pago y precios</span></span>${icon('chevron-right','trail')}</button>
     ${canInstall?`<button class="item item-row" type="button" id="inst">${icon('download','lead')}<span><b>Instalar la app</b><span class="hint">Tenela en la pantalla de inicio del celular</span></span>${icon('chevron-right','trail')}</button>`:''}
     <div id="truck" class="card"><h2>Mi grúa</h2><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i></div></div>

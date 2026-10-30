@@ -55,3 +55,12 @@ test('Solo: nuevo servicio por pasos con tarjetas y remito sin N.º para escribi
   assert.match(ops,/go\('clientes-nueva'\)/);
   assert.doesNotMatch(ops,/<label>N\.º remito<\/label>/);assert.match(ops,/\{bare:true\}/);
 });
+test('Solo: facturación agrupada por prestadora (facturado → cobrado) con resumen en PDF',()=>{
+  const fx=fs.readFileSync('solo/solo-facturacion.js','utf8');
+  assert.match(html,/\/solo\/solo-facturacion\.js/);assert.match(js,/data-go="facturacion"/);assert.match(js,/id="k-billed"/);
+  assert.match(fx,/views\.facturacion=/);assert.match(fx,/\.neq\('status','cancelled'\)/,'los anulados no se facturan');
+  assert.match(fx,/s\.status==='signed'/,'solo los firmados entran en la facturación');
+  assert.match(fx,/invoiced_at:today\(\)/);assert.match(fx,/paid_at:new Date\(\)\.toISOString\(\)/);assert.match(fx,/\.in\('id',next\.rows\.map/);
+  assert.match(fx,/addDays\(invoicedOn,client\.payment_days\)/,'vence según los días de pago');assert.match(fx,/'Vencido'/);
+  assert.match(fx,/Resumen de servicios/);assert.match(fx,/navigator\.share/);assert.match(fx,/Confirmar \$\{next\.rows\.length\} remito/);
+});

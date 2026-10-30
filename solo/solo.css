@@ -251,3 +251,18 @@ p{margin:0}
 .install-steps{margin:0;padding:0 0 0 20px;display:grid;gap:6px;font-size:14px;color:var(--ax-text)}
 .install-steps .ico{width:16px;height:16px;vertical-align:-3px;color:var(--ax-accent)}
 @media (prefers-reduced-motion:reduce){.sheet,.sheet-wrap{transition:none}.mail-ico{animation:none}.tab .ico,.eye .ico{transition:none}}
+
+/* ── Facturación por prestadora ───────────────────────── */
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.trio .mini{padding:10px;min-width:0}
+.trio .mini span{font-size:11px}
+.trio .mini b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill.bad{background:var(--ax-danger-soft);color:var(--ax-danger)}
+.notice.bad{background:var(--ax-danger-soft);color:var(--ax-danger)}
+.notice .ico{width:18px;height:18px;margin-top:1px}
+.kpi-link{cursor:pointer;transition:border-color 140ms ease,transform 140ms var(--ease-out)}
+.kpi-link:hover{border-color:var(--ax-ok)}
+.kpi-link:active{transform:scale(.98)}
+.kpi-link:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.kpi-go{width:14px;height:14px;vertical-align:-2px;color:var(--ax-text-3)}
+.fd-done{align-self:center;justify-self:center;margin:auto;font-size:13px;padding:8px 12px}
