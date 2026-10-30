@@ -10,18 +10,7 @@ const SUPABASE_KEY = window.AUXILIOS_RUNTIME.supabaseKey;
 const { createClient } = window.supabase;
 // Si un pedido sale sin usuario (la sesión se perdió) y la base lo rechaza, se avisa
 // en vez de dejar la pantalla como si nada (p. ej. «permission denied for function…»).
-// Edición monogruero: la misma persona trabaja en «modo oficina» o «modo chofer».
-// En modo chofer cada pedido lleva x-auxilios-mode: chofer y la base lo atiende como chofer.
-const _MONOGRUERO = window.AUXILIOS_RUNTIME.edition === 'monogruero';
-function modoMonogruero() {
-  try { return localStorage.getItem('auxilios_modo') === 'chofer' ? 'chofer' : 'oficina'; } catch (e) { return 'oficina'; }
-}
 const _fetchConAviso = async (input, init) => {
-  if (_MONOGRUERO && modoMonogruero() === 'chofer') {
-    const headers = new Headers((init && init.headers) || (input && input.headers) || {});
-    headers.set('x-auxilios-mode', 'chofer');
-    init = { ...(init || {}), headers };
-  }
   const res = await fetch(input, init);
   try {
     if (res.status === 401 && USUARIO_ACTUAL && !_salidaVoluntaria) {
@@ -307,11 +296,6 @@ async function cargarPerfilUsuario() {
     .eq('user_id', USUARIO_ACTUAL.id)
     .single();
   if (error) { console.error('Error perfil:', error); return; }
-  if (_MONOGRUERO) {
-    // El dueño está guardado como chofer; la base dice qué rol tiene en el modo actual.
-    const { data: mono } = await _db.rpc('get_monogruero_profile_v1');
-    if (mono?.owner) { data.mono_owner = true; data.roles = { name: mono.role }; }
-  }
   PERFIL_USUARIO = data;
   document.dispatchEvent(new CustomEvent('auxilios:perfil', { detail: data }));
   if(typeof actualizarSaludoDashboard==='function')actualizarSaludoDashboard();

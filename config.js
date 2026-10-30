@@ -5,6 +5,8 @@ const ENV = {
 };
 window.AUXILIOS_EDITION = AUXILIOS_RUNTIME.edition;
 document.documentElement.dataset.edition = AUXILIOS_RUNTIME.edition;
+// La instalación monogruero usa AuxiliOS Solo, una app aparte pensada para el celular.
+if (AUXILIOS_RUNTIME.edition === 'monogruero' && !/\/solo(\.html)?$/.test(location.pathname)) location.replace('/solo.html' + location.hash);
 
 /* Formato de fecha único en toda la app: DD/MM/AA (y HH:MM cuando hay hora).
    Las pantallas formatean fechas de muchas formas (toLocaleDateString,
@@ -81,7 +83,7 @@ document.documentElement.dataset.edition = AUXILIOS_RUNTIME.edition;
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'monogruero-v597-20261030';
+window.AUXILIOS_BUILD_ID = 'solo-v598-20261030';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {
