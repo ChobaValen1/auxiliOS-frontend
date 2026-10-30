@@ -252,7 +252,7 @@ function syncQuickStatusAvailability(){
   document.body?.classList.toggle('osl-quick-status-enabled',!!O()?.canRead?.());
   for(const el of document.querySelectorAll('#screen-operaciones .col-status .os-status')){
     const s=service(el.closest('tr')?.dataset.serviceId);
-    if(!quickActions(s).length){if(el.getAttribute('role')==='button')for(const attr of ['role','tabindex','aria-haspopup','aria-expanded','aria-controls','aria-label','title'])el.removeAttribute(attr);continue;}
+    if(!quickActions(s).length){if(el.getAttribute('role')==='button')for(const attr of ['role','tabindex','aria-haspopup','aria-expanded','aria-controls','aria-label','title','data-ax-tip'])el.removeAttribute(attr);continue;}
     const action=canTransition()?'Cambiar estado':'Ver opciones de estado';
     el.setAttribute('role','button');el.tabIndex=0;el.setAttribute('aria-haspopup','menu');
     el.setAttribute('aria-controls','osl-quick-status-menu');el.setAttribute('aria-expanded','false');
