@@ -30,7 +30,7 @@ test('Solo: el remito es por pasos, igual que el del chofer en Flota',()=>{
   assert.match(ops,/const STEPS=\['Servicio','Socio','Adicionales','Evidencia','Firma'\]/);
   for(const l of ['Frente del vehículo','Lateral','Daños o estado adicional','Odómetro'])assert.ok(ops.includes(l),l);
   for(const l of ['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados','Conformidad de arrastre','Socio ausente (firma el chofer)'])assert.ok(ops.includes(l),l);
-  assert.match(ops,/Guardar y seguir después/);assert.match(ops,/Dos medios/);assert.match(ops,/Los pagos suman/);assert.match(ops,/Faltan confirmaciones/);
+  assert.match(ops,/Guardar y seguir después/);assert.match(ops,/Dos medios/);assert.match(ops,/Los dos medios suman/);assert.match(ops,/Faltan confirmaciones/);
   assert.match(ops,/function validate\(n\)/);assert.match(ops,/UI\(\)\.validateForm\(panel\)/);
 });
 test('Solo: app instalable en el celular, sin zoom y sin desplazar la página',()=>{
