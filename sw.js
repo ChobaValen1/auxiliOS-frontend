@@ -1,6 +1,6 @@
 // Mantiene el prefijo canónico y renueva todos los recursos después de integrar
 // el flujo de remitos con los hotfixes productivos.
-const CACHE_NAME='auxilios-v593-status-fix';
+const CACHE_NAME='auxilios-v594-scroll-fab';
 const PRECACHE_ASSETS=[
   '/driver-service-history-v1.js','/driver-service-history-v1.css',
   '/operator-services-map-v1.js','/operator-services-map-v1.css','/service-route-map.js','/service-route-map.css',
@@ -8,7 +8,7 @@ const PRECACHE_ASSETS=[
   '/ui/completed-journey-services-v1.js',
   '/ui/efficiency-loader-v1.js','/ui/motion/efficiency-v1.js','/ui/motion/efficiency-v1.css',
   '/ui/history-tolls-list-v1.js','/ui/history-tolls-list-v1.css',
-  '/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/ui/tooltip-v1.js','/ui/tooltip-v1.css','/ui/count-v1.js','/assets/logo-auxilios-main.png',
+  '/ui/motion/motion-v1.js','/ui/motion/motion-v1.css','/ui/tooltip-v1.js','/ui/tooltip-v1.css','/ui/count-v1.js','/ui/scroll-fab-v1.js','/ui/scroll-fab-v1.css','/assets/logo-auxilios-main.png',
   '/ui/service-price-calculator-v1.js','/ui/service-price-calculator-v1.css',
   '/ui/react-lazy-v1.js','/ui/customer-payment-v1.js','/ui/customer-payment-v1.css','/vendor/react-18.3.1.production.min.js','/vendor/react-dom-18.3.1.production.min.js','/vendor/htm-3.1.1.umd.js',
   '/ui/service-improvements-v1.js','/ui/service-improvements-v1.css','/ui/export-picker-v1.js','/ui/export-picker-v1.css','/ui/drag-sort-v1.js','/ui/drag-sort-v1.css','/ui/theme-v1.js','/ui/theme-light-v1.css',
