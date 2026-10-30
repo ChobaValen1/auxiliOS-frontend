@@ -1,7 +1,7 @@
 /* Browser integration QA. All service/API/map data is synthetic; no production mutations. */
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const root=path.resolve(__dirname,'..'),out=process.env.AUXILIOS_QA_OUTPUT||'/tmp/auxilios-services-map-v591-qa';
+const root=path.resolve(__dirname,'..'),out=process.env.AUXILIOS_QA_OUTPUT||'/tmp/auxilios-services-map-v592-qa';
 fs.mkdirSync(out,{recursive:true});
 const uuid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const base={company_id:'c1',company_name:'Prestadora de prueba',scheduled_for:'2026-10-28T13:30:00Z',origin:'Av. Corrientes 1800, Balvanera, Ciudad Autónoma de Buenos Aires',destination:'Av. Maipú 2200, Vicente López',origin_lat:-34.604,origin_lng:-58.397,destination_lat:-34.526,destination_lng:-58.479,vehicle_plate:'AB 123 CD',primary_concept_id:'tow',concept_name:'Traslado',billing_base_id:'b1',status:'assigned',document_status:'not_started',assigned_driver_id:'d1',driver_name:'Martín López',assigned_truck_id:12,truck_label:'12',driver_multi_service:true,driver_queue_position:2};
@@ -60,6 +60,9 @@ const html=`<!doctype html><html data-theme="dark"><head><meta charset="utf-8"><
  await page.locator('.osm-pin').first().focus();await page.evaluate(()=>OperatorServices.loadServices());assert.equal(await page.evaluate(()=>document.activeElement.classList.contains('osm-pin')),true,'polling preserves focused marker');
  await page.locator('#osm-actions .osm-primary').click();await page.locator('input[name="arrival_reason"][value="operator_provider_confirmed"]').check();await page.locator('#osl-form [type="submit"]').click();await page.waitForFunction(()=>window.OperatorServices.S.services.find(s=>s.service_order_number==='SV-1042').status==='at_origin');
  assert.match(await page.locator('.osm-detail-heading').innerText(),/Arribado/);await page.locator('[data-osm=tracking]').click();assert.match(await page.locator('.osm-facts').innerText(),/Pendiente de carga/);assert.equal(await page.evaluate(()=>__routeCalls.length),5,'status refresh reuses all routes');
+ // Arrived services remain visible in the driver's chain even with signed paperwork.
+ await page.evaluate(id=>{const s=__rows.find(x=>x.service_id===id);s.remito_status='firmado';s.document_status='submitted';return OperatorServices.loadServices();},uuid(2));await page.locator('[data-osm=queue]').click();while(!await page.locator('[data-osm=queue-prev]').isDisabled())await page.locator('[data-osm=queue-prev]').click();assert.match(await page.locator('.osm-queue').innerText(),/SV-1041/);assert.match(await page.locator('.osm-queue').innerText(),/Arribado/);
+ await page.evaluate(id=>{const s=__rows.find(x=>x.service_id===id);delete s.remito_status;s.document_status='not_started';return OperatorServices.loadServices();},uuid(2));
  // A closed service with a pending remito must stay in active.
  await pick(uuid(7));await page.locator('[data-osm=tracking]').click();assert.match(await page.locator('.osm-review-note').innerText(),/revisión pendiente/);
  await pick(uuid(1));await page.evaluate(id=>{const s=__rows.find(s=>s.service_id===id);s.status='completed';s.document_status='approved';return OperatorServices.loadServices();},uuid(1));
