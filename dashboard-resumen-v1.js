@@ -16,7 +16,6 @@
 
   var RPC_FACT = 'dashboard_facturacion_v1';
   var RPC_RES  = 'dashboard_resumen_v1';
-  var RPC_FLOTA = 'dashboard_flota_km_v1';
   var COBERTURA_MIN = 0.9;   // remitos del período cargados como servicio para comparar con el odómetro
 
   var ID_KPIS  = 'dashx-fact-kpis';
@@ -58,7 +57,6 @@
   var mapa = null;
   var observador = null;
   var cargandoLib = null;
-  var chartTipos = null;
   var chartEvol = null;
   var zoomEvol = null;
   /* Zoom de la evolución (dashboard-zoom-v1.js): serie diaria larga, días
@@ -127,6 +125,8 @@
         })
       };
     });
+
+    empresas.sort(function(a,b){return b.monto-a.monto||a.nombre.localeCompare(b.nombre);});
 
     return {
       hayDatos: num(t.servicios) > 0 && f.hay_datos !== false,
@@ -270,34 +270,47 @@
     return comp > 0 && t.kmReal > 0 ? t.kmReal * 100 / comp : null;
   }
 
+  function neutralDelta(actual, anterior, rango) {
+    return delta(actual, anterior, rango).replace(/is-up|is-down/g, 'is-neutral');
+  }
+
   function pintarKpis(d) {
-    var n = el(ID_KPIS);
-    if (!n) return;
-    var t = d.tot, a = d.ant, r = d.rangoAnterior;
-    if (!d.hayDatos) {
-      n.innerHTML =
-        tile('Total facturado', GUION, '', 'Facturación del período', true) +
-        tile('Servicios', GUION, '', 'Viajes finalizados') +
-        tile('Km reales', GUION, '', 'Sin servicios en el período') +
-        tile('$ por servicio', GUION, '', 'Ticket promedio') +
-        tile('Peajes', GUION, '', 'Sobre la facturación') +
-        tile('Eficiencia de km', GUION, '', 'Diferencia sobre los km facturados');
-      return;
-    }
-    var rendFlota = rendimientoFlota(t, d.flota);
-    var ticket = div(t.facturado, t.servicios), ticketAnt = div(a.facturado, a.servicios);
-    var pieReales = miles(t.km) + ' km facturados';
-    if (t.conDato && t.conDato < t.servicios) pieReales += ' · ' + t.conDato + ' de ' + t.servicios + ' con dato';
+    var n = el(ID_KPIS); if (!n) return;
+    var t=d.tot,a=d.ant,r=d.rangoAnterior,has=d.hayDatos;
     n.innerHTML =
-      tile('Total facturado', pesos(t.facturado), delta(t.facturado, a.facturado, r), 'Facturación del período', true) +
-      tile('Servicios', miles(t.servicios), delta(t.servicios, a.servicios, r), 'Viajes finalizados') +
-      tile('Km reales', t.kmReal > 0 ? miles(t.kmReal) + ' km' : GUION,
-        t.kmReal > 0 ? delta(t.kmReal, a.kmReal, r) : '', pieReales) +
-      tile('$ por servicio', ticket != null ? pesos(ticket) : GUION, delta(ticket, ticketAnt, r), 'Ticket promedio') +
-      tile('Peajes', pesos(t.peajes), delta(t.peajes, a.peajes, r),
-        t.facturado > 0 ? pct(t.peajes * 100 / t.facturado, 1) + ' de la facturación' : 'Sobre la facturación') +
-      tile('Eficiencia de km', rendFlota != null ? pct(rendFlota) : GUION, '',
-        rendFlota != null ? 'Diferencia sobre los km facturados' : 'Diferencia sobre los km facturados · ' + motivoSinFlota(d.flota));
+      tile('Total facturado',has?pesos(t.facturado):GUION,has?neutralDelta(t.facturado,a.facturado,r):'','Servicios finalizados del período',true)+
+      tile('Servicios',has?miles(t.servicios):GUION,has?neutralDelta(t.servicios,a.servicios,r):'','Finalizados en el período')+
+      tile('Km reales de servicios',has&&t.conDato>0?miles(t.kmReal)+' km':GUION,has&&t.conDato>0?neutralDelta(t.kmReal,a.kmReal,r):'',has?miles(t.conDato)+' de '+miles(t.servicios)+' servicios con dato':'Sin servicios en el período');
+    var secondary=el('rsm-secondary');
+    if(secondary) secondary.innerHTML='<dl><div><dt>Ticket promedio</dt><dd>'+ (has?pesos(t.facturado/t.servicios):GUION)+'</dd></div><div><dt>Peajes</dt><dd>'+(has?pesos(t.peajes):GUION)+'</dd></div><div><dt>Km facturados</dt><dd>'+(has?miles(t.km)+' km':GUION)+'</dd></div></dl>';
+    var context=el('rsm-period-context');if(context)context.textContent=(d.desde&&d.hasta?'Período: '+fecha(d.desde)+' al '+fecha(d.hasta):'Resumen del período')+(r?' · Comparación: '+r:' · Sin período anterior informado');
+    var quality=el('rsm-data-context');if(quality)quality.textContent=has?(t.conDato<t.servicios?'Kilómetros parciales: '+miles(t.servicios-t.conDato)+' servicios sin km reales registrados. ':'')+'Los km de servicios no representan el odómetro total de la flota.':'No hay servicios finalizados para los filtros seleccionados.';
+  }
+
+  function rankingRows(d){
+    var all=d.empresas.slice().sort(function(a,b){return b.monto-a.monto||a.nombre.localeCompare(b.nombre);});
+    var rows=all.slice(0,5).map(function(e){return {nombre:e.nombre,monto:e.monto,servicios:e.servicios};});
+    if(all.length>5)rows.push({nombre:'Otras '+(all.length-5)+' prestadoras',monto:all.slice(5).reduce(function(n,e){return n+e.monto;},0),servicios:all.slice(5).reduce(function(n,e){return n+e.servicios;},0)});
+    var total=all.reduce(function(n,e){return n+e.monto;},0);
+    return rows.map(function(e){return Object.assign(e,{share:total>0?e.monto*100/total:null});});
+  }
+  function pintarRanking(d){
+    var n=el('rsm-ranking');if(!n)return;
+    var rows=rankingRows(d);
+    n.innerHTML=d.hayDatos&&rows.length?'<ol class="rsm-ranking-list">'+rows.map(function(e){return '<li><div><b>'+esc(e.nombre)+'</b><strong>'+pesos(e.monto)+'</strong></div><div class="rsm-ranking-track" aria-hidden="true"><i style="width:'+Math.max(0,Math.min(100,e.share||0))+'%"></i></div><small>'+miles(e.servicios)+' servicios · '+(e.share===null?'Sin participación calculable':pct(e.share,1)+' del total')+'</small></li>';}).join('')+'</ol>':'<p class="rsm-vacio">Sin facturación para comparar prestadoras.</p>';
+  }
+
+  function chartColors(){var light=document.documentElement?.dataset.theme==='light';return {accent:light?'#a86600':'#f5a623',previous:light?'#66758b':'#8590ab',grid:light?'rgba(70,85,110,.15)':'rgba(100,115,140,.2)'};}
+  function applyChartTheme(){if(!chartEvol)return;var c=chartColors();chartEvol.data.datasets[0].borderColor=c.accent;if(chartEvol.data.datasets[1])chartEvol.data.datasets[1].borderColor=c.previous;chartEvol.options.scales.y.grid.color=c.grid;chartEvol.update('none');}
+
+  function pintarDatosEvol(labels,act,ant){
+    var available=act.filter(function(v){return v!=null&&Number.isFinite(Number(v));}),total=available.reduce(function(n,v){return n+Number(v);},0);
+    var reading=el('rsm-evol-reading');if(reading)reading.textContent=available.length?'Total visible: '+pesos(total)+' · '+available.length+' días con datos':'Sin datos diarios para esta ventana.';
+    var legend=el('rsm-previous-key');if(legend)legend.hidden=!ant.some(function(v){return v!=null&&v>0;});
+    var n=el('rsm-evol-data');if(n)n.innerHTML='<div class="rsm-tabla-wrap"><table class="rsm-daily-table"><caption>Valores de la ventana visible · pesos</caption><thead><tr><th>Día actual</th><th>Actual</th><th>Anterior equivalente</th></tr></thead><tbody>'+labels.map(function(label,i){return '<tr><th scope="row">'+esc(label)+'</th><td>'+ (act[i]==null?GUION:pesos(act[i]))+'</td><td>'+(ant[i]==null?GUION:pesos(ant[i]))+'</td></tr>';}).join('')+'</tbody></table></div>';
+    var card=el('rsm-evol-card');if(card)card.classList.toggle('rsm-fallback-active',typeof global.Chart==='undefined');
+    var cv=el('rsm-evol-canvas');if(cv)cv.setAttribute('aria-label','Facturación diaria de la ventana visible. '+(available.length?'Total actual: '+pesos(total):'Sin datos')+'. Valores diarios disponibles debajo.');
+    var fallback=el('rsm-evol-fallback');if(fallback){fallback.hidden=typeof global.Chart!=='undefined';fallback.textContent='Gráfico no disponible. Consultá los valores diarios debajo.';}
   }
 
   /* ── mapa ─────────────────────────────────────────────────────────────── */
@@ -464,7 +477,7 @@
       return;
     }
     return cargarLibreria().then(function () {
-      if (!el(ID_MAPA)) return;
+      if (!el(ID_MAPA)||estado.res!==d) return;
       if (mapa && mapa.getSource('rsm-puntos')) {
         actualizarFuentes(d);
         encuadrar(d);
@@ -484,7 +497,10 @@
         observador = new global.ResizeObserver(function () { if (mapa) mapa.resize(); });
         observador.observe(c);
       }
+      var ownMap=mapa;
       mapa.on('load', function () {
+        if(mapa!==ownMap||!estado.res)return;
+        d=estado.res;g=datosMapa(d);
         mapa.addSource('rsm-radios', { type: 'geojson', data: g.radios });
         mapa.addSource('rsm-lineas', { type: 'geojson', data: g.lineas });
         mapa.addSource('rsm-puntos', { type: 'geojson', data: g.puntos });
@@ -569,48 +585,10 @@
   /* ── composición por tipo ─────────────────────────────────────────────── */
 
   function pintarTipos(d) {
-    var cv = el('rsm-tipos-canvas');
-    var ls = el('rsm-tipos-lista');
-    var centro = el('rsm-tipos-centro');
-    var filas = d.porClase.filter(function (k) { return k.servicios > 0; });
-    var total = filas.reduce(function (s, k) { return s + k.monto; }, 0);
-    var servicios = filas.reduce(function (s, k) { return s + k.servicios; }, 0);
-    if (centro) centro.innerHTML = '<b>' + (servicios ? miles(servicios) : GUION) + '</b><span>Servicios</span>';
-    if (ls) {
-      ls.innerHTML = filas.length ? filas.map(function (k) {
-        return '<div class="rsm-tipo">' +
-          '<i style="background:' + k.color + '"></i>' +
-          '<b class="rsm-tipo-nombre">' + esc(k.nombre) + '</b>' +
-          '<span class="rsm-tipo-det">' + miles(k.servicios) + ' serv · ' + miles(k.km) + ' km</span>' +
-          '<b class="rsm-tipo-monto">' + pesosCorto(k.monto) + '</b>' +
-          '<span class="rsm-tipo-pct">' + (total ? pct(k.monto * 100 / total) : GUION) + '</span>' +
-          '</div>';
-      }).join('') : '<div class="rsm-vacio">Sin servicios en el período.</div>';
-    }
-    if (chartTipos) { chartTipos.destroy(); chartTipos = null; }
-    if (!cv || typeof global.Chart === 'undefined') return;
-    chartTipos = new global.Chart(cv, {
-      type: 'doughnut',
-      data: {
-        labels: filas.length ? filas.map(function (k) { return k.nombre; }) : ['Sin datos'],
-        datasets: [{
-          data: filas.length ? filas.map(function (k) { return k.monto; }) : [1],
-          backgroundColor: filas.length ? filas.map(function (k) { return k.color; }) : ['#252a38'],
-          borderColor: '#191d27', borderWidth: 3, hoverOffset: 3
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false, cutout: '64%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: !!filas.length, callbacks: {
-            label: function (ctx) {
-              var v = num(ctx.parsed);
-              return ' ' + ctx.label + ': ' + pesos(v) + (total ? ' (' + pct(v * 100 / total) + ')' : '');
-            } } }
-        }
-      }
-    });
+    var ls=el('rsm-tipos-lista');if(!ls)return;
+    var filas=d.porClase.filter(function(k){return k.servicios>0;}).sort(function(a,b){return b.monto-a.monto;});
+    var total=filas.reduce(function(sum,k){return sum+k.monto;},0);
+    ls.innerHTML=filas.length?filas.map(function(k){var share=total>0?k.monto*100/total:null;return '<div class="rsm-type-row"><div><b>'+esc(k.nombre)+'</b><strong>'+pesos(k.monto)+'</strong></div><div class="rsm-ranking-track" aria-hidden="true"><i style="width:'+Math.max(0,Math.min(100,share||0))+'%"></i></div><small>'+miles(k.servicios)+' servicios · '+miles(k.km)+' km facturados · '+(share===null?'Sin participación calculable':pct(share,1)+' del total')+'</small></div>';}).join(''):'<div class="rsm-vacio">Sin servicios en el período.</div>';
   }
 
   /* ── evolución de facturado ───────────────────────────────────────────── */
@@ -651,6 +629,7 @@
     L.i0 = i0;
     var w = ventanaEvol(L, i0, i1);
     subEvol(w);
+    pintarDatosEvol(w.labels,w.act,w.ant);
     if (!chartEvol) return;
     chartEvol.data.labels = w.labels;
     chartEvol.data.datasets[0].data = w.act;
@@ -688,6 +667,7 @@
     L.i0 = v[0];
     var w = ventanaEvol(L, v[0], v[1]);
     subEvol(w);
+    pintarDatosEvol(w.labels,w.act,w.ant);
     var ctl = controlEvol();
     if (!cv || typeof global.Chart === 'undefined') { if (ctl) ctl.datos(cs.length, v, L.vals, 3); return; }
     var grad = cv.getContext('2d').createLinearGradient(0, 0, 0, cv.clientHeight || 200);
@@ -698,15 +678,15 @@
       data: {
         labels: w.labels,
         datasets: [{
-          label: 'Actual', data: w.act, borderColor: '#f5a623', backgroundColor: grad,
-          fill: true, borderWidth: 2, tension: 0.35, pointRadius: w.span <= 16 ? 3 : 0, pointHoverRadius: 4
+          label: 'Actual', data: w.act, borderColor: chartColors().accent, backgroundColor: grad,
+          fill: true, borderWidth: 2, tension: 0, pointRadius: w.span <= 16 ? 3 : 0, pointHoverRadius: 4
         }, {
-          label: 'Anterior', data: w.ant, hidden: !w.hayAnt, borderColor: 'rgba(232,234,242,0.55)',
-          borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0.35, pointRadius: 0, pointHoverRadius: 3
+          label: 'Anterior', data: w.ant, hidden: !w.hayAnt, borderColor: chartColors().previous,
+          borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0, pointRadius: 0, pointHoverRadius: 3
         }]
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false, animation: global.matchMedia?.('(prefers-reduced-motion: reduce)').matches?false:{duration:180},
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
@@ -722,7 +702,7 @@
           x: { grid: { display: false }, border: { display: false },
                ticks: { color: '#8590ab', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
           y: { beginAtZero: true, border: { display: false },
-               grid: { color: 'rgba(37,42,56,0.9)', borderDash: [3, 3] },
+               grid: { color: chartColors().grid, borderDash: [3, 3] },
                ticks: { color: '#8590ab', font: { size: 10 }, maxTicksLimit: 5,
                         callback: function (v) { return pesosCorto(v).replace('$', '$ '); } } }
         }
@@ -735,8 +715,9 @@
   function pintarEvolucionPeriodo(d) {
     var cv = el('rsm-evol-canvas');
     if (chartEvol) { chartEvol.destroy(); chartEvol = null; }
-    if (!cv || typeof global.Chart === 'undefined') return;
     var act = d.porDia.actual, ant = d.porDia.anterior;
+    pintarDatosEvol(etiquetasDias(d,Math.max(act.length,ant.length)),act,ant);
+    if (!cv || typeof global.Chart === 'undefined') return;
     var n = Math.max(act.length, ant.length);
     var hayAnt = ant.some(function (v) { return v > 0; });
     var ctx = cv.getContext('2d');
@@ -744,18 +725,18 @@
     grad.addColorStop(0, 'rgba(245,166,35,0.28)');
     grad.addColorStop(1, 'rgba(245,166,35,0)');
     var series = [{
-      label: 'Período actual', data: act, borderColor: '#f5a623', backgroundColor: grad,
-      fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4
+      label: 'Período actual', data: act, borderColor: chartColors().accent, backgroundColor: grad,
+      fill: true, borderWidth: 2, tension: 0, pointRadius: 0, pointHoverRadius: 4
     }];
     if (hayAnt) series.push({
-      label: 'Período anterior', data: ant, borderColor: 'rgba(232,234,242,0.55)',
-      borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0.4, pointRadius: 0, pointHoverRadius: 3
+      label: 'Período anterior', data: ant, borderColor: chartColors().previous,
+      borderDash: [4, 4], fill: false, borderWidth: 1.5, tension: 0, pointRadius: 0, pointHoverRadius: 3
     });
     chartEvol = new global.Chart(cv, {
       type: 'line',
       data: { labels: etiquetasDias(d, n), datasets: series },
       options: {
-        responsive: true, maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false, animation: global.matchMedia?.('(prefers-reduced-motion: reduce)').matches?false:{duration:180},
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { display: false },
@@ -765,7 +746,7 @@
           x: { grid: { display: false }, border: { display: false },
                ticks: { color: '#8590ab', font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 16 } },
           y: { beginAtZero: true, border: { display: false },
-               grid: { color: 'rgba(37,42,56,0.9)', borderDash: [3, 3] },
+               grid: { color: chartColors().grid, borderDash: [3, 3] },
                ticks: { color: '#8590ab', font: { size: 10 }, maxTicksLimit: 5,
                         callback: function (v) { return pesosCorto(v).replace('$', '$ '); } } }
         }
@@ -933,7 +914,8 @@
 
   function pintar(d) {
     pintarKpis(d);
-    pintarMapa(d);
+    pintarRanking(d);
+    if(el('rsm-geography')?.open) pintarMapa(d);
     pintarTipos(d);
     pintarEvolucion(d);
     pintarEficiencia(d);
@@ -956,14 +938,11 @@
       rpc(RPC_FACT, Object.assign({ p_conceptos: paramArray(f.conceptos) }, base)),
       rpc(RPC_RES, base),
       Z ? Z.historia(f) : null,
-      /* Km del odómetro: si falla, el resto del resumen se muestra igual. */
-      rpc(RPC_FLOTA, { p_desde: base.p_desde, p_hasta: base.p_hasta }).catch(function () { return null; }),
       rpc('dashboard_efficiency_v1', Object.assign({ p_conceptos: paramArray(f.conceptos) }, base)).catch(function () { return null; })
     ]);
     if (request !== eficienciaRequest) return;
     var d = normalizar(r[0], r[1]);
-    d.flota = normalizarFlota(r[3], !!(base.p_empresas || base.p_bases || paramArray(f.conceptos)));
-    d.eficiencia = r[4];
+    d.eficiencia = r[3];
     evol.hist = Z && d.desde ? (r[2] || Z.historiaDePeriodo(d.desde, { facturado: d.porDia.anterior }, { facturado: d.porDia.actual })) : null;
     evol.per = evol.hist ? [Z.diasEntre(evol.hist.desde, d.desde), Z.diasEntre(evol.hist.desde, d.hasta || d.desde)] : null;
     estado.res = d;
@@ -972,11 +951,21 @@
   }
 
   function alError(_c, e) {
+    estado.res=null;destruirMapa();
+    if(el('rsm-mapa-stats'))el('rsm-mapa-stats').innerHTML='';
+    if(el('rsm-mapa-leyenda'))el('rsm-mapa-leyenda').hidden=true;
     var msg = mensajeError(e);
+    pintarRanking(normalizar(null,null));pintarTipos(normalizar(null,null));
+    if(chartEvol){chartEvol.destroy();chartEvol=null;}
+    if(zoomEvol)zoomEvol.datos(0,[0,-1],[],3);
+    evol.hist=null;evol.linea=null;evol.per=null;
+    pintarDatosEvol([],[],[]);
+    if(el('rsm-evol-sub'))el('rsm-evol-sub').textContent=msg;
     if (global.AuxEfficiencyLoader) global.AuxEfficiencyLoader.render(el('rsm-eficiencia'), null, msg);
     var k = el(ID_KPIS);
     if (k) {
       pintarKpis(normalizar(null, null));
+      if(el('rsm-data-context'))el('rsm-data-context').textContent='Datos no disponibles. Actualizá el Resumen para reintentar.';
       k.insertAdjacentHTML('beforeend', '<div class="rsm-error" role="alert">' + esc(msg) + '</div>');
     }
     mensajeMapa(msg, true);
@@ -987,6 +976,9 @@
   function montar() {
     montarFiltros();
     montarControlesMapa();
+    var geo=el('rsm-geography');if(geo&&!geo.dataset.bound){geo.dataset.bound='1';geo.addEventListener('toggle',function(){if(geo.open&&estado.res){pintarMapa(estado.res);if(mapa)mapa.resize();}});}
+    var providers=el('rsm-open-providers');if(providers&&!providers.dataset.bound){providers.dataset.bound='1';providers.addEventListener('click',function(){var detail=el('rsm-provider-detail');if(detail){detail.open=true;detail.querySelector('summary')?.focus();detail.scrollIntoView({block:'start',behavior:global.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}});}
+
     engancharTabla();
     pintarKpis(normalizar(null, null));
   }
@@ -1003,10 +995,13 @@
     return true;
   }
 
+  if(global.MutationObserver&&document.documentElement)new global.MutationObserver(applyChartTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
   if (!registrar()) document.addEventListener('DOMContentLoaded', registrar, { once: true });
 
   global.AuxDashResumen = {
     normalizar: normalizar,
+    rankingRows: rankingRows,
     cobertura: function (d, radio) {
       var prev = estado.radio;
       if (radio != null) estado.radio = radio;

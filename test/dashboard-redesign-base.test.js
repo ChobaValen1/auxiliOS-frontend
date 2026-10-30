@@ -91,7 +91,7 @@ test('las tres secciones tienen contenedor y overlay propios', () => {
 });
 
 test('los canvas y tablas que consumen las secciones existen en el markup', () => {
-  ['rsm-tipos-canvas', 'rsm-evol-canvas', 'dashx-fact-mapa',
+  ['rsm-ranking', 'rsm-evol-canvas', 'dashx-fact-mapa',
    'dashx-ops-tendencia', 'dashx-ops-combustible',
    'dashx-flota-estado']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta el canvas ${id}`));
