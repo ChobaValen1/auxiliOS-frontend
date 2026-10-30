@@ -9,7 +9,7 @@ test('Solo: registro, alta inicial, inicio y tarifas',()=>{
   assert.match(js,/auth\.signUp/);assert.match(js,/signInWithPassword/);
   assert.match(js,/from\('solo_profiles'\)\.insert/);assert.match(js,/from\('solo_trucks'\)\.insert/);
   assert.match(js,/kind:'particular'/);assert.match(js,/rpc\('solo_month_summary_v1'/);
-  assert.match(js,/from\('solo_rates'\)\.upsert/);
+  assert.match(fs.readFileSync('solo/solo-config.js','utf8'),/from\('solo_rates'\)\.upsert/);
   assert.doesNotMatch(js,/innerHTML=[^;]*\$\{c\.name\}/,'los nombres se escapan');
   assert.match(css,/prefers-reduced-motion/);assert.match(css,/safe-area-inset-bottom/);
 });
@@ -157,4 +157,14 @@ test('Solo sin señal: los filtros de la copia local se comportan como la base',
   assert.ok(O._match(row,q.f));assert.ok(!O._match({...row,status:'cancelled'},q.f));assert.ok(!O._match({...row,service_date:'2026-11-02T10:00:00+00:00'},q.f));
   assert.ok(O._match(row,O._parse('https://x/rest/v1/t?paid_at=is.null&active=eq.true').f));
   assert.ok(!O._match(row,O._parse('https://x/rest/v1/t?active=eq.false').f));
+});
+test('Solo: configuración de prestadoras, tarifas y tipos con confirmaciones y sin borrar historial',()=>{
+  const cf=fs.readFileSync('solo/solo-config.js','utf8');
+  assert.match(html,/\/solo\/solo-config\.js/);assert.ok(html.indexOf('solo-ops.js')<html.indexOf('solo-config.js'),'usa las hojas de solo-ops');
+  assert.match(cf,/views\.clientes=/);assert.match(cf,/views\.cliente=/);assert.match(cf,/views\.tipos=/);assert.doesNotMatch(js,/async function renderCliente/);
+  assert.match(cf,/hasServices\?\(c\.active\?'Desactivar'/,'con servicios se desactiva, no se borra');
+  assert.match(cf,/confirmBox\('¿Eliminar la prestadora\?'/);assert.match(cf,/confirmBox\('¿Guardar el precio nuevo\?'/);assert.match(cf,/Los servicios anteriores mantienen su precio/);
+  assert.match(cf,/Historial de precios/);assert.match(cf,/cobrás/,'ejemplo en vivo');assert.match(cf,/update\(\{active:to\}\)/);
+  assert.doesNotMatch(cf,/from\('solo_service_types'\)\.delete/,'los tipos se desactivan, no se borran');
+  assert.doesNotMatch(cf,/innerHTML=[^;]*\$\{c\.name\}/,'los nombres se escapan');
 });

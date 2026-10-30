@@ -228,8 +228,6 @@ let lastMain='inicio';
 function render(){
   if(TABS.some(t=>t[0]===view))lastMain=view;
   if(view==='inicio')return renderInicio();
-  if(view==='clientes')return renderClientes();
-  if(view==='cliente')return renderCliente(detailId);
   if(view==='mas')return renderMas();
   if(views[view])return views[view](detailId);
   return renderPronto(view);
@@ -270,71 +268,13 @@ async function renderAlerts(){
   box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const a=list[Number(b.dataset.i)];if(a.go)return go(a.go);const d=new Date(a.month+'T12:00:00');month=new Date(d.getFullYear(),d.getMonth(),1);go('facturacion-'+a.client);});
 }
 
-async function renderClientes(){
-  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Prestadoras y tarifas</h1></div>
-    <p class="sub">A quién le facturás, a cuántos días te paga y cuánto le cobrás.</p>
-    <div id="list" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>
-    <button class="btn pri block" type="button" id="add-open">${icon('plus')} Nueva prestadora</button>
-    <form id="add" class="card" novalidate hidden><div class="row"><h2>Nueva prestadora</h2><button class="btn ghost icon-btn" type="button" id="add-x" aria-label="Cerrar">${icon('x')}</button></div>
-      <div class="grid2 wide-first"><div class="field"><label for="c-name">Nombre</label><input id="c-name" placeholder="Ej.: Seguros del Sur"></div>
-      <div class="field"><label for="c-days">Días de pago</label><input id="c-days" inputmode="numeric" value="30"></div></div>
-      <p id="c-err" class="err" hidden></p><button class="btn pri block" type="submit">Agregar</button></form>`,'mas');
-  document.getElementById('back').onclick=()=>go(lastMain);
-  const tog=on=>{document.getElementById('add').hidden=!on;document.getElementById('add-open').hidden=on;if(on)document.getElementById('c-name').focus();};
-  document.getElementById('add-open').onclick=()=>tog(true);document.getElementById('add-x').onclick=()=>tog(false);
-  if(detailId==='nueva')tog(true);
-  const [{data:clients,error},{data:rates}]=await Promise.all([db.from('solo_clients').select('*').order('kind',{ascending:false}).order('name'),db.from('solo_rates').select('client_id')]);
-  const list=document.getElementById('list');if(!list)return;
-  if(error){list.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
-  const count=id=>(rates||[]).filter(r=>r.client_id===id).length;
-  list.innerHTML=(clients||[]).map(c=>`<button class="item" type="button" data-id="${c.id}"><div class="row"><b class="ell">${esc(c.name)}</b>${c.kind==='particular'?'<span class="pill muted">Cobro al momento</span>':count(c.id)?`<span class="pill ok">${count(c.id)} tarifa${count(c.id)>1?'s':''}</span>`:'<span class="pill wait">Sin tarifas</span>'}</div><span class="hint">${c.kind==='particular'?'Precio libre en cada servicio':'Paga a '+c.payment_days+' días'}</span></button>`).join('')||'<div class="empty">Todavía no cargaste prestadoras.</div>';
-  list.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>go('cliente-'+b.dataset.id));
-  document.getElementById('add').onsubmit=async e=>{e.preventDefault();const er=document.getElementById('c-err');er.hidden=true;
-    const name=document.getElementById('c-name').value.trim();if(name.length<2){er.textContent='Escribí el nombre.';er.hidden=false;return;}
-    const {data,error}=await db.from('solo_clients').insert({name,payment_days:Math.round(num(document.getElementById('c-days').value))||30}).select('id').single();
-    if(error){er.textContent=errText(error);er.hidden=false;return;}toast('Prestadora agregada');go('cliente-'+data.id);};
-}
-
-async function renderCliente(id){
-  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Prestadoras">${icon('arrow-left')}</button><h1 class="grow" id="cl-name">Prestadora</h1></div><div id="cl" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'mas');
-  document.getElementById('back').onclick=()=>go('clientes');
-  const [{data:c,error},{data:types},{data:rates}]=await Promise.all([
-    db.from('solo_clients').select('*').eq('id',id).maybeSingle(),
-    db.from('solo_service_types').select('*').eq('active',true).order('name'),
-    db.from('solo_rates').select('*').eq('client_id',id).order('valid_from',{ascending:false})]);
-  const box=document.getElementById('cl');if(!box)return;
-  if(error||!c){box.innerHTML='<div class="empty">No encontramos esa prestadora.</div>';return;}
-  const current=t=>(rates||[]).find(r=>r.service_type_id===t.id&&r.valid_from<=isoDate(new Date()))||(rates||[]).find(r=>r.service_type_id===t.id);
-  const particular=c.kind==='particular';
-  document.getElementById('cl-name').textContent=c.name;
-  box.innerHTML=`
-    ${particular?'<p class="sub">Para clientes que pagan en el momento. El precio lo ponés en cada servicio.</p>':`<form id="cfg" class="card" novalidate><div class="grid2"><div class="field"><label for="d-days">Días de pago</label><input id="d-days" inputmode="numeric" value="${c.payment_days}"></div><div class="field" style="align-self:end"><button class="btn block" type="submit">Guardar</button></div></div></form>`}
-    ${particular?'':`<h2>Tarifas</h2><p class="hint">Precio base, km incluidos en la base y precio por km extra. Cada cambio queda con su fecha, así no se tocan los servicios viejos.</p>
-    <div class="rates">${(types||[]).map(t=>{const r=current(t);return `<form class="card rate-form" data-type="${t.id}" novalidate>
-      <div class="row"><b>${esc(t.name)}</b>${r?`<span class="pill ok">Desde ${esc(r.valid_from.split('-').reverse().join('/'))}</span>`:'<span class="pill wait">Sin tarifa</span>'}</div>
-      <div class="grid2"><div class="field"><label for="b-${t.id}">Base $</label><input id="b-${t.id}" inputmode="decimal" value="${r?r.base_amount:''}"></div>
-      <div class="field"><label for="k-${t.id}">Km incluidos</label><input id="k-${t.id}" inputmode="numeric" value="${r?r.included_km:''}"></div></div>
-      <div class="grid2"><div class="field"><label for="p-${t.id}">$ por km extra</label><input id="p-${t.id}" inputmode="decimal" value="${r?r.per_km:''}"></div>
-      <div class="field"><label for="v-${t.id}">Vigente desde</label><input id="v-${t.id}" type="date" value="${isoDate(new Date())}"></div></div>
-      ${r?`<p class="hint">Ejemplo con 48 km: ${money(Number(r.base_amount)+Math.max(0,48-Number(r.included_km))*Number(r.per_km))}</p>`:''}
-      <button class="btn block" type="submit">${r?'Guardar cambio':'Guardar tarifa'}</button></form>`;}).join('')}</div>`}
-    <form id="nt" class="card" novalidate><h2>Otro tipo de servicio</h2><div class="field"><label for="t-name">Nombre</label><input id="t-name" placeholder="Ej.: Paso de corriente"></div><p id="t-err" class="err" hidden></p><button class="btn block" type="submit">Agregar tipo</button></form>`;
-  document.getElementById('cfg')?.addEventListener('submit',async e=>{e.preventDefault();const {error}=await db.from('solo_clients').update({payment_days:Math.round(num(document.getElementById('d-days').value))}).eq('id',id);toast(error?errText(error):'Guardado');});
-  box.querySelectorAll('.rate-form').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const t=f.dataset.type,g=k=>document.getElementById(k+'-'+t).value;
-    const row={client_id:id,service_type_id:t,base_amount:num(g('b')),included_km:num(g('k')),per_km:num(g('p')),valid_from:g('v')||isoDate(new Date())};
-    if(!row.base_amount&&!row.per_km)return toast('Poné al menos el precio base o el precio por km.');
-    const {error}=await db.from('solo_rates').upsert(row,{onConflict:'client_id,service_type_id,valid_from'});toast(error?errText(error):'Tarifa guardada');if(!error)renderCliente(id);});
-  document.getElementById('nt').onsubmit=async e=>{e.preventDefault();const er=document.getElementById('t-err');er.hidden=true;const name=document.getElementById('t-name').value.trim();
-    if(name.length<2){er.textContent='Escribí el nombre del servicio.';er.hidden=false;return;}
-    const {error}=await db.from('solo_service_types').insert({name});if(error){er.textContent=errText(error);er.hidden=false;return;}toast('Tipo agregado');renderCliente(id);};
-}
-
 async function renderMas(){
   const canInstall=window.SoloPWA&&!window.SoloPWA.installed;
   shell(`<h1>Más</h1>
     <button class="item item-row" type="button" data-go="numeros">${icon('chart-column','lead')}<span><b>Mis números</b><span class="hint">Ganancia por servicio, punto de equilibrio y meses</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Resumen del mes, facturado y cobrado</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-to="clientes">${icon('building-2','lead')}<span><b>Prestadoras y tarifas</b><span class="hint">Empresas, días de pago y precios</span></span>${icon('chevron-right','trail')}</button>
+    <button class="item item-row" type="button" data-go="tipos">${icon('list-checks','lead')}<span><b>Tipos de servicio</b><span class="hint">Remolque, auxilio, traslado y los que agregues</span></span>${icon('chevron-right','trail')}</button>
     ${canInstall?`<button class="item item-row" type="button" id="inst">${icon('download','lead')}<span><b>Instalar la app</b><span class="hint">Tenela en la pantalla de inicio del celular</span></span>${icon('chevron-right','trail')}</button>`:''}
     <div id="truck" class="card"><h2>Mi grúa</h2><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i></div></div>
     <div class="card"><h2>Mi cuenta</h2><div class="row"><span>${esc(profile.full_name)}</span></div><p class="hint">${esc(user.email)}</p>

@@ -571,6 +571,8 @@ async function gastoVer(id){
     UI().success();toast('Cambios guardados');gastoVer(id);}
   mode(false);
 }
+// Hojas y confirmaciones compartidas con otras pantallas (Prestadoras, Tipos de servicio).
+window.SoloSheets={sheet,confirmBox,pickCategory};
 async function gastoNuevo(kind){
   const fixed=kind==='fixed',$=x=>document.getElementById(x);
   let cat=null;
