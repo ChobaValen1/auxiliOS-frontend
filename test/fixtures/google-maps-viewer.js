@@ -5,10 +5,13 @@
   class LatLng{constructor(lat,lng){this.latValue=lat;this.lngValue=lng;}}
   class Bounds{constructor(){this.points=[];}extend(p){this.points.push(p);return this;}}
   class MockMap{
-    constructor(el,options){this.el=el;this.options=options;this.listeners={};this.overlays=[];this.paths=[];this.el.innerHTML='';this.el.style.background='#192530';this.canvas=svg('svg');this.canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%';this.el.append(this.canvas);this.pane=document.createElement('div');this.pane.style.cssText='position:absolute;inset:0;pointer-events:none';this.el.append(this.pane);const label=document.createElement('small');label.textContent='Mapa simulado · Datos de prueba';label.style.cssText='position:absolute;bottom:4px;left:12px;color:#b7c3d0;font:10px system-ui';this.el.append(label);this.setOptions(options);state.instances.push(this);}
+    constructor(el,options){this.el=el;this.options=options;this.listeners={};this.fitCalls=0;this.panCalls=0;this.overlays=[];this.paths=[];this.el.innerHTML='';this.el.style.background='#192530';this.canvas=svg('svg');this.canvas.style.cssText='position:absolute;inset:0;width:100%;height:100%';this.el.append(this.canvas);this.pane=document.createElement('div');this.pane.style.cssText='position:absolute;inset:0;pointer-events:none';this.el.append(this.pane);const label=document.createElement('small');label.textContent='Mapa simulado · Datos de prueba';label.style.cssText='position:absolute;bottom:4px;left:12px;color:#b7c3d0;font:10px system-ui';this.el.append(label);this.setOptions(options);state.instances.push(this);}
     setOptions(options){Object.assign(this.options,options);this.el.style.background=options.styles?.length>2?'#192530':'#e2e8ef';}
     addListener(name,fn){this.listeners[name]=fn;return{remove:()=>delete this.listeners[name]};}
-    fitBounds(bounds,padding){this.bounds=bounds;this.padding=padding;this.canvas.replaceChildren();for(let i=1;i<12;i++){for(const diagonal of [false,true]){const line=svg('path');line.setAttribute('d',diagonal?`M${i*100-450},0 l650,900`:`M0,${i*70} l1200,-280`);line.setAttribute('stroke','#526577');line.setAttribute('stroke-width',i%3===0?'2':'1');line.setAttribute('opacity','.22');this.canvas.append(line);}}this.overlays.forEach(o=>o.draw());}
+    fitBounds(bounds,padding){this.fitCalls++;this.bounds=bounds;this.padding=padding;this.canvas.replaceChildren();for(let i=1;i<12;i++){for(const diagonal of [false,true]){const line=svg('path');line.setAttribute('d',diagonal?`M${i*100-450},0 l650,900`:`M0,${i*70} l1200,-280`);line.setAttribute('stroke','#526577');line.setAttribute('stroke-width',i%3===0?'2':'1');line.setAttribute('opacity','.22');this.canvas.append(line);}}this.overlays.forEach(o=>o.draw());}
+    panTo(point){this.panCalls++;this.options.center=point;this.bounds=new Bounds().extend(point);this.overlays.forEach(o=>o.draw());}
+    setZoom(zoom){this.options.zoom=zoom;}
+    getZoom(){return this.options.zoom;}
     project(p){const points=this.bounds?.points||[{lat:this.options.center.lat-.1,lng:this.options.center.lng-.1},{lat:this.options.center.lat+.1,lng:this.options.center.lng+.1}],minLat=Math.min(...points.map(p=>p.lat)),maxLat=Math.max(...points.map(p=>p.lat)),minLng=Math.min(...points.map(p=>p.lng)),maxLng=Math.max(...points.map(p=>p.lng));return{x:55+(p.lng-minLng)/Math.max(.001,maxLng-minLng)*(this.el.clientWidth-110),y:55+(maxLat-p.lat)/Math.max(.001,maxLat-minLat)*(this.el.clientHeight-110)};}
   }
   class Overlay{
@@ -19,6 +22,7 @@
   }
   class Polyline{
     constructor(options){this.options=options;this.map=options.map;this.path=svg('path');this.path.setAttribute('fill','none');this.path.setAttribute('stroke',options.strokeColor);this.path.setAttribute('stroke-width',options.strokeWeight);if(options.icons)this.path.setAttribute('stroke-dasharray','7 7');this.map.canvas.append(this.path);this.map.paths.push(this);}
+    addListener(name,fn){this.path.addEventListener(name,fn);return{remove:()=>this.path.removeEventListener(name,fn)};}
     setPath(points){this.points=points;state.updates++;if(!this.map)return;this.path.setAttribute('d',points.map((p,i)=>{const v=this.map.project(p);return(i?'L':'M')+v.x+','+v.y;}).join(' '));}
     setMap(map){this.map=map;if(!map)this.path.remove();}
   }

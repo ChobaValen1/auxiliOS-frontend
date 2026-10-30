@@ -14,7 +14,7 @@
 .osm-toolbar>div{flex:1;display:flex;align-items:center;flex-wrap:wrap;gap:5px 16px}
 .osm-toolbar b{font-size:14px}.osm-toolbar span{font-size:12px;color:var(--osm-muted)}
 .osm-toolbar button,.osm-map-message button{display:flex;align-items:center;gap:7px;min-height:40px;border:1px solid var(--osm-line);border-radius:8px;padding:0 11px;background:var(--ax-surface-2);color:var(--ax-text)}
-.osm-layout{display:grid;grid-template-columns:280px minmax(250px,1fr) 300px;flex:1;min-height:0}
+.osm-layout{display:grid;grid-template-columns:clamp(320px,23vw,380px) minmax(0,1fr) clamp(360px,27vw,450px);flex:1;min-height:0}
 .osm-sidebar{display:flex;flex-direction:column;min-width:0;min-height:0;border-right:1px solid var(--osm-line)}
 .osm-sidebar>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:16px;border-bottom:1px solid var(--osm-line)}
 .osm-sidebar h3{font-size:12px;margin:0}.osm-sidebar>header span{font-size:10px;color:var(--osm-muted)}
@@ -30,7 +30,7 @@
 .osm-card-route{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--osm-muted)}.osm-card-route>span{display:flex;gap:8px;align-items:baseline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .osm-card-route i{font-size:9px;font-style:normal;font-weight:700;color:var(--ax-text);flex-shrink:0}
 .osm-coverage-missing,.osm-point-only{font-size:10px;color:var(--osm-muted);line-height:1.4}.osm-coverage-missing{color:var(--ax-warn)}
-.osm-stage{position:relative;min-width:0;min-height:0;background:var(--ax-bg);isolation:isolate}
+.osm-stage{position:relative;min-width:0;min-height:0;background:var(--ax-bg);isolation:isolate;overflow:hidden}
 #osm-canvas{position:absolute;inset:0;z-index:0}.osm-map-message{position:absolute;z-index:6;top:18px;left:18px;right:18px;display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:18px;background:var(--ax-surface);border:1px solid var(--osm-line);border-radius:12px;box-shadow:0 10px 35px #0002;line-height:1.6}
 .osm-legend{position:absolute;z-index:3;left:16px;bottom:32px;max-width:calc(100% - 70px);max-height:45%;display:flex;flex-direction:column;gap:8px;background:var(--ax-surface);border:1px solid var(--osm-line);border-radius:9px;padding:11px 13px;color:var(--osm-muted);font-size:11px;pointer-events:auto;box-shadow:0 4px 18px #0002}
 .osm-legend>b{font-size:11px;color:var(--ax-text)}#osm-legend-items{overflow:auto;min-height:0;overscroll-behavior:contain;display:grid;gap:8px}.osm-legend-item{display:flex;gap:8px;align-items:center}.osm-legend-item i{width:23px;border-top:3px solid var(--osm-route-color);flex-shrink:0}.osm-legend-item i.is-unassigned{border-top-style:dashed}.osm-legend-item>small{margin-left:auto;padding-left:10px;font-variant-numeric:tabular-nums;color:var(--ax-text-3)}.osm-legend>small{font-size:9px}.osm-legend-item>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -55,7 +55,7 @@
 .osm-notice{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 16px;border-bottom:1px solid var(--osm-line);background:var(--ax-accent-soft);color:var(--ax-text);font-size:12px}.osm-notice span{flex:1}.osm-notice button{display:flex;align-items:center;min-height:40px;padding:6px 10px;border:1px solid var(--ax-border-strong);border-radius:7px;background:var(--ax-surface);color:var(--ax-text)}.osm-review-note{font-size:11px;color:var(--ax-warn);line-height:1.6}
 [data-theme=light] .osm-badge[data-tone=violet]{color:#6b3fae;background:#6b3fae12}
 @media(min-width:1281px){.osm-detail-body{animation:osm-enter .18s ease-out}}
-@media(max-width:1280px) and (min-width:701px){.osm-layout{grid-template-columns:290px minmax(240px,1fr)}.osm-stage{grid-column:2;grid-row:1}.osm-sidebar,.osm-detail{grid-column:1;grid-row:1;border-left:0;border-right:1px solid var(--osm-line)}#osm-workspace[data-selected=true] .osm-sidebar,#osm-workspace[data-selected=false] .osm-detail{display:none}}
+@media(max-width:1280px) and (min-width:701px){.osm-layout{grid-template-columns:min(380px,44%) minmax(0,1fr)}.osm-stage{grid-column:2;grid-row:1}.osm-sidebar,.osm-detail{grid-column:1;grid-row:1;border-left:0;border-right:1px solid var(--osm-line)}#osm-workspace[data-selected=true] .osm-sidebar,#osm-workspace[data-selected=false] .osm-detail{display:none}}
 @media(max-width:700px){
   .osm-view-switch{margin-left:auto}.osm-view-switch button{min-height:42px}#osm-workspace{border-radius:12px;margin-top:8px}.osm-toolbar{padding:10px 12px;gap:8px}.osm-toolbar>div{display:block}.osm-toolbar b{display:block;font-size:13px}.osm-toolbar span{display:block;font-size:10px;margin-top:3px}.osm-toolbar button{min-height:44px;font-size:11px!important}.osm-toolbar #osm-return{flex-basis:100%}.osm-toolbar:has(#osm-return:not([hidden])){flex-wrap:wrap}
   .osm-layout{display:flex;flex-direction:column;height:auto;min-height:0}.osm-stage{order:0;height:320px;min-height:280px;flex-shrink:0}.osm-sidebar{order:1;border:0;border-top:1px solid var(--osm-line);max-height:480px}.osm-detail{order:1;border:0;border-top:1px solid var(--osm-line)}#osm-workspace[data-selected=true] .osm-sidebar,#osm-workspace[data-selected=false] .osm-detail{display:none}
@@ -101,4 +101,20 @@
   #screen-operaciones.os-map-mode .osm-legend{left:8px;bottom:28px;max-height:65%;max-width:60%;padding:7px 8px;gap:5px;line-height:1.2}.osm-legend>b{font-size:10px}#osm-legend-items{gap:4px}.osm-legend-item{font-size:10px;gap:5px}
   #screen-operaciones.os-map-mode .os-status-tabs{margin:5px 0}
   #screen-operaciones.os-map-mode .os-results-summary{margin:2px 0}
+}
+
+/* Wider desktop panels use the space for readable addresses and compact facts. */
+.osm-card-route>span{white-space:normal;overflow:visible;overflow-wrap:anywhere;line-height:1.5}
+@media(min-width:701px){
+  .osm-detail-body{padding:16px 18px}
+  .osm-overview{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:center;gap:12px;margin:14px 0 16px}
+  .osm-assignment{margin:0;padding:11px 10px;gap:8px}
+  .osm-scheduled{margin:0;gap:7px}
+  .osm-scheduled b{font-size:12px}
+  .osm-stops li{min-height:50px;padding-bottom:12px}
+  .osm-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 16px;margin:16px 0}
+  .osm-facts>div{display:block;padding:8px 0}
+  .osm-facts dt{font-size:10px;line-height:1.4}
+  .osm-facts dd{text-align:left;margin-top:4px;font-size:12px;line-height:1.4}
+  .osm-card{gap:9px;padding:14px}
 }
