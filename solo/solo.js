@@ -234,6 +234,7 @@ async function renderInicio(){
   const first=(profile.full_name||'').split(' ')[0];
   shell(`<div class="top"><div class="brand">AuxiliOS <b>Solo</b></div><span class="sub">Hola, ${esc(first)}</span></div>
     <div class="month"><button class="btn ghost icon-btn" type="button" id="m-prev" aria-label="Mes anterior">${icon('chevron-left')}</button><h1 id="m-name">${esc(monthName(month))}</h1><button class="btn ghost icon-btn" type="button" id="m-next" aria-label="Mes siguiente">${icon('chevron-right')}</button></div>
+    <div id="alerts" class="alerts" aria-live="polite"></div>
     <div id="sum" class="stack" aria-busy="true"><i class="sk kpi-sk"></i><i class="sk kpi-sk tall"></i><i class="sk kpi-sk"></i></div>
     <div class="split"><div class="btn pri" role="button" tabindex="0" id="new-svc">${icon('plus')} Servicio</div><div class="btn" role="button" tabindex="0" id="new-exp">${icon('plus')} Gasto</div></div>
     <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Cuánto le facturás a cada una y qué falta cobrar</span></span>${icon('chevron-right','trail')}</button>
@@ -254,6 +255,14 @@ async function renderInicio(){
       <div class="row"><span class="hint">Por cobrar</span><b class="num" style="color:var(--ax-warn)" data-count="${Number(s.pending)||0}">$ 0</b></div></div>
     <p class="hint">${Number(s.services)?Number(s.services)+' servicios':'Sin servicios todavía'} · fijos ${money(s.fixed_expenses)} · variables ${money(s.variable_expenses)}</p>`;
   const k=document.getElementById('k-billed');k.onclick=()=>go('facturacion');k.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go('facturacion');}};
+  renderAlerts();
+}
+// Avisos de cobro: lo vencido primero; se ven hasta dos y el resto queda en Facturación.
+async function renderAlerts(){
+  if(!window.SoloAlerts)return;const list=await window.SoloAlerts.load();const box=document.getElementById('alerts');if(!box)return;
+  const ICON={bad:'triangle-alert',wait:'calendar-clock',info:'file-warning'};
+  box.innerHTML=list.slice(0,2).map((a,i)=>`<button class="alert ${a.k}" type="button" data-i="${i}">${icon(ICON[a.k])}<span><b class="ell">${esc(a.title)}</b><small class="ell">${esc(a.sub)}</small></span>${i===1&&list.length>2?`<em>+${list.length-2}</em>`:icon('chevron-right','trail')}</button>`).join('');
+  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const a=list[Number(b.dataset.i)];const d=new Date(a.month+'T12:00:00');month=new Date(d.getFullYear(),d.getMonth(),1);go('facturacion-'+a.client);});
 }
 
 async function renderClientes(){

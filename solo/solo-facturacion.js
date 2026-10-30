@@ -49,6 +49,28 @@ function bindMonth(again){
 }
 const minis=(g,label='A facturar')=>`<div class="mini"><span>${label}</span><b class="num">${money(g.total)}</b></div><div class="mini"><span>Cobrado</span><b class="num" style="color:var(--ax-ok)">${money(g.collected)}</b></div><div class="mini"><span>Por cobrar</span><b class="num" style="color:var(--ax-warn)">${money(g.pending)}</b></div>`;
 
+/* ── Avisos para Inicio: pagos vencidos, que vencen pronto y remitos de meses anteriores sin facturar ── */
+async function alerts(){
+  const [{data:rows,error},{data:clients}]=await Promise.all([
+    C.db.from('solo_services').select('*').eq('status','signed').is('paid_at',null),C.db.from('solo_clients').select('*')]);
+  if(error)return [];
+  const t=today(),soon=addDays(t,3),monthStart=isoDate(new Date(new Date().getFullYear(),new Date().getMonth(),1)),by={};
+  (rows||[]).forEach(s=>{const c=(clients||[]).find(x=>x.id===s.client_id);if(!c||c.kind==='particular')return;
+    const g=by[c.id]=by[c.id]||{client:c,overdue:0,overdueDue:null,overdueMonth:null,soon:0,soonDue:null,soonMonth:null,uninv:0,uninvMonth:null};const b=billOf(c,s),day=isoDate(new Date(s.service_date));
+    if(s.invoiced_at){const due=addDays(s.invoiced_at,c.payment_days);
+      if(due<t){g.overdue+=b;if(!g.overdueDue||due<g.overdueDue){g.overdueDue=due;g.overdueMonth=day;}}
+      else if(due<=soon){g.soon+=b;if(!g.soonDue||due<g.soonDue){g.soonDue=due;g.soonMonth=day;}}}
+    else if(day<monthStart){g.uninv+=b;if(!g.uninvMonth||day<g.uninvMonth)g.uninvMonth=day;}});
+  const days=d=>Math.round((new Date(t+'T00:00:00')-new Date(d+'T00:00:00'))/864e5);
+  const out=[];
+  Object.values(by).forEach(g=>{const n=g.client.name;
+    if(g.overdue)out.push({k:'bad',rank:0,amount:g.overdue,client:g.client.id,month:g.overdueMonth,title:`${n} te debe ${money(g.overdue)}`,sub:`Venció el ${dmy(g.overdueDue)} · hace ${days(g.overdueDue)} día${days(g.overdueDue)===1?'':'s'}`});
+    if(g.soon)out.push({k:'wait',rank:1,amount:g.soon,client:g.client.id,month:g.soonMonth,title:`${n} paga ${money(g.soon)}`,sub:g.soonDue===t?'Vence hoy':`Vence el ${dmy(g.soonDue)}`});
+    if(g.uninv)out.push({k:'info',rank:2,amount:g.uninv,client:g.client.id,month:g.uninvMonth,title:`Facturale a ${n} ${money(g.uninv)}`,sub:'Remitos de '+monthName(new Date(g.uninvMonth+'T12:00:00')).toLowerCase()+' sin facturar'});});
+  return out.sort((a,b)=>a.rank-b.rank||b.amount-a.amount);
+}
+window.SoloAlerts={load:alerts,billOf};
+
 /* ── Lista del mes: una tarjeta por prestadora ─────────── */
 views.facturacion=async function(clientId){
   if(clientId)return detail(clientId);

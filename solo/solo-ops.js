@@ -465,7 +465,7 @@ views.gastos=async function(mode){
   if(tab==='movimientos'){
     const days={};(vars||[]).forEach(x=>{(days[x.spent_on]=days[x.spent_on]||[]).push(x);});
     el.innerHTML=Object.entries(days).map(([d,xs])=>`<div class="ex-day"><div class="row ex-day-h"><span>${esc(dayLabel(d))}</span><span class="num">${money(xs.reduce((t,x)=>t+Number(x.amount),0))}</span></div>
-      ${xs.map(x=>`<div class="ex-mov"><span class="ex-ico">${catIcon(x.category)}</span><span class="ex-mov-t"><b>${esc(x.category)}</b>${x.notes?`<span class="hint ell">${esc(x.notes)}</span>`:''}</span><b class="num">${money(x.amount)}</b><button class="btn ghost icon-btn ex-del" type="button" data-del="${x.id}" aria-label="Borrar gasto de ${esc(x.category)}">${icon('trash-2')}</button></div>`).join('')}</div>`).join('')
+      ${xs.map(x=>`<div class="ex-mov"><span class="ex-ico">${catIcon(x.category)}</span><span class="ex-mov-t"><b>${esc(x.category)}</b>${x.notes?`<span class="hint ell">${esc(x.notes)}</span>`:''}</span><b class="num">${money(x.amount)}</b>${x.receipt_path?`<button class="btn ghost icon-btn ex-rcpt" type="button" data-receipt="${esc(x.receipt_path)}" aria-label="Ver ticket de ${esc(x.category)}">${icon('receipt')}</button>`:''}<button class="btn ghost icon-btn ex-del" type="button" data-del="${x.id}" aria-label="Borrar gasto de ${esc(x.category)}">${icon('trash-2')}</button></div>`).join('')}</div>`).join('')
       ||`<div class="empty">${icon('receipt','empty-ico')}<b>Sin movimientos en ${esc(mName)}</b><span>Los gastos del día aparecen acá, agrupados por fecha.</span></div>`;
   }
   // Fijos: lo que suma por mes y hasta cuándo cubre cada pago.
@@ -474,12 +474,24 @@ views.gastos=async function(mode){
       return `<div class="ex-fix-row"><span class="ex-ico">${catIcon(x.category)}</span><div class="ex-cat-main"><div class="row"><b class="ell">${esc(x.category)}</b><b class="num">${money(monthly(x))}<small>/mes</small></b></div>
         <div class="ex-cat-bar fix"><i style="--w:${Math.round(used/total*100)}%"></i></div>
         <span class="hint">${money(x.amount)} por ${total} ${total>1?'meses':'mes'} · cubre hasta ${esc(end.toLocaleDateString('es-AR',{month:'short',year:'numeric'}))}</span></div>
-        <button class="btn ghost icon-btn ex-del" type="button" data-del="${x.id}" aria-label="Borrar gasto fijo ${esc(x.category)}">${icon('trash-2')}</button></div>`;}).join('')
+        ${x.receipt_path?`<button class="btn ghost icon-btn ex-rcpt" type="button" data-receipt="${esc(x.receipt_path)}" aria-label="Ver ticket de ${esc(x.category)}">${icon('receipt')}</button>`:''}<button class="btn ghost icon-btn ex-del" type="button" data-del="${x.id}" aria-label="Borrar gasto fijo ${esc(x.category)}">${icon('trash-2')}</button></div>`;}).join('')
       ||`<div class="empty">${icon('shield-check','empty-ico')}<b>Sin gastos fijos</b><span>Seguro, patente, monotributo: cargalos una vez y se reparten solos por mes.</span></div>`;
   }
+  el.querySelectorAll('[data-receipt]').forEach(b=>b.onclick=()=>showReceipt(b.dataset.receipt));
   el.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(b.dataset.sure!=='1'){b.dataset.sure='1';b.classList.add('sure');b.setAttribute('aria-label','Tocá de nuevo para borrar');UI().haptic(10);setTimeout(()=>{b.dataset.sure='';b.classList.remove('sure');},3000);return;}
     const {error}=await C.db.from('solo_expenses').delete().eq('id',b.dataset.del);toast(error?errText(error):'Gasto borrado');if(!error)views.gastos(mode);});
 };
+// Visor del ticket a pantalla completa; se cierra tocando o con Escape.
+async function showReceipt(path){
+  const v=document.createElement('div');v.className='viewer';v.setAttribute('role','dialog');v.setAttribute('aria-label','Foto del ticket');
+  v.innerHTML=`<button class="btn ghost icon-btn viewer-x" type="button" aria-label="Cerrar">${icon('x')}</button><div class="viewer-img sk"></div>`;document.body.appendChild(v);
+  const close=()=>{v.classList.remove('on');setTimeout(()=>v.remove(),200);removeEventListener('keydown',esc_);};const esc_=e=>{if(e.key==='Escape')close();};
+  v.onclick=close;addEventListener('keydown',esc_);requestAnimationFrame(()=>v.classList.add('on'));v.querySelector('.viewer-x').focus();
+  const {data,error}=await C.db.storage.from('solo_files').createSignedUrl(path,600);
+  const box=v.querySelector('.viewer-img');box.classList.remove('sk');
+  if(error||!data){box.innerHTML='<p class="hint">No se pudo abrir el ticket.</p>';return;}
+  box.innerHTML=`<img src="${esc(data.signedUrl)}" alt="Foto del ticket">`;
+}
 function gastoNuevo(kind){
   const fixed=kind==='fixed';
   shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Nuevo gasto</h1></div>
@@ -489,7 +501,8 @@ function gastoNuevo(kind){
       <div class="field"><label>Categoría</label><div class="ex-cats" id="e-cats">${CATS[kind].map((c,i)=>`<button class="ex-cat-btn" type="button" data-c="${esc(c)}" aria-pressed="${i===0}">${catIcon(c)}<span>${esc(c)}</span></button>`).join('')}</div></div>
       <div class="grid2"><div class="field ${fixed?'':'span2'}"><label for="e-date">${fixed?'Pagado el':'Fecha'}</label><input id="e-date" type="date" value="${isoDate(new Date())}"></div>
       ${fixed?'<div class="field"><label for="e-period">Cubre</label><select id="e-period"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12" selected>12 meses</option></select></div>':''}</div>
-      <div class="field"><label for="e-note">Detalle (opcional)</label><input id="e-note" placeholder="${fixed?'Ej.: póliza La Segunda':'Ej.: YPF Ruta 3, cambio de aceite'}"></div>
+      <div class="ex-note-row"><div class="field"><label for="e-note">Detalle (opcional)</label><input id="e-note" placeholder="${fixed?'Ej.: póliza La Segunda':'Ej.: YPF Ruta 3'}"></div>
+        <div class="field"><label for="e-file">Ticket</label><label class="ex-ticket" id="e-ticket"><input type="file" accept="image/*" capture="environment" hidden id="e-file"><span class="ex-ticket-img" id="e-ticket-img"></span>${icon('camera')}<span class="ex-ticket-t">Foto</span></label></div></div>
       <p class="hint" id="e-per" ${fixed?'':'hidden'}></p>
       <p id="e-err" class="err" hidden></p>
       <button class="btn pri block push" type="submit">${icon('check')} Guardar gasto</button></form>`,'gastos',{bare:true});
@@ -503,9 +516,16 @@ function gastoNuevo(kind){
   const fitAmount=()=>{const n=$('e-amount').value.length;$('e-amount').style.fontSize=Math.max(26,44-Math.max(0,n-6)*4)+'px';};
   $('e-amount').addEventListener('input',()=>{per();fitAmount();});$('e-period')?.addEventListener('change',per);per();
   setTimeout(()=>$('e-amount')?.focus(),60);
+  // Foto del ticket: se ve al instante y se sube achicada al guardar.
+  let ticket=null;
+  $('e-file').addEventListener('change',()=>{const f=$('e-file').files[0];if(!f)return;ticket=f;const img=$('e-ticket-img');if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);
+    img.dataset.url=URL.createObjectURL(f);img.style.backgroundImage=`url("${img.dataset.url}")`;$('e-ticket').classList.add('has');$('e-ticket').querySelector('.ex-ticket-t').textContent='Cambiar';UI().success();});
   $('ex').onsubmit=async e=>{e.preventDefault();const er=$('e-err');er.hidden=true;const amount=num($('e-amount').value);
     if(amount<=0){er.textContent='Poné el monto del gasto.';er.hidden=false;UI().haptic([20,40,20]);$('e-amount').focus();return;}
-    const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:fixed?Number($('e-period').value):null,notes:$('e-note').value.trim()||null};
+    let receipt_path=null;
+    if(ticket){receipt_path=C.user.id+'/receipts/'+Date.now()+'.jpg';const up=await C.db.storage.from('solo_files').upload(receipt_path,await shrink(ticket),{contentType:'image/jpeg'});
+      if(up.error){er.textContent='No se pudo subir la foto del ticket: '+errText(up.error);er.hidden=false;return;}}
+    const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:fixed?Number($('e-period').value):null,notes:$('e-note').value.trim()||null,receipt_path};
     const {error}=await C.db.from('solo_expenses').insert(row);if(error){er.textContent=errText(error);er.hidden=false;return;}
     UI().success();toast('Gasto guardado');go(fixed?'gastos-fijo':'gastos-movimientos');};
 }

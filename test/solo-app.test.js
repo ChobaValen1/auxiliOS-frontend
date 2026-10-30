@@ -101,3 +101,11 @@ test('Solo: «Remito creado» con patente, N.º de servicio y cliente, y el desg
   assert.ok(order.every(i=>i>0),'están todas las partes');assert.deepEqual([...order].sort((a,b)=>a-b),order,'en ese orden');
   assert.match(ops,/function rateForAt/);
 });
+test('Solo: foto del ticket en los gastos y avisos de cobro en Inicio',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');
+  assert.match(ops,/id="e-file"/);assert.match(ops,/C\.user\.id\+'\/receipts\/'/,'el ticket va en la carpeta del gruero');assert.match(ops,/receipt_path\};/);
+  assert.match(ops,/data-receipt=/);assert.match(ops,/function showReceipt/);assert.match(ops,/await shrink\(ticket\)/);
+  assert.match(fx,/async function alerts\(\)/);assert.match(fx,/\.eq\('status','signed'\)\.is\('paid_at',null\)/);
+  assert.match(fx,/addDays\(s\.invoiced_at,c\.payment_days\)/);assert.match(fx,/te debe/);assert.match(fx,/sin facturar/);assert.match(fx,/Vence hoy/);
+  assert.match(js,/id="alerts"/);assert.match(js,/async function renderAlerts/);assert.match(js,/go\('facturacion-'\+a\.client\)/);
+});
