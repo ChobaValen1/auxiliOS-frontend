@@ -262,7 +262,7 @@ async function renderAlerts(){
   if(!window.SoloAlerts)return;const list=await window.SoloAlerts.load();const box=document.getElementById('alerts');if(!box)return;
   const ICON={bad:'triangle-alert',wait:'calendar-clock',info:'file-warning'};
   box.innerHTML=list.slice(0,2).map((a,i)=>`<button class="alert ${a.k}" type="button" data-i="${i}">${icon(ICON[a.k])}<span><b class="ell">${esc(a.title)}</b><small class="ell">${esc(a.sub)}</small></span>${i===1&&list.length>2?`<em>+${list.length-2}</em>`:icon('chevron-right','trail')}</button>`).join('');
-  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const a=list[Number(b.dataset.i)];const d=new Date(a.month+'T12:00:00');month=new Date(d.getFullYear(),d.getMonth(),1);go('facturacion-'+a.client);});
+  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const a=list[Number(b.dataset.i)];if(a.go)return go(a.go);const d=new Date(a.month+'T12:00:00');month=new Date(d.getFullYear(),d.getMonth(),1);go('facturacion-'+a.client);});
 }
 
 async function renderClientes(){

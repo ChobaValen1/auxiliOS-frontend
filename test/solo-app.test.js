@@ -77,7 +77,7 @@ test('Solo: Gastos con total del mes, en qué se va la plata, movimientos por d�
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');
   assert.match(ops,/Gastaste en/);assert.match(ops,/\['categorias','En qué'\],\['movimientos','Movimientos'\],\['fijo','Fijos'\]/);
   assert.match(ops,/sort\(\(p,q\)=>q\.t-p\.t\)/,'categorías de mayor a menor');assert.match(ops,/from\('solo_expenses'\)\.delete\(\)/);
-  assert.match(ops,/CAT_ICON=\{Combustible:'fuel'/);assert.match(ops,/notes:\$\('e-note'\)/);assert.match(ops,/Suma <b class="num">/);
+  assert.match(ops,/CAT_ICON=\{Combustible:'fuel'/);assert.match(ops,/notes:\$\('e-note'\)/);
 });
 test('Solo: con prestadora se factura a la empresa y el socio paga solo los adicionales',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');
@@ -108,4 +108,12 @@ test('Solo: foto del ticket en los gastos y avisos de cobro en Inicio',()=>{
   assert.match(fx,/async function alerts\(\)/);assert.match(fx,/\.eq\('status','signed'\)\.is\('paid_at',null\)/);
   assert.match(fx,/addDays\(s\.invoiced_at,c\.payment_days\)/);assert.match(fx,/te debe/);assert.match(fx,/sin facturar/);assert.match(fx,/Vence hoy/);
   assert.match(js,/id="alerts"/);assert.match(js,/async function renderAlerts/);assert.match(js,/go\('facturacion-'\+a\.client\)/);
+});
+test('Solo: nuevo gasto con teclado propio, repetir, detalle que sugiere categoría y aviso de renovación de fijos',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');const g=ops.slice(ops.indexOf('async function gastoNuevo'));
+  assert.match(g,/class="gx-pad"/);assert.match(g,/'Sumar otro ticket'/);assert.match(g,/expr\.split\('\+'\)/,'suma varios tickets');
+  assert.match(g,/lastCatKey\(kind\)/,'recuerda la última categoría');assert.match(g,/Repetir/);assert.match(g,/if\(CATS\[kind\]\.includes\(p\.category\)\)setCat\(p\.category\)/,'el detalle pone la categoría');
+  assert.match(g,/'¿Cuándo fue\?'/);assert.match(g,/'¿Cuántos meses cubre\?'/);assert.match(g,/Marcá el monto con el teclado/);
+  assert.doesNotMatch(g,/b\.disabled=true/,'el estado de guardado lo maneja solo-ui');
+  assert.match(fx,/Renová \$\{x\.category/);assert.match(js,/if\(a\.go\)return go\(a\.go\)/);
 });

@@ -51,8 +51,9 @@ const minis=(g,label='A facturar')=>`<div class="mini"><span>${label}</span><b c
 
 /* ── Avisos para Inicio: pagos vencidos, que vencen pronto y remitos de meses anteriores sin facturar ── */
 async function alerts(){
-  const [{data:rows,error},{data:clients}]=await Promise.all([
-    C.db.from('solo_services').select('*').eq('status','signed').is('paid_at',null),C.db.from('solo_clients').select('*')]);
+  const [{data:rows,error},{data:clients},{data:fixed}]=await Promise.all([
+    C.db.from('solo_services').select('*').eq('status','signed').is('paid_at',null),C.db.from('solo_clients').select('*'),
+    C.db.from('solo_expenses').select('*').eq('kind','fixed')]);
   if(error)return [];
   const t=today(),soon=addDays(t,3),monthStart=isoDate(new Date(new Date().getFullYear(),new Date().getMonth(),1)),by={};
   (rows||[]).forEach(s=>{const c=(clients||[]).find(x=>x.id===s.client_id);if(!c||c.kind==='particular')return;
@@ -67,6 +68,11 @@ async function alerts(){
     if(g.overdue)out.push({k:'bad',rank:0,amount:g.overdue,client:g.client.id,month:g.overdueMonth,title:`${n} te debe ${money(g.overdue)}`,sub:`Venció el ${dmy(g.overdueDue)} · hace ${days(g.overdueDue)} día${days(g.overdueDue)===1?'':'s'}`});
     if(g.soon)out.push({k:'wait',rank:1,amount:g.soon,client:g.client.id,month:g.soonMonth,title:`${n} paga ${money(g.soon)}`,sub:g.soonDue===t?'Vence hoy':`Vence el ${dmy(g.soonDue)}`});
     if(g.uninv)out.push({k:'info',rank:2,amount:g.uninv,client:g.client.id,month:g.uninvMonth,title:`Facturale a ${n} ${money(g.uninv)}`,sub:'Remitos de '+monthName(new Date(g.uninvMonth+'T12:00:00')).toLowerCase()+' sin facturar'});});
+  // Gastos fijos por renovar (seguro, patente, VTV…): el último pago de cada uno, si vence en 10 días o venció hace poco.
+  const lastBy={};(fixed||[]).forEach(x=>{const d=new Date(x.spent_on+'T00:00:00');d.setMonth(d.getMonth()+Number(x.period_months||1));const end=isoDate(d);
+    if(!lastBy[x.category]||end>lastBy[x.category].end)lastBy[x.category]={x,end};});
+  Object.values(lastBy).forEach(({x,end})=>{const left=-days(end);if(left>10||left<-20)return;
+    out.push({k:left<0?'bad':'wait',rank:1.5,amount:Number(x.amount),go:'gastos-fijo',title:`Renová ${x.category.toLowerCase()}${x.notes?' · '+x.notes:''}`,sub:left<0?`Venció el ${dmy(end)}`:left===0?'Vence hoy':`Vence el ${dmy(end)} · en ${left} día${left===1?'':'s'}`});});
   return out.sort((a,b)=>a.rank-b.rank||b.amount-a.amount);
 }
 window.SoloAlerts={load:alerts,billOf};

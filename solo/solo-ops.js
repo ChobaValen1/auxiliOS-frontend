@@ -492,41 +492,113 @@ async function showReceipt(path){
   if(error||!data){box.innerHTML='<p class="hint">No se pudo abrir el ticket.</p>';return;}
   box.innerHTML=`<img src="${esc(data.signedUrl)}" alt="Foto del ticket">`;
 }
-function gastoNuevo(kind){
-  const fixed=kind==='fixed';
-  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Nuevo gasto</h1></div>
-    <form id="ex" class="ex-form" novalidate>
-      <div class="seg" role="group" aria-label="Tipo de gasto"><button type="button" data-k="variable" aria-pressed="${!fixed}">Del día</button><button type="button" data-k="fixed" aria-pressed="${fixed}">Fijo</button></div>
-      <div class="ex-amount field"><label for="e-amount">${fixed?'Cuánto pagaste':'Cuánto gastaste'}</label><div class="ex-amount-in"><span>$</span><input id="e-amount" inputmode="decimal" placeholder="0" autocomplete="off"></div></div>
-      <div class="field"><label>Categoría</label><div class="ex-cats" id="e-cats">${CATS[kind].map((c,i)=>`<button class="ex-cat-btn" type="button" data-c="${esc(c)}" aria-pressed="${i===0}">${catIcon(c)}<span>${esc(c)}</span></button>`).join('')}</div></div>
-      <div class="grid2"><div class="field ${fixed?'':'span2'}"><label for="e-date">${fixed?'Pagado el':'Fecha'}</label><input id="e-date" type="date" value="${isoDate(new Date())}"></div>
-      ${fixed?'<div class="field"><label for="e-period">Cubre</label><select id="e-period"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12" selected>12 meses</option></select></div>':''}</div>
-      <div class="ex-note-row"><div class="field"><label for="e-note">Detalle (opcional)</label><input id="e-note" placeholder="${fixed?'Ej.: póliza La Segunda':'Ej.: YPF Ruta 3'}"></div>
-        <div class="field"><label for="e-file">Ticket</label><label class="ex-ticket" id="e-ticket"><input type="file" accept="image/*" capture="environment" hidden id="e-file"><span class="ex-ticket-img" id="e-ticket-img"></span>${icon('camera')}<span class="ex-ticket-t">Foto</span></label></div></div>
-      <p class="hint" id="e-per" ${fixed?'':'hidden'}></p>
+/* ── Nuevo gasto: teclado propio, categorías a la vista y atajos (repetir, detalle con sugerencias, fecha) ──
+   Ideas tomadas de apps abiertas de control de gastos (Cashew): la categoría se recuerda por el detalle,
+   los gastos repetidos se cargan de un toque y los fijos avisan antes de vencer. */
+const lastCatKey=k=>'solo-last-cat-'+k;
+const memo={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
+function sheet(title,html){
+  const w=document.createElement('div');w.className='sheet-wrap';
+  w.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="sheet-grip" aria-hidden="true"></div><div class="row"><h2>${esc(title)}</h2><button class="btn ghost icon-btn" type="button" data-x aria-label="Cerrar">${icon('x')}</button></div>${html}</div>`;
+  document.body.appendChild(w);requestAnimationFrame(()=>w.classList.add('on'));
+  const close=()=>{w.classList.remove('on');setTimeout(()=>w.remove(),220);};
+  w.addEventListener('click',e=>{if(e.target===w||e.target.closest('[data-x]'))close();});
+  return {el:w,close};
+}
+async function gastoNuevo(kind){
+  const fixed=kind==='fixed',$=x=>document.getElementById(x);
+  let cat=memo.get(lastCatKey(kind));if(!CATS[kind].includes(cat))cat=CATS[kind][0];
+  let expr='',date=isoDate(new Date()),note='',period=12,ticket=null;
+  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Nuevo gasto</h1>
+      <div class="seg mini-seg" role="group" aria-label="Tipo de gasto"><button type="button" data-k="variable" aria-pressed="${!fixed}">Del día</button><button type="button" data-k="fixed" aria-pressed="${fixed}">Fijo</button></div></div>
+    <form id="ex" class="gx" novalidate>
+      <div class="gx-amount" id="gx-amount" aria-live="polite"><span class="gx-cur">$</span><b class="num" id="gx-val">0</b><small id="gx-expr"></small></div>
+      <div class="gx-quick" id="gx-quick" hidden></div>
+      <div class="gx-cats" id="e-cats" role="radiogroup" aria-label="Categoría">${CATS[kind].map(c=>`<button class="gx-cat" type="button" role="radio" data-c="${esc(c)}" aria-checked="${c===cat}">${catIcon(c)}<span>${esc(c)}</span></button>`).join('')}</div>
+      <div class="gx-meta">
+        <button class="gx-chip" type="button" id="gx-date">${icon('calendar')}<span>Hoy</span></button>
+        ${fixed?`<button class="gx-chip" type="button" id="gx-period">${icon('calendar-clock')}<span>12 meses</span></button>`:''}
+        <button class="gx-chip grow" type="button" id="gx-note">${icon('pencil')}<span class="ell">Detalle</span></button>
+        <label class="gx-chip gx-ticket" id="e-ticket" title="Foto del ticket" aria-label="Foto del ticket"><span class="ex-ticket-img" id="e-ticket-img"></span>${icon('camera')}<input type="file" accept="image/*" capture="environment" hidden id="e-file"></label>
+      </div>
+      <input type="date" id="e-date" class="sr" tabindex="-1" aria-hidden="true" value="${date}"><input type="hidden" id="e-period" value="12"><input type="hidden" id="e-note" value="">
       <p id="e-err" class="err" hidden></p>
-      <button class="btn pri block push" type="submit">${icon('check')} Guardar gasto</button></form>`,'gastos',{bare:true});
-  const $=x=>document.getElementById(x);let cat=CATS[kind][0];
+      <div class="gx-pad" role="group" aria-label="Teclado del monto">
+        ${['7','8','9','del','4','5','6','+','1','2','3','ok','000','0',','].map(k=>k==='ok'?`<button class="gx-key ok" type="submit">${icon('check')}<span>Guardar</span></button>`
+          :`<button class="gx-key ${k==='del'?'fn':k==='+'?'fn':''}" type="button" data-key="${k}" aria-label="${k==='del'?'Borrar':k==='+'?'Sumar otro ticket':k}">${k==='del'?icon('chevron-left'):k}</button>`).join('')}
+      </div>
+    </form>`,'gastos',{bare:true});
   $('back').onclick=()=>go(fixed?'gastos-fijo':'gastos');
   app().querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>go(b.dataset.k==='fixed'?'gastos-nuevo-fijo':'gastos-nuevo'));
-  $('e-cats').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;UI().haptic(6);$('e-cats').querySelectorAll('[data-c]').forEach(x=>x.setAttribute('aria-pressed',x===b));});
-  // En los fijos se ve al instante cuánto suma por mes.
-  const per=()=>{if(!fixed)return;const v=num($('e-amount').value),m=Number($('e-period').value);$('e-per').innerHTML=v?`Suma <b class="num">${money(v/m)}</b> por mes durante ${m} ${m>1?'meses':'mes'}.`:'Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.';};
-  // El monto grande achica la letra a medida que crece, para que siempre entre entero.
-  const fitAmount=()=>{const n=$('e-amount').value.length;$('e-amount').style.fontSize=Math.max(26,44-Math.max(0,n-6)*4)+'px';};
-  $('e-amount').addEventListener('input',()=>{per();fitAmount();});$('e-period')?.addEventListener('change',per);per();
-  setTimeout(()=>$('e-amount')?.focus(),60);
-  // Foto del ticket: se ve al instante y se sube achicada al guardar.
-  let ticket=null;
+  // ── Monto: teclado con suma (para juntar varios tickets) ──
+  const terms=()=>expr.split('+').map(t=>t.trim()).filter(Boolean);
+  const valueOf=t=>Number(t.replace(/\./g,'').replace(',','.'))||0;
+  const total=()=>terms().reduce((a,t)=>a+valueOf(t),0);
+  const fmtTerm=t=>{const [i,d]=t.split(',');const g=i?Number(i).toLocaleString('es-AR'):'0';return d!==undefined?g+','+d:g;};
+  function paint(){const v=total(),ts=terms();
+    $('gx-val').textContent=v?Math.round(v*100)/100===Math.round(v)?Math.round(v).toLocaleString('es-AR'):v.toLocaleString('es-AR',{maximumFractionDigits:2}):'0';
+    $('gx-val').style.fontSize=Math.max(30,52-Math.max(0,$('gx-val').textContent.length-7)*4)+'px';
+    $('gx-expr').textContent=ts.length>1||/\+$/.test(expr)?ts.map(fmtTerm).join(' + ')+(/\+$/.test(expr)?' +':''):fixed&&v?'= '+money(v/period)+' por mes':'';
+    $('gx-amount').classList.toggle('empty',!v);}
+  function press(k){UI().haptic(5);$('e-err').hidden=true;$('gx-amount').classList.remove('bad');
+    const cur=expr.split('+').pop();
+    if(k==='del')expr=expr.slice(0,-1);
+    else if(k==='+'){if(cur&&valueOf(cur))expr+='+';}
+    else if(k===','){if(!cur.includes(','))expr+=(cur?'':'0')+',';}
+    else{const digits=cur.replace(/\D/g,'');if(digits.length>=10)return;if(cur.includes(',')&&cur.split(',')[1].length>=2)return;
+      if((cur==='0')&&k!==',')expr=expr.slice(0,-1);expr+=k==='000'&&!cur?'':k;}
+    paint();}
+  app().querySelectorAll('[data-key]').forEach(b=>b.addEventListener('click',()=>press(b.dataset.key)));
+  // Teclado físico (computadora): números, coma, + y borrar.
+  const onKey=e=>{if(!document.body.contains($('gx-val'))){removeEventListener('keydown',onKey);return;}if(document.querySelector('.sheet-wrap'))return;
+    if(/^[0-9]$/.test(e.key))press(e.key);else if(e.key===','||e.key==='.')press(',');else if(e.key==='+')press('+');else if(e.key==='Backspace')press('del');else return;e.preventDefault();};
+  addEventListener('keydown',onKey);
+  // ── Categoría (se recuerda la última usada) ──
+  const setCat=c=>{cat=c;$('e-cats').querySelectorAll('[data-c]').forEach(x=>x.setAttribute('aria-checked',String(x.dataset.c===c)));};
+  $('e-cats').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{setCat(b.dataset.c);UI().haptic(6);});
+  // ── Fecha: Hoy / Ayer / otra ──
+  const dayTxt=d=>d===isoDate(new Date())?'Hoy':d===isoDate(new Date(Date.now()-864e5))?'Ayer':d.split('-').reverse().slice(0,2).join('/');
+  const setDate=d=>{date=d;$('e-date').value=d;$('gx-date').querySelector('span').textContent=(fixed?'Pagado ':'')+dayTxt(d).toLowerCase().replace(/^./,c=>fixed?c:c.toUpperCase());};
+  setDate(date);
+  $('gx-date').onclick=()=>{const t=isoDate(new Date()),y=isoDate(new Date(Date.now()-864e5));
+    const sh=sheet(fixed?'¿Cuándo lo pagaste?':'¿Cuándo fue?',`<div class="gx-opts">${[[t,'Hoy'],[y,'Ayer']].map(([d,l])=>`<button class="gx-opt" type="button" data-d="${d}" aria-pressed="${date===d}">${l}<small>${d.split('-').reverse().join('/')}</small></button>`).join('')}</div>
+      <div class="field"><label for="gx-other">Otra fecha</label><input id="gx-other" type="date" value="${date}" max="${t}"></div>`);
+    sh.el.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{setDate(b.dataset.d);sh.close();});
+    sh.el.querySelector('#gx-other').addEventListener('change',e=>{if(e.target.value){setDate(e.target.value);sh.close();}});};
+  // ── Período de los fijos ──
+  $('gx-period')?.addEventListener('click',()=>{const sh=sheet('¿Cuántos meses cubre?',`<div class="gx-opts five">${[1,2,3,6,12].map(m=>`<button class="gx-opt" type="button" data-m="${m}" aria-pressed="${period===m}">${m}<small>${m>1?'meses':'mes'}</small></button>`).join('')}</div><p class="hint">Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.</p>`);
+    sh.el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{period=Number(b.dataset.m);$('e-period').value=period;$('gx-period').querySelector('span').textContent=period+(period>1?' meses':' mes');sh.close();paint();});});
+  // ── Detalle con sugerencias: elegir uno anterior también pone su categoría ──
+  const {data:recent}=await C.db.from('solo_expenses').select('*').eq('kind',kind).order('created_at',{ascending:false}).limit(60);
+  const past=[];(recent||[]).forEach(x=>{if(x.notes&&!past.some(p=>p.notes.toLowerCase()===x.notes.toLowerCase()))past.push(x);});
+  const setNote=n=>{note=n.trim();$('e-note').value=note;const b=$('gx-note');b.querySelector('span').textContent=note||'Detalle';b.classList.toggle('on',!!note);};
+  $('gx-note').onclick=()=>{const sh=sheet('Detalle',`<div class="field"><label for="gx-note-in">Qué fue</label><input id="gx-note-in" maxlength="160" autocomplete="off" placeholder="${fixed?'Ej.: póliza La Segunda':'Ej.: YPF Ruta 3'}" value="${esc(note)}"></div><div class="gx-sugg" id="gx-sugg"></div><button class="btn pri block" type="button" id="gx-note-ok">Listo</button>`);
+    const inp=sh.el.querySelector('#gx-note-in'),sg=sh.el.querySelector('#gx-sugg');
+    const draw=()=>{const q=inp.value.trim().toLowerCase();const list=past.filter(p=>!q||p.notes.toLowerCase().includes(q)).slice(0,5);
+      sg.innerHTML=list.map((p,i)=>`<button class="gx-sug" type="button" data-i="${past.indexOf(p)}">${catIcon(p.category)}<span class="ell">${esc(p.notes)}</span><small>${esc(p.category)}</small></button>`).join('');
+      sg.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const p=past[Number(b.dataset.i)];setNote(p.notes);if(CATS[kind].includes(p.category))setCat(p.category);sh.close();});};
+    inp.addEventListener('input',draw);draw();setTimeout(()=>inp.focus(),120);
+    const done=()=>{setNote(inp.value);const m=past.find(p=>p.notes.toLowerCase()===note.toLowerCase());if(m&&CATS[kind].includes(m.category))setCat(m.category);sh.close();};
+    sh.el.querySelector('#gx-note-ok').onclick=done;inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();done();}});};
+  // ── Repetir: los últimos gastos distintos, de un toque ──
+  const reps=[];(recent||[]).forEach(x=>{const k=x.category+'|'+Number(x.amount)+'|'+(x.notes||'');if(!reps.some(r=>r.k===k))reps.push({k,x});});
+  if(reps.length){$('gx-quick').hidden=false;$('gx-quick').innerHTML=`<span class="hint">Repetir</span>`+reps.slice(0,3).map((r,i)=>`<button class="gx-rep" type="button" data-r="${i}">${catIcon(r.x.category)}<span class="ell">${esc(r.x.notes||r.x.category)}</span><b class="num">${money(r.x.amount)}</b></button>`).join('');
+    $('gx-quick').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const x=reps[Number(b.dataset.r)].x;expr=String(Math.round(Number(x.amount)*100)/100).replace('.',',');
+      if(CATS[kind].includes(x.category))setCat(x.category);setNote(x.notes||'');if(fixed&&x.period_months){period=x.period_months;$('e-period').value=period;$('gx-period').querySelector('span').textContent=period+(period>1?' meses':' mes');}
+      paint();UI().haptic(8);});}
+  // ── Foto del ticket ──
   $('e-file').addEventListener('change',()=>{const f=$('e-file').files[0];if(!f)return;ticket=f;const img=$('e-ticket-img');if(img.dataset.url)URL.revokeObjectURL(img.dataset.url);
-    img.dataset.url=URL.createObjectURL(f);img.style.backgroundImage=`url("${img.dataset.url}")`;$('e-ticket').classList.add('has');$('e-ticket').querySelector('.ex-ticket-t').textContent='Cambiar';UI().success();});
-  $('ex').onsubmit=async e=>{e.preventDefault();const er=$('e-err');er.hidden=true;const amount=num($('e-amount').value);
-    if(amount<=0){er.textContent='Poné el monto del gasto.';er.hidden=false;UI().haptic([20,40,20]);$('e-amount').focus();return;}
+    img.dataset.url=URL.createObjectURL(f);img.style.backgroundImage=`url("${img.dataset.url}")`;$('e-ticket').classList.add('has');UI().success();});
+  paint();
+  // ── Guardar ──
+  $('ex').onsubmit=async e=>{e.preventDefault();const er=$('e-err');er.hidden=true;const amount=Math.round(total()*100)/100;
+    if(amount<=0){er.textContent='Marcá el monto con el teclado.';er.hidden=false;$('gx-amount').classList.add('bad');UI().haptic([20,40,20]);return;}
+    // El estado «guardando» del botón lo maneja la capa común de formularios (solo-ui.js).
     let receipt_path=null;
-    if(ticket){receipt_path=C.user.id+'/receipts/'+Date.now()+'.jpg';const up=await C.db.storage.from('solo_files').upload(receipt_path,await shrink(ticket),{contentType:'image/jpeg'});
-      if(up.error){er.textContent='No se pudo subir la foto del ticket: '+errText(up.error);er.hidden=false;return;}}
-    const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:fixed?Number($('e-period').value):null,notes:$('e-note').value.trim()||null,receipt_path};
-    const {error}=await C.db.from('solo_expenses').insert(row);if(error){er.textContent=errText(error);er.hidden=false;return;}
-    UI().success();toast('Gasto guardado');go(fixed?'gastos-fijo':'gastos-movimientos');};
+      if(ticket){receipt_path=C.user.id+'/receipts/'+Date.now()+'.jpg';const up=await C.db.storage.from('solo_files').upload(receipt_path,await shrink(ticket),{contentType:'image/jpeg'});
+        if(up.error){er.textContent='No se pudo subir la foto del ticket: '+errText(up.error);er.hidden=false;return;}}
+      const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:fixed?Number($('e-period').value):null,notes:$('e-note').value.trim()||null,receipt_path};
+      const {error}=await C.db.from('solo_expenses').insert(row);if(error){er.textContent=errText(error);er.hidden=false;return;}
+      memo.set(lastCatKey(kind),cat);removeEventListener('keydown',onKey);UI().success();toast('Gasto guardado · '+money(amount));go(fixed?'gastos-fijo':'gastos-movimientos');};
 }
 })();
