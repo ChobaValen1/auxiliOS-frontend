@@ -644,3 +644,19 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .field label.gv-change{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ax-text);white-space:nowrap}
 .gx-amount{max-height:112px;min-height:72px}
 .gx-amount b{font-size:44px}
+/* Nuevo gasto ocupa toda la pantalla: el teclado queda abajo, al alcance del pulgar, y el monto toma el espacio libre. */
+.gx-amount{flex:1 1 auto;max-height:none;min-height:72px}
+.gx-pad{margin-top:auto}
+.gx-pad{grid-auto-rows:clamp(44px,6.2vh,54px)}
+.gx-amount{align-content:center;padding-bottom:64px}
+.gx-ctx{position:absolute;left:12px;right:12px;bottom:10px;display:grid;gap:4px}
+.gx-ctx>div{display:flex;align-items:baseline;gap:8px;padding:6px 10px;border-radius:10px;background:var(--ax-surface);font-size:12px;color:var(--ax-text-2)}
+.gx-ctx span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gx-ctx b{color:var(--ax-text);font-weight:500}
+.gx-ctx small{color:var(--ax-text-3)}
+@media (max-height:700px){.gx-ctx>div+div{display:none}.gx-amount{padding-bottom:40px}}
+.gx-amount{grid-template-columns:auto auto;justify-content:center;align-items:baseline;column-gap:8px}
+.gx-cur{position:static;transform:none;font-size:26px}
+.gx-amount>small{grid-column:1/-1;text-align:center}
+.gx-ctx b{font:500 13px/1.2 var(--ax-font-mono)!important;color:var(--ax-text);letter-spacing:0}
+.gx-ctx small{font:400 11px/1.2 var(--ax-font)!important;color:var(--ax-text-3)}

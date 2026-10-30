@@ -126,3 +126,8 @@ test('Solo: gasto con «Elegir categoría» en modal, ticket claro y ficha que s
   assert.match(v,/confirmBox\('¿Eliminar este gasto\?'/);assert.match(v,/confirmBox\('¿Guardar los cambios\?'/);assert.match(v,/if\(!ok\)return;/);
   assert.doesNotMatch(ops,/data-del=/,'ya no se borra desde la lista sin confirmar');
 });
+test('Solo: nuevo gasto usa toda la pantalla (teclado abajo, monto con el contexto del mes)',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.match(css,/\.gx-amount\{flex:1 1 auto;max-height:none/);assert.match(css,/\.gx-pad\{margin-top:auto\}/);
+  assert.match(ops,/id="gx-ctx"/);assert.match(ops,/Gastos del día en /);
+});

@@ -575,7 +575,7 @@ async function gastoNuevo(kind){
   shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Nuevo gasto</h1>
       <div class="seg mini-seg" role="group" aria-label="Tipo de gasto"><button type="button" data-k="variable" aria-pressed="${!fixed}">Del día</button><button type="button" data-k="fixed" aria-pressed="${fixed}">Fijo</button></div></div>
     <form id="ex" class="gx" novalidate>
-      <div class="gx-amount" id="gx-amount" aria-live="polite"><span class="gx-cur">$</span><b class="num" id="gx-val">0</b><small id="gx-expr"></small></div>
+      <div class="gx-amount" id="gx-amount" aria-live="polite"><span class="gx-cur">$</span><b class="num" id="gx-val">0</b><small id="gx-expr"></small><div class="gx-ctx" id="gx-ctx"></div></div>
       <div class="gx-quick" id="gx-quick" hidden></div>
       <button class="gx-catbtn" type="button" id="gx-catbtn" aria-haspopup="dialog"><span class="ex-ico">${icon('list-checks')}</span><span class="gx-catbtn-t"><small>Categoría</small><b>Elegir categoría</b></span>${icon('chevron-down','trail')}</button>
       <div class="gx-meta">
@@ -617,7 +617,12 @@ async function gastoNuevo(kind){
     if(/^[0-9]$/.test(e.key))press(e.key);else if(e.key===','||e.key==='.')press(',');else if(e.key==='+')press('+');else if(e.key==='Backspace')press('del');else return;e.preventDefault();};
   addEventListener('keydown',onKey);
   // ── Categoría (se recuerda la última usada) ──
-  const setCat=c=>{cat=c;const b=$('gx-catbtn');b.classList.toggle('on',!!c);b.querySelector('.ex-ico').innerHTML=c?catIcon(c):icon('list-checks');b.querySelector('b').textContent=c||'Elegir categoría';};
+  // Contexto del mes dentro del monto: cuánto va gastado en total y en la categoría elegida.
+  let monthRows=[];
+  const paintCtx=()=>{const el=$('gx-ctx');if(!el)return;const mName=monthName(new Date()).split(' ')[0].toLowerCase();
+    const tot=monthRows.reduce((a,x)=>a+Number(x.amount),0),ofCat=cat?monthRows.filter(x=>x.category===cat):[];
+    el.innerHTML=`<div><span>${fixed?'Fijos cargados en '+mName:'Gastos del día en '+mName}</span><b class="num">${money(tot)}</b></div>`+(cat?`<div><span>${esc(cat)}</span><b class="num">${money(ofCat.reduce((a,x)=>a+Number(x.amount),0))}</b><small>${ofCat.length?ofCat.length+' '+(ofCat.length===1?'vez':'veces'):'primera vez este mes'}</small></div>`:'');};
+  const setCat=c=>{cat=c;paintCtx();const b=$('gx-catbtn');b.classList.toggle('on',!!c);b.querySelector('.ex-ico').innerHTML=c?catIcon(c):icon('list-checks');b.querySelector('b').textContent=c||'Elegir categoría';};
   $('gx-catbtn').onclick=async()=>{const c=await pickCategory(kind,cat);if(c){setCat(c);UI().haptic(6);}};
   // ── Fecha: Hoy / Ayer / otra ──
   const dayTxt=d=>d===isoDate(new Date())?'Hoy':d===isoDate(new Date(Date.now()-864e5))?'Ayer':d.split('-').reverse().slice(0,2).join('/');
@@ -632,7 +637,10 @@ async function gastoNuevo(kind){
   $('gx-period')?.addEventListener('click',()=>{const sh=sheet('¿Cuántos meses cubre?',`<div class="gx-opts five">${[1,2,3,6,12].map(m=>`<button class="gx-opt" type="button" data-m="${m}" aria-pressed="${period===m}">${m}<small>${m>1?'meses':'mes'}</small></button>`).join('')}</div><p class="hint">Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.</p>`);
     sh.el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{period=Number(b.dataset.m);$('e-period').value=period;$('gx-period').querySelector('span').textContent=period+(period>1?' meses':' mes');sh.close();paint();});});
   // ── Detalle con sugerencias: elegir uno anterior también pone su categoría ──
-  const {data:recent}=await C.db.from('solo_expenses').select('*').eq('kind',kind).order('created_at',{ascending:false}).limit(60);
+  const m0=new Date(new Date().getFullYear(),new Date().getMonth(),1),m1=new Date(m0.getFullYear(),m0.getMonth()+1,1);
+  const [{data:recent},{data:month}]=await Promise.all([C.db.from('solo_expenses').select('*').eq('kind',kind).order('created_at',{ascending:false}).limit(60),
+    C.db.from('solo_expenses').select('*').eq('kind',kind).gte('spent_on',isoDate(m0)).lt('spent_on',isoDate(m1))]);
+  monthRows=month||[];paintCtx();
   const past=[];(recent||[]).forEach(x=>{if(x.notes&&!past.some(p=>p.notes.toLowerCase()===x.notes.toLowerCase()))past.push(x);});
   const setNote=n=>{note=n.trim();$('e-note').value=note;const b=$('gx-note');b.querySelector('span').textContent=note||'Detalle';b.classList.toggle('on',!!note);};
   $('gx-note').onclick=()=>{const sh=sheet('Detalle',`<div class="field"><label for="gx-note-in">Qué fue</label><input id="gx-note-in" maxlength="160" autocomplete="off" placeholder="${fixed?'Ej.: póliza La Segunda':'Ej.: YPF Ruta 3'}" value="${esc(note)}"></div><div class="gx-sugg" id="gx-sugg"></div><button class="btn pri block" type="button" id="gx-note-ok">Listo</button>`);
