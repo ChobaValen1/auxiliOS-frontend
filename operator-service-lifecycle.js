@@ -254,9 +254,11 @@ function syncQuickStatusAvailability(){
     const s=service(el.closest('tr')?.dataset.serviceId);
     if(!quickActions(s).length){if(el.getAttribute('role')==='button')for(const attr of ['role','tabindex','aria-haspopup','aria-expanded','aria-controls','aria-label','title','data-ax-tip'])el.removeAttribute(attr);continue;}
     const action=canTransition()?'Cambiar estado':'Ver opciones de estado';
+    // El texto va en su propio span para poder recortarlo con «…» sin que la flecha se corte o lo pise.
+    if(!el.querySelector(':scope>.os-status-label')){const label=document.createElement('span');label.className='os-status-label';label.textContent=el.textContent.trim();el.textContent='';el.appendChild(label);}
     el.setAttribute('role','button');el.tabIndex=0;el.setAttribute('aria-haspopup','menu');
     el.setAttribute('aria-controls','osl-quick-status-menu');el.setAttribute('aria-expanded','false');
-    el.setAttribute('aria-label',`${el.textContent.trim()}: ${action.toLowerCase()}`);el.setAttribute('title',action);
+    el.setAttribute('aria-label',`${el.textContent.trim()}: ${action.toLowerCase()}`);el.setAttribute('title',`${el.textContent.trim()} · ${action}`);
   }
 }
 document.addEventListener('auxilios:services-rendered',syncQuickStatusAvailability);
