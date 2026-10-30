@@ -23,14 +23,14 @@ test('Solo etapa 1c: servicio con precio por tarifa, remito con firma y gastos',
   assert.match(html,/\/solo\/solo-ops\.js/);assert.match(ops,/function rateFor/);assert.match(ops,/Math\.max\(0,\(Number\(km\)\|\|0\)-Number\(rate\.included_km/);
   assert.match(ops,/from\('solo_services'\)\.insert/);assert.match(ops,/status:'signed'/);assert.match(ops,/storage\.from\('solo_files'\)\.upload/);
   assert.match(ops,/conf_service/);assert.match(ops,/navigator\.share/);assert.match(ops,/from\('solo_expenses'\)\.insert/);
-  assert.match(ops,/period_months:kind==='fixed'/);assert.match(css,/\[hidden\]\{display:none!important\}/);
+  assert.match(ops,/period_months:fixed\?Number\(\$\('e-period'\)\.value\):null/);assert.match(css,/\[hidden\]\{display:none!important\}/);
 });
 test('Solo: el remito es por pasos, igual que el del chofer en Flota',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');
   assert.match(ops,/const STEPS=\['Servicio','Socio','Adicionales','Evidencia','Firma'\]/);
   for(const l of ['Frente del vehículo','Lateral','Daños o estado adicional','Odómetro'])assert.ok(ops.includes(l),l);
   for(const l of ['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados','Conformidad de arrastre','Socio ausente (firma el chofer)'])assert.ok(ops.includes(l),l);
-  assert.match(ops,/Guardar y seguir después/);assert.match(ops,/Pago mixto/);assert.match(ops,/Los pagos suman/);assert.match(ops,/Faltan confirmaciones/);
+  assert.match(ops,/Guardar y seguir después/);assert.match(ops,/pago mixto/i);assert.match(ops,/Los pagos suman/);assert.match(ops,/Faltan confirmaciones/);
   assert.match(ops,/function validate\(n\)/);assert.match(ops,/UI\(\)\.validateForm\(panel\)/);
 });
 test('Solo: app instalable en el celular, sin zoom y sin desplazar la página',()=>{
@@ -63,4 +63,19 @@ test('Solo: facturación agrupada por prestadora (facturado → cobrado) con res
   assert.match(fx,/invoiced_at:today\(\)/);assert.match(fx,/paid_at:new Date\(\)\.toISOString\(\)/);assert.match(fx,/\.in\('id',next\.rows\.map/);
   assert.match(fx,/addDays\(invoicedOn,client\.payment_days\)/,'vence según los días de pago');assert.match(fx,/'Vencido'/);
   assert.match(fx,/Resumen de servicios/);assert.match(fx,/navigator\.share/);assert.match(fx,/Confirmar \$\{next\.rows\.length\} remito/);
+});
+test('Solo: remito sin «Llegada», medios de pago con botones y firma con estados como en Flota',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.doesNotMatch(ops,/Llegué|<label>Llegada<\/label>/);
+  assert.match(ops,/class="pay-chip" data-m="\$\{k\}"/);assert.match(ops,/PAY_ICON=\{cash:'banknote'/);assert.match(ops,/No pagó/);
+  for(const t of ['Faltan conformidades','Falta la firma del socio','Falta la aclaración','Listo para finalizar','Sin firma','Firma registrada'])assert.ok(ops.includes(t),t);
+  assert.match(css,/\.conf-area\{flex:4 1 0/);assert.match(css,/\.pad-wrap\{flex:6 1 0/,'60% firma / 40% conformidades');
+  assert.match(ops,/pad\.width=Math\.round\(r0\.width\*dpr\)/,'el trazo no se deforma');
+  assert.match(ops,/Remito creado exitosamente/);assert.match(ops,/doneView\(box,s,cl,tp,tk\)/);assert.match(ops,/Enviar remito \(PDF\)/);
+});
+test('Solo: Gastos con total del mes, en qué se va la plata, movimientos por día y fijos',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.match(ops,/Gastaste en/);assert.match(ops,/\['categorias','En qué'\],\['movimientos','Movimientos'\],\['fijo','Fijos'\]/);
+  assert.match(ops,/sort\(\(p,q\)=>q\.t-p\.t\)/,'categorías de mayor a menor');assert.match(ops,/from\('solo_expenses'\)\.delete\(\)/);
+  assert.match(ops,/CAT_ICON=\{Combustible:'fuel'/);assert.match(ops,/notes:\$\('e-note'\)/);assert.match(ops,/Suma <b class="num">/);
 });

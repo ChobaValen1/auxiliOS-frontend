@@ -44,7 +44,7 @@ const BY_ID={'a-name':'name!','a-email':'email!','a-pass':'pass!','o-name':'name
   'o-client':'name','o-days':'days!','c-name':'name!','c-days':'days!','d-days':'days!','t-name':'name!',
   's-km':'km','s-tolls':'money','s-other':'money','s-manual':'moneypos','s-plate':'plate','s-mm':'text','s-orig':'text','s-dest':'text','s-order':'text','s-cname':'text','s-cdoc':'doc','s-cphone':'phone','s-date':'when!',
   'p1a':'money','sn':'name!','sd':'doc','obs':'text','e-amount':'moneypos!','e-date':'date!',
-  'n-manual':'money','r-date':'when!','r-order':'text','r-plate':'plate!','r-mm':'text','r-orig':'name!','r-dest':'name!','r-km':'km','r-cname':'name!','r-cdoc':'doc','r-cphone':'phone',
+  'n-manual':'money','r-date':'when!','r-order':'text','r-plate':'plate!','r-mm':'text','r-orig':'name!','r-dest':'name!','r-km':'km','r-cname':'name!','r-cdoc':'doc','r-cphone':'phone','r-cemail':'email','e-note':'text',
   'r-tolls':'money','r-exc':'money','r-wait':'money','r-other':'money','r-p1a':'money','r-p2a':'money','r-obs':'text','r-sn':'name!','r-sd':'doc'};
 function ruleFor(el){if(el.dataset.v)return el.dataset.v;const id=el.id||'';if(BY_ID[id])return BY_ID[id];
   if(/^[bp]-/.test(id))return 'money';if(/^k-/.test(id))return 'km';if(/^v-/.test(id))return 'date!';return '';}

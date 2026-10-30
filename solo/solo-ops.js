@@ -97,10 +97,12 @@ const UI=()=>window.SoloUI||{SKELETON:'',validateForm:()=>true,success(){},hapti
 /* ── Remito por pasos, igual que el del chofer en AuxiliOS Flota ── */
 const STEPS=['Servicio','Socio','Adicionales','Evidencia','Firma'];
 const SLOTS=[['frente','Frente del vehículo'],['lateral','Lateral'],['danos','Daños o estado adicional'],['odometro','Odómetro'],['extra1','Foto extra 1'],['extra2','Foto extra 2']];
-const CONF=[['conf_service','Conformidad con el servicio','El socio confirma que el servicio fue prestado correctamente',true],
-  ['conf_charges','Aceptación de cargos variables','Acepta peajes, excedentes y otros cargos detallados',true],
-  ['no_damage','Sin daños reportados','El vehículo fue entregado sin incidentes ni daños adicionales',true],
-  ['conf_tow','Conformidad de arrastre','Autorizo a arrastrar mi vehículo bajo mi exclusiva responsabilidad',false]];
+// Mismas conformidades que el remito del chofer en Flota; en pantalla va el nombre corto y el texto completo queda de ayuda.
+const CONF=[['conf_service','Conformidad con el servicio','El socio confirma que el servicio fue prestado correctamente',true,'Servicio conforme'],
+  ['conf_charges','Aceptación de cargos variables','Acepta peajes, excedentes y otros cargos detallados',true,'Acepta los cargos'],
+  ['no_damage','Sin daños reportados','El vehículo fue entregado sin incidentes ni daños adicionales',true,'Sin daños'],
+  ['conf_tow','Conformidad de arrastre','Autorizo a arrastrar mi vehículo bajo mi exclusiva responsabilidad',false,'Arrastre']];
+const PAY_ICON={cash:'banknote',transfer:'building-2',card:'credit-card',mercado_pago:'wallet',other:'ellipsis'};
 const extraOf=(s,name)=>Number((s.extras||[]).find(x=>x.name===name)?.amount)||0;
 
 views.servicio=async function(id,stepArg){
@@ -114,12 +116,12 @@ views.servicio=async function(id,stepArg){
     s.truck_id?C.db.from('solo_trucks').select('*').eq('id',s.truck_id).maybeSingle():Promise.resolve({data:null}),
     C.db.from('solo_rates').select('*').eq('client_id',s.client_id)]);
   if(s.status!=='open')return signedView(box,s,cl,tp,tk,id);
-  wizard(box,s,cl,tp,rates||[],Math.max(1,Math.min(5,Number(stepArg)||Number(sessionStorageGet('rm-step-'+id))||1)));
+  wizard(box,s,cl,tp,tk,rates||[],Math.max(1,Math.min(5,Number(stepArg)||Number(sessionStorageGet('rm-step-'+id))||1)));
 };
 function sessionStorageGet(k){try{return sessionStorage.getItem(k);}catch(e){return null;}}
 function sessionStorageSet(k,v){try{sessionStorage.setItem(k,v);}catch(e){}}
 
-function wizard(box,s,cl,tp,rates,step){
+function wizard(box,s,cl,tp,tk,rates,step){
   const particular=cl?.kind==='particular';
   const $=x=>document.getElementById(x),uid=C.user.id;
   let sigDirty=false;
@@ -130,48 +132,59 @@ function wizard(box,s,cl,tp,rates,step){
     <div id="rm-panels">
       <section class="rm-panel card" data-step="1" aria-label="Paso 1: Servicio">
         <!-- El N.º de remito lo pone el sistema: no se escribe. -->
-        <div class="grid2"><div class="field ${particular?'span2':''}"><label for="r-date">Fecha y hora</label><input id="r-date" type="datetime-local" value="${localDT(new Date(s.service_date))}"></div>
-        ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div>
-        <div class="grid2"><div class="field"><label for="r-plate">Patente</label><input id="r-plate" placeholder="AB 123 CD" value="${esc(s.plate||'')}"></div>
-        <div class="field"><label for="r-mm">Marca y modelo</label><input id="r-mm" placeholder="Ford Focus" value="${esc(s.make_model||'')}"></div></div>
-        <div class="field"><label for="r-orig">Origen</label><input id="r-orig" placeholder="Ciudad / dirección" value="${esc(s.origin||'')}"></div>
-        <div class="field"><label for="r-dest">Destino</label><input id="r-dest" placeholder="Ciudad / dirección" value="${esc(s.destination||'')}"></div>
-        <div class="grid2"><div class="field"><label for="r-km">Km recorridos</label><input id="r-km" placeholder="Ej.: 48" value="${s.km??''}"></div>
-        <div class="field"><label>Llegada</label>${s.arrived_at?`<input value="${esc(fmtDate(s.arrived_at))}" readonly>`:`<button class="btn block" type="button" id="arr">${icon('map-pin')} Llegué</button>`}</div></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('car')} Vehículo</span>
+          <div class="grid2"><div class="field"><label for="r-plate">Patente</label><input id="r-plate" placeholder="AB 123 CD" value="${esc(s.plate||'')}"></div>
+          <div class="field"><label for="r-mm">Marca y modelo</label><input id="r-mm" placeholder="Ford Focus" value="${esc(s.make_model||'')}"></div></div></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('route')} Recorrido</span>
+          <div class="route"><div class="route-ends"><div class="field"><label for="r-orig">Desde</label><input id="r-orig" placeholder="Ciudad / dirección" value="${esc(s.origin||'')}"></div>
+            <div class="field"><label for="r-dest">Hasta</label><input id="r-dest" placeholder="Ciudad / dirección" value="${esc(s.destination||'')}"></div></div>
+            <div class="field route-km"><label for="r-km">Km</label><input id="r-km" placeholder="0" value="${s.km??''}"></div></div></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('calendar')} Servicio</span>
+          <div class="grid2"><div class="field ${particular?'span2':''}"><label for="r-date">Fecha y hora</label><input id="r-date" type="datetime-local" value="${localDT(new Date(s.service_date))}"></div>
+          ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div></div>
         <button class="link danger" type="button" id="cancel">Anular servicio</button>
       </section>
       <section class="rm-panel card" data-step="2" aria-label="Paso 2: Socio" hidden>
-        <div class="field"><label for="r-cname">Nombre del socio / cliente</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
-        <div class="field"><label for="r-cdoc">DNI / CUIT</label><input id="r-cdoc" inputmode="numeric" placeholder="Ej.: 28.456.112" value="${esc(s.customer_doc||'')}"></div>
-        <div class="field"><label for="r-cphone">Teléfono de contacto</label><input id="r-cphone" type="tel" inputmode="tel" placeholder="Ej.: 11 2345 6789" value="${esc(s.customer_phone||'')}"><span class="help">Con característica, sin 0 ni 15.</span></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('user')} Quién recibe el servicio</span>
+          <div class="field"><label for="r-cname">Nombre del socio / cliente</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
+          <div class="field"><label for="r-cdoc">DNI / CUIT</label><input id="r-cdoc" inputmode="numeric" placeholder="Ej.: 28.456.112" value="${esc(s.customer_doc||'')}"></div></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('phone')} Contacto</span>
+          <div class="field"><label for="r-cphone">Teléfono</label><input id="r-cphone" type="tel" inputmode="tel" placeholder="Ej.: 11 2345 6789" value="${esc(s.customer_phone||'')}"><span class="help">Con característica, sin 0 ni 15.</span></div>
+          <div class="field"><label for="r-cemail">Email (opcional)</label><input id="r-cemail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Para mandarle el remito" value="${esc(s.customer_email||'')}"></div></div>
       </section>
       <section class="rm-panel card" data-step="3" aria-label="Paso 3: Adicionales" hidden>
-        <div class="grid2"><div class="field"><label for="r-tolls">Peajes $</label><input id="r-tolls" value="${extraOf(s,'Peajes')||''}"></div>
-        <div class="field"><label for="r-exc">Excedente km $</label><input id="r-exc" value="${extraOf(s,'Excedente')||''}"></div></div>
-        <div class="grid2"><div class="field"><label for="r-wait">Espera / maniobras $</label><input id="r-wait" value="${extraOf(s,'Espera')||''}"></div>
-        <div class="field"><label for="r-other">Otros $</label><input id="r-other" value="${Number(s.other_amount)||''}"></div></div>
-        <div id="r-total" class="card tight" style="background:var(--ax-surface)"></div>
-        <h2>Cobro en el lugar</h2>
-        <p class="hint" id="r-pay-hint"></p>
-        <div class="grid2"><div class="field"><label for="r-p1m">Medio de pago</label><select id="r-p1m"><option value="">${particular?'Elegí cómo pagó':'No pagó nada en el lugar'}</option>${Object.entries(PAY).map(([k,l])=>`<option value="${k}" ${s.payment_1_method===k?'selected':''}>${l}</option>`).join('')}</select></div>
-        <div class="field"><label for="r-p1a">Monto $</label><input id="r-p1a" value="${s.payment_1_amount??''}"></div></div>
-        <label class="toggle-row"><input type="checkbox" id="r-mixed" ${s.payment_2_method?'checked':''}> <span><b>Pago mixto</b><small>Pagó una parte con otro medio</small></span></label>
-        <div class="grid2" id="r-p2" ${s.payment_2_method?'':'hidden'}><div class="field"><label for="r-p2m">Segundo medio</label><select id="r-p2m">${Object.entries(PAY).map(([k,l])=>`<option value="${k}" ${s.payment_2_method===k?'selected':''}>${l}</option>`).join('')}</select></div>
-        <div class="field"><label for="r-p2a">Monto $</label><input id="r-p2a" value="${s.payment_2_amount??''}"></div></div>
-        <p id="r-pay-err" class="err" hidden></p>
+        <div class="rm-group"><span class="rm-glabel">${icon('plus')} Adicionales</span>
+          <div class="add-grid">${[['r-tolls','Peajes','route',extraOf(s,'Peajes')],['r-exc','Excedente km','gauge',extraOf(s,'Excedente')],['r-wait','Espera / maniobras','clock',extraOf(s,'Espera')],['r-other','Otros','ellipsis',Number(s.other_amount)]]
+            .map(([id,l,ic,v])=>`<label class="add-tile" for="${id}"><span class="add-name">${icon(ic)}${l}</span><span class="add-in"><i>$</i><input id="${id}" inputmode="decimal" placeholder="0" value="${v||''}"></span></label>`).join('')}</div></div>
+        <div id="r-total" class="total-card"></div>
+        <div class="rm-group"><span class="rm-glabel">${icon('wallet')} Cobro en el lugar <small id="r-pay-hint"></small></span>
+          <input type="hidden" id="r-p1m" value="${esc(s.payment_1_method||'')}">
+          <div class="pay-chips" id="r-p1chips" role="radiogroup" aria-label="Medio de pago">${particular?'':`<button type="button" class="pay-chip" data-m="" role="radio">${icon('ban')}<span>No pagó</span></button>`}${Object.entries(PAY).map(([k,l])=>`<button type="button" class="pay-chip" data-m="${k}" role="radio">${icon(PAY_ICON[k])}<span>${l}</span></button>`).join('')}</div>
+          <input type="checkbox" id="r-mixed" hidden ${s.payment_2_method?'checked':''}>
+          <div id="r-p2" class="pay-second" ${s.payment_2_method?'':'hidden'}><input type="hidden" id="r-p2m" value="${esc(s.payment_2_method||'')}">
+            <div class="row"><span class="hint">Segundo medio · pago mixto</span><button class="link" type="button" id="r-mixed-del">Quitar</button></div>
+            <div class="pay-chips small" id="r-p2chips" role="radiogroup" aria-label="Segundo medio de pago">${Object.entries(PAY).map(([k,l])=>`<button type="button" class="pay-chip" data-m="${k}" role="radio">${icon(PAY_ICON[k])}<span>${l}</span></button>`).join('')}</div></div>
+          <div class="pay-row" id="r-p1box" hidden><div class="field"><label for="r-p1a">En <span id="r-p1lbl"></span> $</label><input id="r-p1a" value="${s.payment_1_amount??''}"></div>
+            <button class="btn ghost" type="button" id="r-mixed-add">${icon('plus')} Otro medio</button>
+            <div class="field" id="r-p2abox"><label for="r-p2a">En <span id="r-p2lbl"></span> $</label><input id="r-p2a" value="${s.payment_2_amount??''}"></div></div>
+          <p id="r-pay-err" class="err" hidden></p></div>
       </section>
       <section class="rm-panel card" data-step="4" aria-label="Paso 4: Evidencia" hidden>
-        <p class="hint">Sacá las fotos del vehículo antes de cargarlo. Quedan guardadas con el remito.</p>
+        <span class="rm-glabel">${icon('camera')} Fotos del vehículo <small>antes de cargarlo</small></span>
         <div class="slots">${SLOTS.map(([k,l])=>`<label class="slot" data-slot="${k}"><input type="file" accept="image/*" capture="environment" hidden data-slot-in="${k}"><span class="slot-img"></span><span class="slot-label">${l}</span></label>`).join('')}</div>
-        <div class="field"><label for="r-obs">Observaciones</label><input id="r-obs" placeholder="Clima, demoras, estado del vehículo, notas del cliente…" value="${esc(s.notes||'')}"></div>
+        <div class="field"><label for="r-obs">Observaciones</label><input id="r-obs" placeholder="Clima, demoras, estado del vehículo…" value="${esc(s.notes||'')}"></div>
       </section>
-      <section class="rm-panel card" data-step="5" aria-label="Paso 5: Firma" hidden>
-        <div class="row"><h2>Conformidad del socio</h2><b class="num" id="r-conf-count"></b></div>
-        <div class="bar thin"><i id="r-conf-bar" style="--w:0%"></i></div>
-        <div class="stack">${CONF.map(([k,t,d,req])=>`<label class="toggle-row"><input type="checkbox" id="r-${k}" ${req?'checked':''} ${req?'data-req="1"':''}> <span><b>${t}${req?'':' <small>(opcional)</small>'}</b><small>${d}</small></span></label>`).join('')}</div>
-        <label class="toggle-row"><input type="checkbox" id="r-absent"> <span><b>Socio ausente (firma el chofer)</b><small>Activar si el titular no está presente para firmar</small></span></label>
-        <div class="pad-wrap"><span class="pad-title" id="r-sig-title">Firma digital del socio</span><canvas id="pad" tabindex="0" width="600" height="220" aria-label="Espacio para firmar"></canvas><span class="pad-hint" id="pad-hint">Dibujá con el dedo</span><button class="btn ghost pad-clear" type="button" id="clr">Limpiar</button></div>
-        <div class="grid2"><div class="field"><label for="r-sn">Aclaración</label><input id="r-sn" value="${esc(s.signer_name||s.customer_name||'')}"></div><div class="field"><label for="r-sd">DNI</label><input id="r-sd" inputmode="numeric" value="${esc(s.signer_doc||s.customer_doc||'')}"></div></div>
+      <section class="rm-panel card sign-panel" data-step="5" aria-label="Paso 5: Firma" hidden>
+        <div class="sig-state" id="r-sig-state" role="status" aria-live="polite"></div>
+        <div class="conf-area">
+          <div class="conf-grid">${CONF.map(([k,t,d,req,short])=>`<label class="conf" title="${esc(t+': '+d)}"><input type="checkbox" id="r-${k}" ${req?'checked data-req="1"':''}><span class="conf-box">${icon('check')}</span><span class="conf-t">${short}${req?'':' <small>opcional</small>'}</span></label>`).join('')}</div>
+          <label class="conf wide"><input type="checkbox" id="r-absent"><span class="conf-box">${icon('check')}</span><span class="conf-t">Socio ausente (firma el chofer)</span></label>
+        </div>
+        <div class="pad-wrap">
+          <div class="pad-head"><span class="pad-title" id="r-sig-title">Firma del socio</span><span class="pad-status" id="pad-status"><i></i><span>Sin firma</span></span><button class="pad-clear" type="button" id="clr">${icon('trash-2')} Limpiar</button></div>
+          <canvas id="pad" tabindex="0" width="600" height="300" aria-label="Espacio para firmar"></canvas><span class="pad-hint" id="pad-hint">Dibujá con el dedo</span>
+          <div class="pad-foot"><div class="field"><label for="r-sn">Aclaración</label><input id="r-sn" value="${esc(s.signer_name||s.customer_name||'')}"></div><div class="field"><label for="r-sd">DNI</label><input id="r-sd" inputmode="numeric" value="${esc(s.signer_doc||s.customer_doc||'')}"></div></div>
+        </div>
         <p id="r-sig-err" class="err" hidden></p>
       </section>
     </div>
@@ -183,13 +196,24 @@ function wizard(box,s,cl,tp,rates,step){
     const tolls=num($('r-tolls').value),exc=num($('r-exc').value),wait=num($('r-wait').value),other=num($('r-other').value);
     return {km,r,base:p.base,kmAmount:p.kmAmount,tolls,exc,wait,other,extras:tolls+exc+wait+other,total:p.base+p.kmAmount+tolls+exc+wait+other};}
   function paintTotal(){const t=totals();
-    $('r-total').innerHTML=(!particular&&!t.r?'<p class="err">Esta prestadora no tiene tarifa para este servicio. El total sale solo con los adicionales. <button class="link" type="button" id="r-rate">Cargar tarifa</button></p>':'')+
-      `<div class="row"><span><b>Total del servicio</b><span class="hint block">${[(particular?'Acordado ':'Base ')+money(t.base),t.kmAmount?Math.max(0,t.km-Number(t.r.included_km))+' km × '+money(t.r.per_km):'',t.extras?'adicionales '+money(t.extras):''].filter(Boolean).join(' + ')}</span></span><b class="num total-pop" style="color:var(--ax-accent);font-size:20px">${money(t.total)}</b></div>`;
+    const parts=[[particular?'Acordado':'Base',t.base],t.kmAmount?[Math.max(0,t.km-Number(t.r.included_km))+' km × '+money(t.r.per_km),t.kmAmount]:null,t.extras?['Adicionales',t.extras]:null].filter(Boolean);
+    $('r-total').innerHTML=(!particular&&!t.r?'<p class="err">Esta prestadora no tiene tarifa para este servicio. <button class="link" type="button" id="r-rate">Cargar tarifa</button></p>':'')+
+      `<div class="total-main"><span>Total del servicio</span><b class="num total-pop">${money(t.total)}</b></div><div class="total-parts">${parts.map(([l,v])=>`<span>${esc(l)} <b class="num">${money(v)}</b></span>`).join('<i>+</i>')}</div>`;
     $('r-rate')?.addEventListener('click',()=>go('cliente-'+s.client_id));
-    $('r-pay-hint').textContent=particular?'El particular paga el total en el lugar.':'Lo paga la prestadora. Cargá solo lo que el socio pagó acá.';
-    if(particular&&!$('r-p1a').value&&t.total)$('r-p1a').value=UI().moneyFmt?UI().moneyFmt(String(t.total)):t.total;}
+    $('r-pay-hint').textContent=particular?'· paga el total':'· solo lo que pagó el socio';
+    if(particular&&$('r-p1m').value&&!$('r-p1a').value&&t.total)$('r-p1a').value=UI().moneyFmt?UI().moneyFmt(String(t.total)):t.total;}
   ['r-km','r-tolls','r-exc','r-wait','r-other','r-date'].forEach(x=>$(x).addEventListener('input',paintTotal));
-  $('r-mixed').addEventListener('change',()=>{$('r-p2').hidden=!$('r-mixed').checked;});
+  // ── Medio de pago con botones (el valor queda en r-p1m / r-p2m) ──
+  function payUI(){const m1=$('r-p1m').value,mixed=$('r-mixed').checked&&!!m1,m2=$('r-p2m').value;
+    $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>{const on=b.dataset.m===m1&&(m1||!particular);b.setAttribute('aria-checked',String(on));});
+    $('r-p1box').hidden=!m1;$('r-p1lbl').textContent=(PAY[m1]||'').toLowerCase();
+    $('r-mixed').checked=mixed;$('r-p2').hidden=!mixed;$('r-mixed-add').hidden=mixed;$('r-p2abox').hidden=!mixed;$('r-p2lbl').textContent=(PAY[m2]||'el segundo medio').toLowerCase();
+    $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>{b.disabled=b.dataset.m===m1;b.setAttribute('aria-checked',String(b.dataset.m===m2&&m2!==m1));});}
+  $('r-p1chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p1m').value=b.dataset.m;UI().haptic(6);
+    if(b.dataset.m===$('r-p2m').value)$('r-p2m').value='';payUI();paintTotal();if(b.dataset.m)setTimeout(()=>$('r-p1a').focus({preventScroll:true}),40);$('r-pay-err').hidden=true;});
+  $('r-p2chips').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('r-p2m').value=b.dataset.m;UI().haptic(6);payUI();$('r-pay-err').hidden=true;});
+  $('r-mixed-add').onclick=()=>{$('r-mixed').checked=true;payUI();};
+  $('r-mixed-del').onclick=()=>{$('r-mixed').checked=false;$('r-p2m').value='';$('r-p2a').value='';payUI();};
 
   // ── Validación de cada paso (misma lógica que Flota) ──
   function validate(n){const panel=box.querySelector(`.rm-panel[data-step="${n}"]`);
@@ -199,17 +223,18 @@ function wizard(box,s,cl,tp,rates,step){
       if(t.total<=0)return fail('El total del servicio no puede ser cero.');
       if(particular&&!m1)return fail('Elegí cómo pagó el particular.');
       if(m1&&a1<=0)return fail('Poné el monto que pagó con '+PAY[m1].toLowerCase()+'.');
-      if(mixed&&(!a2||$('r-p2m').value===m1))return fail('En pago mixto, el segundo medio tiene que ser distinto y con monto.');
+      if(mixed&&(!$('r-p2m').value||!a2||$('r-p2m').value===m1))return fail('En pago mixto, elegí el segundo medio (distinto del primero) y su monto.');
       if(particular&&Math.round(a1+a2)!==Math.round(t.total))return fail('Los pagos suman '+money(a1+a2)+' y el total es '+money(t.total)+'.');
       if(!particular&&a1+a2>t.total)return fail('Lo cobrado no puede superar el total del servicio.');}
     if(n===5){const er=$('r-sig-err');er.hidden=true;const absent=$('r-absent').checked;
       const missing=CONF.filter(c=>c[3]&&!$('r-'+c[0]).checked);
-      if(!absent&&missing.length){er.textContent='Faltan confirmaciones: '+missing.map(c=>c[1].toLowerCase()).join(', ')+'.';er.hidden=false;UI().haptic([20,40,20]);return false;}
-      if(!sigDirty){er.textContent=absent?'Falta la firma del chofer.':'Falta la firma del socio.';er.hidden=false;$('pad').classList.add('pad-err');UI().haptic([20,40,20]);return false;}}
+      // Mismos avisos que en Flota: primero las conformidades, después la firma.
+      if(!absent&&missing.length){er.textContent='Faltan confirmaciones: '+missing.map(c=>c[1].toLowerCase()).join(', ')+'.';er.hidden=false;sigState(true);UI().haptic([20,40,20]);return false;}
+      if(!sigDirty){er.textContent=absent?'Falta la firma del chofer.':'Falta la firma del socio.';er.hidden=false;$('pad').classList.add('pad-err');sigState(true);UI().haptic([20,40,20]);return false;}}
     return true;}
   function patchFor(n){const t=totals();
     if(n===1)return {service_date:new Date($('r-date').value||s.service_date).toISOString(),provider_order:$('r-order')?($('r-order').value.trim()||null):null,plate:$('r-plate').value.trim().toUpperCase()||null,make_model:$('r-mm').value.trim()||null,origin:$('r-orig').value.trim()||null,destination:$('r-dest').value.trim()||null,km:t.km||null,base_amount:t.base,km_amount:t.kmAmount,total:t.total};
-    if(n===2)return {customer_name:$('r-cname').value.trim()||null,customer_doc:$('r-cdoc').value.trim()||null,customer_phone:$('r-cphone').value.trim()||null};
+    if(n===2)return {customer_name:$('r-cname').value.trim()||null,customer_doc:$('r-cdoc').value.trim()||null,customer_phone:$('r-cphone').value.trim()||null,customer_email:$('r-cemail').value.trim()||null};
     if(n===3){const m1=$('r-p1m').value||null,mixed=$('r-mixed').checked;return {extras:[['Peajes',t.tolls],['Excedente',t.exc],['Espera',t.wait]].filter(x=>x[1]).map(([name,amount])=>({name,amount})),tolls:t.tolls?[{name:'Peajes',amount:t.tolls}]:[],
       other_amount:t.other,extras_amount:t.extras,base_amount:t.base,km_amount:t.kmAmount,total:t.total,payment_1_method:m1,payment_1_amount:m1?num($('r-p1a').value):null,
       payment_2_method:mixed?$('r-p2m').value:null,payment_2_amount:mixed?num($('r-p2a').value):null};}
@@ -226,7 +251,7 @@ function wizard(box,s,cl,tp,rates,step){
       li.querySelector('.rm-num').textContent=i<n?'✓':i;});
     box.querySelector('.rm-counter').textContent='Paso '+n+' de 5 · '+STEPS[n-1];
     $('r-back').hidden=n===1;$('r-later').hidden=n!==1;$('r-next').innerHTML=n===5?icon('check')+' Finalizar':'Siguiente '+icon('chevron-right');
-    if(n===3)paintTotal();if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();paintConf();}
+    if(n===3){payUI();paintTotal();}if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();sigState();}
     if(prev)$('rm-panels').scrollTop=0;}
   $('r-back').onclick=()=>{if(current>1)show(current-1,-1);};
   // Cerrar guarda lo que haya en el paso actual (sin exigir que esté completo) y vuelve a Servicios.
@@ -234,8 +259,6 @@ function wizard(box,s,cl,tp,rates,step){
   $('r-later').onclick=async()=>{if(!UI().validateForm(box.querySelector('.rm-panel[data-step="1"]')))return;if(await save(1)){toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');}};
   $('r-next').onclick=async()=>{const b=$('r-next');if(b.disabled)return;if(!validate(current))return;b.disabled=true;
     try{if(!(await save(current)))return;if(current<5){show(current+1,1);UI().haptic(8);}else await finish();}finally{b.disabled=false;}};
-  $('arr')?.addEventListener('click',async()=>{const at=new Date().toISOString();const {error}=await C.db.from('solo_services').update({arrived_at:at}).eq('id',s.id);
-    if(error)return toast(errText(error));s.arrived_at=at;$('arr').outerHTML=`<input value="${esc(fmtDate(at))}" readonly>`;toast('Llegada marcada '+fmtDate(at).split(' ')[1]);UI().success();});
   $('cancel').onclick=async()=>{const b=$('cancel');if(b.dataset.sure!=='1'){b.dataset.sure='1';b.textContent='Tocá de nuevo para anular';b.style.color='var(--ax-danger)';return;}
     const {error}=await C.db.from('solo_services').update({status:'cancelled'}).eq('id',s.id);toast(error?errText(error):'Servicio anulado');if(!error)go('servicios');};
 
@@ -250,20 +273,30 @@ function wizard(box,s,cl,tp,rates,step){
     const up=await C.db.from('solo_services').update({photos:paths}).eq('id',s.id);sl.classList.remove('loading');if(up.error)return toast(errText(up.error));
     s.photos=paths;paintSlots();UI().success();}));
 
-  // ── Paso 5: conformidades y firma con el dedo ──
-  function paintConf(){const req=CONF.filter(c=>c[3]),ok=req.filter(c=>$('r-'+c[0]).checked).length,absent=$('r-absent').checked;
-    $('r-conf-count').textContent=absent?'Socio ausente':ok+' / '+req.length;$('r-conf-bar').style.setProperty('--w',(absent?100:ok/req.length*100)+'%');
-    $('r-sig-title').textContent=absent?'Firma del chofer':'Firma digital del socio';}
-  box.querySelectorAll('[id^="r-conf_"],#r-no_damage,#r-absent').forEach(x=>x.addEventListener('change',paintConf));
-  $('r-absent').addEventListener('change',()=>{if($('r-absent').checked){$('r-sn').value=C.profile.full_name;$('r-sd').value='';}else{$('r-sn').value=s.customer_name||'';$('r-sd').value=s.customer_doc||'';}});
+  // ── Paso 5: conformidades y firma con el dedo, con el estado siempre a la vista ──
+  function sigState(strong){const absent=$('r-absent').checked,missing=CONF.filter(c=>c[3]&&!$('r-'+c[0]).checked),name=$('r-sn').value.trim();
+    const st=!absent&&missing.length?['warn','circle-alert','Faltan conformidades',missing.map(c=>c[4].toLowerCase()).join(', ')]
+      :!sigDirty?['warn','signature',absent?'Falta la firma del chofer':'Falta la firma del socio','Que firme en el recuadro blanco']
+      :name.length<2?['warn','pencil','Falta la aclaración','Nombre de quien firma']
+      :['ok','circle-check','Listo para finalizar',absent?'Firma el chofer · socio ausente':'Firmado por '+name];
+    const el=$('r-sig-state');el.dataset.state=st[0];el.classList.toggle('strong',!!strong&&st[0]!=='ok');
+    el.innerHTML=`${icon(st[1])}<span><b>${esc(st[2])}</b><small>${esc(st[3])}</small></span>`;
+    $('pad-status').dataset.on=String(sigDirty);$('pad-status').querySelector('span').textContent=sigDirty?'Firma registrada':'Sin firma';
+    $('r-sig-title').textContent=absent?'Firma del chofer':'Firma del socio';
+    $('r-next').classList.toggle('ready',st[0]==='ok');}
+  box.querySelectorAll('.conf input').forEach(x=>x.addEventListener('change',()=>{UI().haptic(6);$('r-sig-err').hidden=true;sigState();}));
+  ['r-sn','r-sd'].forEach(x=>$(x).addEventListener('input',()=>sigState()));
+  $('r-absent').addEventListener('change',()=>{if($('r-absent').checked){$('r-sn').value=C.profile.full_name;$('r-sd').value='';}else{$('r-sn').value=s.customer_name||'';$('r-sd').value=s.customer_doc||'';}sigState();});
   let padReady=false;
-  function initPad(){if(padReady)return;padReady=true;const pad=$('pad'),ctx=pad.getContext('2d');let drawing=false;ctx.lineWidth=3.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111';
+  function initPad(){if(padReady)return;padReady=true;const pad=$('pad');
+    // El lienzo toma el tamaño real del recuadro (60% de la pantalla) para que el trazo no se deforme.
+    const r0=pad.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);if(r0.width>0&&r0.height>0){pad.width=Math.round(r0.width*dpr);pad.height=Math.round(r0.height*dpr);}
+    const ctx=pad.getContext('2d');let drawing=false;ctx.lineWidth=2.6*dpr;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111';
     const pos=e=>{const r=pad.getBoundingClientRect();return [(e.clientX-r.left)*pad.width/r.width,(e.clientY-r.top)*pad.height/r.height];};
-    pad.addEventListener('focus',()=>pad.scrollIntoView({block:'center'}));
-    pad.addEventListener('pointerdown',e=>{drawing=true;if(!sigDirty){sigDirty=true;$('pad-hint').hidden=true;pad.classList.remove('pad-err');}pad.setPointerCapture(e.pointerId);const [x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);});
+    pad.addEventListener('pointerdown',e=>{drawing=true;if(!sigDirty){sigDirty=true;$('pad-hint').hidden=true;pad.classList.remove('pad-err');$('r-sig-err').hidden=true;}pad.setPointerCapture(e.pointerId);const [x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);});
     pad.addEventListener('pointermove',e=>{if(!drawing)return;const [x,y]=pos(e);ctx.lineTo(x,y);ctx.stroke();});
-    ['pointerup','pointercancel'].forEach(t=>pad.addEventListener(t,()=>{drawing=false;}));
-    $('clr').onclick=()=>{ctx.clearRect(0,0,pad.width,pad.height);sigDirty=false;$('pad-hint').hidden=false;};}
+    ['pointerup','pointercancel'].forEach(t=>pad.addEventListener(t,()=>{if(drawing){drawing=false;sigState();}}));
+    $('clr').onclick=()=>{ctx.clearRect(0,0,pad.width,pad.height);sigDirty=false;$('pad-hint').hidden=false;sigState();};}
   async function finish(){const pad=$('pad'),er=$('r-sig-err');
     const blob=await new Promise(r=>pad.toBlob(r,'image/png'));const path=uid+'/signatures/'+s.id+'.png';
     const up=await C.db.storage.from('solo_files').upload(path,blob,{contentType:'image/png',upsert:true});
@@ -274,8 +307,25 @@ function wizard(box,s,cl,tp,rates,step){
     const paidHere=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);if(particular&&paidHere>=Number(s.total))patch.paid_at=now;
     const {error}=await C.db.from('solo_services').update(patch).eq('id',s.id);if(error){er.textContent=errText(error);er.hidden=false;return;}
     try{sessionStorage.removeItem('rm-step-'+s.id);}catch(e){}
-    UI().success();toast('Remito firmado');views.servicio(s.id);}
+    Object.assign(s,patch);UI().success();doneView(box,s,cl,tp,tk);}
   show(step,1);
+}
+/* ── Remito terminado: confirmación y, abajo, la opción de enviarlo ── */
+function doneView(box,s,cl,tp,tk){
+  const paid=s.paid_at?'Cobrado en el lugar':cl?.kind==='particular'?'Falta cobrar':'Queda para facturar a '+(cl?.name||'la prestadora');
+  box.innerHTML=`<div class="done" role="status">
+      <div class="done-mark" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
+      <h1>Remito creado exitosamente</h1>
+      <p class="sub">N.º ${s.remito_number} · ${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')}</p>
+      <div class="card tight done-card"><div class="row"><span class="hint">Total</span><b class="num" style="color:var(--ax-accent);font-size:22px">${money(s.total)}</b></div>
+        <div class="row"><span class="hint">Firmó</span><span class="ell">${esc(s.signer_name||'')}${s.customer_present===false?' (chofer)':''}</span></div>
+        <div class="row"><span class="hint">Cobro</span><span>${esc(paid)}</span></div></div>
+    </div>
+    <div class="done-actions"><button class="btn pri block" type="button" id="share">${icon('share-2')} Enviar remito (PDF)</button>
+      <div class="split"><button class="btn" type="button" id="see">${icon('file-text')} Ver remito</button><button class="btn" type="button" id="fin">${icon('check')} Listo</button></div></div>`;
+  document.getElementById('share').onclick=()=>sharePdf(s,cl,tp,tk);
+  document.getElementById('see').onclick=()=>views.servicio(s.id);
+  document.getElementById('fin').onclick=()=>go('servicios');
 }
 function rateForAt(rates,clientId,typeId,when){return rateFor(rates,clientId,typeId,when);}
 
@@ -326,48 +376,101 @@ async function sharePdf(s,cl,tp,tk){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();toast('PDF descargado');
 }
 
-/* ── Gastos: resumen del mes y lista; el alta va en su propia pantalla ── */
+/* ── Gastos: cuánto gastaste en el mes, en qué y cada movimiento; el alta va en su propia pantalla ── */
+const CAT_ICON={Combustible:'fuel',Taller:'wrench',Repuestos:'package',Cubiertas:'disc',Peajes:'route',Comida:'receipt',Lavado:'refresh-cw',
+  Seguro:'shield-check',Patente:'file-text',Monotributo:'receipt',VTV:'clipboard-check','GPS / celular':'phone','Cuota de la grúa':'truck',Otro:'ellipsis'};
+const catIcon=c=>icon(CAT_ICON[c]||'receipt');
+const dayLabel=iso=>{const t=isoDate(new Date()),y=isoDate(new Date(Date.now()-864e5));if(iso===t)return 'Hoy';if(iso===y)return 'Ayer';
+  return new Date(iso+'T12:00:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'numeric'}).replace(/^./,c=>c.toUpperCase());};
 views.gastos=async function(mode){
   if(String(mode||'').startsWith('nuevo'))return gastoNuevo(mode==='nuevo-fijo'?'fixed':'variable');
-  const tab=mode==='fijo'?'fixed':'variable';
-  shell(`<div class="top"><h1 class="grow">Gastos · ${esc(monthName(C.month))}</h1><button class="btn pri" type="button" id="add">${icon('plus')} Gasto</button></div>
-    <div id="ex-sum" class="split"><div class="mini"><span>Del día</span><b class="num">…</b></div><div class="mini"><span>Fijos del mes</span><b class="num">…</b></div></div>
-    <div class="seg" role="group" aria-label="Qué gastos ver"><button type="button" data-k="variable" aria-pressed="${tab==='variable'}">Del día</button><button type="button" data-k="fixed" aria-pressed="${tab==='fixed'}">Fijos</button></div>
-    <div id="el" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'gastos');
+  const tab=['movimientos','fijo'].includes(mode)?mode:'categorias';
+  const mName=monthName(C.month).split(' ')[0].toLowerCase();
+  shell(`<div class="top"><h1 class="grow">Gastos</h1>
+      <div class="mnav"><button class="btn ghost icon-btn" type="button" id="m-prev" aria-label="Mes anterior">${icon('chevron-left')}</button><span class="mnav-t">${esc(monthName(C.month))}</span><button class="btn ghost icon-btn" type="button" id="m-next" aria-label="Mes siguiente">${icon('chevron-right')}</button></div></div>
+    <section class="ex-hero" aria-label="Total gastado">
+      <span class="ex-label">Gastaste en ${esc(mName)}</span>
+      <b class="ex-total num" id="ex-total">$ 0</b>
+      <div class="ex-split"><span><i class="dot var"></i>Del día <b class="num" id="ex-var">…</b></span><span><i class="dot fix"></i>Fijos del mes <b class="num" id="ex-fix">…</b></span></div>
+      <div class="ex-bar" aria-hidden="true"><i class="var" id="ex-bv"></i><i class="fix" id="ex-bf"></i></div>
+    </section>
+    <div class="seg" role="group" aria-label="Qué ver">${[['categorias','En qué'],['movimientos','Movimientos'],['fijo','Fijos']].map(([k,l])=>`<button type="button" data-t="${k}" aria-pressed="${tab===k}">${l}</button>`).join('')}</div>
+    <div id="el" class="stack fill">${UI().SKELETON}</div>
+    <button class="btn pri block" type="button" id="add">${icon('plus')} Cargar gasto</button>`,'gastos');
   const $=x=>document.getElementById(x);
-  $('add').onclick=()=>go(tab==='fixed'?'gastos-nuevo-fijo':'gastos-nuevo');
-  app().querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>go(b.dataset.k==='fixed'?'gastos-fijo':'gastos'));
+  $('add').onclick=()=>go(tab==='fijo'?'gastos-nuevo-fijo':'gastos-nuevo');
+  $('m-prev').onclick=()=>{const m=C.month;C.month=new Date(m.getFullYear(),m.getMonth()-1,1);views.gastos(mode);};
+  $('m-next').onclick=()=>{const m=C.month;C.month=new Date(m.getFullYear(),m.getMonth()+1,1);views.gastos(mode);};
+  app().querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>go(b.dataset.t==='categorias'?'gastos':'gastos-'+b.dataset.t));
   const [a,z]=range();
-  const [{data:vars},{data:fixed}]=await Promise.all([
-    C.db.from('solo_expenses').select('*').eq('kind','variable').gte('spent_on',isoDate(a)).lt('spent_on',isoDate(z)).order('spent_on',{ascending:false}),
+  const [{data:vars,error},{data:fixed}]=await Promise.all([
+    C.db.from('solo_expenses').select('*').eq('kind','variable').gte('spent_on',isoDate(a)).lt('spent_on',isoDate(z)).order('spent_on',{ascending:false}).order('created_at',{ascending:false}),
     C.db.from('solo_expenses').select('*').eq('kind','fixed').lt('spent_on',isoDate(z)).order('spent_on',{ascending:false})]);
-  const active=(fixed||[]).filter(x=>{const end=new Date(x.spent_on+'T00:00:00');end.setMonth(end.getMonth()+x.period_months);return end>a&&(!x.ends_on||x.ends_on>=isoDate(a));});
-  const tv=(vars||[]).reduce((t,x)=>t+Number(x.amount),0),tf=active.reduce((t,x)=>t+Number(x.amount)/x.period_months,0);
   const el=$('el');if(!el)return;
-  $('ex-sum').innerHTML=`<div class="mini"><span>Del día</span><b class="num">${money(tv)}</b></div><div class="mini"><span>Fijos del mes</span><b class="num">${money(tf)}</b></div>`;
-  el.innerHTML=tab==='fixed'
-    ?active.map(x=>`<div class="item static"><div class="row"><b>${esc(x.category)}</b><b class="num">${money(Number(x.amount)/x.period_months)}</b></div><span class="hint">${money(x.amount)} cada ${x.period_months} ${x.period_months>1?'meses':'mes'} · pagado ${esc(x.spent_on.split('-').reverse().join('/'))}</span></div>`).join('')||'<div class="empty">Todavía no cargaste gastos fijos (seguro, patente, monotributo…).</div>'
-    :(vars||[]).map(x=>`<div class="item static"><div class="row"><b>${esc(x.category)}</b><b class="num">${money(x.amount)}</b></div><span class="hint">${esc(x.spent_on.split('-').reverse().join('/'))}</span></div>`).join('')||'<div class="empty">Sin gastos del día en este mes.</div>';
+  if(error){el.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
+  const endOf=x=>{const d=new Date(x.spent_on+'T00:00:00');d.setMonth(d.getMonth()+x.period_months);return d;};
+  const active=(fixed||[]).filter(x=>endOf(x)>a&&(!x.ends_on||x.ends_on>=isoDate(a)));
+  const monthly=x=>Number(x.amount)/x.period_months;
+  const tv=(vars||[]).reduce((t,x)=>t+Number(x.amount),0),tf=active.reduce((t,x)=>t+monthly(x),0),tt=tv+tf;
+  UI().countUp($('ex-total'),tt);$('ex-var').textContent=money(tv);$('ex-fix').textContent=money(tf);
+  $('ex-bv').style.flexGrow=tt?tv:1;$('ex-bf').style.flexGrow=tt?tf:0;if(!tt)$('ex-bv').classList.add('none');
+  // En qué: una fila por categoría, de mayor a menor, con su parte del total.
+  if(tab==='categorias'){
+    const by={};(vars||[]).forEach(x=>{const k=x.category;by[k]=by[k]||{c:k,t:0,n:0,fixed:false};by[k].t+=Number(x.amount);by[k].n++;});
+    active.forEach(x=>{const k=x.category+'\u0000f';by[k]=by[k]||{c:x.category,t:0,n:0,fixed:true};by[k].t+=monthly(x);by[k].n++;});
+    const rows=Object.values(by).sort((p,q)=>q.t-p.t),max=rows[0]?.t||1;
+    el.innerHTML=rows.map(r=>`<div class="ex-cat"><span class="ex-ico">${catIcon(r.c)}</span>
+        <div class="ex-cat-main"><div class="row"><b class="ell">${esc(r.c)}${r.fixed?' <small class="tag">fijo</small>':''}</b><b class="num">${money(r.t)}</b></div>
+        <div class="ex-cat-bar ${r.fixed?'fix':''}"><i style="--w:${Math.max(3,Math.round(r.t/max*100))}%"></i></div>
+        <span class="hint">${Math.round(r.t/(tt||1)*100)}% del mes · ${r.n} ${r.fixed?'pago'+(r.n>1?'s':''):'gasto'+(r.n>1?'s':'')}</span></div></div>`).join('')
+      ||`<div class="empty">${icon('wallet','empty-ico')}<b>Sin gastos en ${esc(mName)}</b><span>Cargá combustible, taller o peajes en dos toques.</span></div>`;
+  }
+  // Movimientos: los gastos del día agrupados por fecha; se borran con dos toques.
+  if(tab==='movimientos'){
+    const days={};(vars||[]).forEach(x=>{(days[x.spent_on]=days[x.spent_on]||[]).push(x);});
+    el.innerHTML=Object.entries(days).map(([d,xs])=>`<div class="ex-day"><div class="row ex-day-h"><span>${esc(dayLabel(d))}</span><span class="num">${money(xs.reduce((t,x)=>t+Number(x.amount),0))}</span></div>
+      ${xs.map(x=>`<div class="ex-mov"><span class="ex-ico">${catIcon(x.category)}</span><span class="ex-mov-t"><b>${esc(x.category)}</b>${x.notes?`<span class="hint ell">${esc(x.notes)}</span>`:''}</span><b class="num">${money(x.amount)}</b><button class="btn ghost icon-btn ex-del" type="button" data-del="${x.id}" aria-label="Borrar gasto de ${esc(x.category)}">${icon('trash-2')}</button></div>`).join('')}</div>`).join('')
+      ||`<div class="empty">${icon('receipt','empty-ico')}<b>Sin movimientos en ${esc(mName)}</b><span>Los gastos del día aparecen acá, agrupados por fecha.</span></div>`;
+  }
+  // Fijos: lo que suma por mes y hasta cuándo cubre cada pago.
+  if(tab==='fijo'){
+    el.innerHTML=active.map(x=>{const end=endOf(x),total=x.period_months,left=Math.max(0,Math.round((end-a)/(30.44*864e5))),used=Math.min(total,Math.max(1,total-left+1));
+      return `<div class="ex-fix-row"><span class="ex-ico">${catIcon(x.category)}</span><div class="ex-cat-main"><div class="row"><b class="ell">${esc(x.category)}</b><b class="num">${money(monthly(x))}<small>/mes</small></b></div>
+        <div class="ex-cat-bar fix"><i style="--w:${Math.round(used/total*100)}%"></i></div>
+        <span class="hint">${money(x.amount)} por ${total} ${total>1?'meses':'mes'} · cubre hasta ${esc(end.toLocaleDateString('es-AR',{month:'short',year:'numeric'}))}</span></div>
+        <button class="btn ghost icon-btn ex-del" type="button" data-del="${x.id}" aria-label="Borrar gasto fijo ${esc(x.category)}">${icon('trash-2')}</button></div>`;}).join('')
+      ||`<div class="empty">${icon('shield-check','empty-ico')}<b>Sin gastos fijos</b><span>Seguro, patente, monotributo: cargalos una vez y se reparten solos por mes.</span></div>`;
+  }
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{if(b.dataset.sure!=='1'){b.dataset.sure='1';b.classList.add('sure');b.setAttribute('aria-label','Tocá de nuevo para borrar');UI().haptic(10);setTimeout(()=>{b.dataset.sure='';b.classList.remove('sure');},3000);return;}
+    const {error}=await C.db.from('solo_expenses').delete().eq('id',b.dataset.del);toast(error?errText(error):'Gasto borrado');if(!error)views.gastos(mode);});
 };
 function gastoNuevo(kind){
+  const fixed=kind==='fixed';
   shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Nuevo gasto</h1></div>
-    <form id="ex" class="card fill-card" novalidate>
-      <div class="seg" role="group" aria-label="Tipo de gasto"><button type="button" data-k="variable" aria-pressed="${kind==='variable'}">Del día</button><button type="button" data-k="fixed" aria-pressed="${kind==='fixed'}">Fijo</button></div>
-      <div class="field"><label for="e-amount">Monto $</label><input id="e-amount" class="big-input" inputmode="decimal" placeholder="0"></div>
-      <div class="field"><label>Categoría</label><div class="chips" id="e-cats">${CATS[kind].map((c,i)=>`<button class="chip" type="button" data-c="${esc(c)}" aria-pressed="${i===0}">${esc(c)}</button>`).join('')}</div></div>
-      <div class="grid2"><div class="field ${kind==='fixed'?'':'span2'}"><label for="e-date">${kind==='fixed'?'Pagado el':'Fecha'}</label><input id="e-date" type="date" value="${isoDate(new Date())}"></div>
-      ${kind==='fixed'?'<div class="field"><label for="e-period">Cubre</label><select id="e-period"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12" selected>12 meses</option></select></div>':''}</div>
-      ${kind==='fixed'?'<p class="hint">Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.</p>':''}
-      <p id="e-err" class="err" hidden></p><button class="btn pri block push" type="submit">Guardar gasto</button></form>`,'gastos',{bare:true});
+    <form id="ex" class="ex-form" novalidate>
+      <div class="seg" role="group" aria-label="Tipo de gasto"><button type="button" data-k="variable" aria-pressed="${!fixed}">Del día</button><button type="button" data-k="fixed" aria-pressed="${fixed}">Fijo</button></div>
+      <div class="ex-amount field"><label for="e-amount">${fixed?'Cuánto pagaste':'Cuánto gastaste'}</label><div class="ex-amount-in"><span>$</span><input id="e-amount" inputmode="decimal" placeholder="0" autocomplete="off"></div></div>
+      <div class="field"><label>Categoría</label><div class="ex-cats" id="e-cats">${CATS[kind].map((c,i)=>`<button class="ex-cat-btn" type="button" data-c="${esc(c)}" aria-pressed="${i===0}">${catIcon(c)}<span>${esc(c)}</span></button>`).join('')}</div></div>
+      <div class="grid2"><div class="field ${fixed?'':'span2'}"><label for="e-date">${fixed?'Pagado el':'Fecha'}</label><input id="e-date" type="date" value="${isoDate(new Date())}"></div>
+      ${fixed?'<div class="field"><label for="e-period">Cubre</label><select id="e-period"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12" selected>12 meses</option></select></div>':''}</div>
+      <div class="field"><label for="e-note">Detalle (opcional)</label><input id="e-note" placeholder="${fixed?'Ej.: póliza La Segunda':'Ej.: YPF Ruta 3, cambio de aceite'}"></div>
+      <p class="hint" id="e-per" ${fixed?'':'hidden'}></p>
+      <p id="e-err" class="err" hidden></p>
+      <button class="btn pri block push" type="submit">${icon('check')} Guardar gasto</button></form>`,'gastos',{bare:true});
   const $=x=>document.getElementById(x);let cat=CATS[kind][0];
-  $('back').onclick=()=>go(kind==='fixed'?'gastos-fijo':'gastos');
+  $('back').onclick=()=>go(fixed?'gastos-fijo':'gastos');
   app().querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>go(b.dataset.k==='fixed'?'gastos-nuevo-fijo':'gastos-nuevo'));
   $('e-cats').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;UI().haptic(6);$('e-cats').querySelectorAll('[data-c]').forEach(x=>x.setAttribute('aria-pressed',x===b));});
+  // En los fijos se ve al instante cuánto suma por mes.
+  const per=()=>{if(!fixed)return;const v=num($('e-amount').value),m=Number($('e-period').value);$('e-per').innerHTML=v?`Suma <b class="num">${money(v/m)}</b> por mes durante ${m} ${m>1?'meses':'mes'}.`:'Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.';};
+  // El monto grande achica la letra a medida que crece, para que siempre entre entero.
+  const fitAmount=()=>{const n=$('e-amount').value.length;$('e-amount').style.fontSize=Math.max(26,44-Math.max(0,n-6)*4)+'px';};
+  $('e-amount').addEventListener('input',()=>{per();fitAmount();});$('e-period')?.addEventListener('change',per);per();
   setTimeout(()=>$('e-amount')?.focus(),60);
   $('ex').onsubmit=async e=>{e.preventDefault();const er=$('e-err');er.hidden=true;const amount=num($('e-amount').value);
-    if(amount<=0){er.textContent='Poné el monto del gasto.';er.hidden=false;return;}
-    const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:kind==='fixed'?Number($('e-period').value):null};
+    if(amount<=0){er.textContent='Poné el monto del gasto.';er.hidden=false;UI().haptic([20,40,20]);$('e-amount').focus();return;}
+    const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:fixed?Number($('e-period').value):null,notes:$('e-note').value.trim()||null};
     const {error}=await C.db.from('solo_expenses').insert(row);if(error){er.textContent=errText(error);er.hidden=false;return;}
-    UI().success();toast('Gasto guardado');go(kind==='fixed'?'gastos-fijo':'gastos');};
+    UI().success();toast('Gasto guardado');go(fixed?'gastos-fijo':'gastos-movimientos');};
 }
 })();
