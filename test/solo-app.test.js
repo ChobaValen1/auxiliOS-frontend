@@ -104,7 +104,7 @@ test('Solo: «Remito creado» con patente, N.º de servicio y cliente, y el desg
 test('Solo: foto del ticket en los gastos y avisos de cobro en Inicio',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');
   assert.match(ops,/id="e-file"/);assert.match(ops,/C\.user\.id\+'\/receipts\/'/,'el ticket va en la carpeta del gruero');assert.match(ops,/receipt_path\};/);
-  assert.match(ops,/data-receipt=/);assert.match(ops,/function showReceipt/);assert.match(ops,/await shrink\(ticket\)/);
+  assert.match(ops,/showReceipt\(x\.receipt_path\)/);assert.match(ops,/function showReceipt/);assert.match(ops,/await shrink\(ticket\)/);
   assert.match(fx,/async function alerts\(\)/);assert.match(fx,/\.eq\('status','signed'\)\.is\('paid_at',null\)/);
   assert.match(fx,/addDays\(s\.invoiced_at,c\.payment_days\)/);assert.match(fx,/te debe/);assert.match(fx,/sin facturar/);assert.match(fx,/Vence hoy/);
   assert.match(js,/id="alerts"/);assert.match(js,/async function renderAlerts/);assert.match(js,/go\('facturacion-'\+a\.client\)/);
@@ -112,8 +112,17 @@ test('Solo: foto del ticket en los gastos y avisos de cobro en Inicio',()=>{
 test('Solo: nuevo gasto con teclado propio, repetir, detalle que sugiere categoría y aviso de renovación de fijos',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8'),fx=fs.readFileSync('solo/solo-facturacion.js','utf8');const g=ops.slice(ops.indexOf('async function gastoNuevo'));
   assert.match(g,/class="gx-pad"/);assert.match(g,/'Sumar otro ticket'/);assert.match(g,/expr\.split\('\+'\)/,'suma varios tickets');
-  assert.match(g,/lastCatKey\(kind\)/,'recuerda la última categoría');assert.match(g,/Repetir/);assert.match(g,/if\(CATS\[kind\]\.includes\(p\.category\)\)setCat\(p\.category\)/,'el detalle pone la categoría');
+  assert.match(g,/pickCategory\(kind,cat\)/,'la categoría se elige en un modal');assert.match(g,/Repetir/);assert.match(g,/if\(CATS\[kind\]\.includes\(p\.category\)\)setCat\(p\.category\)/,'el detalle pone la categoría');
   assert.match(g,/'¿Cuándo fue\?'/);assert.match(g,/'¿Cuántos meses cubre\?'/);assert.match(g,/Marcá el monto con el teclado/);
   assert.doesNotMatch(g,/b\.disabled=true/,'el estado de guardado lo maneja solo-ui');
   assert.match(fx,/Renová \$\{x\.category/);assert.match(js,/if\(a\.go\)return go\(a\.go\)/);
+});
+test('Solo: gasto con «Elegir categoría» en modal, ticket claro y ficha que se edita solo con «Modificar» y confirma cambios y borrado',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.match(ops,/Elegir categoría/);assert.match(ops,/function pickCategory/);assert.match(ops,/Sacar foto del ticket/);
+  assert.match(ops,/function gastoVer/);assert.match(ops,/data-open="\$\{x\.id\}"/);assert.match(ops,/go\('gastos-ver-'\+b\.dataset\.open\)/);
+  const v=ops.slice(ops.indexOf('async function gastoVer'),ops.indexOf('async function gastoNuevo'));
+  assert.match(v,/disabled>/,'la ficha arranca solo para ver');assert.match(v,/Modificar/);
+  assert.match(v,/confirmBox\('¿Eliminar este gasto\?'/);assert.match(v,/confirmBox\('¿Guardar los cambios\?'/);assert.match(v,/if\(!ok\)return;/);
+  assert.doesNotMatch(ops,/data-del=/,'ya no se borra desde la lista sin confirmar');
 });

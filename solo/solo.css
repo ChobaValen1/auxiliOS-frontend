@@ -585,3 +585,62 @@ p{margin:0}
 @media (max-height:700px){.gx-amount b{font-size:40px}.gx-amount{min-height:64px}}
 @media (prefers-reduced-motion:reduce){.gx-key,.gx-cat{transition:none}.gx-amount.bad{animation:none}}
 .gx-ticket{flex:none;width:44px;justify-content:center;padding:0}
+
+/* ── Gasto v2: teclado más bajo, categoría en modal, ticket claro y ficha con confirmaciones ── */
+.gx-pad{grid-auto-rows:clamp(40px,5.4vh,48px);gap:5px}
+.gx-key{font-size:21px;border-radius:10px}
+.gx-key .ico{width:20px;height:20px}
+.gx-key.ok{font-size:14px}
+.gx-catbtn{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;width:100%;min-height:54px;padding:6px 12px;border-radius:14px;border:1.5px dashed var(--ax-border-strong);background:var(--ax-surface);color:var(--ax-text-2);text-align:left;cursor:pointer;flex:none;transition:border-color 160ms ease,background 160ms ease}
+.gx-catbtn .ex-ico{width:34px;height:34px}
+.gx-catbtn-t{display:grid;min-width:0}
+.gx-catbtn-t small{font-size:11px;color:var(--ax-text-3);text-transform:uppercase;letter-spacing:.06em}
+.gx-catbtn-t b{font-size:15px;color:var(--ax-text-2)}
+.gx-catbtn.on{border-style:solid;border-color:var(--ax-accent);background:var(--ax-accent-soft)}
+.gx-catbtn.on b{color:var(--ax-text)}
+.gx-catbtn .trail{width:18px;height:18px;color:var(--ax-text-3)}
+.gx-catbtn:disabled{cursor:default;opacity:1;border-style:solid;border-color:var(--ax-border);background:var(--ax-surface)}
+.gx-catbtn:disabled .trail{display:none}
+.gx-catbtn:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.sheet .gx-cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sheet .gx-cat{min-height:76px;font-size:12px}
+.sheet .gx-cat .ico{width:24px;height:24px}
+.sheet .gx-cat[aria-pressed="true"]{background:var(--ax-accent-soft);border-color:var(--ax-accent);color:var(--ax-text)}
+.sheet .gx-cat[aria-pressed="true"] .ico{color:var(--ax-accent)}
+.gx-ticket2{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;min-height:52px;padding:6px 12px 6px 6px;border-radius:14px;border:1.5px dashed var(--ax-border-strong);background:var(--ax-surface);cursor:pointer;flex:none}
+.gx-ticket-thumb{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--ax-surface-3) center/cover no-repeat;color:var(--ax-accent)}
+.gx-ticket-thumb .ico{width:20px;height:20px}
+.gx-ticket-t{display:grid;min-width:0}
+.gx-ticket-t b{font-size:14px}
+.gx-ticket-t small{font-size:12px;color:var(--ax-text-3)}
+.gx-ticket2 .trail{width:18px;height:18px;color:var(--ax-accent)}
+.gx-ticket2.has{border-style:solid;border-color:var(--ax-ok)}
+.gx-ticket2.has .trail{display:none}
+.gx-ticket2:focus-within{box-shadow:var(--ax-focus)}
+/* Lista de gastos: cada fila se toca para ver la ficha */
+button.ex-mov,button.ex-fix-row{width:100%;text-align:left;cursor:pointer;color:inherit;font:inherit;transition:border-color 140ms ease,transform 120ms ease}
+button.ex-mov:active,button.ex-fix-row:active{transform:scale(.985)}
+button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.ex-mov .trail,.ex-fix-row .trail{width:16px;height:16px;color:var(--ax-text-3);flex:none}
+.ex-has-rcpt{display:grid;place-items:center;color:var(--ax-text-3)}
+.ex-has-rcpt .ico{width:15px;height:15px}
+/* Ficha del gasto */
+.gv{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
+.gv-form{flex:1;min-height:0;overflow-y:auto;align-content:start;gap:12px}
+.gv-form input:disabled,.gv-form select:disabled{opacity:1;color:var(--ax-text);background:transparent;border-color:var(--ax-border);-webkit-text-fill-color:var(--ax-text)}
+.gv-form.editing input,.gv-form.editing select{background:var(--ax-surface)}
+.gv-amount input{font:500 26px/1 var(--ax-font-mono)!important}
+.gv-ticket{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.gv-thumb{width:64px;height:64px;border-radius:12px;border:1px solid var(--ax-border-strong);background:var(--ax-surface-3) center/cover no-repeat;cursor:pointer}
+.gv-change{min-height:40px;font-size:14px}
+.btn.danger,.btn.danger:hover{background:var(--ax-danger);border-color:var(--ax-danger);color:#fff}
+.btn.danger-ghost{color:var(--ax-danger);border-color:color-mix(in srgb,var(--ax-danger) 45%,transparent);background:transparent}
+.confirm-body{display:grid;gap:6px;font-size:15px}
+.diff{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.diff li{display:grid;grid-template-columns:90px 1fr;gap:2px 10px;font-size:14px}
+.diff li span{grid-row:span 2;color:var(--ax-text-2)}
+.diff s{color:var(--ax-text-3)}
+.diff b{color:var(--ax-text)}
+.field label.gv-change{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ax-text);white-space:nowrap}
+.gx-amount{max-height:112px;min-height:72px}
+.gx-amount b{font-size:44px}
