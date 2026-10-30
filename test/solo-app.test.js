@@ -18,3 +18,10 @@ test('Solo: cada gruero ve solo lo suyo y el modo oficina/chofer ya no existe',(
   assert.match(mig,/'Cliente inexistente'/);
   assert.doesNotMatch(sb,/x-auxilios-mode/);assert.ok(!fs.existsSync('ui/monogruero-v1.js'));
 });
+test('Solo etapa 1c: servicio con precio por tarifa, remito con firma y gastos',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.match(html,/\/solo\/solo-ops\.js/);assert.match(ops,/function rateFor/);assert.match(ops,/Math\.max\(0,\(Number\(km\)\|\|0\)-Number\(rate\.included_km/);
+  assert.match(ops,/from\('solo_services'\)\.insert/);assert.match(ops,/status:'signed'/);assert.match(ops,/storage\.from\('solo_files'\)\.upload/);
+  assert.match(ops,/conf_service/);assert.match(ops,/navigator\.share/);assert.match(ops,/from\('solo_expenses'\)\.insert/);
+  assert.match(ops,/period_months:kind==='fixed'/);assert.match(css,/\[hidden\]\{display:none!important\}/);
+});

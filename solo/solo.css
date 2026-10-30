@@ -1,5 +1,8 @@
 /* AuxiliOS Solo · app de celular para el gruero que trabaja solo. Usa los tokens de AuxiliOS (oscuro y ámbar). */
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+input[type=checkbox]{accent-color:var(--ax-accent)}
+details.card summary{cursor:pointer;min-height:28px}
 html,body{margin:0;background:var(--ax-bg);color:var(--ax-text);font:15px/1.45 var(--ax-font)}
 button,input,select,textarea{font:inherit;color:inherit}
 .solo{max-width:560px;margin:0 auto;min-height:100vh;padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(96px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:14px;align-content:start}

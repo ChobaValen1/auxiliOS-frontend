@@ -6,6 +6,8 @@ const app=document.getElementById('app');
 const RT=window.AUXILIOS_RUNTIME||{};
 let db=null, user=null, profile=null, view='inicio', month=startOfMonth(new Date()), detailId=null;
 const DEFAULT_TYPES=['Remolque','Auxilio mecánico','Traslado'];
+// Las pantallas de servicios, remito y gastos viven en solo-ops.js y se registran acá.
+const views={};
 
 function startOfMonth(d){return new Date(d.getFullYear(),d.getMonth(),1);}
 function isoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -39,7 +41,8 @@ async function boot(){
 }
 window.addEventListener('hashchange',()=>{if(user&&profile)go(location.hash.slice(1)||'inicio',true);});
 function go(name,fromHash){
-  const [v,id]=String(name).split('-');view=['inicio','servicios','gastos','mas','clientes','cliente'].includes(v)?v:'inicio';detailId=id||null;
+  const i=String(name).indexOf('-'),v=i<0?String(name):String(name).slice(0,i),id=i<0?null:String(name).slice(i+1);
+  view=['inicio','mas','clientes','cliente'].includes(v)||views[v]?v:'inicio';detailId=id||null;
   if(!fromHash){const h=detailId?view+'-'+detailId:view;if(location.hash.slice(1)!==h)history.replaceState(null,'','#'+h);}
   render();
 }
@@ -136,6 +139,7 @@ function render(){
   if(view==='clientes')return renderClientes();
   if(view==='cliente')return renderCliente(detailId);
   if(view==='mas')return renderMas();
+  if(views[view])return views[view](detailId);
   return renderPronto(view);
 }
 
@@ -149,7 +153,7 @@ async function renderInicio(){
   document.getElementById('m-prev').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);renderInicio();};
   document.getElementById('m-next').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);renderInicio();};
   app.querySelector('.item[data-go]').onclick=()=>go('clientes');
-  ['new-svc','new-exp'].forEach(id=>{const el=document.getElementById(id);const f=()=>toast(id==='new-svc'?'Cargar servicios llega en la próxima entrega.':'Cargar gastos llega en la próxima entrega.');el.onclick=f;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f();}};});
+  [['new-svc','nuevo'],['new-exp','gastos-nuevo']].forEach(([id,to])=>{const el=document.getElementById(id);const f=()=>go(to);el.onclick=f;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f();}};});
   const {data:s,error}=await db.rpc('solo_month_summary_v1',{p_month:isoDate(month)});
   const box=document.getElementById('sum');if(!box)return;
   if(error){box.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
@@ -233,5 +237,8 @@ function renderPronto(v){
   shell(`<h1>${txt[0]}</h1><div class="empty"><b>Llega en la próxima entrega</b><span>${txt[1]}</span></div>`,v);
 }
 
+window.SoloCore={views,shell,go,toast,esc,money,num,isoDate,monthName,errText,
+  get db(){return db;},get user(){return user;},get profile(){return profile;},
+  get month(){return month;},set month(d){month=d;}};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
