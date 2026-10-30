@@ -118,7 +118,7 @@ function haptic(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
 function success(){haptic(12);}
 
 /* ── Sin conexión ─────────────────────────────────────── */
-function net(){let b=document.getElementById('offline');if(!b){b=document.createElement('div');b.id='offline';b.className='offline';b.setAttribute('role','status');b.textContent='Sin conexión. Lo que cargues se va a guardar cuando vuelva la señal.';document.body.appendChild(b);}b.hidden=navigator.onLine;}
+function net(){if(window.SoloOffline)return;let b=document.getElementById('offline');if(!b){b=document.createElement('div');b.id='offline';b.className='offline';b.setAttribute('role','status');b.textContent='Sin conexión. Lo que cargues se va a guardar cuando vuelva la señal.';document.body.appendChild(b);}b.hidden=navigator.onLine;}
 addEventListener('online',net);addEventListener('offline',net);document.addEventListener('DOMContentLoaded',net);
 
 // Esqueletos de carga para usar en lugar de «Cargando…».

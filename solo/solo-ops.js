@@ -31,7 +31,7 @@ views.servicios=async function(filter){
   const total=shown.reduce((t,s)=>t+Number(s.total||0),0);
   list.innerHTML=(shown.length?`<p class="hint">${shown.length} servicios · ${money(total)}</p>`:'')+(shown.map(s=>`<button class="item" type="button" data-id="${s.id}">
     <div class="row"><b class="ell">${esc(name(types,s.service_type_id)||'Servicio')}${s.km?' · '+esc(s.km)+' km':''}</b><b class="num">${money(s.total)}</b></div>
-    <div class="row"><span class="hint ell">N.º ${s.remito_number} · ${esc(name(clients,s.client_id))} · ${esc(fmtDate(s.service_date))}</span>${s.paid_at?'<span class="pill ok">Cobrado</span>':s.status==='signed'?'<span class="pill wait">Por cobrar</span>':'<span class="pill muted">Sin firmar</span>'}</div></button>`).join('')||'<div class="empty">No hay servicios para mostrar en este mes.</div>');
+    <div class="row"><span class="hint ell">${s.remito_number?'N.º '+s.remito_number:'Sin subir'} · ${esc(name(clients,s.client_id))} · ${esc(fmtDate(s.service_date))}</span>${s.paid_at?'<span class="pill ok">Cobrado</span>':s.status==='signed'?'<span class="pill wait">Por cobrar</span>':'<span class="pill muted">Sin firmar</span>'}</div></button>`).join('')||'<div class="empty">No hay servicios para mostrar en este mes.</div>');
   list.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>go('servicio-'+b.dataset.id));
 };
 const app=()=>document.getElementById('app');
@@ -126,7 +126,7 @@ function wizard(box,s,cl,tp,tk,rates,step){
   const $=x=>document.getElementById(x),uid=C.user.id;
   let sigDirty=false;
   box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Cerrar y guardar">${icon('x')}</button>
-      <div class="grow"><h1>Remito N.º ${s.remito_number}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')}</p></div><span class="pill wait">En curso</span></div>
+      <div class="grow"><h1>${s.remito_number?'Remito N.º '+s.remito_number:'Remito nuevo'}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')}</p></div><span class="pill wait">En curso</span></div>
     <ol class="rm-steps" aria-label="Progreso del remito">${STEPS.map((l,i)=>`<li data-i="${i+1}"><span class="rm-num">${i+1}</span><span class="rm-label">${l}</span></li>`).join('')}</ol>
     <div class="rm-counter hint" aria-live="polite"></div>
     <div id="rm-panels">
@@ -268,10 +268,13 @@ function wizard(box,s,cl,tp,tk,rates,step){
     try{if(!(await save(current)))return;if(current<5){show(current+1,1);UI().haptic(8);}else await finish();}finally{b.disabled=false;}};
 
   // ── Paso 4: fotos por posición ──
-  async function paintSlots(){const paths=s.photos||[];const urls={};
-    if(paths.length){const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,3600);(data||[]).forEach((u,i)=>{const k=(paths[i].match(/\/([a-z0-9]+)-\d+\.jpg$/)||[])[1];if(k)urls[k]=u.signedUrl;});}
+  // Vista previa local: sin señal la foto todavía no está en la base, pero se ve igual.
+  const localPrev={};
+  async function paintSlots(){const paths=s.photos||[];const urls={...localPrev};
+    if(paths.length){const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,3600);(data||[]).forEach((u,i)=>{const k=(paths[i].match(/\/([a-z0-9]+)-\d+\.jpg$/)||[])[1];if(k&&u?.signedUrl&&!localPrev[k])urls[k]=u.signedUrl;});}
     box.querySelectorAll('.slot').forEach(sl=>{const u=urls[sl.dataset.slot];sl.classList.toggle('has',!!u);sl.querySelector('.slot-img').style.backgroundImage=u?`url("${u}")`:'';});}
   box.querySelectorAll('[data-slot-in]').forEach(inp=>inp.addEventListener('change',async()=>{const f=inp.files[0];if(!f)return;const k=inp.dataset.slotIn,sl=inp.closest('.slot');sl.classList.add('loading');
+    if(localPrev[k])URL.revokeObjectURL(localPrev[k]);localPrev[k]=URL.createObjectURL(f);
     const path=uid+'/services/'+s.id+'/'+k+'-'+Date.now()+'.jpg';const {error}=await C.db.storage.from('solo_files').upload(path,await shrink(f),{contentType:'image/jpeg'});
     if(error){sl.classList.remove('loading');return toast(errText(error));}
     const paths=(s.photos||[]).filter(p=>!new RegExp('/'+k+'-\\d+\\.jpg$').test(p)).concat(path);
@@ -325,7 +328,7 @@ function doneView(box,s,cl,tp,tk){
       <div class="done-mark" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg></div>
       <h1>Remito creado exitosamente</h1>
       <div class="done-id">${s.plate?`<span class="plate">${esc(s.plate)}</span>`:''}${!particular&&s.provider_order?`<span class="done-chip">N.º ${esc(s.provider_order)}</span>`:''}<span class="done-chip">${icon(particular?'user':'building-2')} ${esc(particular?'Particular':cl?.name||'Prestadora')}</span></div>
-      <p class="hint">Remito N.º ${s.remito_number} · ${esc(tp?.name||'Servicio')}</p>
+      <p class="hint">${s.remito_number?'Remito N.º '+s.remito_number:'El N.º de remito llega al subirse (sin señal)'} · ${esc(tp?.name||'Servicio')}</p>
       <div class="card tight done-card" aria-label="Desglose del servicio">
         ${line(particular?'Precio acordado':'Base',money(s.base_amount))}${kmEx}
         ${ex('Peajes')?line('Peajes',money(ex('Peajes'))):''}${ex('Excedente')?line('Excedente km',money(ex('Excedente'))):''}${ex('Espera')?line('Espera / maniobras',money(ex('Espera'))):''}${Number(s.other_amount)?line('Otros',money(s.other_amount)):''}
@@ -350,7 +353,7 @@ function signedView(box,s,cl,tp,tk,id){
   const tel=String(s.customer_phone||'').replace(/\D/g,'');
   const row=(l,v,cls='')=>v?`<div class="rv-row ${cls}"><span>${l}</span><b>${v}</b></div>`:'';
   box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Volver a Servicios">${icon('arrow-left')}</button>
-      <div class="grow"><h1>Remito N.º ${s.remito_number}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')} · ${esc(fmtDate(s.service_date))}</p></div>${cancelled?'<span class="pill muted">Anulado</span>':'<span class="pill ok">Firmado</span>'}</div>
+      <div class="grow"><h1>${s.remito_number?'Remito N.º '+s.remito_number:'Remito nuevo'}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')} · ${esc(fmtDate(s.service_date))}</p></div>${cancelled?'<span class="pill muted">Anulado</span>':'<span class="pill ok">Firmado</span>'}</div>
     <div class="fill stack rv">
       <section class="rv-card" aria-label="Servicio">
         <span class="rm-glabel">${icon('truck')} Servicio</span>
@@ -394,7 +397,7 @@ async function sharePdf(s,cl,tp,tk){
   if(!window.jspdf){toast('No se pudo armar el PDF. Revisá la conexión.');return;}
   const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),P=C.profile;let y=18;
   const t=(txt,x,size=11,bold=false)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.text(String(txt??''),x,y);};
-  t(P.business_name||P.full_name,15,16,true);t('Remito N.º '+s.remito_number,140,14,true);y+=7;t(fmtDate(s.service_date),140,10);t(tk?('Grúa '+tk.plate):'',15,10);y+=10;
+  t(P.business_name||P.full_name,15,16,true);t(s.remito_number?'Remito N.º '+s.remito_number:'Remito',140,14,true);y+=7;t(fmtDate(s.service_date),140,10);t(tk?('Grúa '+tk.plate):'',15,10);y+=10;
   const rows=[['Prestadora',cl?.name],['Servicio',tp?.name],['N.º de servicio',s.provider_order],['Cliente',s.customer_name],['DNI / CUIT',s.customer_doc],['Patente',s.plate],['Vehículo',s.make_model],['Origen',s.origin],['Destino',s.destination],['Km',s.km],['Llegada',fmtDate(s.arrived_at)]].filter(r=>r[1]);
   rows.forEach(([k,v])=>{t(k,15,10,true);t(v,60,10);y+=6.5;});y+=3;
   [['Base',s.base_amount],['Km',s.km_amount],['Adicionales',s.extras_amount]].filter(r=>Number(r[1])).forEach(([k,v])=>{t(k,15,10);t(money(v),160,10);y+=6;});
@@ -407,7 +410,7 @@ async function sharePdf(s,cl,tp,tk){
   if(s.notes){t('Observaciones: '+s.notes,15,10);y+=7;}
   if(s.signature_path){const {data}=await C.db.storage.from('solo_files').download(s.signature_path);if(data){const url=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(data);});doc.addImage(url,'PNG',15,y,80,30);y+=33;}}
   t('Firma: '+(s.signer_name||'')+(s.signer_doc?' · DNI '+s.signer_doc:''),15,10);
-  const blob=doc.output('blob'),file=new File([blob],'remito-'+s.remito_number+'.pdf',{type:'application/pdf'});
+  const blob=doc.output('blob'),file=new File([blob],'remito-'+(s.remito_number||'nuevo')+'.pdf',{type:'application/pdf'});
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:'Remito N.º '+s.remito_number});return;}catch(e){if(e.name==='AbortError')return;}}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();toast('PDF descargado');
 }

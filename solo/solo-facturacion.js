@@ -122,7 +122,7 @@ async function detail(clientId){
   if(g.unsigned.length)notes.push(`${g.unsigned.length} remito${g.unsigned.length>1?'s':''} sin firmar: no entra${g.unsigned.length>1?'n':''} en la facturación hasta que lo firmes.`);
   $('fd-state').innerHTML=notes.length?`<p class="notice ${g.state.k==='bad'?'bad':''}">${icon(g.state.k==='bad'?'triangle-alert':'info')}<span>${notes.map(esc).join('<br>')}</span></p>`:'';
   box.innerHTML=g.rows.map(s=>`<button class="item" type="button" data-s="${s.id}">
-      <div class="row"><b class="ell">N.º ${s.remito_number} · ${esc(tname(s.service_type_id))}</b><b class="num">${money(g.bill(s))}</b></div>
+      <div class="row"><b class="ell">${s.remito_number?'N.º '+s.remito_number:'Sin subir'} · ${esc(tname(s.service_type_id))}</b><b class="num">${money(g.bill(s))}</b></div>
       <div class="row"><span class="hint ell">${esc(shortDate(s.service_date))}${s.plate?' · '+esc(s.plate):''}${s.provider_order?' · serv. '+esc(s.provider_order):''}${s.km?' · '+esc(s.km)+' km':''}</span>${s.paid_at?'<span class="pill ok">Cobrado</span>':s.status==='open'?'<span class="pill muted">Sin firmar</span>':s.invoiced_at?'<span class="pill wait">Facturado</span>':'<span class="pill wait">Por facturar</span>'}</div></button>`).join('')
     ||'<div class="empty">No hay servicios de esta prestadora en el mes.</div>';
   box.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>go('servicio-'+b.dataset.s));
@@ -151,7 +151,7 @@ async function sharePdf(g,tname){
   const head=()=>{doc.setFillColor(240,240,240);doc.rect(13,y-5,184,7,'F');cols.forEach(([x,l],i)=>t(l,x,9,true,i===cols.length-1?'right':undefined));y+=7;};
   head();
   rows.forEach(s=>{if(y>275){doc.addPage();y=18;head();}
-    const cells=[s.remito_number,shortDate(s.service_date),tname(s.service_type_id).slice(0,24),String(s.provider_order||'').slice(0,14),s.plate||'',s.km??'',money(g.bill(s))];
+    const cells=[s.remito_number||'-',shortDate(s.service_date),tname(s.service_type_id).slice(0,24),String(s.provider_order||'').slice(0,14),s.plate||'',s.km??'',money(g.bill(s))];
     cells.forEach((v,i)=>t(v,cols[i][0],9,false,i===cells.length-1?'right':undefined));y+=6;});
   y+=4;doc.line(13,y-4,197,y-4);
   // El resumen lista lo que paga la prestadora; los adicionales que pagó el socio en el lugar no entran.

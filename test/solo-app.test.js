@@ -138,3 +138,23 @@ test('Solo etapa 3: Mis números (ganancia por servicio y km, punto de equilibri
   assert.match(nx,/perSvc=n\?\(billed-variable\)\/n:0/);assert.match(nx,/Math\.ceil\(fixedM\/perSvc\)/,'punto de equilibrio con lo que deja cada servicio');
   assert.match(nx,/\[\.\.\.Array\(6\)\]/);assert.match(nx,/solo_month_summary_v1/);assert.match(nx,/Vencimientos/);
 });
+test('Solo: modo sin señal (copia local, cola de cambios y subida al volver la señal)',()=>{
+  const off=fs.readFileSync('solo/solo-offline.js','utf8');
+  assert.match(html,/\/solo\/solo-offline\.js/);assert.ok(html.indexOf('solo-offline.js')<html.indexOf('/solo/solo.js'),'carga antes que la app');
+  assert.match(js,/createClient\(RT\.supabaseUrl,RT\.supabaseKey,\{global:\{fetch:off\.fetch\}\}\)/);assert.match(js,/SoloOffline\.setUser/);
+  assert.match(js,/que todavía no se subieron/,'avisa antes de cerrar sesión con cambios sin subir');
+  assert.match(off,/indexedDB\.open\('auxilios-solo-offline'/);assert.match(off,/crypto\.randomUUID\(\)/,'altas sin señal con id del teléfono');
+  assert.match(off,/addEventListener\('online'/);assert.match(off,/se subieron/);assert.match(off,/body\.append\('',it\.blob\)/,'las fotos se suben como las manda supabase-js');
+  assert.match(off,/async function monthSummary/);assert.match(off,/url\.includes\('\/auth\/v1\/'\)\)return realFetch/,'el ingreso no pasa por la copia');
+  for(const f of ['sw.js','solo-sw.js'])assert.match(fs.readFileSync(f,'utf8'),/'\/solo\/solo-offline\.js'/);
+});
+test('Solo sin señal: los filtros de la copia local se comportan como la base',()=>{
+  const vm=require('vm');const ctx={window:{fetch(){},AUXILIOS_RUNTIME:{}},addEventListener(){},document:{addEventListener(){}},navigator:{onLine:true},URL,Response:class{},console};ctx.window.window=ctx.window;
+  vm.createContext(ctx);vm.runInContext("var window=this.window;"+fs.readFileSync("solo/solo-offline.js","utf8"),ctx);
+  const O=ctx.window.SoloOffline;const q=O._parse('https://x.supabase.co/rest/v1/solo_services?select=*&status=neq.cancelled&service_date=gte.2026-10-01T03:00:00.000Z&service_date=lt.2026-11-01T03:00:00.000Z&order=service_date.desc');
+  assert.equal(q.table,'solo_services');
+  const row={status:'signed',service_date:'2026-10-30T18:42:00+00:00',paid_at:null,active:true};
+  assert.ok(O._match(row,q.f));assert.ok(!O._match({...row,status:'cancelled'},q.f));assert.ok(!O._match({...row,service_date:'2026-11-02T10:00:00+00:00'},q.f));
+  assert.ok(O._match(row,O._parse('https://x/rest/v1/t?paid_at=is.null&active=eq.true').f));
+  assert.ok(!O._match(row,O._parse('https://x/rest/v1/t?active=eq.false').f));
+});

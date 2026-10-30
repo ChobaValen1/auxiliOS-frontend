@@ -34,7 +34,11 @@ function num(v){const n=Number(String(v??'').replace(/\./g,'').replace(',','.'))
 function start(){
   if(!window.supabase||!RT.supabaseUrl){app.innerHTML='<div class="empty">No se pudo conectar. Revisá tu conexión y recargá.</div>';return;}
   readAuthHash();
-  db=window.supabase.createClient(RT.supabaseUrl,RT.supabaseKey);
+  // Con la capa sin señal, todas las consultas pasan por su fetch (copia local + cola de cambios).
+  const off=window.SoloOffline;
+  db=off?window.supabase.createClient(RT.supabaseUrl,RT.supabaseKey,{global:{fetch:off.fetch}}):window.supabase.createClient(RT.supabaseUrl,RT.supabaseKey);
+  off?.attach(db,RT.supabaseUrl);
+  addEventListener('solo-synced',()=>{if(user&&profile)go(/=/.test(location.hash)?'inicio':location.hash.slice(1)||'inicio',true);});
   db.auth.onAuthStateChange((event,session)=>{const u=session?.user||null;
     if(event==='PASSWORD_RECOVERY'){recovering=true;user=u;return renderNewPassword();}
     if((u?.id||null)!==(user?.id||null)){user=u;boot();}});
@@ -42,6 +46,7 @@ function start(){
 }
 async function boot(){
   if(recovering&&user)return renderNewPassword();
+  if(window.SoloOffline)await window.SoloOffline.setUser(user?.id||null);
   if(!user){profile=null;return renderAuth('login');}
   const {data,error}=await db.from('solo_profiles').select('*').eq('owner_id',user.id).maybeSingle();
   if(error){app.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
@@ -336,7 +341,10 @@ async function renderMas(){
       <button class="btn block" type="button" id="logout">${icon('log-out')} Cerrar sesión</button></div>`,'mas');
   app.querySelector('[data-to]').onclick=()=>go('clientes');
   document.getElementById('inst')?.addEventListener('click',()=>window.SoloPWA.open());
-  document.getElementById('logout').onclick=async()=>{await db.auth.signOut();location.hash='';};
+  document.getElementById('logout').onclick=async()=>{
+    const n=window.SoloOffline?await window.SoloOffline.pending():0;
+    if(n&&!confirm(`Tenés ${n} cambio${n===1?'':'s'} cargado${n===1?'':'s'} sin señal que todavía no se subieron. Si cerrás la sesión se pierden. ¿Cerrar igual?`))return;
+    await db.auth.signOut();if(window.SoloOffline)await window.SoloOffline.clear();location.hash='';};
   const {data:t}=await db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle();
   const box=document.getElementById('truck');if(box)box.innerHTML='<h2>Mi grúa</h2>'+(t?`<div class="row"><b class="num">${esc(t.plate)}</b><span class="sub">${esc([t.brand,t.model].filter(Boolean).join(' '))}</span></div>${t.km?'<p class="hint">'+Number(t.km).toLocaleString('es-AR')+' km</p>':''}`:'<p class="hint">Sin grúa cargada.</p>');
 }
