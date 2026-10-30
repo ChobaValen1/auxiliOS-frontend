@@ -6,6 +6,7 @@ const vm = require('node:vm');
 const config = fs.readFileSync('config.js', 'utf8');
 const sigma = fs.readFileSync('sigma.js', 'utf8');
 const data = fs.readFileSync('supabase.js', 'utf8');
+const runtime = fs.readFileSync('runtime-config.js', 'utf8');
 const envSource = config.slice(0, config.indexOf('// Build visible'));
 const createSource = sigma.slice(sigma.indexOf('async function guardarNuevoUsuario()'), sigma.indexOf('// Esta es la consulta que pedías'));
 const headerSource = data.slice(data.indexOf('async function apiAuthHeaders('), data.indexOf('\n}', data.indexOf('async function apiAuthHeaders(')) + 2);
@@ -18,7 +19,8 @@ function formHarness(response, token = 'session-token') {
   fields['btn-guardar-usuario'] = { style: {} };
   const calls = [], notices = [], closed = [];
   const context = vm.createContext({
-    document: { getElementById: id => fields[id] },
+    window: {},
+    document: { getElementById: id => fields[id], documentElement: { dataset: {} } },
     usuarioEditandoId: null,
     SUPABASE_KEY: 'public-test-key',
     obtenerAccessToken: async () => { if (!token) throw new Error('Sesión expirada. Volvé a ingresar.'); return token; },
@@ -29,7 +31,7 @@ function formHarness(response, token = 'session-token') {
     cargarTablaAdminUsuarios: () => {},
     _siguienteLegajo: async rol => rol === 'chofer' ? 'CHO-011' : 'X-001',
   });
-  vm.runInContext(envSource + headerSource + '\n' + createSource, context);
+  vm.runInContext(runtime + envSource + headerSource + '\n' + createSource, context);
   return { context, fields, calls, notices, closed };
 }
 

@@ -1,7 +1,10 @@
+const AUXILIOS_RUNTIME = window.AUXILIOS_RUNTIME;
 const ENV = {
-  API_BASE_URL: 'https://auxilios.up.railway.app',
-  ADMIN_API_BASE_URL: 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin'
+  API_BASE_URL: AUXILIOS_RUNTIME.apiBaseUrl,
+  ADMIN_API_BASE_URL: AUXILIOS_RUNTIME.supabaseUrl + '/functions/v1/auxilios-admin'
 };
+window.AUXILIOS_EDITION = AUXILIOS_RUNTIME.edition;
+document.documentElement.dataset.edition = AUXILIOS_RUNTIME.edition;
 
 /* Formato de fecha único en toda la app: DD/MM/AA (y HH:MM cuando hay hora).
    Las pantallas formatean fechas de muchas formas (toLocaleDateString,
@@ -78,7 +81,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'sort-flip-v595-20261030';
+window.AUXILIOS_BUILD_ID = 'runtime-config-v596-20261030';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

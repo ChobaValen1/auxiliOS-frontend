@@ -68,6 +68,7 @@ footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
 <body>
 <main id="app"><div class="center">Cargando tu remito…</div></main>
 
+<script src="/runtime-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
@@ -77,8 +78,8 @@ footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
    Todo pasa por get_public_remito_v1 / submit_remito_survey_v1 con el token
    del link (/r/<token>). */
 (()=>{'use strict';
-const SUPABASE_URL='https://bcjcrlrrqfbipleiwkqi.supabase.co';
-const SUPABASE_KEY='sb_publishable_daGVg7URncTvLzC7N8NzOA_Z0CWB-1M';
+const SUPABASE_URL=window.AUXILIOS_RUNTIME.supabaseUrl;
+const SUPABASE_KEY=window.AUXILIOS_RUNTIME.supabaseKey;
 const app=document.getElementById('app');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
