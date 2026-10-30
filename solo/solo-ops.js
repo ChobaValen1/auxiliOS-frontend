@@ -1,8 +1,9 @@
-// AuxiliOS Solo · etapa 1c: servicios (con precio por tarifa), remito digital con firma y gastos fijos/variables.
+// AuxiliOS Solo · servicios (con precio por tarifa), nuevo servicio por pasos, remito digital con firma y gastos fijos/variables.
 (function(){
 'use strict';
 const C=window.SoloCore;if(!C)return;
 const {views,shell,go,toast,esc,money,num,isoDate,monthName,errText}=C;
+const icon=C.icon;
 const PAY={cash:'Efectivo',transfer:'Transferencia',card:'Tarjeta',mercado_pago:'Mercado Pago',other:'Otro'};
 const CATS={variable:['Combustible','Taller','Repuestos','Cubiertas','Peajes','Comida','Lavado','Otro'],fixed:['Seguro','Patente','Monotributo','VTV','GPS / celular','Cuota de la grúa','Otro']};
 const range=()=>{const d=C.month;return [new Date(d.getFullYear(),d.getMonth(),1),new Date(d.getFullYear(),d.getMonth()+1,1)];};
@@ -14,10 +15,9 @@ function priceOf(rate,km){if(!rate)return {base:0,kmAmount:0};const extra=Math.m
 /* ── Servicios del mes ───────────────────────────────── */
 views.servicios=async function(filter){
   const f=['pendientes','cobrados'].includes(filter)?filter:'todos';
-  shell(`<div class="top"><h1>${esc(monthName(C.month))}</h1><button class="btn pri" type="button" id="add">+ Servicio</button></div>
-    <div class="split" role="group" aria-label="Filtro">${[['todos','Todos'],['pendientes','Por cobrar'],['cobrados','Cobrados']].map(([k,l])=>`<button class="btn ${f===k?'pri':''}" type="button" data-f="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
-    <div id="list" class="stack"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'servicios');
-  app().querySelector('.split').style.gridTemplateColumns='repeat(3,1fr)';
+  shell(`<div class="top"><h1 class="grow">${esc(monthName(C.month))}</h1><button class="btn pri" type="button" id="add">${icon('plus')} Servicio</button></div>
+    <div class="seg" role="group" aria-label="Filtro">${[['todos','Todos'],['pendientes','Por cobrar'],['cobrados','Cobrados']].map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
+    <div id="list" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'servicios');
   document.getElementById('add').onclick=()=>go('nuevo');
   app().querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>go('servicios-'+b.dataset.f));
   const [a,z]=range();
@@ -30,36 +30,67 @@ views.servicios=async function(filter){
   const shown=(rows||[]).filter(s=>f==='todos'||(f==='cobrados'?!!s.paid_at:!s.paid_at));
   const total=shown.reduce((t,s)=>t+Number(s.total||0),0);
   list.innerHTML=(shown.length?`<p class="hint">${shown.length} servicios · ${money(total)}</p>`:'')+(shown.map(s=>`<button class="item" type="button" data-id="${s.id}">
-    <div class="row"><b>${esc(name(types,s.service_type_id)||'Servicio')}${s.km?' · '+esc(s.km)+' km':''}</b><b class="num">${money(s.total)}</b></div>
-    <div class="row"><span class="hint">N.º ${s.remito_number} · ${esc(name(clients,s.client_id))} · ${esc(fmtDate(s.service_date))}</span>${s.paid_at?'<span class="pill ok">Cobrado</span>':s.status==='signed'?'<span class="pill wait">Por cobrar</span>':'<span class="pill muted">Sin firmar</span>'}</div></button>`).join('')||'<div class="empty">No hay servicios para mostrar en este mes.</div>');
+    <div class="row"><b class="ell">${esc(name(types,s.service_type_id)||'Servicio')}${s.km?' · '+esc(s.km)+' km':''}</b><b class="num">${money(s.total)}</b></div>
+    <div class="row"><span class="hint ell">N.º ${s.remito_number} · ${esc(name(clients,s.client_id))} · ${esc(fmtDate(s.service_date))}</span>${s.paid_at?'<span class="pill ok">Cobrado</span>':s.status==='signed'?'<span class="pill wait">Por cobrar</span>':'<span class="pill muted">Sin firmar</span>'}</div></button>`).join('')||'<div class="empty">No hay servicios para mostrar en este mes.</div>');
   list.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>go('servicio-'+b.dataset.id));
 };
 const app=()=>document.getElementById('app');
 
-/* ── Nuevo servicio: a quién y qué; el resto se carga en el remito ── */
+/* ── Nuevo servicio por pasos: Prestadora | Particular → a quién → qué servicio (→ precio) ── */
 views.nuevo=async function(){
-  shell(`<div class="top"><button class="btn ghost" type="button" id="back">‹ Volver</button></div><h1>Nuevo servicio</h1><p class="sub">Elegí a quién le hacés el servicio. Después completás el remito paso a paso.</p><div id="nf" class="stack">${UI().SKELETON}</div>`,'servicios');
-  document.getElementById('back').onclick=()=>go('servicios');
-  const [{data:clients},{data:types},{data:trucks}]=await Promise.all([
-    C.db.from('solo_clients').select('*').eq('active',true).order('kind',{ascending:false}).order('name'),
-    C.db.from('solo_service_types').select('*').eq('active',true).order('name'),C.db.from('solo_trucks').select('id').order('created_at').limit(1)]);
-  const box=document.getElementById('nf');if(!box)return;
-  if(!(clients||[]).length){box.innerHTML='<div class="empty">Primero cargá una prestadora.<button class="btn pri" type="button" id="toc">Ir a Prestadoras</button></div>';document.getElementById('toc').onclick=()=>go('clientes');return;}
-  box.innerHTML=`<form id="svc" class="card" novalidate>
-      <div class="field"><label for="n-client">Cliente</label><select id="n-client">${clients.map(c=>`<option value="${c.id}" data-kind="${c.kind}">${esc(c.name)}</option>`).join('')}</select></div>
-      <div class="field"><label for="n-type">Servicio</label><select id="n-type">${(types||[]).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select></div>
-      <div class="field" id="n-manual-box" hidden><label for="n-manual">Precio acordado con el particular $</label><input id="n-manual"></div>
-      <p id="n-err" class="err" hidden></p>
-      <button class="btn pri block" type="submit" data-busy-text="Abriendo remito…">Empezar remito</button></form>`;
-  const $=x=>document.getElementById(x),part=()=>$('n-client').selectedOptions[0]?.dataset.kind==='particular';
-  const sync=()=>{const p=part();$('n-manual-box').hidden=!p;$('n-manual').dataset.v=p?'moneypos!':'money';$('n-manual').required=p;};
-  $('n-client').addEventListener('change',sync);sync();
-  $('svc').onsubmit=async e=>{e.preventDefault();const er=$('n-err');er.hidden=true;const p=part();
-    const base=p?num($('n-manual').value):0;
-    const {data,error}=await C.db.from('solo_services').insert({client_id:$('n-client').value,service_type_id:$('n-type').value||null,truck_id:trucks?.[0]?.id||null,
+  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="nv-back" aria-label="Volver">${icon('arrow-left')}</button>
+      <div class="grow"><h1 id="nv-t">Nuevo servicio</h1><p class="hint" id="nv-sub">Paso 1 de 3</p></div></div>
+    <div class="steps" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+    <div id="nv" class="fill">${UI().SKELETON}</div>`,'servicios',{bare:true});
+  const [{data:clients},{data:types},{data:trucks},{data:rates}]=await Promise.all([
+    C.db.from('solo_clients').select('*').eq('active',true).order('name'),
+    C.db.from('solo_service_types').select('*').eq('active',true).order('name'),C.db.from('solo_trucks').select('id').order('created_at').limit(1),
+    C.db.from('solo_rates').select('*')]);
+  const box=document.getElementById('nv');if(!box)return;
+  const $=x=>document.getElementById(x);
+  const prest=(clients||[]).filter(c=>c.kind!=='particular');
+  const st={kind:null,client:null,type:null},hist=[];
+  const rateCount=id=>new Set((rates||[]).filter(r=>r.client_id===id).map(r=>r.service_type_id)).size;
+  function frame(n,title,html,dir){
+    $('nv-t').textContent=title;$('nv-sub').textContent='Paso '+n+' de 3'+(st.client?' · '+st.client.name:'');
+    app().querySelectorAll('.steps i').forEach((b,i)=>b.classList.toggle('on',i<n));
+    box.innerHTML=`<div class="rm-panel ${dir<0?'slide-r':'slide-l'}">${html}</div>`;}
+  const goStep=(fn,dir=1)=>{if(dir>0&&cur)hist.push(cur);cur=fn;fn(dir);};let cur=null;
+  $('nv-back').onclick=()=>{const prev=hist.pop();if(prev){cur=prev;prev(-1);}else go('servicios');};
+
+  function stepKind(dir){st.kind=null;st.client=null;
+    frame(1,'¿Para quién es?',`<div class="choice">
+      <button class="pick big" type="button" data-kind="prestadora">${icon('building-2','pick-ico')}<b>Prestadora</b><span>Te lo pasó una empresa. Se cobra con tu tarifa.</span><em>${prest.length} cargada${prest.length===1?'':'s'}</em></button>
+      <button class="pick big" type="button" data-kind="particular">${icon('user','pick-ico')}<b>Particular</b><span>Un cliente que te paga en el momento.</span><em>Precio que acordás</em></button></div>`,dir);
+    box.querySelectorAll('[data-kind]').forEach(b=>b.onclick=async()=>{UI().haptic(8);
+      if(b.dataset.kind==='prestadora'){st.kind='prestadora';return goStep(stepClient);}
+      st.kind='particular';st.client=(clients||[]).find(c=>c.kind==='particular')||null;
+      if(!st.client){const {data,error}=await C.db.from('solo_clients').insert({name:'Particular',kind:'particular',payment_days:0}).select('*').single();if(error)return toast(errText(error));st.client=data;}
+      goStep(stepType);});}
+  function stepClient(dir){st.client=null;
+    frame(2,'¿Qué prestadora?',`<div class="pick-grid">${prest.map(c=>{const n=rateCount(c.id);return `<button class="pick" type="button" data-id="${c.id}"><b class="ell2">${esc(c.name)}</b><span>Paga a ${Number(c.payment_days)||0} días</span>${n?`<em class="ok">${n} tarifa${n>1?'s':''}</em>`:'<em class="wait">Sin tarifas</em>'}</button>`;}).join('')}
+      <button class="pick add" type="button" id="nv-add">${icon('plus','pick-ico')}<b>Nueva prestadora</b><span>Cargala con sus tarifas</span></button></div>`,dir);
+    box.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{st.client=prest.find(c=>c.id===b.dataset.id);UI().haptic(8);goStep(stepType);});
+    $('nv-add').onclick=()=>go('clientes-nueva');}
+  function stepType(dir){st.type=null;const n=st.kind==='prestadora'?3:2;
+    frame(n,'¿Qué servicio?',(types||[]).length?`<div class="pick-grid">${types.map(t=>{const r=st.kind==='prestadora'?rateFor(rates,st.client.id,t.id,new Date()):null;
+      return `<button class="pick" type="button" data-t="${t.id}"><b class="ell2">${esc(t.name)}</b>${st.kind!=='prestadora'?'<span>Precio a acordar</span>':r?`<span class="num">Base ${money(r.base_amount)}</span><em class="ok">${Number(r.included_km)||0} km incluidos</em>`:'<em class="wait">Sin tarifa</em>'}</button>`;}).join('')}</div>`
+      :`<div class="empty">Todavía no hay tipos de servicio.<button class="btn pri" type="button" id="nv-types">Cargar tipos</button></div>`,dir);
+    $('nv-types')?.addEventListener('click',()=>go('cliente-'+st.client.id));
+    box.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{st.type=types.find(t=>t.id===b.dataset.t);UI().haptic(8);
+      if(st.kind==='particular')return goStep(stepPrice);create(0,b);});}
+  function stepPrice(dir){
+    frame(3,'Precio acordado',`<form id="svc" class="card" novalidate><p class="sub">${esc(st.type.name)} para un particular. Poné lo que acordaste cobrarle; los adicionales los sumás en el remito.</p>
+      <div class="field"><label for="n-manual">Precio $</label><input id="n-manual" class="big-input" data-v="moneypos!" inputmode="decimal" placeholder="0"></div>
+      <p id="n-err" class="err" hidden></p><button class="btn pri block" type="submit" data-busy-text="Abriendo remito…">Empezar remito</button></form>`,dir);
+    setTimeout(()=>$('n-manual')?.focus(),80);
+    $('svc').onsubmit=e=>{e.preventDefault();create(num($('n-manual').value));};}
+  async function create(base,btn){if(btn){btn.disabled=true;btn.classList.add('busy');}
+    const {data,error}=await C.db.from('solo_services').insert({client_id:st.client.id,service_type_id:st.type?.id||null,truck_id:trucks?.[0]?.id||null,
       service_date:new Date().toISOString(),base_amount:base,total:base}).select('id').single();
-    if(error){er.textContent=errText(error);er.hidden=false;return;}
-    go('servicio-'+data.id);};
+    if(error){if(btn){btn.disabled=false;btn.classList.remove('busy');}const er=$('n-err');if(er){er.textContent=errText(error);er.hidden=false;}else toast(errText(error));return;}
+    UI().success();go('servicio-'+data.id);}
+  goStep(stepKind);
 };
 const UI=()=>window.SoloUI||{SKELETON:'',validateForm:()=>true,success(){},haptic(){}};
 
@@ -73,11 +104,11 @@ const CONF=[['conf_service','Conformidad con el servicio','El socio confirma que
 const extraOf=(s,name)=>Number((s.extras||[]).find(x=>x.name===name)?.amount)||0;
 
 views.servicio=async function(id,stepArg){
-  shell(`<div class="top"><button class="btn ghost" type="button" id="back">‹ Servicios</button></div><div id="rm" class="stack">${UI().SKELETON}</div>`,'servicios');
-  document.getElementById('back').onclick=()=>go('servicios');
+  // Pantalla completa, sin barra inferior: cada paso entra entero en el celular.
+  shell(`<div id="rm" class="rm">${UI().SKELETON}</div>`,'servicios',{bare:true});
   const {data:s,error}=await C.db.from('solo_services').select('*').eq('id',id).maybeSingle();
   const box=document.getElementById('rm');if(!box)return;
-  if(error||!s){box.innerHTML='<div class="empty">No encontramos ese servicio.</div>';return;}
+  if(error||!s){box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Volver">${icon('arrow-left')}</button></div><div class="empty">No encontramos ese servicio.</div>`;document.getElementById('rm-x').onclick=()=>go('servicios');return;}
   const [{data:cl},{data:tp},{data:tk},{data:rates}]=await Promise.all([C.db.from('solo_clients').select('*').eq('id',s.client_id).maybeSingle(),
     s.service_type_id?C.db.from('solo_service_types').select('name').eq('id',s.service_type_id).maybeSingle():Promise.resolve({data:null}),
     s.truck_id?C.db.from('solo_trucks').select('*').eq('id',s.truck_id).maybeSingle():Promise.resolve({data:null}),
@@ -92,21 +123,22 @@ function wizard(box,s,cl,tp,rates,step){
   const particular=cl?.kind==='particular';
   const $=x=>document.getElementById(x),uid=C.user.id;
   let sigDirty=false;
-  box.innerHTML=`<div class="row"><h1>Remito N.º ${s.remito_number}</h1><span class="pill wait">En curso</span></div>
-    <p class="sub">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')}</p>
+  box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Cerrar y guardar">${icon('x')}</button>
+      <div class="grow"><h1>Remito N.º ${s.remito_number}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')}</p></div><span class="pill wait">En curso</span></div>
     <ol class="rm-steps" aria-label="Progreso del remito">${STEPS.map((l,i)=>`<li data-i="${i+1}"><span class="rm-num">${i+1}</span><span class="rm-label">${l}</span></li>`).join('')}</ol>
     <div class="rm-counter hint" aria-live="polite"></div>
     <div id="rm-panels">
       <section class="rm-panel card" data-step="1" aria-label="Paso 1: Servicio">
-        <div class="grid2 rm-first"><div class="field"><label>N.º remito</label><input value="${s.remito_number}" readonly aria-readonly="true"></div>
-        <div class="field"><label for="r-date">Fecha y hora</label><input id="r-date" type="datetime-local" value="${localDT(new Date(s.service_date))}"></div></div>
-        <div class="field"><label for="r-order">N.º de servicio de la prestadora</label><input id="r-order" placeholder="Código asignado por la prestadora" value="${esc(s.provider_order||'')}"></div>
-        <div class="field"><label for="r-plate">Patente del vehículo</label><input id="r-plate" placeholder="AB 123 CD" value="${esc(s.plate||'')}"></div>
-        <div class="field"><label for="r-mm">Marca y modelo</label><input id="r-mm" placeholder="Ej.: Ford Focus 2019" value="${esc(s.make_model||'')}"></div>
+        <!-- El N.º de remito lo pone el sistema: no se escribe. -->
+        <div class="grid2"><div class="field ${particular?'span2':''}"><label for="r-date">Fecha y hora</label><input id="r-date" type="datetime-local" value="${localDT(new Date(s.service_date))}"></div>
+        ${particular?'':`<div class="field"><label for="r-order">N.º de servicio</label><input id="r-order" placeholder="De la prestadora" value="${esc(s.provider_order||'')}"></div>`}</div>
+        <div class="grid2"><div class="field"><label for="r-plate">Patente</label><input id="r-plate" placeholder="AB 123 CD" value="${esc(s.plate||'')}"></div>
+        <div class="field"><label for="r-mm">Marca y modelo</label><input id="r-mm" placeholder="Ford Focus" value="${esc(s.make_model||'')}"></div></div>
         <div class="field"><label for="r-orig">Origen</label><input id="r-orig" placeholder="Ciudad / dirección" value="${esc(s.origin||'')}"></div>
         <div class="field"><label for="r-dest">Destino</label><input id="r-dest" placeholder="Ciudad / dirección" value="${esc(s.destination||'')}"></div>
-        <div class="grid2"><div class="field"><label for="r-km">Kilómetros recorridos</label><input id="r-km" placeholder="Ej.: 48" value="${s.km??''}"></div>
-        <div class="field"><label>Llegada</label>${s.arrived_at?`<input value="${esc(fmtDate(s.arrived_at))}" readonly>`:'<button class="btn block" type="button" id="arr">Llegué</button>'}</div></div>
+        <div class="grid2"><div class="field"><label for="r-km">Km recorridos</label><input id="r-km" placeholder="Ej.: 48" value="${s.km??''}"></div>
+        <div class="field"><label>Llegada</label>${s.arrived_at?`<input value="${esc(fmtDate(s.arrived_at))}" readonly>`:`<button class="btn block" type="button" id="arr">${icon('map-pin')} Llegué</button>`}</div></div>
+        <button class="link danger" type="button" id="cancel">Anular servicio</button>
       </section>
       <section class="rm-panel card" data-step="2" aria-label="Paso 2: Socio" hidden>
         <div class="field"><label for="r-cname">Nombre del socio / cliente</label><input id="r-cname" placeholder="Nombre completo" autocomplete="off" value="${esc(s.customer_name||'')}"></div>
@@ -118,7 +150,7 @@ function wizard(box,s,cl,tp,rates,step){
         <div class="field"><label for="r-exc">Excedente km $</label><input id="r-exc" value="${extraOf(s,'Excedente')||''}"></div></div>
         <div class="grid2"><div class="field"><label for="r-wait">Espera / maniobras $</label><input id="r-wait" value="${extraOf(s,'Espera')||''}"></div>
         <div class="field"><label for="r-other">Otros $</label><input id="r-other" value="${Number(s.other_amount)||''}"></div></div>
-        <div id="r-total" class="card" style="background:var(--ax-surface)"></div>
+        <div id="r-total" class="card tight" style="background:var(--ax-surface)"></div>
         <h2>Cobro en el lugar</h2>
         <p class="hint" id="r-pay-hint"></p>
         <div class="grid2"><div class="field"><label for="r-p1m">Medio de pago</label><select id="r-p1m"><option value="">${particular?'Elegí cómo pagó':'No pagó nada en el lugar'}</option>${Object.entries(PAY).map(([k,l])=>`<option value="${k}" ${s.payment_1_method===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -134,19 +166,16 @@ function wizard(box,s,cl,tp,rates,step){
         <div class="field"><label for="r-obs">Observaciones</label><input id="r-obs" placeholder="Clima, demoras, estado del vehículo, notas del cliente…" value="${esc(s.notes||'')}"></div>
       </section>
       <section class="rm-panel card" data-step="5" aria-label="Paso 5: Firma" hidden>
-        <h2>Conformidad del socio</h2>
+        <div class="row"><h2>Conformidad del socio</h2><b class="num" id="r-conf-count"></b></div>
+        <div class="bar thin"><i id="r-conf-bar" style="--w:0%"></i></div>
         <div class="stack">${CONF.map(([k,t,d,req])=>`<label class="toggle-row"><input type="checkbox" id="r-${k}" ${req?'checked':''} ${req?'data-req="1"':''}> <span><b>${t}${req?'':' <small>(opcional)</small>'}</b><small>${d}</small></span></label>`).join('')}</div>
-        <div class="row"><span class="hint">Confirmaciones</span><b class="num" id="r-conf-count"></b></div>
-        <div class="bar"><i id="r-conf-bar" style="--w:0%"></i></div>
         <label class="toggle-row"><input type="checkbox" id="r-absent"> <span><b>Socio ausente (firma el chofer)</b><small>Activar si el titular no está presente para firmar</small></span></label>
-        <h2 id="r-sig-title">Firma digital del socio</h2>
-        <div class="pad-wrap"><canvas id="pad" tabindex="0" width="600" height="220" aria-label="Espacio para firmar"></canvas><span class="pad-hint" id="pad-hint">Dibujá con el dedo</span><button class="btn ghost pad-clear" type="button" id="clr">Limpiar</button></div>
+        <div class="pad-wrap"><span class="pad-title" id="r-sig-title">Firma digital del socio</span><canvas id="pad" tabindex="0" width="600" height="220" aria-label="Espacio para firmar"></canvas><span class="pad-hint" id="pad-hint">Dibujá con el dedo</span><button class="btn ghost pad-clear" type="button" id="clr">Limpiar</button></div>
         <div class="grid2"><div class="field"><label for="r-sn">Aclaración</label><input id="r-sn" value="${esc(s.signer_name||s.customer_name||'')}"></div><div class="field"><label for="r-sd">DNI</label><input id="r-sd" inputmode="numeric" value="${esc(s.signer_doc||s.customer_doc||'')}"></div></div>
         <p id="r-sig-err" class="err" hidden></p>
       </section>
     </div>
-    <div class="rm-footer"><button class="btn" type="button" id="r-back">‹ Atrás</button><button class="btn ghost" type="button" id="r-later">Guardar y seguir después</button><button class="btn pri" type="button" id="r-next">Siguiente ›</button></div>
-    <button class="btn ghost block" type="button" id="cancel">Anular servicio</button>`;
+    <div class="rm-footer"><button class="btn" type="button" id="r-back">${icon('chevron-left')} Atrás</button><button class="btn ghost" type="button" id="r-later">Guardar y seguir después</button><button class="btn pri" type="button" id="r-next">Siguiente ${icon('chevron-right')}</button></div>`;
 
   // ── Precio: base de la tarifa + km excedentes + adicionales ──
   const rate=()=>particular?null:rateForAt(rates,s.client_id,s.service_type_id,new Date($('r-date').value||s.service_date));
@@ -155,12 +184,9 @@ function wizard(box,s,cl,tp,rates,step){
     return {km,r,base:p.base,kmAmount:p.kmAmount,tolls,exc,wait,other,extras:tolls+exc+wait+other,total:p.base+p.kmAmount+tolls+exc+wait+other};}
   function paintTotal(){const t=totals();
     $('r-total').innerHTML=(!particular&&!t.r?'<p class="err">Esta prestadora no tiene tarifa para este servicio. El total sale solo con los adicionales. <button class="link" type="button" id="r-rate">Cargar tarifa</button></p>':'')+
-      `<div class="row"><span class="hint">${particular?'Precio acordado':'Base'}</span><span class="num">${money(t.base)}</span></div>`+
-      (t.kmAmount?`<div class="row"><span class="hint">${Math.max(0,t.km-Number(t.r.included_km))} km × ${money(t.r.per_km)}</span><span class="num">${money(t.kmAmount)}</span></div>`:'')+
-      (t.extras?`<div class="row"><span class="hint">Adicionales</span><span class="num">${money(t.extras)}</span></div>`:'')+
-      `<div class="row"><b>Total del servicio</b><b class="num total-pop" style="color:var(--ax-accent);font-size:20px">${money(t.total)}</b></div>`;
+      `<div class="row"><span><b>Total del servicio</b><span class="hint block">${[(particular?'Acordado ':'Base ')+money(t.base),t.kmAmount?Math.max(0,t.km-Number(t.r.included_km))+' km × '+money(t.r.per_km):'',t.extras?'adicionales '+money(t.extras):''].filter(Boolean).join(' + ')}</span></span><b class="num total-pop" style="color:var(--ax-accent);font-size:20px">${money(t.total)}</b></div>`;
     $('r-rate')?.addEventListener('click',()=>go('cliente-'+s.client_id));
-    $('r-pay-hint').textContent=particular?'El particular paga el total en el lugar.':'La prestadora paga el servicio. Cargá solo lo que el socio pagó en el lugar (por ejemplo, adicionales).';
+    $('r-pay-hint').textContent=particular?'El particular paga el total en el lugar.':'Lo paga la prestadora. Cargá solo lo que el socio pagó acá.';
     if(particular&&!$('r-p1a').value&&t.total)$('r-p1a').value=UI().moneyFmt?UI().moneyFmt(String(t.total)):t.total;}
   ['r-km','r-tolls','r-exc','r-wait','r-other','r-date'].forEach(x=>$(x).addEventListener('input',paintTotal));
   $('r-mixed').addEventListener('change',()=>{$('r-p2').hidden=!$('r-mixed').checked;});
@@ -182,7 +208,7 @@ function wizard(box,s,cl,tp,rates,step){
       if(!sigDirty){er.textContent=absent?'Falta la firma del chofer.':'Falta la firma del socio.';er.hidden=false;$('pad').classList.add('pad-err');UI().haptic([20,40,20]);return false;}}
     return true;}
   function patchFor(n){const t=totals();
-    if(n===1)return {service_date:new Date($('r-date').value||s.service_date).toISOString(),provider_order:$('r-order').value.trim()||null,plate:$('r-plate').value.trim().toUpperCase()||null,make_model:$('r-mm').value.trim()||null,origin:$('r-orig').value.trim()||null,destination:$('r-dest').value.trim()||null,km:t.km||null,base_amount:t.base,km_amount:t.kmAmount,total:t.total};
+    if(n===1)return {service_date:new Date($('r-date').value||s.service_date).toISOString(),provider_order:$('r-order')?($('r-order').value.trim()||null):null,plate:$('r-plate').value.trim().toUpperCase()||null,make_model:$('r-mm').value.trim()||null,origin:$('r-orig').value.trim()||null,destination:$('r-dest').value.trim()||null,km:t.km||null,base_amount:t.base,km_amount:t.kmAmount,total:t.total};
     if(n===2)return {customer_name:$('r-cname').value.trim()||null,customer_doc:$('r-cdoc').value.trim()||null,customer_phone:$('r-cphone').value.trim()||null};
     if(n===3){const m1=$('r-p1m').value||null,mixed=$('r-mixed').checked;return {extras:[['Peajes',t.tolls],['Excedente',t.exc],['Espera',t.wait]].filter(x=>x[1]).map(([name,amount])=>({name,amount})),tolls:t.tolls?[{name:'Peajes',amount:t.tolls}]:[],
       other_amount:t.other,extras_amount:t.extras,base_amount:t.base,km_amount:t.kmAmount,total:t.total,payment_1_method:m1,payment_1_amount:m1?num($('r-p1a').value):null,
@@ -199,10 +225,12 @@ function wizard(box,s,cl,tp,rates,step){
     box.querySelectorAll('.rm-steps li').forEach(li=>{const i=Number(li.dataset.i);li.classList.toggle('is-done',i<n);li.classList.toggle('is-current',i===n);li.toggleAttribute('aria-current',i===n);if(i===n)li.setAttribute('aria-current','step');
       li.querySelector('.rm-num').textContent=i<n?'✓':i;});
     box.querySelector('.rm-counter').textContent='Paso '+n+' de 5 · '+STEPS[n-1];
-    $('r-back').hidden=n===1;$('r-later').hidden=n!==1;$('r-next').innerHTML=n===5?'✓ Finalizar':'Siguiente ›';
+    $('r-back').hidden=n===1;$('r-later').hidden=n!==1;$('r-next').innerHTML=n===5?icon('check')+' Finalizar':'Siguiente '+icon('chevron-right');
     if(n===3)paintTotal();if(n===4)paintSlots();if(n===5){if(!$('r-absent').checked){if(!$('r-sn').value.trim())$('r-sn').value=s.customer_name||'';if(!$('r-sd').value.trim())$('r-sd').value=s.customer_doc||'';}initPad();paintConf();}
-    if(prev)box.querySelector('.rm-steps').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});}
+    if(prev)$('rm-panels').scrollTop=0;}
   $('r-back').onclick=()=>{if(current>1)show(current-1,-1);};
+  // Cerrar guarda lo que haya en el paso actual (sin exigir que esté completo) y vuelve a Servicios.
+  $('rm-x').onclick=async()=>{await save(current);toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');};
   $('r-later').onclick=async()=>{if(!UI().validateForm(box.querySelector('.rm-panel[data-step="1"]')))return;if(await save(1)){toast('Remito guardado. Seguilo cuando quieras desde Servicios.');go('servicios');}};
   $('r-next').onclick=async()=>{const b=$('r-next');if(b.disabled)return;if(!validate(current))return;b.disabled=true;
     try{if(!(await save(current)))return;if(current<5){show(current+1,1);UI().haptic(8);}else await finish();}finally{b.disabled=false;}};
@@ -255,17 +283,18 @@ function rateForAt(rates,clientId,typeId,when){return rateFor(rates,clientId,typ
 function signedView(box,s,cl,tp,tk,id){
   const line=(l,v)=>v?`<div class="row"><span class="hint">${l}</span><span>${esc(v)}</span></div>`:'';
   const cancelled=s.status==='cancelled';
-  box.innerHTML=`<div class="row"><h1>Remito N.º ${s.remito_number}</h1>${cancelled?'<span class="pill muted">Anulado</span>':'<span class="pill ok">Firmado</span>'}</div>
-    <p class="sub">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')} · ${esc(fmtDate(s.service_date))}</p>
-    <div class="card">${line('Patente',s.plate)}${line('Vehículo',s.make_model)}${line('Origen',s.origin)}${line('Destino',s.destination)}${line('N.º prestadora',s.provider_order)}${line('Socio',s.customer_name)}${line('Km',s.km)}${line('Llegada',fmtDate(s.arrived_at))}
+  box.innerHTML=`<div class="top"><button class="btn ghost icon-btn" type="button" id="rm-x" aria-label="Volver a Servicios">${icon('arrow-left')}</button>
+      <div class="grow"><h1>Remito N.º ${s.remito_number}</h1><p class="hint ell">${esc(cl?.name||'')} · ${esc(tp?.name||'Servicio')} · ${esc(fmtDate(s.service_date))}</p></div>${cancelled?'<span class="pill muted">Anulado</span>':'<span class="pill ok">Firmado</span>'}</div>
+    <div class="fill stack"><div class="card">${line('Patente',s.plate)}${line('Vehículo',s.make_model)}${line('Origen',s.origin)}${line('Destino',s.destination)}${line('N.º prestadora',s.provider_order)}${line('Socio',s.customer_name)}${line('Km',s.km)}${line('Llegada',fmtDate(s.arrived_at))}
       <div class="row"><b>Total</b><b class="num" style="color:var(--ax-accent)">${money(s.total)}</b></div></div>
     <div class="card"><h2>Fotos</h2><div id="ph" class="grid2"></div></div>
     <div class="card"><h2>Firma</h2><img id="sig-img" alt="Firma" style="width:100%;background:#fff;border-radius:10px;min-height:80px">
       <p class="hint">${esc(s.signer_name||'')}${s.signer_doc?' · '+esc(s.signer_doc):''}${s.customer_present===false?' · firmó el chofer (socio ausente)':''} · ${esc(fmtDate(s.signed_at))}</p></div>
     ${cancelled?'':`<div class="card"><h2>Cobro</h2><div class="row"><span>${s.paid_at?'Cobrado el '+esc(fmtDate(s.paid_at)):'Todavía no cobrado'}</span><button class="btn" type="button" id="paid">${s.paid_at?'Marcar no cobrado':'Marcar cobrado'}</button></div>
-      ${s.payment_1_method?`<p class="hint">${PAY[s.payment_1_method]} ${money(s.payment_1_amount)}${s.payment_2_method?' + '+PAY[s.payment_2_method]+' '+money(s.payment_2_amount):''}</p>`:''}</div>
-    <button class="btn pri block" type="button" id="share">Enviar remito (PDF)</button>`}`;
+      ${s.payment_1_method?`<p class="hint">${PAY[s.payment_1_method]} ${money(s.payment_1_amount)}${s.payment_2_method?' + '+PAY[s.payment_2_method]+' '+money(s.payment_2_amount):''}</p>`:''}</div>`}</div>
+    ${cancelled?'':`<button class="btn pri block" type="button" id="share">${icon('share-2')} Enviar remito (PDF)</button>`}`;
   const $=x=>document.getElementById(x);
+  $('rm-x').onclick=()=>go('servicios');
   (async()=>{const paths=s.photos||[];if(!paths.length){$('ph').innerHTML='<p class="hint">Sin fotos.</p>';return;}const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,3600);
     if($('ph'))$('ph').innerHTML=(data||[]).map(u=>`<img src="${esc(u.signedUrl)}" alt="Foto del vehículo" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px">`).join('');})();
   if(s.signature_path)C.db.storage.from('solo_files').createSignedUrl(s.signature_path,3600).then(({data})=>{if(data&&$('sig-img'))$('sig-img').src=data.signedUrl;});
@@ -297,28 +326,17 @@ async function sharePdf(s,cl,tp,tk){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();toast('PDF descargado');
 }
 
-/* ── Gastos ──────────────────────────────────────────── */
+/* ── Gastos: resumen del mes y lista; el alta va en su propia pantalla ── */
 views.gastos=async function(mode){
-  const kind=mode==='fijo'?'fixed':'variable';
-  shell(`<h1>Gastos · ${esc(monthName(C.month))}</h1>
-    <form id="ex" class="card" novalidate><h2>Nuevo gasto</h2>
-      <div class="split" role="group" aria-label="Tipo de gasto"><button class="btn ${kind==='variable'?'pri':''}" type="button" data-k="variable" aria-pressed="${kind==='variable'}">Del día</button><button class="btn ${kind==='fixed'?'pri':''}" type="button" data-k="fixed" aria-pressed="${kind==='fixed'}">Fijo</button></div>
-      <div class="field"><label for="e-amount">Monto $</label><input id="e-amount" inputmode="decimal" style="font-size:22px"></div>
-      <div class="field"><label>Categoría</label><div class="grid2" id="e-cats">${CATS[kind].map((c,i)=>`<button class="btn ${i===0?'pri':''}" type="button" data-c="${esc(c)}" aria-pressed="${i===0}">${esc(c)}</button>`).join('')}</div></div>
-      <div class="grid2"><div class="field"><label for="e-date">${kind==='fixed'?'Pagado el':'Fecha'}</label><input id="e-date" type="date" value="${isoDate(new Date())}"></div>
-      ${kind==='fixed'?'<div class="field"><label for="e-period">Cubre</label><select id="e-period"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12" selected>12 meses</option></select></div>':''}</div>
-      ${kind==='fixed'?'<p class="hint">Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.</p>':''}
-      <p id="e-err" class="err" hidden></p><button class="btn pri block" type="submit">Guardar gasto</button></form>
-    <div id="el" class="stack"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'gastos');
-  const $=x=>document.getElementById(x);let cat=CATS[kind][0];
-  app().querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>go('gastos-'+(b.dataset.k==='fixed'?'fijo':'dia')));
-  $('e-cats').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;$('e-cats').querySelectorAll('[data-c]').forEach(x=>{x.classList.toggle('pri',x===b);x.setAttribute('aria-pressed',x===b);});});
-  if(mode==='nuevo')setTimeout(()=>$('e-amount')?.focus(),50);
-  $('ex').onsubmit=async e=>{e.preventDefault();const er=$('e-err');er.hidden=true;const amount=num($('e-amount').value);
-    if(amount<=0){er.textContent='Poné el monto del gasto.';er.hidden=false;return;}
-    const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:kind==='fixed'?Number($('e-period').value):null};
-    const {error}=await C.db.from('solo_expenses').insert(row);if(error){er.textContent=errText(error);er.hidden=false;return;}
-    toast('Gasto guardado');views.gastos(mode==='fijo'?'fijo':'dia');};
+  if(String(mode||'').startsWith('nuevo'))return gastoNuevo(mode==='nuevo-fijo'?'fixed':'variable');
+  const tab=mode==='fijo'?'fixed':'variable';
+  shell(`<div class="top"><h1 class="grow">Gastos · ${esc(monthName(C.month))}</h1><button class="btn pri" type="button" id="add">${icon('plus')} Gasto</button></div>
+    <div id="ex-sum" class="split"><div class="mini"><span>Del día</span><b class="num">…</b></div><div class="mini"><span>Fijos del mes</span><b class="num">…</b></div></div>
+    <div class="seg" role="group" aria-label="Qué gastos ver"><button type="button" data-k="variable" aria-pressed="${tab==='variable'}">Del día</button><button type="button" data-k="fixed" aria-pressed="${tab==='fixed'}">Fijos</button></div>
+    <div id="el" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'gastos');
+  const $=x=>document.getElementById(x);
+  $('add').onclick=()=>go(tab==='fixed'?'gastos-nuevo-fijo':'gastos-nuevo');
+  app().querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>go(b.dataset.k==='fixed'?'gastos-fijo':'gastos'));
   const [a,z]=range();
   const [{data:vars},{data:fixed}]=await Promise.all([
     C.db.from('solo_expenses').select('*').eq('kind','variable').gte('spent_on',isoDate(a)).lt('spent_on',isoDate(z)).order('spent_on',{ascending:false}),
@@ -326,8 +344,30 @@ views.gastos=async function(mode){
   const active=(fixed||[]).filter(x=>{const end=new Date(x.spent_on+'T00:00:00');end.setMonth(end.getMonth()+x.period_months);return end>a&&(!x.ends_on||x.ends_on>=isoDate(a));});
   const tv=(vars||[]).reduce((t,x)=>t+Number(x.amount),0),tf=active.reduce((t,x)=>t+Number(x.amount)/x.period_months,0);
   const el=$('el');if(!el)return;
-  el.innerHTML=`<div class="split"><div class="mini"><span>Del día</span><b class="num">${money(tv)}</b></div><div class="mini"><span>Fijos del mes</span><b class="num">${money(tf)}</b></div></div>
-    <h2>Fijos que cuentan este mes</h2>${active.map(x=>`<div class="item" style="cursor:default"><div class="row"><b>${esc(x.category)}</b><b class="num">${money(Number(x.amount)/x.period_months)}</b></div><span class="hint">${money(x.amount)} cada ${x.period_months} ${x.period_months>1?'meses':'mes'} · pagado ${esc(x.spent_on.split('-').reverse().join('/'))}</span></div>`).join('')||'<p class="hint">Todavía no cargaste gastos fijos (seguro, patente, monotributo…).</p>'}
-    <h2>Del día</h2>${(vars||[]).map(x=>`<div class="item" style="cursor:default"><div class="row"><b>${esc(x.category)}</b><b class="num">${money(x.amount)}</b></div><span class="hint">${esc(x.spent_on.split('-').reverse().join('/'))}</span></div>`).join('')||'<p class="hint">Sin gastos del día en este mes.</p>'}`;
+  $('ex-sum').innerHTML=`<div class="mini"><span>Del día</span><b class="num">${money(tv)}</b></div><div class="mini"><span>Fijos del mes</span><b class="num">${money(tf)}</b></div>`;
+  el.innerHTML=tab==='fixed'
+    ?active.map(x=>`<div class="item static"><div class="row"><b>${esc(x.category)}</b><b class="num">${money(Number(x.amount)/x.period_months)}</b></div><span class="hint">${money(x.amount)} cada ${x.period_months} ${x.period_months>1?'meses':'mes'} · pagado ${esc(x.spent_on.split('-').reverse().join('/'))}</span></div>`).join('')||'<div class="empty">Todavía no cargaste gastos fijos (seguro, patente, monotributo…).</div>'
+    :(vars||[]).map(x=>`<div class="item static"><div class="row"><b>${esc(x.category)}</b><b class="num">${money(x.amount)}</b></div><span class="hint">${esc(x.spent_on.split('-').reverse().join('/'))}</span></div>`).join('')||'<div class="empty">Sin gastos del día en este mes.</div>';
 };
+function gastoNuevo(kind){
+  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Nuevo gasto</h1></div>
+    <form id="ex" class="card fill-card" novalidate>
+      <div class="seg" role="group" aria-label="Tipo de gasto"><button type="button" data-k="variable" aria-pressed="${kind==='variable'}">Del día</button><button type="button" data-k="fixed" aria-pressed="${kind==='fixed'}">Fijo</button></div>
+      <div class="field"><label for="e-amount">Monto $</label><input id="e-amount" class="big-input" inputmode="decimal" placeholder="0"></div>
+      <div class="field"><label>Categoría</label><div class="chips" id="e-cats">${CATS[kind].map((c,i)=>`<button class="chip" type="button" data-c="${esc(c)}" aria-pressed="${i===0}">${esc(c)}</button>`).join('')}</div></div>
+      <div class="grid2"><div class="field ${kind==='fixed'?'':'span2'}"><label for="e-date">${kind==='fixed'?'Pagado el':'Fecha'}</label><input id="e-date" type="date" value="${isoDate(new Date())}"></div>
+      ${kind==='fixed'?'<div class="field"><label for="e-period">Cubre</label><select id="e-period"><option value="1">1 mes</option><option value="2">2 meses</option><option value="3">3 meses</option><option value="6">6 meses</option><option value="12" selected>12 meses</option></select></div>':''}</div>
+      ${kind==='fixed'?'<p class="hint">Se reparte por mes: un seguro anual de $ 1.200.000 suma $ 100.000 en cada mes.</p>':''}
+      <p id="e-err" class="err" hidden></p><button class="btn pri block push" type="submit">Guardar gasto</button></form>`,'gastos',{bare:true});
+  const $=x=>document.getElementById(x);let cat=CATS[kind][0];
+  $('back').onclick=()=>go(kind==='fixed'?'gastos-fijo':'gastos');
+  app().querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>go(b.dataset.k==='fixed'?'gastos-nuevo-fijo':'gastos-nuevo'));
+  $('e-cats').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;UI().haptic(6);$('e-cats').querySelectorAll('[data-c]').forEach(x=>x.setAttribute('aria-pressed',x===b));});
+  setTimeout(()=>$('e-amount')?.focus(),60);
+  $('ex').onsubmit=async e=>{e.preventDefault();const er=$('e-err');er.hidden=true;const amount=num($('e-amount').value);
+    if(amount<=0){er.textContent='Poné el monto del gasto.';er.hidden=false;return;}
+    const row={kind,category:cat,amount,spent_on:$('e-date').value||isoDate(new Date()),period_months:kind==='fixed'?Number($('e-period').value):null};
+    const {error}=await C.db.from('solo_expenses').insert(row);if(error){er.textContent=errText(error);er.hidden=false;return;}
+    UI().success();toast('Gasto guardado');go(kind==='fixed'?'gastos-fijo':'gastos');};
+}
 })();

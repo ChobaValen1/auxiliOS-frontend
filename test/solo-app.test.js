@@ -33,3 +33,25 @@ test('Solo: el remito es por pasos, igual que el del chofer en Flota',()=>{
   assert.match(ops,/Guardar y seguir después/);assert.match(ops,/Pago mixto/);assert.match(ops,/Los pagos suman/);assert.match(ops,/Faltan confirmaciones/);
   assert.match(ops,/function validate\(n\)/);assert.match(ops,/UI\(\)\.validateForm\(panel\)/);
 });
+test('Solo: app instalable en el celular, sin zoom y sin desplazar la página',()=>{
+  const pwa=fs.readFileSync('solo/solo-pwa.js','utf8'),sw=fs.readFileSync('solo-sw.js','utf8'),man=JSON.parse(fs.readFileSync('solo-manifest.json','utf8')),root=fs.readFileSync('sw.js','utf8');
+  assert.match(html,/maximum-scale=1, user-scalable=no/);assert.match(html,/rel="manifest" href="\/solo-manifest\.json"/);assert.match(html,/apple-touch-icon/);assert.match(html,/\/solo\/solo-pwa\.js/);
+  assert.equal(man.start_url,'/solo.html');assert.equal(man.scope,'/solo');assert.equal(man.display,'standalone');
+  assert.match(pwa,/register\('\/solo-sw\.js',\{scope:'\/solo'\}\)/,'no pisa el service worker de Flota');
+  assert.match(pwa,/beforeinstallprompt/);assert.match(pwa,/Agregar a inicio/);assert.match(pwa,/localStorage/);assert.match(pwa,/gesturestart/);
+  assert.match(sw,/'\/solo\.html'/);assert.match(sw,/supabase\.co/);assert.match(root,/'\/solo\/solo-pwa\.js'/);
+  assert.match(css,/html,body\{height:100%;overflow:hidden/);assert.match(css,/height:100dvh/);assert.match(css,/font-size:16px/);
+});
+test('Solo: barra con íconos, ojito en la contraseña y recuperación por email',()=>{
+  assert.match(js,/\['inicio','Inicio','layout-dashboard'\]/);assert.match(js,/\/ui\/icons\.svg#/);
+  assert.match(js,/data-eye=/);assert.match(js,/'eye-off'/);assert.match(js,/Mostrar contraseña/);
+  assert.match(js,/emailRedirectTo:backUrl\(\)/);assert.match(js,/resetPasswordForEmail\(email,\{redirectTo:backUrl\(\)\}\)/);
+  assert.match(js,/auth\.resend\(\{type:'signup'/);assert.match(js,/PASSWORD_RECOVERY/);assert.match(js,/auth\.updateUser\(\{password\}\)/);
+  assert.match(js,/identities\.length/,'email ya registrado');
+});
+test('Solo: nuevo servicio por pasos con tarjetas y remito sin N.º para escribir',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.match(ops,/data-kind="prestadora"/);assert.match(ops,/data-kind="particular"/);assert.match(ops,/'¿Qué prestadora\?'/);assert.match(ops,/'¿Qué servicio\?'/);assert.match(ops,/'Precio acordado'/);
+  assert.match(ops,/go\('clientes-nueva'\)/);
+  assert.doesNotMatch(ops,/<label>N\.º remito<\/label>/);assert.match(ops,/\{bare:true\}/);
+});
