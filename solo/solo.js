@@ -147,7 +147,7 @@ async function renderInicio(){
   const first=(profile.full_name||'').split(' ')[0];
   shell(`<div class="top"><div><div class="brand">AuxiliOS <b>Solo</b></div><p class="sub">Hola, ${esc(first)}</p></div></div>
     <div class="top"><button class="btn ghost" type="button" id="m-prev" aria-label="Mes anterior">‹</button><h1 id="m-name">${esc(monthName(month))}</h1><button class="btn ghost" type="button" id="m-next" aria-label="Mes siguiente">›</button></div>
-    <div id="sum" class="stack"><div class="kpi in"><span>Facturé</span><b>…</b></div><div class="kpi out"><span>Gasté</span><b>…</b></div><div class="kpi left"><span>Me queda</span><b>…</b></div></div>
+    <div id="sum" class="stack" aria-busy="true"><i class="sk kpi-sk"></i><i class="sk kpi-sk"></i><i class="sk kpi-sk tall"></i></div>
     <div class="split"><div class="btn pri" role="button" tabindex="0" id="new-svc">+ Servicio</div><div class="btn" role="button" tabindex="0" id="new-exp">+ Gasto</div></div>
     <button class="item" type="button" data-go="clientes"><div class="row"><b>Prestadoras y tarifas</b><span aria-hidden="true">›</span></div><span class="hint">A quién le facturás y cuánto le cobrás</span></button>`,'inicio');
   document.getElementById('m-prev').onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);renderInicio();};
@@ -155,13 +155,16 @@ async function renderInicio(){
   app.querySelector('.item[data-go]').onclick=()=>go('clientes');
   [['new-svc','nuevo'],['new-exp','gastos-nuevo']].forEach(([id,to])=>{const el=document.getElementById(id);const f=()=>go(to);el.onclick=f;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f();}};});
   const {data:s,error}=await db.rpc('solo_month_summary_v1',{p_month:isoDate(month)});
-  const box=document.getElementById('sum');if(!box)return;
+  const box=document.getElementById('sum');if(!box)return;box.removeAttribute('aria-busy');
   if(error){box.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
   const left=Number(s.left)||0;
-  box.innerHTML=`<div class="kpi in"><span>Facturé</span><b>${money(s.billed)}</b></div>
-    <div class="kpi out"><span>Gasté</span><b>${money(s.spent)}</b></div>
-    <div class="kpi left ${left<0?'neg':''}"><span>Me queda</span><b>${money(left)}</b></div>
-    <div class="split"><div class="mini"><span>Cobrado</span><b class="num">${money(s.collected)}</b></div><div class="mini"><span>Por cobrar</span><b class="num" style="color:var(--ax-warn)">${money(s.pending)}</b></div></div>
+  const pct=Number(s.billed)>0?Math.max(0,Math.min(100,Math.round(Number(s.collected)/Number(s.billed)*100))):0;
+  box.innerHTML=`<div class="kpi in"><span>Facturé</span><b data-count="${Number(s.billed)||0}">$ 0</b></div>
+    <div class="kpi out"><span>Gasté</span><b data-count="${Number(s.spent)||0}">$ 0</b></div>
+    <div class="kpi left ${left<0?'neg':''}"><span>Me queda</span><b data-count="${left}">$ 0</b></div>
+    <div class="card"><div class="row"><span class="hint">Cobrado</span><b class="num" data-count="${Number(s.collected)||0}">$ 0</b></div>
+      <div class="bar" role="img" aria-label="Cobraste el ${pct}% de lo facturado"><i style="--w:${pct}%"></i></div>
+      <div class="row"><span class="hint">Por cobrar</span><b class="num" style="color:var(--ax-warn)" data-count="${Number(s.pending)||0}">$ 0</b></div></div>
     <p class="hint">${Number(s.services)||0} servicios · fijos del mes ${money(s.fixed_expenses)} · variables ${money(s.variable_expenses)}</p>
     ${Number(s.services)?'':'<div class="empty">Todavía no hay servicios en '+esc(monthName(month).toLowerCase())+'. Primero cargá tus prestadoras y sus tarifas.</div>'}`;
 }
@@ -169,7 +172,7 @@ async function renderInicio(){
 async function renderClientes(){
   shell(`<div class="top"><button class="btn ghost" type="button" id="back" aria-label="Volver">‹ Volver</button></div>
     <h1>Prestadoras y tarifas</h1><p class="sub">A quién le facturás, a cuántos días te paga y cuánto le cobrás por cada servicio.</p>
-    <div id="list" class="stack"><p class="hint">Cargando…</p></div>
+    <div id="list" class="stack"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>
     <form id="add" class="card" novalidate><h2>Nueva prestadora</h2>
       <div class="field"><label for="c-name">Nombre</label><input id="c-name" placeholder="Ej.: Seguros del Sur"></div>
       <div class="field"><label for="c-days">Días de pago</label><input id="c-days" inputmode="numeric" value="30"></div>
@@ -188,7 +191,7 @@ async function renderClientes(){
 }
 
 async function renderCliente(id){
-  shell(`<div class="top"><button class="btn ghost" type="button" id="back">‹ Prestadoras</button></div><div id="cl" class="stack"><p class="hint">Cargando…</p></div>`,'mas');
+  shell(`<div class="top"><button class="btn ghost" type="button" id="back">‹ Prestadoras</button></div><div id="cl" class="stack"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'mas');
   document.getElementById('back').onclick=()=>go('clientes');
   const [{data:c,error},{data:types},{data:rates}]=await Promise.all([
     db.from('solo_clients').select('*').eq('id',id).maybeSingle(),
@@ -223,7 +226,7 @@ async function renderCliente(id){
 async function renderMas(){
   shell(`<h1>Más</h1>
     <button class="item" type="button" data-to="clientes"><div class="row"><b>Prestadoras y tarifas</b><span aria-hidden="true">›</span></div></button>
-    <div id="truck" class="card"><h2>Mi grúa</h2><p class="hint">Cargando…</p></div>
+    <div id="truck" class="card"><h2>Mi grúa</h2><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>
     <div class="card"><h2>Mi cuenta</h2><div class="row"><span>${esc(profile.full_name)}</span></div><p class="hint">${esc(user.email)}</p>
       <button class="btn block" type="button" id="logout">Cerrar sesión</button></div>`,'mas');
   app.querySelector('[data-to]').onclick=()=>go('clientes');

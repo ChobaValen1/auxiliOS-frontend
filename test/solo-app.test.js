@@ -25,3 +25,11 @@ test('Solo etapa 1c: servicio con precio por tarifa, remito con firma y gastos',
   assert.match(ops,/conf_service/);assert.match(ops,/navigator\.share/);assert.match(ops,/from\('solo_expenses'\)\.insert/);
   assert.match(ops,/period_months:kind==='fixed'/);assert.match(css,/\[hidden\]\{display:none!important\}/);
 });
+test('Solo: el remito es por pasos, igual que el del chofer en Flota',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');
+  assert.match(ops,/const STEPS=\['Servicio','Socio','Adicionales','Evidencia','Firma'\]/);
+  for(const l of ['Frente del vehículo','Lateral','Daños o estado adicional','Odómetro'])assert.ok(ops.includes(l),l);
+  for(const l of ['Conformidad con el servicio','Aceptación de cargos variables','Sin daños reportados','Conformidad de arrastre','Socio ausente (firma el chofer)'])assert.ok(ops.includes(l),l);
+  assert.match(ops,/Guardar y seguir después/);assert.match(ops,/Pago mixto/);assert.match(ops,/Los pagos suman/);assert.match(ops,/Faltan confirmaciones/);
+  assert.match(ops,/function validate\(n\)/);assert.match(ops,/UI\(\)\.validateForm\(panel\)/);
+});
