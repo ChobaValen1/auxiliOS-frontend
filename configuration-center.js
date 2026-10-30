@@ -264,7 +264,7 @@
     });
 
     if (canUseManagementTools()) {
-      addAction(management, '👤', 'Personal / Choferes', 'Alta y gestión del personal', () => openLegacySettingsTab('tab-usuarios'));
+      if (typeof window === 'undefined' || window.AUXILIOS_EDITION !== 'monogruero') addAction(management, '👤', 'Personal / Choferes', 'Alta y gestión del personal', () => openLegacySettingsTab('tab-usuarios'));
       addAction(management, '🚛', 'Camiones', 'Alta y administración de vehículos', () => openLegacySettingsTab('tab-flota'));
       addAction(management, '🔧', 'Mantenimiento', 'Seguimiento y asignación de mantenimiento', () => openLegacySettingsTab('tab-mantenimiento'));
       addAction(management, '🆘', 'SOS del chofer', 'Teléfonos, talleres y pasos ante un siniestro', () => openLegacySettingsTab('tab-emergencias'));
@@ -396,6 +396,8 @@
     const screen = document.getElementById('screen-configuracion');
     if (!screen || !canUseCenter()) return;
     const admin = role() === 'administracion';
+    // Monogruero: sin tercerizados ni gestión de personal (es una sola persona).
+    const mono = typeof window !== 'undefined' && window.AUXILIOS_EDITION === 'monogruero';
     const manage = canUseManagementTools();
     const sectionIcon = label => {
       const paths = {
@@ -435,9 +437,9 @@
           route('Tipos de servicio','Alta y definición de servicios.','config-service-types')+route('Tipos de tarifa','Modalidades de cálculo.','config-tariff-types')+route('Peajes','Catálogo e importes vigentes.','peajes')+route('Bases geográficas','Ubicaciones operativas.','bases-geograficas'))
       + area('Prestadoras y tarifas','Servicios habilitados, precios y vigencias.','▥',
           route('Prestadoras','Datos, servicios habilitados y parámetros de facturación.','empresas')+route('Tarifas','Valores y vigencias por prestadora.','config-tariff-matrix')
-          + (admin ? link('Tercerizados','Grúas de afuera: datos y forma de pago.','AuxTercerizados.open()') : ''))
+          + (admin && !mono ? link('Tercerizados','Grúas de afuera: datos y forma de pago.','AuxTercerizados.open()') : ''))
       + area('Usuarios y permisos','Personal, roles y administración interna.','♙',
-          manage ? legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios')+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
+          manage ? (mono ? '' : legacy('Personal / Choferes','Alta y gestión del personal.','tab-usuarios'))+legacy('Mi cuenta','Datos de la cuenta actual.','tab-mi-cuenta') : '<p class="aux-area-note">La gestión de usuarios corresponde a Administración.</p>')
       /* Tema de pantalla: en el teléfono se elige acá (en la computadora también está el botón al lado del perfil). */
       + area('Tema','Oscuro, Claro o el que use tu dispositivo.','◐',
           '<div class="aux-theme-area">'+(typeof window !== 'undefined' && window.AuxTheme ? window.AuxTheme.pickerHtml() : '')+'<p class="aux-area-note">Se guarda para vos en este dispositivo. Sistema sigue el modo del celular o la computadora.</p></div>')
