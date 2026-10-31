@@ -1,0 +1,17 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');const {PGlite}=require('@electric-sql/pglite');
+test('recommended assignment rejects unauthorized, stale chains and already assigned targets; delegates only once',async()=>{const db=new PGlite();try{await db.exec(`create role anon;create role authenticated;create schema auth;create schema app_private;
+create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;
+create function app_private.current_auxilios_role() returns text language sql as $$select current_setting('test.role',true)$$;
+create function app_private.multi_service_enabled_v1(uuid) returns boolean language sql as $$select true$$;
+create function app_private.service_driver_done_v1(uuid) returns boolean language sql as $$select false$$;
+create table public.users(user_id uuid,is_active boolean);create table public.operator_services(service_id uuid primary key,status text,assigned_driver_id uuid,assigned_truck_id integer,driver_activated boolean,logistics_type text,driver_queue_position integer);
+create function public.set_operator_service_assignment_v2(uuid,uuid,integer) returns jsonb language plpgsql as $$begin update public.operator_services set status='assigned',assigned_driver_id=$2,assigned_truck_id=$3 where service_id=$1;return '{"ok":true}'::jsonb;end$$;
+insert into users values ('00000000-0000-4000-8000-000000000001',true);
+insert into operator_services values ('00000000-0000-4000-8000-000000000002','pending',null,null,false,'own',null),('00000000-0000-4000-8000-000000000003','assigned','00000000-0000-4000-8000-000000000004',12,false,'own',1);`);
+await db.exec(fs.readFileSync('migrations/20261030130543_map_recommended_assignment_v1.sql','utf8'));
+const call=`select public.assign_recommended_operator_service_v1('00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000004',12,array['00000000-0000-4000-8000-000000000003']::uuid[])`;
+await assert.rejects(db.query(call),/Sin permiso/);await db.exec(`set test.uid='00000000-0000-4000-8000-000000000001';set test.role='chofer';`);await assert.rejects(db.query(call),/Sin permiso/);await db.exec(`set test.role='operador';`);
+await assert.rejects(db.query(call.replace("array['00000000-0000-4000-8000-000000000003']","array[]")),/cadena cambió/);
+assert.equal((await db.query(call)).rows[0].assign_recommended_operator_service_v1.ok,true);await assert.rejects(db.query(call),/servicio cambió/);
+const privileges=(await db.query("select has_function_privilege('anon','public.assign_recommended_operator_service_v1(uuid,uuid,integer,uuid[])','execute') as anon,has_function_privilege('authenticated','public.assign_recommended_operator_service_v1(uuid,uuid,integer,uuid[])','execute') as authenticated")).rows[0];assert.equal(privileges.anon,false);assert.equal(privileges.authenticated,true);
+}finally{await db.close();}});

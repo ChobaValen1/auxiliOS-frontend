@@ -87,7 +87,7 @@ test('el período anterior del gráfico dura lo mismo y se alinea día por día'
 
 test('el markup trae todo lo que pinta el módulo', () => {
   ['dashx-fact-kpis', 'dashx-fact-mapa', 'rsm-mapa-stats', 'rsm-mapa-leyenda', 'rsm-radio',
-   'rsm-circulos', 'rsm-lineas', 'rsm-tipos-canvas', 'rsm-tipos-lista', 'rsm-evol-canvas',
+   'rsm-circulos', 'rsm-lineas', 'rsm-ranking', 'rsm-tipos-lista', 'rsm-evol-canvas',
    'rsm-eficiencia', 'dashx-fact-empresas', 'dashx-titulo', 'dashx-subtitulo']
     .forEach(id => assert.ok(index.includes(`id="${id}"`), `falta #${id}`));
   assert.match(index, /dashboard-resumen-v1\.js/);
@@ -126,4 +126,14 @@ test('rendimiento de la flota: sólo cuando casi todo el trabajo está cargado c
   assert.equal(api.rendimientoFlota(t, parcial), null);
   assert.equal(api.rendimientoFlota(t, filtrado), null);
   assert.equal(api.rendimientoFlota(t, null), null);
+});
+
+test('ranking prioritizes amount and groups the tail without changing totals or input order',()=>{
+ const {api}=cargarModulo();const empresas=Array.from({length:8},(_,i)=>({nombre:'P'+i,monto:(i+1)*100,servicios:i+1}));const original=JSON.stringify(empresas),rows=api.rankingRows({empresas});
+ assert.equal(rows.length,6);assert.equal(rows[0].nombre,'P7');assert.equal(rows.at(-1).nombre,'Otras 3 prestadoras');assert.equal(rows.reduce((n,r)=>n+r.monto,0),3600);assert.ok(Math.abs(rows.reduce((n,r)=>n+r.share,0)-100)<1e-8);assert.equal(JSON.stringify(empresas),original);
+});
+test('zero revenue does not manufacture percentages',()=>{const {api}=cargarModulo();assert.equal(api.rankingRows({empresas:[{nombre:'Prueba',monto:0,servicios:2}]})[0].share,null);assert.equal(api.rankingRows({empresas:[]}).length,0);});
+test('summary puts evolution before geography, keeps exact-value access and avoids repeated efficiency KPI',()=>{
+ const section=index.slice(index.indexOf('id="dashx-sec-facturacion"'),index.indexOf('<!-- SECCIÓN 1b'));
+ assert.ok(section.indexOf('id="rsm-evol-card"')<section.indexOf('id="rsm-geography"'));assert.ok(section.includes('id="rsm-evol-data"'));assert.match(section,/<details class="rsm-disclosure" id="rsm-geography">/);assert.doesNotMatch(js,/tile\('Eficiencia de km'/);assert.doesNotMatch(js,/rpc\(RPC_FLOTA/);assert.doesNotMatch(js,/type: 'doughnut'/);
 });

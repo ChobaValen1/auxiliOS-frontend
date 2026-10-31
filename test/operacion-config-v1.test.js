@@ -45,8 +45,7 @@ test('Planes de mantenimiento: el catálogo vive en Camión › Planes', () => {
 
 test('Eficiencia operativa: km de la flota según el odómetro', () => {
   const js = read('dashboard-resumen-v1.js'), mig = read('migrations/20261013050000_dashboard_flota_km_v1.sql');
-  assert.match(js, /var RPC_FLOTA = 'dashboard_flota_km_v1'/);
-  assert.match(js, /rpc\(RPC_FLOTA, \{ p_desde: base\.p_desde, p_hasta: base\.p_hasta \}\)\.catch\(/);   // si falla, el resumen sigue
+  assert.doesNotMatch(js, /var RPC_FLOTA|rpc\(RPC_FLOTA/); // la eficiencia se obtiene una sola vez
   assert.match(js, /rpc\('dashboard_efficiency_v1'/);
   assert.match(js, /AuxEfficiencyLoader\.render/);
   const chart = read('motion-ui/src/efficiency.tsx');

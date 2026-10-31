@@ -1,0 +1,15 @@
+# Mapa de Servicios · v591
+
+La barra derecha abre con todos los servicios filtrados y permite alternar Todos/Sin asignar. Las fichas compactas se paginan según el alto disponible. Seleccionar abre el detalle; Todos los servicios vuelve al panel general. Las direcciones completas siguen en el detalle.
+
+Un servicio propio, pendiente y sin chofer/móvil permite buscar recomendaciones. El ranking usa kilómetros por calles desde el último punto de la cadena completa, aunque sus servicios estén fuera de los filtros del mapa. No usa distancia en línea recta, posición GPS ni inventa ETA o minutos. Consulta recorridos al solicitar/recalcular, con dos solicitudes simultáneas y validación de los extremos del trazado. Se muestran hasta tres opciones por página (menos en pantallas bajas).
+
+Se excluyen móviles sin punto final verificable, restricciones de disponibilidad, parejas inconsistentes, choferes sin mult servicio, orden de cadena ambiguo y rutas no disponibles. La aptitud específica y el horario requieren confirmación humana explícita; no hay datos suficientes para afirmarlos automáticamente. Los móviles libres sin ubicación verificable no forman parte de este ranking.
+
+Elegir destaca la cadena y dibuja un enlace discontinuo al nuevo origen. La confirmación vuelve a consultar servicios/disponibilidad y rechaza recomendaciones obsoletas. El RPC `assign_recommended_operator_service_v1` bloquea la fila, exige pendiente/sin asignación, compara la cadena esperada y delega en la asignación canónica. No modifica una asignación realizada por otro operador. Permisos: usuario activo Operador/Administración; sin ejecución anónima. Los cambios posteriores a la comparación pueden requerir recalcular; no hay reserva de recursos.
+
+Validación: pruebas unitarias de elegibilidad/orden/extremos/invalidación; PGlite para permisos, cadena obsoleta y doble asignación; Chromium con datos sintéticos para búsqueda, comparación, confirmación y diseño adaptable; checks de seguridad y suite del proyecto. En producción se verificó instalación, permisos y rechazo sin autenticación mediante transacción sin cambios de datos. El asesor de seguridad agrega el inventario esperado de un RPC definer autenticado, con control interno de rol y usuario activo.
+
+## Ajuste v592 · cadena visible
+
+Los servicios Arribados permanecen en la cadena visible del chofer aunque tengan remito firmado/en revisión. El panel no depende de que el indicador multi servicio venga informado en esa fila. También aparecen, con su estado, al comparar una recomendación. Finalizados y anulados quedan fuera. La cadena de trabajo pendiente usada para calcular recomendaciones y validar la asignación conserva su criterio anterior; un arribo cuyo trabajo ya terminó no vuelve a contarse como pendiente. Validado con prueba unitaria y flujo Chromium de arribo con remito firmado.
