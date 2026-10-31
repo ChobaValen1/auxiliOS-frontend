@@ -1,7 +1,12 @@
+const AUXILIOS_RUNTIME = window.AUXILIOS_RUNTIME;
 const ENV = {
-  API_BASE_URL: 'https://auxilios.up.railway.app',
-  ADMIN_API_BASE_URL: 'https://bcjcrlrrqfbipleiwkqi.supabase.co/functions/v1/auxilios-admin'
+  API_BASE_URL: AUXILIOS_RUNTIME.apiBaseUrl,
+  ADMIN_API_BASE_URL: AUXILIOS_RUNTIME.supabaseUrl + '/functions/v1/auxilios-admin'
 };
+window.AUXILIOS_EDITION = AUXILIOS_RUNTIME.edition;
+document.documentElement.dataset.edition = AUXILIOS_RUNTIME.edition;
+// La instalación monogruero usa AuxiliOS Solo, una app aparte pensada para el celular.
+if (AUXILIOS_RUNTIME.edition === 'monogruero' && !/\/solo(\.html)?$/.test(location.pathname)) location.replace('/solo.html' + location.hash);
 
 /* Formato de fecha único en toda la app: DD/MM/AA (y HH:MM cuando hay hora).
    Las pantallas formatean fechas de muchas formas (toLocaleDateString,
@@ -78,7 +83,7 @@ const ENV = {
 })();
 
 // Build visible para distinguir previews y evitar confundir ramas antiguas.
-window.AUXILIOS_BUILD_ID = 'panel-summary-v593-20261030';
+window.AUXILIOS_BUILD_ID = 'flota-v617-20261031';
 
 const AUXILIOS_ASSET_VERSION = encodeURIComponent(window.AUXILIOS_BUILD_ID);
 function versionedAuxiliosAsset(path) {

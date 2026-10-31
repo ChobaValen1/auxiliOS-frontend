@@ -1,8 +1,9 @@
 {
-  "buildCommand": "node scripts/build-browser-map-config.cjs",
+  "buildCommand": "node scripts/build-browser-map-config.cjs && node scripts/build-runtime-config.cjs",
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/r/:token", "destination": "/remito.html" },
+    { "source": "/v/:code", "destination": "/solo-verificar.html" },
     { "source": "/(.*)", "destination": "/Index.html" }
   ]
 }

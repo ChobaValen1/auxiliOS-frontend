@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0c0e12">
+<title>Verificar remito · AuxiliOS</title>
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/ui/tokens.css?v=solo-v616-20261031">
+<style>
+/* Verificación pública de un remito de AuxiliOS Solo: la abre quien escanea el QR del PDF. */
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ax-bg);color:var(--ax-text);font:15px/1.45 var(--ax-font)}
+main{max-width:520px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top,0px)) 16px calc(28px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.brand{font:400 26px/1 var(--ax-font-brand);letter-spacing:.04em}.brand b{color:var(--ax-accent);font-weight:400}.brand span{font-size:14px;letter-spacing:.2em;color:var(--ax-text-3);margin-left:4px}
+.card{background:var(--ax-surface-2);border:1px solid var(--ax-border);border-radius:16px;padding:18px}
+.res{display:grid;gap:14px}
+.seal{display:flex;align-items:center;gap:12px}
+.seal i{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:24px;font-weight:700}
+.ok .seal i{background:color-mix(in srgb,#22c55e 18%,transparent);color:#4ade80}
+.bad .seal i{background:color-mix(in srgb,#ef4444 18%,transparent);color:#f87171}
+.seal h1{margin:0;font-size:20px;line-height:1.2}.seal p{margin:2px 0 0;color:var(--ax-text-2);font-size:13px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:9px 14px;margin:0;font-size:14px}
+dt{color:var(--ax-text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;align-self:center}
+dd{margin:0;text-align:right;font-weight:600;overflow-wrap:anywhere}
+.num{font-variant-numeric:tabular-nums}
+.big{font:400 34px/1 var(--ax-font-brand);color:var(--ax-accent);letter-spacing:.02em}
+.note{color:var(--ax-text-3);font-size:12px;margin:0}
+form{display:flex;gap:8px}
+input{flex:1;min-width:0;height:46px;border-radius:12px;border:1px solid var(--ax-border-strong);background:var(--ax-surface);color:var(--ax-text);font:600 16px var(--ax-font);padding:0 12px;text-transform:uppercase;letter-spacing:.08em}
+button{height:46px;padding:0 16px;border-radius:12px;border:0;background:var(--ax-accent);color:var(--ax-accent-fg,#111);font:700 15px var(--ax-font);cursor:pointer}
+input:focus-visible,button:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.sk{height:14px;border-radius:7px;background:var(--ax-surface);animation:p 1.2s ease-in-out infinite}@keyframes p{50%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.sk{animation:none}}
+footer{color:var(--ax-text-3);font-size:12px;text-align:center}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="/runtime-config.js?v=solo-v616-20261031" defer></script>
+</head>
+<body>
+<main>
+  <div class="brand">AUXILI<b>OS</b> <span>SOLO</span></div>
+  <section class="card res" id="res" aria-live="polite"><div class="sk"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:50%"></div></section>
+  <section class="card"><p class="note" style="margin-bottom:10px">¿Tenés otro remito? Escribí el código de verificación que figura en el PDF.</p>
+    <form id="f"><input id="c" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Código" aria-label="Código de verificación"><button type="submit">Verificar</button></form></section>
+  <footer>Remitos digitales emitidos con AuxiliOS Solo</footer>
+</main>
+<script>
+(function(){
+  var res=document.getElementById('res');
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function when(v){if(!v)return '';var d=new Date(v);return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'})+' h';}
+  var TAX={monotributo:'Monotributo',responsable_inscripto:'Responsable inscripto',exento:'Exento'};
+  function codeFromUrl(){var m=location.pathname.match(/\/v\/([A-Za-z0-9]{12})\/?$/);if(m)return m[1].toUpperCase();var q=new URLSearchParams(location.search).get('c');return q?q.trim().toUpperCase():'';}
+  function bad(title,sub){res.className='card res bad';res.innerHTML='<div class="seal"><i aria-hidden="true">!</i><div><h1>'+esc(title)+'</h1><p>'+esc(sub)+'</p></div></div>';}
+  function show(r,code){
+    var cuit=r.cuit&&String(r.cuit).length===11?String(r.cuit).replace(/^(\d{2})(\d{8})(\d)$/,'$1-$2-$3'):'';
+    var rows=[['Emitido por',r.business],['CUIT',cuit],['Condición',TAX[r.tax_condition]||''],['Servicio',r.service_type],['Cliente',r.client],['Fecha',when(r.service_date)],
+      ['Patente',r.plate],['Vehículo',r.make_model],['Firmó',r.signer],['Firmado el',when(r.signed_at)],['Fotos',r.photos?r.photos+' guardada'+(r.photos===1?'':'s'):'']].filter(function(x){return x[1];});
+    var cancelled=r.status==='cancelled';
+    res.className='card res '+(cancelled?'bad':'ok');
+    res.innerHTML='<div class="seal"><i aria-hidden="true">'+(cancelled?'!':'✓')+'</i><div><h1>'+(cancelled?'Remito anulado':'Remito original')+'</h1><p>'+(cancelled?'Este remito existe pero fue anulado por quien lo emitió.':'Coincide con el que está guardado en AuxiliOS. Si el PDF muestra otros datos, fue modificado.')+'</p></div></div>'
+      +'<div><span class="note">Remito N.º</span><div class="big num">'+esc(String(r.remito_number||'').padStart(6,'0'))+'</div></div>'
+      +'<dl>'+rows.map(function(x){return '<dt>'+esc(x[0])+'</dt><dd>'+esc(x[1])+'</dd>';}).join('')+'</dl>'
+      +'<p class="note">Código '+esc(code)+'. Por privacidad no se muestran importes, direcciones ni datos de contacto.</p>';
+  }
+  async function check(code){
+    if(!/^[A-Z0-9]{12}$/.test(code))return bad('Código inválido','El código de verificación tiene 12 letras y números. Revisalo en el PDF.');
+    res.className='card res';res.innerHTML='<div class="sk"></div><div class="sk" style="width:70%"></div>';
+    var RT=window.AUXILIOS_RUNTIME||{};
+    if(!window.supabase||!RT.supabaseUrl)return bad('Sin conexión','No pudimos consultar el remito. Revisá la conexión y volvé a intentar.');
+    try{var db=window.supabase.createClient(RT.supabaseUrl,RT.supabaseKey,{auth:{persistSession:false,autoRefreshToken:false}});
+      var out=await db.rpc('solo_verify_remito_v1',{p_code:code});
+      if(out.error)return bad('No pudimos verificar','Probá de nuevo en un rato.');
+      if(!out.data)return bad('No encontramos este remito','El código no corresponde a ningún remito firmado. Si te lo mandaron, pedí que te lo reenvíen.');
+      show(out.data,code);
+    }catch(e){bad('Sin conexión','No pudimos consultar el remito. Revisá la conexión y volvé a intentar.');}
+  }
+  document.getElementById('f').addEventListener('submit',function(e){e.preventDefault();var v=document.getElementById('c').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+    history.replaceState(null,'','/v/'+v);check(v);});
+  function go(){var c=codeFromUrl();if(c){document.getElementById('c').value=c;check(c);}else bad('Verificá un remito','Escaneá el QR del remito o escribí su código abajo.');}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
+})();
+</script>
+</body>
+</html>

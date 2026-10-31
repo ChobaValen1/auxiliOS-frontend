@@ -1,0 +1,11 @@
+/* U8 · Botón flotante extendido que se achica al bajar */
+@media (max-width: 767px){
+  .fab-new-remito.ax-scroll-fab{display:inline-flex;align-items:center;justify-content:flex-start;gap:0;width:auto;max-width:220px;height:56px;padding:0 20px 0 18px;border-radius:999px;background:var(--ax-accent,#f5a623);color:var(--ax-accent-fg,#111);font:var(--ax-fw-semibold,600) 15px/1 var(--ax-font,inherit);box-shadow:var(--ax-shadow-pop,0 8px 24px rgba(0,0,0,.35));overflow:hidden;white-space:nowrap;bottom:calc(92px + env(safe-area-inset-bottom,0px));transition:max-width 260ms cubic-bezier(.2,.8,.2,1),padding 260ms cubic-bezier(.2,.8,.2,1),transform 160ms ease}
+  .ax-scroll-fab .ax-scroll-fab-icon{flex:0 0 20px;font-size:26px;line-height:1;font-weight:500;text-align:center}
+  .ax-scroll-fab .ax-scroll-fab-text{margin-left:10px;opacity:1;transition:opacity 180ms ease,margin 260ms cubic-bezier(.2,.8,.2,1)}
+  .ax-scroll-fab.is-collapsed{max-width:56px;padding:0 18px}
+  .ax-scroll-fab.is-collapsed .ax-scroll-fab-text{opacity:0;margin-left:0}
+  .ax-scroll-fab:active{transform:scale(.96)}
+  .ax-scroll-fab:focus-visible{outline:none;box-shadow:var(--ax-focus,0 0 0 3px rgba(245,166,35,.45))}
+}
+@media (prefers-reduced-motion: reduce){.ax-scroll-fab,.ax-scroll-fab .ax-scroll-fab-text{transition:none!important}}

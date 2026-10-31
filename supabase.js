@@ -3,8 +3,9 @@
 //  Variable: _db (evita conflicto con window.supabase)
 // ================================================================
 
-const SUPABASE_URL = 'https://bcjcrlrrqfbipleiwkqi.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_daGVg7URncTvLzC7N8NzOA_Z0CWB-1M'; // ← reemplazá con la tuya
+// La base sale de runtime-config.js (cada instalación tiene la suya).
+const SUPABASE_URL = window.AUXILIOS_RUNTIME.supabaseUrl;
+const SUPABASE_KEY = window.AUXILIOS_RUNTIME.supabaseKey;
 
 const { createClient } = window.supabase;
 // Si un pedido sale sin usuario (la sesión se perdió) y la base lo rechaza, se avisa
@@ -296,6 +297,7 @@ async function cargarPerfilUsuario() {
     .single();
   if (error) { console.error('Error perfil:', error); return; }
   PERFIL_USUARIO = data;
+  document.dispatchEvent(new CustomEvent('auxilios:perfil', { detail: data }));
   if(typeof actualizarSaludoDashboard==='function')actualizarSaludoDashboard();
   const avatar = document.querySelector('.nav-avatar');
   if (avatar && data.full_name) {

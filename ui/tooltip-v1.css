@@ -1,0 +1,6 @@
+/* U13 · Tooltip con borde (ámbar sobre superficie oscura) */
+.ax-tip{position:fixed;top:0;left:0;z-index:30000;max-width:260px;padding:6px 10px;border:1px solid var(--ax-accent,#f5a623);border-radius:var(--ax-radius,8px);background:var(--ax-surface-2,#191d27);box-shadow:0 0 0 3px var(--ax-accent-soft,rgba(245,166,35,.14)),var(--ax-shadow-pop,0 8px 24px rgba(0,0,0,.35));color:var(--ax-text,#e8eaf2);font:var(--ax-fw-medium,500) var(--ax-fs-xs,12px)/1.35 var(--ax-font,inherit);pointer-events:none;opacity:0;scale:.96;transition:opacity 140ms var(--ax-ease-out,ease),scale 140ms var(--ax-ease-out,ease)}
+.ax-tip[data-side=top]{transform-origin:center bottom}
+.ax-tip[data-side=bottom]{transform-origin:center top}
+.ax-tip.is-on{opacity:1;scale:1}
+@media (prefers-reduced-motion:reduce){.ax-tip{transition:opacity 1ms}}
