@@ -168,3 +168,11 @@ test('Solo: configuración de prestadoras, tarifas y tipos con confirmaciones y 
   assert.doesNotMatch(cf,/from\('solo_service_types'\)\.delete/,'los tipos se desactivan, no se borran');
   assert.doesNotMatch(cf,/innerHTML=[^;]*\$\{c\.name\}/,'los nombres se escapan');
 });
+test('Solo: Servicios por día (arranca en Hoy, días pasados solo para ver, aviso de remitos sin firmar)',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');const v=ops.slice(ops.indexOf('views.servicios='),ops.indexOf("const app=()=>"));
+  assert.match(v,/day<=today\?day:today/,'no se puede elegir un día futuro');assert.match(v,/isToday\?`<button class="btn pri block" type="button" id="add">/,'solo en Hoy se crea');
+  assert.match(v,/Volver a hoy/);assert.match(v,/Los servicios nuevos se cargan con la fecha de hoy/);
+  assert.match(v,/\.eq\('status','open'\)\.lt\('service_date',dayStart\(today\)\.toISOString\(\)\)/,'remitos sin firmar de días anteriores');
+  assert.match(v,/id="sv-pick"/);assert.match(v,/sv-strip/);
+  const nv=ops.slice(ops.indexOf('views.nuevo='));assert.match(nv,/service_date:new Date\(\)\.toISOString\(\)/,'lo nuevo va con la fecha de hoy');
+});

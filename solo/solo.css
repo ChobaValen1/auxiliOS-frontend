@@ -736,3 +736,26 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .cf-type .icon-btn{width:40px;min-height:40px;color:var(--ax-text-2)}
 .sheet{max-height:92dvh;overflow-y:auto}
 .cf-rate-t small.cf-next{color:var(--ax-accent)}
+
+/* ── Servicios por día ─────────────────────────────────── */
+.sv-date{font-size:14px;font-weight:500;color:var(--ax-text-3)}
+.sv-cal{position:relative;overflow:hidden}
+.sv-cal input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.sv-strip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px;flex:none;scroll-snap-type:x proximity}
+.sv-strip::-webkit-scrollbar{display:none}
+.sv-day{flex:none;width:48px;display:grid;justify-items:center;gap:2px;padding:6px 0 7px;border-radius:12px;border:1px solid var(--ax-border);background:var(--ax-surface-2);color:var(--ax-text-2);cursor:pointer;scroll-snap-align:center;transition:background 140ms ease,border-color 140ms ease,color 140ms ease}
+.sv-day small{font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.sv-day b{font:600 17px/1 var(--ax-font-mono);color:var(--ax-text)}
+.sv-day i{width:5px;height:5px;border-radius:50%;background:transparent}
+.sv-day.has i{background:var(--ax-accent)}
+.sv-day.on{background:var(--ax-accent);border-color:var(--ax-accent);color:var(--ax-accent-fg)}
+.sv-day.on b{color:var(--ax-accent-fg)}.sv-day.on.has i{background:var(--ax-accent-fg)}
+.sv-day:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+#sv-pend:empty,#sv-sum:empty{display:none}
+.sv-item{grid-template-columns:auto 1fr;align-items:center;column-gap:12px}
+.sv-time{font-size:13px;color:var(--ax-text-2);min-width:42px}
+.sv-body{display:grid;gap:4px;min-width:0}
+.sv-past{display:grid;gap:6px;flex:none}
+.sv-past .hint{text-align:center}
+.sv-body .pill{flex:none}
+.sv-time{min-width:38px}

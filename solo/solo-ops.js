@@ -12,26 +12,53 @@ const localDT=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-
 function rateFor(rates,clientId,typeId,when){const day=isoDate(when||new Date());return (rates||[]).filter(r=>r.client_id===clientId&&r.service_type_id===typeId&&r.valid_from<=day).sort((a,b)=>a.valid_from<b.valid_from?1:-1)[0]||null;}
 function priceOf(rate,km){if(!rate)return {base:0,kmAmount:0};const extra=Math.max(0,(Number(km)||0)-Number(rate.included_km||0));return {base:Number(rate.base_amount)||0,kmAmount:Math.round(extra*Number(rate.per_km||0))};}
 
-/* ── Servicios del mes ───────────────────────────────── */
-views.servicios=async function(filter){
-  const f=['pendientes','cobrados'].includes(filter)?filter:'todos';
-  shell(`<div class="top"><h1 class="grow">${esc(monthName(C.month))}</h1><button class="btn pri" type="button" id="add">${icon('plus')} Servicio</button></div>
-    <div class="seg" role="group" aria-label="Filtro">${[['todos','Todos'],['pendientes','Por cobrar'],['cobrados','Cobrados']].map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
-    <div id="list" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>`,'servicios');
-  document.getElementById('add').onclick=()=>go('nuevo');
-  app().querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>go('servicios-'+b.dataset.f));
-  const [a,z]=range();
-  const [{data:rows,error},{data:clients},{data:types}]=await Promise.all([
-    C.db.from('solo_services').select('*').neq('status','cancelled').gte('service_date',a.toISOString()).lt('service_date',z.toISOString()).order('service_date',{ascending:false}),
+/* ── Servicios por día: arranca en Hoy; en días pasados solo se consulta (lo nuevo siempre va con la fecha de hoy) ── */
+const dayStart=iso=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d);};
+const dayLabel2=iso=>{const t=isoDate(new Date()),y=isoDate(new Date(Date.now()-864e5));if(iso===t)return 'Hoy';if(iso===y)return 'Ayer';
+  const d=dayStart(iso),wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','').replace(/^./,c=>c.toUpperCase());
+  return wd+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');};
+views.servicios=async function(day){
+  const today=isoDate(new Date()),sel=/^\d{4}-\d{2}-\d{2}$/.test(day||'')&&day<=today?day:today,isToday=sel===today;
+  // Tira de los últimos 14 días (hasta hoy), con el día elegido incluido.
+  const strip=[...Array(14)].map((_,i)=>isoDate(new Date(dayStart(today).getTime()-(13-i)*864e5)));
+  if(!strip.includes(sel))strip.unshift(sel);
+  shell(`<div class="top"><h1 class="grow">${esc(dayLabel2(sel))}${!isToday&&sel.slice(0,4)!==today.slice(0,4)?` <small class="sv-date">${sel.slice(0,4)}</small>`:''}</h1>
+      <label class="btn ghost icon-btn sv-cal" aria-label="Elegir otro día">${icon('calendar')}<input type="date" id="sv-pick" max="${today}" value="${sel}"></label></div>
+    <div class="sv-strip" id="sv-strip" role="tablist" aria-label="Días">${strip.map(d=>{const dd=dayStart(d);return `<button type="button" role="tab" class="sv-day ${d===sel?'on':''}" data-d="${d}" aria-selected="${d===sel}" aria-label="${esc(dayLabel2(d))}"><small>${d===today?'Hoy':dd.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','')}</small><b>${dd.getDate()}</b><i></i></button>`;}).join('')}</div>
+    <div id="sv-pend"></div>
+    <p class="hint" id="sv-sum"></p>
+    <div id="list" class="stack fill"><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i><i class="sk"></i><i class="sk short"></i></div></div>
+    ${isToday?`<button class="btn pri block" type="button" id="add">${icon('plus')} Nuevo servicio</button>`
+      :`<div class="sv-past"><p class="hint">Estás viendo un día anterior. Los servicios nuevos se cargan con la fecha de hoy.</p><button class="btn block" type="button" id="to-today">${icon('calendar')} Volver a hoy</button></div>`}`,'servicios');
+  const $=x=>document.getElementById(x);
+  $('add')?.addEventListener('click',()=>go('nuevo'));$('to-today')?.addEventListener('click',()=>go('servicios'));
+  app().querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>go(b.dataset.d===today?'servicios':'servicios-'+b.dataset.d));
+  $('sv-pick').addEventListener('change',e=>{const v=e.target.value;if(v)go(v>=today?'servicios':'servicios-'+v);});
+  requestAnimationFrame(()=>{const on=app().querySelector('.sv-day.on');on?.scrollIntoView({inline:'center',block:'nearest'});});
+  const a=dayStart(sel),z=new Date(a.getTime()+864e5),from=dayStart(strip[0]);
+  const [{data:rows,error},{data:near},{data:pend},{data:clients},{data:types}]=await Promise.all([
+    C.db.from('solo_services').select('*').neq('status','cancelled').gte('service_date',a.toISOString()).lt('service_date',z.toISOString()).order('service_date'),
+    C.db.from('solo_services').select('id,service_date,status').neq('status','cancelled').gte('service_date',from.toISOString()).lt('service_date',new Date(dayStart(today).getTime()+864e5).toISOString()),
+    C.db.from('solo_services').select('id,service_date,client_id,plate').eq('status','open').lt('service_date',dayStart(today).toISOString()).order('service_date'),
     C.db.from('solo_clients').select('id,name'),C.db.from('solo_service_types').select('id,name')]);
-  const list=document.getElementById('list');if(!list)return;
+  const list=$('list');if(!list)return;
   if(error){list.innerHTML='<div class="empty">'+esc(errText(error))+'</div>';return;}
+  // Punto en los días con servicios.
+  const has=new Set((near||[]).map(s=>isoDate(new Date(s.service_date))));
+  app().querySelectorAll('.sv-day').forEach(b=>b.classList.toggle('has',has.has(b.dataset.d)));
+  // Remitos sin firmar de días anteriores: que no queden olvidados.
+  const P=pend||[];
+  if(P.length)$('sv-pend').innerHTML=`<button class="alert wait" type="button" id="sv-pend-go">${icon('signature')}<span><b class="ell">${P.length===1?'Tenés 1 remito sin firmar':'Tenés '+P.length+' remitos sin firmar'} de días anteriores</b><small class="ell">${esc(dayLabel2(isoDate(new Date(P[0].service_date))))}${P[0].plate?' · '+esc(P[0].plate):''}${P.length>1?' y otros':''} · tocá para terminarlo</small></span>${icon('chevron-right','trail')}</button>`;
+  $('sv-pend-go')?.addEventListener('click',()=>go('servicio-'+P[0].id));
   const name=(arr,id)=>(arr||[]).find(x=>x.id===id)?.name||'';
-  const shown=(rows||[]).filter(s=>f==='todos'||(f==='cobrados'?!!s.paid_at:!s.paid_at));
-  const total=shown.reduce((t,s)=>t+Number(s.total||0),0);
-  list.innerHTML=(shown.length?`<p class="hint">${shown.length} servicios · ${money(total)}</p>`:'')+(shown.map(s=>`<button class="item" type="button" data-id="${s.id}">
-    <div class="row"><b class="ell">${esc(name(types,s.service_type_id)||'Servicio')}${s.km?' · '+esc(s.km)+' km':''}</b><b class="num">${money(s.total)}</b></div>
-    <div class="row"><span class="hint ell">${s.remito_number?'N.º '+s.remito_number:'Sin subir'} · ${esc(name(clients,s.client_id))} · ${esc(fmtDate(s.service_date))}</span>${s.paid_at?'<span class="pill ok">Cobrado</span>':s.status==='signed'?'<span class="pill wait">Por cobrar</span>':'<span class="pill muted">Sin firmar</span>'}</div></button>`).join('')||'<div class="empty">No hay servicios para mostrar en este mes.</div>');
+  const R=rows||[],total=R.reduce((t,s)=>t+Number(s.total||0),0),open=R.filter(s=>s.status==='open').length;
+  $('sv-sum').textContent=R.length?`${R.length} servicio${R.length===1?'':'s'} · ${money(total)}${open?' · '+open+' sin firmar':''}`:'';
+  const hhmm=s=>new Date(s.service_date).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});
+  list.innerHTML=R.map(s=>`<button class="item sv-item" type="button" data-id="${s.id}">
+      <span class="sv-time num">${esc(hhmm(s))}</span>
+      <span class="sv-body"><span class="row"><b class="ell">${esc(name(types,s.service_type_id)||'Servicio')}${s.km?' · '+esc(s.km)+' km':''}</b><b class="num">${money(s.total)}</b></span>
+      <span class="row"><span class="hint ell">${s.remito_number?'N.º '+s.remito_number:'Sin subir'} · ${esc(name(clients,s.client_id))}${s.plate?' · '+esc(s.plate):''}</span>${s.paid_at?'<span class="pill ok">Cobrado</span>':s.status==='signed'?'<span class="pill wait">Por cobrar</span>':'<span class="pill muted">Sin firmar</span>'}</span></span></button>`).join('')
+    ||`<div class="empty">${icon('truck','empty-ico')}<b>${isToday?'Todavía no hay servicios hoy':'No hiciste servicios este día'}</b><span>${isToday?'Cuando salgas a un auxilio, tocá «Nuevo servicio».':'Elegí otro día arriba o en el calendario.'}</span></div>`;
   list.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>go('servicio-'+b.dataset.id));
 };
 const app=()=>document.getElementById('app');
