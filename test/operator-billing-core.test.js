@@ -205,13 +205,16 @@ test('catálogo Excel de servicios conserva los datos comerciales y operativos',
   const required=[
     'N° Orden','Fecha','Hora','Prestadora','Chofer','Móvil','Tipo de Servicio',
     'Calle Origen','Localidad Origen','Provincia Origen','Calle Destino','Localidad Destino','Provincia Destino',
-    'Marca','Modelo','Patente','KM Asfalto','KM Ripio','KM Total','Precio Base','Tarifa KM Asfalto','Tarifa KM Ripio',
+    'Marca','Modelo','Patente','KM Asfalto','KM Ripio','KM Total','Tarifa KM Asfalto','Tarifa KM Ripio',
     'COPAGO','Extra %','Precio Total (sin peajes)','Estado','Base','Importe Movida','Importe KM Asfalto','Importe KM Ripio','Importe KM Total',
-    'Observaciones','Peajes','N° Interno','N° Remito','Arribo','Finalización','Demora otorgada (min)','Cliente / Socio',
-    'Logística','Tercerizado','Activado','Tipo de activado','KM activado','Activado se cobra','KM Facturables','Regla de cobro',
+    'Observaciones','Peajes','N° Remito','Arribo','Finalización','Demora otorgada (min)','Cliente / Socio',
+    'Tercerizado','KM activado','KM Facturables','Regla de cobro',
     'Adicionales $','Recargos $','Feriado','Total con peajes','Conceptos sí/no'
   ];
   for(const label of required)assert.ok(billingExport.includes(`'${label}'`),`falta columna ${label}`);
+  /* Activado es un estado (FINALIZADO | ACTIVADO MOVIDA | ACTIVADO ORIGEN), no columnas aparte: un activado siempre se cobra.
+     Precio Base (= Importe Movida), N° Interno y Logística (Tercerizado ya lo dice) se sacaron del selector. */
+  for(const removed of ["'Activado se cobra'","'Tipo de activado'","serviceColumn('activated'","'Precio Base'","'N° Interno'","'Logística'"])assert.ok(!billingExport.includes(removed),`sobra ${removed}`);
   for(const removed of ["header:'Moneda'","header:'Última revisión'","header:'Revisado por'","header:'Error tarifario'","header:'Importe al cierre'","header:'Diferencia'"]){
     assert.doesNotMatch(billingExport,new RegExp(removed.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   }
