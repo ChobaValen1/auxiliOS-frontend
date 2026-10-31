@@ -817,3 +817,19 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .help textarea{width:100%;min-height:72px;border-radius:12px;border:1px solid var(--ax-border-strong);background:var(--ax-surface);padding:10px 12px;resize:none;font:inherit}
 .help textarea:focus-visible{outline:none;box-shadow:var(--ax-focus)}
 .help-actions{display:grid;gap:8px}
+/* Ingreso con Google */
+.google-wrap{display:grid;gap:12px;margin:4px 0 2px}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;font-weight:600}
+.google-btn:active{background:#f1f3f4}
+.google-btn .spin{color:#1f1f1f}
+.or{display:flex;align-items:center;gap:10px;color:var(--ax-text-3);font-size:12px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--ax-border)}
+/* Enviar remito */
+.send{display:grid;gap:10px}
+.send-opt{display:flex;align-items:center;gap:12px;width:100%;padding:14px;border-radius:14px;border:1px solid var(--ax-border-strong);background:var(--ax-surface);color:var(--ax-text);text-align:left;cursor:pointer}
+.send-opt>.ico{width:22px;height:22px;flex:none;color:var(--ax-accent)}
+.send-opt span{display:grid;gap:1px;min-width:0;flex:1}
+.send-opt small{color:var(--ax-text-2);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.send-opt:disabled{opacity:.6;cursor:progress}
+.send-opt .spin{flex:none}
+.send-opt:focus-visible{outline:none;box-shadow:var(--ax-focus)}
