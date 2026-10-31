@@ -463,6 +463,13 @@ async function remitoPdf(s,cl,tp,tk){
   const when=v=>{if(!v)return '';const d=new Date(v);return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'})+' h';};
   // Imágenes: logo, fotos (en paralelo) y firma.
   const logo=await fetchData('/assets/icons/icon-192.png');
+  // Logo propio del gruero (si subió uno); va sobre un recuadro blanco.
+  let own=null;if(P.logo_path){try{const {data}=await C.db.storage.from('solo_files').createSignedUrl(P.logo_path,600);if(data?.signedUrl)own=await fetchData(data.signedUrl);}catch(e){own=null;}}
+  const fmtOf=im=>/^data:image\/jpe?g/.test(im.d)?'JPEG':'PNG';
+  const TAXL={monotributo:'Monotributo',responsable_inscripto:'Responsable inscripto',exento:'Exento'};
+  const cuit=P.cuit&&String(P.cuit).length===11?String(P.cuit).replace(/^(\d{2})(\d{8})(\d)$/,'$1-$2-$3'):'';
+  // QR que abre la verificación pública del remito (necesita el código que pone la base).
+  const verifyUrl=s.verify_code?location.origin+'/v/'+s.verify_code:'';
   const paths=(s.photos||[]).slice(0,6);let photos=[];
   if(paths.length){try{const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,600);
     photos=(await Promise.all((data||[]).map(async(u,i)=>{const k=(paths[i].match(/\/([a-z0-9]+)-\d+\.jpg$/)||[])[1];const im=u?.signedUrl&&await fetchData(u.signedUrl,900);
@@ -473,10 +480,13 @@ async function remitoPdf(s,cl,tp,tk){
   // Encabezado oscuro con el membrete del gruero y el N.º de remito.
   const header=first=>{doc.setFillColor(...DARK);doc.rect(0,0,W,first?36:16,'F');doc.setFillColor(...AMBER);doc.rect(0,first?36:16,W,1.2,'F');
     if(!first){font(9,true,[255,255,255]);txt(P.business_name||P.full_name||'',M,10);font(9,false,[190,195,205]);txt((s.remito_number?'Remito N.º '+s.remito_number:'Remito')+' · continuación',W-M,10,{align:'right'});y=26;return;}
-    if(logo)doc.addImage(logo.d,'PNG',M,8,20,20,'logo','FAST');
-    const lx=M+(logo?25:0);font(17,true,[255,255,255]);txt(P.business_name||P.full_name||'Servicio de grúa',lx,15.5);
-    font(8.5,false,[190,195,205]);txt('Auxilio mecánico y remolque'+(tk?.plate?' · Grúa '+tk.plate+(tk.brand||tk.model?' ('+[tk.brand,tk.model].filter(Boolean).join(' ')+')':''):''),lx,21.5);
-    txt([P.business_name&&P.full_name?'Titular: '+P.full_name:'',P.phone?'Tel. '+P.phone:'',C.user?.email||''].filter(Boolean).join(' · '),lx,26.5);
+    if(own){doc.setFillColor(255,255,255);doc.roundedRect(M,8,20,20,2.5,2.5,'F');const f=fit(own,17,17);doc.addImage(own.d,fmtOf(own),M+(20-f.w)/2,8+(20-f.h)/2,f.w,f.h,'propio','FAST');}
+    else if(logo)doc.addImage(logo.d,'PNG',M,8,20,20,'logo','FAST');
+    const lx=M+(own||logo?25:0),fiscal=[cuit?'CUIT '+cuit:'',TAXL[P.tax_condition]||''].filter(Boolean).join(' · ');
+    font(17,true,[255,255,255]);txt(P.business_name||P.full_name||'Servicio de grúa',lx,14.5);
+    font(8.5,false,[190,195,205]);const lines=['Auxilio mecánico y remolque'+(tk?.plate?' · Grúa '+tk.plate+(tk.brand||tk.model?' ('+[tk.brand,tk.model].filter(Boolean).join(' ')+')':''):''),fiscal,
+      [P.business_name&&P.full_name?'Titular: '+P.full_name:'',P.phone?'Tel. '+P.phone:'',C.user?.email||''].filter(Boolean).join(' · ')].filter(Boolean);
+    lines.forEach((l,i)=>txt(l,lx,(lines.length>2?20:21)+i*(lines.length>2?4.6:5.2)));
     font(7.5,true,AMBER);txt('REMITO DIGITAL',W-M,12,{align:'right'});
     font(20,true,[255,255,255]);txt(s.remito_number?'N.º '+String(s.remito_number).padStart(6,'0'):'Sin número',W-M,21,{align:'right'});
     font(8.5,false,[190,195,205]);txt(when(s.service_date),W-M,27,{align:'right'});y=46;};
@@ -552,8 +562,14 @@ async function remitoPdf(s,cl,tp,tk){
   font(9.5,true,INK);txt(s.signer_name||s.customer_name||'',fx,y+fh+3.5);font(8,false,MUTED);
   txt([s.signer_doc?'DNI '+s.signer_doc:'',s.signed_at?'Firmado el '+when(s.signed_at):''].filter(Boolean).join(' · '),fx,y+fh+7.8);
   const vx=fx+fw+8,vw=W-M-vx;doc.setFillColor(...SOFT);doc.roundedRect(vx,y-2,vw,fh,2,2,'F');
-  font(6.8,true,MUTED);txt('CÓDIGO DE VERIFICACIÓN',vx+4,y+3.5,{charSpace:.3});font(13,true,INK);txt(String(s.id||'').replace(/-/g,'').slice(0,10).toUpperCase(),vx+4,y+10);
-  font(7.6,false,MUTED);txt(doc.splitTextToSize('Remito digital emitido con AuxiliOS Solo. Las fotos y la firma quedan guardadas con fecha y hora.',vw-8),vx+4,y+16);
+  const qr=verifyUrl&&window.qrcode?(()=>{try{const q=window.qrcode(0,'M');q.addData(verifyUrl);q.make();return q;}catch(e){return null;}})():null;
+  const qs=24,tw=qr?vw-qs-11:vw-8;
+  if(qr){const n=qr.getModuleCount(),cell=qs/n,qx=vx+vw-qs-3,qy=y+1;doc.setFillColor(255,255,255);doc.roundedRect(qx-1.2,qy-1.2,qs+2.4,qs+2.4,1,1,'F');doc.setFillColor(...INK);
+    for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(qr.isDark(r,c))doc.rect(qx+c*cell,qy+r*cell,cell+.02,cell+.02,'F');}
+  font(6.8,true,MUTED);txt('VERIFICACIÓN',vx+4,y+3.5,{charSpace:.3});
+  font(12,true,INK);txt(s.verify_code||'Pendiente',vx+4,y+9.6);
+  font(7.4,false,MUTED);txt(doc.splitTextToSize(qr?'Escaneá el QR para comprobar que este remito es original y está firmado.':'El código llega cuando el remito se sube (sin señal).',tw),vx+4,y+15);
+  if(qr){font(6.4,false,MUTED);txt(doc.splitTextToSize(location.host+'/v/'+s.verify_code,tw),vx+4,y+fh-4.5);}
   y+=fh+12;
 
   // Marca de agua y pie en todas las páginas.

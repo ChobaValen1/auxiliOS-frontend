@@ -274,6 +274,7 @@ async function renderMas(){
     <button class="item item-row" type="button" data-go="numeros">${icon('chart-column','lead')}<span><b>Mis números</b><span class="hint">Ganancia por servicio, punto de equilibrio y meses</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Resumen del mes, facturado y cobrado</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-to="clientes">${icon('building-2','lead')}<span><b>Prestadoras y tarifas</b><span class="hint">Empresas, días de pago y precios</span></span>${icon('chevron-right','trail')}</button>
+    <button class="item item-row" type="button" data-go="perfil">${icon('file-check','lead')}<span><b>Datos del remito</b><span class="hint">Nombre, CUIT, condición fiscal y logo de tu grúa</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-go="tipos">${icon('list-checks','lead')}<span><b>Tipos de servicio</b><span class="hint">Remolque, auxilio, traslado y los que agregues</span></span>${icon('chevron-right','trail')}</button>
     ${canInstall?`<button class="item item-row" type="button" id="inst">${icon('download','lead')}<span><b>Instalar la app</b><span class="hint">Tenela en la pantalla de inicio del celular</span></span>${icon('chevron-right','trail')}</button>`:''}
     <div id="truck" class="card"><h2>Mi grúa</h2><div class="sk-group" aria-busy="true" aria-label="Cargando"><i class="sk"></i></div></div>
@@ -294,7 +295,7 @@ function renderPronto(v){
 }
 
 window.SoloCore={views,shell,go,toast,esc,money,num,isoDate,monthName,errText,icon,
-  get db(){return db;},get user(){return user;},get profile(){return profile;},
+  get db(){return db;},get user(){return user;},get profile(){return profile;},set profile(p){profile=p;},
   get month(){return month;},set month(d){month=d;}};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();

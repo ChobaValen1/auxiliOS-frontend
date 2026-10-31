@@ -3,6 +3,7 @@
   "outputDirectory": ".",
   "rewrites": [
     { "source": "/r/:token", "destination": "/remito.html" },
+    { "source": "/v/:code", "destination": "/solo-verificar.html" },
     { "source": "/(.*)", "destination": "/Index.html" }
   ]
 }

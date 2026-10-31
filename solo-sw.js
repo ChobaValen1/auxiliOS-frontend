@@ -1,6 +1,6 @@
 // AuxiliOS Solo · service worker propio, con alcance /solo (no toca el de Flota en /sw.js).
 // La app siempre intenta red primero; la caché sirve para abrirla sin señal y para poder instalarla.
-const CACHE_NAME='auxilios-solo-v614';
+const CACHE_NAME='auxilios-solo-v615';
 const PRECACHE=[
   '/solo.html','/solo/solo.css','/solo/solo-ui.js','/solo/solo.js','/solo/solo-ops.js','/solo/solo-pwa.js','/solo/solo-facturacion.js','/solo/solo-numeros.js','/solo/solo-offline.js','/solo/solo-config.js',
   '/ui/tokens.css','/ui/icons.svg','/runtime-config.js','/solo-manifest.json',
@@ -24,6 +24,8 @@ self.addEventListener('fetch',event=>{
   const req=event.request;if(req.method!=='GET')return;
   const url=new URL(req.url);
   if(url.hostname.includes('supabase.co'))return;
+  // La verificación pública de remitos no es parte de la app: nunca se guarda como /solo.html.
+  if(url.origin===self.location.origin&&url.pathname.startsWith('/solo-verificar'))return;
   if(url.origin!==self.location.origin){
     if(!CDN.includes(url.hostname))return;
     // CDN: lo guardado primero y se renueva por detrás.

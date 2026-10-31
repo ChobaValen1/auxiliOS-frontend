@@ -782,3 +782,25 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .sv-past .hint{text-align:center}
 .sv-body .pill{flex:none}
 .sv-time{min-width:38px}
+/* Datos del remito: vista previa del membrete (igual que el PDF) y logo */
+.pf-prev{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:#0c0e12;border:1px solid var(--ax-border);border-bottom:3px solid var(--ax-accent);min-width:0}
+.pf-logo{flex:none;width:46px;height:46px;border-radius:10px;overflow:hidden;display:grid;place-items:center}
+.pf-logo img{width:100%;height:100%;object-fit:contain}
+.pf-logo.own{background:#fff;padding:4px}
+.pf-lines{display:grid;gap:1px;min-width:0;flex:1}
+.pf-lines b{font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-lines small{font-size:11px;color:#bec3cd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-num{display:grid;justify-items:end;flex:none}
+.pf-num i{font-style:normal;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--ax-accent)}
+.pf-num b{font-size:13px;color:#fff}
+.pf-form{display:grid;gap:clamp(10px,1.8vh,16px);margin-top:clamp(10px,2vh,18px)}
+.field .lbl{font-size:11px;color:var(--ax-text-2);text-transform:uppercase;letter-spacing:.06em}
+.pf-tax{margin:0}
+.pf-logo-row{display:flex;align-items:center;gap:14px}
+.pf-logo-pick{flex:none;width:64px;height:64px;border-radius:14px;border:1.5px dashed var(--ax-border-strong);background:var(--ax-surface);display:grid;place-items:center;color:var(--ax-accent);cursor:pointer;overflow:hidden;padding:0}
+.pf-logo-pick.has{border-style:solid;background:#fff;padding:6px}
+.pf-logo-pick img{width:100%;height:100%;object-fit:contain}
+.pf-logo-pick .ico{width:22px;height:22px}
+.pf-logo-txt{display:grid;gap:2px;min-width:0}
+.pf-logo-txt .row{justify-content:flex-start;gap:16px}
+.pf-logo-pick:focus-visible{outline:none;box-shadow:var(--ax-focus)}

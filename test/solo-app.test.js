@@ -195,7 +195,20 @@ test('Solo: remito PDF con membrete de la grúa, marca de agua de AuxiliOS, foto
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');const f=ops.slice(ops.indexOf('async function remitoPdf('),ops.indexOf('function prepPdf('));
   assert.match(f,/compress:true/);assert.match(f,/new doc\.GState\(\{opacity:\.045\}\)/,'marca de agua suave');assert.match(f,/txt\('AuxiliOS'/);
   assert.match(f,/P\.business_name/);assert.match(f,/Grúa '\+tk\.plate/);assert.match(f,/createSignedUrls\(paths,600\)/);assert.match(f,/Fotos del vehículo/);
-  assert.match(f,/CÓDIGO DE VERIFICACIÓN/);assert.match(f,/Página '\+i\+' de '\+n/);
+  assert.match(f,/'VERIFICACIÓN'/);assert.match(f,/Página '\+i\+' de '\+n/);
   assert.match(f,/const rows=particular\?\[\['Precio acordado'/,'con prestadora no se muestra la tarifa');assert.doesNotMatch(f,/Se factura a '\+/);
   assert.match(ops,/setTimeout\(\(\)=>prepPdf\(s,cl,tp,tk\),600\)/,'el PDF se arma antes del toque');
+});
+test('Solo: datos del remito (CUIT, condición fiscal, logo) y verificación pública por QR',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8'),cf=fs.readFileSync('solo/solo-config.js','utf8'),ui=fs.readFileSync('solo/solo-ui.js','utf8');
+  const m=fs.readFileSync('migrations/20261031130000_solo_remito_membrete_qr_v1.sql','utf8'),v=fs.readFileSync('solo-verificar.html','utf8'),vc=JSON.parse(fs.readFileSync('vercel.json','utf8'));
+  assert.match(m,/add column if not exists cuit text check \(cuit is null or cuit ~ '\^\[0-9\]\{11\}\$'\)/);assert.match(m,/new\.verify_code:=old\.verify_code/,'el código no se cambia');
+  assert.match(m,/security definer set search_path=''/);assert.match(m,/grant execute on function public\.solo_verify_remito_v1\(text\) to anon/);assert.match(m,/s\.status<>'open'/,'solo remitos firmados');
+  assert.doesNotMatch(m.slice(m.indexOf('solo_verify_remito_v1')),/'total'|customer_phone|customer_doc|origin|destination/,'sin importes ni datos de contacto');
+  assert.match(cf,/views\.perfil=/);assert.match(cf,/from\('solo_profiles'\)\.update\(patch\)/);assert.match(cf,/'image\/png'/);assert.match(js,/data-go="perfil"/);assert.match(js,/set profile\(p\)\{profile=p;\}/);
+  assert.match(ui,/cuit:\{test:v=>cuitOk\(digits\(v\)\)/);assert.match(ui,/'pf-cuit':'cuit'/);
+  assert.match(ops,/location\.origin\+'\/v\/'\+s\.verify_code/);assert.match(ops,/window\.qrcode\(0,'M'\)/);assert.match(ops,/P\.logo_path/);assert.match(html,/qrcode-generator@1\.4\.4/);
+  assert.ok(vc.rewrites.findIndex(r=>r.source==='/v/:code')<vc.rewrites.findIndex(r=>r.source==='/(.*)'),'la ruta corta va antes del comodín');
+  assert.match(v,/rpc\('solo_verify_remito_v1'/);assert.match(v,/noindex/);assert.match(v,/function esc\(/);
+  assert.match(fs.readFileSync('solo-sw.js','utf8'),/startsWith\('\/solo-verificar'\)\)return/);
 });

@@ -154,4 +154,62 @@ views.tipos=async function(){
     const ok=await S().confirmBox(to?'¿Activar el tipo?':'¿Desactivar el tipo?',to?`<p>${esc(t.name)} vuelve a aparecer al cargar servicios.</p>`:`<p><b>${esc(t.name)}</b> deja de aparecer al cargar servicios nuevos.</p><p class="hint">Sus tarifas y los remitos ya cargados quedan guardados.</p>`,to?'Activar':'Desactivar',!to);
     if(!ok)return;const {error}=await C.db.from('solo_service_types').update({active:to}).eq('id',t.id);if(error)return toast(errText(error));toast(to?'Tipo activado':'Tipo desactivado');views.tipos();});
 };
+
+/* ── Datos del remito: lo que sale en el membrete del PDF (nombre, titular, teléfono, CUIT, condición fiscal y logo) ── */
+const TAX={monotributo:'Monotributo',responsable_inscripto:'Responsable inscripto',exento:'Exento'};
+const cuitTxt=d=>d&&d.length===11?d.slice(0,2)+'-'+d.slice(2,10)+'-'+d.slice(10):'';
+// El logo se guarda como PNG chico (conserva el fondo transparente).
+function logoPng(file){return new Promise(res=>{const img=new Image();img.onload=()=>{const k=Math.min(1,512/Math.max(img.width,img.height)),c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(img.src);c.toBlob(b=>res(b),'image/png');};
+  img.onerror=()=>res(null);img.src=URL.createObjectURL(file);});}
+views.perfil=async function(){
+  const P=C.profile||{};let logo=null,logoUrl=null,removeLogo=false;
+  shell(`<div class="top"><button class="btn ghost icon-btn" type="button" id="back" aria-label="Volver">${icon('arrow-left')}</button><h1 class="grow">Datos del remito</h1></div>
+    <div class="pf-prev" aria-label="Así se ve el encabezado del remito"><span class="pf-logo" id="pf-logo-prev"><img src="/assets/icons/icon-192.png" alt=""></span>
+      <span class="pf-lines"><b id="pf-p1"></b><small id="pf-p2"></small><small id="pf-p3"></small></span><span class="pf-num"><i>REMITO</i><b>N.º 000001</b></span></div>
+    <form id="pf" class="pf-form" novalidate>
+      <div class="pf-logo-row"><button class="pf-logo-pick" type="button" id="pf-logo-btn" aria-label="Elegir logo"><span id="pf-logo-img"></span></button>
+        <div class="pf-logo-txt"><b>Logo de tu grúa</b><span class="hint" id="pf-logo-hint">Opcional. Si no subís uno, va el de AuxiliOS.</span>
+          <div class="row"><button class="link" type="button" id="pf-logo-ch">Elegir imagen</button><button class="link danger" type="button" id="pf-logo-rm" hidden>Quitar</button></div></div>
+        <input type="file" id="pf-file" accept="image/png,image/jpeg,image/webp" hidden></div>
+      <div class="field"><label for="pf-biz">Nombre de la grúa o empresa</label><input id="pf-biz" placeholder="Ej.: Grúas Pérez" value="${esc(P.business_name||'')}" autocomplete="organization"></div>
+      <div class="grid2"><div class="field"><label for="pf-name">Titular</label><input id="pf-name" value="${esc(P.full_name||'')}" autocomplete="name"></div>
+        <div class="field"><label for="pf-phone">Teléfono</label><input id="pf-phone" type="tel" inputmode="tel" placeholder="11 2345 6789" value="${esc(P.phone||'')}"></div></div>
+      <div class="field"><label for="pf-cuit">CUIT</label><input id="pf-cuit" inputmode="numeric" placeholder="20-12345678-9" value="${esc(cuitTxt(P.cuit||''))}"></div>
+      <div class="field"><span class="lbl">Condición frente a ARCA</span><input type="hidden" id="pf-tax" value="${esc(P.tax_condition||'')}">
+        <div class="cf-days pf-tax" role="radiogroup" aria-label="Condición fiscal">${Object.entries(TAX).map(([k,l])=>`<button type="button" class="chip" role="radio" data-t="${k}" aria-pressed="${P.tax_condition===k}">${l}</button>`).join('')}</div></div>
+      <button class="btn pri block" type="submit">${icon('check')} Guardar datos</button>
+    </form>`,'mas');
+  $('back').onclick=()=>go('mas');
+  const digits=v=>String(v||'').replace(/\D/g,'');
+  function paint(){const biz=$('pf-biz').value.trim(),name=$('pf-name').value.trim(),tel=$('pf-phone').value.trim(),cuit=digits($('pf-cuit').value),tax=$('pf-tax').value;
+    $('pf-p1').textContent=biz||name||'Tu grúa';
+    $('pf-p2').textContent=[cuit.length===11?'CUIT '+cuitTxt(cuit):'',TAX[tax]||''].filter(Boolean).join(' · ')||'CUIT y condición fiscal';
+    $('pf-p3').textContent=[biz&&name?'Titular: '+name:'',tel?'Tel. '+tel:''].filter(Boolean).join(' · ')||C.user?.email||'';
+    const src=logo?URL.createObjectURL(logo):(!removeLogo&&logoUrl)||null;
+    $('pf-logo-prev').classList.toggle('own',!!src);$('pf-logo-prev').innerHTML=`<img src="${src||'/assets/icons/icon-192.png'}" alt="">`;
+    $('pf-logo-img').innerHTML=src?`<img src="${src}" alt="">`:icon('upload');$('pf-logo-btn').classList.toggle('has',!!src);
+    $('pf-logo-rm').hidden=!src;$('pf-logo-ch').textContent=src?'Cambiar':'Elegir imagen';}
+  ['pf-biz','pf-name','pf-phone','pf-cuit'].forEach(id=>$(id).addEventListener('input',paint));
+  document.querySelectorAll('.pf-tax [data-t]').forEach(b=>b.onclick=()=>{const on=$('pf-tax').value!==b.dataset.t;$('pf-tax').value=on?b.dataset.t:'';
+    document.querySelectorAll('.pf-tax [data-t]').forEach(x=>x.setAttribute('aria-pressed',String(on&&x===b)));UI().haptic(5);paint();});
+  const pick=()=>$('pf-file').click();$('pf-logo-btn').onclick=pick;$('pf-logo-ch').onclick=pick;
+  $('pf-file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>8e6)return toast('La imagen es muy pesada (máximo 8 MB).');
+    const b=await logoPng(f);if(!b)return toast('No pudimos leer esa imagen. Probá con otra.');logo=b;removeLogo=false;paint();};
+  $('pf-logo-rm').onclick=()=>{logo=null;removeLogo=true;paint();};
+  if(P.logo_path){const {data}=await C.db.storage.from('solo_files').createSignedUrl(P.logo_path,3600);if(data?.signedUrl){logoUrl=data.signedUrl;}}
+  paint();
+  $('pf').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
+    try{const patch={business_name:$('pf-biz').value.trim()||null,full_name:$('pf-name').value.trim(),phone:$('pf-phone').value.trim()||null,
+        cuit:digits($('pf-cuit').value)||null,tax_condition:$('pf-tax').value||null};
+      if(logo){const path=C.user.id+'/logo/logo-'+Date.now()+'.png';const up=await C.db.storage.from('solo_files').upload(path,logo,{contentType:'image/png',upsert:true});
+        if(up.error)return toast(errText(up.error));patch.logo_path=path;}
+      else if(removeLogo)patch.logo_path=null;
+      const old=P.logo_path;
+      const {data,error}=await C.db.from('solo_profiles').update(patch).eq('owner_id',C.user.id).select('*').single();
+      if(error)return toast(errText(error));
+      if(old&&old!==patch.logo_path&&'logo_path' in patch)Promise.resolve().then(()=>C.db.storage.from('solo_files').remove([old])).catch(()=>{});
+      C.profile=data||{...P,...patch};UI().success();toast('Datos guardados. Ya salen en tus remitos.');go('mas');
+    }finally{UI().setBusy(f,false);}});
+};
 })();

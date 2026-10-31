@@ -37,7 +37,8 @@ const RULES={
   odo:{test:v=>{const n=parseNum(v);return Number.isFinite(n)&&n>=0&&n<=3000000;},msg:'Revisá los km de la grúa.',mask:moneyFmt},
   days:{test:v=>/^\d{1,3}$/.test(v.trim())&&Number(v)<=365,msg:'Entre 0 y 365 días.'},
   when:{test:v=>{const t=new Date(v).getTime();return Number.isFinite(t)&&t<=Date.now()+864e5&&t>=Date.now()-400*864e5;},msg:'Revisá la fecha: no puede ser de más de un año atrás ni de días futuros.'},
-  date:{test:v=>/^\d{4}-\d{2}-\d{2}$/.test(v),msg:'Elegí una fecha.'}
+  date:{test:v=>/^\d{4}-\d{2}-\d{2}$/.test(v),msg:'Elegí una fecha.'},
+  cuit:{test:v=>cuitOk(digits(v)),msg:'Revisá el CUIT: son 11 números, ej.: 20-12345678-9.',fmt:v=>{const d=digits(v);return cuitOk(d)?cuitFmt(d):v;}}
 };
 // Qué regla lleva cada campo. «!» = obligatorio.
 const BY_ID={'a-name':'name!','a-email':'email!','a-pass':'pass!','o-name':'name!','o-biz':'text','o-phone':'phone','o-plate':'plate!','o-brand':'text','o-model':'text','o-km':'odo',
@@ -45,6 +46,7 @@ const BY_ID={'a-name':'name!','a-email':'email!','a-pass':'pass!','o-name':'name
   's-km':'km','s-tolls':'money','s-other':'money','s-manual':'moneypos','s-plate':'plate','s-mm':'text','s-orig':'text','s-dest':'text','s-order':'text','s-cname':'text','s-cdoc':'doc','s-cphone':'phone','s-date':'when!',
   'p1a':'money','sn':'name!','sd':'doc','obs':'text','e-amount':'moneypos!','e-date':'date!',
   'n-manual':'money','r-date':'when!','r-order':'text','r-plate':'plate!','r-mm':'text','r-orig':'name!','r-dest':'name!','r-km':'km','r-cname':'name!','r-cdoc':'doc','r-cphone':'phone','r-cemail':'email','e-note':'text',
+  'pf-biz':'text','pf-name':'name!','pf-phone':'phone','pf-cuit':'cuit',
   'r-tolls':'money','r-exc':'money','r-wait':'money','r-other':'money','r-p1a':'money','r-p2a':'money','r-obs':'text','r-sn':'name!','r-sd':'doc'};
 function ruleFor(el){if(el.dataset.v)return el.dataset.v;const id=el.id||'';if(BY_ID[id])return BY_ID[id];
   if(/^[bp]-/.test(id))return 'money';if(/^k-/.test(id))return 'km';if(/^v-/.test(id))return 'date!';return '';}
