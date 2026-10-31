@@ -804,3 +804,16 @@ button.ex-mov:focus-visible,button.ex-fix-row:focus-visible{outline:none;box-sha
 .pf-logo-txt{display:grid;gap:2px;min-width:0}
 .pf-logo-txt .row{justify-content:flex-start;gap:16px}
 .pf-logo-pick:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+/* Términos al crear la cuenta y ayuda */
+.terms{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--ax-text-2);line-height:1.4;cursor:pointer;padding:4px 2px;border-radius:10px}
+.terms input{flex:none;width:20px;height:20px;margin:0}
+.terms a{color:var(--ax-accent);font-weight:600}
+.terms.need{box-shadow:0 0 0 2px var(--ax-danger);padding:6px}
+.help-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ax-text-2)}
+.help-link .ico{width:16px;height:16px}
+.help-item .lead{color:var(--ax-accent)}
+.help{display:grid;gap:12px}
+.help-topics{margin:0}
+.help textarea{width:100%;min-height:72px;border-radius:12px;border:1px solid var(--ax-border-strong);background:var(--ax-surface);padding:10px 12px;resize:none;font:inherit}
+.help textarea:focus-visible{outline:none;box-shadow:var(--ax-focus)}
+.help-actions{display:grid;gap:8px}

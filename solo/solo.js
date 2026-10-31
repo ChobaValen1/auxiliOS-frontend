@@ -4,6 +4,7 @@
 'use strict';
 const app=document.getElementById('app');
 const RT=window.AUXILIOS_RUNTIME||{};
+const TERMS_VERSION='2026-10-31';
 let db=null, user=null, profile=null, view='inicio', month=startOfMonth(new Date()), detailId=null;
 let recovering=false, authNotice=null, authEmail='';
 const DEFAULT_TYPES=['Remolque','Auxilio mecánico','Traslado'];
@@ -97,28 +98,33 @@ function renderAuth(mode){
       ${signup?'<div class="field"><label for="a-name">Tu nombre</label><input id="a-name" autocomplete="name" required></div>':''}
       <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" required value="${esc(authEmail)}"></div>
       ${reset?'':passField('a-pass','Contraseña',signup?'new-password':'current-password',signup?'Al menos 6 caracteres.':'')}
+      ${signup?`<label class="terms" for="a-terms"><input type="checkbox" id="a-terms"><span>Acepto los <a href="/terminos-solo.html" target="_blank" rel="noopener">Términos y condiciones</a> y la <a href="/terminos-solo.html#privacidad" target="_blank" rel="noopener">Política de privacidad</a>.</span></label>`:''}
       <p id="a-err" class="err" hidden></p>
       <button class="btn pri block" type="submit">${cta}</button>
       ${!signup&&!reset?'<button class="link center" id="a-forgot" type="button">¿Olvidaste tu contraseña?</button>':''}
     </form>
     <p class="sub center">${reset?'¿Te acordaste?':signup?'¿Ya tenés cuenta?':'¿Todavía no tenés cuenta?'} <button class="link" id="a-switch" type="button">${reset?'Entrá':signup?'Entrá':'Creala gratis'}</button></p>
+    <button class="link center help-link" type="button" id="a-help">${icon('life-buoy')} ¿Necesitás ayuda? Escribinos</button>
   </div>`);
   authNotice=null;
   const $=x=>document.getElementById(x),er=$('a-err');
   $('a-switch').onclick=()=>{authEmail=$('a-email').value.trim();renderAuth(signup?'login':reset?'login':'signup');};
   $('a-forgot')?.addEventListener('click',()=>{authEmail=$('a-email').value.trim();renderAuth('reset');});
+  $('a-help').onclick=()=>support(signup?'No puedo crear la cuenta':'No puedo entrar',$('a-email').value.trim());
   const fail=(msg,resend)=>{er.innerHTML=esc(msg)+(resend?' <button class="link" type="button" id="a-resend">Reenviar email</button>':'');er.hidden=false;
     $('a-resend')?.addEventListener('click',()=>renderCheckEmail(authEmail,'signup',true));};
   $('auth').onsubmit=async e=>{
     e.preventDefault();const b=e.target.querySelector('button[type=submit]');er.hidden=true;
     const email=$('a-email').value.trim(),password=$('a-pass')?.value||'';authEmail=email;
     if(!email||(!reset&&password.length<6))return fail('Completá el email'+(reset?'.':' y una contraseña de al menos 6 caracteres.'));
+    if(signup&&!$('a-terms').checked){$('a-terms').closest('.terms').classList.add('need');return fail('Para crear la cuenta tenés que aceptar los Términos y la Política de privacidad.');}
     b.disabled=true;b.innerHTML='<span class="spin" aria-hidden="true"></span>'+(signup?'Creando…':reset?'Mandando…':'Entrando…');
     try{
       if(reset){const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:backUrl()});if(error)throw error;return renderCheckEmail(email,'reset');}
       if(signup){
         const name=$('a-name').value.trim();
-        const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:backUrl()}});
+        // Queda registrado qué versión de los términos aceptó y cuándo.
+        const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name,terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()},emailRedirectTo:backUrl()}});
         if(error)throw error;
         // Supabase no avisa con error cuando el email ya existe: devuelve un usuario sin identidades.
         if(data.user&&Array.isArray(data.user.identities)&&!data.user.identities.length)throw new Error('already registered');
@@ -271,6 +277,7 @@ async function renderAlerts(){
 async function renderMas(){
   const canInstall=window.SoloPWA&&!window.SoloPWA.installed;
   shell(`<h1>Más</h1>
+    <button class="item item-row help-item" type="button" id="help">${icon('life-buoy','lead')}<span><b>Ayuda y soporte</b><span class="hint">Escribinos por WhatsApp o email, te respondemos rápido</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-go="numeros">${icon('chart-column','lead')}<span><b>Mis números</b><span class="hint">Ganancia por servicio, punto de equilibrio y meses</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-go="facturacion">${icon('receipt','lead')}<span><b>Facturación por prestadora</b><span class="hint">Resumen del mes, facturado y cobrado</span></span>${icon('chevron-right','trail')}</button>
     <button class="item item-row" type="button" data-to="clientes">${icon('building-2','lead')}<span><b>Prestadoras y tarifas</b><span class="hint">Empresas, días de pago y precios</span></span>${icon('chevron-right','trail')}</button>
@@ -281,6 +288,7 @@ async function renderMas(){
     <div class="card"><h2>Mi cuenta</h2><div class="row"><span>${esc(profile.full_name)}</span></div><p class="hint">${esc(user.email)}</p>
       <button class="btn block" type="button" id="logout">${icon('log-out')} Cerrar sesión</button></div>`,'mas');
   app.querySelector('[data-to]').onclick=()=>go('clientes');
+  document.getElementById('help').onclick=()=>support();
   document.getElementById('inst')?.addEventListener('click',()=>window.SoloPWA.open());
   document.getElementById('logout').onclick=async()=>{
     const n=window.SoloOffline?await window.SoloOffline.pending():0;
@@ -289,12 +297,35 @@ async function renderMas(){
   const {data:t}=await db.from('solo_trucks').select('*').order('created_at').limit(1).maybeSingle();
   const box=document.getElementById('truck');if(box)box.innerHTML='<h2>Mi grúa</h2>'+(t?`<div class="row"><b class="num">${esc(t.plate)}</b><span class="sub">${esc([t.brand,t.model].filter(Boolean).join(' '))}</span></div>${t.km?'<p class="hint">'+Number(t.km).toLocaleString('es-AR')+' km</p>':''}`:'<p class="hint">Sin grúa cargada.</p>');
 }
+/* ── Ayuda y soporte: arma el mensaje con lo que necesitamos para ayudar (cuenta, versión, pantalla, cambios sin subir) ── */
+const TOPICS=['No puedo entrar','Remitos y firma','Sin señal','Facturación y cobros','Gastos','Otra consulta'];
+const appVersion=()=>((document.querySelector('script[src*="/solo/solo.js"]')?.src||'').match(/[?&]v=([^&]+)/)||[])[1]||'';
+async function support(topic,mail){
+  const wa=String(RT.supportWhatsapp||''),em=String(RT.supportEmail||'');
+  const S=window.SoloSheets;if(!S)return;
+  if(!wa&&!em){S.sheet('Ayuda y soporte','<p class="sub">El canal de ayuda todavía no está configurado. Probá de nuevo más tarde.</p>');return;}
+  let pick=TOPICS.includes(topic)?topic:topic||'';
+  const sh=S.sheet('Ayuda y soporte',`<div class="help">
+      <p class="sub">Contanos qué pasó y te respondemos lo antes posible.</p>
+      <div class="cf-days help-topics" role="radiogroup" aria-label="Tema">${TOPICS.map(t=>`<button type="button" class="chip" role="radio" data-t="${esc(t)}" aria-pressed="${t===pick}">${esc(t)}</button>`).join('')}</div>
+      <div class="field"><label for="hp-msg">Detalle (opcional)</label><textarea id="hp-msg" rows="3" maxlength="600" placeholder="Ej.: no me deja firmar el remito N.º 12"></textarea></div>
+      <div class="help-actions">${wa?`<button class="btn pri block" type="button" id="hp-wa">${icon('message-circle')} Escribir por WhatsApp</button>`:''}${em?`<button class="btn block" type="button" id="hp-em">${icon('mail')} Mandar un email</button>`:''}</div>
+      <p class="hint">Se envía con tu cuenta y la versión de la app para que podamos ayudarte más rápido.</p></div>`);
+  sh.el.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{pick=b.dataset.t;sh.el.querySelectorAll('[data-t]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
+  const pend=window.SoloOffline?await window.SoloOffline.pending().catch(()=>0):0;
+  const body=()=>{const who=profile?.full_name||user?.user_metadata?.full_name||'';const acct=user?.email||mail||'';
+    return [`Hola, ${who?'soy '+who+'. ':''}Necesito ayuda con AuxiliOS Solo.`,pick?'Tema: '+pick:'',sh.el.querySelector('#hp-msg').value.trim(),'',
+      '— Datos para soporte —',acct?'Cuenta: '+acct:'','Versión: '+appVersion(),'Pantalla: '+(location.hash.slice(1)||'inicio'),pend?'Cambios sin subir: '+pend:'',navigator.onLine?'':'Sin conexión',
+      'Equipo: '+(navigator.userAgent.match(/(iPhone|iPad|Android[^;)]*|Windows|Mac OS X)/)||['otro'])[0]].filter(x=>x!=='').join('\n');};
+  sh.el.querySelector('#hp-wa')?.addEventListener('click',()=>{window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(body()),'_blank','noopener');sh.close();});
+  sh.el.querySelector('#hp-em')?.addEventListener('click',()=>{location.href='mailto:'+em+'?subject='+encodeURIComponent('Ayuda AuxiliOS Solo'+(pick?' · '+pick:''))+'&body='+encodeURIComponent(body());sh.close();});
+}
 function renderPronto(v){
   const txt={servicios:['Servicios','Acá vas a ver los servicios del mes, cargar uno nuevo y hacer su remito con firma.'],gastos:['Gastos','Acá vas a cargar combustible, taller y peajes en dos toques, y tus gastos fijos repartidos por mes.']}[v]||['AuxiliOS Solo',''];
   shell(`<h1>${txt[0]}</h1><div class="empty"><b>Llega en la próxima entrega</b><span>${txt[1]}</span></div>`,v);
 }
 
-window.SoloCore={views,shell,go,toast,esc,money,num,isoDate,monthName,errText,icon,
+window.SoloCore={views,shell,go,toast,esc,money,num,isoDate,monthName,errText,icon,support,
   get db(){return db;},get user(){return user;},get profile(){return profile;},set profile(p){profile=p;},
   get month(){return month;},set month(d){month=d;}};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();

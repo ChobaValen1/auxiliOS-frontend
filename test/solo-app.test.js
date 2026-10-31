@@ -212,3 +212,11 @@ test('Solo: datos del remito (CUIT, condición fiscal, logo) y verificación pú
   assert.match(v,/rpc\('solo_verify_remito_v1'/);assert.match(v,/noindex/);assert.match(v,/function esc\(/);
   assert.match(fs.readFileSync('solo-sw.js','utf8'),/startsWith\('\/solo-verificar'\)\)return/);
 });
+test('Solo: términos y privacidad al crear la cuenta, y ayuda y soporte',()=>{
+  const t=fs.readFileSync('terminos-solo.html','utf8');
+  assert.match(t,/id="terminos"/);assert.match(t,/id="privacidad"/);assert.match(t,/Ley N\.º 25\.326/);assert.match(t,/AGENCIA DE ACCESO A LA INFORMACIÓN PÚBLICA/);assert.match(t,/No reemplaza la factura/);
+  assert.match(js,/id="a-terms"/);assert.match(js,/if\(signup&&!\$\('a-terms'\)\.checked\)/,'sin aceptar no se crea la cuenta');assert.match(js,/terms_version:TERMS_VERSION,terms_accepted_at:/);
+  assert.match(js,/id="help"/);assert.match(js,/id="a-help"/);assert.match(js,/'https:\/\/wa\.me\/'\+wa\+'\?text='\+encodeURIComponent/);assert.match(js,/RT\.supportWhatsapp/);
+  const svg=fs.readFileSync('ui/icons.svg','utf8');for(const i of ['life-buoy','message-circle','mail'])assert.match(svg,new RegExp('id="'+i+'"'));
+  assert.match(fs.readFileSync('solo-sw.js','utf8'),/if\(!\['\/solo\.html','\/solo'\]\.includes\(url\.pathname\)\)return;/,'solo la app se guarda como /solo.html');
+});

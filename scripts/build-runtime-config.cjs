@@ -12,7 +12,11 @@ function configuration(env){
   if(!/^sb_publishable_[A-Za-z0-9_-]+$/.test(key))throw new Error('AUXILIOS_SUPABASE_KEY tiene que ser la llave publicable (sb_publishable_…)');
   if(!EDITIONS.includes(edition))throw new Error('AUXILIOS_EDITION tiene que ser '+EDITIONS.join(' o '));
   if(api&&!/^https:\/\//.test(api))throw new Error('AUXILIOS_API_BASE_URL tiene que empezar con https://');
-  return{edition,supabaseUrl:url,supabaseKey:key,apiBaseUrl:api};
+  // Soporte (opcional): WhatsApp con código de país, sin + ni espacios (ej.: 5491123456789), y email.
+  const wa=String(env.AUXILIOS_SUPPORT_WHATSAPP||'').replace(/\D/g,''),mail=String(env.AUXILIOS_SUPPORT_EMAIL||'').trim();
+  if(wa&&!/^\d{10,15}$/.test(wa))throw new Error('AUXILIOS_SUPPORT_WHATSAPP tiene que ser el número con código de país (10 a 15 números)');
+  if(mail&&!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(mail))throw new Error('AUXILIOS_SUPPORT_EMAIL no es un email válido');
+  return{edition,supabaseUrl:url,supabaseKey:key,apiBaseUrl:api,...(wa?{supportWhatsapp:wa}:{}),...(mail?{supportEmail:mail}:{})};
 }
 function render(c){return '/* Generado al publicar por scripts/build-runtime-config.cjs. */\nwindow.AUXILIOS_RUNTIME = Object.freeze('+JSON.stringify(c,null,2)+');\n';}
 if(require.main===module){

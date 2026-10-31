@@ -17,3 +17,10 @@ test('instalación monogruero: valida las variables y rechaza llaves de servicio
   assert.throws(()=>configuration({...ok,AUXILIOS_EDITION:'otra'}),/EDITION/);
   assert.throws(()=>configuration({...ok,AUXILIOS_SUPABASE_URL:'http://x.com'}),/supabase\.co/);
 });
+test('instalación: datos de soporte opcionales y validados',()=>{
+  const ok={AUXILIOS_EDITION:'monogruero',AUXILIOS_SUPABASE_URL:'https://abc123.supabase.co',AUXILIOS_SUPABASE_KEY:'sb_publishable_x1'};
+  assert.equal(configuration(ok).supportWhatsapp,undefined);
+  const c=configuration({...ok,AUXILIOS_SUPPORT_WHATSAPP:'+54 9 11 2345-6789',AUXILIOS_SUPPORT_EMAIL:'ayuda@auxilios.com.ar'});
+  assert.equal(c.supportWhatsapp,'5491123456789');assert.equal(c.supportEmail,'ayuda@auxilios.com.ar');
+  assert.throws(()=>configuration({...ok,AUXILIOS_SUPPORT_WHATSAPP:'123'}),/WHATSAPP/);assert.throws(()=>configuration({...ok,AUXILIOS_SUPPORT_EMAIL:'x@'}),/EMAIL/);
+});
