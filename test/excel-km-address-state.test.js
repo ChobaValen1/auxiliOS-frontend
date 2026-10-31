@@ -98,7 +98,7 @@ test('Excel: Estado es FINALIZADO, ACTIVADO MOVIDA o ACTIVADO ORIGEN y no hay co
   assert.equal(state({driver_activated:false,billing_status:'pending'}),'FINALIZADO');
   assert.equal(state({driver_activated:true,activation_kind:'movement'}),'ACTIVADO MOVIDA');
   assert.equal(state({driver_activated:true,activation_kind:'origin'}),'ACTIVADO ORIGEN');
-  for(const id of ['activated','activation_kind','activation_billing'])assert.equal(cols.has(id),false,`sobra la columna ${id}`);
+  for(const id of ['activated','activation_kind','activation_billing','base_price','service_number','logistics'])assert.equal(cols.has(id),false,`sobra la columna ${id}`);
   assert.ok(cols.has('activation_km'));
 });
 
