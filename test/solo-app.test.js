@@ -71,7 +71,7 @@ test('Solo: remito sin «Llegada», medios de pago con botones y firma con estad
   for(const t of ['Faltan conformidades','Falta la firma del socio','Falta la aclaración','Listo para finalizar','Sin firma','Firma registrada'])assert.ok(ops.includes(t),t);
   assert.match(css,/\.conf-area\{flex:4 1 0/);assert.match(css,/\.pad-wrap\{flex:6 1 0/,'60% firma / 40% conformidades');
   assert.match(ops,/pad\.width=Math\.round\(r0\.width\*dpr\)/,'el trazo no se deforma');
-  assert.match(ops,/Remito creado exitosamente/);assert.match(ops,/doneView\(box,s,cl,tp,tk\)/);assert.match(ops,/Enviar remito \(PDF\)/);
+  assert.match(ops,/Remito creado exitosamente/);assert.match(ops,/doneView\(box,s,cl,tp,tk\)/);assert.match(ops,/Enviar remito<\/button>/);
 });
 test('Solo: Gastos con total del mes, en qué se va la plata, movimientos por día y fijos',()=>{
   const ops=fs.readFileSync('solo/solo-ops.js','utf8');
@@ -219,4 +219,15 @@ test('Solo: términos y privacidad al crear la cuenta, y ayuda y soporte',()=>{
   assert.match(js,/id="help"/);assert.match(js,/id="a-help"/);assert.match(js,/'https:\/\/wa\.me\/'\+wa\+'\?text='\+encodeURIComponent/);assert.match(js,/RT\.supportWhatsapp/);
   const svg=fs.readFileSync('ui/icons.svg','utf8');for(const i of ['life-buoy','message-circle','mail'])assert.match(svg,new RegExp('id="'+i+'"'));
   assert.match(fs.readFileSync('solo-sw.js','utf8'),/if\(!\['\/solo\.html','\/solo'\]\.includes\(url\.pathname\)\)return;/,'solo la app se guarda como /solo.html');
+});
+test('Solo: enviar remito al teléfono y email del socio, e ingreso con Google con términos',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');const sd=ops.slice(ops.indexOf('const waNumber='),ops.indexOf('/* ── Gastos:'));
+  assert.match(sd,/s\.customer_phone/);assert.match(sd,/s\.customer_email/);assert.match(sd,/'https:\/\/wa\.me\/'\+wa\+'\?text='/);assert.match(sd,/'mailto:'\+encodeURIComponent\(mail\)/);
+  assert.match(sd,/createSignedUrl\(path,90\*24\*3600\)/);assert.match(sd,/id="sd-share"/,'compartir el PDF sigue estando');
+  assert.match(ops,/\$\('share'\)\.onclick=\(\)=>sendSheet\(/);assert.match(ops,/getElementById\('share'\)\.onclick=\(\)=>sendSheet\(/);
+  const wa=eval('('+sd.slice(sd.indexOf('v=>'),sd.indexOf(';\nasync function pdfLink'))+')');
+  assert.equal(wa('11 2345 6789'),'5491123456789');assert.equal(wa('+54 9 11 2345-6789'),'5491123456789');assert.equal(wa('011 2345 6789'),'5491123456789');assert.equal(wa('221 456 7890'),'5492214567890');assert.equal(wa(''),'');
+  assert.match(js,/signInWithOAuth\(\{provider:'google'/);assert.match(js,/\/auth\/v1\/settings/,'el botón solo aparece si Google está activo');
+  assert.match(js,/id="o-terms"/);assert.match(js,/if\(needsTerms\(\)\)\{const t=document\.getElementById\('o-terms'\);if\(!t\.checked\)/);assert.match(js,/updateUser\(\{data:\{terms_version:TERMS_VERSION/);
+  assert.match(fs.readFileSync('ui/icons.svg','utf8'),/id="send"/);
 });

@@ -5,6 +5,7 @@
 const app=document.getElementById('app');
 const RT=window.AUXILIOS_RUNTIME||{};
 const TERMS_VERSION='2026-10-31';
+const needsTerms=()=>!!user&&user.user_metadata?.terms_version!==TERMS_VERSION;
 let db=null, user=null, profile=null, view='inicio', month=startOfMonth(new Date()), detailId=null;
 let recovering=false, authNotice=null, authEmail='';
 const DEFAULT_TYPES=['Remolque','Auxilio mecánico','Traslado'];
@@ -68,14 +69,22 @@ function go(name,fromHash){
 // Los enlaces de los emails (confirmar cuenta, nueva contraseña) vuelven siempre a esta app.
 const backUrl=()=>location.origin+'/solo.html';
 function readAuthHash(){
-  const h=location.hash.slice(1);if(!/(^|&)(error|access_token|type)=/.test(h))return;
-  const q=new URLSearchParams(h);
+  const h=location.hash.slice(1),qs=location.search.slice(1);
+  if(!/(^|&)(error|access_token|type)=/.test(h)&&!/(^|&)error=/.test(qs))return;
+  const q=new URLSearchParams(/(^|&)error=/.test(qs)?qs:h);
   if(q.get('type')==='recovery')recovering=true;
   if(q.get('error')||q.get('error_code')){
-    authNotice=/expired|invalid/i.test((q.get('error_code')||'')+' '+(q.get('error_description')||''))?'El enlace del email venció o ya se usó. Pedí uno nuevo.':'No pudimos validar el enlace del email. Pedí uno nuevo.';
+    const why=(q.get('error')||'')+' '+(q.get('error_code')||'')+' '+(q.get('error_description')||'');
+    authNotice=/access_denied|cancel/i.test(why)&&!/otp|email/i.test(why)?'Cancelaste el ingreso con Google. Probá de nuevo o entrá con tu email.'
+      :/provider|oauth|google/i.test(why)?'No pudimos entrar con Google. Probá de nuevo o entrá con tu email.'
+      :/expired|invalid/i.test(why)?'El enlace del email venció o ya se usó. Pedí uno nuevo.':'No pudimos validar el enlace del email. Pedí uno nuevo.';
     history.replaceState(null,'',location.pathname);
   }
 }
+// Ingreso con Google: el botón aparece solo si Google está activado en la base (así nunca queda un botón roto).
+let googleOn=null;
+const googleEnabled=()=>googleOn||(googleOn=fetch(RT.supabaseUrl+'/auth/v1/settings',{headers:{apikey:RT.supabaseKey}}).then(r=>r.ok?r.json():{}).then(j=>!!j?.external?.google).catch(()=>false));
+const GOOGLE_G='<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
 function screen(html){app.classList.add('bare');app.innerHTML=html;}
 const passField=(id,label,auto,help)=>`<div class="field"><label for="${id}">${label}</label><div class="pass"><input id="${id}" type="password" autocomplete="${auto}" minlength="6" required autocapitalize="none" spellcheck="false"><button class="eye" type="button" data-eye="${id}" aria-label="Mostrar contraseña" aria-pressed="false">${icon('eye')}</button></div>${help?'<span class="help">'+help+'</span>':''}</div>`;
 // Ojito: muestra u oculta la contraseña sin perder el cursor.
@@ -94,6 +103,7 @@ function renderAuth(mode){
     <h1>${title}</h1>
     <p class="sub">${sub}</p>
     ${authNotice?`<p class="notice" role="alert">${icon('circle-alert')}<span>${esc(authNotice)}</span></p>`:''}
+    ${reset?'':`<div class="google-wrap" id="g-wrap" hidden><button class="btn block google-btn" type="button" id="a-google">${GOOGLE_G}<span>${signup?'Crear cuenta con Google':'Entrar con Google'}</span></button><div class="or"><span>o con tu email</span></div></div>`}
     <form id="auth" class="card" novalidate>
       ${signup?'<div class="field"><label for="a-name">Tu nombre</label><input id="a-name" autocomplete="name" required></div>':''}
       <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" required value="${esc(authEmail)}"></div>
@@ -111,6 +121,12 @@ function renderAuth(mode){
   $('a-switch').onclick=()=>{authEmail=$('a-email').value.trim();renderAuth(signup?'login':reset?'login':'signup');};
   $('a-forgot')?.addEventListener('click',()=>{authEmail=$('a-email').value.trim();renderAuth('reset');});
   $('a-help').onclick=()=>support(signup?'No puedo crear la cuenta':'No puedo entrar',$('a-email').value.trim());
+  if(!reset)googleEnabled().then(on=>{const w=$('g-wrap');if(w&&on)w.hidden=false;});
+  $('a-google')?.addEventListener('click',async()=>{const b=$('a-google');if(b.disabled)return;
+    if(!navigator.onLine)return fail('Sin señal no se puede entrar con Google. Probá cuando vuelva la conexión.');
+    b.disabled=true;b.innerHTML='<span class="spin" aria-hidden="true"></span>Abriendo Google…';
+    const {error}=await db.auth.signInWithOAuth({provider:'google',options:{redirectTo:backUrl(),queryParams:{prompt:'select_account'}}});
+    if(error){fail('No pudimos abrir Google. Probá de nuevo o entrá con tu email.');b.disabled=false;b.innerHTML=GOOGLE_G+'<span>'+(signup?'Crear cuenta con Google':'Entrar con Google')+'</span>';}});
   const fail=(msg,resend)=>{er.innerHTML=esc(msg)+(resend?' <button class="link" type="button" id="a-resend">Reenviar email</button>':'');er.hidden=false;
     $('a-resend')?.addEventListener('click',()=>renderCheckEmail(authEmail,'signup',true));};
   $('auth').onsubmit=async e=>{
@@ -176,12 +192,13 @@ function renderNewPassword(){
 /* ── Alta inicial: perfil → grúa → primera prestadora ── */
 function stepsBar(n){return '<div class="steps" aria-label="Paso '+n+' de 3">'+[1,2,3].map(i=>'<i class="'+(i<=n?'on':'')+'"></i>').join('')+'</div>';}
 function renderOnboarding(step){
-  const metaName=user?.user_metadata?.full_name||'';
+  const metaName=user?.user_metadata?.full_name||user?.user_metadata?.name||'';
   const body={
     1:`<h1>Bienvenido</h1><p class="sub">Contanos quién sos. Lo usamos en tus remitos.</p>
       <div class="field"><label for="o-name">Nombre y apellido</label><input id="o-name" autocomplete="name" value="${esc(metaName)}" required></div>
       <div class="field"><label for="o-biz">Nombre comercial (opcional)</label><input id="o-biz" placeholder="Ej.: Grúas Pérez"></div>
-      <div class="field"><label for="o-phone">Teléfono (opcional)</label><input id="o-phone" type="tel" inputmode="tel" autocomplete="tel"></div>`,
+      <div class="field"><label for="o-phone">Teléfono (opcional)</label><input id="o-phone" type="tel" inputmode="tel" autocomplete="tel"></div>
+      ${needsTerms()?`<label class="terms" for="o-terms"><input type="checkbox" id="o-terms"><span>Acepto los <a href="/terminos-solo.html" target="_blank" rel="noopener">Términos y condiciones</a> y la <a href="/terminos-solo.html#privacidad" target="_blank" rel="noopener">Política de privacidad</a>.</span></label>`:''}`,
     2:`<h1>Tu grúa</h1><p class="sub">La patente sale en cada remito.</p>
       <div class="field"><label for="o-plate">Patente</label><input id="o-plate" autocapitalize="characters" placeholder="AB 123 CD" required></div>
       <div class="grid2"><div class="field"><label for="o-brand">Marca</label><input id="o-brand" placeholder="Iveco"></div><div class="field"><label for="o-model">Modelo</label><input id="o-model" placeholder="Daily"></div></div>
@@ -211,6 +228,9 @@ function renderOnboarding(step){
   document.getElementById('onb').onsubmit=async e=>{
     e.preventDefault();er.hidden=true;
     if(step===1){const name=document.getElementById('o-name').value.trim();if(name.length<2)return fail('Escribí tu nombre.');
+      // Al entrar con Google no pasa por la casilla del registro: se pide acá y queda guardada en la cuenta.
+      if(needsTerms()){const t=document.getElementById('o-terms');if(!t.checked){t.closest('.terms').classList.add('need');return fail('Para seguir tenés que aceptar los Términos y la Política de privacidad.');}
+        const {data,error}=await db.auth.updateUser({data:{terms_version:TERMS_VERSION,terms_accepted_at:new Date().toISOString()}});if(error)return fail(error);if(data?.user)user=data.user;}
       onb.name=name;onb.biz=document.getElementById('o-biz').value.trim();onb.phone=document.getElementById('o-phone').value.trim();return renderOnboarding(2);}
     if(step===2){const plate=document.getElementById('o-plate').value.trim().toUpperCase();if(plate.replace(/\s/g,'').length<5)return fail('Escribí la patente de la grúa.');
       const {error}=await db.from('solo_trucks').insert({plate,brand:document.getElementById('o-brand').value.trim()||null,model:document.getElementById('o-model').value.trim()||null,km:num(document.getElementById('o-km').value)||null});

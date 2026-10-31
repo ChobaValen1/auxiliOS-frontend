@@ -389,9 +389,9 @@ function doneView(box,s,cl,tp,tk){
         ${particular?'':line('A facturar a '+esc(cl?.name||'la prestadora'),money(Math.max(0,Number(s.total)-here)),'dl-bill')}
       </div>
     </div>
-    <div class="done-actions"><button class="btn pri block" type="button" id="share">${icon('share-2')} Enviar remito (PDF)</button>
+    <div class="done-actions"><button class="btn pri block" type="button" id="share">${icon('send')} Enviar remito</button>
       <div class="split"><button class="btn" type="button" id="see">${icon('file-text')} Ver remito</button><button class="btn" type="button" id="fin">${icon('check')} Listo</button></div></div>`;
-  document.getElementById('share').onclick=()=>sharePdf(s,cl,tp,tk);setTimeout(()=>prepPdf(s,cl,tp,tk),600);
+  document.getElementById('share').onclick=()=>sendSheet(s,cl,tp,tk);setTimeout(()=>prepPdf(s,cl,tp,tk),600);
   document.getElementById('see').onclick=()=>views.servicio(s.id);
   document.getElementById('fin').onclick=()=>go('servicios');
 }
@@ -431,7 +431,7 @@ function signedView(box,s,cl,tp,tk,id){
         <div><span class="rm-glabel">${icon('camera')} Fotos</span><div id="ph" class="rv-photos"></div></div>
       </section>
     </div>
-    ${cancelled?'':`<button class="btn pri block" type="button" id="share">${icon('share-2')} Enviar remito (PDF)</button>`}`;
+    ${cancelled?'':`<button class="btn pri block" type="button" id="share">${icon('send')} Enviar remito</button>`}`;
   const $=x=>document.getElementById(x);
   $('rm-x').onclick=()=>go('servicios');
   (async()=>{const paths=s.photos||[];if(!paths.length){$('ph').innerHTML='<p class="hint">Sin fotos.</p>';return;}const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,3600);
@@ -439,7 +439,7 @@ function signedView(box,s,cl,tp,tk,id){
   if(s.signature_path)C.db.storage.from('solo_files').createSignedUrl(s.signature_path,3600).then(({data})=>{if(data&&$('sig-img'))$('sig-img').src=data.signedUrl;});
   if(cancelled)return;
   $('paid').onclick=async()=>{const {error}=await C.db.from('solo_services').update({paid_at:s.paid_at?null:new Date().toISOString()}).eq('id',s.id);toast(error?errText(error):s.paid_at?'Marcado como no cobrado':'Marcado como cobrado');if(!error){UI().success();views.servicio(id);}};
-  $('share').onclick=()=>sharePdf(s,cl,tp,tk);setTimeout(()=>prepPdf(s,cl,tp,tk),600);
+  $('share').onclick=()=>sendSheet(s,cl,tp,tk);setTimeout(()=>prepPdf(s,cl,tp,tk),600);
 }
 
 // Achica las fotos antes de subirlas (más rápido con poca señal).
@@ -592,6 +592,42 @@ async function sharePdf(s,cl,tp,tk){
   const blob=doc.output('blob'),file=new File([blob],'remito-'+(s.remito_number||'nuevo')+'.pdf',{type:'application/pdf'});
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:'Remito N.º '+s.remito_number});return;}catch(e){if(e.name==='AbortError')return;}}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();toast('PDF descargado');
+}
+
+/* ── Enviar remito: usa el teléfono y el email que se cargaron en el paso 2 ──
+   WhatsApp y el email no dejan adjuntar archivos desde un enlace: se sube el PDF y se manda un link para descargarlo
+   (vence a los 90 días), más el link de verificación. «Compartir PDF» sigue mandando el archivo. */
+const waNumber=v=>{let d=String(v||'').replace(/\D/g,'');if(!d)return '';if(d.startsWith('54'))d=d.slice(2);if(d.startsWith('9')&&d.length===11)d=d.slice(1);d=d.replace(/^0+/,'');return d.length>=8?'549'+d:'';};
+async function pdfLink(s,cl,tp,tk){
+  if(s.__link)return s.__link;
+  if(!navigator.onLine)throw new Error('offline');
+  const doc=await prepPdf(s,cl,tp,tk);if(!doc)throw new Error('pdf');
+  const path=C.user.id+'/remitos/'+s.id+'.pdf';
+  const up=await C.db.storage.from('solo_files').upload(path,doc.output('blob'),{contentType:'application/pdf',upsert:true});if(up.error)throw up.error;
+  const {data,error}=await C.db.storage.from('solo_files').createSignedUrl(path,90*24*3600);if(error||!data?.signedUrl)throw error||new Error('link');
+  return (s.__link=data.signedUrl);}
+function sendSheet(s,cl,tp,tk){
+  const P=C.profile||{},wa=waNumber(s.customer_phone),mail=String(s.customer_email||'').trim(),first=String(s.customer_name||'').trim().split(/\s+/)[0]||'';
+  const biz=P.business_name||P.full_name||'tu grúa',n=s.remito_number?'N.º '+s.remito_number:'';
+  const verify=s.verify_code?location.origin+'/v/'+s.verify_code:'';
+  const msg=link=>[`Hola${first?' '+first:''}, te envío el remito ${n} del servicio del ${new Date(s.service_date).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}${s.plate?' (patente '+s.plate+')':''}. ${biz}.`,
+    '','Descargalo acá: '+link,verify?'Podés verificar que es original en: '+verify:''].filter(x=>x!=='').join('\n');
+  const sh=sheet('Enviar remito '+n,`<div class="send">
+      ${wa||mail?'':'<p class="hint">No cargaste teléfono ni email del socio. Podés compartir el PDF igual, o agregarlos en el paso 2 del remito.</p>'}
+      ${wa?`<button class="send-opt" type="button" id="sd-wa" disabled>${icon('message-circle')}<span><b>WhatsApp a ${esc(first||'el socio')}</b><small>${esc(s.customer_phone)}</small></span><i class="spin" aria-hidden="true"></i></button>`:''}
+      ${mail?`<button class="send-opt" type="button" id="sd-em" disabled>${icon('mail')}<span><b>Email a ${esc(first||'el socio')}</b><small>${esc(mail)}</small></span><i class="spin" aria-hidden="true"></i></button>`:''}
+      <button class="send-opt" type="button" id="sd-share">${icon('share-2')}<span><b>Compartir el PDF</b><small>Elegís la app y el contacto</small></span></button>
+      <p class="hint" id="sd-state" aria-live="polite">${wa||mail?'Preparando el link del PDF…':''}</p></div>`);
+  const $s=id=>sh.el.querySelector('#'+id);
+  $s('sd-share').onclick=()=>{sh.close();sharePdf(s,cl,tp,tk);};
+  if(!wa&&!mail)return;
+  // El link se prepara apenas se abre la hoja: así el toque abre WhatsApp o el email al instante.
+  pdfLink(s,cl,tp,tk).then(link=>{if(!document.body.contains(sh.el))return;
+    sh.el.querySelectorAll('.send-opt .spin').forEach(x=>x.remove());$s('sd-state').textContent='El socio recibe un link para descargar el PDF.';
+    if(wa){$s('sd-wa').disabled=false;$s('sd-wa').onclick=()=>{window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(msg(link)),'_blank','noopener');sh.close();};}
+    if(mail){$s('sd-em').disabled=false;$s('sd-em').onclick=()=>{location.href='mailto:'+encodeURIComponent(mail)+'?subject='+encodeURIComponent('Remito '+n+' · '+biz)+'&body='+encodeURIComponent(msg(link));sh.close();};}
+  }).catch(e=>{if(!document.body.contains(sh.el))return;sh.el.querySelectorAll('.send-opt .spin').forEach(x=>x.remove());
+    $s('sd-state').textContent=String(e?.message)==='offline'?'Sin señal no se puede armar el link. Compartí el PDF o probá cuando vuelva la conexión.':'No pudimos armar el link. Compartí el PDF.';});
 }
 
 /* ── Gastos: cuánto gastaste en el mes, en qué y cada movimiento; el alta va en su propia pantalla ── */
