@@ -191,3 +191,11 @@ test('Solo: pantalla de carga con contador hasta 100',()=>{
   assert.match(html,/id="boot" class="boot" role="progressbar"/);assert.match(html,/id="boot-n">0</);assert.match(html,/MutationObserver/);
   assert.match(html,/prefers-reduced-motion/);assert.doesNotMatch(html,/Cargando AuxiliOS Solo…<\/div>/);assert.match(css,/\.boot\.done\{/);
 });
+test('Solo: remito PDF con membrete de la grúa, marca de agua de AuxiliOS, fotos y sin tarifa de la prestadora',()=>{
+  const ops=fs.readFileSync('solo/solo-ops.js','utf8');const f=ops.slice(ops.indexOf('async function remitoPdf('),ops.indexOf('function prepPdf('));
+  assert.match(f,/compress:true/);assert.match(f,/new doc\.GState\(\{opacity:\.045\}\)/,'marca de agua suave');assert.match(f,/txt\('AuxiliOS'/);
+  assert.match(f,/P\.business_name/);assert.match(f,/Grúa '\+tk\.plate/);assert.match(f,/createSignedUrls\(paths,600\)/);assert.match(f,/Fotos del vehículo/);
+  assert.match(f,/CÓDIGO DE VERIFICACIÓN/);assert.match(f,/Página '\+i\+' de '\+n/);
+  assert.match(f,/const rows=particular\?\[\['Precio acordado'/,'con prestadora no se muestra la tarifa');assert.doesNotMatch(f,/Se factura a '\+/);
+  assert.match(ops,/setTimeout\(\(\)=>prepPdf\(s,cl,tp,tk\),600\)/,'el PDF se arma antes del toque');
+});

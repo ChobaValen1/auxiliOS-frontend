@@ -391,7 +391,7 @@ function doneView(box,s,cl,tp,tk){
     </div>
     <div class="done-actions"><button class="btn pri block" type="button" id="share">${icon('share-2')} Enviar remito (PDF)</button>
       <div class="split"><button class="btn" type="button" id="see">${icon('file-text')} Ver remito</button><button class="btn" type="button" id="fin">${icon('check')} Listo</button></div></div>`;
-  document.getElementById('share').onclick=()=>sharePdf(s,cl,tp,tk);
+  document.getElementById('share').onclick=()=>sharePdf(s,cl,tp,tk);setTimeout(()=>prepPdf(s,cl,tp,tk),600);
   document.getElementById('see').onclick=()=>views.servicio(s.id);
   document.getElementById('fin').onclick=()=>go('servicios');
 }
@@ -439,29 +439,140 @@ function signedView(box,s,cl,tp,tk,id){
   if(s.signature_path)C.db.storage.from('solo_files').createSignedUrl(s.signature_path,3600).then(({data})=>{if(data&&$('sig-img'))$('sig-img').src=data.signedUrl;});
   if(cancelled)return;
   $('paid').onclick=async()=>{const {error}=await C.db.from('solo_services').update({paid_at:s.paid_at?null:new Date().toISOString()}).eq('id',s.id);toast(error?errText(error):s.paid_at?'Marcado como no cobrado':'Marcado como cobrado');if(!error){UI().success();views.servicio(id);}};
-  $('share').onclick=()=>sharePdf(s,cl,tp,tk);
+  $('share').onclick=()=>sharePdf(s,cl,tp,tk);setTimeout(()=>prepPdf(s,cl,tp,tk),600);
 }
 
 // Achica las fotos antes de subirlas (más rápido con poca señal).
 function shrink(file){return new Promise(res=>{const img=new Image();img.onload=()=>{const k=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);c.toBlob(b=>res(b||file),'image/jpeg',.8);URL.revokeObjectURL(img.src);};img.onerror=()=>res(file);img.src=URL.createObjectURL(file);});}
 
+/* ── Remito en PDF: membrete de la grúa, marca de agua de AuxiliOS, fotos, conformidades y firma ──
+   Es lo que recibe el socio: con prestadora solo figura lo que pagó él en el lugar (la tarifa no se muestra). */
+const blobToData=b=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=()=>r(null);fr.readAsDataURL(b);});
+const imgSize=src=>new Promise(r=>{const i=new Image();i.onload=()=>r({w:i.naturalWidth,h:i.naturalHeight});i.onerror=()=>r(null);i.src=src;});
+async function fetchData(url,max){try{const r=await fetch(url);if(!r.ok)return null;let d=await blobToData(await r.blob());let z=d&&await imgSize(d);if(!z)return null;
+  // Las fotos se achican para que el PDF pese poco y viaje rápido por WhatsApp.
+  if(max&&Math.max(z.w,z.h)>max){const i=new Image();await new Promise(ok=>{i.onload=ok;i.onerror=ok;i.src=d;});const k=max/Math.max(z.w,z.h),c=document.createElement('canvas');
+    c.width=Math.round(z.w*k);c.height=Math.round(z.h*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);d=c.toDataURL('image/jpeg',.74);z={w:c.width,h:c.height};}
+  return {d,...z};}catch(e){return null;}}
+async function remitoPdf(s,cl,tp,tk){
+  const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true}),P=C.profile||{},particular=cl?.kind==='particular';
+  const W=210,M=14,CW=W-2*M,BOTTOM=280;let y=0;
+  const INK=[24,27,34],MUTED=[112,118,130],LINE=[226,229,235],SOFT=[246,247,249],AMBER=[245,166,35],DARK=[12,14,18],OK=[22,150,90];
+  const font=(size,bold,color)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(...(color||INK));};
+  const txt=(v,x,yy,o)=>doc.text(Array.isArray(v)?v:String(v??''),x,yy,o);
+  const when=v=>{if(!v)return '';const d=new Date(v);return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'})+' h';};
+  // Imágenes: logo, fotos (en paralelo) y firma.
+  const logo=await fetchData('/assets/icons/icon-192.png');
+  const paths=(s.photos||[]).slice(0,6);let photos=[];
+  if(paths.length){try{const {data}=await C.db.storage.from('solo_files').createSignedUrls(paths,600);
+    photos=(await Promise.all((data||[]).map(async(u,i)=>{const k=(paths[i].match(/\/([a-z0-9]+)-\d+\.jpg$/)||[])[1];const im=u?.signedUrl&&await fetchData(u.signedUrl,900);
+      return im?{...im,label:(SLOTS.find(x=>x[0]===k)||[,'Foto'])[1]}:null;}))).filter(Boolean);}catch(e){photos=[];}}
+  let sig=null;if(s.signature_path){try{const {data}=await C.db.storage.from('solo_files').download(s.signature_path);if(data){const d=await blobToData(data);const z=d&&await imgSize(d);if(z)sig={d,...z};}}catch(e){}}
+  const fit=(im,w,h)=>{const k=Math.min(w/im.w,h/im.h);return {w:im.w*k,h:im.h*k};};
+
+  // Encabezado oscuro con el membrete del gruero y el N.º de remito.
+  const header=first=>{doc.setFillColor(...DARK);doc.rect(0,0,W,first?36:16,'F');doc.setFillColor(...AMBER);doc.rect(0,first?36:16,W,1.2,'F');
+    if(!first){font(9,true,[255,255,255]);txt(P.business_name||P.full_name||'',M,10);font(9,false,[190,195,205]);txt((s.remito_number?'Remito N.º '+s.remito_number:'Remito')+' · continuación',W-M,10,{align:'right'});y=26;return;}
+    if(logo)doc.addImage(logo.d,'PNG',M,8,20,20,'logo','FAST');
+    const lx=M+(logo?25:0);font(17,true,[255,255,255]);txt(P.business_name||P.full_name||'Servicio de grúa',lx,15.5);
+    font(8.5,false,[190,195,205]);txt('Auxilio mecánico y remolque'+(tk?.plate?' · Grúa '+tk.plate+(tk.brand||tk.model?' ('+[tk.brand,tk.model].filter(Boolean).join(' ')+')':''):''),lx,21.5);
+    txt([P.business_name&&P.full_name?'Titular: '+P.full_name:'',P.phone?'Tel. '+P.phone:'',C.user?.email||''].filter(Boolean).join(' · '),lx,26.5);
+    font(7.5,true,AMBER);txt('REMITO DIGITAL',W-M,12,{align:'right'});
+    font(20,true,[255,255,255]);txt(s.remito_number?'N.º '+String(s.remito_number).padStart(6,'0'):'Sin número',W-M,21,{align:'right'});
+    font(8.5,false,[190,195,205]);txt(when(s.service_date),W-M,27,{align:'right'});y=46;};
+  const ensure=h=>{if(y+h>BOTTOM){doc.addPage();header(false);}};
+  const section=(title,h)=>{ensure(h+9);font(7.5,true,AMBER);txt(title.toUpperCase(),M,y,{charSpace:.5});const tw=doc.getTextWidth(title.toUpperCase())+title.length*.5+3;
+    doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.line(M+tw,y-1.1,W-M,y-1.1);y+=5;};
+  // Grilla de datos: etiqueta chica arriba, valor abajo.
+  const grid=(items,cols)=>{items=items.filter(i=>i[1]!=null&&String(i[1]).trim()!=='');if(!items.length)return;const cw=CW/cols;
+    for(let i=0;i<items.length;i+=cols){const row=items.slice(i,i+cols);let rh=10;
+      row.forEach(([l,v],j)=>{const lines=doc.splitTextToSize(String(v),cw-4);rh=Math.max(rh,6+lines.length*4.6);});ensure(rh);
+      row.forEach(([l,v],j)=>{const x=M+j*cw;font(6.8,true,MUTED);txt(l.toUpperCase(),x,y,{charSpace:.3});font(10.2,false,INK);txt(doc.splitTextToSize(String(v),cw-4),x,y+5);});y+=rh;}
+    y+=1;};
+
+  header(true);
+  // Franja de estado.
+  doc.setFillColor(...SOFT);doc.roundedRect(M,y-5,CW,11,2,2,'F');font(8.5,true,INK);
+  txt(particular?'Servicio particular':'Servicio para '+(cl?.name||'prestadora'),M+4,y+1.8);
+  const st=s.status==='signed'||s.signed_at?'FIRMADO':'EN CURSO';font(7.5,true,st==='FIRMADO'?OK:AMBER);
+  const sw=doc.getTextWidth(st)+8;doc.setDrawColor(...(st==='FIRMADO'?OK:AMBER));doc.setLineWidth(.4);doc.roundedRect(W-M-4-sw,y-2.6,sw,6.4,3.2,3.2,'S');txt(st,W-M-4-sw/2,y+1.6,{align:'center'});
+  y+=14;
+
+  section('Datos del servicio',12);
+  grid([[particular?'Cliente':'Prestadora',particular?'Particular':cl?.name],['Tipo de servicio',tp?.name||'Servicio'],['N.º de servicio',particular?null:s.provider_order],['Fecha y hora',when(s.service_date)]],4);
+
+  section('Vehículo asistido y recorrido',30);
+  grid([['Patente',s.plate],['Marca y modelo',s.make_model],['Km recorridos',s.km!=null&&s.km!==''?String(s.km).replace('.',',')+' km':null]],3);
+  if(s.origin||s.destination){ensure(18);const rx=M+2;
+    doc.setDrawColor(...MUTED);doc.setLineWidth(.35);doc.setLineDashPattern([1,1],0);doc.line(rx+1.6,y+1.6,rx+1.6,y+9.4);doc.setLineDashPattern([],0);
+    doc.setDrawColor(...AMBER);doc.setLineWidth(.6);doc.setFillColor(255,255,255);doc.circle(rx+1.6,y,1.6,'FD');doc.setFillColor(...AMBER);doc.circle(rx+1.6,y+11,1.6,'F');
+    font(6.8,true,MUTED);txt('DESDE',rx+7,y-1.2);txt('HASTA',rx+7,y+9.8);font(10.2,false,INK);txt(doc.splitTextToSize(s.origin||'—',CW-12)[0],rx+7,y+3.2);txt(doc.splitTextToSize(s.destination||'—',CW-12)[0],rx+7,y+14.2);y+=21;}
+
+  section('Quién recibió el servicio',12);
+  grid([['Nombre y apellido',s.customer_name],['DNI / CUIT',s.customer_doc],['Teléfono',s.customer_phone],['Email',s.customer_email]],2);
+
+  // Importes: particular ve todo; con prestadora solo lo que pagó el socio.
+  const ex=n=>Number((s.extras||[]).find(x=>x.name===n)?.amount)||0;
+  const extras=[['Peajes',ex('Peajes')],['Excedente de km',ex('Excedente')],['Espera / maniobras',ex('Espera')],['Otros',Number(s.other_amount)||0]].filter(x=>x[1]);
+  const rows=particular?[['Precio acordado',Number(s.base_amount)||0],...extras]:extras;
+  const paid=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);
+  const pays=s.payment_1_method?(PAY[s.payment_1_method]||'')+(s.payment_2_method?' '+money(s.payment_1_amount)+' + '+(PAY[s.payment_2_method]||'')+' '+money(s.payment_2_amount):''):'';
+  const boxH=(rows.length?rows.length*6.4+4:9)+12+(pays?6:0)+(particular?0:7);
+  section(particular?'Importes':'Cargos abonados por el socio',boxH);
+  doc.setFillColor(...SOFT);doc.roundedRect(M,y-4,CW,boxH,2,2,'F');let iy=y+1.5;
+  if(rows.length)rows.forEach(([l,v])=>{font(9.5,false,INK);txt(l,M+5,iy);txt(money(v),W-M-5,iy,{align:'right'});iy+=6.4;});
+  else{font(9.5,false,MUTED);txt('Sin cargos en el lugar.',M+5,iy);iy+=9;}
+  doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.line(M+5,iy-3,W-M-5,iy-3);
+  const tot=particular?Number(s.total)||0:(paid||extras.reduce((a,x)=>a+x[1],0));
+  font(11,true,INK);txt(particular?'Total':'Total abonado por el socio',M+5,iy+3);doc.setTextColor(...AMBER);txt(money(tot),W-M-5,iy+3,{align:'right'});iy+=9;
+  if(pays){font(8.5,false,MUTED);txt('Medio de pago: '+pays,M+5,iy);iy+=6;}
+  if(!particular){font(8.5,false,MUTED);txt('El servicio contratado por '+(cl?.name||'la prestadora')+' se factura aparte a la prestadora.',M+5,iy);}
+  y+=boxH+4;
+
+  if(photos.length){const cols=photos.length===4?4:Math.min(3,photos.length)||3,gap=4,cw=(CW-gap*(cols-1))/cols,ch=cw*.72;
+    section('Fotos del vehículo',ch+8);
+    for(let i=0;i<photos.length;i+=cols){ensure(ch+8);photos.slice(i,i+cols).forEach((ph,j)=>{const x=M+j*(cw+gap);
+      doc.setFillColor(...SOFT);doc.roundedRect(x,y-2,cw,ch,1.5,1.5,'F');const f=fit(ph,cw-2,ch-2);
+      doc.addImage(ph.d,'JPEG',x+(cw-f.w)/2,y-2+(ch-f.h)/2,f.w,f.h,undefined,'FAST');font(7,false,MUTED);txt(ph.label,x,y+ch+2.2);});y+=ch+8;}}
+
+  const confs=CONF.map(([k,t,d])=>[t,d,!!s[k]]);
+  section('Conformidad del socio',confs.length*9+(s.customer_present===false?9:0));
+  confs.concat(s.customer_present===false?[['Socio ausente','El chofer firma en su nombre',true]]:[]).forEach(([t,d,on])=>{ensure(9);
+    if(on){doc.setFillColor(...AMBER);doc.roundedRect(M,y-3.4,4.2,4.2,.8,.8,'F');doc.setDrawColor(255,255,255);doc.setLineWidth(.6);doc.line(M+1,y-1.3,M+1.8,y-.4);doc.line(M+1.8,y-.4,M+3.3,y-2.4);}
+    else{doc.setDrawColor(...MUTED);doc.setLineWidth(.35);doc.roundedRect(M,y-3.4,4.2,4.2,.8,.8,'S');}
+    font(9.5,true,on?INK:MUTED);txt(t,M+7,y);font(8,false,MUTED);txt(d,M+7,y+3.9);y+=9;});
+  y+=1;
+  if(s.notes){const ln=doc.splitTextToSize(s.notes,CW-10);section('Observaciones',ln.length*4.6+6);font(9.5,false,INK);txt(ln,M,y);y+=ln.length*4.6+4;}
+
+  // Firma + código de verificación.
+  section('Firma',44);const fx=M,fw=96,fh=30;
+  doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.roundedRect(fx,y-2,fw,fh,1.5,1.5,'S');
+  if(sig){const f=fit(sig,fw-6,fh-6);doc.addImage(sig.d,'PNG',fx+(fw-f.w)/2,y-2+(fh-f.h)/2,f.w,f.h,'firma','FAST');}
+  else{font(8.5,false,MUTED);txt('Sin firma',fx+fw/2,y+fh/2-1,{align:'center'});}
+  font(9.5,true,INK);txt(s.signer_name||s.customer_name||'',fx,y+fh+3.5);font(8,false,MUTED);
+  txt([s.signer_doc?'DNI '+s.signer_doc:'',s.signed_at?'Firmado el '+when(s.signed_at):''].filter(Boolean).join(' · '),fx,y+fh+7.8);
+  const vx=fx+fw+8,vw=W-M-vx;doc.setFillColor(...SOFT);doc.roundedRect(vx,y-2,vw,fh,2,2,'F');
+  font(6.8,true,MUTED);txt('CÓDIGO DE VERIFICACIÓN',vx+4,y+3.5,{charSpace:.3});font(13,true,INK);txt(String(s.id||'').replace(/-/g,'').slice(0,10).toUpperCase(),vx+4,y+10);
+  font(7.6,false,MUTED);txt(doc.splitTextToSize('Remito digital emitido con AuxiliOS Solo. Las fotos y la firma quedan guardadas con fecha y hora.',vw-8),vx+4,y+16);
+  y+=fh+12;
+
+  // Marca de agua y pie en todas las páginas.
+  const n=doc.getNumberOfPages();
+  for(let i=1;i<=n;i++){doc.setPage(i);
+    if(doc.GState){doc.setGState(new doc.GState({opacity:.045}));
+      font(96,true,DARK);const w=doc.getTextWidth('AuxiliOS'),a=32*Math.PI/180,cx=W/2,cy=168;txt('AuxiliOS',cx-Math.cos(a)*w/2,cy+Math.sin(a)*w/2,{angle:32});
+      doc.setGState(new doc.GState({opacity:1}));}
+    doc.setDrawColor(...LINE);doc.setLineWidth(.3);doc.line(M,286,W-M,286);
+    if(logo)doc.addImage(logo.d,'PNG',M,288.2,4.6,4.6,'logo','FAST');font(7.2,true,INK);txt('AuxiliOS',M+6,291.6);const bw=doc.getTextWidth('AuxiliOS ');font(7.2,false,MUTED);
+    txt('Solo · Remito digital'+(s.remito_number?' N.º '+s.remito_number:'')+' · '+(P.business_name||P.full_name||''),M+6+bw,291.6);
+    txt('Página '+i+' de '+n,W-M,291.6,{align:'right'});}
+  return doc;}
+// Se arma apenas se abre el remito: así «Enviar» comparte al instante (el celular solo deja compartir justo después del toque).
+function prepPdf(s,cl,tp,tk){if(!window.jspdf)return Promise.resolve(null);if(!s.__pdf)s.__pdf=remitoPdf(s,cl,tp,tk).catch(()=>null);return s.__pdf;}
 async function sharePdf(s,cl,tp,tk){
   if(!window.jspdf){toast('No se pudo armar el PDF. Revisá la conexión.');return;}
-  const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),P=C.profile;let y=18;
-  const t=(txt,x,size=11,bold=false)=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.text(String(txt??''),x,y);};
-  t(P.business_name||P.full_name,15,16,true);t(s.remito_number?'Remito N.º '+s.remito_number:'Remito',140,14,true);y+=7;t(fmtDate(s.service_date),140,10);t(tk?('Grúa '+tk.plate):'',15,10);y+=10;
-  const rows=[['Prestadora',cl?.name],['Servicio',tp?.name],['N.º de servicio',s.provider_order],['Cliente',s.customer_name],['DNI / CUIT',s.customer_doc],['Patente',s.plate],['Vehículo',s.make_model],['Origen',s.origin],['Destino',s.destination],['Km',s.km],['Llegada',fmtDate(s.arrived_at)]].filter(r=>r[1]);
-  rows.forEach(([k,v])=>{t(k,15,10,true);t(v,60,10);y+=6.5;});y+=3;
-  [['Base',s.base_amount],['Km',s.km_amount],['Adicionales',s.extras_amount]].filter(r=>Number(r[1])).forEach(([k,v])=>{t(k,15,10);t(money(v),160,10);y+=6;});
-  t('Total',15,12,true);t(money(s.total),160,12,true);y+=9;
-  if(s.payment_1_method){const pp=PAY[s.payment_1_method]+' '+money(s.payment_1_amount)+(s.payment_2_method?' + '+PAY[s.payment_2_method]+' '+money(s.payment_2_amount):'');
-    t((cl?.kind==='particular'?'Pagó: ':'Adicionales pagados por el socio: ')+pp,15,10);y+=7;}
-  if(cl?.kind!=='particular'){const here=(Number(s.payment_1_amount)||0)+(Number(s.payment_2_amount)||0);t('Se factura a '+(cl?.name||'la prestadora')+': '+money(Math.max(0,Number(s.total)-here)),15,10,true);y+=7;}
-  const conf=[['conf_service','servicio'],['conf_charges','cargos'],['conf_tow','arrastre']].filter(([k])=>s[k]).map(([,l])=>l);
-  if(conf.length){t('Conforme con: '+conf.join(', ')+(s.no_damage?' · sin daños nuevos':''),15,10);y+=7;}
-  if(s.notes){t('Observaciones: '+s.notes,15,10);y+=7;}
-  if(s.signature_path){const {data}=await C.db.storage.from('solo_files').download(s.signature_path);if(data){const url=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(data);});doc.addImage(url,'PNG',15,y,80,30);y+=33;}}
-  t('Firma: '+(s.signer_name||'')+(s.signer_doc?' · DNI '+s.signer_doc:''),15,10);
+  if(!s.__pdf)toast('Armando el remito…');
+  const doc=await prepPdf(s,cl,tp,tk);if(!doc){s.__pdf=null;toast('No se pudo armar el PDF. Probá de nuevo.');return;}
   const blob=doc.output('blob'),file=new File([blob],'remito-'+(s.remito_number||'nuevo')+'.pdf',{type:'application/pdf'});
   if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:'Remito N.º '+s.remito_number});return;}catch(e){if(e.name==='AbortError')return;}}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;document.body.appendChild(a);a.click();a.remove();toast('PDF descargado');
